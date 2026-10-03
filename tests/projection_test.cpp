@@ -17,6 +17,12 @@ int main() {
             for (auto cell : {ark::world::Cell{9, 3}, ark::world::Cell{12, 5}}) {
                 const Vector2 camera{30.0F * (cell.x + cell.y) + 40, 15.0F * (cell.y - cell.x) + 5};
                 const auto p = ark::desktop::tile_center(cell, camera, extent, zoom);
+                const auto continuous = ark::desktop::project_position(
+                    {cell.x * 100.0F + 50, cell.y * 100.0F + 50}, camera, extent, zoom);
+                const auto origin = ark::desktop::project(cell, camera, extent, zoom);
+                if (std::abs(continuous.x - origin.x) > 0.01F ||
+                    std::abs(continuous.y - origin.y) > 0.01F)
+                    throw std::runtime_error("World centre projection differs from tile anchor");
                 const Vector2 pixels{box.x + p.x * box.width / extent.width,
                                      box.y + p.y * box.height / extent.height};
                 const auto logical = ark::desktop::logical_mouse(pixels, box, extent);

@@ -24,9 +24,11 @@ add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/compile_startup.mjs"
         "${PROJECT_SOURCE_DIR}/assets/data" "${ARK_STARTUP_CPP}"
-    DEPENDS scripts/compile_startup.mjs assets/data/MAP.json assets/data/STATE.json
-        assets/data/TABLES.json assets/data/tenantData.txt VERBATIM)
-add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/facilities/facility.cpp
+    DEPENDS scripts/compile_startup.mjs scripts/compile_loaded_map.mjs assets/data/MAP.json assets/data/STATE.json
+        assets/data/TABLES.json assets/data/tenantData.txt assets/data/LOADED_MAP.tsv
+        assets/data/LOADED_INSTANCES.tsv VERBATIM)
+add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/navigation.cpp src/facilities/facility.cpp
+    src/facilities/map_binding.cpp src/app/map_queries.cpp src/people/motion.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -73,6 +75,10 @@ if(BUILD_TESTING)
     target_link_libraries(ark_terrain_tests PRIVATE ark_game)
     ark_target(ark_terrain_tests)
     add_test(NAME road_connections COMMAND ark_terrain_tests)
+    add_executable(ark_navigation_tests tests/navigation_motion_test.cpp)
+    target_link_libraries(ark_navigation_tests PRIVATE ark_game)
+    ark_target(ark_navigation_tests)
+    add_test(NAME loaded_map_navigation_motion COMMAND ark_navigation_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)

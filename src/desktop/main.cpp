@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
             std::cout << "ark_village [--check] [--paused] [--font TTF] [--size W H] [--frames N] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
-                         "arrival|visitor]\n";
+                         "arrival|visitor|motion]\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);

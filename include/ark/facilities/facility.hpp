@@ -5,6 +5,7 @@
 #include "ark/world/grid.hpp"
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,6 +24,7 @@ struct Definition {
     std::vector<Modifier> neighbours{};
     // Preserve z/A independently: several unopened definitions have nonparallel source lists.
     std::vector<int> effect_icons{}, effect_markers{};
+    int direction{-1}; // Definition column11, distinct from tile external_direction.
 };
 struct Progress {
     int level{1};
@@ -36,6 +38,7 @@ struct Instance {
     world::Cell anchor;
     int orientation{}, remaining_ticks{};
     bool source_seed{};
+    std::optional<int> reset_legacy_id{}; // Initial evidence only; never the runtime identity.
 };
 struct Binding {
     world::Cell cell;

@@ -4,9 +4,9 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 
 - main.cpp：参数、无窗口资源/首访检查、窗口入口。
 - game_view.cpp：Retina窗口/原生像素画布、帧调度、输入采集和相机过渡。
-- scene.cpp：源格/设施/人物深度排序、连接道路、占地与建筑/箭头预览。
+- scene.cpp：加载后地表/设施/人物深度排序、连接道路、占地与建筑/箭头预览。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
-- projection.cpp：等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
+- projection.cpp：格与连续世界坐标等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
 - resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。
 - desktop_session.cpp：macOS桌面可用性检查。
 
@@ -18,4 +18,6 @@ Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体�
 场景滚轮每格约5%，范围50%～200%，鼠标下世界位置保持；右键拖动补偿缩放，HUD/面板尺寸不变。
 目录和详情页滚轮继续滚动列表，不同时缩放地图；`--zoom-percent 50..200`用于复现初始视图/有界截图。
 到访列表仅列场景人物，不冒充原版四页名单。inspect-page只检查渲染，不算真实鼠标测试。
+`--inspect-page motion --frames 120`在有界窗口显式选择旅店展示连续运动，只覆盖渲染位置；领域人物/金币不变。
+它不证明默认首访会选择旅店，不含方向动画/武器合成或使用退出；手动新局重置会清除检查行程。
 依据：[研究画面](../../research/dungeon_village_1/prototype/src/startup_view.cpp)、[UI](../../research/dungeon_village_1/ui/PAGES.md)。

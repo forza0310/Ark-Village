@@ -1,5 +1,4 @@
-// Read-only aggregation over the current finite village. Source roads are a snapshot, not the
-// pending reconstructed post-init map. Recomputing avoids stale or duplicated modifier caches.
+// Read-only aggregation over current loaded terrain and full instance bindings.
 #include "ark/app/game.hpp"
 #include <stdexcept>
 namespace ark::app {
@@ -8,12 +7,12 @@ facilities::Neighbourhood Game::neighbourhood(facilities::InstanceId instance) c
     if (!state_.facilities.count(instance))
         throw std::out_of_range("Unknown neighbourhood instance");
     std::vector<world::Cell> roads;
+    const auto map = route_map();
     for (int y = 0; y < data.map.height; ++y)
         for (int x = 0; x < data.map.width; ++x) {
             const world::Cell cell{x, y};
-            if (definition(display(data.map.cells[data.map.index(cell)].display_id).definition_id)
-                        .kind == 6 &&
-                !facility_at(cell))
+            if (map.cells[map.index(cell)].category == world::RouteCategory::road &&
+                !map.cells[map.index(cell)].facility)
                 roads.push_back(cell);
         }
     return facilities::derive_neighbourhood(data.definitions, state_.facilities, roads, data.map)

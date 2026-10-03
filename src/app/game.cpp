@@ -14,11 +14,15 @@ Game::Game(std::uint32_t random_seed) : random_(random_seed) {
     state_.arrival_counter = data.arrival_counter;
     for (const auto &item : data.definitions)
         state_.definition_progress.emplace(item.id, facilities::Progress{});
-    // IDs here identify the source-seed projection, not original rebuilt entrance identities.
+    // Keep original vector order and raw zero through the reset-only raw+1 mapping. Runtime
+    // IDs remain monotonic even though the original allocator can reuse raw IDs.
     for (auto seed : data.seeds) {
-        seed.id = state_.next_id++;
-        state_.facilities.emplace(seed.id, seed);
+        if (!seed.id || !state_.facilities.emplace(seed.id, seed).second)
+            throw std::invalid_argument("Invalid loaded instance identity");
+        state_.next_id = std::max(state_.next_id, seed.id + 1);
+        state_.instance_order.push_back(seed.id);
     }
+    route_map(); // Validate reset bindings before exposing the aggregate.
 }
 const facilities::Definition &Game::definition(int id) const {
     const auto &items = startup_data().definitions;
@@ -87,11 +91,10 @@ Error Game::preview(world::Cell anchor) const {
             return Error::outside_town;
         if (facility_at(part.cell))
             return Error::occupied;
-        // Finite source projection: only evidenced ground/road cells, never guessed post-init
-        // terrain.
-        const int terrain =
-            display(data.map.cells[data.map.index(part.cell)].display_id).definition_id;
-        if (terrain != 17 && terrain != 18)
+        // Startup clears special ground inside the inclusive boundary (e.g. former flower9,8).
+        // Approval uses logical state, never a sprite frame or the pre-load source display.
+        const auto terrain = data.loaded_cells.at(data.map.index(part.cell)).legacy_state;
+        if (terrain != 3 && terrain != 4)
             return Error::occupied;
     }
     return state_.money < item.price ? Error::insufficient_funds : Error::none;
@@ -107,6 +110,7 @@ Error Game::confirm(world::Cell anchor) {
     const auto id = next.next_id++;
     next.facilities.emplace(id, facilities::Instance{id, item.id, anchor, state_.orientation,
                                                      item.construction_ticks, false});
+    next.instance_order.push_back(id);
     next.expenses.push_back({id, 0, item.price});
     next.money -= item.price;
     state_ = std::move(next);

@@ -30,6 +30,7 @@ struct State {
     std::array<int, 4> calendar{};
     std::map<int, facilities::Progress> definition_progress;
     std::map<facilities::InstanceId, facilities::Instance> facilities;
+    std::vector<facilities::InstanceId> instance_order; // Original loaded order; append new IDs.
     std::vector<CashEntry> expenses;
     std::optional<people::Adventurer> adventurer;
     Mode mode{Mode::normal};
@@ -51,6 +52,9 @@ class Game {
     facility_values(int definition_id,
                     std::optional<facilities::InstanceId> instance = std::nullopt) const;
     facilities::Neighbourhood neighbourhood(facilities::InstanceId instance) const;
+    // Read-only current occupancy and conditional route. Does not choose an AI goal or move actors.
+    world::RouteMap route_map() const;
+    world::Route route_to(world::Cell start, world::ArrivalTarget target) const;
     Error open_catalog();
     Error select(int definition_id);
     Error rotate();

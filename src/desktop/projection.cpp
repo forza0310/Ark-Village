@@ -28,6 +28,11 @@ Vector2 project(world::Cell cell, Vector2 camera, Extent canvas, float zoom) {
     return {canvas.width / 2.0F + zoom * (30.0F * (cell.x + cell.y) - camera.x),
             canvas.height / 2.0F + zoom * (-15.0F * (cell.y - cell.x) - 15 + camera.y)};
 }
+Vector2 project_position(world::WorldPosition position, Vector2 camera, Extent canvas, float zoom) {
+    const float x = (position.x - 50) / 100, y = (position.z - 50) / 100;
+    return {canvas.width / 2.0F + zoom * (30 * (x + y) - camera.x),
+            canvas.height / 2.0F + zoom * (-15 * (y - x) - 15 + camera.y)};
+}
 std::optional<world::Cell> pick(Vector2 logical, Vector2 camera, const world::SourceMap &map,
                                 Extent canvas, float zoom) {
     for (int y = 0; y < map.height; ++y)

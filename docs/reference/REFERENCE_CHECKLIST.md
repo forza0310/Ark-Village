@@ -44,8 +44,8 @@
 | C06 | 越界/占用/余额不足 | BEHAVIOR，反馈缺 |
 | C07 | 取消/返回/切换工具 | VISUAL_BASELINE，完整栈缺 |
 | C08 | 施工tick与转活动 | FACILITIES，资格/调度缺 |
-| C09 | 地图绑定/连通/到达身份 | MAP_ACCESS，真实地图/入口缺 |
-| C10 | 寻路/前驱平局 | MAP_ACCESS，示例与原版平局差异需保留 |
+| C09 | 地图绑定/连通/到达身份 | MAP_ACCESS+LOADED_MAP/INSTANCES：静态逻辑/身份、动态完整占地及到达身份已接入；附加覆盖绘制未接 |
+| C10 | 寻路/前驱平局 | MAP_ACCESS：距离场/回溯/出发格费用已接入；示例与原版平局差异保留 |
 | C11 | 邻接完整重算/来源去重 | NEIGHBOURHOOD |
 | C12 | 等级/改良/经营属性 | FACILITIES |
 | C13 | 活动与设施候选/加权选择 | ACTIVITY_CHOICE/CANDIDATES/SNAPSHOT_FACILITY_CHOICE |
@@ -57,7 +57,7 @@
 | C19 | 设施事件/延迟/人气 | FACILITY_EVENTS |
 | C20 | 费用/月报/点数/跨月 | ACCOUNTING，调度候选暂缓 |
 | C21 | 暂停/菜单/模态更新资格 | VISUAL_BASELINE，完整守卫缺 |
-| C22 | 新局/存取/恢复 | VISUAL_BASELINE，完整初值/持久字段缺 |
+| C22 | 新局/存取/恢复 | STARTUP加载后静态初值已接入；完整调度/持久字段缺 |
 | C23 | 任务前置/期限/结果 | BEHAVIOR/ACCOUNTING，完整分类型缺 |
 | C24 | 战斗/奖励/回城 | CHARACTER_HP仅辅助，完整战斗缺 |
 | C25 | 职业/装备/特殊活动 | FACILITY_ARRIVAL，完整特例缺 |
@@ -67,7 +67,8 @@
 
 本轮产品行为接入：C01/C02/C06/C07/C08/C21/C22/C28的有限分支。建设报价/原子拒绝、施工280计数、真实静态初值、首访及暂停均有产品测试。
 新增C11/C12的完整邻接重算/只读经营规则与独立测试；不把这些查询扩张为实际收入/维护扣款或自动升级。
-不把上述通过扩张为道路建设/退款、完整AI、原入口重建、月报/保存或完整模态已完成；详见[切片记录](../stages/B1-playable-prototype.md)。
+新增C09/C10及普通运动的纯组合验收：两出生点到三商店连续移动，各只报告一次逻辑进入；默认AI/收费/使用退出未接。
+不把上述通过扩张为道路建设/退款、完整AI、入口附加覆盖画面、月报/保存或完整模态已完成；详见[切片记录](../stages/B1-playable-prototype.md)。
 
 报告名都位于 [研究入口](../../research/dungeon_village_1/README.md)。
 视觉观察见 [视觉基线](../../research/dungeon_village_1/ui/README.md)与 [截图入口](../../research/dungeon_village_1/references/README.md)。

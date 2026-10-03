@@ -1,8 +1,9 @@
 #pragma once
 
-// Build-time validated research data. Source map seeds are not a certified post-init snapshot.
+// Build-time validated loaded-reset reconstruction, not a certified APK runtime capture.
 #include "ark/facilities/facility.hpp"
 #include "ark/people/adventurer.hpp"
+#include "ark/world/loaded_map.hpp"
 #include <array>
 
 namespace ark::app {
@@ -26,6 +27,7 @@ struct StartupData {
     people::Adventurer first_character;
     std::vector<std::string> first_talk;
     std::array<std::int32_t, 10> initial_job_counts{};
+    std::vector<world::LoadedCell> loaded_cells; // Row-major, original TSV fields preserved.
 };
 const StartupData &startup_data();
 } // namespace ark::app

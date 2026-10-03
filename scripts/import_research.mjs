@@ -21,6 +21,7 @@ const copy = (source, target) => {
 };
 if (!uiOnly) {
 for (const file of ['MAP.json', 'STATE.json', 'TABLES.json']) copy(`data/startup/${file}`, `data/${file}`);
+for (const file of ['LOADED_MAP.tsv', 'LOADED_INSTANCES.tsv']) copy(`data/startup/${file}`, `data/${file}`);
 copy('data/original/tenantData.txt', 'data/tenantData.txt');
 const table = JSON.parse(readFileSync(join(research, 'data/startup/TABLES.json'), 'utf8'));
 const map = JSON.parse(readFileSync(join(research, 'data/startup/MAP.json'), 'utf8'));
@@ -79,5 +80,5 @@ for (const file of ['img.inf', 'top_bar.png', 'btmbar.png', 'btmbar_popular00.pn
 for (const file of ['img.inf', 'touch_arrow.png', 'touch_arrow.seb', 'buildCategoryBack.png',
   'buildCategoryBack.seb', 'frame.png', 'frame.seb'])
   copy(`assets/original/common2/${file}`, `common2/${file}`);
-writeFileSync(join(destination, 'SOURCES.json'), JSON.stringify({ scope: 'static_source_projection_first_arrival_ui', files: records }, null, 2) + '\n');
+writeFileSync(join(destination, 'SOURCES.json'), JSON.stringify({ scope: 'loaded_startup_first_arrival_ui', files: records }, null, 2) + '\n');
 console.log(`Imported ${records.length} maintained files; all hashes recorded`);

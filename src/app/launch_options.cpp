@@ -29,7 +29,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             const auto &page = arguments[i];
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
-                page != "bonuses" && page != "equipment" && page != "booster")
+                page != "bonuses" && page != "equipment" && page != "booster" && page != "motion")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {

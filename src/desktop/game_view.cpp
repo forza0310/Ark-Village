@@ -1,6 +1,7 @@
 // Window/update orchestration only. Original page composition and mouse routing live in ui/.
 #include "game_view.hpp"
 #include "ark/app/game.hpp"
+#include "ark/people/motion.hpp"
 #include "desktop_session.hpp"
 #include "resources.hpp"
 #include "scene.hpp"
@@ -57,15 +58,15 @@ class Canvas {
 void inspect(app::Game &game, ui::State &view, const std::string &page) {
     if (page.empty())
         return;
-    if (page == "arrival" || page == "visitor") {
+    if (page == "arrival" || page == "visitor" || page == "motion") {
         game.set_paused(false);
         for (int i = 0; i < 420; ++i)
             game.update();
-        if (page == "visitor") {
+        if (page == "visitor" || page == "motion") {
             game.acknowledge_talk();
             game.acknowledge_talk();
             game.finish_camera();
-            view.page = ui::Page::roster;
+            view.page = page == "visitor" ? ui::Page::roster : ui::Page::village;
         }
     } else if (page == "menu") {
         view.page = ui::Page::menu;
@@ -105,6 +106,18 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     view.camera = {static_cast<float>(data.camera.x), static_cast<float>(data.camera.y)};
     view.zoom = options.zoom_percent / 100.0F;
     inspect(game, view, options.inspect_page);
+    // A bounded, explicit-target rendering probe. It does not install an AI goal, mutate the
+    // actor's domain state, charge a visit or infer that the first visitor chooses the inn.
+    std::optional<people::Travel> inspected_travel;
+    if (options.inspect_page == "motion") {
+        for (const auto &[id, instance] : game.state().facilities)
+            if (instance.definition_id == 28)
+                inspected_travel =
+                    people::plan_travel(game.route_map(), game.state().adventurer->cell,
+                                        {instance.anchor, id, instance.definition_id});
+        if (!inspected_travel)
+            throw std::runtime_error("Inspection travel could not be planned");
+    }
     int frames{};
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         // Window points drive layout/input; framebuffer pixels drive rasterization. A Retina
@@ -175,10 +188,19 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         }
         if (view.notice_frames)
             --view.notice_frames;
+        if (inspected_travel && !game.state().adventurer)
+            inspected_travel.reset(); // A manual new-game reset also clears the rendering probe.
+        if (inspected_travel)
+            inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
+                                                      game.state().adventurer->flags)
+                                   .travel;
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster_camera);
-        draw_scene(game, sprites, view.camera, extent, view.zoom);
+        draw_scene(game, sprites, view.camera, extent, view.zoom,
+                   inspected_travel
+                       ? std::optional<world::WorldPosition>{inspected_travel->position}
+                       : std::nullopt);
         draw_preview(game, view, layout, sprites, hovered);
         ui::draw_hud(game, view, layout, skin);
         ui::draw_pages(game, view, layout, skin);

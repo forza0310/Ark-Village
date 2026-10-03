@@ -38,8 +38,9 @@ raylib/GLFW需要可访问的登录桌面和唤醒显示器，WindowServer存在
 沙箱可能无法枚举真实显示器；本轮沙箱外同一有界程序成功运行。应在已登录终端运行或获准使用独立窗口检查，不移除显示器保护、不把沙箱报错记成游戏崩溃。
 截图/焦点问题和业务异常分别记录；环境无法运行窗口时仍做构建/CTest，窗口验收明确记未执行。
 
-页面检查：`ark_village --inspect-page shops --frames 8 --screenshot /tmp/ark-shops.png`，支持menu/shops/plants/food/placement/detail/bonuses/equipment/booster/arrival/visitor。
+页面检查：`ark_village --inspect-page shops --frames 8 --screenshot /tmp/ark-shops.png`，支持menu/shops/plants/food/placement/detail/bonuses/equipment/booster/arrival/visitor/motion。
 缩放检查可加`--zoom-percent 50..200`；常规场景滚轮每格约5%，目录/设施第二页滚轮用于列表。
+motion显式指定旅店并只推进检查用行程，渲染位置覆盖不修改领域人物/资金，也不代表默认AI。
 该模式先安排模型状态再暂停，只验渲染，不验真实输入或正常新局。ui_navigation使用同一controller与实际Game验证坐标命中，但不算OS鼠标验收。
 原生自动化连接裸raylib/隔离bundle可能长时间阻塞；本轮连接耗时约8分钟，窗口有界进程已结束，人工输入保持待验。不要反复连接或移除桌面保护，用有界截图和坐标测试记录独立结果。
 SEB检查须区分结构和使用帧：完整记录/legacy_tag原样保留，PNG矩形只检查实际请求帧；不能为未用草地/海面记录修改原图或全面放宽边界。

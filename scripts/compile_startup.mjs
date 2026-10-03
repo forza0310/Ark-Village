@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { parseLoadedMap } from './compile_loaded_map.mjs';
 
 const apk = '1e52408aeaebec2d92a5e50b8c0d964566d0038456bc9b081e18b7d3446a4ef5';
 const need = (condition, message) => { if (!condition) throw new Error(message); };
@@ -20,7 +21,8 @@ const text = value => {
 const list = values => `{${values.map(integer).join(',')}}`;
 const array = (values, count) => { need(values.length === count, 'Invalid array length'); return list(values); };
 
-export function compileStartup(map, state, tables, tenantText) {
+export function compileStartup(map, state, tables, tenantText, loadedCells, loadedInstances) {
+  const loaded = parseLoadedMap(loadedCells, loadedInstances);
   need(createHash('sha256').update(tenantText).digest('hex') ===
        '5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a', 'Facility source hash mismatch');
   need([map, state, tables].every(v => v.apk_sha256 === apk), 'APK provenance mismatch');
@@ -112,15 +114,15 @@ export function compileStartup(map, state, tables, tenantText) {
       `{ {{${endpoints.join(',')}}},${array(row.slice(23,25).map(decimal),2)},${decimal(row[13])},` +
       `${decimal(row[14])},${decimal(row[35])},${decimal(row[3]) === 2 ? 'true' : 'false'}},` +
       `{${slots.map((slot,i)=>`{${slot},${deltas[i]}}`).join(',')}},` +
-      `${list(effects)},${list(plusCounts)}}`;
+      `${list(effects)},${list(plusCounts)},${decimal(row[11])}}`;
   });
   const date = state.calendar;
   return `// Generated from pinned research data; do not edit.\n#include "ark/app/startup_data.hpp"\n` +
     `namespace ark::app { const StartupData &startup_data() { static const StartupData value{\n` +
-    `{24,24,{${cells.map(v => array(v,2)).join(',')}}},\n` +
+    `{24,24,{${loaded.cells.map(v => array(v.slice(5,7),2)).join(',')}}},\n` +
     `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])}}`).join(',')}},\n` +
     `{${definitions.join(',')}},\n` +
-    `{${state.map_seed_instances.map(v => `{0,${v.definition_id},{${v.x},${v.y}},0,0,true}`).join(',')}},\n` +
+    `{${loaded.instances.map(v => `{${v[2]},${v[3]},{${v[4]},${v[5]}},0,0,true,${v[1]}}`).join(',')}},\n` +
     `{${state.boundary.spawn_points.map(v => array(v,2)).join(',')}},${list([b.min_x,b.max_x,b.min_y,b.max_y])},\n` +
     `${state.resources.money},${state.resources.village_points},${state.resources.popularity},` +
     `${list([date.year_index,date.month_index,date.subperiod_index,date.counter])},\n` +
@@ -128,11 +130,13 @@ export function compileStartup(map, state, tables, tenantText) {
     `{${integer(state.render.initial_camera.x)},${integer(state.render.initial_camera.y)}},\n` +
     `{${integer(first.instance_uid)},${integer(first.definition_id)},${text(first.name)},${integer(first.job_id)},${integer(first.sex)},` +
     `${integer(first.job_level)},${integer(first.effort)},${integer(first.satisfaction)},${array(first.derived_attributes,6)},` +
-    `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},0},\n` +
-    `{${talk.map(text).join(',')}},${array(jobCounts,10)}}; return value; } }\n`;
+    `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},2,{0,0},0},\n` +
+    `{${talk.map(text).join(',')}},${array(jobCounts,10)},\n` +
+    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}}}; return value; } }\n`;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [root, output] = process.argv.slice(2);
   const json = name => JSON.parse(readFileSync(`${root}/${name}.json`, 'utf8'));
-  writeFileSync(output, compileStartup(json('MAP'), json('STATE'), json('TABLES'), readFileSync(`${root}/tenantData.txt`, 'utf8')));
+  writeFileSync(output, compileStartup(json('MAP'), json('STATE'), json('TABLES'), readFileSync(`${root}/tenantData.txt`, 'utf8'),
+    readFileSync(`${root}/LOADED_MAP.tsv`, 'utf8'), readFileSync(`${root}/LOADED_INSTANCES.tsv`, 'utf8')));
 }

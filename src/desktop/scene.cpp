@@ -1,4 +1,4 @@
-// Source-seed scene and evidenced connected road frames. Full loaded-map overlays remain pending.
+// Loaded ground and current instances. Boundary/exterior extra overlays still await bindings.
 #include "scene.hpp"
 #include "ark/world/terrain.hpp"
 #include <algorithm>
@@ -12,8 +12,8 @@ void outline(world::Cell cell, Vector2 camera, Extent extent, float zoom, Color 
     DrawLineEx({p.x, p.y + 15 * zoom}, {p.x - 30 * zoom, p.y}, 1, color);
 }
 } // namespace
-void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent extent,
-                float zoom) {
+void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent extent, float zoom,
+                std::optional<world::WorldPosition> inspection_actor) {
     const auto &data = app::startup_data();
     auto terrain = data.map;
     // Build the visual input from current occupancy, rather than immutable startup instance IDs.
@@ -36,8 +36,8 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
             ground.push_back({game.display(source.display_id).sprite, source.variant,
                               project({x, y}, camera, extent, zoom), WHITE, false});
         }
-    for (const auto &entry : game.state().facilities) {
-        const auto &v = entry.second;
+    for (const auto id : game.state().instance_order) {
+        const auto &v = game.state().facilities.at(id);
         const auto &item = game.definition(v.definition_id);
         for (const auto &part : facilities::footprint(item.shape, v.orientation, v.anchor))
             objects.push_back({game.display(item.display_id).sprite, part.fragment,
@@ -45,9 +45,11 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
                                v.remaining_ticks ? Color{180, 180, 180, 255} : WHITE, false});
     }
     if (game.state().adventurer)
-        objects.push_back({"walk00.seb", 0,
-                           project(game.state().adventurer->cell, camera, extent, zoom), WHITE,
-                           true});
+        objects.push_back(
+            {"walk00.seb", 0,
+             project_position(inspection_actor.value_or(game.state().adventurer->position), camera,
+                              extent, zoom),
+             WHITE, true});
     const auto draw = [&](std::vector<Tile> &tiles) {
         std::stable_sort(tiles.begin(), tiles.end(),
                          [](const auto &a, const auto &b) { return a.point.y < b.point.y; });

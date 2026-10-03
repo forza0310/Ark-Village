@@ -6,6 +6,10 @@
 #include <vector>
 
 namespace ark::world {
+// Original simulation coordinates: one grid cell spans 100 units on x/z. No screen pixels.
+struct WorldPosition {
+    float x{}, z{};
+};
 struct Cell {
     int x{};
     int y{};

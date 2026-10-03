@@ -33,15 +33,18 @@ std::string snapshot(const app::Game &game) {
         const auto &v = entry.second;
         out << ';' << entry.first << ',' << v.id << ',' << v.definition_id << ',' << v.anchor.x
             << ',' << v.anchor.y << ',' << v.orientation << ',' << v.remaining_ticks << ','
-            << v.source_seed;
+            << v.source_seed << ',' << v.reset_legacy_id.value_or(-1);
     }
+    for (auto id : s.instance_order)
+        out << ";order=" << id;
     for (const auto &v : s.expenses)
         out << ';' << v.instance << ',' << v.category << ',' << v.expense;
     if (s.adventurer) {
         const auto &v = *s.adventurer;
         out << ';' << v.uid << ',' << v.definition_id << ',' << v.name << ',' << v.job_id << ','
             << v.sex << ',' << v.level << ',' << v.effort << ',' << v.satisfaction << ',' << v.flags
-            << ',' << v.cell.x << ',' << v.cell.y;
+            << ',' << v.cell.x << ',' << v.cell.y << ',' << v.position.x << ',' << v.position.z
+            << ',' << v.pending_activity.value_or(-1);
         for (int x : v.attributes)
             out << ',' << x;
         for (int x : v.equipment)
@@ -86,6 +89,9 @@ void first_arrival() {
           "original first attributes");
     check(a.cell == world::Cell{11, 0} || a.cell == world::Cell{12, 0}, "evidenced spawn");
     check((a.flags & 8192) && game.state().money == 5000, "first visit is free");
+    check(a.flags == (2U | 8192U) && a.pending_activity == 0 &&
+              a.position.x == a.cell.x * 100 + 50 && a.position.z == a.cell.y * 100 + 50,
+          "world centre, initialization flag and unexecuted activity0");
     const auto modal = snapshot(game);
     steps(game, 100);
     check(snapshot(game) == modal, "tutorial pauses world");

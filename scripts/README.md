@@ -2,7 +2,8 @@
 
 需要Node 18+，只消费维护数据，不执行逆向。
 
-- compile_startup.mjs：JSON.parse读取发布包，交叉验证哈希/身份/目录/初值/种子，生成标准C++只读数据。
+- compile_startup.mjs：JSON.parse读取发布包，交叉验证哈希/身份/目录/初值，结合加载后数据生成标准C++只读数据。
+- compile_loaded_map.mjs：固定两份TSV哈希，验证14/6列、576格行主序、8实例原向量顺序与全部交叉绑定；不在产品重建加载流程。
 - import_research.mjs：按显示/SEB绑定复制素材，生成assets/SOURCES.json，不是常规构建步骤。
 - verify_assets.mjs：核对产品副本哈希/尺寸，不依赖research运行目录。
 

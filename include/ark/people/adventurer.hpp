@@ -4,6 +4,7 @@
 #include "ark/world/grid.hpp"
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace ark::people {
@@ -16,6 +17,9 @@ struct Adventurer {
     std::array<int, 3> hp{};
     world::Cell cell;
     std::uint32_t flags{};
+    world::WorldPosition position;
+    std::optional<int>
+        pending_activity{}; // Activity0 is evidenced; executing its priority is pending.
 };
 // Install the researched first visitor before event89. RNG chooses only an evidenced spawn point;
 // local RNG consumption and unknown initial AI/facing are not original-game equivalence claims.

@@ -1,13 +1,13 @@
 # 运行资源
 
 新增新局静态数据、源地图PNG/SEB、初期建筑、农家人物、秘书与窗底。
-95份文件的来源/哈希/字节数/PNG尺寸见[SOURCES.json](SOURCES.json)，由scripts/import_research.mjs原样复制。
+97份文件的来源/哈希/字节数/PNG尺寸见[SOURCES.json](SOURCES.json)，由scripts/import_research.mjs原样复制。
 新增common/common2上下栏、菜单/图标/手形、日期/属性数字、人气/点数、内容角/分类/方向箭头等UI资源。
 设施详情新增arrow01/arrow02及icon_param00；road00的全部16个邻接帧在启动时检查实际PNG边界。
 原始数据与INF通过.gitattributes禁用换行规范化，避免新检出改变哈希；SOURCES.json使用产品标准LF。
 data在构建期编译为只读C++，程序旁素材独立运行，不读取APK、research或Node。
-首屏是源格/设施种子投影，不是加载后完整快照；不复用7×7夹具或夜骑士人物。
-STATE.json保留源投影批次，SOURCES中source_revision指向其研究提交；research最新版本已追加加载后交付说明，尚未同步该输入。
+首屏消费LOADED_MAP.tsv/LOADED_INSTANCES.tsv加载后静态快照，保留源MAP作证据，不复用7×7夹具或夜骑士人物。
+STATE.json与本批维护数据同步；快照包括576格/8实例，逻辑、显示和身份分开。围栏/外入口附加覆盖及道路2×2拼块尚未消费。
 
 | 产品文件 | research源 | 尺寸 | SHA-256 | 用途 |
 | --- | --- | --- | --- | --- |

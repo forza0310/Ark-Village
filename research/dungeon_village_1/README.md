@@ -12,6 +12,7 @@
 | 设施字段、占地、两朝向、经营、邻接 | [设施规格](rules/FACILITIES.md) |
 | 地图绑定、加权路径、到达身份 | [地图访问](rules/MAP_ACCESS.md) |
 | 人物自主调度、首次活动请求与出发组合 | [人物与寻路](rules/CHARACTERS.md) |
+| 人物/怪物共享AI、感知/战斗/生命周期与控制解释器 | [AI专项](rules/ai/README.md) |
 | 类别计划、候选、重复计权、目标格 | [活动选择](rules/ACTIVITY.md) |
 | 到达收费、退出效果、生命值显示协议 | [设施使用](rules/FACILITY_USE.md) |
 | 道具共享改良、实例事件与延迟计划 | [事件与道具](rules/FACILITY_EFFECTS.md) |

@@ -36,6 +36,16 @@ SHA-256依次为`cadcb21544111c305214c67f4e25724a17ada111b3c728f7ed20b9772ddf21b
 道路补块复用既有Map低层与小型图片/深度消费者，见[绘制交付](ui/README.md#road-patches)。
 生成Java保持忽略、不提交；局部交叉证据不消除整套巨型方法的警告。
 
+2026-10-04人物/怪物AI专项新增`work/ai-fallback/Encounter.java`（c.f）和
+`work/ai-fallback/Projectile.java`（c.j），参数为
+`--config none --decompilation-mode fallback --no-res --log-level warn --single-class <类> --single-class-output <路径>`。
+SHA-256分别为`6926d7ff344accf558986f1c2fa1e44d97227a1208ee5f5298490c626f87799c`、
+`b386c299543a294b012361a42ab3256132a7f557dc1bb6e226fa1f2ee84d18c6`。
+复用Character低层哈希`4bd10321f4a6a256664f5700dcc9dd71638e3c66c4fb9cb5634b1d96d712a3bd`和既有Map低层。
+[AI入口](rules/ai/README.md)逐功能记录普通/低层定位、维护C++职责、未闭合副作用与组合条件。
+F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除2掩码已有低层交叉；
+事件完整奖励与复杂控制仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
+
 ## 稳定符号映射
 
 下列名称是根据残留诊断字符串、序列化职责和调用关系建立的工作别名，不是恢复出的 Java 原始类型名。

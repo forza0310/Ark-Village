@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及22个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及28个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -21,6 +21,11 @@
 | weapon_choice | 武器type1重选计数守卫、原数组顺序/rank窗口和票号；不装备/收费，不含防具/饰品 | [武器选择](../rules/FACILITY_USE.md#weapon-choice) |
 | facility_events、facility_items | 实例事件门槛、定义共享改良与库存候选 | [事件与道具](../rules/FACILITY_EFFECTS.md) |
 | accounting | 即时金币、周期费用、报表快照、延迟点数与幂等身份 | [周期账本](../rules/ACCOUNTING.md) |
+| actor_ai、ai_perception | G/e/F/K/L、人物/怪物等待、附近抢占、救援/回复目标与出发前置 | [AI感知](../rules/ai/PERCEPTION.md)、[生命周期](../rules/ai/LIFECYCLE.md) |
+| combat_ai | 职业/武器策略、九格评分、物理/魔法候选与两侧影响场 | [战斗](../rules/ai/COMBAT.md) |
+| encounter_ai | 组时点/清理/姿态、普通怪物数量及定义解锁抽取 | [遭遇](../rules/ai/ENCOUNTERS.md) |
+| actor_lifecycle | 计数状态有序请求、救援双向绑定及r清理候选 | [生命周期](../rules/ai/LIFECYCLE.md) |
+| actor_control | 全34控制码长度/基本值校验、本地前缀、等待/运动/成功出发早停 | [控制解释器](../rules/ai/CONTROL.md) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

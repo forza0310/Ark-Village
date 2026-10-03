@@ -123,9 +123,13 @@ export function compileStartup(map, state, tables, tenantText) {
     const row = rows.get(id), item = catalogs.get(id);
     const display = displays.get(decimal(row[9]));
     requireValue(row && display && decimal(display[5]) === id, '设施缺少显示绑定');
+    const attributes = Array.from({length:4}, (_,slot) => list(row.slice(15+slot*2,17+slot*2).map(decimal)));
+    const economy = `{{{${attributes.join(',')}}},${list(row.slice(23,25).map(decimal))},` +
+      `${decimal(row[13])},${decimal(row[14])},${decimal(row[35])},${decimal(row[3]) === 2}}`;
     return `{${id},${text(row[1])},${decimal(row[3])},${item ? integer(item.tab) : -1},` +
       `${item ? integer(item.effective_price) : 0},${item ? integer(item.construction_counter_threshold ?? 0) : 0},${decimal(display[0])},` +
-      `${decimal(row[4])},${decimal(row[11])},${decimal(row[35])},${decimal(row[10])},${decimal(row[19])}}`;
+      `${decimal(row[4])},${decimal(row[11])},${decimal(row[35])},${decimal(row[10])},${decimal(row[19])},` +
+      `${decimal(row[5])},${decimal(row[25])},${economy}}`;
   });
   const date = state.calendar;
   requireValue([date.year_index,date.month_index,date.subperiod_index,date.counter].join(',') === '0,3,0,0' &&
@@ -144,7 +148,8 @@ export function compileStartup(map, state, tables, tenantText) {
     `{${state.render.initial_camera.x},${state.render.initial_camera.y}},\n` +
     `{${first.instance_uid},${first.definition_id},${text(first.name)},${first.job_id},${first.sex},` +
     `${first.job_level},${first.effort},${first.satisfaction},${list(first.derived_attributes)},` +
-    `${list(first.equipment_ids)},${list(first.combat)},${list(first.initial_hp_slots)},{0,0},0},\n` +
+    `${list(first.equipment_ids)},${list(first.combat)},${list(first.initial_hp_slots)},{0,0},0,{},` +
+    `${list(jobRow.slice(13,15).map(decimal))}},\n` +
     `{${talk.map(text).join(',')}}};\nreturn value;\n}\n}\n`;
   return output;
 }

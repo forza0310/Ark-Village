@@ -4,6 +4,7 @@
 // separate; unknown AI and month-end effects are deliberately not simulated.
 #include "dungeon_village_prototype/startup_map.hpp"
 #include "dungeon_village_reference/accounting.hpp"
+#include "dungeon_village_reference/facility_economy.hpp"
 #include "dungeon_village_reference/geometry.hpp"
 
 #include <array>
@@ -35,6 +36,9 @@ struct StartupDefinition {
     int flags{};
     int shape{};
     int definition_charm{};
+    int detail{};
+    int use_wait{}; // Source column 25; category-2 activity 0/1 overrides it with 200.
+    ref::FacilityEconomyDefinition economy; // Raw endpoints, not effective construction quotes.
 };
 struct StartupFacility {
     std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.
@@ -61,6 +65,8 @@ struct StartupCharacter {
     std::uint32_t flags{};
     // Observed opcode-8 activity request; retained pending while first-play AI is unresolved.
     std::optional<int> pending_activity{};
+    std::array<int, 2>
+        job_satisfaction_thresholds{}; // Source job columns 13/14, not chosen defaults.
 };
 struct StartupEvidence {
     int width{};

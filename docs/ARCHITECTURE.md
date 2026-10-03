@@ -47,7 +47,7 @@
 
 ## 建设规则依据
 
-建设将消费 [设施规格](../research/dungeon_village_1/FACILITIES.md)、[地图访问](../research/dungeon_village_1/MAP_ACCESS.md)、[邻接](../research/dungeon_village_1/NEIGHBOURHOOD.md)和原版页面证据，当前尚未实现。
+建设将消费 [设施规格](../research/dungeon_village_1/rules/FACILITIES.md#definitions)、[地图访问](../research/dungeon_village_1/rules/MAP_ACCESS.md)、[邻接](../research/dungeon_village_1/rules/FACILITIES.md#neighbourhood)和原版页面证据，当前尚未实现。
 已证：定义/实例身份分开；锚点式1/2/4格、两朝向；每个占用格绑定实例/定义/分片；
 邻接按来源实例去重、含对角、每外环道路格魅力+2；等级/改良/使用累计按定义共享。
 连通是访问状态，不能自定“必须接路才允许建设”。

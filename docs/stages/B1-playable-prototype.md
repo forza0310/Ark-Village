@@ -8,12 +8,12 @@
 
 | 内容 | 依据 | 本阶段边界 |
 | --- | --- | --- |
-| 旅店28、双格旅店29、咖啡厅36 | FACILITIES.md、原始tenantData.txt | 建设价1000/1000/700，1/2格、两朝向、完整占地绑定 |
-| 定义与实例分开 | FACILITIES.md | 等级/改良/使用计数/升级提示按定义共享，位置/朝向属于实例 |
-| 建设预览与目录 | VISUAL_BASELINE.md、UI_RENDER_MAP.md、S002/S003 | 列表→预览→确认/取消；完整审批与热区仍缺，产品交互需单独标记 |
-| 冒险者到访 | S009、UI_RENDER_MAP.md | 页面59为到访展示候选；资格、触发、人物创建与关闭副作用未闭合 |
-| 住宅入住/任务征集 | UI_RENDER_MAP.md、S011/S015/S016/S022 | 已有局部链路和外观，属于不同功能，不替代冒险者加入 |
-| 原版新局 | RQ02、VISUAL_BASELINE.md | 地图、资金、人物、镜头未交付；不能把夹具宣称为原版新局 |
+| 旅店28、双格旅店29、咖啡厅36 | [设施规格](../../research/dungeon_village_1/rules/FACILITIES.md)、[原始设施表](../../research/dungeon_village_1/data/original/tenantData.txt) | 建设价1000/1000/700，1/2格、两朝向、完整占地绑定 |
+| 定义与实例分开 | [设施规格](../../research/dungeon_village_1/rules/FACILITIES.md) | 等级/改良/使用计数/升级提示按定义共享，位置/朝向属于实例 |
+| 建设预览与目录 | [视觉基线](../../research/dungeon_village_1/ui/README.md)、[页面映射](../../research/dungeon_village_1/ui/PAGES.md)、S002/S003 | 列表→预览→确认/取消；完整审批与热区仍缺，产品交互需单独标记 |
+| 冒险者到访 | S009、[页面映射](../../research/dungeon_village_1/ui/PAGES.md) | 页面59为到访展示候选；资格、触发、人物创建与关闭副作用未闭合 |
+| 住宅入住/任务征集 | [页面映射](../../research/dungeon_village_1/ui/PAGES.md)、S011/S015/S016/S022 | 已有局部链路和外观，属于不同功能，不替代冒险者加入 |
+| 原版新局 | RQ02、[视觉基线](../../research/dungeon_village_1/ui/README.md) | 地图、资金、人物、镜头未交付；不能把夹具宣称为原版新局 |
 
 本轮目标为真实新局→建造设施→新冒险者到访/加入→在场景与名单中可查询。
 这是验收操作路线，不表示建造必然触发到访；人物创建、展示与加入的内部先后仍等待研究。

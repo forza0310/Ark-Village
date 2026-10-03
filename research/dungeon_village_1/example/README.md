@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及31个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及32个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -29,6 +29,7 @@
 | encounter_lifecycle | 完整事件分支/任务生成、胜利与页面有序请求、定义共享近期统计和延迟成长；不提交全局现金或职业升级 | [事件收尾](../rules/ai/ENCOUNTERS.md#完整事件候选与延迟成长) |
 | actor_lifecycle | 计数状态、救援绑定/修复/跟随/释放、普通旅店双人原子到达、r清理候选 | [生命周期](../rules/ai/LIFECYCLE.md) |
 | actor_control | 全34码校验、本地前缀、失败8、状态setter、漫游、装备显示/提交分离；全局副作用由所有者应用 | [控制解释器](../rules/ai/CONTROL.md) |
+| ai_schedule | 实时名单两遍、反向/正向删除、同轮追加、删除前设施释放；消费者只准备私有聚合副本，不是通用事件总线 | [聚合调度](../rules/ai/LIFECYCLE.md#聚合遍历与同轮新建) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

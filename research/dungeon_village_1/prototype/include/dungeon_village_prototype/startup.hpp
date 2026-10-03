@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/startup_map.hpp"
 #include "dungeon_village_reference/accounting.hpp"
 #include "dungeon_village_reference/facility_economy.hpp"
+#include "dungeon_village_reference/facility_exit.hpp"
 #include "dungeon_village_reference/geometry.hpp"
 
 #include <array>
@@ -39,6 +40,7 @@ struct StartupDefinition {
     int detail{};
     int use_wait{}; // Source column 25; category-2 activity 0/1 overrides it with 200.
     ref::FacilityEconomyDefinition economy; // Raw endpoints, not effective construction quotes.
+    std::vector<ref::FacilityAttributeEffect> exit_effects; // Source columns28/29, original order.
 };
 struct StartupFacility {
     std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.
@@ -67,6 +69,7 @@ struct StartupCharacter {
     std::optional<int> pending_activity{};
     std::array<int, 2>
         job_satisfaction_thresholds{}; // Source job columns 13/14, not chosen defaults.
+    int weapon_reselect_counter{}; // Legacy A[0], set to6 by initial equip; not weapon inventory.
 };
 struct StartupEvidence {
     int width{};

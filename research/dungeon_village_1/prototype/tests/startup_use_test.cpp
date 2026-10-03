@@ -6,6 +6,7 @@
 #include "dungeon_village_reference/facility_arrival.hpp"
 #include "dungeon_village_reference/facility_exit.hpp"
 #include "dungeon_village_reference/facility_use.hpp"
+#include "dungeon_village_reference/weapon_choice.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -87,6 +88,13 @@ void branch(ref::Position birth, int definition_id) {
                                           arrival_input.legacy_flags};
     const auto use = ref::prepare_facility_use(use_input);
     if (definition_id == 30) {
+        // The positive counter branch needs the current definition only; this is NOT a
+        // reconstructed full weapon catalogue or permission to enable equipment arrival.
+        const auto weapon = ref::prepare_weapon_choice({{0, 1, true}}, actor.equipment[0],
+                                                       actor.weapon_reselect_counter);
+        check(actor.weapon_reselect_counter == 6 && weapon.candidate &&
+                  weapon.candidate->weapon_id == 0 && !weapon.candidate->consumes_ticket,
+              "initial equip suppresses first weapon reselect, without a random draw");
         check(arrival.error == ref::FacilityArrivalError::unsupported_branch &&
                   !arrival.candidate && use.error == ref::FacilityUseError::unsupported_branch &&
                   !use.candidate,
@@ -138,6 +146,29 @@ void branch(ref::Position birth, int definition_id) {
           "occupation once; inn-only recovery");
     check(state.phase == ref::FacilityUsePhase::exit_ready,
           "position, release and next activity still require owner-side exit");
+    const auto exit = ref::prepare_facility_exit_position(
+        map,
+        {binding.instance_id, definition_id, ref::FacilityShape::single,
+         ref::FacilityOrientation::first, target->anchor},
+        position);
+    check(exit.candidate && exit.candidate->status == ref::FacilityExitPositionStatus::retained &&
+              exit.candidate->position.x == position.x && exit.candidate->position.z == position.z,
+          "actual initial shops are single-cell: retain arrival world position on exit");
+    const auto tail = ref::prepare_ordinary_exit_tail(
+        definition.category, definition.detail, definition.exit_effects,
+        definition_id == 33 ? std::optional<int>{0} : std::nullopt);
+    check(tail.candidate &&
+              tail.candidate->requests[0].action == ref::ExitDeferredAction::choose_activity &&
+              tail.candidate->requests[0].parameter == 0 &&
+              tail.candidate->evaluate_satisfaction_now == (definition_id == 33),
+          "next activity remains first queued command; inline satisfaction is shop-only");
+    if (definition_id == 33)
+        check(definition.exit_effects.size() == 1 &&
+                  definition.exit_effects[0].attribute_index == 0 &&
+                  definition.exit_effects[0].delta == 1 &&
+                  tail.candidate->requests.back().parameter == 0 &&
+                  tail.candidate->requests.back().value == 1,
+              "bun effect compiled from raw columns28/29, not an invented experience reward");
     // Existing exit helpers are composed here as candidate checks, NOT a complete exit commit.
     const auto completion =
         ref::prepare_facility_use_completion(definition_id, definition.economy.upgrade_uses, {});

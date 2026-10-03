@@ -111,9 +111,7 @@ void shared_completion_boundaries() {
     }
 }
 
-FacilitySatisfactionInput ordinary() {
-    return {{1}, {2}, 36, 40, {10, 60}, 30, 5};
-}
+FacilitySatisfactionInput ordinary() { return {{1}, {2}, 36, 40, {10, 60}, 30, 5}; }
 
 void satisfaction_boundaries() {
     auto input = ordinary();
@@ -271,6 +269,132 @@ void economy_composition() {
     }
 }
 
+void exit_positions() {
+    std::mt19937 random(0xE817U);
+    constexpr std::array<Position, 4> directions{{{0, 1}, {1, 0}, {0, -1}, {-1, 0}}};
+    for (auto shape : {FacilityShape::single, FacilityShape::pair, FacilityShape::square}) {
+        for (auto orientation : {FacilityOrientation::first, FacilityOrientation::second}) {
+            const FacilityPlacement placement{{3}, 28, shape, orientation, {2, 2}};
+            const auto footprint = facility_footprint(shape, orientation, {2, 2}, 5, 5).cells;
+            for (int trial = 0; trial < 100; ++trial) {
+                LegacyMap terrain{5, 5, std::vector<LegacyMapCell>(25)};
+                for (auto &cell : terrain.cells) {
+                    cell.legacy_state = trial == 0 ? 0 : static_cast<int>(random() % 6U);
+                    // Intentionally distinct from state: exits do not use path categories.
+                    cell.category = RouteCategory::blocked;
+                }
+                const auto bound = bind_facility_map(terrain, {{placement, 3}});
+                check(bound.map.has_value(), "complete footprint binding");
+                const auto &map = *bound.map;
+                for (const auto &part : footprint) {
+                    const auto cell = part.position;
+                    const WorldPosition world{cell.x * 100.0F + 17.0F, cell.y * 100.0F + 88.0F};
+                    auto expected = cell;
+                    bool moved = false;
+                    const auto near = [&](Position p) -> std::optional<Position> {
+                        for (const auto d : directions) {
+                            const Position n{p.x + d.x, p.y + d.y};
+                            if (n.x < 0 || n.y < 0 || n.x >= 5 || n.y >= 5)
+                                continue;
+                            const auto state =
+                                map.cells[static_cast<std::size_t>(n.y * 5 + n.x)].legacy_state;
+                            if (state == 3 || state == 4)
+                                return n;
+                        }
+                        return std::nullopt;
+                    };
+                    if (shape != FacilityShape::single && !near(cell)) {
+                        for (const auto &other : footprint) {
+                            if (other.position == cell)
+                                continue;
+                            if (const auto target = near(other.position)) {
+                                expected = *target;
+                                moved = true;
+                                break;
+                            }
+                        }
+                    }
+                    const auto result = prepare_facility_exit_position(map, placement, world);
+                    check(result.candidate && result.candidate->logical_cell == expected &&
+                              result.candidate->instance_id == placement.instance_id &&
+                              result.candidate->status ==
+                                  (moved ? FacilityExitPositionStatus::relocated
+                                         : FacilityExitPositionStatus::retained),
+                          "exit follows footprint then four-direction order, not shortest path");
+                    check(result.candidate->position.x ==
+                                  (moved ? expected.x * 100.0F + 50.0F : world.x) &&
+                              result.candidate->position.z ==
+                                  (moved ? expected.y * 100.0F + 50.0F : world.z),
+                          "retained world position is not snapped; relocated is plain centre");
+                }
+                auto bad = map;
+                bad.cells[static_cast<std::size_t>(footprint[0].position.y * 5 +
+                                                   footprint[0].position.x)]
+                    .facility->definition_id = 99;
+                const WorldPosition world{250, 250};
+                const auto reject = prepare_facility_exit_position(bad, placement, world);
+                check(reject.error == FacilityExitError::invalid_input && !reject.candidate,
+                      "invalid other occupied fragment rejects the whole candidate");
+            }
+        }
+    }
+    LegacyMap terrain{3, 3, std::vector<LegacyMapCell>(9)};
+    const FacilityPlacement facility{
+        {1}, 33, FacilityShape::single, FacilityOrientation::first, {1, 1}};
+    const auto bound = *bind_facility_map(terrain, {{facility, 3}}).map;
+    for (const WorldPosition world :
+         {WorldPosition{0, 0}, WorldPosition{std::numeric_limits<float>::infinity(), 150}})
+        check(!prepare_facility_exit_position(bound, facility, world).candidate,
+              "outside binding and nonfinite position rejected");
+    auto extra = bound;
+    extra.cells[0].facility = FacilityTileBinding{{1}, 33, 0};
+    check(!prepare_facility_exit_position(extra, facility, {150, 150}).candidate,
+          "extra stale instance binding rejected");
+    auto truncated = bound;
+    truncated.cells.pop_back();
+    check(!prepare_facility_exit_position(truncated, facility, {150, 150}).candidate,
+          "truncated map rejected");
+}
+
+void exit_tails() {
+    const auto inn = prepare_ordinary_exit_tail(2, 0, {});
+    check(inn.candidate && !inn.candidate->evaluate_satisfaction_now &&
+              inn.candidate->requests.size() == 2 &&
+              inn.candidate->requests[0].action == ExitDeferredAction::choose_activity &&
+              inn.candidate->requests[0].parameter == 0 &&
+              inn.candidate->requests[1].action == ExitDeferredAction::expression &&
+              inn.candidate->requests[1].parameter == 9,
+          "inn expression is queued behind activity zero, not another numerical heal");
+    const std::vector<FacilityAttributeEffect> effects{{0, 1}, {5, -2}, {0, 3}};
+    for (int ticket = 0; ticket < 3; ++ticket) {
+        const auto shop = prepare_ordinary_exit_tail(1, 0, effects, ticket);
+        check(shop.candidate && shop.candidate->evaluate_satisfaction_now &&
+                  shop.candidate->requests.size() == 3 &&
+                  shop.candidate->requests[0].action == ExitDeferredAction::choose_activity &&
+                  shop.candidate->requests[1].action == ExitDeferredAction::shop_marker &&
+                  shop.candidate->requests[2].action == ExitDeferredAction::attribute &&
+                  shop.candidate->requests[2].parameter == effects[ticket].attribute_index &&
+                  shop.candidate->requests[2].value == effects[ticket].delta,
+              "satisfaction now; duplicate attribute rows weighted; growth remains deferred");
+    }
+    check(prepare_ordinary_exit_tail(1, 0, {}).candidate->requests.size() == 2,
+          "empty effects require no random ticket");
+    check(prepare_ordinary_exit_tail(1, 0, effects).error == FacilityExitError::missing_ticket,
+          "effect selection cannot invent randomness");
+    for (int ticket : {-1, 3}) {
+        const auto result = prepare_ordinary_exit_tail(1, 0, effects, ticket);
+        check(result.error == FacilityExitError::invalid_ticket && !result.candidate,
+              "invalid effect ticket rejects entire plan");
+    }
+    for (int index : {-1, 6})
+        check(!prepare_ordinary_exit_tail(1, 0, {{index, 1}}, 0).candidate,
+              "out of range attribute index rejected");
+    for (const auto branch : std::array<std::array<int, 2>, 4>{{{1, 1}, {1, 4}, {9, 0}, {3, 0}}})
+        check(prepare_ordinary_exit_tail(branch[0], branch[1], {}).error ==
+                  FacilityExitError::unsupported_branch,
+              "unclosed equipment/other categories not silently replaced by ordinary exit");
+}
+
 } // namespace
 
 int main() {
@@ -278,5 +402,7 @@ int main() {
     satisfaction_boundaries();
     independent_scalar_oracles();
     economy_composition();
+    exit_positions();
+    exit_tails();
     std::cout << checks << " checks passed\n";
 }

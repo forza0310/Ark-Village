@@ -108,8 +108,46 @@ map.dat 不含 img.inf，所以未进入 R2 的视觉素材发布目录；这不
 | 初始对象创建 | c/h.java:200-221，经 bs[h]、br[g] 按定义分类创建 | 原始格到当前实例可能经过初始化副作用，不能直接逐格画 PNG 当原版场景 |
 
 源布局与静态初值见 [新局数据](../data/startup/README.md)；尾部两个零字节保留未解释。
-维护地图读取器未实现，初始化后完整实例/占用快照尚未交付，不将源格直接当最终画面。
+维护地图读取器未实现；[加载后静态快照](../rules/STARTUP.md#加载后逻辑显示快照)已交付，
+仍不是原版运行捕获，不将源格直接当最终画面。
 已有 [地图访问](../rules/MAP_ACCESS.md)恢复活动格/准入，不等同于恢复 game.gmap 的原始布局。
+
+<a id="road-patches"></a>
+
+### 道路拼块绘制交付
+
+对应产品RQ02的道路子项。标志生成见[加载后地图](../rules/STARTUP.md#加载后逻辑显示快照)，
+独立表现参数见[road_render.hpp](../prototype/include/dungeon_village_prototype/road_render.hpp)，
+实际素材CPU组合见[road_render_test.cpp](../prototype/tests/road_render_test.cpp)。不修改产品绘制器。
+
+`c/h.java:889–917`及低层`Map.java:2789,L52f→L534→L538→L5cf→L656`交叉核对：
+这是基础地表之后第二遍全图**提交命令**，y从高到低、x从低到高。
+`road_quad`优先于`edge_road_pair`，显示ID为-1时不提交。
+两者是独立PNG**整图绘制**，不是SEB帧、道路图集裁切或填色菱形。
+偏移基准D是经过`c/a.java:139–144`镜头变换的地表SEB锚点，不是菱形中心，
+不重复叠加基础帧的SEB偏移、地表显示偏移或任意中心偏移。
+
+| 标志 | common图片ID | 整图 | 尺寸 | 左上角相对D | 原深度 |
+| --- | --- | --- | --- | --- | --- |
+| road_quad | 0 | [road4block00.png](../assets/original/common/road4block00.png) | 30×20 | (14,21) | D.y-10 |
+| edge_road_pair | 155 | [road4block01.png](../assets/original/common/road4block01.png) | 27×15 | (20,19) | D.y-10 |
+
+绑定链：`common/img.inf`→`b/a.java:469–470`全局p图片库→类型7命令→
+`d/a.java:3832–3835`→`kairo/android/ui/o.java:661–667`整图(0,0,width,height)。
+素材哈希依次为`0826c30591d20f1f6b443f3d7017ffe3b1aee658168bb19a183b34dcea1544eb`、
+`78ec165744e53d4f6794ec0d255c7cc6c5b0e7a728d98139e1db2afdad67f09f`，既有素材清单已登记。
+
+可见性不是补块自身包围盒：用基础地表图片宽高W/H检测矩形
+`(D.x+14,D.y+50-H,W,H)`。第二遍提交不等于最终全局置顶。
+`d/a.java:979–1009`按depth+120分桶，每桶最多10命令，满桶则depth递增；
+绘制按桶升序、桶内插入顺序。基础地表深度为`D.y+15+显示偏移`，
+显示flags1则改为`D.y-50+显示偏移`（`c/h.java:797–819`）。
+特别是道路显示记录37的flags=1、偏移=0，基础深度是D.y-50，不能用普通地表深度验草心。
+产品可采用等价场景队列，但需保留补块与人物/物件的遮挡关系；不能无条件最后覆盖整场景。
+
+CPU测试以四个真实道路SEB帧3/9/5/4组合2×2，严格校验实际请求帧边界，
+验证原补块中心替换原草心、PNG范围外不变，以及道路原深度下补块仍填心、前景夹具仍可覆盖它。
+前景夹具只是顺序测试；未恢复全部场景桶溢出、镜头裁剪与窗口画面，不能据此宣称完整渲染等价。
 
 ## 资源与字体
 

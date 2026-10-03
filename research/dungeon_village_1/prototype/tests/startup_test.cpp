@@ -64,7 +64,7 @@ void reset_and_arrival() {
           "modal suppresses second speed step");
     const auto &c = *s.state().character;
     check(c.uid == 0 && c.definition_id == 1 && c.job_id == 1 && c.sex == 0 && c.level == 1 &&
-              c.equipment == std::array<int, 4>{0, -1, -1, -1} &&
+              c.equipment == std::array<int, 4>{0, -1, -1, -1} && c.weapon_reselect_counter == 6 &&
               c.attributes == std::array<int, 6>{22, 2, 2, 2, 2, 2} &&
               c.combat == std::array<int, 4>{22, 7, 2, 2} && c.hp == std::array<int, 3>{22, 22, 22},
           "first visitor values");

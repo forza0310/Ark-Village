@@ -26,6 +26,16 @@ JADX参数为 `--single-class c.h --single-class-output <路径> --decompilation
 低层修正常规g()循环跳转误读，c()/d()/实例分配小函数交叉定位见[新局报告](rules/STARTUP.md#加载后逻辑显示快照)。
 运动/路点/逻辑格进入复用既有Character低层输出，数值与巨型P()局部证据分级见[连续运动](rules/CHARACTERS.md#continuous-motion)。
 
+本轮新增单类fallback：`work/first-visit-fallback/MainScene.java`（b.c）与
+`work/weapon-choice-fallback/Weapon.java`（a.p），参数均为
+`--config none --decompilation-mode fallback --no-res --single-class <类> --single-class-output <路径>`。
+SHA-256依次为`cadcb21544111c305214c67f4e25724a17ada111b3c728f7ed20b9772ddf21bb`、
+`abeb2ed48ccac67c702cbca1c6113d9e5e678c9addfea35273b750e1cba3c66d`。
+主场景自动扫描/延迟局部见[首访前置](rules/CHARACTERS.md#first-activity)，
+武器消费者及A[0]赋6见[武器报告](rules/FACILITY_USE.md#weapon-choice)，
+道路补块复用既有Map低层与小型图片/深度消费者，见[绘制交付](ui/README.md#road-patches)。
+生成Java保持忽略、不提交；局部交叉证据不消除整套巨型方法的警告。
+
 ## 稳定符号映射
 
 下列名称是根据残留诊断字符串、序列化职责和调用关系建立的工作别名，不是恢复出的 Java 原始类型名。

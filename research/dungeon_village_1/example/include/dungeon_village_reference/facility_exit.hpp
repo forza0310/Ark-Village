@@ -2,12 +2,20 @@
 
 // Exit helpers model shared uses and satisfaction requests, not the entire exit sequence.
 
+#include "dungeon_village_reference/character_motion.hpp"
 #include "dungeon_village_reference/domain.hpp"
 #include "dungeon_village_reference/facility_economy.hpp"
 
 namespace dungeon_village_reference {
 
-enum class FacilityExitError { none, invalid_input, numeric_overflow };
+enum class FacilityExitError {
+    none,
+    invalid_input,
+    numeric_overflow,
+    unsupported_branch,
+    missing_ticket,
+    invalid_ticket
+};
 
 struct FacilityUseProgress {
     int level{1};
@@ -65,5 +73,50 @@ struct FacilitySatisfactionResult {
 
 // Use an injected ticket in [0,10); return a popularity request, not a global popularity mutation.
 FacilitySatisfactionResult prepare_facility_satisfaction(const FacilitySatisfactionInput &input);
+
+enum class FacilityExitPositionStatus { retained, relocated };
+struct FacilityExitPositionCandidate {
+    BuildingId instance_id;
+    Position logical_cell;
+    WorldPosition position;
+    FacilityExitPositionStatus status{FacilityExitPositionStatus::retained};
+};
+struct FacilityExitPositionResult {
+    FacilityExitError error{FacilityExitError::none};
+    std::optional<FacilityExitPositionCandidate> candidate;
+};
+
+// Validate the entire footprint and current logical binding. Multi-cell exits scan legacy state
+// 3/4, not route category or path cost; no available exit still returns a retained candidate.
+// This prepares position only, without releasing occupancy or choosing the next activity.
+FacilityExitPositionResult prepare_facility_exit_position(const LegacyMap &map,
+                                                          const FacilityPlacement &facility,
+                                                          WorldPosition current);
+
+struct FacilityAttributeEffect {
+    int attribute_index{};
+    std::int32_t delta{};
+};
+enum class ExitDeferredAction { choose_activity, shop_marker, attribute, expression };
+struct ExitDeferredRequest {
+    ExitDeferredAction action;
+    int parameter{};
+    std::int32_t value{};
+};
+struct OrdinaryExitTail {
+    bool evaluate_satisfaction_now{};
+    std::vector<ExitDeferredRequest> requests;
+};
+struct OrdinaryExitTailResult {
+    FacilityExitError error{FacilityExitError::none};
+    std::optional<OrdinaryExitTail> candidate;
+};
+// Category1/detail0 and category2/detail0 only. Satisfaction is requested during exit;
+// attributes/expressions stay AFTER activity0 in the control queue. A successful activity choice
+// ends that interpreter call, so the tail must not be eagerly applied by the caller.
+OrdinaryExitTailResult
+prepare_ordinary_exit_tail(int category, int detail,
+                           const std::vector<FacilityAttributeEffect> &effects,
+                           std::optional<int> effect_ticket = std::nullopt);
 
 } // namespace dungeon_village_reference

@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及21个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及22个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -17,6 +17,8 @@
 | character_motion | 6.7世界单位位移、入口路点±40、矩形到达、向零截断和逻辑格进入；不收费/使用、不含表现投影 | [连续运动](../rules/CHARACTERS.md#continuous-motion) |
 | facility_arrival、facility_exit、character_hp | 到达统计/现金候选、共享使用数/满足度请求、生命值目标与显示协议 | [设施使用](../rules/FACILITY_USE.md) |
 | facility_use | 普通食物/旅店的占用请求、同轮等待扣减、旧计数170恢复与待处理退出；不提交完整退出或下一活动 | [使用计数](../rules/FACILITY_USE.md#use-timing) |
+| facility_exit | 另提供完整绑定出口位置、普通活动0/属性/表情尾部顺序；不运行解释器或提交占用/属性 | [出口与下一活动](../rules/FACILITY_USE.md#exit-position) |
+| weapon_choice | 武器type1重选计数守卫、原数组顺序/rank窗口和票号；不装备/收费，不含防具/饰品 | [武器选择](../rules/FACILITY_USE.md#weapon-choice) |
 | facility_events、facility_items | 实例事件门槛、定义共享改良与库存候选 | [事件与道具](../rules/FACILITY_EFFECTS.md) |
 | accounting | 即时金币、周期费用、报表快照、延迟点数与幂等身份 | [周期账本](../rules/ACCOUNTING.md) |
 

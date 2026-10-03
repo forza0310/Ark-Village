@@ -148,7 +148,8 @@ void StartupSession::step() {
         actor.cell =
             startup_evidence()
                 .spawn_points[state_.simulation_steps % startup_evidence().spawn_points.size()];
-        actor.flags |= 8192;
+        actor.flags |= 2U | 8192U; // Character initialization bit and first-arrival bit differ.
+        actor.pending_activity = 0;
         state_.character = std::move(actor);
         ++state_.event89_count;
         state_.mode = StartupMode::tutorial;

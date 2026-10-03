@@ -9,7 +9,8 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/neighbourhood.cpp src/facility_events.cpp src/facility_items.cpp
                                      src/activity_choice.cpp src/ranked_facility_choice.cpp src/facility_exit.cpp
                                      src/activity_candidates.cpp src/facility_arrival.cpp
-                                     src/snapshot_facility_choice.cpp src/regional_choice.cpp src/character_hp.cpp)
+                                     src/snapshot_facility_choice.cpp src/regional_choice.cpp src/character_hp.cpp
+                                     src/facility_departure.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -181,3 +182,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_hp_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.character_hp COMMAND dungeon_village_hp_tests)
+
+add_executable(dungeon_village_departure_tests tests/facility_departure_test.cpp)
+target_link_libraries(dungeon_village_departure_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_departure_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_departure_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_departure_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.facility_departure COMMAND dungeon_village_departure_tests)

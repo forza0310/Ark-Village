@@ -30,7 +30,8 @@ std::string snapshot(const StartupSession &session) {
         out << ';' << entry.first << ',' << entry.second;
     if (s.character)
         out << ';' << s.character->uid << ',' << s.character->definition_id << ','
-            << s.character->cell.x << ',' << s.character->cell.y << ',' << s.character->flags;
+            << s.character->cell.x << ',' << s.character->cell.y << ',' << s.character->flags << ','
+            << s.character->pending_activity.value_or(-999);
     for (const auto &entry : s.accounting.entries())
         out << ';' << entry.first << ',' << entry.second.amount;
     return out.str();
@@ -69,6 +70,9 @@ void reset_and_arrival() {
           "first visitor values");
     check((c.cell == ref::Position{11, 0} || c.cell == ref::Position{12, 0}) && (c.flags & 8192),
           "birth and flag");
+    check(c.flags == (2U | 8192U) && c.pending_activity == 0,
+          "instance flags and activity zero request are installed before tutorial");
+    const auto birth_cell = c.cell;
     const auto modal = snapshot(s);
     normal_steps(s, 100);
     check(snapshot(s) == modal && s.state().calendar[3] == 513,
@@ -85,6 +89,8 @@ void reset_and_arrival() {
     normal_steps(s, 500);
     check(s.state().event89_count == 1 && s.state().character->uid == 0,
           "no second character on close/repeat");
+    check(s.state().character->pending_activity == 0 && s.state().character->cell == birth_cell,
+          "unresolved first AI remains explicitly deferred, not replaced by fixture movement");
     check(s.acknowledge_talk() == StartupError::wrong_mode, "repeat confirmation rejected");
 }
 void construction() {

@@ -52,6 +52,8 @@ struct StartupCharacter {
     std::array<int, 3> hp{};
     ref::Position cell;
     std::uint32_t flags{};
+    // Observed opcode-8 activity request; retained pending while first-play AI is unresolved.
+    std::optional<int> pending_activity{};
 };
 struct StartupEvidence {
     int width{};

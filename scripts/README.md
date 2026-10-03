@@ -7,4 +7,5 @@
 - verify_assets.mjs：核对产品副本哈希/尺寸，不依赖research运行目录。
 
 导入：`node scripts/import_research.mjs research/dungeon_village_1 assets`。先检查范围/版本，导入后核对差异并重跑验收。
+只刷新已发布UI素材：追加`--ui-only`，保留原数据/地图/人物快照和清单，避免research并行推进时静默升级业务输入。
 不修改原始PNG/SEB满足校验；未用记录与实际绘制帧分开检查。

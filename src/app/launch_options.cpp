@@ -28,7 +28,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 return {std::nullopt, "--inspect-page requires a page"};
             const auto &page = arguments[i];
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
-                page != "visitor")
+                page != "visitor" && page != "menu" && page != "placement" && page != "detail")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -38,8 +38,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         } else if (argument == "--size") {
             if (i + 2 >= arguments.size() || !positive(arguments[i + 1], 4096, options.width) ||
                 !positive(arguments[i + 2], 4096, options.height) || options.width < 240 ||
-                options.height < 330) {
-                return {std::nullopt, "--size requires width 240..4096 and height 330..4096"};
+                options.height < 256) {
+                return {std::nullopt, "--size requires width 240..4096 and height 256..4096"};
             }
             i += 2;
         } else if (argument == "--frames") {

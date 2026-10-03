@@ -18,6 +18,8 @@
 
 标准C++的ark_game包含world、facilities、people与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
 raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
+desktop/scene负责源投影/预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
+界面响应窗口比例，像素素材与最终分辨率文字分开绘制；命中和绘制共用逻辑布局，业务数据不移入UI。
 
 启动顺序：参数→程序旁CPU素材校验→无窗口首访检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
 静态输入为24×24源地图、8设施种子、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。

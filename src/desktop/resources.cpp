@@ -20,9 +20,10 @@ std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
         throw std::runtime_error("Cannot read asset metadata: " + path.string());
     return {std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
 }
-std::map<int, std::filesystem::path> image_index(const std::filesystem::path &root) {
+std::map<int, std::filesystem::path> image_index(const std::filesystem::path &root,
+                                                 const char *group = "image") {
     std::map<int, std::filesystem::path> result;
-    for (const auto &row : assets::parse_tsv(read_bytes(root / "image/img.inf"))) {
+    for (const auto &row : assets::parse_tsv(read_bytes(root / group / "img.inf"))) {
         if (row.size() != 2)
             throw std::runtime_error("Invalid image index row");
         auto name = std::filesystem::path(row[1]);
@@ -42,7 +43,9 @@ void validate(const assets::SpritePart &p, int width, int height) {
 }
 } // namespace
 Sprites::Sprites(std::filesystem::path root)
-    : root_(std::move(root)), images_(image_index(root_)) {}
+    : root_(std::move(root)), images_(image_index(root_)),
+      common_images_(image_index(root_, "common")), common2_images_(image_index(root_, "common2")) {
+}
 Sprites::~Sprites() {
     for (const auto &entry : textures_)
         UnloadTexture(entry.second);
@@ -51,43 +54,29 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                    Binding binding, float scale) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
-    const char *group = binding == Binding::farmer      ? "human"
-                        : binding == Binding::secretary ? "common"
-                                                        : "image";
+    const char *group = binding == Binding::farmer                                    ? "human"
+                        : binding == Binding::common2                                 ? "common2"
+                        : binding == Binding::secretary || binding == Binding::common ? "common"
+                                                                                      : "image";
     const auto relative = std::filesystem::path(group) / sprite;
-    auto found = sprites_.find(relative.string());
-    if (found == sprites_.end())
-        found =
-            sprites_
-                .emplace(relative.string(), assets::parse_legacy_seb(read_bytes(root_ / relative)))
-                .first;
-    if (frame < 0 || frame >= found->second.frame_count)
+    const auto &sprite_data = definition(relative);
+    if (frame < 0 || frame >= sprite_data.frame_count)
         throw std::runtime_error("Source variant outside sprite frames");
-    for (const auto &layer : found->second.layers)
+    for (const auto &layer : sprite_data.layers)
         for (const auto &p : layer.parts) {
             if (p.frame != frame)
                 continue;
             if (binding == Binding::secretary && p.image_index != 126)
                 throw std::runtime_error("Secretary image binding changed");
-            const auto path = binding == Binding::farmer ? root_ / "human/chara_flower00.png"
-                              : binding == Binding::secretary
-                                  ? root_ / "common/chara_hishoko01.png"
-                                  : root_ / "image" / images_.at(p.image_index);
-            auto image = textures_.find(path.string());
-            if (image == textures_.end()) {
-                auto texture = LoadTexture(path.string().c_str());
-                if (!texture.id)
-                    throw std::runtime_error("Cannot load texture: " + path.string());
-                SetTextureFilter(texture, TEXTURE_FILTER_POINT);
-                try {
-                    image = textures_.emplace(path.string(), texture).first;
-                } catch (...) {
-                    UnloadTexture(texture);
-                    throw;
-                }
-            }
-            validate(p, image->second.width, image->second.height);
-            DrawTexturePro(image->second,
+            const auto path =
+                binding == Binding::farmer      ? root_ / "human/chara_flower00.png"
+                : binding == Binding::secretary ? root_ / "common/chara_hishoko01.png"
+                : binding == Binding::common    ? root_ / group / common_images_.at(p.image_index)
+                : binding == Binding::common2   ? root_ / group / common2_images_.at(p.image_index)
+                                                : root_ / "image" / images_.at(p.image_index);
+            const auto &image = texture(path);
+            validate(p, image.width, image.height);
+            DrawTexturePro(image,
                            {static_cast<float>(p.source_x), static_cast<float>(p.source_y),
                             static_cast<float>(p.flip_x ? -p.width : p.width),
                             static_cast<float>(p.flip_y ? -p.height : p.height)},
@@ -96,13 +85,78 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                            {0, 0}, 0, tint);
         }
 }
+const assets::SpriteDefinition &Sprites::definition(const std::filesystem::path &relative) {
+    auto found = sprites_.find(relative.string());
+    if (found == sprites_.end())
+        found =
+            sprites_
+                .emplace(relative.string(), assets::parse_legacy_seb(read_bytes(root_ / relative)))
+                .first;
+    return found->second;
+}
+void Sprites::thumbnail(const std::string &sprite, int frame, Rectangle box, Color tint) {
+    if (std::filesystem::path(sprite).has_parent_path())
+        throw std::runtime_error("Unsafe sprite path");
+    const auto &data = definition(std::filesystem::path("image") / sprite);
+    bool found = false;
+    int left{}, top{}, right{}, bottom{};
+    for (const auto &layer : data.layers)
+        for (const auto &part : layer.parts)
+            if (part.frame == frame) {
+                left = found ? std::min(left, static_cast<int>(part.offset_x)) : part.offset_x;
+                top = found ? std::min(top, static_cast<int>(part.offset_y)) : part.offset_y;
+                right = found ? std::max(right, part.offset_x + part.width)
+                              : part.offset_x + part.width;
+                bottom = found ? std::max(bottom, part.offset_y + part.height)
+                               : part.offset_y + part.height;
+                found = true;
+            }
+    if (!found || right <= left || bottom <= top)
+        throw std::runtime_error("Empty thumbnail frame");
+    const float scale = std::min(box.width / (right - left), box.height / (bottom - top));
+    draw(sprite, frame,
+         {box.x + (box.width - (right - left) * scale) / 2 - left * scale,
+          box.y + (box.height - (bottom - top) * scale) / 2 - top * scale},
+         tint, Binding::map, scale);
+}
+Texture2D &Sprites::texture(const std::filesystem::path &path) {
+    auto found = textures_.find(path.string());
+    if (found == textures_.end()) {
+        auto value = LoadTexture(path.string().c_str());
+        if (!value.id)
+            throw std::runtime_error("Cannot load texture: " + path.string());
+        SetTextureFilter(value, TEXTURE_FILTER_POINT);
+        try {
+            found = textures_.emplace(path.string(), value).first;
+        } catch (...) {
+            UnloadTexture(value);
+            throw;
+        }
+    }
+    return found->second;
+}
+void Sprites::image(const std::string &name, Rectangle source, Rectangle destination,
+                    Binding binding, Color tint) {
+    if (std::filesystem::path(name).has_parent_path())
+        throw std::runtime_error("Unsafe image path");
+    const char *group = binding == Binding::common2  ? "common2"
+                        : binding == Binding::window ? "ui"
+                        : binding == Binding::map    ? "image"
+                                                     : "common";
+    const auto &value = texture(root_ / group / name);
+    if (source.x < 0 || source.y < 0 || source.width <= 0 || source.height <= 0 ||
+        source.x + source.width > value.width || source.y + source.height > value.height)
+        throw std::runtime_error("UI image rectangle outside atlas");
+    DrawTexturePro(value, source, destination, {0, 0}, 0, tint);
+}
 Text::Text(const std::filesystem::path &font_path) {
     if (!std::filesystem::is_regular_file(font_path))
         throw std::runtime_error("Chinese font not found; use --font TTF");
     std::string glyphs =
         "建设返回确定旋转设施冒险者名单点数人气年月份道路植物商店饮食金币暂停继续重新开始研究边界"
         "请选择街道内地域有建筑物金钱不足未知设施不可用状态异常施工剩余招募到访等级农家体力攻击防御"
-        "魔法品质魅力尚无本轮结束";
+        "魔法品质魅力尚无本轮结束建造设备一般办公室信息系统保存菜单网站价格使用道具设施信息"
+        "距离下个级还有人数周农家暂无到访者冒险者一览要建造在哪里建设完毕";
     for (int i = 32; i < 127; ++i)
         glyphs += static_cast<char>(i);
     for (const auto &v : app::startup_data().definitions)
@@ -118,7 +172,7 @@ Text::Text(const std::filesystem::path &font_path) {
     UnloadCodepoints(raw);
     std::vector<int> codes(unique.begin(), unique.end());
     font_ =
-        LoadFontEx(font_path.string().c_str(), 24, codes.data(), static_cast<int>(codes.size()));
+        LoadFontEx(font_path.string().c_str(), 48, codes.data(), static_cast<int>(codes.size()));
     if (!font_.texture.id || font_.texture.id == GetFontDefault().texture.id)
         throw std::runtime_error("Cannot load Chinese font");
     for (auto code : codes)
@@ -130,7 +184,17 @@ Text::Text(const std::filesystem::path &font_path) {
 }
 Text::~Text() { UnloadFont(font_); }
 void Text::draw(const std::string &value, float x, float y, Color color, float size) const {
-    DrawTextEx(font_, value.c_str(), {x, y}, size, 0, color);
+    labels_.push_back({value, {x, y}, color, size});
+}
+void Text::flush(float scale, Vector2 offset) const {
+    for (const auto &label : labels_)
+        DrawTextEx(font_, label.value.c_str(),
+                   {offset.x + label.point.x * scale, offset.y + label.point.y * scale},
+                   label.size * scale, 0, label.color);
+    labels_.clear();
+}
+float Text::width(const std::string &value, float size) const {
+    return MeasureTextEx(font_, value.c_str(), size, 0).x;
 }
 void Text::paragraph(const std::string &value, float x, float y, float width) const {
     // Raylib decodes codepoints; wrap only at UTF-8 boundaries using actual font measurements.
@@ -151,6 +215,8 @@ void Text::paragraph(const std::string &value, float x, float y, float width) co
 }
 void check_assets(const std::filesystem::path &root) {
     const auto images = image_index(root);
+    const auto common_images = image_index(root, "common");
+    const auto common2_images = image_index(root, "common2");
     // Structural validation retains unused source records, including out-of-atlas legacy records.
     // Pixel bounds apply to the frames this finite adapter actually requests (research/assets).
     for (const auto &entry : std::filesystem::recursive_directory_iterator(root)) {
@@ -174,11 +240,14 @@ void check_assets(const std::filesystem::path &root) {
                     continue;
                 if (binding == Sprites::Binding::secretary && part.image_index != 126)
                     throw std::runtime_error("Secretary image binding changed");
-                const auto path = binding == Sprites::Binding::farmer
-                                      ? root / "human/chara_flower00.png"
-                                  : binding == Sprites::Binding::secretary
-                                      ? root / "common/chara_hishoko01.png"
-                                      : root / "image" / images.at(part.image_index);
+                const auto path =
+                    binding == Sprites::Binding::farmer      ? root / "human/chara_flower00.png"
+                    : binding == Sprites::Binding::secretary ? root / "common/chara_hishoko01.png"
+                    : binding == Sprites::Binding::common
+                        ? root / "common" / common_images.at(part.image_index)
+                    : binding == Sprites::Binding::common2
+                        ? root / "common2" / common2_images.at(part.image_index)
+                        : root / "image" / images.at(part.image_index);
                 auto image = LoadImage(path.string().c_str());
                 if (!image.data)
                     throw std::runtime_error("Requested sprite image missing: " + path.string());
@@ -215,5 +284,19 @@ void check_assets(const std::filesystem::path &root) {
             validate_frame(root / "image" / entry.first, frame, Sprites::Binding::map);
     validate_frame(root / "human/walk00.seb", 0, Sprites::Binding::farmer);
     validate_frame(root / "common/chara_hishoko01.seb", 0, Sprites::Binding::secretary);
+    for (const auto &name :
+         {"menu.seb", "wnd_menuIcon.seb", "finger_r.seb", "number01.seb", "number05.seb",
+          "number08.seb", "number12.seb", "icon_season.seb", "wnd_conner.seb"}) {
+        const auto path = root / "common" / name;
+        const auto definition = assets::parse_legacy_seb(read_bytes(path));
+        for (int frame = 0; frame < definition.frame_count; ++frame)
+            validate_frame(path, frame, Sprites::Binding::common);
+    }
+    for (const auto &name : {"touch_arrow.seb", "buildCategoryBack.seb"}) {
+        const auto path = root / "common2" / name;
+        const auto definition = assets::parse_legacy_seb(read_bytes(path));
+        for (int frame = 0; frame < definition.frame_count; ++frame)
+            validate_frame(path, frame, Sprites::Binding::common2);
+    }
 }
 } // namespace ark::desktop

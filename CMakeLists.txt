@@ -29,6 +29,8 @@ add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
         assets/data/LOADED_INSTANCES.tsv VERBATIM)
 add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/navigation.cpp src/facilities/facility.cpp
     src/facilities/map_binding.cpp src/app/map_queries.cpp src/people/motion.cpp
+    src/people/activity_choice.cpp src/people/activity_candidates.cpp
+    src/people/facility_choice.cpp src/people/departure.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -79,6 +81,18 @@ if(BUILD_TESTING)
     target_link_libraries(ark_navigation_tests PRIVATE ark_game)
     ark_target(ark_navigation_tests)
     add_test(NAME loaded_map_navigation_motion COMMAND ark_navigation_tests)
+    add_executable(ark_activity_choice_tests tests/activity_choice_test.cpp)
+    target_link_libraries(ark_activity_choice_tests PRIVATE ark_game)
+    ark_target(ark_activity_choice_tests)
+    add_test(NAME activity_category_choice COMMAND ark_activity_choice_tests)
+    add_executable(ark_activity_candidates_tests tests/activity_candidates_test.cpp)
+    target_link_libraries(ark_activity_candidates_tests PRIVATE ark_game)
+    ark_target(ark_activity_candidates_tests)
+    add_test(NAME activity_candidates COMMAND ark_activity_candidates_tests)
+    add_executable(ark_departure_tests tests/departure_test.cpp)
+    target_link_libraries(ark_departure_tests PRIVATE ark_game)
+    ark_target(ark_departure_tests)
+    add_test(NAME facility_choice_departure COMMAND ark_departure_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)

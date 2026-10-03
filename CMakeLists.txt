@@ -18,19 +18,37 @@ add_library(ark_launch STATIC src/app/launch_options.cpp)
 target_include_directories(ark_launch PUBLIC include)
 ark_target(ark_launch)
 
+find_program(ARK_NODE NAMES node REQUIRED)
+set(ARK_STARTUP_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_data.cpp")
+add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/compile_startup.mjs"
+        "${PROJECT_SOURCE_DIR}/assets/data" "${ARK_STARTUP_CPP}"
+    DEPENDS scripts/compile_startup.mjs assets/data/MAP.json assets/data/STATE.json
+        assets/data/TABLES.json assets/data/tenantData.txt VERBATIM)
+add_library(ark_game STATIC src/world/grid.cpp src/facilities/facility.cpp
+    src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
+target_include_directories(ark_game PUBLIC include)
+ark_target(ark_game)
+add_library(ark_asset_metadata STATIC src/assets/sprite.cpp src/assets/table.cpp)
+target_include_directories(ark_asset_metadata PUBLIC include)
+ark_target(ark_asset_metadata)
+
 if(ARK_BUILD_DESKTOP)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
-    add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp)
-    target_link_libraries(ark_village PRIVATE ark_launch PkgConfig::RAYLIB)
+    add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
+        src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp)
+    target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
         target_link_libraries(ark_village PRIVATE "-framework CoreGraphics")
     endif()
     set_target_properties(ark_village PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
     ark_target(ark_village)
-    add_custom_command(TARGET ark_village POST_BUILD
+    add_custom_target(ark_package_assets
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${PROJECT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:ark_village>/assets")
+            "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/bin/assets")
+    add_dependencies(ark_village ark_package_assets)
 endif()
 
 if(BUILD_TESTING)
@@ -39,8 +57,28 @@ if(BUILD_TESTING)
     ark_target(ark_launch_tests)
     add_test(NAME launch_options COMMAND ark_launch_tests)
     set_tests_properties(launch_options PROPERTIES TIMEOUT 10)
+    add_executable(ark_game_tests tests/game_test.cpp)
+    target_link_libraries(ark_game_tests PRIVATE ark_game)
+    ark_target(ark_game_tests)
+    add_test(NAME game_first_play COMMAND ark_game_tests)
+    add_executable(ark_metadata_tests tests/metadata_test.cpp)
+    target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
+    ark_target(ark_metadata_tests)
+    add_test(NAME asset_metadata COMMAND ark_metadata_tests)
+    add_test(NAME startup_data_contract COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/tests/startup_data_test.mjs"
+        "${PROJECT_SOURCE_DIR}/assets/data")
+    add_test(NAME source_provenance COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/verify_assets.mjs"
+        "${PROJECT_SOURCE_DIR}/assets")
     if(ARK_BUILD_DESKTOP)
         add_test(NAME packaged_assets COMMAND ark_village --check)
         set_tests_properties(packaged_assets PROPERTIES TIMEOUT 10 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+        add_executable(ark_projection_tests tests/projection_test.cpp src/desktop/projection.cpp)
+        target_include_directories(ark_projection_tests PRIVATE include src/desktop)
+        target_link_libraries(ark_projection_tests PRIVATE ark_game PkgConfig::RAYLIB)
+        ark_target(ark_projection_tests)
+        add_test(NAME projection_input COMMAND ark_projection_tests)
+        add_test(NAME packaged_frame_contract COMMAND "${ARK_NODE}"
+            "${PROJECT_SOURCE_DIR}/tests/packaged_frames_test.mjs" "$<TARGET_FILE:ark_village>")
+        set_tests_properties(packaged_frame_contract PROPERTIES TIMEOUT 30)
     endif()
 endif()

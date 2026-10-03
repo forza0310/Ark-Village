@@ -18,12 +18,22 @@ int main() {
     check(parse_arguments({}).options->mode == LaunchMode::window);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
+    check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
+    check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
+    check(parse_arguments({"--inspect-page", "shops", "--frames", "8"}).options->inspect_page ==
+          "shops");
     const auto bounded =
         parse_arguments({"--size", "720", "990", "--frames", "30", "--screenshot", "a.png"});
     check(bounded.options && bounded.options->width == 720 && bounded.options->height == 990 &&
           bounded.options->frames == 30 && bounded.options->screenshot == "a.png");
     for (const auto &arguments : std::vector<std::vector<std::string>>{
              {"--unknown"},
+             {"--font"},
+             {"--font", "--check"},
+             {"--inspect-page"},
+             {"--inspect-page", "unknown", "--frames", "8"},
+             {"--inspect-page", "shops"},
+             {"--check", "--inspect-page", "shops", "--frames", "8"},
              {"--frames"},
              {"--frames", "0"},
              {"--frames", "-1"},

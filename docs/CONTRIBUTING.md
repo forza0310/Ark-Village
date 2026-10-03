@@ -15,6 +15,7 @@ ctest --preset desktop-debug
 ```
 
 另三套替换预设名。headless不查找raylib，测试在Release也执行，警告视为错误。
+构建需要Node 18+，只在构建期JSON.parse交叉校验固定发布数据，生成只读标准C++；运行无需Node。
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
 
@@ -30,7 +31,12 @@ raylib/GLFW需要可访问的登录桌面和唤醒显示器，WindowServer存在
 程序在InitWindow前用CoreGraphics检查显示器，无可用显示器时立即返回错误。
 无窗口检查使用`ark_village --check`；真实桌面使用`ark_village --frames 60`等有界运行。
 必要时`caffeinate -d -u <程序> --frames 60`只在进程期间防止休眠，不改永久电源设置，也不授予桌面权限。
+沙箱可能无法枚举真实显示器；本轮沙箱外同一有界程序成功运行。应在已登录终端运行或获准使用独立窗口检查，不移除显示器保护、不把沙箱报错记成游戏崩溃。
 截图/焦点问题和业务异常分别记录；环境无法运行窗口时仍做构建/CTest，窗口验收明确记未执行。
+
+页面检查：`ark_village --inspect-page shops --frames 8 --screenshot /tmp/ark-shops.png`，支持shops/plants/food/arrival/visitor。
+该模式先安排模型状态再暂停，只验渲染，不验真实输入或正常新局。原生自动化本轮未驱动画布，人工输入保持待验，不用领域命令代替鼠标通过。
+SEB检查须区分结构和使用帧：完整记录/legacy_tag原样保留，PNG矩形只检查实际请求帧；不能为未用草地/海面记录修改原图或全面放宽边界。
 
 ## 文档维护
 

@@ -1,0 +1,16 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { compileStartup } from '../scripts/compile_startup.mjs';
+const root = process.argv[2];
+const source = ['MAP','STATE','TABLES'].map(v => JSON.parse(readFileSync(`${root}/${v}.json`,'utf8')));
+source.push(readFileSync(`${root}/tenantData.txt`,'utf8'));
+assert.match(compileStartup(...source), /const StartupData &startup_data/);
+const reject = edit => { const v=structuredClone(source); edit(v); assert.throws(()=>compileStartup(...v)); };
+reject(([m])=>m.cells.pop()); reject(([m])=>m.cells[0][0]=[999,0]);
+reject(([m])=>m.cells[0][0][1]=-1); reject(([m])=>m.unread_tail_hex='');
+reject(([,s])=>s.resources.money=10000); reject(([,s])=>s.initial_catalog[0].id=29);
+reject(([,s])=>s.initial_catalog[2].construction_counter_threshold=400);
+reject(([,s])=>s.map_seed_instances[0].x=-1); reject(([,s])=>s.first_arrival.definition_id=0);
+reject(([,,t])=>t.entries[0].source_utf8+='x'); reject(([,,t])=>t.apk_sha256='other');
+reject(([,s])=>s.first_arrival.equipment_ids.pop());
+console.log('PASS startup data and 12 rejection cases');

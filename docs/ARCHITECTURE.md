@@ -4,23 +4,25 @@
 
 基于research中《冒险迷宫村》一代逆向结果，使用C++17 + raylib复现原版玩法、数值、事件顺序、UI设计和操作流程。
 先稳定二维行为，再推进3D化；3D替换投影、场景与输入适配，复用独立领域规则及验收。
-旧代码、schema、自定资金/居民/工程日/地图和测试均不是兼容要求，当前产品只有启动底座。
+旧代码、schema、自定资金/居民/工程日/地图和测试均不是兼容要求；当前已有有限建设/首访切片。
 
 - [research入口](../research/README.md)是规格、示例、素材和证据来源；原型夹具/安全策略不能自动当作原作事实。
 - 固定输入为一代汉化重签APK，身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)；不复制反编译实现。
 - 三批22张用户图片提供部分外观，第3批明确不同于APK版本；视觉和规则分别登记，截图数值不能覆盖原表。
-- 地图/新局、完整人物优先级、部分退出/调度/战斗仍缺依据，不用自定demo填补。
+- 新局静态地图/初值/首访已交付；加载后完整快照、首段人物AI、月度组合顺序仍缺，不用自定demo填补。
 
 研究覆盖、产品接入、原版对照分别记录；测试、画面、输入和行为等价不能相互替代。
 具体条目与缺口见 [原版对照](reference/REFERENCE_CHECKLIST.md)和 [研究需求](reference/RESEARCH_REQUESTS.md)。
 
 ## 当前实现
 
-只有两个target：标准C++的ark_launch负责参数解析，raylib程序ark_village负责打包图像检查、窗口和启动背景。
-没有GameState、模拟时钟、居民、地图、设施玩法或存档；不建立空领域库。
+标准C++的ark_game包含world、facilities、people与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
+raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
 
-启动顺序：参数→程序旁资源解码→无窗口检查或桌面显示器检查→窗口→纹理→绘制循环→纹理/窗口/图像释放。
-标题背景只是渲染底座检查，不是完整原版标题页；无模拟世界在后台推进。
+启动顺序：参数→程序旁CPU素材校验→无窗口首访检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
+静态输入为24×24源地图、8设施种子、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。
+源种子投影不认证入口重建后的完整世界；七种单格设施可建设，双格旅店/咖啡厅初期未开放。
+道路/入住募集为禁用预览，移动/撤除/住宅/收入/完整AI/存档未实现。1456逻辑步后保守结束本轮，防止跳过待研究费用。
 
 ## 领域设计原则
 
@@ -38,7 +40,7 @@
 | 调度与应用 | 明确逻辑更新资格/顺序、跨域提交；不预建通用事件总线 |
 | 表现 | 页面栈、选中/输入、投影/纹理/动画，规则从领域视图读取 |
 
-这是下一阶段设计输入，不代表模块已实现，也不固定target数量。按真实复杂度分包/文件，避免一函数一库或巨大Game类。
+已实现职责及剩余候选见[切片记录](stages/B1-playable-prototype.md)，不预建完整经营、战斗或通用事件总线。
 
 ## 为3D保留的边界
 
@@ -47,7 +49,7 @@
 
 ## 建设规则依据
 
-建设将消费 [设施规格](../research/dungeon_village_1/rules/FACILITIES.md#definitions)、[地图访问](../research/dungeon_village_1/rules/MAP_ACCESS.md)、[邻接](../research/dungeon_village_1/rules/FACILITIES.md#neighbourhood)和原版页面证据，当前尚未实现。
+建设已消费[设施规格](../research/dungeon_village_1/rules/FACILITIES.md#definitions)及[新局目录](../research/dungeon_village_1/rules/STARTUP.md)。[地图访问](../research/dungeon_village_1/rules/MAP_ACCESS.md)及[邻接](../research/dungeon_village_1/rules/FACILITIES.md#neighbourhood)仍是后续依据，本轮不宣称经营闭环。
 已证：定义/实例身份分开；锚点式1/2/4格、两朝向；每个占用格绑定实例/定义/分片；
 邻接按来源实例去重、含对角、每外环道路格魅力+2；等级/改良/使用累计按定义共享。
 连通是访问状态，不能自定“必须接路才允许建设”。

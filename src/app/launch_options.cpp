@@ -16,10 +16,25 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     for (std::size_t i = 0; i < arguments.size(); ++i) {
         const auto &argument = arguments[i];
         if (argument == "--help") {
-            return {LaunchOptions{LaunchMode::help, 480, 660, 0, {}}, {}};
+            options.mode = LaunchMode::help;
+            return {options, {}};
         }
         if (argument == "--check") {
             options.mode = LaunchMode::check;
+        } else if (argument == "--paused") {
+            options.paused = true;
+        } else if (argument == "--inspect-page") {
+            if (++i >= arguments.size())
+                return {std::nullopt, "--inspect-page requires a page"};
+            const auto &page = arguments[i];
+            if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
+                page != "visitor")
+                return {std::nullopt, "Unknown inspection page"};
+            options.inspect_page = page;
+        } else if (argument == "--font") {
+            if (++i >= arguments.size() || arguments[i].empty() || arguments[i][0] == '-')
+                return {std::nullopt, "--font requires a TTF path"};
+            options.font = arguments[i];
         } else if (argument == "--size") {
             if (i + 2 >= arguments.size() || !positive(arguments[i + 1], 4096, options.width) ||
                 !positive(arguments[i + 2], 4096, options.height) || options.width < 240 ||
@@ -43,6 +58,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (!options.screenshot.empty() && (options.frames == 0 || options.mode == LaunchMode::check)) {
         return {std::nullopt, "--screenshot requires a bounded window run with --frames"};
     }
+    if (!options.inspect_page.empty() &&
+        (options.frames == 0 || options.mode != LaunchMode::window))
+        return {std::nullopt, "--inspect-page requires a bounded window run"};
     return {options, {}};
 }
 

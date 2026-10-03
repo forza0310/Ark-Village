@@ -1,3 +1,5 @@
 * text=auto eol=lf
 *.png -text
 *.seb -text
+assets/data/** -text -eol
+assets/image/*.inf -text -eol whitespace=cr-at-eol

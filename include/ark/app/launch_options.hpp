@@ -14,6 +14,9 @@ struct LaunchOptions {
     int height = 660;
     int frames = 0;
     std::string screenshot;
+    bool paused = false;
+    std::string font;
+    std::string inspect_page; // Bounded rendering inspection; never a normal new-game trajectory.
 };
 
 struct LaunchResult {

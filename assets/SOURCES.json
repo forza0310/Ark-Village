@@ -1,0 +1,387 @@
+{
+  "scope": "static_source_projection_first_arrival",
+  "files": [
+    {
+      "file": "data/MAP.json",
+      "source": "research/dungeon_village_1/data/startup/MAP.json",
+      "sha256": "ba69797e2efa34e999f19f104ac2ee7f8d3b6b9d4d2268368ad68904fac9f2ef",
+      "bytes": 5581
+    },
+    {
+      "file": "data/STATE.json",
+      "source": "research/dungeon_village_1/data/startup/STATE.json",
+      "sha256": "ee938b46adc3cdf9e9cbcfce4386136841889dc8cc481b60f093858248bfa398",
+      "bytes": 7339
+    },
+    {
+      "file": "data/TABLES.json",
+      "source": "research/dungeon_village_1/data/startup/TABLES.json",
+      "sha256": "b00ffa3b69663abb7b2e45873f38a845184efb6895d2b036267196472c36db68",
+      "bytes": 27870
+    },
+    {
+      "file": "data/tenantData.txt",
+      "source": "research/dungeon_village_1/data/original/tenantData.txt",
+      "sha256": "5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a",
+      "bytes": 11629
+    },
+    {
+      "file": "image/item03.seb",
+      "source": "research/dungeon_village_1/assets/original/image/item03.seb",
+      "sha256": "b5da06596e0c61c349c6a01dbbb1ebd08452779b395d0212c7ea123b4ab5b162",
+      "bytes": 28
+    },
+    {
+      "file": "image/item06.seb",
+      "source": "research/dungeon_village_1/assets/original/image/item06.seb",
+      "sha256": "a38cc7e553a6d8181d8dc172b0d83cfc1ff5dc7c1f503ec6eb3a38a3e7a83bed",
+      "bytes": 28
+    },
+    {
+      "file": "image/item04.seb",
+      "source": "research/dungeon_village_1/assets/original/image/item04.seb",
+      "sha256": "6fd8dafbd48c196b5534729cd538a0c3b6bf29352246a02777eb3cf17fdd45cb",
+      "bytes": 28
+    },
+    {
+      "file": "image/road00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/road00.seb",
+      "sha256": "483600b754feb7bd300cf58cdee6fbe939e740b5328867f3a176907b7ef62108",
+      "bytes": 328
+    },
+    {
+      "file": "image/plain00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/plain00.seb",
+      "sha256": "d976a365fd6ec32fb04d6fdee6994ab4458279428162997898d0a814572f5cbb",
+      "bytes": 88
+    },
+    {
+      "file": "image/entrance00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/entrance00.seb",
+      "sha256": "b7c1dcdec02c8f13d927a2771b47f7143d2bd19b30c491ce19363fda9e8fafcb",
+      "bytes": 28
+    },
+    {
+      "file": "image/entrance01.seb",
+      "source": "research/dungeon_village_1/assets/original/image/entrance01.seb",
+      "sha256": "1f61553f5b2096ab85b307cb7ee70dcded4d8c0ef87ef93c3199d48326c643e9",
+      "bytes": 28
+    },
+    {
+      "file": "image/item05.seb",
+      "source": "research/dungeon_village_1/assets/original/image/item05.seb",
+      "sha256": "f6611a49bb3ba9530ef3744adf1eda7b00b97e3f36bcb24df5f385b2d1f66c43",
+      "bytes": 28
+    },
+    {
+      "file": "image/tenant10.seb",
+      "source": "research/dungeon_village_1/assets/original/image/tenant10.seb",
+      "sha256": "7185808420140f439a02fb792e31ebb832a40f41d81951b85076f88c939a81d1",
+      "bytes": 48
+    },
+    {
+      "file": "image/tenant12.seb",
+      "source": "research/dungeon_village_1/assets/original/image/tenant12.seb",
+      "sha256": "ac8214edc4ec3effc0dd804258b96d1557d073139c62615729bd26298667eea5",
+      "bytes": 48
+    },
+    {
+      "file": "image/plant00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/plant00.seb",
+      "sha256": "a9028d15d921c5db439b0050e4d1c1ba63e4acad3da58debf82213ae797f3468",
+      "bytes": 48
+    },
+    {
+      "file": "image/tenant04.seb",
+      "source": "research/dungeon_village_1/assets/original/image/tenant04.seb",
+      "sha256": "779d70d60463d99529723b197cb4953d958f5cf62396c88e5bbf0f795e79d0ee",
+      "bytes": 48
+    },
+    {
+      "file": "image/entranceOut02.seb",
+      "source": "research/dungeon_village_1/assets/original/image/entranceOut02.seb",
+      "sha256": "3ffb997e2e2be021d35858e8ddf371046d335fa998429dade200f63b37ea74cd",
+      "bytes": 28
+    },
+    {
+      "file": "image/entranceOut03.seb",
+      "source": "research/dungeon_village_1/assets/original/image/entranceOut03.seb",
+      "sha256": "5683291b845857fff8a8a08e3c1ec2ac3c6c88c72dd4eca60eb5078bcfe4f09d",
+      "bytes": 28
+    },
+    {
+      "file": "image/sea03.seb",
+      "source": "research/dungeon_village_1/assets/original/image/sea03.seb",
+      "sha256": "293e6ae4faf47a8967b1ee76c53e3a85623846a49cf6974f65621eb9767d1289",
+      "bytes": 28
+    },
+    {
+      "file": "image/sea01.seb",
+      "source": "research/dungeon_village_1/assets/original/image/sea01.seb",
+      "sha256": "247b362a6ba643fb07d6841e22c4e44a6ada986dfacdd022dc82456da4fd7d7e",
+      "bytes": 28
+    },
+    {
+      "file": "image/sea00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/sea00.seb",
+      "sha256": "c1c2bb6a70cf42112c51064c89bd78b66451feb5734a22807ca29bab4ec26a44",
+      "bytes": 68
+    },
+    {
+      "file": "image/item01.seb",
+      "source": "research/dungeon_village_1/assets/original/image/item01.seb",
+      "sha256": "9d804138e1cf4294c8279b45935fa57b958392779a4069e69eaaff834f529fda",
+      "bytes": 48
+    },
+    {
+      "file": "image/t_resident00.seb",
+      "source": "research/dungeon_village_1/assets/original/image/t_resident00.seb",
+      "sha256": "0813fd74980d593dcba03b365097af23abde207b6c90c3e0aed341cb7d2245ed",
+      "bytes": 28
+    },
+    {
+      "file": "image/t_protect.seb",
+      "source": "research/dungeon_village_1/assets/original/image/t_protect.seb",
+      "sha256": "8b1c72e32d5d73028bb35a7c64e23fd8f55cbb2bb882fad4590f0cfe37ef05be",
+      "bytes": 48
+    },
+    {
+      "file": "image/tenant22.seb",
+      "source": "research/dungeon_village_1/assets/original/image/tenant22.seb",
+      "sha256": "f8348071e2900b2858be9e79297c9956e85b14ee778250731b0500ca2bba368b",
+      "bytes": 48
+    },
+    {
+      "file": "image/t_flower.seb",
+      "source": "research/dungeon_village_1/assets/original/image/t_flower.seb",
+      "sha256": "9304f62a6e3d8754baaaec41d04670ef27469401f6f69040ea1fde3d5450ad11",
+      "bytes": 48
+    },
+    {
+      "file": "image/img.inf",
+      "source": "research/dungeon_village_1/assets/original/image/img.inf",
+      "sha256": "f629a980ac747833e0c41331620dc31c37e82799c870c3cbbe220b747d269952",
+      "bytes": 1787
+    },
+    {
+      "file": "image/item03.png",
+      "source": "research/dungeon_village_1/assets/original/image/item03.png",
+      "sha256": "bb5cdf235166a927619c12650ceff459028f2c88603b48d38b1665ce698c5148",
+      "bytes": 1569,
+      "width": 60,
+      "height": 48
+    },
+    {
+      "file": "image/item06.png",
+      "source": "research/dungeon_village_1/assets/original/image/item06.png",
+      "sha256": "bed39dddc1f5e3034457cce997aeaf72cde2bf6fa5c425fc36c1fe70af098ffd",
+      "bytes": 1268,
+      "width": 60,
+      "height": 45
+    },
+    {
+      "file": "image/item04.png",
+      "source": "research/dungeon_village_1/assets/original/image/item04.png",
+      "sha256": "537a98a7b359d3cae7d1e6b0f21aa78feb92a6a3e988224812b6a9ea63e99ebb",
+      "bytes": 1126,
+      "width": 60,
+      "height": 38
+    },
+    {
+      "file": "image/road00.png",
+      "source": "research/dungeon_village_1/assets/original/image/road00.png",
+      "sha256": "8ee61f0b4582a36256d405388518019b4ab66386c9e6a00ec6d16e648e5eedf4",
+      "bytes": 8224,
+      "width": 240,
+      "height": 116
+    },
+    {
+      "file": "image/plain00.png",
+      "source": "research/dungeon_village_1/assets/original/image/plain00.png",
+      "sha256": "d1f6ee4c4b588696b70033c8d5bed01a3c12bd966e6cb004c705066f47810f06",
+      "bytes": 2078,
+      "width": 180,
+      "height": 29
+    },
+    {
+      "file": "image/entrance00.png",
+      "source": "research/dungeon_village_1/assets/original/image/entrance00.png",
+      "sha256": "c8ef4c672534881690409230927e25f9b125cc8cfe700ae02d0902aeaa095543",
+      "bytes": 1024,
+      "width": 60,
+      "height": 36
+    },
+    {
+      "file": "image/entrance01.png",
+      "source": "research/dungeon_village_1/assets/original/image/entrance01.png",
+      "sha256": "a71743e222d781c8d8f25ea1cc5e7e361ca5ad65ad6d9ac42cba7d105c6f2e07",
+      "bytes": 952,
+      "width": 60,
+      "height": 29
+    },
+    {
+      "file": "image/item05.png",
+      "source": "research/dungeon_village_1/assets/original/image/item05.png",
+      "sha256": "629e523d9665f7ea76e5c58ac736f5a851ac4dca328982afe5f194263409fa30",
+      "bytes": 1003,
+      "width": 60,
+      "height": 29
+    },
+    {
+      "file": "image/tenant10.png",
+      "source": "research/dungeon_village_1/assets/original/image/tenant10.png",
+      "sha256": "d05aacdb3af69cb6ab397ae2df786d23565d9a6ca593626ad5b657410ff4c125",
+      "bytes": 1259,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "image/tenant12.png",
+      "source": "research/dungeon_village_1/assets/original/image/tenant12.png",
+      "sha256": "d0f86296eda58b14b653ea42030411b28f17c630a3cfa8110cbef98227b56ac8",
+      "bytes": 1284,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "image/plant00.png",
+      "source": "research/dungeon_village_1/assets/original/image/plant00.png",
+      "sha256": "fd713be7a94c190305b42c79707dfc49dd03b29e112095dfffc3d83d802fbc2b",
+      "bytes": 1031,
+      "width": 60,
+      "height": 35
+    },
+    {
+      "file": "image/tenant04.png",
+      "source": "research/dungeon_village_1/assets/original/image/tenant04.png",
+      "sha256": "a400c71bf827aee8cb2fd288488bbf6540bcd3688b7454f88ef7f73183af42bc",
+      "bytes": 1185,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "image/entranceOut02.png",
+      "source": "research/dungeon_village_1/assets/original/image/entranceOut02.png",
+      "sha256": "4b102bc1876548289e8b13afc377151b283fe7e6f2f5d655598d5403ba953795",
+      "bytes": 1026,
+      "width": 60,
+      "height": 44
+    },
+    {
+      "file": "image/entranceOut03.png",
+      "source": "research/dungeon_village_1/assets/original/image/entranceOut03.png",
+      "sha256": "0910516684faec7c562bd8b867922ac159a73c4809321060fffe288fd12b1cf2",
+      "bytes": 982,
+      "width": 60,
+      "height": 37
+    },
+    {
+      "file": "image/sea03.png",
+      "source": "research/dungeon_village_1/assets/original/image/sea03.png",
+      "sha256": "236538f3dc37d943120d026c295c8b9b3053b82ab21d71263735a315fd0bfeed",
+      "bytes": 994,
+      "width": 60,
+      "height": 29
+    },
+    {
+      "file": "image/sea01.png",
+      "source": "research/dungeon_village_1/assets/original/image/sea01.png",
+      "sha256": "f109d41560a50b68fddc15ad6bf6808012865dec554af95aa2b9b4b43a4a4e7e",
+      "bytes": 907,
+      "width": 60,
+      "height": 29
+    },
+    {
+      "file": "image/sea00.png",
+      "source": "research/dungeon_village_1/assets/original/image/sea00.png",
+      "sha256": "d7342c4dc4d8180a8f4f36296ee8fd9a32d00bfb2d62b592f7be09fca54e462b",
+      "bytes": 641,
+      "width": 60,
+      "height": 29
+    },
+    {
+      "file": "image/item01.png",
+      "source": "research/dungeon_village_1/assets/original/image/item01.png",
+      "sha256": "2a24fe4511793c291af3d1d109407ca54921069cd1c46a7b955e33b8b0370e01",
+      "bytes": 1198,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "image/t_resident00.png",
+      "source": "research/dungeon_village_1/assets/original/image/t_resident00.png",
+      "sha256": "6fc5631b011d85231471c1bd7fbe577c475c5dd9c01ce0fb17854d34750ee23e",
+      "bytes": 1049,
+      "width": 60,
+      "height": 50
+    },
+    {
+      "file": "image/t_protect.png",
+      "source": "research/dungeon_village_1/assets/original/image/t_protect.png",
+      "sha256": "9bb2ed36dfb77ff46fec32adbfbdd351d69778da12729cbc98a3c5ef88a19693",
+      "bytes": 1442,
+      "width": 60,
+      "height": 60
+    },
+    {
+      "file": "image/tenant22.png",
+      "source": "research/dungeon_village_1/assets/original/image/tenant22.png",
+      "sha256": "1549162ba1ef08ed5c700c28f05451e772e1fc871487a3a331cd2943b9a49fb2",
+      "bytes": 1528,
+      "width": 60,
+      "height": 50
+    },
+    {
+      "file": "image/t_flower.png",
+      "source": "research/dungeon_village_1/assets/original/image/t_flower.png",
+      "sha256": "f08027275963801f8ef515e56e7a7b3da8fcab226ae4f7f1f0a73024a6cfa79b",
+      "bytes": 1291,
+      "width": 60,
+      "height": 52
+    },
+    {
+      "file": "human/chara_flower00.png",
+      "source": "research/dungeon_village_1/assets/original/human/chara_flower00.png",
+      "sha256": "79001c63be76f9fa455d1e670fd82c7f839228b01fd25e34752162acdc451a31",
+      "bytes": 3211,
+      "width": 198,
+      "height": 96
+    },
+    {
+      "file": "human/walk00.seb",
+      "source": "research/dungeon_village_1/assets/original/human/walk00.seb",
+      "sha256": "4082d681f971fe4368a3b22fa463e620a039a5533578f8e943e56bcae8e9ba50",
+      "bytes": 88
+    },
+    {
+      "file": "common/chara_hishoko01.png",
+      "source": "research/dungeon_village_1/assets/original/common/chara_hishoko01.png",
+      "sha256": "06fa65b4c43eaad30f890bd162925e93ff54dc20c0da9b2fc811f9484791edd1",
+      "bytes": 705,
+      "width": 34,
+      "height": 27
+    },
+    {
+      "file": "common/chara_hishoko01.seb",
+      "source": "research/dungeon_village_1/assets/original/common/chara_hishoko01.seb",
+      "sha256": "8519bbb27232aded46706459d1e40a92d1f726092222e2ef0341749c17d30ac9",
+      "bytes": 48
+    },
+    {
+      "file": "ui/wnd_back.png",
+      "source": "research/dungeon_village_1/assets/original/common/wnd_back.png",
+      "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+      "bytes": 1166,
+      "width": 40,
+      "height": 240
+    },
+    {
+      "file": "ui/wnd_bar.png",
+      "source": "research/dungeon_village_1/assets/original/common/wnd_bar.png",
+      "sha256": "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+      "bytes": 1951,
+      "width": 240,
+      "height": 17
+    }
+  ]
+}

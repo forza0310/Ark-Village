@@ -42,11 +42,16 @@ class Text {
               float size = 12) const;
     void paragraph(const std::string &value, float x, float y, float width) const;
     float width(const std::string &value, float size = 12) const;
-    // Replay text at native pixel density after presenting the low-resolution pixel artwork.
+    // Grow glyph rasterization with physical UI scale (including Retina and window resize).
+    // Call before layout measurements; retain the atlas until a larger density is needed.
+    void prepare(float pixel_scale);
+    // Replay labels directly into the native framebuffer after logical artwork rendering.
     void flush(float scale, Vector2 offset) const;
 
   private:
     Font font_{};
+    std::filesystem::path font_path_;
+    std::vector<int> codepoints_;
     struct Label {
         std::string value;
         Vector2 point;

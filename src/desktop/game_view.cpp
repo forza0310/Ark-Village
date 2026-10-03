@@ -8,6 +8,7 @@
 #include "ui/hud.hpp"
 #include "ui/pages.hpp"
 #include <cmath>
+#include <iostream>
 #include <random>
 #include <stdexcept>
 
@@ -16,7 +17,7 @@ namespace {
 struct Window {
     explicit Window(const app::LaunchOptions &options) {
         require_display();
-        SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
         InitWindow(options.width, options.height, "Ark-Village");
         if (!IsWindowReady())
             throw std::runtime_error("Cannot initialize raylib window");
@@ -42,7 +43,7 @@ class Canvas {
             return;
         auto next = LoadRenderTexture(size.width, size.height);
         if (!next.id)
-            throw std::runtime_error("Cannot create logical canvas");
+            throw std::runtime_error("Cannot create native framebuffer canvas");
         SetTextureFilter(next.texture, TEXTURE_FILTER_POINT);
         if (value.id)
             UnloadRenderTexture(value);
@@ -106,10 +107,17 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     inspect(game, view, options.inspect_page);
     int frames{};
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
-        canvas.resize(canvas_extent(GetScreenWidth(), GetScreenHeight()));
-        const ui::Layout layout(canvas.extent);
-        const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), canvas.extent);
-        const auto mouse = logical_mouse(GetMousePosition(), destination, canvas.extent);
+        // Window points drive layout/input; framebuffer pixels drive rasterization. A Retina
+        // window may have twice as many physical pixels on each axis. Never rasterize a zoomed
+        // sprite into the small logical layout before enlarging it to the actual framebuffer.
+        const auto extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+        canvas.resize({GetRenderWidth(), GetRenderHeight()});
+        const ui::Layout layout(extent);
+        const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
+        const auto pixels = viewport(canvas.extent.width, canvas.extent.height, extent);
+        const auto raster_camera = canvas_camera(pixels, extent);
+        text.prepare(raster_camera.zoom);
+        const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
         if (IsKeyPressed(KEY_ESCAPE))
             ui::back(game, view);
         if (IsKeyPressed(KEY_ENTER))
@@ -129,7 +137,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                  CheckCollisionPointRec(*mouse, layout.scene) &&
                  (game.state().mode == app::Mode::normal ||
                   game.state().mode == app::Mode::placement))
-            zoom_at(*mouse, canvas.extent, wheel, view.camera, view.zoom);
+            zoom_at(*mouse, extent, wheel, view.camera, view.zoom);
         if (mouse && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if (game.state().mode == app::Mode::research_boundary &&
                 CheckCollisionPointRec(*mouse,
@@ -145,9 +153,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         std::optional<world::Cell> hovered;
         if (!ui::blocks_world(view) && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
             (game.state().mode == app::Mode::normal || game.state().mode == app::Mode::placement)) {
-            hovered = pick(*mouse, view.camera, data.map, canvas.extent, view.zoom);
+            hovered = pick(*mouse, view.camera, data.map, extent, view.zoom);
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                const float scale = destination.width / canvas.extent.width;
+                const float scale = destination.width / extent.width;
                 view.camera.x -= GetMouseDelta().x / (scale * view.zoom);
                 view.camera.y += GetMouseDelta().y / (scale * view.zoom);
             }
@@ -169,21 +177,29 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             --view.notice_frames;
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
-        draw_scene(game, sprites, view.camera, canvas.extent, view.zoom);
+        BeginMode2D(raster_camera);
+        draw_scene(game, sprites, view.camera, extent, view.zoom);
         draw_preview(game, view, layout, sprites, hovered);
         ui::draw_hud(game, view, layout, skin);
         ui::draw_pages(game, view, layout, skin);
+        EndMode2D();
+        text.flush(raster_camera.zoom, raster_camera.offset);
         EndTextureMode();
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawTexturePro(canvas.value.texture,
-                       {0, 0, static_cast<float>(canvas.extent.width),
-                        -static_cast<float>(canvas.extent.height)},
-                       destination, {0, 0}, 0, WHITE);
-        text.flush(destination.width / canvas.extent.width, {destination.x, destination.y});
+        DrawTexturePro(
+            canvas.value.texture,
+            {0, 0, static_cast<float>(canvas.extent.width),
+             -static_cast<float>(canvas.extent.height)},
+            {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
+            {0, 0}, 0, WHITE);
         EndDrawing();
         ++frames;
     }
+    if (options.frames)
+        std::cout << "Render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
+                  << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
+                  << " canvas=" << canvas.extent.width << 'x' << canvas.extent.height << '\n';
     if (!options.screenshot.empty()) {
         if (frames != options.frames)
             throw std::runtime_error("Window closed before bounded capture");

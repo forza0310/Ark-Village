@@ -21,6 +21,9 @@ std::optional<Vector2> logical_mouse(Vector2 pixel, Rectangle destination, Exten
     return Vector2{(pixel.x - destination.x) * canvas.width / destination.width,
                    (pixel.y - destination.y) * canvas.height / destination.height};
 }
+Camera2D canvas_camera(Rectangle destination, Extent canvas) {
+    return {{destination.x, destination.y}, {0, 0}, 0, destination.width / canvas.width};
+}
 Vector2 project(world::Cell cell, Vector2 camera, Extent canvas, float zoom) {
     return {canvas.width / 2.0F + zoom * (30.0F * (cell.x + cell.y) - camera.x),
             canvas.height / 2.0F + zoom * (-15.0F * (cell.y - cell.x) - 15 + camera.y)};

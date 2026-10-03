@@ -27,6 +27,10 @@ research已有外部链接的UI/C/RQ编号保留为交接身份，新产品接�
 
 ## macOS窗口检查
 
+窗口必须在InitWindow前启用FLAG_WINDOW_HIGHDPI，画布按GetRenderWidth/Height分配；逻辑布局尺寸不用于纹理分辨率。
+有界运行会打印window/framebuffer/canvas尺寸。Retina 960×512窗口预期framebuffer/canvas为1920×1024；以实际显示器倍率为准。
+缩放清晰度对比使用同一窗口/镜头/zoom-percent；PNG物理尺寸与窗口点尺寸不同，查看时保留原图像素。
+
 raylib/GLFW需要可访问的登录桌面和唤醒显示器，WindowServer存在不等于当前上下文能访问显示器。
 程序在InitWindow前用CoreGraphics检查显示器，无可用显示器时立即返回错误。
 无窗口检查使用`ark_village --check`；真实桌面使用`ark_village --frames 60`等有界运行。

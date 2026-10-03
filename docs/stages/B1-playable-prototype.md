@@ -196,3 +196,14 @@ Release 1280×600设备页、960×512植物页、240×256且50%缩放的建造�
 保存在/tmp/ark-facility-*.png、ark-connected-roads.png、ark-zoom150.png、ark-bonuses-min.png、ark-detail-portrait.png、
 ark-equipment-release-wide.png、ark-placement-zoom50.png、ark-booster-release.png；临时截图不是持久基线。
 真实滚轮/鼠标和APK动态对照未执行；参数截图与坐标测试分别记证据，不冒充原生输入或完整原版玩法。
+
+## macOS缩放清晰度修正（2026-10-03）
+
+用户反馈缩放模糊。定位为未启用HighDPI以及逻辑小画布二次放大：960×512窗口先在480×256绘制地图，
+75%地图缩放已丢失源像素，最终呈现不能恢复；旧截图只有960×512物理像素。
+修正窗口启用Retina，布局/鼠标仍用窗口点坐标，画布按GetRenderWidth/Height分配，通过canvas_camera直接将源素材画到最终物理尺寸。
+文字图集按物理UI密度分档增长，素材仍最近邻；实际截图确认同一窗口framebuffer/canvas均为1920×1024。
+本轮四套重新配置/编译/CTest通过：headless各7/7、desktop各11/11，共36次；新增1×/1.5×/2×DPI与五档地图缩放的渲染/拾取一致性回归。
+实际截图：Debug 960×512窗口75%地图前后对照、105%设施页、240×256窗口50%预览；Release 1280×600窗口150%地图。
+对应物理输出1920×1024、480×512、2560×1200，图像与文字无布局重叠，临时图在/tmp/ark-retina-*.png。
+原生鼠标/跨显示器拖窗未自动化验收；本轮验证为实际Retina静帧与坐标回归，不升级既有输入验收声明。

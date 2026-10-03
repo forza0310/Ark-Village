@@ -149,7 +149,7 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
         throw std::runtime_error("UI image rectangle outside atlas");
     DrawTexturePro(value, source, destination, {0, 0}, 0, tint);
 }
-Text::Text(const std::filesystem::path &font_path) {
+Text::Text(const std::filesystem::path &font_path) : font_path_(font_path) {
     if (!std::filesystem::is_regular_file(font_path))
         throw std::runtime_error("Chinese font not found; use --font TTF");
     std::string glyphs =
@@ -171,17 +171,28 @@ Text::Text(const std::filesystem::path &font_path) {
         throw std::runtime_error("Cannot decode font codepoints");
     const std::set<int> unique(raw, raw + count);
     UnloadCodepoints(raw);
-    std::vector<int> codes(unique.begin(), unique.end());
-    font_ =
-        LoadFontEx(font_path.string().c_str(), 48, codes.data(), static_cast<int>(codes.size()));
-    if (!font_.texture.id || font_.texture.id == GetFontDefault().texture.id)
+    codepoints_.assign(unique.begin(), unique.end());
+    prepare(1);
+}
+void Text::prepare(float pixel_scale) {
+    // Current labels are <= 16 logical units. Quantizing growth avoids reloading the glyph
+    // atlas on every resize event; map wheel zoom does not change UI density.
+    const int pixels = std::max(48, static_cast<int>(std::ceil(16 * pixel_scale / 16)) * 16);
+    if (font_.texture.id && font_.baseSize >= pixels)
+        return;
+    auto next = LoadFontEx(font_path_.string().c_str(), pixels, codepoints_.data(),
+                           static_cast<int>(codepoints_.size()));
+    if (!next.texture.id || next.texture.id == GetFontDefault().texture.id)
         throw std::runtime_error("Cannot load Chinese font");
-    for (auto code : codes)
-        if (code > 127 && font_.glyphs[GetGlyphIndex(font_, code)].value != code) {
-            UnloadFont(font_);
+    for (auto code : codepoints_)
+        if (code > 127 && next.glyphs[GetGlyphIndex(next, code)].value != code) {
+            UnloadFont(next);
             throw std::runtime_error("Chinese font missing required glyph");
         }
-    SetTextureFilter(font_.texture, TEXTURE_FILTER_BILINEAR);
+    SetTextureFilter(next.texture, TEXTURE_FILTER_BILINEAR);
+    if (font_.texture.id)
+        UnloadFont(font_);
+    font_ = next;
 }
 Text::~Text() { UnloadFont(font_); }
 void Text::draw(const std::string &value, float x, float y, Color color, float size) const {

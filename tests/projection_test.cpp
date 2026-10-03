@@ -24,6 +24,20 @@ int main() {
                     std::abs(logical->y - p.y) > 0.01F ||
                     ark::desktop::pick(*logical, camera, map, extent, zoom) != cell)
                     throw std::runtime_error("Projection inverse mismatch");
+                // Physical render resolution must not change window-point hit testing.
+                for (float dpi : {1.0F, 1.5F, 2.0F}) {
+                    const auto physical = ark::desktop::viewport(
+                        static_cast<int>(size.x * dpi), static_cast<int>(size.y * dpi), extent);
+                    const auto rendered =
+                        GetWorldToScreen2D(p, ark::desktop::canvas_camera(physical, extent));
+                    if (std::abs(rendered.x - pixels.x * dpi) > 0.01F ||
+                        std::abs(rendered.y - pixels.y * dpi) > 0.01F)
+                        throw std::runtime_error("Framebuffer/window DPI mapping mismatch");
+                    const auto hit = ark::desktop::logical_mouse(
+                        {rendered.x / dpi, rendered.y / dpi}, box, extent);
+                    if (!hit || ark::desktop::pick(*hit, camera, map, extent, zoom) != cell)
+                        throw std::runtime_error("Retina hit testing applied DPI twice");
+                }
             }
         if (ark::desktop::logical_mouse({-1, -1}, box, extent))
             throw std::runtime_error("Letterbox input accepted");

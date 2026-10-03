@@ -19,7 +19,8 @@
 标准C++的ark_game包含world、facilities、people与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
 raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
 desktop/scene负责源投影/预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
-界面响应窗口比例，像素素材与最终分辨率文字分开绘制；命中和绘制共用逻辑布局，业务数据不移入UI。
+界面响应窗口比例，命中和绘制共用逻辑布局，业务数据不移入UI。逻辑尺寸仅用于坐标，渲染画布使用framebuffer原生像素（含Retina）。
+像素素材最近邻采样，文字按物理显示密度生成字形；鼠标继续使用窗口点坐标，不重复乘DPI。
 facilities/economy与neighbourhood为纯派生规则，app/facility_queries提供只读查询；UI按页74条件显示实际属性、维护费与来源。
 world/terrain按已证掩码连接道路；desktop/projection负责场景小步缩放/锚点/拾取，HUD与领域不随缩放变化。
 

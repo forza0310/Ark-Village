@@ -2,6 +2,7 @@
 // Package responsibilities and evidence boundaries: ../README.md.
 
 #include "dungeon_village_prototype/asset_manifest.hpp"
+#include "dungeon_village_prototype/startup_view.hpp"
 #include "dungeon_village_prototype/village.hpp"
 
 #include <raylib.h>
@@ -29,13 +30,17 @@ struct Options {
     int frames{};
     bool paused{};
     FacilityOrientation orientation{FacilityOrientation::first};
+    bool fixture{};
+    std::filesystem::path font{"/System/Library/Fonts/Supplemental/Arial Unicode.ttf"};
+    std::string inspect_page;
 };
 
 // Screenshots require a bounded window run; validation mode never opens the desktop.
 Options parse_options(int argc, char **argv) {
     const auto directory = std::filesystem::absolute(argv[0]).parent_path();
-    Options options{directory / "assets", directory / "data/tenantData.txt", std::nullopt, false,
-                    false};
+    Options options;
+    options.assets = directory / "assets";
+    options.table = directory / "data/tenantData.txt";
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--asset-root" && i + 1 < argc)
@@ -45,7 +50,13 @@ Options parse_options(int argc, char **argv) {
         else if (arg == "--screenshot" && i + 1 < argc)
             options.screenshot = argv[++i];
         else if (arg == "--demo")
-            options.demo = true;
+            options.demo = options.fixture = true;
+        else if (arg == "--fixture")
+            options.fixture = true;
+        else if (arg == "--font" && i + 1 < argc)
+            options.font = argv[++i];
+        else if (arg == "--inspect-page" && i + 1 < argc)
+            options.inspect_page = argv[++i];
         else if (arg == "--check")
             options.check = true;
         else if (arg == "--paused")
@@ -72,6 +83,13 @@ Options parse_options(int argc, char **argv) {
         throw std::invalid_argument("截图参数只能用于有界窗口验收");
     if (options.demo && (options.paused || options.frames != 0))
         throw std::invalid_argument("自主演示不能暂停或使用独立帧数上限");
+    if (!options.inspect_page.empty() &&
+        (options.frames == 0 || options.fixture || options.check ||
+         (options.inspect_page != "roads" && options.inspect_page != "shops" &&
+          options.inspect_page != "food" && options.inspect_page != "arrival" &&
+          options.inspect_page != "visitor")))
+        throw std::invalid_argument(
+            "页面检查仅支持有界新局窗口的 roads/shops/food/arrival/visitor");
     return options;
 }
 
@@ -475,6 +493,14 @@ int run_window(const Options &options, Village village, AssetManifest manifest) 
 int main(int argc, char **argv) {
     try {
         const auto options = parse_options(argc, argv);
+        if (!options.fixture) {
+            if (options.check) {
+                check_startup();
+                return 0;
+            }
+            return run_startup_window(options.assets, options.font, options.paused, options.frames,
+                                      options.screenshot, options.inspect_page);
+        }
         const auto manifest = load_asset_manifest(options.assets);
         for (const auto *key :
              {"terrain.grass", "terrain.road", "building.inn", "building.cafe",

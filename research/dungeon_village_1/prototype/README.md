@@ -1,26 +1,31 @@
 # 可玩研究原型包
 
-本包将已维护规则组装成可测试的建设与人物自主访问闭环，不是原版新局或完整 UI 复刻。
-领域聚合不依赖窗口，raylib 只处理输入、格子投影、插值与图片绘制；不加入产品主构建。
+默认运行已发布的新局证据模式，旧7×7自主访问演示只在显式夹具模式运行。
+两者均不是完整原版复刻；本包独立于产品主构建，只修改研究代码。
+证据与缺口集中在[新局报告](../rules/STARTUP.md)，不以截图或演示初值补齐未知原版规则。
 
 ## 职责与依赖
 
 | 文件/目标 | 职责 |
 | --- | --- |
-| [village.hpp](include/dungeon_village_prototype/village.hpp)、[village.cpp](src/village.cpp) | 唯一可变聚合所有者；建设/时间输入候选事务，布局变更取消旧目标，到达收入和完成计数分开 |
-| [catalog.cpp](src/catalog.cpp) | 通过工具包严格解析设施表，仅接入定义28/29/36 |
-| [asset_manifest.hpp](include/dungeon_village_prototype/asset_manifest.hpp)、[asset_manifest.cpp](src/asset_manifest.cpp) | 七个逻辑键与替换素材契约；拒绝不安全路径、重复键和不存在的文件 |
-| [main.cpp](src/main.cpp) | 参数、有界无窗口自检/窗口演示、工具选择、地图点击、相机和RAII纹理/画布 |
-| dungeon_village_prototype_model | 标准C++17模型；依赖 [example](../example/README.md)，复用 [tools](../tools/README.md) 的表解析实现 |
-| dungeon_village_prototype | raylib可执行程序，旁置打包的素材与必要数据表 |
-| [tests](tests/) | 模型组合、事务失败、时间分段、素材像素/替换和CLI边界；含18项领域测试共24项CTest |
+| [startup.hpp](include/dungeon_village_prototype/startup.hpp)、[startup.cpp](src/startup.cpp) | 标准C++17新局聚合；源格与显示定义分开、免费种子加载、两次报价校验、建设事务、施工、首访和模态调度 |
+| [数据编译脚本](scripts/README.md) | 构建期用Node内置JSON解析生成只读C++；完整地图字节哈希、原表和派生契约交叉验证，运行不依赖Node |
+| [startup_view.hpp](include/dungeon_village_prototype/startup_view.hpp)、[startup_view.cpp](src/startup_view.cpp) | raylib新局画面、中文替代字体、源SEB/图片绑定、目录/放置/提示与有界页面检查；核心不接收屏幕坐标 |
+| [village.hpp](include/dungeon_village_prototype/village.hpp)、[village.cpp](src/village.cpp) | 保留旧夹具的建设、多格布局、自主访问、到达收入和周期事务，不混入默认新局 |
+| [catalog.cpp](src/catalog.cpp) | 旧夹具设施表投影，仍只接28/29/36 |
+| [asset_manifest.hpp](include/dungeon_village_prototype/asset_manifest.hpp)、[asset_manifest.cpp](src/asset_manifest.cpp) | 旧夹具的七键替换素材契约 |
+| [main.cpp](src/main.cpp) | CLI入口，显式分流默认新局与旧夹具 |
+| dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
+| dungeon_village_prototype_model | 旧夹具聚合，复用[领域示例](../example/README.md)与[工具](../tools/README.md)表解析 |
+| [测试目录](tests/) | 新局状态/事务/调度、数据错误输入与旧回归；含18项领域测试共28项CTest |
 
-具体目标与打包步骤见 [CMake](CMakeLists.txt)。运行只读程序旁的素材与表，不访问 APK 或反编译结果。
-详细规则见 [规则入口](../rules/README.md)，来源/帧/锚点与换图见 [素材说明](../assets/README.md)。
+[CMake](CMakeLists.txt)把所需原始图集/SEB、秘书和农家图片复制到程序旁。
+运行只读该素材目录；设施新局数据编译进程序，不访问APK、反编译结果或发布JSON。
+源路径/哈希见[素材清单](../assets/MANIFEST.tsv)，不重复发布或修改原图。
 
 ## 构建与运行
 
-从仓库根目录执行，需已安装raylib及pkg-config：
+构建需要C++17、CMake、Node、raylib和pkg-config。从仓库根目录执行：
 
 ```sh
 cmake -S research/dungeon_village_1/prototype -B research/dungeon_village_1/work/prototype-debug-llvm -DCMAKE_BUILD_TYPE=Debug
@@ -29,25 +34,47 @@ ctest --test-dir research/dungeon_village_1/work/prototype-debug-llvm --output-o
 research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --paused
 ```
 
-前三个工具选择旅店、双格旅店、咖啡厅；移动工具先选建筑再选目标格，旋转工具切换朝向，撤除工具删除。
-Esc取消选择，右键拖动视图，暂停按钮继续模拟。人物自主选择设施，不由玩家指挥移动。
-退出不保存。详细操作验收见 [试玩清单](../stages/PLAYTEST.md)。
+本机沿用[现有CLion/LLVM工具链](../verification/BASELINE.md)。暂停开始用`--paused`，
+无窗口新局自检为`--check`，有界运行用`--frames N`，`--screenshot`仅用于有界截图。
+默认字体是本机`/System/Library/Fonts/Supplemental/Arial Unicode.ttf`，未复制或分发；
+其他环境用`--font /绝对路径/中文字体.ttf`指定字体，缺少字形明确失败，不悄悄画方框。
 
-仅检查模型可执行：
+默认窗口为240×320逻辑画布、480×640物理像素。建设→目录分类→条目→地图格→确定。
+返回或Esc取消，放置模式支持连续建设；右键拖动视图，暂停/继续和1倍/2倍按钮控制模拟资格。
+施工只在正常模式推进。首访两句提示逐次确认，然后镜头移到人物；没有人物移动命令。
+退出不保存。详细人工清单见[试玩说明](../stages/PLAYTEST.md)。
+
+页面截图检查不模拟鼠标，必须指定有界帧数：
 
 ```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --check
+research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --inspect-page shops --frames 8 --screenshot research/dungeon_village_1/work/startup-shops.png
 ```
 
-`--demo`执行自动演示并有界退出，`--frames N`限制窗口帧数，`--orientation 0/1`选择初始朝向。
-`--screenshot`只用于有界窗口验收，`--asset-root`切换同契约素材，`--data-file`指定设施表。
-本机工具链与桌面限制见 [验证入口](../VERIFICATION.md)，不能将无窗口自检描述为真实输入通过。
+支持`roads`、`shops`、`food`、`arrival`、`visitor`；它们明确安排检查状态，不能作为正常新局运行轨迹。
 
-## 明确的夹具与缺口
+## 默认模式的来源边界
 
-7×7地图、10000初始资金、两个人物、速度和600个100ms tick的月份均为夹具；初始建造后余额7300。
-独占预约、仅类别1/2、访问计数重置、完成后回到接近格和统一旋转收费是原型策略。
-到达收费使用维护规则，完成只计数，不执行未知退出效果、共享升级、任务或存档。
-画布240×240、站姿角色与固定道路首帧不代表原作 UI、动画或道路建设；截图来源版本也不等于固定APK。
+- 源24×24格、8设施种子、5000金币/10点数/50人气、1年4月、空人物场景与初期9项目录来自发布包。
+  实例身份由原型分配；源格/种子展示不是初始化后完整快照。原入口刷新、最终道路邻接和边界绘制未闭合。
+- 普通商店280逻辑计数、入住募集1、向日葵立即可用；职业影响按已解锁定义计算，不按活人计算。
+  募集建好后的住宅/入住副作用未实现，不由“施工完成”推导居民加入。
+- 自动首访420次有资格更新，先创建UID0/定义1丰田龟次郎再触发事件89，不收取1500入住费。
+  属性/装备保留；出生点由本地可重放策略选择，不还原APK随机消费。最终朝向/武器合成仍未知。
+- 首访后人物停留出生格，暂不套用旧自主AI。不能把当前静止当作原版行为，也不安排后续普通来客。
+- 每正常逻辑步日历加27，每子周期10800、月4子周期；展示帧目标60FPS只是适配节奏。
+  目录/放置/提示/镜头不推进模拟；2倍速每外层最多2步，不换算成原版真实秒。
+- 首个月界进入受保护的月末状态，不扣夹具维护费、不给演示收益，等待跨月组合时序闭合。
+- 新增/撤除后的地表暂用显示记录27，道路暂用37的源首帧；占用/扣款可测，邻接刷新不是原版重建。
+  原型连续放置、撤除退款为0、窗体尺寸/物理热区是适配边界。
+- 草地、建筑、入口与人物使用原始美术；首访使用秘书，而非后续解锁插画。
+  字体、窗体和图标缩放是替代，不宣称固定APK或不同版本截图的视觉等价。
 
-后续产品建设切片需要真实地图/初值与建设链证据，由研究交付、产品智能体接入，不能把本包夹具迁入产品当原作默认值。
+## 旧夹具
+
+`--fixture`显式进入旧7×7场景；`--demo`隐含该模式并自动退出。
+`--fixture --check`执行原自主访问/周期闭环；`--orientation 0/1`与`--data-file`仅作用于旧夹具。
+`--asset-root`是两个模式共同的程序旁素材根目录，新局要求保留`original`结构，旧模式要求七个清单键。
+
+旧模式10000初始金币、三次建设后7300、两位夜骑士、600个100ms tick月份都是夹具。
+仅类别1/2、独占预约、完成回接近格、统一旋转收费、周期报表仍是原型策略。
+它保留此前自主访问回归，不用于认证首名人物行为或产品新局初值。

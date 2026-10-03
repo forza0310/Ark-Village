@@ -1,3 +1,6 @@
+// Strict UTF-8/TSV and typed row readers retain all original fields, including unresolved columns.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/table.hpp"
 
 #include <algorithm>

@@ -1,5 +1,8 @@
 #pragma once
 
+// Neighbour modifiers use source instance identity; an occupied footprint is not counted per
+// fragment.
+
 #include "dungeon_village_reference/facility_economy.hpp"
 #include "dungeon_village_reference/geometry.hpp"
 
@@ -45,11 +48,13 @@ struct NeighbourhoodResult {
     std::vector<FacilityNeighbourhood> facilities;
 };
 
+// Recompute ordered source lists and road charm from a fully validated layout.
 NeighbourhoodResult
 derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definitions,
                               const std::vector<FacilityPlacement> &placements,
                               const std::vector<Position> &roads, int width, int height);
 
+// Add the three instance modifiers to the base input, returning nullopt on narrowing overflow.
 std::optional<FacilityEconomyInput>
 neighbourhood_economy_input(const FacilityNeighbourhood &neighbourhood,
                             const FacilityEconomyInput &base = {});

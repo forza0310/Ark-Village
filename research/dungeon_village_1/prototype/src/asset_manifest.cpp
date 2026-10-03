@@ -1,3 +1,6 @@
+// Logical-key asset contract for replacements; this is not the full APK image/SEB index loader.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_prototype/asset_manifest.hpp"
 
 #include <fstream>

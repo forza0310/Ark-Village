@@ -1,3 +1,6 @@
+// Early R2 single-point autonomous fixture retained for tests; the current window uses
+// prototype::Village. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/simulation.hpp"
 
 #include <algorithm>

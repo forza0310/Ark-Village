@@ -1,3 +1,6 @@
+// Legacy big-endian SEB structure only; unsupported compressed streams and trailing bytes are
+// rejected. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/sprite.hpp"
 
 #include <cstddef>
@@ -71,6 +74,7 @@ SpriteDefinition parse_legacy_seb(const std::vector<std::uint8_t> &bytes) {
     std::size_t total_parts = 0;
     for (std::size_t layer_index = 0; layer_index < layer_count; ++layer_index) {
         const auto part_count = checked_count(reader.read_i16(), kMaxParts, "图层记录数量");
+        // The Java reader discards this field; retain its bits without inferring a record count.
         const auto legacy_tag = reader.read_u16();
         if (part_count > kMaxParts - total_parts) {
             throw std::runtime_error("SEB 总记录数量非法");

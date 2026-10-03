@@ -1,5 +1,8 @@
 #pragma once
 
+// R1 safety fixture: single-cell buildings, exclusive visits and idempotent completion; not APK
+// parity.
+
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -114,19 +117,32 @@ struct ActivityResult {
     std::optional<ActivityId> activity_id;
 };
 
+// Stage a new single-cell building and its charge; this fixture has no original footprint or town
+// limits.
 BuildingResult construct(GlobalState &state, const std::vector<BuildingDefinition> &catalog,
                          const std::string &definition_key, Position position, int rotation = 0);
+// Preserve the stable ID while moving a fixture building; no APK relocation fee is modelled here.
 Error move(GlobalState &state, BuildingId building_id, Position destination, int rotation);
+// Remove the building and clear all reservations and character targets that reference it.
 Error remove(GlobalState &state, BuildingId building_id);
 
+// Reserve exclusively only when the supplied path result succeeds; failures leave the state
+// unchanged.
 ActivityResult start_visit(GlobalState &state, CharacterId character_id, BuildingId building_id,
                            bool path_found);
+// Release the character-owned reservation; repeating cancellation while idle is harmless.
 Error cancel_visit(GlobalState &state, CharacterId character_id);
+// Only transition travelling to in_use; this R1 fixture does not implement arrival income.
 Error arrive(GlobalState &state, CharacterId character_id);
+// Apply the fixture effect once per activity ID, then release the reservation.
 Error complete_use(GlobalState &state, const std::vector<BuildingDefinition> &catalog,
                    CharacterId character_id, ActivityId activity_id);
 
+// Apply the fixture cash reward once; real task deadlines and point rewards remain outside this
+// model.
 Error complete_task(GlobalState &state, std::uint64_t task_id);
+// Commit all missing fixture months together; do not combine this net-payment model with
+// PeriodAccounting.
 Error settle_through(GlobalState &state, const std::vector<BuildingDefinition> &catalog,
                      int target_month, const std::map<int, MonthlyInput> &inputs);
 

@@ -1,3 +1,6 @@
+// Earlier sorted-cell selector; snapshot_facility_choice preserves the later two-view contract.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/ranked_facility_choice.hpp"
 
 #include "dungeon_village_reference/activity_choice.hpp"

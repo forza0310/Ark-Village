@@ -1,3 +1,6 @@
+// Small verified category planner and injected-ticket sampler, not the complete Character priority
+// machine. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/activity_choice.hpp"
 
 #include <algorithm>

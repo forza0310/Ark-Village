@@ -1,5 +1,7 @@
 #pragma once
 
+// Exit helpers model shared uses and satisfaction requests, not the entire exit sequence.
+
 #include "dungeon_village_reference/domain.hpp"
 #include "dungeon_village_reference/facility_economy.hpp"
 
@@ -24,6 +26,7 @@ struct FacilityUseResult {
     std::optional<FacilityUseCandidate> candidate;
 };
 
+// Increment definition-shared uses and latch upgrade_pending without changing the level.
 FacilityUseResult prepare_facility_use_completion(std::int32_t definition_id,
                                                   LevelEndpoints upgrade_uses,
                                                   const FacilityUseProgress &progress);
@@ -60,6 +63,7 @@ struct FacilitySatisfactionResult {
     std::optional<FacilitySatisfactionCandidate> candidate;
 };
 
+// Use an injected ticket in [0,10); return a popularity request, not a global popularity mutation.
 FacilitySatisfactionResult prepare_facility_satisfaction(const FacilitySatisfactionInput &input);
 
 } // namespace dungeon_village_reference

@@ -1,5 +1,8 @@
 #pragma once
 
+// Small verified category planner and injected-ticket sampler, not the complete Character priority
+// machine.
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -32,6 +35,7 @@ struct ActivityCategoryResult {
     std::optional<ActivityCategoryPlan> plan;
 };
 
+// Keep legacy counters/flags explicit; category weights are not multiplied by candidate counts.
 ActivityCategoryResult plan_activity_categories(const ActivityChoiceInput &input);
 
 enum class WeightedTicketError {
@@ -46,6 +50,7 @@ struct WeightedTicketResult {
     std::optional<std::size_t> index;
 };
 
+// Consume a caller-supplied ticket in [0,sum(weights)); this helper does not generate randomness.
 WeightedTicketResult select_weighted_ticket(const std::vector<std::int64_t> &weights,
                                             std::int64_t ticket);
 

@@ -1,5 +1,8 @@
 #pragma once
 
+// Ordinary arrival candidate separates visit counters, actor statistics, instance sales and cash
+// income.
+
 #include "dungeon_village_reference/domain.hpp"
 
 #include <array>
@@ -45,6 +48,8 @@ struct FacilityArrivalResult {
     std::optional<FacilityArrivalCandidate> candidate;
 };
 
+// Return a candidate only; the owner must atomically commit all counters and cash, with arrival
+// deduplication.
 FacilityArrivalResult prepare_facility_arrival(const FacilityArrivalState &state,
                                                const FacilityArrivalInput &input);
 

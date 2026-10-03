@@ -1,5 +1,8 @@
 #pragma once
 
+// Current prototype owner; combines proven rules with explicitly bounded AI, timing and exit
+// fixtures.
+
 #include "dungeon_village_reference/accounting.hpp"
 #include "dungeon_village_reference/facility_arrival.hpp"
 #include "dungeon_village_reference/map_access.hpp"
@@ -22,8 +25,11 @@ struct PrototypeDefinition {
     std::vector<reference::NeighbourModifier> neighbours;
 };
 
+// Strictly parse the source table, then admit only definitions 28/29/36 supported by this
+// prototype.
 std::vector<PrototypeDefinition> load_prototype_catalog(const std::filesystem::path &table);
 
+// Milliseconds and periods below are prototype fixtures, not recovered APK calendar constants.
 struct PrototypeConfig {
     int tick_ms{100};
     int step_ticks{3};
@@ -83,7 +89,8 @@ struct VillageCommandResult {
     std::optional<reference::BuildingId> instance;
 };
 
-// Owns the only mutable prototype state; public mutations stage a complete copy.
+// Owns the only mutable prototype state. Construction and advance stage complete copies;
+// validated actor insertion and pause changes are direct. Readers cannot mutate the aggregate.
 class Village {
   public:
     Village(std::vector<PrototypeDefinition> catalog, reference::LegacyMap terrain,
@@ -92,16 +99,24 @@ class Village {
     const std::vector<PrototypeDefinition> &catalog() const;
     const PrototypeConfig &config() const;
     const PrototypeDefinition &definition(std::int32_t id) const;
+    // Rebuild derived tile bindings from terrain and stable placements; never cache them in the UI.
     reference::LegacyMap bound_map() const;
+    // Derive instance economics from current placement/neighbours; unknown IDs throw.
     reference::FacilityEconomyValues values(reference::BuildingId id) const;
     std::optional<reference::BuildingId> facility_at(reference::Position cell) const;
+    // Stage placement, price and ID allocation together, then cancel stale autonomous targets.
     VillageCommandResult place(std::int32_t definition_id, reference::Position anchor,
                                reference::FacilityOrientation orientation);
+    // Keep the stable ID and charge the prototype relocation/rotation fee of 300.
     VillageError relocate(reference::BuildingId id, reference::Position anchor,
                           reference::FacilityOrientation orientation);
+    // No refund in this prototype; cancel activity references without undoing past arrival income.
     VillageError demolish(reference::BuildingId id);
+    // Explicit test-scene insertion, not the original adventurer-arrival/recruitment workflow.
     VillageError add_actor(reference::CharacterId id, reference::Position cell,
                            std::uint32_t flags = 0);
+    // Commit the complete bounded time input atomically; a failed tick discards all intermediate
+    // ticks.
     VillageError advance(int elapsed_ms);
     void set_paused(bool paused);
 

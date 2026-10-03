@@ -1,3 +1,6 @@
+// Candidate snapshot construction preserves the observed filters, duplicate events and exchange
+// order. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/activity_candidates.hpp"
 
 #include <algorithm>

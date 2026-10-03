@@ -1,5 +1,7 @@
 #pragma once
 
+// Earlier sorted-cell selector; snapshot_facility_choice preserves the later two-view contract.
+
 #include "dungeon_village_reference/domain.hpp"
 
 #include <cstddef>
@@ -39,6 +41,7 @@ struct RankedFacilityResult {
     std::optional<RankedFacilityTarget> target;
 };
 
+// Keep per-cell duplicate weights, then choose the selected instance's first ranked cell.
 RankedFacilityResult select_ranked_facility(const std::vector<RankedFacilityCell> &candidates,
                                             std::int32_t category, std::int64_t ticket);
 

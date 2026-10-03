@@ -1,3 +1,6 @@
+// Read the original facility table and project only the three definitions supported by the
+// prototype. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_prototype/village.hpp"
 #include "dungeon_village_tools/table.hpp"
 

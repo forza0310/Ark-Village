@@ -1,3 +1,6 @@
+// Pure integer economy derivation with shared definition and instance modifiers kept separate.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/facility_economy.hpp"
 
 #include <algorithm>

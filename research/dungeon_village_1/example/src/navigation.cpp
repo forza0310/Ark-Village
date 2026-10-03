@@ -1,3 +1,6 @@
+// Weighted four-neighbour routing for the early fixture grid; map_access handles facility tile
+// bindings. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/navigation.hpp"
 
 #include <algorithm>

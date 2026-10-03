@@ -1,5 +1,8 @@
 #pragma once
 
+// Legacy big-endian SEB structure only; unsupported compressed streams and trailing bytes are
+// rejected.
+
 #include <cstdint>
 #include <vector>
 
@@ -19,6 +22,7 @@ struct SpritePart {
 };
 
 struct SpriteLayer {
+    // Unexplained raw bits; never compare this field with parts.size() or frame_count.
     std::uint16_t legacy_tag{};
     std::vector<SpritePart> parts;
 };
@@ -28,6 +32,8 @@ struct SpriteDefinition {
     std::vector<SpriteLayer> layers;
 };
 
+// Preserve records and legacy_tag verbatim; PNG bounds and drawing-command semantics need separate
+// validation.
 SpriteDefinition parse_legacy_seb(const std::vector<std::uint8_t> &bytes);
 
 } // namespace dungeon_village_tools

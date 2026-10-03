@@ -1,3 +1,6 @@
+// Deterministic source manifest and logical-key publication; reject differing existing output.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 

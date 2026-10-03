@@ -1,5 +1,7 @@
 #pragma once
 
+// Pure integer economy derivation with shared definition and instance modifiers kept separate.
+
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -43,6 +45,8 @@ struct FacilityEconomyResult {
     std::optional<FacilityEconomyValues> values;
 };
 
+// Derive all four slots and upgrade readiness without mutation; readiness does not increment the
+// level.
 FacilityEconomyResult derive_facility_economy(const FacilityEconomyDefinition &definition,
                                               const FacilityEconomyInput &input);
 

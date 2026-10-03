@@ -1,3 +1,6 @@
+// Facility table inspection CLI; prints projections without changing the source table.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 #include "dungeon_village_tools/table.hpp"
 

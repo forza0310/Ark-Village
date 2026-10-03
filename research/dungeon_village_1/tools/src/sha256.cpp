@@ -1,3 +1,6 @@
+// Portable SHA-256 for evidence identity; independent of the game's encrypted-archive CRC.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 
 #include <array>

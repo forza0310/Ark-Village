@@ -1,3 +1,6 @@
+// Neighbour modifiers use source instance identity; an occupied footprint is not counted per
+// fragment. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/neighbourhood.hpp"
 
 #include <algorithm>

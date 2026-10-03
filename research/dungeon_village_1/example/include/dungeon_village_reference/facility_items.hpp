@@ -1,5 +1,8 @@
 #pragma once
 
+// Pure improvement transaction candidate: definition-shared attributes, inventory and instance
+// event counters.
+
 #include "dungeon_village_reference/facility_economy.hpp"
 #include "dungeon_village_reference/facility_events.hpp"
 
@@ -42,6 +45,8 @@ struct FacilityItemResult {
     std::optional<FacilityItemCandidate> candidate;
 };
 
+// Consume one item even when capped display values do not change; the owner commits the complete
+// candidate.
 FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
                                          const ImprovementItemDefinition &item,
                                          const FacilityEconomyInput &shared_input,

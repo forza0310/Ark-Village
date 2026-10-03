@@ -1,3 +1,6 @@
+// Grid footprints and ordered neighbourhood rings; no screen projection or path entrance policy.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/geometry.hpp"
 
 #include <algorithm>

@@ -1,5 +1,8 @@
 #pragma once
 
+// Immediate cash and deferred village points with event/report identity; this is an independent
+// safe contract.
+
 #include <array>
 #include <cstdint>
 #include <map>
@@ -65,8 +68,11 @@ class PeriodAccounting {
   public:
     explicit PeriodAccounting(std::int64_t opening_funds = 0, std::uint16_t opening_points = 0);
 
+    // Post cash immediately; identical event retries are harmless, conflicting event payloads fail.
     AccountingError post_cash(const CashEntry &entry);
+    // Stage the entire fee batch and seal its period; conflicting retries leave the ledger intact.
     AccountingError prepare_report(const ReportInput &input);
+    // Award deferred points once; the displayed net is never paid into cash again.
     AccountingError claim_report(std::uint64_t period);
 
     std::int64_t funds() const;

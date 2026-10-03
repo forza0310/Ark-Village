@@ -1,5 +1,8 @@
 #pragma once
 
+// Weighted four-neighbour routing for the early fixture grid; map_access handles facility tile
+// bindings.
+
 #include "dungeon_village_reference/domain.hpp"
 
 #include <cstddef>
@@ -44,6 +47,8 @@ struct RouteResult {
 
 bool valid_route_grid(const RouteGrid &grid);
 bool within_route_grid(const RouteGrid &grid, Position position);
+// A successful path excludes start and includes goal; budget exhaustion is not proven
+// unreachability.
 RouteResult find_route(const RouteGrid &grid, Position start, Position goal,
                        RouteLimits limits = {});
 

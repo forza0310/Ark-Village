@@ -1,3 +1,6 @@
+// Immediate cash and deferred village points with event/report identity; this is an independent
+// safe contract. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/accounting.hpp"
 
 #include <algorithm>

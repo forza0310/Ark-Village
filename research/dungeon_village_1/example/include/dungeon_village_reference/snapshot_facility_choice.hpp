@@ -1,5 +1,7 @@
 #pragma once
 
+// Full snapshot selection separates the drawn active index, snapshot index and final goal index.
+
 #include "dungeon_village_reference/activity_candidates.hpp"
 
 namespace dungeon_village_reference {
@@ -25,6 +27,8 @@ struct SnapshotFacilityResult {
     std::optional<SnapshotFacilityTarget> target;
 };
 
+// Weight active cells without deduplication; the first matching full-snapshot cell may lack a
+// route.
 SnapshotFacilityResult select_snapshot_facility(const ActivityCandidateSnapshot &snapshot,
                                                 std::int32_t category, std::int64_t ticket);
 

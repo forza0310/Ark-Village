@@ -1,3 +1,6 @@
+// Single-file or recursive legacy SEB inspection CLI, with bounded strict parsing.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 

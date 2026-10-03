@@ -1,3 +1,6 @@
+// Archive inspection/extraction CLI; list-only mode never writes decoded entries.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 
 #include <filesystem>

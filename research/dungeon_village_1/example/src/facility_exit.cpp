@@ -1,3 +1,6 @@
+// Exit helpers model shared uses and satisfaction requests, not the entire exit sequence.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/facility_exit.hpp"
 
 #include <algorithm>

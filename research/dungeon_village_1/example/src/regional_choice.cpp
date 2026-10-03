@@ -1,3 +1,6 @@
+// Regional fallback consumes an explicit random prefix so partial plans can be replayed.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/regional_choice.hpp"
 
 namespace dungeon_village_reference {

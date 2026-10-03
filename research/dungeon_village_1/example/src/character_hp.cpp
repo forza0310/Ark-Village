@@ -1,3 +1,6 @@
+// Six-slot target/display protocol using legacy logical counts, not wall-clock seconds.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/character_hp.hpp"
 
 #include <algorithm>

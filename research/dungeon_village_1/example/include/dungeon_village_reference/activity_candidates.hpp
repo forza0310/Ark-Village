@@ -1,5 +1,8 @@
 #pragma once
 
+// Candidate snapshot construction preserves the observed filters, duplicate events and exchange
+// order.
+
 #include "dungeon_village_reference/map_access.hpp"
 
 #include <array>
@@ -46,6 +49,7 @@ struct ActivityCandidateCell {
     Position position;
     CandidateDefinition definition;
     std::optional<CandidateInstance> instance;
+    // Event appends may have no route cost; selection must not erase these entries implicitly.
     std::optional<std::int64_t> cost;
     CandidateOrigin origin{CandidateOrigin::map_scan};
     std::size_t source_index{};
@@ -84,8 +88,10 @@ struct CountedCategoryResult {
 
 bool inside_town(Position position, TownBounds bounds);
 bool valid_activity_candidate_snapshot(const ActivityCandidateSnapshot &snapshot);
+// Keep event duplicates and absent route costs; candidate membership is not successful routing.
 ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &field,
                                                     const ActivityCandidateInput &input);
+// Draw using the filtered count, then scan the complete category-four view in legacy order.
 CountedCategoryResult select_counted_category_four(const ActivityCandidateSnapshot &snapshot,
                                                    std::int64_t ticket);
 

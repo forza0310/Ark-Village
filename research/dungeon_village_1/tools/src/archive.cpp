@@ -1,3 +1,6 @@
+// Strict archive parsing and visual extraction; malformed or unsupported input raises exceptions.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_tools/archive.hpp"
 
 #include <algorithm>
@@ -275,6 +278,8 @@ Archive parse_archive(const std::vector<std::uint8_t> &decoded) {
     if (reader.remaining() != payload_size) {
         throw std::runtime_error("归档载荷大小与头部不一致");
     }
+    // Offsets address this payload, whose entries have their own length prefix, not the archive
+    // start.
     const auto payload = reader.read_bytes(payload_size);
 
     archive.entries.reserve(entry_count);

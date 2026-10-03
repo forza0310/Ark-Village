@@ -1,3 +1,6 @@
+// Instance item/month counters and a narrow legend plan recognizer; no generic script interpreter.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/facility_events.hpp"
 
 #include <limits>

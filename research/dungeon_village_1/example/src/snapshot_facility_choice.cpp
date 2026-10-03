@@ -1,3 +1,6 @@
+// Full snapshot selection separates the drawn active index, snapshot index and final goal index.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/snapshot_facility_choice.hpp"
 
 #include "dungeon_village_reference/activity_choice.hpp"
@@ -12,6 +15,8 @@ SnapshotFacilityResult select_snapshot_facility(const ActivityCandidateSnapshot 
     if (!valid_activity_candidate_snapshot(snapshot)) {
         return {SnapshotFacilityError::invalid_snapshot, std::nullopt};
     }
+    // Duplicate cells, including event appends, each contribute weight; do not deduplicate
+    // instances.
     std::vector<std::size_t> active_indices;
     std::vector<std::int64_t> weights;
     active_indices.reserve(snapshot.cells.size());
@@ -37,6 +42,7 @@ SnapshotFacilityResult select_snapshot_facility(const ActivityCandidateSnapshot 
     }
     const auto drawn_active = *draw.index;
     const auto drawn_snapshot = active_indices[drawn_active];
+    // The drawn cell determines identity, not the final destination in the full snapshot.
     const auto instance_id = snapshot.cells[drawn_snapshot].instance->instance_id;
     for (std::size_t index = 0; index < snapshot.cells.size(); ++index) {
         const auto &cell = snapshot.cells[index];

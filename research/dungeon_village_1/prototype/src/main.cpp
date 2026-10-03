@@ -1,3 +1,6 @@
+// raylib adapter for inputs, projection and RAII GPU resources; Village owns all gameplay state.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_prototype/asset_manifest.hpp"
 #include "dungeon_village_prototype/village.hpp"
 
@@ -28,6 +31,7 @@ struct Options {
     FacilityOrientation orientation{FacilityOrientation::first};
 };
 
+// Screenshots require a bounded window run; validation mode never opens the desktop.
 Options parse_options(int argc, char **argv) {
     const auto directory = std::filesystem::absolute(argv[0]).parent_path();
     Options options{directory / "assets", directory / "data/tenantData.txt", std::nullopt, false,
@@ -71,11 +75,13 @@ Options parse_options(int argc, char **argv) {
     return options;
 }
 
+// This projection belongs to the 7x7 demo, not the recovered original map/camera transform.
 Vector2 center(Position cell) {
     return {120.0F + static_cast<float>(cell.x - cell.y) * 30.0F,
             46.0F + static_cast<float>(cell.x + cell.y) * 14.5F};
 }
 
+// Hit-test the same fixed diamond used by the adapter; never pass screen coordinates to Village.
 std::optional<Position> pick(Vector2 point) {
     for (int y = 0; y < grid_size; ++y) {
         for (int x = 0; x < grid_size; ++x) {
@@ -87,6 +93,7 @@ std::optional<Position> pick(Vector2 point) {
     return std::nullopt;
 }
 
+// Deliberate fixture: synthetic roads, three facilities and two actors, not a new-game save.
 Village make_village(const std::filesystem::path &table, FacilityOrientation orientation) {
     LegacyMap map{grid_size, grid_size, std::vector<LegacyMapCell>(grid_size * grid_size)};
     for (int y = 0; y < grid_size; ++y) {
@@ -119,6 +126,7 @@ void construction_check(Village &village) {
         throw std::runtime_error("多格建移转拆自检失败");
 }
 
+// Smoke-check the integration without a window; it cannot certify real input or original UI parity.
 void bounded_check(Village &village) {
     construction_check(village);
     if (village.advance(60000) != VillageError::none)
@@ -218,6 +226,7 @@ std::string fragment_key(int definition, int fragment) {
     return fragment < 2 ? "building.inn.pair.front" : "building.inn.pair.back";
 }
 
+// Translate controls into aggregate commands and draw immutable state; resource lifetimes end here.
 int run_window(const Options &options, Village village, AssetManifest manifest) {
     Window window;
     Textures textures(std::move(manifest));

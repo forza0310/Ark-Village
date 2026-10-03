@@ -1,3 +1,6 @@
+// R1 safety fixture: single-cell buildings, exclusive visits and idempotent completion; not APK
+// parity. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/domain.hpp"
 
 #include <algorithm>

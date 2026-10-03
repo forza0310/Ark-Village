@@ -1,5 +1,8 @@
 #pragma once
 
+// Early R2 single-point autonomous fixture retained for tests; the current window uses
+// prototype::Village.
+
 #include "dungeon_village_reference/navigation.hpp"
 
 #include <map>

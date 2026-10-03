@@ -1,5 +1,7 @@
 #pragma once
 
+// Facility tile bindings, legacy path admission and distance-field queries; not a game.gmap reader.
+
 #include "dungeon_village_reference/geometry.hpp"
 #include "dungeon_village_reference/navigation.hpp"
 
@@ -99,13 +101,18 @@ bool valid_legacy_map(const LegacyMap &map);
 bool valid_legacy_distance_field(const LegacyDistanceField &field);
 bool legacy_route_transition(const LegacyMapCell &from, const LegacyMapCell &to,
                              bool first_expansion = false);
+// Bind every footprint fragment to stable instance/definition IDs on a copy of unbound terrain.
 MapBindingResult bind_facility_map(const LegacyMap &terrain,
                                    const std::vector<BoundFacility> &facilities);
+// Build a full weighted distance field; cost/expansion limits are distinct from unreachable.
 LegacySearchResult search_legacy_map(const LegacyMap &map, Position start,
                                      LegacySearchLimits limits = {});
+// Validate the field and trace goal back to start; equal endpoints succeed with no steps.
 LegacyPathResult trace_legacy_path(const LegacyDistanceField &field, Position goal);
+// Validate layout bindings and collect reachable occupied cells, not outer-ring entrances.
 FacilityAccessResult inspect_facility_access(const LegacyDistanceField &field,
                                              const std::vector<FacilityPlacement> &placements);
+// Recheck position, instance and definition at arrival so a stale target cannot be consumed.
 bool arrival_binding_matches(const LegacyMap &map, const ArrivalBinding &target, Position current);
 
 } // namespace dungeon_village_reference

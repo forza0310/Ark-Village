@@ -1,3 +1,6 @@
+// Facility tile bindings, legacy path admission and distance-field queries; not a game.gmap reader.
+// Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/map_access.hpp"
 
 #include <algorithm>

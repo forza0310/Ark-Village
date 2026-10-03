@@ -1,5 +1,7 @@
 #pragma once
 
+// Regional fallback consumes an explicit random prefix so partial plans can be replayed.
+
 #include "dungeon_village_reference/activity_candidates.hpp"
 
 namespace dungeon_village_reference {
@@ -26,6 +28,7 @@ struct RegionalChoiceResult {
     std::optional<RegionalChoicePlan> plan;
 };
 
+// Return needs_draw for an incomplete prefix; the sixth draw bypasses the regional threshold.
 RegionalChoiceResult select_regional_candidate(const ActivityCandidateSnapshot &snapshot,
                                                std::int32_t town_bottom,
                                                const std::vector<std::int64_t> &draw_prefix);

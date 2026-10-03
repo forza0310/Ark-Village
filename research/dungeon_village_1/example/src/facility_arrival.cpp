@@ -1,3 +1,6 @@
+// Ordinary arrival candidate separates visit counters, actor statistics, instance sales and cash
+// income. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/facility_arrival.hpp"
 
 #include <algorithm>
@@ -60,6 +63,8 @@ FacilityArrivalResult prepare_facility_arrival(const FacilityArrivalState &state
     if (!valid) {
         return {FacilityArrivalError::numeric_overflow, std::nullopt};
     }
+    // Visit counters above still change when these guards suppress payment; actor_total is not a
+    // wallet.
     if ((input.legacy_flags & (512U | 256U)) == 0 && input.legacy_actor_kind == 0 &&
         input.resolved_instance_price > 0) {
         const auto price = input.resolved_instance_price;

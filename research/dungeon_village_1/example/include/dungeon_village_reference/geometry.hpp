@@ -1,5 +1,7 @@
 #pragma once
 
+// Grid footprints and ordered neighbourhood rings; no screen projection or path entrance policy.
+
 #include "dungeon_village_reference/domain.hpp"
 
 namespace dungeon_village_reference {
@@ -40,12 +42,16 @@ struct SurroundingCellsResult {
     std::vector<Position> cells;
 };
 
+// Return ordered occupied cells and fragment IDs; reject an out-of-map footprint.
 GeometryResult facility_footprint(FacilityShape shape, FacilityOrientation orientation,
                                   Position anchor, int width, int height);
+// Return the in-bounds outer ring in legacy order, not character entrance cells.
 SurroundingCellsResult facility_surroundings(FacilityShape shape, FacilityOrientation orientation,
                                              Position anchor, int width, int height);
+// Validate stable instance identity, bounds and overlap for the whole placement set.
 GeometryError validate_facility_layout(const std::vector<FacilityPlacement> &placements, int width,
                                        int height);
+// Validate a candidate without mutation; moving excludes only the specified existing instance.
 GeometryResult evaluate_facility_placement(const std::vector<FacilityPlacement> &existing,
                                            const FacilityPlacement &candidate, int width,
                                            int height,

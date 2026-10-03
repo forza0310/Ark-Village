@@ -1,3 +1,6 @@
+// Pure improvement transaction candidate: definition-shared attributes, inventory and instance
+// event counters. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_reference/facility_items.hpp"
 
 #include <algorithm>
@@ -42,6 +45,7 @@ FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
     FacilityItemCandidate candidate;
     candidate.definition_id = facility.definition_id;
     candidate.item_id = item.item_id;
+    // A capped or unchanged visible result still consumes the item and advances instance counters.
     candidate.remaining_inventory = inventory - 1;
     candidate.definition_improvements = shared_input.definition_improvements;
     const auto affinity =

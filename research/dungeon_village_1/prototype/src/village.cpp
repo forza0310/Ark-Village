@@ -1,3 +1,6 @@
+// Current prototype owner; combines proven rules with explicitly bounded AI, timing and exit
+// fixtures. Package responsibilities and evidence boundaries: ../README.md.
+
 #include "dungeon_village_prototype/village.hpp"
 
 #include "dungeon_village_reference/activity_choice.hpp"
@@ -159,6 +162,8 @@ VillageError Village::post(CashCategory category, CashDirection direction, std::
     return VillageError::none;
 }
 
+// Layout edits invalidate all prototype routes/reservations; already posted arrival cash stays
+// posted.
 void Village::cancel_activities() {
     for (auto &entry : state_.actors) {
         auto &actor = entry.second;
@@ -258,6 +263,9 @@ std::size_t Village::draw(std::size_t bound) {
     return static_cast<std::size_t>((state_.random_state >> 16U) % bound);
 }
 
+// Search once, plan category, draw an instance, then trace its goal. Only categories 1/2 are
+// admitted. The reservation filter below is a prototype policy, not proven original facility
+// capacity.
 VillageError Village::begin(PrototypeActor &actor) {
     const auto map = bound_map();
     const auto field = search_legacy_map(map, actor.cell);
@@ -342,6 +350,8 @@ VillageError Village::begin(PrototypeActor &actor) {
     return VillageError::none;
 }
 
+// Synthetic period boundary: fees and report claim are inside the enclosing advance transaction.
+// This does not reconstruct the APK's calendar/report scheduling state machine.
 VillageError Village::close_period() {
     if (state_.period == maximum)
         return VillageError::numeric_overflow;
@@ -363,6 +373,8 @@ VillageError Village::close_period() {
     return VillageError::none;
 }
 
+// Advance actors in stable ID order, post income at arrival, then count completion separately.
+// Called only on advance's candidate copy, so a later actor/period failure cannot partially commit.
 VillageError Village::tick() {
     if (state_.ticks == maximum)
         return VillageError::numeric_overflow;
@@ -444,6 +456,7 @@ VillageError Village::advance(int elapsed_ms) {
         return VillageError::invalid_input;
     if (state_.paused)
         return VillageError::none;
+    // Retain fractional time on the candidate as well as actors, cash, counters and random state.
     auto next = *this;
     const auto elapsed = static_cast<std::int64_t>(next.state_.remainder_ms) + elapsed_ms;
     const auto ticks = elapsed / config_.tick_ms;

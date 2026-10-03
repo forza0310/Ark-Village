@@ -4,12 +4,12 @@
 
 - 阶段 ID：R1；状态：Completed。
 - 日期：2026-10-02；设计整理时分支 `stage/m2-construction`，HEAD 为 `a9fb142`，工作区已有 M2 实施与文档改动。
-- 方向依据：[ADR-0007](../../../docs/DECISIONS.md#adr-0007)；产品入口：[建造玩法](../../../docs/BUILDING_GAMEPLAY.md)；工程边界：[架构](../../../docs/ARCHITECTURE.md)。
+- 方向依据：[ADR-0007](../../../docs/MILESTONES.md#adr-0007)；产品入口：[建造玩法](../../../docs/ARCHITECTURE.md#建设规则依据)；工程边界：[架构](../../../docs/ARCHITECTURE.md)。
 - 本文件补齐现有文档引用的研究设计入口。2026-10-02 用户回复“确认 R1 方案 A，开始实施”，授权按本设计使用隔离工具、生成行为研究材料并编写独立 C++17 示例。
 
 ## 目标与范围
 
-后续素材、规则原型与证据来源统一由 [research](../../README.md)维护。下文保留 R1 研究阶段的原始范围与交付，产品接入和必要素材使用的后续授权见 [ADR-0008](../../../docs/DECISIONS.md#adr-0008)。
+后续素材、规则原型与证据来源统一由 [research](../../README.md)维护。下文保留 R1 研究阶段的原始范围与交付，产品接入和必要素材使用的后续授权见 [ADR-0008](../../../docs/MILESTONES.md#adr-0008)。
 
 在独立研究目录形成一代的可追溯行为规格和独立编写的 C++17 示例，为 M3-M5 的设计提供输入。玩家可见玩法不由 R1 直接改变；研究结论进入产品前仍须阶段设计确认。
 
@@ -114,6 +114,6 @@ Debug/Release 随后编译和 CTest 通过，但 clang-format dry-run 报告排�
 - 主工程 `core-debug`、`core-release`、`godot-debug`、`godot-release` 构建均退出 0；每套 6/6 个 CTest 目标通过。R1 未启动 Godot 编辑器、真实窗口或存档检查，不把 M2 的既有证据记为本阶段结果。
 - 真实 Git 检查显示 `.gitignore` 和 `research/` 为维护改动；根 APK、`research/dungeon_village_1/work/`、根 `build/`、Godot 导入/二进制目录均为 ignored。维护研究树没有 APK、DEX、Java、smali 或原作图片。
 
-限制：本轮是静态反编译与调用/字段证据分析，没有动态插桩或运行原 APK；带 JADX 重构警告的巨型方法只支持职责与局部顺序推断。汉化重签包不能代表所有版本。示例是 Ark 候选规则，不是正式 clean-room 团队隔离流程，也不授权 M3-M5 实现。详细命令与结果见[验证记录](../../../docs/VERIFICATION.md)。
+限制：本轮是静态反编译与调用/字段证据分析，没有动态插桩或运行原 APK；带 JADX 重构警告的巨型方法只支持职责与局部顺序推断。汉化重签包不能代表所有版本。示例是 Ark 候选规则，不是正式 clean-room 团队隔离流程，也不授权 M3-M5 实现。详细命令与结果见[验证记录](../VERIFICATION.md)。
 
 M2 的 Godot 首次导入退出问题已单独定位，绕行方式见 [开发约定](../../../docs/CONTRIBUTING.md#godot-首次导入与自动退出)。R1 不承担解决该引擎问题的职责。

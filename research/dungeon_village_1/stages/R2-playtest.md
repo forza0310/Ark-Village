@@ -15,7 +15,7 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype -
 
 程序旁边已经打包图片/清单/设施表；不需要 APK 或 JADX。关闭窗口即结束，不保存。
 也可单独在 CLion 打开 [研究工程](../prototype/CMakeLists.txt)，运行 dungeon_village_prototype。
-若显示器休眠先唤醒桌面，诊断说明见 [窗口约束](../../../docs/troubleshooting/macos-raylib-window.md)。
+若显示器休眠先唤醒桌面，诊断说明见 [窗口约束](../../../docs/CONTRIBUTING.md#macos窗口检查)。
 
 ## 逐项检查
 

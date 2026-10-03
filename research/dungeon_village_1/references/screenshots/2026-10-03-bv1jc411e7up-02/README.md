@@ -32,8 +32,8 @@ S008 底部游戏画面截断，S010 是用户提供的局部战斗图，原始�
 | S013 / 图片 8 | [赠送礼物结果](characters/S013-gift-result.png) | 未知 | 1303×768 | UI15/UI19；RQ01/RQ07/RQ09 |
 | S014 / 图片 9 | [阿南商会列表](items/S014-item-shop.png) | 未知 | 1319×768 | UI15；RQ01/RQ09 |
 
-关联编号见 [原版对照清单](../../../../../docs/REFERENCE_CHECKLIST.md)与
-[研究需求](../../../../../docs/RESEARCH_REQUESTS.md)。关联仅表示观察涉及的领域，不能记为需求解决。
+关联编号见 [原版对照清单](../../../../../docs/reference/REFERENCE_CHECKLIST.md)与
+[研究需求](../../../../../docs/reference/RESEARCH_REQUESTS.md)。关联仅表示观察涉及的领域，不能记为需求解决。
 
 ## 逐图观察
 

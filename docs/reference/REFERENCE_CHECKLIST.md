@@ -63,6 +63,6 @@
 | C26 | 扩张/解锁/城镇发展 | MAP_ACCESS与截图，完整规则缺 |
 | C27 | 人物HP/恢复/过渡 | CHARACTER_HP，完整调用资格缺 |
 
-报告名都位于 [研究入口](../research/dungeon_village_1/README.md)。
-视觉观察见 [VISUAL_BASELINE](../research/dungeon_village_1/VISUAL_BASELINE.md)与 [截图入口](../research/dungeon_village_1/references/README.md)。
+报告名都位于 [研究入口](../../research/dungeon_village_1/README.md)。
+视觉观察见 [VISUAL_BASELINE](../../research/dungeon_village_1/VISUAL_BASELINE.md)与 [截图入口](../../research/dungeon_village_1/references/README.md)。
 新增接入与差异在本清单维护，补证通过 [RQ](RESEARCH_REQUESTS.md)交接，不代写研究完成状态。

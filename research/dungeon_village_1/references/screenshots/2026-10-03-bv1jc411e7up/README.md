@@ -29,8 +29,8 @@
 | S004 / 图片 4 | [冒险通信弹窗](events/S004-adventure-news.png) | 未显示 | 1316×768 | UI19；RQ01；结算关联尚未认证 |
 | S005 / 图片 5 | [村庄主场景](scene/S005-village-p1-0653.png) | 06:53 / 38:14 | 1250×768 | UI02；RQ01/RQ02（非新局基线） |
 
-UI/RQ 编号来自 [原版对照清单](../../../../../docs/REFERENCE_CHECKLIST.md)与
-[研究需求](../../../../../docs/RESEARCH_REQUESTS.md)。这里记录研究覆盖，不修改产品验收状态。
+UI/RQ 编号来自 [原版对照清单](../../../../../docs/reference/REFERENCE_CHECKLIST.md)与
+[研究需求](../../../../../docs/reference/RESEARCH_REQUESTS.md)。这里记录研究覆盖，不修改产品验收状态。
 
 ## 逐图观察
 

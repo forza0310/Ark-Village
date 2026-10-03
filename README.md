@@ -31,7 +31,8 @@ CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可
 | src/desktop | raylib进程入口、窗口和图像生命周期 |
 | assets/ | 必要运行资源副本及来源记录 |
 | tests/ | 当前产品的测试，不运行research测试代替产品验收 |
-| docs/ | 新产品的目标、架构、决策、计划、对照及验证 |
+| docs/ | 三份概览：目标/架构、开发流程、计划/决策 |
+| docs/reference/ | 持续增长的原版对照清单与研究交接需求 |
 
-从 [目标](docs/REPLICA_TARGET.md)、[架构](docs/ARCHITECTURE.md)、[里程碑](docs/MILESTONES.md)开始阅读。
-近期任务见 [TODO](TODO.md)，开发流程见 [CONTRIBUTING](docs/CONTRIBUTING.md)。
+从 [目标与架构](docs/ARCHITECTURE.md)、[开发流程](docs/CONTRIBUTING.md)、[计划与决策](docs/MILESTONES.md)开始阅读。
+近期任务见 [TODO](TODO.md)，具体复刻条目见 [原版对照](docs/reference/REFERENCE_CHECKLIST.md)。

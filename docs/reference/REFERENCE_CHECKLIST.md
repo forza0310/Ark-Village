@@ -28,6 +28,7 @@
 | UI18 | 战斗/野外/成绩 | 局部截帧和HP辅助；完整规则缺 |
 | UI19 | 收支情报 | 和自动月报/通信分开；实际页面缺 |
 | UI20 | 冒险通信 | S004外观；入口/翻页/背景推进缺 |
+| UI21 | 新冒险者到访/加入提示 | S009外观与固定APK页面59候选；创建/加入时点、关闭副作用、场景/名单刷新与输入缺；不是住宅入住或任务征集 |
 
 ## 行为
 
@@ -62,6 +63,7 @@
 | C25 | 职业/装备/特殊活动 | FACILITY_ARRIVAL，完整特例缺 |
 | C26 | 扩张/解锁/城镇发展 | MAP_ACCESS与截图，完整规则缺 |
 | C27 | 人物HP/恢复/过渡 | CHARACTER_HP，完整调用资格缺 |
+| C28 | 新冒险者资格/到访/加入 | S009/UI_RENDER_MAP仅到访展示候选；定义初值、触发条件、创建/加入/关闭顺序及重复行为缺，优先RQ07 |
 
 报告名都位于 [研究入口](../../research/dungeon_village_1/README.md)。
 视觉观察见 [VISUAL_BASELINE](../../research/dungeon_village_1/VISUAL_BASELINE.md)与 [截图入口](../../research/dungeon_village_1/references/README.md)。

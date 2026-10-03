@@ -31,6 +31,8 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/facilities/map_binding.cpp src/app/map_queries.cpp src/people/motion.cpp
     src/people/activity_choice.cpp src/people/activity_candidates.cpp
     src/people/facility_choice.cpp src/people/departure.cpp
+    src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
+    src/people/decision.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -93,6 +95,22 @@ if(BUILD_TESTING)
     target_link_libraries(ark_departure_tests PRIVATE ark_game)
     ark_target(ark_departure_tests)
     add_test(NAME facility_choice_departure COMMAND ark_departure_tests)
+    add_executable(ark_actor_ai_tests tests/actor_ai_test.cpp)
+    target_link_libraries(ark_actor_ai_tests PRIVATE ark_game)
+    ark_target(ark_actor_ai_tests)
+    add_test(NAME actor_ai_rules COMMAND ark_actor_ai_tests)
+    add_executable(ark_ai_perception_tests tests/ai_perception_test.cpp)
+    target_link_libraries(ark_ai_perception_tests PRIVATE ark_game)
+    ark_target(ark_ai_perception_tests)
+    add_test(NAME ai_perception_rules COMMAND ark_ai_perception_tests)
+    add_executable(ark_actor_control_tests tests/actor_control_test.cpp)
+    target_link_libraries(ark_actor_control_tests PRIVATE ark_game)
+    ark_target(ark_actor_control_tests)
+    add_test(NAME actor_control_prefix COMMAND ark_actor_control_tests)
+    add_executable(ark_ai_decision_tests tests/ai_decision_test.cpp)
+    target_link_libraries(ark_ai_decision_tests PRIVATE ark_game)
+    ark_target(ark_ai_decision_tests)
+    add_test(NAME ai_priority_departure_control COMMAND ark_ai_decision_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)

@@ -28,7 +28,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 return {std::nullopt, "--inspect-page requires a page"};
             const auto &page = arguments[i];
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
-                page != "visitor" && page != "menu" && page != "placement" && page != "detail")
+                page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
+                page != "bonuses" && page != "equipment" && page != "booster")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -42,6 +43,10 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 return {std::nullopt, "--size requires width 240..4096 and height 256..4096"};
             }
             i += 2;
+        } else if (argument == "--zoom-percent") {
+            if (++i >= arguments.size() || !positive(arguments[i], 200, options.zoom_percent) ||
+                options.zoom_percent < 50)
+                return {std::nullopt, "--zoom-percent requires an integer 50..200"};
         } else if (argument == "--frames") {
             if (++i >= arguments.size() || !positive(arguments[i], 100000, options.frames)) {
                 return {std::nullopt, "--frames requires an integer 1..100000"};

@@ -10,6 +10,7 @@
     {
       "file": "data/STATE.json",
       "source": "research/dungeon_village_1/data/startup/STATE.json",
+      "source_revision": "2fcae9fbb3364017f47534d4e830a355af38542e",
       "sha256": "ee938b46adc3cdf9e9cbcfce4386136841889dc8cc481b60f093858248bfa398",
       "bytes": 7339
     },
@@ -594,6 +595,36 @@
       "bytes": 791,
       "width": 176,
       "height": 22
+    },
+    {
+      "file": "common/arrow01.png",
+      "source": "research/dungeon_village_1/assets/original/common/arrow01.png",
+      "sha256": "864fcf16e52634142f776b6245f0964ad12a21d901a4af7308aa6ee939f1ca65",
+      "bytes": 203,
+      "width": 14,
+      "height": 5
+    },
+    {
+      "file": "common/arrow02.png",
+      "source": "research/dungeon_village_1/assets/original/common/arrow02.png",
+      "sha256": "b4463ecc521607a299e809ef9926aa1b8f63f43f023055f249158586b2b7fe4c",
+      "bytes": 262,
+      "width": 16,
+      "height": 8
+    },
+    {
+      "file": "common/arrow02.seb",
+      "source": "research/dungeon_village_1/assets/original/common/arrow02.seb",
+      "sha256": "ae9d5f75696a001cdadb3d579de0fc4902e0689cb5e2a4fe6ef1ccd22ac574c9",
+      "bytes": 128
+    },
+    {
+      "file": "common/icon_param00.png",
+      "source": "research/dungeon_village_1/assets/original/common/icon_param00.png",
+      "sha256": "4dd4ab45877977306dee487e4c781cb8b8bc4f09844fb51b9a285983afc5c351",
+      "bytes": 1615,
+      "width": 112,
+      "height": 32
     },
     {
       "file": "common2/img.inf",

@@ -1,5 +1,6 @@
 // Navigation does not mutate domain state except through Game's validated commands.
 #include "controller.hpp"
+#include "facility_page.hpp"
 #include <algorithm>
 namespace ark::desktop::ui {
 std::vector<const facilities::Definition *> catalog_items(int tab) {
@@ -64,6 +65,18 @@ void scroll(State &view, int delta) {
     view.scroll = std::clamp(view.scroll + delta, 0, std::max(0, count - 4));
     view.row = std::clamp(view.row, view.scroll, std::min(count - 1, view.scroll + 3));
 }
+void turn_facility_page(const app::Game &game, State &view) {
+    if (facility_page_count(game, view) == 2) {
+        view.facility_page = 1 - view.facility_page;
+        view.source_scroll = 0;
+    }
+}
+void scroll_sources(const app::Game &game, State &view, int delta) {
+    if (view.page != Page::facility || view.facility_page != 1 || !view.detail)
+        return;
+    const auto count = static_cast<int>(game.neighbourhood(*view.detail).sources.size());
+    view.source_scroll = std::clamp(view.source_scroll + delta, 0, std::max(0, count - 5));
+}
 void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
     const auto hit = [&](Rectangle box) { return CheckCollisionPointRec(point, box); };
     if (hit(layout.right_button)) {
@@ -88,7 +101,12 @@ void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
             }
         return;
     }
-    if (view.page == Page::roster || view.page == Page::facility || view.page == Page::definition)
+    if (view.page == Page::facility || view.page == Page::definition) {
+        if (hit(layout.detail_previous) || hit(layout.detail_next))
+            turn_facility_page(game, view);
+        return;
+    }
+    if (view.page == Page::roster)
         return;
     if (game.state().mode == app::Mode::catalog) {
         for (int direction : {-1, 1}) {
@@ -103,6 +121,7 @@ void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
         }
         if (hit(layout.left_button)) {
             view.page = Page::definition;
+            view.facility_page = view.source_scroll = 0;
             return;
         }
         for (int i = 0; i < 3; ++i)
@@ -130,7 +149,7 @@ void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
             return;
         }
         if (view.selection) {
-            const auto p = tile_center(*view.selection, view.camera, layout.extent);
+            const auto p = tile_center(*view.selection, view.camera, layout.extent, view.zoom);
             const auto arrows = layout.arrows(p);
             const world::Cell steps[] = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
             for (int i = 0; i < 4; ++i)
@@ -142,7 +161,8 @@ void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
                 }
         }
         if (hit(layout.scene)) {
-            const auto cell = pick(point, view.camera, app::startup_data().map, layout.extent);
+            const auto cell =
+                pick(point, view.camera, app::startup_data().map, layout.extent, view.zoom);
             if (cell) {
                 if (view.selection == cell)
                     confirm(game, view);
@@ -156,9 +176,17 @@ void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
         if (hit(layout.dialogue))
             confirm(game, view);
     } else if (game.state().mode == app::Mode::normal && hit(layout.scene)) {
-        const auto cell = pick(point, view.camera, app::startup_data().map, layout.extent);
-        if (cell && (view.detail = game.facility_at(*cell)))
-            view.page = Page::facility;
+        const auto cell =
+            pick(point, view.camera, app::startup_data().map, layout.extent, view.zoom);
+        if (cell && (view.detail = game.facility_at(*cell))) {
+            const auto kind =
+                game.definition(game.state().facilities.at(*view.detail).definition_id).kind;
+            if (kind == 2 || kind == 3 || kind == 12 || kind == 13) {
+                view.page = Page::facility;
+                view.facility_page = view.source_scroll = 0;
+            } else
+                view.detail.reset(); // Entrance resource filenames are not player facility names.
+        }
     }
 }
 } // namespace ark::desktop::ui

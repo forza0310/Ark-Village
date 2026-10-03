@@ -11,6 +11,7 @@ const integer = value => {
   return value;
 };
 const decimal = value => { need(/^-?\d+$/.test(value), 'Invalid table integer'); return integer(Number(value)); };
+const integers = value => value === '' ? [] : value.split('&').map(decimal);
 const text = value => {
   need(typeof value === 'string' && !value.includes('\0'), 'Invalid published string');
   // JSON Unicode/control escapes are not all legal C++ escapes; use UTF-8 octal bytes instead.
@@ -20,6 +21,8 @@ const list = values => `{${values.map(integer).join(',')}}`;
 const array = (values, count) => { need(values.length === count, 'Invalid array length'); return list(values); };
 
 export function compileStartup(map, state, tables, tenantText) {
+  need(createHash('sha256').update(tenantText).digest('hex') ===
+       '5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a', 'Facility source hash mismatch');
   need([map, state, tables].every(v => v.apk_sha256 === apk), 'APK provenance mismatch');
   need(map.width === 24 && map.height === 24 && map.cells.length === 24 &&
        map.cells.every(row => row.length === 24), 'Invalid source map dimensions');
@@ -73,6 +76,12 @@ export function compileStartup(map, state, tables, tenantText) {
          'Initial job-derived quote changed');
   }
   const first = state.first_arrival;
+  // STARTUP documents only this finite initial cohort: two job1 farmers and one job2 carpenter.
+  // Do not generalize the unknown ten-category mapping to arbitrary later professions.
+  need(state.reset.unlocked_character_definitions.join(',') === '1,2,3', 'Initial profession cohort changed');
+  const characters = new Map(entries.get('character.txt').map(row => [decimal(row[0]), row]));
+  need([1,2,3].map(id => decimal(characters.get(id)[3])).join(',') === '1,2,1', 'Initial professions changed');
+  const jobCounts = [0,0,0,0,0,0,0,0,2,1];
   const firstRow = entries.get('character.txt').find(row => decimal(row[0]) === 1);
   need(first.definition_id === 1 && first.instance_uid === 0 && first.name === firstRow[1] &&
        first.job_id === decimal(firstRow[3]) && first.flags === decimal(firstRow[13]) &&
@@ -89,9 +98,21 @@ export function compileStartup(map, state, tables, tenantText) {
     const item = catalog.get(id);
     const display = [...displays.values()].find(v => decimal(v[5]) === id);
     need(display, 'Missing facility display binding');
+    const slots = integers(row[26]), deltas = integers(row[27]);
+    need(slots.length === deltas.length && slots.every(v => v >= 0 && v < 3), 'Invalid neighbour modifiers');
+    const effects = integers(row[28]), plusCounts = integers(row[29]);
+    need(effects.every(v => v >= 0 && v < 7) &&
+         plusCounts.every(v => v >= 0), 'Invalid effect indicator');
+    const endpoints = Array.from({length:4}, (_,i) => array(row.slice(15+i*2,17+i*2).map(decimal),2));
+    need(row.slice(15,25).every(v => decimal(v) >= 0) && decimal(row[35]) >= 0 &&
+         decimal(row[2]) >= 0 && decimal(row[2]) < 7, 'Invalid facility economy or icon');
     return `{${id},${text(row[1])},${decimal(row[3])},${item ? integer(item.tab) : -1},` +
       `${item ? integer(item.effective_price) : 0},${item ? integer(item.construction_counter_threshold ?? 0) : 0},` +
-      `${decimal(display[0])},${decimal(row[10])}}`;
+      `${decimal(display[0])},${decimal(row[10])},${decimal(row[2])},${decimal(row[4])},${decimal(row[5])},` +
+      `{ {{${endpoints.join(',')}}},${array(row.slice(23,25).map(decimal),2)},${decimal(row[13])},` +
+      `${decimal(row[14])},${decimal(row[35])},${decimal(row[3]) === 2 ? 'true' : 'false'}},` +
+      `{${slots.map((slot,i)=>`{${slot},${deltas[i]}}`).join(',')}},` +
+      `${list(effects)},${list(plusCounts)}}`;
   });
   const date = state.calendar;
   return `// Generated from pinned research data; do not edit.\n#include "ark/app/startup_data.hpp"\n` +
@@ -108,7 +129,7 @@ export function compileStartup(map, state, tables, tenantText) {
     `{${integer(first.instance_uid)},${integer(first.definition_id)},${text(first.name)},${integer(first.job_id)},${integer(first.sex)},` +
     `${integer(first.job_level)},${integer(first.effort)},${integer(first.satisfaction)},${array(first.derived_attributes,6)},` +
     `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},0},\n` +
-    `{${talk.map(text).join(',')}}}; return value; } }\n`;
+    `{${talk.map(text).join(',')}},${array(jobCounts,10)}}; return value; } }\n`;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [root, output] = process.argv.slice(2);

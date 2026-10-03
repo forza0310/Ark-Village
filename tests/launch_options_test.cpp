@@ -20,6 +20,7 @@ int main() {
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
+    check(parse_arguments({"--zoom-percent", "150"}).options->zoom_percent == 150);
     check(parse_arguments({"--inspect-page", "shops", "--frames", "8"}).options->inspect_page ==
           "shops");
     const auto bounded =
@@ -28,6 +29,10 @@ int main() {
           bounded.options->frames == 30 && bounded.options->screenshot == "a.png");
     for (const auto &arguments : std::vector<std::vector<std::string>>{
              {"--unknown"},
+             {"--zoom-percent"},
+             {"--zoom-percent", "49"},
+             {"--zoom-percent", "201"},
+             {"--zoom-percent", "100x"},
              {"--font"},
              {"--font", "--check"},
              {"--inspect-page"},

@@ -1,5 +1,6 @@
 // Coordinate-level input contracts; no OS automation or GPU required. Uses actual Game state.
 #include "ui/controller.hpp"
+#include "ui/facility_page.hpp"
 #include <stdexcept>
 namespace {
 void require(bool ok) {
@@ -30,6 +31,9 @@ int main() {
         require(view.tab == 1 && view.row == 0);
         ui::click(game, view, layout, center(layout.left_button));
         require(view.page == ui::Page::definition && game.state().money == money);
+        require(ui::facility_page_count(game, view) == 1);
+        ui::click(game, view, layout, center(layout.detail_next));
+        require(view.facility_page == 0);
         ui::click(game, view, layout, center(layout.right_button));
         require(view.page == ui::Page::village && game.state().mode == app::Mode::catalog);
         ui::click(game, view, layout, center(layout.rows[0]));
@@ -63,9 +67,26 @@ int main() {
             if (entry.second.definition_id == 28) {
                 view.camera = {30.0F * (entry.second.anchor.x + entry.second.anchor.y),
                                15.0F * (entry.second.anchor.y - entry.second.anchor.x) + 15};
-                ui::click(game, view, layout, tile_center(entry.second.anchor, view.camera, size));
+                view.zoom = 1.5F;
+                ui::click(game, view, layout,
+                          tile_center(entry.second.anchor, view.camera, size, view.zoom));
                 require(view.page == ui::Page::facility && view.detail == entry.first);
+                require(ui::facility_page_count(game, view) == 2);
+                const auto cash = game.state().money;
+                ui::click(game, view, layout, center(layout.detail_next));
+                require(view.facility_page == 1 && game.state().money == cash);
+                ui::scroll_sources(game, view, 999);
+                require(view.source_scroll == 0);
+                ui::click(game, view, layout, center(layout.detail_previous));
+                require(view.facility_page == 0 && game.state().money == cash);
                 break;
             }
     }
+    app::Game game;
+    require(ui::facility_template(game.definition(28)) == ui::FacilityTemplate::ordinary &&
+            ui::facility_template(game.definition(30)) == ui::FacilityTemplate::equipment &&
+            ui::facility_template(game.definition(31)) == ui::FacilityTemplate::equipment &&
+            ui::facility_template(game.definition(66)) == ui::FacilityTemplate::booster &&
+            ui::facility_template(game.definition(24)) == ui::FacilityTemplate::recruitment &&
+            ui::facility_template(game.definition(25)) == ui::FacilityTemplate::home);
 }

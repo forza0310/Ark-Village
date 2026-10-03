@@ -13,6 +13,7 @@ struct LaunchOptions {
     int width = 960;
     int height = 512;
     int frames = 0;
+    int zoom_percent = 100;
     std::string screenshot;
     bool paused = false;
     std::string font;

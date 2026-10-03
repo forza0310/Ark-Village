@@ -26,7 +26,8 @@ add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
         "${PROJECT_SOURCE_DIR}/assets/data" "${ARK_STARTUP_CPP}"
     DEPENDS scripts/compile_startup.mjs assets/data/MAP.json assets/data/STATE.json
         assets/data/TABLES.json assets/data/tenantData.txt VERBATIM)
-add_library(ark_game STATIC src/world/grid.cpp src/facilities/facility.cpp
+add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/facilities/facility.cpp
+    src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
 ark_target(ark_game)
@@ -40,7 +41,8 @@ if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/scene.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
-        src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp)
+        src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
+        src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
         target_link_libraries(ark_village PRIVATE "-framework CoreGraphics")
@@ -63,6 +65,14 @@ if(BUILD_TESTING)
     target_link_libraries(ark_game_tests PRIVATE ark_game)
     ark_target(ark_game_tests)
     add_test(NAME game_first_play COMMAND ark_game_tests)
+    add_executable(ark_facility_tests tests/facility_rules_test.cpp)
+    target_link_libraries(ark_facility_tests PRIVATE ark_game)
+    ark_target(ark_facility_tests)
+    add_test(NAME facility_economy_neighbours COMMAND ark_facility_tests)
+    add_executable(ark_terrain_tests tests/terrain_test.cpp)
+    target_link_libraries(ark_terrain_tests PRIVATE ark_game)
+    ark_target(ark_terrain_tests)
+    add_test(NAME road_connections COMMAND ark_terrain_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)
@@ -80,7 +90,7 @@ if(BUILD_TESTING)
         ark_target(ark_projection_tests)
         add_test(NAME projection_input COMMAND ark_projection_tests)
         add_executable(ark_ui_tests tests/ui_navigation_test.cpp src/desktop/projection.cpp
-            src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp)
+            src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp src/desktop/ui/facility_context.cpp)
         target_include_directories(ark_ui_tests PRIVATE include src/desktop)
         target_link_libraries(ark_ui_tests PRIVATE ark_game PkgConfig::RAYLIB)
         ark_target(ark_ui_tests)

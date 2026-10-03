@@ -13,18 +13,38 @@ int main() {
         if (extent.width < 240 || extent.height < 256 || box.width < size.x - 2 ||
             box.height < size.y - 2)
             throw std::runtime_error("Responsive view did not fill window");
-        for (auto cell : {ark::world::Cell{9, 3}, ark::world::Cell{12, 5}}) {
-            const Vector2 camera{426, -72};
-            const auto p = ark::desktop::tile_center(cell, camera, extent);
-            const Vector2 pixels{box.x + p.x * box.width / extent.width,
-                                 box.y + p.y * box.height / extent.height};
-            const auto logical = ark::desktop::logical_mouse(pixels, box, extent);
-            if (!logical || std::abs(logical->x - p.x) > 0.01F ||
-                std::abs(logical->y - p.y) > 0.01F ||
-                ark::desktop::pick(*logical, camera, map, extent) != cell)
-                throw std::runtime_error("Projection inverse mismatch");
-        }
+        for (float zoom : {0.5F, 1.0F, 1.05F, 1.5F, 2.0F})
+            for (auto cell : {ark::world::Cell{9, 3}, ark::world::Cell{12, 5}}) {
+                const Vector2 camera{30.0F * (cell.x + cell.y) + 40, 15.0F * (cell.y - cell.x) + 5};
+                const auto p = ark::desktop::tile_center(cell, camera, extent, zoom);
+                const Vector2 pixels{box.x + p.x * box.width / extent.width,
+                                     box.y + p.y * box.height / extent.height};
+                const auto logical = ark::desktop::logical_mouse(pixels, box, extent);
+                if (!logical || std::abs(logical->x - p.x) > 0.01F ||
+                    std::abs(logical->y - p.y) > 0.01F ||
+                    ark::desktop::pick(*logical, camera, map, extent, zoom) != cell)
+                    throw std::runtime_error("Projection inverse mismatch");
+            }
         if (ark::desktop::logical_mouse({-1, -1}, box, extent))
             throw std::runtime_error("Letterbox input accepted");
+        Vector2 camera{426, -72};
+        const auto start = camera;
+        float zoom = 1;
+        const auto anchor = ark::desktop::tile_center({12, 5}, camera, extent, zoom);
+        ark::desktop::zoom_at(anchor, extent, 1, camera, zoom);
+        const auto after = ark::desktop::tile_center({12, 5}, camera, extent, zoom);
+        if (std::abs(after.x - anchor.x) > 0.001F || std::abs(after.y - anchor.y) > 0.001F ||
+            std::abs(zoom - 1.05F) > 0.001F)
+            throw std::runtime_error("Small-step anchored zoom failed");
+        ark::desktop::zoom_at(anchor, extent, -1, camera, zoom);
+        if (std::abs(zoom - 1) > 0.001F || std::abs(camera.x - start.x) > 0.001F ||
+            std::abs(camera.y - start.y) > 0.001F)
+            throw std::runtime_error("Zoom round trip moved camera");
+        ark::desktop::zoom_at(anchor, extent, 10000, camera, zoom);
+        if (zoom != 2)
+            throw std::runtime_error("Zoom upper bound failed");
+        ark::desktop::zoom_at(anchor, extent, -10000, camera, zoom);
+        if (zoom != 0.5F)
+            throw std::runtime_error("Zoom lower bound failed");
     }
 }

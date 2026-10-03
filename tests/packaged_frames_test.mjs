@@ -22,5 +22,13 @@ try {
   const failure = run(); assert.notEqual(failure.status, 0); assert.match(failure.stderr, /rectangle/);
   writeFileSync(file, original.subarray(0, original.length-1));
   assert.notEqual(run().status, 0, 'truncated structure must be rejected');
-  console.log('PASS requested-frame bounds, unused-record preservation, truncation and foreign cwd');
+  writeFileSync(file, original);
+  // All adjacency frames are reachable after construction, including ones absent at startup.
+  const roadFile = join(root, 'assets/image/road00.seb');
+  const road = readFileSync(roadFile);
+  road.writeInt16BE(30000, 8 + 15*20 + 4);
+  writeFileSync(roadFile, road);
+  const roadFailure = run(); assert.notEqual(roadFailure.status, 0);
+  assert.match(roadFailure.stderr, /rectangle/);
+  console.log('PASS requested-frame bounds, connected-road frames, unused records, truncation and foreign cwd');
 } finally { rmSync(root, {recursive:true,force:true}); }

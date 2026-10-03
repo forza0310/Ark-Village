@@ -68,11 +68,13 @@ void inspect(app::Game &game, ui::State &view, const std::string &page) {
         }
     } else if (page == "menu") {
         view.page = ui::Page::menu;
-    } else if (page == "detail") {
+    } else if (page == "detail" || page == "bonuses" || page == "equipment" || page == "booster") {
+        const int definition = page == "equipment" ? 30 : page == "booster" ? 66 : 28;
         for (const auto &entry : game.state().facilities)
-            if (entry.second.definition_id == 28) {
+            if (entry.second.definition_id == definition) {
                 view.detail = entry.first;
                 view.page = ui::Page::facility;
+                view.facility_page = page == "bonuses" ? 1 : 0;
                 break;
             }
     } else {
@@ -100,6 +102,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     const auto &data = app::startup_data();
     ui::State view;
     view.camera = {static_cast<float>(data.camera.x), static_cast<float>(data.camera.y)};
+    view.zoom = options.zoom_percent / 100.0F;
     inspect(game, view, options.inspect_page);
     int frames{};
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
@@ -115,8 +118,18 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             game.set_paused(!game.state().paused);
         if (IsKeyPressed(KEY_TAB))
             view.speed = view.speed == 1 ? 2 : 1;
+        if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
+            ui::turn_facility_page(game, view);
+        const float wheel = GetMouseWheelMove();
         if (game.state().mode == app::Mode::catalog && view.page == ui::Page::village)
-            ui::scroll(view, -static_cast<int>(GetMouseWheelMove()));
+            ui::scroll(view, -static_cast<int>(wheel));
+        else if (view.page == ui::Page::facility)
+            ui::scroll_sources(game, view, -static_cast<int>(wheel));
+        else if (wheel && !ui::blocks_world(view) && mouse &&
+                 CheckCollisionPointRec(*mouse, layout.scene) &&
+                 (game.state().mode == app::Mode::normal ||
+                  game.state().mode == app::Mode::placement))
+            zoom_at(*mouse, canvas.extent, wheel, view.camera, view.zoom);
         if (mouse && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             if (game.state().mode == app::Mode::research_boundary &&
                 CheckCollisionPointRec(*mouse,
@@ -132,11 +145,11 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         std::optional<world::Cell> hovered;
         if (!ui::blocks_world(view) && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
             (game.state().mode == app::Mode::normal || game.state().mode == app::Mode::placement)) {
-            hovered = pick(*mouse, view.camera, data.map, canvas.extent);
+            hovered = pick(*mouse, view.camera, data.map, canvas.extent, view.zoom);
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
                 const float scale = destination.width / canvas.extent.width;
-                view.camera.x -= GetMouseDelta().x / scale;
-                view.camera.y += GetMouseDelta().y / scale;
+                view.camera.x -= GetMouseDelta().x / (scale * view.zoom);
+                view.camera.y += GetMouseDelta().y / (scale * view.zoom);
             }
         }
         // STARTUP mode6 does not run the world. Duration/easing remain desktop adapter policy.
@@ -156,7 +169,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             --view.notice_frames;
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
-        draw_scene(game, sprites, view.camera, canvas.extent);
+        draw_scene(game, sprites, view.camera, canvas.extent, view.zoom);
         draw_preview(game, view, layout, sprites, hovered);
         ui::draw_hud(game, view, layout, skin);
         ui::draw_pages(game, view, layout, skin);

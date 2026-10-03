@@ -15,6 +15,8 @@ Layout::Layout(Extent size) : extent(size) {
     for (int i = 0; i < 5; ++i)
         menu_rows[i] = {2, 28.0F + i * 28, 89, 28};
     detail = {(w - 220) / 2, 37, 220, 182};
+    detail_previous = {detail.x + 8, detail.y + 2, 12, 17};
+    detail_next = {detail.x + detail.width - 20, detail.y + 2, 12, 17};
     // STARTUP page0 has a 202x122 dialogue, independently centered in the available viewport.
     dialogue = {(w - 202) / 2, (h - 122) / 2, 202, 122};
     message = {65, h - 27, std::min(170.0F, w - 130), 25};

@@ -1,5 +1,6 @@
 // S001/S002 and PAGES layout: original menu sprites and field order, independent of rule values.
 #include "pages.hpp"
+#include "facility_page.hpp"
 #include <algorithm>
 namespace ark::desktop::ui {
 namespace {
@@ -87,56 +88,13 @@ void catalog(const app::Game &game, const State &view, const Layout &layout, con
                          Color{56, 149, 208, 255});
     }
 }
-void facility(const app::Game &game, const State &view, const Layout &layout, const Skin &skin) {
-    const auto box = layout.detail;
-    const facilities::Definition *item{};
-    const facilities::Instance *instance{};
-    if (view.page == Page::definition) {
-        const auto items = catalog_items(view.tab);
-        if (items.empty())
-            return;
-        item = items.at(static_cast<std::size_t>(view.row));
-    } else if (view.detail) {
-        instance = &game.state().facilities.at(*view.detail);
-        item = &game.definition(instance->definition_id);
-    }
-    if (!item)
-        return;
-    skin.window(box, "设施信息");
-    skin.text.draw(item->name, box.x + 17, box.y + 24, ink, 13);
-    skin.text.draw("价格", box.x + 131, box.y + 24, blue);
-    // Sale price/quality/charm are not yet model consumers. Never replace them with build cost.
-    skin.right("---", box.x + 209, box.y + 24, blue);
-    skin.content({box.x + 8, box.y + 42, 204, 115});
-    skin.content({box.x + 13, box.y + 47, 97, 74}, Color{226, 247, 212, 255});
-    BeginScissorMode(static_cast<int>(box.x + 13), static_cast<int>(box.y + 47), 97, 74);
-    skin.sprites.thumbnail(game.display(item->display_id).sprite,
-                           instance ? instance->orientation : 0, {box.x + 18, box.y + 50, 87, 58});
-    EndScissorMode();
-    skin.sprites.image("wnd_lv.png", {0, 0, 17, 10}, {box.x + 15, box.y + 110, 17, 10});
-    skin.number(game.state().definition_progress.at(item->id).level, {box.x + 49, box.y + 110},
-                "number05.seb");
-    skin.content({box.x + 113, box.y + 47, 94, 34}, Color{255, 249, 217, 255});
-    skin.text.draw("品质", box.x + 120, box.y + 51, blue);
-    skin.text.draw("魅力", box.x + 120, box.y + 66, blue);
-    skin.right("---", box.x + 201, box.y + 51, blue);
-    skin.right("---", box.x + 201, box.y + 66, blue);
-    skin.content({box.x + 113, box.y + 83, 94, 38}, Color{255, 249, 217, 255});
-    skin.centered("---", {box.x + 113, box.y + 83, 94, 38}, blue);
-    if (instance && instance->remaining_ticks)
-        skin.centered("施工 " + std::to_string(instance->remaining_ticks),
-                      {box.x + 10, box.y + 125, 200, 25});
-    else
-        skin.centered("距离下个等级还有 --- 人", {box.x + 10, box.y + 125, 200, 25}, ink, 11);
-    skin.centered("使用道具", {box.x + 60, box.y + 162, 100, 16}, GRAY);
-}
 } // namespace
 void draw_pages(const app::Game &game, const State &view, const Layout &layout, const Skin &skin) {
     const auto &s = game.state();
     if (view.page == Page::menu) {
         menu(view, layout, skin);
     } else if (view.page == Page::facility || view.page == Page::definition) {
-        facility(game, view, layout, skin);
+        draw_facility_page(game, view, layout, skin);
     } else if (view.page == Page::roster) {
         const auto box = layout.detail;
         skin.window(box, "冒险者一览");

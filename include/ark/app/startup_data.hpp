@@ -25,6 +25,7 @@ struct StartupData {
     world::Cell camera;
     people::Adventurer first_character;
     std::vector<std::string> first_talk;
+    std::array<std::int32_t, 10> initial_job_counts{};
 };
 const StartupData &startup_data();
 } // namespace ark::app

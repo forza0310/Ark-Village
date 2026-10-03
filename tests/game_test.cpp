@@ -23,8 +23,12 @@ std::string snapshot(const app::Game &game) {
         << ',' << s.talk_line;
     for (int v : s.calendar)
         out << ',' << v;
-    for (const auto &v : s.definition_progress)
+    for (const auto &v : s.definition_progress) {
         out << ';' << v.first << ',' << v.second.level;
+        for (auto improvement : v.second.improvements)
+            out << ',' << improvement;
+        out << ',' << v.second.completed_uses << ',' << v.second.upgrade_pending;
+    }
     for (const auto &entry : s.facilities) {
         const auto &v = entry.second;
         out << ';' << entry.first << ',' << v.id << ',' << v.definition_id << ',' << v.anchor.x

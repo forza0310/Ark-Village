@@ -15,7 +15,9 @@ int main(int argc, char **argv) {
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
             std::cout << "ark_village [--check] [--paused] [--font TTF] [--size W H] [--frames N] "
-                         "[--screenshot PNG] [--inspect-page menu|shops|plants|food|placement|detail|arrival|visitor]\n";
+                         "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
+                         "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
+                         "arrival|visitor]\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);

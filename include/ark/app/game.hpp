@@ -2,6 +2,7 @@
 
 // Sole mutable aggregate; desktop sends commands and reads immutable state.
 #include "ark/app/startup_data.hpp"
+#include "ark/facilities/neighbourhood.hpp"
 #include <map>
 #include <optional>
 #include <random>
@@ -45,6 +46,11 @@ class Game {
     const facilities::Definition &definition(int id) const;
     const Display &display(int id) const;
     std::optional<facilities::InstanceId> facility_at(world::Cell cell) const;
+    // Read-only derived views. Definition previews omit instance modifiers and never charge.
+    facilities::EconomyValues
+    facility_values(int definition_id,
+                    std::optional<facilities::InstanceId> instance = std::nullopt) const;
+    facilities::Neighbourhood neighbourhood(facilities::InstanceId instance) const;
     Error open_catalog();
     Error select(int definition_id);
     Error rotate();

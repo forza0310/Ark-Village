@@ -9,7 +9,7 @@
 - [research入口](../research/README.md)是规格、示例、素材和证据来源；原型夹具/安全策略不能自动当作原作事实。
 - 固定输入为一代汉化重签APK，身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)；不复制反编译实现。
 - 三批22张用户图片提供部分外观，第3批明确不同于APK版本；视觉和规则分别登记，截图数值不能覆盖原表。
-- 新局静态地图/初值/首访已交付；加载后完整快照、首段人物AI、月度组合顺序仍缺，不用自定demo填补。
+- 新局静态地图/初值/首访和加载后格/实例静态重建已交付；后者尚待产品接入，首段完整AI、月度组合顺序仍缺，不用自定demo填补。
 
 研究覆盖、产品接入、原版对照分别记录；测试、画面、输入和行为等价不能相互替代。
 具体条目与缺口见 [原版对照](reference/REFERENCE_CHECKLIST.md)和 [研究需求](reference/RESEARCH_REQUESTS.md)。
@@ -20,6 +20,8 @@
 raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
 desktop/scene负责源投影/预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
 界面响应窗口比例，像素素材与最终分辨率文字分开绘制；命中和绘制共用逻辑布局，业务数据不移入UI。
+facilities/economy与neighbourhood为纯派生规则，app/facility_queries提供只读查询；UI按页74条件显示实际属性、维护费与来源。
+world/terrain按已证掩码连接道路；desktop/projection负责场景小步缩放/锚点/拾取，HUD与领域不随缩放变化。
 
 启动顺序：参数→程序旁CPU素材校验→无窗口首访检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
 静态输入为24×24源地图、8设施种子、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。
@@ -53,6 +55,6 @@ desktop/scene负责源投影/预览，desktop/ui拆分共享布局、临时导�
 
 建设已消费[设施规格](../research/dungeon_village_1/rules/FACILITIES.md#definitions)及[新局目录](../research/dungeon_village_1/rules/STARTUP.md)。[地图访问](../research/dungeon_village_1/rules/MAP_ACCESS.md)及[邻接](../research/dungeon_village_1/rules/FACILITIES.md#neighbourhood)仍是后续依据，本轮不宣称经营闭环。
 已证：定义/实例身份分开；锚点式1/2/4格、两朝向；每个占用格绑定实例/定义/分片；
-邻接按来源实例去重、含对角、每外环道路格魅力+2；等级/改良/使用累计按定义共享。
+邻接已按来源实例去重、含对角、每外环道路格魅力+2；等级/改良/使用累计按定义共享。当前职业输入只覆盖初局已解锁定义，完整经营流程未实现。
 连通是访问状态，不能自定“必须接路才允许建设”。
 完整解锁、道路报价/覆盖/退款、底图/新局、施工更新资格与反馈继续等待研究；详情显示价格不等于建设价。

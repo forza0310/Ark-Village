@@ -156,7 +156,8 @@ Text::Text(const std::filesystem::path &font_path) {
         "建设返回确定旋转设施冒险者名单点数人气年月份道路植物商店饮食金币暂停继续重新开始研究边界"
         "请选择街道内地域有建筑物金钱不足未知设施不可用状态异常施工剩余招募到访等级农家体力攻击防御"
         "魔法品质魅力尚无本轮结束建造设备一般办公室信息系统保存菜单网站价格使用道具设施信息"
-        "距离下个级还有人数周农家暂无到访者冒险者一览要建造在哪里建设完毕";
+        "距离下个级还有人数周农家暂无到访者冒险者一览要建造在哪里建设完毕设施奖励维护费"
+        "没有奖励周围种类正在销售武器防具饰品查看商品入住希望者住宅";
     for (int i = 32; i < 127; ++i)
         glyphs += static_cast<char>(i);
     for (const auto &v : app::startup_data().definitions)
@@ -261,6 +262,9 @@ void check_assets(const std::filesystem::path &root) {
             }
     };
     std::map<std::string, std::set<int>> requested;
+    // Construction can remove an existing road: every adjacency frame can become reachable.
+    for (int frame = 0; frame < 16; ++frame)
+        requested["road00.seb"].insert(frame);
     for (const auto &cell : app::startup_data().map.cells) {
         const auto &displays = app::startup_data().displays;
         const auto it = std::find_if(displays.begin(), displays.end(),
@@ -286,7 +290,7 @@ void check_assets(const std::filesystem::path &root) {
     validate_frame(root / "common/chara_hishoko01.seb", 0, Sprites::Binding::secretary);
     for (const auto &name :
          {"menu.seb", "wnd_menuIcon.seb", "finger_r.seb", "number01.seb", "number05.seb",
-          "number08.seb", "number12.seb", "icon_season.seb", "wnd_conner.seb"}) {
+          "number08.seb", "number12.seb", "icon_season.seb", "wnd_conner.seb", "arrow02.seb"}) {
         const auto path = root / "common" / name;
         const auto definition = assets::parse_legacy_seb(read_bytes(path));
         for (int frame = 0; frame < definition.frame_count; ++frame)

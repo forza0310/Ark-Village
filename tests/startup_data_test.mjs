@@ -13,4 +13,6 @@ reject(([,s])=>s.initial_catalog[2].construction_counter_threshold=400);
 reject(([,s])=>s.map_seed_instances[0].x=-1); reject(([,s])=>s.first_arrival.definition_id=0);
 reject(([,,t])=>t.entries[0].source_utf8+='x'); reject(([,,t])=>t.apk_sha256='other');
 reject(([,s])=>s.first_arrival.equipment_ids.pop());
-console.log('PASS startup data and 12 rejection cases');
+reject(([,s])=>s.reset.unlocked_character_definitions=[1]);
+reject(v=>v[3]=v[3].replace('300\t450','301\t450'));
+console.log('PASS startup data and 14 rejection cases');

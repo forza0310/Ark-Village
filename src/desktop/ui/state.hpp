@@ -7,8 +7,10 @@ namespace ark::desktop::ui {
 enum class Page { village, menu, roster, facility, definition };
 struct State {
     Vector2 camera{};
+    float zoom{1};
     Page page{Page::village};
     int tab{1}, row{}, scroll{}, menu_row{}, speed{1};
+    int facility_page{}, source_scroll{};
     std::optional<world::Cell> selection;
     std::optional<facilities::InstanceId> detail;
     app::Error error{app::Error::none};

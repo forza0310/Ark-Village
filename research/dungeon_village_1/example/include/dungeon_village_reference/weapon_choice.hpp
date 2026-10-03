@@ -28,4 +28,35 @@ WeaponChoiceResult prepare_weapon_choice(const std::vector<WeaponChoiceDefinitio
                                          std::int32_t current_weapon_id,
                                          std::int32_t reselect_counter,
                                          std::optional<int> ticket = std::nullopt);
+
+enum class EquipmentChoiceKind { armor, accessory };
+struct EquipmentChoiceDefinition {
+    int id{};
+    int rank{};
+    int type{}; // Armor d==2 belongs to slot1, all other types slot2. Accessory ignores type.
+    bool unlocked{};
+};
+struct EquipmentChoiceInput {
+    EquipmentChoiceKind kind{EquipmentChoiceKind::armor};
+    int slot{1}; // Armor1/2; accessory3. Caller already consumed armor-arrival draw2 +1.
+    std::vector<EquipmentChoiceDefinition> catalogue;
+    std::optional<int> current; // Null equipment uses rank0 and does NOT block on A[slot]>0.
+    int reselect_counter{};
+    std::optional<int> ticket;
+};
+struct EquipmentChoiceCandidate {
+    int equipment_id{};
+    std::optional<int>
+        selected_slot; // Armor type determines actual commit slot, not original draw.
+    std::vector<int> eligible_ids;
+    bool consumes_ticket{};
+    bool literal_zero_fallback{}; // Armor null/empty returns source literal0; not invented gear.
+};
+struct EquipmentChoiceResult {
+    WeaponChoiceError error{WeaponChoiceError::none};
+    std::optional<EquipmentChoiceCandidate> candidate;
+};
+// Armor/accessory rank[current-1,current+2], inclusive, unlike weapon lower bound current.
+// Empty+missing accessory would dereference null in the source: maintenance returns invalid_input.
+EquipmentChoiceResult prepare_equipment_choice(const EquipmentChoiceInput &input);
 } // namespace dungeon_village_reference

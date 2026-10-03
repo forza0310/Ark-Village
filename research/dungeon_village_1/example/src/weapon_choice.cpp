@@ -38,4 +38,58 @@ WeaponChoiceResult prepare_weapon_choice(const std::vector<WeaponChoiceDefinitio
     result.consumes_ticket = true;
     return {WeaponChoiceError::none, result};
 }
+EquipmentChoiceResult prepare_equipment_choice(const EquipmentChoiceInput &i) {
+    if ((i.kind != EquipmentChoiceKind::armor && i.kind != EquipmentChoiceKind::accessory) ||
+        (i.kind == EquipmentChoiceKind::armor ? (i.slot != 1 && i.slot != 2) : i.slot != 3) ||
+        i.reselect_counter < 0)
+        return {WeaponChoiceError::invalid_input, std::nullopt};
+    const EquipmentChoiceDefinition *current = nullptr;
+    std::set<int> ids;
+    for (const auto &d : i.catalogue) {
+        if (d.id < 0 || d.rank < 0 || d.type < 0 || !ids.insert(d.id).second)
+            return {WeaponChoiceError::invalid_input, std::nullopt};
+        if (i.current == d.id)
+            current = &d;
+    }
+    if (i.current && !current)
+        return {WeaponChoiceError::invalid_input, std::nullopt};
+    const auto actual_slot = [&](const EquipmentChoiceDefinition &d) {
+        return i.kind == EquipmentChoiceKind::accessory ? 3 : d.type == 2 ? 1 : 2;
+    };
+    EquipmentChoiceCandidate c;
+    c.selected_slot = i.slot;
+    if (current) {
+        c.equipment_id = current->id;
+        c.selected_slot = actual_slot(*current);
+        if (i.reselect_counter > 0)
+            return {WeaponChoiceError::none, c};
+    }
+    const std::int64_t rank = current ? current->rank : 0;
+    for (const auto &d : i.catalogue)
+        if (d.unlocked && (i.kind == EquipmentChoiceKind::accessory || actual_slot(d) == i.slot) &&
+            d.rank >= rank - 1 && d.rank <= rank + 2)
+            c.eligible_ids.push_back(d.id);
+    if (c.eligible_ids.empty()) {
+        if (!current) {
+            if (i.kind == EquipmentChoiceKind::accessory)
+                return {WeaponChoiceError::invalid_input, std::nullopt};
+            c.literal_zero_fallback = true;
+            c.selected_slot.reset(); // Literal0 need not resolve to a catalogue definition.
+            for (const auto &d : i.catalogue)
+                if (d.id == 0)
+                    c.selected_slot = actual_slot(d);
+        }
+        return {WeaponChoiceError::none, c};
+    }
+    if (!i.ticket)
+        return {WeaponChoiceError::missing_ticket, std::nullopt};
+    if (*i.ticket < 0 || static_cast<std::size_t>(*i.ticket) >= c.eligible_ids.size())
+        return {WeaponChoiceError::invalid_ticket, std::nullopt};
+    c.equipment_id = c.eligible_ids[static_cast<std::size_t>(*i.ticket)];
+    c.consumes_ticket = true;
+    for (const auto &d : i.catalogue)
+        if (d.id == c.equipment_id)
+            c.selected_slot = actual_slot(d);
+    return {WeaponChoiceError::none, c};
+}
 } // namespace dungeon_village_reference

@@ -13,7 +13,7 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/facility_departure.cpp src/character_motion.cpp src/facility_use.cpp
                                      src/weapon_choice.cpp src/actor_ai.cpp src/combat_ai.cpp
                                      src/ai_perception.cpp src/encounter_ai.cpp src/actor_lifecycle.cpp
-                                     src/actor_control.cpp)
+                                     src/actor_control.cpp src/combat_execution.cpp src/object_ai.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -275,3 +275,21 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_actor_control_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.actor_control COMMAND dungeon_village_actor_control_tests)
+
+add_executable(dungeon_village_combat_execution_tests tests/combat_execution_test.cpp)
+target_link_libraries(dungeon_village_combat_execution_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_combat_execution_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_combat_execution_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_combat_execution_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.combat_execution COMMAND dungeon_village_combat_execution_tests)
+
+add_executable(dungeon_village_object_ai_tests tests/object_ai_test.cpp)
+target_link_libraries(dungeon_village_object_ai_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_object_ai_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_object_ai_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_object_ai_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.object_ai COMMAND dungeon_village_object_ai_tests)

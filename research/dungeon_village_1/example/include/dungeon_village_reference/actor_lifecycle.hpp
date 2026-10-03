@@ -1,6 +1,9 @@
 #pragma once
 
 #include "dungeon_village_reference/actor_ai.hpp"
+#include "dungeon_village_reference/actor_control.hpp"
+#include "dungeon_village_reference/facility_arrival.hpp"
+#include "dungeon_village_reference/facility_use.hpp"
 
 namespace dungeon_village_reference {
 enum class LifecycleError { none, invalid_input, unsupported_state, stale_target };
@@ -87,6 +90,102 @@ struct RescueBindingResult {
 };
 // State13: bind both R references with N=-2; owner must revalidate target state/identity on commit.
 RescueBindingResult prepare_rescue_binding(const RescueBindingInput &input);
+
+struct CarryReferenceRepairInput {
+    std::uint32_t flags{};
+    int object_slot{-1};
+    bool has_reference{};
+    bool other_has_reference{}; // c() tests R.R!=null, not equality to self.
+};
+struct CarryReferenceRepairCandidate {
+    int object_slot{-1};
+    bool clear_reference{};
+    bool reset_all_hp{};
+    bool reset_action{};
+};
+std::optional<CarryReferenceRepairCandidate>
+prepare_carry_reference_repair(const CarryReferenceRepairInput &input);
+struct RescuedFollowCandidate {
+    bool cleanup{};
+    WorldPosition position;
+    float height{};
+};
+// State16 follows R.n with +16 height; absent/out-of-roster carrier invokes r(), not pathfinding.
+std::optional<RescuedFollowCandidate> prepare_rescued_follow(bool reference, bool in_human_roster,
+                                                             WorldPosition carrier, float height);
+enum class RescueReleaseRequestKind {
+    clear_rescued_reference,
+    rescued_state0,
+    rescued_arrival,
+    rescued_use1,
+    copy_target_binding,
+    copy_world_position,
+    copy_logical_cell,
+    clear_rescuer_reference_and_slot,
+    set_rescuer_flag256
+};
+struct RescueReleaseCandidate {
+    bool released{};
+    std::vector<RescueReleaseRequestKind> requests;
+};
+// Arrival helper releases N=-2 only to category2/8, before ordinary rescuer visit statistics.
+// Clear R of the rescued actor BEFORE recursive arrival, preventing another rescue recursion.
+std::optional<RescueReleaseCandidate> prepare_rescue_release(int object_slot, int category,
+                                                             bool rescued_reference);
+struct RescueInnInput {
+    FacilityArrivalState rescuer_arrival;
+    FacilityArrivalState rescued_arrival;
+    FacilityArrivalInput rescuer;
+    FacilityArrivalInput rescued; // Uses old rescued s/flags for arrival pricing, before copy.
+    bool bound_both_ways{};
+    bool rescued_roster_member{};
+};
+struct RescueInnCandidate {
+    FacilityArrivalCandidate rescuer_arrival;
+    FacilityArrivalCandidate rescued_arrival;
+    FacilityUseState rescued_use; // Mode1, wait200; occupation still first rescued d().
+    std::uint32_t rescuer_flags{};
+    std::int64_t cash_income{};
+    std::vector<LegacyActorControl> rescuer_queue; // Mode2: occupy then immediate exit, no wait.
+    RescueReleaseCandidate release;
+};
+struct RescueInnResult {
+    LifecycleError error{LifecycleError::none};
+    std::optional<RescueInnCandidate> candidate;
+};
+// Narrow, atomic preparation for ordinary category2/detail0 rescue delivery. No partial revenue
+// if either actor's counters/ownership fail; IDs here use the existing nonzero arrival adapter.
+RescueInnResult prepare_rescue_inn_arrival(const RescueInnInput &input);
+
+struct RestoreActorIdentity {
+    int legacy_id{};
+    CharacterId id;
+};
+struct RestoreEncounterIdentity {
+    int legacy_id{};
+    std::uint64_t id{};
+    std::uint64_t group_id{};
+};
+struct ActorReferenceIds {
+    int rescue{-1}; // R from HUMAN roster even when restoring a monster.
+    int follow{-1}; // S from MONSTER roster.
+    int encounter{-1};
+};
+struct RestoredActorReferences {
+    std::optional<CharacterId> rescue;
+    std::optional<CharacterId> follow;
+    std::optional<std::uint64_t> encounter;
+    std::optional<std::uint64_t> group;
+};
+// This is reference rebinding, NOT a save parser/migration. Missing IDs remain null; duplicate
+// source IDs take the first match. Group comes only from restored db, never a serialized dc ID.
+RestoredActorReferences
+restore_actor_references(const ActorReferenceIds &ids,
+                         const std::vector<RestoreActorIdentity> &humans,
+                         const std::vector<RestoreActorIdentity> &monsters,
+                         const std::vector<RestoreEncounterIdentity> &encounters);
+std::vector<CharacterId> restore_roster_references(const std::vector<int> &saved_ids,
+                                                   const std::vector<RestoreActorIdentity> &roster);
 
 struct CleanupCandidate {
     int state{};

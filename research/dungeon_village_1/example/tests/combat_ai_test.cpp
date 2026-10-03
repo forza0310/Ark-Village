@@ -271,6 +271,35 @@ void influence() {
 }
 } // namespace
 int main() {
+    for (int growth = 0; growth <= 600; ++growth)
+        for (int base : {0, 1, 99, 100}) {
+            const int normal_tier = growth < 100   ? 1
+                                    : growth < 200 ? 2
+                                    : growth < 300 ? 3
+                                    : growth < 400 ? 4
+                                                   : 5;
+            const int boss_tier = growth < 9 ? growth + 1 : 10;
+            check(prepare_monster_growth(base, growth, 0, false) == base * normal_tier &&
+                      prepare_monster_growth(base, growth, 0, true) == base * boss_tier,
+                  "growth0 monster normal100 thresholds and boss1..10 multiplier");
+            check(prepare_monster_growth(base, growth, 2, false) == normal_tier &&
+                      prepare_monster_growth(base, growth, 2, true) == boss_tier,
+                  "growth2 tier ignores base");
+            const int reward_percent = growth < 100   ? 100
+                                       : growth < 200 ? 120
+                                       : growth < 300 ? 140
+                                       : growth < 400 ? 160
+                                       : growth < 500 ? 180
+                                                      : 200;
+            check(prepare_monster_growth(base, growth, 1, false) == base * reward_percent / 100,
+                  "growth1 ordinary reward percentage, truncation and500 cap");
+        }
+    check(prepare_monster_growth(100, 8, 1, true) == 188 &&
+              prepare_monster_growth(100, 9, 1, true) == 200,
+          "boss reward integer mapping0..9, not float continuous multiplier");
+    check(!prepare_monster_growth(std::numeric_limits<int>::max(), 9, 0, true) &&
+              !prepare_monster_growth(100, -1, 0, false),
+          "growth overflow and invalid input refused");
     choices();
     timing_and_guards();
     movement();

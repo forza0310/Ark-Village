@@ -177,4 +177,122 @@ std::optional<CleanupCandidate> prepare_actor_cleanup(ActorKind kind, std::uint3
     c.waiting_updates = kind == ActorKind::human && (flags & 1024U) ? 120 : 0;
     return c;
 }
+std::optional<CarryReferenceRepairCandidate>
+prepare_carry_reference_repair(const CarryReferenceRepairInput &i) {
+    if (i.object_slot < -2)
+        return std::nullopt;
+    CarryReferenceRepairCandidate c{i.object_slot, false, false, false};
+    if ((i.flags & 512U) && i.has_reference) {
+        c = {-1, true, true, true};
+    } else if ((i.flags & 512U) && i.object_slot != -1) {
+        c.object_slot = -1;
+    } else if (i.has_reference && !i.other_has_reference) {
+        c = {-1, true, true, true};
+    }
+    return c;
+}
+std::optional<RescuedFollowCandidate> prepare_rescued_follow(bool reference, bool in_roster,
+                                                             WorldPosition carrier, float height) {
+    if (!reference || !in_roster)
+        return RescuedFollowCandidate{true, {}, 0};
+    if (!std::isfinite(carrier.x) || !std::isfinite(carrier.z) || !std::isfinite(height) ||
+        std::abs(carrier.x) > 1000000 || std::abs(carrier.z) > 1000000 || std::abs(height) > 999984)
+        return std::nullopt;
+    return RescuedFollowCandidate{false, carrier, height + 16};
+}
+std::optional<RescueReleaseCandidate> prepare_rescue_release(int slot, int category,
+                                                             bool reference) {
+    if (slot < -2 || category < 0 || category > 10)
+        return std::nullopt;
+    RescueReleaseCandidate c;
+    if (slot != -2 || !reference || (category != 2 && category != 8))
+        return c;
+    c.released = true;
+    c.requests = {RescueReleaseRequestKind::clear_rescued_reference,
+                  RescueReleaseRequestKind::rescued_state0,
+                  RescueReleaseRequestKind::rescued_arrival,
+                  RescueReleaseRequestKind::rescued_use1,
+                  RescueReleaseRequestKind::copy_target_binding,
+                  RescueReleaseRequestKind::copy_world_position,
+                  RescueReleaseRequestKind::copy_logical_cell,
+                  RescueReleaseRequestKind::clear_rescuer_reference_and_slot,
+                  RescueReleaseRequestKind::set_rescuer_flag256};
+    return c;
+}
+RescueInnResult prepare_rescue_inn_arrival(const RescueInnInput &i) {
+    if (!i.bound_both_ways || !i.rescued_roster_member ||
+        i.rescuer.character_id == i.rescued.character_id || i.rescuer.legacy_selection != -2 ||
+        i.rescued.legacy_selection != -1 || i.rescuer.legacy_actor_kind != 0 ||
+        i.rescued.legacy_actor_kind != 0 || i.rescuer.legacy_category != 2 ||
+        i.rescued.legacy_category != 2 || i.rescuer.legacy_detail != 0 ||
+        i.rescued.legacy_detail != 0 || !(i.rescuer.instance_id == i.rescued.instance_id) ||
+        i.rescuer.definition_id != i.rescued.definition_id ||
+        i.rescuer.legacy_month_index != i.rescued.legacy_month_index ||
+        i.rescuer_arrival.current_month_facility_sales !=
+            i.rescued_arrival.current_month_facility_sales)
+        return {LifecycleError::invalid_input, std::nullopt};
+    auto rescued = prepare_facility_arrival(i.rescued_arrival, i.rescued);
+    if (!rescued.candidate)
+        return {LifecycleError::invalid_input, std::nullopt};
+    auto rescuer_input = i.rescuer;
+    rescuer_input.legacy_selection = -1;
+    rescuer_input.legacy_flags |= 256U;
+    auto rescuer_state = i.rescuer_arrival;
+    rescuer_state.current_month_facility_sales =
+        rescued.candidate->state.current_month_facility_sales;
+    auto rescuer = prepare_facility_arrival(rescuer_state, rescuer_input);
+    if (!rescuer.candidate)
+        return {LifecycleError::invalid_input, std::nullopt};
+    auto use = prepare_facility_use({i.rescued.character_id, i.rescued.instance_id,
+                                     i.rescued.definition_id, 2, 0, 1, 0, i.rescued.legacy_flags});
+    if (!use.candidate)
+        return {LifecycleError::invalid_input, std::nullopt};
+    RescueInnCandidate c{*rescuer.candidate,
+                         *rescued.candidate,
+                         use.candidate->state,
+                         i.rescuer.legacy_flags & ~(256U | 16U | 512U | 1024U | 32768U),
+                         rescued.candidate->cash_income + rescuer.candidate->cash_income,
+                         {{6, 1}, {21}, {24}},
+                         *prepare_rescue_release(-2, 2, true)};
+    return {LifecycleError::none, c};
+}
+RestoredActorReferences
+restore_actor_references(const ActorReferenceIds &ids,
+                         const std::vector<RestoreActorIdentity> &humans,
+                         const std::vector<RestoreActorIdentity> &monsters,
+                         const std::vector<RestoreEncounterIdentity> &encounters) {
+    RestoredActorReferences c;
+    if (ids.rescue != -1)
+        for (const auto &h : humans)
+            if (h.legacy_id == ids.rescue) {
+                c.rescue = h.id;
+                break;
+            }
+    if (ids.follow != -1)
+        for (const auto &m : monsters)
+            if (m.legacy_id == ids.follow) {
+                c.follow = m.id;
+                break;
+            }
+    if (ids.encounter != -1)
+        for (const auto &e : encounters)
+            if (e.legacy_id == ids.encounter) {
+                c.encounter = e.id;
+                c.group = e.group_id;
+                break;
+            }
+    return c;
+}
+std::vector<CharacterId>
+restore_roster_references(const std::vector<int> &ids,
+                          const std::vector<RestoreActorIdentity> &roster) {
+    std::vector<CharacterId> restored;
+    for (int id : ids)
+        for (const auto &actor : roster)
+            if (actor.legacy_id == id) {
+                restored.push_back(actor.id);
+                break;
+            }
+    return restored;
+}
 } // namespace dungeon_village_reference

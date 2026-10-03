@@ -98,6 +98,9 @@ struct DamageResult {
 // Preserve Java integer attack/defense division BEFORE float interpolation; not a continuous ratio.
 // Caller provides effective monster growth stats; overflowing maintenance inputs are refused.
 DamageResult prepare_physical_damage(const PhysicalDamageInput &input);
+// Definition v growth: category0 HP/attack/defense,1 reward fields,2 tier count.
+// Boss is DEFINITION flags4, distinct from instance4096 damage/rage. Overflow is refused.
+std::optional<int> prepare_monster_growth(int base, int growth, int category, bool boss);
 struct SpellDamageInput {
     int magic{};
     std::array<bool, 3> learned{};

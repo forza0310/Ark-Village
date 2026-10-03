@@ -5,6 +5,26 @@
 #include <limits>
 
 namespace dungeon_village_reference {
+std::optional<int> prepare_monster_growth(int base, int growth, int category, bool boss) {
+    if (base < 0 || growth < 0 || category < 0 || category > 2)
+        return std::nullopt;
+    const int tier = std::min(growth / 100 + 1, 5);
+    const int boss_tier =
+        static_cast<int>(std::min<std::int64_t>(static_cast<std::int64_t>(growth) + 1, 10));
+    std::int64_t value{};
+    if (category == 2)
+        value = boss ? boss_tier : tier;
+    else if (category == 0)
+        value = static_cast<std::int64_t>(base) * (boss ? boss_tier : tier);
+    else {
+        const int percentage =
+            boss ? 100 + std::min(growth, 9) * 100 / 9 : 100 + std::min(growth / 100, 5) * 20;
+        value = static_cast<std::int64_t>(base) * percentage / 100;
+    }
+    if (value > std::numeric_limits<int>::max())
+        return std::nullopt;
+    return static_cast<int>(value);
+}
 CombatStrategyResult prepare_combat_strategy(const CombatStrategyInput &i) {
     if ((i.kind != ActorKind::human && i.kind != ActorKind::monster) || i.action < 0 ||
         i.action > 11 || i.monster_posture < 0 || i.monster_posture > 2 || i.group_tick < 0 ||

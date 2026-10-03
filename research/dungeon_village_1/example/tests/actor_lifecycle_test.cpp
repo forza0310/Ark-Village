@@ -180,10 +180,93 @@ void rescue_and_cleanup() {
                   "r cleanup is staged leave not immediate removal or universal120 wait");
         }
 }
+void rescue_release_and_follow() {
+    for (unsigned flags : {0U, 512U})
+        for (int slot : {-2, -1, 0, 9})
+            for (bool ref : {false, true})
+                for (bool other : {false, true}) {
+                    const auto c = prepare_carry_reference_repair({flags, slot, ref, other});
+                    const bool full = ref && ((flags & 512) || !other);
+                    check(c && c->clear_reference == full && c->reset_all_hp == full &&
+                              c->reset_action == full &&
+                              c->object_slot == (full || (flags & 512) ? -1 : slot),
+                          "c carry-reference repair preserves asymmetric HP-reset behavior");
+                }
+    auto follow = prepare_rescued_follow(true, true, {100, 200}, 10);
+    check(follow && !follow->cleanup && follow->position.x == 100 && follow->height == 26,
+          "state16 copies carrier n and adds16 height");
+    check(prepare_rescued_follow(true, false, {}, 0)->cleanup &&
+              prepare_rescued_follow(false, true, {}, 0)->cleanup,
+          "missing/non-roster carrier requests r without pathfinding");
+    for (int category = 0; category <= 10; ++category)
+        for (int slot : {-2, -1, 0})
+            for (bool ref : {false, true}) {
+                const auto c = prepare_rescue_release(slot, category, ref);
+                check(c && c->released == (slot == -2 && ref && (category == 2 || category == 8)),
+                      "rescue released only category2/8 with sentinel/reference");
+                if (c->released)
+                    check(c->requests.size() == 9 &&
+                              c->requests[0] == RescueReleaseRequestKind::clear_rescued_reference &&
+                              c->requests[2] == RescueReleaseRequestKind::rescued_arrival &&
+                              c->requests[3] == RescueReleaseRequestKind::rescued_use1 &&
+                              c->requests[4] == RescueReleaseRequestKind::copy_target_binding &&
+                              c->requests.back() == RescueReleaseRequestKind::set_rescuer_flag256,
+                          "clear reference BEFORE recursion, binding copied AFTER arrival/use");
+            }
+    RescueInnInput i;
+    i.rescuer = {{1}, {3}, 33, 2, 2, 0, 0, 0, -2, 3, 300};
+    i.rescued = {{2}, {3}, 33, 2, 2, 0, 0, 0, -1, 3, 300};
+    i.bound_both_ways = true;
+    i.rescued_roster_member = true;
+    auto r = prepare_rescue_inn_arrival(i);
+    check(r.candidate && r.candidate->cash_income == 300 &&
+              r.candidate->rescuer_arrival.cash_income == 0 &&
+              r.candidate->rescued_arrival.cash_income == 300 &&
+              r.candidate->rescuer_arrival.state.legacy_visit_counts[2] == 1 &&
+              r.candidate->rescued_arrival.state.legacy_visit_counts[2] == 1 &&
+              r.candidate->rescuer_arrival.state.current_month_facility_sales == 300,
+          "ordinary inn rescue charges rescued actor only, both visit counts, one shared sales");
+    check(r.candidate->rescued_use.duration == 200 &&
+              r.candidate->rescued_use.input.legacy_activity == 1 &&
+              r.candidate->rescuer_queue == std::vector<LegacyActorControl>{{6, 1}, {21}, {24}},
+          "rescued mode1 waits200, rescuer mode2 occupies/exits same d without wait");
+    i.rescued.legacy_flags = 512;
+    r = prepare_rescue_inn_arrival(i);
+    check(r.candidate && r.candidate->cash_income == 0 &&
+              !(r.candidate->rescued_use.legacy_flags & 512),
+          "rescued512 suppresses recursive arrival BEFORE use clears512");
+    i.rescued.legacy_flags = 0;
+    i.rescuer_arrival.legacy_visit_counts[2] = std::numeric_limits<int>::max();
+    r = prepare_rescue_inn_arrival(i);
+    check(!r.candidate && r.error == LifecycleError::invalid_input &&
+              i.rescued_arrival.current_month_facility_sales == 0,
+          "second actor overflow rejects entire candidate after recursive arrival preparation");
+    i.rescuer_arrival = {};
+    i.bound_both_ways = false;
+    check(!prepare_rescue_inn_arrival(i).candidate, "stale one-sided rescue rejects transaction");
+}
 } // namespace
 int main() {
     timers();
     movement_and_exit();
     rescue_and_cleanup();
+    rescue_release_and_follow();
+    const std::vector<RestoreActorIdentity> humans = {{0, {0}}, {5, {100}}, {5, {101}}};
+    const std::vector<RestoreActorIdentity> monsters = {{5, {200}}, {7, {201}}};
+    const std::vector<RestoreEncounterIdentity> encounters = {
+        {0, 0, 0}, {9, 90, 900}, {9, 91, 901}};
+    auto refs = restore_actor_references({5, 5, 9}, humans, monsters, encounters);
+    check(refs.rescue == CharacterId{100} && refs.follow == CharacterId{200} &&
+              refs.encounter == 90 && refs.group == 900,
+          "restore R from humans, S from monsters, first db and its group only");
+    refs = restore_actor_references({0, -1, 0}, humans, monsters, encounters);
+    check(refs.rescue == CharacterId{0} && !refs.follow && refs.encounter == 0 && refs.group == 0,
+          "restore valid source zero IDs, sentinel -1 is null");
+    refs = restore_actor_references({99, 99, 99}, humans, monsters, encounters);
+    check(!refs.rescue && !refs.follow && !refs.encounter && !refs.group,
+          "missing IDs reset references to null instead of retaining stale pointers");
+    const auto roster = restore_roster_references({5, 99, 0, 5}, humans);
+    check(roster == std::vector<CharacterId>{{100}, {0}, {100}},
+          "saved battle roster preserves duplicates/order, drops missing, first matching identity");
     std::cout << checks << " checks passed\n";
 }

@@ -8,7 +8,9 @@
 
 | 文件/目标 | 职责 |
 | --- | --- |
-| [startup.hpp](include/dungeon_village_prototype/startup.hpp)、[startup.cpp](src/startup.cpp) | 标准C++17新局聚合；源格与显示定义分开、免费种子加载、两次报价校验、建设事务、施工、首访和模态调度 |
+| [startup.hpp](include/dungeon_village_prototype/startup.hpp)、[startup.cpp](src/startup.cpp) | 标准C++17新局聚合；消费加载后身份与建设地表，免费初始化、建设事务、施工、首访和模态调度 |
+| [startup_map.hpp](include/dungeon_village_prototype/startup_map.hpp)、[startup_map.cpp](src/startup_map.cpp) | 576格/8实例静态重建、入口编号、逻辑/显示分离、边界/道路刷新与非零寻路身份投影；不是可变运行地图 |
+| [dump_startup_map.cpp](src/dump_startup_map.cpp) | 导出[发布TSV](../data/startup/README.md#加载后快照)，不访问APK；全字段对账是独立CTest |
 | [数据编译脚本](scripts/README.md) | 构建期用Node内置JSON解析生成只读C++；完整地图字节哈希、原表和派生契约交叉验证，运行不依赖Node |
 | [startup_view.hpp](include/dungeon_village_prototype/startup_view.hpp)、[startup_view.cpp](src/startup_view.cpp) | raylib新局画面、中文替代字体、源SEB/图片绑定、目录/放置/提示与有界页面检查；核心不接收屏幕坐标 |
 | [village.hpp](include/dungeon_village_prototype/village.hpp)、[village.cpp](src/village.cpp) | 保留旧夹具的建设、多格布局、自主访问、到达收入和周期事务，不混入默认新局 |
@@ -17,7 +19,7 @@
 | [main.cpp](src/main.cpp) | CLI入口，显式分流默认新局与旧夹具 |
 | dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
 | dungeon_village_prototype_model | 旧夹具聚合，复用[领域示例](../example/README.md)与[工具](../tools/README.md)表解析 |
-| [测试目录](tests/) | 新局状态/事务/调度、数据错误输入与旧回归；含19项领域测试共29项CTest |
+| [测试目录](tests/) | 新局状态/事务/调度、加载后地图/行走组合、发布快照/错误输入与旧回归；含20项领域测试共32项CTest |
 
 [CMake](CMakeLists.txt)把所需原始图集/SEB、秘书和农家图片复制到程序旁。
 运行只读该素材目录；设施新局数据编译进程序，不访问APK、反编译结果或发布JSON。
@@ -55,7 +57,8 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype -
 ## 默认模式的来源边界
 
 - 源24×24格、8设施种子、5000金币/10点数/50人气、1年4月、空人物场景与初期9项目录来自发布包。
-  实例身份由原型分配；源格/种子展示不是初始化后完整快照。原入口刷新、最终道路邻接和边界绘制未闭合。
+  核心已重建576逻辑/显示格、8实例身份和向量顺序，建设使用加载后地表；原始ID0通过独立映射保留。
+  这是静态重建，不是原版动态捕获；窗口仍按源格/设施适配绘制，边界覆盖、入口标记和道路画面尚未接入。
 - 普通商店280逻辑计数、入住募集1、向日葵立即可用；职业影响按已解锁定义计算，不按活人计算。
   募集建好后的住宅/入住副作用未实现，不由“施工完成”推导居民加入。
 - 自动首访420次有资格更新，先创建UID0/定义1丰田龟次郎再触发事件89，不收取1500入住费。
@@ -63,6 +66,8 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype -
 - 首访实例标志为2与8192的组合，保留待处理活动0；人物仍停留出生格，暂不套用旧自主AI。
   原版可在教程触发同轮执行首次选路，原型延后请求是研究保护，不是原版“关闭教程才启动AI”。
   不能把当前静止当作原版行为，也不安排后续普通来客；[出发规则](../rules/CHARACTERS.md#first-activity)可独立组合验证。
+  [地图组合](tests/startup_map_test.cpp)已覆盖两出生点到三个商店的连续行走与逻辑格进入，但只用于无玩家修改的新局测试，
+  不在窗口自动执行；武器店未从候选删除，未知装备抽选/完整使用仍受保护。
 - 每正常逻辑步日历加27，每子周期10800、月4子周期；展示帧目标60FPS只是适配节奏。
   目录/放置/提示/镜头不推进模拟；2倍速每外层最多2步，不换算成原版真实秒。
 - 首个月界进入受保护的月末状态，不扣夹具维护费、不给演示收益，等待跨月组合时序闭合。

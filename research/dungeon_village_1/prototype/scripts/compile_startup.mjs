@@ -117,13 +117,15 @@ export function compileStartup(map, state, tables, tenantText) {
   requireValue(state.resources.money === 5000 && state.resources.village_points === 10 &&
     state.resources.popularity === 50 && state.reset.arrival_counter === 420 &&
     state.reset.unlocked_character_definitions.join(',') === '1,2,3', '首局资源/解锁初值变化');
-  const ids = [...new Set([...catalogs.keys(), ...state.map_seed_instances.map(v => v.definition_id)])];
+  const ids = [...new Set([...catalogs.keys(), ...state.map_seed_instances.map(v => v.definition_id),
+    ...cells.map(v => decimal(displays.get(v[0])[5]))])];
   const definitions = ids.map(id => {
     const row = rows.get(id), item = catalogs.get(id);
-    const display = [...displays.values()].find(row => decimal(row[5]) === id);
-    requireValue(row && display, '设施缺少显示绑定');
+    const display = displays.get(decimal(row[9]));
+    requireValue(row && display && decimal(display[5]) === id, '设施缺少显示绑定');
     return `{${id},${text(row[1])},${decimal(row[3])},${item ? integer(item.tab) : -1},` +
-      `${item ? integer(item.effective_price) : 0},${item ? integer(item.construction_counter_threshold ?? 0) : 0},${decimal(display[0])}}`;
+      `${item ? integer(item.effective_price) : 0},${item ? integer(item.construction_counter_threshold ?? 0) : 0},${decimal(display[0])},` +
+      `${decimal(row[4])},${decimal(row[11])},${decimal(row[35])},${decimal(row[10])},${decimal(row[19])}}`;
   });
   const date = state.calendar;
   requireValue([date.year_index,date.month_index,date.subperiod_index,date.counter].join(',') === '0,3,0,0' &&
@@ -134,7 +136,7 @@ export function compileStartup(map, state, tables, tenantText) {
     `24,24,{${cells.map(v => list(v)).join(',')}},\n` +
     `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])}}`).join(',')}},\n` +
     `{${definitions.join(',')}},\n` +
-    `{${state.map_seed_instances.map(seed => `{0,${seed.definition_id},{${seed.x},${seed.y}},0,true}`).join(',')}},\n` +
+    `{${state.map_seed_instances.map(seed => `{0,${seed.definition_id},{${seed.x},${seed.y}},0,true,{}}`).join(',')}},\n` +
     `{${state.boundary.spawn_points.map(list).join(',')}},${list([b.min_x,b.max_x,b.min_y,b.max_y])},\n` +
     `${state.resources.money},${state.resources.village_points},${state.resources.popularity},` +
     `${list([date.year_index,date.month_index,date.subperiod_index,date.counter])},` +

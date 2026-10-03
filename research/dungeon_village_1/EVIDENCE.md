@@ -20,6 +20,11 @@
 [新局数据包](data/startup/README.md)。地图保留未消费的两个零字节，不作为完整格式已闭合的声明。
 首名自动到访是人物表flags8命中的ID1；首次教程对话ID69与页面69、普通解锁页59分别登记。
 既有低层 `UserData.java` 的 `L206→L244→L450→L469→L4c9`佐证创建、加入和事件89的局部顺序。
+加载后格/身份的静态重建使用新增 `work/startup-map-fallback/Map.java`，
+JADX参数为 `--single-class c.h --single-class-output <路径> --decompilation-mode fallback --no-res --log-level warn`。
+输出SHA-256为 `faa6ac955724a8d32937a60b45a40c87cace6c0274a9a2a5ca6b3f1c0f84f6fe`，仍不提交生成Java。
+低层修正常规g()循环跳转误读，c()/d()/实例分配小函数交叉定位见[新局报告](rules/STARTUP.md#加载后逻辑显示快照)。
+运动/路点/逻辑格进入复用既有Character低层输出，数值与巨型P()局部证据分级见[连续运动](rules/CHARACTERS.md#continuous-motion)。
 
 ## 稳定符号映射
 

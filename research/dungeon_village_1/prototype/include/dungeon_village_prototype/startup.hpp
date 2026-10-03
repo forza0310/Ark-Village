@@ -1,7 +1,8 @@
 #pragma once
 
-// Static first-play evidence and an independent transaction owner. Source cells are never a
-// post-initialization snapshot; unknown AI and month-end effects are deliberately not simulated.
+// Static first-play evidence and an independent transaction owner. Source and loaded cells remain
+// separate; unknown AI and month-end effects are deliberately not simulated.
+#include "dungeon_village_prototype/startup_map.hpp"
 #include "dungeon_village_reference/accounting.hpp"
 #include "dungeon_village_reference/geometry.hpp"
 
@@ -29,13 +30,19 @@ struct StartupDefinition {
     int cost{};
     int construction_ticks{}; // 0 means immediately usable, not an inferred zero-length timer.
     int display_id{};
+    int category{};
+    int direction{};
+    int flags{};
+    int shape{};
+    int definition_charm{};
 };
 struct StartupFacility {
-    std::uint64_t id{}; // Prototype identity, not a certified original Tenant ID.
+    std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.
     int definition_id{};
     ref::Position cell;
     int remaining_ticks{};
     bool seed{};
+    std::optional<int> legacy_id;
 };
 struct StartupCharacter {
     int uid{};
@@ -95,6 +102,7 @@ struct StartupState {
     int popularity{};
     std::array<int, 4> calendar{};
     std::map<std::uint64_t, StartupFacility> facilities;
+    LoadedStartupMap loaded_map; // Reset snapshot only; later terrain edits are adapter overrides.
     std::map<std::size_t, int>
         terrain_edits; // Explicit prototype display overrides, not source cells.
     std::optional<StartupCharacter> character;

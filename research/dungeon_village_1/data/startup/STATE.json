@@ -388,8 +388,14 @@
       ]
     ]
   },
+  "loaded_map_delivery": {
+    "cells": "LOADED_MAP.tsv",
+    "instances": "LOADED_INSTANCES.tsv",
+    "evidence_level": "static_reconstruction_not_runtime_capture",
+    "scope": "level_zero_no_inheritance_unadvanced_tile_fields_and_instance_identity"
+  },
   "unresolved": [
-    "full_post_init_cell_and_instance_snapshot",
+    "runtime_capture_and_remaining_instance_statistics",
     "first_arrival_facing_and_first_activity",
     "all_repeat_and_cancel_paths",
     "full_modal_input_stack_and_physical_hotspots",

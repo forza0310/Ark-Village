@@ -21,7 +21,7 @@ add_custom_command(OUTPUT "${STARTUP_CPP}"
             "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt" "${STARTUP_CPP}"
     DEPENDS scripts/compile_startup.mjs ../data/startup/MAP.json ../data/startup/STATE.json
             ../data/startup/TABLES.json ../data/original/tenantData.txt VERBATIM)
-add_library(dungeon_village_startup_model src/startup.cpp "${STARTUP_CPP}")
+add_library(dungeon_village_startup_model src/startup.cpp src/startup_map.cpp "${STARTUP_CPP}")
 target_include_directories(dungeon_village_startup_model PUBLIC include)
 target_link_libraries(dungeon_village_startup_model PUBLIC dungeon_village_reference)
 target_compile_features(dungeon_village_startup_model PUBLIC cxx_std_17)
@@ -30,6 +30,14 @@ set_target_properties(dungeon_village_startup_model PROPERTIES CXX_EXTENSIONS OF
 add_executable(dungeon_village_startup_tests tests/startup_test.cpp)
 target_link_libraries(dungeon_village_startup_tests PRIVATE dungeon_village_startup_model)
 add_test(NAME dungeon_village_prototype.startup COMMAND dungeon_village_startup_tests)
+add_executable(dungeon_village_startup_map_tests tests/startup_map_test.cpp)
+target_link_libraries(dungeon_village_startup_map_tests PRIVATE dungeon_village_startup_model)
+add_test(NAME dungeon_village_prototype.startup_map COMMAND dungeon_village_startup_map_tests)
+add_executable(dungeon_village_dump_startup_map src/dump_startup_map.cpp)
+target_link_libraries(dungeon_village_dump_startup_map PRIVATE dungeon_village_startup_model)
+add_test(NAME dungeon_village_prototype.loaded_snapshot
+    COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/loaded_snapshot_test.mjs"
+            "$<TARGET_FILE:dungeon_village_dump_startup_map>" "${CMAKE_CURRENT_SOURCE_DIR}/../data/startup")
 add_test(NAME dungeon_village_prototype.startup_data
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/startup_data_test.mjs"
             "${CMAKE_CURRENT_SOURCE_DIR}/../data/startup"
@@ -117,4 +125,6 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_asset_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_model PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_startup_map_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_dump_startup_map PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()

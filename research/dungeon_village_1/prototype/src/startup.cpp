@@ -10,9 +10,12 @@ StartupSession::StartupSession() {
     state_.popularity = data.popularity;
     state_.calendar = data.calendar;
     state_.arrival_counter = data.arrival_counter;
-    for (auto seed : data.seeds) {
-        seed.id = state_.next_id++;
-        state_.facilities.emplace(seed.id, seed);
+    state_.loaded_map = reconstruct_startup_map(data);
+    for (const auto &seed : state_.loaded_map.instances) {
+        const auto id = static_cast<std::uint64_t>(seed.legacy_id) + 1;
+        state_.facilities.emplace(
+            id, StartupFacility{id, seed.definition_id, seed.anchor, 0, true, seed.legacy_id});
+        state_.next_id = std::max(state_.next_id, id + 1);
     }
 }
 const StartupState &StartupSession::state() const { return state_; }
@@ -75,18 +78,19 @@ StartupError StartupSession::preview(ref::Position cell) const {
         }
         const auto index = static_cast<std::size_t>(cell.y * data.width + cell.x);
         const auto edit = state_.terrain_edits.find(index);
-        const int record =
-            edit == state_.terrain_edits.end() ? data.cells[index].display_id : edit->second;
-        return display(record).definition_id == 18 ? StartupError::none : StartupError::not_found;
+        const int terrain = edit == state_.terrain_edits.end()
+                                ? state_.loaded_map.cells[index].definition_id
+                                : display(edit->second).definition_id;
+        return terrain == 18 ? StartupError::none : StartupError::not_found;
     }
     if (hit)
         return StartupError::occupied;
-    // Limit placement to the source ground/road projection. Final original refresh is unresolved.
+    // Loading clears special terrain inside the town; source display IDs cannot validate building.
     const auto index = static_cast<std::size_t>(cell.y * data.width + cell.x);
     const auto edit = state_.terrain_edits.find(index);
-    const int record =
-        edit == state_.terrain_edits.end() ? data.cells[index].display_id : edit->second;
-    const int terrain = display(record).definition_id;
+    const int terrain = edit == state_.terrain_edits.end()
+                            ? state_.loaded_map.cells[index].definition_id
+                            : display(edit->second).definition_id;
     if (terrain != 17 && terrain != 18)
         return StartupError::occupied;
     if (*state_.selection == 18 && terrain == 18)
@@ -115,7 +119,7 @@ StartupError StartupSession::confirm(ref::Position cell) {
         else {
             const auto instance = next.state_.next_id++;
             next.state_.facilities.emplace(
-                instance, StartupFacility{instance, id, cell, item.construction_ticks, false});
+                instance, StartupFacility{instance, id, cell, item.construction_ticks, false, {}});
             next.state_.terrain_edits[index] = 27;
         }
         // Preserve construction ledger category 0; PeriodAccounting's enum slot 0 is facilities.

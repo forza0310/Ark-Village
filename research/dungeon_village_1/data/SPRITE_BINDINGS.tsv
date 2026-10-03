@@ -1,0 +1,9 @@
+definition_id	mapchip_id	seb_entry	frame	image_index	png_entry	source_rect	offset	flip
+28	48	tenant10.seb	0	25	tenant10.png	0,0,60,60	0,-31	0,0
+28	48	tenant10.seb	1	25	tenant10.png	0,0,60,60	0,-31	1,0
+29	74	t_inn00.seb	0	31	t_inn00.png	0,0,60,48	0,-19	0,0
+29	74	t_inn00.seb	1	31	t_inn00.png	0,0,60,48	0,-19	1,0
+29	74	t_inn00.seb	2	32	t_inn01.png	0,0,60,51	0,-22	0,0
+29	74	t_inn00.seb	3	32	t_inn01.png	0,0,60,51	0,-22	1,0
+36	65	t_cafe.seb	0	61	t_cafe.png	0,0,60,60	0,-31	0,0
+36	65	t_cafe.seb	1	61	t_cafe.png	0,0,60,60	0,-31	1,0

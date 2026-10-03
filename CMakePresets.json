@@ -1,0 +1,28 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": { "BUILD_TESTING": "ON", "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" }
+    },
+    { "name": "headless-debug", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ARK_BUILD_DESKTOP": "OFF" } },
+    { "name": "headless-release", "inherits": "headless-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } },
+    { "name": "desktop-debug", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ARK_BUILD_DESKTOP": "ON" } },
+    { "name": "desktop-release", "inherits": "desktop-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } }
+  ],
+  "buildPresets": [
+    { "name": "headless-debug", "configurePreset": "headless-debug" },
+    { "name": "headless-release", "configurePreset": "headless-release" },
+    { "name": "desktop-debug", "configurePreset": "desktop-debug" },
+    { "name": "desktop-release", "configurePreset": "desktop-release" }
+  ],
+  "testPresets": [
+    { "name": "headless-debug", "configurePreset": "headless-debug", "output": { "outputOnFailure": true } },
+    { "name": "headless-release", "configurePreset": "headless-release", "output": { "outputOnFailure": true } },
+    { "name": "desktop-debug", "configurePreset": "desktop-debug", "output": { "outputOnFailure": true } },
+    { "name": "desktop-release", "configurePreset": "desktop-release", "output": { "outputOnFailure": true } }
+  ]
+}

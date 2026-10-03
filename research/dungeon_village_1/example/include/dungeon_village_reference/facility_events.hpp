@@ -1,0 +1,49 @@
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <vector>
+
+namespace dungeon_village_reference {
+
+struct FacilityEventCounters {
+    std::int64_t item_confirmations{};
+    std::int64_t months_since_trigger{};
+};
+
+struct FacilityEventTransition {
+    FacilityEventCounters counters;
+    bool script_triggered{};
+};
+
+enum class FacilityEventError { none, invalid_input, numeric_overflow };
+struct FacilityEventResult {
+    FacilityEventError error{FacilityEventError::none};
+    std::optional<FacilityEventTransition> transition;
+};
+
+FacilityEventResult advance_facility_event_months(const FacilityEventCounters &counters,
+                                                  std::int64_t crossed_months);
+FacilityEventResult confirm_facility_item(const FacilityEventCounters &counters,
+                                          std::int32_t legacy_icon);
+
+using FacilityEventProgram = std::vector<std::vector<std::int32_t>>;
+
+enum class LegendPresentationMode { legacy_icon_2, legacy_icon_3 };
+struct FacilityLegendPlan {
+    std::int32_t definition_id{};
+    std::int32_t delay_ticks{};
+    LegendPresentationMode mode{LegendPresentationMode::legacy_icon_2};
+};
+
+enum class FacilityPlanStatus { supported, no_script, unsupported, invalid_input };
+struct FacilityPlanResult {
+    FacilityPlanStatus status{FacilityPlanStatus::unsupported};
+    std::optional<FacilityLegendPlan> plan;
+};
+
+FacilityPlanResult inspect_facility_legend_plan(std::int32_t definition_id,
+                                                std::int32_t legacy_icon,
+                                                const FacilityEventProgram &program);
+
+} // namespace dungeon_village_reference

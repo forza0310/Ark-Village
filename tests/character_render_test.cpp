@@ -104,7 +104,12 @@ void actual_ai() {
 // the requested desktop policy, not an original-APK draw predicate or front-door animation.
 void service_visibility(ark::app::PlayMode play) {
     using namespace ark;
-    app::Game game(20261004U, play);
+    // An explicit raw tape selects weapon30 then food33, so the strict preview exercises both
+    // a successful first exit and a later rejected exit. This is a fixture, not an APK seed claim.
+    const auto random = play == app::PlayMode::ai_preview
+                            ? app::RandomStream::from_raw(std::vector<std::int32_t>(16, 0))
+                            : app::RandomStream::from_java_seed(20261004U);
+    app::Game game(random, play);
     check(!desktop::character_visible(game) && !desktop::character_visible(game, true),
           "no visitor means no sprite, including an inspection override");
     for (int n = 0; n < 420; ++n)
@@ -171,6 +176,45 @@ void service_visibility(ark::app::PlayMode play) {
               "preview rolled-back exit retains actual occupation and hidden presentation");
     }
 }
+
+// The actual Java-seeded preview rejects its first exit's unsupported next activity. Check the
+// failed transaction directly, independently of the raw-tape successful-exit visibility case.
+void preview_first_exit_rollback() {
+    using namespace ark;
+    app::Game game(20261004U, app::PlayMode::ai_preview);
+    for (int n = 0; n < 420; ++n)
+        game.update();
+    while (game.state().mode == app::Mode::tutorial)
+        game.acknowledge_talk();
+    check(game.finish_camera() == app::Error::none, "close actual Java-seeded preview camera");
+    for (int n = 0; n < 700 && !game.ai_state()->active_facility; ++n)
+        game.update();
+    check(game.ai_state()->active_facility && game.ai_state()->control.state == 14 &&
+              game.ai_state()->completions == 0 && !desktop::character_visible(game),
+          "Java-seeded preview enters actual first occupation before any completed exit");
+    const auto used = game.ai_state()->active_facility->instance;
+    bool rejected{};
+    for (int n = 0; n < 300 && game.ai_error() == app::InitialAiError::none; ++n) {
+        const auto before = *game.ai_state();
+        const auto draws = game.random_draws();
+        game.update();
+        if (game.ai_error() == app::InitialAiError::none)
+            continue;
+        const auto &after = *game.ai_state();
+        check(game.ai_error() == app::InitialAiError::unsupported_branch && after.arrivals == 1 &&
+                  after.completions == 0 && after.active_facility &&
+                  after.active_facility->instance == used && after.control.state == 14 &&
+                  after.facilities.at(used).occupants == before.facilities.at(used).occupants &&
+                  !after.facilities.at(used).occupants.empty() &&
+                  after.accounting.entries() == before.accounting.entries() &&
+                  after.accounting.funds() == before.accounting.funds() &&
+                  after.control.queue == before.control.queue && after.rounds == before.rounds &&
+                  game.random_draws() == draws && !desktop::character_visible(game),
+              "first rejected exit retains actual occupation, cash, FIFO, round and RNG cursor");
+        rejected = true;
+    }
+    check(rejected, "Java seed20261004 actually rejects its first preview exit");
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -180,6 +224,7 @@ int main(int argc, char **argv) {
         actual_ai();
         service_visibility(ark::app::PlayMode::startup);
         service_visibility(ark::app::PlayMode::ai_preview);
+        preview_first_exit_rollback();
         std::cout << "PASS actual road feet binding, walk poses, pause/idle/2x/reset and real AI\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

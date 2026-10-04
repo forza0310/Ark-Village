@@ -5,7 +5,7 @@
 namespace ark::app {
 // Resolve ordinary priority first, then consume separate category/facility tickets on this map.
 InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTickets &tickets,
-                                        std::mt19937 *random) const {
+                                        RandomStream *random) const {
     if (live_)
         return live_depart(s, s.control.queue.front()[1], tickets, random);
     const auto cell = people::world_cell(s.position);
@@ -65,9 +65,12 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
         } else {
             if (plan.plan->total_weight > std::numeric_limits<int>::max())
                 return InitialAiError::invalid_input;
-            if (random)
-                departure_input.category_ticket = std::uniform_int_distribution<int>(
-                    0, static_cast<int>(plan.plan->total_weight) - 1)(*random);
+            if (random) {
+                const auto draw = random->draw(static_cast<int>(plan.plan->total_weight));
+                if (draw.error != RandomError::none)
+                    return InitialAiError::preparation_failed;
+                departure_input.category_ticket = draw.ticket;
+            }
             std::vector<std::int64_t> weights;
             for (const auto &option : plan.plan->options)
                 weights.push_back(option.weight);
@@ -93,9 +96,12 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
                 total += cell.definition.definition_charm;
         if (total <= 0 || total > std::numeric_limits<int>::max())
             return InitialAiError::preparation_failed;
-        if (random)
-            departure_input.facility_ticket =
-                std::uniform_int_distribution<int>(0, static_cast<int>(total) - 1)(*random);
+        if (random) {
+            const auto draw = random->draw(static_cast<int>(total));
+            if (draw.error != RandomError::none)
+                return InitialAiError::preparation_failed;
+            departure_input.facility_ticket = draw.ticket;
+        }
     }
     const auto departure =
         people::prepare_facility_departure(*search.field, *candidates.snapshot, departure_input);

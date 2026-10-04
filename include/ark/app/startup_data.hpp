@@ -30,6 +30,12 @@ struct StartupData {
     std::array<std::int32_t, 10> initial_job_counts{};
     std::vector<world::LoadedCell> loaded_cells; // Row-major, original TSV fields preserved.
     int boundary_index{}; // Source reset region/skin index; expansion is not implemented.
+    // Proven only for the first arrival after a no-inheritance reset. Later updates read the
+    // current shared definition; these are not fallback values for an unknown home/retirement.
+    std::array<std::int32_t, 4> first_character_home{}; // Legacy shared definition D.
+    std::int32_t first_character_definition_state{};    // Legacy shared definition m.
+    int character_spawn_minimum_y{}; // Region0 h.l[0][1][1], distinct from the other endpoint10.
+    int world_overlap_boundary_y{};
 };
 const StartupData &startup_data();
 } // namespace ark::app

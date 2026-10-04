@@ -55,7 +55,7 @@ const InitialAiState &InitialAiSession::state() const { return state_; }
 InitialAiError InitialAiSession::round(const InitialAiTickets &tickets) {
     return prepare_round(tickets, nullptr);
 }
-InitialAiError InitialAiSession::round_random(std::mt19937 &random) {
+InitialAiError InitialAiSession::round_random(RandomStream &random) {
     auto next_random = random;
     const auto error = prepare_round({}, &next_random);
     if (error == InitialAiError::none)
@@ -63,7 +63,7 @@ InitialAiError InitialAiSession::round_random(std::mt19937 &random) {
     return error;
 }
 InitialAiError InitialAiSession::prepare_round(const InitialAiTickets &tickets,
-                                               std::mt19937 *random) {
+                                               RandomStream *random) {
     if (live_ && state_.error != InitialAiError::none)
         return state_.error; // A retained handoff must not redraw its actual selection.
     auto next = state_;

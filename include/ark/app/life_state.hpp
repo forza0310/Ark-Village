@@ -24,6 +24,7 @@ struct FacilityLifeState {
 struct LifeHome {
     world::Cell cell;
     int state{};
+    int fourth_slot{}; // Preserve shared definition D[3]; this slice does not consume it.
 };
 enum class LifeHandoff { none, home_projection, encounter_creation, facility_consumer };
 struct LifeActorState {
@@ -54,6 +55,8 @@ struct LifeActorState {
     bool removed{}; // Scheduler removes the live projection only after successful submission.
     bool definition_departed{}; // Control26 writes shared definition m=1.
     LifeHandoff handoff{LifeHandoff::none};
+    std::optional<int> spawn_ticket; // Actual L ticket for an unhandled encounter request.
+    std::optional<world::Cell> spawn_center;
     int current_weapon{}, weapon_reselect_counter{};
     std::optional<int> selected_weapon;
     std::uint64_t rounds{}, route_revision{};

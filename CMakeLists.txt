@@ -47,6 +47,7 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
     src/app/initial_ai_check.cpp src/app/game_ai_preview.cpp
     src/app/live_life_context.cpp src/app/game_life.cpp src/app/live_departure.cpp src/app/live_motion.cpp
+    src/app/random.cpp src/app/live_daily.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -78,6 +79,10 @@ if(ARK_BUILD_DESKTOP)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ark_random_tests tests/random_test.cpp)
+    target_link_libraries(ark_random_tests PRIVATE ark_game)
+    ark_target(ark_random_tests)
+    add_test(NAME java_random_stream COMMAND ark_random_tests)
     add_executable(ark_live_world_motion_tests tests/live_world_motion_test.cpp)
     target_link_libraries(ark_live_world_motion_tests PRIVATE ark_game)
     ark_target(ark_live_world_motion_tests)

@@ -2,11 +2,11 @@
 
 Game是唯一可变村庄聚合，接口在`include/ark/app/game.hpp`，协调设施、人物、资金和更新。
 confirm复用预览校验，在候选状态上分配实例、登记CashLedger支出后提交；拒绝不改资金、ID或占地。State.accounting是唯一现金账本，money仅供既有HUD读取。
-update推进1/2个有资格逻辑步，目录/放置/教程/暂停不积累时间；普通相机移动不再暂停整个世界，严格初局预览仍保留镜头资格。
+update推进1/2个有资格逻辑步，目录/放置/教程/暂停不积累时间；首访跟随镜头对应scene6，人物、施工与日期均冻结，恢复后重新验资格。
 首名冒险者420次更新后免费加入，事件89先锁存再展示，关闭不重复创建。
 StartupData在构建期生成，不依赖research/Node运行时；启动参数独立在ark_launch。
-ark_timing仅标准C++，不更改Game或领域的tick单位。original_loop.hpp/cpp消费1e50a60维护loop_pacing：默认v21、整数47ms最小开始间隔、实际观测提交、超时不补算，以及两倍速外层次数资格。
-simulation_clock.hpp/cpp转换平台秒数到整数毫秒，默认门槛在暂停/模态期间继续运行但不产生世界工作；重开清时钟。GetTime的单调观测代替Android墙钟是平台适配，原版实测FPS另验。
+ark_timing仅标准C++，不更改Game或领域的tick单位。original_loop.hpp/cpp提供已证绘制/输入门槛的数值查询：默认v21、整数47ms、等待后实际观测提交、超时不补算，以及正常场景的倍速轮数快照条件。最新LIFECYCLE/WORLD_SCHEDULE明确原版先更新主场景，再在框架绘制/输入路径等待；该纯查询接口本身不安排生命周期。
+simulation_clock.hpp/cpp转换平台秒数到整数毫秒；当前产品借用47ms参数调度独立离散更新，暂停/模态期间门槛继续运行但不产生世界工作，重开清时钟。它尚未复刻原版更新→绘制门槛生命周期；独立60FPS绘制和GetTime单调观测均为产品平台政策，实际原版节奏另验。
 显式--tick-rate才采用fixed_step_clock.hpp/cpp：阻塞清积累、恢复丢弃跨阻塞间隔、每次最多8次补算并丢弃超限时间，作为固定频率实验保留。绘制截止由desktop管理，不进入本包。
 本轮消费加载后576格/8实例快照；1456步后保守停止，防止跳过未闭合月报费用，不是完整原版AI/结算。
 facility_queries.cpp提供只读经营/邻接视图，按当前完整实例占地排除被建筑覆盖的当前道路，不缓存第二份可变状态。
@@ -46,14 +46,15 @@ live_life_context.cpp从当前地图、设施、施工阶段、邻接、等级/�
 关闭首访教程后自主生活与日期、施工共用正常更新资格；暂停/菜单/建设模态冻结它们，恢复不积累逻辑债务，倍速每次重新验资格。首个月报准备前1456步保护保留。
 live_departure.cpp/live_motion.cpp接类别4门口设施→活动6→真实地面路线→P到达转5→同次d执行10小步漫游；c不提前刷新旧s，目标O与缓存位置独立，r清理保留原O/路径身份。
 正常出发显式启用已证reverse_equal_cost和max_expanded_cost，严格初局诊断默认搜索不变。普通FIFO成功8早停而24/失败r继续同次解释，d前缀仅执行一次。
-下一c5触及L前缺minimum_y/遭遇聚合而交接；minimum_y不能猜town.bottom，状态0的L也尚未接，不宣称完整c。共享home D缺初值时类别3/活动5保留请求；显式home夹具可验证实际Map.f出口0/26、定义m1与退休，但不写初始m。
+live_daily.cpp接state0的L→P及state5的表情8→HP/城外计数重选→L；c0重选执行真实状态转换，不在同次c重复P。L按启动区域下限2、实际空怪物名单与研究初始上限4资格懒抽1000，state0概率0仍消费；state5只有票号<13才保存spawn_ticket/spawn_center并交接真实遭遇创建请求，其余正常漫游继续。
+无继承首访的D=[0,0,0,0]编译为home坐标/状态/第四槽，m0归Game共享定义表；类别3/活动5可走真实Map.f出口0/26并写m1退休。未知home输入仍明确交接，不把reset事实推广到读档/继承/其他定义。
 未接活动/装备选择保留真实队列与pending_category/pending_definition/pending_activity，局部error停止该人物并向UI交接；日期、施工继续。该保护是产品边界，不能称为原版等待或通过重抽跳过。
 
 ## 主程序可视预览
 
 Game的PlayMode::ai_preview明确选择有限初局窗口。game_ai_preview.cpp拥有接通、整轮执行和UI投影；InitialAiSession仍是AI状态唯一事实来源。
 先执行真实首访，首目标决策在教程同轮完成；普通模态/暂停资格冻结后续AI。desktop直接安排首访后的视图供--ai-preview查看。
-round_random只在需要时按实际权重生成类别/设施票号与退出满足度/属性票号。会话与mt19937均准备副本，错误不消费随机状态；不是APK随机实现。
+random.hpp/cpp的RandomStream由Game唯一持有，按研究Java48位LCG生成nextInt，再有符号取余绝对值；不是nextInt(bound)/均匀分布。明确seed与raw tape供复现，不代表已观测APK默认seed。正常/预览在实际消费点抽取；会话与随机均准备副本，失败不消费随机状态。正常首访前段先提交出生消费，后段人物候选失败只回滚自己的消费。当前已接消费者的次序可验，完整未接场景/世界消费者仍不能声称全局APK随机等价。
 Game.state的money/adventurer/definition_progress是预览的只读UI投影，建设命令在此模式拒绝，没有第二个业务写入者。
 不推进首访之后的日历、不允许改图，不接战斗/救援/离场；未知类别/回退或1000轮保护结束，窗口可重启，错误可查询ai_error。
 普通PlayMode::startup提供建设/首访和当前村庄生活，不创建持久预览会话；预览仍作为严格初局golden诊断，与正常有限生活各自验收。

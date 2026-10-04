@@ -6,7 +6,6 @@
 #include "ark/facilities/neighbourhood.hpp"
 #include <map>
 #include <optional>
-#include <random>
 
 namespace ark::app {
 enum class Mode { normal, catalog, placement, tutorial, camera, research_boundary };
@@ -39,8 +38,7 @@ struct State {
     std::optional<people::Adventurer> adventurer;
     std::optional<LifeActorState> life;
     std::optional<LifeActorState> retired_life; // Retained diagnostic identity, never scheduled.
-    std::map<int, int>
-        departed_definitions; // Shared definition m writes; no guessed initial state.
+    std::map<int, int> departed_definitions;    // Shared definition m, including reset facts.
     std::map<facilities::InstanceId, FacilityLifeState> facility_life;
     Mode mode{Mode::normal};
     std::optional<int> selection;
@@ -52,6 +50,9 @@ struct State {
 class Game {
   public:
     explicit Game(std::uint32_t random_seed = 20261003U, PlayMode play = PlayMode::startup);
+    // Observed raw tape / explicit Java seed for replay checks, using the same normal owner.
+    explicit Game(RandomStream random, PlayMode play = PlayMode::startup);
+    std::size_t random_draws() const { return random_.draws(); }
     const State &state() const { return state_; }
     bool ai_preview_enabled() const { return play_ == PlayMode::ai_preview; }
     const InitialAiState *ai_state() const { return ai_ ? &ai_->state() : nullptr; }
@@ -76,12 +77,10 @@ class Game {
     Error confirm(world::Cell anchor);
     void cancel();
     void set_paused(bool value) { state_.paused = value; }
-    // Camera interpolation is presentation, not a source common-world pause gate.
-    bool simulation_eligible() const {
-        return !state_.paused && (state_.mode == Mode::normal ||
-                                  (!ai_preview_enabled() && state_.mode == Mode::camera));
-    }
-    // Eligibility is reread before every speed iteration; tutorials and construction UI block.
+    // The introductory actor camera is MainScene state6: it runs no world or calendar update.
+    // This differs from the camera-delay field inside an already admitted UserData.e().
+    bool simulation_eligible() const { return !state_.paused && state_.mode == Mode::normal; }
+    // Current slice rechecks world eligibility per speed step; full scene routing is pending.
     Error update(int speed = 1);
     Error acknowledge_talk();
     Error finish_camera();
@@ -96,7 +95,7 @@ class Game {
     void start_village_life();
     void project_village_actor();
     State state_;
-    std::mt19937 random_;
+    RandomStream random_;
     PlayMode play_;
     std::optional<InitialAiSession> ai_;
     InitialAiError ai_error_{InitialAiError::none};

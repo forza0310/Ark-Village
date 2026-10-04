@@ -52,7 +52,7 @@ InitialAiError InitialAiSession::cleanup(InitialAiState &s) const {
     s.active_facility.reset();
     return InitialAiError::none;
 }
-InitialAiError InitialAiSession::live_decision(InitialAiState &s, std::mt19937 *) const {
+InitialAiError InitialAiSession::live_decision(InitialAiState &s, RandomStream *random) const {
     if (!people::world_cell(s.position) || s.control.state < 0 || s.control.state > 20)
         return InitialAiError::invalid_input;
     const auto prefix = people::prepare_actor_decision_prefix(s.control.flags, 0, 0, s.hp.target,
@@ -62,7 +62,8 @@ InitialAiError InitialAiSession::live_decision(InitialAiState &s, std::mt19937 *
     s.control.flags = prefix->flags;
     s.move_area_before = move_area(map_, s);
     const bool inside = people::inside_town(s.cached_cell, town_bounds());
-    // Evaluate real F from the current empty event/task roster, rather than passing an allow flag.
+    // This empty event/task F has no side effects and cannot succeed. When those owners are
+    // populated, move F into the researched P/c5 positions; do not feed live rosters here.
     people::EventGateInput gate;
     gate.actor.flags = s.control.flags;
     gate.actor.state_counter = s.counters.state;
@@ -77,17 +78,13 @@ InitialAiError InitialAiSession::live_decision(InitialAiState &s, std::mt19937 *
         return InitialAiError::unsupported_branch;
     if (s.control.state == 14)
         return decision(s, {});
-    // The existing normal-life slice does not yet own L's unlocked-region minimum_y or
-    // encounter catalogue. Do not substitute the village boundary for that missing fact.
-    // P/control10 are callable below, but a subsequent state5 c must hand off before L.
-    if (s.control.state == 5 && !(s.control.flags & 16U)) {
-        s.handoff = LifeHandoff::encounter_creation;
-        s.error = InitialAiError::unsupported_branch;
-        s.pending_activity = 6;
-        return InitialAiError::none;
-    }
+    if (s.control.state == 5)
+        return live_idle(s, random); // Never fall through to P after a c0 reselection.
     if (s.control.state != 0)
         return InitialAiError::none;
+    const auto probe = live_spawn(s, random); // Original L precedes P, even in state0.
+    if (probe != InitialAiError::none || s.error != InitialAiError::none)
+        return probe;
     const auto *route = s.journey         ? &s.journey->route
                         : s.unbound_route ? &*s.unbound_route
                                           : nullptr;
@@ -153,7 +150,7 @@ InitialAiError InitialAiSession::live_decision(InitialAiState &s, std::mt19937 *
         ++s.waypoint;
     return InitialAiError::none;
 }
-InitialAiError InitialAiSession::live_wander(InitialAiState &s, std::mt19937 *random) const {
+InitialAiError InitialAiSession::live_wander(InitialAiState &s, RandomStream *random) const {
     people::ActorWanderInput input;
     input.parameter = s.control.queue.front()[1];
     input.actor = s.cached_cell;
@@ -169,14 +166,24 @@ InitialAiError InitialAiSession::live_wander(InitialAiState &s, std::mt19937 *ra
     if (!preview)
         return InitialAiError::preparation_failed;
     input.tickets.clear();
-    const auto draw = [&](int bound) {
-        return random ? std::uniform_int_distribution<int>(0, bound - 1)(*random) : 0;
+    const auto draw = [&](int bound) -> bool {
+        if (!random) {
+            input.tickets.push_back(0); // Explicit ticket-driven fixture, not normal RNG policy.
+            return true;
+        }
+        const auto result = random->draw(bound);
+        if (result.error != RandomError::none)
+            return false;
+        input.tickets.push_back(result.ticket);
+        return true;
     };
-    if (preview->cells.empty())
-        input.tickets.push_back(draw(100));
-    else
+    if (preview->cells.empty()) {
+        if (!draw(100))
+            return InitialAiError::preparation_failed;
+    } else
         for (const auto bound : {static_cast<int>(preview->cells.size()), 80, 80, 100, 100, 4, 20})
-            input.tickets.push_back(draw(bound));
+            if (!draw(bound))
+                return InitialAiError::preparation_failed;
     const auto planned = people::prepare_actor_wander(input);
     if (!planned)
         return InitialAiError::preparation_failed;

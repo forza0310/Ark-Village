@@ -34,10 +34,14 @@ void Game::step_normal_world() {
                 first_visit = state_.event89_count == 0 && --state_.arrival_counter == 0;
                 if (first_visit) {
                     const auto &data = startup_data();
-                    const auto choice = std::uniform_int_distribution<std::size_t>(
-                        0, data.spawn_points.size() - 1)(candidate_random);
-                    state_.adventurer =
-                        people::first_visit(data.first_character, data.spawn_points[choice]);
+                    const auto choice = random_.draw(static_cast<int>(data.spawn_points.size()));
+                    if (choice.error != RandomError::none)
+                        throw std::logic_error("First visitor random stream unavailable");
+                    // Birth belongs to the committed world front. A later failed actor candidate
+                    // may discard its own draws, but cannot undo this already-created visitor.
+                    candidate_random = random_;
+                    state_.adventurer = people::first_visit(data.first_character,
+                                                            data.spawn_points.at(choice.ticket));
                     ++state_.event89_count;
                     state_.mode = Mode::tutorial;
                     start_village_life();

@@ -332,7 +332,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << " canvas=" << canvas.extent.width << 'x' << canvas.extent.height << '\n';
     if (options.frames)
         std::cout << "Simulation: pacing="
-                  << (simulation_clock.original_pacing() ? "original47ms" : "fixed")
+                  << (simulation_clock.original_pacing() ? "product47ms" : "fixed")
                   << " tick_rate_override=" << options.tick_rate
                   << " outer_updates=" << outer_updates
                   << " elapsed_seconds=" << GetTime() - loop_start

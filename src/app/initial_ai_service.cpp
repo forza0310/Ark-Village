@@ -74,7 +74,7 @@ InitialAiError InitialAiSession::arrive(InitialAiState &s) const {
 }
 // Validate exit and delayed tail before applying shared use, release and satisfaction together.
 InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets &tickets,
-                                      std::mt19937 *random) const {
+                                      RandomStream *random) const {
     if (!s.active_facility)
         return InitialAiError::preparation_failed;
     const auto binding = *s.active_facility;
@@ -109,10 +109,18 @@ InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets 
     i.effects = initial_ai_rules().services.at(d.id).effects;
     i.effect_ticket = tickets.attribute;
     if (random && d.activity_category == 1 && d.activity_detail == 0) {
-        i.satisfaction.ticket = std::uniform_int_distribution<int>(0, 9)(*random);
-        if (!i.effects.empty())
-            i.effect_ticket = std::uniform_int_distribution<int>(
-                0, static_cast<int>(i.effects.size()) - 1)(*random);
+        const auto satisfaction = random->draw(10);
+        if (satisfaction.error != RandomError::none)
+            return InitialAiError::preparation_failed;
+        i.satisfaction.ticket = satisfaction.ticket;
+        if (!i.effects.empty() && !i.effect_ticket) {
+            if (i.effects.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                return InitialAiError::invalid_input;
+            const auto attribute = random->draw(static_cast<int>(i.effects.size()));
+            if (attribute.error != RandomError::none)
+                return InitialAiError::preparation_failed;
+            i.effect_ticket = attribute.ticket;
+        }
     }
     i.equipment.old_weapon = s.current_weapon;
     i.equipment.new_weapon = s.selected_weapon.value_or(s.current_weapon);
@@ -153,7 +161,7 @@ InitialAiError InitialAiSession::execution_prefix(InitialAiState &s) const {
 }
 // FIFO continuation never repeats the common d prefix (including after failed departure).
 InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTickets &tickets,
-                                           std::mt19937 *random) const {
+                                           RandomStream *random) const {
     for (int budget = 0; budget < 128; ++budget) {
         const auto prefix = people::prepare_local_control_prefix(s.control);
         if (!prefix.candidate)

@@ -6,7 +6,7 @@
 namespace ark::app {
 InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
                                              const InitialAiTickets &tickets,
-                                             std::mt19937 *random) const {
+                                             RandomStream *random) const {
     if (s.control.queue.empty() || s.control.queue.front()[0] != 8 || activity < 0 || activity > 8)
         return InitialAiError::invalid_input;
     // Control8 consumes itself BEFORE o; normal failure keeps G/H cleanup and replaces FIFO via r.
@@ -38,13 +38,24 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
     if (!collected.snapshot)
         return InitialAiError::preparation_failed;
     const auto &snapshot = *collected.snapshot;
+    RandomError draw_error = RandomError::none;
     const auto draw = [&](std::int64_t bound, int fixed) -> std::optional<int> {
-        if (bound <= 0 || bound > std::numeric_limits<int>::max())
+        if (bound < 0 || bound > std::numeric_limits<int>::max())
             return {};
-        const int v =
-            random ? std::uniform_int_distribution<int>(0, static_cast<int>(bound) - 1)(*random)
-                   : fixed;
+        int v = fixed;
+        if (random) {
+            const auto result = random->draw(static_cast<int>(bound));
+            if (result.error != RandomError::none) {
+                draw_error = result.error;
+                return {};
+            }
+            v = result.ticket;
+        }
         return v >= 0 && v < bound ? std::optional<int>(v) : std::nullopt;
+    };
+    const auto failed_draw = [&] {
+        return draw_error == RandomError::none ? InitialAiError::invalid_input
+                                               : InitialAiError::preparation_failed;
     };
     std::optional<world::Cell> goal;
     std::optional<int> category;
@@ -75,7 +86,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
             if (!category && plan.plan->total_weight > 0) {
                 const auto ticket = draw(plan.plan->total_weight, tickets.category);
                 if (!ticket)
-                    return InitialAiError::invalid_input;
+                    return failed_draw();
                 std::vector<std::int64_t> weights;
                 for (const auto &option : plan.plan->options)
                     weights.push_back(option.weight);
@@ -94,7 +105,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
         } else if (activity == 7) {
             const auto ticket = draw(snapshot.cells.size(), tickets.facility);
             if (!ticket)
-                return InitialAiError::invalid_input;
+                return failed_draw();
             goal = snapshot.cells[*ticket].position;
         } else if (activity != 2 && activity != 3) {
             s.pending_activity = activity;
@@ -114,7 +125,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
             if (s.home->state == 1) {
                 const auto t = draw(100, tickets.facility);
                 if (!t)
-                    return InitialAiError::invalid_input;
+                    return failed_draw();
                 const auto &tile = map_.cells[map_.index(s.home->cell)];
                 if (*t < 90 && s.cached_cell.x != s.home->cell.x &&
                     s.cached_cell.y != s.home->cell.y && tile.facility &&
@@ -131,7 +142,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
                 if (!goal) {
                     const auto t = draw(exits.size(), tickets.facility);
                     if (!t)
-                        return InitialAiError::invalid_input;
+                        return failed_draw();
                     goal = exits[*t];
                 }
             }
@@ -139,7 +150,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
             if (snapshot.category_counts[4] > 0) {
                 const auto t = draw(snapshot.category_counts[4], tickets.facility);
                 if (!t)
-                    return InitialAiError::invalid_input;
+                    return failed_draw();
                 const auto selected = people::select_counted_category_four(snapshot, *t);
                 if (!selected.target)
                     return InitialAiError::preparation_failed;
@@ -149,7 +160,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
             for (int attempt = 0; attempt < 6; ++attempt) {
                 const auto t = draw(snapshot.cells.size(), tickets.facility);
                 if (!t)
-                    return InitialAiError::invalid_input;
+                    return failed_draw();
                 const auto p = snapshot.cells[*t].position;
                 if (attempt == 5 || p.y >= town.bottom + 2) {
                     goal = p;
@@ -165,7 +176,7 @@ InitialAiError InitialAiSession::live_depart(InitialAiState &s, int activity,
             if (weight > 0) {
                 const auto t = draw(weight, tickets.facility);
                 if (!t)
-                    return InitialAiError::invalid_input;
+                    return failed_draw();
                 const auto selected = people::select_snapshot_facility(snapshot, *category, *t);
                 if (!selected.target)
                     return InitialAiError::preparation_failed;

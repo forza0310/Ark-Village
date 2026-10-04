@@ -4,13 +4,13 @@
 // current-village adapter. Normal Game owns durable state and submits the prepared candidate.
 #include "ark/app/initial_ai_data.hpp"
 #include "ark/app/life_state.hpp"
+#include "ark/app/random.hpp"
 #include "ark/app/startup_data.hpp"
 #include "ark/economy/cash.hpp"
 #include "ark/facilities/neighbourhood.hpp"
 #include "ark/facilities/service.hpp"
 #include "ark/people/departure.hpp"
 #include "ark/people/hp.hpp"
-#include <random>
 namespace ark::app {
 class Game;
 struct InitialAiTickets {
@@ -40,26 +40,29 @@ class InitialAiSession {
     // One admitted c/d round: invalid input discards all edits. The live adapter can successfully
     // hand off an unsupported choice with its proven preceding actions and queue retained.
     InitialAiError round(const InitialAiTickets &tickets);
-    // Desktop preview policy: draw only at the rule's consumption point. A failed round also
-    // discards RNG consumption; this is not a replay of the APK's random generator.
-    InitialAiError round_random(std::mt19937 &random);
+    // Draw the shared Java-semantic stream only at actual rule consumption points. A failed round
+    // discards RNG consumption; the explicit seed is not the APK's unobserved default seed.
+    InitialAiError round_random(RandomStream &random);
 
   private:
     friend class Game; // Same-owner schedule consumes split c/d phases before one commit.
     InitialAiSession() = default;
-    InitialAiError prepare_round(const InitialAiTickets &, std::mt19937 *);
+    InitialAiError prepare_round(const InitialAiTickets &, RandomStream *);
     InitialAiError decision(InitialAiState &, const InitialAiTickets &) const;
-    InitialAiError execution(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
-    InitialAiError depart(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
+    InitialAiError execution(InitialAiState &, const InitialAiTickets &, RandomStream *) const;
+    InitialAiError depart(InitialAiState &, const InitialAiTickets &, RandomStream *) const;
     InitialAiError live_depart(InitialAiState &, int activity, const InitialAiTickets &,
-                               std::mt19937 *) const;
-    InitialAiError live_decision(InitialAiState &, std::mt19937 *) const;
-    InitialAiError live_wander(InitialAiState &, std::mt19937 *) const;
+                               RandomStream *) const;
+    InitialAiError live_decision(InitialAiState &, RandomStream *) const;
+    // State0/5 L and human idle decisions, separate from path P and d/FIFO execution.
+    InitialAiError live_spawn(InitialAiState &, RandomStream *) const;
+    InitialAiError live_idle(InitialAiState &, RandomStream *) const;
+    InitialAiError live_wander(InitialAiState &, RandomStream *) const;
     InitialAiError execution_prefix(InitialAiState &) const;
     InitialAiError live_tail(InitialAiState &) const;
     InitialAiError cleanup(InitialAiState &) const;
     InitialAiError arrive(InitialAiState &) const;
-    InitialAiError exit(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
+    InitialAiError exit(InitialAiState &, const InitialAiTickets &, RandomStream *) const;
     world::RouteMap map_;
     std::vector<facilities::InstanceId> instance_order_;
     std::map<facilities::InstanceId, facilities::Neighbourhood> neighbourhoods_;

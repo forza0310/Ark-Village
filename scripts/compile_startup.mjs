@@ -79,6 +79,10 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
          'Initial job-derived quote changed');
   }
   const first = state.first_arrival;
+  // These facts certify only no-inheritance reset -> first arrival, not general actor defaults.
+  need(Array.isArray(first.legacy_D) && first.legacy_D.length === 4 &&
+       first.legacy_D.every(value => value === 0) && first.legacy_m === 0,
+       'First visitor shared reset fields changed');
   // STARTUP documents only this finite initial cohort: two job1 farmers and one job2 carpenter.
   // Do not generalize the unknown ten-category mapping to arbitrary later professions.
   need(state.reset.unlocked_character_definitions.join(',') === '1,2,3', 'Initial profession cohort changed');
@@ -98,6 +102,8 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
   need(state.resources.money === 5000 && state.resources.village_points === 10 && state.resources.popularity === 50 &&
        state.reset.arrival_counter === 420, 'Opening resources changed');
   need(state.reset.active_boundary_index === 0, 'Loaded reset boundary region changed');
+  need(state.boundary.character_spawn_minimum_y === 2 && state.boundary.world_overlap_boundary_y === 2,
+       'Initial world lower Y boundary changed');
   const definitions = [...rows].map(([id, row]) => {
     const item = catalog.get(id);
     const display = [...displays.values()].find(v => decimal(v[5]) === id);
@@ -134,7 +140,9 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
     `${integer(first.job_level)},${integer(first.effort)},${integer(first.satisfaction)},${array(first.derived_attributes,6)},` +
     `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},2,{0,0},0},\n` +
     `{${talk.map(text).join(',')}},${array(jobCounts,10)},\n` +
-    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}},${integer(state.reset.active_boundary_index)}}; return value; }\n` +
+    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}},${integer(state.reset.active_boundary_index)},\n` +
+    `${array(first.legacy_D,4)},${integer(first.legacy_m)},${integer(state.boundary.character_spawn_minimum_y)},` +
+    `${integer(state.boundary.world_overlap_boundary_y)}}; return value; }\n` +
     compileInitialAi(entries, first, rows) + '}\n';
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

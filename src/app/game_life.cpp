@@ -23,6 +23,8 @@ void Game::start_village_life() {
     actor.current_weapon = visitor.equipment[0];
     actor.weapon_reselect_counter = rules.weapon_reselect_counter;
     actor.satisfaction = visitor.satisfaction;
+    const auto &home = startup_data().first_character_home;
+    actor.home = LifeHome{{home[0], home[1]}, home[2], home[3]};
     state_.life = std::move(actor);
     // The common scheduler admits this new actor to the same round c/d.
 }

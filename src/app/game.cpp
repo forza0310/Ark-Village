@@ -5,7 +5,9 @@
 #include <stdexcept>
 
 namespace ark::app {
-Game::Game(std::uint32_t random_seed, PlayMode play) : random_(random_seed), play_(play) {
+Game::Game(std::uint32_t random_seed, PlayMode play)
+    : Game(RandomStream::from_java_seed(random_seed), play) {}
+Game::Game(RandomStream random, PlayMode play) : random_(std::move(random)), play_(play) {
     const auto &data = startup_data();
     state_.money = data.money;
     state_.accounting = economy::CashLedger(data.money);
@@ -13,6 +15,8 @@ Game::Game(std::uint32_t random_seed, PlayMode play) : random_(random_seed), pla
     state_.popularity = data.popularity;
     state_.calendar = data.calendar;
     state_.arrival_counter = data.arrival_counter;
+    state_.departed_definitions.emplace(data.first_character.definition_id,
+                                        data.first_character_definition_state);
     for (const auto &item : data.definitions)
         state_.definition_progress.emplace(item.id, facilities::Progress{});
     // Keep original vector order and raw zero through the reset-only raw+1 mapping. Runtime
@@ -152,9 +156,11 @@ void Game::step() {
     const bool first_visit = state_.event89_count == 0 && --state_.arrival_counter == 0;
     if (first_visit) {
         const auto &data = startup_data();
-        const auto choice =
-            std::uniform_int_distribution<std::size_t>(0, data.spawn_points.size() - 1)(random_);
-        state_.adventurer = people::first_visit(data.first_character, data.spawn_points[choice]);
+        const auto draw = random_.draw(static_cast<int>(data.spawn_points.size()));
+        if (draw.error != RandomError::none)
+            throw std::logic_error("First visitor random stream unavailable");
+        state_.adventurer =
+            people::first_visit(data.first_character, data.spawn_points.at(draw.ticket));
         ++state_.event89_count; // Latch before showing dialogue, never again on close.
         state_.mode = Mode::tutorial;
         start_ai_preview();

@@ -12,6 +12,16 @@ void check(bool pass, const char *message) {
     if (!pass)
         throw std::runtime_error(message);
 }
+bool same_random(app::RandomStream a, app::RandomStream b) {
+    if (a.draws() != b.draws() || a.raw_cursor() != b.raw_cursor())
+        return false;
+    for (int n = 0; n < 16; ++n) {
+        const auto x = a.draw(701), y = b.draw(701);
+        if (x.error != y.error || x.raw != y.raw || x.ticket != y.ticket || x.ordinal != y.ordinal)
+            return false;
+    }
+    return true;
+}
 app::Game initial(std::uint32_t seed) {
     app::Game game(seed, app::PlayMode::ai_preview);
     check(game.open_catalog() == app::Error::unavailable, "preview cannot modify source layout");
@@ -125,12 +135,12 @@ void random_rollback() {
     for (int n = 0; n < 420; ++n)
         source.update();
     app::InitialAiSession ai(source, source.state().adventurer->cell);
-    std::mt19937 random(1);
+    auto random = app::RandomStream::from_java_seed(1);
     for (int n = 0; n < 1000; ++n) {
         const auto saved = ai.state();
         const auto before = random;
         if (ai.round_random(random) != app::InitialAiError::none) {
-            check(random == before && ai.state().rounds == saved.rounds &&
+            check(same_random(random, before) && ai.state().rounds == saved.rounds &&
                       ai.state().control.queue == saved.control.queue &&
                       ai.state().accounting.entries() == saved.accounting.entries() &&
                       ai.state().completions == saved.completions,

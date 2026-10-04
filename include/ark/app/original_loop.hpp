@@ -1,13 +1,13 @@
 // Adapted from published research 1e50a60/c4ce4b2; independent product build.
 #pragma once
 
-// Platform clock adapter for the fixed APK's b.b gate. Domain logic still receives update counts.
+// Pure arithmetic for the fixed APK's render/input gate; placement is a caller contract.
 #include <cstdint>
 #include <optional>
 
 namespace ark::app {
 struct OriginalLoopPacing {
-    std::int64_t last_start_ms{}; // s set AFTER waiting, BEFORE input/scene update/drawing.
+    std::int64_t last_start_ms{}; // s committed after render/input wait; scene already updated.
     int parameter{20};            // e()==v-1; constructor v21. Not the measured x/w FPS estimate.
 };
 struct OriginalLoopWait {

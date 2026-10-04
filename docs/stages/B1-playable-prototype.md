@@ -55,7 +55,7 @@
 - 1456模拟步后保守结束本轮，可重新开始；这是产品研究边界，不是原版结束条件，不跳过未闭合月报费用。
 - SEB结构保留完整记录，PNG边界只校验实际请求帧；草地frame3/海面未用frame1/2不当成正在绘制的非法图块。
 - inspect-page为有界渲染检查，不能记为正常新局或真实鼠标输入；四页原版人物名单尚未接入。
-- 当前增量：正常Game复用已证设施生活链、当前地图与现金账本，新增35/45普通服务字段；战斗策略/共同更新和探索队伍/完成仍属独立底层。默认原版47ms门槛与60FPS绘制独立排期，完整世界/任务/装备商店分支按依赖继续组合。最新覆盖见本文最后一批及原版对照矩阵。
+- 当前增量：正常Game复用已证设施生活链、当前地图与现金账本，新增35/45普通服务字段；Java共享随机、D/m初值和c0/c5日常决策按本文最新批次接入。47ms独立更新与60FPS绘制是桌面政策，原render/input生命周期未完整迁入。完整世界/任务/装备商店分支按依赖继续组合，最新覆盖见本文最后一批及原版对照矩阵。
 
 ## 模块与依赖
 
@@ -601,3 +601,50 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
 - 截图 `/tmp/ark-world-integration-final.png`；新增“遭遇”字库已复查，日志
   `/tmp/ark-world-window-final.log`。血条没有用虚构战斗作窗口展示；OS鼠标和APK动态仍未验。
 - `git diff --check`与82个文档本地链接检查通过；本次只提交产品文件，研究侧并行交付保持独立。
+
+## 启动事实、随机与日常决策接入（2026-10-04）
+
+本节更新此前验收记录中的“D/m/下限缺证”“state5立即交接”“普通镜头放行”和“原版47ms更新门槛”结论；历史记录保留当时范围，不作为当前设计依据。
+
+用户确认“下一轮的产品侧接入”。先接已交付初值、随机消费者和当前场景资格，继续首人普通生活；完整脚本/月报/战斗世界仍需实际所有者与消费者，另阶段接入，不提供默认成功回调。
+
+设计与取舍：
+- Game仍唯一拥有地图、现金、人物与全局随机流。以Java48位LCG和原`abs(nextInt()%bound)`替换产品mt19937/均匀分布；明确种子与raw tape均为可重复测试输入，不声称复现APK默认seed。
+- 票号在实际分支懒消费，失败候选连同随机游标回滚。首访出生选择先提交到其所属前段；后续人物失败不得撤销已经发生的首访随机消费。
+- 接收无继承reset至首次到访的D=[0,0,0,0]、定义m=0、L下限y=2与共同重叠边界y=2；保留第四槽，不泛化到加载/继承/全体角色。共同重叠边界仅存事实，未接战斗配对不伪造消费者。
+- state0先L后P；state5先表情8，再按已证HP/城外计数进行c0重选，再L，不在同一次c落入P。表情8的变体数在两张平台表均为4，无需猜测平台谓词。
+- L资格通过才抽1000；state0仍抽但创建概率0，state5票号<13才请求遭遇。遭遇真实聚合尚未迁入时保留实际请求/票号/位置，局部交接，不把所有state5当成缺依赖。
+- 当前Mode::camera为首访后的scene6跟随镜头，应冻结人物/施工/日期；修正上一轮误把它当作UserData内部镜头延迟的放行。
+- 47ms来自原render/input后段限速，产品独立更新截止是桌面政策；保留更新/绘制分离与卡顿不补算，但撤回原框架循环等价声明。完整continue/skip/end及scene2/7/脚本轮次留待真正Scene Owner。
+
+冻结维护交付SHA256（只读research工作区，不提交研究文件）：
+| 源 | SHA256 |
+| --- | --- |
+| data/startup/STATE.json | e4152b144ecc65976665df86590a23f5a236f3a32bfabeae31d500f5a75ec359 |
+| rules/STARTUP.md | 6d56f8c181e01d71ff55debe29cb200c0b1acb029fec62cfdb9695103e85b2ae |
+| data/startup/README.md | 8db959b0998d98ced404b6bcb8a5acef5e91fdac405c1220d398cb3f2c5ad8bc |
+| example/include/dungeon_village_reference/world_random.hpp | 33de8b76d06b3680c0184f7daed7bb66a41dbb76ea8fad3d7386d59b1b93de55 |
+| example/src/world_random.cpp | ee88918a04b8014c1ff355211aeb75595e2c2405de2f7d246ed6649cd627386d |
+| example/tests/world_random_test.cpp | 977f9d5a238774fe62d7f728b5725381d782863d533c8ebf4d40ca5142874a4f |
+| example/src/world_daily.cpp | 8ef3c59afef2260f317711ec93d130b758f761372ae8fe9d70e18578601b2f7d |
+| example/src/world_random_consumers.cpp | 51c6f454313cb68ccbd6b4221697deeb41c6e52267949a949f0042b3a2e2ecd7 |
+| example/include/dungeon_village_reference/ai_rewards.hpp | 37c24a2b742cdbb6429bc581cefa7675a72dd66af2ec907a05265c2c710836d3 |
+| example/src/world_shop.cpp | 93e2035febd3edd53cd9c55bcb84ab3ede9a8101d5284b371d72c0c823707c63 |
+| example/src/world_scene.cpp | a808cf60ca9f17c018c458752f363a25fd7e0e7ad4726e340af3cb3e75cda8a1 |
+| rules/ai/WORLD_SCHEDULE.md | 865cd635ef0b25140d054432bcb9c9f588975e021789f335f25ec2ad5fca4785 |
+| rules/ai/LIFECYCLE.md | ae6968847b435eb270947518eb8aeea3d0d39bcacc64a91e1a04e979d479040f |
+| prototype/include/dungeon_village_prototype/loop_pacing.hpp | 57a8b82717f296274a0eaac00f047f8598d5ad4f31218d17c4d933fc364d1d56 |
+
+验收：原随机黄金/负数/零上限/耗尽/复制回滚；正常Game首访与D/m；raw tape证实L与表情的懒消费/无生成继续/真正请求交接/c0重选；保留真实离村及晚期回滚；镜头/暂停/施工/日期协同。四套配置/构建/CTest与有界正常窗口controller分别记录，OS输入和APK等价不由此推导。
+
+最终验收与边界：
+- 四套重新配置、构建、CTest全通过：headless Debug/Release各38/38，desktop Debug/Release各47/47，共170次测试执行。
+- java_random_stream通过11,042项，含Java seed0黄金、负余数/MIN/零界顺序/耗尽与复制游标；迁入模块独立UBSan检查也通过。
+- live_world_paths_and_exit通过2,252项，含旧s/y2资格、state0零概率仍抽、state5表情概率/变体/抑制/bit16、L真实票号与中心、重选c0及同次不落P、晚期随机/效果/队列回滚。
+- normal_village_life通过6,283项，新增真实D四槽/m0、出生raw归属及后段耗尽回滚/复制Game/出生失败整轮回滚；教程/镜头/暂停、资金/施工/日期及建设阶段回归继续通过。初局预览109,970项通过，原六条显式票号黄金仍保留。
+- 桌面首轮发现旧seed20261004预览可见性测试依赖mt19937路径。改为明确raw tape夹具分别验证成功退出释放/显示和后续失败保持占用/隐藏；另保留同一Java seed的首次退出失败强回归，核对真实现金/队列/人物轮次/随机游标不变。没有改产品seed或放宽断言。最终两套desktop均通过。
+- 正常窗口`--verify-play --frames 3000`，无预览、无tick-rate覆盖、无安排首访快照：51.4143秒/975次外层更新/最小间隔47ms，真实首访1次、人物515轮、到达2次（含入口）、设施完成1次，施工0，现金/账本均5000G（初始5000+武器收入400-建设400）。controller的移动/收入/占用/释放/入店隐藏/退出显示/施工/暂停恢复全部PASS。
+- 1080×720点窗口，framebuffer/canvas为2160×1440；截图`/tmp/ark-random-daily-final.png`已目视核对中文、素材及栅栏。最终人物到野外后位于当前视口之外；日志可见性表示允许提交，不等于截图内可见。未新增OS鼠标或APK动态等价验收。
+- Java fixture seed20261004正常路径为出生(12,0)→武器店30→入口(11,10)→地面(19,18)，L票号7触发真实创建消费者交接。只读观察seed0..31均在806..1306步触及该边界，尚无正常新局退休轨迹；出口0/26/m1由显式活动5会话条件验证，不宣称自然退休全链已验。
+- 完整遭遇/战斗、脚本/页面、Scene Owner、真实日历/月报及后续到访继续列产品迁入待办；1456步保护保留。当前空任务/事件的F无副作用，接入真实名单时须移到原P/c5分支时点，不能直接给提前空检查填数据。
+- 105份素材来源哈希、108个产品文档本地链接、clang-format和`git diff --check`通过。只提交产品侧本批文件，research并行工作区不修改、不夹带。所有本批窗口及构建测试进程已结束。

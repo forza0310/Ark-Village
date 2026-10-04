@@ -10,8 +10,8 @@
     {
       "file": "data/STATE.json",
       "source": "research/dungeon_village_1/data/startup/STATE.json",
-      "sha256": "498cd28255032820baf9ad0acbf036f3273437a3b6737af91cd7b7a4049f6d12",
-      "bytes": 7604
+      "sha256": "e4152b144ecc65976665df86590a23f5a236f3a32bfabeae31d500f5a75ec359",
+      "bytes": 7724
     },
     {
       "file": "data/TABLES.json",

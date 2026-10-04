@@ -49,7 +49,8 @@ std::string fingerprint(const app::Game &game) {
     std::ostringstream out;
     out << std::setprecision(17) << s.simulation_steps << ',' << s.money << ',' << s.next_cash_id
         << ',' << s.layout_revision << ',' << s.arrival_counter << ',' << s.event89_count << ','
-        << static_cast<int>(s.mode) << ',' << s.selection.value_or(-1) << ',' << s.paused;
+        << static_cast<int>(s.mode) << ',' << s.selection.value_or(-1) << ',' << s.paused << ','
+        << game.random_draws();
     for (const auto n : s.calendar)
         out << ',' << n;
     for (const auto &[id, f] : s.facilities)
@@ -98,6 +99,10 @@ facilities::InstanceId build(app::Game &game, int definition, world::Cell cell) 
 // Observe the complete first service in normal startup, including the actual once-only payment.
 void autonomous_lifecycle() {
     auto game = arrived();
+    const auto &home = game.life_state()->home;
+    check(home && home->cell == world::Cell{0, 0} && home->state == 0 && home->fourth_slot == 0 &&
+              game.state().departed_definitions.at(1) == 0,
+          "normal no-inheritance reset preserves all four shared D slots and initial m0");
     check(game.life_state()->departures == 1 && game.life_state()->journey &&
               game.life_state()->rounds == 1 && !game.state().adventurer->pending_activity,
           "first visitor selects a facility in its admitted arrival round");
@@ -143,6 +148,45 @@ void autonomous_lifecycle() {
               context.state().accounting.entries() == game.state().accounting.entries(),
           "next AI context retains actual shared progress and cash history");
     reconcile(game);
+}
+
+// Birth and actor work belong to distinct schedule stages inside the same Game transaction.
+// A late actor failure rolls back its draws, while the already-created first visitor stays valid.
+void random_front_ownership() {
+    app::Game game(app::RandomStream::from_raw({-1}));
+    steps(game, 419);
+    check(game.random_draws() == 0 && !game.life_state(),
+          "countdown has no speculative random draws");
+    auto twin = game;
+    steps(game, 1);
+    steps(twin, 1);
+    check(game.random_draws() == 1 && game.state().adventurer && game.life_state() &&
+              game.state().adventurer->cell == app::startup_data().spawn_points.at(1) &&
+              game.life_state()->error == app::InitialAiError::preparation_failed &&
+              game.life_state()->rounds == 0 && game.state().money == 5000 &&
+              game.life_state()->control.queue == std::vector<people::LegacyActorControl>{{8, 0}},
+          "birth raw remains consumed while exhausted later AI draw and FIFO are rolled back");
+    check(fingerprint(game) == fingerprint(twin),
+          "copied normal Game owns an independent but reproducible random tape");
+    close_tutorial(game);
+    const auto work = build(game, 28, {7, 3});
+    const auto date = game.state().calendar;
+    steps(game, 1);
+    check(game.random_draws() == 1 && game.state().calendar != date &&
+              game.state().facilities.at(work).remaining_ticks == 279,
+          "failed actor does not reconsume birth or block current construction and date");
+
+    app::Game exhausted(app::RandomStream::from_raw({}));
+    steps(exhausted, 419);
+    const auto before = fingerprint(exhausted);
+    bool rejected{};
+    try {
+        exhausted.update();
+    } catch (const std::logic_error &) {
+        rejected = true;
+    }
+    check(rejected && fingerprint(exhausted) == before && !exhausted.life_state(),
+          "failed birth preparation discards the complete normal Game update");
 }
 
 // Menus, pause and placement suspend all owners together; admitted double steps match single steps.
@@ -408,6 +452,7 @@ void actor_handoff_and_month_boundary() {
 int main() {
     try {
         autonomous_lifecycle();
+        random_front_ownership();
         qualification_and_speed();
         live_construction();
         construction_qualification();

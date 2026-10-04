@@ -101,12 +101,48 @@ void first_arrival() {
     check(game.state().mode == app::Mode::camera, "camera after talk");
     const auto camera = snapshot(game);
     steps(game, 100);
-    check(snapshot(game) != camera, "camera interpolation does not pause the source world");
+    check(snapshot(game) == camera, "introductory actor camera runs no world or date update");
     game.finish_camera();
     steps(game, 100);
     check(game.state().event89_count == 1 && game.state().adventurer->uid == 0,
           "no duplicate on close");
     check(game.acknowledge_talk() == app::Error::wrong_mode, "reject repeat acknowledgement");
+}
+void introductory_camera_freezes_world() {
+    app::Game game;
+    steps(game, 419);
+    check(game.open_catalog() == app::Error::none && game.select(28) == app::Error::none &&
+              game.confirm({7, 3}) == app::Error::none,
+          "start actual construction immediately before first arrival");
+    const auto building = *game.facility_at({7, 3});
+    game.cancel();
+    check(game.update() == app::Error::none && game.state().mode == app::Mode::tutorial &&
+              game.state().facilities.at(building).remaining_ticks == 279,
+          "arrival round advances construction before entering the actor camera");
+    check(game.acknowledge_talk() == app::Error::none &&
+              game.acknowledge_talk() == app::Error::none && game.state().mode == app::Mode::camera,
+          "close actual first-visitor dialogue");
+    const auto before = snapshot(game);
+    const auto actor = *game.life_state();
+    const auto ledger = game.state().accounting.entries();
+    check(!game.simulation_eligible(), "state6 is not a common-world admission");
+    for (int i = 0; i < 100; ++i)
+        check(game.update(2) == app::Error::none, "camera rejects both requested world steps");
+    const auto &after = *game.life_state();
+    check(snapshot(game) == before && game.state().accounting.entries() == ledger,
+          "camera preserves date, steps, construction, actor projection and actual cash entries");
+    check(after.rounds == actor.rounds && after.position.x == actor.position.x &&
+              after.position.z == actor.position.z && after.control.queue == actor.control.queue &&
+              after.counters.state == actor.counters.state &&
+              after.counters.action == actor.counters.action &&
+              after.counters.alternate == actor.counters.alternate &&
+              after.hp.legacy_tick == actor.hp.legacy_tick,
+          "camera preserves actual life counters, queue, motion and HP animation");
+    check(game.finish_camera() == app::Error::none && game.update() == app::Error::none &&
+              game.life_state()->rounds == actor.rounds + 1 &&
+              game.state().facilities.at(building).remaining_ticks == 278 &&
+              game.state().simulation_steps == 421,
+          "the next normal step resumes the same actor, construction and date owner");
 }
 void construction() {
     app::Game game;
@@ -217,6 +253,7 @@ int main() {
     try {
         geometry();
         first_arrival();
+        introductory_camera_freezes_world();
         construction();
         funds_and_boundary();
         std::cout << "PASS first-play product contracts\n";

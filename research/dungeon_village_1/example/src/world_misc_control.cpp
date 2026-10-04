@@ -86,20 +86,18 @@ WorldMiscControlResult prepare_world_misc_control(const WorldMiscControlState &s
     }
     return {WorldMiscControlError::none, std::move(c)};
 }
-WorldStateCommandResult prepare_world_state_command(const RescueWorldState &s,
-                                                    const WorldStateCommandInput &i) {
+WorldStateCommandResult prepare_world_state_transition(const RescueWorldState &s,
+                                                       const WorldStateTransitionInput &i) {
     const auto fail = [](WorldMiscControlError e) -> WorldStateCommandResult { return {e, {}}; };
     const auto error = actor_error(s, i.actor);
     if (error != WorldMiscControlError::none)
         return fail(error);
     const auto &old = s.ai.battle.actors.at(i.actor);
-    if (!world_control_detail::valid_control(old.control) || old.control.queue.empty() ||
-        old.control.queue.front()[0] != 2)
+    if (!world_control_detail::valid_control(old.control))
         return fail(WorldMiscControlError::invalid_input);
-    const int next_state = old.control.queue.front()[1];
+    const int next_state = i.next_state;
     ActorStateTransitionInput transition;
     transition.control = old.control;
-    transition.control.queue.erase(transition.control.queue.begin());
     transition.human = old.kind == ActorKind::human;
     transition.next_state = next_state;
     transition.baseline = old.baseline;
@@ -178,5 +176,20 @@ WorldStateCommandResult prepare_world_state_command(const RescueWorldState &s,
         c.cleaned_up = true;
     }
     return {WorldMiscControlError::none, std::move(c)};
+}
+WorldStateCommandResult prepare_world_state_command(const RescueWorldState &s,
+                                                    const WorldStateCommandInput &i) {
+    const auto error = actor_error(s, i.actor);
+    if (error != WorldMiscControlError::none)
+        return {error, {}};
+    const auto &control = s.ai.battle.actors.at(i.actor).control;
+    if (!world_control_detail::valid_control(control) || control.queue.empty() ||
+        control.queue.front()[0] != 2)
+        return {WorldMiscControlError::invalid_input, {}};
+    auto next = s;
+    next.ai.battle.actors.at(i.actor).control.queue.erase(
+        next.ai.battle.actors.at(i.actor).control.queue.begin());
+    return prepare_world_state_transition(next,
+                                          {i.actor, control.queue.front()[1], i.boost_ticket});
 }
 } // namespace dungeon_village_reference

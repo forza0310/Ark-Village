@@ -22,7 +22,8 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/world_actor_tail.cpp src/dungeon_ai.cpp src/world_dungeon.cpp
                                      src/world_shop.cpp src/world_overlap.cpp src/world_schedule.cpp
                                      src/world_wander.cpp src/world_misc_control.cpp
-                                     src/world_departure.cpp src/world_equipment_display.cpp)
+                                     src/world_departure.cpp src/world_equipment_display.cpp
+                                     src/world_lifecycle.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -536,3 +537,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_world_equipment_display_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.world_equipment_display COMMAND dungeon_village_world_equipment_display_tests)
+
+add_executable(dungeon_village_world_lifecycle_tests tests/world_lifecycle_test.cpp)
+target_link_libraries(dungeon_village_world_lifecycle_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_world_lifecycle_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_world_lifecycle_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_world_lifecycle_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.world_lifecycle COMMAND dungeon_village_world_lifecycle_tests)

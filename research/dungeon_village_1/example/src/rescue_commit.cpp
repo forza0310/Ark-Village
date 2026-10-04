@@ -403,6 +403,19 @@ RescueWorldResult prepare_world_rescue_path_c(const RescueWorldState &s, Charact
 RescueWorldResult prepare_world_rescue_cleanup(const RescueWorldState &s, CharacterId id) {
     if (!human(s, id))
         return fail(RescueWorldError::stale_actor);
+    return prepare_world_actor_cleanup(s, id);
+}
+RescueWorldResult prepare_world_actor_cleanup(const RescueWorldState &s, CharacterId id) {
+    const auto actor = s.ai.battle.actors.find(id);
+    if (!id.value || actor == s.ai.battle.actors.end() || !(actor->second.id == id) ||
+        !s.actors.count(id) || !s.ai.contexts.count(id))
+        return fail(RescueWorldError::stale_actor);
+    if (actor->second.kind != ActorKind::human && actor->second.kind != ActorKind::monster)
+        return fail(RescueWorldError::invalid_input);
+    const auto &roster =
+        actor->second.kind == ActorKind::human ? s.ai.human_order : s.ai.monster_order;
+    if (std::count(roster.begin(), roster.end(), id) != 1)
+        return fail(RescueWorldError::stale_actor);
     RescueWorldCandidate c;
     c.state = s;
     if (!cleanup(c.state, id))

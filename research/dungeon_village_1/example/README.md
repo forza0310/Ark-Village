@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及56个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及57个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -52,6 +52,7 @@
 | world_wander | 从旧s/当前或退休db、S读取中心，扩展10/12/13的原尾部；无引用零随机，不提前移动 | [真实漫游](../rules/ai/WORLD_SCHEDULE.md#真实世界漫游控制-101213) |
 | world_misc_control | 实际c0..20、25恢复/显示、26共享定义与删除请求、32起跳、33旧u音效；不重复共同计数 | [杂项与状态](../rules/ai/CONTROL_COMPOSITION.md#回复离村起跳与拾物音效的实际消费者) |
 | world_equipment_display | 27/29实际cd载荷、负年龄烟效和旧u；已发商店请求不再次消费控制，不装配/计时 | [装备显示](../rules/ai/CONTROL_COMPOSITION.md#27与29的装备显示记录) |
+| world_lifecycle | 九个共享c分支及怪物17、真实b/c/r/HP/表情/路径组合，其他状态明确交接；共同20轮回归，不重新运行前段或d | [共同生命周期](../rules/ai/LIFECYCLE.md#共同世界生命周期分支) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

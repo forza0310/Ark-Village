@@ -48,6 +48,11 @@ struct WorldStateCommandInput {
     CharacterId actor;
     std::optional<int> boost_ticket; // c18真实需要时才消费一次[0,100)，不替外层抽号。
 };
+struct WorldStateTransitionInput {
+    CharacterId actor;
+    int next_state{};
+    std::optional<int> boost_ticket;
+};
 struct WorldStateCommandCandidate {
     RescueWorldState state;
     bool consumed_boost_ticket{};
@@ -58,6 +63,9 @@ struct WorldStateCommandResult {
     WorldMiscControlError error{WorldMiscControlError::none};
     std::optional<WorldStateCommandCandidate> candidate;
 };
+// 真实c(state)由状态分支或控制2共用；不伪造队首2，不运行共同c/d前段。
+WorldStateCommandResult prepare_world_state_transition(const RescueWorldState &state,
+                                                       const WorldStateTransitionInput &input);
 // 通用队首2：真实c0..20，不是动作n或8成功的A直写。整体替换队列后同次续行；
 // q仍读旧s/O，不加status守卫。10旅店在c10公共重置之后执行真实r；18读当前共享u。
 WorldStateCommandResult prepare_world_state_command(const RescueWorldState &state,

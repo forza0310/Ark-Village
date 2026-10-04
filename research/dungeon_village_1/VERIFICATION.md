@@ -52,13 +52,13 @@ S023–S025独立第四批归档保留，本次不覆盖其原件或来源记录
 
 - [AI专项](rules/ai/README.md)维护共享状态/调度、感知、战斗、战斗组、生命周期及34个控制码消费地图。
   独立标准C++17规则与私有所有者不读取Java、不依赖窗口；外部地图/页面/表情请求仍明确标记，不静默补演示行为。
-- AI相关规则/适配检查共521,097项：actor_ai 50,112、ai_perception 42,861、combat_ai 48,092、
+- AI相关规则/适配检查共522,677项：actor_ai 50,112、ai_perception 42,861、combat_ai 48,092、
   encounter_ai 75,137、actor_lifecycle 348、actor_control 11,011、combat_execution 15,033、object_ai 1,658、encounter_lifecycle 17,008、ai_schedule 3,345、actor_effects 33,779、human_growth 12,088，
   facility_service 2,466、actor_housekeeping 85,958、battle_commit 625、object_commit 9,468、ai_rewards 20,264、startup_ai 6,650、
   encounter_creation 1,223、rescue_commit 5,054、combat_commit 12,186、world_perception 112、world_encounters 16,991、
   world_facilities 1,361、world_actor_tail 478、facility_projection 5,185、loop_pacing 19,478、
   dungeon_ai 8,008、world_dungeon 881、world_shop 4,391、world_overlap 96、world_control 29、
-  world_schedule 6,432、world_wander 39、world_misc_control 2,930、world_departure 234、world_equipment_display 86。
+  world_schedule 6,432、world_wander 39、world_misc_control 2,930、world_departure 234、world_equipment_display 86、world_lifecycle 1,580。
   Debug/Release均通过。新增策略→动作窗口→HP→延后死亡清理、物体20/60、双人旅店递归到达与恢复引用的局部组合。
 - 低层交叉纠正活动6前置判断、救援抢占各轴±2、最近目标逆序平局、整数除法后伤害插值、
   影响场整格清零、同轮等待归零继续及成功活动8早停；来源定位保留在各专题和[证据](EVIDENCE.md)。
@@ -68,10 +68,20 @@ S023–S025独立第四批归档保留，本次不覆盖其原件或来源记录
   计数死亡→事件胜利→下轮奖励、反向人物抢拾→同轮物体计数→授予/删除组合通过，仍为显式局部夹具。
 - 新增cd/ce时长/前插/正向删除跳过、19种表情票号/显示抑制及i/l/B/命中标签计数；
   另扩展装备选择123项检查，覆盖防具/饰品rank窗口、不同空当前回退、到达抽槽与退出实际槽分离。
-- 六套重新配置/构建/CTest通过：example 56/56、tools 5/5、prototype 73/73，各含Debug/Release。
+- 六套重新配置/构建/CTest通过：example 57/57、tools 5/5、prototype 74/74，各含Debug/Release。
   固定APK/归档/新局源表只读核对通过：576格、2356字节、6原表、8种子及6负例；未改原表/素材。
 - 研究Markdown/本批模块格式与编辑器检查见本页末尾。无真实窗口/输入或固定APK动态验收。
   全部JADX、构建/测试会话已退出，无后台任务；不终止用户或其他智能体进程。
+- 以`e30b6e6`为本轮基线续补[共同生命周期](rules/ai/LIFECYCLE.md#共同世界生命周期分支)：
+  2/4/6/7/10/12/14/16/19九个共享c分支，另交付怪物17五模式的缓存G/真实P→旧L500/r。
+  直接状态分支与控制2共用真实c(state)，通用r支持双方kind；既有救援人类接口不扩充默认入口。
+  状态16不重复R修复，旅店恢复不加人物/status守卫，b保留B/C/i，O保留O目标；
+  第二表情缺票与实际P失败均无部分候选。其余状态明确交接，不用空回调宣称世界闭环。
+  1,580项新增回归及三项接口针对性CTest通过；20轮调度夹具D6仅隔离计数契约，不是原正常D入口。
+  本轮实际六套均重新配置/构建/CTest：example 57/57×2、tools 5/5×2、prototype 74/74×2。
+  7个C++文件格式、example编辑器诊断、Git空白检查与56份研究文档的1,294个本地路径链接目标通过；
+  编辑器测试接口未发现C++测试，实际结果来自CTest，不记作编辑器测试通过。
+  未改原版输入/素材和产品，未运行真实窗口/触控/固定APK动态验收；默认窗口与月界保护保持。
 - [人物成长](rules/ai/CONTROL.md#人物定义重算与职业成长)已交付定义重算与奖励成长候选，
   覆盖逐职业截断/装备/法术、九步奖励、多级/满级扣费、最后一级提示、职业解锁和无部分结果错误。
   本轮修正累加溢出检查顺序及未升级时保留旧ap；未放宽数值拒绝或改原表。

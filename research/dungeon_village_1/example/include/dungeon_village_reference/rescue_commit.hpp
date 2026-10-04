@@ -105,4 +105,6 @@ RescueWorldResult prepare_world_inn_d(const RescueWorldState &state, CharacterId
 RescueWorldResult prepare_world_inn_control(const RescueWorldState &state, CharacterId actor);
 // r() is staged departure, not deletion; N and path are deliberately retained.
 RescueWorldResult prepare_world_rescue_cleanup(const RescueWorldState &state, CharacterId actor);
+// 同一r()也被怪物17/T1调用；按真实kind选择c19/c0，不制造怪物专属离村流程。
+RescueWorldResult prepare_world_actor_cleanup(const RescueWorldState &state, CharacterId actor);
 } // namespace dungeon_village_reference

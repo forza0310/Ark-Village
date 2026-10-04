@@ -16,11 +16,11 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 - desktop_session.cpp：macOS桌面可用性检查。
 
 默认1080×720横屏，窗口改变时扩展逻辑视口而非固定竖屏留黑；最小逻辑240×256与60FPS是适配政策，不宣称原版分辨率/时钟。
-GetTime单调时钟经app/FixedStepClock累计后才调用Game.update，绘制帧不直接产生逻辑步；倍速仍由Game每次推进1/2步，移动仍每步6.7单位。
-`--tick-rate 1..240`设置每秒外层更新次数，默认60Hz延续既有正常帧速下节奏，原版频率待研究。20Hz可用于预览校准，不能当作原版认证。
-暂停/菜单/非正常模式清空积累，恢复首帧丢弃跨阻塞间隔；每帧最多补算8次，超出墙钟时间丢弃，重开清时钟。补算中教程/研究边界出现即停止。
+GetTime单调时钟经app/SimulationClock才调用Game.update，默认采用原版整数47ms最小开始间隔，卡顿不补算；倍速仍由Game每次推进1/2个有资格步骤，移动仍每步6.7单位。
+game_view关闭raylib的隐式帧末限速，用最早逻辑/60FPS绘制截止WaitTime；两次绘制之间也可更新，输入只在绘制分支采集一次。没有忙等或第二逻辑线程，渲染仍使用Retina原生像素。
+暂停/菜单/非正常模式阻止Game但默认门槛继续运行，不累积工作；重开清时钟。`--tick-rate 1..240`仅显式固定频率实验，阻塞清积累/恢复丢弃跨阻塞间隔、每次最多8次补算，教程/研究边界出现即停止。单调时钟、绘制频率和窗口生命周期是桌面适配，实际APK帧率另验。
 步态逐次观察获准更新，多绘制帧不推进步态；motion检查使用相同逻辑时钟、暂停/倍速，但仅推进检查行程，不改变领域状态。
-`--frames`继续表示绘制帧数，同帧数不保证同逻辑次数；有界运行输出Simulation的tick_rate/outer_updates以便核对。
+`--frames`继续表示绘制帧数，同帧数不保证同逻辑次数；有界运行输出Simulation的pacing/tick_rate_override/outer_updates/elapsed_seconds/minimum_gap_ms以便核对。
 启用FLAG_WINDOW_HIGHDPI；窗口点坐标决定布局/鼠标，GetRenderWidth/Height决定画布物理像素。
 canvas_camera将逻辑布局直接映射到原生画布，呈现时与framebuffer像素一一对应；最近邻素材只在最终尺寸采样。
 Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体；窗口缩放/跨DPI屏幕由下一帧重新计算。

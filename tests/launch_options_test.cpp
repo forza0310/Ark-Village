@@ -18,7 +18,7 @@ int main() {
     check(parse_arguments({}).options->mode == LaunchMode::window);
     const auto defaults = *parse_arguments({}).options;
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
-    check(defaults.tick_rate == 60);
+    check(defaults.tick_rate == 0);
     check(parse_arguments({"--tick-rate", "20"}).options->tick_rate == 20);
     check(parse_arguments({"--tick-rate", "240"}).options->tick_rate == 240);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);

@@ -1,7 +1,7 @@
 // Window/update orchestration only. Original page composition and mouse routing live in ui/.
 #include "game_view.hpp"
-#include "ark/app/fixed_step_clock.hpp"
 #include "ark/app/game.hpp"
+#include "ark/app/simulation_clock.hpp"
 #include "ark/people/motion.hpp"
 #include "character_animation.hpp"
 #include "desktop_session.hpp"
@@ -12,6 +12,7 @@
 #include "ui/pages.hpp"
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <stdexcept>
 
@@ -27,7 +28,7 @@ struct Window {
             throw std::runtime_error("Cannot initialize raylib window");
         SetWindowMinSize(240, 256);
         SetExitKey(KEY_NULL);
-        SetTargetFPS(60);
+        SetTargetFPS(0); // The event loop waits for the earliest logical or 60 FPS render deadline.
     }
     ~Window() { CloseWindow(); }
     Window(const Window &) = delete;
@@ -130,7 +131,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     }
     int frames{};
     std::uint64_t motion_ticks{}, outer_updates{};
-    app::FixedStepClock simulation_clock(options.tick_rate);
+    app::SimulationClock simulation_clock(options.tick_rate);
+    std::optional<std::int64_t> last_update_ms;
+    std::int64_t minimum_gap_ms = std::numeric_limits<std::int64_t>::max();
     CharacterAnimation actor_animation;
     const auto animation_position = [&]() -> std::optional<world::WorldPosition> {
         if (!game.state().adventurer)
@@ -143,11 +146,55 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         return game.ai_state() ? game.ai_state()->rounds : game.state().simulation_steps;
     };
     actor_animation.observe(animation_position(), animation_tick());
-    auto previous_time = GetTime();
+    const auto can_simulate = [&]() {
+        return !ui::blocks_world(view) && !game.state().paused &&
+               game.state().mode == app::Mode::normal;
+    };
+    const auto advance_simulation = [&](double observed) {
+        const auto due = simulation_clock.advance(observed, can_simulate());
+        for (int n = 0; n < due; ++n) {
+            if (!can_simulate()) {
+                break;
+            }
+            if (inspected_travel) {
+                for (int step = 0; step < view.speed; ++step) {
+                    inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
+                                                              game.state().adventurer->flags)
+                                           .travel;
+                    ++motion_ticks;
+                    actor_animation.observe(animation_position(), animation_tick());
+                }
+            } else {
+                game.update(view.speed);
+                actor_animation.observe(animation_position(), animation_tick());
+            }
+            const auto observed_ms = static_cast<std::int64_t>(observed * 1000);
+            if (last_update_ms)
+                minimum_gap_ms = std::min(minimum_gap_ms, observed_ms - *last_update_ms);
+            last_update_ms = observed_ms;
+            ++outer_updates;
+        }
+        if (!can_simulate() && !simulation_clock.original_pacing())
+            // Keep the observation so blocked fixed pacing has no deadline and cannot spin.
+            simulation_clock.advance(observed, false);
+    };
+    const auto loop_start = GetTime();
+    auto next_render_time = loop_start;
+    const auto wait_for_work = [&]() {
+        const auto now = GetTime();
+        const auto remaining =
+            std::min(next_render_time - now, simulation_clock.remaining_seconds(now));
+        if (remaining > 0)
+            WaitTime(remaining); // Yield to the OS; no busy wait or second simulation thread.
+    };
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         const auto now = GetTime();
-        const auto elapsed = now - previous_time;
-        previous_time = now;
+        if (now < next_render_time) {
+            advance_simulation(now);
+            wait_for_work();
+            continue;
+        }
+        next_render_time = now + 1.0 / 60;
         // Window points drive layout/input; framebuffer pixels drive rasterization. A Retina
         // window may have twice as many physical pixels on each axis. Never rasterize a zoomed
         // sprite into the small logical layout before enlarging it to the actual framebuffer.
@@ -185,6 +232,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                                        {layout.dialogue.x + 48, layout.dialogue.y + 66, 106, 29})) {
                 game = app::Game(std::random_device{}(), play);
                 simulation_clock.reset();
+                last_update_ms.reset();
                 motion_ticks = 0;
                 actor_animation.reset();
                 view = ui::State{};
@@ -219,33 +267,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                 game.finish_camera();
             }
         }
-        // Rendering/input remain at 60 FPS. Only the fixed wall-clock adapter admits world work.
-        const auto can_simulate = [&]() {
-            return !ui::blocks_world(view) && !game.state().paused &&
-                   game.state().mode == app::Mode::normal;
-        };
-        const auto due = simulation_clock.advance(elapsed, can_simulate());
-        for (int n = 0; n < due; ++n) {
-            if (!can_simulate()) {
-                simulation_clock.reset();
-                break; // An earlier catch-up update may have opened a tutorial or ended preview.
-            }
-            if (inspected_travel) {
-                for (int step = 0; step < view.speed; ++step) {
-                    inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
-                                                              game.state().adventurer->flags)
-                                           .travel;
-                    ++motion_ticks;
-                    actor_animation.observe(animation_position(), animation_tick());
-                }
-            } else {
-                game.update(view.speed);
-                actor_animation.observe(animation_position(), animation_tick());
-            }
-            ++outer_updates;
-        }
-        if (!can_simulate())
-            simulation_clock.reset();
+        // Input is consumed once per render branch; logical work can also run between renders.
+        advance_simulation(now);
         if (view.notice_frames)
             --view.notice_frames;
         if (inspected_travel && !game.state().adventurer)
@@ -275,14 +298,19 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             {0, 0}, 0, WHITE);
         EndDrawing();
         ++frames;
+        wait_for_work();
     }
     if (options.frames)
         std::cout << "Render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
                   << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
                   << " canvas=" << canvas.extent.width << 'x' << canvas.extent.height << '\n';
     if (options.frames)
-        std::cout << "Simulation: tick_rate=" << options.tick_rate
-                  << " outer_updates=" << outer_updates << '\n';
+        std::cout << "Simulation: pacing="
+                  << (simulation_clock.original_pacing() ? "original47ms" : "fixed")
+                  << " tick_rate_override=" << options.tick_rate
+                  << " outer_updates=" << outer_updates
+                  << " elapsed_seconds=" << GetTime() - loop_start
+                  << " minimum_gap_ms=" << (outer_updates > 1 ? minimum_gap_ms : 0) << '\n';
     if (const auto *ai = game.ai_state()) {
         std::cout << "AI preview: rounds=" << ai->rounds << " position=" << ai->position.x << ','
                   << ai->position.z << " arrivals=" << ai->arrivals

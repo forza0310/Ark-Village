@@ -17,8 +17,8 @@
 ## 当前实现
 
 标准C++的ark_game包含world、facilities、people、economy与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
-ark_timing的app/FixedStepClock独立负责墙钟到离散外层更新的适配；Game仍只接收逻辑步，不依赖raylib或秒数。桌面单调时钟累计更新，60FPS绘制与输入独立，暂停/模态/重开清空积累，长停顿每帧最多补算8次并丢弃超限时间。
-逻辑频率可用--tick-rate调整，默认60Hz仅延续既有适配节奏；原版墙钟限速等待research，不能把Q/R中的20认定为20Hz。二倍速增加逻辑轮数，人物每步6.7单位不变。
+ark_timing的app/SimulationClock负责平台时钟到离散外层更新的适配；Game仍只接收逻辑步，不依赖raylib或秒数。默认OriginalLoopPacing按1e50a60已证整数47ms最小开始间隔，提交实际观测时刻，卡顿不补算。桌面采用单调时钟，是相对Android墙钟的明确平台差异。
+逻辑截止与60FPS绘制/输入截止共同决定等待，逻辑可在绘制之间运行；暂停/模态只阻止世界工作，不积累债务，重开清时钟。--tick-rate显式覆盖才采用FixedStepClock的固定频率/暂停清积累/最多8次补算实验政策。二倍速增加有资格逻辑轮数，人物每步6.7单位不变；47ms静态门槛不是恒定原版FPS动态认证。
 raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
 desktop/scene负责加载后地表/连续世界位置投影及预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
 界面响应窗口比例，命中和绘制共用逻辑布局，业务数据不移入UI。逻辑尺寸仅用于坐标，渲染画布使用framebuffer原生像素（含Retina）。

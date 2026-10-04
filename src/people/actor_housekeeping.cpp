@@ -102,10 +102,12 @@ std::optional<ActorRetentionCandidate> prepare_actor_retention(const ActorRetent
         c.delete_instance = true;
         c.reason = reason;
     };
-    if (i.old_cell_inside_town)
-        n.town_updates = (n.town_updates + 1) % std::numeric_limits<int>::max();
-    else if (n.state != 0 && !(n.flags & 16U))
-        ++n.outside_updates;
+    if (!i.location_counters_already_advanced) {
+        if (i.old_cell_inside_town)
+            n.town_updates = (n.town_updates + 1) % std::numeric_limits<int>::max();
+        else if (n.state != 0 && !(n.flags & 16U))
+            ++n.outside_updates;
+    }
     if ((n.flags & 64U) || !(n.flags & 2U)) {
         ++n.blocked_updates;
         if (n.blocked_updates >= 200 && !cleanup())

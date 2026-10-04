@@ -21,3 +21,11 @@ service.hpp/cpp组合到达使用队列、旅店等待和完整退出计划，�
 依赖people控制/身份、world地图及本包经济/几何；不依赖app。Placement是退出校验的输入投影，不是第二份实例所有者。
 app/initial_ai对照研究d7ca763真实首访，将这些候选与现金/占用统一提交；普通默认世界、月报和人气显示仍另行接入。
 依据：[使用协议](../../research/dungeon_village_1/rules/FACILITY_USE.md)与维护example/src/facility_service.cpp。
+
+## 洞穴与迷宫探索
+
+dungeon.hpp公开类别5的探索候选；住宅是类别9、募集是类别10，不共用探索语义。
+dungeon_crew.cpp处理耐力、入口初始化、探索长度、阶段1队伍/挑战/撤退及有序奖励请求，保留逆序和重复人物引用、负进度及明确的撤退结果输入。
+dungeon_completion.cpp只处理阶段2任务/场地/通知/奖励显示的有序请求；不直接发放目录奖励或改变地图。
+来源4ba4805及前置c4ce4b2维护example/dungeon_ai与[探索规则](../../research/dungeon_village_1/rules/ai/DUNGEONS.md)。阶段2请求携带真实任务定义ID和待结算值，任务成功统计不能命名为解锁；清活动任务由任务所有者清全部人物定义flags2。仅依赖people身份/world格及标准容器，无app/UI依赖。
+队伍快照是设施候选输入，不创建第二份持久人物状态；实际人物/任务/地图/目录由未来统一世界所有者提交。world_dungeon、o0和任务UI尚未进入产品，正常新局不自动创建夹具洞穴或开放探索。

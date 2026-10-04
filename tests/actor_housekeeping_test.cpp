@@ -202,6 +202,24 @@ void retention() {
     check(prepare_actor_retention(i)->state.town_updates == 0, "L modulo max wrap is not overflow");
     i.state.spawn_updates = -1;
     check(!prepare_actor_retention(i), "negative counters reject whole tail");
+    for (bool already : {false, true})
+        for (bool town : {false, true})
+            for (int old_state : {0, 1, 19})
+                for (unsigned flags : {2U, 18U}) {
+                    i = retention_fixture();
+                    i.location_counters_already_advanced = already;
+                    i.old_cell_inside_town = town;
+                    i.state.state = old_state;
+                    i.state.flags = flags;
+                    i.state.town_updates = 12;
+                    i.state.outside_updates = 34;
+                    c = prepare_actor_retention(i);
+                    check(c && c->state.town_updates == 12 + (!already && town ? 1 : 0) &&
+                              c->state.outside_updates ==
+                                  34 + (!already && !town && old_state != 0 && !(flags & 16U) ? 1
+                                                                                              : 0),
+                          "world prefix already advanced L/M once; tail must not double count");
+                }
 }
 } // namespace
 int main() {

@@ -14,7 +14,7 @@ struct LaunchOptions {
     int height = 720;
     int frames = 0;
     int zoom_percent = 100;
-    int tick_rate = 60; // Temporary adapter cadence; original wall-clock rate awaits research.
+    int tick_rate = 0; // Zero selects researched 47 ms pacing; explicit 1..240 is an experiment.
     std::string screenshot;
     bool paused = false;
     bool ai_preview = false;

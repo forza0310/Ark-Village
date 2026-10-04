@@ -67,6 +67,7 @@ struct ActorRetentionInput {
     std::size_t route_cells{};
     bool has_encounter{};
     int reported_hp{}; // g() is read AFTER r on bad-area recovery; action reset is separate.
+    bool location_counters_already_advanced{}; // Shared owner ran old-s L/M before physics.
 };
 enum class ActorRetentionRequest {
     cleanup,

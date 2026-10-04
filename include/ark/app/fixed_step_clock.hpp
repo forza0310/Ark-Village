@@ -9,6 +9,7 @@ class FixedStepClock {
     // long stalls admit at most eight updates, discarding elapsed time beyond that budget.
     int advance(double elapsed_seconds, bool running);
     void reset();
+    double remaining_seconds() const { return interval_ - pending_; }
 
   private:
     double interval_;

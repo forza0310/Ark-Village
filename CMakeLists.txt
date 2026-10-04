@@ -18,7 +18,8 @@ add_library(ark_launch STATIC src/app/launch_options.cpp)
 target_include_directories(ark_launch PUBLIC include)
 ark_target(ark_launch)
 
-add_library(ark_timing STATIC src/app/fixed_step_clock.cpp)
+add_library(ark_timing STATIC src/app/fixed_step_clock.cpp src/app/original_loop.cpp
+    src/app/simulation_clock.cpp)
 target_include_directories(ark_timing PUBLIC include)
 ark_target(ark_timing)
 
@@ -38,6 +39,7 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
     src/people/actor_housekeeping.cpp src/people/combat_strategy.cpp
     src/people/combat_damage.cpp src/people/combat_influence.cpp
+    src/facilities/dungeon_crew.cpp src/facilities/dungeon_completion.cpp
     src/people/decision.cpp
     src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
     src/people/delayed_reward.cpp src/people/human_growth.cpp
@@ -73,6 +75,18 @@ if(ARK_BUILD_DESKTOP)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ark_original_loop_tests tests/original_loop_test.cpp)
+    target_link_libraries(ark_original_loop_tests PRIVATE ark_timing)
+    ark_target(ark_original_loop_tests)
+    add_test(NAME original_loop_pacing COMMAND ark_original_loop_tests)
+    add_executable(ark_simulation_clock_tests tests/simulation_clock_test.cpp)
+    target_link_libraries(ark_simulation_clock_tests PRIVATE ark_timing ark_game)
+    ark_target(ark_simulation_clock_tests)
+    add_test(NAME source_paced_simulation COMMAND ark_simulation_clock_tests)
+    add_executable(ark_dungeon_tests tests/dungeon_rules_test.cpp)
+    target_link_libraries(ark_dungeon_tests PRIVATE ark_game)
+    ark_target(ark_dungeon_tests)
+    add_test(NAME dungeon_crew_and_completion COMMAND ark_dungeon_tests)
     add_executable(ark_fixed_step_tests tests/fixed_step_clock_test.cpp)
     target_link_libraries(ark_fixed_step_tests PRIVATE ark_timing ark_game)
     ark_target(ark_fixed_step_tests)

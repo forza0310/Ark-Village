@@ -602,6 +602,74 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
   `/tmp/ark-world-window-final.log`。血条没有用虚构战斗作窗口展示；OS鼠标和APK动态仍未验。
 - `git diff --check`与82个文档本地链接检查通过；本次只提交产品文件，研究侧并行交付保持独立。
 
+## 完整新局世界接管方案（2026-10-04，待确认/研究稳定）
+
+当前决定：用户选择“暂时维持当前切片，等待研究整批通过”。本方案保留为下一阶段提案，
+本轮不替换正常Game、不解除保护、不迁入新运行时；来源稳定后再确认编码范围。
+
+本轮用户要求跟进最新research并合并到产品。只读检查发现维护prototype新增了
+`startup_world_projection/routes/runtime`、到访/场景/页面/日历/任务适配和显式`--world`入口。
+全目录包含25人物、23职业、113装备（33武器/50防具/30饰品）、36怪物、36物品、81任务、
+85设施、30活动及5份原始脚本。不是只有局部AI纯函数；已可作为产品完整世界接管的依据。
+研究README/VERIFICATION尚未统一登记本批，不能用旧默认AI保护描述否认新入口，
+也不能用旧测试统计宣称新入口已通过。研究工作区由其他智能体持续修改，本轮不修改或提交research。
+
+### 问题与选择
+
+当前Game的`State.life`仍是单人物生活切片，无法承载多人、怪物、脚本和月报。
+把新runtime并排放进去会形成两份地图/现金/随机，且初始化投影明确不接受任意建设后快照。
+建议沿用Game作为唯一外部入口，在新局初始化时创建一次完整世界，替换正常模式旧生活所有者；
+后续UI使用只读投影，所有玩家建设命令直接写这一世界。诊断入口独立保留，正常模式不能同时运行
+`step_normal_world`旧推进和新runtime。此方案涉及持久模型与建设接口调整，具体设计确认后编码。
+
+### 模块与顺序
+
+1. 构建期目录：迁入维护编译器的结构化校验与固定源摘要，生成程序内只读定义/脚本；运行不读取research或APK。
+2. 领域规则：按职责将共同世界/日历规则放world、服务/任务放facilities、人物/战斗放people、账本放economy；复用已有模块，迁入缺少的维护消费者，显式登记CMake源文件。
+3. 应用接管：app分文件处理初始化投影、输入/路由、整轮候选、到访、脚本页栈、日历/月报、任务。路由/商店/脚本财务是临时投影，唯一账本与随机流属于完整世界，候选失败整体回滚。
+4. 建设桥：放置/扣款/绑定/施工/邻接/寻路刷新写同一候选世界，保留当前可建范围与拒绝规则；不能每轮把改变后的地图重置为初局。
+5. 桌面桥：当前人物/怪物/设施列表、原版页栈、相机/裁剪事实与表现请求从完整世界投影；raylib资源不进入领域。研究240×320参考视口不能直接冒充1080×720产品视口。
+
+每批维护重要接口注释及实际模块README。没有完整消费者的分支保留具体交接，不用空成功回调。
+1456步保护只能在真实日历/费用/月报接通并通过连续回归后解除。
+
+### 本轮独立检查
+
+隔离构建目录为`/tmp/ark-research-world-audit`，产品源码未改；研究代码变化使以下结果属于不同时间的检查，不能合并为同一固定发布快照。
+
+- 首次三项定向检查：runtime与runtime_tasks通过，continuous在frame1056失败。
+  Java seed1自然生成怪物stableID6；决策成功后`tail_cache`读取不存在的`actor_metadata.at(6)`抛异常，整轮回滚。
+  最新`startup_world_runtime_tasks.cpp`已增加同步元数据/调度记录代码，不能继续登记为尚无修复。
+- 重新构建时continuous目标成功；runtime_tasks新断言编译失败：`ref::Position`与`std::array<int,2>`比较没有匹配运算符（测试103行）。不修改研究测试来替研究侧验收。
+- 重跑本次成功构建的continuous：45.16秒，在frame1116失败，`runtime=3/scene_error=3/world_error=3`，最后标签arrival；已到3人物、6300G、month_tick1103。最后标签不代表精确失败消费者，此次未确认下一失败根因，也未跨月。
+- Node全目录数据契约独立检查25项通过。任务测试的显式遭遇中心及stage2/updates10属于调用点夹具，不能称自然任务成功；本轮无产品窗口或APK动态验收。
+
+最新只读源码还新增`startup_world_runtime_nonactors.cpp`，包括投射物/表现请求及可见性投影；
+不能继续沿用“所有可见性消费者均未提供”的早期结论，需待同一稳定快照编译后重新验证其组合。
+场景适配仍明确拒绝菜单、非空建设/观察输入及有目标设施镜头，产品建设桥属于本阶段实现工作。
+
+本次阅读指纹（SHA256，仅审计，不是已迁入产品的来源锁）：
+
+| research/dungeon_village_1/相对路径 | SHA256 |
+| --- | --- |
+| prototype/scripts/compile_startup_world.mjs | 1b8271ff0303b06820c3ba8af4c61be89c5e33896e958b6c1de06e92119b8dcb |
+| prototype/src/startup_world_runtime_tasks.cpp | 02b40c698b4c50156a134985f352d7416ac7c8e5d8bda2b3e4dbe05f27de74c0 |
+| prototype/src/startup_world_runtime.cpp | 7091fa04561559fe2cc6c86236f8fa668dda25ba52c2dd7f1ec13b423e1f906d |
+| prototype/src/startup_world_runtime_nonactors.cpp | b4e942b12b0e6b01a85cc5bbd005df7463efed923491c4e5994d977830455744 |
+| prototype/tests/startup_world_runtime_tasks_test.cpp | 44334b2b538995ba0f66c50a5328d3b274657481a05d8acd90e68e2208eaf6dd |
+| prototype/tests/startup_world_continuous_test.cpp | 1c3b6880988b78ee608d0435e8bc7134b766108c3a718093a2f921f525ca45da |
+
+### 接入验收
+
+确认后按稳定来源分批迁入；进入完整世界的最低研究接收条件见[研究需求](../reference/RESEARCH_REQUESTS.md#完整新局运行时交接2026-10-04)。
+产品须从正常新局而非安排首访开始，确认真实页栈，连续多人到访/设施收费/使用/退出，
+自然创建遭遇及新怪物当轮更新，玩家建设与人物共享地图/资金，暂停/继续与日期/施工协同，
+自然跨两个月界产生真实维护费/月报且不重复支付。检查checkpoint仅为审计副本，不实现原存档文件。
+迁入后四套配置/构建/CTest以及正常主程序controller/有界窗口分别验收；自然战斗/任务成功、OS输入和APK等价单独报告。
+
+本轮收尾：现有产品四套重新配置/编译成功，headless Debug/Release各38项、desktop Debug/Release各47项CTest全部通过，共170次测试执行。
+本轮仅更新设计/待办/研究交接文档，未修改游戏源代码或research；无新窗口/OS输入/APK验收。
+
 ## 启动事实、随机与日常决策接入（2026-10-04）
 
 本节更新此前验收记录中的“D/m/下限缺证”“state5立即交接”“普通镜头放行”和“原版47ms更新门槛”结论；历史记录保留当时范围，不作为当前设计依据。

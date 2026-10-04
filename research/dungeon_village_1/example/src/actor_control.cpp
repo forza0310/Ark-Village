@@ -210,8 +210,6 @@ std::optional<ActorWanderCandidate> prepare_actor_wander(const ActorWanderInput 
         i.cells.size() > 1000000)
         return std::nullopt;
     const Position center = i.opcode == 10 ? i.actor : *i.center;
-    if (center.x < 0 || center.y < 0 || center.x >= i.width || center.y >= i.height)
-        return std::nullopt;
     static constexpr Position four[]{{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
     static constexpr Position eight[]{{-1, 1}, {0, 1},   {1, 1},  {-1, 0},
                                       {1, 0},  {-1, -1}, {0, -1}, {1, -1}};

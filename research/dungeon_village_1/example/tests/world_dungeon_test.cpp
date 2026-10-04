@@ -1,7 +1,9 @@
 #include "dungeon_village_reference/world_dungeon.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace dungeon_village_reference;
@@ -253,6 +255,73 @@ void direct_landing() {
               s.world.ai.contexts.at({1}).effects.display.empty(),
           "late direct-o0 preparation failure rolls back movement/display/c0 atomically");
 }
+void task_success_owner() {
+    DungeonTaskSuccessState s;
+    s.definitions.emplace(0, DungeonTaskDefinitionProgress{0, 0, 2, 0});
+    for (int kind : {0, 1})
+        for (int old = 240; old <= 520; ++old) {
+            s.definitions.at(0).kind = kind;
+            s.task_pool_progress = old;
+            const auto r = prepare_dungeon_task_success(s, 0, 1, 4);
+            std::vector<int> notices;
+            const int amount = kind == 0 ? 50 : 100;
+            for (int n = 0; n < 3; ++n)
+                if (old < 300 + 100 * n && old + amount >= 300 + 100 * n)
+                    notices.push_back(29 + n);
+            check(r && r->state.successes == 1 &&
+                      r->state.ordinary_explorations == (kind == 0 ? 1 : 0) &&
+                      r->state.definitions.at(0).completed == 3 &&
+                      r->state.task_pool_progress == old + amount &&
+                      r->threshold_notice_ids == notices,
+                  "task success exact G crossing, kind-specific counters and message IDs");
+        }
+    s.definitions.at(0) = {0, 2U | 4U | 8U, 2, 7};
+    s.monsters.emplace(7, DungeonMonsterAvailability{0, false});
+    s.remaining_task_definitions = {0};
+    s.task_pool_progress = 290;
+    for (int stage = 0; stage <= 5; ++stage) {
+        s.exploration_stage = stage;
+        const auto r = prepare_dungeon_task_success(s, 0, 2, 11);
+        check(r && r->state.exploration_dates[stage] == std::array<int, 2>{2, 11} &&
+                  r->state.exploration_stage == std::min(stage + 1, 5) &&
+                  r->state.ordinary_explorations == 0 && r->state.monsters.at(7).status == 1 &&
+                  r->state.monsters.at(7).pending_notice && r->state.task_pool_progress == 290 &&
+                  r->threshold_notice_ids.empty(),
+              "current special task blocks G before clear, stage5 still rewrites date");
+    }
+    s.remaining_task_definitions.clear();
+    s.monsters.at(7) = {2, false};
+    auto r = prepare_dungeon_task_success(s, 0, 1, 0);
+    check(r && r->state.monsters.at(7).status == 1 && !r->state.monsters.at(7).pending_notice &&
+              r->state.task_pool_progress == 340 && r->threshold_notice_ids == std::vector<int>{29},
+          "nonzero monster status overwritten without new notice, no implicit special guard");
+    r = prepare_dungeon_task_success(r->state, 0, 1, 0);
+    check(r && r->state.successes == 2 && r->state.definitions.at(0).completed == 4,
+          "task-success helper preserves repeated calls instead of inventing deduplication");
+    s.remaining_task_definitions = {99};
+    check(!prepare_dungeon_task_success(s, 0, 1, 0) && s.successes == 0 &&
+              s.monsters.at(7).status == 2,
+          "late missing task definition rolls back counters/stage/monster changes");
+    s.remaining_task_definitions.clear();
+    s.monsters.clear();
+    check(!prepare_dungeon_task_success(s, 0, 1, 0) && s.exploration_dates[5][0] == 0,
+          "flag4 missing actual monster is rejected without fabricated definition");
+    s.definitions.at(0).flags = 0;
+    s.task_pool_progress = std::numeric_limits<int>::max();
+    check(!prepare_dungeon_task_success(s, 0, 1, 0) && s.successes == 0,
+          "G overflow does not leave partial success counters");
+    s.remaining_task_definitions = {0};
+    s.definitions.at(0).flags = 2;
+    check(prepare_dungeon_task_success(s, 0, 1, 0).has_value(),
+          "suppressed G does not reject unrelated pool overflow");
+    check(!prepare_dungeon_task_success(s, 99, 1, 0) && !prepare_dungeon_task_success(s, 0, 1, 12),
+          "unknown task and non-source month rejected");
+    s.successes = std::numeric_limits<int>::max();
+    check(!prepare_dungeon_task_success(s, 0, 1, 0), "success counter overflow rejected");
+    s.successes = 0;
+    s.definitions.at(0).completed = std::numeric_limits<int>::max();
+    check(!prepare_dungeon_task_success(s, 0, 1, 0), "definition completion overflow rejected");
+}
 } // namespace
 int main() {
     try {
@@ -260,6 +329,7 @@ int main() {
         launches_and_binding();
         actual_crew_rewards();
         direct_landing();
+        task_success_owner();
         std::cout << checks << " world dungeon checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

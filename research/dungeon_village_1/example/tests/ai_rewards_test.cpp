@@ -535,6 +535,83 @@ void reference_graph() {
     c = collect_ai_references(s);
     check(c.retired_encounters.empty(), "no db/dc roots finally release retired event");
 }
+void external_reference_graph() {
+    auto s = fixture();
+    auto corpse = s.battle.actors.at({2});
+    corpse.id = {5};
+    corpse.encounter = 9;
+    s.retired_actors.emplace(corpse.id, corpse);
+    s.contexts.emplace(corpse.id, RewardActorContext{});
+    auto event = s.encounters.at(0);
+    event.runtime.id = 9;
+    event.members = {{5}, {5}};
+    s.retired_encounters.emplace(9, event);
+    s.external_actor_roots = {{5}};
+    auto c = collect_ai_references(s);
+    check(c.retired_actors.count({5}) && c.retired_encounters.count(9) && c.contexts.count({5}),
+          "external facility root retains actor-event cycle and cached actor context");
+    check(c.human_order == s.human_order && c.monster_order == s.monster_order &&
+              c.encounter_order == s.encounter_order && !c.battle.actors.count({5}) &&
+              !c.encounters.count(9),
+          "external roots never reinsert retired references into running rosters");
+    c.external_actor_roots.clear();
+    c = collect_ai_references(c);
+    check(!c.retired_actors.count({5}) && !c.retired_encounters.count(9) && !c.contexts.count({5}),
+          "removing final external root collects even a duplicated actor-event cycle");
+    s.external_actor_roots.clear();
+    s.external_encounter_roots = {9};
+    c = collect_ai_references(s);
+    check(c.retired_encounters.count(9) && c.retired_actors.count({5}),
+          "external task/page encounter root reaches retired members and their back reference");
+    c.external_encounter_roots.clear();
+    c = collect_ai_references(c);
+    check(c.retired_encounters.empty() && c.retired_actors.empty(),
+          "removing task/page root permits the same transitive cycle to be collected");
+    s.external_encounter_roots = {999};
+    s.external_actor_roots = {{999}};
+    c = collect_ai_references(s);
+    check(c.retired_encounters.empty() && c.retired_actors.empty() && !c.contexts.count({999}) &&
+              !c.encounters.count(999) && !c.battle.actors.count({999}) &&
+              c.external_actor_roots == s.external_actor_roots &&
+              c.external_encounter_roots == s.external_encounter_roots,
+          "unresolved external references neither manufacture records nor root unrelated cycles");
+    s = fixture();
+    s.external_actor_roots = {{2}};
+    auto &m = s.battle.actors.at({2});
+    m.control.state = 3;
+    m.state_counter = 12;
+    const auto death = prepare_monster_death_commit(s, {2});
+    check(death.candidate && death.candidate->removed &&
+              death.candidate->state.retired_actors.count({2}) &&
+              death.candidate->state.contexts.count({2}) &&
+              death.candidate->state.monster_order.empty(),
+          "death consumer's internal collection respects the prepublished external actor root");
+    c = death.candidate->state;
+    c.external_actor_roots.clear();
+    c = collect_ai_references(c);
+    check(!c.retired_actors.count({2}) && !c.contexts.count({2}),
+          "retired corpse released after external facility reference is cleared");
+    s = fixture();
+    for (auto &[id, a] : s.battle.actors) {
+        (void)id;
+        a.encounter.reset();
+        a.group.reset();
+    }
+    s.encounters.at(0).runtime.state = 1;
+    s.encounters.at(0).runtime.counter = 99;
+    s.external_encounter_roots = {0};
+    const auto end = prepare_encounter_reward_commit(s, {});
+    check(end.candidate && end.candidate->removed &&
+              end.candidate->state.retired_encounters.count(0) &&
+              end.candidate->state.encounters.empty(),
+          "encounter internal collection honors external ID0 root without an actor db/dc root");
+    c = end.candidate->state;
+    c.external_encounter_roots.clear();
+    c = collect_ai_references(c);
+    check(c.retired_encounters.empty(), "released external ID0 root no longer retains encounter");
+    check(s.encounters.count(0) && s.retired_encounters.empty(),
+          "collection and late retirement candidates never mutate the input owner");
+}
 void execution_prefix() {
     auto s = fixture();
     auto &a = s.battle.actors.at({1});
@@ -629,6 +706,7 @@ int main() {
         spawning();
         projectile_world();
         reference_graph();
+        external_reference_graph();
         execution_prefix();
         retired_event_consumers();
         std::cout << checks << " checks passed\n";

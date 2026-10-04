@@ -37,6 +37,11 @@ struct RescueActorContext {
     int short_exit_updates{};
     int bad_area_updates{};
     int monster_mode{}; // T, normal special-entry landing sets1.
+    // O0/1 survive r() and are independent of an instance identity; a ground goal has no binding.
+    // The original freshly allocated O array is all-zero, not generally a null destination.
+    std::optional<Position> destination;
+    std::optional<LegacyPathResult>
+        unbound_route; // Real G for ground goals, never a fake building.
 };
 struct RescueWorldState {
     AiRewardState ai;
@@ -96,7 +101,7 @@ RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &state, C
 RescueWorldResult prepare_world_inn_c(const RescueWorldState &state, CharacterId actor);
 RescueWorldResult prepare_world_inn_d(const RescueWorldState &state, CharacterId actor);
 // Control ONLY, after the common d prefix. Never advances counters/effects/HP/growth.
-// Simple exits include2/7/8/9; category1/5 and other domain opcodes remain explicit handoffs.
+// Common exits include5 as well as2/7/8/9; category1 exit and category5 occupation delegate.
 RescueWorldResult prepare_world_inn_control(const RescueWorldState &state, CharacterId actor);
 // r() is staged departure, not deletion; N and path are deliberately retained.
 RescueWorldResult prepare_world_rescue_cleanup(const RescueWorldState &state, CharacterId actor);

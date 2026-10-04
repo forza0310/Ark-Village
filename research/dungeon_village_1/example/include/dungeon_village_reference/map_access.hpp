@@ -53,6 +53,10 @@ struct LegacySearchLimits {
     std::int64_t max_cost{std::numeric_limits<std::int64_t>::max()};
     std::size_t max_expansions{1000000};
     bool allow_first_step_exit{true};
+    // c.l.a(limit) stops before expanding a node above this limit, retaining discovered frontier.
+    // Distinct from max_cost, which rejects over-budget edges and returns cost_limit.
+    std::optional<std::int64_t> max_expanded_cost{};
+    bool reverse_equal_cost{}; // c.l scans its row-major inventory backward; strict-less ties.
 };
 
 struct LegacyDistanceField {

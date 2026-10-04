@@ -140,7 +140,7 @@ LegacySearchResult search_legacy_map(const LegacyMap &map, Position start,
     if (!within(map, start)) {
         return {MapAccessError::invalid_position, std::nullopt};
     }
-    if (limits.max_cost < 0) {
+    if (limits.max_cost < 0 || (limits.max_expanded_cost && *limits.max_expanded_cost < 0)) {
         return {MapAccessError::invalid_limits, std::nullopt};
     }
     LegacyDistanceField field{map, start, {}, {}, 0, limits.allow_first_step_exit};
@@ -150,17 +150,23 @@ LegacySearchResult search_legacy_map(const LegacyMap &map, Position start,
     field.distances[start_index] = 0;
     using Node = std::pair<std::int64_t, std::size_t>;
     std::priority_queue<Node, std::vector<Node>, std::greater<Node>> frontier;
+    const auto queue_index = [&](std::size_t index) {
+        return limits.reverse_equal_cost ? map.cells.size() - 1 - index : index;
+    };
     if (may_expand(map.cells[start_index])) {
-        frontier.emplace(0, start_index);
+        frontier.emplace(0, queue_index(start_index));
     }
     std::vector<bool> settled(map.cells.size());
     bool pruned_by_cost = false;
     while (!frontier.empty()) {
-        const auto [cost, index] = frontier.top();
+        const auto [cost, queued_index] = frontier.top();
+        const auto index = queue_index(queued_index);
         frontier.pop();
         if (settled[index] || field.distances[index] != cost) {
             continue;
         }
+        if (limits.max_expanded_cost && cost > *limits.max_expanded_cost)
+            break;
         if (field.expanded == limits.max_expansions) {
             return {MapAccessError::expansion_limit, std::nullopt};
         }
@@ -188,7 +194,7 @@ LegacySearchResult search_legacy_map(const LegacyMap &map, Position start,
                 field.distances[next] = total;
                 field.previous[next] = index;
                 if (may_expand(map.cells[next])) {
-                    frontier.emplace(total, next);
+                    frontier.emplace(total, queue_index(next));
                 }
             }
         }

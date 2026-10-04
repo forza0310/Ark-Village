@@ -66,6 +66,57 @@ const RescueFacility *facility_at(const DungeonWorldState &s, Position cell) {
     return &f->second;
 }
 } // namespace
+std::optional<DungeonTaskSuccessCandidate>
+prepare_dungeon_task_success(const DungeonTaskSuccessState &s, int definition, int year,
+                             int month) {
+    const auto old = s.definitions.find(definition);
+    if (definition < 0 || old == s.definitions.end() || old->second.kind < 0 ||
+        old->second.kind > 1 || old->second.completed < 0 || s.successes < 0 ||
+        s.ordinary_explorations < 0 || s.exploration_stage < 0 || s.exploration_stage > 5 ||
+        s.task_pool_progress < 0 || year < 0 || month < 0 || month >= 12)
+        return {};
+    const auto increment = [](int &value) {
+        if (value == std::numeric_limits<int>::max())
+            return false;
+        ++value;
+        return true;
+    };
+    DungeonTaskSuccessCandidate c{s, {}};
+    auto &task = c.state.definitions.at(definition);
+    if (!increment(c.state.successes) || !increment(task.completed) ||
+        (task.kind == 0 && !(task.flags & 8U) && !increment(c.state.ordinary_explorations)))
+        return {};
+    if (task.flags & 2U) {
+        c.state.exploration_dates[c.state.exploration_stage] = {year, month};
+        c.state.exploration_stage = std::min(c.state.exploration_stage + 1, 5);
+    }
+    if (task.flags & 4U) {
+        const auto monster = c.state.monsters.find(task.monster_definition);
+        if (task.monster_definition < 0 || monster == c.state.monsters.end() ||
+            monster->second.status < 0)
+            return {};
+        if (monster->second.status == 0)
+            monster->second.pending_notice = true;
+        monster->second.status = 1;
+    }
+    // 成功统计先于clear_active_task，当前刚完成的特殊任务本身也能抑制G增长。
+    for (const int current : s.remaining_task_definitions) {
+        const auto t = s.definitions.find(current);
+        if (t == s.definitions.end())
+            return {};
+        if (t->second.flags & 2U)
+            return c;
+    }
+    const int amount = task.kind == 0 ? 50 : 100;
+    if (s.task_pool_progress > std::numeric_limits<int>::max() - amount)
+        return {};
+    c.state.task_pool_progress += amount;
+    constexpr int thresholds[]{300, 400, 500};
+    for (int n = 0; n < 3; ++n)
+        if (s.task_pool_progress < thresholds[n] && c.state.task_pool_progress >= thresholds[n])
+            c.threshold_notice_ids.push_back(29 + n);
+    return c;
+}
 DungeonWorldResult prepare_world_dungeon_entry(const DungeonWorldState &s, CharacterId id,
                                                std::optional<int> ticket) {
     if (!live(s, id))

@@ -100,6 +100,8 @@ WorldFacilityControlResult prepare_world_facility_control(const RescueWorldState
                 return failed(RescueWorldError::invalid_input);
             a.position.x = step.step->position.x;
             a.position.z = step.step->position.z;
+            if (step.step->velocity)
+                c.state.actors.at(i.actor).horizontal_velocity = *step.step->velocity;
             // v moves n but leaves s/t/u to the later d projection, including on arrival.
             if (!step.step->waypoint_overlap) {
                 c.flow = ActorControlFlow::moving;

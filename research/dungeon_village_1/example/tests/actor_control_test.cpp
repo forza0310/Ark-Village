@@ -2,6 +2,7 @@
 #include "dungeon_village_reference/actor_lifecycle.hpp"
 
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace dungeon_village_reference;
@@ -197,6 +198,26 @@ void wandering() {
     c = prepare_actor_wander(i);
     check(c && c->append.empty() && !c->consumed_tickets,
           "missing encounter/follow removes original12 without requeue or draws");
+    i.opcode = 10;
+    i.parameter = 0;
+    i.actor = {-1, 1};
+    i.tickets = {0, 0, 0, 0, 0, 0, 0};
+    c = prepare_actor_wander(i);
+    check(c && c->cells == std::vector<Position>{{0, 1}} &&
+              c->append.front() == LegacyActorControl{0, 10, 110},
+          "source tests NEIGHBORS in bounds, outside cached center remains usable");
+    for (const int opcode : {10, 12, 13})
+        for (const int extreme :
+             {std::numeric_limits<int>::min(), std::numeric_limits<int>::max()}) {
+            i.opcode = opcode;
+            i.actor = {extreme, extreme};
+            i.center = i.actor;
+            i.tickets = {99};
+            c = prepare_actor_wander(i);
+            check(c && c->cells.empty() && c->consumed_tickets == 1 &&
+                      c->append.front() == LegacyActorControl{1, 119, 0},
+                  "wide neighbor offsets skip extreme signed outside cells without overflow");
+        }
 }
 void equipment_tail() {
     EquipmentExitTailInput i;

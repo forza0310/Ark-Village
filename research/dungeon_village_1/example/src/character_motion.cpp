@@ -39,12 +39,14 @@ CharacterMotionResult advance_character_motion(WorldPosition current, WorldPosit
     if (!valid(current) || !valid(target))
         return {CharacterMotionError::invalid_input, std::nullopt};
     auto next = current;
+    std::optional<WorldPosition> velocity;
     if ((flags & 64U) == 0) {
         const float dx = target.x - current.x, dz = target.z - current.z;
         const float distance = std::sqrt(dx * dx + dz * dz);
         if (distance != 0.0F) {
-            next.x += dx * 6.7F / distance;
-            next.z += dz * 6.7F / distance;
+            velocity = WorldPosition{dx * 6.7F / distance, dz * 6.7F / distance};
+            next.x += velocity->x;
+            next.z += velocity->z;
         }
     }
     const auto cell = character_world_cell(next);
@@ -52,7 +54,7 @@ CharacterMotionResult advance_character_motion(WorldPosition current, WorldPosit
         return {CharacterMotionError::invalid_input, std::nullopt};
     // Shapes 0 and 2 both use offsets(-4,+4), width/height4 and inclusive rectangle edges.
     const bool overlap = std::abs(next.x - target.x) <= 4.0F && std::abs(next.z - target.z) <= 4.0F;
-    return {CharacterMotionError::none, CharacterMotionStep{next, *cell, overlap}};
+    return {CharacterMotionError::none, CharacterMotionStep{next, *cell, overlap, velocity}};
 }
 
 FacilityEntryStatus inspect_facility_entry(const LegacyMap &map, const ArrivalBinding &target,

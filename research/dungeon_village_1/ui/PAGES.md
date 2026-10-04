@@ -1,13 +1,13 @@
 # UI 截图与 APK 渲染映射
 
-日期：2026-10-03。范围：R3-V；关联RQ01/RQ03/RQ04/RQ05及局部RQ07/RQ09。
+日期：2026-10-04。范围：R3-V；关联RQ01/RQ03/RQ04/RQ05及局部RQ07/RQ09。
 本报告的映射研究按用户要求从代码补缺图页面、反查已有截图渲染出处；本轮文档整合与注释检查独立记入 [验证入口](../VERIFICATION.md)，不修改产品规则。
 截图总入口见 [视觉参考](../references/README.md)，总体边界见 [视觉基线](README.md)。
 
 ## 来源与置信度
 
 - APK固定为1.0.8/versionCode9，身份见 [证据索引](../EVIDENCE.md)；下文代码结论只属于此输入。
-- 用户明确截图来自实际运行，版本与APK不同；代码与截图的对应是结构/功能映射，
+- 用户明确第三批截图来自实际运行，版本与APK不同；第四批及后续批次版本/存档身份未核实。代码与截图的对应是结构/功能映射，
   不认证截图版使用同一页面ID、相同资源、金额、汉化文案或坐标。
 - “已定位”表示固定输入中有明确页面条件、字段或绘制调用；“候选”表示与截图组合相似，
   但尚未闭合全部消费者或跨版本身份；“未定位”不代表原作没有该功能。
@@ -45,6 +45,72 @@
 | S020 | 武器商品1/2       | [b/g:7427](../work/decompiled/sources/b/g.java)，i(o)，79、f126f=1、i=0                                                    | 四行/价格/信息入口已定位；非商会、非防具店下一帧                  |
 | S021 | 设施强化列表      | [b/g:7259](../work/decompiled/sources/b/g.java)，i(o)，页面75                                                              | 库存z/选中/三项分档提示已定位；底部+不是精确效果                  |
 | S022 | 1名入住申请者     | [b/g:7140](../work/decompiled/sources/b/g.java)，74、g=6、X.size()>0                                                       | 与S006同模板不同状态；不认证两图连续转变                          |
+| S023 | 旅店休息/300G     | [c/m:437](../work/decompiled/sources/c/m.java)，类别2占用人物、flag32、B<170；[c/b:1058](../work/decompiled/sources/c/b.java)到达收费浮字 | 休息资源/计时条已定位；300G为同结构候选，不认证当帧收费 |
+| S024 | 旅店数字22/绿条   | [c/m:449](../work/decompiled/sources/c/m.java)，B>=170；数字h()、绿条am[1]/h()、头像 | APK同结构数字是最大HP，不是回复量或当前HP数字；不认证截图版22初值 |
+| S025 | 预览/魅力上升     | [a/o:463](../work/decompiled/sources/a/o.java)新旧邻接差；[c/m:363](../work/decompiled/sources/c/m.java)实例提示类型3 | 队列/素材/确认触发已定位；禁止预览与旧提示可共存，不能据此认定已扣款 |
+
+<a id="inn-rest-and-neighbourhood"></a>
+
+## 旅店休息、HP 与邻接提示
+
+第四批 [S023–S025归档](../references/screenshots/2026-10-04-user-04/README.md)为独立视觉来源，
+下列规则属于固定 APK，跨版本只作结构对应。图中4,300G/4,000G/17点不更新源表或新局初值。
+
+### 旅店不是统一的恢复进度条
+
+[设施绘制c/m:411](../work/decompiled/sources/c/m.java)区分类别2旅店和类别9住所，不能共用恢复展示。
+旅店扫描占用向量o的前4个对象，只绘制人物z含32者；可见行紧凑堆叠，行间距20。
+显示锚点L由设施分片坐标、形状/朝向及场景转换计算，不以截图像素直接当固定窗口热区。
+
+| 阶段 | 明确数据/绘制 | 边界 |
+| --- | --- | --- |
+| B<170 | [c/m:441](../work/decompiled/sources/c/m.java)整张图片67，头像；B在0..170映射到宽30的粉色计时条，高2 | 图片67通过显式img.inf绑定[restBar00.png](../assets/original/common/restBar00.png)，48×17，已实际看图含“休息”；不是人物随机气泡文案 |
+| B>=170 | [c/m:452](../work/decompiled/sources/c/m.java)仅保留restBar00的17×17头像底图；SEB18数字读取h()；白框29×5、暗底27×3、绿条am[1]/h()映射宽26、高2、余段灰 | [h()](../work/decompiled/sources/c/b.java)读取人类定义f()最大HP或怪物容量，不读当前HP或本次回复量；显示HPam[1]与逻辑目标am[3]分开 |
+| 恢复附加演出 | [c/m:469](../work/decompiled/sources/c/m.java)B-170落在d.a.am的帧边界内时绘制恢复特效库w的SEB2 | 附加演出与计时条/HP显示分开，不能从一张截图测时长 |
+
+SEB18是列表0基的[number11.seb](../assets/original/common/number11.seb)，
+严格检查记录表明10帧绑定图片108的[number11.png](../assets/original/common/number11.png)，每字7×9。
+[肖像b/g:318](../work/decompiled/sources/b/g.java)另走人物职业/定义头像绘制；头像不是全身精灵。
+固定 APK 的同结构可以解释S024数字22为容量显示候选，但本批版本身份未核实，不能把22写成人物原始HP。
+
+[a.o.am](../work/decompiled/sources/a/o.java)取[c.b.da={10,20,30}](../work/decompiled/sources/c/b.java)末值30，
+故170是200-30，不是任意选定的秒数。[状态14服务](../work/decompiled/sources/c/b.java)在旧B恰170请求g(h())；
+200的使用等待与退出独立。HP显示由s()渐变，真实恢复/显示顺序见 [设施使用与HP](../rules/FACILITY_USE.md#hp)。
+前段粉色条在170处被替换，不能据“条满”宣称只有100%之后才发生HP恢复，也不能把后段绿条当剩余休息时间。
+自由站立人物的[c/b:1946](../work/decompiled/sources/c/b.java)21×5 HP条及伤害浮字是另一路消费者，不用于解释这组旅店显示。
+
+### 300G 浮字的独立链路
+
+[到达收费c/b:1025](../work/decompiled/sources/c/b.java)读取实例价格o.a(0,m)，在原付款守卫通过时排全局效果、增加现金/实例销售/定义支出；
+[d/a:3437](../work/decompiled/sources/d/a.java)将格子投影位置与金额排入X的类型2记录，初始计数-10。
+[类型2绘制d/a:3493](../work/decompiled/sources/d/a.java)计数非负才显示，SEB12绘数字、帧20附G，带上浮位置。
+因显示存在延迟，“300G”和“休息”同帧不等于该帧刚收费；静图金额也不证明建设价或图中人物身份。
+
+### 邻接变化提示不等于本次预览已提交
+
+[a/o:399](../work/decompiled/sources/a/o.java)全量重算保存实例旧修正G，清s/w，按来源去重和外围道路格重建。
+z为true时对每实例比较s-G，槽0/1/2为价格/品质/魅力：正差排类型1/2/3，负差排4/5/6。
+[c/m:832](../work/decompiled/sources/c/m.java)c(int)向提示向量p排{i,0}，同类型已存在则不重复追加。
+只画队首，d()只推进/删除队首；正变化D={2,4,6,9,12,15,43}控制帧阶段，43个提示更新后移除。
+这不是同一瞬间清空的布尔标志，也不展示具体数值增量。
+
+| 类型 | 资源消费者 | 图层与阶段 |
+| --- | --- | --- |
+| 1价格/2品质/3魅力上升 | [c/m:363](../work/decompiled/sources/c/m.java)分别SEB69/70/71，即eff_tenantUse00/01/02 | 主层按D选帧，上浮-24到-31；第3..5帧再绘图层1 |
+| 4价格/5品质/6魅力下降 | [c/m:378](../work/decompiled/sources/c/m.java)SEB85，即eff_tenantUse04 | 独立下降演出与分段索引，不套用上升素材 |
+
+本轮实际查看[eff_tenantUse00.png](../assets/original/common/eff_tenantUse00.png)，其中并列绘制品质/价格/魅力上升中文。
+严格解析[eff_tenantUse02.seb](../assets/original/common/eff_tenantUse02.seb)得到7帧、2层：
+主层绑定图片49即eff_tenantUse00.png的x=83、宽41、高15区域；第二层第3..5帧绑定图片81即
+[eff_tenantUse01.png](../assets/original/common/eff_tenantUse01.png)的68×37特效，不存在独立eff_tenantUse02.png。
+不能把SEB71误作图片71，也不能凭名称搜索缺PNG就认定素材未提取。
+
+普通建设输入在[b/c:1703](../work/decompiled/sources/b/c.java)先逐占地审批/检查余额，
+合法后[b/c:1733](../work/decompiled/sources/b/c.java)创建实例并传z2=true；[a/o:225](../work/decompiled/sources/a/o.java)立即重算邻接并排变化提示。
+道路确认[b/c:1787](../work/decompiled/sources/b/c.java)、道路撤除1825也显式a(true)，实例撤除由a(o)相关helper触发。
+预览不是确认创建调用；新布局可以触发提示，提示随后在预览中保留。
+S025同帧的禁止图标不能证明那个非法位置已建立设施、扣款或触发两条魅力变化；完整因果仍需连续输入/状态证据。
+邻接数值规则见 [设施邻接](../rules/FACILITIES.md#neighbourhood)，不以截图17点或两条提示倒推固定奖励。
 
 ## 主菜单修正
 

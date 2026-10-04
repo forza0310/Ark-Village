@@ -59,6 +59,10 @@ void binding_and_follow() {
     check(r.candidate && r.candidate->binding_action == RescueBindingAction::chase &&
               !r.candidate->state.ai.battle.actors.at({1}).rescue,
           "non-touching only requests approach, no half binding");
+    s.actors.at({1}).unbound_route = LegacyPathResult{};
+    s.actors.at({1}).unbound_route->steps = {{3, 2}};
+    s.actors.at({1}).waypoint = 1;
+    s.actors.at({1}).destination = Position{3, 2};
     r = prepare_world_rescue_bind(s, {1}, CharacterId{2}, true);
     check(r.candidate && r.candidate->state.ai.battle.actors.at({1}).object_slot == -2 &&
               r.candidate->state.ai.battle.actors.at({1}).rescue == CharacterId{2} &&
@@ -69,6 +73,10 @@ void binding_and_follow() {
               !r.candidate->state.actors.at({1}).path_pending &&
               s.ai.battle.actors.at({2}).control.state == 2,
           "bind commits both R, state16 and activity4 atomically without changing input");
+    check(!r.candidate->state.actors.at({1}).unbound_route &&
+              r.candidate->state.actors.at({1}).waypoint == 0 &&
+              r.candidate->state.actors.at({1}).destination == Position{3, 2},
+          "rescue binding clears real G/H in both route forms but preserves old O");
     s = r.candidate->state;
     r = prepare_world_rescue_follow(s, {2});
     check(r.candidate && r.candidate->state.ai.battle.actors.at({2}).position.height == 18 &&
@@ -241,12 +249,15 @@ void seek_and_return() {
     check(r.candidate && r.candidate->binding_action == RescueBindingAction::bind,
           "fresh collision binds both actors after chase");
     s = r.candidate->state;
+    s.actors.at({1}).unbound_route = LegacyPathResult{};
     const auto map_view = view(s);
     r = prepare_world_rescue_return(s, {1}, map_view);
     check(r.candidate && r.candidate->state.actors.at({1}).journey &&
               r.candidate->state.actors.at({1}).journey->binding.instance_id == BuildingId{3} &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue.empty(),
           "activity4 selects cost-minimum inn without category/facility random and consumes8");
+    check(!r.candidate->state.actors.at({1}).unbound_route,
+          "new inn G replaces old ground G rather than owning two routes");
     s = r.candidate->state;
     int steps{};
     while (s.ai.battle.actors.at({1}).control.state == 0 && steps < 200) {

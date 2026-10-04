@@ -80,6 +80,25 @@ void prefix_once() {
               s.ai.battle.actors.at({1}).state_counter == 0 && s.facilities.at(3).occupants.empty(),
           "late exit overflow rolls back common prefix and occupation together");
 }
+void dungeon_common_exit() {
+    auto s = fixture(5);
+    s.facilities.at(3).occupants = {{1}, {1}};
+    s.ai.battle.actors.at({1}).control.queue = {{24}, {19, 0, 0, 99}};
+    s.ai.battle.actors.at({1}).control.flags = 33U | 16U | 2048U;
+    s.ai.battle.actors.at({1}).state_counter = 71;
+    const auto r = prepare_world_inn_control(s, {1});
+    check(r.candidate && r.candidate->exited &&
+              r.candidate->state.facilities.at(3).occupants == std::vector<CharacterId>{{1}} &&
+              r.candidate->state.facility_uses.at(33).completed_uses == 1 &&
+              r.candidate->state.ai.battle.actors.at({1}).control.queue ==
+                  std::vector<LegacyActorControl>{{8, 0}} &&
+              r.candidate->state.ai.battle.actors.at({1}).control.flags == 2048U &&
+              r.candidate->state.ai.battle.actors.at({1}).state_counter == 0,
+          "category5 opcode24 commits ordinary shared exit, clears old tail, first release, new8");
+    s.facility_uses.at(33).completed_uses = std::numeric_limits<int>::max();
+    check(!prepare_world_inn_control(s, {1}).candidate && s.facilities.at(3).occupants.size() == 2,
+          "category5 late shared-use overflow cannot partly release or consume24");
+}
 void rest_chain() {
     for (int direction = 0; direction < 4; ++direction) {
         auto s = fixture(8, 2);
@@ -155,10 +174,17 @@ void motion_launch_expression() {
               r.candidate->state.ai.contexts.at({1}).cell == Position{1, 1} &&
               r.candidate->state.ai.battle.actors.at({1}).position.height == 0,
           "opcode0 moves6.7, stops before suffix and does not eagerly reproject s");
+    check(r.candidate->state.actors.at({1}).horizontal_velocity.x == 6.7F &&
+              r.candidate->state.actors.at({1}).horizontal_velocity.z == 0,
+          "opcode0 stores original r before n, not rounded new-position minus old-position");
     s.ai.battle.actors.at({1}).control.flags = 64U;
+    s.actors.at({1}).horizontal_velocity = {9, -3};
     r = prepare_world_facility_control(s, {{1}, {}, {}});
     check(r.candidate && r.candidate->state.ai.battle.actors.at({1}).position.x == 150,
           "64 locks opcode0 movement without consuming target");
+    check(r.candidate->state.actors.at({1}).horizontal_velocity.x == 9 &&
+              r.candidate->state.actors.at({1}).horizontal_velocity.z == -3,
+          "64 opcode0 preserves old horizontal r");
     s = fixture();
     s.ai.battle.actors.at({1}).control.queue = {{21}, {18, 15, 20}};
     check(!prepare_world_facility_control(s, {{1}, {}, {}}).candidate &&
@@ -320,6 +346,7 @@ void special_lifecycle() {
 int main() {
     try {
         prefix_once();
+        dungeon_common_exit();
         rest_chain();
         motion_launch_expression();
         home_and_handoff();

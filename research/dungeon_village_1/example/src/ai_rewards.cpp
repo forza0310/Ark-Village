@@ -34,6 +34,12 @@ void collect_retired(AiRewardState &s) {
         if (encounters.insert(id).second)
             events_to_visit.push_back(id);
     };
+    for (const auto id : s.external_actor_roots)
+        actor(id);
+    for (const auto id : s.facility_actor_roots)
+        actor(id);
+    for (const auto id : s.external_encounter_roots)
+        event(id);
     for (const auto &[id, a] : s.battle.actors) {
         (void)a;
         actor(id);

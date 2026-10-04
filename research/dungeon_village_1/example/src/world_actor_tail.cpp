@@ -109,7 +109,9 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
     input.at_spawn_after_projection = std::find(i.spawn_cells.begin(), i.spawn_cells.end(),
                                                 perception.cell) != i.spawn_cells.end();
     input.area_before = perception.move_area;
-    input.route_cells = ctx.journey ? ctx.journey->route.steps.size() : 0;
+    input.route_cells = ctx.journey         ? ctx.journey->route.steps.size()
+                        : ctx.unbound_route ? ctx.unbound_route->steps.size()
+                                            : 0;
     input.has_encounter = a.encounter.has_value();
     input.reported_hp = a.control.action == 7 ? 0 : a.hp.target;
     const auto retention = prepare_actor_retention(input);
@@ -124,6 +126,7 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
             auto &path = c.state.actors.at(i.actor);
             path.path_pending = false;
             path.journey.reset();
+            path.unbound_route.reset();
             path.waypoint = 0;
         } else if (request == ActorRetentionRequest::mark_escape32768)
             c.state.ai.battle.actors.at(i.actor).control.flags |= 32768U;

@@ -56,6 +56,10 @@ void movement() {
     check(diagonal.step && near(diagonal.step->position.x, 4.02F) &&
               near(diagonal.step->position.z, 5.36F),
           "normalized diagonal");
+    check(diagonal.step->velocity && diagonal.step->velocity->x == 30.0F * 6.7F / 50.0F &&
+              diagonal.step->velocity->z == 40.0F * 6.7F / 50.0F,
+          "source velocity is returned before world-position addition, not subtraction after "
+          "rounding");
     const auto overshoot = ref::advance_character_motion({0, 0}, {3, 0}, 0);
     check(overshoot.step && near(overshoot.step->position.x, 6.7F) &&
               overshoot.step->waypoint_overlap,
@@ -67,12 +71,14 @@ void movement() {
     check(same.step && same.step->position.x == 10 && same.step->position.z == 20 &&
               same.step->waypoint_overlap,
           "zero distance avoids division");
+    check(!same.step->velocity, "zero distance preserves caller old r rather than writing zero");
     for (const float delta : {3.999F, 4.0F, 4.001F}) {
         const auto result =
             ref::advance_character_motion({100 + delta, 100 + delta}, {100, 100}, 64U | 2U);
         check(result.step && result.step->position.x == 100 + delta &&
                   result.step->waypoint_overlap == (delta <= 4.0F),
               "bit64 stops displacement but preserves inclusive rectangle test");
+        check(!result.step->velocity, "bit64 does not rewrite caller old r");
     }
     check(ref::character_world_cell({-99, -101}) == ref::Position{0, -1},
           "negative logical coordinates truncate, not floor");

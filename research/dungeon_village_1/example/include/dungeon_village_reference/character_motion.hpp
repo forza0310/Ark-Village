@@ -18,6 +18,7 @@ struct CharacterMotionStep {
     WorldPosition position;
     Position logical_cell;
     bool waypoint_overlap{};
+    std::optional<WorldPosition> velocity{}; // 原r实际写值；64或零距离时为空，调用方保留旧r。
 };
 struct CharacterMotionResult {
     CharacterMotionError error{CharacterMotionError::none};

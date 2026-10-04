@@ -197,6 +197,8 @@ RescueWorldResult prepare_world_rescue_bind(const RescueWorldState &s, Character
         actor.object_slot = -2;
         c.state.actors.at(id).path_pending = false;
         c.state.actors.at(id).journey.reset();
+        c.state.actors.at(id).unbound_route.reset();
+        c.state.actors.at(id).waypoint = 0;
         actor.control.queue.push_back({8, 4});
     } else if (c.binding_action == RescueBindingAction::baseline) {
         const auto baseline =
@@ -239,6 +241,8 @@ RescueWorldResult prepare_world_rescue_seek(const RescueWorldState &s, Character
     auto &actor = c.state.ai.battle.actors.at(id);
     actor.position.x = step.step->position.x;
     actor.position.z = step.step->position.z;
+    if (step.step->velocity)
+        c.state.actors.at(id).horizontal_velocity = *step.step->velocity;
     return {RescueWorldError::none, c};
 }
 RescueWorldResult prepare_world_rescue_return(const RescueWorldState &s, CharacterId id,
@@ -337,6 +341,7 @@ RescueWorldResult prepare_world_rescue_return(const RescueWorldState &s, Charact
     }
     auto &ctx = c.state.actors.at(id);
     ctx.journey = journey;
+    ctx.unbound_route.reset();
     ctx.waypoint = 0;
     ctx.path_pending = true;
     ctx.binding = journey.binding;
@@ -389,6 +394,8 @@ RescueWorldResult prepare_world_rescue_path_c(const RescueWorldState &s, Charact
     actor.position.x = step.step->position.x;
     actor.position.z = step.step->position.z;
     c.state.ai.contexts.at(id).cell = step.step->logical_cell;
+    if (step.step->velocity)
+        c.state.actors.at(id).horizontal_velocity = *step.step->velocity;
     if (step.step->waypoint_overlap)
         ++c.state.actors.at(id).waypoint;
     return {RescueWorldError::none, c};
@@ -609,8 +616,8 @@ RescueWorldResult prepare_world_inn_control(const RescueWorldState &s, Character
                 c.cleaned_up = true;
                 break;
             }
-            if (f->category == 1 || f->category == 5)
-                break; // Satisfaction/equipment/dungeon exploration need actual world consumers.
+            if (f->category == 1)
+                break; // 商店满足度/装备有独立尾部；类别5的24只有共同退出，21另行交接。
             if (!c.state.facility_uses.count(f->placement.definition_id))
                 return fail(RescueWorldError::invalid_input);
             FacilityServiceExitInput i;

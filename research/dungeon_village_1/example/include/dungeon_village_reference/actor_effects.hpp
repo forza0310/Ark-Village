@@ -11,6 +11,8 @@ struct ActorEffectState {
     std::vector<ActorEffectRecord> delayed; // ce, reverse traversal, old delay<=0 fires.
 };
 enum class ActorEffectError { none, invalid_input, missing_ticket, invalid_ticket };
+// Same timeline payload/overflow preflight used by advancement, without advancing any record.
+bool valid_actor_effect_state(const ActorEffectState &state);
 struct ActorEffectSound {
     int sound{};
 }; // Uses actor's cached bm, not the ce effect position.

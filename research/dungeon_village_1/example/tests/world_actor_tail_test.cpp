@@ -153,12 +153,37 @@ void bad_area_and_release() {
     check(!prepare_world_actor_tail(s, i).candidate && s.actors.at({1}).town_updates == 0,
           "late invalid physics rolls back old-cell counters");
 }
+void ground_path_retention() {
+    auto s = fixture();
+    auto &ctx = s.actors.at({1});
+    ctx.journey.reset();
+    ctx.unbound_route = LegacyPathResult{};
+    ctx.unbound_route->steps = {{1, 1}, {2, 1}};
+    ctx.destination = Position{2, 1};
+    ctx.path_pending = true;
+    s.ai.battle.actors.at({1}).control.state = 0;
+    ctx.no_path_updates = 59;
+    auto r = prepare_world_actor_tail(s, input(s));
+    check(r.candidate && !r.candidate->delete_instance &&
+              r.candidate->state.actors.at({1}).no_path_updates == 0 &&
+              r.candidate->state.actors.at({1}).unbound_route,
+          "real ground G is nonempty without a facility binding, not empty-path deletion60");
+    s.ai.contexts.at({1}).move_area = false;
+    ctx.bad_area_updates = 29;
+    s.ai.battle.actors.at({1}).control.action = 7;
+    r = prepare_world_actor_tail(s, input(s));
+    check(r.candidate && r.candidate->cleaned_up &&
+              !r.candidate->state.actors.at({1}).unbound_route &&
+              r.candidate->state.actors.at({1}).destination == Position{2, 1},
+          "bad-area O() clears actual ground G, r still retains old O destination");
+}
 } // namespace
 int main() {
     try {
         source_order();
         thresholds();
         bad_area_and_release();
+        ground_path_retention();
         std::cout << checks << " world tail checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

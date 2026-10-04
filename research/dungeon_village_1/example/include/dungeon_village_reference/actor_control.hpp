@@ -100,6 +100,7 @@ struct ActorWanderCandidate {
     std::size_t consumed_tickets{};
 };
 // Control10/12/13 removed first; append behind existing tail. Direct world targets, no route.
+// Only candidate neighbors must be in-map; an outside cached center is not itself rejected.
 std::optional<ActorWanderCandidate> prepare_actor_wander(const ActorWanderInput &input);
 
 struct EquipmentCommitCandidate {

@@ -406,7 +406,43 @@ void random_map_differential() {
 
 } // namespace
 
+void source_frontier_limit() {
+    const auto map = ground_map(13, 1);
+    LegacySearchLimits limits;
+    limits.max_expanded_cost = 500;
+    limits.reverse_equal_cost = true;
+    const auto bounded = search_legacy_map(map, {0, 0}, limits);
+    check(bounded.field && bounded.field->expanded == 11 && bounded.field->distances[10] == 500 &&
+              bounded.field->distances[11] == 550 && !bounded.field->distances[12],
+          "source expansion limit keeps550 frontier from expanded500, not later600");
+    check(valid_legacy_distance_field(*bounded.field) &&
+              trace_legacy_path(*bounded.field, {11, 0}).error == MapAccessError::none,
+          "retained frontier remains a valid route candidate above expansion limit");
+    limits.max_expanded_cost = 0;
+    const auto start_only = search_legacy_map(map, {0, 0}, limits);
+    check(start_only.field && start_only.field->expanded == 1 &&
+              start_only.field->distances[1] == 50 && !start_only.field->distances[2],
+          "zero expansion cost still discovers first frontier rather than failing cost check");
+    limits.max_expanded_cost = -1;
+    check(search_legacy_map(map, {0, 0}, limits).error == MapAccessError::invalid_limits,
+          "negative independent expansion limit rejected");
+    const auto square = ground_map(2, 2);
+    limits.max_expanded_cost.reset();
+    const auto reversed = search_legacy_map(square, {0, 0}, limits);
+    const auto normal = search_legacy_map(square, {0, 0});
+    check(reversed.field && normal.field && reversed.field->distances == normal.field->distances,
+          "reverse source ties preserve all shortest costs and default search contract");
+    auto detour = ground_map(3, 3);
+    detour.cells[4] = {0, RouteCategory::blocked, {}};
+    const auto reverse_detour = search_legacy_map(detour, {1, 0}, limits);
+    const auto normal_detour = search_legacy_map(detour, {1, 0});
+    check(reverse_detour.field && normal_detour.field && reverse_detour.field->previous[7] == 8 &&
+              normal_detour.field->previous[7] == 6 &&
+              reverse_detour.field->distances[7] == normal_detour.field->distances[7],
+          "source reverse equal-cost inventory chooses right detour; default keeps left tie");
+}
 int main() {
+    source_frontier_limit();
     transition_matrix_and_first_step();
     binding_shapes_kinds_and_identity();
     terminal_transit_and_multi_cell_access();

@@ -5,6 +5,8 @@
 #include "dungeon_village_reference/object_commit.hpp"
 #include "dungeon_village_reference/rescue_commit.hpp"
 
+#include <array>
+#include <cstdint>
 #include <functional>
 
 namespace dungeon_village_reference {
@@ -56,6 +58,36 @@ struct DungeonWorldResult {
     DungeonWorldError error{DungeonWorldError::none};
     std::optional<DungeonWorldCandidate> candidate;
 };
+// c.k.a(任务定义)的任务所有者投影，不另建长期世界/任务存储。
+struct DungeonTaskDefinitionProgress {
+    int kind{};
+    std::uint32_t flags{};
+    int completed{};
+    int monster_definition{};
+};
+struct DungeonMonsterAvailability {
+    int status{};          // 原怪物p，即使旧值非零，c()仍写1。
+    bool pending_notice{}; // 原r，仅旧p0时置真。
+};
+struct DungeonTaskSuccessState {
+    int successes{};                                       // UserData.v
+    int ordinary_explorations{};                           // UserData.w，仅kind0且无flag8。
+    int exploration_stage{};                               // UserData.x，至多5，不是人物等级。
+    std::array<std::array<int, 2>, 7> exploration_dates{}; // UserData.J[1]，原年/月。
+    int task_pool_progress{};                              // UserData.G，不是金币/人气/村子点数。
+    std::map<int, DungeonTaskDefinitionProgress> definitions;
+    std::map<int, DungeonMonsterAvailability> monsters;
+    std::vector<int> remaining_task_definitions; // clear_active_task前的当前bq。
+};
+struct DungeonTaskSuccessCandidate {
+    DungeonTaskSuccessState state;
+    std::vector<int> threshold_notice_ids; // 消息29/30/31，不是摘要页面ID。
+};
+// 不隐式清任务、增长经验/现金/人气或执行UI。重复调用确实再加计数；
+// 有序阶段2在移除任务之前调用一次，不另加原版不存在的幂等屏障。
+std::optional<DungeonTaskSuccessCandidate>
+prepare_dungeon_task_success(const DungeonTaskSuccessState &state, int definition, int raw_year,
+                             int raw_month);
 // Front opcode21 reads the CURRENT O tile's instance; no extra old-s/status guard.
 // Re-entry resets progress, preserves bw and appends duplicates. Empty uniform >=6 records
 // can issue168/169 or170/171; only the actually emitted notice consumes a draw2.

@@ -68,6 +68,12 @@ struct AiRewardState {
     std::map<std::uint64_t, RewardEncounter> encounters;
     std::vector<std::uint64_t> encounter_order; // bn source order, never sort restored originalIDs.
     std::map<std::uint64_t, RewardEncounter> retired_encounters; // Removed from bn, held by db/dc.
+    // Owners outside this battle projection (facility crews, task/page references) must publish
+    // their current roots BEFORE calling a consumer, since consumers can collect internally.
+    std::set<CharacterId> external_actor_roots;
+    // 共同设施所有者每次从实时occupants重建；与任务/UI显式根分开。
+    std::vector<CharacterId> facility_actor_roots;
+    std::set<std::uint64_t> external_encounter_roots; // Encounter ID0 remains a valid identity.
     std::map<std::uint64_t, ProjectileState> projectiles;
     std::vector<std::uint64_t> projectile_order;
     std::uint64_t next_projectile_id{1};
@@ -146,7 +152,8 @@ struct WorldProjectileResult {
 // Collision reads current monster roster/order and caster miss; all hit/drop/spawn changes atomic.
 WorldProjectileResult prepare_world_projectile(const AiRewardState &state,
                                                const WorldProjectileInput &input);
-// Trace Java-style object reachability from live actors/events/projectiles, including R/S/db/dc.
+// Trace Java-style object reachability from live actors/events/projectiles and explicit external
+// roots, including R/S/db/dc. Removing an external root permits collection on the next call.
 // No orphan-cycle retention and no re-entry into running rosters. Missing references stay errors
 // for their consumer; collection does not manufacture an object to repair invalid input.
 AiRewardState collect_ai_references(AiRewardState state);

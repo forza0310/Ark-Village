@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及49个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及56个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -44,8 +44,14 @@
 | world_encounters | 任务F创建/配额/下一次绑定、当前地图候选重建、事件bit2刷新与原时点场快照；声音/提示保持请求 | [任务与场事务](../rules/ai/ENCOUNTERS.md#任务创建与影响场地图事务) |
 | world_facilities | 一次共同d前段/成长→携带表情→设施控制、类别8休息/类别6特殊入口/类别9退出；人物与怪物状态15旧B15/60/70 | [设施控制](../rules/ai/CONTROL.md#设施控制的共同执行组合) |
 | world_actor_tail | 旧s的L/M→物理/K/新s→保留/清理/删除请求，调度原时点释放/退休；不把控制停留当删除 | [执行尾部](../rules/ai/LIFECYCLE.md#执行尾部的世界提交) |
-| dungeon_ai、world_dungeon | 类别5进入/队伍/挑战/撤退/错峰退出、目录及抛出奖励原子候选、状态20直接落地续行、阶段2任务请求 | [洞穴与迷宫](../rules/ai/DUNGEONS.md) |
+| dungeon_ai、world_dungeon | 类别5进入/队伍/挑战/撤退/错峰退出、目录及抛出奖励原子候选、状态20直接落地续行；阶段2任务请求和实际成功统计/探索日期/怪物开放/任务池阈值 | [洞穴与迷宫](../rules/ai/DUNGEONS.md) |
 | world_shop | 当前商店到达/携物、装备选择和收费、满足度/延迟人气、退出/属性/真实装配；显示仍显式交接 | [通用商店事务](../rules/ai/CONTROL.md#通用商店的世界事务) |
+| world_control | 同一控制所有者的跨域FIFO续行、真实hold/true删除，阻止重复共同前段和等待扣减；不内置缺失消费者 | [控制组合](../rules/ai/CONTROL_COMPOSITION.md) |
+| world_schedule、world_overlap | 轮首场/到访/提示/人气/S、两遍实时名单、共同前段/尾部、释放/退休与实际L；支持外层目录/任务/随机原子候选 | [共同调度](../rules/ai/WORLD_SCHEDULE.md) |
+| world_departure | 任务/救援/物体/事件优先级、全部活动、住宅/实际出口、两级票号及真实路线；到达不是选路成功 | [出发事务](../rules/ai/WORLD_DEPARTURE.md) |
+| world_wander | 从旧s/当前或退休db、S读取中心，扩展10/12/13的原尾部；无引用零随机，不提前移动 | [真实漫游](../rules/ai/WORLD_SCHEDULE.md#真实世界漫游控制-101213) |
+| world_misc_control | 实际c0..20、25恢复/显示、26共享定义与删除请求、32起跳、33旧u音效；不重复共同计数 | [杂项与状态](../rules/ai/CONTROL_COMPOSITION.md#回复离村起跳与拾物音效的实际消费者) |
+| world_equipment_display | 27/29实际cd载荷、负年龄烟效和旧u；已发商店请求不再次消费控制，不装配/计时 | [装备显示](../rules/ai/CONTROL_COMPOSITION.md#27与29的装备显示记录) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

@@ -21,7 +21,8 @@ bool valid_display(const ActorEffectRecord &r) {
         return false;
     return true;
 }
-bool valid_state(const ActorEffectState &s) {
+} // namespace
+bool valid_actor_effect_state(const ActorEffectState &s) {
     if (s.display.size() > 1000000 || s.delayed.size() > 1000000 ||
         s.display.size() + s.delayed.size() > 1000000)
         return false;
@@ -33,6 +34,7 @@ bool valid_state(const ActorEffectState &s) {
             return false;
     return true;
 }
+namespace {
 bool valid_counters(const ActorCounterState &s) {
     const auto count = [](int value) {
         return value >= 0 && value < std::numeric_limits<int>::max();
@@ -42,7 +44,7 @@ bool valid_counters(const ActorCounterState &s) {
 }
 } // namespace
 ActorEffectStepResult advance_actor_effects(const ActorEffectState &s) {
-    if (!valid_state(s))
+    if (!valid_actor_effect_state(s))
         return {ActorEffectError::invalid_input, std::nullopt};
     ActorEffectStepCandidate c{s, {}, {}};
     for (std::size_t n = c.state.delayed.size(); n > 0; --n) {
@@ -71,8 +73,8 @@ ActorEffectStepResult advance_actor_effects(const ActorEffectState &s) {
     return {ActorEffectError::none, c};
 }
 ActorExpressionResult prepare_actor_expression(const ActorExpressionInput &i) {
-    if (!valid_state(i.state) || i.expression < 0 || i.expression >= 19 || i.delay < 0 ||
-        i.variant_count <= 0 || i.state.display.size() >= 1000000)
+    if (!valid_actor_effect_state(i.state) || i.expression < 0 || i.expression >= 19 ||
+        i.delay < 0 || i.variant_count <= 0 || i.state.display.size() >= 1000000)
         return {ActorEffectError::invalid_input, std::nullopt};
     if (i.probability_ticket < 0 || i.probability_ticket >= 1000)
         return {ActorEffectError::invalid_ticket, std::nullopt};

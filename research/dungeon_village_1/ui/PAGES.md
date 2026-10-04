@@ -34,7 +34,7 @@
 | S009 | 冒险者到访        | [b/g:3261](../work/decompiled/sources/b/g.java)，f(o)，页面59                                                              | 人物到访插画/文本候选，APK标题“活动”与截图“事件”不同          |
 | S010 | 局部战斗连击/短条 | [战斗表现](COMBAT_RENDER.md)，c/b:1946血条、1988累计伤害/连击、common ef_hit字块 | 连击/浮字消费者已定位；不同版局部数字10不认证为单次伤害 |
 | S011 | 征集冒险者结果    | [b/g:870](../work/decompiled/sources/b/g.java)，c(o)，页面24                                                               | 角色/等级/合计as结构候选；页面23为前置募集页，不能混用            |
-| S012 | 野外攻略进度      | [c/m:487](../work/decompiled/sources/c/m.java)，a(o,x,y)，状态f209e=1、g>=0                                                | 进度条及g/h到百分比消费者候选；“攻略中”标签与目标菱形未全部绑定 |
+| S012 | 野外攻略进度      | [c/m:487](../work/decompiled/sources/c/m.java)，阶段1、g>=0；[探索表现](DUNGEON_RENDER.md) | g/h、攻略中字块、任务菱形和底栏已定位；不认证跨版身份/连续进度 |
 | S013 | 赠礼结果          | [b/g:6440](../work/decompiled/sources/b/g.java)，h(o)，页面66；[c/n:2913](../work/decompiled/sources/c/n.java)属性过渡      | 插画/属性显示候选；截图标题不同，增量不等于最终值                 |
 | S014 | 阿南商会物品      | [b/g:7951](../work/decompiled/sources/b/g.java)，j(o)，页面84，f126f=0、i=0                                                | APK为“南瓜商会”，同布局候选；购买/持有页与出售上下文另分        |
 | S015 | 选择入住者        | [b/g:7387](../work/decompiled/sources/b/g.java)，i(o)，页面80                                                              | 列表/费用/余额色分支已定位；不覆盖截图版资格/收费                 |
@@ -54,6 +54,12 @@
 | S029 | 击杀金币100G      | 同源死亡5083；[d/a](../work/decompiled/sources/d/a.java)3783追加X3、3532绘制及独立X4金币效果 | 死亡地点固定浮字，不是旅店X2；没有HUD入账前后，100G不写源表 |
 | S030 | 经验值+6/橙条     | [c/b](../work/decompiled/sources/c/b.java)，cd24绘制1782；定义共享N/O/L | 数字是剩余待消费N，条读L/阈值；APK资源EXP+与截图中文不同 |
 | S031 | 升级/等级2/两属性 | 同源cd14；[a/e](../work/decompiled/sources/a/e.java)575报告；[d/a](../work/decompiled/sources/d/a.java)2626底栏S0 | 头标和底栏独立，APK LevelUP/Lv.与截图文字分开；不证明回满HP |
+| S032 | 迷宫攻略中50% | [c/n:2710](../work/decompiled/sources/c/n.java)类型14/任务菱形；4208底部路线；[探索表现](DUNGEON_RENDER.md) | 上方条/标签、任务框、头像/挑战与底栏百分比独立；不是奖励/成果页或人物血条 |
+
+<a id="dungeon-render"></a>
+
+迷宫攻略中的任务标记、g/h进度、队伍/挑战底栏、绘制期随机和完成边界见[探索表现规格](DUNGEON_RENDER.md)。
+本轮[S032归档](../references/screenshots/2026-10-04-dungeon/README.md)与旧S012保持独立任务/版本身份。
 
 <a id="combat-render"></a>
 

@@ -5,6 +5,8 @@ namespace ark::desktop::ui {
 Layout::Layout(Extent size) : extent(size) {
     const float w = static_cast<float>(size.width), h = static_cast<float>(size.height);
     scene = {0, 24, w, h - 53};
+    // Paint reaches the 21-unit footer; input stops above the taller 29-unit corner buttons.
+    scene_clip = {0, 24, w, h - 45};
     // Desktop playback control, below the original HUD and clear of its points bar.
     pause_button = {4, 42, 106, 22};
     left_button = {0, h - 29, 60, 29};

@@ -16,6 +16,8 @@ reject(([,s])=>s.map_seed_instances[0].x=-1); reject(([,s])=>s.first_arrival.def
 reject(([,,t])=>t.entries[0].source_utf8+='x'); reject(([,,t])=>t.apk_sha256='other');
 reject(([,s])=>s.first_arrival.equipment_ids.pop());
 reject(([,s])=>s.reset.unlocked_character_definitions=[1]);
+reject(([,s])=>s.reset.active_boundary_index=1);
+reject(([,s])=>delete s.reset.active_boundary_index);
 reject(v=>v[3]=v[3].replace('300\t450','301\t450'));
 reject(v=>v[4]=v[4].replace('route_category','category'));
 reject(v=>v[4]=v[4].split('\n').slice(0,-2).join('\n')+'\n');
@@ -25,7 +27,7 @@ reject(v=>v[5]=v[5].replace('0\t2\t3','0\t2\t4'));
 reject(v=>v[5]=v[5].replace('1\t3\t4','1\t2\t3'));
 reject(v=>v[5]=v[5].replace('83\t11\t10','83\t24\t10'));
 reject(v=>v[4]=v[4].replace('0\t0\t15\t12\t3','0\t0\t15\t12\t9'));
-console.log('PASS startup data and 22 rejection cases');
+console.log('PASS startup data and 24 rejection cases');
 // Exercise shape checks independently of the outer byte hash; invalid structured input must
 // still fail even when a publisher has recalculated its source hash.
 const entries = new Map(source[2].entries.map(e => [e.entry, e.source_utf8.split('\n').map(line => line.split('\t'))]));

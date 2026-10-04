@@ -29,6 +29,7 @@ struct StartupData {
     std::vector<std::string> first_talk;
     std::array<std::int32_t, 10> initial_job_counts{};
     std::vector<world::LoadedCell> loaded_cells; // Row-major, original TSV fields preserved.
+    int boundary_index{}; // Source reset region/skin index; expansion is not implemented.
 };
 const StartupData &startup_data();
 } // namespace ark::app

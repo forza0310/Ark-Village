@@ -75,7 +75,8 @@ for (const file of ['img.inf', 'top_bar.png', 'btmbar.png', 'btmbar_popular00.pn
   'number05.png', 'number05.seb', 'number08.png', 'number08.seb', 'number12.png',
   'number12.seb', 'icon_season.png', 'icon_season.seb', 'wnd_conner.png', 'wnd_conner.seb',
   'wnd_lv.png', 'wnd_max.png', 'icon_tenantInfo.png', 'arrow00.png', 'hisho_talk.png',
-  'arrow01.png', 'arrow02.png', 'arrow02.seb', 'icon_param00.png', 'road4block00.png', 'road4block01.png'])
+  'arrow01.png', 'arrow02.png', 'arrow02.seb', 'icon_param00.png', 'road4block00.png', 'road4block01.png',
+  'fence01.png', 'fence010.seb', 'fence011.seb', 'fence012.seb', 'door00.png', 'door00.seb'])
   copy(`assets/original/common/${file}`, `common/${file}`);
 for (const file of ['img.inf', 'touch_arrow.png', 'touch_arrow.seb', 'buildCategoryBack.png',
   'buildCategoryBack.seb', 'frame.png', 'frame.seb'])

@@ -18,6 +18,12 @@ int main() {
         app::Game arrival;
         ui::State view;
         const ui::Layout layout(size);
+        require(layout.scene_clip.y == 24 && layout.scene_clip.width == size.width &&
+                layout.scene_clip.y + layout.scene_clip.height == size.height - 21);
+        require(layout.scene.y + layout.scene.height == size.height - 29);
+        const Vector2 footer_gap{size.width / 2.0F, size.height - 25.0F};
+        require(CheckCollisionPointRec(footer_gap, layout.scene_clip) &&
+                !CheckCollisionPointRec(footer_gap, layout.scene));
         ui::click(arrival, view, layout, center(layout.pause_button));
         require(arrival.state().paused && view.page == ui::Page::village && !view.detail);
         for (int i = 0; i < 600; ++i)

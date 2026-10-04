@@ -291,12 +291,25 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster_camera);
+        // Scissor consumes framebuffer pixels, while the shared scene rectangle is logical.
+        // Clip full sprites to the scene viewport after the boundary's submission gate.
+        const auto &scene_clip = layout.scene_clip;
+        const auto scene_left = static_cast<int>(
+            std::floor(raster_camera.offset.x + scene_clip.x * raster_camera.zoom));
+        const auto scene_top = static_cast<int>(
+            std::floor(raster_camera.offset.y + scene_clip.y * raster_camera.zoom));
+        const auto scene_right = static_cast<int>(std::ceil(
+            raster_camera.offset.x + (scene_clip.x + scene_clip.width) * raster_camera.zoom));
+        const auto scene_bottom = static_cast<int>(std::ceil(
+            raster_camera.offset.y + (scene_clip.y + scene_clip.height) * raster_camera.zoom));
+        BeginScissorMode(scene_left, scene_top, scene_right - scene_left, scene_bottom - scene_top);
         draw_scene(game, sprites, view.camera, extent, view.zoom,
                    inspected_travel
                        ? std::optional<world::WorldPosition>{inspected_travel->position}
                        : std::nullopt,
                    actor_animation.frame());
         draw_preview(game, view, layout, sprites, hovered);
+        EndScissorMode();
         ui::draw_hud(game, view, layout, skin);
         ui::draw_pages(game, view, layout, skin);
         EndMode2D();

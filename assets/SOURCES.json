@@ -654,6 +654,46 @@
       "height": 15
     },
     {
+      "file": "common/fence01.png",
+      "source": "research/dungeon_village_1/assets/original/common/fence01.png",
+      "sha256": "5fd1fc988f8838b41ae0c0e7c7a5b52c4c84b50eb9f741cfbc792636c84a11f2",
+      "bytes": 2628,
+      "width": 135,
+      "height": 124
+    },
+    {
+      "file": "common/fence010.seb",
+      "source": "research/dungeon_village_1/assets/original/common/fence010.seb",
+      "sha256": "7a8f65d79ffb672be6176271f312c9783f8df9f5ab19dd9bf3de7cefed401e1c",
+      "bytes": 128
+    },
+    {
+      "file": "common/fence011.seb",
+      "source": "research/dungeon_village_1/assets/original/common/fence011.seb",
+      "sha256": "d1592132d8c39770935de38ae95bc4ec1a8228f48695e2b1800fdb5a1c491535",
+      "bytes": 128
+    },
+    {
+      "file": "common/fence012.seb",
+      "source": "research/dungeon_village_1/assets/original/common/fence012.seb",
+      "sha256": "d292c63d56ad21feb2486e5ddd7c85ecff22de75d8fb34a9908b54c30cbc087e",
+      "bytes": 128
+    },
+    {
+      "file": "common/door00.png",
+      "source": "research/dungeon_village_1/assets/original/common/door00.png",
+      "sha256": "21539b447bf4c4d622466620185d65519e4da980fec9549196bc9313d18466c8",
+      "bytes": 749,
+      "width": 41,
+      "height": 31
+    },
+    {
+      "file": "common/door00.seb",
+      "source": "research/dungeon_village_1/assets/original/common/door00.seb",
+      "sha256": "bd1ffaad78b89a05104d1e09eeaaa3edd2c99f83b47150a9ca878b9df6848554",
+      "bytes": 48
+    },
+    {
       "file": "common2/img.inf",
       "source": "research/dungeon_village_1/assets/original/common2/img.inf",
       "sha256": "748663587029cf0a11d4936b3d5abe97cf2b78b5a7d2165adce43d7e1cca00de",

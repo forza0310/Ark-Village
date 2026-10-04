@@ -1,6 +1,7 @@
-// Loaded ground and current instances. Boundary/exterior extra overlays still await bindings.
+// Loaded ground, first-pass boundary/entrance overlays and current instances share depth order.
 #include "scene.hpp"
 #include "ark/world/terrain.hpp"
+#include "boundary_render.hpp"
 #include "character_visibility.hpp"
 #include "road_render.hpp"
 #include <algorithm>
@@ -32,18 +33,40 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
         bool farmer{};
         float depth{};
         int image_width{}, image_height{}; // Nonzero only for whole-PNG road patches.
+        Sprites::Binding binding{Sprites::Binding::map};
     };
     std::vector<Tile> tiles;
+    const auto scene_viewport = ui::Layout(extent).scene_clip;
     const auto base_depth = [&](const app::Display &display, Vector2 p) {
         return p.y + zoom * (((display.flags & 1) ? -50 : 15) + display.depth_offset);
     };
     for (int y = data.map.height - 1; y >= 0; --y)
         for (int x = 0; x < data.map.width; ++x) {
             const auto source = terrain.cells[terrain.index({x, y})];
+            if (source.display_id < 0)
+                continue;
             const auto &display = game.display(source.display_id);
+            if (display.sprite.empty())
+                continue;
             const auto p = project({x, y}, camera, extent, zoom);
             tiles.push_back(
                 {display.sprite, source.variant, p, WHITE, false, base_depth(display, p)});
+            // BOUNDARY: use the ground SEB origin D, then submit offsets; draw() applies SEB
+            // offsets once. The 60x60 rectangle gates submission, not the sprite's source cut.
+            const auto visible =
+                CheckCollisionRecs({p.x, p.y - 31 * zoom, 60 * zoom, 60 * zoom}, scene_viewport);
+            for (const auto &overlay :
+                 boundary_overlays(data.loaded_cells.at(terrain.index({x, y})), data.boundary_index,
+                                   display.flags, display.depth_offset, visible)) {
+                Tile tile{overlay.sprite,
+                          overlay.frame,
+                          {p.x + zoom * overlay.offset_x, p.y + zoom * overlay.offset_y},
+                          WHITE,
+                          false,
+                          p.y + zoom * overlay.depth_offset};
+                tile.binding = Sprites::Binding::common;
+                tiles.push_back(std::move(tile));
+            }
         }
     // Second pass submits to the same depth queue. Never overlay patches over all foreground.
     // This finite renderer draws all base tiles (no patch-specific viewport culling).
@@ -84,7 +107,7 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
             continue;
         }
         sprites.draw(tile.sprite, tile.frame, tile.point, tile.tint,
-                     tile.farmer ? Sprites::Binding::farmer : Sprites::Binding::map, zoom);
+                     tile.farmer ? Sprites::Binding::farmer : tile.binding, zoom);
     }
 }
 void draw_preview(const app::Game &game, const ui::State &view, const ui::Layout &layout,

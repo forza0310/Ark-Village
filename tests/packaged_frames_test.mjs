@@ -38,5 +38,34 @@ try {
   writeFileSync(walkFile, walk);
   const walkFailure = run(); assert.notEqual(walkFailure.status, 0);
   assert.match(walkFailure.stderr, /rectangle/);
-  console.log('PASS requested-frame bounds, walking/road frames, unused records, truncation and foreign cwd');
+  writeFileSync(walkFile, readFileSync(join(dirname(executable), 'assets/human/walk00.seb')));
+  // The published common bindings are explicit image IDs, independent of SEB row indices.
+  const commonIndex = new Map(readFileSync(join(root, 'assets/common/img.inf'), 'utf8')
+    .trimEnd().split(/\r?\n/).map(row => row.split('\t')));
+  assert.equal(commonIndex.get('64'), 'fence01.gif');
+  assert.equal(commonIndex.get('5'), 'door00.gif');
+  for (const [name, frames, imageId] of [
+    ['fence010.seb', 6, 64], ['fence011.seb', 6, 64], ['fence012.seb', 6, 64], ['door00.seb', 2, 5]]) {
+    const bytes = readFileSync(join(root, 'assets/common', name));
+    assert.equal(bytes.readInt16BE(0), 1, `${name}: single layer`);
+    assert.equal(bytes.readInt16BE(2), frames, `${name}: frame count`);
+    assert.equal(bytes.readInt16BE(4), frames, `${name}: record count`);
+    assert.equal(bytes.length, 8 + frames*20, `${name}: complete records`);
+    for (let frame = 0; frame < frames; ++frame) {
+      assert.equal(bytes.readInt16BE(8 + frame*20), frame, `${name}: frame order`);
+      assert.equal(bytes.readInt16BE(8 + frame*20 + 2), imageId, `${name}: common image ID`);
+    }
+  }
+  // A later skin's tall corner and the second entrance post must both be bounds checked.
+  for (const [name, frame] of [['fence012.seb', 3], ['door00.seb', 1]]) {
+    const boundaryFile = join(root, 'assets/common', name);
+    const originalBoundary = readFileSync(boundaryFile);
+    const invalidBoundary = Buffer.from(originalBoundary);
+    invalidBoundary.writeInt16BE(30000, 8 + frame*20 + 4);
+    writeFileSync(boundaryFile, invalidBoundary);
+    const boundaryFailure = run(); assert.notEqual(boundaryFailure.status, 0);
+    assert.match(boundaryFailure.stderr, /rectangle/);
+    writeFileSync(boundaryFile, originalBoundary);
+  }
+  console.log('PASS requested-frame bounds, walking/road/boundary frames, common bindings, unused records, truncation and foreign cwd');
 } finally { rmSync(root, {recursive:true,force:true}); }

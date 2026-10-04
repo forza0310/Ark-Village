@@ -311,6 +311,21 @@ void check_assets(const std::filesystem::path &root) {
     for (int frame = 0; frame < 4; ++frame)
         validate_frame(root / "human/walk00.seb", frame, Sprites::Binding::farmer);
     validate_frame(root / "common/chara_hishoko01.seb", 0, Sprites::Binding::secretary);
+    // Every expansion skin and corner can be consumed; retain the published common IDs.
+    for (const auto &[name, frames, image_id] :
+         {std::tuple{"fence010.seb", 6, 64}, std::tuple{"fence011.seb", 6, 64},
+          std::tuple{"fence012.seb", 6, 64}, std::tuple{"door00.seb", 2, 5}}) {
+        const auto path = root / "common" / name;
+        const auto definition = assets::parse_legacy_seb(read_bytes(path));
+        if (definition.frame_count != frames)
+            throw std::runtime_error("Boundary sprite frame count changed");
+        for (const auto &layer : definition.layers)
+            for (const auto &part : layer.parts)
+                if (part.image_index != image_id)
+                    throw std::runtime_error("Boundary common image binding changed");
+        for (int frame = 0; frame < frames; ++frame)
+            validate_frame(path, frame, Sprites::Binding::common);
+    }
     for (const auto &name :
          {"menu.seb", "wnd_menuIcon.seb", "finger_r.seb", "number01.seb", "number05.seb",
           "number08.seb", "number12.seb", "icon_season.seb", "wnd_conner.seb", "arrow02.seb"}) {

@@ -97,6 +97,7 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
        state.boundary.spawn_points.map(v => v.join(',')).join(';') === '11,0;12,0', 'Boundary changed');
   need(state.resources.money === 5000 && state.resources.village_points === 10 && state.resources.popularity === 50 &&
        state.reset.arrival_counter === 420, 'Opening resources changed');
+  need(state.reset.active_boundary_index === 0, 'Loaded reset boundary region changed');
   const definitions = [...rows].map(([id, row]) => {
     const item = catalog.get(id);
     const display = [...displays.values()].find(v => decimal(v[5]) === id);
@@ -133,7 +134,7 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
     `${integer(first.job_level)},${integer(first.effort)},${integer(first.satisfaction)},${array(first.derived_attributes,6)},` +
     `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},2,{0,0},0},\n` +
     `{${talk.map(text).join(',')}},${array(jobCounts,10)},\n` +
-    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}}}; return value; }\n` +
+    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}},${integer(state.reset.active_boundary_index)}}; return value; }\n` +
     compileInitialAi(entries, first, rows) + '}\n';
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

@@ -24,7 +24,7 @@ add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
     COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/compile_startup.mjs"
         "${PROJECT_SOURCE_DIR}/assets/data" "${ARK_STARTUP_CPP}"
-    DEPENDS scripts/compile_startup.mjs scripts/compile_loaded_map.mjs assets/data/MAP.json assets/data/STATE.json
+    DEPENDS scripts/compile_startup.mjs scripts/compile_loaded_map.mjs scripts/compile_initial_ai.mjs assets/data/MAP.json assets/data/STATE.json
         assets/data/TABLES.json assets/data/tenantData.txt assets/data/LOADED_MAP.tsv
         assets/data/LOADED_INSTANCES.tsv VERBATIM)
 add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/navigation.cpp src/facilities/facility.cpp
@@ -35,6 +35,9 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/decision.cpp
     src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
     src/people/delayed_reward.cpp src/people/human_growth.cpp
+    src/people/hp.cpp src/facilities/arrival.cpp src/facilities/exit.cpp src/facilities/service.cpp
+    src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
+    src/app/initial_ai_check.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -133,6 +136,26 @@ if(BUILD_TESTING)
     target_link_libraries(ark_people_progression_tests PRIVATE ark_game)
     ark_target(ark_people_progression_tests)
     add_test(NAME actor_schedule_equipment_growth COMMAND ark_people_progression_tests)
+    add_executable(ark_facility_arrival_tests tests/facility_arrival_test.cpp)
+    target_link_libraries(ark_facility_arrival_tests PRIVATE ark_game)
+    ark_target(ark_facility_arrival_tests)
+    add_test(NAME facility_arrival_statistics COMMAND ark_facility_arrival_tests)
+    add_executable(ark_facility_exit_tests tests/facility_exit_test.cpp)
+    target_link_libraries(ark_facility_exit_tests PRIVATE ark_game)
+    ark_target(ark_facility_exit_tests)
+    add_test(NAME facility_exit_and_cash COMMAND ark_facility_exit_tests)
+    add_executable(ark_facility_service_tests tests/facility_service_test.cpp)
+    target_link_libraries(ark_facility_service_tests PRIVATE ark_game)
+    ark_target(ark_facility_service_tests)
+    add_test(NAME facility_service_sequence COMMAND ark_facility_service_tests)
+    add_executable(ark_hp_tests tests/character_hp_test.cpp)
+    target_link_libraries(ark_hp_tests PRIVATE ark_game)
+    ark_target(ark_hp_tests)
+    add_test(NAME character_hp_protocol COMMAND ark_hp_tests)
+    add_executable(ark_initial_ai_tests tests/initial_ai_test.cpp)
+    target_link_libraries(ark_initial_ai_tests PRIVATE ark_game)
+    ark_target(ark_initial_ai_tests)
+    add_test(NAME actual_initial_ai_interval COMMAND ark_initial_ai_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)
@@ -148,6 +171,8 @@ if(BUILD_TESTING)
         ark_target(ark_road_render_tests)
         add_test(NAME road_patch_pixels COMMAND ark_road_render_tests "${PROJECT_SOURCE_DIR}/assets")
         add_test(NAME packaged_assets COMMAND ark_village --check)
+        add_test(NAME packaged_initial_ai COMMAND ark_village --check-ai)
+        set_tests_properties(packaged_initial_ai PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
         set_tests_properties(packaged_assets PROPERTIES TIMEOUT 10 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
         add_executable(ark_projection_tests tests/projection_test.cpp src/desktop/projection.cpp)
         target_include_directories(ark_projection_tests PRIVATE include src/desktop)

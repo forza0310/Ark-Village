@@ -9,14 +9,14 @@
 - [research入口](../research/README.md)是规格、示例、素材和证据来源；原型夹具/安全策略不能自动当作原作事实。
 - 固定输入为一代汉化重签APK，身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)；不复制反编译实现。
 - 三批22张用户图片提供部分外观，第3批明确不同于APK版本；视觉和规则分别登记，截图数值不能覆盖原表。
-- 新局静态地图/初值/首访和加载后格/实例静态重建已交付；后者已接入，首段完整AI、月度组合顺序仍缺，不用自定demo填补。
+- 新局静态地图/初值/首访和加载后格/实例静态重建已交付；后者已接入，未改图的首段AI条件组合已交付并接入私有会话；默认世界/月度组合顺序仍缺，不用自定demo填补。
 
 研究覆盖、产品接入、原版对照分别记录；测试、画面、输入和行为等价不能相互替代。
 具体条目与缺口见 [原版对照](reference/REFERENCE_CHECKLIST.md)和 [研究需求](reference/RESEARCH_REQUESTS.md)。
 
 ## 当前实现
 
-标准C++的ark_game包含world、facilities、people与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
+标准C++的ark_game包含world、facilities、people、economy与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
 raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实际模块有README，接口在include/ark同名目录。
 desktop/scene负责加载后地表/连续世界位置投影及预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
 界面响应窗口比例，命中和绘制共用逻辑布局，业务数据不移入UI。逻辑尺寸仅用于坐标，渲染画布使用framebuffer原生像素（含Retina）。
@@ -30,10 +30,14 @@ app/ai_schedule已接入实时名单两遍与删除/同轮追加纯规则，实�
 people/actor_effects分离显示/延迟/控制时点，weapon_choice提供武器/防具/饰品候选，human_growth与delayed_reward提供定义共享属性/职业成长和九步经验。
 各模块只返回候选/请求；组合测试验证装备延迟提交、共享成长与调度私有副本，不能当作默认经营/人物已自主运行。
 
-启动顺序：参数→程序旁CPU素材校验→无窗口首访检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
+app/initial_ai接入d7ca763初局真实生活链，拆分初始化/调度、运动、设施服务与执行；复制整轮候选后提交，失败不残留扣款/占用/队列。
+facilities的arrival/exit/service分离到达收入与使用退出；people/hp区分目标/显示HP，economy/cash记录即时现金且按事件身份去重。
+该会话仅接受未改图的420步首访快照，`--check-ai`验证两个出生点×三目标；真实Game仍未接入默认自主AI。
+
+启动顺序：参数→程序旁CPU素材校验→无窗口首访/AI检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
 静态输入为24×24加载后地图、8个保留原向量顺序与原ID的设施实例、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。
 静态入口身份/逻辑已接入，围栏/外入口附加覆盖绘制仍缺；七种单格设施可建设，双格旅店/咖啡厅初期未开放。
-道路/入住募集为禁用预览，移动/撤除/住宅/收入/完整AI/存档未实现。1456逻辑步后保守结束本轮，防止跳过待研究费用。
+道路/入住募集为禁用预览，移动/撤除/住宅/正常经营收入/完整AI/存档未实现。1456逻辑步后保守结束本轮，防止跳过待研究费用。
 
 ## 领域设计原则
 

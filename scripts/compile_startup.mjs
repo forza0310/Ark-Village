@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { parseLoadedMap } from './compile_loaded_map.mjs';
+import { compileInitialAi } from './compile_initial_ai.mjs';
 
 const apk = '1e52408aeaebec2d92a5e50b8c0d964566d0038456bc9b081e18b7d3446a4ef5';
 const need = (condition, message) => { if (!condition) throw new Error(message); };
@@ -117,7 +118,7 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
       `${list(effects)},${list(plusCounts)},${decimal(row[11])}}`;
   });
   const date = state.calendar;
-  return `// Generated from pinned research data; do not edit.\n#include "ark/app/startup_data.hpp"\n` +
+  return `// Generated from pinned research data; do not edit.\n#include "ark/app/startup_data.hpp"\n#include "ark/app/initial_ai_data.hpp"\n` +
     `namespace ark::app { const StartupData &startup_data() { static const StartupData value{\n` +
     `{24,24,{${loaded.cells.map(v => array(v.slice(5,7),2)).join(',')}}},\n` +
     `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])},${decimal(row[6])}}`).join(',')}},\n` +
@@ -132,7 +133,8 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
     `${integer(first.job_level)},${integer(first.effort)},${integer(first.satisfaction)},${array(first.derived_attributes,6)},` +
     `${array(first.equipment_ids,4)},${array(first.combat,4)},${array(first.initial_hp_slots,3)},{0,0},2,{0,0},0},\n` +
     `{${talk.map(text).join(',')}},${array(jobCounts,10)},\n` +
-    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}}}; return value; } }\n`;
+    `{${loaded.cells.map(v => `{${v[2]},${v[3]},world::RouteCategory(${v[4]}),${v.slice(5,10).join(',')},${!!v[10]},${!!v[11]},${v[12]},${v[13]}}`).join(',')}}}; return value; }\n` +
+    compileInitialAi(entries, first, rows) + '}\n';
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [root, output] = process.argv.slice(2);

@@ -4,6 +4,7 @@
 
 - compile_startup.mjs：JSON.parse读取发布包，交叉验证哈希/身份/目录/初值，结合加载后数据生成标准C++只读数据。
 - compile_loaded_map.mjs：固定两份TSV哈希，验证14/6列、576格行主序、8实例原向量顺序与全部交叉绑定；不在产品重建加载流程。
+- compile_initial_ai.mjs：从已校验原表投影23职业/33武器、首访定义和28/30/33服务字段；校验数组/范围，不猜其他未接设施效果含义。生成initial_ai_rules供私有AI会话使用。
 - import_research.mjs：按显示/SEB绑定复制素材，生成assets/SOURCES.json，不是常规构建步骤。
 - verify_assets.mjs：核对产品副本哈希/尺寸，不依赖research运行目录。
 

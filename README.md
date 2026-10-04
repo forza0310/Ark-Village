@@ -25,6 +25,8 @@ ctest --preset desktop-debug
 无窗口资源检查：`./build/desktop-debug/bin/ark_village --check`。
 默认窗口1080×720（3:2），可拖动调整，或用`--size 宽 高`覆盖；Retina按原生像素渲染。
 有界运行：`./build/desktop-debug/bin/ark_village --frames 60`。
+初局AI无窗口验证：`./build/desktop-debug/bin/ark_village --check-ai`。
+该命令在私有会话中运行两个出生点×旅店/包子铺/武器店六条真实源表流程，验证自主选择、移动、收费、使用、退出与延迟效果；票号显式固定，正常窗口尚不运行这条链。
 CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可使用CMake。
 资源来自可执行程序旁的assets，不依赖当前工作目录或研究工具。
 
@@ -35,7 +37,7 @@ CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可
 普通启动会自动推进；`--paused`仅用于主动暂停检查。菜单/建设/弹窗仍按原有资格暂停世界更新。
 首名冒险者在420次有资格更新后到访，后续持续到访尚未接入。
 菜单“信息”暂接已到访人物页；Tab切换1/2倍速，这是桌面适配入口。
-道路/入住募集暂不可用，人物首段AI/后续访客未接入；本轮在待研究月报前结束，可重新开始。
+道路/入住募集暂不可用，默认窗口尚未启用人物自主AI/后续访客；本轮在待研究月报前结束，可重新开始。
 退出不保存。macOS默认使用系统Arial Unicode.ttf，其他环境加`--font /路径/中文.ttf`。
 模块、研究差异与验收见[切片记录](docs/stages/B1-playable-prototype.md)。
 
@@ -44,7 +46,7 @@ CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可
 | 路径 | 用途 |
 | --- | --- |
 | research/ | 研究智能体维护的规则、示例、素材与截图；产品侧只读 |
-| include/ark、src/world/facilities/people/app | 不依赖raylib的格子、设施、人物与唯一应用聚合 |
+| include/ark、src/world/facilities/people/economy/app | 不依赖raylib的格子、设施、人物与唯一应用聚合 |
 | src/assets | 维护SEB/TSV解析子集，标准C++ |
 | src/desktop | raylib进程入口、窗口和图像生命周期 |
 | assets/ | 必要运行资源副本及来源记录 |

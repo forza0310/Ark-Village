@@ -6,7 +6,7 @@
 
 namespace ark::app {
 
-enum class LaunchMode { window, check, help };
+enum class LaunchMode { window, check, check_ai, help };
 
 struct LaunchOptions {
     LaunchMode mode = LaunchMode::window;

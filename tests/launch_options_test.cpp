@@ -19,6 +19,7 @@ int main() {
     const auto defaults = *parse_arguments({}).options;
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
+    check(parse_arguments({"--check-ai"}).options->mode == LaunchMode::check_ai);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
@@ -41,6 +42,8 @@ int main() {
              {"--inspect-page", "unknown", "--frames", "8"},
              {"--inspect-page", "shops"},
              {"--check", "--inspect-page", "shops", "--frames", "8"},
+             {"--check-ai", "--inspect-page", "shops", "--frames", "8"},
+             {"--check-ai", "--frames", "1", "--screenshot", "a.png"},
              {"--frames"},
              {"--frames", "0"},
              {"--frames", "-1"},

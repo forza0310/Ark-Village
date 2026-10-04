@@ -21,6 +21,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         }
         if (argument == "--check") {
             options.mode = LaunchMode::check;
+        } else if (argument == "--check-ai") {
+            options.mode = LaunchMode::check_ai;
         } else if (argument == "--paused") {
             options.paused = true;
         } else if (argument == "--inspect-page") {
@@ -60,7 +62,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             return {std::nullopt, "Unknown argument: " + argument};
         }
     }
-    if (!options.screenshot.empty() && (options.frames == 0 || options.mode == LaunchMode::check)) {
+    if (!options.screenshot.empty() &&
+        (options.frames == 0 || options.mode != LaunchMode::window)) {
         return {std::nullopt, "--screenshot requires a bounded window run with --frames"};
     }
     if (!options.inspect_page.empty() &&

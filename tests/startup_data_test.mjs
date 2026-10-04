@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { compileStartup } from '../scripts/compile_startup.mjs';
+import { compileInitialAi } from '../scripts/compile_initial_ai.mjs';
 const root = process.argv[2];
 const source = ['MAP','STATE','TABLES'].map(v => JSON.parse(readFileSync(`${root}/${v}.json`,'utf8')));
 source.push(readFileSync(`${root}/tenantData.txt`,'utf8'));
@@ -25,3 +26,23 @@ reject(v=>v[5]=v[5].replace('1\t3\t4','1\t2\t3'));
 reject(v=>v[5]=v[5].replace('83\t11\t10','83\t24\t10'));
 reject(v=>v[4]=v[4].replace('0\t0\t15\t12\t3','0\t0\t15\t12\t9'));
 console.log('PASS startup data and 22 rejection cases');
+// Exercise shape checks independently of the outer byte hash; invalid structured input must
+// still fail even when a publisher has recalculated its source hash.
+const entries = new Map(source[2].entries.map(e => [e.entry, e.source_utf8.split('\n').map(line => line.split('\t'))]));
+const facilities = new Map(source[3].trimEnd().split('\n').map(line => {
+  const row = line.replace(/\r$/, '').split('\t'); return [Number(row[0]), row];
+}));
+const ai = [entries, source[1].first_arrival, facilities];
+assert.match(compileInitialAi(...ai), /const InitialAiRules &initial_ai_rules/);
+const badAi = edit => { const copy = structuredClone(ai); edit(copy); assert.throws(() => compileInitialAi(...copy)); };
+badAi(([e]) => e.get('job.txt').pop());
+badAi(([e]) => e.get('job.txt')[1][9] = '1&2');
+badAi(([e]) => e.get('job.txt')[1][20] = '6');
+badAi(([e]) => e.get('weapon.txt')[0][11] = '-1');
+badAi(([e]) => e.get('weapon.txt')[0][0] = '4');
+badAi(([e]) => e.get('character.txt')[1][5] = '11');
+badAi(([,s]) => s.equipment_ids = [0, 1, -1, -1]);
+badAi(([,,f]) => f.get(33)[28] = '6');
+badAi(([,,f]) => f.get(33)[29] = '1&2');
+badAi(([,,f]) => f.get(28)[25] = '-1');
+console.log('PASS initial AI published table shapes and 10 rejection cases');

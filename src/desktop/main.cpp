@@ -1,5 +1,6 @@
 // Process entry: arguments, CPU asset/model validation, then the raylib adapter.
 #include "ark/app/game.hpp"
+#include "ark/app/initial_ai_check.hpp"
 #include "ark/app/launch_options.hpp"
 #include "game_view.hpp"
 #include "resources.hpp"
@@ -14,7 +15,8 @@ int main(int argc, char **argv) {
             throw std::runtime_error(parsed.error);
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
-            std::cout << "ark_village [--check] [--paused] [--font TTF] [--size W H] [--frames N] "
+            std::cout << "ark_village [--check|--check-ai] [--paused] [--font TTF] [--size W H] "
+                         "[--frames N] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
                          "arrival|visitor|motion]\n";
@@ -23,6 +25,13 @@ int main(int argc, char **argv) {
         SetTraceLogLevel(LOG_WARNING);
         const auto assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
         ark::desktop::check_assets(assets);
+        if (options.mode == ark::app::LaunchMode::check_ai) {
+            for (const auto &c : ark::app::check_initial_ai())
+                std::cout << "PASS initial AI birth=" << c.birth.x << ',' << c.birth.y
+                          << " first_facility=" << c.first_facility << " rounds=" << c.rounds
+                          << " funds=" << c.funds << '\n';
+            return 0;
+        }
         if (options.mode == ark::app::LaunchMode::check) {
             ark::app::Game game;
             for (int i = 0; i < 420; ++i)

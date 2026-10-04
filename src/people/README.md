@@ -7,7 +7,7 @@ motion.hpp/cpp独立实现6.7单位运动、入口±40偏移、向零取整和�
 plan_travel/advance_travel仅组合显式目标与路径；返回候选和一次性进入信号，不预约、收费、选目标或退出。
 过期身份/被阻断的路径安全停止是产品保护策略；自动重规划未实现。默认人物仍停在出生格。
 依赖world的地图/连续坐标与facilities的实例身份；app拥有可变人物和访问计数，本包只返回纯候选。
-完整AI、后续访客/成长待研究，不沿用夜骑士演示。
+完整默认AI、后续访客仍待组合；定义成长已接纯规则，不沿用夜骑士演示。
 依据：[首名人物与加入顺序](../../research/dungeon_village_1/rules/STARTUP.md)、[普通运动](../../research/dungeon_village_1/example/src/character_motion.cpp)。
 
 
@@ -96,3 +96,10 @@ tests/people_progression组合实际产品控制器、效果、成长、app调�
 依据：[显示与延迟](../../research/dungeon_village_1/rules/ai/CONTROL.md#显示与延迟效果的实际推进)、
 [定义重算与职业成长](../../research/dungeon_village_1/rules/ai/CONTROL.md#人物定义重算与职业成长)、
 [装备选择](../../research/dungeon_village_1/rules/FACILITY_USE.md#weapon-choice)。
+
+
+## HP协议与真实首段调用
+
+hp.hpp/cpp消费研究character_hp：分离目标、显示、延迟HP及恢复请求，伤害/恢复先准备候选，显示推进独立验证。
+app/initial_ai在c阶段读取旧B170并请求旅店恢复，在d阶段推进HP显示；到达/退出、定义属性累计与生命恢复不可混为一件事。
+未改图初局真实选目标→使用→退出现已接入私有会话，详见[app](../app/README.md)；正常Game仍受默认AI保护。

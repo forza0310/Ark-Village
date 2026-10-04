@@ -11,3 +11,13 @@ neighbourhood.cpp按完整外环重新计算，种类2/3影响商店3，同来�
 来源保留稳定实例身份，包括空修正来源；with_neighbours替换旧修正，避免重复查询累加。查询不收费、不消耗道具、不自动升级。
 效果图标与标记原表列表独立保留，部分非初期设施长度不同，不把未知消费者写成一一配对。
 依据：[设施规格](../../research/dungeon_village_1/rules/FACILITIES.md#definitions)、[新局目录](../../research/dungeon_village_1/rules/STARTUP.md)。
+
+
+## 到达、使用与退出
+
+arrival.hpp/cpp处理到达价格分支、访问/消费/设施销量统计，装备价替换普通价；只生成收入候选，不直接写账本。
+exit.hpp/cpp处理定义共享使用累计/升级提示、满足度/人气请求、完整占地出口及普通延迟尾部。
+service.hpp/cpp组合到达使用队列、旅店等待和完整退出计划，保留先释放、续活动再消费属性/装备尾部的顺序。
+依赖people控制/身份、world地图及本包经济/几何；不依赖app。Placement是退出校验的输入投影，不是第二份实例所有者。
+app/initial_ai对照研究d7ca763真实首访，将这些候选与现金/占用统一提交；普通默认世界、月报和人气显示仍另行接入。
+依据：[使用协议](../../research/dungeon_village_1/rules/FACILITY_USE.md)与维护example/src/facility_service.cpp。

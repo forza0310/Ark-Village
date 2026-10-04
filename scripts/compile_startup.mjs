@@ -120,7 +120,7 @@ export function compileStartup(map, state, tables, tenantText, loadedCells, load
   return `// Generated from pinned research data; do not edit.\n#include "ark/app/startup_data.hpp"\n` +
     `namespace ark::app { const StartupData &startup_data() { static const StartupData value{\n` +
     `{24,24,{${loaded.cells.map(v => array(v.slice(5,7),2)).join(',')}}},\n` +
-    `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])}}`).join(',')}},\n` +
+    `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])},${decimal(row[6])}}`).join(',')}},\n` +
     `{${definitions.join(',')}},\n` +
     `{${loaded.instances.map(v => `{${v[2]},${v[3]},{${v[4]},${v[5]}},0,0,true,${v[1]}}`).join(',')}},\n` +
     `{${state.boundary.spawn_points.map(v => array(v,2)).join(',')}},${list([b.min_x,b.max_x,b.min_y,b.max_y])},\n` +

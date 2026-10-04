@@ -10,6 +10,7 @@ namespace ark::app {
 struct Display {
     int id{}, definition_id{};
     std::string sprite;
+    int depth_offset{}, flags{}; // mapchip columns4/6: source scene ordering, not facility flags.
 };
 struct StartupData {
     world::SourceMap map;

@@ -9,6 +9,7 @@
 #include <iterator>
 #include <set>
 #include <stdexcept>
+#include <tuple>
 
 namespace ark::desktop {
 namespace {
@@ -229,6 +230,15 @@ void check_assets(const std::filesystem::path &root) {
     const auto images = image_index(root);
     const auto common_images = image_index(root, "common");
     const auto common2_images = image_index(root, "common2");
+    for (const auto &[name, width, height] :
+         {std::tuple{"road4block00.png", 30, 20}, std::tuple{"road4block01.png", 27, 15}}) {
+        auto image = LoadImage((root / "common" / name).string().c_str());
+        const bool valid_size = image.data && image.width == width && image.height == height;
+        if (image.data)
+            UnloadImage(image);
+        if (!valid_size)
+            throw std::runtime_error("Road patch missing or wrong dimensions");
+    }
     // Structural validation retains unused source records, including out-of-atlas legacy records.
     // Pixel bounds apply to the frames this finite adapter actually requests (research/assets).
     for (const auto &entry : std::filesystem::recursive_directory_iterator(root)) {

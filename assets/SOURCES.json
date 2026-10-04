@@ -638,6 +638,22 @@
       "height": 32
     },
     {
+      "file": "common/road4block00.png",
+      "source": "research/dungeon_village_1/assets/original/common/road4block00.png",
+      "sha256": "0826c30591d20f1f6b443f3d7017ffe3b1aee658168bb19a183b34dcea1544eb",
+      "bytes": 392,
+      "width": 30,
+      "height": 20
+    },
+    {
+      "file": "common/road4block01.png",
+      "source": "research/dungeon_village_1/assets/original/common/road4block01.png",
+      "sha256": "78ec165744e53d4f6794ec0d255c7cc6c5b0e7a728d98139e1db2afdad67f09f",
+      "bytes": 475,
+      "width": 27,
+      "height": 15
+    },
+    {
       "file": "common2/img.inf",
       "source": "research/dungeon_village_1/assets/original/common2/img.inf",
       "sha256": "748663587029cf0a11d4936b3d5abe97cf2b78b5a7d2165adce43d7e1cca00de",

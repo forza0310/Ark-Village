@@ -4,7 +4,8 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 
 - main.cpp：参数、无窗口资源/首访检查、窗口入口。
 - game_view.cpp：Retina窗口/原生像素画布、帧调度、输入采集和相机过渡。
-- scene.cpp：加载后地表/设施/人物深度排序、连接道路、占地与建筑/箭头预览。
+- scene.cpp：加载后地表/补块/设施/人物共享深度排序、连接道路、占地与建筑/箭头预览。
+- road_render.cpp：当前未占用道路的2×2/上下边缘标记及原PNG尺寸/锚点偏移，quad优先，第二遍按y降/x升提交。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
 - projection.cpp：格与连续世界坐标等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
 - resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。
@@ -21,3 +22,11 @@ Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体�
 `--inspect-page motion --frames 120`在有界窗口显式选择旅店展示连续运动，只覆盖渲染位置；领域人物/金币不变。
 它不证明默认首访会选择旅店，不含方向动画/武器合成或使用退出；手动新局重置会清除检查行程。
 依据：[研究画面](../../research/dungeon_village_1/prototype/src/startup_view.cpp)、[UI](../../research/dungeon_village_1/ui/PAGES.md)。
+
+
+道路补块按[研究绘制规则](../../research/dungeon_village_1/ui/README.md#road-patches)画整张PNG：
+road4block00为30×20、相对SEB锚点(14,21)；road4block01为27×15、偏移(20,19)，均深度D.y-10。
+不得叠加SEB内部偏移或菱形中心偏移。road_render从当前terrain重算，建筑覆盖任一角后不保留静态quad标志。
+scene从发布mapchip列4/6读取显示深度偏移/flags，基础深度D.y+15+偏移，flags1则D.y-50+偏移。
+补块和地表/物件共享稳定深度队列，人物保留当前深度适配；不无条件把补块最后叠到前景上。
+当前绘制全部地图，不做独立补块裁剪；未复刻原10命令满桶溢出协议，不能把本批填心验收扩张为全场景原版渲染等价。

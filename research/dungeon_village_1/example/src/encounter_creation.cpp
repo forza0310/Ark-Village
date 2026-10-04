@@ -87,6 +87,7 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
     event.runtime.id = s.next_encounter_id;
     event.runtime.center = i.center;
     c.state.encounters.emplace(s.next_encounter_id, event);
+    c.state.encounter_order.push_back(s.next_encounter_id);
     c.state.legacy_encounter_counter = legacy;
     c.created = c.state.next_encounter_id++;
     if (i.kind == 0) {

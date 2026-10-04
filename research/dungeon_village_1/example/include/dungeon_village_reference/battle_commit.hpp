@@ -3,6 +3,7 @@
 // Narrow battle/object owner projections. Definition statistics are shared, actor HP is not.
 #include "dungeon_village_reference/object_ai.hpp"
 
+#include <limits>
 #include <map>
 #include <set>
 
@@ -60,7 +61,14 @@ struct BattleActorRecord {
     int combo_count{1};                // y.
     int attack_idle{};                 // av, cleared by completed15/16 only.
     CombatPoint attack_destination;    // p, not current n or previous au.
-    std::optional<CharacterId> perceived_enemy; // az, rechecked against bl by17.
+    std::optional<CharacterId> perceived_enemy;                  // az, rechecked against bl by17.
+    float perceived_distance{std::numeric_limits<float>::max()}; // aA set at own c prefix only.
+    int blocked_battle_steps{}; // at, baseline restoration only at>=150.
+    int attack_cooldown{};      // aj, decremented at c prefix before sensing.
+    CombatPoint decision_start; // bu, copied BEFORE c movement, distinct from au.
+    int physics_pause{};        // P: old positive skips gravity/K even when decremented to0.
+    float vertical_velocity{};  // r.height, current gravity accumulator.
+    bool area_after{};          // aB1, not c's aB0.
 };
 struct BattleCommitState {
     std::map<CharacterId, BattleActorRecord> actors;

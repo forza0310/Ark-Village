@@ -24,6 +24,7 @@ struct RewardActorContext {
     std::optional<int> facility_category;
     bool move_area{};     // aB[0], source qualification cached at c(), not a route result.
     Position half_cell{}; // t, separate from s whole cell.
+    bool low_hp{};        // ak, refreshed from am3 at own c, not recomputed during J(other).
 };
 struct RewardMonsterDefinition {
     int defeats{};                  // k.u.
@@ -47,6 +48,9 @@ struct RewardEncounter {
     bool group_exists{true};
     BattleGroupState group;
     int legacy_id{}; // f164b, distinct from maintenance runtime.id.
+    std::optional<CombatInfluenceCandidate> influence{}; // p/r copied at event update, not own c.
+    std::vector<int> human_scratch{};   // q, copied from p before each human movement evaluation.
+    std::vector<int> monster_scratch{}; // s, copied from r before each monster evaluation.
 };
 struct AiRewardState {
     BattleCommitState battle; // Sole actor HP/control/J/K/statistics owner.
@@ -62,6 +66,7 @@ struct AiRewardState {
     int monster_progress{}; // UserData.x, NOT drop_progress k.
     int monster_limit{4};   // Source n.Z initial; not a per-batch cap.
     std::map<std::uint64_t, RewardEncounter> encounters;
+    std::vector<std::uint64_t> encounter_order; // bn source order, never sort restored originalIDs.
     std::map<std::uint64_t, RewardEncounter> retired_encounters; // Removed from bn, held by db/dc.
     std::map<std::uint64_t, ProjectileState> projectiles;
     std::vector<std::uint64_t> projectile_order;
@@ -97,7 +102,8 @@ struct EncounterCommitInput {
     std::vector<QuestSpawnCell> cells;
     std::vector<EncounterRandomTicket> tickets;
     std::vector<int> posture_tickets; // Separate group sub-consumer draws, before event draws.
-    std::optional<std::array<int, 2>> spawn_offset_tickets; // Two draws100 on actual spawn only.
+    std::optional<std::array<int, 2>> spawn_offset_tickets;   // Two draws100 on actual spawn only.
+    std::optional<CombatInfluenceCandidate> snapshot_field{}; // h.e cached BEFORE actor c/d.
 };
 // Rebuilds actor/shared reward inputs from the owner; quest spawn needs two offset tickets.
 AiRewardResult prepare_encounter_reward_commit(const AiRewardState &state,

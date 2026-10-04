@@ -4,6 +4,7 @@
 // d() counters/effects/HP/growth precede this segment; no duplicate ticking happens here.
 #include "dungeon_village_reference/ai_perception.hpp"
 #include "dungeon_village_reference/ai_rewards.hpp"
+#include "dungeon_village_reference/world_perception.hpp"
 
 namespace dungeon_village_reference {
 struct CombatWeaponRule {
@@ -21,7 +22,15 @@ struct WorldAttackSetupInput {
     std::optional<int> monster_miss_ticket; // d.a(100)<aR12.
     std::optional<int> facing; // Source projected facing helper; never guessed from grid axes.
 };
-enum class WorldAttackVisual { expression, contact, spell_source, healing_source, healing_target };
+enum class WorldAttackVisual {
+    expression,
+    contact,
+    spell_source,
+    healing_source,
+    healing_target,
+    telegraph,
+    cast_sound
+};
 struct WorldAttackRequest {
     WorldAttackVisual kind{};
     CharacterId actor;
@@ -62,4 +71,38 @@ WorldAttackResult prepare_world_attack_setup(const AiRewardState &state,
 // and command completion commit together. No eager execution of the next action/wait command.
 WorldAttackResult prepare_world_attack_control(const AiRewardState &state,
                                                const WorldAttackInput &input);
+// Local v prefix -> at most one14..17 segment -> same-d local continuation after completion.
+// Unhandled domain front commands remain delegated; never consumes the common d counters twice.
+WorldAttackResult prepare_world_attack_execution(const AiRewardState &state,
+                                                 const WorldAttackInput &input);
+struct WorldCombatPolicyInput {
+    CharacterId actor;
+    CombatWeaponRule weapon; // Current N() catalogue projection, no mutable attribute snapshot.
+    int profession_role{};   // Current cached ad -> immutable h.g, NOT profession definition ID.
+    int monster_range{};     // Immutable a.k.E[g] catalogue projection.
+    int monster_mode{};
+    std::optional<int> policy_ticket;
+    std::optional<int> healing_ticket;
+    std::optional<int> boost_ticket;
+    std::array<int, 5> attack_tickets{};
+    std::optional<int> monster_miss_ticket;
+    std::optional<int> facing; // Original projected-facing adapter; consumed only when needed.
+};
+struct WorldCombatPolicyCandidate {
+    AiRewardState state;
+    CombatStrategyCandidate strategy;
+    std::optional<CharacterId> fresh_enemy;
+    std::optional<WorldPosition> move_target;
+    std::vector<WorldAttackRequest> requests;
+    bool consumed_boost_ticket{};
+};
+struct WorldCombatPolicyResult {
+    AiRewardError error{AiRewardError::none};
+    std::optional<WorldCombatPolicyCandidate> candidate;
+};
+// Execute state1 only AFTER the common c prefix/reference-preemption. Counters/group/state,
+// strategy movement and attack/spell queues commit on the same private owner, never eager hits.
+WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &state,
+                                                    const WorldCombatPolicyInput &input,
+                                                    const WorldMapFacts &facts);
 } // namespace dungeon_village_reference

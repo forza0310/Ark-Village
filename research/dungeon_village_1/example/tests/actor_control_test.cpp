@@ -252,7 +252,7 @@ void baseline_restore() {
                 s.queue = {{1, 10, 0}};
                 const auto c = prepare_actor_baseline_restore(s, baseline, human, mode);
                 check(c && c->control.state == baseline && c->control.action == 0 &&
-                          c->control.action_counter == 0 && c->control.alternate_counter == 0 &&
+                          c->control.action_counter == 0 && c->control.alternate_counter == 20 &&
                           c->control.flags == (2048U | 128U) && c->clear_encounter == human,
                       "b restores D directly, clears16/n0/db only, does not use c(D)");
                 std::vector<LegacyActorControl> expected;

@@ -17,7 +17,8 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/encounter_lifecycle.cpp src/ai_schedule.cpp src/actor_effects.cpp
                                      src/human_growth.cpp src/facility_service.cpp src/actor_housekeeping.cpp
                                      src/battle_commit.cpp src/object_commit.cpp src/ai_rewards.cpp
-                                     src/encounter_creation.cpp src/rescue_commit.cpp src/combat_commit.cpp)
+                                     src/encounter_creation.cpp src/rescue_commit.cpp src/combat_commit.cpp
+                                     src/world_perception.cpp src/world_encounters.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -405,3 +406,21 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_combat_commit_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.combat_commit COMMAND dungeon_village_combat_commit_tests)
+
+add_executable(dungeon_village_world_perception_tests tests/world_perception_test.cpp)
+target_link_libraries(dungeon_village_world_perception_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_world_perception_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_world_perception_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_world_perception_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.world_perception COMMAND dungeon_village_world_perception_tests)
+
+add_executable(dungeon_village_world_encounters_tests tests/world_encounters_test.cpp)
+target_link_libraries(dungeon_village_world_encounters_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_world_encounters_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_world_encounters_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_world_encounters_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.world_encounters COMMAND dungeon_village_world_encounters_tests)

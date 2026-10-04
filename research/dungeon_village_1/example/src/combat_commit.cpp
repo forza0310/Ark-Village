@@ -1,4 +1,5 @@
 #include "dungeon_village_reference/combat_commit.hpp"
+#include "dungeon_village_reference/world_perception.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -17,13 +18,6 @@ const BattleActorRecord *resolve(const AiRewardState &s, CharacterId id) {
     return retired != s.retired_actors.end() && retired->second.id == id ? &retired->second
                                                                          : nullptr;
 }
-const RewardEncounter *encounter(const AiRewardState &s, std::uint64_t id) {
-    const auto live = s.encounters.find(id);
-    if (live != s.encounters.end())
-        return &live->second;
-    const auto retired = s.retired_encounters.find(id);
-    return retired != s.retired_encounters.end() ? &retired->second : nullptr;
-}
 bool live(const AiRewardState &s, CharacterId id) {
     const auto a = s.battle.actors.find(id);
     return id.value && a != s.battle.actors.end() && a->second.id == id && s.contexts.count(id) &&
@@ -34,56 +28,12 @@ bool weapon_valid(const CombatWeaponRule &w) {
            w.miss_low <= 100 && w.miss_high >= 0 && w.miss_high <= 100;
 }
 std::optional<EnemySelectionResult> enemy(const AiRewardState &s, CharacterId id) {
-    const auto &a = s.battle.actors.at(id);
-    EnemySelectionInput input;
-    input.position = {a.position.x, a.position.z};
-    input.active_battle_group = (a.control.flags & 128U) != 0;
-    input.encounter_id = a.encounter;
-    std::vector<CharacterId> roster;
-    if (input.active_battle_group) {
-        if (!a.group)
-            return std::nullopt;
-        const auto *e = encounter(s, *a.group);
-        if (!e)
-            return std::nullopt;
-        const auto &opponents = a.kind == ActorKind::human ? e->group.monsters : e->group.humans;
-        for (const auto &member : opponents)
-            roster.push_back(member.id);
-    } else
-        roster = a.kind == ActorKind::human ? s.monster_order : s.human_order;
-    for (const auto other : roster) {
-        const auto *b = resolve(s, other);
-        const auto ctx = s.contexts.find(other);
-        if (!b || ctx == s.contexts.end())
-            return std::nullopt;
-        input.opposite_roster.push_back({other,
-                                         b->control.state,
-                                         ctx->second.move_area,
-                                         {b->position.x, b->position.z},
-                                         b->encounter});
-    }
-    return select_combat_enemy(input);
+    return query_current_combat_enemy(s, id);
 }
 std::optional<CharacterId> healing_target(const AiRewardState &s, CharacterId id, bool &valid) {
-    std::vector<RescueTargetSnapshot> people;
-    for (const auto other : s.human_order) {
-        if (!live(s, other) || s.battle.actors.at(other).kind != ActorKind::human) {
-            valid = false;
-            return {};
-        }
-        const auto &a = s.battle.actors.at(other);
-        const auto &ctx = s.contexts.at(other);
-        people.push_back({other,
-                          a.control.state,
-                          {a.position.x, a.position.z},
-                          ctx.cell,
-                          ctx.half_cell,
-                          ctx.inside_town,
-                          false,
-                          a.hp.target < a.capacity / 2});
-    }
-    valid = true;
-    return select_healing_target(s.contexts.at(id).half_cell, people);
+    const auto queried = query_world_healing_target(s, id);
+    valid = queried.error == AiRewardError::none;
+    return queried.target;
 }
 bool facing(std::optional<int> value) { return value && *value >= 0 && *value <= 3; }
 bool launch(WorldAttackCandidate &c, CharacterId actor, CharacterId target, ProjectileKind kind,
@@ -130,6 +80,188 @@ bool hit(WorldAttackCandidate &c, const WorldAttackInput &i, CharacterId target)
     return true;
 }
 } // namespace
+WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
+                                                    const WorldCombatPolicyInput &i,
+                                                    const WorldMapFacts &facts) {
+    const auto failed = [](AiRewardError e) -> WorldCombatPolicyResult { return {e, {}}; };
+    if (!live(s, i.actor) || s.battle.actors.at(i.actor).control.state != 1 ||
+        !valid_world_map_facts(facts))
+        return failed(AiRewardError::invalid_input);
+    WorldCombatPolicyCandidate c;
+    c.state = s;
+    auto &a = c.state.battle.actors.at(i.actor);
+    const auto &ctx = s.contexts.at(i.actor);
+    if (a.attack_idle < 0 || a.attack_idle == std::numeric_limits<int>::max())
+        return failed(AiRewardError::invalid_input);
+    ++a.attack_idle;
+    if (a.kind == ActorKind::monster && a.encounter) {
+        auto found = c.state.encounters.find(*a.encounter);
+        auto retired = c.state.retired_encounters.find(*a.encounter);
+        if (found != c.state.encounters.end())
+            found->second.runtime.idle = 0;
+        else if (retired != c.state.retired_encounters.end())
+            retired->second.runtime.idle = 0;
+        else
+            return failed(AiRewardError::stale_encounter);
+    }
+    CombatStrategyInput policy;
+    policy.kind = a.kind;
+    policy.flags = a.control.flags;
+    policy.action = a.control.action;
+    policy.in_move_area = ctx.move_area;
+    policy.sensed_enemy = a.perceived_enemy.has_value();
+    policy.sensed_distance = a.perceived_distance;
+    policy.monster_posture = a.monster_posture;
+    policy.attack_slot = a.attack_slot;
+    policy.policy_ticket = i.policy_ticket;
+    policy.healing_ticket = i.healing_ticket;
+    if (!(a.control.flags & 4U) && a.control.action != 4) {
+        if (a.perceived_enemy) {
+            if (!resolve(s, *a.perceived_enemy) || !s.contexts.count(*a.perceived_enemy))
+                return failed(AiRewardError::stale_actor);
+            policy.same_town_side =
+                ctx.inside_town == s.contexts.at(*a.perceived_enemy).inside_town;
+        }
+        if (policy.in_move_area && policy.sensed_enemy && policy.same_town_side) {
+            const auto fresh = query_current_combat_enemy(c.state, i.actor);
+            if (fresh.error != ActorAiError::none)
+                return failed(AiRewardError::preparation_failed);
+            if (fresh.candidate) {
+                c.fresh_enemy = fresh.candidate->id;
+                policy.fresh_enemy = true;
+                policy.fresh_distance = fresh.candidate->world_distance;
+            }
+            if (policy.fresh_enemy && (a.control.flags & 128U)) {
+                if (!a.group)
+                    return failed(AiRewardError::stale_encounter);
+                const auto found = s.encounters.find(*a.group);
+                const auto retired = s.retired_encounters.find(*a.group);
+                const auto *group = found != s.encounters.end()             ? &found->second
+                                    : retired != s.retired_encounters.end() ? &retired->second
+                                                                            : nullptr;
+                if (!group || !group->group_exists)
+                    return failed(AiRewardError::stale_encounter);
+                policy.group_tick = group->group.tick;
+                policy.group_cycle = group->group.cycle;
+                if (a.kind == ActorKind::human) {
+                    const auto definition = s.growth.find(a.definition);
+                    if (definition == s.growth.end() || !weapon_valid(i.weapon))
+                        return failed(AiRewardError::invalid_input);
+                    bool valid{};
+                    policy.healing_target = healing_target(s, i.actor, valid).has_value();
+                    if (!valid)
+                        return failed(AiRewardError::invalid_input);
+                    policy.spells = definition->second.derived.available_spells;
+                    policy.profession_role = i.profession_role;
+                    policy.weapon_kind = i.weapon.kind;
+                    policy.weapon_range = i.weapon.range;
+                } else
+                    policy.monster_range = i.monster_range;
+            }
+        }
+    }
+    const auto strategy = prepare_combat_strategy(policy);
+    if (!strategy.candidate)
+        return failed(AiRewardError::preparation_failed);
+    c.strategy = *strategy.candidate;
+    if (c.strategy.face_enemy) {
+        if (!facing(i.facing))
+            return failed(AiRewardError::invalid_input);
+        a.control.facing = *i.facing;
+    }
+    if (c.strategy.clear_animation_flag)
+        a.control.flags &= ~2U;
+    if (c.strategy.telegraph)
+        c.requests.push_back({WorldAttackVisual::telegraph, i.actor, {}, 23});
+    switch (c.strategy.decision) {
+    case CombatDecision::keep:
+        break;
+    case CombatDecision::baseline: {
+        const auto baseline =
+            prepare_actor_baseline_restore(a.control, a.baseline, false, i.monster_mode);
+        if (!baseline)
+            return failed(AiRewardError::preparation_failed);
+        a.control = baseline->control;
+        break;
+    }
+    case CombatDecision::battle_prepare: {
+        const auto definition = s.growth.find(a.definition);
+        if (definition == s.growth.end())
+            return failed(AiRewardError::invalid_input);
+        ActorStateTransitionInput transition;
+        transition.control = a.control;
+        transition.human = true;
+        transition.baseline = a.baseline;
+        transition.next_state = 18;
+        transition.legacy_u = definition->second.definition.legacy_u;
+        transition.boost_ticket = i.boost_ticket;
+        transition.boost_event116_seen = s.battle.events.count(116);
+        const auto prepared = prepare_actor_state_transition(transition);
+        if (!prepared)
+            return failed(AiRewardError::preparation_failed);
+        a.control = prepared->control;
+        a.state_counter = a.state_parameter = a.attack_count = 0;
+        c.consumed_boost_ticket = prepared->consumed_boost_ticket;
+        if (prepared->request_boost_event116)
+            c.state.battle.events.insert(116);
+        break;
+    }
+    case CombatDecision::join_group: {
+        if (!a.encounter || !c.fresh_enemy)
+            return failed(AiRewardError::stale_encounter);
+        const auto joined =
+            prepare_battle_group_join(c.state, *a.encounter, i.actor, *c.fresh_enemy);
+        if (!joined.candidate)
+            return failed(joined.error);
+        c.state = joined.candidate->state;
+        break;
+    }
+    case CombatDecision::approach:
+    case CombatDecision::low_influence: {
+        if (!a.perceived_enemy)
+            return failed(AiRewardError::stale_actor);
+        const auto moved =
+            prepare_world_combat_move(c.state, i.actor, *a.perceived_enemy, facts,
+                                      c.strategy.decision == CombatDecision::low_influence);
+        if (!moved.candidate)
+            return failed(moved.error);
+        c.state = moved.candidate->state;
+        c.move_target = moved.candidate->target;
+        break;
+    }
+    case CombatDecision::physical_attack: {
+        const auto target = a.kind == ActorKind::human ? a.perceived_enemy : c.fresh_enemy;
+        if (!target)
+            return failed(AiRewardError::stale_actor);
+        const auto setup =
+            prepare_world_attack_setup(c.state, {i.actor, *target, i.weapon, i.attack_tickets,
+                                                 i.monster_miss_ticket, i.facing});
+        if (!setup.candidate)
+            return failed(setup.error);
+        c.state = setup.candidate->state;
+        c.requests.insert(c.requests.end(), setup.candidate->requests.begin(),
+                          setup.candidate->requests.end());
+        break;
+    }
+    case CombatDecision::offensive_spell:
+    case CombatDecision::healing_spell: {
+        const bool heal = c.strategy.decision == CombatDecision::healing_spell;
+        if (!heal && (a.attack_count < 0 || a.attack_count == std::numeric_limits<int>::max() ||
+                      !facing(i.facing)))
+            return failed(AiRewardError::invalid_input);
+        a.control.queue = {{3, 4}, {heal ? 16 : 15}, {3, 0}, {1, 10, 0}, {7, 4}};
+        a.control.flags |= 4U;
+        if (!heal) {
+            ++a.attack_count;
+            a.miss = false;
+            a.control.facing = *i.facing;
+            c.requests.push_back({WorldAttackVisual::cast_sound, i.actor, {}, 10});
+        }
+        break;
+    }
+    }
+    return {AiRewardError::none, c};
+}
 WorldAttackResult prepare_world_attack_setup(const AiRewardState &s,
                                              const WorldAttackSetupInput &i) {
     if (!live(s, i.actor) || !resolve(s, i.target) || i.actor == i.target)
@@ -341,6 +473,35 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
         c.state.battle.actors.at(i.actor).control.queue.erase(
             c.state.battle.actors.at(i.actor).control.queue.begin());
     c.early_stop = !c.completed;
+    return {AiRewardError::none, c};
+}
+WorldAttackResult prepare_world_attack_execution(const AiRewardState &s,
+                                                 const WorldAttackInput &i) {
+    if (!live(s, i.actor))
+        return fail(AiRewardError::stale_actor);
+    const auto prefix = prepare_local_control_prefix(s.battle.actors.at(i.actor).control);
+    if (!prefix.candidate)
+        return fail(AiRewardError::preparation_failed);
+    WorldAttackCandidate c;
+    c.state = s;
+    c.state.battle.actors.at(i.actor).control = prefix.candidate->state;
+    auto &control = c.state.battle.actors.at(i.actor).control;
+    if (prefix.candidate->flow != ActorControlFlow::delegated || control.queue.empty() ||
+        control.queue.front()[0] < 14 || control.queue.front()[0] > 17) {
+        c.early_stop = prefix.candidate->flow != ActorControlFlow::empty;
+        return {AiRewardError::none, c};
+    }
+    const auto attack = prepare_world_attack_control(c.state, i);
+    if (!attack.candidate)
+        return attack;
+    c = *attack.candidate;
+    if (c.completed) {
+        const auto tail = prepare_local_control_prefix(c.state.battle.actors.at(i.actor).control);
+        if (!tail.candidate)
+            return fail(AiRewardError::preparation_failed);
+        c.state.battle.actors.at(i.actor).control = tail.candidate->state;
+        c.early_stop = tail.candidate->flow != ActorControlFlow::empty;
+    }
     return {AiRewardError::none, c};
 }
 } // namespace dungeon_village_reference

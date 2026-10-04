@@ -14,6 +14,13 @@ BattleActorRecord *resolve(AiRewardState &s, CharacterId id) {
     const auto retired = s.retired_actors.find(id);
     return retired == s.retired_actors.end() ? nullptr : &retired->second;
 }
+RewardEncounter *resolve_event(AiRewardState &s, std::uint64_t id) {
+    const auto live = s.encounters.find(id);
+    if (live != s.encounters.end())
+        return &live->second;
+    const auto retired = s.retired_encounters.find(id);
+    return retired != s.retired_encounters.end() ? &retired->second : nullptr;
+}
 void collect_retired(AiRewardState &s) {
     std::set<CharacterId> references;
     std::set<std::uint64_t> encounters;
@@ -50,6 +57,8 @@ void collect_retired(AiRewardState &s) {
                     actor(*a->rescue);
                 if (a->follow)
                     actor(*a->follow);
+                if (a->perceived_enemy)
+                    actor(*a->perceived_enemy);
                 if (a->encounter)
                     event(*a->encounter);
                 if (a->group)
@@ -73,9 +82,10 @@ void collect_retired(AiRewardState &s) {
         }
     }
     for (auto it = s.retired_actors.begin(); it != s.retired_actors.end();)
-        if (references.count(it->first) == 0)
+        if (references.count(it->first) == 0) {
+            s.contexts.erase(it->first);
             it = s.retired_actors.erase(it);
-        else
+        } else
             ++it;
     for (auto it = s.retired_encounters.begin(); it != s.retired_encounters.end();)
         if (encounters.count(it->first) == 0)
@@ -133,11 +143,11 @@ AiRewardResult prepare_monster_death_commit(const AiRewardState &s, CharacterId 
     AiRewardCandidate c{s, step.candidate->delete_instance, step.candidate->requests, {}, {}};
     if (!c.removed)
         return {AiRewardError::none, c};
+    auto *bound = actor.encounter ? resolve_event(c.state, *actor.encounter) : nullptr;
     if (actor.encounter) {
-        const auto encounter = c.state.encounters.find(*actor.encounter);
-        if (encounter == c.state.encounters.end())
+        if (!bound)
             return fail(AiRewardError::stale_encounter);
-        auto &members = encounter->second.members;
+        auto &members = bound->members;
         const auto member = std::find(members.begin(), members.end(), id);
         if (member != members.end())
             members.erase(member); // Vector.removeElement removes first matching reference only.
@@ -147,9 +157,7 @@ AiRewardResult prepare_monster_death_commit(const AiRewardState &s, CharacterId 
         auto &battle = c.state.battle.monsters.at(actor.definition);
         const bool boss = (battle.flags & 4U) != 0;
         const auto old_reward = prepare_monster_growth(m.base_death_reward, m.growth, 1, boss);
-        if (!old_reward ||
-            (actor.encounter &&
-             !add(c.state.encounters.at(*actor.encounter).runtime.reward, *old_reward)) ||
+        if (!old_reward || (bound && !add(bound->runtime.reward, *old_reward)) ||
             !add(m.defeats, 1) || !add(m.growth, 1))
             return fail(AiRewardError::preparation_failed);
         const auto cash = prepare_monster_growth(m.base_cash_reward, m.growth, 1, boss);
@@ -162,6 +170,11 @@ AiRewardResult prepare_monster_death_commit(const AiRewardState &s, CharacterId 
         battle.death_reward = *reward;
         battle.statF = *cash;
         for (auto &[other_id, other] : c.state.battle.actors) {
+            (void)other_id;
+            if (other.kind == ActorKind::monster && other.definition == actor.definition)
+                other.capacity = *capacity;
+        }
+        for (auto &[other_id, other] : c.state.retired_actors) {
             (void)other_id;
             if (other.kind == ActorKind::monster && other.definition == actor.definition)
                 other.capacity = *capacity;
@@ -179,7 +192,6 @@ AiRewardResult prepare_monster_death_commit(const AiRewardState &s, CharacterId 
         return fail(AiRewardError::invalid_input);
     c.state.retired_actors.emplace(id, c.state.battle.actors.at(id));
     c.state.battle.actors.erase(id);
-    c.state.contexts.erase(id);
     collect_retired(c.state);
     return {AiRewardError::none, c};
 }
@@ -221,7 +233,19 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
         if (!seen.insert(id).second || actor == s.battle.actors.end() ||
             actor->second.kind != ActorKind::monster || !(actor->second.id == id))
             return fail(AiRewardError::stale_actor);
-        input.monsters.push_back({id, actor->second.encounter});
+        auto event_id = actor->second.encounter;
+        if (event_id) {
+            const auto live = s.encounters.find(*event_id);
+            const auto retired = s.retired_encounters.find(*event_id);
+            const auto *bound = live != s.encounters.end()              ? &live->second
+                                : retired != s.retired_encounters.end() ? &retired->second
+                                                                        : nullptr;
+            if (!bound)
+                return fail(AiRewardError::stale_encounter);
+            if (bound->legacy_id == encounter->second.legacy_id)
+                event_id = i.encounter; // Source count/cancel compares f164b, not db pointer.
+        }
+        input.monsters.push_back({id, event_id});
     }
     const auto step = prepare_encounter_step(input);
     if (!step.candidate)
@@ -260,6 +284,14 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
                     return fail(spawn.error);
                 c.state = spawn.candidate->state;
                 spawned = true; // Constructor commits the single planned count increment.
+            }
+            if (i.snapshot_field) {
+                if (!valid_combat_influence_field(*i.snapshot_field))
+                    return fail(AiRewardError::invalid_input);
+                auto &e = c.state.encounters.at(i.encounter);
+                e.influence = i.snapshot_field;
+                e.human_scratch = i.snapshot_field->human_field;
+                e.monster_scratch = i.snapshot_field->monster_field;
             }
             break;
         case EncounterRequestKind::cancel_monster:
@@ -338,6 +370,10 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
             return fail(AiRewardError::invalid_input);
         c.state.retired_encounters.emplace(i.encounter, c.state.encounters.at(i.encounter));
         c.state.encounters.erase(i.encounter);
+        const auto order =
+            std::find(c.state.encounter_order.begin(), c.state.encounter_order.end(), i.encounter);
+        if (order != c.state.encounter_order.end())
+            c.state.encounter_order.erase(order);
         c.state.battle.quest_encounters.erase(i.encounter);
     }
     collect_retired(c.state);
@@ -382,6 +418,11 @@ AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId i
             if (other.kind == ActorKind::human && other.definition == actor->second.definition)
                 other.capacity = g.derived.combat[0]; // h() reads shared w0; current HP unchanged.
         }
+        for (auto &[other_id, other] : c.state.retired_actors) {
+            (void)other_id;
+            if (other.kind == ActorKind::human && other.definition == actor->second.definition)
+                other.capacity = g.derived.combat[0];
+        }
     }
     c.state.contexts.at(id).effects = step.candidate->effects;
     for (const auto &r : c.growth_requests) {
@@ -397,7 +438,11 @@ AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId i
 AiRewardResult prepare_battle_group_join(const AiRewardState &s, std::uint64_t encounter,
                                          CharacterId caller, CharacterId opponent) {
     const auto e = s.encounters.find(encounter);
-    if (e == s.encounters.end() || !e->second.group_exists)
+    const auto retired = s.retired_encounters.find(encounter);
+    const auto *bound = e != s.encounters.end()                 ? &e->second
+                        : retired != s.retired_encounters.end() ? &retired->second
+                                                                : nullptr;
+    if (!bound || !bound->group_exists)
         return fail(AiRewardError::stale_encounter);
     const auto a = s.battle.actors.find(caller), b = s.battle.actors.find(opponent);
     if (a == s.battle.actors.end() || b == s.battle.actors.end() || !(a->second.id == caller) ||
@@ -408,7 +453,9 @@ AiRewardResult prepare_battle_group_join(const AiRewardState &s, std::uint64_t e
     actor.control.flags |= 128U;
     actor.attack_slot = 0;
     actor.group = encounter;
-    auto &group = c.state.encounters.at(encounter).group;
+    auto &group = (e != s.encounters.end() ? c.state.encounters.at(encounter)
+                                           : c.state.retired_encounters.at(encounter))
+                      .group;
     const auto append = [&group](const BattleActorRecord &record) {
         auto &roster = record.kind == ActorKind::human ? group.humans : group.monsters;
         roster.push_back({record.id, record.control.flags});
@@ -502,6 +549,7 @@ AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &s, std::uint
     AiRewardCandidate c{s, false, {}, {}, {}};
     c.state.battle.actors.emplace(actor.id, actor);
     c.state.contexts.emplace(actor.id, RewardActorContext{spawn.cell, false, {}, {}});
+    c.state.contexts.at(actor.id).half_cell = {spawn.cell.x * 2 + 1, spawn.cell.y * 2 + 1};
     c.state.monster_order.push_back(actor.id);
     c.state.encounters.at(encounter).members.push_back(actor.id);
     if (!add(c.state.encounters.at(encounter).runtime.spawned, 1))

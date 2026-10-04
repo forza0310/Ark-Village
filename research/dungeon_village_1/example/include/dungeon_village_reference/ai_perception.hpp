@@ -8,6 +8,7 @@ namespace dungeon_village_reference {
 struct EncounterSnapshot {
     std::uint64_t id{};
     Position center;
+    std::optional<int> original_id{}; // Present in world queries; stable identity stays separate.
 };
 struct EventGateInput {
     BattleGateInput actor; // F ignores1024, unlike G.
@@ -21,6 +22,7 @@ struct EventGateInput {
     int task_kind{};
     Position task_center;
     std::optional<std::uint64_t> task_encounter;
+    std::optional<int> task_original_id{}; // F compares f164b, not pointer/stable-ID equality.
 };
 struct EventGateCandidate {
     bool ready{};

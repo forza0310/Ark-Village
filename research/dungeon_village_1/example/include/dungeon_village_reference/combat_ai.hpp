@@ -141,6 +141,7 @@ struct CombatInfluenceResult {
     CombatAiError error{CombatAiError::none};
     std::optional<CombatInfluenceCandidate> candidate;
 };
+bool valid_combat_influence_field(const CombatInfluenceCandidate &field);
 // Add opposing25-cell kernels first, then multiply friendly9-cell kernels with per-actor
 // truncation. Preserve the fixed bytecode's terrain mask at (gridX/2,gridY/2), NOT gridX*2/gridY*2.
 CombatInfluenceResult prepare_combat_influence(const CombatInfluenceInput &input);

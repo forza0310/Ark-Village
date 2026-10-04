@@ -31,7 +31,7 @@ prepare_actor_baseline_restore(const ActorControlState &s, int baseline, bool hu
     c.control.state = baseline;
     c.control.flags &= ~16U;
     c.control.queue.clear();
-    c.control.action = c.control.action_counter = c.control.alternate_counter = 0;
+    c.control.action = c.control.action_counter = 0; // b() calls n(0), not opcode3's extra i=0.
     if (baseline == 5)
         c.control.queue = {{10, 0}};
     else if (baseline == 17 && mode == 0)

@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及39个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及44个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -39,7 +39,9 @@
 | ai_rewards | 尸体删除/引用保留、战斗组实际提交、任务生成/胜利、延迟成长与全局职业开放；地图/页面/表情保持显式请求 | [奖励所有者](../rules/ai/ENCOUNTERS.md#死亡战斗组与奖励所有者组合) |
 | encounter_creation | 普通事件地图/任务/重叠守卫、数量/解锁/介绍/实际生成及整批回滚；不补任务配额 | [普通创建](../rules/ai/ENCOUNTERS.md#普通遭遇创建事务) |
 | rescue_commit | 共用人物所有者、追踪/双向绑定/返程/递归双人到达、定义共享B2、旅店使用退出；复杂分支明确交接 | [普通旅店世界事务](../rules/ai/PERCEPTION.md#普通旅店世界事务) |
-| combat_commit | 同一奖励人物所有者下攻击安排/14–17、当前敌人/回复对象、投射追加与回复B推进；当前动作和武器独立 | [控制世界提交](../rules/ai/COMBAT.md#控制14至17的世界提交) |
+| combat_commit | 状态1策略→组加入/实际九方向移动/攻击及法术队列，14–17与同次本地解释器续行；当前动作和武器独立 | [策略世界提交](../rules/ai/COMBAT.md#状态1策略的世界提交) |
+| world_perception | 当前地图K/e/F、旧缓存城内外/低血量、引用修复/抢占、状态18、全局场与物理投影、实际d执行前段；不提前刷新s/t/ak | [共同世界感知](../rules/ai/PERCEPTION.md#共同世界感知与缓存)、[执行前段](../rules/ai/LIFECYCLE.md#实际执行前段与解释器续行) |
+| world_encounters | 任务F创建/配额/下一次绑定、当前地图候选重建、事件bit2刷新与原时点场快照；声音/提示保持请求 | [任务与场事务](../rules/ai/ENCOUNTERS.md#任务创建与影响场地图事务) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

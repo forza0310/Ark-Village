@@ -1,5 +1,6 @@
 #include "dungeon_village_reference/ai_rewards.hpp"
 #include "dungeon_village_reference/ai_schedule.hpp"
+#include "dungeon_village_reference/world_perception.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -493,6 +494,15 @@ void reference_graph() {
     c = collect_ai_references(s);
     check(c.retired_actors.count({5}) == 1, "monster S independently roots removed follow target");
     s.battle.actors.at({2}).follow.reset();
+    s.contexts.emplace(CharacterId{5}, RewardActorContext{});
+    s.battle.actors.at({1}).perceived_enemy = CharacterId{5};
+    c = collect_ai_references(s);
+    check(c.retired_actors.count({5}) && c.contexts.count({5}),
+          "live az retains removed opponent and its cached context without roster reentry");
+    s.battle.actors.at({1}).perceived_enemy.reset();
+    c = collect_ai_references(s);
+    check(!c.retired_actors.count({5}) && !c.contexts.count({5}),
+          "last az released collects actor and context together");
     s.retired_actors.at({5}).rescue = CharacterId{6};
     corpse.id = {6};
     corpse.rescue = CharacterId{5};
@@ -525,6 +535,90 @@ void reference_graph() {
     c = collect_ai_references(s);
     check(c.retired_encounters.empty(), "no db/dc roots finally release retired event");
 }
+void execution_prefix() {
+    auto s = fixture();
+    auto &a = s.battle.actors.at({1});
+    a.control.alternate_counter = 20;
+    a.control.action_counter = 4;
+    a.state_counter = 17;
+    a.hit_flash = 3;
+    a.label_timer = 1;
+    a.miss_label = true;
+    a.damage_total = 100;
+    a.hit_count = 2;
+    a.object_slot = -2;
+    a.hp = {50, 20, 20, 70, true, 10};
+    s.contexts.at({1}).effects.delayed = {{4, 0, 10, 20}};
+    s.contexts.at({1}).effects.display = {{12, 0, 40, 1, 0}};
+    auto r = prepare_world_execution_prefix(s, {1});
+    check(r.candidate && r.candidate->state.battle.actors.at({1}).control.alternate_counter == 21 &&
+              r.candidate->state.battle.actors.at({1}).control.action_counter == 5 &&
+              r.candidate->state.battle.actors.at({1}).state_counter == 18 &&
+              r.candidate->state.battle.actors.at({1}).hit_flash == 2,
+          "actual d prefix advances shared i/l/B/aw exactly once");
+    check(r.candidate->sounds.size() == 1 && r.candidate->sounds.front().sound == 17 &&
+              r.candidate->state.contexts.at({1}).effects.display.front() ==
+                  ActorEffectRecord{16, 1, 4, 10, 20},
+          "ce fires/prepends before current cd pass, new spell display age1 before v");
+    check(!r.candidate->state.battle.actors.at({1}).miss_label &&
+              r.candidate->state.battle.actors.at({1}).damage_total == 0 &&
+              r.candidate->state.battle.actors.at({1}).hit_count == 0 &&
+              r.candidate->state.battle.actors.at({1}).hp.legacy_tick == 11 &&
+              r.candidate->request_carry_expression,
+          "label expiry then HP display then shared growth then carry expression17 request");
+    check(a.state_counter == 17 && s.contexts.at({1}).effects.delayed.size() == 1,
+          "all d prefix changes stay private");
+    s.growth.erase(1);
+    check(!prepare_world_execution_prefix(s, {1}).candidate && a.hp.legacy_tick == 10,
+          "late missing human definition rolls back counters/display/HP together");
+    s = fixture();
+    s.growth.clear();
+    s.contexts.at({2}).effects.delayed = {{6, 1, 0, 0}};
+    r = prepare_world_execution_prefix(s, {2});
+    check(r.candidate && r.candidate->state.contexts.at({2}).effects.delayed.front()[1] == 0 &&
+              r.candidate->growth_requests.empty() && r.candidate->sounds.empty(),
+          "monster d skips human growth; ce old1->0 doesn't fire until next execution");
+    s.battle.actors.at({2}).control.alternate_counter = std::numeric_limits<int>::max() - 1;
+    r = prepare_world_execution_prefix(s, {2});
+    check(r.candidate && r.candidate->state.battle.actors.at({2}).control.alternate_counter == 0,
+          "source positive counter modulo INTMAX boundary preserved");
+}
+void retired_event_consumers() {
+    auto s = fixture();
+    auto e = s.encounters.at(0);
+    s.encounters.erase(0);
+    s.retired_encounters.emplace(0, e);
+    auto joined = prepare_battle_group_join(s, 0, {1}, {2});
+    check(joined.candidate && joined.candidate->state.encounters.empty() &&
+              joined.candidate->state.retired_encounters.at(0).group.humans.size() == 1 &&
+              joined.candidate->state.battle.actors.at({1}).group == 0,
+          "referenced retired db still permits source f.a group append without reentering bn");
+    s = joined.candidate->state;
+    s.battle.actors.at({2}).control.state = 3;
+    s.battle.actors.at({2}).state_counter = 12;
+    const auto died = prepare_monster_death_commit(s, {2});
+    check(died.candidate && died.candidate->removed && died.candidate->state.encounters.empty() &&
+              died.candidate->state.retired_encounters.at(0).runtime.reward == 100 &&
+              died.candidate->state.retired_encounters.at(0).members.empty() &&
+              died.candidate->state.accounting.funds() == 120,
+          "old db object remains reward/member owner even after bn removal");
+    s = fixture();
+    auto alias = s.encounters.at(0);
+    alias.runtime.id = 7;
+    s.retired_encounters.emplace(7, alias);
+    s.battle.actors.at({2}).encounter = 7;
+    EncounterCommitInput input;
+    input.tickets = {{1000, 999}};
+    const auto linked = prepare_encounter_reward_commit(s, input);
+    check(linked.candidate && linked.candidate->state.encounters.at(0).runtime.state == 0,
+          "current event monster count matches originalID even when instance db is retired alias");
+    input.town_overlap = true;
+    const auto cancelled = prepare_encounter_reward_commit(s, input);
+    check(cancelled.candidate &&
+              cancelled.candidate->state.battle.actors.at({2}).control.state == 3 &&
+              cancelled.candidate->state.battle.actors.at({2}).state_parameter == 1,
+          "source cancel also matches originalID, not source object's stable db identity");
+}
 } // namespace
 int main() {
     try {
@@ -535,6 +629,8 @@ int main() {
         spawning();
         projectile_world();
         reference_graph();
+        execution_prefix();
+        retired_event_consumers();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

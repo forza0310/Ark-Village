@@ -418,7 +418,7 @@ RescueWorldResult prepare_world_rescue_follow(const RescueWorldState &s, Charact
         a.hp = *hp.candidate;
     }
     if (repair->reset_action)
-        a.control.action = a.control.action_counter = a.control.alternate_counter = 0;
+        a.control.action = a.control.action_counter = 0;
     if (a.control.state == 16) {
         const bool in_roster =
             a.rescue && std::find(s.ai.human_order.begin(), s.ai.human_order.end(), *a.rescue) !=

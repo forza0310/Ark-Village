@@ -5,6 +5,15 @@
 #include <limits>
 
 namespace dungeon_village_reference {
+bool valid_combat_influence_field(const CombatInfluenceCandidate &f) {
+    return f.width > 0 && f.height > 0 &&
+           static_cast<std::uint64_t>(f.width) * f.height <= 4000000 &&
+           static_cast<std::uint64_t>(f.width) * f.height == f.human_field.size() &&
+           f.human_field.size() == f.monster_field.size() &&
+           std::none_of(f.human_field.begin(), f.human_field.end(), [](int v) { return v < 0; }) &&
+           std::none_of(f.monster_field.begin(), f.monster_field.end(),
+                        [](int v) { return v < 0; });
+}
 std::optional<int> prepare_monster_growth(int base, int growth, int category, bool boss) {
     if (base < 0 || growth < 0 || category < 0 || category > 2)
         return std::nullopt;

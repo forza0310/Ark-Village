@@ -11,6 +11,7 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 - scene.cpp：加载后地表/补块/设施/人物共享深度排序、连接道路、占地与建筑/箭头预览。
 - road_render.cpp：当前未占用道路的2×2/上下边缘标记及原PNG尺寸/锚点偏移，quad优先，第二遍按y降/x升提交。
 - character_animation.cpp：按实际位移/获准轮次播放walk00四帧，静止回帧0、暂停冻结、重启清状态；每6移动轮次换帧暂属桌面播放策略，原朝向/武器合成另待研究。
+- character_visibility.cpp：用户要求的店内暂时隐藏适配；仅真实state14、有效active_facility且该实例占用名单包含人物时不提交精灵，退出释放后恢复。普通/预览共用，显式motion检查独立显示；不是原版bit1隐藏谓词或正门动画认证。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
 - projection.cpp：格与连续世界坐标等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
 - resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。
@@ -30,7 +31,7 @@ Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体�
 目录和详情页滚轮继续滚动列表，不同时缩放地图；`--zoom-percent 50..200`用于复现初始视图/有界截图。
 到访列表仅列场景人物，不冒充原版四页名单。inspect-page只检查渲染，不算真实鼠标测试。
 `--verify-play --frames 3000 --screenshot /tmp/ark-playable.png`是正常新局的有界controller检查，固定产品随机种子但不预推进首访、不注入目标/收入；默认47ms等待真实420步，再用共享坐标控制关闭教程、建设食品类包子铺、暂停30绘制帧并恢复。
-该检查观测人物移动/访问/收费/占用/退出、施工完成和现金账本一致性；打印Village的steps/date/life_rounds/visits/completions/funds/ledger_funds/error/pending_category及Playability结果，不达标退出失败。约50秒绘制预算、60秒硬上限，不可与预览/检查页面/暂停启动或固定频率覆盖混用。
+该检查观测人物移动/访问/收费/占用/退出、真实使用期间隐藏与退出再显示、施工完成和现金账本一致性；打印Village的steps/date/life_rounds/visits/completions/funds/ledger_funds/error/pending_category/actor_visible及Playability结果，不达标退出失败。约50秒绘制预算、60秒硬上限，不可与预览/检查页面/暂停启动或固定频率覆盖混用。
 这是产品内部正常模型/controller检查，不代表OS鼠标事件或原APK行为等价；实际通过记录集中在阶段文档。
 `--inspect-page motion --frames 120`在有界窗口显式选择旅店展示连续运动，只覆盖渲染位置；领域人物/金币不变。
 它不证明默认首访会选择旅店，不含方向动画/武器合成或使用退出；手动新局重置会清除检查行程。

@@ -2,7 +2,9 @@
 #include "ark/app/game.hpp"
 #include "ark/assets/sprite.hpp"
 #include "character_animation.hpp"
+#include "character_visibility.hpp"
 #include "projection.hpp"
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
@@ -97,6 +99,78 @@ void actual_ai() {
     check(game.ai_state()->arrivals == 1 && poses.size() == 4 && animation.frame() == 0,
           "real AI motion animates; arrival/use stops the cycle");
 }
+
+// The same actual service state drives normal-world and legacy-preview visibility. This tests
+// the requested desktop policy, not an original-APK draw predicate or front-door animation.
+void service_visibility(ark::app::PlayMode play) {
+    using namespace ark;
+    app::Game game(20261004U, play);
+    check(!desktop::character_visible(game) && !desktop::character_visible(game, true),
+          "no visitor means no sprite, including an inspection override");
+    for (int n = 0; n < 420; ++n)
+        game.update();
+    const auto actor = [&]() -> const app::LifeActorState & {
+        return game.life_state() ? *game.life_state() : *game.ai_state();
+    };
+    const auto occupancy = [&](facilities::InstanceId id) -> const std::vector<people::ActorId> & {
+        return game.life_state() ? game.state().facility_life.at(id).occupants
+                                 : game.ai_state()->facilities.at(id).occupants;
+    };
+    check(game.state().mode == app::Mode::tutorial && desktop::character_visible(game),
+          "first visitor remains visible in tutorial before actual use");
+    const auto tutorial_rounds = actor().rounds;
+    for (int n = 0; n < 20; ++n)
+        game.update();
+    check(actor().rounds == tutorial_rounds && desktop::character_visible(game),
+          "tutorial blocks updates without hiding the visitor");
+    while (game.state().mode == app::Mode::tutorial)
+        game.acknowledge_talk();
+    game.finish_camera();
+    check(desktop::character_visible(game), "departing and walking are visible");
+    for (int n = 0; n < 700 && !actor().active_facility; ++n) {
+        check(desktop::character_visible(game), "actor visible on every pre-entry travel round");
+        game.update();
+    }
+    check(actor().active_facility && actor().control.state == 14,
+          "real autonomous arrival reaches state14 with an actual facility");
+    const auto used = actor().active_facility->instance;
+    const auto &occupants = occupancy(used);
+    check(std::find(occupants.begin(), occupants.end(), actor().actor) != occupants.end() &&
+              !desktop::character_visible(game) && desktop::character_visible(game, true),
+          "actual service occupation hides sprite; explicit motion inspection remains visible");
+    const auto rounds = actor().rounds;
+    game.set_paused(true);
+    for (int n = 0; n < 20; ++n) {
+        game.update();
+        check(actor().rounds == rounds && !desktop::character_visible(game),
+              "pause freezes actual service and its hidden presentation");
+    }
+    game.set_paused(false);
+    for (int n = 0; n < 300 && actor().completions == 0; ++n) {
+        check(!desktop::character_visible(game), "sprite hidden throughout occupied use");
+        game.update();
+    }
+    check(actor().completions == 1 && !actor().active_facility && occupancy(used).empty() &&
+              desktop::character_visible(game),
+          "actual exit releases occupation and shows the character again");
+    // Legacy preview preserves the last successful actor and exposes failed rounds on Game;
+    // normal life stores its explicit handoff on the actor as well as the same Game diagnostic.
+    for (int n = 0; n < 700 && game.ai_error() == app::InitialAiError::none; ++n)
+        game.update();
+    check(game.ai_error() == app::InitialAiError::unsupported_branch,
+          "actual random stream reaches unsupported activity");
+    if (play == app::PlayMode::startup) {
+        check(!actor().active_facility && desktop::character_visible(game),
+              "normal committed exit/handoff remains visible, not falsely inside a shop");
+    } else {
+        // The later preview exit/departure fails as one transaction; its previous occupied
+        // state remains authoritative. An error code alone must not change presentation.
+        check(actor().active_facility && actor().control.state == 14 &&
+                  !occupancy(actor().active_facility->instance).empty() &&
+                  !desktop::character_visible(game),
+              "preview rolled-back exit retains actual occupation and hidden presentation");
+    }
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -104,6 +178,8 @@ int main(int argc, char **argv) {
         ground(argv[1]);
         playback();
         actual_ai();
+        service_visibility(ark::app::PlayMode::startup);
+        service_visibility(ark::app::PlayMode::ai_preview);
         std::cout << "PASS actual road feet binding, walk poses, pause/idle/2x/reset and real AI\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

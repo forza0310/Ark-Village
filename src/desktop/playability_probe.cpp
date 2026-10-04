@@ -1,4 +1,5 @@
 #include "playability_probe.hpp"
+#include "character_visibility.hpp"
 #include "ui/controller.hpp"
 #include <algorithm>
 #include <ostream>
@@ -23,8 +24,10 @@ void PlayabilityProbe::observe(const app::Game &game) {
         if (life->completions > last_completions_)
             for (const auto id : last_occupied_) {
                 const auto &occupants = state.facility_life.at(id).occupants;
-                if (std::find(occupants.begin(), occupants.end(), life->actor) == occupants.end())
+                if (std::find(occupants.begin(), occupants.end(), life->actor) == occupants.end()) {
                     released_ = true;
+                    shown_after_exit_ = shown_after_exit_ || character_visible(game);
+                }
             }
         last_completions_ = life->completions;
     }
@@ -38,6 +41,8 @@ void PlayabilityProbe::observe(const app::Game &game) {
         if (game.life_state() && std::find(service.occupants.begin(), service.occupants.end(),
                                            game.life_state()->actor) != service.occupants.end()) {
             occupied_ = true;
+            if (!character_visible(game))
+                hidden_using_ = true;
             last_occupied_.push_back(id);
         }
     }
@@ -166,7 +171,8 @@ bool PlayabilityProbe::passed(const app::Game &game) const {
     const auto *life = game.life_state();
     return state.event89_count == 1 && life && moved_ && income_ && occupied_ && released_ &&
            life->completions > 0 && built_ && state.facilities.at(*built_).remaining_ticks == 0 &&
-           pause_verified_ && resumed_ && state.money == state.accounting.funds() &&
+           pause_verified_ && resumed_ && hidden_using_ && shown_after_exit_ &&
+           state.money == state.accounting.funds() &&
            (life->error == app::InitialAiError::none ||
             life->error == app::InitialAiError::unsupported_branch);
 }
@@ -181,7 +187,9 @@ void PlayabilityProbe::report(std::ostream &output, const app::Game &game) const
            << (built_ && game.state().facilities.at(*built_).remaining_ticks == 0)
            << " remaining_ticks="
            << (built_ ? game.state().facilities.at(*built_).remaining_ticks : -1)
-           << " pause_frozen=" << pause_verified_ << " resumed=" << resumed_ << " handoff="
+           << " pause_frozen=" << pause_verified_ << " resumed=" << resumed_
+           << " hidden_using=" << hidden_using_ << " shown_after_exit=" << shown_after_exit_
+           << " handoff="
            << (game.life_state() &&
                game.life_state()->error == app::InitialAiError::unsupported_branch)
            << " pending_category="

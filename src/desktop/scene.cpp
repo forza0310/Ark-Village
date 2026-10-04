@@ -1,6 +1,7 @@
 // Loaded ground and current instances. Boundary/exterior extra overlays still await bindings.
 #include "scene.hpp"
 #include "ark/world/terrain.hpp"
+#include "character_visibility.hpp"
 #include "road_render.hpp"
 #include <algorithm>
 namespace ark::desktop {
@@ -68,7 +69,7 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
                              base_depth(display, p)});
         }
     }
-    if (game.state().adventurer) {
+    if (character_visible(game, inspection_actor.has_value())) {
         const auto p = project_position(
             inspection_actor.value_or(game.state().adventurer->position), camera, extent, zoom);
         tiles.push_back({"walk00.seb", actor_frame, p, WHITE, true, p.y});

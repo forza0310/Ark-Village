@@ -4,6 +4,7 @@
 #include "ark/app/simulation_clock.hpp"
 #include "ark/people/motion.hpp"
 #include "character_animation.hpp"
+#include "character_visibility.hpp"
 #include "desktop_session.hpp"
 #include "playability_probe.hpp"
 #include "resources.hpp"
@@ -329,7 +330,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << ai->position.z << " arrivals=" << ai->arrivals
                   << " completions=" << ai->completions << " funds=" << ai->accounting.funds()
                   << " error=" << static_cast<int>(game.ai_error())
-                  << " actor_frame=" << actor_animation.frame() << '\n';
+                  << " actor_frame=" << actor_animation.frame()
+                  << " actor_visible=" << character_visible(game, inspected_travel.has_value())
+                  << '\n';
     }
     if (options.frames && !options.ai_preview) {
         const auto &state = game.state();
@@ -343,7 +346,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << " ledger_funds=" << state.accounting.funds()
                   << " error=" << (life ? static_cast<int>(life->error) : 0) << " pending_category="
                   << (life && life->pending_category ? *life->pending_category : -1)
-                  << " actor_frame=" << actor_animation.frame() << '\n';
+                  << " actor_frame=" << actor_animation.frame()
+                  << " actor_visible=" << character_visible(game, inspected_travel.has_value())
+                  << '\n';
     }
     if (playability) {
         playability->report(std::cout, game);

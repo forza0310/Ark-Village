@@ -32,6 +32,7 @@ class PlayabilityProbe {
     Stage stage_{Stage::arrival};
     int pause_frames_{};
     bool moved_{}, income_{}, occupied_{}, released_{}, pause_verified_{}, resumed_{};
+    bool hidden_using_{}, shown_after_exit_{};
     int last_completions_{};
     std::vector<facilities::InstanceId> last_occupied_;
     std::optional<world::WorldPosition> last_position_;

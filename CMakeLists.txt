@@ -61,7 +61,8 @@ if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp
-        src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/character_animation.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
+        src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/character_animation.cpp
+        src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_timing ark_game ark_asset_metadata PkgConfig::RAYLIB)
@@ -226,7 +227,7 @@ if(BUILD_TESTING)
         ark_target(ark_projection_tests)
         add_test(NAME projection_input COMMAND ark_projection_tests)
         add_executable(ark_character_render_tests tests/character_render_test.cpp
-            src/desktop/character_animation.cpp src/desktop/projection.cpp)
+            src/desktop/character_animation.cpp src/desktop/character_visibility.cpp src/desktop/projection.cpp)
         target_include_directories(ark_character_render_tests PRIVATE include src/desktop)
         target_link_libraries(ark_character_render_tests PRIVATE ark_game ark_asset_metadata PkgConfig::RAYLIB)
         ark_target(ark_character_render_tests)

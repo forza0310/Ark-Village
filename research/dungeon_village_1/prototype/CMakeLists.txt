@@ -64,6 +64,16 @@ foreach(module IN ITEMS startup_world_projection startup_world_routes startup_wo
 endforeach()
 # 维护验收的墙钟保护；不改变世界tick、页输入或游戏日历。
 set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTIES TIMEOUT 900)
+option(DUNGEON_VILLAGE_LONG_WORLD_TESTS "启用跨年与不同种子倍速的有界世界验收" OFF)
+if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
+    add_test(NAME dungeon_village_prototype.world_year
+        COMMAND dungeon_village_startup_world_continuous_tests 12 1 0)
+    add_test(NAME dungeon_village_prototype.world_speed_seed
+        COMMAND dungeon_village_startup_world_continuous_tests 6 20261005 1)
+    set_tests_properties(dungeon_village_prototype.world_year
+                         dungeon_village_prototype.world_speed_seed
+                         PROPERTIES TIMEOUT 1800 LABELS "long-world")
+endif()
 add_test(NAME dungeon_village_prototype.startup_world_data
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/startup_world_data_test.mjs"
             "${CMAKE_CURRENT_SOURCE_DIR}/../data/startup" "${CMAKE_CURRENT_SOURCE_DIR}/../data/world"

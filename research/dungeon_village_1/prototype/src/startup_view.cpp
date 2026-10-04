@@ -599,7 +599,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto &s = session.state();
             const auto &top = s.scripts.pages.back();
             if (top.kind != ref::WorldScriptPageKind::scene && top.lifecycle != 4 &&
-                !(top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 56)) {
+                !(top.kind == ref::WorldScriptPageKind::raw_page &&
+                  (top.legacy_page == 56 || top.legacy_page == 57 || top.legacy_page == 16))) {
                 if (session.acknowledge_page(top.id) != StartupWorldRuntimeError::none)
                     throw std::runtime_error("共同世界检查预运行页面消费者失败");
             }

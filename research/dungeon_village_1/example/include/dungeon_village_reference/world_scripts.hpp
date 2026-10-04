@@ -99,7 +99,7 @@ struct WorldScriptNotice {
     int duration{80};
     std::string replacement;
     std::string text;
-    std::vector<int> definitions{}; // 特殊消息32的原第三载荷；普通消息保持空。
+    std::vector<int> definitions{};        // 特殊消息32的原第三载荷；普通消息保持空。
     std::optional<int> human_definition{}; // 成长消息0的原第四载荷。
     std::optional<std::array<std::array<int, 2>, 4>> attribute_changes{}; // 成长消息0原ap。
 };
@@ -223,7 +223,8 @@ struct WorldScriptCameraFocusInput {
     std::array<float, 2> camera{};            // 表现适配的c.a.n，不由人物n格坐标补造。
     std::array<float, 2> previous_camera{};   // c.a.p，同步接受本次位移。
     std::array<float, 2> previous_velocity{}; // bi.w；终止/无怪物分支保留旧值。
-    std::optional<std::array<float, 2>> first_monster_cached_view; // 实时bm[0].u。
+    std::optional<std::array<float, 2>> first_monster_cached_view;  // 实时bm[0].u。
+    std::optional<std::array<float, 2>> first_task_facility_view{}; // raw57：bq[0].b().f()。
 };
 struct WorldScriptCameraFocusCandidate {
     WorldScriptState state;
@@ -236,7 +237,7 @@ struct WorldScriptCameraFocusResult {
     WorldScriptError error{WorldScriptError::none};
     std::optional<WorldScriptCameraFocusCandidate> candidate;
 };
-// 90的raw56真实逐更新镜头消费者：实时第一怪物u，距离映射10..150→5..26，
+// raw56/57逐更新镜头：第一怪物u或第一任务绑定设施f()，距离映射10..150→5..26，
 // 严格distance<step才直接对齐并标关闭；相等仍移动一次、下一更新才关闭。
 WorldScriptCameraFocusResult
 prepare_world_script_camera_focus(const WorldScriptState &state,

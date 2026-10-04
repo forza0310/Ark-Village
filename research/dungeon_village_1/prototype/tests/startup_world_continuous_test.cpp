@@ -2,6 +2,7 @@
 #include "dungeon_village_reference/world_arrivals.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -208,19 +209,89 @@ std::string diagnose(const StartupWorldRuntimeState &s) {
     const auto scene = adapter.scene_other;
     adapter.scene_other = [&](const auto &owner, const auto &call) {
         last = "scene-stage=" + std::to_string(static_cast<int>(call.stage));
-        return scene(owner, call);
+        auto result = scene(owner, call);
+        if (!result && call.stage == ref::WorldSceneStage::global_display) {
+            for (const auto &effect : owner.visual_effects) {
+                last += " visual=[";
+                for (auto value : effect)
+                    last += std::to_string(value) + ',';
+                last += ']';
+            }
+            for (const auto &effect : owner.delayed_effects) {
+                last += " delayed=[";
+                for (auto value : effect)
+                    last += std::to_string(value) + ',';
+                last += ']';
+            }
+        }
+        return result;
+    };
+    const auto script_read = adapter.scripts.read;
+    adapter.scripts.read = [&](const auto &owner) {
+        auto value = script_read(owner);
+        const auto valid = ref::prepare_world_script_continuations(adapter.catalog, value, false);
+        last = "scripts-read validate=" + std::to_string(static_cast<int>(valid.error));
+        for (const auto &continuation : value.continuations)
+            last += " continuation=" + std::to_string(continuation.event) + ':' +
+                    std::to_string(continuation.next_instruction) + ':' +
+                    std::to_string(continuation.remaining_updates);
+        return value;
+    };
+    const auto script_write = adapter.scripts.write;
+    adapter.scripts.write = [&](auto &owner, const auto &scripts) {
+        const bool written = script_write(owner, scripts);
+        if (!written)
+            last += " scripts-write-failed";
+        return written;
+    };
+    const auto entry_read = adapter.entry.read;
+    adapter.entry.read = [&](const auto &owner) {
+        last = "entry-read";
+        return entry_read(owner);
+    };
+    const auto entry_write = adapter.entry.write;
+    adapter.entry.write = [&](auto &owner, const auto &value) {
+        last = "entry-write";
+        const bool written = entry_write(owner, value);
+        if (!written)
+            last += " failed";
+        return written;
+    };
+    const auto report_read = adapter.report.read;
+    adapter.report.read = [&](const auto &owner) {
+        last = "report-read";
+        return report_read(owner);
+    };
+    const auto report_write = adapter.report.write;
+    adapter.report.write = [&](auto &owner, const auto &value) {
+        last = "report-write";
+        const bool written = report_write(owner, value);
+        if (!written)
+            last += " failed";
+        return written;
+    };
+    const auto before_common = adapter.before_common;
+    adapter.before_common = [&](const auto &owner) {
+        last = "before-common";
+        auto value = before_common(owner);
+        if (!value)
+            last += " failed";
+        return value;
     };
     // 只重放失败候选作读诊断，保留原消费者；不添加任何默认成功/状态推进。
     (void)ref::prepare_owned_world_runtime(s, {s.calendar_advance, true}, adapter);
     return last;
 }
-void continuous() {
+void continuous(int months, std::uint64_t seed, int speed) {
     StartupSession original;
-    StartupWorldRuntimeSession session(original.state(), ref::WorldRandomStream::from_java_seed(1));
+    StartupWorldRuntimeSession session(original.state(),
+                                       ref::WorldRandomStream::from_java_seed(seed));
+    session.set_speed(speed);
     check(session.state().popularity == 50 && session.state().maximum_popularity == 0,
           "source n.J initializes popularity50/peak0; do not invent peak50 to satisfy an invalid "
           "invariant");
     const int opening_month = session.state().scene.calendar.month;
+    const int opening_year = session.state().scene.calendar.year;
     std::set<std::uint64_t> pages;
     std::set<std::uint64_t> task_ids;
     std::set<int> report_states;
@@ -232,7 +303,8 @@ void continuous() {
     int last_month = opening_month;
     bool finished{};
     // 有界测试保护，不参与世界规则、不跳过真实人物/页面/日期消费者。
-    for (int frame = 0; frame < 20000; ++frame) {
+    const int frame_limit = std::max(20000, months * 10000);
+    for (int frame = 0; frame < frame_limit; ++frame) {
         const auto before_random = session.state().scene.random.draws();
         const auto result = session.update();
         if (!result.candidate) {
@@ -261,23 +333,37 @@ void continuous() {
         }
         const auto page = top_page(s);
         check(page != nullptr, "source framework preserves main page");
-        if (page->kind != ref::WorldScriptPageKind::scene && page->legacy_page != 56) {
+        if (page->kind != ref::WorldScriptPageKind::scene && page->legacy_page != 56 &&
+            page->legacy_page != 57 && page->legacy_page != 16) {
             const auto id = page->id;
+            const auto legacy_page = page->legacy_page;
+            const auto source_record = page->source_record;
             if (pages.insert(id).second)
                 std::cout << "page id=" << id << " kind=" << static_cast<int>(page->kind)
                           << " legacy=" << page->legacy_page << " source=" << page->source_record
                           << ' ' << snapshot(s, frame) << std::endl;
             // 明确的测试用户一次确认；多阶段成果页保留自身真实计数/阶段，绝不直接删页。
-            const auto acknowledged = session.acknowledge_page(id);
+            auto acknowledged = StartupWorldRuntimeError::none;
+            if (legacy_page == 87) {
+                // 明确测试玩家选择终止→确认，不自动授勋、清勋章或冒充普通确认。
+                acknowledged =
+                    session.act_award_page(id, ref::WorldAwardAction::request_termination);
+                if (acknowledged == StartupWorldRuntimeError::none)
+                    acknowledged =
+                        session.act_award_page(id, ref::WorldAwardAction::confirm_termination);
+            } else
+                acknowledged = session.acknowledge_page(id);
             if (acknowledged != StartupWorldRuntimeError::none) {
                 std::ostringstream error;
                 error << "page confirmation failed error=" << static_cast<int>(acknowledged)
-                      << " legacy=" << page->legacy_page << " source=" << page->source_record << ' '
+                      << " legacy=" << legacy_page << " source=" << source_record << ' '
                       << snapshot(s, frame);
                 throw std::runtime_error(error.str());
             }
         }
-        if (month_transitions >= 2 && s.scene.calendar.month == (opening_month + 2) % 12 &&
+        if (month_transitions >= months &&
+            s.scene.calendar.year == opening_year + (opening_month + months) / 12 &&
+            s.scene.calendar.month == (opening_month + months) % 12 &&
             s.scene.calendar.units >= 27) {
             finished = true;
             break;
@@ -291,8 +377,12 @@ void continuous() {
         if (entry.second.direction == ref::CashDirection::expense)
             cash_expenses += entry.second.amount;
     }
-    check(finished && month_transitions >= 2,
-          "normal real new game crosses two month boundaries without injected waits");
+    if (!finished)
+        throw std::runtime_error("continuous frame limit reached " + snapshot(s, frame_limit));
+    check(month_transitions == months,
+          "normal real new game crosses requested month boundaries without injected waits");
+    check(s.scene.calendar.year == opening_year + (opening_month + months) / 12,
+          "continuous target includes actual year normalization rather than repeated month only");
     check(max_humans > 0 && max_occupants > 0 && facility_income > 0,
           "real autonomous visitors actually use facilities and pay arrival income");
     check(cash_expenses > 0 && report_states.count(2),
@@ -300,16 +390,36 @@ void continuous() {
     check(!session.checkpoints().empty(),
           "real calendar call saves immutable pre-normalization checkpoints");
     check(s.scene.random.draws() > 0, "real Java48 stream used by live branches");
-    std::cout << "continuous summary humans=" << max_humans << " occupancy=" << max_occupants
+    std::cout << "continuous summary months=" << months << " seed=" << seed << " speed=" << speed
+              << " humans=" << max_humans << " occupancy=" << max_occupants
               << " income=" << facility_income << " expenses=" << cash_expenses
               << " cash=" << s.scene.world.world.ai.accounting.funds() << " pages=" << pages.size()
               << " tasks=" << task_ids.size() << " random=" << s.scene.random.draws()
               << " checkpoints=" << session.checkpoints().size() << '\n';
 }
 } // namespace
-int main() {
+int main(int argc, const char **argv) {
     try {
-        continuous();
+        int months = 2;
+        std::uint64_t seed = 1;
+        int speed = 0;
+        const auto parse = [](const char *text, auto &value) {
+            const std::string input(text);
+            const auto result = std::from_chars(input.data(), input.data() + input.size(), value);
+            if (result.ec != std::errc{} || result.ptr != input.data() + input.size())
+                throw std::invalid_argument("invalid continuous test argument");
+        };
+        if (argc > 4)
+            throw std::invalid_argument("expected [months [seed [speed]]]");
+        if (argc >= 2)
+            parse(argv[1], months);
+        if (argc >= 3)
+            parse(argv[2], seed);
+        if (argc >= 4)
+            parse(argv[3], speed);
+        if (months < 1 || months > 36 || (speed != 0 && speed != 1))
+            throw std::invalid_argument("months must be 1..36, speed must be 0 or 1");
+        continuous(months, seed, speed);
         std::cout << "startup world continuous checks: " << checks << '\n';
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

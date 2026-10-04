@@ -51,6 +51,15 @@ struct WorldCalendarTasksState {
     int system_completion_mode{};               // J[9]。
     std::array<std::vector<std::uint8_t>, 2> system_unlock_data; // UserData.C后的J.e[0/1]原字节。
 };
+struct CalendarTaskRankStatus {
+    std::array<bool, 4> met{};
+    std::array<int, 4> values{};
+    bool qualified{};
+};
+// a/n.a(rank)共享纯查询；不插晋级页、不升rank、不消费随机。
+// rank5在调用方先返回；保留原设施名单重复与施工中的计数资格。
+std::optional<CalendarTaskRankStatus>
+prepare_world_rank_status(const WorldCalendarTasksState &state);
 enum class CalendarTaskExternalKind { endgame_checkpoint, create_task };
 struct CalendarTaskExternalRequest {
     CalendarTaskExternalKind kind{};

@@ -69,6 +69,24 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 `visitor`是旧首访静态接管检查，不混入自然长跑结果。
 
 默认seed1仅为明确可重放研究输入，固定APK的实际默认seed未观测。
+
+### 可持续世界验收入口
+
+[连续测试](tests/startup_world_continuous_test.cpp)接受`月份数 种子 速度`，月份1..36、速度0/1。
+默认仍是seed1两个月；框架更新后检查日期、随机和真实页栈，不注入人物、任务、资金或等待状态。
+raw16定时等待、raw56/57镜头页自动推进，不以确认删除；raw49条件页不执行晋级；raw89保留40快进门槛。
+年度raw87在明确测试输入中选择“终止→确认”，未用勋章保留，事件22与背景音乐按原序消费。
+这些输入只用于验收：窗口尚未接授勋按钮/是非弹窗，也没有授予/raw88、完整任务选单或文件存取。
+
+```sh
+research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_world_continuous_tests 12 1 0
+research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_world_continuous_tests 6 20261005 1
+```
+
+配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`可登记两个可重复长期CTest，
+以`ctest --test-dir <构建目录> -L long-world --output-on-failure`执行；1800秒仅是墙钟保护，不参与原规则。
+当前跨年、多种子、插桩与六套实际结果见[验证](../VERIFICATION.md)，不从单条路径推导全部状态可达或无限期认证。
+
 完整目录/共同AI模式与建设切片分开：本入口尚未提供全建设/任务选单交互和完整原UI皮肤；
 不能从真实AI连续运行推出全部菜单、音频、图层桶溢出或跨版本截图视觉等价。
 图标/文字、逻辑240×320及窗体480×640都是表现适配，验收边界见[当前验证](../VERIFICATION.md)。

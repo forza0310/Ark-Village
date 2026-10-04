@@ -61,6 +61,7 @@
 | world_scripts | 稀疏ID目录、实时延迟续体、事件调用计数与实际框架页栈；原表与消费事实分开 | [原始脚本目录](../data/scripts/) |
 | world_calendar、world_scene | 年/月/子周期有序合同与主场景1/2轮、真实资格/跳转/绘制门槛；实际日历域消费者必须另接 | [主场景](../rules/ai/WORLD_SCHEDULE.md) |
 | world_month_report、world_calendar_maintenance、world_calendar_tasks | 旧t月报/费用/点数、年度清理、跨月/子周期任务与等级提示，外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口) |
+| [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 年度raw87初始化增勋章、原B1/B2贡献/交换排序、首次音效和事件23、明确终止询问及事件22/音乐恢复/关闭顺序；贡献不是击杀，完整授予/raw88明确未接；typed询问仅交接研究测试输入，不宣称真实窗口模态 | [年度授勋最小闭环](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
 | world_task_creation、world_facility_update、world_residence | 真实任务工厂/全占地、设施前缀/施工/共享人气、住宅现有人物奖励和原程序 | [探索](../rules/ai/DUNGEONS.md)、[共同调度](../rules/ai/WORLD_SCHEDULE.md) |
 | world_popularity、world_nonactor_schedule、world_runtime | 实际奖励/新闻、bo/bp/bn/L路由、主场景至真实工厂的同一私有Owner组合；无缺依赖默认成功 | [人气和脚本](../data/scripts/)、[组合入口](include/dungeon_village_reference/world_runtime.hpp) |
 

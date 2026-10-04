@@ -159,6 +159,66 @@ std::map<int, CalendarTaskRankTerms> fixed_calendar_task_rank_terms() {
             {3, {{5, 2500}, {1, 25}, {2, 10}, {4, 30}}},
             {4, {{5, 3500}, {0, 70000}, {6, 30}, {3, 64}}}};
 }
+std::optional<CalendarTaskRankStatus>
+prepare_world_rank_status(const WorldCalendarTasksState &state) {
+    const auto found = state.rank_terms.find(state.rank);
+    if (state.rank < 0 || state.rank >= 5 || found == state.rank_terms.end() ||
+        found->second.size() > 4)
+        return {};
+    CalendarTaskRankStatus status;
+    std::int64_t facilities{}, houses{};
+    for (auto identity : state.facility_order) {
+        const auto facility = state.finish.dungeon.world.facilities.find(identity);
+        if (facility == state.finish.dungeon.world.facilities.end())
+            return {};
+        if (facility->second.kind == 3 || facility->second.kind == 9)
+            ++facilities;
+        if (facility->second.kind == 12)
+            ++houses;
+    }
+    if (!fits(facilities) || !fits(houses))
+        return {};
+    for (std::size_t index = 0; index < found->second.size(); ++index) {
+        const auto &term = found->second[index];
+        int value{};
+        switch (term.type) {
+        case 0:
+            value = state.highest_month_income;
+            break;
+        case 1:
+            value = static_cast<int>(facilities);
+            break;
+        case 2:
+            value = static_cast<int>(houses);
+            break;
+        case 3:
+            status.met[index] = std::any_of(
+                state.facility_order.begin(), state.facility_order.end(), [&](auto identity) {
+                    return state.finish.dungeon.world.facilities.at(identity)
+                               .placement.definition_id == term.threshold;
+                });
+            continue;
+        case 4:
+            value = state.finish.task_progress.successes;
+            break;
+        case 5:
+            value = state.popularity;
+            break;
+        case 6:
+            value = state.events_held;
+            break;
+        default:
+            continue;
+        }
+        status.values[index] = value;
+        status.met[index] = value >= term.threshold;
+    }
+    status.qualified = state.rank_bypass == 1 ||
+                       std::all_of(status.met.begin(), status.met.end(), [](bool value) {
+                           return value;
+                       });
+    return status;
+}
 CalendarTaskResult prepare_world_calendar_tasks(const WorldCalendarTasksState &state,
                                                 const WorldCalendarState &date,
                                                 WorldCalendarStage stage,
@@ -186,57 +246,12 @@ CalendarTaskResult prepare_world_calendar_tasks(const WorldCalendarTasksState &s
         case WorldCalendarStage::month_rank_check: {
             if (next.rank >= 5)
                 break; // 原a.n.a在重置i/j之前直接false。
-            const auto found = next.rank_terms.find(next.rank);
-            if (found == next.rank_terms.end() || found->second.size() > 4)
+            const auto status = prepare_world_rank_status(next);
+            if (!status)
                 fail(CalendarTaskError::invalid_owner);
-            next.rank_met.fill(false);
-            next.rank_values.fill(0);
-            int facilities{}, houses{};
-            for (auto identity : next.facility_order) {
-                const auto &facility = next.finish.dungeon.world.facilities.at(identity);
-                if (facility.kind == 3 || facility.kind == 9)
-                    ++facilities;
-                if (facility.kind == 12)
-                    ++houses;
-            }
-            for (std::size_t index = 0; index < found->second.size(); ++index) {
-                const auto &term = found->second[index];
-                int value{};
-                switch (term.type) {
-                case 0:
-                    value = next.highest_month_income;
-                    break;
-                case 1:
-                    value = facilities;
-                    break;
-                case 2:
-                    value = houses;
-                    break;
-                case 3:
-                    next.rank_met[index] = std::any_of(
-                        next.facility_order.begin(), next.facility_order.end(), [&](auto identity) {
-                            return next.finish.dungeon.world.facilities.at(identity)
-                                       .placement.definition_id == term.threshold;
-                        });
-                    continue;
-                case 4:
-                    value = next.finish.task_progress.successes;
-                    break;
-                case 5:
-                    // f214d由同一外层Owner提供，不从人气待结算队列或现金推出。
-                    value = next.popularity;
-                    break;
-                case 6:
-                    value = next.events_held;
-                    break;
-                default:
-                    continue;
-                }
-                next.rank_values[index] = value;
-                next.rank_met[index] = value >= term.threshold;
-            }
-            if (next.rank_bypass == 1 || std::all_of(next.rank_met.begin(), next.rank_met.end(),
-                                                     [](bool value) { return value; })) {
+            next.rank_met = status->met;
+            next.rank_values = status->values;
+            if (status->qualified) {
                 runner.invoke(36);
                 runner.page(runner.raw(48));
             }

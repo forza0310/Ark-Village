@@ -50,6 +50,26 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 ## 共同世界接管与运行证据
 
+2026-10-05可持续世界补充低层单类`work/world-page-fallback/GamePage.java`（b.g）。
+JADX参数为`--config none --decompilation-mode fallback --no-res --log-level warn --single-class b.g --single-class-output <路径>`，
+SHA-256为`e4b7eea7f8b2ecb40c0a49ba21cc8175c8177f9ac92222fa1d75b45193de2e56`；生成Java保持忽略。
+页49初始化低层13463起`L11→L24`、确认17307起`L6e→L81→L1a8`交叉普通3393–3398、4538–4623：
+只重算晋级条件；确认置u8，不调用页48的晋级副作用，rank5初始化执行事件48后关闭。
+原框架`kairo/android/a/b.java:190–232`在页回调设置j并finally清空；同轮新增页不能替代执行锚，
+下一入口移除关闭页后重建执行根。维护checkpoint不保存回调临时根。
+
+长跑新增停点分别由原小消费者闭合：`b/g.java:4815–4887`的raw56/57读取第一怪物u或第一任务绑定Tenant.f()，
+后者复用`c/m.java:865–895`的真实首占地形状坐标；raw57无绑定不能以任务site替代。
+指令7在`d/a.java:721–724`调用`b/g.a(L):252–255`创建raw16；`b/g.b:11089–11100,11530–11534`
+先减L，剩余为正提前返回，到零后同次减f并关闭，不接受玩家确认跳过。
+raw89确认`b/g.java:6003–6011`早于40只快进，之后关页。raw87年度来源与独立规则见
+[年度最小闭环](rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环)，完整授予/raw88仍不作为本轮完成项。
+
+七月全局入口沿既有`world_world_entry`来源与严格创建规则，原型先前漏接`create_encounter`回调。
+补接保留真实created/denial类型与即时元数据，不以名单增长猜成功，不改抽选/原表或把拒绝当错误。
+任务/遭遇目录也保留2700+人物住宅程序，否则验证其他合法存活续体时会误拒绝；同步说话人替换仍沿既有规则。
+上述静态来源不等于固定APK动态或完整年度授勋UI认证，本轮实际执行只登记于[验证](VERIFICATION.md)。
+
 本批继续使用同一APK和既有生成源码，没有重新解释截图版本或改动原表。
 完整原表发布到[共同世界目录](data/world/README.md)，固定事件发布到[脚本目录](data/scripts/README.md)，
 [原型唯一所有者](prototype/include/dungeon_village_prototype/startup_world_runtime.hpp)在运行时只读取编译C++和程序旁素材。

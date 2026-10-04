@@ -36,6 +36,19 @@ ref::WorldScriptCatalog catalog(const State &s) {
                                 s.rules->facility_initial[n].completion_program);
     for (const auto &m : s.rules->monsters)
         result.programs.emplace(2500 + m.identity, m.introduction_program);
+    // 任务/遭遇会校验全部存活续体，住宅请求也必须保留，不能用局部目录截断全世界。
+    for (const auto &human : s.rules->humans) {
+        auto program = human.residence_request_program;
+        for (auto &command : program)
+            if (command.size() == 2 && command[0] == 2) {
+                const int talk = command[1];
+                if (talk < 0 || talk >= static_cast<int>(result.talks.size()))
+                    throw std::runtime_error("住宅请求原对话缺失");
+                if (result.talks.at(talk).speaker_definition == -1)
+                    command = {3, talk, 1, human.identity};
+            }
+        result.programs.emplace(2700 + human.identity, std::move(program));
+    }
     return result;
 }
 void refresh_schedule_surface(State &s) {
@@ -360,8 +373,9 @@ consume_startup_world_runtime_encounter_request(const State &state,
     }
     return next;
 }
-std::optional<State> prepare_startup_world_runtime_encounter(const State &state,
-                                                             ref::EncounterCreationInput input) {
+std::optional<ref::OwnedWorldRuntimeCreation<State>>
+prepare_startup_world_runtime_encounter_creation(const State &state,
+                                                 ref::EncounterCreationInput input) {
     State next = state;
     input.draw = [&](int bound) -> std::optional<int> {
         const auto result = next.scene.random.draw(bound);
@@ -383,7 +397,13 @@ std::optional<State> prepare_startup_world_runtime_encounter(const State &state,
         return {};
     next.scene.world.world.ai = result.candidate->state;
     synchronize_monster_runtime(next);
-    return next;
+    return ref::OwnedWorldRuntimeCreation<State>{std::move(next), result.candidate->created,
+                                                 result.candidate->denial};
+}
+std::optional<State> prepare_startup_world_runtime_encounter(const State &state,
+                                                             ref::EncounterCreationInput input) {
+    auto result = prepare_startup_world_runtime_encounter_creation(state, std::move(input));
+    return result ? std::optional<State>(std::move(result->state)) : std::nullopt;
 }
 std::optional<ref::WorldEventEntryInput> startup_world_runtime_task_entry(const State &s,
                                                                           ref::CharacterId actor) {
@@ -618,6 +638,9 @@ void configure_startup_world_runtime_task_adapter(ref::WorldRuntimeAdapter<State
     adapter.factory = {startup_world_runtime_factory, write_startup_world_runtime_factory};
     adapter.actors.encounter = consume_startup_world_runtime_encounter_request;
     adapter.nonactors.encounter = startup_world_runtime_encounter_input;
+    adapter.create_encounter = [](const State &s, const ref::EncounterCreationInput &input) {
+        return prepare_startup_world_runtime_encounter_creation(s, input);
+    };
     for (const auto &m : startup_world_rules().monsters)
         adapter.catalog.programs.emplace(2500 + m.identity, m.introduction_program);
     const auto previous = adapter.facility;

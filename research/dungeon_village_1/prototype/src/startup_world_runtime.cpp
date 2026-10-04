@@ -775,6 +775,10 @@ void StartupWorldRuntimeSession::set_speed(int setting) { state_.scene.speed_set
 StartupWorldRuntimeError StartupWorldRuntimeSession::acknowledge_page(std::uint64_t id) {
     return acknowledge_startup_world_runtime_page(state_, id);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_t id,
+                                                                    ref::WorldAwardAction action) {
+    return act_startup_world_runtime_award_page(state_, id, action);
+}
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto admitted = s;
     // 框架下一入口真正移除已关闭页，活动页恢复；不把close当作推进世界/续体。
@@ -788,6 +792,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::invalid_state,
                 ref::WorldScheduleError::none,
                 {}};
+    // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
+    admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();
     if (top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 31 &&
         !initialize_startup_world_runtime_task_result_page(admitted, top.id))
@@ -800,13 +806,17 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     admitted.scene.top_is_main =
         admitted.scripts.pages.back().kind == ref::WorldScriptPageKind::scene;
     if (!admitted.scene.top_is_main) {
-        if (admitted.scene.framework_paused)
+        if (admitted.scene.framework_paused) {
+            admitted.scripts.executing_page.reset();
             return {StartupWorldRuntimeError::none,
                     admitted,
                     ref::WorldSceneError::none,
                     ref::WorldScheduleError::none,
                     {}};
-        const auto updated = update_startup_world_runtime_page(admitted);
+        }
+        auto updated = update_startup_world_runtime_page(admitted);
+        if (updated)
+            updated->scripts.executing_page.reset();
         return updated ? StartupWorldRuntimeResult{StartupWorldRuntimeError::none,
                                                    updated,
                                                    ref::WorldSceneError::none,
@@ -828,13 +838,17 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         auto next = current;
         next.save_marker = 1;
         // 研究策略：原时点保留完整不可变Owner，不执行原APK文件序列化/存取。
+        const auto executing_page = next.scripts.executing_page;
+        next.scripts.executing_page.reset();
         checkpoints.push_back(std::make_shared<const State>(next));
+        next.scripts.executing_page = executing_page;
         return next;
     };
     const auto result = ref::prepare_owned_world_runtime(admitted, {s.calendar_advance, true}, a);
     if (!result.state)
         return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {}};
     auto next = *result.state;
+    next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。
     next.simulation_steps += result.scene ? result.scene->begun_rounds : 0;
     return {StartupWorldRuntimeError::none, std::move(next), ref::WorldSceneError::none,
             ref::WorldScheduleError::none, std::move(checkpoints)};

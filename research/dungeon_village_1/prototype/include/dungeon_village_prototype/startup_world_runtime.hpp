@@ -1,11 +1,12 @@
 #pragma once
 
 #include "dungeon_village_prototype/startup_world_projection.hpp"
-#include "dungeon_village_reference/world_runtime.hpp"
+#include "dungeon_village_reference/world_award_page.hpp"
 #include "dungeon_village_reference/world_exploration.hpp"
+#include "dungeon_village_reference/world_runtime.hpp"
 
-#include <memory>
 #include <limits>
+#include <memory>
 
 namespace dungeon_village_prototype {
 struct StartupWorldHumanCalendar {
@@ -14,6 +15,7 @@ struct StartupWorldHumanCalendar {
     int legacy_F{};
     int legacy_G{};
     int continuation_cost{200}; // a/e.n()的真实初值。
+    int contribution{};         // e.am，由真实B[1]/B[2]重算。
 };
 struct StartupWorldFocusActor {
     ref::BattleActorRecord actor = [] {
@@ -42,7 +44,8 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, ref::DungeonFacilityProgress> dungeon_facilities;
     std::map<ref::CharacterId, ref::DungeonActorProgress> dungeon_actors;
     std::map<std::pair<int, int>, ref::ObjectCatalogRecord> catalog;
-    std::map<std::uint64_t, ref::ObjectShopRecord> shops; // 持久仅category；notices从facility_details投影。
+    std::map<std::uint64_t, ref::ObjectShopRecord>
+        shops; // 持久仅category；notices从facility_details投影。
     std::vector<std::uint64_t> shop_order;
     int item_rewards{};
     std::map<int, int> human_definition_state;
@@ -86,88 +89,93 @@ struct StartupWorldRuntimeState {
     std::vector<ref::WorldPopularityReward> popularity_rewards;
     std::map<int, ref::WorldFacilityUpdateDefinition> facility_definitions;
     std::map<int, int> facility_presence;
-    std::map<int, bool> residence_catalog_available; // o.M由b(true)重算，不是O普通建设开放。
+    std::map<int, bool> residence_catalog_available;  // o.M由b(true)重算，不是O普通建设开放。
     std::map<std::uint64_t, int> page_human_bindings; // 对话/70/94等真实gVar.m绑定。
-    int residence_hint_counter{}; // UserData.H，新局0。
+    int residence_hint_counter{};                     // UserData.H，新局0。
     std::map<int, std::uint32_t> activity_flags;
     std::map<std::uint64_t, ref::WorldFacilityUpdateDetails> facility_details;
     ref::DungeonTaskSuccessState task_progress;
     std::map<std::uint64_t, ref::DungeonFinishTask> tasks;
     std::vector<std::uint64_t> task_order;
     std::map<std::uint64_t, int> task_original_ids;
-    int task_sequence{}; // static c/k.m，新局0。
-    std::uint64_t next_facility_identity{1}; // 维护ID，首次跳过已装入8实例后递增。
-    std::uint64_t next_task_identity{1}; // 与原task_sequence/rawID分开。
-    std::vector<int> task_replay_order; // a/m.x，新局空。
-    int task_special_selection{}; // a/m.v，新局0。
-    int task_special_selection_index{}; // a/m.w，新局0。
+    int task_sequence{};                          // static c/k.m，新局0。
+    std::uint64_t next_facility_identity{1};      // 维护ID，首次跳过已装入8实例后递增。
+    std::uint64_t next_task_identity{1};          // 与原task_sequence/rawID分开。
+    std::vector<int> task_replay_order;           // a/m.x，新局空。
+    int task_special_selection{};                 // a/m.v，新局0。
+    int task_special_selection_index{};           // a/m.w，新局0。
     std::vector<int> task_special_selection_list; // a/m.u，新局空。
-    int fence_level{}; // static n.o，J明确写0。
-    std::vector<int> base_variants; // 原h.i读入数组，不能用显示variant补造。
+    int fence_level{};                            // static n.o，J明确写0。
+    std::vector<int> base_variants;               // 原h.i读入数组，不能用显示variant补造。
     std::optional<std::uint64_t> active_task;
     std::vector<int> participants;
-    std::map<std::uint64_t, std::vector<int>> crew_summaries; // 页31初始化X；H/I只读唯一battle.humans。
+    std::map<std::uint64_t, std::vector<int>>
+        crew_summaries; // 页31初始化X；H/I只读唯一battle.humans。
     std::map<std::uint64_t, ref::DungeonFinishSite> sites;
     int ground_definition{};
     int special_ground_definition{};
     int arrival_counter{};
-    int camera_delay{}; // MainScene.h，影响场后到访资格，不暂停共同AI。
+    int camera_delay{};  // MainScene.h，影响场后到访资格，不暂停共同AI。
     int camera_follow{}; // MainScene.i。
     int event89_count{};
-    int entry_updates{}; // UserData.V，新局0。
-    int global_updates{}; // static n.aK，新局0。
-    std::array<float, 2> camera{}; // c.a.n：表现坐标，不能与地图格混用。
-    std::array<float, 2> previous_camera{}; // c.a.p。
-    std::array<float, 2> camera_velocity{}; // bi.w。
-    int build_mode{}; // a/o.aa，0..7；不是MainScene状态。
-    int build_feedback_counter{}; // a/o.ae，反馈原20tick，state1才递减。
-    std::string build_feedback_message; // a/o.ad，新静态对象为空。
-    StartupWorldFocusActor focus_actor; // 原W；从不持久进入bl/bm，UID=-1。
-    std::uint32_t focus_held_input{}; // 原方向held位，不是玩家控制真实冒险者。
+    int entry_updates{};                                // UserData.V，新局0。
+    int global_updates{};                               // static n.aK，新局0。
+    std::array<float, 2> camera{};                      // c.a.n：表现坐标，不能与地图格混用。
+    std::array<float, 2> previous_camera{};             // c.a.p。
+    std::array<float, 2> camera_velocity{};             // bi.w。
+    int build_mode{};                                   // a/o.aa，0..7；不是MainScene状态。
+    int build_feedback_counter{};                       // a/o.ae，反馈原20tick，state1才递减。
+    std::string build_feedback_message;                 // a/o.ad，新静态对象为空。
+    StartupWorldFocusActor focus_actor;                 // 原W；从不持久进入bl/bm，UID=-1。
+    std::uint32_t focus_held_input{};                   // 原方向held位，不是玩家控制真实冒险者。
     std::vector<ref::ActorEffectRecord> visual_effects; // d.a.X变长载荷，现金浮标7项不得截成5项。
-    std::vector<std::array<int, 4>> delayed_effects; // d.a.Y。
-    std::vector<std::array<int, 3>> floating_labels; // d.a.S的计数投影。
-    std::vector<std::array<int, 2>> global_effects; // n.bu。
-    std::vector<int> sound_requests; // 原c(sound)输出，不把声音变成领域状态。
+    std::vector<std::array<int, 4>> delayed_effects;    // d.a.Y。
+    std::vector<std::array<int, 3>> floating_labels;    // d.a.S的计数投影。
+    std::vector<std::array<int, 2>> global_effects;     // n.bu。
+    std::vector<int> sound_requests;                    // 原c(sound)输出，不把声音变成领域状态。
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
-    std::map<std::uint64_t, int> page_phases; // b.g.i，成果页30两段展示不重复奖励。
-    std::map<int, int> facility_free_builds; // br.H真实新对象0。
+    std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
+    std::map<std::uint64_t, std::vector<int>> award_rankings; // raw87初始化X，定义身份。
+    std::map<std::uint64_t, bool> award_announced;
+    std::map<std::uint64_t, bool> award_termination_pending;
+    int medal_count{};                           // UserData.j，c/n.J新局0，raw87初始化+1。
+    std::map<int, int> facility_free_builds;     // br.H真实新对象0。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
     std::map<int, bool> facility_unlock_notices; // br.r按当前定义维护。
-    bool confirm_input{}; // 桌面输入一次性快照；不是自动确认。
+    bool confirm_input{};                        // 桌面输入一次性快照；不是自动确认。
     bool cancel_input{};
     bool menu_input{};
-    int rank{}; // UserData.k，新局0。
+    int rank{};             // UserData.k，新局0。
     int quarter_counter{3}; // UserData.q，J明确写3。
     int legacy_D{};
     std::array<std::int32_t, 13> legacy_n{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0}};
     std::vector<std::array<std::int32_t, 10>> yearly_statistics{30}; // UserData.C30×10。
-    int events_held{}; // UserData.F。
-    int task_subperiods{}; // UserData.y。
-    bool generation_retry{}; // MainScene.Y。
-    std::optional<std::uint64_t> deadline_page; // MainScene.aI。
-    int completion_mode{}; // P14。
-    int system_completion_mode{}; // J9。
-    int save_marker{}; // P15，av.a(true)先置1。
+    int events_held{};                                               // UserData.F。
+    int task_subperiods{};                                           // UserData.y。
+    bool generation_retry{};                                         // MainScene.Y。
+    std::optional<std::uint64_t> deadline_page;                      // MainScene.aI。
+    int completion_mode{};                                           // P14。
+    int system_completion_mode{};                                    // J9。
+    int save_marker{};                                               // P15，av.a(true)先置1。
     std::array<std::vector<std::uint8_t>, 2> system_unlock_data;
     std::array<bool, 4> rank_met{};
     std::array<int, 4> rank_values{};
     std::uint64_t simulation_steps{};
-    int clock_parameter{80}; // d/a.Q的固定新局输入。
+    int clock_parameter{80};  // d/a.Q的固定新局输入。
     int calendar_advance{27}; // d/a.R的固定新局输入。
 };
 
 ref::WorldActorRoutesState startup_world_runtime_routes(const StartupWorldRuntimeState &state);
 const ref::WorldScriptCatalog &startup_world_runtime_catalog();
 bool write_startup_world_runtime_routes(StartupWorldRuntimeState &state,
-                                       const ref::WorldActorRoutesState &routes);
+                                        const ref::WorldActorRoutesState &routes);
 ref::WorldScriptState startup_world_runtime_scripts(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_scripts(StartupWorldRuntimeState &state,
-                                        const ref::WorldScriptState &scripts);
+                                         const ref::WorldScriptState &scripts);
 ref::DungeonFinishState startup_world_runtime_finish(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_finish(StartupWorldRuntimeState &state,
-                                       const ref::DungeonFinishState &finish);
+                                        const ref::DungeonFinishState &finish);
 
 enum class StartupWorldRuntimeError {
     none,
@@ -178,7 +186,12 @@ enum class StartupWorldRuntimeError {
     script_failed
 };
 StartupWorldRuntimeError acknowledge_startup_world_runtime_page(StartupWorldRuntimeState &state,
-                                                               std::uint64_t page);
+                                                                std::uint64_t page);
+// 授勋的显式测试输入按独立页面更新消费；普通确认不隐式选择终止，授予/raw88仍拒绝。
+StartupWorldRuntimeError act_startup_world_runtime_award_page(StartupWorldRuntimeState &state,
+                                                              std::uint64_t page,
+                                                              ref::WorldAwardAction action);
+bool refresh_startup_world_runtime_rank(StartupWorldRuntimeState &state);
 std::optional<StartupWorldRuntimeState>
 update_startup_world_runtime_page(const StartupWorldRuntimeState &state);
 struct StartupWorldRuntimeResult {
@@ -192,29 +205,33 @@ struct StartupWorldRuntimeResult {
 ref::WorldRuntimeAdapter<StartupWorldRuntimeState> startup_world_runtime_adapter();
 // 原a(2)先n.f：只在进入时把镜头逆投影到W.n，不能每帧覆盖运动。
 bool enter_startup_world_focus(StartupWorldRuntimeState &state);
-std::optional<StartupWorldRuntimeState> advance_startup_world_focus(
-    const StartupWorldRuntimeState &state,
-    const ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
+std::optional<StartupWorldRuntimeState>
+advance_startup_world_focus(const StartupWorldRuntimeState &state,
+                            const ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
 void configure_startup_world_runtime_calendar_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
 void configure_startup_world_runtime_arrival_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
+// c/m.f()：实际绑定占地首格与形状决定镜头中心，场景与raw57共用。
+std::optional<std::array<float, 2>>
+startup_world_runtime_facility_target(const StartupWorldRuntimeState &state, std::uint64_t id);
 void configure_startup_world_runtime_scene_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
 void configure_startup_world_runtime_nonactor_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
 ref::Position startup_world_raw_projection(ref::CombatPoint position);
 ref::Position startup_world_view_projection(const StartupWorldRuntimeState &state,
-                                          ref::CombatPoint position);
+                                            ref::CombatPoint position);
 std::optional<bool> startup_world_actor_visible(const StartupWorldRuntimeState &state,
-                                               ref::CharacterId actor);
+                                                ref::CharacterId actor);
 std::optional<bool> startup_world_hit_sound_visible(const StartupWorldRuntimeState &state,
-                                                   ref::CharacterId actor);
-bool update_startup_world_render_cache(StartupWorldRuntimeState &state); // 每框架frame一次，非每世界轮。
+                                                    ref::CharacterId actor);
+bool update_startup_world_render_cache(
+    StartupWorldRuntimeState &state); // 每框架frame一次，非每世界轮。
 bool emit_startup_world_actor_sound(StartupWorldRuntimeState &state, ref::CharacterId actor,
                                     int sound); // n.a(sound,旧bm)原二次裁剪。
 std::optional<int> startup_world_actor_direction(const StartupWorldRuntimeState &state,
-                                                ref::CharacterId actor, ref::CharacterId target);
+                                                 ref::CharacterId actor, ref::CharacterId target);
 std::optional<ref::DropSelectionInput>
 startup_world_drop_selection(const StartupWorldRuntimeState &state, ref::CharacterId actor);
 StartupWorldRuntimeResult prepare_startup_world_runtime(const StartupWorldRuntimeState &state);
@@ -227,6 +244,7 @@ class StartupWorldRuntimeSession {
     void set_paused(bool paused);
     void set_speed(int setting); // 只恰1双轮；不是人物位移乘二。
     StartupWorldRuntimeError acknowledge_page(std::uint64_t page);
+    StartupWorldRuntimeError act_award_page(std::uint64_t page, ref::WorldAwardAction action);
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;
 
   private:

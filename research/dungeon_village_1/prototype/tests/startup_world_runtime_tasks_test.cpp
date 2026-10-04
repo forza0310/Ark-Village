@@ -94,6 +94,38 @@ void encounter() {
     check(session.state().scene.world.world.ai.monster_order.empty() &&
               session.state().scene.random.draws() == 0,
           "typed creation never mutates caller or exposes partial owner");
+    auto residential = session.state();
+    ref::WorldScriptContinuation residence;
+    residence.event = 2701;
+    residence.remaining_updates = 100;
+    residential.scripts.continuations.push_back(residence);
+    const auto alongside = prepare_startup_world_runtime_encounter(residential, input);
+    check(alongside && alongside->scripts.continuations.size() == 1 &&
+              alongside->scripts.continuations.front().event == 2701 &&
+              alongside->scripts.continuations.front().remaining_updates == 100,
+          "encounter validates full catalog while retaining unrelated authentic residence "
+          "continuation");
+    const auto adapter = startup_world_runtime_adapter();
+    check(static_cast<bool>(adapter.create_encounter),
+          "original month7 world-entry has an actual ordinary creation consumer");
+    input.month_index = 6;
+    const auto global = adapter.create_encounter(session.state(), input);
+    check(global && global->created && global->denial == ref::EncounterCreationDenial::none &&
+              global->state.scene.world.world.ai.encounters.count(*global->created) &&
+              !global->state.scene.world.world.ai.monster_order.empty(),
+          "global callback publishes canonical created identity and actual spawn result");
+    for (const auto id : global->state.scene.world.world.ai.monster_order)
+        check(global->state.scene.world.world.actors.count(id) &&
+                  global->state.actor_metadata.count(id) &&
+                  global->state.scene.world.world.ai.contexts.count(id),
+              "global spawn installs every new monster context before same-frame consumers");
+    auto blocked = input;
+    blocked.upper_band_town = {true, true, true};
+    const auto denied = adapter.create_encounter(session.state(), blocked);
+    check(denied && !denied->created && denied->denial == ref::EncounterCreationDenial::town &&
+              denied->state.scene.world.world.ai.encounters.empty() &&
+              denied->state.scene.random.draws() == session.state().scene.random.draws(),
+          "ordinary town rejection preserves typed denial, not missing-consumer failure");
     // 模拟共同调度局部L的refresh提交，不经过全局生成wrapper末尾。
     auto local = session.state();
     local.scene.world.world.ai = result->scene.world.world.ai;

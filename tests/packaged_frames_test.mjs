@@ -30,5 +30,13 @@ try {
   writeFileSync(roadFile, road);
   const roadFailure = run(); assert.notEqual(roadFailure.status, 0);
   assert.match(roadFailure.stderr, /rectangle/);
-  console.log('PASS requested-frame bounds, connected-road frames, unused records, truncation and foreign cwd');
+  writeFileSync(roadFile, readFileSync(join(dirname(executable), 'assets/image/road00.seb')));
+  const walkFile = join(root, 'assets/human/walk00.seb');
+  const walk = readFileSync(walkFile);
+  // The first pose is valid, but animation now requests frame1 as well.
+  walk.writeInt16BE(30000, 8 + 20 + 4);
+  writeFileSync(walkFile, walk);
+  const walkFailure = run(); assert.notEqual(walkFailure.status, 0);
+  assert.match(walkFailure.stderr, /rectangle/);
+  console.log('PASS requested-frame bounds, walking/road frames, unused records, truncation and foreign cwd');
 } finally { rmSync(root, {recursive:true,force:true}); }

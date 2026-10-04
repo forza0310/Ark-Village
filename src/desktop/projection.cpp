@@ -30,8 +30,10 @@ Vector2 project(world::Cell cell, Vector2 camera, Extent canvas, float zoom) {
 }
 Vector2 project_position(world::WorldPosition position, Vector2 camera, Extent canvas, float zoom) {
     const float x = (position.x - 50) / 100, y = (position.z - 50) / 100;
-    return {canvas.width / 2.0F + zoom * (30 * (x + y) - camera.x),
-            canvas.height / 2.0F + zoom * (-15 * (y - x) - 15 + camera.y)};
+    // Ground SEBs draw a 60x29 diamond from their top-left origin. Character SEBs anchor at
+    // the feet (-9,-24); the same logical cell centre must land at the diamond's centre.
+    return {canvas.width / 2.0F + zoom * (30 * (x + y) - camera.x + 30),
+            canvas.height / 2.0F + zoom * (-15 * (y - x) - 15 + camera.y + 14.5F)};
 }
 std::optional<world::Cell> pick(Vector2 logical, Vector2 camera, const world::SourceMap &map,
                                 Extent canvas, float zoom) {

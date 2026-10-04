@@ -16,7 +16,7 @@ Rectangle viewport(int width, int height, Extent canvas);
 Camera2D canvas_camera(Rectangle destination, Extent canvas);
 std::optional<Vector2> logical_mouse(Vector2 pixel, Rectangle destination, Extent canvas);
 Vector2 project(world::Cell cell, Vector2 camera, Extent canvas, float zoom = 1);
-// Continuous simulation positions use the same source anchor at each 100-unit cell centre.
+// Continuous feet positions coincide with the ground diamond centre, not its SEB drawing origin.
 Vector2 project_position(world::WorldPosition position, Vector2 camera, Extent canvas,
                          float zoom = 1);
 // Published ground SEB occupies [0,60]x[0,29] relative to its projected drawing origin.

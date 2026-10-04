@@ -2,6 +2,7 @@
 #include "game_view.hpp"
 #include "ark/app/game.hpp"
 #include "ark/people/motion.hpp"
+#include "character_animation.hpp"
 #include "desktop_session.hpp"
 #include "resources.hpp"
 #include "scene.hpp"
@@ -126,6 +127,18 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             throw std::runtime_error("Inspection travel could not be planned");
     }
     int frames{};
+    CharacterAnimation actor_animation;
+    const auto animation_position = [&]() -> std::optional<world::WorldPosition> {
+        if (!game.state().adventurer)
+            return std::nullopt;
+        return inspected_travel ? inspected_travel->position : game.state().adventurer->position;
+    };
+    const auto animation_tick = [&]() -> std::uint64_t {
+        if (inspected_travel)
+            return static_cast<std::uint64_t>(frames);
+        return game.ai_state() ? game.ai_state()->rounds : game.state().simulation_steps;
+    };
+    actor_animation.observe(animation_position(), animation_tick());
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         // Window points drive layout/input; framebuffer pixels drive rasterization. A Retina
         // window may have twice as many physical pixels on each axis. Never rasterize a zoomed
@@ -163,6 +176,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                 CheckCollisionPointRec(*mouse,
                                        {layout.dialogue.x + 48, layout.dialogue.y + 66, 106, 29})) {
                 game = app::Game(std::random_device{}(), play);
+                actor_animation.reset();
                 view = ui::State{};
                 view.camera = {static_cast<float>(data.camera.x),
                                static_cast<float>(data.camera.y)};
@@ -205,13 +219,15 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
                                                       game.state().adventurer->flags)
                                    .travel;
+        actor_animation.observe(animation_position(), animation_tick());
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster_camera);
         draw_scene(game, sprites, view.camera, extent, view.zoom,
                    inspected_travel
                        ? std::optional<world::WorldPosition>{inspected_travel->position}
-                       : std::nullopt);
+                       : std::nullopt,
+                   actor_animation.frame());
         draw_preview(game, view, layout, sprites, hovered);
         ui::draw_hud(game, view, layout, skin);
         ui::draw_pages(game, view, layout, skin);
@@ -237,7 +253,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         std::cout << "AI preview: rounds=" << ai->rounds << " position=" << ai->position.x << ','
                   << ai->position.z << " arrivals=" << ai->arrivals
                   << " completions=" << ai->completions << " funds=" << ai->accounting.funds()
-                  << " error=" << static_cast<int>(game.ai_error()) << '\n';
+                  << " error=" << static_cast<int>(game.ai_error())
+                  << " actor_frame=" << actor_animation.frame() << '\n';
     }
     if (!options.screenshot.empty()) {
         if (frames != options.frames)

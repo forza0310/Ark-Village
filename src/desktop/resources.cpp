@@ -308,7 +308,8 @@ void check_assets(const std::filesystem::path &root) {
     for (const auto &entry : requested)
         for (int frame : entry.second)
             validate_frame(root / "image" / entry.first, frame, Sprites::Binding::map);
-    validate_frame(root / "human/walk00.seb", 0, Sprites::Binding::farmer);
+    for (int frame = 0; frame < 4; ++frame)
+        validate_frame(root / "human/walk00.seb", frame, Sprites::Binding::farmer);
     validate_frame(root / "common/chara_hishoko01.seb", 0, Sprites::Binding::secretary);
     for (const auto &name :
          {"menu.seb", "wnd_menuIcon.seb", "finger_r.seb", "number01.seb", "number05.seb",

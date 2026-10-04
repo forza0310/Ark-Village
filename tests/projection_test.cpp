@@ -20,9 +20,18 @@ int main() {
                 const auto continuous = ark::desktop::project_position(
                     {cell.x * 100.0F + 50, cell.y * 100.0F + 50}, camera, extent, zoom);
                 const auto origin = ark::desktop::project(cell, camera, extent, zoom);
-                if (std::abs(continuous.x - origin.x) > 0.01F ||
-                    std::abs(continuous.y - origin.y) > 0.01F)
-                    throw std::runtime_error("World centre projection differs from tile anchor");
+                if (std::abs(continuous.x - p.x) > 0.01F || std::abs(continuous.y - p.y) > 0.01F ||
+                    std::abs(continuous.x - origin.x - 30 * zoom) > 0.01F ||
+                    std::abs(continuous.y - origin.y - 14.5F * zoom) > 0.01F)
+                    throw std::runtime_error(
+                        "Actor feet do not coincide with ground diamond centre");
+                const ark::world::Cell next{cell.x, cell.y + 1};
+                const auto road_end = ark::desktop::tile_center(next, camera, extent, zoom);
+                const auto halfway = ark::desktop::project_position(
+                    {cell.x * 100.0F + 50, cell.y * 100.0F + 100}, camera, extent, zoom);
+                if (std::abs(halfway.x - (p.x + road_end.x) / 2) > 0.01F ||
+                    std::abs(halfway.y - (p.y + road_end.y) / 2) > 0.01F)
+                    throw std::runtime_error("Continuous feet drift from road centreline");
                 const Vector2 pixels{box.x + p.x * box.width / extent.width,
                                      box.y + p.y * box.height / extent.height};
                 const auto logical = ark::desktop::logical_mouse(pixels, box, extent);

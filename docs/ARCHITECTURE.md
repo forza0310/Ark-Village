@@ -21,6 +21,7 @@ raylib的ark_village只处理窗口、资源、投影、输入与UI。src各实�
 desktop/scene负责加载后地表/连续世界位置投影及预览，desktop/ui拆分共享布局、临时导航/控制、原版皮肤、HUD和页面；窗口/循环由game_view协调。
 界面响应窗口比例，命中和绘制共用逻辑布局，业务数据不移入UI。逻辑尺寸仅用于坐标，渲染画布使用framebuffer原生像素（含Retina）。
 像素素材最近邻采样，文字按物理显示密度生成字形；鼠标继续使用窗口点坐标，不重复乘DPI。
+地表SEB绘制原点与人物脚底分开，连续人物位置对齐60×29地块中心；desktop/character_animation依据真实位移/获准轮次播放walk00四帧，暂停冻结，桌面帧速不作为原版时钟。
 facilities/economy与neighbourhood为纯派生规则，app/facility_queries提供只读查询；UI按页74条件显示实际属性、维护费与来源。
 world/loaded_map保留加载后证据，navigation提供加权距离场/回溯，facilities/map_binding按当前完整占地绑定；
 people的activity_candidates/activity_choice/facility_choice/departure提供候选、两级选择及完整出发候选；票号显式输入，上层优先级由调用方负责。

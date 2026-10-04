@@ -308,8 +308,9 @@ void check_assets(const std::filesystem::path &root) {
     for (const auto &entry : requested)
         for (int frame : entry.second)
             validate_frame(root / "image" / entry.first, frame, Sprites::Binding::map);
-    for (int frame = 0; frame < 4; ++frame)
-        validate_frame(root / "human/walk00.seb", frame, Sprites::Binding::farmer);
+    for (const auto *sprite : {"walk00.seb", "walk01.seb", "walk02.seb", "walk03.seb"})
+        for (int frame = 0; frame < 4; ++frame)
+            validate_frame(root / "human" / sprite, frame, Sprites::Binding::farmer);
     validate_frame(root / "common/chara_hishoko01.seb", 0, Sprites::Binding::secretary);
     // Every expansion skin and corner can be consumed; retain the published common IDs.
     for (const auto &[name, frames, image_id] :

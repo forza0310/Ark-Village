@@ -31,14 +31,17 @@ try {
   const roadFailure = run(); assert.notEqual(roadFailure.status, 0);
   assert.match(roadFailure.stderr, /rectangle/);
   writeFileSync(roadFile, readFileSync(join(dirname(executable), 'assets/image/road00.seb')));
-  const walkFile = join(root, 'assets/human/walk00.seb');
-  const walk = readFileSync(walkFile);
-  // The first pose is valid, but animation now requests frame1 as well.
-  walk.writeInt16BE(30000, 8 + 20 + 4);
-  writeFileSync(walkFile, walk);
-  const walkFailure = run(); assert.notEqual(walkFailure.status, 0);
-  assert.match(walkFailure.stderr, /rectangle/);
-  writeFileSync(walkFile, readFileSync(join(dirname(executable), 'assets/human/walk00.seb')));
+  for (const name of ['walk00.seb', 'walk01.seb', 'walk02.seb', 'walk03.seb']) {
+    const walkFile = join(root, 'assets/human', name);
+    const originalWalk = readFileSync(walkFile);
+    const walk = Buffer.from(originalWalk);
+    // Every direction can request non-idle frames, not only the old walk00 first pose.
+    walk.writeInt16BE(30000, 8 + 20 + 4);
+    writeFileSync(walkFile, walk);
+    const walkFailure = run(); assert.notEqual(walkFailure.status, 0, name);
+    assert.match(walkFailure.stderr, /rectangle/);
+    writeFileSync(walkFile, originalWalk);
+  }
   // The published common bindings are explicit image IDs, independent of SEB row indices.
   const commonIndex = new Map(readFileSync(join(root, 'assets/common/img.inf'), 'utf8')
     .trimEnd().split(/\r?\n/).map(row => row.split('\t')));

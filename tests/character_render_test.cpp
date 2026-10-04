@@ -26,15 +26,18 @@ ark::assets::SpriteDefinition load(const std::filesystem::path &file) {
 }
 void ground(const std::filesystem::path &root) {
     const auto road = load(root / "image/road00.seb");
-    const auto walk = load(root / "human/walk00.seb");
-    check(walk.frame_count == 4 && walk.layers.size() == 1 && walk.layers[0].parts.size() == 4,
-          "published walk00 supplies exactly four poses");
     const int source_x[] = {0, 18, 0, 36};
-    for (int n = 0; n < 4; ++n) {
-        const auto &p = walk.layers[0].parts[n];
-        check(p.frame == n && p.source_x == source_x[n] && p.source_y == 0 && p.width == 18 &&
-                  p.height == 24 && p.offset_x == -9 && p.offset_y == -24,
-              "actual source pose cuts/feet binding, not invented frames");
+    for (int facing = 0; facing < 4; ++facing) {
+        const auto walk = load(root / "human" / ark::desktop::walking_sprite(facing));
+        check(walk.frame_count == 4 && walk.layers.size() == 1 && walk.layers[0].parts.size() == 4,
+              "each published walking direction supplies exactly four poses");
+        for (int n = 0; n < 4; ++n) {
+            const auto &p = walk.layers[0].parts[n];
+            check(p.frame == n && p.source_x == source_x[n] && p.source_y == facing * 24 &&
+                      p.width == 18 && p.height == 24 && p.offset_x == -9 && p.offset_y == -24 &&
+                      !p.flip_x && !p.flip_y,
+                  "four distinct atlas rows keep the same feet, without invented mirroring");
+        }
     }
     for (const auto size : {ark::desktop::Extent{384, 256}, ark::desktop::Extent{240, 330}})
         for (float zoom : {0.5F, 1.0F, 2.0F})
@@ -81,23 +84,80 @@ void playback() {
     animation.observe(ark::world::WorldPosition{1250, 50}, 1);
     check(animation.frame() == 0, "new game cannot inherit old movement phase");
 }
-void actual_ai() {
-    ark::app::Game game(20261004, ark::app::PlayMode::ai_preview);
-    for (int n = 0; n < 420; ++n)
-        game.update();
-    game.acknowledge_talk();
-    game.acknowledge_talk();
-    game.finish_camera();
+void facing() {
+    using ark::world::WorldPosition;
     ark::desktop::CharacterAnimation animation;
-    animation.observe(game.state().adventurer->position, game.ai_state()->rounds);
-    std::set<int> poses;
-    while (game.state().mode == ark::app::Mode::normal && !game.ai_state()->arrivals) {
-        game.update();
-        animation.observe(game.state().adventurer->position, game.ai_state()->rounds);
-        poses.insert(animation.frame());
+    animation.observe(WorldPosition{1050, 1050}, 0, 2);
+    check(animation.facing() == 2, "first display respects actual departure/control direction");
+    // One continuous square crosses all four isometric directions. No camera or zoom inputs.
+    const WorldPosition corners[]{{1050, 1070}, {1070, 1070}, {1070, 1050}, {1050, 1050}};
+    const char *sprites[]{"walk00.seb", "walk01.seb", "walk02.seb", "walk03.seb"};
+    for (int n = 0; n < 4; ++n) {
+        animation.observe(corners[n], n + 1, 2);
+        check(animation.facing() == n &&
+                  std::string(ark::desktop::walking_sprite(animation.facing())) == sprites[n],
+              "turning a path corner selects the corresponding actual source sprite");
+        for (int render = 0; render < 20; ++render)
+            animation.observe(corners[n], n + 1, 2);
+        check(animation.facing() == n, "pause and extra renders preserve movement facing");
     }
-    check(game.ai_state()->arrivals == 1 && poses.size() == 4 && animation.frame() == 0,
-          "real AI motion animates; arrival/use stops the cycle");
+    animation.observe(corners[3], 5, 2);
+    check(animation.facing() == 3 && animation.frame() == 0,
+          "stopping retains last walking direction instead of stale departure facing");
+    animation.observe(corners[3], 6, 1);
+    check(animation.facing() == 1, "an actual control4 change turns a stationary character");
+    animation.observe(WorldPosition{1050, 1070}, 7, 2, 4);
+    check(animation.facing() == 2, "state4 bypasses ordinary projected motion facing");
+    animation.observe(WorldPosition{1070, 1070}, 8, 3, 20);
+    check(animation.facing() == 3, "state20 also preserves authored facing");
+    animation.observe(WorldPosition{1000, 1000}, 0, 2);
+    animation.observe(WorldPosition{1001, 1000}, 1, 2);
+    check(animation.facing() == 2, "subpixel motion with equal integer projections retains j");
+    animation.observe(WorldPosition{1002, 1002}, 2, 2);
+    check(animation.facing() == 2, "one unchanged projected axis retains j");
+    animation.observe(std::nullopt, 3);
+    animation.observe(WorldPosition{1050, 1050}, 4, 1);
+    check(animation.facing() == 1, "replacement actor cannot inherit old direction");
+}
+void actual_ai() {
+    for (const auto mode : {ark::app::PlayMode::startup, ark::app::PlayMode::ai_preview}) {
+        ark::app::Game game(20261004, mode);
+        for (int n = 0; n < 420; ++n)
+            game.update();
+        game.acknowledge_talk();
+        game.acknowledge_talk();
+        game.finish_camera();
+        ark::desktop::CharacterAnimation animation;
+        const auto actor = [&]() {
+            return game.life_state() ? game.life_state() : game.ai_state();
+        };
+        const auto observe = [&]() {
+            animation.observe(game.state().adventurer->position, actor()->rounds,
+                              actor()->control.facing, actor()->control.state);
+        };
+        observe();
+        std::set<int> poses, directions;
+        for (int n = 0;
+             n < 700 && game.state().mode == ark::app::Mode::normal && !actor()->arrivals; ++n) {
+            game.update();
+            observe();
+            poses.insert(animation.frame());
+            directions.insert(animation.facing());
+        }
+        check(actor()->arrivals == 1 && poses.size() == 4 && animation.frame() == 0,
+              "real AI motion animates; arrival/use stops the cycle");
+        if (mode == ark::app::PlayMode::startup) {
+            // This fixed source seed reaches its first shop on a straight path. Its actual
+            // corners occur after exit, before the existing encounter-consumer handoff.
+            for (int n = 0; n < 700 && game.ai_error() == ark::app::InitialAiError::none; ++n) {
+                game.update();
+                observe();
+                directions.insert(animation.facing());
+            }
+            check(directions.count(0) && directions.count(1) && directions.count(3),
+                  "normal post-service route displays rear/right/front directions at real turns");
+        }
+    }
 }
 
 // The same actual service state drives normal-world and legacy-preview visibility. This tests
@@ -221,11 +281,13 @@ int main(int argc, char **argv) {
         check(argc == 2, "asset root required");
         ground(argv[1]);
         playback();
+        facing();
         actual_ai();
         service_visibility(ark::app::PlayMode::startup);
         service_visibility(ark::app::PlayMode::ai_preview);
         preview_first_exit_rollback();
-        std::cout << "PASS actual road feet binding, walk poses, pause/idle/2x/reset and real AI\n";
+        std::cout
+            << "PASS actual road feet, four directions/poses, pause/idle/2x/reset and real AI\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';
         return 1;

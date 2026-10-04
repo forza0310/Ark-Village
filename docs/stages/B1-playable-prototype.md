@@ -602,6 +602,46 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
   `/tmp/ark-world-window-final.log`。血条没有用虚构战斗作窗口展示；OS鼠标和APK动态仍未验。
 - `git diff --check`与82个文档本地链接检查通过；本次只提交产品文件，研究侧并行交付保持独立。
 
+## 人物行走四向显示修正（2026-10-04）
+
+用户明确要求移动时人物图片随方向变化。本轮为现有显示错误修正，沿用正常Game/严格预览，
+完整世界接管继续等待研究整批通过。根因是scene固定提交walk00，且现有生活切片的control.facing
+仅由出发/转向指令写入，不能只读取它来表示路径转弯后的显示方向。
+
+依据维护CHARACTERS的整数u/v判向、human/seb.inf的walk00..03顺序及最新prototype的
+`offsets[action]+direction`身体选择，接入四套原始SEB。CharacterAnimation在获准更新后比较
+连续位置的原始整数投影，双轴均变化才判四象限；一轴不变/静止保留旧方向，状态4/20尊重控制方向。
+首次显示及实际控制方向变化从当前人物读取；此缓存只供desktop显示，不回写AI/现金/路径。
+判向不使用镜头/窗口/zoom/DPI，暂停不推进，倍速逐个逻辑步骤观察；每6移动轮次换步态的现有
+桌面政策保持，本轮不扩张为完整原版动作时钟/武器合成接入。
+
+验收：四方向/转弯/静止/单轴整数不变/特殊状态/暂停/重开与正常首访AI；四套SEB所有16帧
+按原图边界/脚底锚点验证，畸形帧拒绝；四套配置/构建/CTest和有界窗口检查分别记录。
+
+本轮只读来源SHA256：
+
+| research/dungeon_village_1/相对路径 | SHA256 |
+| --- | --- |
+| rules/CHARACTERS.md | b4e3d549f23ba9efc80a283a920f93d3f7d692c5922f6ad1a9366268aff35015 |
+| prototype/src/startup_view.cpp | 3cca167ae18aa84e2933a11fa9dad6eb5f1bb847972fee7161ae20fc6f4f008a |
+| prototype/src/startup_world_runtime_nonactors.cpp | 1631dbffb83229e3c67bb9f8526ab026129b574f835b41068f80dce97ec1262d |
+| assets/original/human/seb.inf | 22025324fa4f2bafc736aaa9ae3d10d7072633df0e782a4907a7ffa56950ee67 |
+
+三个新增SEB原字节/哈希见assets/SOURCES.json，共108份资源校验通过；不消费同批在途完整世界代码。
+四套预设在`/tmp/ark-facing-validation`独立配置/构建，headless Debug/Release各38项、desktop
+Debug/Release各47项CTest全部通过，共170次。正常固定seed20261004的首店路径是直线，
+转弯回归沿实际退出后的路径验证0/3/1方向，严格预览继续验证真实首店；显式四方向方形轨迹
+另覆盖全部身体行及状态4/20、整数单轴不变。倍速逐步观察保留外层Game私有候选提交边界。
+
+2026-10-05窗口收尾：最终正常入口`--verify-play --frames 3000`通过，1080×720窗口、
+2160×1440 framebuffer/canvas，51.4316秒/975次外层更新/最小间隔47ms；首访1、到达2、
+服务完成1、实际现金/账本5000G（初始5000+收入400-建设400），建设/暂停恢复/隐藏与退出全部PASS。
+实际窗口另核对125%行走方向0与3、75%完整脚底位置；截图`/tmp/ark-facing-early.png`、
+`/tmp/ark-facing-turn.png`、`/tmp/ark-facing-turn-final.png`，后者出生点不同而为方向0。
+前两项是既有显式AI/运动检查入口的画面证据；正常窗口到最终野外交接时人物已出视口，
+不能用最终截图证明四向全矩阵。四向矩阵由原始16帧与数值/正常AI回归覆盖，未新增OS输入或APK动态认证。
+保留本轮日志，项目内仅更新desktop-debug的程序/资源，四套临时构建验收后清理。
+
 ## 完整新局世界接管方案（2026-10-04，待确认/研究稳定）
 
 当前决定：用户选择“暂时维持当前切片，等待研究整批通过”。本方案保留为下一阶段提案，

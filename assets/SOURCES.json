@@ -360,12 +360,6 @@
       "height": 96
     },
     {
-      "file": "human/walk00.seb",
-      "source": "research/dungeon_village_1/assets/original/human/walk00.seb",
-      "sha256": "4082d681f971fe4368a3b22fa463e620a039a5533578f8e943e56bcae8e9ba50",
-      "bytes": 88
-    },
-    {
       "file": "common/chara_hishoko01.png",
       "source": "research/dungeon_village_1/assets/original/common/chara_hishoko01.png",
       "sha256": "06fa65b4c43eaad30f890bd162925e93ff54dc20c0da9b2fc811f9484791edd1",
@@ -394,6 +388,30 @@
       "bytes": 1951,
       "width": 240,
       "height": 17
+    },
+    {
+      "file": "human/walk00.seb",
+      "source": "research/dungeon_village_1/assets/original/human/walk00.seb",
+      "sha256": "4082d681f971fe4368a3b22fa463e620a039a5533578f8e943e56bcae8e9ba50",
+      "bytes": 88
+    },
+    {
+      "file": "human/walk01.seb",
+      "source": "research/dungeon_village_1/assets/original/human/walk01.seb",
+      "sha256": "152b0e0a77b4b643979e97a80ba196667d32bc0b45e51c8e805faea51a5b2d84",
+      "bytes": 88
+    },
+    {
+      "file": "human/walk02.seb",
+      "source": "research/dungeon_village_1/assets/original/human/walk02.seb",
+      "sha256": "365eb1a2219f885990833a8601d8dccafe338750be0d8c920050ec4f456e2760",
+      "bytes": 88
+    },
+    {
+      "file": "human/walk03.seb",
+      "source": "research/dungeon_village_1/assets/original/human/walk03.seb",
+      "sha256": "e4a3ad8a4f3bee1c11926f8af8324a4c78551681c85a0689a901d0fb93c3844a",
+      "bytes": 88
     },
     {
       "file": "common/img.inf",

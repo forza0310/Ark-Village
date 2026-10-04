@@ -2,6 +2,7 @@
 #include "scene.hpp"
 #include "ark/world/terrain.hpp"
 #include "boundary_render.hpp"
+#include "character_animation.hpp"
 #include "character_status.hpp"
 #include "character_visibility.hpp"
 #include "road_render.hpp"
@@ -17,7 +18,8 @@ void outline(world::Cell cell, Vector2 camera, Extent extent, float zoom, Color 
 }
 } // namespace
 void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent extent, float zoom,
-                std::optional<world::WorldPosition> inspection_actor, int actor_frame) {
+                std::optional<world::WorldPosition> inspection_actor, int actor_frame,
+                int actor_facing) {
     const auto &data = app::startup_data();
     auto terrain = data.map;
     // Build the visual input from current occupancy, rather than immutable startup instance IDs.
@@ -96,7 +98,7 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
     if (character_visible(game, inspection_actor.has_value())) {
         const auto p = project_position(
             inspection_actor.value_or(game.state().adventurer->position), camera, extent, zoom);
-        tiles.push_back({"walk00.seb", actor_frame, p, WHITE, true, p.y});
+        tiles.push_back({walking_sprite(actor_facing), actor_frame, p, WHITE, true, p.y});
     }
     std::stable_sort(tiles.begin(), tiles.end(),
                      [](const auto &a, const auto &b) { return a.depth < b.depth; });

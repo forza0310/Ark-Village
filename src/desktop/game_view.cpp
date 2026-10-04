@@ -140,19 +140,26 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     std::optional<std::int64_t> last_update_ms;
     std::int64_t minimum_gap_ms = std::numeric_limits<std::int64_t>::max();
     CharacterAnimation actor_animation;
-    const auto animation_position = [&]() -> std::optional<world::WorldPosition> {
-        if (!game.state().adventurer)
+    const auto animation_position =
+        [&](const app::Game &current) -> std::optional<world::WorldPosition> {
+        if (!current.state().adventurer)
             return std::nullopt;
-        return inspected_travel ? inspected_travel->position : game.state().adventurer->position;
+        return inspected_travel ? inspected_travel->position : current.state().adventurer->position;
     };
-    const auto animation_tick = [&]() -> std::uint64_t {
+    const auto animation_tick = [&](const app::Game &current) -> std::uint64_t {
         if (inspected_travel)
             return motion_ticks;
-        if (game.life_state())
-            return game.life_state()->rounds;
-        return game.ai_state() ? game.ai_state()->rounds : game.state().simulation_steps;
+        if (current.life_state())
+            return current.life_state()->rounds;
+        return current.ai_state() ? current.ai_state()->rounds : current.state().simulation_steps;
     };
-    actor_animation.observe(animation_position(), animation_tick());
+    const auto observe_actor = [&](const app::Game &current, CharacterAnimation &animation) {
+        const auto *actor = current.life_state() ? current.life_state() : current.ai_state();
+        animation.observe(animation_position(current), animation_tick(current),
+                          !inspected_travel && actor ? actor->control.facing : 0,
+                          !inspected_travel && actor ? actor->control.state : 0);
+    };
+    observe_actor(game, actor_animation);
     const auto can_simulate = [&]() {
         return !ui::blocks_world(view) && !game.state().paused && game.simulation_eligible();
     };
@@ -168,11 +175,19 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                                                               game.state().adventurer->flags)
                                            .travel;
                     ++motion_ticks;
-                    actor_animation.observe(animation_position(), animation_tick());
+                    observe_actor(game, actor_animation);
                 }
             } else {
-                game.update(view.speed);
-                actor_animation.observe(animation_position(), animation_tick());
+                // Keep Game::update(speed)'s private-copy commit boundary while observing a
+                // possible corner between speed2 steps. A failed candidate leaks no pose.
+                auto next_game = game;
+                auto next_animation = actor_animation;
+                for (int step = 0; step < view.speed; ++step) {
+                    next_game.update();
+                    observe_actor(next_game, next_animation);
+                }
+                game = std::move(next_game);
+                actor_animation = std::move(next_animation);
             }
             const auto observed_ms = static_cast<std::int64_t>(observed * 1000);
             if (last_update_ms)
@@ -286,7 +301,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             --view.notice_frames;
         if (inspected_travel && !game.state().adventurer)
             inspected_travel.reset(); // A manual new-game reset also clears the rendering probe.
-        actor_animation.observe(animation_position(), animation_tick());
+        observe_actor(game, actor_animation);
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster_camera);
@@ -306,7 +321,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                    inspected_travel
                        ? std::optional<world::WorldPosition>{inspected_travel->position}
                        : std::nullopt,
-                   actor_animation.frame());
+                   actor_animation.frame(), actor_animation.facing());
         draw_preview(game, view, layout, sprites, hovered);
         EndScissorMode();
         ui::draw_hud(game, view, layout, skin);
@@ -343,6 +358,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << " completions=" << ai->completions << " funds=" << ai->accounting.funds()
                   << " error=" << static_cast<int>(game.ai_error())
                   << " actor_frame=" << actor_animation.frame()
+                  << " actor_facing=" << actor_animation.facing()
                   << " actor_visible=" << character_visible(game, inspected_travel.has_value())
                   << '\n';
     }
@@ -359,6 +375,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << " error=" << (life ? static_cast<int>(life->error) : 0) << " pending_category="
                   << (life && life->pending_category ? *life->pending_category : -1)
                   << " actor_frame=" << actor_animation.frame()
+                  << " actor_facing=" << actor_animation.facing()
                   << " actor_visible=" << character_visible(game, inspected_travel.has_value())
                   << '\n';
     }

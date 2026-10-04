@@ -62,13 +62,14 @@ for (const index of indices) {
   copy(`assets/original/image/${name}`, `image/${name}`);
 }
 copy('assets/original/human/chara_flower00.png', 'human/chara_flower00.png');
-copy('assets/original/human/walk00.seb', 'human/walk00.seb');
 copy('assets/original/common/chara_hishoko01.png', 'common/chara_hishoko01.png');
 copy('assets/original/common/chara_hishoko01.seb', 'common/chara_hishoko01.seb');
 copy('assets/original/common/wnd_back.png', 'ui/wnd_back.png');
 copy('assets/original/common/wnd_bar.png', 'ui/wnd_bar.png');
 }
 // Published UI bindings only. A UI refresh must not silently upgrade the gameplay snapshot.
+for (const file of ['walk00.seb', 'walk01.seb', 'walk02.seb', 'walk03.seb'])
+  copy(`assets/original/human/${file}`, `human/${file}`);
 for (const file of ['img.inf', 'top_bar.png', 'btmbar.png', 'btmbar_popular00.png',
   'btmbar_popular01.png', 'townPointbar.png', 'menu.png', 'menu.seb', 'wnd_menuIcon.png',
   'wnd_menuIcon.seb', 'finger_r.png', 'finger_r.seb', 'number01.png', 'number01.seb',

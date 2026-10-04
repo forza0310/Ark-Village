@@ -11,7 +11,7 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 - scene.cpp：加载后地表/补块/设施/人物共享深度排序、连接道路、占地与建筑/箭头预览。
 - road_render.cpp：当前未占用道路的2×2/上下边缘标记及原PNG尺寸/锚点偏移，quad优先，第二遍按y降/x升提交。
 - boundary_render.cpp：按BOUNDARY规格映射六栅栏片/三皮肤与四方向外部门柱，返回地表SEB锚点的提交偏移/深度；scene第一遍按当前有效地表及视口资格提交common图元，sprites只应用一次SEB记录偏移。
-- character_animation.cpp：按实际位移/获准轮次播放walk00四帧，静止回帧0、暂停冻结、重启清状态；每6移动轮次换帧暂属桌面播放策略，原朝向/武器合成另待研究。
+- character_animation.cpp：按获准轮次与连续位置的原始整数投影选择walk00..03四方向，每方向四帧；双轴均变才改普通朝向，单轴不变/静止保留，初始/控制转向读取当前人物，状态4/20不被普通移动覆盖。镜头/zoom/DPI不参与判向，静止回帧0、暂停冻结、重启清状态；每6移动轮次换帧仍属桌面播放策略，完整原动作时钟/武器合成另行接入。
 - character_visibility.cpp：用户要求的店内暂时隐藏适配；仅真实state14、有效active_facility且该实例占用名单包含人物时不提交精灵，退出释放后恢复。普通/预览共用，显式motion检查独立显示；不是原版bit1隐藏谓词或正门动画认证。
 - character_status.cpp：按[战斗显示契约](../../research/dungeon_village_1/ui/COMBAT_RENDER.md)生成只读HP条矩形计划。正常/预览读取真实HP、容量与动作，显示活动或真实人物选中时出现，动作7和店内隐藏时不画；当前UI尚无人物选中命令。人物绿条/红过渡与怪物蓝条/黄过渡共用接口，正回复不套伤害色。scene按人物锚点与zoom提交、沿用人物深度和场景裁剪；不在绘制时推进HP计数，不为检查运动或尚未创建的怪物注入数据。伤害数字、武器/完整战斗动作及原APK动态对照另验。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
@@ -23,7 +23,7 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 GetTime单调时钟经app/SimulationClock才调用Game.update，默认采用原版整数47ms最小开始间隔，卡顿不补算；倍速仍由Game每次推进1/2个有资格步骤，移动仍每步6.7单位。
 game_view关闭raylib的隐式帧末限速，用最早逻辑/60FPS绘制截止WaitTime；两次绘制之间也可更新，输入只在绘制分支采集一次。没有忙等或第二逻辑线程，渲染仍使用Retina原生像素。
 暂停/菜单/非正常模式阻止Game但默认门槛继续运行，不累积工作；重开清时钟。`--tick-rate 1..240`仅显式固定频率实验，阻塞清积累/恢复丢弃跨阻塞间隔、每次最多8次补算，教程/研究边界出现即停止。单调时钟、绘制频率和窗口生命周期是桌面适配，实际APK帧率另验。
-步态逐次观察获准更新，多绘制帧不推进步态；motion检查使用相同逻辑时钟、暂停/倍速，但仅推进检查行程，不改变领域状态。
+步态与显示朝向逐次观察获准更新，倍速拆为两次观察以保留中间转弯，多绘制帧不推进步态；motion检查使用相同逻辑时钟、暂停/倍速，但仅推进检查行程，不改变领域状态。当前生活切片尚未持有原版u/v缓存，因此显示朝向保存在CharacterAnimation，不反写AI控制状态。
 `--frames`继续表示绘制帧数，同帧数不保证同逻辑次数；有界运行输出Simulation的pacing/tick_rate_override/outer_updates/elapsed_seconds/minimum_gap_ms以便核对。
 启用FLAG_WINDOW_HIGHDPI；窗口点坐标决定布局/鼠标，GetRenderWidth/Height决定画布物理像素。
 canvas_camera将逻辑布局直接映射到原生画布，呈现时与framebuffer像素一一对应；最近邻素材只在最终尺寸采样。
@@ -36,7 +36,7 @@ Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体�
 该检查观测人物移动/访问/收费/占用/退出、真实使用期间隐藏与退出再显示、施工完成和现金账本一致性；打印Village的steps/date/life_rounds/visits/completions/funds/ledger_funds/error/pending_category/actor_visible及Playability结果，不达标退出失败。约50秒绘制预算、60秒硬上限，不可与预览/检查页面/暂停启动或固定频率覆盖混用。
 这是产品内部正常模型/controller检查，不代表OS鼠标事件或原APK行为等价；实际通过记录集中在阶段文档。
 `--inspect-page motion --frames 120`在有界窗口显式选择旅店展示连续运动，只覆盖渲染位置；领域人物/金币不变。
-它不证明默认首访会选择旅店，不含方向动画/武器合成或使用退出；手动新局重置会清除检查行程。
+它不证明默认首访会选择旅店；使用相同四向行走显示，不含武器合成或使用退出；手动新局重置会清除检查行程。
 依据：[研究画面](../../research/dungeon_village_1/prototype/src/startup_view.cpp)、[UI](../../research/dungeon_village_1/ui/PAGES.md)。
 
 

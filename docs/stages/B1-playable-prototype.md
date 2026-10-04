@@ -602,6 +602,26 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
   `/tmp/ark-world-window-final.log`。血条没有用虚构战斗作窗口展示；OS鼠标和APK动态仍未验。
 - `git diff --check`与82个文档本地链接检查通过；本次只提交产品文件，研究侧并行交付保持独立。
 
+## 外部出口草地显示修正（2026-10-05）
+
+用户指出村庄上方出口下应为草地。STARTUP加载后快照明确(11,10)/(12,10)逻辑定义83/84、
+状态7/通行类别4，但显示为草地27/帧0；BOUNDARY规定external_direction=2/3只附加door00门柱。
+产品scene已画草地和门柱，却又遍历所有设施实例提交entranceOut02/03，重复覆盖灰色底座。
+本轮修正显示错误：kind5外部入口不进入普通设施图元循环，保留已有地表/门柱消费者；
+kind4城镇入口及普通建筑照常绘制，逻辑实例/绑定/寻路/AI均不变。
+不新增素材、不改源表或research；同窗口/镜头/缩放/暂停画面逐像素对照，另执行四套配置/构建/CTest。
+
+来源SHA256：STARTUP `6d56f8c181e01d71ff55debe29cb200c0b1acb029fec62cfdb9695103e85b2ae`；
+BOUNDARY `bf573e748d71e2c0251d98b27f821535f5973672d167d7e9a7a1009cadb02f52`；
+LOADED_MAP.tsv `1a3955e1a139931c2731c5598806f920d836b353fa5ba98914b89f2269eefea1`。
+
+验收完成：四套预设在`/tmp/ark-exit-validation`配置/构建通过，headless Debug/Release各38项、
+desktop Debug/Release各47项CTest全通过，共170次。1280×720窗口、2560×1440物理画布、
+50%缩放、暂停3帧同条件截图逐像素比较：仅出口区域10843像素改变，边界(1854,475)–(2106,640)，
+其余画面完全一致；目视确认灰地板消失、草地/两个原门柱与两侧栅栏保留。前后均0逻辑步/5000G。
+截图`/tmp/ark-exit-before.png`、`/tmp/ark-exit-after.png`及并排局部`/tmp/ark-exit-comparison.png`。
+本轮是静态显示修正，未新增OS输入或APK动态验收；本地程序同步更新，后续研究接入另作阶段记录。
+
 ## 人物行走四向显示修正（2026-10-04）
 
 用户明确要求移动时人物图片随方向变化。本轮为现有显示错误修正，沿用正常Game/严格预览，

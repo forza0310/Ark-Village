@@ -87,6 +87,11 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
     for (const auto id : game.state().instance_order) {
         const auto &v = game.state().facilities.at(id);
         const auto &item = game.definition(v.definition_id);
+        // STARTUP/BOUNDARY: kind5 external access retains grass (display27) and draws only
+        // the cell's door00 overlay above. Its logical instance is not another facility sprite;
+        // drawing entranceOut here would cover the published grass with a second grey floor.
+        if (item.kind == 5)
+            continue;
         for (const auto &part : facilities::footprint(item.shape, v.orientation, v.anchor)) {
             const auto &display = game.display(item.display_id);
             const auto p = project(part.cell, camera, extent, zoom);

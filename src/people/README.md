@@ -74,3 +74,25 @@ ordinary仅表示当前输入没有优先目标，不是证明了全局首访前
 参考：[AI专项](../../research/dungeon_village_1/rules/ai/README.md)、
 [感知](../../research/dungeon_village_1/rules/ai/PERCEPTION.md)、[控制](../../research/dungeon_village_1/rules/ai/CONTROL.md)。
 本批不启用默认全局调度、使用/退出事务或真实任务/战斗；条件组合测试与正常窗口行为分别记录。
+
+## 效果、装备与定义成长
+
+本批消费26e65c7/730e7ee已提交独立规则；实际Game接通依赖仍未完成。
+
+| 文件 | 职责与依赖 |
+| --- | --- |
+| actor_effects.hpp/cpp | cd显示/ce延迟时间线、表情概率/变体票号、动作/状态计数与命中标签；无renderer/音频依赖 |
+| weapon_choice.hpp/cpp | 武器、防具、饰品候选；原目录顺序、不同rank区间、重选计数与空当前回退，票号显式输入 |
+| delayed_reward.hpp/cpp | 从encounter_lifecycle提取定义N/O九步奖励及合并；消费方负责XP提交，真实升级丢弃余量 |
+| human_growth.hpp/cpp | 依赖效果和延迟奖励，六属性/装备/法术重算、职业经验/多级成长与有序事件/解锁请求 |
+
+ce先逆序派发再推进cd；cd正序删除后继续加下标，本轮跳过紧邻后项。控制新加的显示在下一轮推进，不能与m控制队列共用时钟。
+表情先消耗概率票号，概率通过再检查cd12/24抑制，未被抑制才需要变体票号；平台变体数量由调用方提供。
+装备选择不收费或装配；调用现有actor_control准备退出尾部，27/29为显示，28/30才生成提交候选，随后按装备属性重算定义。
+human_growth拥有的是定义共享状态，不是每个人物自己的HP；每实例调用可推进一次共享N/O，不按定义每世界轮次去重。
+各职业贡献分别截断后累加，当前职业倍率和量化legacy_u分别取整/上限；战斗值最后加装备，没有自定下限0。
+升级只生成请求：事件109→成长报告，掌握时再页70/职业解锁/页94/事件113/notice33，真实所有者另做幂等与原子提交。
+tests/people_progression组合实际产品控制器、效果、成长、app调度；只使用显式条件夹具，不能作为真实新局职业/库存来源。
+依据：[显示与延迟](../../research/dungeon_village_1/rules/ai/CONTROL.md#显示与延迟效果的实际推进)、
+[定义重算与职业成长](../../research/dungeon_village_1/rules/ai/CONTROL.md#人物定义重算与职业成长)、
+[装备选择](../../research/dungeon_village_1/rules/FACILITY_USE.md#weapon-choice)。

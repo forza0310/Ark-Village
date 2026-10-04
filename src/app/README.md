@@ -12,3 +12,13 @@ map_queries.cpp按加载后底图和当前实例重建访问绑定，route_to只
 reset时原ID+1映射到稳定非零ID，保留原向量顺序instance_order，新增实例使用单调ID并追加顺序。
 建设审批读取加载后逻辑状态3/4；显示ID不作为可建判据。围栏/外入口附加覆盖仍待绘制绑定。
 依据：[STARTUP](../../research/dungeon_village_1/rules/STARTUP.md)，参照[研究聚合](../../research/dungeon_village_1/prototype/src/startup.cpp)。
+
+## 实时名单调度
+
+ai_schedule.hpp/cpp消费研究d412d6e的已获准世界轮次：先全部人物决策、全部人物执行，再怪物决策/执行，随后投射/物体/遭遇/设施与finalize。
+人物两遍逆序，怪物执行和设施正序；正序删除继续加下标，保留跳过与同轮追加语义，不改为稳定快照遍历。
+名单身份按种类隔离，原始ID0有效；调度接口的原始名单身份不能直接当people::ActorId非零快照身份。
+handler看到本轮候选名单，必须只修改独立所有者副本并暂存外部请求。失败或限额返回无候选，调用方丢弃副本；调度器不能撤销handler已经执行的真实世界写入。
+人类执行返回删除且绑定设施时，先请求释放后删名单。admitted由真实运行所有者解决模态资格，安全dispatch_limit不是原版玩法人数限制。
+产品已编译该纯调度并做组合验证，Game尚未调用它；不能将独立调度器交付等同默认人物AI已接通。
+依据：[聚合遍历](../../research/dungeon_village_1/rules/ai/LIFECYCLE.md#聚合遍历与同轮新建)。

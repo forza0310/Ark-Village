@@ -25,7 +25,10 @@ facilities/economy与neighbourhood为纯派生规则，app/facility_queries提�
 world/loaded_map保留加载后证据，navigation提供加权距离场/回溯，facilities/map_binding按当前完整占地绑定；
 people的activity_candidates/activity_choice/facility_choice/departure提供候选、两级选择及完整出发候选；票号显式输入，上层优先级由调用方负责。
 people/motion提供显式目标行程与一次性进入信号。上述纯规则已接入；actor_ai/ai_perception补资格和优先级，decision组合普通出发，actor_control准备本地控制/状态/漫游/装备候选。
-默认AI调度及跨所有者提交仍等待研究依赖。world/terrain按已证掩码连接道路，desktop/road_render按当前占用派生2×2/上下边缘PNG补块并进入共享深度队列；desktop/projection负责场景小步缩放/锚点/拾取，HUD与领域不随缩放变化。
+默认AI完整世界更新及跨所有者提交仍等待研究依赖。world/terrain按已证掩码连接道路，desktop/road_render按当前占用派生2×2/上下边缘PNG补块并进入共享深度队列；desktop/projection负责场景小步缩放/锚点/拾取，HUD与领域不随缩放变化。
+app/ai_schedule已接入实时名单两遍与删除/同轮追加纯规则，实际Game更新尚未接通完整所有者。
+people/actor_effects分离显示/延迟/控制时点，weapon_choice提供武器/防具/饰品候选，human_growth与delayed_reward提供定义共享属性/职业成长和九步经验。
+各模块只返回候选/请求；组合测试验证装备延迟提交、共享成长与调度私有副本，不能当作默认经营/人物已自主运行。
 
 启动顺序：参数→程序旁CPU素材校验→无窗口首访检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
 静态输入为24×24加载后地图、8个保留原向量顺序与原ID的设施实例、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。

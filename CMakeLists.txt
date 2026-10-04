@@ -33,6 +33,8 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/facility_choice.cpp src/people/departure.cpp
     src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
     src/people/decision.cpp
+    src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
+    src/people/delayed_reward.cpp src/people/human_growth.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -111,6 +113,26 @@ if(BUILD_TESTING)
     target_link_libraries(ark_ai_decision_tests PRIVATE ark_game)
     ark_target(ark_ai_decision_tests)
     add_test(NAME ai_priority_departure_control COMMAND ark_ai_decision_tests)
+    add_executable(ark_ai_schedule_tests tests/ai_schedule_test.cpp)
+    target_link_libraries(ark_ai_schedule_tests PRIVATE ark_game)
+    ark_target(ark_ai_schedule_tests)
+    add_test(NAME ai_live_roster_schedule COMMAND ark_ai_schedule_tests)
+    add_executable(ark_actor_effects_tests tests/actor_effects_test.cpp)
+    target_link_libraries(ark_actor_effects_tests PRIVATE ark_game)
+    ark_target(ark_actor_effects_tests)
+    add_test(NAME actor_effect_timeline COMMAND ark_actor_effects_tests)
+    add_executable(ark_weapon_choice_tests tests/weapon_choice_test.cpp)
+    target_link_libraries(ark_weapon_choice_tests PRIVATE ark_game)
+    ark_target(ark_weapon_choice_tests)
+    add_test(NAME equipment_candidate_choice COMMAND ark_weapon_choice_tests)
+    add_executable(ark_human_growth_tests tests/human_growth_test.cpp)
+    target_link_libraries(ark_human_growth_tests PRIVATE ark_game)
+    ark_target(ark_human_growth_tests)
+    add_test(NAME human_shared_growth COMMAND ark_human_growth_tests)
+    add_executable(ark_people_progression_tests tests/people_progression_test.cpp)
+    target_link_libraries(ark_people_progression_tests PRIVATE ark_game)
+    ark_target(ark_people_progression_tests)
+    add_test(NAME actor_schedule_equipment_growth COMMAND ark_people_progression_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)

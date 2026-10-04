@@ -18,6 +18,9 @@ int main() {
     check(parse_arguments({}).options->mode == LaunchMode::window);
     const auto defaults = *parse_arguments({}).options;
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
+    check(defaults.tick_rate == 60);
+    check(parse_arguments({"--tick-rate", "20"}).options->tick_rate == 20);
+    check(parse_arguments({"--tick-rate", "240"}).options->tick_rate == 240);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
     check(parse_arguments({"--check-ai"}).options->mode == LaunchMode::check_ai);
     check(parse_arguments({"--ai-preview"}).options->ai_preview);
@@ -34,6 +37,12 @@ int main() {
           bounded.options->frames == 30 && bounded.options->screenshot == "a.png");
     for (const auto &arguments : std::vector<std::vector<std::string>>{
              {"--unknown"},
+             {"--tick-rate"},
+             {"--tick-rate", "0"},
+             {"--tick-rate", "-1"},
+             {"--tick-rate", "241"},
+             {"--tick-rate", "20x"},
+             {"--tick-rate", "20.5"},
              {"--zoom-percent"},
              {"--zoom-percent", "49"},
              {"--zoom-percent", "201"},

@@ -52,6 +52,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (++i >= arguments.size() || !positive(arguments[i], 200, options.zoom_percent) ||
                 options.zoom_percent < 50)
                 return {std::nullopt, "--zoom-percent requires an integer 50..200"};
+        } else if (argument == "--tick-rate") {
+            if (++i >= arguments.size() || !positive(arguments[i], 240, options.tick_rate))
+                return {std::nullopt, "--tick-rate requires an integer 1..240"};
         } else if (argument == "--frames") {
             if (++i >= arguments.size() || !positive(arguments[i], 100000, options.frames)) {
                 return {std::nullopt, "--frames requires an integer 1..100000"};

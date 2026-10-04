@@ -8,7 +8,7 @@
 namespace ark::desktop {
 class CharacterAnimation {
   public:
-    // Observe once per render. Equal admitted ticks preserve the pose while paused/in a modal;
+    // Observe after admitted updates and renders. Equal ticks preserve pose while paused/modal;
     // an admitted tick without displacement returns to idle. Missing/reset actors clear state.
     void observe(std::optional<world::WorldPosition> position, std::uint64_t admitted_tick);
     int frame() const { return frame_; }

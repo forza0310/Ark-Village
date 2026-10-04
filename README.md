@@ -28,6 +28,7 @@ ctest --preset desktop-debug
 默认窗口1080×720（3:2），可拖动调整，或用`--size 宽 高`覆盖；Retina按原生像素渲染。
 有界运行：`./build/desktop-debug/bin/ark_village --frames 60`。
 查看人物AI：`./build/desktop-debug/bin/ark_village --ai-preview`。
+逻辑时钟已与60FPS绘制分离；`--tick-rate 1..240`调整逻辑频率，默认60Hz。临时放慢预览可用`./build/desktop-debug/bin/ark_village --ai-preview --tick-rate 20`；20Hz尚非原版已证参数，人物每步仍移动6.7单位。
 该入口直接进入真实首访后的场景；可暂停/继续、调整倍速、缩放及查看设施/人物详情。预览中建设禁用，遇未接入离场分支或1000轮上限后显示“本轮结束”，可重新开始。
 初局AI无窗口验证：`./build/desktop-debug/bin/ark_village --check-ai`。
 该命令在私有会话中运行两个出生点×旅店/包子铺/武器店六条真实源表流程，验证自主选择、移动、收费、使用、退出与延迟效果；票号显式固定。窗口效果使用--ai-preview，本地随机消费与APK仍有差异。

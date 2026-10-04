@@ -1,5 +1,6 @@
 // Window/update orchestration only. Original page composition and mouse routing live in ui/.
 #include "game_view.hpp"
+#include "ark/app/fixed_step_clock.hpp"
 #include "ark/app/game.hpp"
 #include "ark/people/motion.hpp"
 #include "character_animation.hpp"
@@ -125,8 +126,11 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                                         {instance.anchor, id, instance.definition_id});
         if (!inspected_travel)
             throw std::runtime_error("Inspection travel could not be planned");
+        game.set_paused(options.paused);
     }
     int frames{};
+    std::uint64_t motion_ticks{}, outer_updates{};
+    app::FixedStepClock simulation_clock(options.tick_rate);
     CharacterAnimation actor_animation;
     const auto animation_position = [&]() -> std::optional<world::WorldPosition> {
         if (!game.state().adventurer)
@@ -135,11 +139,15 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     };
     const auto animation_tick = [&]() -> std::uint64_t {
         if (inspected_travel)
-            return static_cast<std::uint64_t>(frames);
+            return motion_ticks;
         return game.ai_state() ? game.ai_state()->rounds : game.state().simulation_steps;
     };
     actor_animation.observe(animation_position(), animation_tick());
+    auto previous_time = GetTime();
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
+        const auto now = GetTime();
+        const auto elapsed = now - previous_time;
+        previous_time = now;
         // Window points drive layout/input; framebuffer pixels drive rasterization. A Retina
         // window may have twice as many physical pixels on each axis. Never rasterize a zoomed
         // sprite into the small logical layout before enlarging it to the actual framebuffer.
@@ -176,6 +184,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                 CheckCollisionPointRec(*mouse,
                                        {layout.dialogue.x + 48, layout.dialogue.y + 66, 106, 29})) {
                 game = app::Game(std::random_device{}(), play);
+                simulation_clock.reset();
+                motion_ticks = 0;
                 actor_animation.reset();
                 view = ui::State{};
                 view.camera = {static_cast<float>(data.camera.x),
@@ -208,17 +218,38 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                 view.camera = target;
                 game.finish_camera();
             }
-        } else if (!ui::blocks_world(view)) {
-            game.update(view.speed);
         }
+        // Rendering/input remain at 60 FPS. Only the fixed wall-clock adapter admits world work.
+        const auto can_simulate = [&]() {
+            return !ui::blocks_world(view) && !game.state().paused &&
+                   game.state().mode == app::Mode::normal;
+        };
+        const auto due = simulation_clock.advance(elapsed, can_simulate());
+        for (int n = 0; n < due; ++n) {
+            if (!can_simulate()) {
+                simulation_clock.reset();
+                break; // An earlier catch-up update may have opened a tutorial or ended preview.
+            }
+            if (inspected_travel) {
+                for (int step = 0; step < view.speed; ++step) {
+                    inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
+                                                              game.state().adventurer->flags)
+                                           .travel;
+                    ++motion_ticks;
+                    actor_animation.observe(animation_position(), animation_tick());
+                }
+            } else {
+                game.update(view.speed);
+                actor_animation.observe(animation_position(), animation_tick());
+            }
+            ++outer_updates;
+        }
+        if (!can_simulate())
+            simulation_clock.reset();
         if (view.notice_frames)
             --view.notice_frames;
         if (inspected_travel && !game.state().adventurer)
             inspected_travel.reset(); // A manual new-game reset also clears the rendering probe.
-        if (inspected_travel)
-            inspected_travel = people::advance_travel(game.route_map(), *inspected_travel,
-                                                      game.state().adventurer->flags)
-                                   .travel;
         actor_animation.observe(animation_position(), animation_tick());
         BeginTextureMode(canvas.value);
         ClearBackground(Color{145, 211, 247, 255});
@@ -249,6 +280,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         std::cout << "Render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
                   << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
                   << " canvas=" << canvas.extent.width << 'x' << canvas.extent.height << '\n';
+    if (options.frames)
+        std::cout << "Simulation: tick_rate=" << options.tick_rate
+                  << " outer_updates=" << outer_updates << '\n';
     if (const auto *ai = game.ai_state()) {
         std::cout << "AI preview: rounds=" << ai->rounds << " position=" << ai->position.x << ','
                   << ai->position.z << " arrivals=" << ai->arrivals

@@ -18,6 +18,10 @@ add_library(ark_launch STATIC src/app/launch_options.cpp)
 target_include_directories(ark_launch PUBLIC include)
 ark_target(ark_launch)
 
+add_library(ark_timing STATIC src/app/fixed_step_clock.cpp)
+target_include_directories(ark_timing PUBLIC include)
+ark_target(ark_timing)
+
 find_program(ARK_NODE NAMES node REQUIRED)
 set(ARK_STARTUP_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_data.cpp")
 add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
@@ -54,7 +58,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/character_animation.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
-    target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_asset_metadata PkgConfig::RAYLIB)
+    target_link_libraries(ark_village PRIVATE ark_launch ark_timing ark_game ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
         target_link_libraries(ark_village PRIVATE "-framework CoreGraphics")
     endif()
@@ -67,6 +71,10 @@ if(ARK_BUILD_DESKTOP)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ark_fixed_step_tests tests/fixed_step_clock_test.cpp)
+    target_link_libraries(ark_fixed_step_tests PRIVATE ark_timing ark_game)
+    ark_target(ark_fixed_step_tests)
+    add_test(NAME fixed_step_simulation COMMAND ark_fixed_step_tests)
     add_executable(ark_launch_tests tests/launch_options_test.cpp)
     target_link_libraries(ark_launch_tests PRIVATE ark_launch)
     ark_target(ark_launch_tests)

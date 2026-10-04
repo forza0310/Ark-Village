@@ -44,6 +44,10 @@ struct SearchLimits {
     std::int64_t max_cost{std::numeric_limits<std::int64_t>::max()};
     std::size_t max_expansions{1000000};
     bool allow_first_step_exit{true};
+    // Stop before expanding a cost above this threshold; discovered frontier stays traceable.
+    // max_cost instead rejects over-budget edges and reports cost_limit.
+    std::optional<std::int64_t> max_expanded_cost{};
+    bool reverse_equal_cost{}; // Original c.l scans row-major inventory backward on strict ties.
 };
 struct DistanceField {
     RouteMap map;
@@ -65,7 +69,8 @@ struct Route {
 bool valid_map(const RouteMap &map);
 bool route_transition(const RouteCell &from, const RouteCell &to, bool first_expansion = false);
 // Full distance field; ground departure costs x=50/y=70, others x=5/y=7.
-// Equal-cost predecessors follow the maintained C++ tie policy, not an APK-equivalence claim.
+// Default equal-cost predecessors retain the maintained C++ policy. Live callers may explicitly
+// request the published original reverse-inventory order and expansion-cost threshold.
 SearchResult search(const RouteMap &map, Cell start, SearchLimits limits = {});
 bool valid_field(const DistanceField &field);
 Route trace(const DistanceField &field, Cell goal);

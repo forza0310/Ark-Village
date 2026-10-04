@@ -2,6 +2,7 @@
 #include "scene.hpp"
 #include "ark/world/terrain.hpp"
 #include "boundary_render.hpp"
+#include "character_status.hpp"
 #include "character_visibility.hpp"
 #include "road_render.hpp"
 #include <algorithm>
@@ -99,6 +100,11 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
     }
     std::stable_sort(tiles.begin(), tiles.end(),
                      [](const auto &a, const auto &b) { return a.depth < b.depth; });
+    // Inspection motion is an independent visual fixture, so it must not display another
+    // actor's live HP. Real normal/preview actors consume the same read-only status contract.
+    const auto status = inspection_actor ? std::nullopt : character_status_input(game);
+    const auto hp_bar =
+        status ? character_hp_bar(*status) : std::vector<CharacterStatusRectangle>{};
     for (const auto &tile : tiles) {
         if (tile.image_width) {
             sprites.image(
@@ -108,6 +114,11 @@ void draw_scene(const app::Game &game, Sprites &sprites, Vector2 camera, Extent 
         }
         sprites.draw(tile.sprite, tile.frame, tile.point, tile.tint,
                      tile.farmer ? Sprites::Binding::farmer : tile.binding, zoom);
+        if (tile.farmer)
+            for (const auto &part : hp_bar)
+                DrawRectangleRec({tile.point.x + part.x * zoom, tile.point.y + part.y * zoom,
+                                  part.width * zoom, part.height * zoom},
+                                 {part.rgb[0], part.rgb[1], part.rgb[2], 255});
     }
 }
 void draw_preview(const app::Game &game, const ui::State &view, const ui::Layout &layout,

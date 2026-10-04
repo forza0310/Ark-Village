@@ -13,6 +13,7 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 - boundary_render.cpp：按BOUNDARY规格映射六栅栏片/三皮肤与四方向外部门柱，返回地表SEB锚点的提交偏移/深度；scene第一遍按当前有效地表及视口资格提交common图元，sprites只应用一次SEB记录偏移。
 - character_animation.cpp：按实际位移/获准轮次播放walk00四帧，静止回帧0、暂停冻结、重启清状态；每6移动轮次换帧暂属桌面播放策略，原朝向/武器合成另待研究。
 - character_visibility.cpp：用户要求的店内暂时隐藏适配；仅真实state14、有效active_facility且该实例占用名单包含人物时不提交精灵，退出释放后恢复。普通/预览共用，显式motion检查独立显示；不是原版bit1隐藏谓词或正门动画认证。
+- character_status.cpp：按[战斗显示契约](../../research/dungeon_village_1/ui/COMBAT_RENDER.md)生成只读HP条矩形计划。正常/预览读取真实HP、容量与动作，显示活动或真实人物选中时出现，动作7和店内隐藏时不画；当前UI尚无人物选中命令。人物绿条/红过渡与怪物蓝条/黄过渡共用接口，正回复不套伤害色。scene按人物锚点与zoom提交、沿用人物深度和场景裁剪；不在绘制时推进HP计数，不为检查运动或尚未创建的怪物注入数据。伤害数字、武器/完整战斗动作及原APK动态对照另验。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
 - projection.cpp：格与连续世界坐标等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
 - resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。

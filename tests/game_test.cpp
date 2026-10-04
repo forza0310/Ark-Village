@@ -101,7 +101,7 @@ void first_arrival() {
     check(game.state().mode == app::Mode::camera, "camera after talk");
     const auto camera = snapshot(game);
     steps(game, 100);
-    check(snapshot(game) == camera, "camera pauses world");
+    check(snapshot(game) != camera, "camera interpolation does not pause the source world");
     game.finish_camera();
     steps(game, 100);
     check(game.state().event89_count == 1 && game.state().adventurer->uid == 0,

@@ -43,7 +43,9 @@ void draw_hud(const app::Game &game, const State &view, const Layout &layout, co
     if (normal && game.life_state() && game.life_state()->error != app::InitialAiError::none) {
         const auto &life = *game.life_state();
         std::string activity = "后续活动";
-        if (life.pending_definition)
+        if (life.handoff == app::LifeHandoff::encounter_creation)
+            activity = "野外遭遇";
+        else if (life.pending_definition)
             activity = game.definition(*life.pending_definition).name;
         else if (life.pending_category == 3)
             activity = "住所/出口";

@@ -38,6 +38,9 @@ struct State {
     std::vector<CashEntry> expenses;
     std::optional<people::Adventurer> adventurer;
     std::optional<LifeActorState> life;
+    std::optional<LifeActorState> retired_life; // Retained diagnostic identity, never scheduled.
+    std::map<int, int>
+        departed_definitions; // Shared definition m writes; no guessed initial state.
     std::map<facilities::InstanceId, FacilityLifeState> facility_life;
     Mode mode{Mode::normal};
     std::optional<int> selection;
@@ -73,18 +76,24 @@ class Game {
     Error confirm(world::Cell anchor);
     void cancel();
     void set_paused(bool value) { state_.paused = value; }
-    // One or two eligible logical steps; modal/placement/camera modes do not accrue simulation.
+    // Camera interpolation is presentation, not a source common-world pause gate.
+    bool simulation_eligible() const {
+        return !state_.paused && (state_.mode == Mode::normal ||
+                                  (!ai_preview_enabled() && state_.mode == Mode::camera));
+    }
+    // Eligibility is reread before every speed iteration; tutorials and construction UI block.
     Error update(int speed = 1);
     Error acknowledge_talk();
     Error finish_camera();
 
   private:
     void step();
+    void step_normal_world();
+    void commit_village_life(const InitialAiState &);
     void start_ai_preview();
     void step_ai_preview();
     void project_ai_preview();
     void start_village_life();
-    void step_village_life();
     void project_village_actor();
     State state_;
     std::mt19937 random_;

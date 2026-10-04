@@ -549,3 +549,55 @@ Game唯一拥有人物运行状态、实例销售/占用、定义共享使用及
 实际窗口：Debug1280×720/50%全景、Debug1080×720/100%默认、Debug480×660/200%放大；各framebuffer/canvas为窗口双倍。全景目视核对四边/四角连续、城镇双入口和两个外部门柱缺口、建筑/地表遮挡；另外两尺寸核对锚点/缩放与视口切边。初轮还检查Release默认窗口，发现命中scene到角按钮上方的裁剪造成8单位空白带；将绘制scene_clip延伸到21单位底栏而命中scene保持29单位后，增加UI布局回归，重编译两套desktop、重跑最终四套CTest及上述三张Debug截图。
 最终截图为`/tmp/ark-fence-overview-final.png`、`/tmp/ark-fence-default-final.png`、`/tmp/ark-fence-zoom200-final.png`，非持久基线；有界3帧且暂停，村庄均保持0步/5000G，此轮没有重复长时间AI/OS输入/APK动态验收，不以静态画面证明原版运行等价。
 源码格式、差异空白、文档本地路径和本轮BOUNDARY来源哈希检查通过。产品改动单独保存checkpoint；研究侧在途文件与独立流程约定保留工作区，不修改或夹带。所有构建/CTest/窗口会话已结束。
+
+## 共同调度、真实路径及血条（2026-10-04，已验证接入切片）
+
+沿用唯一Game聚合、纯规则候选和正常玩法优先方案，消费用户本轮指定交付：
+WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDER。
+严格初局诊断保留旧前置；正常生活适配器增加旧缓存格s、独立目的地O、无设施路线G、
+留存计数和离村请求。c移动不刷新s，d前段只执行一次，FIFO续行不重复推进HP/效果。
+类别4先到外入口再排活动6；地面到达排c5/10，出口排0/26后才退休、共享定义m写1。
+建设、收费和施工仍使用当前唯一地图/账本；未知依赖保留明确交接，不重抽目标。
+
+任务成功接为设施领域完整候选（共享统计/日期/怪物开放/任务池通知），不伪造新局任务。
+血条接为纯几何计划和scene绘制，使用实际HP动画，无绘制计数或假战斗。
+风险与边界：维护初局尚缺共享住宅D投影；外场遭遇创建/完整任务恢复脚本不由纯消费者自动补齐。
+本轮验收包含正常类别4出发、旧格到达、FIFO顺序/退出请求、失败回滚、四套构建和真实窗口。
+
+本批读取的维护交付指纹（SHA256；research不进入产品提交）：
+
+| research/dungeon_village_1/ 相对路径 | SHA256 |
+| --- | --- |
+| `rules/ai/WORLD_SCHEDULE.md` | `3b88808be5bef1adf7e1ef8327511e5e275ee289aa6ebbb067e70ed17403c2b6` |
+| `rules/ai/WORLD_DEPARTURE.md` | `ef599b6c66bbf5c76e45fed523319e67d2fa1b0c902e28e9d07822e97232cac7` |
+| `rules/ai/CONTROL_COMPOSITION.md` | `eed912a97dbb6519c8c17cd84e7b3c600474cfb854ec5a0110bd69e292c1d2c5` |
+| `rules/ai/DUNGEONS.md` | `75461b992d507890794c0b8fe926dc6b7849c45b4e7c7e8d5d49507052b5c262` |
+| `ui/COMBAT_RENDER.md` | `361b004401f5e5704b71fed3ad7eb109dbcabce3b5dd98d0a7af793669ad7af8` |
+| `example/src/world_schedule.cpp` | `4aa61df4a3f201f7e749e71de4c7231af329d0833fc86f1cda00f3511815b0f1` |
+| `example/src/world_departure.cpp` | `e0834779fd9879b5d4bb73f5133ee85ee94223069e206dffd6a61540dbe7ac1f` |
+| `example/src/world_wander.cpp` | `35f429110000d7c9bfd19912881dfaec0d3a367a1f3dba6e7ce68bc6fd3f7552` |
+| `example/src/world_dungeon.cpp` | `34767d8449212bd44bd037ea4d242deec872f737751a4c3221b0bb46b3a48805` |
+| `example/src/map_access.cpp` | `3f6015c07eeba42e1a107cf167f0a4bf578e32ec8a4763d2076bd9cff63f6014` |
+
+接入边界修订：共同协议已驱动正常Game，人物c/d、施工次序及一次性执行前段已接；
+单人物无最终重叠对。战斗影响场尚不物化，生活人气请求仍待完整消费者。
+本批复刻的是P路线片段和控制续行，状态0的L生成探针尚未接；
+地面c5同轮可执行漫游控制，下一次c5在L/遭遇聚合边界明确停留。
+不能把town.bottom作为未知minimum_y，不能把fixture的home零值作为首访D。
+普通模式镜头插值不再阻止世界轮次；严格诊断保留原准入约束。
+
+
+本轮验证完成：
+
+- 四套配置/编译/CTest通过：headless-debug/release各37，desktop-debug/release各46，共166次。
+- 新增真实出发/旧格到达/末路点/64守卫/建设后unbound身份/漫游FIFO/离村26/随机回滚回归；
+  正常seed20261004确实经过类别4入口、活动6路线和地面状态5后进入已标记交接。
+- 共同协议覆盖首访同轮追加、c/d删除区别、提示/延迟队列及完整私有所有者晚期拒绝；
+  Game现有领域消费者与这些协议测试分别验收，不宣称未迁入领域已运行。
+- 任务成功完整候选与阈值通知通过；HP矩形/RGB、伤害/回复插值、显示条件和店内隐藏通过。
+- 正常原版47ms窗口：1080×720点、framebuffer/canvas2160×1440，实测最小间隔47ms；
+  987逻辑步、人物568轮、到访3次（含入口）、设施完成2次，实际现金和账本均5300G。
+  controller首访/移动/收入/占用/释放/施工/暂停恢复/入店隐藏均PASS。
+- 截图 `/tmp/ark-world-integration-final.png`；新增“遭遇”字库已复查，日志
+  `/tmp/ark-world-window-final.log`。血条没有用虚构战斗作窗口展示；OS鼠标和APK动态仍未验。
+- `git diff --check`与82个文档本地链接检查通过；本次只提交产品文件，研究侧并行交付保持独立。

@@ -48,7 +48,9 @@ InitialAiError InitialAiSession::arrive(InitialAiState &s) const {
     use.control = s.control;
     use.category = d.activity_category;
     use.detail = d.activity_detail;
-    use.definition_wait = initial_ai_rules().services.at(d.id).wait;
+    // Category4 gates do not consume a service wait. Do not require a shop-only table row.
+    use.definition_wait = d.activity_category == 4 ? 0 : initial_ai_rules().services.at(d.id).wait;
+    use.category_six_counter = s.visits.legacy_category_six_counter;
     const auto plan = facilities::prepare_facility_use_plan(use);
     if (!plan.candidate)
         return InitialAiError::preparation_failed;
@@ -61,9 +63,11 @@ InitialAiError InitialAiSession::arrive(InitialAiState &s) const {
     s.visits = arrival.candidate->arrival.state;
     f.sales.current_month_facility_sales = s.visits.current_month_facility_sales;
     s.selected_weapon = arrival.candidate->selected_equipment;
+    s.visits.legacy_category_six_counter = plan.candidate->category_six_counter;
     s.control = plan.candidate->control;
     s.counters.state = 0;
-    s.active_facility = binding;
+    s.active_facility =
+        d.activity_category == 4 ? std::nullopt : std::optional<world::ArrivalTarget>(binding);
     s.journey.reset();
     ++s.arrivals;
     return InitialAiError::none;
@@ -129,8 +133,7 @@ InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets 
     return InitialAiError::none;
 }
 // The d pass advances counters/effects before interpreting controls. Successful8 ends this pass.
-InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTickets &tickets,
-                                           std::mt19937 *random) const {
+InitialAiError InitialAiSession::execution_prefix(InitialAiState &s) const {
     s.counters.action = s.control.action_counter;
     s.counters.alternate = s.control.alternate_counter;
     const auto counters = people::advance_actor_counters(s.counters);
@@ -138,11 +141,19 @@ InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTic
     const auto hp = people::advance_hp_animation(s.hp);
     if (!counters || !effects.candidate || !hp.candidate)
         return InitialAiError::preparation_failed;
-    s.counters = *counters;
+    const auto labels = people::expire_actor_hit_label(*counters);
+    if (!labels)
+        return InitialAiError::preparation_failed;
+    s.counters = *labels;
     s.effects = effects.candidate->state;
     s.hp = *hp.candidate;
     s.control.action_counter = s.counters.action;
     s.control.alternate_counter = s.counters.alternate;
+    return InitialAiError::none;
+}
+// FIFO continuation never repeats the common d prefix (including after failed departure).
+InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTickets &tickets,
+                                           std::mt19937 *random) const {
     for (int budget = 0; budget < 128; ++budget) {
         const auto prefix = people::prepare_local_control_prefix(s.control);
         if (!prefix.candidate)
@@ -152,19 +163,46 @@ InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTic
             return InitialAiError::none;
         const auto command = s.control.queue.front();
         if (command[0] == 8) {
-            if (command[1] != 0)
+            if (!live_ && command[1] != 0)
                 return InitialAiError::unsupported_branch;
             const auto error = depart(s, tickets, random);
             if (error != InitialAiError::none)
                 return error;
             if (live_ && s.error != InitialAiError::none)
-                return InitialAiError::none; // Commit proven exit; retain8 and selected handoff.
+                return InitialAiError::none; // Commit the consumed8 and remaining FIFO/selection.
+            if (live_) {
+                // live_depart removes8 before o, preserving its actual queue on success/failure.
+                if (s.journey || s.unbound_route || s.removed)
+                    return InitialAiError::none;
+                continue;
+            }
             const auto submitted =
                 people::prepare_local_control_prefix(s.control, {std::nullopt, true});
             if (!submitted.candidate)
                 return InitialAiError::preparation_failed;
             s.control = submitted.candidate->state;
             return InitialAiError::none; // Successful8 early stop, pending tail remains.
+        }
+        if (live_ && command[0] == 0) {
+            const auto motion = people::advance_motion(
+                s.position, {static_cast<float>(command[1]), static_cast<float>(command[2])},
+                s.control.flags);
+            s.position = motion.position;
+            if (!motion.waypoint_overlap)
+                return InitialAiError::none;
+            s.control.queue.erase(s.control.queue.begin());
+            continue;
+        }
+        if (live_ && command[0] == 10) {
+            const auto result = live_wander(s, random);
+            if (result != InitialAiError::none)
+                return result;
+            continue;
+        }
+        if (live_ && command[0] == 26) {
+            s.control.queue.erase(s.control.queue.begin());
+            s.definition_departed = s.removed = true;
+            return InitialAiError::none;
         }
         if (command[0] == 24) {
             const auto error = exit(s, tickets, random);

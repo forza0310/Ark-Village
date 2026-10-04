@@ -154,8 +154,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     };
     actor_animation.observe(animation_position(), animation_tick());
     const auto can_simulate = [&]() {
-        return !ui::blocks_world(view) && !game.state().paused &&
-               game.state().mode == app::Mode::normal;
+        return !ui::blocks_world(view) && !game.state().paused && game.simulation_eligible();
     };
     const auto advance_simulation = [&](double observed) {
         const auto due = simulation_clock.advance(observed, can_simulate());

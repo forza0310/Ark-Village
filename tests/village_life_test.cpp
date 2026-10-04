@@ -261,6 +261,7 @@ app::LifeActorState ready_actor(const app::Game &game) {
     actor.visits = {};
     actor.error = app::InitialAiError::none;
     actor.position = {1150.0F, 50.0F};
+    actor.cached_cell = {11, 0};
     return actor;
 }
 app::InitialAiTickets ticket_for(const people::ActivityCandidateSnapshot &snapshot,
@@ -377,8 +378,11 @@ void actor_handoff_and_month_boundary() {
     check(a.error == app::InitialAiError::unsupported_branch &&
               (a.pending_category || a.pending_definition || a.pending_activity),
           "unknown branch records its selected category, definition or activity without reroll");
-    check(!a.control.queue.empty() && a.control.queue.front()[0] == 8,
-          "pending departure remains in the actual actor queue");
+    // WORLD_DEPARTURE now removes8 before o. A category4 choice proceeds through its gate
+    // and activity6; source gaps preserve the resulting FIFO, rather than resurrecting old8.
+    check(a.pending_category != 4 && a.handoff != app::LifeHandoff::none,
+          "category4 no longer stops at selection; handoff names an actual missing consumer");
+    const auto retained_queue = a.control.queue;
     const auto actor_rounds = a.rounds;
     const auto pending = a.pending_category;
     const auto before_date = game.state().calendar;
@@ -386,6 +390,7 @@ void actor_handoff_and_month_boundary() {
     steps(game, 20);
     check(game.state().mode == app::Mode::normal && game.life_state()->rounds == actor_rounds &&
               game.life_state()->pending_category == pending &&
+              game.life_state()->control.queue == retained_queue &&
               game.state().calendar != before_date &&
               game.state().facilities.at(work).remaining_ticks == 260,
           "actor handoff preserves selection while calendar and new construction continue");

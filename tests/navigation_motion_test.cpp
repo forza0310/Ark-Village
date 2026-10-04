@@ -229,6 +229,80 @@ void motion_and_entry() {
     travel.next = 1;
     rejects([&] { people::advance_travel(map, travel, 0); });
 }
+void published_search_controls() {
+    world::RouteMap corridor{5, 1, std::vector<world::RouteCell>(5)};
+    for (auto &cell : corridor.cells) {
+        cell.category = world::RouteCategory::road;
+        cell.legacy_state = 3;
+    }
+    world::SearchLimits limits;
+    limits.max_expanded_cost = 5;
+    const auto partial = world::search(corridor, {0, 0}, limits);
+    check(partial.error == world::RouteError::none && partial.field &&
+              partial.field->expanded == 2 && world::valid_field(*partial.field),
+          "expansion threshold is inclusive and returns a valid partial field");
+    const auto frontier = world::trace(*partial.field, {2, 0});
+    check(frontier.error == world::RouteError::none && frontier.cost == 10 &&
+              frontier.steps == std::vector<world::Cell>{{1, 0}, {2, 0}},
+          "discovered frontier above expansion threshold remains traceable");
+    check(world::trace(*partial.field, {3, 0}).error == world::RouteError::unreachable,
+          "unexpanded frontier does not discover its successor");
+    limits.max_expansions = 2;
+    check(world::search(corridor, {0, 0}, limits).error == world::RouteError::none,
+          "expansion-cost stop precedes exhausted expansion-count budget");
+    limits.max_expanded_cost = 10;
+    check(world::search(corridor, {0, 0}, limits).error == world::RouteError::expansion_limit,
+          "inclusive threshold does not suppress expansion-count failure");
+    limits.max_expansions = 100;
+    limits.max_expanded_cost = 0;
+    const auto origin_only = world::search(corridor, {0, 0}, limits);
+    check(origin_only.field && origin_only.field->expanded == 1 &&
+              world::trace(*origin_only.field, {1, 0}).cost == 5 &&
+              !origin_only.field->distances[corridor.index({2, 0})],
+          "zero threshold still expands origin and retains its immediate frontier");
+    limits.max_cost = 4;
+    const auto pruned = world::search(corridor, {0, 0}, limits);
+    check(pruned.error == world::RouteError::cost_limit && !pruned.field,
+          "edge max_cost still rejects despite expansion threshold");
+    limits.max_cost = std::numeric_limits<std::int64_t>::max();
+    limits.max_expanded_cost = -1;
+    const auto invalid = world::search(corridor, {0, 0}, limits);
+    check(invalid.error == world::RouteError::invalid_limits && !invalid.field,
+          "negative expansion cost rejected");
+
+    // A blocked center creates two equal-cost detours. Reverse inventory must change only
+    // strict-less predecessor order, not distances, transition rules or target admission.
+    world::RouteMap detour{3, 3, std::vector<world::RouteCell>(9)};
+    for (auto &cell : detour.cells) {
+        cell.category = world::RouteCategory::road;
+        cell.legacy_state = 3;
+    }
+    detour.cells[detour.index({1, 1})] = {2, world::RouteCategory::blocked, 17, -1, {}};
+    const auto forward = world::search(detour, {1, 0});
+    world::SearchLimits reverse_limits;
+    reverse_limits.reverse_equal_cost = true;
+    const auto reverse = world::search(detour, {1, 0}, reverse_limits);
+    check(forward.field && reverse.field && forward.field->distances == reverse.field->distances &&
+              forward.field->expanded == reverse.field->expanded,
+          "reverse equal-cost inventory preserves distance field");
+    const auto left = world::trace(*forward.field, {1, 2});
+    const auto right = world::trace(*reverse.field, {1, 2});
+    check(left.error == world::RouteError::none && left.cost == 24 &&
+              left.steps == std::vector<world::Cell>{{0, 0}, {0, 1}, {0, 2}, {1, 2}},
+          "default retains smaller row-major equal-cost predecessor");
+    check(right.error == world::RouteError::none && right.cost == 24 &&
+              right.steps == std::vector<world::Cell>{{2, 0}, {2, 1}, {2, 2}, {1, 2}},
+          "explicit original policy retains larger row-major equal-cost predecessor");
+    check(forward.field->previous[detour.index({1, 2})] == detour.index({0, 2}) &&
+              reverse.field->previous[detour.index({1, 2})] == detour.index({2, 2}),
+          "equal total cost does not overwrite first predecessor");
+    reverse_limits.max_expanded_cost = 5;
+    const auto bounded_reverse = world::search(detour, {1, 0}, reverse_limits);
+    check(bounded_reverse.field && bounded_reverse.field->expanded == 3 &&
+              world::trace(*bounded_reverse.field, {2, 1}).cost == 12 &&
+              world::trace(*bounded_reverse.field, {1, 2}).error == world::RouteError::unreachable,
+          "reverse ordering composes with retained-frontier threshold");
+}
 void real_travel() {
     app::Game game;
     const auto map = game.route_map();
@@ -263,6 +337,7 @@ int main() {
         loaded_and_dynamic();
         binding_and_search();
         motion_and_entry();
+        published_search_controls();
         real_travel();
         std::cout << "PASS loaded map/navigation/motion checks=" << checks << '\n';
     } catch (const std::exception &e) {

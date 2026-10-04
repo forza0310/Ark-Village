@@ -144,6 +144,10 @@ void Game::step() {
         state_.mode = Mode::research_boundary;
         return;
     }
+    if (!ai_preview_enabled()) {
+        step_normal_world();
+        return;
+    }
     ++state_.simulation_steps;
     const bool first_visit = state_.event89_count == 0 && --state_.arrival_counter == 0;
     if (first_visit) {
@@ -153,12 +157,7 @@ void Game::step() {
         state_.adventurer = people::first_visit(data.first_character, data.spawn_points[choice]);
         ++state_.event89_count; // Latch before showing dialogue, never again on close.
         state_.mode = Mode::tutorial;
-        if (ai_preview_enabled())
-            start_ai_preview();
-        else
-            start_village_life();
-    } else if (state_.life) {
-        step_village_life();
+        start_ai_preview();
     }
     // Research two-pass order: actors see construction0 this round; completed facilities are
     // available to their next decision. UI, actors and quotes all use these current instances.
@@ -178,7 +177,7 @@ Error Game::update(int speed) {
     if (speed != 1 && speed != 2)
         return Error::invalid_input;
     auto next = *this;
-    for (int i = 0; i < speed && !next.state_.paused && next.state_.mode == Mode::normal; ++i)
+    for (int i = 0; i < speed && next.simulation_eligible(); ++i)
         next.step();
     *this = std::move(next);
     return Error::none;

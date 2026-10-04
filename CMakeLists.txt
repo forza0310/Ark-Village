@@ -39,14 +39,14 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
     src/people/actor_housekeeping.cpp src/people/combat_strategy.cpp
     src/people/combat_damage.cpp src/people/combat_influence.cpp
-    src/facilities/dungeon_crew.cpp src/facilities/dungeon_completion.cpp
+    src/facilities/dungeon_task.cpp src/facilities/dungeon_crew.cpp src/facilities/dungeon_completion.cpp
     src/people/decision.cpp
-    src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
+    src/app/world_schedule.cpp src/app/game_world.cpp src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
     src/people/delayed_reward.cpp src/people/human_growth.cpp
     src/people/hp.cpp src/facilities/arrival.cpp src/facilities/exit.cpp src/facilities/service.cpp
     src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
     src/app/initial_ai_check.cpp src/app/game_ai_preview.cpp
-    src/app/live_life_context.cpp src/app/game_life.cpp
+    src/app/live_life_context.cpp src/app/game_life.cpp src/app/live_departure.cpp src/app/live_motion.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -62,7 +62,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
-        src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
+        src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_timing ark_game ark_asset_metadata PkgConfig::RAYLIB)
@@ -78,6 +78,18 @@ if(ARK_BUILD_DESKTOP)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ark_live_world_motion_tests tests/live_world_motion_test.cpp)
+    target_link_libraries(ark_live_world_motion_tests PRIVATE ark_game)
+    ark_target(ark_live_world_motion_tests)
+    add_test(NAME live_world_paths_and_exit COMMAND ark_live_world_motion_tests)
+    add_executable(ark_world_schedule_tests tests/world_schedule_test.cpp)
+    target_link_libraries(ark_world_schedule_tests PRIVATE ark_game)
+    ark_target(ark_world_schedule_tests)
+    add_test(NAME world_schedule_protocol COMMAND ark_world_schedule_tests)
+    add_executable(ark_dungeon_task_tests tests/dungeon_task_test.cpp)
+    target_link_libraries(ark_dungeon_task_tests PRIVATE ark_game)
+    ark_target(ark_dungeon_task_tests)
+    add_test(NAME dungeon_task_success COMMAND ark_dungeon_task_tests)
     add_executable(ark_village_life_tests tests/village_life_test.cpp)
     target_link_libraries(ark_village_life_tests PRIVATE ark_game)
     ark_target(ark_village_life_tests)
@@ -212,6 +224,11 @@ if(BUILD_TESTING)
     add_test(NAME source_provenance COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/verify_assets.mjs"
         "${PROJECT_SOURCE_DIR}/assets")
     if(ARK_BUILD_DESKTOP)
+        add_executable(ark_character_status_tests tests/character_status_test.cpp src/desktop/character_status.cpp src/desktop/character_visibility.cpp)
+        target_include_directories(ark_character_status_tests PRIVATE src/desktop)
+        target_link_libraries(ark_character_status_tests PRIVATE ark_game)
+        ark_target(ark_character_status_tests)
+        add_test(NAME character_hp_render COMMAND ark_character_status_tests)
         add_executable(ark_boundary_render_tests tests/boundary_render_test.cpp src/desktop/boundary_render.cpp)
         target_include_directories(ark_boundary_render_tests PRIVATE src/desktop)
         target_link_libraries(ark_boundary_render_tests PRIVATE ark_game ark_asset_metadata PkgConfig::RAYLIB)

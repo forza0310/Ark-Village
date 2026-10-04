@@ -73,11 +73,20 @@ InitialAiError InitialAiSession::prepare_round(const InitialAiTickets &tickets,
     InitialAiError error = InitialAiError::none;
     const auto candidate = prepare_ai_schedule(schedule, [&](const auto &v, const auto &) {
         if (v.phase == AiSchedulePhase::human_decision)
-            error = decision(next, tickets);
-        else if (v.phase == AiSchedulePhase::human_execution)
-            error = execution(next, tickets, random);
+            error = live_ ? live_decision(next, random) : decision(next, tickets);
+        else if (v.phase == AiSchedulePhase::human_execution &&
+                 (!live_ || next.error == InitialAiError::none)) {
+            error = execution_prefix(next);
+            if (error == InitialAiError::none)
+                error = execution(next, tickets, random);
+            if (live_ && error == InitialAiError::none && !next.removed &&
+                next.error == InitialAiError::none)
+                error = live_tail(next);
+        }
         AiScheduleResponse response;
         response.accepted = error == InitialAiError::none;
+        response.remove = next.removed && (v.phase == AiSchedulePhase::human_decision ||
+                                           v.phase == AiSchedulePhase::human_execution);
         return response;
     });
     if (!candidate.candidate)

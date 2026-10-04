@@ -45,11 +45,19 @@ class InitialAiSession {
     InitialAiError round_random(std::mt19937 &random);
 
   private:
+    friend class Game; // Same-owner schedule consumes split c/d phases before one commit.
     InitialAiSession() = default;
     InitialAiError prepare_round(const InitialAiTickets &, std::mt19937 *);
     InitialAiError decision(InitialAiState &, const InitialAiTickets &) const;
     InitialAiError execution(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
     InitialAiError depart(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
+    InitialAiError live_depart(InitialAiState &, int activity, const InitialAiTickets &,
+                               std::mt19937 *) const;
+    InitialAiError live_decision(InitialAiState &, std::mt19937 *) const;
+    InitialAiError live_wander(InitialAiState &, std::mt19937 *) const;
+    InitialAiError execution_prefix(InitialAiState &) const;
+    InitialAiError live_tail(InitialAiState &) const;
+    InitialAiError cleanup(InitialAiState &) const;
     InitialAiError arrive(InitialAiState &) const;
     InitialAiError exit(InitialAiState &, const InitialAiTickets &, std::mt19937 *) const;
     world::RouteMap map_;

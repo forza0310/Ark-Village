@@ -6,6 +6,8 @@ namespace ark::app {
 // Resolve ordinary priority first, then consume separate category/facility tickets on this map.
 InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTickets &tickets,
                                         std::mt19937 *random) const {
+    if (live_)
+        return live_depart(s, s.control.queue.front()[1], tickets, random);
     const auto cell = people::world_cell(s.position);
     if (!cell)
         return InitialAiError::invalid_input;

@@ -29,7 +29,7 @@ world/loaded_map保留加载后证据，navigation提供加权距离场/回溯�
 people的activity_candidates/activity_choice/facility_choice/departure提供候选、两级选择及完整出发候选；票号显式输入，上层优先级由调用方负责。
 people/motion提供显式目标行程与一次性进入信号。上述纯规则已接入；actor_ai/ai_perception补资格和优先级，decision组合普通出发，actor_control准备本地控制/状态/漫游/装备候选。
 正常Game已接普通生活链；完整世界更新及其余跨所有者提交按已交付研究逐项迁入，缺证分支另登记。world/terrain按已证掩码连接道路，desktop/road_render按当前占用派生2×2/上下边缘PNG补块并进入共享深度队列；desktop/projection负责场景小步缩放/锚点/拾取，HUD与领域不随缩放变化。
-app/ai_schedule已接入实时名单两遍与删除/同轮追加纯规则，实际Game更新尚未接通完整所有者。
+app/ai_schedule提供实时名单两遍与删除/同轮追加；world_schedule在其上明确共同阶段，game_world.cpp将已有人物生活和施工接入正常Game，完整世界所有者仍未齐备。
 people/actor_effects分离显示/延迟/控制时点，weapon_choice提供武器/防具/饰品候选，human_growth与delayed_reward提供定义共享属性/职业成长和九步经验。
 各模块只返回候选/请求；组合测试验证装备延迟提交、共享成长与调度私有副本，不能自动推导完整世界已经运行。正常人物自主活动由Game的生活适配入口负责。
 people/actor_housekeeping已接c前缀/状态18、物理与留存清理候选；combat_ai公开接口对应strategy/damage/influence三个实现文件，接入策略、九向评分、物理/魔法、怪物成长和双侧影响场。事件原ID/当前对象身份分开，b恢复与c(state)/动作指令分开。
@@ -41,11 +41,17 @@ facilities的arrival/exit/service分离到达收入与使用退出；people/hp�
 显式--ai-preview由Game拥有同一会话，game_ai_preview.cpp协调获准轮次并投影只读的资金/人物/共享使用到既有UI；窗口按真实连续位置绘制，不使用motion检查覆盖。
 首访后仅推进AI，不推进日历，布局固定；本地随机仅按当前权重抽合法票号，未知离场/回退或1000轮预览保护结束本轮。正常建设启动不自动启用此预览。
 
-正常PlayMode::startup由game_life.cpp协调首名人物生活；State.life持久保存人物控制/运动/HP/成长/待交接状态，State.facility_life保存实例销售与占用，definition_progress保存共享等级/使用累计。
+正常PlayMode::startup由game_world.cpp的step_normal_world协调共同轮次，game_life.cpp负责持久状态创建/提交及UI投影；State.life保存人物控制/运动/HP/成长/待交接状态，State.facility_life保存实例销售与占用，definition_progress保存共享等级/使用累计。
+顺序为首访前段→人物c/live_decision→一次execution_prefix→FIFO→旧缓存位置/留存尾部→设施施工→最后配对阶段。首访同轮加入实时名单，删除请求按调度时点处理；当前仅零或一名人物且无怪物，最后配对无实际对象。协议不持有另一份耐久世界。
+轮首影响场尚未物化，因为没有战斗所有者；人气请求仍保留于人物requests，没有提交全部原版消费者，不能称为完整共同世界已经闭合。
 live_life_context.cpp每个获准轮次从当前Game构造InitialAiSession::from_village临时候选，重建当前地图绑定、邻接和等级/改良经营输入，成功后回写唯一聚合并丢弃适配器；正常模式不持久保存另一套地图、设施或资金。
 建设与到达收费均记入State.accounting唯一CashLedger，money仅为HUD投影；失败候选不改真实账本或随机状态。
 建设提交和施工完成递增layout_revision，已有行程按当前地图重新验证原目标与路线；建设模态/教程/暂停阻止后续轮次，日期、施工和已接生活在正常资格下共同推进。
-新增源表35/45等待与退出效果投影；已接旅店/普通服务和初局武器延迟链不代表所有装备消费者已完成。抽到类别3/4或尚未接的装备选择时保留队列、已选类别/定义并显示局部handoff，停止该人物而非整个日期/施工；不重抽掩盖缺分支，这不是原版等待状态。
+live_departure.cpp与live_motion.cpp接已证类别4入口选择、入口设施后活动6、真实无绑定地面路线与P到达；c移动连续位置而d尾部才重投影旧s，O目标身份独立，r保留O，不把出口身份伪装成商店。
+正常出发可显式采用原逆行主序同成本顺序及max_expanded_cost；后者保留已发现外沿而不是裁边。地面到达转c5，同次d可执行10产生小步漫游；下一c5需要L而缺已解锁区域minimum_y/遭遇聚合时明确交接。状态0的L本轮仍未接，不能把当前P/FIFO适配声称为完整c。
+新增源表35/45等待与退出效果投影；类别3/活动5仍缺共享住宅D初值而保护，尚未接装备消费亦保留真实请求。显式home条件夹具可验证Map.f出口→0/26→共享定义m1/退休，但不据夹具初始化新局D或m。
+未接分支保留队列、已选类别/定义并显示局部handoff，只停止该人物，日期/施工继续；不重抽掩盖缺分支，这不是原版等待状态。普通相机移动不再作为全局暂停资格，严格初局预览仍保留原镜头约束。
+探索task_success完整纯消费者已接设施模块；真实任务所有者、地图恢复和脚本/UI尚未进入正常Game。desktop按真实HP绘制原版矩形RGB血条，不因新增血条就注入新局战斗。
 
 启动顺序：参数→程序旁CPU素材校验→无窗口首访/AI检查或显示器检查→窗口/RAII资源→Game静态新局→输入/逻辑更新→绘制。
 静态输入为24×24加载后地图、8个保留原向量顺序与原ID的设施实例、5000G/10点数/50人气；首名冒险者420次有资格更新后免费加入。

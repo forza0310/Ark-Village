@@ -1,5 +1,6 @@
 // Normal startup's first-actor life loop. Game remains the only durable village owner.
 #include "ark/app/game.hpp"
+#include <algorithm>
 #include <stdexcept>
 
 namespace ark::app {
@@ -11,6 +12,7 @@ void Game::start_village_life() {
     actor.control.flags = visitor.flags;
     actor.control.queue = {{8, 0}};
     actor.position = visitor.position;
+    actor.cached_cell = visitor.cell;
     actor.definition = rules.first_definition;
     const auto stats = people::derive_human_stats(actor.definition, rules.professions);
     if (!stats.candidate || stats.candidate->combat != visitor.combat ||
@@ -22,20 +24,9 @@ void Game::start_village_life() {
     actor.weapon_reselect_counter = rules.weapon_reselect_counter;
     actor.satisfaction = visitor.satisfaction;
     state_.life = std::move(actor);
-    step_village_life(); // Same arrival round c/d, before the tutorial gates subsequent updates.
+    // The common scheduler admits this new actor to the same round c/d.
 }
-void Game::step_village_life() {
-    if (!state_.life || state_.life->error != InitialAiError::none)
-        return; // An explicit actor handoff does not prevent dates or construction advancing.
-    auto engine = InitialAiSession::from_village(*this, *state_.life);
-    auto candidate_random = random_;
-    const auto error = engine.round_random(candidate_random);
-    if (error != InitialAiError::none) {
-        state_.life->error = error;
-        ai_error_ = error;
-        return; // Failed numeric/structure round retains the last successful actor/world/RNG.
-    }
-    const auto &candidate = engine.state();
+void Game::commit_village_life(const InitialAiState &candidate) {
     state_.life = static_cast<const LifeActorState &>(candidate);
     state_.accounting = candidate.accounting;
     state_.next_cash_id = candidate.next_cash_id;
@@ -48,8 +39,22 @@ void Game::step_village_life() {
         shared.completed_uses = static_cast<std::uint64_t>(use.completed_uses);
         shared.upgrade_pending = use.upgrade_pending;
     }
-    random_ = candidate_random;
     ai_error_ = state_.life->error;
+    if (state_.life->removed) {
+        if (state_.life->definition_departed)
+            state_.departed_definitions[startup_data().first_character.definition_id] = 1;
+        const auto &binding = state_.life->destination_binding;
+        if (binding && world::arrival_matches(route_map(), *binding, state_.life->cached_cell)) {
+            auto &occupants = state_.facility_life.at(binding->instance).occupants;
+            const auto found = std::find(occupants.begin(), occupants.end(), state_.life->actor);
+            if (found != occupants.end())
+                occupants.erase(found);
+        }
+        state_.retired_life = std::move(state_.life);
+        state_.life.reset();
+        state_.adventurer.reset();
+        return;
+    }
     project_village_actor();
 }
 // Existing HUD, roster and renderer consume one read projection of the actual life actor.

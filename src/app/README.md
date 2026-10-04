@@ -2,7 +2,7 @@
 
 Game是唯一可变村庄聚合，接口在`include/ark/app/game.hpp`，协调设施、人物、资金和更新。
 confirm复用预览校验，在候选状态上分配实例、登记CashLedger支出后提交；拒绝不改资金、ID或占地。State.accounting是唯一现金账本，money仅供既有HUD读取。
-update推进1/2个有资格逻辑步，目录/放置/教程/镜头/暂停不积累时间。
+update推进1/2个有资格逻辑步，目录/放置/教程/暂停不积累时间；普通相机移动不再暂停整个世界，严格初局预览仍保留镜头资格。
 首名冒险者420次更新后免费加入，事件89先锁存再展示，关闭不重复创建。
 StartupData在构建期生成，不依赖research/Node运行时；启动参数独立在ark_launch。
 ark_timing仅标准C++，不更改Game或领域的tick单位。original_loop.hpp/cpp消费1e50a60维护loop_pacing：默认v21、整数47ms最小开始间隔、实际观测提交、超时不补算，以及两倍速外层次数资格。
@@ -13,7 +13,7 @@ facility_queries.cpp提供只读经营/邻接视图，按当前完整实例占�
 职业输入仅固定无继承初局已解锁定义中的农家2/木匠1，不能替换为当前场景人数或推广到未知后续职业。
 map_queries.cpp按加载后底图和当前实例重建访问绑定，route_to只读查询，不修改资金/人物。
 reset时原ID+1映射到稳定非零ID，保留原向量顺序instance_order，新增实例使用单调ID并追加顺序。
-建设审批读取加载后逻辑状态3/4；显示ID不作为可建判据。围栏/外入口附加覆盖仍待绘制绑定。
+建设审批读取加载后逻辑状态3/4；显示ID不作为可建判据。围栏/外入口附加覆盖由desktop按发布标记绘制，领域不持有纹理。
 依据：[STARTUP](../../research/dungeon_village_1/rules/STARTUP.md)，参照[研究聚合](../../research/dungeon_village_1/prototype/src/startup.cpp)。
 
 ## 实时名单调度
@@ -23,7 +23,9 @@ ai_schedule.hpp/cpp消费研究d412d6e的已获准世界轮次：先全部人物
 名单身份按种类隔离，原始ID0有效；调度接口的原始名单身份不能直接当people::ActorId非零快照身份。
 handler看到本轮候选名单，必须只修改独立所有者副本并暂存外部请求。失败或限额返回无候选，调用方丢弃副本；调度器不能撤销handler已经执行的真实世界写入。
 人类执行返回删除且绑定设施时，先请求释放后删名单。admitted由真实运行所有者解决模态资格，安全dispatch_limit不是原版玩法人数限制。
-产品已编译该纯调度并做组合验证；正常生活与显式AI预览均通过InitialAiSession消费人物两遍调度，怪物/物体/遭遇等完整世界所有者尚未接通。
+world_schedule.hpp/cpp组合共同阶段与上述实时名单协议，显式消费者不能无条件冒充已执行世界副作用；owned适配器在完整调用方副本上准备，晚失败不提交半状态。
+正常Game的game_world.cpp/step_normal_world按首访→c/live_decision→一次execution_prefix→FIFO→缓存/留存尾部→设施更新→final阶段消费现有人物与施工，首次同轮追加和删除时点走同一协议。game_life.cpp只负责人物创建、候选提交与投影。
+当前influence未物化（无战斗所有者），popularity仍由life.requests保留而未接全消费者，final只有零/一人且无怪物的空配对；怪物/物体/遭遇等真实所有者仍未接通，不能将阶段经过当成完整世界运行。
 依据：[聚合遍历](../../research/dungeon_village_1/rules/ai/LIFECYCLE.md#聚合遍历与同轮新建)。
 
 ## 真实初局AI私有会话
@@ -38,11 +40,14 @@ initial_ai_data.hpp从固定源表编译23职业/33武器及28/30/33/35/45服务
 
 ## 正常人物生活
 
-life_state.hpp定义持久人物与设施服务状态；game_life.cpp协调首访同轮c/d、后续轮次提交及人物UI投影。Game::State.life持有人物，facility_life持有各实例销售/占用，definition_progress仍是定义共享进度唯一来源。
+life_state.hpp定义持久人物与设施服务状态；Game::State.life持有人物，facility_life持有各实例销售/占用，definition_progress仍是定义共享进度唯一来源。
 live_life_context.cpp从当前地图、设施、施工阶段、邻接、等级/改良、账本构造每轮临时候选；成功后一次回写Game并丢弃InitialAiSession，失败不留下部分扣款/占用/随机消费。
 建设和访问读写同一CashLedger及单调现金事件ID。布局变更/施工完成递增layout_revision，当前行程重校验原目标和路线，不保留初局路径快照。
 关闭首访教程后自主生活与日期、施工共用正常更新资格；暂停/菜单/建设模态冻结它们，恢复不积累逻辑债务，倍速每次重新验资格。首个月报准备前1456步保护保留。
-未接的活动/装备选择保留真实队列与pending_category/pending_definition/pending_activity，局部error停止该人物并向UI交接；日期、施工继续。该保护是产品边界，不能称为原版等待或通过重抽跳过。
+live_departure.cpp/live_motion.cpp接类别4门口设施→活动6→真实地面路线→P到达转5→同次d执行10小步漫游；c不提前刷新旧s，目标O与缓存位置独立，r清理保留原O/路径身份。
+正常出发显式启用已证reverse_equal_cost和max_expanded_cost，严格初局诊断默认搜索不变。普通FIFO成功8早停而24/失败r继续同次解释，d前缀仅执行一次。
+下一c5触及L前缺minimum_y/遭遇聚合而交接；minimum_y不能猜town.bottom，状态0的L也尚未接，不宣称完整c。共享home D缺初值时类别3/活动5保留请求；显式home夹具可验证实际Map.f出口0/26、定义m1与退休，但不写初始m。
+未接活动/装备选择保留真实队列与pending_category/pending_definition/pending_activity，局部error停止该人物并向UI交接；日期、施工继续。该保护是产品边界，不能称为原版等待或通过重抽跳过。
 
 ## 主程序可视预览
 

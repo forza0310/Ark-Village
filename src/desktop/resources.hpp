@@ -10,13 +10,16 @@
 namespace ark::desktop {
 class Sprites {
   public:
-    enum class Binding { map, farmer, secretary, common, common2, window };
+    enum class Binding { map, farmer, secretary, common, common2, window, human, monster };
     explicit Sprites(std::filesystem::path root);
     ~Sprites();
     Sprites(const Sprites &) = delete;
     Sprites &operator=(const Sprites &) = delete;
     void draw(const std::string &sprite, int frame, Vector2 anchor, Color tint = WHITE,
-              Binding binding = Binding::map, float scale = 1);
+              Binding binding = Binding::map, float scale = 1, int image_override = -1);
+    // Source actor SEB indices and profession/body image indices are independent namespaces.
+    void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor,
+               float scale = 1);
     // Raw published PNG rectangles for tiled bars and nine-slice window components.
     void image(const std::string &name, Rectangle source, Rectangle destination,
                Binding binding = Binding::common, Color tint = WHITE);
@@ -27,6 +30,8 @@ class Sprites {
     std::filesystem::path root_;
     std::map<int, std::filesystem::path> images_;
     std::map<int, std::filesystem::path> common_images_, common2_images_;
+    std::map<std::string, std::map<int, std::filesystem::path>> actor_images_;
+    std::map<std::string, std::vector<std::string>> actor_sprites_;
     std::map<std::string, assets::SpriteDefinition> sprites_;
     std::map<std::string, Texture2D> textures_;
     Texture2D &texture(const std::filesystem::path &path);
@@ -34,7 +39,7 @@ class Sprites {
 };
 class Text {
   public:
-    explicit Text(const std::filesystem::path &font_path);
+    explicit Text(const std::filesystem::path &font_path, const std::string &extra_glyphs = {});
     ~Text();
     Text(const Text &) = delete;
     Text &operator=(const Text &) = delete;

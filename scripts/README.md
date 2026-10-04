@@ -7,6 +7,9 @@
 - compile_initial_ai.mjs：从已校验原表投影23职业/33武器、首访定义和28/30/33/35/45服务字段；校验数组/范围，不猜其他未接设施效果含义。生成initial_ai_rules供严格初局诊断和正常人物生活临时适配器复用，不生成第二套可变世界。
 - import_research.mjs：按显示/SEB绑定复制素材，生成assets/SOURCES.json，不是常规构建步骤。
 - verify_assets.mjs：核对产品副本哈希/尺寸，不依赖research运行目录。
+- import_world_assets.mjs：完整世界的人物/怪物/地图/共用图像目录，已有文件须与维护源相同才复用；不覆盖不同版本。导入前二次核对读取集，统一更新assets/SOURCES.json。
+- import_world_research.mjs：冻结完整世界维护源码/测试/数据，迁入simulation模块，记录源与产品SHA256；仅显式更新时运行。
+- simulation/compile_startup*.mjs：从assets/simulation的固定目录构建完整C++定义/脚本；simulation/verify_sources.mjs独立验证产品快照，不读取research。
 
 导入：`node scripts/import_research.mjs research/dungeon_village_1 assets`。先检查范围/版本，导入后核对差异并重跑验收。
 只刷新已发布UI素材：追加`--ui-only`，保留原数据/地图/人物快照和清单，避免research并行推进时静默升级业务输入。

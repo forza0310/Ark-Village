@@ -52,10 +52,11 @@ Sprites::~Sprites() {
         UnloadTexture(entry.second);
 }
 void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color tint,
-                   Binding binding, float scale) {
+                   Binding binding, float scale, int image_override) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
-    const char *group = binding == Binding::farmer                                    ? "human"
+    const char *group = binding == Binding::farmer || binding == Binding::human       ? "human"
+                        : binding == Binding::monster                                 ? "monster"
                         : binding == Binding::common2                                 ? "common2"
                         : binding == Binding::secretary || binding == Binding::common ? "common"
                                                                                       : "image";
@@ -70,7 +71,8 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
             if (binding == Binding::secretary && p.image_index != 126)
                 throw std::runtime_error("Secretary image binding changed");
             const auto path =
-                binding == Binding::farmer      ? root_ / "human/chara_flower00.png"
+                image_override >= 0 ? root_ / group / actor_images_.at(group).at(image_override)
+                : binding == Binding::farmer    ? root_ / "human/chara_flower00.png"
                 : binding == Binding::secretary ? root_ / "common/chara_hishoko01.png"
                 : binding == Binding::common    ? root_ / group / common_images_.at(p.image_index)
                 : binding == Binding::common2   ? root_ / group / common2_images_.at(p.image_index)
@@ -85,6 +87,24 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                             p.width * scale, p.height * scale},
                            {0, 0}, 0, tint);
         }
+}
+void Sprites::actor(bool monster, int sprite_index, int image_id, int frame, Vector2 anchor,
+                    float scale) {
+    const std::string group = monster ? "monster" : "human";
+    if (!actor_sprites_.count(group)) {
+        std::vector<std::string> sprites;
+        for (const auto &row : assets::parse_tsv(read_bytes(root_ / group / "seb.inf"))) {
+            if (row.size() != 1 || std::filesystem::path(row[0]).has_parent_path())
+                throw std::runtime_error("Invalid actor sprite index");
+            sprites.push_back(row[0]);
+        }
+        actor_images_.emplace(group, image_index(root_, group.c_str()));
+        actor_sprites_.emplace(group, std::move(sprites));
+    }
+    if (sprite_index < 0 || image_id < 0)
+        throw std::runtime_error("Invalid actor sprite/image index");
+    draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite_index)), frame, anchor, WHITE,
+         monster ? Binding::monster : Binding::human, scale, image_id);
 }
 const assets::SpriteDefinition &Sprites::definition(const std::filesystem::path &relative) {
     auto found = sprites_.find(relative.string());
@@ -150,7 +170,8 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
         throw std::runtime_error("UI image rectangle outside atlas");
     DrawTexturePro(value, source, destination, {0, 0}, 0, tint);
 }
-Text::Text(const std::filesystem::path &font_path) : font_path_(font_path) {
+Text::Text(const std::filesystem::path &font_path, const std::string &extra_glyphs)
+    : font_path_(font_path) {
     if (!std::filesystem::is_regular_file(font_path))
         throw std::runtime_error("Chinese font not found; use --font TTF");
     std::string glyphs =
@@ -167,12 +188,19 @@ Text::Text(const std::filesystem::path &font_path) : font_path_(font_path) {
     for (const auto &v : app::startup_data().first_talk)
         glyphs += v;
     glyphs += app::startup_data().first_character.name;
+    glyphs += extra_glyphs;
     int count{};
     int *raw = LoadCodepoints(glyphs.c_str(), &count);
     if (!raw)
         throw std::runtime_error("Cannot decode font codepoints");
-    const std::set<int> unique(raw, raw + count);
+    std::set<int> unique(raw, raw + count);
     UnloadCodepoints(raw);
+    // Script tables include line/tab separators; layout consumes them without raster glyphs.
+    for (auto it = unique.begin(); it != unique.end();)
+        if (*it < 32 || *it == 127)
+            it = unique.erase(it);
+        else
+            ++it;
     codepoints_.assign(unique.begin(), unique.end());
     prepare(1);
 }

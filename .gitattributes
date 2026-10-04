@@ -2,6 +2,12 @@
 *.png -text
 *.seb -text
 assets/data/** -text -eol
+assets/simulation/startup/** -text -eol
+assets/simulation/world/** -text -eol
+assets/simulation/scripts/original/** -text -eol
+assets/simulation/tenantData.txt -text -eol
 assets/image/*.inf -text -eol whitespace=cr-at-eol
 assets/common/*.inf -text -eol whitespace=cr-at-eol
 assets/common2/*.inf -text -eol whitespace=cr-at-eol
+assets/human/*.inf -text -eol whitespace=cr-at-eol
+assets/monster/*.inf -text -eol whitespace=cr-at-eol

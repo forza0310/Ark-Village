@@ -1,0 +1,408 @@
+{
+  "apk_sha256": "1e52408aeaebec2d92a5e50b8c0d964566d0038456bc9b081e18b7d3446a4ef5",
+  "scope": "static_unmodified_first_play_reset_not_runtime_capture",
+  "resources": {
+    "money": 5000,
+    "village_points": 10,
+    "popularity": 50
+  },
+  "calendar": {
+    "year_index": 0,
+    "month_index": 3,
+    "subperiod_index": 0,
+    "counter": 0,
+    "display_year": 1,
+    "display_month": 4,
+    "subperiod_threshold": 10800
+  },
+  "reset": {
+    "scene_characters": 0,
+    "unlocked_character_definitions": [
+      1,
+      2,
+      3
+    ],
+    "arrival_counter": 420,
+    "active_boundary_index": 0
+  },
+  "boundary": {
+    "inclusive": {
+      "min_x": 6,
+      "max_x": 17,
+      "min_y": 2,
+      "max_y": 10
+    },
+    "build_interior": {
+      "min_x": 7,
+      "max_x": 16,
+      "min_y": 3,
+      "max_y": 9
+    },
+    "source_town_entrance": [
+      [
+        11,
+        2
+      ],
+      [
+        12,
+        2
+      ]
+    ],
+    "reconstructed_town_entrance": [
+      [
+        11,
+        2
+      ],
+      [
+        12,
+        2
+      ]
+    ],
+    "reconstructed_outer_entrance": [[11,10],[12,10]],
+    "character_spawn_minimum_y": 2,
+    "world_overlap_boundary_y": 2,
+    "spawn_points": [
+      [
+        11,
+        0
+      ],
+      [
+        12,
+        0
+      ]
+    ]
+  },
+  "map_seed_instances": [
+    {
+      "x": 11,
+      "y": 10,
+      "mapchip_id": 8,
+      "source_variant": 0,
+      "definition_id": 83,
+      "kind": 5,
+      "name": "entranceOut02.seb",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 12,
+      "y": 10,
+      "mapchip_id": 9,
+      "source_variant": 0,
+      "definition_id": 84,
+      "kind": 5,
+      "name": "entranceOut03.seb",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 10,
+      "y": 6,
+      "mapchip_id": 44,
+      "source_variant": 0,
+      "definition_id": 33,
+      "kind": 3,
+      "name": "包子铺",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 10,
+      "y": 5,
+      "mapchip_id": 48,
+      "source_variant": 0,
+      "definition_id": 28,
+      "kind": 3,
+      "name": "旅店",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 12,
+      "y": 5,
+      "mapchip_id": 50,
+      "source_variant": 0,
+      "definition_id": 30,
+      "kind": 3,
+      "name": "武器店",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 13,
+      "y": 5,
+      "mapchip_id": 28,
+      "source_variant": 0,
+      "definition_id": 66,
+      "kind": 2,
+      "name": "向日葵",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 11,
+      "y": 2,
+      "mapchip_id": 0,
+      "source_variant": 0,
+      "definition_id": 75,
+      "kind": 4,
+      "name": "entrance00.seb",
+      "orientation": 0,
+      "construction_state": 1
+    },
+    {
+      "x": 12,
+      "y": 2,
+      "mapchip_id": 1,
+      "source_variant": 0,
+      "definition_id": 76,
+      "kind": 4,
+      "name": "entrance01.seb",
+      "orientation": 0,
+      "construction_state": 1
+    }
+  ],
+  "unlocked_facility_definitions": [
+    18,
+    24,
+    28,
+    30,
+    31,
+    33,
+    35,
+    45,
+    66
+  ],
+  "initial_catalog": [
+    {
+      "id": 18,
+      "name": "道",
+      "kind": 6,
+      "tab": 0,
+      "flags": 21,
+      "priceBase": 10,
+      "shape": 0,
+      "constructionBase": 60,
+      "effective_price": 10,
+      "construction_counter_threshold": null
+    },
+    {
+      "id": 24,
+      "name": "入住募集",
+      "kind": 13,
+      "tab": 0,
+      "flags": 69,
+      "priceBase": 100,
+      "shape": 0,
+      "constructionBase": 1,
+      "effective_price": 100,
+      "construction_counter_threshold": 1
+    },
+    {
+      "id": 28,
+      "name": "旅店",
+      "kind": 3,
+      "tab": 1,
+      "flags": 101,
+      "priceBase": 1000,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 1000,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 30,
+      "name": "武器店",
+      "kind": 3,
+      "tab": 1,
+      "flags": 101,
+      "priceBase": 1000,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 1000,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 31,
+      "name": "防具店",
+      "kind": 3,
+      "tab": 1,
+      "flags": 103,
+      "priceBase": 1000,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 1000,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 33,
+      "name": "包子铺",
+      "kind": 3,
+      "tab": 2,
+      "flags": 262245,
+      "priceBase": 400,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 400,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 35,
+      "name": "面包房",
+      "kind": 3,
+      "tab": 2,
+      "flags": 262247,
+      "priceBase": 600,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 600,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 45,
+      "name": "花店",
+      "kind": 3,
+      "tab": 1,
+      "flags": 131175,
+      "priceBase": 500,
+      "shape": 0,
+      "constructionBase": 400,
+      "effective_price": 500,
+      "construction_counter_threshold": 280
+    },
+    {
+      "id": 66,
+      "name": "向日葵",
+      "kind": 2,
+      "tab": 0,
+      "flags": 37,
+      "priceBase": 400,
+      "shape": 0,
+      "constructionBase": 60,
+      "effective_price": 200,
+      "construction_counter_threshold": null
+    }
+  ],
+  "initial_catalog_commands": {
+    "remove": {
+      "tab": 0,
+      "insert_index": 1,
+      "price": 0
+    },
+    "move": {
+      "available": false,
+      "guard": "UserData.k(32)"
+    }
+  },
+  "first_arrival": {
+    "definition_id": 1,
+    "name": "丰田龟次郎",
+    "flags": 9,
+    "job_id": 1,
+    "job_name": "农家",
+    "sex": 0,
+    "job_level": 1,
+    "effort": 0,
+    "satisfaction": 0,
+    "legacy_D": [0, 0, 0, 0],
+    "legacy_m": 0,
+    "base_attributes": [
+      40,
+      5,
+      5,
+      5,
+      5,
+      5
+    ],
+    "job_percentages": [
+      55,
+      55,
+      55,
+      50,
+      50,
+      50
+    ],
+    "derived_attributes": [
+      22,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "equipment_ids": [
+      0,
+      -1,
+      -1,
+      -1
+    ],
+    "weapon_name": "短剑",
+    "combat": [
+      22,
+      7,
+      2,
+      2
+    ],
+    "initial_hp_slots": [
+      22,
+      22,
+      22
+    ],
+    "instance_uid": 0,
+    "scene_count_before": 0,
+    "scene_count_after": 1,
+    "tutorial_event_id": 89,
+    "talk_id": 69,
+    "talk_page_id": 0
+  },
+  "render": {
+    "initial_camera": {
+      "x": 426,
+      "y": -72
+    },
+    "job_sprite_index": 20,
+    "image": "../../assets/original/human/chara_flower00.png",
+    "walk_seb": "../../assets/original/human/walk00.seb",
+    "walk_frame0": {
+      "source": [
+        0,
+        0,
+        18,
+        24
+      ],
+      "offset": [
+        -9,
+        -24
+      ],
+      "flip": [
+        false,
+        false
+      ]
+    },
+    "spawn_world_coordinates": [
+      [
+        1150,
+        0,
+        50
+      ],
+      [
+        1250,
+        0,
+        50
+      ]
+    ]
+  },
+  "loaded_map_delivery": {
+    "cells": "LOADED_MAP.tsv",
+    "instances": "LOADED_INSTANCES.tsv",
+    "evidence_level": "static_reconstruction_not_runtime_capture",
+    "scope": "level_zero_no_inheritance_unadvanced_tile_fields_and_instance_identity"
+  },
+  "unresolved": [
+    "runtime_capture_and_remaining_instance_statistics",
+    "first_arrival_facing_and_first_activity",
+    "all_repeat_and_cancel_paths",
+    "full_modal_input_stack_and_physical_hotspots",
+    "runtime_cross_version_visual_equivalence"
+  ]
+}

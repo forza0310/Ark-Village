@@ -1,7 +1,9 @@
 # 运行资源
 
 新增新局静态数据、源地图PNG/SEB、初期建筑、农家人物、秘书与窗底。
-108份文件的来源/哈希/字节数/PNG尺寸见[SOURCES.json](SOURCES.json)，由scripts/import_research.mjs原样复制。
+616份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
+完整世界新增human/monster/image/common的维护目录副本，由scripts/import_world_assets.mjs原样复制；包含职业/性别图集、全部动作SEB、怪物体型与地图设施，不用农家图片代替所有人物。
+simulation保存完整世界独立发布数据及源码来源清单，构建期生成目录/脚本；与现有data切片版本分别校验，不在运行时互相覆盖。
 人物行走使用human/walk00..03四套原始SEB与同一农家图集；每方向四帧、独立24像素行、统一脚底锚点，启动时校验全部16帧，无运行时research依赖。
 新增common/common2上下栏、菜单/图标/手形、日期/属性数字、人气/点数、内容角/分类/方向箭头等UI资源。
 设施详情新增arrow01/arrow02及icon_param00；road00的全部16个邻接帧在启动时检查实际PNG边界。

@@ -2,8 +2,10 @@
 #include "ark/app/game.hpp"
 #include "ark/app/initial_ai_check.hpp"
 #include "ark/app/launch_options.hpp"
+#include "ark/simulation/startup_world_runtime.hpp"
 #include "game_view.hpp"
 #include "resources.hpp"
+#include "world_view.hpp"
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -15,17 +17,37 @@ int main(int argc, char **argv) {
             throw std::runtime_error(parsed.error);
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
-            std::cout << "ark_village [--check|--check-ai] [--ai-preview] [--paused] [--font TTF] "
+            std::cout << "ark_village [--check|--check-ai] [--ai-preview|--world] [--paused] "
+                         "[--font TTF] "
                          "[--size W H] "
                          "[--frames N] [--verify-play] [--tick-rate 1..240] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
-                         "arrival|visitor|motion|ai]\n";
+                         "arrival|visitor|motion|ai|world-active|world-month]\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);
         const auto assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
         ark::desktop::check_assets(assets);
+        if (options.world) {
+            if (options.mode == ark::app::LaunchMode::check) {
+                using namespace ark::simulation;
+                // The bootstrap is discarded on return; the runtime is the only live owner.
+                auto session = [] {
+                    StartupSession bootstrap;
+                    return StartupWorldRuntimeSession(bootstrap.state(),
+                                                      rules::WorldRandomStream::from_java_seed(1));
+                }();
+                const auto result = session.update();
+                if (result.error != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("Complete world startup check failed");
+                std::cout << "PASS packaged complete world, funds="
+                          << session.state().scene.world.world.ai.accounting.funds() << '\n';
+            } else {
+                ark::desktop::run_world_game(options, assets);
+            }
+            return 0;
+        }
         if (options.mode == ark::app::LaunchMode::check_ai) {
             for (const auto &c : ark::app::check_initial_ai())
                 std::cout << "PASS initial AI birth=" << c.birth.x << ',' << c.birth.y

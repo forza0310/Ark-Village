@@ -27,6 +27,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             options.paused = true;
         } else if (argument == "--ai-preview") {
             options.ai_preview = true;
+        } else if (argument == "--world") {
+            options.world = true;
         } else if (argument == "--verify-play") {
             options.verify_play = true;
         } else if (argument == "--inspect-page") {
@@ -36,7 +38,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
                 page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
-                page != "ai")
+                page != "ai" && page != "world-active" && page != "world-month")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -81,6 +83,14 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         return {std::nullopt, "--ai-preview requires a window run"};
     if (options.inspect_page == "ai")
         options.ai_preview = true;
+    const bool world_inspection =
+        options.inspect_page == "world-active" || options.inspect_page == "world-month";
+    if (world_inspection && !options.world)
+        return {std::nullopt, "World inspection requires --world"};
+    if (options.world && (options.ai_preview || options.verify_play || options.tick_rate != 0 ||
+                          options.mode == LaunchMode::check_ai ||
+                          (!options.inspect_page.empty() && !world_inspection)))
+        return {std::nullopt, "--world cannot be combined with legacy slice diagnostics"};
     if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")
         return {std::nullopt, "--ai-preview cannot be combined with a different inspection page"};
     if (options.verify_play &&

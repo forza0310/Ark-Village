@@ -16,6 +16,10 @@
 
 ## 当前实现
 
+完整世界接入新增`ark_world_rules`与`ark_world_runtime`，接口在`include/ark/simulation`，实现按规则、初始化、路由、场景、到访、日历、页面、任务与非人物消费者分文件。固定源和机械改写哈希见`assets/simulation/SOURCES.json`；全部定义/脚本构建时从产品副本生成。
+`ark_world_simulation`和`ark_village --world`只创建完整运行时，bootstrap投影后销毁。地图、共同账本、随机、人物/怪物、共享定义和页面均由一个Owner持有，路由/脚本/收尾只是事务投影。普通Game建设切片仍为默认入口；两者不并跑、不互相同步，玩家建设尚待直接写新Owner的桥接。
+以下Game说明属于默认建设切片。完整世界的框架轮次、可见性缓存、页栈和真实跨月逻辑单独沿用维护运行时，不能套用旧1456步保护或单人物state.life。
+
 标准C++的ark_game包含world、facilities、people、economy与app聚合；ark_launch负责参数，ark_asset_metadata负责维护SEB/TSV子集。
 ark_timing的app/SimulationClock负责平台时钟到离散外层更新的适配；Game仍只接收逻辑步，不依赖raylib或秒数。默认OriginalLoopPacing采用整数47ms最小开始间隔、实际观测提交、卡顿不补算的桌面政策；最新研究确认原门槛位于render/input后段，产品独立更新截止不能视为原框架循环等价。桌面单调时钟与原Android墙钟也有平台差异。
 逻辑截止与60FPS绘制/输入截止共同决定等待，逻辑可在绘制之间运行；暂停/模态只阻止世界工作，不积累债务，重开清时钟。--tick-rate显式覆盖才采用FixedStepClock的固定频率/暂停清积累/最多8次补算实验政策。二倍速增加有资格逻辑轮数，人物每步6.7单位不变；47ms静态门槛不是恒定原版FPS动态认证。

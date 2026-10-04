@@ -24,6 +24,16 @@ target_include_directories(ark_timing PUBLIC include)
 ark_target(ark_timing)
 
 find_program(ARK_NODE NAMES node REQUIRED)
+include(cmake/WorldSimulation.cmake)
+add_executable(ark_world_simulation src/app/world_simulation_main.cpp)
+target_link_libraries(ark_world_simulation PRIVATE ark_world_runtime)
+set_target_properties(ark_world_simulation PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+ark_target(ark_world_simulation)
+if(BUILD_TESTING)
+    add_test(NAME world_simulation_cli COMMAND ${CMAKE_COMMAND}
+        "-DWORLD_SIMULATION=$<TARGET_FILE:ark_world_simulation>"
+        -P "${PROJECT_SOURCE_DIR}/tests/world_simulation_cli_test.cmake")
+endif()
 set(ARK_STARTUP_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_data.cpp")
 add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
@@ -61,12 +71,12 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
-        src/desktop/playability_probe.cpp
+        src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_scene.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
-    target_link_libraries(ark_village PRIVATE ark_launch ark_timing ark_game ark_asset_metadata PkgConfig::RAYLIB)
+    target_link_libraries(ark_village PRIVATE ark_launch ark_timing ark_game ark_world_runtime ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
         target_link_libraries(ark_village PRIVATE "-framework CoreGraphics")
     endif()
@@ -76,6 +86,18 @@ if(ARK_BUILD_DESKTOP)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/bin/assets")
     add_dependencies(ark_village ark_package_assets)
+    if(BUILD_TESTING)
+        add_executable(ark_world_scene_tests tests/world_scene_test.cpp
+            src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
+            src/desktop/character_status.cpp src/desktop/character_visibility.cpp
+            src/desktop/ui/layout.cpp)
+        target_include_directories(ark_world_scene_tests PRIVATE src/desktop)
+        target_link_libraries(ark_world_scene_tests PRIVATE ark_world_runtime ark_game
+            ark_asset_metadata PkgConfig::RAYLIB)
+        ark_target(ark_world_scene_tests)
+        add_test(NAME world_scene_projection_and_animation COMMAND ark_world_scene_tests)
+        add_test(NAME complete_world_packaged_check COMMAND ark_village --world --check)
+    endif()
 endif()
 
 if(BUILD_TESTING)

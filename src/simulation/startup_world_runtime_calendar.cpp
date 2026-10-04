@@ -151,6 +151,14 @@ bool write_tasks(State &s, const ref::WorldCalendarTasksState &r) {
     return true;
 }
 } // namespace
+bool refresh_startup_world_runtime_rank(State &state) {
+    const auto status = ref::prepare_world_rank_status(tasks(state));
+    if (!status)
+        return false;
+    state.rank_met = status->met;
+    state.rank_values = status->values;
+    return true;
+}
 void configure_startup_world_runtime_calendar_adapter(ref::WorldRuntimeAdapter<State> &a) {
     a.maintenance = {maintenance, write_maintenance};
     a.tasks = {tasks, write_tasks};

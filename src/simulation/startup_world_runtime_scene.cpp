@@ -190,7 +190,13 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
         s.global_updates = value.global_updates;
         return true;
     };
-    const auto focus_adapter = adapter;
+    // W仅需要这四个执行入口；捕获整份adapter会在每次场景回调复制所有脚本目录。
+    auto focus_dependencies = std::make_shared<ref::WorldRuntimeAdapter<State>>();
+    focus_dependencies->prefix_effects = adapter.prefix_effects;
+    focus_dependencies->actors.owned_command = adapter.actors.owned_command;
+    focus_dependencies->actors.event = adapter.actors.event;
+    focus_dependencies->actors.projected_facing = adapter.actors.projected_facing;
+    const std::shared_ptr<const ref::WorldRuntimeAdapter<State>> focus_adapter = focus_dependencies;
     adapter.scene_other = [focus_adapter](const State &current,
                                           const ref::WorldSceneCall &call) -> std::optional<Step> {
         auto s = current;
@@ -224,7 +230,7 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 return {}; // 非空页面/建设输入必须走已证命令消费者。
             break;
         case Stage::focus_actor: {
-            auto next = advance_startup_world_focus(s, focus_adapter);
+            auto next = advance_startup_world_focus(s, *focus_adapter);
             if (!next)
                 return {};
             s = std::move(*next);

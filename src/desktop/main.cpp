@@ -17,13 +17,18 @@ int main(int argc, char **argv) {
             throw std::runtime_error(parsed.error);
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
-            std::cout << "ark_village [--check|--check-ai] [--ai-preview|--world] [--paused] "
+            std::cout << "ark_village [--check|--check-ai] [--world|--legacy-slice|--ai-preview] "
+                         "[--paused] "
                          "[--font TTF] "
                          "[--size W H] "
                          "[--frames N] [--verify-play] [--tick-rate 1..240] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
-                         "arrival|visitor|motion|ai|world-active|world-month]\n";
+                         "arrival|visitor|motion|ai|world-active|world-month|world-rank]\n"
+                         "Default: continuous world. --world is an explicit alias.\n"
+                         "--legacy-slice opens the former construction slice. --check-ai, "
+                         "--ai-preview, --verify-play and legacy inspection pages select their "
+                         "diagnostic slice explicitly. --tick-rate is a legacy-only experiment.\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);

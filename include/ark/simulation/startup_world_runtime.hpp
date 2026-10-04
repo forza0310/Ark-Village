@@ -179,6 +179,7 @@ enum class StartupWorldRuntimeError {
 };
 StartupWorldRuntimeError acknowledge_startup_world_runtime_page(StartupWorldRuntimeState &state,
                                                                std::uint64_t page);
+bool refresh_startup_world_runtime_rank(StartupWorldRuntimeState &state);
 std::optional<StartupWorldRuntimeState>
 update_startup_world_runtime_page(const StartupWorldRuntimeState &state);
 struct StartupWorldRuntimeResult {

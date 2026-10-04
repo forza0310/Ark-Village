@@ -72,6 +72,7 @@ if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_scene.cpp
+        src/desktop/world_rank.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
@@ -88,7 +89,7 @@ if(ARK_BUILD_DESKTOP)
     add_dependencies(ark_village ark_package_assets)
     if(BUILD_TESTING)
         add_executable(ark_world_scene_tests tests/world_scene_test.cpp
-            src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
+            src/desktop/world_rank.cpp src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
             src/desktop/character_status.cpp src/desktop/character_visibility.cpp
             src/desktop/ui/layout.cpp)
         target_include_directories(ark_world_scene_tests PRIVATE src/desktop)
@@ -97,6 +98,8 @@ if(ARK_BUILD_DESKTOP)
         ark_target(ark_world_scene_tests)
         add_test(NAME world_scene_projection_and_animation COMMAND ark_world_scene_tests)
         add_test(NAME complete_world_packaged_check COMMAND ark_village --world --check)
+        set_tests_properties(complete_world_packaged_check PROPERTIES
+            PASS_REGULAR_EXPRESSION "PASS packaged complete world")
     endif()
 endif()
 
@@ -267,6 +270,11 @@ if(BUILD_TESTING)
         ark_target(ark_road_render_tests)
         add_test(NAME road_patch_pixels COMMAND ark_road_render_tests "${PROJECT_SOURCE_DIR}/assets")
         add_test(NAME packaged_assets COMMAND ark_village --check)
+        set_tests_properties(packaged_assets PROPERTIES
+            PASS_REGULAR_EXPRESSION "PASS packaged complete world")
+        add_test(NAME legacy_slice_packaged_check COMMAND ark_village --legacy-slice --check)
+        set_tests_properties(legacy_slice_packaged_check PROPERTIES
+            PASS_REGULAR_EXPRESSION "PASS packaged source assets")
         add_test(NAME packaged_initial_ai COMMAND ark_village --check-ai)
         set_tests_properties(packaged_initial_ai PROPERTIES TIMEOUT 30 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
         set_tests_properties(packaged_assets PROPERTIES TIMEOUT 10 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

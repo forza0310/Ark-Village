@@ -1,4 +1,5 @@
 // Product geometry must agree with source visibility; animation reads the canonical actor clock.
+#include "world_rank.hpp"
 #include "world_scene.hpp"
 #include <algorithm>
 #include <cmath>
@@ -134,8 +135,64 @@ void actor_animation() {
     actor.control.action_counter = 19;
     check(world_actor_pose(state, id).frame == 0, "Monster action9 is no longer static");
 }
+void rank_conditions() {
+    auto state = initial();
+    const auto original = state;
+    state.rank_values = {-11, 22, 33, 44};
+    state.rank_met = {true, false, true, false};
+    // Independent source-table expectations cover every rank, including definition-ID terms.
+    const std::array<std::array<std::string, 4>, 5> expected{{
+        {{"人气 -11 / 300 [满足]", "最高月收入 22 / 5000 [未满足]", "活动举办次数 33 / 2 [满足]",
+          ""}},
+        {{"人气 -11 / 800 [满足]", "设施数量 22 / 10 [未满足]", "住宅数量 33 / 4 [满足]",
+          "任务成功次数 44 / 12 [未满足]"}},
+        {{"人气 -11 / 1500 [满足]", "最高月收入 22 / 35000 [未满足]", "活动举办次数 33 / 15 [满足]",
+          ""}},
+        {{"人气 -11 / 2500 [满足]", "设施数量 22 / 25 [未满足]", "住宅数量 33 / 10 [满足]",
+          "任务成功次数 44 / 30 [未满足]"}},
+        {{"人气 -11 / 3500 [满足]", "最高月收入 22 / 70000 [未满足]", "活动举办次数 33 / 30 [满足]",
+          ""}},
+    }};
+    for (int rank = 0; rank < 5; ++rank) {
+        state.rank = rank;
+        auto rows = expected.at(rank);
+        const int definition_id = rank == 0 ? 35 : rank == 2 ? 40 : 64;
+        if (rank == 0 || rank == 2 || rank == 4) {
+            const auto &definitions = state.rules->facilities;
+            const auto definition = std::find_if(
+                definitions.begin(), definitions.end(),
+                [definition_id](const auto &entry) { return entry.id == definition_id; });
+            check(definition != definitions.end(), "Source rank facility catalogue is incomplete");
+            rows[3] = "建造" + definition->name + " [未满足]";
+        }
+        check(world_rank_conditions(state) ==
+                  rows[0] + '\n' + rows[1] + '\n' + rows[2] + '\n' + rows[3],
+              "Rank display recomputed cached values/status or changed original thresholds");
+        check(state.rank == rank && state.rank_values == std::array<int, 4>{-11, 22, 33, 44} &&
+                  state.rank_met == std::array<bool, 4>{true, false, true, false} &&
+                  state.popularity == original.popularity &&
+                  state.scene.world.world.ai.accounting.funds() ==
+                      original.scene.world.world.ai.accounting.funds() &&
+                  state.scene.random.draws() == original.scene.random.draws() &&
+                  state.scene.calendar.units == original.scene.calendar.units &&
+                  state.scene.world.updates == original.scene.world.updates &&
+                  state.simulation_steps == original.simulation_steps &&
+                  state.scripts.pages.size() == original.scripts.pages.size() &&
+                  state.scripts.pages.front().lifecycle ==
+                      original.scripts.pages.front().lifecycle &&
+                  state.scripts.user_flags == original.scripts.user_flags,
+              "Read-only rank text mutated world, rank, page, cash, date or random state");
+    }
+    state.rank = 0;
+    state.rank_values[3] = 0;
+    const auto unmet = world_rank_conditions(state);
+    state.rank_met[3] = true;
+    check(world_rank_conditions(state) == unmet.substr(0, unmet.find_last_of('[')) + "[满足]",
+          "Named facility condition did not follow cached boolean independently of numeric zero");
+}
 } // namespace
 int main() {
     geometry();
     actor_animation();
+    rank_conditions();
 }

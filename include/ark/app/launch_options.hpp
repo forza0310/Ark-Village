@@ -18,7 +18,7 @@ struct LaunchOptions {
     std::string screenshot;
     bool paused = false;
     bool ai_preview = false;
-    bool world = false; // Complete researched runtime; separate owner, never advanced with Game.
+    bool world = true; // Default canonical world; explicit legacy diagnostics select Game instead.
     bool verify_play = false; // Bounded normal-game controller probe; never an inspection fixture.
     std::string font;
     std::string inspect_page; // Bounded rendering inspection; never a normal new-game trajectory.

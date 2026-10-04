@@ -13,6 +13,7 @@ bool positive(const std::string &text, int maximum, int &value) {
 
 LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     LaunchOptions options;
+    bool explicit_world{}, explicit_legacy{};
     for (std::size_t i = 0; i < arguments.size(); ++i) {
         const auto &argument = arguments[i];
         if (argument == "--help") {
@@ -28,7 +29,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         } else if (argument == "--ai-preview") {
             options.ai_preview = true;
         } else if (argument == "--world") {
-            options.world = true;
+            explicit_world = true;
+        } else if (argument == "--legacy-slice") {
+            explicit_legacy = true;
         } else if (argument == "--verify-play") {
             options.verify_play = true;
         } else if (argument == "--inspect-page") {
@@ -38,7 +41,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
                 page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
-                page != "ai" && page != "world-active" && page != "world-month")
+                page != "ai" && page != "world-active" && page != "world-month" &&
+                page != "world-rank")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -83,14 +87,23 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         return {std::nullopt, "--ai-preview requires a window run"};
     if (options.inspect_page == "ai")
         options.ai_preview = true;
-    const bool world_inspection =
-        options.inspect_page == "world-active" || options.inspect_page == "world-month";
-    if (world_inspection && !options.world)
-        return {std::nullopt, "World inspection requires --world"};
-    if (options.world && (options.ai_preview || options.verify_play || options.tick_rate != 0 ||
-                          options.mode == LaunchMode::check_ai ||
-                          (!options.inspect_page.empty() && !world_inspection)))
+    const bool world_inspection = options.inspect_page == "world-active" ||
+                                  options.inspect_page == "world-month" ||
+                                  options.inspect_page == "world-rank";
+    // Select a single owner after parsing, so argument order cannot silently change the world.
+    // Named legacy diagnostics remain explicit opt-ins; generic size/pause/check options do not.
+    const bool legacy_diagnostic = options.ai_preview || options.verify_play ||
+                                   options.mode == LaunchMode::check_ai ||
+                                   (!options.inspect_page.empty() && !world_inspection);
+    if (explicit_world && explicit_legacy)
+        return {std::nullopt, "--world and --legacy-slice are mutually exclusive"};
+    if (explicit_world && legacy_diagnostic)
         return {std::nullopt, "--world cannot be combined with legacy slice diagnostics"};
+    if (world_inspection && (explicit_legacy || legacy_diagnostic))
+        return {std::nullopt, "World inspection cannot be combined with legacy slice diagnostics"};
+    options.world = !explicit_legacy && !legacy_diagnostic;
+    if (options.world && options.tick_rate != 0)
+        return {std::nullopt, "--tick-rate requires --legacy-slice or a legacy diagnostic"};
     if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")
         return {std::nullopt, "--ai-preview cannot be combined with a different inspection page"};
     if (options.verify_play &&

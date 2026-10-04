@@ -16,10 +16,10 @@ projections are temporary transaction candidates. Construct a reset snapshot onc
 to `StartupWorldRuntimeSession`, and discard the reset owner. Never schedule this runtime beside
 the old `app::Game` over a second mutable village.
 
-The standard C++ entry is `ark_world_simulation --frames 20000 --months 2 --seed 1 --auto-confirm`.
+The standard C++ entry is `ark_world_simulation --frames 20000 --months 3 --seed 1 --auto-confirm`.
 Frames mean framework calls, not rendered frames or seconds; auto-confirm is an explicit test-user
-strategy. Desktop `ark_village --world` selects this owner instead of the old Game. Default old
-gameplay remains a separate launch mode until construction and all UI commands are transferred;
+strategy. Desktop `ark_village` selects this owner by default; `--world` is an explicit alias.
+The old construction slice is available only through `--legacy-slice` or named legacy diagnostics;
 the two owners are never scheduled together. This does not claim APK equivalence or implement
 normal construction input. Future Game commands/UI views must read/write this same owner.
 
@@ -41,3 +41,9 @@ in tests is user input, not an automatic game policy; immutable checkpoints are 
 not saves. `simulation.source_provenance` checks every imported product file, including the updated
 hash of recorded product patches. Newly authored launch/UI files are covered by their normal
 source review and integration tests rather than pretending they came from research.
+
+The continuous regression now runs three months with seed 1 and speed 0, crossing the naturally
+reached raw49 rank-conditions page beyond the former two-month boundary. Its input only sets u8
+and closes; it does not upgrade rank or charge cash. Calendar projection refreshes the four
+source caches once at page initialization; display adapters must only read those caches.
+Three months do not certify annual transitions, arbitrary seeds, or natural task success.

@@ -1,18 +1,12 @@
 # Ark-Village
 
-基于 `research/` 的逆向交付，以 **C++17 + raylib** 复刻《冒险迷宫村》一代的玩法、数值、UI与操作流程，并保留未来3D化的领域边界。
+基于 `research/` 的逆向交付，以 **C++17 + raylib** 复刻《冒险迷宫村》一代的玩法、数值、UI和操作顺序，并保留未来3D化的领域边界。
 
-2026-10-03按用户要求重新建立产品。旧代码、文档、构建和Git历史已移出项目；research保持原样。
-当前是有限的建造/首访生活原型：24×24加载后地图、5000G初值、七种单格设施建造、首名冒险者自动免费加入及属性查看。
-新增 `--world` 完整世界接入入口：使用独立的唯一世界所有者，消费完整目录、多人/怪物共同调度、实际设施账本、脚本页栈、日期与月报。该入口暂不提供玩家建设；默认启动保留已验收的建设切片。两种入口不会同时推进或同步两套世界。
-数据来自research静态交付；UI已接入原版上下栏、五项主菜单、三分类目录和放置箭头，按截图及页面映射复核。
-正常启动会推进首访；关闭两句教程后，人物自主选设施、寻路、收费、使用、退出并续活动。人物读取当前地图、设施等级/邻接与共享资金，玩家建设后重校验行程，日期与施工继续按既有资格推进。
-默认建设入口仍是有限生活链：抽到未接活动或装备选择时保留实际请求并暂停该人物，窗口显示原因，日期/施工继续；这属于产品缺分支交接，不是原版等待行为。后续访客、完整月报和野外在新的`--world`入口推进。
-村庄栅栏与外部入口门柱已按research的拼片、双层偏移、裁剪和深度接入；四个入口保留开口，初局使用原低木栅栏皮肤。城镇扩张仍未实现。
-人物脚底已对齐道路地块中心，移动播放源四向步态，暂停冻结。寻路按研究优先道路但允许草地；完整世界入口还按研究消费各职业/性别、怪物体型与原动作参数，建筑正门绑定和进出演出仍独立补齐。
-按用户反馈补店内暂时隐藏：真实设施使用/占用期间隐藏精灵，退出后恢复显示。这是桌面表现适配；原版可见性谓词与正门走位仍待研究，不改变进入占用格的收费和使用时点。
-候选生成、两级选目标、出发、运动与普通服务已接入正常Game；感知、战斗、救援、探索等独立模块不等于完整世界已运行。已交付规则优先组合到可玩路径，研究缺口与产品待迁入分别登记。
-寻路与连续运动已作为独立模块接入，可用有界检查查看显式目标运动：`./build/desktop-debug/bin/ark_village --inspect-page motion --frames 120`。
+当前默认运行持续世界：真实新局地图和完整定义目录、多人/怪物共同调度、设施使用和收入、脚本页栈、日期、月报与人气由同一个世界所有者管理。多人到访、实际设施收入与跨月结算已验收。界面已接入原版地表、道路拼块、栅栏/外部入口、人物/怪物动作、血条、现金浮标及事件页面。
+
+完整世界尚未提供玩家建设、任务选择菜单、完整投射物/一般特效或文件存取。旧建设切片保留为显式诊断入口，不能把其中的建设界面当作持续世界已经完成的功能。产品测试和截图也不等于原APK动态行为或OS鼠标验收。
+
+本轮接入raw49晋级条件页消费者，显示当前四项实际条件并支持确认返回；范围不含晋级、收费或授予称号。产品四套配置共528项CTest通过；seed1三个月连续回归每套通过14530项检查，自然生成任务为0。真实窗口已检查启动、多人物、月报和条件页；年度、无限运行、OS输入及原APK动态仍需另验。
 
 ## 构建运行
 
@@ -20,58 +14,59 @@
 
 ```sh
 brew install cmake node pkg-config raylib
-cmake --preset desktop-debug
-cmake --build --preset desktop-debug --parallel 4
-ctest --preset desktop-debug
-./build/desktop-debug/bin/ark_village
+cmake --preset desktop-release
+cmake --build --preset desktop-release --parallel 4
+ctest --preset desktop-release
+./build/desktop-release/bin/ark_village
 ```
 
-无窗口资源检查：`./build/desktop-debug/bin/ark_village --check`。
-完整世界窗口建议使用Release：`./build/desktop-release/bin/ark_village --world`（构建时选择`desktop-release`预设）。完整候选事务在Debug中明显较慢，Debug入口仍可用于断点调试。确认启动介绍和后续真实事件页后继续运行，支持暂停、倍速、拖动镜头及缩放；此入口没有旧切片的1456步保护。
-完整世界无窗口入口也在headless配置构建，明确固定Java种子并允许有界验证，例如：
+默认启动和显式 `--world` 都运行持续世界；`--check` 无窗口校验资源和世界初始化。
+确认启动介绍和后续事件页后，世界才按原有资格继续推进，首名冒险者在420次有资格的到访更新后自动免费加入。页面等待输入时不会自动跳过教程或奖励。
+
+窗口默认1080×720（3:2），支持 `--size 宽 高`、调整窗口大小、右键拖动镜头和滚轮约5%步长缩放。底部按钮或Space暂停/继续，右侧按钮切换1/2倍速。Retina使用原生framebuffer，素材最近邻采样，文字按显示密度生成。
+
+逻辑更新与60FPS绘制分离。当前47ms独立更新间隔是产品桌面调度政策，卡顿不补算；它不是原Android框架生命周期或实际FPS的等价认证。完整候选事务在Debug中较慢，正常体验建议Release，断点调试选择 `desktop-debug`。CLion打开本目录的 `CMakeLists.txt` 即可。
+
+程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。macOS默认使用系统Arial Unicode.ttf，其他环境通过 `--font /路径/中文.ttf` 指定字体。退出不保存。
+
+## 验证与诊断
+
+标准C++世界入口在headless配置中也可构建：
 
 ```sh
-./build/headless-release/bin/ark_world_simulation --seed 1 --frames 20000 --months 2 --auto-confirm
+cmake --preset headless-release
+cmake --build --preset headless-release --parallel 4
+./build/headless-release/bin/ark_world_simulation --seed 1 --frames 20000 --months 3 --auto-confirm
 ```
 
-`--auto-confirm`是明确的测试输入策略；不带它时，页面会等待输入，程序不会跳过教程或奖励确认。`--months`未在帧预算内达到时返回非零退出码。
-窗口静态检查可用 `--world --inspect-page world-active --frames 8` 或 `world-month`：它们预运行真实新局并自动确认页面，停在三人到访/月报以验画面，不代表玩家输入验收。
-默认窗口1080×720（3:2），可拖动调整，或用`--size 宽 高`覆盖；Retina按原生像素渲染。
-有界运行：`./build/desktop-debug/bin/ark_village --frames 60`。
-正常玩法使用不带参数的启动命令；等待首访并依次关闭教程，可观察人物生活链、建设、暂停/继续、倍速及缩放。
-逻辑时钟与60FPS绘制独立：产品默认借用研究中的整数47ms参数调度更新，卡顿后不补算；人物每步仍移动6.7单位。原版47ms门槛在场景更新之后的render/input路径，当前独立调度尚未复刻完整框架生命周期。`--tick-rate 1..240`仅用于显式固定频率实验（含最多8次补算）；原版设备实际FPS/走格耗时另待动态核对。
-`--ai-preview`保留为严格未改图初局诊断：直接进入首访后，布局/日历固定、建设禁用；遇未接分支或1000轮诊断上限后结束，可重新开始。该上限不用于正常生活循环。
-初局AI无窗口验证：`./build/desktop-debug/bin/ark_village --check-ai`。
-该命令在私有会话中运行两个出生点×旅店/包子铺/武器店六条真实源表流程，验证自主选择、移动、收费、使用、退出与延迟效果；票号显式固定。本地随机消费与APK仍有差异，不用该诊断代替正常玩法验收。
-正常窗口有界检查：`./build/desktop-debug/bin/ark_village --verify-play --frames 3000 --screenshot /tmp/ark-playable.png`。按真实47ms/420步首访运行，通过共享controller确认教程、建设包子铺及暂停/恢复，再检查人物访问/收入/退出和施工；这是引擎内坐标控制检查，不等于OS鼠标或原APK验收。
-CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可使用CMake。
-资源来自可执行程序旁的assets，不依赖当前工作目录或研究工具。
+`--seed` 是明确的可重复Java种子输入，未认证原APK默认种子；`--auto-confirm` 是测试用户输入策略。`--frames` 为无节拍框架调用预算，`--months` 是预算内目标，未达到时返回非零退出码。
 
-菜单→建造→分类/条目（选中后再次点击或Enter）→点击地图格→再次点击同格或Enter建造。
-旋转切换两朝向，四向箭头移动预览；返回/Esc逐层返回，右键拖动视图。
-返回正常场景并继续后施工和到访计数才推进；首访两句提示逐次确认，人物已经加入，无需支付入住费用。
-正常村庄画面左上角显示“运行中 · 暂停”或“已暂停 · 继续”，点击或按Space切换。
-普通启动会自动推进；`--paused`仅用于主动暂停检查。菜单/建设/弹窗仍按原有资格暂停世界更新。
-首名冒险者在420次有资格更新后到访；后续持续到访在`--world`中接入，默认建设切片仍只有首名。
-菜单“信息”暂接已到访人物页；Tab切换1/2倍速，这是桌面适配入口。
-默认建设切片的道路/入住募集暂不可用；生活、日期与施工在首个月报准备前1456步结束本轮，可重新开始。未知人物分支只暂停该人物。这个保护不用于完整世界入口。
-退出不保存。macOS默认使用系统Arial Unicode.ttf，其他环境加`--font /路径/中文.ttf`。
-模块、研究差异与验收见[切片记录](docs/stages/B1-playable-prototype.md)。
+| 入口 | 用途与边界 |
+| --- | --- |
+| `ark_village --check` | 无窗口资源和持续世界初始化检查 |
+| `ark_village --frames 60` | 有界默认世界窗口，可加 `--screenshot /tmp/ark.png` |
+| `ark_village --inspect-page world-active --frames 8` | 真实新局预运行至三人到访，再检查画面 |
+| `ark_village --inspect-page world-month --frames 8` | 真实新局预运行至月报，再检查画面 |
+| `ark_village --inspect-page world-rank --frames 8` | 等待实际raw49条件页初始化，再检查四项条件 |
+| `ark_village --legacy-slice` | 旧有限建设/首访生活切片 |
+| `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收 |
 
-## 目录
+`world-active/world-month/world-rank` 不需要额外写 `--world`；它们按实际窗口视口预运行并自动确认前序真实页面，仅作为渲染检查。`--verify-play` 使用共享controller的引擎内坐标，不能替代OS鼠标测试。`--tick-rate 1..240` 可用于 `--legacy-slice` 或允许覆盖时钟的命名旧诊断（如 `--ai-preview`）；默认世界及 `--world` 不接受覆盖，`--verify-play` 仍须原节拍。
+
+旧切片七种单格建设、局部人物交接及1456步月前保护的设计与历史验收集中保留在 [B1记录](docs/stages/B1-playable-prototype.md)，这些限制不适用于默认持续世界。
+
+## 目录与阅读入口
 
 | 路径 | 用途 |
 | --- | --- |
-| research/ | 研究智能体维护的规则、示例、素材与截图；产品侧只读 |
-| include/ark、src/world/facilities/people/economy/app | 不依赖raylib的格子、设施、人物与唯一应用聚合 |
-| include/ark/simulation、src/simulation | 完整世界的维护规则与唯一运行时；与旧建设切片分开启动 |
-| src/assets | 维护SEB/TSV解析子集，标准C++ |
-| src/desktop | raylib进程入口、窗口和图像生命周期 |
-| assets/ | 必要运行资源副本及来源记录 |
-| scripts/ | 发布数据编译与显式素材导入，不执行逆向 |
-| tests/ | 当前产品的测试，不运行research测试代替产品验收 |
-| docs/ | 三份概览：目标/架构、开发流程、计划/决策 |
-| docs/reference/ | 持续增长的原版对照清单与研究交接需求 |
+| `research/` | 研究侧维护的规则、原型、素材与截图，产品侧只读 |
+| `include/ark/simulation/rules/`、`src/simulation/rules/` | 标准C++领域规则，`ark_world_rules` |
+| `include/ark/simulation/`、`src/simulation/` | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime` |
+| `src/app/` | 启动参数、时钟、无窗口世界入口及旧切片协调 |
+| `src/desktop/` | raylib窗口、资源、输入、投影及UI |
+| `src/world/`、`src/facilities/`、`src/people/`、`src/economy/` | 旧建设切片保留的标准C++模块 |
+| `src/assets/`、`assets/` | 素材解析、运行副本及来源清单 |
+| `scripts/`、`tests/` | 数据编译/显式素材导入、产品测试与来源校验 |
+| `docs/` | 架构、流程、计划；长期对照在 `reference/`，历史阶段在 `stages/` |
 
-从 [目标与架构](docs/ARCHITECTURE.md)、[开发流程](docs/CONTRIBUTING.md)、[计划与决策](docs/MILESTONES.md)开始阅读。
-近期任务见 [TODO](TODO.md)，具体复刻条目见 [原版对照](docs/reference/REFERENCE_CHECKLIST.md)。
+从 [架构](docs/ARCHITECTURE.md)、[开发流程](docs/CONTRIBUTING.md)、[计划与决策](docs/MILESTONES.md)开始阅读。近期任务见 [TODO](TODO.md)，研究覆盖与产品缺口见 [原版对照](docs/reference/REFERENCE_CHECKLIST.md)及 [研究需求](docs/reference/RESEARCH_REQUESTS.md)。

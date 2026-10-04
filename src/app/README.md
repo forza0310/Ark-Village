@@ -2,7 +2,7 @@
 
 `world_simulation_main.cpp`是完整共同世界的标准C++有界入口，仅链接`ark_world_runtime`，不会创建旧Game；严格解析帧预算、月份目标和显式Java种子。自动确认真实页栈仅在`--auto-confirm`启用，未达月份目标或运行失败返回非零；输出实际账本、名单、随机次数与页身份供复查。
 
-以下Game职责属于默认建设切片，`--world`桌面入口使用simulation唯一Owner，两种模式不能并行同步。
+默认桌面入口使用simulation唯一Owner，`--world`是显式别名。以下Game职责属于`--legacy-slice`建设切片及其明确诊断，两种模式不能并行同步。
 
 Game是唯一可变村庄聚合，接口在`include/ark/app/game.hpp`，协调设施、人物、资金和更新。
 confirm复用预览校验，在候选状态上分配实例、登记CashLedger支出后提交；拒绝不改资金、ID或占地。State.accounting是唯一现金账本，money仅供既有HUD读取。

@@ -10,8 +10,8 @@ The concentrated rules directory is a transition boundary for receiving the comp
 without adapting research algorithms to the old first-actor slice. Each existing named source
 keeps its domain responsibility; no raylib, desktop input or mutable singleton is introduced.
 Runtime consumers coordinate private candidates and commit one owner. The existing construction
-slice remains the separate default until a direct bridge to this owner is ready; `--world`
-explicitly selects the complete-world mode without constructing the old Game alongside it.
+slice remains available through `--legacy-slice` until its commands write this owner directly.
+The complete world is now the default; it never constructs the old Game alongside it.
 
 | Source Families | Responsibility |
 | --- | --- |

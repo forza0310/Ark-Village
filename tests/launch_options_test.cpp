@@ -17,13 +17,25 @@ int main() {
     using ark::app::parse_arguments;
     check(parse_arguments({}).options->mode == LaunchMode::window);
     const auto defaults = *parse_arguments({}).options;
-    check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
+    check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused && defaults.world);
+    check(ark::app::LaunchOptions{}.world);
     check(defaults.tick_rate == 0);
-    check(parse_arguments({"--tick-rate", "20"}).options->tick_rate == 20);
-    check(parse_arguments({"--tick-rate", "240"}).options->tick_rate == 240);
+    check(parse_arguments({"--legacy-slice", "--tick-rate", "20"}).options->tick_rate == 20);
+    check(parse_arguments({"--tick-rate", "240", "--legacy-slice"}).options->tick_rate == 240);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
+    check(parse_arguments({"--check"}).options->world);
+    check(!parse_arguments({"--legacy-slice"}).options->world);
+    check(!parse_arguments({"--check", "--legacy-slice"}).options->world);
     check(parse_arguments({"--check-ai"}).options->mode == LaunchMode::check_ai);
     check(parse_arguments({"--ai-preview"}).options->ai_preview);
+    check(!parse_arguments({"--ai-preview"}).options->world);
+    check(!parse_arguments({"--ai-preview", "--tick-rate", "20"}).options->world);
+    check(!parse_arguments({"--check-ai"}).options->world);
+    check(!parse_arguments({"--verify-play", "--frames", "3000"}).options->world);
+    check(!parse_arguments({"--inspect-page", "shops", "--frames", "8"}).options->world);
+    check(parse_arguments({"--inspect-page", "world-active", "--frames", "8"}).options->world);
+    check(parse_arguments({"--inspect-page", "world-rank", "--frames", "8"}).options->world);
+    check(parse_arguments({"--paused", "--frames", "8", "--size", "1080", "720"}).options->world);
     check(parse_arguments({"--world"}).options->world);
     check(parse_arguments({"--world", "--check"}).options->world);
     check(parse_arguments({"--world", "--inspect-page", "world-month", "--frames", "8"})
@@ -42,12 +54,18 @@ int main() {
           bounded.options->frames == 30 && bounded.options->screenshot == "a.png");
     for (const auto &arguments : std::vector<std::vector<std::string>>{
              {"--unknown"},
+             {"--world", "--legacy-slice"},
+             {"--legacy-slice", "--world"},
+             {"--legacy-slice", "--inspect-page", "world-active", "--frames", "8"},
+             {"--inspect-page", "world-month", "--frames", "8", "--legacy-slice"},
+             {"--legacy-slice", "--inspect-page", "world-rank", "--frames", "8"},
+             {"--tick-rate", "20"},
              {"--world", "--ai-preview"},
              {"--world", "--check-ai"},
              {"--world", "--tick-rate", "20"},
              {"--world", "--verify-play", "--frames", "3000"},
              {"--world", "--inspect-page", "shops", "--frames", "8"},
-             {"--inspect-page", "world-active", "--frames", "8"},
+             {"--ai-preview", "--world"},
              {"--verify-play"},
              {"--verify-play", "--frames", "60", "--paused"},
              {"--verify-play", "--frames", "60", "--ai-preview"},

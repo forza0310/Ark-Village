@@ -4,6 +4,7 @@
 #include "desktop_session.hpp"
 #include "ui/layout.hpp"
 #include "ui/skin.hpp"
+#include "world_rank.hpp"
 #include "world_scene.hpp"
 #include <algorithm>
 #include <cmath>
@@ -69,9 +70,12 @@ bool advance(State &s) {
 }
 std::string glyphs(const State &s) {
     std::string result =
-        "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成";
+        "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
+        "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
+    for (const auto &f : s.rules->facilities)
+        result += f.name;
     for (const auto &h : s.rules->humans)
         result += h.name;
     for (const auto &t : s.rules->tasks)
@@ -164,19 +168,31 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     }();
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
-    if (options.inspect_page == "world-active" || options.inspect_page == "world-month") {
+    if (options.inspect_page == "world-active" || options.inspect_page == "world-month" ||
+        options.inspect_page == "world-rank") {
         bool reached{};
         for (int step = 0; step < 20000; ++step) {
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
-            if (const auto *page = active_page(state); page && page->legacy_page != 56) {
+            // Wait for the real raw49 page to initialize its cached conditions. Inspection
+            // auto-confirms preceding pages only; it never creates a rank or changes requirements.
+            if (const auto *page = active_page(state); options.inspect_page == "world-rank" &&
+                                                       page && page->legacy_page == 49 &&
+                                                       state.page_counters.count(page->id)) {
+                reached = true;
+                break;
+            }
+            if (const auto *page = active_page(state);
+                page && page->legacy_page != 56 &&
+                !(options.inspect_page == "world-rank" && page->legacy_page == 49)) {
                 if (simulation::acknowledge_startup_world_runtime_page(state, page->id) !=
                     simulation::StartupWorldRuntimeError::none)
                     throw std::runtime_error("World inspection page consumer rejected input");
             }
             reached = options.inspect_page == "world-month"
                           ? state.report_state != 0
-                          : state.scene.world.world.ai.human_order.size() >= 3;
+                          : options.inspect_page == "world-active" &&
+                                state.scene.world.world.ai.human_order.size() >= 3;
             if (reached)
                 break;
         }
@@ -274,7 +290,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             hud(state, layout, skin, failed);
             if (const auto *page = active_page(state)) {
                 std::string title = page->title;
-                if (title.empty())
+                if (page->legacy_page == 49)
+                    title = "村庄升级条件";
+                else if (title.empty())
                     title = page->legacy_page == 94 ? "入手!" : "";
                 skin.window(panel, plain_text(title));
                 std::string body;
@@ -284,6 +302,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 if (page->task_definition &&
                     (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32))
                     body += state.rules->tasks.at(*page->task_definition).name + "完成!";
+                if (page->legacy_page == 49) {
+                    // The page can be inserted just before a render. Wait for runtime
+                    // initialization rather than showing stale caches; rank5 replaces this page on
+                    // its next update.
+                    body = state.page_counters.count(page->id) ? world_rank_conditions(state) : "";
+                }
                 const auto wrapped = lines(text, body, panel.width - 20);
                 const int visible = std::max(1, static_cast<int>((panel.height - 59) / 17));
                 scroll =

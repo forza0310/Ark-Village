@@ -5,6 +5,8 @@ namespace ark::desktop::ui {
 Layout::Layout(Extent size) : extent(size) {
     const float w = static_cast<float>(size.width), h = static_cast<float>(size.height);
     scene = {0, 24, w, h - 53};
+    // Desktop playback control, below the original HUD and clear of its points bar.
+    pause_button = {4, 42, 106, 22};
     left_button = {0, h - 29, 60, 29};
     right_button = {w - 60, h - 29, 60, 29};
     catalog = {(w - 164) / 2, 29, 164, 198};

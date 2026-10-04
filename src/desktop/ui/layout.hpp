@@ -8,7 +8,7 @@ struct Layout {
     explicit Layout(Extent extent);
     Extent extent;
     Rectangle scene, left_button, right_button, catalog, tabs[3], rows[4], menu_rows[5];
-    Rectangle detail, dialogue, message;
+    Rectangle detail, dialogue, message, pause_button;
     Rectangle detail_previous, detail_next;
     std::array<Rectangle, 4> arrows(Vector2 anchor) const;
 };

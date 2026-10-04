@@ -18,10 +18,11 @@ brew install cmake node pkg-config raylib
 cmake --preset desktop-debug
 cmake --build --preset desktop-debug --parallel 4
 ctest --preset desktop-debug
-./build/desktop-debug/bin/ark_village --paused
+./build/desktop-debug/bin/ark_village
 ```
 
 无窗口资源检查：`./build/desktop-debug/bin/ark_village --check`。
+默认窗口1080×720（3:2），可拖动调整，或用`--size 宽 高`覆盖；Retina按原生像素渲染。
 有界运行：`./build/desktop-debug/bin/ark_village --frames 60`。
 CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可使用CMake。
 资源来自可执行程序旁的assets，不依赖当前工作目录或研究工具。
@@ -29,7 +30,10 @@ CLion打开本目录的CMakeLists.txt，选择desktop-debug；其他IDE同样可
 菜单→建造→分类/条目（选中后再次点击或Enter）→点击地图格→再次点击同格或Enter建造。
 旋转切换两朝向，四向箭头移动预览；返回/Esc逐层返回，右键拖动视图。
 返回正常场景并继续后施工和到访计数才推进；首访两句提示逐次确认，人物已经加入，无需支付入住费用。
-菜单“信息”暂接已到访人物页；Space暂停/继续、Tab切换1/2倍速，这是桌面检查入口。
+正常村庄画面左上角显示“运行中 · 暂停”或“已暂停 · 继续”，点击或按Space切换。
+普通启动会自动推进；`--paused`仅用于主动暂停检查。菜单/建设/弹窗仍按原有资格暂停世界更新。
+首名冒险者在420次有资格更新后到访，后续持续到访尚未接入。
+菜单“信息”暂接已到访人物页；Tab切换1/2倍速，这是桌面适配入口。
 道路/入住募集暂不可用，人物首段AI/后续访客未接入；本轮在待研究月报前结束，可重新开始。
 退出不保存。macOS默认使用系统Arial Unicode.ttf，其他环境加`--font /路径/中文.ttf`。
 模块、研究差异与验收见[切片记录](docs/stages/B1-playable-prototype.md)。

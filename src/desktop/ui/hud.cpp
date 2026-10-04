@@ -37,6 +37,9 @@ void draw_hud(const app::Game &game, const State &view, const Layout &layout, co
     const bool catalog = s.mode == app::Mode::catalog;
     const bool placement = s.mode == app::Mode::placement;
     const bool normal = s.mode == app::Mode::normal && view.page == Page::village;
+    // Explicit desktop pause is separate from the original modal update restrictions.
+    if (normal)
+        skin.button(layout.pause_button, s.paused ? "已暂停 · 继续" : "运行中 · 暂停");
     skin.button(layout.left_button,
                 placement                 ? "旋转"
                 : catalog                 ? "信息"

@@ -16,6 +16,8 @@ int main() {
     using ark::app::LaunchMode;
     using ark::app::parse_arguments;
     check(parse_arguments({}).options->mode == LaunchMode::window);
+    const auto defaults = *parse_arguments({}).options;
+    check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);

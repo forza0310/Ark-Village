@@ -11,6 +11,10 @@ std::vector<const facilities::Definition *> catalog_items(int tab) {
     return result;
 }
 bool blocks_world(const State &view) { return view.page != Page::village; }
+void toggle_pause(app::Game &game, const State &view) {
+    if (game.state().mode == app::Mode::normal && !blocks_world(view))
+        game.set_paused(!game.state().paused);
+}
 void back(app::Game &game, State &view) {
     view.error = app::Error::none;
     if (view.page == Page::definition) {
@@ -79,6 +83,10 @@ void scroll_sources(const app::Game &game, State &view, int delta) {
 }
 void click(app::Game &game, State &view, const Layout &layout, Vector2 point) {
     const auto hit = [&](Rectangle box) { return CheckCollisionPointRec(point, box); };
+    if (game.state().mode == app::Mode::normal && !blocks_world(view) && hit(layout.pause_button)) {
+        toggle_pause(game, view);
+        return; // Consume the click before any world-cell selection.
+    }
     if (hit(layout.right_button)) {
         if (game.state().mode == app::Mode::normal && view.page == Page::village)
             view.page = Page::menu;

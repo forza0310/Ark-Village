@@ -12,6 +12,28 @@ Vector2 center(Rectangle r) { return {r.x + r.width / 2, r.y + r.height / 2}; }
 int main() {
     using namespace ark;
     using namespace desktop;
+    // Real controller clicks must pause the arrival clock, consume the scene hit, and resume
+    // the original first-visitor event exactly once; the modal dialogue cannot be unpaused.
+    for (auto size : {Extent{384, 256}, Extent{240, 330}}) {
+        app::Game arrival;
+        ui::State view;
+        const ui::Layout layout(size);
+        ui::click(arrival, view, layout, center(layout.pause_button));
+        require(arrival.state().paused && view.page == ui::Page::village && !view.detail);
+        for (int i = 0; i < 600; ++i)
+            arrival.update();
+        require(arrival.state().simulation_steps == 0 && !arrival.state().adventurer);
+        ui::click(arrival, view, layout, center(layout.pause_button));
+        require(!arrival.state().paused);
+        for (int i = 0; i < 419; ++i)
+            arrival.update();
+        require(!arrival.state().adventurer);
+        arrival.update();
+        require(arrival.state().adventurer && arrival.state().event89_count == 1 &&
+                arrival.state().money == 5000 && arrival.state().mode == app::Mode::tutorial);
+        ui::toggle_pause(arrival, view);
+        require(!arrival.state().paused);
+    }
     for (auto size : {Extent{480, 256}, Extent{240, 330}, Extent{640, 256}}) {
         app::Game game;
         ui::State view;
@@ -19,6 +41,8 @@ int main() {
         const ui::Layout layout(size);
         ui::click(game, view, layout, center(layout.right_button));
         require(view.page == ui::Page::menu && ui::blocks_world(view));
+        ui::toggle_pause(game, view);
+        require(!game.state().paused); // Hidden pause control/Space cannot change modal state.
         const auto money = game.state().money;
         ui::click(game, view, layout, center(layout.menu_rows[1]));
         require(view.page == ui::Page::menu && game.state().money == money);

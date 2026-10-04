@@ -10,8 +10,8 @@ enum class LaunchMode { window, check, help };
 
 struct LaunchOptions {
     LaunchMode mode = LaunchMode::window;
-    int width = 960;
-    int height = 512;
+    int width = 1080;
+    int height = 720;
     int frames = 0;
     int zoom_percent = 100;
     std::string screenshot;

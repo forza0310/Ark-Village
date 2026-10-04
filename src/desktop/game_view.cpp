@@ -135,8 +135,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             ui::back(game, view);
         if (IsKeyPressed(KEY_ENTER))
             ui::confirm(game, view);
-        if (IsKeyPressed(KEY_SPACE) && game.state().mode == app::Mode::normal)
-            game.set_paused(!game.state().paused);
+        if (IsKeyPressed(KEY_SPACE))
+            ui::toggle_pause(game, view);
         if (IsKeyPressed(KEY_TAB))
             view.speed = view.speed == 1 ? 2 : 1;
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))

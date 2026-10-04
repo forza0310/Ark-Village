@@ -247,6 +247,8 @@ void extent_and_completion() {
     i.active_task = DungeonCompletionTask{
         0, 3, {7, 9, 7}, {{5, 0, 3, 50, 0, 2}, {9, 1, 0, 0, 47, 5}, {97, 0, 0, 0, 1, 46}}};
     i.human_order = {{{2}, 7}, {{1}, 7}};
+    i.active_task->definition = 8;
+    i.active_task->pending_completion_value = 17;
     i.summary_tickets = {0, 1};
     r = prepare_dungeon_completion(i);
     check(r && r->requests.size() == 15 &&
@@ -264,10 +266,11 @@ void extent_and_completion() {
     check(r->requests[8].kind == DungeonCompletionRequestKind::event126 &&
               r->requests[9].kind == DungeonCompletionRequestKind::record_complete &&
               r->requests[10].kind == DungeonCompletionRequestKind::restore_site &&
-              r->requests[10].first == 1 &&
-              r->requests[11].kind == DungeonCompletionRequestKind::unlock_task &&
+              r->requests[10].first == 1 && r->requests[9].first == 17 &&
+              r->requests[11].kind == DungeonCompletionRequestKind::record_task_success &&
+              r->requests[11].first == 8 &&
               r->requests[12].kind == DungeonCompletionRequestKind::clear_active_task,
-          "completion preserves exact event/record/site/unlock/global-reset order");
+          "completion preserves event/pending-value/site/success-statistics/global-reset order");
     i.event201_seen = i.event92_seen = true;
     r = prepare_dungeon_completion(i);
     check(r && r->requests.size() == 13, "seen completion/tutorial events not repeated");

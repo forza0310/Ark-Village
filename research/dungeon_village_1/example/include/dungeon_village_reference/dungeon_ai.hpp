@@ -81,6 +81,8 @@ struct DungeonCompletionTask {
     int difficulty{};
     std::vector<int> participants;                   // Global UserData.m, including duplicates.
     std::vector<DungeonChallenge> global_challenges; // Global task's facility, NOT caller facility.
+    int definition{};               // Original task definition identity;0 is valid.
+    int pending_completion_value{}; // Task m.m -> UserData.f215e; not immediate XP or cash.
 };
 struct DungeonSiteTask {
     int kind{};
@@ -97,7 +99,7 @@ enum class DungeonCompletionRequestKind {
     summary32,
     event126,
     record_complete,
-    unlock_task,
+    record_task_success,
     event201,
     event92
 };

@@ -70,8 +70,9 @@ struct WorldSpecialEntryResult {
     std::optional<WorldSpecialEntryCandidate> candidate;
 };
 // State15 c after common perception: horizontal velocity -> B15 expression16 -> B60 stop
-// -> B70 c0, optional activity0 using old ax. Does not advance B or apply d gravity.
+// -> B70 c0, optional activity0 using h.b(OLD s), not cached ax or newly moved n.
+// Does not advance B or apply d gravity; bounds must be the current town boundary.
 WorldSpecialEntryResult
-prepare_world_special_entry_c(const RescueWorldState &state, CharacterId actor,
+prepare_world_special_entry_c(const RescueWorldState &state, CharacterId actor, TownBounds town,
                               std::optional<WorldExpressionTicket> expression_ticket = {});
 } // namespace dungeon_village_reference

@@ -242,8 +242,9 @@ prepare_dungeon_completion(const DungeonCompletionInput &i) {
         request(DungeonCompletionRequestKind::clear_active_task);
         return c;
     }
-    if (task.difficulty < 1 || task.difficulty > 9 || task.participants.empty() ||
-        task.participants.size() > 100000 || i.summary_tickets.size() < 2)
+    if (task.definition < 0 || task.pending_completion_value < 0 || task.difficulty < 1 ||
+        task.difficulty > 9 || task.participants.empty() || task.participants.size() > 100000 ||
+        i.summary_tickets.size() < 2)
         return {};
     for (const int ticket : {i.summary_tickets[0], i.summary_tickets[1]})
         if (ticket < 0 || static_cast<std::size_t>(ticket) >= task.participants.size())
@@ -275,9 +276,9 @@ prepare_dungeon_completion(const DungeonCompletionInput &i) {
             c.summary_rewards.push_back({challenge[4], challenge[5]});
         }
     request(DungeonCompletionRequestKind::event126);
-    request(DungeonCompletionRequestKind::record_complete);
+    request(DungeonCompletionRequestKind::record_complete, task.pending_completion_value);
     request(DungeonCompletionRequestKind::restore_site, 1);
-    request(DungeonCompletionRequestKind::unlock_task);
+    request(DungeonCompletionRequestKind::record_task_success, task.definition);
     request(DungeonCompletionRequestKind::clear_active_task);
     if (!i.event201_seen)
         request(DungeonCompletionRequestKind::event201);

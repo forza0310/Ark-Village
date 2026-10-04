@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及48个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及49个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -45,6 +45,7 @@
 | world_facilities | 一次共同d前段/成长→携带表情→设施控制、类别8休息/类别6特殊入口/类别9退出；人物与怪物状态15旧B15/60/70 | [设施控制](../rules/ai/CONTROL.md#设施控制的共同执行组合) |
 | world_actor_tail | 旧s的L/M→物理/K/新s→保留/清理/删除请求，调度原时点释放/退休；不把控制停留当删除 | [执行尾部](../rules/ai/LIFECYCLE.md#执行尾部的世界提交) |
 | dungeon_ai、world_dungeon | 类别5进入/队伍/挑战/撤退/错峰退出、目录及抛出奖励原子候选、状态20直接落地续行、阶段2任务请求 | [洞穴与迷宫](../rules/ai/DUNGEONS.md) |
+| world_shop | 当前商店到达/携物、装备选择和收费、满足度/延迟人气、退出/属性/真实装配；显示仍显式交接 | [通用商店事务](../rules/ai/CONTROL.md#通用商店的世界事务) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

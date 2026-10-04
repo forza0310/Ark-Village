@@ -179,12 +179,17 @@ prepare_world_facility_execution(const RescueWorldState &s, const WorldFacilityE
             prefix.candidate->growth_requests};
 }
 WorldSpecialEntryResult prepare_world_special_entry_c(const RescueWorldState &s, CharacterId id,
+                                                      TownBounds town,
                                                       std::optional<WorldExpressionTicket> ticket) {
     if (!live(s, id))
         return {RescueWorldError::stale_actor, {}};
     const auto &a = s.ai.battle.actors.at(id);
-    if (a.control.state != 15 || a.state_counter < 0)
+    if (a.control.state != 15 || a.state_counter < 0 || town.left >= town.right ||
+        town.top >= town.bottom)
         return {RescueWorldError::invalid_input, {}};
+    const auto cell = s.ai.contexts.at(id).cell;
+    const bool inside =
+        cell.x > town.left && cell.x < town.right && cell.y > town.top && cell.y < town.bottom;
     const auto velocity = s.actors.at(id).horizontal_velocity;
     const auto lifecycle = prepare_timed_lifecycle({a.kind,
                                                     15,
@@ -193,7 +198,7 @@ WorldSpecialEntryResult prepare_world_special_entry_c(const RescueWorldState &s,
                                                     0,
                                                     a.control.flags,
                                                     a.object_slot != -1,
-                                                    s.ai.contexts.at(id).inside_town,
+                                                    inside,
                                                     s.ai.battle.events.count(90) != 0,
                                                     {a.position.x, a.position.z},
                                                     velocity,

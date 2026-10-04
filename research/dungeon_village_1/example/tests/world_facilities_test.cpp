@@ -234,10 +234,10 @@ void special_lifecycle() {
         a.control.action = 6;
         a.vertical_velocity = 240.0F / 29.0F;
         s.actors.at({1}).horizontal_velocity = {0, 10};
-        s.ai.contexts.at({1}).inside_town = inside;
+        s.ai.contexts.at({1}).inside_town = !inside; // Stale ax must not decide B70's h.b(s).
         for (int old_b = 0; old_b <= 70; ++old_b) {
             const auto c = prepare_world_special_entry_c(
-                s, {1},
+                s, {1}, inside ? TownBounds{0, 4, 0, 4} : TownBounds{2, 4, 0, 4},
                 old_b == 15 ? std::optional<WorldExpressionTicket>({0, 2, 0}) : std::nullopt);
             check(c.candidate && c.candidate->ground_effect == (old_b == 60) &&
                       c.candidate->completed == (old_b == 70),
@@ -258,7 +258,8 @@ void special_lifecycle() {
                           actor.control.action == 0 &&
                           actor.control.queue == (inside ? std::vector<LegacyActorControl>{{8, 0}}
                                                          : std::vector<LegacyActorControl>{}),
-                      "B70 actual c0 resets control; only old ax inside queues activity0");
+                      "B70 actual c0 resets control; h.b(old s), not stale ax/new n, queues "
+                      "activity0");
                 break;
             }
             WorldFacilityExecutionInput input;
@@ -288,7 +289,7 @@ void special_lifecycle() {
     s.ai.battle.actors.at({1}).control.state = 15;
     s.ai.battle.actors.at({1}).state_counter = 15;
     s.actors.at({1}).horizontal_velocity = {0, 10};
-    check(!prepare_world_special_entry_c(s, {1}).candidate &&
+    check(!prepare_world_special_entry_c(s, {1}, {0, 4, 0, 4}).candidate &&
               s.ai.battle.actors.at({1}).position.z == 150,
           "missing B15 expression rolls back horizontal movement");
     s = fixture(6, 3);
@@ -306,7 +307,7 @@ void special_lifecycle() {
           "monster c15 keeps db unlike human transition");
     s = launch.candidate->state;
     s.ai.battle.actors.at({1}).state_counter = 70;
-    const auto landing = prepare_world_special_entry_c(s, {1});
+    const auto landing = prepare_world_special_entry_c(s, {1}, {0, 4, 0, 4});
     check(landing.candidate && landing.candidate->state.actors.at({1}).monster_mode == 1 &&
               landing.candidate->state.ai.battle.actors.at({1}).control.state == 17 &&
               landing.candidate->state.ai.battle.actors.at({1}).baseline == 17 &&

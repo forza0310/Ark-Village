@@ -1,6 +1,7 @@
 #pragma once
 
 // Sole mutable aggregate; desktop sends commands and reads immutable state.
+#include "ark/app/initial_ai.hpp"
 #include "ark/app/startup_data.hpp"
 #include "ark/facilities/neighbourhood.hpp"
 #include <map>
@@ -9,6 +10,7 @@
 
 namespace ark::app {
 enum class Mode { normal, catalog, placement, tutorial, camera, research_boundary };
+enum class PlayMode { startup, ai_preview };
 enum class Error {
     none,
     wrong_mode,
@@ -42,8 +44,11 @@ struct State {
 };
 class Game {
   public:
-    explicit Game(std::uint32_t random_seed = 20261003U);
+    explicit Game(std::uint32_t random_seed = 20261003U, PlayMode play = PlayMode::startup);
     const State &state() const { return state_; }
+    bool ai_preview_enabled() const { return play_ == PlayMode::ai_preview; }
+    const InitialAiState *ai_state() const { return ai_ ? &ai_->state() : nullptr; }
+    InitialAiError ai_error() const { return ai_error_; }
     const facilities::Definition &definition(int id) const;
     const Display &display(int id) const;
     std::optional<facilities::InstanceId> facility_at(world::Cell cell) const;
@@ -70,7 +75,13 @@ class Game {
 
   private:
     void step();
+    void start_ai_preview();
+    void step_ai_preview();
+    void project_ai_preview();
     State state_;
     std::mt19937 random_;
+    PlayMode play_;
+    std::optional<InitialAiSession> ai_;
+    InitialAiError ai_error_{InitialAiError::none};
 };
 } // namespace ark::app

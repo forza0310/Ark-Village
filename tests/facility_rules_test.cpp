@@ -20,7 +20,7 @@ template <class F> void rejects(F run) {
     }
     require(rejected, "invalid query accepted");
 }
-void economy() {
+void economy_rules() {
     app::Game game;
     auto d = game.definition(28).economy;
     const std::int64_t prices[] = {300, 337, 375, 412, 450};
@@ -200,7 +200,7 @@ void queries() {
 }
 } // namespace
 int main() {
-    economy();
+    economy_rules();
     rings();
     neighbours();
     queries();

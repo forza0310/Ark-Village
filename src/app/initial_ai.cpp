@@ -1,5 +1,6 @@
 // Adapted from research d7ca763 prototype/startup_ai.cpp; private owner only.
 #include "ark/app/ai_schedule.hpp"
+#include "ark/app/game.hpp"
 #include "initial_ai_internal.hpp"
 namespace ark::app {
 // Admit only the published static first-visitor state; this is not a general save importer.
@@ -52,6 +53,17 @@ const InitialAiState &InitialAiSession::state() const { return state_; }
 
 // Prepare c/d against one private copy; even a late exit/choice rejection discards all owners.
 InitialAiError InitialAiSession::round(const InitialAiTickets &tickets) {
+    return prepare_round(tickets, nullptr);
+}
+InitialAiError InitialAiSession::round_random(std::mt19937 &random) {
+    auto next_random = random;
+    const auto error = prepare_round({}, &next_random);
+    if (error == InitialAiError::none)
+        random = next_random;
+    return error;
+}
+InitialAiError InitialAiSession::prepare_round(const InitialAiTickets &tickets,
+                                               std::mt19937 *random) {
     auto next = state_;
     AiScheduleInput schedule;
     schedule.rosters[0] = {next.actor.value};
@@ -61,7 +73,7 @@ InitialAiError InitialAiSession::round(const InitialAiTickets &tickets) {
         if (v.phase == AiSchedulePhase::human_decision)
             error = decision(next, tickets);
         else if (v.phase == AiSchedulePhase::human_execution)
-            error = execution(next, tickets);
+            error = execution(next, tickets, random);
         AiScheduleResponse response;
         response.accepted = error == InitialAiError::none;
         return response;

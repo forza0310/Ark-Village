@@ -16,6 +16,7 @@ struct LaunchOptions {
     int zoom_percent = 100;
     std::string screenshot;
     bool paused = false;
+    bool ai_preview = false;
     std::string font;
     std::string inspect_page; // Bounded rendering inspection; never a normal new-game trajectory.
 };

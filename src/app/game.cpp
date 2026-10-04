@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 namespace ark::app {
-Game::Game(std::uint32_t random_seed) : random_(random_seed) {
+Game::Game(std::uint32_t random_seed, PlayMode play) : random_(random_seed), play_(play) {
     const auto &data = startup_data();
     state_.money = data.money;
     state_.points = data.points;
@@ -53,6 +53,8 @@ std::optional<facilities::InstanceId> Game::facility_at(world::Cell cell) const 
 Error Game::open_catalog() {
     if (state_.mode != Mode::normal)
         return Error::wrong_mode;
+    if (ai_preview_enabled())
+        return Error::unavailable;
     state_.mode = Mode::catalog;
     return Error::none;
 }
@@ -123,6 +125,11 @@ void Game::cancel() {
     }
 }
 void Game::step() {
+    // Explicit visual preview advances the proven private interval, with no calendar/map edits.
+    if (ai_) {
+        step_ai_preview();
+        return;
+    }
     // STARTUP/ACCOUNTING: first unresolved report preparation is step 1457, before month end.
     // A finite guard is preferable to silently skipping maintenance or inventing income.
     if (state_.simulation_steps >= 1456) {
@@ -140,6 +147,8 @@ void Game::step() {
         state_.adventurer = people::first_visit(data.first_character, data.spawn_points[choice]);
         ++state_.event89_count; // Latch before showing dialogue, never again on close.
         state_.mode = Mode::tutorial;
+        if (ai_preview_enabled())
+            start_ai_preview();
         return;
     }
     auto &date = state_.calendar;

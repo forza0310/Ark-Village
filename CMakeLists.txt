@@ -37,7 +37,7 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/delayed_reward.cpp src/people/human_growth.cpp
     src/people/hp.cpp src/facilities/arrival.cpp src/facilities/exit.cpp src/facilities/service.cpp
     src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
-    src/app/initial_ai_check.cpp
+    src/app/initial_ai_check.cpp src/app/game_ai_preview.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -156,6 +156,10 @@ if(BUILD_TESTING)
     target_link_libraries(ark_initial_ai_tests PRIVATE ark_game)
     ark_target(ark_initial_ai_tests)
     add_test(NAME actual_initial_ai_interval COMMAND ark_initial_ai_tests)
+    add_executable(ark_game_ai_preview_tests tests/game_ai_preview_test.cpp)
+    target_link_libraries(ark_game_ai_preview_tests PRIVATE ark_game)
+    ark_target(ark_game_ai_preview_tests)
+    add_test(NAME game_visible_ai_preview COMMAND ark_game_ai_preview_tests)
     add_executable(ark_metadata_tests tests/metadata_test.cpp)
     target_link_libraries(ark_metadata_tests PRIVATE ark_asset_metadata)
     ark_target(ark_metadata_tests)

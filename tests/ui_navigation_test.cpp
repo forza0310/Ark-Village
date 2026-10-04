@@ -113,4 +113,27 @@ int main() {
             ui::facility_template(game.definition(66)) == ui::FacilityTemplate::booster &&
             ui::facility_template(game.definition(24)) == ui::FacilityTemplate::recruitment &&
             ui::facility_template(game.definition(25)) == ui::FacilityTemplate::home);
+    // Window routing uses the same pause eligibility in the live AI preview.
+    app::Game ai(20261004, app::PlayMode::ai_preview);
+    for (int n = 0; n < 420; ++n)
+        ai.update();
+    ai.acknowledge_talk();
+    ai.acknowledge_talk();
+    ai.finish_camera();
+    ui::State view;
+    const ui::Layout layout({384, 256});
+    ui::click(ai, view, layout, center(layout.pause_button));
+    const auto rounds = ai.ai_state()->rounds;
+    ai.update();
+    require(ai.state().paused && ai.ai_state()->rounds == rounds);
+    ui::click(ai, view, layout, center(layout.pause_button));
+    ai.update();
+    require(!ai.state().paused && ai.ai_state()->rounds == rounds + 1);
+    ui::click(ai, view, layout, center(layout.right_button));
+    require(view.page == ui::Page::menu && ui::blocks_world(view));
+    ui::click(ai, view, layout, center(layout.menu_rows[0]));
+    require(view.page == ui::Page::menu && ai.state().mode == app::Mode::normal &&
+            view.error == app::Error::unavailable);
+    ui::back(ai, view);
+    require(view.page == ui::Page::village && !ui::blocks_world(view));
 }

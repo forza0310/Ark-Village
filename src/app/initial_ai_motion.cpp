@@ -1,9 +1,11 @@
 // Adapted from research d7ca763 prototype/startup_ai.cpp; private owner only.
 #include "ark/people/ai_perception.hpp"
 #include "initial_ai_internal.hpp"
+#include <limits>
 namespace ark::app {
 // Resolve ordinary priority first, then consume separate category/facility tickets on this map.
-InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTickets &tickets) const {
+InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTickets &tickets,
+                                        std::mt19937 *random) const {
     const auto cell = people::world_cell(s.position);
     if (!cell)
         return InitialAiError::invalid_input;
@@ -40,6 +42,44 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
     departure_input.facility_ticket = tickets.facility;
     std::copy(s.visits.legacy_visit_counts.begin(), s.visits.legacy_visit_counts.end(),
               departure_input.legacy_visit_counts.begin());
+    if (random) {
+        const auto plan = people::plan_activity_categories({0, candidates.snapshot->category_counts,
+                                                            departure_input.legacy_visit_counts,
+                                                            s.control.flags});
+        if (!plan.plan)
+            return InitialAiError::preparation_failed;
+        if (!plan.plan->forced_category && plan.plan->total_weight <= 0)
+            return InitialAiError::unsupported_branch;
+        int category{};
+        if (plan.plan->forced_category) {
+            category = *plan.plan->forced_category;
+        } else {
+            if (plan.plan->total_weight > std::numeric_limits<int>::max())
+                return InitialAiError::invalid_input;
+            departure_input.category_ticket = std::uniform_int_distribution<int>(
+                0, static_cast<int>(plan.plan->total_weight) - 1)(*random);
+            std::vector<std::int64_t> weights;
+            for (const auto &option : plan.plan->options)
+                weights.push_back(option.weight);
+            const auto chosen =
+                people::select_weighted_ticket(weights, departure_input.category_ticket);
+            if (!chosen.index)
+                return InitialAiError::preparation_failed;
+            category = plan.plan->options[*chosen.index].category;
+        }
+        // An original exit/special choice ends this finite preview; never reroll or remove it.
+        if (category != 1 && category != 2)
+            return InitialAiError::unsupported_branch;
+        std::int64_t total{};
+        for (const auto &cell : candidates.snapshot->cells)
+            if (cell.instance && cell.instance->legacy_phase == 1 &&
+                cell.definition.legacy_category == category)
+                total += cell.definition.definition_charm;
+        if (total <= 0 || total > std::numeric_limits<int>::max())
+            return InitialAiError::preparation_failed;
+        departure_input.facility_ticket =
+            std::uniform_int_distribution<int>(0, static_cast<int>(total) - 1)(*random);
+    }
     const auto departure =
         people::prepare_facility_departure(*search.field, *candidates.snapshot, departure_input);
     if (!departure.departure)

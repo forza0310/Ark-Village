@@ -1,4 +1,5 @@
 #include "ark/app/initial_ai_check.hpp"
+#include "ark/app/game.hpp"
 #include "ark/app/initial_ai.hpp"
 #include <stdexcept>
 namespace ark::app {

@@ -1,4 +1,5 @@
 // Real-source initial interval, ticket-controlled private owner; not an APK PRNG replay.
+#include "ark/app/game.hpp"
 #include "ark/app/initial_ai.hpp"
 
 #include <iostream>

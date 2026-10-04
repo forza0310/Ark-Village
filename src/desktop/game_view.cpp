@@ -19,7 +19,8 @@ struct Window {
     explicit Window(const app::LaunchOptions &options) {
         require_display();
         SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
-        InitWindow(options.width, options.height, "Ark-Village");
+        InitWindow(options.width, options.height,
+                   options.ai_preview ? "Ark-Village - AI Preview" : "Ark-Village");
         if (!IsWindowReady())
             throw std::runtime_error("Cannot initialize raylib window");
         SetWindowMinSize(240, 256);
@@ -58,11 +59,11 @@ class Canvas {
 void inspect(app::Game &game, ui::State &view, const std::string &page) {
     if (page.empty())
         return;
-    if (page == "arrival" || page == "visitor" || page == "motion") {
+    if (page == "arrival" || page == "visitor" || page == "motion" || page == "ai") {
         game.set_paused(false);
         for (int i = 0; i < 420; ++i)
             game.update();
-        if (page == "visitor" || page == "motion") {
+        if (page == "visitor" || page == "motion" || page == "ai") {
             game.acknowledge_talk();
             game.acknowledge_talk();
             game.finish_camera();
@@ -85,6 +86,8 @@ void inspect(app::Game &game, ui::State &view, const std::string &page) {
         if (page == "placement")
             ui::confirm(game, view);
     }
+    if (page == "ai")
+        return; // Arrange the real snapshot, then advance Game's AI each admitted window update.
     game.set_paused(true);
 }
 } // namespace
@@ -99,13 +102,17 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
 #endif
     Text text(font);
     const ui::Skin skin(sprites, text);
-    app::Game game(std::random_device{}());
+    const auto play = options.ai_preview ? app::PlayMode::ai_preview : app::PlayMode::startup;
+    app::Game game(options.inspect_page == "ai" ? 20261004U : std::random_device{}(), play);
     game.set_paused(options.paused);
     const auto &data = app::startup_data();
     ui::State view;
     view.camera = {static_cast<float>(data.camera.x), static_cast<float>(data.camera.y)};
     view.zoom = options.zoom_percent / 100.0F;
-    inspect(game, view, options.inspect_page);
+    inspect(game, view,
+            options.ai_preview && options.inspect_page.empty() ? "ai" : options.inspect_page);
+    if (options.ai_preview)
+        game.set_paused(options.paused);
     // A bounded, explicit-target rendering probe. It does not install an AI goal, mutate the
     // actor's domain state, charge a visit or infer that the first visitor chooses the inn.
     std::optional<people::Travel> inspected_travel;
@@ -155,10 +162,14 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             if (game.state().mode == app::Mode::research_boundary &&
                 CheckCollisionPointRec(*mouse,
                                        {layout.dialogue.x + 48, layout.dialogue.y + 66, 106, 29})) {
-                game = app::Game(std::random_device{}());
+                game = app::Game(std::random_device{}(), play);
                 view = ui::State{};
                 view.camera = {static_cast<float>(data.camera.x),
                                static_cast<float>(data.camera.y)};
+                if (options.ai_preview) {
+                    inspect(game, view, "ai");
+                    game.set_paused(options.paused);
+                }
             } else {
                 ui::click(game, view, layout, *mouse);
             }
@@ -222,6 +233,12 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
         std::cout << "Render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
                   << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
                   << " canvas=" << canvas.extent.width << 'x' << canvas.extent.height << '\n';
+    if (const auto *ai = game.ai_state()) {
+        std::cout << "AI preview: rounds=" << ai->rounds << " position=" << ai->position.x << ','
+                  << ai->position.z << " arrivals=" << ai->arrivals
+                  << " completions=" << ai->completions << " funds=" << ai->accounting.funds()
+                  << " error=" << static_cast<int>(game.ai_error()) << '\n';
+    }
     if (!options.screenshot.empty()) {
         if (frames != options.frames)
             throw std::runtime_error("Window closed before bounded capture");

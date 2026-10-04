@@ -20,6 +20,8 @@ int main() {
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
     check(parse_arguments({"--check-ai"}).options->mode == LaunchMode::check_ai);
+    check(parse_arguments({"--ai-preview"}).options->ai_preview);
+    check(parse_arguments({"--inspect-page", "ai", "--frames", "8"}).options->ai_preview);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
@@ -44,6 +46,9 @@ int main() {
              {"--check", "--inspect-page", "shops", "--frames", "8"},
              {"--check-ai", "--inspect-page", "shops", "--frames", "8"},
              {"--check-ai", "--frames", "1", "--screenshot", "a.png"},
+             {"--check", "--ai-preview"},
+             {"--check-ai", "--ai-preview"},
+             {"--ai-preview", "--inspect-page", "motion", "--frames", "8"},
              {"--frames"},
              {"--frames", "0"},
              {"--frames", "-1"},

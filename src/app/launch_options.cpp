@@ -25,13 +25,16 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             options.mode = LaunchMode::check_ai;
         } else if (argument == "--paused") {
             options.paused = true;
+        } else if (argument == "--ai-preview") {
+            options.ai_preview = true;
         } else if (argument == "--inspect-page") {
             if (++i >= arguments.size())
                 return {std::nullopt, "--inspect-page requires a page"};
             const auto &page = arguments[i];
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
-                page != "bonuses" && page != "equipment" && page != "booster" && page != "motion")
+                page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
+                page != "ai")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -69,6 +72,12 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.mode != LaunchMode::window))
         return {std::nullopt, "--inspect-page requires a bounded window run"};
+    if (options.ai_preview && options.mode != LaunchMode::window)
+        return {std::nullopt, "--ai-preview requires a window run"};
+    if (options.inspect_page == "ai")
+        options.ai_preview = true;
+    if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")
+        return {std::nullopt, "--ai-preview cannot be combined with a different inspection page"};
     return {options, {}};
 }
 

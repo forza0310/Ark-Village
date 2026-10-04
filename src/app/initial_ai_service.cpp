@@ -67,7 +67,8 @@ InitialAiError InitialAiSession::arrive(InitialAiState &s) const {
     return InitialAiError::none;
 }
 // Validate exit and delayed tail before applying shared use, release and satisfaction together.
-InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets &tickets) const {
+InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets &tickets,
+                                      std::mt19937 *random) const {
     if (!s.active_facility)
         return InitialAiError::preparation_failed;
     const auto binding = *s.active_facility;
@@ -99,6 +100,12 @@ InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets 
                       tickets.satisfaction};
     i.effects = initial_ai_rules().services.at(d.id).effects;
     i.effect_ticket = tickets.attribute;
+    if (random && d.activity_category == 1 && d.activity_detail == 0) {
+        i.satisfaction.ticket = std::uniform_int_distribution<int>(0, 9)(*random);
+        if (!i.effects.empty())
+            i.effect_ticket = std::uniform_int_distribution<int>(
+                0, static_cast<int>(i.effects.size()) - 1)(*random);
+    }
     i.equipment.old_weapon = s.current_weapon;
     i.equipment.new_weapon = s.selected_weapon.value_or(s.current_weapon);
     const auto result = facilities::prepare_facility_service_exit(i);
@@ -118,8 +125,8 @@ InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets 
     return InitialAiError::none;
 }
 // The d pass advances counters/effects before interpreting controls. Successful8 ends this pass.
-InitialAiError InitialAiSession::execution(InitialAiState &s,
-                                           const InitialAiTickets &tickets) const {
+InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTickets &tickets,
+                                           std::mt19937 *random) const {
     s.counters.action = s.control.action_counter;
     s.counters.alternate = s.control.alternate_counter;
     const auto counters = people::advance_actor_counters(s.counters);
@@ -143,7 +150,7 @@ InitialAiError InitialAiSession::execution(InitialAiState &s,
         if (command[0] == 8) {
             if (command[1] != 0)
                 return InitialAiError::unsupported_branch;
-            const auto error = depart(s, tickets);
+            const auto error = depart(s, tickets, random);
             if (error != InitialAiError::none)
                 return error;
             const auto submitted =
@@ -154,7 +161,7 @@ InitialAiError InitialAiSession::execution(InitialAiState &s,
             return InitialAiError::none; // Successful8 early stop, pending tail remains.
         }
         if (command[0] == 24) {
-            const auto error = exit(s, tickets);
+            const auto error = exit(s, tickets, random);
             if (error != InitialAiError::none)
                 return error;
             continue;

@@ -15,11 +15,12 @@ int main(int argc, char **argv) {
             throw std::runtime_error(parsed.error);
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
-            std::cout << "ark_village [--check|--check-ai] [--paused] [--font TTF] [--size W H] "
+            std::cout << "ark_village [--check|--check-ai] [--ai-preview] [--paused] [--font TTF] "
+                         "[--size W H] "
                          "[--frames N] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
-                         "arrival|visitor|motion]\n";
+                         "arrival|visitor|motion|ai]\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);

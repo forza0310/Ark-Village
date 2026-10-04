@@ -21,7 +21,7 @@ const char *error_text(app::Error error) {
         return "状态异常";
     }
 }
-void menu(const State &view, const Layout &layout, const Skin &skin) {
+void menu(const app::Game &game, const State &view, const Layout &layout, const Skin &skin) {
     const char *names[] = {"建造", "冒险", "办公室", "信息", "系统"};
     const int icons[] = {0, 1, 2, 5, 6};
     for (int i = 0; i < 5; ++i) {
@@ -32,8 +32,9 @@ void menu(const State &view, const Layout &layout, const Skin &skin) {
         skin.sprites.draw("wnd_menuIcon.seb", icons[i], {r.x + 4, r.y + 5}, WHITE,
                           Sprites::Binding::common);
         skin.text.draw(names[i], r.x + 26, r.y + 8,
-                       (i == 0 || i == 3) ? (i == view.menu_row ? ink : WHITE)
-                                          : Color{182, 174, 147, 255});
+                       ((i == 0 && !game.ai_preview_enabled()) || i == 3)
+                           ? (i == view.menu_row ? ink : WHITE)
+                           : Color{182, 174, 147, 255});
         if (i == view.menu_row)
             skin.sprites.draw("finger_r.seb", 0, {r.x + r.width - 1, r.y + 11}, WHITE,
                               Sprites::Binding::common);
@@ -92,7 +93,7 @@ void catalog(const app::Game &game, const State &view, const Layout &layout, con
 void draw_pages(const app::Game &game, const State &view, const Layout &layout, const Skin &skin) {
     const auto &s = game.state();
     if (view.page == Page::menu) {
-        menu(view, layout, skin);
+        menu(game, view, layout, skin);
     } else if (view.page == Page::facility || view.page == Page::definition) {
         draw_facility_page(game, view, layout, skin);
     } else if (view.page == Page::roster) {

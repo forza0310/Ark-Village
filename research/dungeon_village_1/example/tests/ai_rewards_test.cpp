@@ -342,6 +342,189 @@ void spawning() {
               town.candidate->state.encounters.at(0).runtime.spawned == 0,
           "selected town cell consumes cell ticket only, no offsets/definition/spawn");
 }
+AiRewardState projectile_fixture() {
+    auto s = fixture();
+    s.battle.actors.at({1}).control.flags = 2U;
+    s.growth.at(1).derived.combat[1] = 100;
+    auto &m = s.battle.actors.at({2});
+    m.position = {20, 0, 0};
+    m.hp = {0, 500, 500, 500, false, 0};
+    m.capacity = 500;
+    auto original = m;
+    original.id = {3};
+    original.position = {1000, 0, 0};
+    s.battle.actors.emplace(original.id, original);
+    s.contexts.emplace(original.id, RewardActorContext{});
+    s.monster_order.push_back(original.id);
+    s.monster_growth.at(7).growth = 0;
+    s.monster_growth.at(7).base_defense = 50;
+    s.projectile_order = {10};
+    s.next_projectile_id = 11;
+    return s;
+}
+WorldProjectileInput projectile_input() {
+    WorldProjectileInput i;
+    i.projectile = 10;
+    i.box = CollisionBox{-1, 0, 2, 2};
+    i.monster_boxes[0] = CollisionBox{-10, 10, 20, 20};
+    i.physical_jitter = 12;
+    i.current_weapon_kind = 1;
+    i.drop_ticket = 99;
+    return i;
+}
+void projectile_world() {
+    for (bool miss : {false, true}) {
+        auto s = projectile_fixture();
+        const auto p = prepare_projectile(ProjectileKind::arrow, {1}, {3}, {}, {1000, 0, 0}, 0);
+        s.projectiles.emplace(10, *p.candidate);
+        s.battle.actors.at({1}).miss = miss;
+        const auto c = prepare_world_projectile(s, projectile_input());
+        check(c.candidate && c.candidate->step.damage_target == CharacterId{2} &&
+                  c.candidate->physical_damage->value == 120 && c.candidate->hit->landed == !miss &&
+                  c.candidate->state.battle.actors.at({2}).hp.target == (miss ? 500 : 380) &&
+                  c.candidate->state.battle.actors.at({3}).hp.target == 500 &&
+                  c.candidate->step.contact_effect && c.candidate->state.projectiles.empty(),
+              "arrow hits actual first collision not original, rederives damage/current miss; "
+              "contact even miss");
+        check(s.projectiles.at(10).position.x == 0 && s.battle.actors.at({2}).hp.target == 500,
+              "private projectile transaction doesn't mutate input owners");
+    }
+    auto s = projectile_fixture();
+    ProjectileState p;
+    p.kind = ProjectileKind::spell;
+    p.caster = {1};
+    p.original_target = {3};
+    p.position = {20, -1, 0};
+    p.effect = 4;
+    p.damage = 10;
+    s.projectiles.emplace(10, p);
+    auto next = s;
+    AiScheduleInput schedule;
+    schedule.rosters[2] = {10};
+    const auto plan = prepare_ai_schedule(schedule, [&](const auto &visit, const auto &) {
+        AiScheduleResponse r;
+        if (visit.phase == AiSchedulePhase::projectile) {
+            const auto step = prepare_world_projectile(next, projectile_input());
+            if (!step.candidate) {
+                r.accepted = false;
+                return r;
+            }
+            next = step.candidate->state;
+            r.remove = step.candidate->step.remove;
+            if (step.candidate->spawned_projectile)
+                r.append.push_back({AiRosterKind::projectile, *step.candidate->spawned_projectile});
+        }
+        return r;
+    });
+    check(plan.candidate && plan.candidate->rosters[2] == std::vector<std::uint64_t>{11} &&
+              next.projectiles.at(11).counter == 0 && next.projectiles.at(11).delay == 6 &&
+              next.battle.actors.at({2}).hp.target == 500,
+          "spell collision appends delayed object, reverse current pass excludes new projectile");
+    WorldProjectileInput delayed;
+    delayed.projectile = 11;
+    for (int tick = 0; tick < 6; ++tick) {
+        const auto c = prepare_world_projectile(next, delayed);
+        check(c.candidate && !c.candidate->hit &&
+                  c.candidate->state.projectiles.at(11).counter == tick + 1,
+              "delayed old-counter0..5 waits without damage");
+        next = c.candidate->state;
+    }
+    next.battle.actors.at({1}).miss = true;
+    auto c = prepare_world_projectile(next, delayed);
+    check(c.candidate && c.candidate->hit && !c.candidate->hit->landed &&
+              c.candidate->state.battle.actors.at({2}).hp.target == 500 &&
+              c.candidate->state.projectiles.empty(),
+          "seventh delayed check reads caster current miss, not launch snapshot");
+    s = projectile_fixture();
+    p = {};
+    p.kind = ProjectileKind::delayed_damage;
+    p.caster = {1};
+    p.original_target = {2};
+    p.damage = 10;
+    p.delay = 0;
+    s.projectiles.emplace(10, p);
+    auto &dead = s.battle.actors.at({2});
+    dead.control.state = 3;
+    dead.control.action = 9;
+    dead.control.flags &= ~128U;
+    dead.state_parameter = 1;
+    dead.state_counter = 12;
+    dead.hp.target = 0;
+    const auto death = prepare_monster_death_commit(s, {2});
+    check(death.candidate && death.candidate->state.retired_actors.count({2}),
+          "projectile reference keeps corpse alive after removal from bm");
+    c = prepare_world_projectile(death.candidate->state, projectile_input());
+    check(c.candidate && c.candidate->hit->lethal &&
+              c.candidate->state.battle.humans.at(1).kills == 1 &&
+              !c.candidate->state.battle.actors.count({2}) &&
+              c.candidate->state.battle.actors.at({3}).hp.target == 500 &&
+              c.candidate->state.retired_actors.empty(),
+          "delayed corpse rehit commits stats without re-adding instance or hitting reused UID, "
+          "then releases ref");
+    s = projectile_fixture();
+    s.projectiles.emplace(
+        10, *prepare_projectile(ProjectileKind::arrow, {1}, {3}, {}, {1000, 0, 0}, 0).candidate);
+    s.battle.actors.at({2}).hp.target = 1;
+    auto invalid = projectile_input();
+    invalid.drop_ticket.reset();
+    check(!prepare_world_projectile(s, invalid).candidate && s.projectiles.at(10).position.x == 0 &&
+              s.battle.actors.at({2}).hp.target == 1,
+          "late lethal sub-consumer failure discards projectile motion/deletion and target stats");
+    s.battle.actors.erase({3});
+    c = prepare_world_projectile(s, {});
+    check(!c.candidate, "unresolved projectile ID is invalid not fabricated");
+    WorldProjectileInput missing;
+    missing.projectile = 10;
+    c = prepare_world_projectile(s, missing);
+    check(c.candidate && c.candidate->step.remove && c.candidate->state.projectiles.empty(),
+          "missing original reference deletes before collision metadata/physical draws");
+}
+void reference_graph() {
+    auto s = fixture();
+    auto corpse = s.battle.actors.at({2});
+    corpse.id = {5};
+    corpse.encounter.reset();
+    s.retired_actors.emplace(corpse.id, corpse);
+    s.battle.actors.at({1}).rescue = corpse.id;
+    auto c = collect_ai_references(s);
+    check(c.retired_actors.count({5}) == 1, "live R keeps removed object outside roster alive");
+    s.battle.actors.at({1}).rescue.reset();
+    s.battle.actors.at({2}).follow = corpse.id;
+    c = collect_ai_references(s);
+    check(c.retired_actors.count({5}) == 1, "monster S independently roots removed follow target");
+    s.battle.actors.at({2}).follow.reset();
+    s.retired_actors.at({5}).rescue = CharacterId{6};
+    corpse.id = {6};
+    corpse.rescue = CharacterId{5};
+    s.retired_actors.emplace(corpse.id, corpse);
+    c = collect_ai_references(s);
+    check(c.retired_actors.empty(), "unrooted mutual R cycle released like Java GC");
+    s.battle.actors.at({1}).rescue = CharacterId{5};
+    c = collect_ai_references(s);
+    check(c.retired_actors.size() == 2, "reachable R chain retains entire cycle");
+    s = fixture();
+    s.encounters.at(0).runtime.state = 1;
+    s.encounters.at(0).runtime.counter = 99;
+    const auto end = prepare_encounter_reward_commit(s, {});
+    check(end.candidate && end.candidate->removed && end.candidate->state.encounters.empty() &&
+              end.candidate->state.retired_encounters.count(0) == 1,
+          "bn deletion retains original event through current actor db");
+    s = end.candidate->state;
+    for (auto &[id, a] : s.battle.actors) {
+        (void)id;
+        a.encounter.reset();
+        a.group = 0;
+    }
+    c = collect_ai_references(s);
+    check(c.retired_encounters.count(0) == 1,
+          "dc keeps removed event/group identity independently");
+    for (auto &[id, a] : s.battle.actors) {
+        (void)id;
+        a.group.reset();
+    }
+    c = collect_ai_references(s);
+    check(c.retired_encounters.empty(), "no db/dc roots finally release retired event");
+}
 } // namespace
 int main() {
     try {
@@ -350,6 +533,8 @@ int main() {
         timeline();
         groups();
         spawning();
+        projectile_world();
+        reference_graph();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

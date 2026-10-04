@@ -75,7 +75,18 @@ void enemies() {
     input.opposite_roster[0].in_move_area = false;
     check(!select_combat_enemy(input).candidate, "invalid movement area excluded");
     input.opposite_roster = {{{1}, 1, true, {3, 4}, 9}, {{1}, 1, true, {1, 1}, 9}};
-    check(select_combat_enemy(input).error == ActorAiError::invalid_input, "duplicate ID rejected");
+    check(select_combat_enemy(input).error == ActorAiError::invalid_input,
+          "same ID conflicting position rejected");
+    input.opposite_roster = {{{1}, 1, true, {4, 0}, 9},
+                             {{2}, 1, true, {1, 0}, 9},
+                             {{3}, 1, true, {0, 1}, 9},
+                             {{2}, 1, true, {1, 0}, 9}};
+    result = select_combat_enemy(input);
+    check(result.candidate && result.candidate->id == CharacterId{2},
+          "group repeated rightmost minimum preserved, not sorted/deduplicated");
+    input.active_battle_group = false;
+    check(select_combat_enemy(input).error == ActorAiError::invalid_input,
+          "ordinary global roster still rejects duplicate identity");
     input.opposite_roster.clear();
     input.position.x = std::numeric_limits<float>::quiet_NaN();
     check(select_combat_enemy(input).error == ActorAiError::invalid_input,

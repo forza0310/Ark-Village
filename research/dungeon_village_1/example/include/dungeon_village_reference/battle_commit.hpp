@@ -54,6 +54,13 @@ struct BattleActorRecord {
     int hit_flash{};
     int label_timer{};
     bool miss_label{};
+    std::optional<CharacterId> follow; // S: restored monster reference, not a rescue alias.
+    bool attack_armed{true};           // ai, independent from miss w.
+    int combo_index{};                 // x.
+    int combo_count{1};                // y.
+    int attack_idle{};                 // av, cleared by completed15/16 only.
+    CombatPoint attack_destination;    // p, not current n or previous au.
+    std::optional<CharacterId> perceived_enemy; // az, rechecked against bl by17.
 };
 struct BattleCommitState {
     std::map<CharacterId, BattleActorRecord> actors;

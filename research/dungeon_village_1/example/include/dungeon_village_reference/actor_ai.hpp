@@ -49,7 +49,8 @@ struct EnemySelectionResult {
     std::optional<EnemySelectionCandidate> candidate; // Empty + none is a valid no-enemy result.
 };
 // Reject seven states and invalid movement area. Event-scoped input filters matching db identity;
-// group-scoped input is already supplied by the owner. Preserve reverse-scan strict-less ties.
+// group-scoped input is already supplied by the owner. Consistent group duplicates are retained;
+// conflicting snapshots/ordinary duplicate IDs fail. Preserve reverse-scan strict-less ties.
 EnemySelectionResult select_combat_enemy(const EnemySelectionInput &input);
 
 enum class IdleAiAction { keep, activity, battle_prepare };

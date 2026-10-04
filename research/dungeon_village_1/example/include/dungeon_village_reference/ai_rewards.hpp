@@ -22,21 +22,31 @@ struct RewardActorContext {
     bool inside_town{};
     ActorEffectState effects;
     std::optional<int> facility_category;
+    bool move_area{};     // aB[0], source qualification cached at c(), not a route result.
+    Position half_cell{}; // t, separate from s whole cell.
 };
 struct RewardMonsterDefinition {
-    int defeats{};           // k.u.
-    int growth{};            // k.v, increment AFTER event reward is resolved.
-    int base_death_reward{}; // k.R.
-    int base_cash_reward{};  // k.S.
-    int base_hp{};           // k.i, all existing instances read shared growth through h().
-    int body{};              // k.d.
-    int sprite_variant{};    // k.f.
+    int defeats{};                  // k.u.
+    int growth{};                   // k.v, increment AFTER event reward is resolved.
+    int base_death_reward{};        // k.R.
+    int base_cash_reward{};         // k.S.
+    int base_hp{};                  // k.i, all existing instances read shared growth through h().
+    int body{};                     // k.d.
+    int sprite_variant{};           // k.f.
+    int required_progress{};        // k.h, distinct from drop progress UserData.k.
+    int status{};                   // k.p, maintained catalogue supports0/1.
+    bool newly_unlocked{};          // k.r.
+    bool introduced{};              // k.y.
+    bool has_introduction_script{}; // k.t.length>0, execution stays an ordered request.
+    int base_attack{};              // k.j.
+    int base_defense{};             // k.k.
 };
 struct RewardEncounter {
     EncounterRuntimeState runtime;
     std::vector<CharacterId> members; // Original j, distinct from all matching db instances.
     bool group_exists{true};
     BattleGroupState group;
+    int legacy_id{}; // f164b, distinct from maintenance runtime.id.
 };
 struct AiRewardState {
     BattleCommitState battle; // Sole actor HP/control/J/K/statistics owner.
@@ -48,10 +58,19 @@ struct AiRewardState {
     std::map<int, RewardHumanDefinition> growth;
     std::vector<HumanProfessionRule> professions; // Shared unlock state, not per human.
     std::map<int, RewardMonsterDefinition> monster_growth;
+    std::vector<int> monster_definition_order;
+    int monster_progress{}; // UserData.x, NOT drop_progress k.
+    int monster_limit{4};   // Source n.Z initial; not a per-batch cap.
     std::map<std::uint64_t, RewardEncounter> encounters;
+    std::map<std::uint64_t, RewardEncounter> retired_encounters; // Removed from bn, held by db/dc.
+    std::map<std::uint64_t, ProjectileState> projectiles;
+    std::vector<std::uint64_t> projectile_order;
+    std::uint64_t next_projectile_id{1};
     PeriodAccounting accounting;
     std::uint64_t next_cash_id{1};
     std::uint64_t next_actor_id{3}; // Maintenance allocator, not original first-free UID.
+    std::uint64_t next_encounter_id{1};
+    int legacy_encounter_counter{}; // Source f.A: increment/modulo before collision scan.
     std::uint64_t period{1};  // Maintenance ledger identity, not original calendar/month number.
     int pending_completion{}; // UserData.f215e; not immediately converted to money/points.
     bool task_active{};
@@ -95,4 +114,37 @@ AiRewardResult prepare_battle_group_commit(const AiRewardState &state, std::uint
 AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &state, std::uint64_t encounter,
                                                const EncounterSpawnCandidate &spawn,
                                                const std::array<int, 2> &offset_tickets);
+struct WorldProjectileInput {
+    std::uint64_t projectile{};
+    std::optional<CollisionBox> box; // n.a(0,8/9), required only for live arrow/spell consumers.
+    std::array<std::optional<CollisionBox>, 4> monster_boxes; // n.a(1,g+3).
+    std::optional<int> physical_jitter;
+    int current_weapon_kind{}; // Resolved caster N() kind at collision, not at launch.
+    bool caster_visible{};
+    std::optional<int> drop_ticket;
+    std::optional<DropSelectionInput> drop_selection;
+};
+struct WorldProjectileCandidate {
+    AiRewardState state;
+    ProjectileStepCandidate step;
+    std::optional<HitCandidate> hit;
+    std::optional<DamageCandidate> physical_damage;
+    std::optional<std::uint64_t> spawned_projectile;
+    std::vector<std::uint64_t> spawned_objects;
+};
+struct WorldProjectileResult {
+    AiRewardError error{AiRewardError::none};
+    std::optional<WorldProjectileCandidate> candidate;
+};
+// Roster and reference liveness differ: delayed target/caster may be retained Java objects.
+// Collision reads current monster roster/order and caster miss; all hit/drop/spawn changes atomic.
+WorldProjectileResult prepare_world_projectile(const AiRewardState &state,
+                                               const WorldProjectileInput &input);
+// Trace Java-style object reachability from live actors/events/projectiles, including R/S/db/dc.
+// No orphan-cycle retention and no re-entry into running rosters. Missing references stay errors
+// for their consumer; collection does not manufacture an object to repair invalid input.
+AiRewardState collect_ai_references(AiRewardState state);
+// Rebuild effective attack/defense and boosts from current shared definitions/instances.
+DamageResult prepare_actor_physical_damage(const AiRewardState &state, CharacterId attacker,
+                                           CharacterId target, std::optional<int> jitter);
 } // namespace dungeon_village_reference

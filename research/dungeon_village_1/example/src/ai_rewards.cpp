@@ -16,16 +16,70 @@ BattleActorRecord *resolve(AiRewardState &s, CharacterId id) {
 }
 void collect_retired(AiRewardState &s) {
     std::set<CharacterId> references;
-    for (const auto &[id, encounter] : s.encounters) {
+    std::set<std::uint64_t> encounters;
+    std::vector<CharacterId> actors_to_visit;
+    std::vector<std::uint64_t> events_to_visit;
+    const auto actor = [&](CharacterId id) {
+        if (references.insert(id).second)
+            actors_to_visit.push_back(id);
+    };
+    const auto event = [&](std::uint64_t id) {
+        if (encounters.insert(id).second)
+            events_to_visit.push_back(id);
+    };
+    for (const auto &[id, a] : s.battle.actors) {
+        (void)a;
+        actor(id);
+    }
+    for (const auto &[id, e] : s.encounters) {
+        (void)e;
+        event(id);
+    }
+    for (const auto &[id, projectile] : s.projectiles) {
         (void)id;
-        references.insert(encounter.members.begin(), encounter.members.end());
-        for (const auto *roster : {&encounter.group.humans, &encounter.group.monsters})
-            for (const auto &member : *roster)
-                references.insert(member.id);
+        actor(projectile.caster);
+        actor(projectile.original_target);
+    }
+    // Actor<->event and rescue cycles are traced only when reachable from a live root.
+    while (!actors_to_visit.empty() || !events_to_visit.empty()) {
+        if (!actors_to_visit.empty()) {
+            const auto id = actors_to_visit.back();
+            actors_to_visit.pop_back();
+            if (const auto *a = resolve(s, id)) {
+                if (a->rescue)
+                    actor(*a->rescue);
+                if (a->follow)
+                    actor(*a->follow);
+                if (a->encounter)
+                    event(*a->encounter);
+                if (a->group)
+                    event(*a->group);
+            }
+        } else {
+            const auto id = events_to_visit.back();
+            events_to_visit.pop_back();
+            const auto live = s.encounters.find(id);
+            const auto retired = s.retired_encounters.find(id);
+            const auto *e = live != s.encounters.end()              ? &live->second
+                            : retired != s.retired_encounters.end() ? &retired->second
+                                                                    : nullptr;
+            if (!e)
+                continue;
+            for (const auto member : e->members)
+                actor(member);
+            for (const auto *roster : {&e->group.humans, &e->group.monsters})
+                for (const auto &member : *roster)
+                    actor(member.id);
+        }
     }
     for (auto it = s.retired_actors.begin(); it != s.retired_actors.end();)
         if (references.count(it->first) == 0)
             it = s.retired_actors.erase(it);
+        else
+            ++it;
+    for (auto it = s.retired_encounters.begin(); it != s.retired_encounters.end();)
+        if (encounters.count(it->first) == 0)
+            it = s.retired_encounters.erase(it);
         else
             ++it;
 }
@@ -280,6 +334,9 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
         }
     }
     if (c.removed) {
+        if (c.state.retired_encounters.count(i.encounter))
+            return fail(AiRewardError::invalid_input);
+        c.state.retired_encounters.emplace(i.encounter, c.state.encounters.at(i.encounter));
         c.state.encounters.erase(i.encounter);
         c.state.battle.quest_encounters.erase(i.encounter);
     }
@@ -451,5 +508,130 @@ AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &s, std::uint
         return fail(AiRewardError::preparation_failed);
     ++c.state.next_actor_id;
     return {AiRewardError::none, c};
+}
+WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
+                                               const WorldProjectileInput &i) {
+    const auto fail = [](AiRewardError error) {
+        return WorldProjectileResult{error, std::nullopt};
+    };
+    const auto projectile = s.projectiles.find(i.projectile);
+    if (projectile == s.projectiles.end() ||
+        std::count(s.projectile_order.begin(), s.projectile_order.end(), i.projectile) != 1)
+        return fail(AiRewardError::invalid_input);
+    WorldProjectileCandidate c{s, {}, {}, {}, {}, {}};
+    const auto &p = projectile->second;
+    ProjectileContext context;
+    const auto caster = resolve(c.state, p.caster), original = resolve(c.state, p.original_target);
+    context.caster_reference = caster != nullptr;
+    context.original_target_reference = original != nullptr;
+    if (caster && original && p.kind != ProjectileKind::delayed_damage) {
+        if (!i.box)
+            return fail(AiRewardError::invalid_input);
+        context.box = *i.box;
+        std::set<CharacterId> seen;
+        for (const auto id : s.monster_order) {
+            const auto actor = s.battle.actors.find(id);
+            if (actor == s.battle.actors.end() || !seen.insert(id).second ||
+                !(actor->second.id == id) || actor->second.kind != ActorKind::monster ||
+                actor->second.body < 0 || actor->second.body > 3 ||
+                !i.monster_boxes[actor->second.body])
+                return fail(AiRewardError::stale_actor);
+            context.monsters.push_back(
+                {id, actor->second.position, *i.monster_boxes[actor->second.body]});
+        }
+    }
+    const auto step = advance_projectile(p, context);
+    if (!step.candidate)
+        return fail(AiRewardError::preparation_failed);
+    c.step = *step.candidate;
+    if (c.step.damage_target) {
+        const auto victim = resolve(c.state, *c.step.damage_target);
+        if (!caster || !victim || caster->kind != ActorKind::human ||
+            victim->kind != ActorKind::monster)
+            return fail(AiRewardError::stale_actor);
+        int damage = p.damage;
+        if (c.step.physical_damage) {
+            const auto physical = prepare_actor_physical_damage(s, p.caster, *c.step.damage_target,
+                                                                i.physical_jitter);
+            if (!physical.candidate)
+                return fail(AiRewardError::preparation_failed);
+            c.physical_damage = physical.candidate;
+            damage = physical.candidate->value;
+        }
+        // Temporarily project retained actors for the shared hit consumer, then restore ownership.
+        std::vector<CharacterId> retained;
+        for (const auto id : {p.caster, *c.step.damage_target})
+            if (!c.state.battle.actors.count(id)) {
+                c.state.battle.actors.emplace(id, c.state.retired_actors.at(id));
+                retained.push_back(id);
+            }
+        const auto old_next_object = c.state.battle.next_object_id;
+        const auto hit = prepare_battle_commit(
+            c.state.battle, {p.caster, *c.step.damage_target, damage, i.current_weapon_kind,
+                             i.caster_visible, i.drop_ticket, i.drop_selection});
+        if (!hit.candidate)
+            return fail(AiRewardError::preparation_failed);
+        c.hit = hit.candidate->hit;
+        c.state.battle = hit.candidate->state;
+        if (c.state.battle.next_object_id != old_next_object)
+            c.spawned_objects.push_back(old_next_object);
+        for (const auto id : retained) {
+            c.state.retired_actors.at(id) = c.state.battle.actors.at(id);
+            c.state.battle.actors.erase(id);
+        }
+    }
+    if (c.step.spawned) {
+        if (c.state.next_projectile_id == 0 ||
+            c.state.next_projectile_id == std::numeric_limits<std::uint64_t>::max() ||
+            c.state.projectiles.count(c.state.next_projectile_id))
+            return fail(AiRewardError::invalid_input);
+        c.spawned_projectile = c.state.next_projectile_id++;
+        c.state.projectiles.emplace(*c.spawned_projectile, *c.step.spawned);
+        c.state.projectile_order.push_back(*c.spawned_projectile);
+    }
+    if (c.step.remove) {
+        c.state.projectiles.erase(i.projectile);
+        const auto id = std::find(c.state.projectile_order.begin(), c.state.projectile_order.end(),
+                                  i.projectile);
+        c.state.projectile_order.erase(id);
+    } else
+        c.state.projectiles.at(i.projectile) = c.step.state;
+    collect_retired(c.state);
+    return {AiRewardError::none, c};
+}
+AiRewardState collect_ai_references(AiRewardState state) {
+    collect_retired(state);
+    return state;
+}
+DamageResult prepare_actor_physical_damage(const AiRewardState &s, CharacterId attacker,
+                                           CharacterId target, std::optional<int> jitter) {
+    const auto find = [&](CharacterId id) -> const BattleActorRecord * {
+        const auto live = s.battle.actors.find(id);
+        if (live != s.battle.actors.end())
+            return &live->second;
+        const auto retired = s.retired_actors.find(id);
+        return retired != s.retired_actors.end() ? &retired->second : nullptr;
+    };
+    const auto *a = find(attacker), *b = find(target);
+    if (!a || !b || a->kind == b->kind)
+        return {CombatAiError::invalid_input, {}};
+    const auto *human = a->kind == ActorKind::human ? a : b;
+    const auto *monster = a->kind == ActorKind::monster ? a : b;
+    const auto growth = s.growth.find(human->definition);
+    const auto definition = s.monster_growth.find(monster->definition);
+    const auto shared = s.battle.monsters.find(monster->definition);
+    if (growth == s.growth.end() || definition == s.monster_growth.end() ||
+        shared == s.battle.monsters.end())
+        return {CombatAiError::invalid_input, {}};
+    const bool attacking = a->kind == ActorKind::monster;
+    const auto effective = prepare_monster_growth(
+        attacking ? definition->second.base_attack : definition->second.base_defense,
+        definition->second.growth, 0, (shared->second.flags & 4U) != 0);
+    if (!effective)
+        return {CombatAiError::invalid_input, {}};
+    return prepare_physical_damage(
+        {a->kind, attacking ? *effective : growth->second.derived.combat[1],
+         attacking ? growth->second.derived.combat[2] : *effective,
+         (human->control.flags & 2048U) != 0, (monster->control.flags & 4096U) != 0, jitter});
 }
 } // namespace dungeon_village_reference

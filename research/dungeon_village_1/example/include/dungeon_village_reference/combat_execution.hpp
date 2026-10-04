@@ -41,6 +41,7 @@ struct HumanAttackFrame {
     bool enemy_found{};
     float enemy_distance{};
     int weapon_range{};
+    std::optional<int> action{}; // Current k; absent uses setup's normal p.C[kind] projection.
 };
 struct HumanAttackCandidate {
     int counter{};
@@ -49,6 +50,7 @@ struct HumanAttackCandidate {
     bool request_damage{};
     bool request_arrow{};
     bool completed{};
+    bool query_enemy{}; // True only at an actual direct window or bow's current-action first point.
 };
 struct HumanAttackResult {
     CombatAiError error{CombatAiError::none};
@@ -62,7 +64,8 @@ struct SpellFrameCandidate {
     bool request_effect{}; // Damage projectile or immediate healing request.
     bool completed{};      // l>=42, resets av; missing target at26 does not finish.
 };
-std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_found);
+std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_found,
+                                                       int action = 4);
 DamageResult prepare_healing_amount(int magic, std::optional<int> jitter_ticket);
 
 struct AttackTargetSnapshot {

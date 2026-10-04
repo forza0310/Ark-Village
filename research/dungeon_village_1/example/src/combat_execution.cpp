@@ -93,34 +93,40 @@ AttackSetupResult prepare_human_attack(const AttackSetupInput &i) {
 HumanAttackResult prepare_human_attack_frame(const HumanAttackFrame &i) {
     if (i.weapon_kind < 0 || i.weapon_kind > 3 || i.counter < 0 || i.counter > 1000000 ||
         i.combo_index < 0 || i.combo_count < 1 || i.combo_index >= i.combo_count ||
-        !std::isfinite(i.enemy_distance) || i.enemy_distance < 0 || i.weapon_range < 0)
+        !std::isfinite(i.enemy_distance) || i.enemy_distance < 0 || i.weapon_range < 0 ||
+        (i.action && (*i.action < 0 || *i.action > 11)))
         return {CombatAiError::invalid_input, std::nullopt};
     HumanAttackCandidate c{i.counter + (i.combo_index > 0 ? 1 : 0), i.combo_index, i.armed};
-    constexpr int first[] = {2, 8, 6, 2}, last[] = {12, 14, 12, 12};
-    if (i.weapon_kind != 1 && c.armed && c.counter >= 5 && c.counter <= 8 && i.enemy_found &&
-        i.enemy_distance < i.weapon_range) {
+    constexpr int actions[] = {1, 2, 3, 1};
+    constexpr int first[] = {4, 2, 8, 6, 26, 1, 24, 60, 4, 300, 12, 300};
+    constexpr int last[] = {16, 12, 14, 12, 42, 16, 24, 60, 16, 300, 18, 300};
+    const int action = i.action.value_or(actions[i.weapon_kind]);
+    c.query_enemy = i.weapon_kind != 1 ? c.armed && c.counter >= 5 && c.counter <= 8
+                                       : c.counter == first[action];
+    if (i.weapon_kind != 1 && c.query_enemy && i.enemy_found && i.enemy_distance < i.weapon_range) {
         c.armed = false;
         c.request_damage = true;
     }
-    if (i.weapon_kind == 1 && c.counter == first[i.weapon_kind]) {
+    if (i.weapon_kind == 1 && c.counter == first[action]) {
         if (!i.enemy_found)
             return {CombatAiError::none, c}; // L535 bypasses completion/restart on this one frame.
         c.request_arrow = true;
     }
     if (c.combo_index >= i.combo_count - 1)
-        c.completed = c.counter >= last[i.weapon_kind];
-    else if (c.counter >= last[i.weapon_kind] - 5) {
+        c.completed = c.counter >= last[action];
+    else if (c.counter >= last[action] - 5) {
         c.counter = 0;
         ++c.combo_index;
         c.armed = true;
     }
     return {CombatAiError::none, c};
 }
-std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_found) {
-    if (counter < 0 || counter > 1000000)
+std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_found, int action) {
+    if (counter < 0 || counter > 1000000 || action < 0 || action > 11)
         return std::nullopt;
+    constexpr int last[] = {16, 12, 14, 12, 42, 16, 24, 60, 16, 300, 18, 300};
     return SpellFrameCandidate{counter == 1, counter == 26, counter == 26 && target_found,
-                               counter >= 42};
+                               counter >= last[action] && (counter != 26 || target_found)};
 }
 DamageResult prepare_healing_amount(int magic, std::optional<int> ticket) {
     if (magic < 0 || magic > 1000000)

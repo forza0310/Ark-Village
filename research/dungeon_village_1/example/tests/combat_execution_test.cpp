@@ -79,6 +79,34 @@ void setup_and_windows() {
     HumanAttackFrame exact{0, 5, 0, 1, true, true, 50, 50};
     check(!prepare_human_attack_frame(exact).candidate->request_damage,
           "exact range excludes direct hit");
+    constexpr int action_first[] = {4, 2, 8, 6, 26, 1, 24, 60, 4, 300, 12, 300};
+    constexpr int action_last[] = {16, 12, 14, 12, 42, 16, 24, 60, 16, 300, 18, 300};
+    for (int action = 0; action <= 11; ++action)
+        for (int weapon = 0; weapon <= 3; ++weapon)
+            for (int tick : {0, 1, 2, 4, 5, 6, 7, 8, 12, 14, 16, 18, 24, 26, 42, 60, 300})
+                for (bool found : {false, true}) {
+                    HumanAttackFrame f{weapon, tick, 0, 1, true, found, 50, 100, action};
+                    const auto c = prepare_human_attack_frame(f).candidate;
+                    const bool query =
+                        weapon == 1 ? tick == action_first[action] : tick >= 5 && tick <= 8;
+                    check(c && c->query_enemy == query &&
+                              c->request_arrow == (weapon == 1 && query && found) &&
+                              c->request_damage == (weapon != 1 && query && found),
+                          "weapon windows vs independent current-action bow first point");
+                    check(
+                        c->completed ==
+                            (tick >= action_last[action] && !(weapon == 1 && query && !found)),
+                        "completion uses current action end, absent bow target still early stops");
+                }
+    for (int action = 0; action <= 11; ++action)
+        for (int tick : {1, 12, 14, 16, 18, 24, 26, 42, 60, 300})
+            for (bool found : {false, true}) {
+                const auto c = prepare_spell_frame(tick, found, action);
+                check(c && c->query_target == (tick == 26) &&
+                          c->completed == (tick >= action_last[action] && (tick != 26 || found)),
+                      "spell query26 stays fixed, current-action end and missing26 early stop "
+                      "independent");
+            }
     for (int tick = 0; tick <= 50; ++tick)
         for (bool found : {false, true}) {
             const auto c = prepare_spell_frame(tick, found);

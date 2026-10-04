@@ -41,8 +41,9 @@
 | [object_ai.hpp](../../example/include/dungeon_village_reference/object_ai.hpp) | 掉落选择、物体构造/计数/奖励/H/拾取控制队列 | 全局库存和发布原型实例提交 |
 | [ai_schedule.hpp](../../example/include/dungeon_village_reference/ai_schedule.hpp) | 实时名单遍历、两遍更新/删除跳过/同轮追加、设施释放顺序 | 更新资格/主场景前置、世界与统计的完整所有者及真实新局默认AI |
 | [actor_effects.hpp](../../example/include/dungeon_village_reference/actor_effects.hpp) | cd/ce顺序与时长、表情概率/抑制/票号、i/l/B/aw/aq计数 | 图像/声音真实播放、平台文字选择及全部表现渲染 |
+| [human_growth.hpp](../../example/include/dungeon_village_reference/human_growth.hpp) | 逐职业六属性、当前职业/legacy_u倍率、装备/法术、九步成长与有序解锁请求 | 全局页面/定义实际提交，不把成长显示当作HP恢复 |
 
-十一个AI模块只有标准C++17，不调用Java或窗口、不接管原版向量，返回候选由唯一所有者重校验并提交。
+十二个AI模块只有标准C++17，不调用Java或窗口、不接管原版向量，返回候选由唯一所有者重校验并提交。
 外部命令明确delegated，未知/截断明确错误，不静默补演示AI；原型默认保护不因纯规则通过而解除。
 当前可复现检查数与六套结果见[验证](../../VERIFICATION.md)。
 

@@ -14,7 +14,8 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/weapon_choice.cpp src/actor_ai.cpp src/combat_ai.cpp
                                      src/ai_perception.cpp src/encounter_ai.cpp src/actor_lifecycle.cpp
                                      src/actor_control.cpp src/combat_execution.cpp src/object_ai.cpp
-                                     src/encounter_lifecycle.cpp src/ai_schedule.cpp src/actor_effects.cpp)
+                                     src/encounter_lifecycle.cpp src/ai_schedule.cpp src/actor_effects.cpp
+                                     src/human_growth.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -321,3 +322,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_actor_effects_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.actor_effects COMMAND dungeon_village_actor_effects_tests)
+
+add_executable(dungeon_village_human_growth_tests tests/human_growth_test.cpp)
+target_link_libraries(dungeon_village_human_growth_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_human_growth_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_human_growth_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_human_growth_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.human_growth COMMAND dungeon_village_human_growth_tests)

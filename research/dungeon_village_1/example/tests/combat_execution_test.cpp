@@ -270,7 +270,7 @@ void hits() {
     i.attacker_kind = ActorKind::monster;
     i.target_carries_rescued_actor = true;
     i.rescue_reference = true;
-    i.victim_participant = true;
+    i.victim_participant_matches = 1;
     i.global_down_count = 4;
     auto c = prepare_hit(human, 100, i).candidate;
     const std::vector<HitRequestKind> sequence = {HitRequestKind::attack_sound,
@@ -282,7 +282,7 @@ void hits() {
                                                   HitRequestKind::participant_down_count,
                                                   HitRequestKind::global_down_count,
                                                   HitRequestKind::event131,
-                                                  HitRequestKind::reset_human_definition,
+                                                  HitRequestKind::clear_recent_reward_and_kills,
                                                   HitRequestKind::monster_human_kills};
     check(c->requests.size() == sequence.size(), "human down complete ordered requests");
     for (std::size_t n = 0; n < sequence.size(); ++n)
@@ -299,7 +299,7 @@ void hits() {
     i = {};
     i.attacker_first_visit = true;
     i.task_encounter = true;
-    i.killer_participant = true;
+    i.killer_participant_matches = 1;
     i.boss_flags4 = true;
     i.monster_rank = 5;
     check(prepare_hit(monster, 100, i).error == CombatAiError::missing_ticket,

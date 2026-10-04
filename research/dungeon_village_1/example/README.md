@@ -2,7 +2,7 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及34个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及39个 CTest 测试程序，不加入产品主构建。
 
 ## 模块与依据
 
@@ -32,6 +32,11 @@
 | ai_schedule | 实时名单两遍、反向/正向删除、同轮追加、删除前设施释放；消费者只准备私有聚合副本，不是通用事件总线 | [聚合调度](../rules/ai/LIFECYCLE.md#聚合遍历与同轮新建) |
 | actor_effects | cd/ce逻辑时间线、删除跳过、表情票号/抑制、动作/状态计数及命中标签过期；不绘图或直接播放声音 | [显示与延迟效果](../rules/ai/CONTROL.md#显示与延迟效果的实际推进) |
 | human_growth | 定义共享六属性/装备/法术重算、九步奖励成长、多级/满级及最后一级提示/职业解锁请求；不改变人物当前HP或代替全局页面提交 | [定义成长](../rules/ai/CONTROL.md#人物定义重算与职业成长) |
+| facility_service | 装备/携物价格前置、全部设施使用队列、完整退出前部/普通/装备/住宅尾部；救援哨兵必须交双人事务 | [设施事务](../rules/FACILITY_USE.md#设施服务组合与首段私有所有者) |
+| actor_housekeeping | c前缀、状态18事件身份守卫、重力/K/退回旧位置、d尾部清理/超时；保留旧格与新投影读取点 | [共用更新尾部](../rules/ai/LIFECYCLE.md#共用更新前缀与尾部) |
+| battle_commit | HP/状态、双方救援引用、定义共享统计、全局倒地/击杀和掉落ID一次提交；保留尸体重复命中 | [战斗提交](../rules/ai/COMBAT.md#跨所有者战斗提交) |
+| object_commit | 物体/拾取人物原子提交、目录库存或装备解锁、商店通知、事件151/216及直接授予110差异 | [拾物提交](../rules/ai/LIFECYCLE.md#拾物与目录实际提交) |
+| ai_rewards | 尸体删除/引用保留、战斗组实际提交、任务生成/胜利、延迟成长与全局职业开放；地图/页面/表情保持显式请求 | [奖励所有者](../rules/ai/ENCOUNTERS.md#死亡战斗组与奖励所有者组合) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

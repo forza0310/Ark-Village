@@ -163,7 +163,7 @@ enum class HitRequestKind {
     participant_down_count,
     global_down_count,
     event131,
-    reset_human_definition,
+    clear_recent_reward_and_kills,
     monster_human_kills,
     copy_attack_position,
     kill_count,
@@ -173,7 +173,7 @@ enum class HitRequestKind {
     participant_task_kills,
     spawn_drop,
     event217,
-    global_monster_kill
+    global_monster_record
 };
 struct HitRequest {
     HitRequestKind kind{};
@@ -198,9 +198,10 @@ struct HitContext {
     bool attacker_first_visit{}; // 8192: suppresses drop AFTER consuming ticket100.
     bool target_carries_rescued_actor{};
     bool rescue_reference{};
-    bool target_attack_locked{}; // E(): monster k3/6/9 or state8 preserves au.
-    bool victim_participant{};
-    bool killer_participant{};
+    bool target_attack_locked{};      // E(): monster k3/6/9 or state8 preserves au.
+    int victim_participant_matches{}; // Every matching definitionID in UserData.m, duplicates
+                                      // count.
+    int killer_participant_matches{};
     bool task_encounter{}; // db.k==3.
     int global_down_count{};
     bool event131_present{};

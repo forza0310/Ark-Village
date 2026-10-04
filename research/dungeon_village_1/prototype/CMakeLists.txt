@@ -21,7 +21,8 @@ add_custom_command(OUTPUT "${STARTUP_CPP}"
             "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt" "${STARTUP_CPP}"
     DEPENDS scripts/compile_startup.mjs ../data/startup/MAP.json ../data/startup/STATE.json
             ../data/startup/TABLES.json ../data/original/tenantData.txt VERBATIM)
-add_library(dungeon_village_startup_model src/startup.cpp src/startup_map.cpp src/road_render.cpp "${STARTUP_CPP}")
+add_library(dungeon_village_startup_model src/startup.cpp src/startup_map.cpp src/road_render.cpp
+                                        src/startup_ai.cpp "${STARTUP_CPP}")
 target_include_directories(dungeon_village_startup_model PUBLIC include)
 target_link_libraries(dungeon_village_startup_model PUBLIC dungeon_village_reference)
 target_compile_features(dungeon_village_startup_model PUBLIC cxx_std_17)
@@ -36,6 +37,9 @@ add_test(NAME dungeon_village_prototype.startup_map COMMAND dungeon_village_star
 add_executable(dungeon_village_startup_use_tests tests/startup_use_test.cpp)
 target_link_libraries(dungeon_village_startup_use_tests PRIVATE dungeon_village_startup_model)
 add_test(NAME dungeon_village_prototype.startup_use COMMAND dungeon_village_startup_use_tests)
+add_executable(dungeon_village_startup_ai_tests tests/startup_ai_test.cpp)
+target_link_libraries(dungeon_village_startup_ai_tests PRIVATE dungeon_village_startup_model)
+add_test(NAME dungeon_village_prototype.startup_ai COMMAND dungeon_village_startup_ai_tests)
 add_executable(dungeon_village_road_render_tests tests/road_render_test.cpp ../tools/src/sprite.cpp)
 target_include_directories(dungeon_village_road_render_tests PRIVATE ../tools/include)
 target_link_libraries(dungeon_village_road_render_tests PRIVATE dungeon_village_startup_model PkgConfig::RAYLIB)
@@ -137,6 +141,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_startup_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_map_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_use_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_startup_ai_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_road_render_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_dump_startup_map PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()

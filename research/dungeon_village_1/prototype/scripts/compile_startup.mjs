@@ -131,16 +131,52 @@ export function compileStartup(map, state, tables, tenantText) {
     requireValue(effectIndices.length === effectDeltas.length &&
       effectIndices.every(index => index >= 0 && index < 6), '退出属性数组不一致或下标非法');
     const effects = `{${effectIndices.map((index, i) => `{${index},${effectDeltas[i]}}`).join(',')}}`;
+    const neighbourIndices = row[26] === '' ? [] : row[26].split('&').map(decimal);
+    const neighbourDeltas = row[27] === '' ? [] : row[27].split('&').map(decimal);
+    requireValue(neighbourIndices.length === neighbourDeltas.length &&
+      neighbourIndices.every(index => index >= 0 && index < 3), '邻接属性数组不一致');
+    const neighbours = `{${neighbourIndices.map((index,i)=>`{${index},${neighbourDeltas[i]}}`).join(',')}}`;
     return `{${id},${text(row[1])},${decimal(row[3])},${item ? integer(item.tab) : -1},` +
       `${item ? integer(item.effective_price) : 0},${item ? integer(item.construction_counter_threshold ?? 0) : 0},${decimal(display[0])},` +
       `${decimal(row[4])},${decimal(row[11])},${decimal(row[35])},${decimal(row[10])},${decimal(row[19])},` +
-      `${decimal(row[5])},${decimal(row[25])},${economy},${effects}}`;
+      `${decimal(row[5])},${decimal(row[25])},${economy},${effects},${neighbours}}`;
   });
   const date = state.calendar;
   requireValue([date.year_index,date.month_index,date.subperiod_index,date.counter].join(',') === '0,3,0,0' &&
     state.render.initial_camera.x === 426 && state.render.initial_camera.y === -72, '日期/镜头初值变化');
+  const jobs = entries.get('job.txt');
+  const weapons = entries.get('weapon.txt');
+  requireValue(jobs?.length === 23 && weapons?.length === 33, 'AI职业/武器目录缺失');
+  for (const [index, row] of jobs.entries()) {
+    requireValue(row.length === 24 && decimal(row[0]) === index &&
+      row[9].split('&').length === 6 && row[10].split('&').length === 6 &&
+      decimal(row[20]) >= 1 && decimal(row[20]) <= 5, 'AI职业数组/难度错误');
+  }
+  for (const [index, row] of weapons.entries())
+    requireValue(row.length === 19 && decimal(row[0]) === index, 'AI武器数组错误');
+  const spells = Array.from({length:4},(_,slot)=>jobs.find(row =>
+    decimal(row[18]) >= 10 && decimal(row[18]) % 10 === slot)).filter(Boolean).map(row=>decimal(row[0]));
+  const initialLevels = Array(jobs.length).fill(1);
+  const initialJobs = firstRow[4] === '' ? [] : firstRow[4].split('&').map(decimal);
+  const initialJobLevels = firstRow[5] === '' ? [] : firstRow[5].split('&').map(decimal);
+  requireValue(initialJobs.length === initialJobLevels.length, '初始职业等级数组不一致');
+  initialJobs.forEach((job,index)=>{
+    requireValue(job >= 0 && job < jobs.length && initialJobLevels[index] >= 1 &&
+      initialJobLevels[index] <= 10, '初始职业等级越界');
+    initialLevels[job] = initialJobLevels[index];
+  });
+  const initialWeapon = weapons[first.equipment_ids[0]];
+  requireValue(initialWeapon && first.equipment_ids.slice(1).every(id=>id === -1), '首局非武器装备待研究');
+  const aiOutput = `const StartupAiRules &startup_ai_rules() {\nstatic const StartupAiRules value{\n` +
+    `{${first.job_id},${decimal(firstRow[6])},${list(base)},{},${list(initialLevels)},` +
+    `{{std::array<int,4>${list(initialWeapon.slice(12,16).map(decimal))},std::nullopt,std::nullopt,std::nullopt}},` +
+    `{},${list(spells)}},\n` +
+    `{${jobs.map(row=>`{${list(row[9].split('&').map(decimal))},${list(row[10].split('&').map(decimal))},` +
+      `${decimal(row[20])},${(decimal(row[23]) & 1) !== 0}}`).join(',')}},\n` +
+    `{${weapons.map(row=>`{{${decimal(row[0])},${decimal(row[5])},${(decimal(row[18]) & 1) !== 0}},` +
+      `${decimal(row[11])},${list(row.slice(12,16).map(decimal))}}`).join(',')}}};\nreturn value;\n}\n`;
   const output = `// 自动生成；来源为 data/startup 三份发布文件。不要手工编辑。\n` +
-    `#include "dungeon_village_prototype/startup.hpp"\nnamespace dungeon_village_prototype {\n` +
+    `#include "dungeon_village_prototype/startup_ai.hpp"\nnamespace dungeon_village_prototype {\n` +
     `const StartupEvidence &startup_evidence() {\nstatic const StartupEvidence value{\n` +
     `24,24,{${cells.map(v => list(v)).join(',')}},\n` +
     `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])}}`).join(',')}},\n` +
@@ -156,7 +192,7 @@ export function compileStartup(map, state, tables, tenantText) {
     `${list(first.equipment_ids)},${list(first.combat)},${list(first.initial_hp_slots)},{0,0},0,{},` +
     // c/n initial equip calls a/e.a(Character, record, weapon), which writes A[0]=6.
     `${list(jobRow.slice(13,15).map(decimal))},6},\n` +
-    `{${talk.map(text).join(',')}}};\nreturn value;\n}\n}\n`;
+    `{${talk.map(text).join(',')}}};\nreturn value;\n}\n${aiOutput}}\n`;
   return output;
 }
 

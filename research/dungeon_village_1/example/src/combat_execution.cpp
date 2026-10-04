@@ -285,6 +285,7 @@ HitResult prepare_hit(const HitTargetState &s, int damage, const HitContext &i) 
     if (damage < 0 || s.capacity < 0 || s.damage_total < 0 || s.hit_count < 0 ||
         s.label_timer < 0 || i.global_down_count < 0 || i.weapon_kind < 0 || i.weapon_kind > 3 ||
         i.monster_stat1 < 0 || i.monster_statF < 0 || i.target_action < 0 || i.target_action > 11 ||
+        i.victim_participant_matches < 0 || i.killer_participant_matches < 0 ||
         (s.kind != ActorKind::human && s.kind != ActorKind::monster) ||
         (i.attacker_kind != ActorKind::human && i.attacker_kind != ActorKind::monster))
         return {CombatAiError::invalid_input, std::nullopt};
@@ -331,12 +332,12 @@ HitResult prepare_hit(const HitTargetState &s, int damage, const HitContext &i) 
                 request(HitRequestKind::clear_rescue_links);
             }
             c.target.flags &= ~2048U;
-            if (i.victim_participant)
-                request(HitRequestKind::participant_down_count, 1);
+            if (i.victim_participant_matches > 0)
+                request(HitRequestKind::participant_down_count, i.victim_participant_matches);
             request(HitRequestKind::global_down_count, 1);
             if (i.global_down_count + 1 >= 5 && !i.event131_present)
                 request(HitRequestKind::event131, 131);
-            request(HitRequestKind::reset_human_definition);
+            request(HitRequestKind::clear_recent_reward_and_kills);
             request(HitRequestKind::monster_human_kills, 1);
         } else {
             if (!i.drop_ticket)
@@ -350,14 +351,14 @@ HitResult prepare_hit(const HitTargetState &s, int damage, const HitContext &i) 
             request(HitRequestKind::kill_stat1, i.monster_stat1);
             request(HitRequestKind::kill_statF, i.monster_statF);
             request(HitRequestKind::record_monster);
-            if (i.task_encounter && i.killer_participant)
-                request(HitRequestKind::participant_task_kills, 1);
+            if (i.task_encounter && i.killer_participant_matches > 0)
+                request(HitRequestKind::participant_task_kills, i.killer_participant_matches);
             c.consumed_drop_ticket = true;
             if (*i.drop_ticket < 6 && !i.attacker_first_visit)
                 request(HitRequestKind::spawn_drop);
             if (i.boss_flags4 && i.monster_rank == 5 && !i.event217_present)
                 request(HitRequestKind::event217, 217);
-            request(HitRequestKind::global_monster_kill);
+            request(HitRequestKind::global_monster_record);
         }
     } else {
         c.target.flags &= ~16U;

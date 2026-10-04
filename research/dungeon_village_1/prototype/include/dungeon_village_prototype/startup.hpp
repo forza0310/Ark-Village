@@ -7,6 +7,7 @@
 #include "dungeon_village_reference/facility_economy.hpp"
 #include "dungeon_village_reference/facility_exit.hpp"
 #include "dungeon_village_reference/geometry.hpp"
+#include "dungeon_village_reference/neighbourhood.hpp"
 
 #include <array>
 #include <string>
@@ -41,6 +42,7 @@ struct StartupDefinition {
     int use_wait{}; // Source column 25; category-2 activity 0/1 overrides it with 200.
     ref::FacilityEconomyDefinition economy; // Raw endpoints, not effective construction quotes.
     std::vector<ref::FacilityAttributeEffect> exit_effects; // Source columns28/29, original order.
+    std::vector<ref::NeighbourModifier> neighbour_effects; // Source26/27, separate from exit gains.
 };
 struct StartupFacility {
     std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.

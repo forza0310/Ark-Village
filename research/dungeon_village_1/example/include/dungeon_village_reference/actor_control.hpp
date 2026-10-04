@@ -61,6 +61,14 @@ struct ActorStateTransitionCandidate {
 // c(state), distinct from b() baseline restoration and opcode8's direct A=0 write.
 std::optional<ActorStateTransitionCandidate>
 prepare_actor_state_transition(const ActorStateTransitionInput &input);
+struct ActorBaselineCandidate {
+    ActorControlState control;
+    bool clear_encounter{};
+};
+// b(): preserve B/C/D, clear16/control, n0 resets i/l; not c(D). Only5/17 enqueue wander.
+std::optional<ActorBaselineCandidate> prepare_actor_baseline_restore(const ActorControlState &state,
+                                                                     int baseline, bool human,
+                                                                     int monster_mode);
 
 struct FailedActivityCandidate {
     std::uint32_t flags{};

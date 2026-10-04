@@ -239,11 +239,38 @@ void equipment_tail() {
           "illegal equipment slot or ID rejected");
 }
 } // namespace
+void baseline_restore() {
+    for (int baseline = 0; baseline <= 20; ++baseline)
+        for (int mode = 0; mode <= 4; ++mode)
+            for (bool human : {false, true}) {
+                ActorControlState s;
+                s.state = 12;
+                s.action = 7;
+                s.action_counter = 42;
+                s.alternate_counter = 20;
+                s.flags = 16U | 2048U | 128U;
+                s.queue = {{1, 10, 0}};
+                const auto c = prepare_actor_baseline_restore(s, baseline, human, mode);
+                check(c && c->control.state == baseline && c->control.action == 0 &&
+                          c->control.action_counter == 0 && c->control.alternate_counter == 0 &&
+                          c->control.flags == (2048U | 128U) && c->clear_encounter == human,
+                      "b restores D directly, clears16/n0/db only, does not use c(D)");
+                std::vector<LegacyActorControl> expected;
+                if (baseline == 5)
+                    expected = {{10, 0}};
+                else if (baseline == 17 && mode == 0)
+                    expected = {{12}};
+                else if (baseline == 17 && mode == 3)
+                    expected = {{13}};
+                check(c->control.queue == expected, "only5/17 mode0/3 enqueue source wander");
+            }
+}
 int main() {
     shapes();
     local_queue();
     transitions_and_failure();
     wandering();
     equipment_tail();
+    baseline_restore();
     std::cout << checks << " checks passed\n";
 }

@@ -83,6 +83,38 @@ void enemies() {
     check(select_combat_enemy(input).error == ActorAiError::invalid_input,
           "nonfinite world rejected");
 }
+void group_duplicates() {
+    EnemySelectionInput input{{0, 0},
+                              true,
+                              9,
+                              {{{1}, 1, true, {4, 0}, 9},
+                               {{2}, 1, true, {1, 0}, 9},
+                               {{3}, 1, true, {0, 1}, 9},
+                               {{2}, 1, true, {1, 0}, 9}}};
+    const auto r = select_combat_enemy(input);
+    check(r.candidate && r.candidate->id.value == 2,
+          "consistent group duplicates retained in source order and reverse-scan ties");
+    input.active_battle_group = false;
+    check(select_combat_enemy(input).error == ActorAiError::invalid_input,
+          "ordinary roster still rejects duplicate actors");
+    input.active_battle_group = true;
+    for (int field = 0; field < 5; ++field) {
+        auto bad = input;
+        auto &duplicate = bad.opposite_roster.back();
+        if (field == 0)
+            duplicate.legacy_state = 5;
+        else if (field == 1)
+            duplicate.in_move_area = false;
+        else if (field == 2)
+            duplicate.position.x = 2;
+        else if (field == 3)
+            duplicate.position.z = 2;
+        else
+            duplicate.encounter_id = 10;
+        check(select_combat_enemy(bad).error == ActorAiError::invalid_input,
+              "conflicting duplicate group snapshot rejected before selection");
+    }
+}
 void human_idle() {
     for (unsigned mask = 0; mask < 64; ++mask)
         for (int hp : {0, 24, 25, 50, 100, 150})
@@ -156,6 +188,7 @@ void monsters() {
 int main() {
     gates();
     enemies();
+    group_duplicates();
     human_idle();
     monsters();
     std::cout << checks << " checks passed\n";

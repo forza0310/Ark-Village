@@ -36,6 +36,8 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/activity_choice.cpp src/people/activity_candidates.cpp
     src/people/facility_choice.cpp src/people/departure.cpp
     src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
+    src/people/actor_housekeeping.cpp src/people/combat_strategy.cpp
+    src/people/combat_damage.cpp src/people/combat_influence.cpp
     src/people/decision.cpp
     src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
     src/people/delayed_reward.cpp src/people/human_growth.cpp
@@ -120,6 +122,18 @@ if(BUILD_TESTING)
     target_link_libraries(ark_actor_control_tests PRIVATE ark_game)
     ark_target(ark_actor_control_tests)
     add_test(NAME actor_control_prefix COMMAND ark_actor_control_tests)
+    add_executable(ark_actor_housekeeping_tests tests/actor_housekeeping_test.cpp)
+    target_link_libraries(ark_actor_housekeeping_tests PRIVATE ark_game)
+    ark_target(ark_actor_housekeeping_tests)
+    add_test(NAME actor_common_update COMMAND ark_actor_housekeeping_tests)
+    add_executable(ark_combat_ai_tests tests/combat_ai_test.cpp)
+    target_link_libraries(ark_combat_ai_tests PRIVATE ark_game)
+    ark_target(ark_combat_ai_tests)
+    add_test(NAME combat_strategy_damage_influence COMMAND ark_combat_ai_tests)
+    add_executable(ark_ai_update_tests tests/ai_update_test.cpp)
+    target_link_libraries(ark_ai_update_tests PRIVATE ark_game)
+    ark_target(ark_ai_update_tests)
+    add_test(NAME ai_common_update_schedule COMMAND ark_ai_update_tests)
     add_executable(ark_ai_decision_tests tests/ai_decision_test.cpp)
     target_link_libraries(ark_ai_decision_tests PRIVATE ark_game)
     ark_target(ark_ai_decision_tests)

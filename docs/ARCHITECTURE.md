@@ -32,6 +32,8 @@ people/motion提供显式目标行程与一次性进入信号。上述纯规则�
 app/ai_schedule已接入实时名单两遍与删除/同轮追加纯规则，实际Game更新尚未接通完整所有者。
 people/actor_effects分离显示/延迟/控制时点，weapon_choice提供武器/防具/饰品候选，human_growth与delayed_reward提供定义共享属性/职业成长和九步经验。
 各模块只返回候选/请求；组合测试验证装备延迟提交、共享成长与调度私有副本，不能当作默认经营/人物已自主运行。
+people/actor_housekeeping已接c前缀/状态18、物理与留存清理候选；combat_ai公开接口对应strategy/damage/influence三个实现文件，接入策略、九向评分、物理/魔法、怪物成长和双侧影响场。事件原ID/当前对象身份分开，b恢复与c(state)/动作指令分开。
+这些标准C++规则通过app调度/控制/运动/清理的条件组合测试；完整共同世界感知、遭遇/救援/掉落及跨域解释器的产品所有者尚待接入，不制造新局战斗或放开默认完整AI。
 
 app/initial_ai接入d7ca763初局真实生活链，拆分初始化/调度、运动、设施服务与执行；复制整轮候选后提交，失败不残留扣款/占用/队列。
 facilities的arrival/exit/service分离到达收入与使用退出；people/hp区分目标/显示HP，economy/cash记录即时现金且按事件身份去重。

@@ -3,7 +3,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <set>
+#include <map>
 
 namespace ark::people {
 BattleGateResult prepare_battle_gate(const BattleGateInput &input) {
@@ -33,12 +33,22 @@ BattleGateResult prepare_battle_gate(const BattleGateInput &input) {
 EnemySelectionResult select_combat_enemy(const EnemySelectionInput &input) {
     if (!world_cell(input.position))
         return {ActorAiError::invalid_input, std::nullopt};
-    std::set<ActorId> ids;
+    std::map<ActorId, EnemySnapshot> ids;
     std::vector<EnemySelectionCandidate> eligible;
     for (const auto &enemy : input.opposite_roster) {
-        if (enemy.id.value == 0 || !ids.insert(enemy.id).second || enemy.legacy_state < 0 ||
-            enemy.legacy_state > 20 || !world_cell(enemy.position))
+        if (enemy.id.value == 0 || enemy.legacy_state < 0 || enemy.legacy_state > 20 ||
+            !world_cell(enemy.position))
             return {ActorAiError::invalid_input, std::nullopt};
+        const auto inserted = ids.emplace(enemy.id, enemy);
+        if (!inserted.second) {
+            const auto &previous = inserted.first->second;
+            if (!input.active_battle_group || previous.legacy_state != enemy.legacy_state ||
+                previous.in_move_area != enemy.in_move_area ||
+                previous.position.x != enemy.position.x ||
+                previous.position.z != enemy.position.z ||
+                previous.encounter_id != enemy.encounter_id)
+                return {ActorAiError::invalid_input, std::nullopt};
+        }
         const int state = enemy.legacy_state;
         if (!enemy.in_move_area || state == 2 || state == 3 || state == 8 || state == 9 ||
             state == 14 || state == 15 || state == 16)

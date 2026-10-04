@@ -239,6 +239,40 @@ void equipment_tail() {
     check(!prepare_equipment_commit({30, 4, 1}) && !prepare_equipment_commit({28, -1}),
           "illegal equipment slot or ID rejected");
 }
+void baseline_restore() {
+    for (int baseline = 0; baseline <= 20; ++baseline)
+        for (int mode = 0; mode <= 4; ++mode)
+            for (bool human : {false, true}) {
+                ActorControlState s;
+                s.state = 12;
+                s.action = 7;
+                s.action_counter = 42;
+                s.alternate_counter = 20;
+                s.flags = 16U | 2048U | 128U;
+                s.queue = {{1, 10, 0}};
+                const auto c = prepare_actor_baseline_restore(s, baseline, human, mode);
+                check(c && c->control.state == baseline && c->control.action == 0 &&
+                          c->control.action_counter == 0 && c->control.alternate_counter == 20 &&
+                          c->control.flags == (2048U | 128U) && c->clear_encounter == human,
+                      "published b keeps i/B/C/D, clears16/action/l/db without c(D)");
+                std::vector<LegacyActorControl> expected;
+                if (baseline == 5)
+                    expected = {{10, 0}};
+                else if (baseline == 17 && mode == 0)
+                    expected = {{12}};
+                else if (baseline == 17 && mode == 3)
+                    expected = {{13}};
+                check(c->control.queue == expected, "only5/17 mode0/3 enqueue source wander");
+                check(s.alternate_counter == 20 &&
+                          s.queue == std::vector<LegacyActorControl>{{1, 10, 0}},
+                      "baseline candidate leaves source untouched");
+            }
+    ActorControlState s;
+    check(!prepare_actor_baseline_restore(s, -1, true, 0) &&
+              !prepare_actor_baseline_restore(s, 21, true, 0) &&
+              !prepare_actor_baseline_restore(s, 5, true, 5),
+          "invalid baseline or monster mode rejected");
+}
 } // namespace
 int main() {
     shapes();
@@ -246,5 +280,6 @@ int main() {
     transitions_and_failure();
     wandering();
     equipment_tail();
+    baseline_restore();
     std::cout << checks << " checks passed\n";
 }

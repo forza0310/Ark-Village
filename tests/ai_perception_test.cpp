@@ -26,6 +26,24 @@ void event_gate() {
     i.task_encounter = 4;
     check(prepare_event_gate(i).candidate->bind_encounter == 4,
           "task actor scans only task event identity");
+    i.encounters = {{3, {11, 11}, 7}, {4, {10, 10}, 8}};
+    i.task_original_id = 7;
+    i.task_encounter = 99;
+    check(prepare_event_gate(i).candidate->bind_encounter == 3,
+          "retired task object matches source ID and binds current object identity");
+    i.task_original_id = 8;
+    i.task_encounter = 3;
+    check(prepare_event_gate(i).candidate->bind_encounter == 4,
+          "source ID takes precedence over coincident current object identity");
+    i.task_original_id = 0;
+    i.encounters[0].original_id = 0;
+    check(prepare_event_gate(i).candidate->bind_encounter == 3,
+          "original event ID0 remains a present identity");
+    i.task_original_id = 9;
+    check(!prepare_event_gate(i).candidate->ready,
+          "mismatched source ID cannot fall back to a coincident object identity");
+    i.task_original_id.reset();
+    i.encounters = {{3, {11, 11}}, {4, {10, 10}}};
     i.task_encounter.reset();
     check(!prepare_event_gate(i).candidate->ready, "task with no event cannot match any event");
     i.previous_encounter = 99;

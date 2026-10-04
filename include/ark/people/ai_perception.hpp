@@ -10,6 +10,7 @@ namespace ark::people {
 struct EncounterSnapshot {
     std::uint64_t id{};
     world::Cell center;
+    std::optional<int> original_id{}; // Source f164b is distinct from current object identity.
 };
 struct EventGateInput {
     BattleGateInput actor; // F ignores1024, unlike G.
@@ -23,6 +24,7 @@ struct EventGateInput {
     int task_kind{};
     world::Cell task_center;
     std::optional<std::uint64_t> task_encounter;
+    std::optional<int> task_original_id{}; // F compares the source ID, not object identity.
 };
 struct EventGateCandidate {
     bool ready{};

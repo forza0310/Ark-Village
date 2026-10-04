@@ -68,7 +68,8 @@
 已接af85eb1/b532d2a决策/感知/控制、d412d6e实时名单两遍、26e65c7效果/装备、730e7ee共享成长，现补接d7ca763初局服务组合。
 [专项入口](../../research/dungeon_village_1/rules/ai/README.md)与[控制](../../research/dungeon_village_1/rules/ai/CONTROL.md)优先于早期概览中的未交付描述。
 d7ca763亦已发布actor_housekeeping、battle_commit、object_commit和ai_rewards；本批产品未迁入其全套依赖，不能登记成研究未交付。
-遭遇创建/救援等研究在途工作不作为本批输入；待维护发布后按实际依赖与正常世界组合边界推进。
+截至e8bd81c，战斗策略/执行/提交、遭遇创建、救援、共同世界感知/遭遇局部事务已有维护交付，不能重复要求研究未交付。产品已补接actor_housekeeping、战斗策略/评分/伤害/成长/影响场，以及事件原ID/组重复成员/b恢复修正；其他完整事务按实际依赖继续迁入。
+research当前在途rescue_commit/world_facilities更新不作为本批输入；研究仍保留全世界逐tick/跨域解释器、复杂优先级/设施和随机消费缺口，按正常世界组合边界推进。
 产品模块/验收见[本批设计](../stages/B1-playable-prototype.md#真实首段ai与设施服务2026-10-04)，尚不宣称正常窗口人物已自主运行。
 产品新增--ai-preview可视消费已证未改图生活链，主程序显示真实位置/资金及使用退出；这是固定布局/日历的显式预览，完整默认世界、玩家改图、离场/回退和随机复演的交接条件仍需补齐。
 

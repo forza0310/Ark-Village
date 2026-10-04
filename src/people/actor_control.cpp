@@ -22,6 +22,26 @@ bool valid_actor_control(const LegacyActorControl &c) {
         return false;
     return true;
 }
+// Published e8bd81c baseline restoration keeps the alternate counter, unlike opcode3.
+std::optional<ActorBaselineCandidate>
+prepare_actor_baseline_restore(const ActorControlState &s, int baseline, bool human, int mode) {
+    if (baseline < 0 || baseline > 20 || mode < 0 || mode > 4 || s.state < 0 || s.state > 20 ||
+        s.action < 0 || s.action > 11 || s.action_counter < 0 || s.alternate_counter < 0 ||
+        s.facing < 0 || s.facing > 3)
+        return std::nullopt;
+    ActorBaselineCandidate c{s, human};
+    c.control.state = baseline;
+    c.control.flags &= ~16U;
+    c.control.queue.clear();
+    c.control.action = c.control.action_counter = 0;
+    if (baseline == 5)
+        c.control.queue = {{10, 0}};
+    else if (baseline == 17 && mode == 0)
+        c.control.queue = {{12}};
+    else if (baseline == 17 && mode == 3)
+        c.control.queue = {{13}};
+    return c;
+}
 ActorControlResult prepare_local_control_prefix(const ActorControlState &s,
                                                 const ActorControlContext &context) {
     if (s.state < 0 || s.state > 20 || s.action < 0 || s.action > 11 || s.action_counter < 0 ||

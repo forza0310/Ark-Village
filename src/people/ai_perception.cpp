@@ -31,7 +31,9 @@ EventGateResult prepare_event_gate(const EventGateInput &i) {
     const bool task_actor = i.active_task && i.definition_task_flag;
     if (i.cell_event_flag) {
         for (const auto &e : i.encounters)
-            if ((!task_actor || (i.task_encounter && *i.task_encounter == e.id)) &&
+            if ((!task_actor ||
+                 (i.task_original_id ? e.original_id == i.task_original_id
+                                     : (i.task_encounter && *i.task_encounter == e.id))) &&
                 within(i.cell, e.center, 1)) {
                 c.bind_encounter = e.id;
                 break;

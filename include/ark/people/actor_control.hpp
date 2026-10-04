@@ -67,6 +67,16 @@ struct ActorStateTransitionCandidate {
 std::optional<ActorStateTransitionCandidate>
 prepare_actor_state_transition(const ActorStateTransitionInput &input);
 
+struct ActorBaselineCandidate {
+    ActorControlState control;
+    bool clear_encounter{};
+};
+// Published e8bd81c b(): preserve B/C/D and i; clear16/queue, action/l only. Not c(D)/opcode3.
+// Only baseline5/17 with matching monster mode enqueue wander; owner clears human db.
+std::optional<ActorBaselineCandidate> prepare_actor_baseline_restore(const ActorControlState &state,
+                                                                     int baseline, bool human,
+                                                                     int monster_mode);
+
 struct FailedActivityCandidate {
     std::uint32_t flags{};
     bool expression18{};

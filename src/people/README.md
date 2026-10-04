@@ -103,3 +103,21 @@ tests/people_progression组合实际产品控制器、效果、成长、app调�
 hp.hpp/cpp消费研究character_hp：分离目标、显示、延迟HP及恢复请求，伤害/恢复先准备候选，显示推进独立验证。
 app/initial_ai在c阶段读取旧B170并请求旅店恢复，在d阶段推进HP显示；到达/退出、定义属性累计与生命恢复不可混为一件事。
 未改图初局真实选目标→使用→退出现已接入私有会话，详见[app](../app/README.md)；正常Game仍受默认AI保护。
+
+## 战斗决策与共用更新
+
+本批消费e8bd81c已提交规则及其依赖，标准C++，不链接research或读取研究运行目录。共同世界感知/遭遇/救援事务依赖尚未全部迁入，不解除默认AI保护或注入夹具敌人。
+
+| 文件 | 职责与边界 |
+| --- | --- |
+| combat_ai.hpp / combat_strategy.cpp | 状态1职业/武器/怪物策略与九方向评分；显式策略/回复票号，返回组/运动/攻击/法术候选，不执行攻击 |
+| combat_ai.hpp / combat_damage.cpp | 物理/魔法数值、增强与扰动票号、怪物定义成长；保留整数除法/float截断与两种增强顺序，不提交HP |
+| combat_ai.hpp / combat_influence.cpp | 敌方25格累加、友方9格逐人截断、两侧场和固定地形掩码；资格读取上轮区域缓存，非寻路成本 |
+| actor_housekeeping.hpp / actor_housekeeping.cpp | c前缀/状态18事件资格、旧P/重力/K回退及d尾部计数/有序清理删除请求；不投影、不自行释放设施或删除名单 |
+
+actor_ai允许战斗组里一致的重复快照保留原顺序，矛盾或普通重复身份仍拒绝；名单ActorId非零与原事件ID0分开。
+ai_perception的F使用task_original_id匹配原事件号，绑定当前encounters中的对象ID；未提供原号的既有条件输入沿用维护兼容分支，真实世界适配需显式提供原号。
+actor_control新增独立prepare_actor_baseline_restore：b保留备用动作计数i与外部B/C/D，清16/队列/动作/l，只5/17的已证分支追加漫游。不是c(D)，也不是会清i的opcode3。
+actor_housekeeping复用唯一prepare_actor_cleanup，不建立第二份r规则；清理请求先于后续状态/标志/事件守卫，删除交由app调度先释放设施再移出名单。
+tests/ai_update使用明确条件夹具组合策略/评分→6.7运动→区域失败回退→旧区域留存，并验证调度晚失败不提交、删除前释放；不是原版新局或全世界时序认证。
+依据：[战斗](../../research/dungeon_village_1/rules/ai/COMBAT.md)、[共用前后段](../../research/dungeon_village_1/rules/ai/LIFECYCLE.md#共用更新前缀与尾部)、[共同世界感知](../../research/dungeon_village_1/rules/ai/PERCEPTION.md#共同世界感知与缓存)。

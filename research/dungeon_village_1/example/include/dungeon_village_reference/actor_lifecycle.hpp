@@ -39,7 +39,7 @@ struct TimedLifecycleInput {
     WorldPosition position;
     WorldPosition horizontal_velocity;
     float height{};
-    int hp_slot1{};
+    int hp_slot1{}; // Signed display value; equip can lower capacity without changing this slot.
     int hp_capacity{1};
 };
 struct TimedLifecycleCandidate {

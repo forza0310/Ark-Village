@@ -38,6 +38,26 @@ void timers() {
                               (counter >= 900),
                       "old B recovery minimum1 and delayed full-capacity baseline");
             }
+    for (int hp :
+         {std::numeric_limits<int>::min(), -100, -1, 101, 130, std::numeric_limits<int>::max()}) {
+        i = {};
+        i.state = 2;
+        i.hp_capacity = 100;
+        i.hp_slot1 = hp;
+        const auto r = prepare_timed_lifecycle(i);
+        const auto expected = std::min<std::int64_t>(100, static_cast<std::int64_t>(hp) + 1);
+        check(r.candidate && r.candidate->write_hp_slot1_and3 == expected,
+              "down recovery caps AFTER adding; signed display/old value above new capacity is "
+              "legal");
+        i.state = 3;
+        i.old_counter = 12;
+        check(prepare_timed_lifecycle(i).candidate &&
+                  prepare_timed_lifecycle(i).candidate->delete_instance,
+              "death timer cannot reject signed HP display it does not read");
+    }
+    i.hp_capacity = 0;
+    check(!prepare_timed_lifecycle(i).candidate,
+          "nonpositive capacity remains outside the maintained lifecycle contract");
     i = {};
     i.state = 3;
     for (int counter : {0, 11, 12, 13})

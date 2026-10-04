@@ -245,6 +245,26 @@ void delayed_equipment() {
     s.world.facilities.at(3).status = 0;
     check(prepare_world_shop_exit(s, exit_input()).candidate.has_value(),
           "complete q binding may exit construction0; no extra status guard");
+    s = fixture();
+    s.humans.at(0).equipment[0] = 2;
+    s.world.ai.growth.at(0).definition.equipment[0] = catalogue()[1].combat;
+    s.world.ai.growth.at(0).derived =
+        *derive_human_stats(s.world.ai.growth.at(0).definition, s.world.ai.professions).candidate;
+    s.world.ai.battle.actors.at({1}).capacity = 130;
+    s.world.ai.battle.actors.at({1}).hp = {0, 130, 130, 130, false, 0};
+    s.world.ai.battle.actors.at({1}).control.queue = {{28, 0}};
+    const auto downgrade = prepare_world_shop_command(s, {1}, catalogue());
+    check(downgrade.candidate &&
+              downgrade.candidate->state.world.ai.battle.actors.at({1}).capacity == 100 &&
+              downgrade.candidate->state.world.ai.battle.actors.at({1}).hp.displayed == 130,
+          "actual equip can decrease h() without clamping or healing current HP");
+    TimedLifecycleInput life;
+    life.state = 2;
+    life.hp_capacity = downgrade.candidate->state.world.ai.battle.actors.at({1}).capacity;
+    life.hp_slot1 = downgrade.candidate->state.world.ai.battle.actors.at({1}).hp.displayed;
+    const auto recovery = prepare_timed_lifecycle(life);
+    check(recovery.candidate && recovery.candidate->write_hp_slot1_and3 == 100,
+          "subsequent down consumer accepts preserved HP then performs its own source cap");
 }
 } // namespace
 int main() {

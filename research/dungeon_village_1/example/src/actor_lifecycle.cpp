@@ -6,10 +6,9 @@
 namespace dungeon_village_reference {
 TimedLifecycleResult prepare_timed_lifecycle(const TimedLifecycleInput &i) {
     if ((i.kind != ActorKind::human && i.kind != ActorKind::monster) || i.old_counter < 0 ||
-        i.monster_mode < 0 || i.monster_mode > 4 || i.hp_capacity <= 0 || i.hp_slot1 < 0 ||
-        i.hp_slot1 > i.hp_capacity || !character_world_cell(i.position) ||
-        !std::isfinite(i.horizontal_velocity.x) || !std::isfinite(i.horizontal_velocity.z) ||
-        !std::isfinite(i.height))
+        i.monster_mode < 0 || i.monster_mode > 4 || i.hp_capacity <= 0 ||
+        !character_world_cell(i.position) || !std::isfinite(i.horizontal_velocity.x) ||
+        !std::isfinite(i.horizontal_velocity.z) || !std::isfinite(i.height))
         return {LifecycleError::invalid_input, std::nullopt};
     TimedLifecycleCandidate c;
     c.position = i.position;

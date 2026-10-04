@@ -11,12 +11,12 @@
 
 - [AI专项](rules/ai/README.md)维护共享状态/调度、感知、战斗、战斗组、生命周期及34个控制码消费地图。
   独立标准C++17规则与私有所有者不读取Java、不依赖窗口；外部地图/页面/表情请求仍明确标记，不静默补演示行为。
-- AI相关规则/适配检查共510,633项：actor_ai 50,112、ai_perception 42,861、combat_ai 48,092、
-  encounter_ai 75,137、actor_lifecycle 335、actor_control 11,004、combat_execution 15,033、object_ai 1,658、encounter_lifecycle 17,008、ai_schedule 3,345、actor_effects 33,779、human_growth 12,088，
+- AI相关规则/适配检查共510,648项：actor_ai 50,112、ai_perception 42,861、combat_ai 48,092、
+  encounter_ai 75,137、actor_lifecycle 348、actor_control 11,004、combat_execution 15,033、object_ai 1,658、encounter_lifecycle 17,008、ai_schedule 3,345、actor_effects 33,779、human_growth 12,088，
   facility_service 2,466、actor_housekeeping 85,958、battle_commit 625、object_commit 9,468、ai_rewards 20,253、startup_ai 6,650、
   encounter_creation 1,223、rescue_commit 5,052、combat_commit 12,186、world_perception 112、world_encounters 16,991、
   world_facilities 1,357、world_actor_tail 476、facility_projection 5,185、loop_pacing 19,478、
-  dungeon_ai 8,008、world_dungeon 304、world_shop 4,389。
+  dungeon_ai 8,008、world_dungeon 304、world_shop 4,391。
   Debug/Release均通过。新增策略→动作窗口→HP→延后死亡清理、物体20/60、双人旅店递归到达与恢复引用的局部组合。
 - 低层交叉纠正活动6前置判断、救援抢占各轴±2、最近目标逆序平局、整数除法后伤害插值、
   影响场整格清零、同轮等待归零继续及成功活动8早停；来源定位保留在各专题和[证据](EVIDENCE.md)。
@@ -79,7 +79,7 @@
   落地回调和阶段2有序请求不冒充完整任务/UI/地图所有者；没有补造下一活动或原始新局人物值。
 - 新夹具分别遗漏单人领队+10和首引用删除后actor2移到领队位置，已按原实时索引修正；
   未删除有效断言、放宽校验或改原表。另修正效果记录类型名，构建/回归重新执行通过。
-- [通用商店](rules/ai/CONTROL.md#通用商店的世界事务)4,389项：四店型/防具两槽、付款前抽选、
+- [通用商店](rules/ai/CONTROL.md#通用商店的世界事务)4,391项：四店型/防具两槽、付款前抽选、
   512/256仍选择/访问、真实携物g.c与可支付5000、库存/统计/现金整批回滚、2,130组满足度输入、
   I前插10计数/零增量/封顶100、首占用释放、活动8早停、属性19不重算、显示27/29与实际28/30分离、
   双实例共享容量/发起者独有ae、施工0/失效q及晚期装备/目录/属性错误。
@@ -87,6 +87,10 @@
   原有效生命周期断言保留，新增相反ax输入在同一1,357项回归通过。未改原表或放宽判断。
 - 阶段2`c/k.java:62–104`为成功统计而非任务解锁；请求改为record_task_success并携带真实定义ID。
   任务m.m独立传入待结算请求，不拿难度×5或摘要替代。8,008项探索回归与六套均重新执行通过。
+- 装备降低共享h()但保留当前HP，计时器不能把旧显示HP≤新容量当作全状态不变量。
+  按`c/b.java:5064–5081`状态2的先加/后上限封顶及状态3不读该字段修正校验；
+  新增13项有符号/超容量/非正容量对照及2项实际装配→容量下降→状态2消费组合。
+  原有效断言全部保留，负容量/非法状态/非有限位置和溢出拒绝未移除；详见[生命周期](rules/ai/LIFECYCLE.md#状态字段不能混用)。
 - AI专项仍未完成：完整共同世界与跨域解释器、探索阶段2任务/UI/地图实际提交、复杂活动交接/装备显示适配、
   全部显示随机与主场景组合仍需闭合；已证休息/特殊入口/保留计数/墙钟不再重复列为纯规则缺口。
   默认新局AI保护不解除，不能把候选规则通过当作完整行为等价。
@@ -222,7 +226,7 @@
 
 - 更新[原型说明](prototype/README.md)、[新局报告](rules/STARTUP.md)、数据包与阶段索引，
   集中解释默认新局、旧夹具与未实现边界，新增长篇内容并入既有AI/设施专题，没有新增碎片报告。
-- 维护Markdown本地路径/章节锚点和研究Git差异空白检查通过；当前research维护树47份文档、1,042个本地链接零错误。
+- 维护Markdown本地路径/章节锚点和研究Git差异空白检查通过；当前research维护树47份文档、1,045个本地链接零错误。
   本批C++格式检查及新增模块编辑器检查无问题；原型旧文件诊断与实际构建不一致，见上节，未对无关历史文件或配置做改动。
 - 编辑器测试接口未发现C++测试；实际验收使用CMake显式登记的CTest及专项可执行程序，没有把“未发现测试”记为通过。
 - 只保存本地研究检查点，不推送、不改写历史；不纳入工作约定或其他智能体产品改动。

@@ -39,6 +39,8 @@ void Game::project_ai_preview() {
     actor.hp = {s.hp.displayed, s.hp.origin, s.hp.target};
     actor.pending_activity.reset();
     state_.money = s.accounting.funds();
+    state_.accounting = s.accounting; // Diagnostic read projection; preview rejects construction.
+    state_.next_cash_id = s.next_cash_id;
     for (const auto &[id, uses] : s.uses) {
         auto &progress = state_.definition_progress.at(id);
         progress.level = uses.level;

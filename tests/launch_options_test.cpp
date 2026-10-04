@@ -24,6 +24,7 @@ int main() {
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);
     check(parse_arguments({"--check-ai"}).options->mode == LaunchMode::check_ai);
     check(parse_arguments({"--ai-preview"}).options->ai_preview);
+    check(parse_arguments({"--verify-play", "--frames", "3000"}).options->verify_play);
     check(parse_arguments({"--inspect-page", "ai", "--frames", "8"}).options->ai_preview);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
@@ -37,6 +38,13 @@ int main() {
           bounded.options->frames == 30 && bounded.options->screenshot == "a.png");
     for (const auto &arguments : std::vector<std::vector<std::string>>{
              {"--unknown"},
+             {"--verify-play"},
+             {"--verify-play", "--frames", "60", "--paused"},
+             {"--verify-play", "--frames", "60", "--ai-preview"},
+             {"--verify-play", "--frames", "60", "--inspect-page", "arrival"},
+             {"--verify-play", "--frames", "60", "--tick-rate", "60"},
+             {"--verify-play", "--frames", "60", "--check"},
+             {"--verify-play", "--frames", "60", "--check-ai"},
              {"--tick-rate"},
              {"--tick-rate", "0"},
              {"--tick-rate", "-1"},

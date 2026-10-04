@@ -27,6 +27,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             options.paused = true;
         } else if (argument == "--ai-preview") {
             options.ai_preview = true;
+        } else if (argument == "--verify-play") {
+            options.verify_play = true;
         } else if (argument == "--inspect-page") {
             if (++i >= arguments.size())
                 return {std::nullopt, "--inspect-page requires a page"};
@@ -81,6 +83,10 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         options.ai_preview = true;
     if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")
         return {std::nullopt, "--ai-preview cannot be combined with a different inspection page"};
+    if (options.verify_play &&
+        (options.frames == 0 || options.mode != LaunchMode::window || options.paused ||
+         options.ai_preview || !options.inspect_page.empty() || options.tick_rate != 0))
+        return {std::nullopt, "--verify-play requires --frames and normal original-paced startup"};
     return {options, {}};
 }
 

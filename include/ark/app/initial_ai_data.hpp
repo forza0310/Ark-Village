@@ -21,7 +21,7 @@ struct InitialAiRules {
     std::vector<InitialWeaponRule> weapons;
     std::array<int, 2> satisfaction_thresholds{};
     int weapon_reselect_counter{};
-    std::map<int, InitialServiceRule> services; // Only the evidenced initial28/30/33 interval.
+    std::map<int, InitialServiceRule> services; // Evidenced ordinary28/30/33/35/45 table fields.
 };
 const InitialAiRules &initial_ai_rules();
 } // namespace ark::app

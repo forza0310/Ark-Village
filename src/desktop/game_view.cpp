@@ -5,6 +5,7 @@
 #include "ark/people/motion.hpp"
 #include "character_animation.hpp"
 #include "desktop_session.hpp"
+#include "playability_probe.hpp"
 #include "resources.hpp"
 #include "scene.hpp"
 #include "ui/controller.hpp"
@@ -106,7 +107,10 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     Text text(font);
     const ui::Skin skin(sprites, text);
     const auto play = options.ai_preview ? app::PlayMode::ai_preview : app::PlayMode::startup;
-    app::Game game(options.inspect_page == "ai" ? 20261004U : std::random_device{}(), play);
+    // Repeat only the diagnostic's random stream, preserving normal startup and rule draws.
+    app::Game game(options.inspect_page == "ai" || options.verify_play ? 20261004U
+                                                                       : std::random_device{}(),
+                   play);
     game.set_paused(options.paused);
     const auto &data = app::startup_data();
     ui::State view;
@@ -143,6 +147,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     const auto animation_tick = [&]() -> std::uint64_t {
         if (inspected_travel)
             return motion_ticks;
+        if (game.life_state())
+            return game.life_state()->rounds;
         return game.ai_state() ? game.ai_state()->rounds : game.state().simulation_steps;
     };
     actor_animation.observe(animation_position(), animation_tick());
@@ -179,6 +185,9 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             simulation_clock.advance(observed, false);
     };
     const auto loop_start = GetTime();
+    std::optional<PlayabilityProbe> playability;
+    if (options.verify_play)
+        playability.emplace();
     auto next_render_time = loop_start;
     const auto wait_for_work = [&]() {
         const auto now = GetTime();
@@ -189,6 +198,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     };
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         const auto now = GetTime();
+        if (playability && now - loop_start >= 60)
+            break; // The diagnostic must terminate even if rendering misses its frame deadline.
         if (now < next_render_time) {
             advance_simulation(now);
             wait_for_work();
@@ -246,6 +257,8 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                 ui::click(game, view, layout, *mouse);
             }
         }
+        if (playability)
+            playability->drive(game, view, layout);
         std::optional<world::Cell> hovered;
         if (!ui::blocks_world(view) && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
             (game.state().mode == app::Mode::normal || game.state().mode == app::Mode::placement)) {
@@ -317,6 +330,25 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
                   << " completions=" << ai->completions << " funds=" << ai->accounting.funds()
                   << " error=" << static_cast<int>(game.ai_error())
                   << " actor_frame=" << actor_animation.frame() << '\n';
+    }
+    if (options.frames && !options.ai_preview) {
+        const auto &state = game.state();
+        const auto *life = game.life_state();
+        std::cout << "Village: steps=" << state.simulation_steps << " date=" << state.calendar[0]
+                  << ',' << state.calendar[1] << ',' << state.calendar[2] << ','
+                  << state.calendar[3] << " arrival=" << state.event89_count
+                  << " life_rounds=" << (life ? life->rounds : 0)
+                  << " visits=" << (life ? life->arrivals : 0)
+                  << " completions=" << (life ? life->completions : 0) << " funds=" << state.money
+                  << " ledger_funds=" << state.accounting.funds()
+                  << " error=" << (life ? static_cast<int>(life->error) : 0) << " pending_category="
+                  << (life && life->pending_category ? *life->pending_category : -1)
+                  << " actor_frame=" << actor_animation.frame() << '\n';
+    }
+    if (playability) {
+        playability->report(std::cout, game);
+        if (!playability->passed(game))
+            throw std::runtime_error("Normal-game playability probe did not meet all assertions");
     }
     if (!options.screenshot.empty()) {
         if (frames != options.frames)

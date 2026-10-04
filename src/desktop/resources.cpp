@@ -154,7 +154,7 @@ Text::Text(const std::filesystem::path &font_path) : font_path_(font_path) {
     if (!std::filesystem::is_regular_file(font_path))
         throw std::runtime_error("Chinese font not found; use --font TTF");
     std::string glyphs =
-        "运行中 · 暂停已暂停 · 继续"
+        "运行中 · 暂停已暂停 · 继续人物活动待接入：后续活动住所/出口野外人物更新失败"
         "建设返回确定旋转设施冒险者名单点数人气年月份道路植物商店饮食金币暂停继续重新开始研究边界"
         "请选择街道内地域有建筑物金钱不足未知设施不可用状态异常施工剩余招募到访等级农家体力攻击防御"
         "魔法品质魅力尚无本轮结束建造设备一般办公室信息系统保存菜单网站价格使用道具设施信息"

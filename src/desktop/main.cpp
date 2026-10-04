@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
         if (options.mode == ark::app::LaunchMode::help) {
             std::cout << "ark_village [--check|--check-ai] [--ai-preview] [--paused] [--font TTF] "
                          "[--size W H] "
-                         "[--frames N] [--tick-rate 1..240] "
+                         "[--frames N] [--verify-play] [--tick-rate 1..240] "
                          "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
                          "arrival|visitor|motion|ai]\n";

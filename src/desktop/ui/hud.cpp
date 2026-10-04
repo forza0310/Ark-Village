@@ -40,6 +40,20 @@ void draw_hud(const app::Game &game, const State &view, const Layout &layout, co
     // Explicit desktop pause is separate from the original modal update restrictions.
     if (normal)
         skin.button(layout.pause_button, s.paused ? "已暂停 · 继续" : "运行中 · 暂停");
+    if (normal && game.life_state() && game.life_state()->error != app::InitialAiError::none) {
+        const auto &life = *game.life_state();
+        std::string activity = "后续活动";
+        if (life.pending_definition)
+            activity = game.definition(*life.pending_definition).name;
+        else if (life.pending_category == 3)
+            activity = "住所/出口";
+        else if (life.pending_category == 4)
+            activity = "野外";
+        const auto label = life.error == app::InitialAiError::unsupported_branch
+                               ? "人物活动待接入：" + activity
+                               : "人物更新失败";
+        skin.centered(label, {4, 68, std::min(230.0F, w - 8), 20}, Color{142, 42, 31, 255}, 10);
+    }
     skin.button(layout.left_button,
                 placement                 ? "旋转"
                 : catalog                 ? "信息"

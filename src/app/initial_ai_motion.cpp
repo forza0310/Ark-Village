@@ -22,7 +22,8 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
     for (const auto &d : startup_data().definitions)
         input.definitions.push_back({d.id, d.activity_category, d.economy.attributes[2].first});
     for (const auto id : instance_order_)
-        input.instances.push_back({id, s.facilities.at(id).placement.definition_id, 1});
+        input.instances.push_back(
+            {id, s.facilities.at(id).placement.definition_id, s.facilities.at(id).phase});
     const auto candidates = people::collect_activity_candidates(*search.field, input);
     if (!candidates.snapshot)
         return InitialAiError::preparation_failed;
@@ -42,22 +43,29 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
     departure_input.facility_ticket = tickets.facility;
     std::copy(s.visits.legacy_visit_counts.begin(), s.visits.legacy_visit_counts.end(),
               departure_input.legacy_visit_counts.begin());
-    if (random) {
+    if (random || live_) {
         const auto plan = people::plan_activity_categories({0, candidates.snapshot->category_counts,
                                                             departure_input.legacy_visit_counts,
                                                             s.control.flags});
         if (!plan.plan)
             return InitialAiError::preparation_failed;
-        if (!plan.plan->forced_category && plan.plan->total_weight <= 0)
+        if (!plan.plan->forced_category && plan.plan->total_weight <= 0) {
+            if (live_) {
+                s.error = InitialAiError::unsupported_branch;
+                s.pending_activity = 0;
+                return InitialAiError::none;
+            }
             return InitialAiError::unsupported_branch;
+        }
         int category{};
         if (plan.plan->forced_category) {
             category = *plan.plan->forced_category;
         } else {
             if (plan.plan->total_weight > std::numeric_limits<int>::max())
                 return InitialAiError::invalid_input;
-            departure_input.category_ticket = std::uniform_int_distribution<int>(
-                0, static_cast<int>(plan.plan->total_weight) - 1)(*random);
+            if (random)
+                departure_input.category_ticket = std::uniform_int_distribution<int>(
+                    0, static_cast<int>(plan.plan->total_weight) - 1)(*random);
             std::vector<std::int64_t> weights;
             for (const auto &option : plan.plan->options)
                 weights.push_back(option.weight);
@@ -68,8 +76,14 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
             category = plan.plan->options[*chosen.index].category;
         }
         // An original exit/special choice ends this finite preview; never reroll or remove it.
-        if (category != 1 && category != 2)
+        if (category != 1 && category != 2) {
+            if (live_) {
+                s.error = InitialAiError::unsupported_branch;
+                s.pending_category = category;
+                return InitialAiError::none;
+            }
             return InitialAiError::unsupported_branch;
+        }
         std::int64_t total{};
         for (const auto &cell : candidates.snapshot->cells)
             if (cell.instance && cell.instance->legacy_phase == 1 &&
@@ -77,8 +91,9 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
                 total += cell.definition.definition_charm;
         if (total <= 0 || total > std::numeric_limits<int>::max())
             return InitialAiError::preparation_failed;
-        departure_input.facility_ticket =
-            std::uniform_int_distribution<int>(0, static_cast<int>(total) - 1)(*random);
+        if (random)
+            departure_input.facility_ticket =
+                std::uniform_int_distribution<int>(0, static_cast<int>(total) - 1)(*random);
     }
     const auto departure =
         people::prepare_facility_departure(*search.field, *candidates.snapshot, departure_input);
@@ -86,10 +101,17 @@ InitialAiError InitialAiSession::depart(InitialAiState &s, const InitialAiTicket
         return InitialAiError::preparation_failed;
     const auto &d = initial_definition(departure.departure->binding.definition_id);
     if ((d.activity_category != 1 && d.activity_category != 2) ||
-        (d.activity_detail != 0 && d.activity_detail != 1))
+        (d.activity_detail != 0 && d.activity_detail != 1)) {
+        if (live_) {
+            s.error = InitialAiError::unsupported_branch;
+            s.pending_definition = d.id;
+            return InitialAiError::none;
+        }
         return InitialAiError::unsupported_branch;
+    }
     s.journey = departure.departure;
     s.waypoint = 0;
+    s.route_revision = layout_revision_;
     if (s.journey->legacy_direction)
         s.control.facing = *s.journey->legacy_direction;
     ++s.departures;
@@ -110,6 +132,22 @@ InitialAiError InitialAiSession::decision(InitialAiState &s, const InitialAiTick
     }
     if (s.control.state != 0 || !s.journey)
         return InitialAiError::none;
+    // Construction refreshes the route against the live layout without changing the selected
+    // target or consuming another choice ticket. The original target binding is revalidated.
+    if (live_ && s.route_revision != layout_revision_) {
+        const auto cell = people::world_cell(s.position);
+        if (!cell || !world::arrival_matches(map_, s.journey->binding, s.journey->binding.cell))
+            return InitialAiError::preparation_failed;
+        const auto field = world::search(map_, *cell);
+        if (!field.field)
+            return InitialAiError::preparation_failed;
+        auto route = world::trace(*field.field, s.journey->binding.cell);
+        if (route.error != world::RouteError::none)
+            return InitialAiError::preparation_failed;
+        s.journey->route = std::move(route);
+        s.waypoint = 0;
+        s.route_revision = layout_revision_;
+    }
     const auto status = people::inspect_entry(map_, s.journey->binding, s.position, true);
     if (status == people::EntryStatus::ready)
         return arrive(s);

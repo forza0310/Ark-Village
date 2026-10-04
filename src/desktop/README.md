@@ -1,6 +1,7 @@
 # desktop
 
---ai-preview在同一主程序显示真实初局人物寻路/设施交互，场景读取Game投影的实际连续位置，HUD/人物页读取实际会话资金/HP/装备。
+正常启动显示首访后真实人物生活，场景读取Game投影的实际连续位置，HUD/人物页读取共享资金和人物HP/装备；玩家建设与人物活动使用当前世界。未知活动的局部handoff须显示原因，日期/施工仍推进，首个月报前总体保护另行显示。
+--ai-preview保留为严格初局寻路/设施交互诊断，使用同一表现层；它固定布局/日历，不用于正常建设验收。
 菜单/设施页按现有资格阻止Game.update，暂停/倍速/缩放仍走共享controller；建设在预览禁用。--inspect-page ai安排同一模式并固定种子用于有界截图，不注入假位置或收入。
 
 raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修改人物或设施规则。
@@ -24,10 +25,13 @@ game_view关闭raylib的隐式帧末限速，用最早逻辑/60FPS绘制截止Wa
 启用FLAG_WINDOW_HIGHDPI；窗口点坐标决定布局/鼠标，GetRenderWidth/Height决定画布物理像素。
 canvas_camera将逻辑布局直接映射到原生画布，呈现时与framebuffer像素一一对应；最近邻素材只在最终尺寸采样。
 Text::prepare按物理UI倍率增长字形图集，缩放地图不重建字体；窗口缩放/跨DPI屏幕由下一帧重新计算。
-地图精灵原点与地块中心分开，拾取使用原SEB的60×29中心；连续人物脚底在同一中心投影，不复用地表左上绘制锚点。普通建设模式首访静止，显式AI预览按真实位置运动。
+地图精灵原点与地块中心分开，拾取使用原SEB的60×29中心；连续人物脚底在同一中心投影，不复用地表左上绘制锚点。普通建设模式与显式AI预览均读取真实生活位置。
 场景滚轮每格约5%，范围50%～200%，鼠标下世界位置保持；右键拖动补偿缩放，HUD/面板尺寸不变。
 目录和详情页滚轮继续滚动列表，不同时缩放地图；`--zoom-percent 50..200`用于复现初始视图/有界截图。
 到访列表仅列场景人物，不冒充原版四页名单。inspect-page只检查渲染，不算真实鼠标测试。
+`--verify-play --frames 3000 --screenshot /tmp/ark-playable.png`是正常新局的有界controller检查，固定产品随机种子但不预推进首访、不注入目标/收入；默认47ms等待真实420步，再用共享坐标控制关闭教程、建设食品类包子铺、暂停30绘制帧并恢复。
+该检查观测人物移动/访问/收费/占用/退出、施工完成和现金账本一致性；打印Village的steps/date/life_rounds/visits/completions/funds/ledger_funds/error/pending_category及Playability结果，不达标退出失败。约50秒绘制预算、60秒硬上限，不可与预览/检查页面/暂停启动或固定频率覆盖混用。
+这是产品内部正常模型/controller检查，不代表OS鼠标事件或原APK行为等价；实际通过记录集中在阶段文档。
 `--inspect-page motion --frames 120`在有界窗口显式选择旅店展示连续运动，只覆盖渲染位置；领域人物/金币不变。
 它不证明默认首访会选择旅店，不含方向动画/武器合成或使用退出；手动新局重置会清除检查行程。
 依据：[研究画面](../../research/dungeon_village_1/prototype/src/startup_view.cpp)、[UI](../../research/dungeon_village_1/ui/PAGES.md)。

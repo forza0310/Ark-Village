@@ -27,7 +27,9 @@ struct CashEntry {
     std::int64_t expense{};
 };
 struct State {
-    std::int64_t money{};
+    std::int64_t money{}; // Read-only UI projection; all writers post to accounting.
+    economy::CashLedger accounting;
+    std::uint64_t next_cash_id{1}, layout_revision{};
     int points{}, popularity{};
     std::array<int, 4> calendar{};
     std::map<int, facilities::Progress> definition_progress;
@@ -35,6 +37,8 @@ struct State {
     std::vector<facilities::InstanceId> instance_order; // Original loaded order; append new IDs.
     std::vector<CashEntry> expenses;
     std::optional<people::Adventurer> adventurer;
+    std::optional<LifeActorState> life;
+    std::map<facilities::InstanceId, FacilityLifeState> facility_life;
     Mode mode{Mode::normal};
     std::optional<int> selection;
     int orientation{}, arrival_counter{}, event89_count{};
@@ -48,6 +52,7 @@ class Game {
     const State &state() const { return state_; }
     bool ai_preview_enabled() const { return play_ == PlayMode::ai_preview; }
     const InitialAiState *ai_state() const { return ai_ ? &ai_->state() : nullptr; }
+    const LifeActorState *life_state() const { return state_.life ? &*state_.life : nullptr; }
     InitialAiError ai_error() const { return ai_error_; }
     const facilities::Definition &definition(int id) const;
     const Display &display(int id) const;
@@ -78,6 +83,9 @@ class Game {
     void start_ai_preview();
     void step_ai_preview();
     void project_ai_preview();
+    void start_village_life();
+    void step_village_life();
+    void project_village_actor();
     State state_;
     std::mt19937 random_;
     PlayMode play_;

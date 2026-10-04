@@ -46,6 +46,7 @@ add_library(ark_game STATIC src/world/grid.cpp src/world/terrain.cpp src/world/n
     src/people/hp.cpp src/facilities/arrival.cpp src/facilities/exit.cpp src/facilities/service.cpp
     src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
     src/app/initial_ai_check.cpp src/app/game_ai_preview.cpp
+    src/app/live_life_context.cpp src/app/game_life.cpp
     src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
     src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
 target_include_directories(ark_game PUBLIC include)
@@ -59,6 +60,7 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
+        src/desktop/playability_probe.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/character_animation.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
@@ -75,6 +77,10 @@ if(ARK_BUILD_DESKTOP)
 endif()
 
 if(BUILD_TESTING)
+    add_executable(ark_village_life_tests tests/village_life_test.cpp)
+    target_link_libraries(ark_village_life_tests PRIVATE ark_game)
+    ark_target(ark_village_life_tests)
+    add_test(NAME normal_village_life COMMAND ark_village_life_tests)
     add_executable(ark_original_loop_tests tests/original_loop_test.cpp)
     target_link_libraries(ark_original_loop_tests PRIVATE ark_timing)
     ark_target(ark_original_loop_tests)

@@ -64,6 +64,8 @@ InitialAiError InitialAiSession::round_random(std::mt19937 &random) {
 }
 InitialAiError InitialAiSession::prepare_round(const InitialAiTickets &tickets,
                                                std::mt19937 *random) {
+    if (live_ && state_.error != InitialAiError::none)
+        return state_.error; // A retained handoff must not redraw its actual selection.
     auto next = state_;
     AiScheduleInput schedule;
     schedule.rosters[0] = {next.actor.value};

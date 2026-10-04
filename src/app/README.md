@@ -1,7 +1,7 @@
 # app
 
 Game是唯一可变村庄聚合，接口在`include/ark/app/game.hpp`，协调设施、人物、资金和更新。
-confirm复用预览校验，在候选状态上分配实例、登记支出、扣款后提交；拒绝不改资金、ID或占地。
+confirm复用预览校验，在候选状态上分配实例、登记CashLedger支出后提交；拒绝不改资金、ID或占地。State.accounting是唯一现金账本，money仅供既有HUD读取。
 update推进1/2个有资格逻辑步，目录/放置/教程/镜头/暂停不积累时间。
 首名冒险者420次更新后免费加入，事件89先锁存再展示，关闭不重复创建。
 StartupData在构建期生成，不依赖research/Node运行时；启动参数独立在ark_launch。
@@ -23,18 +23,26 @@ ai_schedule.hpp/cpp消费研究d412d6e的已获准世界轮次：先全部人物
 名单身份按种类隔离，原始ID0有效；调度接口的原始名单身份不能直接当people::ActorId非零快照身份。
 handler看到本轮候选名单，必须只修改独立所有者副本并暂存外部请求。失败或限额返回无候选，调用方丢弃副本；调度器不能撤销handler已经执行的真实世界写入。
 人类执行返回删除且绑定设施时，先请求释放后删名单。admitted由真实运行所有者解决模态资格，安全dispatch_limit不是原版玩法人数限制。
-产品已编译该纯调度并做组合验证；普通建设模式Game尚未调用它，显式AI预览通过InitialAiSession消费初局两遍调度，完整世界默认AI仍待接通。
+产品已编译该纯调度并做组合验证；正常生活与显式AI预览均通过InitialAiSession消费人物两遍调度，怪物/物体/遭遇等完整世界所有者尚未接通。
 依据：[聚合遍历](../../research/dungeon_village_1/rules/ai/LIFECYCLE.md#聚合遍历与同轮新建)。
 
 ## 真实初局AI私有会话
 
 initial_ai.hpp及initial_ai.cpp拥有整段会话状态、前置检查和c/d调度；initial_ai_motion.cpp负责优先级/选目标/道路运动，initial_ai_service.cpp负责到达收费、使用、退出及控制消费。
 来源为d7ca763的prototype/startup_ai；复用产品地图绑定、邻接、调度、设施和人物纯规则，无raylib依赖。
-仅接受未修改的真实420步首访Game快照；允许显式选择两个已证出生点。构造不修改Game；普通建设窗口不创建，显式AI预览的Game在构造后消费并投影视图。
+严格诊断构造仅接受未修改的真实420步首访Game快照；允许显式选择两个已证出生点。构造不修改Game，显式AI预览的Game持久消费并投影视图。正常生活使用from_village临时适配入口，不使用这个严格初局前置。
 每轮在私有副本上推进所有统计、资金、占用、共享使用、HP与队列；任何后段失败全部放弃，成功后一次替换。
 到达普通价格取真实邻接派生值，武器取原表装备价；退出后成功8先出发，19只累计属性，28才装配并重算。
-initial_ai_data.hpp从固定源表编译23职业/33武器及三个服务输入；initial_ai_check运行六条有界案例供--check-ai调用。
-票号显式输入，未复演APK随机消费/同成本路径；不包括日历/月界、玩家改图、任务/救援/战斗或默认AI启用。
+initial_ai_data.hpp从固定源表编译23职业/33武器及28/30/33/35/45服务输入；initial_ai_check运行六条有界案例供--check-ai调用。
+票号显式输入，未复演APK随机消费/同成本路径；严格诊断不包括日历/月界、玩家改图、任务/救援/战斗，不作为正常玩法的状态所有者。
+
+## 正常人物生活
+
+life_state.hpp定义持久人物与设施服务状态；game_life.cpp协调首访同轮c/d、后续轮次提交及人物UI投影。Game::State.life持有人物，facility_life持有各实例销售/占用，definition_progress仍是定义共享进度唯一来源。
+live_life_context.cpp从当前地图、设施、施工阶段、邻接、等级/改良、账本构造每轮临时候选；成功后一次回写Game并丢弃InitialAiSession，失败不留下部分扣款/占用/随机消费。
+建设和访问读写同一CashLedger及单调现金事件ID。布局变更/施工完成递增layout_revision，当前行程重校验原目标和路线，不保留初局路径快照。
+关闭首访教程后自主生活与日期、施工共用正常更新资格；暂停/菜单/建设模态冻结它们，恢复不积累逻辑债务，倍速每次重新验资格。首个月报准备前1456步保护保留。
+未接的活动/装备选择保留真实队列与pending_category/pending_definition/pending_activity，局部error停止该人物并向UI交接；日期、施工继续。该保护是产品边界，不能称为原版等待或通过重抽跳过。
 
 ## 主程序可视预览
 
@@ -43,4 +51,4 @@ Game的PlayMode::ai_preview明确选择有限初局窗口。game_ai_preview.cpp�
 round_random只在需要时按实际权重生成类别/设施票号与退出满足度/属性票号。会话与mt19937均准备副本，错误不消费随机状态；不是APK随机实现。
 Game.state的money/adventurer/definition_progress是预览的只读UI投影，建设命令在此模式拒绝，没有第二个业务写入者。
 不推进首访之后的日历、不允许改图，不接战斗/救援/离场；未知类别/回退或1000轮保护结束，窗口可重启，错误可查询ai_error。
-普通PlayMode::startup仍提供建设/首访，不自动创建预览会话；Game按值复制会话使update/倍速与失败提交保持原子。
+普通PlayMode::startup提供建设/首访和当前村庄生活，不创建持久预览会话；预览仍作为严格初局golden诊断，与正常有限生活各自验收。

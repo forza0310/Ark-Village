@@ -8,6 +8,8 @@ InitialAiError InitialAiSession::arrive(InitialAiState &s) const {
     auto &f = s.facilities.at(binding.instance);
     const auto &d = initial_definition(binding.definition_id);
     auto economy_input = facilities::with_neighbours({}, neighbourhoods_.at(binding.instance));
+    if (live_)
+        economy_input = economy_inputs_.at(binding.instance);
     economy_input.level = s.uses.at(d.id).level;
     const auto values = facilities::derive_economy(d.economy, economy_input);
     if (values.instance[0] > std::numeric_limits<int>::max())
@@ -88,6 +90,8 @@ InitialAiError InitialAiSession::exit(InitialAiState &s, const InitialAiTickets 
     i.upgrade_uses = d.economy.upgrade_uses;
     i.occupants = f.occupants;
     auto economy_input = facilities::with_neighbours({}, neighbourhoods_.at(binding.instance));
+    if (live_)
+        economy_input = economy_inputs_.at(binding.instance);
     const auto values = facilities::derive_economy(d.economy, economy_input);
     if (values.instance[1] > std::numeric_limits<int>::max())
         return InitialAiError::preparation_failed;
@@ -153,6 +157,8 @@ InitialAiError InitialAiSession::execution(InitialAiState &s, const InitialAiTic
             const auto error = depart(s, tickets, random);
             if (error != InitialAiError::none)
                 return error;
+            if (live_ && s.error != InitialAiError::none)
+                return InitialAiError::none; // Commit proven exit; retain8 and selected handoff.
             const auto submitted =
                 people::prepare_local_control_prefix(s.control, {std::nullopt, true});
             if (!submitted.candidate)

@@ -89,9 +89,10 @@ void first_arrival() {
           "original first attributes");
     check(a.cell == world::Cell{11, 0} || a.cell == world::Cell{12, 0}, "evidenced spawn");
     check((a.flags & 8192) && game.state().money == 5000, "first visit is free");
-    check(a.flags == (2U | 8192U) && a.pending_activity == 0 &&
+    check(a.flags == (2U | 8192U) && !a.pending_activity && game.life_state() &&
+              game.life_state()->rounds == 1 && game.life_state()->departures == 1 &&
               a.position.x == a.cell.x * 100 + 50 && a.position.z == a.cell.y * 100 + 50,
-          "world centre, initialization flag and unexecuted activity0");
+          "world centre, initialization flag and same-round activity0 execution");
     const auto modal = snapshot(game);
     steps(game, 100);
     check(snapshot(game) == modal, "tutorial pauses world");
@@ -174,9 +175,17 @@ void funds_and_boundary() {
     game.finish_camera();
     steps(game, 1100);
     check(game.state().mode == app::Mode::research_boundary &&
-              game.state().simulation_steps == 1456 && game.state().money == 0 &&
+              game.state().simulation_steps == 1456 &&
+              game.state().money == game.state().accounting.funds() &&
               game.state().expenses.size() == 5,
           "guard unknown settlement before effects");
+    std::int64_t expected_money = 5000;
+    for (const auto &[id, entry] : game.state().accounting.entries()) {
+        check(id == entry.event_id, "cash event identity");
+        expected_money +=
+            entry.direction == economy::CashDirection::income ? entry.amount : -entry.amount;
+    }
+    check(game.state().money == expected_money, "construction and autonomous income reconcile");
     const auto bound = snapshot(game);
     steps(game, 100);
     check(snapshot(game) == bound, "boundary no drift");

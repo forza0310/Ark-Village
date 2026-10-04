@@ -18,6 +18,7 @@ struct LaunchOptions {
     std::string screenshot;
     bool paused = false;
     bool ai_preview = false;
+    bool verify_play = false; // Bounded normal-game controller probe; never an inspection fixture.
     std::string font;
     std::string inspect_page; // Bounded rendering inspection; never a normal new-game trajectory.
 };

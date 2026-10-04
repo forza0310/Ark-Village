@@ -36,7 +36,7 @@ export function compileInitialAi(entries, first, facilityRows) {
   need(weapon && first.equipment_ids.slice(1).every(id => id === -1), 'Unsupported initial equipment');
   const spells = Array.from({length: 4}, (_, slot) => jobs.find(row =>
     decimal(row[18]) >= 10 && decimal(row[18]) % 10 === slot)).filter(Boolean).map(row => decimal(row[0]));
-  const services = [28, 30, 33].map(id => {
+  const services = [28, 30, 33, 35, 45].map(id => {
     const row = facilityRows.get(id);
     need(row?.length === 36, 'Missing initial AI service');
     const attrs = numbers(row[28]), deltas = numbers(row[29]);

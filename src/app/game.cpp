@@ -1,5 +1,5 @@
-// Adapts research/prototype startup transactions. Unknown AI, demolition/road and monthly
-// side effects are excluded; simulation stops before the unresolved report preparation step.
+// Researched startup, construction and ordinary life transactions over one mutable village.
+// Demolition/road and monthly effects remain outside the pre-report playable interval.
 #include "ark/app/game.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -8,6 +8,7 @@ namespace ark::app {
 Game::Game(std::uint32_t random_seed, PlayMode play) : random_(random_seed), play_(play) {
     const auto &data = startup_data();
     state_.money = data.money;
+    state_.accounting = economy::CashLedger(data.money);
     state_.points = data.points;
     state_.popularity = data.popularity;
     state_.calendar = data.calendar;
@@ -21,6 +22,7 @@ Game::Game(std::uint32_t random_seed, PlayMode play) : random_(random_seed), pla
             throw std::invalid_argument("Invalid loaded instance identity");
         state_.next_id = std::max(state_.next_id, seed.id + 1);
         state_.instance_order.push_back(seed.id);
+        state_.facility_life.emplace(seed.id, FacilityLifeState{});
     }
     route_map(); // Validate reset bindings before exposing the aggregate.
 }
@@ -113,8 +115,14 @@ Error Game::confirm(world::Cell anchor) {
     next.facilities.emplace(id, facilities::Instance{id, item.id, anchor, state_.orientation,
                                                      item.construction_ticks, false});
     next.instance_order.push_back(id);
+    next.facility_life.emplace(id, FacilityLifeState{});
     next.expenses.push_back({id, 0, item.price});
-    next.money -= item.price;
+    if (next.accounting.post_cash(
+            {next.next_cash_id++, next.simulation_steps + 1, economy::CashCategory::facilities,
+             economy::CashDirection::expense, item.price}) != economy::CashError::none)
+        return Error::invalid_input;
+    next.money = next.accounting.funds();
+    ++next.layout_revision;
     state_ = std::move(next);
     return Error::none;
 }
@@ -137,10 +145,8 @@ void Game::step() {
         return;
     }
     ++state_.simulation_steps;
-    for (auto &entry : state_.facilities)
-        if (entry.second.remaining_ticks > 0)
-            --entry.second.remaining_ticks;
-    if (state_.event89_count == 0 && --state_.arrival_counter == 0) {
+    const bool first_visit = state_.event89_count == 0 && --state_.arrival_counter == 0;
+    if (first_visit) {
         const auto &data = startup_data();
         const auto choice =
             std::uniform_int_distribution<std::size_t>(0, data.spawn_points.size() - 1)(random_);
@@ -149,8 +155,18 @@ void Game::step() {
         state_.mode = Mode::tutorial;
         if (ai_preview_enabled())
             start_ai_preview();
-        return;
+        else
+            start_village_life();
+    } else if (state_.life) {
+        step_village_life();
     }
+    // Research two-pass order: actors see construction0 this round; completed facilities are
+    // available to their next decision. UI, actors and quotes all use these current instances.
+    for (auto &entry : state_.facilities)
+        if (entry.second.remaining_ticks > 0 && --entry.second.remaining_ticks == 0)
+            ++state_.layout_revision;
+    if (first_visit)
+        return;
     auto &date = state_.calendar;
     date[3] += 27;
     if (date[3] >= 10800) {

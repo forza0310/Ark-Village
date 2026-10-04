@@ -87,6 +87,17 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype -
 - 草地、建筑、入口与人物使用原始美术；首访使用秘书，而非后续解锁插画。
   字体、窗体和图标缩放是替代，不宣称固定APK或不同版本截图的视觉等价。
 
+## AI表现适配交付
+
+[facility_projection.hpp](include/dungeon_village_prototype/facility_projection.hpp)维护类别8休息/类别6特殊入口的
+旧s→原60×30投影偏移→h.e世界坐标截断。领域只消费世界目标，不出现原像素位置；
+[回归](tests/facility_projection_test.cpp)检查四方向×576格并连接完整使用队列。
+
+[loop_pacing.hpp](include/dungeon_village_prototype/loop_pacing.hpp)维护固定APK默认47ms最小外层开始间隔、
+等待后观测提交和普通模式倍速迭代上限；[回归](tests/loop_pacing_test.cpp)覆盖整数除法、长停顿无补算及时钟回拨。
+来源/限定见[限速规格](../rules/ai/LIFECYCLE.md#原版墙钟限速)。这两个适配均无窗口、无线程、无真实sleep，
+交付给后续产品接入，不擅自修改当前窗口节奏或解开AI/月界保护。
+
 ## 旧夹具
 
 `--fixture`显式进入旧7×7场景；`--demo`隐含该模式并自动退出。

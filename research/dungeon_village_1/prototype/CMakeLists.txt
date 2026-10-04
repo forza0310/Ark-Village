@@ -22,7 +22,7 @@ add_custom_command(OUTPUT "${STARTUP_CPP}"
     DEPENDS scripts/compile_startup.mjs ../data/startup/MAP.json ../data/startup/STATE.json
             ../data/startup/TABLES.json ../data/original/tenantData.txt VERBATIM)
 add_library(dungeon_village_startup_model src/startup.cpp src/startup_map.cpp src/road_render.cpp
-                                        src/startup_ai.cpp "${STARTUP_CPP}")
+                                        src/startup_ai.cpp src/facility_projection.cpp src/loop_pacing.cpp "${STARTUP_CPP}")
 target_include_directories(dungeon_village_startup_model PUBLIC include)
 target_link_libraries(dungeon_village_startup_model PUBLIC dungeon_village_reference)
 target_compile_features(dungeon_village_startup_model PUBLIC cxx_std_17)
@@ -40,6 +40,12 @@ add_test(NAME dungeon_village_prototype.startup_use COMMAND dungeon_village_star
 add_executable(dungeon_village_startup_ai_tests tests/startup_ai_test.cpp)
 target_link_libraries(dungeon_village_startup_ai_tests PRIVATE dungeon_village_startup_model)
 add_test(NAME dungeon_village_prototype.startup_ai COMMAND dungeon_village_startup_ai_tests)
+add_executable(dungeon_village_facility_projection_tests tests/facility_projection_test.cpp)
+target_link_libraries(dungeon_village_facility_projection_tests PRIVATE dungeon_village_startup_model)
+add_test(NAME dungeon_village_prototype.facility_projection COMMAND dungeon_village_facility_projection_tests)
+add_executable(dungeon_village_loop_pacing_tests tests/loop_pacing_test.cpp)
+target_link_libraries(dungeon_village_loop_pacing_tests PRIVATE dungeon_village_startup_model)
+add_test(NAME dungeon_village_prototype.loop_pacing COMMAND dungeon_village_loop_pacing_tests)
 add_executable(dungeon_village_road_render_tests tests/road_render_test.cpp ../tools/src/sprite.cpp)
 target_include_directories(dungeon_village_road_render_tests PRIVATE ../tools/include)
 target_link_libraries(dungeon_village_road_render_tests PRIVATE dungeon_village_startup_model PkgConfig::RAYLIB)

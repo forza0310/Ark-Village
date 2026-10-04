@@ -18,6 +18,7 @@ struct RescueFacility {
     LevelEndpoints upgrade_uses;
     int sales{};
     std::vector<CharacterId> occupants;
+    int definition_wait{}; // o.w; distinct from instance condition or actor counters.
 };
 struct RescueActorContext {
     FacilityArrivalState visits; // B2/sales fields are temporary projections, never authorities.
@@ -27,6 +28,15 @@ struct RescueActorContext {
     bool definition_task_flag{};
     std::optional<FacilityDeparture> journey;
     std::size_t waypoint{};
+    WorldPosition horizontal_velocity; // r.x/z for the special-entry parabola.
+    int town_updates{};
+    int outside_updates{};
+    int blocked_updates{};
+    int spawn_updates{};
+    int no_path_updates{};
+    int short_exit_updates{};
+    int bad_area_updates{};
+    int monster_mode{}; // T, normal special-entry landing sets1.
 };
 struct RescueWorldState {
     AiRewardState ai;
@@ -49,6 +59,7 @@ struct RescueWorldCandidate {
     bool recovered{};
     bool cleaned_up{};
     std::optional<DepartureOverrideCandidate> departure_override;
+    ActorControlFlow flow{ActorControlFlow::empty};
 };
 struct RescueWorldResult {
     RescueWorldError error{RescueWorldError::none};
@@ -72,11 +83,21 @@ RescueWorldResult prepare_world_rescue_path_c(const RescueWorldState &state, Cha
 RescueWorldResult prepare_world_rescue_follow(const RescueWorldState &state, CharacterId actor);
 // Recursive rescued arrival uses OLD flags/s; copies O/n/s only AFTER its use1 is arranged.
 // Successful release is not replayable: N/R/binding revalidation rejects a repeated delivery.
-RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &state, CharacterId rescuer);
+struct RescueDeliveryProjection {
+    std::optional<Position> rescued_target; // Category8: derived from rescued OLD s, before copy.
+    std::optional<int> rescued_direction;   // First draw4, recursive use1 precedes carrier use2.
+    std::optional<Position> carrier_target;
+    std::optional<int> carrier_direction;
+};
+RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &state, CharacterId rescuer,
+                                                const RescueDeliveryProjection &projection = {});
 // Split c()/d(): c reads old B170; d advances counters/HP, local prefix, occupation and exit.
 // Exit keeps queued activity8 and expression18 for the next interpreter consumer.
 RescueWorldResult prepare_world_inn_c(const RescueWorldState &state, CharacterId actor);
 RescueWorldResult prepare_world_inn_d(const RescueWorldState &state, CharacterId actor);
+// Control ONLY, after the common d prefix. Never advances counters/effects/HP/growth.
+// Simple exits include2/7/8/9; category1/5 and other domain opcodes remain explicit handoffs.
+RescueWorldResult prepare_world_inn_control(const RescueWorldState &state, CharacterId actor);
 // r() is staged departure, not deletion; N and path are deliberately retained.
 RescueWorldResult prepare_world_rescue_cleanup(const RescueWorldState &state, CharacterId actor);
 } // namespace dungeon_village_reference

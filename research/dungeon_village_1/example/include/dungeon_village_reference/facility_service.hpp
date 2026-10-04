@@ -1,7 +1,7 @@
 #pragma once
 
 // Service orchestration prepares values; a world owner revalidates IDs and submits atomically.
-// These plans do not execute category5 residence side effects or render equipment animations.
+// These plans do not execute category5 dungeon exploration or render equipment animations.
 #include "dungeon_village_reference/actor_lifecycle.hpp"
 #include "dungeon_village_reference/facility_exit.hpp"
 

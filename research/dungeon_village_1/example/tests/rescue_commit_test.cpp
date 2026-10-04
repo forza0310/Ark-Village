@@ -172,18 +172,55 @@ void rollback_and_cleanup() {
     s = carried();
     s.facilities.at(3).occupants = {{1}, {1}, {2}};
     s.ai.battle.actors.at({1}).control.flags |= 1024U;
+    s.ai.battle.actors.at({1}).control.action = 11;
+    s.ai.battle.actors.at({1}).control.action_counter = 17;
+    s.ai.battle.actors.at({1}).control.alternate_counter = 29;
     const auto r = prepare_world_rescue_cleanup(s, {1});
     check(r.candidate &&
               r.candidate->state.facilities.at(3).occupants == std::vector<CharacterId>{{1}, {2}} &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue ==
                   std::vector<LegacyActorControl>{{1, 120, 0}, {8, 5}} &&
-              r.candidate->state.ai.battle.actors.at({1}).object_slot == -2,
+              r.candidate->state.ai.battle.actors.at({1}).object_slot == -2 &&
+              r.candidate->state.ai.battle.actors.at({1}).control.action == 11 &&
+              r.candidate->state.ai.battle.actors.at({1}).control.action_counter == 17 &&
+              r.candidate->state.ai.battle.actors.at({1}).control.alternate_counter == 0,
           "cleanup removes first occupant only, optional wait120, retains N and staged departure");
     s = prepare_world_rescue_delivery(carried(), {1}).candidate->state;
     s.facility_uses.at(33).completed_uses = std::numeric_limits<int>::max();
     check(!prepare_world_inn_d(s, {1}).candidate && s.facilities.at(3).occupants.empty() &&
               s.ai.battle.actors.at({1}).state_counter == 0,
           "late shared use overflow rolls back same-call occupation and counters");
+}
+void rest_delivery() {
+    for (int first = 0; first < 4; ++first)
+        for (int second = 0; second < 4; ++second) {
+            auto s = carried();
+            s.facilities.at(3).category = 8;
+            s.facilities.at(3).detail = 2;
+            // Explicit projections represent different old cells; not source initial values.
+            RescueDeliveryProjection projection{Position{250, 250}, first, Position{150, 150},
+                                                second};
+            const auto r = prepare_world_rescue_delivery(s, {1}, projection);
+            check(r.candidate && r.candidate->arrived &&
+                      r.candidate->state.ai.battle.actors.at({2}).position.x == 150 &&
+                      r.candidate->state.ai.battle.actors.at({2}).control.queue.front() ==
+                          LegacyActorControl{0, 250, 250} &&
+                      r.candidate->state.ai.battle.actors.at({1}).control.queue.front() ==
+                          LegacyActorControl{0, 150, 150} &&
+                      r.candidate->state.ai.battle.actors.at({2}).control.queue[4] ==
+                          LegacyActorControl{4, first} &&
+                      r.candidate->state.ai.battle.actors.at({1}).control.queue[4] ==
+                          LegacyActorControl{4, second} &&
+                      r.candidate->state.facilities.at(3).occupants.empty(),
+                  "recursive category8 uses rescued old-s target before copy, separate ordered "
+                  "draws");
+            projection.carrier_direction.reset();
+            check(!prepare_world_rescue_delivery(s, {1}, projection).candidate &&
+                      s.ai.battle.actors.at({2}).control.state == 16 &&
+                      s.ai.battle.actors.at({2}).rescue == CharacterId{1} &&
+                      s.facilities.at(3).sales == 0 && s.ai.accounting.funds() == 0,
+                  "late second rest draw missing rolls back first use/payment/reference release");
+        }
 }
 ActivityCandidateInput view(const RescueWorldState &s) {
     ActivityCandidateInput input;
@@ -245,7 +282,7 @@ void seek_and_return() {
     r = prepare_world_rescue_return(s, {1}, view(s));
     check(r.candidate.has_value(), "longer return route can be prepared");
     s = r.candidate->state;
-    s.facilities.at(3).status = 0;
+    s.facilities.erase(3); // q tests actual instance identity, not construction/operating status.
     // The already selected goal remains O, but final delivery must revalidate current liveness.
     s.ai.battle.actors.at({1}).position = {150, 0, 150};
     s.ai.contexts.at({1}).cell = {1, 1};
@@ -280,5 +317,6 @@ int main() {
     delivery_and_timing();
     rollback_and_cleanup();
     seek_and_return();
+    rest_delivery();
     std::cout << "rescue commit checks: " << checks << '\n';
 }

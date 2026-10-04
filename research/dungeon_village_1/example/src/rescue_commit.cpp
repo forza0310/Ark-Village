@@ -46,6 +46,7 @@ bool touching(CombatPoint a, CollisionBox ab, CombatPoint b, CollisionBox bb) {
 bool transition(BattleActorRecord &a, int state) {
     ActorStateTransitionInput i;
     i.control = a.control;
+    i.human = a.kind == ActorKind::human;
     i.baseline = a.baseline;
     i.next_state = state;
     const auto c = prepare_actor_state_transition(i);
@@ -65,8 +66,7 @@ RescueFacility *bound(RescueWorldState &s, CharacterId id) {
     if (!binding)
         return nullptr;
     const auto f = s.facilities.find(binding->instance_id.value);
-    if (f == s.facilities.end() || f->second.status == 0 ||
-        f->second.placement.definition_id != binding->definition_id ||
+    if (f == s.facilities.end() || f->second.placement.definition_id != binding->definition_id ||
         !(f->second.placement.instance_id == binding->instance_id) ||
         !arrival_binding_matches(s.map, *binding, s.ai.contexts.at(id).cell))
         return nullptr;
@@ -76,6 +76,18 @@ void release_first(RescueFacility &f, CharacterId id) {
     const auto it = std::find(f.occupants.begin(), f.occupants.end(), id);
     if (it != f.occupants.end())
         f.occupants.erase(it);
+}
+RescueFacility *occupation_at_goal(RescueWorldState &s, CharacterId id) {
+    const auto &binding = s.actors.at(id).binding;
+    if (!binding || binding->goal.x < 0 || binding->goal.x >= s.map.width || binding->goal.y < 0 ||
+        binding->goal.y >= s.map.height || !valid_legacy_map(s.map))
+        return nullptr;
+    const auto &cell =
+        s.map.cells[static_cast<std::size_t>(binding->goal.y * s.map.width + binding->goal.x)];
+    if (!cell.facility)
+        return nullptr;
+    const auto f = s.facilities.find(cell.facility->instance_id.value);
+    return f == s.facilities.end() ? nullptr : &f->second;
 }
 bool cleanup(RescueWorldState &s, CharacterId id) {
     auto &a = s.ai.battle.actors.at(id);
@@ -92,7 +104,7 @@ bool cleanup(RescueWorldState &s, CharacterId id) {
     a.control.queue.clear();
     if (!transition(a, c->state))
         return false;
-    a.control.action = a.control.action_counter = a.control.alternate_counter = 0;
+    // r invokes c19 (preserves k/l), not n0. Monster c0 already resets k/l in transition.
     if (c->waiting_updates)
         a.control.queue.push_back({1, c->waiting_updates, 0});
     a.control.queue.push_back({8, c->activity});
@@ -124,13 +136,17 @@ FacilityArrivalInput arrival(const RescueWorldState &s, CharacterId id, const Re
             s.month_index,
             f.price};
 }
-bool use(RescueWorldState &s, CharacterId id, int mode, const RescueFacility &f) {
+bool use(RescueWorldState &s, CharacterId id, int mode, const RescueFacility &f,
+         std::optional<Position> target = {}, std::optional<int> direction = {}) {
     auto &a = s.ai.battle.actors.at(id);
     FacilityUsePlanInput i;
     i.control = a.control;
     i.category = f.category;
     i.detail = f.detail;
     i.activity = mode;
+    i.definition_wait = f.definition_wait;
+    i.world_target = target;
+    i.direction_ticket = direction;
     const auto plan = prepare_facility_use_plan(i);
     if (!plan.candidate || plan.candidate->cleanup)
         return false;
@@ -438,7 +454,8 @@ RescueWorldResult prepare_world_rescue_follow(const RescueWorldState &s, Charact
     }
     return {RescueWorldError::none, c};
 }
-RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, CharacterId id) {
+RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, CharacterId id,
+                                                const RescueDeliveryProjection &projection) {
     if (!human(s, id))
         return fail(RescueWorldError::stale_actor);
     const auto &original = s.ai.battle.actors.at(id);
@@ -452,7 +469,7 @@ RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, Chara
     RescueWorldCandidate c;
     c.state = s;
     auto *f = bound(c.state, id);
-    if (!f || f->category != 2 || f->detail != 0)
+    if (!f || !((f->category == 2 && f->detail == 0) || (f->category == 8 && f->detail == 2)))
         return fail(RescueWorldError::stale_binding);
     // Preserve the recursive old flags/s input; applying use1 first would wrongly clear512.
     const auto rescued_arrival = prepare_facility_arrival(statistics(c.state, rescued_id, *f),
@@ -461,7 +478,8 @@ RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, Chara
         return fail(RescueWorldError::preparation_failed);
     auto &carried = c.state.ai.battle.actors.at(rescued_id);
     carried.rescue.reset();
-    if (!transition(carried, 0) || !use(c.state, rescued_id, 1, *f))
+    if (!transition(carried, 0) ||
+        !use(c.state, rescued_id, 1, *f, projection.rescued_target, projection.rescued_direction))
         return fail(RescueWorldError::preparation_failed);
     store_visits(c.state, rescued_id, rescued_arrival.candidate->state);
     c.state.human_spending.at(carried.definition) =
@@ -480,7 +498,7 @@ RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, Chara
         return fail(RescueWorldError::preparation_failed);
     // The movement-arrival caller clears256 BEFORE selecting helper mode2.
     carrier.control.flags &= ~256U;
-    if (!use(c.state, id, 2, *f))
+    if (!use(c.state, id, 2, *f, projection.carrier_target, projection.carrier_direction))
         return fail(RescueWorldError::preparation_failed);
     store_visits(c.state, id, carrier_arrival.candidate->state);
     c.state.human_spending.at(carrier.definition) =
@@ -554,16 +572,31 @@ RescueWorldResult prepare_world_inn_d(const RescueWorldState &s, CharacterId id)
     if (!hp.candidate)
         return fail(RescueWorldError::preparation_failed);
     a.hp = *hp.candidate;
+    return prepare_world_inn_control(c.state, id);
+}
+RescueWorldResult prepare_world_inn_control(const RescueWorldState &s, CharacterId id) {
+    const auto found = s.ai.battle.actors.find(id);
+    if (found == s.ai.battle.actors.end() || !(found->second.id == id) || !s.actors.count(id) ||
+        !s.ai.contexts.count(id))
+        return fail(RescueWorldError::stale_actor);
+    RescueWorldCandidate c;
+    c.state = s;
+    auto &a = c.state.ai.battle.actors.at(id);
     for (;;) {
         const auto local = prepare_local_control_prefix(a.control);
         if (!local.candidate)
             return fail(RescueWorldError::preparation_failed);
         a.control = local.candidate->state;
+        c.flow = local.candidate->flow;
         if (local.candidate->flow == ActorControlFlow::waiting || a.control.queue.empty())
             break;
         auto *f = bound(c.state, id);
         const auto opcode = a.control.queue.front()[0];
         if (opcode == 21) {
+            // 21 queries CURRENT instance at O, unlike q's old-s/definition/identity guard.
+            f = occupation_at_goal(c.state, id);
+            if (f && f->category == 5)
+                break; // m.a category5 has actual actor counters/definition/page side effects.
             a.control.queue.erase(a.control.queue.begin());
             if (f) {
                 f->occupants.push_back(id);
@@ -576,7 +609,9 @@ RescueWorldResult prepare_world_inn_d(const RescueWorldState &s, CharacterId id)
                 c.cleaned_up = true;
                 break;
             }
-            if (f->category != 2 || !c.state.facility_uses.count(f->placement.definition_id))
+            if (f->category == 1 || f->category == 5)
+                break; // Satisfaction/equipment/dungeon exploration need actual world consumers.
+            if (!c.state.facility_uses.count(f->placement.definition_id))
                 return fail(RescueWorldError::invalid_input);
             FacilityServiceExitInput i;
             i.actor = id;
@@ -603,10 +638,18 @@ RescueWorldResult prepare_world_inn_d(const RescueWorldState &s, CharacterId id)
             a.state_counter = a.state_parameter = 0;
             a.baseline = 0;
             a.encounter.reset();
+            if (e.home_hp_and_visits) {
+                const auto hp = prepare_hp_assignment(a.hp, a.capacity);
+                if (!hp.candidate)
+                    return fail(RescueWorldError::preparation_failed);
+                a.hp = *hp.candidate;
+                c.state.actors.at(id).visits.legacy_visit_counts.fill(0);
+            }
             c.exited = true;
+            c.flow = ActorControlFlow::delegated;
             break; // Activity8 needs fresh world selection; preserve deferred expression tail.
         } else
-            return fail(RescueWorldError::invalid_input);
+            break; // The world interpreter must continue this same d, without another prefix.
     }
     return {RescueWorldError::none, c};
 }

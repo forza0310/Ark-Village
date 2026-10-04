@@ -1,6 +1,6 @@
 # UI 截图与 APK 渲染映射
 
-日期：2026-10-04。范围：R3-V；关联RQ01/RQ03/RQ04/RQ05及局部RQ07/RQ09。
+日期：2026-10-04。范围：R3-V；关联RQ01/RQ02/RQ03/RQ04/RQ05及局部RQ07/RQ09/RQ11。
 本报告的映射研究按用户要求从代码补缺图页面、反查已有截图渲染出处；本轮文档整合与注释检查独立记入 [验证入口](../VERIFICATION.md)，不修改产品规则。
 截图总入口见 [视觉参考](../references/README.md)，总体边界见 [视觉基线](README.md)。
 
@@ -32,7 +32,7 @@
 | S007 | 城镇晋级条件      | [b/g:2921](../work/decompiled/sources/b/g.java)，f(o)，页面48/49                                                           | 条件/星槽结构候选；未将截图直接认证为48或49                       |
 | S008 | 设施选中/气泡     | [c/a:249](../work/decompiled/sources/c/a.java)选中轮廓；[c/b:233](../work/decompiled/sources/c/b.java)气泡文本表            | 轮廓调用已定位；具体气泡绘制/施工帧身份仍需追踪                   |
 | S009 | 冒险者到访        | [b/g:3261](../work/decompiled/sources/b/g.java)，f(o)，页面59                                                              | 人物到访插画/文本候选，APK标题“活动”与截图“事件”不同          |
-| S010 | 局部战斗连击/短条 | [人物战斗代码](../work/decompiled/sources/c/b.java)和效果消费者待继续追踪                                                  | 本轮未闭合“2连击”的渲染出处，不擅认数字10语义                   |
+| S010 | 局部战斗连击/短条 | [战斗表现](COMBAT_RENDER.md)，c/b:1946血条、1988累计伤害/连击、common ef_hit字块 | 连击/浮字消费者已定位；不同版局部数字10不认证为单次伤害 |
 | S011 | 征集冒险者结果    | [b/g:870](../work/decompiled/sources/b/g.java)，c(o)，页面24                                                               | 角色/等级/合计as结构候选；页面23为前置募集页，不能混用            |
 | S012 | 野外攻略进度      | [c/m:487](../work/decompiled/sources/c/m.java)，a(o,x,y)，状态f209e=1、g>=0                                                | 进度条及g/h到百分比消费者候选；“攻略中”标签与目标菱形未全部绑定 |
 | S013 | 赠礼结果          | [b/g:6440](../work/decompiled/sources/b/g.java)，h(o)，页面66；[c/n:2913](../work/decompiled/sources/c/n.java)属性过渡      | 插画/属性显示候选；截图标题不同，增量不等于最终值                 |
@@ -48,6 +48,22 @@
 | S023 | 旅店休息/300G     | [c/m:437](../work/decompiled/sources/c/m.java)，类别2占用人物、flag32、B<170；[c/b:1058](../work/decompiled/sources/c/b.java)到达收费浮字 | 休息资源/计时条已定位；300G为同结构候选，不认证当帧收费 |
 | S024 | 旅店数字22/绿条   | [c/m:449](../work/decompiled/sources/c/m.java)，B>=170；数字h()、绿条am[1]/h()、头像 | APK同结构数字是最大HP，不是回复量或当前HP数字；不认证截图版22初值 |
 | S025 | 预览/魅力上升     | [a/o:463](../work/decompiled/sources/a/o.java)新旧邻接差；[c/m:363](../work/decompiled/sources/c/m.java)实例提示类型3 | 队列/素材/确认触发已定位；禁止预览与旧提示可共存，不能据此认定已扣款 |
+| S026 | 道路终点选择      | [b/c:843](../work/decompiled/sources/b/c.java)，场景1、a.o.aa=2；连续预览/当前框/提示；[栅栏规格](BOUNDARY.md) | 状态/资源已定位；版本身份未核实，预览不等于收费格数 |
+| S027 | 攻击/黄5/蓝血条   | [c/b](../work/decompiled/sources/c/b.java)，怪物4500、HP1946、伤害1988；[战斗专项](COMBAT_RENDER.md) | 黄色为怪物累计标签样式，不据5判单次伤害或暴击，四朝向动作仍另待验 |
+| S028 | 受击/红2/绿血条   | 同源人物4522、HP1946、伤害1988 | 红过渡段是旧显示HP到目标HP差；具体人物/容量/盾牌效果未认证 |
+| S029 | 击杀金币100G      | 同源死亡5083；[d/a](../work/decompiled/sources/d/a.java)3783追加X3、3532绘制及独立X4金币效果 | 死亡地点固定浮字，不是旅店X2；没有HUD入账前后，100G不写源表 |
+| S030 | 经验值+6/橙条     | [c/b](../work/decompiled/sources/c/b.java)，cd24绘制1782；定义共享N/O/L | 数字是剩余待消费N，条读L/阈值；APK资源EXP+与截图中文不同 |
+| S031 | 升级/等级2/两属性 | 同源cd14；[a/e](../work/decompiled/sources/a/e.java)575报告；[d/a](../work/decompiled/sources/d/a.java)2626底栏S0 | 头标和底栏独立，APK LevelUP/Lv.与截图文字分开；不证明回满HP |
+
+<a id="combat-render"></a>
+
+人物/怪物血条、累计伤害/连击、金币、经验、头顶升级与成长底栏见[战斗表现规格](COMBAT_RENDER.md)。
+五张本轮图片的裁图/版本/对象/数值边界见[S027–S031归档](../references/screenshots/2026-10-04-combat/README.md)。
+
+<a id="road-placement"></a>
+
+道路起点/终点模式、连续预览/当前格资源、主轴投影与取消条件见[道路UI专项](BOUNDARY.md#road-placement)。
+S026只提供终点选择外观，不认证固定APK触摸热区、收费或连续时序。
 
 <a id="inn-rest-and-neighbourhood"></a>
 
@@ -160,7 +176,7 @@ S001五项菜单与默认结构相符；“五项对七标签”不能单独证�
 | 强化结果77         | [b/g:7370](../work/decompiled/sources/b/g.java)“设施强化”，调用c/n设施属性结果绘制；[b/g:5609](../work/decompiled/sources/b/g.java)确认输入可跳到展示末段或关闭                                                                               | 属性结果图、回到详情的栈恢复；不预建二次确认弹窗                  |
 | 设施等级提升81     | [b/g:7815](../work/decompiled/sources/b/g.java)“等级上升”，两段正文/属性展示；[初始化3840](../work/decompiled/sources/b/g.java)执行升级helper，关闭5703清提示                                                                                 | 运行重入/完整输入与显示；S016住宅完成不能代替                     |
 | 建设设备分类       | [b/g:10647](../work/decompiled/sources/b/g.java)W[0]按状态过滤，插入-1撤除、条件k(32)插入-2配置更替；[绘制9688](../work/decompiled/sources/b/g.java)报价分别0/300                                                                               | 实际道路条目/开放存档、截图版命名；不由0报价推全部退款规则        |
-| 道路/撤除/移动提示 | [a/o:69](../work/decompiled/sources/a/o.java)8个模式提示；[b/g:11595](../work/decompiled/sources/b/g.java)进入模式3撤除、6移动、1道路起点、0建筑；[b/c:1006](../work/decompiled/sources/b/c.java)绘制当前提示                                    | 完整预览、拒绝、确认/返回、位置/报价和所有热区                    |
+| 道路/撤除/移动提示 | [a/o:69](../work/decompiled/sources/a/o.java)8个模式提示；[b/g:11595](../work/decompiled/sources/b/g.java)进入模式3撤除、6移动、1道路起点、0建筑；[道路终点映射](#road-placement)已补预览/取消 | 撤除/移动完整预览、拒绝、确认/返回、动态报价和所有热区仍另待核对 |
 | 入住余额不足       | [b/g:5681](../work/decompiled/sources/b/g.java)余额不够调用消息11并返回false；[d/a:3968](../work/decompiled/sources/d/a.java)直接比较金币与费用                                                                                                 | 消息11正文资源、截图版拒绝画面；不由静态消息号编造中文提示        |
 | 设置页12           | [b/g:8794](../work/decompiled/sources/b/g.java)与8904两套语言布局，画面/速度/BGM/效果音/画面旋转，数值与选项组来自顶部数组                                                                                                                     | 实际语言分支、设置副作用与显示；未执行系统设置修改                |
 

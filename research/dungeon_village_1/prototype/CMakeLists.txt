@@ -28,6 +28,47 @@ target_link_libraries(dungeon_village_startup_model PUBLIC dungeon_village_refer
 target_compile_features(dungeon_village_startup_model PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_model PROPERTIES CXX_EXTENSIONS OFF)
 
+# 全目录另编译，避免运行时读取研究目录，也不改变旧首访切片的发布接口。
+set(STARTUP_WORLD_CPP "${CMAKE_CURRENT_BINARY_DIR}/startup_world_data.cpp")
+add_custom_command(OUTPUT "${STARTUP_WORLD_CPP}"
+    COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_startup_world.mjs"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../data/startup" "${CMAKE_CURRENT_SOURCE_DIR}/../data/world"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt" "${STARTUP_WORLD_CPP}"
+    DEPENDS scripts/compile_startup_world.mjs scripts/compile_startup.mjs
+            ../data/startup/MAP.json ../data/startup/STATE.json ../data/startup/TABLES.json
+            ../data/original/tenantData.txt ../data/world/monster.txt ../data/world/questData.txt
+            ../data/world/armour.txt ../data/world/accessory.txt ../data/world/item.txt
+            ../data/world/asEventData.txt
+            ../data/scripts/original/events.txt ../data/scripts/original/talk.txt
+            ../data/scripts/original/news.txt ../data/scripts/original/evtmsgs.txt
+            ../data/scripts/original/popularBonus.txt VERBATIM)
+add_library(dungeon_village_startup_world src/startup_world_projection.cpp
+    src/startup_world_routes.cpp src/startup_world_runtime.cpp
+    src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
+    src/startup_world_runtime_focus.cpp
+    src/startup_world_runtime_arrival.cpp src/startup_world_runtime_tasks.cpp
+    src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp "${STARTUP_WORLD_CPP}")
+target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
+target_include_directories(dungeon_village_startup_world PUBLIC include)
+target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
+set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
+foreach(module IN ITEMS startup_world_projection startup_world_routes startup_world_scene startup_world_arrival
+                        startup_world_runtime_tasks startup_world_runtime startup_world_continuous startup_world_pages
+                        startup_world_runtime_nonactors)
+    add_executable(dungeon_village_${module}_tests tests/${module}_test.cpp)
+    target_link_libraries(dungeon_village_${module}_tests PRIVATE dungeon_village_startup_world)
+    add_test(NAME dungeon_village_prototype.${module} COMMAND dungeon_village_${module}_tests)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+        target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+endforeach()
+# 维护验收的墙钟保护；不改变世界tick、页输入或游戏日历。
+set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTIES TIMEOUT 900)
+add_test(NAME dungeon_village_prototype.startup_world_data
+    COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/startup_world_data_test.mjs"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../data/startup" "${CMAKE_CURRENT_SOURCE_DIR}/../data/world"
+            "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt")
+
 add_executable(dungeon_village_startup_tests tests/startup_test.cpp)
 target_link_libraries(dungeon_village_startup_tests PRIVATE dungeon_village_startup_model)
 add_test(NAME dungeon_village_prototype.startup COMMAND dungeon_village_startup_tests)
@@ -77,7 +118,7 @@ add_test(NAME dungeon_village_prototype.village COMMAND dungeon_village_village_
 
 add_executable(dungeon_village_prototype src/main.cpp src/asset_manifest.cpp src/startup_view.cpp ../tools/src/sprite.cpp)
 target_include_directories(dungeon_village_prototype PRIVATE include ../tools/include)
-target_link_libraries(dungeon_village_prototype PRIVATE dungeon_village_prototype_model dungeon_village_startup_model PkgConfig::RAYLIB)
+target_link_libraries(dungeon_village_prototype PRIVATE dungeon_village_prototype_model dungeon_village_startup_world PkgConfig::RAYLIB)
 target_compile_features(dungeon_village_prototype PRIVATE cxx_std_17)
 set_target_properties(dungeon_village_prototype PROPERTIES CXX_EXTENSIONS OFF)
 set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS
@@ -91,7 +132,10 @@ set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/normalized/terrain.grass.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/normalized/terrain.road.png")
 file(GLOB STARTUP_IMAGE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/image/*")
-set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS ${STARTUP_IMAGE_FILES}
+file(GLOB STARTUP_ACTOR_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/monster/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common/*")
+set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS ${STARTUP_IMAGE_FILES} ${STARTUP_ACTOR_FILES}
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/chara_flower00.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/walk00.seb"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common/chara_hishoko01.png"
@@ -110,6 +154,12 @@ add_custom_command(TARGET dungeon_village_prototype POST_BUILD
             "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/chara_flower00.png"
             "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/walk00.seb"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/human"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/human"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/monster"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/monster"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/common"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../assets/MANIFEST.tsv"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/MANIFEST.tsv"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:dungeon_village_prototype>/data"
@@ -144,6 +194,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_prototype PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_asset_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_model PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_startup_world PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_map_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_startup_use_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

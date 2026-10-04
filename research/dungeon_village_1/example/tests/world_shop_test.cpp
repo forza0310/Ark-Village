@@ -1,3 +1,4 @@
+#include "dungeon_village_reference/world_random.hpp"
 #include "dungeon_village_reference/world_shop.hpp"
 
 #include <algorithm>
@@ -266,12 +267,57 @@ void delayed_equipment() {
     check(recovery.candidate && recovery.candidate->write_hp_slot1_and3 == 100,
           "subsequent down consumer accepts preserved HP then performs its own source cap");
 }
+void lazy_random() {
+    for (const int detail : {0, 1, 4, 5}) {
+        auto s = fixture(detail);
+        auto random = WorldRandomStream::from_raw({-1, -7});
+        std::vector<int> bounds;
+        ShopArrivalInput input{{1}, catalogue(), {}, {}};
+        input.draw = [&](int bound) -> std::optional<int> {
+            bounds.push_back(bound);
+            const auto r = random.draw(bound);
+            return r.error == WorldRandomError::none ? std::optional<int>(r.ticket) : std::nullopt;
+        };
+        const auto r = prepare_world_shop_arrival(s, input);
+        const std::vector<int> expected = detail == 0   ? std::vector<int>{}
+                                          : detail == 1 ? std::vector<int>{2}
+                                          : detail == 4 ? std::vector<int>{2, 1}
+                                                        : std::vector<int>{1};
+        check(r.candidate && bounds == expected && random.draws() == expected.size(),
+              "arrival draws slot first and only actual eligible equipment count");
+        if (detail == 4) {
+            s.humans.at(0).reselect[2] = 5;
+            bounds.clear();
+            random = WorldRandomStream::from_raw({1});
+            check(prepare_world_shop_arrival(s, input).candidate && bounds == std::vector<int>{2},
+                  "armor cooldown consumes mandatory slot but no selection");
+            s.humans.at(0).equipment[2].reset();
+            bounds.clear();
+            random = WorldRandomStream::from_raw({1, 0});
+            check(prepare_world_shop_arrival(s, input).candidate &&
+                      bounds == std::vector<int>({2, 1}),
+                  "empty armor slot with positive cooldown still draws selection");
+        }
+        s.world.ai.battle.actors.at({1}).control.queue = {{24}};
+        if (r.candidate)
+            s.actors = r.candidate->state.actors;
+        auto exit = exit_input();
+        exit.effect_ticket.reset();
+        bounds.clear();
+        random = WorldRandomStream::from_raw({3, 1});
+        exit.draw = input.draw;
+        check(prepare_world_shop_exit(s, exit).candidate &&
+                  bounds == (detail == 0 ? std::vector<int>({10, 2}) : std::vector<int>{}),
+              "ordinary exit consumes satisfaction then effect; equipment exit draws neither");
+    }
+}
 } // namespace
 int main() {
     try {
         arrivals();
         ordinary_exits();
         delayed_equipment();
+        lazy_random();
         std::cout << checks << " world shop checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

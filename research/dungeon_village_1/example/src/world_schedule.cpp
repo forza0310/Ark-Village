@@ -57,13 +57,15 @@ bool valid_phase_mutation(const AiRosters &before, const AiRosters &after, std::
 WorldMapFacts world_schedule_facts(const WorldScheduleState &s) {
     return {s.world.map, s.surface, s.map_flags, s.town};
 }
-std::optional<WorldScheduleState> prepare_world_schedule_overlap(const WorldScheduleState &s,
-                                                                 const std::vector<int> &tickets) {
+std::optional<WorldScheduleState>
+prepare_world_schedule_overlap(const WorldScheduleState &s, const std::vector<int> &tickets,
+                               const std::function<std::optional<int>(int)> &draw) {
     if (!valid_world_schedule_owner(s))
         return {};
     WorldOverlapInput input;
-    input.boundary_y = s.town.bottom; // h.l[n.o][1][1]，不是纵向下界[1][0]。
+    input.boundary_y = s.town.top; // 翻转后的h.l[n.o][1][1]为较小Y，不是[0][1]。
     input.direction_tickets = tickets;
+    input.draw = draw;
     for (const auto kind : {ActorKind::human, ActorKind::monster}) {
         auto &list = kind == ActorKind::human ? input.humans : input.monsters;
         for (const auto id :
@@ -288,6 +290,14 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                 c.state.world.ai = prefix.candidate->state;
                 c.effects.push_back(
                     {actor, prefix.candidate->sounds, prefix.candidate->growth_requests});
+                if (!prefix.candidate->sounds.empty() ||
+                    !prefix.candidate->growth_requests.empty()) {
+                    WorldScheduleCall effects{WorldScheduleStage::prefix_effects, visit.id, {}};
+                    effects.effects = c.effects.back();
+                    disposition = invoke(effects);
+                    if (!disposition || *disposition != WorldScheduleDisposition::keep)
+                        return reject(disposition ? WorldScheduleError::invalid_mutation : error);
+                }
                 if (prefix.candidate->request_carry_expression) {
                     disposition = invoke({WorldScheduleStage::carry_expression, visit.id, {}});
                     if (!disposition || *disposition != WorldScheduleDisposition::keep)
@@ -295,11 +305,23 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                 }
                 disposition = invoke({WorldScheduleStage::control, visit.id, {}});
                 if (disposition && *disposition == WorldScheduleDisposition::keep) {
-                    const auto tail = prepare_world_actor_tail(
-                        c.state.world, {actor, world_schedule_facts(c.state), c.state.spawn_cells});
+                    WorldActorTailInput tail_input{actor, world_schedule_facts(c.state),
+                                                   c.state.spawn_cells};
+                    if (input.projected_facing)
+                        tail_input.facing_after_projection = [&](const BattleActorRecord &value) {
+                            return input.projected_facing(actor, value);
+                        };
+                    const auto tail = prepare_world_actor_tail(c.state.world, tail_input);
                     if (!tail.candidate)
                         return reject(WorldScheduleError::common_segment_failed);
                     c.state.world = tail.candidate->state;
+                    if (input.publish_actor_tail) {
+                        WorldScheduleCall cache{WorldScheduleStage::actor_tail_cache, visit.id, {}};
+                        cache.projected_actor = tail.candidate->projected_actor;
+                        const auto published = invoke(cache);
+                        if (!published || *published != WorldScheduleDisposition::keep)
+                            return reject(published ? WorldScheduleError::invalid_mutation : error);
+                    }
                     if (tail.candidate->delete_instance)
                         disposition = WorldScheduleDisposition::remove_requested;
                 }

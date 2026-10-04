@@ -47,8 +47,15 @@ std::optional<GroundObjectState> prepare_ground_throw(ObjectId id, CombatPoint o
     return s;
 }
 DropSelectionResult prepare_drop_selection(const DropSelectionInput &i) {
-    if (i.equipment_ticket < 0 || i.equipment_ticket >= 100 || i.rank_ticket < 0 ||
-        i.rank_ticket >= 60)
+    const auto equipment_ticket = i.draw ? i.draw(100) : std::optional<int>{i.equipment_ticket};
+    if (!equipment_ticket)
+        return {ObjectError::missing_ticket, std::nullopt};
+    if (*equipment_ticket < 0 || *equipment_ticket >= 100)
+        return {ObjectError::invalid_ticket, std::nullopt};
+    const auto rank_ticket = i.draw ? i.draw(60) : std::optional<int>{i.rank_ticket};
+    if (!rank_ticket)
+        return {ObjectError::missing_ticket, std::nullopt};
+    if (*rank_ticket < 0 || *rank_ticket >= 60)
         return {ObjectError::invalid_ticket, std::nullopt};
     int last_kind{};
     for (const auto &d : i.definitions) {
@@ -58,8 +65,8 @@ DropSelectionResult prepare_drop_selection(const DropSelectionInput &i) {
     }
     const int luck = (std::clamp(i.luck, 5, 100) - 5) * 35 / 95;
     const int progress = std::clamp(i.progress, 0, 5) * 35 / 5;
-    const int maximum = 1 + std::clamp(luck + progress + i.rank_ticket - 30, 0, 100) * 8 / 100;
-    const bool equipment = i.equipment_ticket < 15;
+    const int maximum = 1 + std::clamp(luck + progress + *rank_ticket - 30, 0, 100) * 8 / 100;
+    const bool equipment = *equipment_ticket < 15;
     std::vector<DropDefinition> items, equipment_candidates;
     for (const auto &d : i.definitions)
         if ((d.flags & 2U) && d.rank <= maximum) {
@@ -72,11 +79,16 @@ DropSelectionResult prepare_drop_selection(const DropSelectionInput &i) {
     DropSelectionCandidate c{maximum, equipment, false, std::nullopt};
     if (choices.empty())
         return {ObjectError::none, c};
-    if (!i.selection_ticket)
+    if (choices.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        return {ObjectError::invalid_input, std::nullopt};
+    const auto selection_ticket = i.selection_ticket ? i.selection_ticket
+                                  : i.draw           ? i.draw(static_cast<int>(choices.size()))
+                                                     : std::optional<int>{};
+    if (!selection_ticket)
         return {ObjectError::missing_ticket, std::nullopt};
-    if (*i.selection_ticket < 0 || static_cast<std::size_t>(*i.selection_ticket) >= choices.size())
+    if (*selection_ticket < 0 || static_cast<std::size_t>(*selection_ticket) >= choices.size())
         return {ObjectError::invalid_ticket, std::nullopt};
-    c.selected = choices[static_cast<std::size_t>(*i.selection_ticket)];
+    c.selected = choices[static_cast<std::size_t>(*selection_ticket)];
     c.consumed_selection = true;
     return {ObjectError::none, c};
 }

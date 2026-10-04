@@ -1,7 +1,7 @@
 # 人物与怪物AI专项
 
-日期：2026-10-04。用户授权持续自主研究、文档与独立C++同步推进；仅修改research。
-固定输入/行号/警告见[证据清单](../../EVIDENCE.md)，本批以`e8bd81c`事务检查点为基线继续。
+日期：2026-10-05。用户授权持续自主研究、文档与独立C++同步推进；仅修改research。
+固定输入/行号/警告见[证据清单](../../EVIDENCE.md)，最新共同世界整线检查见[验证](../../VERIFICATION.md)。
 本目录维护长篇AI专项，既有[活动](../ACTIVITY.md)、[运动](../CHARACTERS.md#continuous-motion)
 与[设施使用](../FACILITY_USE.md)继续作为唯一对应规格，不复制其正文。
 
@@ -13,14 +13,14 @@
 
 | 专题 | 验收要求 | 当前状态 |
 | --- | --- | --- |
-| 共享状态/调度 | 21状态、c()/d()/控制队列及B/M/L先后、清理与删除返回值 | [共同所有者](WORLD_SCHEDULE.md)已组合轮首场、到访、提示/人气、实时两遍、共同前段/尾部与实际L；[生命周期](LIFECYCLE.md#共同世界生命周期分支)续补九个c分支与怪物17，全状态自动路由/主场景前置仍需接通 |
-| 感知/资格 | 移动区域、城内外、敌人/物体/救援候选与平局 | G/e/F/K/L、当前地图/缓存、引用修复/抢占、状态18及物理重查已[组合](PERCEPTION.md#共同世界感知与缓存)，共同调度复用一次；具体状态分支仍须适配 |
-| 人物日常 | 全部活动参数与任务/救援/物体优先级、设施/区域/住所/出口 | 首段生活、休息/住宅/特殊入口、探索、商店及[出发/P路径到达](WORLD_DEPARTURE.md)已交付；完整商店目录、探索任务全局提交和所有状态路由仍独立验收 |
-| 战斗策略 | 近攻/远攻/魔法/回复、职业/武器条件、目标与移动评价 | 策略→组/实际九方向移动/近攻与法术队列→14–17及同次本地续行、投射/延迟/尸体重击已组合；完整跨域解释器与共同世界仍缺 |
+| 共享状态/调度 | 21状态、c()/d()/控制队列及B/M/L先后、清理与删除返回值 | [共同所有者](WORLD_SCHEDULE.md)接真实前段/尾部与[全状态路由](LIFECYCLE.md#日常登场拾物与全状态路由)；真实新局跨两月、同轮击杀掉落与晚失败回滚有执行验证 |
+| 感知/资格 | 移动区域、城内外、敌人/物体/救援候选与平局 | G/e/F/K/L、当前地图/旧缓存、引用修复/抢占、状态18及物理重查已[组合](PERCEPTION.md#共同世界感知与缓存)，共同调度复用一次；旧o/bm另按frame刷新 |
+| 人物日常 | 全部活动参数与任务/救援/物体优先级、设施/区域/住所/出口 | 休息/住宅/特殊入口、探索、商店及[出发/P路径到达](WORLD_DEPARTURE.md)接完整目录；自然新局设施收入、原实例离场与再次到访已观察 |
+| 战斗策略 | 近攻/远攻/魔法/回复、职业/武器条件、目标与移动评价 | 策略→组/实际九方向移动/近攻与法术队列→14–17及同次本地续行、投射/延迟/尸体重击已组合；懒表情与131/217同步脚本已接，不以静态模块验收替代真实连续世界 |
 | 怪物生命周期 | 定义初值、事件产生、模式0–4、漫游、登场/死亡/撤退 | 普通/任务创建、配额/地图/场快照、死亡/增长/组/引用与成长已组合；T2/3/4全源写入核对只见存取，未造正常生成入口 |
-| 救援/道具 | 条件、接近/拾取/双向引用、带回与释放 | 拾物、真实出发优先级、普通旅店返程、P到达与类别8双人递归已组合；完整物体/商店目录与同一世界全部状态路由仍缺 |
-| 控制解释器 | 每个实际opcode、等待/早停/异常、动作与显示队列分离 | [34码领域消费者与FIFO组合](CONTROL_COMPOSITION.md)含真实8、漫游、装备显示及杂项；全部码在同一运行所有者/随机流的自动路由仍缺 |
-| 聚合与原型 | 已证规则独立C++、所有权/原子提交、错误/组合回归 | 共同所有者已覆盖设施/死亡/投射/物体/事件真实组合、扩展目录原子回滚与引用根；默认窗口AI及全状态接通仍保护，不能称全量完成 |
+| 救援/道具 | 条件、接近/拾取/双向引用、带回与释放 | 拾物、真实优先级、普通旅店返程、P到达/类别8双人递归与全状态路由接共同Owner；自然长跑不代替双人救援条件组合 |
+| 控制解释器 | 每个实际opcode、等待/早停/异常、动作与显示队列分离 | [全码自动路由](CONTROL_COMPOSITION.md#全码自动路由与当前随机接入)、共同Java48懒消费、同步脚本/表现已接；全状态/全码条件输入与自然可达分开验收 |
+| 聚合与原型 | 已证规则独立C++、所有权/原子提交、错误/组合回归 | 真实新局唯一Owner/完整目录跨两月、显式`--world`窗口实际移动和月报画面已验证；完整UI、OS输入和APK动态一致性分别登记 |
 
 “全部完成”要求上述专题有证据覆盖和可执行规则/组合验收，不能用一份状态表、局部函数或静止原型充当整体完成。
 每批修正有效断言必须有来源；小错误自行处理。只有来源冲突/关键契约歧义才暂停相应分支。
@@ -58,24 +58,43 @@
 | [world_dungeon.hpp](../../example/include/dungeon_village_reference/world_dungeon.hpp) | 当前O进入、真实地图撤退/q/HP、队伍目录/抛出奖励、原子落地续行及任务成功统计/探索日期/怪物开放/任务池阈值 | 地图恢复与任务/UI整段共同提交、完整事件脚本/实际模态结算时点 |
 | [world_shop.hpp](../../example/include/dungeon_village_reference/world_shop.hpp) | 四店型到达/携物、装备收费前选择、满足度/人气队列、属性和28/30实际装配/共享重算 | 完整商店目录/随机流及默认窗口接通；cd由下列显示适配消费 |
 | [world_control.hpp](../../example/include/dungeon_village_reference/world_control.hpp) | 唯一control的同次FIFO续行、hold/true区别、真实退出/r/战斗/商店组合与晚期回滚 | 不内置所有领域适配，不重复共同前段/尾部 |
-| [world_schedule.hpp](../../example/include/dungeon_village_reference/world_schedule.hpp) | 唯一世界中的场/到访/队列/S、两遍实时名单、共同前段/尾部/释放、真实非人物消费者与外层原子候选 | 主场景/月度前置、所有21状态分支及全部实际随机/页面消费者 |
+| [world_schedule.hpp](../../example/include/dungeon_village_reference/world_schedule.hpp) | 唯一世界中的场/到访/队列/S、两遍实时名单、共同前段/尾部/释放、真实非人物消费者与外层原子候选 | 实际运行目录/所有者与表现输入；21状态另由既有routes消费 |
 | [world_overlap.hpp](../../example/include/dungeon_village_reference/world_overlap.hpp) | 实际L的三段名单/随机pair、共享矩形别名、不对称几何和只写n.x/z | 不刷新s/t/u/ax、不推进状态/控制 |
 | [world_departure.hpp](../../example/include/dungeon_village_reference/world_departure.hpp) | 全部活动/优先级、住宅/实际出口/票号、路线、front8真假返回/r，真实P/F/旧格身份/路点/普通到达与救援组合 | 完整商店装备/物体目录交接、全部状态与同一随机流；选择成功不是到达 |
 | [world_wander.hpp](../../example/include/dungeon_village_reference/world_wander.hpp) | 10/12/13读取旧s和当前/退休db/S、真实邻格/抽号/队尾扩展 | 不提前移动/推进计数，不伪造缺失引用 |
 | [world_misc_control.hpp](../../example/include/dungeon_village_reference/world_misc_control.hpp) | 实际c0..20、HP回复、共享定义离村、竖速和旧u投影音效 | 真实投影回调和使用方共享定义仍需显式提供 |
 | [world_equipment_display.hpp](../../example/include/dungeon_village_reference/world_equipment_display.hpp) | 27/29实际cd追加、负年龄烟效、已发请求消费与时间线组合 | 不改装备/不再删控制/不提前计时；完整图片绘制另验 |
 | [world_lifecycle.hpp](../../example/include/dungeon_village_reference/world_lifecycle.hpp) | 2/4/6/7/10/12/14/16/19真实共享c消费者、b与c区分、状态17缓存G/实际P→旧L500/r及共同20轮回归 | 不重跑共同前段/引用修复；其他状态明确交接，完整自动路由/随机/表现/窗口另验 |
+| [world_daily.hpp](../../example/include/dungeon_village_reference/world_daily.hpp)、[world_actor_routes.hpp](../../example/include/dungeon_village_reference/world_actor_routes.hpp) | 日常L/F/P/登场/拾物与全21状态/34控制同一候选路由、真实队首输入及部分懒随机 | 完整运行目录/其他随机/世界与表现逐层接通 |
+| [world_actor_schedule.hpp](../../example/include/dungeon_village_reference/world_actor_schedule.hpp) | 共同c/d前段、成长/携物表情、全状态/控制、原尾部/删除点的外层Owner组合 | 其他域必须实际提供，不允许默认成功消费者 |
+| [world_exploration.hpp](../../example/include/dungeon_village_reference/world_exploration.hpp) | 真实阶段2页栈/奖励/任务/地图/邻接/126/92/201续体共同提交 | 格/偏移表现请求未渲染；其他脚本域拒绝 |
+| [world_scripts.hpp](../../example/include/dungeon_village_reference/world_scripts.hpp) | 固定事件、调用计数、实时续体与真实框架页栈的独立消费者 | 外层唯一目录/金融/选择根等须实际投影，不保持第二份事实 |
+| [world_calendar.hpp](../../example/include/dungeon_village_reference/world_calendar.hpp)、[world_scene.hpp](../../example/include/dungeon_village_reference/world_scene.hpp) | 真实日期归一化/有序域、主场景保存轮数/实时分支/跳转和绘制门槛 | 实际月报/任务/页面/窗口全部组合另验 |
+| [world_calendar_maintenance.hpp](../../example/include/dungeon_village_reference/world_calendar_maintenance.hpp) | 年统计/清理、月居民/库存/装备/设施/住宅G及请求 | 未维护stage拒绝，请求须同步真实消费者后提交 |
+| [world_month_report.hpp](../../example/include/dungeon_village_reference/world_month_report.hpp) | 旧t1457费用/现金/z/v/K/L/M/O、70+70报告与关闭后点数 | 不封账、不当作独立模态页、不提前推进日期 |
+| [world_calendar_tasks.hpp](../../example/include/dungeon_village_reference/world_calendar_tasks.hpp)、[world_task_creation.hpp](../../example/include/dungeon_village_reference/world_task_creation.hpp) | 特殊月份/等级提示/任务期限/生成/容量，实际定义/落点/奖励/挑战工厂 | 实际完整目录/持久请求和任务页面输入须外层提供 |
+| [world_facility_update.hpp](../../example/include/dungeon_village_reference/world_facility_update.hpp)、[world_residence.hpp](../../example/include/dungeon_village_reference/world_residence.hpp) | 设施前缀/施工/延迟人气及住宅现有人物奖励/成长/真实程序/页面 | 住宅不是新建人物；礼物页94插入不等于领取 |
+| [world_popularity.hpp](../../example/include/dungeon_village_reference/world_popularity.hpp) | 原序奖励/显示delta/最大值/跨百重放/实际程序与新闻 | 页97须实际更新才清R，不能用任意关闭替代 |
+| [world_nonactor_schedule.hpp](../../example/include/dungeon_village_reference/world_nonactor_schedule.hpp) | bo/bp/bn/L实际路由、统一懒随机、事件原时点同步与typed全球/I写回 | 未支持请求明确失败，实际绘制/声音另验 |
+| [world_runtime.hpp](../../example/include/dungeon_village_reference/world_runtime.hpp) | 主场景→真实脚本→月报→全状态/控制/非人物→跨月真实任务工厂，同一私有Owner晚期整体回滚 | 空村1600轮是旧隔离夹具，真实非空新局的当前检查见验证入口 |
+| [startup_world_runtime.hpp](../../prototype/include/dungeon_village_prototype/startup_world_runtime.hpp) | 具体唯一Owner、完整原表、真实到访/脚本/队首facts/任务/金融/月报与frame渲染缓存 | seed/视口/字体/内存检查点是明确研究输入；全UI和正常文件存取不由此认证 |
 | [startup_ai.hpp](../../prototype/include/dungeon_village_prototype/startup_ai.hpp) | 真实首段自主选路→收费→使用→完整退出→下一活动/属性/武器 | 首个月界、玩家改图/复杂事件、默认窗口接通 |
 
 AI相关规则与私有所有者只有标准C++17，不调用Java或窗口、不接管原版向量，返回候选由唯一所有者重校验并提交。
 外部命令明确delegated，未知/截断明确错误，不静默补演示AI；原型默认保护不因纯规则通过而解除。
 当前可复现检查数与六套结果见[验证](../../VERIFICATION.md)。
 
-## 下一批闭合顺序
+## 整线覆盖与后续边界
 
-1. 共同所有者和跨域FIFO合同已交付，不再将“缺整个调度器”或8/漫游/装备显示的实际消费者重复列为未实现。九个共享生命周期分支与怪物17已续补；下一步先统一其与0/1/3/5/8/9/11/13/15/18/20的状态路由，补登场脚本/表现与日常F/L链，用真实领域组合验证，而非空成功回调。
-2. 完整探索阶段2任务/UI/地图提交、实际任务/住宅/目录/出口投影与同一随机游标继续闭合。任务目录/UI外部引用根由实际外层所有者登记，不将AI根子集当作整个Java堆。
-3. 完整随机消费与显示请求：表情/变体/投射/装备票号按真实顺序供给，明确主场景资格与日期/装备A月度扣减边界。默认47ms墙钟门槛与不补算已静态闭合，见[限速](LIFECYCLE.md#原版墙钟限速)，不是动态FPS认证。
-4. 首段私有生活已有真实数据组合；上述世界依赖完成后再评估默认窗口AI。窗口/原版动态验收单列，不提前解除保护。
+本批沿用户指定顺序，将六段接入同一真实新局所有者，当前源与验收入口集中在[验证](../../VERIFICATION.md)。
+登场90见状态同次同步、击杀掉落同轮名单、任务成功的怪物p/r跨层写回和旧渲染缓存分别有回归；
+任务目录/成果页外部根由真正页栈保存，不将AI根子集当成整个Java堆。
 
-这些是仍未完成的研究/代码项，不是需要用户选方案的小问题；沿用无人值守授权继续核对，不把未知填成默认值。
+两月自然运行使用显式seed1并逐帧确认真实页面，任务为0；任务工厂、探索地图/阶段2、战斗胜利和成果页使用
+真实目录上的显式条件组合。因此不能从长跑推出每个状态/任务自然到达，也不制造任务或T2/3/4入口。
+47ms为框架绘制路径门槛，不是每逻辑轮更新前的等待；两轮保存/跳过本轮/结束帧区别保留。
+
+下一阶段是扩大原APK动态覆盖与表现/输入对照，不是重新研究已交付路由。完整建设/任务选单、武器图层合成、
+全局特效/音频播放、原图层满桶行为及正常文件存取仍单独规划。绘制期迷宫随机抖动也读同一流，
+没有固定APK默认seed和渲染轨迹时，不宣称C++运行与原APK逐帧随机等价。
+真实OS键鼠验收受macOS自动化权限阻挡，不绕过隐私授权；控制器或截图通过不能替代它。

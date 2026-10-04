@@ -54,6 +54,8 @@ struct DungeonWorldCandidate {
     bool landed{};
     std::optional<int> entry_event;
 };
+using DungeonWorldRequestConsumer = std::function<std::optional<DungeonWorldState>(
+    const DungeonWorldState &, const DungeonWorldRequest &)>;
 struct DungeonWorldResult {
     DungeonWorldError error{DungeonWorldError::none};
     std::optional<DungeonWorldCandidate> candidate;
@@ -91,23 +93,28 @@ prepare_dungeon_task_success(const DungeonTaskSuccessState &state, int definitio
 // Front opcode21 reads the CURRENT O tile's instance; no extra old-s/status guard.
 // Re-entry resets progress, preserves bw and appends duplicates. Empty uniform >=6 records
 // can issue168/169 or170/171; only the actually emitted notice consumes a draw2.
-DungeonWorldResult prepare_world_dungeon_entry(const DungeonWorldState &state, CharacterId actor,
-                                               std::optional<int> notice_ticket = {});
+DungeonWorldResult
+prepare_world_dungeon_entry(const DungeonWorldState &state, CharacterId actor,
+                            std::optional<int> notice_ticket = {},
+                            const std::function<std::optional<int>(int)> &draw = {});
 // Actual Character.a(cell): teleport BEFORE checking eight outside-state4 cells. No target
 // succeeds as a no-launch candidate and consumes no tickets; q removal uses the new s.
-DungeonWorldResult prepare_world_dungeon_retreat(const DungeonWorldState &state, CharacterId actor,
-                                                 Position origin, TownBounds town,
-                                                 std::optional<DungeonLaunchTickets> tickets = {});
+DungeonWorldResult
+prepare_world_dungeon_retreat(const DungeonWorldState &state, CharacterId actor, Position origin,
+                              TownBounds town, std::optional<DungeonLaunchTickets> tickets = {},
+                              const std::function<std::optional<int>(int)> &draw = {});
 struct DungeonWorldCrewInput {
     std::uint64_t facility{};
     TownBounds town;
     std::optional<int> active_task_extent;
     std::vector<DungeonLaunchTickets> launches; // Actual successful retreats/throws, source order.
+    std::function<std::optional<int>(int)> draw{};
 };
 // Phase1 after Tenant counter/notices: live retreat -> crew rules -> direct grants/ground throws
 // -> c0/wait/index*5/activity0. All domains commit only if the entire candidate succeeds.
 DungeonWorldResult prepare_world_dungeon_crew(const DungeonWorldState &state,
-                                              const DungeonWorldCrewInput &input);
+                                              const DungeonWorldCrewInput &input,
+                                              const DungeonWorldRequestConsumer &consumer = {});
 using DungeonLandingDeparture =
     std::function<std::optional<DungeonWorldState>(const DungeonWorldState &, CharacterId)>;
 // State20 c: move horizontally first, oldB>=36 land -> OLD cached u display -> c0 -> DIRECT

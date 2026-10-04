@@ -14,6 +14,8 @@ struct CombatWeaponRule {
     int miss_low{};
     int miss_high{};
 };
+using WorldCombatFacingConsumer =
+    std::function<std::optional<int>(CharacterId, CharacterId)>; // 原b(self,target)，旧u决定。
 struct WorldAttackSetupInput {
     CharacterId actor;
     CharacterId target;
@@ -21,6 +23,8 @@ struct WorldAttackSetupInput {
     std::array<int, 5> human_tickets{};
     std::optional<int> monster_miss_ticket; // d.a(100)<aR12.
     std::optional<int> facing; // Source projected facing helper; never guessed from grid axes.
+    CombatRandomDraw draw{};
+    WorldCombatExpressionConsumer expression{}; // human c1先于五次attack100。
 };
 enum class WorldAttackVisual {
     expression,
@@ -48,6 +52,10 @@ struct WorldAttackInput {
     bool actor_visible{};
     std::optional<int> drop_ticket;
     std::optional<DropSelectionInput> drop_selection;
+    CombatRandomDraw draw{};
+    WorldCombatExpressionConsumer expression{}; // 真实down c2/16、monster成功命中后c0。
+    WorldCombatEventConsumer event{};           // 原hit内131/217同步脚本，typed全球/I写回。
+    WorldCombatFacingConsumer facing_for{}; // 仅真实发射目标确定之后调用，不能按旧j复用。
 };
 struct WorldAttackCandidate {
     AiRewardState state;
@@ -59,6 +67,7 @@ struct WorldAttackCandidate {
     std::optional<std::uint64_t> projectile;
     std::vector<std::uint64_t> objects;
     std::vector<WorldAttackRequest> requests; // Display/sound/face-position adapters stay explicit.
+    std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
 };
 struct WorldAttackResult {
     AiRewardError error{AiRewardError::none};
@@ -87,6 +96,9 @@ struct WorldCombatPolicyInput {
     std::array<int, 5> attack_tickets{};
     std::optional<int> monster_miss_ticket;
     std::optional<int> facing; // Original projected-facing adapter; consumed only when needed.
+    CombatRandomDraw draw{};
+    WorldCombatExpressionConsumer expression{};
+    WorldCombatFacingConsumer facing_for{};
 };
 struct WorldCombatPolicyCandidate {
     AiRewardState state;

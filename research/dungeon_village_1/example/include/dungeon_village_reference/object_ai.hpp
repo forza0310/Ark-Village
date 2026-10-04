@@ -23,6 +23,7 @@ struct DropSelectionInput {
     int rank_ticket{};      // 60, always consumed even with no possible drop.
     std::vector<DropDefinition> definitions; // Items then weapon/armor/accessory source order.
     std::optional<int> selection_ticket;
+    CombatRandomDraw draw{}; // provider存在时取100/60，只有非空实际目录才取selection bound。
 };
 struct DropSelectionCandidate {
     int maximum_rank{};

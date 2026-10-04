@@ -98,6 +98,13 @@ struct EncounterStepInput {
     bool event128_present{};
     bool event205_present{};
     bool feature16{};
+    std::function<std::optional<int>(int)> draw{};
+    // 随机子消费者在原req点同步执行，防止先规划所有语义票再执行姿态/表情导致反序。
+    // 所有req均可影响下一抽（重复参与者的显示抑制等）；仅作用于外层私有候选。
+    std::function<bool(const EncounterRequest &)> random_request{};
+    // 外部脚本/任务消费者必须看到req时点已更新的k/l/f；旧req回调仅为兼容接口。
+    std::function<bool(const EncounterRuntimeState &, const EncounterRequest &)>
+        synchronous_request{};
 };
 struct EncounterStepCandidate {
     EncounterRuntimeState state;

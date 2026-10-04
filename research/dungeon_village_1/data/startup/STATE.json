@@ -59,6 +59,8 @@
       ]
     ],
     "reconstructed_outer_entrance": [[11,10],[12,10]],
+    "character_spawn_minimum_y": 2,
+    "world_overlap_boundary_y": 2,
     "spawn_points": [
       [
         11,
@@ -302,6 +304,8 @@
     "job_level": 1,
     "effort": 0,
     "satisfaction": 0,
+    "legacy_D": [0, 0, 0, 0],
+    "legacy_m": 0,
     "base_attributes": [
       40,
       5,

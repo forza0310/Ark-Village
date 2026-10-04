@@ -80,13 +80,16 @@ CombatStrategyResult prepare_combat_strategy(const CombatStrategyInput &i) {
             static constexpr int weights[5][3] = {
                 {100, 20, 90}, {100, 80, 50}, {100, 80, 50}, {100, 55, 70}, {100, 40, 70}};
             static constexpr int choices[3][2] = {{0, 0}, {1, 0}, {2, 1}};
-            if (!i.policy_ticket)
+            const auto policy_ticket = i.policy_ticket ? i.policy_ticket
+                                       : i.draw        ? i.draw(100)
+                                                       : std::optional<int>{};
+            if (!policy_ticket)
                 return {CombatAiError::missing_ticket, std::nullopt};
-            if (*i.policy_ticket < 0 || *i.policy_ticket >= 100)
+            if (*policy_ticket < 0 || *policy_ticket >= 100)
                 return {CombatAiError::invalid_ticket, std::nullopt};
             c.consumed_policy_ticket = true;
             c.policy_column = column;
-            int choice = choices[column][*i.policy_ticket >= weights[i.profession_role][column]];
+            int choice = choices[column][*policy_ticket >= weights[i.profession_role][column]];
             if (choice == 1 && !offensive && !healing)
                 choice = physical ? 2 : 0;
             if (choice == 0)
@@ -96,12 +99,15 @@ CombatStrategyResult prepare_combat_strategy(const CombatStrategyInput &i) {
             else {
                 bool use_healing = healing && !offensive;
                 if (offensive && healing) {
-                    if (!i.healing_ticket)
+                    const auto healing_ticket = i.healing_ticket ? i.healing_ticket
+                                                : i.draw         ? i.draw(10)
+                                                                 : std::optional<int>{};
+                    if (!healing_ticket)
                         return {CombatAiError::missing_ticket, std::nullopt};
-                    if (*i.healing_ticket < 0 || *i.healing_ticket >= 10)
+                    if (*healing_ticket < 0 || *healing_ticket >= 10)
                         return {CombatAiError::invalid_ticket, std::nullopt};
                     c.consumed_healing_ticket = true;
-                    use_healing = *i.healing_ticket >= 4;
+                    use_healing = *healing_ticket >= 4;
                 }
                 c.decision =
                     use_healing ? CombatDecision::healing_spell : CombatDecision::offensive_spell;
@@ -156,8 +162,10 @@ std::optional<int> float_integer(float value) {
     return static_cast<int>(value);
 }
 DamageResult jitter_damage(int base, std::optional<int> ticket, bool human_boost,
-                           bool monster_boost, ActorKind kind) {
+                           bool monster_boost, ActorKind kind, const CombatRandomDraw &draw) {
     const auto span = std::max<std::int64_t>(static_cast<std::int64_t>(base) * 2 / 10, 2);
+    if (!ticket && draw)
+        ticket = draw(static_cast<int>(span));
     if (!ticket)
         return {CombatAiError::missing_ticket, std::nullopt};
     if (*ticket < 0 || *ticket >= span)
@@ -205,7 +213,7 @@ DamageResult prepare_physical_damage(const PhysicalDamageInput &i) {
     if (!base)
         return {CombatAiError::invalid_input, std::nullopt};
     return jitter_damage(std::max(*base, 2), i.jitter_ticket, i.human_boost, i.monster_boost,
-                         i.kind);
+                         i.kind, i.draw);
 }
 SpellDamageResult prepare_spell_damage(const SpellDamageInput &i) {
     if (i.magic < 0)
@@ -215,26 +223,35 @@ SpellDamageResult prepare_spell_damage(const SpellDamageInput &i) {
         count += learned;
     if (count == 0)
         return {CombatAiError::invalid_input, std::nullopt};
-    if (!i.spell_ticket || !i.enhancement_ticket)
+    const auto spell_ticket = i.spell_ticket ? i.spell_ticket
+                              : i.draw       ? i.draw(count)
+                                             : std::optional<int>{};
+    if (!spell_ticket)
         return {CombatAiError::missing_ticket, std::nullopt};
-    if (*i.spell_ticket < 0 || *i.spell_ticket >= count || *i.enhancement_ticket < 0 ||
-        *i.enhancement_ticket >= 100)
+    if (*spell_ticket < 0 || *spell_ticket >= count)
+        return {CombatAiError::invalid_ticket, std::nullopt};
+    const auto enhancement_ticket = i.enhancement_ticket ? i.enhancement_ticket
+                                    : i.draw             ? i.draw(100)
+                                                         : std::optional<int>{};
+    if (!enhancement_ticket)
+        return {CombatAiError::missing_ticket, std::nullopt};
+    if (*enhancement_ticket < 0 || *enhancement_ticket >= 100)
         return {CombatAiError::invalid_ticket, std::nullopt};
     int selected = 0;
-    int remaining = *i.spell_ticket;
+    int remaining = *spell_ticket;
     for (int n = 0; n < 3; ++n)
         if (i.learned[n] && remaining-- == 0) {
             selected = n;
             break;
         }
     const int chance = 5 + (std::clamp(i.magic, 100, 1000) - 100) * 45 / 900;
-    const bool enhanced = *i.enhancement_ticket < chance;
+    const bool enhanced = *enhancement_ticket < chance;
     static constexpr float coefficients[2][3] = {{0.5F, 0.7F, 0.9F}, {1.1F, 1.3F, 1.5F}};
     const auto base = float_integer(coefficients[enhanced][selected] * static_cast<float>(i.magic));
     if (!base)
         return {CombatAiError::invalid_input, std::nullopt};
     const auto damage = jitter_damage(*base == 0 ? 2 : *base, i.jitter_ticket, i.human_boost, false,
-                                      ActorKind::human);
+                                      ActorKind::human, i.draw);
     if (!damage.candidate)
         return {damage.error, std::nullopt};
     return {CombatAiError::none,

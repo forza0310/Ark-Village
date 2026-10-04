@@ -82,6 +82,7 @@ BattleCommitResult prepare_battle_commit(const BattleCommitState &s, const Battl
     context.monster_statF = monster.statF;
     context.target_action = victim.control.action;
     context.drop_ticket = i.drop_ticket;
+    context.draw = i.draw;
     const HitTargetState target{victim.kind,      victim.control.flags, victim.hp,
                                 victim.capacity,  victim.damage_total,  victim.hit_count,
                                 victim.hit_flash, victim.label_timer,   victim.miss_label};
@@ -108,6 +109,16 @@ BattleCommitResult prepare_battle_commit(const BattleCommitState &s, const Battl
         case HitRequestKind::reset_down_timer:
             a.down_timer = 0;
             break;
+        case HitRequestKind::expression:
+            if (i.expression) {
+                if (!i.expression(c.state, i.target, r.parameter, 16))
+                    return refuse(BattleCommitError::preparation_failed);
+            } else if (i.draw) {
+                return refuse(BattleCommitError::preparation_failed);
+            } else {
+                c.presentation.push_back(r);
+            }
+            break;
         case HitRequestKind::drop_rescued_actor: {
             if (!a.rescue)
                 return refuse(BattleCommitError::stale_actor);
@@ -133,6 +144,14 @@ BattleCommitResult prepare_battle_commit(const BattleCommitState &s, const Battl
         case HitRequestKind::event131:
         case HitRequestKind::event217:
             c.state.events.insert(r.parameter);
+            if (i.external_event) {
+                const auto events = i.external_event(c.state, r.parameter);
+                if (!events)
+                    return refuse(BattleCommitError::preparation_failed);
+                c.state.events.insert(events->begin(), events->end());
+            } else if (i.draw) {
+                return refuse(BattleCommitError::preparation_failed);
+            }
             break;
         case HitRequestKind::clear_recent_reward_and_kills:
             human.recent_reward = human.recent_kills = 0;
@@ -174,6 +193,8 @@ BattleCommitResult prepare_battle_commit(const BattleCommitState &s, const Battl
             auto input = *i.drop_selection;
             input.luck = human.luck;
             input.progress = s.drop_progress;
+            if (!input.draw)
+                input.draw = i.draw;
             const auto drop = prepare_drop_selection(input);
             if (!drop.candidate)
                 return refuse(BattleCommitError::preparation_failed);

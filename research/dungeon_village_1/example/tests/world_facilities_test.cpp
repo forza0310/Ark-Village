@@ -106,6 +106,34 @@ void rest_chain() {
         check(use.state && use.state->ai.battle.actors.at({1}).control.state == 14 &&
                   use.state->ai.battle.actors.at({1}).control.queue.size() == 19,
               "rest plan resolves target and direction without occupation21");
+        int draws{}, projections{};
+        WorldFacilityUseInput lazy{
+            {1},
+            0,
+            {},
+            {},
+            [&](int bound) -> std::optional<int> {
+                check(bound == 4 && projections == 0,
+                      "special rest direction draws4 before presentation target projection");
+                ++draws;
+                return direction;
+            },
+            [&](int ticket) -> std::optional<Position> {
+                ++projections;
+                return ticket == direction ? std::optional<Position>{{150, 150}} : std::nullopt;
+            }};
+        const auto same_ticket = prepare_world_facility_use(s, lazy);
+        check(same_ticket.state && draws == 1 && projections == 1 &&
+                  same_ticket.state->ai.battle.actors.at({1}).control.queue ==
+                      use.state->ai.battle.actors.at({1}).control.queue,
+              "lazy rest target reuses exactly one original direction ticket");
+        lazy.direction_target = [](int) -> std::optional<Position> { return {}; };
+        projections = 0;
+        draws = 0;
+        check(!prepare_world_facility_use(s, lazy).state &&
+                  s.ai.battle.actors.at({1}).control.state == 14 &&
+                  s.ai.battle.actors.at({1}).control.queue.empty(),
+              "missing same-ticket rest projection rejects without mutating original actor");
         s = *use.state;
         WorldFacilityControlInput input{{1}, {{0, 3, 0}}, {}};
         int rounds{};

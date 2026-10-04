@@ -94,7 +94,7 @@ ShopWorldResult prepare_world_shop_arrival(const ShopWorldState &s, const ShopAr
             if (d.kind == 1)
                 definitions.push_back({d.id, d.rank, d.unlocked});
         const auto choice = prepare_weapon_choice(definitions, *human.equipment[0],
-                                                  human.reselect[0], i.selection_ticket);
+                                                  human.reselect[0], i.selection_ticket, i.draw);
         if (!choice.candidate)
             return error(choice.error == WeaponChoiceError::missing_ticket
                              ? ShopWorldError::missing_ticket
@@ -107,11 +107,19 @@ ShopWorldResult prepare_world_shop_arrival(const ShopWorldState &s, const ShopAr
         const bool armor = f->detail == 4;
         int slot = 3;
         if (armor) {
-            if (!i.armor_slot_ticket)
+            auto ticket = i.armor_slot_ticket;
+            if (!ticket && i.draw) {
+                try {
+                    ticket = i.draw(2);
+                } catch (...) {
+                    return error(ShopWorldError::preparation_failed);
+                }
+            }
+            if (!ticket)
                 return error(ShopWorldError::missing_ticket);
-            if (*i.armor_slot_ticket < 0 || *i.armor_slot_ticket >= 2)
+            if (*ticket < 0 || *ticket >= 2)
                 return error(ShopWorldError::invalid_input);
-            slot = *i.armor_slot_ticket + 1;
+            slot = *ticket + 1;
             c.consumed_armor_slot = true;
         }
         kind = armor ? 2 : 3;
@@ -121,6 +129,7 @@ ShopWorldResult prepare_world_shop_arrival(const ShopWorldState &s, const ShopAr
         choice.current = human.equipment[slot];
         choice.reselect_counter = human.reselect[slot];
         choice.ticket = i.selection_ticket;
+        choice.draw = i.draw;
         for (const auto &d : i.catalogue)
             if (d.kind == kind)
                 choice.catalogue.push_back({d.id, d.rank, d.type, d.unlocked});
@@ -175,9 +184,11 @@ ShopWorldResult prepare_world_shop_arrival(const ShopWorldState &s, const ShopAr
     auto &context = c.state.world.actors.at(i.actor);
     context.visits = visits;
     context.journey.reset();
+    context.unbound_route.reset();
     context.path_pending = false;
     context.waypoint = 0;
     a.control = use.candidate->control;
+    a.control.flags &= ~256U; // P先完成到达收费守卫，再清256并安排实际use。
     a.state_counter = a.state_parameter = 0;
     a.encounter.reset();
     a.object_slot = resolved.candidate->object_slot;
@@ -226,6 +237,24 @@ ShopWorldResult prepare_world_shop_exit(const ShopWorldState &s, const ShopExitI
                       input.satisfaction_ticket};
     i.effects = input.effects;
     i.effect_ticket = input.effect_ticket;
+    // 普通商店才先抽满意度10，再按真实效果数抽属性；装备退出完全不抽。
+    if (input.draw && f->detail != 1 && f->detail != 4 && f->detail != 5) {
+        try {
+            const auto satisfaction = input.draw(10);
+            if (!satisfaction)
+                return error(ShopWorldError::missing_ticket);
+            i.satisfaction.ticket = *satisfaction;
+            if (!i.effects.empty() && !i.effect_ticket) {
+                if (i.effects.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+                    return error(ShopWorldError::invalid_input);
+                i.effect_ticket = input.draw(static_cast<int>(i.effects.size()));
+                if (!i.effect_ticket)
+                    return error(ShopWorldError::missing_ticket);
+            }
+        } catch (...) {
+            return error(ShopWorldError::preparation_failed);
+        }
+    }
     const auto &selected = s.actors.at(input.actor);
     i.equipment.old_weapon = selected.weapon;
     if (f->detail == 1) {

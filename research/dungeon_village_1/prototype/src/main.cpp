@@ -31,6 +31,7 @@ struct Options {
     bool paused{};
     FacilityOrientation orientation{FacilityOrientation::first};
     bool fixture{};
+    bool world{};
     std::filesystem::path font{"/System/Library/Fonts/Supplemental/Arial Unicode.ttf"};
     std::string inspect_page;
 };
@@ -53,6 +54,8 @@ Options parse_options(int argc, char **argv) {
             options.demo = options.fixture = true;
         else if (arg == "--fixture")
             options.fixture = true;
+        else if (arg == "--world")
+            options.world = true;
         else if (arg == "--font" && i + 1 < argc)
             options.font = argv[++i];
         else if (arg == "--inspect-page" && i + 1 < argc)
@@ -83,13 +86,20 @@ Options parse_options(int argc, char **argv) {
         throw std::invalid_argument("截图参数只能用于有界窗口验收");
     if (options.demo && (options.paused || options.frames != 0))
         throw std::invalid_argument("自主演示不能暂停或使用独立帧数上限");
+    if (options.world &&
+        (options.fixture ||
+         (!options.inspect_page.empty() && options.inspect_page != "visitor" &&
+          options.inspect_page != "world-month" && options.inspect_page != "world-active")))
+        throw std::invalid_argument(
+            "共同世界不能与旧夹具混用；快照检查支持 visitor/world-month/world-active");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
-          options.inspect_page != "visitor")))
-        throw std::invalid_argument(
-            "页面检查仅支持有界新局窗口的 roads/shops/food/arrival/visitor");
+          options.inspect_page != "visitor" &&
+          !(options.world &&
+            (options.inspect_page == "world-month" || options.inspect_page == "world-active")))))
+        throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     return options;
 }
 
@@ -494,6 +504,15 @@ int main(int argc, char **argv) {
     try {
         const auto options = parse_options(argc, argv);
         if (!options.fixture) {
+            if (options.world) {
+                if (options.check) {
+                    check_startup_world();
+                    return 0;
+                }
+                return run_startup_world_window(options.assets, options.font, options.paused,
+                                                options.frames, options.screenshot,
+                                                options.inspect_page);
+            }
             if (options.check) {
                 check_startup();
                 return 0;

@@ -133,10 +133,20 @@ WorldLifecycleResult prepare_world_lifecycle_c(const RescueWorldState &s,
     bool wrote_recovery = false;
     for (const auto &request : lifecycle.candidate->requests) {
         if (request.kind == LifecycleRequestKind::expression) {
-            if (c.consumed_expressions >= i.expressions.size())
-                return fail(WorldLifecycleError::missing_ticket);
-            const auto &ticket = i.expressions[c.consumed_expressions];
             auto &effects = c.state.ai.contexts.at(i.actor).effects;
+            std::optional<WorldExpressionTicket> supplied;
+            if (c.consumed_expressions < i.expressions.size())
+                supplied = i.expressions[c.consumed_expressions];
+            else if (i.expression_draw) {
+                try {
+                    supplied = i.expression_draw(effects, request.parameter);
+                } catch (...) {
+                    return fail(WorldLifecycleError::preparation_failed);
+                }
+            }
+            if (!supplied)
+                return fail(WorldLifecycleError::missing_ticket);
+            const auto &ticket = *supplied;
             const auto expression =
                 prepare_actor_expression({effects, request.parameter, 0, ticket.probability,
                                           ticket.variant_count, ticket.variant});

@@ -177,6 +177,51 @@ void ground_path_retention() {
               r.candidate->state.actors.at({1}).destination == Position{2, 1},
           "bad-area O() clears actual ground G, r still retains old O destination");
 }
+void projected_facing_order() {
+    auto s = fixture();
+    s.ai.battle.actors.at({1}).control.flags = 64U;
+    s.actors.at({1}).blocked_updates = 199;
+    auto i = input(s);
+    int calls{};
+    i.facing_after_projection = [&](const BattleActorRecord &actor) -> std::optional<int> {
+        ++calls;
+        check(actor.control.state == 14 && actor.position.height < 30,
+              "direction reads actual physics result before retention changes state");
+        return 2;
+    };
+    const auto result = prepare_world_actor_tail(s, i);
+    check(result.candidate && calls == 1 && result.candidate->cleaned_up &&
+              result.candidate->state.ai.battle.actors.at({1}).control.state == 19 &&
+              result.candidate->state.ai.battle.actors.at({1}).control.facing == 2,
+          "projected direction survives subsequent actual r cleanup");
+    check(result.candidate->projected_actor &&
+              result.candidate->projected_actor->position.height > 0 &&
+              result.candidate->state.ai.battle.actors.at({1}).position.height == 0,
+          "tail retains actual pre-r projection separately from cleaned current n");
+    for (const int state : {4, 20}) {
+        auto excluded = fixture();
+        excluded.ai.battle.actors.at({1}).control.state = state;
+        excluded.ai.battle.actors.at({1}).control.facing = 3;
+        auto excluded_input = input(excluded);
+        excluded_input.facing_after_projection =
+            [](const BattleActorRecord &) -> std::optional<int> { return {}; };
+        const auto kept = prepare_world_actor_tail(excluded, excluded_input);
+        check(kept.candidate && kept.candidate->state.ai.battle.actors.at({1}).control.facing == 3,
+              "state4/20 skips direction callback and preserves source facing");
+    }
+    for (const int direction : {-1, 4}) {
+        i.facing_after_projection = [direction](const BattleActorRecord &) {
+            return std::optional<int>{direction};
+        };
+        check(!prepare_world_actor_tail(s, i).candidate &&
+                  s.actors.at({1}).blocked_updates == 199 &&
+                  s.facilities.at(3).occupants.size() == 3,
+              "invalid direction rolls back physics and later occupancy cleanup");
+    }
+    i.facing_after_projection = [](const BattleActorRecord &) -> std::optional<int> { return {}; };
+    check(!prepare_world_actor_tail(s, i).candidate && s.actors.at({1}).town_updates == 0,
+          "missing projected metadata refuses without partial old-cell counters");
+}
 } // namespace
 int main() {
     try {
@@ -184,6 +229,7 @@ int main() {
         thresholds();
         bad_area_and_release();
         ground_path_retention();
+        projected_facing_order();
         std::cout << checks << " world tail checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

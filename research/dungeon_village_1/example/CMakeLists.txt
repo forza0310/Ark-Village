@@ -23,7 +23,16 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/world_shop.cpp src/world_overlap.cpp src/world_schedule.cpp
                                      src/world_wander.cpp src/world_misc_control.cpp
                                      src/world_departure.cpp src/world_equipment_display.cpp
-                                     src/world_lifecycle.cpp)
+                                     src/world_lifecycle.cpp src/world_daily.cpp src/world_actor_routes.cpp
+                                     src/world_dungeon_finish.cpp src/world_random.cpp src/world_calendar.cpp
+                                     src/world_scripts.cpp src/world_map_refresh.cpp
+                                     src/world_random_consumers.cpp src/world_scene.cpp
+                                     src/world_exploration.cpp src/world_calendar_maintenance.cpp
+                                     src/world_month_report.cpp src/world_calendar_tasks.cpp
+                                     src/world_popularity.cpp src/world_task_creation.cpp
+                                     src/world_facility_update.cpp src/world_nonactor_schedule.cpp
+                                     src/world_residence.cpp src/world_world_entry.cpp src/world_gift_page.cpp
+                                     src/world_arrivals.cpp)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)
@@ -546,3 +555,29 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_world_lifecycle_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME dungeon_village_reference.world_lifecycle COMMAND dungeon_village_world_lifecycle_tests)
+
+add_executable(dungeon_village_world_daily_tests tests/world_daily_test.cpp)
+target_link_libraries(dungeon_village_world_daily_tests PRIVATE dungeon_village_reference)
+target_compile_features(dungeon_village_world_daily_tests PRIVATE cxx_std_17)
+set_target_properties(dungeon_village_world_daily_tests PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_world_daily_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_reference.world_daily COMMAND dungeon_village_world_daily_tests)
+
+foreach(module IN ITEMS world_actor_routes world_dungeon_finish world_random world_calendar
+                        world_scripts world_map_refresh world_random_consumers world_scene
+                        world_exploration world_calendar_maintenance world_actor_schedule
+                        world_combat_random world_encounter_random world_month_report
+                        world_calendar_tasks world_popularity world_task_creation
+                        world_facility_update world_nonactor_schedule world_runtime world_residence
+                        world_world_entry world_gift_page world_arrivals)
+    add_executable(dungeon_village_${module}_tests tests/${module}_test.cpp)
+    target_link_libraries(dungeon_village_${module}_tests PRIVATE dungeon_village_reference)
+    target_compile_features(dungeon_village_${module}_tests PRIVATE cxx_std_17)
+    set_target_properties(dungeon_village_${module}_tests PROPERTIES CXX_EXTENSIONS OFF)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+        target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    endif()
+    add_test(NAME dungeon_village_reference.${module} COMMAND dungeon_village_${module}_tests)
+endforeach()

@@ -2,7 +2,8 @@
 
 本包只有标准 C++17，不依赖 raylib、窗口、图片、APK 或平台坐标。
 公开接口位于 [include](include/dungeon_village_reference/)，实现位于 [src](src/)，对应回归位于 [tests](tests/)。
-[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及57个 CTest 测试程序，不加入产品主构建。
+[CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及对应 CTest 测试程序，不加入产品主构建；
+当前程序数和当轮结果以[验证](../VERIFICATION.md)为准。
 
 ## 模块与依据
 
@@ -48,11 +49,20 @@
 | world_shop | 当前商店到达/携物、装备选择和收费、满足度/延迟人气、退出/属性/真实装配；显示仍显式交接 | [通用商店事务](../rules/ai/CONTROL.md#通用商店的世界事务) |
 | world_control | 同一控制所有者的跨域FIFO续行、真实hold/true删除，阻止重复共同前段和等待扣减；不内置缺失消费者 | [控制组合](../rules/ai/CONTROL_COMPOSITION.md) |
 | world_schedule、world_overlap | 轮首场/到访/提示/人气/S、两遍实时名单、共同前段/尾部、释放/退休与实际L；支持外层目录/任务/随机原子候选 | [共同调度](../rules/ai/WORLD_SCHEDULE.md) |
+| [world_detached_actor.hpp](include/dungeon_village_reference/world_detached_actor.hpp) | UID-1独立W的严格身份验证；cleanup/departure/tail显式入口复用原主体，不改变普通名单约束 | [独立W](../rules/ai/WORLD_SCHEDULE.md#state2独立w对象接入与边界) |
 | world_departure | 任务/救援/物体/事件优先级、全部活动、住宅/实际出口、两级票号及真实路线；到达不是选路成功 | [出发事务](../rules/ai/WORLD_DEPARTURE.md) |
 | world_wander | 从旧s/当前或退休db、S读取中心，扩展10/12/13的原尾部；无引用零随机，不提前移动 | [真实漫游](../rules/ai/WORLD_SCHEDULE.md#真实世界漫游控制-101213) |
 | world_misc_control | 实际c0..20、25恢复/显示、26共享定义与删除请求、32起跳、33旧u音效；不重复共同计数 | [杂项与状态](../rules/ai/CONTROL_COMPOSITION.md#回复离村起跳与拾物音效的实际消费者) |
 | world_equipment_display | 27/29实际cd载荷、负年龄烟效和旧u；已发商店请求不再次消费控制，不装配/计时 | [装备显示](../rules/ai/CONTROL_COMPOSITION.md#27与29的装备显示记录) |
 | world_lifecycle | 九个共享c分支及怪物17、真实b/c/r/HP/表情/路径组合，其他状态明确交接；共同20轮回归，不重新运行前段或d | [共同生命周期](../rules/ai/LIFECYCLE.md#共同世界生命周期分支) |
+| world_daily、world_actor_routes | 日常/F/L、登场/拾物、全21状态及34控制同一人物/设施候选路由；实际队首提供当前输入，缺依赖拒绝 | [全状态](../rules/ai/LIFECYCLE.md#日常登场拾物与全状态路由)、[全码](../rules/ai/CONTROL_COMPOSITION.md#全码自动路由与当前随机接入) |
+| world_dungeon_finish、world_map_refresh | 探索阶段2任务/奖励/全占地恢复及实际地图显示/道路围栏/补块/邻接；页面/脚本同步合同 | [探索](../rules/ai/DUNGEONS.md) |
+| world_random、world_random_consumers | Java48显式种子或原始磁带、原nextInt余数语义、懒表情/两变体表；不猜APK默认seed | [随机与路由](../rules/ai/CONTROL_COMPOSITION.md#全码自动路由与当前随机接入) |
+| world_scripts | 稀疏ID目录、实时延迟续体、事件调用计数与实际框架页栈；原表与消费事实分开 | [原始脚本目录](../data/scripts/) |
+| world_calendar、world_scene | 年/月/子周期有序合同与主场景1/2轮、真实资格/跳转/绘制门槛；实际日历域消费者必须另接 | [主场景](../rules/ai/WORLD_SCHEDULE.md) |
+| world_month_report、world_calendar_maintenance、world_calendar_tasks | 旧t月报/费用/点数、年度清理、跨月/子周期任务与等级提示，外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口) |
+| world_task_creation、world_facility_update、world_residence | 真实任务工厂/全占地、设施前缀/施工/共享人气、住宅现有人物奖励和原程序 | [探索](../rules/ai/DUNGEONS.md)、[共同调度](../rules/ai/WORLD_SCHEDULE.md) |
+| world_popularity、world_nonactor_schedule、world_runtime | 实际奖励/新闻、bo/bp/bn/L路由、主场景至真实工厂的同一私有Owner组合；无缺依赖默认成功 | [人气和脚本](../data/scripts/)、[组合入口](include/dungeon_village_reference/world_runtime.hpp) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。

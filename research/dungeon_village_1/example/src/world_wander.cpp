@@ -83,6 +83,7 @@ WorldWanderResult prepare_world_wander(const RescueWorldState &s, const WorldWan
     pure.width = s.map.width;
     pure.height = s.map.height;
     pure.tickets = i.tickets;
+    pure.draw = i.draw;
     for (int y = 0; y < s.map.height; ++y)
         for (int x = 0; x < s.map.width; ++x) {
             const auto index = static_cast<std::size_t>(y) * s.map.width + x;

@@ -1,4 +1,5 @@
 #include "dungeon_village_reference/world_actor_tail.hpp"
+#include "dungeon_village_reference/world_detached_actor.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -26,9 +27,10 @@ void release(RescueWorldState &s, CharacterId id) {
     if (occupant != occupants.end())
         occupants.erase(occupant);
 }
-bool cleanup(RescueWorldState &s, CharacterId id) {
+bool cleanup(RescueWorldState &s, CharacterId id, bool detached = false) {
     if (s.ai.battle.actors.at(id).kind == ActorKind::human) {
-        const auto c = prepare_world_rescue_cleanup(s, id);
+        const auto c = detached ? prepare_world_detached_actor_cleanup(s, id)
+                                : prepare_world_rescue_cleanup(s, id);
         if (!c.candidate)
             return false;
         s = c.candidate->state;
@@ -59,10 +61,10 @@ bool cleanup(RescueWorldState &s, CharacterId id) {
     return true;
 }
 } // namespace
-WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
-                                              const WorldActorTailInput &i) {
+static WorldActorTailResult actor_tail(const RescueWorldState &s, const WorldActorTailInput &i,
+                                       bool detached) {
     const auto failed = [](RescueWorldError e) -> WorldActorTailResult { return {e, {}}; };
-    if (!live(s, i.actor))
+    if (!(detached ? valid_detached_human(s, i.actor) : live(s, i.actor)))
         return failed(RescueWorldError::stale_actor);
     if (!valid_world_map_facts(i.facts) || !valid_legacy_map(s.map) ||
         s.map.width != i.facts.map.width || s.map.height != i.facts.map.height)
@@ -91,6 +93,20 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
         return failed(RescueWorldError::preparation_failed);
     c.state.ai = physics.candidate->state;
     c.queried_area = physics.candidate->queried_area;
+    auto &projected = c.state.ai.battle.actors.at(i.actor);
+    if (projected.control.state != 4 && projected.control.state != 20 &&
+        i.facing_after_projection) {
+        std::optional<int> facing;
+        try {
+            facing = i.facing_after_projection(projected);
+        } catch (...) {
+            return failed(RescueWorldError::preparation_failed);
+        }
+        if (!facing || *facing < 0 || *facing > 3)
+            return failed(RescueWorldError::invalid_input);
+        projected.control.facing = *facing;
+    }
+    c.projected_actor = projected;
     const auto &a = c.state.ai.battle.actors.at(i.actor);
     const auto &ctx = c.state.actors.at(i.actor);
     const auto &perception = c.state.ai.contexts.at(i.actor);
@@ -119,7 +135,7 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
         return failed(RescueWorldError::preparation_failed);
     for (const auto request : retention->requests) {
         if (request == ActorRetentionRequest::cleanup) {
-            if (!cleanup(c.state, i.actor))
+            if (!cleanup(c.state, i.actor, detached))
                 return failed(RescueWorldError::preparation_failed);
             c.cleaned_up = true;
         } else if (request == ActorRetentionRequest::clear_path) {
@@ -152,6 +168,14 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
     c.delete_instance = retention->delete_instance;
     c.deletion_reason = retention->reason;
     return {RescueWorldError::none, c};
+}
+WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
+                                              const WorldActorTailInput &i) {
+    return actor_tail(s, i, false);
+}
+WorldActorTailResult prepare_world_detached_actor_tail(const RescueWorldState &s,
+                                                       const WorldActorTailInput &i) {
+    return actor_tail(s, i, true);
 }
 WorldActorTailResult prepare_world_actor_remove(const RescueWorldState &s, CharacterId id,
                                                 bool from_execution) {

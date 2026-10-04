@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dungeon_village_reference/domain.hpp"
+#include <functional>
 
 namespace dungeon_village_reference {
 using LegacyActorControl = std::vector<int>; // Fixed APK m queue, not cd/ce or a global event bus.
@@ -93,6 +94,7 @@ struct ActorWanderInput {
     int height{};
     std::vector<ActorWanderCell> cells; // Row-major; no facility/path-category reinterpretation.
     std::vector<int> tickets; // Exact draw order, each value checked against its current bound.
+    std::function<std::optional<int>(int)> draw{}; // 票号耗尽后才按实际分支请求上限。
 };
 struct ActorWanderCandidate {
     std::vector<Position> cells;

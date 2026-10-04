@@ -3,8 +3,11 @@
 #include "dungeon_village_reference/actor_ai.hpp"
 
 #include <array>
+#include <functional>
 
 namespace dungeon_village_reference {
+// 只允许捕获外层私有Owner的随机状态；失败时Owner整体丢弃，不推进真实随机流。
+using CombatRandomDraw = std::function<std::optional<int>(int)>;
 enum class CombatAiError { none, invalid_input, missing_ticket, invalid_ticket };
 enum class CombatDecision {
     keep,
@@ -39,6 +42,7 @@ struct CombatStrategyInput {
     bool healing_target{};             // J() already resolved in original roster order.
     std::optional<int> policy_ticket;  // d.a(100), only human at attack_slot.
     std::optional<int> healing_ticket; // d.a(10), only if both spell kinds available and chosen.
+    CombatRandomDraw draw{};           // 缺显式票号时，实际分支才请求100/10。
 };
 struct CombatStrategyCandidate {
     CombatDecision decision{CombatDecision::keep};
@@ -85,6 +89,7 @@ struct PhysicalDamageInput {
     bool human_boost{};   // Instance2048: attacker for human damage, defender for monster damage.
     bool monster_boost{}; // Instance4096: defender for human damage, attacker for monster damage.
     std::optional<int> jitter_ticket;
+    CombatRandomDraw draw{};
 };
 struct DamageCandidate {
     int base{};
@@ -108,6 +113,7 @@ struct SpellDamageInput {
     std::optional<int> spell_ticket;       // Original Q0..2 learned order.
     std::optional<int> enhancement_ticket; // 0..99, below mapped5..50 => enhanced.
     std::optional<int> jitter_ticket;
+    CombatRandomDraw draw{};
 };
 struct SpellDamageCandidate {
     DamageCandidate damage;

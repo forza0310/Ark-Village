@@ -13,7 +13,8 @@ int slot(std::size_t index, std::size_t count, bool monster) {
 }
 } // namespace
 BattleGroupResult prepare_battle_group_step(const BattleGroupState &s,
-                                            const std::vector<int> &tickets) {
+                                            const std::vector<int> &tickets,
+                                            const std::function<std::optional<int>(int)> &draw) {
     if (s.tick < 0 || s.tick >= std::numeric_limits<int>::max() || s.duration <= 0 || s.cycle < 0 ||
         s.cycle > 2 || s.alternating_side < 0 || s.alternating_side > 1)
         return {EncounterAiError::invalid_input, std::nullopt};
@@ -46,21 +47,21 @@ BattleGroupResult prepare_battle_group_step(const BattleGroupState &s,
                 roster->clear();
             }
         } else {
-            if (c.state.monsters.size() > 1) {
-                if (tickets.size() < c.state.monsters.size())
-                    return {EncounterAiError::missing_ticket, std::nullopt};
-                for (std::size_t n = 0; n < c.state.monsters.size(); ++n)
-                    if (tickets[n] < 0 || tickets[n] >= 100)
-                        return {EncounterAiError::invalid_ticket, std::nullopt};
-                c.consumed_tickets = c.state.monsters.size();
-            }
             for (std::size_t n = 0; n < c.state.monsters.size(); ++n) {
                 int posture = 0;
                 if (c.state.monsters.size() > 1) {
+                    const auto ticket = n < tickets.size() ? std::optional<int>{tickets[n]}
+                                        : draw             ? draw(100)
+                                                           : std::nullopt;
+                    if (!ticket)
+                        return {EncounterAiError::missing_ticket, std::nullopt};
+                    if (*ticket < 0 || *ticket >= 100)
+                        return {EncounterAiError::invalid_ticket, std::nullopt};
+                    ++c.consumed_tickets;
                     const bool boss = (c.state.monsters[n].flags & 16384U) != 0;
                     const int first = boss ? 50 : 60;
                     const int second = boss ? 67 : 80;
-                    posture = tickets[n] < first ? 0 : tickets[n] < second ? 1 : 2;
+                    posture = *ticket < first ? 0 : *ticket < second ? 1 : 2;
                 }
                 c.assignments.push_back(
                     {c.state.monsters[n].id, slot(n, c.state.monsters.size(), true), posture});
@@ -71,7 +72,8 @@ BattleGroupResult prepare_battle_group_step(const BattleGroupState &s,
 }
 MonsterChoiceResult prepare_monster_choice(const std::vector<MonsterChoiceDefinition> &table,
                                            int progress, bool active_task,
-                                           std::optional<int> ticket) {
+                                           std::optional<int> ticket,
+                                           const std::function<std::optional<int>(int)> &draw) {
     if (progress < 0)
         return {EncounterAiError::invalid_input, std::nullopt};
     std::set<int> ids;
@@ -94,6 +96,8 @@ MonsterChoiceResult prepare_monster_choice(const std::vector<MonsterChoiceDefini
             c.eligible.push_back(p->id);
     if (c.eligible.empty())
         return {EncounterAiError::no_candidates, std::nullopt};
+    if (!ticket && draw)
+        ticket = draw(static_cast<int>(c.eligible.size()));
     if (!ticket)
         return {EncounterAiError::missing_ticket, std::nullopt};
     if (*ticket < 0 || static_cast<std::size_t>(*ticket) >= c.eligible.size())
@@ -107,13 +111,22 @@ MonsterChoiceResult prepare_monster_choice(const std::vector<MonsterChoiceDefini
 MonsterCountResult prepare_normal_monster_count(const MonsterCountInput &i) {
     if (i.year_index < 0 || i.month_index < 0 || i.month_index > 11 || i.nearby_people < 0)
         return {EncounterAiError::invalid_input, std::nullopt};
-    if (!i.count_ticket || (i.nearby_people > 0 && !i.nearby_ticket))
+    auto count_ticket = i.count_ticket;
+    auto nearby_ticket = i.nearby_ticket;
+    if (!count_ticket && i.draw)
+        count_ticket = i.draw(100);
+    if (!count_ticket)
         return {EncounterAiError::missing_ticket, std::nullopt};
-    if (*i.count_ticket < 0 || *i.count_ticket >= 100 ||
-        (i.nearby_people > 0 && (*i.nearby_ticket < 0 || *i.nearby_ticket >= i.nearby_people)))
+    if (*count_ticket < 0 || *count_ticket >= 100)
+        return {EncounterAiError::invalid_ticket, std::nullopt};
+    if (i.nearby_people > 0 && !nearby_ticket && i.draw)
+        nearby_ticket = i.draw(i.nearby_people);
+    if (i.nearby_people > 0 && !nearby_ticket)
+        return {EncounterAiError::missing_ticket, std::nullopt};
+    if (i.nearby_people > 0 && (*nearby_ticket < 0 || *nearby_ticket >= i.nearby_people))
         return {EncounterAiError::invalid_ticket, std::nullopt};
     const bool late = i.year_index >= 4;
-    const int ticket = *i.count_ticket;
+    const int ticket = *count_ticket;
     int count = late          ? ticket < 50   ? 1
                                 : ticket < 80 ? 2
                                 : ticket < 95 ? 3
@@ -122,7 +135,7 @@ MonsterCountResult prepare_normal_monster_count(const MonsterCountInput &i) {
                 : ticket < 95 ? 2
                               : 3;
     if (i.nearby_people > 0)
-        count += std::min(*i.nearby_ticket, 3);
+        count += std::min(*nearby_ticket, 3);
     // The early-year override happens after both random branches, not before their consumption.
     if (i.year_index == 0 && i.month_index < 7)
         count = 1;

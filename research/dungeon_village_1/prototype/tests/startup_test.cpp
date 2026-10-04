@@ -72,6 +72,9 @@ void reset_and_arrival() {
           "birth and flag");
     check(c.flags == (2U | 8192U) && c.pending_activity == 0,
           "instance flags and activity zero request are installed before tutorial");
+    check(c.legacy_D == std::array<int, 4>{0, 0, 0, 0} && c.legacy_m == 0 &&
+              d.character_spawn_minimum_y == 2 && d.world_overlap_boundary_y == 2,
+          "actual no-inheritance shared home/leave reset and transformed L boundary");
     const auto birth_cell = c.cell;
     const auto modal = snapshot(s);
     normal_steps(s, 100);

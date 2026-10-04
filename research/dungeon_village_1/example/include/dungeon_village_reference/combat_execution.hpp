@@ -1,6 +1,6 @@
 #pragma once
 
-// Animation-window, projectile and hit candidates. No world ownership, RNG or renderer.
+// Animation-window, projectile and hit candidates. No world ownership or renderer.
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/character_hp.hpp"
 #include "dungeon_village_reference/combat_ai.hpp"
@@ -19,6 +19,7 @@ struct AttackSetupInput {
     int miss_high{};
     bool boosted{};
     std::array<int, 5> tickets{}; // Four perturbations then miss; all draws consumed.
+    CombatRandomDraw draw{};      // 存在provider时替代固定数组，按源顺序实际抽5次100。
 };
 struct AttackSetupCandidate {
     int action{};
@@ -66,7 +67,8 @@ struct SpellFrameCandidate {
 };
 std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_found,
                                                        int action = 4);
-DamageResult prepare_healing_amount(int magic, std::optional<int> jitter_ticket);
+DamageResult prepare_healing_amount(int magic, std::optional<int> jitter_ticket,
+                                    const CombatRandomDraw &draw = {});
 
 struct AttackTargetSnapshot {
     CharacterId id;
@@ -215,6 +217,7 @@ struct HitContext {
     int monster_statF{}; // k.e(), already resolved from definition.
     int target_action{}; // g() reports0 for k7, otherwise the new am[3] target.
     std::optional<int> drop_ticket;
+    CombatRandomDraw draw{}; // 真正怪物致命命中才抽100，首访8192仍先消费。
 };
 struct HitCandidate {
     HitTargetState target;

@@ -37,19 +37,36 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
     c.state = s;
     ++c.state.counter;
     c.humans = i.humans;
+    EncounterAiError ticket_error = EncounterAiError::none;
     auto req = [&](EncounterRequestKind kind, int parameter = 0, int value = 0, int delay = 0,
                    std::optional<CharacterId> actor = std::nullopt) {
         c.requests.push_back({kind, actor, parameter, value, delay});
+        if (ticket_error == EncounterAiError::none && i.synchronous_request &&
+            !i.synchronous_request(c.state, c.requests.back()))
+            ticket_error = EncounterAiError::invalid_input;
+        if (ticket_error == EncounterAiError::none && i.random_request &&
+            !i.random_request(c.requests.back()))
+            ticket_error = EncounterAiError::invalid_input;
     };
-    EncounterAiError ticket_error = EncounterAiError::none;
     auto draw = [&](std::size_t bound) -> std::optional<int> {
+        if (ticket_error != EncounterAiError::none)
+            return {};
         if (bound == 0 || bound > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
             ticket_error = EncounterAiError::no_candidates;
             return std::nullopt;
         }
         if (c.consumed_tickets >= i.tickets.size()) {
-            ticket_error = EncounterAiError::missing_ticket;
-            return std::nullopt;
+            const auto value = i.draw ? i.draw(static_cast<int>(bound)) : std::nullopt;
+            if (!value) {
+                ticket_error = EncounterAiError::missing_ticket;
+                return std::nullopt;
+            }
+            if (*value < 0 || static_cast<std::size_t>(*value) >= bound) {
+                ticket_error = EncounterAiError::invalid_ticket;
+                return std::nullopt;
+            }
+            ++c.consumed_tickets;
+            return value;
         }
         const auto &t = i.tickets[c.consumed_tickets++];
         if (t.bound != static_cast<int>(bound) || t.value < 0 || t.value >= t.bound) {
@@ -62,6 +79,11 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
         c.state.state = 1;
         c.state.counter = 0;
     };
+    const auto finish = [&]() -> EncounterStepResult {
+        if (ticket_error != EncounterAiError::none)
+            return {ticket_error, std::nullopt};
+        return {EncounterAiError::none, c};
+    };
     auto cancel = [&] {
         c.cancelled = true;
         for (const auto &m : i.monsters)
@@ -72,21 +94,23 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
     };
     if (s.state == 1) {
         c.remove = c.state.counter >= 100;
-        return {EncounterAiError::none, c};
+        return finish();
     }
     if (s.state == 2)
-        return {EncounterAiError::none, c};
+        return finish();
     if (s.state == 0 && i.town_overlap) {
         cancel();
-        return {EncounterAiError::none, c};
+        return finish();
     }
     if (s.state == 3 && !i.task_exists) {
         req(EncounterRequestKind::clear_task);
         cancel();
-        return {EncounterAiError::none, c};
+        return finish();
     }
     if (i.group_exists)
         req(EncounterRequestKind::update_group);
+    if (ticket_error != EncounterAiError::none)
+        return {ticket_error, std::nullopt};
     for (const auto &h : i.humans)
         if (nearby(h.cell, s.center))
             ++c.nearby_humans; // Includes town/down/rescued, unlike victory list.
@@ -127,11 +151,11 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
         ++c.state.idle;
         if (c.state.idle >= 600)
             cancel();
-        return {EncounterAiError::none, c};
+        return finish();
     }
     if (s.state == 3 &&
         (c.state.spawned == 0 || c.state.spawned < s.quota || c.linked_monsters != 0))
-        return {EncounterAiError::none, c};
+        return finish();
     c.victory = true;
     retire();
     if (s.state == 3 && c.state.reward <= 0 && (i.quest.flags & 2U)) {
@@ -173,6 +197,8 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
                 req(s.state == 0 ? EncounterRequestKind::expression5
                                  : EncounterRequestKind::task_victory_expression,
                     5, 0, expression_delay, h.id);
+            if (ticket_error != EncounterAiError::none)
+                return false;
         }
         const auto amount = static_cast<std::int64_t>(recent.first) + share;
         if (!fits(amount)) {
@@ -192,7 +218,7 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
             h.flags &= ~2048U;
             req(EncounterRequestKind::clear_boost2048, 2048, 0, 0, h.id);
         }
-        return true;
+        return ticket_error == EncounterAiError::none;
     };
     if (s.state == 0) {
         int ordinal{};
@@ -203,7 +229,7 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
         if (!i.event91_present)
             req(EncounterRequestKind::event, 91);
         req(EncounterRequestKind::refresh_map);
-        return {EncounterAiError::none, c};
+        return finish();
     }
     for (int def : i.quest.participants) {
         if (def < 0)
@@ -244,7 +270,7 @@ EncounterStepResult prepare_encounter_step(const EncounterStepInput &i) {
     }
     if (!i.event205_present)
         req(EncounterRequestKind::event, 205);
-    return {EncounterAiError::none, c};
+    return finish();
 }
 std::optional<DelayedRewardState> prepare_delayed_reward(const DelayedRewardState &s, int amount,
                                                          int delay) {

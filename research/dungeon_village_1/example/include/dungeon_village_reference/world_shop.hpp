@@ -66,6 +66,7 @@ struct ShopArrivalInput {
     std::vector<ShopEquipmentDefinition> catalogue; // Current definitions in source order.
     std::optional<int> armor_slot_ticket; // ALWAYS draw2 for detail4, including cooldown/no gear.
     std::optional<int> selection_ticket;
+    std::function<std::optional<int>(int)> draw{};
 };
 // P's F/route/arrival predicate must already have succeeded. Resolves selection BEFORE payment
 // guards, delivers N>=0 without global item-reward E, and atomically arranges actual use.
@@ -79,6 +80,7 @@ struct ShopExitInput {
     int satisfaction_ticket{};
     std::vector<FacilityAttributeEffect> effects; // Current definition z/A order.
     std::optional<int> effect_ticket;
+    std::function<std::optional<int>(int)> draw{};
 };
 // Front24: same exit position/use/release/reset; ordinary shop inserts popularity even for0.
 // Equipment animation/attributes remain AFTER activity8, never eagerly applied on exit.

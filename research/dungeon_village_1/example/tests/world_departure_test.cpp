@@ -111,6 +111,51 @@ void ordinary_and_clearing() {
     check(!failed.candidate && failed.error == WorldDepartureError::invalid_ticket,
           "instance ticket at exact upper bound rejected");
 }
+void dynamic_random_provider() {
+    const auto s = fixture();
+    auto i = input(s);
+    std::vector<int> bounds;
+    i.draw = [&](int bound) -> std::optional<std::int64_t> {
+        bounds.push_back(bound);
+        return 0;
+    };
+    auto r = prepare_world_departure(s, i);
+    check(r.candidate && r.candidate->succeeded && r.candidate->consumed_tickets == 2 &&
+              bounds.size() == 2 && bounds[0] > 0 && bounds[1] == 10,
+          "dynamic provider observes actual category then instance bound, never pre-draws");
+    const auto category_bound = bounds[0];
+    bounds.clear();
+    i.tickets = {0};
+    r = prepare_world_departure(s, i);
+    check(r.candidate && r.candidate->consumed_tickets == 2 && bounds == std::vector<int>{10},
+          "explicit ticket prefix precedes dynamic provider without consuming duplicate category");
+    i.tickets.clear();
+    i.draw = [category_bound](int) -> std::optional<std::int64_t> { return category_bound; };
+    r = prepare_world_departure(s, i);
+    check(!r.candidate && r.error == WorldDepartureError::invalid_ticket &&
+              !s.actors.at({1}).journey,
+          "provider upper-bound ticket fails without publishing route");
+    i.draw = [](int) -> std::optional<std::int64_t> { return {}; };
+    check(prepare_world_departure(s, i).error == WorldDepartureError::missing_ticket,
+          "provider exhaustion is explicit missing ticket");
+    i.draw = [](int) -> std::optional<std::int64_t> { throw std::runtime_error("draw"); };
+    check(prepare_world_departure(s, i).error == WorldDepartureError::preparation_failed,
+          "provider exception is contained at transaction boundary");
+    auto empty = s;
+    for (auto &[id, f] : empty.facilities) {
+        (void)id;
+        f.status = 0;
+    }
+    int calls{};
+    i = input(empty);
+    i.draw = [&](int) -> std::optional<std::int64_t> {
+        ++calls;
+        return 0;
+    };
+    r = prepare_world_departure(empty, i);
+    check(r.candidate && !r.candidate->succeeded && calls == 0,
+          "no candidates never request a speculative draw");
+}
 void task_and_priority() {
     auto s = fixture();
     s.ai.task_active = true;
@@ -1031,6 +1076,7 @@ void path_domain_callback_and_strict_failure() {
 int main() {
     try {
         ordinary_and_clearing();
+        dynamic_random_provider();
         task_and_priority();
         activity_one_and_inn();
         home_exit_and_routes();

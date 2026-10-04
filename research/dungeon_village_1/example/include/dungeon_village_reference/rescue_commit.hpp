@@ -102,9 +102,12 @@ RescueWorldResult prepare_world_inn_c(const RescueWorldState &state, CharacterId
 RescueWorldResult prepare_world_inn_d(const RescueWorldState &state, CharacterId actor);
 // Control ONLY, after the common d prefix. Never advances counters/effects/HP/growth.
 // Common exits include5 as well as2/7/8/9; category1 exit and category5 occupation delegate.
-RescueWorldResult prepare_world_inn_control(const RescueWorldState &state, CharacterId actor);
+RescueWorldResult prepare_world_inn_control(const RescueWorldState &state, CharacterId actor,
+                                            std::size_t domain_limit = 1000000);
 // r() is staged departure, not deletion; N and path are deliberately retained.
 RescueWorldResult prepare_world_rescue_cleanup(const RescueWorldState &state, CharacterId actor);
 // 同一r()也被怪物17/T1调用；按真实kind选择c19/c0，不制造怪物专属离村流程。
 RescueWorldResult prepare_world_actor_cleanup(const RescueWorldState &state, CharacterId actor);
+RescueWorldResult prepare_world_detached_actor_cleanup(const RescueWorldState &state,
+                                                       CharacterId actor);
 } // namespace dungeon_village_reference

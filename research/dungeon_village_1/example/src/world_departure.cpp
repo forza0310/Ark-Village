@@ -1,4 +1,5 @@
 #include "dungeon_village_reference/world_departure.hpp"
+#include "dungeon_village_reference/world_detached_actor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -145,6 +146,7 @@ bool path_cleanup(RescueWorldState &s, CharacterId id) {
 }
 struct Draws {
     const std::vector<std::int64_t> &tickets;
+    const std::function<std::optional<std::int64_t>(int)> &draw;
     std::size_t used{};
     WorldDepartureError error{WorldDepartureError::none};
     std::optional<std::int64_t> take(std::int64_t bound) {
@@ -152,11 +154,23 @@ struct Draws {
             error = WorldDepartureError::preparation_failed;
             return {};
         }
-        if (used == tickets.size()) {
+        std::optional<std::int64_t> next;
+        if (used < tickets.size())
+            next = tickets[used];
+        else if (draw && bound <= std::numeric_limits<int>::max()) {
+            try {
+                next = draw(static_cast<int>(bound));
+            } catch (...) {
+                error = WorldDepartureError::preparation_failed;
+                return {};
+            }
+        }
+        if (!next) {
             error = WorldDepartureError::missing_ticket;
             return {};
         }
-        const auto value = tickets[used++];
+        const auto value = *next;
+        ++used;
         if (value < 0 || value >= bound) {
             error = WorldDepartureError::invalid_ticket;
             return {};
@@ -265,10 +279,10 @@ LegacySearchResult prepare_world_departure_field(const LegacyMap &map, Position 
     limits.reverse_equal_cost = true;
     return search_legacy_map(map, start, limits);
 }
-WorldDepartureResult prepare_world_departure(const RescueWorldState &s,
-                                             const WorldDepartureInput &i) {
+static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
+                                                   const WorldDepartureInput &i, bool detached) {
     const auto fail = [](WorldDepartureError e) -> WorldDepartureResult { return {e, {}}; };
-    if (!live(s, i.actor))
+    if (!(detached ? valid_detached_human(s, i.actor) : live(s, i.actor)))
         return fail(WorldDepartureError::stale_actor);
     if (!valid_legacy_map(s.map) || i.activity < 0 || i.activity > 8 ||
         i.catalogue.town.left >= i.catalogue.town.right ||
@@ -322,7 +336,7 @@ WorldDepartureResult prepare_world_departure(const RescueWorldState &s,
         c.denial = WorldDepartureDenial::no_candidates;
         return {WorldDepartureError::none, c};
     }
-    Draws draws{i.tickets};
+    Draws draws{i.tickets, i.draw};
     const auto finish = [&]() -> WorldDepartureResult {
         if (draws.error != WorldDepartureError::none)
             return fail(draws.error);
@@ -584,13 +598,17 @@ WorldDepartureResult prepare_world_departure(const RescueWorldState &s,
     }
     return finish();
 }
-WorldDepartureControlResult prepare_world_departure_control(const RescueWorldState &s,
-                                                            const WorldDepartureControlInput &i) {
+WorldDepartureResult prepare_world_departure(const RescueWorldState &s,
+                                             const WorldDepartureInput &i) {
+    return prepare_departure_impl(s, i, false);
+}
+static WorldDepartureControlResult
+departure_control(const RescueWorldState &s, const WorldDepartureControlInput &i, bool detached) {
     const auto fail = [](WorldDepartureError error) -> WorldDepartureControlResult {
         return {error, {}};
     };
     const auto id = i.departure.actor;
-    if (!live(s, id))
+    if (!(detached ? valid_detached_human(s, id) : live(s, id)))
         return fail(WorldDepartureError::stale_actor);
     const auto &old = s.ai.battle.actors.at(id);
     if (old.control.queue.empty() ||
@@ -604,7 +622,7 @@ WorldDepartureControlResult prepare_world_departure_control(const RescueWorldSta
     input.activity = old.control.queue.front()[1];
     next.ai.battle.actors.at(id).control.queue.erase(
         next.ai.battle.actors.at(id).control.queue.begin());
-    const auto departure = prepare_world_departure(next, input);
+    const auto departure = prepare_departure_impl(next, input, detached);
     if (!departure.candidate)
         return fail(departure.error);
     WorldDepartureControlCandidate c;
@@ -620,9 +638,17 @@ WorldDepartureControlResult prepare_world_departure_control(const RescueWorldSta
     const auto failure = prepare_failed_activity(c.state.ai.battle.actors.at(id).control.flags);
     // 旧 1024 的表情先于旧 32768 删除；后面新置的 1024 不能倒回来重做此判断。
     if (failure.expression18) {
-        if (!i.failure_expression)
+        auto supplied = i.failure_expression;
+        if (!supplied && i.expression_draw) {
+            try {
+                supplied = i.expression_draw(c.state.ai.contexts.at(id).effects, 18);
+            } catch (...) {
+                return fail(WorldDepartureError::preparation_failed);
+            }
+        }
+        if (!supplied)
             return fail(WorldDepartureError::missing_ticket);
-        const auto &ticket = *i.failure_expression;
+        const auto &ticket = *supplied;
         const auto expression =
             prepare_actor_expression({c.state.ai.contexts.at(id).effects, 18, 0, ticket.probability,
                                       ticket.variant_count, ticket.variant});
@@ -641,7 +667,8 @@ WorldDepartureControlResult prepare_world_departure_control(const RescueWorldSta
         return {WorldDepartureError::none, c};
     c.state.ai.battle.actors.at(id).control.flags = failure.flags;
     if (old.kind == ActorKind::human) {
-        const auto cleanup = prepare_world_rescue_cleanup(c.state, id);
+        const auto cleanup = detached ? prepare_world_detached_actor_cleanup(c.state, id)
+                                      : prepare_world_rescue_cleanup(c.state, id);
         if (!cleanup.candidate)
             return fail(WorldDepartureError::preparation_failed);
         c.state = cleanup.candidate->state;
@@ -684,6 +711,15 @@ WorldDepartureControlResult prepare_world_departure_control(const RescueWorldSta
     // r 产生的等待或第二条 8 归外层同次 FIFO 循环，不能推进下一次共同 d 前段。
     c.cleaned_up = c.continue_interpreter = true;
     return {WorldDepartureError::none, c};
+}
+WorldDepartureControlResult prepare_world_departure_control(const RescueWorldState &s,
+                                                            const WorldDepartureControlInput &i) {
+    return departure_control(s, i, false);
+}
+WorldDepartureControlResult
+prepare_world_detached_departure_control(const RescueWorldState &s,
+                                         const WorldDepartureControlInput &i) {
+    return departure_control(s, i, true);
 }
 WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathInput &i) {
     const auto fail = [](WorldPathError e) -> WorldPathResult { return {e, {}}; };
@@ -766,9 +802,17 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                           std::abs(static_cast<std::int64_t>(cell.y) - p.y) <= 1;
             }
             if (nearby) {
-                if (!i.nearby_expression)
+                auto supplied = i.nearby_expression;
+                if (!supplied && i.expression_draw) {
+                    try {
+                        supplied = i.expression_draw(c.state.ai.contexts.at(i.actor).effects, 7);
+                    } catch (...) {
+                        return fail(WorldPathError::invalid_callback);
+                    }
+                }
+                if (!supplied)
                     return fail(WorldPathError::missing_ticket);
-                const auto &t = *i.nearby_expression;
+                const auto &t = *supplied;
                 const auto expression =
                     prepare_actor_expression({c.state.ai.contexts.at(i.actor).effects, 7, 0,
                                               t.probability, t.variant_count, t.variant});
@@ -782,15 +826,23 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 c.consumed_expression = true;
                 c.consumed_variant = expression.candidate->consumed_variant;
             }
+            auto boost = i.boost_ticket;
             if (!(c.state.ai.battle.actors.at(i.actor).control.flags & 2048U)) {
-                if (!i.boost_ticket)
+                if (!boost && i.draw) {
+                    try {
+                        boost = i.draw(100);
+                    } catch (...) {
+                        return fail(WorldPathError::invalid_callback);
+                    }
+                }
+                if (!boost)
                     return fail(WorldPathError::missing_ticket);
-                if (*i.boost_ticket < 0 || *i.boost_ticket >= 100)
+                if (*boost < 0 || *boost >= 100)
                     return fail(WorldPathError::invalid_ticket);
                 if (!c.state.ai.growth.count(old.definition))
                     return fail(WorldPathError::missing_fact);
             }
-            if (!path_transition(c.state, i.actor, 18, i.boost_ticket, &c))
+            if (!path_transition(c.state, i.actor, 18, boost, &c))
                 return fail(WorldPathError::preparation_failed);
         } else if (old.kind == ActorKind::monster) {
             if (!path_transition(c.state, i.actor, 1))
@@ -923,7 +975,8 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 const int mode = (a.control.flags & 256U) ? 2 : 0;
                 a.control.flags &= ~256U;
                 const auto use = prepare_world_facility_use(
-                    c.state, {i.actor, mode, i.use_world_target, i.use_direction_ticket});
+                    c.state, {i.actor, mode, i.use_world_target, i.use_direction_ticket, i.draw,
+                              i.use_direction_target});
                 if (!use.state)
                     return fail(WorldPathError::preparation_failed);
                 c.state = *use.state;

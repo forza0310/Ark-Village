@@ -1,4 +1,5 @@
 #include "dungeon_village_reference/rescue_commit.hpp"
+#include "dungeon_village_reference/world_detached_actor.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -423,6 +424,16 @@ RescueWorldResult prepare_world_actor_cleanup(const RescueWorldState &s, Charact
     c.cleaned_up = true;
     return {RescueWorldError::none, c};
 }
+RescueWorldResult prepare_world_detached_actor_cleanup(const RescueWorldState &s, CharacterId id) {
+    if (!valid_detached_human(s, id))
+        return fail(RescueWorldError::stale_actor);
+    RescueWorldCandidate c;
+    c.state = s;
+    if (!cleanup(c.state, id))
+        return fail(RescueWorldError::preparation_failed);
+    c.cleaned_up = true;
+    return {RescueWorldError::none, c};
+}
 RescueWorldResult prepare_world_rescue_follow(const RescueWorldState &s, CharacterId id) {
     if (!human(s, id))
         return fail(RescueWorldError::stale_actor);
@@ -594,13 +605,17 @@ RescueWorldResult prepare_world_inn_d(const RescueWorldState &s, CharacterId id)
     a.hp = *hp.candidate;
     return prepare_world_inn_control(c.state, id);
 }
-RescueWorldResult prepare_world_inn_control(const RescueWorldState &s, CharacterId id) {
+RescueWorldResult prepare_world_inn_control(const RescueWorldState &s, CharacterId id,
+                                            std::size_t domain_limit) {
     const auto found = s.ai.battle.actors.find(id);
     if (found == s.ai.battle.actors.end() || !(found->second.id == id) || !s.actors.count(id) ||
         !s.ai.contexts.count(id))
         return fail(RescueWorldError::stale_actor);
     RescueWorldCandidate c;
     c.state = s;
+    if (domain_limit == 0)
+        return fail(RescueWorldError::invalid_input);
+    std::size_t domains{};
     auto &a = c.state.ai.battle.actors.at(id);
     for (;;) {
         const auto local = prepare_local_control_prefix(a.control);
@@ -622,6 +637,8 @@ RescueWorldResult prepare_world_inn_control(const RescueWorldState &s, Character
                 f->occupants.push_back(id);
                 c.occupied = true;
             } // Original q()==null still consumes21; state14 c() cleans up next time.
+            if (++domains >= domain_limit)
+                break;
         } else if (opcode == 24) {
             if (!f) {
                 if (!cleanup(c.state, id))

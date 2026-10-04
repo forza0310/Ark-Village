@@ -36,6 +36,19 @@ std::optional<CharacterId> healing_target(const AiRewardState &s, CharacterId id
     return queried.target;
 }
 bool facing(std::optional<int> value) { return value && *value >= 0 && *value <= 3; }
+bool expression(AiRewardState &state, CharacterId actor, int kind, int delay,
+                const WorldCombatExpressionConsumer &consumer, bool required) {
+    const auto context = state.contexts.find(actor);
+    if (!consumer)
+        return !required;
+    if (context == state.contexts.end())
+        return false;
+    auto effects = consumer(actor, context->second.effects, kind, delay);
+    if (!effects || !valid_actor_effect_state(*effects))
+        return false;
+    context->second.effects = std::move(*effects);
+    return true;
+}
 bool launch(WorldAttackCandidate &c, CharacterId actor, CharacterId target, ProjectileKind kind,
             std::optional<int> direction, int effect = 0, int damage = 0) {
     if (!facing(direction) || c.state.next_projectile_id == 0 ||
@@ -54,7 +67,8 @@ bool launch(WorldAttackCandidate &c, CharacterId actor, CharacterId target, Proj
     return true;
 }
 bool hit(WorldAttackCandidate &c, const WorldAttackInput &i, CharacterId target) {
-    const auto damage = prepare_actor_physical_damage(c.state, i.actor, target, i.physical_jitter);
+    const auto damage =
+        prepare_actor_physical_damage(c.state, i.actor, target, i.physical_jitter, i.draw);
     if (!damage.candidate)
         return false;
     c.physical_damage = damage.candidate;
@@ -64,7 +78,16 @@ bool hit(WorldAttackCandidate &c, const WorldAttackInput &i, CharacterId target)
         c.state.battle.actors.emplace(target, c.state.retired_actors.at(target));
     const auto result = prepare_battle_commit(
         c.state.battle, {i.actor, target, damage.candidate->value, i.weapon.kind, i.actor_visible,
-                         i.drop_ticket, i.drop_selection});
+                         i.drop_ticket, i.drop_selection, i.draw,
+                         [&](const BattleCommitState &, CharacterId actor, int kind, int delay) {
+                             return expression(c.state, actor, kind, delay, i.expression,
+                                               static_cast<bool>(i.draw));
+                         },
+                         [&](const BattleCommitState &battle, int event) {
+                             return consume_world_combat_event(c.state, battle, event, i.event,
+                                                               c.popularity_queue,
+                                                               static_cast<bool>(i.draw));
+                         }});
     if (!result.candidate)
         return false;
     c.hit = result.candidate->hit;
@@ -115,6 +138,7 @@ WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
     policy.attack_slot = a.attack_slot;
     policy.policy_ticket = i.policy_ticket;
     policy.healing_ticket = i.healing_ticket;
+    policy.draw = i.draw;
     if (!(a.control.flags & 4U) && a.control.action != 4) {
         if (a.perceived_enemy) {
             if (!resolve(s, *a.perceived_enemy) || !s.contexts.count(*a.perceived_enemy))
@@ -165,9 +189,11 @@ WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
         return failed(AiRewardError::preparation_failed);
     c.strategy = *strategy.candidate;
     if (c.strategy.face_enemy) {
-        if (!facing(i.facing))
+        const auto direction = i.facing_for && a.perceived_enemy
+            ? i.facing_for(i.actor, *a.perceived_enemy) : i.facing;
+        if (!facing(direction))
             return failed(AiRewardError::invalid_input);
-        a.control.facing = *i.facing;
+        a.control.facing = *direction;
     }
     if (c.strategy.clear_animation_flag)
         a.control.flags &= ~2U;
@@ -195,6 +221,8 @@ WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
         transition.next_state = 18;
         transition.legacy_u = definition->second.definition.legacy_u;
         transition.boost_ticket = i.boost_ticket;
+        if (!transition.boost_ticket && !(a.control.flags & 2048U) && i.draw)
+            transition.boost_ticket = i.draw(100);
         transition.boost_event116_seen = s.battle.events.count(116);
         const auto prepared = prepare_actor_state_transition(transition);
         if (!prepared)
@@ -233,9 +261,10 @@ WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
         const auto target = a.kind == ActorKind::human ? a.perceived_enemy : c.fresh_enemy;
         if (!target)
             return failed(AiRewardError::stale_actor);
-        const auto setup =
-            prepare_world_attack_setup(c.state, {i.actor, *target, i.weapon, i.attack_tickets,
-                                                 i.monster_miss_ticket, i.facing});
+        const auto direction = i.facing_for ? i.facing_for(i.actor, *target) : i.facing;
+        const auto setup = prepare_world_attack_setup(
+            c.state, {i.actor, *target, i.weapon, i.attack_tickets, i.monster_miss_ticket, direction,
+                      i.draw, i.expression});
         if (!setup.candidate)
             return failed(setup.error);
         c.state = setup.candidate->state;
@@ -246,15 +275,17 @@ WorldCombatPolicyResult prepare_world_combat_policy(const AiRewardState &s,
     case CombatDecision::offensive_spell:
     case CombatDecision::healing_spell: {
         const bool heal = c.strategy.decision == CombatDecision::healing_spell;
+        const auto direction = i.facing_for && a.perceived_enemy
+            ? i.facing_for(i.actor, *a.perceived_enemy) : i.facing;
         if (!heal && (a.attack_count < 0 || a.attack_count == std::numeric_limits<int>::max() ||
-                      !facing(i.facing)))
+                      !facing(direction)))
             return failed(AiRewardError::invalid_input);
         a.control.queue = {{3, 4}, {heal ? 16 : 15}, {3, 0}, {1, 10, 0}, {7, 4}};
         a.control.flags |= 4U;
         if (!heal) {
             ++a.attack_count;
             a.miss = false;
-            a.control.facing = *i.facing;
+            a.control.facing = *direction;
             c.requests.push_back({WorldAttackVisual::cast_sound, i.actor, {}, 10});
         }
         break;
@@ -285,20 +316,26 @@ WorldAttackResult prepare_world_attack_setup(const AiRewardState &s,
         const auto growth = s.growth.find(a.definition);
         if (growth == s.growth.end())
             return fail(AiRewardError::invalid_input);
+        if (!expression(c.state, i.actor, 1, 0, i.expression, static_cast<bool>(i.draw)))
+            return fail(AiRewardError::preparation_failed);
         const auto setup = prepare_human_attack(
             {growth->second.derived.attributes[2], i.weapon.kind, i.weapon.combo, i.weapon.miss_low,
-             i.weapon.miss_high, (a.control.flags & 2048U) != 0, i.human_tickets});
+             i.weapon.miss_high, (a.control.flags & 2048U) != 0, i.human_tickets, i.draw});
         if (!setup.candidate)
             return fail(AiRewardError::preparation_failed);
         a.miss = setup.candidate->miss;
         a.combo_index = 0;
         a.combo_count = setup.candidate->combo_count;
         a.control.queue = setup.candidate->queue;
-        c.requests.push_back({WorldAttackVisual::expression, i.actor, {}, 1});
+        if (!i.expression)
+            c.requests.push_back({WorldAttackVisual::expression, i.actor, {}, 1});
     } else {
-        if (!i.monster_miss_ticket || *i.monster_miss_ticket < 0 || *i.monster_miss_ticket >= 100)
+        const auto miss_ticket = i.monster_miss_ticket ? i.monster_miss_ticket
+                                 : i.draw              ? i.draw(100)
+                                                       : std::optional<int>{};
+        if (!miss_ticket || *miss_ticket < 0 || *miss_ticket >= 100)
             return fail(AiRewardError::invalid_input);
-        a.miss = *i.monster_miss_ticket < 12;
+        a.miss = *miss_ticket < 12;
         const float dx = target.position.x - a.position.x, dz = target.position.z - a.position.z;
         const float distance = std::sqrt(dx * dx + dz * dz);
         if (!std::isfinite(distance) || distance == 0)
@@ -359,7 +396,8 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
         if (frame.candidate->request_damage && !hit(c, i, *c.target))
             return fail(AiRewardError::preparation_failed);
         if (frame.candidate->request_arrow &&
-            !launch(c, i.actor, *c.target, ProjectileKind::arrow, i.facing))
+            !launch(c, i.actor, *c.target, ProjectileKind::arrow,
+                    i.facing_for ? i.facing_for(i.actor, *c.target) : i.facing))
             return fail(AiRewardError::preparation_failed);
     } else if (opcode == 15 || opcode == 16) {
         if (original.kind != ActorKind::human || !s.growth.count(original.definition))
@@ -397,14 +435,16 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
                          (original.control.flags & 2048U) != 0,
                          i.spell_ticket,
                          i.enhancement_ticket,
-                         i.magic_jitter});
+                         i.magic_jitter,
+                         i.draw});
                     if (!damage.candidate ||
-                        !launch(c, i.actor, *c.target, ProjectileKind::spell, i.facing,
+                        !launch(c, i.actor, *c.target, ProjectileKind::spell,
+                                i.facing_for ? i.facing_for(i.actor, *c.target) : i.facing,
                                 damage.candidate->effect, damage.candidate->damage.value))
                         return fail(AiRewardError::preparation_failed);
                 } else {
                     const auto amount =
-                        prepare_healing_amount(growth.derived.combat[3], i.magic_jitter);
+                        prepare_healing_amount(growth.derived.combat[3], i.magic_jitter, i.draw);
                     auto &target = c.state.battle.actors.at(*c.target);
                     if (!amount.candidate || target.capacity <= 0 || target.state_counter < 0)
                         return fail(AiRewardError::preparation_failed);
@@ -464,9 +504,13 @@ WorldAttackResult prepare_world_attack_control(const AiRewardState &s, const Wor
         c.state.battle.actors.at(i.actor).attack_armed = frame.candidate->armed;
         if (c.target && !hit(c, i, *c.target))
             return fail(AiRewardError::preparation_failed);
+        if (c.hit && c.hit->landed) {
+            if (!expression(c.state, *c.target, 0, 0, i.expression, static_cast<bool>(i.draw)))
+                return fail(AiRewardError::preparation_failed);
+            if (!i.expression)
+                c.requests.push_back({WorldAttackVisual::expression, *c.target, {}, 0});
+        }
         c.state.battle.actors.at(i.actor).attack_position = frame.candidate->position;
-        if (c.hit && c.hit->landed)
-            c.requests.push_back({WorldAttackVisual::expression, *c.target, {}, 0});
         c.completed = frame.candidate->completed;
     }
     if (c.completed)

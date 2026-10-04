@@ -8,6 +8,7 @@ namespace dungeon_village_reference {
 struct WorldLifecycleInput {
     CharacterId actor;
     std::vector<WorldExpressionTicket> expressions; // 状态2按expression3、4实际调用顺序读取。
+    WorldExpressionDraw expression_draw{};
 };
 enum class WorldLifecycleError {
     none,

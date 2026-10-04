@@ -263,19 +263,19 @@ void actual_final_boundary() {
     add_actor(s, 2, ActorKind::human, 1);
     s.world.ai.contexts.at({1}).inside_town = false;
     s.world.ai.contexts.at({2}).inside_town = false;
-    s.world.ai.contexts.at({1}).cell = {1, 4};
-    s.world.ai.contexts.at({2}).cell = {1, 4};
+    s.world.ai.contexts.at({1}).cell = {1, s.town.top};
+    s.world.ai.contexts.at({2}).cell = {1, s.town.top};
     auto r = prepare_world_schedule_overlap(s, {});
     check(r && r->world.ai.battle.actors.at({1}).position.x == 150,
-          "L uses town bottom [1][1], not top [1][0] even when cached ax=false");
-    s.world.ai.contexts.at({1}).cell.y = 6;
-    s.world.ai.contexts.at({2}).cell.y = 6;
+          "L excludes exact transformed minimumY h.l[n.o][1][1] even with cached ax=false");
+    s.world.ai.contexts.at({1}).cell.y = s.town.top + 1;
+    s.world.ai.contexts.at({2}).cell.y = s.town.top + 1;
     check(!prepare_world_schedule_overlap(s, {}),
           "eligible outside pair requires RNG even if cached/world coordinates disagree");
     s.world.ai.battle.actors.at({2}).position = {160, 13, 160};
     r = prepare_world_schedule_overlap(s, {0});
     check(r && r->world.ai.battle.actors.at({1}).position.x == 130 &&
-              r->world.ai.contexts.at({1}).cell == Position{1, 6} &&
+              r->world.ai.contexts.at({1}).cell == Position{1, s.town.top + 1} &&
               r->world.ai.contexts.at({1}).half_cell == Position{3, 3} &&
               r->world.ai.battle.actors.at({2}).position.height == 13,
           "L writes n.x/z only, leaves s/t and height untouched after source alias separation");

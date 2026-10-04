@@ -8,6 +8,8 @@ struct WorldActorTailInput {
     CharacterId actor;
     WorldMapFacts facts;
     std::vector<Position> spawn_cells; // Map.f, raw order; no invented entrances.
+    // 原a.a(n,u)之后、留存r之前的朝向；旧v由外层表现缓存捕获，不把像素引入核心。
+    std::function<std::optional<int>(const BattleActorRecord &)> facing_after_projection{};
 };
 struct WorldActorTailCandidate {
     RescueWorldState state;
@@ -15,6 +17,7 @@ struct WorldActorTailCandidate {
     ActorDeletionReason deletion_reason{ActorDeletionReason::none};
     bool cleaned_up{};
     bool queried_area{};
+    std::optional<BattleActorRecord> projected_actor{}; // 物理/朝向后、r留存前的n/u输入。
 };
 struct WorldActorTailResult {
     RescueWorldError error{RescueWorldError::none};
@@ -22,6 +25,8 @@ struct WorldActorTailResult {
 };
 // Old-s L/M -> physics/K/s/t -> ab/r -> spawn/empty path/short exit -> monster db -> bad area.
 // No common d prefix/control, no eager ax update, no removal or garbage collection here.
+WorldActorTailResult prepare_world_detached_actor_tail(const RescueWorldState &state,
+                                                       const WorldActorTailInput &input);
 WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &state,
                                               const WorldActorTailInput &input);
 // Schedule's actual erase: human d true first releases current q FIRST matching occupant;

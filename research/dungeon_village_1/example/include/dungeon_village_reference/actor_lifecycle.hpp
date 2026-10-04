@@ -20,7 +20,8 @@ enum class LifecycleRequestKind {
     follow_actor,
     remove_event_member,
     normal_death_rewards,
-    cancelled_death_effect
+    cancelled_death_effect,
+    landing_effect // 原state15 B60的cd18，不能误登记为global20。
 };
 struct LifecycleRequest {
     LifecycleRequestKind kind;

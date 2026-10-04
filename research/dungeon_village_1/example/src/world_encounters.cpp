@@ -62,6 +62,7 @@ WorldEventEntryResult prepare_world_event_entry(const AiRewardState &s, const Wo
         return fail(AiRewardError::invalid_input);
     EncounterCreationInput create;
     create.kind = 2;
+    create.draw = i.draw;
     create.center = i.task.center;
     for (int offset = -1; offset <= 1; ++offset)
         create.upper_band_town[static_cast<std::size_t>(offset + 1)] =

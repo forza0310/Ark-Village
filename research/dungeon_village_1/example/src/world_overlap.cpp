@@ -91,11 +91,23 @@ WorldOverlapResult prepare_world_overlap(const WorldOverlapInput &i) {
             error = WorldOverlapError::attempt_limit;
             return false;
         }
-        if (c.consumed_tickets >= i.direction_tickets.size()) {
+        std::optional<int> supplied;
+        if (c.consumed_tickets < i.direction_tickets.size())
+            supplied = i.direction_tickets[c.consumed_tickets];
+        else if (i.draw) {
+            try {
+                supplied = i.draw(2);
+            } catch (...) {
+                error = WorldOverlapError::invalid_input;
+                return false;
+            }
+        }
+        if (!supplied) {
             error = WorldOverlapError::missing_ticket;
             return false;
         }
-        const int ticket = i.direction_tickets[c.consumed_tickets++];
+        const int ticket = *supplied;
+        ++c.consumed_tickets;
         if (ticket < 0 || ticket >= 2) {
             error = WorldOverlapError::invalid_input;
             return false;

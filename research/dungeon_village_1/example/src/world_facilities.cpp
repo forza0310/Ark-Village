@@ -45,10 +45,25 @@ WorldFacilityUseResult prepare_world_facility_use(const RescueWorldState &s,
     const auto &a = s.ai.battle.actors.at(i.actor);
     if (a.kind == ActorKind::monster && !(f->category == 6 && f->detail == 3))
         return {RescueWorldError::invalid_input, {}, false}; // P() has different other categories.
-    const auto plan =
-        prepare_facility_use_plan({a.control, f->category, f->detail, i.mode, f->definition_wait,
-                                   s.actors.at(i.actor).visits.legacy_category_six_counter,
-                                   i.world_target, i.direction_ticket});
+    auto direction = i.direction_ticket;
+    if (f->category == 8 && f->detail == 2 && !direction && i.draw) {
+        try {
+            direction = i.draw(4);
+        } catch (...) {
+            return {RescueWorldError::preparation_failed, {}, false};
+        }
+    }
+    auto target = i.world_target;
+    if (f->category == 8 && f->detail == 2 && !target && direction && i.direction_target) {
+        try {
+            target = i.direction_target(*direction);
+        } catch (...) {
+            return {RescueWorldError::preparation_failed, {}, false};
+        }
+    }
+    const auto plan = prepare_facility_use_plan(
+        {a.control, f->category, f->detail, i.mode, f->definition_wait,
+         s.actors.at(i.actor).visits.legacy_category_six_counter, target, direction});
     if (!plan.candidate)
         return {RescueWorldError::preparation_failed, {}, false};
     if (plan.candidate->cleanup) {
@@ -75,10 +90,14 @@ WorldFacilityControlResult prepare_world_facility_control(const RescueWorldState
     const auto failed = [](RescueWorldError e) -> WorldFacilityControlResult { return {e, {}}; };
     if (!live(s, i.actor))
         return failed(RescueWorldError::stale_actor);
+    if (i.domain_limit == 0)
+        return failed(RescueWorldError::invalid_input);
     WorldFacilityControlCandidate c;
     c.state = s;
+    std::size_t domains{};
     for (;;) {
-        const auto simple = prepare_world_inn_control(c.state, i.actor);
+        const auto before = c.state.ai.battle.actors.at(i.actor).control.queue;
+        const auto simple = prepare_world_inn_control(c.state, i.actor, i.domain_limit - domains);
         if (!simple.candidate)
             return failed(simple.error);
         c.state = simple.candidate->state;
@@ -87,6 +106,9 @@ WorldFacilityControlResult prepare_world_facility_control(const RescueWorldState
         c.cleaned_up |= simple.candidate->cleaned_up;
         c.flow = simple.candidate->flow;
         auto &a = c.state.ai.battle.actors.at(i.actor);
+        if (!before.empty() && before.front()[0] == 21 && before != a.control.queue &&
+            ++domains >= i.domain_limit)
+            break;
         if (a.control.queue.empty() || c.flow == ActorControlFlow::waiting || c.exited ||
             c.cleaned_up)
             break;
@@ -161,6 +183,8 @@ WorldFacilityControlResult prepare_world_facility_control(const RescueWorldState
             return {RescueWorldError::none, c};
         }
         a.control.queue.erase(a.control.queue.begin());
+        if (++domains >= i.domain_limit)
+            break;
     }
     return {RescueWorldError::none, c};
 }

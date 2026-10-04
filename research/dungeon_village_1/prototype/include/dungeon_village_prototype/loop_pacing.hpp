@@ -6,7 +6,7 @@
 
 namespace dungeon_village_prototype {
 struct OriginalLoopPacing {
-    std::int64_t last_start_ms{}; // s set AFTER waiting, BEFORE input/scene update/drawing.
+    std::int64_t last_start_ms{}; // s set after wait on the render/input path, not per AI round.
     int parameter{20};            // e()==v-1; constructor v21. Not the measured x/w FPS estimate.
 };
 struct OriginalLoopWait {

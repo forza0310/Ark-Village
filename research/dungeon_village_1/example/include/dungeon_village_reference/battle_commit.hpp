@@ -91,6 +91,11 @@ struct BattleCommitInput {
     bool attacker_visible{};
     std::optional<int> drop_ticket; // Lethal monster: always consumes100 before first-visit guard.
     std::optional<DropSelectionInput> drop_selection; // Required only when hit requests spawn_drop.
+    CombatRandomDraw draw{};
+    // state2后、救援/统计/脚本之前的真实c(2,16)。只借用外层私有表现/随机候选。
+    std::function<bool(const BattleCommitState &, CharacterId, int, int)> expression{};
+    // 131/217的原case同步脚本。返回当前真实脚本登记集，仅可扩展，不能回填旧战斗。
+    std::function<std::optional<std::set<int>>(const BattleCommitState &, int)> external_event{};
 };
 enum class BattleCommitError {
     none,

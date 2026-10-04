@@ -2,6 +2,7 @@
 
 // Weapon-only selection. Equipment cooldown is not stock, money or facility use duration.
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <vector>
 
@@ -27,7 +28,8 @@ struct WeaponChoiceResult {
 WeaponChoiceResult prepare_weapon_choice(const std::vector<WeaponChoiceDefinition> &catalogue,
                                          std::int32_t current_weapon_id,
                                          std::int32_t reselect_counter,
-                                         std::optional<int> ticket = std::nullopt);
+                                         std::optional<int> ticket = std::nullopt,
+                                         const std::function<std::optional<int>(int)> &draw = {});
 
 enum class EquipmentChoiceKind { armor, accessory };
 struct EquipmentChoiceDefinition {
@@ -43,6 +45,8 @@ struct EquipmentChoiceInput {
     std::optional<int> current; // Null equipment uses rank0 and does NOT block on A[slot]>0.
     int reselect_counter{};
     std::optional<int> ticket;
+    // 仅真实候选非空时调用，已有装备且冷却为正不抽；空槽不受冷却阻止。
+    std::function<std::optional<int>(int)> draw{};
 };
 struct EquipmentChoiceCandidate {
     int equipment_id{};

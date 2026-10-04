@@ -13,7 +13,8 @@ bool within(Position a, Position b, int distance) {
 }
 } // namespace
 EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
-                                                   const EncounterCreationInput &i) {
+                                                   const EncounterCreationInput &i,
+                                                   const EncounterCreationConsumer &consumer) {
     auto fail = [](AiRewardError error) { return EncounterCreationResult{error, std::nullopt}; };
     if (i.kind < 0 || i.kind > 2 || i.center.x < 0 || i.center.y < 0 || i.center.x > 9998 ||
         i.center.y > 9998 || s.monster_limit < 0 || s.monster_progress < 0 ||
@@ -33,10 +34,22 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
         if (actor == s.battle.actors.end() || context == s.contexts.end() ||
             !(actor->second.id == i.probe->actor) || !(context->second.cell == i.center))
             return fail(AiRewardError::stale_actor);
-        const auto gate = prepare_spawn_probe(
-            {actor->second.kind, actor->second.control.state, context->second.inside_town,
-             i.probe->destination_inside_town, i.center.y, i.probe->minimum_y,
-             static_cast<int>(s.monster_order.size()), s.monster_limit, i.probe->ticket});
+        SpawnProbeInput probe{actor->second.kind,
+                              actor->second.control.state,
+                              context->second.inside_town,
+                              i.probe->destination_inside_town,
+                              i.center.y,
+                              i.probe->minimum_y,
+                              static_cast<int>(s.monster_order.size()),
+                              s.monster_limit,
+                              i.probe->ticket};
+        auto gate = prepare_spawn_probe(probe);
+        if (!gate.candidate && !probe.ticket && i.draw && probe.state >= 0 && probe.state <= 20 &&
+            !(probe.inside_town && probe.kind == ActorKind::monster) &&
+            !probe.destination_inside_town && probe.cell_y >= probe.minimum_y) {
+            probe.ticket = i.draw(1000); // 原L先抽，再检查怪物数量上限。
+            gate = prepare_spawn_probe(probe);
+        }
         if (!gate.candidate)
             return fail(AiRewardError::preparation_failed);
         c.consumed_probe = gate.candidate->consumes_ticket;
@@ -101,9 +114,9 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
                 ++nearby;
         }
         const auto count = prepare_normal_monster_count(
-            {i.year_index, i.month_index, nearby, i.count_ticket, i.nearby_ticket});
+            {i.year_index, i.month_index, nearby, i.count_ticket, i.nearby_ticket, i.draw});
         if (!count.candidate ||
-            i.monsters.size() < static_cast<std::size_t>(count.candidate->count))
+            (!i.draw && i.monsters.size() < static_cast<std::size_t>(count.candidate->count)))
             return fail(AiRewardError::preparation_failed);
         c.consumed_count = true;
         c.consumed_nearby = count.candidate->consumes_nearby_ticket;
@@ -123,9 +136,12 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
                                      d->second.status == 1, d->second.growth,
                                      d->second.introduced});
             }
-            const auto &draw = i.monsters[static_cast<std::size_t>(n)];
-            const auto choice = prepare_monster_choice(catalogue, c.state.monster_progress,
-                                                       c.state.task_active, draw.definition_ticket);
+            const bool prefix = static_cast<std::size_t>(n) < i.monsters.size();
+            const auto draw =
+                prefix ? i.monsters[static_cast<std::size_t>(n)] : EncounterCreationDraw{};
+            const auto choice =
+                prepare_monster_choice(catalogue, c.state.monster_progress, c.state.task_active,
+                                       draw.definition_ticket, i.draw);
             if (!choice.candidate)
                 return fail(AiRewardError::preparation_failed);
             ++c.consumed_definitions; // Always draw catalogue length, even forced def13.
@@ -136,18 +152,29 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
             }
             int selected = choice.candidate->selected;
             if (choice.candidate->request_introduction) {
-                auto &d = c.state.monster_growth.at(selected);
-                if (d.has_introduction_script)
-                    c.requests.push_back(
-                        {EncounterCreationRequestKind::definition_script, selected});
-                c.requests.push_back({EncounterCreationRequestKind::page89, selected});
-                d.introduced = true;
+                const auto invoke = [&](EncounterCreationRequest request) {
+                    c.requests.push_back(request);
+                    if (!consumer)
+                        return true; // 明确纯计划调用；实际Owner必须提供同步消费者。
+                    auto consumed = consumer(c.state, request);
+                    if (!consumed)
+                        return false;
+                    c.state = std::move(*consumed);
+                    return true;
+                };
+                if (c.state.monster_growth.at(selected).has_introduction_script &&
+                    !invoke({EncounterCreationRequestKind::definition_script, selected}))
+                    return fail(AiRewardError::preparation_failed);
+                if (!invoke({EncounterCreationRequestKind::page89, selected}))
+                    return fail(AiRewardError::preparation_failed);
+                c.state.monster_growth.at(selected).introduced = true;
             }
             if (i.source_force_definition13)
                 selected =
                     13; // Source override AFTER selection/intro, not an alternate draw branch.
             const auto spawn = prepare_encounter_monster_spawn(
-                c.state, *c.created, {i.center, selected, false}, draw.offset_tickets);
+                c.state, *c.created, {i.center, selected, false}, draw.offset_tickets,
+                prefix ? std::function<std::optional<int>(int)>{} : i.draw);
             if (!spawn.candidate)
                 return fail(spawn.error);
             c.state = spawn.candidate->state;
@@ -161,6 +188,14 @@ EncounterCreationResult prepare_encounter_creation(const AiRewardState &s,
             c.state.battle.quest_encounters.insert(*c.created);
             c.requests.push_back({EncounterCreationRequestKind::refresh_map, 0});
         }
+    }
+    // 最后的地图刷新同样在真实调用点消费；介绍请求已在各自spawn之前同步执行。
+    if (consumer && !c.requests.empty() &&
+        c.requests.back().kind == EncounterCreationRequestKind::refresh_map) {
+        auto consumed = consumer(c.state, c.requests.back());
+        if (!consumed)
+            return fail(AiRewardError::preparation_failed);
+        c.state = std::move(*consumed);
     }
     return {AiRewardError::none, c};
 }

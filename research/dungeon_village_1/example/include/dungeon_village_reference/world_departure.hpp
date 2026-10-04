@@ -21,6 +21,8 @@ struct WorldDepartureInput {
     std::vector<Position> exits;            // 原序 Map.f 真实出口；住宅命中时不读取此字段。
     Position task_center;                   // 仅当前任务有效时读取的任务中心。
     std::vector<std::int64_t> tickets;      // 按真实顺序消费，未使用队尾不会消费。
+    std::function<std::optional<std::int64_t>(int)> draw;
+    // tickets耗尽时按实际上限请求一个号；只能操作外层私有随机候选，失败整体回滚。
 };
 enum class WorldDepartureError {
     none,
@@ -58,6 +60,8 @@ WorldDepartureResult prepare_world_departure(const RescueWorldState &state,
 struct WorldDepartureControlInput {
     WorldDepartureInput departure; // 人物/目录/票号；活动参数以实际队首 8 为准。
     std::optional<WorldExpressionTicket> failure_expression; // 仅旧 1024，真实 c(18,0) 抽取。
+    std::function<std::optional<WorldExpressionTicket>(const ActorEffectState &, int)>
+        expression_draw{};
 };
 struct WorldDepartureControlCandidate {
     RescueWorldState state;
@@ -81,6 +85,10 @@ struct WorldDepartureControlResult {
 WorldDepartureControlResult
 prepare_world_departure_control(const RescueWorldState &state,
                                 const WorldDepartureControlInput &input);
+// 仅MainScene.W；不改变普通名单入口或P寻路执行入口的live约束。
+WorldDepartureControlResult
+prepare_world_detached_departure_control(const RescueWorldState &state,
+                                         const WorldDepartureControlInput &input);
 
 // 复杂a(m,o)分支必须由真实领域消费者提交，不用普通到访默认值替代救援/装备/物体交付。
 struct WorldPathFacilityRequest {
@@ -109,6 +117,9 @@ struct WorldPathInput {
     std::optional<int> use_direction_ticket;
     WorldPathTaskAttempt task_attempt;
     WorldPathFacilityConsumer facility_consumer;
+    WorldExpressionDraw expression_draw{};
+    std::function<std::optional<int>(int)> draw{};
+    std::function<std::optional<Position>(int)> use_direction_target{};
 };
 enum class WorldPathError {
     none,

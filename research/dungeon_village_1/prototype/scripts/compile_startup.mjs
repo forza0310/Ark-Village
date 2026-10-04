@@ -109,11 +109,16 @@ export function compileStartup(map, state, tables, tenantText) {
     first.equipment_ids.join(',') === equipment.join(',') && first.derived_attributes.join(',') === attributes.join(',') &&
     first.initial_hp_slots.join(',') === '22,22,22' && first.combat.join(',') === '22,7,2,2',
     '首名人物身份或属性不一致');
+  requireValue(Array.isArray(first.legacy_D) && first.legacy_D.join(',') === '0,0,0,0' &&
+    first.legacy_m === 0, '无继承首名共享住宅/离村初值不一致');
   const talk = tables.talk.selected.find(record => record.id === 69)?.record.split('\t').slice(4);
   requireValue(talk?.length === 2, '首访对话缺失');
   const b = state.boundary.build_interior;
   requireValue([b.min_x,b.max_x,b.min_y,b.max_y].join(',') === '7,16,3,9' &&
     state.boundary.spawn_points.map(v => v.join(',')).join(';') === '11,0;12,0', '边界/出生点契约变化');
+  requireValue(state.boundary.character_spawn_minimum_y === map.regions_l[0].logical[3] &&
+    state.boundary.world_overlap_boundary_y === map.regions_l[0].logical[3],
+    '人物L与世界L必须读取原区域[1][1]翻转后的较小Y');
   requireValue(state.resources.money === 5000 && state.resources.village_points === 10 &&
     state.resources.popularity === 50 && state.reset.arrival_counter === 420 &&
     state.reset.unlocked_character_definitions.join(',') === '1,2,3', '首局资源/解锁初值变化');
@@ -179,7 +184,7 @@ export function compileStartup(map, state, tables, tenantText) {
     `#include "dungeon_village_prototype/startup_ai.hpp"\nnamespace dungeon_village_prototype {\n` +
     `const StartupEvidence &startup_evidence() {\nstatic const StartupEvidence value{\n` +
     `24,24,{${cells.map(v => list(v)).join(',')}},\n` +
-    `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])}}`).join(',')}},\n` +
+    `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])},${decimal(row[6])}}`).join(',')}},\n` +
     `{${definitions.join(',')}},\n` +
     `{${state.map_seed_instances.map(seed => `{0,${seed.definition_id},{${seed.x},${seed.y}},0,true,{}}`).join(',')}},\n` +
     `{${state.boundary.spawn_points.map(list).join(',')}},${list([b.min_x,b.max_x,b.min_y,b.max_y])},\n` +
@@ -191,8 +196,9 @@ export function compileStartup(map, state, tables, tenantText) {
     `${first.job_level},${first.effort},${first.satisfaction},${list(first.derived_attributes)},` +
     `${list(first.equipment_ids)},${list(first.combat)},${list(first.initial_hp_slots)},{0,0},0,{},` +
     // c/n initial equip calls a/e.a(Character, record, weapon), which writes A[0]=6.
-    `${list(jobRow.slice(13,15).map(decimal))},6},\n` +
-    `{${talk.map(text).join(',')}}};\nreturn value;\n}\n${aiOutput}}\n`;
+    `${list(jobRow.slice(13,15).map(decimal))},6,${list(first.legacy_D)},${first.legacy_m}},\n` +
+    `{${talk.map(text).join(',')}},${state.boundary.character_spawn_minimum_y},` +
+    `${state.boundary.world_overlap_boundary_y}};\nreturn value;\n}\n${aiOutput}}\n`;
   return output;
 }
 

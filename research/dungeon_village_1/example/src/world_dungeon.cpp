@@ -36,6 +36,31 @@ std::optional<CombatPoint> destination(const std::vector<Position> &cells, Dunge
     return CombatPoint{p.x * 100.0F + (t.x_offset + 10) * 100.0F / 100.0F, 0,
                        p.y * 100.0F + (t.z_offset + 10) * 100.0F / 100.0F};
 }
+std::optional<DungeonLaunchTickets>
+resolve_launch(const std::vector<Position> &cells, std::optional<DungeonLaunchTickets> prefix,
+               const std::function<std::optional<int>(int)> &draw, DungeonWorldError &error) {
+    if (prefix)
+        return prefix;
+    if (!draw) {
+        error = DungeonWorldError::missing_ticket;
+        return {};
+    }
+    std::array<int, 3> values{};
+    const std::array<int, 3> bounds{static_cast<int>(cells.size()), 80, 80};
+    for (std::size_t n = 0; n < values.size(); ++n) {
+        const auto value = draw(bounds[n]);
+        if (!value) {
+            error = DungeonWorldError::missing_ticket;
+            return {};
+        }
+        if (*value < 0 || *value >= bounds[n]) {
+            error = DungeonWorldError::invalid_input;
+            return {};
+        }
+        values[n] = *value;
+    }
+    return DungeonLaunchTickets{values[0], values[1], values[2]};
+}
 bool transition(DungeonWorldState &s, CharacterId id, int state) {
     auto &a = s.world.ai.battle.actors.at(id);
     ActorStateTransitionInput i;
@@ -118,7 +143,8 @@ prepare_dungeon_task_success(const DungeonTaskSuccessState &s, int definition, i
     return c;
 }
 DungeonWorldResult prepare_world_dungeon_entry(const DungeonWorldState &s, CharacterId id,
-                                               std::optional<int> ticket) {
+                                               std::optional<int> ticket,
+                                               const std::function<std::optional<int>(int)> &draw) {
     if (!live(s, id))
         return {DungeonWorldError::stale_actor, {}};
     const auto &a = s.world.ai.battle.actors.at(id);
@@ -144,6 +170,8 @@ DungeonWorldResult prepare_world_dungeon_entry(const DungeonWorldState &s, Chara
         const bool uniform = std::all_of(progress.challenges.begin(), progress.challenges.end() - 1,
                                          [&](const auto &r) { return r[1] == first_type; });
         if (uniform && (first_type == 0 || first_type == 1)) {
+            if (!ticket && draw)
+                ticket = draw(2);
             if (!ticket)
                 return {DungeonWorldError::missing_ticket, {}};
             if (*ticket < 0 || *ticket >= 2)
@@ -157,9 +185,10 @@ DungeonWorldResult prepare_world_dungeon_entry(const DungeonWorldState &s, Chara
     c.state.world.facilities.at(f->placement.instance_id.value).occupants.push_back(id);
     return {DungeonWorldError::none, c};
 }
-DungeonWorldResult prepare_world_dungeon_retreat(const DungeonWorldState &s, CharacterId id,
-                                                 Position origin, TownBounds town,
-                                                 std::optional<DungeonLaunchTickets> tickets) {
+DungeonWorldResult
+prepare_world_dungeon_retreat(const DungeonWorldState &s, CharacterId id, Position origin,
+                              TownBounds town, std::optional<DungeonLaunchTickets> tickets,
+                              const std::function<std::optional<int>(int)> &draw) {
     if (!live(s, id))
         return {DungeonWorldError::stale_actor, {}};
     if (!valid_legacy_map(s.world.map) || !town_valid(town) || origin.x < 0 ||
@@ -174,8 +203,10 @@ DungeonWorldResult prepare_world_dungeon_retreat(const DungeonWorldState &s, Cha
     const auto cells = destinations(s.world.map, origin, town);
     if (cells.empty())
         return {DungeonWorldError::none, c};
+    DungeonWorldError error{DungeonWorldError::none};
+    tickets = resolve_launch(cells, tickets, draw, error);
     if (!tickets)
-        return {DungeonWorldError::missing_ticket, {}};
+        return {error, {}};
     const auto target = destination(cells, *tickets);
     if (!target)
         return {DungeonWorldError::invalid_input, {}};
@@ -206,7 +237,8 @@ DungeonWorldResult prepare_world_dungeon_retreat(const DungeonWorldState &s, Cha
     return {DungeonWorldError::none, c};
 }
 DungeonWorldResult prepare_world_dungeon_crew(const DungeonWorldState &s,
-                                              const DungeonWorldCrewInput &i) {
+                                              const DungeonWorldCrewInput &i,
+                                              const DungeonWorldRequestConsumer &consumer) {
     const auto old = s.world.facilities.find(i.facility);
     const auto p = s.facilities.find(i.facility);
     if (old == s.world.facilities.end() || p == s.facilities.end() || old->second.category != 5 ||
@@ -246,7 +278,7 @@ DungeonWorldResult prepare_world_dungeon_crew(const DungeonWorldState &s,
         if (c.consumed_launches < i.launches.size())
             launch = i.launches[c.consumed_launches];
         const auto retreat = prepare_world_dungeon_retreat(
-            c.state, id, old->second.placement.anchor, i.town, launch);
+            c.state, id, old->second.placement.anchor, i.town, launch, i.draw);
         if (!retreat.candidate)
             return retreat;
         c.state = retreat.candidate->state;
@@ -285,9 +317,15 @@ DungeonWorldResult prepare_world_dungeon_crew(const DungeonWorldState &s,
         } else if (request.kind == DungeonCrewRequestKind::spawn_catalog_reward) {
             const auto cells = destinations(s.world.map, old->second.placement.anchor, i.town);
             if (!cells.empty()) {
-                if (c.consumed_launches >= i.launches.size())
-                    return {DungeonWorldError::missing_ticket, {}};
-                const auto target = destination(cells, i.launches[c.consumed_launches++]);
+                std::optional<DungeonLaunchTickets> prefix;
+                if (c.consumed_launches < i.launches.size())
+                    prefix = i.launches[c.consumed_launches];
+                DungeonWorldError error{DungeonWorldError::none};
+                const auto launch = resolve_launch(cells, prefix, i.draw, error);
+                if (!launch)
+                    return {error, {}};
+                const auto target = destination(cells, *launch);
+                ++c.consumed_launches;
                 const auto id = c.state.world.ai.battle.next_object_id;
                 if (!target || !id || id == std::numeric_limits<std::uint64_t>::max() ||
                     c.state.world.ai.battle.objects.count(id))
@@ -311,6 +349,12 @@ DungeonWorldResult prepare_world_dungeon_crew(const DungeonWorldState &s,
             if (!transition(c.state, *request.actor, 0))
                 return {DungeonWorldError::preparation_failed, {}};
             a.control.queue = {{1, request.first, 0}, {8, 0}};
+        }
+        if (consumer) {
+            const auto consumed = consumer(c.state, record);
+            if (!consumed)
+                return {DungeonWorldError::preparation_failed, {}};
+            c.state = *consumed;
         }
         c.requests.push_back(std::move(record));
     }

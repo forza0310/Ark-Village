@@ -10,4 +10,9 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
                        const std::optional<std::filesystem::path> &screenshot,
                        const std::string &inspect_page = {});
 void check_startup();
+int run_startup_world_window(const std::filesystem::path &assets,
+                             const std::filesystem::path &font, bool paused, int frames,
+                             const std::optional<std::filesystem::path> &screenshot,
+                             const std::string &inspect_page = {});
+void check_startup_world();
 } // namespace dungeon_village_prototype

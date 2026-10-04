@@ -88,6 +88,8 @@ struct AiRewardState {
     bool task_completed{};
     bool feature16{};
 };
+using WorldCombatExpressionConsumer =
+    std::function<std::optional<ActorEffectState>(CharacterId, const ActorEffectState &, int, int)>;
 enum class AiRewardError { none, invalid_input, stale_actor, stale_encounter, preparation_failed };
 struct AiRewardCandidate {
     AiRewardState state;
@@ -101,6 +103,31 @@ struct AiRewardResult {
     std::optional<AiRewardCandidate> candidate;
 };
 AiRewardResult prepare_monster_death_commit(const AiRewardState &state, CharacterId monster);
+// 外部脚本/任务/页面可以明确写回这些全局字段，不能整AI回填旧actor/field/设施根。
+struct EncounterExternalWriteback {
+    std::set<int> events;
+    int pending_completion{};
+    bool task_active{};
+    bool task_completed{};
+    bool feature16{};
+    std::set<CharacterId> external_actor_roots;
+    std::set<std::uint64_t> external_encounter_roots;
+    std::optional<std::map<int, std::array<int, 2>>> monster_availability{}; // 仅task success的p/r。
+};
+EncounterExternalWriteback encounter_external_writeback(const AiRewardState &state);
+bool encounter_request_needs_external(EncounterRequestKind kind);
+struct WorldCombatExternalWriteback {
+    EncounterExternalWriteback globals;
+    std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
+};
+using WorldCombatEventConsumer =
+    std::function<std::optional<WorldCombatExternalWriteback>(const AiRewardState &, int)>;
+// 底层battle当前候选借给外部解释器；只回传明确全球/I，不恢复旧人物/组/影响/设施根。
+std::optional<std::set<int>>
+consume_world_combat_event(AiRewardState &owner, const BattleCommitState &battle, int event,
+                           const WorldCombatEventConsumer &consumer,
+                           std::optional<std::vector<std::array<int, 3>>> &popularity_queue,
+                           bool required);
 struct EncounterCommitInput {
     std::uint64_t encounter{};
     bool town_overlap{};
@@ -110,6 +137,16 @@ struct EncounterCommitInput {
     std::vector<int> posture_tickets; // Separate group sub-consumer draws, before event draws.
     std::optional<std::array<int, 2>> spawn_offset_tickets;   // Two draws100 on actual spawn only.
     std::optional<CombatInfluenceCandidate> snapshot_field{}; // h.e cached BEFORE actor c/d.
+    CombatRandomDraw draw{};
+    // 事件原req位置的实际表情消费者；必须只修改外层私有Owner的表现/随机投影。
+    // provider模式缺此消费者且门槛触发表情时拒绝，不能把抽取移到所有人物之后。
+    std::function<std::optional<AiRewardState>(const AiRewardState &, const EncounterRequest &)>
+        random_request{};
+    // 核心已执行对应scalar/事件登记；外部只提交实际脚本/任务/页栈及其明确后果。
+    // 空hook保留旧纯候选API；共同世界实际路由必须提供，不得只记录通知算成功。
+    std::function<std::optional<EncounterExternalWriteback>(const AiRewardState &,
+                                                            const EncounterRequest &)>
+        external_request{};
 };
 // Rebuilds actor/shared reward inputs from the owner; quest spawn needs two offset tickets.
 AiRewardResult prepare_encounter_reward_commit(const AiRewardState &state,
@@ -121,11 +158,13 @@ AiRewardResult prepare_battle_group_join(const AiRewardState &state, std::uint64
                                          CharacterId caller, CharacterId opponent);
 // Reads each reference's current flags, including retired-but-still-referenced Java objects.
 AiRewardResult prepare_battle_group_commit(const AiRewardState &state, std::uint64_t encounter,
-                                           const std::vector<int> &posture_tickets = {});
+                                           const std::vector<int> &posture_tickets = {},
+                                           const CombatRandomDraw &draw = {});
 // One c.f private a -> n.a -> c(8) -> db/bm/j append. No invented T2/3/4 constructors.
 AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &state, std::uint64_t encounter,
                                                const EncounterSpawnCandidate &spawn,
-                                               const std::array<int, 2> &offset_tickets);
+                                               const std::array<int, 2> &offset_tickets,
+                                               const CombatRandomDraw &draw = {});
 struct WorldProjectileInput {
     std::uint64_t projectile{};
     std::optional<CollisionBox> box; // n.a(0,8/9), required only for live arrow/spell consumers.
@@ -135,6 +174,9 @@ struct WorldProjectileInput {
     bool caster_visible{};
     std::optional<int> drop_ticket;
     std::optional<DropSelectionInput> drop_selection;
+    CombatRandomDraw draw{};
+    WorldCombatExpressionConsumer expression{};
+    WorldCombatEventConsumer event{}; // 致命命中131/217真实原位置，非事后request遍历。
 };
 struct WorldProjectileCandidate {
     AiRewardState state;
@@ -143,6 +185,7 @@ struct WorldProjectileCandidate {
     std::optional<DamageCandidate> physical_damage;
     std::optional<std::uint64_t> spawned_projectile;
     std::vector<std::uint64_t> spawned_objects;
+    std::optional<std::vector<std::array<int, 3>>> popularity_queue{};
 };
 struct WorldProjectileResult {
     AiRewardError error{AiRewardError::none};
@@ -159,5 +202,6 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &state,
 AiRewardState collect_ai_references(AiRewardState state);
 // Rebuild effective attack/defense and boosts from current shared definitions/instances.
 DamageResult prepare_actor_physical_damage(const AiRewardState &state, CharacterId attacker,
-                                           CharacterId target, std::optional<int> jitter);
+                                           CharacterId target, std::optional<int> jitter,
+                                           const CombatRandomDraw &draw = {});
 } // namespace dungeon_village_reference

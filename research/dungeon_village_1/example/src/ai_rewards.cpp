@@ -201,6 +201,52 @@ AiRewardResult prepare_monster_death_commit(const AiRewardState &s, CharacterId 
     collect_retired(c.state);
     return {AiRewardError::none, c};
 }
+EncounterExternalWriteback encounter_external_writeback(const AiRewardState &s) {
+    return {s.battle.events,           s.pending_completion, s.task_active,
+            s.task_completed,          s.feature16,          s.external_actor_roots,
+            s.external_encounter_roots};
+}
+std::optional<std::set<int>>
+consume_world_combat_event(AiRewardState &owner, const BattleCommitState &battle, int event,
+                           const WorldCombatEventConsumer &consumer,
+                           std::optional<std::vector<std::array<int, 3>>> &popularity_queue,
+                           bool required) {
+    if (!consumer)
+        return required ? std::nullopt : std::optional<std::set<int>>(battle.events);
+    auto source = owner;
+    source.battle = battle;
+    const auto fields = consumer(source, event);
+    if (!fields || fields->globals.pending_completion < 0 || fields->globals.monster_availability)
+        return {};
+    owner.pending_completion = fields->globals.pending_completion;
+    owner.task_active = fields->globals.task_active;
+    owner.task_completed = fields->globals.task_completed;
+    owner.feature16 = fields->globals.feature16;
+    owner.external_actor_roots = fields->globals.external_actor_roots;
+    owner.external_encounter_roots = fields->globals.external_encounter_roots;
+    if (fields->popularity_queue)
+        popularity_queue = fields->popularity_queue;
+    auto events = battle.events;
+    events.insert(fields->globals.events.begin(), fields->globals.events.end());
+    return events;
+}
+bool encounter_request_needs_external(EncounterRequestKind kind) {
+    switch (kind) {
+    case EncounterRequestKind::clear_task:
+    case EncounterRequestKind::refresh_map:
+    case EncounterRequestKind::event:
+    case EncounterRequestKind::page30:
+    case EncounterRequestKind::page31:
+    case EncounterRequestKind::completion_delta:
+    case EncounterRequestKind::mark_task_complete:
+    case EncounterRequestKind::refresh_global:
+    case EncounterRequestKind::refresh_task_catalog:
+    case EncounterRequestKind::set_feature16:
+        return true;
+    default:
+        return false;
+    }
+}
 AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
                                                const EncounterCommitInput &i) {
     const auto encounter = s.encounters.find(i.encounter);
@@ -214,6 +260,7 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
     input.quest.participants = s.battle.participants;
     input.quest_cells = i.cells;
     input.tickets = i.tickets;
+    input.draw = i.draw;
     input.town_overlap = i.town_overlap;
     input.event91_present = s.battle.events.count(91);
     input.event128_present = s.battle.events.count(128);
@@ -253,47 +300,52 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
         }
         input.monsters.push_back({id, event_id});
     }
-    const auto step = prepare_encounter_step(input);
-    if (!step.candidate)
-        return fail(AiRewardError::preparation_failed);
-    AiRewardCandidate c{s, step.candidate->remove, {}, step.candidate->requests, {}};
-    c.state.encounters.at(i.encounter).runtime = step.candidate->state;
-    bool spawned = !step.candidate->spawn;
-    for (const auto &r : c.encounter_requests) {
+    AiRewardCandidate c{s, false, {}, {}, {}};
+    std::optional<EncounterSpawnCandidate> planned_spawn;
+    bool spawned = true;
+    auto request_error = AiRewardError::none;
+    const auto reject_request = [&](AiRewardError error) {
+        request_error = error;
+        return false;
+    };
+    const auto consume_request = [&](const EncounterRequest &r) -> bool {
         BattleActorRecord *a{};
         RewardActorContext *ctx{};
         if (r.actor) {
             const auto actor = c.state.battle.actors.find(*r.actor);
             const auto context = c.state.contexts.find(*r.actor);
             if (actor == c.state.battle.actors.end() || context == c.state.contexts.end())
-                return fail(AiRewardError::stale_actor);
+                return reject_request(AiRewardError::stale_actor);
             a = &actor->second;
             ctx = &context->second;
         }
         switch (r.kind) {
         case EncounterRequestKind::update_group: {
-            const auto group = prepare_battle_group_commit(c.state, i.encounter, i.posture_tickets);
+            const auto group =
+                prepare_battle_group_commit(c.state, i.encounter, i.posture_tickets, i.draw);
             if (!group.candidate)
-                return fail(group.error);
+                return reject_request(group.error);
             c.state = group.candidate->state;
             break;
         }
         case EncounterRequestKind::snapshot_influence:
             // Group update precedes spawning; spawning precedes influence snapshot.
             if (!spawned) {
-                if (!i.spawn_offset_tickets)
-                    return fail(AiRewardError::preparation_failed);
+                if (!i.spawn_offset_tickets && !i.draw)
+                    return reject_request(AiRewardError::preparation_failed);
                 c.state.encounters.at(i.encounter).runtime.spawned = input.state.spawned;
                 const auto spawn = prepare_encounter_monster_spawn(
-                    c.state, i.encounter, *step.candidate->spawn, *i.spawn_offset_tickets);
+                    c.state, i.encounter, *planned_spawn,
+                    i.spawn_offset_tickets.value_or(std::array<int, 2>{}),
+                    i.spawn_offset_tickets ? CombatRandomDraw{} : i.draw);
                 if (!spawn.candidate)
-                    return fail(spawn.error);
+                    return reject_request(spawn.error);
                 c.state = spawn.candidate->state;
                 spawned = true; // Constructor commits the single planned count increment.
             }
             if (i.snapshot_field) {
                 if (!valid_combat_influence_field(*i.snapshot_field))
-                    return fail(AiRewardError::invalid_input);
+                    return reject_request(AiRewardError::invalid_input);
                 auto &e = c.state.encounters.at(i.encounter);
                 e.influence = i.snapshot_field;
                 e.human_scratch = i.snapshot_field->human_field;
@@ -302,53 +354,53 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
             break;
         case EncounterRequestKind::cancel_monster:
             if (!a || !transition(*a, 3))
-                return fail(AiRewardError::preparation_failed);
+                return reject_request(AiRewardError::preparation_failed);
             a->state_parameter = 1;
             a->attack_position = a->position;
             break;
         case EncounterRequestKind::state10:
             if (!a || !transition(*a, 10, ctx->facility_category))
-                return fail(AiRewardError::preparation_failed);
+                return reject_request(AiRewardError::preparation_failed);
             break;
         case EncounterRequestKind::reset_attack_count:
             if (!a)
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             a->attack_count = 0;
             break;
         case EncounterRequestKind::reset_hp: {
             if (!a)
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             const auto hp = prepare_hp_assignment(a->hp, a->capacity);
             if (!hp.candidate)
-                return fail(AiRewardError::preparation_failed);
+                return reject_request(AiRewardError::preparation_failed);
             a->hp = *hp.candidate;
             break;
         }
         case EncounterRequestKind::reset_recent_reward_and_kills:
             if (!a || !c.state.battle.humans.count(a->definition))
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             c.state.battle.humans.at(a->definition).recent_reward = 0;
             c.state.battle.humans.at(a->definition).recent_kills = 0;
             break;
         case EncounterRequestKind::reward_display:
             if (!ctx)
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             ctx->effects.display.push_back({24, -r.delay, 0, r.value, 0, 0});
             break;
         case EncounterRequestKind::reward_accumulation: {
             if (!a || !c.state.growth.count(a->definition))
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             auto &pending = c.state.growth.at(a->definition).pending;
             const auto reward = prepare_delayed_reward(pending, r.value, r.delay);
             if (!reward)
-                return fail(AiRewardError::preparation_failed);
+                return reject_request(AiRewardError::preparation_failed);
             pending = *reward;
             c.state.growth.at(a->definition).notice_pending = false; // e.c(delay,amount) clears P.
             break;
         }
         case EncounterRequestKind::clear_boost2048:
             if (!a)
-                return fail(AiRewardError::invalid_input);
+                return reject_request(AiRewardError::invalid_input);
             a->control.flags &= ~2048U;
             break;
         case EncounterRequestKind::event:
@@ -356,7 +408,7 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
             break;
         case EncounterRequestKind::completion_delta:
             if (!add(c.state.pending_completion, r.parameter))
-                return fail(AiRewardError::preparation_failed);
+                return reject_request(AiRewardError::preparation_failed);
             break;
         case EncounterRequestKind::mark_task_complete:
             c.state.task_completed = true;
@@ -367,10 +419,68 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
         case EncounterRequestKind::set_feature16:
             c.state.feature16 = true;
             break;
+        case EncounterRequestKind::expression5:
+        case EncounterRequestKind::task_victory_expression:
+            if (i.random_request) {
+                auto next = i.random_request(c.state, r);
+                if (!next)
+                    return reject_request(AiRewardError::preparation_failed);
+                c.state = std::move(*next);
+            } else if (i.draw)
+                return reject_request(AiRewardError::preparation_failed);
+            break;
         default:
-            break; // Map, battle group, expressions and UI remain typed, ordered requests.
+            break; // External map/UI consumers remain typed, ordered requests.
         }
-    }
+        return true;
+    };
+    // 在事件原req位置同步处理group和逐人物表现/领域写回，避免共享随机游标反序。
+    input.synchronous_request = [&](const EncounterRuntimeState &runtime,
+                                    const EncounterRequest &request) {
+        c.state.encounters.at(i.encounter).runtime = runtime;
+        // 实际spawn计划尚未返回，生成当轮随后无事件抽取；无spawn先同步真实field。
+        if (request.kind == EncounterRequestKind::snapshot_influence)
+            return runtime.spawned != input.state.spawned || consume_request(request);
+        if (!consume_request(request))
+            return false;
+        if (i.external_request && encounter_request_needs_external(request.kind)) {
+            const auto fields = i.external_request(c.state, request);
+            if (!fields || fields->pending_completion < 0)
+                return reject_request(AiRewardError::preparation_failed);
+            c.state.battle.events.insert(fields->events.begin(), fields->events.end());
+            c.state.pending_completion = fields->pending_completion;
+            c.state.task_active = fields->task_active;
+            c.state.task_completed = fields->task_completed;
+            c.state.feature16 = fields->feature16;
+            c.state.external_actor_roots = fields->external_actor_roots;
+            c.state.external_encounter_roots = fields->external_encounter_roots;
+            if (fields->monster_availability) {
+                if (request.kind != EncounterRequestKind::mark_task_complete)
+                    return reject_request(AiRewardError::preparation_failed);
+                for (const auto &entry : *fields->monster_availability) {
+                    const auto current = c.state.monster_growth.find(entry.first);
+                    if (current == c.state.monster_growth.end() || entry.second[0] < 0 ||
+                        entry.second[0] > 1 || entry.second[1] < 0 || entry.second[1] > 1)
+                        return reject_request(AiRewardError::preparation_failed);
+                    current->second.status = entry.second[0];
+                    current->second.newly_unlocked = entry.second[1] != 0;
+                }
+            }
+        }
+        return true;
+    };
+    const auto step = prepare_encounter_step(input);
+    if (!step.candidate)
+        return fail(request_error != AiRewardError::none ? request_error
+                                                         : AiRewardError::preparation_failed);
+    c.removed = step.candidate->remove;
+    c.encounter_requests = step.candidate->requests;
+    c.state.encounters.at(i.encounter).runtime = step.candidate->state;
+    planned_spawn = step.candidate->spawn;
+    spawned = !planned_spawn;
+    for (const auto &request : c.encounter_requests)
+        if (request.kind == EncounterRequestKind::snapshot_influence && !consume_request(request))
+            return fail(request_error);
     if (c.removed) {
         if (c.state.retired_encounters.count(i.encounter))
             return fail(AiRewardError::invalid_input);
@@ -471,7 +581,8 @@ AiRewardResult prepare_battle_group_join(const AiRewardState &s, std::uint64_t e
     return {AiRewardError::none, c};
 }
 AiRewardResult prepare_battle_group_commit(const AiRewardState &s, std::uint64_t encounter,
-                                           const std::vector<int> &tickets) {
+                                           const std::vector<int> &tickets,
+                                           const CombatRandomDraw &draw) {
     const auto e = s.encounters.find(encounter);
     if (e == s.encounters.end() || !e->second.group_exists)
         return fail(AiRewardError::stale_encounter);
@@ -485,7 +596,7 @@ AiRewardResult prepare_battle_group_commit(const AiRewardState &s, std::uint64_t
                 return fail(AiRewardError::stale_actor);
             member.flags = actor->control.flags;
         }
-    const auto step = prepare_battle_group_step(group, tickets);
+    const auto step = prepare_battle_group_step(group, tickets, draw);
     if (!step.candidate)
         return fail(AiRewardError::preparation_failed);
     c.state.encounters.at(encounter).group = step.candidate->state;
@@ -503,7 +614,9 @@ AiRewardResult prepare_battle_group_commit(const AiRewardState &s, std::uint64_t
 }
 AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &s, std::uint64_t encounter,
                                                const EncounterSpawnCandidate &spawn,
-                                               const std::array<int, 2> &tickets) {
+                                               const std::array<int, 2> &explicit_tickets,
+                                               const CombatRandomDraw &draw) {
+    auto tickets = explicit_tickets;
     if (!s.encounters.count(encounter))
         return fail(AiRewardError::stale_encounter);
     const auto definition = s.monster_growth.find(spawn.definition);
@@ -515,8 +628,7 @@ AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &s, std::uint
         return fail(AiRewardError::invalid_input);
     const auto &d = definition->second;
     if (d.body < 0 || d.body > 3 || d.sprite_variant < 0 || d.sprite_variant >= 30 ||
-        spawn.cell.x < 0 || spawn.cell.y < 0 || spawn.cell.x > 9998 || spawn.cell.y > 9998 ||
-        tickets[0] < 0 || tickets[0] >= 100 || tickets[1] < 0 || tickets[1] >= 100)
+        spawn.cell.x < 0 || spawn.cell.y < 0 || spawn.cell.x > 9998 || spawn.cell.y > 9998)
         return fail(AiRewardError::invalid_input);
     const bool boss = (shared->second.flags & 4U) != 0;
     const auto capacity = prepare_monster_growth(d.base_hp, d.growth, 0, boss);
@@ -536,6 +648,16 @@ AiRewardResult prepare_encounter_monster_spawn(const AiRewardState &s, std::uint
             return fail(AiRewardError::invalid_input);
         ++first_free;
     }
+    if (draw) {
+        for (auto &ticket : tickets) {
+            const auto drawn = draw(100);
+            if (!drawn || *drawn < 0 || *drawn >= 100)
+                return fail(AiRewardError::preparation_failed);
+            ticket = *drawn;
+        }
+    }
+    if (tickets[0] < 0 || tickets[0] >= 100 || tickets[1] < 0 || tickets[1] >= 100)
+        return fail(AiRewardError::invalid_input);
     BattleActorRecord actor;
     actor.id = {s.next_actor_id};
     actor.legacy_id = first_free;
@@ -606,7 +728,7 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
         int damage = p.damage;
         if (c.step.physical_damage) {
             const auto physical = prepare_actor_physical_damage(s, p.caster, *c.step.damage_target,
-                                                                i.physical_jitter);
+                                                                i.physical_jitter, i.draw);
             if (!physical.candidate)
                 return fail(AiRewardError::preparation_failed);
             c.physical_damage = physical.candidate;
@@ -621,8 +743,25 @@ WorldProjectileResult prepare_world_projectile(const AiRewardState &s,
             }
         const auto old_next_object = c.state.battle.next_object_id;
         const auto hit = prepare_battle_commit(
-            c.state.battle, {p.caster, *c.step.damage_target, damage, i.current_weapon_kind,
-                             i.caster_visible, i.drop_ticket, i.drop_selection});
+            c.state.battle,
+            {p.caster, *c.step.damage_target, damage, i.current_weapon_kind, i.caster_visible,
+             i.drop_ticket, i.drop_selection, i.draw,
+             [&](const BattleCommitState &, CharacterId actor, int kind, int delay) {
+                 const auto found = c.state.contexts.find(actor);
+                 if (!i.expression)
+                     return !i.draw;
+                 if (found == c.state.contexts.end())
+                     return false;
+                 auto effects = i.expression(actor, found->second.effects, kind, delay);
+                 if (!effects || !valid_actor_effect_state(*effects))
+                     return false;
+                 found->second.effects = std::move(*effects);
+                 return true;
+             },
+             [&](const BattleCommitState &battle, int event) {
+                 return consume_world_combat_event(c.state, battle, event, i.event,
+                                                   c.popularity_queue, static_cast<bool>(i.draw));
+             }});
         if (!hit.candidate)
             return fail(AiRewardError::preparation_failed);
         c.hit = hit.candidate->hit;
@@ -658,7 +797,8 @@ AiRewardState collect_ai_references(AiRewardState state) {
     return state;
 }
 DamageResult prepare_actor_physical_damage(const AiRewardState &s, CharacterId attacker,
-                                           CharacterId target, std::optional<int> jitter) {
+                                           CharacterId target, std::optional<int> jitter,
+                                           const CombatRandomDraw &draw) {
     const auto find = [&](CharacterId id) -> const BattleActorRecord * {
         const auto live = s.battle.actors.find(id);
         if (live != s.battle.actors.end())
@@ -686,6 +826,6 @@ DamageResult prepare_actor_physical_damage(const AiRewardState &s, CharacterId a
     return prepare_physical_damage(
         {a->kind, attacking ? *effective : growth->second.derived.combat[1],
          attacking ? growth->second.derived.combat[2] : *effective,
-         (human->control.flags & 2048U) != 0, (monster->control.flags & 4096U) != 0, jitter});
+         (human->control.flags & 2048U) != 0, (monster->control.flags & 4096U) != 0, jitter, draw});
 }
 } // namespace dungeon_village_reference

@@ -24,6 +24,7 @@ struct StartupDisplay {
     int definition_id{};
     std::string sprite;
     int offset_y{};
+    std::uint32_t flags{}; // a.j.o，绘制深度守卫；不是设施flags。
 };
 struct StartupDefinition {
     int id{};
@@ -72,6 +73,8 @@ struct StartupCharacter {
     std::array<int, 2>
         job_satisfaction_thresholds{}; // Source job columns 13/14, not chosen defaults.
     int weapon_reselect_counter{}; // Legacy A[0], set to6 by initial equip; not weapon inventory.
+    std::array<int, 4> legacy_D{}; // 无继承重置；D[2]==0不代表存在住宅实例。
+    int legacy_m{};                // 共享人物定义离村倒计时，初值0。
 };
 struct StartupEvidence {
     int width{};
@@ -91,6 +94,8 @@ struct StartupEvidence {
     ref::Position camera;
     StartupCharacter first_character;
     std::vector<std::string> first_talk;
+    int character_spawn_minimum_y{};
+    int world_overlap_boundary_y{};
 };
 
 // Generated at build time from the published JSON with JSON.parse, not a handwritten C++ parser.

@@ -28,6 +28,7 @@ struct EncounterCreationInput {
     std::optional<int> nearby_ticket;
     std::vector<EncounterCreationDraw> monsters;
     bool source_force_definition13{}; // f.v==1 debug guard; default source global is0.
+    std::function<std::optional<int>(int)> draw{};
 };
 enum class EncounterCreationDenial { none, probe, cell, task_overlap, town, limit, event_overlap };
 enum class EncounterCreationRequestKind { definition_script, page89, refresh_map };
@@ -47,6 +48,8 @@ struct EncounterCreationCandidate {
     std::size_t consumed_offsets{};
     std::vector<EncounterCreationRequest> requests;
 };
+using EncounterCreationConsumer = std::function<std::optional<AiRewardState>(
+    const AiRewardState &, const EncounterCreationRequest &)>;
 struct EncounterCreationResult {
     AiRewardError error{AiRewardError::none};
     std::optional<EncounterCreationCandidate> candidate;
@@ -55,5 +58,6 @@ struct EncounterCreationResult {
 // Gates return an unchanged candidate with denial; missing/invalid late draws return NO candidate.
 // Quest quota remains0 here; F's caller installs m.c() only after successful creation.
 EncounterCreationResult prepare_encounter_creation(const AiRewardState &state,
-                                                   const EncounterCreationInput &input);
+                                                   const EncounterCreationInput &input,
+                                                   const EncounterCreationConsumer &consumer = {});
 } // namespace dungeon_village_reference

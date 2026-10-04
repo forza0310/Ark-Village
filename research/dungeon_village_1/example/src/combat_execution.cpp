@@ -68,19 +68,27 @@ AttackSetupResult prepare_human_attack(const AttackSetupInput &i) {
     if (i.weapon_kind < 0 || i.weapon_kind > 3 || i.weapon_combo < 1 || i.weapon_combo > 1000000 ||
         i.miss_low < 0 || i.miss_low > 100 || i.miss_high < 0 || i.miss_high > 100)
         return {CombatAiError::invalid_input, std::nullopt};
-    for (int t : i.tickets)
-        if (t < 0 || t >= 100)
+    auto tickets = i.tickets;
+    for (auto &ticket : tickets) {
+        if (i.draw) {
+            const auto drawn = i.draw(100);
+            if (!drawn)
+                return {CombatAiError::missing_ticket, std::nullopt};
+            ticket = *drawn;
+        }
+        if (ticket < 0 || ticket >= 100)
             return {CombatAiError::invalid_ticket, std::nullopt};
+    }
     const int dexterity = map_int(i.dexterity, 0, 500, 0, 100);
     int count = map_int(dexterity, 0, 100, 1, i.weapon_combo);
-    count += i.tickets[0] < 10 ? 2 : 0;
-    count += i.tickets[1] < 50 ? 1 : 0;
-    count -= i.tickets[2] < 30 ? 1 : 0;
-    count -= i.tickets[3] < 10 ? 2 : 0;
+    count += tickets[0] < 10 ? 2 : 0;
+    count += tickets[1] < 50 ? 1 : 0;
+    count -= tickets[2] < 30 ? 1 : 0;
+    count -= tickets[3] < 10 ? 2 : 0;
     count = std::max(count, 1);
     if (i.boosted)
         count = count == 1 ? 2 : static_cast<int>(count * 1.7F);
-    const bool miss = i.tickets[4] < map_int(dexterity, 0, 100, i.miss_low, i.miss_high);
+    const bool miss = tickets[4] < map_int(dexterity, 0, 100, i.miss_low, i.miss_high);
     if (miss)
         count = 1;
     constexpr int actions[] = {1, 2, 3, 1};
@@ -128,10 +136,13 @@ std::optional<SpellFrameCandidate> prepare_spell_frame(int counter, bool target_
     return SpellFrameCandidate{counter == 1, counter == 26, counter == 26 && target_found,
                                counter >= last[action] && (counter != 26 || target_found)};
 }
-DamageResult prepare_healing_amount(int magic, std::optional<int> ticket) {
+DamageResult prepare_healing_amount(int magic, std::optional<int> ticket,
+                                    const CombatRandomDraw &draw) {
     if (magic < 0 || magic > 1000000)
         return {CombatAiError::invalid_input, std::nullopt};
     const int span = std::max(magic * 2 / 10, 2);
+    if (!ticket && draw)
+        ticket = draw(span);
     if (!ticket)
         return {CombatAiError::missing_ticket, std::nullopt};
     if (*ticket < 0 || *ticket >= span)
@@ -346,9 +357,12 @@ HitResult prepare_hit(const HitTargetState &s, int damage, const HitContext &i) 
             request(HitRequestKind::clear_recent_reward_and_kills);
             request(HitRequestKind::monster_human_kills, 1);
         } else {
-            if (!i.drop_ticket)
+            const auto drop_ticket = i.drop_ticket ? i.drop_ticket
+                                     : i.draw      ? i.draw(100)
+                                                   : std::optional<int>{};
+            if (!drop_ticket)
                 return {CombatAiError::missing_ticket, std::nullopt};
-            if (*i.drop_ticket < 0 || *i.drop_ticket >= 100)
+            if (*drop_ticket < 0 || *drop_ticket >= 100)
                 return {CombatAiError::invalid_ticket, std::nullopt};
             if (!i.target_attack_locked)
                 request(HitRequestKind::copy_attack_position);
@@ -360,7 +374,7 @@ HitResult prepare_hit(const HitTargetState &s, int damage, const HitContext &i) 
             if (i.task_encounter && i.killer_participant_matches > 0)
                 request(HitRequestKind::participant_task_kills, i.killer_participant_matches);
             c.consumed_drop_ticket = true;
-            if (*i.drop_ticket < 6 && !i.attacker_first_visit)
+            if (*drop_ticket < 6 && !i.attacker_first_visit)
                 request(HitRequestKind::spawn_drop);
             if (i.boss_flags4 && i.monster_rank == 5 && !i.event217_present)
                 request(HitRequestKind::event217, 217);

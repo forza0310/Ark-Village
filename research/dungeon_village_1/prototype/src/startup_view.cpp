@@ -1,5 +1,7 @@
 #include "dungeon_village_prototype/startup_view.hpp"
+#include "dungeon_village_prototype/road_render.hpp"
 #include "dungeon_village_prototype/startup.hpp"
+#include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
 
@@ -8,8 +10,10 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <set>
 #include <stdexcept>
 
@@ -31,7 +35,7 @@ std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
 // separately. legacy_tag is retained by the tool parser and is never used as a record count.
 class SourceSprites {
   public:
-    enum class Binding { map, farmer, secretary };
+    enum class Binding { map, farmer, secretary, human, monster, common };
     explicit SourceSprites(std::filesystem::path root) : root_(std::move(root)) {
         for (const auto &row :
              dungeon_village_tools::parse_tsv(read_bytes(root_ / "image/img.inf"))) {
@@ -45,6 +49,27 @@ class SourceSprites {
             if (!images_.emplace(id, name).second)
                 throw std::runtime_error("图片索引重复");
         }
+        for (const auto *group : {"human", "monster", "common"}) {
+            for (const auto &row :
+                 dungeon_village_tools::parse_tsv(read_bytes(root_ / group / "img.inf"))) {
+                if (row.size() != 2)
+                    throw std::runtime_error("人物图片索引列数错误");
+                std::filesystem::path path(row[1]);
+                if (path.has_parent_path())
+                    throw std::runtime_error("人物图片索引路径不安全");
+                path.replace_extension(".png");
+                if (!actor_images_[group]
+                         .emplace(dungeon_village_tools::parse_table_integer(row[0]), path)
+                         .second)
+                    throw std::runtime_error("人物图片索引重复");
+            }
+            for (const auto &row :
+                 dungeon_village_tools::parse_tsv(read_bytes(root_ / group / "seb.inf"))) {
+                if (row.size() != 1 || std::filesystem::path(row[0]).has_parent_path())
+                    throw std::runtime_error("人物精灵索引错误");
+                actor_sprites_[group].push_back(row[0]);
+            }
+        }
     }
     ~SourceSprites() {
         for (const auto &v : textures_)
@@ -53,10 +78,11 @@ class SourceSprites {
     SourceSprites(const SourceSprites &) = delete;
     SourceSprites &operator=(const SourceSprites &) = delete;
     void draw(const std::string &sprite, int frame, Vector2 anchor, Color tint = WHITE,
-              Binding binding = Binding::map, float factor = 1) {
-        const char *group = binding == Binding::farmer      ? "human"
-                            : binding == Binding::secretary ? "common"
-                                                            : "image";
+              Binding binding = Binding::map, float factor = 1, int image_override = -1) {
+        const char *group = binding == Binding::farmer || binding == Binding::human ? "human"
+                            : binding == Binding::monster                           ? "monster"
+                            : binding == Binding::secretary || binding == Binding::common ? "common"
+                                                                                          : "image";
         const auto relative = std::filesystem::path(group) / sprite;
         auto it = sprites_.find(relative.string());
         if (it == sprites_.end())
@@ -72,10 +98,13 @@ class SourceSprites {
                     continue;
                 if (binding == Binding::secretary && part.image_index != 126)
                     throw std::runtime_error("秘书SEB图片绑定发生变化");
-                const auto path = binding == Binding::farmer ? root_ / "human/chara_flower00.png"
-                                  : binding == Binding::secretary
-                                      ? root_ / "common/chara_hishoko01.png"
-                                      : root_ / "image" / images_.at(part.image_index);
+                const auto path =
+                    image_override >= 0 ? root_ / group / actor_images_.at(group).at(image_override)
+                    : binding == Binding::farmer    ? root_ / "human/chara_flower00.png"
+                    : binding == Binding::secretary ? root_ / "common/chara_hishoko01.png"
+                    : binding == Binding::common
+                        ? root_ / "common" / actor_images_.at("common").at(part.image_index)
+                        : root_ / "image" / images_.at(part.image_index);
                 auto image = textures_.find(path.string());
                 if (image == textures_.end()) {
                     const auto texture = LoadTexture(path.string().c_str());
@@ -101,10 +130,31 @@ class SourceSprites {
             }
         }
     }
+    void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor) {
+        const char *group = monster ? "monster" : "human";
+        draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite_index)), frame, anchor,
+             WHITE, monster ? Binding::monster : Binding::human, 1, image_index);
+    }
+    void image(const std::filesystem::path &relative, Vector2 position) {
+        if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
+            throw std::runtime_error("整图资源路径无效");
+        const auto path = root_ / relative;
+        auto found = textures_.find(path.string());
+        if (found == textures_.end()) {
+            const auto texture = LoadTexture(path.string().c_str());
+            if (!texture.id)
+                throw std::runtime_error("整图资源无法读取");
+            SetTextureFilter(texture, TEXTURE_FILTER_POINT);
+            found = textures_.emplace(path.string(), texture).first;
+        }
+        DrawTextureV(found->second, position, WHITE);
+    }
 
   private:
     std::filesystem::path root_;
     std::map<int, std::filesystem::path> images_;
+    std::map<std::string, std::map<int, std::filesystem::path>> actor_images_;
+    std::map<std::string, std::vector<std::string>> actor_sprites_;
     std::map<std::string, dungeon_village_tools::SpriteDefinition> sprites_;
     std::map<std::string, Texture2D> textures_;
 };
@@ -127,10 +177,11 @@ std::optional<ref::Position> pick(Vector2 point, Vector2 camera) {
 
 class ChineseFont {
   public:
-    explicit ChineseFont(const std::filesystem::path &path) {
+    explicit ChineseFont(const std::filesystem::path &path, const std::string &extra = {}) {
         if (!std::filesystem::is_regular_file(path))
             throw std::runtime_error("请用 --font 指定可用中文TTF字体");
-        std::string glyphs = "建设返回确定撤除道路植物商店饮食金币点数人气年月份倍暂停继续月末"
+        std::string glyphs = "本月结算打倒怪物获得村子收入支出收支成果姓名数下降完成"
+                             "建设返回确定撤除道路植物商店饮食金币点数人气年月份倍暂停继续月末"
                              "请选择街道内地域有建筑物金钱不足没有设施不可撤除状态异常施工";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
@@ -139,6 +190,7 @@ class ChineseFont {
         for (const auto &v : startup_evidence().first_talk)
             glyphs += v;
         glyphs += startup_evidence().first_character.name;
+        glyphs += extra;
         int count = 0;
         int *raw = LoadCodepoints(glyphs.c_str(), &count);
         if (!raw)
@@ -164,8 +216,12 @@ class ChineseFont {
               float size = 12) const {
         DrawTextEx(font_, value.c_str(), {x, y}, size, 0, color);
     }
+    float measure(const std::string &value, float size = 12) const {
+        return MeasureTextEx(font_, value.c_str(), size, 0).x;
+    }
     // Wrap at measured codepoint boundaries, preserving Chinese without inserting broken UTF-8.
-    void paragraph(const std::string &value, float x, float y, float max_width) const {
+    float paragraph(const std::string &value, float x, float y, float max_width) const {
+        const float start_y = y;
         std::string line;
         for (std::size_t i = 0; i < value.size();) {
             const auto first = static_cast<unsigned char>(value[i]);
@@ -180,6 +236,7 @@ class ChineseFont {
             i += length;
         }
         text(line, x, y);
+        return y - start_y + 17;
     }
 
   private:
@@ -490,6 +547,432 @@ int run_startup_window(const std::filesystem::path &assets, const std::filesyste
               << " mode=" << static_cast<int>(session.state().mode)
               << " steps=" << session.state().simulation_steps
               << " money=" << session.state().accounting.funds() << '\n';
+    return 0;
+}
+
+void check_startup_world() {
+    StartupSession initial;
+    // 明确研究seed，不认证固定APK默认seed或捕获轨迹。
+    StartupWorldRuntimeSession session(initial.state(), ref::WorldRandomStream::from_java_seed(1));
+    const auto result = session.update();
+    if (result.error != StartupWorldRuntimeError::none)
+        throw std::runtime_error("共同世界新局首个更新失败");
+    std::cout << "world check passed: state=" << session.state().scene.scene_state
+              << " pages=" << session.state().scripts.pages.size()
+              << " actors=" << session.state().scene.world.world.ai.human_order.size() << '\n';
+}
+
+int run_startup_world_window(const std::filesystem::path &assets,
+                             const std::filesystem::path &font_path, bool paused, int frames,
+                             const std::optional<std::filesystem::path> &screenshot,
+                             const std::string &inspect_page) {
+    Window window;
+    Canvas canvas;
+    SourceSprites sprites(assets / "original");
+    const auto &rules = startup_world_rules();
+    std::string glyphs = rules.script_sources.talks + rules.script_sources.news +
+                         rules.script_sources.event_messages;
+    for (const auto &human : rules.humans)
+        glyphs += human.name;
+    for (const auto &task : rules.tasks)
+        glyphs += task.name + task.title;
+    for (const auto &item : rules.items)
+        glyphs += item.name;
+    for (const auto &equipment : rules.equipment)
+        glyphs += equipment.name;
+    ChineseFont font(font_path, glyphs);
+    // 只在接管前存在旧启动快照；runtime构造后释放，禁止两个可写世界并存。
+    std::unique_ptr<StartupSession> initial = std::make_unique<StartupSession>();
+    if (inspect_page == "visitor") {
+        for (int n = 0; n < 420; ++n)
+            initial->update();
+    }
+    StartupWorldRuntimeSession session(initial->state(), ref::WorldRandomStream::from_java_seed(1));
+    initial.reset();
+    if (inspect_page == "world-month" || inspect_page == "world-active") {
+        bool reached{};
+        // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
+        for (int step = 0; step < 20000; ++step) {
+            const auto result = session.update();
+            if (!result.candidate)
+                throw std::runtime_error("共同世界检查预运行失败，step=" + std::to_string(step));
+            const auto &s = session.state();
+            const auto &top = s.scripts.pages.back();
+            if (top.kind != ref::WorldScriptPageKind::scene && top.lifecycle != 4 &&
+                !(top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 56)) {
+                if (session.acknowledge_page(top.id) != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("共同世界检查预运行页面消费者失败");
+            }
+            const auto &current = session.state();
+            reached = inspect_page == "world-month"
+                          ? current.report_state != 0
+                          : current.scene.world.world.ai.human_order.size() >= 3;
+            if (reached)
+                break;
+        }
+        if (!reached)
+            throw std::runtime_error("共同世界有界检查未到达真实目标状态");
+    }
+    session.set_paused(paused);
+    ref::WorldRenderClock clock;
+    Vector2 camera{static_cast<float>(startup_evidence().camera.x),
+                   static_cast<float>(startup_evidence().camera.y)};
+    Vector2 view_offset{};
+    int frame_count{}, paragraph_index{};
+    int moved_frames{};
+    int confirmation_inputs{}, pause_inputs{}, speed_inputs{};
+    std::size_t world_pixel_colors{};
+    std::map<ref::CharacterId, ref::CombatPoint> previous_positions;
+    float body_scroll{}, body_extent{};
+    std::uint64_t viewed_page{};
+    while (!WindowShouldClose()) {
+        const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
+        const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        const auto hit = [&](Rectangle r) { return pressed && CheckCollisionPointRec(mouse, r); };
+        if (hit({4, 295, 64, 22})) {
+            ++pause_inputs;
+            session.set_paused(!session.state().scene.framework_paused);
+        }
+        if (hit({176, 295, 58, 22})) {
+            ++speed_inputs;
+            session.set_speed(session.state().scene.speed_setting == 1 ? 0 : 1);
+        }
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+            const auto delta = GetMouseDelta();
+            view_offset.x -= delta.x / scale;
+            view_offset.y += delta.y / scale;
+        }
+        const auto top_page = [&]() -> const ref::WorldScriptPage * {
+            const auto &pages = session.state().scripts.pages;
+            for (auto it = pages.rbegin(); it != pages.rend(); ++it)
+                if (it->kind != ref::WorldScriptPageKind::scene && it->lifecycle != 4)
+                    return &*it;
+            return nullptr;
+        };
+        if (const auto *page = top_page()) {
+            if (viewed_page != page->id) {
+                viewed_page = page->id;
+                paragraph_index = 0;
+                body_scroll = body_extent = 0;
+            }
+            if (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER)) {
+                ++confirmation_inputs;
+                if (paragraph_index + 1 < static_cast<int>(page->paragraphs.size())) {
+                    ++paragraph_index;
+                    body_scroll = body_extent = 0;
+                } else {
+                    const auto error = session.acknowledge_page(page->id);
+                    if (error != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("共同世界页面输入消费者失败");
+                }
+            }
+            if (CheckCollisionPointRec(mouse, {12, 196, 216, 64}))
+                body_scroll = std::clamp(body_scroll - GetMouseWheelMove() * 17, 0.0F,
+                                         std::max(body_extent - 64, 0.0F));
+        }
+        // 框架绘制门槛与逻辑轮数分开；长停顿不补算，倍速由MainScene保存轮数。
+        const auto gate =
+            ref::prepare_world_render_gate(clock, static_cast<std::int64_t>(GetTime() * 1000));
+        if (gate.error != ref::WorldRenderGateError::none)
+            throw std::runtime_error("共同世界绘制时钟失败");
+        if (gate.clock) {
+            clock = *gate.clock;
+            const auto result = session.update();
+            if (result.error != StartupWorldRuntimeError::none)
+                throw std::runtime_error(
+                    "共同世界更新失败：" + std::to_string(static_cast<int>(result.error)) + "/" +
+                    std::to_string(static_cast<int>(result.scene_error)) + "/" +
+                    std::to_string(static_cast<int>(result.world_error)));
+        }
+        const auto &state = session.state();
+        camera = {state.camera[0] + view_offset.x, state.camera[1] + view_offset.y};
+        const auto &world = state.scene.world.world;
+        bool moved{};
+        for (const auto &entry : world.ai.battle.actors) {
+            const auto old = previous_positions.find(entry.first);
+            const auto &p = entry.second.position;
+            if (old != previous_positions.end() &&
+                (old->second.x != p.x || old->second.z != p.z || old->second.height != p.height))
+                moved = true;
+            previous_positions[entry.first] = p;
+        }
+        moved_frames += moved ? 1 : 0;
+        BeginTextureMode(canvas.value);
+        ClearBackground(Color{83, 141, 77, 255});
+        const auto display = [&](int id) -> const StartupDisplay & {
+            const auto &list = startup_evidence().displays;
+            const auto found =
+                std::find_if(list.begin(), list.end(), [id](const auto &d) { return d.id == id; });
+            if (found == list.end())
+                throw std::runtime_error("共同世界缺少真实显示定义");
+            return *found;
+        };
+        struct Overlay {
+            float depth;
+            std::function<void()> draw;
+        };
+        std::vector<Overlay> overlays;
+        std::vector<Overlay> patches; // 原道路补块在地表第一遍之后提交。
+        constexpr std::array<ref::Position, 6> fence_offsets{
+            {{13, 22}, {16, 22}, {13, 21}, {42, 22}, {15, 23}, {16, 9}}};
+        constexpr std::array<ref::Position, 4> entry_offsets{
+            {{15, 24}, {26, 19}, {15, 18}, {28, 24}}};
+        for (int y = world.map.height - 1; y >= 0; --y)
+            for (int x = 0; x < world.map.width; ++x) {
+                const auto index = static_cast<std::size_t>(y * world.map.width + x);
+                const auto &cell = state.surface.at(index);
+                const auto p = project({x, y}, camera);
+                if (cell.display_definition < 0)
+                    continue;
+                const auto &record = display(cell.display_definition);
+                const float base_depth =
+                    ((record.flags & 1U) ? p.y - 50 : p.y + 15) + record.offset_y;
+                // c/i.i已经是占地分片帧；逐格绘制双格/四格，不能再只画设施锚点。
+                overlays.push_back(
+                    {base_depth, [&, p, sprite = record.sprite, frame = cell.variant] {
+                         sprites.draw(sprite, frame, p);
+                     }});
+                if (cell.fragment >= 0 && cell.fragment < 6 &&
+                    world.map.cells[index].category == ref::RouteCategory::blocked) {
+                    const auto offset = fence_offsets.at(cell.fragment);
+                    overlays.push_back(
+                        {base_depth + 60, [&, p, offset, frame = cell.fragment] {
+                             sprites.draw("fence01" + std::to_string(state.fence_level) + ".seb",
+                                          frame, {p.x + offset.x, p.y + offset.y}, WHITE,
+                                          SourceSprites::Binding::common);
+                         }});
+                }
+                if (cell.instance >= 0) { // 维护旧字段名instance实际保存原c/i.m外部入口方向。
+                    const auto offset = entry_offsets.at(static_cast<std::size_t>(cell.instance));
+                    overlays.push_back({p.y + offset.y, [&, p, offset, frame = cell.instance / 2] {
+                                            sprites.draw("door00.seb", frame,
+                                                         {p.x + offset.x, p.y + offset.y}, WHITE,
+                                                         SourceSprites::Binding::common);
+                                        }});
+                }
+                LoadedStartupCell patch_cell;
+                patch_cell.display_id = cell.display_definition;
+                patch_cell.road_quad = state.road_patches.at(index)[0];
+                patch_cell.edge_road_pair = state.road_patches.at(index)[1];
+                if (const auto patch = road_patch_draw(patch_cell)) {
+                    patches.push_back({p.y + patch->depth_offset, [&, p, patch = *patch] {
+                                           sprites.image(patch.asset_path, {p.x + patch.offset_x,
+                                                                            p.y + patch.offset_y});
+                                       }});
+                }
+            }
+        overlays.insert(overlays.end(), patches.begin(), patches.end());
+        const auto draw_actor = [&](ref::CharacterId id) {
+            const auto &actor = world.ai.battle.actors.at(id);
+            if (actor.control.flags & 1U)
+                return; // 原Character.a(o,int)首个绘制守卫，不从状态号猜隐身。
+            const auto &p = state.actor_metadata.at(id).render_position; // 原o，不是攻击备份au。
+            const Vector2 anchor{120 + (p.x + p.z) * 0.3F - camera.x,
+                                 160 + (p.x - p.z) * 0.15F - p.height + camera.y};
+            const int direction = actor.control.facing;
+            const int action = actor.control.action;
+            const int tick = (actor.control.flags & 2U) ? actor.control.action_counter : 0;
+            if (actor.kind == ref::ActorKind::human) {
+                const auto &meta = state.actor_metadata.at(id);
+                const int image = rules.jobs.at(meta.profession).sprites.at(meta.sex);
+                constexpr std::array<int, 12> offsets{{0, 4, 4, 4, 20, 4, 8, 12, 16, 20, 24, 20}};
+                int phase{};
+                if (action == 0 || action == 8)
+                    phase = (tick % 16) / 4; // c.b.aZ=4，四个阈值4/8/12/16。
+                else if (action == 1)
+                    phase = tick % 12 < 4 ? 0 : 1;
+                else if (action == 2 || action == 5)
+                    phase = 1;
+                else if (action == 3)
+                    phase = tick % 12 < 6 ? 0 : 1;
+                else if (action == 4)
+                    phase = tick % 42 < 26 ? 0 : 1;
+                else if (action == 10)
+                    phase = tick % 18 < 12 ? 0 : 1;
+                const int sprite = offsets.at(action) + (action == 5 ? tick % 16 % 4 : direction);
+                sprites.actor(false, sprite, image, phase, anchor);
+            } else {
+                const auto &definition = world.ai.monster_growth.at(actor.definition);
+                constexpr std::array<int, 4> lengths{{6, 6, 8, 10}};
+                const int body = definition.body;
+                int phase = (tick % (lengths.at(body) * 4)) / lengths.at(body);
+                constexpr std::array<int, 4> attacks{{2, 4, 6, 8}};
+                if (action == 3) {
+                    if (tick < 10 || (tick >= 28 && tick < 34))
+                        phase = 0;
+                    else if (tick < 28)
+                        phase = (tick % (attacks.at(body) * 4)) / attacks.at(body);
+                } else if (action == 6) {
+                    if (tick < 6)
+                        phase = (tick % (attacks.at(body) * 4)) / attacks.at(body);
+                    else if (tick < 12)
+                        phase = 0;
+                }
+                sprites.actor(true, body * 4 + direction, body * 30 + definition.sprite_variant,
+                              action == 9 ? 0 : phase, anchor);
+            }
+        };
+        for (const auto *roster : {&world.ai.human_order, &world.ai.monster_order})
+            for (const auto id : *roster) {
+                const auto &position = world.ai.battle.actors.at(id).position;
+                const float depth = 160 + (position.x - position.z) * 0.15F + camera.y;
+                overlays.push_back({depth, [&, id] { draw_actor(id); }});
+            }
+        std::stable_sort(overlays.begin(), overlays.end(),
+                         [](const auto &a, const auto &b) { return a.depth < b.depth; });
+        for (const auto &overlay : overlays)
+            overlay.draw();
+        for (const auto &effect : state.visual_effects) {
+            if (effect.size() < 2 || effect[0] != 2 || effect[1] < 0)
+                continue;
+            if (effect.size() != 7)
+                throw std::runtime_error("现金显示载荷不完整");
+            float y = 160 - effect[3] + camera.y;
+            y +=
+                effect[1] < 6
+                    ? -16 + ((effect[5] * effect[1] + effect[6] * effect[1] * (effect[1] + 1) / 2) /
+                             1000)
+                    : -26;
+            const auto amount = std::to_string(effect[4]);
+            float x = 120 + effect[2] - camera.x - (amount.size() * 8 + 9) / 2.0F + 28;
+            for (const auto digit : amount) {
+                sprites.draw("number05.seb", digit - '0', {x, y - 10}, WHITE,
+                             SourceSprites::Binding::common);
+                x += 8;
+            }
+            sprites.draw("number05.seb", 20, {x, y - 10}, WHITE, SourceSprites::Binding::common);
+        }
+        DrawRectangle(0, 0, width, 35, paper);
+        font.text(std::to_string(state.scene.calendar.year + 1) + "年" +
+                      std::to_string(state.scene.calendar.month + 1) + "月",
+                  6, 5);
+        font.text(std::to_string(world.ai.accounting.funds()) + "G", 145, 5);
+        font.text("点数 " + std::to_string(state.village_points), 6, 21);
+        font.text("人气 " + std::to_string(state.popularity), 116, 21);
+        if (state.report_state != 0) {
+            // 原r/s月报不占框架页栈、不暂停世界；只展示已提交快照，不再扣款。
+            DrawRectangle(10, 45, 220, 112, paper);
+            font.text("本月结算", 84, 51);
+            if (state.report_state == 1) {
+                font.text("打倒怪物", 20, 76);
+                font.text(std::to_string(state.report_snapshot[0]), 177, 76);
+                font.text("获得村子点数", 20, 102);
+                font.text(std::to_string(state.report_snapshot[1]), 177, 102);
+            } else {
+                constexpr std::array<const char *, 3> labels{{"收入", "支出", "收支"}};
+                for (std::size_t n = 0; n < labels.size(); ++n) {
+                    font.text(labels[n], 20, 75 + static_cast<int>(n) * 23);
+                    const auto amount = std::to_string(state.report_snapshot[n + 2]) + "G";
+                    const auto extent = font.measure(amount);
+                    font.text(amount, 220 - extent, 75 + static_cast<int>(n) * 23);
+                }
+            }
+        }
+        if (const auto *page = top_page()) {
+            DrawRectangle(5, 170, 230, 119, paper);
+            std::string title = page->title;
+            if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
+                if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
+                    title = "成果";
+                else if (page->legacy_page == 94)
+                    title = "入手!";
+            }
+            font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
+            if (!page->paragraphs.empty()) {
+                BeginScissorMode(12, 196, 212, 64);
+                body_extent =
+                    font.paragraph(page->paragraphs.at(static_cast<std::size_t>(paragraph_index)),
+                                   12, 198 - body_scroll, 208);
+                EndScissorMode();
+                if (body_extent > 64) {
+                    DrawRectangle(226, 198, 2, 60, LIGHTGRAY);
+                    DrawRectangle(226,
+                                  198 + static_cast<int>(body_scroll / (body_extent - 64) * 48), 2,
+                                  12, GRAY);
+                }
+            }
+            if (page->kind == ref::WorldScriptPageKind::raw_page && page->legacy_page == 31) {
+                const auto crew = state.crew_summaries.find(page->id);
+                if (crew != state.crew_summaries.end()) {
+                    DrawRectangle(10, 48, 220, 119, paper);
+                    font.text("姓名", 18, 54);
+                    font.text("打倒数", 133, 54);
+                    font.text("下降", 196, 54);
+                    for (std::size_t n = 0; n < crew->second.size() && n < 5; ++n) {
+                        const auto definition = crew->second[n];
+                        const auto &human = world.ai.battle.humans.at(definition);
+                        const auto &name = rules.humans.at(definition).name;
+                        const auto y = 77 + static_cast<int>(n) * 17;
+                        font.text(name, 18, y, ink, font.measure(name) > 110 ? 10 : 12);
+                        font.text(std::to_string(human.task_kills), 151, y);
+                        font.text(std::to_string(human.participant_downs), 209, y);
+                    }
+                }
+            }
+            if (page->kind == ref::WorldScriptPageKind::raw_page &&
+                (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32) &&
+                page->task_definition) {
+                const auto &task = rules.tasks.at(*page->task_definition);
+                BeginScissorMode(12, 196, 212, 64);
+                font.paragraph(task.name + "完成!", 12, 198, 208);
+                EndScissorMode();
+            }
+            font.text("确定", 190, 270);
+        }
+        DrawRectangle(0, 294, width, 26, paper);
+        font.text(state.scene.framework_paused ? "继续" : "暂停", 18, 301);
+        font.text(state.scene.speed_setting == 1 ? "2倍" : "1倍", 193, 301);
+        EndTextureMode();
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTexturePro(canvas.value.texture, {0, 0, width, -height},
+                       {0, 0, width * scale, height * scale}, {0, 0}, 0, WHITE);
+        EndDrawing();
+        ++frame_count;
+        if (frames > 0 && frame_count >= frames) {
+            if (screenshot) {
+                if (!screenshot->parent_path().empty())
+                    std::filesystem::create_directories(screenshot->parent_path());
+                auto image = LoadImageFromScreen();
+                if (!image.data)
+                    throw std::runtime_error("共同世界窗口像素读取失败");
+                auto *pixels = LoadImageColors(image);
+                if (!pixels) {
+                    UnloadImage(image);
+                    throw std::runtime_error("共同世界窗口像素解码失败");
+                }
+                std::set<std::uint32_t> colors;
+                // 验证地图区，排除HUD、事件正文和月报主体，防止仅有文字也被当作非空地图。
+                for (int y = 160 * scale; y < 170 * scale; ++y)
+                    for (int x = 0; x < image.width; ++x) {
+                        const auto color = pixels[y * image.width + x];
+                        colors.insert((static_cast<std::uint32_t>(color.r) << 16) |
+                                      (static_cast<std::uint32_t>(color.g) << 8) | color.b);
+                    }
+                UnloadImageColors(pixels);
+                world_pixel_colors = colors.size();
+                if (world_pixel_colors < 8) {
+                    UnloadImage(image);
+                    throw std::runtime_error("共同世界窗口地图像素疑似空白");
+                }
+                const bool saved = ExportImage(image, screenshot->string().c_str());
+                UnloadImage(image);
+                if (!saved)
+                    throw std::runtime_error("共同世界截图导出失败");
+            }
+            break;
+        }
+    }
+    std::cout << "world window closed: frames=" << frame_count
+              << " updates=" << session.state().scene.world.updates
+              << " actors=" << session.state().scene.world.world.ai.human_order.size()
+              << " random_draws=" << session.state().scene.random.draws()
+              << " funds=" << session.state().scene.world.world.ai.accounting.funds()
+              << " moved_frames=" << moved_frames << " map_colors=" << world_pixel_colors
+              << " confirm_inputs=" << confirmation_inputs << " pause_inputs=" << pause_inputs
+              << " speed_inputs=" << speed_inputs
+              << " paused=" << session.state().scene.framework_paused
+              << " speed=" << session.state().scene.speed_setting << '\n';
     return 0;
 }
 } // namespace dungeon_village_prototype

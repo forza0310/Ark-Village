@@ -2,6 +2,7 @@
 
 // UserData.L在已准入世界轮的最后执行，位于全部名单和设施遍历之后。
 #include "dungeon_village_reference/actor_ai.hpp"
+#include <functional>
 
 namespace dungeon_village_reference {
 struct WorldOverlapActor {
@@ -39,6 +40,7 @@ struct WorldOverlapInput {
     int boundary_y{};                   // h.l[n.o][1][1]，不以城内判断替代。
     std::vector<int> direction_tickets; // 按原pair遍历顺序提供[0,2)抽号。
     std::size_t attempt_limit{1000000}; // 维护保护预算，不是APK规则。
+    std::function<std::optional<int>(int)> draw{};
 };
 enum class WorldOverlapError { none, invalid_input, duplicate_id, missing_ticket, attempt_limit };
 struct WorldOverlapCandidate {

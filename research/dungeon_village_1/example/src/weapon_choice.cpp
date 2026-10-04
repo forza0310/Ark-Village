@@ -6,7 +6,8 @@
 namespace dungeon_village_reference {
 WeaponChoiceResult prepare_weapon_choice(const std::vector<WeaponChoiceDefinition> &catalogue,
                                          std::int32_t current_weapon_id,
-                                         std::int32_t reselect_counter, std::optional<int> ticket) {
+                                         std::int32_t reselect_counter, std::optional<int> ticket,
+                                         const std::function<std::optional<int>(int)> &draw) {
     if (current_weapon_id < 0 || reselect_counter < 0)
         return {WeaponChoiceError::invalid_input, std::nullopt};
     const WeaponChoiceDefinition *current = nullptr;
@@ -30,6 +31,13 @@ WeaponChoiceResult prepare_weapon_choice(const std::vector<WeaponChoiceDefinitio
         return {WeaponChoiceError::none, result};
     if (result.eligible_ids.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
         return {WeaponChoiceError::invalid_input, std::nullopt};
+    if (!ticket && draw) {
+        try {
+            ticket = draw(static_cast<int>(result.eligible_ids.size()));
+        } catch (...) {
+            return {WeaponChoiceError::invalid_input, std::nullopt};
+        }
+    }
     if (!ticket)
         return {WeaponChoiceError::missing_ticket, std::nullopt};
     if (*ticket < 0 || static_cast<std::size_t>(*ticket) >= result.eligible_ids.size())
@@ -81,11 +89,21 @@ EquipmentChoiceResult prepare_equipment_choice(const EquipmentChoiceInput &i) {
         }
         return {WeaponChoiceError::none, c};
     }
-    if (!i.ticket)
+    if (c.eligible_ids.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
+        return {WeaponChoiceError::invalid_input, std::nullopt};
+    auto ticket = i.ticket;
+    if (!ticket && i.draw) {
+        try {
+            ticket = i.draw(static_cast<int>(c.eligible_ids.size()));
+        } catch (...) {
+            return {WeaponChoiceError::invalid_input, std::nullopt};
+        }
+    }
+    if (!ticket)
         return {WeaponChoiceError::missing_ticket, std::nullopt};
-    if (*i.ticket < 0 || static_cast<std::size_t>(*i.ticket) >= c.eligible_ids.size())
+    if (*ticket < 0 || static_cast<std::size_t>(*ticket) >= c.eligible_ids.size())
         return {WeaponChoiceError::invalid_ticket, std::nullopt};
-    c.equipment_id = c.eligible_ids[static_cast<std::size_t>(*i.ticket)];
+    c.equipment_id = c.eligible_ids[static_cast<std::size_t>(*ticket)];
     c.consumes_ticket = true;
     for (const auto &d : i.catalogue)
         if (d.id == c.equipment_id)

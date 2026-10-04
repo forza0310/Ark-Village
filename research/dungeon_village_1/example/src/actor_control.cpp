@@ -230,9 +230,20 @@ std::optional<ActorWanderCandidate> prepare_actor_wander(const ActorWanderInput 
         for (const auto offset : eight)
             consider(offset);
     const auto draw = [&](int bound) -> std::optional<int> {
-        if (c.consumed_tickets >= i.tickets.size())
-            return std::nullopt;
-        const int ticket = i.tickets[c.consumed_tickets++];
+        std::optional<int> supplied;
+        if (c.consumed_tickets < i.tickets.size())
+            supplied = i.tickets[c.consumed_tickets];
+        else if (i.draw) {
+            try {
+                supplied = i.draw(bound);
+            } catch (...) {
+                return {};
+            }
+        }
+        if (!supplied)
+            return {};
+        const int ticket = *supplied;
+        ++c.consumed_tickets;
         if (ticket < 0 || ticket >= bound)
             return std::nullopt;
         return ticket;

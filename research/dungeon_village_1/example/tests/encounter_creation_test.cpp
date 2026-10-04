@@ -151,11 +151,50 @@ void creation() {
               c.candidate->state.encounters.at(1).runtime.quota == 0,
           "event source ID wraps to0, retained creation doesn't invent quota or monsters");
 }
+void synchronous_intro() {
+    const auto source = fixture();
+    std::vector<EncounterCreationRequestKind> order;
+    const auto result = prepare_encounter_creation(
+        source, input(),
+        [&](const AiRewardState &current,
+            const EncounterCreationRequest &request) -> std::optional<AiRewardState> {
+            order.push_back(request.kind);
+            check(current.monster_order.size() ==
+                      (request.kind == EncounterCreationRequestKind::refresh_map ? 1U : 0U),
+                  "source introduction and page89 occur before current monster spawn");
+            auto next = current;
+            if (request.kind == EncounterCreationRequestKind::definition_script)
+                next.pending_completion = 37;
+            if (request.kind == EncounterCreationRequestKind::page89)
+                check(next.pending_completion == 37,
+                      "next typed request sees actual script mutation");
+            return next;
+        });
+    check(result.candidate && result.candidate->state.pending_completion == 37 &&
+              order ==
+                  std::vector<EncounterCreationRequestKind>{
+                      EncounterCreationRequestKind::definition_script,
+                      EncounterCreationRequestKind::page89,
+                      EncounterCreationRequestKind::refresh_map},
+          "one synchronous sequence consumes actual candidate requests in source order");
+    const auto rejected = prepare_encounter_creation(
+        source, input(),
+        [](const AiRewardState &current,
+           const EncounterCreationRequest &request) -> std::optional<AiRewardState> {
+            if (request.kind == EncounterCreationRequestKind::page89)
+                return {};
+            return current;
+        });
+    check(!rejected.candidate && source.monster_order.empty() &&
+              source.monster_growth.at(1).status == 0 && source.pending_completion == 0,
+          "late synchronous page failure exposes no spawn/unlock/script candidate");
+}
 } // namespace
 int main() {
     try {
         guards();
         creation();
+        synchronous_intro();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

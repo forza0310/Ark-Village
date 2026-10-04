@@ -19,6 +19,7 @@ struct WorldEventEntryInput {
     int base_quota{};
     int task_completions{};
     std::uint32_t task_flags{};
+    std::function<std::optional<int>(int)> draw{};
 };
 struct WorldEventEntryCandidate {
     AiRewardState state;

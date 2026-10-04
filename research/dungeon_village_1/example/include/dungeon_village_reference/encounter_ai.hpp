@@ -2,6 +2,8 @@
 
 #include "dungeon_village_reference/actor_ai.hpp"
 
+#include <functional>
+
 namespace dungeon_village_reference {
 enum class EncounterAiError { none, invalid_input, missing_ticket, invalid_ticket, no_candidates };
 struct BattleGroupMember {
@@ -34,8 +36,10 @@ struct BattleGroupResult {
 };
 // c.g.a(): increment first; half-cycle human slots, end-cycle pruning/monster slots/postures.
 // Only >1 surviving monster draws tickets. Owner commits state and all assignments together.
-BattleGroupResult prepare_battle_group_step(const BattleGroupState &state,
-                                            const std::vector<int> &posture_tickets = {});
+BattleGroupResult
+prepare_battle_group_step(const BattleGroupState &state,
+                          const std::vector<int> &posture_tickets = {},
+                          const std::function<std::optional<int>(int)> &draw = {});
 
 struct MonsterChoiceDefinition {
     int id{};
@@ -59,13 +63,15 @@ struct MonsterChoiceResult {
 // Unlike the original invalid empty-vector draw, maintenance returns explicit no_candidates.
 MonsterChoiceResult prepare_monster_choice(const std::vector<MonsterChoiceDefinition> &table,
                                            int progress, bool active_task,
-                                           std::optional<int> ticket = std::nullopt);
+                                           std::optional<int> ticket = std::nullopt,
+                                           const std::function<std::optional<int>(int)> &draw = {});
 struct MonsterCountInput {
     int year_index{};
     int month_index{};
     int nearby_people{};
     std::optional<int> count_ticket;  // 0..99, always drawn for ordinary type0 creation.
     std::optional<int> nearby_ticket; // 0..nearby_people-1 iff nearby_people>0.
+    std::function<std::optional<int>(int)> draw{}; // 仅缺票且真实分支需要时请求动态上限。
 };
 struct MonsterCountCandidate {
     int count{};

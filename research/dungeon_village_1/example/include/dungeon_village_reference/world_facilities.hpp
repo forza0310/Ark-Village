@@ -10,10 +10,13 @@ struct WorldExpressionTicket {
     int variant_count{}; // Original platform table, not a locale guessed from screenshots.
     std::optional<int> variant;
 };
+using WorldExpressionDraw =
+    std::function<std::optional<WorldExpressionTicket>(const ActorEffectState &, int)>;
 struct WorldFacilityControlInput {
     CharacterId actor;
     std::vector<WorldExpressionTicket> expressions; // Actual opcode18 order only.
     std::vector<int> launch_tickets;                // Actual opcode23 order, each [0,4).
+    std::size_t domain_limit{1000000}; // 外层全码路由可设1，让下一领域读取当前世界/票号。
 };
 struct WorldFacilityControlCandidate {
     RescueWorldState state;
@@ -37,6 +40,8 @@ struct WorldFacilityUseInput {
     int mode{};
     std::optional<Position> world_target; // h.e projected by the presentation adapter, truncated.
     std::optional<int> direction_ticket;
+    std::function<std::optional<int>(int)> draw{};
+    std::function<std::optional<Position>(int)> direction_target{}; // 同一draw4之后的h.e投影。
 };
 struct WorldFacilityUseResult {
     RescueWorldError error{RescueWorldError::none};

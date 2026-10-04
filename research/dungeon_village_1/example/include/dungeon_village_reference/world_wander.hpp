@@ -9,6 +9,7 @@ struct WorldWanderInput {
     CharacterId actor;
     WorldMapFacts facts;      // 当前逻辑状态4/地图位2/开边界，不是路径资格。
     std::vector<int> tickets; // 原序抽号；扩展返回实际消费量。
+    std::function<std::optional<int>(int)> draw{};
 };
 struct WorldWanderCandidate {
     RescueWorldState state;

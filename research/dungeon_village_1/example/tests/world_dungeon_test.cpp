@@ -160,6 +160,36 @@ void actual_crew_rewards() {
               r.candidate->state.item_rewards == 1 &&
               r.candidate->state.world.ai.battle.objects.empty(),
           "treasure direct grant commits catalog/shop/events; does NOT create ground object");
+    int consumed{};
+    int item_grants{};
+    const auto synchronized = prepare_world_dungeon_crew(
+        s, input(),
+        [&](const DungeonWorldState &current,
+            const DungeonWorldRequest &request) -> std::optional<DungeonWorldState> {
+            item_grants += request.source.first == 0 ? 1 : 0;
+            check(request.source.kind == DungeonCrewRequestKind::grant_catalog_reward &&
+                      current.item_rewards == consumed + item_grants,
+                  "each crew grant synchronously sees prior typed consumer and current grant");
+            auto next = current;
+            ++next.item_rewards; // 明确外部回写夹具；不把该额外统计称原版奖励。
+            ++consumed;
+            return next;
+        });
+    check(synchronized.candidate && consumed == 2 &&
+              synchronized.candidate->state.item_rewards == 3 && s.item_rewards == 0,
+          "crew typed consumer writeback is visible to next grant without touching original owner");
+    consumed = 0;
+    const auto rejected = prepare_world_dungeon_crew(
+        s, input(),
+        [&](const DungeonWorldState &current,
+            const DungeonWorldRequest &) -> std::optional<DungeonWorldState> {
+            if (++consumed == 2)
+                return {};
+            return current;
+        });
+    check(!rejected.candidate && consumed == 2 && s.catalog.at({1, 46}).status == 0 &&
+              s.shops.at(8).notices.empty(),
+          "late real crew request rejection rolls back all earlier grants and shop events");
     s.catalog.erase({0, 9});
     check(!prepare_world_dungeon_crew(s, input()).candidate && s.catalog.at({1, 46}).status == 0 &&
               s.shops.at(8).notices.empty(),

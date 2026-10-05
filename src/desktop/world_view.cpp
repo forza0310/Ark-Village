@@ -7,6 +7,7 @@
 #include "ui/script_text.hpp"
 #include "ui/skin.hpp"
 #include "ui/world_award.hpp"
+#include "ui/world_crew_summary.hpp"
 #include "ui/world_panels.hpp"
 #include "world_rank.hpp"
 #include "world_rest_visuals.hpp"
@@ -78,7 +79,7 @@ std::string glyphs(const State &s) {
     std::string result =
         "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
         "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
-        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否";
+        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否成果统计倒地";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -372,6 +373,18 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 const int visible = std::max(1, static_cast<int>(award_layout.rows.height / 18));
                 scroll = std::clamp(scroll, 0,
                                     std::max(0, static_cast<int>(award.rows.size()) - visible));
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 31) {
+                const auto crew = ui::world_crew_summary_view(current, page->id);
+                const auto crew_layout = ui::world_crew_summary_layout(extent);
+                if (crew.initialized && !desired_pause && !failed && !pending_ack &&
+                    (hit(crew_layout.confirm) || IsKeyPressed(KEY_ENTER)))
+                    pending_ack = session.ack_page(page->id);
+                if (mouse && CheckCollisionPointRec(*mouse, crew_layout.rows))
+                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+                const int visible = ui::world_crew_summary_visible_rows(crew_layout);
+                scroll = std::clamp(scroll, 0,
+                                    std::max(0, static_cast<int>(crew.rows.size()) - visible));
             } else if (ui::world_page_regular_confirmation(*page)) {
                 const auto page_layout = ui::world_page_layout(*page, extent);
                 if (!desired_pause && !failed && !pending_ack &&
@@ -420,6 +433,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 const auto award_layout = ui::world_award_layout(extent, award.termination_pending);
                 ui::draw_world_award(award, award_layout, skin, scroll,
                                      !desired_pause && !failed && !pending_ack);
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 31) {
+                const auto crew = ui::world_crew_summary_view(current, page->id);
+                const auto crew_layout = ui::world_crew_summary_layout(extent);
+                ui::draw_world_crew_summary(crew, crew_layout, skin, scroll,
+                                            !desired_pause && !failed && !pending_ack);
             } else if (!ui::world_page_automatic(*page)) {
                 // Timed waits and camera pages draw the world only; they do not expose a fake modal
                 // or a confirmation capable of skipping their source-owned counter/focus consumer.

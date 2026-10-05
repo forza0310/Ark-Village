@@ -27,12 +27,13 @@ find_program(ARK_NODE NAMES node REQUIRED)
 include(cmake/WorldSimulation.cmake)
 # Immutable UI plans also run in headless tests; only the final draw adapter depends on raylib.
 add_library(ark_world_visuals STATIC src/desktop/world_combat_visuals.cpp
-    src/desktop/world_rest_visuals.cpp src/desktop/ui/script_text.cpp)
+    src/desktop/world_rest_visuals.cpp src/desktop/world_dungeon_visuals.cpp
+    src/desktop/ui/script_text.cpp)
 target_include_directories(ark_world_visuals PUBLIC src/desktop)
 target_link_libraries(ark_world_visuals PUBLIC ark_world_runtime)
 ark_target(ark_world_visuals)
 if(BUILD_TESTING)
-    foreach(module IN ITEMS world_combat_visuals world_rest_visuals script_text)
+    foreach(module IN ITEMS world_combat_visuals world_rest_visuals world_dungeon_visuals script_text)
         add_executable(ark_${module}_tests tests/${module}_test.cpp)
         target_link_libraries(ark_${module}_tests PRIVATE ark_world_visuals)
         ark_target(ark_${module}_tests)
@@ -41,6 +42,16 @@ if(BUILD_TESTING)
 endif()
 
 find_package(Threads REQUIRED)
+# Canonical-world read queries do not own another world or expose UI/clock dependencies.
+add_library(ark_world_queries STATIC src/app/world_facility_queries.cpp)
+target_link_libraries(ark_world_queries PUBLIC ark_world_runtime)
+ark_target(ark_world_queries)
+if(BUILD_TESTING)
+    add_executable(ark_world_facility_queries_tests tests/world_facility_queries_test.cpp)
+    target_link_libraries(ark_world_facility_queries_tests PRIVATE ark_world_queries)
+    ark_target(ark_world_facility_queries_tests)
+    add_test(NAME world_facility_queries COMMAND ark_world_facility_queries_tests)
+endif()
 add_library(ark_world_session STATIC src/app/world_session.cpp src/app/world_report.cpp)
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing Threads::Threads)
 ark_target(ark_world_session)
@@ -104,7 +115,8 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
-        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
+        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp
+        src/desktop/ui/world_crew_summary.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_world_visuals ark_world_session ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
@@ -133,6 +145,14 @@ if(ARK_BUILD_DESKTOP)
             ark_asset_metadata PkgConfig::RAYLIB)
         ark_target(ark_world_award_ui_tests)
         add_test(NAME world_award_ui COMMAND ark_world_award_ui_tests)
+        add_executable(ark_world_crew_summary_tests tests/world_crew_summary_test.cpp
+            src/desktop/ui/world_crew_summary.cpp src/desktop/ui/layout.cpp src/desktop/ui/skin.cpp
+            src/desktop/resources.cpp src/desktop/projection.cpp)
+        target_include_directories(ark_world_crew_summary_tests PRIVATE src/desktop)
+        target_link_libraries(ark_world_crew_summary_tests PRIVATE ark_world_visuals ark_game
+            ark_asset_metadata PkgConfig::RAYLIB)
+        ark_target(ark_world_crew_summary_tests)
+        add_test(NAME world_crew_summary COMMAND ark_world_crew_summary_tests)
         add_executable(ark_world_scene_tests tests/world_scene_test.cpp
             src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
             src/desktop/character_status.cpp src/desktop/character_visibility.cpp

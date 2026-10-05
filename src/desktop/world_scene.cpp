@@ -3,6 +3,7 @@
 #include "character_status.hpp"
 #include "ui/layout.hpp"
 #include "world_combat_visuals.hpp"
+#include "world_dungeon_visuals.hpp"
 #include "world_overlay_render.hpp"
 #include "world_rest_visuals.hpp"
 #include <algorithm>
@@ -220,6 +221,24 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State 
                      draw_world_overlay(world_actor_combat_visuals(s, id), sprites, point, zoom);
                  }});
         }
+    // The task's bar and ground marker have different source depths. Keep both in the
+    // shared stable queue so actors can occlude them according to the same world ordering.
+    const auto dungeon = world_dungeon_view(s);
+    if (dungeon.active) {
+        const auto point = raw_anchor(view, 30.F * (dungeon.site.x + dungeon.site.y),
+                                      15.F * (dungeon.site.y - dungeon.site.x) + 15, zoom);
+        const int height =
+            dungeon.has_facility && dungeon.phase == 1 && dungeon.progress >= 0
+                ? sprites.map_image_height(dungeon.tenant_sprite, dungeon.tenant_frame)
+                : 0;
+        // Use the published wider text offsets for the bundled Chinese label so 100% does
+        // not overlap it. This desktop artwork choice does not certify the APK language flag.
+        for (auto layer : world_dungeon_visuals(dungeon, height, true))
+            queue.push_back(
+                {point.y + layer.depth_offset * zoom, [&, point, plan = std::move(layer.plan)] {
+                     draw_world_overlay(plan, sprites, point, zoom);
+                 }});
+    }
     std::stable_sort(queue.begin(), queue.end(),
                      [](const auto &a, const auto &b) { return a.depth < b.depth; });
     for (const auto &draw : queue)

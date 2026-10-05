@@ -25,6 +25,9 @@ class Sprites {
                Binding binding = Binding::common, Color tint = WHITE);
     // Fit the actual SEB frame bounds; the map anchor is not the image's visual center.
     void thumbnail(const std::string &sprite, int frame, Rectangle box, Color tint = WHITE);
+    // Dungeon labels use the bound tenant PNG height, not a SEB frame bounding box.
+    // Reject ambiguous multi-image frames instead of guessing an art height.
+    int map_image_height(const std::string &sprite, int frame);
 
   private:
     std::filesystem::path root_;

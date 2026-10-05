@@ -63,3 +63,5 @@ scene从发布mapchip列4/6读取显示深度偏移/flags，基础深度D.y+15+�
 Layout.scene_clip绘制到21单位底栏边缘；Layout.scene命中仍停在29单位角按钮上方。两者不能混用，避免8单位空白带或改变旧鼠标命中。
 初局boundary_index来自已校验STATE.reset.active_boundary_index=0，34片低木栅栏和两个方向2/3门柱依加载后格标记绘制；通行仍读取原边界blocked/access状态。扩张必须同步更新通行/标记，不能只切三皮肤纹理；本轮未添加扩张命令。
 依据：[栅栏与入口契约](../../research/dungeon_village_1/ui/BOUNDARY.md)。原版动态遮挡/扩张及截图跨版本差异另行验收。
+
+`world_dungeon_visuals`为无raylib的任务场景计划：读取唯一活动任务/实例g与h，返回进度条与目标菱形的独立深度层；调用方提供首占地格实际PNG高度和明确语言偏移。它不推进任务、绘制期随机或底栏队伍，不持有第二份进度。

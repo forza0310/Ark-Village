@@ -51,6 +51,24 @@ Sprites::~Sprites() {
     for (const auto &entry : textures_)
         UnloadTexture(entry.second);
 }
+int Sprites::map_image_height(const std::string &sprite, int frame) {
+    if (std::filesystem::path(sprite).has_parent_path())
+        throw std::runtime_error("Unsafe tenant sprite path");
+    const auto &data = definition(std::filesystem::path("image") / sprite);
+    if (frame < 0 || frame >= data.frame_count)
+        throw std::runtime_error("Tenant frame outside sprite definition");
+    int image = -1;
+    for (const auto &layer : data.layers)
+        for (const auto &part : layer.parts)
+            if (part.frame == frame) {
+                if (image >= 0 && image != part.image_index)
+                    throw std::runtime_error("Tenant frame has ambiguous image height");
+                image = part.image_index;
+            }
+    if (image < 0)
+        throw std::runtime_error("Tenant frame has no image");
+    return texture(root_ / "image" / images_.at(image)).height;
+}
 void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color tint,
                    Binding binding, float scale, int image_override) {
     if (std::filesystem::path(sprite).has_parent_path())

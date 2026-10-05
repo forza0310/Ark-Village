@@ -4,18 +4,22 @@
 #include "dungeon_village_reference/world_award_page.hpp"
 #include "dungeon_village_reference/world_exploration.hpp"
 #include "dungeon_village_reference/world_runtime.hpp"
+#include "dungeon_village_reference/world_task_commands.hpp"
+#include "dungeon_village_reference/world_task_deadline.hpp"
+#include "dungeon_village_reference/world_task_display.hpp"
 
 #include <limits>
 #include <memory>
 
 namespace dungeon_village_prototype {
 struct StartupWorldHumanCalendar {
-    int absent_months{};
+    int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
     int legacy_F{};
     int legacy_G{};
     int continuation_cost{200}; // a/e.n()的真实初值。
     int contribution{};         // e.am，由真实B[1]/B[2]重算。
+    int celebrations{};         // e.E，新局0；n.a(e,...,true)奖励次数，非到访/勋章数。
 };
 struct StartupWorldFocusActor {
     ref::BattleActorRecord actor = [] {
@@ -136,6 +140,21 @@ struct StartupWorldRuntimeState {
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
+    std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X快照。
+    std::map<std::uint64_t, ref::TaskRecruitmentAnimation>
+        task_recruitment_pages;                                 // raw24 X/Y/ap/aq/ar/as。
+    std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。
+    std::map<std::uint64_t, int> task_page_predictions;         // raw28 f126f，只展示不影响胜负。
+    std::map<std::uint64_t, bool> task_page_acceleration;       // raw28 g。
+    std::map<std::uint64_t, int> page_secondary_counters;       // 页24 f125e，与逻辑tick分开。
+    std::array<std::array<std::int32_t, 9>, 8>
+        task_display_table{};                         // 全局n.bd演出表，不创建战斗实体。
+    std::set<std::uint64_t> task_display_initialized; // raw99/100按页初始化，不重复E抽取。
+    std::set<std::uint64_t> deadline_initialized;     // raw33 ak只在本页初始化计算。
+    std::map<std::uint64_t, int> deadline_grades;     // raw33 ak显示档，不改变实际任务。
+    std::map<std::uint64_t, int> deadline_returns;    // raw33 K，由main入口消费，不在关页扣费。
+    std::optional<ref::WorldScriptPage>
+        deadline_closed_page; // aI栈外保留的已关闭原页；main消费后退役。
     std::map<std::uint64_t, std::vector<int>> award_rankings; // raw87初始化X，定义身份。
     std::map<std::uint64_t, bool> award_announced;
     std::map<std::uint64_t, bool> award_termination_pending;
@@ -146,8 +165,9 @@ struct StartupWorldRuntimeState {
     bool confirm_input{};                        // 桌面输入一次性快照；不是自动确认。
     bool cancel_input{};
     bool menu_input{};
-    int rank{};             // UserData.k，新局0。
-    int quarter_counter{3}; // UserData.q，J明确写3。
+    bool page_confirm_held{}; // 页24独立held快照，不与主场景的边沿确认混用。
+    int rank{};               // UserData.k，新局0。
+    int quarter_counter{3};   // UserData.q，J明确写3。
     int legacy_D{};
     std::array<std::int32_t, 13> legacy_n{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0}};
     std::vector<std::array<std::int32_t, 10>> yearly_statistics{30}; // UserData.C30×10。
@@ -185,8 +205,18 @@ enum class StartupWorldRuntimeError {
     invalid_page,
     script_failed
 };
+enum class StartupWorldTaskAction { confirm, cancel, add_member, depart, hire };
+struct StartupWorldTaskPageResult {
+    StartupWorldRuntimeError error{StartupWorldRuntimeError::none};
+    ref::TaskCommandDenial denial{ref::TaskCommandDenial::none};
+    bool accepted{};
+    bool departed{};
+};
 StartupWorldRuntimeError acknowledge_startup_world_runtime_page(StartupWorldRuntimeState &state,
                                                                 std::uint64_t page);
+// 商店追加页83的原按钮2返回；不把确认伪装成取消，不执行购买或删掉下方脚本页。
+StartupWorldRuntimeError cancel_startup_world_runtime_page(StartupWorldRuntimeState &state,
+                                                           std::uint64_t page);
 // 授勋的显式测试输入按独立页面更新消费；普通确认不隐式选择终止，授予/raw88仍拒绝。
 StartupWorldRuntimeError act_startup_world_runtime_award_page(StartupWorldRuntimeState &state,
                                                               std::uint64_t page,
@@ -243,8 +273,13 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeResult update(); // 一次框架b入口，内部保留原1/2轮与日历27。
     void set_paused(bool paused);
     void set_speed(int setting); // 只恰1双轮；不是人物位移乘二。
+    void set_page_confirm_held(bool held);
     StartupWorldRuntimeError acknowledge_page(std::uint64_t page);
+    StartupWorldRuntimeError cancel_page(std::uint64_t page);
     StartupWorldRuntimeError act_award_page(std::uint64_t page, ref::WorldAwardAction action);
+    StartupWorldRuntimeError open_task_menu();
+    StartupWorldTaskPageResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
+                                             int selection = 0);
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;
 
   private:

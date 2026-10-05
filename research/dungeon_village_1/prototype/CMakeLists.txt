@@ -47,6 +47,8 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
     src/startup_world_runtime_arrival.cpp src/startup_world_runtime_tasks.cpp
+    src/startup_world_runtime_task_pages.cpp
+    src/startup_world_runtime_deadline.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp "${STARTUP_WORLD_CPP}")
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
 target_include_directories(dungeon_village_startup_world PUBLIC include)
@@ -54,7 +56,7 @@ target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
 foreach(module IN ITEMS startup_world_projection startup_world_routes startup_world_scene startup_world_arrival
                         startup_world_runtime_tasks startup_world_runtime startup_world_continuous startup_world_pages
-                        startup_world_runtime_nonactors)
+                        startup_world_runtime_nonactors startup_world_task_flow startup_world_deadline)
     add_executable(dungeon_village_${module}_tests tests/${module}_test.cpp)
     target_link_libraries(dungeon_village_${module}_tests PRIVATE dungeon_village_startup_world)
     add_test(NAME dungeon_village_prototype.${module} COMMAND dungeon_village_${module}_tests)
@@ -62,8 +64,10 @@ foreach(module IN ITEMS startup_world_projection startup_world_routes startup_wo
         target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 endforeach()
-# 维护验收的墙钟保护；不改变世界tick、页输入或游戏日历。
-set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTIES TIMEOUT 900)
+# 唯一Owner的Debug值事务在并行构建时可能被CPU限流；这里只放宽墙钟保护，
+# 真实日期目标、150000框架调用上限及所有领域断言不变，不改世界tick或游戏期限。
+set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTIES TIMEOUT 1800)
+set_tests_properties(dungeon_village_prototype.startup_world_task_flow PROPERTIES TIMEOUT 3600)
 option(DUNGEON_VILLAGE_LONG_WORLD_TESTS "启用跨年与不同种子倍速的有界世界验收" OFF)
 if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
     add_test(NAME dungeon_village_prototype.world_year
@@ -72,7 +76,7 @@ if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
         COMMAND dungeon_village_startup_world_continuous_tests 6 20261005 1)
     set_tests_properties(dungeon_village_prototype.world_year
                          dungeon_village_prototype.world_speed_seed
-                         PROPERTIES TIMEOUT 1800 LABELS "long-world")
+                         PROPERTIES TIMEOUT 3600 LABELS "long-world")
 endif()
 add_test(NAME dungeon_village_prototype.startup_world_data
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/startup_world_data_test.mjs"

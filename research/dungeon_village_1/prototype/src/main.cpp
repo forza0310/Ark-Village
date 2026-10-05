@@ -89,16 +89,18 @@ Options parse_options(int argc, char **argv) {
     if (options.world &&
         (options.fixture ||
          (!options.inspect_page.empty() && options.inspect_page != "visitor" &&
-          options.inspect_page != "world-month" && options.inspect_page != "world-active")))
+          options.inspect_page != "world-month" && options.inspect_page != "world-active" &&
+          options.inspect_page != "task-team")))
         throw std::invalid_argument(
-            "共同世界不能与旧夹具混用；快照检查支持 visitor/world-month/world-active");
+            "共同世界不能与旧夹具混用；快照检查支持 visitor/world-month/world-active/task-team");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
           options.inspect_page != "visitor" &&
           !(options.world &&
-            (options.inspect_page == "world-month" || options.inspect_page == "world-active")))))
+            (options.inspect_page == "world-month" || options.inspect_page == "world-active" ||
+             options.inspect_page == "task-team")))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     return options;
 }

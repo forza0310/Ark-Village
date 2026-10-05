@@ -91,6 +91,7 @@ void routing() {
     check(binding.has_value(), "real first journey has source facility binding");
     const auto &facility = r.world.facilities.at(binding->instance_id.value);
     auto current = r;
+    current.world.ai.contexts.at(id).cell = binding->goal;
     current.world.ai.battle.actors.at(id).control.queue = {{24}};
     const auto exit = prepare_startup_world_command_input(current, id, {24}, f);
     check(exit.has_value() &&
@@ -113,6 +114,18 @@ void routing() {
           "incomplete map rejects instead of introducing fallback cells");
     check(!prepare_startup_world_command_input(current, {999}, {8, 0}, f),
           "stale actor cannot receive a valid provider input");
+    // 明确退休目标夹具：原版O保留旧目标，但恢复后地图格不再绑定该实例。
+    auto restored = current;
+    restored.world.facilities.erase(binding->instance_id.value);
+    for (auto &cell : restored.world.map.cells)
+        if (cell.facility && cell.facility->instance_id == binding->instance_id) {
+            cell.facility.reset();
+            cell.category = ref::RouteCategory::ground;
+        }
+    check(prepare_startup_world_decision_input(restored, id, f).has_value() &&
+              prepare_startup_world_command_input(restored, id, {24}, f).has_value(),
+          "restored map invalidates old O identity normally; providers do not reject legal "
+          "retirement");
 }
 } // namespace
 int main() {

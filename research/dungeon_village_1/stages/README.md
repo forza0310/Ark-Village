@@ -5,9 +5,16 @@
 
 ## 当前工作
 
-- [R3 原版 UI 与地图基线](R3-original-visual-baseline.md)：当前优先级；静态页面/资源已有交付，固定 APK 动态基线未完成。
+- [共同世界与AI](../rules/ai/README.md)：真实新局共同调度、长期世界与玩家任务自然闭环已交付；本批实际结果见[验证](../VERIFICATION.md)。
+- [R3 原版 UI 与地图基线](R3-original-visual-baseline.md)：静态页面/资源已有交付，固定 APK 动态基线未完成。
 - [研究原型试玩](PLAYTEST.md)：已有程序的交互检查；用户免除鼠标验证不等于原版输入通过。
-- [日历与月报候选](R3-calendar-report-scheduling.md)：暂缓，未获得实施确认。
+- [日历与月报早期候选](R3-calendar-report-scheduling.md)：保留当时方案，不作为现行暂停状态；共同世界现行消费者见[调度](../rules/ai/WORLD_SCHEDULE.md)。
+
+当前共同世界`--world`与默认建设/首访保护切片、旧`--fixture`分流；不能把下方旧切片缺口套到完整世界。
+本批任务接受/征集/出发、探索及战斗自然成功、成果返回/地图恢复和实际后续任务已验；
+完整授勋/主动任务管理、引用退役与长期资源规模及全原UI仍是后续边界，产品接入单独验收。
+
+## 旧保护切片记录
 
 用户已确认“已有研究原型供测试”和“支撑产品首个建设切片”两步。
 研究侧已交付 [七类缺口静态报告](../rules/STARTUP.md)和 [新局数据](../data/startup/README.md)，

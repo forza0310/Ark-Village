@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/road_render.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
 
@@ -580,6 +581,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += item.name;
     for (const auto &equipment : rules.equipment)
         glyphs += equipment.name;
+    glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加";
     ChineseFont font(font_path, glyphs);
     // 只在接管前存在旧启动快照；runtime构造后释放，禁止两个可写世界并存。
     std::unique_ptr<StartupSession> initial = std::make_unique<StartupSession>();
@@ -589,7 +591,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
     }
     StartupWorldRuntimeSession session(initial->state(), ref::WorldRandomStream::from_java_seed(1));
     initial.reset();
-    if (inspect_page == "world-month" || inspect_page == "world-active") {
+    if (inspect_page == "world-month" || inspect_page == "world-active" ||
+        inspect_page == "task-team") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < 20000; ++step) {
@@ -597,16 +600,27 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (!result.candidate)
                 throw std::runtime_error("共同世界检查预运行失败，step=" + std::to_string(step));
             const auto &s = session.state();
-            const auto &top = s.scripts.pages.back();
+            const auto top = s.scripts.pages.back();
             if (top.kind != ref::WorldScriptPageKind::scene && top.lifecycle != 4 &&
                 !(top.kind == ref::WorldScriptPageKind::raw_page &&
-                  (top.legacy_page == 56 || top.legacy_page == 57 || top.legacy_page == 16))) {
-                if (session.acknowledge_page(top.id) != StartupWorldRuntimeError::none)
+                  (top.legacy_page == 56 || top.legacy_page == 57 || top.legacy_page == 16 ||
+                   top.legacy_page == 97))) {
+                auto error = StartupWorldRuntimeError::none;
+                if (inspect_page == "task-team" && (top.legacy_page == 22 || top.legacy_page == 23))
+                    error = session.act_task_page(top.id, StartupWorldTaskAction::confirm).error;
+                else if (top.legacy_page != 24 && top.legacy_page != 25 && top.legacy_page != 28)
+                    error = session.acknowledge_page(top.id);
+                if (error != StartupWorldRuntimeError::none)
                     throw std::runtime_error("共同世界检查预运行页面消费者失败");
             }
+            if (inspect_page == "task-team" && top.kind == ref::WorldScriptPageKind::scene &&
+                !session.state().task_order.empty() && !session.state().active_task &&
+                session.open_task_menu() != StartupWorldRuntimeError::none)
+                throw std::runtime_error("任务检查预运行菜单入口失败");
             const auto &current = session.state();
-            reached = inspect_page == "world-month"
-                          ? current.report_state != 0
+            reached = inspect_page == "world-month" ? current.report_state != 0
+                      : inspect_page == "task-team"
+                          ? current.scripts.pages.back().legacy_page == 25
                           : current.scene.world.world.ai.human_order.size() >= 3;
             if (reached)
                 break;
@@ -626,6 +640,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     std::map<ref::CharacterId, ref::CombatPoint> previous_positions;
     float body_scroll{}, body_extent{};
     std::uint64_t viewed_page{};
+    int task_selection{}, task_scroll{};
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
@@ -655,8 +670,75 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 viewed_page = page->id;
                 paragraph_index = 0;
                 body_scroll = body_extent = 0;
+                task_selection = task_scroll = 0;
             }
-            if (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER)) {
+            const int raw = page->legacy_page;
+            const bool task_page = raw >= 22 && raw <= 28;
+            if (raw == 33) {
+                const auto phase = session.state().page_phases.find(page->id);
+                const bool animating =
+                    phase != session.state().page_phases.end() && phase->second == 1;
+                if (!animating) {
+                    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
+                        task_selection = 1 - task_selection;
+                    if (hit({24, 194, 96, 28}))
+                        task_selection = 0;
+                    if (hit({120, 194, 96, 28}))
+                        task_selection = 1;
+                }
+                // 页33无按钮2/Back分支；Esc不伪造取消，选择中止仍走同一50计数演出。
+                if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) {
+                    ++confirmation_inputs;
+                    if (session
+                            .act_task_page(page->id, StartupWorldTaskAction::confirm,
+                                           task_selection)
+                            .error != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("任务期限输入消费者失败");
+                }
+            } else if (task_page) {
+                const auto &s = session.state();
+                const int count =
+                    raw == 22   ? static_cast<int>(s.task_page_lists.at(page->id).size())
+                    : raw == 25 ? static_cast<int>(s.participants.size()) + 1
+                    : raw == 27 ? static_cast<int>(s.task_extra_pages.at(page->id).size())
+                                : 0;
+                if (count > 0) {
+                    if (IsKeyPressed(KEY_UP))
+                        task_selection = (task_selection + count - 1) % count;
+                    if (IsKeyPressed(KEY_DOWN))
+                        task_selection = (task_selection + 1) % count;
+                    for (int row = 0; row < 5 && row + task_scroll < count; ++row)
+                        if (hit({12, 62.0F + row * 20, 216, 20}))
+                            task_selection = row + task_scroll;
+                    task_scroll = std::clamp(task_scroll, task_selection - 4, task_selection);
+                    task_scroll = std::clamp(task_scroll, 0, std::max(count - 5, 0));
+                }
+                if (raw != 24 && (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))) {
+                    if (session.act_task_page(page->id, StartupWorldTaskAction::cancel).error !=
+                        StartupWorldRuntimeError::none)
+                        throw std::runtime_error("任务取消消费者失败");
+                } else if (raw != 24 && (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
+                    auto action = StartupWorldTaskAction::confirm;
+                    int selection = task_selection;
+                    if (raw == 25)
+                        action = selection == static_cast<int>(s.participants.size())
+                                     ? StartupWorldTaskAction::add_member
+                                     : StartupWorldTaskAction::depart;
+                    else if (raw == 27) {
+                        action = StartupWorldTaskAction::hire;
+                        selection = s.task_extra_pages.at(page->id).at(task_selection);
+                    }
+                    ++confirmation_inputs;
+                    if (session.act_task_page(page->id, action, selection).error !=
+                        StartupWorldRuntimeError::none)
+                        throw std::runtime_error("任务输入消费者失败");
+                }
+            } else if (page->legacy_page == 83) {
+                if ((IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) &&
+                    session.cancel_page(page->id) != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("商店追加菜单返回消费者失败");
+            } else if (page->legacy_page != 97 &&
+                       (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
                 if (paragraph_index + 1 < static_cast<int>(page->paragraphs.size())) {
                     ++paragraph_index;
@@ -671,6 +753,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 body_scroll = std::clamp(body_scroll - GetMouseWheelMove() * 17, 0.0F,
                                          std::max(body_extent - 64, 0.0F));
         }
+        if (!top_page() && (hit({88, 295, 64, 22}) || IsKeyPressed(KEY_T)) &&
+            !session.state().active_task &&
+            session.open_task_menu() != StartupWorldRuntimeError::none)
+            throw std::runtime_error("任务菜单消费者失败");
+        const auto *held_page = top_page();
+        session.set_page_confirm_held(
+            held_page && held_page->legacy_page == 24 &&
+            (IsKeyDown(KEY_ENTER) || (IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
+                                      CheckCollisionPointRec(mouse, {176, 265, 58, 24}))));
         // 框架绘制门槛与逻辑轮数分开；长停顿不补算，倍速由MainScene保存轮数。
         const auto gate =
             ref::prepare_world_render_gate(clock, static_cast<std::int64_t>(GetTime() * 1000));
@@ -877,8 +968,37 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     title = "成果";
                 else if (page->legacy_page == 94)
                     title = "入手!";
+                else if (page->legacy_page == 33)
+                    title = "任务期限";
+                else if (page->legacy_page == 83)
+                    title = "商店追加";
+                else if (page->legacy_page == 59)
+                    title = "活动";
+                else if (page->legacy_page >= 22 && page->legacy_page <= 28)
+                    title = page->legacy_page == 22   ? "任务列表"
+                            : page->legacy_page == 27 ? "追加队员"
+                                                      : "征集队伍";
+                else if ((page->legacy_page == 99 || page->legacy_page == 100) &&
+                         page->monster_definition)
+                    title = rules.monsters.at(*page->monster_definition).name;
             }
             font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
+            if (page->kind == ref::WorldScriptPageKind::raw_page && page->legacy_page == 59) {
+                // 定义已解锁但实例尚未到访；这里只读当前职业/性别和页面计数绘制。
+                const auto &human = rules.humans.at(page->legacy_f);
+                const auto profession =
+                    world.ai.growth.at(human.identity).definition.current_profession;
+                const auto &job = rules.jobs.at(profession);
+                const auto count = state.page_counters.find(page->id);
+                const int tick = count == state.page_counters.end() ? 0 : count->second;
+                DrawRectangle(8, 42, 224, 126, paper);
+                sprites.actor(false, 2, job.sprites.at(human.sex), (tick % 16) / 4, {120, 144});
+                if (tick >= 60)
+                    font.text("多指教", 98, 91);
+                BeginScissorMode(12, 196, 212, 64);
+                font.paragraph(job.name + "的\n" + human.name + "可以到访了!", 12, 198, 208);
+                EndScissorMode();
+            }
             if (!page->paragraphs.empty()) {
                 BeginScissorMode(12, 196, 212, 64);
                 body_extent =
@@ -918,11 +1038,113 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.paragraph(task.name + "完成!", 12, 198, 208);
                 EndScissorMode();
             }
-            font.text("确定", 190, 270);
+            if (page->legacy_page == 33) {
+                DrawRectangle(8, 42, 224, 126, paper);
+                if (page->task_definition)
+                    font.paragraph(rules.tasks.at(*page->task_definition).name, 17, 65, 204);
+                font.text("延长费用 " + std::to_string(page->legacy_f) + "G", 17, 100);
+                const auto grade = state.deadline_grades.find(page->id);
+                if (grade != state.deadline_grades.end()) {
+                    static const std::string grades[]{"再加把劲!!", "再加加油!!", "需要补充战力!",
+                                                      "重新来过比较好", "应该撤退…"};
+                    font.text(grades[grade->second], 17, 122);
+                }
+                const auto phase = state.page_phases.find(page->id);
+                const bool animating = phase != state.page_phases.end() && phase->second == 1;
+                if (animating) {
+                    const auto counter = state.page_counters.find(page->id);
+                    const float ratio = counter == state.page_counters.end()
+                                            ? 0.0F
+                                            : std::clamp(counter->second / 50.0F, 0.0F, 1.0F);
+                    DrawRectangle(24, 199, 192, 8, GRAY);
+                    DrawRectangle(24, 199, static_cast<int>(192 * ratio), 8, GREEN);
+                } else {
+                    DrawRectangle(task_selection == 0 ? 24 : 120, 194, 96, 28,
+                                  Color{219, 232, 204, 255});
+                    font.text("继续", 52, 202);
+                    font.text("中止", 148, 202);
+                }
+                font.text("确定", 190, 270);
+            } else if (page->legacy_page >= 22 && page->legacy_page <= 28) {
+                DrawRectangle(8, 42, 224, 126, paper);
+                std::vector<std::string> rows;
+                if (page->legacy_page == 22) {
+                    for (const auto id : state.task_page_lists.at(page->id))
+                        rows.push_back(rules.tasks.at(state.tasks.at(id).definition).name);
+                } else if (page->legacy_page == 25 || page->legacy_page == 27) {
+                    const auto &list = page->legacy_page == 25
+                                           ? state.participants
+                                           : state.task_extra_pages.at(page->id);
+                    for (const auto id : list) {
+                        auto name = rules.humans.at(id).name;
+                        if (page->legacy_page == 27)
+                            name += " " +
+                                    std::to_string(state.human_calendar.at(id).continuation_cost) +
+                                    "G";
+                        rows.push_back(name);
+                    }
+                    if (page->legacy_page == 25)
+                        rows.emplace_back("追加队员");
+                }
+                for (int row = 0; row < 5 && row + task_scroll < static_cast<int>(rows.size());
+                     ++row) {
+                    const auto &text = rows[row + task_scroll];
+                    const int y = 65 + row * 20;
+                    if (row + task_scroll == task_selection)
+                        DrawRectangle(12, y - 3, 216, 19, Color{219, 232, 204, 255});
+                    font.text(text, 17, y, ink, font.measure(text) > 204 ? 10 : 12);
+                }
+                if (page->task_definition && (page->legacy_page == 23 || page->legacy_page == 28)) {
+                    const auto &task = rules.tasks.at(*page->task_definition);
+                    font.paragraph(task.name, 17, 65, 204);
+                    font.text(page->legacy_page == 23
+                                  ? "征集费 " + std::to_string(task.recruitment_fee) + "G"
+                                  : "队伍评价 " +
+                                        std::to_string(state.task_page_predictions.at(page->id)),
+                              17, 104);
+                }
+                if (page->legacy_page == 24) {
+                    const auto &animation = state.task_recruitment_pages.at(page->id);
+                    font.text(std::to_string(animation.displayed_count) + "人", 17, 66);
+                    const float ratio =
+                        std::clamp(state.page_counters.at(page->id) /
+                                       static_cast<float>(animation.completion_tick),
+                                   0.0F, 1.0F);
+                    DrawRectangle(17, 100, 198, 7, GRAY);
+                    DrawRectangle(17, 100, static_cast<int>(198 * ratio), 7, GREEN);
+                    if (!animation.portraits.empty()) {
+                        const auto &human = rules.humans.at(animation.portraits.front());
+                        font.text(human.name, 17, 118);
+                        const auto profession =
+                            world.ai.growth.at(human.identity).definition.current_profession;
+                        const auto image = rules.jobs.at(profession).sprites.at(human.sex);
+                        sprites.actor(false, 0, image, 0, {196, 141});
+                    }
+                }
+                if (page->legacy_page != 24)
+                    font.text("取消", 18, 270);
+                font.text(page->legacy_page == 25
+                              ? task_selection == static_cast<int>(state.participants.size())
+                                    ? "追加"
+                                    : "出发"
+                              : "确定",
+                          190, 270);
+            } else if (page->legacy_page == 83)
+                font.text("取消", 18, 270);
+            else if (page->legacy_page != 97 &&
+                     (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
+                                                  state.page_counters.at(page->id) >= 70)))
+                font.text("确定", 190, 270);
+            if ((page->legacy_page == 99 || page->legacy_page == 100) && page->monster_definition) {
+                const auto &monster = world.ai.monster_growth.at(*page->monster_definition);
+                sprites.actor(true, monster.body * 4 + 1,
+                              monster.body * 30 + monster.sprite_variant, 0, {120, 128});
+            }
         }
         DrawRectangle(0, 294, width, 26, paper);
         font.text(state.scene.framework_paused ? "继续" : "暂停", 18, 301);
         font.text(state.scene.speed_setting == 1 ? "2倍" : "1倍", 193, 301);
+        font.text("任务", 103, 301);
         EndTextureMode();
         BeginDrawing();
         ClearBackground(BLACK);

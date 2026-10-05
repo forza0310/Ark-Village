@@ -270,6 +270,7 @@ bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesSta
     s.shop_order = r.shop_order;
     s.item_rewards = r.item_rewards;
     s.human_definition_state = r.human_definition_state;
+    synchronize_startup_world_runtime_monsters(s);
     return true;
 }
 ref::WorldScriptState startup_world_runtime_scripts(const State &s) {
@@ -772,8 +773,22 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
 const State &StartupWorldRuntimeSession::state() const { return state_; }
 void StartupWorldRuntimeSession::set_paused(bool paused) { state_.scene.framework_paused = paused; }
 void StartupWorldRuntimeSession::set_speed(int setting) { state_.scene.speed_setting = setting; }
+void StartupWorldRuntimeSession::set_page_confirm_held(bool held) {
+    state_.page_confirm_held = held;
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::acknowledge_page(std::uint64_t id) {
     return acknowledge_startup_world_runtime_page(state_, id);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::cancel_page(std::uint64_t id) {
+    return cancel_startup_world_runtime_page(state_, id);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_menu() {
+    return open_startup_world_runtime_task_menu(state_);
+}
+StartupWorldTaskPageResult StartupWorldRuntimeSession::act_task_page(std::uint64_t page,
+                                                                     StartupWorldTaskAction action,
+                                                                     int selection) {
+    return act_startup_world_runtime_task_page(state_, page, action, selection);
 }
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_t id,
                                                                     ref::WorldAwardAction action) {
@@ -781,6 +796,19 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto admitted = s;
+    for (const auto &page : admitted.scripts.pages)
+        if (page.lifecycle == 4) {
+            // 成果载荷随实际页面退休；保留它会让下一次探索误判为悬空页引用。
+            admitted.exploration_summaries.erase(page.id);
+            admitted.crew_summaries.erase(page.id);
+            admitted.task_page_lists.erase(page.id);
+            admitted.task_recruitment_pages.erase(page.id);
+            admitted.task_extra_pages.erase(page.id);
+            admitted.task_page_predictions.erase(page.id);
+            admitted.task_page_acceleration.erase(page.id);
+            admitted.page_secondary_counters.erase(page.id);
+            admitted.task_display_initialized.erase(page.id);
+        }
     // 框架下一入口真正移除已关闭页，活动页恢复；不把close当作推进世界/续体。
     admitted.scripts.pages.erase(
         std::remove_if(admitted.scripts.pages.begin(), admitted.scripts.pages.end(),

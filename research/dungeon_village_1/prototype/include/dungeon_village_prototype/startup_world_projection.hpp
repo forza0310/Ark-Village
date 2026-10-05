@@ -59,6 +59,8 @@ struct StartupWorldTask {
     int initial_status{};
     int encounter_quota{};
     std::vector<int> encounter_monsters; // 原a.m.j，第10列，保留原序。
+    int recruitment_fee{};               // 原a.m.g，第6列；页23确认扣现金类别4。
+    int crew_rating_penalty{};           // 原a.m.s，第15列；只用于页28评价，不拒绝出发。
 };
 struct StartupWorldFacilityInitial {
     std::uint32_t flags{};
@@ -108,10 +110,10 @@ struct StartupWorldRules {
 const StartupWorldRules &startup_world_rules();
 struct StartupWorldActorMetadata {
     int sex{};
-    int profession{};          // 首访创建写入的ad；后续职业更新由真正Owner维护。
-    int weapon{};              // 首访ae。
-    ref::Position cached_view; // n.a时写u；与逻辑cell分开。
-    ref::CombatPoint render_position{}; // 原o：new b零初值，仅真实frame渲染裁剪后更新，不是au。
+    int profession{};                       // 首访创建写入的ad；后续职业更新由真正Owner维护。
+    int weapon{};                           // 首访ae。
+    ref::Position cached_view;              // n.a时写u；与逻辑cell分开。
+    ref::CombatPoint render_position{};     // 原o：new b零初值，仅真实frame渲染裁剪后更新，不是au。
     ref::Position cached_screen_position{}; // 原bm：new b零，render/部分控制显式写，不是raw u。
 };
 // 一次性初始化/接管候选；提交后销毁StartupState，不保存StartupSession与routes双权威。

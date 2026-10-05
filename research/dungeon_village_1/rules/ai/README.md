@@ -73,6 +73,9 @@
 | [world_calendar_maintenance.hpp](../../example/include/dungeon_village_reference/world_calendar_maintenance.hpp) | 年统计/清理、月居民/库存/装备/设施/住宅G及请求 | 未维护stage拒绝，请求须同步真实消费者后提交 |
 | [world_month_report.hpp](../../example/include/dungeon_village_reference/world_month_report.hpp) | 旧t1457费用/现金/z/v/K/L/M/O、70+70报告与关闭后点数 | 不封账、不当作独立模态页、不提前推进日期 |
 | [world_calendar_tasks.hpp](../../example/include/dungeon_village_reference/world_calendar_tasks.hpp)、[world_task_creation.hpp](../../example/include/dungeon_village_reference/world_task_creation.hpp) | 特殊月份/等级提示/任务期限/生成/容量，实际定义/落点/奖励/挑战工厂 | 实际完整目录/持久请求和任务页面输入须外层提供 |
+| [world_task_commands.hpp](../../example/include/dungeon_village_reference/world_task_commands.hpp) | 原费用、全目录征集随机/入场演出、追加报价、预测和96计数正式出发，取消/拒绝与同步消费者 | 不替人物寻路、进入任务或制造自然成功 |
+| [world_task_display.hpp](../../example/include/dungeon_village_reference/world_task_display.hpp) | 99/100页40门槛、共享8×9表的19抽初始化/F更新，同一Java流 | 仅原演出状态，不创建实际战斗怪物或发奖励 |
+| [world_task_deadline.hpp](../../example/include/dungeon_village_reference/world_task_deadline.hpp) | 页33选择/演出/关闭原引用与真正主场景返回，实时费用/月账本/中止有序消费 | 不把关页当作扣费，不替玩家默认继续；主动任务管理菜单另行接入 |
 | [world_facility_update.hpp](../../example/include/dungeon_village_reference/world_facility_update.hpp)、[world_residence.hpp](../../example/include/dungeon_village_reference/world_residence.hpp) | 设施前缀/施工/延迟人气及住宅现有人物奖励/成长/真实程序/页面 | 住宅不是新建人物；礼物页94插入不等于领取 |
 | [world_popularity.hpp](../../example/include/dungeon_village_reference/world_popularity.hpp) | 原序奖励/显示delta/最大值/跨百重放/实际程序与新闻 | 页97须实际更新才清R，不能用任意关闭替代 |
 | [world_nonactor_schedule.hpp](../../example/include/dungeon_village_reference/world_nonactor_schedule.hpp) | bo/bp/bn/L实际路由、统一懒随机、事件原时点同步与typed全球/I写回 | 未支持请求明确失败，实际绘制/声音另验 |
@@ -92,14 +95,18 @@ AI相关规则与私有所有者只有标准C++17，不调用Java或窗口、不
 
 上轮两月seed1路径任务0；本轮补全七月全局入口、任务镜头/定时等待、rank条件/新怪物介绍与年度终止，
 同一真实新局已跨12个月、自然生成3项任务；另一种子双轮跨6个月、自然生成2项任务。
-第三个seed0双轮跨24个月/两次年度返回，自然任务3；三条实际指标与六套398次CTest见[当前验证](../../VERIFICATION.md)。
+第三个seed0双轮跨24个月/两次年度返回，自然任务3；三条实际指标和历史398项见[验证](../../VERIFICATION.md)。
 年度终止是明确测试玩家选择，不清未用勋章、不自动授予；完整原授勋UI和raw88保留缺口。
 任务工厂、探索地图/阶段2、战斗胜利和成果页仍有真实目录的显式条件组合，
-但这些与玩家接受后自然成功不同；不能从长跑推导每个状态/任务自然到达，也不制造T2/3/4入口。
+本批另接玩家任务页/期限/成果返回，同一真实新局两条seed/速度路径都自然完成探索及战斗，
+并等实际成果续体退休、最近成功之后新任务生成，真正打开新接受页再取消返回。
+新增页11/83/97/59分别按原消息、取消、自动更新与人物解锁门槛处理，不给未知页通用关闭。
+最新六套/十专项及简化队伍窗口见顶部当前批次，不能从长跑推导每个状态/任务自然到达，也不制造T2/3/4入口。
 47ms为框架绘制路径门槛，不是每逻辑轮更新前的等待；两轮保存/跳过本轮/结束帧区别保留。
 
 当前优先[可持续世界](WORLD_SCHEDULE.md#可持续世界推进)：跨年/多种子/倍速、真实停点与页面恢复，
-再闭合玩家接受任务后的自然成功及引用退役/资源规模；不重新研究已交付路由。完整建设/任务选单、武器图层合成、
+玩家任务自然闭环已验，后续按真实停点推进完整授予/raw88、主动任务管理及引用退役/资源规模；
+不重新研究已交付路由。完整建设/任务选单皮肤、武器图层合成、
 全局特效/音频播放、原图层满桶行为及正常文件存取仍单独规划。绘制期迷宫随机抖动也读同一流，
 没有固定APK默认seed和渲染轨迹时，不宣称C++运行与原APK逐帧随机等价。
 真实OS键鼠验收受macOS自动化权限阻挡，不绕过隐私授权；控制器或截图通过不能替代它。

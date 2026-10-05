@@ -1,0 +1,93 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-arm64
+          - runner: windows-2022
+            target: windows10-x86
+    steps:
+      - name: Preserve frozen source and asset bytes
+        shell: bash
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Check out raylib 6.0
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: raysan5/raylib
+          ref: dbc56a87da87d973a9c5baa4e7438a9d20121d28
+          path: build/ci/raylib
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Install macOS build tools
+        if: runner.os == 'macOS'
+        run: brew install cmake ninja pkg-config
+
+      - name: Install Windows x86 toolchain
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install pkgconfiglite --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw 'pkg-config installation failed' }
+          $version = '20250305'
+          $name = "llvm-mingw-$version-ucrt-x86_64"
+          $archive = Join-Path $env:RUNNER_TEMP "$name.zip"
+          Invoke-WebRequest "https://github.com/mstorsjo/llvm-mingw/releases/download/$version/$name.zip" -OutFile $archive
+          Expand-Archive $archive -DestinationPath $env:RUNNER_TEMP
+          "ARK_LLVM_ROOT=$(Join-Path $env:RUNNER_TEMP $name)" >> $env:GITHUB_ENV
+
+      - name: Build, test all four presets, and package Release
+        shell: bash
+        env:
+          ARK_CI_TARGET: ${{ matrix.target }}
+          PYTHONUTF8: '1'
+        run: python .github/ci/build.py
+
+      - name: Upload Release package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ark-village-${{ matrix.target }}
+          path: build/ci/dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build and test diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: diagnostics-${{ matrix.target }}
+          path: |
+            build/ci/logs/
+            build/*/Testing/Temporary/
+            build/*/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: warn
+          retention-days: 14

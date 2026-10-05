@@ -1,13 +1,13 @@
 // Exercise the executable's real CPU asset validation against isolated mutated copies.
 import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join, dirname, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 const executable = process.argv[2];
 const root = mkdtempSync(join(tmpdir(), 'ark-frames-'));
 try {
-  const target = join(root, 'ark_village');
+  const target = join(root, basename(executable));
   cpSync(executable, target);
   cpSync(join(dirname(executable), 'assets'), join(root, 'assets'), {recursive:true});
   const file = join(root, 'assets/image/plain00.seb');

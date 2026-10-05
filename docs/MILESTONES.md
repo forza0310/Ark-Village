@@ -231,6 +231,10 @@ Accepted，2026-10-05：按用户明确要求清理/tmp项目临时文件并落�
 
 Accepted，2026-10-05：用户在测试整理期间报告可见缺漏，并明确选择先恢复可用五项菜单。复用原菜单素材，先开放冒险→已交付任务目录，其余禁用；WorldFrame菜单元数据和FIFO命令实现独立冻结/保持显式暂停、原子切换源任务页，不造raw3或接回旧Game。raw24补33ee056原型Y队首当前职业/性别身体展示，不冒称完整入场动画。旗子、连击、手持武器的精确渲染合同与月报原APK动态耗时交给研究补齐；不改已证重买规则、日历参数或47ms政策。四套构建/590项标准回归与真实菜单/征集窗口已通过，详见[B1本阶段记录](stages/B1-playable-prototype.md#菜单恢复与招募展示2026-10-05)。
 
+## ADR-0038
+
+Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。两边执行四套标准预设，全部成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户明确限定构建/测试只在GitHub runner上进行，本地仅静态检查；Windows Server测试不等于Windows 10真机验收，远程首次运行仍待验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
+
 ## 研究历史引用
 
 <a id="adr-0007"></a>

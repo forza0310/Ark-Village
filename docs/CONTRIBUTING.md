@@ -26,6 +26,29 @@ ctest --preset desktop-debug
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
 
+## GitHub CI与制品
+
+[Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。按用户要求，CI构建与测试仅在GitHub runner上执行；本地只检查配置、脚本语法和差异，不以历史或本地结果代替远程验收。
+
+| 制品 | GitHub runner / 工具链 | 目标与验收边界 |
+| --- | --- | --- |
+| `ark-village-macos-arm64` | `macos-15` ARM64 / Apple Clang | macOS 11+、Apple Silicon；检查Mach-O ARM64和仅系统动态依赖 |
+| `ark-village-windows10-x86` | `windows-2022` / LLVM-MinGW 20250305 UCRT、i686 | Windows 10 32位目标；检查PE32/x86，实际测试系统为Windows Server 2022，不代表Windows 10真机/图形验收 |
+
+每个平台依次配置、编译、执行headless-debug/headless-release/desktop-debug/desktop-release的全部标准CTest，保留三个月基线，额外`ARK_LONG_WORLD_TESTS`关闭。任何步骤失败即失败，不跳过平台专属失败或降低断言。平台之间独立运行；同一main的新提交取消旧流水线。
+
+Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈希。现有`packaged_frame_contract`仅调整临时副本为保留原可执行文件名（Windows保留`.exe`），避免Node/libuv按扩展名查找时无法启动；原有全部断言、变异输入及产品实现保持不变。
+
+raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，CI单独静态构建；通过其`PKG_CONFIG_LIBS_EXTRA`配置补齐静态系统链接依赖，不改产品CMake或研究来源。Windows C++运行库也静态链接，构建工具运行于x64宿主、输出显式选择i686，制品不需要安装Node/CMake/raylib。
+
+四套测试成功后打包Release桌面程序、无窗口程序、完整`assets/`、raylib许可和启动说明；Windows附调用既有`--font`选项的启动脚本，自动选已安装的微软雅黑/黑体/宋体，缺中文字体时明确提示自行指定。macOS包保持可执行权限，不签名或公证。打包前检查架构、动态依赖、资源哈希，并从其他工作目录执行制品`--check`和无窗口入口`--help`。
+
+Actions运行页保留14天的压缩制品、SHA-256校验文件及独立诊断artifact；失败时仍上传已有构建日志、CTest日志/JUnit结果。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
+
+本次交付的本地验收仅含工作流/脚本静态检查；远程四套构建和CTest结果待main上的实际Actions运行后记录。
+
+平台依据：[GitHub托管runner列表](https://github.com/actions/runner-images#available-images)、[LLVM-MinGW 20250305工具链与UCRT说明](https://github.com/mstorsjo/llvm-mingw/blob/20250305/README.md)。
+
 ## 测试设计与组织
 
 ### 初始审计快照（2026-10-05）

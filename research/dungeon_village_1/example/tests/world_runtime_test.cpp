@@ -1,5 +1,6 @@
 #include "dungeon_village_reference/world_runtime.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -285,6 +286,81 @@ void loop_and_rollback(const WorldScriptCatalog &catalog) {
     check(idle.state && idle.state->scene.frame_counter == 0 && idle.state->entries == 0,
           "framework non-main admission is exact freeze not missing unused callback failure");
 }
+void actual_facility_completion(const WorldScriptCatalog &catalog) {
+    auto source = fixture(catalog);
+    for (const auto id : {10ULL, 11ULL, 12ULL}) {
+        RescueFacility facility;
+        facility.placement = {{id}, 3, FacilityShape::single, FacilityOrientation::first, {1, 1}};
+        facility.kind = 1;
+        facility.category = 5;
+        facility.status = id == 10 ? 2 : 1;
+        source.scene.world.world.facilities.emplace(id, facility);
+        source.scene.world.facility_order.push_back(id);
+        source.tasks.finish.dungeon.facilities.emplace(
+            id, DungeonFacilityProgress{id == 10 ? 9 : 0, 9600, 9600, 100, 100, {}});
+        source.facilities.details.emplace(id, WorldFacilityUpdateDetails{});
+    }
+    source.facilities.definitions.emplace(3, WorldFacilityUpdateDefinition{});
+    source.facilities.cycle_length = 80;
+    auto a = adapter(catalog);
+    a.facilities.read = [](const Owner &o) {
+        auto value = o.facilities;
+        value.finish = finish(o);
+        value.scripts = scripts(o);
+        value.random = o.random;
+        return value;
+    };
+    a.facilities.write = [](Owner &o, const WorldFacilityUpdateState &value) {
+        o.facilities = value;
+        o.facilities.finish = DungeonFinishState();
+        o.facilities.scripts = {};
+        o.facilities.random = {};
+        o.tasks.finish = value.finish;
+        o.tasks.finish.dungeon.world = RescueWorldState();
+        o.tasks.finish.event_calls.clear();
+        o.scene.world.world = value.finish.dungeon.world;
+        auto &order = o.scene.world.facility_order;
+        order.erase(
+            std::remove_if(order.begin(), order.end(),
+                           [&](auto id) { return !o.scene.world.world.facilities.count(id); }),
+            order.end());
+        return write_scripts(o, value.scripts);
+    };
+    a.facility = [](const Owner &current,
+                    const WorldFacilityUpdateRequest &request) -> std::optional<Owner> {
+        if (request.kind != WorldFacilityUpdateConsumerKind::dungeon_finish ||
+            request.facility != 10)
+            return {};
+        auto next = current;
+        next.scene.world.world.facilities.erase(10);
+        next.tasks.finish.dungeon.facilities.erase(10);
+        auto &order = next.scene.world.facility_order;
+        order.erase(std::find(order.begin(), order.end(), 10));
+        return next; // 明确阶段2域删除夹具，实际地图恢复另由world_exploration专项覆盖。
+    };
+    const auto completed = prepare_owned_world_runtime(source, {27}, a);
+    check(completed.state && completed.worlds.size() == 1 &&
+              completed.state->scene.world.facility_order == std::vector<std::uint64_t>{11, 12} &&
+              !completed.state->scene.world.world.facilities.count(10) &&
+              completed.state->tasks.finish.dungeon.facilities.at(11).updates == 0 &&
+              completed.state->tasks.finish.dungeon.facilities.at(12).updates == 1,
+          "runtime actual phase2 facility consumer self-removal reports already_removed; forward "
+          "skip11 then12");
+    const auto resumed = prepare_owned_world_runtime(*completed.state, {27}, a);
+    check(resumed.state && resumed.state->tasks.finish.dungeon.facilities.at(11).updates == 1 &&
+              resumed.state->tasks.finish.dungeon.facilities.at(12).updates == 2,
+          "retained shifted facility updates next frame, removed current never invoked twice");
+    // 原adapter的L通过默认真实重叠路径，不借未注册request占位；清空read_routes触发晚期拒绝。
+    a.nonactors.read_routes = {};
+    const auto rejected = prepare_owned_world_runtime(source, {27}, a);
+    check(!rejected.state && rejected.worlds.empty() &&
+              source.scene.world.facility_order == std::vector<std::uint64_t>{10, 11, 12} &&
+              source.scene.world.world.facilities.count(10) &&
+              source.tasks.finish.dungeon.facilities.at(10).updates == 9 &&
+              source.random.draws() == 0,
+          "late missing L consumer rejects whole runtime after successful facility completion and "
+          "skips");
+}
 } // namespace
 int main() {
     try {
@@ -293,6 +369,7 @@ int main() {
         check(parsed.catalog.has_value(), "published scripts parse");
         source_scan(*parsed.catalog);
         loop_and_rollback(*parsed.catalog);
+        actual_facility_completion(*parsed.catalog);
         std::cout << "world runtime: " << checks << " checks passed\n";
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

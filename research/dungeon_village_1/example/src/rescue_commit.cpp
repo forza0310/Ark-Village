@@ -517,6 +517,7 @@ RescueWorldResult prepare_world_rescue_delivery(const RescueWorldState &s, Chara
         rescued_arrival.candidate->state.legacy_actor_total;
     f->sales = rescued_arrival.candidate->state.current_month_facility_sales;
     c.state.actors.at(rescued_id).binding = c.state.actors.at(id).binding;
+    c.state.actors.at(rescued_id).destination = c.state.actors.at(id).destination;
     carried.position = original.position;
     c.state.ai.contexts.at(rescued_id).cell = s.ai.contexts.at(id).cell;
     auto &carrier = c.state.ai.battle.actors.at(id);

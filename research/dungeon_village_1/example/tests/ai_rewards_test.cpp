@@ -689,12 +689,22 @@ void retired_event_consumers() {
     const auto linked = prepare_encounter_reward_commit(s, input);
     check(linked.candidate && linked.candidate->state.encounters.at(0).runtime.state == 0,
           "current event monster count matches originalID even when instance db is retired alias");
+    check(linked.candidate && linked.candidate->state.encounters.at(0).linked_monsters == 1,
+          "normal event count publishes source f.n cache");
+    s.encounters.at(0).linked_monsters = 9;
     input.town_overlap = true;
     const auto cancelled = prepare_encounter_reward_commit(s, input);
     check(cancelled.candidate &&
               cancelled.candidate->state.battle.actors.at({2}).control.state == 3 &&
               cancelled.candidate->state.battle.actors.at({2}).state_parameter == 1,
           "source cancel also matches originalID, not source object's stable db identity");
+    check(cancelled.candidate && cancelled.candidate->state.encounters.at(0).linked_monsters == 9,
+          "early town cancellation preserves prior f.n rather than publishing defaultzero");
+    s.encounters.at(0).runtime.state = 1;
+    input.town_overlap = false;
+    const auto retiring = prepare_encounter_reward_commit(s, input);
+    check(retiring.candidate && retiring.candidate->state.encounters.at(0).linked_monsters == 9,
+          "retiring state1 preserves cached f.n without a new counting branch");
 }
 } // namespace
 int main() {

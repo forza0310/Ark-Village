@@ -33,7 +33,7 @@ struct AiRosterAppend {
 };
 struct AiScheduleResponse {
     bool accepted{true}; // Consumer could not prepare its domain candidate => fail whole plan.
-    bool remove{};       // True from c()/d()/object/event consumer, never inverted.
+    bool remove{};       // c/d/object/event返回true，或上层已验证设施c内部自删后的名单镜像。
     bool release_current_facility{}; // Human d() true and q()!=null, before instance erase.
     std::vector<AiRosterAppend> append;
 };

@@ -30,7 +30,7 @@
 | encounter_lifecycle | 完整事件分支/任务生成、胜利与页面有序请求、定义共享近期统计和延迟成长；不提交全局现金或职业升级 | [事件收尾](../rules/ai/ENCOUNTERS.md#完整事件候选与延迟成长) |
 | actor_lifecycle | 计数状态、救援绑定/修复/跟随/释放、普通旅店双人原子到达、r清理候选 | [生命周期](../rules/ai/LIFECYCLE.md) |
 | actor_control | 全34码校验、本地前缀、失败8、状态setter、漫游、装备显示/提交分离；全局副作用由所有者应用 | [控制解释器](../rules/ai/CONTROL.md) |
-| ai_schedule | 实时名单两遍、反向/正向删除、同轮追加、删除前设施释放；消费者只准备私有聚合副本，不是通用事件总线 | [聚合调度](../rules/ai/LIFECYCLE.md#聚合遍历与同轮新建) |
+| ai_schedule | 实时名单两遍、反向/正向删除、设施内部自删后正向跳过、同轮追加、删除前设施释放；消费者只准备私有聚合副本，不是通用事件总线 | [聚合调度](../rules/ai/LIFECYCLE.md#聚合遍历与同轮新建) |
 | actor_effects | cd/ce逻辑时间线、删除跳过、表情票号/抑制、动作/状态计数及命中标签过期；不绘图或直接播放声音 | [显示与延迟效果](../rules/ai/CONTROL.md#显示与延迟效果的实际推进) |
 | human_growth | 定义共享六属性/装备/法术重算、九步奖励成长、多级/满级及最后一级提示/职业解锁请求；不改变人物当前HP或代替全局页面提交 | [定义成长](../rules/ai/CONTROL.md#人物定义重算与职业成长) |
 | facility_service | 装备/携物价格前置、全部设施使用队列、完整退出前部/普通/装备/住宅尾部；救援哨兵必须交双人事务 | [设施事务](../rules/FACILITY_USE.md#设施服务组合与首段私有所有者) |
@@ -63,6 +63,9 @@
 | world_month_report、world_calendar_maintenance、world_calendar_tasks | 旧t月报/费用/点数、年度清理、跨月/子周期任务与等级提示，外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口) |
 | [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 年度raw87初始化增勋章、原B1/B2贡献/交换排序、首次音效和事件23、明确终止询问及事件22/音乐恢复/关闭顺序；贡献不是击杀，完整授予/raw88明确未接；typed询问仅交接研究测试输入，不宣称真实窗口模态 | [年度授勋最小闭环](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
 | world_task_creation、world_facility_update、world_residence | 真实任务工厂/全占地、设施前缀/施工/共享人气、住宅现有人物奖励和原程序 | [探索](../rules/ai/DUNGEONS.md)、[共同调度](../rules/ai/WORLD_SCHEDULE.md) |
+| [world_task_commands.hpp](include/dungeon_village_reference/world_task_commands.hpp) | 玩家页23/24募集费用、原序全列表随机/入场/队伍提交、页27当前候选与追加费用、页28预测/动画/正式任务启动；回主场景、消息与页面同步请求，取消/拒绝及晚期失败不留部分世界或随机 | [玩家接受与出发](../rules/ai/DUNGEONS.md#玩家接受募集追加与正式出发) |
+| [world_task_display.hpp](include/dungeon_village_reference/world_task_display.hpp) | raw99确认40门槛与raw100共享8×9演出表、19抽初始化、逐行更新和统一随机候选；不生成怪物实例、不重复本帧更新、不承担实际战斗结算 | [演出与成果后的阻塞点](../rules/ai/DUNGEONS.md#演出与成果后的阻塞点) |
+| [world_task_deadline.hpp](include/dungeon_village_reference/world_task_deadline.hpp) | raw33费用快照守卫、继续/中止动画与栈外原页返回；主场景重新汇总当前费用、同步月账本和完整中止请求，关页不提前扣款 | [期限页与返回主场景](../rules/ai/DUNGEONS.md#期限页与返回主场景) |
 | world_popularity、world_nonactor_schedule、world_runtime | 实际奖励/新闻、bo/bp/bn/L路由、主场景至真实工厂的同一私有Owner组合；无缺依赖默认成功 | [人气和脚本](../data/scripts/)、[组合入口](include/dungeon_village_reference/world_runtime.hpp) |
 
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。

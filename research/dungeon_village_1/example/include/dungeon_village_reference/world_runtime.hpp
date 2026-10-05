@@ -45,8 +45,9 @@ template <class Owner> struct WorldRuntimeAdapter {
     std::function<std::optional<WorldMonthReportInput>(const Owner &)> report_input;
     WorldScriptCatalog catalog;
     // 真实f.a0创建消费者；V/aK/概率/20落点由已维护entry强制消费。
-    std::function<std::optional<OwnedWorldRuntimeCreation<Owner>>(
-        const Owner &, const EncounterCreationInput &)> create_encounter;
+    std::function<std::optional<OwnedWorldRuntimeCreation<Owner>>(const Owner &,
+                                                                  const EncounterCreationInput &)>
+        create_encounter;
     // 镜头l.h只影响前置到访，不以高层JADX包围形态额外暂停整段AI。
     std::function<std::optional<Owner>(const Owner &)> before_common;
     std::function<std::optional<Owner>(const Owner &)> arrival;
@@ -211,7 +212,12 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
         if (!result.candidate || !adapter.facilities.write(next, result.candidate->state))
             return {};
         adapter.write_random(next) = result.candidate->state.random;
-        return OwnedWorldScheduleStep<Owner>{std::move(next)};
+        // c/m阶段2会在c内部恢复地图并从g撤除当前实例；没有虚构的void返回true请求。
+        const bool present =
+            adapter.facilities.read(next).finish.dungeon.world.facilities.count(*call.id) != 0;
+        return OwnedWorldScheduleStep<Owner>{std::move(next),
+                                             present ? WorldScheduleDisposition::keep
+                                                     : WorldScheduleDisposition::already_removed};
     }
     auto nonactors = adapter.nonactors;
     nonactors.other = {}; // 到访/人气/设施已在上方实际路由，禁止互相递归兜底。
@@ -292,8 +298,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
         if (call.stage == WorldSceneStage::normal_world ||
             call.stage == WorldSceneStage::focus_world) {
             if (!adapter.entry || !adapter.read_random || !adapter.write_random ||
-                !adapter.before_common || !adapter.report ||
-                !adapter.report_input)
+                !adapter.before_common || !adapter.report || !adapter.report_input)
                 return {};
             auto initial_entry = adapter.entry.read(next);
             initial_entry.random = adapter.read_random(next);
@@ -311,7 +316,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
                     auto published = adapter.entry.read(next);
                     published.random = adapter.read_random(next);
                     return WorldWorldEntryCreation{std::move(published), created->created,
-                                                    created->denial};
+                                                   created->denial};
                 });
             if (!entry.candidate || !adapter.entry.write(next, entry.candidate->state))
                 return {};

@@ -337,8 +337,9 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
             if (!disposition)
                 return reject(error);
             remove = *disposition != WorldScheduleDisposition::keep;
-            if (remove && (visit.phase == AiSchedulePhase::facility ||
-                           visit.phase == AiSchedulePhase::finalize))
+            if (remove && (visit.phase == AiSchedulePhase::finalize ||
+                           (visit.phase == AiSchedulePhase::facility &&
+                            *disposition != WorldScheduleDisposition::already_removed)))
                 return reject(WorldScheduleError::invalid_mutation);
             const auto now = rosters(c.state);
             const bool present = visit.id && std::find(now[list].begin(), now[list].end(),

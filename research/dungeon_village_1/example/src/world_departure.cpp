@@ -935,8 +935,9 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
             c.ground_effect20 = domain->ground_effect20;
         } else {
             // 有界普通a(m,o)：装备抽选、递归救援和物体交付必须用真实领域回调。
-            if (old.object_slot != -1 || facility.detail == 1 || facility.detail == 4 ||
-                facility.detail == 5)
+            if (old.object_slot == -2 ||
+                (old.object_slot >= 0 && (facility.category == 1 || facility.category == 7)) ||
+                facility.detail == 1 || facility.detail == 4 || facility.detail == 5)
                 return fail(WorldPathError::missing_domain);
             auto stats = c.state.actors.at(i.actor).visits;
             if (old.kind == ActorKind::human) {
@@ -946,21 +947,27 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 stats.legacy_actor_total = spending->second;
             }
             stats.current_month_facility_sales = facility.sales;
-            const auto arrival = prepare_facility_arrival(
-                stats, {i.actor, facility.placement.instance_id, facility.placement.definition_id,
-                        facility.kind, facility.category, facility.detail,
-                        old.kind == ActorKind::human ? 0 : 1, old.control.flags, old.object_slot,
-                        s.month_index, facility.price});
-            if (!arrival.candidate)
+            // 原N>=0只在类别1/7交付；进入旅馆等普通设施仍保留携带物，不需物品目录。
+            const auto resolved = prepare_resolved_arrival(
+                {{i.actor, facility.placement.instance_id, facility.placement.definition_id,
+                  facility.kind, facility.category, facility.detail,
+                  old.kind == ActorKind::human ? 0 : 1, old.control.flags, old.object_slot,
+                  s.month_index, facility.price},
+                 stats,
+                 {},
+                 {},
+                 false});
+            if (!resolved.candidate)
                 return fail(WorldPathError::preparation_failed);
-            auto visits = arrival.candidate->state;
+            const auto &arrival = resolved.candidate->arrival;
+            auto visits = arrival.state;
             c.state.facilities.at(ctx.binding->instance_id.value).sales =
                 visits.current_month_facility_sales;
             if (old.kind == ActorKind::human)
                 c.state.human_spending.at(old.definition) = visits.legacy_actor_total;
             visits.current_month_facility_sales = visits.legacy_actor_total = 0;
             c.state.actors.at(i.actor).visits = visits;
-            const auto cash = arrival.candidate->cash_income;
+            const auto cash = arrival.cash_income;
             if (cash > 0) {
                 auto &ai = c.state.ai;
                 if (ai.next_cash_id == 0 ||

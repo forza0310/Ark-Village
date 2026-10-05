@@ -160,6 +160,102 @@ void fifo_and_failures() {
               calls == std::vector<int>{2},
           "real c0 replaces queue; old32/9 are not replayed from snapshot");
 }
+// 显式两人救援夹具：验证完整c0→P路由消费已证递归交付，而非绕过P直接调用。
+void recursive_rescue_arrival() {
+    auto s = fixture(0);
+    auto &carrier = s.world.ai.battle.actors.at({1});
+    carrier.object_slot = -2;
+    carrier.rescue = CharacterId{2};
+    auto rescued = carrier;
+    rescued.id = {2};
+    rescued.control.state = 16;
+    rescued.control.flags |= 512U;
+    rescued.object_slot = -1;
+    rescued.rescue = CharacterId{1};
+    s.world.ai.battle.actors.emplace(rescued.id, rescued);
+    s.world.ai.human_order.push_back(rescued.id);
+    s.world.ai.contexts.emplace(rescued.id, RewardActorContext{{4, 5}, false, {}, {}});
+    s.world.actors.emplace(rescued.id, RescueActorContext{});
+    s.world.actors.at(rescued.id).destination = Position{1, 1}; // 倒下前的旧O坐标。
+    s.world.human_spending[0] = 0;
+    RescueFacility inn;
+    inn.placement = {{22}, 22, FacilityShape::single, FacilityOrientation::first, {5, 5}};
+    inn.category = 2;
+    inn.price = 17;
+    s.world.facilities.emplace(22, inn);
+    auto old_dungeon = inn;
+    old_dungeon.placement = {{33}, 33, FacilityShape::single, FacilityOrientation::first, {1, 1}};
+    old_dungeon.category = 5;
+    s.world.facilities.emplace(33, old_dungeon);
+    const auto map =
+        bind_facility_map(s.world.map, {{inn.placement, 3}, {old_dungeon.placement, 3}});
+    check(map.map.has_value(), "rescue fixture binds exact inn tile");
+    s.world.map = *map.map;
+    s.facts.map = s.world.map;
+    auto &path = s.world.actors.at({1});
+    path.binding = ArrivalBinding{{5, 5}, {22}, 22};
+    path.destination = Position{5, 5};
+    path.path_pending = true;
+    FacilityDeparture journey;
+    journey.category = 2;
+    journey.binding = *path.binding;
+    journey.route.steps = {{5, 5}};
+    path.journey = journey;
+    auto i = decision();
+    i.daily.path = WorldPathInput{};
+    i.daily.path->actor = {1};
+    i.daily.path->facts = s.facts;
+    const auto result = prepare_world_actor_decision(s, i);
+    check(result.candidate && result.candidate->daily && result.candidate->daily->path &&
+              result.candidate->daily->path->arrived,
+          "full actor router invokes recursive delivery after actual P arrival");
+    const auto &next = result.candidate->state.world;
+    check(next.ai.battle.actors.at({1}).object_slot == -1 &&
+              !next.ai.battle.actors.at({1}).rescue && !next.ai.battle.actors.at({2}).rescue &&
+              next.ai.battle.actors.at({1}).control.state == 14 &&
+              next.ai.battle.actors.at({2}).control.state == 14 &&
+              next.ai.contexts.at({2}).cell == Position{5, 5} &&
+              next.actors.at({2}).destination == Position{5, 5} &&
+              next.facilities.at(22).sales == 0 && !next.actors.at({1}).journey,
+          "rescued use1 and helper use2 retain old512/256 fee guards and release both R");
+    check(s.world.ai.battle.actors.at({1}).object_slot == -2 &&
+              s.world.ai.battle.actors.at({2}).control.state == 16,
+          "recursive arrival publishes only complete candidate");
+    const auto entered = prepare_world_actor_control(
+        result.candidate->state, {2},
+        [](const auto &, auto, const auto &) -> std::optional<WorldActorCommandInput> {
+            return WorldActorCommandInput{};
+        });
+    check(entered.candidate &&
+              entered.candidate->state.world.facilities.at(22).occupants ==
+                  std::vector<CharacterId>{{2}} &&
+              entered.candidate->state.world.facilities.at(33).occupants.empty(),
+          "rescued21 occupies new inn, never routes to pre-rescue dungeon O coordinates");
+    auto rest = s;
+    rest.world.facilities.at(22).category = 8;
+    rest.world.facilities.at(22).detail = 2;
+    rest.random = WorldRandomStream::from_raw({2, 3});
+    i.use_shared_random = true;
+    i.primary_expression_table = true;
+    std::vector<std::pair<CharacterId, int>> projected;
+    i.rescue_direction_target = [&](CharacterId actor, int direction) -> std::optional<Position> {
+        projected.emplace_back(actor, direction);
+        const auto cell = rest.world.ai.contexts.at(actor).cell;
+        return Position{cell.x * 100 + direction, cell.y * 100};
+    };
+    const auto seated = prepare_world_actor_decision(rest, i);
+    check(seated.candidate && seated.candidate->state.random.draws() == 2 &&
+              projected == std::vector<std::pair<CharacterId, int>>{{{2}, 2}, {{1}, 3}} &&
+              seated.candidate->state.world.ai.battle.actors.at({2}).control.queue.front() ==
+                  LegacyActorControl{0, 402, 500} &&
+              seated.candidate->state.world.ai.battle.actors.at({1}).control.queue.front() ==
+                  LegacyActorControl{0, 503, 500},
+          "full category8 router draws rescued then carrier, each target uses separate old cell");
+    rest.random = WorldRandomStream::from_raw({2});
+    check(!prepare_world_actor_decision(rest, i).candidate && rest.random.draws() == 0 &&
+              rest.world.ai.battle.actors.at({1}).object_slot == -2,
+          "second rescue direction exhaustion rolls back both people and shared stream");
+}
 void shared_random_sequence() {
     auto s = fixture();
     s.random = WorldRandomStream::from_raw({-1, 6, 3, 2, 11, 19, 99, 2, 5, 7});
@@ -284,6 +380,7 @@ int main() {
     try {
         all_state_routing();
         fifo_and_failures();
+        recursive_rescue_arrival();
         shared_random_sequence();
         decision_shared_random();
         every_control_route();

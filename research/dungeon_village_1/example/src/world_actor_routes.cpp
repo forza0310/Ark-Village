@@ -147,7 +147,39 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
                 c.state = *result;
                 return c.state.world.ai;
             };
-        if (input.path && i.shop_arrival && !input.path->facility_consumer) {
+        if (input.path && old.object_slot == -2 && !input.path->facility_consumer) {
+            // P先清路线再递归交付被救者；两人的使用计划与原救援领域共同提交。
+            input.path->facility_consumer = [&](const RescueWorldState &world,
+                                                const WorldPathFacilityRequest &request)
+                -> std::optional<WorldPathFacilityCandidate> {
+                if (!request.human_arrival_and_use || !(request.actor == i.actor))
+                    return {};
+                const auto f = world.facilities.find(request.binding.instance_id.value);
+                if (f == world.facilities.end())
+                    return {};
+                RescueDeliveryProjection projection;
+                if (f->second.category == 8 && f->second.detail == 2) {
+                    const auto rescued = world.ai.battle.actors.at(i.actor).rescue;
+                    if (!i.rescue_direction_target || !i.use_shared_random || !rescued)
+                        return {};
+                    projection.rescued_direction = draw(4);
+                    if (!projection.rescued_direction)
+                        return {};
+                    projection.rescued_target =
+                        i.rescue_direction_target(*rescued, *projection.rescued_direction);
+                    projection.carrier_direction = draw(4);
+                    if (!projection.carrier_direction)
+                        return {};
+                    projection.carrier_target =
+                        i.rescue_direction_target(i.actor, *projection.carrier_direction);
+                }
+                const auto r = prepare_world_rescue_delivery(world, i.actor, projection);
+                if (!r.candidate)
+                    return {};
+                c.state.world = r.candidate->state;
+                return WorldPathFacilityCandidate{c.state.world};
+            };
+        } else if (input.path && i.shop_arrival && !input.path->facility_consumer) {
             input.path->facility_consumer = [&](const RescueWorldState &world,
                                                 const WorldPathFacilityRequest &request)
                 -> std::optional<WorldPathFacilityCandidate> {
@@ -167,8 +199,8 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
                                        r.candidate->requests.end());
                 for (const auto &presentation : r.candidate->requests)
                     if (i.presentation) {
-                        const auto p = i.presentation(c.state,
-                            {i.actor, {}, {}, {}, {}, presentation});
+                        const auto p =
+                            i.presentation(c.state, {i.actor, {}, {}, {}, {}, presentation});
                         if (!p)
                             return {};
                         c.state = *p;
@@ -241,7 +273,8 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
         c.attack_requests = r.candidate->requests;
         for (const auto &request : r.candidate->requests)
             if (i.presentation) {
-                const auto p = i.presentation(c.state, {request.actor, request.target, request, {}, {}, {}});
+                const auto p =
+                    i.presentation(c.state, {request.actor, request.target, request, {}, {}, {}});
                 if (!p)
                     return fail(WorldActorRouteError::consumer_failed);
                 c.state = *p;
@@ -362,13 +395,12 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
         c.lifecycle = r.candidate;
     }
     for (const auto &request : c.lifecycle_requests)
-        if (i.presentation &&
-            (request.kind == LifecycleRequestKind::ground_effect ||
-             request.kind == LifecycleRequestKind::normal_death_rewards ||
-             request.kind == LifecycleRequestKind::cancelled_death_effect ||
-             request.kind == LifecycleRequestKind::landing_effect)) {
-            const auto p = i.presentation(c.state,
-                {i.actor, {}, {}, {}, {}, {}, request, old.definition});
+        if (i.presentation && (request.kind == LifecycleRequestKind::ground_effect ||
+                               request.kind == LifecycleRequestKind::normal_death_rewards ||
+                               request.kind == LifecycleRequestKind::cancelled_death_effect ||
+                               request.kind == LifecycleRequestKind::landing_effect)) {
+            const auto p =
+                i.presentation(c.state, {i.actor, {}, {}, {}, {}, {}, request, old.definition});
             if (!p)
                 return fail(WorldActorRouteError::consumer_failed);
             c.state = *p;
@@ -524,15 +556,15 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
                     for (const auto &request : r.candidate->hit->requests)
                         if (request.kind == HitRequestKind::face_attacker ||
                             request.kind == HitRequestKind::attack_sound) {
-                            const auto p = i.presentation(next.state,
-                                {actor, r.candidate->target, {}, request, {}, {}});
+                            const auto p = i.presentation(
+                                next.state, {actor, r.candidate->target, {}, request, {}, {}});
                             if (!p)
                                 return fail();
                             next.state = *p;
                         }
                 for (const auto &request : r.candidate->requests) {
-                    const auto p = i.presentation(next.state,
-                        {request.actor, request.target, request, {}, {}, {}});
+                    const auto p = i.presentation(
+                        next.state, {request.actor, request.target, request, {}, {}, {}});
                     if (!p)
                         return fail();
                     next.state = *p;

@@ -40,8 +40,7 @@ AiScheduleResult prepare_ai_schedule(const AiScheduleInput &i, const AiScheduleH
         if ((response.release_current_facility &&
              (visit.phase != AiSchedulePhase::human_execution || !response.remove)) ||
             (response.remove && (visit.phase == AiSchedulePhase::release_human_facility ||
-                                 visit.phase == AiSchedulePhase::finalize ||
-                                 visit.phase == AiSchedulePhase::facility))) {
+                                 visit.phase == AiSchedulePhase::finalize))) {
             error = AiScheduleError::invalid_response;
             return std::nullopt;
         }

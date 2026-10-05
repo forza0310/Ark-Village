@@ -3,8 +3,8 @@
 ## 当前状态
 
 - [x] 建立C++17/raylib产品工程、四套构建预设、模块说明和独立测试。
-- [x] 配置main GitHub CI：macOS ARM64与Windows 10 x86制品、每个平台desktop-debug/desktop-release两套全部标准CTest、失败诊断与制品校验；headless预设保留但不在日常CI重复执行，构建/测试仅在GitHub runner执行，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
-- [ ] 首次main Actions运行：确认两个平台的desktop Debug/Release构建、全部标准CTest及下载包检查通过；本地静态检查不算远程验收，Windows 10真机另验。
+- [x] 配置main GitHub CI：macOS ARM64与Windows 10 x86制品、每个平台desktop-release构建及全部标准CTest、失败诊断与制品校验；Debug和headless预设保留但不在日常CI重复执行，构建/测试仅在GitHub runner执行，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+- [ ] 首次main Actions运行：确认两个平台的desktop Release构建、全部标准CTest及下载包检查通过；本地静态检查不算远程验收，Windows 10真机另验。
 - [x] 迁入研究侧完整定义目录、脚本、新局数据及共同世界运行时，保留来源与机械迁入校验。
 - [x] 世界唯一持有地图、现金、随机、人物/怪物和页面；标准C++入口及桌面入口独占同一类Owner。
 - [x] 验证多人到访、实际设施使用/收入、遭遇和跨月结算；桌面接入多人/怪物动作、道路拼块、栅栏/门柱、血条及现金浮标。

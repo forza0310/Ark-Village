@@ -14,7 +14,7 @@
 
 阶段前先分析并确认设计；不改变已确认规则、契约或范围的小型错误自行修复并定向复验，仅来源/规则冲突、关键契约歧义或需要新范围/决策时暂停确认，详见[开发流程](CONTRIBUTING.md)。本批实现完成后集中完善测试，代码/构建/资源/测试阶段结束四套配置/编译/CTest通过；纯文档只做文档检查，实际窗口/输入及原版对照另记。
 四套预设为headless-debug/headless-release/desktop-debug/desktop-release，不沿用旧预设或历史日志。
-main日常CI仅执行desktop-debug/desktop-release两套全部标准CTest，headless预设保留供阶段验收及依赖边界检查；CI配置调整的构建/测试仅在GitHub runner执行，详见ADR-0038。
+main日常CI仅执行desktop-release构建及全部标准CTest，Debug和headless预设保留供阶段验收及依赖边界检查；CI配置调整的构建/测试仅在GitHub runner执行，详见ADR-0038。
 
 近期操作项以 [TODO](../TODO.md)为准；本页只记录阶段范围、状态和稳定决策。
 
@@ -234,7 +234,7 @@ Accepted，2026-10-05：用户在测试整理期间报告可见缺漏，并明�
 
 ## ADR-0038
 
-Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI缩减为desktop-debug/desktop-release两套全部标准CTest；desktop已覆盖核心程序和测试，不重复headless构建，保留headless预设供阶段验收和依赖边界检查。两套全部成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户明确限定构建/测试只在GitHub runner上进行，本地仅静态检查；Windows Server测试不等于Windows 10真机验收，远程首次运行仍待验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
+Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI仅保留desktop-release构建及全部标准CTest；Release同样执行核心和桌面测试，减少重复构建及Debug持续模拟耗时，保留Debug/headless预设供开发调试、阶段验收和依赖边界检查。全部标准测试成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户明确限定构建/测试只在GitHub runner上进行，本地仅静态检查；Windows Server测试不等于Windows 10真机验收，远程首次运行仍待验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
 
 ## 研究历史引用
 

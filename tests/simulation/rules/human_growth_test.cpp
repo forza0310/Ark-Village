@@ -190,12 +190,49 @@ void errors() {
           "bad effect rejects upgrade candidate without changing definition");
     check(!human_growth_threshold(0, 1) && !human_growth_threshold(1, 6), "threshold bounds");
 }
+void immediate_rewards() {
+    auto i = fixture();
+    for (const int u : {0, 9, 90, 95, 100}) {
+        i.definition.legacy_u = u;
+        const auto r = prepare_human_reward(i.definition, i.professions, 100, 2, 7, 10, 10, true);
+        check(r.candidate && r.candidate->satisfaction == 100 &&
+                  r.candidate->definition.legacy_u == std::min(u + 10, 100) &&
+                  r.candidate->celebrations == 3 && r.candidate->pending_completion == 17 &&
+                  r.candidate->reward_display[2] == std::array<int, 2>{10, 10} &&
+                  r.candidate->effort_display.has_value() == (u < 100),
+              "award capped value does not replace requested completion; effort threshold only");
+    }
+    i.definition.legacy_u = 0;
+    const auto residence =
+        prepare_human_reward(i.definition, i.professions, 99, 2, 0, 5, 15, false);
+    check(residence.candidate && residence.candidate->celebrations == 2 &&
+              residence.candidate->pending_completion == 5 &&
+              residence.candidate->reward_display[1] == std::array<int, 2>{100, 15},
+          "residence uses same calculation but does not increment E");
+    for (const auto &input : {std::array<int, 3>{2, std::numeric_limits<int>::max(), 10},
+                              std::array<int, 3>{std::numeric_limits<int>::max(), 0, 10}})
+        check(!prepare_human_reward(i.definition, i.professions, 1, input[0], input[1], input[2],
+                                    10, true)
+                   .candidate,
+              "celebration and completion overflow return no partial reward");
+    const auto signed_pending =
+        prepare_human_reward(i.definition, i.professions, 1, 0, -10, 5, 9, false);
+    check(signed_pending.candidate && signed_pending.candidate->pending_completion == -5,
+          "abort may leave signed pending popularity; reward adds request without invented zero "
+          "floor");
+    const auto subthreshold =
+        prepare_human_reward(i.definition, i.professions, 1, 0, 0, 5, 9, false);
+    check(subthreshold.candidate && !subthreshold.candidate->derived &&
+              !subthreshold.candidate->effort_display,
+          "below decade does not fabricate new stat cache or effort display");
+}
 } // namespace
 int main() {
     try {
         stats();
         rewards();
         errors();
+        immediate_rewards();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

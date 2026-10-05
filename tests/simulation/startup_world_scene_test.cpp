@@ -30,11 +30,16 @@ void display_and_input() {
           "reverse delayed source zero dispatch, positive only decrement");
     check(s.visual_effects[0][1] == 11 && s.delayed_effects.size() == 2,
           "candidate does not mutate input");
-    s.floating_labels = {{0, 0, 5}, {0, 22, 5}};
+    s.scripts.notices = {{0, 0, 5, {}, {}}, {0, 22, 5, {}, {}}};
     next = adapter.scene_other(s, {ref::WorldSceneStage::common_display_tail, -1, {}});
-    check(next && next->state.floating_labels.size() == 1 &&
+    check(next && next->state.scripts.notices.size() == 1 &&
               next->state.sound_requests == std::vector<int>{11},
           "q reverse expiry and first tick sound");
+    s.scripts.notices = {{2, 0, 80, {}, "first"},
+                         {3, std::numeric_limits<int>::max(), 80, {}, "invalid"}};
+    check(!adapter.scene_other(s, {ref::WorldSceneStage::common_display_tail, -1, {}}) &&
+              s.scripts.notices.front().counter == 0 && s.sound_requests.empty(),
+          "late notice counter failure leaves sole queue and sound output unchanged");
     s.global_effects = {{0, 49}, {1, 49}};
     next = adapter.scene_other(s, {ref::WorldSceneStage::common_global_flag, -1, {}});
     check(next && next->state.global_effects == std::vector<std::array<int, 2>>{{1, 49}},

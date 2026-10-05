@@ -9,7 +9,7 @@ Rectangle world_menu_button(Extent extent) {
     return {62, extent.height - 25.F, 40, 22};
 }
 std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opened, bool can_open,
-                                                bool can_adventure, bool pending, int &selected,
+                                                bool can_manage, bool pending, int &selected,
                                                 const WorldMenuInput &input) {
     if (pending)
         return std::nullopt;
@@ -33,11 +33,11 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
                 activate = true;
                 break;
             }
-    if (activate && selected == 1 && can_adventure)
-        return WorldMenuIntent::tasks;
+    if (activate && selected < 2 && can_manage)
+        return selected == 0 ? WorldMenuIntent::build : WorldMenuIntent::tasks;
     return std::nullopt;
 }
-void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_adventure,
+void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
                      const std::string &feedback) {
     constexpr const char *names[]{"建设", "冒险", "村办", "情报", "系统"};
     constexpr int icons[]{0, 1, 2, 5, 6};
@@ -48,8 +48,8 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
         skin.sprites.draw("wnd_menuIcon.seb", icons[i], {row.x + 4, row.y + 5}, WHITE,
                           Sprites::Binding::common);
         skin.text.draw(names[i], row.x + 26, row.y + 8,
-                       i == 1 && can_adventure ? (selected == i ? ink : WHITE)
-                                               : Color{182, 174, 147, 255});
+                       i < 2 && can_manage ? (selected == i ? ink : WHITE)
+                                           : Color{182, 174, 147, 255});
         if (i == selected)
             skin.sprites.draw("finger_r.seb", 0, {row.x + row.width - 1, row.y + 11}, WHITE,
                               Sprites::Binding::common);

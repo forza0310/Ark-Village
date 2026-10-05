@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_routes.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 
@@ -275,7 +276,6 @@ bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesSta
 }
 ref::WorldScriptState startup_world_runtime_scripts(const State &s) {
     auto r = s.scripts;
-    // UserData.j has one canonical owner, shared by opcode29 and the annual page.
     r.medal_count = s.medal_count;
     r.pending_completion = s.scene.world.world.ai.pending_completion;
     r.popularity_queue = s.scene.world.popularity_queue;
@@ -335,7 +335,7 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
     }
     // 共享字段只留在真实Owner，持久scripts不成为第二份账本、I、名单、场景。
     s.scripts.finance.reset();
-    s.scripts.medal_count = 0; // Projection only; do not retain a second mutable medal balance.
+    s.scripts.medal_count = 0;
     s.scripts.pending_completion = 0;
     s.scripts.popularity_queue.clear();
     s.scripts.human_order.clear();
@@ -747,6 +747,10 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_unlock_counters.emplace(d.id, 0);
     }
     for (const auto id : p.facility_order) {
+        if (id == std::numeric_limits<std::uint64_t>::max())
+            throw std::invalid_argument("新局设施维护身份溢出");
+        state_.next_facility_identity = std::max(state_.next_facility_identity, id + 1);
+        state_.facility_flags.emplace(id, 0);
         state_.facility_monthly_cash.emplace(id, std::array<std::array<int, 2>, 12>{});
         ref::WorldFacilityUpdateDetails details;
         details.resident_definition = p.facility_residents.at(id);
@@ -755,6 +759,8 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_month_age.emplace(id, 0);
         state_.facility_difficulties.emplace(id, 0);
     }
+    if (!initialize_startup_world_neighbours(state_))
+        throw std::invalid_argument("真实新局邻接来源投影未认证");
     for (const auto &i : p.rules->items)
         state_.shop_item_stock.emplace(i.identity, i.maintenance);
     for (const auto &t : p.rules->tasks)
@@ -775,7 +781,39 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     }
 }
 const State &StartupWorldRuntimeSession::state() const { return state_; }
+StartupBuildResult StartupWorldRuntimeSession::begin_build(int definition) {
+    return begin_startup_world_build(state_, definition);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_build_menu() {
+    return open_startup_world_build_menu(state_);
+}
+StartupBuildResult StartupWorldRuntimeSession::select_build_menu(std::uint64_t page,
+                                                                 int definition) {
+    return select_startup_world_build_menu(state_, page, definition);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::cancel_build_menu(std::uint64_t page) {
+    return cancel_startup_world_build_menu(state_, page);
+}
+StartupBuildResult StartupWorldRuntimeSession::confirm_build(ref::Position anchor,
+                                                             ref::FacilityOrientation orientation) {
+    return confirm_startup_world_build(state_, anchor, orientation);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::cancel_build() {
+    return cancel_startup_world_build(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_facility_page(std::uint64_t facility) {
+    return open_startup_world_facility_page(state_, facility);
+}
+StartupWorldRuntimeError
+StartupWorldRuntimeSession::act_facility_page(std::uint64_t page,
+                                              StartupFacilityPageAction action) {
+    return act_startup_world_facility_page(state_, page, action);
+}
 void StartupWorldRuntimeSession::set_paused(bool paused) { state_.scene.framework_paused = paused; }
+StartupBuildResult StartupWorldRuntimeSession::act_residence_page(std::uint64_t page, int human,
+                                                                  bool cancel) {
+    return act_startup_world_residence_page(state_, page, human, cancel);
+}
 void StartupWorldRuntimeSession::set_speed(int setting) { state_.scene.speed_setting = setting; }
 void StartupWorldRuntimeSession::set_page_confirm_held(bool held) {
     state_.page_confirm_held = held;
@@ -795,8 +833,16 @@ StartupWorldTaskPageResult StartupWorldRuntimeSession::act_task_page(std::uint64
     return act_startup_world_runtime_task_page(state_, page, action, selection);
 }
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_t id,
-                                                                    ref::WorldAwardAction action) {
-    return act_startup_world_runtime_award_page(state_, id, action);
+                                                                    ref::WorldAwardAction action,
+                                                                    int selection) {
+    return act_startup_world_runtime_award_page(state_, id, action, selection);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_control_menu() {
+    return open_startup_world_runtime_task_control_menu(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t page,
+                                                                   int selection, bool cancel) {
+    return act_startup_world_runtime_rank_page(state_, page, selection, cancel);
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto admitted = s;
@@ -812,6 +858,22 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.task_page_acceleration.erase(page.id);
             admitted.page_secondary_counters.erase(page.id);
             admitted.task_display_initialized.erase(page.id);
+            admitted.facility_page_bindings.erase(page.id);
+            admitted.facility_page_neighbours.erase(page.id);
+            admitted.build_page_catalogs.erase(page.id);
+            admitted.award_rankings.erase(page.id);
+            admitted.award_announced.erase(page.id);
+            admitted.award_termination_pending.erase(page.id);
+            admitted.award_pending_humans.erase(page.id);
+            admitted.page_human_bindings.erase(page.id);
+            admitted.page_counters.erase(page.id);
+            admitted.page_phases.erase(page.id);
+            admitted.task_abort_questions.erase(page.id);
+            admitted.task_abort_answers.erase(page.id);
+            admitted.human_pages_initialized.erase(page.id);
+            admitted.residence_page_candidates.erase(page.id);
+            admitted.facility_upgrade_initialized.erase(page.id);
+            admitted.rank_celebration_participants.erase(page.id);
         }
     // 框架下一入口真正移除已关闭页，活动页恢复；不把close当作推进世界/续体。
     admitted.scripts.pages.erase(

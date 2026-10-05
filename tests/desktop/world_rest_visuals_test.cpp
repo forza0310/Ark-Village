@@ -17,8 +17,11 @@ void check(bool value, const char *message) {
         throw std::runtime_error(message);
 }
 sim::StartupWorldRuntimeState fixture() {
-    sim::StartupWorldRuntimeState state;
+    auto state = ark::test::initial_world();
     auto &world = state.scene.world.world;
+    world.facilities.clear();
+    world.ai.battle.actors.clear();
+    world.ai.retired_actors.clear();
     rules::RescueFacility inn;
     inn.category = 2;
     inn.occupants = {{1}};
@@ -27,7 +30,11 @@ sim::StartupWorldRuntimeState fixture() {
         rules::BattleActorRecord actor;
         actor.id = {i};
         actor.control.flags = 1U | 32U; // Hidden inside a facility; its row remains visible.
-        actor.capacity = 22;
+        actor.definition = static_cast<int>(i - 1);
+        actor.capacity = 901; // Deliberately stale actor cache; the original UI reads shared h().
+        auto &growth = world.ai.growth.at(actor.definition);
+        growth.derived.combat[0] = 22;
+        growth.definition.current_profession = 0;
         actor.hp.displayed = 11;
         actor.hp.target = 22;
         world.ai.battle.actors.emplace(actor.id, actor);
@@ -52,9 +59,69 @@ std::string numbers(const OverlayPlan &plan) {
         }
     return result;
 }
+OverlayPortrait portrait(const OverlayPlan &plan) {
+    const OverlayPortrait *face{};
+    int count{};
+    for (const auto &command : plan)
+        if (const auto *current = std::get_if<OverlayPortrait>(&command)) {
+            face = current;
+            ++count;
+        }
+    check(count == 1 && face, "Each visible rest row contains exactly one current-job portrait");
+    return *face;
+}
+void portraits() {
+    auto state = fixture();
+    auto &world = state.scene.world.world;
+    auto &actor = world.ai.battle.actors.at({1});
+    auto &growth = world.ai.growth.at(actor.definition);
+    const int sex = state.rules->humans.at(actor.definition).sex;
+    actor.state_counter = 169;
+    const auto waiting = portrait(world_rest_rows(state, 7).front().plan);
+    actor.state_counter = 170;
+    const auto healing = portrait(world_rest_rows(state, 7).front().plan);
+    check(waiting.image == state.rules->jobs.at(0).sprites.at(sex) &&
+              healing.image == waiting.image && waiting.source == healing.source &&
+              waiting.destination == healing.destination &&
+              waiting.source == std::array<float, 4>{1, 27, 15, 14} &&
+              waiting.destination == std::array<float, 4>{1, 1, 15, 14},
+          "Waiting and healing use the same walk01 frame-zero PNG crop at the left panel inset");
+    // Changing shared profession must bypass any actor birth-time rendering metadata.
+    state.actor_metadata[actor.id].profession = 0;
+    growth.definition.current_profession = 1;
+    const auto changed = portrait(world_rest_rows(state, 7).front().plan);
+    check(changed.image == state.rules->jobs.at(1).sprites.at(sex) &&
+              changed.source == healing.source && changed.destination == healing.destination &&
+              state.actor_metadata.at(actor.id).profession == 0,
+          "A current profession change resolves the real sex-specific body while retaining crop "
+          "geometry");
+    world.facilities.at(7).occupants = {{1}, {2}, {1}};
+    world.ai.battle.actors.at({2}).control.flags &= ~32U;
+    const auto rows = world_rest_rows(state, 7);
+    const auto upper = portrait(rows.at(1).plan);
+    check(upper.image == changed.image && upper.source == changed.source &&
+              upper.destination == std::array<float, 4>{1, -19, 15, 14},
+          "Portraits follow compact visible rows, preserving duplicate occupant identities");
+    const auto before = state;
+    (void)world_rest_rows(state, 7);
+    (void)world_rest_rows(state, 7);
+    check(
+        growth.definition.current_profession ==
+                before.scene.world.world.ai.growth.at(actor.definition)
+                    .definition.current_profession &&
+            growth.derived.combat ==
+                before.scene.world.world.ai.growth.at(actor.definition).derived.combat &&
+            state.actor_metadata.at(actor.id).profession ==
+                before.actor_metadata.at(actor.id).profession &&
+            actor.capacity == before.scene.world.world.ai.battle.actors.at(actor.id).capacity &&
+            state.scene.random.draws() == before.scene.random.draws() &&
+            ark::test::same_world_clock(state, before),
+        "Portrait projection does not refresh shared stats, actor caches, random or source timing");
+}
 void phases() {
     auto state = fixture();
     auto &actor = state.scene.world.world.ai.battle.actors.at({1});
+    auto &capacity = state.scene.world.world.ai.growth.at(actor.definition).derived.combat[0];
     for (const int counter : {0, 169, 170, 199}) {
         actor.state_counter = counter;
         const auto rows = world_rest_rows(state, 7);
@@ -73,7 +140,8 @@ void phases() {
             check(numbers(plan) == "22" && colored_width(plan, {255, 128, 192}) == 0 &&
                       colored_width(plan, {83, 255, 0}) == 13 &&
                       colored_width(plan, {68, 100, 104}) == 13,
-                  "The second phase displays capacity and displayed HP, not target HP/time");
+                  "The second phase displays shared capacity and displayed HP, not actor "
+                  "cache/target HP/time");
             bool frame{}, inset{};
             for (const auto &command : plan)
                 if (const auto *rectangle = std::get_if<OverlayRectangle>(&command)) {
@@ -88,15 +156,15 @@ void phases() {
     auto plan = world_rest_rows(state, 7).front().plan;
     check(colored_width(plan, {83, 255, 0}) == 0 && colored_width(plan, {68, 100, 104}) == 26,
           "Negative displayed HP is safely clamped without an HP animation eligibility gate");
-    actor.capacity = std::numeric_limits<int>::max();
+    capacity = std::numeric_limits<int>::max();
     actor.hp.displayed = std::numeric_limits<int>::max();
     plan = world_rest_rows(state, 7).front().plan;
     check(colored_width(plan, {83, 255, 0}) == 26 && colored_width(plan, {68, 100, 104}) == 0,
           "Large capacity uses a safe width mapping without integer multiplication overflow");
-    actor.capacity = 1;
+    capacity = 1;
     plan = world_rest_rows(state, 7).front().plan;
     check(colored_width(plan, {83, 255, 0}) == 26, "Over-capacity display saturates visually");
-    actor.capacity = 0;
+    capacity = 0;
     bool rejected{};
     try {
         world_rest_rows(state, 7);
@@ -138,6 +206,12 @@ void readonly() {
     const auto &old_actor = before.scene.world.world.ai.battle.actors.at({1});
     check(actor.state_counter == old_actor.state_counter &&
               actor.control.flags == old_actor.control.flags &&
+              actor.capacity == old_actor.capacity && actor.definition == old_actor.definition &&
+              world.ai.growth.at(actor.definition).definition.current_profession ==
+                  before.scene.world.world.ai.growth.at(actor.definition)
+                      .definition.current_profession &&
+              world.ai.growth.at(actor.definition).derived.combat ==
+                  before.scene.world.world.ai.growth.at(actor.definition).derived.combat &&
               actor.hp.displayed == old_actor.hp.displayed &&
               actor.hp.target == old_actor.hp.target &&
               actor.hp.legacy_tick == old_actor.hp.legacy_tick &&
@@ -161,11 +235,16 @@ void retained_occupant() {
             colored_width(rows.front().plan, {255, 128, 192}) == 29 &&
             world.ai.retired_actors.at(retired.id).control.flags == retired.control.flags,
         "A retained facility reference displays the original retired actor without changing flags");
+    const auto face = portrait(rows.front().plan);
+    check(face.image == state.rules->jobs.at(0).sprites.at(
+                            state.rules->humans.at(retired.definition).sex) &&
+              face.source == std::array<float, 4>{1, 27, 15, 14},
+          "Retired occupants still resolve their current shared profession portrait");
     world.ai.retired_actors.at(retired.id).state_counter = 180;
     rows = world_rest_rows(state, 7);
     check(numbers(rows.front().plan) == "22" &&
               colored_width(rows.front().plan, {83, 255, 0}) == 13,
-          "Retained actor HP phase reads the same capacity and display HP fields");
+          "Retained actor HP phase reads current shared capacity and retained displayed HP");
     world.ai.retired_actors.at(retired.id).control.flags &= ~32U;
     check(world_rest_rows(state, 7).empty(),
           "A retained actor without the actual rest flag has no inn row");
@@ -181,6 +260,7 @@ void retained_occupant() {
 } // namespace
 int main() {
     phases();
+    portraits();
     eligibility();
     readonly();
     retained_occupant();

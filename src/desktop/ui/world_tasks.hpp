@@ -22,6 +22,8 @@ struct WorldTaskRecruitmentActor {
 };
 struct WorldTaskView {
     int raw{};
+    bool abort_question{};
+    std::vector<std::string> details;
     bool initialized{}, animating{};
     std::string title, task_name;
     std::optional<std::uint64_t> task;
@@ -34,10 +36,11 @@ struct WorldTaskView {
 };
 struct WorldTaskLayout {
     Rectangle panel, body, rows, progress, cancel, confirm, continue_choice, stop_choice;
-    Rectangle recruitment_name, recruitment_actor;
+    Rectangle recruitment_name, recruitment_actor, inspect;
 };
 struct WorldTaskSelection {
     int selected{}, first_row{};
+    int prompt{1}; // Source task-abort questions default to No.
 };
 struct WorldTaskInput {
     std::optional<Vector2> click;
@@ -49,6 +52,9 @@ struct WorldTaskIntent {
     int selection{}; // Row index for22, actual human definition for27, choice for33.
 };
 bool world_task_page(const simulation::rules::WorldScriptPage &page);
+// raw1/raw60 belong here only with an explicit runtime binding, never by number alone.
+bool world_task_page(const simulation::StartupWorldRuntimeState &state,
+                     const simulation::rules::WorldScriptPage &page);
 WorldTaskView world_task_view(const simulation::StartupWorldRuntimeState &state,
                               const simulation::rules::WorldScriptPage &page);
 WorldTaskLayout world_task_layout(Extent extent);

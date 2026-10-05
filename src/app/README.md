@@ -1,10 +1,14 @@
 # app
 
-`world_session.hpp/.cpp` 是默认桌面的标准C++线程边界，链接runtime/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变 `WorldFrame`（当前/前次快照、发布时间与统计）。FIFO命令只在事务间执行，相邻待处理镜头可以合并，确认/暂停/倍速保持顺序。47ms实际开始截止、卡顿不追赶；倍速仅由源运行时应用。年度`act_award`同样通过FIFO提交request/reject/confirm动作，不复用普通ack替玩家选择；暂停/旧页/非法动作沿明确失败政策。停止会唤醒并join，失败保留最后成功世界并发布错误。
+`world_session.hpp/.cpp`是默认桌面的标准C++线程边界，链接runtime/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变`WorldFrame`。FIFO命令只在事务间执行，相邻待处理镜头可以合并，决定/暂停/倍速保持顺序。47ms实际开始截止、卡顿不追赶；倍速仅由源运行时应用。停止唤醒并join，失败保留最后成功世界。
 
-任务输入独立为`open_task_menu`、`act_task_page(page, action, selection)`、`set_page_confirm_held(page, held)`和页83的`cancel_page`，调用33ee056已发布消费者。任务余额不足/满员/无追加候选保留源合法反馈页，用可恢复rejected回应；旧页/暂停中的新任务输入也可恢复拒绝，不改成新页确认。missing_source/script_failed/runtime_failed仍停止worker；既有普通ack/授勋/月报错误契约保持。`WorldFrame.command_results`仅保留最近64条这类显式输入的serial/outcome/源错误与denial，避免后续镜头或tick发布覆盖待处理结果，不是通用事件总线。征集held绑定raw24页身份，仅逻辑页更新消费；切页、暂停和月报门槛自动清除，UI释放/失焦发送原页false，迟到旧页release不能清另一页的新press。普通ack不得替任务页22..28/33或商店83选择动作。
+`world_commands.hpp/.cpp`按稳定职责分离显式决定的源适配，调用e8f66d9维护消费者；线程/队列/快照提交仍归session。建设目录21、选择/连续放置/取消、设施详情74、入住80、任务管理/人物详情/中止、授勋87及晋级48共享同一候选Owner、地图、账本和随机流。目录/页面命令绑定页稳定ID，建筑点击绑定设施稳定ID；放置和取消同时携带UI观察到的预期definition，旧点击不能操作新选择。设施升级81沿原页确认消费者，不在产品重新计算等级/阈值。
 
-桌面五项菜单是明确的产品适配：`WorldFrame.main_menu_open`由同一worker持有，仅是冻结资格元数据，不伪造原版raw3页、不改写`framework_paused`。`open_main_menu`仅在源主场景且无月报时打开，`close_main_menu`保留显式暂停；47ms门槛持续运行但不产生世界工作，关闭不补算。`open_menu_tasks`在一个FIFO候选事务内调用真实任务入口并关闭菜单，避免先关菜单再发任务造成世界插队；暂停、活动任务或失效页面会可恢复拒绝并保留菜单，源空目录提示页保留并正常关闭菜单。菜单打开时普通任务快捷入口拒绝旁路。三项命令沿最近64条结果历史报告；重复开关/过期选择不使worker失败，缺源等错误仍明确停止。菜单其余未接项只禁用，不连接旧Game。
+游戏拒绝保留源合法反馈页，用可恢复rejected回应；旧页/暂停/旧建造选择/已消失设施也可恢复拒绝。缺源、脚本或运行时失败仍停止worker；普通ack及月报错误保持原明确失败协议，不代替任务、建设、入住、授勋或晋级选择。`WorldFrame.command_results`仅保留最近64条显式决定的serial/outcome、源错误、task/build denial及实际新建ID，跨镜头/tick留存，不是游戏事件日志。授勋selection是源贡献排名索引，入住selection是实际人物定义ID，不混用。
+
+任务`open_task_menu`在无活动任务时开目录22，有活动任务时按源开管理26；`open_task_control_menu`单独开中止入口4。`act_task_page`传入明确inspect/request_abort等动作，raw1询问必须由该协议确认；不以普通ack自动选择中止。征集held绑定raw24页身份，仅逻辑页更新消费；切页、暂停和月报自动清除，迟到旧页release不能清除新页press。普通ack不替22..28/33、4/任务询问、21/48/60/74/80/83选择动作。
+
+桌面五项菜单是产品适配：`WorldFrame.main_menu_open`由worker持有，只影响冻结资格，不伪造raw3或改写显式暂停。打开只接受源主场景且无月报；关闭保留暂停，47ms门槛继续运行但不产生世界工作、关闭不补算。`open_menu_tasks`/`open_menu_build`在一个FIFO候选中打开真实源页面并关闭菜单，避免关菜单和开源页面之间世界插队；暂停/失效选择拒绝且保留菜单，源空任务目录提示正常保留。菜单打开时直接快捷入口拒绝旁路。仅建设/冒险已接，其余禁用。
 
 `world_report.hpp/.cpp` 适配用户选择的桌面手动月报：识别场景顶层报告，校验期望阶段，复用原报告投影/候选/提交；不推进日期、不重算维护费、不重复奖励。等待时session冻结世界，确认1→2→0后按显式暂停资格恢复。headless入口仍保留源自动报告，未改迁入规则。
 

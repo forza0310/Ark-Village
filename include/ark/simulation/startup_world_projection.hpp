@@ -26,8 +26,10 @@ struct StartupWorldHuman {
     int status{};
     ref::HumanDefinitionStatsInput definition; // 无继承r()/h()后的真实初值。
     std::array<int, 4> equipment;
-    int residence_threshold{};                         // 原e.g，第7列。
-    ref::WorldScriptProgram residence_request_program; // 原e.j，第10列。
+    int residence_threshold{};                         // 原e.g，character索引7。
+    ref::WorldScriptProgram residence_request_program; // 原e.j，character索引10。
+    int residence_fee{}; // 原e.h，character索引8；与设施造价、任务征集费分开。
+    ref::WorldScriptProgram residence_completion_program; // 原e.i，character索引9。
 };
 struct StartupWorldEquipment {
     ref::ShopEquipmentDefinition shop;

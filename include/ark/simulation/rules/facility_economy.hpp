@@ -49,5 +49,15 @@ struct FacilityEconomyResult {
 // level.
 FacilityEconomyResult derive_facility_economy(const FacilityEconomyDefinition &definition,
                                               const FacilityEconomyInput &input);
+struct FacilityUpgradeCandidate {
+    int level{};
+    std::uint64_t remaining_uses{};
+    FacilityEconomyValues values;
+    std::array<std::array<std::int64_t, 3>, 3> display{}; // 原o.ap：旧、新、差额；含当前实例邻接。
+};
+// a/o.a(o,m)：先减本级门槛再升共享等级；提示清除由raw81关闭消费者单独提交。
+std::optional<FacilityUpgradeCandidate>
+prepare_facility_upgrade(const FacilityEconomyDefinition &definition,
+                         const FacilityEconomyInput &input);
 
 } // namespace ark::simulation::rules

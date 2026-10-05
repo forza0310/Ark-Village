@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/startup_world_building.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -165,6 +166,7 @@ bool write_startup_world_runtime_factory(State &s, const ref::WorldTaskCreationS
     s.road_patches = f.road_patches;
     s.scene.first_normal_refresh = f.refresh_pending;
     for (const auto id : f.facility_order) {
+        s.facility_flags.try_emplace(id, 0);
         if (!s.neighbourhood.count(id))
             s.neighbourhood.emplace(id, std::array<int, 3>{}); // factory不执行邻接，原新m.s零。
         s.neighbourhood_details.try_emplace(id);               // 原new m的s/G/w/p/H初值。
@@ -651,6 +653,8 @@ void configure_startup_world_runtime_task_adapter(ref::WorldRuntimeAdapter<State
             return prepare_startup_world_runtime_dungeon_finish(s, request.facility);
         if (request.kind == ref::WorldFacilityUpdateConsumerKind::dungeon_crew)
             return prepare_startup_world_runtime_dungeon_crew(s, request.facility);
+        if (request.kind == ref::WorldFacilityUpdateConsumerKind::residence_join)
+            return prepare_startup_world_residence_completion(s, request.facility);
         return previous ? previous(s, request) : std::nullopt;
     };
 }

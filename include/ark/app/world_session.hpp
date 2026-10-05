@@ -1,6 +1,7 @@
 #pragma once
 
 // The desktop reads immutable publications; only the worker commits the canonical world.
+#include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 
 #include <chrono>
@@ -14,6 +15,17 @@ enum class WorldCommandKind {
     acknowledge_page,
     acknowledge_report,
     award_action,
+    rank_action,
+    open_menu_build,
+    open_build_menu,
+    select_build_menu,
+    cancel_build_menu,
+    confirm_build,
+    cancel_build,
+    open_facility,
+    facility_action,
+    residence_action,
+    open_task_control_menu,
     open_main_menu,
     close_main_menu,
     open_menu_tasks,
@@ -33,6 +45,8 @@ struct WorldCommandResult {
     WorldCommandOutcome outcome{WorldCommandOutcome::applied};
     simulation::StartupWorldRuntimeError runtime_error{simulation::StartupWorldRuntimeError::none};
     simulation::rules::TaskCommandDenial denial{simulation::rules::TaskCommandDenial::none};
+    simulation::StartupBuildDenial build_denial{simulation::StartupBuildDenial::none};
+    std::optional<std::uint64_t> created;
     bool task_accepted{};
     bool departed{};
 };
@@ -49,7 +63,7 @@ struct WorldFrame {
     std::string error;
     std::uint64_t outer_updates{};
     double max_update_ms{};
-    // Last 64 menu/task/cancel/held input results, retained across ticks and camera publications.
+    // Last 64 explicit decision results, retained across ticks and camera publications.
     // This bounded FIFO acknowledgement history is not a gameplay event log.
     std::vector<WorldCommandResult> command_results;
 };
@@ -61,6 +75,13 @@ struct WorldCommand {
     simulation::rules::WorldAwardAction award_action{simulation::rules::WorldAwardAction::update};
     simulation::StartupWorldTaskAction task_action{simulation::StartupWorldTaskAction::confirm};
     int selection{};
+    int definition{};
+    std::uint64_t facility{};
+    simulation::rules::Position anchor{};
+    simulation::rules::FacilityOrientation orientation{};
+    simulation::StartupFacilityPageAction facility_action{
+        simulation::StartupFacilityPageAction::confirm};
+    bool cancel{};
     bool held{};
     bool paused{};
     int speed{};
@@ -85,13 +106,27 @@ class WorldSession {
     std::uint64_t ack_page(std::uint64_t page);
     std::uint64_t ack_report(int expected_phase);
     // Annual-page input is explicit: ordinary page confirmation never chooses termination.
-    std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action);
+    std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action,
+                            int selection = 0);
+    std::uint64_t act_rank(std::uint64_t page, int selection = 0, bool cancel = false);
     // Menu visibility is worker-owned metadata; closing never changes explicit pause.
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();
     // Atomically opens the real task source page and closes the desktop menu on success.
     std::uint64_t open_menu_tasks();
     std::uint64_t open_task_menu();
+    std::uint64_t open_task_control_menu();
+    std::uint64_t open_menu_build();
+    std::uint64_t open_build_menu();
+    std::uint64_t select_build_menu(std::uint64_t page, int definition);
+    std::uint64_t cancel_build_menu(std::uint64_t page);
+    // Bind placement to the selection observed by the UI; an old click cannot build a new item.
+    std::uint64_t confirm_build(int expected_definition, simulation::rules::Position anchor,
+                                simulation::rules::FacilityOrientation orientation);
+    std::uint64_t cancel_build(int expected_definition);
+    std::uint64_t open_facility(std::uint64_t facility);
+    std::uint64_t act_facility(std::uint64_t page, simulation::StartupFacilityPageAction action);
+    std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,
                                 int selection = 0);
     // A held edge belongs only to this raw24 identity. Send false on release/focus loss;

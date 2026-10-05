@@ -52,6 +52,47 @@ void world_panels() {
     const auto other_speaker = ui::world_page_layout(page, {540, 360});
     check(other_speaker.body.width > with_secretary.body.width,
           "Unknown speakers must not reserve an invented secretary portrait");
+    // UI owns only the footer transform and plain-text decoding. The source suite already
+    // exhausts queue lifetime boundaries; these examples cover their product wiring.
+    std::vector<WorldScriptNotice> notices(3);
+    notices[0].message = 2;
+    notices[0].counter = 8;
+    notices[0].text = "<co=ff0000>先到</co><br>通知";
+    notices[1].message = 3;
+    notices[1].counter = 8;
+    notices[1].text = "<po=cm>后到通知";
+    notices[2].message = 4;
+    notices[2].counter = 8;
+    notices[2].text = "第三条仍在队列";
+    const auto original = notices;
+    for (const auto extent : {Extent{240, 256}, Extent{540, 360}}) {
+        const auto lines = ui::world_notice_view(notices, extent);
+        check(lines.size() == 2 && lines[0].index == 1 && lines[1].index == 0 &&
+                  lines[0].text == "后到通知" && lines[1].text == "先到\n通知",
+              "Notice wiring uses source reverse first-two order and decodes script tags");
+        const float footer = extent.height - 26.F;
+        check(lines[0].box.x == 0 && lines[1].box.x == 0 && lines[0].box.width == extent.width &&
+                  lines[1].box.width == extent.width && lines[0].box.y == footer - 40 &&
+                  lines[0].box.height == 19 && lines[1].box.y == footer - 21 &&
+                  lines[1].box.height == 21 &&
+                  lines[0].box.y + lines[0].box.height == lines[1].box.y &&
+                  lines[1].box.y + lines[1].box.height == footer,
+              "Notice heights and offsets translate to the desktop footer without rescaling source "
+              "rows");
+    }
+    check(notices.size() == original.size() && notices[0].counter == original[0].counter &&
+              notices[1].counter == original[1].counter &&
+              notices[2].counter == original[2].counter && notices[0].text == original[0].text &&
+              notices[1].text == original[1].text && notices[2].text == original[2].text,
+          "Repeated notice projections neither advance counters nor mutate queued source text");
+    notices[1].message = 1;
+    const auto hidden = ui::world_notice_view(notices, {540, 360});
+    check(hidden.size() == 1 && hidden[0].index == 0 && hidden[0].box.y == 313 &&
+              hidden[0].box.height == 21,
+          "Unshipped special notice1 stays hidden without promoting a third queue record");
+    notices[0].counter = notices[1].counter = 0;
+    check(ui::world_notice_view(notices, {540, 360}).empty(),
+          "Unstarted first-two notices do not expose a later queued record");
     std::cout << "PASS world page layout contracts\n";
 }
 } // namespace ark::test

@@ -232,6 +232,62 @@ void deadlines(const WorldScriptCatalog &scripts) {
     check(!missing.candidate && state.human_details.at(0).continuation_cost == 0,
           "late missing participant rolls back earlier n() cost and y");
 }
+void rank_promotion_and_celebration() {
+    const auto terms = fixed_calendar_task_rank_terms();
+    for (int rank = 0; rank < 5; ++rank) {
+        const auto result = prepare_world_rank_promotion(
+            rank, terms.at(rank), {true, true, true, true}, 0, true, "FIXTURE");
+        check(result && result->promoted && result->rank == rank + 1 && result->mark_user_flag &&
+                  result->before_promotion.front().event == 37 &&
+                  result->after_promotion.front().event == rank + 53,
+              "all five promotions keep manual37 before rank and true rank script afterward");
+        check(result->after_promotion.size() == (rank == 0 || rank == 2 || rank == 4 ? 4u : 3u),
+              "only new ranks1/3/5 append206/208/210");
+        if (rank == 4)
+            check(result->after_promotion[1].event == 47 && result->after_promotion[2].event == 46,
+                  "rank5 executes47 then46, no rank-below5 script");
+        else
+            check(result->after_promotion[1].replacement ==
+                          "FIXTURE\t" + std::to_string(rank + 1) &&
+                      result->after_promotion[2].event == 41,
+                  "rank scripts retain village and actual new rank payload");
+    }
+    for (int count = 0; count < 4; ++count) {
+        std::array<bool, 4> met{};
+        std::fill_n(met.begin(), count, true);
+        const auto result = prepare_world_rank_promotion(0, terms.at(0), met, 0, false, "FIXTURE");
+        check(result && !result->promoted && result->mark_user_flag &&
+                  result->before_promotion.front().event == (count == 3 ? 39 : 38),
+              "three met conditions use39, all other denials38; marku8 without promotion");
+    }
+    const auto explain = prepare_world_rank_promotion(0, terms.at(0), {}, 1, false, "FIXTURE");
+    check(explain && !explain->mark_user_flag && !explain->promoted &&
+              explain->before_promotion.front().event == 159,
+          "selected popularity criterion emits5+154 without userflag or rank");
+    check(!prepare_world_rank_promotion(5, terms.at(0), {}, 0, false, "FIXTURE") &&
+              !prepare_world_rank_promotion(0, {}, {}, 0, false, "FIXTURE"),
+          "max rank and incomplete criterion catalogue reject");
+    const auto rng = WorldRandomStream::from_raw({2, 0, 1});
+    const auto celebration = prepare_world_rank_celebration({1, 3, 5}, rng);
+    check(celebration && celebration->random.draws() == 3 && rng.draws() == 0 &&
+              celebration->participants == std::vector<std::array<int, 5>>{{3, 287, 143, 3, 0},
+                                                                           {1, 273, 135, 1, 1},
+                                                                           {5, 287, 135, 2, 1}},
+          "source all-range swap, not Fisher-Yates; definition-index layout retained");
+    const auto empty = prepare_world_rank_celebration({}, WorldRandomStream::from_raw({}));
+    check(empty && empty->participants.empty() && empty->random.draws() == 0,
+          "empty celebration draws nothing");
+    check(!prepare_world_rank_celebration({1}, WorldRandomStream::from_raw({})) &&
+              !prepare_world_rank_celebration({1, 3, 5}, WorldRandomStream::from_raw({2, 0})),
+          "single participant still needs one draw; late exhaustion leaves no partial candidate");
+    std::vector<int> many(12);
+    for (int n = 0; n < 12; ++n)
+        many[n] = n;
+    const auto capped = prepare_world_rank_celebration(
+        many, WorldRandomStream::from_raw(std::vector<std::int32_t>(12, 0)));
+    check(capped && capped->participants.size() == 10 && capped->random.draws() == 12,
+          "all12 shuffled before ten-layout truncation, no shortened random stream");
+}
 void midpoint(const WorldScriptCatalog &scripts) {
     auto state = fixture();
     task(state, 1, 30);
@@ -446,6 +502,7 @@ int main() {
         const auto scripts = catalog();
         specials(scripts);
         ranks(scripts);
+        rank_promotion_and_celebration();
         deadlines(scripts);
         midpoint(scripts);
         generation(scripts);

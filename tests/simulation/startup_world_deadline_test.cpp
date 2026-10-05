@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -15,9 +16,7 @@ void check(bool condition, const char *message) {
 // 专项期限调用点夹具：地图/目录/任务工厂真实，但活动任务、期限和页33由本测试明确安装。
 // 不把该快照冒充自然任务到期，也不修改主线程自然长跑的输入。
 StartupWorldRuntimeState fixture(int kind = 0) {
-    StartupSession startup;
-    StartupWorldRuntimeSession runtime(startup.state(), ref::WorldRandomStream::from_java_seed(0));
-    auto s = runtime.state();
+    auto s = test_support::world_fixture(ref::WorldRandomStream::from_java_seed(0));
     const auto created = ref::prepare_world_task_creation(startup_world_runtime_factory(s), kind);
     check(created.candidate && created.candidate->created_task &&
               write_startup_world_runtime_factory(s, created.candidate->state),

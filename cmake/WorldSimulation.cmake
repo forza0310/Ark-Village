@@ -51,6 +51,11 @@ if(BUILD_TESTING)
     foreach(source IN LISTS ARK_WORLD_TEST_SOURCES)
         get_filename_component(module "${source}" NAME_WE)
         set(target "ark_simulation_${module}")
+        if(module STREQUAL "startup_world_visuals_test")
+            # This frozen test also decodes/crops PNGs with raylib. ProductTests registers
+            # it after desktop dependencies exist; the runtime stays standard C++ only.
+            continue()
+        endif()
         add_executable(${target} "${source}")
         target_link_libraries(${target} PRIVATE ark_world_runtime)
         if(module MATCHES "^world_(arrivals|calendar_tasks|exploration|facility_update|gift_page|popularity|residence|runtime|scripts|world_entry)_test$")

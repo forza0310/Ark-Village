@@ -6,6 +6,14 @@
 namespace ark::simulation {
 // 玩家显式打开任务列表/操作栈顶页；不自动接任务，不绕过征集、费用或出发动画。
 StartupWorldRuntimeError open_startup_world_runtime_task_menu(StartupWorldRuntimeState &state);
+// 原冒险页4的已证任务中止入口；普通任务目录入口不替玩家选择中止。
+StartupWorldRuntimeError
+open_startup_world_runtime_task_control_menu(StartupWorldRuntimeState &state);
+std::optional<StartupWorldRuntimeState>
+update_startup_world_runtime_task_control_page(const StartupWorldRuntimeState &state,
+                                               std::uint64_t page);
+// 共用n.o实体恢复，但没有期限页/费用/aI消费；调用者仅能在私有候选上执行。
+bool abort_startup_world_runtime_task_entities(StartupWorldRuntimeState &state);
 StartupWorldTaskPageResult act_startup_world_runtime_task_page(StartupWorldRuntimeState &state,
                                                                std::uint64_t page,
                                                                StartupWorldTaskAction action,

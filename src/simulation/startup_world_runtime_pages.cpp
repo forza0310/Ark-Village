@@ -1,3 +1,4 @@
+#include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/rules/world_gift_page.hpp"
@@ -91,6 +92,42 @@ bool initialize_rank_page(State &s, std::uint64_t id) {
     s.page_counters[id] = 0;
     return true;
 }
+bool initialize_rank_celebration(State &s, std::uint64_t id) {
+    if (s.rank_celebration_participants.count(id))
+        return true;
+    std::vector<int> definitions;
+    for (const auto &h : s.rules->humans)
+        if (s.human_presence.at(h.identity) == 1)
+            definitions.push_back(h.identity);
+    const auto result = ref::prepare_world_rank_celebration(definitions, s.scene.random);
+    if (!result)
+        return false;
+    s.rank_celebration_participants[id] = result->participants;
+    s.scene.random = result->random;
+    s.page_phases[id] = s.page_counters[id] = 0;
+    return true;
+}
+bool consume_rank_celebration(State &s, std::uint64_t id, bool confirm) {
+    if (!initialize_rank_celebration(s, id))
+        return false;
+    auto &phase = s.page_phases[id];
+    auto &counter = s.page_counters[id];
+    if (phase < 0 || phase > 2)
+        return false;
+    if (phase == 0 && counter == 1 && !confirm)
+        s.sound_requests.push_back(3);
+    if (phase < 2 && counter >= (phase == 0 ? 135 : 20)) {
+        ++phase;
+        counter = 0;
+    }
+    if (confirm && phase == 2 && counter >= 140) {
+        s.sound_requests.push_back(s.active_task && s.task.encounter ? 2 : 1);
+        const auto closed =
+            ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
+        return closed.candidate && write_startup_world_runtime_scripts(s, closed.candidate->state);
+    }
+    return true;
+}
 ref::WorldAwardPageState award_projection(const State &s, std::uint64_t id) {
     ref::WorldAwardPageState a;
     a.medal_count = s.medal_count;
@@ -103,6 +140,9 @@ ref::WorldAwardPageState award_projection(const State &s, std::uint64_t id) {
         a.ranked_definitions = rankings->second;
         a.announced = s.award_announced.at(id);
         a.termination_pending = s.award_termination_pending.at(id);
+        const auto pending = s.award_pending_humans.find(id);
+        if (pending != s.award_pending_humans.end())
+            a.pending_award = pending->second;
     }
     for (const auto &h : s.rules->humans) {
         const auto &extra = s.human_calendar.at(h.identity);
@@ -114,11 +154,56 @@ ref::WorldAwardPageState award_projection(const State &s, std::uint64_t id) {
     }
     return a;
 }
-bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action) {
+bool award_reward(State &s, int human) {
+    auto &ai = s.scene.world.world.ai;
+    const auto growth = ai.growth.find(human);
+    if (growth == ai.growth.end() || !s.shop_humans.count(human) || !s.human_calendar.count(human))
+        return false;
+    const auto r = ref::prepare_human_reward(
+        growth->second.definition, ai.professions, s.shop_humans.at(human).satisfaction,
+        s.human_calendar.at(human).celebrations, ai.pending_completion, 10, 10, true);
+    if (!r.candidate)
+        return false;
+    const auto &reward = *r.candidate;
+    growth->second.definition = reward.definition;
+    s.shop_humans.at(human).satisfaction = reward.satisfaction;
+    s.human_calendar.at(human).celebrations = reward.celebrations;
+    ai.pending_completion = reward.pending_completion;
+    s.reward_display = reward.reward_display;
+    if (reward.derived) {
+        growth->second.derived = *reward.derived;
+        s.effort_display = *reward.effort_display;
+    }
+    const auto event = ref::prepare_world_script(startup_world_runtime_catalog(),
+                                                 startup_world_runtime_scripts(s), {58, {}, {}});
+    if (!event.candidate || !write_startup_world_runtime_scripts(s, event.candidate->state))
+        return false;
+    for (const int raw : {88, 67}) {
+        if (raw == 67 && !reward.effort_display)
+            continue;
+        ref::WorldScriptPage p;
+        p.kind = ref::WorldScriptPageKind::raw_page;
+        p.legacy_page = raw;
+        if (raw == 67) {
+            p.legacy_f = reward.reward_display[0][1];
+            p.legacy_g = reward.reward_display[1][1];
+        }
+        const auto page = ref::prepare_world_script_page(startup_world_runtime_scripts(s), p);
+        if (!page.candidate || !write_startup_world_runtime_scripts(s, page.candidate->state))
+            return false;
+        for (const auto &inserted : page.candidate->inserted_pages) {
+            s.page_human_bindings[inserted.id] = human;
+            s.page_phases[inserted.id] = s.page_counters[inserted.id] = 0;
+        }
+    }
+    return true;
+}
+bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action, int selection = 0) {
     const auto initialized = ref::prepare_world_award_page_initialization(award_projection(s, id));
     if (!initialized.candidate)
         return false;
-    const auto result = ref::prepare_world_award_page(initialized.candidate->state, action);
+    const auto result =
+        ref::prepare_world_award_page(initialized.candidate->state, action, selection);
     if (!result.candidate)
         return false;
     const auto &a = result.candidate->state;
@@ -126,6 +211,11 @@ bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action) {
     s.award_rankings[id] = a.ranked_definitions;
     s.award_announced[id] = a.announced;
     s.award_termination_pending[id] = a.termination_pending;
+    s.page_counters[id] = a.page_counter;
+    if (a.pending_award)
+        s.award_pending_humans[id] = *a.pending_award;
+    else
+        s.award_pending_humans.erase(id);
     for (const auto &h : a.humans)
         s.human_calendar.at(h.definition).contribution = h.contribution;
     for (const auto &effect : result.candidate->effects) {
@@ -143,6 +233,9 @@ bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action) {
             if (!script.candidate ||
                 !write_startup_world_runtime_scripts(s, script.candidate->state))
                 return false;
+        } else if (effect.kind == Kind::reward) {
+            if (!award_reward(s, effect.value))
+                return false;
         } else if (effect.kind == Kind::close) {
             const auto closed =
                 ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
@@ -150,14 +243,58 @@ bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action) {
                 !write_startup_world_runtime_scripts(s, closed.candidate->state))
                 return false;
         }
-        // termination_prompt由显式测试输入消费，窗口尚未接按钮10/是非弹窗。
+        // termination_prompt由独立命令/窗口是非输入消费，不把普通确认当作终止。
+    }
+    return true;
+}
+bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
+    const auto binding = s.page_human_bindings.find(id);
+    if (binding == s.page_human_bindings.end() || !s.human_calendar.count(binding->second))
+        return false;
+    bool close{};
+    if (raw == 67) {
+        const auto r =
+            ref::prepare_world_effort_display(s.page_counters[id], confirm, s.effort_display[2]);
+        if (!r)
+            return false;
+        s.page_counters[id] = r->counter;
+        close = r->closed;
+    } else {
+        const auto r = ref::prepare_world_award_display({s.page_counters[id], s.page_phases[id]},
+                                                        confirm, s.scene.random);
+        if (!r)
+            return false;
+        s.page_counters[id] = r->state.counter;
+        s.page_phases[id] = r->state.phase;
+        s.scene.random = r->random;
+        if (r->event) {
+            const auto event =
+                ref::prepare_world_script(startup_world_runtime_catalog(),
+                                          startup_world_runtime_scripts(s), {*r->event, {}, {}});
+            if (!event.candidate || !event.candidate->last_page ||
+                !write_startup_world_runtime_scripts(s, event.candidate->state))
+                return false;
+            const auto page =
+                std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                             [&](const auto &p) { return p.id == *event.candidate->last_page; });
+            if (page == s.scripts.pages.end())
+                return false;
+            page->speaker_kind = 1;
+            page->speaker_definition = binding->second;
+            close = true;
+        }
+    }
+    if (close) {
+        const auto r = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
+        if (!r.candidate || !write_startup_world_runtime_scripts(s, r.candidate->state))
+            return false;
     }
     return true;
 }
 } // namespace
 
 Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
-                                           ref::WorldAwardAction action) {
+                                           ref::WorldAwardAction action, int selection) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
@@ -169,7 +306,7 @@ Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
     if (counter == std::numeric_limits<int>::max())
         return Error::missing_source;
     ++counter;
-    if (!consume_award(next, id, action))
+    if (!consume_award(next, id, action, selection))
         return Error::missing_source;
     next.scripts.executing_page.reset();
     state = std::move(next);
@@ -184,6 +321,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::invalid_page;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return act_startup_world_runtime_deadline_page(state, id, 0).error;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
+        return act_startup_world_runtime_rank_page(state, id);
     auto next = state;
     next.scripts.executing_page = id;
     if (top->kind == ref::WorldScriptPageKind::raw_page) {
@@ -215,6 +354,40 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             }
         } else if (top->legacy_page == 99 || top->legacy_page == 100) {
             if (!consume_task_display(next, *top, ref::WorldTaskDisplayAction::confirm))
+                return Error::missing_source;
+        } else if (top->legacy_page == 50) {
+            if (!consume_rank_celebration(next, id, true))
+                return Error::missing_source;
+        } else if (top->legacy_page == 81) {
+            if (!consume_startup_world_facility_upgrade(next, id, true))
+                return Error::missing_source;
+        } else if (top->legacy_page == 96) {
+            if (!next.page_human_bindings.count(id) ||
+                !next.human_calendar.count(next.page_human_bindings.at(id)))
+                return Error::missing_source;
+            auto &phase = next.page_phases[id];
+            auto &counter = next.page_counters[id];
+            if (phase == 0) {
+                if (counter < 40)
+                    counter = 40;
+                else {
+                    phase = 1;
+                    counter = 0;
+                }
+            } else if (phase == 1) {
+                if (counter < 77)
+                    counter = 77;
+                else {
+                    const auto closed = ref::prepare_world_script_close_page(
+                        startup_world_runtime_scripts(next), id);
+                    if (!closed.candidate ||
+                        !write_startup_world_runtime_scripts(next, closed.candidate->state))
+                        return Error::script_failed;
+                }
+            } else
+                return Error::missing_source;
+        } else if (top->legacy_page == 67 || top->legacy_page == 88) {
+            if (!consume_award_display(next, id, true, top->legacy_page))
                 return Error::missing_source;
         } else if (top->legacy_page == 49) {
             if (!initialize_rank_page(next, id))
@@ -285,6 +458,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
+    if (top != state.scripts.pages.rend() && top->id == id &&
+        top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
+        return act_startup_world_runtime_rank_page(state, id, 0, true);
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind != ref::WorldScriptPageKind::raw_page || top->legacy_page != 83)
         return Error::invalid_page;
@@ -300,6 +476,84 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     return Error::none;
 }
 
+Error act_startup_world_runtime_rank_page(State &state, std::uint64_t id, int selection,
+                                          bool cancel) {
+    const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                  [](const auto &p) { return p.lifecycle != 4; });
+    if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
+        top->kind != ref::WorldScriptPageKind::raw_page || top->legacy_page != 48)
+        return Error::invalid_page;
+    auto next = state;
+    next.scripts.executing_page = id;
+    if (!initialize_rank_page(next, id))
+        return Error::missing_source;
+    const auto close = [&]() {
+        const auto result =
+            ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+        return result.candidate &&
+               write_startup_world_runtime_scripts(next, result.candidate->state);
+    };
+    if (next.rank < 5) {
+        if (cancel) {
+            if (!close())
+                return Error::script_failed;
+        } else {
+            const auto terms = ref::fixed_calendar_task_rank_terms();
+            const auto result = ref::prepare_world_rank_promotion(
+                next.rank, terms.at(next.rank), next.rank_met, selection, top->legacy_f == 1,
+                next.scripts.village_name);
+            if (!result)
+                return Error::missing_source;
+            const auto invoke = [&](const ref::WorldScriptInput &input) {
+                const auto script = ref::prepare_world_script(
+                    startup_world_runtime_catalog(), startup_world_runtime_scripts(next), input);
+                return script.candidate &&
+                       write_startup_world_runtime_scripts(next, script.candidate->state);
+            };
+            if (result->mark_user_flag)
+                next.scripts.user_flags |= 8;
+            for (const auto &input : result->before_promotion)
+                if (!invoke(input))
+                    return Error::script_failed;
+            if (result->promoted) {
+                next.rank = result->rank;
+                next.rank_history.at(next.rank - 1) = {next.scene.calendar.year,
+                                                       next.scene.calendar.month};
+                if (std::any_of(next.rules->facilities.begin(), next.rules->facilities.end(),
+                                [&](const auto &d) { return d.unlock_rank == next.rank; }))
+                    next.scripts.notices.push_back({18, -1, 80, "", "有了新的设施"});
+                for (const auto &activity : next.rules->activities) {
+                    if (activity.parameters[6] != next.rank)
+                        continue;
+                    auto &definition = next.scripts.activities.at(activity.identity);
+                    if (definition.status == 0)
+                        definition.pending_notice = true;
+                    definition.status = 1;
+                    next.scripts.notices.push_back(
+                        {6, -1, 80, activity.name,
+                         "举办活动追加 <co=0064FF>" + activity.name + "</co> "});
+                }
+                ref::WorldScriptPage celebration;
+                celebration.kind = ref::WorldScriptPageKind::raw_page;
+                celebration.legacy_page = 50;
+                const auto page = ref::prepare_world_script_page(
+                    startup_world_runtime_scripts(next), celebration);
+                if (!page.candidate ||
+                    !write_startup_world_runtime_scripts(next, page.candidate->state))
+                    return Error::script_failed;
+                for (const auto &input : result->after_promotion)
+                    if (!invoke(input))
+                        return Error::script_failed;
+                if (!close())
+                    return Error::script_failed;
+            }
+        }
+    }
+    next.scripts.executing_page.reset();
+    state = std::move(next);
+    return Error::none;
+}
+
 std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (state.scene.framework_paused)
         return state;
@@ -309,6 +563,9 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return update_startup_world_runtime_deadline_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 74 &&
+        !valid_startup_world_facility_page(state, *top))
+        return {};
     auto next = state;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 97) {
         // b/g.b:6172：实际更新清R并m()；不是玩家确认页，不再执行奖励脚本。
@@ -322,20 +579,64 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 24 || top->legacy_page == 28))
         return update_startup_world_runtime_task_page(state, top->id, state.page_confirm_held);
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 49) {
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 4)
+        return update_startup_world_runtime_task_control_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 60) {
+        const auto bound = next.page_human_bindings.find(top->id);
+        if (bound == next.page_human_bindings.end())
+            return {};
+        const auto human = next.scene.world.world.ai.growth.find(bound->second);
+        if (human == next.scene.world.world.ai.growth.end())
+            return {};
+        if (!next.human_pages_initialized.count(top->id)) {
+            const auto stats = ref::derive_human_stats(human->second.definition,
+                                                       next.scene.world.world.ai.professions);
+            if (!stats.candidate)
+                return {};
+            human->second.derived = *stats.candidate;
+            next.human_pages_initialized.insert(top->id);
+            if (!ref::world_script_seen(next.scripts, 111)) {
+                const auto event =
+                    ref::prepare_world_script(startup_world_runtime_catalog(),
+                                              startup_world_runtime_scripts(next), {111, {}, {}});
+                if (!event.candidate ||
+                    !write_startup_world_runtime_scripts(next, event.candidate->state))
+                    return {};
+            }
+        }
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 48 || top->legacy_page == 49)) {
         if (!initialize_rank_page(next, top->id))
             return {};
         if (next.rank >= 5)
             return next;
     }
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
+        !initialize_rank_celebration(next, top->id))
+        return {};
     auto &counter = next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
+        !consume_rank_celebration(next, top->id, false))
+        return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 81 &&
+        !consume_startup_world_facility_upgrade(next, top->id, false))
+        return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 59) {
         if (!unlock_human_valid(next, *top))
             return {};
         if (counter == 1)
+            next.sound_requests.push_back(5);
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 96) {
+        if (!next.page_human_bindings.count(top->id) ||
+            !next.human_calendar.count(next.page_human_bindings.at(top->id)) ||
+            next.page_phases[top->id] < 0 || next.page_phases[top->id] > 1)
+            return {};
+        if (counter == 1 && next.page_phases[top->id] == 0)
             next.sound_requests.push_back(5);
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 11) {
@@ -352,6 +653,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 87 &&
         !consume_award(next, top->id, ref::WorldAwardAction::update))
+        return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 67 || top->legacy_page == 88) &&
+        !consume_award_display(next, top->id, false, top->legacy_page))
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 30 && counter == 1 &&
         next.page_phases[top->id] == 0)

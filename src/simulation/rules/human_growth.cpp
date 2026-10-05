@@ -89,6 +89,47 @@ std::optional<int> human_growth_threshold(int level, int difficulty) {
     const int base = level * 3 * level + level * 4 + 5;
     return base + (difficulty - 1) * (base * 5) / 4;
 }
+HumanRewardResult prepare_human_reward(const HumanDefinitionStatsInput &definition,
+                                       const std::vector<HumanProfessionRule> &professions,
+                                       int satisfaction, int celebrations, int pending_completion,
+                                       int satisfaction_request, int effort_request,
+                                       bool celebrate) {
+    if (definition.legacy_u < 0 || definition.legacy_u > 100 || satisfaction < 0 ||
+        satisfaction > 100 || celebrations < 0 || satisfaction_request < 0 || effort_request < 0)
+        return {HumanGrowthError::invalid_input, {}};
+    const auto C = static_cast<std::int64_t>(satisfaction) + satisfaction_request;
+    const auto u = static_cast<std::int64_t>(definition.legacy_u) + effort_request;
+    const auto E = static_cast<std::int64_t>(celebrations) + (celebrate ? 1 : 0);
+    const auto completion = static_cast<std::int64_t>(pending_completion) + satisfaction_request;
+    if (!fits(C) || !fits(u) || !fits(E) || !fits(completion))
+        return {HumanGrowthError::numeric_overflow, {}};
+    HumanRewardCandidate c;
+    c.definition = definition;
+    c.satisfaction = static_cast<int>(std::min<std::int64_t>(C, 100));
+    c.definition.legacy_u = static_cast<int>(std::min<std::int64_t>(u, 100));
+    c.celebrations = static_cast<int>(E);
+    c.pending_completion = static_cast<int>(completion);
+    c.reward_display = {{{satisfaction, definition.legacy_u},
+                         {c.satisfaction, c.definition.legacy_u},
+                         {satisfaction_request, effort_request}}};
+    if (c.definition.legacy_u / 10 > definition.legacy_u / 10) {
+        const auto before = derive_human_stats(definition, professions);
+        const auto after = derive_human_stats(c.definition, professions);
+        if (!before.candidate || !after.candidate)
+            return {before.candidate ? after.error : before.error, {}};
+        std::array<std::array<int, 4>, 3> display{
+            before.candidate->combat, after.candidate->combat, {}};
+        for (std::size_t n = 0; n < 4; ++n) {
+            const auto delta = static_cast<std::int64_t>(display[1][n]) - display[0][n];
+            if (!fits(delta))
+                return {HumanGrowthError::numeric_overflow, {}};
+            display[2][n] = static_cast<int>(delta);
+        }
+        c.effort_display = display;
+        c.derived = after.candidate;
+    }
+    return {HumanGrowthError::none, std::move(c)};
+}
 HumanGrowthResult prepare_human_growth(const HumanGrowthInput &i) {
     if (!valid(i.definition, i.professions) || i.experience < 0 || i.pending.amount < 0 ||
         i.pending.counter == std::numeric_limits<int>::max())

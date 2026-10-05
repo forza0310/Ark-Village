@@ -22,14 +22,14 @@ ctest --preset desktop-debug
 ```
 
 另三套为desktop-release、headless-debug、headless-release。headless不查找raylib，测试在Release也执行，警告视为错误。阶段收口统一执行并记录当前代码的结果，本轮最终四套产品验证完成前不得写全部通过。修复后重验受影响配置；共用源码/测试改动覆盖全部受影响预设。通过后无新修改、失败或未决风险不重复全套。
-以上为产品阶段验收；main日常CI按用户确认只运行desktop-release，完整执行标准CTest，不重复Debug或headless构建。Debug和headless预设仍用于阶段验收及核心依赖、模块或表现层边界检查。本次CI配置调整只做本地静态检查，构建/测试交给GitHub runner。
+以上为产品阶段验收；main日常CI按用户确认只运行desktop-release，完整执行标准CTest，不重复Debug或headless构建。Debug和headless预设仍用于阶段验收及核心依赖、模块或表现层边界检查。此前CI配置调整只做本地静态检查；用户已明确持续允许本地验证，CI是额外验证，不限制产品开发的本地构建/测试。
 构建需要Node 18+，只在构建期JSON.parse交叉校验固定发布数据，生成只读标准C++；运行无需Node。
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
 
 ## GitHub CI与制品
 
-[Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。按用户要求，CI构建与测试仅在GitHub runner上执行；本地只检查配置、脚本语法和差异，不以历史或本地结果代替远程验收。
+[Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。CI构建与测试在GitHub runner上执行，属于本地阶段验证以外的额外检查。用户持续允许本地配置、编译、测试和窗口验收；两类结果分别记录，不以本地结果代替远程验收。
 
 | 制品 | GitHub runner / 工具链 | 目标与验收边界 |
 | --- | --- | --- |
@@ -130,7 +130,7 @@ oras pull ghcr.io/forza0310/ark-village:latest
 推送或远程历史改写需用户明确指令；不能把本次本地重置自动推成force-push。
 research已有外部链接的UI/C/RQ编号保留为交接身份。按已提交维护源冻结、迁入和核对哈希，不夹带在途研究改动；研究测试结果与产品验收分别记录。
 
-当前默认启动、`--world`别名及`--check`都选择持续世界。旧建设切片通过`--legacy-slice`或命名旧诊断进入，`--tick-rate`只用于这类旧入口；`--verify-play`保留原节拍。本轮raw49只接晋级条件读取/四项显示/确认，不接收费晋级。长期回归通过 `-DARK_LONG_WORLD_TESTS=ON` 显式开启，建议Release、`ctest -L long_world --parallel 1`，避免与试玩/其他长跑争抢CPU。自然任务生成、玩家接受后自然成功及无限运行分别验收，不能互相代替。
+当前默认启动、`--world`别名及`--check`都选择持续世界。旧建设切片通过`--legacy-slice`或命名旧诊断进入，`--tick-rate`只用于这类旧入口；`--verify-play`保留原节拍。raw49只接晋级条件读取/四项显示/确认；e8批次另经原raw48消费者申请晋级，不能从raw49或普通确认旁路收费。长期回归通过 `-DARK_LONG_WORLD_TESTS=ON` 显式开启，建议Release、`ctest -L long_world --parallel 1`，避免与试玩/其他长跑争抢CPU。自然任务生成、玩家接受后自然成功及无限运行分别验收，不能互相代替。
 
 ## macOS窗口检查
 

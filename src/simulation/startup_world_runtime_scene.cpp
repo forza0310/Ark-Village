@@ -1,5 +1,6 @@
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/rules/world_notices.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -284,18 +285,15 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 return {};
             break;
         }
-        case Stage::common_display_tail:
-            for (std::size_t n = s.floating_labels.size(); n > 0; --n) {
-                auto &label = s.floating_labels[n - 1];
-                if (!increment(label[1]))
-                    return {};
-                if (label[1] == 1)
-                    s.sound_requests.push_back(11);
-                if (label[1] > label[2] + 16)
-                    s.floating_labels.erase(s.floating_labels.begin() +
-                                            static_cast<std::ptrdiff_t>(n - 1));
-            }
+        case Stage::common_display_tail: {
+            const auto notices = ref::prepare_world_notices(s.scripts.notices);
+            if (!notices)
+                return {};
+            s.scripts.notices = notices->notices;
+            s.sound_requests.insert(s.sound_requests.end(), notices->sounds.begin(),
+                                    notices->sounds.end());
             break;
+        }
         case Stage::common_global_flag:
             for (std::size_t n = s.global_effects.size(); n > 0; --n) {
                 auto &effect = s.global_effects[n - 1];

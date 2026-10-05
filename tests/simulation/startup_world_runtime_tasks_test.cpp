@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -255,12 +256,101 @@ void task_victory_requests() {
     check(state.crew_summaries.at(page_id) == std::vector<int>{1, 3, 2} && state.tasks.count(id),
           "subsequent catalogue update cannot invalidate closed-task result payload");
 }
+void active_management() {
+    auto s = test_support::world_fixture(ref::WorldRandomStream::from_java_seed(0));
+    const auto created = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 0);
+    check(created.candidate && created.candidate->created_task &&
+              write_startup_world_runtime_factory(s, created.candidate->state),
+          "active management conditional fixture uses real source task factory");
+    const auto task = *created.candidate->created_task;
+    const auto site = *s.tasks.at(task).facility;
+    s.active_task = task;
+    s.scene.world.world.ai.task_active = true;
+    s.task.kind = 0;
+    s.task.center = *s.tasks.at(task).site;
+    s.participants = {1};
+    s.human_presence.at(3) = 1;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    check(open_startup_world_runtime_task_menu(s) == StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().legacy_page == 26,
+          "active task opens real participant page26 rather than rejecting all task management");
+    const auto team = s.scripts.pages.back().id;
+    check(act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::depart).error ==
+                  StartupWorldRuntimeError::invalid_page &&
+              s.active_task == task,
+          "active team cannot redepart or replace active task");
+    check(act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::add_member).error ==
+                  StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().legacy_page == 27 &&
+              std::find(s.task_extra_pages.at(s.scripts.pages.back().id).begin(),
+                        s.task_extra_pages.at(s.scripts.pages.back().id).end(),
+                        3) != s.task_extra_pages.at(s.scripts.pages.back().id).end(),
+          "active team reuses source unpaid extra-candidate snapshot with actual available "
+          "definition");
+    const auto extra = s.scripts.pages.back().id;
+    check(act_startup_world_runtime_task_page(s, extra, StartupWorldTaskAction::hire, 3).error ==
+                  StartupWorldRuntimeError::none &&
+              s.participants == std::vector<int>({1, 3}) &&
+              s.scene.world.world.ai.accounting.funds() == cash - 200 && s.active_task == task &&
+              (s.human_flags.at(3) & 2U),
+          "active hiring pays current200 once, marks same definition and preserves active task");
+    // 关闭实际64提示与旧追加页，不推进真实世界；仍是显式页面输入的条件调用点。
+    for (auto &p : s.scripts.pages)
+        if (p.id != team && p.kind != ref::WorldScriptPageKind::scene)
+            p.lifecycle = 4;
+    check(act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::inspect, 0).error ==
+                  StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().legacy_page == 60 &&
+              s.page_human_bindings.at(s.scripts.pages.back().id) == 1,
+          "participant detail binds source definition, not synthetic actor or another roster");
+    check(act_startup_world_runtime_task_page(s, s.scripts.pages.back().id,
+                                              StartupWorldTaskAction::cancel)
+                      .error == StartupWorldRuntimeError::none &&
+              act_startup_world_runtime_task_page(s, team, StartupWorldTaskAction::cancel).error ==
+                  StartupWorldRuntimeError::none,
+          "detail and team return independently, no fee or active task cancellation");
+    check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none,
+          "source adventure4 task-control entry opens without cancelling task");
+    const auto parent =
+        std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(), [](const auto &p) {
+            return p.lifecycle != 4;
+        })->id;
+    check(act_startup_world_runtime_task_page(s, parent, StartupWorldTaskAction::request_abort)
+                      .error == StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().legacy_page == 1,
+          "source task abort creates real raw1 yes/no question");
+    const auto question = s.scripts.pages.back().id;
+    const auto before = s.scene.world.world.ai.pending_completion;
+    const auto draws = s.scene.random.draws();
+    check(act_startup_world_runtime_task_page(s, question, StartupWorldTaskAction::confirm, 0)
+                      .error == StartupWorldRuntimeError::none &&
+              s.active_task == task && s.scene.world.world.facilities.count(site) &&
+              !ref::world_script_seen(s.scripts, 80),
+          "question close records yes only; n.o and effects wait for actual parent callback");
+    auto broken = s;
+    broken.sites.at(site).occupied_cells.clear();
+    check(!update_startup_world_runtime_task_control_page(broken, parent) &&
+              broken.active_task == task && broken.task_abort_answers.at(parent) == 0 &&
+              broken.scene.world.world.facilities.count(site),
+          "late restoration rejection preserves pending answer and entire active world");
+    const auto settled = update_startup_world_runtime_task_control_page(s, parent);
+    check(
+        settled && !settled->active_task && !settled->scene.world.world.facilities.count(site) &&
+            settled->scene.world.world.ai.pending_completion == before - 10 &&
+            settled->scripts.event_calls.at(80) == 1 && settled->scripts.event_calls.at(162) == 1 &&
+            settled->scripts.notices.back().message == 26 &&
+            settled->scene.world.world.ai.accounting.funds() == cash - 200 &&
+            settled->scene.random.draws() == draws && !settled->deadline_page &&
+            settled->participants == std::vector<int>({1, 3}),
+        "parent restores whole site then80/-10/first162/notice26; no deadlinefee or random shadow");
+}
 } // namespace
 int main() {
     try {
         factory();
         encounter();
         task_victory_requests();
+        active_management();
         std::cout << "startup runtime task checks: " << checks << '\n';
         return 0;
     } catch (const std::exception &e) {

@@ -19,12 +19,15 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_runtime_arrival', 'startup_world_runtime_calendar', 'startup_world_runtime_scene',
   'startup_world_runtime_focus', 'startup_world_runtime_pages', 'startup_world_runtime_tasks',
   'startup_world_runtime_task_pages', 'startup_world_runtime_deadline',
-  'startup_world_runtime_nonactors'];
+  'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
-  'startup_world_task_flow', 'startup_world_deadline'];
-const translate = text => text.replaceAll('dungeon_village_reference/', 'ark/simulation/rules/')
+  'startup_world_task_flow', 'startup_world_deadline', 'startup_world_building',
+  'startup_world_visuals'];
+const translate = text => text.replaceAll('dungeon_village_tools/', 'ark/assets/')
+  .replaceAll('dungeon_village_tools', 'ark::assets')
+  .replaceAll('dungeon_village_reference/', 'ark/simulation/rules/')
   .replaceAll('dungeon_village_prototype/', 'ark/simulation/')
   .replaceAll('dungeon_village_reference', 'ark::simulation::rules')
   .replaceAll('dungeon_village_prototype', 'ark::simulation');
@@ -66,7 +69,20 @@ if (mode === '--record-patch') {
     for (const match of text.matchAll(/^#include "([^"]+)"/gm)) {
       const reference = match[1].startsWith('dungeon_village_reference/');
       const prototype = match[1].startsWith('dungeon_village_prototype/');
-      if (!reference && !prototype) throw new Error(`Unresolved local include: ${relative}: ${match[1]}`);
+      if (!reference && !prototype) {
+        // CPU portrait regression reuses the product's existing identical SEB/TSV API.
+        // Keep the full test body; only its header/namespace and target dependency change.
+        if (relative === 'prototype/tests/startup_world_visuals_test.cpp' &&
+            ['dungeon_village_tools/sprite.hpp', 'dungeon_village_tools/table.hpp'].includes(match[1]))
+          continue;
+        // Maintained prototype regressions share a local fixture. Keep its relative path
+        // and source identity; never resolve an arbitrary include outside the frozen tree.
+        if (relative.startsWith('prototype/tests/') && /^support\/[A-Za-z0-9_]+\.hpp$/.test(match[1])) {
+          pending.push(`prototype/tests/${match[1]}`);
+          continue;
+        }
+        throw new Error(`Unresolved local include: ${relative}: ${match[1]}`);
+      }
       const packageName = reference ? 'example' : 'prototype';
       pending.push(`${packageName}/include/${match[1]}`);
       const implementation = `${packageName}/src/${basename(match[1], '.hpp')}.cpp`;
@@ -84,6 +100,7 @@ if (mode === '--record-patch') {
   for (const file of ['compile_startup.mjs', 'compile_startup_world.mjs'])
     files.add(`prototype/scripts/${file}`);
   files.add('prototype/tests/startup_world_data_test.mjs');
+  files.add('prototype/tests/support/README.md');
   const records = [...files].sort().map(file => {
     const bytes = readFileSync(join(source, file));
     put(join(destination, file), bytes);
@@ -117,7 +134,8 @@ if (mode === '--record-patch') {
       target = 'include/ark/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/src/')) target = 'src/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/scripts/')) target = 'scripts/simulation/' + basename(entry.file);
-    else if (entry.file.startsWith('prototype/tests/')) target = 'tests/simulation/' + basename(entry.file);
+    else if (entry.file.startsWith('prototype/tests/'))
+      target = 'tests/simulation/' + entry.file.slice('prototype/tests/'.length);
     else if (entry.file === 'data/original/tenantData.txt') target = 'assets/simulation/tenantData.txt';
     else if (entry.file.startsWith('data/')) target = 'assets/simulation/' + entry.file.slice(5);
     else throw new Error(`Unsupported snapshot path: ${entry.file}`);

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <stdexcept>
 
 namespace {
@@ -41,6 +42,29 @@ app::WorldFacilityDetail query(const State &s, std::uint64_t id) {
 void rejected(const State &s, std::uint64_t id, Error error) {
     const auto result = app::query_world_facility_detail(s, id);
     check(result.error == error && !result.detail, "Incorrect query rejection or partial result");
+}
+// e8f66d9 initializes the full neighbour cache at startup. A pure query must preserve
+// every field and source order, regardless of whether its caller supplied an empty cache.
+bool same_neighbourhood_details(
+    const std::map<std::uint64_t, rules::WorldMapNeighbourCache> &actual,
+    const std::map<std::uint64_t, rules::WorldMapNeighbourCache> &before) {
+    if (actual.size() != before.size())
+        return false;
+    return std::equal(
+        actual.begin(), actual.end(), before.begin(), [](const auto &a, const auto &b) {
+            if (a.first != b.first)
+                return false;
+            const auto &left = a.second;
+            const auto &right = b.second;
+            return left.current == right.current && left.previous == right.previous &&
+                   left.visited == right.visited && left.notices == right.notices &&
+                   left.sources.size() == right.sources.size() &&
+                   std::equal(left.sources.begin(), left.sources.end(), right.sources.begin(),
+                              [](const auto &source, const auto &saved) {
+                                  return source.instance_id.value == saved.instance_id.value &&
+                                         source.definition_id == saved.definition_id;
+                              });
+        });
 }
 State geometry_fixture() {
     auto s = ark::test::initial_world();
@@ -88,14 +112,14 @@ void startup_and_current_economy() {
     check(first.type == app::WorldFacilityTemplate::ordinary && first.definition == 28 &&
               first.level == 1 && first.status == 1 && !first.construction,
           "Real inn classification/progress incorrect");
-    check(!first.neighbours.empty(),
-          "Missing startup source cache was misrepresented as no bonuses");
+    check(!first.neighbours.empty(), "Startup source neighbours were misrepresented as no bonuses");
     check(first.monthly_income == 0 && first.monthly_expense == 0 && first.cumulative_profit == 0,
           "Empty real startup has invented sales");
     check(query(s, instance(s, 30)).type == app::WorldFacilityTemplate::equipment &&
               query(s, instance(s, 66)).type == app::WorldFacilityTemplate::booster,
           "Special source templates lost classification");
-    check(s.neighbourhood_details.empty() && s.neighbourhood == before.neighbourhood &&
+    check(same_neighbourhood_details(s.neighbourhood_details, before.neighbourhood_details) &&
+              s.neighbourhood == before.neighbourhood &&
               s.scene.random.draws() == before.scene.random.draws() &&
               s.scene.world.world.ai.accounting.funds() ==
                   before.scene.world.world.ai.accounting.funds() &&

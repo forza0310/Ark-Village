@@ -4,6 +4,7 @@
 #include "ark/assets/sprite.hpp"
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <raylib.h>
 #include <string>
 
@@ -20,6 +21,9 @@ class Sprites {
     // Source actor SEB indices and profession/body image indices are independent namespaces.
     void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor,
                float scale = 1);
+    // CPU-verified portrait crop from the current human image; no nested screen scissor or
+    // render-resolution assumptions, so world zoom and Retina use the same source pixels.
+    void human_image(int image_index, Rectangle source, Rectangle destination);
     // Raw published PNG rectangles for tiled bars and nine-slice window components.
     void image(const std::string &name, Rectangle source, Rectangle destination,
                Binding binding = Binding::common, Color tint = WHITE);
@@ -48,6 +52,8 @@ class Text {
     Text &operator=(const Text &) = delete;
     void draw(const std::string &value, float x, float y, Color color = {48, 44, 46, 255},
               float size = 12) const;
+    void clipped(const std::string &value, float x, float y, Rectangle clip,
+                 Color color = {48, 44, 46, 255}, float size = 12) const;
     void paragraph(const std::string &value, float x, float y, float width) const;
     float width(const std::string &value, float size = 12) const;
     // Grow glyph rasterization with physical UI scale (including Retina and window resize).
@@ -65,6 +71,7 @@ class Text {
         Vector2 point;
         Color color;
         float size;
+        std::optional<Rectangle> clip;
     };
     mutable std::vector<Label> labels_;
 };

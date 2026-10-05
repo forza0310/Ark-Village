@@ -1,6 +1,7 @@
 // S004/S005/S009 supply visual composition; STARTUP supplies page0 and its secretary binding.
 // Responsive panel positioning is a desktop adaptation, not a fixed-APK touch-coordinate claim.
 #include "world_panels.hpp"
+#include "ark/simulation/rules/world_notices.hpp"
 #include "script_text.hpp"
 #include "skin.hpp"
 #include <algorithm>
@@ -15,6 +16,30 @@ bool secretary(const Page &page) {
     return dialogue(page) && page.speaker_kind == 0 && page.speaker_definition == -1;
 }
 } // namespace
+
+std::vector<WorldNoticeLine>
+world_notice_view(const std::vector<simulation::rules::WorldScriptNotice> &notices, Extent extent) {
+    const auto positions = simulation::rules::world_notice_placements(notices);
+    if (!positions)
+        throw std::invalid_argument("Invalid source notice queue");
+    std::vector<WorldNoticeLine> lines;
+    for (const auto &position : *positions) {
+        const auto &notice = notices.at(position.index);
+        if (notice.message == 1)
+            continue; // Same unrendered special record as the published prototype.
+        lines.push_back({position.index,
+                         {0, extent.height - 26.F + position.offset,
+                          static_cast<float>(extent.width), static_cast<float>(position.height)},
+                         decode_script_text(notice.text).text});
+    }
+    return lines;
+}
+void draw_world_notices(const std::vector<WorldNoticeLine> &lines, const Skin &skin) {
+    for (const auto &line : lines) {
+        DrawRectangleRec(line.box, {250, 254, 248, 255});
+        skin.text.clipped(line.text, line.box.x + 4, line.box.y + 3, line.box, ink, 10);
+    }
+}
 
 WorldPageLayout world_page_layout(const Page &page, Extent extent) {
     if (extent.width < 240 || extent.height < 256)

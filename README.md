@@ -4,19 +4,17 @@
 
 当前默认运行持续世界：真实新局地图和完整定义目录、多人/怪物共同调度、设施使用和收入、脚本页栈、日期、月报与人气由同一个世界所有者管理。多人到访、实际设施收入与跨月结算已验收。界面已接入原版地表、道路拼块、栅栏/外部入口、人物/怪物动作、血条、现金浮标及事件页面。
 
-完整世界已实现任务入口、接受/征集/出发/期限及成果返回。当前恢复原五项菜单外观，先开放“冒险”进入任务目录，菜单打开冻结世界、关闭保留显式暂停；其余四项禁用。建筑点击详情/建设、完整菜单子页、完整投射物/一般特效或文件存取仍未提供。当前Owner的只读设施查询底层已备妥，建筑详情窗口的桌面适配方案待确认。旧建设切片保留为显式诊断入口，不能把其中的建设界面当作持续世界已经完成的功能。产品测试和截图也不等于原APK动态行为或OS鼠标验收。
+当前产品已迁入研究 **`e8f66d9` 的309项源/测试/数据**，并完成对应桌面接线，本阶段本地构建、测试和窗口验收已通过。正常世界可经菜单“建设”进入目录，预览完整占地并连续放置；点击建筑查看真实经营详情、符合资格时入住/升级；活动任务可追加队员、查看成员及请求中止。年度页支持选择人物授勋，晋级页支持实际申请与庆典；这些动作都提交当前模拟线程，共用地图、资金、人物和随机。
 
-已补齐伤害数字、死亡金币、经验/升级标签、旅馆休息/HP条、通知换行及原素材模板，并改为月报手动确认与独立模拟线程。此前的2倍速600帧窗口绘制间隔中位数16.96ms、95分位17.12ms，月报等待120帧时世界更新0次。交互气泡具体文案、人气动态填充、旅馆头像/精确锚点及部分战斗特效仍待研究补齐。
+原五项菜单当前开放“建设、冒险”，村办/情报/系统禁用。旅馆两阶段条已接当前职业/性别头像；底栏通知按源生命周期显示前两条文本。raw67/88/96为真实数据的文字展示适配，完整能力增长/授勋/自宅动画、通知成长属性拼片/77皮肤/32特殊条，以及道路建设、移动、拆除尚未接入。旧建设切片仅保留为显式诊断，当前世界建设不会启动第二个Game。产品测试和截图不等于原APK动态行为或OS鼠标验收。
 
-此前已迁入研究40972a9的全局遭遇、定时/镜头/怪物介绍页及年度贡献/结束流程，历史验收见[B1记录](docs/stages/B1-playable-prototype.md#已发布持续世界修正接入2026-10-05)。raw49已有条件读取/显示/确认，未接晋级收费；年度完整授予/raw88仍待研究。随后已接成果页队员统计和活动任务的场景攻略条/目标轮廓；通知底栏尚缺队列生命周期桥，不能直接绘制永久消息。该批任务显示采用明确夹具验证，历史四套配置共570项标准CTest通过；更早一批完成三个12/6/24个月长期回归。
+此前已补齐伤害数字、死亡金币、经验/升级标签、旅馆休息/HP条和通知换行，并采用月报手动确认与独立模拟线程。此前2倍速600帧窗口绘制间隔中位数16.96ms、95分位17.12ms，月报等待120帧时世界更新0次；这些是历史结果，不能代替本阶段验收。交互气泡具体文案、人气动态填充、设施精确L锚点、旗帜/连击/手持武器及部分战斗特效仍按已发布研究补齐。
 
-上一批已按研究33ee056迁入任务自然闭环及救援/携物/路线/名单修正，冻结298项源/数据，保留勋章共享字段的产品适配记录。任务操作通过模拟线程向同一Owner提交。四套编译及588项标准CTest、6次额外长测全部通过，真实新局队伍/自然成果窗口已检查；两种子任务链包含自然成功、成果返回和后续任务。详见[B1本批验收](docs/stages/B1-playable-prototype.md#任务自然闭环产品接入2026-10-05)。
-
-本轮已完成测试目录/套件整理与菜单、招募人物展示修正，四套构建和590项标准CTest通过；真实菜单/征集窗口已检查。测试结构见[tests/README](tests/README.md)，当前差异与验收边界见[B1最新记录](docs/stages/B1-playable-prototype.md#菜单恢复与招募展示2026-10-05)。
+历史接入与验收集中在[B1记录](docs/stages/B1-playable-prototype.md)：33ee056任务闭环冻结298项源/数据，四套588项标准测试及6次长测通过；随后测试整理与菜单/招募展示四套590项通过。本阶段e8接入通过四套构建、602项标准测试、6次额外自然/年度长测和7个真实窗口检查，最终结果已记入B1。测试结构见[tests/README](tests/README.md)。
 
 ## 构建运行
 
-main上的[GitHub Actions](.github/workflows/ci.yml)分别在macOS ARM与Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-macos-arm64`和`ark-village-windows10-x86`的Release压缩包及SHA-256。Debug和headless预设保留，但不在日常CI中重复执行。成功构建还会发布到仓库的GitHub Packages（GHCR）：`ghcr.io/forza0310/ark-village:latest`，可用`oras pull`下载两平台压缩包及校验文件。Actions运行页的Artifacts继续保留14天；Windows目标是32位、实际CI系统为Windows Server 2022。构建/测试仅在GitHub runner上执行，首次Packages发布待验证；制品内容、字体启动方式和验收边界见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+main上的[GitHub Actions](.github/workflows/ci.yml)分别在macOS ARM与Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-macos-arm64`和`ark-village-windows10-x86`的Release压缩包及SHA-256。Debug和headless预设保留，但不在日常CI中重复执行。成功构建还会发布到仓库的GitHub Packages（GHCR）：`ghcr.io/forza0310/ark-village:latest`，可用`oras pull`下载两平台压缩包及校验文件。Actions运行页的Artifacts继续保留14天；Windows目标是32位、实际CI系统为Windows Server 2022。CI是本地阶段验证之外的额外检查，本地构建/测试持续允许，首次Packages发布待验证；制品内容、字体启动方式和验收边界见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
 需要CMake 3.21+、C++17、Node 18+（仅构建）、pkg-config及raylib 6.0+。macOS可用：
 
@@ -37,9 +35,12 @@ ctest --preset desktop-release
 
 月报等待确认时暂停世界：第1页点击“下一页”，第2页点击“确定”后恢复；Enter也可确认。如果此前手动暂停，关闭月报后仍保持暂停。人物、日期、设施与随机在等待期间均不推进，最终确认发放一次村子点数。
 
-主场景无其他页面/月报时，点击底部“菜单”或按M打开原五项菜单；M、Esc或再次点击菜单关闭。菜单期间冻结世界，关闭不改变手动暂停。未暂停且无活动任务时选择“冒险”打开任务目录，也可在主场景直接按T。点击列表或用上下键选择，点击确认或按Enter接受；征集页按住Enter或“加速”按钮加快原征集计数，松开、切页、暂停或失焦即释放。队伍页可选择追加队员并支付实际费用，或选择出发；出发演出开始后不能取消。期限页选择继续或中止再确认，成果页显示真实队员统计后确认返回。一般返回用取消或Esc；设施强化页83目前仅提供取消，解锁页59需原计数满70才可确认。原版完整菜单生命周期尚未交付，当前开关属于已确认的桌面适配。招募页已恢复按源名单切换的人物展示，完整入场/表情动画仍待研究绘制计划。
+主场景无其他页面/月报时，点击底部“菜单”或按M打开五项菜单；M、Esc或再次点击菜单关闭。菜单期间冻结世界，关闭不改变手动暂停。未暂停时可选择“建设”或“冒险”，其他三项禁用；原版完整菜单生命周期尚未交付，开关属于已确认的桌面适配。
 
-年度贡献页显示真实排名与持有勋章；“结束授勋”先询问是/否，选择否继续停留，选择是按真实消费者结束并保留未用勋章。完整授予操作尚未接入。
+- **建设**：菜单→建设或B打开三分类目录，点击列表/上下键选择、左右键切换分类，确认后进入地图预览。点击地图锁定位置，R旋转，Enter或“建设”按钮提交；成功后保持连续放置，Esc/返回退出。预览不占地或扣款，模拟线程提交时重新验证。
+- **设施**：点击当前建筑打开详情，左右键翻页；入住候选、升级和返回沿实际页面资格提交。道路建设、移动、拆除及未交付商品/道具操作不提供。
+- **任务**：菜单→冒险或T打开目录；有活动任务时打开当前队伍。征集页按住Enter或“加速”按钮加快源计数，松开/切页/暂停/失焦释放。队伍页支持追加、成员详情和出发；出发演出开始后不可取消。X打开活动任务中止管理，先请求、再在默认“否”的问题页确认；期限页沿原继续/中止流程。完整招募入场/表情动画仍待绘制合同。
+- **年度与晋级**：年度贡献页选择人物后请求授勋，再确认是/否；结束授勋有独立问题。raw48可申请晋级或查看四项条件解释，raw49仅查看，庆典按源计数开放确认。一般返回用取消/Esc，设施强化83目前仅取消，解锁59满70计数可确认。
 
 程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。macOS默认使用系统Arial Unicode.ttf，其他环境通过 `--font /路径/中文.ttf` 指定字体。退出不保存。
 
@@ -55,23 +56,29 @@ cmake --build --preset headless-release --parallel 4
 
 `--seed` 是明确的可重复Java种子输入，未认证原APK默认种子；`--auto-confirm` 是测试用户输入策略。`--speed 0|1` 对应正常/双倍源轮数；跨年度测试另加 `--end-awards`，明确请求并确认结束授勋，普通 `--auto-confirm` 不替代年度选择。`--frames` 为无节拍框架调用预算，`--months` 是预算内目标，未达到时返回非零退出码。
 
-| 入口 | 用途与边界 |
-| --- | --- |
-| `ark_village --check` | 无窗口资源和持续世界初始化检查 |
-| `ark_village --frames 60` | 有界默认世界窗口，可加 `--screenshot /tmp/ark.png` |
-| `ark_village --inspect-page world-menu --frames 120` | 真实三人新局后经FIFO打开菜单；保留显式未暂停，检查独立菜单冻结 |
-| `ark_village --inspect-page world-task-recruitment --frames 120` | 真实接受任务后停在已显示源队首人物的征集页 |
-| `ark_village --inspect-page world-active --frames 8` | 真实新局预运行至三人到访，再检查画面 |
-| `ark_village --inspect-page world-month --frames 8` | 真实新局预运行至月报，再检查画面 |
-| `ark_village --inspect-page world-award --frames 120` | 从真实新局预运行至年度贡献页；可能耗时数分钟，前序确认仅为测试输入 |
-| `ark_village --inspect-page world-task-team --frames 8` | 有界真实新局输入，接受当前可负担任务并征集到队伍页；可能耗时数分钟 |
-| `ark_village --inspect-page world-task-result --frames 8` | 接续真实接受/出发，自然运行到同一任务成果页，不注入任务或奖励 |
-| `ark_village --inspect-page world-rank --frames 8` | 等待实际raw49条件页初始化，再检查四项条件 |
-| `ark_village --inspect-page world-combat --frames 8` | 停在真实受击数字；另有world-reward/world-exp/world-rest/world-rest-hp |
-| `ark_village --inspect-page world-news --frames 8` | 真实冒险通信；world-break检查带换行标记的通知 |
-| `ark_village --inspect-page world-speed --frames 600` | 三人正常场景后以2倍速持续运行，输出绘制/模拟耗时 |
-| `ark_village --legacy-slice` | 旧有限建设/首访生活切片 |
-| `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收 |
+| 入口                                                                            | 用途与边界                                                            |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `ark_village --check`                                                         | 无窗口资源和持续世界初始化检查                                        |
+| `ark_village --frames 60`                                                     | 有界默认世界窗口，可加`--screenshot /tmp/ark.png`                   |
+| `ark_village --inspect-page world-menu --frames 120`                          | 真实三人新局后经FIFO打开菜单；保留显式未暂停，检查独立菜单冻结        |
+| `ark_village --inspect-page world-task-recruitment --frames 120`              | 真实接受任务后停在已显示源队首人物的征集页                            |
+| `ark_village --inspect-page world-building --frames 120` | 预运行调用源建设目录消费者，检查分类/当前报价 |
+| `ark_village --inspect-page world-details --frames 120` | 预运行调用源设施消费者，打开当前建筑详情 |
+| `ark_village --inspect-page world-built --frames 120` | 预运行调用源目录/建设事务，检查同一地图与账本 |
+| `ark_village --inspect-page world-award-granted --frames 120` | 预运行经源年度消费者请求并确认授勋，停在真实奖励展示 |
+| `ark_village --inspect-page world-active --frames 8`                          | 真实新局预运行至三人到访，再检查画面                                  |
+| `ark_village --inspect-page world-month --frames 8`                           | 真实新局预运行至月报，再检查画面                                      |
+| `ark_village --inspect-page world-award --frames 120`                         | 从真实新局预运行至年度贡献页；可能耗时数分钟，前序确认仅为测试输入    |
+| `ark_village --inspect-page world-task-team --frames 8`                       | 有界真实新局输入，接受当前可负担任务并征集到队伍页；可能耗时数分钟    |
+| `ark_village --inspect-page world-task-result --frames 8`                     | 接续真实接受/出发，自然运行到同一任务成果页，不注入任务或奖励         |
+| `ark_village --inspect-page world-rank --frames 8`                            | 等待实际raw49条件页初始化，再检查四项条件                             |
+| `ark_village --inspect-page world-combat --frames 8`                          | 停在真实受击数字；另有world-reward/world-exp/world-rest/world-rest-hp |
+| `ark_village --inspect-page world-news --frames 8`                            | 真实冒险通信；world-break检查带换行标记的通知                         |
+| `ark_village --inspect-page world-speed --frames 600`                         | 三人正常场景后以2倍速持续运行，输出绘制/模拟耗时                      |
+| `ark_village --legacy-slice`                                                  | 旧有限建设/首访生活切片                                               |
+| `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收                          |
+
+`world-building/details/built/award-granted`的诊断预运行直接调用源消费者，不经过窗口worker FIFO或OS鼠标；它们检验实际源状态的窗口呈现。正常UI命令的FIFO、回执与事务契约由产品会话测试覆盖，不能把这些截图称为窗口自动点击验收。
 
 `world-active/world-month/world-rank` 不需要额外写 `--world`；它们按实际窗口视口预运行并自动确认前序真实页面，仅作为渲染检查。`--verify-play` 使用共享controller的引擎内坐标，不能替代OS鼠标测试。`--tick-rate 1..240` 可用于 `--legacy-slice` 或允许覆盖时钟的命名旧诊断（如 `--ai-preview`）；默认世界及 `--world` 不接受覆盖，`--verify-play` 仍须原节拍。
 
@@ -89,16 +96,16 @@ ctest --preset headless-release -L long_world --parallel 1
 
 ## 目录与阅读入口
 
-| 路径 | 用途 |
-| --- | --- |
-| `research/` | 研究侧维护的规则、原型、素材与截图，产品侧只读 |
-| `include/ark/simulation/rules/`、`src/simulation/rules/` | 标准C++领域规则，`ark_world_rules` |
-| `include/ark/simulation/`、`src/simulation/` | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime` |
-| `src/app/` | 启动参数、时钟、世界模拟线程/手动报告、只读设施查询、无窗口入口及旧切片协调 |
-| `src/desktop/` | raylib窗口、资源、输入、投影及UI |
-| `src/world/`、`src/facilities/`、`src/people/`、`src/economy/` | 旧建设切片保留的标准C++模块 |
-| `src/assets/`、`assets/` | 素材解析、运行副本及来源清单 |
-| `scripts/`、`tests/` | 数据编译/显式素材导入、按职责组织的测试与来源校验，见[测试说明](tests/README.md) |
-| `docs/` | 架构、流程、计划；长期对照在 `reference/`，历史阶段在 `stages/` |
+| 路径                                                                   | 用途                                                                            |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `research/`                                                          | 研究侧维护的规则、原型、素材与截图，产品侧只读                                  |
+| `include/ark/simulation/rules/`、`src/simulation/rules/`           | 标准C++领域规则，`ark_world_rules`                                            |
+| `include/ark/simulation/`、`src/simulation/`                       | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime`                        |
+| `src/app/`                                                           | 启动参数、时钟、世界模拟线程/手动报告、只读设施查询、无窗口入口及旧切片协调     |
+| `src/desktop/`                                                       | raylib窗口、资源、输入、投影及UI                                                |
+| `src/world/`、`src/facilities/`、`src/people/`、`src/economy/` | 旧建设切片保留的标准C++模块                                                     |
+| `src/assets/`、`assets/`                                           | 素材解析、运行副本及来源清单                                                    |
+| `scripts/`、`tests/`                                               | 数据编译/显式素材导入、按职责组织的测试与来源校验，见[测试说明](tests/README.md) |
+| `docs/`                                                              | 架构、流程、计划；长期对照在`reference/`，历史阶段在 `stages/`              |
 
 从 [架构](docs/ARCHITECTURE.md)、[开发流程](docs/CONTRIBUTING.md)、[计划与决策](docs/MILESTONES.md)开始阅读。近期任务见 [TODO](TODO.md)，研究覆盖与产品缺口见 [原版对照](docs/reference/REFERENCE_CHECKLIST.md)及 [研究需求](docs/reference/RESEARCH_REQUESTS.md)。

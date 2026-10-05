@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "support/world_fixture.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -12,9 +13,7 @@ void check(bool condition, const char *message) {
         throw std::runtime_error(message);
 }
 StartupWorldRuntimeState fixture() {
-    StartupSession startup;
-    StartupWorldRuntimeSession session(startup.state(), ref::WorldRandomStream::from_java_seed(17));
-    auto s = session.state();
+    auto s = test_support::world_fixture(ref::WorldRandomStream::from_java_seed(17));
     // 只为独立表现调用夹具装入两名对象；不宣称原版新局会有这名怪物。
     ref::BattleActorRecord human;
     human.id = {1};

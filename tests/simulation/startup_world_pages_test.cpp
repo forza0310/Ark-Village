@@ -1,7 +1,9 @@
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace ark::simulation;
@@ -12,20 +14,7 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
-// 明确页面夹具：初始世界与目录均真实，只有待测试的页面由此装入。
-StartupWorldRuntimeState fixture(int raw) {
-    StartupSession initial;
-    StartupWorldRuntimeSession runtime(initial.state(), ref::WorldRandomStream::from_java_seed(1));
-    auto state = runtime.state();
-    state.scripts.pages.front().lifecycle = 3;
-    ref::WorldScriptPage page;
-    page.id = state.scripts.next_page_id++;
-    page.kind = ref::WorldScriptPageKind::raw_page;
-    page.legacy_page = raw;
-    state.scripts.pages.push_back(page);
-    state.scripts.executing_page = page.id;
-    return state;
-}
+const auto fixture = test_support::page_fixture;
 void summary() {
     auto s = fixture(30);
     const auto id = s.scripts.pages.back().id;
@@ -282,19 +271,142 @@ void rank_conditions() {
               malformed.scripts.pages.back().lifecycle != 4,
           "invalid rank rejects without page, criteria or flag partial writes");
 }
+void rank_promotion() {
+    auto s = fixture(48);
+    const auto id = s.scripts.pages.back().id;
+    s.scripts.pages.back().legacy_f = 1;
+    auto initialized = prepare_startup_world_runtime(s);
+    check(initialized.candidate && initialized.candidate->rank == 0,
+          "promotion page initialization only refreshes source criteria");
+    s = *initialized.candidate;
+    const auto draws = s.scene.random.draws();
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    check(act_startup_world_runtime_rank_page(s, id, 1) == StartupWorldRuntimeError::none &&
+              s.rank == 0 && (s.scripts.user_flags & 8) == 0 && s.scripts.event_calls.at(159) == 1,
+          "condition explanation does not promote or marku8");
+    // 条件缓存/页面调用点夹具，不伪造自然新局已满足晋级条件。
+    auto ready = fixture(48);
+    const auto ready_id = ready.scripts.pages.back().id;
+    ready.scripts.pages.back().legacy_f = 1;
+    ready.page_counters[ready_id] = 1;
+    ready.rank_met.fill(true);
+    ready.scene.calendar.year = 2;
+    ready.scene.calendar.month = 7;
+    check(act_startup_world_runtime_rank_page(ready, ready_id) == StartupWorldRuntimeError::none &&
+              ready.rank == 1 && ready.rank_history[0] == std::array<int, 2>{2, 7} &&
+              (ready.scripts.user_flags & 8) != 0 && ready.scripts.event_calls.at(37) == 1 &&
+              ready.scripts.event_calls.at(53) == 1 && ready.scripts.event_calls.at(42) == 1 &&
+              ready.scripts.event_calls.at(41) == 1 && ready.scripts.event_calls.at(206) == 1,
+          "actual promotion commits rank/date and manual/facility/title/tutorial script chain");
+    const auto closed = std::find_if(ready.scripts.pages.begin(), ready.scripts.pages.end(),
+                                     [&](const auto &p) { return p.id == ready_id; });
+    check(closed != ready.scripts.pages.end() && closed->lifecycle == 4 &&
+              ready.scene.world.world.ai.accounting.funds() == cash &&
+              ready.scene.random.draws() == draws && ready.scene.world.updates == 0,
+          "promotion closes only source page, no invented cost/world update/shuffle before raw50 "
+          "initialization");
+    check(std::any_of(ready.scripts.pages.begin(), ready.scripts.pages.end(),
+                      [](const auto &p) { return p.legacy_page == 50; }) &&
+              std::any_of(ready.scripts.notices.begin(), ready.scripts.notices.end(),
+                          [](const auto &n) { return n.message == 18; }) &&
+              std::any_of(ready.scripts.notices.begin(), ready.scripts.notices.end(),
+                          [](const auto &n) { return n.message == 6; }),
+          "rank1 creates actual celebration and definition/activity notices");
+    for (const auto &activity : ready.rules->activities)
+        if (activity.parameters[6] == 1)
+            check(ready.scripts.activities.at(activity.identity).status == 1 &&
+                      ready.scripts.activities.at(activity.identity).pending_notice,
+                  "matched original activity j opens shared definition and retains new notice");
+    check(act_startup_world_runtime_rank_page(ready, ready_id) ==
+                  StartupWorldRuntimeError::invalid_page &&
+              ready.rank == 1,
+          "closed promotion cannot advance rank twice");
+    auto denied = fixture(48);
+    const auto denied_id = denied.scripts.pages.back().id;
+    denied.page_counters[denied_id] = 1;
+    denied.rank_met = {true, true, true, false};
+    check(act_startup_world_runtime_rank_page(denied, denied_id) ==
+                  StartupWorldRuntimeError::none &&
+              denied.rank == 0 && denied.scripts.event_calls.at(39) == 1 &&
+              denied.scripts.pages[1].lifecycle != 4,
+          "three-condition refusal preserves rank and source page, invokes39");
+    auto broken = fixture(48);
+    const auto bad_id = broken.scripts.pages.back().id;
+    broken.page_counters[bad_id] = 1;
+    broken.rank_met.fill(true);
+    broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    check(
+        act_startup_world_runtime_rank_page(broken, bad_id) ==
+                StartupWorldRuntimeError::script_failed &&
+            broken.rank == 0 && broken.rank_history[0] == std::array<int, 2>{0, 0} &&
+            broken.scripts.notices.empty() && broken.scripts.event_calls.empty() &&
+            (broken.scripts.user_flags & 8) == 0 && broken.scene.random.draws() == 0,
+        "late page-ID exhaustion rolls back rank/history/unlocks/notices/userflag/scripts/random");
+    auto celebration = fixture(50);
+    const auto celebration_id = celebration.scripts.pages.back().id;
+    celebration.human_presence.at(1) = 1;
+    celebration.human_presence.at(2) = 0; // 原表2同为p1；本条件夹具只保留一名入场者。
+    celebration.human_presence.at(3) = 2; // p2不入庆典，不按p!=0扩宽。
+    celebration.scene.random = ref::WorldRandomStream::from_raw({0});
+    auto tick = prepare_startup_world_runtime(celebration);
+    check(tick.candidate &&
+              tick.candidate->rank_celebration_participants.at(celebration_id) ==
+                  std::vector<std::array<int, 5>>{{1, 287, 143, 3, 0}} &&
+              tick.candidate->scene.random.draws() == 1 &&
+              tick.candidate->sound_requests == std::vector<int>{3},
+          "celebration initializes current p1 definitions, one shuffle draw and first music3");
+    celebration = *tick.candidate;
+    check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
+                  StartupWorldRuntimeError::none &&
+              celebration.page_counters.at(celebration_id) == 1 &&
+              celebration.page_phases.at(celebration_id) == 0,
+          "early celebration confirm does not fastforward or close");
+    for (const auto threshold : {135, 20}) {
+        celebration.page_counters[celebration_id] = threshold - 1;
+        tick = prepare_startup_world_runtime(celebration);
+        check(tick.candidate && tick.candidate->page_counters.at(celebration_id) == 0,
+              "source phase threshold automatically transitions and resets local counter");
+        celebration = *tick.candidate;
+    }
+    celebration.page_counters[celebration_id] = 139;
+    check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
+                  StartupWorldRuntimeError::none &&
+              celebration.scripts.pages.back().lifecycle != 4,
+          "last celebration phase139 cannot close before140");
+    tick = prepare_startup_world_runtime(celebration);
+    check(tick.candidate.has_value(), "last celebration threshold update valid");
+    celebration = *tick.candidate;
+    check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
+                  StartupWorldRuntimeError::none &&
+              celebration.scripts.pages.back().lifecycle == 4 &&
+              celebration.sound_requests.back() == 1 && celebration.scene.world.updates == 0 &&
+              celebration.scene.random.draws() == 1,
+          "final confirm refreshes original music and closes, no repeat shuffle/world update");
+    auto exhausted = fixture(50);
+    exhausted.human_presence.at(1) = 1;
+    exhausted.scene.random = ref::WorldRandomStream::from_raw({});
+    check(!prepare_startup_world_runtime(exhausted).candidate &&
+              exhausted.rank_celebration_participants.empty() && exhausted.page_counters.empty(),
+          "celebration random exhaustion fails whole Owner without synthetic participants");
+}
 void annual_termination() {
     auto s = fixture(87);
     const auto id = s.scripts.pages.back().id;
     s.human_presence.at(1) = 1;
+    const auto issued = ref::prepare_world_script(startup_world_runtime_catalog(),
+                                                  startup_world_runtime_scripts(s), {108, {}, {}});
+    check(issued.candidate && write_startup_world_runtime_scripts(s, issued.candidate->state) &&
+              s.medal_count == 1 && s.scripts.medal_count == 0,
+          "real opcode29 commits medal to sole Owner, not persistent script duplicate");
     const auto cash = s.scene.world.world.ai.accounting.funds();
     const auto tick = prepare_startup_world_runtime(s);
-    check(tick.candidate && tick.candidate->medal_count == 1 &&
+    check(tick.candidate && tick.candidate->medal_count == 2 &&
               tick.candidate->sound_requests == std::vector<int>{3} &&
               tick.candidate->award_rankings.count(id) && tick.candidate->award_announced.at(id),
           "raw87 actual page initialization increments j once and first update sounds3 only");
     s = *tick.candidate;
     const auto repeated = prepare_startup_world_runtime(s);
-    check(repeated.candidate && repeated.candidate->medal_count == 1 &&
+    check(repeated.candidate && repeated.candidate->medal_count == 2 &&
               repeated.candidate->sound_requests == std::vector<int>{3},
           "raw87 later updates neither award another medal nor replay first sound");
     check(acknowledge_startup_world_runtime_page(s, id) ==
@@ -302,7 +414,7 @@ void annual_termination() {
               act_startup_world_runtime_award_page(s, id,
                                                    ref::WorldAwardAction::confirm_termination) ==
                   StartupWorldRuntimeError::missing_source &&
-              s.medal_count == 1,
+              s.medal_count == 2,
           "ordinary confirm and absent termination question cannot silently end ceremony");
     check(act_startup_world_runtime_award_page(s, id, ref::WorldAwardAction::request_termination) ==
                   StartupWorldRuntimeError::none &&
@@ -317,7 +429,7 @@ void annual_termination() {
               act_startup_world_runtime_award_page(s, id,
                                                    ref::WorldAwardAction::confirm_termination) ==
                   StartupWorldRuntimeError::none &&
-              s.medal_count == 1 && s.scripts.event_calls.at(22) == 1 &&
+              s.medal_count == 2 && s.scripts.event_calls.at(22) == 1 &&
               s.sound_requests.back() == 1 && s.scene.world.world.ai.accounting.funds() == cash &&
               s.scene.calendar.units == 0 && s.scene.random.draws() == 0,
           "termination preserves unused medal and cash/date/RNG, runs22 then source BGM refresh");
@@ -325,15 +437,103 @@ void annual_termination() {
                       [&](const auto &p) { return p.id == id && p.lifecycle == 4; }) &&
               !s.scripts.executing_page,
           "termination closes only parent award page and releases callback root");
+    const auto reissued = ref::prepare_world_script(
+        startup_world_runtime_catalog(), startup_world_runtime_scripts(s), {108, {}, {}});
+    check(reissued.candidate && reissued.candidate->state.medal_count == 3 &&
+              write_startup_world_runtime_scripts(s, reissued.candidate->state) &&
+              s.medal_count == 3 && s.scripts.medal_count == 0,
+          "script after ceremony reads actual retained medals and increments same field");
     auto malformed = fixture(87);
     const auto bad = malformed.scripts.pages.back().id;
     malformed.medal_count = std::numeric_limits<int>::max();
+    const auto overflow = ref::prepare_world_script(
+        startup_world_runtime_catalog(), startup_world_runtime_scripts(malformed), {108, {}, {}});
+    check(!overflow.candidate && malformed.medal_count == std::numeric_limits<int>::max() &&
+              malformed.scripts.medal_count == 0 && malformed.scripts.notices.empty(),
+          "real medal overflow returns no partial shared field or notification");
     check(!prepare_startup_world_runtime(malformed).candidate &&
               act_startup_world_runtime_award_page(malformed, bad,
                                                    ref::WorldAwardAction::request_termination) ==
                   StartupWorldRuntimeError::missing_source &&
               malformed.award_rankings.empty() && malformed.page_counters.empty(),
           "late award initialization error cannot leave partial medal/list/page state");
+}
+void annual_award() {
+    auto s = fixture(87);
+    s.human_presence.at(1) = 1;
+    const auto parent = s.scripts.pages.back().id;
+    const auto tick = prepare_startup_world_runtime(s);
+    check(tick.candidate.has_value(), "actual annual page initialized");
+    s = *tick.candidate;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto old_u = s.scene.world.world.ai.growth.at(1).definition.legacy_u;
+    const auto old_C = s.shop_humans.at(1).satisfaction;
+    const auto completion = s.scene.world.world.ai.pending_completion;
+    check(act_startup_world_runtime_award_page(s, parent, ref::WorldAwardAction::request_award) ==
+                  StartupWorldRuntimeError::none &&
+              s.award_pending_humans.at(parent) == 1 && s.medal_count == 1,
+          "request binds definition and preserves unique medal");
+    auto overflow = s;
+    overflow.human_calendar.at(1).celebrations = std::numeric_limits<int>::max();
+    const auto counter = overflow.page_counters.at(parent);
+    check(act_startup_world_runtime_award_page(overflow, parent,
+                                               ref::WorldAwardAction::confirm_award) ==
+                  StartupWorldRuntimeError::missing_source &&
+              overflow.medal_count == 1 && overflow.page_counters.at(parent) == counter &&
+              overflow.scripts.pages.size() == s.scripts.pages.size() &&
+              overflow.award_pending_humans.at(parent) == 1,
+          "late reward overflow rolls back medal, pending question, counter and page stack");
+    check(act_startup_world_runtime_award_page(s, parent, ref::WorldAwardAction::confirm_award) ==
+                  StartupWorldRuntimeError::none &&
+              s.medal_count == 0 && s.human_calendar.at(1).celebrations == 1 &&
+              s.scripts.event_calls.at(58) == 1 &&
+              s.scene.world.world.ai.pending_completion == completion + 10 &&
+              s.shop_humans.at(1).satisfaction == std::min(old_C + 10, 100) &&
+              s.scene.world.world.ai.growth.at(1).definition.legacy_u ==
+                  std::min(old_u + 10, 100) &&
+              s.page_counters.at(parent) == 0 && s.award_announced.at(parent),
+          "yes commits reward and event58 once, preserves announced flag at parent counter0");
+    check(s.scripts.pages.back().legacy_page == 88 &&
+              s.page_human_bindings.at(s.scripts.pages.back().id) == 1,
+          "framework inserts each child after same callback anchor: raw88 above later67");
+    const auto display = s.scripts.pages.back().id;
+    s.page_phases[display] = 1;
+    s.page_counters[display] = 212;
+    s.scene.random = ref::WorldRandomStream::from_raw({1});
+    auto exhausted = s;
+    exhausted.scene.random = ref::WorldRandomStream::from_raw({});
+    check(acknowledge_startup_world_runtime_page(exhausted, display) ==
+                  StartupWorldRuntimeError::missing_source &&
+              exhausted.scripts.pages.back().id == display &&
+              exhausted.scripts.pages.back().lifecycle != 4 && exhausted.scene.random.draws() == 0,
+          "late display random failure keeps source page and global random unchanged");
+    check(
+        acknowledge_startup_world_runtime_page(s, display) == StartupWorldRuntimeError::none &&
+            s.scene.random.draws() == 1 && s.scripts.event_calls.at(25) == 1 &&
+            s.scripts.pages.back().speaker_kind == 1 &&
+            s.scripts.pages.back().speaker_definition == 1 &&
+            s.scene.world.world.ai.accounting.funds() == cash && s.scene.calendar.units == 0 &&
+            s.scene.world.world.ai.battle.actors.empty(),
+        "raw88 selects actual event25 on sole RNG and binds last page without world/cash advance");
+    for (int n = 0; n < 100 && !ref::world_script_seen(s.scripts, 22); ++n) {
+        const auto next = prepare_startup_world_runtime(s);
+        check(next.candidate.has_value(), "award return chain keeps valid Owner");
+        s = *next.candidate;
+        if (s.scripts.pages.back().kind == ref::WorldScriptPageKind::dialogue)
+            check(acknowledge_startup_world_runtime_page(s, s.scripts.pages.back().id) ==
+                      StartupWorldRuntimeError::none,
+                  "actual award dialogue returns");
+        else if (s.scripts.pages.back().legacy_page == 67) {
+            const auto effort = s.scripts.pages.back().id;
+            s.page_counters[effort] = 73;
+            check(acknowledge_startup_world_runtime_page(s, effort) ==
+                      StartupWorldRuntimeError::none,
+                  "effort page returns after original award dialogue at threshold73");
+        }
+    }
+    check(ref::world_script_seen(s.scripts, 22) && s.medal_count == 0 &&
+              s.human_calendar.at(1).celebrations == 1,
+          "zero medals close ceremony after child return, never repeat reward");
 }
 void task_display() {
     for (int raw : {99, 100}) {
@@ -520,8 +720,10 @@ int main() {
         focus_and_pause();
         crew_initialization();
         rank_conditions();
+        rank_promotion();
         task_focus_and_introduction();
         annual_termination();
+        annual_award();
         task_display();
         event_message_and_shop_return();
         popularity_return();

@@ -61,6 +61,7 @@ set(ARK_WORLD_RULE_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_misc_control.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_month_report.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_nonactor_schedule.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/rules/world_notices.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_overlap.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_perception.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_popularity.cpp"
@@ -84,6 +85,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_building.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime.cpp"
@@ -96,6 +98,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_scene.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_task_pages.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_tasks.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_visuals.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/accounting_test.cpp"
@@ -161,6 +164,7 @@ set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_misc_control_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_month_report_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_nonactor_schedule_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/rules/world_notices_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_overlap_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_perception_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_popularity_test.cpp"
@@ -179,6 +183,7 @@ set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_wander_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/world_world_entry_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_arrival_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_world_building_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_continuous_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_deadline_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_pages_test.cpp"
@@ -189,4 +194,5 @@ set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_runtime_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_scene_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_task_flow_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_world_visuals_test.cpp"
 )

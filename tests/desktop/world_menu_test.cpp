@@ -32,10 +32,13 @@ void world_menu() {
             input.click = middle(layout.menu_rows[row]);
             const auto action =
                 ui::world_menu_input(layout, true, true, true, false, selected, input);
-            check(selected == row && (row == 1 ? action == Intent::tasks : !action.has_value()),
-                  "Original five row hit areas select faithfully; only adventure is executable");
+            check(selected == row && (row == 0   ? action == Intent::build
+                                      : row == 1 ? action == Intent::tasks
+                                                 : !action.has_value()),
+                  "Original five row hit areas select faithfully; construction and adventure are "
+                  "executable");
             check(!ui::world_menu_input(layout, true, true, false, false, selected, input),
-                  "Pause/active task prevents mouse activation without fabricating a page");
+                  "Pause prevents mouse activation without fabricating a page");
             check(layout.menu_rows[row].x >= 0 &&
                       layout.menu_rows[row].x + layout.menu_rows[row].width <= extent.width &&
                       layout.menu_rows[row].y + layout.menu_rows[row].height <= button.y,

@@ -2,17 +2,21 @@
 
 默认 `world_view` 只负责输入/60FPS绘制，使用 `WorldSession` 的不可变快照；普通行走按快照时间插值，瞬移/进出/状态变化直接呈现，深度排序与绘制用同一位置。镜头先本地响应，再按序写回唯一世界，保留源可见性影响。
 
-`world_overlay` 定义标准C++绘制计划，`world_combat_visuals` 读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals` 按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。`world_overlay_render` 才调用raylib。布局读取不扣款/加经验/推进计数；精确特殊身体偏移、旅馆头像与L锚点仍缺研究，当前明确使用桌面适配，不填假头像。
+`world_overlay`定义标准C++绘制计划，`world_combat_visuals`读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals`按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。头像采用e8f66d9的`startup_world_visuals`计划，读取当前职业/性别并裁剪walk01帧0。`world_overlay_render`才调用raylib；布局不扣款/加经验/推进计数，设施精确L锚点和完整恢复特效仍未交付。
 
-默认`ark_village`即运行完整世界，`--world`保留为别名。`world_view`拥有唯一运行时State，按完整候选加渲染缓存的提交边界更新，
-处理真实页ID确认、暂停/倍速和窗口生命周期；不创建旧Game，不保留bootstrap。
-`world_scene`只读实际surface、名册和元数据，按职业/性别与怪物体型绘制原动作帧，复用道路拼块、栅栏/门柱、血条和现金浮标。
-`world_rank`只读实际rank条件缓存和原条件表/设施名供页49显示；确认交回页栈消费者，仅返回，不晋级/收费。
-当前窗口可查看连续世界和操作已交付任务闭环；玩家建设与投射物/一般特效另接。
-`world_menu`恢复原五项菜单外观，仅冒险接真实任务目录，未接入口禁用。底部菜单/M打开，Esc/M/菜单按钮关闭，方向键/Enter或鼠标选择；T仍可在普通场景直接打开任务。菜单冻结模拟但保留显式暂停，暂停时可打开/关闭菜单，先继续才能选冒险。输入等待FIFO确认，菜单和在途开关命令阻止地图拖拽/缩放及任务快捷键旁路；此生命周期是已确认桌面适配，不冒充研究尚未交付的raw3。
-实际场景视口反缩放后写入运行时投影，画面/可见性使用同一相机；渲染到Retina原生画布，鼠标仍用窗口点。
-`world-menu`在同样的真实到访预运行后经WorldSession FIFO打开菜单，结尾核验打开状态；不造raw3或手动暂停。
-`world-active/world-month/world-rank`是显式自动确认页面的画面检查策略，预运行前即安装实际宽屏视口，不冒充OS输入。
+默认`ark_village`及`--world`使用`WorldSession`模拟线程独占唯一State，`world_view`负责真实页ID输入、窗口生命周期、快照绘制与插值，不创建旧Game。`world_scene`只读当前surface、名册和元数据，按职业/性别/怪物体型绘制原动作帧，复用道路拼块、栅栏/门柱、血条和现金浮标。
+
+- `world_management`：建设/设施/授勋/晋级页面的桌面选择、预览与FIFO接线；只保留表现状态和在途序号，拒绝反馈来自模拟线程。
+- `world_build_placement`：与场景共享相机/zoom的格拾取和完整占地红绿预览；读取当前报价与占用，最终合法性仍由worker重新验证。
+- `world_menu`：五项原素材菜单，开放建设/冒险，其余三项禁用。M/菜单打开，Esc/M关闭，冻结worker且保留显式暂停；动作等待FIFO确认，菜单/待回执阻止地图输入旁路。生命周期是桌面适配，不伪造raw3。
+- `ui/world_building`：21建设目录、74设施详情、80入住候选及81升级值；B打开建设，点击地图锁位、R旋转、Enter/按钮提交，成功连续放置、Esc退出。无道路建设、移动或拆除入口。
+- `ui/world_tasks`：T进入任务目录/活动队伍，26/27追加、60成员详情，X打开4中止管理，绑定1默认否并把答案交给父页消费。
+- `ui/world_award`、`ui/world_progression`：年度按排名索引请求/确认授予或终止；48晋级/条件解释与49只读分开，50/67/88/96沿源计数开放输入，当前演出为数据/文字适配。
+- `ui/world_panels`：普通页模板与源notice队列的前两条文本映射；不重复计时，成长属性拼片/77皮肤/32特殊条仍未还原。
+
+`world_rank`保留纯条件查询和既有契约，新的页面操作经`world_progression`向同一Owner提交。完整投射物/一般特效及其他经营/信息菜单另接。本批冻结e8f66d9的接线及最终构建/测试/窗口验收已通过，结果见B1。
+
+实际场景视口反缩放后写入运行时，画面/可见性使用同一相机；渲染到Retina原生画布，鼠标仍用窗口点。`world-menu`经真实到访预运行和FIFO检查菜单冻结；`world-building/details/built/award-granted`分别检查真实目录、建筑详情、实际建设和授勋消费。`world-active/month/rank`等诊断从首轮使用实际宽屏视口，自动确认前序页面只是测试输入，不能替代OS鼠标验收。
 
 以下描述`--legacy-slice`建设切片及其诊断的既有桌面模块。
 

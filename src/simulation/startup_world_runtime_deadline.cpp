@@ -277,6 +277,8 @@ bool abort_task(State &s) {
 }
 } // namespace
 
+bool abort_startup_world_runtime_task_entities(State &s) { return abort_task(s); }
+
 StartupWorldTaskPageResult act_startup_world_runtime_deadline_page(State &state, std::uint64_t id,
                                                                    int selection) {
     const auto p = top(state);

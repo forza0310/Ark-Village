@@ -276,6 +276,64 @@ void world_tasks() {
         check(menu.x >= 60 && menu.x + menu.width < extent.width - 137,
               "Task entry leaves source popularity and both playback buttons unobscured");
     }
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 26;
+    view = ui::world_task_view(state, page);
+    selection = {};
+    input = {};
+    input.click = middle(layout.inspect);
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(view.rows.size() == 4 && intent && intent->action == Action::inspect &&
+              intent->selection == 0,
+          "Active team exposes member inspection by participant index");
+    input = {};
+    input.enter = true;
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(intent && intent->action == Action::confirm,
+          "Active team confirm closes its page instead of starting a second departure");
+    selection.selected = 3;
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(intent && intent->action == Action::add_member,
+          "Active team retains real extra recruitment action");
+    page.legacy_page = 60;
+    check(!ui::world_task_page(state, page), "Unbound raw60 is not a task member detail");
+    state.page_human_bindings[page.id] = 42;
+    state.shop_humans[42].satisfaction = 77;
+    view = ui::world_task_view(state, page);
+    check(view.task_name == "human-42" && view.details[2] == "满足 77" &&
+              !ui::world_task_related_confirmation(state, page),
+          "Member detail reads runtime identity/stats and blocks generic confirmation");
+    check(!ui::world_task_input(view, layout, selection, input, false),
+          "Member detail has only Back; Enter must not synthesize unsupported confirmation");
+    input = {};
+    input.escape = true;
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(intent && intent->action == Action::cancel,
+          "Member detail Back uses task page cancellation");
+    page.legacy_page = 4;
+    view = ui::world_task_view(state, page);
+    input = {};
+    input.enter = true;
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(intent && intent->action == Action::request_abort,
+          "Active task management requests a question, never directly aborts the task");
+    page.legacy_page = 1;
+    check(!ui::world_task_page(state, page), "Ordinary raw1 is not an abort question");
+    state.task_abort_questions[page.id] = 444;
+    view = ui::world_task_view(state, page);
+    selection = {};
+    intent = ui::world_task_input(view, layout, selection, input, false);
+    check(view.abort_question && intent && intent->selection == 1 &&
+              intent->action == Action::confirm &&
+              !ui::world_task_related_confirmation(state, page),
+          "Bound abort question defaults No and returns the answer for the parent to consume");
+    input = {};
+    input.escape = true;
+    check(!ui::world_task_input(view, layout, selection, input, false),
+          "Abort question cannot fabricate an unpublished Back action");
+    page.kind = rules::WorldScriptPageKind::dialogue;
+    check(!ui::world_task_page(state, page),
+          "Dialogue with raw1 number stays a dialogue even when an old binding exists");
     std::cout << "PASS task UI identity, source-page eligibility, layout and input contracts\n";
 }
 } // namespace ark::test

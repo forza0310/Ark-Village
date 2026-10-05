@@ -22,6 +22,12 @@ struct OverlayImage {
     std::array<float, 4> source{};
     std::array<float, 4> destination{};
 };
-using OverlayCommand = std::variant<OverlaySprite, OverlayRectangle, OverlayImage>;
+// Image identity is resolved from the current profession/sex, never a birth-time actor cache.
+struct OverlayPortrait {
+    int image{};
+    std::array<float, 4> source{};
+    std::array<float, 4> destination{};
+};
+using OverlayCommand = std::variant<OverlaySprite, OverlayRectangle, OverlayImage, OverlayPortrait>;
 using OverlayPlan = std::vector<OverlayCommand>;
 } // namespace ark::desktop

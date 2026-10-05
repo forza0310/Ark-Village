@@ -1,7 +1,7 @@
 #include "ark/app/world_session.hpp"
 #include "ark/app/original_loop.hpp"
 #include "ark/app/world_report.hpp"
-#include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "world_commands.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -19,22 +19,6 @@ const simulation::rules::WorldScriptPage *top_page(const WorldState &state) {
     const auto found = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                     [](const auto &page) { return page.lifecycle != 4; });
     return found == state.scripts.pages.rend() ? nullptr : &*found;
-}
-bool task_command(WorldCommandKind kind) {
-    return kind == WorldCommandKind::open_main_menu || kind == WorldCommandKind::close_main_menu ||
-           kind == WorldCommandKind::open_menu_tasks || kind == WorldCommandKind::open_task_menu ||
-           kind == WorldCommandKind::task_action || kind == WorldCommandKind::page_confirm_held ||
-           kind == WorldCommandKind::cancel_page;
-}
-bool task_decision_page(const simulation::rules::WorldScriptPage *page) {
-    return page && page->kind == simulation::rules::WorldScriptPageKind::raw_page &&
-           ((page->legacy_page >= 22 && page->legacy_page <= 28) || page->legacy_page == 33 ||
-            page->legacy_page == 83);
-}
-bool valid_task_action(simulation::StartupWorldTaskAction action) {
-    using Action = simulation::StartupWorldTaskAction;
-    return action == Action::confirm || action == Action::cancel || action == Action::add_member ||
-           action == Action::depart || action == Action::hire;
 }
 std::string update_error(const simulation::StartupWorldRuntimeResult &result) {
     return "World update rejected: runtime=" + std::to_string(static_cast<int>(result.error)) +
@@ -129,8 +113,8 @@ class WorldSession::Impl {
         state.page_confirm_held = held_page.has_value();
     }
 
-    std::shared_ptr<const WorldFrame> apply_task(const WorldFrame &current,
-                                                 const QueuedCommand &input) {
+    std::shared_ptr<const WorldFrame> apply_decision(const WorldFrame &current,
+                                                     const QueuedCommand &input) {
         const auto &command = input.value;
         const bool menu_toggle = command.kind == WorldCommandKind::open_main_menu ||
                                  command.kind == WorldCommandKind::close_main_menu;
@@ -156,13 +140,14 @@ class WorldSession::Impl {
                 result.runtime_error = RuntimeError::invalid_page;
             else
                 menu_open = false;
-        } else if (command.kind == WorldCommandKind::open_menu_tasks) {
+        } else if (command.kind == WorldCommandKind::open_menu_tasks ||
+                   command.kind == WorldCommandKind::open_menu_build) {
             if (!menu_open || world_report_waiting(*candidate)) {
                 result.runtime_error = RuntimeError::invalid_page;
             } else {
-                // Closing the overlay and opening the source task page are one FIFO transaction.
-                // Source rejection preserves the overlay, including explicit pause/active-task.
-                result.runtime_error = simulation::open_startup_world_runtime_task_menu(*candidate);
+                // Closing the overlay and opening the source page are one FIFO transaction.
+                // Source rejection preserves the overlay, including explicit pause.
+                detail::apply_world_decision(*candidate, command, result);
                 if (result.runtime_error == RuntimeError::none)
                     menu_open = false;
             }
@@ -186,23 +171,12 @@ class WorldSession::Impl {
             }
         } else if (world_report_waiting(*candidate)) {
             result.runtime_error = RuntimeError::invalid_page;
-        } else if (command.kind == WorldCommandKind::open_task_menu) {
-            result.runtime_error = simulation::open_startup_world_runtime_task_menu(*candidate);
-        } else if (command.kind == WorldCommandKind::cancel_page) {
-            result.runtime_error =
-                simulation::cancel_startup_world_runtime_page(*candidate, command.page);
-        } else if (!valid_task_action(command.task_action)) {
-            result.runtime_error = RuntimeError::invalid_page;
         } else {
-            const auto source = simulation::act_startup_world_runtime_task_page(
-                *candidate, command.page, command.task_action, command.selection);
-            result.runtime_error = source.error;
-            result.denial = source.denial;
-            result.task_accepted = source.accepted;
-            result.departed = source.departed;
+            detail::apply_world_decision(*candidate, command, result);
         }
         result.outcome = result.runtime_error == RuntimeError::none &&
-                                 result.denial == simulation::rules::TaskCommandDenial::none
+                                 result.denial == simulation::rules::TaskCommandDenial::none &&
+                                 result.build_denial == simulation::StartupBuildDenial::none
                              ? WorldCommandOutcome::applied
                              : WorldCommandOutcome::rejected;
         auto next = current;
@@ -212,7 +186,7 @@ class WorldSession::Impl {
         if (result.runtime_error != RuntimeError::none &&
             result.runtime_error != RuntimeError::invalid_page)
             return fail(next,
-                        "World task input failed: error=" +
+                        "World decision input failed: error=" +
                             std::to_string(static_cast<int>(result.runtime_error)),
                         input.serial);
         if (result.runtime_error == RuntimeError::none) {
@@ -254,8 +228,8 @@ class WorldSession::Impl {
     // Each command is a separate transaction: earlier successes remain committed if a later
     // command fails. No stale-page retry or replacement confirmation is synthesized here.
     std::shared_ptr<const WorldFrame> apply(const WorldFrame &current, const QueuedCommand &input) {
-        if (task_command(input.value.kind))
-            return apply_task(current, input);
+        if (detail::is_world_decision(input.value.kind))
+            return apply_decision(current, input);
         const auto &command = input.value;
         const auto &old = *current.state;
         bool changed = true;
@@ -278,7 +252,6 @@ class WorldSession::Impl {
             break;
         case WorldCommandKind::acknowledge_page:
         case WorldCommandKind::acknowledge_report:
-        case WorldCommandKind::award_action:
             break;
         default:
             return fail(current, "Unknown world command", input.serial);
@@ -300,9 +273,9 @@ class WorldSession::Impl {
             case WorldCommandKind::acknowledge_page: {
                 // Task choices require an explicit action/selection. In particular raw33's
                 // source generic ack would select renewal; the desktop must not infer that.
-                if (task_decision_page(top_page(*candidate)))
-                    return fail(current, "Task decision requires an explicit task action",
-                                input.serial);
+                if (detail::is_decision_page(top_page(*candidate)) ||
+                    candidate->task_abort_questions.count(command.page))
+                    return fail(current, "Page decision requires an explicit action", input.serial);
                 const auto error =
                     simulation::acknowledge_startup_world_runtime_page(*candidate, command.page);
                 if (error != simulation::StartupWorldRuntimeError::none)
@@ -320,18 +293,6 @@ class WorldSession::Impl {
                                     std::to_string(command.report_phase),
                                 input.serial);
                 break;
-            case WorldCommandKind::award_action: {
-                const auto error = simulation::act_startup_world_runtime_award_page(
-                    *candidate, command.page, command.award_action);
-                if (error != simulation::StartupWorldRuntimeError::none)
-                    return fail(
-                        current,
-                        "World award action rejected: page=" + std::to_string(command.page) +
-                            " action=" + std::to_string(static_cast<int>(command.award_action)) +
-                            " error=" + std::to_string(static_cast<int>(error)),
-                        input.serial);
-                break;
-            }
             default:
                 return fail(current, "Unexpected world input dispatch", input.serial);
             }
@@ -450,11 +411,12 @@ std::uint64_t WorldSession::ack_report(int expected_phase) {
     return submit(command);
 }
 std::uint64_t WorldSession::act_award(std::uint64_t page,
-                                      simulation::rules::WorldAwardAction action) {
+                                      simulation::rules::WorldAwardAction action, int selection) {
     WorldCommand command;
     command.kind = WorldCommandKind::award_action;
     command.page = page;
     command.award_action = action;
+    command.selection = selection;
     return submit(command);
 }
 std::uint64_t WorldSession::open_main_menu() {

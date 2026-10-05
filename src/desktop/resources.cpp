@@ -106,6 +106,15 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                            {0, 0}, 0, tint);
         }
 }
+void Sprites::human_image(int image_id, Rectangle source, Rectangle destination) {
+    if (!actor_images_.count("human"))
+        actor_images_.emplace("human", image_index(root_, "human"));
+    const auto &image = texture(root_ / "human" / actor_images_.at("human").at(image_id));
+    if (source.x < 0 || source.y < 0 || source.width <= 0 || source.height <= 0 ||
+        source.x + source.width > image.width || source.y + source.height > image.height)
+        throw std::runtime_error("Human portrait outside source image");
+    DrawTexturePro(image, source, destination, {0, 0}, 0, WHITE);
+}
 void Sprites::actor(bool monster, int sprite_index, int image_id, int frame, Vector2 anchor,
                     float scale) {
     const std::string group = monster ? "monster" : "human";
@@ -244,13 +253,25 @@ void Text::prepare(float pixel_scale) {
 }
 Text::~Text() { UnloadFont(font_); }
 void Text::draw(const std::string &value, float x, float y, Color color, float size) const {
-    labels_.push_back({value, {x, y}, color, size});
+    labels_.push_back({value, {x, y}, color, size, {}});
+}
+void Text::clipped(const std::string &value, float x, float y, Rectangle clip, Color color,
+                   float size) const {
+    labels_.push_back({value, {x, y}, color, size, clip});
 }
 void Text::flush(float scale, Vector2 offset) const {
-    for (const auto &label : labels_)
+    for (const auto &label : labels_) {
+        if (label.clip)
+            BeginScissorMode(static_cast<int>(offset.x + label.clip->x * scale),
+                             static_cast<int>(offset.y + label.clip->y * scale),
+                             static_cast<int>(label.clip->width * scale),
+                             static_cast<int>(label.clip->height * scale));
         DrawTextEx(font_, label.value.c_str(),
                    {offset.x + label.point.x * scale, offset.y + label.point.y * scale},
                    label.size * scale, 0, label.color);
+        if (label.clip)
+            EndScissorMode();
+    }
     labels_.clear();
 }
 float Text::width(const std::string &value, float size) const {

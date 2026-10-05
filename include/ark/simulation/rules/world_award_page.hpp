@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ark/simulation/rules/world_random.hpp"
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -22,6 +23,7 @@ struct WorldAwardPageState {
     bool announced{};           // g.w，首次初始化false；首次更新改true。
     bool termination_pending{}; // g.bU，确认必须来自实际终止询问。
     bool closed{};
+    std::optional<int> pending_award; // 原bV，绑定询问时的在籍定义，不用人物实例ID。
 };
 enum class WorldAwardAction {
     update,
@@ -29,9 +31,18 @@ enum class WorldAwardAction {
     confirm_termination,
     reject_termination,
     request_award,
-    confirm_award
+    confirm_award,
+    reject_award
 };
-enum class WorldAwardEffectKind { sound, event, refresh, close, termination_prompt };
+enum class WorldAwardEffectKind {
+    sound,
+    event,
+    refresh,
+    close,
+    termination_prompt,
+    award_prompt,
+    reward
+};
 struct WorldAwardEffect {
     WorldAwardEffectKind kind{};
     int value{}; // sound3、event22/23；event23参数为当前勋章数。
@@ -48,7 +59,26 @@ struct WorldAwardResult {
 };
 // b/g.java3919–3941、a/e.java395–436；初始化仅一次，零在籍显式拒绝原除零路径。
 WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageState &state);
-// b/g.java5909–5984。授予与raw88尚未实装，明确拒绝，不能借普通确认退出。
-WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state,
-                                          WorldAwardAction action);
+// b/g.java5909–6001。请求绑定贡献名单索引；确认扣勋章→奖励→子页→父counter0。
+WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state, WorldAwardAction action,
+                                          int selection = 0);
+struct WorldAwardDisplayState {
+    int counter{};
+    int phase{};
+};
+struct WorldAwardDisplayCandidate {
+    WorldAwardDisplayState state;
+    WorldRandomStream random;
+    std::optional<int> event; // 原24/25，Owner实际调用后关闭，并绑定返回页的说话者。
+};
+std::optional<WorldAwardDisplayCandidate>
+prepare_world_award_display(WorldAwardDisplayState state, bool confirm,
+                            const WorldRandomStream &random);
+struct WorldEffortDisplayCandidate {
+    int counter{};
+    bool closed{};
+};
+// raw67只推进全局as[0]的四差额显示；跳过空窗口不改变属性或再次发奖励。
+std::optional<WorldEffortDisplayCandidate>
+prepare_world_effort_display(int counter, bool confirm, const std::array<int, 4> &deltas);
 } // namespace ark::simulation::rules

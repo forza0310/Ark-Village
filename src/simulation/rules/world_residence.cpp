@@ -1,7 +1,6 @@
 #include "ark/simulation/rules/world_residence.hpp"
 
 #include <algorithm>
-#include <limits>
 
 namespace ark::simulation::rules {
 namespace {
@@ -9,11 +8,6 @@ struct Failure {
     WorldResidenceError error;
 };
 [[noreturn]] void fail(WorldResidenceError error) { throw Failure{error}; }
-int checked(std::int64_t value) {
-    if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
-        fail(WorldResidenceError::overflow);
-    return static_cast<int>(value);
-}
 // 原d/a.b(text,replacement)逐字段替换；不是把人物名称覆盖为村名。
 std::string substitute(std::string text, const std::string &replacement) {
     std::size_t begin{}, field{};
@@ -91,33 +85,25 @@ WorldResidenceResult prepare_world_residence(const WorldResidenceState &state,
         };
         const int old_satisfaction = scripts.humans.at(human).satisfaction;
         const int old_effort = resident.definition.legacy_u;
-        const int new_satisfaction = std::min(old_satisfaction + 5, 100);
-        const int new_effort = std::min(old_effort + 15, 100);
-        next.reward_display = {std::array<int, 2>{old_satisfaction, old_effort},
-                               std::array<int, 2>{new_satisfaction, new_effort},
-                               std::array<int, 2>{5, 15}};
-        scripts.humans.at(human).satisfaction =
-            std::clamp(old_satisfaction + (new_satisfaction - old_satisfaction), 0, 100);
-        resident.definition.legacy_u = new_effort;
-        scripts.pending_completion =
-            checked(static_cast<std::int64_t>(scripts.pending_completion) + 5);
+        const auto reward =
+            prepare_human_reward(resident.definition, next.professions, old_satisfaction,
+                                 resident.celebrations, scripts.pending_completion, 5, 15, false);
+        if (!reward.candidate)
+            fail(reward.error == HumanGrowthError::numeric_overflow
+                     ? WorldResidenceError::overflow
+                     : WorldResidenceError::stats_failed);
+        const auto &r = *reward.candidate;
+        const int new_effort = r.definition.legacy_u;
+        next.reward_display = r.reward_display;
+        scripts.humans.at(human).satisfaction = r.satisfaction;
+        resident.definition = r.definition;
+        scripts.pending_completion = r.pending_completion;
         synchronize();
         invoke(58); // 即使C已100，仍给请求5的完成量；不以实际满足度差替代。
-        candidate.effort_threshold_crossed = new_effort / 10 > old_effort / 10;
+        candidate.effort_threshold_crossed = r.effort_display.has_value();
         if (candidate.effort_threshold_crossed) {
-            auto old_definition = resident.definition;
-            old_definition.legacy_u = old_effort;
-            const auto before = derive_human_stats(old_definition, next.professions);
-            const auto after = derive_human_stats(resident.definition, next.professions);
-            if (!before.candidate || !after.candidate)
-                fail(WorldResidenceError::stats_failed);
-            next.effort_display[0] = before.candidate->combat;
-            next.effort_display[1] = after.candidate->combat;
-            for (std::size_t slot = 0; slot < 4; ++slot)
-                next.effort_display[2][slot] =
-                    checked(static_cast<std::int64_t>(after.candidate->combat[slot]) -
-                            before.candidate->combat[slot]);
-            resident.derived = *after.candidate; // e.b旧/新后e.a再次新u重算，值与after相同。
+            next.effort_display = *r.effort_display;
+            resident.derived = *r.derived;
         }
         WorldScriptPage home;
         home.kind = WorldScriptPageKind::raw_page;

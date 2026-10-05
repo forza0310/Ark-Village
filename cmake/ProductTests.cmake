@@ -29,7 +29,8 @@ endfunction()
 # Current-world contracts. The worker retains its own process; the two pure command suites
 # share a binary but CTest selects each in a fresh process, preserving independent fixtures.
 ark_test_executable(ark_world_session_tests
-    SOURCES tests/app/world_session_test.cpp LIBRARIES ark_world_session)
+    SOURCES tests/app/world_session_test.cpp tests/app/world_task_commands_test.cpp
+        tests/app/world_building_commands_test.cpp LIBRARIES ark_world_session)
 ark_test_case(world_session ark_world_session_tests LABELS runtime TIMEOUT 30)
 ark_test_executable(ark_world_contract_tests
     SOURCES tests/app/world_contracts_main.cpp tests/app/world_report_test.cpp
@@ -106,6 +107,13 @@ ark_legacy_test(ark_initial_ai_tests actual_initial_ai_interval initial_ai_test.
 ark_legacy_test(ark_game_ai_preview_tests game_visible_ai_preview game_ai_preview_test.cpp ark_game)
 
 if(ARK_BUILD_DESKTOP)
+    # Source portrait assertions keep their CPU image oracle and use the existing product
+    # SEB/TSV parsers. No WindowServer is needed, but headless builds do not depend on raylib.
+    ark_test_executable(ark_simulation_startup_world_visuals_test
+        SOURCES tests/simulation/startup_world_visuals_test.cpp
+        LIBRARIES ark_world_runtime ark_asset_metadata PkgConfig::RAYLIB)
+    ark_test_case(simulation.startup_world_visuals_test ark_simulation_startup_world_visuals_test
+        ARGS "${PROJECT_SOURCE_DIR}/assets" LABELS presentation frozen TIMEOUT 120)
     # World UI suites use the same skin/resource/layout lifetime and dependencies.
     # Their bodies remain separate files and each CTest invocation selects one named case.
     add_library(ark_world_ui_test_support STATIC src/desktop/ui/layout.cpp
@@ -117,11 +125,14 @@ if(ARK_BUILD_DESKTOP)
     ark_test_executable(ark_world_ui_tests
         SOURCES tests/desktop/world_ui_main.cpp tests/desktop/world_panels_test.cpp
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp
-            tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp src/desktop/ui/world_panels.cpp
+            tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
+            tests/desktop/world_building_test.cpp src/desktop/ui/world_panels.cpp
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
+            src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
+            src/desktop/world_build_placement.cpp
         LIBRARIES ark_world_ui_test_support)
-    foreach(case IN ITEMS world_panels world_award_ui world_crew_summary world_tasks world_menu)
+    foreach(case IN ITEMS world_panels world_award_ui world_crew_summary world_tasks world_menu world_building)
         ark_test_case(${case} ark_world_ui_tests ARGS ${case} LABELS presentation)
     endforeach()
     ark_test_executable(ark_world_scene_tests

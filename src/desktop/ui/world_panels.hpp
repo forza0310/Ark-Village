@@ -17,4 +17,14 @@ void draw_world_page_chrome(const simulation::rules::WorldScriptPage &page,
 // The maintained source has not published the meter's value-to-fill mapping. Draw only the
 // certified artwork and actual number; do not turn popularity into an invented percentage.
 void draw_world_popularity(int popularity, const Layout &layout, const Skin &skin);
+struct WorldNoticeLine {
+    std::size_t index{};
+    Rectangle box;
+    std::string text;
+};
+// Source queue order/height/lifetime, with the baseline moved to the current footer. These
+// records never advance the queue; message1 and unshipped special artwork follow the prototype.
+std::vector<WorldNoticeLine>
+world_notice_view(const std::vector<simulation::rules::WorldScriptNotice> &notices, Extent extent);
+void draw_world_notices(const std::vector<WorldNoticeLine> &lines, const Skin &skin);
 } // namespace ark::desktop::ui

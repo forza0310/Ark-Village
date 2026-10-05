@@ -16,12 +16,19 @@ void draw_world_overlay(const OverlayPlan &plan, Sprites &sprites, Vector2 ancho
                     DrawRectangleRec({anchor.x + part.x * zoom, anchor.y + part.y * zoom,
                                       part.width * zoom, part.height * zoom},
                                      {part.rgb[0], part.rgb[1], part.rgb[2], 255});
-                else
+                else if constexpr (std::is_same_v<Part, OverlayImage>)
                     sprites.image(part.name,
                                   {part.source[0], part.source[1], part.source[2], part.source[3]},
                                   {anchor.x + part.destination[0] * zoom,
                                    anchor.y + part.destination[1] * zoom,
                                    part.destination[2] * zoom, part.destination[3] * zoom});
+                else
+                    sprites.human_image(
+                        part.image,
+                        {part.source[0], part.source[1], part.source[2], part.source[3]},
+                        {anchor.x + part.destination[0] * zoom,
+                         anchor.y + part.destination[1] * zoom, part.destination[2] * zoom,
+                         part.destination[3] * zoom});
             },
             command);
 }

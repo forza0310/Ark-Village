@@ -38,7 +38,7 @@ find_package(Threads REQUIRED)
 add_library(ark_world_queries STATIC src/app/world_facility_queries.cpp)
 target_link_libraries(ark_world_queries PUBLIC ark_world_runtime)
 ark_target(ark_world_queries)
-add_library(ark_world_session STATIC src/app/world_session.cpp src/app/world_report.cpp)
+add_library(ark_world_session STATIC src/app/world_session.cpp src/app/world_commands.cpp src/app/world_report.cpp)
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing Threads::Threads)
 ark_target(ark_world_session)
 
@@ -85,9 +85,12 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_scene.cpp
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
+        src/desktop/world_management.cpp src/desktop/world_management_inspection.cpp
+        src/desktop/world_build_placement.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp
+        src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
         src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_world_visuals ark_world_session ark_asset_metadata PkgConfig::RAYLIB)

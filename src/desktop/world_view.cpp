@@ -9,9 +9,11 @@
 #include "ui/world_award.hpp"
 #include "ui/world_crew_summary.hpp"
 #include "ui/world_panels.hpp"
+#include "ui/world_tasks.hpp"
 #include "world_rank.hpp"
 #include "world_rest_visuals.hpp"
 #include "world_scene.hpp"
+#include "world_task_inspection.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -79,7 +81,9 @@ std::string glyphs(const State &s) {
     std::string result =
         "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
         "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
-        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否成果统计倒地";
+        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否成果统计倒地"
+        "参加任务征集队员冒险队伍追加准备出发期限延长费用评价加速取消中止再加把劲需要补充战力"
+        "重新来过比较好应该撤退资金不足队伍已满暂无可追加人员页面已变化请重试当前操作不可用";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -206,6 +210,9 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     ui::draw_world_popularity(s.popularity, layout, skin);
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(layout.right_button, s.scene.speed_setting == 1 ? "2倍" : "1倍", !failed);
+    skin.button(ui::world_task_menu_button(layout.extent), "任务",
+                !failed && !s.scene.framework_paused && !active_page(s) && !s.active_task &&
+                    !app::world_report_waiting(s));
     if (failed)
         skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
     if (s.report_state && !active_page(s)) {
@@ -244,8 +251,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         options.inspect_page != "world-speed" && options.inspect_page != "world-month" &&
         options.inspect_page != "world-rank" && options.inspect_page != "world-award";
     if (inspecting) {
+        WorldTaskInspection task_inspection;
         bool reached{};
-        const int limit = options.inspect_page == "world-award" ? 120000 : 20000;
+        const int limit = options.inspect_page == "world-award" ||
+                                  world_task_inspection_mode(options.inspect_page)
+                              ? 120000
+                              : 20000;
         for (int step = 0; step < limit; ++step) {
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
@@ -255,11 +266,18 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 while (app::world_report_waiting(state))
                     if (!app::acknowledge_world_report(state, state.report_state))
                         throw std::runtime_error("World inspection report rejected input");
-            reached = inspection_ready(state, options.inspect_page);
+            reached =
+                world_task_inspection_mode(options.inspect_page)
+                    ? world_task_inspection_ready(state, options.inspect_page, task_inspection)
+                    : inspection_ready(state, options.inspect_page);
             if (reached)
                 break;
+            if (world_task_inspection_mode(options.inspect_page) &&
+                apply_world_task_inspection_input(state, task_inspection))
+                continue;
             if (const auto *page = active_page(state);
                 page && ui::world_page_regular_confirmation(*page) &&
+                ui::world_task_related_confirmation(state, *page) &&
                 !(options.inspect_page == "world-rank" && page->legacy_page == 49)) {
                 if (simulation::acknowledge_startup_world_runtime_page(state, page->id) !=
                     simulation::StartupWorldRuntimeError::none)
@@ -268,6 +286,13 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         }
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
+        if (world_task_inspection_mode(options.inspect_page))
+            std::cout << "World task inspection: target=" << options.inspect_page
+                      << " accepted=" << task_inspection.accepted_task.value_or(0)
+                      << " departed=" << task_inspection.departed_task.value_or(0)
+                      << " page=" << active_page(state)->legacy_page
+                      << " participants=" << state.participants.size()
+                      << " successes=" << state.task_progress.successes << '\n';
         if (transient)
             focus_inspection(state, options.inspect_page);
     }
@@ -286,6 +311,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
+    std::uint64_t pending_task{}, held_task_page{};
+    ui::WorldTaskSelection task_selection;
+    std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
     int desired_speed = publication->state->scene.speed_setting;
     const auto started = GetTime();
@@ -307,6 +335,32 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         const bool failed = publication->failed;
         if (publication->last_command_serial >= pending_ack)
             pending_ack = 0;
+        if (pending_task) {
+            const auto result = std::find_if(
+                publication->command_results.begin(), publication->command_results.end(),
+                [&](const auto &r) { return r.serial == pending_task; });
+            if (result != publication->command_results.end()) {
+                task_feedback.clear();
+                if (result->outcome == app::WorldCommandOutcome::rejected) {
+                    using Denial = rules::TaskCommandDenial;
+                    switch (result->denial) {
+                    case Denial::insufficient_funds:
+                        task_feedback = "资金不足";
+                        break;
+                    case Denial::team_full:
+                        task_feedback = "队伍已满";
+                        break;
+                    case Denial::no_extra_candidates:
+                        task_feedback = "暂无可追加人员";
+                        break;
+                    default:
+                        task_feedback = "页面已变化，请重试";
+                        break;
+                    }
+                }
+                pending_task = 0;
+            }
+        }
         if (publication->last_command_serial >= pending_view)
             view = {current.camera, current.reference_viewport};
         if (publication->last_command_serial >= pending_pause)
@@ -359,8 +413,38 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             if (viewed_page != page->id) {
                 viewed_page = page->id;
                 paragraph = scroll = 0;
+                task_selection = {};
+                task_feedback.clear();
             }
-            if (page->kind == rules::WorldScriptPageKind::raw_page && page->legacy_page == 87) {
+            if (ui::world_task_page(*page)) {
+                const auto task = ui::world_task_view(current, *page);
+                const auto task_layout = ui::world_task_layout(extent);
+                ui::WorldTaskInput input;
+                input.click = click ? mouse : std::nullopt;
+                input.enter = IsKeyPressed(KEY_ENTER);
+                input.escape = IsKeyPressed(KEY_ESCAPE);
+                input.up = IsKeyPressed(KEY_UP);
+                input.down = IsKeyPressed(KEY_DOWN);
+                input.left = IsKeyPressed(KEY_LEFT);
+                input.right = IsKeyPressed(KEY_RIGHT);
+                if (mouse && CheckCollisionPointRec(*mouse, task_layout.rows))
+                    input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
+                const auto intent = ui::world_task_input(task, task_layout, task_selection, input,
+                                                         desired_pause || failed || pending_task);
+                if (intent) {
+                    task_feedback.clear();
+                    pending_task =
+                        session.act_task_page(page->id, intent->action, intent->selection);
+                }
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 83) {
+                const auto box = ui::world_page_layout(*page, extent);
+                const Rectangle cancel{box.panel.x + 10, box.confirm.y, 58, 20};
+                if (!desired_pause && !failed && !pending_task &&
+                    (hit(cancel) || IsKeyPressed(KEY_ESCAPE)))
+                    pending_task = session.cancel_page(page->id);
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 87) {
                 const auto award = ui::world_award_view(current, page->id);
                 const auto award_layout = ui::world_award_layout(extent, award.termination_pending);
                 const auto action = ui::world_award_input(
@@ -385,7 +469,8 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 const int visible = ui::world_crew_summary_visible_rows(crew_layout);
                 scroll = std::clamp(scroll, 0,
                                     std::max(0, static_cast<int>(crew.rows.size()) - visible));
-            } else if (ui::world_page_regular_confirmation(*page)) {
+            } else if (ui::world_page_regular_confirmation(*page) &&
+                       ui::world_task_related_confirmation(current, *page)) {
                 const auto page_layout = ui::world_page_layout(*page, extent);
                 if (!desired_pause && !failed && !pending_ack &&
                     (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
@@ -411,6 +496,28 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         } else if (app::world_report_waiting(current) && !failed && !pending_ack &&
                    (hit(month_confirm(extent)) || IsKeyPressed(KEY_ENTER)))
             pending_ack = session.ack_report(current.report_state);
+        // Held acceleration is page-bound and edge-triggered; 60 FPS cannot add source ticks.
+        const auto *held_page = active_page(current);
+        const auto held_layout = ui::world_task_layout(extent);
+        const bool held =
+            held_page && held_page->legacy_page == 24 && !desired_pause && !failed &&
+            IsWindowFocused() &&
+            (IsKeyDown(KEY_ENTER) || (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && mouse &&
+                                      CheckCollisionPointRec(*mouse, held_layout.confirm)));
+        const auto next_held_page = held ? held_page->id : 0;
+        if (held_task_page != next_held_page) {
+            if (held_task_page)
+                session.set_page_confirm_held(held_task_page, false);
+            if (next_held_page)
+                session.set_page_confirm_held(next_held_page, true);
+            held_task_page = next_held_page;
+        }
+        if (!active_page(current) && !app::world_report_waiting(current) && !current.active_task &&
+            !desired_pause && !failed && !pending_task &&
+            (hit(ui::world_task_menu_button(extent)) || IsKeyPressed(KEY_T))) {
+            task_feedback.clear();
+            pending_task = session.open_task_menu();
+        }
         BeginTextureMode(canvas.texture);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster);
@@ -428,7 +535,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         EndScissorMode();
         hud(current, layout, skin, failed);
         if (const auto *page = active_page(current)) {
-            if (page->kind == rules::WorldScriptPageKind::raw_page && page->legacy_page == 87) {
+            if (ui::world_task_page(*page)) {
+                ui::draw_world_task(ui::world_task_view(current, *page),
+                                    ui::world_task_layout(extent), skin, task_selection,
+                                    !desired_pause && !failed && !pending_task, task_feedback);
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 87) {
                 const auto award = ui::world_award_view(current, page->id);
                 const auto award_layout = ui::world_award_layout(extent, award.termination_pending);
                 ui::draw_world_award(award, award_layout, skin, scroll,
@@ -444,6 +556,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 // or a confirmation capable of skipping their source-owned counter/focus consumer.
                 const auto page_layout = ui::world_page_layout(*page, extent);
                 ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
+                ui::draw_world_task_monster(current, *page, page_layout.body, skin);
                 const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
                 const auto wrapped =
                     ui::wrap_plain_text(decoded.text, page_layout.body.width,
@@ -461,11 +574,16 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                         text.draw(wrapped[scroll + row], page_layout.body.x, y);
                 }
                 const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
-                skin.button(page_layout.confirm,
-                            more_text                                                   ? "下一屏"
-                            : paragraph + 1 < static_cast<int>(page->paragraphs.size()) ? "下一页"
-                                                                                        : "确定",
-                            !desired_pause && !failed && !pending_ack);
+                if (page->legacy_page == 83)
+                    skin.button({page_layout.panel.x + 10, page_layout.confirm.y, 58, 20}, "取消",
+                                !desired_pause && !failed && !pending_task);
+                else if (ui::world_task_related_confirmation(current, *page))
+                    skin.button(page_layout.confirm,
+                                more_text ? "下一屏"
+                                : paragraph + 1 < static_cast<int>(page->paragraphs.size())
+                                    ? "下一页"
+                                    : "确定",
+                                !desired_pause && !failed && !pending_ack);
             }
         } else if (app::world_report_waiting(current))
             skin.button(month_confirm(extent), current.report_state == 1 ? "下一页" : "确定",

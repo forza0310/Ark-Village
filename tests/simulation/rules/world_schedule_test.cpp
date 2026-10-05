@@ -5,6 +5,7 @@
 #include "ark/simulation/rules/world_misc_control.hpp"
 #include "ark/simulation/rules/world_schedule.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -784,6 +785,102 @@ void actual_exit_journey_rounds() {
               source.common.updates == 0,
           "late common L refusal rolls back actual departure and all common-prefix state");
 }
+void actual_facility_self_removal() {
+    auto source = fixture();
+    for (const auto id : {4ULL, 5ULL, 6ULL}) {
+        auto facility = source.world.facilities.at(3);
+        facility.placement.instance_id = {id};
+        source.world.facilities.emplace(id, facility);
+        source.facility_order.push_back(id);
+    }
+    const auto erase = [](auto &state, std::uint64_t id) {
+        state.world.facilities.erase(id);
+        auto &order = state.facility_order;
+        order.erase(std::find(order.begin(), order.end(), id));
+        for (auto &cell : state.world.map.cells)
+            if (cell.facility && cell.facility->instance_id.value == id) {
+                cell.facility.reset();
+                cell.legacy_state = 4;
+                cell.category = RouteCategory::terminal;
+            }
+    };
+    const auto complete = [&](const auto &state, const auto &call, const auto &field) {
+        auto step = consumer(state, call, field);
+        if (step && call.stage == WorldScheduleStage::facility && call.id == 3) {
+            erase(step->state, 3);
+            auto appended = state.world.facilities.at(4);
+            appended.placement.instance_id = {7};
+            step->state.world.facilities.emplace(7, appended);
+            step->state.facility_order.push_back(7);
+            step->disposition = WorldScheduleDisposition::already_removed;
+        }
+        return step;
+    };
+    const auto result = prepare_world_schedule(source, {}, complete);
+    check(result.candidate &&
+              result.candidate->state.facility_order == std::vector<std::uint64_t>{4, 5, 6, 7} &&
+              !result.candidate->state.world.facilities.count(3),
+          "real facility c completion self-removal accepted only as already_removed with absent "
+          "owner");
+    std::vector<std::uint64_t> visited;
+    for (const auto &call : result.candidate->calls)
+        if (call.stage == WorldScheduleStage::facility)
+            visited.push_back(*call.id);
+    check(visited == std::vector<std::uint64_t>{3, 5, 6, 7},
+          "forward self-removal mirrors once, skips shifted4 and visits new appended7 same round");
+    const auto next = prepare_world_schedule(result.candidate->state, {}, consumer);
+    visited.clear();
+    for (const auto &call : next.candidate->calls)
+        if (call.stage == WorldScheduleStage::facility)
+            visited.push_back(*call.id);
+    check(next.candidate && visited == std::vector<std::uint64_t>{4, 5, 6, 7},
+          "shifted skipped facility remains active and updates on subsequent complete round");
+    for (const auto disposition :
+         {WorldScheduleDisposition::keep, WorldScheduleDisposition::remove_requested}) {
+        const auto rejected = prepare_world_schedule(
+            source, {}, [&](const auto &state, const auto &call, const auto &field) {
+                auto step = complete(state, call, field);
+                if (step && call.stage == WorldScheduleStage::facility && call.id == 3)
+                    step->disposition = disposition;
+                return step;
+            });
+        check(!rejected.candidate && rejected.error == WorldScheduleError::invalid_mutation,
+              "actual self-removal cannot claim keep or request a second scheduler removal");
+    }
+    const auto false_claim = prepare_world_schedule(
+        source, {}, [&](const auto &state, const auto &call, const auto &field) {
+            auto step = consumer(state, call, field);
+            if (step && call.stage == WorldScheduleStage::facility && call.id == 3)
+                step->disposition = WorldScheduleDisposition::already_removed;
+            return step;
+        });
+    check(!false_claim.candidate && false_claim.error == WorldScheduleError::invalid_mutation,
+          "already_removed must observe actual absence, not a fake successful deletion token");
+    for (const bool remove_other : {false, true}) {
+        const auto invalid = prepare_world_schedule(
+            source, {}, [&](const auto &state, const auto &call, const auto &field) {
+                auto step = complete(state, call, field);
+                if (step && call.stage == WorldScheduleStage::facility && call.id == 3) {
+                    if (remove_other)
+                        erase(step->state, 4);
+                    else
+                        std::swap(step->state.facility_order[0], step->state.facility_order[1]);
+                }
+                return step;
+            });
+        check(!invalid.candidate && invalid.error == WorldScheduleError::invalid_mutation,
+              "facility self-removal does not permit deletion/reordering of other live facilities");
+    }
+    const auto failed = prepare_world_schedule(
+        source, {}, [&](const auto &state, const auto &call, const auto &field) {
+            return call.stage == WorldScheduleStage::finalize ? std::optional<WorldScheduleStep>{}
+                                                              : complete(state, call, field);
+        });
+    check(!failed.candidate && failed.error == WorldScheduleError::consumer_failed &&
+              source.facility_order == std::vector<std::uint64_t>{3, 4, 5, 6} &&
+              source.world.facilities.count(3) && source.updates == 0,
+          "late L refusal rolls back domain self-removal, new facility and common counters");
+}
 } // namespace
 int main() {
     try {
@@ -797,6 +894,7 @@ int main() {
         errors_and_atomic_extension();
         prelude_mutation_guards();
         actual_exit_journey_rounds();
+        actual_facility_self_removal();
         std::cout << "world_schedule " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

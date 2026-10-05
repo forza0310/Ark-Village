@@ -49,7 +49,7 @@ struct WorldActorPresentationRequest {
     std::optional<WorldMiscSoundRequest> sound;
     std::optional<ShopWorldRequest> shop;
     std::optional<LifecycleRequest> lifecycle{};
-    std::optional<int> definition{}; // 删除后的怪物仍需原定义载荷，不依赖已回收实例。
+    std::optional<int> definition{};   // 删除后的怪物仍需原定义载荷，不依赖已回收实例。
     std::optional<int> cached_sound{}; // n.a(sound,旧bm)，不回写或重投影bm。
 };
 using WorldActorPresentationConsumer = std::function<std::optional<WorldActorRoutesState>(
@@ -72,6 +72,8 @@ struct WorldActorDecisionInput {
     WorldActorEventConsumer event;
     WorldActorEncounterConsumer encounter;
     WorldActorPresentationConsumer presentation{}; // 在实际c调用点同步消费，不移到全人物之后。
+    // 类别8递归交付：被救者使用旧s投影，之后才复制救援者的O/n/s。
+    std::function<std::optional<Position>(CharacterId, int)> rescue_direction_target{};
 };
 struct WorldActorDecisionCandidate {
     WorldActorRoutesState state;

@@ -1,6 +1,7 @@
 // Manual desktop confirmations reuse the real fee/snapshot/close transaction. Monthly defeat
 // and visitor values below are explicit contract fixtures, not a claimed natural game trajectory.
 #include "ark/app/world_report.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -17,14 +18,8 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
-State initial() {
-    sim::StartupSession startup;
-    sim::StartupWorldRuntimeSession runtime(startup.state(),
-                                            rules::WorldRandomStream::from_java_seed(1));
-    return runtime.state();
-}
 State prepared_report() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     state.scene.calendar.month_ticks = state.clock_parameter * 20 - 143;
     const auto monster =
         std::find_if(state.rules->monsters.begin(), state.rules->monsters.end(),
@@ -55,15 +50,7 @@ State prepared_report() {
     return state;
 }
 void unchanged_world(const State &state, const State &before) {
-    check(state.scene.calendar.year == before.scene.calendar.year &&
-              state.scene.calendar.month == before.scene.calendar.month &&
-              state.scene.calendar.subperiod == before.scene.calendar.subperiod &&
-              state.scene.calendar.units == before.scene.calendar.units &&
-              state.scene.calendar.previous_units == before.scene.calendar.previous_units &&
-              state.scene.calendar.month_ticks == before.scene.calendar.month_ticks &&
-              state.scene.world.updates == before.scene.world.updates &&
-              state.simulation_steps == before.simulation_steps &&
-              state.arrival_counter == before.arrival_counter &&
+    check(ark::test::same_world_clock(state, before) &&
               state.scene.world.world.map.cells.size() == before.scene.world.world.map.cells.size(),
           "Report input never advances world, calendar, arrival or map ownership");
     const auto &actor = state.scene.world.world.ai.battle.actors.at({81});

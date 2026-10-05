@@ -5,9 +5,8 @@
 #include <stdexcept>
 
 namespace ark::simulation {
-namespace {
 using State = StartupWorldRuntimeState;
-void synchronize_monster_runtime(State &s) {
+void synchronize_startup_world_runtime_monsters(State &s) {
     // 局部L生成和全局f.a生成都在刷新请求时拥有新怪物；尾部u更新不能补造缺失对象。
     for (const auto id : s.scene.world.world.ai.monster_order) {
         s.scene.world.world.actors.try_emplace(id);
@@ -21,6 +20,7 @@ void synchronize_monster_runtime(State &s) {
                      static_cast<int>(n.x * -15.0F / 100.0F + n.z * 15.0F / 100.0F)}});
     }
 }
+namespace {
 ref::WorldScriptCatalog catalog(const State &s) {
     const auto &t = s.rules->script_sources;
     auto c = ref::parse_world_script_catalog(t.events, t.talks, t.news, t.event_messages);
@@ -336,7 +336,7 @@ std::optional<State>
 consume_startup_world_runtime_encounter_request(const State &state,
                                                 const ref::EncounterCreationRequest &request) {
     State next = state;
-    synchronize_monster_runtime(next);
+    synchronize_startup_world_runtime_monsters(next);
     const auto c = catalog(next);
     if (request.kind == ref::EncounterCreationRequestKind::refresh_map) {
         const auto map = ref::prepare_world_event_map(next.scene.world.world.ai,
@@ -396,7 +396,7 @@ prepare_startup_world_runtime_encounter_creation(const State &state,
     if (!result.candidate)
         return {};
     next.scene.world.world.ai = result.candidate->state;
-    synchronize_monster_runtime(next);
+    synchronize_startup_world_runtime_monsters(next);
     return ref::OwnedWorldRuntimeCreation<State>{std::move(next), result.candidate->created,
                                                  result.candidate->denial};
 }

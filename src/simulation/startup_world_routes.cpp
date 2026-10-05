@@ -112,7 +112,9 @@ std::optional<ref::WorldPathInput> path(const ref::WorldActorRoutesState &r, ref
     for (const auto &d : f.rules->facilities)
         p.definition_directions.emplace(d.id, d.direction);
     const auto &binding = r.world.actors.at(id).binding;
-    if (binding) {
+    // 探索恢复后O/旧路线仍可保留原身份；P先核对当前地图，不把退休目标当缺输入。
+    if (binding &&
+        ref::arrival_binding_matches(r.world.map, *binding, r.world.ai.contexts.at(id).cell)) {
         const auto instance = r.world.facilities.find(binding->instance_id.value);
         if (instance == r.world.facilities.end())
             return {};
@@ -171,6 +173,18 @@ prepare_startup_world_decision_input(const ref::WorldActorRoutesState &r, ref::C
     input.monster_path = *p;
     input.actor_box = f.actor_box;
     input.rescue_box = f.rescue_box;
+    std::map<ref::CharacterId, ref::Position> rescue_cells;
+    for (const auto &[actor_id, context] : r.world.ai.contexts)
+        rescue_cells.emplace(actor_id, context.cell);
+    input.rescue_direction_target =
+        [cells = std::move(rescue_cells)](ref::CharacterId actor_id,
+                                          int direction) -> std::optional<ref::Position> {
+        const auto cell = cells.find(actor_id);
+        if (cell == cells.end())
+            return {};
+        const auto target = project_facility_use_target(cell->second, 8, 2, direction);
+        return target ? std::optional<ref::Position>{target->world_target} : std::nullopt;
+    };
     const auto metadata = f.actor_metadata.find(id);
     if (metadata != f.actor_metadata.end())
         input.cached_view = metadata->second.cached_view;
@@ -181,7 +195,8 @@ prepare_startup_world_decision_input(const ref::WorldActorRoutesState &r, ref::C
     const auto &actor = r.world.ai.battle.actors.at(id);
     if (actor.kind == ref::ActorKind::human) {
         const auto &binding = r.world.actors.at(id).binding;
-        if (binding) {
+        if (binding &&
+            ref::arrival_binding_matches(r.world.map, *binding, r.world.ai.contexts.at(id).cell)) {
             const auto instance = r.world.facilities.find(binding->instance_id.value);
             if (instance == r.world.facilities.end())
                 return {};
@@ -245,7 +260,8 @@ prepare_startup_world_command_input(const ref::WorldActorRoutesState &r, ref::Ch
     }
     if (command[0] == 24) {
         const auto &binding = r.world.actors.at(id).binding;
-        if (binding) {
+        if (binding &&
+            ref::arrival_binding_matches(r.world.map, *binding, r.world.ai.contexts.at(id).cell)) {
             const auto instance = r.world.facilities.find(binding->instance_id.value);
             if (instance == r.world.facilities.end())
                 return {};

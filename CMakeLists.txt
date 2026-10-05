@@ -112,11 +112,11 @@ if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_scene.cpp
-        src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp
+        src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp
-        src/desktop/ui/world_crew_summary.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
+        src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_world_visuals ark_world_session ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
@@ -129,30 +129,26 @@ if(ARK_BUILD_DESKTOP)
             "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/bin/assets")
     add_dependencies(ark_village ark_package_assets)
     if(BUILD_TESTING)
-        add_executable(ark_world_panels_tests tests/world_panels_test.cpp
-            src/desktop/ui/world_panels.cpp src/desktop/ui/layout.cpp src/desktop/ui/skin.cpp
-            src/desktop/resources.cpp src/desktop/projection.cpp)
-        target_include_directories(ark_world_panels_tests PRIVATE src/desktop)
-        target_link_libraries(ark_world_panels_tests PRIVATE ark_world_visuals ark_game
+        # Compile common UI fixtures once, retaining separate suites and every assertion.
+        add_library(ark_world_ui_test_support STATIC src/desktop/ui/layout.cpp
+            src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/projection.cpp)
+        target_include_directories(ark_world_ui_test_support PUBLIC src/desktop)
+        target_link_libraries(ark_world_ui_test_support PUBLIC ark_world_visuals ark_game
             ark_asset_metadata PkgConfig::RAYLIB)
-        ark_target(ark_world_panels_tests)
-        add_test(NAME world_panels COMMAND ark_world_panels_tests)
-        add_executable(ark_world_award_ui_tests tests/world_award_ui_test.cpp
-            src/desktop/ui/world_award.cpp src/desktop/ui/layout.cpp src/desktop/ui/skin.cpp
-            src/desktop/resources.cpp src/desktop/projection.cpp)
-        target_include_directories(ark_world_award_ui_tests PRIVATE src/desktop)
-        target_link_libraries(ark_world_award_ui_tests PRIVATE ark_world_visuals ark_game
-            ark_asset_metadata PkgConfig::RAYLIB)
-        ark_target(ark_world_award_ui_tests)
-        add_test(NAME world_award_ui COMMAND ark_world_award_ui_tests)
-        add_executable(ark_world_crew_summary_tests tests/world_crew_summary_test.cpp
-            src/desktop/ui/world_crew_summary.cpp src/desktop/ui/layout.cpp src/desktop/ui/skin.cpp
-            src/desktop/resources.cpp src/desktop/projection.cpp)
-        target_include_directories(ark_world_crew_summary_tests PRIVATE src/desktop)
-        target_link_libraries(ark_world_crew_summary_tests PRIVATE ark_world_visuals ark_game
-            ark_asset_metadata PkgConfig::RAYLIB)
-        ark_target(ark_world_crew_summary_tests)
-        add_test(NAME world_crew_summary COMMAND ark_world_crew_summary_tests)
+        ark_target(ark_world_ui_test_support)
+        function(ark_world_ui_test name implementation)
+            add_executable(ark_${name}_tests tests/${name}_test.cpp
+                src/desktop/ui/${implementation}.cpp)
+            target_link_libraries(ark_${name}_tests PRIVATE ark_world_ui_test_support)
+            ark_target(ark_${name}_tests)
+            add_test(NAME ${name} COMMAND ark_${name}_tests)
+        endfunction()
+        ark_world_ui_test(world_panels world_panels)
+        ark_world_ui_test(world_award_ui world_award)
+        ark_world_ui_test(world_crew_summary world_crew_summary)
+        ark_world_ui_test(world_tasks world_tasks)
+        # Task pages also verify the shared generic-confirmation/automatic-page policy.
+        target_sources(ark_world_tasks_tests PRIVATE src/desktop/ui/world_award.cpp)
         add_executable(ark_world_scene_tests tests/world_scene_test.cpp
             src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
             src/desktop/character_status.cpp src/desktop/character_visibility.cpp

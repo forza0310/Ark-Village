@@ -617,6 +617,14 @@ void path_real_journey_and_entry() {
                 std::vector<LegacyActorControl>{{6, 1}, {21}, {24}},
         "old256 suppresses arrival fee then is cleared before exact helper use2 without inn wait");
     auto empty = inn_journey();
+    auto carrying = inn_journey();
+    carrying.ai.contexts.at({1}).cell = {2, 2};
+    carrying.ai.battle.actors.at({1}).object_slot = 7;
+    const auto carried_arrival = prepare_world_path_c(carrying, path_input(carrying));
+    check(carried_arrival.candidate && carried_arrival.candidate->arrived &&
+              carried_arrival.candidate->state.ai.battle.actors.at({1}).object_slot == 7 &&
+              carried_arrival.candidate->state.facilities.at(22).sales == 17,
+          "carried item stays in N at ordinary inn arrival; only shops deliver with extra5000");
     empty.actors.at({1}).journey->route.steps.clear();
     empty.ai.contexts.at({1}).cell = {2, 2};
     r = prepare_world_path_c(empty, path_input(empty));

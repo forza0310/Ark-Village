@@ -56,6 +56,10 @@ void summary() {
           "fourth immediate confirm closes without paying again");
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
           "closed summary cannot be acknowledged twice");
+    tick = prepare_startup_world_runtime(s);
+    check(tick.candidate && !tick.candidate->exploration_summaries.count(id) &&
+              !s.exploration_summaries.empty(),
+          "framework retires closed result payload only on successful next Owner commit");
     s = fixture(32);
     const auto missing = s.scripts.pages.back().id;
     check(acknowledge_startup_world_runtime_page(s, missing) ==
@@ -331,6 +335,183 @@ void annual_termination() {
               malformed.award_rankings.empty() && malformed.page_counters.empty(),
           "late award initialization error cannot leave partial medal/list/page state");
 }
+void task_display() {
+    for (int raw : {99, 100}) {
+        auto s = fixture(raw);
+        const auto id = s.scripts.pages.back().id;
+        auto missing = prepare_startup_world_runtime(s);
+        check(
+            !missing.candidate && s.scene.random.draws() == 0,
+            "task display requires actual bound monster definition; page number cannot invent it");
+        s.scripts.pages.back().monster_definition = 0;
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.page_counters.at(id) == 0 && s.scripts.pages.back().lifecycle != 4 &&
+                  s.scene.random.draws() == (raw == 100 ? 19U : 0U),
+              "early confirm initializes true display once but never skips forty counter");
+        const auto initial_draws = s.scene.random.draws();
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.scene.random.draws() == initial_draws,
+              "repeated early confirmation does not reinitialize or run same-frame F");
+        for (int count = 1; count <= 40; ++count) {
+            const auto tick = prepare_startup_world_runtime(s);
+            check(tick.candidate && tick.candidate->page_counters.at(id) == count &&
+                      tick.candidate->scene.calendar.units == 0 &&
+                      tick.candidate->scene.world.updates == 0,
+                  "presentation page advances separately while shared world and calendar stay "
+                  "frozen");
+            s = *tick.candidate;
+        }
+        const auto draws = s.scene.random.draws();
+        check((raw == 99 ? draws == 0 : draws > initial_draws) &&
+                  acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.scripts.pages.back().lifecycle == 4 && s.scene.random.draws() == draws,
+              "ready confirm closes true display without extra presentation random");
+    }
+}
+void event_message_and_shop_return() {
+    for (int command : {0, 1, 2}) {
+        auto s = fixture(11);
+        const auto id = s.scripts.pages.back().id;
+        s.scripts.pages.back().message_commands = {command};
+        s.scripts.pages.back().paragraphs = {"调用点夹具"};
+        const auto funds = s.scene.world.world.ai.accounting.funds();
+        const auto tick = prepare_startup_world_runtime(s);
+        check(
+            tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
+                tick.candidate->sound_requests ==
+                    (command == 2 ? std::vector<int>{} : std::vector<int>{command == 0 ? 4 : 6}) &&
+                tick.candidate->scene.world.updates == 0 &&
+                tick.candidate->scene.random.draws() == 0,
+            "raw11 source sound only on first page update, no world/random tick");
+        s = *tick.candidate;
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.page_counters.at(id) == 40 && s.scripts.pages.back().lifecycle != 4,
+              "raw11 early confirm only fast-forwards to40");
+        auto locked = s;
+        locked.scripts.page_mutations_locked = true;
+        // kairo/android/a/b.c(a)无l守卫；l限制新增页，不限制关闭已有页。
+        check(acknowledge_startup_world_runtime_page(locked, id) ==
+                      StartupWorldRuntimeError::none &&
+                  locked.scripts.pages.back().lifecycle == 4 &&
+                  locked.scene.world.world.ai.accounting.funds() == funds,
+              "source page creation lock does not prevent raw11 existing-page close");
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.scripts.pages.back().lifecycle == 4 &&
+                  s.scene.world.world.ai.accounting.funds() == funds,
+              "raw11 second confirm only closes, no extra reward/payment");
+    }
+    auto invalid = fixture(11);
+    const auto invalid_id = invalid.scripts.pages.back().id;
+    check(!prepare_startup_world_runtime(invalid).candidate &&
+              acknowledge_startup_world_runtime_page(invalid, invalid_id) ==
+                  StartupWorldRuntimeError::missing_source &&
+              invalid.page_counters.empty(),
+          "raw11 missing authenticated message payload rejects without partial update");
+    auto s = fixture(83);
+    const auto id = s.scripts.pages.back().id;
+    const auto funds = s.scene.world.world.ai.accounting.funds();
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::missing_source,
+          "shop confirm does not silently mean cancel or fabricate purchase");
+    auto locked = s;
+    locked.scripts.page_mutations_locked = true;
+    check(cancel_startup_world_runtime_page(locked, id) == StartupWorldRuntimeError::none &&
+              locked.scripts.pages.back().lifecycle == 4,
+          "source page creation lock does not prevent raw83 existing-page cancel");
+    check(cancel_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().lifecycle == 4 && s.scripts.pages.front().lifecycle != 4 &&
+              s.scene.random.draws() == 0 && s.scene.world.world.ai.accounting.funds() == funds,
+          "explicit shop cancel preserves lower scene, money and random");
+    check(cancel_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
+          "retired shop cannot be cancelled twice");
+    auto unknown = fixture(1234);
+    check(cancel_startup_world_runtime_page(unknown, unknown.scripts.pages.back().id) ==
+                  StartupWorldRuntimeError::invalid_page &&
+              unknown.scripts.pages.back().lifecycle != 4,
+          "cancel only supports proven raw83 source route");
+}
+void popularity_return() {
+    auto s = fixture(97);
+    const auto id = s.scripts.pages.back().id;
+    s.scripts.pages.back().lifecycle = 1;
+    s.popularity_display = true;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto rewards = s.popularity_rewards;
+    check(acknowledge_startup_world_runtime_page(s, id) ==
+                  StartupWorldRuntimeError::missing_source &&
+              s.popularity_display && s.scripts.pages.back().lifecycle == 1,
+          "raw97 early player input cannot bypass actual framework update");
+    check(!update_startup_world_runtime_page(s),
+          "raw97 direct consumer preserves lifecycle2 requirement");
+    s.scene.framework_paused = true;
+    auto tick = prepare_startup_world_runtime(s);
+    check(tick.candidate && tick.candidate->popularity_display &&
+              tick.candidate->scripts.pages.back().lifecycle != 4,
+          "raw97 framework pause does not clear reward display");
+    s.scene.framework_paused = false;
+    tick = prepare_startup_world_runtime(s);
+    check(tick.candidate && !tick.candidate->popularity_display &&
+              tick.candidate->scripts.pages.back().lifecycle == 4,
+          "raw97 actual first update automatically clears R and closes");
+    check(tick.candidate->scene.calendar.units == s.scene.calendar.units &&
+              tick.candidate->scene.world.updates == s.scene.world.updates &&
+              tick.candidate->scene.random.draws() == s.scene.random.draws() &&
+              tick.candidate->scene.world.world.ai.accounting.funds() == cash &&
+              tick.candidate->sound_requests.empty() && tick.checkpoints.empty(),
+          "raw97 does not advance world or replay cash/random/reward effects");
+    check(tick.candidate->popularity_rewards.size() == rewards.size(),
+          "raw97 preserves reward catalog size");
+    for (std::size_t index = 0; index < rewards.size(); ++index)
+        check(tick.candidate->popularity_rewards[index].status == rewards[index].status &&
+                  tick.candidate->popularity_rewards[index].pending_notice ==
+                      rewards[index].pending_notice,
+              "raw97 leaves each claimed reward and pending notice untouched");
+    s = *tick.candidate;
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
+          "retired raw97 cannot repeat its effect through player confirmation");
+}
+void unlocked_visitor() {
+    auto s = fixture(59);
+    s.scripts.pages.back().legacy_f = 2;
+    const auto id = s.scripts.pages.back().id;
+    const auto actors = s.scene.world.world.ai.human_order;
+    const auto priority = s.human_calendar.at(2).absent_months;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.page_counters.at(id) == 0 && s.scripts.pages.back().lifecycle != 4 &&
+              s.human_calendar.at(2).absent_months == priority,
+          "raw59 early confirm does not fastforward or change arrival priority");
+    for (int count = 1; count <= 70; ++count) {
+        const auto tick = prepare_startup_world_runtime(s);
+        check(tick.candidate && tick.candidate->page_counters.at(id) == count &&
+                  tick.candidate->scripts.pages.back().lifecycle != 4 &&
+                  tick.candidate->scene.world.world.ai.human_order == actors &&
+                  tick.candidate->scene.random.draws() == s.scene.random.draws() &&
+                  tick.candidate->scene.calendar.units == s.scene.calendar.units &&
+                  tick.candidate->scene.world.world.ai.accounting.funds() == cash &&
+                  tick.candidate->human_calendar.at(2).absent_months == priority,
+              "raw59 page clock advances without auto-close, spawn, reward or world tick");
+        s = *tick.candidate;
+        check(s.sound_requests == std::vector<int>{5},
+              "raw59 sound5 occurs only on first actual update");
+        if (count < 70)
+            check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                      s.page_counters.at(id) == count && s.scripts.pages.back().lifecycle != 4,
+                  "raw59 confirms below70 preserve page and exact counter");
+    }
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.human_calendar.at(2).absent_months == 10 && s.scripts.pages.back().lifecycle == 4 &&
+              s.scene.world.world.ai.human_order == actors,
+          "raw59 ready confirm writes aq10 and closes without direct arrival");
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::invalid_page,
+          "raw59 closed page rejects duplicate confirm");
+    auto bad = fixture(59);
+    bad.scripts.pages.back().legacy_f = -1;
+    check(!prepare_startup_world_runtime(bad).candidate && bad.page_counters.empty() &&
+              acknowledge_startup_world_runtime_page(bad, bad.scripts.pages.back().id) ==
+                  StartupWorldRuntimeError::missing_source &&
+              bad.scripts.pages.back().lifecycle != 4,
+          "raw59 invalid definition rolls back update and confirmation");
+}
 } // namespace
 int main() {
     try {
@@ -341,6 +522,10 @@ int main() {
         rank_conditions();
         task_focus_and_introduction();
         annual_termination();
+        task_display();
+        event_message_and_shop_return();
+        popularity_return();
+        unlocked_visitor();
         std::cout << "startup world pages checks: " << checks << '\n';
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

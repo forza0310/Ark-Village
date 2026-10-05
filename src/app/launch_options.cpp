@@ -45,7 +45,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-rank" && page != "world-combat" && page != "world-reward" &&
                 page != "world-exp" && page != "world-rest" && page != "world-rest-hp" &&
                 page != "world-news" && page != "world-break" && page != "world-speed" &&
-                page != "world-award")
+                page != "world-award" && page != "world-task-team" && page != "world-task-result")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {

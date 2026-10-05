@@ -202,6 +202,7 @@ void install_first(StartupWorldProjection &c, const StartupCharacter &character)
     if (derived.attributes != character.attributes || derived.combat != character.combat)
         throw StartupWorldProjectionError::source_mismatch;
     world.ai.battle.actors.emplace(identity, actor);
+    c.routes.dungeon_actors.emplace(identity, ref::DungeonActorProgress{0, 0, 0, 0, 0, 0, false});
     world.ai.human_order.push_back(identity);
     ref::RewardActorContext cache;
     cache.cell = character.cell;

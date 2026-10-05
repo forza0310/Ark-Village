@@ -33,6 +33,13 @@ reject_arguments(--end-awards --end-awards)
 reject_arguments(--unknown)
 reject_arguments(--help --frames 1)
 
+execute_process(COMMAND "${WORLD_SIMULATION}" --help
+    RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 10)
+if(NOT result EQUAL 0 OR NOT output MATCHES "16/56/57/97" OR
+   NOT output MATCHES "auto-confirm never accepts, departs, renews or cancels")
+    message(FATAL_ERROR "CLI must declare its explicit task decision boundary\n${output}\n${error}")
+endif()
+
 execute_process(COMMAND "${WORLD_SIMULATION}" --frames 8 --seed 0
     RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 20)
 if(NOT result EQUAL 0 OR NOT output MATCHES "auto_confirm=0 end_awards=0 speed=0" OR
@@ -50,7 +57,7 @@ endif()
 execute_process(COMMAND "${WORLD_SIMULATION}" --frames 8 --seed 18446744073709551615 --auto-confirm
     RESULT_VARIABLE result OUTPUT_VARIABLE output ERROR_VARIABLE error TIMEOUT 20)
 if(NOT result EQUAL 0 OR NOT output MATCHES "seed=18446744073709551615" OR
-   NOT output MATCHES "auto_confirm=1 end_awards=0")
+   NOT output MATCHES "auto_confirm=1 end_awards=0" OR NOT output MATCHES "task_input=manual")
     message(FATAL_ERROR "Full Java seed and explicit test input must be accepted\n${output}\n${error}")
 endif()
 

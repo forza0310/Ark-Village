@@ -37,6 +37,15 @@ int main() {
                   "White text frame must not cover the confirmation button");
         }
     }
+    for (const int raw : {99, 100}) {
+        WorldScriptPage task;
+        task.kind = WorldScriptPageKind::raw_page;
+        task.legacy_page = raw;
+        const auto layout = ui::world_page_layout(task, {240, 256});
+        check(layout.body.y - layout.panel.y >= 95 && layout.body.height >= 34 &&
+                  contains(layout.panel, layout.body),
+              "Task monster display reserves its own area above readable source paragraphs");
+    }
     WorldScriptPage page;
     page.kind = WorldScriptPageKind::dialogue;
     page.legacy_page = 0;

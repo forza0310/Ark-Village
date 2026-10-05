@@ -27,6 +27,8 @@ void catalogue() {
               rules.equipment[0].battle.combo == 5 && rules.equipment[0].battle.miss_low == 3 &&
               rules.equipment[0].battle.miss_high == 15,
           "actual shortsword complete battle rule");
+    check(rules.tasks[0].recruitment_fee == 1300 && rules.tasks[0].crew_rating_penalty == 1500,
+          "questData constructor columns6/15 publish fee and display-only rating penalty");
     check(rules.facilities[54].exit_effects.size() == 1 &&
               rules.facilities[54].exit_effects[0].attribute_index == 5 &&
               rules.unconsumed_exit_deltas.at(54) == std::vector<int>{3} &&
@@ -102,6 +104,11 @@ void first() {
     const auto &world = c.routes.world;
     const auto &old = *session.state().character;
     const auto &actor = world.ai.battle.actors.at({1});
+    const auto &dungeon = c.routes.dungeon_actors.at({1});
+    check(dungeon.progress == 0 && dungeon.previous == 0 && dungeon.percent == 0 &&
+              dungeon.endurance == 0 && dungeon.retreat_state == 0 &&
+              dungeon.retreat_updates == 0 && !dungeon.constrained,
+          "new Character dungeon fields preserve Java zero; endurance belongs to actual entry");
     check(actor.definition == 1 && actor.legacy_id == 0 && actor.control.state == 0 &&
               actor.control.flags == (2U | 8192U) &&
               actor.control.queue == std::vector<ref::LegacyActorControl>{{8, 0}} &&

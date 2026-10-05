@@ -28,7 +28,9 @@ constexpr const char *usage =
     "                            [--speed 0|1] [--auto-confirm] [--end-awards]\n"
     "Framework updates are unpaced. --months sets a goal within the --frames budget.\n"
     "Ordinary pages wait unless --auto-confirm supplies explicit test-user confirmations.\n"
-    "Timed pages 16/56/57 advance themselves. Annual termination additionally needs --end-awards;\n"
+    "Timed pages 16/56/57/97 advance themselves. Task decisions and shop83 always wait for\n"
+    "explicit input; auto-confirm never accepts, departs, renews or cancels these pages.\n"
+    "Annual termination additionally needs --end-awards;\n"
     "that test policy requests and confirms termination, retaining unused medals.\n"
     "Exit codes: 0 completed budget/goal, 1 runtime failure, 2 invalid arguments, 3 unmet goal.\n";
 
@@ -147,7 +149,7 @@ int run(const Options &options) {
     std::cout << "policy seed=" << options.seed << " seed_type=explicit_java"
               << " frame_budget=" << options.frames << " month_goal=" << options.months.value_or(0)
               << " auto_confirm=" << options.auto_confirm << " end_awards=" << options.end_awards
-              << " speed=" << options.speed << " pacing=unpaced\n";
+              << " speed=" << options.speed << " pacing=unpaced task_input=manual\n";
     print_state("initial", session.state(), 0);
     while (frames < options.frames) {
         const auto result = session.update();
@@ -179,8 +181,12 @@ int run(const Options &options) {
         // Automatic waiting/camera pages never receive fabricated confirmation. Annual-page
         // termination is a separate opted-in test input, not an implication of auto-confirm.
         const bool raw = page->kind == rules::WorldScriptPageKind::raw_page;
-        const bool automatic =
-            raw && (page->legacy_page == 16 || page->legacy_page == 56 || page->legacy_page == 57);
+        const bool automatic = raw && (page->legacy_page == 16 || page->legacy_page == 56 ||
+                                       page->legacy_page == 57 || page->legacy_page == 97);
+        // The source generic raw33 confirmation chooses renewal. Do not reuse it as an
+        // ordinary acknowledgement, and never invent recruitment/departure/cancellation policy.
+        const bool decision = raw && ((page->legacy_page >= 22 && page->legacy_page <= 28) ||
+                                      page->legacy_page == 33 || page->legacy_page == 83);
         const bool annual = raw && page->legacy_page == 87;
         if (annual && options.end_awards) {
             const auto id = page->id;
@@ -197,7 +203,7 @@ int run(const Options &options) {
                 return 1;
             }
             ++confirmations;
-        } else if (options.auto_confirm && !automatic && !annual &&
+        } else if (options.auto_confirm && !automatic && !annual && !decision &&
                    page->kind != rules::WorldScriptPageKind::scene) {
             const auto id = page->id;
             const auto acknowledged = session.acknowledge_page(id);

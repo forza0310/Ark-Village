@@ -22,7 +22,7 @@ int main() {
     using Action = rules::WorldAwardAction;
     rules::WorldScriptPage page;
     page.kind = rules::WorldScriptPageKind::raw_page;
-    for (const int id : {16, 56, 57}) {
+    for (const int id : {16, 56, 57, 97}) {
         page.legacy_page = id;
         check(ui::world_page_automatic(page) && !ui::world_page_regular_confirmation(page),
               "Timed waits and camera pages must never submit ordinary confirmation");

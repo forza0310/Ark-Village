@@ -1,4 +1,5 @@
 // Presentation fixtures exercise real owner fields without spawning actors or paying rewards.
+#include "support/world_fixture.hpp"
 #include "world_combat_visuals.hpp"
 
 #include <algorithm>
@@ -214,9 +215,7 @@ void immutable_owner() {
     check(ai.accounting.funds() == 1234 && ai.accounting.entries().empty() &&
               ai.accounting.village_points() == 12 &&
               state.scene.random.draws() == before.scene.random.draws() &&
-              state.simulation_steps == before.simulation_steps &&
-              state.scene.calendar.units == before.scene.calendar.units &&
-              state.scene.world.updates == before.scene.world.updates &&
+              ark::test::same_world_clock(state, before) &&
               ai.battle.actors.at({1}).label_timer == 16 &&
               ai.battle.actors.at({1}).damage_total == 42 &&
               ai.growth.at(7).pending.amount == old.growth.at(7).pending.amount &&

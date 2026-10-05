@@ -65,3 +65,5 @@ Layout.scene_clip绘制到21单位底栏边缘；Layout.scene命中仍停在29�
 依据：[栅栏与入口契约](../../research/dungeon_village_1/ui/BOUNDARY.md)。原版动态遮挡/扩张及截图跨版本差异另行验收。
 
 `world_dungeon_visuals`为无raylib的任务场景计划：读取唯一活动任务/实例g与h，返回进度条与目标菱形的独立深度层；调用方提供首占地格实际PNG高度和明确语言偏移。它不推进任务、绘制期随机或底栏队伍，不持有第二份进度。
+
+`world_task_inspection` 只供显式 `--inspect-page world-task-team/world-task-result`：真实新局选择当前可负担的实际任务，调用原征集/出发消费者，自然运行到队伍或成果页。普通页/月报复用已有诊断确认；不写人物、任务、奖励或资金，不参与正常窗口策略。

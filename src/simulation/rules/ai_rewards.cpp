@@ -476,6 +476,11 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
     c.removed = step.candidate->remove;
     c.encounter_requests = step.candidate->requests;
     c.state.encounters.at(i.encounter).runtime = step.candidate->state;
+    // f.n只在正常0/3计数分支刷新；退场和提前取消保留上一次缓存。
+    if (std::any_of(c.encounter_requests.begin(), c.encounter_requests.end(), [](const auto &r) {
+            return r.kind == EncounterRequestKind::snapshot_influence;
+        }))
+        c.state.encounters.at(i.encounter).linked_monsters = step.candidate->linked_monsters;
     planned_spawn = step.candidate->spawn;
     spawned = !planned_spawn;
     for (const auto &request : c.encounter_requests)

@@ -2,11 +2,13 @@
 
 `world_session.hpp/.cpp` 是默认桌面的标准C++线程边界，链接runtime/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变 `WorldFrame`（当前/前次快照、发布时间与统计）。FIFO命令只在事务间执行，相邻待处理镜头可以合并，确认/暂停/倍速保持顺序。47ms实际开始截止、卡顿不追赶；倍速仅由源运行时应用。年度`act_award`同样通过FIFO提交request/reject/confirm动作，不复用普通ack替玩家选择；暂停/旧页/非法动作沿明确失败政策。停止会唤醒并join，失败保留最后成功世界并发布错误。
 
+任务输入独立为`open_task_menu`、`act_task_page(page, action, selection)`、`set_page_confirm_held(page, held)`和页83的`cancel_page`，调用33ee056已发布消费者。任务余额不足/满员/无追加候选保留源合法反馈页，用可恢复rejected回应；旧页/暂停中的新任务输入也可恢复拒绝，不改成新页确认。missing_source/script_failed/runtime_failed仍停止worker；既有普通ack/授勋/月报错误契约保持。`WorldFrame.command_results`仅保留最近64条这类显式输入的serial/outcome/源错误与denial，避免后续镜头或tick发布覆盖待处理结果，不是通用事件总线。征集held绑定raw24页身份，仅逻辑页更新消费；切页、暂停和月报门槛自动清除，UI释放/失焦发送原页false，迟到旧页release不能清另一页的新press。普通ack不得替任务页22..28/33或商店83选择动作。
+
 `world_report.hpp/.cpp` 适配用户选择的桌面手动月报：识别场景顶层报告，校验期望阶段，复用原报告投影/候选/提交；不推进日期、不重算维护费、不重复奖励。等待时session冻结世界，确认1→2→0后按显式暂停资格恢复。headless入口仍保留源自动报告，未改迁入规则。
 
 `world_facility_queries.hpp/.cpp`只读当前simulation Owner的设施实例，复用发布经营/邻接规则，返回page74模板、共享等级/使用/提示、实例施工/占用、当月收支与原口径累计利润。消费价格不是建设报价，工期读取建设时固化阈值；不使用旧Game或初局职业计数。初始邻接来源缓存缺失时仅作纯查询重建，必须与Owner三属性相同；已有缓存还需来源身份/顺序一致，否则返回明确错误，不显示虚假的零奖励，也不刷新世界。接口不负责raw74开关、暂停资格或道具/购买/升级/入住动作。
 
-`world_simulation_main.cpp`是完整共同世界的标准C++有界入口，仅链接`ark_world_runtime`，不会创建旧Game；严格解析帧预算、月份目标和显式Java种子。自动确认普通真实页栈仅在`--auto-confirm`启用；raw16/56/57自行推进，raw87仅在显式`--end-awards`时执行请求/确认终止，`--speed 0|1`传入源1/2轮规则。未达月份目标或运行失败返回非零；输出实际账本、名单、随机次数与页身份供复查。
+`world_simulation_main.cpp`是完整共同世界的标准C++有界入口，仅链接`ark_world_runtime`，不会创建旧Game；严格解析帧预算、月份目标和显式Java种子。自动确认普通真实页栈仅在`--auto-confirm`启用；raw16/56/57/97自行推进，任务页22..28/33和商店83始终等待显式决策，不隐式接任务/出发/续费/返回；raw87仅在显式`--end-awards`时执行请求/确认终止，`--speed 0|1`传入源1/2轮规则。未达月份目标或运行失败返回非零；输出实际账本、名单、随机次数与页身份供复查。
 
 默认桌面入口使用simulation唯一Owner，`--world`是显式别名。以下Game职责属于`--legacy-slice`建设切片及其明确诊断，两种模式不能并行同步。
 

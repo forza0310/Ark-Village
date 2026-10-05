@@ -15,11 +15,16 @@ bool hit(std::optional<Vector2> point, Rectangle box) {
 }
 } // namespace
 bool world_page_automatic(const Page &page) {
-    return page.kind == Kind::raw_page &&
-           (page.legacy_page == 16 || page.legacy_page == 56 || page.legacy_page == 57);
+    return page.kind == Kind::raw_page && (page.legacy_page == 16 || page.legacy_page == 56 ||
+                                           page.legacy_page == 57 || page.legacy_page == 97);
 }
 bool world_page_regular_confirmation(const Page &page) {
-    return !world_page_automatic(page) && !(page.kind == Kind::raw_page && page.legacy_page == 87);
+    if (world_page_automatic(page))
+        return false;
+    if (page.kind != Kind::raw_page)
+        return true;
+    const int raw = page.legacy_page;
+    return raw != 87 && raw != 83 && raw != 33 && !(raw >= 22 && raw <= 28);
 }
 WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &state,
                                 std::uint64_t page) {

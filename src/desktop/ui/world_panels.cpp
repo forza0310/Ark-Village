@@ -27,7 +27,9 @@ WorldPageLayout world_page_layout(const Page &page, Extent extent) {
     result.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &box = result.panel;
     const float inset = secretary(page) ? 37.F : 15.F;
-    const float top = news ? 64.F : 29.F;
+    // Task99/100 reserve the upper paper area for their actual monster display.
+    const bool task_monster = page.legacy_page == 99 || page.legacy_page == 100;
+    const float top = news ? 64.F : task_monster ? 95.F : 29.F;
     result.body = {box.x + inset, box.y + top, box.width - inset - 15, box.height - top - 39};
     result.confirm = {box.x + box.width - 68, box.y + box.height - 28, 58, 20};
     return result;

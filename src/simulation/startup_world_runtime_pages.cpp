@@ -9,6 +9,42 @@ namespace ark::simulation {
 namespace {
 using State = StartupWorldRuntimeState;
 using Error = StartupWorldRuntimeError;
+bool unlock_human_valid(const State &s, const ref::WorldScriptPage &p) {
+    // b/g:3467的X仅含bv[f]；aq由到访排序读取，不在此页直接创建人物实例。
+    return s.rules && s.human_calendar.count(p.legacy_f) &&
+           std::any_of(s.rules->humans.begin(), s.rules->humans.end(),
+                       [&](const auto &h) { return h.identity == p.legacy_f; });
+}
+std::optional<int> event_message_command(const State &s, const ref::WorldScriptPage &p) {
+    const auto phase = s.page_phases.find(p.id);
+    const int index = phase == s.page_phases.end() ? 0 : phase->second;
+    if (p.message_commands.empty() || p.message_commands.size() != p.paragraphs.size() ||
+        index < 0 || static_cast<std::size_t>(index) >= p.message_commands.size())
+        return {};
+    return p.message_commands.at(static_cast<std::size_t>(index));
+}
+bool consume_task_display(State &s, const ref::WorldScriptPage &page,
+                          ref::WorldTaskDisplayAction action) {
+    if (!page.monster_definition || *page.monster_definition < 0 ||
+        *page.monster_definition >= static_cast<int>(s.rules->monsters.size()))
+        return false;
+    const ref::WorldTaskDisplayState display{
+        page.legacy_page, s.task_display_initialized.count(page.id) != 0, s.task_display_table};
+    const auto result = ref::prepare_world_task_display_page(
+        display, {action, s.page_counters[page.id]}, s.scene.random);
+    if (!result.candidate)
+        return false;
+    s.task_display_table = result.candidate->state.bd;
+    s.scene.random = result.candidate->random;
+    s.task_display_initialized.insert(page.id);
+    if (result.candidate->closed) {
+        const auto r =
+            ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), page.id);
+        if (!r.candidate || !write_startup_world_runtime_scripts(s, r.candidate->state))
+            return false;
+    }
+    return true;
+}
 ref::WorldGiftPageState gift(const State &s, const ref::WorldRuntimeAdapter<State> &adapter) {
     ref::WorldGiftPageState g;
     g.facility = adapter.facilities.read(s);
@@ -146,11 +182,41 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
+        return act_startup_world_runtime_deadline_page(state, id, 0).error;
     auto next = state;
     next.scripts.executing_page = id;
     if (top->kind == ref::WorldScriptPageKind::raw_page) {
         const auto adapter = startup_world_runtime_adapter();
-        if (top->legacy_page == 49) {
+        if (top->legacy_page == 11) {
+            // b/g:11367：确认只快进到40或关闭；不再次执行奖励/指令22续体。
+            if (!event_message_command(next, *top))
+                return Error::missing_source;
+            if (next.page_counters[id] < 40)
+                next.page_counters[id] = 40;
+            else {
+                const auto closed =
+                    ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+                if (!closed.candidate ||
+                    !write_startup_world_runtime_scripts(next, closed.candidate->state))
+                    return Error::script_failed;
+            }
+        } else if (top->legacy_page == 59) {
+            if (!unlock_human_valid(next, *top))
+                return Error::missing_source;
+            // b/g:4879、aM={60,70}：早确认不快进，满70才写aq10并关闭。
+            if (next.page_counters[id] >= 70) {
+                next.human_calendar.at(top->legacy_f).absent_months = 10;
+                const auto closed =
+                    ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+                if (!closed.candidate ||
+                    !write_startup_world_runtime_scripts(next, closed.candidate->state))
+                    return Error::script_failed;
+            }
+        } else if (top->legacy_page == 99 || top->legacy_page == 100) {
+            if (!consume_task_display(next, *top, ref::WorldTaskDisplayAction::confirm))
+                return Error::missing_source;
+        } else if (top->legacy_page == 49) {
             if (!initialize_rank_page(next, id))
                 return Error::missing_source;
             if (next.rank < 5) {
@@ -202,11 +268,6 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             if (!result.candidate ||
                 !write_startup_world_runtime_scripts(next, result.candidate->state))
                 return Error::script_failed;
-        } else if (top->legacy_page == 97) {
-            const auto result =
-                ref::prepare_world_popularity_unlock_page(adapter.popularity.read(next), id);
-            if (!result.candidate || !adapter.popularity.write(next, result.candidate->state))
-                return Error::script_failed;
         } else
             return Error::missing_source; // 任务结果/税收等页有独立域动作，不能只关页。
     } else {
@@ -221,6 +282,24 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     return Error::none;
 }
 
+Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
+    const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                  [](const auto &p) { return p.lifecycle != 4; });
+    if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
+        top->kind != ref::WorldScriptPageKind::raw_page || top->legacy_page != 83)
+        return Error::invalid_page;
+    // b/g:5745：按钮2走m()；仅退出商店追加菜单，购买84/85未接，不虚构确认。
+    auto next = state;
+    next.scripts.executing_page = id;
+    const auto closed =
+        ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+    if (!closed.candidate || !write_startup_world_runtime_scripts(next, closed.candidate->state))
+        return Error::script_failed;
+    next.scripts.executing_page.reset();
+    state = std::move(next);
+    return Error::none;
+}
+
 std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (state.scene.framework_paused)
         return state;
@@ -228,7 +307,21 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
+        return update_startup_world_runtime_deadline_page(state, top->id);
     auto next = state;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 97) {
+        // b/g.b:6172：实际更新清R并m()；不是玩家确认页，不再执行奖励脚本。
+        const auto adapter = startup_world_runtime_adapter();
+        const auto result =
+            ref::prepare_world_popularity_unlock_page(adapter.popularity.read(next), top->id);
+        if (!result.candidate || !adapter.popularity.write(next, result.candidate->state))
+            return {};
+        return next;
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 24 || top->legacy_page == 28))
+        return update_startup_world_runtime_task_page(state, top->id, state.page_confirm_held);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 49) {
         if (!initialize_rank_page(next, top->id))
             return {};
@@ -239,6 +332,24 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 59) {
+        if (!unlock_human_valid(next, *top))
+            return {};
+        if (counter == 1)
+            next.sound_requests.push_back(5);
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 11) {
+        const auto command = event_message_command(next, *top);
+        if (!command)
+            return {};
+        // b/g:11368：首轮0播放4、1播放6，其余代码没有此音效。
+        if (counter == 1 && (*command == 0 || *command == 1))
+            next.sound_requests.push_back(*command == 0 ? 4 : 6);
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 99 || top->legacy_page == 100) &&
+        !consume_task_display(next, *top, ref::WorldTaskDisplayAction::update))
+        return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 87 &&
         !consume_award(next, top->id, ref::WorldAwardAction::update))
         return {};

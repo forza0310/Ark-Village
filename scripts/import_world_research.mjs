@@ -18,10 +18,12 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_projection', 'startup_world_routes', 'startup_world_runtime',
   'startup_world_runtime_arrival', 'startup_world_runtime_calendar', 'startup_world_runtime_scene',
   'startup_world_runtime_focus', 'startup_world_runtime_pages', 'startup_world_runtime_tasks',
+  'startup_world_runtime_task_pages', 'startup_world_runtime_deadline',
   'startup_world_runtime_nonactors'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
-  'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors'];
+  'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
+  'startup_world_task_flow', 'startup_world_deadline'];
 const translate = text => text.replaceAll('dungeon_village_reference/', 'ark/simulation/rules/')
   .replaceAll('dungeon_village_prototype/', 'ark/simulation/')
   .replaceAll('dungeon_village_reference', 'ark::simulation::rules')

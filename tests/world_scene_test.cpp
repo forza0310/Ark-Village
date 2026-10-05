@@ -1,4 +1,5 @@
 // Product geometry must agree with source visibility; animation reads the canonical actor clock.
+#include "support/world_fixture.hpp"
 #include "world_rank.hpp"
 #include "world_scene.hpp"
 #include <algorithm>
@@ -16,14 +17,8 @@ void check(bool condition, const char *message) {
 bool close(Vector2 a, Vector2 b) {
     return std::abs(a.x - b.x) < .001F && std::abs(a.y - b.y) < .001F;
 }
-sim::StartupWorldRuntimeState initial() {
-    sim::StartupSession startup;
-    sim::StartupWorldRuntimeSession session(startup.state(),
-                                            rules::WorldRandomStream::from_java_seed(1));
-    return session.state();
-}
 void geometry() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     state.camera = {{426, -72}};
     state.reference_viewport = {{0, 23, 240, 297}};
     for (const auto point : {rules::CombatPoint{0, 0, 0}, rules::CombatPoint{1050, 6, 750}}) {
@@ -65,7 +60,7 @@ void geometry() {
           "Lower zoom clamp moved pointer anchor");
 }
 void actor_animation() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     state.reference_viewport = world_viewport(canvas_extent(1080, 720), 1);
     check(state.scripts.pages.size() == 1 &&
               state.scripts.pages.front().kind == rules::WorldScriptPageKind::scene,
@@ -160,7 +155,7 @@ void actor_animation() {
     check(world_actor_pose(state, id).frame == 0, "Monster action9 is no longer static");
 }
 void rank_conditions() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     const auto original = state;
     state.rank_values = {-11, 22, 33, 44};
     state.rank_met = {true, false, true, false};
@@ -198,9 +193,7 @@ void rank_conditions() {
                   state.scene.world.world.ai.accounting.funds() ==
                       original.scene.world.world.ai.accounting.funds() &&
                   state.scene.random.draws() == original.scene.random.draws() &&
-                  state.scene.calendar.units == original.scene.calendar.units &&
-                  state.scene.world.updates == original.scene.world.updates &&
-                  state.simulation_steps == original.simulation_steps &&
+                  ark::test::same_world_clock(state, original) &&
                   state.scripts.pages.size() == original.scripts.pages.size() &&
                   state.scripts.pages.front().lifecycle ==
                       original.scripts.pages.front().lifecycle &&

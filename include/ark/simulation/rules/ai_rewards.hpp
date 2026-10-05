@@ -51,6 +51,7 @@ struct RewardEncounter {
     std::optional<CombatInfluenceCandidate> influence{}; // p/r copied at event update, not own c.
     std::vector<int> human_scratch{};   // q, copied from p before each human movement evaluation.
     std::vector<int> monster_scratch{}; // s, copied from r before each monster evaluation.
+    int linked_monsters{};             // f.n，最近事件c()缓存；页面33不实时重新数bm。
 };
 struct AiRewardState {
     BattleCommitState battle; // Sole actor HP/control/J/K/statistics owner.

@@ -1,6 +1,7 @@
 // Real empty startup for integration; explicit geometry/economy fixtures test source
 // boundaries without simulating visits or claiming natural construction acceptance.
 #include "ark/app/world_facility_queries.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -18,12 +19,6 @@ void check(bool value, const char *message) {
     ++checks;
     if (!value)
         throw std::runtime_error(message);
-}
-State initial() {
-    sim::StartupSession startup;
-    sim::StartupWorldRuntimeSession session(startup.state(),
-                                            rules::WorldRandomStream::from_java_seed(1));
-    return session.state();
 }
 const sim::StartupDefinition &definition(const State &s, int id) {
     const auto it = std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),
@@ -48,7 +43,7 @@ void rejected(const State &s, std::uint64_t id, Error error) {
     check(result.error == error && !result.detail, "Incorrect query rejection or partial result");
 }
 State geometry_fixture() {
-    auto s = initial();
+    auto s = ark::test::initial_world();
     auto &world = s.scene.world.world;
     world.facilities.clear();
     s.scene.world.facility_order.clear();
@@ -86,7 +81,7 @@ State geometry_fixture() {
     return s;
 }
 void startup_and_current_economy() {
-    auto s = initial();
+    auto s = ark::test::initial_world();
     const auto inn = instance(s, 28);
     const auto before = s;
     const auto first = query(s, inn);
@@ -106,7 +101,7 @@ void startup_and_current_economy() {
                   before.scene.world.world.ai.accounting.funds() &&
               s.facility_monthly_cash == before.facility_monthly_cash &&
               s.scripts.event_calls == before.scripts.event_calls &&
-              s.simulation_steps == before.simulation_steps,
+              ark::test::same_world_clock(s, before),
           "Pure query mutated world/caches/cash/random");
 
     auto &use = s.scene.world.world.facility_uses.at(28);
@@ -171,7 +166,7 @@ void sources_and_staleness() {
     rejected(s, 101, Error::inconsistent_neighbourhood);
 }
 void instance_finance_and_failures() {
-    auto s = initial();
+    auto s = ark::test::initial_world();
     const auto inn = instance(s, 28);
     auto &f = s.scene.world.world.facilities.at(inn);
     f.status = 0;

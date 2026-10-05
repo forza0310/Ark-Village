@@ -107,6 +107,8 @@ std::optional<ref::CharacterId> create(State &s, const ref::WorldArrivalCreation
     context.destination = ref::Position{}; // Character.O全零，不创建虚拟设施binding。
     world.actors.emplace(identity, context);
     s.shop_actors.emplace(identity, ref::ShopActorRecord{weapon, {}, {}, {}});
+    // new Character的V/W/X/Y/Z/aa/bw均为Java0；真正21入场才计算Y耐力。
+    s.dungeon_actors.emplace(identity, ref::DungeonActorProgress{0, 0, 0, 0, 0, 0, false});
     const float x = actor.position.x * 0.3f + actor.position.z * 0.3f;
     const float y = actor.position.x * -0.15f + actor.position.z * 0.15f;
     s.actor_metadata.emplace(identity,

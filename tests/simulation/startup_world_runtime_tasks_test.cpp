@@ -89,6 +89,23 @@ void encounter() {
     const auto actor = result->scene.world.world.ai.monster_order.front();
     check(result->scene.world.world.actors.count(actor) && result->actor_metadata.count(actor),
           "new monster receives canonical movement and old-u metadata, not AI-only orphan");
+    // 局部P生成后的投影边界夹具：真实怪物已存在，但同轮尚未建立原型表现缓存。
+    auto local_spawn = *result;
+    local_spawn.actor_metadata.erase(actor);
+    const auto routes = startup_world_runtime_routes(*result);
+    const auto draws = local_spawn.scene.random.draws();
+    check(write_startup_world_runtime_routes(local_spawn, routes) &&
+              local_spawn.actor_metadata.count(actor) &&
+              startup_world_runtime_adapter()
+                  .actors
+                  .projected_facing(local_spawn, actor, routes.world.ai.battle.actors.at(actor))
+                  .has_value() &&
+              local_spawn.scene.random.draws() == draws,
+          "local actor route publication supplies real spawned monster metadata before same d");
+    local_spawn.actor_metadata.at(actor).cached_view = {99, 88};
+    check(write_startup_world_runtime_routes(local_spawn, routes) &&
+              local_spawn.actor_metadata.at(actor).cached_view == ref::Position{99, 88},
+          "monster synchronization never recomputes existing old-u cache on route publication");
     check(result->scene.world.map_flags.at(18 * 24 + 10) & 2U,
           "source event map refresh happens in typed request before returned owner");
     check(session.state().scene.world.world.ai.monster_order.empty() &&

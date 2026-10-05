@@ -271,13 +271,21 @@ void errors() {
           "duplicate append fails explicitly");
     i.rosters[0].clear();
     i.rosters[5] = {0};
-    r = prepare_ai_schedule(i, [](const auto &, const auto &) {
+    r = prepare_ai_schedule(i, [](const auto &visit, const auto &) {
         AiScheduleResponse response;
-        response.remove = true;
+        response.remove = visit.phase == AiSchedulePhase::facility;
         return response;
     });
-    check(r.error == AiScheduleError::invalid_response,
-          "facility c is void, no invented removal branch");
+    check(
+        r.candidate && r.candidate->rosters[5].empty(),
+        "facility void c can self-remove in stage2; scheduler mirrors already-committed deletion");
+    r = prepare_ai_schedule(i, [](const auto &visit, const auto &) {
+        AiScheduleResponse response;
+        response.remove = visit.phase == AiSchedulePhase::finalize;
+        return response;
+    });
+    check(r.error == AiScheduleError::invalid_response && !r.candidate,
+          "finalize still cannot claim an instance deletion");
     i.rosters[5].clear();
     i.rosters[1] = {0};
     i.dispatch_limit = 10;
@@ -290,6 +298,40 @@ void errors() {
     check(r.error == AiScheduleError::dispatch_limit && !r.candidate,
           "unbounded forward appends hit explicit safety limit, no hang or silent truncation");
 }
+void forward_facility_self_removal() {
+    AiScheduleInput input;
+    input.rosters[5] = {0, 1, 2, 3};
+    const auto handler = [](const auto &visit, const auto &) {
+        AiScheduleResponse response;
+        if (visit.phase == AiSchedulePhase::facility && visit.id == 0) {
+            response.remove = true; // 已由领域消费者提交的自删镜像，不是void返回值。
+            response.append = {{AiRosterKind::facility, 4}};
+        }
+        return response;
+    };
+    const auto result = prepare_ai_schedule(input, handler);
+    check(result.candidate &&
+              ids(*result.candidate, AiSchedulePhase::facility) ==
+                  std::vector<std::uint64_t>{0, 2, 3, 4} &&
+              result.candidate->rosters[5] == std::vector<std::uint64_t>{1, 2, 3, 4},
+          "source forward facility erase advances cursor and skips shifted1 but visits append4");
+    const auto second =
+        prepare_ai_schedule({result.candidate->rosters},
+                            [](const auto &, const auto &) { return AiScheduleResponse{}; });
+    check(second.candidate && ids(*second.candidate, AiSchedulePhase::facility) ==
+                                  std::vector<std::uint64_t>{1, 2, 3, 4},
+          "shifted facility survives and resumes exactly next admitted source round");
+    const auto failed =
+        prepare_ai_schedule(input, [handler](const auto &visit, const auto &rosters) {
+            auto response = handler(visit, rosters);
+            if (visit.phase == AiSchedulePhase::finalize)
+                response.accepted = false;
+            return response;
+        });
+    check(!failed.candidate && failed.error == AiScheduleError::consumer_failed &&
+              input.rosters[5] == std::vector<std::uint64_t>{0, 1, 2, 3},
+          "late finalize rollback includes facility self-removal and same-round append");
+}
 } // namespace
 int main() {
     try {
@@ -299,6 +341,7 @@ int main() {
         death_then_victory();
         pickup_then_reward();
         errors();
+        forward_facility_self_removal();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

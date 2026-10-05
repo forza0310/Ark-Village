@@ -34,6 +34,7 @@ normal construction input. Future Game commands/UI views must read/write this sa
 | startup_world_runtime_calendar | Calendar, maintenance, month report and checkpoints |
 | startup_world_runtime_pages | Real top-page input/lifecycle; no implicit close-all policy |
 | startup_world_runtime_tasks | Creation, encounter/task consumers and exploration restore |
+| startup_world_runtime_task_pages/deadline | Task offer, recruitment, extra members, departure and renewal/abort transactions |
 | startup_world_runtime_nonactors | Projectile/object/presentation requests and render facts |
 
 Each important interface retains its source contracts and comments. Explicit page confirmation
@@ -49,5 +50,9 @@ source caches once at page initialization; display adapters must only read those
 Three months do not certify annual transitions, arbitrary seeds, or natural task success.
 
 
-285项冻结快照接收研究40972a9：全局create_encounter保留created/denial，局部任务目录含2700+住宅续体；raw16/57/89与raw87年度页按专门消费者处理。raw87的明确终止与raw88授予分开，后者尚未交付。
+298项冻结快照接收研究33ee056（包含此前40972a9）：全局create_encounter保留created/denial，局部任务目录含2700+住宅续体；raw16/57/89与raw87年度页按专门消费者处理。raw87的明确终止与raw88授予分开，后者尚未交付。
 产品唯一勋章Owner为`StartupWorldRuntimeState.medal_count`；`startup_world_runtime_scripts`读时投影，`write_startup_world_runtime_scripts`写回并清除持久scripts临时槽。原冻结研究遗漏这条共享字段桥，修正理由和原始/产品哈希登记在SOURCES.json的product_patch；独立world_medals回归验证真实53/54/108脚本与年度+1、终止、溢出回滚。下一次迁入必须核对研究是否已补，不直接覆盖或双重增加。
+
+任务页22–28/33及相关59/83/97/99/100消费者沿冻结来源执行，费用、参与者、路线、自然成功和成果退栈均提交同一Owner。24的按住加速是源逻辑输入，桌面只发送边沿；28/33在动画中允许源confirm加速，不能由绘制帧自动触发。产品`world_session`负责物理按住的页身份和过期输入拒绝。完整主菜单、活动任务管理、raw74和普通建设不包含在这次交付。
+
+自然任务回归保留研究的全部断言，四套均编译，运行需开启`ARK_LONG_WORLD_TESTS`，标签`natural_tasks;long_world`。阶段矩阵以无窗口Debug验证默认自然轨迹、Release验证两种子与年度轨迹；raylib配置保留页面输入及世界接线检查，不重复同一标准C++长链。

@@ -24,6 +24,7 @@ The complete world is now the default; it never constructs the old Game alongsid
 | accounting/world_calendar/maintenance/tasks/month_report | Immediate money, calendar domains and report lifecycle |
 | world_scripts/popularity/gift_page/world_world_entry | Fixed events, continuations, pages and actual reward consumers |
 | world_task_creation/dungeon_finish/exploration/map_refresh | Task factories, success, restoration and dynamic map state |
+| world_task_commands/display/deadline | Explicit offers/fees, recruitment/departure presentation and renewal/abort candidates |
 | world_scene/runtime/random/random_consumers | Framework routing, private owner composition and one lazy stream |
 
 Headers without matching implementation files contain the existing template compositions;

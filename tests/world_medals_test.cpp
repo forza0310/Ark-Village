@@ -1,6 +1,7 @@
 // Product regression for the canonical UserData.j bridge. Published scripts and annual-page
 // consumers are real; eligible presence and the annual page are explicit integration fixtures.
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -17,22 +18,12 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
-State initial() {
-    sim::StartupSession startup;
-    sim::StartupWorldRuntimeSession session(startup.state(),
-                                            rules::WorldRandomStream::from_java_seed(1));
-    return session.state();
-}
 void unchanged_business(const State &state, const State &before) {
     check(state.scene.world.world.ai.accounting.funds() ==
                   before.scene.world.world.ai.accounting.funds() &&
               state.scene.world.world.ai.accounting.entries().size() ==
                   before.scene.world.world.ai.accounting.entries().size() &&
-              state.scene.calendar.units == before.scene.calendar.units &&
-              state.scene.calendar.year == before.scene.calendar.year &&
-              state.scene.calendar.month == before.scene.calendar.month &&
-              state.scene.world.updates == before.scene.world.updates &&
-              state.simulation_steps == before.simulation_steps &&
+              ark::test::same_world_clock(state, before) &&
               state.scene.random.draws() == before.scene.random.draws(),
           "Medal/page input must not mutate cash, date, actor updates or shared random");
 }
@@ -80,7 +71,7 @@ void initialize_annual(State &state) {
     state = *result.candidate;
 }
 void interleaved_consumers() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     consistent_projection(state, 0);
     script(state, 53);
     script(state, 54);
@@ -132,7 +123,7 @@ void interleaved_consumers() {
     consistent_projection(state, 4);
 }
 void overflow_rollback() {
-    auto state = initial();
+    auto state = ark::test::initial_world();
     state.medal_count = std::numeric_limits<int>::max();
     const auto before = state;
     const auto result =

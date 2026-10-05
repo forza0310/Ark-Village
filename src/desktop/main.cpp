@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
                          "arrival|visitor|motion|ai|world-active|world-month|world-rank|world-"
                          "combat|world-reward|world-exp|world-rest|world-rest-hp|world-news|world-"
-                         "break|world-speed|world-award]\n"
+                         "break|world-speed|world-award|world-task-team|world-task-result]\n"
                          "Default: continuous world. --world is an explicit alias.\n"
                          "--legacy-slice opens the former construction slice. --check-ai, "
                          "--ai-preview, --verify-play and legacy inspection pages select their "

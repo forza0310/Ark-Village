@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/startup_world_runtime_tasks.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -204,8 +205,12 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
         auto s = current;
         switch (call.stage) {
         case Stage::entry_task_result:
-            if (s.deadline_page)
-                return {}; // 实际任务结果页由任务消费者接管，不能提前清空。
+            if (s.deadline_page) {
+                auto result = prepare_startup_world_runtime_deadline_result(s);
+                if (!result)
+                    return {};
+                s = std::move(*result);
+            }
             break;
         case Stage::frame_view_sync:
             if (s.scene.scene_state == 2) {

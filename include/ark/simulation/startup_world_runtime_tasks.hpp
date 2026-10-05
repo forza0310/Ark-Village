@@ -4,6 +4,24 @@
 #include "ark/simulation/rules/world_exploration.hpp"
 
 namespace ark::simulation {
+// 玩家显式打开任务列表/操作栈顶页；不自动接任务，不绕过征集、费用或出发动画。
+StartupWorldRuntimeError open_startup_world_runtime_task_menu(StartupWorldRuntimeState &state);
+StartupWorldTaskPageResult act_startup_world_runtime_task_page(StartupWorldRuntimeState &state,
+                                                               std::uint64_t page,
+                                                               StartupWorldTaskAction action,
+                                                               int selection = 0);
+std::optional<StartupWorldRuntimeState>
+update_startup_world_runtime_task_page(const StartupWorldRuntimeState &state, std::uint64_t page,
+                                       bool held = false);
+StartupWorldTaskPageResult act_startup_world_runtime_deadline_page(StartupWorldRuntimeState &state,
+                                                                   std::uint64_t page,
+                                                                   int selection);
+std::optional<StartupWorldRuntimeState>
+update_startup_world_runtime_deadline_page(const StartupWorldRuntimeState &state,
+                                           std::uint64_t page);
+// raw33实际关闭后，首次获准main b()入口才合计费用/续费或完整中止。
+std::optional<StartupWorldRuntimeState>
+prepare_startup_world_runtime_deadline_result(const StartupWorldRuntimeState &state);
 ref::WorldTaskCreationState startup_world_runtime_factory(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_factory(StartupWorldRuntimeState &state,
                                          const ref::WorldTaskCreationState &factory);
@@ -34,4 +52,6 @@ bool initialize_startup_world_runtime_task_result_page(StartupWorldRuntimeState 
                                                        std::uint64_t page);
 void configure_startup_world_runtime_task_adapter(
     ref::WorldRuntimeAdapter<StartupWorldRuntimeState> &adapter);
+// 局部L/P可在人物c期间真实生成怪物；同轮怪物d前同步其构造时的渲染元数据。
+void synchronize_startup_world_runtime_monsters(StartupWorldRuntimeState &state);
 } // namespace ark::simulation

@@ -1,4 +1,5 @@
 // Explicit display fixtures verify the maintained inn contract, not a natural startup trace.
+#include "support/world_fixture.hpp"
 #include "world_rest_visuals.hpp"
 
 #include <iostream>
@@ -144,7 +145,7 @@ void readonly() {
                   before.scene.world.world.facilities.at(7).occupants &&
               world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
               state.scene.random.draws() == before.scene.random.draws() &&
-              state.simulation_steps == before.simulation_steps,
+              ark::test::same_world_clock(state, before),
           "Repeated rendering never advances rest/HP or writes occupancy, money, RNG or ticks");
 }
 void retained_occupant() {

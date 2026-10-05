@@ -334,7 +334,7 @@ void continuous(int months, std::uint64_t seed, int speed) {
         const auto page = top_page(s);
         check(page != nullptr, "source framework preserves main page");
         if (page->kind != ref::WorldScriptPageKind::scene && page->legacy_page != 56 &&
-            page->legacy_page != 57 && page->legacy_page != 16) {
+            page->legacy_page != 57 && page->legacy_page != 16 && page->legacy_page != 97) {
             const auto id = page->id;
             const auto legacy_page = page->legacy_page;
             const auto source_record = page->source_record;

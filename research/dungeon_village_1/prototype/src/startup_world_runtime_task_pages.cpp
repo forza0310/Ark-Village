@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace dungeon_village_prototype {
 namespace {
@@ -56,6 +57,7 @@ Command project(const State &s, const ref::WorldScriptPage &page) {
     using Phase = ref::TaskCommandPhase;
     c.phase = page.legacy_page == 24   ? Phase::recruiting
               : page.legacy_page == 25 ? Phase::team
+              : page.legacy_page == 26 ? Phase::active_team
               : page.legacy_page == 27 ? Phase::extra
               : page.legacy_page == 28 ? Phase::departure_prompt
                                        : Phase::offer;
@@ -198,21 +200,35 @@ StartupWorldTaskPageResult commit(State &state, State &next, std::uint64_t targe
 Error open_startup_world_runtime_task_menu(State &state) {
     const auto p = top(state);
     if (!state.rules || state.scene.framework_paused || !p ||
-        p->kind != ref::WorldScriptPageKind::scene || state.active_task)
+        p->kind != ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
     auto next = state;
     next.scripts.executing_page = p->id;
-    const auto id = open(next, 22, {});
+    const auto id = open(next, state.active_task ? 26 : 22, state.active_task);
     if (!id)
         return Error::script_failed;
-    next.task_page_lists[*id] = next.task_order;
-    if (next.task_order.empty()) {
+    if (!state.active_task)
+        next.task_page_lists[*id] = next.task_order;
+    if (!state.active_task && next.task_order.empty()) {
         const auto r = ref::prepare_world_script(startup_world_runtime_catalog(),
                                                  startup_world_runtime_scripts(next), {29, {}, {}});
         if (!r.candidate || !write_startup_world_runtime_scripts(next, r.candidate->state) ||
             !close(next, *id))
             return Error::script_failed;
     }
+    next.scripts.executing_page.reset();
+    state = std::move(next);
+    return Error::none;
+}
+Error open_startup_world_runtime_task_control_menu(State &state) {
+    const auto *p = top(state);
+    if (!state.rules || state.scene.framework_paused || !p ||
+        p->kind != ref::WorldScriptPageKind::scene || !state.active_task)
+        return Error::invalid_page;
+    auto next = state;
+    next.scripts.executing_page = p->id;
+    if (!open(next, 4, state.active_task))
+        return Error::script_failed;
     next.scripts.executing_page.reset();
     state = std::move(next);
     return Error::none;
@@ -228,12 +244,55 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     auto next = state;
     next.scripts.executing_page = id;
     const int raw = p->legacy_page;
+    if (raw == 60 && next.page_human_bindings.count(id)) {
+        if (action != StartupWorldTaskAction::cancel || !close(next, id))
+            return {Error::invalid_page};
+        next.scripts.executing_page.reset();
+        state = std::move(next);
+        return {};
+    }
+    if (raw == 1 && next.task_abort_questions.count(id)) {
+        if (action != StartupWorldTaskAction::confirm || selection < 0 || selection > 1)
+            return {Error::invalid_page};
+        const auto parent = next.task_abort_questions.at(id);
+        const auto owner =
+            std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(), [&](const auto &v) {
+                return v.id == parent && v.lifecycle != 4 && v.legacy_page == 4;
+            });
+        if (owner == next.scripts.pages.end() || next.task_abort_answers.count(parent) ||
+            !close(next, id))
+            return {Error::invalid_page};
+        next.task_abort_answers[parent] = selection;
+        next.scripts.executing_page.reset();
+        state = std::move(next);
+        return {};
+    }
+    if (raw == 4) {
+        if (action == StartupWorldTaskAction::cancel) {
+            if (!close(next, id))
+                return {Error::script_failed};
+        } else if (action == StartupWorldTaskAction::request_abort) {
+            if (std::any_of(next.task_abort_questions.begin(), next.task_abort_questions.end(),
+                            [&](const auto &q) { return q.second == id; }) ||
+                next.task_abort_answers.count(id))
+                return {Error::invalid_page};
+            const auto question = open(next, 1, state.active_task);
+            if (!question)
+                return {Error::script_failed};
+            next.task_abort_questions[*question] = id;
+            next.scripts.pages.back().paragraphs = {"要终止任务吗"};
+        } else
+            return {Error::invalid_page};
+        next.scripts.executing_page.reset();
+        state = std::move(next);
+        return {};
+    }
     if (raw == 33)
         return action == StartupWorldTaskAction::confirm
                    ? act_startup_world_runtime_deadline_page(state, id, selection)
                    : StartupWorldTaskPageResult{Error::invalid_page};
     if (raw == 22 || raw == 25 || raw == 26) {
-        if (action == StartupWorldTaskAction::cancel || raw == 26) {
+        if (action == StartupWorldTaskAction::cancel) {
             if (!close(next, id))
                 return {Error::script_failed};
         } else if (raw == 22 && action == StartupWorldTaskAction::confirm) {
@@ -242,7 +301,7 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
                 selection >= static_cast<int>(list->second.size()) ||
                 !open(next, 23, list->second[selection]))
                 return {Error::invalid_page};
-        } else if (raw == 25) {
+        } else if (raw == 25 || raw == 26) {
             auto target = id;
             const auto c = project(next, *p);
             const auto consume = consumer(next, id, target);
@@ -255,12 +314,25 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
                 const auto r = ref::prepare_world_task_extra_candidates(c, consume);
                 return commit(state, next, target, r);
             }
-            if (action == StartupWorldTaskAction::depart ||
-                action == StartupWorldTaskAction::confirm) {
-                const auto r = ref::prepare_world_task_departure_page(c, consume);
-                return commit(state, next, target, r);
+            if (action == StartupWorldTaskAction::inspect && selection >= 0 &&
+                selection < static_cast<int>(state.participants.size())) {
+                const auto detail = open(next, 60, {});
+                if (!detail)
+                    return {Error::script_failed};
+                next.page_human_bindings[*detail] = state.participants.at(selection);
+            } else if (raw == 26 && action == StartupWorldTaskAction::confirm) {
+                if (!close(next, id))
+                    return {Error::script_failed};
+            } else {
+                if (action == StartupWorldTaskAction::depart ||
+                    (action == StartupWorldTaskAction::confirm && raw == 25)) {
+                    if (raw == 26)
+                        return {Error::invalid_page};
+                    const auto r = ref::prepare_world_task_departure_page(c, consume);
+                    return commit(state, next, target, r);
+                }
+                return {Error::invalid_page};
             }
-            return {Error::invalid_page};
         } else
             return {Error::invalid_page};
         next.scripts.executing_page.reset();
@@ -286,6 +358,43 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     else
         return {Error::invalid_page};
     return commit(state, next, target, result);
+}
+
+std::optional<State> update_startup_world_runtime_task_control_page(const State &state,
+                                                                    std::uint64_t id) {
+    const auto *p = top(state);
+    if (!p || p->id != id || p->legacy_page != 4 || state.scene.framework_paused)
+        return {};
+    auto next = state;
+    next.scripts.executing_page = id;
+    const auto answer = next.task_abort_answers.find(id);
+    if (answer == next.task_abort_answers.end())
+        return next;
+    if (answer->second == 0) {
+        if (!abort_startup_world_runtime_task_entities(next))
+            return {};
+        for (const int event : {80, 162}) {
+            if (event == 162 && ref::world_script_seen(next.scripts, 162))
+                continue;
+            const auto result =
+                ref::prepare_world_script(startup_world_runtime_catalog(),
+                                          startup_world_runtime_scripts(next), {event, {}, {}});
+            if (!result.candidate ||
+                !write_startup_world_runtime_scripts(next, result.candidate->state))
+                return {};
+            if (event == 80) {
+                auto &pending = next.scene.world.world.ai.pending_completion;
+                if (pending < std::numeric_limits<int>::min() + 10)
+                    return {};
+                pending -= 10; // 请求完成量，不即时减人气或改金币。
+            }
+        }
+        next.scripts.notices.push_back({26, -1, 80, "", "任务中止。街道人气<co=FF0E01>-10</co>"});
+        if (!close(next, id))
+            return {};
+    }
+    next.task_abort_answers.erase(id);
+    return next;
 }
 
 std::optional<State> update_startup_world_runtime_task_page(const State &state, std::uint64_t id,

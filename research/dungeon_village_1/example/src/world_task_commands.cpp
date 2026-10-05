@@ -299,7 +299,8 @@ TaskCommandResult prepare_world_task_recruitment(const State &s, bool held,
 
 TaskCommandResult prepare_world_task_extra_candidates(const State &s,
                                                       const TaskCommandConsumer &consumer) {
-    if (!valid(s) || s.phase != TaskCommandPhase::team)
+    if (!valid(s) ||
+        (s.phase != TaskCommandPhase::team && s.phase != TaskCommandPhase::active_team))
         return fail(CommandError::invalid_input);
     Candidate c;
     c.state = s;
@@ -343,7 +344,8 @@ TaskCommandResult prepare_world_task_hire(const State &s, int id, TaskCommandInp
     c.state = s;
     CommandError error{};
     if (input.cancel) {
-        c.state.phase = TaskCommandPhase::team;
+        c.state.phase =
+            s.finish.active_task ? TaskCommandPhase::active_team : TaskCommandPhase::team;
         if (!request(c, Effect::close_page, 27, consumer, error))
             return fail(error);
         return {CommandError::none, c};
@@ -372,7 +374,7 @@ TaskCommandResult prepare_world_task_hire(const State &s, int id, TaskCommandInp
     c.state.finish.human_definition_flags.at(id) |= 2U;
     if (!emit(c, {Effect::event, 64, 1, {}, c.state.selected_task, id}, consumer, error))
         return fail(error);
-    c.state.phase = TaskCommandPhase::team;
+    c.state.phase = s.finish.active_task ? TaskCommandPhase::active_team : TaskCommandPhase::team;
     if (!request(c, Effect::close_page, 27, consumer, error))
         return fail(error);
     c.accepted = true;

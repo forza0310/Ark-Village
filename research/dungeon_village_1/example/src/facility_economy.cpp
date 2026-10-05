@@ -28,9 +28,7 @@ bool multiply_percent(std::int64_t &value, std::int64_t percent) {
     return true;
 }
 
-bool flag(std::uint32_t bits, std::uint32_t bit) {
-    return (bits & bit) != 0U;
-}
+bool flag(std::uint32_t bits, std::uint32_t bit) { return (bits & bit) != 0U; }
 
 } // namespace
 
@@ -102,4 +100,27 @@ FacilityEconomyResult derive_facility_economy(const FacilityEconomyDefinition &d
     return {FacilityEconomyError::none, values};
 }
 
+std::optional<FacilityUpgradeCandidate>
+prepare_facility_upgrade(const FacilityEconomyDefinition &definition,
+                         const FacilityEconomyInput &input) {
+    const auto before = derive_facility_economy(definition, input);
+    if (!before.values || !before.values->upgrade_ready || before.values->upgrade_uses < 0)
+        return {};
+    auto next = input;
+    ++next.level;
+    next.completed_definition_uses -= static_cast<std::uint64_t>(before.values->upgrade_uses);
+    const auto after = derive_facility_economy(definition, next);
+    if (!after.values)
+        return {};
+    FacilityUpgradeCandidate c;
+    c.level = next.level;
+    c.remaining_uses = next.completed_definition_uses;
+    c.values = *after.values;
+    for (std::size_t n = 0; n < 3; ++n) {
+        c.display[0][n] = before.values->instance_attributes[n];
+        c.display[1][n] = after.values->instance_attributes[n];
+        c.display[2][n] = c.display[1][n] - c.display[0][n];
+    }
+    return c;
+}
 } // namespace dungeon_village_reference

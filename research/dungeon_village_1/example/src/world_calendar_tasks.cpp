@@ -159,6 +159,77 @@ std::map<int, CalendarTaskRankTerms> fixed_calendar_task_rank_terms() {
             {3, {{5, 2500}, {1, 25}, {2, 10}, {4, 30}}},
             {4, {{5, 3500}, {0, 70000}, {6, 30}, {3, 64}}}};
 }
+
+std::optional<WorldRankPromotion>
+prepare_world_rank_promotion(int rank, const CalendarTaskRankTerms &terms,
+                             const std::array<bool, 4> &met, int selection, bool manual,
+                             const std::string &village, int bypass) {
+    if (rank < 0 || rank >= 5 || terms.size() != 4 || selection < 0 || selection > 4)
+        return {};
+    WorldRankPromotion result;
+    result.rank = rank;
+    if (selection) {
+        const int type = terms.at(static_cast<std::size_t>(selection - 1)).type;
+        if (type < 0 || type > 6)
+            return {};
+        result.before_promotion.push_back({type + 154, {}, {}});
+        return result;
+    }
+    result.mark_user_flag = true;
+    const auto count = std::count(met.begin(), met.end(), true);
+    if (bypass == 0 && count != 4) {
+        result.before_promotion.push_back({count == 3 ? 39 : 38, {}, {}});
+        return result;
+    }
+    result.promoted = true;
+    result.rank = rank + 1;
+    if (manual)
+        result.before_promotion.push_back({37, {}, {}});
+    result.after_promotion.push_back({result.rank - 1 + 53, {}, {}});
+    if (result.rank == 5)
+        result.after_promotion.push_back({47, {}, {}});
+    if (result.rank < 5) {
+        result.after_promotion.push_back(
+            {result.rank - 1 + 42, village + "\t" + std::to_string(result.rank), {}});
+        result.after_promotion.push_back({41, {}, {}});
+    } else
+        result.after_promotion.push_back({46, {}, {}});
+    if (result.rank == 1 || result.rank == 3 || result.rank == 5)
+        result.after_promotion.push_back({result.rank - 1 + 206, {}, {}});
+    return result;
+}
+
+std::optional<WorldRankCelebration>
+prepare_world_rank_celebration(const std::vector<int> &present_definitions,
+                               const WorldRandomStream &random) {
+    if (present_definitions.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+        std::any_of(present_definitions.begin(), present_definitions.end(),
+                    [](int id) { return id < 0; }))
+        return {};
+    auto shuffled = present_definitions;
+    WorldRankCelebration result;
+    result.random = random;
+    for (std::size_t n = 0; n < shuffled.size(); ++n) {
+        const auto draw = result.random.draw(static_cast<int>(shuffled.size()));
+        if (draw.error != WorldRandomError::none)
+            return {};
+        std::swap(shuffled[n], shuffled.at(static_cast<std::size_t>(draw.ticket)));
+    }
+    constexpr std::array<std::array<int, 4>, 10> layout{{{287, 143, 3, 0},
+                                                         {273, 135, 1, 1},
+                                                         {287, 135, 2, 1},
+                                                         {273, 143, 0, 0},
+                                                         {301, 143, 3, 0},
+                                                         {301, 135, 2, 1},
+                                                         {259, 143, 0, 0},
+                                                         {315, 143, 3, 0},
+                                                         {259, 135, 1, 1},
+                                                         {315, 135, 2, 1}}};
+    for (std::size_t n = 0; n < std::min(shuffled.size(), layout.size()); ++n)
+        result.participants.push_back(
+            {shuffled[n], layout[n][0], layout[n][1], layout[n][2], layout[n][3]});
+    return result;
+}
 std::optional<CalendarTaskRankStatus>
 prepare_world_rank_status(const WorldCalendarTasksState &state) {
     const auto found = state.rank_terms.find(state.rank);
@@ -213,10 +284,8 @@ prepare_world_rank_status(const WorldCalendarTasksState &state) {
         status.values[index] = value;
         status.met[index] = value >= term.threshold;
     }
-    status.qualified = state.rank_bypass == 1 ||
-                       std::all_of(status.met.begin(), status.met.end(), [](bool value) {
-                           return value;
-                       });
+    status.qualified = state.rank_bypass == 1 || std::all_of(status.met.begin(), status.met.end(),
+                                                             [](bool value) { return value; });
     return status;
 }
 CalendarTaskResult prepare_world_calendar_tasks(const WorldCalendarTasksState &state,

@@ -177,6 +177,26 @@ void invalid_and_overflow() {
     check(wide.definition_attributes[0] == static_cast<std::int64_t>(INT_MAX) * 2,
           "wide type does not reproduce Java integer wrap");
 }
+void actual_upgrade() {
+    FacilityEconomyInput input;
+    input.completed_definition_uses = 57;
+    input.instance_modifiers = {17, 4, 5, 0};
+    const auto next = prepare_facility_upgrade(inn(), input);
+    check(next && next->level == 2 && next->remaining_uses == 7 && input.level == 1 &&
+              input.completed_definition_uses == 57,
+          "upgrade consumes old threshold50, preserves excess7, leaves source untouched");
+    check(
+        next->display ==
+            std::array<std::array<std::int64_t, 3>, 3>{{{317, 9, 10}, {354, 20, 21}, {37, 11, 11}}},
+        "actual upgrade display keeps instance modifiers on old/new and integer deltas");
+    for (const auto sample :
+         std::array<std::pair<int, std::uint64_t>, 3>{{{1, 49}, {5, 500}, {0, 57}}}) {
+        input.level = sample.first;
+        input.completed_definition_uses = sample.second;
+        check(!prepare_facility_upgrade(inn(), input),
+              "not-ready, max-level and invalid inputs cannot produce an upgrade candidate");
+    }
+}
 
 } // namespace
 
@@ -186,5 +206,6 @@ int main() {
     flag_priority();
     construction_and_upgrade();
     invalid_and_overflow();
+    actual_upgrade();
     std::cout << checks << " checks passed\n";
 }

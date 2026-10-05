@@ -49,14 +49,15 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_arrival.cpp src/startup_world_runtime_tasks.cpp
     src/startup_world_runtime_task_pages.cpp
     src/startup_world_runtime_deadline.cpp
-    src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp "${STARTUP_WORLD_CPP}")
+    src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
+    src/startup_world_visuals.cpp src/startup_world_building.cpp "${STARTUP_WORLD_CPP}")
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
 target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
 foreach(module IN ITEMS startup_world_projection startup_world_routes startup_world_scene startup_world_arrival
                         startup_world_runtime_tasks startup_world_runtime startup_world_continuous startup_world_pages
-                        startup_world_runtime_nonactors startup_world_task_flow startup_world_deadline)
+                        startup_world_runtime_nonactors startup_world_task_flow startup_world_deadline startup_world_building)
     add_executable(dungeon_village_${module}_tests tests/${module}_test.cpp)
     target_link_libraries(dungeon_village_${module}_tests PRIVATE dungeon_village_startup_world)
     add_test(NAME dungeon_village_prototype.${module} COMMAND dungeon_village_${module}_tests)
@@ -64,6 +65,12 @@ foreach(module IN ITEMS startup_world_projection startup_world_routes startup_wo
         target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 endforeach()
+add_executable(dungeon_village_startup_world_visuals_tests tests/startup_world_visuals_test.cpp
+    ../tools/src/sprite.cpp ../tools/src/table.cpp)
+target_include_directories(dungeon_village_startup_world_visuals_tests PRIVATE ../tools/include)
+target_link_libraries(dungeon_village_startup_world_visuals_tests PRIVATE dungeon_village_startup_world PkgConfig::RAYLIB)
+add_test(NAME dungeon_village_prototype.startup_world_visuals
+    COMMAND dungeon_village_startup_world_visuals_tests "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original")
 # 唯一Owner的Debug值事务在并行构建时可能被CPU限流；这里只放宽墙钟保护，
 # 真实日期目标、150000框架调用上限及所有领域断言不变，不改世界tick或游戏期限。
 set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTIES TIMEOUT 1800)
@@ -203,6 +210,7 @@ add_test(NAME dungeon_village_prototype.assets
          COMMAND dungeon_village_asset_tests "${CMAKE_CURRENT_SOURCE_DIR}/../assets")
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_startup_world_visuals_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_prototype_model PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_village_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_prototype PRIVATE -Wall -Wextra -Wpedantic -Werror)

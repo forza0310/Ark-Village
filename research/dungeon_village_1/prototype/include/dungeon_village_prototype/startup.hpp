@@ -44,6 +44,7 @@ struct StartupDefinition {
     ref::FacilityEconomyDefinition economy; // Raw endpoints, not effective construction quotes.
     std::vector<ref::FacilityAttributeEffect> exit_effects; // Source columns28/29, original order.
     std::vector<ref::NeighbourModifier> neighbour_effects; // Source26/27, separate from exit gains.
+    int unlock_rank{}; // 原o.D，tenantData第32索引列，仅用于晋级后的提醒匹配。
 };
 struct StartupFacility {
     std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.

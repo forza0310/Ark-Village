@@ -76,9 +76,29 @@ void rules() {
               r.candidate->effects[1].value == 22,
           "zero medals automatic branch refreshes before event22");
     state.medal_count = 1;
-    for (const auto action : {WorldAwardAction::request_award, WorldAwardAction::confirm_award})
-        check(prepare_world_award_page(state, action).error == WorldAwardError::unsupported_action,
-              "unimplemented award and raw88 explicitly reject without mutation");
+    state.termination_pending = false;
+    check(prepare_world_award_page(state, WorldAwardAction::confirm_award).error ==
+              WorldAwardError::invalid_owner,
+          "award cannot skip actual yes/no request");
+    r = prepare_world_award_page(state, WorldAwardAction::request_award, 1);
+    check(r.candidate && r.candidate->state.pending_award == 0 &&
+              r.candidate->state.medal_count == 1 &&
+              r.candidate->effects.front().kind == WorldAwardEffectKind::award_prompt,
+          "request binds actual selected ranked definition without spending medal");
+    state = r.candidate->state;
+    auto rejected = prepare_world_award_page(state, WorldAwardAction::reject_award);
+    check(rejected.candidate && !rejected.candidate->state.pending_award &&
+              rejected.candidate->state.medal_count == 1,
+          "no answer preserves medal, clears only award prompt");
+    r = prepare_world_award_page(state, WorldAwardAction::confirm_award);
+    check(r.candidate && r.candidate->state.medal_count == 0 &&
+              r.candidate->state.page_counter == 0 && r.candidate->state.announced &&
+              r.candidate->effects.front().kind == WorldAwardEffectKind::reward &&
+              r.candidate->effects.front().value == 0,
+          "yes consumes once, requests bound reward, retains w and resets parent counter");
+    check(prepare_world_award_page(r.candidate->state, WorldAwardAction::confirm_award).error ==
+              WorldAwardError::invalid_owner,
+          "same answer cannot award twice");
     check(prepare_world_award_page(state, static_cast<WorldAwardAction>(99)).error ==
               WorldAwardError::unsupported_action,
           "unknown action never falls through as ordinary update");
@@ -109,10 +129,44 @@ void rules() {
     check(prepare_world_award_page_initialization(original).error == WorldAwardError::invalid_owner,
           "zero roster rejects source division by zero, never injects adventurer");
 }
+void displays() {
+    const auto random = WorldRandomStream::from_raw({-1});
+    struct Case {
+        int counter;
+        int phase;
+        bool confirm;
+        int next_counter;
+        int next_phase;
+        bool event;
+    };
+    for (const auto c : {Case{134, 0, true, 134, 0, false}, Case{135, 0, true, 212, 1, true},
+                         Case{201, 1, true, 202, 1, false}, Case{202, 1, true, 212, 1, false},
+                         Case{211, 1, true, 212, 1, false}, Case{212, 1, true, 212, 1, true},
+                         Case{500, 1, false, 500, 1, false}}) {
+        const auto r = prepare_world_award_display({c.counter, c.phase}, c.confirm, random);
+        check(r && r->state.counter == c.next_counter && r->state.phase == c.next_phase &&
+                  r->event.has_value() == c.event && r->random.draws() == (c.event ? 1U : 0U),
+              "raw88 old-local transition and fast-forward boundaries preserve single random draw");
+        if (c.event)
+            check(r->event == 25, "source signed modulo random selects actual event25");
+    }
+    check(!prepare_world_award_display({212, 1}, true, WorldRandomStream::from_raw({})),
+          "exhausted RNG cannot return partial display or close");
+    for (const int n : {0, 2, 41, 42, 66, 67, 72, 73}) {
+        const auto r = prepare_world_effort_display(n, true, {});
+        check(r && r->counter == (n < 67 ? 67 : n) && r->closed == (n >= 73),
+              "effort confirm preserves 67..72 hold before closing at73");
+    }
+    check(prepare_world_effort_display(2, false, {})->counter == 8 &&
+              prepare_world_effort_display(2, false, {1, 0, 0, 0})->counter == 2 &&
+              prepare_world_effort_display(14, false, {1, 0, 0, 0})->counter == 20,
+          "only actual nonzero delta window suppresses extra six counter steps");
+}
 } // namespace
 int main() {
     try {
         rules();
+        displays();
         std::cout << checks << " award page checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

@@ -25,7 +25,16 @@ struct TaskCommandHuman {
     int extra_fee{};                    // e.an，只有页27初始化才重新计算。
     int absence{};                      // e.m，真正出发才按参与定义清0。
 };
-enum class TaskCommandPhase { offer, recruiting, team, extra, departure_prompt, departing, closed };
+enum class TaskCommandPhase {
+    offer,
+    recruiting,
+    team,
+    active_team,
+    extra,
+    departure_prompt,
+    departing,
+    closed
+};
 struct TaskRecruitmentEntry {
     int human{};
     int counter{};  // 原X[i][1]，负数为入场延迟。

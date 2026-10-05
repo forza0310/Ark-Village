@@ -82,4 +82,24 @@ struct HumanGrowthResult {
 // deduplicate. Retains existing XP after cost subtraction, but any actual upgrade discards
 // pending N/O.
 HumanGrowthResult prepare_human_growth(const HumanGrowthInput &input);
+
+struct HumanRewardCandidate {
+    HumanDefinitionStatsInput definition;
+    int satisfaction{};
+    int celebrations{};
+    int pending_completion{};
+    std::array<std::array<int, 2>, 3> reward_display{}; // 原aH：旧值、新值、请求值。
+    std::optional<std::array<std::array<int, 4>, 3>> effort_display;
+    std::optional<HumanDerivedStats> derived; // 努力跨十位才重算，不覆盖原共享缓存时点。
+};
+struct HumanRewardResult {
+    HumanGrowthError error{HumanGrowthError::none};
+    std::optional<HumanRewardCandidate> candidate;
+};
+// c/n.a(e,C,u,z)：满足度封顶仍增加请求C的完成量；事件58与页面由聚合Owner消费。
+HumanRewardResult prepare_human_reward(const HumanDefinitionStatsInput &definition,
+                                       const std::vector<HumanProfessionRule> &professions,
+                                       int satisfaction, int celebrations, int pending_completion,
+                                       int satisfaction_request, int effort_request,
+                                       bool celebrate);
 } // namespace dungeon_village_reference

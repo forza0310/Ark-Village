@@ -29,7 +29,7 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/world_random_consumers.cpp src/world_scene.cpp
                                      src/world_exploration.cpp src/world_calendar_maintenance.cpp
                                      src/world_month_report.cpp src/world_calendar_tasks.cpp
-                                     src/world_award_page.cpp
+                                     src/world_award_page.cpp src/world_notices.cpp
                                      src/world_popularity.cpp src/world_task_creation.cpp
                                      src/world_task_commands.cpp src/world_task_display.cpp src/world_task_deadline.cpp
                                      src/world_facility_update.cpp src/world_nonactor_schedule.cpp
@@ -574,7 +574,7 @@ foreach(module IN ITEMS world_actor_routes world_dungeon_finish world_random wor
                         world_calendar_tasks world_popularity world_task_creation world_task_commands
                         world_task_display world_task_deadline
                         world_facility_update world_nonactor_schedule world_runtime world_residence
-                        world_world_entry world_gift_page world_arrivals world_award_page)
+                        world_world_entry world_gift_page world_arrivals world_award_page world_notices)
     add_executable(dungeon_village_${module}_tests tests/${module}_test.cpp)
     target_link_libraries(dungeon_village_${module}_tests PRIVATE dungeon_village_reference)
     target_compile_features(dungeon_village_${module}_tests PRIVATE cxx_std_17)

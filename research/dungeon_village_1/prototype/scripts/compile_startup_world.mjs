@@ -81,7 +81,8 @@ export function compileStartupWorld(tables, map, sources, state) {
     const flags = n(row[13]);
     return `{${n(row[0])},${text(row[1])},${n(row[2])},${flags},${flags&1?1:0},`+
       `{${job},${n(row[6])},${array(base)},{},${array(levels)},{{${combat.join(',')}}},{},${array(spells)}},${array(equipment)},`+
-      `${n(row[7])},`+(row[10]===''?'{}':`{${row[10].split('&').map(op=>array(op.split(','))).join(',')}}`)+'}';
+      `${n(row[7])},`+(row[10]===''?'{}':`{${row[10].split('&').map(op=>array(op.split(','))).join(',')}}`)+
+      `,${n(row[8])},`+(row[9]===''?'{}':`{${row[9].split('&').map(op=>array(op.split(','))).join(',')}}`)+'}';
   });
   const equipmentOutput = [weapons,armor,accessory].flatMap((table,index)=>table.map(row=>{
     const weapon = index===0, flag = n(row[weapon?18:12]), opened = (flag&1)!==0;
@@ -125,9 +126,9 @@ export function compileStartupWorld(tables, map, sources, state) {
       return `{${a.map((v,i)=>`{${v},${b[i]}}`).join(',')}}`;
     };
     need(n(row[10])>=0&&n(row[10])<=2,'设施形状越界');
-    return `{${n(row[0])},${text(row[1])},${n(row[3])},-1,${n(row[13])},${n(row[14])},`+
+    return `{${n(row[0])},${text(row[1])},${n(row[3])},${n(row[8])},${n(row[13])},${n(row[14])},`+
       `${n(row[9])},${n(row[4])},${n(row[11])},${n(row[35])},${n(row[10])},${n(row[19])},`+
-      `${n(row[5])},${n(row[25])},${economy},${pairs(row[28],row[29],6,true)},${pairs(row[26],row[27],3)}}`;
+      `${n(row[5])},${n(row[25])},${economy},${pairs(row[28],row[29],6,true)},${pairs(row[26],row[27],3)},${n(row[32])}}`;
   });
   const regions=name=>`{${map[name].map(region=>{
     const a=region.logical;

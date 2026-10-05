@@ -1,3 +1,4 @@
+#include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 
 #include <algorithm>
@@ -13,31 +14,41 @@ ref::WorldCalendarMaintenanceState maintenance(const State &s) {
         const auto id = h.identity;
         const auto &extra = s.human_calendar.at(id);
         const auto &definition = s.scene.world.world.ai.growth.at(id).definition;
-        auto totals = std::vector<std::int32_t>(extra.yearly_totals.begin(), extra.yearly_totals.end());
+        auto totals =
+            std::vector<std::int32_t>(extra.yearly_totals.begin(), extra.yearly_totals.end());
         totals[0] = s.scene.world.world.ai.battle.humans.at(id).kills;
         totals[1] = s.scene.world.world.ai.battle.humans.at(id).killed_stat1;
         totals[2] = s.scene.world.world.human_spending.at(id);
         const auto &cooldowns = s.shop_humans.at(id).reselect;
-        r.humans.push_back({id, s.human_presence.at(id), s.human_definition_state.at(id),
-                            extra.absent_months, {cooldowns.begin(), cooldowns.end()}, totals,
+        r.humans.push_back({id,
+                            s.human_presence.at(id),
+                            s.human_definition_state.at(id),
+                            extra.absent_months,
+                            {cooldowns.begin(), cooldowns.end()},
+                            totals,
                             s.human_homes.at(id)[2],
                             s.rules->jobs.at(definition.current_profession).type,
-                            s.scene.world.world.ai.battle.humans.at(id).battle_reward_stat, extra.legacy_G});
+                            s.scene.world.world.ai.battle.humans.at(id).battle_reward_stat,
+                            extra.legacy_G});
     }
     for (const auto id : s.scene.world.world.ai.human_order)
-        r.active_human_definitions.push_back(s.scene.world.world.ai.battle.actors.at(id).definition);
+        r.active_human_definitions.push_back(
+            s.scene.world.world.ai.battle.actors.at(id).definition);
     for (const auto &d : s.rules->facilities)
-        r.facility_definitions.push_back({d.id, d.kind,
-                                         s.facility_definitions.at(d.id).popularity_reward});
+        r.facility_definitions.push_back(
+            {d.id, d.kind, s.facility_definitions.at(d.id).popularity_reward});
     for (const auto id : s.scene.world.facility_order) {
         const auto &cash = s.facility_monthly_cash.at(id);
-        r.facilities.push_back({id, s.scene.world.world.facilities.at(id).placement.definition_id,
-                                s.facility_month_age.at(id), {cash.begin(), cash.end()}});
+        r.facilities.push_back({id,
+                                s.scene.world.world.facilities.at(id).placement.definition_id,
+                                s.facility_month_age.at(id),
+                                {cash.begin(), cash.end()}});
     }
     for (const auto &i : s.rules->items)
         r.shop_items.push_back(s.shop_item_stock.at(i.identity));
     for (const auto &m : s.rules->monsters)
-        r.monster_month_kills.push_back(s.scene.world.world.ai.monster_growth.at(m.identity).defeats);
+        r.monster_month_kills.push_back(
+            s.scene.world.world.ai.monster_growth.at(m.identity).defeats);
     for (const auto &a : s.activity_flags)
         r.item_flags.push_back(a.second); // 原bx/a.c活动目录，不是by物品。
     r.kill_display = s.scene.world.world.ai.battle.defeated_definitions;
@@ -69,7 +80,8 @@ bool write_maintenance(State &s, const ref::WorldCalendarMaintenanceState &r) {
         battle.kills = h.yearly_totals[0];
         battle.killed_stat1 = h.yearly_totals[1];
         battle.battle_reward_stat = h.legacy_F;
-        std::copy(h.equipment.begin(), h.equipment.end(), s.shop_humans.at(h.definition).reselect.begin());
+        std::copy(h.equipment.begin(), h.equipment.end(),
+                  s.shop_humans.at(h.definition).reselect.begin());
         s.human_homes.at(h.definition)[2] = h.residence_status;
         extra.legacy_F = h.legacy_F;
         extra.legacy_G = h.legacy_G;
@@ -80,7 +92,8 @@ bool write_maintenance(State &s, const ref::WorldCalendarMaintenanceState &r) {
         if (f.yearly_cash.size() != 12)
             return false;
         s.facility_month_age.at(f.identity) = f.month_age;
-        std::copy(f.yearly_cash.begin(), f.yearly_cash.end(), s.facility_monthly_cash.at(f.identity).begin());
+        std::copy(f.yearly_cash.begin(), f.yearly_cash.end(),
+                  s.facility_monthly_cash.at(f.identity).begin());
     }
     for (const auto &i : r.shop_items)
         s.shop_item_stock.at(i.definition) = i;
@@ -105,16 +118,18 @@ ref::WorldCalendarTasksState tasks(const State &s) {
     r.scripts = startup_world_runtime_scripts(s);
     r.random = s.scene.random;
     for (const auto &h : s.human_calendar)
-        r.human_details.emplace(h.first, ref::CalendarTaskHuman{
-            s.scene.world.world.ai.growth.at(h.first).definition.profession_levels,
-            h.second.continuation_cost});
+        r.human_details.emplace(
+            h.first, ref::CalendarTaskHuman{
+                         s.scene.world.world.ai.growth.at(h.first).definition.profession_levels,
+                         h.second.continuation_cost});
     for (const auto &t : s.rules->tasks)
         r.task_details.emplace(t.factory.identity,
                                ref::CalendarTaskDefinitionDetails{t.title, t.name});
     for (const auto &m : s.rules->monsters)
-        r.monster_details.emplace(m.identity, ref::CalendarTaskMonsterDetails{
-            m.name, m.initial.sprite_variant,
-            s.scene.world.world.ai.monster_growth.at(m.identity).growth});
+        r.monster_details.emplace(m.identity,
+                                  ref::CalendarTaskMonsterDetails{
+                                      m.name, m.initial.sprite_variant,
+                                      s.scene.world.world.ai.monster_growth.at(m.identity).growth});
     r.facility_definition_presence = s.facility_presence;
     r.rank_terms = ref::fixed_calendar_task_rank_terms();
     r.facility_order = s.scene.world.facility_order;
@@ -159,92 +174,104 @@ bool refresh_startup_world_runtime_rank(State &state) {
     state.rank_values = status->values;
     return true;
 }
+std::optional<State> refresh_startup_world_residence_requests(const State &s, bool notify) {
+    auto next = s;
+    const auto &catalog = startup_world_runtime_catalog();
+    // UserData.b(true)：按全部bv原序，只读取p/D2/flags2/C/g；不创建人物或住宅。
+    for (const auto &d : next.rules->facilities)
+        if (d.kind == 13)
+            next.residence_catalog_available.at(d.id) = false;
+    bool any{};
+    auto scripts = startup_world_runtime_scripts(next);
+    for (const auto &human : next.rules->humans) {
+        const int id = human.identity;
+        auto &flags = next.human_flags.at(id);
+        if (next.human_presence.at(id) == 0 || next.human_homes.at(id)[2] != 0 ||
+            (flags & 2U) != 0 || next.shop_humans.at(id).satisfaction < human.residence_threshold)
+            continue;
+        any = true;
+        if ((flags & 4U) != 0)
+            continue;
+        flags |= 4U;
+        auto programs = catalog;
+        auto program = human.residence_request_program;
+        // 原外层a(program,...,0,1,human)仅给没有k的对话填j/k；保留原指定说话者。
+        for (auto &command : program)
+            if (command.size() == 2 && command[0] == 2) {
+                const int talk = command[1];
+                if (talk < 0 || talk >= static_cast<int>(catalog.talks.size()))
+                    return {};
+                if (catalog.talks.at(talk).speaker_definition == -1)
+                    command = {3, talk, 1, id};
+            }
+        const int identity = 2700 + id; // 研究外部程序路由身份，不登记aL事件调用。
+        programs.programs.emplace(identity, std::move(program));
+        const auto result =
+            ref::prepare_world_script_program(programs, scripts, {identity, {}, {}});
+        if (!result.candidate)
+            return {};
+        scripts = result.candidate->state;
+        for (const auto &page : result.candidate->inserted_pages)
+            next.page_human_bindings[page.id] = id;
+        const bool exists = std::any_of(scripts.notices.begin(), scripts.notices.end(),
+                                        [](const auto &notice) { return notice.message == 20; });
+        if (notify && !exists) {
+            scripts.notices.push_back({20, -20, 80, "", "想要入住的人增加了"});
+            next.residence_hint_counter = 0;
+        }
+    }
+    if (any) {
+        for (const auto &d : next.rules->facilities)
+            if (d.kind == 13)
+                next.residence_catalog_available.at(d.id) = true;
+        if (!notify) {
+            if (!write_startup_world_runtime_scripts(next, scripts))
+                return {};
+            return next;
+        }
+        const bool built = std::any_of(next.scene.world.world.facilities.begin(),
+                                       next.scene.world.world.facilities.end(),
+                                       [](const auto &f) { return f.second.kind == 13; });
+        auto invoke = [&](int id) {
+            const auto result = ref::prepare_world_script(catalog, scripts, {id, {}, {}});
+            if (!result.candidate)
+                return false;
+            scripts = result.candidate->state;
+            return true;
+        };
+        if (!ref::world_script_seen(scripts, 82)) {
+            if (!invoke(82) || !write_startup_world_runtime_scripts(next, scripts))
+                return {};
+            return next; // 原初次82之后立即return，不推进H。
+        }
+        if (!built) {
+            if (!ref::world_script_seen(scripts, 83) && !invoke(83))
+                return {};
+            if (next.residence_hint_counter == std::numeric_limits<int>::max())
+                return {};
+            if (++next.residence_hint_counter >= 8) {
+                next.residence_hint_counter = 0;
+                scripts.notices.push_back({19, -1, 80, "", "有想要入住的冒险者。"});
+            }
+        }
+    }
+    if (!write_startup_world_runtime_scripts(next, scripts))
+        return {};
+    return next;
+}
 void configure_startup_world_runtime_calendar_adapter(ref::WorldRuntimeAdapter<State> &a) {
     a.maintenance = {maintenance, write_maintenance};
     a.tasks = {tasks, write_tasks};
     const auto catalog = a.catalog;
-    a.calendar_other = [catalog](const State &s, ref::WorldCalendarStage stage) -> std::optional<State> {
-        auto next = s;
+    a.calendar_other = [](const State &s, ref::WorldCalendarStage stage) -> std::optional<State> {
         if (stage == ref::WorldCalendarStage::year_refresh) {
-            next.monthly_cash = {}; // UserData.i()。
+            auto next = s;
+            next.monthly_cash = {};
             return next;
         }
-        if (stage != ref::WorldCalendarStage::subperiod_refresh)
-            return {}; // checkpoint由会话本次私有memory_checkpoint消费者提供。
-        // UserData.b(true)：按全部bv原序，只读取p/D2/flags2/C/g；不创建人物或住宅。
-        for (const auto &d : next.rules->facilities)
-            if (d.kind == 13)
-                next.residence_catalog_available.at(d.id) = false;
-        bool any{};
-        auto scripts = startup_world_runtime_scripts(next);
-        for (const auto &human : next.rules->humans) {
-            const int id = human.identity;
-            auto &flags = next.human_flags.at(id);
-            if (next.human_presence.at(id) == 0 || next.human_homes.at(id)[2] != 0 ||
-                (flags & 2U) != 0 || next.shop_humans.at(id).satisfaction < human.residence_threshold)
-                continue;
-            any = true;
-            if ((flags & 4U) != 0)
-                continue;
-            flags |= 4U;
-            auto programs = catalog;
-            auto program = human.residence_request_program;
-            // 原外层a(program,...,0,1,human)仅给没有k的对话填j/k；保留原指定说话者。
-            for (auto &command : program)
-                if (command.size() == 2 && command[0] == 2) {
-                    const int talk = command[1];
-                    if (talk < 0 || talk >= static_cast<int>(catalog.talks.size()))
-                        return {};
-                    if (catalog.talks.at(talk).speaker_definition == -1)
-                        command = {3, talk, 1, id};
-                }
-            const int identity = 2700 + id; // 研究外部程序路由身份，不登记aL事件调用。
-            programs.programs.emplace(identity, std::move(program));
-            const auto result = ref::prepare_world_script_program(programs, scripts, {identity, {}, {}});
-            if (!result.candidate)
-                return {};
-            scripts = result.candidate->state;
-            for (const auto &page : result.candidate->inserted_pages)
-                next.page_human_bindings[page.id] = id;
-            const bool exists = std::any_of(scripts.notices.begin(), scripts.notices.end(),
-                [](const auto &notice) { return notice.message == 20; });
-            if (!exists) {
-                scripts.notices.push_back({20, -20, 80, "", "想要入住的人增加了"});
-                next.residence_hint_counter = 0;
-            }
-        }
-        if (any) {
-            for (const auto &d : next.rules->facilities)
-                if (d.kind == 13)
-                    next.residence_catalog_available.at(d.id) = true;
-            const bool built = std::any_of(next.scene.world.world.facilities.begin(),
-                next.scene.world.world.facilities.end(), [](const auto &f) { return f.second.kind == 13; });
-            auto invoke = [&](int id) {
-                const auto result = ref::prepare_world_script(catalog, scripts, {id, {}, {}});
-                if (!result.candidate)
-                    return false;
-                scripts = result.candidate->state;
-                return true;
-            };
-            if (!ref::world_script_seen(scripts, 82)) {
-                if (!invoke(82) || !write_startup_world_runtime_scripts(next, scripts))
-                    return {};
-                return next; // 原初次82之后立即return，不推进H。
-            }
-            if (!built) {
-                if (!ref::world_script_seen(scripts, 83) && !invoke(83))
-                    return {};
-                if (next.residence_hint_counter == std::numeric_limits<int>::max())
-                    return {};
-                if (++next.residence_hint_counter >= 8) {
-                    next.residence_hint_counter = 0;
-                    scripts.notices.push_back({19, -1, 80, "", "有想要入住的冒险者。"});
-                }
-            }
-        }
-        if (!write_startup_world_runtime_scripts(next, scripts))
-            return {};
-        return next;
+        if (stage == ref::WorldCalendarStage::subperiod_refresh)
+            return refresh_startup_world_residence_requests(s, true);
+        return {};
     };
     a.endgame_checkpoint = [](const State &s) -> std::optional<State> {
         auto next = s;
@@ -261,14 +288,18 @@ void configure_startup_world_runtime_calendar_adapter(ref::WorldRuntimeAdapter<S
         next.system_unlock_data = std::move(data); // UserData.C真实J.e[0/1]大端short顺序。
         return next;
     };
-    a.calendar_request = [catalog](const State &s, const ref::CalendarMaintenanceRequest &request)
-        -> std::optional<State> {
+    a.calendar_request =
+        [catalog](const State &s,
+                  const ref::CalendarMaintenanceRequest &request) -> std::optional<State> {
         auto next = s;
         auto scripts = startup_world_runtime_scripts(next);
         if (request.kind == ref::CalendarMaintenanceRequestKind::script) {
-            const auto result = ref::prepare_world_script(catalog, scripts,
-                {request.code, request.number ? std::optional<std::string>(std::to_string(*request.number))
-                                             : std::nullopt, {}});
+            const auto result = ref::prepare_world_script(
+                catalog, scripts,
+                {request.code,
+                 request.number ? std::optional<std::string>(std::to_string(*request.number))
+                                : std::nullopt,
+                 {}});
             if (!result.candidate)
                 return {};
             scripts = result.candidate->state;
@@ -282,8 +313,9 @@ void configure_startup_world_runtime_calendar_adapter(ref::WorldRuntimeAdapter<S
             scripts = result.candidate->state;
         } else {
             // 16/17补货提示，原az16=-1/80时点；目录已经由maintenance实际提交。
-            const std::string text = request.code == 16 ? "商店进了新的道具"
-                                     : request.code == 17 ? "进了新的道具" : "";
+            const std::string text = request.code == 16   ? "商店进了新的道具"
+                                     : request.code == 17 ? "进了新的道具"
+                                                          : "";
             if (text.empty())
                 return {};
             scripts.notices.push_back({request.code, -request.delay, 80, "", text});

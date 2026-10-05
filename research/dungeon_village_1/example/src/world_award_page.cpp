@@ -31,7 +31,8 @@ bool valid(const WorldAwardPageState &state) {
     for (const int definition : state.ranked_definitions)
         if (!active.count(definition) || !ranked.insert(definition).second)
             return false;
-    return ranked == active;
+    return ranked == active && (!state.pending_award || active.count(*state.pending_award)) &&
+           !(state.pending_award && state.termination_pending);
 }
 // c/d.java49–62：z=false不截断，区间退化返回下界25。
 int mapped(std::int32_t value, int mean, float sigma) {
@@ -106,8 +107,8 @@ WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageSta
     next.initialized = true;
     return {WorldAwardError::none, std::move(candidate)};
 }
-WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state,
-                                          WorldAwardAction action) {
+WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state, WorldAwardAction action,
+                                          int selection) {
     if (!valid(state) || !state.initialized || state.closed)
         return {WorldAwardError::invalid_owner, {}};
     switch (action) {
@@ -115,15 +116,19 @@ WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state,
     case WorldAwardAction::request_termination:
     case WorldAwardAction::confirm_termination:
     case WorldAwardAction::reject_termination:
-        break;
     case WorldAwardAction::request_award:
     case WorldAwardAction::confirm_award:
+    case WorldAwardAction::reject_award:
+        break;
     default:
         return {WorldAwardError::unsupported_action, {}};
     }
     if ((action == WorldAwardAction::confirm_termination ||
          action == WorldAwardAction::reject_termination) &&
         !state.termination_pending)
+        return {WorldAwardError::invalid_owner, {}};
+    if ((action == WorldAwardAction::confirm_award || action == WorldAwardAction::reject_award) &&
+        !state.pending_award)
         return {WorldAwardError::invalid_owner, {}};
     WorldAwardCandidate candidate{state, {}};
     auto effect = [&](WorldAwardEffectKind kind, int value = 0, std::optional<int> argument = {}) {
@@ -148,6 +153,17 @@ WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state,
     }
     if (action == WorldAwardAction::reject_termination)
         candidate.state.termination_pending = false;
+    if (action == WorldAwardAction::confirm_award) {
+        if (state.medal_count <= 0)
+            return {WorldAwardError::invalid_owner, {}};
+        --candidate.state.medal_count;
+        effect(WorldAwardEffectKind::reward, *state.pending_award);
+        candidate.state.pending_award.reset();
+        candidate.state.page_counter = 0;
+        return {WorldAwardError::none, std::move(candidate)};
+    }
+    if (action == WorldAwardAction::reject_award)
+        candidate.state.pending_award.reset();
     if (state.medal_count <= 0) {
         effect(WorldAwardEffectKind::refresh);
         effect(WorldAwardEffectKind::event, 22);
@@ -155,11 +171,58 @@ WorldAwardResult prepare_world_award_page(const WorldAwardPageState &state,
         candidate.state.closed = true;
         candidate.state.termination_pending = false;
     } else if (action == WorldAwardAction::request_termination) {
-        if (state.termination_pending)
+        if (state.termination_pending || state.pending_award)
             return {WorldAwardError::invalid_owner, {}};
         effect(WorldAwardEffectKind::termination_prompt);
         candidate.state.termination_pending = true;
+    } else if (action == WorldAwardAction::request_award) {
+        if (state.termination_pending || state.pending_award || selection < 0 ||
+            static_cast<std::size_t>(selection) >= state.ranked_definitions.size())
+            return {WorldAwardError::invalid_owner, {}};
+        candidate.state.pending_award = state.ranked_definitions.at(selection);
+        effect(WorldAwardEffectKind::award_prompt, *candidate.state.pending_award);
     }
     return {WorldAwardError::none, std::move(candidate)};
+}
+std::optional<WorldAwardDisplayCandidate>
+prepare_world_award_display(WorldAwardDisplayState state, bool confirm,
+                            const WorldRandomStream &random) {
+    if (state.counter < 0 || state.phase < 0 || state.phase > 1)
+        return {};
+    WorldAwardDisplayCandidate c{state, random, {}};
+    const int local = state.counter - state.phase * 135;
+    if (state.phase == 0 && state.counter >= 135)
+        c.state.phase = 1; // 切换当轮local仍用旧phase；不能重算。
+    if (c.state.phase == 1 && confirm) {
+        c.state.counter = local < 67 ? 202 : 212;
+        if (local >= 77) {
+            const auto draw = c.random.draw(2);
+            if (draw.error != WorldRandomError::none)
+                return {};
+            c.event = draw.ticket + 24;
+        }
+    }
+    return c;
+}
+std::optional<WorldEffortDisplayCandidate>
+prepare_world_effort_display(int counter, bool confirm, const std::array<int, 4> &deltas) {
+    if (counter < 0)
+        return {};
+    if (counter >= 2 && counter < 42) {
+        bool active{};
+        const int local = counter - 2;
+        for (int n = 0; n < 4; ++n)
+            active = active || (local >= n * 6 && local < n * 6 + 12 && deltas[n] != 0);
+        if (!active)
+            counter += 6;
+    }
+    WorldEffortDisplayCandidate c{counter, false};
+    if (confirm) {
+        if (counter < 67)
+            c.counter = 67;
+        else if (counter >= 73)
+            c.closed = true;
+    }
+    return c;
 }
 } // namespace dungeon_village_reference

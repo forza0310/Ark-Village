@@ -60,6 +60,26 @@ struct CalendarTaskRankStatus {
 // rank5在调用方先返回；保留原设施名单重复与施工中的计数资格。
 std::optional<CalendarTaskRankStatus>
 prepare_world_rank_status(const WorldCalendarTasksState &state);
+struct WorldRankPromotion {
+    int rank{};
+    bool promoted{};
+    bool mark_user_flag{};
+    std::vector<WorldScriptInput> before_promotion;
+    std::vector<WorldScriptInput> after_promotion;
+};
+// raw48读取初始化后的四项缓存；条件解释不标u8，拒绝与真正晋级分开。
+std::optional<WorldRankPromotion>
+prepare_world_rank_promotion(int rank, const CalendarTaskRankTerms &terms,
+                             const std::array<bool, 4> &met, int selection, bool manual,
+                             const std::string &village, int bypass = 0);
+struct WorldRankCelebration {
+    std::vector<std::array<int, 5>> participants; // raw50 X：定义、x、y、朝向、层。
+    WorldRandomStream random;
+};
+// 原全名单交换洗牌，每个人抽一次（包括只有一人），之后截取十个静态布局槽。
+std::optional<WorldRankCelebration>
+prepare_world_rank_celebration(const std::vector<int> &present_definitions,
+                               const WorldRandomStream &random);
 enum class CalendarTaskExternalKind { endgame_checkpoint, create_task };
 struct CalendarTaskExternalRequest {
     CalendarTaskExternalKind kind{};

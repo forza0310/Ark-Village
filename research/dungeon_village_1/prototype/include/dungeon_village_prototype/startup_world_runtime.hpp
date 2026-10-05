@@ -12,6 +12,8 @@
 #include <memory>
 
 namespace dungeon_village_prototype {
+struct StartupBuildResult;
+enum class StartupFacilityPageAction;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -61,7 +63,8 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, int> facility_original_ids;
     std::map<std::uint64_t, int> facility_ordinals;
     std::map<std::uint64_t, int> facility_residents;
-    std::map<std::uint64_t, int> facility_difficulties; // Tenant.l，新局0。
+    std::map<std::uint64_t, int> facility_difficulties;    // Tenant.l，新局0。
+    std::map<std::uint64_t, std::uint32_t> facility_flags; // Tenant.n，仅bit1为连接警告。
     std::map<std::uint64_t, std::array<int, 3>> neighbourhood;
     std::map<std::uint64_t, ref::WorldMapNeighbourCache> neighbourhood_details;
     std::map<std::uint64_t, ref::WorldExplorationSummary> exploration_summaries;
@@ -95,7 +98,10 @@ struct StartupWorldRuntimeState {
     std::map<int, int> facility_presence;
     std::map<int, bool> residence_catalog_available;  // o.M由b(true)重算，不是O普通建设开放。
     std::map<std::uint64_t, int> page_human_bindings; // 对话/70/94等真实gVar.m绑定。
-    int residence_hint_counter{};                     // UserData.H，新局0。
+    std::map<std::uint64_t, std::uint64_t> task_abort_questions; // raw1→实际raw4父页。
+    std::map<std::uint64_t, int> task_abort_answers;             // raw4.bU.K，返回父页才消费。
+    std::set<std::uint64_t> human_pages_initialized;             // raw60原f()仅首次重算人物缓存。
+    int residence_hint_counter{};                                // UserData.H，新局0。
     std::map<int, std::uint32_t> activity_flags;
     std::map<std::uint64_t, ref::WorldFacilityUpdateDetails> facility_details;
     ref::DungeonTaskSuccessState task_progress;
@@ -122,19 +128,19 @@ struct StartupWorldRuntimeState {
     int camera_delay{};  // MainScene.h，影响场后到访资格，不暂停共同AI。
     int camera_follow{}; // MainScene.i。
     int event89_count{};
-    int entry_updates{};                                // UserData.V，新局0。
-    int global_updates{};                               // static n.aK，新局0。
-    std::array<float, 2> camera{};                      // c.a.n：表现坐标，不能与地图格混用。
-    std::array<float, 2> previous_camera{};             // c.a.p。
-    std::array<float, 2> camera_velocity{};             // bi.w。
-    int build_mode{};                                   // a/o.aa，0..7；不是MainScene状态。
-    int build_feedback_counter{};                       // a/o.ae，反馈原20tick，state1才递减。
-    std::string build_feedback_message;                 // a/o.ad，新静态对象为空。
-    StartupWorldFocusActor focus_actor;                 // 原W；从不持久进入bl/bm，UID=-1。
-    std::uint32_t focus_held_input{};                   // 原方向held位，不是玩家控制真实冒险者。
+    int entry_updates{};                    // UserData.V，新局0。
+    int global_updates{};                   // static n.aK，新局0。
+    std::array<float, 2> camera{};          // c.a.n：表现坐标，不能与地图格混用。
+    std::array<float, 2> previous_camera{}; // c.a.p。
+    std::array<float, 2> camera_velocity{}; // bi.w。
+    int build_mode{};                       // a/o.aa，0..7；不是MainScene状态。
+    std::optional<int> build_definition;    // 原a/o.Z；普通建设选择，不借用旧StartupState。
+    int build_feedback_counter{};           // a/o.ae，反馈原20tick，state1才递减。
+    std::string build_feedback_message;     // a/o.ad，新静态对象为空。
+    StartupWorldFocusActor focus_actor;     // 原W；从不持久进入bl/bm，UID=-1。
+    std::uint32_t focus_held_input{};       // 原方向held位，不是玩家控制真实冒险者。
     std::vector<ref::ActorEffectRecord> visual_effects; // d.a.X变长载荷，现金浮标7项不得截成5项。
     std::vector<std::array<int, 4>> delayed_effects;    // d.a.Y。
-    std::vector<std::array<int, 3>> floating_labels;    // d.a.S的计数投影。
     std::vector<std::array<int, 2>> global_effects;     // n.bu。
     std::vector<int> sound_requests;                    // 原c(sound)输出，不把声音变成领域状态。
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
@@ -158,6 +164,17 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::vector<int>> award_rankings; // raw87初始化X，定义身份。
     std::map<std::uint64_t, bool> award_announced;
     std::map<std::uint64_t, bool> award_termination_pending;
+    std::map<std::uint64_t, int> award_pending_humans;  // raw87原bV是非询问绑定。
+    std::array<std::array<int, 2>, 3> reward_display{}; // 全局n.aH，授勋/住宅共用。
+    std::array<std::array<int, 4>, 3> effort_display{}; // 全局e.as[0]，不是每页独立奖励。
+    std::map<std::uint64_t, std::uint64_t> facility_page_bindings; // raw74实际n引用稳定实例。
+    std::map<std::uint64_t, std::vector<ref::NeighbourSource>>
+        facility_page_neighbours; // 初始化Y。
+    std::map<std::uint64_t, std::array<std::vector<int>, 3>>
+        build_page_catalogs;                                             // raw21原W普通子集。
+    std::map<std::uint64_t, std::vector<int>> residence_page_candidates; // raw80初始化X。
+    std::set<std::uint64_t> facility_upgrade_initialized; // raw81只初始化一次，不重复升级。
+    std::array<std::array<std::int64_t, 3>, 3> facility_upgrade_display{}; // 全局o.ap。
     int medal_count{};                           // UserData.j，c/n.J新局0，raw87初始化+1。
     std::map<int, int> facility_free_builds;     // br.H真实新对象0。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
@@ -181,6 +198,10 @@ struct StartupWorldRuntimeState {
     std::array<std::vector<std::uint8_t>, 2> system_unlock_data;
     std::array<bool, 4> rank_met{};
     std::array<int, 4> rank_values{};
+    std::array<std::array<int, 2>, 7>
+        rank_history{}; // UserData.J[0]，真实新对象零初值；记录原年/月。
+    std::map<std::uint64_t, std::vector<std::array<int, 5>>>
+        rank_celebration_participants; // raw50 X。
     std::uint64_t simulation_steps{};
     int clock_parameter{80};  // d/a.Q的固定新局输入。
     int calendar_advance{27}; // d/a.R的固定新局输入。
@@ -205,7 +226,15 @@ enum class StartupWorldRuntimeError {
     invalid_page,
     script_failed
 };
-enum class StartupWorldTaskAction { confirm, cancel, add_member, depart, hire };
+enum class StartupWorldTaskAction {
+    confirm,
+    cancel,
+    add_member,
+    depart,
+    hire,
+    inspect,
+    request_abort
+};
 struct StartupWorldTaskPageResult {
     StartupWorldRuntimeError error{StartupWorldRuntimeError::none};
     ref::TaskCommandDenial denial{ref::TaskCommandDenial::none};
@@ -217,11 +246,16 @@ StartupWorldRuntimeError acknowledge_startup_world_runtime_page(StartupWorldRunt
 // 商店追加页83的原按钮2返回；不把确认伪装成取消，不执行购买或删掉下方脚本页。
 StartupWorldRuntimeError cancel_startup_world_runtime_page(StartupWorldRuntimeState &state,
                                                            std::uint64_t page);
-// 授勋的显式测试输入按独立页面更新消费；普通确认不隐式选择终止，授予/raw88仍拒绝。
+// 授勋按独立页面更新消费；普通确认不隐式选择授予或终止，selection是贡献榜索引。
 StartupWorldRuntimeError act_startup_world_runtime_award_page(StartupWorldRuntimeState &state,
                                                               std::uint64_t page,
-                                                              ref::WorldAwardAction action);
+                                                              ref::WorldAwardAction action,
+                                                              int selection = 0);
 bool refresh_startup_world_runtime_rank(StartupWorldRuntimeState &state);
+// raw48独立选择条件说明/晋级/返回；raw49仍只查看，不调用此消费者。
+StartupWorldRuntimeError act_startup_world_runtime_rank_page(StartupWorldRuntimeState &state,
+                                                             std::uint64_t page, int selection = 0,
+                                                             bool cancel = false);
 std::optional<StartupWorldRuntimeState>
 update_startup_world_runtime_page(const StartupWorldRuntimeState &state);
 struct StartupWorldRuntimeResult {
@@ -276,8 +310,22 @@ class StartupWorldRuntimeSession {
     void set_page_confirm_held(bool held);
     StartupWorldRuntimeError acknowledge_page(std::uint64_t page);
     StartupWorldRuntimeError cancel_page(std::uint64_t page);
-    StartupWorldRuntimeError act_award_page(std::uint64_t page, ref::WorldAwardAction action);
+    StartupWorldRuntimeError act_award_page(std::uint64_t page, ref::WorldAwardAction action,
+                                            int selection = 0);
+    StartupWorldRuntimeError act_rank_page(std::uint64_t page, int selection = 0,
+                                           bool cancel = false);
     StartupWorldRuntimeError open_task_menu();
+    StartupWorldRuntimeError open_task_control_menu();
+    StartupBuildResult begin_build(int definition);
+    StartupWorldRuntimeError open_build_menu();
+    StartupBuildResult select_build_menu(std::uint64_t page, int definition);
+    StartupWorldRuntimeError cancel_build_menu(std::uint64_t page);
+    StartupBuildResult confirm_build(ref::Position anchor, ref::FacilityOrientation orientation);
+    StartupWorldRuntimeError cancel_build();
+    StartupWorldRuntimeError open_facility_page(std::uint64_t facility);
+    StartupWorldRuntimeError act_facility_page(std::uint64_t page,
+                                               StartupFacilityPageAction action);
+    StartupBuildResult act_residence_page(std::uint64_t page, int human, bool cancel = false);
     StartupWorldTaskPageResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                              int selection = 0);
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;

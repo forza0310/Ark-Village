@@ -10,7 +10,7 @@
 | 模块 | 职责与边界 | 规格 |
 | --- | --- | --- |
 | domain、simulation | R1事务、独占预约、单点自主模拟夹具；当前窗口不使用旧模拟 | [状态与建设](../rules/STATE_CONSTRUCTION.md)、[人物](../rules/CHARACTERS.md) |
-| geometry、facility_economy、neighbourhood | 格坐标占地、经营推导、来源实例去重与道路魅力 | [设施](../rules/FACILITIES.md) |
+| geometry、facility_economy、neighbourhood | 格坐标占地、经营推导、来源实例去重与道路魅力；真正共享等级升级扣旧门槛/保留剩余次数，旧/新/差额分别含实例邻接 | [设施](../rules/FACILITIES.md)、[建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同) |
 | navigation、map_access | 加权寻路、完整设施绑定、距离场和到达身份 | [地图访问](../rules/MAP_ACCESS.md) |
 | activity_choice、activity_candidates | 类别计划、候选生成/排序，票号由调用方注入 | [活动选择](../rules/ACTIVITY.md) |
 | ranked_facility_choice、snapshot_facility_choice、regional_choice | 保留不同历史契约；重复计权、抽中项/目标格、六次区域回退 | [活动选择](../rules/ACTIVITY.md) |
@@ -32,7 +32,7 @@
 | actor_control | 全34码校验、本地前缀、失败8、状态setter、漫游、装备显示/提交分离；全局副作用由所有者应用 | [控制解释器](../rules/ai/CONTROL.md) |
 | ai_schedule | 实时名单两遍、反向/正向删除、设施内部自删后正向跳过、同轮追加、删除前设施释放；消费者只准备私有聚合副本，不是通用事件总线 | [聚合调度](../rules/ai/LIFECYCLE.md#聚合遍历与同轮新建) |
 | actor_effects | cd/ce逻辑时间线、删除跳过、表情票号/抑制、动作/状态计数及命中标签过期；不绘图或直接播放声音 | [显示与延迟效果](../rules/ai/CONTROL.md#显示与延迟效果的实际推进) |
-| human_growth | 定义共享六属性/装备/法术重算、九步奖励成长、多级/满级及最后一级提示/职业解锁请求；不改变人物当前HP或代替全局页面提交 | [定义成长](../rules/ai/CONTROL.md#人物定义重算与职业成长) |
+| human_growth | 定义共享六属性/装备/法术重算、九步奖励成长、多级/满级及职业解锁；授勋/住宅复用满足/努力/完成量即时奖励，跨十位才重算；不改变当前HP或代替Owner页面提交 | [定义成长](../rules/ai/CONTROL.md#人物定义重算与职业成长)、[建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同) |
 | facility_service | 装备/携物价格前置、全部设施使用队列、完整退出前部/普通/装备/住宅尾部；救援哨兵必须交双人事务 | [设施事务](../rules/FACILITY_USE.md#设施服务组合与首段私有所有者) |
 | actor_housekeeping | c前缀、状态18事件身份守卫、重力/K/退回旧位置、d尾部清理/超时；保留旧格与新投影读取点 | [共用更新尾部](../rules/ai/LIFECYCLE.md#共用更新前缀与尾部) |
 | battle_commit | HP/状态、双方救援引用、定义共享统计、全局倒地/击杀和掉落ID一次提交；保留尸体重复命中 | [战斗提交](../rules/ai/COMBAT.md#跨所有者战斗提交) |
@@ -59,9 +59,10 @@
 | world_dungeon_finish、world_map_refresh | 探索阶段2任务/奖励/全占地恢复及实际地图显示/道路围栏/补块/邻接；页面/脚本同步合同 | [探索](../rules/ai/DUNGEONS.md) |
 | world_random、world_random_consumers | Java48显式种子或原始磁带、原nextInt余数语义、懒表情/两变体表；不猜APK默认seed | [随机与路由](../rules/ai/CONTROL_COMPOSITION.md#全码自动路由与当前随机接入) |
 | world_scripts | 稀疏ID目录、实时延迟续体、事件调用计数与实际框架页栈；原表与消费事实分开 | [原始脚本目录](../data/scripts/) |
+| [world_notices.hpp](include/dungeon_village_reference/world_notices.hpp) | 唯一通知队首两项逆序计数/过期与声音11，21/19高度和整数展开/收回布局；不绘皮肤、不过度推进第三条 | [通知合同](../ui/PAGES.md#共同底部通知队列) |
 | world_calendar、world_scene | 年/月/子周期有序合同与主场景1/2轮、真实资格/跳转/绘制门槛；实际日历域消费者必须另接 | [主场景](../rules/ai/WORLD_SCHEDULE.md) |
-| world_month_report、world_calendar_maintenance、world_calendar_tasks | 旧t月报/费用/点数、年度清理、跨月/子周期任务与等级提示，外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口) |
-| [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 年度raw87初始化增勋章、原B1/B2贡献/交换排序、首次音效和事件23、明确终止询问及事件22/音乐恢复/关闭顺序；贡献不是击杀，完整授予/raw88明确未接；typed询问仅交接研究测试输入，不宣称真实窗口模态 | [年度授勋最小闭环](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
+| world_month_report、world_calendar_maintenance、world_calendar_tasks | 月报/费用/点数、年度清理、跨月任务/等级提示、raw48真正晋级的有序规则及raw50全范围洗牌/布局；外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口)、[晋级](../rules/ai/WORLD_SCHEDULE.md#城镇真正晋级与庆典) |
+| [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 年度raw87贡献/交换排序、终止与授予的独立询问绑定、扣唯一勋章/奖励请求、raw88旧局部计数与关闭抽选、raw67空窗口推进；Owner执行真实脚本/共享奖励，不宣称原窗口模态等价 | [年度授勋](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
 | world_task_creation、world_facility_update、world_residence | 真实任务工厂/全占地、设施前缀/施工/共享人气、住宅现有人物奖励和原程序 | [探索](../rules/ai/DUNGEONS.md)、[共同调度](../rules/ai/WORLD_SCHEDULE.md) |
 | [world_task_commands.hpp](include/dungeon_village_reference/world_task_commands.hpp) | 玩家页23/24募集费用、原序全列表随机/入场/队伍提交、页27当前候选与追加费用、页28预测/动画/正式任务启动；回主场景、消息与页面同步请求，取消/拒绝及晚期失败不留部分世界或随机 | [玩家接受与出发](../rules/ai/DUNGEONS.md#玩家接受募集追加与正式出发) |
 | [world_task_display.hpp](include/dungeon_village_reference/world_task_display.hpp) | raw99确认40门槛与raw100共享8×9演出表、19抽初始化、逐行更新和统一随机候选；不生成怪物实例、不重复本帧更新、不承担实际战斗结算 | [演出与成果后的阻塞点](../rules/ai/DUNGEONS.md#演出与成果后的阻塞点) |

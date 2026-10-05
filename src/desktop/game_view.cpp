@@ -100,12 +100,7 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
     const Window window(options);
     Canvas canvas;
     Sprites sprites(assets);
-    std::filesystem::path font = options.font;
-#ifdef __APPLE__
-    if (font.empty())
-        font = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf";
-#endif
-    Text text(font);
+    Text text(desktop_font_path(assets, options.font));
     const ui::Skin skin(sprites, text);
     const auto play = options.ai_preview ? app::PlayMode::ai_preview : app::PlayMode::startup;
     // Repeat only the diagnostic's random stream, preserving normal startup and rule draws.

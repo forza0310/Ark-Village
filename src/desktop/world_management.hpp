@@ -28,7 +28,10 @@ class WorldManagement {
                         bool enabled) const;
     // Draw inside the scene scissor; controls/text are a separate UI pass.
     void draw_footprint(const app::WorldState &state, const WorldCameraView &view, Extent extent,
-                        std::optional<Vector2> mouse, float zoom) const;
+                        std::optional<Vector2> mouse, float zoom, Sprites &sprites) const;
+    // Explicit window diagnostic: fixes only desktop selection, never buys or edits the Owner.
+    void inspect_placement(int definition, simulation::rules::Position anchor,
+                           simulation::rules::FacilityOrientation orientation);
 
   private:
     void queued(std::uint64_t serial);

@@ -2,6 +2,7 @@
 // Responsive panel positioning is a desktop adaptation, not a fixed-APK touch-coordinate claim.
 #include "world_panels.hpp"
 #include "ark/simulation/rules/world_notices.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "script_text.hpp"
 #include "skin.hpp"
 #include <algorithm>
@@ -27,17 +28,101 @@ world_notice_view(const std::vector<simulation::rules::WorldScriptNotice> &notic
         const auto &notice = notices.at(position.index);
         if (notice.message == 1)
             continue; // Same unrendered special record as the published prototype.
-        lines.push_back({position.index,
-                         {0, extent.height - 26.F + position.offset,
-                          static_cast<float>(extent.width), static_cast<float>(position.height)},
-                         decode_script_text(notice.text).text});
+        WorldNoticeLine line;
+        line.index = position.index;
+        // Clear the desktop HUD's 41px popularity fan without changing source row
+        // offsets/lifetimes.
+        line.box = {0, extent.height - 42.F + position.offset, static_cast<float>(extent.width),
+                    static_cast<float>(position.height)};
+        const auto decoded = decode_script_text(notice.text);
+        line.text = decoded.text;
+        line.standard_skin = notice.message != 32;
+        line.runs = decoded.runs;
+        lines.push_back(std::move(line));
     }
     return lines;
 }
+std::vector<WorldNoticeLine> world_notice_view(const simulation::StartupWorldRuntimeState &s,
+                                               Extent extent) {
+    auto lines = world_notice_view(s.scripts.notices, extent);
+    for (auto &line : lines) {
+        const auto &notice = s.scripts.notices.at(line.index);
+        if (notice.message != 0)
+            continue;
+        if (!notice.human_definition || !notice.attribute_changes)
+            throw std::invalid_argument("Growth notice has no source human/ap binding");
+        const auto portrait = simulation::startup_world_portrait(s, *notice.human_definition);
+        if (!portrait)
+            throw std::invalid_argument("Growth notice has no current portrait");
+        line.portrait_image = portrait->image;
+        // ap is already ordered by the source's exchange sort. Do not sort ties or total levels.
+        for (std::size_t i = 0; i < notice.attribute_changes->size() / 2; ++i) {
+            const auto &attribute = notice.attribute_changes->at(i);
+            if (attribute[1] <= 0)
+                continue;
+            if (attribute[0] < 0 || attribute[0] > 3)
+                throw std::invalid_argument("Growth notice has an invalid attribute");
+            line.attributes.push_back(attribute);
+        }
+    }
+    return lines;
+}
+WorldNoticeLayout world_notice_layout(const WorldNoticeLine &line, float text_width) {
+    WorldNoticeLayout result;
+    result.end = std::min(line.box.width - 16, 32 + text_width + 5);
+    constexpr int widths[]{17, 25, 24, 25};
+    for (const auto &attribute : line.attributes) {
+        const float width =
+            widths[attribute[0]] + 8.F * (1 + std::to_string(attribute[1]).size()) + 4;
+        if (result.end + width > line.box.width - 16)
+            break;
+        result.attributes.push_back({attribute[0], attribute[1], result.end});
+        result.end += width;
+    }
+    return result;
+}
 void draw_world_notices(const std::vector<WorldNoticeLine> &lines, const Skin &skin) {
     for (const auto &line : lines) {
-        DrawRectangleRec(line.box, {250, 254, 248, 255});
-        skin.text.clipped(line.text, line.box.x + 4, line.box.y + 3, line.box, ink, 10);
+        if (!line.standard_skin) {
+            // Special item-summary32 has a different, still unimplemented composition.
+            DrawRectangleRec(line.box, {250, 254, 248, 255});
+            skin.text.clipped(line.text, line.box.x + 4, line.box.y + 3, line.box, ink, 10);
+            continue;
+        }
+        const float x = line.box.x, y = line.box.y;
+        const auto layout = world_notice_layout(line, skin.text.width(line.text, 10));
+        const float end = layout.end;
+        // TASK_REPORT_RENDER: image77 left32, middle x32 up to108, final16. Logical row
+        // heights remain 21/19; the 22px skin overlaps its neighbour as in the source atlas.
+        skin.sprites.image("hisho_talk.png", {0, 0, 32, 22}, {x, y, 32, 22});
+        skin.tile("hisho_talk.png", {32, 0, 108, 22}, {x + 32, y, end - 32, 22});
+        skin.sprites.image("hisho_talk.png", {160, 0, 16, 22}, {x + end, y, 16, 22});
+        if (line.portrait_image)
+            skin.sprites.human_image(*line.portrait_image, {1, 27, 15, 14}, {x + 3, y + 3, 15, 14});
+        else
+            skin.sprites.image("chara_hishoko01.png", {0, 0, 16, 19}, {x + 2, y + 3, 16, 19});
+        float cursor = x + 32;
+        const Rectangle clip{cursor, y + 3, end - 32, 16};
+        for (const auto &run : line.runs) {
+            const auto rgb = run.rgb.value_or(0x403020);
+            const Color color{static_cast<unsigned char>(rgb >> 16),
+                              static_cast<unsigned char>(rgb >> 8), static_cast<unsigned char>(rgb),
+                              255};
+            skin.text.clipped(run.text, cursor, y + 6, clip, color, 10);
+            cursor += skin.text.width(run.text, 10);
+        }
+        constexpr int widths[]{17, 25, 24, 25};
+        for (const auto &attribute : layout.attributes) {
+            cursor = x + attribute.x;
+            skin.sprites.draw("icon_param00.seb", attribute.kind + 4, {cursor, y + 3}, WHITE,
+                              Sprites::Binding::common);
+            cursor += widths[attribute.kind];
+            skin.sprites.draw("number08.seb", 14, {cursor, y + 6}, WHITE, Sprites::Binding::common);
+            cursor += 8;
+            const float width = 8.F * std::to_string(attribute.value).size();
+            skin.number(attribute.value, {cursor + width, y + 6});
+            cursor += width + 4;
+        }
     }
 }
 

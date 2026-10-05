@@ -47,8 +47,12 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-news" && page != "world-break" && page != "world-speed" &&
                 page != "world-award" && page != "world-task-team" && page != "world-task-result" &&
                 page != "world-task-recruitment" && page != "world-menu" &&
-                page != "world-building" && page != "world-details" && page != "world-built" &&
-                page != "world-award-granted")
+                page != "world-building" && page != "world-build-preview" &&
+                page != "world-build-rotated" && page != "world-details" && page != "world-built" &&
+                page != "world-award-granted" && page != "world-task-added" &&
+                page != "world-level-up" && page != "world-month-income" &&
+                page != "world-month-defeats" && page != "world-task-victory" &&
+                page != "world-task-popularity")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {

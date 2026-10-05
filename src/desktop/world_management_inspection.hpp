@@ -10,6 +10,9 @@ struct WorldManagementInspection {
     std::optional<std::uint64_t> created;
     std::optional<int> selection;
     std::optional<int> awarded_human;
+    std::optional<simulation::rules::Position> preview_anchor;
+    simulation::rules::FacilityOrientation preview_orientation{
+        simulation::rules::FacilityOrientation::first};
     bool award_applied{};
 };
 bool management_inspection_mode(const std::string &mode);

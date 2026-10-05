@@ -2,6 +2,7 @@
 // presentation fixtures, not evidence of natural recruitment or successful task completion.
 #include "support/checks.hpp"
 #include "ui/world_award.hpp"
+#include "ui/world_reports.hpp"
 #include "ui/world_tasks.hpp"
 #include <iostream>
 
@@ -334,6 +335,30 @@ void world_tasks() {
     page.kind = rules::WorldScriptPageKind::dialogue;
     check(!ui::world_task_page(state, page),
           "Dialogue with raw1 number stays a dialogue even when an old binding exists");
+    catalogue.tasks.front().factory.pending_completion_value = 23;
+    rules::WorldScriptPage victory;
+    victory.id = 123;
+    victory.kind = rules::WorldScriptPageKind::raw_page;
+    victory.legacy_page = 30;
+    victory.task_identity = 999;
+    victory.task_definition = 8;
+    victory.legacy_f = 17;
+    state.exploration_summaries.emplace(123, rules::WorldExplorationSummary{30, 999, 8, {}});
+    state.active_task.reset();
+    state.participants = {42, 42};
+    for (const int phase : {0, 1})
+        for (const int counter : {0, 39, 40}) {
+            state.page_phases[123] = phase;
+            state.page_counters[123] = counter;
+            const auto result = ui::world_victory_view(state, victory);
+            check(result.initialized && result.task == 999 && result.phase == phase &&
+                      result.counter == counter && result.experience == 17 &&
+                      result.members.size() == 2 && result.members[0].definition == 42 &&
+                      result.members[1].definition == 42 && result.popularity == 23 &&
+                      result.name == "task-8",
+                  "Victory uses retained sparse task identity, display experience and ordered m "
+                  "after retirement");
+        }
     std::cout << "PASS task UI identity, source-page eligibility, layout and input contracts\n";
 }
 } // namespace ark::test

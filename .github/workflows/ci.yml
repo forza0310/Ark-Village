@@ -14,18 +14,10 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.target }}
+    name: windows10-x64
     if: github.ref == 'refs/heads/main'
-    runs-on: ${{ matrix.runner }}
+    runs-on: windows-2022
     timeout-minutes: 180
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-15
-            target: macos-arm64
-          - runner: windows-2022
-            target: windows10-x86
     steps:
       - name: Preserve frozen source and asset bytes
         shell: bash
@@ -47,12 +39,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install macOS build tools
-        if: runner.os == 'macOS'
-        run: brew install cmake ninja pkg-config
-
-      - name: Install Windows x86 toolchain
-        if: runner.os == 'Windows'
+      - name: Install Windows x64 toolchain
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -65,49 +52,54 @@ jobs:
           Expand-Archive $archive -DestinationPath $env:RUNNER_TEMP
           "ARK_LLVM_ROOT=$(Join-Path $env:RUNNER_TEMP $name)" >> $env:GITHUB_ENV
 
+      - name: Install pinned font subset tool
+        shell: pwsh
+        run: python -m pip install --disable-pip-version-check fonttools==4.59.0
+
       - name: Build and test desktop Release, then package
         shell: bash
         env:
-          ARK_CI_TARGET: ${{ matrix.target }}
+          ARK_CI_TARGET: windows10-x64
           PYTHONUTF8: '1'
         run: python .github/ci/build.py
 
       - name: Upload Release package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: ark-village-${{ matrix.target }}
+          name: ark-village-windows10-x64
           path: build/ci/dist/*
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7
+          # The game archive is already compressed; do not recompress it in the transport ZIP.
+          compression-level: 0
 
       - name: Upload build and test diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: diagnostics-${{ matrix.target }}
+          name: diagnostics-windows10-x64
           path: |
             build/ci/logs/
             build/*/Testing/Temporary/
             build/*/CMakeFiles/CMakeConfigureLog.yaml
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
   publish:
     name: Publish GitHub Packages
     needs: build
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-24.04
+    runs-on: windows-2022
     timeout-minutes: 15
     permissions:
       actions: read
       contents: read
       packages: write
     steps:
-      - name: Download both Release packages
+      - name: Download tested Windows Release package
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          pattern: ark-village-*
-          merge-multiple: true
+          name: ark-village-windows10-x64
           path: release
 
       - name: Install ORAS
@@ -120,13 +112,14 @@ jobs:
         shell: bash
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ORAS media-type arguments are not paths for Git Bash to translate.
+          MSYS_NO_PATHCONV: '1'
         run: |
           set -euo pipefail
           package="ghcr.io/${GITHUB_REPOSITORY,,}"
           revision_tag="sha-${GITHUB_SHA}"
-          macos=ark-village-macos-arm64.tar.gz
-          windows=ark-village-windows10-x86.zip
-          sha256sum --check "$macos.sha256" "$windows.sha256"
+          windows=ark-village-windows10-x64.zip
+          sha256sum --check "$windows.sha256"
           printf '%s' "$GHCR_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
           trap 'oras logout ghcr.io' EXIT
           oras push "$package:$revision_tag" \
@@ -134,19 +127,16 @@ jobs:
             --annotation "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             --annotation "org.opencontainers.image.revision=$GITHUB_SHA" \
             --annotation "org.opencontainers.image.title=Ark-Village desktop Release" \
-            --annotation "org.opencontainers.image.description=macOS ARM64 and Windows 10 x86 game archives with SHA-256 checksums; download with ORAS." \
-            "$macos:application/gzip" "$macos.sha256:text/plain" \
+            --annotation "org.opencontainers.image.description=Windows 10+ x64 game archive with bundled CJK font and static raylib/runtime; download with ORAS." \
             "$windows:application/zip" "$windows.sha256:text/plain"
           oras pull "$package:$revision_tag" --output verified
-          cmp "$macos" "verified/$macos"
           cmp "$windows" "verified/$windows"
-          cmp "$macos.sha256" "verified/$macos.sha256"
           cmp "$windows.sha256" "verified/$windows.sha256"
           oras tag "$package:$revision_tag" latest
           {
             printf '### GitHub Packages\n\n'
-            printf 'Published both tested desktop archives to **%s:latest**.\n\n' "$package"
+            printf 'Published the tested Windows x64 archive to **%s:latest**.\n\n' "$package"
             printf 'Commit tag: `%s:%s`\n\n' "$package" "$revision_tag"
-            printf 'Download both archives and checksums: `oras pull %s:latest`\n\n' "$package"
+            printf 'Download the archive and checksum: `oras pull %s:latest`\n\n' "$package"
             printf 'The repository Packages panel lists the package. New GHCR packages are private by default; access is managed in Package settings.\n'
           } >> "$GITHUB_STEP_SUMMARY"

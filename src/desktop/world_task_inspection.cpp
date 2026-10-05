@@ -32,7 +32,8 @@ void require(simulation::StartupWorldRuntimeError error) {
 } // namespace
 bool world_task_inspection_mode(const std::string &mode) {
     return mode == "world-task-team" || mode == "world-task-result" ||
-           mode == "world-task-recruitment";
+           mode == "world-task-recruitment" || mode == "world-task-victory" ||
+           mode == "world-task-popularity";
 }
 bool world_task_inspection_ready(const State &s, const std::string &mode,
                                  const WorldTaskInspection &inspection) {
@@ -45,6 +46,15 @@ bool world_task_inspection_ready(const State &s, const std::string &mode,
         return page->legacy_page == 24 && s.page_counters.count(page->id) &&
                recruitment != s.task_recruitment_pages.end() &&
                !recruitment->second.portraits.empty();
+    }
+    if (mode == "world-task-victory" || mode == "world-task-popularity") {
+        const auto counter = s.page_counters.find(page->id);
+        const auto phase = s.page_phases.find(page->id);
+        return page->legacy_page == 30 && s.exploration_summaries.count(page->id) &&
+               counter != s.page_counters.end() && counter->second >= 40 &&
+               phase != s.page_phases.end() &&
+               phase->second == (mode == "world-task-victory" ? 0 : 1) &&
+               inspection.departed_task == inspection.accepted_task;
     }
     return (mode == "world-task-team" && page->legacy_page == 25 && page->task_identity &&
             !s.participants.empty()) ||

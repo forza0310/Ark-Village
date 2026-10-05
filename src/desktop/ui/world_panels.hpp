@@ -2,7 +2,9 @@
 
 // Page chrome reads the canonical page identity; it never confirms pages or advances a clock.
 #include "ark/simulation/rules/world_scripts.hpp"
+#include "ark/simulation/startup_world_runtime.hpp"
 #include "layout.hpp"
+#include "script_text.hpp"
 
 namespace ark::desktop::ui {
 class Skin;
@@ -21,10 +23,25 @@ struct WorldNoticeLine {
     std::size_t index{};
     Rectangle box;
     std::string text;
+    bool standard_skin{true};
+    std::vector<ScriptTextRun> runs;
+    std::optional<int> portrait_image;
+    std::vector<std::array<int, 2>> attributes;
 };
+struct WorldNoticeAttribute {
+    int kind{}, value{};
+    float x{};
+};
+struct WorldNoticeLayout {
+    float end{}; // Start of the 16px right cap, relative to the row origin.
+    std::vector<WorldNoticeAttribute> attributes;
+};
+WorldNoticeLayout world_notice_layout(const WorldNoticeLine &line, float text_width);
 // Source queue order/height/lifetime, with the baseline moved to the current footer. These
 // records never advance the queue; message1 and unshipped special artwork follow the prototype.
 std::vector<WorldNoticeLine>
 world_notice_view(const std::vector<simulation::rules::WorldScriptNotice> &notices, Extent extent);
+std::vector<WorldNoticeLine> world_notice_view(const simulation::StartupWorldRuntimeState &state,
+                                               Extent extent);
 void draw_world_notices(const std::vector<WorldNoticeLine> &lines, const Skin &skin);
 } // namespace ark::desktop::ui

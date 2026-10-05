@@ -12,6 +12,19 @@
 #include <tuple>
 
 namespace ark::desktop {
+std::filesystem::path desktop_font_path(const std::filesystem::path &assets,
+                                        const std::string &override_path) {
+    if (!override_path.empty())
+        return override_path;
+    const auto fonts = assets.parent_path() / "fonts";
+    for (const auto &path :
+         {fonts / "default.otf", fonts / "default.ttf",
+          std::filesystem::path("/System/Library/Fonts/Supplemental/Arial Unicode.ttf")})
+        if (std::filesystem::is_regular_file(path))
+            return path;
+    throw std::runtime_error("Chinese font not found; place default.otf or default.ttf in fonts "
+                             "beside the executable, or use --font TTF/OTF");
+}
 namespace {
 std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
     if (std::filesystem::file_size(path) > 1024 * 1024)
@@ -115,6 +128,40 @@ void Sprites::human_image(int image_id, Rectangle source, Rectangle destination)
         throw std::runtime_error("Human portrait outside source image");
     DrawTexturePro(image, source, destination, {0, 0}, 0, WHITE);
 }
+void Sprites::actor_thumbnail(bool monster, int sprite_index, int image_id, Rectangle box) {
+    const std::string group = monster ? "monster" : "human";
+    if (!actor_sprites_.count(group)) {
+        std::vector<std::string> names;
+        for (const auto &row : assets::parse_tsv(read_bytes(root_ / group / "seb.inf"))) {
+            if (row.size() != 1 || std::filesystem::path(row[0]).has_parent_path())
+                throw std::runtime_error("Invalid actor sprite index");
+            names.push_back(row.at(0));
+        }
+        actor_sprites_.emplace(group, std::move(names));
+        actor_images_.emplace(group, image_index(root_, group.c_str()));
+    }
+    const auto &data =
+        definition(std::filesystem::path(group) / actor_sprites_.at(group).at(sprite_index));
+    bool found = false;
+    int left{}, top{}, right{}, bottom{};
+    for (const auto &layer : data.layers)
+        for (const auto &p : layer.parts) {
+            if (p.frame != 0)
+                continue;
+            left = found ? std::min(left, static_cast<int>(p.offset_x)) : p.offset_x;
+            top = found ? std::min(top, static_cast<int>(p.offset_y)) : p.offset_y;
+            right = found ? std::max(right, p.offset_x + p.width) : p.offset_x + p.width;
+            bottom = found ? std::max(bottom, p.offset_y + p.height) : p.offset_y + p.height;
+            found = true;
+        }
+    if (!found || right <= left || bottom <= top)
+        throw std::runtime_error("Empty actor thumbnail frame");
+    const float scale = std::min(box.width / (right - left), box.height / (bottom - top));
+    actor(monster, sprite_index, image_id, 0,
+          {box.x + (box.width - (right - left) * scale) / 2 - left * scale,
+           box.y + (box.height - (bottom - top) * scale) / 2 - top * scale},
+          scale);
+}
 void Sprites::actor(bool monster, int sprite_index, int image_id, int frame, Vector2 anchor,
                     float scale) {
     const std::string group = monster ? "monster" : "human";
@@ -143,29 +190,39 @@ const assets::SpriteDefinition &Sprites::definition(const std::filesystem::path 
     return found->second;
 }
 void Sprites::thumbnail(const std::string &sprite, int frame, Rectangle box, Color tint) {
+    thumbnail(sprite, std::vector<std::pair<int, Vector2>>{{frame, {0, 0}}}, box, tint);
+}
+void Sprites::thumbnail(const std::string &sprite,
+                        const std::vector<std::pair<int, Vector2>> &frames, Rectangle box,
+                        Color tint) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
     const auto &data = definition(std::filesystem::path("image") / sprite);
     bool found = false;
-    int left{}, top{}, right{}, bottom{};
-    for (const auto &layer : data.layers)
-        for (const auto &part : layer.parts)
-            if (part.frame == frame) {
-                left = found ? std::min(left, static_cast<int>(part.offset_x)) : part.offset_x;
-                top = found ? std::min(top, static_cast<int>(part.offset_y)) : part.offset_y;
-                right = found ? std::max(right, part.offset_x + part.width)
-                              : part.offset_x + part.width;
-                bottom = found ? std::max(bottom, part.offset_y + part.height)
-                               : part.offset_y + part.height;
-                found = true;
-            }
+    float left{}, top{}, right{}, bottom{};
+    for (const auto &[frame, offset] : frames) {
+        if (frame < 0 || frame >= data.frame_count || !std::isfinite(offset.x) ||
+            !std::isfinite(offset.y))
+            throw std::runtime_error("Invalid thumbnail fragment");
+        for (const auto &layer : data.layers)
+            for (const auto &part : layer.parts)
+                if (part.frame == frame) {
+                    const float x = offset.x + part.offset_x, y = offset.y + part.offset_y;
+                    left = found ? std::min(left, x) : x;
+                    top = found ? std::min(top, y) : y;
+                    right = found ? std::max(right, x + part.width) : x + part.width;
+                    bottom = found ? std::max(bottom, y + part.height) : y + part.height;
+                    found = true;
+                }
+    }
     if (!found || right <= left || bottom <= top)
         throw std::runtime_error("Empty thumbnail frame");
     const float scale = std::min(box.width / (right - left), box.height / (bottom - top));
-    draw(sprite, frame,
-         {box.x + (box.width - (right - left) * scale) / 2 - left * scale,
-          box.y + (box.height - (bottom - top) * scale) / 2 - top * scale},
-         tint, Binding::map, scale);
+    for (const auto &[frame, offset] : frames)
+        draw(sprite, frame,
+             {box.x + (box.width - (right - left) * scale) / 2 + (offset.x - left) * scale,
+              box.y + (box.height - (bottom - top) * scale) / 2 + (offset.y - top) * scale},
+             tint, Binding::map, scale);
 }
 Texture2D &Sprites::texture(const std::filesystem::path &path) {
     auto found = textures_.find(path.string());
@@ -244,7 +301,8 @@ void Text::prepare(float pixel_scale) {
     for (auto code : codepoints_)
         if (code > 127 && next.glyphs[GetGlyphIndex(next, code)].value != code) {
             UnloadFont(next);
-            throw std::runtime_error("Chinese font missing required glyph");
+            throw std::runtime_error("Chinese font missing required glyph (Unicode decimal " +
+                                     std::to_string(code) + ")");
         }
     SetTextureFilter(next.texture, TEXTURE_FILTER_BILINEAR);
     if (font_.texture.id)

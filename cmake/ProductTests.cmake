@@ -127,7 +127,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
             tests/desktop/world_building_test.cpp src/desktop/ui/world_panels.cpp
-            src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp
+            src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
             src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
             src/desktop/world_build_placement.cpp

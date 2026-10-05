@@ -16,6 +16,14 @@ int main() {
     check(decode_script_text("<po=cm>村庄<co=0066cc>升级</co><br/>条件").text == "村庄升级\n条件",
           "Known presentation markup changed visible content");
     check(decode_script_text("<po=cm>村庄").centered, "Source centered paragraph ignored");
+    const auto notice = decode_script_text("任务 <co=0064FF>沼泽</co> 追加");
+    check(notice.runs.size() == 3 && !notice.runs[0].rgb && notice.runs[1].text == "沼泽" &&
+              notice.runs[1].rgb == 0x0064ff && !notice.runs[2].rgb &&
+              notice.text == "任务 沼泽 追加",
+          "Task name color must survive decoding without changing measured visible text");
+    const auto nested = decode_script_text("<co=0000ff>A<co=ff0000>B</co>C</co>D");
+    check(nested.runs.size() == 4 && nested.runs[2].rgb == 0xff && !nested.runs[3].rgb,
+          "Closing an inner color must restore the enclosing color");
     check(decode_script_text("A<BR>B<br />C\r\nD\rE").text == "A\nB\nC\nD\nE",
           "Explicit break variants or CRLF produced literal markup/duplicate rows");
     check(decode_script_text("<0> 2<3 <unknown> <co=xyz>尾").text == "<0> 2<3 <unknown> <co=xyz>尾",

@@ -6,6 +6,14 @@
 namespace ark::desktop::ui {
 ScriptText decode_script_text(std::string_view source) {
     ScriptText result;
+    std::vector<std::uint32_t> colors;
+    const auto append = [&](char c) {
+        const auto color = colors.empty() ? std::optional<std::uint32_t>{} : colors.back();
+        result.text += c;
+        if (result.runs.empty() || result.runs.back().rgb != color)
+            result.runs.push_back({{}, color});
+        result.runs.back().text += c;
+    };
     for (std::size_t i = 0; i < source.size();) {
         if (source[i] == '<') {
             const auto end = source.find('>', i + 1);
@@ -14,7 +22,7 @@ ScriptText decode_script_text(std::string_view source) {
                 std::transform(tag.begin(), tag.end(), tag.begin(),
                                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
                 if (tag == "br" || tag == "br/" || tag == "br /") {
-                    result.text += '\n';
+                    append('\n');
                     i = end + 1;
                     continue;
                 }
@@ -22,6 +30,11 @@ ScriptText decode_script_text(std::string_view source) {
                                    std::all_of(tag.begin() + 3, tag.end(),
                                                [](unsigned char c) { return std::isxdigit(c); });
                 if (color || tag == "/co" || tag == "po=cm") {
+                    if (color)
+                        colors.push_back(
+                            static_cast<std::uint32_t>(std::stoul(tag.substr(3), nullptr, 16)));
+                    else if (tag == "/co" && !colors.empty())
+                        colors.pop_back();
                     result.centered = result.centered || tag == "po=cm";
                     i = end + 1;
                     continue;
@@ -29,12 +42,12 @@ ScriptText decode_script_text(std::string_view source) {
             }
         }
         if (source[i] == '\r') {
-            result.text += '\n';
+            append('\n');
             ++i;
             if (i < source.size() && source[i] == '\n')
                 ++i;
         } else
-            result.text += source[i++];
+            append(source[i++]);
     }
     return result;
 }

@@ -2,6 +2,7 @@
 
 // e8f66d9 building pages read the canonical Owner. Selection and responsive geometry are
 // desktop state; only intents cross to the simulation thread, carrying stable page/definition IDs.
+#include "../world_build_placement.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "layout.hpp"
 #include <optional>
@@ -14,6 +15,7 @@ struct WorldBuildingRow {
     int identity{}; // Definition for raw21; human definition for raw80, never a row index.
     std::string name;
     std::int64_t cost{};
+    WorldBuildGraphic graphic{}; // Empty for human residence rows.
 };
 struct WorldBuildingView {
     int raw{};
@@ -32,6 +34,7 @@ struct WorldBuildingView {
 struct WorldBuildingLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next;
     std::array<Rectangle, 3> tabs;
+    float row_height{38};
 };
 struct WorldBuildingSelection {
     int tab{}, selected{}, first_row{};

@@ -229,7 +229,8 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
     return false;
 }
 void WorldManagement::draw_footprint(const State &state, const WorldCameraView &view, Extent extent,
-                                     std::optional<Vector2> mouse, float zoom) const {
+                                     std::optional<Vector2> mouse, float zoom,
+                                     Sprites &sprites) const {
     if (state.scene.scene_state != 1 || !state.build_definition)
         return;
     const auto cell = anchor_ ? anchor_
@@ -238,7 +239,14 @@ void WorldManagement::draw_footprint(const State &state, const WorldCameraView &
                           : std::nullopt;
     if (cell)
         draw_world_build_preview(
-            world_build_preview(state, *state.build_definition, *cell, orientation_), view, zoom);
+            world_build_preview(state, *state.build_definition, *cell, orientation_), view, zoom,
+            sprites);
+}
+void WorldManagement::inspect_placement(int definition, simulation::rules::Position anchor,
+                                        simulation::rules::FacilityOrientation orientation) {
+    definition_ = definition;
+    anchor_ = anchor;
+    orientation_ = orientation;
 }
 void WorldManagement::draw_placement(const State &state, const WorldCameraView &view, Extent extent,
                                      std::optional<Vector2> mouse, float zoom, const ui::Skin &skin,

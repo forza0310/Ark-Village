@@ -1,6 +1,8 @@
 // Layout contracts keep active text and confirmation inside the viewport at every supported size.
 #include "support/checks.hpp"
+#include "support/world_fixture.hpp"
 #include "ui/world_panels.hpp"
+#include "ui/world_reports.hpp"
 #include <iostream>
 
 namespace {
@@ -70,7 +72,7 @@ void world_panels() {
         check(lines.size() == 2 && lines[0].index == 1 && lines[1].index == 0 &&
                   lines[0].text == "后到通知" && lines[1].text == "先到\n通知",
               "Notice wiring uses source reverse first-two order and decodes script tags");
-        const float footer = extent.height - 26.F;
+        const float footer = extent.height - 42.F;
         check(lines[0].box.x == 0 && lines[1].box.x == 0 && lines[0].box.width == extent.width &&
                   lines[1].box.width == extent.width && lines[0].box.y == footer - 40 &&
                   lines[0].box.height == 19 && lines[1].box.y == footer - 21 &&
@@ -87,12 +89,74 @@ void world_panels() {
           "Repeated notice projections neither advance counters nor mutate queued source text");
     notices[1].message = 1;
     const auto hidden = ui::world_notice_view(notices, {540, 360});
-    check(hidden.size() == 1 && hidden[0].index == 0 && hidden[0].box.y == 313 &&
+    check(hidden.size() == 1 && hidden[0].index == 0 && hidden[0].box.y == 297 &&
               hidden[0].box.height == 21,
           "Unshipped special notice1 stays hidden without promoting a third queue record");
     notices[0].counter = notices[1].counter = 0;
     check(ui::world_notice_view(notices, {540, 360}).empty(),
           "Unstarted first-two notices do not expose a later queued record");
+    auto state = initial_world();
+    const int human_id = state.rules->humans.front().identity;
+    const int monster_id = state.rules->monsters.front().identity;
+    state.report_state = 1;
+    state.report_snapshot = {0, 18, 3165, 4000, -835, human_id};
+    state.report_portraits = {monster_id, monster_id, monster_id, monster_id, monster_id};
+    for (const int defeats : {0, 1, 4, 5}) {
+        state.report_snapshot[0] = defeats;
+        const auto view = ui::world_month_view(state);
+        const auto expected = defeats > 4 ? 3U : static_cast<unsigned>(defeats);
+        check(view.defeats == defeats && view.monsters.size() == expected &&
+                  view.ellipsis == (defeats > 4) && view.human_image.has_value() == (defeats == 0),
+              "Monthly 0/1/4/5 defeats preserve count, zero-human and overflow branches");
+        for (const auto &portrait : view.monsters)
+            check(portrait.definition == monster_id,
+                  "Repeated monster portraits must not be deduplicated");
+    }
+    state.report_portraits[1] = -1;
+    check(ui::world_month_view(state).monsters.size() == 1,
+          "Monthly portrait -1 ends the sequence even when later slots contain definitions");
+    state.report_state = 2;
+    state.report_new_records[4] = true;
+    const auto income = ui::world_month_view(state);
+    check(income.income == 3165 && income.expenses == 4000 && income.balance == -835 &&
+              income.record && income.monsters.empty(),
+          "Income view consumes the prepared snapshot and signed total, independent of live funds");
+    WorldScriptNotice growth;
+    growth.message = 0;
+    growth.counter = 8;
+    growth.text = "人物 Lv.<co=0064ff>3</co>";
+    growth.human_definition = human_id;
+    growth.attribute_changes = std::array<std::array<int, 2>, 4>{{{3, 8}, {1, 8}, {0, 7}, {2, 6}}};
+    state.scripts.notices = {growth};
+    const auto before = state;
+    const auto growth_view = ui::world_notice_view(state, {240, 256});
+    check(growth_view.size() == 1 && growth_view[0].portrait_image &&
+              growth_view[0].attributes == std::vector<std::array<int, 2>>{{3, 8}, {1, 8}},
+          "Growth keeps source ap order and only its first half, including equal increments");
+    for (const auto input : {std::pair<float, std::size_t>{40, 2}, {110, 1}, {180, 0}, {400, 0}}) {
+        const auto layout = ui::world_notice_layout(growth_view[0], input.first);
+        check(layout.attributes.size() == input.second && layout.end + 16 <= 240,
+              "Narrow growth notices omit whole attribute groups when name/level consumes width");
+    }
+    const auto &person = state.rules->humans.front();
+    const auto profession =
+        state.scene.world.world.ai.growth.at(human_id).definition.current_profession;
+    check(growth_view[0].portrait_image == state.rules->jobs.at(profession).sprites.at(person.sex),
+          "Growth portrait reads current profession and sex");
+    check(same_world_clock(state, before) && state.village_points == before.village_points &&
+              state.scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds() &&
+              state.scripts.notices[0].counter == 8 &&
+              state.scripts.notices[0].attribute_changes == growth.attribute_changes,
+          "Report and growth projections do not consume points, fees, counters or ap");
+    for (const Extent extent : {Extent{240, 256}, Extent{540, 360}}) {
+        const auto layout = ui::world_victory_layout(extent);
+        const Rectangle usable{0, 24, static_cast<float>(extent.width), extent.height - 51.F};
+        check(contains(usable, layout.panel) && contains(usable, layout.confirm) &&
+                  layout.confirm.y >= layout.panel.y + layout.panel.height &&
+                  contains(usable, ui::world_month_confirm(extent)),
+              "Report buttons stay clear of artwork and footer at narrow and wide sizes");
+    }
     std::cout << "PASS world page layout contracts\n";
 }
 } // namespace ark::test

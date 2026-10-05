@@ -1,14 +1,21 @@
 #pragma once
 
+#include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace ark::desktop::ui {
+struct ScriptTextRun {
+    std::string text;
+    std::optional<std::uint32_t> rgb;
+};
 struct ScriptText {
     std::string text;
     bool centered{};
+    std::vector<ScriptTextRun> runs;
 };
 // Decode the maintained script's presentation tags after rule-side placeholder substitution.
 // Unknown tags and literal angle brackets remain visible instead of silently deleting content.

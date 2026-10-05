@@ -60,7 +60,7 @@ void Skin::number(std::int64_t value, Vector2 edge, const std::string &sprite) c
         if (c >= '0' && c <= '9')
             sprites.draw(sprite, c - '0', {x, edge.y}, WHITE, Sprites::Binding::common);
         else
-            text.draw("-", x, edge.y, blue, 10);
+            text.draw("-", x, edge.y, sprite == "number12.seb" ? MAROON : blue, 10);
         x += 8;
     }
 }

@@ -4,6 +4,7 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_building.hpp"
 #include "world_build_placement.hpp"
+#include <algorithm>
 #include <utility>
 
 namespace ark::test {
@@ -36,13 +37,52 @@ void world_building() {
     check(view.catalogs[0][1].cost ==
               sim::startup_world_build_quote(state, definition)->construction_cost,
           "Displayed cost uses current source economy rather than definition's initial cost");
+    check(!view.catalogs[0][1].graphic.sprite.empty() &&
+              view.catalogs[0][1].graphic.frames.front().first == 0,
+          "Catalogue carries source artwork in initial orientation instead of text-only rows");
+    // FACILITIES shape/fragment tables and SPRITE_BINDINGS independently specify these
+    // examples. In particular the two inn fragments come from different PNGs in one SEB.
+    struct GraphicCase {
+        int definition;
+        const char *sprite;
+        std::vector<std::pair<int, Vector2>> first, second;
+    };
+    for (const auto &example : std::vector<GraphicCase>{
+             {28, "tenant10.seb", {{0, {0, 0}}}, {{1, {0, 0}}}},
+             {29, "t_inn00.seb", {{0, {30, -15}}, {2, {0, 0}}}, {{1, {-30, -15}}, {3, {0, 0}}}},
+             {55,
+              "t_circus.seb",
+              {{0, {0, -30}}, {2, {-30, -15}}, {4, {30, -15}}, {6, {0, 0}}},
+              {{1, {0, -30}}, {3, {30, -15}}, {5, {-30, -15}}, {7, {0, 0}}}}}) {
+        const auto item =
+            std::find_if(catalogue.facilities.begin(), catalogue.facilities.end(),
+                         [&](const auto &value) { return value.id == example.definition; });
+        check(item != catalogue.facilities.end(), "Published graphic fixture definition exists");
+        for (const auto orientation :
+             {rules::FacilityOrientation::first, rules::FacilityOrientation::second}) {
+            const auto context = "definition=" + std::to_string(example.definition) +
+                                 " orientation=" + std::to_string(static_cast<int>(orientation));
+            const auto graphic = desktop::world_build_graphic(*item, orientation);
+            const auto &expected =
+                orientation == rules::FacilityOrientation::first ? example.first : example.second;
+            check(graphic.sprite == example.sprite && graphic.frames.size() == expected.size(),
+                  "Complete source tenant graphic: " + context);
+            for (std::size_t i = 0; i < expected.size(); ++i)
+                check(graphic.frames[i].first == expected[i].first &&
+                          graphic.frames[i].second.x == expected[i].second.x &&
+                          graphic.frames[i].second.y == expected[i].second.y,
+                      "Source frame and raster anchor: " + context +
+                          " fragment=" + std::to_string(i));
+        }
+    }
     for (const auto extent :
          {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const auto layout = ui::world_building_layout(extent);
         check(layout.panel.x >= 0 && layout.panel.y >= 0 &&
                   layout.panel.x + layout.panel.width <= extent.width &&
                   layout.panel.y + layout.panel.height <= extent.height &&
-                  layout.rows.y + ui::world_building_visible_rows(layout) * 23 <= layout.cancel.y &&
+                  layout.rows.y + ui::world_building_visible_rows(layout) * layout.row_height <=
+                      layout.cancel.y &&
                   !CheckCollisionRecs(layout.previous, layout.cancel) &&
                   !CheckCollisionRecs(layout.next, layout.confirm),
               "Responsive page rows and navigation remain on-screen without button overlaps");
@@ -87,7 +127,7 @@ void world_building() {
               view.residents[0].name == catalogue.humans.at(3).name &&
               view.residents[0].cost == 901,
           "Residence candidates use actual human identity and residence fee, not build price");
-    input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, 23});
+    input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
     auto intent = ui::world_building_input(view, layout, selection, input, false);
     check(intent && intent->action == Action::residence_select &&
               intent->selection == catalogue.humans.at(3).identity,
@@ -212,13 +252,24 @@ void world_building() {
     auto preview =
         desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
     check(preview.valid() && preview.cells.size() == 4 && preview.cells[0].position.x == 7 &&
-              preview.cells[0].position.y == 9,
+              preview.cells[0].position.y == 9 && preview.graphic.frames.size() == 4,
           "Construction ghost includes the entire rotated source footprint");
+    const auto pair_first =
+        desktop::world_build_preview(state, 29, {8, 8}, rules::FacilityOrientation::first);
+    const auto pair_second =
+        desktop::world_build_preview(state, 29, {8, 8}, rules::FacilityOrientation::second);
+    check(pair_first.valid() && pair_second.valid() && pair_first.graphic.sprite == "t_inn00.seb" &&
+              pair_second.graphic.sprite == pair_first.graphic.sprite &&
+              pair_first.cells[0].position.x == 8 && pair_first.cells[0].position.y == 9 &&
+              pair_second.cells[0].position.x == 7 && pair_second.cells[0].position.y == 8 &&
+              pair_first.graphic.frames[0].first == 0 && pair_first.graphic.frames[1].first == 2 &&
+              pair_second.graphic.frames[0].first == 1 && pair_second.graphic.frames[1].first == 3,
+          "Rotated placement changes both the full source tenant artwork and its occupied cells");
     map.cells.at(9 * map.width + 7).legacy_state = 10;
     preview =
         desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
-    check(preview.denial == Denial::occupied,
-          "Non-anchor occupied footprint cell rejects a seemingly free anchor");
+    check(preview.denial == Denial::occupied && preview.graphic.frames.size() == 4,
+          "Invalid placement keeps its full ghost artwork while rejecting an occupied outer cell");
     map.cells.at(9 * map.width + 7).legacy_state = 0;
     check(desktop::world_build_preview(state, definition, {1, 8}, rules::FacilityOrientation::first)
                       .denial == Denial::outside_town &&

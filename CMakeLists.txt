@@ -4,7 +4,23 @@ project(ark_village VERSION 0.1.0 LANGUAGES CXX)
 option(ARK_BUILD_DESKTOP "Build the raylib executable" ON)
 include(CTest)
 
+# Explicitly run as the caller: Windows otherwise treats 32-bit executables with names such
+# as "update" as installers and rejects CreateProcess for ordinary users (ERROR_ELEVATION_REQUIRED).
+if(WIN32)
+    enable_language(RC)
+    configure_file(cmake/windows.rc.in "${PROJECT_BINARY_DIR}/ark_windows.rc" @ONLY)
+endif()
+function(ark_windows_manifest target)
+    if(WIN32)
+        get_target_property(kind ${target} TYPE)
+        if(kind STREQUAL "EXECUTABLE")
+            target_sources(${target} PRIVATE "${PROJECT_BINARY_DIR}/ark_windows.rc")
+        endif()
+    endif()
+endfunction()
+
 function(ark_target target)
+    ark_windows_manifest(${target})
     target_compile_features(${target} PUBLIC cxx_std_17)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -89,7 +105,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/world_build_placement.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
-        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp
+        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_reports.cpp src/desktop/ui/world_award.cpp
         src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
         src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
@@ -103,6 +119,23 @@ if(ARK_BUILD_DESKTOP)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${PROJECT_SOURCE_DIR}/assets" "${CMAKE_BINARY_DIR}/bin/assets")
     add_dependencies(ark_village ark_package_assets)
+    set(ARK_DESKTOP_FONT "" CACHE FILEPATH "Optional complete CJK TTF/OTF copied beside the desktop executable")
+    set(ARK_DESKTOP_FONT_LICENSE "" CACHE FILEPATH "License accompanying ARK_DESKTOP_FONT")
+    if(ARK_DESKTOP_FONT)
+        get_filename_component(ark_font_extension "${ARK_DESKTOP_FONT}" EXT)
+        if(NOT EXISTS "${ARK_DESKTOP_FONT}" OR NOT ark_font_extension MATCHES "^\\.(ttf|otf)$")
+            message(FATAL_ERROR "ARK_DESKTOP_FONT must be an existing TTF or OTF")
+        endif()
+        add_custom_command(TARGET ark_package_assets POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/bin/fonts"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ARK_DESKTOP_FONT}"
+                "${CMAKE_BINARY_DIR}/bin/fonts/default${ark_font_extension}")
+        if(ARK_DESKTOP_FONT_LICENSE)
+            add_custom_command(TARGET ark_package_assets POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ARK_DESKTOP_FONT_LICENSE}"
+                    "${CMAKE_BINARY_DIR}/bin/fonts/LICENSE.txt")
+        endif()
+    endif()
 endif()
 
 if(BUILD_TESTING)

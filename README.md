@@ -6,7 +6,7 @@
 
 当前产品已迁入研究 **`e8f66d9` 的309项源/测试/数据**，并完成对应桌面接线，本阶段本地构建、测试和窗口验收已通过。正常世界可经菜单“建设”进入目录，预览完整占地并连续放置；点击建筑查看真实经营详情、符合资格时入住/升级；活动任务可追加队员、查看成员及请求中止。年度页支持选择人物授勋，晋级页支持实际申请与庆典；这些动作都提交当前模拟线程，共用地图、资金、人物和随机。
 
-原五项菜单当前开放“建设、冒险”，村办/情报/系统禁用。旅馆两阶段条已接当前职业/性别头像；底栏通知按源生命周期显示前两条文本。raw67/88/96为真实数据的文字展示适配，完整能力增长/授勋/自宅动画、通知成长属性拼片/77皮肤/32特殊条，以及道路建设、移动、拆除尚未接入。旧建设切片仅保留为显式诊断，当前世界建设不会启动第二个Game。产品测试和截图不等于原APK动态行为或OS鼠标验收。
+原五项菜单当前开放“建设、冒险”，村办/情报/系统禁用。旅馆两阶段条已接当前职业/性别头像；按5aa5c37新增秘书通知77皮肤/富文本、成长头像/ap前两项、raw30两阶段胜利窗及月报左上头像/收支简表，验收记录见B1。raw67/88/96仍为真实数据的文字展示，完整演出、胜利跳跃/手持武器合成、通知32特殊条及道路建设/移动/拆除另接。旧建设切片仅保留为显式诊断，当前世界建设不会启动第二个Game。产品测试和截图不等于原APK动态行为或OS鼠标验收。
 
 此前已补齐伤害数字、死亡金币、经验/升级标签、旅馆休息/HP条和通知换行，并采用月报手动确认与独立模拟线程。此前2倍速600帧窗口绘制间隔中位数16.96ms、95分位17.12ms，月报等待120帧时世界更新0次；这些是历史结果，不能代替本阶段验收。交互气泡具体文案、人气动态填充、设施精确L锚点、旗帜/连击/手持武器及部分战斗特效仍按已发布研究补齐。
 
@@ -14,16 +14,17 @@
 
 ## 构建运行
 
-main上的[GitHub Actions](.github/workflows/ci.yml)分别在macOS ARM与Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-macos-arm64`和`ark-village-windows10-x86`的Release压缩包及SHA-256。Debug和headless预设保留，但不在日常CI中重复执行。成功构建还会发布到仓库的GitHub Packages（GHCR）：`ghcr.io/forza0310/ark-village:latest`，可用`oras pull`下载两平台压缩包及校验文件。Actions运行页的Artifacts继续保留14天；Windows目标是32位、实际CI系统为Windows Server 2022。CI是本地阶段验证之外的额外检查，本地构建/测试持续允许，首次Packages发布待验证；制品内容、字体启动方式和验收边界见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：raylib和C++运行库静态链接，中文字体与许可随包提供。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。Debug和headless预设继续用于本地四套阶段验收。
 
-需要CMake 3.21+、C++17、Node 18+（仅构建）、pkg-config及raylib 6.0+。macOS可用：
+成功构建还会发布到GitHub Packages：`ghcr.io/forza0310/ark-village:latest`，用`oras pull`下载Windows压缩包及校验文件。实际CI系统为Windows Server 2022，Windows 10真机另验。CI是本地验收以外的额外检查，首次新版远程发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
-```sh
-brew install cmake node pkg-config raylib
-cmake --preset desktop-release
+开发需要CMake 3.21+、Ninja、Node 18+（仅构建）、pkg-config、LLVM-MinGW x64及静态raylib 6.0。设置x64编译器和raylib的`PKG_CONFIG_PATH`后，在PowerShell中运行（完整依赖准备见[Windows本地构建](docs/CONTRIBUTING.md#windows本地构建)）：
+
+```powershell
+cmake --preset desktop-release -G Ninja -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres -DCMAKE_EXE_LINKER_FLAGS=-static -DARK_DESKTOP_FONT="$PWD/build/local-tools/fonts/default.otf" -DARK_DESKTOP_FONT_LICENSE="$PWD/build/local-tools/fonts/OFL.txt"
 cmake --build --preset desktop-release --parallel 4
 ctest --preset desktop-release
-./build/desktop-release/bin/ark_village
+.\build\desktop-release\bin\ark_village.exe
 ```
 
 默认启动和显式 `--world` 都运行持续世界；`--check` 无窗口校验资源和世界初始化。
@@ -37,12 +38,12 @@ ctest --preset desktop-release
 
 主场景无其他页面/月报时，点击底部“菜单”或按M打开五项菜单；M、Esc或再次点击菜单关闭。菜单期间冻结世界，关闭不改变手动暂停。未暂停时可选择“建设”或“冒险”，其他三项禁用；原版完整菜单生命周期尚未交付，开关属于已确认的桌面适配。
 
-- **建设**：菜单→建设或B打开三分类目录，点击列表/上下键选择、左右键切换分类，确认后进入地图预览。点击地图锁定位置，R旋转，Enter或“建设”按钮提交；成功后保持连续放置，Esc/返回退出。预览不占地或扣款，模拟线程提交时重新验证。
+- **建设**：菜单→建设或B打开三分类目录，左侧显示完整建筑缩略图、右侧名称和当前报价；点击列表/上下键选择、左右键切换分类，确认后进入完整建筑与占地预览。点击地图锁定位置，R或“旋转”切换朝向，Enter或“建设”提交；成功后保持连续放置，Esc/返回退出。当前预览静态半透明，精确原版闪烁节拍待研究；预览不占地或扣款，模拟线程提交时重新验证。
 - **设施**：点击当前建筑打开详情，左右键翻页；入住候选、升级和返回沿实际页面资格提交。道路建设、移动、拆除及未交付商品/道具操作不提供。
 - **任务**：菜单→冒险或T打开目录；有活动任务时打开当前队伍。征集页按住Enter或“加速”按钮加快源计数，松开/切页/暂停/失焦释放。队伍页支持追加、成员详情和出发；出发演出开始后不可取消。X打开活动任务中止管理，先请求、再在默认“否”的问题页确认；期限页沿原继续/中止流程。完整招募入场/表情动画仍待绘制合同。
 - **年度与晋级**：年度贡献页选择人物后请求授勋，再确认是/否；结束授勋有独立问题。raw48可申请晋级或查看四项条件解释，raw49仅查看，庆典按源计数开放确认。一般返回用取消/Esc，设施强化83目前仅取消，解锁59满70计数可确认。
 
-程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。macOS默认使用系统Arial Unicode.ttf，其他环境通过 `--font /路径/中文.ttf` 指定字体。退出不保存。
+程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。字体优先使用 `--font`，否则查找程序旁 `fonts/default.otf`、`fonts/default.ttf`，保留macOS历史回退。Windows便携包附Noto CJK衍生字形子集及OFL许可，直接运行exe即可；本地通过 `ARK_DESKTOP_FONT`、`ARK_DESKTOP_FONT_LICENSE` 配置复制。raylib不能直接读取Windows TTC集合，部分系统TTF缺原文符号；不会静默忽略缺字。字体属于桌面依赖，不改研究素材清单。退出不保存。
 
 ## 验证与诊断
 

@@ -27,28 +27,44 @@ ctest --preset desktop-debug
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
 
+## Windows本地构建
+
+当前目标为Windows 10+ x64，使用LLVM-MinGW 20250305 UCRT，CMake 3.21+、Ninja、Node 18+、pkg-config。工具可解包到忽略的`build/local-tools`，不必系统安装；编译器、CMake/Ninja、Node和pkg-config加入当前终端PATH。更换已配置的32位编译器时先以`cmake --fresh --preset ...`重新配置，不混用旧对象和raylib库。
+
+raylib使用下节固定提交；示例命令假定源码位于`build/local-tools/raylib`，LLVM的bin已在PATH。先构建x64静态库：
+
+```powershell
+cmake -S build/local-tools/raylib -B build/local-tools/raylib-x64-build -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-clang -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$PWD/build/local-tools/raylib-x64-install" '-DPKG_CONFIG_LIBS_EXTRA=-lwinmm -lgdi32 -lopengl32'
+cmake --build build/local-tools/raylib-x64-build --parallel 4
+cmake --install build/local-tools/raylib-x64-build
+$env:PKG_CONFIG_PATH="$PWD/build/local-tools/raylib-x64-install/lib/pkgconfig"
+python -m pip install fonttools==4.59.0
+python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts
+```
+
+字体工具仅用于构建。再按README配置`desktop-release`，以及`desktop-debug/headless-debug/headless-release`；headless不需要raylib/字体。路径含空格时保留PowerShell引号，CLion也可将相同编译器/缓存项配置在CMake profile。CMake的`ARK_DESKTOP_FONT`/`ARK_DESKTOP_FONT_LICENSE`将OTF与许可复制至exe旁`fonts/`。Windows可执行文件显式嵌入`asInvoker`，避免带update字样的测试程序被系统误认为安装器。
+
 ## GitHub CI与制品
 
 [Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。CI构建与测试在GitHub runner上执行，属于本地阶段验证以外的额外检查。用户持续允许本地配置、编译、测试和窗口验收；两类结果分别记录，不以本地结果代替远程验收。
 
 | 制品 | GitHub runner / 工具链 | 目标与验收边界 |
 | --- | --- | --- |
-| `ark-village-macos-arm64` | `macos-15` ARM64 / Apple Clang | macOS 11+、Apple Silicon；检查Mach-O ARM64和仅系统动态依赖 |
-| `ark-village-windows10-x86` | `windows-2022` / LLVM-MinGW 20250305 UCRT、i686 | Windows 10 32位目标；检查PE32/x86，实际测试系统为Windows Server 2022，不代表Windows 10真机/图形验收 |
+| `ark-village-windows10-x64` | `windows-2022` / LLVM-MinGW 20250305 UCRT、x86_64 | Windows 10+ 64位目标；检查PE32+/AMD64，实际CI为Windows Server 2022，不代表Windows 10真机/图形验收 |
 
-每个平台配置、编译desktop-release并执行全部标准CTest，保留三个月基线，额外`ARK_LONG_WORLD_TESTS`关闭。desktop包含核心程序及核心测试，日常CI不重复构建Debug或headless；这些预设保留供调试、独立构建与依赖边界检查。任何步骤失败即失败，不跳过平台专属失败或降低断言。平台之间独立运行；同一main的新提交取消旧流水线。
+按2026-10-06用户决定，构建与发布job均只在Windows运行；停止macOS/x86制品。配置、编译desktop-release并执行全部标准CTest，保留三个月基线，额外`ARK_LONG_WORLD_TESTS`关闭。desktop包含核心程序及核心测试，日常CI不重复Debug或headless；四套预设仍用于本地阶段验收。任何步骤失败即失败，不跳过失败或降低断言；同一main的新提交取消旧流水线。
 
 Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈希。现有`packaged_frame_contract`仅调整临时副本为保留原可执行文件名（Windows保留`.exe`），避免Node/libuv按扩展名查找时无法启动；原有全部断言、变异输入及产品实现保持不变。
 
-raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，CI单独静态构建；通过其`PKG_CONFIG_LIBS_EXTRA`配置补齐静态系统链接依赖，不改产品CMake或研究来源。Windows C++运行库也静态链接，构建工具运行于x64宿主、输出显式选择i686，制品不需要安装Node/CMake/raylib。
+raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独静态构建；通过`PKG_CONFIG_LIBS_EXTRA`补齐`winmm/gdi32/opengl32`系统链接依赖。Windows C++运行库也静态链接，编译器显式选择`x86_64-w64-mingw32-clang++`。包仅依赖Windows系统DLL/UCRT，不需要安装Node/CMake/raylib或额外C++运行库。
 
-desktop-release全部标准测试成功后打包Release桌面程序、无窗口程序、完整`assets/`、raylib许可和启动说明；Windows附调用既有`--font`选项的启动脚本，自动选已安装的微软雅黑/黑体/宋体，缺中文字体时明确提示自行指定。macOS包保持可执行权限，不签名或公证。打包前检查架构、动态依赖、资源哈希，并从其他工作目录执行制品`--check`和无窗口入口`--help`。
+desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序、616项清单资源、字体子集/来源/OFL许可、raylib与静态运行库许可及启动说明。运行时编译进exe的simulation数据、源码副本、测试、CLI和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；每次构建重新生成，新增文案不会沿用旧字形清单。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
 
-Actions运行页保留14天的压缩制品、SHA-256校验文件及独立诊断artifact；失败时仍上传已有构建日志、CTest日志/JUnit结果。两个平台构建/测试/打包均成功后，独立publish job使用最小`packages: write`权限将两份压缩包及校验文件发布到GitHub Packages的GHCR仓库`ghcr.io/forza0310/ark-village`；build job仍只有读取权限。OCI制品类型为`application/vnd.ark-village.release.v1`，这是游戏文件包，不能用`docker run`启动。
+Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job以最小`packages: write`权限将单份ZIP及校验文件发布到`ghcr.io/forza0310/ark-village`；build job只有读取权限。OCI类型`application/vnd.ark-village.release.v1`是可下载的游戏文件包，不能用`docker run`启动。
 
-每次发布标记`sha-<完整提交SHA>`，从GHCR回读并逐字节核对四个文件后更新`latest`；发布失败会使流水线失败，已上传的Actions制品仍可下载。包通过`org.opencontainers.image.source`关联本仓库，显示在仓库Packages区域；不受Actions制品14天保留期限制。新GHCR包默认私有，访问权限/公开状态由Package settings管理；私有包拉取需先用具备`read:packages`权限的凭据执行`oras login ghcr.io`。
+每次发布标记`sha-<完整提交SHA>`，从GHCR回读并逐字节核对ZIP/校验两个文件后更新`latest`；失败使流水线失败，Actions下载仍可用。包通过`org.opencontainers.image.source`关联仓库，显示在Packages区域；GHCR历史提交标签继续保留，不受Actions的7天期限影响，本批不自动删除远程历史。新包默认私有，公开状态/权限由Package settings管理；私有包拉取需先以具备`read:packages`权限的凭据执行`oras login ghcr.io`。
 
-安装[ORAS](https://oras.land/docs/installation)后下载两个平台压缩包与SHA-256文件：
+安装[ORAS](https://oras.land/docs/installation)后下载Windows x64压缩包与SHA-256文件：
 
 ```sh
 oras pull ghcr.io/forza0310/ark-village:latest
@@ -56,7 +72,7 @@ oras pull ghcr.io/forza0310/ark-village:latest
 
 指定历史构建时将`latest`换为`sha-<完整提交SHA>`。Actions发布步骤摘要也记录实际包名、提交标签和下载命令。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
 
-2026-10-05已通过GitHub API核对[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)：`ba68e90`的两个平台Release构建/测试、打包检查和Actions上传均成功。此次Packages发布配置仅做本地静态检查，首次GHCR推送/回读验证待包含新配置的main运行确认。
+历史[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)验证了`ba68e90`旧两平台流程。当前Windows-only x64流程的本地构建/静态检查及待执行打包验收状态单独记录于[B1](stages/B1-playable-prototype.md#task-report-ui)；远程构建及首次GHCR推送/回读待包含新配置的main运行确认，本地不主动推送。
 
 平台依据：[GitHub托管runner列表](https://github.com/actions/runner-images#available-images)、[LLVM-MinGW 20250305工具链与UCRT说明](https://github.com/mstorsjo/llvm-mingw/blob/20250305/README.md)。
 

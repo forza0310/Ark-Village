@@ -7,8 +7,13 @@
 #include <optional>
 #include <raylib.h>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace ark::desktop {
+// Explicit --font wins; packaged fonts resolve beside the executable's assets, not the cwd.
+std::filesystem::path desktop_font_path(const std::filesystem::path &assets,
+                                        const std::string &override_path);
 class Sprites {
   public:
     enum class Binding { map, farmer, secretary, common, common2, window, human, monster };
@@ -24,11 +29,16 @@ class Sprites {
     // CPU-verified portrait crop from the current human image; no nested screen scissor or
     // render-resolution assumptions, so world zoom and Retina use the same source pixels.
     void human_image(int image_index, Rectangle source, Rectangle destination);
+    // Fit a source frame into a desktop icon box; not the unshipped exact monster head crop.
+    void actor_thumbnail(bool monster, int sprite_index, int image_index, Rectangle destination);
     // Raw published PNG rectangles for tiled bars and nine-slice window components.
     void image(const std::string &name, Rectangle source, Rectangle destination,
                Binding binding = Binding::common, Color tint = WHITE);
     // Fit the actual SEB frame bounds; the map anchor is not the image's visual center.
     void thumbnail(const std::string &sprite, int frame, Rectangle box, Color tint = WHITE);
+    // Multi-cell facilities fit all source fragments together at their relative map anchors.
+    void thumbnail(const std::string &sprite, const std::vector<std::pair<int, Vector2>> &frames,
+                   Rectangle box, Color tint = WHITE);
     // Dungeon labels use the bound tenant PNG height, not a SEB frame bounding box.
     // Reject ambiguous multi-image frames instead of guessing an art height.
     int map_image_height(const std::string &sprite, int frame);

@@ -6,6 +6,14 @@
 #include "world_scene.hpp"
 
 namespace ark::desktop {
+// Complete ordered tenant fragments at relative raster anchors. Both catalogue icons and
+// placement ghosts use the definition -> display -> SEB chain, never the legacy Game.
+struct WorldBuildGraphic {
+    std::string sprite;
+    std::vector<std::pair<int, Vector2>> frames;
+};
+WorldBuildGraphic world_build_graphic(const simulation::StartupDefinition &definition,
+                                      simulation::rules::FacilityOrientation orientation);
 // One physical input frame produces at most one intent. Map clicks precede keyboard
 // confirmation so selecting a new cell can never buy the previously locked anchor.
 struct WorldBuildControls {
@@ -29,6 +37,7 @@ struct WorldBuildPreview {
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupBuildDenial denial{simulation::StartupBuildDenial::none};
     bool missing_source{};
+    WorldBuildGraphic graphic;
     std::vector<simulation::rules::FootprintCell> cells;
     std::int64_t cost{};
     bool valid() const { return !missing_source && denial == simulation::StartupBuildDenial::none; }
@@ -40,5 +49,5 @@ WorldBuildPreview world_build_preview(const simulation::StartupWorldRuntimeState
                                       int definition, simulation::rules::Position anchor,
                                       simulation::rules::FacilityOrientation orientation);
 void draw_world_build_preview(const WorldBuildPreview &preview, const WorldCameraView &view,
-                              float zoom);
+                              float zoom, Sprites &sprites);
 } // namespace ark::desktop

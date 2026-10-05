@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
 
 namespace ark::desktop {
 namespace {
@@ -15,6 +16,27 @@ Vector2 anchor(const WorldCameraView &view, float x, float y, float zoom) {
             zoom * (v[1] + v[3] - (v[1] + v[3]) / 2 - y + view.camera[1])};
 }
 } // namespace
+WorldBuildGraphic world_build_graphic(const simulation::StartupDefinition &definition,
+                                      rules::FacilityOrientation orientation) {
+    const auto &displays = simulation::startup_evidence().displays;
+    const auto display = std::find_if(displays.begin(), displays.end(), [&](const auto &item) {
+        return item.id == definition.display_id;
+    });
+    if (display == displays.end())
+        throw std::invalid_argument("Building graphic references an unknown map display");
+    // A small local grid only obtains source relative offsets, not a second business map.
+    const auto footprint = rules::facility_footprint(
+        static_cast<rules::FacilityShape>(definition.shape), orientation, {1, 0}, 3, 3);
+    if (footprint.error != rules::GeometryError::none)
+        throw std::invalid_argument("Building graphic has an unsupported source footprint");
+    WorldBuildGraphic graphic;
+    graphic.sprite = display->sprite;
+    for (const auto &cell : footprint.cells) {
+        const int x = cell.position.x - 1, y = cell.position.y;
+        graphic.frames.push_back({cell.fragment_index, {30.F * (x + y), 15.F * (x - y)}});
+    }
+    return graphic;
+}
 WorldBuildControls world_build_controls(Extent extent) {
     return {ui::Layout(extent).scene,
             {6, extent.height - 54.F, 58, 22},
@@ -78,6 +100,7 @@ WorldBuildPreview world_build_preview(const State &state, int id, rules::Positio
         preview.missing_source = true;
         return preview;
     }
+    preview.graphic = world_build_graphic(*item, orientation);
     const auto &world = state.scene.world.world;
     const auto footprint =
         rules::facility_footprint(static_cast<rules::FacilityShape>(item->shape), orientation,
@@ -123,7 +146,7 @@ WorldBuildPreview world_build_preview(const State &state, int id, rules::Positio
     return preview;
 }
 void draw_world_build_preview(const WorldBuildPreview &preview, const WorldCameraView &view,
-                              float zoom) {
+                              float zoom, Sprites &sprites) {
     const Color color = preview.valid() ? Color{70, 194, 94, 190} : Color{222, 74, 58, 190};
     for (const auto &cell : preview.cells) {
         const float x = static_cast<float>(cell.position.x),
@@ -139,6 +162,17 @@ void draw_world_build_preview(const WorldBuildPreview &preview, const WorldCamer
         DrawLineEx(right, bottom, zoom, color);
         DrawLineEx(bottom, left, zoom, color);
         DrawLineEx(left, top, zoom, color);
+    }
+    if (!preview.cells.empty()) {
+        // Match the installed surface's raster anchor and complete source fragments. The
+        // exact original blink cadence is not delivered; drawing never advances its counter.
+        const auto p = anchor(view, 30.F * (preview.anchor.x + preview.anchor.y),
+                              15.F * (preview.anchor.y - preview.anchor.x) + 15, zoom);
+        const Color tint = preview.valid() ? Color{255, 255, 255, 190} : Color{255, 160, 160, 170};
+        for (const auto &[frame, offset] : preview.graphic.frames)
+            sprites.draw(preview.graphic.sprite, frame,
+                         {p.x + offset.x * zoom, p.y + offset.y * zoom}, tint,
+                         Sprites::Binding::map, zoom);
     }
 }
 } // namespace ark::desktop

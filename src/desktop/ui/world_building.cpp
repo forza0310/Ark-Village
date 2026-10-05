@@ -52,7 +52,9 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                 if (!quote)
                     throw std::invalid_argument("Building page is missing its current quote");
                 view.catalogs[tab].push_back(
-                    {id, definition(state, id).name, quote->construction_cost});
+                    {id, definition(state, id).name, quote->construction_cost,
+                     world_build_graphic(definition(state, id),
+                                         simulation::rules::FacilityOrientation::first)});
             }
         view.can_confirm = true;
     } else if (view.raw == 80) {
@@ -121,7 +123,7 @@ WorldBuildingLayout world_building_layout(Extent extent) {
     return layout;
 }
 int world_building_visible_rows(const WorldBuildingLayout &layout) {
-    return std::max(1, static_cast<int>(layout.rows.height / 23));
+    return std::max(1, static_cast<int>(layout.rows.height / layout.row_height));
 }
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
                                                         const WorldBuildingLayout &layout,
@@ -181,7 +183,8 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
     selection.first_row = std::min(selection.first_row, selection.selected);
     selection.first_row = std::max(selection.first_row, selection.selected - visible + 1);
     for (int row = 0; row < visible && row + selection.first_row < count; ++row)
-        if (hit(input.click, {layout.rows.x, layout.rows.y + row * 23, layout.rows.width, 23})) {
+        if (hit(input.click, {layout.rows.x, layout.rows.y + row * layout.row_height,
+                              layout.rows.width, layout.row_height})) {
             selection.selected = row + selection.first_row;
             confirm = true;
         }
@@ -212,12 +215,19 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
             for (int row = 0; row < world_building_visible_rows(layout) &&
                               row + first < static_cast<int>(list.size());
                  ++row) {
-                Rectangle box{layout.rows.x, layout.rows.y + row * 23, layout.rows.width, 23};
+                Rectangle box{layout.rows.x, layout.rows.y + row * layout.row_height,
+                              layout.rows.width, layout.row_height};
                 if (first + row == selection.selected)
                     DrawRectangleRec(box, {255, 236, 174, 255});
                 const auto &item = list[first + row];
-                fitted(skin, item.name, {box.x + 4, box.y + 5, box.width - 80, 14});
-                skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 5, ink,
+                float label_x = box.x + 4;
+                if (!item.graphic.frames.empty()) {
+                    const Rectangle icon{box.x + 2, box.y + 2, 58, layout.row_height - 4};
+                    skin.sprites.thumbnail(item.graphic.sprite, item.graphic.frames, icon);
+                    label_x = box.x + 65;
+                }
+                fitted(skin, item.name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
+                skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
                            10);
             }
         } else {

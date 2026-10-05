@@ -4,6 +4,8 @@
 
 任务输入独立为`open_task_menu`、`act_task_page(page, action, selection)`、`set_page_confirm_held(page, held)`和页83的`cancel_page`，调用33ee056已发布消费者。任务余额不足/满员/无追加候选保留源合法反馈页，用可恢复rejected回应；旧页/暂停中的新任务输入也可恢复拒绝，不改成新页确认。missing_source/script_failed/runtime_failed仍停止worker；既有普通ack/授勋/月报错误契约保持。`WorldFrame.command_results`仅保留最近64条这类显式输入的serial/outcome/源错误与denial，避免后续镜头或tick发布覆盖待处理结果，不是通用事件总线。征集held绑定raw24页身份，仅逻辑页更新消费；切页、暂停和月报门槛自动清除，UI释放/失焦发送原页false，迟到旧页release不能清另一页的新press。普通ack不得替任务页22..28/33或商店83选择动作。
 
+桌面五项菜单是明确的产品适配：`WorldFrame.main_menu_open`由同一worker持有，仅是冻结资格元数据，不伪造原版raw3页、不改写`framework_paused`。`open_main_menu`仅在源主场景且无月报时打开，`close_main_menu`保留显式暂停；47ms门槛持续运行但不产生世界工作，关闭不补算。`open_menu_tasks`在一个FIFO候选事务内调用真实任务入口并关闭菜单，避免先关菜单再发任务造成世界插队；暂停、活动任务或失效页面会可恢复拒绝并保留菜单，源空目录提示页保留并正常关闭菜单。菜单打开时普通任务快捷入口拒绝旁路。三项命令沿最近64条结果历史报告；重复开关/过期选择不使worker失败，缺源等错误仍明确停止。菜单其余未接项只禁用，不连接旧Game。
+
 `world_report.hpp/.cpp` 适配用户选择的桌面手动月报：识别场景顶层报告，校验期望阶段，复用原报告投影/候选/提交；不推进日期、不重算维护费、不重复奖励。等待时session冻结世界，确认1→2→0后按显式暂停资格恢复。headless入口仍保留源自动报告，未改迁入规则。
 
 `world_facility_queries.hpp/.cpp`只读当前simulation Owner的设施实例，复用发布经营/邻接规则，返回page74模板、共享等级/使用/提示、实例施工/占用、当月收支与原口径累计利润。消费价格不是建设报价，工期读取建设时固化阈值；不使用旧Game或初局职业计数。初始邻接来源缓存缺失时仅作纯查询重建，必须与Owner三属性相同；已有缓存还需来源身份/顺序一致，否则返回明确错误，不显示虚假的零奖励，也不刷新世界。接口不负责raw74开关、暂停资格或道具/购买/升级/入住动作。

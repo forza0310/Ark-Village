@@ -21,8 +21,10 @@ const simulation::rules::WorldScriptPage *top_page(const WorldState &state) {
     return found == state.scripts.pages.rend() ? nullptr : &*found;
 }
 bool task_command(WorldCommandKind kind) {
-    return kind == WorldCommandKind::open_task_menu || kind == WorldCommandKind::task_action ||
-           kind == WorldCommandKind::page_confirm_held || kind == WorldCommandKind::cancel_page;
+    return kind == WorldCommandKind::open_main_menu || kind == WorldCommandKind::close_main_menu ||
+           kind == WorldCommandKind::open_menu_tasks || kind == WorldCommandKind::open_task_menu ||
+           kind == WorldCommandKind::task_action || kind == WorldCommandKind::page_confirm_held ||
+           kind == WorldCommandKind::cancel_page;
 }
 bool task_decision_page(const simulation::rules::WorldScriptPage *page) {
     return page && page->kind == simulation::rules::WorldScriptPageKind::raw_page &&
@@ -130,13 +132,43 @@ class WorldSession::Impl {
     std::shared_ptr<const WorldFrame> apply_task(const WorldFrame &current,
                                                  const QueuedCommand &input) {
         const auto &command = input.value;
-        auto candidate = std::make_shared<WorldState>(*current.state);
+        const bool menu_toggle = command.kind == WorldCommandKind::open_main_menu ||
+                                 command.kind == WorldCommandKind::close_main_menu;
+        // Visibility changes publish metadata only; they do not copy the entire world.
+        auto candidate = menu_toggle ? std::shared_ptr<WorldState>{}
+                                     : std::make_shared<WorldState>(*current.state);
         WorldCommandResult result;
         result.serial = input.serial;
         result.page = command.page;
         result.kind = command.kind;
-        if (!candidate->rules) {
+        bool menu_open = current.main_menu_open;
+        if (!current.state->rules) {
             result.runtime_error = RuntimeError::missing_source;
+        } else if (command.kind == WorldCommandKind::open_main_menu) {
+            const auto *page = top_page(*current.state);
+            if (menu_open || world_report_waiting(*current.state) || !page ||
+                page->kind != simulation::rules::WorldScriptPageKind::scene)
+                result.runtime_error = RuntimeError::invalid_page;
+            else
+                menu_open = true;
+        } else if (command.kind == WorldCommandKind::close_main_menu) {
+            if (!menu_open)
+                result.runtime_error = RuntimeError::invalid_page;
+            else
+                menu_open = false;
+        } else if (command.kind == WorldCommandKind::open_menu_tasks) {
+            if (!menu_open || world_report_waiting(*candidate)) {
+                result.runtime_error = RuntimeError::invalid_page;
+            } else {
+                // Closing the overlay and opening the source task page are one FIFO transaction.
+                // Source rejection preserves the overlay, including explicit pause/active-task.
+                result.runtime_error = simulation::open_startup_world_runtime_task_menu(*candidate);
+                if (result.runtime_error == RuntimeError::none)
+                    menu_open = false;
+            }
+        } else if (current.main_menu_open) {
+            // A stale direct task shortcut cannot bypass this desktop modal gate.
+            result.runtime_error = RuntimeError::invalid_page;
         } else if (command.kind == WorldCommandKind::page_confirm_held) {
             if (!command.held) {
                 // A late release may clear only its own old press, never a newer page's press.
@@ -186,8 +218,11 @@ class WorldSession::Impl {
         if (result.runtime_error == RuntimeError::none) {
             // A source denial can legitimately open message11/63. Keep that complete source
             // candidate; do not charge anyway or roll back its valid feedback page.
-            synchronize_held(*candidate);
-            next.state = std::move(candidate);
+            if (candidate) {
+                synchronize_held(*candidate);
+                next.state = std::move(candidate);
+            }
+            next.main_menu_open = menu_open;
         }
         next.previous = next.state;
         next.last_command_serial = input.serial;
@@ -383,7 +418,7 @@ class WorldSession::Impl {
                 const auto interval = std::chrono::duration<double>(now - last_start).count();
                 last_start = now;
                 deadline = now + period; // Adopt actual start; a slow call creates no tick debt.
-                if (!current->state->scene.framework_paused &&
+                if (!current->main_menu_open && !current->state->scene.framework_paused &&
                     !world_report_waiting(*current->state))
                     current = update(*current, interval);
             }
@@ -420,6 +455,21 @@ std::uint64_t WorldSession::act_award(std::uint64_t page,
     command.kind = WorldCommandKind::award_action;
     command.page = page;
     command.award_action = action;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_main_menu() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_main_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::close_main_menu() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::close_main_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_menu_tasks() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_menu_tasks;
     return submit(command);
 }
 std::uint64_t WorldSession::open_task_menu() {

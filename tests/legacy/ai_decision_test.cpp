@@ -2,7 +2,7 @@
 #include "ark/app/game.hpp"
 #include "ark/people/actor_control.hpp"
 #include "ark/people/decision.hpp"
-#include "people_test_support.hpp"
+#include "legacy/support/people_test_support.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>

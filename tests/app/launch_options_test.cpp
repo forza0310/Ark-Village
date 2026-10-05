@@ -37,7 +37,8 @@ int main() {
     check(parse_arguments({"--inspect-page", "world-rank", "--frames", "8"}).options->world);
     for (const auto &page :
          {"world-combat", "world-reward", "world-exp", "world-rest", "world-rest-hp", "world-news",
-          "world-break", "world-speed", "world-award", "world-task-team", "world-task-result"}) {
+          "world-break", "world-speed", "world-award", "world-task-team", "world-task-result",
+          "world-task-recruitment", "world-menu"}) {
         const auto result = parse_arguments({"--inspect-page", page, "--frames", "8"});
         check(result.options && result.options->world && result.options->inspect_page == page);
         check(

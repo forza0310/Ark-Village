@@ -95,6 +95,14 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
         view.recruited_count = animation->second.displayed_count;
         for (const int id : animation->second.portraits)
             view.recruitment_names.push_back(human(s, id).name);
+        if (!animation->second.portraits.empty()) {
+            const auto &person = human(s, animation->second.portraits.front());
+            const int profession =
+                s.scene.world.world.ai.growth.at(person.identity).definition.current_profession;
+            view.recruitment_actor =
+                WorldTaskRecruitmentActor{person.identity, profession, person.sex,
+                                          s.rules->jobs.at(profession).sprites.at(person.sex)};
+        }
     } else if (view.raw == 25) {
         if (!page.task_identity)
             return view;
@@ -142,6 +150,10 @@ WorldTaskLayout world_task_layout(Extent extent) {
     layout.confirm = {p.x + width - 68, p.y + height - 28, 58, 20};
     layout.continue_choice = {p.x + 12, p.y + height - 92, (width - 28) / 2, 22};
     layout.stop_choice = {p.x + width / 2 + 2, p.y + height - 92, (width - 28) / 2, 22};
+    // Reserve a separate area for the source 18x24 actor. Names keep the normal text size
+    // and may wrap; neither image nor name overlaps the count or the progress bar.
+    layout.recruitment_name = {layout.body.x, layout.body.y + 48, layout.body.width - 44, 40};
+    layout.recruitment_actor = {layout.body.x + layout.body.width - 40, layout.body.y + 40, 40, 40};
     return layout;
 }
 Rectangle world_task_menu_button(Extent extent) {
@@ -248,7 +260,18 @@ void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, c
         if (view.raw == 24) {
             skin.text.draw(std::to_string(view.recruited_count) + "人", body.x, body.y + 24);
             if (!view.recruitment_names.empty())
-                fitted(skin, view.recruitment_names.front(), {body.x, body.y + 48, body.width, 17});
+                skin.text.paragraph(view.recruitment_names.front(), layout.recruitment_name.x,
+                                    layout.recruitment_name.y, layout.recruitment_name.width);
+            if (view.recruitment_actor) {
+                // research33ee056 startup_view: Y.front(), current profession/sex, actor0/frame0.
+                // The source page ticks switch Y; rendering does not advance that clock.
+                // This restores the delivered prototype's character switch only. Exact X-entry
+                // movement/expressions for the full original recruitment animation remain
+                // unshipped.
+                skin.sprites.actor(
+                    false, 0, view.recruitment_actor->image, 0,
+                    {layout.recruitment_actor.x + 20, layout.recruitment_actor.y + 36});
+            }
         }
     }
     if (view.initialized && (view.raw == 24 || view.animating)) {

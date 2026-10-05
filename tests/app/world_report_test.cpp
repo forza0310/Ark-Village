@@ -1,24 +1,18 @@
 // Manual desktop confirmations reuse the real fee/snapshot/close transaction. Monthly defeat
 // and visitor values below are explicit contract fixtures, not a claimed natural game trajectory.
 #include "ark/app/world_report.hpp"
+#include "support/checks.hpp"
 #include "support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>
-#include <stdexcept>
 
 namespace {
 namespace app = ark::app;
 namespace sim = ark::simulation;
 namespace rules = sim::rules;
 using State = sim::StartupWorldRuntimeState;
-int checks{};
-void check(bool value, const char *message) {
-    ++checks;
-    if (!value)
-        throw std::runtime_error(message);
-}
-State prepared_report() {
+State prepared_report(ark::test::Checks &check) {
     auto state = ark::test::initial_world();
     state.scene.calendar.month_ticks = state.clock_parameter * 20 - 143;
     const auto monster =
@@ -49,7 +43,7 @@ State prepared_report() {
           "Fixture begins after fee payment and before report point redemption");
     return state;
 }
-void unchanged_world(const State &state, const State &before) {
+void unchanged_world(ark::test::Checks &check, const State &state, const State &before) {
     check(ark::test::same_world_clock(state, before) &&
               state.scene.world.world.map.cells.size() == before.scene.world.world.map.cells.size(),
           "Report input never advances world, calendar, arrival or map ownership");
@@ -79,34 +73,34 @@ void unchanged_world(const State &state, const State &before) {
         check(random.draw(103).ticket == old_random.draw(103).ticket,
               "Report input preserves the future shared random sequence");
 }
-void transitions() {
-    auto state = prepared_report();
+void transitions(ark::test::Checks &check) {
+    auto state = prepared_report(check);
     const auto before = state;
     check(app::world_report_waiting(state), "Prepared visible report requests manual confirmation");
     check(app::acknowledge_world_report(state, 1) && state.report_state == 2 &&
               state.report_counter == 0 && state.village_points == before.village_points,
           "First confirmation advances from defeats to financial results without early points");
-    unchanged_world(state, before);
+    unchanged_world(check, state, before);
     const auto phase2 = state;
     check(!app::acknowledge_world_report(state, 1) && state.report_state == phase2.report_state &&
               state.report_counter == phase2.report_counter,
           "A repeated stale first-phase click cannot close the financial report");
-    unchanged_world(state, phase2);
+    unchanged_world(check, state, phase2);
     check(app::acknowledge_world_report(state, 2) && state.report_state == 0 &&
               state.report_counter == 0 && !app::world_report_waiting(state) &&
               state.village_points ==
                   std::min(999, before.village_points + before.report_snapshot[1]),
           "Second confirmation closes and awards actual snapshot points exactly once");
-    unchanged_world(state, before);
+    unchanged_world(check, state, before);
     const auto closed = state;
     for (int phase : {0, 1, 2, 3, 4})
         check(!app::acknowledge_world_report(state, phase) &&
                   state.village_points == closed.village_points && state.report_state == 0,
               "Closed report rejects all repeated confirmations, even at the original fee tick");
-    unchanged_world(state, closed);
+    unchanged_world(check, state, closed);
 }
-void gates() {
-    auto state = prepared_report();
+void gates(ark::test::Checks &check) {
+    auto state = prepared_report(check);
     const auto before = state;
     for (int phase : {-1, 0, 2, 3, 4})
         check(!app::acknowledge_world_report(state, phase) && state.report_state == 1,
@@ -129,17 +123,20 @@ void gates() {
     check(app::acknowledge_world_report(state, 3) && state.report_state == 0 &&
               state.village_points == 999,
           "Existing phase3 closes through the source and retains its point cap");
-    unchanged_world(state, before);
+    unchanged_world(check, state, before);
     state = before;
     state.report_counter = -1;
     check(!app::acknowledge_world_report(state, 1) && state.report_state == 1 &&
               state.report_counter == -1 && state.village_points == before.village_points,
           "Rejected source candidate leaves the original report owner unchanged");
-    unchanged_world(state, before);
+    unchanged_world(check, state, before);
 }
 } // namespace
-int main() {
-    transitions();
-    gates();
-    std::cout << "PASS manual world report " << checks << " checks\n";
+namespace ark::test {
+void world_report() {
+    Checks check{"world_report"};
+    transitions(check);
+    gates(check);
+    std::cout << "PASS manual world report " << check.count() << " checks\n";
 }
+} // namespace ark::test

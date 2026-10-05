@@ -1,20 +1,19 @@
 // Page31 must preserve initialized X and read actual H/I without replaying its initializer.
+#include "support/checks.hpp"
 #include "ui/world_crew_summary.hpp"
 #include <iostream>
 #include <stdexcept>
 
 namespace {
-void check(bool value, const char *message) {
-    if (!value)
-        throw std::runtime_error(message);
-}
 bool contains(Rectangle outer, Rectangle inner) {
     return inner.width > 0 && inner.height > 0 && inner.x >= outer.x && inner.y >= outer.y &&
            inner.x + inner.width <= outer.x + outer.width &&
            inner.y + inner.height <= outer.y + outer.height;
 }
 } // namespace
-int main() {
+namespace ark::test {
+void world_crew_summary() {
+    Checks check{"world_crew_summary"};
     namespace ui = ark::desktop::ui;
     namespace sim = ark::simulation;
     sim::StartupWorldRules catalogue;
@@ -69,3 +68,4 @@ int main() {
     }
     std::cout << "PASS crew-summary identities, data and layout\n";
 }
+} // namespace ark::test

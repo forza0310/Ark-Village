@@ -437,7 +437,7 @@ const app::WorldCommandResult &input_result(const app::WorldFrame &frame, std::u
         throw std::runtime_error("Task command result was lost behind a later publication");
     return *result;
 }
-app::WorldState task_offer_fixture() {
+app::WorldState task_listing_fixture() {
     // Explicit task-generation callsite fixture, not a claim that the initial day naturally
     // generated a task. Map, task, fees, catalogue and offer pages use the actual consumers.
     auto state = initial();
@@ -446,6 +446,10 @@ app::WorldState task_offer_fixture() {
     check(created.candidate && created.candidate->created_task &&
               sim::write_startup_world_runtime_factory(state, created.candidate->state),
           "Transport fixture creates a task with the real current-world factory");
+    return state;
+}
+app::WorldState task_offer_fixture() {
+    auto state = task_listing_fixture();
     check(sim::open_startup_world_runtime_task_menu(state) == sim::StartupWorldRuntimeError::none &&
               task_top(state).legacy_page == 22,
           "Source task menu opens its real task list");
@@ -464,6 +468,121 @@ app::WorldState recruitment_fixture() {
               task_top(state).legacy_page == 24,
           "Actual affordable offer prepares the recruitment state");
     return state;
+}
+// The desktop overlay never enters the source page stack or replaces framework_paused.
+void main_menu_gate_and_pause() {
+    using Outcome = app::WorldCommandOutcome;
+    for (bool paused : {false, true}) {
+        const auto state = initial(paused);
+        app::WorldSession session(state);
+        const auto opened = input_frame(session, session.open_main_menu());
+        check(!opened->failed && opened->main_menu_open && opened->outer_updates == 0 &&
+                  opened->state->scene.framework_paused == paused,
+              "Desktop menu opens above the source scene without changing explicit pause");
+        same_world(*opened->state, state);
+        check(session.wait_for_frame_after(opened->revision, 120ms) == opened,
+              "Menu freezes world, calendar, recruitment and publications across source gates");
+        const auto duplicate = session.open_main_menu();
+        const auto bypass = session.open_task_menu();
+        const auto rejected = input_frame(session, bypass);
+        check(!rejected->failed && rejected->main_menu_open && rejected->outer_updates == 0 &&
+                  input_result(*rejected, duplicate).outcome == Outcome::rejected &&
+                  input_result(*rejected, bypass).outcome == Outcome::rejected,
+              "Duplicate open and direct task shortcut reject without bypassing menu or failing");
+        same_world(*rejected->state, state);
+        const auto closed = input_frame(session, session.close_main_menu());
+        check(!closed->failed && !closed->main_menu_open &&
+                  closed->state->scene.framework_paused == paused,
+              "Menu close restores update eligibility while retaining explicit pause");
+        if (paused) {
+            check(session.wait_for_frame_after(closed->revision, 120ms) == closed,
+                  "Closing a menu opened during pause cannot resume the world");
+            const auto stale = input_frame(session, session.close_main_menu());
+            check(!stale->failed && !stale->main_menu_open &&
+                      input_result(*stale, stale->last_command_serial).outcome == Outcome::rejected,
+                  "A stale close is acknowledged as a recoverable rejection");
+        } else {
+            const auto resumed = await(session, [](const auto &frame) {
+                return frame.outer_updates >= 2 || frame.failed;
+            });
+            check(!resumed->failed && resumed->interval_seconds >= .047,
+                  "Menu close resumes source gates without catch-up or a new tick policy");
+        }
+        session.stop();
+    }
+}
+void main_menu_task_transaction() {
+    using Outcome = app::WorldCommandOutcome;
+    // Both a real catalogue and event29's empty-catalogue feedback use the source transaction.
+    for (bool has_task : {false, true}) {
+        auto state = has_task ? task_listing_fixture() : initial();
+        state.scene.framework_paused = true;
+        app::WorldSession session(state);
+        input_frame(session, session.open_main_menu());
+        const auto denied = input_frame(session, session.open_menu_tasks());
+        check(!denied->failed && denied->main_menu_open &&
+                  input_result(*denied, denied->last_command_serial).outcome == Outcome::rejected,
+              "Selecting Adventure during explicit pause preserves the desktop menu");
+        const auto resume = session.set_paused(false);
+        const auto selected = session.open_menu_tasks();
+        const auto paused = session.set_paused(true);
+        check(selected == resume + 1 && paused == selected + 1,
+              "Resume, atomic Adventure selection and pause retain input FIFO ordering");
+        const auto result = input_frame(session, paused);
+        check(!result->failed && !result->main_menu_open &&
+                  input_result(*result, selected).outcome == Outcome::applied &&
+                  result->state->scene.framework_paused &&
+                  task_top(*result->state).kind != rules::WorldScriptPageKind::scene &&
+                  result->state->scene.random.draws() == state.scene.random.draws() &&
+                  result->state->simulation_steps == state.simulation_steps &&
+                  result->state->scene.world.world.ai.accounting.funds() ==
+                      state.scene.world.world.ai.accounting.funds(),
+              "One source task transaction closes the overlay without a main-scene update");
+        check(has_task ? task_top(*result->state).legacy_page == 22
+                       : event_count(*result->state, 29) == 1,
+              "Adventure opens the actual list or retains source no-task message feedback");
+        const auto stale = input_frame(session, session.open_menu_tasks());
+        check(!stale->failed && !stale->main_menu_open &&
+                  input_result(*stale, stale->last_command_serial).outcome == Outcome::rejected,
+              "Stale Adventure selection cannot open a second page or fail the session");
+        session.stop();
+    }
+    auto active = initial(true);
+    active.active_task = 7; // Eligibility fixture only; no task update is allowed while menu holds.
+    app::WorldSession session(active);
+    input_frame(session, session.open_main_menu());
+    session.set_paused(false);
+    const auto result = input_frame(session, session.open_menu_tasks());
+    check(!result->failed && result->main_menu_open && result->outer_updates == 0 &&
+              result->state->active_task == active.active_task &&
+              input_result(*result, result->last_command_serial).outcome == Outcome::rejected,
+          "An active task rejects Adventure without closing the menu or losing its world gate");
+    session.stop();
+}
+void main_menu_modal_rejections() {
+    using Outcome = app::WorldCommandOutcome;
+    for (bool report : {false, true}) {
+        auto state = report ? initial(true) : task_offer_fixture();
+        state.scene.framework_paused = true;
+        if (report)
+            state.report_state = 1;
+        app::WorldSession session(state);
+        const auto result = input_frame(session, session.open_main_menu());
+        check(!result->failed && !result->main_menu_open && result->outer_updates == 0 &&
+                  input_result(*result, result->last_command_serial).outcome == Outcome::rejected,
+              "Monthly report and a source modal page reject desktop menu opening recoverably");
+        same_world(*result->state, state);
+        session.stop();
+    }
+    auto missing = initial(true);
+    missing.rules = nullptr;
+    app::WorldSession failed(missing);
+    const auto result = input_frame(failed, failed.open_main_menu());
+    check(result->failed && !result->main_menu_open &&
+              input_result(*result, result->last_command_serial).runtime_error ==
+                  sim::StartupWorldRuntimeError::missing_source,
+          "Missing source remains fatal; the recoverable menu policy cannot hide broken runtime");
+    failed.stop();
 }
 void task_inputs_and_denials() {
     using Action = sim::StartupWorldTaskAction;
@@ -704,6 +823,9 @@ int main() {
     input_flood_fairness();
     annual_page_commands();
     report_below_timed_page();
+    main_menu_gate_and_pause();
+    main_menu_task_transaction();
+    main_menu_modal_rejections();
     task_inputs_and_denials();
     recruitment_held_transport();
     task_menu_report_and_departure();

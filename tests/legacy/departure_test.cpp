@@ -2,7 +2,7 @@
 // The ordinary-branch precondition is explicit; this is not a default AI runtime test.
 #include "ark/app/game.hpp"
 #include "ark/people/motion.hpp"
-#include "people_test_support.hpp"
+#include "legacy/support/people_test_support.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>

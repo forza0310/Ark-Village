@@ -1,13 +1,9 @@
 // Tests source identity/order and the actual click-to-action path without a window or fake award.
+#include "support/checks.hpp"
 #include "ui/world_award.hpp"
 #include <iostream>
-#include <stdexcept>
 
 namespace {
-void check(bool value, const char *message) {
-    if (!value)
-        throw std::runtime_error(message);
-}
 Vector2 middle(Rectangle r) { return {r.x + r.width / 2, r.y + r.height / 2}; }
 bool contains(Rectangle outer, Rectangle inner) {
     return inner.width > 0 && inner.height > 0 && inner.x >= outer.x && inner.y >= outer.y &&
@@ -15,7 +11,9 @@ bool contains(Rectangle outer, Rectangle inner) {
            inner.y + inner.height <= outer.y + outer.height;
 }
 } // namespace
-int main() {
+namespace ark::test {
+void world_award_ui() {
+    Checks check{"world_award_ui"};
     namespace ui = ark::desktop::ui;
     namespace sim = ark::simulation;
     namespace rules = sim::rules;
@@ -92,3 +90,4 @@ int main() {
     }
     std::cout << "PASS annual UI source projection and input contracts\n";
 }
+} // namespace ark::test

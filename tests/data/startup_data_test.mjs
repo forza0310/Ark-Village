@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
-import { compileStartup } from '../scripts/compile_startup.mjs';
-import { compileInitialAi } from '../scripts/compile_initial_ai.mjs';
+import { compileStartup } from '../../scripts/compile_startup.mjs';
+import { compileInitialAi } from '../../scripts/compile_initial_ai.mjs';
 const root = process.argv[2];
 const source = ['MAP','STATE','TABLES'].map(v => JSON.parse(readFileSync(`${root}/${v}.json`,'utf8')));
 source.push(readFileSync(`${root}/tenantData.txt`,'utf8'));

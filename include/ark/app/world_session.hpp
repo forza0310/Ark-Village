@@ -14,6 +14,9 @@ enum class WorldCommandKind {
     acknowledge_page,
     acknowledge_report,
     award_action,
+    open_main_menu,
+    close_main_menu,
+    open_menu_tasks,
     open_task_menu,
     task_action,
     page_confirm_held,
@@ -40,11 +43,13 @@ struct WorldFrame {
     double interval_seconds{.047};
     std::uint64_t revision{};
     std::uint64_t last_command_serial{};
+    // Desktop adaptation only: this gate is not a synthetic source raw3 page or user pause.
+    bool main_menu_open{};
     bool failed{};
     std::string error;
     std::uint64_t outer_updates{};
     double max_update_ms{};
-    // Last 64 task/cancel/held input results, retained across ticks and camera publications.
+    // Last 64 menu/task/cancel/held input results, retained across ticks and camera publications.
     // This bounded FIFO acknowledgement history is not a gameplay event log.
     std::vector<WorldCommandResult> command_results;
 };
@@ -81,6 +86,11 @@ class WorldSession {
     std::uint64_t ack_report(int expected_phase);
     // Annual-page input is explicit: ordinary page confirmation never chooses termination.
     std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action);
+    // Menu visibility is worker-owned metadata; closing never changes explicit pause.
+    std::uint64_t open_main_menu();
+    std::uint64_t close_main_menu();
+    // Atomically opens the real task source page and closes the desktop menu on success.
+    std::uint64_t open_menu_tasks();
     std::uint64_t open_task_menu();
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,
                                 int selection = 0);

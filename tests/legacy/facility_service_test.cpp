@@ -1,6 +1,6 @@
 // Maintained research d7ca763 service cases, adapted to product bindings.
 #include "ark/facilities/service.hpp"
-#include "facility_test_support.hpp"
+#include "legacy/support/facility_test_support.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,5 +1,5 @@
 // Candidate order, duplicate weight and refusal contracts from research/ACTIVITY.
-#include "people_test_support.hpp"
+#include "legacy/support/people_test_support.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>

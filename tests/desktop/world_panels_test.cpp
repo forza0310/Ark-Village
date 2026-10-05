@@ -1,20 +1,18 @@
 // Layout contracts keep active text and confirmation inside the viewport at every supported size.
+#include "support/checks.hpp"
 #include "ui/world_panels.hpp"
 #include <iostream>
-#include <stdexcept>
 
 namespace {
-void check(bool pass, const char *message) {
-    if (!pass)
-        throw std::runtime_error(message);
-}
 bool contains(Rectangle outer, Rectangle inner) {
     return inner.width > 0 && inner.height > 0 && inner.x >= outer.x && inner.y >= outer.y &&
            inner.x + inner.width <= outer.x + outer.width &&
            inner.y + inner.height <= outer.y + outer.height;
 }
 } // namespace
-int main() {
+namespace ark::test {
+void world_panels() {
+    Checks check{"world_panels"};
     using namespace ark::desktop;
     using namespace ark::simulation::rules;
     for (const auto size :
@@ -56,3 +54,4 @@ int main() {
           "Unknown speakers must not reserve an invented secretary portrait");
     std::cout << "PASS world page layout contracts\n";
 }
+} // namespace ark::test

@@ -1,15 +1,11 @@
 // Deliberately sparse definition/instance IDs catch accidental row-index ownership. These are
 // presentation fixtures, not evidence of natural recruitment or successful task completion.
+#include "support/checks.hpp"
 #include "ui/world_award.hpp"
 #include "ui/world_tasks.hpp"
 #include <iostream>
-#include <stdexcept>
 
 namespace {
-void check(bool value, const char *message) {
-    if (!value)
-        throw std::runtime_error(message);
-}
 Vector2 middle(Rectangle r) { return {r.x + r.width / 2, r.y + r.height / 2}; }
 bool contains(Rectangle outer, Rectangle inner) {
     return inner.width > 0 && inner.height > 0 && inner.x >= outer.x && inner.y >= outer.y &&
@@ -17,7 +13,9 @@ bool contains(Rectangle outer, Rectangle inner) {
            inner.y + inner.height <= outer.y + outer.height;
 }
 } // namespace
-int main() {
+namespace ark::test {
+void world_tasks() {
+    Checks check{"world_tasks"};
     namespace ui = ark::desktop::ui;
     namespace sim = ark::simulation;
     namespace rules = sim::rules;
@@ -25,12 +23,16 @@ int main() {
     sim::StartupWorldRules catalogue;
     sim::StartupWorldRuntimeState state;
     state.rules = &catalogue;
+    catalogue.jobs.resize(3);
+    catalogue.jobs[1].sprites = {11, 12};
+    catalogue.jobs[2].sprites = {21, 22};
     for (const int id : {42, 7, 19, 5, 66, 14, 3}) {
         sim::StartupWorldHuman person;
         person.identity = id;
         person.name = "human-" + std::to_string(id);
         catalogue.humans.push_back(person);
         state.human_calendar[id].continuation_cost = id * 10;
+        state.scene.world.world.ai.growth[id].definition.current_profession = 1;
     }
     for (const int id : {8, 3}) {
         sim::StartupWorldTask task;
@@ -86,10 +88,48 @@ int main() {
     animation.completion_tick = 200;
     animation.displayed_count = 1;
     animation.portraits = {7, 42};
+    animation.portrait_timer = 12;
+    const auto recruitment_draws = state.scene.random.draws();
+    const auto recruitment_cash = state.scene.world.world.ai.accounting.funds();
     view = ui::world_task_view(state, page);
     check(view.initialized && view.counter == 61 && view.extent == 200 &&
               view.recruited_count == 1 && view.recruitment_names[0] == "human-7",
           "Recruitment reads displayed count separately from actual Y queue size");
+    check(view.recruitment_actor && view.recruitment_actor->human == 7 &&
+              view.recruitment_actor->profession == 1 && view.recruitment_actor->sex == 0 &&
+              view.recruitment_actor->image == 11,
+          "Recruitment selects sparse Y-front identity and live profession, not catalogue row or "
+          "initial profession");
+    state.scene.world.world.ai.growth.at(7).definition.current_profession = 2;
+    catalogue.humans.at(1).sex = 1;
+    view = ui::world_task_view(state, page);
+    check(view.recruitment_actor && view.recruitment_actor->human == 7 &&
+              view.recruitment_actor->profession == 2 && view.recruitment_actor->sex == 1 &&
+              view.recruitment_actor->image == 22,
+          "Recruitment resolves current profession and sex afresh from the owner and catalogue");
+    animation.portraits = {42, 7};
+    view = ui::world_task_view(state, page);
+    check(view.recruitment_actor && view.recruitment_actor->human == 42 &&
+              view.recruitment_actor->image == 11 && view.recruitment_names.front() == "human-42",
+          "A source Y-front change switches the displayed person without a render-time timer");
+    animation.portraits.clear();
+    view = ui::world_task_view(state, page);
+    check(view.initialized && !view.recruitment_actor && view.recruitment_names.empty() &&
+              view.recruited_count == 1,
+          "An empty source Y shows no person even when displayed count is nonzero");
+    animation.portraits = {7, 42};
+    view = ui::world_task_view(state, page);
+    (void)ui::world_task_view(state, page);
+    check(state.scene.random.draws() == recruitment_draws &&
+              state.scene.world.world.ai.accounting.funds() == recruitment_cash &&
+              state.page_counters.at(page.id) == 61 && animation.portrait_timer == 12 &&
+              animation.portraits == std::vector<int>({7, 42}) && animation.displayed_count == 1 &&
+              animation.completion_tick == 200 && state.participants.empty() &&
+              state.scene.world.world.ai.growth.size() == 7 &&
+              state.scene.world.world.ai.growth.at(7).definition.current_profession == 2 &&
+              catalogue.humans.at(1).sex == 1,
+          "Repeated recruitment projection leaves source queue, timing, identity, cash and random "
+          "untouched");
     input = {};
     input.enter = true;
     check(!ui::world_task_input(view, layout, selection, input, false),
@@ -224,9 +264,18 @@ int main() {
                   contains(boxes.panel, boxes.stop_choice) &&
                   ui::world_task_visible_rows(boxes) == 5,
               "Five task rows and controls fit both minimum and normal desktop layouts");
+        check(contains(boxes.body, boxes.recruitment_name) &&
+                  contains(boxes.body, boxes.recruitment_actor) &&
+                  boxes.recruitment_name.x + boxes.recruitment_name.width <=
+                      boxes.recruitment_actor.x &&
+                  boxes.recruitment_actor.y >= boxes.body.y + 38 &&
+                  boxes.recruitment_actor.y + boxes.recruitment_actor.height < boxes.progress.y,
+              "Recruitment character has separate space from the normal-size name, count and "
+              "progress");
         const auto menu = ui::world_task_menu_button(extent);
         check(menu.x >= 60 && menu.x + menu.width < extent.width - 137,
               "Task entry leaves source popularity and both playback buttons unobscured");
     }
     std::cout << "PASS task UI identity, source-page eligibility, layout and input contracts\n";
 }
+} // namespace ark::test

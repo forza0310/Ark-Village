@@ -63,7 +63,7 @@ if(BUILD_TESTING)
             if(ARK_LONG_WORLD_TESTS)
                 add_test(NAME "simulation.${module}" COMMAND ${target} 1 1)
                 set_tests_properties("simulation.${module}" PROPERTIES
-                    TIMEOUT 5400 LABELS "long_world;natural_tasks" RUN_SERIAL TRUE)
+                    TIMEOUT 5400 LABELS "long_world;natural_tasks;e2e;frozen" RUN_SERIAL TRUE)
             endif()
             continue()
         elseif(module STREQUAL "startup_world_continuous_test")
@@ -72,11 +72,16 @@ if(BUILD_TESTING)
         else()
             add_test(NAME "simulation.${module}" COMMAND ${target})
         endif()
-        set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 120)
+        if(source MATCHES "/rules/")
+            set(layer rules)
+        else()
+            set(layer runtime)
+        endif()
+        set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 120 LABELS "${layer};frozen")
         if(module STREQUAL "startup_world_continuous_test")
             # Full candidate copies are deliberately retained in Debug. Keep the same
             # three-month assertions, allowing a bounded run on a busy developer machine.
-            set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 3600)
+            set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 3600 LABELS "e2e;frozen")
         endif()
     endforeach()
     if(ARK_LONG_WORLD_TESTS)
@@ -87,7 +92,7 @@ if(BUILD_TESTING)
                 "-DWORLD_TEST=$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
                 "-DMONTHS=${months}" "-DSEED=${seed}" "-DSPEED=${speed}"
                 "-DEXPECTED_TASKS=${tasks}"
-                -P "${ARK_WORLD_ROOT}/tests/world_long_run_test.cmake")
+                -P "${ARK_WORLD_ROOT}/tests/integration/world_long_run_test.cmake")
         endfunction()
         ark_long_world_test(simulation.world_annual_seed1 12 1 0 3)
         ark_long_world_test(simulation.world_multiseed_double_speed 6 20261005 1 2)
@@ -95,10 +100,10 @@ if(BUILD_TESTING)
         add_test(NAME simulation.world_task_flow_second_seed
             COMMAND ark_simulation_startup_world_task_flow_test 20261005 0)
         set_tests_properties(simulation.world_task_flow_second_seed PROPERTIES
-            TIMEOUT 5400 LABELS "long_world;natural_tasks" RUN_SERIAL TRUE)
+            TIMEOUT 5400 LABELS "long_world;natural_tasks;e2e;frozen" RUN_SERIAL TRUE)
         set_tests_properties(simulation.world_annual_seed1 simulation.world_multiseed_double_speed
             simulation.world_two_years_seed0 PROPERTIES TIMEOUT 5400
-            LABELS "long_world;annual_world" RUN_SERIAL TRUE)
+            LABELS "long_world;annual_world;e2e;frozen" RUN_SERIAL TRUE)
     endif()
     add_test(NAME simulation.startup_world_data
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/startup_world_data_test.mjs"
@@ -106,4 +111,6 @@ if(BUILD_TESTING)
     add_test(NAME simulation.source_provenance
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/verify_sources.mjs"
             "${ARK_WORLD_ROOT}")
+    set_tests_properties(simulation.startup_world_data simulation.source_provenance
+        PROPERTIES LABELS "provenance;frozen")
 endif()

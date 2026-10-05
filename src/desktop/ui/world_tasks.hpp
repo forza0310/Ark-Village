@@ -17,6 +17,9 @@ struct WorldTaskRow {
     std::optional<int> fee;
     bool add_member{};
 };
+struct WorldTaskRecruitmentActor {
+    int human{}, profession{}, sex{}, image{};
+};
 struct WorldTaskView {
     int raw{};
     bool initialized{}, animating{};
@@ -25,10 +28,13 @@ struct WorldTaskView {
     std::optional<int> fee, prediction, deadline_grade;
     int counter{}, extent{}, recruited_count{};
     std::vector<std::string> recruitment_names; // Actual Y identities; no invented portraits.
+    // Only Y.front() is visible in the published prototype; this is not an actor instance.
+    std::optional<WorldTaskRecruitmentActor> recruitment_actor;
     std::vector<WorldTaskRow> rows;
 };
 struct WorldTaskLayout {
     Rectangle panel, body, rows, progress, cancel, confirm, continue_choice, stop_choice;
+    Rectangle recruitment_name, recruitment_actor;
 };
 struct WorldTaskSelection {
     int selected{}, first_row{};

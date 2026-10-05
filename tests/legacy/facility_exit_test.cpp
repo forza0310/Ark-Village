@@ -1,6 +1,6 @@
 // Exit contracts use real product map binding. Cases are conditional fixtures, not new-game data.
 #include "ark/economy/cash.hpp"
-#include "facility_test_support.hpp"
+#include "legacy/support/facility_test_support.hpp"
 #include <iostream>
 #include <limits>
 #include <stdexcept>

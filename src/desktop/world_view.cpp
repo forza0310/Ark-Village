@@ -8,6 +8,7 @@
 #include "ui/skin.hpp"
 #include "ui/world_award.hpp"
 #include "ui/world_crew_summary.hpp"
+#include "ui/world_menu.hpp"
 #include "ui/world_panels.hpp"
 #include "ui/world_tasks.hpp"
 #include "world_rank.hpp"
@@ -83,7 +84,8 @@ std::string glyphs(const State &s) {
         "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
         "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否成果统计倒地"
         "参加任务征集队员冒险队伍追加准备出发期限延长费用评价加速取消中止再加把劲需要补充战力"
-        "重新来过比较好应该撤退资金不足队伍已满暂无可追加人员页面已变化请重试当前操作不可用";
+        "重新来过比较好应该撤退资金不足队伍已满暂无可追加人员页面已变化请重试当前操作不可用"
+        "菜单建设村办情报系统";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -131,7 +133,7 @@ Rectangle month_confirm(Extent extent) {
 // or payment. Transient inspections stop at a naturally produced source display record.
 bool inspection_ready(const State &s, const std::string &mode) {
     const auto &ai = s.scene.world.world.ai;
-    if (mode == "world-active" || mode == "world-speed")
+    if (mode == "world-active" || mode == "world-speed" || mode == "world-menu")
         return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
     if (mode == "world-month")
         return app::world_report_waiting(s);
@@ -194,7 +196,8 @@ void focus_inspection(State &s, const std::string &mode) {
                 return;
             }
 }
-void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool failed) {
+void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool failed,
+         bool menu_open, bool menu_pending) {
     const float w = layout.extent.width, h = layout.extent.height;
     skin.tile("top_bar.png", {22, 0, 90, 24}, {22, 0, w - 150, 24});
     skin.sprites.image("top_bar.png", {0, 0, 22, 24}, {0, 0, 22, 24});
@@ -210,9 +213,9 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     ui::draw_world_popularity(s.popularity, layout, skin);
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(layout.right_button, s.scene.speed_setting == 1 ? "2倍" : "1倍", !failed);
-    skin.button(ui::world_task_menu_button(layout.extent), "任务",
-                !failed && !s.scene.framework_paused && !active_page(s) && !s.active_task &&
-                    !app::world_report_waiting(s));
+    skin.button(ui::world_menu_button(layout.extent), "菜单",
+                !failed && !menu_pending &&
+                    (menu_open || (!active_page(s) && !app::world_report_waiting(s))));
     if (failed)
         skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
     if (s.report_state && !active_page(s)) {
@@ -248,8 +251,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
     const bool transient =
         inspecting && options.inspect_page != "world-active" &&
-        options.inspect_page != "world-speed" && options.inspect_page != "world-month" &&
-        options.inspect_page != "world-rank" && options.inspect_page != "world-award";
+        options.inspect_page != "world-speed" && options.inspect_page != "world-menu" &&
+        options.inspect_page != "world-month" && options.inspect_page != "world-rank" &&
+        options.inspect_page != "world-award";
     if (inspecting) {
         WorldTaskInspection task_inspection;
         bool reached{};
@@ -311,7 +315,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
-    std::uint64_t pending_task{}, held_task_page{};
+    std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
+    int menu_selection = 1;
+    std::string menu_feedback;
+    // Menu inspection exercises the real asynchronous desktop command after natural startup.
+    if (options.inspect_page == "world-menu")
+        pending_menu = session.open_main_menu();
     ui::WorldTaskSelection task_selection;
     std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
@@ -361,6 +370,16 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 pending_task = 0;
             }
         }
+        if (pending_menu) {
+            const auto result = std::find_if(
+                publication->command_results.begin(), publication->command_results.end(),
+                [&](const auto &r) { return r.serial == pending_menu; });
+            if (result != publication->command_results.end()) {
+                menu_feedback =
+                    result->outcome == app::WorldCommandOutcome::rejected ? "当前操作不可用" : "";
+                pending_menu = 0;
+            }
+        }
         if (publication->last_command_serial >= pending_view)
             view = {current.camera, current.reference_viewport};
         if (publication->last_command_serial >= pending_pause)
@@ -393,8 +412,37 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             desired_speed = desired_speed == 1 ? 0 : 1;
             pending_speed = session.set_speed(desired_speed);
         }
-        if (mouse && CheckCollisionPointRec(*mouse, layout.scene) && !active_page(current) &&
-            !app::world_report_waiting(current)) {
+        ui::WorldMenuInput menu_input;
+        menu_input.click = click ? mouse : std::nullopt;
+        menu_input.toggle = IsKeyPressed(KEY_M);
+        menu_input.escape = IsKeyPressed(KEY_ESCAPE);
+        menu_input.up = IsKeyPressed(KEY_UP);
+        menu_input.down = IsKeyPressed(KEY_DOWN);
+        menu_input.enter = IsKeyPressed(KEY_ENTER);
+        const auto menu_intent = ui::world_menu_input(
+            layout, publication->main_menu_open,
+            !active_page(current) && !app::world_report_waiting(current),
+            !desired_pause && !current.active_task, failed || pending_menu || pending_task,
+            menu_selection, menu_input);
+        if (menu_intent) {
+            menu_feedback.clear();
+            switch (*menu_intent) {
+            case ui::WorldMenuIntent::open:
+                pending_menu = session.open_main_menu();
+                break;
+            case ui::WorldMenuIntent::close:
+                pending_menu = session.close_main_menu();
+                break;
+            case ui::WorldMenuIntent::tasks:
+                pending_menu = session.open_menu_tasks();
+                break;
+            }
+        }
+        // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
+        // old scene while the simulation worker completes its previous atomic update.
+        const bool menu_blocked = publication->main_menu_open || pending_menu;
+        if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
+            !active_page(current) && !app::world_report_waiting(current)) {
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
                 const float factor = destination.width / extent.width * zoom;
                 const auto delta = GetMouseDelta();
@@ -409,7 +457,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         }
         if (view_changed && !failed)
             pending_view = session.set_view(view.camera, view.viewport);
-        if (const auto *page = active_page(current)) {
+        if (const auto *page = menu_blocked ? nullptr : active_page(current)) {
             if (viewed_page != page->id) {
                 viewed_page = page->id;
                 paragraph = scroll = 0;
@@ -493,15 +541,15 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
                     scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
             }
-        } else if (app::world_report_waiting(current) && !failed && !pending_ack &&
+        } else if (!menu_blocked && app::world_report_waiting(current) && !failed && !pending_ack &&
                    (hit(month_confirm(extent)) || IsKeyPressed(KEY_ENTER)))
             pending_ack = session.ack_report(current.report_state);
         // Held acceleration is page-bound and edge-triggered; 60 FPS cannot add source ticks.
         const auto *held_page = active_page(current);
         const auto held_layout = ui::world_task_layout(extent);
         const bool held =
-            held_page && held_page->legacy_page == 24 && !desired_pause && !failed &&
-            IsWindowFocused() &&
+            !menu_blocked && held_page && held_page->legacy_page == 24 && !desired_pause &&
+            !failed && IsWindowFocused() &&
             (IsKeyDown(KEY_ENTER) || (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && mouse &&
                                       CheckCollisionPointRec(*mouse, held_layout.confirm)));
         const auto next_held_page = held ? held_page->id : 0;
@@ -512,9 +560,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 session.set_page_confirm_held(next_held_page, true);
             held_task_page = next_held_page;
         }
-        if (!active_page(current) && !app::world_report_waiting(current) && !current.active_task &&
-            !desired_pause && !failed && !pending_task &&
-            (hit(ui::world_task_menu_button(extent)) || IsKeyPressed(KEY_T))) {
+        if (!menu_blocked && !active_page(current) && !app::world_report_waiting(current) &&
+            !current.active_task && !desired_pause && !failed && !pending_task &&
+            IsKeyPressed(KEY_T)) {
             task_feedback.clear();
             pending_task = session.open_task_menu();
         }
@@ -533,7 +581,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
         draw_world_scene(current, sprites, zoom, publication->previous.get(), alpha, &view);
         EndScissorMode();
-        hud(current, layout, skin, failed);
+        hud(current, layout, skin, failed, publication->main_menu_open, pending_menu != 0);
         if (const auto *page = active_page(current)) {
             if (ui::world_task_page(*page)) {
                 ui::draw_world_task(ui::world_task_view(current, *page),
@@ -588,6 +636,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         } else if (app::world_report_waiting(current))
             skin.button(month_confirm(extent), current.report_state == 1 ? "下一页" : "确定",
                         !failed && !pending_ack);
+        if (publication->main_menu_open)
+            ui::draw_world_menu(layout, skin, menu_selection,
+                                !desired_pause && !failed && !pending_menu && !current.active_task,
+                                menu_feedback);
+        else if (!menu_feedback.empty())
+            skin.text.draw(menu_feedback, 8, extent.height - 58.F, MAROON);
         EndMode2D();
         text.flush(raster.zoom, raster.offset);
         EndTextureMode();
@@ -607,6 +661,12 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     publication = session.frame();
     const auto &final_state = *publication->state;
     const bool failed = publication->failed;
+    if (options.inspect_page == "world-menu") {
+        std::cout << "World menu inspection: open=" << publication->main_menu_open
+                  << " explicit_pause=" << final_state.scene.framework_paused << '\n';
+        if (!publication->main_menu_open || failed)
+            throw std::runtime_error("World menu inspection did not receive successful FIFO open");
+    }
     if (!options.screenshot.empty()) {
         if (frames != options.frames)
             throw std::runtime_error("World window closed before bounded capture");

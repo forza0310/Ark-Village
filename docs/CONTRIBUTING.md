@@ -44,9 +44,19 @@ raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，CI单独静
 
 desktop-release全部标准测试成功后打包Release桌面程序、无窗口程序、完整`assets/`、raylib许可和启动说明；Windows附调用既有`--font`选项的启动脚本，自动选已安装的微软雅黑/黑体/宋体，缺中文字体时明确提示自行指定。macOS包保持可执行权限，不签名或公证。打包前检查架构、动态依赖、资源哈希，并从其他工作目录执行制品`--check`和无窗口入口`--help`。
 
-Actions运行页保留14天的压缩制品、SHA-256校验文件及独立诊断artifact；失败时仍上传已有构建日志、CTest日志/JUnit结果。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
+Actions运行页保留14天的压缩制品、SHA-256校验文件及独立诊断artifact；失败时仍上传已有构建日志、CTest日志/JUnit结果。两个平台构建/测试/打包均成功后，独立publish job使用最小`packages: write`权限将两份压缩包及校验文件发布到GitHub Packages的GHCR仓库`ghcr.io/forza0310/ark-village`；build job仍只有读取权限。OCI制品类型为`application/vnd.ark-village.release.v1`，这是游戏文件包，不能用`docker run`启动。
 
-本次交付及缩减CI配置的本地验收仅含工作流/脚本静态检查；两个平台各自的desktop Release构建和CTest结果待main上的实际Actions运行后记录。
+每次发布标记`sha-<完整提交SHA>`，从GHCR回读并逐字节核对四个文件后更新`latest`；发布失败会使流水线失败，已上传的Actions制品仍可下载。包通过`org.opencontainers.image.source`关联本仓库，显示在仓库Packages区域；不受Actions制品14天保留期限制。新GHCR包默认私有，访问权限/公开状态由Package settings管理；私有包拉取需先用具备`read:packages`权限的凭据执行`oras login ghcr.io`。
+
+安装[ORAS](https://oras.land/docs/installation)后下载两个平台压缩包与SHA-256文件：
+
+```sh
+oras pull ghcr.io/forza0310/ark-village:latest
+```
+
+指定历史构建时将`latest`换为`sha-<完整提交SHA>`。Actions发布步骤摘要也记录实际包名、提交标签和下载命令。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
+
+2026-10-05已通过GitHub API核对[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)：`ba68e90`的两个平台Release构建/测试、打包检查和Actions上传均成功。此次Packages发布配置仅做本地静态检查，首次GHCR推送/回读验证待包含新配置的main运行确认。
 
 平台依据：[GitHub托管runner列表](https://github.com/actions/runner-images#available-images)、[LLVM-MinGW 20250305工具链与UCRT说明](https://github.com/mstorsjo/llvm-mingw/blob/20250305/README.md)。
 

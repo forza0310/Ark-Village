@@ -234,7 +234,7 @@ Accepted，2026-10-05：用户在测试整理期间报告可见缺漏，并明�
 
 ## ADR-0038
 
-Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI仅保留desktop-release构建及全部标准CTest；Release同样执行核心和桌面测试，减少重复构建及Debug持续模拟耗时，保留Debug/headless预设供开发调试、阶段验收和依赖边界检查。全部标准测试成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户明确限定构建/测试只在GitHub runner上进行，本地仅静态检查；Windows Server测试不等于Windows 10真机验收，远程首次运行仍待验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
+Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI仅保留desktop-release构建及全部标准CTest；Release同样执行核心和桌面测试，减少重复构建及Debug持续模拟耗时，保留Debug/headless预设供开发调试、阶段验收和依赖边界检查。全部标准测试成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户明确限定构建/测试只在GitHub runner上进行，本地仅静态检查；Windows Server测试不等于Windows 10真机验收；`ba68e90`的首次远程两平台Release构建、测试、打包和Actions上传已通过。用户随后要求发布到GitHub Packages：两平台成功后将压缩包和校验文件作为OCI文件制品发布至GHCR，保留提交标签，回读比对后更新latest；源码关联仓库，Packages访问权限独立管理，Actions下载继续保留。首次GHCR发布仍待新配置运行验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
 
 ## 研究历史引用
 

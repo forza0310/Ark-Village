@@ -16,7 +16,7 @@
 
 ## 构建运行
 
-main上的[GitHub Actions](.github/workflows/ci.yml)分别在macOS ARM与Windows runner执行四套构建/标准CTest，成功后提供`ark-village-macos-arm64`和`ark-village-windows10-x86`的Release压缩包及SHA-256。下载入口在Actions运行页的Artifacts，保留14天；Windows目标是32位、实际CI系统为Windows Server 2022。构建/测试仅在GitHub runner上执行，首次远程结果待验证；制品内容、字体启动方式和验收边界见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+main上的[GitHub Actions](.github/workflows/ci.yml)分别在macOS ARM与Windows runner执行desktop-debug/desktop-release两套构建及全部标准CTest，成功后提供`ark-village-macos-arm64`和`ark-village-windows10-x86`的Release压缩包及SHA-256。headless预设保留，但不在日常CI中重复执行。下载入口在Actions运行页的Artifacts，保留14天；Windows目标是32位、实际CI系统为Windows Server 2022。构建/测试仅在GitHub runner上执行，首次远程结果待验证；制品内容、字体启动方式和验收边界见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
 需要CMake 3.21+、C++17、Node 18+（仅构建）、pkg-config及raylib 6.0+。macOS可用：
 

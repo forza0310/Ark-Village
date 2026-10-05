@@ -14,7 +14,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 CI = ROOT / "build" / "ci"
 LOGS = CI / "logs"
-PRESETS = ("headless-debug", "headless-release", "desktop-debug", "desktop-release")
+PRESETS = ("desktop-debug", "desktop-release")
 
 
 def run(label, args, cwd=ROOT):

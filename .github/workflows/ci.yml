@@ -65,7 +65,7 @@ jobs:
           Expand-Archive $archive -DestinationPath $env:RUNNER_TEMP
           "ARK_LLVM_ROOT=$(Join-Path $env:RUNNER_TEMP $name)" >> $env:GITHUB_ENV
 
-      - name: Build, test all four presets, and package Release
+      - name: Build and test desktop Debug and Release, then package
         shell: bash
         env:
           ARK_CI_TARGET: ${{ matrix.target }}

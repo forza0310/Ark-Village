@@ -26,7 +26,7 @@ ctest --preset desktop-debug
 推送或远程历史改写需用户明确指令；不能把本次本地重置自动推成force-push。
 research已有外部链接的UI/C/RQ编号保留为交接身份。按已提交维护源冻结、迁入和核对哈希，不夹带在途研究改动；研究测试结果与产品验收分别记录。
 
-当前默认启动、`--world`别名及`--check`都选择持续世界。旧建设切片通过`--legacy-slice`或命名旧诊断进入，`--tick-rate`只用于这类旧入口；`--verify-play`保留原节拍。本轮raw49只接晋级条件读取/四项显示/确认，不接收费晋级。研究seed1三个月14530项检查、自然任务0只作研究进度，不能写成产品年度或无限运行已验。
+当前默认启动、`--world`别名及`--check`都选择持续世界。旧建设切片通过`--legacy-slice`或命名旧诊断进入，`--tick-rate`只用于这类旧入口；`--verify-play`保留原节拍。本轮raw49只接晋级条件读取/四项显示/确认，不接收费晋级。长期回归通过 `-DARK_LONG_WORLD_TESTS=ON` 显式开启，建议Release、`ctest -L long_world --parallel 1`，避免与试玩/其他长跑争抢CPU。自然任务生成、玩家接受后自然成功及无限运行分别验收，不能互相代替。
 
 ## macOS窗口检查
 
@@ -41,7 +41,7 @@ raylib/GLFW需要可访问的登录桌面和唤醒显示器，WindowServer存在
 沙箱可能无法枚举真实显示器。应在已登录终端运行或获准使用独立窗口检查，不移除显示器保护、不把沙箱报错记成游戏崩溃。
 截图/焦点问题和业务异常分别记录；环境无法运行窗口时仍做构建/CTest，窗口验收明确记未执行。
 
-世界页面检查：`ark_village --inspect-page world-active --frames 8 --screenshot /tmp/ark-world.png`，也支持world-month/world-rank；从实际窗口视口预运行真实世界，明确给予前序页面测试确认输入，停在实际多人/月报/晋级条件状态。
+世界页面检查：`ark_village --inspect-page world-active --frames 8 --screenshot /tmp/ark-world.png`，也支持world-month/world-rank/world-award；从实际窗口视口预运行真实世界，明确给予前序页面测试确认输入，停在实际多人/月报/晋级条件/年度贡献状态。年度预运行可能耗时数分钟，不能用合成状态替换真实新局轨迹。
 旧页面检查如`--inspect-page shops/motion`自动选择旧切片。motion覆盖检查用行程，不修改领域人物/资金，也不代表默认AI。缩放检查可加`--zoom-percent 50..200`。
 页面快照只验渲染，不等于正常新局/OS输入。共享controller坐标测试单独记录，不能代替真实鼠标验收。原生自动化连接裸raylib或隔离bundle可能阻塞，优先有界截图与坐标测试，不反复连接或移除桌面保护。
 SEB检查须区分结构和使用帧：完整记录/legacy_tag原样保留，PNG矩形只检查实际请求帧；不能为未用草地/海面记录修改原图或全面放宽边界。

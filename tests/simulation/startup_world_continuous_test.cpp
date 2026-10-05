@@ -244,13 +244,48 @@ std::string diagnose(const StartupWorldRuntimeState &s) {
             last += " scripts-write-failed";
         return written;
     };
+    const auto entry_read = adapter.entry.read;
+    adapter.entry.read = [&](const auto &owner) {
+        last = "entry-read";
+        return entry_read(owner);
+    };
+    const auto entry_write = adapter.entry.write;
+    adapter.entry.write = [&](auto &owner, const auto &value) {
+        last = "entry-write";
+        const bool written = entry_write(owner, value);
+        if (!written)
+            last += " failed";
+        return written;
+    };
+    const auto report_read = adapter.report.read;
+    adapter.report.read = [&](const auto &owner) {
+        last = "report-read";
+        return report_read(owner);
+    };
+    const auto report_write = adapter.report.write;
+    adapter.report.write = [&](auto &owner, const auto &value) {
+        last = "report-write";
+        const bool written = report_write(owner, value);
+        if (!written)
+            last += " failed";
+        return written;
+    };
+    const auto before_common = adapter.before_common;
+    adapter.before_common = [&](const auto &owner) {
+        last = "before-common";
+        auto value = before_common(owner);
+        if (!value)
+            last += " failed";
+        return value;
+    };
     // 只重放失败候选作读诊断，保留原消费者；不添加任何默认成功/状态推进。
     (void)ref::prepare_owned_world_runtime(s, {s.calendar_advance, true}, adapter);
     return last;
 }
 void continuous(int months, std::uint64_t seed, int speed) {
     StartupSession original;
-    StartupWorldRuntimeSession session(original.state(), ref::WorldRandomStream::from_java_seed(seed));
+    StartupWorldRuntimeSession session(original.state(),
+                                       ref::WorldRandomStream::from_java_seed(seed));
     session.set_speed(speed);
     check(session.state().popularity == 50 && session.state().maximum_popularity == 0,
           "source n.J initializes popularity50/peak0; do not invent peak50 to satisfy an invalid "
@@ -298,18 +333,30 @@ void continuous(int months, std::uint64_t seed, int speed) {
         }
         const auto page = top_page(s);
         check(page != nullptr, "source framework preserves main page");
-        if (page->kind != ref::WorldScriptPageKind::scene && page->legacy_page != 56) {
+        if (page->kind != ref::WorldScriptPageKind::scene && page->legacy_page != 56 &&
+            page->legacy_page != 57 && page->legacy_page != 16) {
             const auto id = page->id;
+            const auto legacy_page = page->legacy_page;
+            const auto source_record = page->source_record;
             if (pages.insert(id).second)
                 std::cout << "page id=" << id << " kind=" << static_cast<int>(page->kind)
                           << " legacy=" << page->legacy_page << " source=" << page->source_record
                           << ' ' << snapshot(s, frame) << std::endl;
             // 明确的测试用户一次确认；多阶段成果页保留自身真实计数/阶段，绝不直接删页。
-            const auto acknowledged = session.acknowledge_page(id);
+            auto acknowledged = StartupWorldRuntimeError::none;
+            if (legacy_page == 87) {
+                // 明确测试玩家选择终止→确认，不自动授勋、清勋章或冒充普通确认。
+                acknowledged =
+                    session.act_award_page(id, ref::WorldAwardAction::request_termination);
+                if (acknowledged == StartupWorldRuntimeError::none)
+                    acknowledged =
+                        session.act_award_page(id, ref::WorldAwardAction::confirm_termination);
+            } else
+                acknowledged = session.acknowledge_page(id);
             if (acknowledged != StartupWorldRuntimeError::none) {
                 std::ostringstream error;
                 error << "page confirmation failed error=" << static_cast<int>(acknowledged)
-                      << " legacy=" << page->legacy_page << " source=" << page->source_record << ' '
+                      << " legacy=" << legacy_page << " source=" << source_record << ' '
                       << snapshot(s, frame);
                 throw std::runtime_error(error.str());
             }

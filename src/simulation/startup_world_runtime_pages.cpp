@@ -42,11 +42,12 @@ bool initialize_rank_page(State &s, std::uint64_t id) {
     if (s.page_counters.count(id))
         return true;
     if (s.rank >= 5) {
-        const auto script = ref::prepare_world_script(startup_world_runtime_catalog(),
-                                                     startup_world_runtime_scripts(s), {48, {}, {}});
+        const auto script = ref::prepare_world_script(
+            startup_world_runtime_catalog(), startup_world_runtime_scripts(s), {48, {}, {}});
         if (!script.candidate || !write_startup_world_runtime_scripts(s, script.candidate->state))
             return false;
-        const auto closed = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
+        const auto closed =
+            ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
         return closed.candidate && write_startup_world_runtime_scripts(s, closed.candidate->state);
     }
     if (!refresh_startup_world_runtime_rank(s))
@@ -54,7 +55,90 @@ bool initialize_rank_page(State &s, std::uint64_t id) {
     s.page_counters[id] = 0;
     return true;
 }
+ref::WorldAwardPageState award_projection(const State &s, std::uint64_t id) {
+    ref::WorldAwardPageState a;
+    a.medal_count = s.medal_count;
+    const auto counter = s.page_counters.find(id);
+    if (counter != s.page_counters.end())
+        a.page_counter = counter->second;
+    const auto rankings = s.award_rankings.find(id);
+    if (rankings != s.award_rankings.end()) {
+        a.initialized = true;
+        a.ranked_definitions = rankings->second;
+        a.announced = s.award_announced.at(id);
+        a.termination_pending = s.award_termination_pending.at(id);
+    }
+    for (const auto &h : s.rules->humans) {
+        const auto &extra = s.human_calendar.at(h.identity);
+        auto totals = extra.yearly_totals;
+        totals[1] = s.scene.world.world.ai.battle.humans.at(h.identity).killed_stat1;
+        totals[2] = s.scene.world.world.human_spending.at(h.identity);
+        a.humans.push_back(
+            {h.identity, s.human_presence.at(h.identity), totals, extra.contribution});
+    }
+    return a;
+}
+bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action) {
+    const auto initialized = ref::prepare_world_award_page_initialization(award_projection(s, id));
+    if (!initialized.candidate)
+        return false;
+    const auto result = ref::prepare_world_award_page(initialized.candidate->state, action);
+    if (!result.candidate)
+        return false;
+    const auto &a = result.candidate->state;
+    s.medal_count = a.medal_count;
+    s.award_rankings[id] = a.ranked_definitions;
+    s.award_announced[id] = a.announced;
+    s.award_termination_pending[id] = a.termination_pending;
+    for (const auto &h : a.humans)
+        s.human_calendar.at(h.definition).contribution = h.contribution;
+    for (const auto &effect : result.candidate->effects) {
+        using Kind = ref::WorldAwardEffectKind;
+        if (effect.kind == Kind::sound)
+            s.sound_requests.push_back(effect.value);
+        else if (effect.kind == Kind::refresh)
+            s.sound_requests.push_back(s.active_task && s.task.encounter ? 2 : 1);
+        else if (effect.kind == Kind::event) {
+            const auto script = ref::prepare_world_script(
+                startup_world_runtime_catalog(), startup_world_runtime_scripts(s),
+                {effect.value,
+                 effect.event_argument ? std::to_string(*effect.event_argument) : "",
+                 {}});
+            if (!script.candidate ||
+                !write_startup_world_runtime_scripts(s, script.candidate->state))
+                return false;
+        } else if (effect.kind == Kind::close) {
+            const auto closed =
+                ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
+            if (!closed.candidate ||
+                !write_startup_world_runtime_scripts(s, closed.candidate->state))
+                return false;
+        }
+        // termination_prompt由显式测试输入消费，窗口尚未接按钮10/是非弹窗。
+    }
+    return true;
+}
 } // namespace
+
+Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
+                                           ref::WorldAwardAction action) {
+    const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                  [](const auto &p) { return p.lifecycle != 4; });
+    if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
+        top->kind != ref::WorldScriptPageKind::raw_page || top->legacy_page != 87)
+        return Error::invalid_page;
+    auto next = state;
+    next.scripts.executing_page = id;
+    auto &counter = next.page_counters[id];
+    if (counter == std::numeric_limits<int>::max())
+        return Error::missing_source;
+    ++counter;
+    if (!consume_award(next, id, action))
+        return Error::missing_source;
+    next.scripts.executing_page.reset();
+    state = std::move(next);
+    return Error::none;
+}
 
 Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
@@ -72,8 +156,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             if (next.rank < 5) {
                 // b/g.g L6e/L1a8：确认置u8后关闭，页49绝不走页48的晋级消费者。
                 next.scripts.user_flags |= 8;
-                const auto result = ref::prepare_world_script_close_page(
-                    startup_world_runtime_scripts(next), id);
+                const auto result =
+                    ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
                 if (!result.candidate ||
                     !write_startup_world_runtime_scripts(next, result.candidate->state))
                     return Error::script_failed;
@@ -93,6 +177,17 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             if (!result.candidate || !write_gift(next, result.candidate->state, adapter))
                 return Error::script_failed;
             next.page_counters[id] = result.candidate->counter;
+        } else if (top->legacy_page == 89) {
+            // b/g.g:6003：早确认仅快进；40之后关闭，不再重复执行介绍脚本。
+            if (next.page_counters[id] < 40)
+                next.page_counters[id] = 40;
+            else {
+                const auto result =
+                    ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
+                if (!result.candidate ||
+                    !write_startup_world_runtime_scripts(next, result.candidate->state))
+                    return Error::script_failed;
+            }
         } else if (top->legacy_page == 30 && next.page_counters[id] < 40) {
             next.page_counters[id] = 40;
         } else if (top->legacy_page == 30 && next.page_phases[id] == 0) {
@@ -144,16 +239,39 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 87 &&
+        !consume_award(next, top->id, ref::WorldAwardAction::update))
+        return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 30 && counter == 1 &&
         next.page_phases[top->id] == 0)
         next.sound_requests.push_back(4);
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 56) {
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 16) {
+        // d/a opcode7→g.a(L)，b/g.b先--L再走f--；至少一次更新，不接受确认跳过。
+        if (counter >= std::max(1, top->legacy_l)) {
+            const auto result =
+                ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), top->id);
+            if (!result.candidate ||
+                !write_startup_world_runtime_scripts(next, result.candidate->state))
+                return {};
+        }
+    } else if (top->kind == ref::WorldScriptPageKind::raw_page &&
+               (top->legacy_page == 56 || top->legacy_page == 57)) {
         ref::WorldScriptCameraFocusInput input;
         input.page = top->id;
         input.camera = next.camera;
         input.previous_camera = next.previous_camera;
         input.previous_velocity = next.camera_velocity;
-        if (!next.scene.world.world.ai.monster_order.empty()) {
+        if (top->legacy_page == 57 && !next.task_order.empty()) {
+            const auto task = next.tasks.find(next.task_order.front());
+            if (task == next.tasks.end())
+                return {};
+            if (task->second.facility) {
+                input.first_task_facility_view =
+                    startup_world_runtime_facility_target(next, *task->second.facility);
+                if (!input.first_task_facility_view)
+                    return {};
+            }
+        } else if (top->legacy_page == 56 && !next.scene.world.world.ai.monster_order.empty()) {
             const auto id = next.scene.world.world.ai.monster_order.front();
             const auto meta = next.actor_metadata.find(id);
             if (meta == next.actor_metadata.end())

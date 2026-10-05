@@ -45,6 +45,8 @@ target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
 target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
 ark_world_target(ark_world_runtime)
 
+option(ARK_LONG_WORLD_TESTS "Run explicit-seed annual world integration checks" OFF)
+
 if(BUILD_TESTING)
     foreach(source IN LISTS ARK_WORLD_TEST_SOURCES)
         get_filename_component(module "${source}" NAME_WE)
@@ -63,9 +65,27 @@ if(BUILD_TESTING)
         endif()
         set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 120)
         if(module STREQUAL "startup_world_continuous_test")
-            set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 900)
+            # Full candidate copies are deliberately retained in Debug. Keep the same
+            # three-month assertions, allowing a bounded run on a busy developer machine.
+            set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 3600)
         endif()
     endforeach()
+    if(ARK_LONG_WORLD_TESTS)
+        # Keep source assertions intact. The product wrapper also checks the three
+        # published natural-task counts; source tests otherwise only print those counts.
+        function(ark_long_world_test name months seed speed tasks)
+            add_test(NAME ${name} COMMAND ${CMAKE_COMMAND}
+                "-DWORLD_TEST=$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
+                "-DMONTHS=${months}" "-DSEED=${seed}" "-DSPEED=${speed}"
+                "-DEXPECTED_TASKS=${tasks}"
+                -P "${ARK_WORLD_ROOT}/tests/world_long_run_test.cmake")
+        endfunction()
+        ark_long_world_test(simulation.world_annual_seed1 12 1 0 3)
+        ark_long_world_test(simulation.world_multiseed_double_speed 6 20261005 1 2)
+        ark_long_world_test(simulation.world_two_years_seed0 24 0 1 3)
+        set_tests_properties(simulation.world_annual_seed1 simulation.world_multiseed_double_speed
+            simulation.world_two_years_seed0 PROPERTIES TIMEOUT 5400 LABELS long_world)
+    endif()
     add_test(NAME simulation.startup_world_data
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/startup_world_data_test.mjs"
             "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/world" "${ARK_WORLD_DATA}/tenantData.txt")

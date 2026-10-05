@@ -138,6 +138,7 @@ class WorldSession::Impl {
             break;
         case WorldCommandKind::acknowledge_page:
         case WorldCommandKind::acknowledge_report:
+        case WorldCommandKind::award_action:
             break;
         default:
             return fail(current, "Unknown world command", input.serial);
@@ -174,6 +175,18 @@ class WorldSession::Impl {
                                     std::to_string(command.report_phase),
                                 input.serial);
                 break;
+            case WorldCommandKind::award_action: {
+                const auto error = simulation::act_startup_world_runtime_award_page(
+                    *candidate, command.page, command.award_action);
+                if (error != simulation::StartupWorldRuntimeError::none)
+                    return fail(
+                        current,
+                        "World award action rejected: page=" + std::to_string(command.page) +
+                            " action=" + std::to_string(static_cast<int>(command.award_action)) +
+                            " error=" + std::to_string(static_cast<int>(error)),
+                        input.serial);
+                break;
+            }
             }
             next.state = std::move(candidate);
         }
@@ -284,6 +297,14 @@ std::uint64_t WorldSession::ack_report(int expected_phase) {
     WorldCommand command;
     command.kind = WorldCommandKind::acknowledge_report;
     command.report_phase = expected_phase;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_award(std::uint64_t page,
+                                      simulation::rules::WorldAwardAction action) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::award_action;
+    command.page = page;
+    command.award_action = action;
     return submit(command);
 }
 std::uint64_t WorldSession::set_paused(bool paused) {

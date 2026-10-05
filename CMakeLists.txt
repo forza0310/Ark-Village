@@ -45,7 +45,7 @@ add_library(ark_world_session STATIC src/app/world_session.cpp src/app/world_rep
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing Threads::Threads)
 ark_target(ark_world_session)
 if(BUILD_TESTING)
-    foreach(module IN ITEMS world_session world_report)
+    foreach(module IN ITEMS world_session world_report world_medals)
         add_executable(ark_${module}_tests tests/${module}_test.cpp)
         target_link_libraries(ark_${module}_tests PRIVATE ark_world_session)
         ark_target(ark_${module}_tests)
@@ -104,7 +104,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
-        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
+        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_award.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_world_visuals ark_world_session ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)
@@ -125,6 +125,14 @@ if(ARK_BUILD_DESKTOP)
             ark_asset_metadata PkgConfig::RAYLIB)
         ark_target(ark_world_panels_tests)
         add_test(NAME world_panels COMMAND ark_world_panels_tests)
+        add_executable(ark_world_award_ui_tests tests/world_award_ui_test.cpp
+            src/desktop/ui/world_award.cpp src/desktop/ui/layout.cpp src/desktop/ui/skin.cpp
+            src/desktop/resources.cpp src/desktop/projection.cpp)
+        target_include_directories(ark_world_award_ui_tests PRIVATE src/desktop)
+        target_link_libraries(ark_world_award_ui_tests PRIVATE ark_world_visuals ark_game
+            ark_asset_metadata PkgConfig::RAYLIB)
+        ark_target(ark_world_award_ui_tests)
+        add_test(NAME world_award_ui COMMAND ark_world_award_ui_tests)
         add_executable(ark_world_scene_tests tests/world_scene_test.cpp
             src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_scene.cpp src/desktop/resources.cpp src/desktop/projection.cpp
             src/desktop/character_status.cpp src/desktop/character_visibility.cpp

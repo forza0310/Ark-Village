@@ -97,7 +97,10 @@ bool build_update(State &s) {
     }
     return true;
 }
-std::optional<std::array<float, 2>> facility_target(const State &s, std::uint64_t id) {
+} // namespace
+
+std::optional<std::array<float, 2>> startup_world_runtime_facility_target(const State &s,
+                                                                          std::uint64_t id) {
     if (!ref::valid_legacy_map(s.scene.world.world.map))
         return {};
     const auto instance = s.scene.world.world.facilities.find(id);
@@ -134,7 +137,6 @@ std::optional<std::array<float, 2>> facility_target(const State &s, std::uint64_
         return {};
     return std::array<float, 2>{static_cast<float>(x), static_cast<float>(y)};
 }
-} // namespace
 
 void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<State> &adapter) {
     const auto catalog = adapter.catalog;
@@ -271,7 +273,8 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 s.scene.scene_counter = 0;
                 return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
             }
-            const auto target = facility_target(s, *s.scripts.selected_facility);
+            const auto target =
+                startup_world_runtime_facility_target(s, *s.scripts.selected_facility);
             if (!target || !camera_focus(s, *target))
                 return {};
             break;

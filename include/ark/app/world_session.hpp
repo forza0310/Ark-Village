@@ -25,6 +25,7 @@ struct WorldFrame {
 enum class WorldCommandKind {
     acknowledge_page,
     acknowledge_report,
+    award_action,
     set_paused,
     set_speed,
     set_view
@@ -33,6 +34,7 @@ struct WorldCommand {
     WorldCommandKind kind{WorldCommandKind::set_paused};
     std::uint64_t page{};
     int report_phase{};
+    simulation::rules::WorldAwardAction award_action{simulation::rules::WorldAwardAction::update};
     bool paused{};
     int speed{};
     std::array<float, 2> camera{};
@@ -55,6 +57,8 @@ class WorldSession {
     std::uint64_t submit(WorldCommand command);
     std::uint64_t ack_page(std::uint64_t page);
     std::uint64_t ack_report(int expected_phase);
+    // Annual-page input is explicit: ordinary page confirmation never chooses termination.
+    std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action);
     std::uint64_t set_paused(bool paused);
     std::uint64_t set_speed(int setting);
     std::uint64_t set_view(std::array<float, 2> camera, std::array<int, 4> viewport);

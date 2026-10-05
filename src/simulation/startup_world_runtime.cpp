@@ -274,6 +274,8 @@ bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesSta
 }
 ref::WorldScriptState startup_world_runtime_scripts(const State &s) {
     auto r = s.scripts;
+    // UserData.j has one canonical owner, shared by opcode29 and the annual page.
+    r.medal_count = s.medal_count;
     r.pending_completion = s.scene.world.world.ai.pending_completion;
     r.popularity_queue = s.scene.world.popularity_queue;
     r.scene_mode = s.scene.scene_state;
@@ -306,6 +308,7 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
     if (!r.finance || !post_finance(s, *r.finance))
         return false;
     s.scripts = r;
+    s.medal_count = r.medal_count;
     // aM调用计数是唯一事实；战斗规则需要的seen集合只作同次调用的派生缓存。
     s.scene.world.world.ai.battle.events.clear();
     for (const auto &event : r.event_calls)
@@ -331,6 +334,7 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
     }
     // 共享字段只留在真实Owner，持久scripts不成为第二份账本、I、名单、场景。
     s.scripts.finance.reset();
+    s.scripts.medal_count = 0; // Projection only; do not retain a second mutable medal balance.
     s.scripts.pending_completion = 0;
     s.scripts.popularity_queue.clear();
     s.scripts.human_order.clear();
@@ -774,6 +778,10 @@ void StartupWorldRuntimeSession::set_paused(bool paused) { state_.scene.framewor
 void StartupWorldRuntimeSession::set_speed(int setting) { state_.scene.speed_setting = setting; }
 StartupWorldRuntimeError StartupWorldRuntimeSession::acknowledge_page(std::uint64_t id) {
     return acknowledge_startup_world_runtime_page(state_, id);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_t id,
+                                                                    ref::WorldAwardAction action) {
+    return act_startup_world_runtime_award_page(state_, id, action);
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto admitted = s;

@@ -19,13 +19,17 @@ struct Options {
     int frames{1000};
     std::optional<int> months;
     std::uint64_t seed{1}; // Reproducible input; the APK's actual default seed was not observed.
+    int speed{};
     bool auto_confirm{};
+    bool end_awards{};
 };
 constexpr const char *usage =
     "Usage: ark_world_simulation [--frames 1..100000] [--months 1..24] [--seed unsigned64]\n"
-    "                            [--auto-confirm]\n"
+    "                            [--speed 0|1] [--auto-confirm] [--end-awards]\n"
     "Framework updates are unpaced. --months sets a goal within the --frames budget.\n"
-    "Pages receive no input unless --auto-confirm explicitly supplies test-user confirmations.\n"
+    "Ordinary pages wait unless --auto-confirm supplies explicit test-user confirmations.\n"
+    "Timed pages 16/56/57 advance themselves. Annual termination additionally needs --end-awards;\n"
+    "that test policy requests and confirms termination, retaining unused medals.\n"
     "Exit codes: 0 completed budget/goal, 1 runtime failure, 2 invalid arguments, 3 unmet goal.\n";
 
 // from_chars must consume the entire unsigned decimal token; signs and whitespace are invalid.
@@ -42,12 +46,16 @@ Options parse(int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         const std::string option = argv[i];
         if (option != "--frames" && option != "--months" && option != "--seed" &&
-            option != "--auto-confirm")
+            option != "--speed" && option != "--auto-confirm" && option != "--end-awards")
             throw std::invalid_argument("Unknown argument: " + option);
         if (!seen.insert(option).second)
             throw std::invalid_argument("Duplicate argument: " + option);
         if (option == "--auto-confirm") {
             options.auto_confirm = true;
+            continue;
+        }
+        if (option == "--end-awards") {
+            options.end_awards = true;
             continue;
         }
         if (++i == argc)
@@ -61,6 +69,10 @@ Options parse(int argc, char **argv) {
             if (value < 1 || value > 24)
                 throw std::invalid_argument("--months must be in 1..24");
             options.months = static_cast<int>(value);
+        } else if (option == "--speed") {
+            if (value > 1)
+                throw std::invalid_argument("--speed must be 0 or 1");
+            options.speed = static_cast<int>(value);
         } else
             options.seed = value;
     }
@@ -127,13 +139,15 @@ int run(const Options &options) {
         return simulation::StartupWorldRuntimeSession(
             initial.state(), rules::WorldRandomStream::from_java_seed(options.seed));
     }();
+    session.set_speed(options.speed);
     const auto initial_month = month_index(session.state());
     auto last_month = initial_month;
     int frames{}, confirmations{};
     std::set<std::uint64_t> observed_pages;
     std::cout << "policy seed=" << options.seed << " seed_type=explicit_java"
               << " frame_budget=" << options.frames << " month_goal=" << options.months.value_or(0)
-              << " auto_confirm=" << options.auto_confirm << " pacing=unpaced\n";
+              << " auto_confirm=" << options.auto_confirm << " end_awards=" << options.end_awards
+              << " speed=" << options.speed << " pacing=unpaced\n";
     print_state("initial", session.state(), 0);
     while (frames < options.frames) {
         const auto result = session.update();
@@ -162,10 +176,29 @@ int run(const Options &options) {
         if (page->kind != rules::WorldScriptPageKind::scene &&
             observed_pages.insert(page->id).second)
             print_state("page", session.state(), frames);
-        // Page56 is the original automatic camera page. A confirmed page can remain active for
-        // several source phases; preserve its consumer and counters instead of deleting it.
-        if (options.auto_confirm && page->kind != rules::WorldScriptPageKind::scene &&
-            page->legacy_page != 56) {
+        // Automatic waiting/camera pages never receive fabricated confirmation. Annual-page
+        // termination is a separate opted-in test input, not an implication of auto-confirm.
+        const bool raw = page->kind == rules::WorldScriptPageKind::raw_page;
+        const bool automatic =
+            raw && (page->legacy_page == 16 || page->legacy_page == 56 || page->legacy_page == 57);
+        const bool annual = raw && page->legacy_page == 87;
+        if (annual && options.end_awards) {
+            const auto id = page->id;
+            auto error = session.act_award_page(id, rules::WorldAwardAction::request_termination);
+            if (error == simulation::StartupWorldRuntimeError::none) {
+                ++confirmations;
+                error = session.act_award_page(id, rules::WorldAwardAction::confirm_termination);
+            }
+            if (error != simulation::StartupWorldRuntimeError::none) {
+                std::cerr << "award_input_error frame=" << frames << " page=" << id
+                          << " error=" << static_cast<int>(error) << '\n';
+                print_summary(session.state(), frames, current_month - initial_month, confirmations,
+                              "award_input_failed");
+                return 1;
+            }
+            ++confirmations;
+        } else if (options.auto_confirm && !automatic && !annual &&
+                   page->kind != rules::WorldScriptPageKind::scene) {
             const auto id = page->id;
             const auto acknowledged = session.acknowledge_page(id);
             if (acknowledged != simulation::StartupWorldRuntimeError::none) {

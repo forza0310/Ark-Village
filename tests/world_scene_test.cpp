@@ -88,7 +88,8 @@ void actor_animation() {
                   "First world page no longer presents the actual event7 introduction");
             observed_introduction = true;
         }
-        if (page->kind != rules::WorldScriptPageKind::scene && page->legacy_page != 56) {
+        if (page->kind != rules::WorldScriptPageKind::scene && page->legacy_page != 16 &&
+            page->legacy_page != 56 && page->legacy_page != 57) {
             const auto page_id = page->id;
             check(sim::acknowledge_startup_world_runtime_page(state, page_id) ==
                       sim::StartupWorldRuntimeError::none,

@@ -47,3 +47,7 @@ reached raw49 rank-conditions page beyond the former two-month boundary. Its inp
 and closes; it does not upgrade rank or charge cash. Calendar projection refreshes the four
 source caches once at page initialization; display adapters must only read those caches.
 Three months do not certify annual transitions, arbitrary seeds, or natural task success.
+
+
+285项冻结快照接收研究40972a9：全局create_encounter保留created/denial，局部任务目录含2700+住宅续体；raw16/57/89与raw87年度页按专门消费者处理。raw87的明确终止与raw88授予分开，后者尚未交付。
+产品唯一勋章Owner为`StartupWorldRuntimeState.medal_count`；`startup_world_runtime_scripts`读时投影，`write_startup_world_runtime_scripts`写回并清除持久scripts临时槽。原冻结研究遗漏这条共享字段桥，修正理由和原始/产品哈希登记在SOURCES.json的product_patch；独立world_medals回归验证真实53/54/108脚本与年度+1、终止、溢出回滚。下一次迁入必须核对研究是否已补，不直接覆盖或双重增加。

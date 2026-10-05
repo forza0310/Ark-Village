@@ -8,7 +8,7 @@
 
 本轮补齐伤害数字、死亡金币、经验/升级标签、旅馆休息/HP条、通知换行及原素材模板，并改为月报手动确认与独立模拟线程。四套配置共550项CTest通过；2倍速600帧窗口绘制间隔中位数16.96ms、95分位17.12ms，月报等待120帧时世界更新0次。交互气泡具体文案、人气动态填充、旅馆头像/精确锚点及部分战斗特效仍待研究补齐。
 
-产品仍固定seed1三个月连续基线，自然生成任务为0；研究40972a9的年度/自然任务进展尚待下一批迁入。raw49已有条件读取/显示/确认，未接晋级收费。OS输入、年度持续世界及原APK动态须另验。
+已迁入研究40972a9的全局遭遇、定时/镜头/怪物介绍页及年度贡献/结束流程，当前批次验收见[B1记录](docs/stages/B1-playable-prototype.md#已发布持续世界修正接入2026-10-05)。raw49已有条件读取/显示/确认，未接晋级收费；年度完整授予/raw88仍待研究。自然生成任务不等于玩家已能接受任务并自然完成。
 
 ## 构建运行
 
@@ -31,6 +31,8 @@ ctest --preset desktop-release
 
 月报等待确认时暂停世界：第1页点击“下一页”，第2页点击“确定”后恢复；Enter也可确认。如果此前手动暂停，关闭月报后仍保持暂停。人物、日期、设施与随机在等待期间均不推进，最终确认发放一次村子点数。
 
+年度贡献页显示真实排名与持有勋章；“结束授勋”先询问是/否，选择否继续停留，选择是按真实消费者结束并保留未用勋章。完整授予操作尚未接入。
+
 程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。macOS默认使用系统Arial Unicode.ttf，其他环境通过 `--font /路径/中文.ttf` 指定字体。退出不保存。
 
 ## 验证与诊断
@@ -43,7 +45,7 @@ cmake --build --preset headless-release --parallel 4
 ./build/headless-release/bin/ark_world_simulation --seed 1 --frames 20000 --months 3 --auto-confirm
 ```
 
-`--seed` 是明确的可重复Java种子输入，未认证原APK默认种子；`--auto-confirm` 是测试用户输入策略。`--frames` 为无节拍框架调用预算，`--months` 是预算内目标，未达到时返回非零退出码。
+`--seed` 是明确的可重复Java种子输入，未认证原APK默认种子；`--auto-confirm` 是测试用户输入策略。`--speed 0|1` 对应正常/双倍源轮数；跨年度测试另加 `--end-awards`，明确请求并确认结束授勋，普通 `--auto-confirm` 不替代年度选择。`--frames` 为无节拍框架调用预算，`--months` 是预算内目标，未达到时返回非零退出码。
 
 | 入口 | 用途与边界 |
 | --- | --- |
@@ -51,6 +53,7 @@ cmake --build --preset headless-release --parallel 4
 | `ark_village --frames 60` | 有界默认世界窗口，可加 `--screenshot /tmp/ark.png` |
 | `ark_village --inspect-page world-active --frames 8` | 真实新局预运行至三人到访，再检查画面 |
 | `ark_village --inspect-page world-month --frames 8` | 真实新局预运行至月报，再检查画面 |
+| `ark_village --inspect-page world-award --frames 120` | 从真实新局预运行至年度贡献页；可能耗时数分钟，前序确认仅为测试输入 |
 | `ark_village --inspect-page world-rank --frames 8` | 等待实际raw49条件页初始化，再检查四项条件 |
 | `ark_village --inspect-page world-combat --frames 8` | 停在真实受击数字；另有world-reward/world-exp/world-rest/world-rest-hp |
 | `ark_village --inspect-page world-news --frames 8` | 真实冒险通信；world-break检查带换行标记的通知 |
@@ -59,6 +62,16 @@ cmake --build --preset headless-release --parallel 4
 | `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收 |
 
 `world-active/world-month/world-rank` 不需要额外写 `--world`；它们按实际窗口视口预运行并自动确认前序真实页面，仅作为渲染检查。`--verify-play` 使用共享controller的引擎内坐标，不能替代OS鼠标测试。`--tick-rate 1..240` 可用于 `--legacy-slice` 或允许覆盖时钟的命名旧诊断（如 `--ai-preview`）；默认世界及 `--world` 不接受覆盖，`--verify-play` 仍须原节拍。
+
+年度/多种子/倍速长回归默认不纳入日常CTest，可在Release中显式开启：
+
+```sh
+cmake --preset headless-release -DARK_LONG_WORLD_TESTS=ON
+cmake --build --preset headless-release --parallel 4
+ctest --preset headless-release -L long_world --parallel 1
+```
+
+长回归保持研究原断言，并核对12/6/24个月的自然任务数。建议与正常试玩错开，Debug完整候选复制和并行长测会显著拉长逻辑推进时间；60FPS绘制不代表世界每47ms都能完成计算。
 
 旧切片七种单格建设、局部人物交接及1456步月前保护的设计与历史验收集中保留在 [B1记录](docs/stages/B1-playable-prototype.md)，这些限制不适用于默认持续世界。
 

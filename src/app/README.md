@@ -1,10 +1,10 @@
 # app
 
-`world_session.hpp/.cpp` 是默认桌面的标准C++线程边界，链接runtime/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变 `WorldFrame`（当前/前次快照、发布时间与统计）。FIFO命令只在事务间执行，相邻待处理镜头可以合并，确认/暂停/倍速保持顺序。47ms实际开始截止、卡顿不追赶；倍速仅由源运行时应用。停止会唤醒并join，失败保留最后成功世界并发布错误。
+`world_session.hpp/.cpp` 是默认桌面的标准C++线程边界，链接runtime/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变 `WorldFrame`（当前/前次快照、发布时间与统计）。FIFO命令只在事务间执行，相邻待处理镜头可以合并，确认/暂停/倍速保持顺序。47ms实际开始截止、卡顿不追赶；倍速仅由源运行时应用。年度`act_award`同样通过FIFO提交request/reject/confirm动作，不复用普通ack替玩家选择；暂停/旧页/非法动作沿明确失败政策。停止会唤醒并join，失败保留最后成功世界并发布错误。
 
 `world_report.hpp/.cpp` 适配用户选择的桌面手动月报：识别场景顶层报告，校验期望阶段，复用原报告投影/候选/提交；不推进日期、不重算维护费、不重复奖励。等待时session冻结世界，确认1→2→0后按显式暂停资格恢复。headless入口仍保留源自动报告，未改迁入规则。
 
-`world_simulation_main.cpp`是完整共同世界的标准C++有界入口，仅链接`ark_world_runtime`，不会创建旧Game；严格解析帧预算、月份目标和显式Java种子。自动确认真实页栈仅在`--auto-confirm`启用，未达月份目标或运行失败返回非零；输出实际账本、名单、随机次数与页身份供复查。
+`world_simulation_main.cpp`是完整共同世界的标准C++有界入口，仅链接`ark_world_runtime`，不会创建旧Game；严格解析帧预算、月份目标和显式Java种子。自动确认普通真实页栈仅在`--auto-confirm`启用；raw16/56/57自行推进，raw87仅在显式`--end-awards`时执行请求/确认终止，`--speed 0|1`传入源1/2轮规则。未达月份目标或运行失败返回非零；输出实际账本、名单、随机次数与页身份供复查。
 
 默认桌面入口使用simulation唯一Owner，`--world`是显式别名。以下Game职责属于`--legacy-slice`建设切片及其明确诊断，两种模式不能并行同步。
 

@@ -6,6 +6,7 @@
 #include "ui/layout.hpp"
 #include "ui/script_text.hpp"
 #include "ui/skin.hpp"
+#include "ui/world_award.hpp"
 #include "ui/world_panels.hpp"
 #include "world_rank.hpp"
 #include "world_rest_visuals.hpp"
@@ -77,7 +78,7 @@ std::string glyphs(const State &s) {
     std::string result =
         "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
         "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
-        "大家的冒险通信下一页下一屏关闭月报待确认";
+        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -90,6 +91,8 @@ std::string glyphs(const State &s) {
         result += i.name;
     for (const auto &e : s.rules->equipment)
         result += e.name;
+    for (const auto &monster : s.rules->monsters)
+        result += monster.name;
     return result;
 }
 std::string page_body(const State &s, const rules::WorldScriptPage &page, int paragraph) {
@@ -102,6 +105,14 @@ std::string page_body(const State &s, const rules::WorldScriptPage &page, int pa
         body += s.rules->tasks.at(*page.task_definition).name + "完成!";
     if (page.legacy_page == 49)
         body = s.page_counters.count(page.id) ? world_rank_conditions(s) : "";
+    if (page.legacy_page == 89 && page.monster_definition && body.empty()) {
+        // This page owns a monster definition identity, not an actor or source-record index.
+        const auto found = std::find_if(
+            s.rules->monsters.begin(), s.rules->monsters.end(),
+            [&](const auto &monster) { return monster.identity == *page.monster_definition; });
+        if (found != s.rules->monsters.end())
+            body = found->name;
+    }
     return body;
 }
 Rectangle month_panel(Extent extent) {
@@ -120,6 +131,8 @@ bool inspection_ready(const State &s, const std::string &mode) {
     if (mode == "world-month")
         return app::world_report_waiting(s);
     if (const auto *page = active_page(s)) {
+        if (mode == "world-award")
+            return page->legacy_page == 87 && s.award_rankings.count(page->id);
         if (mode == "world-rank")
             return page->legacy_page == 49 && s.page_counters.count(page->id);
         if (mode == "world-news")
@@ -225,13 +238,14 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
     const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
-    const bool transient = inspecting && options.inspect_page != "world-active" &&
-                           options.inspect_page != "world-speed" &&
-                           options.inspect_page != "world-month" &&
-                           options.inspect_page != "world-rank";
+    const bool transient =
+        inspecting && options.inspect_page != "world-active" &&
+        options.inspect_page != "world-speed" && options.inspect_page != "world-month" &&
+        options.inspect_page != "world-rank" && options.inspect_page != "world-award";
     if (inspecting) {
         bool reached{};
-        for (int step = 0; step < 20000; ++step) {
+        const int limit = options.inspect_page == "world-award" ? 120000 : 20000;
+        for (int step = 0; step < limit; ++step) {
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
             // Inspection confirmations are explicit test input, including the desktop report.
@@ -244,7 +258,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             if (reached)
                 break;
             if (const auto *page = active_page(state);
-                page && page->legacy_page != 56 &&
+                page && ui::world_page_regular_confirmation(*page) &&
                 !(options.inspect_page == "world-rank" && page->legacy_page == 49)) {
                 if (simulation::acknowledge_startup_world_runtime_page(state, page->id) !=
                     simulation::StartupWorldRuntimeError::none)
@@ -345,25 +359,42 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 viewed_page = page->id;
                 paragraph = scroll = 0;
             }
-            const auto page_layout = ui::world_page_layout(*page, extent);
-            if (!desired_pause && !failed && !pending_ack && page->legacy_page != 56 &&
-                (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
-                const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
-                const auto wrapped =
-                    ui::wrap_plain_text(decoded.text, page_layout.body.width,
-                                        [&](const auto &value) { return text.width(value); });
-                const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
-                // Finishing a paragraph is separate from reaching the end of its visible slice.
-                if (scroll + visible < static_cast<int>(wrapped.size()))
-                    scroll = std::min(scroll + visible, static_cast<int>(wrapped.size()) - visible);
-                else if (paragraph + 1 < static_cast<int>(page->paragraphs.size())) {
-                    ++paragraph;
-                    scroll = 0;
-                } else
-                    pending_ack = session.ack_page(page->id);
+            if (page->kind == rules::WorldScriptPageKind::raw_page && page->legacy_page == 87) {
+                const auto award = ui::world_award_view(current, page->id);
+                const auto award_layout = ui::world_award_layout(extent, award.termination_pending);
+                const auto action = ui::world_award_input(
+                    award, award_layout, click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
+                    IsKeyPressed(KEY_ESCAPE), desired_pause || failed || pending_ack != 0);
+                if (action)
+                    pending_ack = session.act_award(page->id, *action);
+                if (mouse && CheckCollisionPointRec(*mouse, award_layout.rows))
+                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+                const int visible = std::max(1, static_cast<int>(award_layout.rows.height / 18));
+                scroll = std::clamp(scroll, 0,
+                                    std::max(0, static_cast<int>(award.rows.size()) - visible));
+            } else if (ui::world_page_regular_confirmation(*page)) {
+                const auto page_layout = ui::world_page_layout(*page, extent);
+                if (!desired_pause && !failed && !pending_ack &&
+                    (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
+                    const auto decoded =
+                        ui::decode_script_text(page_body(current, *page, paragraph));
+                    const auto wrapped =
+                        ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                            [&](const auto &value) { return text.width(value); });
+                    const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+                    // Finishing a paragraph is separate from reaching the end of its visible slice.
+                    if (scroll + visible < static_cast<int>(wrapped.size()))
+                        scroll =
+                            std::min(scroll + visible, static_cast<int>(wrapped.size()) - visible);
+                    else if (paragraph + 1 < static_cast<int>(page->paragraphs.size())) {
+                        ++paragraph;
+                        scroll = 0;
+                    } else
+                        pending_ack = session.ack_page(page->id);
+                }
+                if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
+                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
             }
-            if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
-                scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
         } else if (app::world_report_waiting(current) && !failed && !pending_ack &&
                    (hit(month_confirm(extent)) || IsKeyPressed(KEY_ENTER)))
             pending_ack = session.ack_report(current.report_state);
@@ -384,29 +415,39 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         EndScissorMode();
         hud(current, layout, skin, failed);
         if (const auto *page = active_page(current)) {
-            const auto page_layout = ui::world_page_layout(*page, extent);
-            ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
-            const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
-            const auto wrapped =
-                ui::wrap_plain_text(decoded.text, page_layout.body.width,
-                                    [&](const auto &value) { return text.width(value); });
-            const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
-            scroll = std::clamp(scroll, 0, std::max(0, static_cast<int>(wrapped.size()) - visible));
-            for (int row = 0; row < visible && scroll + row < static_cast<int>(wrapped.size());
-                 ++row) {
-                const float y = page_layout.body.y + row * 17;
-                if (decoded.centered)
-                    skin.centered(wrapped[scroll + row],
-                                  {page_layout.body.x, y, page_layout.body.width, 17});
-                else
-                    text.draw(wrapped[scroll + row], page_layout.body.x, y);
+            if (page->kind == rules::WorldScriptPageKind::raw_page && page->legacy_page == 87) {
+                const auto award = ui::world_award_view(current, page->id);
+                const auto award_layout = ui::world_award_layout(extent, award.termination_pending);
+                ui::draw_world_award(award, award_layout, skin, scroll,
+                                     !desired_pause && !failed && !pending_ack);
+            } else if (!ui::world_page_automatic(*page)) {
+                // Timed waits and camera pages draw the world only; they do not expose a fake modal
+                // or a confirmation capable of skipping their source-owned counter/focus consumer.
+                const auto page_layout = ui::world_page_layout(*page, extent);
+                ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
+                const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
+                const auto wrapped =
+                    ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                        [&](const auto &value) { return text.width(value); });
+                const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+                scroll =
+                    std::clamp(scroll, 0, std::max(0, static_cast<int>(wrapped.size()) - visible));
+                for (int row = 0; row < visible && scroll + row < static_cast<int>(wrapped.size());
+                     ++row) {
+                    const float y = page_layout.body.y + row * 17;
+                    if (decoded.centered)
+                        skin.centered(wrapped[scroll + row],
+                                      {page_layout.body.x, y, page_layout.body.width, 17});
+                    else
+                        text.draw(wrapped[scroll + row], page_layout.body.x, y);
+                }
+                const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
+                skin.button(page_layout.confirm,
+                            more_text                                                   ? "下一屏"
+                            : paragraph + 1 < static_cast<int>(page->paragraphs.size()) ? "下一页"
+                                                                                        : "确定",
+                            !desired_pause && !failed && !pending_ack);
             }
-            const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
-            skin.button(page_layout.confirm,
-                        more_text                                                   ? "下一屏"
-                        : paragraph + 1 < static_cast<int>(page->paragraphs.size()) ? "下一页"
-                                                                                    : "确定",
-                        !desired_pause && !failed && !pending_ack && page->legacy_page != 56);
         } else if (app::world_report_waiting(current))
             skin.button(month_confirm(extent), current.report_state == 1 ? "下一页" : "确定",
                         !failed && !pending_ack);

@@ -16,6 +16,10 @@ prepare_startup_world_runtime_dungeon_crew(const StartupWorldRuntimeState &state
 std::optional<StartupWorldRuntimeState>
 prepare_startup_world_runtime_encounter(const StartupWorldRuntimeState &state,
                                         ref::EncounterCreationInput input);
+// 全局入口需要真实created/denial，不能从新名单长度猜测创建结果。
+std::optional<ref::OwnedWorldRuntimeCreation<StartupWorldRuntimeState>>
+prepare_startup_world_runtime_encounter_creation(const StartupWorldRuntimeState &state,
+                                                 ref::EncounterCreationInput input);
 std::optional<StartupWorldRuntimeState>
 consume_startup_world_runtime_encounter_request(const StartupWorldRuntimeState &state,
                                                 const ref::EncounterCreationRequest &request);

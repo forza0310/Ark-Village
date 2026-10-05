@@ -165,7 +165,7 @@ void page_failure_rollback() {
     for (int i = 0; i < 100; ++i) {
         const auto page = active();
         if (page != state.scripts.pages.rend() && page->kind != rules::WorldScriptPageKind::scene &&
-            page->legacy_page != 56)
+            page->legacy_page != 16 && page->legacy_page != 56 && page->legacy_page != 57)
             break;
         state = advance(std::move(state));
     }
@@ -303,6 +303,120 @@ void input_flood_fairness() {
     check(session.set_view({}, {0, 0, 100, 100}) == 0,
           "Input flood leaves a stoppable session with no abandoned producer");
 }
+app::WorldState award_fixture() {
+    // Explicit raw87 fixture from the published page contract, not an annual startup trace.
+    auto state = initial();
+    state.scripts.pages.front().lifecycle = 3;
+    rules::WorldScriptPage page;
+    page.id = state.scripts.next_page_id++;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 87;
+    state.scripts.pages.push_back(page);
+    state.scripts.executing_page = page.id;
+    state.human_presence.at(1) = 1;
+    state = advance(std::move(state));
+    check(state.medal_count == 1 && state.award_rankings.count(page.id) &&
+              !state.award_termination_pending.at(page.id),
+          "Source initializes the annual page once without granting a medal to any actor");
+    return state;
+}
+int event_count(const app::WorldState &state, int event) {
+    const auto found = state.scripts.event_calls.find(event);
+    return found == state.scripts.event_calls.end() ? 0 : found->second;
+}
+void annual_page_commands() {
+    using Action = rules::WorldAwardAction;
+    const auto source = award_fixture();
+    const auto page = source.scripts.pages.back().id;
+    app::WorldSession session(source);
+    auto serial = session.act_award(page, Action::request_termination);
+    auto shown = await(session, [serial](const auto &frame) {
+        return frame.last_command_serial >= serial || frame.failed;
+    });
+    check(!shown->failed && shown->state->award_termination_pending.at(page) &&
+              shown->state->medal_count == 1 && event_count(*shown->state, 22) == 0,
+          "Termination request opens confirmation without ending the ceremony or spending medals");
+    serial = session.act_award(page, Action::reject_termination);
+    auto rejected = await(session, [serial](const auto &frame) {
+        return frame.last_command_serial >= serial || frame.failed;
+    });
+    check(!rejected->failed && !rejected->state->award_termination_pending.at(page) &&
+              rejected->state->scripts.pages.back().id == page &&
+              rejected->state->scripts.pages.back().lifecycle != 4 &&
+              event_count(*rejected->state, 22) == 0,
+          "Explicit no answer preserves the actual annual page and allows another decision");
+    const auto requested = session.act_award(page, Action::request_termination);
+    const auto confirmed = session.act_award(page, Action::confirm_termination);
+    const auto paused = session.set_paused(true);
+    check(confirmed == requested + 1 && paused == confirmed + 1,
+          "Annual request, affirmative answer and pause share the ordered command FIFO");
+    const auto closed = await(session, [paused](const auto &frame) {
+        return frame.last_command_serial >= paused || frame.failed;
+    });
+    check(!closed->failed && !closed->state->award_termination_pending.at(page) &&
+              closed->state->medal_count == 1 && event_count(*closed->state, 22) == 1 &&
+              std::none_of(
+                  closed->state->scripts.pages.begin(), closed->state->scripts.pages.end(),
+                  [page](const auto &item) { return item.id == page && item.lifecycle != 4; }),
+          "Affirmative answer runs the source termination once and retains the unused medal");
+    check(closed->state->scene.random.draws() == source.scene.random.draws() &&
+              closed->state->scene.calendar.units == source.scene.calendar.units &&
+              closed->state->scene.world.world.ai.accounting.funds() ==
+                  source.scene.world.world.ai.accounting.funds() &&
+              closed->state->simulation_steps == source.simulation_steps &&
+              closed->state->human_presence == source.human_presence,
+          "Annual input does not advance date, AI, shared randomness or fabricate cash/visitors");
+    session.stop();
+
+    for (int mode = 0; mode < 5; ++mode) {
+        auto state = source;
+        if (mode == 3)
+            state.scene.framework_paused = true;
+        app::WorldSession blocked(state);
+        const auto before = blocked.frame();
+        const auto input = mode == 0 ? blocked.ack_page(page)
+                                     : blocked.act_award(mode == 4 ? page + 1000 : page,
+                                                         mode == 1   ? Action::confirm_termination
+                                                         : mode == 2 ? Action::request_award
+                                                                     : Action::request_termination);
+        const auto failed = await(blocked, [](const auto &frame) { return frame.failed; });
+        check(
+            input != 0 && failed->last_command_serial == input &&
+                !failed->state->award_termination_pending.at(page) &&
+                failed->state->medal_count == 1 && event_count(*failed->state, 22) == 0 &&
+                failed->state->scene.random.draws() == source.scene.random.draws(),
+            "Ordinary confirmation, absent question, unsupported award, pause and stale ID reject");
+        if (mode == 3)
+            check(failed->state == before->state && failed->outer_updates == 0,
+                  "Paused annual command fails without even cloning a committed replacement");
+        check(blocked.act_award(page, Action::request_termination) == 0,
+              "A failed annual action cannot automatically retry or clear the session error");
+        blocked.stop();
+    }
+}
+void report_below_timed_page() {
+    auto state = initial();
+    state.report_state = 1; // Explicit overlay fixture beneath a source-owned automatic page.
+    state.scripts.pages.front().lifecycle = 3;
+    rules::WorldScriptPage timer;
+    timer.id = state.scripts.next_page_id++;
+    timer.kind = rules::WorldScriptPageKind::raw_page;
+    timer.legacy_page = 16;
+    timer.legacy_l = 2;
+    state.scripts.pages.push_back(timer);
+    app::WorldSession session(state);
+    const auto revealed =
+        await(session, [](const auto &frame) { return frame.outer_updates >= 2 || frame.failed; });
+    check(!revealed->failed && revealed->state->page_counters.at(timer.id) == 2 &&
+              revealed->state->report_state == 1 && app::world_report_waiting(*revealed->state) &&
+              revealed->last_command_serial == 0,
+          "Timed page above a report updates and closes itself without confirmation input");
+    check(session.wait_for_frame_after(revealed->revision, 120ms) == revealed &&
+              revealed->state->scene.calendar.units == state.scene.calendar.units &&
+              revealed->state->scene.random.draws() == state.scene.random.draws(),
+          "Only the revealed main-scene report holds subsequent world updates");
+    session.stop();
+}
 } // namespace
 int main() {
     paused_commands();
@@ -311,5 +425,7 @@ int main() {
     runtime_failure_rollback();
     report_gate_and_commands();
     input_flood_fairness();
+    annual_page_commands();
+    report_below_timed_page();
     std::cout << "PASS world session " << checks << " checks\n";
 }

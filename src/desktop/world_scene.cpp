@@ -2,6 +2,9 @@
 #include "world_scene.hpp"
 #include "character_status.hpp"
 #include "ui/layout.hpp"
+#include "world_combat_visuals.hpp"
+#include "world_overlay_render.hpp"
+#include "world_rest_visuals.hpp"
 #include <algorithm>
 #include <cmath>
 #include <functional>
@@ -11,10 +14,13 @@ namespace ark::desktop {
 namespace {
 namespace rules = simulation::rules;
 using State = simulation::StartupWorldRuntimeState;
+Vector2 raw_anchor(const WorldCameraView &view, float x, float y, float zoom) {
+    const auto &v = view.viewport;
+    return {zoom * ((v[0] + v[2]) / 2 + x - view.camera[0]),
+            zoom * (v[1] + v[3] - (v[1] + v[3]) / 2 - y + view.camera[1])};
+}
 Vector2 raw_anchor(const State &s, float x, float y, float zoom) {
-    const auto &v = s.reference_viewport;
-    return {zoom * ((v[0] + v[2]) / 2 + x - s.camera[0]),
-            zoom * (v[1] + v[3] - (v[1] + v[3]) / 2 - y + s.camera[1])};
+    return raw_anchor(WorldCameraView{s.camera, s.reference_viewport}, x, y, zoom);
 }
 const simulation::StartupDisplay &display(int id) {
     const auto &list = simulation::startup_evidence().displays;
@@ -41,15 +47,43 @@ std::array<int, 4> world_viewport(Extent extent, float zoom) {
 Vector2 world_anchor(const State &s, rules::CombatPoint p, float zoom) {
     return raw_anchor(s, (p.x + p.z) * .3F, (p.z - p.x) * .15F + p.height, zoom);
 }
-void world_zoom_at(State &s, Extent extent, Vector2 pointer, float wheel, float &zoom) {
+void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
+                       float &zoom) {
     const auto next = std::clamp(zoom * std::pow(1.05F, wheel), .5F, 2.F);
-    const auto origin = raw_anchor(s, 0, 0, zoom);
+    const auto origin = raw_anchor(view, 0, 0, zoom);
     const float x = (pointer.x - origin.x) / zoom, y = (origin.y - pointer.y) / zoom;
-    s.reference_viewport = world_viewport(extent, next);
-    const auto shifted = raw_anchor(s, x, y, next);
-    s.camera[0] += (shifted.x - pointer.x) / next;
-    s.camera[1] += (pointer.y - shifted.y) / next;
+    view.viewport = world_viewport(extent, next);
+    const auto shifted = raw_anchor(view, x, y, next);
+    view.camera[0] += (shifted.x - pointer.x) / next;
+    view.camera[1] += (pointer.y - shifted.y) / next;
     zoom = next;
+}
+void world_zoom_at(State &s, Extent extent, Vector2 pointer, float wheel, float &zoom) {
+    WorldCameraView view{s.camera, s.reference_viewport};
+    world_zoom_camera(view, extent, pointer, wheel, zoom);
+    s.camera = view.camera;
+    s.reference_viewport = view.viewport;
+}
+simulation::rules::CombatPoint world_actor_render_position(const State &s, rules::CharacterId id,
+                                                           const State *previous, float alpha) {
+    const auto current = s.actor_metadata.at(id).render_position;
+    if (!previous || s.scene.framework_paused || !previous->actor_metadata.count(id))
+        return current;
+    const auto &actor = s.scene.world.world.ai.battle.actors.at(id);
+    const auto old_actor = previous->scene.world.world.ai.battle.actors.find(id);
+    if (old_actor == previous->scene.world.world.ai.battle.actors.end() ||
+        actor.control.action != 0 || old_actor->second.control.action != 0 ||
+        actor.control.state != old_actor->second.control.state || (actor.control.flags & 1U) ||
+        (old_actor->second.control.flags & 1U) || actor.kind != old_actor->second.kind)
+        return current;
+    const auto old = previous->actor_metadata.at(id).render_position;
+    // A cell is 100 units: larger discontinuities are map/focus transitions, never walking.
+    if (std::abs(current.x - old.x) > 100 || std::abs(current.z - old.z) > 100 ||
+        std::abs(current.height - old.height) > 100 || !std::isfinite(alpha))
+        return current;
+    const auto t = std::clamp(alpha, 0.F, 1.F);
+    return {old.x + (current.x - old.x) * t, old.height + (current.height - old.height) * t,
+            old.z + (current.z - old.z) * t};
 }
 WorldActorPose world_actor_pose(const State &s, rules::CharacterId id) {
     const auto &a = s.scene.world.world.ai.battle.actors.at(id);
@@ -97,8 +131,14 @@ WorldActorPose world_actor_pose(const State &s, rules::CharacterId id) {
     }
     return pose;
 }
-void draw_world_scene(const State &s, Sprites &sprites, float zoom) {
+void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State *previous,
+                      float alpha, const WorldCameraView *override_view) {
     const auto &world = s.scene.world.world;
+    const auto view =
+        override_view ? *override_view : WorldCameraView{s.camera, s.reference_viewport};
+    const auto project = [&](rules::CombatPoint p) {
+        return raw_anchor(view, (p.x + p.z) * .3F, (p.z - p.x) * .15F + p.height, zoom);
+    };
     struct Draw {
         float depth{};
         std::function<void()> paint;
@@ -114,7 +154,7 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom) {
             if (cell.display_definition < 0)
                 continue;
             const auto &record = display(cell.display_definition);
-            const auto p = raw_anchor(s, 30.F * (x + y), 15.F * (y - x) + 15, zoom);
+            const auto p = raw_anchor(view, 30.F * (x + y), 15.F * (y - x) + 15, zoom);
             const float depth = p.y + zoom * (((record.flags & 1U) ? -50 : 15) + record.offset_y);
             queue.push_back({depth, [&, p, sprite = record.sprite, frame = cell.variant] {
                                  sprites.draw(sprite, frame, p, WHITE, Sprites::Binding::map, zoom);
@@ -155,14 +195,14 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom) {
             const auto &actor = world.ai.battle.actors.at(id);
             if (actor.control.flags & 1U)
                 continue;
-            auto ground_position = actor.position;
+            auto ground_position = world_actor_render_position(s, id, previous, alpha);
             ground_position.height = 0;
-            const auto depth = world_anchor(s, ground_position, zoom).y;
+            const auto depth = project(ground_position).y;
             queue.push_back(
                 {depth, [&, id] {
                      const auto &a = world.ai.battle.actors.at(id);
                      const auto point =
-                         world_anchor(s, s.actor_metadata.at(id).render_position, zoom);
+                         project(world_actor_render_position(s, id, previous, alpha));
                      const auto pose = world_actor_pose(s, id);
                      sprites.actor(pose.monster, pose.sprite, pose.image, pose.frame, point, zoom);
                      const auto &hp = a.hp;
@@ -177,29 +217,46 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom) {
                          DrawRectangleRec({point.x + bar.x * zoom, point.y + bar.y * zoom,
                                            bar.width * zoom, bar.height * zoom},
                                           {bar.rgb[0], bar.rgb[1], bar.rgb[2], 255});
+                     draw_world_overlay(world_actor_combat_visuals(s, id), sprites, point, zoom);
                  }});
         }
     std::stable_sort(queue.begin(), queue.end(),
                      [](const auto &a, const auto &b) { return a.depth < b.depth; });
     for (const auto &draw : queue)
         draw.paint();
-    for (const auto &effect : s.visual_effects) {
-        if (effect.size() < 2 || effect[0] != 2 || effect[1] < 0)
+    // Inn occupants can hide their body (bit1); their facility-owned rest rows remain visible.
+    // This screen position is a desktop adaptation until the original L/portrait mapping is
+    // published.
+    for (const auto id : s.scene.world.facility_order) {
+        const auto rows = world_rest_rows(s, id);
+        if (rows.empty())
             continue;
-        if (effect.size() != 7 || effect[4] < 0)
-            throw std::runtime_error("Invalid world cash-display payload");
-        auto p = raw_anchor(s, static_cast<float>(effect[2]), static_cast<float>(effect[3]), zoom);
-        const int n = effect[1];
-        p.y += zoom * (n < 6 ? -16 + (effect[5] * n + effect[6] * n * (n + 1) / 2) / 1000 : -26);
-        const auto digits = std::to_string(effect[4]);
-        p.x += zoom * (28 - (digits.size() * 8 + 9) / 2.F);
-        for (const auto digit : digits) {
-            sprites.draw("number05.seb", digit - '0', {p.x, p.y - 10 * zoom}, WHITE,
-                         Sprites::Binding::common, zoom);
-            p.x += 8 * zoom;
+        const auto &placement = world.facilities.at(id).placement;
+        const auto cells =
+            rules::facility_footprint(placement.shape, placement.orientation, placement.anchor,
+                                      world.map.width, world.map.height);
+        if (cells.cells.empty())
+            throw std::runtime_error("Inn display has no valid footprint");
+        float x{}, y{};
+        for (const auto &cell : cells.cells) {
+            x += cell.position.x + .5F;
+            y += cell.position.y + .5F;
         }
-        sprites.draw("number05.seb", 20, {p.x, p.y - 10 * zoom}, WHITE, Sprites::Binding::common,
-                     zoom);
+        x /= cells.cells.size();
+        y /= cells.cells.size();
+        auto point = raw_anchor(view, 30.F * (x + y), 15.F * (y - x) + 15, zoom);
+        point.x -= 24 * zoom;
+        point.y -= 48 * zoom;
+        for (const auto &row : rows)
+            draw_world_overlay(row.plan, sprites, point, zoom);
+    }
+    for (const auto &effect : s.visual_effects) {
+        const auto plan = world_cash_visuals(effect);
+        if (plan.empty())
+            continue;
+        const auto point =
+            raw_anchor(view, static_cast<float>(effect[2]), static_cast<float>(effect[3]), zoom);
+        draw_world_overlay(plan, sprites, point, zoom);
     }
 }
 } // namespace ark::desktop

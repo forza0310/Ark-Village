@@ -118,6 +118,29 @@ void actor_animation() {
     actor.control.action_counter = 7;
     check(world_actor_pose(state, id).sprite == 7 && world_actor_pose(state, id).frame == 1,
           "Human special action no longer replaces facing with counter phase");
+    // Drawing interpolates two immutable samples without moving the simulation actor.
+    actor.control.action = 0;
+    actor.control.state = 0;
+    actor.control.flags = 2;
+    state.actor_metadata.at(id).render_position = {100, 0, 100};
+    const auto previous = state;
+    state.actor_metadata.at(id).render_position = {113.4F, 0, 100};
+    const auto halfway = world_actor_render_position(state, id, &previous, .5F);
+    check(std::abs(halfway.x - 106.7F) < .001F &&
+              state.actor_metadata.at(id).render_position.x == 113.4F &&
+              previous.actor_metadata.at(id).render_position.x == 100,
+          "Raster interpolation mutated authoritative walking position");
+    state.scene.framework_paused = true;
+    check(world_actor_render_position(state, id, &previous, .2F).x == 113.4F,
+          "Paused actor still interpolates");
+    state.scene.framework_paused = false;
+    actor.control.flags |= 1;
+    check(world_actor_render_position(state, id, &previous, .2F).x == 113.4F,
+          "Hidden actor interpolates across facility entry");
+    actor.control.flags = 2;
+    state.actor_metadata.at(id).render_position.x = 500;
+    check(world_actor_render_position(state, id, &previous, .2F).x == 500,
+          "Map teleport was turned into a walking path");
     // Explicit presentation fixture: reuse the single actor slot to cover monster body families.
     actor.kind = rules::ActorKind::monster;
     actor.definition = state.scene.world.world.ai.monster_growth.begin()->first;

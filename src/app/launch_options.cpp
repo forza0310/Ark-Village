@@ -42,7 +42,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
                 page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
                 page != "ai" && page != "world-active" && page != "world-month" &&
-                page != "world-rank")
+                page != "world-rank" && page != "world-combat" && page != "world-reward" &&
+                page != "world-exp" && page != "world-rest" && page != "world-rest-hp" &&
+                page != "world-news" && page != "world-break" && page != "world-speed")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--font") {
@@ -87,9 +89,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         return {std::nullopt, "--ai-preview requires a window run"};
     if (options.inspect_page == "ai")
         options.ai_preview = true;
-    const bool world_inspection = options.inspect_page == "world-active" ||
-                                  options.inspect_page == "world-month" ||
-                                  options.inspect_page == "world-rank";
+    const bool world_inspection = options.inspect_page.rfind("world-", 0) == 0;
     // Select a single owner after parsing, so argument order cannot silently change the world.
     // Named legacy diagnostics remain explicit opt-ins; generic size/pause/check options do not.
     const bool legacy_diagnostic = options.ai_preview || options.verify_play ||

@@ -21,7 +21,21 @@ void world_zoom_at(simulation::StartupWorldRuntimeState &state, Extent extent, V
 // Read original action-counter phase and profession/body bindings, independent of render FPS.
 WorldActorPose world_actor_pose(const simulation::StartupWorldRuntimeState &state,
                                 simulation::rules::CharacterId actor);
+// Interpolate only continuous walking for the raster. Teleports, action changes, hiding and
+// pauses snap to current source facts; collision, HP, RNG and the canonical positions never change.
+simulation::rules::CombatPoint
+world_actor_render_position(const simulation::StartupWorldRuntimeState &state,
+                            simulation::rules::CharacterId actor,
+                            const simulation::StartupWorldRuntimeState *previous, float alpha);
+// UI camera operations use this tiny presentation value, never copy a mutable business world.
+struct WorldCameraView {
+    std::array<float, 2> camera{};
+    std::array<int, 4> viewport{};
+};
+void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
+                       float &zoom);
 // Stable source depth order for per-cell surfaces, fences, doors, all actors, HP and cash effects.
 void draw_world_scene(const simulation::StartupWorldRuntimeState &state, Sprites &sprites,
-                      float zoom);
+                      float zoom, const simulation::StartupWorldRuntimeState *previous = nullptr,
+                      float alpha = 1, const WorldCameraView *view = nullptr);
 } // namespace ark::desktop

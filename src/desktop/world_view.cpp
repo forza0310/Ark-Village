@@ -1,12 +1,17 @@
 // Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
 #include "world_view.hpp"
-#include "ark/app/simulation_clock.hpp"
+#include "ark/app/world_report.hpp"
+#include "ark/app/world_session.hpp"
 #include "desktop_session.hpp"
 #include "ui/layout.hpp"
+#include "ui/script_text.hpp"
 #include "ui/skin.hpp"
+#include "ui/world_panels.hpp"
 #include "world_rank.hpp"
+#include "world_rest_visuals.hpp"
 #include "world_scene.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <iostream>
 #include <stdexcept>
@@ -71,7 +76,8 @@ bool advance(State &s) {
 std::string glyphs(const State &s) {
     std::string result =
         "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
-        "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未";
+        "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
+        "大家的冒险通信下一页下一屏关闭月报待确认";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -86,38 +92,89 @@ std::string glyphs(const State &s) {
         result += e.name;
     return result;
 }
-std::string plain_text(const std::string &source) {
-    std::string text;
-    for (std::size_t i = 0; i < source.size();) {
-        if (source.compare(i, 4, "<co=") == 0 || source.compare(i, 5, "</co>") == 0) {
-            const auto end = source.find('>', i);
-            if (end != std::string::npos) {
-                i = end + 1;
-                continue;
-            }
-        }
-        text += source[i++];
-    }
-    return text;
+std::string page_body(const State &s, const rules::WorldScriptPage &page, int paragraph) {
+    std::string body;
+    if (!page.paragraphs.empty())
+        body =
+            page.paragraphs.at(std::min(paragraph, static_cast<int>(page.paragraphs.size()) - 1));
+    if (page.task_definition &&
+        (page.legacy_page == 30 || page.legacy_page == 31 || page.legacy_page == 32))
+        body += s.rules->tasks.at(*page.task_definition).name + "完成!";
+    if (page.legacy_page == 49)
+        body = s.page_counters.count(page.id) ? world_rank_conditions(s) : "";
+    return body;
 }
-std::vector<std::string> lines(const Text &text, const std::string &source, float width) {
-    std::vector<std::string> result;
-    std::string line;
-    const auto value = plain_text(source);
-    for (std::size_t i = 0; i < value.size();) {
-        int bytes{};
-        GetCodepointNext(value.c_str() + i, &bytes);
-        const auto next = value.substr(i, static_cast<std::size_t>(bytes));
-        if (next == "\n" || (!line.empty() && text.width(line + next) > width)) {
-            result.push_back(line);
-            line.clear();
-        }
-        if (next != "\n")
-            line += next;
-        i += static_cast<std::size_t>(bytes);
+Rectangle month_panel(Extent extent) {
+    return {(extent.width - 230) / 2.F, (extent.height - 150) / 2.F, 230, 150};
+}
+Rectangle month_confirm(Extent extent) {
+    const auto box = month_panel(extent);
+    return {box.x + box.width - 68, box.y + box.height - 29, 58, 23};
+}
+// Inspections supply explicit user confirmations to a real new game, never a fabricated battle
+// or payment. Transient inspections stop at a naturally produced source display record.
+bool inspection_ready(const State &s, const std::string &mode) {
+    const auto &ai = s.scene.world.world.ai;
+    if (mode == "world-active" || mode == "world-speed")
+        return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
+    if (mode == "world-month")
+        return app::world_report_waiting(s);
+    if (const auto *page = active_page(s)) {
+        if (mode == "world-rank")
+            return page->legacy_page == 49 && s.page_counters.count(page->id);
+        if (mode == "world-news")
+            return page->kind == rules::WorldScriptPageKind::newspaper;
+        if (mode == "world-break")
+            return std::any_of(
+                page->paragraphs.begin(), page->paragraphs.end(),
+                [](const auto &body) { return body.find("<br>") != std::string::npos; });
+        return false; // Scene overlays must not be captured behind an unrelated modal.
     }
-    result.push_back(line);
-    return result;
+    if (mode == "world-combat")
+        for (const auto &entry : ai.battle.actors)
+            if (entry.second.label_timer > 0 && !entry.second.miss_label &&
+                !(entry.second.control.flags & 1U))
+                return true;
+    if (mode == "world-reward")
+        for (const auto &effect : s.visual_effects)
+            if (effect.size() >= 2 && effect[0] == 3 && effect[1] >= 0)
+                return true;
+    if (mode == "world-exp")
+        for (const auto id : ai.human_order)
+            for (const auto &effect : ai.contexts.at(id).effects.display)
+                if (effect.size() >= 2 && effect[0] == 24 && effect[1] >= 0 && effect[1] < 55)
+                    return true;
+    if (mode == "world-rest" || mode == "world-rest-hp")
+        for (const auto id : s.scene.world.facility_order)
+            for (const auto &row : world_rest_rows(s, id))
+                if ((mode == "world-rest" && row.counter > 50 && row.counter < 170) ||
+                    (mode == "world-rest-hp" && row.counter >= 180))
+                    return true;
+    return false;
+}
+void focus_inspection(State &s, const std::string &mode) {
+    // A camera change after the inspection target is reached is a screenshot policy, not AI.
+    const auto &ai = s.scene.world.world.ai;
+    for (const auto &entry : ai.battle.actors) {
+        const auto &a = entry.second;
+        bool focus = mode == "world-combat" && a.label_timer > 0 && !a.miss_label;
+        focus =
+            focus || ((mode == "world-rest" || mode == "world-rest-hp") && (a.control.flags & 32U));
+        if (mode == "world-exp" && a.kind == rules::ActorKind::human)
+            for (const auto &effect : ai.contexts.at(entry.first).effects.display)
+                focus = focus || (effect.size() >= 2 && effect[0] == 24 && effect[1] >= 0);
+        if (focus) {
+            const auto p = s.actor_metadata.at(entry.first).render_position;
+            s.camera = {(p.x + p.z) * .3F, (p.z - p.x) * .15F + p.height};
+            return;
+        }
+    }
+    if (mode == "world-reward")
+        for (const auto &effect : s.visual_effects)
+            if (effect.size() >= 4 && effect[0] == 3 && effect[1] >= 0) {
+                s.camera = {static_cast<float>(effect[2]), static_cast<float>(effect[3])};
+                return;
+            }
 }
 void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool failed) {
     const float w = layout.extent.width, h = layout.extent.height;
@@ -132,16 +189,15 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
     skin.number(s.village_points, {w - 3, 27});
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
-    skin.sprites.image("btmbar_popular00.png", {0, 0, 78, 41}, {w / 2 - 39, h - 41, 78, 41});
-    skin.sprites.image("btmbar_popular01.png", {0, 0, 77, 14}, {w / 2 - 38, h - 16, 77, 14});
-    skin.number(s.popularity, {w / 2 + 35, h - 20});
+    ui::draw_world_popularity(s.popularity, layout, skin);
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(layout.right_button, s.scene.speed_setting == 1 ? "2倍" : "1倍", !failed);
     if (failed)
         skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
     if (s.report_state && !active_page(s)) {
-        const Rectangle box{(w - 220) / 2, 72, 220, 112};
+        const auto box = month_panel(layout.extent);
         skin.window(box, "本月结算");
+        skin.content({box.x + 6, box.y + 22, box.width - 12, box.height - 57});
         constexpr const char *labels[]{"打倒怪物", "获得村子点数", "收入", "支出", "收支"};
         const int first = s.report_state == 1 ? 0 : 2, count = s.report_state == 1 ? 2 : 3;
         for (int i = 0; i < count; ++i) {
@@ -168,20 +224,25 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     }();
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
-    if (options.inspect_page == "world-active" || options.inspect_page == "world-month" ||
-        options.inspect_page == "world-rank") {
+    const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
+    const bool transient = inspecting && options.inspect_page != "world-active" &&
+                           options.inspect_page != "world-speed" &&
+                           options.inspect_page != "world-month" &&
+                           options.inspect_page != "world-rank";
+    if (inspecting) {
         bool reached{};
         for (int step = 0; step < 20000; ++step) {
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
-            // Wait for the real raw49 page to initialize its cached conditions. Inspection
-            // auto-confirms preceding pages only; it never creates a rank or changes requirements.
-            if (const auto *page = active_page(state); options.inspect_page == "world-rank" &&
-                                                       page && page->legacy_page == 49 &&
-                                                       state.page_counters.count(page->id)) {
-                reached = true;
+            // Inspection confirmations are explicit test input, including the desktop report.
+            // Finish intervening reports so a reward screenshot cannot be hidden by one.
+            if (options.inspect_page != "world-month")
+                while (app::world_report_waiting(state))
+                    if (!app::acknowledge_world_report(state, state.report_state))
+                        throw std::runtime_error("World inspection report rejected input");
+            reached = inspection_ready(state, options.inspect_page);
+            if (reached)
                 break;
-            }
             if (const auto *page = active_page(state);
                 page && page->legacy_page != 56 &&
                 !(options.inspect_page == "world-rank" && page->legacy_page == 49)) {
@@ -189,15 +250,11 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                     simulation::StartupWorldRuntimeError::none)
                     throw std::runtime_error("World inspection page consumer rejected input");
             }
-            reached = options.inspect_page == "world-month"
-                          ? state.report_state != 0
-                          : options.inspect_page == "world-active" &&
-                                state.scene.world.world.ai.human_order.size() >= 3;
-            if (reached)
-                break;
         }
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
+        if (transient)
+            focus_inspection(state, options.inspect_page);
     }
     WorldCanvas canvas;
     Sprites sprites(assets);
@@ -206,137 +263,172 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                   : std::filesystem::path(options.font),
               glyphs(state));
     ui::Skin skin(sprites, text);
-    state.scene.framework_paused = options.paused;
-    app::SimulationClock clock;
+    state.scene.framework_paused = options.paused || transient;
+    if (options.inspect_page == "world-speed")
+        state.scene.speed_setting = 1;
+    WorldCameraView view{state.camera, state.reference_viewport};
+    app::WorldSession session(std::move(state));
+    auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
-    std::uint64_t viewed_page{};
-    bool failed{};
+    std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
+    bool desired_pause = publication->state->scene.framework_paused;
+    int desired_speed = publication->state->scene.speed_setting;
     const auto started = GetTime();
     auto next_render = started;
-    const auto update = [&](double now) {
-        if (clock.advance(now, true) && !failed)
-            failed = !advance(state);
-    };
+    double last_render{};
+    std::vector<double> frame_intervals, render_costs;
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         const auto now = GetTime();
-        if (now >= next_render) {
-            next_render = now + 1.0 / 60;
-            extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
-            state.reference_viewport = world_viewport(extent, zoom);
-            canvas.resize({GetRenderWidth(), GetRenderHeight()});
-            const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
-            const auto raster =
-                canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
-            text.prepare(raster.zoom);
-            const ui::Layout layout(extent);
-            const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
-            const bool click = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-            const auto hit = [&](Rectangle rectangle) {
-                return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
-            };
-            if (!failed && (hit(layout.left_button) || IsKeyPressed(KEY_SPACE)))
-                state.scene.framework_paused = !state.scene.framework_paused;
-            if (!failed && hit(layout.right_button))
-                state.scene.speed_setting = state.scene.speed_setting == 1 ? 0 : 1;
-            if (mouse && CheckCollisionPointRec(*mouse, layout.scene) && !active_page(state)) {
-                if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                    const float factor = destination.width / extent.width * zoom;
-                    state.camera[0] -= GetMouseDelta().x / factor;
-                    state.camera[1] += GetMouseDelta().y / factor;
-                }
-                if (const auto wheel = GetMouseWheelMove(); wheel)
-                    world_zoom_at(state, extent, *mouse, wheel, zoom);
+        if (now < next_render) {
+            WaitTime(next_render - now);
+            continue;
+        }
+        next_render = now + 1.0 / 60;
+        if (frames > 20)
+            frame_intervals.push_back((now - last_render) * 1000);
+        last_render = now;
+        publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
+        const auto &current = *publication->state;
+        const bool failed = publication->failed;
+        if (publication->last_command_serial >= pending_ack)
+            pending_ack = 0;
+        if (publication->last_command_serial >= pending_view)
+            view = {current.camera, current.reference_viewport};
+        if (publication->last_command_serial >= pending_pause)
+            desired_pause = current.scene.framework_paused;
+        if (publication->last_command_serial >= pending_speed)
+            desired_speed = current.scene.speed_setting;
+        extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+        bool view_changed{};
+        const auto next_viewport = world_viewport(extent, zoom);
+        if (next_viewport != view.viewport) {
+            view.viewport = next_viewport;
+            view_changed = true;
+        }
+        canvas.resize({GetRenderWidth(), GetRenderHeight()});
+        const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
+        const auto raster =
+            canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
+        text.prepare(raster.zoom);
+        const ui::Layout layout(extent);
+        const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
+        const bool click = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        const auto hit = [&](Rectangle rectangle) {
+            return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
+        };
+        if (!failed && (hit(layout.left_button) || IsKeyPressed(KEY_SPACE))) {
+            desired_pause = !desired_pause;
+            pending_pause = session.set_paused(desired_pause);
+        }
+        if (!failed && hit(layout.right_button)) {
+            desired_speed = desired_speed == 1 ? 0 : 1;
+            pending_speed = session.set_speed(desired_speed);
+        }
+        if (mouse && CheckCollisionPointRec(*mouse, layout.scene) && !active_page(current) &&
+            !app::world_report_waiting(current)) {
+            if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
+                const float factor = destination.width / extent.width * zoom;
+                const auto delta = GetMouseDelta();
+                view.camera[0] -= delta.x / factor;
+                view.camera[1] += delta.y / factor;
+                view_changed = view_changed || delta.x != 0 || delta.y != 0;
             }
-            const Rectangle panel{(extent.width - std::min(310, extent.width - 16)) / 2.F, 70,
-                                  static_cast<float>(std::min(310, extent.width - 16)),
-                                  static_cast<float>(std::min(152, extent.height - 112))};
-            const Rectangle confirm{panel.x + panel.width - 64, panel.y + panel.height - 28, 58,
-                                    23};
-            if (const auto *page = active_page(state)) {
-                if (viewed_page != page->id) {
-                    viewed_page = page->id;
-                    paragraph = scroll = 0;
-                }
-                if (!state.scene.framework_paused && !failed && page->legacy_page != 56 &&
-                    (hit(confirm) || IsKeyPressed(KEY_ENTER))) {
-                    if (paragraph + 1 < static_cast<int>(page->paragraphs.size())) {
-                        ++paragraph;
-                        scroll = 0;
-                    } else {
-                        const auto page_id = page->id;
-                        const auto error =
-                            simulation::acknowledge_startup_world_runtime_page(state, page_id);
-                        if (error != simulation::StartupWorldRuntimeError::none) {
-                            failed = true;
-                            std::cerr << "World page rejected: page=" << page_id
-                                      << " error=" << static_cast<int>(error) << '\n';
-                        }
-                    }
-                }
-                if (mouse && CheckCollisionPointRec(*mouse, panel))
-                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+            if (const auto wheel = GetMouseWheelMove(); wheel) {
+                world_zoom_camera(view, extent, *mouse, wheel, zoom);
+                view_changed = true;
             }
-            update(now);
-            BeginTextureMode(canvas.texture);
-            ClearBackground(Color{145, 211, 247, 255});
-            BeginMode2D(raster);
-            const auto clip = layout.scene_clip;
-            BeginScissorMode(static_cast<int>(std::floor(raster.offset.x + clip.x * raster.zoom)),
-                             static_cast<int>(std::floor(raster.offset.y + clip.y * raster.zoom)),
-                             static_cast<int>(std::ceil(clip.width * raster.zoom)),
-                             static_cast<int>(std::ceil(clip.height * raster.zoom)));
-            draw_world_scene(state, sprites, zoom);
-            EndScissorMode();
-            hud(state, layout, skin, failed);
-            if (const auto *page = active_page(state)) {
-                std::string title = page->title;
-                if (page->legacy_page == 49)
-                    title = "村庄升级条件";
-                else if (title.empty())
-                    title = page->legacy_page == 94 ? "入手!" : "";
-                skin.window(panel, plain_text(title));
-                std::string body;
-                if (!page->paragraphs.empty())
-                    body = page->paragraphs.at(
-                        std::min(paragraph, static_cast<int>(page->paragraphs.size()) - 1));
-                if (page->task_definition &&
-                    (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32))
-                    body += state.rules->tasks.at(*page->task_definition).name + "完成!";
-                if (page->legacy_page == 49) {
-                    // The page can be inserted just before a render. Wait for runtime
-                    // initialization rather than showing stale caches; rank5 replaces this page on
-                    // its next update.
-                    body = state.page_counters.count(page->id) ? world_rank_conditions(state) : "";
-                }
-                const auto wrapped = lines(text, body, panel.width - 20);
-                const int visible = std::max(1, static_cast<int>((panel.height - 59) / 17));
-                scroll =
-                    std::clamp(scroll, 0, std::max(0, static_cast<int>(wrapped.size()) - visible));
-                for (int row = 0; row < visible && scroll + row < static_cast<int>(wrapped.size());
-                     ++row)
-                    text.draw(wrapped[scroll + row], panel.x + 10, panel.y + 24 + row * 17);
-                skin.button(confirm, "确定",
-                            !state.scene.framework_paused && !failed && page->legacy_page != 56);
+        }
+        if (view_changed && !failed)
+            pending_view = session.set_view(view.camera, view.viewport);
+        if (const auto *page = active_page(current)) {
+            if (viewed_page != page->id) {
+                viewed_page = page->id;
+                paragraph = scroll = 0;
             }
-            EndMode2D();
-            text.flush(raster.zoom, raster.offset);
-            EndTextureMode();
-            BeginDrawing();
-            ClearBackground(BLACK);
-            DrawTexturePro(
-                canvas.texture.texture,
-                {0, 0, static_cast<float>(canvas.size.width),
-                 -static_cast<float>(canvas.size.height)},
-                {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
-                {0, 0}, 0, WHITE);
-            EndDrawing();
-            ++frames;
-        } else
-            update(now);
-        const auto delay = std::min(next_render - GetTime(), clock.remaining_seconds(GetTime()));
-        if (delay > 0)
-            WaitTime(delay);
+            const auto page_layout = ui::world_page_layout(*page, extent);
+            if (!desired_pause && !failed && !pending_ack && page->legacy_page != 56 &&
+                (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
+                const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
+                const auto wrapped =
+                    ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                        [&](const auto &value) { return text.width(value); });
+                const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+                // Finishing a paragraph is separate from reaching the end of its visible slice.
+                if (scroll + visible < static_cast<int>(wrapped.size()))
+                    scroll = std::min(scroll + visible, static_cast<int>(wrapped.size()) - visible);
+                else if (paragraph + 1 < static_cast<int>(page->paragraphs.size())) {
+                    ++paragraph;
+                    scroll = 0;
+                } else
+                    pending_ack = session.ack_page(page->id);
+            }
+            if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
+                scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+        } else if (app::world_report_waiting(current) && !failed && !pending_ack &&
+                   (hit(month_confirm(extent)) || IsKeyPressed(KEY_ENTER)))
+            pending_ack = session.ack_report(current.report_state);
+        BeginTextureMode(canvas.texture);
+        ClearBackground(Color{145, 211, 247, 255});
+        BeginMode2D(raster);
+        const auto clip = layout.scene_clip;
+        BeginScissorMode(static_cast<int>(std::floor(raster.offset.x + clip.x * raster.zoom)),
+                         static_cast<int>(std::floor(raster.offset.y + clip.y * raster.zoom)),
+                         static_cast<int>(std::ceil(clip.width * raster.zoom)),
+                         static_cast<int>(std::ceil(clip.height * raster.zoom)));
+        const double age =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - publication->published)
+                .count();
+        const float alpha = static_cast<float>(
+            std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
+        draw_world_scene(current, sprites, zoom, publication->previous.get(), alpha, &view);
+        EndScissorMode();
+        hud(current, layout, skin, failed);
+        if (const auto *page = active_page(current)) {
+            const auto page_layout = ui::world_page_layout(*page, extent);
+            ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
+            const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
+            const auto wrapped =
+                ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                    [&](const auto &value) { return text.width(value); });
+            const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+            scroll = std::clamp(scroll, 0, std::max(0, static_cast<int>(wrapped.size()) - visible));
+            for (int row = 0; row < visible && scroll + row < static_cast<int>(wrapped.size());
+                 ++row) {
+                const float y = page_layout.body.y + row * 17;
+                if (decoded.centered)
+                    skin.centered(wrapped[scroll + row],
+                                  {page_layout.body.x, y, page_layout.body.width, 17});
+                else
+                    text.draw(wrapped[scroll + row], page_layout.body.x, y);
+            }
+            const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
+            skin.button(page_layout.confirm,
+                        more_text                                                   ? "下一屏"
+                        : paragraph + 1 < static_cast<int>(page->paragraphs.size()) ? "下一页"
+                                                                                    : "确定",
+                        !desired_pause && !failed && !pending_ack && page->legacy_page != 56);
+        } else if (app::world_report_waiting(current))
+            skin.button(month_confirm(extent), current.report_state == 1 ? "下一页" : "确定",
+                        !failed && !pending_ack);
+        EndMode2D();
+        text.flush(raster.zoom, raster.offset);
+        EndTextureMode();
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTexturePro(
+            canvas.texture.texture,
+            {0, 0, static_cast<float>(canvas.size.width), -static_cast<float>(canvas.size.height)},
+            {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
+            {0, 0}, 0, WHITE);
+        EndDrawing();
+        if (frames > 20)
+            render_costs.push_back((GetTime() - now) * 1000);
+        ++frames;
     }
+    session.stop();
+    publication = session.frame();
+    const auto &final_state = *publication->state;
+    const bool failed = publication->failed;
     if (!options.screenshot.empty()) {
         if (frames != options.frames)
             throw std::runtime_error("World window closed before bounded capture");
@@ -361,13 +453,25 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     std::cout << "World render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
               << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
               << " canvas=" << canvas.size.width << 'x' << canvas.size.height << '\n';
-    std::cout << "World window: frames=" << frames << " rounds=" << state.simulation_steps
-              << " cash=" << state.scene.world.world.ai.accounting.funds()
-              << " humans=" << state.scene.world.world.ai.human_order.size()
-              << " monsters=" << state.scene.world.world.ai.monster_order.size()
-              << " random=" << state.scene.random.draws() << " failed=" << failed
+    std::cout << "World window: frames=" << frames << " rounds=" << final_state.simulation_steps
+              << " cash=" << final_state.scene.world.world.ai.accounting.funds()
+              << " humans=" << final_state.scene.world.world.ai.human_order.size()
+              << " monsters=" << final_state.scene.world.world.ai.monster_order.size()
+              << " random=" << final_state.scene.random.draws() << " failed=" << failed
               << " elapsed=" << GetTime() - started << '\n';
+    const auto percentile = [](std::vector<double> values, double fraction) {
+        if (values.empty())
+            return 0.0;
+        std::sort(values.begin(), values.end());
+        return values.at(static_cast<std::size_t>((values.size() - 1) * fraction));
+    };
+    std::cout << "World pacing: heartbeat_ms=47 speed=" << final_state.scene.speed_setting + 1
+              << " outer_updates=" << publication->outer_updates
+              << " render_interval_p50_ms=" << percentile(frame_intervals, .5)
+              << " render_interval_p95_ms=" << percentile(frame_intervals, .95)
+              << " render_cost_p95_ms=" << percentile(render_costs, .95)
+              << " simulation_max_ms=" << publication->max_update_ms << '\n';
     if (failed)
-        throw std::runtime_error("World runtime rejected an update or page consumer");
+        throw std::runtime_error(publication->error);
 }
 } // namespace ark::desktop

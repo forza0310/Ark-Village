@@ -6,7 +6,9 @@
 
 完整世界尚未提供玩家建设、任务选择菜单、完整投射物/一般特效或文件存取。旧建设切片保留为显式诊断入口，不能把其中的建设界面当作持续世界已经完成的功能。产品测试和截图也不等于原APK动态行为或OS鼠标验收。
 
-本轮接入raw49晋级条件页消费者，显示当前四项实际条件并支持确认返回；范围不含晋级、收费或授予称号。产品四套配置共528项CTest通过；seed1三个月连续回归每套通过14530项检查，自然生成任务为0。真实窗口已检查启动、多人物、月报和条件页；年度、无限运行、OS输入及原APK动态仍需另验。
+本轮补齐伤害数字、死亡金币、经验/升级标签、旅馆休息/HP条、通知换行及原素材模板，并改为月报手动确认与独立模拟线程。四套配置共550项CTest通过；2倍速600帧窗口绘制间隔中位数16.96ms、95分位17.12ms，月报等待120帧时世界更新0次。交互气泡具体文案、人气动态填充、旅馆头像/精确锚点及部分战斗特效仍待研究补齐。
+
+产品仍固定seed1三个月连续基线，自然生成任务为0；研究40972a9的年度/自然任务进展尚待下一批迁入。raw49已有条件读取/显示/确认，未接晋级收费。OS输入、年度持续世界及原APK动态须另验。
 
 ## 构建运行
 
@@ -25,7 +27,9 @@ ctest --preset desktop-release
 
 窗口默认1080×720（3:2），支持 `--size 宽 高`、调整窗口大小、右键拖动镜头和滚轮约5%步长缩放。底部按钮或Space暂停/继续，右侧按钮切换1/2倍速。Retina使用原生framebuffer，素材最近邻采样，文字按显示密度生成。
 
-逻辑更新与60FPS绘制分离。当前47ms独立更新间隔是产品桌面调度政策，卡顿不补算；它不是原Android框架生命周期或实际FPS的等价认证。完整候选事务在Debug中较慢，正常体验建议Release，断点调试选择 `desktop-debug`。CLion打开本目录的 `CMakeLists.txt` 即可。
+逻辑由独立模拟线程提交，主线程读取不可变快照以60FPS绘制，普通行走插值平滑。当前47ms独立更新间隔是产品桌面调度政策，卡顿不补算；它不是原Android框架生命周期或实际FPS的等价认证。完整候选事务在Debug中较慢，正常体验建议Release，断点调试选择 `desktop-debug`。CLion打开本目录的 `CMakeLists.txt` 即可。
+
+月报等待确认时暂停世界：第1页点击“下一页”，第2页点击“确定”后恢复；Enter也可确认。如果此前手动暂停，关闭月报后仍保持暂停。人物、日期、设施与随机在等待期间均不推进，最终确认发放一次村子点数。
 
 程序从可执行文件旁的 `assets/` 加载资源，不依赖当前工作目录、research或APK。macOS默认使用系统Arial Unicode.ttf，其他环境通过 `--font /路径/中文.ttf` 指定字体。退出不保存。
 
@@ -48,6 +52,9 @@ cmake --build --preset headless-release --parallel 4
 | `ark_village --inspect-page world-active --frames 8` | 真实新局预运行至三人到访，再检查画面 |
 | `ark_village --inspect-page world-month --frames 8` | 真实新局预运行至月报，再检查画面 |
 | `ark_village --inspect-page world-rank --frames 8` | 等待实际raw49条件页初始化，再检查四项条件 |
+| `ark_village --inspect-page world-combat --frames 8` | 停在真实受击数字；另有world-reward/world-exp/world-rest/world-rest-hp |
+| `ark_village --inspect-page world-news --frames 8` | 真实冒险通信；world-break检查带换行标记的通知 |
+| `ark_village --inspect-page world-speed --frames 600` | 三人正常场景后以2倍速持续运行，输出绘制/模拟耗时 |
 | `ark_village --legacy-slice` | 旧有限建设/首访生活切片 |
 | `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收 |
 
@@ -62,7 +69,7 @@ cmake --build --preset headless-release --parallel 4
 | `research/` | 研究侧维护的规则、原型、素材与截图，产品侧只读 |
 | `include/ark/simulation/rules/`、`src/simulation/rules/` | 标准C++领域规则，`ark_world_rules` |
 | `include/ark/simulation/`、`src/simulation/` | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime` |
-| `src/app/` | 启动参数、时钟、无窗口世界入口及旧切片协调 |
+| `src/app/` | 启动参数、时钟、世界模拟线程/手动报告、无窗口入口及旧切片协调 |
 | `src/desktop/` | raylib窗口、资源、输入、投影及UI |
 | `src/world/`、`src/facilities/`、`src/people/`、`src/economy/` | 旧建设切片保留的标准C++模块 |
 | `src/assets/`、`assets/` | 素材解析、运行副本及来源清单 |

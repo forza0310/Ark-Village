@@ -1,5 +1,9 @@
 # desktop
 
+默认 `world_view` 只负责输入/60FPS绘制，使用 `WorldSession` 的不可变快照；普通行走按快照时间插值，瞬移/进出/状态变化直接呈现，深度排序与绘制用同一位置。镜头先本地响应，再按序写回唯一世界，保留源可见性影响。
+
+`world_overlay` 定义标准C++绘制计划，`world_combat_visuals` 读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals` 按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。`world_overlay_render` 才调用raylib。布局读取不扣款/加经验/推进计数；精确特殊身体偏移、旅馆头像与L锚点仍缺研究，当前明确使用桌面适配，不填假头像。
+
 默认`ark_village`即运行完整世界，`--world`保留为别名。`world_view`拥有唯一运行时State，按完整候选加渲染缓存的提交边界更新，
 处理真实页ID确认、暂停/倍速和窗口生命周期；不创建旧Game，不保留bootstrap。
 `world_scene`只读实际surface、名册和元数据，按职业/性别与怪物体型绘制原动作帧，复用道路拼块、栅栏/门柱、血条和现金浮标。

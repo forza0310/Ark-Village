@@ -1,0 +1,158 @@
+// Manual desktop confirmations reuse the real fee/snapshot/close transaction. Monthly defeat
+// and visitor values below are explicit contract fixtures, not a claimed natural game trajectory.
+#include "ark/app/world_report.hpp"
+
+#include <algorithm>
+#include <iostream>
+#include <stdexcept>
+
+namespace {
+namespace app = ark::app;
+namespace sim = ark::simulation;
+namespace rules = sim::rules;
+using State = sim::StartupWorldRuntimeState;
+int checks{};
+void check(bool value, const char *message) {
+    ++checks;
+    if (!value)
+        throw std::runtime_error(message);
+}
+State initial() {
+    sim::StartupSession startup;
+    sim::StartupWorldRuntimeSession runtime(startup.state(),
+                                            rules::WorldRandomStream::from_java_seed(1));
+    return runtime.state();
+}
+State prepared_report() {
+    auto state = initial();
+    state.scene.calendar.month_ticks = state.clock_parameter * 20 - 143;
+    const auto monster =
+        std::find_if(state.rules->monsters.begin(), state.rules->monsters.end(),
+                     [](const auto &value) { return value.points_per_defeat > 0; });
+    check(monster != state.rules->monsters.end(), "Source defines a point-bearing monster");
+    state.scene.world.world.ai.monster_growth.at(monster->identity).defeats = 3;
+    rules::BattleActorRecord actor;
+    actor.id = {81};
+    actor.definition = state.rules->humans.front().identity;
+    actor.position = {155, 3, 255};
+    actor.state_counter = 101;
+    actor.control.state = 14;
+    state.scene.world.world.ai.battle.actors.emplace(actor.id, actor);
+    state.scene.world.world.ai.human_order.push_back(actor.id);
+    const auto adapter = sim::startup_world_runtime_adapter();
+    const auto input = adapter.report_input(state);
+    check(input.has_value(), "Source projects actual monthly report input");
+    const auto before_cash = state.scene.world.world.ai.accounting.funds();
+    const auto before_points = state.village_points;
+    const auto result = rules::prepare_world_month_report(adapter.report.read(state), *input);
+    check(result.candidate && adapter.report.write(state, result.candidate->state),
+          "Actual source report prepares and commits maintenance fees plus immutable totals");
+    check(state.report_state == 1 && state.report_counter == 0 && state.report_snapshot[0] == 3 &&
+              state.report_snapshot[1] == 3 * monster->points_per_defeat &&
+              state.scene.world.world.ai.accounting.funds() < before_cash &&
+              state.village_points == before_points,
+          "Fixture begins after fee payment and before report point redemption");
+    return state;
+}
+void unchanged_world(const State &state, const State &before) {
+    check(state.scene.calendar.year == before.scene.calendar.year &&
+              state.scene.calendar.month == before.scene.calendar.month &&
+              state.scene.calendar.subperiod == before.scene.calendar.subperiod &&
+              state.scene.calendar.units == before.scene.calendar.units &&
+              state.scene.calendar.previous_units == before.scene.calendar.previous_units &&
+              state.scene.calendar.month_ticks == before.scene.calendar.month_ticks &&
+              state.scene.world.updates == before.scene.world.updates &&
+              state.simulation_steps == before.simulation_steps &&
+              state.arrival_counter == before.arrival_counter &&
+              state.scene.world.world.map.cells.size() == before.scene.world.world.map.cells.size(),
+          "Report input never advances world, calendar, arrival or map ownership");
+    const auto &actor = state.scene.world.world.ai.battle.actors.at({81});
+    const auto &old_actor = before.scene.world.world.ai.battle.actors.at({81});
+    check(actor.state_counter == old_actor.state_counter &&
+              actor.control.state == old_actor.control.state &&
+              actor.position.x == old_actor.position.x &&
+              actor.position.z == old_actor.position.z &&
+              actor.position.height == old_actor.position.height &&
+              state.scene.world.world.ai.human_order == before.scene.world.world.ai.human_order,
+          "Report input does not drive or recreate the current visitor");
+    check(state.scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds() &&
+              state.monthly_cash == before.monthly_cash &&
+              state.facility_monthly_cash == before.facility_monthly_cash &&
+              state.report_snapshot == before.report_snapshot &&
+              state.report_records == before.report_records &&
+              state.report_new_records == before.report_new_records &&
+              state.maximum_income == before.maximum_income &&
+              state.scripts.notices.size() == before.scripts.notices.size(),
+          "Report phases neither repeat maintenance/notice nor recalculate or repay the snapshot");
+    check(state.scene.random.draws() == before.scene.random.draws(),
+          "Confirmation does not consume shared random input");
+    auto random = state.scene.random, old_random = before.scene.random;
+    for (int i = 0; i < 5; ++i)
+        check(random.draw(103).ticket == old_random.draw(103).ticket,
+              "Report input preserves the future shared random sequence");
+}
+void transitions() {
+    auto state = prepared_report();
+    const auto before = state;
+    check(app::world_report_waiting(state), "Prepared visible report requests manual confirmation");
+    check(app::acknowledge_world_report(state, 1) && state.report_state == 2 &&
+              state.report_counter == 0 && state.village_points == before.village_points,
+          "First confirmation advances from defeats to financial results without early points");
+    unchanged_world(state, before);
+    const auto phase2 = state;
+    check(!app::acknowledge_world_report(state, 1) && state.report_state == phase2.report_state &&
+              state.report_counter == phase2.report_counter,
+          "A repeated stale first-phase click cannot close the financial report");
+    unchanged_world(state, phase2);
+    check(app::acknowledge_world_report(state, 2) && state.report_state == 0 &&
+              state.report_counter == 0 && !app::world_report_waiting(state) &&
+              state.village_points ==
+                  std::min(999, before.village_points + before.report_snapshot[1]),
+          "Second confirmation closes and awards actual snapshot points exactly once");
+    unchanged_world(state, before);
+    const auto closed = state;
+    for (int phase : {0, 1, 2, 3, 4})
+        check(!app::acknowledge_world_report(state, phase) &&
+                  state.village_points == closed.village_points && state.report_state == 0,
+              "Closed report rejects all repeated confirmations, even at the original fee tick");
+    unchanged_world(state, closed);
+}
+void gates() {
+    auto state = prepared_report();
+    const auto before = state;
+    for (int phase : {-1, 0, 2, 3, 4})
+        check(!app::acknowledge_world_report(state, phase) && state.report_state == 1,
+              "Only the currently displayed source report phase is accepted");
+    rules::WorldScriptPage modal;
+    modal.id = 999;
+    modal.kind = rules::WorldScriptPageKind::dialogue;
+    modal.lifecycle = 1;
+    state.scripts.pages.push_back(modal);
+    check(!app::world_report_waiting(state) && !app::acknowledge_world_report(state, 1),
+          "A script modal takes input precedence over an underlying report");
+    state.scripts.pages.back().lifecycle = 4;
+    check(app::world_report_waiting(state), "Closed modal does not obscure the main-scene report");
+    state.scripts.pages.clear();
+    check(!app::world_report_waiting(state) && !app::acknowledge_world_report(state, 1),
+          "Missing scene root cannot be treated as an exposed report");
+    state = before;
+    state.report_state = 3; // Explicit existing-special-phase fixture; does not invent its entry.
+    state.village_points = 999;
+    check(app::acknowledge_world_report(state, 3) && state.report_state == 0 &&
+              state.village_points == 999,
+          "Existing phase3 closes through the source and retains its point cap");
+    unchanged_world(state, before);
+    state = before;
+    state.report_counter = -1;
+    check(!app::acknowledge_world_report(state, 1) && state.report_state == 1 &&
+              state.report_counter == -1 && state.village_points == before.village_points,
+          "Rejected source candidate leaves the original report owner unchanged");
+    unchanged_world(state, before);
+}
+} // namespace
+int main() {
+    transitions();
+    gates();
+    std::cout << "PASS manual world report " << checks << " checks\n";
+}

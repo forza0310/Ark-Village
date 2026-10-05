@@ -1159,4 +1159,8 @@ Windows字体使用官方Noto Sans CJK SC2.004及固定hash/OFL、fonttools4.59.
 
 字体替换后的桌面标准CTest再次全通过：desktop-debug160项/324.85秒、desktop-release160项/96.22秒。最终全角空格修正另经两套真实启动及子集覆盖/可重复哈希定向检查通过，未变化的领域基线不再次重复。所有本批检查进程已结束，ARK_LONG_WORLD_TESTS保持OFF。Python复用LLVM工具链内置版本，fonttools纯Python wheel哈希核验后仅解包至build/local-tools，未系统安装。
 
-CI已改Windows-only/x64，打包代码保留静态运行库、字体及许可，排除CLI/构建期副本并压缩、Actions保存7天。Python语法、发布Bash语法及本地PE架构/仅系统DLL检查通过。远程CI/GHCR首次新版运行仍待main触发。本地ZIP生成/解压启动验收被自动审批审查拒绝（认为一般打包授权未明确覆盖该执行），已向用户请求具体确认；此项未执行，不宣称分发包已验收。
+CI已改Windows-only/x64，打包代码保留静态运行库、字体及许可，排除CLI/构建期副本并压缩、Actions保存7天。Python语法、发布Bash语法及本地PE架构/仅系统DLL检查通过。远程CI/GHCR首次新版运行仍待main触发。本地打包此前被自动审批拦截，2026-10-06用户明确允许ZIP生成、解压和启动验收后已完成以下检查。
+
+分发包使用产品提交`3d94c3c1bc40ac4e264a0b7ab979c03c442a68d3`已验收的Release二进制，直接调用`.github/ci/build.py`的同一package函数；只剥离分发副本，不重编译或改变产品。复用CLion内置Python3.10.18/zlib完成压缩，未下载新依赖。`build/validation/windows-x64-package-20261006/dist/ark-village-windows10-x64.zip`为3,186,080字节（约3.04MiB），625文件解压共7,093,399字节（约6.76MiB）；同目录保留SHA256文件。ZIP SHA256为`cd9dccd72586737f072221c494b8a81b2357d1fe08f16c7a403494f1176d934e`。
+
+PE32+/AMD64与系统DLL导入白名单、616项素材哈希、随包字体/许可与已验证源的一致性均通过；ZIP CRC、SHA256、包内/解压625文件逐字节一致性及解压后`--check`通过。从独立smoke目录、仅保留Windows系统目录的PATH，分别运行解压exe默认入口和随包Run-Ark-Village.cmd建设目录，各8帧、均未指定--font/--assets，实际窗口退出码0，中文/建筑图标正常。运行不需要开发工具、raylib DLL或另装C++运行库。截图、完整日志和validation.json保存在该专属目录；这是本地解压启动验收，不冒充OS鼠标操作或另一台Windows机器的兼容性认证。本次仅补打包与文档证据，不重复未变化的四套游戏回归，不上传/发布远程。

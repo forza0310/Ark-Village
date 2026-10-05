@@ -72,7 +72,7 @@ oras pull ghcr.io/forza0310/ark-village:latest
 
 指定历史构建时将`latest`换为`sha-<完整提交SHA>`。Actions发布步骤摘要也记录实际包名、提交标签和下载命令。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
 
-历史[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)验证了`ba68e90`旧两平台流程。当前Windows-only x64流程的本地构建/静态检查及待执行打包验收状态单独记录于[B1](stages/B1-playable-prototype.md#task-report-ui)；远程构建及首次GHCR推送/回读待包含新配置的main运行确认，本地不主动推送。
+历史[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)验证了`ba68e90`旧两平台流程。当前Windows-only x64流程的本地构建、静态检查、ZIP生成/解压及真实启动已通过，单独记录于[B1](stages/B1-playable-prototype.md#task-report-ui)；远程构建及首次GHCR推送/回读待包含新配置的main运行确认，本地不主动推送。
 
 平台依据：[GitHub托管runner列表](https://github.com/actions/runner-images#available-images)、[LLVM-MinGW 20250305工具链与UCRT说明](https://github.com/mstorsjo/llvm-mingw/blob/20250305/README.md)。
 

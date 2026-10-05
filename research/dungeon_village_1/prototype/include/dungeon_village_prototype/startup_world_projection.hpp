@@ -16,7 +16,13 @@ struct StartupWorldJob {
     std::string name;
     std::uint32_t flags{};
     int initial_status{};
-    int script_extra{}; // 原h.f41f，脚本profession提示载荷。
+    int script_extra{};      // 原h.f41f，脚本profession提示载荷。
+    int sort_order{};        // 原h.d，目录交换排序，不是职业ID。
+    int gift_profile{};      // 原h.h，装备评价矩阵的行。
+    int change_points{};     // 原h.s，消耗村子点数，不是金币。
+    int required_medals{};   // 原h.t，人物E，不是当前全局勋章库存。
+    int mastery_attribute{}; // 原h.v，>=10表示魔法，<6为满级属性奖励。
+    int mastery_value{};     // 原h.w。
 };
 struct StartupWorldHuman {
     int identity{};
@@ -37,6 +43,8 @@ struct StartupWorldEquipment {
     ref::CombatWeaponRule battle; // 只kind1使用，其他命名空间不冒充武器。
     int reward_difficulty{};      // 武器g、防具/饰品f，用于任务奖励池。
     std::string name;
+    int gift_rating{}; // 原weapon.t / armor.i / accessory.i，仅评价，不是装备准入。
+    int gift_order{};  // 原weapon.u / armor.j / accessory.j。
 };
 struct StartupWorldMonster {
     int identity{};

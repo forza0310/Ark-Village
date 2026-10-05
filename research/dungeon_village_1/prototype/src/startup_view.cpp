@@ -2,8 +2,10 @@
 #include "dungeon_village_prototype/road_render.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 #include "dungeon_village_tools/sprite.hpp"
@@ -608,9 +610,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += item.name;
     for (const auto &equipment : rules.equipment)
         glyphs += equipment.name;
+    for (const auto &job : rules.jobs)
+        glyphs += job.name;
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
               "年度贡献勋章授予终止是非满足努力能力上升自宅完成设施升级城镇等级晋级申请"
-              "月收入设施数居住数指定建设任务完成数街道人气举办活动达成未暂不可用";
+              "月收入设施数居住数指定建设任务完成数街道人气举办活动达成未暂不可用"
+              "概况属性装备魔法体力力量灵活结实魔力运气攻击防御经验职业大师转职"
+              "武器防具饰品装备礼物居民税收合计库存可用学会火冰雷恢复营业施工使用支出加成";
     ChineseFont font(font_path, glyphs);
     // 只在接管前存在旧启动快照；runtime构造后释放，禁止两个可写世界并存。
     std::unique_ptr<StartupSession> initial = std::make_unique<StartupSession>();
@@ -627,7 +633,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (session.open_facility_page(4) != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实初局旅店详情检查入口失败");
     } else if (inspect_page == "world-month" || inspect_page == "world-active" ||
-               inspect_page == "task-team" || inspect_page == "world-award") {
+               inspect_page == "task-team" || inspect_page == "world-award" ||
+               inspect_page == "world-human") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
@@ -644,7 +651,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (top.kind != ref::WorldScriptPageKind::scene && top.lifecycle != 4 &&
                 !(top.kind == ref::WorldScriptPageKind::raw_page &&
                   (top.legacy_page == 56 || top.legacy_page == 57 || top.legacy_page == 16 ||
-                   top.legacy_page == 97))) {
+                   top.legacy_page == 97 || top.legacy_page == 98))) {
                 auto error = StartupWorldRuntimeError::none;
                 if (inspect_page == "task-team" && (top.legacy_page == 22 || top.legacy_page == 23))
                     error = session.act_task_page(top.id, StartupWorldTaskAction::confirm).error;
@@ -658,6 +665,30 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 session.open_task_menu() != StartupWorldRuntimeError::none)
                 throw std::runtime_error("任务检查预运行菜单入口失败");
             const auto &current = session.state();
+            if (inspect_page == "world-human" && top.kind == ref::WorldScriptPageKind::scene &&
+                top.lifecycle != 4 && current.scene.scene_state == 0 &&
+                !current.scene.world.world.ai.human_order.empty()) {
+                const int human = current.scene.world.world.ai.battle.actors
+                                      .at(current.scene.world.world.ai.human_order.front())
+                                      .definition;
+                if (session.open_human_page(human) != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("自然人物详情检查入口失败");
+                for (int n = 0; n < 100; ++n) {
+                    if (!session.update().candidate)
+                        throw std::runtime_error("人物详情首次说明推进失败");
+                    const auto current_page = session.state().scripts.pages.back();
+                    if (current_page.legacy_page == 60 && current_page.lifecycle != 4 &&
+                        session.state().human_pages_initialized.count(current_page.id))
+                        break;
+                    if (current_page.kind == ref::WorldScriptPageKind::dialogue &&
+                        session.acknowledge_page(current_page.id) != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("人物详情首次说明确认失败");
+                    if (n == 99)
+                        throw std::runtime_error("人物首次说明有界检查未返回详情");
+                }
+                reached = true;
+                break;
+            }
             reached = inspect_page == "world-month" ? current.report_state != 0
                       : inspect_page == "task-team"
                           ? current.scripts.pages.back().legacy_page == 25
@@ -819,11 +850,89 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (r.error != StartupWorldRuntimeError::none)
                         throw std::runtime_error("入住选择事务失败");
                 }
-            } else if (raw == 60 && session.state().page_human_bindings.count(page->id)) {
-                if ((IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) &&
-                    session.act_task_page(page->id, StartupWorldTaskAction::cancel).error !=
-                        StartupWorldRuntimeError::none)
-                    throw std::runtime_error("队员详情返回失败");
+            } else if ((raw >= 60 && raw <= 66) || raw == 68 || raw == 70 || raw == 73) {
+                if (startup_world_human_page_ready(session.state(), page->id)) {
+                    using A = StartupHumanPageAction;
+                    const auto pid = page->id;
+                    const auto act = [&](A a, int row = 0) {
+                        if (session.act_human_page(pid, a, row) != StartupWorldRuntimeError::none)
+                            throw std::runtime_error("人物页面输入失败");
+                    };
+                    if (raw == 60) {
+                        for (int tab = 0; tab < 4; ++tab)
+                            if (hit({8.F + tab * 56, 45, 56, 18}))
+                                act(A::view_tab, tab);
+                        if (IsKeyPressed(KEY_LEFT))
+                            act(A::previous);
+                        if (IsKeyPressed(KEY_RIGHT))
+                            act(A::next);
+                        if (hit({14, 232, 96, 24}))
+                            act(A::gifts);
+                        else if (hit({128, 232, 96, 24}))
+                            act(A::professions);
+                        else if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
+                            act(A::cancel);
+                    } else if (raw == 61 || raw == 62 || raw == 64 || raw == 73) {
+                        const int chosen = session.state().human_page_selections.at(pid);
+                        if (raw == 64) {
+                            for (int tab = 0; tab < 4; ++tab)
+                                if (hit({8.F + tab * 56, 45, 56, 18}))
+                                    act(A::equipment_slot, tab);
+                        }
+                        if (IsKeyPressed(KEY_UP))
+                            act(A::previous);
+                        if (IsKeyPressed(KEY_DOWN))
+                            act(A::next);
+                        if (raw == 61 || raw == 64) {
+                            const int start = std::max(0, chosen - 4);
+                            const auto &list = raw == 61
+                                                   ? session.state().human_page_catalogs.at(pid)
+                                                   : session.state().equipment_page_catalogs.at(
+                                                         pid)[session.state().page_phases.at(pid)];
+                            for (int row = 0;
+                                 row < 5 && start + row < static_cast<int>(list.size()); ++row)
+                                if (hit({12, 74.F + row * 27, 216, 26}))
+                                    act(A::select, start + row);
+                        }
+                        if (raw == 62 || raw == 73) {
+                            if (IsKeyPressed(KEY_LEFT))
+                                act(A::previous);
+                            if (IsKeyPressed(KEY_RIGHT))
+                                act(A::next);
+                        }
+                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
+                            act(A::cancel);
+                        else if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                            act(A::confirm);
+                        else if (raw == 64 && hit({96, 265, 52, 24}))
+                            act(A::inspect_equipment);
+                    } else if (raw == 65) {
+                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
+                            act(A::cancel);
+                        else if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                            act(A::confirm);
+                    } else {
+                        if (raw == 70 && session.state().page_phases.at(pid) == 2) {
+                            if (hit({14, 225, 98, 24}))
+                                act(A::select, 0);
+                            if (hit({128, 225, 98, 24}))
+                                act(A::select, 1);
+                        }
+                        if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                            act(A::confirm);
+                    }
+                }
+            } else if (raw == 90) {
+                const auto act = [&](StartupWorldTaxAction a) {
+                    if (session.act_tax_page(page->id, a) != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("税收页面输入失败");
+                };
+                if (IsKeyPressed(KEY_UP))
+                    act(StartupWorldTaxAction::previous);
+                if (IsKeyPressed(KEY_DOWN))
+                    act(StartupWorldTaxAction::next);
+                if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                    act(StartupWorldTaxAction::confirm);
             } else if (raw == 21) {
                 const auto &groups = session.state().build_page_catalogs.at(page->id);
                 if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT)) {
@@ -946,7 +1055,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if ((IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) &&
                     session.cancel_page(page->id) != StartupWorldRuntimeError::none)
                     throw std::runtime_error("商店追加菜单返回消费者失败");
-            } else if (page->legacy_page != 97 &&
+            } else if (page->legacy_page != 97 && page->legacy_page != 98 &&
                        (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
                 if (paragraph_index + 1 < static_cast<int>(page->paragraphs.size())) {
@@ -989,17 +1098,32 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (session.open_build_menu() != StartupWorldRuntimeError::none)
                     throw std::runtime_error("建设目录打开失败");
             } else if (pressed && mouse.y >= 35 && mouse.y < 265) {
-                if (const auto cell = pick(mouse, camera)) {
-                    const auto &map = session.state().scene.world.world.map;
-                    const auto &binding = map.cells.at(cell->y * map.width + cell->x).facility;
-                    if (binding &&
-                        session.state()
-                                .scene.world.world.facilities.at(binding->instance_id.value)
-                                .status != 0 &&
-                        session.open_facility_page(binding->instance_id.value) !=
-                            StartupWorldRuntimeError::none)
-                        throw std::runtime_error("设施情报打开失败");
+                bool selected_human{};
+                for (const auto actor : session.state().scene.world.world.ai.human_order) {
+                    const auto &a = session.state().scene.world.world.ai.battle.actors.at(actor);
+                    const auto projection = startup_world_raw_projection(a.position);
+                    const Vector2 point{120 + projection.x - camera.x,
+                                        160 - projection.y + camera.y};
+                    if (a.control.state == 4 ||
+                        !CheckCollisionPointRec(mouse, {point.x - 10, point.y - 24, 20, 26}))
+                        continue;
+                    if (session.open_human_page(a.definition) != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("人物详情打开失败");
+                    selected_human = true;
+                    break;
                 }
+                if (!selected_human)
+                    if (const auto cell = pick(mouse, camera)) {
+                        const auto &map = session.state().scene.world.world.map;
+                        const auto &binding = map.cells.at(cell->y * map.width + cell->x).facility;
+                        if (binding &&
+                            session.state()
+                                    .scene.world.world.facilities.at(binding->instance_id.value)
+                                    .status != 0 &&
+                            session.open_facility_page(binding->instance_id.value) !=
+                                StartupWorldRuntimeError::none)
+                            throw std::runtime_error("设施情报打开失败");
+                    }
             }
         }
         if (!top_page() && session.state().scene.scene_state == 0 &&
@@ -1029,6 +1153,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     std::to_string(static_cast<int>(result.scene_error)) + "/" +
                     std::to_string(static_cast<int>(result.world_error)));
         }
+        // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
+        (void)session.take_sound_requests();
         const auto &state = session.state();
         camera = {state.camera[0] + view_offset.x, state.camera[1] + view_offset.y};
         const auto &world = state.scene.world.world;
@@ -1340,8 +1466,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto values = startup_world_facility_values(state, id);
                 if (!values)
                     throw std::runtime_error("设施情报经营投影失败");
-                DrawRectangle(5, 42, 230, 126, paper);
+                DrawRectangle(5, 42, 230, 216, paper);
                 font.text(d.name, 12, 48);
+                const auto &growth = world.facility_uses.at(d.id);
+                font.text("Lv." + std::to_string(growth.level), 144, 48, ink, 10);
                 const auto phase = state.page_phases.at(page->id);
                 font.text(std::to_string(phase + 1) + "/" +
                               std::to_string(startup_world_facility_page_count(state, *page)),
@@ -1363,6 +1491,25 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     font.text("加成", 16, 126);
                     font.text(std::to_string(state.facility_page_neighbours.at(page->id).size()),
                               170, 126);
+                    font.text("支出", 16, 148);
+                    font.text(std::to_string(state.facility_monthly_cash.at(
+                                  id)[state.scene.calendar.month][1]) +
+                                  "G",
+                              160, 148);
+                    const auto &sources = state.facility_page_neighbours.at(page->id);
+                    for (std::size_t n = 0; n < std::min<std::size_t>(4, sources.size()); ++n)
+                        font.text(rules.facilities.at(sources[n].definition_id).name, 16,
+                                  173 + n * 17, ink, 10);
+                } else {
+                    font.text("使用 " + std::to_string(growth.completed_uses) + "/" +
+                                  std::to_string(values->upgrade_uses),
+                              16, 150, ink, 10);
+                    font.text(facility.status == 0 ? "施工中" : "营业中", 16, 172, ink, 10);
+                    const auto &art = display(d.display_id);
+                    sprites.draw(art.sprite, 0, {182, 218});
+                    if (d.kind == 12 && state.facility_residents.at(id) >= 0)
+                        font.text(rules.humans.at(state.facility_residents.at(id)).name, 16, 197,
+                                  ink, 10);
                 }
                 font.text("返回", 18, 272);
                 if (d.detail == 6)
@@ -1479,17 +1626,213 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 font.text("返回", 18, 272);
                 font.text("入住", 190, 272);
-            } else if (page->legacy_page == 60 && state.page_human_bindings.count(page->id)) {
+            } else if (page->legacy_page == 60 && startup_world_human_page_ready(state, page->id)) {
                 const int human = state.page_human_bindings.at(page->id);
-                const auto &g = world.ai.growth.at(human);
-                font.text(rules.humans.at(human).name, 17, 66);
-                font.text(rules.jobs.at(g.definition.current_profession).name, 17, 90);
-                font.text("努力 " + std::to_string(g.definition.legacy_u), 17, 114);
-                font.text("满足 " + std::to_string(state.shop_humans.at(human).satisfaction), 17,
-                          138);
-                for (int n = 0; n < 4; ++n)
-                    font.text(std::to_string(g.derived.combat[n]), 17 + n * 50, 170);
+                const auto details = startup_world_human_details(state, human);
+                if (!details)
+                    throw std::runtime_error("人物详情缺少共享定义");
+                const int tab = state.page_phases.at(page->id);
+                constexpr const char *tabs[]{"概况", "属性", "装备", "魔法"};
+                DrawRectangle(8, 42, 224, 214, paper);
+                for (int n = 0; n < 4; ++n) {
+                    if (tab == n)
+                        DrawRectangle(8 + n * 56, 45, 56, 18, {219, 232, 204, 255});
+                    font.text(tabs[n], 16 + n * 56, 48, ink, 10);
+                }
+                if (const auto portrait = startup_world_portrait(state, human))
+                    sprites.portrait(*portrait, {16, 74});
+                font.text(rules.humans.at(human).name, 40, 74);
+                font.text(rules.jobs.at(details->profession).name + " Lv." +
+                              std::to_string(details->level),
+                          16, 98, ink, 11);
+                if (tab == 0) {
+                    const int hp = details->live_actor
+                                       ? world.ai.battle.actors.at(*details->live_actor).hp.target
+                                       : details->combat[0];
+                    font.text("HP " + std::to_string(hp) + "/" + std::to_string(details->combat[0]),
+                              16, 121, ink, 11);
+                    font.text("满足 " + std::to_string(details->satisfaction) + "  努力 " +
+                                  std::to_string(details->effort),
+                              16, 143, ink, 11);
+                    font.text("勋章 " + std::to_string(details->medals) +
+                                  (details->resident ? "  居民" : "  冒险者"),
+                              16, 165, ink, 11);
+                    font.text(details->level >= 10 ? "职业大师"
+                                                   : "经验 " + std::to_string(details->experience) +
+                                                         "/" + std::to_string(details->threshold),
+                              16, 187, ink, 11);
+                } else if (tab == 1) {
+                    constexpr const char *labels[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
+                    for (int n = 0; n < 6; ++n) {
+                        const int x = 16 + (n % 2) * 111, y = 122 + (n / 2) * 24;
+                        font.text(labels[n], x, y, ink, 10);
+                        font.text(std::to_string(details->attributes[n]), x + 50, y, ink, 10);
+                    }
+                    font.text("攻击 " + std::to_string(details->combat[1]) + " 防御 " +
+                                  std::to_string(details->combat[2]) + " 魔法 " +
+                                  std::to_string(details->combat[3]),
+                              16, 200, ink, 10);
+                } else if (tab == 2) {
+                    constexpr const char *labels[]{"武器", "防具1", "防具2", "饰品"};
+                    for (int n = 0; n < 4; ++n) {
+                        std::string name = "无";
+                        if (details->equipment[n]) {
+                            const int kind = n == 0 ? 1 : n == 3 ? 3 : 2;
+                            for (const auto &e : rules.equipment)
+                                if (e.shop.kind == kind && e.shop.id == *details->equipment[n])
+                                    name = e.name;
+                        }
+                        font.text(labels[n], 16, 121 + n * 22, ink, 10);
+                        font.text(name, 75, 121 + n * 22, ink, 10);
+                    }
+                } else {
+                    constexpr const char *names[]{"火魔法", "冰魔法", "雷魔法", "回复魔法"};
+                    for (int n = 0; n < 4; ++n)
+                        font.text(std::string(names[n]) +
+                                      (details->spells[n] ? "  可用" : "  未学会"),
+                                  16, 121 + n * 22, ink, 10);
+                }
+                DrawRectangle(14, 232, 96, 24, {219, 232, 204, 255});
+                DrawRectangle(128, 232, 96, 24, {219, 232, 204, 255});
+                font.text("装备礼物", 23, 238, ink, 11);
+                font.text("转职", 164, 238, ink, 11);
                 font.text("返回", 18, 272);
+            } else if ((page->legacy_page == 61 || page->legacy_page == 62) &&
+                       startup_world_human_page_ready(state, page->id)) {
+                const auto &list = state.human_page_catalogs.at(page->id);
+                const int chosen = state.human_page_selections.at(page->id);
+                font.text(page->legacy_page == 61 ? "职业一览" : "转职确认", 16, 48);
+                if (page->legacy_page == 61) {
+                    const int first = std::max(0, chosen - 4);
+                    for (int n = first; n < std::min(static_cast<int>(list.size()), first + 5);
+                         ++n) {
+                        const auto &job = rules.jobs.at(list[n]);
+                        const int y = 74 + (n - first) * 27;
+                        if (n == chosen)
+                            DrawRectangle(12, y, 216, 26, {219, 232, 204, 255});
+                        font.text(job.name, 16, y + 3, ink, 11);
+                        font.text(std::to_string(job.change_points) + "点 / " +
+                                      std::to_string(job.required_medals) + "勋章",
+                                  137, y + 4, ink, 9);
+                    }
+                    font.text("村子点 " + std::to_string(state.village_points), 16, 222, ink, 10);
+                } else {
+                    const auto &job = rules.jobs.at(list.at(chosen));
+                    font.text(job.name, 16, 76);
+                    constexpr const char *labels[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
+                    for (int n = 0; n < 6; ++n)
+                        font.text(std::string(labels[n]) + " " +
+                                      std::to_string(state.human_attribute_display[0][n]) + " > " +
+                                      std::to_string(state.human_attribute_display[1][n]),
+                                  16, 100 + n * 18, ink, 10);
+                    font.text(std::to_string(job.change_points) + "点 / " +
+                                  std::to_string(job.required_medals) + "勋章",
+                              16, 222, ink, 10);
+                }
+                font.text("返回", 18, 272);
+                font.text("确定", 190, 272);
+            } else if ((page->legacy_page == 64 || page->legacy_page == 65 ||
+                        page->legacy_page == 73) &&
+                       startup_world_human_page_ready(state, page->id)) {
+                const int slot = state.page_phases.at(page->id);
+                constexpr const char *tabs[]{"武器", "防具1", "防具2", "饰品"};
+                for (int n = 0; n < 4; ++n) {
+                    if (slot == n)
+                        DrawRectangle(8 + n * 56, 45, 56, 18, {219, 232, 204, 255});
+                    font.text(tabs[n], 16 + n * 56, 48, ink, 10);
+                }
+                const int kind = slot == 0 ? 1 : slot == 3 ? 3 : 2;
+                const auto show_equipment = [&](int item, float y) {
+                    const auto found = std::find_if(
+                        rules.equipment.begin(), rules.equipment.end(),
+                        [&](const auto &e) { return e.shop.kind == kind && e.shop.id == item; });
+                    if (found == rules.equipment.end())
+                        throw std::runtime_error("装备定义缺失");
+                    font.text(found->name, 16, y, ink, 11);
+                    const int stock = state.catalog.at({kind, item}).free_purchases;
+                    const int quote = kind == 1 ? found->shop.price * 3 / 2 : found->shop.price * 2;
+                    font.text(stock > 0 ? "库存 " + std::to_string(stock)
+                                        : std::to_string(quote) + "G",
+                              166, y, ink, 9);
+                    return found->shop.combat;
+                };
+                if (page->legacy_page == 64) {
+                    const int chosen = state.human_page_selections.at(page->id),
+                              first = std::max(0, chosen - 4);
+                    const auto &list = state.equipment_page_catalogs.at(page->id)[slot];
+                    for (int n = first; n < std::min(static_cast<int>(list.size()), first + 5);
+                         ++n) {
+                        const float y = 78 + (n - first) * 27;
+                        if (n == chosen)
+                            DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
+                        show_equipment(list[n], y);
+                    }
+                    font.text("详情", 100, 272);
+                } else {
+                    const int item = page->legacy_page == 65
+                                         ? state.human_equipment_choices.at(page->id)[1]
+                                         : state.equipment_page_catalogs.at(page->id)[slot].at(
+                                               state.human_page_selections.at(page->id));
+                    const auto stats = show_equipment(item, 82);
+                    constexpr const char *labels[]{"HP", "攻击", "防御", "魔法"};
+                    for (int n = 0; n < 4; ++n)
+                        font.text(std::string(labels[n]) + " " + std::to_string(stats[n]), 16,
+                                  112 + n * 22, ink, 11);
+                    if (page->legacy_page == 65)
+                        font.text("赠送", 16, 216);
+                }
+                font.text("返回", 18, 272);
+                font.text("确定", 190, 272);
+            } else if ((page->legacy_page == 63 || page->legacy_page == 66 ||
+                        page->legacy_page == 68 || page->legacy_page == 70) &&
+                       startup_world_human_page_ready(state, page->id)) {
+                const int human = state.page_human_bindings.at(page->id);
+                font.text(rules.humans.at(human).name, 16, 66);
+                if (const auto portrait = startup_world_portrait(state, human))
+                    sprites.portrait(*portrait, {190, 68});
+                const int raw = page->legacy_page;
+                font.text(raw == 63   ? "转职"
+                          : raw == 66 ? "礼物"
+                          : raw == 68 ? "装备能力"
+                                      : "职业大师",
+                          16, 95);
+                if (raw == 68) {
+                    constexpr const char *labels[]{"HP", "攻击", "防御", "魔法"};
+                    for (int n = 0; n < 4; ++n)
+                        font.text(std::string(labels[n]) + " " +
+                                      std::to_string(state.equipment_attribute_display[0][n]) +
+                                      " > " +
+                                      std::to_string(state.equipment_attribute_display[1][n]),
+                                  16, 126 + n * 22, ink, 10);
+                } else if (raw == 70) {
+                    font.text(
+                        rules.jobs.at(world.ai.growth.at(human).definition.current_profession).name,
+                        16, 126);
+                    if (state.page_phases.at(page->id) == 2) {
+                        const int selected = state.human_page_selections.at(page->id);
+                        DrawRectangle(selected == 0 ? 14 : 128, 225, 98, 24, {219, 232, 204, 255});
+                        font.text("转职", 42, 232, ink, 11);
+                        font.text("返回", 156, 232, ink, 11);
+                    }
+                } else if (state.human_gift_messages.count(page->id))
+                    font.text(state.human_gift_messages.at(page->id), 16, 126);
+                font.text("确定", 190, 272);
+            } else if (page->legacy_page == 90) {
+                const auto view = inspect_startup_world_tax_page(state, page->id);
+                if (!view)
+                    throw std::runtime_error("税收详情缺失");
+                font.text("居民税收", 16, 48);
+                for (int n = view->first_visible;
+                     n < std::min(static_cast<int>(view->rows.size()), view->first_visible + 5);
+                     ++n) {
+                    const float y = 78 + (n - view->first_visible) * 27;
+                    if (n == view->selection)
+                        DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
+                    font.text(rules.humans.at(view->rows[n].definition).name, 16, y, ink, 11);
+                    font.text(std::to_string(view->rows[n].amount) + "G", 164, y, ink, 10);
+                }
+                font.text("合计 " + std::to_string(view->total) + "G", 16, 226, ink, 11);
+                font.text("确定", 190, 272);
             } else if (page->legacy_page == 81) {
                 font.text("设施升级", 17, 66);
                 for (int n = 0; n < 3; ++n)

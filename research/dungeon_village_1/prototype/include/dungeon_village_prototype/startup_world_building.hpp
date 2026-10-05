@@ -38,6 +38,8 @@ StartupWorldRuntimeError cancel_startup_world_build(StartupWorldRuntimeState &st
 bool refresh_startup_world_connections(StartupWorldRuntimeState &state);
 // 新局a/o.a(false)已计算的s/w/G投影，不把缺失w误作没有加成，不排变化提示。
 bool initialize_startup_world_neighbours(StartupWorldRuntimeState &state);
+// 原o.f()只重算kind3共享经营缓存；转职最终确认调用，不在预览/中点执行。
+bool refresh_startup_world_profession_economy(StartupWorldRuntimeState &state);
 
 enum class StartupFacilityPageAction { previous, next, confirm, cancel };
 StartupWorldRuntimeError open_startup_world_facility_page(StartupWorldRuntimeState &state,

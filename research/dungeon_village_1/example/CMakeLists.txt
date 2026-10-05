@@ -15,7 +15,7 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/ai_perception.cpp src/encounter_ai.cpp src/actor_lifecycle.cpp
                                      src/actor_control.cpp src/combat_execution.cpp src/object_ai.cpp
                                      src/encounter_lifecycle.cpp src/ai_schedule.cpp src/actor_effects.cpp
-                                     src/human_growth.cpp src/facility_service.cpp src/actor_housekeeping.cpp
+                                     src/human_growth.cpp src/human_management.cpp src/facility_service.cpp src/actor_housekeeping.cpp
                                      src/battle_commit.cpp src/object_commit.cpp src/ai_rewards.cpp
                                      src/encounter_creation.cpp src/rescue_commit.cpp src/combat_commit.cpp
                                      src/world_perception.cpp src/world_encounters.cpp src/world_facilities.cpp

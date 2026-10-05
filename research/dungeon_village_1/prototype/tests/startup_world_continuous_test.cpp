@@ -1,4 +1,7 @@
+#include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
+#include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_reference/world_arrivals.hpp"
 
 #include <algorithm>
@@ -397,6 +400,331 @@ void continuous(int months, std::uint64_t seed, int speed) {
               << " tasks=" << task_ids.size() << " random=" << s.scene.random.draws()
               << " checkpoints=" << session.checkpoints().size() << '\n';
 }
+
+ref::Position housing_anchor(const StartupWorldRuntimeState &s) {
+    const auto &map = s.scene.world.world.map;
+    const auto bounds = s.rules->fences.at(s.fence_level);
+    for (int y = bounds[1].y + 1; y < bounds[0].y; ++y)
+        for (int x = bounds[0].x + 1; x < bounds[1].x; ++x)
+            if (!map.cells.at(y * map.width + x).facility)
+                return {x, y};
+    throw std::runtime_error("natural housing has no free original town cell");
+}
+void retired_recruitment(const StartupWorldRuntimeState &s, std::uint64_t id) {
+    check(!s.scene.world.world.facilities.count(id) && !s.facility_original_ids.count(id) &&
+              !s.facility_ordinals.count(id) && !s.facility_residents.count(id) &&
+              !s.facility_difficulties.count(id) && !s.facility_flags.count(id) &&
+              !s.facility_details.count(id) && !s.facility_monthly_cash.count(id) &&
+              !s.facility_month_age.count(id) && !s.neighbourhood.count(id) &&
+              !s.neighbourhood_details.count(id) && !s.dungeon_facilities.count(id) &&
+              !s.sites.count(id) && !s.shops.count(id) &&
+              std::find(s.shop_order.begin(), s.shop_order.end(), id) == s.shop_order.end(),
+          "natural residence retires old recruitment instance and all no-longer-owned auxiliary "
+          "records");
+}
+void managed_resource_references(const StartupWorldRuntimeState &s) {
+    std::set<std::uint64_t> pages;
+    for (const auto &page : s.scripts.pages)
+        pages.insert(page.id);
+    const auto page_owned = [&](const auto &records) {
+        return std::all_of(records.begin(), records.end(),
+                           [&](const auto &record) { return pages.count(record.first) != 0; });
+    };
+    check(page_owned(s.human_page_catalogs) && page_owned(s.equipment_page_catalogs) &&
+              page_owned(s.human_page_selections) && page_owned(s.page_job_bindings) &&
+              page_owned(s.human_page_parents) && page_owned(s.human_page_answers) &&
+              page_owned(s.human_equipment_choices) && page_owned(s.human_gift_scores) &&
+              page_owned(s.human_gift_messages) && page_owned(s.tax_page_residents) &&
+              page_owned(s.tax_page_selection) && page_owned(s.tax_page_scroll) &&
+              std::all_of(s.human_pages_initialized.begin(), s.human_pages_initialized.end(),
+                          [&](const auto id) { return pages.count(id) != 0; }),
+          "human and tax payload scale is bounded by real retained pages, never orphan history");
+    check(std::all_of(s.shops.begin(), s.shops.end(),
+                      [&](const auto &shop) {
+                          return s.scene.world.world.facilities.count(shop.first) != 0;
+                      }) &&
+              std::all_of(s.shop_order.begin(), s.shop_order.end(),
+                          [&](const auto id) { return s.shops.count(id) != 0; }),
+          "shop records and order are owned by currently retained facility instances");
+}
+// 长轨迹沿既有continuous职责：真实新局，仅玩家命令，不注入C/资金/人物/日期/奖励。
+void natural_housing(std::uint64_t seed, int speed) {
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(),
+                                       ref::WorldRandomStream::from_java_seed(seed));
+    session.set_speed(speed);
+    const auto anchor = housing_anchor(session.state());
+    check(session.open_build_menu() == StartupWorldRuntimeError::none,
+          "natural player opens actual construction catalogue");
+    const auto catalogue = top_page(session.state());
+    check(catalogue && catalogue->legacy_page == 21,
+          "natural catalogue is actual raw21, not an injected page");
+    check(session.select_build_menu(catalogue->id, 24).error == StartupWorldRuntimeError::none,
+          "actual initial catalogue permits original recruitment24");
+    const auto before_build = session.state().scene.world.world.ai.accounting.funds();
+    const auto placed = session.confirm_build(anchor, ref::FacilityOrientation::first);
+    check(placed.created &&
+              session.state().scene.world.world.ai.accounting.funds() == before_build - 100 &&
+              session.cancel_build() == StartupWorldRuntimeError::none,
+          "natural recruitment costs original100, returns real scene without injected cash");
+    const auto recruitment = *placed.created;
+    std::optional<std::uint64_t> home;
+    std::optional<int> resident;
+    bool recruitment_ready{};
+    bool home_ready{};
+    int grants{};
+    int tax_receipts{};
+    std::optional<std::uint64_t> tax_page;
+    int tax_month{-1};
+    int tax_year{-1};
+    int income_after_tax{};
+    std::size_t max_pages{}, max_notices{}, max_sounds{}, max_actors{}, max_tasks{}, max_entries{};
+    std::size_t max_retired_actors{}, max_retired_encounters{}, max_payloads{}, max_effects{};
+    std::size_t consumed_sounds{};
+    int gifts{};
+    bool gifting{};
+    int last_month = session.state().scene.calendar.month;
+    constexpr int frame_limit = 180000;
+    for (int frame = 0; frame < frame_limit; ++frame) {
+        const auto &old = session.state();
+        const auto previous = top_page(old);
+        const bool paying = previous && previous->kind == ref::WorldScriptPageKind::raw_page &&
+                            previous->legacy_page == 98;
+        const auto paying_id = paying ? previous->id : 0;
+        const auto old_cash = old.scene.world.world.ai.accounting.funds();
+        const auto old_draws = old.scene.random.draws();
+        const int old_income = old.monthly_cash.at(old.scene.calendar.month)[4][0];
+        std::int64_t expected_tax{};
+        if (paying)
+            for (const auto &human : old.rules->humans)
+                if (old.human_presence.at(human.identity) != 0 &&
+                    old.human_homes.at(human.identity)[2] == 1)
+                    expected_tax += old.human_calendar.at(human.identity).legacy_G;
+        const auto updated = session.update();
+        if (!updated.candidate)
+            throw std::runtime_error("natural housing update failed runtime=" +
+                                     std::to_string(static_cast<int>(updated.error)) + ' ' +
+                                     snapshot(session.state(), frame) +
+                                     " last=" + diagnose(session.state()));
+        const auto &s = session.state();
+        managed_resource_references(s);
+        const auto usage = startup_world_resource_usage(s);
+        max_retired_actors = std::max(max_retired_actors, usage.retired_actors);
+        max_retired_encounters = std::max(max_retired_encounters, usage.retired_encounters);
+        max_payloads = std::max(max_payloads, usage.page_payloads);
+        max_effects = std::max(max_effects, usage.effects);
+        check(s.scene.random.draws() >= old_draws &&
+                  ref::valid_world_calendar_state(s.scene.calendar),
+              "natural housing keeps one monotonic random stream and normalized calendar");
+        max_pages = std::max(max_pages, s.scripts.pages.size());
+        max_notices = std::max(max_notices, s.scripts.notices.size());
+        max_sounds = std::max(max_sounds, s.sound_requests.size());
+        max_actors = std::max(max_actors, s.scene.world.world.ai.battle.actors.size());
+        max_tasks = std::max(max_tasks, s.tasks.size());
+        max_entries = std::max(max_entries, s.scene.world.world.ai.accounting.entries().size());
+        if (paying) {
+            const auto paid = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                           [&](const auto &p) { return p.id == paying_id; });
+            check(paid != s.scripts.pages.end() && paid->lifecycle == 4 &&
+                      s.scene.world.world.ai.accounting.funds() == old_cash + expected_tax &&
+                      s.monthly_cash.at(s.scene.calendar.month)[4][0] ==
+                          old_income + expected_tax &&
+                      s.scene.random.draws() == old_draws,
+                  "natural98 automatically posts exact current tax to other-income and closes "
+                  "without random");
+            check(std::all_of(
+                      s.rules->humans.begin(), s.rules->humans.end(),
+                      [&](const auto &human) {
+                          const auto id = human.identity;
+                          return s.human_calendar.at(id).legacy_G == 0 &&
+                                 s.scene.world.world.ai.battle.humans.at(id).battle_reward_stat ==
+                                     0;
+                      }),
+                  "natural98 clears every real definition's F/G, not only the chosen resident");
+            check(tax_page && expected_tax > 0,
+                  "natural resident really earned positive tax before original annual collection");
+            ++tax_receipts;
+            tax_month = s.scene.calendar.month;
+            tax_year = s.scene.calendar.year;
+            income_after_tax = s.monthly_cash.at(tax_month)[0][0];
+            std::cout << "housing tax amount=" << expected_tax << ' ' << snapshot(s, frame)
+                      << std::endl;
+        }
+        if (!home) {
+            const auto built = s.scene.world.world.facilities.find(recruitment);
+            check(built != s.scene.world.world.facilities.end(),
+                  "natural recruitment remains until the actual successful residence command");
+            recruitment_ready = recruitment_ready || built->second.status == 1;
+        } else {
+            retired_recruitment(s, recruitment);
+            const auto &built = s.scene.world.world.facilities.at(*home);
+            if (!home_ready && built.status == 1) {
+                home_ready = true;
+                check(resident && s.facility_residents.at(*home) == *resident &&
+                          s.human_homes.at(*resident)[2] == 1 &&
+                          ref::world_script_seen(s.scripts, 202),
+                      "common world naturally completes actual home and source first-home event");
+                std::cout << "housing complete human=" << *resident << ' ' << snapshot(s, frame)
+                          << std::endl;
+            }
+        }
+        if (s.scene.calendar.month != last_month) {
+            last_month = s.scene.calendar.month;
+            std::cout << "housing resources pages=" << s.scripts.pages.size()
+                      << " notices=" << s.scripts.notices.size()
+                      << " sounds=" << s.sound_requests.size()
+                      << " actors=" << s.scene.world.world.ai.battle.actors.size()
+                      << " task_records=" << s.tasks.size()
+                      << " cash_entries=" << s.scene.world.world.ai.accounting.entries().size()
+                      << " checkpoints=" << session.checkpoints().size() << ' '
+                      << " C1=" << s.shop_humans.at(1).satisfaction << ' ' << snapshot(s, frame)
+                      << std::endl;
+        }
+        const auto current = top_page(s);
+        check(current, "natural housing preserves a real framework page");
+        const auto page = *current;
+        const auto failure = [&](StartupWorldRuntimeError error, const char *command) {
+            if (error != StartupWorldRuntimeError::none)
+                throw std::runtime_error(std::string("natural housing input failed ") + command +
+                                         " error=" + std::to_string(static_cast<int>(error)) + ' ' +
+                                         snapshot(session.state(), frame));
+        };
+        if (page.kind == ref::WorldScriptPageKind::scene && !home && recruitment_ready) {
+            const auto eligible = std::find_if(
+                s.rules->humans.begin(), s.rules->humans.end(), [&](const auto &human) {
+                    return s.human_presence.at(human.identity) != 0 &&
+                           s.human_homes.at(human.identity)[2] == 0 &&
+                           s.shop_humans.at(human.identity).satisfaction >=
+                               human.residence_threshold &&
+                           s.scene.world.world.ai.accounting.funds() >= human.residence_fee;
+                });
+            if (eligible != s.rules->humans.end()) {
+                resident = eligible->identity;
+                failure(session.open_facility_page(recruitment), "open recruitment");
+            } else if (s.human_presence.at(1) != 0 &&
+                       s.shop_humans.at(1).satisfaction <
+                           s.rules->humans.at(1).residence_threshold &&
+                       s.scene.world.world.ai.accounting.funds() >=
+                           s.rules->humans.at(1).residence_fee + 150) {
+                // 明确玩家策略：赠送原初始短剑提升C，留足原入住费；不写C或补现金。
+                gifting = true;
+                failure(session.open_human_page(1), "open actual gift recipient");
+            }
+        } else if (gifting && page.legacy_page == 60) {
+            failure(session.act_human_page(page.id, StartupHumanPageAction::gifts),
+                    "open equipment gifts");
+        } else if (gifting && page.legacy_page == 64) {
+            if (s.human_page_answers.count(page.id)) {
+                // K0必须由下一真实父更新消费；此刻不重开65。
+            } else if (s.shop_humans.at(1).satisfaction >=
+                           s.rules->humans.at(1).residence_threshold ||
+                       s.scene.world.world.ai.accounting.funds() <
+                           s.rules->humans.at(1).residence_fee + 150) {
+                failure(session.act_human_page(page.id, StartupHumanPageAction::cancel),
+                        "return gift catalogue");
+                gifting = false;
+            } else {
+                const auto &list = s.equipment_page_catalogs.at(page.id)[0];
+                const auto selected = std::find(list.begin(), list.end(), 0);
+                check(selected != list.end(),
+                      "source initial short sword0 remains available to player gifts");
+                failure(session.act_human_page(page.id, StartupHumanPageAction::select,
+                                               static_cast<int>(selected - list.begin())),
+                        "select original short sword");
+                failure(session.act_human_page(page.id, StartupHumanPageAction::confirm),
+                        "open65 quote");
+            }
+        } else if (gifting && page.legacy_page == 65) {
+            failure(session.acknowledge_page(page.id), "confirm original equipment gift");
+            ++gifts;
+        } else if (!gifting && page.legacy_page == 60) {
+            failure(session.cancel_page(page.id), "return human details after gifts");
+        } else if (page.legacy_page == 74) {
+            if (!home && s.facility_page_bindings.at(page.id) == recruitment)
+                failure(session.act_facility_page(page.id, StartupFacilityPageAction::confirm),
+                        "open resident candidates");
+            else
+                failure(session.act_facility_page(page.id, StartupFacilityPageAction::cancel),
+                        "return facility details");
+        } else if (page.legacy_page == 80) {
+            check(resident && std::find(s.residence_page_candidates.at(page.id).begin(),
+                                        s.residence_page_candidates.at(page.id).end(),
+                                        *resident) != s.residence_page_candidates.at(page.id).end(),
+                  "natural reached threshold appears in real candidate list");
+            const auto chosen = session.act_residence_page(page.id, *resident);
+            failure(chosen.error, "choose actual resident");
+            check(chosen.created && chosen.denial == StartupBuildDenial::none,
+                  "natural affordable resident replaces recruitment without a synthetic rebate");
+            home = chosen.created;
+            std::cout << "housing admitted human=" << *resident << ' '
+                      << snapshot(session.state(), frame) << std::endl;
+        } else if (page.legacy_page == 87) {
+            if (s.medal_count > 0) {
+                const int human = s.award_rankings.at(page.id).front();
+                const int before = s.human_calendar.at(human).celebrations;
+                failure(session.act_award_page(page.id, ref::WorldAwardAction::request_award, 0),
+                        "request real annual medal");
+                failure(session.act_award_page(page.id, ref::WorldAwardAction::confirm_award),
+                        "confirm real annual medal");
+                check(session.state().human_calendar.at(human).celebrations == before + 1,
+                      "natural annual award actually increments chosen human's source medal count");
+                ++grants;
+            }
+        } else if (page.legacy_page == 90) {
+            check(
+                home_ready && s.scene.calendar.year > 0 && s.scene.calendar.month == 3,
+                "natural completed residence reaches original tax date without calendar injection");
+            const auto view = inspect_startup_world_tax_page(s, page.id);
+            check(view && !view->rows.empty(), "actual90 displays real resident tax list");
+            tax_page = page.id;
+            const auto cash = s.scene.world.world.ai.accounting.funds();
+            failure(session.acknowledge_page(page.id), "confirm tax list");
+            check(session.state().scene.world.world.ai.accounting.funds() == cash,
+                  "natural tax-list confirmation itself does not pay tax");
+        } else if (page.legacy_page == 83) {
+            failure(session.cancel_page(page.id), "return unlocked shop entry");
+        } else if (page.kind != ref::WorldScriptPageKind::scene && page.legacy_page != 16 &&
+                   page.legacy_page != 56 && page.legacy_page != 57 && page.legacy_page != 97 &&
+                   page.legacy_page != 98) {
+            failure(session.acknowledge_page(page.id), "confirm actual event");
+        }
+        const auto &after = session.state();
+        consumed_sounds += session.take_sound_requests().size();
+        check(session.state().sound_requests.empty(),
+              "natural headless presentation sink consumes transient sound outputs each frame");
+        const auto next_page = top_page(after);
+        const int elapsed_months = after.scene.calendar.year * 12 + after.scene.calendar.month -
+                                   (tax_year * 12 + tax_month);
+        if (tax_receipts == 1 && elapsed_months >= 1 && after.scene.calendar.units >= 27 &&
+            next_page && next_page->kind == ref::WorldScriptPageKind::scene) {
+            check(home_ready && recruitment_ready && grants > 0 &&
+                      after.monthly_cash.at(tax_month)[0][0] > income_after_tax,
+                  "natural housing, annual award and tax return to continuing paid facility "
+                  "business");
+            check(after.tax_page_residents.empty() && after.tax_page_selection.empty() &&
+                      after.tax_page_scroll.empty(),
+                  "real tax pages retire their transient lists and selection records");
+            retired_recruitment(after, recruitment);
+            std::cout << "housing summary seed=" << seed << " speed=" << speed
+                      << " resident=" << *resident << " home=" << *home << " grants=" << grants
+                      << " taxes=" << tax_receipts << " gifts=" << gifts
+                      << " peak_pages=" << max_pages << " peak_notices=" << max_notices
+                      << " peak_sounds=" << max_sounds << " peak_actors=" << max_actors
+                      << " consumed_sounds=" << consumed_sounds
+                      << " peak_task_records=" << max_tasks << " peak_cash_entries=" << max_entries
+                      << " peak_retired_actors=" << max_retired_actors
+                      << " peak_retired_encounters=" << max_retired_encounters
+                      << " peak_page_payloads=" << max_payloads << " peak_effects=" << max_effects
+                      << " checkpoints=" << session.checkpoints().size() << ' '
+                      << snapshot(after, frame) << '\n';
+            return;
+        }
+    }
+    throw std::runtime_error(
+        "natural housing frame limit reached home=" + std::to_string(home.has_value()) +
+        " ready=" + std::to_string(home_ready) + " grants=" + std::to_string(grants) +
+        " taxes=" + std::to_string(tax_receipts) + ' ' + snapshot(session.state(), frame_limit));
+}
 } // namespace
 int main(int argc, const char **argv) {
     try {
@@ -409,6 +737,19 @@ int main(int argc, const char **argv) {
             if (result.ec != std::errc{} || result.ptr != input.data() + input.size())
                 throw std::invalid_argument("invalid continuous test argument");
         };
+        if (argc >= 2 && std::string(argv[1]) == "natural_housing") {
+            if (argc > 4)
+                throw std::invalid_argument("expected natural_housing [seed [speed]]");
+            if (argc >= 3)
+                parse(argv[2], seed);
+            if (argc >= 4)
+                parse(argv[3], speed);
+            if (speed != 0 && speed != 1)
+                throw std::invalid_argument("speed must be 0 or 1");
+            natural_housing(seed, speed);
+            std::cout << "natural housing continuous checks: " << checks << '\n';
+            return 0;
+        }
         if (argc > 4)
             throw std::invalid_argument("expected [months [seed [speed]]]");
         if (argc >= 2)

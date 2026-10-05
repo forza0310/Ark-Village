@@ -1,6 +1,8 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_reference/world_gift_page.hpp"
 
 #include <algorithm>
@@ -172,6 +174,8 @@ bool award_reward(State &s, int human) {
     s.reward_display = reward.reward_display;
     if (reward.derived) {
         growth->second.derived = *reward.derived;
+        if (!synchronize_startup_world_human_capacity(s, human))
+            return false;
         s.effort_display = *reward.effort_display;
     }
     const auto event = ref::prepare_world_script(startup_world_runtime_catalog(),
@@ -323,6 +327,14 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return act_startup_world_runtime_deadline_page(state, id, 0).error;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
         return act_startup_world_runtime_rank_page(state, id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 90)
+        return act_startup_world_tax_page(state, id, StartupWorldTaxAction::confirm);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 98)
+        return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
+         top->legacy_page == 70 || top->legacy_page == 73))
+        return act_startup_world_human_page(state, id, StartupHumanPageAction::confirm);
     auto next = state;
     next.scripts.executing_page = id;
     if (top->kind == ref::WorldScriptPageKind::raw_page) {
@@ -459,6 +471,12 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top != state.scripts.pages.rend() && top->id == id &&
+        top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 60 || top->legacy_page == 61 || top->legacy_page == 62 ||
+         top->legacy_page == 64 || top->legacy_page == 65 || top->legacy_page == 70 ||
+         top->legacy_page == 73))
+        return act_startup_world_human_page(state, id, StartupHumanPageAction::cancel);
+    if (top != state.scripts.pages.rend() && top->id == id &&
         top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
         return act_startup_world_runtime_rank_page(state, id, 0, true);
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
@@ -581,30 +599,13 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         return update_startup_world_runtime_task_page(state, top->id, state.page_confirm_held);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 4)
         return update_startup_world_runtime_task_control_page(state, top->id);
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 60) {
-        const auto bound = next.page_human_bindings.find(top->id);
-        if (bound == next.page_human_bindings.end())
-            return {};
-        const auto human = next.scene.world.world.ai.growth.find(bound->second);
-        if (human == next.scene.world.world.ai.growth.end())
-            return {};
-        if (!next.human_pages_initialized.count(top->id)) {
-            const auto stats = ref::derive_human_stats(human->second.definition,
-                                                       next.scene.world.world.ai.professions);
-            if (!stats.candidate)
-                return {};
-            human->second.derived = *stats.candidate;
-            next.human_pages_initialized.insert(top->id);
-            if (!ref::world_script_seen(next.scripts, 111)) {
-                const auto event =
-                    ref::prepare_world_script(startup_world_runtime_catalog(),
-                                              startup_world_runtime_scripts(next), {111, {}, {}});
-                if (!event.candidate ||
-                    !write_startup_world_runtime_scripts(next, event.candidate->state))
-                    return {};
-            }
-        }
-    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 90 || top->legacy_page == 98))
+        return update_startup_world_tax_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
+         top->legacy_page == 70 || top->legacy_page == 73))
+        return update_startup_world_human_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 48 || top->legacy_page == 49)) {
         if (!initialize_rank_page(next, top->id))

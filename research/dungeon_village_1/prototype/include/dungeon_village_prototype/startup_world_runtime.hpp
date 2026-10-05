@@ -14,6 +14,8 @@
 namespace dungeon_village_prototype {
 struct StartupBuildResult;
 enum class StartupFacilityPageAction;
+enum class StartupHumanPageAction;
+enum class StartupWorldTaxAction;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -101,7 +103,22 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::uint64_t> task_abort_questions; // raw1→实际raw4父页。
     std::map<std::uint64_t, int> task_abort_answers;             // raw4.bU.K，返回父页才消费。
     std::set<std::uint64_t> human_pages_initialized;             // raw60原f()仅首次重算人物缓存。
-    int residence_hint_counter{};                                // UserData.H，新局0。
+    std::map<int, std::vector<int>> human_profession_changes; // 原e.R，每职业转入次数，不是M等级。
+    std::map<std::uint64_t, std::vector<int>> human_page_catalogs;                    // 61/62的X。
+    std::map<std::uint64_t, std::array<std::vector<int>, 4>> equipment_page_catalogs; // 64前四Z。
+    std::map<std::uint64_t, int> human_page_selections;
+    std::map<std::uint64_t, int> page_job_bindings;                      // 62/63原p。
+    std::map<std::uint64_t, std::uint64_t> human_page_parents;           // 子页65/62原bW引用。
+    std::map<std::uint64_t, int> human_page_answers;                     // 父61/64恢复时才消费K。
+    std::map<std::uint64_t, std::array<int, 2>> human_equipment_choices; // 65/66，槽/原ID。
+    std::array<std::array<int, 6>, 3> human_attribute_display{};     // 原e.at，预览与道具结果共享。
+    std::array<std::array<int, 4>, 3> equipment_attribute_display{}; // 原e.as[1]。
+    std::map<std::uint64_t, int> human_gift_scores;
+    std::map<std::uint64_t, std::string> human_gift_messages;
+    std::map<std::uint64_t, std::vector<int>> tax_page_residents; // raw90当时在籍住宅名单。
+    std::map<std::uint64_t, int> tax_page_selection;
+    std::map<std::uint64_t, int> tax_page_scroll;
+    int residence_hint_counter{}; // UserData.H，新局0。
     std::map<int, std::uint32_t> activity_flags;
     std::map<std::uint64_t, ref::WorldFacilityUpdateDetails> facility_details;
     ref::DungeonTaskSuccessState task_progress;
@@ -316,6 +333,13 @@ class StartupWorldRuntimeSession {
                                            bool cancel = false);
     StartupWorldRuntimeError open_task_menu();
     StartupWorldRuntimeError open_task_control_menu();
+    StartupWorldRuntimeError open_human_page(int human);
+    StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action,
+                                            int selection = 0);
+    StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action,
+                                          int selection = 0);
+    // 表现输出一次领取；无音频适配的验收明确丢弃，不作为世界耐久历史。
+    std::vector<int> take_sound_requests();
     StartupBuildResult begin_build(int definition);
     StartupWorldRuntimeError open_build_menu();
     StartupBuildResult select_build_menu(std::uint64_t page, int definition);

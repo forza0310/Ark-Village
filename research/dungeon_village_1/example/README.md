@@ -9,6 +9,7 @@
 
 | 模块 | 职责与边界 | 规格 |
 | --- | --- | --- |
+| human_management | 职业／装备目录原交换排序、预览与有序拒绝、三档R奖励、中点／终点计划、大师加成、职业喜好矩阵与赠礼候选；不持有页面、随机或第二世界 | [人物管理](../rules/CHARACTERS.md) |
 | domain、simulation | R1事务、独占预约、单点自主模拟夹具；当前窗口不使用旧模拟 | [状态与建设](../rules/STATE_CONSTRUCTION.md)、[人物](../rules/CHARACTERS.md) |
 | geometry、facility_economy、neighbourhood | 格坐标占地、经营推导、来源实例去重与道路魅力；真正共享等级升级扣旧门槛/保留剩余次数，旧/新/差额分别含实例邻接 | [设施](../rules/FACILITIES.md)、[建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同) |
 | navigation、map_access | 加权寻路、完整设施绑定、距离场和到达身份 | [地图访问](../rules/MAP_ACCESS.md) |

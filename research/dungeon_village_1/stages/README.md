@@ -5,6 +5,9 @@
 
 ## 当前工作
 
+当前已按用户要求中断，Windows接续从[可运行checkpoint与村办在途稿](in-progress/village-activity/README.md)开始。
+正式源码基线`8f12654`已通过验收，归档草稿未注册CMake／未交付；不得把它当作已实现村办。
+
 2026-10-05用户确认继续下列批次，沿既有固定APK/唯一Owner/整事务方案；仅维护research。
 
 | 顺序 | 本批契约 | 验收与状态 |

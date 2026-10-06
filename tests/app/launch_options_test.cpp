@@ -65,11 +65,23 @@ int main() {
     check(parse_arguments({"--verify-play", "--frames", "3000"}).options->verify_play);
     check(parse_arguments({"--inspect-page", "ai", "--frames", "8"}).options->ai_preview);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
+    for (const auto *page :
+         {"world-road-start", "world-road-end", "world-road-built", "world-road-remove",
+          "world-demolished", "world-home-credit", "world-home-rebuilt"}) {
+        const auto parsed = parse_arguments({"--inspect-page", page, "--frames", "8"});
+        check(parsed.options && parsed.options->world && parsed.options->inspect_page == page);
+        check(
+            !parse_arguments({"--legacy-slice", "--inspect-page", page, "--frames", "8"}).options);
+    }
     const auto suite = parse_arguments(
         {"--inspect-page", "world-commerce-suite", "--frames", "8", "--screenshot", "suite.png"});
     check(suite.options && suite.options->world &&
           suite.options->inspect_page == "world-commerce-suite");
     check(!parse_arguments({"--inspect-page", "world-commerce-suite", "--frames", "8"}).options);
+    check(parse_arguments(
+              {"--inspect-page", "world-home-suite", "--frames", "8", "--screenshot", "home.png"})
+              .options.has_value());
+    check(!parse_arguments({"--inspect-page", "world-home-suite", "--frames", "8"}).options);
     check(!parse_arguments({"--legacy-slice", "--inspect-page", "world-commerce-suite", "--frames",
                             "8", "--screenshot", "suite.png"})
                .options);

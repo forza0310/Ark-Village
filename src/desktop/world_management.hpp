@@ -13,6 +13,7 @@
 #include "ui/world_tax.hpp"
 #include "ui/world_village_activity.hpp"
 #include "world_build_placement.hpp"
+#include "world_editing.hpp"
 
 namespace ark::desktop {
 class WorldManagement {
@@ -38,6 +39,7 @@ class WorldManagement {
     // Explicit window diagnostic: fixes only desktop selection, never buys or edits the Owner.
     void inspect_placement(int definition, simulation::rules::Position anchor,
                            simulation::rules::FacilityOrientation orientation);
+    void inspect_edit(const app::WorldState &state, simulation::rules::Position position);
 
   private:
     void queued(std::uint64_t serial);
@@ -48,6 +50,7 @@ class WorldManagement {
     ui::WorldBuildingSelection building_;
     ui::WorldAwardSelection award_;
     int rank_{};
+    int edit_mode_{-1};
     std::optional<int> definition_;
     std::optional<simulation::rules::Position> anchor_;
     simulation::rules::FacilityOrientation orientation_{};

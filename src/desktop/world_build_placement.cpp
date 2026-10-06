@@ -144,6 +144,15 @@ WorldBuildPreview world_build_preview(const State &state, int id, rules::Positio
             return preview;
         }
     }
+    if (state.build_mode == 7) {
+        // Moving preserves an existing facility; a fresh construction quote is irrelevant.
+        preview.cost = 300;
+        preview.missing_source =
+            state.next_facility_identity == std::numeric_limits<std::uint64_t>::max();
+        if (preview.cost > world.ai.accounting.funds())
+            preview.denial = Denial::insufficient_funds;
+        return preview;
+    }
     const auto quote = simulation::startup_world_build_quote(state, id);
     if (!quote || quote->construction_cost > std::numeric_limits<int>::max() ||
         quote->construction_ticks > std::numeric_limits<int>::max() ||

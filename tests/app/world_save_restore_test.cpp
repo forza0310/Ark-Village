@@ -223,6 +223,23 @@ void invalid_candidates() {
     bad.build_moving_facility = bad.scene.world.facility_order.front();
     reject(bad, "unfinished moving selection");
     check(!app::world_save_eligible(bad), "moving selection cannot be captured");
+    const auto main_capture = app::capture_world_save(initial);
+    check(main_capture.image.has_value(), "stable baseline captures before dormant-tool cases");
+    for (const int mode : {1, 3, 6}) {
+        auto dormant = initial;
+        dormant.build_mode = mode; // Published cancel leaves the last tool in scene0.
+        const auto saved = app::capture_world_save(dormant);
+        check(saved.image && saved.image->bytes == main_capture.image->bytes,
+              "exited tool is transient and does not change durable main-scene bytes");
+        dormant.scene.scene_state = 1;
+        check(!app::world_save_eligible(dormant), "active tool scene remains ineligible");
+    }
+    for (const int mode : {-1, 8}) {
+        bad = initial;
+        bad.build_mode = mode;
+        reject(bad, "invalid dormant editing tool");
+        check(!app::world_save_eligible(bad), "invalid dormant tool cannot be captured");
+    }
     bad = initial;
     bad.activity_page_answers.emplace(42, 0);
     reject(bad, "unconsumed village activity decision");

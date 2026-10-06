@@ -32,6 +32,8 @@
 
 `ark_world_ui_tests world_human_render_fixture`为显式窗口诊断，复用同一runner而不加入标准CTest。它用标注为synthetic的raw70三阶段输入检查实际皮肤/文字/布局，并验证绘制不改变日期、现金、随机或奖励属性；不运行奖励消费者，不替代自然大师整线或原版动画验收。
 
+`ark_world_ui_tests world_edit_render_fixture`同样仅为手动窗口诊断。它显式提供flag32门控，使用初局真实包子铺、完整mode7预览和实际300G移动事务，保存预览/移动后两图并检查绘制不推进世界；不替代自然首星解锁、OS输入或原APK光标验收。实际Windows命令使用`build/bin/ark_world_ui_tests-desktop-release.exe world_edit_render_fixture`。
+
 设施只读查询回归比较查询前后完整邻接缓存（键、current/previous、visited、完整有序sources/notices）及资金/随机/日期。e8已在初局初始化缓存，因此不能继续断言缓存初始为空，也不能退化为只比较数量。
 
 合并的是重复链接和入口，不把不同场景合成串行大流程。正文仍按职责独立文件；CTest使用原名称，每次只选择一个case并启动新进程，错误归属和夹具隔离保留。未指定或指定不存在的case返回2，断言失败返回1；没有隐式“运行全部”。月报/勋章采用相同真实新局夹具与运行时依赖，因此共享可执行；线程会话、长跑、CLI进程检查及冻结来源测试保持独立。

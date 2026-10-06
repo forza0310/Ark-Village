@@ -284,9 +284,11 @@ void clear_presentation(State &s) {
 } // namespace
 
 bool world_save_eligible(const State &s, std::string *reason) {
+    // Source cancellation retains the last tool number in the main scene. That dormant
+    // UI field is not persisted; scene/definition/selection still reject unfinished edits.
     if (!s.rules || s.scene.scene_state != 0 || s.scene.processing_phase != -1 ||
         s.report_state != 0 || s.deadline_page || s.deadline_closed_page || s.build_definition ||
-        s.build_mode != 0 || s.build_anchor || s.build_moving_facility)
+        s.build_mode < 0 || s.build_mode >= 8 || s.build_anchor || s.build_moving_facility)
         return fail(reason, "请返回主场景，等待月报和待处理事件结束后保存");
     if (s.scripts.pages.size() != 1 ||
         s.scripts.pages.front().kind != ref::WorldScriptPageKind::scene ||
@@ -319,9 +321,9 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         !counter(s.scene.scene_counter) ||
         (s.scene.speed_setting != 0 && s.scene.speed_setting != 1) || s.scene.scene_state != 0 ||
         s.scene.processing_phase != -1 || s.report_state != 0 || s.deadline_page ||
-        s.deadline_closed_page || s.build_mode != 0 || s.build_definition || s.build_anchor ||
-        s.build_moving_facility || !s.activity_page_answers.empty() || !coordinate(s.camera[0]) ||
-        !coordinate(s.camera[1]) || !coordinate(s.previous_camera[0]) ||
+        s.deadline_closed_page || s.build_mode < 0 || s.build_mode >= 8 || s.build_definition ||
+        s.build_anchor || s.build_moving_facility || !s.activity_page_answers.empty() ||
+        !coordinate(s.camera[0]) || !coordinate(s.camera[1]) || !coordinate(s.previous_camera[0]) ||
         !coordinate(s.previous_camera[1]) || !coordinate(s.camera_velocity[0]) ||
         !coordinate(s.camera_velocity[1]) || s.reference_viewport[2] <= 0 ||
         s.reference_viewport[3] <= 0 || s.reference_viewport[2] > 100000 ||

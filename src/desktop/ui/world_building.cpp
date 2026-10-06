@@ -56,6 +56,31 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                      world_build_graphic(definition(state, id),
                                          simulation::rules::FacilityOrientation::first)});
             }
+        // The maintained base catalogue contains buildings only. The desktop raw21
+        // projection adds the published road/edit identities without changing that cache.
+        std::vector<WorldBuildingRow> roads;
+        for (const auto &item : state.rules->facilities) {
+            const auto presence = state.facility_presence.find(item.id);
+            if (item.kind != 6 || !(item.flags & 4) || presence == state.facility_presence.end() ||
+                presence->second == 0)
+                continue;
+            const auto quote = simulation::startup_world_build_quote(state, item.id);
+            if (!quote)
+                throw std::invalid_argument("Road catalogue is missing its current quote");
+            roads.push_back(
+                {item.id, item.name, quote->construction_cost,
+                 world_build_graphic(item, simulation::rules::FacilityOrientation::first)});
+        }
+        view.catalogs[0].insert(view.catalogs[0].begin(), roads.begin(), roads.end());
+        view.catalogs[0].push_back(
+            {-1, "撤除", 0, {}, {}, "destruct00.png", {0, 0, 60, 29}, {4, 3}});
+        if (state.scripts.user_flags & 32U)
+            view.catalogs[0].push_back(
+                {-2, "配置更替", 300, {}, {}, "moveTenant.png", {0, 0, 63, 32}, {1, 0}});
+        for (auto &tab : view.catalogs)
+            for (auto &row : tab)
+                if (row.identity >= 0 && definition(state, row.identity).kind == 12)
+                    row.residence_qualifications = state.facility_free_builds.at(row.identity);
         view.can_confirm = true;
     } else if (view.raw == 80) {
         const auto list = state.residence_page_candidates.find(page.id);
@@ -259,16 +284,29 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                     DrawRectangleRec(box, {255, 236, 174, 255});
                 const auto &item = list[first + row];
                 float label_x = box.x + 4;
-                if (!item.graphic.frames.empty()) {
+                if (!item.graphic.frames.empty() || !item.common_image.empty()) {
                     const auto icon = world_building_icon(layout, row);
                     DrawRectangleRec(icon.clip, icon.background);
                     for (const auto &[frame, offset] : item.graphic.frames)
                         skin.sprites.draw(item.graphic.sprite, frame,
                                           {icon.anchor.x + offset.x, icon.anchor.y + offset.y},
                                           WHITE, Sprites::Binding::map, 1, -1, icon.clip);
+                    if (!item.common_image.empty()) {
+                        const Rectangle target{icon.clip.x + item.image_offset.x,
+                                               icon.clip.y + item.image_offset.y,
+                                               item.image_source.width, item.image_source.height};
+                        const auto clipped =
+                            clip_sprite_blit({item.image_source, target}, icon.clip);
+                        if (clipped)
+                            skin.sprites.image(item.common_image, clipped->source,
+                                               clipped->destination, Sprites::Binding::common);
+                    }
                     label_x = box.x + 72;
                 }
                 fitted(skin, item.name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
+                if (item.residence_qualifications)
+                    skin.text.draw("H " + std::to_string(*item.residence_qualifications), label_x,
+                                   box.y + 22, blue, 10);
                 skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
                            10);
             }

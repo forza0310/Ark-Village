@@ -221,9 +221,28 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         result.runtime_error = simulation::open_startup_world_build_menu(state);
         break;
     case Kind::select_build_menu:
-        build_result(
-            simulation::select_startup_world_build_menu(state, command.page, command.definition),
-            result);
+        if (command.definition == -1 || command.definition == -2 ||
+            std::any_of(state.rules->facilities.begin(), state.rules->facilities.end(),
+                        [&](const auto &d) { return d.id == command.definition && d.kind == 6; })) {
+            // Source denials can carry valid feedback candidates, so the worker commits them.
+            // This bridge has no such feedback: close and begin must succeed together.
+            auto next = state;
+            result.runtime_error = simulation::cancel_startup_world_build_menu(next, command.page);
+            if (result.runtime_error == Error::none) {
+                build_result(
+                    command.definition < 0
+                        ? simulation::begin_startup_world_edit(next, command.definition == -2)
+                        : simulation::begin_startup_world_road(next, command.definition),
+                    result);
+                if (result.runtime_error == Error::none &&
+                    result.build_denial == simulation::StartupBuildDenial::none)
+                    state = std::move(next);
+            }
+        } else {
+            build_result(simulation::select_startup_world_build_menu(state, command.page,
+                                                                     command.definition),
+                         result);
+        }
         break;
     case Kind::cancel_build_menu:
         result.runtime_error = simulation::cancel_startup_world_build_menu(state, command.page);
@@ -238,6 +257,46 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
                 result);
         } else {
             result.runtime_error = simulation::cancel_startup_world_build(state);
+        }
+        break;
+    case Kind::confirm_edit:
+    case Kind::cancel_edit:
+        if (state.scene.scene_state != 1 || state.build_mode != command.selection ||
+            state.build_mode < 1 || state.build_mode > 7 || state.build_mode == 4 ||
+            (command.kind == Kind::confirm_edit &&
+             command.orientation != simulation::rules::FacilityOrientation::first &&
+             command.orientation != simulation::rules::FacilityOrientation::second) ||
+            state.build_definition.value_or(-1) != command.definition ||
+            !(state.build_anchor == command.edit_anchor) ||
+            state.build_moving_facility.value_or(0) != command.facility) {
+            result.runtime_error = Error::invalid_page;
+        } else if (command.kind == Kind::cancel_edit) {
+            result.runtime_error = simulation::cancel_startup_world_edit(state);
+        } else {
+            // The maintained single-binding map cannot represent a road over a special
+            // facility while retaining its old pointer. Reject that known unsupported input
+            // before the source missing-data failure; never partly commit a road segment.
+            bool unsupported{};
+            if (state.build_mode == 2 && state.rules && state.fence_level >= 0 &&
+                static_cast<std::size_t>(state.fence_level) < state.rules->fences.size()) {
+                const auto segment = simulation::startup_world_edit_segment(state, command.anchor);
+                const auto &f = state.rules->fences.at(state.fence_level);
+                if (segment)
+                    for (const auto p : *segment) {
+                        const auto &map = state.scene.world.world.map;
+                        const auto &tile = map.cells.at(p.y * map.width + p.x);
+                        if (p.x > f[0].x && p.x < f[1].x && p.y > f[1].y && p.y < f[0].y &&
+                            tile.legacy_state != 1 && tile.legacy_state != 2 &&
+                            tile.legacy_state != 3 && tile.facility)
+                            unsupported = true;
+                    }
+            }
+            if (unsupported)
+                result.build_denial = simulation::StartupBuildDenial::unavailable;
+            else
+                build_result(simulation::confirm_startup_world_edit(state, command.anchor,
+                                                                    command.orientation),
+                             result);
         }
         break;
     case Kind::open_facility: {
@@ -437,6 +496,28 @@ std::uint64_t WorldSession::act_village_activity(std::uint64_t page,
     command.page = page;
     command.village_activity_action = action;
     command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::confirm_edit(const WorldState &observed,
+                                         simulation::rules::Position target,
+                                         simulation::rules::FacilityOrientation orientation) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::confirm_edit;
+    command.selection = observed.build_mode;
+    command.definition = observed.build_definition.value_or(-1);
+    command.edit_anchor = observed.build_anchor;
+    command.facility = observed.build_moving_facility.value_or(0);
+    command.anchor = target;
+    command.orientation = orientation;
+    return submit(command);
+}
+std::uint64_t WorldSession::cancel_edit(const WorldState &observed) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::cancel_edit;
+    command.selection = observed.build_mode;
+    command.definition = observed.build_definition.value_or(-1);
+    command.edit_anchor = observed.build_anchor;
+    command.facility = observed.build_moving_facility.value_or(0);
     return submit(command);
 }
 std::uint64_t WorldSession::open_menu_commerce() {

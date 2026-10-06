@@ -4,6 +4,7 @@
 #include "ark/app/world_save_files.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_commerce.hpp"
+#include "ark/simulation/startup_world_editing.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
@@ -28,6 +29,8 @@ enum class WorldCommandKind {
     cancel_build_menu,
     confirm_build,
     cancel_build,
+    confirm_edit,
+    cancel_edit,
     open_facility,
     open_human,
     human_action,
@@ -118,6 +121,8 @@ struct WorldCommand {
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::rules::Position anchor{};
+    // Transient selection binding, distinct from the destination anchor.
+    std::optional<simulation::rules::Position> edit_anchor;
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupFacilityPageAction facility_action{
         simulation::StartupFacilityPageAction::confirm};
@@ -181,6 +186,10 @@ class WorldSession {
                                        simulation::StartupVillageActivityAction action,
                                        int selection = 0);
     std::uint64_t open_menu_commerce();
+    // Bind the observed stage/start/instance so a delayed click cannot edit a new selection.
+    std::uint64_t confirm_edit(const WorldState &observed, simulation::rules::Position target,
+                               simulation::rules::FacilityOrientation orientation);
+    std::uint64_t cancel_edit(const WorldState &observed);
     std::uint64_t open_commerce();
     std::uint64_t act_commerce(std::uint64_t page, simulation::StartupCommerceAction action,
                                int selection = 0);

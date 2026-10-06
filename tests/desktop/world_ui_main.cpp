@@ -14,6 +14,7 @@ void world_village_activity();
 void world_commerce();
 void world_facility_items();
 void world_human_render_fixture();
+void render_world_edit_fixture();
 } // namespace ark::test
 
 int main(int argc, char **argv) {
@@ -30,5 +31,6 @@ int main(int argc, char **argv) {
          {"world_village_activity", ark::test::world_village_activity},
          {"world_commerce", ark::test::world_commerce},
          {"world_facility_items", ark::test::world_facility_items},
-         {"world_human_render_fixture", ark::test::world_human_render_fixture}});
+         {"world_human_render_fixture", ark::test::world_human_render_fixture},
+         {"world_edit_render_fixture", ark::test::render_world_edit_fixture}});
 }

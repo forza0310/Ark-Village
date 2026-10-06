@@ -119,6 +119,8 @@ std::string glyphs(const State &s) {
     result += "村办活动开展活动进行中结果季度剩余此活动尚未接入完成获得奖励配置更替领取";
     result += "南瓜商会购买道具出售多谢惠顾持有剩余获得设施使用道具设施强化赠送礼物能力提升商品种类"
               "出售中";
+    result += "道路撤除配置更替从哪里开始铺呢铺到哪里呢撤到哪里移动哪个移动去哪里路铺好了"
+              "选起点选设施中止";
     for (const auto &t : s.rules->tasks)
         result += t.name + t.title;
     for (const auto &i : s.rules->items)
@@ -263,7 +265,8 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
 // purchases and point payments cannot leak into the next capture or into normal gameplay.
 static void run_world_game_capture(const app::LaunchOptions &options,
                                    const std::filesystem::path &assets,
-                                   std::optional<State> *checkpoint = nullptr) {
+                                   std::optional<State> *checkpoint = nullptr,
+                                   WorldManagementInspection *inspection_checkpoint = nullptr) {
     WorldWindow window(options);
     float zoom = options.zoom_percent / 100.F;
     Extent extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
@@ -309,7 +312,22 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     if (inspecting) {
         double next_inspection_draw{};
         WorldTaskInspection task_inspection;
-        begin_management_inspection(state, options.inspect_page, management_inspection);
+        if (checkpoint && *checkpoint && inspection_checkpoint) {
+            management_inspection = *inspection_checkpoint;
+            // A credit catalogue may be opened with less than its 800G quote. A reused
+            // rebuild branch leaves that modal through the real cancel before earning more.
+            if (options.inspect_page == "world-home-rebuilt" &&
+                state.scene.world.world.ai.accounting.funds() <
+                    management_inspection.home_build_quote) {
+                const auto *page = active_page(state);
+                if (!page || simulation::cancel_startup_world_build_menu(state, page->id) !=
+                                 simulation::StartupWorldRuntimeError::none)
+                    throw std::runtime_error("Home suite cannot leave an unaffordable catalogue");
+                management_inspection.home_rebuild_stage = 1;
+            }
+        } else {
+            begin_management_inspection(state, options.inspect_page, management_inspection);
+        }
         begin_human_inspection(state, options.inspect_page, human_inspection);
         bool reached =
             (management_inspection_mode(options.inspect_page) &&
@@ -407,9 +425,12 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
         if (checkpoint && !*checkpoint) {
-            if (options.inspect_page != "world-commerce")
-                throw std::runtime_error("Commerce suite must first capture its natural entry");
+            if (options.inspect_page != "world-commerce" &&
+                options.inspect_page != "world-home-credit")
+                throw std::runtime_error("Inspection suite must first capture its natural entry");
             *checkpoint = state; // Capture before screenshot-only camera/pause changes.
+            if (inspection_checkpoint)
+                *inspection_checkpoint = management_inspection;
         }
         if (human_inspection_mode(options.inspect_page))
             std::cout << "World human inspection: target=" << options.inspect_page
@@ -448,6 +469,27 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                       << " activity_started=" << management_inspection.activity_started
                       << " activity_completed=" << management_inspection.activity_completed
                       << " scene_counter=" << state.scene.scene_counter;
+            if (options.inspect_page.rfind("world-road-", 0) == 0 ||
+                options.inspect_page == "world-demolished")
+                std::cout << " edit_cells=" << management_inspection.edit_cells
+                          << " edit_cash=" << management_inspection.edit_cash_before << '/'
+                          << management_inspection.edit_cash_after
+                          << " edit_random=" << management_inspection.edit_draws_before << '/'
+                          << management_inspection.edit_draws_after
+                          << " edited_old=" << management_inspection.edited_old.value_or(0)
+                          << " edit_completed=" << management_inspection.edit_completed;
+            if (options.inspect_page == "world-home-credit" ||
+                options.inspect_page == "world-home-rebuilt")
+                std::cout << " home_stage=" << management_inspection.home_rebuild_stage
+                          << " home_resident=" << management_inspection.home_resident.value_or(-1)
+                          << " home_credit=" << management_inspection.home_credit_before << '/'
+                          << management_inspection.home_credit_after << '/'
+                          << management_inspection.home_credit_remaining
+                          << " home_quote=" << management_inspection.home_build_quote
+                          << " home_cash=" << management_inspection.home_build_cash_before << '/'
+                          << management_inspection.home_build_cash_after
+                          << " home_random=" << management_inspection.home_build_draws_before << '/'
+                          << management_inspection.home_build_draws_after;
             if (management_inspection.selection && management_inspection.preview_anchor)
                 std::cout << " ghost_visible="
                           << world_build_preview(state, *management_inspection.selection,
@@ -504,10 +546,16 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     WorldSaveMenu save_menu;
     auto generation = publication->generation;
     std::uint64_t discard_interpolation_revision{};
-    if (management_inspection.preview_anchor)
-        management.inspect_placement(*management_inspection.selection,
-                                     *management_inspection.preview_anchor,
-                                     management_inspection.preview_orientation);
+    if (management_inspection.preview_anchor) {
+        if (world_edit_view(*publication->state, {}).active)
+            management.inspect_edit(*publication->state,
+                                    management_inspection.edit_endpoint.value_or(
+                                        *management_inspection.preview_anchor));
+        else
+            management.inspect_placement(*management_inspection.selection,
+                                         *management_inspection.preview_anchor,
+                                         management_inspection.preview_orientation);
+    }
     ui::WorldTaskSelection task_selection;
     std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
@@ -1067,29 +1115,39 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         throw std::runtime_error(publication->error);
 }
 void run_world_game(const app::LaunchOptions &options, const std::filesystem::path &assets) {
-    if (options.inspect_page != "world-commerce-suite") {
+    const bool home = options.inspect_page == "world-home-suite";
+    if (options.inspect_page != "world-commerce-suite" && !home) {
         run_world_game_capture(options, assets);
         return;
     }
     std::optional<State> checkpoint;
+    WorldManagementInspection inspection_checkpoint;
     const std::filesystem::path prefix(options.screenshot);
     const auto started = std::chrono::steady_clock::now();
-    for (const auto *mode : {"world-commerce", "world-commerce-buy", "world-commerce-receipt",
-                             "world-commerce-facilities", "world-commerce-facility-info",
-                             "world-commerce-facility-reward"}) {
+    const std::vector<const char *> modes =
+        home ? std::vector<const char *>{"world-home-credit", "world-home-rebuilt"}
+             : std::vector<const char *>{"world-commerce",
+                                         "world-commerce-buy",
+                                         "world-commerce-receipt",
+                                         "world-commerce-facilities",
+                                         "world-commerce-facility-info",
+                                         "world-commerce-facility-reward"};
+    for (const auto *mode : modes) {
         const auto capture_started = std::chrono::steady_clock::now();
         auto capture = options;
         capture.inspect_page = mode;
         capture.screenshot =
             (prefix.parent_path() / (prefix.stem().string() + "-" + mode + ".png")).string();
-        run_world_game_capture(capture, assets, &checkpoint);
+        run_world_game_capture(capture, assets, &checkpoint,
+                               home ? &inspection_checkpoint : nullptr);
         std::cout << "World suite capture: target=" << mode << " elapsed="
                   << std::chrono::duration<double>(std::chrono::steady_clock::now() -
                                                    capture_started)
                          .count()
                   << '\n';
     }
-    std::cout << "World inspection suite: captures=6 natural_preparations=1 elapsed="
+    std::cout << "World inspection suite: captures=" << modes.size()
+              << " natural_preparations=1 elapsed="
               << std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count()
               << '\n';
 }

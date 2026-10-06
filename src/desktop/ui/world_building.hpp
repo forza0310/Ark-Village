@@ -15,7 +15,11 @@ struct WorldBuildingRow {
     int identity{}; // Definition for raw21; human definition for raw80, never a row index.
     std::string name;
     std::int64_t cost{};
-    WorldBuildGraphic graphic{}; // Empty for human residence rows.
+    WorldBuildGraphic graphic{};                   // Empty for human residence rows.
+    std::optional<int> residence_qualifications{}; // Published H, independent of the gold quote.
+    std::string common_image{}; // Special -1/-2 rows bind PNG indices, never guessed SEB frames.
+    Rectangle image_source{};
+    Vector2 image_offset{};
 };
 struct WorldBuildingView {
     int raw{};

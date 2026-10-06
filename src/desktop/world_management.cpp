@@ -48,7 +48,8 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         }
         if (result->outcome == app::WorldCommandOutcome::rejected)
             feedback_ = refusal(result->build_denial);
-        if (result->created)
+        if (result->created || (result->kind == app::WorldCommandKind::confirm_edit &&
+                                result->outcome == app::WorldCommandOutcome::applied))
             anchor_.reset();
         pending_ = 0;
     } else if (frame.last_command_serial >= pending_) {
@@ -270,14 +271,48 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
 bool WorldManagement::input_scene(const State &state, const WorldCameraView &view, Extent extent,
                                   std::optional<Vector2> mouse, bool click, float zoom,
                                   bool blocked, app::WorldSession &session) {
-    const bool placing = state.scene.scene_state == 1 && state.build_definition.has_value();
-    if (definition_ != state.build_definition || !placing) {
+    const bool editing = world_edit_view(state, {}).active;
+    const bool placing =
+        state.scene.scene_state == 1 && state.build_mode == 0 && state.build_definition.has_value();
+    if (definition_ != state.build_definition || edit_mode_ != state.build_mode ||
+        (!placing && !editing)) {
         definition_ = state.build_definition;
+        edit_mode_ = state.build_mode;
         anchor_.reset();
         orientation_ = simulation::rules::FacilityOrientation::first;
+        if (editing && state.build_mode == 7 && state.build_moving_facility)
+            orientation_ = state.scene.world.world.facilities.at(*state.build_moving_facility)
+                               .placement.orientation;
     }
     if (blocked || pending())
-        return placing;
+        return placing || editing;
+    if (editing) {
+        const auto intent = world_edit_input(world_edit_view(state, anchor_), extent,
+                                             {click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
+                                              IsKeyPressed(KEY_ESCAPE), IsKeyPressed(KEY_R)},
+                                             false);
+        if (!intent)
+            return true;
+        switch (intent->action) {
+        case WorldBuildAction::cancel:
+            queued(session.cancel_edit(state));
+            break;
+        case WorldBuildAction::choose:
+            anchor_ = world_pick_cell(state, view, *intent->point, zoom);
+            feedback_.clear();
+            break;
+        case WorldBuildAction::rotate:
+            orientation_ = orientation_ == simulation::rules::FacilityOrientation::first
+                               ? simulation::rules::FacilityOrientation::second
+                               : simulation::rules::FacilityOrientation::first;
+            break;
+        case WorldBuildAction::confirm:
+            if (anchor_)
+                queued(session.confirm_edit(state, *anchor_, orientation_));
+            break;
+        }
+        return true;
+    }
     if (placing) {
         const auto intent =
             world_build_input(world_build_controls(extent),
@@ -354,13 +389,16 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
 void WorldManagement::draw_footprint(const State &state, const WorldCameraView &view, Extent extent,
                                      std::optional<Vector2> mouse, float zoom,
                                      Sprites &sprites) const {
-    if (state.scene.scene_state != 1 || !state.build_definition)
+    if (state.scene.scene_state != 1)
         return;
     const auto cell = anchor_ ? anchor_
                       : hit(mouse, ui::Layout(extent).scene)
                           ? world_pick_cell(state, view, *mouse, zoom)
                           : std::nullopt;
-    if (cell)
+    const auto edit = world_edit_view(state, cell);
+    if (edit.active)
+        draw_world_edit_preview(edit, view, zoom, sprites);
+    if (cell && state.build_definition && (state.build_mode == 0 || state.build_mode == 7))
         draw_world_build_preview(
             world_build_preview(state, *state.build_definition, *cell, orientation_), view, zoom,
             sprites);
@@ -370,11 +408,37 @@ void WorldManagement::inspect_placement(int definition, simulation::rules::Posit
     definition_ = definition;
     anchor_ = anchor;
     orientation_ = orientation;
+    edit_mode_ = 0;
+}
+void WorldManagement::inspect_edit(const State &state, simulation::rules::Position position) {
+    definition_ = state.build_definition;
+    anchor_ = position;
+    edit_mode_ = state.build_mode;
+    if (state.build_moving_facility)
+        orientation_ = state.scene.world.world.facilities.at(*state.build_moving_facility)
+                           .placement.orientation;
 }
 void WorldManagement::draw_placement(const State &state, const WorldCameraView &view, Extent extent,
                                      std::optional<Vector2> mouse, float zoom, const ui::Skin &skin,
                                      bool enabled) const {
-    if (state.scene.scene_state != 1 || !state.build_definition)
+    if (state.scene.scene_state != 1)
+        return;
+    auto edit = world_edit_view(state, anchor_);
+    if (edit.active) {
+        if (state.build_feedback_counter > 0)
+            edit.caption = state.build_feedback_message;
+        else if ((state.build_mode == 1 || state.build_mode == 2) && state.build_definition) {
+            if (const auto quote =
+                    simulation::startup_world_build_quote(state, *state.build_definition))
+                edit.caption += "  " + std::to_string(quote->construction_cost) + "G/格";
+        } else if (state.build_mode == 6 || state.build_mode == 7) {
+            edit.caption += "  300G";
+        }
+        // A hovering preview is independent of the separately locked confirmation cell.
+        draw_world_edit_controls(edit, extent, skin, enabled && !pending(), feedback_);
+        return;
+    }
+    if (!state.build_definition)
         return;
     const auto cell = anchor_ ? anchor_
                       : hit(mouse, ui::Layout(extent).scene)

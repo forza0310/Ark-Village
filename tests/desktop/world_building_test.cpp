@@ -4,6 +4,7 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_building.hpp"
 #include "world_build_placement.hpp"
+#include "world_editing.hpp"
 #include <algorithm>
 #include <utility>
 
@@ -98,11 +99,20 @@ void world_building() {
     const int other = catalogue.facilities.at(5).id;
     state.build_page_catalogs[page.id][0] = {other, definition, other};
     state.build_page_catalogs[page.id][2] = {definition};
+    state.facility_presence.at(18) = 0; // Isolate cached building order from road availability.
+    state.scripts.user_flags &= ~32U;
     auto view = ui::world_building_view(state, page);
-    check(view.page == 903 && view.initialized && view.catalogs[0].size() == 3 &&
+    check(view.page == 903 && view.initialized && view.catalogs[0].size() == 4 &&
               view.catalogs[0][0].identity == other && view.catalogs[0][1].identity == definition &&
               view.catalogs[0][2].identity == other && view.catalogs[1].empty(),
           "Build tabs preserve published page order, duplicates and actual definition identities");
+    check(view.catalogs[0].back().identity == -1 && view.catalogs[0].back().cost == 0 &&
+              view.catalogs[0].back().common_image == "destruct00.png" &&
+              view.catalogs[0].back().image_source.width == 60 &&
+              view.catalogs[0].back().image_source.height == 29 &&
+              view.catalogs[0].back().image_offset.x == 4 &&
+              view.catalogs[0].back().image_offset.y == 3,
+          "Removal is an independent stable identity with its published PNG crop and zero quote");
     check(view.catalogs[0][1].cost ==
               sim::startup_world_build_quote(state, definition)->construction_cost,
           "Displayed cost uses current source economy rather than definition's initial cost");
@@ -159,6 +169,58 @@ void world_building() {
     check(road_first.frames.size() == 1 && road_first.frames[0].first == 11 &&
               road_second.frames.size() == 1 && road_second.frames[0].first == 1,
           "Source road candidate uses masks11/1 rather than regular building fragment0/1");
+    {
+        auto editing = state;
+        editing.facility_presence.at(18) = 2;
+        editing.scripts.user_flags |= 32U;
+        const auto cache = editing.build_page_catalogs;
+        const auto cash = editing.scene.world.world.ai.accounting.funds();
+        const auto random = editing.scene.random.draws();
+        auto catalogue_view = ui::world_building_view(editing, page);
+        const auto &first_tab = catalogue_view.catalogs[0];
+        const int moving_row = static_cast<int>(first_tab.size()) - 1;
+        check(first_tab.size() == 6 && first_tab.front().identity == 18 &&
+                  first_tab[1].identity == other && first_tab[2].identity == definition &&
+                  first_tab[first_tab.size() - 2].identity == -1 && first_tab.back().identity == -2,
+              "Desktop road/special rows augment base catalogue while preserving building order");
+        check(first_tab.back().cost == 300 && first_tab.back().common_image == "moveTenant.png" &&
+                  first_tab.back().image_source.width == 63 &&
+                  first_tab.back().image_source.height == 32 &&
+                  first_tab.back().image_offset.x == 1 && first_tab.back().image_offset.y == 0 &&
+                  first_tab.front().cost ==
+                      sim::startup_world_build_quote(editing, 18)->construction_cost,
+              "Moving uses its actual fixed quote/PNG and road uses current economy quote");
+        editing.build_page_catalogs[page.id][0] = {25};
+        editing.facility_free_builds.at(25) = 3;
+        catalogue_view = ui::world_building_view(editing, page);
+        const auto house =
+            std::find_if(catalogue_view.catalogs[0].begin(), catalogue_view.catalogs[0].end(),
+                         [](const auto &row) { return row.identity == 25; });
+        check(house != catalogue_view.catalogs[0].end() && house->residence_qualifications == 3 &&
+                  house->cost == sim::startup_world_build_quote(editing, 25)->construction_cost,
+              "Residential H is displayed separately and does not erase the real gold price");
+        editing.build_page_catalogs = cache;
+        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+            const auto geometry = ui::world_building_layout(extent);
+            ui::WorldBuildingSelection cursor{0, moving_row, 0};
+            ui::WorldBuildingInput request;
+            request.enter = true;
+            const auto action = ui::world_building_input(ui::world_building_view(editing, page),
+                                                         geometry, cursor, request, false);
+            check(
+                action && action->selection == -2 && action->action == Action::select_build,
+                "Special catalogue rows keep stable negative identities through responsive input");
+        }
+        check(editing.build_page_catalogs == cache && editing.scene.random.draws() == random &&
+                  editing.scene.world.world.ai.accounting.funds() == cash,
+              "Catalogue augmentation never rewrites cache, consumes random or spends money");
+        editing.facility_presence.at(18) = 0;
+        editing.scripts.user_flags &= ~32U;
+        catalogue_view = ui::world_building_view(editing, page);
+        check(catalogue_view.catalogs[0].size() == 4 &&
+                  catalogue_view.catalogs[0].back().identity == -1,
+              "Road absence and flag32 independently gate road and moving rows");
+    }
     for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
                               desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const auto layout = ui::world_building_layout(extent);
@@ -439,6 +501,72 @@ void world_building() {
     }
 
     // Picking uses independently specified projected ground centres across pan and zoom.
+    {
+        auto editing = state;
+        editing.scene.scene_state = 1;
+        editing.build_mode = 2;
+        editing.build_anchor = rules::Position{8, 8};
+        const auto random = editing.scene.random.draws();
+        const auto cash = editing.scene.world.world.ai.accounting.funds();
+        auto &tiles = editing.scene.world.world.map;
+        for (int y = 8; y <= 10; ++y)
+            tiles.cells.at(static_cast<std::size_t>(y * tiles.width + 8)).legacy_state = y - 7;
+        auto edit = desktop::world_edit_view(editing, rules::Position{10, 10});
+        check(edit.active && edit.mode == 2 && edit.segment.size() == 3 && edit.segment[0].x == 8 &&
+                  edit.segment[0].y == 8 && edit.segment[2].x == 8 && edit.segment[2].y == 10 &&
+                  edit.road_preview.size() == 2 && edit.road_preview[0].y == 9 &&
+                  edit.road_preview[1].y == 10 && edit.current_cell->x == 10 &&
+                  edit.current_cell->y == 10 && edit.cancel_label == "中止" &&
+                  edit.caption == "铺到哪里呢" && !edit.rotate_allowed,
+              "Road tie projects the vertical segment, skips state1 alone and preserves raw cursor "
+              "T");
+        edit = desktop::world_edit_view(editing, rules::Position{11, 9});
+        check(
+            edit.segment.size() == 4 && edit.segment[3].x == 11 && edit.segment[3].y == 8 &&
+                edit.current_cell->y == 9,
+            "Longer horizontal axis retains source ascending order without snapping current cell");
+        check(!desktop::world_edit_view(editing, rules::Position{-1, 8}).current_cell &&
+                  desktop::world_edit_view(editing, std::nullopt).segment.empty(),
+              "Missing/outside pointer produces no stale road or cursor preview");
+        for (const int mode : {1, 3, 5, 6, 7}) {
+            editing.build_mode = mode;
+            edit = desktop::world_edit_view(editing, rules::Position{10, 10});
+            check(edit.active && edit.road_preview.empty() &&
+                      edit.cancel_label == (mode == 5 || mode == 7 ? "中止" : "返回"),
+                  "Editing modes expose source cancellation phase without invented road graphics");
+        }
+        editing.build_mode = 7;
+        editing.build_definition = 2;
+        for (const bool rotate : {false, true}) {
+            const auto flags = catalogue.facilities.at(2).flags;
+            catalogue.facilities.at(2).flags = rotate ? flags | 32U : flags & ~32U;
+            edit = desktop::world_edit_view(editing, rules::Position{10, 10});
+            check(edit.rotate_allowed == rotate,
+                  "Moving rotation control reads actual selected definition flag32");
+            catalogue.facilities.at(2).flags = flags;
+        }
+        editing.build_mode = 2;
+        edit = desktop::world_edit_view(editing, rules::Position{10, 10});
+        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+            desktop::WorldBuildInput request;
+            request.click = Vector2{extent.width / 2.F, 90};
+            request.enter = true;
+            const auto action = desktop::world_edit_input(edit, extent, request, false);
+            check(action && action->action == desktop::WorldBuildAction::choose && action->point,
+                  "Editing selection plus Enter cannot submit the previous locked endpoint");
+            request = {};
+            request.rotate = true;
+            check(!desktop::world_edit_input(edit, extent, request, false),
+                  "Road mode rejects a hidden rotate action");
+            request.enter = true;
+            check(!desktop::world_edit_input(edit, extent, request, true),
+                  "Pending editing input remains blocked through shared input arbitration");
+        }
+        check(editing.scene.random.draws() == random &&
+                  editing.scene.world.world.ai.accounting.funds() == cash &&
+                  editing.build_anchor->x == 8 && editing.build_anchor->y == 8,
+              "Editing projection and input never mutate canonical anchor, random or funds");
+    }
     for (float zoom : {.5F, 1.F, 2.F}) {
         desktop::WorldCameraView camera{{23.5F, -17.F}, {3, 19, 539, 299}};
         for (const rules::Position cell : {rules::Position{2, 3}, {11, 14}, {22, 22}}) {
@@ -533,6 +661,23 @@ void world_building() {
         desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
     check(preview.denial == Denial::insufficient_funds && preview.graphic_visible,
           "Unaffordable source candidate remains visible during the visible logical phase");
+    state.build_mode = 7;
+    const auto moving =
+        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    check(funds >= 300 && moving.valid() && moving.cost == 300 && moving.graphic_visible &&
+              moving.cells.size() == 4 && moving.graphic.frames.size() == 4 &&
+              state.scene.random.draws() == draws &&
+              state.scene.world.world.ai.accounting.funds() == funds,
+          "Moving to a free destination quotes fixed300G with the full ghost, independent of "
+          "unaffordable fresh construction and without consuming cash/random");
+    map.cells.at(9 * map.width + 7).legacy_state = 10;
+    const auto blocked_move =
+        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    check(blocked_move.denial == Denial::occupied && blocked_move.graphic_visible &&
+              blocked_move.graphic.frames.size() == 4,
+          "Moving preview keeps nonoverlap checks and full ghost despite the fixed fee");
+    map.cells.at(9 * map.width + 7).legacy_state = 0;
+    state.build_mode = 0;
     catalogue.facilities.at(2).economy.construction_cost = 0;
     check(desktop::world_build_preview(state, definition, {1, 8}, rules::FacilityOrientation::first)
                       .denial == Denial::outside_town &&

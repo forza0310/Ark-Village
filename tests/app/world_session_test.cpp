@@ -555,5 +555,6 @@ int main() {
     village_command_transactions();
     commerce_command_transactions();
     facility_item_command_transactions();
+    editing_command_transactions();
     std::cout << "PASS world session " << checks << " checks\n";
 }

@@ -127,7 +127,8 @@ if(ARK_BUILD_DESKTOP)
         SOURCES tests/desktop/world_ui_main.cpp tests/desktop/world_panels_test.cpp
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
-            tests/desktop/world_building_test.cpp src/desktop/ui/world_panels.cpp
+            tests/desktop/world_building_test.cpp tests/desktop/world_building_render_fixture.cpp
+            src/desktop/ui/world_panels.cpp
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
             tests/desktop/world_village_activity_test.cpp src/desktop/ui/world_village_activity.cpp
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
@@ -137,6 +138,10 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
             src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
             src/desktop/world_build_placement.cpp src/desktop/world_human_inspection.cpp
+            src/desktop/world_editing.cpp
+            src/desktop/world_scene.cpp src/desktop/world_overlay_render.cpp
+            src/desktop/world_rank.cpp src/desktop/character_status.cpp
+            src/desktop/character_visibility.cpp
             src/desktop/world_task_inspection.cpp
             src/desktop/world_save_menu.cpp
         LIBRARIES ark_world_ui_test_support ark_world_session)

@@ -108,6 +108,22 @@ reference DLL SHA-256 `bb0da82464cf1d8cdf0f5a89c90a3b0f02b18982945738631030624a6
 同进程值复制、已列观测字段及随机未来样本一致，不等于全字段codec或跨进程认证；覆盖与反例见
 [探针报告](work/persistence-replay-analysis/runtime/REPORT.md)。临时可执行文件验后清理，源／日志保留。
 
+后续实施期另作一次有界Steam存储补证，未覆盖上述51方法证据文件。仍用同一DLL／metadata及iced-x861.21.0，
+独立输出13＋5个局部方法和6个字符串使用槽；前组方法区间上限64KiB、后组16KiB，输入哈希重新核对一致，未执行原程序。
+结论与VA／RVA／文件偏移见[存储局部报告](work/persistence-replay-analysis/exe/STORAGE_LOCAL.md)：
+初始化setter实际写false、media4根Storage与条件路径已定位，配置加载后的实际USE_STEAM／ROOT_FOLDER仍未知。
+
+| 新增输出 | SHA-256 |
+| --- | --- |
+| `exe/storage-local-disassembly.json` | `8968b875830fa074fb09d2b57ce9a828d5785e81385a3cb8fbbba43707f4f398` |
+| `exe/storage-tail-disassembly.json` | `133d47e461e1f5338af3e86acd370ae958780362067d747c36675a578d7b7066` |
+| `exe/storage-local-strings.json` | `8c7e362b16bbf15b0b3d726853fd7e6113555e3fa5d96c5be4aa71cda89c0f57` |
+
+维护文件的字段身份由自有C++声明生成，不来自反编译实现。当前92结构／11枚举、私有包装字段及别名清单见
+[codec字段清单](prototype/src/startup_world_codec_fields.json)，SHA-256为
+`0500cff0cd937c6967836c6bf7c594ff43dd64c23f408e7ea9188e4fc3423403`。
+数据集身份另外覆盖15份已发布原表／脚本／新局输入；正常文件、测试控制器与原存档的契约分开，见[模块说明](prototype/PERSISTENCE.md)。
+
 ## 共同世界接管与运行证据
 
 2026-10-06 Windows恢复：用户补回`maoxianmigongcun.apk`，SHA-256与本页固定输入完全相同。

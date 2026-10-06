@@ -25,10 +25,12 @@ Windows六套420项标准与四项长测共424次CTest通过，两个有界窗�
 随后村办类型3第一次自然扩张／新区经营、特殊道路引用组合及同轨迹性能优化已收口：
 单Release的123项标准与4条专项长测通过，两个既有有界窗口通过；同核3000步CPU均值减少22.4%，完整扩张109条里程碑保持一致。
 原[村办归档](dungeon_village_1/stages/in-progress/village-activity/README.md)仅保留历史草稿。
-[存档分析](dungeon_village_1/rules/PERSISTENCE.md)独立交付；长期审计历史保留及正常文件存取仍未实现。
+[存档分析](dungeon_village_1/rules/PERSISTENCE.md)独立交付；原版来源与维护恢复政策分开。
 用户已将正常存读档持续可用、可校验中途回放快照及中后期性能采样列为必要后续工作，
 用于减少每批从新局重复长测；2026-10-07已完成来源补证与有界短探针，形成[具体设计](dungeon_village_1/stages/PERSISTENCE_REPLAY.md)。
-同进程Session分叉可重复，但日历轮内检查点不能直接续帧；文件codec／跨进程恢复尚未实现。
+同进程Session分叉可重复，但日历轮内检查点不能直接续帧；用户随后授权继续实施，
+现已完成[维护文件codec／跨进程恢复](dungeon_village_1/prototype/PERSISTENCE.md)及集中验收：127项标准通过，
+修后受影响检查通过；38000帧快照三路尾段一致，完整生成1101秒、重复282帧尾段约15.3秒，详情见验证入口。
 构建缓存仅复用项目内[研究work目录](dungeon_village_1/work/)，阶段结束收齐进程并清理不再需要的缓存。
 产品编码由另一智能体管理，本目录不代写产品阶段状态。
 

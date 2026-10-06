@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.16)
 project(dungeon_village_prototype LANGUAGES CXX)
 
 include(../cmake/ResearchLibraries.cmake)
+include(../cmake/ResearchHash.cmake)
 
 include(CTest)
 
@@ -46,7 +47,20 @@ add_custom_command(OUTPUT "${STARTUP_WORLD_CPP}"
             ../data/scripts/original/events.txt ../data/scripts/original/talk.txt
             ../data/scripts/original/news.txt ../data/scripts/original/evtmsgs.txt
             ../data/scripts/original/popularBonus.txt VERBATIM)
+set(PERSISTENCE_IDENTITY_CPP "${CMAKE_CURRENT_BINARY_DIR}/persistence_identity.cpp")
+add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
+    COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_persistence_identity.mjs"
+            "${CMAKE_CURRENT_SOURCE_DIR}/.." "${PERSISTENCE_IDENTITY_CPP}"
+    DEPENDS scripts/compile_persistence_identity.mjs
+            ../data/startup/MAP.json ../data/startup/STATE.json ../data/startup/TABLES.json
+            ../data/original/tenantData.txt ../data/world/monster.txt ../data/world/questData.txt
+            ../data/world/armour.txt ../data/world/accessory.txt ../data/world/item.txt
+            ../data/world/asEventData.txt ../data/scripts/original/events.txt
+            ../data/scripts/original/talk.txt ../data/scripts/original/news.txt
+            ../data/scripts/original/evtmsgs.txt ../data/scripts/original/popularBonus.txt VERBATIM)
 add_library(dungeon_village_startup_world src/startup_world_projection.cpp
+    src/startup_world_codec.cpp src/startup_world_restore_validation.cpp
+    src/startup_world_persistence.cpp src/startup_world_file_io.cpp "${PERSISTENCE_IDENTITY_CPP}"
     src/startup_world_routes.cpp src/startup_world_runtime.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
@@ -59,6 +73,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_facility_items.cpp src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
 dungeon_village_library(dungeon_village_startup_world)
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
+target_link_libraries(dungeon_village_startup_world PRIVATE dungeon_village_hash)
 target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
@@ -72,6 +87,33 @@ foreach(module IN ITEMS startup_world_projection startup_world_routes startup_wo
         target_compile_options(dungeon_village_${module}_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endif()
 endforeach()
+target_sources(dungeon_village_startup_world_continuous_tests PRIVATE tests/startup_world_replay_driver.cpp)
+# 文件格式／平台失败隔离使用一个集中套件，业务黄金断言仍属于原持续世界套件。
+add_executable(dungeon_village_startup_world_persistence_tests tests/startup_world_persistence_test.cpp
+    tests/startup_world_codec_checks.cpp tests/startup_world_restore_checks.cpp)
+target_include_directories(dungeon_village_startup_world_persistence_tests PRIVATE src)
+target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_world dungeon_village_hash)
+target_compile_features(dungeon_village_startup_world_persistence_tests PRIVATE cxx_std_17)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_startup_world_persistence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME dungeon_village_prototype.startup_world_persistence
+    COMMAND dungeon_village_startup_world_persistence_tests "${CMAKE_CURRENT_BINARY_DIR}/persistence-tests")
+add_test(NAME dungeon_village_prototype.startup_world_replay_driver
+    COMMAND dungeon_village_startup_world_continuous_tests replay_driver_contract)
+add_test(NAME dungeon_village_prototype.startup_world_replay_process
+    COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/replay_file_test.mjs"
+        --exe "$<TARGET_FILE:dungeon_village_startup_world_continuous_tests>"
+        --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
+set_tests_properties(dungeon_village_prototype.startup_world_replay_process PROPERTIES TIMEOUT 360)
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # 重建字段AST检查覆盖；新成员不能只改运行时而静默漏出存档。
+    add_test(NAME dungeon_village_prototype.startup_world_codec_coverage
+        COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/generate_owner_codec.mjs"
+            --root "${CMAKE_CURRENT_SOURCE_DIR}/.."
+            --ast "${CMAKE_CURRENT_BINARY_DIR}/owner-codec-coverage.json"
+            --compiler "${CMAKE_CXX_COMPILER}" --check)
+endif()
 add_executable(dungeon_village_startup_world_visuals_tests tests/startup_world_visuals_test.cpp
     ../tools/src/sprite.cpp ../tools/src/table.cpp)
 target_include_directories(dungeon_village_startup_world_visuals_tests PRIVATE ../tools/include)

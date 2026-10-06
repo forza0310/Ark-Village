@@ -3,13 +3,17 @@
 #include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_reference/world_arrivals.hpp"
+#include "startup_world_replay_driver.hpp"
 
 #include <algorithm>
 #include <charconv>
+#include <cctype>
+#include <fstream>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -898,33 +902,141 @@ std::array<std::uint64_t, 2> natural_editing_commands(StartupWorldRuntimeSession
 
 // 明确自动玩家策略：建设面包房、实际开展活动、点击自然升级提示，再申请月度晋级。
 // 仅调用Session玩家命令；不写资金、点数、人气、日期、人物、设施使用数或rank。
-void natural_progression(std::uint64_t seed, int speed, bool expansion = false) {
+void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
+                         const test::StartupWorldReplayOptions &options = {}) {
     StartupSession initial;
     StartupWorldRuntimeSession session(initial.state(),
                                        ref::WorldRandomStream::from_java_seed(seed));
     session.set_speed(speed);
+    constexpr const char *controller_id = "natural-progression-expansion-v1";
+    test::StartupWorldReplayDriver driver;
+    driver.seed = seed;
+    driver.speed = speed;
+    driver.expansion = expansion;
+    std::vector<StartupWorldOpaqueSection> retained_extensions;
+    if (!options.load_file.empty()) {
+        auto loaded = load_startup_world_file(options.load_file, *session.state().rules,
+                                             StartupWorldSavePurpose::replay, controller_id);
+        if (!loaded.snapshot)
+            throw std::runtime_error("natural replay load failed: " + loaded.error);
+        auto candidate = test::decode_startup_world_replay_driver(
+            loaded.snapshot->metadata.controller_state);
+        if (loaded.snapshot->metadata.next_frame != static_cast<std::uint64_t>(candidate.next_frame) ||
+            candidate.expansion != expansion ||
+            (options.seed_explicit && candidate.seed != seed) ||
+            (options.speed_explicit && candidate.speed != speed))
+            throw std::invalid_argument("natural replay controller or frame does not match request");
+        test::validate_startup_world_replay_driver_world(candidate, loaded.snapshot->session.state());
+        // Driver和世界均已在私有候选上校验；安装前不改自动玩家或当前Session。
+        driver = std::move(candidate);
+        session = std::move(loaded.snapshot->session);
+        retained_extensions = std::move(loaded.snapshot->metadata.extensions);
+        seed = driver.seed;
+        speed = driver.speed;
+        checks = driver.checks;
+    }
+    const int frame_limit = expansion ? 240000 : 180000;
+    test::validate_startup_world_replay_options(options, driver.next_frame, frame_limit);
+    if (driver.terminal)
+        throw std::invalid_argument("natural replay snapshot already completed its scenario");
+    std::ofstream trace;
+    if (!options.trace_file.empty()) {
+        trace.open(options.trace_file, std::ios::binary | std::ios::trunc);
+        if (!trace) throw std::runtime_error("cannot open natural replay trace");
+    }
+    bool saved{};
+    const auto save = [&](const std::filesystem::path &file) {
+        StartupWorldSaveMetadata metadata;
+        metadata.purpose = StartupWorldSavePurpose::replay;
+        metadata.producer_revision = options.producer_revision;
+        metadata.controller_id = controller_id;
+        metadata.next_frame = static_cast<std::uint64_t>(driver.next_frame);
+        metadata.controller_state = test::encode_startup_world_replay_driver(driver);
+        metadata.extensions = retained_extensions;
+        const auto result = save_startup_world_file(file, session, metadata);
+        if (!result.ok) throw std::runtime_error("natural replay save failed: " + result.error);
+    };
+    // 轮末唯一检查点：更新、该轮全部玩家命令、声音领取和原验收断言都已完成。
+    const auto round_boundary = [&](int frame) {
+        driver.next_frame = frame + 1;
+        driver.checks = checks;
+        if (!options.trace_file.empty() && frame >= options.trace_from.value_or(0)) {
+            const auto bytes = test::encode_startup_world_replay_driver(driver);
+            constexpr const char *hex = "0123456789abcdef";
+            std::string controller_bytes;
+            controller_bytes.reserve(bytes.size() * 2);
+            for (const auto byte : bytes) {
+                controller_bytes.push_back(hex[byte >> 4]);
+                controller_bytes.push_back(hex[byte & 15]);
+            }
+            trace << frame << ' ' << startup_world_session_digest(session) << ' '
+                  << controller_bytes << '\n';
+            if (!trace) throw std::runtime_error("cannot write natural replay trace");
+        }
+        if (options.save_at && frame == *options.save_at) {
+            save(options.save_file);
+            saved = true;
+            std::cout << "natural replay saved next_frame=" << driver.next_frame << ' '
+                      << snapshot(session.state(), frame) << std::endl;
+        }
+        if (test::startup_world_periodic_snapshot_due(options, frame)) {
+            const auto directory = std::filesystem::path(options.save_directory);
+            std::filesystem::create_directories(directory);
+            const auto target = directory / ("prefix-" + std::to_string(frame) + ".awr");
+            // staging目录独占，发布用硬链接create-only；竞态也不能覆盖已有有效证据。
+            const auto staging = std::filesystem::path(target.string() + ".staging");
+            if (std::filesystem::exists(target) || !std::filesystem::create_directory(staging))
+                throw std::runtime_error("periodic snapshot target or staging already exists");
+            const auto staged_file = staging / "snapshot.awr";
+            const auto cleanup = [&] {
+                std::error_code ignored;
+                std::filesystem::remove(staged_file, ignored);
+                std::filesystem::remove(staging, ignored);
+            };
+            try {
+                save(staged_file);
+                std::filesystem::create_hard_link(staged_file, target);
+            } catch (...) { cleanup(); throw; }
+            cleanup();
+            std::cout << "natural replay periodic saved next_frame=" << driver.next_frame << ' '
+                      << snapshot(session.state(), frame) << std::endl;
+        }
+        return options.stop_at && frame == *options.stop_at;
+    };
     using E = StartupWorldRuntimeError;
     using A = StartupVillageActivityAction;
-    std::optional<std::uint64_t> bakery;
-    std::set<int> upgraded;
-    std::set<std::uint64_t> seen_upgrades;
-    int last_month = -1, promoted_month = -1, unlocked_month = -1;
-    std::int64_t unlocked_income{};
-    int edited_month = -1;
-    std::int64_t edited_income{};
-    std::array<std::uint64_t, 2> edited_retired{};
-    bool progression_complete{};
-    int expanded_month = -1, expanded_road_month = -1;
-    std::int64_t expanded_income{};
-    std::optional<ref::Position> expanded_road;
-    int expanded_road_definition = -1;
-    std::size_t sounds{}, peak_sounds{}, peak_payloads{}, peak_pages{}, peak_effects{},
-        peak_actors{}, peak_cash{}, peak_tasks{};
-    std::size_t peak_retired_actors{}, peak_retired_encounters{};
-    int next_activity_attempt{}, completed{}, unlocked_completed{};
-    int next_task_month{};
-    std::optional<std::uint64_t> previous_task;
-    int observed_frame{};
+    auto &bakery = driver.bakery;
+    auto &upgraded = driver.upgraded;
+    auto &seen_upgrades = driver.seen_upgrades;
+    auto &last_month = driver.last_month;
+    auto &promoted_month = driver.promoted_month;
+    auto &unlocked_month = driver.unlocked_month;
+    auto &unlocked_income = driver.unlocked_income;
+    auto &edited_month = driver.edited_month;
+    auto &edited_income = driver.edited_income;
+    auto &edited_retired = driver.edited_retired;
+    auto &progression_complete = driver.progression_complete;
+    auto &expanded_month = driver.expanded_month;
+    auto &expanded_road_month = driver.expanded_road_month;
+    auto &expanded_income = driver.expanded_income;
+    auto &expanded_road = driver.expanded_road;
+    auto &expanded_road_definition = driver.expanded_road_definition;
+    auto &sounds = driver.sounds;
+    auto &peak_sounds = driver.peak_sounds;
+    auto &peak_payloads = driver.peak_payloads;
+    auto &peak_pages = driver.peak_pages;
+    auto &peak_effects = driver.peak_effects;
+    auto &peak_actors = driver.peak_actors;
+    auto &peak_cash = driver.peak_cash;
+    auto &peak_tasks = driver.peak_tasks;
+    auto &peak_retired_actors = driver.peak_retired_actors;
+    auto &peak_retired_encounters = driver.peak_retired_encounters;
+    auto &next_activity_attempt = driver.next_activity_attempt;
+    auto &completed = driver.completed;
+    auto &unlocked_completed = driver.unlocked_completed;
+    auto &next_task_month = driver.next_task_month;
+    auto &previous_task = driver.previous_task;
+    auto &observed_frame = driver.observed_frame;
     const auto require = [&](E error, const char *label) {
         if (error != E::none)
             throw std::runtime_error(
@@ -946,13 +1058,13 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false) 
     const auto expansion_activity = std::find_if(session.state().rules->activities.begin(),
                                                  session.state().rules->activities.end(),
                                                  [](const auto &a) { return a.identity == 25; });
-    if (expansion)
+    if (expansion && options.load_file.empty())
         check(expansion_activity != session.state().rules->activities.end(),
               "fixed activity table contains original village expansion25");
     const int expansion_cost = expansion ? expansion_activity->parameters[4] : 0;
     // 扩张在原晋级/编辑完整前缀之后继续真实经营；只延长该可选模式的有限保护。
     const int limit = expansion ? 240000 : 180000;
-    for (int frame = 0; frame < limit; ++frame) {
+    for (int frame = driver.next_frame; frame < limit; ++frame) {
         observed_frame = frame;
         const auto step = session.update();
         if (!step.candidate)
@@ -1326,13 +1438,15 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false) 
                       << " checkpoints=" << session.checkpoints().size() << ' '
                       << snapshot(s, frame) << '\n';
             if (!expansion)
-                return;
-            // 原模式的全部断言和终点先完成；可选尾段从下一帧才改变玩家命令。
-            if (seed == 1 && speed == 0)
-                check(frame == 38282 && s.scene.world.world.ai.accounting.funds() == 23388 &&
-                          s.scene.random.draws() == 322697,
-                      "expansion retains the accepted first-star/editing golden prefix");
-            progression_complete = true;
+                driver.terminal = true;
+            else {
+                // 原模式的全部断言和终点先完成；可选尾段从下一帧才改变玩家命令。
+                if (seed == 1 && speed == 0)
+                    check(frame == 38282 && s.scene.world.world.ai.accounting.funds() == 23388 &&
+                              s.scene.random.draws() == 322697,
+                          "expansion retains the accepted first-star/editing golden prefix");
+                progression_complete = true;
+            }
         }
         if (expansion_tail && expanded_road_month >= 0 && month >= expanded_road_month + 2 &&
             s.scene.calendar.units >= 27 && top_page(s) &&
@@ -1362,11 +1476,192 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false) 
                       << " peak_tasks=" << peak_tasks
                       << " checkpoints=" << session.checkpoints().size() << ' '
                       << snapshot(s, frame) << '\n';
+            driver.terminal = true;
+        }
+        const bool stopped = round_boundary(frame);
+        if (driver.terminal || stopped) {
+            if (!options.save_file.empty() && !saved)
+                throw std::runtime_error("natural scenario ended before requested snapshot frame");
+            if (trace.is_open()) {
+                trace.flush();
+                if (!trace) throw std::runtime_error("cannot flush natural replay trace");
+            }
+            if (stopped && !driver.terminal)
+                std::cout << "natural replay bounded prefix next_frame=" << driver.next_frame
+                          << ' ' << snapshot(session.state(), frame) << std::endl;
             return;
         }
     }
     throw std::runtime_error("natural progression limit reached " +
                              snapshot(session.state(), limit));
+}
+
+// 同一continuous套件中的控制器协议边界；仅显式模式执行，不增加自然黄金轨迹checks。
+void replay_driver_contract() {
+    using D = test::StartupWorldReplayDriver;
+    D d;
+    d.seed = 123;
+    d.expansion = true;
+    d.speed = 1;
+    d.next_frame = 1234;
+    d.observed_frame = 1233;
+    d.checks = 5678;
+    d.bakery = 101;
+    d.upgraded = {28, 35};
+    d.seen_upgrades = {201, 202};
+    d.last_month = 15;
+    d.promoted_month = 11;
+    d.unlocked_month = 12;
+    d.unlocked_income = 301;
+    d.edited_month = 13;
+    d.edited_income = 401;
+    d.edited_retired = {501, 502};
+    d.progression_complete = true;
+    d.expanded_month = 14;
+    d.expanded_road_month = 15;
+    d.expanded_income = 601;
+    d.expanded_road = ref::Position{4, 3};
+    d.expanded_road_definition = 18;
+    d.sounds = 701; d.peak_sounds = 702; d.peak_payloads = 703; d.peak_pages = 704;
+    d.peak_effects = 705; d.peak_actors = 706; d.peak_cash = 707; d.peak_tasks = 708;
+    d.peak_retired_actors = 709; d.peak_retired_encounters = 710;
+    d.next_activity_attempt = 1240;
+    d.completed = 7;
+    d.unlocked_completed = 2;
+    d.next_task_month = 16;
+    d.previous_task = 801;
+    const auto bytes = test::encode_startup_world_replay_driver(d);
+    const auto restored = test::decode_startup_world_replay_driver(bytes);
+    check(restored.seed == 123 && restored.speed == 1 && restored.expansion &&
+              restored.next_frame == 1234 && restored.observed_frame == 1233 &&
+              restored.checks == 5678 && !restored.terminal,
+          "replay driver retains scenario identity and exact next complete round");
+    check(restored.bakery == d.bakery && restored.upgraded == d.upgraded &&
+              restored.seen_upgrades == d.seen_upgrades && restored.last_month == 15 &&
+              restored.promoted_month == 11 && restored.unlocked_month == 12 &&
+              restored.unlocked_income == 301 && restored.edited_month == 13 &&
+              restored.edited_income == 401 && restored.edited_retired == d.edited_retired &&
+              restored.progression_complete && restored.expanded_month == 14 &&
+              restored.expanded_road_month == 15 && restored.expanded_income == 601 &&
+              restored.expanded_road && restored.expanded_road->x == 4 &&
+              restored.expanded_road->y == 3 && restored.expanded_road_definition == 18,
+          "replay driver preserves natural progression command stages and income baselines");
+    check(restored.sounds == 701 && restored.peak_sounds == 702 &&
+              restored.peak_payloads == 703 && restored.peak_pages == 704 &&
+              restored.peak_effects == 705 && restored.peak_actors == 706 &&
+              restored.peak_cash == 707 && restored.peak_tasks == 708 &&
+              restored.peak_retired_actors == 709 && restored.peak_retired_encounters == 710 &&
+              restored.next_activity_attempt == 1240 && restored.completed == 7 &&
+              restored.unlocked_completed == 2 && restored.next_task_month == 16 &&
+              restored.previous_task == d.previous_task,
+          "replay driver preserves output accounting, resource peaks, and command cooldowns");
+    const auto rejected = [](const auto &operation) {
+        try { operation(); } catch (const std::invalid_argument &) { return true; }
+        return false;
+    };
+    test::StartupWorldReplayOptions periodic;
+    test::validate_startup_world_replay_options(periodic, 0, 180000);
+    check(!test::startup_world_periodic_snapshot_due(periodic, 5000),
+          "periodic replay snapshots are disabled unless explicitly requested");
+    periodic.save_every = 5000;
+    check(rejected([&] { test::validate_startup_world_replay_options(periodic, 0, 180000); }),
+          "periodic replay cadence requires an explicit output directory");
+    periodic.save_directory = "periodic-contract-only";
+    test::validate_startup_world_replay_options(periodic, 5001, 180000);
+    check(!test::startup_world_periodic_snapshot_due(periodic, 0) &&
+              !test::startup_world_periodic_snapshot_due(periodic, 4999) &&
+              test::startup_world_periodic_snapshot_due(periodic, 5000) &&
+              !test::startup_world_periodic_snapshot_due(periodic, 5001) &&
+              test::startup_world_periodic_snapshot_due(periodic, 10000),
+          "periodic snapshots use completed global frames and retain cadence after resume");
+    periodic.save_at = 38000;
+    periodic.save_file = "primary-contract-only.awr";
+    test::validate_startup_world_replay_options(periodic, 0, 180000);
+    check(periodic.save_at == 38000 && !test::startup_world_periodic_snapshot_due(periodic, 38000),
+          "periodic snapshots do not replace the independent certification save frame");
+    for (const int invalid : {0, -1, 180000}) {
+        periodic.save_every = invalid;
+        check(rejected([&] { test::validate_startup_world_replay_options(periodic, 0, 180000); }),
+              "periodic replay rejects nonpositive or out-of-range cadence");
+    }
+    periodic.save_every.reset();
+    check(rejected([&] { test::validate_startup_world_replay_options(periodic, 0, 180000); }),
+          "periodic replay directory alone does not imply permission to save");
+    for (std::size_t size = 0; size < bytes.size(); ++size) {
+        const std::vector<std::uint8_t> truncated(bytes.begin(), bytes.begin() + size);
+        check(rejected([&] { (void)test::decode_startup_world_replay_driver(truncated); }),
+              "truncated replay driver is rejected before installation");
+    }
+    auto corrupt = bytes;
+    corrupt.push_back(0);
+    check(rejected([&] { (void)test::decode_startup_world_replay_driver(corrupt); }),
+          "replay driver rejects trailing bytes");
+    corrupt = bytes; corrupt[0] ^= 1;
+    check(rejected([&] { (void)test::decode_startup_world_replay_driver(corrupt); }),
+          "replay driver rejects another schema identity");
+    corrupt = bytes; corrupt[24] = 2; // v1 expansion的8字节布尔字段。
+    check(rejected([&] { (void)test::decode_startup_world_replay_driver(corrupt); }),
+          "replay driver rejects noncanonical boolean");
+    corrupt = bytes;
+    std::copy(corrupt.begin() + 88, corrupt.begin() + 96, corrupt.begin() + 96);
+    check(rejected([&] { (void)test::decode_startup_world_replay_driver(corrupt); }),
+          "replay driver rejects duplicate upgraded definitions rather than dropping them");
+    for (int scenario = 0; scenario != 7; ++scenario) {
+        auto bad = d;
+        switch (scenario) {
+        case 0: bad.next_frame = 0; break;
+        case 1: --bad.observed_frame; break;
+        case 2: bad.speed = 2; break;
+        case 3: bad.checks = -1; break;
+        case 4: bad.unlocked_completed = bad.completed + 1; break;
+        case 5: bad.expanded_road.reset(); break;
+        case 6: bad.expansion = false; break;
+        }
+        check(rejected([&] { (void)test::encode_startup_world_replay_driver(bad); }),
+              "replay driver rejects invalid frame, mode, stage, or statistics");
+    }
+    // 普通晋级终点只置terminal；扩张终点同时保留progression_complete前缀标志。
+    d.terminal = true;
+    check(test::decode_startup_world_replay_driver(
+              test::encode_startup_world_replay_driver(d)).terminal,
+          "expansion endpoint remains a valid complete-round snapshot");
+    d.expansion = false;
+    d.progression_complete = false;
+    d.expanded_month = d.expanded_road_month = -1;
+    d.expanded_income = 0;
+    d.expanded_road.reset();
+    d.expanded_road_definition = -1;
+    check(test::decode_startup_world_replay_driver(
+              test::encode_startup_world_replay_driver(d)).terminal,
+          "progression endpoint remains a valid complete-round snapshot");
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(), ref::WorldRandomStream::from_java_seed(1));
+    const auto step = session.update();
+    check(step.candidate.has_value(), "driver ownership fixture completes one real framework round");
+    (void)session.take_sound_requests();
+    D first;
+    first.next_frame = 1;
+    first.observed_frame = 0;
+    first.checks = 1;
+    first.last_month = session.state().scene.calendar.year * 12 + session.state().scene.calendar.month;
+    test::validate_startup_world_replay_driver_world(first, session.state());
+    for (int scenario = 0; scenario != 8; ++scenario) {
+        auto bad = first;
+        switch (scenario) {
+        case 0: bad.bakery = session.state().next_facility_identity; break;
+        case 1: bad.previous_task = session.state().next_task_identity; break;
+        case 2: bad.seen_upgrades.insert(session.state().scripts.next_page_id); break;
+        case 3: bad.upgraded.insert(35); break;
+        case 4: bad.edited_retired = {1, 2}; break;
+        case 5: bad.speed = 1; break;
+        case 6: ++bad.last_month; break;
+        case 7: bad.checks = 0; break;
+        }
+        check(rejected([&] {
+                  test::validate_startup_world_replay_driver_world(bad, session.state());
+              }),
+              "driver cannot install dangling or contradictory progress into valid Owner");
+    }
 }
 
 // 新局实际库存先赠人/投设施，真实任务开放商会后买卖，再留出完整自然月营业。
@@ -1718,6 +2013,11 @@ int main(int argc, const char **argv) {
             if (result.ec != std::errc{} || result.ptr != input.data() + input.size())
                 throw std::invalid_argument("invalid continuous test argument");
         };
+        if (argc == 2 && std::string(argv[1]) == "replay_driver_contract") {
+            replay_driver_contract();
+            std::cout << "natural replay driver: " << checks << " checks\n";
+            return 0;
+        }
         if (argc >= 2 && std::string(argv[1]) == "natural_tools") {
             if (argc > 4)
                 throw std::invalid_argument("expected natural_tools [seed [speed]]");
@@ -1733,16 +2033,60 @@ int main(int argc, const char **argv) {
         }
         if (argc >= 2 && (std::string(argv[1]) == "natural_progression" ||
                           std::string(argv[1]) == "natural_expansion")) {
-            if (argc > 4)
-                throw std::invalid_argument(
-                    "expected natural_progression|natural_expansion [seed [speed]]");
-            if (argc >= 3)
-                parse(argv[2], seed);
-            if (argc >= 4)
-                parse(argv[3], speed);
+            test::StartupWorldReplayOptions options;
+            int arg = 2;
+            if (arg < argc && std::string(argv[arg]).rfind("--", 0) != 0) {
+                parse(argv[arg++], seed);
+                options.seed_explicit = true;
+            }
+            if (arg < argc && std::string(argv[arg]).rfind("--", 0) != 0) {
+                parse(argv[arg++], speed);
+                options.speed_explicit = true;
+            }
+            std::set<std::string> seen_options;
+            while (arg < argc) {
+                const std::string name = argv[arg++];
+                if (!seen_options.insert(name).second || arg == argc)
+                    throw std::invalid_argument("duplicate or incomplete natural replay option");
+                const std::string value = argv[arg++];
+                if (value.empty()) throw std::invalid_argument("empty natural replay option");
+                if (name == "--save-file") options.save_file = value;
+                else if (name == "--save-directory") options.save_directory = value;
+                else if (name == "--load-file") options.load_file = value;
+                else if (name == "--trace-file") options.trace_file = value;
+                else if (name == "--producer-revision") options.producer_revision = value;
+                else if (name == "--save-at" || name == "--stop-at" || name == "--trace-from" ||
+                         name == "--save-every") {
+                    int frame{};
+                    parse(value.c_str(), frame);
+                    if (name == "--save-at") options.save_at = frame;
+                    else if (name == "--stop-at") options.stop_at = frame;
+                    else if (name == "--save-every") options.save_every = frame;
+                    else options.trace_from = frame;
+                } else
+                    throw std::invalid_argument("unknown natural replay option: " + name);
+            }
             if (speed != 0 && speed != 1)
                 throw std::invalid_argument("speed must be 0 or 1");
-            natural_progression(seed, speed, std::string(argv[1]) == "natural_expansion");
+            const auto same_path = [](const std::string &a, const std::string &b) {
+                if (a.empty() || b.empty()) return false;
+                std::error_code error;
+                if (std::filesystem::equivalent(a, b, error) && !error) return true;
+                auto x = std::filesystem::absolute(a).lexically_normal().generic_string();
+                auto y = std::filesystem::absolute(b).lexically_normal().generic_string();
+#ifdef _WIN32
+                // 尚未存在的目标也按Windows路径大小写规则拒绝冲突。
+                std::transform(x.begin(), x.end(), x.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                std::transform(y.begin(), y.end(), y.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+#endif
+                return x == y;
+            };
+            if (same_path(options.trace_file, options.save_file) ||
+                same_path(options.trace_file, options.load_file))
+                throw std::invalid_argument("natural trace must not overwrite snapshot input/output");
+            natural_progression(seed, speed, std::string(argv[1]) == "natural_expansion", options);
             std::cout << checks << " checks passed\n";
             return 0;
         }

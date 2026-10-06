@@ -19,7 +19,8 @@
   “动画不保存”不能概括两者。
 - 原加载过程先重置并直接修改全局世界；它不是当前维护 C++ 使用的候选 Owner 成功后替换事务。
 
-当前成果是来源规格和可执行的下一批方向，不是“正常文件存取已经完成”。
+原版来源分析与维护实现分开：2026-10-07已按用户继续授权实现独立维护文件格式与恢复接口，
+模块范围见[文件存取与回放](../prototype/PERSISTENCE.md)，本批验收结果见[验证记录](../VERIFICATION.md)。这不等于原APK／Steam档兼容。
 
 ## 必要后续工作：持续可用的存读档与测试快照
 
@@ -43,8 +44,8 @@
 | 对象 | 目标与边界 |
 | --- | --- |
 | 原APK存档模块 | 继续补齐25分区、嵌套结构、读取／写入、引用恢复和失败分支的来源分析；目前仍缺真实存档及完整加载大分支认证 |
-| 研究正常文件存取 | 当前支持世界能可靠保存、加载并继续经营；保持唯一Owner，文件写入失败保留旧有效档，加载失败保留当前世界 |
-| 精确回放测试快照 | 除耐久世界外，还须完整表示原版未保存但决定测试尾段的随机状态／游标、页面／续体、命令进度及必要一次性输出处理状态 |
+| 研究正常文件存取 | 已实现稳定主场景维护格式；保持唯一Owner，文件写入失败保留旧有效档，加载失败返回错误且不替换当前世界；具体验收另记 |
+| 精确回放测试快照 | 已实现全Session及自然晋级／扩张控制器格式，额外保存随机、页面／续体、命令进度；在声音领取后的外层轮结束捕获，原日历检查点只恢复为审计历史 |
 
 原APK不保存随机游标和页面栈，载入又会重建主场景，所以“完整解析原存档”不能单独实现原地精确回放。
 捕获／恢复必须选择明确的事务边界；若支持轮内位置，还必须保存恢复阶段，避免重复此前AI、收费或日历消费者。
@@ -62,7 +63,7 @@
   对损坏文件、不支持版本和介质错误给出明确结果，而不是承诺任意输入、任意I/O故障都能成功。
 
 2026-10-07已完成来源补充、容器保留与Session分叉短探针，具体下一批方案见[快照恢复与重复回放设计](../stages/PERSISTENCE_REPLAY.md)。
-正式文件是否直接兼容APK、兼容到哪些分区、格式演进与未实现字段的封装仍须在编码前明确。
+随后用户授权继续完成，首版选独立维护格式，不导入原APK／Steam档，不做旧档迁移；已知长度且不影响引用的可选附属段可原样保留。
 此前“不做旧档迁移”不自动改为无限兼容承诺；正常存取与精确测试恢复共同规划，验收等级分别记录。
 
 ## 定位入口
@@ -333,7 +334,7 @@ XOR 密钥由协调器初始化的 11 个 int 拆为 44 字节，拆字节按低
 | 延迟脚本 | 5个int、字符串、参数数量及数组 | `DelayEvent.Serialize/Deserialize 0x2A2AF0/0x2A29D0`顺序相同；支持续体属于保存内容的交叉结论 |
 | 设施效果 | p队列读后丢弃 | `Tenant.Deserialize 0x2C1B40`中`0x2C1DE1..0x2C1EA0`读short数量，空Vector写tenantFukidashi，逐对读short但未加入集合；同一局部现象独立确认 |
 | 校验外壳 | 32位游戏校验值存8字节long，再XOR／Base64 | `RecordStore.WriteRecord 0x728B80`前置8字节并Encode；名为CRC64的`0x838450/0x8383A0`实际仍是32位反条件递推，不是标准CRC64；完整Encode／Property与APK字节兼容仍未认证 |
-| 存储媒介 | Activity私有SharedPreferences | RecordStore分到Preference或Storage；`Storage.Write 0x72ACE0`含File.WriteAllBytes，但启动配置最终媒介／根路径／文件名未知 |
+| 存储媒介 | Activity私有SharedPreferences | 初始化创建media4的Storage；SetPreferenceMode虽收到true却实际写false，该初始化且无后续改写时WriteRecord走Storage.Write／文件分支；最终配置目录仍未闭合 |
 | 随机算法 | Java Random／Java48 | `GameUtil.Random 0x2A44E0`调用JRandom再余数／Abs；`JRandom.NextInt 0x7F7E60`按Logic选System.Random、Random2018或Xorshift；实际运行分支未知，不能套用Java48 |
 | 随机持久化 | 已核对共同随机未保存 | 已检查协调与代表serializer未发现保存；全部嵌套及Property分支未遍历，不能升级为全路径排除结论 |
 | 轮内自动保存 | 世界更新后、日期消费者前 | 本轮未完成Steam自动调用点与主循环顺序交叉，不因25分区相同推导时序相同 |
@@ -344,21 +345,29 @@ Random2018创建System.Random并反射改字段，字段语义尚未闭合。
 `IApplication.Awake`在ActionReplay／PlayerPrefs条件下设置fix种子标记（VA `0x1078218A`），构造／SetSeed对应强制0；
 这是内置回放线索，未启用它，也没有证明原游戏提供可供维护测试直接使用的快照接口。
 
-下一步来源缺口集中在真实手动／中断样本、Steam存储配置／Property全布局、随机选型与自动保存调用边界。
+本轮另补18个局部方法及字符串使用槽，见[存储初始化局部报告](../work/persistence-replay-analysis/exe/STORAGE_LOCAL.md)。
+`AppData.Init 0x258A30`调用`SetPreferenceMode(true)`，但setter `0x728700`完整短方法不读参数，实际无条件写usePreference=false；
+`RecordStore.Setup 0x728780`创建media4／security=true的根Storage。不能根据形参或方法名猜媒介。
+`Storage.GetFolder 0x729F80`的USE_STEAM分支返回`Path.GetDirectoryName(Application.dataPath)+"/saves/"+SteamID`，
+构造器`0x72B410`还组合Config.ROOT_FOLDER；逻辑记录名为`0001`—`0004`，不得擅加`.dat`。
+Config静态初始化先写USE_STEAM=0，配置加载后的实际取值与最终后缀尚未闭合；未读取实际SteamID或磁盘档，不能宣布本机最终落点。
+
+下一步来源缺口集中在真实手动／中断样本、Steam配置值链／Property全布局、随机选型与自动保存调用边界。
 已证两侧共性用于定位，冲突和未知保留；本轮不更换规则基线。
 
 ## 当前 C++ 边界与下一批
 
 [唯一研究 Owner](../prototype/include/dungeon_village_prototype/startup_world_runtime.hpp)和
-[阶段检查点](../prototype/src/startup_world_runtime.cpp)目前只有完整不可变内存副本，不写玩家文件。
+[阶段检查点](../prototype/src/startup_world_runtime.cpp)保留原完整不可变内存副本；
+新增[文件接口](../prototype/include/dungeon_village_prototype/startup_world_persistence.hpp)以独立格式写读，未将原日历时点改成文件自动保存。
 `StartupWorldRuntimeSession::checkpoints_` 每次成功跨界追加一份完整世界，没有已见容量上限；
 资源规模检查应计入这类审计缓存，不将它当作正常两栏自动存档的必需历史。
 静态 `rules` 指针、执行期引用、raylib 资源、临时投影与输入快照不应作为对象内存直接转储。
 
-### 最小实施建议（未实现）
+### 实施合同与本批范围
 
 此前建议先做当前研究 schema 的存取，不实现读原 APK 档、不做旧 demo 档迁移。
-下列通用门槛保留；2026-10-07[具体设计](../stages/PERSISTENCE_REPLAY.md)补充外部控制器、帧边界、快照资格和分批验收，仍待实施设计确认：
+下列通用门槛保留；2026-10-07[具体设计](../stages/PERSISTENCE_REPLAY.md)已获继续实施授权，补充外部控制器、帧边界、快照资格和分批验收：
 
 1. 定义有界、可版本拒绝的 `SaveSnapshot`：固定数据集身份、维护 schema 版本、唯一 Owner 的耐久字段和身份映射。
    从原分区表列字段覆盖表，未解释但已维护字段按 `legacy_*` 保留，不遗漏共享定义成长或改名／住宅数据。
@@ -375,7 +384,8 @@ Random2018创建System.Random并反射改字段，字段语义尚未闭合。
 
 初版接口只需职责清楚的“捕获快照／验证并重建候选／读写文件”，不预建存储服务容器或统一事件总线。
 跨平台原子替换和持久化级别属于接入层设计，C++17 核心不要依赖 Android `SharedPreferences`。
-具体格式选择、任意模态恢复范围和写入权限仍需该存取批次设计确认；本研究只提供原依据与风险。
+首版具体格式与模态覆盖见模块说明；正常档只支持稳定主场景，测试快照覆盖完整已维护页载荷；未覆盖状态必须拒绝。
+原两栏菜单、自动文件写入和其它自然玩家控制器未在此批接入，不以本接口存在代替其验收。
 
 ### 验收合同
 

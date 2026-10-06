@@ -1,5 +1,9 @@
 #include "dungeon_village_reference/world_random.hpp"
 
+#include <limits>
+#include <locale>
+#include <sstream>
+#include <stdexcept>
 #include <utility>
 
 namespace dungeon_village_reference {
@@ -17,6 +21,32 @@ WorldRandomStream WorldRandomStream::from_raw(std::vector<std::int32_t> raw) {
 WorldRandomStream WorldRandomStream::from_java_seed(std::uint64_t seed) {
     WorldRandomStream result;
     result.engine_.seed((seed ^ java_multiplier) & java_mask);
+    return result;
+}
+WorldRandomSnapshot WorldRandomStream::snapshot() const {
+    // 标准引擎流接口导出内部状态；不推进引擎，也不读取其对象表示。
+    std::ostringstream output;
+    output.imbue(std::locale::classic());
+    output << engine_;
+    std::istringstream input(output.str());
+    input.imbue(std::locale::classic());
+    std::uint64_t state{};
+    if (!(input >> state) || state > java_mask)
+        throw std::runtime_error("invalid Java random engine snapshot");
+    return {state, tape_, static_cast<std::uint64_t>(cursor_), tape_mode_};
+}
+std::optional<WorldRandomStream>
+WorldRandomStream::from_snapshot(const WorldRandomSnapshot &snapshot) {
+    if (snapshot.engine_state > java_mask ||
+        snapshot.cursor > std::numeric_limits<std::size_t>::max() ||
+        (snapshot.tape_mode && snapshot.cursor > snapshot.tape.size()) ||
+        (!snapshot.tape_mode && !snapshot.tape.empty()))
+        return {};
+    WorldRandomStream result;
+    result.engine_.seed(snapshot.engine_state); // c非零；seed(0)也原样恢复48位状态0。
+    result.tape_ = snapshot.tape;
+    result.cursor_ = static_cast<std::size_t>(snapshot.cursor);
+    result.tape_mode_ = snapshot.tape_mode;
     return result;
 }
 WorldRandomDraw WorldRandomStream::draw(std::int32_t bound) {

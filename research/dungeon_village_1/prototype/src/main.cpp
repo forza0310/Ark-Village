@@ -3,6 +3,7 @@
 
 #include "dungeon_village_prototype/asset_manifest.hpp"
 #include "dungeon_village_prototype/startup_view.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/village.hpp"
 
 #include <raylib.h>
@@ -25,6 +26,7 @@ struct Options {
     std::filesystem::path assets;
     std::filesystem::path table;
     std::optional<std::filesystem::path> screenshot;
+    std::optional<std::filesystem::path> load_file, save_file;
     bool demo{};
     bool check{};
     int frames{};
@@ -50,6 +52,10 @@ Options parse_options(int argc, char **argv) {
             options.table = argv[++i];
         else if (arg == "--screenshot" && i + 1 < argc)
             options.screenshot = argv[++i];
+        else if (arg == "--load-file" && i + 1 < argc)
+            options.load_file = argv[++i];
+        else if (arg == "--save-file" && i + 1 < argc)
+            options.save_file = argv[++i];
         else if (arg == "--demo")
             options.demo = options.fixture = true;
         else if (arg == "--fixture")
@@ -113,6 +119,10 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-item-gift" ||
              options.inspect_page == "world-editing")))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
+    if ((options.load_file || options.save_file) &&
+        (!options.world || options.fixture || !options.inspect_page.empty() ||
+         (options.check && options.save_file)))
+        throw std::invalid_argument("文件存取只用于真实共同世界，不与页面夹具混用；check只读档");
     return options;
 }
 
@@ -519,12 +529,19 @@ int main(int argc, char **argv) {
         if (!options.fixture) {
             if (options.world) {
                 if (options.check) {
+                    if (options.load_file) {
+                        auto loaded = load_startup_world_file(*options.load_file, startup_world_rules(),
+                                                             StartupWorldSavePurpose::normal);
+                        if (!loaded.snapshot) throw std::runtime_error(loaded.error);
+                        std::cout << "normal save checked: " << startup_world_state_digest(loaded.snapshot->session.state()) << '\n';
+                        return 0;
+                    }
                     check_startup_world();
                     return 0;
                 }
                 return run_startup_world_window(options.assets, options.font, options.paused,
                                                 options.frames, options.screenshot,
-                                                options.inspect_page);
+                                                options.inspect_page, options.load_file, options.save_file);
             }
             if (options.check) {
                 check_startup();

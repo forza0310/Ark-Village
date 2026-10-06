@@ -103,7 +103,9 @@ Il2CppDumper6.7.46静态搜索成功，PE节表独立核对37942条非零方法�
 
 - SaveGame实际调用25分区写器，并按当前槽位加1／3选择手动／自动记录。
 - DelayEvent确实写入等待与脚本续体；Tenant效果队列在读取后丢弃，与APK低层局部行为相同。
-- RecordStore前置8字节校验值；CRC64只是类名，实际是32位游戏校验。Storage有文件写分支，但实际配置、路径和失败原子性未锁定。
+- RecordStore前置8字节校验值；CRC64只是类名，实际是32位游戏校验。补充18个局部方法后确认初始化创建media4根Storage，
+  SetPreferenceMode(true)的setter实际写false，因此该初始化且无后续改写时走Storage.Write。Steam条件路径和记录逻辑名已定位，
+  但配置值链、最终目录／后缀和失败原子性仍未锁定，详见存档交叉表。
 - JRandom调用有System.Random／Random2018／Xorshift三分支，实际Logic未确认；ActionReplay条件有固定seed0线索，未启用。
   已查保存路径未发现随机持久化，但全部嵌套分支未排除，不能套用APK负面结论。
 

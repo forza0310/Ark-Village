@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
@@ -603,7 +604,9 @@ void check_startup_world() {
 int run_startup_world_window(const std::filesystem::path &assets,
                              const std::filesystem::path &font_path, bool paused, int frames,
                              const std::optional<std::filesystem::path> &screenshot,
-                             const std::string &inspect_page) {
+                             const std::string &inspect_page,
+                             const std::optional<std::filesystem::path> &load_file,
+                             const std::optional<std::filesystem::path> &save_file) {
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
@@ -639,6 +642,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
     }
     StartupWorldRuntimeSession session(initial->state(), ref::WorldRandomStream::from_java_seed(1));
     initial.reset();
+    StartupWorldSaveMetadata file_metadata;
+    if (load_file) {
+        auto loaded = load_startup_world_file(*load_file, rules, StartupWorldSavePurpose::normal);
+        if (!loaded.snapshot) throw std::runtime_error("读取失败：" + loaded.error);
+        file_metadata = std::move(loaded.snapshot->metadata);
+        session = std::move(loaded.snapshot->session);
+    }
     const auto available_road = [](const StartupWorldRuntimeState &s) -> std::optional<int> {
         for (const auto &d : s.rules->facilities) {
             const auto presence = s.facility_presence.find(d.id);
@@ -985,7 +995,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (!reached)
             throw std::runtime_error("共同世界有界检查未到达真实目标状态");
     }
-    session.set_paused(paused);
+    if (!load_file || paused)
+        session.set_paused(paused);
     ref::WorldRenderClock clock;
     Vector2 camera{static_cast<float>(startup_evidence().camera.x),
                    static_cast<float>(startup_evidence().camera.y)};
@@ -2769,6 +2780,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
             break;
         }
+    }
+    if (save_file) {
+        const auto result = save_startup_world_file(*save_file, session, file_metadata);
+        if (!result.ok) throw std::runtime_error("保存失败：" + result.error);
+        std::cout << "normal save written: " << save_file->string() << '\n';
     }
     std::cout << "world window closed: frames=" << frame_count
               << " updates=" << session.state().scene.world.updates

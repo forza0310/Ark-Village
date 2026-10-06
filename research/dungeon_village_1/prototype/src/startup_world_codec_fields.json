@@ -1,0 +1,3924 @@
+{
+  "wire": "owner-le-v1: integer64,bool8,floatIEEE,container-count64; rules=rebind",
+  "wrappers": [
+    {
+      "name": "dungeon_village_reference::WorldRandomStream",
+      "snapshot": "dungeon_village_reference::WorldRandomSnapshot",
+      "fields": [
+        {
+          "name": "engine_",
+          "type": "JavaEngine"
+        },
+        {
+          "name": "tape_",
+          "type": "std::vector<std::int32_t>"
+        },
+        {
+          "name": "cursor_",
+          "type": "std::size_t"
+        },
+        {
+          "name": "tape_mode_",
+          "type": "bool"
+        }
+      ],
+      "aliases": [
+        {
+          "name": "dungeon_village_reference::WorldRandomStream::JavaEngine",
+          "type": "std::linear_congruential_engine<std::uint64_t, 25214903917ULL, 11ULL, (1ULL << 48)>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::PeriodAccounting",
+      "snapshot": "dungeon_village_reference::PeriodAccountingSnapshot",
+      "fields": [
+        {
+          "name": "funds_",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "village_points_",
+          "type": "std::uint16_t"
+        },
+        {
+          "name": "entries_",
+          "type": "std::map<std::uint64_t, CashEntry>"
+        },
+        {
+          "name": "reports_",
+          "type": "std::map<std::uint64_t, AccountingReport>"
+        }
+      ],
+      "aliases": []
+    }
+  ],
+  "records": [
+    {
+      "name": "dungeon_village_prototype::StartupWorldActorMetadata",
+      "fields": [
+        {
+          "name": "sex",
+          "type": "int"
+        },
+        {
+          "name": "profession",
+          "type": "int"
+        },
+        {
+          "name": "weapon",
+          "type": "int"
+        },
+        {
+          "name": "cached_view",
+          "type": "ref::Position"
+        },
+        {
+          "name": "render_position",
+          "type": "ref::CombatPoint"
+        },
+        {
+          "name": "cached_screen_position",
+          "type": "ref::Position"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_prototype::StartupWorldFocusActor",
+      "fields": [
+        {
+          "name": "actor",
+          "type": "ref::BattleActorRecord"
+        },
+        {
+          "name": "perception",
+          "type": "ref::RewardActorContext"
+        },
+        {
+          "name": "routes",
+          "type": "ref::RescueActorContext"
+        },
+        {
+          "name": "metadata",
+          "type": "StartupWorldActorMetadata"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_prototype::StartupWorldHumanCalendar",
+      "fields": [
+        {
+          "name": "absent_months",
+          "type": "int"
+        },
+        {
+          "name": "yearly_totals",
+          "type": "std::array<int, 3>"
+        },
+        {
+          "name": "legacy_F",
+          "type": "int"
+        },
+        {
+          "name": "legacy_G",
+          "type": "int"
+        },
+        {
+          "name": "continuation_cost",
+          "type": "int"
+        },
+        {
+          "name": "contribution",
+          "type": "int"
+        },
+        {
+          "name": "celebrations",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_prototype::StartupWorldRuntimeState",
+      "fields": [
+        {
+          "name": "scene",
+          "type": "ref::WorldSceneState"
+        },
+        {
+          "name": "rules",
+          "type": "const StartupWorldRules *"
+        },
+        {
+          "name": "task",
+          "type": "ref::WorldEventTask"
+        },
+        {
+          "name": "shop_humans",
+          "type": "std::map<int, ref::ShopHumanRecord>"
+        },
+        {
+          "name": "shop_actors",
+          "type": "std::map<ref::CharacterId, ref::ShopActorRecord>"
+        },
+        {
+          "name": "items",
+          "type": "std::map<int, ref::ObjectCatalogRecord>"
+        },
+        {
+          "name": "dungeon_facilities",
+          "type": "std::map<std::uint64_t, ref::DungeonFacilityProgress>"
+        },
+        {
+          "name": "dungeon_actors",
+          "type": "std::map<ref::CharacterId, ref::DungeonActorProgress>"
+        },
+        {
+          "name": "catalog",
+          "type": "std::map<std::pair<int, int>, ref::ObjectCatalogRecord>"
+        },
+        {
+          "name": "shops",
+          "type": "std::map<std::uint64_t, ref::ObjectShopRecord>"
+        },
+        {
+          "name": "shop_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "item_rewards",
+          "type": "int"
+        },
+        {
+          "name": "human_definition_state",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "human_homes",
+          "type": "std::map<int, std::array<int, 4>>"
+        },
+        {
+          "name": "human_presence",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "human_flags",
+          "type": "std::map<int, std::uint32_t>"
+        },
+        {
+          "name": "human_calendar",
+          "type": "std::map<int, StartupWorldHumanCalendar>"
+        },
+        {
+          "name": "actor_metadata",
+          "type": "std::map<ref::CharacterId, StartupWorldActorMetadata>"
+        },
+        {
+          "name": "facility_original_ids",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_ordinals",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_residents",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_difficulties",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_flags",
+          "type": "std::map<std::uint64_t, std::uint32_t>"
+        },
+        {
+          "name": "neighbourhood",
+          "type": "std::map<std::uint64_t, std::array<int, 3>>"
+        },
+        {
+          "name": "neighbourhood_details",
+          "type": "std::map<std::uint64_t, ref::WorldMapNeighbourCache>"
+        },
+        {
+          "name": "exploration_summaries",
+          "type": "std::map<std::uint64_t, ref::WorldExplorationSummary>"
+        },
+        {
+          "name": "exploration_displays",
+          "type": "std::vector<ref::WorldExplorationGroundDisplay>"
+        },
+        {
+          "name": "dungeon_labels",
+          "type": "std::vector<ref::DungeonCrewRequest>"
+        },
+        {
+          "name": "surface",
+          "type": "std::vector<ref::DungeonFinishSurface>"
+        },
+        {
+          "name": "road_patches",
+          "type": "std::vector<std::array<bool, 2>>"
+        },
+        {
+          "name": "scripts",
+          "type": "ref::WorldScriptState"
+        },
+        {
+          "name": "cash_peak",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "cash_peak_village",
+          "type": "std::string"
+        },
+        {
+          "name": "monthly_cash",
+          "type": "std::array<std::array<std::array<int, 2>, 5>, 12>"
+        },
+        {
+          "name": "facility_monthly_cash",
+          "type": "std::map<std::uint64_t, std::array<std::array<int, 2>, 12>>"
+        },
+        {
+          "name": "facility_month_age",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "shop_item_stock",
+          "type": "std::map<int, ref::CalendarMaintenanceShopItem>"
+        },
+        {
+          "name": "report_state",
+          "type": "int"
+        },
+        {
+          "name": "report_counter",
+          "type": "int"
+        },
+        {
+          "name": "report_snapshot",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "report_records",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "report_new_records",
+          "type": "std::array<bool, 6>"
+        },
+        {
+          "name": "report_portraits",
+          "type": "std::array<int, 5>"
+        },
+        {
+          "name": "report_kills",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "maximum_income",
+          "type": "int"
+        },
+        {
+          "name": "village_points",
+          "type": "int"
+        },
+        {
+          "name": "popularity",
+          "type": "int"
+        },
+        {
+          "name": "maximum_popularity",
+          "type": "int"
+        },
+        {
+          "name": "popularity_display",
+          "type": "bool"
+        },
+        {
+          "name": "popularity_pulses",
+          "type": "std::vector<std::array<int, 3>>"
+        },
+        {
+          "name": "popularity_rewards",
+          "type": "std::vector<ref::WorldPopularityReward>"
+        },
+        {
+          "name": "facility_definitions",
+          "type": "std::map<int, ref::WorldFacilityUpdateDefinition>"
+        },
+        {
+          "name": "facility_presence",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "residence_catalog_available",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "page_human_bindings",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "task_abort_questions",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
+          "name": "task_abort_answers",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "human_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "human_profession_changes",
+          "type": "std::map<int, std::vector<int>>"
+        },
+        {
+          "name": "human_page_catalogs",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "equipment_page_catalogs",
+          "type": "std::map<std::uint64_t, std::array<std::vector<int>, 5>>"
+        },
+        {
+          "name": "human_page_selections",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "page_job_bindings",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "human_page_parents",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
+          "name": "human_page_answers",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "human_equipment_choices",
+          "type": "std::map<std::uint64_t, std::array<int, 2>>"
+        },
+        {
+          "name": "human_attribute_display",
+          "type": "std::array<std::array<int, 6>, 3>"
+        },
+        {
+          "name": "equipment_attribute_display",
+          "type": "std::array<std::array<int, 4>, 3>"
+        },
+        {
+          "name": "human_gift_scores",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "human_gift_messages",
+          "type": "std::map<std::uint64_t, std::string>"
+        },
+        {
+          "name": "tax_page_residents",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "tax_page_selection",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "tax_page_scroll",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "residence_hint_counter",
+          "type": "int"
+        },
+        {
+          "name": "activity_flags",
+          "type": "std::map<int, std::uint32_t>"
+        },
+        {
+          "name": "activity_counts",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "human_activity_previous",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "activity_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "activity_page_bindings",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "activity_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "activity_page_display_humans",
+          "type": "std::map<std::uint64_t, std::array<int, 2>>"
+        },
+        {
+          "name": "activity_page_parents",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
+          "name": "activity_page_answers",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "activity_page_selections",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "activity_page_scroll",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_details",
+          "type": "std::map<std::uint64_t, ref::WorldFacilityUpdateDetails>"
+        },
+        {
+          "name": "task_progress",
+          "type": "ref::DungeonTaskSuccessState"
+        },
+        {
+          "name": "tasks",
+          "type": "std::map<std::uint64_t, ref::DungeonFinishTask>"
+        },
+        {
+          "name": "task_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "task_original_ids",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "task_sequence",
+          "type": "int"
+        },
+        {
+          "name": "next_facility_identity",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "next_task_identity",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "task_replay_order",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "task_special_selection",
+          "type": "int"
+        },
+        {
+          "name": "task_special_selection_index",
+          "type": "int"
+        },
+        {
+          "name": "task_special_selection_list",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "fence_level",
+          "type": "int"
+        },
+        {
+          "name": "base_variants",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "active_task",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "participants",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "crew_summaries",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "sites",
+          "type": "std::map<std::uint64_t, ref::DungeonFinishSite>"
+        },
+        {
+          "name": "ground_definition",
+          "type": "int"
+        },
+        {
+          "name": "special_ground_definition",
+          "type": "int"
+        },
+        {
+          "name": "arrival_counter",
+          "type": "int"
+        },
+        {
+          "name": "camera_delay",
+          "type": "int"
+        },
+        {
+          "name": "camera_follow",
+          "type": "int"
+        },
+        {
+          "name": "event89_count",
+          "type": "int"
+        },
+        {
+          "name": "entry_updates",
+          "type": "int"
+        },
+        {
+          "name": "global_updates",
+          "type": "int"
+        },
+        {
+          "name": "camera",
+          "type": "std::array<float, 2>"
+        },
+        {
+          "name": "previous_camera",
+          "type": "std::array<float, 2>"
+        },
+        {
+          "name": "camera_velocity",
+          "type": "std::array<float, 2>"
+        },
+        {
+          "name": "build_mode",
+          "type": "int"
+        },
+        {
+          "name": "build_definition",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "build_anchor",
+          "type": "std::optional<ref::Position>"
+        },
+        {
+          "name": "build_moving_facility",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "build_feedback_counter",
+          "type": "int"
+        },
+        {
+          "name": "build_feedback_message",
+          "type": "std::string"
+        },
+        {
+          "name": "focus_actor",
+          "type": "StartupWorldFocusActor"
+        },
+        {
+          "name": "focus_held_input",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "visual_effects",
+          "type": "std::vector<ref::ActorEffectRecord>"
+        },
+        {
+          "name": "delayed_effects",
+          "type": "std::vector<std::array<int, 4>>"
+        },
+        {
+          "name": "global_effects",
+          "type": "std::vector<std::array<int, 2>>"
+        },
+        {
+          "name": "sound_requests",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "reference_viewport",
+          "type": "std::array<int, 4>"
+        },
+        {
+          "name": "page_counters",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "page_phases",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "task_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<std::uint64_t>>"
+        },
+        {
+          "name": "task_recruitment_pages",
+          "type": "std::map<std::uint64_t, ref::TaskRecruitmentAnimation>"
+        },
+        {
+          "name": "task_extra_pages",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "task_page_predictions",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "task_page_acceleration",
+          "type": "std::map<std::uint64_t, bool>"
+        },
+        {
+          "name": "page_secondary_counters",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "task_display_table",
+          "type": "std::array<std::array<std::int32_t, 9>, 8>"
+        },
+        {
+          "name": "task_display_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "deadline_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "deadline_grades",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "deadline_returns",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "deadline_closed_page",
+          "type": "std::optional<ref::WorldScriptPage>"
+        },
+        {
+          "name": "award_rankings",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "award_announced",
+          "type": "std::map<std::uint64_t, bool>"
+        },
+        {
+          "name": "award_termination_pending",
+          "type": "std::map<std::uint64_t, bool>"
+        },
+        {
+          "name": "award_pending_humans",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "reward_display",
+          "type": "std::array<std::array<int, 2>, 3>"
+        },
+        {
+          "name": "effort_display",
+          "type": "std::array<std::array<int, 4>, 3>"
+        },
+        {
+          "name": "facility_page_bindings",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
+          "name": "facility_definition_page_bindings",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_page_neighbours",
+          "type": "std::map<std::uint64_t, std::vector<ref::NeighbourSource>>"
+        },
+        {
+          "name": "build_page_catalogs",
+          "type": "std::map<std::uint64_t, std::array<std::vector<int>, 3>>"
+        },
+        {
+          "name": "residence_page_candidates",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "facility_upgrade_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "facility_upgrade_display",
+          "type": "std::array<std::array<std::int64_t, 3>, 3>"
+        },
+        {
+          "name": "facility_item_confirmations",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_item_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "facility_item_page_items",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_item_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "facility_item_page_selections",
+          "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "facility_item_response",
+          "type": "int"
+        },
+        {
+          "name": "item_commerce_read",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "facility_commerce_read",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "commerce_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "commerce_page_data",
+          "type": "std::map<std::uint64_t, std::array<int, 6>>"
+        },
+        {
+          "name": "commerce_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "medal_count",
+          "type": "int"
+        },
+        {
+          "name": "facility_free_builds",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "facility_unlock_counters",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "facility_unlock_notices",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "confirm_input",
+          "type": "bool"
+        },
+        {
+          "name": "cancel_input",
+          "type": "bool"
+        },
+        {
+          "name": "menu_input",
+          "type": "bool"
+        },
+        {
+          "name": "page_confirm_held",
+          "type": "bool"
+        },
+        {
+          "name": "rank",
+          "type": "int"
+        },
+        {
+          "name": "quarter_counter",
+          "type": "int"
+        },
+        {
+          "name": "legacy_D",
+          "type": "int"
+        },
+        {
+          "name": "legacy_n",
+          "type": "std::array<std::int32_t, 13>"
+        },
+        {
+          "name": "yearly_statistics",
+          "type": "std::vector<std::array<std::int32_t, 10>>"
+        },
+        {
+          "name": "events_held",
+          "type": "int"
+        },
+        {
+          "name": "task_subperiods",
+          "type": "int"
+        },
+        {
+          "name": "generation_retry",
+          "type": "bool"
+        },
+        {
+          "name": "deadline_page",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "completion_mode",
+          "type": "int"
+        },
+        {
+          "name": "system_completion_mode",
+          "type": "int"
+        },
+        {
+          "name": "save_marker",
+          "type": "int"
+        },
+        {
+          "name": "system_unlock_data",
+          "type": "std::array<std::vector<std::uint8_t>, 2>"
+        },
+        {
+          "name": "rank_met",
+          "type": "std::array<bool, 4>"
+        },
+        {
+          "name": "rank_values",
+          "type": "std::array<int, 4>"
+        },
+        {
+          "name": "rank_history",
+          "type": "std::array<std::array<int, 2>, 7>"
+        },
+        {
+          "name": "rank_celebration_participants",
+          "type": "std::map<std::uint64_t, std::vector<std::array<int, 5>>>"
+        },
+        {
+          "name": "simulation_steps",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "clock_parameter",
+          "type": "int"
+        },
+        {
+          "name": "calendar_advance",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::AccountingReport",
+      "fields": [
+        {
+          "name": "input",
+          "type": "ReportInput"
+        },
+        {
+          "name": "categories",
+          "type": "std::array<CashTotals, 5>"
+        },
+        {
+          "name": "displayed",
+          "type": "CashTotals"
+        },
+        {
+          "name": "displayed_net",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "pending_points",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "awarded_points",
+          "type": "std::uint16_t"
+        },
+        {
+          "name": "claimed",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ActivityCandidateCell",
+      "fields": [
+        {
+          "name": "position",
+          "type": "Position"
+        },
+        {
+          "name": "definition",
+          "type": "CandidateDefinition"
+        },
+        {
+          "name": "instance",
+          "type": "std::optional<CandidateInstance>"
+        },
+        {
+          "name": "cost",
+          "type": "std::optional<std::int64_t>"
+        },
+        {
+          "name": "origin",
+          "type": "CandidateOrigin"
+        },
+        {
+          "name": "source_index",
+          "type": "std::size_t"
+        },
+        {
+          "name": "instance_definition",
+          "type": "std::optional<CandidateDefinition>"
+        },
+        {
+          "name": "legacy_state",
+          "type": "int"
+        },
+        {
+          "name": "route_category",
+          "type": "RouteCategory"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ActorControlState",
+      "fields": [
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "state",
+          "type": "int"
+        },
+        {
+          "name": "action",
+          "type": "int"
+        },
+        {
+          "name": "action_counter",
+          "type": "int"
+        },
+        {
+          "name": "alternate_counter",
+          "type": "int"
+        },
+        {
+          "name": "facing",
+          "type": "int"
+        },
+        {
+          "name": "queue",
+          "type": "std::vector<LegacyActorControl>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ActorEffectState",
+      "fields": [
+        {
+          "name": "display",
+          "type": "std::vector<ActorEffectRecord>"
+        },
+        {
+          "name": "delayed",
+          "type": "std::vector<ActorEffectRecord>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::AiRewardState",
+      "fields": [
+        {
+          "name": "battle",
+          "type": "BattleCommitState"
+        },
+        {
+          "name": "retired_actors",
+          "type": "std::map<CharacterId, BattleActorRecord>"
+        },
+        {
+          "name": "human_order",
+          "type": "std::vector<CharacterId>"
+        },
+        {
+          "name": "monster_order",
+          "type": "std::vector<CharacterId>"
+        },
+        {
+          "name": "contexts",
+          "type": "std::map<CharacterId, RewardActorContext>"
+        },
+        {
+          "name": "growth",
+          "type": "std::map<int, RewardHumanDefinition>"
+        },
+        {
+          "name": "professions",
+          "type": "std::vector<HumanProfessionRule>"
+        },
+        {
+          "name": "monster_growth",
+          "type": "std::map<int, RewardMonsterDefinition>"
+        },
+        {
+          "name": "monster_definition_order",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "monster_progress",
+          "type": "int"
+        },
+        {
+          "name": "monster_limit",
+          "type": "int"
+        },
+        {
+          "name": "encounters",
+          "type": "std::map<std::uint64_t, RewardEncounter>"
+        },
+        {
+          "name": "encounter_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "retired_encounters",
+          "type": "std::map<std::uint64_t, RewardEncounter>"
+        },
+        {
+          "name": "external_actor_roots",
+          "type": "std::set<CharacterId>"
+        },
+        {
+          "name": "facility_actor_roots",
+          "type": "std::vector<CharacterId>"
+        },
+        {
+          "name": "external_encounter_roots",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "projectiles",
+          "type": "std::map<std::uint64_t, ProjectileState>"
+        },
+        {
+          "name": "projectile_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "next_projectile_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "accounting",
+          "type": "PeriodAccounting"
+        },
+        {
+          "name": "next_cash_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "next_actor_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "next_encounter_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "legacy_encounter_counter",
+          "type": "int"
+        },
+        {
+          "name": "period",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "pending_completion",
+          "type": "int"
+        },
+        {
+          "name": "task_active",
+          "type": "bool"
+        },
+        {
+          "name": "task_completed",
+          "type": "bool"
+        },
+        {
+          "name": "feature16",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ArrivalBinding",
+      "fields": [
+        {
+          "name": "goal",
+          "type": "Position"
+        },
+        {
+          "name": "instance_id",
+          "type": "BuildingId"
+        },
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::BattleActorRecord",
+      "fields": [
+        {
+          "name": "id",
+          "type": "CharacterId"
+        },
+        {
+          "name": "kind",
+          "type": "ActorKind"
+        },
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "control",
+          "type": "ActorControlState"
+        },
+        {
+          "name": "hp",
+          "type": "CharacterHpState"
+        },
+        {
+          "name": "capacity",
+          "type": "int"
+        },
+        {
+          "name": "baseline",
+          "type": "int"
+        },
+        {
+          "name": "state_counter",
+          "type": "int"
+        },
+        {
+          "name": "state_parameter",
+          "type": "int"
+        },
+        {
+          "name": "attack_count",
+          "type": "int"
+        },
+        {
+          "name": "down_timer",
+          "type": "int"
+        },
+        {
+          "name": "object_slot",
+          "type": "int"
+        },
+        {
+          "name": "rescue",
+          "type": "std::optional<CharacterId>"
+        },
+        {
+          "name": "encounter",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "group",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "attack_slot",
+          "type": "int"
+        },
+        {
+          "name": "monster_posture",
+          "type": "int"
+        },
+        {
+          "name": "legacy_id",
+          "type": "int"
+        },
+        {
+          "name": "body",
+          "type": "int"
+        },
+        {
+          "name": "sprite",
+          "type": "int"
+        },
+        {
+          "name": "position",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "attack_position",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "miss",
+          "type": "bool"
+        },
+        {
+          "name": "damage_total",
+          "type": "int"
+        },
+        {
+          "name": "hit_count",
+          "type": "int"
+        },
+        {
+          "name": "hit_flash",
+          "type": "int"
+        },
+        {
+          "name": "label_timer",
+          "type": "int"
+        },
+        {
+          "name": "miss_label",
+          "type": "bool"
+        },
+        {
+          "name": "follow",
+          "type": "std::optional<CharacterId>"
+        },
+        {
+          "name": "attack_armed",
+          "type": "bool"
+        },
+        {
+          "name": "combo_index",
+          "type": "int"
+        },
+        {
+          "name": "combo_count",
+          "type": "int"
+        },
+        {
+          "name": "attack_idle",
+          "type": "int"
+        },
+        {
+          "name": "attack_destination",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "perceived_enemy",
+          "type": "std::optional<CharacterId>"
+        },
+        {
+          "name": "perceived_distance",
+          "type": "float"
+        },
+        {
+          "name": "blocked_battle_steps",
+          "type": "int"
+        },
+        {
+          "name": "attack_cooldown",
+          "type": "int"
+        },
+        {
+          "name": "decision_start",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "physics_pause",
+          "type": "int"
+        },
+        {
+          "name": "vertical_velocity",
+          "type": "float"
+        },
+        {
+          "name": "area_after",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::BattleCommitState",
+      "fields": [
+        {
+          "name": "actors",
+          "type": "std::map<CharacterId, BattleActorRecord>"
+        },
+        {
+          "name": "humans",
+          "type": "std::map<int, HumanBattleRecord>"
+        },
+        {
+          "name": "monsters",
+          "type": "std::map<int, MonsterBattleRecord>"
+        },
+        {
+          "name": "participants",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "quest_encounters",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "events",
+          "type": "std::set<int>"
+        },
+        {
+          "name": "global_downs",
+          "type": "int"
+        },
+        {
+          "name": "defeated_definitions",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "drop_progress",
+          "type": "int"
+        },
+        {
+          "name": "objects",
+          "type": "std::map<std::uint64_t, GroundObjectState>"
+        },
+        {
+          "name": "next_object_id",
+          "type": "std::uint64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::BattleGroupMember",
+      "fields": [
+        {
+          "name": "id",
+          "type": "CharacterId"
+        },
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::BattleGroupState",
+      "fields": [
+        {
+          "name": "tick",
+          "type": "int"
+        },
+        {
+          "name": "duration",
+          "type": "int"
+        },
+        {
+          "name": "cycle",
+          "type": "int"
+        },
+        {
+          "name": "alternating_side",
+          "type": "int"
+        },
+        {
+          "name": "humans",
+          "type": "std::vector<BattleGroupMember>"
+        },
+        {
+          "name": "monsters",
+          "type": "std::vector<BattleGroupMember>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::BuildingId",
+      "fields": [
+        {
+          "name": "value",
+          "type": "std::uint64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CalendarMaintenanceShopItem",
+      "fields": [
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "minimum_rank",
+          "type": "int"
+        },
+        {
+          "name": "maximum_quantity",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "quantity",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "presence",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "legacy_q",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "newly_available",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CandidateDefinition",
+      "fields": [
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "legacy_category",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "definition_charm",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "legacy_kind",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CandidateInstance",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "BuildingId"
+        },
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "legacy_phase",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CashEntry",
+      "fields": [
+        {
+          "name": "event_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "period",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "category",
+          "type": "CashCategory"
+        },
+        {
+          "name": "direction",
+          "type": "CashDirection"
+        },
+        {
+          "name": "amount",
+          "type": "std::int64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CashTotals",
+      "fields": [
+        {
+          "name": "income",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "expense",
+          "type": "std::int64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CharacterHpState",
+      "fields": [
+        {
+          "name": "requested_delta",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "displayed",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "origin",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "target",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "animating",
+          "type": "bool"
+        },
+        {
+          "name": "legacy_tick",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CharacterId",
+      "fields": [
+        {
+          "name": "value",
+          "type": "std::uint64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CombatInfluenceCandidate",
+      "fields": [
+        {
+          "name": "width",
+          "type": "int"
+        },
+        {
+          "name": "height",
+          "type": "int"
+        },
+        {
+          "name": "human_field",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "monster_field",
+          "type": "std::vector<int>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CombatPoint",
+      "fields": [
+        {
+          "name": "x",
+          "type": "float"
+        },
+        {
+          "name": "height",
+          "type": "float"
+        },
+        {
+          "name": "z",
+          "type": "float"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DefeatTally",
+      "fields": [
+        {
+          "name": "definition_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "defeats",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "points_per_defeat",
+          "type": "std::uint64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DelayedRewardState",
+      "fields": [
+        {
+          "name": "amount",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonActorProgress",
+      "fields": [
+        {
+          "name": "progress",
+          "type": "int"
+        },
+        {
+          "name": "previous",
+          "type": "int"
+        },
+        {
+          "name": "percent",
+          "type": "int"
+        },
+        {
+          "name": "endurance",
+          "type": "int"
+        },
+        {
+          "name": "retreat_state",
+          "type": "int"
+        },
+        {
+          "name": "retreat_updates",
+          "type": "int"
+        },
+        {
+          "name": "constrained",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonCrewRequest",
+      "fields": [
+        {
+          "name": "kind",
+          "type": "DungeonCrewRequestKind"
+        },
+        {
+          "name": "actor",
+          "type": "std::optional<CharacterId>"
+        },
+        {
+          "name": "first",
+          "type": "int"
+        },
+        {
+          "name": "second",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonFacilityProgress",
+      "fields": [
+        {
+          "name": "updates",
+          "type": "int"
+        },
+        {
+          "name": "progress",
+          "type": "int"
+        },
+        {
+          "name": "extent",
+          "type": "int"
+        },
+        {
+          "name": "percent",
+          "type": "int"
+        },
+        {
+          "name": "previous_percent",
+          "type": "int"
+        },
+        {
+          "name": "challenges",
+          "type": "std::vector<DungeonChallenge>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonFinishSite",
+      "fields": [
+        {
+          "name": "occupied_cells",
+          "type": "std::vector<Position>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonFinishSurface",
+      "fields": [
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "updates",
+          "type": "int"
+        },
+        {
+          "name": "instance",
+          "type": "int"
+        },
+        {
+          "name": "fragment",
+          "type": "int"
+        },
+        {
+          "name": "display_definition",
+          "type": "int"
+        },
+        {
+          "name": "variant",
+          "type": "int"
+        },
+        {
+          "name": "road_mask",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonFinishTask",
+      "fields": [
+        {
+          "name": "identity",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "difficulty",
+          "type": "int"
+        },
+        {
+          "name": "pending_completion_value",
+          "type": "int"
+        },
+        {
+          "name": "facility",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "site",
+          "type": "std::optional<Position>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonMonsterAvailability",
+      "fields": [
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "pending_notice",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonTaskDefinitionProgress",
+      "fields": [
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "completed",
+          "type": "int"
+        },
+        {
+          "name": "monster_definition",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonTaskSuccessState",
+      "fields": [
+        {
+          "name": "successes",
+          "type": "int"
+        },
+        {
+          "name": "ordinary_explorations",
+          "type": "int"
+        },
+        {
+          "name": "exploration_stage",
+          "type": "int"
+        },
+        {
+          "name": "exploration_dates",
+          "type": "std::array<std::array<int, 2>, 7>"
+        },
+        {
+          "name": "task_pool_progress",
+          "type": "int"
+        },
+        {
+          "name": "definitions",
+          "type": "std::map<int, DungeonTaskDefinitionProgress>"
+        },
+        {
+          "name": "monsters",
+          "type": "std::map<int, DungeonMonsterAvailability>"
+        },
+        {
+          "name": "remaining_task_definitions",
+          "type": "std::vector<int>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::EncounterRuntimeState",
+      "fields": [
+        {
+          "name": "id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "center",
+          "type": "Position"
+        },
+        {
+          "name": "state",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        },
+        {
+          "name": "idle",
+          "type": "int"
+        },
+        {
+          "name": "spawned",
+          "type": "int"
+        },
+        {
+          "name": "quota",
+          "type": "int"
+        },
+        {
+          "name": "reward",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityArrivalState",
+      "fields": [
+        {
+          "name": "legacy_visit_counts",
+          "type": "std::array<std::int32_t, 6>"
+        },
+        {
+          "name": "legacy_category_one_count",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "legacy_category_six_counter",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "last_visited_instance",
+          "type": "std::optional<BuildingId>"
+        },
+        {
+          "name": "legacy_actor_total",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "current_month_facility_sales",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityDeparture",
+      "fields": [
+        {
+          "name": "category",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "selection",
+          "type": "SnapshotFacilityTarget"
+        },
+        {
+          "name": "binding",
+          "type": "ArrivalBinding"
+        },
+        {
+          "name": "route",
+          "type": "LegacyPathResult"
+        },
+        {
+          "name": "legacy_direction",
+          "type": "std::optional<std::int32_t>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityEconomyDefinition",
+      "fields": [
+        {
+          "name": "attributes",
+          "type": "std::array<LevelEndpoints, 4>"
+        },
+        {
+          "name": "upgrade_uses",
+          "type": "LevelEndpoints"
+        },
+        {
+          "name": "construction_cost",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "construction_ticks",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "legacy_flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "decoration",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityPlacement",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "BuildingId"
+        },
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "shape",
+          "type": "FacilityShape"
+        },
+        {
+          "name": "orientation",
+          "type": "FacilityOrientation"
+        },
+        {
+          "name": "anchor",
+          "type": "Position"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityTileBinding",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "BuildingId"
+        },
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "fragment_index",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityUseProgress",
+      "fields": [
+        {
+          "name": "level",
+          "type": "int"
+        },
+        {
+          "name": "completed_uses",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "upgrade_pending",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::GroundObjectState",
+      "fields": [
+        {
+          "name": "id",
+          "type": "ObjectId"
+        },
+        {
+          "name": "state",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        },
+        {
+          "name": "duration",
+          "type": "int"
+        },
+        {
+          "name": "delay",
+          "type": "int"
+        },
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "position",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "velocity",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "acceleration",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "cached_cell",
+          "type": "Position"
+        },
+        {
+          "name": "inside_town",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::HumanBattleRecord",
+      "fields": [
+        {
+          "name": "kills",
+          "type": "int"
+        },
+        {
+          "name": "killed_stat1",
+          "type": "int"
+        },
+        {
+          "name": "battle_reward_stat",
+          "type": "int"
+        },
+        {
+          "name": "task_kills",
+          "type": "int"
+        },
+        {
+          "name": "participant_downs",
+          "type": "int"
+        },
+        {
+          "name": "recent_reward",
+          "type": "int"
+        },
+        {
+          "name": "recent_kills",
+          "type": "int"
+        },
+        {
+          "name": "luck",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::HumanDefinitionStatsInput",
+      "fields": [
+        {
+          "name": "current_profession",
+          "type": "int"
+        },
+        {
+          "name": "legacy_u",
+          "type": "int"
+        },
+        {
+          "name": "base",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "extra",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "profession_levels",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "equipment",
+          "type": "std::array<std::optional<std::array<int, 4>>, 4>"
+        },
+        {
+          "name": "learned_spells",
+          "type": "std::array<bool, 4>"
+        },
+        {
+          "name": "spell_professions",
+          "type": "std::vector<int>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::HumanDerivedStats",
+      "fields": [
+        {
+          "name": "growth",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "attributes",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "combat",
+          "type": "std::array<int, 4>"
+        },
+        {
+          "name": "available_spells",
+          "type": "std::array<bool, 4>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::HumanProfessionRule",
+      "fields": [
+        {
+          "name": "maximum_growth",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "attribute_percent",
+          "type": "std::array<int, 6>"
+        },
+        {
+          "name": "difficulty",
+          "type": "int"
+        },
+        {
+          "name": "unlocked",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::LegacyMap",
+      "fields": [
+        {
+          "name": "width",
+          "type": "int"
+        },
+        {
+          "name": "height",
+          "type": "int"
+        },
+        {
+          "name": "cells",
+          "type": "std::vector<LegacyMapCell>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::LegacyMapCell",
+      "fields": [
+        {
+          "name": "legacy_state",
+          "type": "int"
+        },
+        {
+          "name": "category",
+          "type": "RouteCategory"
+        },
+        {
+          "name": "facility",
+          "type": "std::optional<FacilityTileBinding>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::LegacyPathResult",
+      "fields": [
+        {
+          "name": "error",
+          "type": "MapAccessError"
+        },
+        {
+          "name": "steps",
+          "type": "std::vector<Position>"
+        },
+        {
+          "name": "cost",
+          "type": "std::int64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::LevelEndpoints",
+      "fields": [
+        {
+          "name": "first",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "fifth",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::MonsterBattleRecord",
+      "fields": [
+        {
+          "name": "human_kills",
+          "type": "int"
+        },
+        {
+          "name": "stat1",
+          "type": "int"
+        },
+        {
+          "name": "statF",
+          "type": "int"
+        },
+        {
+          "name": "death_reward",
+          "type": "int"
+        },
+        {
+          "name": "rank",
+          "type": "int"
+        },
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::NeighbourSource",
+      "fields": [
+        {
+          "name": "instance_id",
+          "type": "BuildingId"
+        },
+        {
+          "name": "definition_id",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ObjectCatalogRecord",
+      "fields": [
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "unlock_counter",
+          "type": "int"
+        },
+        {
+          "name": "newly_unlocked",
+          "type": "bool"
+        },
+        {
+          "name": "inventory",
+          "type": "int"
+        },
+        {
+          "name": "free_purchases",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ObjectId",
+      "fields": [
+        {
+          "name": "value",
+          "type": "std::uint64_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ObjectShopRecord",
+      "fields": [
+        {
+          "name": "category",
+          "type": "int"
+        },
+        {
+          "name": "notices",
+          "type": "std::vector<std::array<int, 2>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::PeriodAccountingSnapshot",
+      "fields": [
+        {
+          "name": "funds",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "village_points",
+          "type": "std::uint16_t"
+        },
+        {
+          "name": "entries",
+          "type": "std::map<std::uint64_t, CashEntry>"
+        },
+        {
+          "name": "reports",
+          "type": "std::map<std::uint64_t, AccountingReport>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::Position",
+      "fields": [
+        {
+          "name": "x",
+          "type": "int"
+        },
+        {
+          "name": "y",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ProjectileState",
+      "fields": [
+        {
+          "name": "kind",
+          "type": "ProjectileKind"
+        },
+        {
+          "name": "caster",
+          "type": "CharacterId"
+        },
+        {
+          "name": "original_target",
+          "type": "CharacterId"
+        },
+        {
+          "name": "position",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "velocity",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "acceleration",
+          "type": "CombatPoint"
+        },
+        {
+          "name": "facing",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        },
+        {
+          "name": "delay",
+          "type": "int"
+        },
+        {
+          "name": "effect",
+          "type": "int"
+        },
+        {
+          "name": "damage",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ReportInput",
+      "fields": [
+        {
+          "name": "period",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "charges",
+          "type": "std::vector<CashEntry>"
+        },
+        {
+          "name": "defeats",
+          "type": "std::vector<DefeatTally>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RescueActorContext",
+      "fields": [
+        {
+          "name": "visits",
+          "type": "FacilityArrivalState"
+        },
+        {
+          "name": "binding",
+          "type": "std::optional<ArrivalBinding>"
+        },
+        {
+          "name": "path_pending",
+          "type": "bool"
+        },
+        {
+          "name": "on_event_cell",
+          "type": "bool"
+        },
+        {
+          "name": "definition_task_flag",
+          "type": "bool"
+        },
+        {
+          "name": "journey",
+          "type": "std::optional<FacilityDeparture>"
+        },
+        {
+          "name": "waypoint",
+          "type": "std::size_t"
+        },
+        {
+          "name": "horizontal_velocity",
+          "type": "WorldPosition"
+        },
+        {
+          "name": "town_updates",
+          "type": "int"
+        },
+        {
+          "name": "outside_updates",
+          "type": "int"
+        },
+        {
+          "name": "blocked_updates",
+          "type": "int"
+        },
+        {
+          "name": "spawn_updates",
+          "type": "int"
+        },
+        {
+          "name": "no_path_updates",
+          "type": "int"
+        },
+        {
+          "name": "short_exit_updates",
+          "type": "int"
+        },
+        {
+          "name": "bad_area_updates",
+          "type": "int"
+        },
+        {
+          "name": "monster_mode",
+          "type": "int"
+        },
+        {
+          "name": "destination",
+          "type": "std::optional<Position>"
+        },
+        {
+          "name": "unbound_route",
+          "type": "std::optional<LegacyPathResult>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RescueFacility",
+      "fields": [
+        {
+          "name": "placement",
+          "type": "FacilityPlacement"
+        },
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "category",
+          "type": "int"
+        },
+        {
+          "name": "detail",
+          "type": "int"
+        },
+        {
+          "name": "price",
+          "type": "int"
+        },
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "upgrade_uses",
+          "type": "LevelEndpoints"
+        },
+        {
+          "name": "sales",
+          "type": "int"
+        },
+        {
+          "name": "occupants",
+          "type": "std::vector<CharacterId>"
+        },
+        {
+          "name": "definition_wait",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RescueWorldState",
+      "fields": [
+        {
+          "name": "ai",
+          "type": "AiRewardState"
+        },
+        {
+          "name": "map",
+          "type": "LegacyMap"
+        },
+        {
+          "name": "actors",
+          "type": "std::map<CharacterId, RescueActorContext>"
+        },
+        {
+          "name": "facilities",
+          "type": "std::map<std::uint64_t, RescueFacility>"
+        },
+        {
+          "name": "human_spending",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "facility_uses",
+          "type": "std::map<int, FacilityUseProgress>"
+        },
+        {
+          "name": "month_index",
+          "type": "int"
+        },
+        {
+          "name": "object_order",
+          "type": "std::vector<std::uint64_t>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RewardActorContext",
+      "fields": [
+        {
+          "name": "cell",
+          "type": "Position"
+        },
+        {
+          "name": "inside_town",
+          "type": "bool"
+        },
+        {
+          "name": "effects",
+          "type": "ActorEffectState"
+        },
+        {
+          "name": "facility_category",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "move_area",
+          "type": "bool"
+        },
+        {
+          "name": "half_cell",
+          "type": "Position"
+        },
+        {
+          "name": "low_hp",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RewardEncounter",
+      "fields": [
+        {
+          "name": "runtime",
+          "type": "EncounterRuntimeState"
+        },
+        {
+          "name": "members",
+          "type": "std::vector<CharacterId>"
+        },
+        {
+          "name": "group_exists",
+          "type": "bool"
+        },
+        {
+          "name": "group",
+          "type": "BattleGroupState"
+        },
+        {
+          "name": "legacy_id",
+          "type": "int"
+        },
+        {
+          "name": "influence",
+          "type": "std::optional<CombatInfluenceCandidate>"
+        },
+        {
+          "name": "human_scratch",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "monster_scratch",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "linked_monsters",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RewardHumanDefinition",
+      "fields": [
+        {
+          "name": "definition",
+          "type": "HumanDefinitionStatsInput"
+        },
+        {
+          "name": "derived",
+          "type": "HumanDerivedStats"
+        },
+        {
+          "name": "experience",
+          "type": "int"
+        },
+        {
+          "name": "pending",
+          "type": "DelayedRewardState"
+        },
+        {
+          "name": "notice_pending",
+          "type": "bool"
+        },
+        {
+          "name": "notice_attributes",
+          "type": "std::array<std::array<int, 2>, 4>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RewardMonsterDefinition",
+      "fields": [
+        {
+          "name": "defeats",
+          "type": "int"
+        },
+        {
+          "name": "growth",
+          "type": "int"
+        },
+        {
+          "name": "base_death_reward",
+          "type": "int"
+        },
+        {
+          "name": "base_cash_reward",
+          "type": "int"
+        },
+        {
+          "name": "base_hp",
+          "type": "int"
+        },
+        {
+          "name": "body",
+          "type": "int"
+        },
+        {
+          "name": "sprite_variant",
+          "type": "int"
+        },
+        {
+          "name": "required_progress",
+          "type": "int"
+        },
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "newly_unlocked",
+          "type": "bool"
+        },
+        {
+          "name": "introduced",
+          "type": "bool"
+        },
+        {
+          "name": "has_introduction_script",
+          "type": "bool"
+        },
+        {
+          "name": "base_attack",
+          "type": "int"
+        },
+        {
+          "name": "base_defense",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ShopActorRecord",
+      "fields": [
+        {
+          "name": "weapon",
+          "type": "int"
+        },
+        {
+          "name": "selected_weapon",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "selected_armor",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "selected_accessory",
+          "type": "std::optional<int>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ShopHumanRecord",
+      "fields": [
+        {
+          "name": "equipment",
+          "type": "std::array<std::optional<int>, 4>"
+        },
+        {
+          "name": "reselect",
+          "type": "std::array<int, 4>"
+        },
+        {
+          "name": "satisfaction",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::SnapshotFacilityTarget",
+      "fields": [
+        {
+          "name": "drawn_active_index",
+          "type": "std::size_t"
+        },
+        {
+          "name": "drawn_snapshot_index",
+          "type": "std::size_t"
+        },
+        {
+          "name": "goal_snapshot_index",
+          "type": "std::size_t"
+        },
+        {
+          "name": "goal",
+          "type": "ActivityCandidateCell"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::TaskRecruitmentAnimation",
+      "fields": [
+        {
+          "name": "entries",
+          "type": "std::vector<TaskRecruitmentEntry>"
+        },
+        {
+          "name": "portraits",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "arrival_extent",
+          "type": "int"
+        },
+        {
+          "name": "completion_tick",
+          "type": "int"
+        },
+        {
+          "name": "portrait_timer",
+          "type": "int"
+        },
+        {
+          "name": "displayed_count",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::TaskRecruitmentEntry",
+      "fields": [
+        {
+          "name": "human",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        },
+        {
+          "name": "phrase",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::TownBounds",
+      "fields": [
+        {
+          "name": "left",
+          "type": "int"
+        },
+        {
+          "name": "right",
+          "type": "int"
+        },
+        {
+          "name": "top",
+          "type": "int"
+        },
+        {
+          "name": "bottom",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldCalendarState",
+      "fields": [
+        {
+          "name": "year",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "month",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "subperiod",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "units",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "previous_units",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "month_ticks",
+          "type": "std::int32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldEventTask",
+      "fields": [
+        {
+          "name": "definition_task_flag",
+          "type": "bool"
+        },
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "center",
+          "type": "Position"
+        },
+        {
+          "name": "encounter",
+          "type": "std::optional<std::uint64_t>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldExplorationGroundDisplay",
+      "fields": [
+        {
+          "name": "cell",
+          "type": "Position"
+        },
+        {
+          "name": "kind",
+          "type": "int"
+        },
+        {
+          "name": "delay",
+          "type": "int"
+        },
+        {
+          "name": "x_offset",
+          "type": "int"
+        },
+        {
+          "name": "y_offset",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldExplorationSummary",
+      "fields": [
+        {
+          "name": "legacy_page",
+          "type": "int"
+        },
+        {
+          "name": "task",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "rewards",
+          "type": "std::vector<std::array<int, 2>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldFacilityUpdateDefinition",
+      "fields": [
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "popularity_reward",
+          "type": "int"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldFacilityUpdateDetails",
+      "fields": [
+        {
+          "name": "construction_limit",
+          "type": "int"
+        },
+        {
+          "name": "condition",
+          "type": "int"
+        },
+        {
+          "name": "completion_popularity",
+          "type": "int"
+        },
+        {
+          "name": "residence_mode",
+          "type": "int"
+        },
+        {
+          "name": "resident_definition",
+          "type": "int"
+        },
+        {
+          "name": "notices",
+          "type": "std::vector<std::array<int, 2>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldMapNeighbourCache",
+      "fields": [
+        {
+          "name": "current",
+          "type": "std::array<int, 3>"
+        },
+        {
+          "name": "previous",
+          "type": "std::array<int, 3>"
+        },
+        {
+          "name": "sources",
+          "type": "std::vector<NeighbourSource>"
+        },
+        {
+          "name": "visited",
+          "type": "bool"
+        },
+        {
+          "name": "notices",
+          "type": "std::vector<std::array<int, 2>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldPopularityReward",
+      "fields": [
+        {
+          "name": "definition",
+          "type": "int"
+        },
+        {
+          "name": "legacy_tag",
+          "type": "int"
+        },
+        {
+          "name": "threshold",
+          "type": "int"
+        },
+        {
+          "name": "human",
+          "type": "int"
+        },
+        {
+          "name": "facility",
+          "type": "int"
+        },
+        {
+          "name": "program",
+          "type": "WorldScriptProgram"
+        },
+        {
+          "name": "flags",
+          "type": "std::uint32_t"
+        },
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "pending_notice",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldPosition",
+      "fields": [
+        {
+          "name": "x",
+          "type": "float"
+        },
+        {
+          "name": "z",
+          "type": "float"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldRandomSnapshot",
+      "fields": [
+        {
+          "name": "engine_state",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "tape",
+          "type": "std::vector<std::int32_t>"
+        },
+        {
+          "name": "cursor",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "tape_mode",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldSceneState",
+      "fields": [
+        {
+          "name": "world",
+          "type": "WorldScheduleState"
+        },
+        {
+          "name": "random",
+          "type": "WorldRandomStream"
+        },
+        {
+          "name": "calendar",
+          "type": "WorldCalendarState"
+        },
+        {
+          "name": "scene_state",
+          "type": "int"
+        },
+        {
+          "name": "speed_setting",
+          "type": "int"
+        },
+        {
+          "name": "frame_counter",
+          "type": "int"
+        },
+        {
+          "name": "scene_counter",
+          "type": "int"
+        },
+        {
+          "name": "processing_phase",
+          "type": "int"
+        },
+        {
+          "name": "processing_subphase",
+          "type": "int"
+        },
+        {
+          "name": "first_normal_refresh",
+          "type": "bool"
+        },
+        {
+          "name": "top_is_main",
+          "type": "bool"
+        },
+        {
+          "name": "framework_paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScheduleState",
+      "fields": [
+        {
+          "name": "world",
+          "type": "RescueWorldState"
+        },
+        {
+          "name": "surface",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "map_flags",
+          "type": "std::vector<std::uint32_t>"
+        },
+        {
+          "name": "town",
+          "type": "TownBounds"
+        },
+        {
+          "name": "spawn_cells",
+          "type": "std::vector<Position>"
+        },
+        {
+          "name": "facility_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "updates",
+          "type": "int"
+        },
+        {
+          "name": "hints",
+          "type": "std::vector<std::vector<int>>"
+        },
+        {
+          "name": "floating_notes",
+          "type": "std::vector<std::vector<int>>"
+        },
+        {
+          "name": "popularity_queue",
+          "type": "std::vector<std::array<int, 3>>"
+        },
+        {
+          "name": "rescue_available",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptContinuation",
+      "fields": [
+        {
+          "name": "event",
+          "type": "int"
+        },
+        {
+          "name": "next_instruction",
+          "type": "std::size_t"
+        },
+        {
+          "name": "remaining_updates",
+          "type": "int"
+        },
+        {
+          "name": "legacy_tag",
+          "type": "int"
+        },
+        {
+          "name": "saved_context",
+          "type": "int"
+        },
+        {
+          "name": "replacement",
+          "type": "std::string"
+        },
+        {
+          "name": "parameters",
+          "type": "std::optional<std::vector<int>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptFacilityDefinition",
+      "fields": [
+        {
+          "name": "category",
+          "type": "int"
+        },
+        {
+          "name": "level",
+          "type": "int"
+        },
+        {
+          "name": "economy",
+          "type": "FacilityEconomyDefinition"
+        },
+        {
+          "name": "improvements",
+          "type": "std::array<std::int32_t, 4>"
+        },
+        {
+          "name": "attributes",
+          "type": "std::array<std::int32_t, 4>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptFinance",
+      "fields": [
+        {
+          "name": "cash",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "cash_peak",
+          "type": "std::int64_t"
+        },
+        {
+          "name": "cash_peak_village",
+          "type": "std::string"
+        },
+        {
+          "name": "legacy_flags14",
+          "type": "int"
+        },
+        {
+          "name": "month",
+          "type": "int"
+        },
+        {
+          "name": "localized_gold_template",
+          "type": "std::optional<std::string>"
+        },
+        {
+          "name": "monthly_totals",
+          "type": "std::array<std::array<std::array<int, 2>, 5>, 12>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptNotice",
+      "fields": [
+        {
+          "name": "message",
+          "type": "int"
+        },
+        {
+          "name": "counter",
+          "type": "int"
+        },
+        {
+          "name": "duration",
+          "type": "int"
+        },
+        {
+          "name": "replacement",
+          "type": "std::string"
+        },
+        {
+          "name": "text",
+          "type": "std::string"
+        },
+        {
+          "name": "definitions",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "human_definition",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "attribute_changes",
+          "type": "std::optional<std::array<std::array<int, 2>, 4>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptPage",
+      "fields": [
+        {
+          "name": "id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "lifecycle",
+          "type": "int"
+        },
+        {
+          "name": "kind",
+          "type": "WorldScriptPageKind"
+        },
+        {
+          "name": "legacy_page",
+          "type": "int"
+        },
+        {
+          "name": "source_record",
+          "type": "int"
+        },
+        {
+          "name": "replacement",
+          "type": "std::string"
+        },
+        {
+          "name": "title",
+          "type": "std::string"
+        },
+        {
+          "name": "paragraphs",
+          "type": "std::vector<std::string>"
+        },
+        {
+          "name": "speaker_kind",
+          "type": "int"
+        },
+        {
+          "name": "speaker_definition",
+          "type": "int"
+        },
+        {
+          "name": "legacy_tag",
+          "type": "int"
+        },
+        {
+          "name": "legacy_r",
+          "type": "int"
+        },
+        {
+          "name": "legacy_s",
+          "type": "int"
+        },
+        {
+          "name": "legacy_t",
+          "type": "int"
+        },
+        {
+          "name": "legacy_f",
+          "type": "int"
+        },
+        {
+          "name": "legacy_g",
+          "type": "int"
+        },
+        {
+          "name": "legacy_l",
+          "type": "int"
+        },
+        {
+          "name": "message_commands",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "task_identity",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "task_definition",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "monster_definition",
+          "type": "std::optional<int>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptState",
+      "fields": [
+        {
+          "name": "event_calls",
+          "type": "std::map<int, int>"
+        },
+        {
+          "name": "continuations",
+          "type": "std::vector<WorldScriptContinuation>"
+        },
+        {
+          "name": "context",
+          "type": "int"
+        },
+        {
+          "name": "village_name",
+          "type": "std::string"
+        },
+        {
+          "name": "pending_completion",
+          "type": "int"
+        },
+        {
+          "name": "popularity_queue",
+          "type": "std::vector<std::array<int, 3>>"
+        },
+        {
+          "name": "pages",
+          "type": "std::vector<WorldScriptPage>"
+        },
+        {
+          "name": "executing_page",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "next_page_id",
+          "type": "std::uint64_t"
+        },
+        {
+          "name": "page_mutations_locked",
+          "type": "bool"
+        },
+        {
+          "name": "redraw_requested",
+          "type": "bool"
+        },
+        {
+          "name": "selected_actor",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "selected_monster",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "selected_facility",
+          "type": "std::optional<std::uint64_t>"
+        },
+        {
+          "name": "human_order",
+          "type": "std::vector<std::uint64_t>"
+        },
+        {
+          "name": "scene_mode",
+          "type": "int"
+        },
+        {
+          "name": "scene_updates",
+          "type": "int"
+        },
+        {
+          "name": "scene_labels",
+          "type": "std::array<std::string, 2>"
+        },
+        {
+          "name": "selection_mode",
+          "type": "int"
+        },
+        {
+          "name": "finance",
+          "type": "std::optional<WorldScriptFinance>"
+        },
+        {
+          "name": "notices",
+          "type": "std::vector<WorldScriptNotice>"
+        },
+        {
+          "name": "activities",
+          "type": "std::map<int, WorldScriptUnlockDefinition>"
+        },
+        {
+          "name": "humans",
+          "type": "std::map<int, WorldScriptUnlockDefinition>"
+        },
+        {
+          "name": "professions",
+          "type": "std::map<int, WorldScriptUnlockDefinition>"
+        },
+        {
+          "name": "facilities",
+          "type": "std::map<int, WorldScriptFacilityDefinition>"
+        },
+        {
+          "name": "human_catalog_complete",
+          "type": "bool"
+        },
+        {
+          "name": "facility_catalog_complete",
+          "type": "bool"
+        },
+        {
+          "name": "job_counts",
+          "type": "std::array<std::int32_t, 10>"
+        },
+        {
+          "name": "medal_count",
+          "type": "int"
+        },
+        {
+          "name": "exploration_phase",
+          "type": "int"
+        },
+        {
+          "name": "user_flags",
+          "type": "std::uint32_t"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptUnlockDefinition",
+      "fields": [
+        {
+          "name": "status",
+          "type": "int"
+        },
+        {
+          "name": "pending_notice",
+          "type": "bool"
+        },
+        {
+          "name": "name",
+          "type": "std::string"
+        },
+        {
+          "name": "extra",
+          "type": "int"
+        },
+        {
+          "name": "satisfaction",
+          "type": "int"
+        }
+      ]
+    }
+  ],
+  "aliases": [
+    {
+      "name": "dungeon_village_reference::ActorEffectRecord",
+      "type": "std::vector<int>"
+    },
+    {
+      "name": "dungeon_village_reference::DungeonChallenge",
+      "type": "std::array<int, 6>"
+    },
+    {
+      "name": "dungeon_village_reference::LegacyActorControl",
+      "type": "std::vector<int>"
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptProgram",
+      "type": "std::vector<std::vector<int>>"
+    }
+  ],
+  "enums": [
+    {
+      "name": "dungeon_village_reference::ActorKind",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "human",
+          "value": "0"
+        },
+        {
+          "name": "monster",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CandidateOrigin",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "map_scan",
+          "value": "0"
+        },
+        {
+          "name": "event",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CashCategory",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "facilities",
+          "value": "0"
+        },
+        {
+          "name": "monsters",
+          "value": "1"
+        },
+        {
+          "name": "adventurers",
+          "value": "2"
+        },
+        {
+          "name": "shop",
+          "value": "3"
+        },
+        {
+          "name": "other",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::CashDirection",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "income",
+          "value": "0"
+        },
+        {
+          "name": "expense",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::DungeonCrewRequestKind",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "retreat",
+          "value": "0"
+        },
+        {
+          "name": "progress_label231",
+          "value": "1"
+        },
+        {
+          "name": "grant_catalog_reward",
+          "value": "2"
+        },
+        {
+          "name": "spawn_catalog_reward",
+          "value": "3"
+        },
+        {
+          "name": "exit_crew",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityOrientation",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "first",
+          "value": "0"
+        },
+        {
+          "name": "second",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::FacilityShape",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "single",
+          "value": "0"
+        },
+        {
+          "name": "pair",
+          "value": "1"
+        },
+        {
+          "name": "square",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::MapAccessError",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "none",
+          "value": "0"
+        },
+        {
+          "name": "invalid_map",
+          "value": "1"
+        },
+        {
+          "name": "invalid_position",
+          "value": "2"
+        },
+        {
+          "name": "invalid_limits",
+          "value": "3"
+        },
+        {
+          "name": "invalid_layout",
+          "value": "4"
+        },
+        {
+          "name": "unsupported_kind",
+          "value": "5"
+        },
+        {
+          "name": "invalid_field",
+          "value": "6"
+        },
+        {
+          "name": "binding_mismatch",
+          "value": "7"
+        },
+        {
+          "name": "unreachable",
+          "value": "8"
+        },
+        {
+          "name": "cost_limit",
+          "value": "9"
+        },
+        {
+          "name": "expansion_limit",
+          "value": "10"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::ProjectileKind",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "arrow",
+          "value": "0"
+        },
+        {
+          "name": "spell",
+          "value": "1"
+        },
+        {
+          "name": "delayed_damage",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::RouteCategory",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "terminal",
+          "value": "0"
+        },
+        {
+          "name": "road",
+          "value": "1"
+        },
+        {
+          "name": "ground",
+          "value": "2"
+        },
+        {
+          "name": "blocked",
+          "value": "3"
+        },
+        {
+          "name": "access",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldScriptPageKind",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "scene",
+          "value": "0"
+        },
+        {
+          "name": "dialogue",
+          "value": "1"
+        },
+        {
+          "name": "simple_message",
+          "value": "2"
+        },
+        {
+          "name": "newspaper",
+          "value": "3"
+        },
+        {
+          "name": "raw_page",
+          "value": "4"
+        }
+      ]
+    }
+  ]
+}

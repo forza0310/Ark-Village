@@ -6,8 +6,10 @@ include(../cmake/ResearchLibraries.cmake)
 
 include(CTest)
 
-add_library(dungeon_village_archive src/archive.cpp src/sha256.cpp src/sprite.cpp src/table.cpp)
+include(../cmake/ResearchHash.cmake)
+add_library(dungeon_village_archive src/archive.cpp src/sprite.cpp src/table.cpp)
 dungeon_village_library(dungeon_village_archive)
+target_link_libraries(dungeon_village_archive PUBLIC dungeon_village_hash)
 target_include_directories(dungeon_village_archive PUBLIC include)
 target_compile_features(dungeon_village_archive PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_archive PROPERTIES CXX_EXTENSIONS OFF)

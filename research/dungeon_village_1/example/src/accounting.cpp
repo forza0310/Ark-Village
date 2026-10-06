@@ -159,20 +159,62 @@ AccountingError PeriodAccounting::claim_report(std::uint64_t period) {
     return AccountingError::none;
 }
 
-std::int64_t PeriodAccounting::funds() const {
-    return funds_;
-}
+std::int64_t PeriodAccounting::funds() const { return funds_; }
 
-std::uint16_t PeriodAccounting::village_points() const {
-    return village_points_;
-}
+std::uint16_t PeriodAccounting::village_points() const { return village_points_; }
 
-const std::map<std::uint64_t, CashEntry> &PeriodAccounting::entries() const {
-    return entries_;
-}
+const std::map<std::uint64_t, CashEntry> &PeriodAccounting::entries() const { return entries_; }
 
 const std::map<std::uint64_t, AccountingReport> &PeriodAccounting::reports() const {
     return reports_;
+}
+
+PeriodAccountingSnapshot PeriodAccounting::snapshot() const {
+    return {funds_, village_points_, entries_, reports_};
+}
+std::optional<PeriodAccounting>
+PeriodAccounting::from_snapshot(const PeriodAccountingSnapshot &snapshot) {
+    if (snapshot.village_points > 999)
+        return {};
+    for (const auto &[id, entry] : snapshot.entries)
+        if (id != entry.event_id || !valid_entry(entry))
+            return {};
+    for (const auto &[period, report] : snapshot.reports) {
+        if (period == 0 || report.input.period != period || report.awarded_points > 999 ||
+            report.awarded_points > report.pending_points ||
+            (!report.claimed && report.awarded_points != 0))
+            return {};
+        // 用原有报告规则核验快照，不把原现金余额再支付一次。
+        PeriodAccounting checked;
+        for (const auto &[id, entry] : snapshot.entries)
+            if (entry.period == period)
+                checked.entries_.emplace(id, entry);
+        checked.funds_ = snapshot.funds;
+        if (checked.prepare_report(report.input) != AccountingError::none)
+            return {};
+        const auto &expected = checked.reports_.at(period);
+        if (expected.pending_points != report.pending_points ||
+            expected.displayed.income != report.displayed.income ||
+            expected.displayed.expense != report.displayed.expense ||
+            expected.displayed_net != report.displayed_net)
+            return {};
+        for (std::size_t n = 0; n < report.categories.size(); ++n)
+            if (expected.categories[n].income != report.categories[n].income ||
+                expected.categories[n].expense != report.categories[n].expense)
+                return {};
+        // prepare_report不得补写快照中缺失的原费用事件。
+        for (const auto &charge : report.input.charges) {
+            const auto found = snapshot.entries.find(charge.event_id);
+            if (found == snapshot.entries.end() || !(found->second == charge))
+                return {};
+        }
+    }
+    PeriodAccounting result;
+    result.funds_ = snapshot.funds;
+    result.village_points_ = snapshot.village_points;
+    result.entries_ = snapshot.entries;
+    result.reports_ = snapshot.reports;
+    return result;
 }
 
 } // namespace dungeon_village_reference

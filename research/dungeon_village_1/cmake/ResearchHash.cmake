@@ -1,0 +1,10 @@
+# 三包共享标准C++摘要实现，避免原型依赖整个素材提取库。
+include_guard(GLOBAL)
+add_library(dungeon_village_hash "${CMAKE_CURRENT_LIST_DIR}/../tools/src/sha256.cpp")
+dungeon_village_library(dungeon_village_hash)
+target_include_directories(dungeon_village_hash PUBLIC "${CMAKE_CURRENT_LIST_DIR}/../tools/include")
+target_compile_features(dungeon_village_hash PUBLIC cxx_std_17)
+set_target_properties(dungeon_village_hash PROPERTIES CXX_EXTENSIONS OFF)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_hash PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()

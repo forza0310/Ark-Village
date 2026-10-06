@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <random>
 #include <vector>
 
@@ -12,6 +13,13 @@ struct WorldRandomDraw {
     std::int32_t ticket{}; // 仅none时有效；不是Java Random.nextInt(bound)。
     std::int32_t raw{};    // exhausted时无原始值，其余分支已消费nextInt。
     std::size_t ordinal{}; // 从零起的全局原始抽取位置，包括zero_bound。
+};
+// 维护快照显式保存48位Java引擎和磁带；不是原APK存档布局。
+struct WorldRandomSnapshot {
+    std::uint64_t engine_state{};
+    std::vector<std::int32_t> tape;
+    std::uint64_t cursor{};
+    bool tape_mode{};
 };
 
 // c/d.java:29,75：一个static Random，nextInt之后Java有符号余数再abs。
@@ -25,6 +33,8 @@ class WorldRandomStream {
     WorldRandomDraw draw(std::int32_t bound);
     std::size_t draws() const { return cursor_; }
     std::size_t raw_cursor() const { return cursor_; }
+    WorldRandomSnapshot snapshot() const;
+    static std::optional<WorldRandomStream> from_snapshot(const WorldRandomSnapshot &snapshot);
 
   private:
     using JavaEngine =

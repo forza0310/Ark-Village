@@ -398,6 +398,8 @@ class StartupWorldRuntimeSession {
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;
 
   private:
+    friend struct StartupWorldPersistenceAccess; // 已完整校验的文件候选唯一安装入口。
+    StartupWorldRuntimeSession() = default;
     StartupWorldRuntimeState state_;
     std::vector<std::shared_ptr<const StartupWorldRuntimeState>> checkpoints_; // 不嵌入Owner。
 };

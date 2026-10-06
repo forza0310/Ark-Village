@@ -1178,3 +1178,7 @@ PE32+/AMD64与系统DLL导入白名单、616项素材哈希、随包字体/许�
 Release真实窗口三项通过：24的朝向0/1预览均显示图像，cash5000/random0/未创建；朝向1通过真实事务建成实例9，cash4900/random0/failed0。每项8帧有界运行，截图与日志在`build/validation/build-rotation`；这不是OS鼠标点击或固定APK动态对照。
 
 Windows x64四套重新配置/编译/标准CTest全部通过：headless-debug141项/378.91秒，headless-release141项/92.06秒，desktop-debug160项/376.98秒，desktop-release160项/97.58秒，共602项，每套保留三个月连续世界基线。309项冻结来源与616项素材哈希、C++格式、diff检查通过；额外长跑仍OFF。未新增UI文本字形或下载依赖，不重复生成字体；研究工作区改动完整保留。旧`windows-x64-package-20261006`仍为含此问题的历史包，不作为本次修复制品。
+
+修复checkpoint为`8013131`。复用已授权的本地CI打包/解压流程，生成`build/validation/windows-x64-rotation-fix-20261006/dist/ark-village-windows10-x64.zip`，3,187,744字节（约3.04MiB），625文件解压7,098,007字节。SHA256为`f04fb9106c5db93a8d770197226bbca41f902ace6491acd00d928bbb780d3828`。AMD64/系统DLL白名单、素材与字体/许可、ZIP CRC/SHA及625文件解压逐字节一致性、解压后`--check`全部通过。
+
+解压目录仅Windows系统PATH、无font/assets参数的三个实际窗口通过：独立smoke工作目录默认exe启动、CMD启动器募集旋转预览、独立smoke目录exe旋转建造，均8帧/退出0；后者仍是definition24/实例9/cash4900/random0。日志和PNG位于该新包目录。这是修复后本地包的启动/渲染验收，未发布远程，不替代OS鼠标操作或原APK单帧旋转合同。

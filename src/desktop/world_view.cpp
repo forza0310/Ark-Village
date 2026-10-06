@@ -282,6 +282,14 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                               ? 120000
                               : 20000;
         for (int step = 0; step < limit && !reached; ++step) {
+            if (step % 5000 == 0) {
+                const auto *page = active_page(state);
+                std::cout << "World inspection progress: target=" << options.inspect_page
+                          << " step=" << step << " rounds=" << state.simulation_steps
+                          << " page=" << (page ? page->legacy_page : -1)
+                          << " date=" << state.scene.calendar.year << '/'
+                          << state.scene.calendar.month << std::endl;
+            }
             // Long natural preparations must pump the OS window. This affects neither source
             // ticks nor player commands; default gameplay never enters this diagnostic loop.
             if (GetTime() >= next_inspection_draw) {
@@ -295,8 +303,10 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 if (WindowShouldClose())
                     throw std::runtime_error("World inspection closed during preparation");
             }
+            before_human_inspection_update(state, options.inspect_page, human_inspection);
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
+            after_human_inspection_update(state, human_inspection);
             // This synchronous diagnostic is its own Owner; normal windows consume outputs
             // in WorldSession. No sound playback is implemented in either adapter yet.
             state.sound_requests.clear();

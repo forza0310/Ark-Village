@@ -132,7 +132,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
             src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
-            src/desktop/world_build_placement.cpp
+            src/desktop/world_build_placement.cpp src/desktop/world_human_inspection.cpp
         LIBRARIES ark_world_ui_test_support)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"

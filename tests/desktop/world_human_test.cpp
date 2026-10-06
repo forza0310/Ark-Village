@@ -4,6 +4,7 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_human.hpp"
 #include "ui/world_tax.hpp"
+#include "world_human_inspection.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -249,5 +250,23 @@ void world_tax() {
     check(inside(layout.panel, layout.rows) && inside(layout.panel, layout.total) &&
               inside(layout.panel, layout.confirm),
           "Five tax rows and total fit the minimum viewport");
+
+    // A preceding event input can expose raw98 immediately. The next source update both
+    // pays and closes it, so the diagnostic must capture its input before that update.
+    auto automatic = initial_world();
+    const auto tax = human_page(automatic, 98);
+    automatic.human_presence.at(1) = 1;
+    automatic.human_homes.at(1)[2] = 1;
+    automatic.human_calendar.at(1).legacy_G = 100;
+    desktop::WorldHumanInspection inspection;
+    inspection.tax_confirmed = true;
+    desktop::before_human_inspection_update(automatic, "world-tax-collected", inspection);
+    check(inspection.tax_pending && inspection.expected_tax == 100,
+          "Diagnostic captures an input-created automatic page before it disappears");
+    const auto paid = sim::update_startup_world_tax_page(automatic, tax.id);
+    check(paid.has_value(), "Actual automatic tax consumer closes the diagnostic boundary fixture");
+    desktop::after_human_inspection_update(*paid, inspection);
+    check(inspection.tax_collected && !inspection.tax_pending,
+          "Diagnostic recognizes the actual payment without needing a post-update raw98 page");
 }
 } // namespace ark::test

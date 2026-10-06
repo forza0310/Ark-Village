@@ -6,7 +6,7 @@
 
 [research入口](../research/README.md)及其维护规则、prototype、素材是产品唯一规格来源，输入身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)。产品侧只读维护交付，不读取 `research/work`、不执行逆向，也不把夹具、研究原型保护或跨版本截图数值当作原版规则。
 
-研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；本批e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面，本阶段验收已通过。村办/情报/系统及其余未交付操作禁用；具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
+研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面，本阶段验收已通过。村办/情报/系统及其余未交付操作禁用；具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
 
 ## 三层结构
 
@@ -18,7 +18,7 @@
 | 世界运行时 | `include/ark/simulation/`、`src/simulation/` | `ark_world_runtime`：真实新局、完整定义目录、唯一Owner，以及路由/场景/到访/日历/页面/任务/非人物消费者的投影和提交 |
 | 桌面适配 | `src/desktop/` | raylib窗口、资源、输入、相机、投影、深度绘制及UI；`world_view`协调平台循环，`world_scene`读取世界视图 |
 
-当前冻结研究8f12654，共315项源/测试/数据；本批人物经营链、住宅税收及桌面接线已实现，最终验收进行中。e8f66d9的309项接入曾通过四套602项标准测试、6次自然/年度长测及7个窗口检查；此前33ee056的298项接入通过588项标准测试与6次长测，随后菜单/招募展示及测试整理通过590项。旧结果仅作历史证据，具体结果见B1。
+当前冻结研究8f12654，共315项源/测试/数据；本批人物经营链、住宅税收及桌面接线已实现，验收通过（结果见B1）。e8f66d9的309项接入曾通过四套602项标准测试、6次自然/年度长测及7个窗口检查；此前33ee056的298项接入通过588项标准测试与6次长测，随后菜单/招募展示及测试整理通过590项。旧结果仅作历史证据，具体结果见B1。
 
 `src/app/world_simulation_main.cpp` 是标准C++无窗口入口，直接调用世界运行时；桌面入口 `src/desktop/main.cpp` 根据启动参数选择运行模式。启动参数属于 `ark_launch`，逻辑时钟适配属于 `ark_timing`，SEB/TSV解析属于 `ark_asset_metadata`。这些平台无关工具不持有第二套业务世界。
 

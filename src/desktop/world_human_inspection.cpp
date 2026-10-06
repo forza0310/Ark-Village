@@ -140,14 +140,6 @@ void verify_cancelled_choice(const State &s, const std::string &mode,
 // gift the original short sword while reserving the residence fee, then admit an eligible
 // person. Construction, satisfaction, tax preparation and cash posting remain source updates.
 bool housing_input(State &s, const rules::WorldScriptPage &page, WorldHumanInspection &i) {
-    if (i.tax_pending && page.legacy_page != 98) {
-        if (s.scene.world.world.ai.accounting.funds() != i.cash_before_tax + i.expected_tax ||
-            s.monthly_cash.at(s.scene.calendar.month)[4][0] != i.income_before_tax + i.expected_tax)
-            throw std::runtime_error(
-                "Human inspection automatic tax posting differs from actual resident sum");
-        i.tax_pending = false;
-        i.tax_collected = true;
-    }
     if (page.kind == Kind::scene && s.scene.scene_state == 0 && !s.scene.framework_paused &&
         !i.home && i.recruitment && s.scene.world.world.facilities.at(*i.recruitment).status == 1) {
         const auto eligible =
@@ -230,21 +222,40 @@ bool housing_input(State &s, const rules::WorldScriptPage &page, WorldHumanInspe
         return true;
     }
     if (page.legacy_page == 98) {
-        if (!i.tax_confirmed)
-            throw std::runtime_error("Human inspection tax posting has no confirmed list");
-        i.tax_pending = true;
-        i.cash_before_tax = s.scene.world.world.ai.accounting.funds();
-        i.income_before_tax = s.monthly_cash.at(s.scene.calendar.month)[4][0];
-        i.tax_month = s.scene.calendar.year * 12 + s.scene.calendar.month;
-        i.expected_tax = 0;
-        for (const auto &h : s.rules->humans)
-            if (s.human_presence.at(h.identity) != 0 && s.human_homes.at(h.identity)[2] == 1)
-                i.expected_tax += s.human_calendar.at(h.identity).legacy_G;
         return true; // raw98 owns automatic posting; never supply confirmation.
     }
     return false;
 }
 } // namespace
+
+void before_human_inspection_update(const State &s, const std::string &mode,
+                                    WorldHumanInspection &i) {
+    const auto *page = top(s);
+    if (!tax_mode(mode) || !page || page->legacy_page != 98)
+        return;
+    if (!i.tax_confirmed)
+        throw std::runtime_error("Human inspection tax posting has no confirmed list");
+    i.tax_pending = true;
+    i.cash_before_tax = s.scene.world.world.ai.accounting.funds();
+    i.income_before_tax = s.monthly_cash.at(s.scene.calendar.month)[4][0];
+    i.tax_month = s.scene.calendar.year * 12 + s.scene.calendar.month;
+    i.expected_tax = 0;
+    for (const auto &h : s.rules->humans)
+        if (s.human_presence.at(h.identity) != 0 && s.human_homes.at(h.identity)[2] == 1)
+            i.expected_tax += s.human_calendar.at(h.identity).legacy_G;
+}
+void after_human_inspection_update(const State &s, WorldHumanInspection &i) {
+    if (!i.tax_pending)
+        return;
+    const auto *page = top(s);
+    if ((page && page->legacy_page == 98) ||
+        s.scene.world.world.ai.accounting.funds() != i.cash_before_tax + i.expected_tax ||
+        s.monthly_cash.at(s.scene.calendar.month)[4][0] != i.income_before_tax + i.expected_tax)
+        throw std::runtime_error(
+            "Human inspection automatic tax posting differs from actual resident sum");
+    i.tax_pending = false;
+    i.tax_collected = true;
+}
 
 bool human_inspection_mode(const std::string &mode) {
     return human_tab(mode) >= 0 || gift_catalogue(mode) || tax_mode(mode) ||

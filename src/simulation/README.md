@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结8f12654，共315项源/测试/数据；人物经营、住宅税收和配套运行时修正已迁入，产品最终验收进行中。新增`startup_world_human`处理当前人物四页、转职、四槽装备赠礼和大师奖励，`startup_world_tax`处理90查看/确认与98自动结算。转职55/197、赠礼子页答案/父页恢复、最大HP缓存不回血及住宅替换记录退休均保持源契约，不由表现层补算。
+当前冻结8f12654，共315项源/测试/数据；人物经营、住宅税收和配套运行时修正已迁入，产品验收通过（结果见B1）。新增`startup_world_human`处理当前人物四页、转职、四槽装备赠礼和大师奖励，`startup_world_tax`处理90查看/确认与98自动结算。转职55/197、赠礼子页答案/父页恢复、最大HP缓存不回血及住宅替换记录退休均保持源契约，不由表现层补算。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 

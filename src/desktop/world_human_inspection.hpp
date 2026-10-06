@@ -36,6 +36,11 @@ void begin_human_inspection(simulation::StartupWorldRuntimeState &state, const s
                             WorldHumanInspection &inspection);
 bool human_inspection_ready(const simulation::StartupWorldRuntimeState &state,
                             const std::string &mode, const WorldHumanInspection &inspection);
+// Automatic pages can be opened by a preceding input, so observe the exact update boundary.
+void before_human_inspection_update(const simulation::StartupWorldRuntimeState &state,
+                                    const std::string &mode, WorldHumanInspection &inspection);
+void after_human_inspection_update(const simulation::StartupWorldRuntimeState &state,
+                                   WorldHumanInspection &inspection);
 // True means this policy handled the page, including waiting for a real initialization,
 // animation or automatic consumer. Generic confirmation must not run in that case.
 bool apply_human_inspection_input(simulation::StartupWorldRuntimeState &state,

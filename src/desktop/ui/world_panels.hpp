@@ -8,6 +8,15 @@
 
 namespace ark::desktop::ui {
 class Skin;
+// STARTUP and the archived HUD identify the calendar subperiod as the displayed week.
+// Read the canonical date; rendering never advances or normalizes its counters.
+struct WorldDateView {
+    std::string text;
+    std::array<std::string, 3> numbers;
+    float week_progress{}; // Canonical units / 10800, not monthly report ticks.
+};
+WorldDateView world_date_view(const simulation::rules::WorldCalendarState &calendar);
+void draw_world_date(const WorldDateView &view, const Skin &skin, float right);
 struct WorldPageLayout {
     Rectangle panel;
     Rectangle body; // Text inset, shared by wrapping, scrolling and drawing.

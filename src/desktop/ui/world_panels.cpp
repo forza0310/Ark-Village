@@ -18,6 +18,47 @@ bool secretary(const Page &page) {
 }
 } // namespace
 
+WorldDateView world_date_view(const simulation::rules::WorldCalendarState &calendar) {
+    if (calendar.units < 0 || calendar.units >= 10800)
+        throw std::invalid_argument("HUD requires the normalized source within-week clock");
+    WorldDateView view;
+    view.numbers = {std::to_string(static_cast<std::int64_t>(calendar.year) + 1),
+                    std::to_string(calendar.month + 1), std::to_string(calendar.subperiod + 1)};
+    view.text = view.numbers[0] + "年" + view.numbers[1] + "月" + view.numbers[2] + "周";
+    view.week_progress = calendar.units / 10800.F;
+    return view;
+}
+void draw_world_date(const WorldDateView &view, const Skin &skin, float right) {
+    // Published common SEB8/number01 contains digits and frames10/11/12 for year/month/week.
+    // The desktop shrinks the whole date only when necessary to preserve actual cash width.
+    float width = 39;
+    for (const auto &value : view.numbers)
+        width += static_cast<float>(value.size()) * 8;
+    const float scale = std::clamp((right - 29) / (width + 10), 0.F, 1.F);
+    if (scale <= 0)
+        return;
+    float x = 29;
+    for (int unit = 0; unit < 3; ++unit) {
+        for (char digit : view.numbers[unit]) {
+            skin.sprites.draw("number01.seb", digit - '0', {x, 8}, WHITE, Sprites::Binding::common,
+                              scale);
+            x += 8 * scale;
+        }
+        skin.sprites.draw("number01.seb", 10 + unit, {x, 8}, WHITE, Sprites::Binding::common,
+                          scale);
+        x += 13 * scale;
+    }
+    // Desktop progress geometry. Calendar units and denominator are source facts;
+    // exact original bar crop, dimensions and fill direction have not been published.
+    // The source top_bar.png remains unchanged, and drawing never advances the calendar.
+    x += 3 * scale;
+    DrawRectangleRec({x, 6, 5 * scale, 14}, ink);
+    DrawRectangleRec({x + scale, 7, 3 * scale, 12}, {52, 72, 64, 255});
+    const float height = view.week_progress * 12;
+    if (height > 0)
+        DrawRectangleRec({x + scale, 19 - height, 3 * scale, height}, {217, 242, 139, 255});
+}
+
 std::vector<WorldNoticeLine>
 world_notice_view(const std::vector<simulation::rules::WorldScriptNotice> &notices, Extent extent) {
     const auto positions = simulation::rules::world_notice_placements(notices);

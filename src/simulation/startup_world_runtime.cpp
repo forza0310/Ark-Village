@@ -1,7 +1,9 @@
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_routes.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/startup_world_tax.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -702,6 +704,8 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     state_.scripts.next_page_id = 2;
     for (const auto &h : p.rules->humans) {
         state_.human_calendar.emplace(h.identity, StartupWorldHumanCalendar{});
+        state_.human_profession_changes.emplace(h.identity,
+                                                std::vector<int>(p.rules->jobs.size(), 0));
         state_.human_flags.emplace(h.identity, h.flags);
         state_.scripts.humans.emplace(
             h.identity,
@@ -840,6 +844,24 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_control_menu() {
     return open_startup_world_runtime_task_control_menu(state_);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
+    return open_startup_world_human_page(state_, human);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_human_page(std::uint64_t page,
+                                                                    StartupHumanPageAction action,
+                                                                    int selection) {
+    return act_startup_world_human_page(state_, page, action, selection);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_tax_page(std::uint64_t page,
+                                                                  StartupWorldTaxAction action,
+                                                                  int selection) {
+    return act_startup_world_tax_page(state_, page, action, selection);
+}
+std::vector<int> StartupWorldRuntimeSession::take_sound_requests() {
+    std::vector<int> result;
+    result.swap(state_.sound_requests);
+    return result;
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t page,
                                                                    int selection, bool cancel) {
     return act_startup_world_runtime_rank_page(state_, page, selection, cancel);
@@ -871,6 +893,18 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.task_abort_questions.erase(page.id);
             admitted.task_abort_answers.erase(page.id);
             admitted.human_pages_initialized.erase(page.id);
+            admitted.human_page_catalogs.erase(page.id);
+            admitted.equipment_page_catalogs.erase(page.id);
+            admitted.human_page_selections.erase(page.id);
+            admitted.page_job_bindings.erase(page.id);
+            admitted.human_page_parents.erase(page.id);
+            admitted.human_page_answers.erase(page.id);
+            admitted.human_equipment_choices.erase(page.id);
+            admitted.human_gift_scores.erase(page.id);
+            admitted.human_gift_messages.erase(page.id);
+            admitted.tax_page_residents.erase(page.id);
+            admitted.tax_page_selection.erase(page.id);
+            admitted.tax_page_scroll.erase(page.id);
             admitted.residence_page_candidates.erase(page.id);
             admitted.facility_upgrade_initialized.erase(page.id);
             admitted.rank_celebration_participants.erase(page.id);
@@ -887,6 +921,12 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldScheduleError::none,
                 {}};
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
+    if (!initialize_startup_world_human_pages(admitted))
+        return {StartupWorldRuntimeError::missing_source,
+                {},
+                ref::WorldSceneError::missing_consumer,
+                ref::WorldScheduleError::none,
+                {}};
     admitted.scripts.executing_page = admitted.scripts.pages.back().id;
     const auto &top = admitted.scripts.pages.back();
     if (top.kind == ref::WorldScriptPageKind::raw_page && top.legacy_page == 31 &&

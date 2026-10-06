@@ -1,4 +1,4 @@
-// Manual desktop confirmations reuse the real fee/snapshot/close transaction. Monthly defeat
+// Automatic display and diagnostic skips reuse the real fee/snapshot/close transaction. Defeat
 // and visitor values below are explicit contract fixtures, not a claimed natural game trajectory.
 #include "ark/app/world_report.hpp"
 #include "support/checks.hpp"
@@ -73,13 +73,45 @@ void unchanged_world(ark::test::Checks &check, const State &state, const State &
         check(random.draw(103).ticket == old_random.draw(103).ticket,
               "Report input preserves the future shared random sequence");
 }
-void transitions(ark::test::Checks &check) {
+void automatic_transitions(ark::test::Checks &check) {
     auto state = prepared_report(check);
     const auto before = state;
-    check(app::world_report_waiting(state), "Prepared visible report requests manual confirmation");
+    const auto adapter = sim::startup_world_runtime_adapter();
+    for (int tick = 1; tick <= 140; ++tick) {
+        auto input = adapter.report_input(state);
+        check(input && input->admitted && !input->skip_display,
+              "Automatic report uses source-admitted input without a synthesized confirmation");
+        const auto result = rules::prepare_world_month_report(adapter.report.read(state), *input);
+        check(result.candidate && adapter.report.write(state, result.candidate->state),
+              "Each admitted automatic display step commits through the actual Owner adapter");
+        const int phase = tick < 70 ? 1 : tick < 140 ? 2 : 0;
+        check(state.report_state == phase && state.report_counter == tick % 70 &&
+                  state.village_points ==
+                      (tick < 140
+                           ? before.village_points
+                           : std::min(999, before.village_points + before.report_snapshot[1])),
+              "Source 70/70 display ordering settles positive points only when phase2 closes");
+        if (tick == 70 || tick == 140)
+            unchanged_world(check, state, before);
+    }
+    // Move away from the phase0 fee trigger as the ordinary world consumer does. A closed
+    // report must not repay its retained snapshot on subsequent automatic updates.
+    const auto closed = state;
+    auto input = adapter.report_input(state);
+    ++input->old_month_tick;
+    const auto result = rules::prepare_world_month_report(adapter.report.read(state), *input);
+    check(result.candidate && adapter.report.write(state, result.candidate->state) &&
+              state.report_state == 0 && state.village_points == closed.village_points,
+          "A later automatic step cannot redeem the same retained report snapshot twice");
+    unchanged_world(check, state, closed);
+}
+void diagnostic_skips(ark::test::Checks &check) {
+    auto state = prepared_report(check);
+    const auto before = state;
+    check(app::world_report_visible(state), "Prepared report is a visible automatic overlay");
     check(app::acknowledge_world_report(state, 1) && state.report_state == 2 &&
               state.report_counter == 0 && state.village_points == before.village_points,
-          "First confirmation advances from defeats to financial results without early points");
+          "Diagnostic skip advances from defeats to financial results without early points");
     unchanged_world(check, state, before);
     const auto phase2 = state;
     check(!app::acknowledge_world_report(state, 1) && state.report_state == phase2.report_state &&
@@ -90,7 +122,7 @@ void transitions(ark::test::Checks &check) {
               state.report_counter == 0 && !app::world_report_waiting(state) &&
               state.village_points ==
                   std::min(999, before.village_points + before.report_snapshot[1]),
-          "Second confirmation closes and awards actual snapshot points exactly once");
+          "Second diagnostic skip closes and awards actual snapshot points exactly once");
     unchanged_world(check, state, before);
     const auto closed = state;
     for (int phase : {0, 1, 2, 3, 4})
@@ -102,6 +134,19 @@ void transitions(ark::test::Checks &check) {
 void gates(ark::test::Checks &check) {
     auto state = prepared_report(check);
     const auto before = state;
+    state.scene.framework_paused = true;
+    check(!app::acknowledge_world_report(state, 1) && state.report_state == 1 &&
+              state.report_counter == 0 && state.scene.framework_paused,
+          "Diagnostic skip cannot override the user's explicit pause or auto-resume the world");
+    state.scene.framework_paused = false;
+    for (const int mode : {1, 3, 4, 5, 6, 7}) {
+        state.scene.scene_state = mode;
+        check(app::world_report_visible(state) && !app::acknowledge_world_report(state, 1) &&
+                  state.report_state == 1 && state.report_counter == 0,
+              "A visible overlay cannot bypass source non-world camera/build/wait update "
+              "eligibility");
+    }
+    state.scene.scene_state = before.scene.scene_state;
     for (int phase : {-1, 0, 2, 3, 4})
         check(!app::acknowledge_world_report(state, phase) && state.report_state == 1,
               "Only the currently displayed source report phase is accepted");
@@ -135,8 +180,9 @@ void gates(ark::test::Checks &check) {
 namespace ark::test {
 void world_report() {
     Checks check{"world_report"};
-    transitions(check);
+    automatic_transitions(check);
+    diagnostic_skips(check);
     gates(check);
-    std::cout << "PASS manual world report " << check.count() << " checks\n";
+    std::cout << "PASS automatic world report " << check.count() << " checks\n";
 }
 } // namespace ark::test

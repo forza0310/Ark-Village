@@ -59,6 +59,29 @@ void geometry() {
     check(zoom == .5F && close(world_anchor(state, point, zoom), anchor),
           "Lower zoom clamp moved pointer anchor");
 }
+void human_picking() {
+    auto state = ark::test::initial_world();
+    auto &ai = state.scene.world.world.ai;
+    const rules::CharacterId first{41}, second{7}, stale{90};
+    ai.human_order = {stale, first, second};
+    ai.battle.actors[first].position = {300, 7, 200};
+    ai.battle.actors[second].position = {300, 7, 200};
+    const WorldCameraView view{{23, 11}, {0, 24, 384, 211}};
+    const auto draws = state.scene.random.draws();
+    for (float zoom : {.5F, 1.F, 2.F}) {
+        check(world_pick_human(state, view, {319 * zoom, 130 * zoom}, zoom) == first,
+              "Human hit uses source roster order rather than ID order after camera/zoom");
+        check(!world_pick_human(state, view, {308 * zoom, 130 * zoom}, zoom),
+              "Pointer outside the source 20x26 character box cannot open a human");
+        ai.battle.actors[first].control.state = 4;
+        check(world_pick_human(state, view, {319 * zoom, 130 * zoom}, zoom) == second,
+              "Hidden-state human is skipped without swallowing another person's hit");
+        ai.battle.actors[first].control.state = 0;
+    }
+    check(!world_pick_human(state, view, {319, 130}, 0) && state.scene.random.draws() == draws &&
+              state.page_human_bindings.empty(),
+          "Picking is read-only and rejects invalid scale without opening a source page");
+}
 void actor_animation() {
     auto state = ark::test::initial_world();
     state.reference_viewport = world_viewport(canvas_extent(1080, 720), 1);
@@ -210,6 +233,7 @@ void rank_conditions() {
 } // namespace
 int main() {
     geometry();
+    human_picking();
     actor_animation();
     rank_conditions();
 }

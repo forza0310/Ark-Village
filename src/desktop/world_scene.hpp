@@ -32,6 +32,11 @@ struct WorldCameraView {
     std::array<float, 2> camera{};
     std::array<int, 4> viewport{};
 };
+// Maintained prototype hit box/order, transformed by the desktop camera/zoom. The
+// worker rechecks this live identity before opening its shared human definition.
+std::optional<simulation::rules::CharacterId>
+world_pick_human(const simulation::StartupWorldRuntimeState &state, const WorldCameraView &view,
+                 Vector2 pointer, float zoom);
 void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
                        float &zoom);
 // Stable source depth order for per-cell surfaces, fences, doors, all actors, HP and cash effects.

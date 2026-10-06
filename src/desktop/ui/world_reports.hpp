@@ -25,11 +25,11 @@ void draw_world_victory(const WorldVictoryView &view, const WorldPageLayout &lay
                         const Skin &skin, bool interactive);
 struct WorldMonthView {
     int phase{}, defeats{}, points{}, income{}, expenses{}, balance{};
+    float offset_x{};
     bool ellipsis{}, record{};
     std::vector<ReportPortrait> monsters;
     std::optional<int> human_image;
 };
 WorldMonthView world_month_view(const simulation::StartupWorldRuntimeState &state);
-Rectangle world_month_confirm(Extent extent);
 void draw_world_month(const WorldMonthView &view, const Skin &skin);
 } // namespace ark::desktop::ui

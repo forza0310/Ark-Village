@@ -30,6 +30,7 @@ set(ARK_WORLD_RULE_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_use.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/geometry.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/human_growth.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/rules/human_management.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/map_access.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/navigation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/neighbourhood.cpp"
@@ -86,6 +87,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_building.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_human.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime.cpp"
@@ -98,6 +100,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_scene.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_task_pages.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_tasks.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_tax.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_visuals.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES

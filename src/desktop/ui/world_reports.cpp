@@ -95,6 +95,12 @@ void draw_world_victory(const WorldVictoryView &v, const WorldPageLayout &l, con
 WorldMonthView world_month_view(const State &s) {
     WorldMonthView v;
     v.phase = s.report_state;
+    // Published entry/exit endpoints are six source counters over 104 pixels. Linear
+    // positioning between those endpoints is a desktop rendering adaptation, never a clock.
+    if (v.phase == 1)
+        v.offset_x = -104.F * (1 - std::clamp(s.report_counter / 6.F, 0.F, 1.F));
+    else if (v.phase == 2)
+        v.offset_x = -104.F * std::clamp((s.report_counter - 64) / 6.F, 0.F, 1.F);
     v.defeats = s.report_snapshot[0];
     v.points = s.report_snapshot[1];
     v.income = s.report_snapshot[2];
@@ -118,47 +124,47 @@ WorldMonthView world_month_view(const State &s) {
     }
     return v;
 }
-Rectangle world_month_confirm(Extent e) { return {e.width - 78.F, 94, 70, 21}; }
 void draw_world_month(const WorldMonthView &v, const Skin &skin) {
-    // Manual report policy freezes the source counter. Draw the fully expanded 111x61
-    // scene overlay; do not tick the owner (or fabricate 70 updates) to slide it into view.
-    const Rectangle box{0, 24, 111, 61};
+    const float dx = v.offset_x;
+    const Rectangle box{dx, 24, 111, 61};
     skin.tile("wnd_back.png", {0, 0, 4, 240}, box, Sprites::Binding::window);
     DrawRectangleLinesEx(box, 1, ink);
-    skin.content({3, 27, 105, 55});
+    skin.content({dx + 3, 27, 105, 55});
     if (v.phase == 1) {
-        skin.centered(v.defeats ? "讨伐怪物" : "本月", {3, 27, 105, 12}, ink, 10);
+        skin.centered(v.defeats ? "讨伐怪物" : "本月", {dx + 3, 27, 105, 12}, ink, 10);
         if (v.defeats) {
             for (std::size_t i = 0; i < v.monsters.size(); ++i) {
                 const auto &p = v.monsters[i];
-                const float x = 7 + 16.F * i;
+                const float x = dx + 7 + 16.F * i;
                 skin.sprites.image("icon_back00.png", {0, 0, 18, 18}, {x, 42, 18, 18});
                 skin.sprites.actor_thumbnail(true, p.sprite, p.image, {x + 1, 43, 16, 16});
             }
             if (v.ellipsis)
-                skin.text.draw("...", 59, 47, ink, 10);
-            skin.number(v.defeats, {106, 46}, "number13.seb");
-            skin.sprites.draw("icon_result00.seb", 4, {9, 65}, WHITE, Sprites::Binding::common);
-            skin.number(v.points, {65, 67}, "number13.seb");
-            skin.text.draw("获得!", 70, 67, ink, 10);
+                skin.text.draw("...", dx + 59, 47, ink, 10);
+            skin.number(v.defeats, {dx + 106, 46}, "number13.seb");
+            skin.sprites.draw("icon_result00.seb", 4, {dx + 9, 65}, WHITE,
+                              Sprites::Binding::common);
+            skin.number(v.points, {dx + 65, 67}, "number13.seb");
+            skin.text.draw("获得!", dx + 70, 67, ink, 10);
         } else {
-            skin.sprites.image("icon_back00.png", {0, 0, 18, 18}, {7, 43, 18, 18});
+            skin.sprites.image("icon_back00.png", {0, 0, 18, 18}, {dx + 7, 43, 18, 18});
             if (v.human_image)
-                skin.sprites.human_image(*v.human_image, {1, 27, 15, 14}, {8, 44, 15, 14});
-            skin.text.draw("击倒 0", 31, 46, ink, 10);
-            skin.text.draw("真遗憾", 35, 67, ink, 10);
+                skin.sprites.human_image(*v.human_image, {1, 27, 15, 14}, {dx + 8, 44, 15, 14});
+            skin.text.draw("击倒 0", dx + 31, 46, ink, 10);
+            skin.text.draw("真遗憾", dx + 35, 67, ink, 10);
         }
     } else {
         // r3 remains its separate source path; no rewards or ledger are changed here.
         const char *labels[]{"收入", "经费", "合计"};
         const int values[]{v.income, v.expenses, v.balance};
         for (int i = 0; i < 3; ++i) {
-            skin.text.draw(labels[i], 5, 32 + 17.F * i, ink, 10);
-            money(skin, values[i], {107, 33 + 17.F * i},
+            skin.text.draw(labels[i], dx + 5, 32 + 17.F * i, ink, 10);
+            money(skin, values[i], {dx + 107, 33 + 17.F * i},
                   i == 1 || values[i] < 0 ? "number12.seb" : "number05.seb");
         }
         if (v.record)
-            skin.sprites.draw("icon_result00.seb", 2, {113, 66}, WHITE, Sprites::Binding::common);
+            skin.sprites.draw("icon_result00.seb", 2, {dx + 113, 66}, WHITE,
+                              Sprites::Binding::common);
     }
 }
 } // namespace ark::desktop::ui

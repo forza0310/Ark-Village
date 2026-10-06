@@ -2,7 +2,9 @@
 
 // The desktop reads immutable publications; only the worker commits the canonical world.
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/startup_world_tax.hpp"
 
 #include <chrono>
 #include <memory>
@@ -23,6 +25,9 @@ enum class WorldCommandKind {
     confirm_build,
     cancel_build,
     open_facility,
+    open_human,
+    human_action,
+    tax_action,
     facility_action,
     residence_action,
     open_task_control_menu,
@@ -63,6 +68,9 @@ struct WorldFrame {
     std::string error;
     std::uint64_t outer_updates{};
     double max_update_ms{};
+    // Silent presentation sink: source outputs are taken once by the worker, not replayed
+    // from immutable snapshots. Actual audio playback remains a separate adapter.
+    std::uint64_t consumed_sound_requests{};
     // Last 64 explicit decision results, retained across ticks and camera publications.
     // This bounded FIFO acknowledgement history is not a gameplay event log.
     std::vector<WorldCommandResult> command_results;
@@ -77,6 +85,9 @@ struct WorldCommand {
     int selection{};
     int definition{};
     std::uint64_t facility{};
+    simulation::rules::CharacterId actor{};
+    simulation::StartupHumanPageAction human_action{simulation::StartupHumanPageAction::confirm};
+    simulation::StartupWorldTaxAction tax_action{simulation::StartupWorldTaxAction::confirm};
     simulation::rules::Position anchor{};
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupFacilityPageAction facility_action{
@@ -125,6 +136,12 @@ class WorldSession {
                                 simulation::rules::FacilityOrientation orientation);
     std::uint64_t cancel_build(int expected_definition);
     std::uint64_t open_facility(std::uint64_t facility);
+    // Both identities must still describe the same active human when the FIFO is consumed.
+    std::uint64_t open_human(simulation::rules::CharacterId actor, int definition);
+    std::uint64_t act_human(std::uint64_t page, simulation::StartupHumanPageAction action,
+                            int selection = 0);
+    std::uint64_t act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,
+                          int selection = 0);
     std::uint64_t act_facility(std::uint64_t page, simulation::StartupFacilityPageAction action);
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,

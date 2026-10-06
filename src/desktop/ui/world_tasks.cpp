@@ -34,8 +34,6 @@ std::string title(int raw) {
         return "中止任务";
     case 4:
         return "任务管理";
-    case 60:
-        return "冒险者详情";
     case 22:
     case 26:
         return "任务";
@@ -71,8 +69,7 @@ bool world_task_page(const Page &page) {
 bool world_task_page(const State &s, const Page &page) {
     return world_task_page(page) ||
            (page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
-            ((page.legacy_page == 1 && s.task_abort_questions.count(page.id)) ||
-             (page.legacy_page == 60 && s.page_human_bindings.count(page.id))));
+            (page.legacy_page == 1 && s.task_abort_questions.count(page.id)));
 }
 WorldTaskView world_task_view(const State &s, const Page &page) {
     if (!world_task_page(s, page) || !s.rules)
@@ -92,17 +89,6 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
         view.abort_question = true;
     } else if (view.raw == 4) {
         view.details = {"任务实施中"};
-    } else if (view.raw == 60) {
-        const int id = s.page_human_bindings.at(page.id);
-        const auto &growth = s.scene.world.world.ai.growth.at(id);
-        view.task_name = human(s, id).name;
-        view.details = {s.rules->jobs.at(growth.definition.current_profession).name,
-                        "努力 " + std::to_string(growth.definition.legacy_u),
-                        "满足 " + std::to_string(s.shop_humans.at(id).satisfaction)};
-        std::string stats;
-        for (const auto value : growth.derived.combat)
-            stats += (stats.empty() ? "能力 " : " / ") + std::to_string(value);
-        view.details.push_back(std::move(stats));
     } else if (view.raw == 22) {
         const auto list = s.task_page_lists.find(page.id);
         if (list == s.task_page_lists.end())
@@ -246,8 +232,6 @@ std::optional<WorldTaskIntent> world_task_input(const WorldTaskView &view,
     if ((view.raw == 25 || view.raw == 26) && count &&
         !view.rows.at(selection.selected).add_member && hit(input.click, layout.inspect))
         return WorldTaskIntent{Action::inspect, selection.selected};
-    if (view.raw == 60)
-        return {};
     if (!input.enter && !hit(input.click, layout.confirm))
         return {};
     if ((view.raw == 22 || view.raw == 25 || view.raw == 26 || view.raw == 27) && count == 0)
@@ -356,8 +340,7 @@ void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, c
                              : "确定";
     if (view.raw == 4)
         confirm = "中止";
-    if (view.raw != 60)
-        skin.button(layout.confirm, confirm, interactive);
+    skin.button(layout.confirm, confirm, interactive);
     if ((view.raw == 25 || view.raw == 26) && !view.rows.empty())
         skin.button(layout.inspect, "详情",
                     interactive && !view.rows

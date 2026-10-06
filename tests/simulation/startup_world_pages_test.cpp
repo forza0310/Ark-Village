@@ -1,4 +1,6 @@
+#include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/startup_world_tax.hpp"
 #include "support/world_fixture.hpp"
 
 #include <algorithm>
@@ -15,6 +17,310 @@ void check(bool value, const char *message) {
         throw std::runtime_error(message);
 }
 const auto fixture = test_support::page_fixture;
+StartupWorldRuntimeState human_fixture(int raw) {
+    auto s = fixture(raw);
+    s.page_human_bindings[s.scripts.pages.back().id] = 1;
+    // 管理页合同夹具：绕开首次说明的模态，仅避免它遮住被测栈顶。
+    for (int event : {99, 111, 112, 119})
+        s.scripts.event_calls[event] = 1;
+    return s;
+}
+void page_tick(StartupWorldRuntimeState &s) {
+    const auto r = prepare_startup_world_runtime(s);
+    check(r.candidate.has_value(), "managed page actual framework update succeeds");
+    s = *r.candidate;
+}
+void human_details_and_gifts() {
+    using A = StartupHumanPageAction;
+    using E = StartupWorldRuntimeError;
+    auto s = human_fixture(60);
+    const auto id = s.scripts.pages.back().id;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto draws = s.scene.random.draws();
+    const auto date = s.scene.calendar.units;
+    const auto old = startup_world_human_details(s, 1);
+    check(!startup_world_human_page_ready(s, id),
+          "new human page read-only readiness does not construct a catalogue or advance state");
+    check(old && old->equipment == s.shop_humans.at(1).equipment,
+          "human query reads current sole definition and equipment, not spawn metadata");
+    page_tick(s);
+    check(startup_world_human_page_ready(s, id),
+          "only successful framework initialization makes detail payload ready");
+    for (int tab = 0; tab < 4; ++tab)
+        check(act_startup_world_human_page(s, id, A::view_tab, tab) == E::none &&
+                  s.page_phases.at(id) == tab,
+              "all four detail tabs have explicit current page input");
+    check(act_startup_world_human_page(s, id, A::view_tab, 4) == E::invalid_page &&
+              s.scene.random.draws() == draws && s.scene.calendar.units == date &&
+              s.scene.world.world.ai.accounting.funds() == cash,
+          "detail tabs and rejected tab do not advance world/date/random/cash");
+    check(act_startup_world_human_page(s, id, A::gifts) == E::none,
+          "actual human detail opens equipment gift catalogue");
+    const auto gift = s.scripts.pages.back().id;
+    page_tick(s);
+    const auto &list = s.equipment_page_catalogs.at(gift)[0];
+    check(!list.empty(), "real initial weapon catalogue is nonempty");
+    const int weapon = list.front();
+    s.catalog.at({1, weapon}).free_purchases = 1;
+    s.catalog.at({1, weapon}).inventory = 7; // 两种库存刻意不同，防止接错ObjectCatalog字段。
+    check(act_startup_world_human_page(s, gift, A::confirm) == E::none,
+          "gift catalogue opens exact selected weapon confirmation");
+    const auto question = s.scripts.pages.back().id;
+    const auto satisfaction = s.shop_humans.at(1).satisfaction;
+    for (int fault = 0; fault < 4; ++fault) {
+        auto invalid = s;
+        auto &parent_page =
+            *std::find_if(invalid.scripts.pages.begin(), invalid.scripts.pages.end(),
+                          [&](const auto &p) { return p.id == gift; });
+        if (fault == 0)
+            parent_page.lifecycle = 4;
+        if (fault == 1)
+            parent_page.legacy_page = 60;
+        if (fault == 2)
+            invalid.page_human_bindings.at(gift) = 2;
+        if (fault == 3)
+            invalid.human_equipment_choices.at(gift)[1] = -1;
+        check(acknowledge_startup_world_runtime_page(invalid, question) == E::missing_source &&
+                  invalid.human_page_answers.empty() &&
+                  invalid.scene.world.world.ai.accounting.funds() == cash &&
+                  invalid.catalog.at({1, weapon}).free_purchases == 1,
+              "65 rejects retired, wrong-kind, different-human or mismatched-choice parent "
+              "atomically");
+    }
+    check(acknowledge_startup_world_runtime_page(s, question) == E::none &&
+              s.catalog.at({1, weapon}).free_purchases == 1 &&
+              s.shop_humans.at(1).satisfaction == satisfaction &&
+              s.scene.world.world.ai.accounting.funds() == cash,
+          "raw65 confirm only returns K0; no eager charge, inventory or reward");
+    check(act_startup_world_human_page(s, gift, A::confirm) == E::invalid_page,
+          "resumed parent answer cannot be bypassed by another input");
+    auto broken = s;
+    broken.scene.random =
+        ref::WorldRandomStream::from_raw({}); // 晚期文案抽签无票，整个消费必须回滚。
+    const auto result = prepare_startup_world_runtime(broken);
+    check(!result.candidate && broken.catalog.at({1, weapon}).free_purchases == 1 &&
+              broken.shop_humans.at(1).satisfaction == satisfaction &&
+              broken.human_page_answers.at(gift) == 0,
+          "late gift dialogue failure rolls back stock, reward and parent answer");
+    page_tick(s);
+    check(s.shop_humans.at(1).equipment[0] == weapon &&
+              s.catalog.at({1, weapon}).free_purchases == 0 &&
+              s.catalog.at({1, weapon}).inventory == 7 &&
+              s.scene.world.world.ai.accounting.funds() == cash &&
+              s.shop_humans.at(1).reselect[0] == 6 && s.scene.random.draws() == draws + 1,
+          "resumed64 commits stock-only gift, final setter, cooldown6 and one draw2");
+    check(acknowledge_startup_world_runtime_page(s, question) == E::invalid_page,
+          "retired65 cannot grant twice");
+    // 取消问答复用同一目录，不发礼物或随机；不另建一次性bug套件。
+    s = human_fixture(64);
+    const auto parent = s.scripts.pages.back().id;
+    page_tick(s);
+    check(act_startup_world_human_page(s, parent, A::confirm) == E::none,
+          "cash-backed weapon quote opens65");
+    const auto cancelled = s.scripts.pages.back().id;
+    const auto before = s.scene.world.world.ai.accounting.funds();
+    check(cancel_startup_world_runtime_page(s, cancelled) == E::none,
+          "65 cancel returns K1 instead of deleting parent");
+    page_tick(s);
+    check(s.scene.world.world.ai.accounting.funds() == before && s.scene.random.draws() == 0 &&
+              s.scripts.pages.back().id == parent,
+          "resumed64 cancellation keeps cash/random/catalogue unchanged");
+    const int selected_weapon = s.equipment_page_catalogs.at(parent)[0].front();
+    s.catalog.at({1, selected_weapon}).newly_unlocked = true;
+    check(act_startup_world_human_page(s, parent, A::inspect_equipment) == E::none &&
+              !startup_world_human_page_ready(s, s.scripts.pages.back().id) &&
+              s.catalog.at({1, selected_weapon}).newly_unlocked,
+          "selected equipment has read-only raw73 details");
+    page_tick(s);
+    check(s.scripts.pages.back().legacy_page == 73 &&
+              acknowledge_startup_world_runtime_page(s, s.scripts.pages.back().id) == E::none &&
+              s.scene.world.world.ai.accounting.funds() == before && s.scene.random.draws() == 0,
+          "equipment details confirm only closes without gift side effects");
+}
+void human_profession_and_mastery() {
+    using A = StartupHumanPageAction;
+    using E = StartupWorldRuntimeError;
+    auto s = human_fixture(61);
+    const auto id = s.scripts.pages.back().id;
+    const int old_job = s.scene.world.world.ai.growth.at(1).definition.current_profession;
+    const auto original_job_counts = s.scripts.job_counts;
+    // 最小缓存夹具：同定义的活跃/保留实例上限随共享重算，当前HP保持原值。
+    ref::BattleActorRecord active;
+    active.id = {501};
+    active.definition = 1;
+    active.capacity = s.scene.world.world.ai.growth.at(1).derived.combat[0];
+    active.hp.target = active.hp.displayed = 9;
+    s.scene.world.world.ai.battle.actors.emplace(active.id, active);
+    auto retained = active;
+    retained.id = {502};
+    s.scene.world.world.ai.retired_actors.emplace(retained.id, retained);
+    s.village_points = 999;
+    s.scene.world.world.ai.growth.at(1).definition.legacy_u = 7; // 3点奖励跨十位，强制实际67接线。
+    s.human_calendar.at(1).celebrations = 99;
+    for (auto &job : s.scripts.professions)
+        job.second.status = 1;
+    page_tick(s);
+    const auto &list = s.human_page_catalogs.at(id);
+    const auto found =
+        std::find_if(list.begin(), list.end(), [&](int job) { return job != old_job; });
+    check(found != list.end(), "full actual profession directory has an alternative for sex");
+    const int job = *found;
+    check(act_startup_world_human_page(s, id, A::select, static_cast<int>(found - list.begin())) ==
+                  E::none &&
+              act_startup_world_human_page(s, id, A::confirm) == E::none,
+          "actual61 accepts distinct affordable profession and opens62");
+    const auto question = s.scripts.pages.back().id;
+    const int cost = s.rules->jobs.at(job).change_points;
+    const int effort = s.scene.world.world.ai.growth.at(1).definition.legacy_u;
+    auto wrong_parent = s;
+    wrong_parent.page_human_bindings.at(id) = 2;
+    check(acknowledge_startup_world_runtime_page(wrong_parent, question) == E::missing_source &&
+              wrong_parent.village_points == 999 &&
+              wrong_parent.human_profession_changes.at(1).at(job) == 0 &&
+              wrong_parent.human_page_answers.empty(),
+          "62 cannot charge or reward through another human's profession parent");
+    check(acknowledge_startup_world_runtime_page(s, question) == E::none &&
+              s.village_points == 999 - cost && s.human_profession_changes.at(1).at(job) == 1 &&
+              s.scene.world.world.ai.growth.at(1).definition.current_profession == old_job &&
+              s.scene.world.world.ai.growth.at(1).definition.legacy_u == effort + 3,
+          "62 pays points, rewards old profession, increments R but does not switch t yet");
+    const auto animation =
+        std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                     [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 63; });
+    check(animation != s.scripts.pages.end(), "confirmation queues real63 animation");
+    const auto aid = animation->id;
+    page_tick(s);
+    check(s.human_pages_initialized.count(aid) && s.page_counters.at(aid) == 0 &&
+              s.scene.random.draws() == 1 && s.scripts.pages.back().legacy_page == 67,
+          "framework initializes hidden63 before updating result67; draw5 does not wait for focus");
+    // 领域67已单独覆盖；这里只按合法确认消掉它，保留63的真实计数时点。
+    for (int n = 0; n < 120 && s.scripts.pages.back().id != aid; ++n) {
+        page_tick(s);
+        if (s.scripts.pages.back().legacy_page == 67)
+            check(acknowledge_startup_world_runtime_page(s, s.scripts.pages.back().id) == E::none,
+                  "effort result drains before profession animation");
+    }
+    check(s.scripts.pages.back().id == aid, "63 becomes actual top after reward result");
+    for (int n = s.page_counters[aid]; n < 54; ++n)
+        page_tick(s);
+    check(s.scene.world.world.ai.growth.at(1).definition.current_profession == old_job,
+          "frame54 retains original profession");
+    const auto cache = s.scene.world.world.ai.growth.at(1).derived.attributes;
+    page_tick(s);
+    check(s.page_counters.at(aid) == 55 &&
+              s.scene.world.world.ai.growth.at(1).definition.current_profession == job &&
+              s.scene.world.world.ai.growth.at(1).derived.attributes == cache &&
+              s.scene.random.draws() == 1,
+          "exact55 switches shared t only; no eager recalculation or repeated dialogue draw");
+    s.scene.world.world.ai.growth.at(1).experience = 9;
+    s.scene.world.world.ai.growth.at(1).pending = {4, 8};
+    check(acknowledge_startup_world_runtime_page(s, aid) == E::none &&
+              s.scene.world.world.ai.growth.at(1).experience == 9,
+          "early63 confirm does not clear current experience");
+    while (s.page_counters.at(aid) < 197)
+        page_tick(s);
+    check(acknowledge_startup_world_runtime_page(s, aid) == E::none &&
+              s.scene.world.world.ai.growth.at(1).experience == 0 &&
+              s.scene.world.world.ai.growth.at(1).pending.amount == 0 &&
+              s.scene.world.world.ai.growth.at(1).pending.counter == 8 &&
+              s.scene.random.draws() == 1,
+          "197 confirm recomputes and closes, clears L/N only, preserves O and random");
+    const int changed_capacity = s.scene.world.world.ai.growth.at(1).derived.combat[0];
+    check(s.scene.world.world.ai.battle.actors.at(active.id).capacity == changed_capacity &&
+              s.scene.world.world.ai.retired_actors.at(retained.id).capacity == changed_capacity &&
+              s.scene.world.world.ai.battle.actors.at(active.id).hp.target == 9 &&
+              s.scene.world.world.ai.retired_actors.at(retained.id).hp.displayed == 9,
+          "197 refresh propagates shared maximum HP to live and retained actors without healing");
+    const auto old_type = s.rules->jobs.at(old_job).type;
+    const auto new_type = s.rules->jobs.at(job).type;
+    // a/h.d()统计p!=0定义；新局另一名已开放人物仍贡献旧职业人数。
+    check(s.scripts.job_counts.at(new_type) ==
+                  original_job_counts.at(new_type) + (old_type == new_type ? 0 : 1) &&
+              s.scripts.job_counts.at(old_type) ==
+                  original_job_counts.at(old_type) - (old_type == new_type ? 0 : 1),
+          "final profession refresh synchronizes shared h.C read by later route and construction");
+    page_tick(s);
+    check(s.scripts.pages.back().lifecycle == 4 && s.scripts.pages.back().id == id &&
+              !s.human_page_answers.count(id),
+          "61 closes only when its update consumes returned K0");
+    const auto usage = startup_world_resource_usage(s);
+    check(usage.pages <= 2 && usage.page_payloads < 12,
+          "closed child payloads retire instead of accumulating for detail chain");
+    s = human_fixture(70);
+    const auto mastery = s.scripts.pages.back().id;
+    const auto extra = s.scene.world.world.ai.growth.at(1).definition.extra;
+    for (int phase = 0; phase < 2; ++phase) {
+        check(acknowledge_startup_world_runtime_page(s, mastery) == E::none &&
+                  s.page_counters.at(mastery) == 40 &&
+                  s.scene.world.world.ai.growth.at(1).definition.extra == extra,
+              "mastery phase early confirmation fastforwards only");
+        check(acknowledge_startup_world_runtime_page(s, mastery) == E::none &&
+                  s.page_phases.at(mastery) == phase + 1,
+              "mastery independently enters each following phase");
+    }
+    check(act_startup_world_human_page(s, mastery, A::select, 1) == E::none &&
+              acknowledge_startup_world_runtime_page(s, mastery) == E::none &&
+              s.scene.world.world.ai.growth.at(1).definition.extra == extra,
+          "final choice still waits its own40 before granting");
+    check(acknowledge_startup_world_runtime_page(s, mastery) == E::none &&
+              s.scripts.pages.back().lifecycle == 4 &&
+              acknowledge_startup_world_runtime_page(s, mastery) == E::invalid_page,
+          "mastery final return grants once and stale duplicate rejects");
+}
+void tax_pages() {
+    using E = StartupWorldRuntimeError;
+    auto s = fixture(90);
+    const auto id = s.scripts.pages.back().id;
+    for (int n = 0; n < 6; ++n) {
+        s.human_presence.at(n) = 1;
+        s.human_homes.at(n)[2] = 1;
+        s.human_calendar.at(n).legacy_G = (n + 1) * 10;
+        s.scene.world.world.ai.battle.humans.at(n).battle_reward_stat = 100 + n;
+    }
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto draws = s.scene.random.draws();
+    page_tick(s);
+    check(s.tax_page_residents.at(id) == std::vector<int>({0, 1, 2, 3, 4, 5}) &&
+              act_startup_world_tax_page(s, id, StartupWorldTaxAction::select, 5) == E::none &&
+              s.tax_page_scroll.at(id) == 1,
+          "90 freezes source residents and keeps selected row in five-row viewport");
+    s.human_calendar.at(5).legacy_G = 90;
+    s.human_homes.at(5)[2] = 0;
+    const auto view = inspect_startup_world_tax_page(s, id);
+    check(view && view->rows.size() == 6 && view->rows.back().amount == 90 && view->total == 240,
+          "90 frozen identities still read current G without refreshing eligibility");
+    check(cancel_startup_world_runtime_page(s, id) == E::invalid_page &&
+              acknowledge_startup_world_runtime_page(s, id) == E::none &&
+              s.scene.world.world.ai.accounting.funds() == cash,
+          "tax list has no cancellation and confirmation never pays");
+    s = fixture(98);
+    const auto payment = s.scripts.pages.back().id;
+    s.human_presence.at(1) = 1;
+    s.human_homes.at(1)[2] = 1;
+    s.human_calendar.at(1).legacy_G = 140;
+    s.human_calendar.at(2).legacy_G = 90;
+    s.scene.world.world.ai.battle.humans.at(2).battle_reward_stat = 700;
+    check(acknowledge_startup_world_runtime_page(s, payment) == E::invalid_page,
+          "automatic98 cannot be executed by manual confirm");
+    page_tick(s);
+    check(s.scene.world.world.ai.accounting.funds() == cash + 140 &&
+              s.monthly_cash.at(s.scene.calendar.month)[4][0] == 140 &&
+              s.human_calendar.at(2).legacy_G == 0 &&
+              s.scene.world.world.ai.battle.humans.at(2).battle_reward_stat == 0 &&
+              s.scene.random.draws() == draws && s.scripts.pages.back().lifecycle == 4,
+          "98 pays current eligible residents once to other income, clears every F/G and no draw");
+    check(s.scripts.notices.back().message == 28, "automatic tax receipt submits source notice28");
+    auto broken = fixture(98);
+    broken.human_presence.at(1) = 1;
+    broken.human_homes.at(1)[2] = 1;
+    broken.human_calendar.at(1).legacy_G = 10;
+    broken.monthly_cash.at(broken.scene.calendar.month)[4][0] = std::numeric_limits<int>::max();
+    check(!prepare_startup_world_runtime(broken).candidate &&
+              broken.human_calendar.at(1).legacy_G == 10 &&
+              broken.scene.world.world.ai.accounting.funds() == cash &&
+              broken.page_counters.empty(),
+          "tax ledger overflow rolls back cash, F/G, counter and close");
+}
 void summary() {
     auto s = fixture(30);
     const auto id = s.scripts.pages.back().id;
@@ -728,6 +1034,9 @@ int main() {
         event_message_and_shop_return();
         popularity_return();
         unlocked_visitor();
+        human_details_and_gifts();
+        human_profession_and_mastery();
+        tax_pages();
         std::cout << "startup world pages checks: " << checks << '\n';
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

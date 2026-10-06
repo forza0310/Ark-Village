@@ -36,6 +36,7 @@ class WorldSession::Impl {
             throw std::logic_error("Invalid source world update period");
         period = std::chrono::milliseconds(gate->minimum_period_ms);
         auto initial_frame = std::make_shared<WorldFrame>();
+        take_sound_outputs(initial, *initial_frame);
         initial_frame->state = std::make_shared<const WorldState>(std::move(initial));
         initial_frame->previous = initial_frame->state;
         initial_frame->published = Clock::now();
@@ -102,13 +103,20 @@ class WorldSession::Impl {
     bool stopping{};
     std::optional<std::uint64_t> held_page; // Worker-only physical input binding, not source state.
 
+    static void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
+        // Same once-only take semantics as the maintained runtime session. This desktop
+        // currently has no audio adapter, so consume transient outputs in a silent sink.
+        frame.consumed_sound_requests += candidate.sound_requests.size();
+        candidate.sound_requests.clear();
+    }
+
     // Called after every successful input/update. A press cannot survive a new modal page,
-    // pause or report gate, even if a release event arrives late or the UI has lost focus.
+    // or pause, even if a release event arrives late or the UI has lost focus.
     void synchronize_held(WorldState &state) {
         const auto *page = top_page(state);
         if (!page || !held_page || page->id != *held_page ||
             page->kind != simulation::rules::WorldScriptPageKind::raw_page ||
-            page->legacy_page != 24 || state.scene.framework_paused || world_report_waiting(state))
+            page->legacy_page != 24 || state.scene.framework_paused)
             held_page.reset();
         state.page_confirm_held = held_page.has_value();
     }
@@ -130,8 +138,7 @@ class WorldSession::Impl {
             result.runtime_error = RuntimeError::missing_source;
         } else if (command.kind == WorldCommandKind::open_main_menu) {
             const auto *page = top_page(*current.state);
-            if (menu_open || world_report_waiting(*current.state) || !page ||
-                page->kind != simulation::rules::WorldScriptPageKind::scene)
+            if (menu_open || !page || page->kind != simulation::rules::WorldScriptPageKind::scene)
                 result.runtime_error = RuntimeError::invalid_page;
             else
                 menu_open = true;
@@ -142,7 +149,7 @@ class WorldSession::Impl {
                 menu_open = false;
         } else if (command.kind == WorldCommandKind::open_menu_tasks ||
                    command.kind == WorldCommandKind::open_menu_build) {
-            if (!menu_open || world_report_waiting(*candidate)) {
+            if (!menu_open) {
                 result.runtime_error = RuntimeError::invalid_page;
             } else {
                 // Closing the overlay and opening the source page are one FIFO transaction.
@@ -161,16 +168,13 @@ class WorldSession::Impl {
                     held_page.reset();
             } else {
                 const auto *page = top_page(*candidate);
-                if (candidate->scene.framework_paused || world_report_waiting(*candidate) ||
-                    !page || page->id != command.page ||
+                if (candidate->scene.framework_paused || !page || page->id != command.page ||
                     page->kind != simulation::rules::WorldScriptPageKind::raw_page ||
                     page->legacy_page != 24)
                     result.runtime_error = RuntimeError::invalid_page;
                 else
                     held_page = command.page;
             }
-        } else if (world_report_waiting(*candidate)) {
-            result.runtime_error = RuntimeError::invalid_page;
         } else {
             detail::apply_world_decision(*candidate, command, result);
         }
@@ -194,6 +198,8 @@ class WorldSession::Impl {
             // candidate; do not charge anyway or roll back its valid feedback page.
             if (candidate) {
                 synchronize_held(*candidate);
+                if (command.kind != WorldCommandKind::page_confirm_held)
+                    take_sound_outputs(*candidate, next);
                 next.state = std::move(candidate);
             }
             next.main_menu_open = menu_open;
@@ -297,6 +303,9 @@ class WorldSession::Impl {
                 return fail(current, "Unexpected world input dispatch", input.serial);
             }
             synchronize_held(*candidate);
+            if (command.kind == WorldCommandKind::acknowledge_page ||
+                command.kind == WorldCommandKind::acknowledge_report)
+                take_sound_outputs(*candidate, next);
             next.state = std::move(candidate);
         }
         // View/pause/input publications must not restart interpolation of an earlier movement.
@@ -320,6 +329,7 @@ class WorldSession::Impl {
             return fail(next, result.candidate ? "World render-cache update rejected"
                                                : update_error(result));
         next.previous = current.state;
+        take_sound_outputs(*result.candidate, next);
         next.state = std::make_shared<const WorldState>(std::move(*result.candidate));
         next.interval_seconds = interval;
         ++next.revision;
@@ -379,8 +389,7 @@ class WorldSession::Impl {
                 const auto interval = std::chrono::duration<double>(now - last_start).count();
                 last_start = now;
                 deadline = now + period; // Adopt actual start; a slow call creates no tick debt.
-                if (!current->main_menu_open && !current->state->scene.framework_paused &&
-                    !world_report_waiting(*current->state))
+                if (!current->main_menu_open && !current->state->scene.framework_paused)
                     current = update(*current, interval);
             }
         } catch (const std::exception &error) {

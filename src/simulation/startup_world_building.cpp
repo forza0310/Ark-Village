@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/rules/world_map_refresh.hpp"
 #include "ark/simulation/rules/world_residence.hpp"
 
@@ -119,6 +120,39 @@ int free_number(const std::set<int> &used) {
 }
 } // namespace
 bool initialize_startup_world_neighbours(State &s) { return refresh_map(s, true); }
+bool refresh_startup_world_profession_economy(State &s) {
+    if (!s.rules)
+        return false;
+    for (const auto &d : s.rules->facilities) {
+        if (d.kind != 3)
+            continue;
+        const auto current_jobs = input(s, d.id);
+        s.scripts.job_counts = current_jobs.legacy_job_counts; // 原o.e()->h.d()也更新共享h.C。
+        const auto economy = ref::derive_facility_economy(d.economy, current_jobs);
+        if (!economy.values)
+            return false;
+        for (std::size_t n = 0; n < 4; ++n) {
+            const auto value = economy.values->definition_attributes[n];
+            if (value < std::numeric_limits<int>::min() || value > std::numeric_limits<int>::max())
+                return false;
+            s.scripts.facilities.at(d.id).attributes[n] = static_cast<int>(value);
+        }
+        for (auto &instance : s.scene.world.world.facilities) {
+            if (instance.second.placement.definition_id != d.id)
+                continue;
+            auto in = input(s, d.id);
+            const auto &modifiers = s.neighbourhood.at(instance.first);
+            std::copy(modifiers.begin(), modifiers.end(), in.instance_modifiers.begin());
+            const auto current = ref::derive_facility_economy(d.economy, in);
+            if (!current.values ||
+                current.values->instance_attributes[0] < std::numeric_limits<int>::min() ||
+                current.values->instance_attributes[0] > std::numeric_limits<int>::max())
+                return false;
+            instance.second.price = static_cast<int>(current.values->instance_attributes[0]);
+        }
+    }
+    return true;
+}
 std::optional<std::array<std::vector<int>, 3>> startup_world_build_catalog(const State &s) {
     if (!s.rules)
         return {};
@@ -314,6 +348,11 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     facility.status = (d->flags & 64) ? 0 : 1;
     world.facilities.emplace(id, facility);
     next.scene.world.facility_order.push_back(id);
+    // 与真实新局接管同一类别投影；新建商店也必须进入有序物品消费者。
+    if (d->category == 1) {
+        next.shops.emplace(id, ref::ObjectShopRecord{d->detail, {}});
+        next.shop_order.push_back(id);
+    }
     next.facility_original_ids[id] = raw;
     next.facility_ordinals[id] = ordinal;
     next.facility_residents[id] = -1;
@@ -592,6 +631,21 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
                                                       old_id),
                                           next.scene.world.facility_order.end());
     next.neighbourhood_details.erase(old_id);
+    // 募集实例已从地图退休；其逐实例缓存不属于住宅或合法经营历史。
+    next.facility_original_ids.erase(old_id);
+    next.facility_ordinals.erase(old_id);
+    next.facility_residents.erase(old_id);
+    next.facility_difficulties.erase(old_id);
+    next.facility_flags.erase(old_id);
+    next.facility_details.erase(old_id);
+    next.facility_monthly_cash.erase(old_id);
+    next.facility_month_age.erase(old_id);
+    next.neighbourhood.erase(old_id);
+    next.dungeon_facilities.erase(old_id);
+    next.sites.erase(old_id);
+    next.shops.erase(old_id);
+    next.shop_order.erase(std::remove(next.shop_order.begin(), next.shop_order.end(), old_id),
+                          next.shop_order.end());
     if (!refresh_map(next, false, false))
         return {Error::missing_source}; // 原撤除false先刷新，再创建新住宅true刷新。
     const auto home = std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),
@@ -645,6 +699,8 @@ std::optional<State> prepare_startup_world_residence_completion(const State &s, 
         auto &g = next.scene.world.world.ai.growth.at(h.first);
         g.definition = h.second.definition;
         g.derived = h.second.derived;
+        if (!synchronize_startup_world_human_capacity(next, h.first))
+            return {};
     }
     next.reward_display = c.reward_display;
     next.effort_display = c.effort_display;

@@ -12,6 +12,7 @@
 #include "ui/world_panels.hpp"
 #include "ui/world_reports.hpp"
 #include "ui/world_tasks.hpp"
+#include "world_human_inspection.hpp"
 #include "world_management.hpp"
 #include "world_management_inspection.hpp"
 #include "world_rank.hpp"
@@ -91,13 +92,22 @@ std::string glyphs(const State &s) {
         "菜单建设村办情报系统募集入住维护费品质魅力加成价格经营设施居民返回授予勋章转职"
         "点击选择位置旋转超出地图请建在村庄范围内位置已被占用当前不可建设页面或选择已变化"
         "村庄晋级能力上升自宅完成现在下级恢复攻击防御魔法条件说明满足尚未达成庆典勇气"
-        "胜利！讨伐真遗憾经费合计因为街道的人气上升了显示全文";
+        "胜利！讨伐真遗憾经费合计因为街道的人气上升了显示全文"
+        // The bundled font subset and this runtime atlas are separate inventories. Include
+        // every human/tax label, even when its page is first opened long after startup.
+        "人物情报转职确认职业变更赠送装备赠送确认礼物评价装备能力职业大师装备情报"
+        "概况属性装备魔法体力力量灵活结实魔力运气最大HP攻击防御武器衣服盾帽饰品"
+        "库存无暂无候选点经验住宅已入住未入住满足努力勋章可使用不可使用"
+        "转职准备中职业已变更赠送给？评价大师保持现状返回关闭确定赠送情报住宅税收合计"
+        "谢谢我要加油!转机好开心合适吗？太好了!感动了!支付维护费Ｇ";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
         result += f.name;
     for (const auto &h : s.rules->humans)
         result += h.name;
+    for (const auto &job : s.rules->jobs)
+        result += job.name;
     for (const auto &t : s.rules->tasks)
         result += t.name + t.title;
     for (const auto &i : s.rules->items)
@@ -128,7 +138,6 @@ std::string page_body(const State &s, const rules::WorldScriptPage &page, int pa
     }
     return body;
 }
-Rectangle month_confirm(Extent extent) { return ui::world_month_confirm(extent); }
 // Inspections supply explicit user confirmations to a real new game, never a fabricated battle
 // or payment. Transient inspections stop at a naturally produced source display record.
 bool inspection_ready(const State &s, const std::string &mode) {
@@ -136,9 +145,11 @@ bool inspection_ready(const State &s, const std::string &mode) {
     if (mode == "world-active" || mode == "world-speed" || mode == "world-menu")
         return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
     if (mode == "world-month-defeats")
-        return app::world_report_waiting(s) && s.report_state == 1 && s.report_snapshot[0] > 0;
+        return app::world_report_visible(s) && s.report_state == 1 && s.report_counter >= 6 &&
+               s.report_snapshot[0] > 0;
     if (mode == "world-month" || mode == "world-month-income")
-        return app::world_report_waiting(s) && s.report_state == (mode == "world-month" ? 1 : 2);
+        return app::world_report_visible(s) && s.report_state == (mode == "world-month" ? 1 : 2) &&
+               (s.report_state != 1 || s.report_counter >= 6);
     if (const auto *page = active_page(s)) {
         if (mode == "world-award")
             return page->legacy_page == 87 && s.award_rankings.count(page->id);
@@ -213,11 +224,10 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     skin.tile("top_bar.png", {22, 0, 90, 24}, {22, 0, w - 150, 24});
     skin.sprites.image("top_bar.png", {0, 0, 22, 24}, {0, 0, 22, 24});
     skin.sprites.image("top_bar.png", {112, 0, 128, 24}, {w - 128, 0, 128, 24});
-    skin.text.draw(std::to_string(s.scene.calendar.year + 1) + "年" +
-                       std::to_string(s.scene.calendar.month + 1) + "月 " +
-                       std::to_string(s.scene.calendar.subperiod + 1),
-                   27, 6);
-    skin.right(std::to_string(s.scene.world.world.ai.accounting.funds()) + "G", w - 7, 6);
+    const auto cash = std::to_string(s.scene.world.world.ai.accounting.funds()) + "G";
+    ui::draw_world_date(ui::world_date_view(s.scene.calendar), skin,
+                        w - 15 - skin.text.width(cash));
+    skin.right(cash, w - 7, 6);
     skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
     skin.number(s.village_points, {w - 3, 27});
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
@@ -226,8 +236,7 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     skin.button(layout.right_button, s.scene.speed_setting == 1 ? "2倍" : "1倍", !failed);
     skin.button(ui::world_menu_button(layout.extent), "菜单",
                 !failed && !menu_pending &&
-                    (menu_open || (s.scene.scene_state == 0 && !active_page(s) &&
-                                   !app::world_report_waiting(s))));
+                    (menu_open || (s.scene.scene_state == 0 && !active_page(s))));
     if (failed)
         skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
     if (s.report_state && !active_page(s)) {
@@ -257,14 +266,17 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
         options.inspect_page != "world-building" && options.inspect_page != "world-details";
     WorldManagementInspection management_inspection;
+    WorldHumanInspection human_inspection;
     if (inspecting) {
         double next_inspection_draw{};
         WorldTaskInspection task_inspection;
         begin_management_inspection(state, options.inspect_page, management_inspection);
+        begin_human_inspection(state, options.inspect_page, human_inspection);
         bool reached =
             management_inspection_mode(options.inspect_page) &&
             management_inspection_ready(state, options.inspect_page, management_inspection);
-        const int limit = options.inspect_page == "world-award" ||
+        const int limit = human_inspection_mode(options.inspect_page) ? 180000
+                          : options.inspect_page == "world-award" ||
                                   management_inspection_mode(options.inspect_page) ||
                                   world_task_inspection_mode(options.inspect_page)
                               ? 120000
@@ -285,20 +297,15 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             }
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
-            // Inspection confirmations are explicit test input, including the desktop report.
-            // Finish intervening reports so a reward screenshot cannot be hidden by one.
-            if (options.inspect_page == "world-month-income" && app::world_report_waiting(state) &&
-                state.report_state == 1)
-                if (!app::acknowledge_world_report(state, 1))
-                    throw std::runtime_error("Income inspection could not confirm first report");
-            if (options.inspect_page != "world-month" &&
-                options.inspect_page != "world-month-income" &&
-                !(options.inspect_page == "world-month-defeats" && state.report_snapshot[0] > 0))
-                while (app::world_report_waiting(state))
-                    if (!app::acknowledge_world_report(state, state.report_state))
-                        throw std::runtime_error("World inspection report rejected input");
+            // This synchronous diagnostic is its own Owner; normal windows consume outputs
+            // in WorldSession. No sound playback is implemented in either adapter yet.
+            state.sound_requests.clear();
+            // Reports advance automatically alongside the world, including in diagnostics.
+            // No synthetic confirmation or report-specific clock is introduced here.
             reached =
-                management_inspection_mode(options.inspect_page)
+                human_inspection_mode(options.inspect_page)
+                    ? human_inspection_ready(state, options.inspect_page, human_inspection)
+                : management_inspection_mode(options.inspect_page)
                     ? management_inspection_ready(state, options.inspect_page,
                                                   management_inspection)
                 : world_task_inspection_mode(options.inspect_page)
@@ -306,6 +313,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                     : inspection_ready(state, options.inspect_page);
             if (reached)
                 break;
+            if (human_inspection_mode(options.inspect_page) &&
+                apply_human_inspection_input(state, options.inspect_page, human_inspection))
+                continue;
             if (management_inspection_mode(options.inspect_page) &&
                 apply_management_inspection_input(state, options.inspect_page,
                                                   management_inspection))
@@ -334,6 +344,18 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         }
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
+        if (human_inspection_mode(options.inspect_page))
+            std::cout << "World human inspection: target=" << options.inspect_page
+                      << " human=" << human_inspection.human.value_or(-1)
+                      << " equipment=" << human_inspection.equipment.value_or(-1)
+                      << " gift=" << human_inspection.gift_confirmed
+                      << " cancelled=" << human_inspection.cancelled
+                      << " profession=" << human_inspection.target_profession.value_or(-1)
+                      << " changed=" << human_inspection.profession_confirmed
+                      << " completed=" << human_inspection.profession_completed
+                      << " home=" << human_inspection.home.value_or(0)
+                      << " tax=" << human_inspection.expected_tax
+                      << " collected=" << human_inspection.tax_collected << '\n';
         if (world_task_inspection_mode(options.inspect_page))
             std::cout << "World task inspection: target=" << options.inspect_page
                       << " accepted=" << task_inspection.accepted_task.value_or(0)
@@ -483,10 +505,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         menu_input.enter = IsKeyPressed(KEY_ENTER);
         const auto menu_intent = ui::world_menu_input(
             layout, publication->main_menu_open,
-            !active_page(current) && !app::world_report_waiting(current) &&
-                current.scene.scene_state == 0,
-            !desired_pause, failed || pending_menu || pending_task || management.pending(),
-            menu_selection, menu_input);
+            !active_page(current) && current.scene.scene_state == 0, !desired_pause,
+            failed || pending_menu || pending_task || management.pending(), menu_selection,
+            menu_input);
         if (menu_intent) {
             menu_feedback.clear();
             switch (*menu_intent) {
@@ -509,7 +530,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         const bool menu_blocked =
             publication->main_menu_open || pending_menu || management.pending();
         if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
-            !active_page(current) && !app::world_report_waiting(current)) {
+            !active_page(current)) {
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
                 const float factor = destination.width / extent.width * zoom;
                 const auto delta = GetMouseDelta();
@@ -603,9 +624,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
                     scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
             }
-        } else if (!menu_blocked && app::world_report_waiting(current) && !failed && !pending_ack &&
-                   (hit(month_confirm(extent)) || IsKeyPressed(KEY_ENTER)))
-            pending_ack = session.ack_report(current.report_state);
+        }
         // Held acceleration is page-bound and edge-triggered; 60 FPS cannot add source ticks.
         const auto *held_page = active_page(current);
         const auto held_layout = ui::world_task_layout(extent);
@@ -622,8 +641,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 session.set_page_confirm_held(next_held_page, true);
             held_task_page = next_held_page;
         }
-        const bool main_scene =
-            !menu_blocked && !active_page(current) && !app::world_report_waiting(current);
+        const bool main_scene = !menu_blocked && !active_page(current);
         const bool scene_handled =
             main_scene && management.input_scene(current, view, extent, mouse, click, zoom,
                                                  desired_pause || failed || pending_task, session);
@@ -646,12 +664,10 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         const float alpha = static_cast<float>(
             std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
         draw_world_scene(current, sprites, zoom, publication->previous.get(), alpha, &view);
-        if (!active_page(current) && !app::world_report_waiting(current) &&
-            !publication->main_menu_open)
+        if (!active_page(current) && !publication->main_menu_open)
             management.draw_footprint(current, view, extent, mouse, zoom, sprites);
         EndScissorMode();
-        if (!active_page(current) && !app::world_report_waiting(current) &&
-            !publication->main_menu_open)
+        if (!active_page(current) && !publication->main_menu_open)
             management.draw_placement(current, view, extent, mouse, zoom, skin,
                                       !desired_pause && !failed);
         ui::draw_world_notices(ui::world_notice_view(current, extent), skin);
@@ -712,9 +728,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                                     : "确定",
                                 !desired_pause && !failed && !pending_ack);
             }
-        } else if (app::world_report_waiting(current))
-            skin.button(month_confirm(extent), current.report_state == 1 ? "下一页" : "确定",
-                        !failed && !pending_ack);
+        }
         if (publication->main_menu_open)
             ui::draw_world_menu(layout, skin, menu_selection,
                                 !desired_pause && !failed && !pending_menu, menu_feedback);
@@ -773,6 +787,10 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
               << " cash=" << final_state.scene.world.world.ai.accounting.funds()
               << " humans=" << final_state.scene.world.world.ai.human_order.size()
               << " monsters=" << final_state.scene.world.world.ai.monster_order.size()
+              << " report=" << final_state.report_state << '/' << final_state.report_counter
+              << " date=" << final_state.scene.calendar.year << '/'
+              << final_state.scene.calendar.month << '/' << final_state.scene.calendar.subperiod
+              << '/' << final_state.scene.calendar.units
               << " random=" << final_state.scene.random.draws() << " failed=" << failed
               << " elapsed=" << GetTime() - started << '\n';
     const auto percentile = [](std::vector<double> values, double fraction) {

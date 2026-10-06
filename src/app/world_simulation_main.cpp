@@ -28,7 +28,7 @@ constexpr const char *usage =
     "                            [--speed 0|1] [--auto-confirm] [--end-awards]\n"
     "Framework updates are unpaced. --months sets a goal within the --frames budget.\n"
     "Ordinary pages wait unless --auto-confirm supplies explicit test-user confirmations.\n"
-    "Timed pages 16/56/57/97 advance themselves. Task decisions and shop83 always wait for\n"
+    "Timed pages 16/56/57/97/98 advance themselves. Task, human and tax decisions wait for\n"
     "explicit input; auto-confirm never accepts, departs, renews or cancels these pages.\n"
     "Annual termination additionally needs --end-awards;\n"
     "that test policy requests and confirms termination, retaining unused medals.\n"
@@ -163,6 +163,8 @@ int run(const Options &options) {
                           confirmations, "runtime_failed");
             return 1;
         }
+        (void)
+            session.take_sound_requests(); // Explicit silent consumer, not retained world history.
         const auto *page = top_page(session.state());
         if (!page) {
             std::cerr << "runtime_error frame=" << frames << " missing_active_page\n";
@@ -181,12 +183,16 @@ int run(const Options &options) {
         // Automatic waiting/camera pages never receive fabricated confirmation. Annual-page
         // termination is a separate opted-in test input, not an implication of auto-confirm.
         const bool raw = page->kind == rules::WorldScriptPageKind::raw_page;
-        const bool automatic = raw && (page->legacy_page == 16 || page->legacy_page == 56 ||
-                                       page->legacy_page == 57 || page->legacy_page == 97);
+        const bool automatic =
+            raw && (page->legacy_page == 16 || page->legacy_page == 56 || page->legacy_page == 57 ||
+                    page->legacy_page == 97 || page->legacy_page == 98);
         // The source generic raw33 confirmation chooses renewal. Do not reuse it as an
         // ordinary acknowledgement, and never invent recruitment/departure/cancellation policy.
         const bool decision = raw && ((page->legacy_page >= 22 && page->legacy_page <= 28) ||
-                                      page->legacy_page == 33 || page->legacy_page == 83);
+                                      page->legacy_page == 33 || page->legacy_page == 83 ||
+                                      (page->legacy_page >= 60 && page->legacy_page <= 66) ||
+                                      page->legacy_page == 68 || page->legacy_page == 70 ||
+                                      page->legacy_page == 73 || page->legacy_page == 90);
         const bool annual = raw && page->legacy_page == 87;
         if (annual && options.end_awards) {
             const auto id = page->id;
@@ -216,6 +222,7 @@ int run(const Options &options) {
             }
             ++confirmations;
         }
+        (void)session.take_sound_requests(); // Successful acknowledgement may also emit a sound.
         if (options.months && current_month - initial_month >= *options.months) {
             print_summary(session.state(), frames, current_month - initial_month, confirmations,
                           "month_goal_reached");

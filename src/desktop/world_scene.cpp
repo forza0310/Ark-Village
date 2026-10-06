@@ -48,6 +48,23 @@ std::array<int, 4> world_viewport(Extent extent, float zoom) {
 Vector2 world_anchor(const State &s, rules::CombatPoint p, float zoom) {
     return raw_anchor(s, (p.x + p.z) * .3F, (p.z - p.x) * .15F + p.height, zoom);
 }
+std::optional<rules::CharacterId> world_pick_human(const State &s, const WorldCameraView &view,
+                                                   Vector2 pointer, float zoom) {
+    if (!std::isfinite(zoom) || zoom <= 0 || !std::isfinite(pointer.x) || !std::isfinite(pointer.y))
+        return {};
+    const auto &ai = s.scene.world.world.ai;
+    for (const auto id : ai.human_order) {
+        const auto found = ai.battle.actors.find(id);
+        if (found == ai.battle.actors.end() || found->second.control.state == 4)
+            continue;
+        const auto p = simulation::startup_world_raw_projection(found->second.position);
+        const auto point = raw_anchor(view, static_cast<float>(p.x), static_cast<float>(p.y), zoom);
+        if (CheckCollisionPointRec(
+                pointer, {point.x - 10 * zoom, point.y - 24 * zoom, 20 * zoom, 26 * zoom}))
+            return id;
+    }
+    return {};
+}
 void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
                        float &zoom) {
     const auto next = std::clamp(zoom * std::pow(1.05F, wheel), .5F, 2.F);

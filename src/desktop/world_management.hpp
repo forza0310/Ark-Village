@@ -5,7 +5,9 @@
 #include "ark/app/world_session.hpp"
 #include "ui/world_award.hpp"
 #include "ui/world_building.hpp"
+#include "ui/world_human.hpp"
 #include "ui/world_progression.hpp"
+#include "ui/world_tax.hpp"
 #include "world_build_placement.hpp"
 
 namespace ark::desktop {

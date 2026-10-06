@@ -15,8 +15,9 @@ bool hit(std::optional<Vector2> point, Rectangle box) {
 }
 } // namespace
 bool world_page_automatic(const Page &page) {
-    return page.kind == Kind::raw_page && (page.legacy_page == 16 || page.legacy_page == 56 ||
-                                           page.legacy_page == 57 || page.legacy_page == 97);
+    return page.kind == Kind::raw_page &&
+           (page.legacy_page == 16 || page.legacy_page == 56 || page.legacy_page == 57 ||
+            page.legacy_page == 97 || page.legacy_page == 98);
 }
 bool world_page_regular_confirmation(const Page &page) {
     if (world_page_automatic(page))
@@ -25,7 +26,8 @@ bool world_page_regular_confirmation(const Page &page) {
         return true;
     const int raw = page.legacy_page;
     return raw != 87 && raw != 83 && raw != 33 && raw != 4 && raw != 21 && raw != 48 && raw != 74 &&
-           raw != 80 && !(raw >= 22 && raw <= 28);
+           raw != 80 && !(raw >= 22 && raw <= 28) && !(raw >= 60 && raw <= 66) && raw != 68 &&
+           raw != 70 && raw != 73 && raw != 90;
 }
 WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &state,
                                 std::uint64_t page) {

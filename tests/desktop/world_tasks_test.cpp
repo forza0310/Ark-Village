@@ -297,20 +297,13 @@ void world_tasks() {
     check(intent && intent->action == Action::add_member,
           "Active team retains real extra recruitment action");
     page.legacy_page = 60;
-    check(!ui::world_task_page(state, page), "Unbound raw60 is not a task member detail");
     state.page_human_bindings[page.id] = 42;
-    state.shop_humans[42].satisfaction = 77;
-    view = ui::world_task_view(state, page);
-    check(view.task_name == "human-42" && view.details[2] == "满足 77" &&
-              !ui::world_task_related_confirmation(state, page),
-          "Member detail reads runtime identity/stats and blocks generic confirmation");
-    check(!ui::world_task_input(view, layout, selection, input, false),
-          "Member detail has only Back; Enter must not synthesize unsupported confirmation");
-    input = {};
-    input.escape = true;
-    intent = ui::world_task_input(view, layout, selection, input, false);
-    check(intent && intent->action == Action::cancel,
-          "Member detail Back uses task page cancellation");
+    check(!ui::world_task_page(state, page) && !ui::world_page_regular_confirmation(page),
+          "Task member raw60 delegates to shared human management, never the old task Back page");
+    // Current shared fields and all four raw60 tabs are now owned by world_human tests.
+    page.legacy_page = 98;
+    check(ui::world_page_automatic(page) && !ui::world_page_regular_confirmation(page),
+          "Tax payment is an automatic source consumer, never a generic confirmation");
     page.legacy_page = 4;
     view = ui::world_task_view(state, page);
     input = {};

@@ -1,5 +1,6 @@
 // Definition growth is separate from actor HP, delayed display and world-page ownership.
 #include "ark/simulation/rules/human_growth.hpp"
+#include "ark/simulation/rules/human_management.hpp"
 
 #include <iostream>
 #include <limits>
@@ -226,6 +227,174 @@ void immediate_rewards() {
               !subthreshold.candidate->effort_display,
           "below decade does not fabricate new stat cache or effort display");
 }
+void profession_management() {
+    const std::vector<HumanManagementProfession> directory{{0, 1, 2, -1, 10, 1},
+                                                           {1, 2, 2, 0, 20, 2},
+                                                           {2, 1, 1, -1, 30, 3},
+                                                           {3, 1, 0, 1, 0, 0},
+                                                           {4, 0, -1, -1, 0, 0}};
+    check(catalogue_human_professions(0, directory) == std::vector<int>{2, 1, 0},
+          "job catalogue keeps source swap order, nonzero p and sex restriction");
+    check(catalogue_human_professions(1, directory) == std::vector<int>{3, 2, 0},
+          "unrestricted professions included for both sexes; locked absent");
+    auto target = directory[0];
+    check(
+        check_human_profession_change(HumanProfessionEntry::catalogue61, 0, 0, 0, target).denial ==
+                HumanManagementDenial::same_profession20 &&
+            check_human_profession_change(HumanProfessionEntry::confirmation62, 0, 0, 0, target)
+                    .denial == HumanManagementDenial::insufficient_medals27,
+        "61 and62 have different denial order, not generic all-gates-at-once");
+    check(check_human_profession_change(HumanProfessionEntry::confirmation62, 1, 1, 9, target)
+                      .denial == HumanManagementDenial::insufficient_points12 &&
+              check_human_profession_change(HumanProfessionEntry::confirmation62, 1, 1, 10, target)
+                      .denial == HumanManagementDenial::none,
+          "point and medal thresholds are inclusive; medals not a payment");
+    auto i = fixture();
+    i.professions[1].attribute_percent = {200, 300, 400, 500, 600, 700};
+    i.definition.equipment[0] = std::array<int, 4>{3, 7, 11, 13};
+    const auto preview = preview_human_profession_change(i.definition, i.professions, 1);
+    check(preview && preview->before == std::array<int, 6>{22, 19, 6, 5, 7, 11} &&
+              preview->after == std::array<int, 6>{44, 57, 24, 25, 42, 77} &&
+              preview->difference == std::array<int, 6>{22, 38, 18, 20, 35, 66} &&
+              i.definition.current_profession == 0 && i.definition.profession_levels[1] == 1,
+          "62 preview is six attributes, not combat equipment bonuses or actual setter");
+    HumanProfessionChangeInput change;
+    change.definition = i.definition;
+    change.professions = i.professions;
+    change.target = {1, 1, 2, -1, 20, 2};
+    change.village_points = 21;
+    change.medals = 2;
+    change.satisfaction = 99;
+    change.pending_completion = -10;
+    constexpr std::array<std::array<int, 2>, 4> requests{{{3, 3}, {0, 1}, {1, 0}, {1, 0}}};
+    for (int count = 0; count < 4; ++count) {
+        change.prior_changes = count;
+        const auto result = prepare_human_profession_change(change);
+        check(result.candidate && result.candidate->village_points == 1 &&
+                  result.candidate->prior_changes == count + 1 &&
+                  result.candidate->satisfaction_request == requests[count][0] &&
+                  result.candidate->effort_request == requests[count][1] &&
+                  result.candidate->reward.pending_completion == -10 + requests[count][0] &&
+                  result.candidate->reward.definition.current_profession == 0 &&
+                  result.candidate->reward.celebrations == 2 && change.village_points == 21,
+              "R indexed reward plan uses old profession, keeps medals, no partial mutation");
+    }
+    change.prior_changes = std::numeric_limits<int>::max();
+    check(prepare_human_profession_change(change).error == HumanGrowthError::numeric_overflow,
+          "R overflow rejected without partially charging points");
+    for (const int frame : {0, 54, 55, 56, 196, 197, 198}) {
+        const auto waiting = human_profession_change_animation_plan(frame, false);
+        const auto confirm = human_profession_change_animation_plan(frame, true);
+        check(waiting && confirm && waiting->set_profession == (frame == 55) &&
+                  confirm->set_profession == (frame == 55) && !waiting->finish &&
+                  confirm->finish == (frame >= 197),
+              "raw63 has exact midpoint setter and gated final confirm, no early fast forward");
+    }
+    const auto bonus = prepare_human_mastery_bonus(i.definition, i.professions, 0, 15);
+    check(bonus.candidate && bonus.candidate->definition.extra[0] == 15 &&
+              bonus.candidate->stats.attributes[0] == 37 &&
+              bonus.candidate->stats.combat[0] == 40 && i.definition.extra[0] == 0,
+          "mastery final choice appends extra before existing derive, leaves input untouched");
+    const auto no_bonus = prepare_human_mastery_bonus(i.definition, i.professions, 10, 15);
+    check(no_bonus.candidate && no_bonus.candidate->definition.extra == i.definition.extra,
+          "v10 mastery spell presentation does not invent a six-attribute bonus");
+    i.definition.extra[0] = std::numeric_limits<int>::max();
+    check(!prepare_human_mastery_bonus(i.definition, i.professions, 0, 1).candidate &&
+              !prepare_human_mastery_bonus(i.definition, i.professions, 6, 1).candidate,
+          "mastery overflow and source-impossible six-array index reject safely");
+}
+void equipment_management() {
+    HumanManagementEquipment target{7, 0, 1, 2, 3, 51, 0, 0, {10, 20, 30, 40}};
+    check(human_equipment_gift_cost(target) == 76, "weapon gift truncates price*3/2");
+    target.slot = 1;
+    check(human_equipment_gift_cost(target) == 102, "armor gift costs twice price, not points");
+    target.stock = 1;
+    check(human_equipment_gift_cost(target) == -1, "shared inventory gift quote sentinel");
+    const auto directory = std::vector<HumanManagementEquipment>{{0, 0, 1, 2, 0, 0, 0, 0, {}},
+                                                                 {1, 0, 2, 2, 0, 0, 0, 0, {}},
+                                                                 {2, 0, 1, 1, 0, 0, 0, 0, {}},
+                                                                 {3, 1, 1, 0, 0, 0, 0, 0, {}},
+                                                                 {4, 0, 0, -1, 0, 0, 0, 0, {}}};
+    check(catalogue_human_equipment(0, directory) == std::vector<int>{2, 1, 0},
+          "equipment catalogue independent of profession, locks and slots only");
+    constexpr int likes[5][6]{{100, 0, 50, 50, 100, 50},
+                              {0, 100, 50, 50, 100, 50},
+                              {50, 50, 100, 0, 100, 50},
+                              {50, 50, 0, 100, 100, 50},
+                              {0, 0, 0, 0, 100, 50}};
+    constexpr int upgrade_parts[]{0, 0, 26, 52, 80, 80};
+    for (int job = 0; job < 5; ++job)
+        for (int affinity = 0; affinity < 6; ++affinity)
+            for (int delta = -1; delta <= 4; ++delta)
+                check(human_equipment_gift_evaluation(4, 4 + delta, job, affinity) ==
+                          upgrade_parts[delta + 1] + likes[job][affinity] / 5,
+                      "all gift profiles and grade boundaries, integer then float truncation");
+    check(human_gift_rewards(0) == std::array<int, 2>{2, 0} &&
+              human_gift_rewards(20) == std::array<int, 2>{3, 0} &&
+              human_gift_rewards(70) == std::array<int, 2>{6, 3} &&
+              human_gift_rewards(100) == std::array<int, 2>{9, 6},
+          "gift score independently maps satisfaction and effort, low clamp at20");
+    auto f = fixture();
+    f.definition.legacy_u = 9;
+    f.definition.equipment[0] = std::array<int, 4>{5, 0, 0, 0};
+    HumanEquipmentGiftInput gift;
+    gift.definition = f.definition;
+    gift.professions = f.professions;
+    gift.equipment_ids[0] = 2;
+    target.slot = 0;
+    target.stock = 0;
+    gift.target = target;
+    gift.money = 200;
+    gift.satisfaction = 99;
+    gift.medals = 3;
+    const auto result = prepare_human_equipment_gift(gift);
+    check(result.candidate && result.candidate->money == 124 && result.candidate->stock == 0 &&
+              result.candidate->cash_charge == 76 && result.candidate->evaluation == 100 &&
+              result.candidate->dialogue_band == 2 &&
+              result.candidate->equipment_ids == std::array<int, 4>{7, -1, -1, -1} &&
+              result.candidate->equipment_cooldowns == std::array<int, 4>{6, 0, 0, 0},
+          "confirm cash, grade reward, setter and acquisition lock6 compose");
+    check(result.candidate->reward.satisfaction == 100 &&
+              result.candidate->reward.pending_completion == 9 &&
+              result.candidate->reward.definition.legacy_u == 15 &&
+              result.candidate->reward.derived->combat == std::array<int, 4>{29, 20, 5, 7} &&
+              result.candidate->final_stats.combat == std::array<int, 4>{34, 40, 35, 47} &&
+              (*result.candidate->equipment_display)[2] == std::array<int, 4>{5, 20, 30, 40},
+          "effort comparison retains old equipment, equipment comparison uses new effort");
+    check(gift.money == 200 && gift.definition.legacy_u == 9 && gift.equipment_ids[0] == 2,
+          "gift result cannot partially mutate owner input");
+    gift.target.stock = 2;
+    gift.money = -100;
+    const auto inventory = prepare_human_equipment_gift(gift);
+    check(inventory.candidate && inventory.candidate->stock == 1 &&
+              inventory.candidate->money == -100 && inventory.candidate->cash_charge == 0,
+          "inventory decrement is global and does not alter signed cash");
+    gift.target.stock = 0;
+    const auto signed_cash = prepare_human_equipment_gift(gift);
+    check(signed_cash.candidate && signed_cash.candidate->money == -176,
+          "parent confirmation does not invent a second affordability rejection or zero floor");
+    gift.money = std::numeric_limits<std::int64_t>::min();
+    check(prepare_human_equipment_gift(gift).error == HumanGrowthError::numeric_overflow,
+          "cash numeric underflow fails before a partial reward or item update");
+    gift.money = 200;
+    gift.target.definition = 2;
+    gift.target.grade = 0;
+    gift.target.combat = *gift.definition.equipment[0];
+    const auto repeated = prepare_human_equipment_gift(gift);
+    check(repeated.candidate && !repeated.candidate->equipment_display &&
+              repeated.candidate->equipment_cooldowns[0] == 6 &&
+              repeated.candidate->reward.pending_completion == 3,
+          "same equipment is legal, rewards and resets lock but no fabricated page68");
+    gift.equipment_ids[1] = 0;
+    check(!prepare_human_equipment_gift(gift).candidate,
+          "equipment ID and stat projection mismatch rejects whole candidate");
+    auto duplicate = directory;
+    duplicate.push_back(directory[0]);
+    check(!catalogue_human_equipment(0, duplicate) && !catalogue_human_professions(2, {}) &&
+              !human_equipment_gift_evaluation(0, 0, 5, 0) && !human_gift_rewards(101) &&
+              !human_profession_change_animation_plan(-1, true),
+          "catalogue identity, profiles, scores and animation technical bounds");
+}
 } // namespace
 int main() {
     try {
@@ -233,6 +402,8 @@ int main() {
         rewards();
         errors();
         immediate_rewards();
+        profession_management();
+        equipment_management();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

@@ -161,9 +161,10 @@ void main_menu_modal_rejections() {
             state.report_state = 1;
         app::WorldSession session(state);
         const auto result = input_frame(session, session.open_main_menu());
-        check(!result->failed && !result->main_menu_open && result->outer_updates == 0 &&
-                  input_result(*result, result->last_command_serial).outcome == Outcome::rejected,
-              "Monthly report and a source modal page reject desktop menu opening recoverably");
+        check(!result->failed && result->main_menu_open == report && result->outer_updates == 0 &&
+                  input_result(*result, result->last_command_serial).outcome ==
+                      (report ? Outcome::applied : Outcome::rejected),
+              "Automatic report allows desktop menu opening while a source modal still rejects it");
         same_world(*result->state, state);
         session.stop();
     }
@@ -333,15 +334,14 @@ void task_menu_report_and_departure() {
     auto report = initial();
     report.report_state = 1;
     app::WorldSession reporting(report);
-    const auto denied = reporting.open_task_menu();
-    frame = input_frame(reporting, denied);
+    const auto requested = reporting.open_task_menu();
+    frame = input_frame(reporting, reporting.set_paused(true));
     check(!frame->failed &&
-              input_result(*frame, denied).outcome == app::WorldCommandOutcome::rejected &&
-              frame->outer_updates == 0 && app::world_report_waiting(*frame->state),
-          "Task menu input cannot bypass the desktop's manual month report gate");
-    const auto confirmed = input_frame(reporting, reporting.ack_report(1));
-    check(!confirmed->failed && confirmed->state->report_state == 2,
-          "Rejected task input leaves the ordinary report protocol usable");
+              input_result(*frame, requested).outcome == app::WorldCommandOutcome::applied &&
+              frame->outer_updates == 0 && frame->state->report_state == 1 &&
+              event_count(*frame->state, 29) == 1,
+          "Visible automatic report permits the source task-menu action without a report "
+          "acknowledgement");
     reporting.stop();
 
     auto team = recruitment_fixture();
@@ -405,6 +405,179 @@ void task_menu_report_and_departure() {
               input_result(*frame, duplicate).outcome == app::WorldCommandOutcome::rejected,
           "Old shop Back is a recoverable stale input");
     shopping.stop();
+}
+
+// These are page-callsite fixtures. They use the real initial shared definitions; no
+// alternate reward calculation or long-running automatic player lives in transport tests.
+app::WorldState managed_page_fixture(int raw, bool ready = true) {
+    auto state = initial();
+    state.scripts.pages.front().lifecycle = 3;
+    rules::WorldScriptPage page;
+    page.id = state.scripts.next_page_id++;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = raw;
+    state.scripts.pages.push_back(page);
+    state.page_human_bindings[page.id] = 1;
+    for (int event : {99, 111, 112, 119})
+        state.scripts.event_calls[event] = 1;
+    if (ready && raw >= 60 && raw <= 73)
+        check(sim::initialize_startup_world_human_pages(state),
+              "Managed fixture initializes source pages");
+    state.scene.framework_paused = true;
+    return state;
+}
+void human_command_transactions() {
+    using Action = sim::StartupHumanPageAction;
+    using Outcome = app::WorldCommandOutcome;
+    auto state = initial(true);
+    // Minimal clicked-actor identity fixture; no actor simulation is run in this case.
+    rules::BattleActorRecord actor;
+    actor.id = {501};
+    actor.kind = rules::ActorKind::human;
+    actor.definition = 1;
+    state.scene.world.world.ai.battle.actors.emplace(actor.id, actor);
+    state.scene.world.world.ai.human_order.push_back(actor.id);
+    auto unavailable = actor;
+    unavailable.id = {502};
+    unavailable.control.state = 4;
+    state.scene.world.world.ai.battle.actors.emplace(unavailable.id, unavailable);
+    state.scene.world.world.ai.human_order.push_back(unavailable.id);
+    state.human_presence.at(1) = 1;
+    app::WorldSession session(state);
+    const auto missing = session.open_human({999}, 1);
+    const auto mismatched = session.open_human(actor.id, 2);
+    session.set_paused(false);
+    const auto stale_state = session.open_human(unavailable.id, 1);
+    const auto opened = session.open_human(actor.id, 1);
+    auto frame = input_frame(session, session.set_paused(true));
+    check(!frame->failed && input_result(*frame, missing).outcome == Outcome::rejected &&
+              input_result(*frame, mismatched).outcome == Outcome::rejected &&
+              input_result(*frame, stale_state).outcome == Outcome::rejected &&
+              input_result(*frame, stale_state).runtime_error ==
+                  sim::StartupWorldRuntimeError::invalid_page &&
+              input_result(*frame, opened).outcome == Outcome::applied &&
+              task_top(*frame->state).legacy_page == 60 && frame->outer_updates == 0,
+          "FIFO opens only a currently selectable actor with the observed definition; state4 "
+          "rejects");
+    const auto page = task_top(*frame->state).id;
+    session.set_paused(false);
+    const auto early = session.act_human(page, Action::view_tab, 1);
+    const auto early_cancel = session.cancel_page(page);
+    frame = input_frame(session, session.set_paused(true));
+    check(!frame->failed && input_result(*frame, early).outcome == Outcome::rejected &&
+              input_result(*frame, early_cancel).outcome == Outcome::rejected &&
+              !frame->state->human_pages_initialized.count(page),
+          "Input cannot initialize a new human page before the real framework update");
+    session.stop();
+
+    auto detail = managed_page_fixture(60);
+    const auto id = task_top(detail).id;
+    app::WorldSession details(detail);
+    details.set_paused(false);
+    const auto invalid = details.act_human(id, static_cast<Action>(999));
+    const auto tab = details.act_human(id, Action::view_tab, 3);
+    const auto close = details.act_human(id, Action::cancel);
+    const auto stale = details.act_human(id, Action::gifts);
+    frame = input_frame(details, details.set_paused(true));
+    check(!frame->failed && input_result(*frame, invalid).outcome == Outcome::rejected &&
+              input_result(*frame, tab).outcome == Outcome::applied &&
+              input_result(*frame, close).outcome == Outcome::applied &&
+              input_result(*frame, stale).outcome == Outcome::rejected &&
+              frame->state->scene.random.draws() == detail.scene.random.draws(),
+          "Human tab, close and stale input preserve FIFO and reject invalid action enums");
+    details.stop();
+
+    auto report = state;
+    report.report_state = 1;
+    report.scene.framework_paused = false;
+    app::WorldSession reporting(report);
+    const auto requested = reporting.open_human(actor.id, 1);
+    frame = input_frame(reporting, reporting.set_paused(true));
+    check(!frame->failed && input_result(*frame, requested).outcome == Outcome::applied &&
+              frame->outer_updates == 0 && frame->state->report_state == 1 &&
+              task_top(*frame->state).legacy_page == 60,
+          "Visible automatic report permits actor details while preserving source page ownership");
+    reporting.stop();
+}
+void human_gift_parent_transaction() {
+    using Action = sim::StartupHumanPageAction;
+    using Outcome = app::WorldCommandOutcome;
+    auto state = managed_page_fixture(64);
+    state.scene.framework_paused = false;
+    const auto parent = task_top(state).id;
+    const int weapon = state.equipment_page_catalogs.at(parent)[0].front();
+    state.catalog.at({1, weapon}).free_purchases = 1;
+    check(sim::act_startup_world_human_page(state, parent, Action::confirm) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_human_pages(state),
+          "Actual equipment catalogue creates and initializes its bound question65");
+    const auto question = task_top(state).id;
+    const auto cash = state.scene.world.world.ai.accounting.funds();
+    const auto draws = state.scene.random.draws();
+    state.scene.framework_paused = true;
+    app::WorldSession session(state);
+    session.set_paused(false);
+    const auto yes = session.act_human(question, Action::confirm);
+    const auto duplicate = session.act_human(question, Action::confirm);
+    const auto bypass = session.act_human(parent, Action::confirm);
+    auto frame = input_frame(session, session.set_paused(true));
+    check(!frame->failed && input_result(*frame, yes).outcome == Outcome::applied &&
+              input_result(*frame, duplicate).outcome == Outcome::rejected &&
+              input_result(*frame, bypass).outcome == Outcome::rejected &&
+              frame->state->human_page_answers.at(parent) == 0 &&
+              frame->state->catalog.at({1, weapon}).free_purchases == 1 &&
+              frame->state->scene.world.world.ai.accounting.funds() == cash &&
+              frame->state->scene.random.draws() == draws,
+          "65 returns only its answer; duplicate and resumed-parent input cannot grant early");
+    session.set_paused(false);
+    await(session, [parent](const auto &f) {
+        return f.failed || !f.state->human_page_answers.count(parent);
+    });
+    frame = input_frame(session, session.set_paused(true));
+    check(!frame->failed && frame->state->catalog.at({1, weapon}).free_purchases == 0 &&
+              frame->state->shop_humans.at(1).equipment[0] == weapon &&
+              frame->state->scene.world.world.ai.accounting.funds() == cash &&
+              frame->state->scene.random.draws() == draws + 1,
+          "A real parent update consumes free stock and commits the gift and one dialogue draw");
+    session.stop();
+}
+void tax_command_transactions() {
+    using Action = sim::StartupWorldTaxAction;
+    using Outcome = app::WorldCommandOutcome;
+    auto state = managed_page_fixture(90, false);
+    const auto page = task_top(state).id;
+    state.human_presence.at(1) = 1;
+    state.human_homes.at(1)[2] = 1;
+    state.human_calendar.at(1).legacy_G = 100;
+    state.scene.framework_paused = false;
+    check(sim::initialize_startup_world_tax_page(state, page) ==
+              sim::StartupWorldRuntimeError::none,
+          "Tax fixture freezes the real eligible resident list");
+    state.scene.framework_paused = true;
+    app::WorldSession session(state);
+    session.set_paused(false);
+    const auto invalid = session.act_tax(page, static_cast<Action>(999));
+    const auto select = session.act_tax(page, Action::select, 0);
+    const auto confirm = session.act_tax(page, Action::confirm);
+    const auto stale = session.act_tax(page, Action::confirm);
+    const auto frame = input_frame(session, session.set_paused(true));
+    check(!frame->failed && input_result(*frame, invalid).outcome == Outcome::rejected &&
+              input_result(*frame, select).outcome == Outcome::applied &&
+              input_result(*frame, confirm).outcome == Outcome::applied &&
+              input_result(*frame, stale).outcome == Outcome::rejected &&
+              frame->state->scene.world.world.ai.accounting.funds() ==
+                  state.scene.world.world.ai.accounting.funds() &&
+              frame->state->human_calendar.at(1).legacy_G == 100,
+          "Tax selection and confirmation never pay; duplicate and invalid enums reject");
+    session.stop();
+    for (int raw : {60, 90, 98}) {
+        app::WorldSession guarded(managed_page_fixture(raw, false));
+        const auto id = task_top(*guarded.frame()->state).id;
+        const auto result = input_frame(guarded, guarded.ack_page(id));
+        check(result->failed && result->outer_updates == 0 && task_top(*result->state).id == id,
+              "Generic acknowledgement cannot choose a human/tax action or execute automatic98");
+        guarded.stop();
+    }
 }
 
 } // namespace ark::test::world_session

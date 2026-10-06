@@ -32,4 +32,7 @@ void task_menu_report_and_departure();
 void building_command_transactions();
 void facility_and_rank_commands();
 void residence_replacement_command();
+void human_command_transactions();
+void human_gift_parent_transaction();
+void tax_command_transactions();
 } // namespace ark::test::world_session

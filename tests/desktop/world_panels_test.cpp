@@ -3,6 +3,7 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_panels.hpp"
 #include "ui/world_reports.hpp"
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -17,6 +18,20 @@ void world_panels() {
     Checks check{"world_panels"};
     using namespace ark::desktop;
     using namespace ark::simulation::rules;
+    struct DateCase {
+        int year, month, week, units;
+        const char *text;
+        float progress;
+    };
+    for (const auto &test :
+         {DateCase{0, 3, 0, 0, "1年4月1周", 0}, DateCase{0, 3, 2, 5400, "1年4月3周", .5F},
+          DateCase{0, 11, 3, 10773, "1年12月4周", .9975F},
+          DateCase{1, 0, 0, 27, "2年1月1周", .0025F}}) {
+        const WorldCalendarState calendar{test.year, test.month, test.week, test.units, 10799, 77};
+        const auto date = ui::world_date_view(calendar);
+        check(date.text == test.text && std::abs(date.week_progress - test.progress) < .00001F,
+              "HUD shows one-based year/month/week and progress within this week, not month ticks");
+    }
     for (const auto size :
          {Extent{240, 256}, Extent{360, 240 + 80}, Extent{540, 360}, Extent{1080, 720}}) {
         for (const auto kind :
@@ -96,6 +111,15 @@ void world_panels() {
     check(ui::world_notice_view(notices, {540, 360}).empty(),
           "Unstarted first-two notices do not expose a later queued record");
     auto state = initial_world();
+    const auto running_date = ui::world_date_view(state.scene.calendar);
+    const auto initial_clock = state;
+    state.scene.framework_paused = true;
+    const auto paused_date = ui::world_date_view(state.scene.calendar);
+    check(paused_date.text == running_date.text &&
+              paused_date.week_progress == running_date.week_progress &&
+              same_world_clock(state, initial_clock),
+          "Paused HUD reads the same source date and progress without advancing calendar units");
+    state.scene.framework_paused = initial_clock.scene.framework_paused;
     const int human_id = state.rules->humans.front().identity;
     const int monster_id = state.rules->monsters.front().identity;
     state.report_state = 1;
@@ -149,13 +173,21 @@ void world_panels() {
               state.scripts.notices[0].counter == 8 &&
               state.scripts.notices[0].attribute_changes == growth.attribute_changes,
           "Report and growth projections do not consume points, fees, counters or ap");
+    // Entry/exit positions follow source report counters, never a drawing-frame timer.
+    for (const auto &sample : std::vector<std::array<int, 3>>{
+             {1, 0, -104}, {1, 3, -52}, {1, 6, 0}, {2, 64, 0}, {2, 67, -52}, {2, 70, -104}}) {
+        state.report_state = sample[0];
+        state.report_counter = sample[1];
+        check(ui::world_month_view(state).offset_x == sample[2] &&
+                  state.report_counter == sample[1],
+              "Monthly overlay slides with the existing counter without changing world time");
+    }
     for (const Extent extent : {Extent{240, 256}, Extent{540, 360}}) {
         const auto layout = ui::world_victory_layout(extent);
         const Rectangle usable{0, 24, static_cast<float>(extent.width), extent.height - 51.F};
         check(contains(usable, layout.panel) && contains(usable, layout.confirm) &&
-                  layout.confirm.y >= layout.panel.y + layout.panel.height &&
-                  contains(usable, ui::world_month_confirm(extent)),
-              "Report buttons stay clear of artwork and footer at narrow and wide sizes");
+                  layout.confirm.y >= layout.panel.y + layout.panel.height,
+              "Victory confirmation stays clear of artwork and footer at narrow and wide sizes");
     }
     std::cout << "PASS world page layout contracts\n";
 }

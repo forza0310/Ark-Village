@@ -49,6 +49,9 @@ void same_world(const app::WorldState &a, const app::WorldState &b) {
               a.scene.calendar.units == b.scene.calendar.units &&
               a.scene.calendar.year == b.scene.calendar.year &&
               a.scene.calendar.month == b.scene.calendar.month &&
+              a.scene.calendar.month_ticks == b.scene.calendar.month_ticks &&
+              a.report_state == b.report_state && a.report_counter == b.report_counter &&
+              a.report_snapshot == b.report_snapshot && a.village_points == b.village_points &&
               a.scene.world.world.ai.human_order == b.scene.world.world.ai.human_order &&
               a.scene.world.world.ai.monster_order == b.scene.world.world.ai.monster_order &&
               a.camera == b.camera && a.reference_viewport == b.reference_viewport,
@@ -202,48 +205,56 @@ void runtime_failure_rollback() {
     same_world(*failed->state, invalid);
     session.stop();
 }
-void report_gate_and_commands() {
+void automatic_report_and_pause() {
     auto state = initial();
-    // An explicit focus-state fixture reaches the same source common-world report consumer
-    // without the new-game introduction intercepting the first normal scene iteration.
-    state.scene.scene_state = 2;
+    // Explicit already-seen introduction fixture keeps the actual normal scene/calendar
+    // consumer eligible. Source event7 has an empty automatic condition at new-game entry.
+    state.scripts.event_calls[7] = 1;
     state.scene.calendar.month_ticks = state.clock_parameter * 20 - 143;
+    const auto monster =
+        std::find_if(state.rules->monsters.begin(), state.rules->monsters.end(),
+                     [](const auto &value) { return value.points_per_defeat > 0; });
+    check(monster != state.rules->monsters.end(),
+          "Report fixture has a point-bearing source monster");
+    state.scene.world.world.ai.monster_growth.at(monster->identity).defeats = 3;
     state = advance(std::move(state));
-    check(app::world_report_waiting(state), "Source world update creates an exposed report");
+    check(app::world_report_visible(state) && state.report_snapshot[1] > 0,
+          "Source world update creates an exposed report with unsettled positive points");
+    // The consumer's entire 70/70 boundary is covered by world_report. Start at its last
+    // first-phase tick here so this real-thread test focuses on transport, pause and resume.
+    state.report_counter = 69;
     app::WorldSession session(state);
     const auto first = session.frame();
-    const auto waiting = session.wait_for_frame_after(first->revision, 120ms);
-    check(waiting == first && waiting->outer_updates == 0,
-          "Visible monthly report freezes world publication pending explicit input");
-    const auto next = session.ack_report(1);
-    const auto phase2 = await(session, [next](const auto &frame) {
-        return frame.last_command_serial >= next || frame.failed;
-    });
-    check(!phase2->failed && phase2->state->report_state == 2 && phase2->outer_updates == 0 &&
-              phase2->state->scene.calendar.month_ticks == state.scene.calendar.month_ticks,
-          "First manual report command advances only the source display phase");
-    check(session.wait_for_frame_after(phase2->revision, 80ms) == phase2,
-          "Financial phase also remains frozen until the second confirmation");
-    const auto pause = session.set_paused(true);
-    const auto close = session.ack_report(2);
-    check(close == pause + 1, "Pause/report commands retain common FIFO order");
-    const auto closed = await(session, [close](const auto &frame) {
-        return frame.last_command_serial >= close || frame.failed;
-    });
-    check(!closed->failed && closed->state->report_state == 0 && closed->outer_updates == 0 &&
-              closed->state->scene.framework_paused &&
-              closed->state->scene.world.world.ai.accounting.funds() ==
-                  state.scene.world.world.ai.accounting.funds(),
-          "Closing a report preserves explicit user pause and never recharges maintenance");
-    const auto resume = session.set_paused(false);
-    check(resume != 0, "Report close leaves the session ready to resume");
-    const auto resumed =
-        await(session, [](const auto &frame) { return frame.outer_updates > 0 || frame.failed; });
-    check(!resumed->failed, "Closing the report releases normal source world updates");
+    const auto phase2 = await(
+        session, [](const auto &frame) { return frame.state->report_state == 2 || frame.failed; });
+    check(
+        !phase2->failed && phase2->outer_updates > 0 && phase2->last_command_serial == 0 &&
+            phase2->state->scene.world.updates > state.scene.world.updates &&
+            phase2->state->scene.calendar.month_ticks > state.scene.calendar.month_ticks &&
+            phase2->state->village_points == state.village_points &&
+            first->state->report_state == 1 && first->state->report_counter == 69,
+        "Automatic report advances the shared world/date and phase without input or early points");
+    const auto paused = input_frame(session, session.set_paused(true));
+    check(!paused->failed && paused->state->report_state == 2 &&
+              paused->state->scene.framework_paused &&
+              session.wait_for_frame_after(paused->revision, 120ms) == paused,
+          "Explicit user pause freezes the report and all world publication until explicit resume");
+    auto expected = state;
+    for (std::uint64_t i = 0; i < paused->outer_updates; ++i)
+        expected = advance(std::move(expected));
+    expected.scene.framework_paused = true;
+    same_world(*paused->state, expected);
+    session.set_paused(false);
+    const auto closed = await(
+        session, [](const auto &frame) { return frame.state->report_state == 0 || frame.failed; });
+    check(!closed->failed && !closed->state->scene.framework_paused &&
+              closed->state->village_points ==
+                  std::min(999, state.village_points + state.report_snapshot[1]),
+          "After explicit resume, phase2 ends naturally and source awards its positive snapshot "
+          "once");
     session.stop();
     const auto final = session.frame();
-    auto expected = *closed->state;
-    expected.scene.framework_paused = false;
+    expected = state;
     for (std::uint64_t i = 0; i < final->outer_updates; ++i)
         expected = advance(std::move(expected));
     same_world(*final->state, expected);
@@ -414,6 +425,7 @@ void annual_page_commands() {
 }
 void report_below_timed_page() {
     auto state = initial();
+    state.scene.scene_state = 2;
     state.report_state = 1; // Explicit overlay fixture beneath a source-owned automatic page.
     state.scripts.pages.front().lifecycle = 3;
     rules::WorldScriptPage timer;
@@ -429,10 +441,53 @@ void report_below_timed_page() {
               revealed->state->report_state == 1 && app::world_report_waiting(*revealed->state) &&
               revealed->last_command_serial == 0,
           "Timed page above a report updates and closes itself without confirmation input");
-    check(session.wait_for_frame_after(revealed->revision, 120ms) == revealed &&
-              revealed->state->scene.calendar.units == state.scene.calendar.units &&
-              revealed->state->scene.random.draws() == state.scene.random.draws(),
-          "Only the revealed main-scene report holds subsequent world updates");
+    const auto progressed = await(session, [&](const auto &frame) {
+        return frame.outer_updates > revealed->outer_updates || frame.failed;
+    });
+    check(!progressed->failed &&
+              progressed->state->report_counter > revealed->state->report_counter,
+          "Revealing the report resumes its source counter with normal shared-world updates");
+    session.stop();
+    const auto final = session.frame();
+    auto expected = state;
+    for (std::uint64_t i = 0; i < final->outer_updates; ++i)
+        expected = advance(std::move(expected));
+    same_world(*final->state, expected);
+}
+void sound_output_sink() {
+    auto state = initial(true);
+    state.sound_requests = {4, 11}; // Outputs left by bounded diagnostic prewarming.
+    state.scripts.pages.front().lifecycle = 3;
+    rules::WorldScriptPage page;
+    page.id = state.scripts.next_page_id++;
+    page.kind = rules::WorldScriptPageKind::raw_page;
+    page.legacy_page = 30; // The source requests sound4 exactly at counter1.
+    state.scripts.pages.push_back(page);
+    app::WorldSession session(state);
+    const auto first = session.frame();
+    check(first->consumed_sound_requests == 2 && first->state->sound_requests.empty() &&
+              first->previous == first->state,
+          "Prewarmed sounds are taken once before the first immutable publication");
+    for (int i = 0; i < 10; ++i)
+        check(session.frame() == first, "Repeated frame reads cannot consume or replay outputs");
+    const auto metadata = input_frame(session, session.set_view({11, 20}, {0, 24, 384, 211}));
+    check(metadata->consumed_sound_requests == 2 && metadata->state->sound_requests.empty(),
+          "Camera publication does not replay the initial sound queue");
+    session.set_paused(false);
+    await(session, [](const auto &f) { return f.failed || f.outer_updates >= 2; });
+    const auto ticked = input_frame(session, session.set_paused(true));
+    check(!ticked->failed && ticked->consumed_sound_requests == 3 &&
+              ticked->state->sound_requests.empty() && ticked->previous->sound_requests.empty() &&
+              first->consumed_sound_requests == 2,
+          "Successful source counter1 sound is consumed once without mutating retained snapshots");
+    const auto rejected =
+        input_frame(session, session.act_tax(page.id, sim::StartupWorldTaxAction::confirm));
+    check(!rejected->failed && rejected->consumed_sound_requests == 3,
+          "Rejected decision publishes no new sound consumption");
+    const auto failed = input_frame(session, session.ack_page(page.id + 1000));
+    check(failed->failed && failed->consumed_sound_requests == 3 &&
+              failed->state->sound_requests.empty(),
+          "Failure publication preserves the last successful output-consumption count");
     session.stop();
 }
 
@@ -443,7 +498,7 @@ int main() {
     sequential_equivalence();
     page_failure_rollback();
     runtime_failure_rollback();
-    report_gate_and_commands();
+    automatic_report_and_pause();
     input_flood_fairness();
     annual_page_commands();
     report_below_timed_page();
@@ -456,5 +511,9 @@ int main() {
     building_command_transactions();
     facility_and_rank_commands();
     residence_replacement_command();
+    human_command_transactions();
+    human_gift_parent_transaction();
+    tax_command_transactions();
+    sound_output_sink();
     std::cout << "PASS world session " << checks << " checks\n";
 }

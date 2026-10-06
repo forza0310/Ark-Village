@@ -1,13 +1,15 @@
 #pragma once
 
-// Product interaction policy around the unchanged maintained monthly report consumer.
+// Read-only visibility and diagnostic skip around the maintained automatic report consumer.
 #include "ark/simulation/startup_world_runtime.hpp"
 
 namespace ark::app {
-// The report overlay waits only while it is actually exposed on the main scene. A script
-// modal remains independently eligible for its own update/input until it uncovers the report.
+// Visibility is not a modal/update gate. Source-admitted world updates advance the report
+// automatically; an unrelated script page keeps its original update/input precedence.
+bool world_report_visible(const simulation::StartupWorldRuntimeState &state);
+// Compatibility name for existing inspections. Never use it to suspend the world or input.
 bool world_report_waiting(const simulation::StartupWorldRuntimeState &state);
-// Advance exactly the current visible phase1/2/3 using the source skip-display input. An old
-// phase or missing report is rejected without mutation; closing consumes village points once.
+// Diagnostic-only source skip for a visible phase1/2/3. Normal UI needs no acknowledgement.
+// Stale phase, explicit pause, missing report or non-world scene mode rejects without mutation.
 bool acknowledge_world_report(simulation::StartupWorldRuntimeState &state, int expected_phase);
 } // namespace ark::app

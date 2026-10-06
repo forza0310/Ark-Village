@@ -91,6 +91,12 @@ if(BUILD_TESTING)
         endif()
     endforeach()
     if(ARK_LONG_WORLD_TESTS)
+        # Same frozen continuous suite with its explicit real-player housing strategy.
+        # This is not a numeric-month annual fixture and must not use the annual wrapper.
+        add_test(NAME simulation.natural_housing
+            COMMAND ark_simulation_startup_world_continuous_test natural_housing 1 0)
+        set_tests_properties(simulation.natural_housing PROPERTIES TIMEOUT 5400
+            LABELS "long_world;natural_housing;e2e;frozen" RUN_SERIAL TRUE)
         # Keep source assertions intact. The product wrapper also checks the three
         # published natural-task counts; source tests otherwise only print those counts.
         function(ark_long_world_test name months seed speed tasks)

@@ -132,6 +132,20 @@ void multi_tile_and_rollback() {
                   "each pair tile binds same stable instance");
     }
 }
+void new_shop_projection() {
+    auto s = test_support::world_fixture();
+    const auto old = s.shop_order;
+    check(begin_startup_world_build(s, 30).denial == StartupBuildDenial::none,
+          "real initial weapon shop is an affordable ordinary construction");
+    const auto r =
+        confirm_startup_world_build(s, empty_anchor(s, 30), ref::FacilityOrientation::first);
+    check(r.created && s.shop_order.size() == old.size() + 1 && s.shop_order.back() == *r.created &&
+              s.shops.at(*r.created).category == 1 && s.shops.at(*r.created).notices.empty(),
+          "new weapon shop installs exact category1 and original order for object/shop consumers");
+    const auto route = startup_world_runtime_routes(s);
+    check(route.shops.count(*r.created) && route.shop_order == s.shop_order,
+          "current route projection includes player-built shop without a second owner");
+}
 void details() {
     auto s = test_support::world_fixture();
     const auto id = s.scene.world.facility_order.at(0);
@@ -392,6 +406,7 @@ int main() {
     try {
         normal_construction();
         multi_tile_and_rollback();
+        new_shop_projection();
         details();
         shared_upgrade();
         menu_and_current_quotes();

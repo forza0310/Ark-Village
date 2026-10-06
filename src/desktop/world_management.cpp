@@ -60,6 +60,38 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     const auto point = click ? mouse : std::nullopt;
     const bool enter = IsKeyPressed(KEY_ENTER), escape = IsKeyPressed(KEY_ESCAPE);
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_human_page(page)) {
+        const auto view = ui::world_human_view(state, page);
+        const auto layout = ui::world_human_layout(extent);
+        ui::WorldHumanInput input;
+        input.click = point;
+        input.enter = enter;
+        input.escape = escape;
+        input.up = up;
+        input.down = down;
+        input.left = IsKeyPressed(KEY_LEFT);
+        input.right = IsKeyPressed(KEY_RIGHT);
+        input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
+        input.professions = IsKeyPressed(KEY_P);
+        input.gifts = IsKeyPressed(KEY_G);
+        input.inspect = IsKeyPressed(KEY_I);
+        if (const auto intent = ui::world_human_input(view, layout, input, blocked))
+            queued(session.act_human(page.id, intent->action, intent->selection));
+        return true;
+    }
+    if (ui::world_tax_page(page)) {
+        const auto view = ui::world_tax_view(state, page);
+        const auto layout = ui::world_tax_layout(extent);
+        ui::WorldHumanInput input;
+        input.click = point;
+        input.enter = enter;
+        input.up = up;
+        input.down = down;
+        input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
+        if (const auto intent = ui::world_tax_input(view, layout, input, blocked))
+            queued(session.act_tax(page.id, intent->action, intent->selection));
+        return true;
+    }
     if (ui::world_building_page(page)) {
         const auto view = ui::world_building_view(state, page);
         const auto layout = ui::world_building_layout(extent);
@@ -140,7 +172,13 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_building_page(page)) {
+    if (ui::world_human_page(page)) {
+        ui::draw_world_human(ui::world_human_view(state, page), ui::world_human_layout(extent),
+                             skin, enabled, feedback_);
+    } else if (ui::world_tax_page(page)) {
+        ui::draw_world_tax(ui::world_tax_view(state, page), ui::world_tax_layout(extent), skin,
+                           enabled);
+    } else if (ui::world_building_page(page)) {
         ui::draw_world_building(ui::world_building_view(state, page),
                                 ui::world_building_layout(extent), skin, building_, enabled,
                                 feedback_);
@@ -214,6 +252,11 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         return true;
     }
     if (click && hit(mouse, ui::Layout(extent).scene)) {
+        if (const auto actor = world_pick_human(state, view, *mouse, zoom)) {
+            queued(session.open_human(
+                *actor, state.scene.world.world.ai.battle.actors.at(*actor).definition));
+            return true;
+        }
         if (const auto cell = world_pick_cell(state, view, *mouse, zoom)) {
             const auto &map = state.scene.world.world.map;
             const auto facility =

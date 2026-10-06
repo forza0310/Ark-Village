@@ -60,10 +60,7 @@ std::optional<WorldBuildIntent> world_edit_input(const WorldEditView &view, Exte
                                                  const WorldBuildInput &input, bool blocked) {
     if (!view.active)
         return {};
-    const auto intent = world_build_input(world_build_controls(extent), input, blocked);
-    if (intent && intent->action == WorldBuildAction::rotate && !view.rotate_allowed)
-        return {};
-    return intent;
+    return world_build_input(world_build_controls(extent), input, blocked, view.rotate_allowed);
 }
 void draw_world_edit_preview(const WorldEditView &view, const WorldCameraView &camera, float zoom,
                              Sprites &sprites) {

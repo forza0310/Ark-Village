@@ -5,8 +5,9 @@
 #else
 #include "ark/simulation/startup_world_runtime.hpp"
 #endif
-#ifdef ARK_PROFILE_COMPARE
 #include "ark/app/world_save.hpp"
+#include "ark/app/world_session.hpp"
+#ifdef ARK_PROFILE_COMPARE
 #include <tuple>
 #endif
 
@@ -21,6 +22,78 @@ namespace sim = ark::simulation;
 namespace rules = sim::rules;
 using Clock = std::chrono::steady_clock;
 using State = sim::StartupWorldRuntimeState;
+static const rules::WorldScriptPage &top_page(const State &state) {
+    const auto found = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                    [](const auto &p) { return p.lifecycle != 4; });
+    if (found == state.scripts.pages.rend())
+        throw std::runtime_error("missing page");
+    return *found;
+}
+// Explicit player input policy derived from the frozen natural_progression scenario.
+// No balance, map, population or task injection: every action uses the real consumer.
+static bool build_bakery(State &state, int frame) {
+    if (frame < 2000 || top_page(state).kind != rules::WorldScriptPageKind::scene ||
+        state.scene.scene_state != 0)
+        return false;
+    const auto quote = sim::startup_world_build_quote(state, 35);
+    if (!quote || state.scene.world.world.ai.accounting.funds() < quote->construction_cost)
+        return false;
+    const auto require = [](sim::StartupWorldRuntimeError error) {
+        if (error != sim::StartupWorldRuntimeError::none)
+            throw std::runtime_error("bakery input rejected");
+    };
+    require(sim::open_startup_world_build_menu(state));
+    const auto selected = sim::select_startup_world_build_menu(state, top_page(state).id, 35);
+    require(selected.error);
+    if (selected.denial != sim::StartupBuildDenial::none)
+        throw std::runtime_error("bakery unavailable");
+    const auto &map = state.scene.world.world.map;
+    std::vector<rules::Position> cells;
+    for (int y = 0; y < map.height; ++y)
+        for (int x = 0; x < map.width; ++x) {
+            const auto &cell = map.cells.at(y * map.width + x);
+            if (!cell.facility && cell.legacy_state == 4)
+                cells.push_back({x, y});
+        }
+    const auto distance = [&](rules::Position p) {
+        int nearest = map.width + map.height;
+        for (int y = 0; y < map.height; ++y)
+            for (int x = 0; x < map.width; ++x)
+                if (map.cells.at(y * map.width + x).legacy_state == 3)
+                    nearest = std::min(nearest, std::abs(p.x - x) + std::abs(p.y - y));
+        return nearest;
+    };
+    std::stable_sort(cells.begin(), cells.end(),
+                     [&](auto a, auto b) { return distance(a) < distance(b); });
+    // The map reference is used only before consumers may replace the Owner.
+    for (const auto cell : cells) {
+        const auto result =
+            sim::confirm_startup_world_build(state, cell, rules::FacilityOrientation::first);
+        require(result.error);
+        if (result.created) {
+            std::cerr << "bakery frame=" << frame << " id=" << *result.created << " cell=" << cell.x
+                      << ',' << cell.y << '\n';
+            require(sim::cancel_startup_world_build(state));
+            return true;
+        }
+    }
+    throw std::runtime_error("no legal bakery placement");
+}
+
+static std::uint64_t durable_hash(const State &state) {
+    const auto save = ark::app::capture_world_save(state);
+    if (save.error == ark::app::WorldSaveError::ineligible)
+        return 0; // No fabricated save eligibility.
+    if (save.error != ark::app::WorldSaveError::none || !save.image)
+        throw std::runtime_error("durable capture failed: error=" +
+                                 std::to_string(static_cast<int>(save.error)) + " " + save.message);
+    std::uint64_t hash = 14695981039346656037ULL;
+    for (const auto byte : save.image->bytes) {
+        hash ^= static_cast<unsigned char>(byte);
+        hash *= 1099511628211ULL;
+    }
+    return hash;
+}
 static double elapsed(Clock::time_point start) {
     return std::chrono::duration<double, std::milli>(Clock::now() - start).count();
 }
@@ -64,6 +137,9 @@ static void compare_state(const State &left, const State &right, int frame) {
 int main(int argc, char **argv) {
     try {
         const int frames = argc > 1 ? std::stoi(argv[1]) : 2000;
+        const std::string policy = argc > 2 ? argv[2] : "passive";
+        if (argc > 3 || (policy != "passive" && policy != "bakery"))
+            throw std::invalid_argument("usage: profile_world [frames [passive|bakery]]");
         if (frames < 1 || frames > 100000)
             throw std::invalid_argument("frames must be 1..100000");
         auto state = [] {
@@ -76,12 +152,15 @@ int main(int argc, char **argv) {
         double prepare_ms{}, render_ms{}, commit_ms{}, copy_ms{}, adapter_ms{};
         std::uint64_t copy_sink{};
         int confirmations{};
+        bool bakery{};
         const auto started = Clock::now();
         std::cout << "policy seed=1 speed=0 viewport=240x320 calendar=27 pacing=unpaced "
-                     "render_cache=every_frame commit=copy auto_confirm=ordinary_only\n";
+                     "render_cache=every_frame commit=copy auto_confirm=ordinary_only inputs="
+                  << policy << '\n';
         std::cout << "frames,rounds,wall_ms,prepare_ms,render_ms,commit_copy_ms,probe_copy_ms,"
                      "probe_adapter_ms,humans,monsters,retired,ledger_entries,catalog,"
-                     "checkpoints,random_draws,cash,year,month,units,confirmations\n";
+                     "checkpoints,random_draws,cash,year,month,units,confirmations,facilities,"
+                     "tasks,task_order,probe_snapshot_ms,durable_hash,future_random_hash\n";
         for (int frame = 1; frame <= frames; ++frame) {
             auto begin = Clock::now();
 #ifdef ARK_PROFILE_INSTRUMENTED
@@ -131,6 +210,8 @@ int main(int argc, char **argv) {
                 ++confirmations;
             }
             state.sound_requests.clear();
+            if (policy == "bakery" && !bakery)
+                bakery = build_bakery(state, frame);
             if (frame % 250 == 0 || frame == frames) {
                 begin = Clock::now();
                 for (int repeat = 0; repeat < 20; ++repeat) {
@@ -144,6 +225,21 @@ int main(int argc, char **argv) {
                     copy_sink += adapter.catalog.events.size();
                 }
                 adapter_ms = elapsed(begin) / 20;
+                double snapshot_ms{};
+                for (int repeat = 0; repeat < 20; ++repeat) {
+                    auto copy = state; // Preparation deliberately outside publication timing.
+                    begin = Clock::now();
+                    auto published = std::make_shared<ark::app::WorldFrame>();
+                    published->state = std::make_shared<const State>(std::move(copy));
+                    published->previous = published->state;
+                    snapshot_ms += elapsed(begin);
+                    copy_sink += published->state->scene.random.draws();
+                }
+                auto random = state.scene.random;
+                std::uint64_t future_hash{};
+                for (int draw = 0; draw < 8; ++draw)
+                    future_hash =
+                        future_hash * 31 + static_cast<std::uint64_t>(random.draw(97).raw);
                 const auto &ai = state.scene.world.world.ai;
                 const auto &date = state.scene.calendar;
                 std::cout << std::fixed << std::setprecision(3) << frame << ','
@@ -154,14 +250,17 @@ int main(int argc, char **argv) {
                           << ai.accounting.entries().size() << ',' << state.catalog.size() << ','
                           << checkpoints.size() << ',' << state.scene.random.draws() << ','
                           << ai.accounting.funds() << ',' << date.year << ',' << date.month << ','
-                          << date.units << ',' << confirmations << std::endl;
+                          << date.units << ',' << confirmations << ','
+                          << state.scene.world.facility_order.size() << ',' << state.tasks.size()
+                          << ',' << state.task_order.size() << ',' << snapshot_ms / 20 << ','
+                          << durable_hash(state) << ',' << future_hash << std::endl;
+#ifdef ARK_PROFILE_INSTRUMENTED
+                profile_report(frame);
+#endif
                 prepare_ms = render_ms = commit_ms = 0;
             }
         }
         std::cerr << "copy_sink=" << copy_sink << '\n';
-#ifdef ARK_PROFILE_INSTRUMENTED
-        profile_report();
-#endif
         return 0;
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

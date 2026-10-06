@@ -31,6 +31,8 @@
 
 ## 后续产品接入
 
+- [x] 并行产品输入审阅与增长性能采样：修复隐藏旋转按钮吞地图点击，desktop-debug166项及两尺寸Release渲染通过；12000帧定位prepare内部热点，保持生产所有权契约。采样并发限制/2500帧对照范围见[B1](docs/stages/B1-playable-prototype.md#pc-input-performance)。
+- [ ] Windows原游戏PC操作/截图对照：文件身份已核对；计算机操作native pipe未连接，VS Code插件已启用，等待客户端重载后复验。产品渲染截图不替代OS输入或原版对照。
 - [x] 重新审计最新在途研究与历史未接表现，区分正式2b交付、扩张/双绑定/性能在途和Steam独立评估，见[当前审计](docs/reference/REFERENCE_CHECKLIST.md#当前未接入审计2026-10-06)。
 - [x] 按用户要求移除玩家二倍速：窗口按钮、world-speed入口与旧切片Tab切换移除，旧档恢复沿用当前速度；测试诊断的冻结速度合同保留。
 - [x] 已发布稳定UI首批：P真时经验头标按cd24的12计数/两帧交替，55后与条共存，72结束；当前普通锚点适配，不补未证弹跳。验收见[B1](docs/stages/B1-playable-prototype.md#pending-level-ui)。

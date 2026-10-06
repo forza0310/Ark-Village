@@ -9,11 +9,20 @@ mkdirSync(out, { recursive: true });
 for (const name of ['world_runtime', 'world_scene', 'world_schedule', 'world_actor_schedule', 'world_nonactor_schedule']) {
   const path = `ark/simulation/rules/${name}.hpp`;
   let count = 0;
-  const source = readFileSync(resolve(root, 'include', path), 'utf8').replace(
+  let source = readFileSync(resolve(root, 'include', path), 'utf8').replace(
     /Owner (next|scratch) = (state|current);/g, (_, local, original) => {
       ++count;
       return `Owner ${local} = profile_copy(${original});`;
     });
+  if (name === 'world_runtime') {
+    for (const [functionName, metric] of [['prepare_owned_world_runtime_domain', 11],
+                                        ['prepare_owned_world_runtime_calendar', 13]]) {
+      const start = source.indexOf(functionName + '(');
+      const body = source.indexOf('{', start);
+      if (start < 0 || body < 0) throw new Error(`Missing ${functionName}`);
+      source = source.slice(0, body + 1) + `\n    ProfileScope profile_scope{${metric}};` + source.slice(body + 1);
+    }
+  }
   const target = resolve(out, path);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, source);
@@ -27,7 +36,7 @@ let fn = source.slice(start, end).replace('prepare_startup_world_runtime(const S
 const adapterAnchor = 'auto a = startup_world_runtime_adapter();';
 if (fn.split(adapterAnchor).length !== 2)
   throw new Error('Expected exactly one runtime adapter instrumentation anchor');
-fn = fn.replace(adapterAnchor, `auto a = startup_world_runtime_adapter();
+fn = fn.replace(adapterAnchor, `auto a = [] { ProfileScope profile_scope{12}; return startup_world_runtime_adapter(); }();
     profile_wrap(a.scene.read, 1); profile_wrap(a.scene.write, 2);
     profile_wrap(a.scripts.read, 3); profile_wrap(a.scripts.write, 4);
     profile_wrap(a.actors.read_routes, 5); profile_wrap(a.actors.write_routes, 6);

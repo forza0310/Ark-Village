@@ -47,7 +47,8 @@ WorldBuildControls world_build_controls(Extent extent) {
             {extent.width - 76.F, extent.height - 54.F, 70, 22}};
 }
 std::optional<WorldBuildIntent> world_build_input(const WorldBuildControls &controls,
-                                                  const WorldBuildInput &input, bool blocked) {
+                                                  const WorldBuildInput &input, bool blocked,
+                                                  bool rotation_allowed) {
     if (blocked)
         return {};
     const auto hit = [&](Rectangle box) {
@@ -57,7 +58,7 @@ std::optional<WorldBuildIntent> world_build_input(const WorldBuildControls &cont
     using Action = WorldBuildAction;
     if (input.escape || hit(controls.cancel))
         return WorldBuildIntent{Action::cancel, {}};
-    if (hit(controls.rotate))
+    if (rotation_allowed && hit(controls.rotate))
         return WorldBuildIntent{Action::rotate, {}};
     if (hit(controls.confirm))
         return WorldBuildIntent{Action::confirm, {}};
@@ -66,7 +67,8 @@ std::optional<WorldBuildIntent> world_build_input(const WorldBuildControls &cont
     if (hit(controls.scene))
         return WorldBuildIntent{Action::choose, input.click};
     if (input.rotate)
-        return WorldBuildIntent{Action::rotate, {}};
+        return rotation_allowed ? std::optional{WorldBuildIntent{Action::rotate, {}}}
+                                : std::nullopt;
     if (input.enter)
         return WorldBuildIntent{Action::confirm, {}};
     return {};

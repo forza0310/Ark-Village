@@ -29,8 +29,10 @@ struct WorldBuildIntent {
     std::optional<Vector2> point; // Present only for choose; conversion to map cell stays separate.
 };
 WorldBuildControls world_build_controls(Extent extent);
+// Hidden rotation controls leave their scene region available for choosing a map cell.
 std::optional<WorldBuildIntent> world_build_input(const WorldBuildControls &controls,
-                                                  const WorldBuildInput &input, bool blocked);
+                                                  const WorldBuildInput &input, bool blocked,
+                                                  bool rotation_allowed);
 struct WorldBuildPreview {
     int definition{};
     simulation::rules::Position anchor;

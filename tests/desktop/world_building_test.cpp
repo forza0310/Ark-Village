@@ -467,36 +467,58 @@ void world_building() {
         const Vector2 newly_clicked{extent.width / 2.F, 90};
         request.click = newly_clicked;
         request.enter = true;
-        auto selected = desktop::world_build_input(controls, request, false);
+        auto selected = desktop::world_build_input(controls, request, false, true);
         check(selected && selected->action == BuildAction::choose && selected->point &&
                   selected->point->x == newly_clicked.x && selected->point->y == newly_clicked.y,
               "A new map click plus Enter only selects B; it cannot submit the previous anchor A");
         request.click = middle(controls.confirm);
-        selected = desktop::world_build_input(controls, request, false);
+        selected = desktop::world_build_input(controls, request, false, true);
         check(
             selected && selected->action == BuildAction::confirm && !selected->point,
             "Confirm button plus Enter emits one confirmation, never an additional map selection");
         for (const auto &button : {std::pair{controls.cancel, BuildAction::cancel},
                                    std::pair{controls.rotate, BuildAction::rotate}}) {
             request.click = middle(button.first);
-            selected = desktop::world_build_input(controls, request, false);
+            selected = desktop::world_build_input(controls, request, false, true);
             check(selected && selected->action == button.second && !selected->point,
                   "Cancel/rotate buttons inside the scene consume their click without choosing a "
                   "cell");
-            check(!desktop::world_build_input(controls, request, true),
+            check(!desktop::world_build_input(controls, request, true, true),
                   "Blocked pending/paused inputs cannot cancel, rotate, select or submit");
+        }
+        for (const bool enter : {false, true}) {
+            request = {};
+            request.click = middle(controls.rotate);
+            request.enter = enter;
+            request.rotate = true;
+            selected = desktop::world_build_input(controls, request, false, false);
+            check(selected && selected->action == BuildAction::choose && selected->point &&
+                      selected->point->x == request.click->x &&
+                      selected->point->y == request.click->y,
+                  "Hidden rotation region selects its map cell, including simultaneous Enter/R");
+            check(!desktop::world_build_input(controls, request, true, false),
+                  "Hidden rotation region cannot bypass the pending/paused barrier");
+        }
+        request = {};
+        request.rotate = true;
+        for (const bool enter : {false, true}) {
+            request.enter = enter;
+            check(!desktop::world_build_input(controls, request, false, false),
+                  "Unavailable keyboard rotation remains rejected without confirming a lock");
         }
         request = {};
         request.enter = true;
-        check(desktop::world_build_input(controls, request, false)->action == BuildAction::confirm,
+        check(desktop::world_build_input(controls, request, false, true)->action ==
+                  BuildAction::confirm,
               "A later separate Enter submits the controller's currently locked selection");
         request = {};
         request.click = Vector2{extent.width / 2.F, 2};
-        check(!desktop::world_build_input(controls, request, false),
+        check(!desktop::world_build_input(controls, request, false, true),
               "HUD clicks outside scene and placement controls produce no world selection");
         request.click = newly_clicked;
         request.escape = true;
-        check(desktop::world_build_input(controls, request, false)->action == BuildAction::cancel,
+        check(desktop::world_build_input(controls, request, false, true)->action ==
+                  BuildAction::cancel,
               "Explicit Escape wins over a simultaneous map click");
     }
 
@@ -543,6 +565,18 @@ void world_building() {
             edit = desktop::world_edit_view(editing, rules::Position{10, 10});
             check(edit.rotate_allowed == rotate,
                   "Moving rotation control reads actual selected definition flag32");
+            for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+                desktop::WorldBuildInput request;
+                request.click = middle(desktop::world_build_controls(extent).rotate);
+                request.enter = true;
+                const auto action = desktop::world_edit_input(edit, extent, request, false);
+                check(action &&
+                          action->action == (rotate ? desktop::WorldBuildAction::rotate
+                                                    : desktop::WorldBuildAction::choose) &&
+                          action->point.has_value() != rotate,
+                      "Moving rotation region consumes visible controls and selects through hidden "
+                      "ones");
+            }
             catalogue.facilities.at(2).flags = flags;
         }
         editing.build_mode = 2;
@@ -554,6 +588,20 @@ void world_building() {
             const auto action = desktop::world_edit_input(edit, extent, request, false);
             check(action && action->action == desktop::WorldBuildAction::choose && action->point,
                   "Editing selection plus Enter cannot submit the previous locked endpoint");
+            for (const int mode : {1, 2, 3, 5, 6}) {
+                editing.build_mode = mode;
+                const auto hidden_rotation =
+                    desktop::world_edit_view(editing, rules::Position{10, 10});
+                request.click = middle(desktop::world_build_controls(extent).rotate);
+                const auto selected =
+                    desktop::world_edit_input(hidden_rotation, extent, request, false);
+                check(selected && selected->action == desktop::WorldBuildAction::choose &&
+                          selected->point,
+                      "Road/removal/move-selection modes allow map locking under hidden rotation: "
+                      "mode=" +
+                          std::to_string(mode));
+            }
+            editing.build_mode = 2;
             request = {};
             request.rotate = true;
             check(!desktop::world_edit_input(edit, extent, request, false),

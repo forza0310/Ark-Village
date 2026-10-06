@@ -8,7 +8,7 @@
 
 ```powershell
 $compiler = 'build/local-tools/llvm-mingw-20250305-ucrt-x86_64/bin/x86_64-w64-mingw32-clang++.exe'
-& $compiler -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Werror -Iinclude scripts/simulation/profile_world.cpp -Lbuild/shared-libraries/lib -lark_world_runtime -lark_world_rules -o build/bin/ark_profile_world.exe
+& $compiler -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Werror -Iinclude scripts/simulation/profile_world.cpp -Lbuild/shared-libraries/lib -lark_world_runtime -lark_world_rules -lark_world_save -o build/bin/ark_profile_world.exe
 & build/bin/ark_profile_world.exe 2000
 ```
 
@@ -18,11 +18,17 @@ $compiler = 'build/local-tools/llvm-mingw-20250305-ucrt-x86_64/bin/x86_64-w64-mi
 
 ```powershell
 node scripts/simulation/profile_world_generate.mjs
-& $compiler -std=c++17 -O3 -DNDEBUG -DARK_PROFILE_INSTRUMENTED -Wall -Wextra -Werror -Ibuild/validation/world-performance/instrumented -Iinclude scripts/simulation/profile_world.cpp -Lbuild/shared-libraries/lib -lark_world_runtime -lark_world_rules -o build/bin/ark_profile_instrumented.exe
+& $compiler -std=c++17 -O3 -DNDEBUG -DARK_PROFILE_INSTRUMENTED -Wall -Wextra -Werror -Ibuild/validation/world-performance/instrumented -Iinclude scripts/simulation/profile_world.cpp -Lbuild/shared-libraries/lib -lark_world_runtime -lark_world_rules -lark_world_save -o build/bin/ark_profile_instrumented.exe
 & build/bin/ark_profile_instrumented.exe 2000
 ```
 
 生成器只读取产品文件，将入口和5个模板头的诊断副本写入忽略的 `build/validation/world-performance/instrumented`；正常产品/CMake不使用该目录。它计量显式Owner复制构造及adapter回调，不覆盖DLL内部的所有复制；各项可能嵌套，不能直接相加解释总占比。插桩调用、额外时间查询和模板在EXE中的编译会扰动耗时。
+
+较长轨迹可使用 `ark_profile_world.exe 12000 bakery`：同一真实新局在第2000帧起，首次稳定主场景且原资金足够时，从真实目录选择35号面包店，按冻结 `natural_progression` 中相同的原道路距离排序，经建设消费者寻找合法完整占地并退出工具；只建一次。设施/人物/任务的其它增长均由原消费者产生，不注入人物、资金、任务或地图。`passive` 为默认策略，保持历史2000帧输入。它们都不自动处理任务、年度授勋等决策页，因此月份/任务数和停点须看实测，不能把指定帧数称为无限经营或高人口压力测试。
+
+新增列记录设施数、任务Owner/顺序名单数、耐久存档FNV-1a摘要与未来8个随机原值的滚动摘要。摘要只作快速同输入核对；当前工具只在capture明确返回ineligible时记耐久摘要0，其它捕获失败抛出错误码和消息，不伪造保存资格，也不是完整瞬态状态等价证明。`probe_snapshot_ms`为每个采样点20次 `WorldFrame` 分配及 `make_shared<const WorldState>(move(candidate))` 的平均毫秒；准备完整candidate和销毁均在计时外，不含worker锁、通知、读线程或绘制，所以只能定位快照构造成本。
+
+插桩stderr现在逐250帧记录累计指标，可相减取得区间值。`domain`覆盖 `prepare_owned_world_runtime_domain`（不等于整个prepare；包括其内部Owner复制及消费者）；`calendar`覆盖日历入口；`adapter_construct`只覆盖prepare中实际adapter构造，外部20次adapter探针仍包含销毁。它们与其它指标嵌套，不能求和。性能采样前检查其它游戏、构建和研究长测进程；若有并发，仅记录侦察结果，不把前后墙钟差异解释为受控收益。保留命令、产品HEAD、源/EXE/DLL哈希、运行前后CPU累计及原始CSV/stderr。
 
 新模板/入口与尚未重建的旧DLL可做同输入逐帧对照（必须在重建旧DLL之前执行）：
 
@@ -57,3 +63,23 @@ node scripts/simulation/profile_world_generate.mjs
 优化入口对旧DLL独立oracle的2000帧逐帧对照已通过（exit0），终点、4个checkpoint及所有实际可保存帧的耐久字节一致；对照wall65.890s包含双份计算，不列入加速比。原始 `compare-2000.csv/.stderr` 保留；这不替代阶段统一标准测试与Release三个月基线。
 
 共用Release DLL重建后，用原普通诊断EXE再次采样2000帧，期间不并发编译或测试：30.071568s（exit0），相较32.663625s减少7.94%；prepare累计32.117240→29.499849s，减少8.15%。逐250帧的8个采样点，frame/round、人物/怪物/退休、账本条数、catalog、checkpoint、random/cash、年/月/units与确认数共14列逐值一致。原始 `optimized-2000.csv/.stderr` 和 `comparison.json` 保留。这是相同短轨迹的一次前后对照；共享目录构造和其余投影/复制成本仍存在，不声称获得稳态FPS或解决全部增长开销。
+
+## 2026-10-06 增长轨迹侦察
+
+产品HEAD `2acf7e1`、冻结研究 `2b479f6`、LLVM-MinGW 20250305 x64 UCRT、公共Release DLL，使用上述 `12000 bakery` 策略。没有导入研究在途性能代码，也没有修改生产代码、完整candidate返回、快照所有权、规则或47ms开始门槛。原始输入哈希、CPU快照、CSV/stderr、汇总在 `build/validation/late-world-performance/`；本次不登记product_patch。
+
+两次都与研究长测PID15556并发；该进程在插桩/普通采样区间分别实际消耗296.781/272.359 CPU秒。普通采样约10250帧后还叠加了产品构建/CTest。因此以下是热点侦察及状态核对，**不是受控前后性能对照**，不能用302.938s与277.819s推导优化收益。
+
+同一新局自然从0人物/8设施/0任务推进到3人物/10设施/3任务：2000帧真实建面包店，之后原任务消费者生成场所；采样峰值3人/4怪。终点11926轮、原日期0/10/8262、cash17675、random72123、92笔账本、29个原时点检查点。没有接受任务或执行村办/晋级策略，因此不代表高人口、多年经营或活动任务压力。48个采样点的19项计数/名单摘要、资金、日期、未来随机摘要全部相同；其中43点成功捕获的耐久摘要也全部相同。历史测量版本在另外5点只记了0而未留存capture错误类别，这5点不认证为ineligible或耐久等价；采样间隙也不由摘要对照认证。
+
+| 插桩区间（框架） | prepare平均ms/框架 | Owner复制探针ms | 最终commit-copy平均ms/框架 | 快照构造探针ms |
+| --- | ---: | ---: | ---: | ---: |
+| 1–2000 | 17.152 | 0.106 | 0.109 | 0.001 |
+| 5001–7000 | 24.343 | 0.113 | 0.122 | 0.001 |
+| 10001–12000 | 32.343 | 0.118 | 0.138 | 0.001 |
+
+插桩prepare共299.213s；domain153159次/98.511s、显式模板Owner复制301198次/38.417s、实际adapter构造11926次/16.831s。domain与复制嵌套，不能相加；其它未插桩的规则、投影、审计复制和销毁仍在prepare内。前/后2000帧显式Owner复制39751/58349次，说明调用次数增长也是成本来源，而非只有单次Owner变大。普通采样prepare共274.104s、最终commit-copy1.498s、render cache0.012s；这些是离线计算和探针，不能解释为实际绘制耗时、稳定FPS或47ms尾延迟保证。
+
+本批不追加生产优化：快照已移动完整候选，外层复制和快照构造不是主要热点；静态目录改共享引用涉及adapter所有权契约，尚不以这份并发小人口样本推动该改造。优先保留既有597e642适配。后续若继续优化，应先在更丰富的已证经营轨迹上细分domain/审计和规则内投影，并在独立CPU窗口做相同输入的优化前后比较，保持当前回滚、检查点、完整候选和未来随机oracle。
+
+另外以 `ARK_PROFILE_COMPARE` 运行2500帧bakery策略：每帧由插桩模板入口与原DLL从同一输入计算，核对日期/计数/资金、全部页面字段、声音、未来8个随机原值、capture错误/结果及实际成功捕获的耐久字节，逐一比较6个检查点；完成至2479轮/cash6280/random6602，无差异并打印正常结束标记。这个范围不等于12000帧逐帧认证，也不证明所有瞬态字段等价。收口修正了hash探针对非ineligible捕获失败的诊断；最小独立夹具复验真实新局可保存、活动场景ineligible及非法日历invalid_world三条分支通过，不重新跑12k或添加标准CTest。性能工具两种构建与比较构建均使用 `-O3 -DNDEBUG -Wall -Wextra -Werror`；标准游戏验收由本阶段统一记录，本工具结果不替代原拒绝/回滚或长期回归。

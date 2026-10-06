@@ -314,11 +314,15 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         return true;
     }
     if (placing) {
-        const auto intent =
-            world_build_input(world_build_controls(extent),
-                              {click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
-                               IsKeyPressed(KEY_ESCAPE), IsKeyPressed(KEY_R)},
-                              blocked || pending());
+        const WorldBuildInput input{click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
+                                    IsKeyPressed(KEY_ESCAPE), IsKeyPressed(KEY_R)};
+        const bool rotation_allowed =
+            (input.click || input.rotate) &&
+            world_build_preview(state, *definition_,
+                                anchor_.value_or(simulation::rules::Position{0, 0}), orientation_)
+                .rotation_hint;
+        const auto intent = world_build_input(world_build_controls(extent), input,
+                                              blocked || pending(), rotation_allowed);
         if (!intent)
             return true;
         switch (intent->action) {
@@ -326,11 +330,6 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
             queued(session.cancel_build(*definition_));
             break;
         case WorldBuildAction::rotate:
-            if (!world_build_preview(state, *definition_,
-                                     anchor_.value_or(simulation::rules::Position{0, 0}),
-                                     orientation_)
-                     .rotation_hint)
-                return true;
             orientation_ = orientation_ == simulation::rules::FacilityOrientation::first
                                ? simulation::rules::FacilityOrientation::second
                                : simulation::rules::FacilityOrientation::first;

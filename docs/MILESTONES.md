@@ -344,6 +344,12 @@ Accepted，2026-10-06：用户要求接稳定研究，并在核对正式交付/�
 
 回归归既有world_combat_visuals；手动窗口夹具按战斗表现职责建源文件并复用world_ui runner，不增加标准CTest/target。两套Debug标准308项（精确排除三个月）及实际资源窗口通过，CI待验证；本批未导入未提交扩张/双绑定/深化性能或Steam规则。结果见[B1](stages/B1-playable-prototype.md#pending-level-ui)。
 
+## ADR-0052
+
+Accepted，2026-10-06：用户授权并行推进PC输入验收与增长轨迹性能采样，可运行Windows原游戏并截图。Windows观察指导桌面交互，固定APK/正式研究仍决定规则与数值，不因PC版本外观修改经营消费者。先审阅当前产品输入，再通过原游戏实际操作比较；真实OS操作、产品渲染诊断和规则回归分别记录。
+
+性能沿已证新局/建设消费者增加自然增长轨迹，分别测prepare内部、Owner复制、adapter构造与快照分配/移动；保留随机、检查点、失败回滚和完整candidate契约。并发负载只作为热点侦察，不据墙钟差异声明收益，也不以小人口样本决定新所有权改造。本批修复隐藏旋转热区并交付诊断工具，未改生产模拟。标准166项、两项渲染诊断与采样对照边界见[B1](stages/B1-playable-prototype.md#pc-input-performance)。原游戏操作因计算机操作native pipe未连接待恢复，CI待验证。
+
 ## 研究历史引用
 
 <a id="adr-0007"></a>

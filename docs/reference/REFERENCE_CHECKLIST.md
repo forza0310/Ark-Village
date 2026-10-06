@@ -12,6 +12,8 @@
 
 存档接续：已按确认方案实现独立Ark格式、系统两栏手动保存/读取，并升级为2b479f6数据集/schema2；稳定主场景、当前随机/暂停保留、候选失败回滚及Windows窗口已验。自动跨周中断档仍待轮内恢复消费者；不是原APK格式兼容或任意模态续演。字段覆盖和本地验证见[B1存档批次](../stages/B1-playable-prototype.md#file-persistence-design)。
 
+PC交互接续：用户允许运行Windows原游戏、操作和截图，用于桌面交互参考；固定APK规则来源不变。已核对EXE/关键数据身份并修复产品隐藏旋转热区，标准回归及产品渲染已验。计算机操作连接仍报native pipe不存在，原游戏实际操作/截图和OS鼠标验收待恢复，详见[B1](../stages/B1-playable-prototype.md#pc-input-performance)。
+
 ## 2026-10-05完整世界接入
 
 当前默认运行完整世界，`--world`为别名，旧建设切片通过`--legacy-slice`进入。以下历史清单中的单人/1456步限制和Game指旧切片，不适用于当前Owner，也不能把旧切片页面算作当前世界验收。

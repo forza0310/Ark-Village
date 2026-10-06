@@ -86,15 +86,14 @@ jobs:
           retention-days: 7
 
   publish:
-    name: Publish GitHub Packages
+    name: Publish GitHub Release
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: windows-2022
     timeout-minutes: 15
     permissions:
       actions: read
-      contents: read
-      packages: write
+      contents: write
     steps:
       - name: Download tested Windows Release package
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -102,41 +101,50 @@ jobs:
           name: ark-village-windows10-x64
           path: release
 
-      - name: Install ORAS
-        uses: oras-project/setup-oras@8d34698a59f5ffe24821f0b48ab62a3de8b64b20 # v1.2.3
-        with:
-          version: '1.2.3'
-
-      - name: Publish and verify the package
+      - name: Publish and verify Release assets
         working-directory: release
         shell: bash
         env:
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # ORAS media-type arguments are not paths for Git Bash to translate.
-          MSYS_NO_PATHCONV: '1'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          package="ghcr.io/${GITHUB_REPOSITORY,,}"
           revision_tag="sha-${GITHUB_SHA}"
           windows=ark-village-windows10-x64.zip
           sha256sum --check "$windows.sha256"
-          printf '%s' "$GHCR_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          trap 'oras logout ghcr.io' EXIT
-          oras push "$package:$revision_tag" \
-            --artifact-type application/vnd.ark-village.release.v1 \
-            --annotation "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
-            --annotation "org.opencontainers.image.revision=$GITHUB_SHA" \
-            --annotation "org.opencontainers.image.title=Ark-Village desktop Release" \
-            --annotation "org.opencontainers.image.description=Windows 10+ x64 game archive with bundled CJK font and static raylib/runtime; download with ORAS." \
-            "$windows:application/zip" "$windows.sha256:text/plain"
-          oras pull "$package:$revision_tag" --output verified
+
+          # Resume an interrupted draft; never overwrite already published assets.
+          if ! is_draft=$(gh release view "$revision_tag" --json isDraft --jq '.isDraft'); then
+            {
+              printf 'Windows 10+ x64 build from commit `%s`.\n\n' "$GITHUB_SHA"
+              printf 'Download and extract `%s`, then run `ark_village.exe`.\n\n' "$windows"
+              printf 'Assets, a CJK font, and licenses are bundled; raylib and the C++ runtime are statically linked.\n\n'
+              printf 'Build and standard CTest results: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+            } > release-notes.md
+            gh release create "$revision_tag" --target "$GITHUB_SHA" --draft \
+              --title "Ark-Village Windows x64 (${GITHUB_SHA:0:7})" \
+              --notes-file release-notes.md
+            is_draft=true
+          fi
+          if [[ "$is_draft" == true ]]; then
+            gh release upload "$revision_tag" "$windows" "$windows.sha256" --clobber
+          fi
+          gh release download "$revision_tag" --dir verified \
+            --pattern "$windows" --pattern "$windows.sha256"
           cmp "$windows" "verified/$windows"
           cmp "$windows.sha256" "verified/$windows.sha256"
-          oras tag "$package:$revision_tag" latest
+
+          # Re-running an older commit must not replace the current Latest release.
+          main_sha=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [[ "$main_sha" == "$GITHUB_SHA" ]]; then
+            gh release edit "$revision_tag" --draft=false --latest
+          elif [[ "$is_draft" == true ]]; then
+            gh release edit "$revision_tag" --draft=false --latest=false
+          fi
+          release_url=$(gh release view "$revision_tag" --json url --jq '.url')
           {
-            printf '### GitHub Packages\n\n'
-            printf 'Published the tested Windows x64 archive to **%s:latest**.\n\n' "$package"
-            printf 'Commit tag: `%s:%s`\n\n' "$package" "$revision_tag"
-            printf 'Download the archive and checksum: `oras pull %s:latest`\n\n' "$package"
-            printf 'The repository Packages panel lists the package. New GHCR packages are private by default; access is managed in Package settings.\n'
+            printf '### GitHub Release\n\n'
+            printf 'Download the verified Windows x64 ZIP and SHA-256: %s\n\n' "$release_url"
+            printf 'Commit tag: `%s`\n\n' "$revision_tag"
+            printf 'Extract the ZIP and run `ark_village.exe`.\n'
           } >> "$GITHUB_STEP_SUMMARY"

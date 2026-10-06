@@ -236,6 +236,8 @@ Accepted，2026-10-05：用户在测试整理期间报告可见缺漏，并明�
 
 ## ADR-0038
 
+其中Packages/GHCR发布政策已由ADR-0043取代；下文保留历史决定。
+
 Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI仅保留desktop-release构建及全部标准CTest；Release同样执行核心和桌面测试，减少重复构建及Debug持续模拟耗时，保留Debug/headless预设供开发调试、阶段验收和依赖边界检查。全部标准测试成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户随后澄清：永远允许本地验证，CI仅是额外检查；此前CI配置任务仅静态验收不限制产品开发。Windows Server测试不等于Windows 10真机验收；`ba68e90`的首次远程两平台Release构建、测试、打包和Actions上传已通过。用户随后要求发布到GitHub Packages：两平台成功后将压缩包和校验文件作为OCI文件制品发布至GHCR，保留提交标签，回读比对后更新latest；源码关联仓库，Packages访问权限独立管理，Actions下载继续保留。首次GHCR发布仍待新配置运行验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
 
 ## ADR-0039
@@ -256,6 +258,8 @@ ADR-0040后续修复记录（2026-10-06）：单帧地图素材的第二逻辑�
 
 ## ADR-0041
 
+其中GHCR发布政策已由ADR-0043取代；Windows x64打包目标继续有效。
+
 Accepted，2026-10-06：用户要求以后围绕Windows构建，CI与发布仅Windows，并将raylib/字体随包提供、尽量减小制品；同意易于实施的64位迁移。现有LLVM-MinGW已含x86_64工具链，本地四套与CI统一迁至Windows x64/UCRT，raylib和C++运行库静态链接，保留标准C++17领域边界。此决定取代ADR-0038的双平台/32位分发目标，历史验证记录仍保留。
 
 中文字体采用固定官方Noto Sans CJK SC2.004生成产品字形子集，构建时校验覆盖、改用衍生字体名称并保留OFL/来源；运行不依赖系统TTC或联网。制品只打包桌面exe、清单资源和必要许可，剥离分发副本符号，ZIP等级9，Actions保存7天；GHCR继续提交标签/回读验证/latest，不擅自删除远程历史。不把OCI文件包称为可docker run的Windows容器。CI仍仅desktop-release完整标准CTest，本地阶段仍四套；远程首次新流程需独立验证。
@@ -267,6 +271,14 @@ Accepted，2026-10-06：用户确认接入8f12654人物经营链，冻结315项�
 用户随后明确“左上角弹出的小报告窗口，不需要确认，也不会暂停世界。对齐原版”，取代ADR-0031/0039/0040的月报手动冻结部分。默认桌面恢复源phase1/2各70次有资格更新、关闭后点数一次消费；报告不阻断世界或正常命令，脚本模态/场景资格和显式暂停仍照常生效，不自动resume。诊断skip独立保留，不成为正常确认流程。日期显示年/月/周及已证`units/10800`周内比例；精确条皮肤、尺寸和方向尚待研究，不以桌面适配声称原版像素一致。
 
 本批四套606项标准测试、4条自然长测及人物/税收/月报窗口通过，最终结果见B1；原APK动态对照未验。普通道具、完整转职/赠礼动画、村办活动和文件存取不在本批。随后研究9897d64另交付村办/奖励页95，用户指定下一阶段先核对并接入存档合同，文件设计另确认。
+
+## ADR-0043
+
+Accepted，2026-10-06：用户指出exe分发应使用GitHub Releases，取代ADR-0038/0041的Packages/GHCR政策。沿用main成功构建后自动发布、Windows runner、单份便携ZIP及SHA-256、提交历史与回读校验；移除ORAS和packages写权限，仅publish job使用contents写权限创建Release及标签。
+
+标签`sha-<完整提交SHA>`指向已测试提交；先上传草稿，下载并逐字节核对两个附件后公开，当前main提交才更新Latest。草稿失败可续传，已公开附件不覆盖；旧提交重跑不抢Latest。Actions仍保留7天，Release历史及已有GHCR包不自动删除。README与CI操作说明同步为浏览器直接下载ZIP、解压运行exe。
+
+验收：actionlint 1.7.7、Bash语法及14项本地发布模拟通过，覆盖首次发布、草稿续传、已公开重跑、旧提交、校验与API失败路径；文档链接/差异检查通过。四套配置/编译通过；desktop-release 162项、headless-release 141项标准CTest全部通过。用户随后明确跳过耗时的三个月连续模拟：desktop-debug该进程已停止（原始CTest日志保留中止失败），其余161项通过；headless-debug显式排除同一用例，其余140项通过。合计604项通过，两个Debug基线未完成，CI标准CTest配置不删减。日志与本地模拟放`build/validation/github-releases-20261006/`；本次未另做窗口/原版对照。远程发布待新配置推送后独立验证，不把本地检查记作已发布。
 
 ## ADR-0044
 

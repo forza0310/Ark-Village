@@ -60,19 +60,19 @@ raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独静�
 
 desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序、616项清单资源、字体子集/来源/OFL许可、raylib与静态运行库许可及启动说明。运行时编译进exe的simulation数据、源码副本、测试、CLI和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；每次构建重新生成，新增文案不会沿用旧字形清单。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
 
-Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job以最小`packages: write`权限将单份ZIP及校验文件发布到`ghcr.io/forza0310/ark-village`；build job只有读取权限。OCI类型`application/vnd.ark-village.release.v1`是可下载的游戏文件包，不能用`docker run`启动。
+Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job用Windows runner自带的GitHub CLI，将单份ZIP及校验文件作为GitHub Release附件上传；仅此job授予`contents: write`及下载artifact所需的`actions: read`，build job只有读取权限。不再安装ORAS或申请`packages: write`。
 
-每次发布标记`sha-<完整提交SHA>`，从GHCR回读并逐字节核对ZIP/校验两个文件后更新`latest`；失败使流水线失败，Actions下载仍可用。包通过`org.opencontainers.image.source`关联仓库，显示在Packages区域；GHCR历史提交标签继续保留，不受Actions的7天期限影响，本批不自动删除远程历史。新包默认私有，公开状态/权限由Package settings管理；私有包拉取需先以具备`read:packages`权限的凭据执行`oras login ghcr.io`。
+每次发布使用`sha-<完整提交SHA>`标签，显式指向已测试的提交。先创建草稿并上传附件，从Release回读并逐字节核对ZIP/校验两个文件后才公开；当前main提交标为Latest，重跑旧提交不会替换Latest。失败使流水线失败，未公开的草稿可在重跑时续传；已公开附件不覆盖，重跑须与本次产物逐字节一致，否则失败。Release历史不受Actions的7天期限影响；已有GHCR包不自动删除。
 
-安装[ORAS](https://oras.land/docs/installation)后下载Windows x64压缩包与SHA-256文件：
+在[最新Release](https://github.com/forza0310/Ark-Village/releases/latest)的Assets中下载`ark-village-windows10-x64.zip`及`.zip.sha256`，解压后运行`ark_village.exe`。也可使用GitHub CLI：
 
 ```sh
-oras pull ghcr.io/forza0310/ark-village:latest
+gh release download --repo forza0310/Ark-Village --pattern 'ark-village-windows10-x64.zip*'
 ```
 
-指定历史构建时将`latest`换为`sha-<完整提交SHA>`。Actions发布步骤摘要也记录实际包名、提交标签和下载命令。CI不创建GitHub Release、不推送提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
+指定历史构建时，在`gh release download`后追加`sha-<完整提交SHA>`，或从[Releases列表](https://github.com/forza0310/Ark-Village/releases)选择版本。Actions发布步骤摘要记录Release链接和提交标签。CI创建Release及对应标签，不推送源码提交、不执行研究工具；标准CTest、真实窗口/OS输入与原APK动态对照分别报告。
 
-历史[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)验证了`ba68e90`旧两平台流程。当前Windows-only x64流程的本地构建、静态检查、ZIP生成/解压及真实启动已通过，单独记录于[B1](stages/B1-playable-prototype.md#task-report-ui)；远程构建及首次GHCR推送/回读待包含新配置的main运行确认，本地不主动推送。
+历史[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)验证了`ba68e90`旧两平台流程。Windows-only x64游戏包的历史本地构建、ZIP生成/解压及真实启动记录于[B1](stages/B1-playable-prototype.md#task-report-ui)。本次Releases发布迁移的验收见[ADR-0043](MILESTONES.md#adr-0043)；首次远程创建/附件回读/Latest更新待包含新配置的main运行确认，本地不主动推送。
 
 平台依据：[GitHub托管runner列表](https://github.com/actions/runner-images#available-images)、[LLVM-MinGW 20250305工具链与UCRT说明](https://github.com/mstorsjo/llvm-mingw/blob/20250305/README.md)。
 

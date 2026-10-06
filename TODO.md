@@ -7,8 +7,8 @@
 - [x] 建立C++17/raylib产品工程、四套构建预设、模块说明和独立测试。
 - [x] 配置main GitHub CI；按2026-10-06最新决定仅Windows x64，desktop-release及全部标准CTest、失败诊断与制品校验；Debug/headless保留本地四套阶段验收，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 - [x] 首次main Actions运行：`ba68e90`两个平台的desktop Release构建、全部标准CTest、打包检查和上传成功，见[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)；Windows 10真机另验。
-- [x] 增加GitHub Packages发布配置：Windows x64通过后发布单份游戏文件包，保留提交标签，回读校验后更新latest；Actions制品保留7天。
-- [ ] 首次新版Windows x64 Actions/Packages发布：确认构建、GHCR推送、回读及latest更新成功；本地验收不替代远程运行。
+- [x] 改为GitHub Releases发布：Windows x64通过后上传游戏ZIP及SHA-256附件，按提交保留历史，草稿回读校验后公开并更新Latest；Actions制品保留7天，见[ADR-0043](docs/MILESTONES.md#adr-0043)。
+- [ ] 首次Windows x64 Actions/Releases发布：确认构建、Release创建、附件回读及Latest更新成功；本地验收不替代远程运行。
 - [x] 迁入研究侧完整定义目录、脚本、新局数据及共同世界运行时，保留来源与机械迁入校验。
 - [x] 世界唯一持有地图、现金、随机、人物/怪物和页面；标准C++入口及桌面入口独占同一类Owner。
 - [x] 验证多人到访、实际设施使用/收入、遭遇和跨月结算；桌面接入多人/怪物动作、道路拼块、栅栏/门柱、血条及现金浮标。
@@ -34,7 +34,7 @@
 
 - [x] **e8阶段验收**：四套构建、602项标准CTest、Debug自然链及Release两种子/12、6、24个月共6次额外长测、7个真实窗口均通过；设施查询旧断言修复后已重验受影响配置。本批结果独立记录，不沿用研究或前批测试。
 - [x] **5aa5c37表现接入**：秘书77皮肤/富文本、raw30真实绑定两阶段、月报头像/收支简表及成长头像/ap属性条，另修建设目录/候选建筑漏图。Windows x64四套602项、相应实际窗口和来源检查通过，见[B1](docs/stages/B1-playable-prototype.md#task-report-ui)。该批保留的手动月报冻结现已被自动政策取代；唯一Owner/奖励契约保持，精确跳跃/武器、闪烁、32特殊条与APK动态另验。
-- [x] **Windows x64分发包验收**：用户明确允许后，复用CI打包函数生成3d94c3c便携包，ZIP约3.04MiB、解压约6.76MiB；625文件逐字节/CRC/SHA256、616素材哈希与字体来源检查通过。独立目录/仅系统PATH下，解压exe和随包启动脚本均无--font启动成功，见[B1](docs/stages/B1-playable-prototype.md#task-report-ui)。远程CI/GHCR仍另验。
+- [x] **Windows x64分发包验收**：用户明确允许后，复用CI打包函数生成3d94c3c便携包，ZIP约3.04MiB、解压约6.76MiB；625文件逐字节/CRC/SHA256、616素材哈希与字体来源检查通过。独立目录/仅系统PATH下，解压exe和随包启动脚本均无--font启动成功，见[B1](docs/stages/B1-playable-prototype.md#task-report-ui)。发布目标现已改为Releases，远程流水线另验。
 
 
 - [x] **测试组织约定**：静态梳理140个C++测试及构建/冻结来源，落实阶段实现收口后统一测试、契约分层、夹具复用与去重规则，见[开发流程](docs/CONTRIBUTING.md#测试设计与组织)和ADR-0034；本次仅文档检查，不新增游戏回归结果。

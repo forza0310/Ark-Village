@@ -16,7 +16,7 @@
 
 当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：raylib和C++运行库静态链接，中文字体与许可随包提供。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。Debug和headless预设继续用于本地四套阶段验收。
 
-成功构建还会发布到GitHub Packages：`ghcr.io/forza0310/ark-village:latest`，用`oras pull`下载Windows压缩包及校验文件。实际CI系统为Windows Server 2022，Windows 10真机另验。CI是本地验收以外的额外检查，首次新版远程发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+成功构建会发布到[GitHub Releases](https://github.com/forza0310/Ark-Village/releases/latest)，直接下载Windows ZIP及SHA-256附件，无需容器工具；历史版本按提交保留。实际CI系统为Windows Server 2022，Windows 10真机另验。CI是本地验收以外的额外检查，首次Releases发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
 开发需要CMake 3.21+、Ninja、Node 18+（仅构建）、pkg-config、LLVM-MinGW x64及静态raylib 6.0。设置x64编译器和raylib的`PKG_CONFIG_PATH`后，在PowerShell中运行（完整依赖准备见[Windows本地构建](docs/CONTRIBUTING.md#windows本地构建)）：
 

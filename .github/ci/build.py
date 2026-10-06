@@ -1,5 +1,6 @@
 """Runner-only build/test/package driver; no product or test-source changes."""
 
+import ctypes
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ LOGS = CI / "logs"
 PRESETS = ("desktop-release",)
 
 
-def run(label, args, cwd=ROOT):
+def run(label, args, cwd=ROOT, env=None):
     """Stream output to Actions and retain the exact failing command's log."""
     print(f"\n::group::{label}", flush=True)
     print(subprocess.list2cmdline([str(arg) for arg in args]), flush=True)
@@ -27,7 +28,7 @@ def run(label, args, cwd=ROOT):
         with (LOGS / f"{label}.log").open("w", encoding="utf-8") as log:
             with subprocess.Popen(
                 [str(arg) for arg in args], cwd=cwd, stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace",
+                stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace", env=env,
             ) as process:
                 for line in process.stdout:
                     print(line, end="", flush=True)
@@ -48,6 +49,58 @@ def check_architecture(executable):
     print(f"PASS architecture: {executable.name}", flush=True)
 
 
+SYSTEM_DLLS = {"kernel32.dll", "user32.dll", "winmm.dll", "shell32.dll", "gdi32.dll",
+               "opengl32.dll", "advapi32.dll", "ole32.dll", "ntdll.dll", "ucrtbase.dll",
+               "bcrypt.dll", "ws2_32.dll"}
+
+
+def system_dll(name):
+    return name in SYSTEM_DLLS or (name.startswith("api-ms-win-crt-") and name.endswith(".dll"))
+
+
+def system_environment():
+    """Keep player checks independent of compiler and other development DLL paths."""
+    environment = os.environ.copy()
+    directory = ctypes.create_unicode_buffer(32768)
+    length = ctypes.windll.kernel32.GetWindowsDirectoryW(directory, len(directory))
+    assert 0 < length < len(directory), "Cannot resolve Windows system directory"
+    windows = Path(directory.value)
+    environment["SystemRoot"] = str(windows)
+    environment["PATH"] = os.pathsep.join(str(path) for path in (windows / "System32", windows))
+    return environment
+
+
+def imports(image):
+    label = f"imports-{image.name}"
+    run(label, ["llvm-readobj", "--coff-imports", image])
+    text = (LOGS / f"{label}.log").read_text(encoding="utf-8").lower()
+    dependencies = re.findall(r"^\s+name: (\S+)$", text, re.MULTILINE)
+    assert dependencies, f"No PE imports found: {image}"
+    return dependencies
+
+
+def copy_runtime_dependencies(executable, binary_dir, stage):
+    # Walk only the player's imports. Tests, import libraries and unused DLLs stay in the build.
+    available = {path.name.lower(): path for path in binary_dir.glob("*.dll")}
+    pending = [executable]
+    copied = set()
+    while pending:
+        image = pending.pop()
+        for dependency in imports(image):
+            if system_dll(dependency) or dependency in copied:
+                continue
+            assert dependency in available, f"Unbundled runtime dependency: {dependency} ({image.name})"
+            source = available[dependency]
+            destination = stage / source.name
+            shutil.copy2(source, destination)
+            check_architecture(destination)
+            run(f"strip-{source.name}", ["llvm-strip", "--strip-unneeded", destination])
+            copied.add(dependency)
+            pending.append(destination)
+    print(f"PASS player runtime closure: {len(copied)} DLLs", flush=True)
+    return copied
+
+
 def package(target):
     assert target == "windows10-x64", target
     name = f"ark-village-{target}"
@@ -59,23 +112,14 @@ def package(target):
     if stage.exists():
         shutil.rmtree(stage)
     stage.mkdir(parents=True)
-    binary_dir = ROOT / "build" / "desktop-release" / "bin"
+    binary_dir = ROOT / "build" / "bin"
     executable = stage / "ark_village.exe"
-    shutil.copy2(binary_dir / executable.name, executable)
+    shutil.copy2(binary_dir / "ark_village-desktop-release.exe", executable)
     # Only the shipped copy is stripped; tests and their diagnostic binaries stay intact.
     run("package-strip", ["llvm-strip", "--strip-unneeded", executable])
     check_architecture(executable)
-    run("imports-ark_village", ["llvm-readobj", "--coff-imports", executable])
-    imports = (LOGS / "imports-ark_village.log").read_text(encoding="utf-8").lower()
-    dependencies = re.findall(r"^\s+name: (\S+)$", imports, re.MULTILINE)
-    assert dependencies, "No PE imports found"
-    system_libraries = {"kernel32.dll", "user32.dll", "winmm.dll", "shell32.dll", "gdi32.dll",
-                        "opengl32.dll", "advapi32.dll", "ole32.dll", "ntdll.dll", "ucrtbase.dll"}
-    for dependency in dependencies:
-        assert dependency in system_libraries or (
-            dependency.startswith("api-ms-win-crt-") and dependency.endswith(".dll")
-        ), f"Unbundled non-system runtime dependency: {dependency}"
-    # The immutable simulation catalog is compiled into the executable. Ship the
+    copy_runtime_dependencies(executable, binary_dir, stage)
+    # The immutable simulation catalog is compiled into the runtime DLL. Ship the
     # complete audited sprite/data manifest once, without source/build-only data.
     assets = binary_dir / "assets"
     manifest = json.loads((assets / "SOURCES.json").read_text(encoding="utf-8"))
@@ -108,7 +152,7 @@ def package(target):
         "Target: Windows 10+ x64 (UCRT); CI executes on Windows Server 2022.\n"
         "Windows 10 hardware/graphics compatibility has not been verified by this CI.\n"
         "Start ark_village.exe or Run-Ark-Village.cmd. The CJK font is included.\n"
-        "raylib and the C++ runtime are statically linked into the executable.\n"
+        "Required game, raylib and C++ runtime DLLs are included beside the executable.\n"
         'Optional font override: ark_village.exe --font "C:\\path\\Chinese.ttf"\n'
     )
     launcher = (
@@ -122,7 +166,7 @@ def package(target):
     smoke = CI / "smoke"
     smoke.mkdir(exist_ok=True)
     run("package-assets", ["node", ROOT / "scripts" / "verify_assets.mjs", stage / "assets"], smoke)
-    run("package-check", [executable, "--check"], smoke)
+    run("package-check", [executable, "--check"], smoke, env=system_environment())
     dist = CI / "dist"
     dist.mkdir(exist_ok=True)
     archive = dist / f"{stage.name}.zip"
@@ -146,13 +190,14 @@ def main():
     prefix = CI / "raylib-install"
     toolchain = Path(os.environ["ARK_LLVM_ROOT"]) / "bin"
     os.environ["PATH"] = str(toolchain) + os.pathsep + os.environ["PATH"]
+    run("package-contracts", [sys.executable, ROOT / ".github" / "ci" / "build_test.py"])
     flags = [
         f"-DCMAKE_C_COMPILER={(toolchain / 'x86_64-w64-mingw32-clang.exe').as_posix()}",
         f"-DCMAKE_CXX_COMPILER={(toolchain / 'x86_64-w64-mingw32-clang++.exe').as_posix()}",
         f"-DCMAKE_RC_COMPILER={(toolchain / 'x86_64-w64-mingw32-windres.exe').as_posix()}",
-        "-DCMAKE_EXE_LINKER_FLAGS=-static",
+        "-DCMAKE_EXE_LINKER_FLAGS=",
     ]
-    # raylib 6.0's .pc omits the embedded GLFW/system dependencies for static linking.
+    # Only raylib's shared target links its embedded GLFW and platform dependencies.
     raylib_libraries = "-lwinmm -lgdi32 -lopengl32"
     run("prepare-font", [
         sys.executable, ROOT / "scripts" / "prepare_windows_font.py",
@@ -161,12 +206,18 @@ def main():
     os.environ["PKG_CONFIG_PATH"] = (prefix / "lib" / "pkgconfig").as_posix()
     run("raylib-configure", [
         "cmake", "-S", CI / "raylib", "-B", CI / "raylib-build", "-G", "Ninja",
-        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_EXAMPLES=OFF", "-DBUILD_SHARED_LIBS=OFF",
+        "-DCMAKE_BUILD_TYPE=Release", "-DBUILD_EXAMPLES=OFF", "-DBUILD_SHARED_LIBS=ON",
         "-DCMAKE_INSTALL_LIBDIR=lib", f"-DCMAKE_INSTALL_PREFIX={prefix.as_posix()}",
         f"-DPKG_CONFIG_LIBS_EXTRA={raylib_libraries}", *flags,
     ])
     run("raylib-build", ["cmake", "--build", CI / "raylib-build", "--parallel", "3"])
     run("raylib-install", ["cmake", "--install", CI / "raylib-build"])
+    run("shared-libraries-configure", [
+        "cmake", "--preset", "shared-libraries", "-G", "Ninja",
+        f"-DARK_DESKTOP_FONT={(CI / 'fonts' / 'default.otf').as_posix()}",
+        f"-DARK_DESKTOP_FONT_LICENSE={(CI / 'fonts' / 'OFL.txt').as_posix()}", *flags,
+    ])
+    run("shared-libraries-build", ["cmake", "--build", "--preset", "shared-libraries", "--parallel", "3"])
     for preset in PRESETS:
         run(f"{preset}-configure", [
             "cmake", "--preset", preset, "-G", "Ninja", "-DARK_LONG_WORLD_TESTS=OFF",

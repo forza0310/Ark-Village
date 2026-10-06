@@ -14,17 +14,19 @@
 
 ## 构建运行
 
-当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：raylib和C++运行库静态链接，中文字体与许可随包提供。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
+当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：所需Ark、raylib和C++运行库DLL、中文字体与许可随包提供，无需另外安装依赖。开发与测试共用DLL，避免静态代码重复进入每个测试程序。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
 
 成功构建会发布到[GitHub Releases](https://github.com/forza0310/Ark-Village/releases/latest)，直接下载Windows ZIP及SHA-256附件，无需容器工具；历史版本按提交保留。实际CI系统为Windows Server 2022，Windows 10真机另验。CI按上述分工执行，首次Releases发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
-开发需要CMake 3.21+、Ninja、Node 18+（仅构建）、pkg-config、LLVM-MinGW x64及静态raylib 6.0。设置x64编译器和raylib的`PKG_CONFIG_PATH`后，在PowerShell中运行（完整依赖准备见[Windows本地构建](docs/CONTRIBUTING.md#windows本地构建)）：
+开发需要CMake 3.21+、Ninja、Node 18+（仅构建）、pkg-config、LLVM-MinGW x64及共享raylib 6.0。设置x64编译器和raylib的`PKG_CONFIG_PATH`后，在PowerShell中运行（完整依赖准备见[Windows本地构建](docs/CONTRIBUTING.md#windows本地构建)）：
 
 ```powershell
-cmake --preset desktop-release -G Ninja -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres -DCMAKE_EXE_LINKER_FLAGS=-static -DARK_DESKTOP_FONT="$PWD/build/local-tools/fonts/default.otf" -DARK_DESKTOP_FONT_LICENSE="$PWD/build/local-tools/fonts/OFL.txt"
+cmake --preset shared-libraries -G Ninja -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres -DCMAKE_EXE_LINKER_FLAGS= -DARK_DESKTOP_FONT="$PWD/build/local-tools/fonts/default.otf" -DARK_DESKTOP_FONT_LICENSE="$PWD/build/local-tools/fonts/OFL.txt"
+cmake --build --preset shared-libraries --parallel 4
+cmake --preset desktop-release -G Ninja -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres -DCMAKE_EXE_LINKER_FLAGS= -DARK_DESKTOP_FONT="$PWD/build/local-tools/fonts/default.otf" -DARK_DESKTOP_FONT_LICENSE="$PWD/build/local-tools/fonts/OFL.txt"
 cmake --build --preset desktop-release --parallel 4
 ctest --preset desktop-release
-.\build\desktop-release\bin\ark_village.exe
+.\build\bin\ark_village-desktop-release.exe
 ```
 
 默认启动和显式 `--world` 都运行持续世界；`--check` 无窗口校验资源和世界初始化。
@@ -32,7 +34,7 @@ ctest --preset desktop-release
 
 窗口默认1080×720（3:2），支持 `--size 宽 高`、调整窗口大小、右键拖动镜头和滚轮约5%步长缩放。底部按钮或Space暂停/继续，右侧按钮切换1/2倍速。Retina使用原生framebuffer，素材最近邻采样，文字按显示密度生成。
 
-逻辑由独立模拟线程提交，主线程读取不可变快照以60FPS绘制，普通行走插值平滑。当前47ms独立更新间隔是产品桌面调度政策，卡顿不补算；它不是原Android框架生命周期或实际FPS的等价认证。完整候选事务在Debug中较慢，正常体验建议Release，断点调试选择 `desktop-debug`。CLion打开本目录的 `CMakeLists.txt` 即可。
+逻辑由独立模拟线程提交，主线程读取不可变快照以60FPS绘制，普通行走插值平滑。当前47ms独立更新间隔是产品桌面调度政策，卡顿不补算；它不是原Android框架生命周期或实际FPS的等价认证。四套程序共用无调试符号的Release核心库；`desktop-debug`用于调试应用和测试消费者，不能完整单步调试库内部。CLion打开本目录的 `CMakeLists.txt` 即可。
 
 左上月报自动显示击倒/点数和收支两阶段，无需确认，也不暂停世界或阻断菜单、人物与任务操作。每阶段沿原消费者累计70次有资格更新，关闭时只发放一次村子点数，维护费不重复扣除；其他源模态与场景资格照常生效。玩家显式暂停仍冻结世界与报告，只有明确继续才恢复。日期显示年/月/周，周内进度条只映射已证的`units/10800`；精确原版皮肤、尺寸和方向尚待研究。
 
@@ -55,7 +57,7 @@ ctest --preset desktop-release
 ```sh
 cmake --preset headless-release
 cmake --build --preset headless-release --parallel 4
-./build/headless-release/bin/ark_world_simulation --seed 1 --frames 20000 --months 3 --auto-confirm
+./build/bin/ark_world_simulation-headless-release.exe --seed 1 --frames 20000 --months 3 --auto-confirm
 ```
 
 `--seed` 是明确的可重复Java种子输入，未认证原APK默认种子；`--auto-confirm` 是测试用户输入策略。`--speed 0|1` 对应正常/双倍源轮数；跨年度测试另加 `--end-awards`，明确请求并确认结束授勋，普通 `--auto-confirm` 不替代年度选择。`--frames` 为无节拍框架调用预算，`--months` 是预算内目标，未达到时返回非零退出码。

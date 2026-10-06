@@ -12,6 +12,8 @@
 
 依赖从表现层向下，规则层只使用标准C++，没有raylib、窗口或屏幕类型。
 
+产品公共库通过独立`shared-libraries`预设统一以Release构建；四套消费者导入同一份CMake目标和DLL，不分别编译核心。规则、Owner、存档与会话保持原依赖方向；Debug调试消费者代码，库内部已优化且不保留符号。Windows全部EXE及DLL统一位于`build/bin/`，EXE带消费者配置后缀。Release玩家包复制游戏PE导入闭包和资源并恢复`ark_village.exe`名称。此政策不修改research目标或构建缓存。
+
 | 层 | 接口 / 实现 | 目标与职责 |
 | --- | --- | --- |
 | 领域规则 | `include/ark/simulation/rules/`、`src/simulation/rules/` | `ark_world_rules`：地图/路线、人物控制/AI、战斗/救援、设施/商店、任务、现金、脚本、日期/月报与共同调度的候选规则 |

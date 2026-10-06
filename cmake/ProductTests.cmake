@@ -122,12 +122,6 @@ if(ARK_BUILD_DESKTOP)
         ARGS "${PROJECT_SOURCE_DIR}/assets" LABELS presentation frozen TIMEOUT 120)
     # World UI suites use the same skin/resource/layout lifetime and dependencies.
     # Their bodies remain separate files and each CTest invocation selects one named case.
-    add_library(ark_world_ui_test_support STATIC src/desktop/ui/layout.cpp
-        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/projection.cpp)
-    target_include_directories(ark_world_ui_test_support PUBLIC src/desktop)
-    target_link_libraries(ark_world_ui_test_support PUBLIC ark_world_visuals ark_game
-        ark_asset_metadata PkgConfig::RAYLIB)
-    ark_target(ark_world_ui_test_support)
     ark_test_executable(ark_world_ui_tests
         SOURCES tests/desktop/world_ui_main.cpp tests/desktop/world_panels_test.cpp
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp

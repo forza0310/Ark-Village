@@ -1288,3 +1288,28 @@ Release真实窗口保存、隔离空栏读取失败、独立进程冷载入及2
 按用户确认分工，另一会话实施全工程共享链接，本会话只审阅和适配存档模块。`ark_world_save`现在按`ark_world_runtime`目标类型选择SHARED/STATIC，避免共享核心与存档的第二份静态规则单例混用。未重配/清理另一会话的`build/dynamic-linking`。尝试在独立忽略目录用已完成核心DLL验证新增save/session DLL时，自动审批拒绝临时自定义CMake工程，并将第二次固定源列表尝试判为重复创建/绕过；该路径停止，不改工具重试。实际共享分支待正式共享配置合入后验证，不能把静态回退检查记作共享验收。
 
 适配后的正式headless-debug重新配置及`ark_world_save`定向构建通过，已有对象无需重编；另一次正式产品配置的隔离缓存约0.567MiB，没有复制DLL/重建核心或清理其他缓存。只读占用快照中两个旧Debug树约13.9GiB，其中EXE约10.1GiB，主要为内部静态代码重复链接；旧目录继续保留给相应会话安全迁移，不将此审计记为已经释放空间。
+
+<a id="dynamic-linking-validation"></a>
+
+## 单份公共Release库与缓存清理（2026-10-06）
+
+用户授权接管停止的动态链接调整，限定只改产品构建、不动research，并清理旧缓存、量化减少。旧`build/dynamic-linking`基于54e70bd且停在349/593，没有成功测试，不导入其旧源快照。先前按配置各自产出DLL的中间版本完成三套验收后，用户进一步澄清四套须共用一套独立构建的库，并明确选择Release公共库；中间结果不代替最终布局验收。
+
+`shared-libraries`预设在`build/shared-libraries`仅编译公共库：10个Ark模块及桌面UI测试支持，源数据只生成一次。四套消费者通过CMake导出的目标导入同一套Release DLL，核对编译器身份/版本/路径与指针宽度，缺DLL或导入库时配置明确拒绝。库内部已优化且无调试符号，Debug仅指应用/测试消费者。全部程序在`build/bin`运行，EXE以配置后缀区分；11个产品DLL、raylib及3个编译器运行库只存一套，消费者缓存无DLL、无核心源码编译、无重复simulation-generated目录。四套实际EXE数为148/148/138/138，公共DLL构建前后哈希不变；这不是572项独立规则契约。资源/字体也由库阶段只复制一次。修改库源码先重建公共库，再构建消费者，不让多个消费构建隐式并发修改库树。
+
+本地最终独立公共库及四套消费者配置/编译通过：
+
+| 消费配置 | 最终检查 | 结果 |
+| --- | --- | --- |
+| desktop-debug | 标准CTest，精确排除simulation.startup_world_continuous_test | 162项，98.08秒 |
+| headless-debug | 同上，配置不查raylib | 141项，47.70秒 |
+| desktop-release | 完整标准CTest，保留三个月基线 | 163项，116.83秒；基线112.20秒 |
+| headless-release | 会话、存档、CLI、冻结来源定向检查 | 4项，28.82秒 |
+
+合计470项通过；Debug三个月未执行，额外自然/年度长测未重复。中间版本headless线程用例曾在并发编译负载下等待发布超时，原日志保留；单独复验通过，最终两套Debug均通过，未放宽5秒断言或30秒CTest超时。最终库导入缺失拒绝、公共构建恢复缺失libunwind DLL及哈希一致性通过。CI脚本的3项标准库测试覆盖递归依赖/循环去重/无关库不打包、缺失与未知系统依赖拒绝、非x64拒绝；actionlint、Node/Python语法及差异检查通过。main CI仍只构建公共库和desktop-release消费者、完整标准CTest后打包；远程流水线待推送，不以本地结果声称已发布。
+
+最终本地ZIP为`build/validation/dynamic-linking-20261006/dist/ark-village-windows10-x64.zip`，4457579字节（约4.25MiB），637文件解压11136856字节；SHA256为af5542eb6df54429c1e060c425ed3ff1689916eef4cc41b03f773e985a6a95cf。这是当前本地工作树快照，包内标明其父checkpoint与local shared-link working tree，正式CI将写实际提交身份。打包递归检查PE导入，仅复制所需12个DLL，剥离分发副本；查询库、UI测试支持、未使用的pthread DLL、导入库、源码和测试不进入包。616项素材、字体/许可、PE AMD64、ZIP CRC与637文件逐字节解压一致性通过。只含Windows系统PATH、独立工作目录、无font参数的--check及启动/旋转/保存/独立进程载入全部退出0；4个真实窗口各8帧，截图核对中文、素材、预览和保存摘要。诊断经实际FIFO，不等于OS鼠标或原APK动态验收。复用本地依赖，无新下载。
+
+清理前逐个检查绝对路径、重解析点和进程，不结束任何用户/研究进程。删除旧desktop-debug/headless-debug/headless-release、停止的dynamic-linking源/构建临时树，并清除旧desktop-release全部文件；该目录的空bin仍由目录句柄持有，剩余0文件/0字节。本轮按配置重复库的三个中间树也已清理。保留local-tools、历史验证证据与research全部文件/构建。旧scratch构建日志与基准身份移入本批证据目录。
+
+产品`build/`按文件Length求和的可比快照：17863391643→3781743815字节，即16.64→3.52GiB，净减少14081647828字节（13.11GiB、78.8%）。原五个旧缓存共清除16955424978字节（15.79GiB），与净减少分开计算：最终仍包含四套消费者、单份公共库、工具和验收证据。不含research目录，也不是NTFS分配空间测量。现存主要为公共bin约0.96GiB、两套Debug消费者对象约1.58GiB及local-tools约0.72GiB；公共库构建树约26.8MiB，DLL合计约10.5MiB。原始JSON、日志、脚本、SHA和截图在`build/validation/dynamic-linking-20261006/`。

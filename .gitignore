@@ -5,4 +5,5 @@
 /.venv/
 /CMakeUserPresets.json
 /compile_commands.json
+/.github/ci/__pycache__/
 .DS_Store

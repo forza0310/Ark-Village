@@ -1,5 +1,5 @@
 // Exercise the executable's real CPU asset validation against isolated mutated copies.
-import { mkdtempSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, cpSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, basename } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -9,6 +9,11 @@ const root = mkdtempSync(join(tmpdir(), 'ark-frames-'));
 try {
   const target = join(root, basename(executable));
   cpSync(executable, target);
+  // Relocation includes the shared runtime; the same resource mutations/assertions follow.
+  for (const name of readdirSync(dirname(executable))) {
+    if (/\.(dll|dylib|so(?:\.\d+)*)$/i.test(name))
+      cpSync(join(dirname(executable), name), join(root, name));
+  }
   cpSync(join(dirname(executable), 'assets'), join(root, 'assets'), {recursive:true});
   const file = join(root, 'assets/image/plain00.seb');
   const original = readFileSync(file);

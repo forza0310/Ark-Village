@@ -80,8 +80,9 @@ jobs:
           name: diagnostics-windows10-x64
           path: |
             build/ci/logs/
-            build/*/Testing/Temporary/
-            build/*/CMakeFiles/CMakeConfigureLog.yaml
+            build/*-shared/Testing/Temporary/
+            build/*-shared/CMakeFiles/CMakeConfigureLog.yaml
+            build/shared-libraries/CMakeFiles/CMakeConfigureLog.yaml
           if-no-files-found: warn
           retention-days: 7
 
@@ -118,7 +119,7 @@ jobs:
             {
               printf 'Windows 10+ x64 build from commit `%s`.\n\n' "$GITHUB_SHA"
               printf 'Download and extract `%s`, then run `ark_village.exe`.\n\n' "$windows"
-              printf 'Assets, a CJK font, and licenses are bundled; raylib and the C++ runtime are statically linked.\n\n'
+              printf 'Assets, a CJK font, licenses, and required game/raylib/C++ runtime DLLs are bundled.\n\n'
               printf 'Build and standard CTest results: %s/%s/actions/runs/%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
             } > release-notes.md
             gh release create "$revision_tag" --target "$GITHUB_SHA" --draft \

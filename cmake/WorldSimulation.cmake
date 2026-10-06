@@ -5,6 +5,7 @@ find_program(ARK_WORLD_NODE NAMES node REQUIRED)
 
 function(ark_world_target target)
     ark_windows_manifest(${target})
+    ark_use_shared_runtime(${target})
     target_compile_features(${target} PUBLIC cxx_std_17)
     set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
     if(MSVC)
@@ -15,40 +16,42 @@ function(ark_world_target target)
 endfunction()
 
 set(ARK_WORLD_DATA "${ARK_WORLD_ROOT}/assets/simulation")
-set(ARK_WORLD_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/simulation-generated")
-set(ARK_WORLD_STARTUP_CPP "${ARK_WORLD_GENERATED}/startup_data.cpp")
-set(ARK_WORLD_CATALOG_CPP "${ARK_WORLD_GENERATED}/world_data.cpp")
-set(ARK_WORLD_DATA_INPUTS
-    "${ARK_WORLD_DATA}/startup/MAP.json" "${ARK_WORLD_DATA}/startup/STATE.json"
-    "${ARK_WORLD_DATA}/startup/TABLES.json" "${ARK_WORLD_DATA}/tenantData.txt"
-    "${ARK_WORLD_DATA}/world/monster.txt" "${ARK_WORLD_DATA}/world/questData.txt"
-    "${ARK_WORLD_DATA}/world/armour.txt" "${ARK_WORLD_DATA}/world/accessory.txt"
-    "${ARK_WORLD_DATA}/world/item.txt" "${ARK_WORLD_DATA}/world/asEventData.txt"
-    "${ARK_WORLD_DATA}/scripts/original/events.txt" "${ARK_WORLD_DATA}/scripts/original/talk.txt"
-    "${ARK_WORLD_DATA}/scripts/original/news.txt" "${ARK_WORLD_DATA}/scripts/original/evtmsgs.txt"
-    "${ARK_WORLD_DATA}/scripts/original/popularBonus.txt")
-add_custom_command(OUTPUT "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${ARK_WORLD_GENERATED}"
-    COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"
-        "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/tenantData.txt" "${ARK_WORLD_STARTUP_CPP}"
-    COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup_world.mjs"
-        "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/world"
-        "${ARK_WORLD_DATA}/tenantData.txt" "${ARK_WORLD_CATALOG_CPP}"
-    DEPENDS "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"
-        "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup_world.mjs" ${ARK_WORLD_DATA_INPUTS}
-    VERBATIM)
-add_library(ark_world_rules STATIC ${ARK_WORLD_RULE_SOURCES})
-target_include_directories(ark_world_rules PUBLIC "${ARK_WORLD_ROOT}/include")
-ark_world_target(ark_world_rules)
-add_library(ark_world_runtime STATIC ${ARK_WORLD_RUNTIME_SOURCES}
-    "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}")
-target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
-target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
-ark_world_target(ark_world_runtime)
+if(ARK_LIBRARIES_ONLY)
+    set(ARK_WORLD_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/simulation-generated")
+    set(ARK_WORLD_STARTUP_CPP "${ARK_WORLD_GENERATED}/startup_data.cpp")
+    set(ARK_WORLD_CATALOG_CPP "${ARK_WORLD_GENERATED}/world_data.cpp")
+    set(ARK_WORLD_DATA_INPUTS
+        "${ARK_WORLD_DATA}/startup/MAP.json" "${ARK_WORLD_DATA}/startup/STATE.json"
+        "${ARK_WORLD_DATA}/startup/TABLES.json" "${ARK_WORLD_DATA}/tenantData.txt"
+        "${ARK_WORLD_DATA}/world/monster.txt" "${ARK_WORLD_DATA}/world/questData.txt"
+        "${ARK_WORLD_DATA}/world/armour.txt" "${ARK_WORLD_DATA}/world/accessory.txt"
+        "${ARK_WORLD_DATA}/world/item.txt" "${ARK_WORLD_DATA}/world/asEventData.txt"
+        "${ARK_WORLD_DATA}/scripts/original/events.txt" "${ARK_WORLD_DATA}/scripts/original/talk.txt"
+        "${ARK_WORLD_DATA}/scripts/original/news.txt" "${ARK_WORLD_DATA}/scripts/original/evtmsgs.txt"
+        "${ARK_WORLD_DATA}/scripts/original/popularBonus.txt")
+    add_custom_command(OUTPUT "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ARK_WORLD_GENERATED}"
+        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"
+            "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/tenantData.txt" "${ARK_WORLD_STARTUP_CPP}"
+        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup_world.mjs"
+            "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/world"
+            "${ARK_WORLD_DATA}/tenantData.txt" "${ARK_WORLD_CATALOG_CPP}"
+        DEPENDS "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"
+            "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup_world.mjs" ${ARK_WORLD_DATA_INPUTS}
+        VERBATIM)
+    add_library(ark_world_rules SHARED ${ARK_WORLD_RULE_SOURCES})
+    target_include_directories(ark_world_rules PUBLIC "${ARK_WORLD_ROOT}/include")
+    ark_world_target(ark_world_rules)
+    add_library(ark_world_runtime SHARED ${ARK_WORLD_RUNTIME_SOURCES}
+        "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}")
+    target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
+    target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
+    ark_world_target(ark_world_runtime)
+endif()
 
 option(ARK_LONG_WORLD_TESTS "Run explicit-seed annual world integration checks" OFF)
 
-if(BUILD_TESTING)
+if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
     foreach(source IN LISTS ARK_WORLD_TEST_SOURCES)
         get_filename_component(module "${source}" NAME_WE)
         set(target "ark_simulation_${module}")

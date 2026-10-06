@@ -2,6 +2,8 @@
 
 按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；默认本地desktop-debug排除三个月连续模拟，CI desktop-release完整执行，headless按需追加，选择规则见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。
 
+四套测试EXE共用独立`shared-libraries`预设的Release DLL，库源码只编译一次；Debug/Release描述的是测试与应用消费者的编译配置。库内不保留调试符号，测试的有效断言仍按原合同保留。`build/bin/`只保留一套DLL，EXE用配置后缀区分；先重建公共库再构建消费者。CI打包脚本的递归依赖/缺失拒绝/架构合同在`.github/ci/build_test.py`，由CI构建驱动先执行，不增加游戏CTest或新依赖。
+
 | 目录 | 负责的契约 | 主标签 |
 | --- | --- | --- |
 | `simulation/rules/` | 冻结研究纯规则与已证拒绝/边界 | `rules;frozen` |

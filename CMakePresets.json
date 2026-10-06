@@ -5,15 +5,17 @@
     {
       "name": "base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build/${presetName}",
+      "binaryDir": "${sourceDir}/build/${presetName}-shared",
       "cacheVariables": { "BUILD_TESTING": "ON", "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" }
     },
+    { "name": "shared-libraries", "inherits": "base", "binaryDir": "${sourceDir}/build/shared-libraries", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "ARK_LIBRARIES_ONLY": "ON", "BUILD_TESTING": "OFF", "ARK_BUILD_DESKTOP": "ON" } },
     { "name": "headless-debug", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ARK_BUILD_DESKTOP": "OFF" } },
     { "name": "headless-release", "inherits": "headless-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } },
     { "name": "desktop-debug", "inherits": "base", "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ARK_BUILD_DESKTOP": "ON" } },
     { "name": "desktop-release", "inherits": "desktop-debug", "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" } }
   ],
   "buildPresets": [
+    { "name": "shared-libraries", "configurePreset": "shared-libraries" },
     { "name": "headless-debug", "configurePreset": "headless-debug" },
     { "name": "headless-release", "configurePreset": "headless-release" },
     { "name": "desktop-debug", "configurePreset": "desktop-debug" },

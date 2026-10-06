@@ -16,6 +16,8 @@
 保留四套预设，普通代码阶段默认只在本地配置、编译desktop-debug并验收，排除耗时的三个月连续模拟：
 
 ```sh
+cmake --preset shared-libraries
+cmake --build --preset shared-libraries --parallel 4
 cmake --preset desktop-debug
 cmake --build --preset desktop-debug --parallel 4
 ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
@@ -37,7 +39,7 @@ ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
 
 阶段收口分别记录本地配置/通过项、Debug排除项、按需追加检查及对应提交的CI链接/结果。当前CI只运行desktop-release，不得把Release结果写成Debug三个月通过；CI未运行或未结束时标待验证。完成上述本地范围可先保存checkpoint，不为等待CI而补跑四套或本地Debug三个月，也不自动推送；完整交付仍需记录流水线结果。修复后按实际影响重验本批所需配置及用例，共用源码改动不自动升级为四套全测；通过后无新修改、失败或未决风险不重复全套。
 
-四套是构建配置，不是四份玩家制品：Debug用于调试，Release开启优化，headless用于无窗口验证/模拟。只向用户发布desktop-release游戏包；其余配置按上述用途使用。main CI不重复Debug或headless构建，本地配置、编译、测试与窗口验收持续允许。
+四套是消费者配置，不是四份玩家制品：Debug调试消费者程序，Release优化消费者程序，headless用于无窗口验证/模拟。用户选择公共库统一用Release，不保留库内部调试符号；四套消费者导入同一份库，不分别编译核心。独立`shared-libraries`预设在`build/shared-libraries`编译库，消费者对象仍位于`build/<预设名>-shared`。全部EXE/DLL同放`build/bin/`，EXE带配置名后缀避免互相覆盖，导入库只在公共库树`lib/`。每次公共库构建补齐C++运行库、raylib、资源和字体；修改库源码后先重建公共库，再构建消费者。只向用户发布desktop-release游戏包，打包才复制必要DLL并去掉游戏EXE后缀。main CI不重复Debug或headless构建，本地验证持续允许。
 构建需要Node 18+，只在构建期JSON.parse交叉校验固定发布数据，生成只读标准C++；运行无需Node。
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
@@ -46,18 +48,18 @@ ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
 
 当前目标为Windows 10+ x64，使用LLVM-MinGW 20250305 UCRT，CMake 3.21+、Ninja、Node 18+、pkg-config。工具可解包到忽略的`build/local-tools`，不必系统安装；编译器、CMake/Ninja、Node和pkg-config加入当前终端PATH。更换已配置的32位编译器时先以`cmake --fresh --preset ...`重新配置，不混用旧对象和raylib库。
 
-raylib使用下节固定提交；示例命令假定源码位于`build/local-tools/raylib`，LLVM的bin已在PATH。先构建x64静态库：
+raylib使用下节固定提交；示例命令假定源码位于`build/local-tools/raylib`，LLVM的bin已在PATH。先构建x64共享库：
 
 ```powershell
-cmake -S build/local-tools/raylib -B build/local-tools/raylib-x64-build -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-clang -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-clang++ -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$PWD/build/local-tools/raylib-x64-install" '-DPKG_CONFIG_LIBS_EXTRA=-lwinmm -lgdi32 -lopengl32'
-cmake --build build/local-tools/raylib-x64-build --parallel 4
-cmake --install build/local-tools/raylib-x64-build
-$env:PKG_CONFIG_PATH="$PWD/build/local-tools/raylib-x64-install/lib/pkgconfig"
+cmake -S build/local-tools/raylib -B build/local-tools/raylib-x64-shared-build -G Ninja -DCMAKE_C_COMPILER=x86_64-w64-mingw32-clang -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_PREFIX="$PWD/build/local-tools/raylib-x64-shared-install" '-DPKG_CONFIG_LIBS_EXTRA=-lwinmm -lgdi32 -lopengl32'
+cmake --build build/local-tools/raylib-x64-shared-build --parallel 4
+cmake --install build/local-tools/raylib-x64-shared-build
+$env:PKG_CONFIG_PATH="$PWD/build/local-tools/raylib-x64-shared-install/lib/pkgconfig"
 python -m pip install fonttools==4.59.0
 python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts
 ```
 
-字体工具仅用于构建。按README的桌面配置命令选择所需预设：日常开发用`desktop-debug`，试玩/打包用`desktop-release`；两套headless按需配置，不需要raylib/字体。路径含空格时保留PowerShell引号，CLion也可将相同编译器/缓存项配置在CMake profile。CMake的`ARK_DESKTOP_FONT`/`ARK_DESKTOP_FONT_LICENSE`将OTF与许可复制至exe旁`fonts/`。Windows可执行文件显式嵌入`asInvoker`，避免带update字样的测试程序被系统误认为安装器。
+字体工具仅用于构建。先按README配置/构建`shared-libraries`，再选择消费者预设：日常开发用`desktop-debug`，试玩/打包用`desktop-release`；两套headless按需配置，不查找raylib/字体。仅核心开发可用`shared-libraries`加`-DARK_BUILD_DESKTOP=OFF`构建核心库，桌面使用前须以ON重新构建公共库。共享配置不能沿用`-static`、`-static-libstdc++`或`-static-libgcc`；编译器身份、版本、路径和指针宽度必须与公共库一致。pkg-config不在PATH时可显式传`-DPKG_CONFIG_EXECUTABLE=<pkgconf.exe路径>`。路径含空格时保留PowerShell引号，CLion也可将相同编译器/缓存项配置在CMake profile。公共库阶段将`ARK_DESKTOP_FONT`/`ARK_DESKTOP_FONT_LICENSE`指定的OTF/许可复制至`build/bin/fonts/`。Windows可执行文件嵌入`asInvoker`，避免带update字样的测试程序被系统误认为安装器。
 
 ## GitHub CI与制品
 
@@ -69,11 +71,11 @@ python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts
 
 按2026-10-06用户决定，构建与发布job均只在Windows运行；停止macOS/x86制品。配置、编译desktop-release并执行全部标准CTest，保留三个月基线，额外`ARK_LONG_WORLD_TESTS`关闭。desktop包含核心程序及核心测试，日常CI不重复Debug或headless；本地以desktop-debug为默认验收配置，headless按需追加。任何步骤失败即失败，不跳过失败或降低断言；同一main的新提交取消旧流水线。
 
-Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈希。现有`packaged_frame_contract`仅调整临时副本为保留原可执行文件名（Windows保留`.exe`），避免Node/libuv按扩展名查找时无法启动；原有全部断言、变异输入及产品实现保持不变。
+Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈希。先构建公共Release库，再构建desktop-release消费者。`packaged_frame_contract`临时副本保留原可执行文件名（Windows保留`.exe`），并携带共用DLL；原有全部断言、变异输入及产品实现保持不变。
 
-raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独静态构建；通过`PKG_CONFIG_LIBS_EXTRA`补齐`winmm/gdi32/opengl32`系统链接依赖。Windows C++运行库也静态链接，编译器显式选择`x86_64-w64-mingw32-clang++`。包仅依赖Windows系统DLL/UCRT，不需要安装Node/CMake/raylib或额外C++运行库。
+raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独共享构建；通过`PKG_CONFIG_LIBS_EXTRA`补齐`winmm/gdi32/opengl32`系统链接依赖。编译器显式选择`x86_64-w64-mingw32-clang++`，开发程序共用目标架构的C++运行库DLL。打包递归读取PE导入，仅复制Release游戏所需的Ark/raylib/C++ DLL并剥离分发副本符号，拒绝未随包提供的非系统依赖。解压后不需要安装Node/CMake/raylib或额外C++运行库。
 
-desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序、616项清单资源、字体子集/来源/OFL许可、raylib与静态运行库许可及启动说明。运行时编译进exe的simulation数据、源码副本、测试、CLI和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；每次构建重新生成，新增文案不会沿用旧字形清单。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
+desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序及依赖DLL、616项清单资源、字体子集/来源/OFL许可、raylib与运行库许可及启动说明。simulation数据已编译进运行库，源码副本、测试、CLI、导入库、调试符号和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；每次构建重新生成，新增文案不会沿用旧字形清单。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
 
 Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job用Windows runner自带的GitHub CLI，将单份ZIP及校验文件作为GitHub Release附件上传；仅此job授予`contents: write`及下载artifact所需的`actions: read`，build job只有读取权限。不再安装ORAS或申请`packages: write`。
 

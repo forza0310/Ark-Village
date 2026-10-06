@@ -7,6 +7,7 @@
 
 | 需要查什么 | 正文入口 |
 | --- | --- |
+| 研究步骤、Windows交叉分析与差分交付 | [研究流程](../WORKFLOW.md) |
 | 真实新局、首名到访、初期目录、施工与暂停 | [新局与首个可玩切片证据](rules/STARTUP.md)、[可读取数据](data/startup/README.md) |
 | 建设交互、实例持久化、全局聚合 | [状态与建设](rules/STATE_CONSTRUCTION.md) |
 | 设施字段、占地、两朝向、经营、邻接 | [设施规格](rules/FACILITIES.md) |

@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
+#include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_reference/world_arrivals.hpp"
 
 #include <algorithm>
@@ -436,6 +437,14 @@ void managed_resource_references(const StartupWorldRuntimeState &s) {
               page_owned(s.human_equipment_choices) && page_owned(s.human_gift_scores) &&
               page_owned(s.human_gift_messages) && page_owned(s.tax_page_residents) &&
               page_owned(s.tax_page_selection) && page_owned(s.tax_page_scroll) &&
+              page_owned(s.activity_page_bindings) && page_owned(s.activity_page_lists) &&
+              page_owned(s.activity_page_display_humans) && page_owned(s.activity_page_parents) &&
+              page_owned(s.activity_page_answers) && page_owned(s.activity_page_selections) &&
+              page_owned(s.activity_page_scroll) &&
+              std::all_of(s.activity_page_parents.begin(), s.activity_page_parents.end(),
+                          [&](const auto &binding) { return pages.count(binding.second) != 0; }) &&
+              std::all_of(s.activity_pages_initialized.begin(), s.activity_pages_initialized.end(),
+                          [&](auto id) { return pages.count(id) != 0; }) &&
               std::all_of(s.human_pages_initialized.begin(), s.human_pages_initialized.end(),
                           [&](const auto id) { return pages.count(id) != 0; }),
           "human and tax payload scale is bounded by real retained pages, never orphan history");
@@ -725,6 +734,287 @@ void natural_housing(std::uint64_t seed, int speed) {
         " ready=" + std::to_string(home_ready) + " grants=" + std::to_string(grants) +
         " taxes=" + std::to_string(tax_receipts) + ' ' + snapshot(session.state(), frame_limit));
 }
+// 明确自动玩家策略：建设面包房、实际开展活动、点击自然升级提示，再申请月度晋级。
+// 仅调用Session玩家命令；不写资金、点数、人气、日期、人物、设施使用数或rank。
+void natural_progression(std::uint64_t seed, int speed) {
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(),
+                                       ref::WorldRandomStream::from_java_seed(seed));
+    session.set_speed(speed);
+    using E = StartupWorldRuntimeError;
+    using A = StartupVillageActivityAction;
+    std::optional<std::uint64_t> bakery;
+    std::set<int> upgraded;
+    std::set<std::uint64_t> seen_upgrades;
+    int last_month = -1, promoted_month = -1, unlocked_month = -1;
+    std::int64_t unlocked_income{};
+    std::size_t sounds{}, peak_sounds{}, peak_payloads{}, peak_pages{}, peak_effects{},
+        peak_actors{}, peak_cash{}, peak_tasks{};
+    std::size_t peak_retired_actors{}, peak_retired_encounters{};
+    int next_activity_attempt{}, completed{}, unlocked_completed{};
+    int next_task_month{};
+    std::optional<std::uint64_t> previous_task;
+    int observed_frame{};
+    const auto require = [&](E error, const char *label) {
+        if (error != E::none)
+            throw std::runtime_error(
+                std::string("natural progression command ") + label +
+                " error=" + std::to_string(static_cast<int>(error)) +
+                " raw=" + std::to_string(top_page(session.state())->legacy_page) +
+                " page=" + std::to_string(top_page(session.state())->id) +
+                " source=" + std::to_string(top_page(session.state())->source_record) + " " +
+                snapshot(session.state(), observed_frame));
+    };
+    const auto income = [](const auto &s) {
+        std::int64_t total{};
+        for (const auto &entry : s.scene.world.world.ai.accounting.entries())
+            if (entry.second.category == ref::CashCategory::facilities &&
+                entry.second.direction == ref::CashDirection::income)
+                total += entry.second.amount;
+        return total;
+    };
+    constexpr int limit = 180000;
+    for (int frame = 0; frame < limit; ++frame) {
+        observed_frame = frame;
+        const auto step = session.update();
+        if (!step.candidate)
+            throw std::runtime_error("natural progression update failed " +
+                                     snapshot(session.state(), frame) +
+                                     " last=" + diagnose(session.state()));
+        const auto &s = session.state();
+        managed_resource_references(s);
+        const auto usage = startup_world_resource_usage(s);
+        peak_payloads = std::max(peak_payloads, usage.page_payloads);
+        peak_sounds = std::max(peak_sounds, usage.sound_outputs);
+        peak_retired_actors = std::max(peak_retired_actors, usage.retired_actors);
+        peak_retired_encounters = std::max(peak_retired_encounters, usage.retired_encounters);
+        peak_pages = std::max(peak_pages, usage.pages);
+        peak_effects = std::max(peak_effects, usage.effects);
+        peak_actors = std::max(peak_actors, usage.live_actors + usage.retired_actors);
+        peak_cash = std::max(peak_cash, s.scene.world.world.ai.accounting.entries().size());
+        peak_tasks = std::max(peak_tasks, s.tasks.size());
+        const auto current = top_page(s);
+        check(current != nullptr, "progression preserves real framework page");
+        const auto page = *current;
+        const int month = s.scene.calendar.year * 12 + s.scene.calendar.month;
+        // 明确的玩家经营策略：任务结束后留出一个完整自然月供人物恢复与设施营业。
+        // 只限制下一次主动接受命令，不改变任务生成、人物AI或日历。
+        if (previous_task && !s.active_task)
+            next_task_month = month + 2;
+        previous_task = s.active_task;
+        const bool save_for_exhibition = s.rank >= 1 && unlocked_completed == 0;
+        if (month != last_month) {
+            last_month = month;
+            std::cout << "progression month popularity=" << s.popularity
+                      << " peak_income=" << s.maximum_income << " points=" << s.village_points
+                      << " F=" << s.events_held << " q=" << s.quarter_counter << " rank=" << s.rank
+                      << ' ' << snapshot(s, frame) << std::endl;
+        }
+        if (s.rank >= 1 && promoted_month < 0) {
+            promoted_month = month;
+            check(bakery && s.events_held >= 2 && s.popularity >= 300 && s.maximum_income >= 5000 &&
+                      s.scene.world.world.facilities.at(*bakery).placement.definition_id == 35 &&
+                      s.scripts.activities.at(16).status == 1,
+                  "first star follows actual source conditions and unlocks painting exhibition16");
+            std::cout << "progression promoted " << snapshot(s, frame) << std::endl;
+        }
+        if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) {
+            const auto pending = std::find_if(
+                s.scene.world.facility_order.begin(), s.scene.world.facility_order.end(),
+                [&](auto id) {
+                    return s.scene.world.world.facility_uses
+                        .at(s.scene.world.world.facilities.at(id).placement.definition_id)
+                        .upgrade_pending;
+                });
+            if (pending != s.scene.world.facility_order.end()) {
+                require(session.open_facility_page(*pending), "open natural upgrade");
+            } else if (!bakery) {
+                const auto quote = startup_world_build_quote(s, 35);
+                if (quote &&
+                    s.scene.world.world.ai.accounting.funds() >= quote->construction_cost) {
+                    require(session.open_build_menu(), "open build catalogue");
+                    const auto selected =
+                        session.select_build_menu(top_page(session.state())->id, 35);
+                    require(selected.error, "select bakery35");
+                    check(selected.denial == StartupBuildDenial::none,
+                          "original bakery35 is genuinely available");
+                    // 邻接原道路的空地优先；每个坐标仍交实际建设消费者检验完整占地。
+                    const auto &map = session.state().scene.world.world.map;
+                    std::vector<ref::Position> cells;
+                    for (int y = 0; y < map.height; ++y)
+                        for (int x = 0; x < map.width; ++x) {
+                            const auto &cell = map.cells.at(y * map.width + x);
+                            if (!cell.facility && cell.legacy_state == 4)
+                                cells.push_back({x, y});
+                        }
+                    const auto distance = [&](ref::Position p) {
+                        int nearest = map.width + map.height;
+                        for (int y = 0; y < map.height; ++y)
+                            for (int x = 0; x < map.width; ++x)
+                                if (map.cells.at(y * map.width + x).legacy_state == 3)
+                                    nearest =
+                                        std::min(nearest, std::abs(p.x - x) + std::abs(p.y - y));
+                        return nearest;
+                    };
+                    std::stable_sort(cells.begin(), cells.end(),
+                                     [&](auto a, auto b) { return distance(a) < distance(b); });
+                    for (const auto cell : cells) {
+                        const auto built =
+                            session.confirm_build(cell, ref::FacilityOrientation::first);
+                        require(built.error, "place bakery35");
+                        if (built.created) {
+                            bakery = built.created;
+                            break;
+                        }
+                    }
+                    check(bakery.has_value(),
+                          "player found legal bakery placement using current map");
+                    require(session.cancel_build(), "finish placement");
+                    std::cout << "progression bakery " << snapshot(session.state(), frame)
+                              << std::endl;
+                }
+            } else if (s.quarter_counter > 0 &&
+                       s.village_points >=
+                           (save_for_exhibition ? s.rules->activities.at(16).parameters[4] : 20) &&
+                       frame >= next_activity_attempt) {
+                require(session.open_village_activities(), "open village activities");
+                next_activity_attempt = frame + 300;
+            } else if (!s.active_task && s.rank == 0 && s.popularity < 300 &&
+                       month >= next_task_month &&
+                       std::any_of(
+                           s.task_order.begin(), s.task_order.end(),
+                           [&](auto id) {
+                               return s.rules->tasks.at(s.tasks.at(id).definition)
+                                          .recruitment_fee <=
+                                      s.scene.world.world.ai.accounting.funds();
+                           })) {
+                require(session.open_task_menu(), "open affordable adventure");
+            }
+        } else if (page.legacy_page >= 51 && page.legacy_page <= 54) {
+            const auto view = inspect_startup_world_village_activity_page(s, page.id);
+            check(view.has_value(), "actual village page has initialized payload");
+            if (page.legacy_page == 51) {
+                int selected = -1;
+                for (int n = 0; n < static_cast<int>(view->entries.size()); ++n) {
+                    const auto &a = s.rules->activities.at(view->entries[n]);
+                    if (save_for_exhibition && a.identity != 16)
+                        continue;
+                    if (a.parameters[2] <= 2 && a.parameters[4] <= s.village_points &&
+                        s.quarter_counter > 0) {
+                        selected = n;
+                        if (a.identity == 16)
+                            break; // 晋级后实际消费新开放活动。
+                    }
+                }
+                if (selected < 0)
+                    require(session.cancel_page(page.id), "leave unavailable activities");
+                else {
+                    require(session.act_village_activity_page(page.id, A::select, selected),
+                            "select affordable activity");
+                    require(session.acknowledge_page(page.id), "open activity offer");
+                }
+            } else if (page.legacy_page == 53) {
+                if (view->counter >= 120) {
+                    const int activity = *view->activity;
+                    require(session.acknowledge_page(page.id), "complete real activity");
+                    ++completed;
+                    if (activity == 16) {
+                        ++unlocked_completed;
+                        if (unlocked_month < 0) {
+                            unlocked_month = month;
+                            unlocked_income = income(session.state());
+                        }
+                    }
+                    std::cout << "progression activity=" << activity << ' '
+                              << snapshot(session.state(), frame) << std::endl;
+                }
+            } else
+                require(session.acknowledge_page(page.id), "confirm activity offer/result");
+        } else if (page.legacy_page == 22) {
+            const auto &list = s.task_page_lists.at(page.id);
+            const auto affordable = std::find_if(list.begin(), list.end(), [&](auto id) {
+                return s.rules->tasks.at(s.tasks.at(id).definition).recruitment_fee <=
+                       s.scene.world.world.ai.accounting.funds();
+            });
+            check(affordable != list.end(), "natural management chooses an actual affordable task");
+            require(session
+                        .act_task_page(page.id, StartupWorldTaskAction::confirm,
+                                       static_cast<int>(affordable - list.begin()))
+                        .error,
+                    "select actual adventure");
+        } else if (page.legacy_page == 23) {
+            require(session.act_task_page(page.id, StartupWorldTaskAction::confirm).error,
+                    "accept actual adventure");
+        } else if (page.legacy_page == 25) {
+            require(session.act_task_page(page.id, StartupWorldTaskAction::depart).error,
+                    "depart real recruited team");
+        } else if (page.legacy_page == 28) {
+            if (s.page_phases.at(page.id) == 0)
+                require(session.act_task_page(page.id, StartupWorldTaskAction::confirm).error,
+                        "confirm departure animation");
+        } else if (page.legacy_page == 33) {
+            require(session
+                        .act_task_page(
+                            page.id, StartupWorldTaskAction::confirm,
+                            s.scene.world.world.ai.accounting.funds() >= page.legacy_f ? 0 : 1)
+                        .error,
+                    "renew affordable task or explicitly abort");
+        } else if (page.legacy_page == 81) {
+            if (seen_upgrades.insert(page.id).second) {
+                const auto facility = s.facility_page_bindings.at(page.id);
+                const int definition =
+                    s.scene.world.world.facilities.at(facility).placement.definition_id;
+                check(s.scene.world.world.facility_uses.at(definition).level > 1,
+                      "natural usage threshold really raises shared facility level");
+                upgraded.insert(definition);
+                std::cout << "progression upgraded=" << definition << ' ' << snapshot(s, frame)
+                          << std::endl;
+            }
+            require(session.acknowledge_page(page.id), "confirm upgrade presentation");
+        } else if (page.legacy_page == 48) {
+            require(session.act_rank_page(page.id), "apply actual rank promotion");
+        } else if (page.legacy_page == 87) {
+            if (s.medal_count > 0) {
+                require(session.act_award_page(page.id, ref::WorldAwardAction::request_award, 0),
+                        "request annual medal");
+                require(session.act_award_page(page.id, ref::WorldAwardAction::confirm_award),
+                        "award annual medal");
+            }
+        } else if (page.legacy_page == 83)
+            require(session.cancel_page(page.id), "leave shop");
+        else if (page.kind != ref::WorldScriptPageKind::scene && page.legacy_page != 16 &&
+                 page.legacy_page != 24 && page.legacy_page != 56 && page.legacy_page != 57 &&
+                 page.legacy_page != 97 && page.legacy_page != 98)
+            require(session.acknowledge_page(page.id), "confirm actual world event");
+        sounds += session.take_sound_requests().size();
+        check(session.state().sound_requests.empty(),
+              "progression sink consumes sound outputs once per frame");
+        if (unlocked_month >= 0 && month > unlocked_month && !upgraded.empty() &&
+            unlocked_completed > 0 &&
+            s.scripts.pages.back().kind == ref::WorldScriptPageKind::scene &&
+            s.scene.calendar.units >= 27) {
+            check(income(s) > unlocked_income && completed >= 2 &&
+                      s.activity_pages_initialized.empty(),
+                  "newly unlocked activity finishes and post-rank world keeps earning income with "
+                  "retired pages");
+            std::cout << "progression summary completed=" << completed
+                      << " unlocked=" << unlocked_completed << " upgraded=" << upgraded.size()
+                      << " sounds=" << sounds << " peak_pages=" << peak_pages
+                      << " peak_payloads=" << peak_payloads << " peak_effects=" << peak_effects
+                      << " peak_sounds=" << peak_sounds
+                      << " peak_retired_actors=" << peak_retired_actors
+                      << " peak_retired_encounters=" << peak_retired_encounters
+                      << " peak_actors=" << peak_actors << " peak_cash=" << peak_cash
+                      << " peak_tasks=" << peak_tasks
+                      << " checkpoints=" << session.checkpoints().size() << ' '
+                      << snapshot(s, frame) << '\n';
+            return;
+        }
+    }
+    throw std::runtime_error("natural progression limit reached " +
+                             snapshot(session.state(), limit));
+}
+
 } // namespace
 int main(int argc, const char **argv) {
     try {
@@ -737,6 +1027,19 @@ int main(int argc, const char **argv) {
             if (result.ec != std::errc{} || result.ptr != input.data() + input.size())
                 throw std::invalid_argument("invalid continuous test argument");
         };
+        if (argc >= 2 && std::string(argv[1]) == "natural_progression") {
+            if (argc > 4)
+                throw std::invalid_argument("expected natural_progression [seed [speed]]");
+            if (argc >= 3)
+                parse(argv[2], seed);
+            if (argc >= 4)
+                parse(argv[3], speed);
+            if (speed != 0 && speed != 1)
+                throw std::invalid_argument("speed must be 0 or 1");
+            natural_progression(seed, speed);
+            std::cout << checks << " checks passed\n";
+            return 0;
+        }
         if (argc >= 2 && std::string(argv[1]) == "natural_housing") {
             if (argc > 4)
                 throw std::invalid_argument("expected natural_housing [seed [speed]]");

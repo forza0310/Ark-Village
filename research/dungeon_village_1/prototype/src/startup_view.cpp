@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
+#include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 #include "dungeon_village_tools/sprite.hpp"
@@ -612,6 +613,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += equipment.name;
     for (const auto &job : rules.jobs)
         glyphs += job.name;
+    for (const auto &activity : rules.activities)
+        glyphs += activity.name + activity.detail + activity.description;
+    glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取";
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
               "年度贡献勋章授予终止是非满足努力能力上升自宅完成设施升级城镇等级晋级申请"
               "月收入设施数居住数指定建设任务完成数街道人气举办活动达成未暂不可用"
@@ -626,7 +630,23 @@ int run_startup_world_window(const std::filesystem::path &assets,
     }
     StartupWorldRuntimeSession session(initial->state(), ref::WorldRandomStream::from_java_seed(1));
     initial.reset();
-    if (inspect_page == "world-building") {
+    if (inspect_page == "world-activities") {
+        if (session.open_village_activities() != StartupWorldRuntimeError::none)
+            throw std::runtime_error("真实村办目录检查入口失败");
+        bool ready{};
+        for (int n = 0; n < 100 && !ready; ++n) {
+            if (!session.update().candidate)
+                throw std::runtime_error("村办首次说明推进失败");
+            const auto p = session.state().scripts.pages.back();
+            ready = p.legacy_page == 51 &&
+                    inspect_startup_world_village_activity_page(session.state(), p.id).has_value();
+            if (!ready && p.kind == ref::WorldScriptPageKind::dialogue &&
+                session.acknowledge_page(p.id) != StartupWorldRuntimeError::none)
+                throw std::runtime_error("村办首次说明确认失败");
+        }
+        if (!ready)
+            throw std::runtime_error("村办检查未返回真实目录");
+    } else if (inspect_page == "world-building") {
         if (session.open_build_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局建设目录检查入口失败");
     } else if (inspect_page == "world-details") {
@@ -741,7 +761,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     return &*it;
             return nullptr;
         };
-        if (const auto *page = top_page()) {
+        // 暂停时不派发页面输入，避免把合法的暂停拒绝误报成窗口消费者故障。
+        if (const auto *page = top_page(); page && !session.state().scene.framework_paused) {
             if (viewed_page != page->id) {
                 viewed_page = page->id;
                 paragraph_index = 0;
@@ -756,7 +777,43 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
             const int raw = page->legacy_page;
             const bool task_page = raw >= 22 && raw <= 28;
-            if (raw == 48) {
+            if (raw >= 51 && raw <= 54) {
+                const auto view =
+                    inspect_startup_world_village_activity_page(session.state(), page->id);
+                if (view) {
+                    using A = StartupVillageActivityAction;
+                    const auto pid = page->id;
+                    std::optional<A> action;
+                    int selection{};
+                    if (raw != 53) {
+                        if (IsKeyPressed(KEY_UP))
+                            action = A::previous;
+                        if (IsKeyPressed(KEY_DOWN))
+                            action = A::next;
+                        const int count = raw == 52 ? 2 : static_cast<int>(view->entries.size());
+                        for (int row = 0; row < 5 && row + view->first_visible < count; ++row)
+                            if (hit({12, 74.F + row * 27, 216, 26})) {
+                                action = A::select;
+                                selection = row + view->first_visible;
+                            }
+                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
+                            action = A::cancel;
+                    }
+                    if ((raw != 53 || view->counter >= 120) &&
+                        (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})))
+                        action = A::confirm;
+                    if (action) {
+                        const auto error =
+                            session.act_village_activity_page(pid, *action, selection);
+                        if (error != StartupWorldRuntimeError::none &&
+                            error != StartupWorldRuntimeError::missing_source)
+                            throw std::runtime_error("村办页面输入失败：" +
+                                                     std::to_string(static_cast<int>(error)));
+                        command_feedback =
+                            error == StartupWorldRuntimeError::none ? "" : "尚未接入";
+                    }
+                }
+            } else if (raw == 48) {
                 if (IsKeyPressed(KEY_UP))
                     rank_selection = (rank_selection + 4) % 5;
                 if (IsKeyPressed(KEY_DOWN))
@@ -1071,7 +1128,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 body_scroll = std::clamp(body_scroll - GetMouseWheelMove() * 17, 0.0F,
                                          std::max(body_extent - 64, 0.0F));
         }
-        if (!top_page() && session.state().scene.scene_state == 1) {
+        if (!top_page() && !session.state().scene.framework_paused &&
+            session.state().scene.scene_state == 1) {
             if (IsKeyPressed(KEY_R))
                 build_orientation = build_orientation == ref::FacilityOrientation::first
                                         ? ref::FacilityOrientation::second
@@ -1097,6 +1155,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (hit({52, 295, 52, 22}) || IsKeyPressed(KEY_B)) {
                 if (session.open_build_menu() != StartupWorldRuntimeError::none)
                     throw std::runtime_error("建设目录打开失败");
+            } else if (IsKeyPressed(KEY_V) || hit({176, 23, 60, 20})) {
+                if (session.open_village_activities() != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("村办入口失败");
             } else if (pressed && mouse.y >= 35 && mouse.y < 265) {
                 bool selected_human{};
                 for (const auto actor : session.state().scene.world.world.ai.human_order) {
@@ -1419,7 +1480,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
                     title = "成果";
-                else if (page->legacy_page == 94)
+                else if (page->legacy_page == 94 || page->legacy_page == 95)
                     title = "入手!";
                 else if (page->legacy_page == 33)
                     title = "任务期限";
@@ -1436,7 +1497,39 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     title = rules.monsters.at(*page->monster_definition).name;
             }
             font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
-            if (page->legacy_page == 21) {
+            if (page->legacy_page == 95) {
+                // 简化奖励投影；计数、领取和解锁仍只由Owner消费者提交。
+                DrawRectangle(8, 42, 224, 214, paper);
+                font.text("获得奖励", 16, 48);
+                std::string reward;
+                switch (page->legacy_r) {
+                case 0:
+                    reward = std::to_string(page->legacy_s) + "G";
+                    break;
+                case 1:
+                    reward = "村子点 " + std::to_string(page->legacy_s);
+                    break;
+                case 3:
+                    reward = rules.facilities.at(page->legacy_s).name;
+                    break;
+                case 4:
+                    reward = rules.jobs.at(page->legacy_s).name;
+                    break;
+                case 9:
+                    reward = "配置更替";
+                    break;
+                case 10:
+                    reward = "勋章";
+                    break;
+                case 11:
+                    reward = rules.activities.at(page->legacy_s).name;
+                    break;
+                default:
+                    throw std::runtime_error("未维护的奖励页类型");
+                }
+                font.paragraph(reward, 16, 96, 208);
+                font.text("确认领取", 176, 272, ink, 10);
+            } else if (page->legacy_page == 21) {
                 DrawRectangle(5, 42, 230, 126, paper);
                 constexpr std::array<const char *, 3> tabs{{"道路植物", "商店", "饮食"}};
                 for (int tab = 0; tab < 3; ++tab) {
@@ -1626,6 +1719,80 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 font.text("返回", 18, 272);
                 font.text("入住", 190, 272);
+            } else if (page->legacy_page >= 51 && page->legacy_page <= 54) {
+                const auto view = inspect_startup_world_village_activity_page(state, page->id);
+                DrawRectangle(8, 42, 224, 214, paper);
+                font.text("村办活动", 16, 48);
+                if (view) {
+                    const auto *activity =
+                        view->activity ? &rules.activities.at(*view->activity) : nullptr;
+                    if (view->raw == 51 || view->raw == 54) {
+                        for (int n = view->first_visible;
+                             n < std::min(static_cast<int>(view->entries.size()),
+                                          view->first_visible + 5);
+                             ++n) {
+                            const int y = 78 + (n - view->first_visible) * 27;
+                            if (n == view->selection)
+                                DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
+                            const int entry = view->entries[n];
+                            if (view->raw == 51) {
+                                const auto &a = rules.activities.at(entry);
+                                font.text(a.name, 16, y, ink, 10);
+                                font.text(std::to_string(a.parameters[4]) + "点", 184, y, ink, 10);
+                            } else {
+                                const auto h = startup_world_human_details(state, entry);
+                                if (!h || !activity)
+                                    throw std::runtime_error("活动结果人物缺失");
+                                const int current = activity->parameters[2] == 0
+                                                        ? h->satisfaction
+                                                        : h->attributes.at(activity->parameters[3]);
+                                font.text(rules.humans.at(entry).name, 16, y, ink, 10);
+                                font.text(std::to_string(state.human_activity_previous.at(entry)) +
+                                              " > " + std::to_string(current),
+                                          154, y, ink, 10);
+                            }
+                        }
+                        if (view->raw == 51)
+                            font.text("村子点 " + std::to_string(state.village_points) +
+                                          "  季度剩余 " + std::to_string(state.quarter_counter),
+                                      16, 216, ink, 10);
+                        // 展示共享定义当前职业/性别，不创建场上人物实例。
+                        for (int n = 0; n < 2; ++n) {
+                            const int human = view->display_humans[n];
+                            const auto presence = state.human_presence.find(human);
+                            if (presence == state.human_presence.end())
+                                throw std::runtime_error("活动展示人物引用无效");
+                            if (presence->second == 0)
+                                continue;
+                            const auto portrait = startup_world_portrait(state, human);
+                            if (!portrait)
+                                throw std::runtime_error("活动展示人物职业或性别无效");
+                            sprites.actor(false, 0, portrait->image, 0, {74.F + n * 90, 252});
+                        }
+                    } else if (view->raw == 52) {
+                        if (activity)
+                            font.text(activity->name, 98, 48, ink, 10);
+                        for (int n = 0; n < 2; ++n) {
+                            if (n == view->selection)
+                                DrawRectangle(12, 74 + n * 27, 216, 26, {219, 232, 204, 255});
+                            font.text(n == 0 ? "开展活动" : "返回", 16, 78 + n * 27);
+                        }
+                        if (activity)
+                            font.paragraph(activity->detail, 16, 152, 208);
+                    } else {
+                        if (activity)
+                            font.paragraph(activity->description, 16, 82, 208);
+                        font.text(std::to_string(std::min(view->counter, 120)) + " / 120", 74, 150);
+                        DrawRectangle(16, 178, 208, 8, GRAY);
+                        DrawRectangle(16, 178, 208 * std::min(view->counter, 120) / 120, 8, GREEN);
+                    }
+                    if (view->raw != 53)
+                        font.text("返回", 18, 272);
+                    if (view->raw != 53 || view->counter >= 120)
+                        font.text("确定", 190, 272);
+                }
+                if (!command_feedback.empty())
+                    font.text(command_feedback, 92, 272, RED, 10);
             } else if (page->legacy_page == 60 && startup_world_human_page_ready(state, page->id)) {
                 const int human = state.page_human_bindings.at(page->id);
                 const auto details = startup_world_human_details(state, human);
@@ -1991,6 +2158,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 sprites.actor(true, monster.body * 4 + 1,
                               monster.body * 30 + monster.sprite_variant, 0, {120, 128});
             }
+        }
+        if (!top_page() && state.scene.scene_state == 0 && !state.scene.framework_paused) {
+            DrawRectangle(176, 23, 60, 20, paper);
+            font.text("村办 V", 180, 27, ink, 10);
         }
         DrawRectangle(0, 294, width, 26, paper);
         font.text(state.scene.framework_paused ? "继续" : "暂停", 8, 301);

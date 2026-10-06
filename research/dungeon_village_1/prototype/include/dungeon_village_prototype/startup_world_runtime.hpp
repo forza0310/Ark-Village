@@ -16,6 +16,7 @@ struct StartupBuildResult;
 enum class StartupFacilityPageAction;
 enum class StartupHumanPageAction;
 enum class StartupWorldTaxAction;
+enum class StartupVillageActivityAction;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -120,6 +121,16 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, int> tax_page_scroll;
     int residence_hint_counter{}; // UserData.H，新局0。
     std::map<int, std::uint32_t> activity_flags;
+    std::map<int, int> activity_counts;         // 原m，累计举办次数；季度不清零。
+    std::map<int, int> human_activity_previous; // 原ao，只保留最后活动前值。
+    std::set<std::uint64_t> activity_pages_initialized;
+    std::map<std::uint64_t, int> activity_page_bindings;
+    std::map<std::uint64_t, std::vector<int>> activity_page_lists;
+    std::map<std::uint64_t, std::array<int, 2>> activity_page_display_humans;
+    std::map<std::uint64_t, std::uint64_t> activity_page_parents;
+    std::map<std::uint64_t, int> activity_page_answers; // 父51恢复时才消费K。
+    std::map<std::uint64_t, int> activity_page_selections;
+    std::map<std::uint64_t, int> activity_page_scroll;
     std::map<std::uint64_t, ref::WorldFacilityUpdateDetails> facility_details;
     ref::DungeonTaskSuccessState task_progress;
     std::map<std::uint64_t, ref::DungeonFinishTask> tasks;
@@ -333,6 +344,10 @@ class StartupWorldRuntimeSession {
                                            bool cancel = false);
     StartupWorldRuntimeError open_task_menu();
     StartupWorldRuntimeError open_task_control_menu();
+    StartupWorldRuntimeError open_village_activities();
+    StartupWorldRuntimeError act_village_activity_page(std::uint64_t page,
+                                                       StartupVillageActivityAction action,
+                                                       int selection = 0);
     StartupWorldRuntimeError open_human_page(int human);
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                             int selection = 0);

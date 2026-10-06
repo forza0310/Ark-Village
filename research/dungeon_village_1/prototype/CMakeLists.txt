@@ -51,7 +51,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_deadline.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
     src/startup_world_visuals.cpp src/startup_world_building.cpp
-    src/startup_world_human.cpp src/startup_world_tax.cpp "${STARTUP_WORLD_CPP}")
+    src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp "${STARTUP_WORLD_CPP}")
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
 target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
@@ -78,6 +78,8 @@ set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTI
 set_tests_properties(dungeon_village_prototype.startup_world_task_flow PROPERTIES TIMEOUT 3600)
 option(DUNGEON_VILLAGE_LONG_WORLD_TESTS "启用跨年与不同种子倍速的有界世界验收" OFF)
 if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
+    add_test(NAME dungeon_village_prototype.natural_progression
+        COMMAND dungeon_village_startup_world_continuous_tests natural_progression 1 0)
     add_test(NAME dungeon_village_prototype.natural_housing
         COMMAND dungeon_village_startup_world_continuous_tests natural_housing 1 0)
     add_test(NAME dungeon_village_prototype.world_year
@@ -87,6 +89,7 @@ if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
     set_tests_properties(dungeon_village_prototype.world_year
                          dungeon_village_prototype.world_speed_seed
                          dungeon_village_prototype.natural_housing
+                         dungeon_village_prototype.natural_progression
                          PROPERTIES TIMEOUT 3600 LABELS "long-world")
 endif()
 add_test(NAME dungeon_village_prototype.startup_world_data
@@ -228,3 +231,5 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_road_render_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
     target_compile_options(dungeon_village_dump_startup_map PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
+
+include(../cmake/WindowsExecutables.cmake)

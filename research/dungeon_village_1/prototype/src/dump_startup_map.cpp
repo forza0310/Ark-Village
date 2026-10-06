@@ -6,6 +6,12 @@
 #include <iostream>
 #include <stdexcept>
 
+#ifdef _WIN32
+#include <cstdio>
+#include <fcntl.h>
+#include <io.h>
+#endif
+
 namespace dv = dungeon_village_prototype;
 int main(int argc, char **argv) {
     try {
@@ -14,6 +20,11 @@ int main(int argc, char **argv) {
         const std::string mode = argv[1];
         if (mode != "cells" && mode != "instances")
             throw std::invalid_argument("快照类型必须是cells或instances");
+#ifdef _WIN32
+        // 发布TSV固定LF字节；管道输出与二进制文件输出必须一致，不改发布表或比较断言。
+        if (argc == 2 && _setmode(_fileno(stdout), _O_BINARY) == -1)
+            throw std::runtime_error("快照标准输出无法设置二进制模式");
+#endif
         std::ofstream file;
         if (argc == 3) {
             file.open(argv[2], std::ios::binary | std::ios::trunc);

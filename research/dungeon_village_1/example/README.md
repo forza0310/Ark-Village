@@ -10,6 +10,7 @@
 | 模块 | 职责与边界 | 规格 |
 | --- | --- | --- |
 | human_management | 职业／装备目录原交换排序、预览与有序拒绝、三档R奖励、中点／终点计划、大师加成、职业喜好矩阵与赠礼候选；不持有页面、随机或第二世界 | [人物管理](../rules/CHARACTERS.md) |
+| [world_village_activity.hpp](include/dungeon_village_reference/world_village_activity.hpp) | 村办原序目录、51先季度次数后点数拒绝、52扣点及m／F候选、53恰70声音／满120确认计划；类型0单精度满足度、类型1按当前职业增加extra后重算；类型2全局人气交Owner，不冒充人物效果 | [村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置) |
 | domain、simulation | R1事务、独占预约、单点自主模拟夹具；当前窗口不使用旧模拟 | [状态与建设](../rules/STATE_CONSTRUCTION.md)、[人物](../rules/CHARACTERS.md) |
 | geometry、facility_economy、neighbourhood | 格坐标占地、经营推导、来源实例去重与道路魅力；真正共享等级升级扣旧门槛/保留剩余次数，旧/新/差额分别含实例邻接 | [设施](../rules/FACILITIES.md)、[建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同) |
 | navigation、map_access | 加权寻路、完整设施绑定、距离场和到达身份 | [地图访问](../rules/MAP_ACCESS.md) |
@@ -60,6 +61,7 @@
 | world_dungeon_finish、world_map_refresh | 探索阶段2任务/奖励/全占地恢复及实际地图显示/道路围栏/补块/邻接；页面/脚本同步合同 | [探索](../rules/ai/DUNGEONS.md) |
 | world_random、world_random_consumers | Java48显式种子或原始磁带、原nextInt余数语义、懒表情/两变体表；不猜APK默认seed | [随机与路由](../rules/ai/CONTROL_COMPOSITION.md#全码自动路由与当前随机接入) |
 | world_scripts | 稀疏ID目录、实时延迟续体、事件调用计数与实际框架页栈；原表与消费事实分开 | [原始脚本目录](../data/scripts/) |
+| [world_gift_page.hpp](include/dungeon_village_reference/world_gift_page.hpp) | 94的r3/5/6/7/8及固定脚本95的r0/1/3/4/9/10/11：计数／确认与金币、点数、定义解锁、标志、勋章候选；金币与勋章不额外通知34/21，不持有第二账本 | [奖励页面合同](../rules/ACCOUNTING.md#脚本奖励页面9495) |
 | [world_notices.hpp](include/dungeon_village_reference/world_notices.hpp) | 唯一通知队首两项逆序计数/过期与声音11，21/19高度和整数展开/收回布局；不绘皮肤、不过度推进第三条 | [通知合同](../ui/PAGES.md#共同底部通知队列) |
 | world_calendar、world_scene | 年/月/子周期有序合同与主场景1/2轮、真实资格/跳转/绘制门槛；实际日历域消费者必须另接 | [主场景](../rules/ai/WORLD_SCHEDULE.md) |
 | world_month_report、world_calendar_maintenance、world_calendar_tasks | 月报/费用/点数、年度清理、跨月任务/等级提示、raw48真正晋级的有序规则及raw50全范围洗牌/布局；外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口)、[晋级](../rules/ai/WORLD_SCHEDULE.md#城镇真正晋级与庆典) |
@@ -73,6 +75,10 @@
 `prepare_*` 纯函数返回候选值，调用方负责跨域原子提交及事件去重。
 `GlobalState` 是早期安全夹具，不能与当前原型聚合或原作初值混用；R1净额结算不能与即时现金账本叠加。
 头文件注释维护输入、所有权、失败与返回语义，非直观计权/时点在实现处补注释；不逐行描述赋值。
+
+村办领域回归扩展现有[成长套件](tests/human_growth_test.cpp)，页面51—54的唯一Owner事务、载荷拒绝和退休
+由[原型](../prototype/README.md)的现有页面套件承担。类型0／1／2已有维护实现，类型3地图扩张等尚未接入；
+本批完整回归、窗口及自然升级／晋级验收已收口，最新结果及各类型覆盖边界见[当前验证](../VERIFICATION.md)。
 
 ## 构建与检查
 

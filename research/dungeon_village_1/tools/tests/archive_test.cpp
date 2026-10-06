@@ -139,6 +139,11 @@ void paths_and_crc_are_validated() {
     check(is_safe_relative_path("image/tiles.png"), "接受安全相对路径");
     check(!is_safe_relative_path("../tiles.png"), "拒绝父目录路径");
     check(!is_safe_relative_path("/tmp/tiles.png"), "拒绝绝对路径");
+#ifdef _WIN32
+    for (const auto *name :
+         {"\\tiles.png", "C:tiles.png", "C:\\tiles.png", "\\\\server\\share\\tiles.png"})
+        check(!is_safe_relative_path(name), "拒绝Windows根目录、盘符和网络路径");
+#endif
     check(crc32(std::string("123456789")) == 0xcbf43926U, "CRC32 标准向量");
     check(game_crc32(std::string("image.dat")) == 491867833U, "游戏资源名称校验向量");
     check(sha256_hex(std::string()) ==

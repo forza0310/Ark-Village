@@ -60,3 +60,5 @@ add_test(NAME dungeon_village_tools.item_table COMMAND dungeon_village_item_tabl
 add_test(NAME dungeon_village_tools.item_data
          COMMAND dungeon_village_item_table_tests "${CMAKE_CURRENT_SOURCE_DIR}/../data/items/original/item.txt"
                  "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt")
+
+include(../cmake/WindowsExecutables.cmake)

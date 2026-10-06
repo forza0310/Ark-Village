@@ -29,7 +29,7 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/world_random_consumers.cpp src/world_scene.cpp
                                      src/world_exploration.cpp src/world_calendar_maintenance.cpp
                                      src/world_month_report.cpp src/world_calendar_tasks.cpp
-                                     src/world_award_page.cpp src/world_notices.cpp
+                                     src/world_award_page.cpp src/world_notices.cpp src/world_village_activity.cpp
                                      src/world_popularity.cpp src/world_task_creation.cpp
                                      src/world_task_commands.cpp src/world_task_display.cpp src/world_task_deadline.cpp
                                      src/world_facility_update.cpp src/world_nonactor_schedule.cpp
@@ -584,3 +584,5 @@ foreach(module IN ITEMS world_actor_routes world_dungeon_finish world_random wor
     endif()
     add_test(NAME dungeon_village_reference.${module} COMMAND dungeon_village_${module}_tests)
 endforeach()
+
+include(../cmake/WindowsExecutables.cmake)

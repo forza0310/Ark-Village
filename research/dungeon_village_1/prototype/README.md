@@ -29,6 +29,7 @@
 | [共同世界建设](include/dungeon_village_prototype/startup_world_building.hpp)、[实现](src/startup_world_building.cpp) | 当前普通目录/报价/全占地准入与实例初始化、raw74稳定绑定、募集24→入住80→住宅25/96、共享等级81；刷新/账本/脚本整轮回滚，不复用旧建设世界 |
 | [人物管理](include/dungeon_village_prototype/startup_world_human.hpp)、[实现](src/startup_world_human.cpp) | 当前四页／装备73、61/62预览与拒绝、63中点及最终提交、64/65延迟赠礼、66/68结果、70大师奖励；只维护同一Owner的共享进度和页附属记录 |
 | [税收](include/dungeon_village_prototype/startup_world_tax.hpp)、[实现](src/startup_world_tax.cpp) | 90居民引用／实时税额和98自动其它收入、清全人物F/G；确认与入账分开，无额外随机 |
+| [村办活动](include/dungeon_village_prototype/startup_world_village_activity.hpp)、[实现](src/startup_world_village_activity.cpp) | 51—54初始化／只读投影／动作／更新，类型0／1／2及两次有放回抽签；同一Owner提交资源、人物、脚本和页面，严格拒绝失配载荷并随真实页退休辅助记录 |
 | dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
 | dungeon_village_startup_world | 标准C++17共同世界与完整原表；不依赖raylib，不在运行时读取APK/研究临时文件 |
 | dungeon_village_prototype_model | 旧夹具聚合，复用[领域示例](../example/README.md)与[工具](../tools/README.md)表解析 |
@@ -92,6 +93,18 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 研究窗口未实现音频，明确领取并丢弃一次性声音请求；其他适配可通过`take_sound_requests()`按原序领取一次。
 世界完整检查点仍是研究审计历史，不是文件存档；原介质／分区／不保存的随机和页面见[存档专题](../rules/PERSISTENCE.md)。
 
+脚本奖励95接入原计数40快进／确认领取，覆盖固定脚本实际生成的现金、点数、建筑、职业、配置更替、勋章和活动七类型。
+窗口只读展示奖励名称；领取后才回写唯一现金台账及共享进度，不复用脚本奖励通知来多发一次。
+原94既有支持范围保持。通用确认与专用动作均拒绝框架暂停中的输入；合同见[脚本奖励页](../rules/ACCOUNTING.md#script-rewards)。
+
+主场景“村办”按钮／V打开51原序目录，上下键或点击选择，确认进入52开展／取消。
+51先检查季度次数再检查点数；52开展才扣点并增加定义m／全局F，季度q和人物效果留到53满120确认。
+53恰70更新请求声音5，提前确认不快进；类型0／1随后进入54只读结果，类型2只请求全局人气。
+当前仅维护类型0／1／2；类型3地图扩张及其余依赖明确拒绝，不显示虚假成功。
+所有修改由唯一Owner在私有候选内组合，缺绑定／名单／计数、越界选择、错误父页或晚期随机／脚本失败
+拒绝整轮，不留下部分扣款、随机或实体修改；页面附属记录随真实页退休。具体来源见[村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置)。
+这些是简化原型入口与维护合同；本批全套、窗口及自然晋级验收已收口，最新结果见[当前验证](../VERIFICATION.md)。
+
 `--world --inspect-page task-team --frames 12 --screenshot 路径`从真实新局自然等候任务，
 提供明确的测试玩家接受输入，停在真实队伍页作有界窗口检查，不注入任务、人物或资金。
 
@@ -125,17 +138,31 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_wor
 research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_world_continuous_tests 6 20261005 1
 ```
 
-配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`可登记年度、不同种子和住宅三个可重复长期CTest，
+配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`登记四个可重复长期CTest：`world_year`、
+`world_speed_seed`、`natural_housing`、`natural_progression`（名称均带`dungeon_village_prototype.`前缀），
 以`ctest --test-dir <构建目录> -L long-world --output-on-failure`执行；3600秒仅是墙钟保护，不参与原规则。
 当前跨年、多种子、插桩与六套实际结果见[验证](../VERIFICATION.md)，不从单条路径推导全部状态可达或无限期认证。
 
-本批新增同套件的显式`natural_housing [seed [speed]]`模式：原募集建设、合法短剑赠礼提高满足度、74/80入住、
+同套件保留显式`natural_housing [seed [speed]]`模式：原募集建设、合法短剑赠礼提高满足度、74/80入住、
 共同施工、年度真正授予、90/98及收税后继续一个月；不注入人物／现金／满足度／日期或奖励。
 长测选项同时登记该模式，每月输出对象、页栈、输出队列、现金记录和检查点规模；合法审计增长与泄漏分别登记。
 每轮核对人物／税收页载荷属于真实留存页面、商店记录属于真实留存设施；募集退休时连同商店索引清理。
 页面载荷、音效输出、退役人物／遭遇和特效记录单独记录峰值；账本、任务历史和内存检查点不冒充原文件存档。
 赠礼只走60→64→65→父64，读原报价、库存、C奖励和锁；保留入住费，不手工改C。它是明确玩家策略，不代表无操作也会同年入住。
 第一星还要求人气300、最高月收入5000、两次村办活动和指定设施35；活动操作是自然晋级的依赖，不能靠自动等待代替。
+
+新增显式`natural_progression [seed [speed]]`模式，默认`1 0`：从真实空人物新局建设35面包房，
+实际开展可支付活动和任务，点击自然设施升级提示，经48申请第一星；再完成新解锁16绘画展览，
+继续到后续月份并检查设施收入增加。策略只调用真实Session玩家命令，不注入资金、点数、人气、F、日期或rank，
+任务结束后留一个完整自然月正常营业，人气达到300后不再接新任务；晋级后为活动16保留其原价点数。
+这是显式验收玩家策略，不是原版自动行为；最高月收入不包含95的其它收入现金奖励。
+不改变上述住宅模式和原自然任务黄金轨迹。此入口已实现，自然晋级是否通过须看[当前验证](../VERIFICATION.md)。
+180000框架调用与3600秒是验收保护；每轮检查真实页载荷／实体引用及声音消费，输出资源峰值和检查点规模。
+现金流水、任务历史和完整内存检查点允许合法增长，有限轨迹不能证明永久有界。
+
+```sh
+research/dungeon_village_1/work/prototype-release-llvm/dungeon_village_startup_world_continuous_tests natural_progression 1 0
+```
 
 [自然任务流程测试](tests/startup_world_task_flow_test.cpp)接受可选`种子 速度`（默认`1 1`），
 从真实空人物新局等待任务，按真实现金选择可支付任务，显式接受、等待征集并确认出发。
@@ -154,7 +181,10 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_wor
 `--world --inspect-page world-building`和`world-details`从真实新局用显式命令打开目录/初始旅店详情；
 `world-human`自然等到首个冒险者，再打开60并实际确认首次说明后停在详情，不注入人物或跳过初始化。
 `world-award`以最多50000次真实框架更新、前序页面确认输入等到首个年度raw87，不补人物/年月/勋章。
-三者均要求`--frames N`有界运行，截图存项目内work；失败明确报告，不用合成Owner替代自然轨迹。
+`world-activities`从真实新局打开村办，按实际更新／确认处理首次说明后停在51，不注入点数或活动次数。
+这些检查均要求`--frames N`有界运行，截图存项目内work；失败明确报告，不用合成Owner替代自然轨迹。
+例如`--world --inspect-page world-activities --frames 12 --screenshot research/dungeon_village_1/work/world-activities.png`，
+Windows使用本机构建的`.exe`并以`--font`指定可用中文字体；有界截图检查不等于真实鼠标／键盘验收。
 
 默认窗口为240×320逻辑画布、480×640物理像素。建设→目录分类→条目→地图格→确定。
 返回或Esc取消，放置模式支持连续建设；右键拖动视图，暂停/继续和1倍/2倍按钮控制模拟资格。

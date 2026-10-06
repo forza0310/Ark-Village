@@ -317,7 +317,8 @@ bool is_safe_relative_path(const std::string &name) {
         return false;
     }
     const std::filesystem::path path(name);
-    if (path.is_absolute() || path.has_root_name()) {
+    // Windows的/tmp是当前盘根路径，is_absolute()为false，仍不能写入输出目录之外。
+    if (path.has_root_path()) {
         return false;
     }
     for (const auto &part : path) {
@@ -328,9 +329,7 @@ bool is_safe_relative_path(const std::string &name) {
     return true;
 }
 
-bool is_visual_archive(const Archive &archive) {
-    return archive.find("img.inf") != nullptr;
-}
+bool is_visual_archive(const Archive &archive) { return archive.find("img.inf") != nullptr; }
 
 bool is_visual_entry(const ArchiveEntry &entry) {
     const auto name = lowercase(entry.name);

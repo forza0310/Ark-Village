@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
+#include "dungeon_village_prototype/startup_world_village_activity.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -704,6 +705,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     state_.scripts.next_page_id = 2;
     for (const auto &h : p.rules->humans) {
         state_.human_calendar.emplace(h.identity, StartupWorldHumanCalendar{});
+        state_.human_activity_previous.emplace(h.identity, 0);
         state_.human_profession_changes.emplace(h.identity,
                                                 std::vector<int>(p.rules->jobs.size(), 0));
         state_.human_flags.emplace(h.identity, h.flags);
@@ -721,6 +723,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     }
     for (const auto &a : p.rules->activities) {
         state_.activity_flags.emplace(a.identity, a.flags);
+        state_.activity_counts.emplace(a.identity, 0);
         state_.scripts.activities.emplace(
             a.identity,
             ref::WorldScriptUnlockDefinition{a.initial_status, (a.flags & 2U) != 0, a.name});
@@ -844,6 +847,13 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_award_page(std::uint64_
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_control_menu() {
     return open_startup_world_runtime_task_control_menu(state_);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_village_activities() {
+    return open_startup_world_village_activities(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
+    std::uint64_t page, StartupVillageActivityAction action, int selection) {
+    return act_startup_world_village_activity_page(state_, page, action, selection);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
     return open_startup_world_human_page(state_, human);
 }
@@ -905,6 +915,14 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.tax_page_residents.erase(page.id);
             admitted.tax_page_selection.erase(page.id);
             admitted.tax_page_scroll.erase(page.id);
+            admitted.activity_pages_initialized.erase(page.id);
+            admitted.activity_page_bindings.erase(page.id);
+            admitted.activity_page_lists.erase(page.id);
+            admitted.activity_page_display_humans.erase(page.id);
+            admitted.activity_page_parents.erase(page.id);
+            admitted.activity_page_answers.erase(page.id);
+            admitted.activity_page_selections.erase(page.id);
+            admitted.activity_page_scroll.erase(page.id);
             admitted.residence_page_candidates.erase(page.id);
             admitted.facility_upgrade_initialized.erase(page.id);
             admitted.rank_celebration_participants.erase(page.id);
@@ -921,7 +939,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldScheduleError::none,
                 {}};
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
-    if (!initialize_startup_world_human_pages(admitted))
+    if (!initialize_startup_world_human_pages(admitted) ||
+        !initialize_startup_world_village_activity_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

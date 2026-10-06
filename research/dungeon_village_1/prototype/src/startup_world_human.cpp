@@ -753,7 +753,11 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.human_page_answers.size() + s.human_equipment_choices.size() +
                       s.human_gift_scores.size() + s.human_gift_messages.size() +
                       s.tax_page_residents.size() + s.tax_page_selection.size() +
-                      s.tax_page_scroll.size();
+                      s.tax_page_scroll.size() + s.activity_pages_initialized.size() +
+                      s.activity_page_bindings.size() + s.activity_page_lists.size() +
+                      s.activity_page_display_humans.size() + s.activity_page_parents.size() +
+                      s.activity_page_answers.size() + s.activity_page_selections.size() +
+                      s.activity_page_scroll.size();
     r.sound_outputs = s.sound_requests.size();
     r.effects = s.visual_effects.size() + s.delayed_effects.size() + s.global_effects.size();
     r.continuations = s.scripts.continuations.size();

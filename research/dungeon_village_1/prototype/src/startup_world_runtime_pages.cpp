@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
+#include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_reference/world_gift_page.hpp"
 
 #include <algorithm>
@@ -51,6 +52,7 @@ bool consume_task_display(State &s, const ref::WorldScriptPage &page,
 ref::WorldGiftPageState gift(const State &s, const ref::WorldRuntimeAdapter<State> &adapter) {
     ref::WorldGiftPageState g;
     g.facility = adapter.facilities.read(s);
+    g.village_points = s.village_points;
     g.facility_order = s.scene.world.facility_order;
     for (const auto &d : s.rules->facilities) {
         const auto value = [](const auto &map, int id) {
@@ -69,6 +71,7 @@ bool write_gift(State &s, const ref::WorldGiftPageState &g,
                 const ref::WorldRuntimeAdapter<State> &adapter) {
     if (!adapter.facilities.write(s, g.facility))
         return false;
+    s.village_points = g.village_points;
     for (const auto &d : g.facility_unlocks) {
         s.facility_presence.at(d.first) = d.second.status;
         s.facility_unlock_notices[d.first] = d.second.pending_notice;
@@ -320,9 +323,14 @@ Error act_startup_world_runtime_award_page(State &state, std::uint64_t id,
 Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
-    if (top == state.scripts.pages.rend() || top->id != id ||
+    // 暂停冻结页回调；通用确认与专用管理动作遵守同一框架资格。
+    if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 51 &&
+        top->legacy_page <= 54)
+        return act_startup_world_village_activity_page(state, id,
+                                                       StartupVillageActivityAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return act_startup_world_runtime_deadline_page(state, id, 0).error;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
@@ -422,7 +430,7 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
             if (!result.candidate ||
                 !write_startup_world_runtime_scripts(next, result.candidate->state))
                 return Error::script_failed;
-        } else if (top->legacy_page == 94) {
+        } else if (top->legacy_page == 94 || top->legacy_page == 95) {
             const auto result = ref::prepare_world_gift_page(
                 gift(next, adapter), {id, next.page_counters[id], true}, adapter.catalog);
             if (!result.candidate || !write_gift(next, result.candidate->state, adapter))
@@ -468,6 +476,13 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 }
 
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
+    const auto activity = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+    if (activity != state.scripts.pages.rend() && activity->id == id &&
+        activity->kind == ref::WorldScriptPageKind::raw_page && activity->legacy_page >= 51 &&
+        activity->legacy_page <= 54)
+        return act_startup_world_village_activity_page(state, id,
+                                                       StartupVillageActivityAction::cancel);
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top != state.scripts.pages.rend() && top->id == id &&
@@ -602,6 +617,9 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 90 || top->legacy_page == 98))
         return update_startup_world_tax_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 51 &&
+        top->legacy_page <= 54)
+        return update_startup_world_village_activity_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
          top->legacy_page == 70 || top->legacy_page == 73))
@@ -704,7 +722,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         next.camera = result.candidate->camera;
         next.previous_camera = result.candidate->previous_camera;
         next.camera_velocity = result.candidate->velocity;
-    } else if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 94) {
+    } else if (top->kind == ref::WorldScriptPageKind::raw_page &&
+               (top->legacy_page == 94 || top->legacy_page == 95)) {
         const auto adapter = startup_world_runtime_adapter();
         const auto result = ref::prepare_world_gift_page(
             gift(next, adapter), {top->id, counter, false}, adapter.catalog);

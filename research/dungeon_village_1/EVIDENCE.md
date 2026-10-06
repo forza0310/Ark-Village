@@ -10,7 +10,7 @@
 | 版本 | `1.0.8`，版本代码 9 | 直接事实 |
 | 运行时形态 | 单个 Dalvik/Java 应用，不含原生库 | 直接事实 |
 | 签名/来源限制 | 包含汉化内容并使用 Android 调试签名证书 | 直接事实 |
-| 反编译器 | Homebrew 安装的 JADX 1.5.6 | 直接事实 |
+| 反编译器 | JADX 1.5.6；早期macOS使用Homebrew，本次Windows恢复使用官方发布CLI，详见下文 | 直接事实 |
 | 反编译规模 | 188 个类、1,953 个方法、295,672 条指令，并生成调用图 | 工具报告 |
 
 包身份和哈希将所有结论固定到这一输入。调试证书和汉化字符串意味着不能把该安装包描述为未经修改的
@@ -49,6 +49,23 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
 ## 共同世界接管与运行证据
+
+2026-10-06 Windows恢复：用户补回`maoxianmigongcun.apk`，SHA-256与本页固定输入完全相同。
+使用官方JADX1.5.6发布包（ZIP SHA-256 `545ea2be9c242511bc145755cf4bda2485ade42966e096f8b4d3da2a230e8974`），
+通过CLI类`jadx.cli.JadxCLI`恢复普通输出及单类fallback；工具、配置、临时文件和生成证据均留项目work，
+不写入产品素材或维护实现。普通参数为`--config none --show-bad-code --comments-level warn -j 2`，
+低层仍沿本节既有fallback参数。
+
+| Windows输出 | 原始字节SHA-256 | 换行为LF后的SHA-256 |
+| --- | --- | --- |
+| `work/world-page-fallback/GamePage.java` | `15d1f2232da54406cbbbf67bc059de9dace51a388672db4bff9f2110cb986fc6` | `e4b7eea7f8b2ecb40c0a49ba21cc8175c8177f9ac92222fa1d75b45193de2e56` |
+| `work/construction-render-fallback/MainScene.java` | `a64b18b56d600bfd6dffe7907cc56b701bcc18743ffc7d51dd3b2c0ba69cba84` | `cadcb21544111c305214c67f4e25724a17ada111b3c728f7ed20b9772ddf21bb` |
+
+两份LF哈希分别与已有GamePage／MainScene证据一致，差异仅平台换行；没有修改固定APK、原表或原图。
+raw95输入及领取分支由普通`b/g.java:6116`与GamePage低层21341起`L1e92→L1f84`交叉，
+恰1声音、40快进及领取后关闭得到支持；实际现金／点数／职业／用户flag／勋章／活动效果按小方法分别核对，
+维护合同见[周期账本](rules/ACCOUNTING.md)。候选建筑闪烁／两朝向／原21裁剪见[绘制映射](ui/PAGES.md)。
+本轮是固定输入静态研究，不认证原APK动态、OS输入或产品窗口已经符合。
 
 2026-10-05可持续世界补充低层单类`work/world-page-fallback/GamePage.java`（b.g）。
 JADX参数为`--config none --decompilation-mode fallback --no-res --log-level warn --single-class b.g --single-class-output <路径>`，

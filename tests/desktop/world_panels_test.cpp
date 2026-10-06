@@ -189,6 +189,58 @@ void world_panels() {
                   layout.confirm.y >= layout.panel.y + layout.panel.height,
               "Victory confirmation stays clear of artwork and footer at narrow and wide sizes");
     }
+    // raw95 renders the actual script payload. This view neither creates a reward nor uses
+    // a screenshot amount; the frozen reward consumer owns its seven distinct transactions.
+    auto reward_state = initial_world();
+    auto reward_rules = *reward_state.rules;
+    reward_rules.facilities.at(28).name = "设施奖";
+    reward_rules.jobs.at(0).name = "职业奖";
+    reward_rules.activities.at(4).name = "活动奖";
+    reward_state.rules = &reward_rules;
+    WorldScriptPage reward;
+    reward.id = 719;
+    reward.kind = WorldScriptPageKind::raw_page;
+    reward.legacy_page = 95;
+    reward.lifecycle = 1;
+    reward_state.scripts.pages.push_back(reward);
+    check(!ui::world_script_reward_view(reward_state, reward).initialized,
+          "Reward view does not initialize a fresh source page or create its counter");
+    struct RewardCase {
+        int kind, value;
+        const char *label;
+    };
+    for (const auto &sample :
+         {RewardCase{0, 237, "237G"}, RewardCase{1, 17, "村子点 17"}, RewardCase{3, 28, "设施奖"},
+          RewardCase{4, 0, "职业奖"}, RewardCase{9, 32, "配置更替"}, RewardCase{10, 1, "勋章"},
+          RewardCase{11, 4, "活动奖"}}) {
+        reward.legacy_r = sample.kind;
+        reward.legacy_s = sample.value;
+        reward.legacy_t =
+            991; // Preserve the other bound payload; UI never reinterprets it as money.
+        for (const int counter : {0, 1, 39, 40, 41}) {
+            reward_state.page_counters[reward.id] = counter;
+            const auto before = reward_state;
+            const auto view = ui::world_script_reward_view(reward_state, reward);
+            const auto again = ui::world_script_reward_view(reward_state, reward);
+            check(view.initialized && view.label == sample.label && view.page == reward.id &&
+                      view.kind == sample.kind && view.counter == counter &&
+                      view.ready_to_claim == (counter >= 40) && again.label == view.label,
+                  "Seven bound reward labels and original40 claim gate stay distinct under "
+                  "repeated reads");
+            check(reward_state.scene.world.world.ai.accounting.funds() ==
+                          before.scene.world.world.ai.accounting.funds() &&
+                      reward_state.village_points == before.village_points &&
+                      reward_state.medal_count == before.medal_count &&
+                      reward_state.sound_requests == before.sound_requests &&
+                      reward_state.scene.random.draws() == before.scene.random.draws() &&
+                      reward_state.scripts.pages.size() == before.scripts.pages.size(),
+                  "Reward presentation does not pay, request sound, draw random or retire the "
+                  "owning page");
+        }
+    }
+    reward.lifecycle = 4;
+    check(!ui::world_script_reward_view(reward_state, reward).initialized,
+          "Retired reward cannot expose another claim button");
     std::cout << "PASS world page layout contracts\n";
 }
 } // namespace ark::test

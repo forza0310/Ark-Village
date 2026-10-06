@@ -29,6 +29,11 @@ void world_award_ui() {
     page.legacy_page = 87;
     check(!ui::world_page_automatic(page) && !ui::world_page_regular_confirmation(page),
           "Annual page must await an explicit annual action rather than ordinary acknowledgement");
+    for (const int raw : {51, 52, 53, 54}) {
+        page.legacy_page = raw;
+        check(!ui::world_page_regular_confirmation(page),
+              "Village pages require their own action and cannot enter the generic ack path");
+    }
     page.legacy_page = 89;
     check(ui::world_page_regular_confirmation(page),
           "Introduction page must keep its source early-confirm and later-close inputs");

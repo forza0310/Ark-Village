@@ -18,6 +18,63 @@ bool secretary(const Page &page) {
 }
 } // namespace
 
+bool world_script_reward_page(const Page &page) {
+    return page.kind == Kind::raw_page && page.legacy_page == 95;
+}
+WorldScriptRewardView world_script_reward_view(const simulation::StartupWorldRuntimeState &state,
+                                               const Page &page) {
+    if (!state.rules || !world_script_reward_page(page))
+        throw std::invalid_argument("Script reward requires a bound source raw95 page");
+    WorldScriptRewardView out;
+    out.page = page.id;
+    out.kind = page.legacy_r;
+    const auto counter = state.page_counters.find(page.id);
+    if (page.lifecycle == 4 || counter == state.page_counters.end())
+        return out;
+    out.counter = counter->second;
+    out.ready_to_claim = out.counter >= 40;
+    switch (page.legacy_r) {
+    case 0:
+        out.label = std::to_string(page.legacy_s) + "G";
+        break;
+    case 1:
+        out.label = "村子点 " + std::to_string(page.legacy_s);
+        break;
+    case 3:
+        out.label = state.rules->facilities.at(page.legacy_s).name;
+        break;
+    case 4:
+        out.label = state.rules->jobs.at(page.legacy_s).name;
+        break;
+    case 9:
+        out.label = "配置更替";
+        break;
+    case 10:
+        out.label = "勋章";
+        break;
+    case 11:
+        out.label = state.rules->activities.at(page.legacy_s).name;
+        break;
+    default:
+        throw std::invalid_argument("Script reward kind is outside published raw95 payloads");
+    }
+    out.initialized = true;
+    return out;
+}
+void draw_world_script_reward(const WorldScriptRewardView &view, const WorldPageLayout &layout,
+                              const Skin &skin, bool enabled) {
+    skin.window(layout.panel, "获得奖励");
+    skin.content(layout.body);
+    if (view.initialized) {
+        const auto lines = wrap_plain_text(view.label, layout.body.width - 12,
+                                           [&](const auto &text) { return skin.text.width(text); });
+        for (std::size_t n = 0; n < lines.size() && (n + 1) * 16 <= layout.body.height; ++n)
+            skin.text.draw(lines[n], layout.body.x + 6, layout.body.y + 6 + n * 16, blue);
+    }
+    // Early input only requests the source's jump to40; only a later qualifying input claims.
+    skin.button(layout.confirm, view.ready_to_claim ? "领取" : "继续", enabled && view.initialized);
+}
+
 WorldDateView world_date_view(const simulation::rules::WorldCalendarState &calendar) {
     if (calendar.units < 0 || calendar.units >= 10800)
         throw std::invalid_argument("HUD requires the normalized source within-week clock");

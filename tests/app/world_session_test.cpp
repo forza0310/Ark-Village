@@ -552,5 +552,6 @@ int main() {
     tax_command_transactions();
     sound_output_sink();
     save_command_transactions();
+    village_command_transactions();
     std::cout << "PASS world session " << checks << " checks\n";
 }

@@ -33,7 +33,10 @@ WorldBuildGraphic world_build_graphic(const simulation::StartupDefinition &defin
     graphic.sprite = display->sprite;
     for (const auto &cell : footprint.cells) {
         const int x = cell.position.x - 1, y = cell.position.y;
-        graphic.frames.push_back({cell.fragment_index, {30.F * (x + y), 15.F * (x - y)}});
+        const int frame = definition.kind == 6
+                              ? (orientation == rules::FacilityOrientation::second ? 1 : 11)
+                              : cell.fragment_index;
+        graphic.frames.push_back({frame, {30.F * (x + y), 15.F * (x - y)}});
     }
     return graphic;
 }
@@ -102,6 +105,14 @@ WorldBuildPreview world_build_preview(const State &state, int id, rules::Positio
     }
     preview.graphic = world_build_graphic(*item, orientation);
     const auto &world = state.scene.world.world;
+    preview.cursor_in_map = position.x >= 0 && position.y >= 0 && position.x < world.map.width &&
+                            position.y < world.map.height;
+    preview.rotation_hint = (item->flags & 32) != 0;
+    // 2b479f6 PAGES: f103b is the admitted scene-update counter, not render frames/time.
+    // An in-map cursor may still display a building rejected by footprint/funds checks.
+    preview.graphic_visible = preview.cursor_in_map && state.scene.scene_state == 1 &&
+                              (state.build_mode == 0 || state.build_mode == 7) &&
+                              state.scene.scene_counter >= 0 && state.scene.scene_counter % 20 < 10;
     const auto footprint =
         rules::facility_footprint(static_cast<rules::FacilityShape>(item->shape), orientation,
                                   position, world.map.width, world.map.height);
@@ -163,15 +174,14 @@ void draw_world_build_preview(const WorldBuildPreview &preview, const WorldCamer
         DrawLineEx(bottom, left, zoom, color);
         DrawLineEx(left, top, zoom, color);
     }
-    if (!preview.cells.empty()) {
-        // Match the installed surface's raster anchor and complete source fragments. The
-        // exact original blink cadence is not delivered; drawing never advances its counter.
+    if (preview.graphic_visible) {
+        // Match the installed surface's raster anchor. The cursor's independent pulse does
+        // not become a building fade; the source building is either drawn normally or absent.
         const auto p = anchor(view, 30.F * (preview.anchor.x + preview.anchor.y),
                               15.F * (preview.anchor.y - preview.anchor.x) + 15, zoom);
-        const Color tint = preview.valid() ? Color{255, 255, 255, 190} : Color{255, 160, 160, 170};
         for (const auto &[frame, offset] : preview.graphic.frames)
             sprites.draw(preview.graphic.sprite, frame,
-                         {p.x + offset.x * zoom, p.y + offset.y * zoom}, tint,
+                         {p.x + offset.x * zoom, p.y + offset.y * zoom}, WHITE,
                          Sprites::Binding::map, zoom);
     }
 }

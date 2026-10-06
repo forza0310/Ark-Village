@@ -152,7 +152,8 @@ class WorldSession::Impl {
             else
                 menu_open = false;
         } else if (command.kind == WorldCommandKind::open_menu_tasks ||
-                   command.kind == WorldCommandKind::open_menu_build) {
+                   command.kind == WorldCommandKind::open_menu_build ||
+                   command.kind == WorldCommandKind::open_menu_village_activities) {
             if (!menu_open) {
                 result.runtime_error = RuntimeError::invalid_page;
             } else {

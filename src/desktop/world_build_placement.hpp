@@ -37,6 +37,7 @@ struct WorldBuildPreview {
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupBuildDenial denial{simulation::StartupBuildDenial::none};
     bool missing_source{};
+    bool cursor_in_map{}, graphic_visible{}, rotation_hint{};
     WorldBuildGraphic graphic;
     std::vector<simulation::rules::FootprintCell> cells;
     std::int64_t cost{};

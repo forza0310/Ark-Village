@@ -6,7 +6,7 @@
 
 [research入口](../research/README.md)及其维护规则、prototype、素材是产品唯一规格来源，输入身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)。产品侧只读维护交付，不读取 `research/work`、不执行逆向，也不把夹具、研究原型保护或跨版本截图数值当作原版规则。
 
-研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面，本阶段验收已通过。系统仅开放稳定主场景两栏手动存读档，村办/情报及其余未交付操作禁用；具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
+研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面。系统仅开放稳定主场景两栏手动存读档；本次2b479f6接续开放村办类型0/1/2及奖励95，情报和其余未交付操作仍禁用。具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
 
 ## 三层结构
 

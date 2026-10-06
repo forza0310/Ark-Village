@@ -57,18 +57,36 @@ void validate(const assets::SpritePart &p, int width, int height) {
         throw std::runtime_error("Unsupported sprite command or invalid image rectangle/flip");
 }
 int map_frame_index(const std::string &sprite, const assets::SpriteDefinition &data, int variant) {
-    // Desktop accommodation: resident plots and some houses publish only one frame.
-    // Keep their sole image for orientation1; this does not certify the APK's rotation
-    // appearance, invent a mirrored frame, or change the source geometry/instance.
-    if (data.frame_count == 1 && variant == 1)
-        return 0;
-    if (variant < 0 || variant >= data.frame_count)
+    // 2b479f6 PAGES: map layers outside their source frame range return null and do not draw.
+    // A logical second orientation must not become the single resource's frame0.
+    if (variant < 0)
         throw std::runtime_error("Map sprite frame outside source: " + sprite +
                                  " variant=" + std::to_string(variant) +
                                  " frames=" + std::to_string(data.frame_count));
     return variant;
 }
 } // namespace
+std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip) {
+    const auto destination = blit.destination;
+    if (destination.width <= 0 || destination.height <= 0 || clip.width <= 0 || clip.height <= 0)
+        return {};
+    const float left = std::max(destination.x, clip.x);
+    const float top = std::max(destination.y, clip.y);
+    const float right = std::min(destination.x + destination.width, clip.x + clip.width);
+    const float bottom = std::min(destination.y + destination.height, clip.y + clip.height);
+    if (right <= left || bottom <= top)
+        return {};
+    const float u0 = (left - destination.x) / destination.width;
+    const float u1 = (right - destination.x) / destination.width;
+    const float v0 = (top - destination.y) / destination.height;
+    const float v1 = (bottom - destination.y) / destination.height;
+    blit.source.x += std::abs(blit.source.width) * (blit.source.width < 0 ? 1 - u1 : u0);
+    blit.source.y += std::abs(blit.source.height) * (blit.source.height < 0 ? 1 - v1 : v0);
+    blit.source.width *= u1 - u0;
+    blit.source.height *= v1 - v0;
+    blit.destination = {left, top, right - left, bottom - top};
+    return blit;
+}
 Sprites::Sprites(std::filesystem::path root)
     : root_(std::move(root)), images_(image_index(root_)),
       common_images_(image_index(root_, "common")), common2_images_(image_index(root_, "common2")) {
@@ -86,6 +104,8 @@ int Sprites::map_frame(const std::string &sprite, int variant) {
 int Sprites::map_image_height(const std::string &sprite, int frame) {
     frame = map_frame(sprite, frame);
     const auto &data = definition(std::filesystem::path("image") / sprite);
+    if (frame >= data.frame_count)
+        return 0;
     int image = -1;
     for (const auto &layer : data.layers)
         for (const auto &part : layer.parts)
@@ -95,11 +115,12 @@ int Sprites::map_image_height(const std::string &sprite, int frame) {
                 image = part.image_index;
             }
     if (image < 0)
-        throw std::runtime_error("Tenant frame has no image");
+        return 0;
     return texture(root_ / "image" / images_.at(image)).height;
 }
 void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color tint,
-                   Binding binding, float scale, int image_override) {
+                   Binding binding, float scale, int image_override,
+                   std::optional<Rectangle> clip) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
     const char *group = binding == Binding::farmer || binding == Binding::human       ? "human"
@@ -109,8 +130,11 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                                                                                       : "image";
     const auto relative = std::filesystem::path(group) / sprite;
     const auto &sprite_data = definition(relative);
-    if (binding == Binding::map)
+    if (binding == Binding::map) {
         frame = map_frame_index(sprite, sprite_data, frame);
+        if (frame >= sprite_data.frame_count)
+            return;
+    }
     if (frame < 0 || frame >= sprite_data.frame_count)
         throw std::runtime_error("Source variant outside sprite frames: " + relative.string() +
                                  " variant=" + std::to_string(frame) +
@@ -130,13 +154,18 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                                                 : root_ / "image" / images_.at(p.image_index);
             const auto &image = texture(path);
             validate(p, image.width, image.height);
-            DrawTexturePro(image,
-                           {static_cast<float>(p.source_x), static_cast<float>(p.source_y),
-                            static_cast<float>(p.flip_x ? -p.width : p.width),
-                            static_cast<float>(p.flip_y ? -p.height : p.height)},
-                           {anchor.x + p.offset_x * scale, anchor.y + p.offset_y * scale,
-                            p.width * scale, p.height * scale},
-                           {0, 0}, 0, tint);
+            SpriteBlit blit{{static_cast<float>(p.source_x), static_cast<float>(p.source_y),
+                             static_cast<float>(p.flip_x ? -p.width : p.width),
+                             static_cast<float>(p.flip_y ? -p.height : p.height)},
+                            {anchor.x + p.offset_x * scale, anchor.y + p.offset_y * scale,
+                             p.width * scale, p.height * scale}};
+            if (clip) {
+                const auto cropped = clip_sprite_blit(blit, *clip);
+                if (!cropped)
+                    continue;
+                blit = *cropped;
+            }
+            DrawTexturePro(image, blit.source, blit.destination, {0, 0}, 0, tint);
         }
 }
 void Sprites::human_image(int image_id, Rectangle source, Rectangle destination) {
@@ -224,6 +253,8 @@ void Sprites::thumbnail(const std::string &sprite,
         const int frame = map_frame_index(sprite, data, variant);
         if (!std::isfinite(offset.x) || !std::isfinite(offset.y))
             throw std::runtime_error("Invalid thumbnail fragment");
+        if (frame >= data.frame_count)
+            continue;
         for (const auto &layer : data.layers)
             for (const auto &part : layer.parts)
                 if (part.frame == frame) {
@@ -235,8 +266,10 @@ void Sprites::thumbnail(const std::string &sprite,
                     found = true;
                 }
     }
-    if (!found || right <= left || bottom <= top)
-        throw std::runtime_error("Empty thumbnail frame");
+    if (!found)
+        return;
+    if (right <= left || bottom <= top)
+        throw std::runtime_error("Invalid thumbnail bounds");
     const float scale = std::min(box.width / (right - left), box.height / (bottom - top));
     for (const auto &[frame, offset] : frames)
         draw(sprite, frame,
@@ -400,8 +433,11 @@ void check_assets(const std::filesystem::path &root) {
     const auto validate_frame = [&](const std::filesystem::path &sprite_path, int frame,
                                     Sprites::Binding binding) {
         const auto sprite = assets::parse_legacy_seb(read_bytes(sprite_path));
-        if (binding == Sprites::Binding::map)
+        if (binding == Sprites::Binding::map) {
             frame = map_frame_index(sprite_path.filename().string(), sprite, frame);
+            if (frame >= sprite.frame_count)
+                return;
+        }
         if (frame < 0 || frame >= sprite.frame_count)
             throw std::runtime_error("Requested sprite frame invalid: " + sprite_path.string());
         for (const auto &layer : sprite.layers)

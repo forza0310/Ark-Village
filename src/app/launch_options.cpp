@@ -48,22 +48,24 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-award" && page != "world-task-team" && page != "world-task-result" &&
                 page != "world-task-recruitment" && page != "world-menu" &&
                 page != "world-building" && page != "world-build-preview" &&
-                page != "world-build-rotated" && page != "world-details" && page != "world-built" &&
-                page != "world-award-granted" && page != "world-task-added" &&
-                page != "world-level-up" && page != "world-month-income" &&
-                page != "world-month-defeats" && page != "world-task-victory" &&
-                page != "world-task-popularity" && page != "world-human" &&
-                page != "world-human-attributes" && page != "world-human-equipment" &&
-                page != "world-human-spells" && page != "world-professions" &&
-                page != "world-profession-preview" && page != "world-profession-cancel" &&
-                page != "world-profession-change" && page != "world-profession-complete" &&
-                page != "world-gift-cancel" && page != "world-gifts" &&
-                page != "world-gifts-armor" && page != "world-gifts-shield" &&
-                page != "world-gifts-accessory" && page != "world-gift-confirm" &&
-                page != "world-equipment-info" && page != "world-gift-result" &&
-                page != "world-equipment-change" && page != "world-tax" &&
-                page != "world-tax-collected" && page != "world-save" &&
-                page != "world-load-error" && page != "world-load")
+                page != "world-build-preview-hidden" && page != "world-build-rotated" &&
+                page != "world-details" && page != "world-built" && page != "world-award-granted" &&
+                page != "world-task-added" && page != "world-level-up" &&
+                page != "world-month-income" && page != "world-month-defeats" &&
+                page != "world-task-victory" && page != "world-task-popularity" &&
+                page != "world-human" && page != "world-human-attributes" &&
+                page != "world-human-equipment" && page != "world-human-spells" &&
+                page != "world-professions" && page != "world-profession-preview" &&
+                page != "world-profession-cancel" && page != "world-profession-change" &&
+                page != "world-profession-complete" && page != "world-gift-cancel" &&
+                page != "world-gifts" && page != "world-gifts-armor" &&
+                page != "world-gifts-shield" && page != "world-gifts-accessory" &&
+                page != "world-gift-confirm" && page != "world-equipment-info" &&
+                page != "world-gift-result" && page != "world-equipment-change" &&
+                page != "world-tax" && page != "world-tax-collected" && page != "world-village" &&
+                page != "world-village-start" && page != "world-village-results" &&
+                page != "world-reward95" && page != "world-save" && page != "world-load-error" &&
+                page != "world-load")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--save-dir") {

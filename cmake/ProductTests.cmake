@@ -31,6 +31,7 @@ endfunction()
 ark_test_executable(ark_world_session_tests
     SOURCES tests/app/world_session_test.cpp tests/app/world_task_commands_test.cpp
         tests/app/world_building_commands_test.cpp tests/app/world_save_commands_test.cpp
+        tests/app/world_management_commands_test.cpp
     LIBRARIES ark_world_session)
 ark_test_case(world_session ark_world_session_tests LABELS runtime TIMEOUT 30)
 ark_test_executable(ark_world_save_tests SOURCES tests/app/world_save_test.cpp
@@ -128,6 +129,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
             tests/desktop/world_building_test.cpp src/desktop/ui/world_panels.cpp
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
+            tests/desktop/world_village_activity_test.cpp src/desktop/ui/world_village_activity.cpp
             src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
@@ -138,7 +140,7 @@ if(ARK_BUILD_DESKTOP)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"
         ARK_TEST_OUTPUT="${PROJECT_SOURCE_DIR}/build/validation/human-management/fixtures")
-    foreach(case IN ITEMS world_panels world_award_ui world_crew_summary world_tasks world_menu world_building world_human world_tax)
+    foreach(case IN ITEMS world_panels world_award_ui world_crew_summary world_tasks world_menu world_building world_human world_tax world_village_activity)
         ark_test_case(${case} ark_world_ui_tests ARGS ${case} LABELS presentation)
     endforeach()
     ark_test_executable(ark_world_scene_tests

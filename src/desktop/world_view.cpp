@@ -114,6 +114,9 @@ std::string glyphs(const State &s) {
         result += h.name;
     for (const auto &job : s.rules->jobs)
         result += job.name;
+    for (const auto &activity : s.rules->activities)
+        result += activity.name + activity.detail + activity.description;
+    result += "村办活动开展活动进行中结果季度剩余此活动尚未接入完成获得奖励配置更替领取";
     for (const auto &t : s.rules->tasks)
         result += t.name + t.title;
     for (const auto &i : s.rules->items)
@@ -407,7 +410,18 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                       << " created=" << management_inspection.created.value_or(0)
                       << " definition=" << management_inspection.selection.value_or(-1)
                       << " awarded=" << management_inspection.awarded_human.value_or(-1)
-                      << " applied=" << management_inspection.award_applied << '\n';
+                      << " applied=" << management_inspection.award_applied
+                      << " activity=" << management_inspection.activity.value_or(-1)
+                      << " activity_started=" << management_inspection.activity_started
+                      << " activity_completed=" << management_inspection.activity_completed
+                      << " scene_counter=" << state.scene.scene_counter;
+            if (management_inspection.selection && management_inspection.preview_anchor)
+                std::cout << " ghost_visible="
+                          << world_build_preview(state, *management_inspection.selection,
+                                                 *management_inspection.preview_anchor,
+                                                 management_inspection.preview_orientation)
+                                 .graphic_visible;
+            std::cout << '\n';
         }
         if (transient)
             focus_inspection(state, options.inspect_page);
@@ -669,6 +683,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             case ui::WorldMenuIntent::tasks:
                 pending_menu = session.open_menu_tasks();
                 break;
+            case ui::WorldMenuIntent::village:
+                pending_menu = session.open_menu_village_activities();
+                break;
             case ui::WorldMenuIntent::system:
                 pending_menu = session.open_save_menu();
                 break;
@@ -810,6 +827,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             task_feedback.clear();
             pending_task = session.open_task_menu();
         }
+        if (main_scene && !scene_handled && current.scene.scene_state == 0 && !desired_pause &&
+            !failed && !pending_task && !pending_menu && IsKeyPressed(KEY_V))
+            pending_menu = session.open_village_activities();
         BeginTextureMode(canvas.texture);
         ClearBackground(Color{145, 211, 247, 255});
         BeginMode2D(raster);

@@ -103,16 +103,21 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
     view.initialized = true;
     return view;
 }
-WorldBuildingLayout world_building_layout(Extent extent) {
+WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Building page requires the supported logical viewport");
     const float width = std::min(310.F, extent.width - 16.F);
-    const float height = std::min(250.F, extent.height - 68.F);
+    // Keep five source rows at ordinary desktop heights; a shorter window scrolls the
+    // remaining rows. Other management pages retain their existing responsive geometry.
+    const float height =
+        raw == 21 ? std::min(300.F, extent.height - 58.F) : std::min(250.F, extent.height - 68.F);
     WorldBuildingLayout layout;
+    layout.row_height = raw == 21 ? 37.F : 38.F;
     layout.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &p = layout.panel;
-    layout.body = {p.x + 12, p.y + 30, width - 24, height - 75};
-    layout.rows = {p.x + 12, p.y + 59, width - 24, height - 108};
+    layout.body = {p.x + 12, p.y + 30, width - 24, height - (raw == 21 ? 61.F : 75.F)};
+    layout.rows = {p.x + 12, p.y + (raw == 21 ? 56.F : 59.F), width - 24,
+                   height - (raw == 21 ? 87.F : 108.F)};
     for (int tab = 0; tab < 3; ++tab)
         layout.tabs[tab] = {layout.body.x + tab * layout.body.width / 3, p.y + 30,
                             layout.body.width / 3, 22};
@@ -123,7 +128,15 @@ WorldBuildingLayout world_building_layout(Extent extent) {
     return layout;
 }
 int world_building_visible_rows(const WorldBuildingLayout &layout) {
-    return std::max(1, static_cast<int>(layout.rows.height / layout.row_height));
+    return std::clamp(static_cast<int>(layout.rows.height / layout.row_height), 1, 5);
+}
+WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int visible_row) {
+    if (visible_row < 0 || visible_row >= world_building_visible_rows(layout))
+        throw std::invalid_argument("Building icon row is outside the visible catalogue");
+    // 2b479f6 PAGES: raw21 uses a 64x32 crop with a +(2,10) source anchor, never a fitted image.
+    const Rectangle clip{layout.rows.x + 2, layout.rows.y + visible_row * layout.row_height + 2, 64,
+                         32};
+    return {clip, {clip.x + 2, clip.y + 10}};
 }
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
                                                         const WorldBuildingLayout &layout,
@@ -222,9 +235,13 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                 const auto &item = list[first + row];
                 float label_x = box.x + 4;
                 if (!item.graphic.frames.empty()) {
-                    const Rectangle icon{box.x + 2, box.y + 2, 58, layout.row_height - 4};
-                    skin.sprites.thumbnail(item.graphic.sprite, item.graphic.frames, icon);
-                    label_x = box.x + 65;
+                    const auto icon = world_building_icon(layout, row);
+                    DrawRectangleRec(icon.clip, icon.background);
+                    for (const auto &[frame, offset] : item.graphic.frames)
+                        skin.sprites.draw(item.graphic.sprite, frame,
+                                          {icon.anchor.x + offset.x, icon.anchor.y + offset.y},
+                                          WHITE, Sprites::Binding::map, 1, -1, icon.clip);
+                    label_x = box.x + 72;
                 }
                 fitted(skin, item.name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
                 skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,

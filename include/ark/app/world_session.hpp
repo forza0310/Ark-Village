@@ -6,6 +6,7 @@
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
+#include "ark/simulation/startup_world_village_activity.hpp"
 
 #include <chrono>
 #include <memory>
@@ -29,6 +30,9 @@ enum class WorldCommandKind {
     open_human,
     human_action,
     tax_action,
+    open_menu_village_activities,
+    open_village_activities,
+    village_activity_action,
     facility_action,
     residence_action,
     open_task_control_menu,
@@ -100,6 +104,8 @@ struct WorldCommand {
     simulation::rules::CharacterId actor{};
     simulation::StartupHumanPageAction human_action{simulation::StartupHumanPageAction::confirm};
     simulation::StartupWorldTaxAction tax_action{simulation::StartupWorldTaxAction::confirm};
+    simulation::StartupVillageActivityAction village_activity_action{
+        simulation::StartupVillageActivityAction::confirm};
     simulation::rules::Position anchor{};
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupFacilityPageAction facility_action{
@@ -158,6 +164,11 @@ class WorldSession {
                             int selection = 0);
     std::uint64_t act_tax(std::uint64_t page, simulation::StartupWorldTaxAction action,
                           int selection = 0);
+    std::uint64_t open_menu_village_activities();
+    std::uint64_t open_village_activities();
+    std::uint64_t act_village_activity(std::uint64_t page,
+                                       simulation::StartupVillageActivityAction action,
+                                       int selection = 0);
     std::uint64_t act_facility(std::uint64_t page, simulation::StartupFacilityPageAction action);
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,

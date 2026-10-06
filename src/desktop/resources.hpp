@@ -14,6 +14,12 @@ namespace ark::desktop {
 // Explicit --font wins; packaged fonts resolve beside the executable's assets, not the cwd.
 std::filesystem::path desktop_font_path(const std::filesystem::path &assets,
                                         const std::string &override_path);
+struct SpriteBlit {
+    Rectangle source, destination;
+};
+// Crop in logical drawing coordinates, preserving source flips. Canvas/DPI transforms
+// subsequently apply once to the destination, without a nested physical-pixel scissor.
+std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip);
 class Sprites {
   public:
     enum class Binding { map, farmer, secretary, common, common2, window, human, monster };
@@ -22,7 +28,8 @@ class Sprites {
     Sprites(const Sprites &) = delete;
     Sprites &operator=(const Sprites &) = delete;
     void draw(const std::string &sprite, int frame, Vector2 anchor, Color tint = WHITE,
-              Binding binding = Binding::map, float scale = 1, int image_override = -1);
+              Binding binding = Binding::map, float scale = 1, int image_override = -1,
+              std::optional<Rectangle> clip = {});
     // Source actor SEB indices and profession/body image indices are independent namespaces.
     void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor,
                float scale = 1);
@@ -40,9 +47,9 @@ class Sprites {
     void thumbnail(const std::string &sprite, const std::vector<std::pair<int, Vector2>> &frames,
                    Rectangle box, Color tint = WHITE);
     // Dungeon labels use the bound tenant PNG height, not a SEB frame bounding box.
-    // Reject ambiguous multi-image frames instead of guessing an art height.
+    // Missing map frames have no image height; ambiguous multi-image frames are rejected.
     int map_image_height(const std::string &sprite, int frame);
-    // Resolve a logical map fragment without loading textures or changing world orientation.
+    // Preserve a nonnegative logical map request; a missing frame draws nothing, never frame0.
     int map_frame(const std::string &sprite, int variant);
 
   private:

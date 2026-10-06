@@ -37,6 +37,7 @@ void world_menu() {
                 ui::world_menu_input(layout, true, true, true, false, selected, input);
             check(selected == row && (row == 0   ? action == Intent::build
                                       : row == 1 ? action == Intent::tasks
+                                      : row == 2 ? action == Intent::village
                                       : row == 4 ? action == Intent::system
                                                  : !action.has_value()),
                   "Original five row hit areas select faithfully; construction, adventure and "

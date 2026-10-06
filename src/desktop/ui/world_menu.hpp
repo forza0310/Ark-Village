@@ -7,7 +7,7 @@
 
 namespace ark::desktop::ui {
 class Skin;
-enum class WorldMenuIntent { open, close, tasks, build, system };
+enum class WorldMenuIntent { open, close, tasks, build, village, system };
 struct WorldMenuInput {
     std::optional<Vector2> click;
     bool toggle{}, escape{}, up{}, down{}, enter{};

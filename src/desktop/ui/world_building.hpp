@@ -39,6 +39,11 @@ struct WorldBuildingLayout {
 struct WorldBuildingSelection {
     int tab{}, selected{}, first_row{};
 };
+struct WorldBuildingIcon {
+    Rectangle clip;
+    Vector2 anchor;
+    Color background{190, 242, 230, 255};
+};
 struct WorldBuildingInput {
     std::optional<Vector2> click;
     bool enter{}, escape{}, up{}, down{}, left{}, right{};
@@ -63,8 +68,9 @@ struct WorldBuildingIntent {
 bool world_building_page(const simulation::rules::WorldScriptPage &page);
 WorldBuildingView world_building_view(const simulation::StartupWorldRuntimeState &state,
                                       const simulation::rules::WorldScriptPage &page);
-WorldBuildingLayout world_building_layout(Extent extent);
+WorldBuildingLayout world_building_layout(Extent extent, int raw = 21);
 int world_building_visible_rows(const WorldBuildingLayout &layout);
+WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int visible_row);
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
                                                         const WorldBuildingLayout &layout,
                                                         WorldBuildingSelection &selection,

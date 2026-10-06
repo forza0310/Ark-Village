@@ -48,6 +48,27 @@ bool valid_tax_action(simulation::StartupWorldTaxAction action) {
     return action == Action::previous || action == Action::next || action == Action::select ||
            action == Action::confirm;
 }
+bool valid_village_action(simulation::StartupVillageActivityAction action) {
+    using Action = simulation::StartupVillageActivityAction;
+    return action == Action::previous || action == Action::next || action == Action::select ||
+           action == Action::confirm || action == Action::cancel;
+}
+bool unsupported_village_choice(const WorldState &state, const WorldCommand &command) {
+    using Action = simulation::StartupVillageActivityAction;
+    if (command.village_activity_action != Action::confirm)
+        return false;
+    const auto view = simulation::inspect_startup_world_village_activity_page(state, command.page);
+    if (!view || view->raw != 51 || view->selection < 0 ||
+        view->selection >= static_cast<int>(view->entries.size()))
+        return false; // A damaged initialized payload still reaches the source failure path.
+    const int id = view->entries[view->selection];
+    const auto definition =
+        std::find_if(state.rules->activities.begin(), state.rules->activities.end(),
+                     [id](const auto &v) { return v.identity == id; });
+    // Only type0/1/2 have published activity consumers. A stale UI choice cannot turn an
+    // intentionally disabled feature into a fatal missing-source error for the whole world.
+    return definition != state.rules->activities.end() && definition->parameters[2] > 2;
+}
 bool human_page(const WorldState &state, std::uint64_t id) {
     const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                    [](const auto &p) { return p.lifecycle != 4; });
@@ -108,8 +129,8 @@ bool is_decision_page(const simulation::rules::WorldScriptPage *page) {
         return false;
     const auto raw = page->legacy_page;
     return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || raw == 48 ||
-           (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 || raw == 73 || raw == 74 ||
-           raw == 80 || raw == 83 || raw == 90 || raw == 98;
+           (raw >= 51 && raw <= 54) || (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 ||
+           raw == 73 || raw == 74 || raw == 80 || raw == 83 || raw == 90 || raw == 98;
 }
 void apply_world_decision(WorldState &state, const WorldCommand &command,
                           WorldCommandResult &result) {
@@ -126,6 +147,19 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         break;
     case Kind::open_task_control_menu:
         result.runtime_error = simulation::open_startup_world_runtime_task_control_menu(state);
+        break;
+    case Kind::open_menu_village_activities:
+    case Kind::open_village_activities:
+        result.runtime_error = simulation::open_startup_world_village_activities(state);
+        break;
+    case Kind::village_activity_action:
+        result.runtime_error =
+            valid_village_action(command.village_activity_action) &&
+                    state.activity_pages_initialized.count(command.page) &&
+                    !unsupported_village_choice(state, command)
+                ? simulation::act_startup_world_village_activity_page(
+                      state, command.page, command.village_activity_action, command.selection)
+                : Error::invalid_page;
         break;
     case Kind::open_menu_build:
     case Kind::open_build_menu:
@@ -327,6 +361,26 @@ std::uint64_t WorldSession::act_tax(std::uint64_t page, simulation::StartupWorld
     command.kind = WorldCommandKind::tax_action;
     command.page = page;
     command.tax_action = action;
+    command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_menu_village_activities() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_menu_village_activities;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_village_activities() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_village_activities;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_village_activity(std::uint64_t page,
+                                                 simulation::StartupVillageActivityAction action,
+                                                 int selection) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::village_activity_action;
+    command.page = page;
+    command.village_activity_action = action;
     command.selection = selection;
     return submit(command);
 }

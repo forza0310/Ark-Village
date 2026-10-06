@@ -36,6 +36,8 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
             }
     if (activate && selected < 2 && can_manage)
         return selected == 0 ? WorldMenuIntent::build : WorldMenuIntent::tasks;
+    if (activate && selected == 2 && can_manage)
+        return WorldMenuIntent::village;
     if (activate && selected == 4)
         return WorldMenuIntent::system;
     return std::nullopt;
@@ -51,7 +53,7 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
         skin.sprites.draw("wnd_menuIcon.seb", icons[i], {row.x + 4, row.y + 5}, WHITE,
                           Sprites::Binding::common);
         skin.text.draw(names[i], row.x + 26, row.y + 8,
-                       ((i < 2 && can_manage) || (i == 4 && can_system))
+                       ((i < 3 && can_manage) || (i == 4 && can_system))
                            ? (selected == i ? ink : WHITE)
                            : Color{182, 174, 147, 255});
         if (i == selected)

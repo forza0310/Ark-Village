@@ -3,6 +3,7 @@
 // Explicit window diagnostics only: actions use the maintained source consumer and real
 // new-world funds/catalogue. This driver neither edits rule values nor fabricates elapsed time.
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "world_task_inspection.hpp"
 #include <string>
 
 namespace ark::desktop {
@@ -14,6 +15,9 @@ struct WorldManagementInspection {
     simulation::rules::FacilityOrientation preview_orientation{
         simulation::rules::FacilityOrientation::first};
     bool award_applied{};
+    std::optional<int> activity;
+    bool activity_started{}, activity_completed{};
+    WorldTaskInspection task_policy;
 };
 bool management_inspection_mode(const std::string &mode);
 // Called once before the bounded advance loop, so initial raw21/raw74 can be inspected

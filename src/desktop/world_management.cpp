@@ -60,6 +60,24 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     const auto point = click ? mouse : std::nullopt;
     const bool enter = IsKeyPressed(KEY_ENTER), escape = IsKeyPressed(KEY_ESCAPE);
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_village_activity_page(page)) {
+        const auto view = ui::world_village_activity_view(state, page);
+        const auto layout = ui::world_village_activity_layout(extent);
+        const ui::WorldVillageActivityInput input{
+            point,  up,
+            down,   enter,
+            escape, hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
+        if (const auto intent = ui::world_village_activity_input(view, layout, input, blocked))
+            queued(session.act_village_activity(page.id, intent->action, intent->selection));
+        return true;
+    }
+    if (ui::world_script_reward_page(page)) {
+        const auto view = ui::world_script_reward_view(state, page);
+        if (!blocked && view.initialized &&
+            (enter || hit(point, ui::world_page_layout(page, extent).confirm)))
+            queued(session.ack_page(page.id));
+        return true;
+    }
     if (ui::world_human_page(page)) {
         const auto view = ui::world_human_view(state, page);
         const auto layout = ui::world_human_layout(extent);
@@ -94,7 +112,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_building_page(page)) {
         const auto view = ui::world_building_view(state, page);
-        const auto layout = ui::world_building_layout(extent);
+        const auto layout = ui::world_building_layout(extent, page.legacy_page);
         ui::WorldBuildingInput input{
             point,
             enter,
@@ -172,7 +190,14 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_human_page(page)) {
+    if (ui::world_village_activity_page(page)) {
+        ui::draw_world_village_activity(ui::world_village_activity_view(state, page),
+                                        ui::world_village_activity_layout(extent), skin, enabled,
+                                        feedback_);
+    } else if (ui::world_script_reward_page(page)) {
+        ui::draw_world_script_reward(ui::world_script_reward_view(state, page),
+                                     ui::world_page_layout(page, extent), skin, enabled);
+    } else if (ui::world_human_page(page)) {
         ui::draw_world_human(ui::world_human_view(state, page), ui::world_human_layout(extent),
                              skin, enabled, feedback_);
     } else if (ui::world_tax_page(page)) {
@@ -180,8 +205,8 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
                            enabled);
     } else if (ui::world_building_page(page)) {
         ui::draw_world_building(ui::world_building_view(state, page),
-                                ui::world_building_layout(extent), skin, building_, enabled,
-                                feedback_);
+                                ui::world_building_layout(extent, page.legacy_page), skin,
+                                building_, enabled, feedback_);
     } else if (page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
                page.legacy_page == 87) {
         const auto view = ui::world_award_view(state, page.id);
@@ -220,6 +245,11 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
             queued(session.cancel_build(*definition_));
             break;
         case WorldBuildAction::rotate:
+            if (!world_build_preview(state, *definition_,
+                                     anchor_.value_or(simulation::rules::Position{0, 0}),
+                                     orientation_)
+                     .rotation_hint)
+                return true;
             orientation_ = orientation_ == simulation::rules::FacilityOrientation::first
                                ? simulation::rules::FacilityOrientation::second
                                : simulation::rules::FacilityOrientation::first;
@@ -301,7 +331,11 @@ void WorldManagement::draw_placement(const State &state, const WorldCameraView &
                           ? world_pick_cell(state, view, *mouse, zoom)
                           : std::nullopt;
     bool valid{};
-    std::string caption = "点击选择位置，R旋转，Enter建设";
+    const bool rotation =
+        world_build_preview(state, *state.build_definition,
+                            cell.value_or(simulation::rules::Position{0, 0}), orientation_)
+            .rotation_hint;
+    std::string caption = rotation ? "点击选择位置，R旋转，Enter建设" : "点击选择位置，Enter建设";
     if (cell) {
         const auto preview =
             world_build_preview(state, *state.build_definition, *cell, orientation_);
@@ -312,7 +346,8 @@ void WorldManagement::draw_placement(const State &state, const WorldCameraView &
                    feedback_.empty() && valid ? ui::ink : MAROON, 10);
     const auto controls = world_build_controls(extent);
     skin.button(controls.cancel, "返回", enabled && !pending());
-    skin.button(controls.rotate, "旋转", enabled && !pending());
+    if (rotation)
+        skin.button(controls.rotate, "旋转", enabled && !pending());
     skin.button(controls.confirm, "建设", enabled && !pending() && valid && anchor_.has_value());
 }
 } // namespace ark::desktop

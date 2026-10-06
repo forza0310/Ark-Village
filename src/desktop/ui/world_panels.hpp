@@ -8,6 +8,15 @@
 
 namespace ark::desktop::ui {
 class Skin;
+struct WorldScriptRewardView {
+    std::uint64_t page{};
+    int kind{}, counter{};
+    bool initialized{}, ready_to_claim{};
+    std::string label;
+};
+bool world_script_reward_page(const simulation::rules::WorldScriptPage &page);
+WorldScriptRewardView world_script_reward_view(const simulation::StartupWorldRuntimeState &state,
+                                               const simulation::rules::WorldScriptPage &page);
 // STARTUP and the archived HUD identify the calendar subperiod as the displayed week.
 // Read the canonical date; rendering never advances or normalizes its counters.
 struct WorldDateView {
@@ -22,6 +31,8 @@ struct WorldPageLayout {
     Rectangle body; // Text inset, shared by wrapping, scrolling and drawing.
     Rectangle confirm;
 };
+void draw_world_script_reward(const WorldScriptRewardView &view, const WorldPageLayout &layout,
+                              const Skin &skin, bool enabled);
 WorldPageLayout world_page_layout(const simulation::rules::WorldScriptPage &page, Extent extent);
 void draw_world_page_chrome(const simulation::rules::WorldScriptPage &page,
                             const WorldPageLayout &layout, const Skin &skin, int paragraph_index);

@@ -19,13 +19,22 @@ void world_building() {
     auto state = initial_world();
     auto catalogue = *state.rules;
     state.rules = &catalogue;
-    // Real asset metadata covers the single-frame plot that the inn-only artwork examples
-    // missed. Preview and installed surfaces both resolve through this CPU-only boundary.
+    // 2b479f6 PAGES "fixed APK candidate buildings": missing map layers return null.
+    // This supersedes the earlier documented desktop frame1->frame0 accommodation.
     desktop::Sprites sprites(ARK_TEST_ASSETS);
     check(sprites.map_frame("t_resident00.seb", 0) == 0 &&
-              sprites.map_frame("t_resident00.seb", 1) == 0 &&
-              sprites.map_frame("t_myhome03.seb", 1) == 0,
-          "Single-frame resident/house artwork remains visible in either logical orientation");
+              sprites.map_frame("t_resident00.seb", 1) == 1 &&
+              sprites.map_frame("t_myhome03.seb", 1) == 1,
+          "Single-frame resident/house requests keep orientation1 instead of remapping to frame0");
+    for (const auto &absent : {std::pair{"t_resident00.seb", 1}, std::pair{"t_resident00.seb", 2},
+                               std::pair{"tenant10.seb", 2}, std::pair{"t_inn00.seb", 4}}) {
+        // No GPU context exists: attempting the old fallback image would load a texture and
+        // fail. Missing maps must return before texture access in each actual draw path.
+        sprites.draw(absent.first, absent.second, {});
+        sprites.thumbnail(absent.first, absent.second, {0, 0, 64, 32});
+        check(sprites.map_image_height(absent.first, absent.second) == 0,
+              "Missing map frames have no drawable image or height");
+    }
     for (const auto &item : catalogue.facilities) {
         if (!(item.flags & 4) && item.kind != 12)
             continue;
@@ -35,21 +44,50 @@ void world_building() {
              {rules::FacilityOrientation::first, rules::FacilityOrientation::second}) {
             const auto graphic = desktop::world_build_graphic(item, orientation);
             for (const auto &part : graphic.frames)
-                check(sprites.map_frame(graphic.sprite, part.first) >= 0,
-                      "Every buildable/house fragment resolves against shipped assets: " +
+                check(sprites.map_frame(graphic.sprite, part.first) == part.first,
+                      "Buildable/house fragments preserve source requests without clamping: " +
                           std::to_string(item.id));
         }
     }
-    for (const auto &invalid : {std::pair{"t_resident00.seb", -1}, std::pair{"t_resident00.seb", 2},
-                                std::pair{"tenant10.seb", 2}, std::pair{"t_inn00.seb", 4}}) {
+    for (const auto &invalid : {std::pair{"t_resident00.seb", -1}, std::pair{"tenant10.seb", -1},
+                                std::pair{"t_inn00.seb", -1}}) {
         bool rejected = false;
         try {
             (void)sprites.map_frame(invalid.first, invalid.second);
         } catch (const std::runtime_error &) {
             rejected = true;
         }
-        check(rejected, "Frame accommodation must not clamp corrupt or multi-fragment indices");
+        check(rejected, "Negative map requests remain invalid");
     }
+    bool rejected_non_map{};
+    try {
+        sprites.draw("chara_hishoko01.seb", 999, {}, WHITE, desktop::Sprites::Binding::secretary);
+    } catch (const std::runtime_error &) {
+        rejected_non_map = true;
+    }
+    check(rejected_non_map, "Missing-map behavior does not weaken non-map source frame checks");
+    // Crop actual source pixels rather than rescaling the building to its catalogue box.
+    for (const auto &[flip_x, flip_y] : {std::pair{false, false}, std::pair{true, false},
+                                         std::pair{false, true}, std::pair{true, true}}) {
+        const auto clipped = desktop::clip_sprite_blit(
+            {{10, 20, flip_x ? -80.F : 80.F, flip_y ? -40.F : 40.F}, {100, 200, 80, 40}},
+            {120, 205, 30, 20});
+        check(clipped && clipped->source.x == (flip_x ? 40 : 30) &&
+                  clipped->source.y == (flip_y ? 35 : 25) &&
+                  clipped->source.width == (flip_x ? -30 : 30) &&
+                  clipped->source.height == (flip_y ? -20 : 20) && clipped->destination.x == 120 &&
+                  clipped->destination.y == 205 && clipped->destination.width == 30 &&
+                  clipped->destination.height == 20,
+              "Logical clipping preserves the selected source pixels and both sprite flips");
+    }
+    check(!desktop::clip_sprite_blit({{10, 20, 80, 40}, {100, 200, 80, 40}}, {180, 200, 8, 8}) &&
+              !desktop::clip_sprite_blit({{10, 20, 80, 40}, {100, 200, 80, 40}}, {110, 205, 0, 8}),
+          "Disjoint and empty catalogue crops produce no sprite blit");
+    const auto scaled_crop =
+        desktop::clip_sprite_blit({{10, 20, 80, 40}, {100, 200, 160, 80}}, {120, 210, 60, 40});
+    check(scaled_crop && scaled_crop->source.x == 20 && scaled_crop->source.y == 25 &&
+              scaled_crop->source.width == 30 && scaled_crop->source.height == 20,
+          "Clipping respects an existing draw scale without fitting or recentering the sprite");
     rules::WorldScriptPage page;
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 21;
@@ -111,9 +149,35 @@ void world_building() {
                           "Authored orientation frames are preserved: " + context);
         }
     }
-    for (const auto extent :
-         {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
+    const auto road = std::find_if(catalogue.facilities.begin(), catalogue.facilities.end(),
+                                   [](const auto &item) { return item.id == 18; });
+    check(road != catalogue.facilities.end() && road->kind == 6,
+          "Published road fixture keeps its source definition and kind");
+    const auto road_first = desktop::world_build_graphic(*road, rules::FacilityOrientation::first);
+    const auto road_second =
+        desktop::world_build_graphic(*road, rules::FacilityOrientation::second);
+    check(road_first.frames.size() == 1 && road_first.frames[0].first == 11 &&
+              road_second.frames.size() == 1 && road_second.frames[0].first == 1,
+          "Source road candidate uses masks11/1 rather than regular building fragment0/1");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
+                              desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const auto layout = ui::world_building_layout(extent);
+        check(layout.row_height == 37 && ui::world_building_visible_rows(layout) <= 5 &&
+                  (extent.height < 360 || ui::world_building_visible_rows(layout) == 5),
+              "Raw21 uses source row pitch and five rows when the desktop height permits");
+        check(layout.panel.y >= 24 && layout.panel.y + layout.panel.height <= extent.height - 29 &&
+                  layout.rows.y + ui::world_building_visible_rows(layout) * layout.row_height <=
+                      layout.cancel.y,
+              "Catalogue clears the HUD and playback footer at the actual widescreen canvas size");
+        for (int row = 0; row < ui::world_building_visible_rows(layout); ++row) {
+            const auto icon = ui::world_building_icon(layout, row);
+            check(icon.clip.width == 64 && icon.clip.height == 32 &&
+                      icon.clip.y == layout.rows.y + row * 37 + 2 &&
+                      icon.anchor.x == icon.clip.x + 2 && icon.anchor.y == icon.clip.y + 10 &&
+                      icon.background.r == 190 && icon.background.g == 242 &&
+                      icon.background.b == 230,
+                  "Raw21 preserves the published crop, source anchor and background");
+        }
         check(layout.panel.x >= 0 && layout.panel.y >= 0 &&
                   layout.panel.x + layout.panel.width <= extent.width &&
                   layout.panel.y + layout.panel.height <= extent.height &&
@@ -283,8 +347,51 @@ void world_building() {
     catalogue.facilities.at(2).shape = 2;
     catalogue.facilities.at(2).economy.construction_cost = 0;
     catalogue.fences.at(state.fence_level) = {{{0, map.height - 1}, {map.width - 1, 0}}};
+    state.scene.scene_state = 1;
+    state.build_mode = 0;
     const auto draws = state.scene.random.draws();
     const auto funds = state.scene.world.world.ai.accounting.funds();
+    for (const auto &[counter, visible] :
+         {std::pair{0, true}, std::pair{9, true}, std::pair{10, false}, std::pair{19, false},
+          std::pair{20, true}}) {
+        state.scene.scene_counter = counter;
+        for (const bool paused : {false, true}) {
+            state.scene.framework_paused = paused;
+            for (const int speed : {0, 1}) {
+                state.scene.speed_setting = speed;
+                for (int repaint = 0; repaint < 2; ++repaint) {
+                    const auto phase = desktop::world_build_preview(
+                        state, definition, {8, 8}, rules::FacilityOrientation::first);
+                    check(phase.cursor_in_map && phase.graphic_visible == visible &&
+                              state.scene.scene_counter == counter,
+                          "Candidate blink reads logical counter without advancing on repaint: " +
+                              std::to_string(counter));
+                }
+            }
+        }
+    }
+    state.scene.framework_paused = false;
+    state.scene.speed_setting = 0;
+    state.scene.scene_counter = 0;
+    for (const auto &[mode, visible] :
+         {std::pair{0, true}, std::pair{1, false}, std::pair{6, false}, std::pair{7, true}}) {
+        state.build_mode = mode;
+        check(desktop::world_build_preview(state, definition, {8, 8},
+                                           rules::FacilityOrientation::first)
+                      .graphic_visible == visible,
+              "Normal/moving placement alone selects the source candidate building: mode=" +
+                  std::to_string(mode));
+    }
+    state.build_mode = 0;
+    const auto original_flags = catalogue.facilities.at(2).flags;
+    for (const bool enabled : {false, true}) {
+        catalogue.facilities.at(2).flags = enabled ? original_flags | 32 : original_flags & ~32;
+        check(desktop::world_build_preview(state, definition, {8, 8},
+                                           rules::FacilityOrientation::first)
+                      .rotation_hint == enabled,
+              "Rotation prompt follows source definition bit32");
+    }
+    catalogue.facilities.at(2).flags = original_flags;
     auto preview =
         desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
     check(preview.valid() && preview.cells.size() == 4 && preview.cells[0].position.x == 7 &&
@@ -304,15 +411,31 @@ void world_building() {
     map.cells.at(9 * map.width + 7).legacy_state = 10;
     preview =
         desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
-    check(preview.denial == Denial::occupied && preview.graphic.frames.size() == 4,
+    check(preview.denial == Denial::occupied && preview.graphic.frames.size() == 4 &&
+              preview.graphic_visible,
           "Invalid placement keeps its full ghost artwork while rejecting an occupied outer cell");
     map.cells.at(9 * map.width + 7).legacy_state = 0;
+    catalogue.facilities.at(2).economy.construction_cost = 100000000;
+    preview =
+        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    check(preview.denial == Denial::insufficient_funds && preview.graphic_visible,
+          "Unaffordable source candidate remains visible during the visible logical phase");
+    catalogue.facilities.at(2).economy.construction_cost = 0;
     check(desktop::world_build_preview(state, definition, {1, 8}, rules::FacilityOrientation::first)
                       .denial == Denial::outside_town &&
               desktop::world_build_preview(state, definition, {0, 8},
                                            rules::FacilityOrientation::first)
                       .denial == Denial::outside_map,
           "Whole footprint distinguishes town fence crossing from map crossing");
+    preview =
+        desktop::world_build_preview(state, definition, {0, 8}, rules::FacilityOrientation::first);
+    check(preview.denial == Denial::outside_map && preview.cells.empty() && preview.cursor_in_map &&
+              preview.graphic_visible,
+          "A footprint crossing the map edge does not hide an in-map cursor's candidate");
+    preview =
+        desktop::world_build_preview(state, definition, {-1, 8}, rules::FacilityOrientation::first);
+    check(!preview.cursor_in_map && !preview.graphic_visible,
+          "An out-of-map cursor hides the candidate independently of placement eligibility");
     check(state.scene.random.draws() == draws &&
               state.scene.world.world.ai.accounting.funds() == funds && !state.build_definition,
           "Preview never spends, consumes random, installs facilities or begins construction mode");

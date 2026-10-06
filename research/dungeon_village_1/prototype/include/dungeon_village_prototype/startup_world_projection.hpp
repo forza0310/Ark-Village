@@ -16,13 +16,14 @@ struct StartupWorldJob {
     std::string name;
     std::uint32_t flags{};
     int initial_status{};
-    int script_extra{};      // 原h.f41f，脚本profession提示载荷。
-    int sort_order{};        // 原h.d，目录交换排序，不是职业ID。
-    int gift_profile{};      // 原h.h，装备评价矩阵的行。
-    int change_points{};     // 原h.s，消耗村子点数，不是金币。
-    int required_medals{};   // 原h.t，人物E，不是当前全局勋章库存。
-    int mastery_attribute{}; // 原h.v，>=10表示魔法，<6为满级属性奖励。
-    int mastery_value{};     // 原h.w。
+    int script_extra{};             // 原h.f41f，脚本profession提示载荷。
+    int sort_order{};               // 原h.d，目录交换排序，不是职业ID。
+    int gift_profile{};             // 原h.h，装备评价矩阵的行。
+    int change_points{};            // 原h.s，消耗村子点数，不是金币。
+    int required_medals{};          // 原h.t，人物E，不是当前全局勋章库存。
+    int mastery_attribute{};        // 原h.v，>=10表示魔法，<6为满级属性奖励。
+    int mastery_value{};            // 原h.w。
+    std::vector<int> item_affinity; // 原h.u，job索引17，普通道具分类评价。
 };
 struct StartupWorldHuman {
     int identity{};
@@ -59,8 +60,15 @@ struct StartupWorldItem {
     int identity{};
     ref::ObjectCatalogRecord initial;
     ref::CalendarMaintenanceShopItem maintenance;
-    int difficulty{};
+    int difficulty{}; // 原g.j，任务奖励难度与普通道具评价共用。
     std::string name;
+    int category{};                             // 原g.e，item索引3。
+    int effect{};                               // 原g.f，属性／回复／学习分支。
+    int spell{};                                // 原g.h，学习魔法槽。
+    int attribute_amount{};                     // 原g.m，人物永久extra增量。
+    int recovery{};                             // 原g.w，实际恢复量。
+    std::array<int, 3> facility_improvements{}; // 原g.k，设施三项增量。
+    int commerce_price{};                       // 原g.u，商会金币价格，出售向零除2。
 };
 struct StartupWorldTask {
     ref::TaskCreationDefinition factory;
@@ -75,13 +83,13 @@ struct StartupWorldTask {
 struct StartupWorldFacilityInitial {
     std::uint32_t flags{};
     int status{};
-    int shared_n{};                             // 原新对象N=0；存档读取不能与原表字段混合。
-    int construction_limit{};                   // 原o.o bit64分支：定义24为1，其余280，否则0。
-    int capacity{};                             // 原o.s，第12列，另于施工m.x。
-    bool pending_notice{};                      // 原a()后r：bit2。
-    bool initial_available{};                   // 原a()后O：bit1。
+    int shared_n{};           // 原新对象N=0；存档读取不能与原表字段混合。
+    int construction_limit{}; // 原o.o bit64分支：定义24为1，其余280，否则0。
+    int capacity{};           // 原o.s，第12列，同时为85的村子点报价，另于施工m.x。
+    bool pending_notice{};    // 原a()后r：bit2。
+    bool initial_available{}; // 原a()后O：bit1。
     ref::WorldScriptProgram completion_program; // 原o.E，注册2000+原定义下标。
-    std::vector<int> monthly_pattern;           // 原o.F，第34列。
+    std::vector<int> item_affinities;           // 原o.F，第34列，道具适配，不是月经营模式。
 };
 struct StartupWorldScriptSources {
     std::string events;

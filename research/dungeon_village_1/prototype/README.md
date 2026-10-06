@@ -5,6 +5,10 @@
 本包独立于产品主构建，只修改研究代码。
 证据与缺口集中在[新局报告](../rules/STARTUP.md)，不以截图或演示初值补齐未知原版规则。
 
+本批普通道具／商会／道路与编辑消费者已接，Release标准、五项长测与三个有界研究窗口已通过；新聚合Release入口123项标准及迁移窗口也已通过。
+`9897d64`对应此前村办、95和自然晋级基线，
+本批新增路径不能沿用其424次CTest或窗口结果宣称通过；独立检查进度见[验证入口](../VERIFICATION.md)。
+
 ## 职责与依赖
 
 | 文件/目标 | 职责 |
@@ -27,7 +31,10 @@
 | [期限与返回](src/startup_world_runtime_deadline.cpp) | 页33续费/中止演出、栈外原关闭页引用及真正主场景返回；当前报价/现金/任务清理/地图恢复整轮提交 |
 | [只读世界表现](include/dungeon_village_prototype/startup_world_visuals.hpp)、[实现](src/startup_world_visuals.cpp) | 当前职业/性别头像、旅馆前四占用引用与flag32过滤、169/170计时/HP切换；不推进服务、不持有第二份世界 |
 | [共同世界建设](include/dungeon_village_prototype/startup_world_building.hpp)、[实现](src/startup_world_building.cpp) | 当前普通目录/报价/全占地准入与实例初始化、raw74稳定绑定、募集24→入住80→住宅25/96、共享等级81；刷新/账本/脚本整轮回滚，不复用旧建设世界 |
-| [人物管理](include/dungeon_village_prototype/startup_world_human.hpp)、[实现](src/startup_world_human.cpp) | 当前四页／装备73、61/62预览与拒绝、63中点及最终提交、64/65延迟赠礼、66/68结果、70大师奖励；只维护同一Owner的共享进度和页附属记录 |
+| [共同世界编辑](include/dungeon_village_prototype/startup_world_editing.hpp)、[实现](src/startup_world_editing.cpp) | 道路起终点／撤除／移动选择与落点、原模式返回、全占地刷新及旧实例退休；住宅解除绑定及H重建资格仍归同一Owner，重建仍付原800G |
+| [设施道具](include/dungeon_village_prototype/startup_world_facility_items.hpp)、[实现](src/startup_world_facility_items.cpp) | 74→75库存目录、75消费与实例门槛／原程序、76首次共享改良／49换页、77结果确认；各同定义实例独立重算价格，载荷随页退休 |
+| [商会](include/dungeon_village_prototype/startup_world_commerce.hpp)、[实现](src/startup_world_commerce.cpp) | 83入口、84真实买卖／86反馈、85点数购买与93确认领取；金币、村子点数、商会A库存、人物可用z库存和建筑H次数分开；85定义预览只读共享定义 |
+| [人物管理](include/dungeon_village_prototype/startup_world_human.hpp)、[实现](src/startup_world_human.cpp) | 当前四页／装备73、61/62预览与拒绝、63中点及最终提交、64/65装备延迟赠礼、64普通道具及66/68/69结果／回复、70大师奖励；只维护同一Owner的共享进度和页附属记录 |
 | [税收](include/dungeon_village_prototype/startup_world_tax.hpp)、[实现](src/startup_world_tax.cpp) | 90居民引用／实时税额和98自动其它收入、清全人物F/G；确认与入账分开，无额外随机 |
 | [村办活动](include/dungeon_village_prototype/startup_world_village_activity.hpp)、[实现](src/startup_world_village_activity.cpp) | 51—54初始化／只读投影／动作／更新，类型0／1／2及两次有放回抽签；同一Owner提交资源、人物、脚本和页面，严格拒绝失配载荷并随真实页退休辅助记录 |
 | dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
@@ -41,26 +48,53 @@
 
 ## 构建与运行
 
-构建需要C++17、CMake、Node、raylib和pkg-config。从仓库根目录执行：
+构建需要C++17、CMake、Node、动态raylib和pkg-config。日常从仓库根目录使用[研究聚合入口](../CMakeLists.txt)：
 
 ```sh
-cmake -S research/dungeon_village_1/prototype -B research/dungeon_village_1/work/prototype-debug-llvm -DCMAKE_BUILD_TYPE=Debug
-cmake --build research/dungeon_village_1/work/prototype-debug-llvm --parallel 2
-ctest --test-dir research/dungeon_village_1/work/prototype-debug-llvm --output-on-failure
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --paused
+cmake -S research/dungeon_village_1 -B research/dungeon_village_1/work/release -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+cmake --build research/dungeon_village_1/work/release --parallel 2
+ctest --test-dir research/dungeon_village_1/work/release -LE long-world --output-on-failure
+research/dungeon_village_1/work/release/bin/dungeon_village_prototype --paused
 ```
 
-本机沿用[现有CLion/LLVM工具链](../verification/BASELINE.md)。暂停开始用`--paused`，
+同一依赖图只构建一份reference领域库；prototype包含的87项领域测试不重复注册，
+加上31项原型及5项工具测试，共123项唯一标准测试。长测按本批风险显式启用，以`-L long-world`单独执行。
+三包独立CMake入口保留用于依赖边界检查，但日常只保留`work/release`，不常驻重复缓存。
+Debug仅在定位问题时将上述构建目录改为`work/debug`、配置改为`-DCMAKE_BUILD_TYPE=Debug`，
+可只构建所需target；完成后收齐进程并清理，不再每批要求三包各跑Debug与Release。
+
+本机工具链路径见[环境基线](../verification/BASELINE.md)。暂停开始用`--paused`，
 无窗口新局自检为`--check`，有界运行用`--frames N`，`--screenshot`仅用于有界截图。
 默认字体是本机`/System/Library/Fonts/Supplemental/Arial Unicode.ttf`，未复制或分发；
 其他环境用`--font /绝对路径/中文字体.ttf`指定字体，缺少字形明确失败，不悄悄画方框。
 
+[共同构建策略](../cmake/ResearchLibraries.cmake)让本地Debug与Release都使用共享项目库和动态raylib。
+同一顶层构建的程序及DLL放`bin/`、导入库放`lib/`；三包共用该位置。
+不同构建树不共写同一个DLL目录；按需Debug使用自己构建的匹配库，不混用Release DLL。
+素材复制使用真实可执行目录，故仍在`bin/assets`及`bin/data`，CTest按target路径运行，不依赖当前工作目录找DLL。
+Windows运行库仅从目标LLVM-MinGW导入库定位并验证PE架构；不会取宿主x64编译器旁的同名DLL来运行i686程序。
+raylib只从PkgConfig的`RAYLIB_PREFIX`寻找DLL，静态`.a`或缺DLL会明确失败，不回退静态链接。
+
+本机i686动态raylib安装在`research/dungeon_village_1/work/local-tools/raylib-shared`。
+PowerShell配置聚合入口前显式设置其pkg-config路径。若在已有静态缓存内切换，先结束对应进程，
+再清除旧链接与pkg-config缓存值；不要把旧包级构建树直接改为不同的CMake源目录：
+
+```powershell
+$env:PKG_CONFIG_PATH = (Resolve-Path research/dungeon_village_1/work/local-tools/raylib-shared/lib/pkgconfig).Path
+cmake -S research/dungeon_village_1 -B research/dungeon_village_1/work/release -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_EXE_LINKER_FLAGS= '-URAYLIB_*' '-Upkgcfg_lib_RAYLIB_*' -U__pkg_config_checked_RAYLIB
+```
+
+Release日常目录采用同一动态策略；只有独立向玩家分发的Release制品才在另一个构建目录显式设置
+`BUILD_SHARED_LIBS=OFF`及匹配的静态raylib／运行库选项，不因配置名是Release自动静态。
+聚合入口123项标准及迁移窗口通过，旧六目录已清理；
+实际测试与缓存体积见[验证入口](../VERIFICATION.md)，旧回归不能替代当前验收。
+
 ## 共同世界入口
 
 ```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --world
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --world --check
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --world --inspect-page world-month --frames 12 --screenshot research/dungeon_village_1/work/world-month.png
+research/dungeon_village_1/work/release/bin/dungeon_village_prototype --world
+research/dungeon_village_1/work/release/bin/dungeon_village_prototype --world --check
+research/dungeon_village_1/work/release/bin/dungeon_village_prototype --world --inspect-page world-month --frames 12 --screenshot research/dungeon_village_1/work/world-month.png
 ```
 
 `--world`从真实空人物新局开始：介绍、自动到访、89提示/镜头、自主设施选择/移动/使用/退出，
@@ -77,18 +111,26 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 按X打开raw4主动中止菜单：真实raw1是非页保存答案，恢复父页后才执行中止/地图恢复、
 80/首次162、完成量请求-10及通知26。期限页33仍走独立费用/返回链，不把主动中止伪装成期限收费。
 
-主场景建设按钮/B进入当前普通目录：三分类包括募集24，不包括道路/私人住宅；报价、扣款与全占地来自同一Owner。
+主场景建设按钮/B进入当前目录：三分类按实际开放状态包含道路、撤除和已解锁移动；住宅重建需有真实H建设资格。
+普通设施、募集24的报价、扣款与全占地来自同一Owner。
 确认放置可连续建设，Esc退出不退款；施工仅在回到正常场景后推进。点击现有设施开raw74，普通两页箭头/返回已接。
 募集的入住按钮进入raw80，以人物原费用替换为住宅25并绑定同一定义；建成后奖励/96/67由真实消费者提交。
 已绑定住宅点击转到原居民raw60，不误开普通设施74或创建人物；正常场景也可直接点击可见冒险者查看详情，不控制移动。
-有升级提示时先开81，第一次初始化真正升共享等级；40/55分段确认最终才清提示。道路/移动/撤除尚未接此入口。
+有升级提示时先开81，第一次初始化真正升共享等级；40/55分段确认最终才清提示。
+道路先定起点再终点，沿原较长轴选线、等长取纵轴；Esc先退回起点模式，再返回场景。
+移动要求真实用户flag32，选中现有设施后定落点，重建维护身份但保留原数字ID／序号及来源快照字段，原移动费300G。
+撤除不退款；住宅释放居民绑定并返还H建设资格，后续重建仍支付原800G造价，沿实际目录、原居民状态与施工恢复绑定。
+H不是造价减免，不因返还资格重复收取募集入住费，也不伪造一次新入住奖励。
 精确规则见[共同世界建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同)。
 
 人物详情分概况／六属性／四槽装备／四魔法。职业名单与性别／当前开放／村子点／人物勋章取真实共享定义，
 确认62扣点并奖励后进入63；第55计数改职业，满197确认才重算经营及清当前经验L和待发N，保留O。
 装备65只回传答案，64实际恢复后重新报价、扣款或减免费份数、奖励及装配；取消不支付。
 礼物不按职业拒绝装备，同装备仍奖励并设置重选锁6；当前人物HP与详情最大HP分开。
-四槽之外的普通道具赠礼尚未接，不用装备入口冒充全部原礼物类别；精确合同见[人物管理](../rules/CHARACTERS.md)。
+64第五类已接普通道具：正库存目录、职业适配／品质评价、奖励与消耗、属性结果69及学习／回复分支。
+普通道具直接确认使用，区别于装备65回传答案；66的实际恢复沿原计数推进，不通过绘制或重复确认多次回血。
+设施74第一详情页进入75，道具先消费，再于76首次初始化改良定义；77的49快进／55关闭不重复奖励，也不提供取消领取。
+精确合同见[人物管理](../rules/CHARACTERS.md)与[设施道具](../rules/FACILITY_EFFECTS.md)。
 税收90确认只关列表，事件123之后的98自动结算；按原月份3／年份>0，不以自然住宅建成就立即收税。
 研究窗口未实现音频，明确领取并丢弃一次性声音请求；其他适配可通过`take_sound_requests()`按原序领取一次。
 世界完整检查点仍是研究审计历史，不是文件存档；原介质／分区／不保存的随机和页面见[存档专题](../rules/PERSISTENCE.md)。
@@ -103,7 +145,7 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 当前仅维护类型0／1／2；类型3地图扩张及其余依赖明确拒绝，不显示虚假成功。
 所有修改由唯一Owner在私有候选内组合，缺绑定／名单／计数、越界选择、错误父页或晚期随机／脚本失败
 拒绝整轮，不留下部分扣款、随机或实体修改；页面附属记录随真实页退休。具体来源见[村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置)。
-这些是简化原型入口与维护合同；本批全套、窗口及自然晋级验收已收口，最新结果见[当前验证](../VERIFICATION.md)。
+这些是简化原型入口与维护合同；本批新增普通工具与编辑路径已通过Release标准、五项长测与三个有界窗口，新聚合Release入口123项标准及迁移窗口也已通过，结果见[当前验证](../VERIFICATION.md)。
 
 `--world --inspect-page task-team --frames 12 --screenshot 路径`从真实新局自然等候任务，
 提供明确的测试玩家接受输入，停在真实队伍页作有界窗口检查，不注入任务、人物或资金。
@@ -112,8 +154,10 @@ Enter或确认点击逐段处理当前页；暂停同时冻结世界和栈顶页
 旅馆两阶段头像按原walk01帧0裁剪；通知底栏读取唯一队列的前两项，不由绘制FPS推进。
 通知当前皮肤为研究简化显示，恢复特效未接；精确合同及独立边界见[页面映射](../ui/PAGES.md)。
 月报读取唯一Owner已提交的快照，不重复扣维护费；页面30/31/32关闭不再次发奖励。
-成果后的事件消息页11保留40计数快进/关闭门槛；首次战斗成功延迟出现的商店追加页83用Esc或取消返回，
-确认购买84/85尚未接入，不用取消替代购买。人气奖励终点页97等待实际页面更新自动清R/返回，
+成果后的事件消息页11保留40计数快进/关闭门槛；首次战斗成功延迟出现的商会83可买入、出售或购买设施。
+主场景S／商会按钮仍受真实开放flag16限制。84逐件交易、86反馈自动返回；85扣村子点数，93满40确认才增加H建设次数并开放定义，
+领取不是立即把设施放进地图。85设施定义预览已通过本批Release合同验收，只读共享定义，不套用实例邻接、月度统计或设施道具操作。
+人气奖励终点页97等待实际页面更新自动清R/返回，
 不接受玩家确认，不重复奖励。页面只是当前原脚本链，不能直接清整栈恢复世界。
 人物解锁页59首轮音效5，满70次页面更新后确认才提高到访优先值并返回；不快进或直接创建人物。
 `world-active`/`world-month`检查先在同一真实世界逐轮确认页面，到达三人物/月报时再开画面；
@@ -134,14 +178,14 @@ raw49条件页不执行晋级；raw89保留40快进门槛。
 raw48已接真正晋级/条件说明/返回，raw50三段计数庆典不以早确认跳过；raw49仍只查看条件。
 
 ```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_world_continuous_tests 12 1 0
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_world_continuous_tests 6 20261005 1
+research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests 12 1 0
+research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests 6 20261005 1
 ```
 
-配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`登记四个可重复长期CTest：`world_year`、
-`world_speed_seed`、`natural_housing`、`natural_progression`（名称均带`dungeon_village_prototype.`前缀），
+配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`登记五个可重复长期CTest：`world_year`、
+`world_speed_seed`、`natural_housing`、`natural_progression`、`natural_tools`（名称均带`dungeon_village_prototype.`前缀），
 以`ctest --test-dir <构建目录> -L long-world --output-on-failure`执行；3600秒仅是墙钟保护，不参与原规则。
-当前跨年、多种子、插桩与六套实际结果见[验证](../VERIFICATION.md)，不从单条路径推导全部状态可达或无限期认证。
+当前跨年、多种子、插桩与构建实际结果见[验证](../VERIFICATION.md)，不从单条路径推导全部状态可达或无限期认证。
 
 同套件保留显式`natural_housing [seed [speed]]`模式：原募集建设、合法短剑赠礼提高满足度、74/80入住、
 共同施工、年度真正授予、90/98及收税后继续一个月；不注入人物／现金／满足度／日期或奖励。
@@ -151,18 +195,28 @@ research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_startup_wor
 赠礼只走60→64→65→父64，读原报价、库存、C奖励和锁；保留入住费，不手工改C。它是明确玩家策略，不代表无操作也会同年入住。
 第一星还要求人气300、最高月收入5000、两次村办活动和指定设施35；活动操作是自然晋级的依赖，不能靠自动等待代替。
 
-新增显式`natural_progression [seed [speed]]`模式，默认`1 0`：从真实空人物新局建设35面包房，
+显式`natural_progression [seed [speed]]`模式，默认`1 0`：从真实空人物新局建设35面包房，
 实际开展可支付活动和任务，点击自然设施升级提示，经48申请第一星；再完成新解锁16绘画展览，
 继续到后续月份并检查设施收入增加。策略只调用真实Session玩家命令，不注入资金、点数、人气、F、日期或rank，
 任务结束后留一个完整自然月正常营业，人气达到300后不再接新任务；晋级后为活动16保留其原价点数。
 这是显式验收玩家策略，不是原版自动行为；最高月收入不包含95的其它收入现金奖励。
-不改变上述住宅模式和原自然任务黄金轨迹。此入口已实现，自然晋级是否通过须看[当前验证](../VERIFICATION.md)。
+本批在原晋级／活动16／后续收入完成断言之后追加编辑尾段：真实flag32已解锁才铺设并撤除单格道路，
+移动并撤除一个正常kind2设施，检查原数字身份保留与新旧维护引用退休，再经营到下一月份并检查新增收入。
+不重复新建第二条从新局到晋级的长测，不改变住宅模式和原自然任务黄金轨迹；本批Release长测已通过，原frame36385前缀保持。
+编辑消耗道路10G及移动300G，不抽随机，旧实例6→新实例15→撤除；终点frame38282、23388G／322697抽，共154284项检查。
 180000框架调用与3600秒是验收保护；每轮检查真实页载荷／实体引用及声音消费，输出资源峰值和检查点规模。
 现金流水、任务历史和完整内存检查点允许合法增长，有限轨迹不能证明永久有界。
 
 ```sh
-research/dungeon_village_1/work/prototype-release-llvm/dungeon_village_startup_world_continuous_tests natural_progression 1 0
+research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests natural_progression 1 0
+research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests natural_tools 1 0
 ```
+
+新增`natural_tools`从真实初始库存开始：自然人物到访后赠送普通道具，再给实际包子铺使用设施道具，
+真实任务自然成功及商会补货后买入一件、售回同件，再经营一个完整自然月份。
+它只发Session玩家命令，不注入钱／人物／库存／日期／flags；与任务黄金、住宅黄金及晋级编辑链各自验收。
+新模式沿180000调用／3600秒保护，每轮检查页载荷／设施归属与输出消费，并报告资源峰值和退休情况。
+本批Release长测已通过：真实补货后买入400G、售回200G，终点frame16263、10770G／106409抽，共81340项检查；详见[当前验证](../VERIFICATION.md)。
 
 [自然任务流程测试](tests/startup_world_task_flow_test.cpp)接受可选`种子 速度`（默认`1 1`），
 从真实空人物新局等待任务，按真实现金选择可支付任务，显式接受、等待征集并确认出发。
@@ -173,8 +227,8 @@ research/dungeon_village_1/work/prototype-release-llvm/dungeon_village_startup_w
 150000框架调用和3600秒是验收保护，不是原任务期限或游戏时钟；普通两月检查墙钟保护为1800秒。
 并行构建导致CPU限流时先减少研究长测并发，不能改日期目标、删断言或补成功来缩短检查。
 
-完整目录/共同AI模式与旧保护建设切片分开：本入口已有上述普通建设/管理，但尚未提供道路/移动/撤除、
-普通道具和商店购买消费者、完整主菜单和原UI皮肤；
+完整目录/共同AI模式与旧保护建设切片分开：本入口已接上述普通道具、商会与编辑消费者，
+85定义预览已通过本批Release合同验收，仅读共享定义且没有实例邻接；完整主菜单、原UI皮肤与正常文件存取仍有边界；
 不能从真实AI连续运行推出全部菜单、音频、图层桶溢出或跨版本截图视觉等价。
 图标/文字、逻辑240×320及窗体480×640都是表现适配，验收边界见[当前验证](../VERIFICATION.md)。
 
@@ -194,7 +248,7 @@ Windows使用本机构建的`.exe`并以`--font`指定可用中文字体；有�
 页面截图检查不模拟鼠标，必须指定有界帧数：
 
 ```sh
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype --inspect-page shops --frames 8 --screenshot research/dungeon_village_1/work/startup-shops.png
+research/dungeon_village_1/work/release/bin/dungeon_village_prototype --inspect-page shops --frames 8 --screenshot research/dungeon_village_1/work/startup-shops.png
 ```
 
 支持`roads`、`shops`、`food`、`arrival`、`visitor`；它们明确安排检查状态，不能作为正常新局运行轨迹。

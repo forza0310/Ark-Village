@@ -32,9 +32,7 @@ FacilityItemDefinition cafe() {
     return result;
 }
 
-ImprovementItemDefinition milk() {
-    return {1, 5, {30, 4, 0}};
-}
+ImprovementItemDefinition milk() { return {1, 5, {30, 4, 0}}; }
 
 FacilityItemCandidate prepare(const FacilityItemDefinition &facility,
                               const ImprovementItemDefinition &item,
@@ -77,6 +75,21 @@ void fixed_records_and_affinities() {
     check(negative.visible_deltas == std::array<std::int64_t, 3>{-6, -10, -6} &&
               negative.after.instance_attributes[1] == -4,
           "signed fixture does not invent a lower attribute cap");
+}
+
+void separate_improvement_phase() {
+    FacilityEconomyInput input;
+    input.definition_improvements = {0, 0, 0, 7};
+    const auto improved = prepare_facility_improvement(cafe(), milk(), input);
+    check(improved.candidate && improved.error == FacilityItemError::none &&
+              improved.candidate->definition_improvements ==
+                  std::array<std::int32_t, 4>{60, 8, 0, 7} &&
+              improved.candidate->visible_deltas == std::array<std::int64_t, 3>{60, 8, 0},
+          "raw76 improvement remains available after previous raw75 exhausted inventory");
+    input.definition_improvements[0] = std::numeric_limits<int>::max();
+    const auto refused = prepare_facility_improvement(cafe(), milk(), input);
+    check(!refused.candidate && refused.error == FacilityItemError::numeric_overflow,
+          "separate raw76 rejects overflowing shared improvement without partial candidate");
 }
 
 void shared_definition_and_caps() {
@@ -272,6 +285,7 @@ void random_exact_scaling() {
 
 int main() {
     fixed_records_and_affinities();
+    separate_improvement_phase();
     shared_definition_and_caps();
     failures_and_limits();
     random_exact_scaling();

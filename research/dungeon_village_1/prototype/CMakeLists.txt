@@ -2,10 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 
 project(dungeon_village_prototype LANGUAGES CXX)
 
+include(../cmake/ResearchLibraries.cmake)
+
 include(CTest)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib)
+dungeon_village_raylib_runtime()
 
 add_subdirectory(../example domain)
 
@@ -23,6 +26,7 @@ add_custom_command(OUTPUT "${STARTUP_CPP}"
             ../data/startup/TABLES.json ../data/original/tenantData.txt VERBATIM)
 add_library(dungeon_village_startup_model src/startup.cpp src/startup_map.cpp src/road_render.cpp
                                         src/startup_ai.cpp src/facility_projection.cpp src/loop_pacing.cpp "${STARTUP_CPP}")
+dungeon_village_library(dungeon_village_startup_model)
 target_include_directories(dungeon_village_startup_model PUBLIC include)
 target_link_libraries(dungeon_village_startup_model PUBLIC dungeon_village_reference)
 target_compile_features(dungeon_village_startup_model PUBLIC cxx_std_17)
@@ -51,7 +55,9 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_deadline.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
     src/startup_world_visuals.cpp src/startup_world_building.cpp
-    src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp "${STARTUP_WORLD_CPP}")
+    src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp
+    src/startup_world_facility_items.cpp src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
+dungeon_village_library(dungeon_village_startup_world)
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)
 target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
@@ -78,6 +84,8 @@ set_tests_properties(dungeon_village_prototype.startup_world_continuous PROPERTI
 set_tests_properties(dungeon_village_prototype.startup_world_task_flow PROPERTIES TIMEOUT 3600)
 option(DUNGEON_VILLAGE_LONG_WORLD_TESTS "启用跨年与不同种子倍速的有界世界验收" OFF)
 if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
+    add_test(NAME dungeon_village_prototype.natural_tools
+        COMMAND dungeon_village_startup_world_continuous_tests natural_tools 1 0)
     add_test(NAME dungeon_village_prototype.natural_progression
         COMMAND dungeon_village_startup_world_continuous_tests natural_progression 1 0)
     add_test(NAME dungeon_village_prototype.natural_housing
@@ -87,6 +95,7 @@ if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
     add_test(NAME dungeon_village_prototype.world_speed_seed
         COMMAND dungeon_village_startup_world_continuous_tests 6 20261005 1)
     set_tests_properties(dungeon_village_prototype.world_year
+                         dungeon_village_prototype.natural_tools
                          dungeon_village_prototype.world_speed_seed
                          dungeon_village_prototype.natural_housing
                          dungeon_village_prototype.natural_progression
@@ -133,6 +142,7 @@ add_test(NAME dungeon_village_prototype.startup_data
             "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt")
 
 add_library(dungeon_village_prototype_model src/village.cpp src/catalog.cpp ../tools/src/table.cpp)
+dungeon_village_library(dungeon_village_prototype_model)
 target_include_directories(dungeon_village_prototype_model PUBLIC include PRIVATE ../tools/include)
 target_link_libraries(dungeon_village_prototype_model PUBLIC dungeon_village_reference)
 target_compile_features(dungeon_village_prototype_model PUBLIC cxx_std_17)

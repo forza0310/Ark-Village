@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/world_map_refresh.hpp"
 #include "dungeon_village_reference/world_residence.hpp"
@@ -120,6 +121,7 @@ int free_number(const std::set<int> &used) {
 }
 } // namespace
 bool initialize_startup_world_neighbours(State &s) { return refresh_map(s, true); }
+bool refresh_startup_world_map(State &s, bool notices) { return refresh_map(s, false, notices); }
 bool refresh_startup_world_profession_economy(State &s) {
     if (!s.rules)
         return false;
@@ -162,7 +164,12 @@ std::optional<std::array<std::vector<int>, 3>> startup_world_build_catalog(const
         if (presence == s.facility_presence.end())
             return {};
         // 页21使用p与bit4，不用O（商店新设施标志）或截图目录。
-        if (presence->second != 0 && (d.flags & 4) && d.kind != 12 && d.kind != 6) {
+        const auto remaining = s.facility_free_builds.find(d.id);
+        if (remaining == s.facility_free_builds.end() || remaining->second < 0 ||
+            remaining->second > 99)
+            return {};
+        if (presence->second != 0 && (d.flags & 4) && (d.kind != 12 || remaining->second > 0) &&
+            d.kind != 6) {
             if (d.tab < 0 || d.tab > 2)
                 return {};
             groups[d.tab].push_back(d.id);
@@ -205,6 +212,8 @@ int startup_world_facility_page_count(const State &s, const ref::WorldScriptPage
     const auto *d = definition(s, page.legacy_f);
     if (!d || page.legacy_page != 74)
         return 0;
+    if (s.facility_definition_page_bindings.count(page.id))
+        return 1;
     return d->kind != 2 && d->kind != 12 && d->detail != 1 && d->detail != 4 && d->detail != 5 &&
                    d->detail != 6
                ? 2
@@ -359,6 +368,7 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     next.facility_difficulties[id] = 0;
     next.facility_flags[id] = 0;
     next.facility_month_age[id] = 0;
+    next.facility_item_confirmations[id] = 0;
     next.facility_monthly_cash[id] = {};
     next.facility_details[id] = {};
     next.facility_details[id].construction_limit =
@@ -402,11 +412,99 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     s = std::move(next);
     return {Error::none, StartupBuildDenial::none, id};
 }
+bool retire_startup_world_facility(State &s, std::uint64_t old_id) {
+    const auto found = s.scene.world.world.facilities.find(old_id);
+    if (found == s.scene.world.world.facilities.end())
+        return false;
+    const auto anchor = found->second.placement.anchor;
+    const auto footprint = ref::facility_footprint(
+        found->second.placement.shape, found->second.placement.orientation, anchor,
+        s.scene.world.world.map.width, s.scene.world.world.map.height);
+    if (footprint.error != ref::GeometryError::none)
+        return false;
+    auto &world = s.scene.world.world;
+    for (const auto &c : footprint.cells) {
+        const auto n = static_cast<std::size_t>(c.position.y * world.map.width + c.position.x);
+        world.map.cells.at(n).facility.reset();
+        world.map.cells.at(n).legacy_state = 4;
+        world.map.cells.at(n).category = ref::RouteCategory::ground;
+        s.surface.at(n).definition = s.ground_definition;
+        s.surface.at(n).updates = 0;
+        s.surface.at(n).instance = s.surface.at(n).fragment = -1;
+    }
+    world.facilities.erase(old_id);
+    s.scene.world.facility_order.erase(std::remove(s.scene.world.facility_order.begin(),
+                                                   s.scene.world.facility_order.end(), old_id),
+                                       s.scene.world.facility_order.end());
+    s.neighbourhood_details.erase(old_id);
+    // 实例已从地图退休；逐实例缓存不属于新实例或合法经营历史。
+    s.facility_original_ids.erase(old_id);
+    s.facility_ordinals.erase(old_id);
+    s.facility_residents.erase(old_id);
+    s.facility_difficulties.erase(old_id);
+    s.facility_flags.erase(old_id);
+    s.facility_details.erase(old_id);
+    s.facility_monthly_cash.erase(old_id);
+    s.facility_month_age.erase(old_id);
+    s.facility_item_confirmations.erase(old_id);
+    s.neighbourhood.erase(old_id);
+    s.dungeon_facilities.erase(old_id);
+    s.sites.erase(old_id);
+    s.shops.erase(old_id);
+    s.shop_order.erase(std::remove(s.shop_order.begin(), s.shop_order.end(), old_id),
+                       s.shop_order.end());
+    return true;
+}
 StartupBuildResult confirm_startup_world_build(State &s, ref::Position anchor,
                                                ref::FacilityOrientation orientation) {
     if (!main(s) || s.scene.scene_state != 1 || !s.build_definition || s.build_mode != 0)
         return {Error::invalid_page};
-    return install_facility(s, anchor, orientation, true);
+    const auto *d = definition(s, *s.build_definition);
+    if (!d)
+        return {Error::missing_source};
+    if (d->kind != 12)
+        return install_facility(s, anchor, orientation, true);
+    const auto remaining = s.facility_free_builds.find(d->id);
+    if (remaining == s.facility_free_builds.end() || remaining->second <= 0)
+        return {Error::none, StartupBuildDenial::unavailable};
+    auto next = s;
+    const auto installed = install_facility(next, anchor, orientation, true);
+    if (!installed.created)
+        return installed;
+    const auto id = *installed.created;
+    next.facility_details.at(id).residence_mode = 0; // 原复建不重复首次入住奖励。
+    for (const auto &human : next.rules->humans) {
+        const auto presence = next.human_presence.find(human.identity);
+        const auto home = next.human_homes.find(human.identity);
+        if (presence == next.human_presence.end() || home == next.human_homes.end())
+            return {Error::missing_source};
+        if (presence->second != 0 && home->second[2] == 2) {
+            --next.facility_free_builds.at(d->id);
+            next.facility_residents.at(id) = human.identity;
+            next.facility_details.at(id).resident_definition = human.identity;
+            home->second = {anchor.x, anchor.y, 1, 0};
+            break;
+        }
+    }
+    if (next.facility_free_builds.at(d->id) <= 0) {
+        next.facility_free_builds.at(d->id) = 0;
+        next.scene.scene_state = 0;
+        next.scene.scene_counter = 0;
+        next.build_definition.reset();
+        next.scripts.selected_facility.reset();
+        for (auto &flags : next.scene.world.map_flags)
+            flags &= ~1U;
+    }
+    s = std::move(next);
+    return installed;
+}
+StartupBuildResult install_startup_world_facility(State &s, int id, ref::Position anchor,
+                                                  ref::FacilityOrientation orientation) {
+    const auto saved = s.build_definition;
+    s.build_definition = id;
+    const auto result = install_facility(s, anchor, orientation, false);
+    s.build_definition = saved;
+    return result;
 }
 Error cancel_startup_world_build(State &s) {
     if (!main(s) || s.scene.scene_state != 1)
@@ -431,6 +529,40 @@ std::optional<ref::FacilityEconomyValues> startup_world_facility_values(const St
     return ref::derive_facility_economy(d->economy, in).values;
 }
 bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPage &p) {
+    const auto counter = s.page_counters.find(p.id);
+    const auto phase = s.page_phases.find(p.id);
+    if (p.legacy_page != 74 || counter == s.page_counters.end() || counter->second < 0 ||
+        phase == s.page_phases.end() || phase->second < 0 ||
+        phase->second >= startup_world_facility_page_count(s, p))
+        return false;
+    const auto preview = s.facility_definition_page_bindings.find(p.id);
+    if (preview != s.facility_definition_page_bindings.end()) {
+        const auto *d = definition(s, preview->second);
+        const auto status = s.facility_presence.find(preview->second);
+        if (!d || preview->second != p.legacy_f || p.legacy_g != 1 ||
+            s.facility_page_bindings.count(p.id) || s.facility_page_neighbours.count(p.id) ||
+            status == s.facility_presence.end() || status->second == 2 || d->unlock_rank < 0 ||
+            d->unlock_rank > s.rank || !s.scripts.facilities.count(d->id))
+            return false;
+        const ref::WorldScriptPage *parent = nullptr;
+        for (const auto &page : s.scripts.pages) {
+            if (page.id == p.id)
+                break;
+            if (page.lifecycle != 4)
+                parent = &page;
+        }
+        if (!parent || parent->kind != ref::WorldScriptPageKind::raw_page ||
+            parent->legacy_page != 85 || !s.commerce_pages_initialized.count(parent->id))
+            return false;
+        const auto list = s.commerce_page_lists.find(parent->id);
+        const auto data = s.commerce_page_data.find(parent->id);
+        return list != s.commerce_page_lists.end() && data != s.commerce_page_data.end() &&
+               data->second[2] >= 0 &&
+               static_cast<std::size_t>(data->second[2]) < list->second.size() &&
+               list->second[data->second[2]] == d->id;
+    }
+    if (p.legacy_g == 1)
+        return false;
     const auto binding = s.facility_page_bindings.find(p.id);
     if (p.legacy_page != 74 || binding == s.facility_page_bindings.end() ||
         !s.facility_page_neighbours.count(p.id))
@@ -439,6 +571,41 @@ bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPag
     return f != s.scene.world.world.facilities.end() && f->second.status != 0 &&
            f->second.placement.definition_id == p.legacy_f &&
            startup_world_runtime_facility_target(s, binding->second).has_value();
+}
+Error open_startup_world_facility_definition(State &s, int d) {
+    const auto *parent = top(s);
+    if (!s.rules || s.scene.framework_paused || !parent ||
+        parent->kind != ref::WorldScriptPageKind::raw_page || parent->legacy_page != 85 ||
+        !s.commerce_pages_initialized.count(parent->id))
+        return Error::invalid_page;
+    const auto *source = definition(s, d);
+    const auto presence = s.facility_presence.find(d);
+    const auto list = s.commerce_page_lists.find(parent->id);
+    const auto data = s.commerce_page_data.find(parent->id);
+    if (!source || presence == s.facility_presence.end() || presence->second == 2 ||
+        source->unlock_rank < 0 || source->unlock_rank > s.rank || !s.scripts.facilities.count(d) ||
+        list == s.commerce_page_lists.end() || data == s.commerce_page_data.end() ||
+        data->second[2] < 0 || static_cast<std::size_t>(data->second[2]) >= list->second.size() ||
+        list->second[data->second[2]] != d)
+        return Error::missing_source;
+    auto next = s;
+    next.scripts.executing_page = parent->id;
+    ref::WorldScriptPage page;
+    page.kind = ref::WorldScriptPageKind::raw_page;
+    page.legacy_page = 74;
+    page.legacy_f = d; // 维护绑定的定义索引；原f=1另记g，不能冒充地图实例。
+    page.legacy_g = 1;
+    page.title = "设施情报";
+    const auto result = ref::prepare_world_script_page(startup_world_runtime_scripts(next), page);
+    if (!result.candidate || result.candidate->inserted_pages.size() != 1 ||
+        !write_startup_world_runtime_scripts(next, result.candidate->state))
+        return Error::script_failed;
+    const auto id = result.candidate->inserted_pages.front().id;
+    next.facility_definition_page_bindings[id] = d;
+    next.page_counters[id] = next.page_phases[id] = 0;
+    next.scripts.executing_page.reset();
+    s = std::move(next);
+    return Error::none;
 }
 Error open_startup_world_facility_page(State &s, std::uint64_t id) {
     if (!main(s) || s.scene.scene_state != 0)
@@ -519,6 +686,10 @@ Error open_startup_world_facility_page(State &s, std::uint64_t id) {
 }
 Error act_startup_world_facility_page(State &s, std::uint64_t id,
                                       StartupFacilityPageAction action) {
+    if (action != StartupFacilityPageAction::previous &&
+        action != StartupFacilityPageAction::next && action != StartupFacilityPageAction::confirm &&
+        action != StartupFacilityPageAction::cancel)
+        return Error::invalid_page;
     const auto *page = top(s);
     if (!s.rules || s.scene.framework_paused || !page || page->id != id ||
         !valid_startup_world_facility_page(s, *page))
@@ -532,12 +703,16 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
         // 原普通类别3实例两页，商品/道具/植物/住宅模板不伪造第二页。
         if (startup_world_facility_page_count(s, *page) == 2)
             next.page_phases[id] = 1 - next.page_phases.at(id);
-    } else if (action == StartupFacilityPageAction::cancel) {
+    } else if (action == StartupFacilityPageAction::cancel ||
+               next.facility_definition_page_bindings.count(id)) {
         const auto r =
             ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
         if (!r.candidate || !write_startup_world_runtime_scripts(next, r.candidate->state))
             return Error::script_failed;
     } else if (next.page_phases.at(id) == 0) {
+        if (d->kind != 2 && d->kind != 12 && d->detail != 1 && d->detail != 4 && d->detail != 5 &&
+            d->detail != 6)
+            return open_startup_world_facility_items(s, id);
         if (d->detail != 6)
             return Error::missing_source; // 75/79/人物60尚有各自操作，不能通用关页。
         ref::WorldScriptPage p;
@@ -613,39 +788,8 @@ StartupBuildResult act_startup_world_residence_page(State &s, std::uint64_t id, 
         return {Error::missing_source};
     monthly += h->residence_fee;
     const auto anchor = old->second.placement.anchor;
-    const auto footprint = ref::facility_footprint(
-        old->second.placement.shape, old->second.placement.orientation, anchor, 24, 24);
-    auto &world = next.scene.world.world;
-    for (const auto &c : footprint.cells) {
-        const auto n = static_cast<std::size_t>(c.position.y * world.map.width + c.position.x);
-        world.map.cells.at(n).facility.reset();
-        world.map.cells.at(n).legacy_state = 4;
-        world.map.cells.at(n).category = ref::RouteCategory::ground;
-        next.surface.at(n).definition = next.ground_definition;
-        next.surface.at(n).updates = 0;
-        next.surface.at(n).instance = next.surface.at(n).fragment = -1;
-    }
-    world.facilities.erase(old_id);
-    next.scene.world.facility_order.erase(std::remove(next.scene.world.facility_order.begin(),
-                                                      next.scene.world.facility_order.end(),
-                                                      old_id),
-                                          next.scene.world.facility_order.end());
-    next.neighbourhood_details.erase(old_id);
-    // 募集实例已从地图退休；其逐实例缓存不属于住宅或合法经营历史。
-    next.facility_original_ids.erase(old_id);
-    next.facility_ordinals.erase(old_id);
-    next.facility_residents.erase(old_id);
-    next.facility_difficulties.erase(old_id);
-    next.facility_flags.erase(old_id);
-    next.facility_details.erase(old_id);
-    next.facility_monthly_cash.erase(old_id);
-    next.facility_month_age.erase(old_id);
-    next.neighbourhood.erase(old_id);
-    next.dungeon_facilities.erase(old_id);
-    next.sites.erase(old_id);
-    next.shops.erase(old_id);
-    next.shop_order.erase(std::remove(next.shop_order.begin(), next.shop_order.end(), old_id),
-                          next.shop_order.end());
+    if (!retire_startup_world_facility(next, old_id))
+        return {Error::missing_source};
     if (!refresh_map(next, false, false))
         return {Error::missing_source}; // 原撤除false先刷新，再创建新住宅true刷新。
     const auto home = std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),

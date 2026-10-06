@@ -44,8 +44,15 @@ ref::WorldCalendarMaintenanceState maintenance(const State &s) {
                                 s.facility_month_age.at(id),
                                 {cash.begin(), cash.end()}});
     }
-    for (const auto &i : s.rules->items)
-        r.shop_items.push_back(s.shop_item_stock.at(i.identity));
+    for (const auto &i : s.rules->items) {
+        auto stock = s.shop_item_stock.at(i.identity);
+        // p/q/r由当前道具定义唯一持有；拾取/奖励可能已改变它们，不能读回补货旧镜像。
+        const auto &definition = s.items.at(i.identity);
+        stock.presence = definition.status;
+        stock.legacy_q = definition.unlock_counter;
+        stock.newly_available = definition.newly_unlocked;
+        r.shop_items.push_back(stock);
+    }
     for (const auto &m : s.rules->monsters)
         r.monster_month_kills.push_back(
             s.scene.world.world.ai.monster_growth.at(m.identity).defeats);
@@ -95,8 +102,18 @@ bool write_maintenance(State &s, const ref::WorldCalendarMaintenanceState &r) {
         std::copy(f.yearly_cash.begin(), f.yearly_cash.end(),
                   s.facility_monthly_cash.at(f.identity).begin());
     }
-    for (const auto &i : r.shop_items)
+    for (const auto &i : r.shop_items) {
+        const auto definition = s.items.find(i.definition);
+        const auto catalog = s.catalog.find({0, i.definition});
+        if (definition == s.items.end() || catalog == s.catalog.end() ||
+            !s.shop_item_stock.count(i.definition))
+            return false;
         s.shop_item_stock.at(i.definition) = i;
+        definition->second.status = i.presence;
+        definition->second.unlock_counter = i.legacy_q;
+        definition->second.newly_unlocked = i.newly_available;
+        catalog->second = definition->second;
+    }
     if (r.monster_month_kills.size() != s.rules->monsters.size() ||
         r.item_flags.size() != s.activity_flags.size())
         return false;

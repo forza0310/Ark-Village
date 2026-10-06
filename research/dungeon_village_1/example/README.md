@@ -5,11 +5,17 @@
 [CMake](CMakeLists.txt)提供 `dungeon_village_reference` 库及对应 CTest 测试程序，不加入产品主构建；
 当前程序数和当轮结果以[验证](../VERIFICATION.md)为准。
 
+2026-10-06后续批次已接普通人物／设施道具、商会及道路／移动／撤除的维护消费者，
+本批Release标准、五项长测与三个有界研究窗口已通过；新聚合Release入口123项标准及迁移窗口也已通过。
+`9897d64`的村办／95／自然晋级结果是此前基线，不能替代本批标准测试和扩展自然链结果。
+商会、编辑及住宅重建属于[原型唯一Owner](../prototype/README.md)的组合，领域库不新增第二套世界。
+住宅H是重建资格而非造价减免，重建仍付原800G；85定义预览已通过本批Release合同验收，只读共享定义、没有实例邻接。
+
 ## 模块与依据
 
 | 模块 | 职责与边界 | 规格 |
 | --- | --- | --- |
-| human_management | 职业／装备目录原交换排序、预览与有序拒绝、三档R奖励、中点／终点计划、大师加成、职业喜好矩阵与赠礼候选；不持有页面、随机或第二世界 | [人物管理](../rules/CHARACTERS.md) |
+| human_management | 职业／装备目录原交换排序、预览与有序拒绝、三档R奖励、中点／终点计划、大师加成、装备喜好矩阵与普通道具赠礼候选；普通道具按职业适配与品质各半评价，原品质10在1..9插值端点夹紧；不持有页面、随机或第二世界 | [人物管理](../rules/CHARACTERS.md) |
 | [world_village_activity.hpp](include/dungeon_village_reference/world_village_activity.hpp) | 村办原序目录、51先季度次数后点数拒绝、52扣点及m／F候选、53恰70声音／满120确认计划；类型0单精度满足度、类型1按当前职业增加extra后重算；类型2全局人气交Owner，不冒充人物效果 | [村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置) |
 | domain、simulation | R1事务、独占预约、单点自主模拟夹具；当前窗口不使用旧模拟 | [状态与建设](../rules/STATE_CONSTRUCTION.md)、[人物](../rules/CHARACTERS.md) |
 | geometry、facility_economy、neighbourhood | 格坐标占地、经营推导、来源实例去重与道路魅力；真正共享等级升级扣旧门槛/保留剩余次数，旧/新/差额分别含实例邻接 | [设施](../rules/FACILITIES.md)、[建筑合同](../rules/STATE_CONSTRUCTION.md#共同世界建筑合同) |
@@ -22,7 +28,7 @@
 | facility_use | 普通食物/旅店的占用请求、同轮等待扣减、旧计数170恢复与待处理退出；不提交完整退出或下一活动 | [使用计数](../rules/FACILITY_USE.md#use-timing) |
 | facility_exit | 另提供完整绑定出口位置、普通活动0/属性/表情尾部顺序；不运行解释器或提交占用/属性 | [出口与下一活动](../rules/FACILITY_USE.md#exit-position) |
 | weapon_choice | 武器/防具/饰品重选计数、不同rank窗口/空当前回退及票号；不装配/收费 | [武器与装备选择](../rules/FACILITY_USE.md#weapon-choice) |
-| facility_events、facility_items | 实例事件门槛、定义共享改良与库存候选 | [事件与道具](../rules/FACILITY_EFFECTS.md) |
+| facility_events、facility_items | 实例事件门槛、定义共享改良与库存候选；独立改良候选供76首次初始化复用，75消费库存与推进实例计数不提前改共享J；原合一API保留 | [事件与道具](../rules/FACILITY_EFFECTS.md) |
 | accounting | 即时金币、周期费用、报表快照、延迟点数与幂等身份 | [周期账本](../rules/ACCOUNTING.md) |
 | actor_ai、ai_perception | G/e/F/K/L、人物/怪物等待、附近抢占、救援/回复目标与出发前置 | [AI感知](../rules/ai/PERCEPTION.md)、[生命周期](../rules/ai/LIFECYCLE.md) |
 | combat_ai | 职业/武器策略、九格评分、物理/魔法候选与两侧影响场 | [战斗](../rules/ai/COMBAT.md) |
@@ -78,18 +84,32 @@
 
 村办领域回归扩展现有[成长套件](tests/human_growth_test.cpp)，页面51—54的唯一Owner事务、载荷拒绝和退休
 由[原型](../prototype/README.md)的现有页面套件承担。类型0／1／2已有维护实现，类型3地图扩张等尚未接入；
-本批完整回归、窗口及自然升级／晋级验收已收口，最新结果及各类型覆盖边界见[当前验证](../VERIFICATION.md)。
+此前`9897d64`的村办、窗口及自然升级／晋级验收已收口；本批Release标准、五项长测与三个有界窗口已通过，新聚合Release入口123项标准及迁移窗口也已通过。最新结果及各类型覆盖边界见[当前验证](../VERIFICATION.md)。
+普通道具计算继续扩展成长与设施道具套件；库存、页面恢复、随机、同定义实例刷新和失败回滚由原型现有页面／建筑套件主责。
+自然工具经营与晋级后的编辑尾段各有显式连续模式，组合夹具、自然玩家路径和简化窗口分别登记。
 
 ## 构建与检查
 
-从仓库根目录执行：
+日常从仓库根目录使用[研究聚合入口](../CMakeLists.txt)，与tools、prototype共用一套Release构建树：
 
 ```sh
-cmake -S research/dungeon_village_1/example -B research/dungeon_village_1/work/example-debug-llvm -DCMAKE_BUILD_TYPE=Debug
-cmake --build research/dungeon_village_1/work/example-debug-llvm --parallel 2
-ctest --test-dir research/dungeon_village_1/work/example-debug-llvm --output-on-failure
+cmake -S research/dungeon_village_1 -B research/dungeon_village_1/work/release -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+cmake --build research/dungeon_village_1/work/release --parallel 2
+ctest --test-dir research/dungeon_village_1/work/release -LE long-world --output-on-failure
 ```
 
-Release使用独立目录。本机显式工具链路径见 [环境基线](../verification/BASELINE.md)，
+聚合构建需要原型使用的Node、动态raylib及pkg-config，配置方式见[原型构建说明](../prototype/README.md#构建与运行)。
+prototype已包含本包的87项领域测试，聚合入口不重复注册；连同31项原型及5项工具测试，共123项唯一标准测试。
+长测按风险显式启用并单独以`-L long-world`执行。Debug只在定位问题时使用`work/debug`，不再每批重复六套验收。
+本包[CMake入口](CMakeLists.txt)仍可独立配置以检查标准C++17依赖边界，但不常驻另一份重复缓存。
+本机显式工具链路径见 [环境基线](../verification/BASELINE.md)，
 本轮结果见 [当前验证](../VERIFICATION.md)。测试覆盖严格错误、边界、重放、随机差分及组合链，
 不替代固定 APK 动态认证。
+
+本地Debug和Release均默认动态链接，策略由[共享构建模块](../cmake/ResearchLibraries.cmake)统一维护。
+可执行文件及运行DLL放本构建目录`bin/`，导入库／静态归档放`lib/`；同一领域DLL由各测试及原型共用。
+不同构建树不共写DLL目录，按需Debug构建自己的匹配库；进程收齐后清理不再需要的临时构建树。
+Windows使用目标架构的libc++／unwind／winpthread，按导入库位置查找并验证PE架构，不从宿主PATH猜DLL。
+旧缓存若含`CMAKE_EXE_LINKER_FLAGS=-static`会明确拒绝；收齐该缓存进程后显式加`-DCMAKE_EXE_LINKER_FLAGS=`重新配置，
+不静默覆写已有flag。只有独立向玩家发布的Release制品才显式选择`BUILD_SHARED_LIBS=OFF`并配置相应静态运行库；
+日常Release回归不采用该例外。切换后的验收与体积记录见验证入口，不沿用旧静态结果。

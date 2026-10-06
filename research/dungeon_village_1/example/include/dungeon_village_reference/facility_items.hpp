@@ -45,6 +45,24 @@ struct FacilityItemResult {
     std::optional<FacilityItemCandidate> candidate;
 };
 
+// raw76初始化只提交共享改良；raw75此前已经消耗库存并推进实例事件。
+// 与一体候选共用计算，避免Owner复制适配、封顶和实际显示差值规则。
+struct FacilityImprovementCandidate {
+    std::array<std::int32_t, 4> definition_improvements{};
+    std::array<std::int32_t, 3> applied_improvements{};
+    std::array<std::int64_t, 3> visible_deltas{};
+    std::int32_t legacy_response{};
+    FacilityEconomyValues before;
+    FacilityEconomyValues after;
+};
+struct FacilityImprovementResult {
+    FacilityItemError error{FacilityItemError::none};
+    std::optional<FacilityImprovementCandidate> candidate;
+};
+FacilityImprovementResult prepare_facility_improvement(const FacilityItemDefinition &facility,
+                                                       const ImprovementItemDefinition &item,
+                                                       const FacilityEconomyInput &shared_input);
+
 // Consume one item even when capped display values do not change; the owner commits the complete
 // candidate.
 FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,

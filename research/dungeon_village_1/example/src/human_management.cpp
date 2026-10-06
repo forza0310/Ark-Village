@@ -232,4 +232,49 @@ HumanEquipmentGiftResult prepare_human_equipment_gift(const HumanEquipmentGiftIn
     }
     return {HumanGrowthError::none, {}, std::move(c)};
 }
+HumanItemGiftResult prepare_human_item_gift(const HumanItemGiftInput &i) {
+    if (i.stock <= 0 || i.stock > 999 || i.profession_affinity < 0 || i.profession_affinity > 2 ||
+        i.quality < 1 || i.quality > 10 || i.effect < 0 || i.effect > 9 ||
+        (i.effect == 9 && (i.spell < 0 || i.spell >= 4)))
+        return {HumanGrowthError::invalid_input, {}};
+    const auto initial = derive_human_stats(i.definition, i.professions);
+    if (!initial.candidate)
+        return {initial.error, {}};
+    HumanItemGiftCandidate c;
+    c.stock = i.stock - 1;
+    // 原表11/14/17的j为10；n.d调用带clamp的1..9插值，10按端点100参与评价。
+    c.evaluation = static_cast<int>(interpolate(i.profession_affinity, 0, 2, 0, 100) * 0.5f +
+                                    interpolate(i.quality, 1, 9, 0, 100) * 0.5f);
+    c.dialogue_band = c.evaluation < 25 ? 0 : c.evaluation < 70 ? 1 : 2;
+    const auto amounts = *human_gift_rewards(c.evaluation);
+    const auto reward = prepare_human_reward(i.definition, i.professions, i.satisfaction, i.medals,
+                                             i.pending_completion, amounts[0], amounts[1], false);
+    if (!reward.candidate)
+        return {reward.error, {}};
+    c.reward = *reward.candidate;
+    c.definition = c.reward.definition;
+    if (i.effect < 6) {
+        const auto before = derive_human_stats(c.definition, i.professions);
+        const auto value = static_cast<std::int64_t>(c.definition.extra[i.effect]) + i.amount;
+        if (!fits(value))
+            return {HumanGrowthError::numeric_overflow, {}};
+        c.definition.extra[i.effect] = static_cast<int>(value);
+        const auto after = derive_human_stats(c.definition, i.professions);
+        if (!before.candidate || !after.candidate)
+            return {before.candidate ? after.error : before.error, {}};
+        HumanAttributeComparison display{
+            before.candidate->attributes, after.candidate->attributes, {}};
+        for (std::size_t n = 0; n < 6; ++n) {
+            const auto delta = static_cast<std::int64_t>(display.after[n]) - display.before[n];
+            if (!fits(delta))
+                return {HumanGrowthError::numeric_overflow, {}};
+            display.difference[n] = static_cast<int>(delta);
+        }
+        c.attribute_display = display;
+        c.final_stats = *after.candidate;
+    } else if (i.effect == 9) {
+        c.definition.learned_spells[i.spell] = true;
+    }
+    return {HumanGrowthError::none, std::move(c)};
+}
 } // namespace dungeon_village_reference

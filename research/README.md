@@ -17,7 +17,10 @@
 2026-10-06用户已恢复研究工作：正式村办51—54的类型0／1／2及Owner／Session／简化窗口已接，
 固定APK及raw95领取合同／消费者已恢复；真实建设→三种设施升级→第一星→新活动16→后续月份收入整线已通过。
 Windows六套420项标准与四项长测共424次CTest通过，两个有界窗口通过；进度见[阶段入口](dungeon_village_1/stages/README.md)。
-之后再补主动工具、道路／移动／撤除，原[村办归档](dungeon_village_1/stages/in-progress/village-activity/README.md)仅保留历史草稿。
+随后普通人物／设施道具、商会买卖及设施兑换、道路／移动／撤除已接同一Owner，
+本批Release标准、五项长测与三个有界研究窗口已通过；新聚合Release入口123项标准及迁移窗口也已通过。
+当前进度见[阶段入口](dungeon_village_1/stages/README.md)，本批不沿用上一批424次结果，不代表完整原皮肤或固定APK动态认证。
+原[村办归档](dungeon_village_1/stages/in-progress/village-activity/README.md)仅保留历史草稿。
 [存档分析](dungeon_village_1/rules/PERSISTENCE.md)独立交付；长期审计历史保留及正常文件存取仍未实现。
 构建缓存仅复用项目内[研究work目录](dungeon_village_1/work/)，阶段结束收齐进程并清理不再需要的缓存。
 产品编码由另一智能体管理，本目录不代写产品阶段状态。

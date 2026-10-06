@@ -316,6 +316,56 @@ void decision_shared_random() {
               s.world.ai.contexts.at({1}).effects.display.empty(),
           "second actual recovery expression exhaustion rolls back HP/control and first variant");
 }
+void delivered_item_catalogue() {
+    auto s = fixture(0);
+    s.world.ai.battle.actors.at({1}).object_slot = 9;
+    s.items.emplace(9, ObjectCatalogRecord{});
+    s.catalog.emplace(std::pair<int, int>{0, 9}, ObjectCatalogRecord{});
+    s.world.human_spending[0] = 0;
+    RescueFacility shop;
+    shop.placement = {{33}, 33, FacilityShape::single, FacilityOrientation::first, {5, 5}};
+    shop.category = 1;
+    shop.price = 10;
+    shop.definition_wait = 2;
+    shop.upgrade_uses = {2, 10};
+    s.world.facilities.emplace(33, shop);
+    s.world.facility_uses.emplace(33, FacilityUseProgress{});
+    const auto bound = bind_facility_map(s.world.map, {{shop.placement, 3}});
+    check(bound.map.has_value(), "carried-item fixture binds exact shop arrival cell");
+    s.world.map = *bound.map;
+    s.facts.map = s.world.map;
+    auto &path = s.world.actors.at({1});
+    path.binding = ArrivalBinding{{5, 5}, {33}, 33};
+    path.destination = Position{5, 5};
+    path.path_pending = true;
+    FacilityDeparture journey;
+    journey.category = 1;
+    journey.binding = *path.binding;
+    journey.route.steps = {{5, 5}};
+    path.journey = journey;
+    auto input = decision();
+    input.daily.path = WorldPathInput{};
+    input.daily.path->actor = {1};
+    input.daily.path->facts = s.facts;
+    input.shop_arrival = ShopArrivalInput{};
+    input.shop_arrival->actor = {1};
+    const auto result = prepare_world_actor_decision(s, input);
+    check(result.candidate && result.candidate->daily && result.candidate->daily->path &&
+              result.candidate->daily->path->arrived,
+          "real P arrival invokes shop delivery without a direct inventory fixture increment");
+    const auto &next = result.candidate->state;
+    check(next.items.at(9).inventory == 1 && next.catalog.at({0, 9}).inventory == 1 &&
+              next.items.at(9).status == 1 && next.catalog.at({0, 9}).status == 1 &&
+              next.items.at(9).newly_unlocked && next.catalog.at({0, 9}).newly_unlocked &&
+              s.items.at(9).inventory == 0 && s.catalog.at({0, 9}).inventory == 0,
+          "shop-delivered ordinary item reaches both route projections exactly once");
+    s.catalog.erase({0, 9});
+    check(!prepare_world_actor_decision(s, input).candidate && s.items.at(9).inventory == 0 &&
+              s.world.ai.accounting.funds() == 0 &&
+              s.world.ai.battle.actors.at({1}).object_slot == 9,
+          "missing ordinary-item catalogue mirror rejects arrival without partial delivery or "
+          "income");
+}
 void every_control_route() {
     const std::vector<LegacyActorControl> commands{
         {0, 550, 550}, {1, 1, 0},   {2, 0},     {3, 0},  {4, 0},     {5, 16},       {6, 16},
@@ -383,6 +433,7 @@ int main() {
         recursive_rescue_arrival();
         shared_random_sequence();
         decision_shared_random();
+        delivered_item_catalogue();
         every_control_route();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {

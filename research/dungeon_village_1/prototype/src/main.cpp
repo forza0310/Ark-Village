@@ -92,10 +92,13 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-month" && options.inspect_page != "world-active" &&
           options.inspect_page != "task-team" && options.inspect_page != "world-award" &&
           options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
-          options.inspect_page != "world-human" && options.inspect_page != "world-activities")))
+          options.inspect_page != "world-human" && options.inspect_page != "world-activities" &&
+          options.inspect_page != "world-commerce" && options.inspect_page != "world-item-gift" &&
+          options.inspect_page != "world-editing")))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
-                                    "world-building/world-details/world-human/world-activities");
+                                    "world-building/world-details/world-human/world-activities/"
+                                    "world-commerce/world-item-gift/world-editing");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
@@ -105,8 +108,10 @@ Options parse_options(int argc, char **argv) {
             (options.inspect_page == "world-month" || options.inspect_page == "world-active" ||
              options.inspect_page == "task-team" || options.inspect_page == "world-award" ||
              options.inspect_page == "world-building" || options.inspect_page == "world-details" ||
-             options.inspect_page == "world-human" ||
-             options.inspect_page == "world-activities")))))
+             options.inspect_page == "world-human" || options.inspect_page == "world-activities" ||
+             options.inspect_page == "world-commerce" ||
+             options.inspect_page == "world-item-gift" ||
+             options.inspect_page == "world-editing")))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     return options;
 }

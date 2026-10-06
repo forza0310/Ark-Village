@@ -113,7 +113,8 @@ export function compileStartupWorld(tables, map, sources, state) {
   const itemOutput=rows['item.txt'].map(row=>{
     const flag=n(row[24]),opened=(flag&1)!==0;
     return `{${n(row[0])},{${flag},${opened?1:0},0,false,${n(row[17])},0},`+
-      `{${n(row[0])},${n(row[7])},${n(row[20])},${n(row[18])},${opened?1:0},0,false},${n(row[8])},${text(row[1])}}`;
+      `{${n(row[0])},${n(row[7])},${n(row[20])},${n(row[18])},${opened?1:0},0,false},${n(row[8])},${text(row[1])},`+
+      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])}}`;
   });
   const excess=[];
   const facilityOutput=facilities.map(row=>{
@@ -128,7 +129,7 @@ export function compileStartupWorld(tables, map, sources, state) {
     need(n(row[10])>=0&&n(row[10])<=2,'设施形状越界');
     return `{${n(row[0])},${text(row[1])},${n(row[3])},${n(row[8])},${n(row[13])},${n(row[14])},`+
       `${n(row[9])},${n(row[4])},${n(row[11])},${n(row[35])},${n(row[10])},${n(row[19])},`+
-      `${n(row[5])},${n(row[25])},${economy},${pairs(row[28],row[29],6,true)},${pairs(row[26],row[27],3)},${n(row[32])}}`;
+      `${n(row[5])},${n(row[25])},${economy},${pairs(row[28],row[29],6,true)},${pairs(row[26],row[27],3)},${n(row[32])},${n(row[2])}}`;
   });
   const regions=name=>`{${map[name].map(region=>{
     const a=region.logical;
@@ -140,7 +141,7 @@ export function compileStartupWorld(tables, map, sources, state) {
     '#include "dungeon_village_prototype/startup_world_projection.hpp"\n'+
     'namespace dungeon_village_prototype {\nconst StartupWorldRules &startup_world_rules() {\n'+
     'static const StartupWorldRules value{\n'+
-    `{${jobs.map(row=>`{${n(row[6])},${n(row[8])},${array(row.slice(3,5))},${array(row.slice(13,15))},${array(row.slice(11,13))},${text(row[1])},${n(row[23])},${n(row[23])&1?1:0},${n(row[5])},${n(row[2])},${n(row[7])},${n(row[15])},${n(row[16])},${n(row[18])},${n(row[19])}}`).join(',')}},\n`+
+    `{${jobs.map(row=>`{${n(row[6])},${n(row[8])},${array(row.slice(3,5))},${array(row.slice(13,15))},${array(row.slice(11,13))},${text(row[1])},${n(row[23])},${n(row[23])&1?1:0},${n(row[5])},${n(row[2])},${n(row[7])},${n(row[15])},${n(row[16])},${n(row[18])},${n(row[19])},${array(values(row[17]))}}`).join(',')}},\n`+
     `{${humanOutput.join(',')}},\n{${equipmentOutput.join(',')}},\n{${monsterOutput.join(',')}},\n`+
     `{${itemOutput.join(',')}},\n{${taskOutput.join(',')}},\n{${facilityOutput.join(',')}},\n`+
     `${regions('regions_l')},${regions('regions_m')},{${excess.join(',')}},\n`+

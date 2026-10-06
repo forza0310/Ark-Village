@@ -396,6 +396,76 @@ void equipment_management() {
               !human_profession_change_animation_plan(-1, true),
           "catalogue identity, profiles, scores and animation technical bounds");
 }
+void ordinary_item_gifts() {
+    const auto f = fixture();
+    HumanItemGiftInput i;
+    i.definition = f.definition;
+    i.professions = f.professions;
+    i.stock = 2;
+    i.quality = 1;
+    i.effect = 6;
+    // 独立整数期望覆盖两段插值先截断再各半，与装备80/20明确区分。
+    for (const auto row : {std::array<int, 4>{0, 1, 0, 2},
+                           {1, 2, 31, 4},
+                           {2, 8, 93, 8},
+                           {2, 9, 100, 9},
+                           {0, 10, 50, 5},
+                           {1, 10, 75, 7},
+                           {2, 10, 100, 9}}) {
+        i.profession_affinity = row[0];
+        i.quality = row[1];
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && r.candidate->evaluation == row[2] && r.candidate->stock == 1 &&
+                  r.candidate->reward.satisfaction == row[3] && !r.candidate->final_stats &&
+                  !r.candidate->attribute_display,
+              "ordinary items use equal affinity/quality interpolation and consume one stock");
+    }
+    i.profession_affinity = 0;
+    i.quality = 1;
+    i.amount = 4;
+    i.professions[0].attribute_percent.fill(150);
+    for (int attribute = 0; attribute < 6; ++attribute) {
+        i.effect = attribute;
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && r.candidate->definition.extra[attribute] == 4 &&
+                  r.candidate->attribute_display && r.candidate->final_stats &&
+                  r.candidate->attribute_display->difference[attribute] == 6,
+              "all six item stats add raw m to extra, then derive and show six attributes");
+    }
+    i.effect = 9;
+    i.spell = 2;
+    i.definition.legacy_u = 9;
+    i.profession_affinity = 2;
+    i.quality = 9;
+    const auto learn = prepare_human_item_gift(i);
+    check(learn.candidate && learn.candidate->definition.learned_spells[2] &&
+              !learn.candidate->final_stats && learn.candidate->reward.derived &&
+              !learn.candidate->reward.derived->available_spells[2] &&
+              !learn.candidate->reward.definition.learned_spells[2],
+          "learning follows common reward and does not eagerly refresh available spell cache");
+    i.definition.learned_spells[2] = true;
+    check(prepare_human_item_gift(i).candidate->stock == 1,
+          "already learned magic remains consumable and rewarded");
+    for (const int effect : {6, 7, 8}) {
+        i.effect = effect;
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && !r.candidate->final_stats && !r.candidate->attribute_display,
+              "gift, material and recovery items do not invent permanent attribute changes");
+    }
+    i.stock = 0;
+    check(!prepare_human_item_gift(i).candidate, "empty inventory cannot produce a gift");
+    i.stock = 1000;
+    check(!prepare_human_item_gift(i).candidate,
+          "inventory beyond original999 cap refuses instead of normalizing corrupt stock");
+    i.stock = 1;
+    i.effect = 9;
+    i.spell = 4;
+    check(!prepare_human_item_gift(i).candidate, "invalid learned spell index rejects explicitly");
+    i.effect = 0;
+    i.definition.extra[0] = std::numeric_limits<int>::max();
+    check(!prepare_human_item_gift(i).candidate && i.stock == 1,
+          "late attribute overflow leaves caller inventory and definition unchanged");
+}
 void village_activity_rules() {
     WorldVillageActivityDefinition a{23, 1, 0, 0, 2, 0, 20, 10};
     auto once = a;
@@ -601,6 +671,7 @@ int main() {
         immediate_rewards();
         profession_management();
         equipment_management();
+        ordinary_item_gifts();
         village_activity_rules();
         village_activity_rejections();
         std::cout << checks << " checks passed\n";

@@ -35,7 +35,22 @@ DungeonWorldState dungeon(const WorldActorRoutesState &s) {
     return {s.world, s.dungeon_facilities, s.dungeon_actors, s.catalog,
             s.shops, s.shop_order,         s.item_rewards};
 }
-void write_dungeon(WorldActorRoutesState &s, DungeonWorldState d) {
+bool matching_item_definitions(const std::map<int, ObjectCatalogRecord> &items,
+                               const std::map<std::pair<int, int>, ObjectCatalogRecord> &catalog) {
+    for (const auto &item : items)
+        if (item.first < 0 || !catalog.count({0, item.first}))
+            return false;
+    for (const auto &record : catalog)
+        if (record.first.first == 0 && !items.count(record.first.second))
+            return false;
+    return true;
+}
+bool write_dungeon(WorldActorRoutesState &s, DungeonWorldState d) {
+    if (!matching_item_definitions(s.items, d.catalog))
+        return false;
+    // 探索/地下城按catalog授予道具；先回写完整原p/q/r/z，再保留该次奖励目录。
+    for (auto &item : s.items)
+        item.second = d.catalog.at({0, item.first});
     s.world = std::move(d.world);
     s.dungeon_facilities = std::move(d.facilities);
     s.dungeon_actors = std::move(d.actors);
@@ -43,16 +58,23 @@ void write_dungeon(WorldActorRoutesState &s, DungeonWorldState d) {
     s.shops = std::move(d.shops);
     s.shop_order = std::move(d.shop_order);
     s.item_rewards = d.item_rewards;
+    return true;
 }
 ShopWorldState shop(const WorldActorRoutesState &s) {
     return {s.world, s.shop_humans, s.shop_actors, s.items, s.popularity_queue};
 }
-void write_shop(WorldActorRoutesState &s, ShopWorldState d) {
+bool write_shop(WorldActorRoutesState &s, ShopWorldState d) {
+    if (!matching_item_definitions(d.items, s.catalog))
+        return false;
+    // 真实商店到达通过items执行携物交付；不能反向取旧catalog盖掉刚加的z和解锁。
+    for (const auto &item : d.items)
+        s.catalog.at({0, item.first}) = item.second;
     s.world = std::move(d.world);
     s.shop_humans = std::move(d.humans);
     s.shop_actors = std::move(d.actors);
     s.items = std::move(d.items);
     s.popularity_queue = std::move(d.popularity_queue);
+    return true;
 }
 const RescueFacility *current_facility(const WorldActorRoutesState &s, CharacterId id,
                                        bool occupation) {
@@ -194,7 +216,8 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
                 const auto r = prepare_world_shop_arrival(projected, arrival);
                 if (!r.candidate)
                     return {};
-                write_shop(c.state, r.candidate->state);
+                if (!write_shop(c.state, r.candidate->state))
+                    return {};
                 c.shop_requests.insert(c.shop_requests.end(), r.candidate->requests.begin(),
                                        r.candidate->requests.end());
                 for (const auto &presentation : r.candidate->requests)
@@ -362,7 +385,8 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
             [&](const DungeonWorldState &d, CharacterId id) -> std::optional<DungeonWorldState> {
                 if (!i.landing_departure || !(i.landing_departure->actor == id))
                     return {};
-                write_dungeon(scratch, d);
+                if (!write_dungeon(scratch, d))
+                    return {};
                 auto input = *i.landing_departure;
                 if (i.use_shared_random && !input.draw)
                     input.draw = [&](int bound) -> std::optional<std::int64_t> {
@@ -382,7 +406,8 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
         if (!r.candidate)
             return fail(WorldActorRouteError::preparation_failed);
         c.state = std::move(scratch);
-        write_dungeon(c.state, r.candidate->state);
+        if (!write_dungeon(c.state, r.candidate->state))
+            return fail(WorldActorRouteError::missing_fact);
     } else {
         auto input = i.lifecycle;
         input.actor = i.actor;
@@ -576,7 +601,8 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
             const auto r = prepare_world_shop_command(shop(owner), actor, i.equipment);
             if (!r.candidate)
                 return fail();
-            write_shop(next.state, r.candidate->state);
+            if (!write_shop(next.state, r.candidate->state))
+                return fail();
             for (const auto &request : r.candidate->requests) {
                 if (request.kind == ShopWorldRequestKind::equipment_display) {
                     const auto display = prepare_world_equipment_display(
@@ -618,7 +644,8 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
                                     : std::function<std::optional<int>(int)>{});
             if (!r.candidate)
                 return fail();
-            write_dungeon(next.state, r.candidate->state);
+            if (!write_dungeon(next.state, r.candidate->state))
+                return fail();
             if (r.candidate->entry_event &&
                 !event(next.state, *r.candidate->entry_event, i.event, audit.consumed_events))
                 return fail();
@@ -632,7 +659,8 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
             const auto r = prepare_world_shop_exit(shop(owner), input);
             if (!r.candidate)
                 return fail();
-            write_shop(next.state, r.candidate->state);
+            if (!write_shop(next.state, r.candidate->state))
+                return fail();
             audit.shop_requests.insert(audit.shop_requests.end(), r.candidate->requests.begin(),
                                        r.candidate->requests.end());
             for (const auto &request : r.candidate->requests)

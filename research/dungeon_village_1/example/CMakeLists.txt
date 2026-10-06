@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.16)
 
 project(dungeon_village_reference LANGUAGES CXX)
 
+include(../cmake/ResearchLibraries.cmake)
+
 include(CTest)
 
 add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simulation.cpp src/geometry.cpp
@@ -35,6 +37,7 @@ add_library(dungeon_village_reference src/domain.cpp src/navigation.cpp src/simu
                                      src/world_facility_update.cpp src/world_nonactor_schedule.cpp
                                      src/world_residence.cpp src/world_world_entry.cpp src/world_gift_page.cpp
                                      src/world_arrivals.cpp)
+dungeon_village_library(dungeon_village_reference)
 target_include_directories(dungeon_village_reference PUBLIC include)
 target_compile_features(dungeon_village_reference PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_reference PROPERTIES CXX_EXTENSIONS OFF)

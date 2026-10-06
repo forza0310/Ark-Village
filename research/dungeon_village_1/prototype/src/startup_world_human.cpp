@@ -97,8 +97,45 @@ bool initialize(State &s, std::uint64_t id, int raw) {
     if (h == s.page_human_bindings.end() || !startup_world_human_details(s, h->second))
         return false;
     const int human = h->second;
-    if (s.human_pages_initialized.count(id))
+    if (raw == 65 || raw == 66 || raw == 69) {
+        const auto choice = s.human_equipment_choices.find(id);
+        if (choice == s.human_equipment_choices.end() || choice->second[0] < 0 ||
+            choice->second[0] > (raw == 65 ? 3 : 4))
+            return false;
+        if (choice->second[0] == 4) {
+            const auto item =
+                std::find_if(s.rules->items.begin(), s.rules->items.end(),
+                             [&](const auto &d) { return d.identity == choice->second[1]; });
+            if (item == s.rules->items.end() ||
+                (raw == 69 && (item->effect < 0 || item->effect >= 6)))
+                return false;
+        } else if (raw == 69 || !equipment(s, choice->second[0], choice->second[1]))
+            return false;
+        if (raw == 66 && (!s.human_gift_scores.count(id) || !s.human_gift_messages.count(id)))
+            return false;
+    }
+    if (s.human_pages_initialized.count(id)) {
+        if (!s.page_phases.count(id) || !s.page_counters.count(id) ||
+            !s.human_page_selections.count(id))
+            return false;
+        if ((raw == 61 || raw == 62) && !s.human_page_catalogs.count(id))
+            return false;
+        if ((raw == 64 || raw == 73) && !s.equipment_page_catalogs.count(id))
+            return false;
+        if (raw == 64 || raw == 73) {
+            const int phase = s.page_phases.at(id);
+            const int selected = s.human_page_selections.at(id);
+            if (phase < 0 || phase > (raw == 64 ? 4 : 3))
+                return false;
+            const auto &list = s.equipment_page_catalogs.at(id)[phase];
+            if (selected < 0 ||
+                (list.empty() ? selected != 0 : selected >= static_cast<int>(list.size())))
+                return false;
+        }
+        if ((raw == 65 || raw == 66 || raw == 69) && !s.human_equipment_choices.count(id))
+            return false;
         return true;
+    }
     auto &g = s.scene.world.world.ai.growth.at(human);
     if (raw == 60) {
         const auto stats =
@@ -153,6 +190,15 @@ bool initialize(State &s, std::uint64_t id, int raw) {
                 return false;
             s.equipment_page_catalogs[id][slot] = *list;
         }
+        if (raw == 64) {
+            for (const auto &item : s.rules->items) {
+                const auto stock = s.items.find(item.identity);
+                if (stock == s.items.end() || stock->second.inventory < 0)
+                    return false;
+                if (stock->second.inventory > 0)
+                    s.equipment_page_catalogs[id][4].push_back(item.identity);
+            }
+        }
         if (raw == 73) {
             const auto choice = s.human_equipment_choices.find(id);
             if (choice == s.human_equipment_choices.end() || choice->second[0] < 0 ||
@@ -197,6 +243,18 @@ std::optional<std::uint64_t> live_parent(const State &s, std::uint64_t child, in
         person->second != human)
         return {};
     return parent->id;
+}
+// c/n.r()清的是全部普通道具r提示；不是库存、获得状态或住宅请求。
+bool clear_item_notices(State &s) {
+    for (const auto &definition : s.rules->items) {
+        const auto owned = s.items.find(definition.identity);
+        const auto catalog = s.catalog.find({0, definition.identity});
+        if (owned == s.items.end() || catalog == s.catalog.end())
+            return false;
+        owned->second.newly_unlocked = false;
+        catalog->second.newly_unlocked = false;
+    }
+    return true;
 }
 bool commit_gift(State &s, std::uint64_t parent, int human) {
     const auto selected = s.human_equipment_choices.find(parent);
@@ -282,6 +340,126 @@ bool commit_gift(State &s, std::uint64_t parent, int human) {
         s.actor_metadata.at(id).weapon = weapon;
         break; // 原j()只同步首个同定义实例，不广播装备。
     }
+    return clear_item_notices(s);
+}
+
+// 普通道具在父64直接确认：先评价/结果，再消耗库存；全过程仍在Owner候选内。
+bool commit_item(State &s, std::uint64_t parent, int human, int item) {
+    const auto source = std::find_if(s.rules->items.begin(), s.rules->items.end(),
+                                     [&](const auto &d) { return d.identity == item; });
+    const auto stock = s.items.find(item);
+    const auto catalog = s.catalog.find({0, item});
+    if (source == s.rules->items.end() || stock == s.items.end() || catalog == s.catalog.end() ||
+        catalog->second.inventory != stock->second.inventory)
+        return false;
+    auto &growth = s.scene.world.world.ai.growth.at(human);
+    const auto &affinities = s.rules->jobs.at(growth.definition.current_profession).item_affinity;
+    if (source->category < 0 || static_cast<std::size_t>(source->category) >= affinities.size())
+        return false;
+    const auto result = ref::prepare_human_item_gift(
+        {growth.definition, s.scene.world.world.ai.professions, stock->second.inventory,
+         affinities[source->category], source->difficulty, source->effect, source->attribute_amount,
+         source->spell, s.shop_humans.at(human).satisfaction,
+         s.human_calendar.at(human).celebrations, s.scene.world.world.ai.pending_completion});
+    if (!result.candidate || !reward(s, human, result.candidate->reward))
+        return false;
+    const auto &c = *result.candidate;
+    growth.definition = c.definition;
+    if (c.final_stats) {
+        growth.derived = *c.final_stats;
+        if (!synchronize_startup_world_human_capacity(s, human))
+            return false;
+    }
+    const auto text = s.scene.random.draw(2);
+    if (text.error != ref::WorldRandomError::none)
+        return false;
+    const auto gift = open(s, 66, human);
+    if (!gift)
+        return false;
+    constexpr const char *messages[3][2]{
+        {"好开心", "谢谢"}, {"好开心", "谢谢"}, {"太好了!", "感动了!"}};
+    s.human_gift_scores[*gift] = c.evaluation;
+    s.human_gift_messages[*gift] = messages[c.dialogue_band][text.ticket];
+    s.human_equipment_choices[*gift] = {4, item};
+    if (c.attribute_display) {
+        const auto &d = *c.attribute_display;
+        s.human_attribute_display = {d.before, d.after, d.difference};
+        const auto display = open(s, 69, human);
+        if (!display)
+            return false;
+        s.human_equipment_choices[*display] = {4, item};
+    }
+    if (!reward_page(s, human, c.reward))
+        return false;
+    s.items.at(item).inventory = c.stock;
+    s.catalog.at({0, item}).inventory = c.stock;
+    auto &list = s.equipment_page_catalogs.at(parent)[4];
+    if (!c.stock)
+        list.erase(std::remove(list.begin(), list.end(), item), list.end());
+    auto &selection = s.human_page_selections.at(parent);
+    if (selection >= static_cast<int>(list.size()))
+        selection = 0;
+    // 原j()末尾同步首个同定义实例武器，即使道具不改变装备也执行同一收尾。
+    for (const auto id : s.scene.world.world.ai.human_order) {
+        const auto &actor = s.scene.world.world.ai.battle.actors.at(id);
+        if (actor.definition == human) {
+            const int weapon = s.shop_humans.at(human).equipment[0].value_or(-1);
+            s.shop_actors.at(id).weapon = weapon;
+            s.actor_metadata.at(id).weapon = weapon;
+            break;
+        }
+    }
+    return clear_item_notices(s);
+}
+
+bool item_recovery(State &s, std::uint64_t page, int counter) {
+    const auto choice = s.human_equipment_choices.find(page);
+    if (choice == s.human_equipment_choices.end())
+        return false;
+    if (choice->second[0] != 4)
+        return choice->second[0] >= 0 && choice->second[0] < 4;
+    const auto item = std::find_if(s.rules->items.begin(), s.rules->items.end(),
+                                   [&](const auto &d) { return d.identity == choice->second[1]; });
+    if (item == s.rules->items.end())
+        return false;
+    if (item->recovery <= 0 || counter < 75)
+        return true;
+    auto &world = s.scene.world.world;
+    for (const auto id : world.ai.human_order) {
+        const auto found = world.ai.battle.actors.find(id);
+        if (found == world.ai.battle.actors.end())
+            return false;
+        auto &actor = found->second;
+        if (actor.definition != s.page_human_bindings.at(page))
+            continue;
+        if (counter == 75) {
+            if (actor.control.action == 7 && !actor.rescue) {
+                const auto hp = ref::prepare_hp_assignment(actor.hp, 0);
+                const auto metadata = world.actors.find(id);
+                if (!hp.candidate || metadata == world.actors.end())
+                    return false;
+                const auto restored = ref::prepare_actor_baseline_restore(
+                    actor.control, actor.baseline, actor.kind == ref::ActorKind::human,
+                    metadata->second.monster_mode);
+                if (!restored)
+                    return false;
+                actor.state_counter = 900;
+                actor.hp = *hp.candidate;
+                actor.control = restored->control;
+                if (restored->clear_encounter)
+                    actor.encounter.reset();
+            }
+            const auto hp = ref::prepare_hp_change(actor.hp, item->recovery, actor.capacity);
+            if (!hp.candidate)
+                return false;
+            actor.hp = *hp.candidate;
+        }
+        const auto animation = ref::advance_hp_animation(actor.hp);
+        if (!animation.candidate)
+            return false;
+        actor.hp = *animation.candidate;
+        break;
+    }
     return true;
 }
 
@@ -334,6 +512,9 @@ bool consume_display(State &s, std::uint64_t id, int raw, bool confirm) {
         return !result->closed || close(s, id);
     }
     if (raw == 66) {
+        // 页面输入与真正更新分离：同一counter重复确认不能重复触发g(w)或s()。
+        if (!confirm && !item_recovery(s, id, counter))
+            return false;
         const int before = counter - 85;
         auto &phase = s.page_phases.at(id);
         if (counter >= 135 && phase == 0)
@@ -348,6 +529,12 @@ bool consume_display(State &s, std::uint64_t id, int raw, bool confirm) {
                     return close(s, id);
             }
         }
+    }
+    if (raw == 69 && confirm) {
+        if (counter < 39)
+            counter = 39;
+        else if (counter >= 45)
+            return close(s, id);
     }
     return true;
 }
@@ -452,8 +639,22 @@ Error open_startup_world_human_page(State &s, int human) {
 }
 bool startup_world_human_page_ready(const State &s, std::uint64_t id) {
     const auto *p = top(s);
-    return p && p->id == id && p->kind == ref::WorldScriptPageKind::raw_page &&
-           s.human_pages_initialized.count(id) != 0;
+    if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page ||
+        !s.human_pages_initialized.count(id) || !s.page_human_bindings.count(id) ||
+        !s.page_phases.count(id) || !s.page_counters.count(id) ||
+        !s.human_page_selections.count(id))
+        return false;
+    const int raw = p->legacy_page;
+    if ((raw == 61 || raw == 62) && !s.human_page_catalogs.count(id))
+        return false;
+    if (raw == 64 || raw == 73) {
+        const auto catalog = s.equipment_page_catalogs.find(id);
+        const int phase = s.page_phases.at(id);
+        if (catalog == s.equipment_page_catalogs.end() || phase < 0 || phase > (raw == 64 ? 4 : 3))
+            return false;
+    }
+    return !((raw == 65 || raw == 66 || raw == 69) && !s.human_equipment_choices.count(id)) &&
+           !(raw == 66 && (!s.human_gift_scores.count(id) || !s.human_gift_messages.count(id)));
 }
 bool initialize_startup_world_human_pages(State &s) {
     if (s.scene.framework_paused)
@@ -461,8 +662,9 @@ bool initialize_startup_world_human_pages(State &s) {
     std::vector<std::pair<std::uint64_t, int>> pending;
     for (const auto &p : s.scripts.pages)
         if (p.lifecycle != 4 && p.kind == ref::WorldScriptPageKind::raw_page &&
-            ((p.legacy_page >= 60 && p.legacy_page <= 66) || p.legacy_page == 68 ||
-             p.legacy_page == 70 || p.legacy_page == 73) &&
+            ((p.legacy_page >= 60 && p.legacy_page <= 66) ||
+             (p.legacy_page == 68 || p.legacy_page == 69) || p.legacy_page == 70 ||
+             p.legacy_page == 73) &&
             !s.human_pages_initialized.count(p.id))
             pending.emplace_back(p.id, p.legacy_page);
     const auto executing = s.scripts.executing_page;
@@ -481,8 +683,9 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
     const auto *p = top(s);
     if (!s.rules || s.scene.framework_paused || !p || p->id != id ||
         p->kind != ref::WorldScriptPageKind::raw_page ||
-        !((p->legacy_page >= 60 && p->legacy_page <= 66) || p->legacy_page == 68 ||
-          p->legacy_page == 70 || p->legacy_page == 73))
+        !((p->legacy_page >= 60 && p->legacy_page <= 66) ||
+          (p->legacy_page == 68 || p->legacy_page == 69) || p->legacy_page == 70 ||
+          p->legacy_page == 73))
         return Error::invalid_page;
     auto next = s;
     next.scripts.executing_page = id;
@@ -607,11 +810,11 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
         } else
             return Error::invalid_page;
     } else if (raw == 64 || raw == 73) {
-        if (phase < 0 || phase > 3)
+        if (phase < 0 || phase > (raw == 64 ? 4 : 3))
             return Error::missing_source;
         const auto &list = next.equipment_page_catalogs.at(id)[phase];
         if (action == A::equipment_slot && raw == 64) {
-            if (selection < 0 || selection > 3)
+            if (selection < 0 || selection > 4)
                 return Error::invalid_page;
             phase = selection;
             chosen = 0;
@@ -626,12 +829,23 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 return Error::invalid_page;
             chosen = target;
         } else if (action == A::cancel || (action == A::confirm && raw == 73)) {
+            if (raw == 64 && !clear_item_notices(next))
+                return Error::missing_source;
             if (!close(next, id))
                 return Error::script_failed;
         } else if (action == A::confirm || action == A::inspect_equipment) {
             if (chosen < 0 || chosen >= static_cast<int>(list.size()))
                 return Error::invalid_page;
             const int item = list[chosen];
+            if (phase == 4) {
+                if (action != A::confirm)
+                    return Error::invalid_page;
+                if (!commit_item(next, id, human, item))
+                    return Error::missing_source;
+                next.scripts.executing_page.reset();
+                s = std::move(next);
+                return Error::none;
+            }
             const auto target = equipment(next, phase, item);
             const auto cost =
                 target ? ref::human_equipment_gift_cost(*target) : std::optional<int>{};
@@ -757,7 +971,13 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
                       s.activity_page_bindings.size() + s.activity_page_lists.size() +
                       s.activity_page_display_humans.size() + s.activity_page_parents.size() +
                       s.activity_page_answers.size() + s.activity_page_selections.size() +
-                      s.activity_page_scroll.size();
+                      s.activity_page_scroll.size() + s.facility_item_pages_initialized.size() +
+                      s.facility_item_page_items.size() + s.facility_item_page_lists.size() +
+                      s.facility_item_page_selections.size() + s.commerce_pages_initialized.size() +
+                      s.commerce_page_data.size() + s.commerce_page_lists.size() +
+                      s.facility_definition_page_bindings.size() + s.facility_page_bindings.size() +
+                      s.facility_page_neighbours.size() + s.build_page_catalogs.size() +
+                      s.residence_page_candidates.size() + s.facility_upgrade_initialized.size();
     r.sound_outputs = s.sound_requests.size();
     r.effects = s.visual_effects.size() + s.delayed_effects.size() + s.global_effects.size();
     r.continuations = s.scripts.continuations.size();

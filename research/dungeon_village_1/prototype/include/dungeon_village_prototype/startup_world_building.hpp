@@ -38,12 +38,22 @@ StartupWorldRuntimeError cancel_startup_world_build(StartupWorldRuntimeState &st
 bool refresh_startup_world_connections(StartupWorldRuntimeState &state);
 // 新局a/o.a(false)已计算的s/w/G投影，不把缺失w误作没有加成，不排变化提示。
 bool initialize_startup_world_neighbours(StartupWorldRuntimeState &state);
+// 唯一Owner候选上的原创建/刷新原语；移动只复用安装，不支付设施原造价。
+StartupBuildResult install_startup_world_facility(StartupWorldRuntimeState &candidate,
+                                                  int definition, ref::Position anchor,
+                                                  ref::FacilityOrientation orientation);
+bool refresh_startup_world_map(StartupWorldRuntimeState &candidate, bool notices);
+// 只退休实例及其占地/辅助缓存，不重写人物既有目标、路线或合法任务历史。
+bool retire_startup_world_facility(StartupWorldRuntimeState &candidate, std::uint64_t facility);
 // 原o.f()只重算kind3共享经营缓存；转职最终确认调用，不在预览/中点执行。
 bool refresh_startup_world_profession_economy(StartupWorldRuntimeState &state);
 
 enum class StartupFacilityPageAction { previous, next, confirm, cancel };
 StartupWorldRuntimeError open_startup_world_facility_page(StartupWorldRuntimeState &state,
                                                           std::uint64_t facility);
+// 原85按钮7：raw74只读定义，无实例/邻接；返回保留商会父页选择及资金。
+StartupWorldRuntimeError open_startup_world_facility_definition(StartupWorldRuntimeState &state,
+                                                                int definition);
 StartupWorldRuntimeError act_startup_world_facility_page(StartupWorldRuntimeState &state,
                                                          std::uint64_t page,
                                                          StartupFacilityPageAction action);

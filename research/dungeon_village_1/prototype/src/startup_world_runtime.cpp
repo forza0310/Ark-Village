@@ -1,5 +1,8 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_editing.hpp"
+#include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -13,6 +16,36 @@
 namespace dungeon_village_prototype {
 namespace {
 using State = StartupWorldRuntimeState;
+bool copy_catalog_items(std::map<int, ref::ObjectCatalogRecord> &items,
+                        const std::map<std::pair<int, int>, ref::ObjectCatalogRecord> &catalog) {
+    for (const auto &item : items)
+        if (item.first < 0 || !catalog.count({0, item.first}))
+            return false;
+    for (const auto &record : catalog)
+        if (record.first.first == 0 && !items.count(record.first.second))
+            return false;
+    // 非人物/探索投影在catalog执行奖励；复制完整原定义字段，不只追平库存数量。
+    for (auto &item : items)
+        item.second = catalog.at({0, item.first});
+    return true;
+}
+bool coherent_items(const ref::WorldActorRoutesState &r) {
+    for (const auto &item : r.items) {
+        const auto record = r.catalog.find({0, item.first});
+        if (record == r.catalog.end())
+            return false;
+        const auto &a = item.second;
+        const auto &b = record->second;
+        if (a.flags != b.flags || a.status != b.status || a.unlock_counter != b.unlock_counter ||
+            a.newly_unlocked != b.newly_unlocked || a.inventory != b.inventory ||
+            a.free_purchases != b.free_purchases)
+            return false;
+    }
+    for (const auto &record : r.catalog)
+        if (record.first.first == 0 && !r.items.count(record.first.second))
+            return false;
+    return true;
+}
 bool project_human_task_flags(ref::RescueWorldState &world,
                               const std::map<int, std::uint32_t> &flags) {
     for (const auto &actor : world.ai.battle.actors) {
@@ -216,6 +249,9 @@ ref::WorldActorRoutesState startup_world_runtime_routes(const State &s) {
     return r;
 }
 bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesState &r) {
+    // 各领域已经按本次权威来源同步；聚合写回只验一致性，不猜哪一份较新。
+    if (!coherent_items(r))
+        return false;
     // 原aH.z与m.v即时累计；台账仅保留真实现金事务，不借月报再支付一次净额。
     const int month = s.scene.calendar.month;
     auto cash_cursor = s.scene.world.world.ai.accounting.funds();
@@ -374,6 +410,8 @@ bool write_startup_world_runtime_finish(State &s, const ref::DungeonFinishState 
     r.dungeon_facilities = f.dungeon.facilities;
     r.dungeon_actors = f.dungeon.actors;
     r.catalog = f.dungeon.catalog;
+    if (!copy_catalog_items(r.items, r.catalog))
+        return false;
     r.shops = f.dungeon.shops;
     r.shop_order = f.dungeon.shop_order;
     r.item_rewards = f.dungeon.item_rewards;
@@ -559,6 +597,8 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         return r;
     };
     a.nonactors.write_routes = [](State &s, const ref::WorldNonactorScheduleState &r) {
+        if (!copy_catalog_items(s.items, r.objects.catalog))
+            return false;
         s.catalog = r.objects.catalog;
         s.shops = r.objects.shops;
         for (auto &shop : s.shops) {
@@ -751,6 +791,8 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_presence.emplace(d.id, initial.status);
         state_.residence_catalog_available.emplace(d.id, false);
         state_.facility_unlock_notices.emplace(d.id, initial.pending_notice);
+        state_.facility_free_builds.emplace(d.id, 0);
+        state_.facility_commerce_read.emplace(d.id, initial.initial_available);
         state_.facility_unlock_counters.emplace(d.id, 0);
     }
     for (const auto id : p.facility_order) {
@@ -764,12 +806,15 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_details.emplace(id, details);
         state_.dungeon_facilities.emplace(id, ref::DungeonFacilityProgress{});
         state_.facility_month_age.emplace(id, 0);
+        state_.facility_item_confirmations.emplace(id, 0);
         state_.facility_difficulties.emplace(id, 0);
     }
     if (!initialize_startup_world_neighbours(state_))
         throw std::invalid_argument("真实新局邻接来源投影未认证");
-    for (const auto &i : p.rules->items)
+    for (const auto &i : p.rules->items) {
         state_.shop_item_stock.emplace(i.identity, i.maintenance);
+        state_.item_commerce_read.emplace(i.identity, (i.initial.flags & 1U) != 0);
+    }
     for (const auto &t : p.rules->tasks)
         state_.task_progress.definitions.emplace(
             t.factory.identity,
@@ -850,6 +895,31 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_control_menu() {
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_village_activities() {
     return open_startup_world_village_activities(state_);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_commerce() {
+    return open_startup_world_commerce(state_);
+}
+StartupBuildResult StartupWorldRuntimeSession::begin_road(int definition) {
+    return begin_startup_world_road(state_, definition);
+}
+StartupBuildResult StartupWorldRuntimeSession::begin_edit(bool move) {
+    return begin_startup_world_edit(state_, move);
+}
+StartupBuildResult StartupWorldRuntimeSession::confirm_edit(ref::Position position,
+                                                            ref::FacilityOrientation orientation) {
+    return confirm_startup_world_edit(state_, position, orientation);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::cancel_edit() {
+    return cancel_startup_world_edit(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_commerce_page(std::uint64_t page,
+                                                                       StartupCommerceAction action,
+                                                                       int selection) {
+    return act_startup_world_commerce_page(state_, page, action, selection);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_facility_item_page(
+    std::uint64_t page, StartupFacilityItemAction action, int selection) {
+    return act_startup_world_facility_item_page(state_, page, action, selection);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
     std::uint64_t page, StartupVillageActivityAction action, int selection) {
     return act_startup_world_village_activity_page(state_, page, action, selection);
@@ -891,6 +961,14 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.page_secondary_counters.erase(page.id);
             admitted.task_display_initialized.erase(page.id);
             admitted.facility_page_bindings.erase(page.id);
+            admitted.facility_definition_page_bindings.erase(page.id);
+            admitted.facility_item_pages_initialized.erase(page.id);
+            admitted.facility_item_page_items.erase(page.id);
+            admitted.facility_item_page_lists.erase(page.id);
+            admitted.facility_item_page_selections.erase(page.id);
+            admitted.commerce_page_data.erase(page.id);
+            admitted.commerce_pages_initialized.erase(page.id);
+            admitted.commerce_page_lists.erase(page.id);
             admitted.facility_page_neighbours.erase(page.id);
             admitted.build_page_catalogs.erase(page.id);
             admitted.award_rankings.erase(page.id);
@@ -940,7 +1018,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 {}};
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
     if (!initialize_startup_world_human_pages(admitted) ||
-        !initialize_startup_world_village_activity_pages(admitted))
+        !initialize_startup_world_village_activity_pages(admitted) ||
+        !initialize_startup_world_commerce_pages(admitted) ||
+        !initialize_startup_world_facility_item_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

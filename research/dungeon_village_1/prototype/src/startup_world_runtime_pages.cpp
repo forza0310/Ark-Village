@@ -1,4 +1,6 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -339,9 +341,15 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return act_startup_world_tax_page(state, id, StartupWorldTaxAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 98)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 75 &&
+        top->legacy_page <= 77)
+        return act_startup_world_facility_item_page(state, id, StartupFacilityItemAction::confirm);
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        ((top->legacy_page >= 83 && top->legacy_page <= 86) || top->legacy_page == 93))
+        return act_startup_world_commerce_page(state, id, StartupCommerceAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
-         top->legacy_page == 70 || top->legacy_page == 73))
+         top->legacy_page == 69 || top->legacy_page == 70 || top->legacy_page == 73))
         return act_startup_world_human_page(state, id, StartupHumanPageAction::confirm);
     auto next = state;
     next.scripts.executing_page = id;
@@ -486,6 +494,14 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top != state.scripts.pages.rend() && top->id == id &&
+        top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 75 &&
+        top->legacy_page <= 77)
+        return act_startup_world_facility_item_page(state, id, StartupFacilityItemAction::cancel);
+    if (top != state.scripts.pages.rend() && top->id == id &&
+        top->kind == ref::WorldScriptPageKind::raw_page &&
+        ((top->legacy_page >= 83 && top->legacy_page <= 86) || top->legacy_page == 93))
+        return act_startup_world_commerce_page(state, id, StartupCommerceAction::cancel);
+    if (top != state.scripts.pages.rend() && top->id == id &&
         top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 60 || top->legacy_page == 61 || top->legacy_page == 62 ||
          top->legacy_page == 64 || top->legacy_page == 65 || top->legacy_page == 70 ||
@@ -494,19 +510,7 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (top != state.scripts.pages.rend() && top->id == id &&
         top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 48)
         return act_startup_world_runtime_rank_page(state, id, 0, true);
-    if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
-        top->kind != ref::WorldScriptPageKind::raw_page || top->legacy_page != 83)
-        return Error::invalid_page;
-    // b/g:5745：按钮2走m()；仅退出商店追加菜单，购买84/85未接，不虚构确认。
-    auto next = state;
-    next.scripts.executing_page = id;
-    const auto closed =
-        ref::prepare_world_script_close_page(startup_world_runtime_scripts(next), id);
-    if (!closed.candidate || !write_startup_world_runtime_scripts(next, closed.candidate->state))
-        return Error::script_failed;
-    next.scripts.executing_page.reset();
-    state = std::move(next);
-    return Error::none;
+    return Error::invalid_page;
 }
 
 Error act_startup_world_runtime_rank_page(State &state, std::uint64_t id, int selection,
@@ -620,9 +624,15 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 51 &&
         top->legacy_page <= 54)
         return update_startup_world_village_activity_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 75 &&
+        top->legacy_page <= 77)
+        return prepare_startup_world_facility_item_page(state);
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        ((top->legacy_page >= 83 && top->legacy_page <= 86) || top->legacy_page == 93))
+        return update_startup_world_commerce_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 60 && top->legacy_page <= 66) || top->legacy_page == 68 ||
-         top->legacy_page == 70 || top->legacy_page == 73))
+         top->legacy_page == 69 || top->legacy_page == 70 || top->legacy_page == 73))
         return update_startup_world_human_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 48 || top->legacy_page == 49)) {

@@ -1,4 +1,7 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_editing.hpp"
+#include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -416,9 +419,9 @@ void retired_recruitment(const StartupWorldRuntimeState &s, std::uint64_t id) {
               !s.facility_ordinals.count(id) && !s.facility_residents.count(id) &&
               !s.facility_difficulties.count(id) && !s.facility_flags.count(id) &&
               !s.facility_details.count(id) && !s.facility_monthly_cash.count(id) &&
-              !s.facility_month_age.count(id) && !s.neighbourhood.count(id) &&
-              !s.neighbourhood_details.count(id) && !s.dungeon_facilities.count(id) &&
-              !s.sites.count(id) && !s.shops.count(id) &&
+              !s.facility_month_age.count(id) && !s.facility_item_confirmations.count(id) &&
+              !s.neighbourhood.count(id) && !s.neighbourhood_details.count(id) &&
+              !s.dungeon_facilities.count(id) && !s.sites.count(id) && !s.shops.count(id) &&
               std::find(s.shop_order.begin(), s.shop_order.end(), id) == s.shop_order.end(),
           "natural residence retires old recruitment instance and all no-longer-owned auxiliary "
           "records");
@@ -440,7 +443,21 @@ void managed_resource_references(const StartupWorldRuntimeState &s) {
               page_owned(s.activity_page_bindings) && page_owned(s.activity_page_lists) &&
               page_owned(s.activity_page_display_humans) && page_owned(s.activity_page_parents) &&
               page_owned(s.activity_page_answers) && page_owned(s.activity_page_selections) &&
-              page_owned(s.activity_page_scroll) &&
+              page_owned(s.activity_page_scroll) && page_owned(s.facility_item_page_items) &&
+              page_owned(s.facility_item_page_lists) &&
+              page_owned(s.facility_item_page_selections) && page_owned(s.commerce_page_data) &&
+              page_owned(s.commerce_page_lists) &&
+              page_owned(s.facility_definition_page_bindings) &&
+              page_owned(s.facility_page_bindings) && page_owned(s.facility_page_neighbours) &&
+              page_owned(s.build_page_catalogs) && page_owned(s.residence_page_candidates) &&
+              std::all_of(s.facility_upgrade_initialized.begin(),
+                          s.facility_upgrade_initialized.end(),
+                          [&](auto id) { return pages.count(id) != 0; }) &&
+              std::all_of(s.facility_item_pages_initialized.begin(),
+                          s.facility_item_pages_initialized.end(),
+                          [&](auto id) { return pages.count(id) != 0; }) &&
+              std::all_of(s.commerce_pages_initialized.begin(), s.commerce_pages_initialized.end(),
+                          [&](auto id) { return pages.count(id) != 0; }) &&
               std::all_of(s.activity_page_parents.begin(), s.activity_page_parents.end(),
                           [&](const auto &binding) { return pages.count(binding.second) != 0; }) &&
               std::all_of(s.activity_pages_initialized.begin(), s.activity_pages_initialized.end(),
@@ -734,6 +751,151 @@ void natural_housing(std::uint64_t seed, int speed) {
         " ready=" + std::to_string(home_ready) + " grants=" + std::to_string(grants) +
         " taxes=" + std::to_string(tax_receipts) + ' ' + snapshot(session.state(), frame_limit));
 }
+// 在真实晋级前缀之后执行编辑命令。候选从当时地图/定义寻找，不预设空地或维护ID。
+template <class Require>
+std::array<std::uint64_t, 2> natural_editing_commands(StartupWorldRuntimeSession &session,
+                                                      Require &&require) {
+    const auto &initial = session.state();
+    check((initial.scripts.user_flags & 32U) != 0,
+          "natural first-star95 really unlocked moving before editing commands");
+    const auto road_definition = std::find_if(
+        initial.rules->facilities.begin(), initial.rules->facilities.end(), [&](const auto &d) {
+            return d.kind == 6 && (d.flags & 4) && initial.facility_presence.at(d.id) != 0;
+        });
+    check(road_definition != initial.rules->facilities.end(),
+          "natural town has unlocked source road definition");
+    const int road_id = road_definition->id;
+    const auto quote = startup_world_build_quote(initial, road_id);
+    check(quote.has_value(), "natural road uses current source construction quote");
+    const auto &map = initial.scene.world.world.map;
+    const auto fence = initial.rules->fences.at(initial.fence_level);
+    const auto in_town = [&](ref::Position p) {
+        return p.x > fence[0].x && p.x < fence[1].x && p.y > fence[1].y && p.y < fence[0].y;
+    };
+    std::optional<ref::Position> road_cell;
+    for (int y = 0; y < map.height && !road_cell; ++y)
+        for (int x = 0; x < map.width && !road_cell; ++x) {
+            const auto &tile = map.cells.at(y * map.width + x);
+            if (in_town({x, y}) && tile.legacy_state == 4 && !tile.facility)
+                road_cell = ref::Position{x, y};
+        }
+    check(road_cell.has_value(), "natural map supplies a legal single road cell");
+    const auto accepted = [&](const StartupBuildResult &r, const char *label) {
+        require(r.error, label);
+        if (r.denial != StartupBuildDenial::none)
+            throw std::runtime_error(std::string("natural editing denied ") + label +
+                                     " denial=" + std::to_string(static_cast<int>(r.denial)) + ' ' +
+                                     snapshot(session.state(), -1));
+    };
+    const auto cash = initial.scene.world.world.ai.accounting.funds();
+    const auto draws = initial.scene.random.draws();
+    const auto index = static_cast<std::size_t>(road_cell->y * map.width + road_cell->x);
+    accepted(session.begin_road(road_id), "enter natural road mode");
+    accepted(session.confirm_edit(*road_cell, ref::FacilityOrientation::first),
+             "choose road start");
+    accepted(session.confirm_edit(*road_cell, ref::FacilityOrientation::first),
+             "commit single road cell");
+    check(session.state().scene.world.world.map.cells.at(index).legacy_state == 3 &&
+              session.state().surface.at(index).definition == road_id &&
+              session.state().scene.world.world.ai.accounting.funds() ==
+                  cash - quote->construction_cost,
+          "real road changes one tile and charges original current quote once");
+    require(session.cancel_edit(), "leave road mode");
+    accepted(session.begin_edit(false), "enter road removal mode");
+    accepted(session.confirm_edit(*road_cell, ref::FacilityOrientation::first),
+             "choose road removal start");
+    accepted(session.confirm_edit(*road_cell, ref::FacilityOrientation::first),
+             "remove single road cell");
+    check(session.state().scene.world.world.map.cells.at(index).legacy_state == 4 &&
+              session.state().surface.at(index).definition == session.state().ground_definition &&
+              session.state().scene.world.world.ai.accounting.funds() ==
+                  cash - quote->construction_cost,
+          "real road removal restores ground without synthetic refund");
+    require(session.cancel_edit(), "leave road removal mode");
+
+    std::optional<std::uint64_t> old_id;
+    std::optional<ref::Position> target;
+    // 只选择正常kind2及其合法全占地空地；不拆正在经营/接待人物的设施来简化引用问题。
+    const auto &before = session.state();
+    for (const auto id : before.scene.world.facility_order) {
+        const auto &f = before.scene.world.world.facilities.at(id);
+        if (f.kind != 2 || f.status != 1 || !f.occupants.empty())
+            continue;
+        for (int y = 0; y < before.scene.world.world.map.height && !target; ++y)
+            for (int x = 0; x < before.scene.world.world.map.width && !target; ++x) {
+                const auto footprint = ref::facility_footprint(
+                    f.placement.shape, f.placement.orientation, {x, y},
+                    before.scene.world.world.map.width, before.scene.world.world.map.height);
+                if (footprint.error != ref::GeometryError::none)
+                    continue;
+                if (std::all_of(footprint.cells.begin(), footprint.cells.end(), [&](const auto &c) {
+                        const auto &tile = before.scene.world.world.map.cells.at(
+                            c.position.y * before.scene.world.world.map.width + c.position.x);
+                        return in_town(c.position) && tile.legacy_state == 4 && !tile.facility;
+                    })) {
+                    old_id = id;
+                    target = ref::Position{x, y};
+                }
+            }
+        if (target)
+            break;
+    }
+    check(old_id && target, "natural town has an ordinary kind2 and disjoint legal move footprint");
+    const auto placed = before.scene.world.world.facilities.at(*old_id).placement;
+    const int raw = before.facility_original_ids.at(*old_id),
+              ordinal = before.facility_ordinals.at(*old_id);
+    const int age = before.facility_month_age.at(*old_id);
+    const auto month_cash = before.facility_monthly_cash.at(*old_id);
+    const int item_count = before.facility_item_confirmations.at(*old_id);
+    const auto count = before.scene.world.world.facilities.size();
+    const auto move_cash = before.scene.world.world.ai.accounting.funds();
+    accepted(session.begin_edit(true), "enter genuinely unlocked move mode");
+    accepted(session.confirm_edit(placed.anchor, placed.orientation),
+             "select actual kind2 instance");
+    const auto moved = session.confirm_edit(*target, placed.orientation);
+    accepted(moved, "move actual kind2 instance");
+    check(moved.created && *moved.created != *old_id &&
+              !session.state().scene.world.world.facilities.count(*old_id) &&
+              session.state().scene.world.world.facilities.size() == count &&
+              session.state().facility_original_ids.at(*moved.created) == raw &&
+              session.state().facility_ordinals.at(*moved.created) == ordinal &&
+              session.state().facility_month_age.at(*moved.created) == age &&
+              session.state().facility_monthly_cash.at(*moved.created) == month_cash &&
+              session.state().facility_item_confirmations.at(*moved.created) == item_count &&
+              session.state().scene.world.world.ai.accounting.funds() == move_cash - 300,
+          "natural move rebuilds stable Owner identity while preserving source raw/ordinal/y/cash "
+          "and charging source300");
+    // 300来自b/c:1826–1890/a/o:613–635的原固定移动费，不是新设演示价格。
+    require(session.cancel_edit(), "leave move mode");
+    accepted(session.begin_edit(false), "enter moved-decoration removal mode");
+    accepted(session.confirm_edit(*target, placed.orientation), "remove moved kind2 instance");
+    require(session.cancel_edit(), "leave final removal mode");
+    const auto &after = session.state();
+    check(after.scene.world.world.facilities.size() + 1 == count &&
+              !after.scene.world.world.facilities.count(*moved.created) &&
+              after.scene.world.world.ai.accounting.funds() == move_cash - 300 &&
+              after.scene.random.draws() == draws && !after.build_moving_facility &&
+              !after.build_anchor,
+          "natural moved facility removal retires entity without refund, random draw or stale "
+          "editing selection");
+    for (const auto id : {*old_id, *moved.created}) {
+        check(!after.facility_original_ids.count(id) && !after.facility_ordinals.count(id) &&
+                  !after.facility_details.count(id) && !after.facility_month_age.count(id) &&
+                  !after.facility_item_confirmations.count(id) &&
+                  !after.facility_monthly_cash.count(id) && !after.sites.count(id) &&
+                  !after.dungeon_facilities.count(id) && !after.neighbourhood.count(id) &&
+                  !after.neighbourhood_details.count(id) &&
+                  std::none_of(after.scene.world.world.map.cells.begin(),
+                               after.scene.world.world.map.cells.end(),
+                               [id](const auto &cell) {
+                                   return cell.facility && cell.facility->instance_id.value == id;
+                               }),
+              "natural editing leaves neither old nor replacement per-instance or map references");
+    }
+    managed_resource_references(after);
+    return {*old_id, *moved.created};
+}
+
 // 明确自动玩家策略：建设面包房、实际开展活动、点击自然升级提示，再申请月度晋级。
 // 仅调用Session玩家命令；不写资金、点数、人气、日期、人物、设施使用数或rank。
 void natural_progression(std::uint64_t seed, int speed) {
@@ -748,6 +910,9 @@ void natural_progression(std::uint64_t seed, int speed) {
     std::set<std::uint64_t> seen_upgrades;
     int last_month = -1, promoted_month = -1, unlocked_month = -1;
     std::int64_t unlocked_income{};
+    int edited_month = -1;
+    std::int64_t edited_income{};
+    std::array<std::uint64_t, 2> edited_retired{};
     std::size_t sounds{}, peak_sounds{}, peak_payloads{}, peak_pages{}, peak_effects{},
         peak_actors{}, peak_cash{}, peak_tasks{};
     std::size_t peak_retired_actors{}, peak_retired_encounters{};
@@ -818,7 +983,8 @@ void natural_progression(std::uint64_t seed, int speed) {
                   "first star follows actual source conditions and unlocks painting exhibition16");
             std::cout << "progression promoted " << snapshot(s, frame) << std::endl;
         }
-        if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) {
+        if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
+            edited_month < 0) {
             const auto pending = std::find_if(
                 s.scene.world.facility_order.begin(), s.scene.world.facility_order.end(),
                 [&](auto id) {
@@ -972,7 +1138,8 @@ void natural_progression(std::uint64_t seed, int speed) {
             }
             require(session.acknowledge_page(page.id), "confirm upgrade presentation");
         } else if (page.legacy_page == 48) {
-            require(session.act_rank_page(page.id), "apply actual rank promotion");
+            require(session.act_rank_page(page.id, 0, edited_month >= 0),
+                    "apply rank or return post-edit report");
         } else if (page.legacy_page == 87) {
             if (s.medal_count > 0) {
                 require(session.act_award_page(page.id, ref::WorldAwardAction::request_award, 0),
@@ -989,14 +1156,37 @@ void natural_progression(std::uint64_t seed, int speed) {
         sounds += session.take_sound_requests().size();
         check(session.state().sound_requests.empty(),
               "progression sink consumes sound outputs once per frame");
-        if (unlocked_month >= 0 && month > unlocked_month && !upgraded.empty() &&
-            unlocked_completed > 0 &&
+        if (edited_month < 0 && unlocked_month >= 0 && month > unlocked_month &&
+            !upgraded.empty() && unlocked_completed > 0 &&
             s.scripts.pages.back().kind == ref::WorldScriptPageKind::scene &&
             s.scene.calendar.units >= 27) {
             check(income(s) > unlocked_income && completed >= 2 &&
                       s.activity_pages_initialized.empty(),
                   "newly unlocked activity finishes and post-rank world keeps earning income with "
                   "retired pages");
+            std::cout << "progression original prefix completed " << snapshot(s, frame)
+                      << std::endl;
+            edited_retired = natural_editing_commands(session, require);
+            edited_month = month;
+            edited_income = income(session.state());
+            peak_sounds = std::max(peak_sounds, session.state().sound_requests.size());
+            sounds += session.take_sound_requests().size();
+            check(session.state().sound_requests.empty(),
+                  "editing command sound outputs consumed once");
+            std::cout << "progression edited old=" << edited_retired[0]
+                      << " moved=" << edited_retired[1] << ' ' << snapshot(session.state(), frame)
+                      << std::endl;
+        }
+        if (edited_month >= 0 && month > edited_month && s.scene.calendar.units >= 27 &&
+            top_page(s) && top_page(s)->kind == ref::WorldScriptPageKind::scene) {
+            check(income(s) > edited_income &&
+                      !s.scene.world.world.facilities.count(edited_retired[0]) &&
+                      !s.scene.world.world.facilities.count(edited_retired[1]) &&
+                      !s.facility_month_age.count(edited_retired[0]) &&
+                      !s.facility_month_age.count(edited_retired[1]) && !s.build_moving_facility &&
+                      !s.build_anchor,
+                  "post-edit natural month earns new facility income and keeps retired references "
+                  "absent");
             std::cout << "progression summary completed=" << completed
                       << " unlocked=" << unlocked_completed << " upgraded=" << upgraded.size()
                       << " sounds=" << sounds << " peak_pages=" << peak_pages
@@ -1005,7 +1195,7 @@ void natural_progression(std::uint64_t seed, int speed) {
                       << " peak_retired_actors=" << peak_retired_actors
                       << " peak_retired_encounters=" << peak_retired_encounters
                       << " peak_actors=" << peak_actors << " peak_cash=" << peak_cash
-                      << " peak_tasks=" << peak_tasks
+                      << " peak_tasks=" << peak_tasks << " edited_month=" << edited_month
                       << " checkpoints=" << session.checkpoints().size() << ' '
                       << snapshot(s, frame) << '\n';
             return;
@@ -1015,6 +1205,343 @@ void natural_progression(std::uint64_t seed, int speed) {
                              snapshot(session.state(), limit));
 }
 
+// 新局实际库存先赠人/投设施，真实任务开放商会后买卖，再留出完整自然月营业。
+// 这是显式玩家策略；不改其它自然链与默认黄金轨迹，也不补钱、人物、库存或flags。
+void natural_tools(std::uint64_t seed, int speed) {
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(),
+                                       ref::WorldRandomStream::from_java_seed(seed));
+    session.set_speed(speed);
+    using E = StartupWorldRuntimeError;
+    using H = StartupHumanPageAction;
+    using C = StartupCommerceAction;
+    check(session.state().items.at(0).inventory == 2 && session.state().items.at(29).inventory == 3,
+          "natural tools begins with original two potatoes and three medicines");
+    std::optional<int> recipient, bought_item;
+    bool person_gift{}, facility_gift{}, facility_effect{}, bought{}, sold{};
+    int commerce_month = -1, complete_month = -1, last_month = -1, observed_frame{};
+    std::int64_t commerce_income{};
+    const int old_improvement = session.state().scripts.facilities.at(33).improvements[1];
+    const auto &start = session.state();
+    const auto original_bun = std::find_if(
+        start.scene.world.facility_order.begin(), start.scene.world.facility_order.end(),
+        [&](auto id) {
+            return start.scene.world.world.facilities.at(id).placement.definition_id == 33;
+        });
+    check(original_bun != start.scene.world.facility_order.end(),
+          "natural source map contains original bun shop");
+    const auto bun = *original_bun;
+    std::size_t sounds{}, peak_sounds{}, peak_payloads{}, peak_pages{}, peak_effects{},
+        peak_actors{}, peak_cash{}, peak_tasks{}, peak_retired_actors{}, peak_retired_encounters{};
+    const auto require = [&](E error, const char *label) {
+        if (error == E::none)
+            return;
+        const auto *p = top_page(session.state());
+        throw std::runtime_error(std::string("natural tools command ") + label +
+                                 " error=" + std::to_string(static_cast<int>(error)) +
+                                 " raw=" + std::to_string(p ? p->legacy_page : -1) + ' ' +
+                                 snapshot(session.state(), observed_frame));
+    };
+    const auto income = [](const auto &s) {
+        std::int64_t total{};
+        for (const auto &entry : s.scene.world.world.ai.accounting.entries())
+            if (entry.second.category == ref::CashCategory::facilities &&
+                entry.second.direction == ref::CashDirection::income)
+                total += entry.second.amount;
+        return total;
+    };
+    const auto affordable_task = [](const auto &s, std::uint64_t id) {
+        return s.rules->tasks.at(s.tasks.at(id).definition).recruitment_fee <=
+               s.scene.world.world.ai.accounting.funds();
+    };
+    const auto affordable_stock = [](const auto &s) {
+        return std::any_of(s.rules->items.begin(), s.rules->items.end(), [&](const auto &i) {
+            return s.shop_item_stock.at(i.identity).quantity > 0 &&
+                   s.scene.world.world.ai.accounting.funds() >= i.commerce_price;
+        });
+    };
+    constexpr int limit = 180000;
+    for (int frame = 0; frame < limit; ++frame) {
+        observed_frame = frame;
+        const auto old_draws = session.state().scene.random.draws();
+        const auto step = session.update();
+        if (!step.candidate) {
+            const auto &failed = session.state();
+            std::ostringstream details;
+            details << "natural tools update failed " << snapshot(failed, frame)
+                    << " error=" << static_cast<int>(step.error)
+                    << " scene_error=" << static_cast<int>(step.scene_error)
+                    << " world_error=" << static_cast<int>(step.world_error) << " bought=" << bought
+                    << " sold=" << sold;
+            for (const auto &p : failed.scripts.pages) {
+                const auto counter = failed.page_counters.find(p.id);
+                details << " page=" << p.id << ":raw" << p.legacy_page << ":life" << p.lifecycle
+                        << ":source" << p.source_record << ":f/r/s=" << p.legacy_f << '/'
+                        << p.legacy_r << '/' << p.legacy_s << ":counter"
+                        << (counter == failed.page_counters.end() ? -1 : counter->second)
+                        << ":initialized=" << failed.commerce_pages_initialized.count(p.id) << '/'
+                        << failed.human_pages_initialized.count(p.id) << '/'
+                        << failed.facility_item_pages_initialized.count(p.id);
+            }
+            for (const auto &[id, item] : failed.items) {
+                const auto c = failed.catalog.find({0, id});
+                if (c == failed.catalog.end() || c->second.inventory != item.inventory ||
+                    c->second.status != item.status ||
+                    c->second.unlock_counter != item.unlock_counter ||
+                    c->second.newly_unlocked != item.newly_unlocked) {
+                    details << " item-mismatch=" << id << ":items=" << item.inventory << '/'
+                            << item.status << '/' << item.unlock_counter << '/'
+                            << item.newly_unlocked;
+                    if (c != failed.catalog.end())
+                        details << ":catalog=" << c->second.inventory << '/' << c->second.status
+                                << '/' << c->second.unlock_counter << '/'
+                                << c->second.newly_unlocked;
+                }
+            }
+            throw std::runtime_error(details.str() + " last=" + diagnose(failed));
+        }
+        const auto &s = session.state();
+        managed_resource_references(s);
+        check(s.scene.random.draws() >= old_draws &&
+                  ref::valid_world_calendar_state(s.scene.calendar),
+              "natural tools retains common monotonic random and normalized calendar");
+        const auto usage = startup_world_resource_usage(s);
+        peak_sounds = std::max(peak_sounds, usage.sound_outputs);
+        peak_payloads = std::max(peak_payloads, usage.page_payloads);
+        peak_pages = std::max(peak_pages, usage.pages);
+        peak_effects = std::max(peak_effects, usage.effects);
+        peak_actors = std::max(peak_actors, usage.live_actors + usage.retired_actors);
+        peak_retired_actors = std::max(peak_retired_actors, usage.retired_actors);
+        peak_retired_encounters = std::max(peak_retired_encounters, usage.retired_encounters);
+        peak_cash = std::max(peak_cash, s.scene.world.world.ai.accounting.entries().size());
+        peak_tasks = std::max(peak_tasks, s.tasks.size());
+        const int month = s.scene.calendar.year * 12 + s.scene.calendar.month;
+        if (month != last_month) {
+            last_month = month;
+            std::cout << "tools month person=" << person_gift << " facility=" << facility_effect
+                      << " success=" << s.task_progress.successes << " bought=" << bought
+                      << " sold=" << sold << ' ' << snapshot(s, frame) << std::endl;
+        }
+        if (facility_gift && !facility_effect &&
+            s.scripts.facilities.at(33).improvements[1] == old_improvement + 2) {
+            facility_effect = true;
+            check(s.facility_item_confirmations.at(bun) == 1,
+                  "natural original potato reaches76 and advances actual bun-shop instance count");
+            std::cout << "tools facility improved " << snapshot(s, frame) << std::endl;
+        }
+        const auto current = top_page(s);
+        check(current, "natural tools preserves real framework page");
+        const auto page = *current;
+        if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) {
+            if (!person_gift && !s.scene.world.world.ai.human_order.empty()) {
+                const auto actor = s.scene.world.world.ai.human_order.front();
+                recipient = s.scene.world.world.ai.battle.actors.at(actor).definition;
+                require(session.open_human_page(*recipient), "inspect natural arrival");
+            } else if (person_gift && !facility_gift) {
+                require(session.open_facility_page(bun), "inspect original bun shop");
+            } else if (facility_effect && !(s.scripts.user_flags & 16U) && !s.active_task &&
+                       std::any_of(s.task_order.begin(), s.task_order.end(),
+                                   [&](auto id) { return affordable_task(s, id); })) {
+                require(session.open_task_menu(), "open natural available adventure");
+            } else if (facility_effect && s.task_progress.successes > 0 && !s.active_task &&
+                       !sold && (s.scripts.user_flags & 16U)) {
+                // 探索成功不保证开放商会；持续真实任务直至原事件／讨伐链给出开放位。
+                // 开放后等待真实商会补货或下一次自然月补货。
+                if (bought || affordable_stock(s))
+                    require(session.open_commerce(), "open genuinely unlocked commerce");
+            }
+        } else if (page.legacy_page == 60) {
+            if (recipient && !person_gift)
+                require(session.act_human_page(page.id, H::gifts), "open natural recipient gifts");
+            else
+                require(session.cancel_page(page.id), "return human details");
+        } else if (page.legacy_page == 64) {
+            if (person_gift) {
+                require(session.cancel_page(page.id), "return after one ordinary gift");
+            } else {
+                require(session.act_human_page(page.id, H::equipment_slot, 4),
+                        "open ordinary items");
+                const auto &list = session.state().equipment_page_catalogs.at(page.id)[4];
+                const auto potato = std::find(list.begin(), list.end(), 0);
+                check(potato != list.end(), "original potato appears in ordinary item inventory");
+                require(session.act_human_page(page.id, H::select,
+                                               static_cast<int>(potato - list.begin())),
+                        "select potato");
+                const auto cash = session.state().scene.world.world.ai.accounting.funds();
+                const auto old_extra =
+                    session.state().scene.world.world.ai.growth.at(*recipient).definition.extra[0];
+                require(session.act_human_page(page.id, H::confirm), "give original potato");
+                check(session.state().items.at(0).inventory == 1 &&
+                          session.state().scene.world.world.ai.accounting.funds() == cash &&
+                          session.state()
+                                  .scene.world.world.ai.growth.at(*recipient)
+                                  .definition.extra[0] == old_extra + 4,
+                      "natural64 consumes original item and applies actual m4 without cash "
+                      "injection");
+                person_gift = true;
+                std::cout << "tools human gifted=" << *recipient << ' '
+                          << snapshot(session.state(), frame) << std::endl;
+            }
+        } else if (page.legacy_page == 74) {
+            require(session.act_facility_page(page.id, facility_gift
+                                                           ? StartupFacilityPageAction::cancel
+                                                           : StartupFacilityPageAction::confirm),
+                    "use or return original facility details");
+        } else if (page.legacy_page == 75) {
+            if (facility_gift) {
+                require(session.cancel_page(page.id), "return facility item catalogue");
+            } else {
+                const auto &list = s.facility_item_page_lists.at(page.id);
+                const auto potato = std::find(list.begin(), list.end(), 0);
+                check(potato != list.end(), "remaining original potato appears in75");
+                require(session.act_facility_item_page(page.id, StartupFacilityItemAction::select,
+                                                       static_cast<int>(potato - list.begin())),
+                        "select facility potato");
+                require(session.acknowledge_page(page.id), "apply facility potato");
+                check(session.state().items.at(0).inventory == 0 &&
+                          session.state().scripts.facilities.at(33).improvements[1] ==
+                              old_improvement,
+                      "natural75 exhausts potato before actual76 improvement");
+                facility_gift = true;
+            }
+        } else if (page.legacy_page == 22) {
+            const auto &list = s.task_page_lists.at(page.id);
+            const auto task = std::find_if(list.begin(), list.end(),
+                                           [&](auto id) { return affordable_task(s, id); });
+            check(task != list.end(), "natural tools selects affordable actual task");
+            require(session
+                        .act_task_page(page.id, StartupWorldTaskAction::confirm,
+                                       static_cast<int>(task - list.begin()))
+                        .error,
+                    "select task");
+        } else if (page.legacy_page == 23) {
+            require(session.act_task_page(page.id, StartupWorldTaskAction::confirm).error,
+                    "accept task");
+        } else if (page.legacy_page == 25) {
+            require(session.act_task_page(page.id, StartupWorldTaskAction::depart).error,
+                    "depart recruited team");
+        } else if (page.legacy_page == 28) {
+            if (s.page_phases.at(page.id) == 0)
+                require(session.act_task_page(page.id, StartupWorldTaskAction::confirm).error,
+                        "confirm departure");
+        } else if (page.legacy_page == 33) {
+            require(session
+                        .act_task_page(
+                            page.id, StartupWorldTaskAction::confirm,
+                            s.scene.world.world.ai.accounting.funds() >= page.legacy_f ? 0 : 1)
+                        .error,
+                    "renew affordable adventure or explicitly abort");
+        } else if (page.legacy_page == 83) {
+            // 事件36也可在本轮调度尾部刚插入83；与主动入口一样等待真实首次初始化。
+            if (!s.commerce_pages_initialized.count(page.id)) {
+                // 仍执行本轮末尾声音消费和资源检查。
+            } else if (s.task_progress.successes == 0 || sold ||
+                       (!bought && !affordable_stock(s))) {
+                require(session.cancel_page(page.id), "return commerce");
+            } else {
+                require(session.act_commerce_page(page.id, C::select, bought ? 1 : 0),
+                        "select buy or sell catalogue");
+                require(session.act_commerce_page(page.id, C::confirm), "open trade catalogue");
+            }
+        } else if (page.legacy_page == 84) {
+            const auto view = inspect_startup_world_commerce_page(s, page.id);
+            check(view.has_value(), "natural commerce catalogue has initialized payload");
+            if ((view->mode == 0 && bought) || (view->mode == 1 && sold)) {
+                require(session.cancel_page(page.id), "return completed trade catalogue");
+            } else {
+                int index = -1;
+                for (int n = 0; n < static_cast<int>(view->entries.size()); ++n) {
+                    const auto id = view->entries[n];
+                    if (view->mode == 1 ? bought_item == id
+                                        : s.rules->items.at(id).commerce_price <=
+                                              s.scene.world.world.ai.accounting.funds()) {
+                        index = n;
+                        break;
+                    }
+                }
+                check(index >= 0,
+                      "natural trade has affordable stock or the genuinely purchased item");
+                const int item = view->entries[index];
+                const int old_stock = s.items.at(item).inventory;
+                const int old_shop = s.shop_item_stock.at(item).quantity;
+                const auto cash = s.scene.world.world.ai.accounting.funds();
+                const int price =
+                    s.rules->items.at(item).commerce_price / (view->mode == 1 ? 2 : 1);
+                require(session.act_commerce_page(page.id, C::select, index),
+                        "select real stocked item");
+                require(session.act_commerce_page(page.id, C::confirm),
+                        "commit actual buy or sale");
+                const bool sale = view->mode == 1;
+                check(session.state().items.at(item).inventory == old_stock + (sale ? -1 : 1) &&
+                          session.state().shop_item_stock.at(item).quantity ==
+                              old_shop - (sale ? 0 : 1) &&
+                          session.state().scene.world.world.ai.accounting.funds() ==
+                              cash + (sale ? price : -price),
+                      "natural trade exactly changes real cash, owned stock and distinct commerce "
+                      "stock");
+                if (sale) {
+                    sold = true;
+                    commerce_month = month;
+                    complete_month = month + 2; // 跨过成交月尾及下一整月，不把半个月当完整经营月。
+                    commerce_income = income(session.state());
+                } else {
+                    bought = true;
+                    bought_item = item;
+                }
+                std::cout << "tools trade mode=" << view->mode << " item=" << item << ' '
+                          << snapshot(session.state(), frame) << std::endl;
+            }
+        } else if (page.legacy_page == 77 && !s.facility_item_pages_initialized.count(page.id)) {
+            // 76本次更新刚换入77；玩家等下一次真实初始化，不能在首轮载荷创建前确认。
+        } else if (page.legacy_page == 48) {
+            require(session.act_rank_page(page.id, 0, true), "return rank conditions");
+        } else if (page.legacy_page == 87) {
+            if (s.medal_count > 0) {
+                require(session.act_award_page(page.id, ref::WorldAwardAction::request_award, 0),
+                        "request annual medal");
+                require(session.act_award_page(page.id, ref::WorldAwardAction::confirm_award),
+                        "award annual medal");
+            }
+        } else if (page.kind != ref::WorldScriptPageKind::scene && page.legacy_page != 16 &&
+                   page.legacy_page != 24 && page.legacy_page != 56 && page.legacy_page != 57 &&
+                   page.legacy_page != 76 && page.legacy_page != 86 && page.legacy_page != 97 &&
+                   page.legacy_page != 98) {
+            require(session.acknowledge_page(page.id), "confirm source event or item result");
+        }
+        sounds += session.take_sound_requests().size();
+        check(session.state().sound_requests.empty(),
+              "natural tools consumes transient sound outputs exactly once");
+        const auto &after = session.state();
+        const auto *remaining = top_page(after);
+        if (sold && month >= complete_month && after.scene.calendar.units >= 27 && remaining &&
+            remaining->kind == ref::WorldScriptPageKind::scene) {
+            check(person_gift && facility_effect && bought && after.task_progress.successes > 0 &&
+                      income(after) > commerce_income &&
+                      after.facility_item_pages_initialized.empty() &&
+                      after.facility_item_page_lists.empty() &&
+                      after.facility_item_page_items.empty() &&
+                      after.commerce_pages_initialized.empty() &&
+                      after.commerce_page_data.empty() && after.commerce_page_lists.empty(),
+                  "real gifts, task restock and buy/sale retire pages and continue a complete "
+                  "income month");
+            std::cout << "tools summary success=" << after.task_progress.successes
+                      << " bought=" << *bought_item << " commerce_month=" << commerce_month
+                      << " sounds=" << sounds << " peak_pages=" << peak_pages
+                      << " peak_payloads=" << peak_payloads << " peak_effects=" << peak_effects
+                      << " peak_sounds=" << peak_sounds << " peak_actors=" << peak_actors
+                      << " peak_retired_actors=" << peak_retired_actors
+                      << " peak_retired_encounters=" << peak_retired_encounters
+                      << " peak_cash=" << peak_cash << " peak_tasks=" << peak_tasks
+                      << " checkpoints=" << session.checkpoints().size() << ' '
+                      << snapshot(after, frame) << '\n';
+            return;
+        }
+    }
+    throw std::runtime_error(
+        "natural tools frame limit reached person=" + std::to_string(person_gift) +
+        " facility=" + std::to_string(facility_effect) + " bought=" + std::to_string(bought) +
+        " sold=" + std::to_string(sold) + ' ' + snapshot(session.state(), limit));
+}
 } // namespace
 int main(int argc, const char **argv) {
     try {
@@ -1027,6 +1554,19 @@ int main(int argc, const char **argv) {
             if (result.ec != std::errc{} || result.ptr != input.data() + input.size())
                 throw std::invalid_argument("invalid continuous test argument");
         };
+        if (argc >= 2 && std::string(argv[1]) == "natural_tools") {
+            if (argc > 4)
+                throw std::invalid_argument("expected natural_tools [seed [speed]]");
+            if (argc >= 3)
+                parse(argv[2], seed);
+            if (argc >= 4)
+                parse(argv[3], speed);
+            if (speed != 0 && speed != 1)
+                throw std::invalid_argument("invalid natural_tools speed");
+            natural_tools(seed, speed);
+            std::cout << "natural tools: " << checks << " checks\n";
+            return 0;
+        }
         if (argc >= 2 && std::string(argv[1]) == "natural_progression") {
             if (argc > 4)
                 throw std::invalid_argument("expected natural_progression [seed [speed]]");

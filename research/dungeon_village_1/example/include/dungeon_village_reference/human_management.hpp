@@ -146,4 +146,29 @@ struct HumanEquipmentGiftResult {
 // 66/可选68/可选67 -> 首个同定义actor.ae同步。取消不调用；同装备仍奖励、锁6。
 // 预算检查只发生于打开65前，确认消费者不再添加二次现金拒绝，原余额可为负。
 HumanEquipmentGiftResult prepare_human_equipment_gift(const HumanEquipmentGiftInput &input);
+
+struct HumanItemGiftInput {
+    HumanDefinitionStatsInput definition;
+    std::vector<HumanProfessionRule> professions;
+    int stock{};
+    int profession_affinity{}; // h.u[item.e]，0..2；与装备矩阵无关。
+    int quality{};             // 原表item.j为1..10；评价插值在1..9夹紧。
+    int effect{};              // 0..5属性、6/7礼物素材、8回复、9学习。
+    int amount{};              // item.m，属性直接加extra，不乘职业系数。
+    int spell{};               // item.h，仅effect9读取。
+    int satisfaction{}, medals{}, pending_completion{};
+};
+struct HumanItemGiftCandidate {
+    int stock{}, evaluation{}, dialogue_band{};
+    HumanRewardCandidate reward; // 先共用奖励，再属性/学习；学习后不立即重算Q。
+    HumanDefinitionStatsInput definition;
+    std::optional<HumanDerivedStats> final_stats;
+    std::optional<HumanAttributeComparison> attribute_display;
+};
+struct HumanItemGiftResult {
+    HumanGrowthError error{HumanGrowthError::none};
+    std::optional<HumanItemGiftCandidate> candidate;
+};
+// raw64第五标签直接消费，既不打开65也不扣钱；Owner协调66/69/67和库存退休。
+HumanItemGiftResult prepare_human_item_gift(const HumanItemGiftInput &input);
 } // namespace dungeon_village_reference

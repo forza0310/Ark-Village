@@ -21,32 +21,22 @@ FacilityItemError economy_error(FacilityEconomyError error) {
 
 } // namespace
 
-FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
-                                         const ImprovementItemDefinition &item,
-                                         const FacilityEconomyInput &shared_input,
-                                         const FacilityEventCounters &instance_counters,
-                                         std::int32_t inventory) {
+FacilityImprovementResult prepare_facility_improvement(const FacilityItemDefinition &facility,
+                                                       const ImprovementItemDefinition &item,
+                                                       const FacilityEconomyInput &shared_input) {
     if (facility.definition_id < 0 || facility.legacy_icon < 0 || item.item_id < 0 ||
         item.legacy_category < 0 ||
         static_cast<std::size_t>(item.legacy_category) >= facility.category_affinities.size() ||
         std::any_of(
             facility.category_affinities.begin(), facility.category_affinities.end(),
-            [](std::int32_t value) { return value < 0 || value > 2; }) ||
-        inventory < 0 || inventory > 999) {
+            [](std::int32_t value) { return value < 0 || value > 2; })) {
         return {FacilityItemError::invalid_input, std::nullopt};
-    }
-    if (inventory == 0) {
-        return {FacilityItemError::no_inventory, std::nullopt};
     }
     const auto before = derive_facility_economy(facility.economy, shared_input);
     if (before.error != FacilityEconomyError::none) {
         return {economy_error(before.error), std::nullopt};
     }
-    FacilityItemCandidate candidate;
-    candidate.definition_id = facility.definition_id;
-    candidate.item_id = item.item_id;
-    // A capped or unchanged visible result still consumes the item and advances instance counters.
-    candidate.remaining_inventory = inventory - 1;
+    FacilityImprovementCandidate candidate;
     candidate.definition_improvements = shared_input.definition_improvements;
     const auto affinity =
         facility.category_affinities[static_cast<std::size_t>(item.legacy_category)];
@@ -70,16 +60,8 @@ FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
     if (after.error != FacilityEconomyError::none) {
         return {economy_error(after.error), std::nullopt};
     }
-    const auto event = confirm_facility_item(instance_counters, facility.legacy_icon);
-    if (event.error != FacilityEventError::none) {
-        return {event.error == FacilityEventError::numeric_overflow
-                    ? FacilityItemError::numeric_overflow
-                    : FacilityItemError::invalid_input,
-                std::nullopt};
-    }
     candidate.before = *before.values;
     candidate.after = *after.values;
-    candidate.instance_event = *event.transition;
     bool changed = false;
     for (std::size_t slot = 0; slot < candidate.visible_deltas.size(); ++slot) {
         candidate.visible_deltas[slot] =
@@ -88,6 +70,39 @@ FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
     }
     candidate.legacy_response = changed ? affinity : -1;
     return {FacilityItemError::none, candidate};
+}
+
+FacilityItemResult prepare_facility_item(const FacilityItemDefinition &facility,
+                                         const ImprovementItemDefinition &item,
+                                         const FacilityEconomyInput &shared_input,
+                                         const FacilityEventCounters &instance_counters,
+                                         std::int32_t inventory) {
+    // 保留既有一体API的输入拒绝顺序；展示不变也照常扣库存、推进实例计数。
+    if (facility.definition_id < 0 || facility.legacy_icon < 0 || item.item_id < 0 ||
+        item.legacy_category < 0 ||
+        static_cast<std::size_t>(item.legacy_category) >= facility.category_affinities.size() ||
+        std::any_of(
+            facility.category_affinities.begin(), facility.category_affinities.end(),
+            [](std::int32_t value) { return value < 0 || value > 2; }) ||
+        inventory < 0 || inventory > 999)
+        return {FacilityItemError::invalid_input, std::nullopt};
+    if (inventory == 0)
+        return {FacilityItemError::no_inventory, std::nullopt};
+    const auto improvement = prepare_facility_improvement(facility, item, shared_input);
+    if (!improvement.candidate)
+        return {improvement.error, std::nullopt};
+    const auto event = confirm_facility_item(instance_counters, facility.legacy_icon);
+    if (!event.transition)
+        return {event.error == FacilityEventError::numeric_overflow
+                    ? FacilityItemError::numeric_overflow
+                    : FacilityItemError::invalid_input,
+                std::nullopt};
+    const auto &i = *improvement.candidate;
+    return {FacilityItemError::none,
+            FacilityItemCandidate{facility.definition_id, item.item_id, inventory - 1,
+                                  i.definition_improvements, *event.transition,
+                                  i.applied_improvements, i.visible_deltas, i.legacy_response,
+                                  i.before, i.after}};
 }
 
 } // namespace dungeon_village_reference

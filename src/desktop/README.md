@@ -6,6 +6,8 @@
 
 `world_overlay`定义标准C++绘制计划，`world_combat_visuals`读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals`按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。头像采用e8f66d9的`startup_world_visuals`计划，读取当前职业/性别并裁剪walk01帧0。`world_overlay_render`才调用raylib；布局不扣款/加经验/推进计数，设施精确L锚点和完整恢复特效仍未交付。
 
+经验期间共享定义P真时，cd24自己的计数按12周期/6半周期选择ef_lvUp两帧，55后与经验条继续共存、72结束；不使用FPS或真正cd14时钟，不触发升级/HP恢复。普通身体锚点沿现有适配，弹跳/完整bl、设施正向浮标及金币X4精确运动缺口另列研究需求。
+
 默认`ark_village`及`--world`使用`WorldSession`模拟线程独占唯一State，`world_view`负责真实页ID输入、窗口生命周期、快照绘制与插值，不创建旧Game。`world_scene`只读当前surface、名册和元数据，按职业/性别/怪物体型绘制原动作帧，复用道路拼块、栅栏/门柱、血条和现金浮标。
 
 - `world_management`：建设/设施/授勋/晋级及人物/税收页面的预览与FIFO接线；只保留表现状态和在途序号，拒绝反馈来自模拟线程，人物与税收列表选择由源Owner持有。

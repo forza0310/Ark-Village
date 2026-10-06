@@ -6,7 +6,8 @@
 #include "world_overlay.hpp"
 
 namespace ark::desktop {
-// Uses the ordinary body anchor. Special-action bl offsets, MISS/combo layouts and level-up
+// Uses the ordinary body anchor. Definition P/cd24 alternates the pending level badge;
+// the actual cd14 badge has its independent timer. Special-action bl offsets, MISS/combo and
 // bounce/particles need their complete maintained contracts before being added here.
 // EXP remainder preserves the maintained growth-consumption arithmetic; exact original visual
 // map truncation is not yet specified by research and is not claimed as pixel-exact behavior.

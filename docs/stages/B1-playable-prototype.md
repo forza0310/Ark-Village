@@ -1,5 +1,17 @@
 # B1：建造与招募可玩切片
 
+<a id="pending-level-ui"></a>
+
+## 已发布稳定UI：经验期间P闪标（2026-10-06）
+
+用户要求接入稳定研究，并选择先接历史已发布UI。最新a1b4cc7仅研究流程文档；正式规则仍2b479f6，扩张/双绑定/深化性能代码尚未提交，本批没有消费它们或修改research。COMBAT_RENDER给出共享定义P门控、cd24计数`(count%12)/6`两帧交替，当前world_combat_visuals据此补齐经验期间LevelUP头标。55隐藏经验数字后头标仍与经验条共存，负计数/72结束/Pfalse/人物隐藏均不绘；真正cd14仍独立frame0/48寿命，不复用cd24计数或重复升级/发奖/回血。
+
+锚点沿现有普通身体头标桌面适配，完整bl/弹跳/粒子仍不认证。设施正向浮标和金币X4已有素材、阶段/寿命部分交付，但完整落地仍缺上浮整数公式/锚点及X4运动与count13–22帧选择。精确复核发现不能从“两计数换帧0..6、23移除”直接推count/2，也不能随意固定末帧或把运动负数当金额；已登记[最小缺口](../reference/RESEARCH_REQUESTS.md#已发布表现的精确消费缺口2026-10-06)，旧X4不作金币文字的断言保留。
+
+主责边界测试扩展既有world_combat_visuals，覆盖0/5/6/11/12/54/55/71、负延迟/72、Pfalse、隐藏、真实cd14独立性与重复绘制不改P/经验/HP/资金/随机/计数。窗口夹具按战斗表现职责独立源文件、复用world_ui runner，手动world_combat_render_fixture不注册标准CTest；标注synthetic，四个输入0/6/55/72绘成一图，实际载入ef_lvUp两帧与EXP素材，绘4帧且Owner不推进。截图已核对，窗口退出0，不等于自然P出现、OS输入或原APK连续动态验收。
+
+公共Release库、desktop-debug/headless-debug/desktop-release消费者构建通过。desktop-debug标准166项/50.07秒、headless-debug142项/42.23秒全部通过，两套精确排除三个月，未重复此前长期基线；新增窗口夹具真实渲染通过，冻结330项来源/原断言保持。日志在build/validation/published-ui，图在build/validation/human-management/fixtures/synthetic-pending-level-badge.png。未新增/修改素材、存档格式、世界规则或依赖；CI待验证，没有推送/发布。
+
 <a id="normal-speed-audit"></a>
 
 ## 最新研究审计与玩家一倍速（2026-10-06）

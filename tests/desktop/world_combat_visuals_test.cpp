@@ -163,6 +163,48 @@ void experience_conservation() {
         }
     }
 }
+void pending_level_badge() {
+    auto state = fixture();
+    auto &ai = state.scene.world.world.ai;
+    auto &growth = ai.growth.at(7);
+    auto &effects = ai.contexts.at({1}).effects.display;
+    growth.notice_pending = true;
+    effects = {{24, 0, 0, 10, 0, 0}};
+    for (const auto &[count, frame] :
+         {std::pair{0, 0}, {5, 0}, {6, 1}, {11, 1}, {12, 0}, {54, 1}, {55, 1}, {71, 1}}) {
+        effects.front()[1] = count;
+        const auto plan = world_actor_combat_visuals(state, {1});
+        const auto out = sprites(plan);
+        const auto badge = std::find_if(out.begin(), out.end(), [](const auto &sprite) {
+            return sprite.name == "ef_lvUp.seb";
+        });
+        check(badge != out.end() && badge->frame == frame && badge->x == 0 && badge->y == -23,
+              "Pending P badge follows cd24's six-tick halves on the ordinary badge anchor");
+        check(orange(plan) && (count < 55 || out.size() == 1),
+              "P badge survives label expiry with the actual experience bar");
+    }
+    for (const int count : {-1, 72}) {
+        effects.front()[1] = count;
+        check(world_actor_combat_visuals(state, {1}).empty(),
+              "Pending badge cannot outlive or precede its cd24 record");
+    }
+    effects = {{24, 6, 0, 10, 0, 0}};
+    growth.notice_pending = false;
+    const auto no_pending = sprites(world_actor_combat_visuals(state, {1}));
+    check(std::none_of(no_pending.begin(), no_pending.end(),
+                       [](const auto &sprite) { return sprite.name == "ef_lvUp.seb"; }),
+          "Experience alone does not invent a pending level badge");
+    // The actual level-up consumer owns cd14; its frame is independent of pending P.
+    effects = {{14, 6}};
+    const auto actual = sprites(world_actor_combat_visuals(state, {1}));
+    check(actual.size() == 1 && actual.front().frame == 0,
+          "Actual cd14 stays frame0 when the removed cd24 would have shown frame1");
+    effects = {{24, 6, 0, 10, 0, 0}};
+    growth.notice_pending = true;
+    ai.battle.actors.at({1}).control.flags |= 1U;
+    check(world_actor_combat_visuals(state, {1}).empty(),
+          "Hidden actor suppresses the pending badge along with its ordinary overlays");
+}
 void cash() {
     std::vector<int> facility{2, -10, 120, 140, 300, -4000, 666};
     std::vector<int> death{3, -2, 120, 140, 300, 0, 0};
@@ -205,6 +247,7 @@ void immutable_owner() {
     ai.battle.actors.at({1}).damage_total = 42;
     ai.battle.actors.at({1}).label_timer = 16;
     ai.contexts.at({1}).effects.display = {{24, 12, 0, 10, 0, 0}};
+    ai.growth.at(7).notice_pending = true;
     state.visual_effects = {{3, 2, 120, 140, 300, 0, 0}};
     const auto before = state;
     for (int rendered_frame = 0; rendered_frame < 100; ++rendered_frame) {
@@ -221,6 +264,8 @@ void immutable_owner() {
               ai.growth.at(7).pending.amount == old.growth.at(7).pending.amount &&
               ai.growth.at(7).pending.counter == old.growth.at(7).pending.counter &&
               ai.growth.at(7).experience == old.growth.at(7).experience &&
+              ai.growth.at(7).notice_pending == old.growth.at(7).notice_pending &&
+              ai.battle.actors.at({1}).hp.target == old.battle.actors.at({1}).hp.target &&
               ai.contexts.at({1}).effects.display == old.contexts.at({1}).effects.display &&
               state.visual_effects == before.visual_effects,
           "Repeated drawing must not pay rewards, draw random or advance source clocks/HP/XP");
@@ -230,6 +275,7 @@ int main() {
     damage();
     experience();
     experience_conservation();
+    pending_level_badge();
     cash();
     immutable_owner();
     std::cout << "PASS world combat visual plans " << checks << " checks\n";

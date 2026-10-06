@@ -130,6 +130,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_building_test.cpp tests/desktop/world_building_render_fixture.cpp
             src/desktop/ui/world_panels.cpp
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
+            tests/desktop/world_combat_render_fixture.cpp
             tests/desktop/world_village_activity_test.cpp src/desktop/ui/world_village_activity.cpp
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
             src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp

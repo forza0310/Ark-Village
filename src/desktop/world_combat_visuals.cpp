@@ -90,6 +90,11 @@ OverlayPlan world_actor_combat_visuals(const simulation::StartupWorldRuntimeStat
                 digits(plan, "number05.seb", amount, number_x, -35);
             }
             experience_bar(plan, growth, ai.professions);
+            // COMBAT_RENDER: shared definition P gates the pending badge. Its frame uses
+            // cd24's own admitted counter, including the bar-only interval after tick55.
+            // Reuse the current ordinary-body badge anchor; special bl offsets remain separate.
+            if (growth.notice_pending)
+                plan.emplace_back(OverlaySprite{"ef_lvUp.seb", (count % 12) / 6, 0, -23});
         }
     }
     return plan;

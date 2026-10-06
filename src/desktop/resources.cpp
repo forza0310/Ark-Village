@@ -3,6 +3,7 @@
 #include "resources.hpp"
 #include "ark/app/startup_data.hpp"
 #include "ark/assets/table.hpp"
+#include "ark/simulation/startup.hpp"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -55,6 +56,18 @@ void validate(const assets::SpritePart &p, int width, int height) {
         p.flip_x > 1 || p.flip_y < 0 || p.flip_y > 1)
         throw std::runtime_error("Unsupported sprite command or invalid image rectangle/flip");
 }
+int map_frame_index(const std::string &sprite, const assets::SpriteDefinition &data, int variant) {
+    // Desktop accommodation: resident plots and some houses publish only one frame.
+    // Keep their sole image for orientation1; this does not certify the APK's rotation
+    // appearance, invent a mirrored frame, or change the source geometry/instance.
+    if (data.frame_count == 1 && variant == 1)
+        return 0;
+    if (variant < 0 || variant >= data.frame_count)
+        throw std::runtime_error("Map sprite frame outside source: " + sprite +
+                                 " variant=" + std::to_string(variant) +
+                                 " frames=" + std::to_string(data.frame_count));
+    return variant;
+}
 } // namespace
 Sprites::Sprites(std::filesystem::path root)
     : root_(std::move(root)), images_(image_index(root_)),
@@ -64,12 +77,15 @@ Sprites::~Sprites() {
     for (const auto &entry : textures_)
         UnloadTexture(entry.second);
 }
-int Sprites::map_image_height(const std::string &sprite, int frame) {
+int Sprites::map_frame(const std::string &sprite, int variant) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe tenant sprite path");
     const auto &data = definition(std::filesystem::path("image") / sprite);
-    if (frame < 0 || frame >= data.frame_count)
-        throw std::runtime_error("Tenant frame outside sprite definition");
+    return map_frame_index(sprite, data, variant);
+}
+int Sprites::map_image_height(const std::string &sprite, int frame) {
+    frame = map_frame(sprite, frame);
+    const auto &data = definition(std::filesystem::path("image") / sprite);
     int image = -1;
     for (const auto &layer : data.layers)
         for (const auto &part : layer.parts)
@@ -93,8 +109,12 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                                                                                       : "image";
     const auto relative = std::filesystem::path(group) / sprite;
     const auto &sprite_data = definition(relative);
+    if (binding == Binding::map)
+        frame = map_frame_index(sprite, sprite_data, frame);
     if (frame < 0 || frame >= sprite_data.frame_count)
-        throw std::runtime_error("Source variant outside sprite frames");
+        throw std::runtime_error("Source variant outside sprite frames: " + relative.string() +
+                                 " variant=" + std::to_string(frame) +
+                                 " frames=" + std::to_string(sprite_data.frame_count));
     for (const auto &layer : sprite_data.layers)
         for (const auto &p : layer.parts) {
             if (p.frame != frame)
@@ -200,9 +220,9 @@ void Sprites::thumbnail(const std::string &sprite,
     const auto &data = definition(std::filesystem::path("image") / sprite);
     bool found = false;
     float left{}, top{}, right{}, bottom{};
-    for (const auto &[frame, offset] : frames) {
-        if (frame < 0 || frame >= data.frame_count || !std::isfinite(offset.x) ||
-            !std::isfinite(offset.y))
+    for (const auto &[variant, offset] : frames) {
+        const int frame = map_frame_index(sprite, data, variant);
+        if (!std::isfinite(offset.x) || !std::isfinite(offset.y))
             throw std::runtime_error("Invalid thumbnail fragment");
         for (const auto &layer : data.layers)
             for (const auto &part : layer.parts)
@@ -380,6 +400,8 @@ void check_assets(const std::filesystem::path &root) {
     const auto validate_frame = [&](const std::filesystem::path &sprite_path, int frame,
                                     Sprites::Binding binding) {
         const auto sprite = assets::parse_legacy_seb(read_bytes(sprite_path));
+        if (binding == Sprites::Binding::map)
+            frame = map_frame_index(sprite_path.filename().string(), sprite, frame);
         if (frame < 0 || frame >= sprite.frame_count)
             throw std::runtime_error("Requested sprite frame invalid: " + sprite_path.string());
         for (const auto &layer : sprite.layers)
@@ -429,6 +451,27 @@ void check_assets(const std::filesystem::path &root) {
         for (int orientation = 0; orientation < orientations; ++orientation)
             for (const auto &part : facilities::footprint(item.shape, orientation, {0, 0}))
                 requested[it->sprite].insert(part.fragment);
+    }
+    // The complete world's catalogue includes recruitment and later private housing that
+    // the legacy slice disabled. Validate every authored fragment in both orientations.
+    const auto &evidence = simulation::startup_evidence();
+    for (const auto &item : evidence.definitions) {
+        if ((!(item.flags & 4) && item.kind != 12) || item.kind == 6)
+            continue;
+        const auto display = std::find_if(evidence.displays.begin(), evidence.displays.end(),
+                                          [&](const auto &d) { return d.id == item.display_id; });
+        if (display == evidence.displays.end())
+            throw std::runtime_error("Building references an unknown map display");
+        for (const auto orientation : {simulation::rules::FacilityOrientation::first,
+                                       simulation::rules::FacilityOrientation::second}) {
+            const auto footprint = simulation::rules::facility_footprint(
+                static_cast<simulation::rules::FacilityShape>(item.shape), orientation, {1, 0}, 3,
+                3);
+            if (footprint.error != simulation::rules::GeometryError::none)
+                throw std::runtime_error("Building has an unsupported footprint");
+            for (const auto &part : footprint.cells)
+                requested[display->sprite].insert(part.fragment_index);
+        }
     }
     for (const auto &entry : requested)
         for (int frame : entry.second)

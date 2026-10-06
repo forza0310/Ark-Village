@@ -42,6 +42,8 @@ class Sprites {
     // Dungeon labels use the bound tenant PNG height, not a SEB frame bounding box.
     // Reject ambiguous multi-image frames instead of guessing an art height.
     int map_image_height(const std::string &sprite, int frame);
+    // Resolve a logical map fragment without loading textures or changing world orientation.
+    int map_frame(const std::string &sprite, int variant);
 
   private:
     std::filesystem::path root_;

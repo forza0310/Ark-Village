@@ -132,6 +132,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
             src/desktop/world_build_placement.cpp
         LIBRARIES ark_world_ui_test_support)
+    target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets")
     foreach(case IN ITEMS world_panels world_award_ui world_crew_summary world_tasks world_menu world_building)
         ark_test_case(${case} ark_world_ui_tests ARGS ${case} LABELS presentation)
     endforeach()

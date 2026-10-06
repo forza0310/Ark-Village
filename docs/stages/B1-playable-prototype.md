@@ -1164,3 +1164,17 @@ CI已改Windows-only/x64，打包代码保留静态运行库、字体及许可�
 分发包使用产品提交`3d94c3c1bc40ac4e264a0b7ab979c03c442a68d3`已验收的Release二进制，直接调用`.github/ci/build.py`的同一package函数；只剥离分发副本，不重编译或改变产品。复用CLion内置Python3.10.18/zlib完成压缩，未下载新依赖。`build/validation/windows-x64-package-20261006/dist/ark-village-windows10-x64.zip`为3,186,080字节（约3.04MiB），625文件解压共7,093,399字节（约6.76MiB）；同目录保留SHA256文件。ZIP SHA256为`cd9dccd72586737f072221c494b8a81b2357d1fe08f16c7a403494f1176d934e`。
 
 PE32+/AMD64与系统DLL导入白名单、616项素材哈希、随包字体/许可与已验证源的一致性均通过；ZIP CRC、SHA256、包内/解压625文件逐字节一致性及解压后`--check`通过。从独立smoke目录、仅保留Windows系统目录的PATH，分别运行解压exe默认入口和随包Run-Ark-Village.cmd建设目录，各8帧、均未指定--font/--assets，实际窗口退出码0，中文/建筑图标正常。运行不需要开发工具、raylib DLL或另装C++运行库。截图、完整日志和validation.json保存在该专属目录；这是本地解压启动验收，不冒充OS鼠标操作或另一台Windows机器的兼容性认证。本次仅补打包与文档证据，不重复未变化的四套游戏回归，不上传/发布远程。
+
+<a id="build-rotation-fix"></a>
+
+## 单帧建筑旋转退出修复（2026-10-06）
+
+用户正常Release建设时点击旋转，程序报`Source variant outside sprite frames`后退出。核对确认：定义24入住募集的`t_resident00.seb`只有1帧，几何朝向1产生fragment1，预览直接把它当SEB帧；确认后的地表也保留variant1，因此只修预览会把同一错误推迟到建成时。住宅27的`t_myhome03.seb`同样只有1帧。已有旅馆28、双格29和四格55两朝向检查没有覆盖这条路径，旧`--check`还沿用禁用募集旋转的有限切片目录。
+
+修复集中在桌面资源边界：map素材只有1帧且请求variant1时复用帧0；预览、组合缩略图、已建地表和地图图片高度共用解释。其他负数/越界仍拒绝，诊断增加资源名、请求帧和实际帧数。保留源fragment、实例朝向、占地、随机及扣款，不改研究或冻结规则。复用唯一图像是明确桌面容错；原版单帧转向是否复用、限制或另有图形消费者仍待最小研究合同，不宣称镜像外观已复刻。
+
+扩展现有world_building套件，读取随产品发布的真实SEB，覆盖全部可建设施/住宅两朝向、募集24和住宅27单帧、旅馆/双格/四格独立帧预期及非法帧拒绝；`--check`补查完整世界目录及其PNG裁剪。未新增测试target，未复制冻结事务算法。既有world-build-preview/rotated/built窗口诊断改为优先实际募集目录，built提交朝向1，不注入设施或修改资金。
+
+Release真实窗口三项通过：24的朝向0/1预览均显示图像，cash5000/random0/未创建；朝向1通过真实事务建成实例9，cash4900/random0/failed0。每项8帧有界运行，截图与日志在`build/validation/build-rotation`；这不是OS鼠标点击或固定APK动态对照。
+
+Windows x64四套重新配置/编译/标准CTest全部通过：headless-debug141项/378.91秒，headless-release141项/92.06秒，desktop-debug160项/376.98秒，desktop-release160项/97.58秒，共602项，每套保留三个月连续世界基线。309项冻结来源与616项素材哈希、C++格式、diff检查通过；额外长跑仍OFF。未新增UI文本字形或下载依赖，不重复生成字体；研究工作区改动完整保留。旧`windows-x64-package-20261006`仍为含此问题的历史包，不作为本次修复制品。

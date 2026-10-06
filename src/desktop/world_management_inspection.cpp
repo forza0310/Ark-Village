@@ -93,7 +93,9 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
     if ((mode == "world-built" || preview) && !inspection.created) {
         if (page.legacy_page == 21) {
             const auto &groups = state.build_page_catalogs.at(page.id);
-            for (int group : {1, 2, 0})
+            // Start with the actual resident plot: inn-only diagnostics miss single-frame
+            // artwork. Both preview orientations and the installed rotated surface are checked.
+            for (int group : {0, 1, 2})
                 for (int definition : groups.at(group)) {
                     const auto quote = simulation::startup_world_build_quote(state, definition);
                     if (!quote ||
@@ -117,8 +119,9 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
         }
         if (!preview && page.kind == Kind::scene && state.scene.scene_state == 1 &&
             inspection.selection) {
+            const auto orientation = rules::FacilityOrientation::second;
             const auto result = simulation::confirm_startup_world_build(
-                state, empty_site(state, *inspection.selection), rules::FacilityOrientation::first);
+                state, empty_site(state, *inspection.selection, orientation), orientation);
             require_build(result, "place selected building");
             if (!result.created)
                 throw std::runtime_error(

@@ -246,6 +246,8 @@ Accepted，2026-10-05：用户确认按完整方案接入研究e8f66d9，并永�
 
 Accepted，2026-10-05：用户确认接入最新研究，优先UI；消费5aa5c37的任务追加、raw30两阶段、月报两状态及成长通知表现合同。规则冻结保持e8f66d9；绘制只读同一Owner，不改变奖励、任务或队列计数。月报保留用户手动冻结政策，左上原尺寸面板直接展开、独立确认按钮，不用渲染FPS补滑入计数。异版截图、桌面适配与精确原版动画分别登记。本批Windows四套与窗口验收单独记录于[B1](stages/B1-playable-prototype.md#task-report-ui)，不沿用Mac通过结论。
 
+ADR-0040后续修复记录（2026-10-06）：单帧地图素材的第二逻辑朝向复用唯一图像，避免建设预览/已建地表越界退出；不改变几何或建设事务。原版单帧朝向外观另列[最小研究需求](reference/RESEARCH_REQUESTS.md)，验收见[B1](stages/B1-playable-prototype.md#build-rotation-fix)。此为桌面容错，不扩展模拟规则。
+
 ## ADR-0041
 
 Accepted，2026-10-06：用户要求以后围绕Windows构建，CI与发布仅Windows，并将raylib/字体随包提供、尽量减小制品；同意易于实施的64位迁移。现有LLVM-MinGW已含x86_64工具链，本地四套与CI统一迁至Windows x64/UCRT，raylib和C++运行库静态链接，保留标准C++17领域边界。此决定取代ADR-0038的双平台/32位分发目标，历史验证记录仍保留。

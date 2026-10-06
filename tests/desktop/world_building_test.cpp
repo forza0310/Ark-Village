@@ -19,6 +19,37 @@ void world_building() {
     auto state = initial_world();
     auto catalogue = *state.rules;
     state.rules = &catalogue;
+    // Real asset metadata covers the single-frame plot that the inn-only artwork examples
+    // missed. Preview and installed surfaces both resolve through this CPU-only boundary.
+    desktop::Sprites sprites(ARK_TEST_ASSETS);
+    check(sprites.map_frame("t_resident00.seb", 0) == 0 &&
+              sprites.map_frame("t_resident00.seb", 1) == 0 &&
+              sprites.map_frame("t_myhome03.seb", 1) == 0,
+          "Single-frame resident/house artwork remains visible in either logical orientation");
+    for (const auto &item : catalogue.facilities) {
+        if (!(item.flags & 4) && item.kind != 12)
+            continue;
+        if (item.kind == 6)
+            continue; // Roads select adjacency masks, not facility orientation fragments.
+        for (const auto orientation :
+             {rules::FacilityOrientation::first, rules::FacilityOrientation::second}) {
+            const auto graphic = desktop::world_build_graphic(item, orientation);
+            for (const auto &part : graphic.frames)
+                check(sprites.map_frame(graphic.sprite, part.first) >= 0,
+                      "Every buildable/house fragment resolves against shipped assets: " +
+                          std::to_string(item.id));
+        }
+    }
+    for (const auto &invalid : {std::pair{"t_resident00.seb", -1}, std::pair{"t_resident00.seb", 2},
+                                std::pair{"tenant10.seb", 2}, std::pair{"t_inn00.seb", 4}}) {
+        bool rejected = false;
+        try {
+            (void)sprites.map_frame(invalid.first, invalid.second);
+        } catch (const std::runtime_error &) {
+            rejected = true;
+        }
+        check(rejected, "Frame accommodation must not clamp corrupt or multi-fragment indices");
+    }
     rules::WorldScriptPage page;
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.legacy_page = 21;
@@ -48,6 +79,7 @@ void world_building() {
         std::vector<std::pair<int, Vector2>> first, second;
     };
     for (const auto &example : std::vector<GraphicCase>{
+             {24, "t_resident00.seb", {{0, {0, 0}}}, {{1, {0, 0}}}},
              {28, "tenant10.seb", {{0, {0, 0}}}, {{1, {0, 0}}}},
              {29, "t_inn00.seb", {{0, {30, -15}}, {2, {0, 0}}}, {{1, {-30, -15}}, {3, {0, 0}}}},
              {55,
@@ -73,6 +105,10 @@ void world_building() {
                           graphic.frames[i].second.y == expected[i].second.y,
                       "Source frame and raster anchor: " + context +
                           " fragment=" + std::to_string(i));
+            if (example.definition != 24)
+                for (const auto &part : graphic.frames)
+                    check(sprites.map_frame(graphic.sprite, part.first) == part.first,
+                          "Authored orientation frames are preserved: " + context);
         }
     }
     for (const auto extent :

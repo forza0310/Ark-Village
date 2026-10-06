@@ -131,7 +131,8 @@ def package(target):
             if path.is_file():
                 output.write(path, path.relative_to(stage.parent))
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
-    (dist / f"{archive.name}.sha256").write_text(f"{digest}  {archive.name}\n", encoding="ascii")
+    # Git Bash sha256sum treats a CRLF's CR as part of the filename; always emit LF.
+    (dist / f"{archive.name}.sha256").write_bytes(f"{digest}  {archive.name}\n".encode("ascii"))
 
 
 def main():

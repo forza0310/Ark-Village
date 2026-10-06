@@ -282,6 +282,8 @@ Accepted，2026-10-06：用户指出exe分发应使用GitHub Releases，取代AD
 
 验收：actionlint 1.7.7、Bash语法及14项本地发布模拟通过，覆盖首次发布、草稿续传、已公开重跑、旧提交、校验与API失败路径；文档链接/差异检查通过。四套配置/编译通过；desktop-release 162项、headless-release 141项标准CTest全部通过。用户随后明确跳过耗时的三个月连续模拟：desktop-debug该进程已停止（原始CTest日志保留中止失败），其余161项通过；headless-debug显式排除同一用例，其余140项通过。合计604项通过，两个Debug基线未完成，CI标准CTest配置不删减。日志与本地模拟放`build/validation/github-releases-20261006/`；本次未另做窗口/原版对照。远程发布待新配置推送后独立验证，不把本地检查记作已发布。
 
+2026-10-06发布校验修复：Windows Python的`write_text`将SHA-256清单末尾LF转换为CRLF，Git Bash的`sha256sum`把CR作为文件名一部分，导致发布前校验失败。清单改用ASCII字节写入，固定LF；哈希算法、附件内容校验及旧提交不抢Latest政策不变。本地Windows复现旧代码失败，分别对独立修复与当前工作区打包尾段验证LF字节、正常ZIP通过、损坏/缺失ZIP拒绝；使用修复生成的ZIP/清单重跑14项发布模拟全部通过，actionlint 1.7.7和Bash语法通过。检查脚本和夹具位于`build/validation/release-checksum-20261006/`。本次只修发布清单，不运行游戏CTest/窗口；未推送，远程CI待验证。
+
 ## ADR-0044
 
 Accepted：用户“按照推荐计划继续”批准文件存取首批边界，稳定主场景两栏手动档已实现并通过本地验收。

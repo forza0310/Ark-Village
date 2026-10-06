@@ -10,6 +10,7 @@
 - [x] 配置main GitHub CI；按2026-10-06最新决定仅Windows x64，desktop-release及全部标准CTest、失败诊断与制品校验；本地默认desktop-debug，headless按需使用，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 - [x] 首次main Actions运行：`ba68e90`两个平台的desktop Release构建、全部标准CTest、打包检查和上传成功，见[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)；Windows 10真机另验。
 - [x] 改为GitHub Releases发布：Windows x64通过后上传游戏ZIP及SHA-256附件，按提交保留历史，草稿回读校验后公开并更新Latest；Actions制品保留7天，见[ADR-0043](docs/MILESTONES.md#adr-0043)。
+- [x] 修复Windows发布SHA-256校验文件的CRLF：固定ASCII/LF输出，本机复现原失败并验证有效/损坏/缺失ZIP及14项发布模拟；见[ADR-0043](docs/MILESTONES.md#adr-0043)。尚未推送，远程CI待验证。
 - [ ] 首次Windows x64 Actions/Releases发布：确认构建、Release创建、附件回读及Latest更新成功；本地验收不替代远程运行。
 - [x] 迁入研究侧完整定义目录、脚本、新局数据及共同世界运行时，保留来源与机械迁入校验。
 - [x] 世界唯一持有地图、现金、随机、人物/怪物和页面；标准C++入口及桌面入口独占同一类Owner。

@@ -157,8 +157,7 @@ bool inspection_ready(const State &s, const std::string &mode) {
     const auto &ai = s.scene.world.world.ai;
     if (mode == "world-save" || mode == "world-load" || mode == "world-load-error")
         return app::world_save_eligible(s);
-    if (mode == "world-active" || mode == "world-speed" || mode == "world-menu" ||
-        mode == "world-village-menu")
+    if (mode == "world-active" || mode == "world-menu" || mode == "world-village-menu")
         return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
     if (mode == "world-month-defeats")
         return app::world_report_visible(s) && s.report_state == 1 && s.report_counter >= 6 &&
@@ -249,7 +248,6 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
     ui::draw_world_popularity(s.popularity, layout, skin);
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
-    skin.button(layout.right_button, s.scene.speed_setting == 1 ? "2倍" : "1倍", !failed);
     skin.button(ui::world_menu_button(layout.extent), "菜单",
                 !failed && !menu_pending &&
                     (menu_open || (s.scene.scene_state == 0 && !active_page(s))));
@@ -301,8 +299,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                  options.inspect_page == "world-load" ||
                                  options.inspect_page == "world-load-error";
     const bool transient =
-        inspecting && options.inspect_page != "world-active" &&
-        options.inspect_page != "world-speed" && !menu_inspection &&
+        inspecting && options.inspect_page != "world-active" && !menu_inspection &&
         options.inspect_page != "world-month" && options.inspect_page != "world-month-income" &&
         options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
         options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
@@ -506,8 +503,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     Text text(desktop_font_path(assets, options.font), glyphs(state));
     ui::Skin skin(sprites, text);
     state.scene.framework_paused = options.paused || transient;
-    if (options.inspect_page == "world-speed")
-        state.scene.speed_setting = 1;
+    state.scene.speed_setting = 0; // Player windows always use the normal source update count.
     WorldCameraView view{state.camera, state.reference_viewport};
     std::filesystem::path inspection_save_directory = options.save_directory;
     if (options.inspect_page == "world-load" && inspection_save_directory.empty())
@@ -525,7 +521,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     app::WorldSession session(std::move(state), inspection_save_directory);
     auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
-    std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
+    std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
     std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
     int menu_selection = 1;
     bool village_menu = options.inspect_page == "world-village-menu";
@@ -559,7 +555,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     ui::WorldTaskSelection task_selection;
     std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
-    int desired_speed = publication->state->scene.speed_setting;
     const auto started = GetTime();
     auto next_render = started;
     double last_render{};
@@ -582,7 +577,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             // reading input; neither held buttons nor prior interpolation crosses a load.
             generation = publication->generation;
             discard_interpolation_revision = publication->revision;
-            viewed_page = pending_ack = pending_view = pending_pause = pending_speed = 0;
+            viewed_page = pending_ack = pending_view = pending_pause = 0;
             pending_task = held_task_page = pending_menu = 0;
             paragraph = scroll = 0;
             management = {};
@@ -592,7 +587,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             task_feedback.clear();
             view = {current.camera, current.reference_viewport};
             desired_pause = current.scene.framework_paused;
-            desired_speed = current.scene.speed_setting;
         }
         management.observe(*publication);
         save_menu.observe(*publication);
@@ -708,8 +702,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             view = {current.camera, current.reference_viewport};
         if (publication->last_command_serial >= pending_pause)
             desired_pause = current.scene.framework_paused;
-        if (publication->last_command_serial >= pending_speed)
-            desired_speed = current.scene.speed_setting;
         extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
         bool view_changed{};
         const auto next_viewport = world_viewport(extent, zoom);
@@ -732,11 +724,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             (hit(layout.left_button) || IsKeyPressed(KEY_SPACE))) {
             desired_pause = !desired_pause;
             pending_pause = session.set_paused(desired_pause);
-        }
-        if (!failed && !publication->save_menu_open && !save_menu.pending() &&
-            hit(layout.right_button)) {
-            desired_speed = desired_speed == 1 ? 0 : 1;
-            pending_speed = session.set_speed(desired_speed);
         }
         ui::WorldMenuInput menu_input;
         menu_input.click = click ? mouse : std::nullopt;

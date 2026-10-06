@@ -42,15 +42,31 @@ int main() {
     check(!parse_arguments({"--verify-play", "--frames", "3000"}).options->world);
     check(!parse_arguments({"--inspect-page", "shops", "--frames", "8"}).options->world);
     check(parse_arguments({"--inspect-page", "world-active", "--frames", "8"}).options->world);
+    check(!parse_arguments({"--inspect-page", "world-speed", "--frames", "8"}).options);
     check(parse_arguments({"--inspect-page", "world-rank", "--frames", "8"}).options->world);
-    for (const auto &page : {"world-task-added",    "world-level-up",      "world-month-income",
-                             "world-month-defeats", "world-task-victory",  "world-task-popularity",
-                             "world-combat",        "world-reward",        "world-exp",
-                             "world-rest",          "world-rest-hp",       "world-news",
-                             "world-break",         "world-speed",         "world-award",
-                             "world-task-team",     "world-task-result",   "world-task-recruitment",
-                             "world-menu",          "world-building",      "world-details",
-                             "world-built",         "world-award-granted", "world-build-preview",
+    for (const auto &page : {"world-task-added",
+                             "world-level-up",
+                             "world-month-income",
+                             "world-month-defeats",
+                             "world-task-victory",
+                             "world-task-popularity",
+                             "world-combat",
+                             "world-reward",
+                             "world-exp",
+                             "world-rest",
+                             "world-rest-hp",
+                             "world-news",
+                             "world-break",
+                             "world-award",
+                             "world-task-team",
+                             "world-task-result",
+                             "world-task-recruitment",
+                             "world-menu",
+                             "world-building",
+                             "world-details",
+                             "world-built",
+                             "world-award-granted",
+                             "world-build-preview",
                              "world-build-rotated"}) {
         const auto result = parse_arguments({"--inspect-page", page, "--frames", "8"});
         check(result.options && result.options->world && result.options->inspect_page == page);

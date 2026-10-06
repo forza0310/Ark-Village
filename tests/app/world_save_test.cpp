@@ -62,6 +62,20 @@ void codec_and_policy() {
     auto recaptured = app::capture_world_save(*decoded.state);
     check(recaptured.image && recaptured.image->bytes == captured.image->bytes,
           "Durable fields round-trip exactly after pure restoration");
+    auto old_fast = state;
+    old_fast.scene.speed_setting = 1;
+    const auto old_fast_file = app::capture_world_save(old_fast);
+    check(old_fast_file.image.has_value(), "Historical speed2 save remains a valid schema2 file");
+    auto old_fast_candidate = app::decode_world_save(old_fast_file.image->bytes);
+    check(old_fast_candidate.state && old_fast_candidate.state->scene.speed_setting == 1,
+          "Decode preserves the recorded value before session restoration");
+    check(app::prepare_world_save_candidate(*old_fast_candidate.state, current, reason) ==
+                  app::WorldSaveError::none &&
+              old_fast_candidate.state->scene.speed_setting == 0 &&
+              old_fast_candidate.state->scene.random.draws() == draws &&
+              old_fast_candidate.state->scene.world.world.ai.accounting.funds() ==
+                  state.scene.world.world.ai.accounting.funds(),
+          "Loading old speed2 file uses normal current pacing without changing cash or random");
     state.sound_requests = {1, 2};
     state.visual_effects.push_back({});
     state.scripts.notices.push_back({});

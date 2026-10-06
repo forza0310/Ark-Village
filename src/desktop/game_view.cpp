@@ -233,8 +233,6 @@ void run_game(const app::LaunchOptions &options, const std::filesystem::path &as
             ui::confirm(game, view);
         if (IsKeyPressed(KEY_SPACE))
             ui::toggle_pause(game, view);
-        if (IsKeyPressed(KEY_TAB))
-            view.speed = view.speed == 1 ? 2 : 1;
         if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
             ui::turn_facility_page(game, view);
         const float wheel = GetMouseWheelMove();

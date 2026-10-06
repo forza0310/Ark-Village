@@ -727,6 +727,8 @@ WorldSaveError prepare_world_save_candidate(State &candidate, const State &curre
     clear_presentation(restored);
     restored.scene.random = current.scene.random;
     restored.scene.framework_paused = current.scene.framework_paused;
+    // Loading keeps the current session's pacing; historical saves cannot enable player speed2.
+    restored.scene.speed_setting = current.scene.speed_setting;
     restored.reference_viewport = current.reference_viewport;
     if (!rebuild_map(restored) || !simulation::update_startup_world_render_cache(restored)) {
         reason = "Save map or render cache could not be rebuilt";

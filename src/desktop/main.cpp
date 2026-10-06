@@ -32,7 +32,9 @@ int main(int argc, char **argv) {
                          "Default: continuous world. --world is an explicit alias.\n"
                          "--legacy-slice opens the former construction slice. --check-ai, "
                          "--ai-preview, --verify-play and legacy inspection pages select their "
-                         "diagnostic slice explicitly. --tick-rate is a legacy-only experiment.\n";
+                         "diagnostic slice explicitly. --tick-rate is a legacy-only experiment.\n"
+                         "--inspect-page world-commerce-suite --frames N --screenshot prefix.png "
+                         "captures six commerce pages after one natural preparation.\n";
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);

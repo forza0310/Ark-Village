@@ -165,23 +165,24 @@ std::optional<OwnedWorldScheduleStep<Owner>>
 prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &call,
                                    const CombatInfluenceCandidate &field,
                                    const WorldRuntimeAdapter<Owner> &adapter) {
-    Owner next = state;
     if (call.stage == WorldScheduleStage::prefix_effects) {
         if (!call.effects || !adapter.prefix_effects)
             return {};
-        auto consumed = adapter.prefix_effects(next, *call.effects);
+        auto consumed = adapter.prefix_effects(state, *call.effects);
         return consumed ? std::optional<OwnedWorldScheduleStep<Owner>>{{std::move(*consumed)}}
                         : std::nullopt;
     }
     if (call.stage == WorldScheduleStage::arrival_front) {
         if (!adapter.arrival)
             return {};
-        const auto arrived = adapter.arrival(next);
-        return arrived ? std::optional<OwnedWorldScheduleStep<Owner>>{{*arrived}} : std::nullopt;
+        auto arrived = adapter.arrival(state);
+        return arrived ? std::optional<OwnedWorldScheduleStep<Owner>>{{std::move(*arrived)}}
+                       : std::nullopt;
     }
     if (call.stage == WorldScheduleStage::popularity) {
         if (!call.popularity || !adapter.popularity)
             return {};
+        Owner next = state;
         const auto result =
             prepare_world_popularity(adapter.catalog, adapter.popularity.read(next),
                                      (*call.popularity)[0], (*call.popularity)[1] == 1);
@@ -192,6 +193,7 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
     if (call.stage == WorldScheduleStage::facility) {
         if (!call.id || !adapter.facilities || !adapter.read_random || !adapter.write_random)
             return {};
+        Owner next = state;
         auto facilities = adapter.facilities.read(next);
         facilities.random = adapter.read_random(next);
         const auto result = prepare_world_facility_update(
@@ -267,9 +269,9 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
     };
     scene.consume = [&](const Owner &current,
                         const WorldSceneCall &call) -> std::optional<OwnedWorldSceneStep<Owner>> {
-        Owner next = current;
         if (call.stage == WorldSceneStage::normal_condition_scripts ||
             call.stage == WorldSceneStage::normal_delayed_scripts) {
+            Owner next = current;
             if (call.stage == WorldSceneStage::normal_condition_scripts) {
                 if (!adapter.normal_conditions)
                     return {};
@@ -297,6 +299,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
         }
         if (call.stage == WorldSceneStage::normal_world ||
             call.stage == WorldSceneStage::focus_world) {
+            Owner next = current;
             if (!adapter.entry || !adapter.read_random || !adapter.write_random ||
                 !adapter.before_common || !adapter.report || !adapter.report_input)
                 return {};
@@ -309,10 +312,10 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
                     if (!adapter.entry.write(next, current) || !adapter.create_encounter)
                         return {};
                     adapter.write_random(next) = current.random;
-                    const auto created = adapter.create_encounter(next, creation);
+                    auto created = adapter.create_encounter(next, creation);
                     if (!created)
                         return {};
-                    next = created->state;
+                    next = std::move(created->state);
                     auto published = adapter.entry.read(next);
                     published.random = adapter.read_random(next);
                     return WorldWorldEntryCreation{std::move(published), created->created,
@@ -361,34 +364,35 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
                                const CombatInfluenceCandidate &field) {
                 return prepare_owned_world_runtime_domain(owner, request, field, adapter);
             };
-            const auto world = prepare_world_actor_schedule(next, {true}, actors);
+            auto world = prepare_world_actor_schedule(next, {true}, actors);
             if (!world.state) {
                 output.world_error = world.error;
                 return {};
             }
             if (world.audit)
-                output.worlds.push_back(*world.audit);
-            return OwnedWorldSceneStep<Owner>{*world.state};
+                output.worlds.push_back(std::move(*world.audit));
+            return OwnedWorldSceneStep<Owner>{std::move(*world.state)};
         }
         if (call.stage == WorldSceneStage::calendar_call) {
             if (!call.calendar_stage)
                 return {};
-            const auto date = adapter.scene.read(next).calendar;
-            const auto calendar =
-                prepare_owned_world_runtime_calendar(next, date, *call.calendar_stage, adapter);
-            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{*calendar}} : std::nullopt;
+            const auto date = adapter.scene.read(current).calendar;
+            auto calendar =
+                prepare_owned_world_runtime_calendar(current, date, *call.calendar_stage, adapter);
+            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{std::move(*calendar)}}
+                            : std::nullopt;
         }
-        return adapter.scene_other ? adapter.scene_other(next, call) : std::nullopt;
+        return adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
     };
     try {
-        const auto result = prepare_owned_world_scene(state, input, scene);
+        auto result = prepare_owned_world_scene(state, input, scene);
         output.error = result.error;
         if (!result.state) {
             output.worlds.clear();
             return output;
         }
-        output.state = result.state;
-        output.scene = result.audit;
+        output.state = std::move(result.state);
+        output.scene = std::move(result.audit);
         return output;
     } catch (...) {
         output.error = WorldSceneError::consumer_failed;

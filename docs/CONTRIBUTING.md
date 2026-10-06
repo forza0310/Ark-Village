@@ -46,6 +46,8 @@ ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
 
 ## Windows本地构建
 
+长测与窗口预运行已经逐框架直接计算，不等待47ms；游戏倍速0/1仍是原消费者规则，不能用跳tick加速测试。性能采样入口与计量边界见[采样说明](../scripts/simulation/profile_world.md)。合并商会窗口验收使用`build/bin/ark_village-desktop-release.exe --inspect-page world-commerce-suite --frames 8 --screenshot build/validation/world-performance/suite.png`：一次自然到达83，独立分支输出六页截图和耗时；目录需先创建。保留各页实际输入与资金/点数检查，不将独立分支当连续交易。正常窗口worker节拍不变。
+
 当前目标为Windows 10+ x64，使用LLVM-MinGW 20250305 UCRT，CMake 3.21+、Ninja、Node 18+、pkg-config。工具可解包到忽略的`build/local-tools`，不必系统安装；编译器、CMake/Ninja、Node和pkg-config加入当前终端PATH。更换已配置的32位编译器时先以`cmake --fresh --preset ...`重新配置，不混用旧对象和raylib库。
 
 raylib使用下节固定提交；示例命令假定源码位于`build/local-tools/raylib`，LLVM的bin已在PATH。先构建x64共享库：

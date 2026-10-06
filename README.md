@@ -82,6 +82,7 @@ cmake --build --preset headless-release --parallel 4
 | `ark_village --inspect-page world-combat --frames 8`                          | 停在真实受击数字；另有world-reward/world-exp/world-rest/world-rest-hp |
 | `ark_village --inspect-page world-news --frames 8`                            | 真实冒险通信；world-break检查带换行标记的通知                         |
 | `ark_village --inspect-page world-speed --frames 600`                         | 三人正常场景后以2倍速持续运行，输出绘制/模拟耗时                      |
+| `ark_village --inspect-page world-commerce-suite --frames 8 --screenshot suite.png` | 一次自然预运行，独立分支验收六个商会页面，输出六张带页面名后缀的PNG |
 | `ark_village --legacy-slice`                                                  | 旧有限建设/首访生活切片                                               |
 | `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收                          |
 

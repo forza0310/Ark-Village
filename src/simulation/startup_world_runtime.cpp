@@ -1042,7 +1042,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         if (admitted.scene.framework_paused) {
             admitted.scripts.executing_page.reset();
             return {StartupWorldRuntimeError::none,
-                    admitted,
+                    std::move(admitted),
                     ref::WorldSceneError::none,
                     ref::WorldScheduleError::none,
                     {}};
@@ -1051,7 +1051,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         if (updated)
             updated->scripts.executing_page.reset();
         return updated ? StartupWorldRuntimeResult{StartupWorldRuntimeError::none,
-                                                   updated,
+                                                   std::move(updated),
                                                    ref::WorldSceneError::none,
                                                    ref::WorldScheduleError::none,
                                                    {}}
@@ -1077,10 +1077,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         next.scripts.executing_page = executing_page;
         return next;
     };
-    const auto result = ref::prepare_owned_world_runtime(admitted, {s.calendar_advance, true}, a);
+    auto result = ref::prepare_owned_world_runtime(admitted, {s.calendar_advance, true}, a);
     if (!result.state)
         return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {}};
-    auto next = *result.state;
+    auto next = std::move(*result.state);
     next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。
     next.simulation_steps += result.scene ? result.scene->begun_rounds : 0;
     return {StartupWorldRuntimeError::none, std::move(next), ref::WorldSceneError::none,

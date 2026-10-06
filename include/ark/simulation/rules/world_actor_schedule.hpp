@@ -92,10 +92,10 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
             [&](const WorldActorRoutesState &r, int code) -> std::optional<WorldActorRoutesState> {
             if (!adapter.event || !publish(r))
                 return {};
-            const auto consumed = adapter.event(next, code);
+            auto consumed = adapter.event(next, code);
             if (!consumed)
                 return {};
-            next = *consumed;
+            next = std::move(*consumed);
             auto result = adapter.read_routes(next);
             const auto &latest = adapter.read_common(next);
             result.world = latest.world;
@@ -109,10 +109,10 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
             -> std::optional<WorldActorRoutesState> {
             if (!adapter.presentation || !publish(r))
                 return {};
-            const auto consumed = adapter.presentation(next, request);
+            auto consumed = adapter.presentation(next, request);
             if (!consumed)
                 return {};
-            next = *consumed;
+            next = std::move(*consumed);
             return adapter.read_routes(next);
         };
         if (call.stage == WorldScheduleStage::decision) {
@@ -129,10 +129,10 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                     -> std::optional<WorldActorRoutesState> {
                     if (!publish(r))
                         return {};
-                    const auto consumed = adapter.encounter(next, request);
+                    auto consumed = adapter.encounter(next, request);
                     if (!consumed)
                         return {};
-                    next = *consumed;
+                    next = std::move(*consumed);
                     return adapter.read_routes(next);
                 };
             const auto r = prepare_world_actor_decision(routes, *i);
@@ -183,12 +183,12 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
     };
     auto schedule_input = input;
     schedule_input.publish_actor_tail = static_cast<bool>(adapter.tail_cache);
-    const auto result = prepare_owned_world_schedule(state, schedule_input, owned);
+    auto result = prepare_owned_world_schedule(state, schedule_input, owned);
     if (!result.state)
         return {result.error, {}, {}, {}, {}};
     output.error = WorldScheduleError::none;
-    output.state = result.state;
-    output.audit = result.audit;
+    output.state = std::move(result.state);
+    output.audit = std::move(result.audit);
     return output;
 }
 } // namespace ark::simulation::rules

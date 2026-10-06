@@ -65,6 +65,14 @@ int main() {
     check(parse_arguments({"--verify-play", "--frames", "3000"}).options->verify_play);
     check(parse_arguments({"--inspect-page", "ai", "--frames", "8"}).options->ai_preview);
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
+    const auto suite = parse_arguments(
+        {"--inspect-page", "world-commerce-suite", "--frames", "8", "--screenshot", "suite.png"});
+    check(suite.options && suite.options->world &&
+          suite.options->inspect_page == "world-commerce-suite");
+    check(!parse_arguments({"--inspect-page", "world-commerce-suite", "--frames", "8"}).options);
+    check(!parse_arguments({"--legacy-slice", "--inspect-page", "world-commerce-suite", "--frames",
+                            "8", "--screenshot", "suite.png"})
+               .options);
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
     check(parse_arguments({"--zoom-percent", "150"}).options->zoom_percent == 150);

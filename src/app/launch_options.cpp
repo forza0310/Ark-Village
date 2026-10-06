@@ -70,7 +70,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-commerce" && page != "world-commerce-buy" &&
                 page != "world-commerce-receipt" && page != "world-commerce-facilities" &&
                 page != "world-commerce-facility-info" &&
-                page != "world-commerce-facility-reward" && page != "world-village-menu")
+                page != "world-commerce-facility-reward" && page != "world-village-menu" &&
+                page != "world-commerce-suite")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--save-dir") {
@@ -132,6 +133,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (world_inspection && (explicit_legacy || legacy_diagnostic))
         return {std::nullopt, "World inspection cannot be combined with legacy slice diagnostics"};
     options.world = !explicit_legacy && !legacy_diagnostic;
+    if (options.inspect_page == "world-commerce-suite" && options.screenshot.empty())
+        return {std::nullopt, "Commerce inspection suite requires --screenshot filename prefix"};
     if (!options.world && !options.save_directory.empty())
         return {std::nullopt, "--save-dir requires the continuous world"};
     if (options.inspect_page == "world-load" && options.save_directory.empty())

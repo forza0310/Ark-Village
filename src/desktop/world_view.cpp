@@ -259,12 +259,22 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
 }
 } // namespace
 
-void run_world_game(const app::LaunchOptions &options, const std::filesystem::path &assets) {
+// A suite retains one immutable natural checkpoint. Each capture owns an independent branch;
+// purchases and point payments cannot leak into the next capture or into normal gameplay.
+static void run_world_game_capture(const app::LaunchOptions &options,
+                                   const std::filesystem::path &assets,
+                                   std::optional<State> *checkpoint = nullptr) {
     WorldWindow window(options);
     float zoom = options.zoom_percent / 100.F;
     Extent extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
     // Initialization is temporary; this value is the sole persistent canonical world.
     State state = [&] {
+        if (checkpoint && *checkpoint) {
+            std::cout << "World inspection checkpoint: target=" << options.inspect_page
+                      << " rounds=" << (*checkpoint)->simulation_steps
+                      << " random=" << (*checkpoint)->scene.random.draws() << '\n';
+            return **checkpoint;
+        }
         std::uint64_t seed = 1;
         if (options.inspect_page.empty() || options.inspect_page == "world-load") {
             // Original files omit randomness. Every normal/cold-load process starts a new stream;
@@ -302,8 +312,10 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         begin_management_inspection(state, options.inspect_page, management_inspection);
         begin_human_inspection(state, options.inspect_page, human_inspection);
         bool reached =
-            management_inspection_mode(options.inspect_page) &&
-            management_inspection_ready(state, options.inspect_page, management_inspection);
+            (management_inspection_mode(options.inspect_page) &&
+             management_inspection_ready(state, options.inspect_page, management_inspection)) ||
+            (human_inspection_mode(options.inspect_page) &&
+             human_inspection_ready(state, options.inspect_page, human_inspection));
         const int limit = human_inspection_mode(options.inspect_page) ? 180000
                           : options.inspect_page == "world-award" ||
                                   management_inspection_mode(options.inspect_page) ||
@@ -394,6 +406,11 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         }
         if (!reached)
             throw std::runtime_error("World inspection did not reach its bounded target");
+        if (checkpoint && !*checkpoint) {
+            if (options.inspect_page != "world-commerce")
+                throw std::runtime_error("Commerce suite must first capture its natural entry");
+            *checkpoint = state; // Capture before screenshot-only camera/pause changes.
+        }
         if (human_inspection_mode(options.inspect_page))
             std::cout << "World human inspection: target=" << options.inspect_page
                       << " human=" << human_inspection.human.value_or(-1)
@@ -1048,5 +1065,32 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
               << " simulation_max_ms=" << publication->max_update_ms << '\n';
     if (failed)
         throw std::runtime_error(publication->error);
+}
+void run_world_game(const app::LaunchOptions &options, const std::filesystem::path &assets) {
+    if (options.inspect_page != "world-commerce-suite") {
+        run_world_game_capture(options, assets);
+        return;
+    }
+    std::optional<State> checkpoint;
+    const std::filesystem::path prefix(options.screenshot);
+    const auto started = std::chrono::steady_clock::now();
+    for (const auto *mode : {"world-commerce", "world-commerce-buy", "world-commerce-receipt",
+                             "world-commerce-facilities", "world-commerce-facility-info",
+                             "world-commerce-facility-reward"}) {
+        const auto capture_started = std::chrono::steady_clock::now();
+        auto capture = options;
+        capture.inspect_page = mode;
+        capture.screenshot =
+            (prefix.parent_path() / (prefix.stem().string() + "-" + mode + ".png")).string();
+        run_world_game_capture(capture, assets, &checkpoint);
+        std::cout << "World suite capture: target=" << mode << " elapsed="
+                  << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                                   capture_started)
+                         .count()
+                  << '\n';
+    }
+    std::cout << "World inspection suite: captures=6 natural_preparations=1 elapsed="
+              << std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count()
+              << '\n';
 }
 } // namespace ark::desktop

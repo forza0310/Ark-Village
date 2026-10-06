@@ -85,12 +85,40 @@ void synchronous_event_seen() {
               s.scene.world.world.ai.battle.events.count(116) && s.scripts.event_calls.at(116) == 2,
           "finish writer regenerates seen from counts without a second persistent event owner");
 }
+void successful_result_retains_independent_owner() {
+    StartupSession reset;
+    StartupWorldRuntimeSession runtime(reset.state(), ref::WorldRandomStream::from_java_seed(1));
+    auto result = runtime.update();
+    check(result.error == StartupWorldRuntimeError::none && result.candidate,
+          "successful session update returns its complete candidate after commit");
+    auto &candidate = *result.candidate;
+    const auto &committed = runtime.state();
+    check(candidate.catalog.size() == 149 && candidate.catalog.size() == committed.catalog.size() &&
+              candidate.scripts.pages.size() == committed.scripts.pages.size() &&
+              candidate.scene.world.world.map.cells.size() == 576 &&
+              candidate.scene.calendar.units == committed.scene.calendar.units &&
+              candidate.simulation_steps == committed.simulation_steps,
+          "moving private intermediates retains returned catalogs, world, pages and date");
+    auto returned_random = candidate.scene.random;
+    auto committed_random = committed.scene.random;
+    for (int i = 0; i < 8; ++i)
+        check(returned_random.draw(97).raw == committed_random.draw(97).raw,
+              "returned and committed random engines retain the same future stream");
+    const auto pages = committed.scripts.pages.size();
+    candidate.catalog.clear();
+    candidate.scripts.pages.clear();
+    candidate.scene.world.world.map.cells.clear();
+    check(committed.catalog.size() == 149 && committed.scripts.pages.size() == pages &&
+              committed.scene.world.world.map.cells.size() == 576,
+          "returned candidate remains independently mutable without changing committed owner");
+}
 } // namespace
 int main() {
     try {
         initial_owner();
         pause_and_private_failure();
         synchronous_event_seen();
+        successful_result_retains_independent_owner();
         std::cout << "startup_world_runtime: " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception &error) {

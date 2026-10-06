@@ -14,7 +14,7 @@
 
 ## 构建运行
 
-当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：raylib和C++运行库静态链接，中文字体与许可随包提供。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。四套预设继续用于本地阶段验收，Debug默认排除三个月测试，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
+当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：raylib和C++运行库静态链接，中文字体与许可随包提供。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
 
 成功构建会发布到[GitHub Releases](https://github.com/forza0310/Ark-Village/releases/latest)，直接下载Windows ZIP及SHA-256附件，无需容器工具；历史版本按提交保留。实际CI系统为Windows Server 2022，Windows 10真机另验。CI按上述分工执行，首次Releases发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
@@ -92,7 +92,7 @@ cmake --build --preset headless-release --parallel 4
 ctest --preset headless-release -L long_world --parallel 1
 ```
 
-长回归保持研究原断言：`annual_world` 核对12/6/24个月和自然任务数，`natural_tasks` 覆盖seed1双轮及seed20261005单轮的真实接受至自然成功/后续任务链。两类均由 `ARK_LONG_WORLD_TESTS` 显式开启；自然任务测试在四套配置中编译，执行按风险选择并优先Release，避免重复相同纯核心长跑。标准三个月基线保留注册，本地Debug默认跳过，三个月行为覆盖依赖main CI的desktop-release完整测试；当前CI不跑Debug或额外长测。仅必要诊断或用户明确要求时补跑Debug长测，命令与记录要求见[构建检查](docs/CONTRIBUTING.md#构建检查)。建议与正常试玩错开；60FPS绘制不代表世界每47ms都能完成计算。
+长回归保持研究原断言：`annual_world` 核对12/6/24个月和自然任务数，`natural_tasks` 覆盖seed1双轮及seed20261005单轮的真实接受至自然成功/后续任务链。两类均由 `ARK_LONG_WORLD_TESTS` 显式开启；自然任务测试保留四套构建支持，按风险选择所需配置，优先headless-release，避免重复相同纯核心长跑。标准三个月基线保留注册，本地Debug默认跳过，三个月行为覆盖依赖main CI的desktop-release完整测试；当前CI不跑Debug或额外长测。仅必要诊断或用户明确要求时补跑Debug长测，命令与记录要求见[构建检查](docs/CONTRIBUTING.md#构建检查)。建议与正常试玩错开；60FPS绘制不代表世界每47ms都能完成计算。
 
 旧切片七种单格建设、局部人物交接及1456步月前保护的设计与历史验收集中保留在 [B1记录](docs/stages/B1-playable-prototype.md)，这些限制不适用于默认持续世界。
 

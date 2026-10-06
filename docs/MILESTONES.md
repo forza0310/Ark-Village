@@ -12,8 +12,8 @@
 | B5 | 二维全流程对照与补齐 | Planned；玩法/UI/画面/输入和差异逐项验收 |
 | B6 | 3D化重构 | Planned；在二维行为基线上替换表现，复用领域测试 |
 
-阶段前先分析并确认设计；不改变已确认规则、契约或范围的小型错误自行修复并定向复验，仅来源/规则冲突、关键契约歧义或需要新范围/决策时暂停确认，详见[开发流程](CONTRIBUTING.md)。实现完成后集中完善测试：四套配置/编译，本地Release完整标准CTest，Debug默认仅排除三个月连续模拟；排除项及对应提交的CI结果分别记录，详见ADR-0045。纯文档只做文档检查，实际窗口/输入及原版对照另记。
-四套预设为headless-debug/headless-release/desktop-debug/desktop-release，不沿用旧预设或历史日志。
+阶段前先分析并确认设计；不改变已确认规则、契约或范围的小型错误自行修复并定向复验，仅来源/规则冲突、关键契约歧义或需要新范围/决策时暂停确认，详见[开发流程](CONTRIBUTING.md)。实现完成后集中完善测试：默认本地desktop-debug构建/标准CTest，排除三个月连续模拟；CI运行desktop-release完整标准CTest。headless按核心边界或长模拟风险追加，本地配置/排除项及对应提交的CI结果分别记录，详见ADR-0045。纯文档只做文档检查，实际窗口/输入及原版对照另记。
+保留headless-debug/headless-release/desktop-debug/desktop-release四套预设，按用途选择，不强制每阶段全部执行，不沿用旧预设或历史日志。
 main日常CI仅执行desktop-release构建及全部标准CTest，承担三个月行为覆盖并提供其余额外检查；Debug和headless预设保留供阶段验收及依赖边界检查，本地验证持续允许。CI Release结果不代表Debug三个月已运行，当前分工见ADR-0045，CI历史见ADR-0038。
 
 近期操作项以 [TODO](../TODO.md)为准；本页只记录阶段范围、状态和稳定决策。
@@ -290,9 +290,11 @@ Proposed：文件存取首批边界，待设计确认。
 
 ## ADR-0045
 
-Accepted，2026-10-06：用户要求长耗时Debug三个月测试尽量不在本地进行，依赖流水线测试。四套配置/编译与本地Release完整标准CTest保留；本地desktop-debug/headless-debug默认仅排除`simulation.startup_world_continuous_test`，其余标准测试执行。Debug三个月仅为定位Debug特有问题、相关失败或用户明确要求定向补跑；额外长测按风险显式选择，优先Release，不再每批要求Debug长链。
+Accepted，2026-10-06：用户先要求本地Debug跳过耗时三个月测试，随后确认取消每阶段强制四套矩阵，改为一套本地调试验收加一套CI发布验收。普通代码阶段默认本地desktop-debug配置/编译/标准CTest，仅排除`simulation.startup_world_continuous_test`；main CI执行desktop-release构建及完整标准CTest，包含三个月基线。保留四套预设，但只发布desktop-release玩家游戏包，Debug/headless作为开发配置。
 
-当前main流水线仍仅desktop-release完整标准CTest，包含三个月基线；本次只改文档，不增加Debug CI，也不修改测试注册、断言、种子、月份或超时。三个月行为覆盖依赖CI Release结果，不能宣称Debug三个月已由CI执行。交付分开记录本地排除项及对应提交的CI状态；CI待验证时可保存本地checkpoint，不自动推送或为了等待CI补跑本地Debug长测。操作命令与验收范围见[构建检查](CONTRIBUTING.md#构建检查)。本次仅检查文档差异、链接与策略一致性，不运行游戏回归；历史实测结果不改写。
+核心接口、模块依赖或CMake调整时补headless-debug构建及标准测试，同样默认排除三个月；长期模拟、性能或持续世界回归按风险使用headless-release，不重复同一核心轨迹。界面/资源/打包调整补实际窗口、资源或解压启动，试玩优先Release；仅CI发布配置检查相关工作流/脚本/发布路径。Debug三个月仅为定位Debug特有问题、相关失败或用户明确要求定向补跑。
+
+本次只改文档，不修改预设、CI、测试注册、断言、种子、月份或超时。CI的Release结果不代表Debug三个月或额外长测已执行。交付分开记录本地配置/排除项、按需检查及对应提交的CI状态；CI待验证时可保存本地checkpoint，不自动推送或为了等待CI补跑四套。操作命令与验收范围见[构建检查](CONTRIBUTING.md#构建检查)。本次仅检查文档差异、链接与策略一致性，不运行游戏回归；历史实测结果不改写。
 
 ## 研究历史引用
 

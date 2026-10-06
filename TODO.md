@@ -2,12 +2,12 @@
 
 ## 当前状态
 
-- [x] 更新本地/CI测试分工：本地Debug默认跳过三个月连续模拟，其余Debug与完整Release标准测试保留；三个月行为覆盖依赖main CI的Release结果，Debug长跑仅作必要诊断，见[ADR-0045](docs/MILESTONES.md#adr-0045)。本次仅文档检查。
+- [x] 更新本地/CI测试分工：保留四套配置，取消每阶段强制四套；默认本地desktop-debug测试（排除三个月）、CI desktop-release完整测试及唯一玩家游戏包，headless-debug用于核心边界、headless-release用于按需长模拟，见[ADR-0045](docs/MILESTONES.md#adr-0045)。本次仅文档检查。
 
 - [x] 修复Windows建设旋转退出：单帧入住募集/住宅素材在第二逻辑朝向复用唯一图像，预览与建成地表共用；四套602项标准CTest、两朝向预览及旋转建成窗口通过，见[B1记录](docs/stages/B1-playable-prototype.md#build-rotation-fix)。原版单帧朝向外观另待研究。
 
 - [x] 建立C++17/raylib产品工程、四套构建预设、模块说明和独立测试。
-- [x] 配置main GitHub CI；按2026-10-06最新决定仅Windows x64，desktop-release及全部标准CTest、失败诊断与制品校验；Debug/headless保留本地四套阶段验收，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
+- [x] 配置main GitHub CI；按2026-10-06最新决定仅Windows x64，desktop-release及全部标准CTest、失败诊断与制品校验；本地默认desktop-debug，headless按需使用，见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 - [x] 首次main Actions运行：`ba68e90`两个平台的desktop Release构建、全部标准CTest、打包检查和上传成功，见[运行37317066693](https://github.com/forza0310/Ark-Village/actions/runs/37317066693)；Windows 10真机另验。
 - [x] 改为GitHub Releases发布：Windows x64通过后上传游戏ZIP及SHA-256附件，按提交保留历史，草稿回读校验后公开并更新Latest；Actions制品保留7天，见[ADR-0043](docs/MILESTONES.md#adr-0043)。
 - [ ] 首次Windows x64 Actions/Releases发布：确认构建、Release创建、附件回读及Latest更新成功；本地验收不替代远程运行。

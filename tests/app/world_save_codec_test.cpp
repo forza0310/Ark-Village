@@ -53,7 +53,7 @@ struct Header {
     std::size_t payload{};
 };
 Header header(const Bytes &bytes) {
-    // Schema 1: magic8, version4, dataset string, village string, date4*4, funds8, length4.
+    // Schema 2: magic8, version4, dataset string, village string, date4*4, funds8, length4.
     const auto dataset_length = read32(bytes, 12);
     const auto village_length_position = 16U + dataset_length;
     const auto village_length = read32(bytes, village_length_position);
@@ -81,13 +81,24 @@ void rejected(const Bytes &bytes, app::WorldSaveError error, const char *diagnos
 
 void headers(const Bytes &valid, Header layout) {
     auto bytes = valid;
-    put32(bytes, 8, 2);
+    put32(bytes, 8, 99);
     reseal(bytes);
     rejected(bytes, app::WorldSaveError::unsupported_version, "version", "unknown schema");
     bytes = valid;
     bytes[layout.dataset] = bytes[layout.dataset] == '0' ? '1' : '0';
     reseal(bytes);
     rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "foreign frozen dataset");
+    bytes = valid;
+    const std::string previous_dataset =
+        "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609";
+    check(read32(bytes, 12) == previous_dataset.size(), "previous frozen identity has fixed width");
+    std::copy(previous_dataset.begin(), previous_dataset.end(), bytes.begin() + layout.dataset);
+    reseal(bytes);
+    rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "previous product dataset");
+    bytes = valid;
+    put32(bytes, 8, 1);
+    reseal(bytes);
+    rejected(bytes, app::WorldSaveError::unsupported_version, "version", "previous schema");
     bytes = valid;
     bytes[0] ^= 1;
     reseal(bytes);

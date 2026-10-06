@@ -177,6 +177,7 @@ bool write_startup_world_runtime_factory(State &s, const ref::WorldTaskCreationS
             s.facility_details.emplace(id, details);
             s.facility_monthly_cash.emplace(id, std::array<std::array<int, 2>, 12>{});
             s.facility_month_age.emplace(id, 0);
+            s.facility_item_confirmations.emplace(id, 0);
         }
     }
     refresh_schedule_surface(s);
@@ -270,6 +271,15 @@ std::optional<State> prepare_startup_world_runtime_dungeon_crew(const State &sta
         routes.dungeon_facilities = world.facilities;
         routes.dungeon_actors = world.actors;
         routes.catalog = world.catalog;
+        // 探索队伍即时奖励唯一修改catalog；缺原定义镜像先拒绝，不补造目录项。
+        for (const auto &item : routes.items)
+            if (!routes.catalog.count({0, item.first}))
+                return false;
+        for (const auto &record : routes.catalog)
+            if (record.first.first == 0 && !routes.items.count(record.first.second))
+                return false;
+        for (auto &item : routes.items)
+            item.second = routes.catalog.at({0, item.first});
         routes.shops = world.shops;
         routes.shop_order = world.shop_order;
         routes.item_rewards = world.item_rewards;
@@ -599,9 +609,14 @@ bool consume_startup_world_runtime_task_encounter_request(State &s,
         bool opened{}, changed{};
         for (const auto &source : next.rules->items) {
             auto stock = next.shop_item_stock.find(source.identity);
-            if (stock == next.shop_item_stock.end())
+            const auto definition = next.items.find(source.identity);
+            if (stock == next.shop_item_stock.end() || definition == next.items.end())
                 return false;
             auto &i = stock->second;
+            // 即时H()与月度补货同样读当前by.p/q/r，不能把奖励解锁覆盖回旧值。
+            i.presence = definition->second.status;
+            i.legacy_q = definition->second.unlock_counter;
+            i.newly_available = definition->second.newly_unlocked;
             const auto missing = static_cast<std::int64_t>(i.maximum_quantity) - i.quantity;
             if (i.minimum_rank == -1 || i.minimum_rank > next.rank || missing <= 0)
                 continue;

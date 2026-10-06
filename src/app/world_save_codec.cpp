@@ -13,7 +13,7 @@ namespace save_detail {
 static_assert(sizeof(int) == 4, "Save schema requires 32-bit world integers");
 static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559,
               "Save schema requires IEEE-754 binary32");
-constexpr std::uint32_t schema_version = 1;
+constexpr std::uint32_t schema_version = 2;
 constexpr std::size_t max_entries = 1000000;
 constexpr char magic[] = "ARKSAVE1";
 struct Failure {
@@ -255,7 +255,7 @@ template <class Archive> void fields(Archive &io, WorldSaveMetadata &x) {
 } // namespace save_detail
 
 const char *world_save_dataset() {
-    return "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609";
+    return "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c";
 }
 
 WorldSaveCapture capture_world_save(const simulation::StartupWorldRuntimeState &state) {

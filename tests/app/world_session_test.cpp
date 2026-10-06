@@ -174,18 +174,54 @@ void page_failure_rollback() {
           "Bounded source startup provides a real confirmable page");
     const auto page_id = top->id;
     state.scene.framework_paused = true;
+    auto paused_reference = state;
+    check(sim::acknowledge_startup_world_runtime_page(paused_reference, page_id) ==
+              sim::StartupWorldRuntimeError::invalid_page,
+          "Published 2b479f6 freezes every page callback while paused");
+    same_world(paused_reference, state);
+    app::WorldSession paused_session(state);
+    const auto paused_input = paused_session.ack_page(page_id);
+    const auto paused_failure =
+        await(paused_session, [](const auto &frame) { return frame.failed; });
+    check(paused_failure->last_command_serial == paused_input && paused_failure->outer_updates == 0,
+          "Paused page refusal cannot execute a callback or advance the worker");
+    same_world(*paused_failure->state, state);
+    paused_session.stop();
+
+    // Confirm while running, then freeze the committed publication before probing stale
+    // input. This never depends on input arriving within the 47ms tick gate.
+    state.scene.framework_paused = false;
     auto expected = state;
     check(sim::acknowledge_startup_world_runtime_page(expected, page_id) ==
               sim::StartupWorldRuntimeError::none,
           "Source accepts the first actual page confirmation");
+    check(sim::acknowledge_startup_world_runtime_page(expected, page_id) ==
+              sim::StartupWorldRuntimeError::invalid_page,
+          "The committed page identity is stale before testing worker rollback");
+    state.scene.framework_paused = true;
     app::WorldSession session(state);
+    session.set_paused(false);
     const auto accepted = session.ack_page(page_id);
+    const auto committed = await(session, [accepted](const auto &frame) {
+        return frame.last_command_serial >= accepted || frame.failed;
+    });
+    check(!committed->failed &&
+              std::none_of(
+                  committed->state->scripts.pages.begin(), committed->state->scripts.pages.end(),
+                  [&](const auto &page) { return page.id == page_id && page.lifecycle != 4; }),
+          "Worker commits the actual source confirmation before rejecting stale input");
+    const auto frozen = input_frame(session, session.set_paused(true));
+    check(!frozen->failed && frozen->state->scene.framework_paused,
+          "The last successful commit is frozen for deterministic rollback comparison");
+    expected = *frozen->state;
+    const auto stale = session.ack_page(page_id);
     const auto duplicate = session.ack_page(page_id);
-    check(accepted > 0 && duplicate == accepted + 1, "Explicit confirmations retain FIFO identity");
+    check(stale > accepted && duplicate == stale + 1,
+          "Explicit confirmations retain FIFO identity");
     const auto failed = await(session, [](const auto &frame) { return frame.failed; });
-    check(failed->last_command_serial == duplicate && !failed->error.empty() &&
-              failed->outer_updates == 0 && failed->previous == failed->state,
-          "Duplicate stale confirmation fails explicitly without automatically confirming a new "
+    check(failed->last_command_serial == stale && !failed->error.empty() &&
+              failed->outer_updates == frozen->outer_updates && failed->previous == failed->state,
+          "Stale confirmation fails explicitly without automatically confirming a new "
           "page");
     same_world(*failed->state, expected);
     const auto unchanged = session.wait_for_frame_after(failed->revision, 80ms);

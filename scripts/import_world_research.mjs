@@ -58,7 +58,7 @@ if (mode === '--record-patch') {
   const files = new Set(), pending = prototypeModules.map(name => `prototype/src/${name}.cpp`);
   for (const name of prototypeTests) pending.push(`prototype/tests/${name}_test.cpp`);
   for (const name of readdirSync(join(source, 'example/tests')).sort()) {
-    if (/^(world_|actor_|ai_|battle_|character_|combat_|encounter_|object_|rescue_|human_|weapon_|accounting|activity_|snapshot_facility_choice|geometry|map_access|navigation|neighbourhood|domain|facility_(arrival|departure|economy|exit|service|use))/.test(name) && name.endsWith('_test.cpp'))
+    if (/^(world_|actor_|ai_|battle_|character_|combat_|encounter_|object_|rescue_|human_|weapon_|accounting|activity_|snapshot_facility_choice|geometry|map_access|navigation|neighbourhood|domain|facility_(arrival|departure|economy|exit|items|service|use))/.test(name) && name.endsWith('_test.cpp'))
       pending.push(`example/tests/${name}`);
   }
   while (pending.length) {

@@ -28,13 +28,40 @@ WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
                 scripts.pending_completion ||
             !prepare_world_script_continuations(catalog, scripts, false).candidate)
             fail(WorldGiftPageError::invalid_owner);
-        if (found->legacy_page != 94 || found->kind != WorldScriptPageKind::raw_page ||
-            (found->legacy_r != 3 && (found->legacy_r < 5 || found->legacy_r > 8)))
-            fail(WorldGiftPageError::unsupported_page);
         const int mode = found->legacy_r;
+        const bool supported94 =
+            found->legacy_page == 94 && (mode == 3 || (mode >= 5 && mode <= 8));
+        const bool supported95 =
+            found->legacy_page == 95 && (mode == 0 || mode == 1 || mode == 3 || mode == 4 ||
+                                         mode == 9 || mode == 10 || mode == 11);
+        if (found->kind != WorldScriptPageKind::raw_page || (!supported94 && !supported95))
+            fail(WorldGiftPageError::unsupported_page);
         const int definition = found->legacy_s;
         if (definition < 0)
             fail(WorldGiftPageError::invalid_owner);
+        // 95可在第一次更新后立即进入只读绘制；载荷缺失不能等确认领取才暴露。
+        // 94保留已验的延迟读取合同，不把95的入口校验扩散到旧页。
+        if (supported95) {
+            if (mode == 0 &&
+                (!scripts.finance || scripts.finance->month < 0 || scripts.finance->month >= 12))
+                fail(WorldGiftPageError::invalid_owner);
+            if (mode == 1 && (state.village_points < 0 || state.village_points > 999))
+                fail(WorldGiftPageError::invalid_owner);
+            if (mode == 3) {
+                const auto item = state.facility_unlocks.find(definition);
+                if (item == state.facility_unlocks.end() || item->second.status < 0 ||
+                    item->second.free_builds < 0 || item->second.free_builds > 99)
+                    fail(WorldGiftPageError::invalid_owner);
+            }
+            if (mode == 4 || mode == 11) {
+                const auto &definitions = mode == 4 ? scripts.professions : scripts.activities;
+                const auto item = definitions.find(definition);
+                if (item == definitions.end() || item->second.status < 0)
+                    fail(WorldGiftPageError::invalid_owner);
+            }
+            if (mode == 10 && scripts.medal_count < 0)
+                fail(WorldGiftPageError::invalid_owner);
+        }
         WorldGiftPageCandidate candidate{state, input.counter, false, false, {}, {}, {}};
         auto &next = candidate.state;
         if (input.counter == 1)
@@ -59,7 +86,42 @@ WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
             candidate.pages.insert(candidate.pages.end(), result.candidate->inserted_pages.begin(),
                                    result.candidate->inserted_pages.end());
         };
-        if (mode == 3) {
+        if (mode == 0) {
+            auto &finance = next.facility.scripts.finance;
+            if (!finance || finance->month < 0 || finance->month >= 12)
+                fail(WorldGiftPageError::invalid_owner);
+            auto &total = finance->monthly_totals[finance->month][4][0];
+            if (finance->cash > std::numeric_limits<std::int64_t>::max() - definition)
+                fail(WorldGiftPageError::overflow);
+            total = checked(static_cast<std::int64_t>(total) + definition);
+            finance->cash += definition;
+            if (finance->legacy_flags14 == 0 && finance->cash > finance->cash_peak) {
+                finance->cash_peak = finance->cash;
+                finance->cash_peak_village = next.facility.scripts.village_name;
+            }
+        } else if (mode == 1) {
+            if (next.village_points < 0 || next.village_points > 999)
+                fail(WorldGiftPageError::invalid_owner);
+            next.village_points = std::clamp(
+                checked(static_cast<std::int64_t>(next.village_points) + definition), 0, 999);
+        } else if (mode == 4 || mode == 11) {
+            auto &definitions =
+                mode == 4 ? next.facility.scripts.professions : next.facility.scripts.activities;
+            const auto item = definitions.find(definition);
+            if (item == definitions.end() || item->second.status < 0)
+                fail(WorldGiftPageError::invalid_owner);
+            // 原a/h.c与a/c.a：旧p0才置提示；脚本31已经开放的职业不再制造提示。
+            if (item->second.status == 0)
+                item->second.pending_notice = true;
+            item->second.status = 1;
+        } else if (mode == 9) {
+            next.facility.scripts.user_flags |= 32U;
+        } else if (mode == 10) {
+            if (next.facility.scripts.medal_count < 0)
+                fail(WorldGiftPageError::invalid_owner);
+            next.facility.scripts.medal_count =
+                checked(static_cast<std::int64_t>(next.facility.scripts.medal_count) + 1);
+        } else if (mode == 3) {
             const auto item = next.facility_unlocks.find(definition);
             if (item == next.facility_unlocks.end() || item->second.status < 0 ||
                 item->second.free_builds < 0 || item->second.free_builds > 99)

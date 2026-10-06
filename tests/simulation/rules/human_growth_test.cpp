@@ -1,6 +1,7 @@
 // Definition growth is separate from actor HP, delayed display and world-page ownership.
 #include "ark/simulation/rules/human_growth.hpp"
 #include "ark/simulation/rules/human_management.hpp"
+#include "ark/simulation/rules/world_village_activity.hpp"
 
 #include <iostream>
 #include <limits>
@@ -395,6 +396,272 @@ void equipment_management() {
               !human_profession_change_animation_plan(-1, true),
           "catalogue identity, profiles, scores and animation technical bounds");
 }
+void ordinary_item_gifts() {
+    const auto f = fixture();
+    HumanItemGiftInput i;
+    i.definition = f.definition;
+    i.professions = f.professions;
+    i.stock = 2;
+    i.quality = 1;
+    i.effect = 6;
+    // 独立整数期望覆盖两段插值先截断再各半，与装备80/20明确区分。
+    for (const auto row : {std::array<int, 4>{0, 1, 0, 2},
+                           {1, 2, 31, 4},
+                           {2, 8, 93, 8},
+                           {2, 9, 100, 9},
+                           {0, 10, 50, 5},
+                           {1, 10, 75, 7},
+                           {2, 10, 100, 9}}) {
+        i.profession_affinity = row[0];
+        i.quality = row[1];
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && r.candidate->evaluation == row[2] && r.candidate->stock == 1 &&
+                  r.candidate->reward.satisfaction == row[3] && !r.candidate->final_stats &&
+                  !r.candidate->attribute_display,
+              "ordinary items use equal affinity/quality interpolation and consume one stock");
+    }
+    i.profession_affinity = 0;
+    i.quality = 1;
+    i.amount = 4;
+    i.professions[0].attribute_percent.fill(150);
+    for (int attribute = 0; attribute < 6; ++attribute) {
+        i.effect = attribute;
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && r.candidate->definition.extra[attribute] == 4 &&
+                  r.candidate->attribute_display && r.candidate->final_stats &&
+                  r.candidate->attribute_display->difference[attribute] == 6,
+              "all six item stats add raw m to extra, then derive and show six attributes");
+    }
+    i.effect = 9;
+    i.spell = 2;
+    i.definition.legacy_u = 9;
+    i.profession_affinity = 2;
+    i.quality = 9;
+    const auto learn = prepare_human_item_gift(i);
+    check(learn.candidate && learn.candidate->definition.learned_spells[2] &&
+              !learn.candidate->final_stats && learn.candidate->reward.derived &&
+              !learn.candidate->reward.derived->available_spells[2] &&
+              !learn.candidate->reward.definition.learned_spells[2],
+          "learning follows common reward and does not eagerly refresh available spell cache");
+    i.definition.learned_spells[2] = true;
+    check(prepare_human_item_gift(i).candidate->stock == 1,
+          "already learned magic remains consumable and rewarded");
+    for (const int effect : {6, 7, 8}) {
+        i.effect = effect;
+        const auto r = prepare_human_item_gift(i);
+        check(r.candidate && !r.candidate->final_stats && !r.candidate->attribute_display,
+              "gift, material and recovery items do not invent permanent attribute changes");
+    }
+    i.stock = 0;
+    check(!prepare_human_item_gift(i).candidate, "empty inventory cannot produce a gift");
+    i.stock = 1000;
+    check(!prepare_human_item_gift(i).candidate,
+          "inventory beyond original999 cap refuses instead of normalizing corrupt stock");
+    i.stock = 1;
+    i.effect = 9;
+    i.spell = 4;
+    check(!prepare_human_item_gift(i).candidate, "invalid learned spell index rejects explicitly");
+    i.effect = 0;
+    i.definition.extra[0] = std::numeric_limits<int>::max();
+    check(!prepare_human_item_gift(i).candidate && i.stock == 1,
+          "late attribute overflow leaves caller inventory and definition unchanged");
+}
+void village_activity_rules() {
+    WorldVillageActivityDefinition a{23, 1, 0, 0, 2, 0, 20, 10};
+    auto once = a;
+    once.identity = 2;
+    once.flags = 2;
+    once.held = 1;
+    auto quarter = a;
+    quarter.identity = 3;
+    quarter.flags = 4;
+    auto excluded = a;
+    excluded.identity = 27;
+    auto locked = a;
+    locked.identity = 4;
+    locked.status = 0;
+    auto first_once = once;
+    first_once.identity = 1;
+    first_once.held = 0;
+    auto repeatable = a;
+    repeatable.identity = 5;
+    repeatable.held = 3;
+    repeatable.flags = 1;
+    auto other_status = a;
+    other_status.identity = 6;
+    other_status.status = 2;
+    const auto list = catalogue_world_village_activities(
+        {once, a, quarter, excluded, locked, first_once, repeatable, other_status});
+    check(list && *list == std::vector<int>{23, 1, 5},
+          "village catalogue keeps source order, exact p1 and independent once/quarter flags");
+    check(catalogue_world_village_activities({once, quarter, excluded, locked}) ==
+              std::vector<int>{},
+          "filtered catalogue stays empty, without fabricated activities");
+    check(!catalogue_world_village_activities({a, a}), "duplicate activity definition rejects");
+    check(check_world_village_activity(a, 0, 0).denial ==
+                  WorldVillageActivityDenial::no_quarter_slots50 &&
+              check_world_village_activity(a, 1, 19).denial ==
+                  WorldVillageActivityDenial::insufficient_points12 &&
+              check_world_village_activity(a, 1, 20).denial == WorldVillageActivityDenial::none,
+          "51 checks quarterly quota before points, including exact affordable boundary");
+    const auto start = prepare_world_village_activity_start(a, 20, 7);
+    check(start.candidate && start.candidate->village_points == 0 &&
+              start.candidate->events_held == 8 && start.candidate->activity.held == 1 &&
+              start.candidate->activity.flags == 4 && a.held == 0 && a.flags == 0,
+          "52 charges points and increments m/F, without effect or quarterly completion");
+    const auto changed_points = prepare_world_village_activity_start(first_once, 19, 0);
+    check(changed_points.candidate && changed_points.candidate->village_points == 0 &&
+              changed_points.candidate->activity.flags == 6,
+          "52 does not repeat51 affordability gate and preserves the once flag");
+    check(!prepare_world_village_activity_start(a, 20, std::numeric_limits<int>::max()).candidate,
+          "activity count overflow rejects");
+    auto overflow_count = a;
+    overflow_count.held = std::numeric_limits<int>::max();
+    check(prepare_world_village_activity_start(overflow_count, 20, 0).error ==
+                  WorldVillageActivityError::overflow &&
+              overflow_count.flags == 0,
+          "per-definition count overflow cannot leave a charged or marked candidate");
+    for (const int counter : {69, 70, 71, 119, 120, 121}) {
+        const auto update = world_village_activity_animation(counter, false);
+        const auto confirm = world_village_activity_animation(counter, true);
+        check(update && confirm && update->sound5 == (counter == 70) && !update->complete &&
+                  confirm->complete == (counter >= 120),
+              "70 sound and 120 confirmation are separate contracts");
+    }
+    auto f = fixture();
+    const auto cached = derive_human_stats(f.definition, f.professions);
+    check(cached.candidate.has_value(),
+          "village effect fixture derives valid source-independent inputs");
+    a.kind = 0;
+    a.magnitude = 7;
+    // 固定独立期望：单精度插值后向零截断；不是调用被测公式生成oracle。
+    for (const auto values : {std::array<int, 2>{0, 7},
+                              {14, 21},
+                              {15, 22},
+                              {35, 40},
+                              {54, 57},
+                              {55, 58},
+                              {99, 100},
+                              {100, 100}}) {
+        const auto r = prepare_world_village_human_effect(a, f.definition, f.professions,
+                                                          *cached.candidate, values[0]);
+        check(r.candidate && r.candidate->previous_value == values[0] &&
+                  r.candidate->satisfaction == values[1] && !r.candidate->stats,
+              "kind0 saves old C and uses clamped float interpolation without growth rewards");
+    }
+    a.magnitude = -7;
+    const auto negative =
+        prepare_world_village_human_effect(a, f.definition, f.professions, *cached.candidate, 35);
+    check(negative.candidate && negative.candidate->satisfaction == 30,
+          "signed satisfaction request truncates toward zero before the0..100 clamp");
+    a.kind = 1;
+    a.magnitude = 5;
+    f.definition.current_profession = 1;
+    f.professions[1].attribute_percent = {150, 125, 175, 50, 200, 90};
+    constexpr std::array<int, 6> extra{7, 6, 8, 2, 10, 4};
+    constexpr std::array<int, 6> final_attributes{43, 31, 24, 3, 34, 13};
+    for (int attribute = 0; attribute < 6; ++attribute) {
+        a.attribute = attribute;
+        const auto r = prepare_world_village_human_effect(a, f.definition, f.professions,
+                                                          *cached.candidate, 20);
+        check(
+            r.candidate && r.candidate->previous_value == cached.candidate->attributes[attribute] &&
+                r.candidate->definition.extra[attribute] == extra[attribute] &&
+                r.candidate->stats &&
+                r.candidate->stats->attributes[attribute] == final_attributes[attribute] &&
+                r.candidate->satisfaction == 20 && f.definition.extra[attribute] == 0,
+            "each attribute scales extra by current profession then derives, preserving cached ao");
+    }
+    a.attribute = 0;
+    a.magnitude = -5;
+    const auto signed_extra =
+        prepare_world_village_human_effect(a, f.definition, f.professions, *cached.candidate, 20);
+    check(signed_extra.candidate && signed_extra.candidate->stats &&
+              signed_extra.candidate->definition.extra[0] == -7 &&
+              signed_extra.candidate->stats->attributes[0] == 22,
+          "negative profession-scaled extra truncates toward zero, without an invented lower cap");
+    for (const int kind : {2, 3, 4, 5, 6}) {
+        a.kind = kind;
+        check(prepare_world_village_human_effect(a, f.definition, f.professions, *cached.candidate,
+                                                 20)
+                      .error == WorldVillageActivityError::unsupported_kind,
+              "global popularity and deferred special activities are never human effects");
+    }
+}
+void village_activity_rejections() {
+    auto f = fixture();
+    const auto cached = derive_human_stats(f.definition, f.professions);
+    check(cached.candidate.has_value(), "activity rejection fixture has valid cached stats");
+    const WorldVillageActivityDefinition activity{23, 1, 0, 0, 1, 0, 20, 5};
+    for (int field = 0; field < 6; ++field) {
+        auto invalid = activity;
+        if (field == 0)
+            invalid.identity = -1;
+        if (field == 1)
+            invalid.status = -1;
+        if (field == 2)
+            invalid.held = -1;
+        if (field == 3)
+            invalid.kind = 7;
+        if (field == 4)
+            invalid.attribute = 6;
+        if (field == 5)
+            invalid.points = -1;
+        check(!catalogue_world_village_activities({invalid}) &&
+                  check_world_village_activity(invalid, 1, 20).error ==
+                      WorldVillageActivityError::invalid_input &&
+                  !prepare_world_village_activity_start(invalid, 20, 0).candidate,
+              "invalid published activity fields reject before a directory or start candidate");
+    }
+    for (const int points : {-1, 1000})
+        check(check_world_village_activity(activity, 0, points).error ==
+                      WorldVillageActivityError::invalid_input &&
+                  !prepare_world_village_activity_start(activity, points, 0).candidate,
+              "technical points bounds reject instead of inventing a gameplay refusal");
+    check(!world_village_activity_animation(-1, true) &&
+              !prepare_world_village_activity_start(activity, 20, -1).candidate,
+          "negative animation and aggregate count reject");
+    auto request = activity;
+    request.kind = 0;
+    request.magnitude = std::numeric_limits<int>::max();
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 0)
+                  .error == WorldVillageActivityError::overflow,
+          "float-rounded out-of-range request rejects before conversion to int");
+    request.kind = 1;
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 20)
+                  .error == WorldVillageActivityError::overflow,
+          "profession multiplication overflow is checked before division");
+    request.magnitude = 1;
+    f.definition.extra[0] = std::numeric_limits<int>::max();
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 20)
+                      .error == WorldVillageActivityError::overflow &&
+              f.definition.extra[0] == std::numeric_limits<int>::max(),
+          "extra overflow rejects without mutating the caller definition");
+    f = fixture();
+    f.definition.base[0] = std::numeric_limits<int>::max();
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 20)
+                      .error == WorldVillageActivityError::overflow &&
+              f.definition.extra[0] == 0,
+          "late stat derivation overflow also rejects the earlier extra increment");
+    f = fixture();
+    f.definition.current_profession = 3;
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 20)
+                  .error == WorldVillageActivityError::invalid_input,
+          "missing current profession rejects before indexing its coefficient");
+    f = fixture();
+    f.definition.profession_levels.pop_back();
+    check(prepare_world_village_human_effect(request, f.definition, f.professions,
+                                             *cached.candidate, 20)
+                      .error == WorldVillageActivityError::invalid_input &&
+              f.definition.extra[0] == 0,
+          "late malformed growth input returns no partially updated definition");
+}
+
 } // namespace
 int main() {
     try {
@@ -404,6 +671,9 @@ int main() {
         immediate_rewards();
         profession_management();
         equipment_management();
+        ordinary_item_gifts();
+        village_activity_rules();
+        village_activity_rejections();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

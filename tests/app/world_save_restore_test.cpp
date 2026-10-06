@@ -158,6 +158,112 @@ void invalid_candidates() {
     bad = initial;
     bad.shop_item_stock.begin()->second.definition = 99999;
     reject(bad, "mismatched shop item value identity");
+    for (int field = 0; field < 6; ++field) {
+        bad = initial;
+        auto &item = bad.items.begin()->second;
+        switch (field) {
+        case 0:
+            item.flags ^= 1U;
+            break;
+        case 1:
+            ++item.status;
+            break;
+        case 2:
+            ++item.unlock_counter;
+            break;
+        case 3:
+            item.newly_unlocked = !item.newly_unlocked;
+            break;
+        case 4:
+            item.inventory = item.inventory == 999 ? 998 : item.inventory + 1;
+            break;
+        case 5:
+            ++item.free_purchases;
+            break;
+        }
+        reject(bad, "incoherent item owner/catalog field");
+    }
+    bad = initial;
+    bad.activity_counts.erase(bad.activity_counts.begin());
+    reject(bad, "missing village activity count");
+    bad = initial;
+    bad.activity_counts.begin()->second = -1;
+    reject(bad, "negative village activity count");
+    bad = initial;
+    bad.scripts.activities.begin()->second.status = -1;
+    reject(bad, "negative village activity status");
+    bad = initial;
+    bad.events_held = std::numeric_limits<int>::max();
+    reject(bad, "total village event count overflow");
+    bad = initial;
+    bad.human_activity_previous.erase(bad.human_activity_previous.begin());
+    bad.human_activity_previous.emplace(99999, 0);
+    reject(bad, "wrong human previous-activity identity");
+    bad = initial;
+    bad.item_commerce_read.erase(bad.item_commerce_read.begin());
+    reject(bad, "missing item commerce reading state");
+    bad = initial;
+    bad.facility_commerce_read.erase(bad.facility_commerce_read.begin());
+    bad.facility_commerce_read.emplace(99999, false);
+    reject(bad, "wrong facility commerce reading identity");
+    bad = initial;
+    bad.facility_item_confirmations.erase(bad.facility_item_confirmations.begin());
+    reject(bad, "missing live facility item counter");
+    bad = initial;
+    bad.facility_item_confirmations.begin()->second = -1;
+    reject(bad, "negative facility item counter");
+    bad = initial;
+    bad.facility_item_confirmations.emplace(bad.next_facility_identity++, 0);
+    reject(bad, "unrooted retired facility item counter");
+    bad = initial;
+    bad.build_anchor = ref::Position{5, 5};
+    reject(bad, "unfinished editing anchor");
+    check(!app::world_save_eligible(bad), "unfinished editing anchor cannot be captured");
+    bad = initial;
+    bad.build_moving_facility = bad.scene.world.facility_order.front();
+    reject(bad, "unfinished moving selection");
+    check(!app::world_save_eligible(bad), "moving selection cannot be captured");
+    bad = initial;
+    bad.activity_page_answers.emplace(42, 0);
+    reject(bad, "unconsumed village activity decision");
+    check(!app::world_save_eligible(bad), "village activity answer cannot be discarded");
+}
+void management_fields_roundtrip() {
+    auto state = ark::test::initial_world();
+    // A byte-coverage fixture for maintained records, not a claim of natural business execution.
+    const auto activity = state.activity_counts.begin()->first;
+    const auto human = state.human_activity_previous.begin()->first;
+    const auto facility = state.scene.world.facility_order.front();
+    const auto item = state.item_commerce_read.begin()->first;
+    const auto facility_definition = state.facility_commerce_read.begin()->first;
+    state.activity_counts.at(activity) = 7;
+    state.human_activity_previous.at(human) = -3;
+    state.facility_item_confirmations.at(facility) = 2;
+    state.item_commerce_read.at(item) = !state.item_commerce_read.at(item);
+    state.facility_commerce_read.at(facility_definition) =
+        !state.facility_commerce_read.at(facility_definition);
+    // Restock p/q/r is an old projection until the actual consumer refreshes it.
+    auto &owned = state.items.at(item);
+    ++owned.unlock_counter;
+    state.catalog.at({0, item}) = owned;
+    state.facility_item_response = 3;
+    state.commerce_page_data[42] = {0, 1, 2, 0, item, 9};
+    state.activity_page_display_humans[42] = {human, human};
+    const auto loaded = restored(state);
+    check(loaded.activity_counts == state.activity_counts &&
+              loaded.human_activity_previous == state.human_activity_previous &&
+              loaded.facility_item_confirmations == state.facility_item_confirmations &&
+              loaded.item_commerce_read == state.item_commerce_read &&
+              loaded.facility_commerce_read == state.facility_commerce_read,
+          "new management durable tables round-trip with exact identities and values");
+    check(loaded.items.at(item).unlock_counter == state.items.at(item).unlock_counter &&
+              loaded.catalog.at({0, item}).unlock_counter == state.items.at(item).unlock_counter &&
+              loaded.shop_item_stock.at(item).legacy_q == state.shop_item_stock.at(item).legacy_q,
+          "coherent current item state preserves the independently timed restock projection");
+    check(loaded.facility_item_response == 0 && loaded.commerce_page_data.empty() &&
+              loaded.activity_page_display_humans.empty(),
+          "business page payloads and last result response are transient");
+    same_durable(state, loaded, "new management state capture");
 }
 void task_and_combat_roundtrip(const State &natural) {
     auto task = natural;
@@ -402,6 +508,7 @@ void natural_operation_roundtrip() {
 
 void run_restore_tests() {
     invalid_candidates();
+    management_fields_roundtrip();
     natural_operation_roundtrip();
     std::cout << "PASS world save restore " << checks << " checks\n";
 }

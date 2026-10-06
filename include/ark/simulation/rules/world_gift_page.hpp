@@ -13,6 +13,7 @@ struct WorldGiftPageState {
     WorldFacilityUpdateState facility; // 原共享物品/装备在finish.dungeon.catalog，不建第二份库存。
     std::map<int, WorldGiftFacilityDefinition> facility_unlocks;
     std::vector<std::uint64_t> facility_order; // 原g，o.g按实例g细类扫描，允许重复引用。
+    int village_points{};                      // 原n.b(int)点数；临时Owner投影，不与现金合并。
 };
 struct WorldGiftPageInput {
     std::uint64_t page{};
@@ -42,6 +43,8 @@ struct WorldGiftPageResult {
 };
 // 页94r3/5/6/7/8真实确认：counter<40第一次只快进40；>=40才br.c/bt.b/bz.a/bA.a/by.c然后关闭。
 // 直接定义领取不复用c/e.a掉落消费者：不加UserData.E、不发额外notice2/10/11/110/151。
+// 页95只接固定脚本实际产生的r0/1/3/4/9/10/11；与94共用上述计数/确认时点。
+// r0现金与月类别4收入经scripts.finance投影提交，不调用会额外通知34的脚本opcode0。
 WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
                                             const WorldGiftPageInput &input,
                                             const WorldScriptCatalog &catalog);

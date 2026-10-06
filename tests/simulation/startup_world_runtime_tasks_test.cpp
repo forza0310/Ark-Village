@@ -75,6 +75,52 @@ void factory() {
               later.candidate->state.finish.tasks.at(task).facility == site,
           "new factory after restored original site cannot alias retired summary/task identity");
 }
+void crew_item_reward_writeback() {
+    auto s = test_support::world_fixture();
+    const auto created = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 0);
+    check(created.candidate && created.candidate->created_task &&
+              write_startup_world_runtime_factory(s, created.candidate->state),
+          "crew reward fixture uses actual factory site and full original item catalogue");
+    const auto task = *created.candidate->created_task;
+    const auto facility = *s.tasks.at(task).facility;
+    const ref::CharacterId actor_id{900};
+    ref::BattleActorRecord actor;
+    actor.id = actor_id;
+    actor.definition = 1;
+    actor.control.state = 14;
+    actor.capacity = 100;
+    actor.hp = {0, 100, 100, 100, false, 0};
+    const auto cell = s.scene.world.world.facilities.at(facility).placement.anchor;
+    actor.position = {static_cast<float>(cell.x * 100 + 50), 0,
+                      static_cast<float>(cell.y * 100 + 50)};
+    s.scene.world.world.ai.battle.actors.emplace(actor_id, actor);
+    s.scene.world.world.ai.human_order.push_back(actor_id);
+    s.scene.world.world.ai.contexts.emplace(actor_id, ref::RewardActorContext{cell, false, {}, {}});
+    s.scene.world.world.actors.emplace(actor_id, ref::RescueActorContext{});
+    s.scene.world.world.actors.at(actor_id).binding = ref::ArrivalBinding{
+        cell, {facility}, s.scene.world.world.facilities.at(facility).placement.definition_id};
+    s.dungeon_actors.emplace(actor_id, ref::DungeonActorProgress{});
+    s.scene.world.world.facilities.at(facility).occupants = {actor_id};
+    s.scene.world.world.facilities.at(facility).status = 1;
+    // 最小已到达挑战位置的调用点夹具；仍由真实crew计算与grant回调发普通道具。
+    s.dungeon_facilities.at(facility).challenges = {{0, 0, 0, 0, 0, 0}};
+    const auto before = s.items.at(0).inventory;
+    const auto draws = s.scene.random.draws();
+    const auto result = prepare_startup_world_runtime_dungeon_crew(s, facility);
+    check(result && result->items.at(0).inventory == before + 1 &&
+              result->catalog.at({0, 0}).inventory == before + 1 &&
+              result->item_rewards == s.item_rewards + 1 && !result->scripts.notices.empty() &&
+              result->scripts.notices.back().message == 2 &&
+              result->scene.random.draws() == draws && s.items.at(0).inventory == before,
+          "actual crew callback publishes one item to both owner projections and emits original "
+          "notice2");
+    auto missing = s;
+    missing.items.erase(0);
+    check(!prepare_startup_world_runtime_dungeon_crew(missing, facility) &&
+              missing.catalog.at({0, 0}).inventory == before &&
+              missing.item_rewards == s.item_rewards && missing.scene.random.draws() == draws,
+          "crew callback missing item mirror rolls back reward, notices and random");
+}
 void encounter() {
     StartupSession initial;
     StartupWorldRuntimeSession session(initial.state(), ref::WorldRandomStream{});
@@ -348,6 +394,7 @@ void active_management() {
 int main() {
     try {
         factory();
+        crew_item_reward_writeback();
         encounter();
         task_victory_requests();
         active_management();

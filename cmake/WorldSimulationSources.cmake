@@ -25,7 +25,9 @@ set(ARK_WORLD_RULE_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_arrival.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_departure.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_economy.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/rules/facility_events.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_exit.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/rules/facility_items.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_service.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/facility_use.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/geometry.cpp"
@@ -77,6 +79,7 @@ set(ARK_WORLD_RULE_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_task_creation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_task_deadline.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_task_display.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/rules/world_village_activity.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_wander.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/rules/world_world_entry.cpp"
 )
@@ -87,6 +90,9 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_building.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_commerce.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_editing.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_facility_items.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_human.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_routes.cpp"
@@ -101,6 +107,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_task_pages.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_tasks.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_tax.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_village_activity.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_visuals.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES
@@ -129,6 +136,7 @@ set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_departure_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_economy_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_exit_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_items_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_service_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/facility_use_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/rules/geometry_test.cpp"

@@ -45,6 +45,7 @@ struct StartupDefinition {
     std::vector<ref::FacilityAttributeEffect> exit_effects; // Source columns28/29, original order.
     std::vector<ref::NeighbourModifier> neighbour_effects; // Source26/27, separate from exit gains.
     int unlock_rank{}; // 原o.D，tenantData第32索引列，仅用于晋级后的提醒匹配。
+    int legacy_icon{}; // 原o.d，tenantData索引2；设施道具事件门槛。
 };
 struct StartupFacility {
     std::uint64_t id{}; // Nonzero prototype identity; raw zero is represented explicitly below.

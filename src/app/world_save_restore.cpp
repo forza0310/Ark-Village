@@ -65,14 +65,28 @@ bool path(const ref::LegacyMap &map, const ref::LegacyPathResult &route) {
            std::all_of(route.steps.begin(), route.steps.end(),
                        [&](const auto p) { return in_map(map, p); });
 }
-bool binding(const State &s, const ref::ArrivalBinding &value) {
+std::set<std::uint64_t> retired_task_facilities(const State &s) {
+    const std::set<std::uint64_t> listed(s.task_order.begin(), s.task_order.end());
+    std::set<std::uint64_t> result;
+    // Completed task objects remain readable after their site leaves the live map.
+    for (const auto &entry : s.tasks) {
+        const auto id = entry.second.facility;
+        if (id && *id && *id < s.next_facility_identity &&
+            !s.scene.world.world.facilities.count(*id) && s.facility_original_ids.count(*id) &&
+            entry.second.identity == entry.first && s.active_task != entry.first &&
+            !listed.count(entry.first))
+            result.insert(*id);
+    }
+    return result;
+}
+bool binding(const State &s, const ref::ArrivalBinding &value,
+             const std::set<std::uint64_t> &retired) {
     const auto &world = s.scene.world.world;
     if (!in_map(world.map, value.goal))
         return false;
     const auto f = world.facilities.find(value.instance_id.value);
     if (f == world.facilities.end())
-        return value.instance_id.value < s.next_facility_identity &&
-               s.facility_original_ids.count(value.instance_id.value) &&
+        return retired.count(value.instance_id.value) &&
                s.scripts.facilities.count(value.definition_id);
     if (f->second.placement.definition_id != value.definition_id)
         return false;
@@ -84,6 +98,11 @@ bool binding(const State &s, const ref::ArrivalBinding &value) {
 bool catalog_record(const ref::ObjectCatalogRecord &value) {
     return counter(value.status) && counter(value.unlock_counter) && value.inventory >= 0 &&
            value.inventory <= 999 && counter(value.free_purchases);
+}
+bool same_item(const ref::ObjectCatalogRecord &a, const ref::ObjectCatalogRecord &b) {
+    return a.flags == b.flags && a.status == b.status && a.unlock_counter == b.unlock_counter &&
+           a.newly_unlocked == b.newly_unlocked && a.inventory == b.inventory &&
+           a.free_purchases == b.free_purchases;
 }
 
 bool rebuild_map(State &s) {
@@ -180,6 +199,14 @@ void clear_presentation(State &s) {
     s.tax_page_residents.clear();
     s.tax_page_selection.clear();
     s.tax_page_scroll.clear();
+    s.activity_pages_initialized.clear();
+    s.activity_page_bindings.clear();
+    s.activity_page_lists.clear();
+    s.activity_page_display_humans.clear();
+    s.activity_page_parents.clear();
+    s.activity_page_answers.clear();
+    s.activity_page_selections.clear();
+    s.activity_page_scroll.clear();
     s.page_counters.clear();
     s.page_phases.clear();
     s.task_page_lists.clear();
@@ -199,10 +226,19 @@ void clear_presentation(State &s) {
     s.award_termination_pending.clear();
     s.award_pending_humans.clear();
     s.facility_page_bindings.clear();
+    s.facility_definition_page_bindings.clear();
     s.facility_page_neighbours.clear();
     s.build_page_catalogs.clear();
     s.residence_page_candidates.clear();
     s.facility_upgrade_initialized.clear();
+    s.facility_item_pages_initialized.clear();
+    s.facility_item_page_items.clear();
+    s.facility_item_page_lists.clear();
+    s.facility_item_page_selections.clear();
+    s.facility_item_response = 0;
+    s.commerce_pages_initialized.clear();
+    s.commerce_page_data.clear();
+    s.commerce_page_lists.clear();
     s.rank_celebration_participants.clear();
     s.exploration_summaries.clear();
     s.exploration_displays.clear();
@@ -218,6 +254,8 @@ void clear_presentation(State &s) {
     s.focus_held_input = 0;
     s.build_mode = 0;
     s.build_definition.reset();
+    s.build_anchor.reset();
+    s.build_moving_facility.reset();
     s.build_feedback_counter = 0;
     s.build_feedback_message.clear();
     s.camera_follow = s.camera_delay = 0;
@@ -248,13 +286,13 @@ void clear_presentation(State &s) {
 bool world_save_eligible(const State &s, std::string *reason) {
     if (!s.rules || s.scene.scene_state != 0 || s.scene.processing_phase != -1 ||
         s.report_state != 0 || s.deadline_page || s.deadline_closed_page || s.build_definition ||
-        s.build_mode != 0)
+        s.build_mode != 0 || s.build_anchor || s.build_moving_facility)
         return fail(reason, "请返回主场景，等待月报和待处理事件结束后保存");
     if (s.scripts.pages.size() != 1 ||
         s.scripts.pages.front().kind != ref::WorldScriptPageKind::scene ||
         s.scripts.pages.front().lifecycle != 2 || s.scripts.executing_page ||
         s.scripts.page_mutations_locked || !s.human_page_answers.empty() ||
-        !s.task_abort_answers.empty())
+        !s.task_abort_answers.empty() || !s.activity_page_answers.empty())
         return fail(reason, "请关闭当前页面并完成其中的选择后保存");
     for (const auto &entry : s.scene.world.world.ai.battle.actors)
         if (entry.second.kind == ref::ActorKind::human &&
@@ -275,24 +313,28 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
     const auto &rules = *s.rules;
     const auto &world = s.scene.world.world;
     const auto &ai = world.ai;
+    const auto retired_facilities = retired_task_facilities(s);
     if (!ref::valid_world_calendar_state(s.scene.calendar) || !counter(s.scene.calendar.year) ||
         !counter(s.scene.calendar.month_ticks) || !counter(s.scene.frame_counter) ||
         !counter(s.scene.scene_counter) ||
         (s.scene.speed_setting != 0 && s.scene.speed_setting != 1) || s.scene.scene_state != 0 ||
         s.scene.processing_phase != -1 || s.report_state != 0 || s.deadline_page ||
-        s.deadline_closed_page || !coordinate(s.camera[0]) || !coordinate(s.camera[1]) ||
-        !coordinate(s.previous_camera[0]) || !coordinate(s.previous_camera[1]) ||
-        !coordinate(s.camera_velocity[0]) || !coordinate(s.camera_velocity[1]) ||
-        s.reference_viewport[2] <= 0 || s.reference_viewport[3] <= 0 ||
-        s.reference_viewport[2] > 100000 || s.reference_viewport[3] > 100000 ||
-        s.reference_viewport[0] < -100000 || s.reference_viewport[0] > 100000 ||
-        s.reference_viewport[1] < -100000 || s.reference_viewport[1] > 100000 ||
+        s.deadline_closed_page || s.build_mode != 0 || s.build_definition || s.build_anchor ||
+        s.build_moving_facility || !s.activity_page_answers.empty() || !coordinate(s.camera[0]) ||
+        !coordinate(s.camera[1]) || !coordinate(s.previous_camera[0]) ||
+        !coordinate(s.previous_camera[1]) || !coordinate(s.camera_velocity[0]) ||
+        !coordinate(s.camera_velocity[1]) || s.reference_viewport[2] <= 0 ||
+        s.reference_viewport[3] <= 0 || s.reference_viewport[2] > 100000 ||
+        s.reference_viewport[3] > 100000 || s.reference_viewport[0] < -100000 ||
+        s.reference_viewport[0] > 100000 || s.reference_viewport[1] < -100000 ||
+        s.reference_viewport[1] > 100000 ||
         s.simulation_steps == std::numeric_limits<std::uint64_t>::max() ||
         s.clock_parameter != 80 || s.calendar_advance != 27 || s.village_points < 0 ||
         s.village_points > 999 || s.rank < 0 || s.rank > 6 || !counter(s.medal_count) ||
         s.popularity < -50 || s.popularity == std::numeric_limits<int>::max() ||
         !counter(s.maximum_popularity) || !counter(s.arrival_counter) ||
-        !counter(s.global_updates) || !counter(s.entry_updates) || !counter(s.task_subperiods))
+        !counter(s.global_updates) || !counter(s.entry_updates) || !counter(s.task_subperiods) ||
+        !counter(s.events_held))
         return invalid("Save calendar, scene or global ranges are invalid");
     if (!ref::valid_legacy_map(world.map) ||
         world.map.width != simulation::startup_evidence().width ||
@@ -334,8 +376,9 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
             !s.facility_residents.count(id) || !s.facility_details.count(id) ||
             !s.facility_flags.count(id) || !s.facility_difficulties.count(id) ||
             !s.facility_monthly_cash.count(id) || !s.facility_month_age.count(id) ||
-            !s.neighbourhood.count(id) || !s.dungeon_facilities.count(id) ||
-            !counter(s.facility_original_ids.at(id)) || !counter(s.facility_ordinals.at(id)) ||
+            !s.facility_item_confirmations.count(id) || !s.neighbourhood.count(id) ||
+            !s.dungeon_facilities.count(id) || !counter(s.facility_original_ids.at(id)) ||
+            !counter(s.facility_ordinals.at(id)) ||
             !original_facilities.insert(s.facility_original_ids.at(id)).second ||
             !ordinals[f.placement.definition_id].insert(s.facility_ordinals.at(id)).second ||
             f.category < 0 || f.category > 13 || f.status < 0 || f.status > 2 ||
@@ -369,7 +412,7 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         const auto &progress = s.dungeon_facilities.at(id);
         const auto &detail = s.facility_details.at(id);
         if (!counter(progress.updates) || progress.progress < 0 || progress.extent < 0 ||
-            !counter(detail.construction_limit))
+            !counter(detail.construction_limit) || !counter(s.facility_item_confirmations.at(id)))
             return invalid("Save facility construction or exploration counter is invalid");
         for (const auto &notice : detail.notices)
             if (notice[0] < 0 || notice[0] >= 8 || !counter(notice[1]))
@@ -388,6 +431,24 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
     if (ref::validate_facility_layout(placements, world.map.width, world.map.height) !=
         ref::GeometryError::none)
         return invalid("Save facility layout is invalid");
+    for (const auto &entry : s.facility_item_confirmations)
+        if (!counter(entry.second) ||
+            (!world.facilities.count(entry.first) && !retired_facilities.count(entry.first)))
+            return invalid("Save facility item counter references an unknown instance");
+    if (s.activity_counts.size() != rules.activities.size() ||
+        s.activity_flags.size() != rules.activities.size() ||
+        s.scripts.activities.size() != rules.activities.size() ||
+        s.human_activity_previous.size() != rules.humans.size() ||
+        s.item_commerce_read.size() != rules.items.size() ||
+        s.facility_commerce_read.size() != rules.facilities.size())
+        return invalid("Save management tables do not cover the fixed dataset");
+    for (const auto &activity : rules.activities)
+        if (!s.activity_counts.count(activity.identity) ||
+            !s.activity_flags.count(activity.identity) ||
+            !s.scripts.activities.count(activity.identity) ||
+            !counter(s.activity_counts.at(activity.identity)) ||
+            !counter(s.scripts.activities.at(activity.identity).status))
+            return invalid("Save village activity identity or held count is invalid");
     if (ai.professions.size() != rules.jobs.size() || ai.growth.size() != rules.humans.size() ||
         ai.battle.humans.size() != rules.humans.size() ||
         world.human_spending.size() != rules.humans.size() ||
@@ -404,8 +465,8 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         if (!ai.growth.count(id) || !ai.battle.humans.count(id) || !s.shop_humans.count(id) ||
             !s.human_homes.count(id) || !s.human_presence.count(id) || !s.human_flags.count(id) ||
             !s.human_calendar.count(id) || !s.human_definition_state.count(id) ||
-            !world.human_spending.count(id) || !s.human_profession_changes.count(id) ||
-            !s.scripts.humans.count(id))
+            !world.human_spending.count(id) || !s.human_activity_previous.count(id) ||
+            !s.human_profession_changes.count(id) || !s.scripts.humans.count(id))
             return invalid("Save is missing a shared human definition");
         const auto &growth = ai.growth.at(id);
         const auto &definition = growth.definition;
@@ -436,8 +497,8 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         if (!world.facility_uses.count(d.id) || !s.scripts.facilities.count(d.id) ||
             !s.facility_definitions.count(d.id) || !s.facility_presence.count(d.id) ||
             !s.residence_catalog_available.count(d.id) || !s.facility_unlock_counters.count(d.id) ||
-            !s.facility_unlock_notices.count(d.id) || world.facility_uses.at(d.id).level < 1 ||
-            world.facility_uses.at(d.id).level > 5)
+            !s.facility_unlock_notices.count(d.id) || !s.facility_commerce_read.count(d.id) ||
+            world.facility_uses.at(d.id).level < 1 || world.facility_uses.at(d.id).level > 5)
             return invalid("Save shared facility definition or level is invalid");
     std::set<ref::CharacterId> live_order;
     std::set<int> human_uids, monster_uids;
@@ -494,11 +555,12 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         if (!ai.battle.actors.count(entry.first))
             continue; // Retired/collected objects can leave inactive adapter caches.
         const auto &c = entry.second;
-        if ((c.binding && !binding(s, *c.binding)) ||
+        if ((c.binding && !binding(s, *c.binding, retired_facilities)) ||
             (c.destination && !in_map(world.map, *c.destination)) ||
             (c.unbound_route && !path(world.map, *c.unbound_route)) ||
-            (c.journey && (!binding(s, c.journey->binding) || !path(world.map, c.journey->route) ||
-                           c.waypoint > c.journey->route.steps.size())) ||
+            (c.journey &&
+             (!binding(s, c.journey->binding, retired_facilities) ||
+              !path(world.map, c.journey->route) || c.waypoint > c.journey->route.steps.size())) ||
             !coordinate(c.horizontal_velocity.x) || !coordinate(c.horizontal_velocity.z))
             return invalid("Save actor facility/path reference is invalid");
         const auto &meta = s.actor_metadata.at(entry.first);
@@ -581,9 +643,12 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
             return invalid("Save equipment catalog does not cover the fixed dataset");
     for (const auto &item : rules.items)
         if (!s.catalog.count({0, item.identity}) || !s.items.count(item.identity) ||
-            !s.shop_item_stock.count(item.identity) || !catalog_record(s.items.at(item.identity)) ||
+            !s.shop_item_stock.count(item.identity) || !s.item_commerce_read.count(item.identity) ||
+            !catalog_record(s.items.at(item.identity)) ||
             s.shop_item_stock.at(item.identity).definition != item.identity)
             return invalid("Save item catalog does not cover the fixed dataset");
+        else if (!same_item(s.items.at(item.identity), s.catalog.at({0, item.identity})))
+            return invalid("Save item owner and catalog projection disagree");
     for (const auto &monster : rules.monsters)
         if (!ai.monster_growth.count(monster.identity) ||
             !ai.battle.monsters.count(monster.identity))
@@ -610,7 +675,7 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         if (entry.first != task.identity || !s.task_progress.definitions.count(task.definition) ||
             !s.task_original_ids.count(entry.first) ||
             (task.facility && !world.facilities.count(*task.facility) &&
-             (!s.facility_original_ids.count(*task.facility) ||
+             (!retired_facilities.count(*task.facility) ||
               std::find(s.task_order.begin(), s.task_order.end(), entry.first) !=
                   s.task_order.end() ||
               s.active_task == entry.first)) ||

@@ -1,6 +1,8 @@
 #include "world_human_inspection.hpp"
 #include "ark/simulation/rules/human_management.hpp"
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_commerce.hpp"
+#include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
 #include <algorithm>
@@ -26,6 +28,18 @@ void require(Error error, const char *action) {
 bool tax_mode(const std::string &mode) {
     return mode == "world-tax" || mode == "world-tax-collected";
 }
+bool facility_item_mode(const std::string &mode) {
+    return mode == "world-facility-items" || mode == "world-facility-item-result";
+}
+bool commerce_mode(const std::string &mode) {
+    return mode == "world-commerce" || mode == "world-commerce-buy" ||
+           mode == "world-commerce-receipt" || mode == "world-commerce-facilities" ||
+           mode == "world-commerce-facility-info" || mode == "world-commerce-facility-reward";
+}
+bool commerce_facility_mode(const std::string &mode) {
+    return mode == "world-commerce-facilities" || mode == "world-commerce-facility-info" ||
+           mode == "world-commerce-facility-reward";
+}
 int human_tab(const std::string &mode) {
     if (mode == "world-human")
         return 0;
@@ -38,6 +52,8 @@ int human_tab(const std::string &mode) {
     return -1;
 }
 int gift_slot(const std::string &mode) {
+    if (mode == "world-item-gift")
+        return 4;
     if (mode == "world-gifts-armor")
         return 1;
     if (mode == "world-gifts-shield")
@@ -226,6 +242,191 @@ bool housing_input(State &s, const rules::WorldScriptPage &page, WorldHumanInspe
     }
     return false;
 }
+// Tools diagnostics use initial, owned potatoes and the actual bun-shop instance. They never
+// share preparation mutations with equipment gifts, housing or the natural-world baseline.
+bool facility_item_input(State &s, const rules::WorldScriptPage &page, WorldHumanInspection &i) {
+    using F = simulation::StartupFacilityItemAction;
+    if (page.kind == Kind::scene) {
+        if (s.scene.scene_state != 0 || s.scene.framework_paused)
+            return true;
+        if (!i.item_facility)
+            for (auto id : s.scene.world.facility_order)
+                if (s.scene.world.world.facilities.at(id).placement.definition_id == 33 &&
+                    s.scene.world.world.facilities.at(id).status == 1) {
+                    i.item_facility = id;
+                    break;
+                }
+        if (!i.item_facility)
+            throw std::runtime_error("Facility item inspection lost original bun shop");
+        require(simulation::open_startup_world_facility_page(s, *i.item_facility),
+                "open original bun shop");
+        return true;
+    }
+    if (page.legacy_page == 74) {
+        require(simulation::act_startup_world_facility_page(
+                    s, page.id, simulation::StartupFacilityPageAction::confirm),
+                "open real facility item catalogue");
+        return true;
+    }
+    if (page.legacy_page >= 75 && page.legacy_page <= 77) {
+        if (page.legacy_page != 75 || !s.facility_item_pages_initialized.count(page.id))
+            return true; // 76 applies/animates automatically; 77 is the capture target.
+        const auto &list = s.facility_item_page_lists.at(page.id);
+        const auto potato = std::find(list.begin(), list.end(), 0);
+        if (potato == list.end())
+            throw std::runtime_error("Facility item inspection lost initial potato");
+        const int index = static_cast<int>(potato - list.begin());
+        if (s.facility_item_page_selections.at(page.id) != index)
+            require(simulation::act_startup_world_facility_item_page(s, page.id, F::select, index),
+                    "select actual facility potato");
+        else {
+            const int owned = s.items.at(0).inventory;
+            i.facility_improvement_before = s.scripts.facilities.at(33).improvements[1];
+            require(simulation::act_startup_world_facility_item_page(s, page.id, F::confirm),
+                    "give actual facility potato");
+            if (s.items.at(0).inventory != owned - 1 ||
+                s.scripts.facilities.at(33).improvements[1] != i.facility_improvement_before)
+                throw std::runtime_error(
+                    "Facility potato must consume inventory before raw76 effect");
+            i.facility_item_confirmed = true;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool affordable_commerce_stock(const State &s) {
+    return std::any_of(s.rules->items.begin(), s.rules->items.end(), [&](const auto &item) {
+        return s.shop_item_stock.at(item.identity).quantity > 0 &&
+               item.commerce_price <= s.scene.world.world.ai.accounting.funds();
+    });
+}
+std::optional<int> affordable_commerce_facility(const State &s) {
+    std::optional<int> result;
+    for (const auto &f : s.rules->facilities)
+        if (s.facility_presence.at(f.id) != 2 && f.unlock_rank >= 0 && f.unlock_rank <= s.rank &&
+            s.rules->facility_initial.at(f.id).capacity <= s.village_points &&
+            (!result || s.rules->facility_initial.at(f.id).capacity <
+                            s.rules->facility_initial.at(*result).capacity))
+            result = f.id;
+    return result;
+}
+bool commerce_input(State &s, const rules::WorldScriptPage &page, const std::string &mode,
+                    WorldHumanInspection &i) {
+    using C = simulation::StartupCommerceAction;
+    if (page.kind == Kind::scene) {
+        if (s.scene.scene_state != 0 || s.scene.framework_paused)
+            return true;
+        // Only actual battle events unlock flag16. Stop accepting tasks once it is available,
+        // then let the ordinary economy/monthly restock make a purchase affordable.
+        if ((s.scripts.user_flags & 16U) != 0) {
+            if (mode != "world-commerce" &&
+                (commerce_facility_mode(mode) ? affordable_commerce_facility(s).has_value()
+                                              : affordable_commerce_stock(s)))
+                require(simulation::open_startup_world_commerce(s), "open unlocked commerce");
+            return true;
+        }
+        return apply_world_task_inspection_input(s, i.commerce_tasks);
+    }
+    if (page.legacy_page == 70) {
+        if (!simulation::startup_world_human_page_ready(s, page.id))
+            return true;
+        const bool choose_stay =
+            s.page_phases.at(page.id) == 2 && s.human_page_selections.at(page.id) != 1;
+        act(s, page.id, choose_stay ? Action::select : Action::confirm, 1);
+        return true;
+    }
+    if (page.legacy_page == 31) {
+        if (s.crew_summaries.count(page.id))
+            require(simulation::acknowledge_startup_world_runtime_page(s, page.id),
+                    "close actual commerce-preparation crew result");
+        return true;
+    }
+    if (page.legacy_page == 48) {
+        require(simulation::act_startup_world_runtime_rank_page(s, page.id, 0, true),
+                "close rank conditions during commerce preparation");
+        return true;
+    }
+    if (page.legacy_page >= 83 && page.legacy_page <= 86) {
+        const auto view = simulation::inspect_startup_world_commerce_page(s, page.id);
+        if (!view || page.legacy_page == 86)
+            return true;
+        if (page.legacy_page == 83) {
+            const bool facility = commerce_facility_mode(mode);
+            if (facility)
+                i.commerce_facility = affordable_commerce_facility(s);
+            if (facility ? !i.commerce_facility : !affordable_commerce_stock(s))
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::cancel),
+                        "leave shop while saving real resources");
+            else
+                require(simulation::act_startup_world_commerce_page(
+                            s, page.id,
+                            view->selection == (facility ? 2 : 0) ? C::confirm : C::select,
+                            facility ? 2 : 0),
+                        "open actual commerce catalogue");
+        } else if (page.legacy_page == 84 && mode == "world-commerce-receipt") {
+            const auto chosen =
+                std::min_element(view->entries.begin(), view->entries.end(), [&](int a, int b) {
+                    return s.rules->items.at(a).commerce_price <
+                           s.rules->items.at(b).commerce_price;
+                });
+            if (chosen == view->entries.end() || s.rules->items.at(*chosen).commerce_price >
+                                                     s.scene.world.world.ai.accounting.funds()) {
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::cancel),
+                        "leave unaffordable item catalogue");
+                return true;
+            }
+            const int index = static_cast<int>(chosen - view->entries.begin());
+            if (view->selection != index)
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::select, index),
+                        "select cheapest actual commerce stock");
+            else {
+                const int item = *chosen;
+                const auto cash = s.scene.world.world.ai.accounting.funds();
+                const int inventory = s.items.at(item).inventory;
+                const int stock = s.shop_item_stock.at(item).quantity;
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::confirm),
+                        "purchase actual commerce stock");
+                if (s.scene.world.world.ai.accounting.funds() !=
+                        cash - s.rules->items.at(item).commerce_price ||
+                    s.items.at(item).inventory != std::min(999, inventory + 1) ||
+                    s.shop_item_stock.at(item).quantity != stock - 1)
+                    throw std::runtime_error(
+                        "Commerce inspection purchase did not commit actual resources");
+                i.commerce_item = item;
+                i.commerce_bought = true;
+            }
+        } else if (page.legacy_page == 85 && i.commerce_facility) {
+            const auto found =
+                std::find(view->entries.begin(), view->entries.end(), *i.commerce_facility);
+            if (found == view->entries.end())
+                throw std::runtime_error("Commerce inspection lost real affordable facility");
+            const int index = static_cast<int>(found - view->entries.begin());
+            if (view->selection != index)
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::select, index),
+                        "select real affordable facility");
+            else if (mode == "world-commerce-facility-info")
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::inspect),
+                        "inspect actual commerce definition");
+            else if (mode == "world-commerce-facility-reward") {
+                const int points = s.village_points;
+                const int free = s.facility_free_builds.at(*i.commerce_facility);
+                require(simulation::act_startup_world_commerce_page(s, page.id, C::confirm),
+                        "purchase actual facility offer");
+                if (s.village_points !=
+                        points - s.rules->facility_initial.at(*i.commerce_facility).capacity ||
+                    s.facility_free_builds.at(*i.commerce_facility) != free)
+                    throw std::runtime_error(
+                        "Commerce facility must pay points before raw93 grant");
+                i.commerce_facility_paid = true;
+            }
+        }
+        return true;
+    }
+    if (page.legacy_page == 93 || page.legacy_page == 74)
+        return true;
+    return apply_world_task_inspection_input(s, i.commerce_tasks);
+}
 } // namespace
 
 void before_human_inspection_update(const State &s, const std::string &mode,
@@ -259,6 +460,7 @@ void after_human_inspection_update(const State &s, WorldHumanInspection &i) {
 
 bool human_inspection_mode(const std::string &mode) {
     return human_tab(mode) >= 0 || gift_catalogue(mode) || tax_mode(mode) ||
+           facility_item_mode(mode) || commerce_mode(mode) || mode == "world-item-gift" ||
            profession_mode(mode) || mode == "world-gift-confirm" || mode == "world-gift-cancel" ||
            mode == "world-equipment-info" || mode == "world-gift-result" ||
            mode == "world-equipment-change";
@@ -291,6 +493,45 @@ bool human_inspection_ready(const State &s, const std::string &mode,
     const auto *page = top(s);
     if (!page)
         return false;
+    if (facility_item_mode(mode)) {
+        if (!i.item_facility || !s.facility_item_pages_initialized.count(page->id))
+            return false;
+        const auto bound = s.facility_page_bindings.find(page->id);
+        if (bound == s.facility_page_bindings.end() || bound->second != *i.item_facility)
+            return false;
+        if (mode == "world-facility-items")
+            return page->legacy_page == 75;
+        if (page->legacy_page != 77 || !i.facility_item_confirmed ||
+            s.page_counters.at(page->id) < 49)
+            return false;
+        if (s.scripts.facilities.at(33).improvements[1] != i.facility_improvement_before + 2)
+            throw std::runtime_error("Facility inspection lost actual potato improvement");
+        return true;
+    }
+    if (commerce_mode(mode)) {
+        // raw86 is intentionally observed before initialization/update retires it. The
+        // preceding actual84 command already committed all money and stock changes.
+        if (mode == "world-commerce-receipt")
+            return page->legacy_page == 86 && i.commerce_bought && i.commerce_item &&
+                   page->legacy_f == 0 && page->legacy_s == *i.commerce_item;
+        if (mode == "world-commerce-facility-info") {
+            const auto binding = s.facility_definition_page_bindings.find(page->id);
+            return page->legacy_page == 74 && i.commerce_facility &&
+                   binding != s.facility_definition_page_bindings.end() &&
+                   binding->second == *i.commerce_facility;
+        }
+        const auto view = simulation::inspect_startup_world_commerce_page(s, page->id);
+        if (!view)
+            return false;
+        if (mode == "world-commerce")
+            return page->legacy_page == 83;
+        if (mode == "world-commerce-buy")
+            return page->legacy_page == 84 && view->mode == 0;
+        if (mode == "world-commerce-facilities")
+            return page->legacy_page == 85;
+        return page->legacy_page == 93 && i.commerce_facility_paid && i.commerce_facility &&
+               view->binding == *i.commerce_facility && view->counter >= 40;
+    }
     if (mode == "world-tax") {
         const auto view = simulation::inspect_startup_world_tax_page(s, page->id);
         return page->legacy_page == 90 && i.home && view && view->total > 0;
@@ -314,6 +555,8 @@ bool human_inspection_ready(const State &s, const std::string &mode,
     if (binding == s.page_human_bindings.end() || binding->second != *i.human)
         return false;
     const int raw = page->legacy_page;
+    if (mode == "world-item-gift")
+        return raw == 69 && i.gift_confirmed && s.page_counters.at(page->id) >= 39;
     if ((mode == "world-gift-cancel" || mode == "world-profession-cancel") && i.cancelled &&
         raw == (mode == "world-gift-cancel" ? 64 : 61) && !s.human_page_answers.count(page->id)) {
         verify_cancelled_choice(s, mode, i);
@@ -343,12 +586,16 @@ bool apply_human_inspection_input(State &s, const std::string &mode, WorldHumanI
     if (!current)
         throw std::runtime_error("Human inspection lost real page stack");
     const auto page = *current;
+    if (commerce_mode(mode))
+        return commerce_input(s, page, mode, i);
+    if (facility_item_mode(mode))
+        return facility_item_input(s, page, i);
     // Do not let generic acknowledgements silently make a profession/mastery decision.
     if (page.legacy_page == 70 || (page.legacy_page == 63 && !profession_commit_mode(mode)))
         throw std::runtime_error(
             "Human inspection reached a profession/mastery decision outside its player policy");
     if (((page.legacy_page >= 60 && page.legacy_page <= 66) || page.legacy_page == 68 ||
-         page.legacy_page == 73) &&
+         page.legacy_page == 69 || page.legacy_page == 73) &&
         !simulation::startup_world_human_page_ready(s, page.id))
         return true;
     if (tax_mode(mode) && housing_input(s, page, i))
@@ -429,6 +676,29 @@ bool apply_human_inspection_input(State &s, const std::string &mode, WorldHumanI
         if (s.page_phases.at(page.id) != slot)
             act(s, page.id, Action::equipment_slot, slot);
         else if (!gift_catalogue(mode)) {
+            if (mode == "world-item-gift") {
+                const auto &list = s.equipment_page_catalogs.at(page.id)[4];
+                const auto potato = std::find(list.begin(), list.end(), 0);
+                if (potato == list.end())
+                    throw std::runtime_error("Human item inspection lost initial potato");
+                const int index = static_cast<int>(potato - list.begin());
+                if (s.human_page_selections.at(page.id) != index)
+                    act(s, page.id, Action::select, index);
+                else {
+                    const int owned = s.items.at(0).inventory;
+                    const auto cash = s.scene.world.world.ai.accounting.funds();
+                    const int extra =
+                        s.scene.world.world.ai.growth.at(*i.human).definition.extra[0];
+                    act(s, page.id, Action::confirm);
+                    if (s.items.at(0).inventory != owned - 1 ||
+                        s.scene.world.world.ai.accounting.funds() != cash ||
+                        s.scene.world.world.ai.growth.at(*i.human).definition.extra[0] != extra + 4)
+                        throw std::runtime_error(
+                            "Human potato inspection lost actual inventory/attribute effect");
+                    i.gift_confirmed = true;
+                }
+                return true;
+            }
             const int choice = affordable_gift(s, page.id, *i.human, slot);
             i.equipment = s.equipment_page_catalogs.at(page.id)[slot][choice];
             if (s.human_page_selections.at(page.id) != choice)
@@ -461,6 +731,8 @@ bool apply_human_inspection_input(State &s, const std::string &mode, WorldHumanI
         act(s, page.id, Action::confirm);
         return true;
     }
+    if (mode == "world-item-gift" && page.legacy_page == 69)
+        return true; // Let the original display counter reach39 without skipping its animation.
     if (page.legacy_page == 83) {
         require(simulation::cancel_startup_world_runtime_page(s, page.id), "close shop entry");
         return true;

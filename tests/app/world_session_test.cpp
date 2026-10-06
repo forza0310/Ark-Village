@@ -553,5 +553,7 @@ int main() {
     sound_output_sink();
     save_command_transactions();
     village_command_transactions();
+    commerce_command_transactions();
+    facility_item_command_transactions();
     std::cout << "PASS world session " << checks << " checks\n";
 }

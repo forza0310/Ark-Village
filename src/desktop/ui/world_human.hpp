@@ -32,6 +32,7 @@ struct WorldHumanView {
 struct WorldHumanLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next, professions, gifts, inspect;
     std::array<Rectangle, 4> tabs;
+    std::array<Rectangle, 5> gift_tabs;
     float row_height{};
 };
 struct WorldHumanInput {

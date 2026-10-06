@@ -5,6 +5,8 @@
 #include "ark/app/world_session.hpp"
 #include "ui/world_award.hpp"
 #include "ui/world_building.hpp"
+#include "ui/world_commerce.hpp"
+#include "ui/world_facility_items.hpp"
 #include "ui/world_human.hpp"
 #include "ui/world_panels.hpp"
 #include "ui/world_progression.hpp"
@@ -40,6 +42,8 @@ class WorldManagement {
   private:
     void queued(std::uint64_t serial);
     std::uint64_t page_{}, pending_{};
+    std::uint64_t receipt_page_{}, generation_{};
+    std::optional<std::int64_t> commerce_amount_;
     std::string feedback_;
     ui::WorldBuildingSelection building_;
     ui::WorldAwardSelection award_;

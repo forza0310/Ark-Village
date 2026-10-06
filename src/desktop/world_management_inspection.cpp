@@ -158,7 +158,7 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
         if (page.kind == Kind::scene && state.scene.scene_state == 0 &&
             !state.scene.framework_paused && !state.scene.world.world.ai.human_order.empty()) {
             const auto selected = affordable_activity(state, mode == "world-village-results" ||
-                                                               mode == "world-reward95");
+                                                                 mode == "world-reward95");
             if (mode == "world-village" || selected) {
                 inspection.activity = selected;
                 require(simulation::open_startup_world_village_activities(state),

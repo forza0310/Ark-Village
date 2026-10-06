@@ -1,4 +1,4 @@
-// Page21/74/80/81 fields and actions follow the frozen e8f66d9 maintained prototype.
+// Page21/74/80/81 fields and actions follow the frozen 2b479f6 maintained prototype.
 // Drawing never initializes a page, charges money or changes a facility's shared level.
 #include "world_building.hpp"
 #include "skin.hpp"
@@ -70,6 +70,28 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.residents.push_back({id, human->name, human->residence_fee});
         }
         view.can_confirm = !view.residents.empty();
+    } else if (view.raw == 74 && state.facility_definition_page_bindings.count(page.id)) {
+        if (!simulation::valid_startup_world_facility_page(state, page))
+            throw std::invalid_argument("Facility definition preview has invalid source payload");
+        const int id = state.facility_definition_page_bindings.at(page.id);
+        const auto &item = definition(state, id);
+        view.definition_preview = true;
+        view.title = item.name;
+        view.page_count = 1;
+        view.phase = state.page_phases.at(page.id);
+        const auto &attributes = state.scripts.facilities.at(id).attributes;
+        std::copy(attributes.begin(), attributes.end(), view.attributes.begin());
+        view.graphic = world_build_graphic(item, simulation::rules::FacilityOrientation::first);
+        // The source shop template displays already-open merchandise, not an invented instance.
+        const int kind = item.detail == 1 ? 1 : item.detail == 4 ? 2 : item.detail == 5 ? 3 : 0;
+        if (kind != 0) {
+            view.product_count = 0;
+            for (const auto &product : state.rules->equipment)
+                if (product.shop.kind == kind &&
+                    state.catalog.at({kind, product.shop.id}).status != 0)
+                    ++*view.product_count;
+        }
+        view.can_confirm = true;
     } else {
         const auto binding = state.facility_page_bindings.find(page.id);
         if (binding == state.facility_page_bindings.end())
@@ -97,7 +119,10 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.income =
                 state.facility_monthly_cash.at(*view.facility).at(state.scene.calendar.month)[0];
             view.neighbours = state.facility_page_neighbours.at(page.id).size();
-            view.can_confirm = item.detail == 6 && view.phase == 0;
+            view.can_use_items = view.phase == 0 && item.kind != 2 && item.kind != 12 &&
+                                 item.detail != 1 && item.detail != 4 && item.detail != 5 &&
+                                 item.detail != 6;
+            view.can_confirm = (item.detail == 6 && view.phase == 0) || view.can_use_items;
         }
     }
     view.initialized = true;
@@ -247,6 +272,23 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                 skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
                            10);
             }
+        } else if (view.definition_preview) {
+            skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
+                                   {layout.body.x + 3, layout.body.y + 7, 85, 75});
+            if (view.product_count) {
+                fitted(skin, "商品种类",
+                       {layout.body.x + 94, layout.body.y + 8, layout.body.width - 98, 16});
+                skin.right(std::to_string(*view.product_count),
+                           layout.body.x + layout.body.width - 4, layout.body.y + 31, blue);
+            } else {
+                constexpr const char *labels[]{"价格", "品质", "魅力"};
+                for (int row = 0; row < 3; ++row) {
+                    const float y = layout.body.y + 8 + row * 25;
+                    fitted(skin, labels[row], {layout.body.x + 94, y, 40, 16});
+                    skin.right(std::to_string(view.attributes[row]),
+                               layout.body.x + layout.body.width - 4, y, blue, 11);
+                }
+            }
         } else {
             constexpr const char *labels[]{"价格", "品质", "魅力", "维护费"};
             for (int row = 0; row < 3; ++row) {
@@ -281,9 +323,11 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
     }
     if (view.raw != 74 || view.can_confirm)
         skin.button(layout.confirm,
-                    view.raw == 21   ? "建设"
-                    : view.raw == 81 ? "确定"
-                                     : "入住",
+                    view.raw == 21            ? "建设"
+                    : view.raw == 81          ? "确定"
+                    : view.definition_preview ? "关闭"
+                    : view.can_use_items      ? "使用道具"
+                                              : "入住",
                     active && view.can_confirm &&
                         (view.raw != 21 || !rows(view, selection.tab).empty()));
     if (!feedback.empty())

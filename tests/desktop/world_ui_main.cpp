@@ -11,6 +11,8 @@ void world_building();
 void world_human();
 void world_tax();
 void world_village_activity();
+void world_commerce();
+void world_facility_items();
 void world_human_render_fixture();
 } // namespace ark::test
 
@@ -26,5 +28,7 @@ int main(int argc, char **argv) {
          {"world_human", ark::test::world_human},
          {"world_tax", ark::test::world_tax},
          {"world_village_activity", ark::test::world_village_activity},
+         {"world_commerce", ark::test::world_commerce},
+         {"world_facility_items", ark::test::world_facility_items},
          {"world_human_render_fixture", ark::test::world_human_render_fixture}});
 }

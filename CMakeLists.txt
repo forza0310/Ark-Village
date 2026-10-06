@@ -65,6 +65,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
         src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
         src/desktop/ui/world_village_activity.cpp
+        src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
         src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_link_libraries(ark_village PRIVATE ark_launch ark_game ark_world_visuals ark_world_session ark_asset_metadata PkgConfig::RAYLIB)

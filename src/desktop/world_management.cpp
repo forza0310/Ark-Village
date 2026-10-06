@@ -32,11 +32,20 @@ void WorldManagement::queued(std::uint64_t serial) {
     feedback_.clear();
 }
 void WorldManagement::observe(const app::WorldFrame &frame) {
+    if (generation_ != frame.generation) {
+        generation_ = frame.generation;
+        receipt_page_ = 0;
+        commerce_amount_.reset();
+    }
     if (!pending_)
         return;
     const auto result = std::find_if(frame.command_results.begin(), frame.command_results.end(),
                                      [&](const auto &r) { return r.serial == pending_; });
     if (result != frame.command_results.end()) {
+        if (result->commerce_amount) {
+            commerce_amount_ = result->commerce_amount;
+            receipt_page_ = result->page;
+        }
         if (result->outcome == app::WorldCommandOutcome::rejected)
             feedback_ = refusal(result->build_denial);
         if (result->created)
@@ -60,6 +69,33 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     const auto point = click ? mouse : std::nullopt;
     const bool enter = IsKeyPressed(KEY_ENTER), escape = IsKeyPressed(KEY_ESCAPE);
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_commerce_page(page)) {
+        const auto view = ui::world_commerce_view(state, page);
+        const auto layout = ui::world_commerce_layout(extent);
+        const ui::WorldCommerceInput input{
+            point,
+            enter,
+            escape,
+            up,
+            down,
+            IsKeyPressed(KEY_LEFT),
+            IsKeyPressed(KEY_RIGHT),
+            IsKeyPressed(KEY_I),
+            hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
+        if (const auto intent = ui::world_commerce_input(view, layout, input, blocked))
+            queued(session.act_commerce(page.id, intent->action, intent->selection));
+        return true;
+    }
+    if (ui::world_facility_items_page(page)) {
+        const auto view = ui::world_facility_items_view(state, page);
+        const auto layout = ui::world_facility_items_layout(extent);
+        const ui::WorldFacilityItemsInput input{
+            point, enter, escape,
+            up,    down,  hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
+        if (const auto intent = ui::world_facility_items_input(view, layout, input, blocked))
+            queued(session.act_facility_item(page.id, intent->action, intent->selection));
+        return true;
+    }
     if (ui::world_village_activity_page(page)) {
         const auto view = ui::world_village_activity_view(state, page);
         const auto layout = ui::world_village_activity_layout(extent);
@@ -190,7 +226,17 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_village_activity_page(page)) {
+    if (ui::world_commerce_page(page)) {
+        const auto view = ui::world_commerce_view(state, page);
+        ui::draw_world_commerce(view, ui::world_commerce_layout(extent), skin, enabled, feedback_,
+                                receipt_page_ == page.id && view.feedback_counter > 0
+                                    ? commerce_amount_
+                                    : std::nullopt);
+    } else if (ui::world_facility_items_page(page)) {
+        ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
+                                      ui::world_facility_items_layout(extent), skin, enabled,
+                                      feedback_);
+    } else if (ui::world_village_activity_page(page)) {
         ui::draw_world_village_activity(ui::world_village_activity_view(state, page),
                                         ui::world_village_activity_layout(extent), skin, enabled,
                                         feedback_);
@@ -275,6 +321,10 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         return false;
     if (IsKeyPressed(KEY_B)) {
         queued(session.open_build_menu());
+        return true;
+    }
+    if (IsKeyPressed(KEY_C) && (state.scripts.user_flags & 16U)) {
+        queued(session.open_commerce());
         return true;
     }
     if (IsKeyPressed(KEY_X) && state.active_task) {

@@ -53,6 +53,17 @@ bool valid_village_action(simulation::StartupVillageActivityAction action) {
     return action == Action::previous || action == Action::next || action == Action::select ||
            action == Action::confirm || action == Action::cancel;
 }
+bool valid_commerce_action(simulation::StartupCommerceAction action) {
+    using Action = simulation::StartupCommerceAction;
+    return action == Action::confirm || action == Action::cancel || action == Action::previous ||
+           action == Action::next || action == Action::select || action == Action::previous_tab ||
+           action == Action::next_tab || action == Action::inspect;
+}
+bool valid_facility_item_action(simulation::StartupFacilityItemAction action) {
+    using Action = simulation::StartupFacilityItemAction;
+    return action == Action::confirm || action == Action::cancel || action == Action::previous ||
+           action == Action::next || action == Action::select;
+}
 bool unsupported_village_choice(const WorldState &state, const WorldCommand &command) {
     using Action = simulation::StartupVillageActivityAction;
     if (command.village_activity_action != Action::confirm)
@@ -130,7 +141,8 @@ bool is_decision_page(const simulation::rules::WorldScriptPage *page) {
     const auto raw = page->legacy_page;
     return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || raw == 48 ||
            (raw >= 51 && raw <= 54) || (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 ||
-           raw == 73 || raw == 74 || raw == 80 || raw == 83 || raw == 90 || raw == 98;
+           raw == 69 || raw == 73 || (raw >= 74 && raw <= 77) || raw == 80 ||
+           (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 || raw == 98;
 }
 void apply_world_decision(WorldState &state, const WorldCommand &command,
                           WorldCommandResult &result) {
@@ -151,6 +163,49 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
     case Kind::open_menu_village_activities:
     case Kind::open_village_activities:
         result.runtime_error = simulation::open_startup_world_village_activities(state);
+        break;
+    case Kind::open_menu_commerce:
+    case Kind::open_commerce:
+        result.runtime_error = simulation::open_startup_world_commerce(state);
+        break;
+    case Kind::commerce_action: {
+        if (!valid_commerce_action(command.commerce_action) ||
+            !state.commerce_pages_initialized.count(command.page)) {
+            result.runtime_error = Error::invalid_page;
+            break;
+        }
+        const auto view = simulation::inspect_startup_world_commerce_page(state, command.page);
+        if (view && view->raw == 86) {
+            result.runtime_error = Error::invalid_page; // Only its automatic consumer retires86.
+            break;
+        }
+        std::optional<int> item;
+        int inventory{}, stock{};
+        const auto funds = state.scene.world.world.ai.accounting.funds();
+        if (view && view->raw == 84 &&
+            command.commerce_action == simulation::StartupCommerceAction::confirm &&
+            view->selection >= 0 && view->selection < static_cast<int>(view->entries.size())) {
+            item = view->entries[view->selection];
+            inventory = state.items.at(*item).inventory;
+            stock = state.shop_item_stock.at(*item).quantity;
+        }
+        result.runtime_error = simulation::act_startup_world_commerce_page(
+            state, command.page, command.commerce_action, command.selection);
+        if (result.runtime_error == Error::none && item &&
+            (state.items.at(*item).inventory != inventory ||
+             state.shop_item_stock.at(*item).quantity != stock)) {
+            const auto delta = state.scene.world.world.ai.accounting.funds() - funds;
+            result.commerce_amount = delta < 0 ? -delta : delta;
+        }
+        break;
+    }
+    case Kind::facility_item_action:
+        result.runtime_error =
+            valid_facility_item_action(command.facility_item_action) &&
+                    state.facility_item_pages_initialized.count(command.page)
+                ? simulation::act_startup_world_facility_item_page(
+                      state, command.page, command.facility_item_action, command.selection)
+                : Error::invalid_page;
         break;
     case Kind::village_activity_action:
         result.runtime_error =
@@ -381,6 +436,35 @@ std::uint64_t WorldSession::act_village_activity(std::uint64_t page,
     command.kind = WorldCommandKind::village_activity_action;
     command.page = page;
     command.village_activity_action = action;
+    command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_menu_commerce() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_menu_commerce;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_commerce() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_commerce;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_commerce(std::uint64_t page,
+                                         simulation::StartupCommerceAction action, int selection) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::commerce_action;
+    command.page = page;
+    command.commerce_action = action;
+    command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_facility_item(std::uint64_t page,
+                                              simulation::StartupFacilityItemAction action,
+                                              int selection) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::facility_item_action;
+    command.page = page;
+    command.facility_item_action = action;
     command.selection = selection;
     return submit(command);
 }

@@ -3,6 +3,8 @@
 // The desktop reads immutable publications; only the worker commits the canonical world.
 #include "ark/app/world_save_files.hpp"
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_commerce.hpp"
+#include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
@@ -33,6 +35,10 @@ enum class WorldCommandKind {
     open_menu_village_activities,
     open_village_activities,
     village_activity_action,
+    open_menu_commerce,
+    open_commerce,
+    commerce_action,
+    facility_item_action,
     facility_action,
     residence_action,
     open_task_control_menu,
@@ -61,6 +67,8 @@ struct WorldCommandResult {
     simulation::rules::TaskCommandDenial denial{simulation::rules::TaskCommandDenial::none};
     simulation::StartupBuildDenial build_denial{simulation::StartupBuildDenial::none};
     std::optional<std::uint64_t> created;
+    // Successful raw84 transaction receipt, bound to its command page; not durable world data.
+    std::optional<std::int64_t> commerce_amount;
     bool task_accepted{};
     bool departed{};
 };
@@ -106,6 +114,9 @@ struct WorldCommand {
     simulation::StartupWorldTaxAction tax_action{simulation::StartupWorldTaxAction::confirm};
     simulation::StartupVillageActivityAction village_activity_action{
         simulation::StartupVillageActivityAction::confirm};
+    simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
+    simulation::StartupFacilityItemAction facility_item_action{
+        simulation::StartupFacilityItemAction::confirm};
     simulation::rules::Position anchor{};
     simulation::rules::FacilityOrientation orientation{};
     simulation::StartupFacilityPageAction facility_action{
@@ -169,6 +180,13 @@ class WorldSession {
     std::uint64_t act_village_activity(std::uint64_t page,
                                        simulation::StartupVillageActivityAction action,
                                        int selection = 0);
+    std::uint64_t open_menu_commerce();
+    std::uint64_t open_commerce();
+    std::uint64_t act_commerce(std::uint64_t page, simulation::StartupCommerceAction action,
+                               int selection = 0);
+    std::uint64_t act_facility_item(std::uint64_t page,
+                                    simulation::StartupFacilityItemAction action,
+                                    int selection = -1);
     std::uint64_t act_facility(std::uint64_t page, simulation::StartupFacilityPageAction action);
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,

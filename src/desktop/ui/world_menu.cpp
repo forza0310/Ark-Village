@@ -74,4 +74,56 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
             skin.text.draw(lines[line], row.x + 2, row.y + 33 + line * 14.F, MAROON, 11);
     }
 }
+std::optional<WorldVillageMenuIntent>
+world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_unlocked,
+                         bool pending, int &selected, const WorldMenuInput &input) {
+    if (pending)
+        return {};
+    if (input.toggle ||
+        (input.click && CheckCollisionPointRec(*input.click, world_menu_button(layout.extent))))
+        return WorldVillageMenuIntent::close;
+    if (input.escape)
+        return WorldVillageMenuIntent::back;
+    selected = std::clamp(selected, 0, 2);
+    if (input.up)
+        selected = (selected + 2) % 3;
+    if (input.down)
+        selected = (selected + 1) % 3;
+    bool activate = input.enter;
+    if (input.click)
+        for (int i = 0; i < 3; ++i)
+            if (CheckCollisionPointRec(*input.click, layout.menu_rows[i])) {
+                selected = i;
+                activate = true;
+                break;
+            }
+    if (!activate)
+        return {};
+    if (selected == 2)
+        return WorldVillageMenuIntent::back;
+    if (can_manage && selected == 0)
+        return WorldVillageMenuIntent::activities;
+    if (can_manage && commerce_unlocked && selected == 1)
+        return WorldVillageMenuIntent::commerce;
+    return {};
+}
+void draw_world_village_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
+                             bool commerce_unlocked, const std::string &feedback) {
+    constexpr const char *names[]{"村办活动", "南瓜商会", "返回"};
+    for (int i = 0; i < 3; ++i) {
+        const auto row = layout.menu_rows[i];
+        skin.sprites.draw("menu.seb", selected == i ? 2 : 3, {row.x, row.y}, WHITE,
+                          Sprites::Binding::common);
+        const bool enabled = i == 2 || (can_manage && (i == 0 || commerce_unlocked));
+        skin.text.draw(names[i], row.x + 6, row.y + 8,
+                       enabled ? (selected == i ? ink : WHITE) : Color{182, 174, 147, 255});
+        if (selected == i)
+            skin.sprites.draw("finger_r.seb", 0, {row.x + row.width - 1, row.y + 11}, WHITE,
+                              Sprites::Binding::common);
+    }
+    if (!feedback.empty())
+        skin.text.clipped(feedback, 8, layout.menu_rows[2].y + 33,
+                          {8, layout.menu_rows[2].y + 31, layout.extent.width - 16.F, 30}, MAROON,
+                          10);
+}
 } // namespace ark::desktop::ui

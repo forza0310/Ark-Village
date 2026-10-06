@@ -282,6 +282,119 @@ void world_building() {
               Action::confirm_upgrade,
           "Upgrade sends generic source confirmation, not a second upgrade transaction");
 
+    // The existing inn is an eligible two-page facility, while a definition preview has no
+    // instance.
+    const auto inn = std::find_if(
+        state.scene.world.world.facilities.begin(), state.scene.world.world.facilities.end(),
+        [](const auto &entry) { return entry.second.placement.definition_id == 28; });
+    check(inn != state.scene.world.world.facilities.end(), "Published initial inn instance exists");
+    page.legacy_page = 74;
+    page.legacy_f = 28;
+    state.facility_page_bindings[page.id] = inn->first;
+    state.page_phases[page.id] = 0;
+    view = ui::world_building_view(state, page);
+    input = {};
+    input.enter = true;
+    check(view.can_use_items && view.can_confirm &&
+              ui::world_building_input(view, layout, selection, input, false)->action ==
+                  Action::facility_confirm,
+          "Ordinary instance details open the maintained item consumer through facility confirm");
+    state.page_phases[page.id] = 1;
+    view = ui::world_building_view(state, page);
+    check(!view.can_use_items && !view.can_confirm &&
+              !ui::world_building_input(view, layout, selection, input, false),
+          "Neighbour/income second page cannot open item use");
+
+    {
+        auto preview_state = initial_world();
+        const auto offer = std::find_if(preview_state.rules->facilities.begin(),
+                                        preview_state.rules->facilities.end(), [](const auto &d) {
+                                            return (d.flags & 4) && d.unlock_rank >= 0 &&
+                                                   d.detail != 1 && d.detail != 4 && d.detail != 5;
+                                        });
+        check(offer != preview_state.rules->facilities.end(),
+              "Published ordinary facility offer exists");
+        rules::WorldScriptPage commerce;
+        commerce.id = 777;
+        commerce.kind = rules::WorldScriptPageKind::raw_page;
+        commerce.legacy_page = 85;
+        commerce.lifecycle = 1;
+        preview_state.scripts.pages.clear();
+        preview_state.scripts.pages.push_back(commerce);
+        preview_state.commerce_pages_initialized.insert(commerce.id);
+        preview_state.commerce_page_lists[commerce.id] = {offer->id};
+        preview_state.commerce_page_data[commerce.id] = {0, 0, 0, 0, -1, 0};
+        auto preview = commerce;
+        preview.id = 778;
+        preview.legacy_page = 74;
+        preview.legacy_f = offer->id;
+        preview.legacy_g = 1;
+        preview_state.scripts.pages.push_back(preview);
+        preview_state.rank = std::max(preview_state.rank, offer->unlock_rank);
+        preview_state.facility_presence.at(offer->id) = 0;
+        preview_state.facility_definition_page_bindings[preview.id] = offer->id;
+        preview_state.page_phases[preview.id] = preview_state.page_counters[preview.id] = 0;
+        preview_state.scripts.facilities.at(offer->id).attributes = {411, 22, 33, 44};
+        const auto preview_before = preview_state;
+        view = ui::world_building_view(preview_state, preview);
+        check(
+            view.definition_preview && !view.facility && view.page_count == 1 && view.phase == 0 &&
+                view.attributes == std::array<std::int64_t, 4>{411, 22, 33, 44} &&
+                !view.can_use_items && view.income == 0 && view.neighbours == 0 &&
+                !view.graphic.frames.empty(),
+            "Definition preview reads shared attributes and artwork with no instance economics or "
+            "second page");
+        input = {};
+        input.enter = true;
+        check(ui::world_building_input(view, layout, selection, input, false)->action ==
+                  Action::facility_confirm,
+              "Definition preview confirm only returns its existing parent through source facility "
+              "action");
+        input = {};
+        input.escape = true;
+        check(ui::world_building_input(view, layout, selection, input, false)->action ==
+                      Action::facility_cancel &&
+                  preview_state.village_points == preview_before.village_points &&
+                  preview_state.facility_free_builds == preview_before.facility_free_builds &&
+                  preview_state.scene.random.draws() == preview_before.scene.random.draws() &&
+                  same_world_clock(preview_state, preview_before),
+              "Preview input cannot pay, grant construction qualifications or consume world/random "
+              "updates");
+        input = {};
+        input.right = true;
+        check(!ui::world_building_input(view, layout, selection, input, false),
+              "Definition preview has no fabricated instance second page");
+        preview_state.facility_page_bindings[preview.id] = inn->first;
+        bool rejected = false;
+        try {
+            (void)ui::world_building_view(preview_state, preview);
+        } catch (const std::invalid_argument &) {
+            rejected = true;
+        }
+        check(rejected, "A definition preview carrying an instance binding is rejected explicitly");
+        preview_state.facility_page_bindings.erase(preview.id);
+        const auto shop = std::find_if(
+            preview_state.rules->facilities.begin(), preview_state.rules->facilities.end(),
+            [](const auto &d) { return d.detail == 4 && d.unlock_rank >= 0; });
+        check(shop != preview_state.rules->facilities.end(), "Published armor-shop offer exists");
+        preview.legacy_f = shop->id;
+        preview_state.scripts.pages.back().legacy_f = shop->id;
+        preview_state.facility_definition_page_bindings[preview.id] = shop->id;
+        preview_state.commerce_page_lists[commerce.id] = {shop->id};
+        preview_state.facility_presence.at(shop->id) = 0;
+        preview_state.rank = std::max(preview_state.rank, shop->unlock_rank);
+        for (auto &entry : preview_state.catalog)
+            if (entry.first.first == 2)
+                entry.second.status = 0;
+        preview_state.catalog.at({2, 0}).status = 1;
+        preview_state.catalog.at({2, 1}).status = 2;
+        view = ui::world_building_view(preview_state, preview);
+        check(view.definition_preview && view.product_count == 2 && !view.facility &&
+                  !view.can_use_items,
+              "Armor-shop preview counts only already-open merchandise without an instance or "
+              "item-use command");
+    }
+
     // Input arbitration is independent of Owner and commit eligibility. A previously locked
     // anchor A must survive until the controller consumes choose(B), never confirm(A) first.
     for (const auto extent :

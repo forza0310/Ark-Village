@@ -1,6 +1,6 @@
 #pragma once
 
-// e8f66d9 building pages read the canonical Owner. Selection and responsive geometry are
+// 2b479f6 building pages read the canonical Owner. Selection and responsive geometry are
 // desktop state; only intents cross to the simulation thread, carrying stable page/definition IDs.
 #include "../world_build_placement.hpp"
 #include "ark/simulation/startup_world_building.hpp"
@@ -20,9 +20,11 @@ struct WorldBuildingRow {
 struct WorldBuildingView {
     int raw{};
     std::uint64_t page{};
-    bool initialized{}, can_confirm{};
+    bool initialized{}, can_confirm{}, definition_preview{}, can_use_items{};
     std::string title;
     std::optional<std::uint64_t> facility;
+    WorldBuildGraphic graphic;
+    std::optional<std::size_t> product_count;
     std::array<std::vector<WorldBuildingRow>, 3> catalogs;
     std::vector<WorldBuildingRow> residents;
     int phase{}, page_count{};

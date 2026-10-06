@@ -65,7 +65,12 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-tax" && page != "world-tax-collected" && page != "world-village" &&
                 page != "world-village-start" && page != "world-village-results" &&
                 page != "world-reward95" && page != "world-save" && page != "world-load-error" &&
-                page != "world-load")
+                page != "world-load" && page != "world-item-gift" &&
+                page != "world-facility-items" && page != "world-facility-item-result" &&
+                page != "world-commerce" && page != "world-commerce-buy" &&
+                page != "world-commerce-receipt" && page != "world-commerce-facilities" &&
+                page != "world-commerce-facility-info" &&
+                page != "world-commerce-facility-reward" && page != "world-village-menu")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
         } else if (argument == "--save-dir") {

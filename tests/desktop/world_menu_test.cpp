@@ -92,6 +92,32 @@ void world_menu() {
         input.down = true;
         (void)ui::world_menu_input(layout, true, true, true, false, selected, input);
         check(selected == 0, "Down wraps to construction without activating disabled row");
+        using Village = ui::WorldVillageMenuIntent;
+        for (const bool unlocked : {false, true}) {
+            input = {};
+            input.click = middle(layout.menu_rows[1]);
+            const auto action =
+                ui::world_village_menu_input(layout, true, unlocked, false, selected, input);
+            check(selected == 1 && (unlocked ? action == Village::commerce : !action),
+                  "Desktop management chooser gates commerce on the real unlock flag");
+            check(!ui::world_village_menu_input(layout, false, unlocked, false, selected, input),
+                  "Explicit pause cannot bypass the commerce gate");
+        }
+        input = {};
+        input.click = middle(layout.menu_rows[0]);
+        check(ui::world_village_menu_input(layout, true, false, false, selected, input) ==
+                  Village::activities,
+              "Activity entry does not depend on commerce unlock");
+        input = {};
+        input.escape = true;
+        check(ui::world_village_menu_input(layout, false, false, false, selected, input) ==
+                  Village::back,
+              "Escape returns from management chooser to its parent while paused");
+        input.toggle = true;
+        check(ui::world_village_menu_input(layout, true, true, false, selected, input) ==
+                      Village::close &&
+                  !ui::world_village_menu_input(layout, true, true, true, selected, input),
+              "Menu toggle closes the chooser; pending barrier blocks duplicate navigation");
     }
     // These are explicit read-only slot view fixtures. Their paused worker has no file overlay,
     // so submitted actions are rejected without writing a file; this suite owns only the UI's

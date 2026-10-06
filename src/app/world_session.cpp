@@ -153,7 +153,8 @@ class WorldSession::Impl {
                 menu_open = false;
         } else if (command.kind == WorldCommandKind::open_menu_tasks ||
                    command.kind == WorldCommandKind::open_menu_build ||
-                   command.kind == WorldCommandKind::open_menu_village_activities) {
+                   command.kind == WorldCommandKind::open_menu_village_activities ||
+                   command.kind == WorldCommandKind::open_menu_commerce) {
             if (!menu_open) {
                 result.runtime_error = RuntimeError::invalid_page;
             } else {
@@ -265,6 +266,11 @@ class WorldSession::Impl {
             ++next.revision;
             return publish(std::move(next));
         }
+        const auto *current_page = top_page(*current.state);
+        if (kind == WorldCommandKind::acknowledge_page && current_page &&
+            (current_page->legacy_page == 76 || current_page->legacy_page == 86))
+            return apply_decision(current,
+                                  input); // Automatic presentation pages reject late clicks.
         if (detail::is_world_decision(input.value.kind))
             return apply_decision(current, input);
         const auto &command = input.value;

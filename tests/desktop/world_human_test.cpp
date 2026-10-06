@@ -1,5 +1,6 @@
 // UI owns current-owner projection and action routing. Frozen rule/runtime suites own
 // profession gates, gift rewards and tax posting; those transactions are not duplicated here.
+#include "ark/simulation/startup_world_commerce.hpp"
 #include "support/checks.hpp"
 #include "support/world_fixture.hpp"
 #include "ui/world_human.hpp"
@@ -145,13 +146,72 @@ void world_human() {
               view.rows[0].stock == 2,
           "Equipment preserves source order and shared stock quote, never displays a negative cash "
           "price");
-    for (int slot = 0; slot < 4; ++slot) {
+    for (int slot = 0; slot < 5; ++slot) {
         input = {};
-        input.click = middle(layout.tabs[slot]);
+        input.click = middle(layout.gift_tabs[slot]);
         intent = ui::world_human_input(view, layout, input, false);
         check(intent && intent->action == Action::equipment_slot && intent->selection == slot,
-              "Equipment tabs preserve all four source namespaces");
+              "Gift tabs preserve four equipment namespaces and the separate ordinary-item "
+              "namespace");
     }
+    const int ordinary = state.rules->items.at(5).identity;
+    state.equipment_page_catalogs[page.id][4] = {ordinary};
+    state.items.at(ordinary).inventory = 3;
+    state.catalog.at({0, ordinary}) = state.items.at(ordinary);
+    state.page_phases[page.id] = 4;
+    const auto item_before = state;
+    view = ui::world_human_view(state, page);
+    check(view.choice && view.choice->slot == 4 && view.choice->identity == ordinary &&
+              view.choice->stock == 3 && view.choice->cost == -1 &&
+              view.choice->name == state.rules->items.at(5).name,
+          "Fifth gift tab reads owned item z, never equipment armor or free-purchase stock");
+    input = {};
+    input.inspect = true;
+    check(!ui::world_human_input(view, layout, input, false),
+          "Ordinary items cannot open equipment-only raw73");
+    input = {};
+    input.right = true;
+    check(ui::world_human_input(view, layout, input, false)->selection == 0,
+          "Gift keyboard navigation wraps from the fifth tab to weapon");
+    input = {};
+    input.enter = true;
+    check(ui::world_human_input(view, layout, input, false)->action == Action::confirm &&
+              state.items.at(ordinary).inventory == 3 &&
+              state.scene.random.draws() == item_before.scene.random.draws() &&
+              same_world_clock(state, item_before),
+          "Ordinary gift confirmation emits an intent without consuming stock or drawing dialogue");
+    page.legacy_page = state.scripts.pages.back().legacy_page = 66;
+    state.human_equipment_choices[page.id] = {4, ordinary};
+    state.human_gift_scores[page.id] = 51;
+    state.human_gift_messages[page.id] = "谢谢";
+    view = ui::world_human_view(state, page);
+    check(view.choice && view.choice->slot == 4 &&
+              view.choice->name == state.rules->items.at(5).name && view.gift_score == 51 &&
+              !view.can_cancel,
+          "Ordinary gift evaluation uses its committed item binding and source message");
+    page.legacy_page = state.scripts.pages.back().legacy_page = 69;
+    state.human_attribute_display = {
+        {{10, 20, 30, 40, 50, 60}, {10, 22, 30, 40, 50, 60}, {0, 2, 0, 0, 0, 0}}};
+    check(ui::world_human_page(page), "Ordinary attribute result69 belongs to the human UI");
+    for (int counter : {0, 38, 39, 44, 45}) {
+        state.page_counters[page.id] = counter;
+        view = ui::world_human_view(state, page);
+        input = {};
+        input.enter = true;
+        check(view.attributes == state.human_attribute_display &&
+                  bool(ui::world_human_input(view, layout, input, false)) ==
+                      (counter < 39 || counter >= 45),
+              "Ordinary item result reads six attributes and respects the39-through44 confirmation "
+              "gap");
+        input = {};
+        input.escape = true;
+        check(!ui::world_human_input(view, layout, input, false),
+              "Ordinary item attribute result has no cancel path");
+    }
+    page.legacy_page = state.scripts.pages.back().legacy_page = 73;
+    check(!ui::world_human_view(state, page).initialized,
+          "Equipment-only inspection refuses a fifth ordinary-item phase");
+    state.page_phases[page.id] = 0;
     page.legacy_page = state.scripts.pages.back().legacy_page = 65;
     state.human_equipment_choices[page.id] = {0, 1};
     view = ui::world_human_view(state, page);
@@ -196,11 +256,49 @@ void world_human() {
     page.legacy_page = 67;
     check(!ui::world_human_page(page),
           "Effort raw67 remains owned by the existing progression view");
-    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{1080, 720}}) {
+    {
+        // Explicit input-boundary fixture: the real84 consumer creates86, whose first
+        // update retires it. The diagnostic must recognize it before that update.
+        auto purchase = initial_world();
+        purchase.scripts.pages.clear();
+        Page catalogue;
+        catalogue.id = purchase.scripts.next_page_id++;
+        catalogue.kind = sim::rules::WorldScriptPageKind::raw_page;
+        catalogue.legacy_page = 84;
+        catalogue.lifecycle = 1;
+        purchase.scripts.pages.push_back(catalogue);
+        purchase.shop_item_stock.at(0).quantity = 2;
+        check(sim::initialize_startup_world_commerce_pages(purchase),
+              "Receipt boundary fixture initializes real commerce catalogue");
+        desktop::WorldHumanInspection diagnostic;
+        check(!desktop::human_inspection_ready(purchase, "world-commerce-receipt", diagnostic),
+              "Uncommitted purchase is not a captured receipt");
+        check(desktop::apply_human_inspection_input(purchase, "world-commerce-receipt", diagnostic),
+              "Receipt diagnostic issues the actual selected purchase command");
+        check(diagnostic.commerce_bought &&
+                  desktop::human_inspection_ready(purchase, "world-commerce-receipt", diagnostic),
+              "Actual receipt is observable immediately after84 before source initialization");
+        const auto receipt = purchase.scripts.pages.back().id;
+        check(!purchase.commerce_pages_initialized.count(receipt),
+              "Diagnostic does not initialize transient receipt to manufacture a display frame");
+        const auto after = sim::update_startup_world_commerce_page(purchase, receipt);
+        check(after &&
+                  !desktop::human_inspection_ready(*after, "world-commerce-receipt", diagnostic),
+              "First original86 update retires the receipt without a second purchase");
+    }
+    for (const auto extent :
+         {desktop::Extent{240, 256}, desktop::Extent{384, 256}, desktop::Extent{1080, 720}}) {
         const auto frame = ui::world_human_layout(extent);
+        check(
+            inside({0, 24, static_cast<float>(extent.width), extent.height - 53.F}, frame.panel) &&
+                frame.row_height >= 14 &&
+                frame.body.y + frame.body.height <= frame.panel.y + frame.panel.height - 49,
+            "Human panel clears HUD/footer with readable five-row lists and separate feedback");
         for (const auto box : {frame.body, frame.cancel, frame.confirm, frame.previous, frame.next,
                                frame.professions, frame.gifts, frame.inspect})
             check(inside(frame.panel, box), "Human controls fit minimum and large viewports");
+        for (const auto box : frame.gift_tabs)
+            check(inside(frame.panel, box), "All five gift tabs fit minimum and large viewports");
     }
 }
 

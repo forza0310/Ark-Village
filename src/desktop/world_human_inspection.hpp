@@ -3,6 +3,7 @@
 // Bounded, explicit window diagnostics. All choices go through ordinary source consumers;
 // this policy never injects a person, money, attributes, dates or page payloads.
 #include "ark/simulation/startup_world_human.hpp"
+#include "world_task_inspection.hpp"
 #include <string>
 
 namespace ark::desktop {
@@ -30,6 +31,15 @@ struct WorldHumanInspection {
     std::int64_t expected_tax{};
     int income_before_tax{};
     int tax_month{-1};
+    // Separate natural-tools policy; existing human/housing preparations keep their choices.
+    std::optional<std::uint64_t> item_facility;
+    bool facility_item_confirmed{};
+    int facility_improvement_before{};
+    WorldTaskInspection commerce_tasks;
+    std::optional<int> commerce_item;
+    bool commerce_bought{};
+    std::optional<int> commerce_facility;
+    bool commerce_facility_paid{};
 };
 bool human_inspection_mode(const std::string &mode);
 void begin_human_inspection(simulation::StartupWorldRuntimeState &state, const std::string &mode,

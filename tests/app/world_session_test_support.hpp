@@ -37,4 +37,6 @@ void human_gift_parent_transaction();
 void tax_command_transactions();
 void save_command_transactions();
 void village_command_transactions();
+void commerce_command_transactions();
+void facility_item_command_transactions();
 } // namespace ark::test::world_session

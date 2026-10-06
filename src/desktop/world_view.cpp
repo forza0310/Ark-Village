@@ -117,6 +117,8 @@ std::string glyphs(const State &s) {
     for (const auto &activity : s.rules->activities)
         result += activity.name + activity.detail + activity.description;
     result += "村办活动开展活动进行中结果季度剩余此活动尚未接入完成获得奖励配置更替领取";
+    result += "南瓜商会购买道具出售多谢惠顾持有剩余获得设施使用道具设施强化赠送礼物能力提升商品种类"
+              "出售中";
     for (const auto &t : s.rules->tasks)
         result += t.name + t.title;
     for (const auto &i : s.rules->items)
@@ -153,7 +155,8 @@ bool inspection_ready(const State &s, const std::string &mode) {
     const auto &ai = s.scene.world.world.ai;
     if (mode == "world-save" || mode == "world-load" || mode == "world-load-error")
         return app::world_save_eligible(s);
-    if (mode == "world-active" || mode == "world-speed" || mode == "world-menu")
+    if (mode == "world-active" || mode == "world-speed" || mode == "world-menu" ||
+        mode == "world-village-menu")
         return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
     if (mode == "world-month-defeats")
         return app::world_report_visible(s) && s.report_state == 1 && s.report_counter >= 6 &&
@@ -279,12 +282,14 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
     const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
+    const bool menu_inspection =
+        options.inspect_page == "world-menu" || options.inspect_page == "world-village-menu";
     const bool save_inspection = options.inspect_page == "world-save" ||
                                  options.inspect_page == "world-load" ||
                                  options.inspect_page == "world-load-error";
     const bool transient =
         inspecting && options.inspect_page != "world-active" &&
-        options.inspect_page != "world-speed" && options.inspect_page != "world-menu" &&
+        options.inspect_page != "world-speed" && !menu_inspection &&
         options.inspect_page != "world-month" && options.inspect_page != "world-month-income" &&
         options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
         options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
@@ -348,8 +353,14 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             if (reached)
                 break;
             if (human_inspection_mode(options.inspect_page) &&
-                apply_human_inspection_input(state, options.inspect_page, human_inspection))
+                apply_human_inspection_input(state, options.inspect_page, human_inspection)) {
+                // raw86 retires on the next framework update. Observe the committed transaction
+                // page before another update; rendering never initializes or holds its consumer.
+                reached = human_inspection_ready(state, options.inspect_page, human_inspection);
+                if (reached)
+                    break;
                 continue;
+            }
             if (management_inspection_mode(options.inspect_page) &&
                 apply_management_inspection_input(state, options.inspect_page,
                                                   management_inspection))
@@ -374,6 +385,11 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 if (simulation::acknowledge_startup_world_runtime_page(state, page->id) !=
                     simulation::StartupWorldRuntimeError::none)
                     throw std::runtime_error("World inspection page consumer rejected input");
+                if (human_inspection_mode(options.inspect_page) &&
+                    human_inspection_ready(state, options.inspect_page, human_inspection)) {
+                    reached = true;
+                    break;
+                }
             }
         }
         if (!reached)
@@ -453,13 +469,15 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
     std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
     int menu_selection = 1;
+    bool village_menu = options.inspect_page == "world-village-menu";
+    int village_selection{};
     std::string menu_feedback;
     // Menu inspection exercises the real asynchronous desktop command after natural startup.
     // This explicit diagnostic player pause permits checking the exact loaded date before
     // another source round. Loading must preserve it and the current fresh-session random stream.
     if (options.inspect_page == "world-load")
         session.set_paused(true);
-    if (options.inspect_page == "world-menu" || save_inspection)
+    if (menu_inspection || save_inspection)
         pending_menu = session.open_main_menu();
     int save_inspection_stage{};
     bool save_inspection_ready = !save_inspection;
@@ -662,12 +680,42 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         menu_input.up = IsKeyPressed(KEY_UP);
         menu_input.down = IsKeyPressed(KEY_DOWN);
         menu_input.enter = IsKeyPressed(KEY_ENTER);
-        const auto menu_intent = ui::world_menu_input(
-            layout, publication->main_menu_open,
-            !active_page(current) && current.scene.scene_state == 0, !desired_pause,
-            failed || pending_menu || pending_task || management.pending() ||
-                publication->save_menu_open || save_menu.pending(),
-            menu_selection, menu_input);
+        if (!publication->main_menu_open && !pending_menu)
+            village_menu = false;
+        const bool menu_pending = failed || pending_menu || pending_task || management.pending() ||
+                                  publication->save_menu_open || save_menu.pending();
+        const bool was_village_menu = village_menu;
+        if (village_menu) {
+            const auto intent = ui::world_village_menu_input(
+                layout, !desired_pause, (current.scripts.user_flags & 16U) != 0, menu_pending,
+                village_selection, menu_input);
+            if (intent) {
+                menu_feedback.clear();
+                switch (*intent) {
+                case ui::WorldVillageMenuIntent::back:
+                    village_menu = false;
+                    break;
+                case ui::WorldVillageMenuIntent::close:
+                    pending_menu = session.close_main_menu();
+                    break;
+                case ui::WorldVillageMenuIntent::activities:
+                    pending_menu = session.open_menu_village_activities();
+                    break;
+                case ui::WorldVillageMenuIntent::commerce:
+                    pending_menu = session.open_menu_commerce();
+                    break;
+                }
+            }
+        }
+        const auto menu_intent =
+            was_village_menu
+                ? std::nullopt
+                : ui::world_menu_input(
+                      layout, publication->main_menu_open,
+                      !active_page(current) && current.scene.scene_state == 0, !desired_pause,
+                      failed || pending_menu || pending_task || management.pending() ||
+                          publication->save_menu_open || save_menu.pending(),
+                      menu_selection, menu_input);
         if (menu_intent) {
             menu_feedback.clear();
             switch (*menu_intent) {
@@ -684,7 +732,8 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 pending_menu = session.open_menu_tasks();
                 break;
             case ui::WorldMenuIntent::village:
-                pending_menu = session.open_menu_village_activities();
+                village_menu = true;
+                village_selection = 0;
                 break;
             case ui::WorldMenuIntent::system:
                 pending_menu = session.open_save_menu();
@@ -913,11 +962,16 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                                 !desired_pause && !failed && !pending_ack);
             }
         }
-        if (publication->main_menu_open)
-            ui::draw_world_menu(layout, skin, menu_selection,
-                                !desired_pause && !failed && !pending_menu, menu_feedback,
-                                !failed && !pending_menu);
-        else if (!publication->save_menu_open && !menu_feedback.empty())
+        if (publication->main_menu_open) {
+            if (village_menu)
+                ui::draw_world_village_menu(layout, skin, village_selection,
+                                            !desired_pause && !failed && !pending_menu,
+                                            (current.scripts.user_flags & 16U) != 0, menu_feedback);
+            else
+                ui::draw_world_menu(layout, skin, menu_selection,
+                                    !desired_pause && !failed && !pending_menu, menu_feedback,
+                                    !failed && !pending_menu);
+        } else if (!publication->save_menu_open && !menu_feedback.empty())
             skin.text.draw(menu_feedback, 8, extent.height - 58.F, MAROON);
         save_menu.draw(*publication, extent, skin);
         EndMode2D();
@@ -940,7 +994,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     publication = session.frame();
     const auto &final_state = *publication->state;
     const bool failed = publication->failed;
-    if (options.inspect_page == "world-menu") {
+    if (menu_inspection) {
         std::cout << "World menu inspection: open=" << publication->main_menu_open
                   << " explicit_pause=" << final_state.scene.framework_paused << '\n';
         if (!publication->main_menu_open || failed)

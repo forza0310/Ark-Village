@@ -12,9 +12,9 @@
 | B5 | 二维全流程对照与补齐 | Planned；玩法/UI/画面/输入和差异逐项验收 |
 | B6 | 3D化重构 | Planned；在二维行为基线上替换表现，复用领域测试 |
 
-阶段前先分析并确认设计；不改变已确认规则、契约或范围的小型错误自行修复并定向复验，仅来源/规则冲突、关键契约歧义或需要新范围/决策时暂停确认，详见[开发流程](CONTRIBUTING.md)。本批实现完成后集中完善测试，代码/构建/资源/测试阶段结束四套配置/编译/CTest通过；纯文档只做文档检查，实际窗口/输入及原版对照另记。
+阶段前先分析并确认设计；不改变已确认规则、契约或范围的小型错误自行修复并定向复验，仅来源/规则冲突、关键契约歧义或需要新范围/决策时暂停确认，详见[开发流程](CONTRIBUTING.md)。实现完成后集中完善测试：四套配置/编译，本地Release完整标准CTest，Debug默认仅排除三个月连续模拟；排除项及对应提交的CI结果分别记录，详见ADR-0045。纯文档只做文档检查，实际窗口/输入及原版对照另记。
 四套预设为headless-debug/headless-release/desktop-debug/desktop-release，不沿用旧预设或历史日志。
-main日常CI仅执行desktop-release构建及全部标准CTest，Debug和headless预设保留供阶段验收及依赖边界检查；CI是额外检查，本地验证始终允许，详见ADR-0038。
+main日常CI仅执行desktop-release构建及全部标准CTest，承担三个月行为覆盖并提供其余额外检查；Debug和headless预设保留供阶段验收及依赖边界检查，本地验证持续允许。CI Release结果不代表Debug三个月已运行，当前分工见ADR-0045，CI历史见ADR-0038。
 
 近期操作项以 [TODO](../TODO.md)为准；本页只记录阶段范围、状态和稳定决策。
 
@@ -219,6 +219,8 @@ Accepted，2026-10-05：按用户明确的第二批范围接旧可见反馈，�
 
 ## ADR-0034
 
+其中每批本地四套完整CTest及Debug长跑要求已由ADR-0045调整；历史验收结果保留。
+
 Accepted，2026-10-05：按用户要求，测试改为已确认功能批次实现收口后集中完善与统一验证；实现中保留编译排错及必要定向复验，不逐个函数/提交重复全套验收。代码、构建、资源和测试阶段仍要求四套当前结果；纯文档按差异、链接与一致性检查验收。
 以行为契约及风险确定主责测试层，按稳定职责组织套件，复用断言/局部夹具和CMake注册，表驱动消除同逻辑重复；不强制一文件一target，也不合成巨型测试。冻结研究测试与旧诊断保留各自来源/覆盖，不凭同名删除。具体静态审计与增量整理方法见[开发流程](CONTRIBUTING.md#测试设计与组织)。本次仅修改约定与文档，未重构测试或运行四套游戏回归。
 
@@ -236,7 +238,7 @@ Accepted，2026-10-05：用户在测试整理期间报告可见缺漏，并明�
 
 ## ADR-0038
 
-其中Packages/GHCR发布政策已由ADR-0043取代；下文保留历史决定。
+其中Packages/GHCR发布政策已由ADR-0043取代，本地/CI测试分工由ADR-0045调整；下文保留历史决定。
 
 Accepted，2026-10-05：按用户要求增加main上的GitHub CI，不改变游戏逻辑。两个目标为macOS ARM64与Windows 10 x86（32位），分别使用macos-15原生ARM runner和windows-2022 runner上的LLVM-MinGW/UCRT i686工具链。按用户后续确认，日常CI仅保留desktop-release构建及全部标准CTest；Release同样执行核心和桌面测试，减少重复构建及Debug持续模拟耗时，保留Debug/headless预设供开发调试、阶段验收和依赖边界检查。全部标准测试成功后打包本平台Release程序和资源；固定raylib版本并静态链接，保留失败诊断和制品哈希。打包测试的临时副本保留原文件名/Windows扩展名，断言不变。用户随后澄清：永远允许本地验证，CI仅是额外检查；此前CI配置任务仅静态验收不限制产品开发。Windows Server测试不等于Windows 10真机验收；`ba68e90`的首次远程两平台Release构建、测试、打包和Actions上传已通过。用户随后要求发布到GitHub Packages：两平台成功后将压缩包和校验文件作为OCI文件制品发布至GHCR，保留提交标签，回读比对后更新latest；源码关联仓库，Packages访问权限独立管理，Actions下载继续保留。首次GHCR发布仍待新配置运行验证。操作和边界见[CI说明](CONTRIBUTING.md#github-ci与制品)。
 
@@ -285,6 +287,12 @@ Accepted，2026-10-06：用户指出exe分发应使用GitHub Releases，取代AD
 Proposed：文件存取首批边界，待设计确认。
 
 2026-10-06：用户指定8f人物经营链收口后接存档。9897d64的PERSISTENCE仍是原来源规格，没有正常文件捕获/恢复实现。建议两栏手动/中断独立、原版随机不落盘、版本化Ark格式及Windows用户本地目录，首批稳定主场景手动档，自动档待源跨周轮内恢复合同闭合后接入；加载候选完整验证后一次替换Owner，失败保留旧档与当前世界，不迁移旧档。完整来源、取舍、所有权、最小依赖与验收见[B1设计](stages/B1-playable-prototype.md#file-persistence-design)和[RQ12](reference/RESEARCH_REQUESTS.md#persistence-integration-gap)，当前只完成设计，尚未编码。
+
+## ADR-0045
+
+Accepted，2026-10-06：用户要求长耗时Debug三个月测试尽量不在本地进行，依赖流水线测试。四套配置/编译与本地Release完整标准CTest保留；本地desktop-debug/headless-debug默认仅排除`simulation.startup_world_continuous_test`，其余标准测试执行。Debug三个月仅为定位Debug特有问题、相关失败或用户明确要求定向补跑；额外长测按风险显式选择，优先Release，不再每批要求Debug长链。
+
+当前main流水线仍仅desktop-release完整标准CTest，包含三个月基线；本次只改文档，不增加Debug CI，也不修改测试注册、断言、种子、月份或超时。三个月行为覆盖依赖CI Release结果，不能宣称Debug三个月已由CI执行。交付分开记录本地排除项及对应提交的CI状态；CI待验证时可保存本地checkpoint，不自动推送或为了等待CI补跑本地Debug长测。操作命令与验收范围见[构建检查](CONTRIBUTING.md#构建检查)。本次仅检查文档差异、链接与策略一致性，不运行游戏回归；历史实测结果不改写。
 
 ## 研究历史引用
 

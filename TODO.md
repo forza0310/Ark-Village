@@ -2,6 +2,8 @@
 
 ## 当前状态
 
+- [x] 更新本地/CI测试分工：本地Debug默认跳过三个月连续模拟，其余Debug与完整Release标准测试保留；三个月行为覆盖依赖main CI的Release结果，Debug长跑仅作必要诊断，见[ADR-0045](docs/MILESTONES.md#adr-0045)。本次仅文档检查。
+
 - [x] 修复Windows建设旋转退出：单帧入住募集/住宅素材在第二逻辑朝向复用唯一图像，预览与建成地表共用；四套602项标准CTest、两朝向预览及旋转建成窗口通过，见[B1记录](docs/stages/B1-playable-prototype.md#build-rotation-fix)。原版单帧朝向外观另待研究。
 
 - [x] 建立C++17/raylib产品工程、四套构建预设、模块说明和独立测试。

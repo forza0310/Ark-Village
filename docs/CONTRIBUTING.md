@@ -13,16 +13,27 @@
 
 ## 构建检查
 
-四套预设分别执行：
+四套预设仍分别配置、编译；本地Debug默认排除耗时的三个月连续模拟：
 
 ```sh
 cmake --preset desktop-debug
 cmake --build --preset desktop-debug --parallel 4
-ctest --preset desktop-debug
+ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
 ```
 
-另三套为desktop-release、headless-debug、headless-release。headless不查找raylib，测试在Release也执行，警告视为错误。阶段收口统一执行并记录当前代码的结果，本轮最终四套产品验证完成前不得写全部通过。修复后重验受影响配置；共用源码/测试改动覆盖全部受影响预设。通过后无新修改、失败或未决风险不重复全套。
-以上为产品阶段验收；main日常CI按用户确认只运行desktop-release，完整执行标准CTest，不重复Debug或headless构建。Debug和headless预设仍用于阶段验收及核心依赖、模块或表现层边界检查。此前CI配置调整只做本地静态检查；用户已明确持续允许本地验证，CI是额外验证，不限制产品开发的本地构建/测试。
+另三套为desktop-release、headless-debug、headless-release，配置/编译命令替换预设名。headless不查找raylib，测试在Release也执行，警告视为错误。本地测试范围如下：
+
+| 配置 | 阶段收口测试 |
+| --- | --- |
+| desktop-debug、headless-debug | 标准CTest仅用上述`-E`精确排除`simulation.startup_world_continuous_test`，其余全部执行 |
+| desktop-release、headless-release | 完整标准CTest，包括三个月基线，不加上述排除条件 |
+| main CI：desktop-release | 完整标准CTest，包括三个月基线；构建/测试通过后才打包发布 |
+
+按2026-10-06用户决定，本地Debug三个月测试不作为每批必跑项，三个月行为覆盖依赖流水线的Release测试；仅定位Debug特有问题、相关失败或用户明确要求时定向补跑。该用例仍注册在四套CTest中，直接运行不带`-E`的Debug预设会执行它；不修改用例、断言、月份、种子或超时。额外自然/年度长跑按风险显式开启，优先Release，Debug长跑仅作必要定向诊断。
+
+阶段收口分别记录本地通过项、Debug排除项及对应提交的CI链接/结果。当前CI只运行desktop-release，不得把Release结果写成Debug三个月通过；CI未运行或未结束时标待验证。完成上述本地范围可先保存checkpoint，不为等待CI而补跑本地Debug三个月，也不自动推送；完整交付仍需记录流水线结果。修复后重验受影响配置，共用源码/测试改动覆盖全部受影响预设；通过后无新修改、失败或未决风险不重复全套。
+
+Debug和headless预设仍用于核心依赖、模块及表现层边界检查，main CI不重复这三套构建。本地配置、编译、测试与窗口验收持续允许；除上述分工外，CI仍提供额外检查。此前CI配置任务仅静态验收的安排不限制产品开发。
 构建需要Node 18+，只在构建期JSON.parse交叉校验固定发布数据，生成只读标准C++；运行无需Node。
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。
@@ -46,7 +57,7 @@ python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts
 
 ## GitHub CI与制品
 
-[Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。CI构建与测试在GitHub runner上执行，属于本地阶段验证以外的额外检查。用户持续允许本地配置、编译、测试和窗口验收；两类结果分别记录，不以本地结果代替远程验收。
+[Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。CI构建与测试在GitHub runner上执行，按[构建检查](#构建检查)承担三个月行为覆盖并提供其余额外检查。用户持续允许本地配置、编译、测试和窗口验收；两类结果分别记录，不以本地结果代替远程验收。
 
 | 制品 | GitHub runner / 工具链 | 目标与验收边界 |
 | --- | --- | --- |
@@ -118,13 +129,15 @@ gh release download --repo forza0310/Ark-Village --pattern 'ark-village-windows1
 1. 按本阶段契约表检查正常路径、关键边界和失败路径，缺陷回归放入其行为主责套件；不补仅验证私有布局、转发代码或低风险可逆改动的机械测试。
 2. 核对新用例是否提供不同风险覆盖；重复输入改为表驱动，重复夹具局部共享，上层只保留组合保障。旧诊断仍有入口时保留其独立回归，不凭同名删除。
 3. 合并/移除测试须给出旧契约→保留场景映射，保持有效断言、错误拒绝、独立oracle与来源依据。涉及冻结迁入结构先明确机械适配及校验方式，禁止修改research或放宽哈希校验来完成整理。
-4. 实现和测试收口后执行四套配置/编译/标准CTest，记录失败与修复结果；长期回归按实际风险追加。记录新增/合并理由与显著耗时变化，不追求文件数、断言数或覆盖率指标；代码检查、产品行为、真实窗口和原版一致性分别报告。
+4. 实现和测试收口后执行四套配置/编译及[构建检查](#构建检查)规定的本地CTest范围，Debug默认排除三个月用例；记录失败、修复、排除项与对应提交的CI结果。长期回归按实际风险追加，优先Release。记录新增/合并理由与显著耗时变化，不追求文件数、断言数或覆盖率指标；代码检查、产品行为、真实窗口和原版一致性分别报告。
 
 本批已落地产品自有支撑整理并通过四套标准测试及集中长测：`tests/support/world_fixture.hpp`以真实新局初始化、seed1每进程不可变缓存和逐用例独立副本复用准备过程，`same_world_clock`统一六个日期字段及世界/模拟/到访计数比较，业务和随机断言由各套件保留。显示边界用的小型合成夹具保持局部；不隐藏自动确认或额外推进。`ark_world_ui_test_support`共同编译布局、皮肤、资源和投影，轻量CMake注册保留独立UI套件与全部断言。冻结研究测试不为风格整理改写，未因同名删除旧切片覆盖。
 
-长测显式分层：标准三个月连续基线仍在四套CTest内；`ARK_LONG_WORLD_TESTS=ON`注册`long_world`，其中`annual_world`为12/6/24个月三种子/倍速，`natural_tasks`为seed1双轮及seed20261005单轮的实际任务接受至自然成功链。自然任务目标四套均编译，阶段统一在Debug/Release执行核心长跑，避免按桌面/headless重复相同核心轨迹；保留原参数、逻辑预算与断言。完整验收需单独登记这些显式长测结果，不能用标准CTest绿色替代。
+长测显式分层：标准三个月连续基线仍在四套CTest内注册，本地Debug按上述策略排除，CI在Release中完整执行。`ARK_LONG_WORLD_TESTS=ON`额外注册`long_world`，其中`annual_world`为12/6/24个月三种子/倍速，`natural_tasks`为seed1双轮及seed20261005单轮的实际任务接受至自然成功链。自然任务目标四套均编译，执行按风险选择，优先Release，不再默认要求Debug长链；避免按桌面/headless重复相同核心轨迹，保留原参数、逻辑预算与断言。CI默认不开启额外长测，不得称其已覆盖这些轨迹；需要时单独登记执行范围与结果。
 
 ## 本轮测试目录与套件整理（2026-10-05）
+
+以下为该批历史方案与实测结果；后续执行范围以[构建检查](#构建检查)的本地Debug排除政策为准。
 
 本轮沿用户明确授权实施上文整理规则。主要风险是搬移漏注册、来源哈希变化、case合并后误共享状态或吞掉失败；对应保留旧CTest清单、冻结文件哈希、各case独立进程，以及原断言表达式/消息/顺序。
 

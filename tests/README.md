@@ -1,6 +1,6 @@
 # 测试组织
 
-按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest仍执行全部适用用例，标签用于定位，不能以单层通过替代阶段验收。
+按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；本地Debug默认仅排除三个月连续模拟，完整执行范围见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。
 
 | 目录 | 负责的契约 | 主标签 |
 | --- | --- | --- |
@@ -40,10 +40,14 @@
 
 ```sh
 ctest --preset desktop-release --output-on-failure
+ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$' --output-on-failure
+ctest --preset headless-debug -E '^simulation\.startup_world_continuous_test$' --output-on-failure
 ctest --preset desktop-release -L presentation --output-on-failure
 ctest --preset headless-debug -R '^(world_report|world_medals|world_session)$' --output-on-failure
 ```
 
-e8历史批次的四套602项标准CTest和6次自然/年度长测已通过，详见B1；这些结果不能替代当前8f12654人物链、日期和自动月报批次的最终验收，本批四套606项标准CTest和4条额外自然长测通过。四套标准均保留seed1三个月基线。`ARK_LONG_WORLD_TESTS=ON`额外注册长期回归，按规则风险选择自然住宅、任务和年度轨迹；只改产品表现/接线而冻结规则及既有长跑未变时，不重复已通过的同一核心长链。检查路径、命令、月份/种子、断言参数与注册，不因慢缩减保障。
+e8历史批次四套602项标准CTest和6次自然/年度长测、8f12654批次四套606项标准CTest和4条额外自然长测均已通过，详见B1。历史全测结果不要求后续每批重复本地Debug长测。
+
+四套标准均保留seed1三个月基线注册；按2026-10-06策略，本地Debug默认使用上述精确排除条件，Release完整执行，三个月行为覆盖依赖main CI的desktop-release结果。仅必要诊断或用户明确要求时补跑Debug三个月，不能将CI Release结果记作Debug通过。`ARK_LONG_WORLD_TESTS=ON`额外注册长期回归，按规则风险选择自然住宅、任务和年度轨迹，优先Release；CI默认不执行这些额外长测。只改产品表现/接线而冻结规则及既有长跑未变时，不重复已通过的同一核心长链。保留路径、命令、月份/种子、断言参数与注册，改变执行分工不缩减断言。
 
 新增回归先找行为所属套件，明确“旧契约→保留场景”和独立期望值。保留有效错误拒绝、回滚、随机与调用顺序保障；不能因文件同名删除旧切片或冻结研究测试。详细要求见[开发流程](../docs/CONTRIBUTING.md#测试设计与组织)。

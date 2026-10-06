@@ -21,7 +21,8 @@ struct LaunchOptions {
     bool world = true; // Default canonical world; explicit legacy diagnostics select Game instead.
     bool verify_play = false; // Bounded normal-game controller probe; never an inspection fixture.
     std::string font;
-    std::string inspect_page; // Bounded rendering inspection; never a normal new-game trajectory.
+    std::string save_directory; // Optional explicit player/test directory; default is user-local.
+    std::string inspect_page;   // Bounded rendering inspection; never a normal new-game trajectory.
 };
 
 struct LaunchResult {

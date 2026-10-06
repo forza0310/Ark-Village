@@ -20,6 +20,14 @@ int main() {
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused && defaults.world);
     check(ark::app::LaunchOptions{}.world);
     check(defaults.tick_rate == 0);
+    check(defaults.save_directory.empty());
+    check(parse_arguments({"--save-dir", "test saves"}).options->save_directory == "test saves");
+    check(parse_arguments({"--inspect-page", "world-load", "--frames", "8", "--save-dir", "test"})
+              .options->world);
+    check(!parse_arguments({"--inspect-page", "world-load", "--frames", "8"}).options);
+    check(!parse_arguments({"--save-dir"}).options);
+    check(!parse_arguments({"--save-dir", "--paused"}).options);
+    check(!parse_arguments({"--legacy-slice", "--save-dir", "test"}).options);
     check(parse_arguments({"--legacy-slice", "--tick-rate", "20"}).options->tick_rate == 20);
     check(parse_arguments({"--tick-rate", "240", "--legacy-slice"}).options->tick_rate == 240);
     check(parse_arguments({"--check"}).options->mode == LaunchMode::check);

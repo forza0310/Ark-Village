@@ -54,8 +54,12 @@ find_package(Threads REQUIRED)
 add_library(ark_world_queries STATIC src/app/world_facility_queries.cpp)
 target_link_libraries(ark_world_queries PUBLIC ark_world_runtime)
 ark_target(ark_world_queries)
+add_library(ark_world_save STATIC src/app/world_save_codec.cpp src/app/world_save_restore.cpp
+    src/app/world_save_files.cpp)
+target_link_libraries(ark_world_save PUBLIC ark_world_runtime)
+ark_target(ark_world_save)
 add_library(ark_world_session STATIC src/app/world_session.cpp src/app/world_commands.cpp src/app/world_report.cpp)
-target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing Threads::Threads)
+target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing ark_world_save Threads::Threads)
 ark_target(ark_world_session)
 
 add_executable(ark_world_simulation src/app/world_simulation_main.cpp)
@@ -99,7 +103,7 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
-        src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_scene.cpp
+        src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_save_menu.cpp src/desktop/world_scene.cpp
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
         src/desktop/world_management.cpp src/desktop/world_management_inspection.cpp
         src/desktop/world_human_inspection.cpp

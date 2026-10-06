@@ -38,6 +38,8 @@
 
 ## 运行与扩展
 
+`world_save`是字节协议/文件隔离独立职责，合用同一runner中的codec、恢复和文件场景；规则计算仍由既有冻结套件主责。它检查带有效校验的恶意字段、两个栏位与失败替换、真实经营/施工/服务、延迟续体及跨月恢复；会话generation/旧命令/暂停和失败Owner保留归现有`world_session`，槽选择/确认/禁用归现有`world_menu`。夹具只读取真实新局，不复制领域算法，Release断言有效。
+
 ```sh
 # 本地代码阶段默认
 ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$' --output-on-failure

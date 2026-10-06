@@ -62,9 +62,14 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-gifts-accessory" && page != "world-gift-confirm" &&
                 page != "world-equipment-info" && page != "world-gift-result" &&
                 page != "world-equipment-change" && page != "world-tax" &&
-                page != "world-tax-collected")
+                page != "world-tax-collected" && page != "world-save" &&
+                page != "world-load-error" && page != "world-load")
                 return {std::nullopt, "Unknown inspection page"};
             options.inspect_page = page;
+        } else if (argument == "--save-dir") {
+            if (++i >= arguments.size() || arguments[i].empty() || arguments[i][0] == '-')
+                return {std::nullopt, "--save-dir requires a directory"};
+            options.save_directory = arguments[i];
         } else if (argument == "--font") {
             if (++i >= arguments.size() || arguments[i].empty() || arguments[i][0] == '-')
                 return {std::nullopt, "--font requires a TTF path"};
@@ -120,6 +125,10 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (world_inspection && (explicit_legacy || legacy_diagnostic))
         return {std::nullopt, "World inspection cannot be combined with legacy slice diagnostics"};
     options.world = !explicit_legacy && !legacy_diagnostic;
+    if (!options.world && !options.save_directory.empty())
+        return {std::nullopt, "--save-dir requires the continuous world"};
+    if (options.inspect_page == "world-load" && options.save_directory.empty())
+        return {std::nullopt, "world-load inspection requires --save-dir"};
     if (options.world && options.tick_rate != 0)
         return {std::nullopt, "--tick-rate requires --legacy-slice or a legacy diagnostic"};
     if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")

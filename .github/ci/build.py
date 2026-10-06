@@ -100,7 +100,9 @@ def package(target):
         f"Ark-Village — {target}\nCommit: {revision}\n\n"
         "Keep assets/ and fonts/ next to the executable. No build tools or separate raylib installation are needed.\n"
         "ark_village.exe --check validates resources without opening a window.\n"
-        "The game currently does not save progress.\n\n"
+        "System > Save/Load offers two manual slots from a stable village scene.\n"
+        "Saves use %LOCALAPPDATA%/Ark-Village/saves; --save-dir PATH overrides the directory.\n"
+        "Closing the game does not save automatically. Original APK and older Ark formats are unsupported.\n\n"
     )
     instructions += (
         "Target: Windows 10+ x64 (UCRT); CI executes on Windows Server 2022.\n"

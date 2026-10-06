@@ -35,4 +35,5 @@ void residence_replacement_command();
 void human_command_transactions();
 void human_gift_parent_transaction();
 void tax_command_transactions();
+void save_command_transactions();
 } // namespace ark::test::world_session

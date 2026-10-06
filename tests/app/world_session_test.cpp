@@ -515,5 +515,6 @@ int main() {
     human_gift_parent_transaction();
     tax_command_transactions();
     sound_output_sink();
+    save_command_transactions();
     std::cout << "PASS world session " << checks << " checks\n";
 }

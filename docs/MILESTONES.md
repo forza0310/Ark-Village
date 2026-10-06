@@ -284,9 +284,9 @@ Accepted，2026-10-06：用户指出exe分发应使用GitHub Releases，取代AD
 
 ## ADR-0044
 
-Proposed：文件存取首批边界，待设计确认。
+Accepted：用户“按照推荐计划继续”批准文件存取首批边界，稳定主场景两栏手动档已实现并通过本地验收。
 
-2026-10-06：用户指定8f人物经营链收口后接存档。9897d64的PERSISTENCE仍是原来源规格，没有正常文件捕获/恢复实现。建议两栏手动/中断独立、原版随机不落盘、版本化Ark格式及Windows用户本地目录，首批稳定主场景手动档，自动档待源跨周轮内恢复合同闭合后接入；加载候选完整验证后一次替换Owner，失败保留旧档与当前世界，不迁移旧档。完整来源、取舍、所有权、最小依赖与验收见[B1设计](stages/B1-playable-prototype.md#file-persistence-design)和[RQ12](reference/RESEARCH_REQUESTS.md#persistence-integration-gap)，当前只完成设计，尚未编码。
+2026-10-06：用户指定8f人物经营链收口后接存档，并确认推荐方案。9897d64的PERSISTENCE是原来源规格，没有正常文件捕获/恢复实现，但明确允许独立当前版本Ark格式。现有值类型、公开构造和纯地图刷新足以实现稳定主场景手动恢复，不以缺少研究SaveSnapshot接口阻塞这部分。两栏手动/中断独立、原版随机不落盘、版本化Ark格式及Windows用户本地目录；自动档仍待跨周轮内恢复合同闭合。加载候选完整验证后一次替换Owner，失败保留旧档与当前世界，不迁移旧档。完整来源、取舍、所有权、最小依赖与验收见[B1设计](stages/B1-playable-prototype.md#file-persistence-design)和[RQ12](reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## ADR-0045
 

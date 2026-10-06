@@ -30,8 +30,14 @@ endfunction()
 # share a binary but CTest selects each in a fresh process, preserving independent fixtures.
 ark_test_executable(ark_world_session_tests
     SOURCES tests/app/world_session_test.cpp tests/app/world_task_commands_test.cpp
-        tests/app/world_building_commands_test.cpp LIBRARIES ark_world_session)
+        tests/app/world_building_commands_test.cpp tests/app/world_save_commands_test.cpp
+    LIBRARIES ark_world_session)
 ark_test_case(world_session ark_world_session_tests LABELS runtime TIMEOUT 30)
+ark_test_executable(ark_world_save_tests SOURCES tests/app/world_save_test.cpp
+    tests/app/world_save_restore_test.cpp
+    tests/app/world_save_codec_test.cpp
+    LIBRARIES ark_world_save)
+ark_test_case(world_save ark_world_save_tests LABELS runtime TIMEOUT 300)
 ark_test_executable(ark_world_contract_tests
     SOURCES tests/app/world_contracts_main.cpp tests/app/world_report_test.cpp
         tests/app/world_medals_test.cpp
@@ -133,7 +139,8 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
             src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
             src/desktop/world_build_placement.cpp src/desktop/world_human_inspection.cpp
-        LIBRARIES ark_world_ui_test_support)
+            src/desktop/world_save_menu.cpp
+        LIBRARIES ark_world_ui_test_support ark_world_session)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"
         ARK_TEST_OUTPUT="${PROJECT_SOURCE_DIR}/build/validation/human-management/fixtures")

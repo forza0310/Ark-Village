@@ -17,12 +17,14 @@
 #include "world_management_inspection.hpp"
 #include "world_rank.hpp"
 #include "world_rest_visuals.hpp"
+#include "world_save_menu.hpp"
 #include "world_scene.hpp"
 #include "world_task_inspection.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <stdexcept>
 
 namespace ark::desktop {
@@ -99,7 +101,11 @@ std::string glyphs(const State &s) {
         "概况属性装备魔法体力力量灵活结实魔力运气最大HP攻击防御武器衣服盾帽饰品"
         "库存无暂无候选点经验住宅已入住未入住满足努力勋章可使用不可使用"
         "转职准备中职业已变更赠送给？评价大师保持现状返回关闭确定赠送情报住宅税收合计"
-        "谢谢我要加油!转机好开心合适吗？太好了!感动了!支付维护费Ｇ";
+        "谢谢我要加油!转机好开心合适吗？太好了!感动了!支付维护费Ｇ"
+        "系统保存读取手动存档栏位空覆盖此已有原将被替换当前未进度"
+        "取消确定返回处理中了请稍候无法操作后重试没有不可失败成功损坏格式版本数据不匹配"
+        "稳定主场景才能打开文件目录创建写入载入校验完成忙碌权限路径错误"
+        "周大小限制完整检查临时保留世界有效完毕先并等告容受与游戏和事其离";
     result += s.rules->script_sources.talks + s.rules->script_sources.news +
               s.rules->script_sources.event_messages;
     for (const auto &f : s.rules->facilities)
@@ -142,6 +148,8 @@ std::string page_body(const State &s, const rules::WorldScriptPage &page, int pa
 // or payment. Transient inspections stop at a naturally produced source display record.
 bool inspection_ready(const State &s, const std::string &mode) {
     const auto &ai = s.scene.world.world.ai;
+    if (mode == "world-save" || mode == "world-load" || mode == "world-load-error")
+        return app::world_save_eligible(s);
     if (mode == "world-active" || mode == "world-speed" || mode == "world-menu")
         return ai.human_order.size() >= 3 && !active_page(s) && s.scene.scene_state == 0;
     if (mode == "world-month-defeats")
@@ -250,21 +258,34 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     float zoom = options.zoom_percent / 100.F;
     Extent extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
     // Initialization is temporary; this value is the sole persistent canonical world.
-    State state = [] {
+    State state = [&] {
+        std::uint64_t seed = 1;
+        if (options.inspect_page.empty() || options.inspect_page == "world-load") {
+            // Original files omit randomness. Every normal/cold-load process starts a new stream;
+            // bounded source inspections retain their explicit reproducible seed.
+            std::random_device entropy;
+            seed = static_cast<std::uint64_t>(
+                       std::chrono::system_clock::now().time_since_epoch().count()) ^
+                   (static_cast<std::uint64_t>(entropy()) << 32) ^ entropy();
+        }
         simulation::StartupSession initial;
-        simulation::StartupWorldRuntimeSession session(initial.state(),
-                                                       rules::WorldRandomStream::from_java_seed(1));
+        simulation::StartupWorldRuntimeSession session(
+            initial.state(), rules::WorldRandomStream::from_java_seed(seed));
         return session.state();
     }();
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
     const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
+    const bool save_inspection = options.inspect_page == "world-save" ||
+                                 options.inspect_page == "world-load" ||
+                                 options.inspect_page == "world-load-error";
     const bool transient =
         inspecting && options.inspect_page != "world-active" &&
         options.inspect_page != "world-speed" && options.inspect_page != "world-menu" &&
         options.inspect_page != "world-month" && options.inspect_page != "world-month-income" &&
         options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
-        options.inspect_page != "world-building" && options.inspect_page != "world-details";
+        options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
+        !save_inspection;
     WorldManagementInspection management_inspection;
     WorldHumanInspection human_inspection;
     if (inspecting) {
@@ -399,7 +420,20 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     if (options.inspect_page == "world-speed")
         state.scene.speed_setting = 1;
     WorldCameraView view{state.camera, state.reference_viewport};
-    app::WorldSession session(std::move(state));
+    std::filesystem::path inspection_save_directory = options.save_directory;
+    if (options.inspect_page == "world-load" && inspection_save_directory.empty())
+        throw std::runtime_error("Cold-load inspection requires an explicit isolated --save-dir");
+    if (save_inspection && inspection_save_directory.empty()) {
+        if (options.screenshot.empty())
+            throw std::runtime_error(
+                "Save inspection requires a screenshot path for isolated files");
+        const std::filesystem::path capture(options.screenshot);
+        inspection_save_directory =
+            capture.parent_path() /
+            (capture.stem().string() + "-files-" +
+             std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    }
+    app::WorldSession session(std::move(state), inspection_save_directory);
     auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{}, pending_speed{};
@@ -407,9 +441,20 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
     int menu_selection = 1;
     std::string menu_feedback;
     // Menu inspection exercises the real asynchronous desktop command after natural startup.
-    if (options.inspect_page == "world-menu")
+    // This explicit diagnostic player pause permits checking the exact loaded date before
+    // another source round. Loading must preserve it and the current fresh-session random stream.
+    if (options.inspect_page == "world-load")
+        session.set_paused(true);
+    if (options.inspect_page == "world-menu" || save_inspection)
         pending_menu = session.open_main_menu();
+    int save_inspection_stage{};
+    bool save_inspection_ready = !save_inspection;
+    std::shared_ptr<const State> save_inspection_frozen;
+    std::optional<app::WorldSaveMetadata> load_inspection_metadata;
     WorldManagement management;
+    WorldSaveMenu save_menu;
+    auto generation = publication->generation;
+    std::uint64_t discard_interpolation_revision{};
     if (management_inspection.preview_anchor)
         management.inspect_placement(*management_inspection.selection,
                                      *management_inspection.preview_anchor,
@@ -435,7 +480,25 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
         const auto &current = *publication->state;
         const bool failed = publication->failed;
+        if (publication->generation != generation) {
+            // Loaded IDs may match the discarded world. Drop every local binding before
+            // reading input; neither held buttons nor prior interpolation crosses a load.
+            generation = publication->generation;
+            discard_interpolation_revision = publication->revision;
+            viewed_page = pending_ack = pending_view = pending_pause = pending_speed = 0;
+            pending_task = held_task_page = pending_menu = 0;
+            paragraph = scroll = 0;
+            management = {};
+            save_menu = {};
+            task_selection = {};
+            menu_feedback.clear();
+            task_feedback.clear();
+            view = {current.camera, current.reference_viewport};
+            desired_pause = current.scene.framework_paused;
+            desired_speed = current.scene.speed_setting;
+        }
         management.observe(*publication);
+        save_menu.observe(*publication);
         if (publication->last_command_serial >= pending_ack)
             pending_ack = 0;
         if (pending_task) {
@@ -469,11 +532,81 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 publication->command_results.begin(), publication->command_results.end(),
                 [&](const auto &r) { return r.serial == pending_menu; });
             if (result != publication->command_results.end()) {
-                menu_feedback =
-                    result->outcome == app::WorldCommandOutcome::rejected ? "当前操作不可用" : "";
+                menu_feedback = result->outcome == app::WorldCommandOutcome::rejected
+                                    ? (result->kind == app::WorldCommandKind::open_save_menu &&
+                                               !publication->save_message.empty()
+                                           ? publication->save_message
+                                           : "当前操作不可用")
+                                    : "";
                 pending_menu = 0;
             }
         }
+        if (save_inspection && !save_inspection_ready && !pending_menu && !publication->save_busy) {
+            if (save_inspection_stage == 0 && publication->main_menu_open) {
+                save_inspection_frozen = publication->state;
+                pending_menu = session.open_save_menu();
+                save_inspection_stage = 1;
+            } else if (save_inspection_stage == 1 && publication->save_menu_open) {
+                // Explicit error probe uses a nonexistent isolated slot through the worker.
+                // Normal UI keeps empty-slot Load disabled; no player file is touched.
+                if (options.inspect_page == "world-load") {
+                    load_inspection_metadata = publication->save_slots[0].metadata;
+                    if (!load_inspection_metadata)
+                        throw std::runtime_error("Cold-load inspection has no valid source slot");
+                    pending_menu = session.load_slot(0);
+                } else {
+                    if (options.inspect_page == "world-load-error" &&
+                        publication->save_slots[1].exists)
+                        throw std::runtime_error(
+                            "Load-error inspection requires an empty isolated second slot");
+                    pending_menu = options.inspect_page == "world-save" ? session.save_slot(0)
+                                                                        : session.load_slot(1);
+                }
+                save_inspection_stage = 2;
+            } else if (save_inspection_stage == 2 && !publication->save_message.empty()) {
+                const bool saved = publication->save_slots[0].exists &&
+                                   publication->save_slots[0].metadata.has_value();
+                const bool loading = options.inspect_page == "world-load";
+                const bool expected_message =
+                    options.inspect_page == "world-save" ? publication->save_message == "保存完毕"
+                    : loading                            ? publication->save_message == "读取完毕"
+                              : publication->save_message.rfind("读取失败", 0) == 0;
+                if (!expected_message ||
+                    (loading ? publication->save_menu_open || publication->generation != 2 ||
+                                   publication->state == save_inspection_frozen
+                             : !publication->save_menu_open ||
+                                   (options.inspect_page == "world-save" && !saved) ||
+                                   publication->state != save_inspection_frozen))
+                    throw std::runtime_error(
+                        "Save inspection did not preserve the expected file/overlay result");
+                if (loading) {
+                    const auto &metadata = *load_inspection_metadata;
+                    const auto &date = current.scene.calendar;
+                    if (date.year != metadata.year || date.month != metadata.month ||
+                        date.subperiod != metadata.week || date.units != metadata.units ||
+                        current.scene.world.world.ai.accounting.funds() != metadata.funds ||
+                        !current.scene.framework_paused)
+                        throw std::runtime_error("Cold-load inspection disagrees with saved "
+                                                 "date/funds or explicit pause");
+                    auto before = save_inspection_frozen->scene.random,
+                         after = current.scene.random;
+                    if (before.draws() != after.draws())
+                        throw std::runtime_error(
+                            "Cold-load inspection reset the current random cursor");
+                    for (int sample = 0; sample < 8; ++sample)
+                        if (before.draw(197).ticket != after.draw(197).ticket)
+                            throw std::runtime_error(
+                                "Cold-load inspection replaced the current random stream");
+                }
+                save_inspection_ready = true;
+                std::cout << "World save inspection: target=" << options.inspect_page
+                          << " directory=" << inspection_save_directory.string()
+                          << " saved=" << saved << " generation=" << publication->generation
+                          << " message=" << publication->save_message << '\n';
+            }
+        }
+        if (save_inspection && !save_inspection_ready && (failed || now - started > 30))
+            throw std::runtime_error("Save inspection FIFO did not finish within its bound");
         if (publication->last_command_serial >= pending_view)
             view = {current.camera, current.reference_viewport};
         if (publication->last_command_serial >= pending_pause)
@@ -498,11 +631,13 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         const auto hit = [&](Rectangle rectangle) {
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
-        if (!failed && (hit(layout.left_button) || IsKeyPressed(KEY_SPACE))) {
+        if (!failed && !publication->save_menu_open && !save_menu.pending() &&
+            (hit(layout.left_button) || IsKeyPressed(KEY_SPACE))) {
             desired_pause = !desired_pause;
             pending_pause = session.set_paused(desired_pause);
         }
-        if (!failed && hit(layout.right_button)) {
+        if (!failed && !publication->save_menu_open && !save_menu.pending() &&
+            hit(layout.right_button)) {
             desired_speed = desired_speed == 1 ? 0 : 1;
             pending_speed = session.set_speed(desired_speed);
         }
@@ -516,8 +651,9 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         const auto menu_intent = ui::world_menu_input(
             layout, publication->main_menu_open,
             !active_page(current) && current.scene.scene_state == 0, !desired_pause,
-            failed || pending_menu || pending_task || management.pending(), menu_selection,
-            menu_input);
+            failed || pending_menu || pending_task || management.pending() ||
+                publication->save_menu_open || save_menu.pending(),
+            menu_selection, menu_input);
         if (menu_intent) {
             menu_feedback.clear();
             switch (*menu_intent) {
@@ -533,12 +669,26 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
             case ui::WorldMenuIntent::tasks:
                 pending_menu = session.open_menu_tasks();
                 break;
+            case ui::WorldMenuIntent::system:
+                pending_menu = session.open_save_menu();
+                break;
             }
+        }
+        if (publication->save_menu_open) {
+            WorldSaveMenuInput save_input;
+            save_input.click = click ? mouse : std::nullopt;
+            save_input.up = IsKeyPressed(KEY_UP);
+            save_input.down = IsKeyPressed(KEY_DOWN);
+            save_input.left = IsKeyPressed(KEY_LEFT);
+            save_input.right = IsKeyPressed(KEY_RIGHT);
+            save_input.enter = IsKeyPressed(KEY_ENTER);
+            save_input.escape = IsKeyPressed(KEY_ESCAPE);
+            save_menu.input(*publication, extent, save_input, session);
         }
         // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
         // old scene while the simulation worker completes its previous atomic update.
-        const bool menu_blocked =
-            publication->main_menu_open || pending_menu || management.pending();
+        const bool menu_blocked = publication->main_menu_open || publication->save_menu_open ||
+                                  pending_menu || save_menu.pending() || management.pending();
         if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
             !active_page(current)) {
             if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
@@ -553,7 +703,7 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 view_changed = true;
             }
         }
-        if (view_changed && !failed)
+        if (view_changed && !failed && !publication->save_menu_open && !save_menu.pending())
             pending_view = session.set_view(view.camera, view.viewport);
         if (const auto *page = menu_blocked ? nullptr : active_page(current)) {
             if (viewed_page != page->id) {
@@ -673,11 +823,15 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
                 .count();
         const float alpha = static_cast<float>(
             std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
-        draw_world_scene(current, sprites, zoom, publication->previous.get(), alpha, &view);
-        if (!active_page(current) && !publication->main_menu_open)
+        draw_world_scene(current, sprites, zoom,
+                         publication->revision <= discard_interpolation_revision
+                             ? nullptr
+                             : publication->previous.get(),
+                         alpha, &view);
+        if (!active_page(current) && !publication->main_menu_open && !publication->save_menu_open)
             management.draw_footprint(current, view, extent, mouse, zoom, sprites);
         EndScissorMode();
-        if (!active_page(current) && !publication->main_menu_open)
+        if (!active_page(current) && !publication->main_menu_open && !publication->save_menu_open)
             management.draw_placement(current, view, extent, mouse, zoom, skin,
                                       !desired_pause && !failed);
         ui::draw_world_notices(ui::world_notice_view(current, extent), skin);
@@ -741,9 +895,11 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         }
         if (publication->main_menu_open)
             ui::draw_world_menu(layout, skin, menu_selection,
-                                !desired_pause && !failed && !pending_menu, menu_feedback);
-        else if (!menu_feedback.empty())
+                                !desired_pause && !failed && !pending_menu, menu_feedback,
+                                !failed && !pending_menu);
+        else if (!publication->save_menu_open && !menu_feedback.empty())
             skin.text.draw(menu_feedback, 8, extent.height - 58.F, MAROON);
+        save_menu.draw(*publication, extent, skin);
         EndMode2D();
         text.flush(raster.zoom, raster.offset);
         EndTextureMode();
@@ -757,7 +913,8 @@ void run_world_game(const app::LaunchOptions &options, const std::filesystem::pa
         EndDrawing();
         if (frames > 20)
             render_costs.push_back((GetTime() - now) * 1000);
-        ++frames;
+        if (save_inspection_ready)
+            ++frames;
     }
     session.stop();
     publication = session.frame();

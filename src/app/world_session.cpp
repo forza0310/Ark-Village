@@ -29,7 +29,8 @@ std::string update_error(const simulation::StartupWorldRuntimeResult &result) {
 
 class WorldSession::Impl {
   public:
-    explicit Impl(WorldState initial) {
+    explicit Impl(WorldState initial, std::filesystem::path directory)
+        : save_directory(std::move(directory)) {
         initial.page_confirm_held = false; // A new desktop session has no physical press owner.
         const auto gate = query_original_loop_wait({}, 0);
         if (!gate || gate->minimum_period_ms <= 0)
@@ -55,6 +56,8 @@ class WorldSession::Impl {
         if (stopping || published->failed)
             return 0;
         const auto serial = next_serial++;
+        if (!command.generation)
+            command.generation = published->generation;
         // Only adjacent, still-queued views can supersede one another. A pause, speed or
         // confirmation remains an ordering barrier; the latest serial also acknowledges the
         // superseded view requests when that final view reaches the worker's safe boundary.
@@ -101,6 +104,7 @@ class WorldSession::Impl {
     std::chrono::milliseconds period{};
     std::uint64_t next_serial{1};
     bool stopping{};
+    std::filesystem::path save_directory;
     std::optional<std::uint64_t> held_page; // Worker-only physical input binding, not source state.
 
     static void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
@@ -234,6 +238,32 @@ class WorldSession::Impl {
     // Each command is a separate transaction: earlier successes remain committed if a later
     // command fails. No stale-page retry or replacement confirmation is synthesized here.
     std::shared_ptr<const WorldFrame> apply(const WorldFrame &current, const QueuedCommand &input) {
+        if (input.value.generation != current.generation) {
+            auto next = current;
+            WorldCommandResult result;
+            result.serial = input.serial;
+            result.kind = input.value.kind;
+            result.outcome = WorldCommandOutcome::rejected;
+            result.runtime_error = RuntimeError::invalid_page;
+            next.command_results.push_back(result);
+            if (next.command_results.size() > 64)
+                next.command_results.erase(next.command_results.begin());
+            next.last_command_serial = input.serial;
+            next.previous = next.state;
+            ++next.revision;
+            return publish(std::move(next));
+        }
+        const auto kind = input.value.kind;
+        if (kind == WorldCommandKind::open_save_menu || kind == WorldCommandKind::close_save_menu ||
+            kind == WorldCommandKind::save_slot || kind == WorldCommandKind::load_slot)
+            return apply_save(current, input);
+        if (current.save_menu_open) {
+            auto next = current;
+            next.last_command_serial = input.serial;
+            next.previous = next.state;
+            ++next.revision;
+            return publish(std::move(next));
+        }
         if (detail::is_world_decision(input.value.kind))
             return apply_decision(current, input);
         const auto &command = input.value;
@@ -314,6 +344,107 @@ class WorldSession::Impl {
         ++next.revision;
         return publish(std::move(next));
     }
+    std::shared_ptr<const WorldFrame> apply_save(const WorldFrame &current,
+                                                 const QueuedCommand &input) {
+        auto next = current;
+        next.last_command_serial = input.serial;
+        next.previous = next.state;
+        next.save_message.clear();
+        ++next.revision;
+        const auto kind = input.value.kind;
+        bool applied = false;
+        const auto complete = [&]() {
+            WorldCommandResult result;
+            result.serial = input.serial;
+            result.kind = kind;
+            result.outcome = applied ? WorldCommandOutcome::applied : WorldCommandOutcome::rejected;
+            result.runtime_error = applied ? RuntimeError::none : RuntimeError::invalid_page;
+            next.command_results.push_back(result);
+            if (next.command_results.size() > 64)
+                next.command_results.erase(next.command_results.begin());
+            return publish(std::move(next));
+        };
+        if (kind == WorldCommandKind::close_save_menu) {
+            next.save_menu_open = false;
+            applied = current.save_menu_open;
+            return complete();
+        }
+        std::string reason;
+        if (!world_save_eligible(*current.state, &reason)) {
+            next.save_message = "当前世界尚不能存读档：" + reason;
+            return complete();
+        }
+        try {
+            if (save_directory.empty())
+                save_directory = default_world_save_directory();
+            if (kind == WorldCommandKind::open_save_menu) {
+                next.save_slots = inspect_world_save_slots(save_directory);
+                next.main_menu_open = false;
+                next.save_menu_open = true;
+                held_page.reset();
+                applied = true;
+                return complete();
+            }
+            const int slot = input.value.selection;
+            if (!current.save_menu_open || slot < 0 || slot >= 2) {
+                next.save_message = "无效的存档操作";
+                return complete();
+            }
+            next.save_busy = true;
+            auto busy = next;
+            busy.last_command_serial = current.last_command_serial;
+            publish(std::move(busy)); // Completion is acknowledged only after file I/O finishes.
+            if (kind == WorldCommandKind::save_slot) {
+                auto capture = capture_world_save(*current.state);
+                if (!capture.image)
+                    next.save_message =
+                        std::string("保存失败：") + world_save_error_text(capture.error);
+                else {
+                    const auto result = write_world_save_slot(save_directory, slot, *capture.image);
+                    applied = result.error == WorldSaveError::none;
+                    next.save_message = result.error == WorldSaveError::none
+                                            ? "保存完毕"
+                                            : "保存失败：" + result.message;
+                }
+                next.save_slots = inspect_world_save_slots(save_directory);
+            } else {
+                auto loaded = read_world_save_slot(save_directory, slot);
+                if (!loaded.state)
+                    next.save_message =
+                        std::string("读取失败：") + world_save_error_text(loaded.error);
+                else if (prepare_world_save_candidate(*loaded.state, *current.state, reason) !=
+                         WorldSaveError::none)
+                    next.save_message = "读取失败：存档中的世界数据无效";
+                else {
+                    auto replacement = std::make_shared<const WorldState>(std::move(*loaded.state));
+                    std::string success = "读取完毕";
+                    next.save_message = std::move(success);
+                    // All allocating preparation precedes this candidate commit.
+                    next.state = std::move(replacement);
+                    next.previous = next.state;
+                    ++next.generation;
+                    next.command_results.clear();
+                    held_page.reset();
+                    next.save_menu_open = false;
+                    next.main_menu_open = false;
+                    applied = true;
+                }
+            }
+        } catch (const std::exception &) {
+            if (applied && kind == WorldCommandKind::save_slot)
+                next.save_message = "保存完毕，目录暂无法刷新";
+            else {
+                next.state = current.state;
+                next.previous = current.state;
+                next.generation = current.generation;
+                next.save_message = "存档文件操作失败，当前世界已保留";
+                applied = false;
+            }
+        }
+        next.save_busy = false;
+        ++next.revision;
+        return complete();
+    }
     std::shared_ptr<const WorldFrame> update(const WorldFrame &current, double interval) {
         const auto started = Clock::now();
         auto result = simulation::prepare_startup_world_runtime(*current.state);
@@ -389,7 +520,8 @@ class WorldSession::Impl {
                 const auto interval = std::chrono::duration<double>(now - last_start).count();
                 last_start = now;
                 deadline = now + period; // Adopt actual start; a slow call creates no tick debt.
-                if (!current->main_menu_open && !current->state->scene.framework_paused)
+                if (!current->main_menu_open && !current->save_menu_open &&
+                    !current->state->scene.framework_paused)
                     current = update(*current, interval);
             }
         } catch (const std::exception &error) {
@@ -400,8 +532,8 @@ class WorldSession::Impl {
     }
 };
 
-WorldSession::WorldSession(WorldState initial)
-    : impl_(std::make_unique<Impl>(std::move(initial))) {}
+WorldSession::WorldSession(WorldState initial, std::filesystem::path save_directory)
+    : impl_(std::make_unique<Impl>(std::move(initial), std::move(save_directory))) {}
 WorldSession::~WorldSession() = default;
 std::shared_ptr<const WorldFrame> WorldSession::frame() const { return impl_->frame(); }
 std::uint64_t WorldSession::submit(WorldCommand command) {
@@ -436,6 +568,28 @@ std::uint64_t WorldSession::open_main_menu() {
 std::uint64_t WorldSession::close_main_menu() {
     WorldCommand command;
     command.kind = WorldCommandKind::close_main_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_save_menu() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_save_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::close_save_menu() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::close_save_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::save_slot(int slot) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::save_slot;
+    command.selection = slot;
+    return submit(command);
+}
+std::uint64_t WorldSession::load_slot(int slot) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::load_slot;
+    command.selection = slot;
     return submit(command);
 }
 std::uint64_t WorldSession::open_menu_tasks() {

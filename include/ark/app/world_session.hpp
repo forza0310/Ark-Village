@@ -1,6 +1,7 @@
 #pragma once
 
 // The desktop reads immutable publications; only the worker commits the canonical world.
+#include "ark/app/world_save_files.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
@@ -33,6 +34,10 @@ enum class WorldCommandKind {
     open_task_control_menu,
     open_main_menu,
     close_main_menu,
+    open_save_menu,
+    close_save_menu,
+    save_slot,
+    load_slot,
     open_menu_tasks,
     open_task_menu,
     task_action,
@@ -64,6 +69,11 @@ struct WorldFrame {
     std::uint64_t last_command_serial{};
     // Desktop adaptation only: this gate is not a synthetic source raw3 page or user pause.
     bool main_menu_open{};
+    bool save_menu_open{};
+    bool save_busy{};
+    std::string save_message;
+    std::array<WorldSaveSlotInfo, 2> save_slots;
+    std::uint64_t generation{1};
     bool failed{};
     std::string error;
     std::uint64_t outer_updates{};
@@ -77,6 +87,8 @@ struct WorldFrame {
 };
 
 struct WorldCommand {
+    // Zero binds to the current publication on submission. UI may bind an observed generation.
+    std::uint64_t generation{};
     WorldCommandKind kind{WorldCommandKind::set_paused};
     std::uint64_t page{};
     int report_phase{};
@@ -105,7 +117,7 @@ struct WorldCommand {
 // multiplier. Destruction wakes and joins it; an in-flight atomic update finishes first.
 class WorldSession {
   public:
-    explicit WorldSession(WorldState initial);
+    explicit WorldSession(WorldState initial, std::filesystem::path save_directory = {});
     ~WorldSession();
     WorldSession(const WorldSession &) = delete;
     WorldSession &operator=(const WorldSession &) = delete;
@@ -123,6 +135,10 @@ class WorldSession {
     // Menu visibility is worker-owned metadata; closing never changes explicit pause.
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();
+    std::uint64_t open_save_menu();
+    std::uint64_t close_save_menu();
+    std::uint64_t save_slot(int slot);
+    std::uint64_t load_slot(int slot);
     // Atomically opens the real task source page and closes the desktop menu on success.
     std::uint64_t open_menu_tasks();
     std::uint64_t open_task_menu();

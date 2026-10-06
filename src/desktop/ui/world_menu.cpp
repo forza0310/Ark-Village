@@ -1,5 +1,6 @@
 // PAGES/S001 proves five rows and their artwork. Open/close/freeze is desktop adaptation.
 #include "world_menu.hpp"
+#include "script_text.hpp"
 #include "skin.hpp"
 #include <algorithm>
 
@@ -35,10 +36,12 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
             }
     if (activate && selected < 2 && can_manage)
         return selected == 0 ? WorldMenuIntent::build : WorldMenuIntent::tasks;
+    if (activate && selected == 4)
+        return WorldMenuIntent::system;
     return std::nullopt;
 }
 void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                     const std::string &feedback) {
+                     const std::string &feedback, bool can_system) {
     constexpr const char *names[]{"建设", "冒险", "村办", "情报", "系统"};
     constexpr int icons[]{0, 1, 2, 5, 6};
     for (int i = 0; i < 5; ++i) {
@@ -48,15 +51,25 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
         skin.sprites.draw("wnd_menuIcon.seb", icons[i], {row.x + 4, row.y + 5}, WHITE,
                           Sprites::Binding::common);
         skin.text.draw(names[i], row.x + 26, row.y + 8,
-                       i < 2 && can_manage ? (selected == i ? ink : WHITE)
-                                           : Color{182, 174, 147, 255});
+                       ((i < 2 && can_manage) || (i == 4 && can_system))
+                           ? (selected == i ? ink : WHITE)
+                           : Color{182, 174, 147, 255});
         if (i == selected)
             skin.sprites.draw("finger_r.seb", 0, {row.x + row.width - 1, row.y + 11}, WHITE,
                               Sprites::Binding::common);
     }
     if (!feedback.empty()) {
         const auto &row = layout.menu_rows[4];
-        skin.text.draw(feedback, row.x + 2, row.y + 32, MAROON);
+        const float width = layout.extent.width - 12.F;
+        const auto lines = wrap_plain_text(feedback, width, [&](const auto &value) {
+            return skin.text.width(value) * 11.F / 12.F;
+        });
+        const int visible =
+            std::min(static_cast<int>(lines.size()),
+                     std::max(1, static_cast<int>((layout.extent.height - row.y - 65) / 14)));
+        skin.content({row.x, row.y + 31, width + 4, visible * 14.F + 4});
+        for (int line = 0; line < visible; ++line)
+            skin.text.draw(lines[line], row.x + 2, row.y + 33 + line * 14.F, MAROON, 11);
     }
 }
 } // namespace ark::desktop::ui

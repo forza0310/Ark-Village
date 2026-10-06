@@ -7,7 +7,7 @@
 
 namespace ark::desktop::ui {
 class Skin;
-enum class WorldMenuIntent { open, close, tasks, build };
+enum class WorldMenuIntent { open, close, tasks, build, system };
 struct WorldMenuInput {
     std::optional<Vector2> click;
     bool toggle{}, escape{}, up{}, down{}, enter{};
@@ -18,5 +18,5 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
                                                 bool can_manage, bool pending, int &selected,
                                                 const WorldMenuInput &input);
 void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                     const std::string &feedback = {});
+                     const std::string &feedback = {}, bool can_system = true);
 } // namespace ark::desktop::ui

@@ -60,6 +60,54 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 存取与快照交叉证据（2026-10-07）
+
+来源合同见[存档规格](rules/PERSISTENCE.md)，维护设计见[快照与回放](stages/PERSISTENCE_REPLAY.md)。
+本批为静态研究与有界独立探针，不运行原游戏，不更换APK规则输入，不交付文件codec。
+生成Java、IL2CPP映射和探针只保留在忽略的`work/persistence-replay-analysis/`，不作为维护实现或产品素材。
+
+APK使用既有JADX1.5.6／同一固定输入，单类参数：
+`--config none --decompilation-mode fallback --no-res --log-level warn -j 1 --single-class <类> --single-class-output <文件>`。
+Java堆上限768MB，配置／缓存／临时路径在项目内。25分区读写与九项来源身份见
+[APK索引](work/persistence-replay-analysis/apk/evidence.json)，可用同目录`evidence.cjs`复做。
+
+| 新增低层文件 | 类 | 原始SHA-256 | LF归一化SHA-256 |
+| --- | --- | --- | --- |
+| `apk/Coordinator.java` | d.a | `bda557b86211b0a594fc968663bcda3e763e266bd5478f881a75023143a2c1cb` | `ee26e35483ad14b26938fc378c6d6b41563ff12109aa4e918c9a286609bab1e8` |
+| `apk/Tenant.java` | c.m | `ccd147e5b95b6a28a341e68d5d82ed36c5ae0ad2d70393c7a28c963c15127a18` | `fa39882c6a943413f6a88141af5641b7a899b76ebbde955f969c87920a321596` |
+| `apk/Encounter.java` | c.f | `6d500b0d95fd644ece189ee293119200c2bad0ddfd258188ccd72a54286ec862` | `64db52f28ddc775da690c082db4df18ea9d3bd6db456a089c32659ed1e8c410f` |
+
+Steam输入保持[既有清单](verification/STEAM_ASSESSMENT.md#输入身份与已证事实)：GameAssembly SHA-256
+`9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，metadata
+`80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`；游戏buildID仍未知。
+
+| 工具／输出 | 身份与范围 |
+| --- | --- |
+| Il2CppDumper6.7.46 | 官方`Il2CppDumper-net7-v6.7.46.zip`，SHA-256 `c7f365347ce6bd816cdf774830e44ac46aea59c391c94f388605667394d6aba2` |
+| 宿主与参数 | .NET8.0.24 x64，`--roll-forward Major`运行net7工具；GenerateDummyDll／GenerateStruct／RequireAnyKey均false；样本x86 |
+| 静态注册地址 | ImageBase `0x10000000`；CodeRegistration VA `0x10E13B44`；MetadataRegistration VA `0x10F59638`；37942条非零映射经PE节表独立核对 |
+| iced-x86 1.21.0 | npm发布包`https://registry.npmjs.org/iced-x86/-/iced-x86-1.21.0.tgz`，SHA-256 `88abc8fa5a1aeb0fc0e13b43689410e5e12474cba0392d38b1928636ba56e7e6`；解压调用WASM，无安装脚本 |
+| `exe/analyze.cjs` | SHA-256 `f85475614faf00fc874efa5de416b4f792269a88efc494ec70d35137c84507f1`；映射核对及51个代表方法解码 |
+| `exe/disassembly.json` | SHA-256 `c9a1bf2cfc3845905753b159cd1d338453b146ae6faf4cce34071732a7244b45`；真实字节／指令，非dummy方法体 |
+
+运行前审查了工具Program.cs／PELoader.cs。静态搜索失败会尝试PE加载，但本次x64宿主配x86样本在回退载入前会拒绝位数；
+本次实际静态搜索直接成功，未走加载回退、未执行原DLL。详细日志、地址／文件偏移和方法结论见
+[Steam技术报告](work/persistence-replay-analysis/exe/README.md)。解码按下个方法地址限界且上限64KiB，可能含填充，不是完整CFG／异常恢复。
+
+| 维护策略探针 | 可复查材料及SHA-256 |
+| --- | --- |
+| 容器不透明保留 | `container-probe.cjs`：`261e18ee23e8b5b24b7accc6b5ff1b342d558f31a9b3cae9765dec6a69be179b`；独立手工86字节夹具，非真实游戏档 |
+| 容器夹具输入／改写后 | `f39cbfc686c9a474e66402aa61e7f4b489dd0a3dac16ce41a2269c19c0bb3355`／`1287f320e997629a1bf0594bd76ac78769bc8c7547d78d622dde22a08acf00a2` |
+| C++ Session分叉 | `runtime/replay_probe.cpp`：`ac957e5e0a6d759e5d6d72aefca9f6e226c19b23a7186d12e7deb1ef57cc0114` |
+| 最终运行日志 | `runtime/replay_probe.log`：`f4fcf21e4fe3c3b8ffecff5010eec50d026500d9e3f3aa20c5e4019e85d9bc0f`；18.7482秒，退出0 |
+
+C++探针以`898b6536e71bea6240620d3407e8483030142895`为研究基线，用既有LLVM-MinGW i686，
+`-std=c++17 -O2 -DNDEBUG -Wall -Wextra -Wpedantic -Werror`，链接唯一Release导入库，未另建构建树。
+startup_world DLL SHA-256 `0087687d634615035267e5ac339de2903f75a23462ba4fccaceb2ebb51d5f388`，
+reference DLL SHA-256 `bb0da82464cf1d8cdf0f5a89c90a3b0f02b18982945738631030624a6d6640cf`。
+同进程值复制、已列观测字段及随机未来样本一致，不等于全字段codec或跨进程认证；覆盖与反例见
+[探针报告](work/persistence-replay-analysis/runtime/REPORT.md)。临时可执行文件验后清理，源／日志保留。
+
 ## 共同世界接管与运行证据
 
 2026-10-06 Windows恢复：用户补回`maoxianmigongcun.apk`，SHA-256与本页固定输入完全相同。

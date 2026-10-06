@@ -27,12 +27,14 @@ Windows六套420项标准与四项长测共424次CTest通过，两个有界窗�
 原[村办归档](dungeon_village_1/stages/in-progress/village-activity/README.md)仅保留历史草稿。
 [存档分析](dungeon_village_1/rules/PERSISTENCE.md)独立交付；长期审计历史保留及正常文件存取仍未实现。
 用户已将正常存读档持续可用、可校验中途回放快照及中后期性能采样列为必要后续工作，
-用于减少每批从新局重复长测；具体要求与未实现字段保留边界见存档专题，当前仅登记，尚未实现。
+用于减少每批从新局重复长测；2026-10-07已完成来源补证与有界短探针，形成[具体设计](dungeon_village_1/stages/PERSISTENCE_REPLAY.md)。
+同进程Session分叉可重复，但日历轮内检查点不能直接续帧；文件codec／跨进程恢复尚未实现。
 构建缓存仅复用项目内[研究work目录](dungeon_village_1/work/)，阶段结束收齐进程并清理不再需要的缓存。
 产品编码由另一智能体管理，本目录不代写产品阶段状态。
 
 用户提供的Steam Windows版已完成[独立静态可行性评估](dungeon_village_1/verification/STEAM_ASSESSMENT.md)：
-IL2CPP语义名可读，部分地图／表格／素材字节相同；尚未核对本机方法体、时序或动态行为，不更换固定APK研究输入。
+IL2CPP语义名可读，部分地图／表格／素材字节相同；已验证方法地址映射及存取／随机代表机器码。
+实际随机选型、存储路径、完整时序和动态行为仍待核对，不更换固定APK研究输入。
 
 ## 消费约定
 

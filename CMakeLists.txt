@@ -54,7 +54,15 @@ find_package(Threads REQUIRED)
 add_library(ark_world_queries STATIC src/app/world_facility_queries.cpp)
 target_link_libraries(ark_world_queries PUBLIC ark_world_runtime)
 ark_target(ark_world_queries)
-add_library(ark_world_save STATIC src/app/world_save_codec.cpp src/app/world_save_restore.cpp
+# Keep persistence in the same linkage mode as its canonical runtime, so development
+# executables reuse one persistence DLL alongside the shared runtime.
+get_target_property(ark_runtime_library_type ark_world_runtime TYPE)
+if(ark_runtime_library_type STREQUAL "SHARED_LIBRARY")
+    set(ark_save_library_type SHARED)
+else()
+    set(ark_save_library_type STATIC)
+endif()
+add_library(ark_world_save ${ark_save_library_type} src/app/world_save_codec.cpp src/app/world_save_restore.cpp
     src/app/world_save_files.cpp)
 target_link_libraries(ark_world_save PUBLIC ark_world_runtime)
 ark_target(ark_world_save)

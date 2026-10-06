@@ -347,9 +347,14 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
         static_cast<std::size_t>(s.fence_level) >= rules.fences.size())
         return invalid("Save map dimensions or per-cell fields are invalid");
     const auto &town = s.scene.world.town;
+    // The fence level selects the source town boundary on the fixed map. Accepting an
+    // arbitrary in-map rectangle would restore different routing and construction rules.
+    const auto &bounds = rules.fences[s.fence_level];
     if (!counter(s.scene.world.updates) || town.left >= town.right || town.top >= town.bottom ||
         !in_map(world.map, {town.left, town.top}) ||
         !in_map(world.map, {town.right, town.bottom}) ||
+        town.left != bounds[0].x || town.right != bounds[1].x ||
+        town.top != bounds[1].y || town.bottom != bounds[0].y ||
         s.scene.world.spawn_cells != simulation::startup_evidence().spawn_points)
         return invalid("Save town bounds, spawn cells or world update counter is invalid");
     std::map<int, const simulation::StartupDefinition *> definitions;
@@ -399,7 +404,9 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
                 cell.facility->instance_id.value != id ||
                 cell.facility->definition_id != f.placement.definition_id ||
                 cell.facility->fragment_index != part.fragment_index ||
-                s.surface[index].definition != f.placement.definition_id)
+                !ref::legacy_surface_binding_matches(
+                    cell, s.surface[index].definition,
+                    definitions.at(s.surface[index].definition)->kind, s.ground_definition))
                 return invalid(
                     "Save contains overlapping facilities or inconsistent tile bindings");
         }

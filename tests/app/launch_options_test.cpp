@@ -83,7 +83,8 @@ int main() {
     check(parse_arguments({"--help"}).options->mode == LaunchMode::help);
     for (const auto *page :
          {"world-road-start", "world-road-end", "world-road-built", "world-road-remove",
-          "world-demolished", "world-home-credit", "world-home-rebuilt"}) {
+          "world-demolished", "world-home-credit", "world-home-rebuilt",
+          "world-expansion-catalogue", "world-expansion-start", "world-expansion-completed"}) {
         const auto parsed = parse_arguments({"--inspect-page", page, "--frames", "8"});
         check(parsed.options && parsed.options->world && parsed.options->inspect_page == page);
         check(

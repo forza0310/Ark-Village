@@ -64,12 +64,13 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-gift-result" && page != "world-equipment-change" &&
                 page != "world-tax" && page != "world-tax-collected" && page != "world-village" &&
                 page != "world-village-start" && page != "world-village-results" &&
-                page != "world-reward95" && page != "world-save" && page != "world-load-error" &&
-                page != "world-load" && page != "world-item-gift" &&
-                page != "world-facility-items" && page != "world-facility-item-result" &&
-                page != "world-commerce" && page != "world-commerce-buy" &&
-                page != "world-commerce-receipt" && page != "world-commerce-facilities" &&
-                page != "world-commerce-facility-info" &&
+                page != "world-expansion-catalogue" && page != "world-expansion-start" &&
+                page != "world-expansion-completed" && page != "world-reward95" &&
+                page != "world-save" && page != "world-load-error" && page != "world-load" &&
+                page != "world-item-gift" && page != "world-facility-items" &&
+                page != "world-facility-item-result" && page != "world-commerce" &&
+                page != "world-commerce-buy" && page != "world-commerce-receipt" &&
+                page != "world-commerce-facilities" && page != "world-commerce-facility-info" &&
                 page != "world-commerce-facility-reward" && page != "world-village-menu" &&
                 page != "world-commerce-suite" && page != "world-road-start" &&
                 page != "world-road-end" && page != "world-road-built" &&

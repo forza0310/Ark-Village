@@ -186,11 +186,10 @@ WorldExplorationResult prepare_world_exploration_finish(const WorldScriptCatalog
                                                         const WorldExplorationState &s,
                                                         const DungeonFinishInput &input) {
     // preflight没有推进续体，确保成果页和后续脚本共享合法的框架栈。
-    const auto script_preflight =
-        prepare_world_script_continuations(catalog, script_projection(s), false);
-    if (!script_preflight.candidate)
+    const auto script_preflight = validate_world_script_state(catalog, script_projection(s));
+    if (script_preflight != WorldScriptError::none)
         return failure(WorldExplorationError::script_failed, DungeonFinishError::none,
-                       WorldMapRefreshError::none, script_preflight.error);
+                       WorldMapRefreshError::none, script_preflight);
     if (!valid_summary_refs(s) || !valid_map_owner(s) ||
         s.finish.dungeon.world.ai.task_active != s.finish.active_task.has_value())
         return failure(WorldExplorationError::invalid_input);

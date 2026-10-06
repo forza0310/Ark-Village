@@ -466,6 +466,14 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                       << " activity_started=" << management_inspection.activity_started
                       << " activity_completed=" << management_inspection.activity_completed
                       << " scene_counter=" << state.scene.scene_counter;
+            if (options.inspect_page.rfind("world-expansion-", 0) == 0) {
+                const auto &town = state.scene.world.town;
+                std::cout << " expansion_fixture=1 fence_level="
+                          << management_inspection.expansion_level_before << '/'
+                          << state.fence_level << " town=" << town.left << ',' << town.right << ','
+                          << town.top << ',' << town.bottom
+                          << " map_cells=" << state.scene.world.world.map.cells.size();
+            }
             if (options.inspect_page.rfind("world-road-", 0) == 0 ||
                 options.inspect_page == "world-demolished")
                 std::cout << " edit_cells=" << management_inspection.edit_cells

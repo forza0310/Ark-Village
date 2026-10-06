@@ -135,7 +135,7 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                     next = std::move(*consumed);
                     return adapter.read_routes(next);
                 };
-            const auto r = prepare_world_actor_decision(routes, *i);
+            auto r = prepare_world_actor_decision(routes, *i);
             if (!r.candidate)
                 return {};
             routes = r.candidate->state;
@@ -143,7 +143,8 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                           : r.candidate->delete_requested
                               ? WorldScheduleDisposition::remove_requested
                               : WorldScheduleDisposition::keep;
-            output.decisions.push_back(*r.candidate);
+            // 工作投影保留上方那次复制；原时点完整candidate移入独立审计后不再读取。
+            output.decisions.push_back(std::move(*r.candidate));
         } else if (call.stage == WorldScheduleStage::control) {
             const WorldActorCommandProvider command =
                 [&](const WorldActorRoutesState &r, CharacterId id,
@@ -160,13 +161,13 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                     input->presentation = present;
                 return input;
             };
-            const auto r = prepare_world_actor_control(routes, actor, command);
+            auto r = prepare_world_actor_control(routes, actor, command);
             if (!r.candidate)
                 return {};
             routes = r.candidate->state;
             if (r.candidate->flow == WorldControlFlow::delete_requested)
                 disposition = WorldScheduleDisposition::remove_requested;
-            output.controls.push_back(*r.candidate);
+            output.controls.push_back(std::move(*r.candidate));
         } else {
             if (!adapter.primary_expression_table || !routes.world.ai.contexts.count(actor))
                 return {};

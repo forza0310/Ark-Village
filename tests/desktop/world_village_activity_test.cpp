@@ -94,15 +94,25 @@ void world_village_activity() {
     view = ui::world_village_activity_view(state, page);
     input = {};
     input.enter = true;
-    check(view.rows[3].definition == 25 && view.rows[3].points == 100 && !view.rows[3].supported &&
-              !view.status.empty() && !view.can_confirm &&
-              !ui::world_village_activity_input(view, layout, input, false),
-          "Unsupported expansion stays visible with true quote but cannot submit missing-source "
-          "work");
+    check(view.rows[3].definition == 25 && view.rows[3].points == 100 && view.rows[3].supported &&
+              view.status.empty() && view.can_confirm &&
+              ui::world_village_activity_input(view, layout, input, false)->action ==
+                  Action::confirm,
+          "Published expansion keeps its source quote and uses the same confirmation transport");
+    for (const int unsupported : {27, 28, 30}) {
+        state.activity_page_lists.at(page.id)[3] = unsupported;
+        view = ui::world_village_activity_view(state, page);
+        check(view.rows[3].definition == unsupported && view.rows[3].points == 100 &&
+                  !view.rows[3].supported && !view.status.empty() && !view.can_confirm &&
+                  !ui::world_village_activity_input(view, layout, input, false),
+              "Unpublished type4/5/6 stay visible with true quote and cannot submit missing-source "
+              "work");
+    }
     input = {};
     input.escape = true;
     check(ui::world_village_activity_input(view, layout, input, false)->action == Action::cancel,
           "Unsupported selection still allows returning from catalogue");
+    state.activity_page_lists.at(page.id)[3] = 25;
     state.activity_page_selections[page.id] = 0;
     state.quarter_counter = state.village_points = 0;
     view = ui::world_village_activity_view(state, page);
@@ -146,21 +156,24 @@ void world_village_activity() {
 
     auto animation = initial_world();
     const auto animated_page = attach(animation, 53, 909);
-    animation.activity_page_bindings[animated_page.id] = 4;
-    for (const int counter : {0, 40, 69, 70, 119, 120, 121}) {
-        animation.page_counters[animated_page.id] = counter;
-        view = ui::world_village_activity_view(animation, animated_page);
-        input = {};
-        input.enter = true;
-        const auto confirm = ui::world_village_activity_input(view, layout, input, false);
-        check(view.initialized && view.counter == counter && view.can_confirm == (counter >= 120) &&
-                  static_cast<bool>(confirm) == (counter >= 120),
-              "Activity animation confirmation only opens at source counter120 without early "
-              "fast-forward");
-        input = {};
-        input.escape = input.up = true;
-        check(!view.can_cancel && !ui::world_village_activity_input(view, layout, input, false),
-              "Animation has no cancel/navigation action that could skip committed start");
+    for (const int activity : {4, 25}) {
+        animation.activity_page_bindings[animated_page.id] = activity;
+        for (const int counter : {0, 40, 69, 70, 119, 120, 121}) {
+            animation.page_counters[animated_page.id] = counter;
+            view = ui::world_village_activity_view(animation, animated_page);
+            input = {};
+            input.enter = true;
+            const auto confirm = ui::world_village_activity_input(view, layout, input, false);
+            check(view.initialized && view.counter == counter &&
+                      view.can_confirm == (counter >= 120) &&
+                      static_cast<bool>(confirm) == (counter >= 120),
+                  "Activity animation confirmation only opens at source counter120 without early "
+                  "fast-forward");
+            input = {};
+            input.escape = input.up = true;
+            check(!view.can_cancel && !ui::world_village_activity_input(view, layout, input, false),
+                  "Animation has no cancel/navigation action that could skip committed start");
+        }
     }
 
     auto result = initial_world();

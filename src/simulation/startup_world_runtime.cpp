@@ -1061,13 +1061,14 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                                                    ref::WorldScheduleError::none,
                                                    {}};
     }
-    auto a = startup_world_runtime_adapter();
+    // 固定原表和回调只读共享；Owner、随机及下方检查点收集器仍属于本次调用。
+    // 公开adapter工厂仍返回独立值，诊断／测试对其修改不会污染这个缓存。
+    static const auto a = startup_world_runtime_adapter();
     std::vector<std::shared_ptr<const State>> checkpoints;
-    const auto other = a.calendar_other;
-    a.calendar_other = [&](const State &current,
-                           ref::WorldCalendarStage stage) -> std::optional<State> {
+    const ref::WorldRuntimeCalendarConsumer<State> calendar_other =
+        [&](const State &current, ref::WorldCalendarStage stage) -> std::optional<State> {
         if (stage != ref::WorldCalendarStage::checkpoint_before_normalize)
-            return other ? other(current, stage) : std::nullopt;
+            return a.calendar_other ? a.calendar_other(current, stage) : std::nullopt;
         auto next = current;
         next.save_marker = 1;
         // 研究策略：原时点保留完整不可变Owner，不执行原APK文件序列化/存取。
@@ -1077,9 +1078,11 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         next.scripts.executing_page = executing_page;
         return next;
     };
-    auto result = ref::prepare_owned_world_runtime(admitted, {s.calendar_advance, true}, a);
+    auto result = ref::prepare_owned_world_runtime_with_calendar(
+        admitted, {s.calendar_advance, true}, a, calendar_other);
     if (!result.state)
         return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {}};
+    // 局部运行结果的Owner最后一次移交；scene审计仍完整，继续读取其实际轮数。
     auto next = std::move(*result.state);
     next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。
     next.simulation_steps += result.scene ? result.scene->begun_rounds : 0;
@@ -1095,6 +1098,7 @@ StartupWorldRuntimeResult StartupWorldRuntimeSession::update() {
                     ref::WorldSceneError::missing_consumer,
                     ref::WorldScheduleError::none,
                     {}};
+        // update()向调用者返回完整独立candidate；这里必须复制，不能返回被移动空的成功快照。
         state_ = *result.candidate;
         checkpoints_.insert(checkpoints_.end(), result.checkpoints.begin(),
                             result.checkpoints.end());

@@ -84,6 +84,38 @@ bool same_cell(const ActivityCandidateCell &left, const ActivityCandidateCell &r
                               left.instance->legacy_phase == right.instance->legacy_phase);
 }
 
+void retained_instance_surface() {
+    // 调用点夹具：铺/撤道路已经完成，保留的x仍指向原设施；不模拟玩家建设前置。
+    for (const int state : {3, 4}) {
+        auto map = terrain(3, 3);
+        map.cells[4] = {state, state == 3 ? RouteCategory::road : RouteCategory::ground,
+                        FacilityTileBinding{{1}, 10, 0}};
+        const auto field = search(map, {0, 0});
+        auto input = metadata(field, 4);
+        input.definitions[0].legacy_kind = 7;
+        input.definitions[1].legacy_kind = 1;
+        input.definitions.push_back({20, 0, 0, 6});
+        input.ground_definition = 0;
+        input.cell_definition_ids[4] = state == 3 ? 20 : 0;
+        check(collect(field, input).cells.empty(),
+              "covered instance is absent from ordinary state-filtered facility candidates");
+        input.legacy_activity = 7;
+        const auto result = collect(field, input);
+        check(result.cells.size() == 1 && valid_activity_candidate_snapshot(result),
+              "town scan retains the reachable mixed cell and a valid explicit snapshot");
+        const auto &entry = result.cells.front();
+        check(entry.definition.definition_id == (state == 3 ? 20 : 0) && entry.instance &&
+                  entry.instance->instance_id == BuildingId{1} &&
+                  entry.instance->definition_id == 10 && entry.instance_definition &&
+                  entry.instance_definition->definition_id == 10 &&
+                  entry.instance_definition->legacy_category == 4 &&
+                  result.category_counts[0] == 1 && result.category_counts[4] == 0,
+              "dk counts current surface while dl retains the original instance definition");
+        check(map.cells[4].facility->definition_id == 10 && input.instances[0].legacy_phase == 1,
+              "collection does not rewrite source binding or live instance phase");
+    }
+}
+
 void ordinary_truth_table() {
     for (int state = 0; state <= 12; ++state) {
         for (int phase = 0; phase <= 3; ++phase) {
@@ -638,6 +670,7 @@ void random_collection_oracle() {
 } // namespace
 
 int main() {
+    retained_instance_surface();
     ordinary_truth_table();
     town_and_special_activities();
     events_counts_and_tickets();

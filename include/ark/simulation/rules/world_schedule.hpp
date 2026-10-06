@@ -140,6 +140,7 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
     if (!result.candidate)
         return {result.error, {}, {}};
     adapter.write(scratch) = result.candidate->state;
+    // 最后写回已完成；移动完整审计，既不清内容也不改变它记录的时点。
     return {WorldScheduleError::none, std::move(scratch), std::move(result.candidate)};
 }
 } // namespace ark::simulation::rules

@@ -25,7 +25,8 @@ bool add_checked(std::int64_t &value, std::int64_t delta) {
 NeighbourhoodResult
 derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definitions,
                               const std::vector<FacilityPlacement> &placements,
-                              const std::vector<Position> &roads, int width, int height) {
+                              const std::vector<Position> &roads, int width, int height,
+                              const std::vector<NeighbourRoadBinding> &road_bindings) {
     if (validate_facility_layout(placements, width, height) != GeometryError::none) {
         return {NeighbourhoodError::invalid_layout, {}};
     }
@@ -58,6 +59,7 @@ derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definition
                static_cast<std::size_t>(position.x);
     };
     std::vector<std::optional<std::size_t>> owners(capacity);
+    std::vector<int> fragments(capacity, -1);
     std::vector<FacilityNeighbourhood> result;
     std::vector<std::vector<Position>> surroundings;
     for (std::size_t index = 0; index < placements.size(); ++index) {
@@ -66,14 +68,30 @@ derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definition
                                                   placement.anchor, width, height);
         for (const auto &cell : footprint.cells) {
             owners[tile_index(cell.position)] = index;
+            fragments[tile_index(cell.position)] = cell.fragment_index;
         }
         result.push_back({placement.instance_id, placement.definition_id, {}, {}, 0});
         surroundings.push_back(facility_surroundings(placement.shape, placement.orientation,
                                                      placement.anchor, width, height)
                                    .cells);
     }
-    if (roads.size() > capacity) {
+    if (roads.size() > capacity || road_bindings.size() > roads.size()) {
         return {NeighbourhoodError::invalid_roads, {}};
+    }
+    std::vector<bool> bound_roads(capacity);
+    for (const auto &binding : road_bindings) {
+        const auto p = binding.position;
+        if (p.x < 0 || p.y < 0 || p.x >= width || p.y >= height)
+            return {NeighbourhoodError::invalid_roads, {}};
+        const auto index = tile_index(p);
+        if (bound_roads[index] || !owners[index])
+            return {NeighbourhoodError::invalid_roads, {}};
+        const auto &owner = placements[*owners[index]];
+        if (!(owner.instance_id == binding.instance_id) ||
+            owner.definition_id != binding.definition_id ||
+            fragments[index] != binding.fragment_index)
+            return {NeighbourhoodError::invalid_roads, {}};
+        bound_roads[index] = true;
     }
     std::vector<bool> road_cells(capacity);
     for (const auto road : roads) {
@@ -81,11 +99,14 @@ derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definition
             return {NeighbourhoodError::invalid_roads, {}};
         }
         const auto index = tile_index(road);
-        if (road_cells[index] || owners[index].has_value()) {
+        if (road_cells[index] || (owners[index].has_value() && !bound_roads[index])) {
             return {NeighbourhoodError::invalid_roads, {}};
         }
         road_cells[index] = true;
     }
+    for (const auto &binding : road_bindings)
+        if (!road_cells[tile_index(binding.position)])
+            return {NeighbourhoodError::invalid_roads, {}};
     for (std::size_t source = 0; source < placements.size(); ++source) {
         const auto &definition = *bound_definitions[source];
         if (definition.legacy_kind != 2 && definition.legacy_kind != 3) {
@@ -124,6 +145,13 @@ derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definition
         }
     }
     return {NeighbourhoodError::none, std::move(result)};
+}
+
+NeighbourhoodResult
+derive_facility_neighbourhood(const std::vector<NeighbourDefinition> &definitions,
+                              const std::vector<FacilityPlacement> &placements,
+                              const std::vector<Position> &roads, int width, int height) {
+    return derive_facility_neighbourhood(definitions, placements, roads, width, height, {});
 }
 
 std::optional<FacilityEconomyInput>

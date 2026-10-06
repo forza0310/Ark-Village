@@ -12,15 +12,15 @@ namespace ark::test::world_session {
 namespace {
 using Action = sim::StartupVillageActivityAction;
 using Outcome = app::WorldCommandOutcome;
-app::WorldState village_fixture() {
+app::WorldState village_fixture(int unsupported = 28) {
     auto state = initial();
-    // Explicit management callsite fixture: published activity16 costs40 points, while25
+    // Explicit management callsite fixture: published activity16 costs40 points, while28
     // has an unsupported activity consumer. This is not a natural unlock/window claim.
     state.scripts.event_calls[100] = 1;
     for (auto &entry : state.scripts.activities)
         entry.second.status = 0;
     state.scripts.activities.at(16).status = 1;
-    state.scripts.activities.at(25).status = 1;
+    state.scripts.activities.at(unsupported).status = 1;
     state.village_points = 100;
     state.quarter_counter = 3;
     return state;
@@ -456,7 +456,7 @@ void village_command_transactions() {
               sim::initialize_startup_world_village_activity_pages(state),
           "Management transport fixture uses the real source page initializer");
     const auto page = task_top(state).id;
-    check(state.activity_page_lists.at(page) == std::vector<int>{16, 25},
+    check(state.activity_page_lists.at(page) == std::vector<int>{16, 28},
           "Published source identities provide supported and unsupported directory entries");
     state.scene.framework_paused = true;
     app::WorldSession session(state);
@@ -498,6 +498,117 @@ void village_command_transactions() {
                   state.scene.world.world.ai.accounting.funds(),
           "52 start pays points once; stale input cannot repay or consume53's later effects");
     session.stop();
+
+    for (const int unsupported : {27, 30}) {
+        auto unsupported_state = village_fixture(unsupported);
+        check(sim::open_startup_world_village_activities(unsupported_state) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_village_activity_pages(unsupported_state),
+              "Unsupported transport case uses initialized real51");
+        const auto unsupported_page = task_top(unsupported_state).id;
+        if (unsupported == 27) {
+            check(unsupported_state.activity_page_lists.at(unsupported_page) ==
+                      std::vector<int>{16},
+                  "Published catalogue excludes festival27 despite its eligible status");
+            // Explicit stale-callsite payload: the original catalogue never lists27. Retain
+            // its real definition only to prove the FIFO guard rejects unavailable type4.
+            unsupported_state.activity_page_lists.at(unsupported_page).push_back(27);
+        }
+        app::WorldSession blocked_session(unsupported_state);
+        blocked_session.act_village_activity(unsupported_page, Action::select, 1);
+        const auto refusal =
+            blocked_session.act_village_activity(unsupported_page, Action::confirm);
+        const auto frozen = input_frame(blocked_session, blocked_session.set_paused(true));
+        check(
+            !frozen->failed && input_result(*frozen, refusal).outcome == Outcome::rejected &&
+                task_top(*frozen->state).id == unsupported_page &&
+                frozen->state->village_points == unsupported_state.village_points &&
+                frozen->state->quarter_counter == unsupported_state.quarter_counter &&
+                frozen->state->scene.random.draws() == unsupported_state.scene.random.draws(),
+            "Unavailable type4/6 remain recoverable FIFO refusals without a child page or payment");
+        blocked_session.stop();
+    }
+
+    for (const int counter : {119, 120}) {
+        auto expansion = village_fixture();
+        expansion.scripts.activities.at(16).status = 0;
+        expansion.scripts.activities.at(28).status = 0;
+        expansion.scripts.activities.at(25).status = 1;
+        check(sim::open_startup_world_village_activities(expansion) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_village_activity_pages(expansion),
+              "Expansion callsite fixture prepares actual25 eligibility, not a natural unlock");
+        auto expansion_page = task_top(expansion).id;
+        app::WorldSession previewing(expansion);
+        const auto preview_command =
+            previewing.act_village_activity(expansion_page, Action::confirm);
+        const auto previewed = input_frame(previewing, previewing.set_paused(true));
+        check(!previewed->failed &&
+                  input_result(*previewed, preview_command).outcome == Outcome::applied &&
+                  task_top(*previewed->state).legacy_page == 52 &&
+                  previewed->state->village_points == 100 && previewed->state->fence_level == 0,
+              "Type3 passes FIFO51 capability gate into52 without payment or map changes");
+        expansion = *previewed->state;
+        previewing.stop();
+        expansion.scene.framework_paused = false;
+        check(sim::initialize_startup_world_village_activity_pages(expansion),
+              "Framework initializer prepares real52 after FIFO preview");
+        expansion_page = task_top(expansion).id;
+        check(sim::act_startup_world_village_activity_page(expansion, expansion_page,
+                                                           Action::confirm) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_village_activity_pages(expansion),
+              "Expansion real52 pays its original cost and creates53");
+        expansion_page = task_top(expansion).id;
+        // Explicit presentation-boundary fixture: effects still pass through the real FIFO53.
+        expansion.page_counters.at(expansion_page) = counter;
+        check(expansion.village_points == 0 && expansion.quarter_counter == 3 &&
+                  expansion.events_held == 1 && expansion.activity_counts.at(25) == 1 &&
+                  expansion.fence_level == 0,
+              "Paid expansion53 retains original boundary and later quarter effect");
+        if (counter == 120) {
+            auto broken = expansion;
+            // Published late-failure fixture exhausts IDs only after partial candidate rebuilding.
+            broken.next_facility_identity = std::numeric_limits<std::uint64_t>::max() - 3;
+            app::WorldSession failing(broken);
+            const auto refusal = failing.act_village_activity(expansion_page, Action::confirm);
+            const auto rejected = input_frame(failing, refusal);
+            check(rejected->failed &&
+                      input_result(*rejected, refusal).outcome == Outcome::rejected &&
+                      rejected->state->fence_level == broken.fence_level &&
+                      rejected->state->quarter_counter == broken.quarter_counter &&
+                      rejected->state->scene.world.facility_order ==
+                          broken.scene.world.facility_order &&
+                      rejected->state->facility_original_ids == broken.facility_original_ids &&
+                      rejected->state->next_facility_identity == broken.next_facility_identity,
+                  "Late expansion failure publishes no partial quarter/map/identity commit");
+            same_world(broken, *rejected->state);
+            failing.stop();
+        }
+        app::WorldSession expanding(expansion);
+        const auto complete = expanding.act_village_activity(expansion_page, Action::confirm);
+        const auto duplicate =
+            counter == 120 ? expanding.act_village_activity(expansion_page, Action::confirm) : 0;
+        const auto completed = input_frame(expanding, expanding.set_paused(true));
+        check(
+            !completed->failed && input_result(*completed, complete).outcome == Outcome::applied &&
+                completed->state->fence_level == (counter == 120 ? 1 : 0) &&
+                completed->state->quarter_counter == (counter == 120 ? 2 : 3) &&
+                completed->state->village_points == 0 && completed->state->events_held == 1 &&
+                completed->state->activity_counts.at(25) == 1 &&
+                completed->state->scene.random.draws() == expansion.scene.random.draws() &&
+                completed->state->scene.world.world.ai.accounting.funds() ==
+                    expansion.scene.world.world.ai.accounting.funds() &&
+                completed->state->scene.world.world.map.cells.size() == 576,
+            "FIFO53 keeps early confirmation inert and completes120 exactly once without cash/RNG");
+        check(
+            std::none_of(completed->state->scripts.pages.begin(),
+                         completed->state->scripts.pages.end(),
+                         [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 54; }) &&
+                (!duplicate || input_result(*completed, duplicate).outcome == Outcome::rejected),
+            "Expansion never inserts human-result54 and its retired53 rejects stale confirmations");
+        expanding.stop();
+    }
 }
 void commerce_command_transactions() {
     using A = sim::StartupCommerceAction;

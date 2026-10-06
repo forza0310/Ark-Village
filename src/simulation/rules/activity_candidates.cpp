@@ -15,7 +15,8 @@ constexpr std::size_t kInputLimit = 1000000;
 
 bool valid_definition(const CandidateDefinition &definition) {
     return definition.definition_id >= 0 && definition.legacy_category >= 0 &&
-           definition.legacy_category < 11 && definition.definition_charm >= 0;
+           definition.legacy_category < 11 && definition.definition_charm >= 0 &&
+           definition.legacy_kind >= -1 && definition.legacy_kind <= 13;
 }
 
 bool ordinary_state(int state) {
@@ -36,15 +37,22 @@ void count_categories(ActivityCandidateSnapshot &snapshot) {
 }
 
 bool valid_snapshot(const ActivityCandidateSnapshot &snapshot) {
-    if (snapshot.cells.size() > kCandidateLimit) {
+    if (snapshot.cells.size() > kCandidateLimit || snapshot.ground_definition < -1) {
         return false;
     }
-    using CoordinateValue =
-        std::tuple<std::int32_t, std::optional<std::int64_t>, std::uint64_t, std::int32_t>;
+    using CoordinateValue = std::tuple<std::int32_t, std::optional<std::int64_t>, std::uint64_t,
+                                       std::int32_t, int, RouteCategory>;
     std::map<std::pair<int, int>, CoordinateValue> positions;
-    std::map<std::int32_t, std::pair<std::int32_t, std::int64_t>> definitions;
+    std::map<std::int32_t, std::tuple<std::int32_t, std::int64_t, int>> definitions;
     std::map<BuildingId, std::pair<std::int32_t, std::int32_t>> instances;
     std::array<std::int64_t, 11> counts{};
+    const auto remember_definition = [&](const CandidateDefinition &d) {
+        if (!valid_definition(d))
+            return false;
+        const auto value = std::make_tuple(d.legacy_category, d.definition_charm, d.legacy_kind);
+        const auto stored = definitions.emplace(d.definition_id, value);
+        return stored.second || stored.first->second == value;
+    };
     for (std::size_t index = 0; index < snapshot.cells.size(); ++index) {
         const auto &cell = snapshot.cells[index];
         if (cell.position.x < 0 || cell.position.y < 0 || !valid_definition(cell.definition) ||
@@ -54,19 +62,23 @@ bool valid_snapshot(const ActivityCandidateSnapshot &snapshot) {
             return false;
         }
         const auto &definition = cell.definition;
-        const auto definition_value =
-            std::make_pair(definition.legacy_category, definition.definition_charm);
-        const auto stored_definition =
-            definitions.emplace(definition.definition_id, definition_value);
-        if (!stored_definition.second && stored_definition.first->second != definition_value) {
+        if (!remember_definition(definition)) {
             return false;
         }
         std::uint64_t instance_id = 0;
         std::int32_t phase = 0;
         if (cell.instance) {
             const auto &instance = *cell.instance;
+            const auto &instance_definition = candidate_instance_definition(cell);
+            const LegacyMapCell tile{
+                cell.legacy_state, cell.route_category,
+                FacilityTileBinding{instance.instance_id, instance.definition_id, 0}};
             if (instance.instance_id.value == 0 || instance.legacy_phase < 0 ||
-                instance.definition_id != definition.definition_id) {
+                instance.definition_id != instance_definition.definition_id ||
+                !remember_definition(instance_definition) ||
+                !legacy_surface_binding_matches(tile, definition.definition_id,
+                                                definition.legacy_kind,
+                                                snapshot.ground_definition)) {
                 return false;
             }
             const auto value = std::make_pair(instance.definition_id, instance.legacy_phase);
@@ -76,8 +88,12 @@ bool valid_snapshot(const ActivityCandidateSnapshot &snapshot) {
             }
             instance_id = instance.instance_id.value;
             phase = instance.legacy_phase;
+        } else if (cell.instance_definition) {
+            return false;
         }
-        const CoordinateValue value{definition.definition_id, cell.cost, instance_id, phase};
+        const CoordinateValue value{
+            definition.definition_id, cell.cost,          instance_id, phase,
+            cell.legacy_state,        cell.route_category};
         const auto stored =
             positions.emplace(std::make_pair(cell.position.x, cell.position.y), value);
         if (!stored.second && stored.first->second != value) {
@@ -112,7 +128,8 @@ ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &f
         input.cell_definition_ids.size() != map.cells.size() ||
         input.definitions.size() > kInputLimit || input.instances.size() > kInputLimit ||
         input.events.size() > kInputLimit ||
-        (input.last_visited_instance && input.last_visited_instance->value == 0)) {
+        (input.last_visited_instance && input.last_visited_instance->value == 0) ||
+        input.ground_definition < -1) {
         return {ActivityCandidateError::invalid_input, std::nullopt};
     }
     std::map<std::int32_t, CandidateDefinition> definitions;
@@ -122,6 +139,9 @@ ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &f
             return {ActivityCandidateError::invalid_input, std::nullopt};
         }
     }
+    if (input.ground_definition >= 0 && (!definitions.count(input.ground_definition) ||
+                                         definitions.at(input.ground_definition).legacy_kind != 7))
+        return {ActivityCandidateError::invalid_input, std::nullopt};
     std::map<BuildingId, CandidateInstance> instances;
     for (const auto &instance : input.instances) {
         if (instance.instance_id.value == 0 || instance.legacy_phase < 0 ||
@@ -136,8 +156,10 @@ ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &f
         }
         if (const auto &binding = map.cells[index].facility) {
             const auto found = instances.find(binding->instance_id);
+            const auto &surface = definitions.at(input.cell_definition_ids[index]);
             if (found == instances.end() || found->second.definition_id != binding->definition_id ||
-                binding->definition_id != input.cell_definition_ids[index]) {
+                !legacy_surface_binding_matches(map.cells[index], surface.definition_id,
+                                                surface.legacy_kind, input.ground_definition)) {
                 return {ActivityCandidateError::binding_mismatch, std::nullopt};
             }
         }
@@ -156,6 +178,7 @@ ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &f
     const bool exterior = input.legacy_activity == 6 || input.legacy_activity == 8;
     const bool interior = input.legacy_activity == 7;
     ActivityCandidateSnapshot snapshot;
+    snapshot.ground_definition = input.ground_definition;
     const auto append = [&](std::size_t index, CandidateOrigin origin, std::size_t source) {
         const auto &binding = map.cells[index].facility;
         std::optional<CandidateInstance> instance;
@@ -169,7 +192,11 @@ ActivityCandidateResult collect_activity_candidates(const LegacyDistanceField &f
              instance,
              field.distances[index],
              origin,
-             source});
+             source,
+             binding ? std::optional<CandidateDefinition>{definitions.at(binding->definition_id)}
+                     : std::nullopt,
+             map.cells[index].legacy_state,
+             map.cells[index].category});
     };
     for (std::size_t index = 0; index < map.cells.size(); ++index) {
         if (!field.distances[index]) {

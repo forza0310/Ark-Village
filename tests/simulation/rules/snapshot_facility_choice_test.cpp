@@ -50,6 +50,47 @@ SnapshotFacilityTarget choose(const ActivityCandidateSnapshot &input, int catego
     return *result.target;
 }
 
+void retained_instance_weights() {
+    auto mixed = cell(0, 1, 20, 2, 1000, 1);
+    mixed.definition.legacy_kind = 6;
+    mixed.instance->definition_id = 10;
+    mixed.instance_definition = CandidateDefinition{10, 1, 2, 1};
+    mixed.legacy_state = 3;
+    mixed.route_category = RouteCategory::road;
+    auto input = snapshot({mixed, cell(1, 2, 30, 1, 3, 2)});
+    check(valid_activity_candidate_snapshot(input) && input.category_counts[1] == 1 &&
+              input.category_counts[2] == 1,
+          "mixed surface count does not replace the retained instance's category");
+    for (const auto ticket : {0, 1, 2, 4}) {
+        const auto selected = choose(input, 1, ticket);
+        check(selected.goal.instance->instance_id == BuildingId{ticket < 2 ? 1U : 2U},
+              "two tickets belong to old instance charm2 and three to ordinary charm3");
+    }
+    const auto end = select_snapshot_facility(input, 1, 5);
+    check(end.error == SnapshotFacilityError::invalid_ticket && !end.target,
+          "mixed selection uses old instance total5, never road surface charm1000");
+    const auto other = select_snapshot_facility(input, 2, 0);
+    check(other.error == SnapshotFacilityError::no_weight && !other.target,
+          "surface category count alone does not invent an active instance of that category");
+    for (int mutation = 0; mutation < 4; ++mutation) {
+        auto bad = input;
+        auto &entry = bad.cells.front();
+        if (mutation == 0)
+            entry.instance_definition.reset();
+        else if (mutation == 1)
+            entry.instance_definition->definition_id = 99;
+        else if (mutation == 2)
+            entry.legacy_state = 1;
+        else
+            entry.route_category = RouteCategory::terminal;
+        check(!valid_activity_candidate_snapshot(bad) &&
+                  select_snapshot_facility(bad, 1, 0).error ==
+                      SnapshotFacilityError::invalid_snapshot,
+              "mixed snapshot still rejects missing identity, mismatched definition and illegal "
+              "surface");
+    }
+}
+
 void three_index_spaces_and_duplicates() {
     auto input =
         snapshot({cell(0, 0, 0, 1, 1000, 0), cell(1, 9, 90, 1, 1000, 1, 2),
@@ -325,6 +366,7 @@ void compatible_ranked_subset() {
 } // namespace
 
 int main() {
+    retained_instance_weights();
     three_index_spaces_and_duplicates();
     refusals_and_limits();
     map_plan_path_composition();

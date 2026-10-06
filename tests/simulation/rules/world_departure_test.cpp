@@ -559,6 +559,49 @@ RescueWorldState inn_journey() {
         throw std::runtime_error("real inn departure fixture failed");
     return d.candidate->state;
 }
+void retained_instance_destination() {
+    for (const int state : {3, 4}) {
+        auto s = fixture();
+        s.human_spending[1] = 0;
+        s.facilities.at(22).price = 17;
+        // 已由围栏/铺撤路形成的混合调用点；此处只验新的出发和真实P到达消费者。
+        s.map.cells[18].legacy_state = state;
+        s.map.cells[18].category = state == 3 ? RouteCategory::road : RouteCategory::ground;
+        auto i = input(s, 5);
+        i.catalogue.definitions[0].legacy_kind = 7;
+        i.catalogue.definitions.push_back({1000, 0, 0, 6});
+        i.catalogue.ground_definition = 0;
+        i.catalogue.cell_definition_ids[18] = state == 3 ? 1000 : 0;
+        i.home = WorldDepartureHome{{2, 2}, 1};
+        i.tickets = {89};
+        const auto departure = prepare_world_departure(s, i);
+        check(departure.candidate && departure.candidate->succeeded &&
+                  departure.candidate->goal == Position{2, 2} &&
+                  departure.candidate->consumed_tickets == 1,
+              "home preference may target retained x even when ordinary candidate scan skips "
+              "surface3/4");
+        const auto &ctx = departure.candidate->state.actors.at({1});
+        check(ctx.binding && ctx.binding->instance_id == BuildingId{22} &&
+                  ctx.binding->definition_id == 22 && ctx.journey &&
+                  ctx.journey->selection.goal.definition.definition_id == (state == 3 ? 1000 : 0) &&
+                  ctx.journey->selection.goal.instance_definition &&
+                  ctx.journey->selection.goal.instance_definition->definition_id == 22,
+              "direct target outside ordinary snapshot keeps current surface separate from O "
+              "instance identity");
+        auto arriving = departure.candidate->state;
+        arriving.ai.contexts.at({1}).cell = {2, 2}; // 原d投影已到达的调用点。
+        const auto arrival = prepare_world_path_c(arriving, path_input(arriving));
+        check(arrival.candidate && arrival.candidate->arrived &&
+                  arrival.candidate->state.actors.at({1}).binding->instance_id == BuildingId{22} &&
+                  arrival.candidate->state.facilities.at(22).sales == 17 &&
+                  arrival.candidate->state.human_spending.at(1) == 17 &&
+                  arrival.candidate->state.map.cells[18].legacy_state == state &&
+                  arriving.facilities.at(22).sales == 0 && !s.actors.at({1}).binding,
+              "P arrival charges old inn instance once without restoring or retiring overlaid "
+              "surface");
+    }
+}
+
 void path_real_journey_and_entry() {
     auto s = inn_journey();
     const auto old = s;
@@ -1090,6 +1133,7 @@ int main() {
         home_exit_and_routes();
         exterior_and_monster();
         fifo_departure_control();
+        retained_instance_destination();
         path_real_journey_and_entry();
         path_waypoint_identity_and_ground();
         path_exit_and_monster();

@@ -76,9 +76,9 @@ bool unsupported_village_choice(const WorldState &state, const WorldCommand &com
     const auto definition =
         std::find_if(state.rules->activities.begin(), state.rules->activities.end(),
                      [id](const auto &v) { return v.identity == id; });
-    // Only type0/1/2 have published activity consumers. A stale UI choice cannot turn an
+    // Only type0/1/2/3 have published activity consumers. A stale UI choice cannot turn an
     // intentionally disabled feature into a fatal missing-source error for the whole world.
-    return definition != state.rules->activities.end() && definition->parameters[2] > 2;
+    return definition != state.rules->activities.end() && definition->parameters[2] > 3;
 }
 bool human_page(const WorldState &state, std::uint64_t id) {
     const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),

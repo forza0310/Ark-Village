@@ -31,12 +31,14 @@
 
 ## 后续产品接入
 
+- [x] 接入正式研究898b653：用户明确批准后冻结332项，五项同义性能补丁由已发布实现替代；扩张UI/FIFO、道路混合绑定、schema2新数据集及存读续跑已接。两套Debug标准覆盖308项（排除三个月，夹具修正后定向复验）、Release三个月及四窗口通过；CI待验证。见[B1](docs/stages/B1-playable-prototype.md#research-898b653-design)。
+- [ ] c11a786后续存档/回放设计：新交叉证据确认原设施p效果加载丢弃，与当前Ark保留维护历史的政策有差异；单独确认处理后修改，不混入898功能批次。精确文件快照仍无交付，不能直接从轮内checkpoint重跑完整框架，见[研究需求](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 - [x] 并行产品输入审阅与增长性能采样：修复隐藏旋转按钮吞地图点击，desktop-debug166项及两尺寸Release渲染通过；12000帧定位prepare内部热点，保持生产所有权契约。采样并发限制/2500帧对照范围见[B1](docs/stages/B1-playable-prototype.md#pc-input-performance)。
 - [ ] Windows原游戏PC操作/截图对照：文件身份已核对；计算机操作native pipe未连接，VS Code插件已启用，等待客户端重载后复验。产品渲染截图不替代OS输入或原版对照。
 - [x] 重新审计最新在途研究与历史未接表现，区分正式2b交付、扩张/双绑定/性能在途和Steam独立评估，见[当前审计](docs/reference/REFERENCE_CHECKLIST.md#当前未接入审计2026-10-06)。
 - [x] 按用户要求移除玩家二倍速：窗口按钮、world-speed入口与旧切片Tab切换移除，旧档恢复沿用当前速度；测试诊断的冻结速度合同保留。
 - [x] 已发布稳定UI首批：P真时经验头标按cd24的12计数/两帧交替，55后与条共存，72结束；当前普通锚点适配，不补未证弹跳。验收见[B1](docs/stages/B1-playable-prototype.md#pending-level-ui)。
-- [ ] 下一批候选：设施正向属性浮标/金币X4仍缺精确运动/锚点或后半段帧规则，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#已发布表现的精确消费缺口2026-10-06)；待研究新提交收口后审计扩张/双绑定/运行时与既有性能补丁，探索底栏先设计随机/恢复Owner消费。
+- [ ] 下一批候选：设施正向属性浮标/金币X4仍缺精确运动/锚点或后半段帧规则，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#已发布表现的精确消费缺口2026-10-06)；扩张/双绑定/运行时及性能现已随898b653正式发布，按本批设计接入；探索底栏先设计随机/恢复Owner消费。
 
 - [x] 按用户确认顺序同步`9897d64`/`2b479f6`规则与运行时（库存同步及schema2存档适配），接村办/raw95、普通道具/商会、道路/移动/拆除/住宅重建；各批独立本地验收/checkpoint，见[ADR-0047](docs/MILESTONES.md#adr-0047)。CI待验证，原版表现缺口继续单独登记。
 - [x] 首批冻结330项规则/运行时、完整库存写回与schema2存档适配；desktop-debug163项（唯一旧夹具修正后复验）、headless-debug142项及Release三个月基线通过，Debug精确排除三个月，CI待验证。村办/道具/商会/地图编辑玩家入口另批接线。

@@ -22,6 +22,10 @@ bool village_mode(const std::string &mode) {
     return mode == "world-village" || mode == "world-village-start" ||
            mode == "world-village-results";
 }
+bool expansion_mode(const std::string &mode) {
+    return mode == "world-expansion-catalogue" || mode == "world-expansion-start" ||
+           mode == "world-expansion-completed";
+}
 bool road_mode(const std::string &mode) {
     return mode == "world-road-start" || mode == "world-road-end" || mode == "world-road-built" ||
            mode == "world-road-remove";
@@ -339,10 +343,24 @@ bool management_inspection_mode(const std::string &mode) {
     return mode == "world-building" || mode == "world-details" || mode == "world-built" ||
            build_preview_mode(mode) || mode == "world-award-granted" || village_mode(mode) ||
            mode == "world-reward95" || road_mode(mode) || mode == "world-demolished" ||
-           home_mode(mode);
+           home_mode(mode) || expansion_mode(mode);
 }
 void begin_management_inspection(State &state, const std::string &mode,
                                  WorldManagementInspection &inspection) {
+    if (expansion_mode(mode)) {
+        // Explicit source-callsite window fixture, not a natural unlock. Only eligibility,
+        // points and the quarter slot are prepared; source51/52/53 own all map changes,
+        // payments, counters and retirement. No terrain/entity/popularity is injected.
+        state.scripts.event_calls[100] = 1;
+        for (auto &[id, activity] : state.scripts.activities)
+            activity.status = id == 25 ? 1 : 0;
+        state.village_points = 100;
+        state.quarter_counter = 3;
+        inspection.activity = 25;
+        inspection.expansion_level_before = state.fence_level;
+        require(simulation::open_startup_world_village_activities(state),
+                "open expansion callsite fixture");
+    }
     if (road_mode(mode))
         begin_road_inspection(state, mode, inspection);
     if (mode == "world-demolished")
@@ -368,6 +386,18 @@ bool management_inspection_ready(const State &state, const std::string &mode,
     const auto *page = top(state);
     if (!page)
         return false;
+    if (expansion_mode(mode)) {
+        if (mode == "world-expansion-completed")
+            return inspection.activity_completed && page->kind == Kind::scene &&
+                   state.scene.scene_state == 0 &&
+                   state.fence_level == inspection.expansion_level_before + 1;
+        const auto view = simulation::inspect_startup_world_village_activity_page(state, page->id);
+        return view && (mode == "world-expansion-catalogue"
+                            ? view->raw == 51 && view->entries == std::vector<int>{25}
+                            : view->raw == 53 && view->activity == 25 && view->counter >= 70 &&
+                                  inspection.activity_started &&
+                                  state.fence_level == inspection.expansion_level_before);
+    }
     if (home_mode(mode)) {
         if (mode == "world-home-credit")
             return inspection.home_rebuild_stage == 2 && page->legacy_page == 21 &&
@@ -439,6 +469,27 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
     const auto page = *current; // Source commands may replace/reallocate the stack.
     if (home_mode(mode))
         return home_rebuild_input(state, mode, inspection, page);
+    if (expansion_mode(mode)) {
+        using A = simulation::StartupVillageActivityAction;
+        const auto view = simulation::inspect_startup_world_village_activity_page(state, page.id);
+        if (!view || state.activity_page_answers.count(page.id))
+            return true; // First initialization and real parent resumption belong to updates.
+        if (view->raw == 51) {
+            require(simulation::act_startup_world_village_activity_page(
+                        state, page.id, inspection.activity_completed ? A::cancel : A::confirm),
+                    "select expansion or close its resumed catalogue");
+        } else if (view->raw == 52) {
+            require(simulation::act_startup_world_village_activity_page(state, page.id, A::confirm),
+                    "start expansion through actual52 payment");
+            inspection.activity_started = true;
+        } else if (view->raw == 53 && view->counter >= 120) {
+            require(simulation::act_startup_world_village_activity_page(state, page.id, A::confirm),
+                    "complete expansion through actual53 map transaction");
+            inspection.activity_completed = true;
+        } else if (view->raw == 54)
+            throw std::runtime_error("Expansion incorrectly inserted human-result54");
+        return true;
+    }
     if (village_mode(mode) || mode == "world-reward95") {
         using A = simulation::StartupVillageActivityAction;
         if (mode == "world-reward95" && page.legacy_page == 95)

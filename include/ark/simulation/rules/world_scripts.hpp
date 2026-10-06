@@ -183,6 +183,9 @@ struct WorldScriptResult {
     std::optional<WorldScriptCandidate> candidate;
 };
 bool world_script_seen(const WorldScriptState &state, int event);
+// 与脚本执行共用同一校验及错误顺序；不复制状态、推进续体或产生页面／输出。
+WorldScriptError validate_world_script_state(const WorldScriptCatalog &catalog,
+                                             const WorldScriptState &state);
 // 支持固定200事件实际使用的全部25种opcode及嵌套1；未证opcode显式失败。
 // 无隐含去重，调用入口立即aM+1；126等待早于调用者累加完成量。
 WorldScriptResult prepare_world_script(const WorldScriptCatalog &catalog,

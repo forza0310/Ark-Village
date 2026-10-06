@@ -88,13 +88,16 @@ void headers(const Bytes &valid, Header layout) {
     bytes[layout.dataset] = bytes[layout.dataset] == '0' ? '1' : '0';
     reseal(bytes);
     rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "foreign frozen dataset");
-    bytes = valid;
-    const std::string previous_dataset =
-        "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609";
-    check(read32(bytes, 12) == previous_dataset.size(), "previous frozen identity has fixed width");
-    std::copy(previous_dataset.begin(), previous_dataset.end(), bytes.begin() + layout.dataset);
-    reseal(bytes);
-    rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "previous product dataset");
+    for (const std::string previous_dataset : {
+             "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609",
+             "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c"}) {
+        bytes = valid;
+        check(read32(bytes, 12) == previous_dataset.size(),
+              "previous frozen identity has fixed width");
+        std::copy(previous_dataset.begin(), previous_dataset.end(), bytes.begin() + layout.dataset);
+        reseal(bytes);
+        rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "previous product dataset");
+    }
     bytes = valid;
     put32(bytes, 8, 1);
     reseal(bytes);

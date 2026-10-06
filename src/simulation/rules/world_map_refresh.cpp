@@ -33,7 +33,11 @@ WorldMapRefreshError validate_surface(const WorldMapRefreshState &s) {
         if (s.surface[n].updates < 0 || s.base_variants[n] < -128 || s.base_variants[n] > 127)
             return WorldMapRefreshError::invalid_input;
         const auto &binding = s.map.cells[n].facility;
-        if (binding && binding->definition_id != s.surface[n].definition)
+        if (binding &&
+            (!s.definitions.count(binding->definition_id) ||
+             !legacy_surface_binding_matches(s.map.cells[n], s.surface[n].definition,
+                                             s.definitions.at(s.surface[n].definition).category,
+                                             s.ground_definition)))
             return WorldMapRefreshError::stale_facility;
     }
     return WorldMapRefreshError::none;
@@ -156,6 +160,7 @@ WorldMapRefreshResult prepare_world_map_neighbours(const WorldMapRefreshState &s
         return failure(WorldMapRefreshError::stale_facility);
     std::vector<NeighbourDefinition> definitions;
     std::vector<Position> roads;
+    std::vector<NeighbourRoadBinding> road_bindings;
     std::optional<BuildingId> last_source;
     std::set<std::uint64_t> owners;
     std::set<std::size_t> occupied;
@@ -187,10 +192,17 @@ WorldMapRefreshResult prepare_world_map_neighbours(const WorldMapRefreshState &s
         definitions.push_back({d.first, d.second.shape, d.second.category, d.second.modifiers});
     for (int y = 0; y < s.map.height; ++y)
         for (int x = 0; x < s.map.width; ++x)
-            if (s.map.cells[index(s.map, {x, y})].legacy_state == 3)
+            if (s.map.cells[index(s.map, {x, y})].legacy_state == 3) {
                 roads.push_back({x, y}); // 原道路魅力检查状态3，不额外要求类别6。
-    const auto derived =
-        derive_facility_neighbourhood(definitions, s.facilities, roads, s.map.width, s.map.height);
+                const auto &binding = s.map.cells[index(s.map, {x, y})].facility;
+                if (binding)
+                    road_bindings.push_back({{x, y},
+                                             binding->instance_id,
+                                             binding->definition_id,
+                                             binding->fragment_index});
+            }
+    const auto derived = derive_facility_neighbourhood(definitions, s.facilities, roads,
+                                                       s.map.width, s.map.height, road_bindings);
     if (derived.error != NeighbourhoodError::none)
         return failure(derived.error == NeighbourhoodError::numeric_overflow
                            ? WorldMapRefreshError::numeric_overflow

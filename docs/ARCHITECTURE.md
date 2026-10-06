@@ -6,7 +6,7 @@
 
 [research入口](../research/README.md)及其维护规则、prototype、素材是产品唯一规格来源，输入身份见 [EVIDENCE](../research/dungeon_village_1/EVIDENCE.md)。产品侧只读维护交付，不读取 `research/work`、不执行逆向，也不把夹具、研究原型保护或跨版本截图数值当作原版规则。
 
-研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面。系统仅开放稳定主场景两栏手动存读档；本次2b479f6接续开放村办类型0/1/2、奖励95、普通道具/设施强化及按flag16开放的南瓜商会，情报和其余未交付操作仍禁用。具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
+研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面。系统仅开放稳定主场景两栏手动存读档；2b479f6接续开放村办类型0/1/2、奖励95、普通道具/设施强化及按flag16开放的南瓜商会，898b653继续开放类型3地图扩张。情报和其余未交付操作仍禁用。具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
 
 ## 三层结构
 
@@ -22,7 +22,7 @@
 | 世界运行时 | `include/ark/simulation/`、`src/simulation/` | `ark_world_runtime`：真实新局、完整定义目录、唯一Owner，以及路由/场景/到访/日历/页面/任务/非人物消费者的投影和提交 |
 | 桌面适配 | `src/desktop/` | raylib窗口、资源、输入、相机、投影、深度绘制及UI；`world_view`协调平台循环，`world_scene`读取世界视图 |
 
-当前冻结研究2b479f6，共330项源/测试/数据；规则/库存/schema2、村办/建设视觉及普通道具/商会已完成本地验收，CI待验证（结果见B1）。8f12654人物经营链和住宅税收、e8f66d9的309项接入、此前33ee056的298项接入结果仅作历史证据，具体结果见B1。
+当前冻结研究898b653，共332项源/测试/数据；新增村办类型3扩张、道路地表与特殊实例混合绑定、只读adapter复用及调用级检查点回调。五项同义产品性能补丁由已发布实现替代，独立完整candidate产品回归保留。手动档schema2无新增字段，数据集身份更新；恢复核对围栏等级对应村界及完整占地/身份/分片，合法混合格沿源helper验证。当前本地验收与CI待验证状态见B1。此前2b库存/经营、8f人物住宅、e8及33ee接入仅作各自历史证据。
 
 `src/app/world_simulation_main.cpp` 是标准C++无窗口入口，直接调用世界运行时；桌面入口 `src/desktop/main.cpp` 根据启动参数选择运行模式。启动参数属于 `ark_launch`，逻辑时钟适配属于 `ark_timing`，SEB/TSV解析属于 `ark_asset_metadata`。这些平台无关工具不持有第二套业务世界。
 

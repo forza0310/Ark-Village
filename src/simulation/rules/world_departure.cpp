@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace ark::simulation::rules {
 namespace {
@@ -250,15 +251,17 @@ std::optional<Position> category_goal(int category, std::int64_t count,
         return {};
     }
     std::int64_t weight{};
-    for (const auto &candidate : snapshot.cells)
+    for (const auto &candidate : snapshot.cells) {
+        const auto &definition = candidate_instance_definition(candidate);
         if (candidate.instance && candidate.instance->legacy_phase == 1 &&
-            candidate.definition.legacy_category == category) {
-            if (candidate.definition.definition_charm > std::numeric_limits<int>::max() - weight) {
+            definition.legacy_category == category) {
+            if (definition.definition_charm > std::numeric_limits<int>::max() - weight) {
                 draws.error = WorldDepartureError::invalid_catalogue;
                 return {};
             }
-            weight += candidate.definition.definition_charm;
+            weight += definition.definition_charm;
         }
+    }
     if (weight == 0)
         return {};
     const auto ticket = draws.take(weight);
@@ -334,7 +337,7 @@ static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
     next_context.waypoint = 0;
     if (c.snapshot.cells.empty()) {
         c.denial = WorldDepartureDenial::no_candidates;
-        return {WorldDepartureError::none, c};
+        return {WorldDepartureError::none, std::move(c)};
     }
     Draws draws{i.tickets, i.draw};
     const auto finish = [&]() -> WorldDepartureResult {
@@ -343,12 +346,12 @@ static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
         c.consumed_tickets = draws.used;
         if (!c.goal) {
             c.denial = WorldDepartureDenial::no_selection;
-            return {WorldDepartureError::none, c};
+            return {WorldDepartureError::none, std::move(c)};
         }
         const auto route = trace_legacy_path(*field.field, *c.goal);
         if (route.error != MapAccessError::none) {
             c.denial = WorldDepartureDenial::no_route;
-            return {WorldDepartureError::none, c};
+            return {WorldDepartureError::none, std::move(c)};
         }
         c.route = route;
         next_context.destination = c.goal;
@@ -372,12 +375,19 @@ static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
                 target = *selected;
                 selected_index = static_cast<std::size_t>(selected - c.snapshot.cells.begin());
             } else {
+                const auto surface_id = catalogue.cell_definition_ids[index(s.map, *c.goal)];
                 const auto d =
+                    std::find_if(catalogue.definitions.begin(), catalogue.definitions.end(),
+                                 [&](const CandidateDefinition &value) {
+                                     return value.definition_id == surface_id;
+                                 });
+                const auto instance_definition =
                     std::find_if(catalogue.definitions.begin(), catalogue.definitions.end(),
                                  [&](const CandidateDefinition &value) {
                                      return value.definition_id == tile.facility->definition_id;
                                  });
-                if (d == catalogue.definitions.end())
+                if (d == catalogue.definitions.end() ||
+                    instance_definition == catalogue.definitions.end())
                     return fail(WorldDepartureError::invalid_catalogue);
                 target = {*c.goal,
                           *d,
@@ -385,7 +395,10 @@ static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
                                             tile.facility->definition_id, f->second.status},
                           route.cost,
                           CandidateOrigin::map_scan,
-                          index(s.map, *c.goal)};
+                          index(s.map, *c.goal),
+                          *instance_definition,
+                          tile.legacy_state,
+                          tile.category};
             }
             next_context.journey =
                 FacilityDeparture{f->second.category,
@@ -409,7 +422,7 @@ static WorldDepartureResult prepare_departure_impl(const RescueWorldState &s,
                 next_context.journey->legacy_direction = direction;
         }
         c.succeeded = true;
-        return {WorldDepartureError::none, c};
+        return {WorldDepartureError::none, std::move(c)};
     };
     DepartureOverrideInput priority;
     priority.kind = actor.kind;
@@ -633,7 +646,7 @@ departure_control(const RescueWorldState &s, const WorldDepartureControlInput &i
     c.departure_succeeded = departure.candidate->succeeded;
     if (c.departure_succeeded) {
         c.state.ai.battle.actors.at(id).control.state = 0; // 直接写 A，不调用 c0 重置其他状态。
-        return {WorldDepartureError::none, c};
+        return {WorldDepartureError::none, std::move(c)};
     }
     const auto failure = prepare_failed_activity(c.state.ai.battle.actors.at(id).control.flags);
     // 旧 1024 的表情先于旧 32768 删除；后面新置的 1024 不能倒回来重做此判断。
@@ -664,7 +677,7 @@ departure_control(const RescueWorldState &s, const WorldDepartureControlInput &i
     }
     c.delete_instance = failure.delete_instance;
     if (c.delete_instance)
-        return {WorldDepartureError::none, c};
+        return {WorldDepartureError::none, std::move(c)};
     c.state.ai.battle.actors.at(id).control.flags = failure.flags;
     if (old.kind == ActorKind::human) {
         const auto cleanup = detached ? prepare_world_detached_actor_cleanup(c.state, id)
@@ -710,7 +723,7 @@ departure_control(const RescueWorldState &s, const WorldDepartureControlInput &i
     }
     // r 产生的等待或第二条 8 归外层同次 FIFO 循环，不能推进下一次共同 d 前段。
     c.cleaned_up = c.continue_interpreter = true;
-    return {WorldDepartureError::none, c};
+    return {WorldDepartureError::none, std::move(c)};
 }
 WorldDepartureControlResult prepare_world_departure_control(const RescueWorldState &s,
                                                             const WorldDepartureControlInput &i) {
@@ -849,11 +862,11 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 return fail(WorldPathError::preparation_failed);
         } else
             return fail(WorldPathError::invalid_input);
-        return {WorldPathError::none, c};
+        return {WorldPathError::none, std::move(c)};
     }
     const auto cell = s.ai.contexts.at(i.actor).cell;
     if (!within(s.map, cell))
-        return {WorldPathError::none, c}; // 原P越界false，不清路线或伪造到达。
+        return {WorldPathError::none, std::move(c)}; // 原P越界false，不清路线或伪造到达。
     const auto &ctx = s.actors.at(i.actor);
     if (ctx.journey && ctx.unbound_route)
         return fail(WorldPathError::invalid_input);
@@ -861,7 +874,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                         : ctx.unbound_route ? &*ctx.unbound_route
                                             : nullptr;
     if (!route || route->steps.empty())
-        return {WorldPathError::none, c}; // G空时，即使旧s==O也不进入。
+        return {WorldPathError::none, std::move(c)}; // G空时，即使旧s==O也不进入。
     const auto destination = ctx.destination ? ctx.destination
                              : ctx.binding   ? std::optional<Position>(ctx.binding->goal)
                                              : std::nullopt;
@@ -881,7 +894,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
             if (!path_cleanup(c.state, i.actor))
                 return fail(WorldPathError::preparation_failed);
             c.cleaned_up = true;
-            return {WorldPathError::none, c};
+            return {WorldPathError::none, std::move(c)};
         }
         auto &next_context = c.state.actors.at(i.actor);
         next_context.journey.reset();
@@ -906,7 +919,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 a.control.queue.push_back(old.kind == ActorKind::human ? LegacyActorControl{10, 0}
                                                                        : LegacyActorControl{8, 7});
             }
-            return {WorldPathError::none, c};
+            return {WorldPathError::none, std::move(c)};
         }
         const auto f = c.state.facilities.find(ctx.binding->instance_id.value);
         if (f == c.state.facilities.end() ||
@@ -1008,7 +1021,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 c.state.ai.battle.actors.at(i.actor).control.queue.push_back({8, 7});
             }
         }
-        return {WorldPathError::none, c};
+        return {WorldPathError::none, std::move(c)};
     }
     const auto waypoint_cell = route->steps[ctx.waypoint];
     const auto &tile = s.map.cells[index(s.map, waypoint_cell)];
@@ -1038,6 +1051,6 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
         ++c.state.actors.at(i.actor).waypoint;
         c.advanced_waypoint = true;
     }
-    return {WorldPathError::none, c};
+    return {WorldPathError::none, std::move(c)};
 }
 } // namespace ark::simulation::rules

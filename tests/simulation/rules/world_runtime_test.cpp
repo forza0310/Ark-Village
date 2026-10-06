@@ -284,6 +284,47 @@ void loop_and_rollback(const WorldScriptCatalog &catalog) {
     check(idle.state && idle.state->scene.frame_counter == 0 && idle.state->entries == 0,
           "framework non-main admission is exact freeze not missing unused callback failure");
 }
+void scoped_calendar_consumers(const WorldScriptCatalog &catalog) {
+    auto source = fixture(catalog);
+    source.scene.calendar = {0, 3, 0, 10790, 0, 399};
+    const auto shared = adapter(catalog);
+    std::vector<Owner> first_saved, second_saved;
+    const WorldRuntimeCalendarConsumer<Owner> second = [&](const Owner &current,
+                                                           WorldCalendarStage stage) {
+        if (stage == WorldCalendarStage::checkpoint_before_normalize)
+            second_saved.push_back(current);
+        return shared.calendar_other(current, stage);
+    };
+    const WorldRuntimeCalendarConsumer<Owner> first = [&](const Owner &current,
+                                                          WorldCalendarStage stage) {
+        if (stage == WorldCalendarStage::checkpoint_before_normalize) {
+            first_saved.push_back(current);
+            // 嵌套借用同一只读adapter，不能把外层调用的检查点收集器换掉。
+            const auto nested = prepare_owned_world_runtime_calendar_with_consumer(
+                source, source.scene.calendar, stage, shared, second);
+            check(nested && nested->scene.world.updates == 0,
+                  "nested calendar consumer owns a separate private input");
+        }
+        return shared.calendar_other(current, stage);
+    };
+    const auto outer = prepare_owned_world_runtime_with_calendar(source, {27}, shared, first);
+    const auto following = prepare_owned_world_runtime_with_calendar(source, {27}, shared, second);
+    const auto original = prepare_owned_world_runtime(source, {27}, shared);
+    check(outer.state && following.state && original.state && first_saved.size() == 1 &&
+              second_saved.size() == 2 && first_saved[0].scene.calendar.units == 10790 &&
+              first_saved[0].scene.world.updates == 1 && second_saved[0].scene.world.updates == 0 &&
+              second_saved[1].scene.world.updates == 1 && outer.state->scene.calendar.units == 17 &&
+              outer.state->calendars == original.state->calendars &&
+              following.state->calendars == original.state->calendars,
+          "shared adapter preserves checkpoint timing, nested isolation and default behavior");
+    const WorldRuntimeCalendarConsumer<Owner> reject =
+        [](const Owner &, WorldCalendarStage) -> std::optional<Owner> { return {}; };
+    const auto failed = prepare_owned_world_runtime_with_calendar(source, {27}, shared, reject);
+    check(!failed.state && failed.worlds.empty() && source.scene.world.updates == 0 &&
+              source.scene.calendar.units == 10790 && source.random.draws() == 0 &&
+              source.calendars.empty(),
+          "call-local calendar rejection rolls back earlier world updates without shared mutation");
+}
 void actual_facility_completion(const WorldScriptCatalog &catalog) {
     auto source = fixture(catalog);
     for (const auto id : {10ULL, 11ULL, 12ULL}) {
@@ -348,6 +389,20 @@ void actual_facility_completion(const WorldScriptCatalog &catalog) {
     check(resumed.state && resumed.state->tasks.finish.dungeon.facilities.at(11).updates == 1 &&
               resumed.state->tasks.finish.dungeon.facilities.at(12).updates == 2,
           "retained shifted facility updates next frame, removed current never invoked twice");
+    // 下一帧推进Owner之后，公开world/scene审计仍保存自移除成功帧的完整状态。
+    const auto &world_audit = completed.worlds.front().state;
+    check(world_audit.updates == 1 && world_audit.world.map.cells.size() == 36 &&
+              world_audit.facility_order == std::vector<std::uint64_t>{11, 12} &&
+              world_audit.world.facilities.size() == 2 && world_audit.world.facilities.count(11) &&
+              world_audit.world.facilities.count(12),
+          "world audit retains full map and surviving facilities at completed first round");
+    check(completed.scene && completed.scene->state.frame_counter == 1 &&
+              completed.scene->state.world.updates == 1 &&
+              completed.scene->state.world.world.map.cells.size() == 36 &&
+              completed.scene->state.world.facility_order == std::vector<std::uint64_t>{11, 12} &&
+              completed.scene->state.world.world.facilities.size() == 2 &&
+              completed.state->scene.world.updates == 1 && resumed.state->scene.world.updates == 2,
+          "scene audit and returned owner remain independent of subsequent successful frame");
     // 原adapter的L通过默认真实重叠路径，不借未注册request占位；清空read_routes触发晚期拒绝。
     a.nonactors.read_routes = {};
     const auto rejected = prepare_owned_world_runtime(source, {27}, a);
@@ -367,6 +422,7 @@ int main() {
         check(parsed.catalog.has_value(), "published scripts parse");
         source_scan(*parsed.catalog);
         loop_and_rollback(*parsed.catalog);
+        scoped_calendar_consumers(*parsed.catalog);
         actual_facility_completion(*parsed.catalog);
         std::cout << "world runtime: " << checks << " checks passed\n";
     } catch (const std::exception &error) {

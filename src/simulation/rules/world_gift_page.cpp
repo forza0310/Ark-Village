@@ -26,7 +26,7 @@ WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
             state.facility.finish.event_calls != scripts.event_calls ||
             state.facility.finish.dungeon.world.ai.pending_completion !=
                 scripts.pending_completion ||
-            !prepare_world_script_continuations(catalog, scripts, false).candidate)
+            validate_world_script_state(catalog, scripts) != WorldScriptError::none)
             fail(WorldGiftPageError::invalid_owner);
         const int mode = found->legacy_r;
         const bool supported94 =

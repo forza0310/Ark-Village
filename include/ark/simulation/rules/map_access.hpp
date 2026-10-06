@@ -19,6 +19,21 @@ struct LegacyMapCell {
     std::optional<FacilityTileBinding> facility;
 };
 
+// 原i.b()/i.a()只换地表，不清x；h.d四角覆路成5，扩张h.g将旧内围栏转4。
+// 这些步骤均不改x；这里只验已证地表组合，实例身份/占地仍由调用者完整校验。
+inline bool legacy_surface_binding_matches(const LegacyMapCell &cell, int definition, int kind,
+                                           int ground_definition) {
+    if (!cell.facility || cell.facility->definition_id == definition)
+        return true;
+    if (kind == 6 && ((cell.legacy_state == 3 && cell.category == RouteCategory::road) ||
+                      (cell.legacy_state == 4 && cell.category == RouteCategory::ground) ||
+                      (cell.legacy_state == 5 && cell.category == RouteCategory::blocked)))
+        return true;
+    return definition == ground_definition && kind == 7 &&
+           ((cell.legacy_state == 4 && cell.category == RouteCategory::ground) ||
+            (cell.legacy_state == 5 && cell.category == RouteCategory::blocked));
+}
+
 struct LegacyMap {
     int width{};
     int height{};

@@ -1,5 +1,7 @@
 #include "ark/app/world_save.hpp"
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_editing.hpp"
+#include "ark/simulation/startup_world_expansion.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -147,6 +149,12 @@ void invalid_candidates() {
     bad.scene.world.town.right = bad.scene.world.town.left;
     reject(bad, "empty town bounds");
     bad = initial;
+    --bad.scene.world.town.left;
+    reject(bad, "in-map town differs from its source fence level");
+    bad = initial;
+    ++bad.fence_level;
+    reject(bad, "source fence level differs from saved town bounds");
+    bad = initial;
     bad.scene.world.spawn_cells.clear();
     reject(bad, "empty arrival spawn cells");
     bad = initial;
@@ -282,6 +290,163 @@ void management_fields_roundtrip() {
           "business page payloads and last result response are transient");
     same_durable(state, loaded, "new management state capture");
 }
+
+void expanded_map_roundtrip() {
+    auto state = ark::test::initial_world();
+    const auto funds = state.scene.world.world.ai.accounting.funds();
+    const auto draws = state.scene.random.draws();
+    // Direct source map-consumer fixtures isolate persistence from activity eligibility.
+    // The natural activity fee/quarter chain remains owned by the source runtime tests.
+    for (int level = 1; level <= 2; ++level) {
+        check(sim::expand_startup_world_map(state), "source map expansion prepares save fixture");
+        check(state.fence_level == level && state.scene.world.world.map.cells.size() == 576 &&
+                  state.scene.world.world.ai.accounting.funds() == funds &&
+                  state.scene.random.draws() == draws,
+              "source expansion keeps fixed map, funds and random stream");
+        auto loaded = restored(state);
+        same_durable(state, loaded, "expanded fixed-map capture");
+        const auto &town = loaded.scene.world.town;
+        check(loaded.fence_level == level && town.left == (level == 1 ? 3 : 1) &&
+                  town.right == (level == 1 ? 20 : 22) && town.top == 2 &&
+                  town.bottom == (level == 1 ? 11 : 12) &&
+                  loaded.scene.world.world.map.width == 24 &&
+                  loaded.scene.world.world.map.height == 24 &&
+                  loaded.scene.world.spawn_cells == state.scene.world.spawn_cells &&
+                  loaded.facility_original_ids == state.facility_original_ids &&
+                  loaded.facility_ordinals == state.facility_ordinals &&
+                  loaded.next_facility_identity == state.next_facility_identity,
+              "expanded save keeps source bounds, entry identities and allocation state");
+        auto baseline = state;
+        discard_nonpersistent_effects(baseline);
+        advance(loaded);
+        advance(baseline);
+        check(loaded.scene.world.world.ai.accounting.funds() ==
+                      baseline.scene.world.world.ai.accounting.funds() &&
+                  loaded.monthly_cash == baseline.monthly_cash &&
+                  loaded.village_points == baseline.village_points &&
+                  loaded.scene.random.draws() == baseline.scene.random.draws() &&
+                  ark::test::same_world_clock(loaded, baseline),
+              "expanded restore continues actual world without repeating fees or random draws");
+    }
+}
+
+void mixed_surface_roundtrip() {
+    auto state = ark::test::initial_world();
+    const auto created =
+        ref::prepare_world_task_creation(sim::startup_world_runtime_factory(state), 0);
+    check(created.candidate && created.candidate->created_task &&
+              sim::write_startup_world_runtime_factory(state, created.candidate->state),
+          "source task factory creates mixed-surface facility with real auxiliary records");
+    const auto task = *created.candidate->created_task;
+    const auto id = *state.tasks.at(task).facility;
+    auto &facility = state.scene.world.world.facilities.at(id);
+    check(facility.kind == 1 && facility.placement.shape == ref::FacilityShape::single,
+          "mixed-surface save fixture uses actual source cave definition");
+    auto &map = state.scene.world.world.map;
+    for (const auto position : state.sites.at(id).occupied_cells) {
+        const auto index = static_cast<std::size_t>(position.y) * map.width + position.x;
+        map.cells.at(index) = {4, ref::RouteCategory::ground, {}};
+        state.surface.at(index).definition = state.ground_definition;
+        state.surface.at(index).instance = state.surface.at(index).fragment = -1;
+    }
+    // Geometry-only fixture, matching the published source road-special regression.
+    // Task generation does not naturally place caves inside the town; no rule/table is changed.
+    const ref::Position position{7, 3};
+    const auto index = static_cast<std::size_t>(position.y) * map.width + position.x;
+    check(!map.cells.at(index).facility, "mixed-surface geometry never overwrites an instance");
+    facility.placement.anchor = position;
+    state.tasks.at(task).site = position;
+    state.sites.at(id).occupied_cells = {position};
+    map.cells.at(index) = {8, ref::RouteCategory::terminal,
+                          ref::FacilityTileBinding{{id}, facility.placement.definition_id, 0}};
+    state.surface.at(index).definition = facility.placement.definition_id;
+    state.surface.at(index).variant = 0;
+    state.surface.at(index).instance = 3; // Source direction m is separate from the stable identity.
+    const auto definition = facility.placement.definition_id;
+    check(sim::refresh_startup_world_map(state, false), "source refresh validates cave fixture");
+    const auto raw = state.facility_original_ids.at(id);
+    const auto funds = state.scene.world.world.ai.accounting.funds();
+    const auto draws = state.scene.random.draws();
+    check(sim::begin_startup_world_road(state, 18).error == sim::StartupWorldRuntimeError::none &&
+              sim::confirm_startup_world_edit(state, position, ref::FacilityOrientation::first)
+                      .error == sim::StartupWorldRuntimeError::none &&
+              sim::confirm_startup_world_edit(state, position, ref::FacilityOrientation::first)
+                      .error == sim::StartupWorldRuntimeError::none &&
+              sim::cancel_startup_world_edit(state) == sim::StartupWorldRuntimeError::none,
+          "actual source road command preserves cave binding while changing surface");
+    for (int phase = 0; phase < 2; ++phase) {
+        if (phase == 1)
+            check(sim::begin_startup_world_edit(state, false).error ==
+                          sim::StartupWorldRuntimeError::none &&
+                      sim::confirm_startup_world_edit(state, position,
+                                                       ref::FacilityOrientation::first)
+                              .error == sim::StartupWorldRuntimeError::none &&
+                      sim::confirm_startup_world_edit(state, position,
+                                                       ref::FacilityOrientation::first)
+                              .error == sim::StartupWorldRuntimeError::none &&
+                      sim::cancel_startup_world_edit(state) == sim::StartupWorldRuntimeError::none,
+                  "actual source road removal retains the same cave instance");
+        const auto &binding = state.scene.world.world.map.cells.at(index).facility;
+        check(binding && binding->instance_id.value == id && binding->definition_id == definition &&
+                  state.surface.at(index).definition == (phase == 0 ? 18 : state.ground_definition) &&
+                  state.surface.at(index).instance == 3 &&
+                  state.scene.world.world.ai.accounting.funds() == funds - 10 &&
+                  state.scene.random.draws() == draws,
+              "source mixed road/ground has exact binding, one charge and retained direction");
+        auto loaded = restored(state);
+        same_durable(state, loaded, phase == 0 ? "road with cave capture" : "ground with cave capture");
+        check(loaded.facility_original_ids.at(id) == raw &&
+                  loaded.scene.world.world.map.cells.at(index).facility->instance_id.value == id &&
+                  loaded.scene.world.world.map.cells.at(index).facility->definition_id == definition,
+              "mixed surface restore keeps actual source instance and original identity");
+        auto baseline = state;
+        discard_nonpersistent_effects(baseline);
+        advance(loaded);
+        advance(baseline);
+        check(loaded.scene.world.world.ai.accounting.funds() ==
+                      baseline.scene.world.world.ai.accounting.funds() &&
+                  loaded.monthly_cash == baseline.monthly_cash &&
+                  loaded.scene.random.draws() == baseline.scene.random.draws() &&
+                  ark::test::same_world_clock(loaded, baseline),
+              "mixed surface restore resumes source world without repeating road charges");
+        for (int fault = 0; fault < 5; ++fault) {
+            auto broken = state;
+            auto &cell = broken.scene.world.world.map.cells.at(index);
+            if (fault == 0)
+                cell.facility->instance_id.value = broken.next_facility_identity + 100;
+            else if (fault == 1)
+                cell.facility->definition_id = 18;
+            else if (fault == 2)
+                ++cell.facility->fragment_index;
+            else if (fault == 3)
+                broken.surface.at(index).definition = 30; // Known ordinary building, not road/ground.
+            else
+                cell.category = ref::RouteCategory::terminal; // Incorrect category for state3/4.
+            const auto cash = broken.scene.world.world.ai.accounting.funds();
+            const auto random = broken.scene.random.draws();
+            const auto damaged_binding = *cell.facility;
+            const auto damaged_surface = broken.surface.at(index).definition;
+            const auto damaged_category = cell.category;
+            std::string reason;
+            check(app::prepare_world_save_candidate(broken, state, reason) ==
+                      app::WorldSaveError::invalid_world,
+                  "mixed-surface restore rejects damaged binding or unsupported combination " +
+                      std::to_string(fault));
+            check(broken.scene.world.world.ai.accounting.funds() == cash &&
+                      broken.scene.random.draws() == random &&
+                      broken.scene.world.world.map.cells.at(index).facility->instance_id ==
+                          damaged_binding.instance_id &&
+                      broken.scene.world.world.map.cells.at(index).facility->definition_id ==
+                          damaged_binding.definition_id &&
+                      broken.scene.world.world.map.cells.at(index).facility->fragment_index ==
+                          damaged_binding.fragment_index &&
+                      broken.surface.at(index).definition == damaged_surface &&
+                      broken.scene.world.world.map.cells.at(index).category == damaged_category,
+                  "mixed-surface rejection keeps candidate cash/random/identity untouched");
+        }
+    }
+}
+
 void task_and_combat_roundtrip(const State &natural) {
     auto task = natural;
     const auto generated =
@@ -526,6 +691,8 @@ void natural_operation_roundtrip() {
 void run_restore_tests() {
     invalid_candidates();
     management_fields_roundtrip();
+    expanded_map_roundtrip();
+    mixed_surface_roundtrip();
     natural_operation_roundtrip();
     std::cout << "PASS world save restore " << checks << " checks\n";
 }

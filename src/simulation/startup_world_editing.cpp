@@ -137,7 +137,9 @@ bool release_residence(State &s, std::uint64_t id) {
 bool road(State &s, const std::vector<ref::Position> &cells, bool remove, int d, int price) {
     const auto primary = std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),
                                       [](const auto &value) { return value.kind == 6; });
-    if (primary == s.rules->facilities.end() || !s.build_anchor)
+    const auto *ground = definition(s, s.ground_definition);
+    if (primary == s.rules->facilities.end() || !s.build_anchor || !ground || ground->kind != 7 ||
+        s.surface.size() != s.scene.world.world.map.cells.size())
         return false;
     const bool vertical = cells.size() < 2 || cells.front().x == cells.back().x;
     int changed{};
@@ -151,9 +153,12 @@ bool road(State &s, const std::vector<ref::Position> &cells, bool remove, int d,
         if (remove ? tile.legacy_state != 3
                    : (tile.legacy_state == 1 || tile.legacy_state == 2 || tile.legacy_state == 3))
             continue;
-        // 原i.b保留x；维护单一格定义模型尚不表示“路覆盖特殊设施且保留旧x”的混合形态。
-        if (tile.facility)
+        const auto *surface = definition(s, s.surface[n].definition);
+        if (!surface || !ref::legacy_surface_binding_matches(tile, surface->id, surface->kind,
+                                                             s.ground_definition))
             return false;
+        // 原i.b()/i.a()保留x及m：实例/占地和入口方向不退休，只有地表与路径字段改变。
+        // 随后的完整地图刷新继续验证实例定义、全部占地和分片，不放过悬空引用。
         tile.legacy_state = remove ? 4 : 3;
         tile.category = remove ? ref::RouteCategory::ground : ref::RouteCategory::road;
         s.surface.at(n).definition = remove ? s.ground_definition : d;

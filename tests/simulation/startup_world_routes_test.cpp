@@ -72,6 +72,26 @@ void routing() {
     check(p.routes.random.draws() == before && i->use_shared_random &&
               i->departure->departure.tickets.empty(),
           "provider borrows runtime stream lazily and never draws during read");
+    // 显式重复ID夹具：源表本身唯一；优化仍必须保留旧首项经济／明细的查找语义。
+    auto duplicate_rules = *f.rules;
+    auto duplicate = duplicate_rules.facilities.front();
+    duplicate.economy.attributes[2] = {987654, 987654};
+    duplicate.detail = 987;
+    duplicate.category = 876;
+    duplicate_rules.facilities.push_back(duplicate);
+    auto duplicate_facts = f;
+    duplicate_facts.rules = &duplicate_rules;
+    const auto repeated =
+        prepare_startup_world_command_input(p.routes, id, {8, 0}, duplicate_facts);
+    check(repeated && repeated->departure &&
+              repeated->departure->departure.catalogue.definitions.size() == 86 &&
+              repeated->departure->departure.catalogue.definitions.back().definition_charm ==
+                  i->departure->departure.catalogue.definitions.front().definition_charm &&
+              repeated->departure->departure.catalogue.definitions.back().legacy_category == 876 &&
+              repeated->departure->departure.definition_details.at(duplicate.id) ==
+                  duplicate_rules.facilities.front().detail &&
+              p.routes.random.draws() == before,
+          "duplicate ID keeps first economic definition/detail and current category without draw");
     const auto started = ref::prepare_world_actor_control(
         p.routes, id, [&](const auto &r, auto actor, const auto &op) {
             return prepare_startup_world_command_input(r, actor, op, f);

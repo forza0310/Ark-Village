@@ -30,6 +30,8 @@ node scripts/simulation/profile_world_generate.mjs
 
 插桩stderr现在逐250帧记录累计指标，可相减取得区间值。`domain`覆盖 `prepare_owned_world_runtime_domain`（不等于整个prepare；包括其内部Owner复制及消费者）；`calendar`覆盖日历入口；`adapter_construct`只覆盖prepare中实际adapter构造，外部20次adapter探针仍包含销毁。它们与其它指标嵌套，不能求和。性能采样前检查其它游戏、构建和研究长测进程；若有并发，仅记录侦察结果，不把前后墙钟差异解释为受控收益。保留命令、产品HEAD、源/EXE/DLL哈希、运行前后CPU累计及原始CSV/stderr。
 
+898b653接入后，诊断生成器在实际调用级calendar consumer计时，并保留原入口委托；prepare中的只读adapter只在首次调用构造，包装回调也只发生在该诊断对象初始化中，不修改生产共享adapter。`adapter_construct`因此只记录首次构造，独立adapter探针仍构造新值，两者含义不同。以下2b479f6历史测量不据此改写或宣称新版本提速。
+
 新模板/入口与尚未重建的旧DLL可做同输入逐帧对照（必须在重建旧DLL之前执行）：
 
 ```powershell

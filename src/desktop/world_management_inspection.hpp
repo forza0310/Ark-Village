@@ -18,6 +18,7 @@ struct WorldManagementInspection {
     bool award_applied{};
     std::optional<int> activity;
     bool activity_started{}, activity_completed{};
+    int expansion_level_before{}; // Observation only; the source53 consumer changes the level.
     // Map-edit diagnostics retain only observations; all changes use the published Owner
     // consumers. These values also make window logs distinguish real commits from previews.
     std::optional<simulation::rules::Position> edit_endpoint;

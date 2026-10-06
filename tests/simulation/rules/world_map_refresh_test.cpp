@@ -209,6 +209,79 @@ void neighbour_cache_and_chain() {
               r.candidate->state.neighbours.at(1).current == std::array<int, 3>{0, 0, 0},
           "no eligible source preserves H rather than inventing blanket clear");
 }
+void retained_instance_refresh() {
+    auto s = fixture();
+    // 显式kind8分支夹具，非固定APK实际目录项；只验c/d/邻接的地表与x分离。
+    s.definitions.at(42).category = 8;
+    s.definitions.at(7).category = 7;
+    s.facilities = {{{99}, 42, FacilityShape::single, FacilityOrientation::first, {1, 5}}};
+    s.map = *bind_facility_map(s.map, {{s.facilities.front(), 8}}).map;
+    s.neighbours[99] = {};
+    const auto at = cell({1, 5});
+    road(s, {1, 5});
+    auto r = prepare_world_map_refresh(s, false);
+    check(r.candidate && r.candidate->state.map.cells[at].legacy_state == 5 &&
+              r.candidate->state.map.cells[at].category == RouteCategory::blocked &&
+              r.candidate->state.surface[at].definition == 40 &&
+              r.candidate->state.surface[at].display == 400 &&
+              r.candidate->state.map.cells[at].facility->instance_id == BuildingId{99} &&
+              r.candidate->state.map.cells[at].facility->definition_id == 42,
+          "road3 at unconditional corner becomes fence5 without losing old x or road definition");
+    auto expanded = r.candidate->state;
+    expanded.fence_levels.push_back({{{0, 6}, {6, 0}}});
+    expanded.fence_level = 1;
+    // 原扩张g的调用点：旧内围栏a(4)保留f182b/x；真正扩张事务由Owner套件负责。
+    expanded.map.cells[at].legacy_state = 4;
+    expanded.map.cells[at].category = RouteCategory::ground;
+    expanded.surface[at].updates = 0;
+    r = prepare_world_map_refresh(expanded, false);
+    check(r.candidate && r.candidate->state.surface[at].definition == 40 &&
+              r.candidate->state.surface[at].display == 70 &&
+              r.candidate->state.surface[at].variant == 6 &&
+              r.candidate->state.map.cells[at].facility->definition_id == 42 &&
+              r.candidate->state.facilities.size() == 1 &&
+              r.candidate->state.neighbours.size() == 1 && r.candidate->added_notices.empty(),
+          "old inner fence4 preserves road identity and live instance while drawing base ground");
+    for (const int state : {4, 5}) {
+        auto removed = s;
+        removed.surface[at].definition = 7;
+        removed.map.cells[at].legacy_state = state;
+        removed.map.cells[at].category =
+            state == 4 ? RouteCategory::ground : RouteCategory::blocked;
+        check(prepare_world_map_neighbours(removed, false).candidate.has_value(),
+              "actual S ground after road removal accepts retained instance before or after fence");
+    }
+    for (int mutation = 0; mutation < 8; ++mutation) {
+        auto bad = s;
+        if (mutation == 0)
+            bad.map.cells[at].legacy_state = 8;
+        else if (mutation == 1)
+            bad.map.cells[at].category = RouteCategory::ground;
+        else if (mutation == 2)
+            bad.surface[at].definition = 8;
+        else if (mutation == 3) {
+            bad.definitions[60] = {70, 7, FacilityShape::single, {}};
+            bad.surface[at].definition = 60;
+            bad.map.cells[at].legacy_state = 4;
+            bad.map.cells[at].category = RouteCategory::ground;
+        } else if (mutation == 4)
+            bad.map.cells[at].facility->instance_id = {100};
+        else if (mutation == 5)
+            bad.map.cells[at].facility->definition_id = 50;
+        else if (mutation == 6)
+            bad.map.cells[at].facility->fragment_index = 1;
+        else
+            bad.definitions.erase(42);
+        check(!prepare_world_map_refresh(bad, false).candidate &&
+                  bad.map.cells[at].legacy_state != 5 && !bad.refresh_pending,
+              "legal overlay does not admit wrong state/category/S, identity, footprint or missing "
+              "definition");
+    }
+    check(s.map.cells[at].legacy_state == 3 && s.surface[at].display == 99 &&
+              s.map.cells[at].facility->definition_id == 42,
+          "refresh candidates never mutate the supplied mixed source");
+}
+
 void validation_and_late_rollback() {
     for (int mutation = 0; mutation < 14; ++mutation) {
         auto s = neighbours_fixture();
@@ -270,6 +343,7 @@ int main() {
         fences_and_patches();
         exhaustive_patch_domain();
         neighbour_cache_and_chain();
+        retained_instance_refresh();
         validation_and_late_rollback();
         std::cout << "world map refresh checks: " << checks << '\n';
     } catch (const std::exception &e) {

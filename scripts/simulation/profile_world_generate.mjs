@@ -15,8 +15,12 @@ for (const name of ['world_runtime', 'world_scene', 'world_schedule', 'world_act
       return `Owner ${local} = profile_copy(${original});`;
     });
   if (name === 'world_runtime') {
+    // The published runtime delegates its old calendar entry to the call-level consumer.
+    const calendar = source.includes('prepare_owned_world_runtime_calendar_with_consumer(')
+      ? 'prepare_owned_world_runtime_calendar_with_consumer'
+      : 'prepare_owned_world_runtime_calendar';
     for (const [functionName, metric] of [['prepare_owned_world_runtime_domain', 11],
-                                        ['prepare_owned_world_runtime_calendar', 13]]) {
+                                        [calendar, 13]]) {
       const start = source.indexOf(functionName + '(');
       const body = source.indexOf('{', start);
       if (start < 0 || body < 0) throw new Error(`Missing ${functionName}`);
@@ -33,15 +37,23 @@ const start = source.indexOf('StartupWorldRuntimeResult prepare_startup_world_ru
 const end = source.indexOf('StartupWorldRuntimeResult StartupWorldRuntimeSession::update()', start);
 if (start < 0 || end < 0) throw new Error('Runtime function boundaries changed');
 let fn = source.slice(start, end).replace('prepare_startup_world_runtime(const State &s)', 'profile_prepare(const State &s)');
-const adapterAnchor = 'auto a = startup_world_runtime_adapter();';
+const cached = fn.includes('static const auto a = startup_world_runtime_adapter();');
+const adapterAnchor = cached ? 'static const auto a = startup_world_runtime_adapter();'
+  : 'auto a = startup_world_runtime_adapter();';
 if (fn.split(adapterAnchor).length !== 2)
   throw new Error('Expected exactly one runtime adapter instrumentation anchor');
-fn = fn.replace(adapterAnchor, `auto a = [] { ProfileScope profile_scope{12}; return startup_world_runtime_adapter(); }();
-    profile_wrap(a.scene.read, 1); profile_wrap(a.scene.write, 2);
-    profile_wrap(a.scripts.read, 3); profile_wrap(a.scripts.write, 4);
-    profile_wrap(a.actors.read_routes, 5); profile_wrap(a.actors.write_routes, 6);
-    profile_wrap(a.actors.decision, 7); profile_wrap(a.scene_other, 8);
-    profile_wrap(a.before_common, 9); profile_wrap(a.normal_conditions, 10);`);
+// Wrap only the diagnostic adapter during initialization; the production cached object stays
+// const, and this preserves its one-construction lifetime in the instrumented entry as well.
+fn = fn.replace(adapterAnchor, `${cached ? 'static const' : 'const'} auto a = [] {
+    ProfileScope profile_scope{12};
+    auto instrumented = startup_world_runtime_adapter();
+    profile_wrap(instrumented.scene.read, 1); profile_wrap(instrumented.scene.write, 2);
+    profile_wrap(instrumented.scripts.read, 3); profile_wrap(instrumented.scripts.write, 4);
+    profile_wrap(instrumented.actors.read_routes, 5); profile_wrap(instrumented.actors.write_routes, 6);
+    profile_wrap(instrumented.actors.decision, 7); profile_wrap(instrumented.scene_other, 8);
+    profile_wrap(instrumented.before_common, 9); profile_wrap(instrumented.normal_conditions, 10);
+    return instrumented;
+  }();`);
 const metrics = readFileSync(resolve(scriptDir, 'profile_world_metrics.hpp'), 'utf8');
 writeFileSync(resolve(out, 'profile_prepare.hpp'), metrics + source.slice(0, source.indexOf('namespace ark::simulation {')) +
   '\nnamespace ark::simulation {\nusing State = StartupWorldRuntimeState;\n' + fn + '}\n');

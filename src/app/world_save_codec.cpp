@@ -255,7 +255,7 @@ template <class Archive> void fields(Archive &io, WorldSaveMetadata &x) {
 } // namespace save_detail
 
 const char *world_save_dataset() {
-    return "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c";
+    return "f34787eabc2e6e1556fe971b57c4d6adbf2f35d79b2aa9c81e35cddbf8ec6b04";
 }
 
 WorldSaveCapture capture_world_save(const simulation::StartupWorldRuntimeState &state) {

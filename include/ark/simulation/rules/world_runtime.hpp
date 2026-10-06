@@ -27,6 +27,9 @@ template <class Owner> struct OwnedWorldRuntimeCreation {
     std::optional<std::uint64_t> created;
     EncounterCreationDenial denial{EncounterCreationDenial::none};
 };
+template <class Owner>
+using WorldRuntimeCalendarConsumer =
+    std::function<std::optional<Owner>(const Owner &, WorldCalendarStage)>;
 template <class Owner> struct WorldRuntimeAdapter {
     WorldRuntimeProjection<Owner, WorldSceneState> scene;
     WorldRuntimeProjection<Owner, WorldScriptState> scripts;
@@ -61,7 +64,7 @@ template <class Owner> struct WorldRuntimeAdapter {
     std::function<std::optional<OwnedWorldSceneStep<Owner>>(const Owner &)> normal_conditions;
     // 保存资格、年度刷新、子周期刷新，以及框架/镜头/输入的实际适配。
     // 缺失拒绝；其余已提取领域不能通过该函数跳过。
-    std::function<std::optional<Owner>(const Owner &, WorldCalendarStage)> calendar_other;
+    WorldRuntimeCalendarConsumer<Owner> calendar_other;
     std::function<std::optional<OwnedWorldSceneStep<Owner>>(const Owner &, const WorldSceneCall &)>
         scene_other;
 };
@@ -89,14 +92,14 @@ inline bool external_calendar_stage(WorldCalendarStage stage) {
 
 // 真实任务工厂接在日历原调用点。普通无地点保留消费；任何后段失败丢弃整个Owner。
 template <class Owner>
-std::optional<Owner>
-prepare_owned_world_runtime_calendar(const Owner &state, const WorldCalendarState &date,
-                                     WorldCalendarStage stage,
-                                     const WorldRuntimeAdapter<Owner> &adapter) {
+std::optional<Owner> prepare_owned_world_runtime_calendar_with_consumer(
+    const Owner &state, const WorldCalendarState &date, WorldCalendarStage stage,
+    const WorldRuntimeAdapter<Owner> &adapter,
+    const WorldRuntimeCalendarConsumer<Owner> &calendar_other) {
     if (!adapter.read_random || !adapter.write_random)
         return {};
     if (world_runtime_detail::external_calendar_stage(stage))
-        return adapter.calendar_other ? adapter.calendar_other(state, stage) : std::nullopt;
+        return calendar_other ? calendar_other(state, stage) : std::nullopt;
     Owner next = state;
     if (world_runtime_detail::task_stage(stage)) {
         if (!adapter.tasks)
@@ -158,6 +161,16 @@ prepare_owned_world_runtime_calendar(const Owner &state, const WorldCalendarStat
         next = std::move(*consumed);
     }
     return next;
+}
+
+// 保留原入口：未提供调用级消费者时，仍使用该adapter自己的日历消费者。
+template <class Owner>
+std::optional<Owner>
+prepare_owned_world_runtime_calendar(const Owner &state, const WorldCalendarState &date,
+                                     WorldCalendarStage stage,
+                                     const WorldRuntimeAdapter<Owner> &adapter) {
+    return prepare_owned_world_runtime_calendar_with_consumer(state, date, stage, adapter,
+                                                              adapter.calendar_other);
 }
 
 template <class Owner>
@@ -252,10 +265,12 @@ template <class Owner> struct WorldRuntimeResult {
 
 // MainScene的共同组合入口。只推进已获框架资格的场景；保存的1/2轮数不因脚本推页重算。
 // 最后一轮/最后一个日历域失败也不向调用者暴露此前AI、随机、金钱或页栈的部分提交。
+// 调用级日历消费者仅在本次同步调用内借用，不写入可复用的只读adapter。
+// 允许各Session独立收集检查点，同时避免每帧复制捕获原表的所有回调。
 template <class Owner>
-WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
-                                                      const WorldSceneInput &input,
-                                                      const WorldRuntimeAdapter<Owner> &adapter) {
+WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
+    const Owner &state, const WorldSceneInput &input, const WorldRuntimeAdapter<Owner> &adapter,
+    const WorldRuntimeCalendarConsumer<Owner> &calendar_other) {
     WorldRuntimeResult<Owner> output;
     if (!adapter.scene || !adapter.scripts) {
         output.error = WorldSceneError::missing_consumer;
@@ -269,9 +284,24 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
     };
     scene.consume = [&](const Owner &current,
                         const WorldSceneCall &call) -> std::optional<OwnedWorldSceneStep<Owner>> {
+        // 只读委托自身返回私有Owner；未参与写回的分支不先复制再丢弃整个世界。
+        if (call.stage == WorldSceneStage::calendar_call) {
+            if (!call.calendar_stage)
+                return {};
+            const auto date = adapter.scene.read(current).calendar;
+            auto calendar = prepare_owned_world_runtime_calendar_with_consumer(
+                current, date, *call.calendar_stage, adapter, calendar_other);
+            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{std::move(*calendar)}}
+                            : std::nullopt;
+        }
+        if (call.stage != WorldSceneStage::normal_condition_scripts &&
+            call.stage != WorldSceneStage::normal_delayed_scripts &&
+            call.stage != WorldSceneStage::normal_world &&
+            call.stage != WorldSceneStage::focus_world)
+            return adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
+        Owner next = current;
         if (call.stage == WorldSceneStage::normal_condition_scripts ||
             call.stage == WorldSceneStage::normal_delayed_scripts) {
-            Owner next = current;
             if (call.stage == WorldSceneStage::normal_condition_scripts) {
                 if (!adapter.normal_conditions)
                     return {};
@@ -299,7 +329,6 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
         }
         if (call.stage == WorldSceneStage::normal_world ||
             call.stage == WorldSceneStage::focus_world) {
-            Owner next = current;
             if (!adapter.entry || !adapter.read_random || !adapter.write_random ||
                 !adapter.before_common || !adapter.report || !adapter.report_input)
                 return {};
@@ -371,18 +400,10 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
             }
             if (world.audit)
                 output.worlds.push_back(std::move(*world.audit));
+            // 完整审计已移交，state为独立成员；局部结果随后销毁，不影响调用者快照。
             return OwnedWorldSceneStep<Owner>{std::move(*world.state)};
         }
-        if (call.stage == WorldSceneStage::calendar_call) {
-            if (!call.calendar_stage)
-                return {};
-            const auto date = adapter.scene.read(current).calendar;
-            auto calendar =
-                prepare_owned_world_runtime_calendar(current, date, *call.calendar_stage, adapter);
-            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{std::move(*calendar)}}
-                            : std::nullopt;
-        }
-        return adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
+        return {};
     };
     try {
         auto result = prepare_owned_world_scene(state, input, scene);
@@ -399,5 +420,11 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
         output.worlds.clear();
         return output;
     }
+}
+template <class Owner>
+WorldRuntimeResult<Owner> prepare_owned_world_runtime(const Owner &state,
+                                                      const WorldSceneInput &input,
+                                                      const WorldRuntimeAdapter<Owner> &adapter) {
+    return prepare_owned_world_runtime_with_calendar(state, input, adapter, adapter.calendar_other);
 }
 } // namespace ark::simulation::rules

@@ -24,9 +24,10 @@ SnapshotFacilityResult select_snapshot_facility(const ActivityCandidateSnapshot 
     for (std::size_t index = 0; index < snapshot.cells.size(); ++index) {
         const auto &cell = snapshot.cells[index];
         if (cell.instance && cell.instance->legacy_phase == 1) {
+            const auto &definition = candidate_instance_definition(cell);
             active_indices.push_back(index);
-            weights.push_back(
-                cell.definition.legacy_category == category ? cell.definition.definition_charm : 0);
+            weights.push_back(definition.legacy_category == category ? definition.definition_charm
+                                                                     : 0);
         }
     }
     const auto draw = select_weighted_ticket(weights, ticket);

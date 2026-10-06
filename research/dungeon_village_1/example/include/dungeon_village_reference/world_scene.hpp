@@ -120,11 +120,12 @@ prepare_owned_world_scene(const Owner &state, const WorldSceneInput &input,
             return WorldSceneStep{adapter.read(scratch), next->disposition};
         };
     }
-    const auto result = prepare_world_scene(adapter.read(state), input, consumer);
+    auto result = prepare_world_scene(adapter.read(state), input, consumer);
     if (!result.candidate)
         return {result.error, {}, {}, result.calendar_error};
     adapter.write(scratch, result.candidate->state);
-    return {WorldSceneError::none, std::move(scratch), result.candidate, WorldCalendarError::none};
+    return {WorldSceneError::none, std::move(scratch), std::move(result.candidate),
+            WorldCalendarError::none};
 }
 
 // b/b.d是框架绘制路径门槛，kairo/android/a/b.g的栈顶b()路径先return false。

@@ -694,6 +694,15 @@ bool world_script_seen(const WorldScriptState &state, int event) {
     const auto calls = state.event_calls.find(event);
     return calls != state.event_calls.end() && calls->second > 0;
 }
+WorldScriptError validate_world_script_state(const WorldScriptCatalog &catalog,
+                                             const WorldScriptState &state) {
+    try {
+        validate(catalog, state);
+        return WorldScriptError::none;
+    } catch (const Failure &failure) {
+        return failure.error;
+    }
+}
 std::optional<WorldScriptProgram> parse_world_script_program(const std::string &text) {
     try {
         return program(text);

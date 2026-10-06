@@ -69,9 +69,7 @@ std::vector<Position> oracle_footprint(const FacilityPlacement &p) {
     return result;
 }
 
-bool near(Position a, Position b) {
-    return std::abs(a.x - b.x) <= 1 && std::abs(a.y - b.y) <= 1;
-}
+bool near(Position a, Position b) { return std::abs(a.x - b.x) <= 1 && std::abs(a.y - b.y) <= 1; }
 
 bool near_footprint(Position position, const std::vector<Position> &cells) {
     return std::any_of(cells.begin(), cells.end(),
@@ -302,6 +300,51 @@ void checked_economy_bridge() {
     check(!neighbourhood_economy_input(neighbourhood).has_value(), "positive narrowing refused");
 }
 
+void explicit_road_bindings() {
+    const auto definitions = original_examples();
+    const std::vector<FacilityPlacement> placements{placement(1, 28, {3, 3}),
+                                                    placement(2, 36, {4, 3})};
+    const std::vector<Position> roads{{4, 3}};
+    const NeighbourRoadBinding binding{{4, 3}, {2}, 36, 0};
+    check(derive_facility_neighbourhood(definitions, placements, roads, 9, 8).error ==
+              NeighbourhoodError::invalid_roads,
+          "ordinary layout API still rejects implicit road and owner overlap");
+    // 当前地图投影合同夹具；不声称普通kind3可直接被玩家道路覆盖。
+    const auto mixed =
+        derive_facility_neighbourhood(definitions, placements, roads, 9, 8, {binding});
+    check(mixed.error == NeighbourhoodError::none && mixed.facilities.size() == 2 &&
+              mixed.facilities[0].modifiers == std::array<std::int64_t, 3>{0, 0, 12} &&
+              mixed.facilities[0].road_cells == 1 && mixed.facilities[0].sources.size() == 1 &&
+              mixed.facilities[0].sources[0].instance_id.value == 2 &&
+              mixed.facilities[1].modifiers == std::array<std::int64_t, 3>{0, 0, 10} &&
+              mixed.facilities[1].road_cells == 0,
+          "explicit same-cell owner gives source appeal10 and separate road2 without self road");
+    for (int fault = 0; fault < 8; ++fault) {
+        auto supplied = std::vector<NeighbourRoadBinding>{binding};
+        auto current_roads = roads;
+        if (fault == 0)
+            supplied[0].instance_id.value = 999;
+        else if (fault == 1)
+            supplied[0].definition_id = 28;
+        else if (fault == 2)
+            supplied[0].fragment_index = 1;
+        else if (fault == 3)
+            supplied.push_back(binding);
+        else if (fault == 4)
+            supplied[0].position = {8, 7}; // 无owner，不能用授权列表造绑定。
+        else if (fault == 5)
+            supplied[0].position = {-1, 3};
+        else if (fault == 6)
+            current_roads = {{2, 3}}; // 绑定本身真实，但不是本次state3集合。
+        else
+            current_roads.push_back({4, 3});
+        check(
+            derive_facility_neighbourhood(definitions, placements, current_roads, 9, 8, supplied)
+                    .error == NeighbourhoodError::invalid_roads,
+            "explicit roads reject wrong ID/definition/fragment, duplicate, absent owner or road");
+    }
+}
+
 void random_layout_differential() {
     std::mt19937 random(0xAE2026U);
     const auto catalog = original_examples();
@@ -390,6 +433,7 @@ int main() {
     deduplication_same_definition_and_rotation();
     refusal_and_numeric_boundaries();
     checked_economy_bridge();
+    explicit_road_bindings();
     random_layout_differential();
     std::cout << checks << " checks passed\n";
 }

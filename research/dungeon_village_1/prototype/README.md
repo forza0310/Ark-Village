@@ -5,7 +5,9 @@
 本包独立于产品主构建，只修改研究代码。
 证据与缺口集中在[新局报告](../rules/STARTUP.md)，不以截图或演示初值补齐未知原版规则。
 
-本批普通道具／商会／道路与编辑消费者已接，Release标准、五项长测与三个有界研究窗口已通过；新聚合Release入口123项标准及迁移窗口也已通过。
+`2b479f6`普通道具／商会／道路与编辑消费者已验，Release标准、五项长测与三个有界研究窗口通过；聚合Release入口123项标准及迁移窗口也通过。
+随后第一次自然地图扩张／新区经营、道路保留特殊实例引用组合及同轨迹性能优化已独立验收：
+单Release标准123项、4条专项长测及两个既有有界窗口通过；第二次扩张／封顶仍只属组合验收。
 `9897d64`对应此前村办、95和自然晋级基线，
 本批新增路径不能沿用其424次CTest或窗口结果宣称通过；独立检查进度见[验证入口](../VERIFICATION.md)。
 
@@ -32,11 +34,12 @@
 | [只读世界表现](include/dungeon_village_prototype/startup_world_visuals.hpp)、[实现](src/startup_world_visuals.cpp) | 当前职业/性别头像、旅馆前四占用引用与flag32过滤、169/170计时/HP切换；不推进服务、不持有第二份世界 |
 | [共同世界建设](include/dungeon_village_prototype/startup_world_building.hpp)、[实现](src/startup_world_building.cpp) | 当前普通目录/报价/全占地准入与实例初始化、raw74稳定绑定、募集24→入住80→住宅25/96、共享等级81；刷新/账本/脚本整轮回滚，不复用旧建设世界 |
 | [共同世界编辑](include/dungeon_village_prototype/startup_world_editing.hpp)、[实现](src/startup_world_editing.cpp) | 道路起终点／撤除／移动选择与落点、原模式返回、全占地刷新及旧实例退休；住宅解除绑定及H重建资格仍归同一Owner，重建仍付原800G |
+| [地图扩张](include/dungeon_village_prototype/startup_world_expansion.hpp)、[实现](src/startup_world_expansion.cpp) | 村办类型3的边界级别、原序设施替换／退休、地面／双入口重建与旧ax人物重置；地图仍为576格，逐次刷新和最后c/d分开，失败不提交部分Owner |
 | [设施道具](include/dungeon_village_prototype/startup_world_facility_items.hpp)、[实现](src/startup_world_facility_items.cpp) | 74→75库存目录、75消费与实例门槛／原程序、76首次共享改良／49换页、77结果确认；各同定义实例独立重算价格，载荷随页退休 |
 | [商会](include/dungeon_village_prototype/startup_world_commerce.hpp)、[实现](src/startup_world_commerce.cpp) | 83入口、84真实买卖／86反馈、85点数购买与93确认领取；金币、村子点数、商会A库存、人物可用z库存和建筑H次数分开；85定义预览只读共享定义 |
 | [人物管理](include/dungeon_village_prototype/startup_world_human.hpp)、[实现](src/startup_world_human.cpp) | 当前四页／装备73、61/62预览与拒绝、63中点及最终提交、64/65装备延迟赠礼、64普通道具及66/68/69结果／回复、70大师奖励；只维护同一Owner的共享进度和页附属记录 |
 | [税收](include/dungeon_village_prototype/startup_world_tax.hpp)、[实现](src/startup_world_tax.cpp) | 90居民引用／实时税额和98自动其它收入、清全人物F/G；确认与入账分开，无额外随机 |
-| [村办活动](include/dungeon_village_prototype/startup_world_village_activity.hpp)、[实现](src/startup_world_village_activity.cpp) | 51—54初始化／只读投影／动作／更新，类型0／1／2及两次有放回抽签；同一Owner提交资源、人物、脚本和页面，严格拒绝失配载荷并随真实页退休辅助记录 |
+| [村办活动](include/dungeon_village_prototype/startup_world_village_activity.hpp)、[实现](src/startup_world_village_activity.cpp) | 51—54初始化／只读投影／动作／更新，类型0／1／2及人物结果的有放回抽签；类型3在53提交地图扩张，不插54或额外抽签。同一Owner提交资源、人物、脚本和页面，严格拒绝失配载荷并随真实页退休辅助记录 |
 | dungeon_village_startup_model | 标准C++17静态证据与新局规则，无raylib/字体/JSON运行依赖 |
 | dungeon_village_startup_world | 标准C++17共同世界与完整原表；不依赖raylib，不在运行时读取APK/研究临时文件 |
 | dungeon_village_prototype_model | 旧夹具聚合，复用[领域示例](../example/README.md)与[工具](../tools/README.md)表解析 |
@@ -142,10 +145,11 @@ H不是造价减免，不因返还资格重复收取募集入住费，也不伪�
 主场景“村办”按钮／V打开51原序目录，上下键或点击选择，确认进入52开展／取消。
 51先检查季度次数再检查点数；52开展才扣点并增加定义m／全局F，季度q和人物效果留到53满120确认。
 53恰70更新请求声音5，提前确认不快进；类型0／1随后进入54只读结果，类型2只请求全局人气。
-当前仅维护类型0／1／2；类型3地图扩张及其余依赖明确拒绝，不显示虚假成功。
+类型3地图扩张已接本批维护实现，满120确认后更新边界与地图，不插人物结果54；当前验收状态见验证入口。
+类型4／5／6仍明确拒绝，不显示虚假成功。
 所有修改由唯一Owner在私有候选内组合，缺绑定／名单／计数、越界选择、错误父页或晚期随机／脚本失败
 拒绝整轮，不留下部分扣款、随机或实体修改；页面附属记录随真实页退休。具体来源见[村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置)。
-这些是简化原型入口与维护合同；本批新增普通工具与编辑路径已通过Release标准、五项长测与三个有界窗口，新聚合Release入口123项标准及迁移窗口也已通过，结果见[当前验证](../VERIFICATION.md)。
+这些是简化原型入口与维护合同；`2b479f6`普通工具与编辑路径已通过Release标准、五项长测与三个有界窗口，聚合Release入口123项标准及迁移窗口也已通过。本批扩张独立验收，结果见[当前验证](../VERIFICATION.md)。
 
 `--world --inspect-page task-team --frames 12 --screenshot 路径`从真实新局自然等候任务，
 提供明确的测试玩家接受输入，停在真实队伍页作有界窗口检查，不注入任务、人物或资金。
@@ -182,10 +186,25 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests 6 20261005 1
 ```
 
-配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`登记五个可重复长期CTest：`world_year`、
-`world_speed_seed`、`natural_housing`、`natural_progression`、`natural_tools`（名称均带`dungeon_village_prototype.`前缀），
-以`ctest --test-dir <构建目录> -L long-world --output-on-failure`执行；3600秒仅是墙钟保护，不参与原规则。
+配置时加`-DDUNGEON_VILLAGE_LONG_WORLD_TESTS=ON`登记六个可重复长期CTest：`world_year`、
+`world_speed_seed`、`natural_housing`、`natural_progression`、`natural_tools`、`natural_expansion`（名称均带`dungeon_village_prototype.`前缀），
+以`ctest --test-dir <构建目录> -L long-world --output-on-failure`执行；原五项3600秒、扩张10800秒仅是墙钟保护，不参与原规则。
 当前跨年、多种子、插桩与构建实际结果见[验证](../VERIFICATION.md)，不从单条路径推导全部状态可达或无限期认证。
+
+无窗口长测直接循环调用`StartupWorldRuntimeSession::update()`，不使用sleep、FPS或墙钟节拍，已经按CPU可承受速度运行。
+`speed=1`仅表示原版主场景在框架入口保存两轮逻辑；自动玩家在每次框架更新后观察并下达命令，
+因此改成1可能改变页面、命令和随机消费的交错，不能代替`seed=1/speed=0`的黄金轨迹验收。
+增大CTest超时不会提速。保持同轨迹的性能工作应先采样Owner候选复制、投影、分配与验证成本，
+再以相同结果、操作时点、随机抽数及回滚断言验收优化；目前没有额外的等价加速参数。
+
+用户已将按改动缩小长测范围、中后期采样与可校验的中途回放快照列为必要后续工作，
+同时要求正常存读档持续可用。原APK不保存随机游标／页面栈，测试精确恢复需额外状态与明确事务边界；
+未实现字段的无损保留和持续回归要求见[存档后续工作](../rules/PERSISTENCE.md#必要后续工作持续可用的存读档与测试快照)，当前尚未实现。
+
+Windows混合核心机器可单独配置测试进程的CPU亲和性，保持正常优先级，不改变游戏步长。
+本机拓扑确认逻辑核心0—11为6个带超线程的性能核、12—19为能效核；本机性能核掩码为4095，
+仅在已核对的本机诊断／验收进程使用。它不是跨机器默认值，也不是游戏内倍速；测量时应记录亲和性与宿主负载。
+本批同核3000步对照的CPU均值减少22.4%，该数据与随后长测的核心调度调整分别记录在[验证](../VERIFICATION.md)。
 
 同套件保留显式`natural_housing [seed [speed]]`模式：原募集建设、合法短剑赠礼提高满足度、74/80入住、
 共同施工、年度真正授予、90/98及收税后继续一个月；不注入人物／现金／满足度／日期或奖励。
@@ -200,9 +219,9 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 继续到后续月份并检查设施收入增加。策略只调用真实Session玩家命令，不注入资金、点数、人气、F、日期或rank，
 任务结束后留一个完整自然月正常营业，人气达到300后不再接新任务；晋级后为活动16保留其原价点数。
 这是显式验收玩家策略，不是原版自动行为；最高月收入不包含95的其它收入现金奖励。
-本批在原晋级／活动16／后续收入完成断言之后追加编辑尾段：真实flag32已解锁才铺设并撤除单格道路，
+`2b479f6`在原晋级／活动16／后续收入完成断言之后追加编辑尾段：真实flag32已解锁才铺设并撤除单格道路，
 移动并撤除一个正常kind2设施，检查原数字身份保留与新旧维护引用退休，再经营到下一月份并检查新增收入。
-不重复新建第二条从新局到晋级的长测，不改变住宅模式和原自然任务黄金轨迹；本批Release长测已通过，原frame36385前缀保持。
+不重复新建第二条从新局到晋级的长测，不改变住宅模式和原自然任务黄金轨迹；该批Release长测已通过，原frame36385前缀保持。
 编辑消耗道路10G及移动300G，不抽随机，旧实例6→新实例15→撤除；终点frame38282、23388G／322697抽，共154284项检查。
 180000框架调用与3600秒是验收保护；每轮检查真实页载荷／实体引用及声音消费，输出资源峰值和检查点规模。
 现金流水、任务历史和完整内存检查点允许合法增长，有限轨迹不能证明永久有界。
@@ -212,11 +231,25 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests natural_tools 1 0
 ```
 
+显式`natural_expansion [seed [speed]]`复用`natural_progression`函数及全部原晋级／编辑断言，
+seed1／speed0先验证既有frame38282、23388G／322697抽的前缀，再继续玩家经营，不改变旧模式轨迹。
+尾段通过真实任务和已开放的人气活动达到1000，预留原100村子点和一个季度名额，等待原奖励解锁25后走51→52→53。
+完成后在旧边界外的新严格内圈实际铺一格原价道路，保留道路并经营到一个完整自然月结束，检查新增设施收入、
+地图仍576格、页面／实例引用退休和声音输出消费。只执行Session命令，不注入人气、点数、日期、人物或解锁旗标。
+新模式采用240000框架调用的有限保护，旧模式180000不变；保护不是游戏时限。
+本批优化后实际通过451725项检查，终点frame111808、138463G／1047804抽；109条里程碑与优化前逐字一致。
+本批可只跑更长扩张模式以覆盖已有完整前缀；第二次扩张及封顶由Owner组合验收，不能写成已走两次自然玩家链。
+现金流水、任务历史和完整内存检查点仍可能合法增长，有限自然轨迹不证明永久有界。
+
+```sh
+research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests natural_expansion 1 0
+```
+
 新增`natural_tools`从真实初始库存开始：自然人物到访后赠送普通道具，再给实际包子铺使用设施道具，
 真实任务自然成功及商会补货后买入一件、售回同件，再经营一个完整自然月份。
 它只发Session玩家命令，不注入钱／人物／库存／日期／flags；与任务黄金、住宅黄金及晋级编辑链各自验收。
 新模式沿180000调用／3600秒保护，每轮检查页载荷／设施归属与输出消费，并报告资源峰值和退休情况。
-本批Release长测已通过：真实补货后买入400G、售回200G，终点frame16263、10770G／106409抽，共81340项检查；详见[当前验证](../VERIFICATION.md)。
+`2b479f6`的Release长测已通过：真实补货后买入400G、售回200G，终点frame16263、10770G／106409抽，共81340项检查；详见[当前验证](../VERIFICATION.md)。
 
 [自然任务流程测试](tests/startup_world_task_flow_test.cpp)接受可选`种子 速度`（默认`1 1`），
 从真实空人物新局等待任务，按真实现金选择可支付任务，显式接受、等待征集并确认出发。

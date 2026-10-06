@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace dungeon_village_reference {
 namespace {
@@ -162,7 +163,7 @@ WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &s, Ch
     a.perceived_distance = c.sensed_distance;
     if (!c.enemy)
         a.control.flags &= ~128U;
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldPerceptionResult
 prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const WorldMapFacts &f,
@@ -196,7 +197,7 @@ prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const
     // Do not touch irrelevant rosters when this actor cannot execute the idle scans.
     if (a.kind != ActorKind::human || (a.control.state != 0 && a.control.state != 5) ||
         a.object_slot != -1)
-        return {AiRewardError::none, c};
+        return {AiRewardError::none, std::move(c)};
     const auto &ctx = c.state.contexts.at(id);
     PreemptionInput input;
     input.kind = a.kind;
@@ -258,7 +259,7 @@ prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const
         if (prepared->clear_encounter)
             a.encounter.reset();
     }
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 CombatInfluenceResult prepare_world_influence(const AiRewardState &s, const WorldMapFacts &f) {
     if (!valid_world_map_facts(f))
@@ -312,7 +313,7 @@ WorldPerceptionResult prepare_world_actor_projection(const AiRewardState &s, Cha
     c.state = s;
     c.state.contexts.at(id).cell = *whole;
     c.state.contexts.at(id).half_cell = *half;
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldEventGateResult prepare_world_event_gate(const AiRewardState &s, CharacterId id,
                                               const WorldMapFacts &f, const WorldEventTask &task) {
@@ -373,7 +374,7 @@ WorldEventGateResult prepare_world_event_gate(const AiRewardState &s, CharacterI
             return {AiRewardError::stale_encounter, {}};
         c.state.battle.actors.at(id).encounter = c.gate.bind_encounter;
     }
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &s, CharacterId id,
                                                     const WorldMapFacts &f) {
@@ -411,7 +412,7 @@ WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &s, Char
     if (!projection.candidate)
         return {AiRewardError::preparation_failed, {}};
     c.state = projection.candidate->state;
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldPerceptionResult prepare_world_encounter_influence(const AiRewardState &s, std::uint64_t id,
                                                         const CombatInfluenceCandidate &global) {
@@ -423,7 +424,7 @@ WorldPerceptionResult prepare_world_encounter_influence(const AiRewardState &s, 
     e.influence = global;
     e.human_scratch = global.human_field;
     e.monster_scratch = global.monster_field;
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldCombatMoveResult prepare_world_combat_move(const AiRewardState &s, CharacterId id,
                                                 CharacterId enemy_id, const WorldMapFacts &f,
@@ -436,7 +437,7 @@ WorldCombatMoveResult prepare_world_combat_move(const AiRewardState &s, Characte
     const auto &target = *actor(s, enemy_id);
     if (!a.encounter) {
         c.diagnostic = 4;
-        return {AiRewardError::none, c};
+        return {AiRewardError::none, std::move(c)};
     }
     RewardEncounter *e = nullptr;
     if (c.state.encounters.count(*a.encounter))
@@ -498,7 +499,7 @@ WorldCombatMoveResult prepare_world_combat_move(const AiRewardState &s, Characte
         next.position.z = motion.step->position.z;
         c.diagnostic = 6;
     }
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s, CharacterId id) {
     const auto failed = [](AiRewardError error) -> WorldExecutionPrefixResult {
@@ -537,7 +538,7 @@ WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s
         c.state = growth.candidate->state;
         c.growth_requests = growth.candidate->growth_requests;
     }
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
 }
 WorldBattlePreparationResult prepare_world_battle_preparation(const AiRewardState &s,
                                                               CharacterId id,

@@ -20,7 +20,7 @@ void validate(const WorldFacilityUpdateState &state, std::uint64_t identity,
         !state.finish.dungeon.facilities.count(identity) || !state.details.count(identity) ||
         state.cycle_length <= 0 || state.finish.event_calls != state.scripts.event_calls ||
         state.finish.dungeon.world.ai.pending_completion != state.scripts.pending_completion ||
-        !prepare_world_script_continuations(catalog, state.scripts, false).candidate)
+        validate_world_script_state(catalog, state.scripts) != WorldScriptError::none)
         fail(WorldFacilityUpdateError::invalid_owner);
     const auto definition =
         state.finish.dungeon.world.facilities.at(identity).placement.definition_id;
@@ -61,7 +61,7 @@ prepare_world_facility_update(const WorldFacilityUpdateState &state, std::uint64
                 result->finish.dungeon.world.ai.pending_completion !=
                     result->scripts.pending_completion ||
                 result->random.draws() < candidate.state.random.draws() ||
-                !prepare_world_script_continuations(catalog, result->scripts, false).candidate)
+                validate_world_script_state(catalog, result->scripts) != WorldScriptError::none)
                 fail(WorldFacilityUpdateError::consumer_failed);
             if (kind == WorldFacilityUpdateConsumerKind::residence_join) {
                 const auto current = result->finish.dungeon.world.facilities.find(identity);

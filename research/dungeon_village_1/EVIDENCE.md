@@ -19,6 +19,10 @@
 包身份和哈希将所有结论固定到这一输入。调试证书和汉化字符串意味着不能把该安装包描述为未经修改的
 官方发行版。
 
+2026-10-06用户另提供其购买的Steam Windows安装目录，仅授权并行评估可分析性与未来切换成本。
+[静态可行性评估](verification/STEAM_ASSESSMENT.md)独立登记PE／IL2CPP、文件哈希和版本差异边界；
+它不是固定APK的补丁或等价认证，本页APK身份、现有原表及黄金轨迹不变，尚未决定更换正式研究基础。
+
 新局七类缺口的本轮研究见 [新局、到访与建设](rules/STARTUP.md)，原始字节与推导分开发布到
 [新局数据包](data/startup/README.md)。地图保留未消费的两个零字节，不作为完整格式已闭合的声明。
 首名自动到访是人物表flags8命中的ID1；首次教程对话ID69与页面69、普通解锁页59分别登记。
@@ -27,6 +31,11 @@
 JADX参数为 `--single-class c.h --single-class-output <路径> --decompilation-mode fallback --no-res --log-level warn`。
 输出SHA-256为 `faa6ac955724a8d32937a60b45a40c87cace6c0274a9a2a5ca6b3f1c0f84f6fe`，仍不提交生成Java。
 低层修正常规g()循环跳转误读，c()/d()/实例分配小函数交叉定位见[新局报告](rules/STARTUP.md#加载后逻辑显示快照)。
+本次村办类型3研究在Windows以同版JADX恢复该路径，增加`--config none`，按LF归一化后的SHA-256与上值一致。
+`Map.java:1021`的g及`3596`的f用于核对扩张：`L1fd→Lc6→Lcf→L93`证明非flags16实例只跳过本项，
+常规`c/h.java:365`的`break`不能作为提前结束扫描的依据。扩张仍是固定24×24地图内的边界级别切换，
+逐次删除／创建／邻接及人物重置见[建筑合同](rules/STATE_CONSTRUCTION.md#村办类型3地图扩张)。
+恢复输出仍属于忽略的研究证据缓存，不提交生成Java，也不将静态顺序核对称为APK动态轨迹认证。
 运动/路点/逻辑格进入复用既有Character低层输出，数值与巨型P()局部证据分级见[连续运动](rules/CHARACTERS.md#continuous-motion)。
 
 本轮新增单类fallback：`work/first-visit-fallback/MainScene.java`（b.c）与

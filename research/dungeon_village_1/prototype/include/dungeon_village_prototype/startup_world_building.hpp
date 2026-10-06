@@ -43,6 +43,13 @@ StartupBuildResult install_startup_world_facility(StartupWorldRuntimeState &cand
                                                   int definition, ref::Position anchor,
                                                   ref::FacilityOrientation orientation);
 bool refresh_startup_world_map(StartupWorldRuntimeState &candidate, bool notices);
+// 原c→d：只重建显示、道路及围栏，不改变邻接G/s/w/H或通知。
+bool refresh_startup_world_surface(StartupWorldRuntimeState &candidate);
+// 原地图g内部设施创建：限kind4/5，不走玩家镇界、造价、施工和连接提示。
+// refresh=true仅c→d；false保留源稍后统一刷新时点。调用者持有整次事务候选。
+StartupBuildResult install_startup_world_map_facility(StartupWorldRuntimeState &candidate,
+                                                      int definition, ref::Position anchor,
+                                                      bool refresh);
 // 只退休实例及其占地/辅助缓存，不重写人物既有目标、路线或合法任务历史。
 bool retire_startup_world_facility(StartupWorldRuntimeState &candidate, std::uint64_t facility);
 // 原o.f()只重算kind3共享经营缓存；转职最终确认调用，不在预览/中点执行。

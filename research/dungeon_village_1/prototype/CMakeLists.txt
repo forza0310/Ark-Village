@@ -54,7 +54,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_task_pages.cpp
     src/startup_world_runtime_deadline.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
-    src/startup_world_visuals.cpp src/startup_world_building.cpp
+    src/startup_world_visuals.cpp src/startup_world_building.cpp src/startup_world_expansion.cpp
     src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp
     src/startup_world_facility_items.cpp src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
 dungeon_village_library(dungeon_village_startup_world)
@@ -88,6 +88,8 @@ if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
         COMMAND dungeon_village_startup_world_continuous_tests natural_tools 1 0)
     add_test(NAME dungeon_village_prototype.natural_progression
         COMMAND dungeon_village_startup_world_continuous_tests natural_progression 1 0)
+    add_test(NAME dungeon_village_prototype.natural_expansion
+        COMMAND dungeon_village_startup_world_continuous_tests natural_expansion 1 0)
     add_test(NAME dungeon_village_prototype.natural_housing
         COMMAND dungeon_village_startup_world_continuous_tests natural_housing 1 0)
     add_test(NAME dungeon_village_prototype.world_year
@@ -99,7 +101,11 @@ if(DUNGEON_VILLAGE_LONG_WORLD_TESTS)
                          dungeon_village_prototype.world_speed_seed
                          dungeon_village_prototype.natural_housing
                          dungeon_village_prototype.natural_progression
+                         dungeon_village_prototype.natural_expansion
                          PROPERTIES TIMEOUT 3600 LABELS "long-world")
+    # 新扩张模式保留既有第一星/编辑前缀，再自然经营到人气1000和扩张后完整月。
+    # 单独给新增长轨迹墙钟预算；原五项保护、断言与调用次数上限保持不变。
+    set_tests_properties(dungeon_village_prototype.natural_expansion PROPERTIES TIMEOUT 10800)
 endif()
 add_test(NAME dungeon_village_prototype.startup_world_data
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/startup_world_data_test.mjs"

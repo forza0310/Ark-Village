@@ -1,5 +1,6 @@
 // 村办51—54的唯一Owner消费者：页面、资源、人物效果与共同随机整轮提交。
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
+#include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/world_village_activity.hpp"
 
@@ -135,7 +136,7 @@ bool payload(const State &s, std::uint64_t id, int raw) {
         if (binding == s.activity_page_bindings.end())
             return false;
         const auto a = definition(s, binding->second);
-        if (!a || a->kind < 0 || a->kind > 2 || (raw == 54 && a->kind == 2))
+        if (!a || a->kind < 0 || a->kind > 3 || (raw == 54 && a->kind > 1))
             return false;
     }
     if (raw == 52)
@@ -234,8 +235,7 @@ std::optional<std::uint64_t> parent(const State &s, std::uint64_t child) {
     return p->id;
 }
 bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinition &a) {
-    // 地图扩张仍缺共同刷新链；拒绝整候选，不扣季度次数或把缺消费者当成功。
-    if (a.kind < 0 || a.kind > 2 || s.quarter_counter == std::numeric_limits<int>::min())
+    if (a.kind < 0 || a.kind > 3 || s.quarter_counter == std::numeric_limits<int>::min())
         return false;
     --s.quarter_counter;
     if (a.kind == 0 || a.kind == 1) {
@@ -269,9 +269,11 @@ bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinit
         const auto result = open(s, 54, a.identity);
         if (!result || !draw_pair(s, *pool, *result))
             return false;
-    } else {
+    } else if (a.kind == 2) {
         s.scene.world.popularity_queue.insert(s.scene.world.popularity_queue.begin(),
                                               {10, a.magnitude, 1});
+    } else if (!expand_startup_world_map(s)) {
+        return false;
     }
     return close(s, page);
 }
@@ -379,7 +381,7 @@ Error act_startup_world_village_activity_page(State &s, std::uint64_t id, Action
                                      : 12))
                     return Error::script_failed;
             } else {
-                if (a->kind > 2)
+                if (a->kind > 3)
                     return Error::missing_source;
                 const auto child = open(next, 52, a->identity);
                 if (!child)

@@ -50,7 +50,7 @@ WorldResidenceResult prepare_world_residence(const WorldResidenceState &state,
             state.facility.finish.event_calls != state.facility.scripts.event_calls ||
             state.facility.finish.dungeon.world.ai.pending_completion !=
                 state.facility.scripts.pending_completion ||
-            !prepare_world_script_continuations(catalog, state.facility.scripts, false).candidate)
+            validate_world_script_state(catalog, state.facility.scripts) != WorldScriptError::none)
             fail(WorldResidenceError::invalid_owner);
         WorldResidenceCandidate candidate{state, {}, {}, false};
         auto &next = candidate.state;

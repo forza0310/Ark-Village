@@ -15,12 +15,12 @@ const StartupDefinition *definition(const StartupWorldRouteFacts &f, int id) {
     return found == f.rules->facilities.end() ? nullptr : &*found;
 }
 std::optional<ref::FacilityEconomyValues> economy(const ref::WorldActorRoutesState &r,
-                                                  const StartupWorldRouteFacts &f, int id,
+                                                  const StartupWorldRouteFacts &f,
+                                                  const StartupDefinition &d,
                                                   std::optional<std::uint64_t> instance = {}) {
-    const auto *d = definition(f, id);
-    const auto use = r.world.facility_uses.find(id);
-    const auto improvement = f.facility_improvements.find(id);
-    if (!d || use == r.world.facility_uses.end() || improvement == f.facility_improvements.end())
+    const auto use = r.world.facility_uses.find(d.id);
+    const auto improvement = f.facility_improvements.find(d.id);
+    if (use == r.world.facility_uses.end() || improvement == f.facility_improvements.end())
         return {};
     ref::FacilityEconomyInput input;
     input.level = use->second.level;
@@ -34,7 +34,7 @@ std::optional<ref::FacilityEconomyValues> economy(const ref::WorldActorRoutesSta
         std::copy(neighbour->second.begin(), neighbour->second.end(),
                   input.instance_modifiers.begin());
     }
-    return ref::derive_facility_economy(d->economy, input).values;
+    return ref::derive_facility_economy(d.economy, input).values;
 }
 std::optional<std::vector<ref::ShopEquipmentDefinition>>
 equipment(const ref::WorldActorRoutesState &r, const StartupWorldRouteFacts &f) {
@@ -59,14 +59,23 @@ std::optional<ref::WorldDepartureInput> departure(const ref::WorldActorRoutesSta
     ref::WorldDepartureInput input;
     input.actor = id;
     input.catalogue.town = r.facts.town;
+    const auto ground = std::find_if(f.rules->facilities.begin(), f.rules->facilities.end(),
+                                     [](const auto &d) { return d.kind == 7; });
+    if (ground == f.rules->facilities.end())
+        return {};
+    input.catalogue.ground_definition = ground->id; // c/n初始化o.S取首个kind7。
     for (const auto &cell : f.surface)
         input.catalogue.cell_definition_ids.push_back(cell.definition);
+    // 复用本就需要的明细索引判重；唯一ID直接用当前定义，重复ID仍回查首项。
+    // 不再为每次出发额外分配索引，也不缓存随等级／职业改变的经济结果。
     for (const auto &d : f.rules->facilities) {
-        const auto values = economy(r, f, d.id);
+        const auto inserted = input.definition_details.emplace(d.id, d.detail).second;
+        const auto *first = inserted ? &d : definition(f, d.id);
+        const auto values = economy(r, f, *first);
         if (!values)
             return {};
-        input.catalogue.definitions.push_back({d.id, d.category, values->definition_attributes[2]});
-        input.definition_details.emplace(d.id, d.detail);
+        input.catalogue.definitions.push_back(
+            {d.id, d.category, values->definition_attributes[2], d.kind});
     }
     for (const auto &entry : r.world.facilities)
         input.catalogue.instances.push_back(
@@ -272,7 +281,7 @@ prepare_startup_world_command_input(const ref::WorldActorRoutesState &r, ref::Ch
                 const auto *d = definition(f, instance->second.placement.definition_id);
                 if (!d)
                     return {};
-                const auto values = economy(r, f, d->id, instance->first);
+                const auto values = economy(r, f, *d, instance->first);
                 if (!values || values->instance_attributes[1] < 0 ||
                     values->instance_attributes[1] > std::numeric_limits<int>::max())
                     return {};

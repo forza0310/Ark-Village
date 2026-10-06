@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <utility>
 
 namespace dungeon_village_reference {
 namespace {
@@ -167,7 +168,7 @@ static WorldActorTailResult actor_tail(const RescueWorldState &s, const WorldAct
     counts.bad_area_updates = retention->state.bad_area_updates;
     c.delete_instance = retention->delete_instance;
     c.deletion_reason = retention->reason;
-    return {RescueWorldError::none, c};
+    return {RescueWorldError::none, std::move(c)};
 }
 WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
                                               const WorldActorTailInput &i) {
@@ -192,6 +193,6 @@ WorldActorTailResult prepare_world_actor_remove(const RescueWorldState &s, Chara
     c.state.ai.battle.actors.erase(id);
     c.delete_instance = true;
     // Keep contextual records until the world collector traces external task/page roots too.
-    return {RescueWorldError::none, c};
+    return {RescueWorldError::none, std::move(c)};
 }
 } // namespace dungeon_village_reference

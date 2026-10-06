@@ -20,6 +20,7 @@ struct CandidateDefinition {
     std::int32_t definition_id{};
     std::int32_t legacy_category{};
     std::int64_t definition_charm{};
+    int legacy_kind{-1}; // o.e；同定义调用点可省略，混合地表必须提供真实种类。
 };
 
 struct CandidateInstance {
@@ -41,6 +42,7 @@ struct ActivityCandidateInput {
     std::vector<CandidateInstance> instances;
     std::vector<CandidateMapEvent> events;
     std::optional<BuildingId> last_visited_instance;
+    int ground_definition{-1}; // 原o.S，不能将任意kind7替代为基础地面。
 };
 
 enum class CandidateOrigin { map_scan, event };
@@ -53,12 +55,22 @@ struct ActivityCandidateCell {
     std::optional<std::int64_t> cost;
     CandidateOrigin origin{CandidateOrigin::map_scan};
     std::size_t source_index{};
+    // dk使用definition，dl使用x.e()；铺撤路后可能不同，不能互相覆盖。
+    std::optional<CandidateDefinition> instance_definition{};
+    int legacy_state{-1};
+    RouteCategory route_category{RouteCategory::ground};
 };
 
 struct ActivityCandidateSnapshot {
     std::vector<ActivityCandidateCell> cells;
     std::array<std::int64_t, 11> category_counts{};
+    int ground_definition{-1};
 };
+
+// 同定义手工快照可复用格定义；实际收集时显式发布两份定义。
+inline const CandidateDefinition &candidate_instance_definition(const ActivityCandidateCell &cell) {
+    return cell.instance_definition ? *cell.instance_definition : cell.definition;
+}
 
 enum class ActivityCandidateError {
     none,

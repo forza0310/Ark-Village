@@ -171,13 +171,16 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
         return Step{std::move(next)};
     };
     adapter.entry.read = [](const State &s) {
+        // 原c/k.c取h.m[0]，不是h.l[n.o]；扩张后围栏等级不能索引地区数组。
+        if (!s.rules || s.rules->generation_bounds.empty())
+            throw std::runtime_error("世界入口缺原始地区目录h.m[0]");
         ref::WorldWorldEntryState value;
         value.finish = startup_world_runtime_finish(s);
         value.scripts = startup_world_runtime_scripts(s);
         value.random = s.scene.random;
         value.map_surface = s.scene.world.surface;
         value.map_flags = s.scene.world.map_flags;
-        value.generation_bounds = s.rules->generation_bounds.at(s.fence_level);
+        value.generation_bounds = s.rules->generation_bounds.front();
         value.town = s.scene.world.town;
         value.updates = s.entry_updates;
         value.global_updates = s.global_updates;

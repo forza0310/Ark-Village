@@ -1,7 +1,9 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_editing.hpp"
+#include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
 #include <algorithm>
@@ -683,7 +685,7 @@ void road_editing() {
               prepare_startup_world_runtime(s).candidate.has_value(),
           "real common world resumes after road topology changed");
 }
-void move_remove_and_stale_actor() {
+StartupWorldRuntimeState first_arrival_fixture() {
     StartupSession arrival;
     for (int n = 0; n < 420; ++n)
         check(arrival.update() == StartupError::none, "source first-arrival fixture updates");
@@ -712,6 +714,10 @@ void move_remove_and_stale_actor() {
     check(entered, "first arrival source script returns naturally to ordinary main scene");
     check(!baseline.scene.world.world.ai.human_order.empty(),
           "actual source arrival installed a real actor");
+    return baseline;
+}
+void move_remove_and_stale_actor() {
+    const auto baseline = first_arrival_fixture();
     for (const bool move : {false, true})
         for (const bool using_facility : {false, true}) {
             auto s = baseline;
@@ -841,6 +847,307 @@ void residence_rebuild() {
               prepare_startup_world_runtime(s).candidate.has_value(),
           "exhausted home credit leaves catalogue and rebuilt world resumes");
 }
+void retired_facility_records(const StartupWorldRuntimeState &s, std::uint64_t id) {
+    check(!s.scene.world.world.facilities.count(id) && !s.facility_original_ids.count(id) &&
+              !s.facility_ordinals.count(id) && !s.facility_residents.count(id) &&
+              !s.facility_flags.count(id) && !s.facility_details.count(id) &&
+              !s.facility_month_age.count(id) && !s.facility_monthly_cash.count(id) &&
+              !s.facility_item_confirmations.count(id) && !s.neighbourhood.count(id) &&
+              !s.neighbourhood_details.count(id) && !s.dungeon_facilities.count(id) &&
+              !s.sites.count(id) && !s.shops.count(id) &&
+              std::none_of(s.scene.world.world.map.cells.begin(),
+                           s.scene.world.world.map.cells.end(),
+                           [&](const auto &cell) {
+                               return cell.facility && cell.facility->instance_id.value == id;
+                           }),
+          "map replacement retires old occupancy and auxiliary records together");
+}
+void expansion_map_and_world() {
+    auto s = test_support::world_fixture();
+    const auto money = s.scene.world.world.ai.accounting.funds();
+    const auto draws = s.scene.random.draws();
+    for (int level = 1; level <= 2; ++level) {
+        const int old_left_definition = level == 1 ? 75 : 77;
+        const std::array<std::uint64_t, 4> old{{source_facility(s, old_left_definition),
+                                                source_facility(s, old_left_definition + 1),
+                                                source_facility(s, 83), source_facility(s, 84)}};
+        check(expand_startup_world_map(s), "source initial map expands through both real levels");
+        const auto &town = s.scene.world.town;
+        check(s.fence_level == level && town.left == (level == 1 ? 3 : 1) &&
+                  town.right == (level == 1 ? 20 : 22) && town.top == 2 &&
+                  town.bottom == (level == 1 ? 11 : 12) && s.scene.world.world.map.width == 24 &&
+                  s.scene.world.world.map.height == 24 &&
+                  s.scene.world.world.map.cells.size() == 576 && s.surface.size() == 576 &&
+                  s.road_patches.size() == 576 && s.scene.world.facility_order.size() == 8,
+              "source fences expand 3,11..20,2 then1,12..22,2 without resizing or entity growth");
+        for (const auto id : old)
+            retired_facility_records(s, id);
+        for (int side = 0; side < 2; ++side) {
+            const int entrance_definition = (level == 1 ? 77 : 79) + side;
+            const auto top = source_facility(s, entrance_definition);
+            const auto bottom = source_facility(s, 83 + side);
+            const ref::Position upper{11 + side, 2}, lower{11 + side, 10 + level};
+            const auto &upper_cell = s.scene.world.world.map.cells.at(upper.y * 24 + upper.x);
+            const auto &lower_cell = s.scene.world.world.map.cells.at(lower.y * 24 + lower.x);
+            check(s.scene.world.world.facilities.at(top).placement.anchor == upper &&
+                      s.scene.world.world.facilities.at(bottom).placement.anchor == lower &&
+                      upper_cell.facility->instance_id.value == top &&
+                      upper_cell.legacy_state == 6 &&
+                      lower_cell.facility->instance_id.value == bottom &&
+                      lower_cell.legacy_state == 7 &&
+                      s.surface.at(lower.y * 24 + lower.x).instance == 2 + side &&
+                      s.surface.at(upper.y * 24 + upper.x).instance == -1 &&
+                      s.facility_original_ids.at(bottom) == side,
+                  "kind4 replacements and relocated double entrance retain source tiles/m/rawID");
+        }
+        check(s.scene.world.world.ai.accounting.funds() == money &&
+                  s.scene.random.draws() == draws && s.sound_requests.empty(),
+              "map effect alone emits no player build charges, sound or random draws");
+        const auto projected = startup_world_runtime_adapter().entry.read(s);
+        check(projected.generation_bounds == std::array<ref::Position, 2>{{{4, 21}, {19, 15}}},
+              "expanded world entry still reads original h.m[0], not fence-level index");
+        auto running = s;
+        for (int n = 0; n < 3; ++n) {
+            const auto step = prepare_startup_world_runtime(running);
+            check(step.candidate.has_value(), "expanded Owner admits actual common world rounds");
+            running = *step.candidate;
+        }
+    }
+    // 普通建设/道路仍走真实Owner命令，位置在旧村界外、扩张后内圈，不开放定义或补款。
+    const ref::Position tree{4, 3}, road{5, 3};
+    const auto quote = startup_world_build_quote(s, 66);
+    check(quote && begin_startup_world_build(s, 66).error == StartupWorldRuntimeError::none,
+          "real available tree catalogue can start construction after expansion");
+    const auto built = confirm_startup_world_build(s, tree, ref::FacilityOrientation::first);
+    check(built.created && cancel_startup_world_build(s) == StartupWorldRuntimeError::none &&
+              s.scene.world.world.ai.accounting.funds() == money - quote->construction_cost,
+          "new interior accepts actual source construction and charges its real price");
+    check(begin_startup_world_road(s, 18).error == StartupWorldRuntimeError::none &&
+              confirm_startup_world_edit(s, road, ref::FacilityOrientation::first).error ==
+                  StartupWorldRuntimeError::none &&
+              confirm_startup_world_edit(s, road, ref::FacilityOrientation::first).error ==
+                  StartupWorldRuntimeError::none &&
+              cancel_startup_world_edit(s) == StartupWorldRuntimeError::none &&
+              s.scene.world.world.ai.accounting.funds() == money - quote->construction_cost - 10 &&
+              s.scene.random.draws() == draws &&
+              prepare_startup_world_runtime(s).candidate.has_value(),
+          "expanded interior road costs10 without RNG and full Owner continues after editing");
+}
+
+// 真实任务工厂准备kind1洞穴类实例；移动到指定格只是几何条件夹具，不宣称自然任务选址。
+struct TaskFacilityFixture {
+    std::shared_ptr<StartupWorldRules> geometry_rules;
+    StartupWorldRuntimeState state;
+    std::uint64_t facility;
+};
+TaskFacilityFixture task_facility_fixture(ref::Position position, bool pair = false) {
+    auto s = test_support::world_fixture();
+    const auto created = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 0);
+    check(created.candidate && created.candidate->created_task &&
+              write_startup_world_runtime_factory(s, created.candidate->state),
+          "real original task factory creates the special facility fixture");
+    const auto id = *s.tasks.at(*created.candidate->created_task).facility;
+    auto &f = s.scene.world.world.facilities.at(id);
+    check(f.kind == 1, "mixed-reference fixture uses actual source kind1, never a fake tree");
+    for (const auto old : s.sites.at(id).occupied_cells) {
+        const auto at = old.y * 24 + old.x;
+        s.scene.world.world.map.cells.at(at) = {4, ref::RouteCategory::ground, {}};
+        s.surface.at(at).definition = s.ground_definition;
+        s.surface.at(at).instance = s.surface.at(at).fragment = -1;
+    }
+    std::shared_ptr<StartupWorldRules> geometry_rules;
+    if (pair) {
+        // 原表flag16实例均单格；局部双格只覆盖“任一占地”，不改发布原表或声称原版双格洞穴。
+        geometry_rules = std::make_shared<StartupWorldRules>(*s.rules);
+        geometry_rules->facilities.at(f.placement.definition_id).shape =
+            static_cast<int>(ref::FacilityShape::pair);
+        s.rules = geometry_rules.get();
+        f.placement.shape = ref::FacilityShape::pair;
+    }
+    f.placement.anchor = position;
+    s.tasks.at(*created.candidate->created_task).site = position;
+    const auto footprint =
+        ref::facility_footprint(f.placement.shape, f.placement.orientation, position, 24, 24);
+    check(footprint.error == ref::GeometryError::none, "fixture footprint is inside real map");
+    s.sites.at(id).occupied_cells.clear();
+    for (const auto &cell : footprint.cells) {
+        const auto at = cell.position.y * 24 + cell.position.x;
+        check(!s.scene.world.world.map.cells.at(at).facility,
+              "fixture never overwrites an existing real instance");
+        s.scene.world.world.map.cells.at(at) = {
+            8, ref::RouteCategory::terminal,
+            ref::FacilityTileBinding{{id}, f.placement.definition_id, cell.fragment_index}};
+        s.surface.at(at).definition = f.placement.definition_id;
+        s.surface.at(at).variant = cell.fragment_index;
+        s.surface.at(at).instance = 3; // 原m方向独立于x实例，检验铺撤不得清除。
+        s.sites.at(id).occupied_cells.push_back(cell.position);
+    }
+    check(refresh_startup_world_map(s, false), "source task fixture has coherent map and identity");
+    return {std::move(geometry_rules), std::move(s), id};
+}
+void expansion_cleanup_and_rejections() {
+    for (const bool pair : {false, true}) {
+        auto fixture =
+            task_facility_fixture(pair ? ref::Position{4, 2} : ref::Position{4, 3}, pair);
+        auto &s = fixture.state;
+        const auto old_order = s.scene.world.facility_order;
+        const auto old_next = s.next_facility_identity;
+        check(!expand_startup_world_map(s) && s.fence_level == 0 &&
+                  s.scene.world.facility_order == old_order &&
+                  s.next_facility_identity == old_next &&
+                  s.scene.world.world.facilities.count(fixture.facility) && !s.tasks.empty(),
+              "unreachable relocated task-site retirement refuses without dangling task reference");
+        // 以下仅验证flag16/占地扫描；固定原任务区域不在扩张范围，不保留伪造任务关系。
+        s.tasks.clear();
+        s.task_order.clear();
+        s.task_original_ids.clear();
+        check(expand_startup_world_map(s),
+              "flag16 removal scans past later non16 kind4 and checks every footprint cell");
+        retired_facility_records(s, fixture.facility);
+    }
+    const auto baseline = test_support::world_fixture();
+    for (int fault = 0; fault < 5; ++fault) {
+        auto broken = baseline;
+        const auto id = source_facility(broken, 75);
+        const auto p = broken.scene.world.world.facilities.at(id).placement.anchor;
+        if (fault == 0)
+            broken.scene.world.world.map.cells.at(p.y * 24 + p.x).facility->instance_id.value = 999;
+        else if (fault == 1)
+            broken.facility_original_ids.erase(id);
+        else if (fault == 2)
+            broken.neighbourhood_details.erase(id);
+        else if (fault == 3)
+            broken.scene.world.world.facility_uses.erase(77);
+        else
+            broken.base_variants.pop_back();
+        check(!expand_startup_world_map(broken) && broken.fence_level == 0 &&
+                  broken.scene.world.town.left == 6 &&
+                  broken.scene.world.facility_order == baseline.scene.world.facility_order &&
+                  broken.next_facility_identity == baseline.next_facility_identity &&
+                  broken.scene.random.draws() == baseline.scene.random.draws() &&
+                  broken.scene.world.world.ai.accounting.funds() ==
+                      baseline.scene.world.world.ai.accounting.funds(),
+              "invalid binding or missing required projection rejects expansion atomically");
+    }
+}
+void expansion_human_cleanup() {
+    auto baseline = first_arrival_fixture();
+    ref::EncounterCreationInput encounter;
+    encounter.kind = 0;
+    encounter.center = {10, 18};
+    encounter.year_index = 0;
+    encounter.month_index = 3;
+    const auto spawned = prepare_startup_world_runtime_encounter(baseline, encounter);
+    check(spawned && !spawned->scene.world.world.ai.monster_order.empty(),
+          "actual source encounter provides a real monster for bl/bm separation");
+    baseline = *spawned;
+    const auto human = baseline.scene.world.world.ai.human_order.front();
+    const auto monster = baseline.scene.world.world.ai.monster_order.front();
+    struct Case {
+        ref::Position cell;
+        bool old_ax;
+        bool cleanup;
+    };
+    for (const auto &test : std::array<Case, 4>{{{{4, 3}, false, true},
+                                                 {{3, 2}, false, true},
+                                                 {{2, 3}, false, false},
+                                                 {{4, 3}, true, false}}}) {
+        auto s = baseline;
+        auto &ai = s.scene.world.world.ai;
+        auto &a = ai.battle.actors.at(human);
+        a.position.height = 9;
+        a.control.state = 0;
+        a.control.flags = 1121; // 1024|97，原r清97、置514并插等待120。
+        a.control.queue = {{1, 9, 0}};
+        ai.contexts.at(human).cell = test.cell;
+        ai.contexts.at(human).inside_town = test.old_ax;
+        ai.contexts.at(monster).cell = {4, 3};
+        ai.contexts.at(monster).inside_town = false;
+        auto &route = s.scene.world.world.actors.at(human);
+        route.unbound_route = ref::LegacyPathResult{ref::MapAccessError::none, {{4, 3}, {5, 3}}, 1};
+        const auto old_actor = a;
+        const auto old_monster = ai.battle.actors.at(monster);
+        const auto old_humans = ai.human_order, old_monsters = ai.monster_order;
+        const auto draws = s.scene.random.draws();
+        check(expand_startup_world_map(s), "source expansion accepts actual actor-owner fixture");
+        const auto &after = s.scene.world.world.ai;
+        const auto &h = after.battle.actors.at(human);
+        const auto &m = after.battle.actors.at(monster);
+        check(after.human_order == old_humans && after.monster_order == old_monsters &&
+                  h.object_slot == old_actor.object_slot &&
+                  s.scene.world.world.actors.at(human).unbound_route->steps ==
+                      std::vector<ref::Position>{{4, 3}, {5, 3}} &&
+                  m.control.state == old_monster.control.state &&
+                  m.control.flags == old_monster.control.flags &&
+                  m.control.queue == old_monster.control.queue &&
+                  m.position.height == old_monster.position.height &&
+                  s.scene.random.draws() == draws,
+              "expansion preserves both rosters, monster state, human N/path and random stream");
+        if (test.cleanup)
+            check(h.control.state == 19 && h.control.flags == 1538 && h.position.height == 0 &&
+                      h.control.queue == std::vector<ref::LegacyActorControl>{{1, 120, 0}, {8, 5}},
+                  "only old !ax human inside new closed bounds receives exact r state19/120/act5");
+        else
+            check(h.control.state == old_actor.control.state &&
+                      h.control.flags == old_actor.control.flags &&
+                      h.control.queue == old_actor.control.queue && h.position.height == 9,
+                  "old ax=true or outside new closed bounds leaves human control unchanged");
+    }
+}
+void road_special_reference() {
+    auto fixture = task_facility_fixture({7, 3});
+    auto s = std::move(fixture.state);
+    const auto id = fixture.facility;
+    const ref::Position p{7, 3};
+    const auto at = p.y * 24 + p.x;
+    const auto original = s.scene.world.world.map.cells.at(at).facility;
+    const auto raw = s.facility_original_ids.at(id);
+    const auto order = s.scene.world.facility_order;
+    const auto draws = s.scene.random.draws();
+    const auto funds = s.scene.world.world.ai.accounting.funds();
+    check(begin_startup_world_road(s, 18).error == StartupWorldRuntimeError::none &&
+              confirm_startup_world_edit(s, p, ref::FacilityOrientation::first).error ==
+                  StartupWorldRuntimeError::none,
+          "actual road selects a source kind1 task-site cell");
+    auto broken = s;
+    broken.scene.world.world.map.cells.at(at).facility->instance_id.value = 999999;
+    check(confirm_startup_world_edit(broken, p, ref::FacilityOrientation::first).error !=
+                  StartupWorldRuntimeError::none &&
+              broken.surface.at(at).definition == original->definition_id &&
+              broken.scene.world.world.ai.accounting.funds() == funds &&
+              broken.scene.random.draws() == draws && broken.build_mode == 2,
+          "stale special reference rejects whole road candidate before cash or mode publication");
+    const auto paved = confirm_startup_world_edit(s, p, ref::FacilityOrientation::first);
+    if (paved.error != StartupWorldRuntimeError::none)
+        throw std::runtime_error("source kind1 road transaction failed: error=" +
+                                 std::to_string(static_cast<int>(paved.error)) +
+                                 " definition=" + std::to_string(original->definition_id) +
+                                 " instance=" + std::to_string(id));
+    check(paved.error == StartupWorldRuntimeError::none && s.surface.at(at).definition == 18 &&
+              s.surface.at(at).instance == 3 &&
+              s.scene.world.world.map.cells.at(at).legacy_state == 3 &&
+              s.scene.world.world.map.cells.at(at).facility->instance_id.value == id &&
+              s.scene.world.world.map.cells.at(at).facility->definition_id ==
+                  original->definition_id &&
+              s.scene.world.facility_order == order && s.facility_original_ids.at(id) == raw &&
+              s.scene.world.world.ai.accounting.funds() == funds - 10 &&
+              s.scene.random.draws() == draws,
+          "one changed road tile preserves kind1 x/definition/rawID/m and costs exactly10");
+    check(cancel_startup_world_edit(s) == StartupWorldRuntimeError::none &&
+              begin_startup_world_edit(s, false).error == StartupWorldRuntimeError::none &&
+              confirm_startup_world_edit(s, p, ref::FacilityOrientation::first).error ==
+                  StartupWorldRuntimeError::none &&
+              confirm_startup_world_edit(s, p, ref::FacilityOrientation::first).error ==
+                  StartupWorldRuntimeError::none &&
+              s.surface.at(at).definition == s.ground_definition &&
+              s.surface.at(at).instance == 3 &&
+              s.scene.world.world.map.cells.at(at).legacy_state == 4 &&
+              s.scene.world.world.map.cells.at(at).facility->instance_id.value == id &&
+              s.scene.world.facility_order == order && s.facility_original_ids.at(id) == raw &&
+              s.scene.world.world.ai.accounting.funds() == funds - 10 &&
+              s.scene.random.draws() == draws,
+          "removing road restores S ground while retaining source cave and has no refund or RNG");
+}
 void commerce_definition_preview() {
     auto s = test_support::page_fixture(85);
     const auto parent = s.scripts.pages.back().id;
@@ -919,6 +1226,10 @@ int main() {
         residence();
         road_editing();
         move_remove_and_stale_actor();
+        expansion_map_and_world();
+        expansion_cleanup_and_rejections();
+        expansion_human_cleanup();
+        road_special_reference();
         residence_rebuild();
         commerce_definition_preview();
         facility_item_pages();

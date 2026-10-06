@@ -258,8 +258,9 @@ int main() {
     try {
         auto s = fixture();
         const auto a = adapter();
+        std::optional<WorldActorScheduleResult<Owner>> first_round;
         for (int n = 0; n < 1000; ++n) {
-            const auto r = prepare_world_actor_schedule(s, {}, a);
+            auto r = prepare_world_actor_schedule(s, {}, a);
             if (!r.state)
                 throw std::runtime_error("round " + std::to_string(n) + " error " +
                                          std::to_string(static_cast<int>(r.error)));
@@ -271,7 +272,27 @@ int main() {
                       r.decisions.size() == 1 && r.controls.size() == 1,
                   "oldB170 inn recovery, zero unused random and one decision/control segment");
             s = *r.state;
+            if (n == 0)
+                first_round = std::move(r);
         }
+        // 保留首轮公开审计到千轮之后：c、v和最终共同世界必须仍各自保持原时点。
+        const auto &decision = first_round->decisions.front().state;
+        const auto &control = first_round->controls.front().state;
+        check(decision.world.ai.battle.actors.at({1}).state_counter == 0 &&
+                  decision.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1200 &&
+                  decision.world.map.cells.size() == 36 && decision.world.facilities.count(3) &&
+                  decision.human_definition_state.at(0) == 0 && decision.random.draws() == 0,
+              "retained decision audit contains full world and definition state before d/v");
+        check(control.world.ai.battle.actors.at({1}).state_counter == 1 &&
+                  control.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1199 &&
+                  control.world.map.cells.size() == 36 && control.world.facilities.count(3) &&
+                  control.human_definition_state.at(0) == 0 && control.random.draws() == 0,
+              "retained control audit contains full world after d/v independent of later rounds");
+        check(first_round->audit && first_round->audit->state.updates == 1 &&
+                  first_round->audit->state.world.ai.battle.actors.at({1}).state_counter == 1 &&
+                  first_round->audit->state.facility_order == std::vector<std::uint64_t>{3} &&
+                  first_round->state->common.updates == 1 && s.common.updates == 1000,
+              "first returned owner and final schedule audit remain complete after owner advances");
         auto missing = a;
         missing.other = {};
         check(

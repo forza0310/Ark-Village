@@ -285,6 +285,43 @@ void failures(WorldScriptCatalog catalog) {
               !parse_world_script_catalog("1\tname\t0\t\t", talk, "0\tone").catalog,
           "strict UTF8 and presentation boundaries reject damaged source");
 }
+void read_only_preflight(const WorldScriptCatalog &catalog) {
+    auto pending = invoke(catalog, fixture(), 126);
+    pending.pending_completion = 21;
+    check(validate_world_script_state(catalog, pending) == WorldScriptError::none &&
+              pending.continuations[0].remaining_updates == 10 &&
+              pending.pending_completion == 21 && pending.popularity_queue.empty() &&
+              pending.event_calls.at(126) == 1 && pending.pages.size() == 1,
+          "read-only preflight validates pending126 without advancing or producing outputs");
+    // 独立预期覆盖调用点仍须拒绝的页引用／续体损坏，不能用执行结果生成预期。
+    for (int damage = 0; damage < 6; ++damage) {
+        auto state = pending;
+        if (damage == 0)
+            state.executing_page = 999;
+        else if (damage == 1)
+            state.pages.push_back(state.pages.front());
+        else if (damage == 2)
+            state.selected_actor = 0;
+        else if (damage == 3)
+            state.continuations[0].event = 999;
+        else if (damage == 4)
+            state.continuations[0].next_instruction = 999;
+        else
+            state.continuations[0].remaining_updates = std::numeric_limits<int>::min();
+        const auto expected =
+            damage == 3 ? WorldScriptError::missing_event : WorldScriptError::invalid_input;
+        check(validate_world_script_state(catalog, state) == expected &&
+                  prepare_world_script_continuations(catalog, state, false).error == expected,
+              "read-only and nonadmitted preflight retain explicit invalid-state rejection");
+    }
+    auto bad_catalog = catalog;
+    bad_catalog.events.at(126).id = 999;
+    check(validate_world_script_state(bad_catalog, pending) == WorldScriptError::invalid_catalog,
+          "read-only preflight rejects inconsistent event identity");
+    pending.executing_page = 999;
+    check(validate_world_script_state(bad_catalog, pending) == WorldScriptError::invalid_input,
+          "invalid owner is reported before invalid catalogue, preserving original order");
+}
 void all_fixed_programs(const WorldScriptCatalog &catalog) {
     check(catalog.talks.size() == 182 && catalog.news.size() == 28 &&
               catalog.event_messages.size() == 10,
@@ -502,6 +539,7 @@ int main() {
         presentation_and_close(catalog);
         composed_continuations(catalog);
         failures(catalog);
+        read_only_preflight(catalog);
         all_fixed_programs(catalog);
         camera_focus(catalog);
         automatic_events(catalog);

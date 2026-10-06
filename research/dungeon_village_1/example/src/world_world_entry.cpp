@@ -30,7 +30,7 @@ void validate(const WorldWorldEntryState &state, const WorldCalendarState &date,
         state.updates >= std::numeric_limits<int>::max() ||
         state.finish.event_calls != state.scripts.event_calls ||
         state.finish.dungeon.world.ai.pending_completion != state.scripts.pending_completion ||
-        !prepare_world_script_continuations(catalog, state.scripts, false).candidate)
+        validate_world_script_state(catalog, state.scripts) != WorldScriptError::none)
         fail(WorldWorldEntryError::invalid_owner);
 }
 } // namespace

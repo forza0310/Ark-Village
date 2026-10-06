@@ -126,7 +126,7 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
         admitted_input.projected_facing = [&](CharacterId id, const BattleActorRecord &actor) {
             return adapter.projected_facing(scratch, id, actor);
         };
-    const auto result = prepare_world_schedule(
+    auto result = prepare_world_schedule(
         adapter.read(state), admitted_input,
         [&](const WorldScheduleState &common, const WorldScheduleCall &call,
             const CombatInfluenceCandidate &field) -> std::optional<WorldScheduleStep> {
@@ -140,6 +140,7 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
     if (!result.candidate)
         return {result.error, {}, {}};
     adapter.write(scratch) = result.candidate->state;
-    return {WorldScheduleError::none, std::move(scratch), result.candidate};
+    // 最后写回已完成；移动完整审计，既不清内容也不改变它记录的时点。
+    return {WorldScheduleError::none, std::move(scratch), std::move(result.candidate)};
 }
 } // namespace dungeon_village_reference

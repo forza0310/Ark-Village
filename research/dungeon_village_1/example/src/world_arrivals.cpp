@@ -21,7 +21,7 @@ void validate(const WorldArrivalsState &s, const WorldScriptCatalog &catalog) {
     const auto &ai = s.finish.dungeon.world.ai;
     if (s.soft_limit < 0 || s.hard_limit < 0 || s.finish.event_calls != s.scripts.event_calls ||
         ai.pending_completion != s.scripts.pending_completion ||
-        !prepare_world_script_continuations(catalog, s.scripts, false).candidate)
+        validate_world_script_state(catalog, s.scripts) != WorldScriptError::none)
         fail(WorldArrivalsError::invalid_owner);
     std::set<int> definitions;
     for (const auto &d : s.definitions)

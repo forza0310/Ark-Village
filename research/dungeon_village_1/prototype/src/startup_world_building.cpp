@@ -43,9 +43,11 @@ ref::FacilityEconomyInput input(const State &s, int id) {
         }
     return in;
 }
-bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true) {
+bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true,
+                 bool include_neighbours = true) {
     auto &world = s.scene.world.world;
-    if (s.surface.size() != world.map.cells.size() || s.road_patches.size() != s.surface.size())
+    if (!s.rules || s.surface.size() != world.map.cells.size() ||
+        s.road_patches.size() != s.surface.size())
         return false;
     ref::WorldMapRefreshState m;
     m.map = world.map;
@@ -66,6 +68,8 @@ bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true)
     m.fence_level = s.fence_level;
     m.fence_levels = s.rules->fences;
     for (const auto id : s.scene.world.facility_order) {
+        if (!world.facilities.count(id) || !s.neighbourhood.count(id))
+            return false;
         auto &cache = m.neighbours[id];
         const auto existing = s.neighbourhood_details.find(id);
         if (existing != s.neighbourhood_details.end())
@@ -88,10 +92,13 @@ bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true)
             return false;
         m = roads.candidate->state;
     }
-    auto neighbours = ref::prepare_world_map_neighbours(m, !initial_neighbours && notices);
-    if (!neighbours.candidate)
-        return false;
-    const auto &r = neighbours.candidate->state;
+    if (include_neighbours) {
+        auto neighbours = ref::prepare_world_map_neighbours(m, !initial_neighbours && notices);
+        if (!neighbours.candidate)
+            return false;
+        m = std::move(neighbours.candidate->state);
+    }
+    const auto &r = m;
     world.map = r.map;
     s.neighbourhood_details = r.neighbours;
     if (!initial_neighbours)
@@ -122,6 +129,7 @@ int free_number(const std::set<int> &used) {
 } // namespace
 bool initialize_startup_world_neighbours(State &s) { return refresh_map(s, true); }
 bool refresh_startup_world_map(State &s, bool notices) { return refresh_map(s, false, notices); }
+bool refresh_startup_world_surface(State &s) { return refresh_map(s, false, false, false); }
 bool refresh_startup_world_profession_economy(State &s) {
     if (!s.rules)
         return false;
@@ -304,11 +312,34 @@ bool refresh_startup_world_connections(State &s) {
 }
 // 原a/o.a只安装实例与刷新；普通放置调用点才扣造价/播放11，入住页80已先扣人物h。
 static StartupBuildResult install_facility(State &s, ref::Position anchor,
-                                           ref::FacilityOrientation orientation, bool charge) {
-    const auto *d = definition(s, *s.build_definition);
-    if (!d)
+                                           ref::FacilityOrientation orientation, bool charge,
+                                           int map_definition = -1, bool surface_refresh = true) {
+    const bool map_creation = map_definition >= 0;
+    if (!s.rules || (!map_creation && !s.build_definition))
+        return {Error::missing_source};
+    const auto *d = definition(s, map_creation ? map_definition : *s.build_definition);
+    if (!d || (map_creation && d->kind != 4 && d->kind != 5))
         return {Error::missing_source};
     const auto &old = s.scene.world.world;
+    // 地图内部创建不能通过map.at抛错掩盖缺失共享字段；仍使用真实经营定义初值。
+    if (!ref::valid_legacy_map(old.map) || s.surface.size() != old.map.cells.size() ||
+        !old.facility_uses.count(d->id) || !s.scripts.facilities.count(d->id) ||
+        s.fence_level < 0 || static_cast<std::size_t>(s.fence_level) >= s.rules->fences.size())
+        return {Error::missing_source};
+    for (const auto &h : s.rules->humans) {
+        const auto presence = s.human_presence.find(h.identity);
+        if (presence == s.human_presence.end())
+            return {Error::missing_source};
+        if (presence->second == 0)
+            continue;
+        const auto growth = old.ai.growth.find(h.identity);
+        if (growth == old.ai.growth.end())
+            return {Error::missing_source};
+        const int profession = growth->second.definition.current_profession;
+        if (profession < 0 || static_cast<std::size_t>(profession) >= s.rules->jobs.size() ||
+            s.rules->jobs[profession].type < 0 || s.rules->jobs[profession].type >= 10)
+            return {Error::missing_source};
+    }
     const auto footprint =
         ref::facility_footprint(static_cast<ref::FacilityShape>(d->shape), orientation, anchor,
                                 old.map.width, old.map.height);
@@ -319,16 +350,19 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     const auto bounds = s.rules->fences.at(s.fence_level);
     for (const auto &c : footprint.cells) {
         const auto &tile = old.map.cells.at(c.position.y * old.map.width + c.position.x);
-        if (tile.legacy_state == 1 || tile.legacy_state == 10 || tile.legacy_state == 2 ||
-            tile.facility)
+        if (tile.facility || (!map_creation && (tile.legacy_state == 1 || tile.legacy_state == 10 ||
+                                                tile.legacy_state == 2)))
             return {Error::none, StartupBuildDenial::occupied};
-        if (c.position.x <= bounds[0].x || c.position.x >= bounds[1].x ||
-            c.position.y >= bounds[0].y || c.position.y <= bounds[1].y)
+        if (!map_creation && (c.position.x <= bounds[0].x || c.position.x >= bounds[1].x ||
+                              c.position.y >= bounds[0].y || c.position.y <= bounds[1].y))
             return {Error::none, StartupBuildDenial::outside_town};
     }
     const auto quote = ref::derive_facility_economy(d->economy, input(s, d->id));
     if (!quote.values || quote.values->construction_cost > std::numeric_limits<int>::max() ||
         quote.values->construction_ticks > std::numeric_limits<int>::max() ||
+        quote.values->definition_attributes[0] < std::numeric_limits<int>::min() ||
+        quote.values->definition_attributes[0] > std::numeric_limits<int>::max() ||
+        s.next_facility_identity == 0 ||
         s.next_facility_identity == std::numeric_limits<std::uint64_t>::max())
         return {Error::missing_source};
     if (charge && quote.values->construction_cost > old.ai.accounting.funds())
@@ -337,6 +371,9 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     auto &world = next.scene.world.world;
     std::set<int> raw_ids, ordinals;
     for (const auto id : next.scene.world.facility_order) {
+        if (!next.facility_original_ids.count(id) || !next.facility_ordinals.count(id) ||
+            !world.facilities.count(id))
+            return {Error::missing_source};
         raw_ids.insert(next.facility_original_ids.at(id));
         if (world.facilities.at(id).placement.definition_id == d->id)
             ordinals.insert(next.facility_ordinals.at(id));
@@ -354,7 +391,7 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
     facility.price = static_cast<int>(quote.values->definition_attributes[0]);
     facility.definition_wait = d->use_wait;
     facility.upgrade_uses = d->economy.upgrade_uses;
-    facility.status = (d->flags & 64) ? 0 : 1;
+    facility.status = !map_creation && (d->flags & 64) ? 0 : 1;
     world.facilities.emplace(id, facility);
     next.scene.world.facility_order.push_back(id);
     // 与真实新局接管同一类别投影；新建商店也必须进入有序物品消费者。
@@ -383,13 +420,22 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
         tile.facility = ref::FacilityTileBinding{{id}, d->id, c.fragment_index};
         tile.legacy_state = d->kind == 1 ? 8 : d->kind == 8 ? 9 : d->kind == 9 ? 10 : 1;
         tile.category = ref::RouteCategory::terminal;
+        if (map_creation) {
+            tile.legacy_state = d->kind == 4 ? 6 : 7;
+            tile.category = ref::RouteCategory::access;
+            if (d->kind == 5) {
+                next.surface[n].instance = d->direction; // 原i.f(o.m)，不是实例ID。
+                next.surface[n].fragment = -1;
+            }
+        }
         next.surface[n].definition = d->id;
         next.surface[n].updates = 0;
         next.surface[n].variant = c.fragment_index;
         site.occupied_cells.push_back(c.position);
     }
     next.sites.emplace(id, site);
-    if (!refresh_map(next))
+    if ((!map_creation && !refresh_map(next)) ||
+        (map_creation && surface_refresh && !refresh_startup_world_surface(next)))
         return {Error::missing_source};
     if (charge) {
         // 原g(price,0)只记全局建设支出，不把造价塞进设施月经营数组。
@@ -407,10 +453,16 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
         next.build_feedback_message = "建设完毕";
         next.build_feedback_counter = 20;
     }
-    if (!refresh_startup_world_connections(next))
+    if (!map_creation && !refresh_startup_world_connections(next))
         return {Error::missing_source};
     s = std::move(next);
     return {Error::none, StartupBuildDenial::none, id};
+}
+StartupBuildResult install_startup_world_map_facility(State &s, int definition,
+                                                      ref::Position anchor, bool refresh) {
+    if (definition < 0)
+        return {Error::missing_source};
+    return install_facility(s, anchor, ref::FacilityOrientation::first, false, definition, refresh);
 }
 bool retire_startup_world_facility(State &s, std::uint64_t old_id) {
     const auto found = s.scene.world.world.facilities.find(old_id);
@@ -423,6 +475,16 @@ bool retire_startup_world_facility(State &s, std::uint64_t old_id) {
     if (footprint.error != ref::GeometryError::none)
         return false;
     auto &world = s.scene.world.world;
+    if (!ref::valid_legacy_map(world.map) || s.surface.size() != world.map.cells.size())
+        return false;
+    for (const auto &c : footprint.cells) {
+        const auto n = static_cast<std::size_t>(c.position.y * world.map.width + c.position.x);
+        const auto &binding = world.map.cells[n].facility;
+        if (!binding || binding->instance_id.value != old_id ||
+            binding->definition_id != found->second.placement.definition_id ||
+            binding->fragment_index != c.fragment_index)
+            return false;
+    }
     for (const auto &c : footprint.cells) {
         const auto n = static_cast<std::size_t>(c.position.y * world.map.width + c.position.x);
         world.map.cells.at(n).facility.reset();

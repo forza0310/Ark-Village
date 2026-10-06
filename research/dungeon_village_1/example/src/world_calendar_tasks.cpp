@@ -18,7 +18,7 @@ void validate(const WorldCalendarTasksState &state, const WorldCalendarState &da
         state.finish.event_calls != state.scripts.event_calls ||
         state.finish.dungeon.world.ai.pending_completion != state.scripts.pending_completion)
         fail(CalendarTaskError::invalid_owner);
-    if (!prepare_world_script_continuations(catalog, state.scripts, false).candidate)
+    if (validate_world_script_state(catalog, state.scripts) != WorldScriptError::none)
         fail(CalendarTaskError::invalid_owner);
     for (auto identity : state.finish.task_order)
         if (!identity || !state.finish.tasks.count(identity))

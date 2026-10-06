@@ -1,3 +1,5 @@
 # 原始安装包与可再生成的研究工作目录不进入版本管理。
 *.apk
 dungeon_village_1/work/
+# 用户提供的Steam安装文件仅作独立只读研究输入，不提交原程序或资源副本。
+dungeon_village_1/DungeonVillageEXE/

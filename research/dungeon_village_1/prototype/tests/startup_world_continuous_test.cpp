@@ -898,7 +898,7 @@ std::array<std::uint64_t, 2> natural_editing_commands(StartupWorldRuntimeSession
 
 // 明确自动玩家策略：建设面包房、实际开展活动、点击自然升级提示，再申请月度晋级。
 // 仅调用Session玩家命令；不写资金、点数、人气、日期、人物、设施使用数或rank。
-void natural_progression(std::uint64_t seed, int speed) {
+void natural_progression(std::uint64_t seed, int speed, bool expansion = false) {
     StartupSession initial;
     StartupWorldRuntimeSession session(initial.state(),
                                        ref::WorldRandomStream::from_java_seed(seed));
@@ -913,6 +913,11 @@ void natural_progression(std::uint64_t seed, int speed) {
     int edited_month = -1;
     std::int64_t edited_income{};
     std::array<std::uint64_t, 2> edited_retired{};
+    bool progression_complete{};
+    int expanded_month = -1, expanded_road_month = -1;
+    std::int64_t expanded_income{};
+    std::optional<ref::Position> expanded_road;
+    int expanded_road_definition = -1;
     std::size_t sounds{}, peak_sounds{}, peak_payloads{}, peak_pages{}, peak_effects{},
         peak_actors{}, peak_cash{}, peak_tasks{};
     std::size_t peak_retired_actors{}, peak_retired_encounters{};
@@ -938,7 +943,15 @@ void natural_progression(std::uint64_t seed, int speed) {
                 total += entry.second.amount;
         return total;
     };
-    constexpr int limit = 180000;
+    const auto expansion_activity = std::find_if(session.state().rules->activities.begin(),
+                                                 session.state().rules->activities.end(),
+                                                 [](const auto &a) { return a.identity == 25; });
+    if (expansion)
+        check(expansion_activity != session.state().rules->activities.end(),
+              "fixed activity table contains original village expansion25");
+    const int expansion_cost = expansion ? expansion_activity->parameters[4] : 0;
+    // 扩张在原晋级/编辑完整前缀之后继续真实经营；只延长该可选模式的有限保护。
+    const int limit = expansion ? 240000 : 180000;
     for (int frame = 0; frame < limit; ++frame) {
         observed_frame = frame;
         const auto step = session.update();
@@ -968,6 +981,8 @@ void natural_progression(std::uint64_t seed, int speed) {
             next_task_month = month + 2;
         previous_task = s.active_task;
         const bool save_for_exhibition = s.rank >= 1 && unlocked_completed == 0;
+        const bool expansion_tail = expansion && progression_complete;
+        const bool expansion_open = expansion && s.scripts.activities.at(25).status == 1;
         if (month != last_month) {
             last_month = month;
             std::cout << "progression month popularity=" << s.popularity
@@ -983,8 +998,85 @@ void natural_progression(std::uint64_t seed, int speed) {
                   "first star follows actual source conditions and unlocks painting exhibition16");
             std::cout << "progression promoted " << snapshot(s, frame) << std::endl;
         }
-        if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
-            edited_month < 0) {
+        if (expansion_tail && page.kind == ref::WorldScriptPageKind::scene &&
+            s.scene.scene_state == 0) {
+            if (expanded_month >= 0 && !expanded_road) {
+                check(s.fence_level == 1 && s.scene.world.world.map.cells.size() == 576,
+                      "natural first expansion changes boundary without resizing source map");
+                const auto &map = s.scene.world.world.map;
+                const auto old_fence = s.rules->fences.at(0);
+                const auto new_fence = s.rules->fences.at(s.fence_level);
+                const auto inside = [](ref::Position p, const auto &fence) {
+                    return p.x > fence[0].x && p.x < fence[1].x && p.y > fence[1].y &&
+                           p.y < fence[0].y;
+                };
+                const auto road = std::find_if(
+                    s.rules->facilities.begin(), s.rules->facilities.end(), [&](const auto &d) {
+                        return d.kind == 6 && (d.flags & 4) && s.facility_presence.at(d.id) != 0;
+                    });
+                check(road != s.rules->facilities.end(), "expanded town retains real road unlock");
+                expanded_road_definition = road->id;
+                const auto quote = startup_world_build_quote(s, expanded_road_definition);
+                check(quote.has_value(), "new-area road uses source construction quote");
+                for (int y = 0; y < map.height && !expanded_road; ++y)
+                    for (int x = 0; x < map.width && !expanded_road; ++x) {
+                        const auto &tile = map.cells.at(y * map.width + x);
+                        if (inside({x, y}, new_fence) && !inside({x, y}, old_fence) &&
+                            tile.legacy_state == 4 && !tile.facility)
+                            expanded_road = ref::Position{x, y};
+                    }
+                check(expanded_road.has_value(), "expansion exposes a genuinely new editable cell");
+                const auto cash = s.scene.world.world.ai.accounting.funds();
+                const auto draws = s.scene.random.draws();
+                const auto accepted = [&](const StartupBuildResult &r, const char *label) {
+                    require(r.error, label);
+                    check(r.denial == StartupBuildDenial::none,
+                          "source editing consumer accepts newly expanded interior");
+                };
+                accepted(session.begin_road(expanded_road_definition), "enter expanded-area road");
+                accepted(session.confirm_edit(*expanded_road, ref::FacilityOrientation::first),
+                         "select expanded-area road start");
+                accepted(session.confirm_edit(*expanded_road, ref::FacilityOrientation::first),
+                         "build expanded-area road");
+                require(session.cancel_edit(), "leave expanded-area road mode");
+                const auto &after = session.state();
+                const auto n =
+                    static_cast<std::size_t>(expanded_road->y * map.width + expanded_road->x);
+                check(after.scene.world.world.map.cells.at(n).legacy_state == 3 &&
+                          after.surface.at(n).definition == expanded_road_definition &&
+                          after.scene.world.world.ai.accounting.funds() ==
+                              cash - quote->construction_cost &&
+                          after.scene.random.draws() == draws,
+                      "new-area road charges original quote once without random consumption");
+                expanded_road_month = month;
+                expanded_income = income(after);
+                std::cout << "expansion road=" << expanded_road->x << ',' << expanded_road->y << ' '
+                          << snapshot(after, frame) << std::endl;
+            } else if (expanded_month < 0) {
+                // 留100原价点数及一个季度名额；开放25后停止另开任务，等当前任务真正结束。
+                const bool can_expand = expansion_open && !s.active_task &&
+                                        s.village_points >= expansion_cost && s.quarter_counter > 0;
+                const bool can_promote = !expansion_open && s.popularity < 1000 &&
+                                         s.village_points >= expansion_cost + 20 &&
+                                         s.quarter_counter > 1;
+                if ((can_expand || can_promote) && frame >= next_activity_attempt) {
+                    require(session.open_village_activities(),
+                            "open expansion-tail village office");
+                    next_activity_attempt = frame + 300;
+                } else if (!expansion_open && s.popularity < 1000 && !s.active_task &&
+                           month >= next_task_month &&
+                           std::any_of(
+                               s.task_order.begin(), s.task_order.end(),
+                               [&](auto id) {
+                                   return s.rules->tasks.at(s.tasks.at(id).definition)
+                                              .recruitment_fee <=
+                                          s.scene.world.world.ai.accounting.funds();
+                               })) {
+                    require(session.open_task_menu(), "open real task toward expansion unlock");
+                }
+            }
+        } else if (page.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
+                   edited_month < 0) {
             const auto pending = std::find_if(
                 s.scene.world.facility_order.begin(), s.scene.world.facility_order.end(),
                 [&](auto id) {
@@ -1063,6 +1155,23 @@ void natural_progression(std::uint64_t seed, int speed) {
                 int selected = -1;
                 for (int n = 0; n < static_cast<int>(view->entries.size()); ++n) {
                     const auto &a = s.rules->activities.at(view->entries[n]);
+                    if (expansion_tail) {
+                        if (expansion_open) {
+                            if (a.identity == 25 && !s.active_task &&
+                                a.parameters[4] <= s.village_points && s.quarter_counter > 0) {
+                                selected = n;
+                                break;
+                            }
+                        } else if (a.parameters[2] == 2 && s.quarter_counter > 1 &&
+                                   a.parameters[4] <= s.village_points - expansion_cost) {
+                            // 原序内优先本次人气增量高的可支付活动，不改费用或原表。
+                            if (selected < 0 ||
+                                a.parameters[5] >
+                                    s.rules->activities.at(view->entries[selected]).parameters[5])
+                                selected = n;
+                        }
+                        continue;
+                    }
                     if (save_for_exhibition && a.identity != 16)
                         continue;
                     if (a.parameters[2] <= 2 && a.parameters[4] <= s.village_points &&
@@ -1082,8 +1191,25 @@ void natural_progression(std::uint64_t seed, int speed) {
             } else if (page.legacy_page == 53) {
                 if (view->counter >= 120) {
                     const int activity = *view->activity;
+                    const auto before_random = s.scene.random.draws();
+                    const int before_points = s.village_points, before_slots = s.quarter_counter,
+                              before_held = s.events_held;
                     require(session.acknowledge_page(page.id), "complete real activity");
                     ++completed;
+                    if (activity == 25) {
+                        const auto &after = session.state();
+                        check(expansion_tail && expanded_month < 0 && after.fence_level == 1 &&
+                                  after.village_points == before_points &&
+                                  after.quarter_counter == before_slots - 1 &&
+                                  after.events_held == before_held &&
+                                  after.activity_counts.at(25) == 1 &&
+                                  after.scene.random.draws() == before_random &&
+                                  top_page(after)->legacy_page != 54,
+                              "natural expansion completes once at53 without duplicate52 payment "
+                              "or human-result random draws");
+                        expanded_month = month;
+                        std::cout << "expansion completed " << snapshot(after, frame) << std::endl;
+                    }
                     if (activity == 16) {
                         ++unlocked_completed;
                         if (unlocked_month < 0) {
@@ -1177,8 +1303,9 @@ void natural_progression(std::uint64_t seed, int speed) {
                       << " moved=" << edited_retired[1] << ' ' << snapshot(session.state(), frame)
                       << std::endl;
         }
-        if (edited_month >= 0 && month > edited_month && s.scene.calendar.units >= 27 &&
-            top_page(s) && top_page(s)->kind == ref::WorldScriptPageKind::scene) {
+        if (!progression_complete && edited_month >= 0 && month > edited_month &&
+            s.scene.calendar.units >= 27 && top_page(s) &&
+            top_page(s)->kind == ref::WorldScriptPageKind::scene) {
             check(income(s) > edited_income &&
                       !s.scene.world.world.facilities.count(edited_retired[0]) &&
                       !s.scene.world.world.facilities.count(edited_retired[1]) &&
@@ -1196,6 +1323,43 @@ void natural_progression(std::uint64_t seed, int speed) {
                       << " peak_retired_encounters=" << peak_retired_encounters
                       << " peak_actors=" << peak_actors << " peak_cash=" << peak_cash
                       << " peak_tasks=" << peak_tasks << " edited_month=" << edited_month
+                      << " checkpoints=" << session.checkpoints().size() << ' '
+                      << snapshot(s, frame) << '\n';
+            if (!expansion)
+                return;
+            // 原模式的全部断言和终点先完成；可选尾段从下一帧才改变玩家命令。
+            if (seed == 1 && speed == 0)
+                check(frame == 38282 && s.scene.world.world.ai.accounting.funds() == 23388 &&
+                          s.scene.random.draws() == 322697,
+                      "expansion retains the accepted first-star/editing golden prefix");
+            progression_complete = true;
+        }
+        if (expansion_tail && expanded_road_month >= 0 && month >= expanded_road_month + 2 &&
+            s.scene.calendar.units >= 27 && top_page(s) &&
+            top_page(s)->kind == ref::WorldScriptPageKind::scene && !s.active_task) {
+            const auto n = static_cast<std::size_t>(
+                expanded_road->y * s.scene.world.world.map.width + expanded_road->x);
+            check(s.fence_level == 1 && s.activity_counts.at(25) == 1 &&
+                      s.scene.world.world.map.cells.size() == 576 &&
+                      s.scene.world.world.map.cells.at(n).legacy_state == 3 &&
+                      s.surface.at(n).definition == expanded_road_definition &&
+                      income(s) > expanded_income && s.activity_pages_initialized.empty() &&
+                      !s.build_anchor && !s.build_moving_facility,
+                  "expanded town keeps new-area road and earns through a full natural month "
+                  "with retired village pages");
+            // 本批优化前完整自然轨迹的维护黄金值；不是APK原始随机seed或注入夹具。
+            if (seed == 1 && speed == 0)
+                check(frame == 111808 && s.scene.world.world.ai.accounting.funds() == 138463 &&
+                          s.scene.random.draws() == 1047804 && s.popularity == 1024,
+                      "performance changes retain the accepted natural expansion endpoint");
+            std::cout << "expansion summary expanded_month=" << expanded_month
+                      << " road_month=" << expanded_road_month << " sounds=" << sounds
+                      << " peak_pages=" << peak_pages << " peak_payloads=" << peak_payloads
+                      << " peak_effects=" << peak_effects << " peak_sounds=" << peak_sounds
+                      << " peak_retired_actors=" << peak_retired_actors
+                      << " peak_retired_encounters=" << peak_retired_encounters
+                      << " peak_actors=" << peak_actors << " peak_cash=" << peak_cash
+                      << " peak_tasks=" << peak_tasks
                       << " checkpoints=" << session.checkpoints().size() << ' '
                       << snapshot(s, frame) << '\n';
             return;
@@ -1567,16 +1731,18 @@ int main(int argc, const char **argv) {
             std::cout << "natural tools: " << checks << " checks\n";
             return 0;
         }
-        if (argc >= 2 && std::string(argv[1]) == "natural_progression") {
+        if (argc >= 2 && (std::string(argv[1]) == "natural_progression" ||
+                          std::string(argv[1]) == "natural_expansion")) {
             if (argc > 4)
-                throw std::invalid_argument("expected natural_progression [seed [speed]]");
+                throw std::invalid_argument(
+                    "expected natural_progression|natural_expansion [seed [speed]]");
             if (argc >= 3)
                 parse(argv[2], seed);
             if (argc >= 4)
                 parse(argv[3], speed);
             if (speed != 0 && speed != 1)
                 throw std::invalid_argument("speed must be 0 or 1");
-            natural_progression(seed, speed);
+            natural_progression(seed, speed, std::string(argv[1]) == "natural_expansion");
             std::cout << checks << " checks passed\n";
             return 0;
         }

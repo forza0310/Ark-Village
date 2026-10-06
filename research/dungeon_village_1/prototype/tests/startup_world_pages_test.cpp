@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -1364,6 +1365,103 @@ void village_activity_pages() {
               s.activity_page_scroll.empty() && s.activity_page_display_humans.empty(),
           "completed empty catalogue retires all eight transient record families");
 }
+void village_expansion_pages() {
+    using A = StartupVillageActivityAction;
+    using E = StartupWorldRuntimeError;
+    // 页面条件夹具：25/26为真实原表活动，开放状态和200点沿village_fixture明确准备。
+    // 费用/时序的自然玩家路径由continuous的natural_expansion另验。
+    for (const auto scenario :
+         {std::array<int, 4>{25, 0, 1, 100}, {26, 1, 2, 200}, {25, 2, 2, 100}}) {
+        auto s = village_fixture(scenario[0]);
+        while (s.fence_level < scenario[1])
+            check(expand_startup_world_map(s),
+                  "expansion page fixture uses actual prior map effects");
+        const auto parent = s.scripts.pages.back().id;
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto draws = s.scene.random.draws();
+        check(acknowledge_startup_world_runtime_page(s, parent) == E::none,
+              "type3 catalogue opens confirmation without charging or expanding");
+        page_tick(s);
+        const auto question = s.scripts.pages.back().id;
+        check(s.fence_level == scenario[1] && s.village_points == 200 && s.events_held == 0,
+              "type3 51 only opens52 and keeps resources");
+        check(acknowledge_startup_world_runtime_page(s, question) == E::none,
+              "type3 52 starts actual source expansion activity");
+        page_tick(s);
+        const auto animation = s.scripts.pages.back().id;
+        check(s.scripts.pages.back().legacy_page == 53 && s.fence_level == scenario[1] &&
+                  s.village_points == 200 - scenario[3] && s.quarter_counter == 3 &&
+                  s.events_held == 1 && s.activity_counts.at(scenario[0]) == 1 &&
+                  (s.activity_flags.at(scenario[0]) & 4U),
+              "52 charges source points and held count but does not consume q or change map");
+        s.page_counters.at(animation) = 119; // 明确演出计数边界夹具，不跳过效果提交。
+        check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+                  s.page_counters.at(animation) == 119 && s.fence_level == scenario[1] &&
+                  s.quarter_counter == 3,
+              "type3 119 confirmation cannot complete or fast-forward");
+        page_tick(s);
+        if (scenario[1] == 0) {
+            auto broken = s;
+            // 两个kind4已重建、首个新外入口已创建后才耗尽维护ID，证明晚期整候选回滚。
+            broken.next_facility_identity = std::numeric_limits<std::uint64_t>::max() - 3;
+            const auto order = broken.scene.world.facility_order;
+            const auto originals = broken.facility_original_ids;
+            const auto serial = broken.next_facility_identity;
+            check(acknowledge_startup_world_runtime_page(broken, animation) != E::none &&
+                      broken.fence_level == 0 && broken.quarter_counter == 3 &&
+                      broken.village_points == 100 && broken.events_held == 1 &&
+                      broken.activity_counts.at(25) == 1 &&
+                      broken.scene.world.facility_order == order &&
+                      broken.facility_original_ids == originals &&
+                      broken.next_facility_identity == serial &&
+                      broken.scene.random.draws() == draws &&
+                      broken.scripts.pages.back().id == animation &&
+                      broken.scripts.pages.back().lifecycle != 4,
+                  "late expansion failure preserves paid52 but rolls back "
+                  "q/map/entities/page/random");
+            for (std::size_t n = 0; n < s.surface.size(); ++n) {
+                const auto &before = s.scene.world.world.map.cells[n];
+                const auto &after = broken.scene.world.world.map.cells[n];
+                check(before.legacy_state == after.legacy_state &&
+                          before.category == after.category &&
+                          before.facility.has_value() == after.facility.has_value() &&
+                          (!before.facility ||
+                           (before.facility->instance_id == after.facility->instance_id &&
+                            before.facility->definition_id == after.facility->definition_id &&
+                            before.facility->fragment_index == after.facility->fragment_index)) &&
+                          s.surface[n].definition == broken.surface[n].definition &&
+                          s.surface[n].instance == broken.surface[n].instance &&
+                          s.surface[n].fragment == broken.surface[n].fragment &&
+                          s.surface[n].road_mask == broken.surface[n].road_mask,
+                      "late type3 failure leaves each original surface and binding unchanged");
+            }
+        }
+        check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+                  s.fence_level == scenario[2] && s.quarter_counter == 2 &&
+                  s.village_points == 200 - scenario[3] &&
+                  s.scene.world.world.ai.accounting.funds() == cash &&
+                  s.scene.random.draws() == draws && s.scene.world.world.map.cells.size() == 576,
+              "120 applies type3 once; capped level is a successful no-op without refund");
+        check(std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                           [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 54; }) &&
+                  acknowledge_startup_world_runtime_page(s, animation) == E::invalid_page,
+              "type3 has no54 result draw and stale53 cannot repeat payment or expansion");
+        page_tick(s);
+        check(!s.activity_page_bindings.count(animation) &&
+                  !s.activity_pages_initialized.count(animation) &&
+                  !s.activity_page_parents.count(question),
+              "type3 child pages and expansion payload retire on real parent resumption");
+        const auto &remaining = s.activity_page_lists.at(parent);
+        check(std::find(remaining.begin(), remaining.end(), scenario[0]) == remaining.end(),
+              "held source bit2 expansion disappears from parent catalogue");
+        check(act_startup_world_village_activity_page(s, parent, A::cancel) == E::none,
+              "source expansion returns through normal catalogue cancellation");
+    }
+    auto forged = fixture(54);
+    forged.activity_page_bindings[forged.scripts.pages.back().id] = 25;
+    check(!prepare_startup_world_runtime(forged).candidate,
+          "type3 cannot initialize a forged human-result54 payload");
+}
 void village_activity_effect_rollback() {
     using A = StartupVillageActivityAction;
     using E = StartupWorldRuntimeError;
@@ -1900,6 +1998,7 @@ int main() {
         commerce_facility_and_projection();
         village_activity_initialization();
         village_activity_pages();
+        village_expansion_pages();
         village_activity_effect_rollback();
         summary();
         gift();

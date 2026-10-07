@@ -227,9 +227,11 @@ S025同帧的禁止图标不能证明那个非法位置已建立设施、扣款�
 每个占地格的`fragment_index`选帧，再由`image/img.inf`绑定PNG；例如面包房35→显示53→
 [tenant22.seb](../assets/original/image/tenant22.seb)→图片122→
 [tenant22.png](../assets/original/image/tenant22.png)。双格／四格必须组合各片，不能把首片当完整建筑。
-[原型SourceSprites](../prototype/src/startup_view.cpp)已维护SEB层、偏移、翻转和已建地表逐格绘制，
-但其共同世界预览仍仅黄色占地、目录仍仅文字；不是完整原皮肤交付。
+[原型SourceSprites](../prototype/src/startup_view.cpp)已维护SEB层、偏移、翻转和已建地表逐格绘制。
+`0a5b5e2`时普通预览仍仅黄色占地、目录仍仅文字，移动落点本体已经接入；这条记录属于该基线。
+2026-10-08本轮普通候选／目录图块维护接线已编译，目录8帧窗口已观察；新增主责测试待自动审批所需确认，尚不作为完整验收交付。
 本页S002的原21目录定位与设施详情大图／标题图标也须分开；`icon_tenantInfo.png`的16×16标题图标不等于目录建筑缩略图。
+输入定位／提交与绘制副作用另见[输入及Owner请求合同](INPUT_RENDER_REQUESTS.md)，不将建筑图像已显示当作原触摸操作已复刻。
 
 初次交接时本机缺少固定APK／JADX缓存，建筑本体闪烁和目录裁剪参数留缺，未以用户描述或异版本S003补猜。
 同日用户补齐APK并核对身份后，已恢复JADX 1.5.6普通及单类低层输出；下节补齐这些局部静态合同，

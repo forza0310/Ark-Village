@@ -7,6 +7,17 @@
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
+## 2026-10-08输入与绘制请求取证
+
+[输入／绘制合同](ui/INPUT_RENDER_REQUESTS.md)归纳APK列表marker、建设候选p/v/t、原触摸type5及旋转边界；
+只读源身份与行号分别登记，不复制新源码摘录，Steam75边距与APK独立。
+[绘制请求窄证据](work/render-request-contract/README.md)覆盖20有限窗口326局部行、11明确DEX方法2442指令字节：
+原整栈／栈顶准入、任务栏重复共享抽取、缺绑定清理人物flags2，以及66恰45重复声音请求。
+来源事实与新增Owner／回放方案分开；原窗口动态、全部重绘标志产生者和完整触摸取消仍未认证。
+[输入追加DEX](work/render-request-contract/INPUT_DEX_EVIDENCE.json)四方法5226字节，确认raw UP／CANCEL条件分派、float候选运动及视窗整数除法；
+旋转巨型方法因8KiB预算仅登记身份，不冒称其全部低层语义已核。
+建设候选／目录维护图像接线已编译，新增主责用例因自动审批要求用户具体确认而待验，不作为已交付消费者。
+
 ## 2026-10-08举物与设施增长绘制
 
 正式合同见[装备与设施属性演出](ui/EQUIPMENT_FACILITY_RENDER.md)。

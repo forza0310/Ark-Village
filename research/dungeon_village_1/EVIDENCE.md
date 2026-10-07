@@ -62,6 +62,22 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 ## 恢复行为交叉证据（2026-10-07）
 
+用户随后交回[Steam窗口实验](work/window-restore-observation/20261007-102645-backup-restore-trials/RESULT.md)：标题实见ver2.56，
+本机Steam appID1859360、buildID14371088；GameAssembly／metadata仍为此前固定身份。原报告登记截图尺寸，不把截图像素当逻辑客户区／DPI。
+本会话[只读交叉](work/window-save-analysis/ANALYSIS.md)核验37截图、28记录文件、7清单共72项，
+其中游戏档14路径／9种内容、225段及126引用组一致。静态、原窗口观察、保存端点与未覆盖部分在[合同](rules/PERSISTENCE.md#steam窗口恢复实验与密文交叉2026-10-07)分别登记。
+已验证的端点包括163不在后续输出、道具库存／共享改良落盘，以及中断自然推进后的旧周自动保存；非空p及候选重载尚未完成。
+
+| 窗口实验交回证据（相对work） | SHA-256 |
+| --- | --- |
+| window-restore-observation/20261007-102645-backup-restore-trials/RESULT.md | `9fdea748a3926042ba0af02bb9ddd4ba651e1fc66aa7ea2ea9cfc443a45ce48d` |
+| window-restore-observation/20261007-102645-backup-restore-trials/EVIDENCE_INDEX.json | `62cf22c2b9b94e1c75cbb2230ab71bd03d7ef2e379eb92caa0ae0036aacc0a04` |
+| window-save-analysis/analyze.cjs | `f84748d0cadf81cae44684018aca8c718435d69e00d8bcac72bccdb99f1c42ac` |
+| window-save-analysis/AUDIT.json | `24a25eee3676359cb6c52903e30a4fee3f470829a3729f6b22fa0222aa100a61` |
+
+输入明细／密文／可能含名字的截图只留本地work，不提交原程序或用户档。实时原目录在分析期间再次变化，另见工作记录，
+不因此改变冻结实验期望或覆盖原件；最终分析仅依交回清单与完整备份。
+
 无窗口续批将已核25分区／引用合同接入[审计工具](tools/ORIGINAL_SAVE.md#25分区只读审计)，
 新增[Steam静态补证](work/headless-save-audit-analysis/steam-static/README.md)：24个明确方法共45,664字节，
 另复用既有LoadGame 20,544字节与16字节共享空入口。默认步长27有初始化指令证据；完整运行期写入及退出委托仍未闭合。

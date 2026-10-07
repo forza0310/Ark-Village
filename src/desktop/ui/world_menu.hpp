@@ -8,7 +8,7 @@
 namespace ark::desktop::ui {
 class Skin;
 enum class WorldMenuIntent { open, close, tasks, build, village, system };
-enum class WorldVillageMenuIntent { back, close, activities, commerce };
+enum class WorldVillageMenuIntent { back, close, activities, commerce, magic_pot };
 struct WorldMenuInput {
     std::optional<Vector2> click;
     bool toggle{}, escape{}, up{}, down{}, enter{};
@@ -23,7 +23,9 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
 // Desktop management chooser; the source raw7/menu11 hierarchy is not yet fully mapped.
 std::optional<WorldVillageMenuIntent>
 world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_unlocked,
-                         bool pending, int &selected, const WorldMenuInput &input);
+                         bool pending, int &selected, const WorldMenuInput &input,
+                         bool magic_unlocked = false);
 void draw_world_village_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                             bool commerce_unlocked, const std::string &feedback = {});
+                             bool commerce_unlocked, const std::string &feedback = {},
+                             bool magic_unlocked = false);
 } // namespace ark::desktop::ui

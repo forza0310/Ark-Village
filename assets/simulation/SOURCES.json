@@ -1,6 +1,6 @@
 {
   "scope": "maintained_complete_world_rules_and_single_runtime_owner",
-  "snapshot_sha256": "0bd75a9647b5464c7490e822312d0b81a1f2f7816f52a9aae3b9c942c66b7c2b",
+  "snapshot_sha256": "e2e0d0d06765bea97f808cb8903637b4d209770aad404b47088985129df38884",
   "files": [
     {
       "file": "assets/simulation/tenantData.txt",
@@ -101,10 +101,10 @@
     {
       "file": "assets/simulation/world/SOURCE.tsv",
       "source": "research/dungeon_village_1/data/world/SOURCE.tsv",
-      "source_sha256": "bcc3998d725bf52e1a297a99c4d0edd4e98f5a977809dce32a77fcbe4284f010",
-      "source_bytes": 823,
-      "sha256": "bcc3998d725bf52e1a297a99c4d0edd4e98f5a977809dce32a77fcbe4284f010",
-      "bytes": 823
+      "source_sha256": "2d674351afc0daa8dceeb1d65a9d4f4062c59dacf078d207192c7311c08c6e4d",
+      "source_bytes": 979,
+      "sha256": "2d674351afc0daa8dceeb1d65a9d4f4062c59dacf078d207192c7311c08c6e4d",
+      "bytes": 979
     },
     {
       "file": "assets/simulation/world/accessory.txt",
@@ -145,6 +145,14 @@
       "source_bytes": 3327,
       "sha256": "95e29d253688e30ac623b925a9a5dacd1f6280f60ed0528b551707df1252d6b8",
       "bytes": 3327
+    },
+    {
+      "file": "assets/simulation/world/magicPot.txt",
+      "source": "research/dungeon_village_1/data/world/magicPot.txt",
+      "source_sha256": "7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c",
+      "source_bytes": 1379,
+      "sha256": "7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c",
+      "bytes": 1379
     },
     {
       "file": "assets/simulation/world/monster.txt",
@@ -665,6 +673,14 @@
       "source_bytes": 2485,
       "sha256": "93381af470774a6c4491e5e77bf8a6b6e81f46b3c2966bda02b002cadcc76849",
       "bytes": 2464
+    },
+    {
+      "file": "include/ark/simulation/rules/world_magic_pot.hpp",
+      "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_magic_pot.hpp",
+      "source_sha256": "703061e113d284ab932dd944f63c8c8b16232143812951223beb763587dc9b6f",
+      "source_bytes": 5734,
+      "sha256": "6ad9c2e59a05e5f1bf667f7c7fcc72d0fcec5d93ede51b7f5a616725ce456220",
+      "bytes": 5728
     },
     {
       "file": "include/ark/simulation/rules/world_map_refresh.hpp",
@@ -1331,6 +1347,14 @@
       "bytes": 13424
     },
     {
+      "file": "src/simulation/rules/world_magic_pot.cpp",
+      "source": "research/dungeon_village_1/example/src/world_magic_pot.cpp",
+      "source_sha256": "4ce34e73309932647bca6819614aefa75c49f7a18a4a05c041f0daddef31bea4",
+      "source_bytes": 11247,
+      "sha256": "a50222f31715ecbc0bfc770d088832b2924faa02df8b1cc5d84f4a82d6e80c84",
+      "bytes": 11236
+    },
+    {
       "file": "src/simulation/rules/world_map_refresh.cpp",
       "source": "research/dungeon_village_1/example/src/world_map_refresh.cpp",
       "source_sha256": "aa7faaa2d64ee381ae983ddab4bcab56a8cb50dc0ba716fc9242ec2fab8cf7e9",
@@ -1709,10 +1733,10 @@
     {
       "file": "tests/simulation/rules/facility_items_test.cpp",
       "source": "research/dungeon_village_1/example/tests/facility_items_test.cpp",
-      "source_sha256": "05a9d1d63f5a1ca56aa1244c91c85c55bc080e91752eca9a24900ba28fd8333c",
-      "source_bytes": 15218,
-      "sha256": "27293c826c3bb8533d315901fcff32ee09f3281386f281628f71e0bad9c2cc4d",
-      "bytes": 15210
+      "source_sha256": "b1f7c02a3a33ccfab1d6aa3d9efbab77141d841975bf9bef8705735dda6931dc",
+      "source_bytes": 29237,
+      "sha256": "d86b64b1e42be767bd6866131af07356d0ae5802266939724bdb212235dc4c40",
+      "bytes": 29224
     },
     {
       "file": "tests/simulation/rules/facility_service_test.cpp",
@@ -2259,6 +2283,14 @@
       "bytes": 2684
     },
     {
+      "file": "include/ark/simulation/startup_world_magic_pot.hpp",
+      "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_magic_pot.hpp",
+      "source_sha256": "24c7c6d71a30807d05036f3675c1b484cff226406a5681426397634bf2351da7",
+      "source_bytes": 1802,
+      "sha256": "e88d82a879cd697ce62e39fb6da79ec3c6142a805b88b378aa782161750ac321",
+      "bytes": 1771
+    },
+    {
       "file": "include/ark/simulation/startup_world_persistence.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_persistence.hpp",
       "source_sha256": "fa0abb31ec752bea510027f0c7c98f45857f24ae315e552ac5697ef8646a40d7",
@@ -2269,10 +2301,10 @@
     {
       "file": "include/ark/simulation/startup_world_projection.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_projection.hpp",
-      "source_sha256": "d11420ab8ea4029e91a466276509027db1ef08777f0ab884de17af90938d364d",
-      "source_bytes": 8807,
-      "sha256": "dea4d3258d32700da7f0aea0edc36edc31d3f97c37be355eb88728d3115c0452",
-      "bytes": 8756
+      "source_sha256": "865b4b87b4ca19b12b35969885980284928802d80880bdd3be03cfb8ef62450d",
+      "source_bytes": 9275,
+      "sha256": "57007f233097c1069c6af190ee19eb53f086890c1b563689d80d79e9bde24214",
+      "bytes": 9219
     },
     {
       "file": "include/ark/simulation/startup_world_routes.hpp",
@@ -2285,10 +2317,10 @@
     {
       "file": "include/ark/simulation/startup_world_runtime.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_runtime.hpp",
-      "source_sha256": "31ec5fe394f1e40aea700a5e4ab7791db01e28eac401529c83622f99a064814e",
-      "source_bytes": 26921,
-      "sha256": "ace4f53957d7c67c53b194cb1631bab7987070552e5777f2191157bfa7d0adbd",
-      "bytes": 26860
+      "source_sha256": "35e3027239a02a0ea17f0f0fb2866a48178ac3afe57cb4803db9923d1421a7cb",
+      "source_bytes": 28062,
+      "sha256": "f641ad342d9927d728164a235078102aaf761d39b7f3cfdb077a932366033a95",
+      "bytes": 27996
     },
     {
       "file": "include/ark/simulation/startup_world_runtime_tasks.hpp",
@@ -2317,21 +2349,21 @@
     {
       "file": "include/ark/simulation/startup_world_visuals.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_visuals.hpp",
-      "source_sha256": "a997a9dc9ddc9ee61f0c29db3f0488764b77f9eb012e4274e45171ad19588353",
-      "source_bytes": 1142,
-      "sha256": "ad15eef8c19749dd957be13f38987d4cb45523cc8f7dd1be714c41e87779d12e",
-      "bytes": 1111
+      "source_sha256": "ae53c884985a5772a36e6aaae03ff49fe9f5a6f53883853c70f7565cba6c7772",
+      "source_bytes": 2018,
+      "sha256": "859b772e91ab7b2ce478aad803acae3c7647ef50c526dc5de0a2350837c6fb24",
+      "bytes": 1987
     },
     {
       "file": "scripts/simulation/compile_persistence_identity.mjs",
       "source": "research/dungeon_village_1/prototype/scripts/compile_persistence_identity.mjs",
-      "source_sha256": "fd14bacd5aef54c3bd0ba21e6256c22940e93cedddb1969a134c446f59bf4703",
-      "source_bytes": 1313,
-      "sha256": "5a75b5eeb248be71bf3429f288adfd5853dd68ef73d050cd8cb8077e63422416",
-      "bytes": 1559,
+      "source_sha256": "aea18854cd72278623ac7a2954f49fa1be1fbc30a4c16fe83bb44459b162954c",
+      "source_bytes": 1341,
+      "sha256": "575c24360b47e06afe0bf2792cb023c7b7c157816a1e8366abbb36f243c2e125",
+      "bytes": 1587,
       "product_patch": {
-        "imported_sha256": "9acd9db2b4dd536e144d04ee816e26465437b19682f9b9a95b5a4e3019f63a8f",
-        "reason": "Resolve the frozen dataset bytes from assets/simulation while retaining all 15 research logical manifest paths and the independently verified dataset SHA-256; emit the product namespace only."
+        "imported_sha256": "0da3e1da1c3caf475ea5a0cf9a64e43ae378dc93451ede15feac63b08a076008",
+        "reason": "Resolve the frozen dataset bytes from assets/simulation while retaining all 16 research logical manifest paths and the independently verified dataset SHA-256; emit the product namespace only. Rebased explicitly on a57958c, preserving the added magic-pot dataset/initial-state oracle."
       }
     },
     {
@@ -2345,10 +2377,10 @@
     {
       "file": "scripts/simulation/compile_startup_world.mjs",
       "source": "research/dungeon_village_1/prototype/scripts/compile_startup_world.mjs",
-      "source_sha256": "54372c7d28cca5b9a8845fdbcc5162fb80380e29e8b8e1656cdb8c36b55c0229",
-      "source_bytes": 11637,
-      "sha256": "936256a7ecabfcc323bf1f29900ebb1c21ccf12b097a8de212a75608e3ec6b55",
-      "bytes": 11616
+      "source_sha256": "c91cbb6e4a568d2e8078fb7b132dc1ff23e5b8d34ff720341134ed0d334f3ef0",
+      "source_bytes": 13757,
+      "sha256": "a5dfb1ea57567a9ec0fe678e5d8495dcb98b701ef54ec9724bd22147cadea498",
+      "bytes": 13736
     },
     {
       "file": "scripts/simulation/generate_owner_codec.mjs",
@@ -2429,18 +2461,18 @@
     {
       "file": "src/simulation/startup_world_codec_fields.inc",
       "source": "research/dungeon_village_1/prototype/src/startup_world_codec_fields.inc",
-      "source_sha256": "576c18113f65a6547e3af07071270120695e67e321f91812f528a1e717a14a57",
-      "source_bytes": 182525,
-      "sha256": "69a2bfcfe1f7c0621acc623ca000e41933a021227ac7312b0b94243ae51be5cb",
-      "bytes": 174298
+      "source_sha256": "409a90c9616e3dfc7aadeb99de2c0ee7866a989894dc215581122469451f1e1f",
+      "source_bytes": 185216,
+      "sha256": "1a974ef6d89b73f5daa758c3e8183f0a23bcf8539b13a99d9ba21b70d7e8c82f",
+      "bytes": 176808
     },
     {
       "file": "src/simulation/startup_world_codec_fields.json",
       "source": "research/dungeon_village_1/prototype/src/startup_world_codec_fields.json",
-      "source_sha256": "f6b3cd3c538d59b84fc44c41df44556ec3de78ae381d57efd91b211852b30eb1",
-      "source_bytes": 88128,
-      "sha256": "f6b3cd3c538d59b84fc44c41df44556ec3de78ae381d57efd91b211852b30eb1",
-      "bytes": 88128
+      "source_sha256": "e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f",
+      "source_bytes": 89425,
+      "sha256": "e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f",
+      "bytes": 89425
     },
     {
       "file": "src/simulation/startup_world_commerce.cpp",
@@ -2501,10 +2533,18 @@
     {
       "file": "src/simulation/startup_world_human.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_human.cpp",
-      "source_sha256": "c181ba30b8b18c0cbb50c54771166265cb269760fbe4a4c5eb1bcf6df1ca3980",
-      "source_bytes": 46765,
-      "sha256": "0260574302c2822ec7091062047b870fdec4f99cc73a8d3908f74e12fca1357e",
-      "bytes": 46718
+      "source_sha256": "bffc3ac18f9176e1504799e713bdd9751da3031e8a0d778b764e29eccebf00c1",
+      "source_bytes": 46945,
+      "sha256": "32727bf4966f56810b01a908052fada240606ea5205ba56b434ef6b60912a4c1",
+      "bytes": 46898
+    },
+    {
+      "file": "src/simulation/startup_world_magic_pot.cpp",
+      "source": "research/dungeon_village_1/prototype/src/startup_world_magic_pot.cpp",
+      "source_sha256": "dd9e10deaab7aec6ebdde37650a8ca9f1b7972b72547659d6415836bc4a4f9ab",
+      "source_bytes": 27648,
+      "sha256": "e26329e38d7571e2564e1897c28b338ccd52e8be81fcf678b5ea976305e8266c",
+      "bytes": 27612
     },
     {
       "file": "src/simulation/startup_world_persistence.cpp",
@@ -2526,10 +2566,10 @@
     {
       "file": "src/simulation/startup_world_restore_validation.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_restore_validation.cpp",
-      "source_sha256": "cbf0d6f900b994f3bf159a471136cea5586670cf064e352c1ba534b86797508e",
-      "source_bytes": 56488,
-      "sha256": "c272d8e8435b31bcfefe937701d720724bb89ef9b29c7fe80b0e13eb6f6928dd",
-      "bytes": 56425
+      "source_sha256": "fab2f7c9744d6eb4226cec2d61b5559be1af7c6e479d00773dde339929f6ccab",
+      "source_bytes": 58525,
+      "sha256": "542cc12c078d2f2167fb0374978995869598be82058a06b0a1e5726bdc1eaf24",
+      "bytes": 58451
     },
     {
       "file": "src/simulation/startup_world_restore_validation.hpp",
@@ -2550,10 +2590,10 @@
     {
       "file": "src/simulation/startup_world_runtime.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_runtime.cpp",
-      "source_sha256": "d073e2511b0a5e3e1e641cfe0e3f9a2dbab6f072ddaa2cff4c124aa78d4fae48",
-      "source_bytes": 57376,
-      "sha256": "8b1e16f5473cf0e6ef208eb6227dd152842deefa88b1e8fd87f68a84957a9f16",
-      "bytes": 57235
+      "source_sha256": "ed4b37904be3d08648c599f65f41656573e91594ab8a5cf1b01a1a9b59c7a3ec",
+      "source_bytes": 58460,
+      "sha256": "4d0214d97bfcc2976702bf1451e417bc1d1da80c4caab62d339e0d433643edc1",
+      "bytes": 58308
     },
     {
       "file": "src/simulation/startup_world_runtime_arrival.cpp",
@@ -2598,10 +2638,10 @@
     {
       "file": "src/simulation/startup_world_runtime_pages.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_runtime_pages.cpp",
-      "source_sha256": "c51164831ebec89dd331cedbb442b3c84830a6e74df17a40b858338cf85cb00a",
-      "source_bytes": 39588,
-      "sha256": "c11bd237436f8dd7fea4adb7be1e20fc6c22b4f09094a2bdbd8fca5382a49963",
-      "bytes": 39464
+      "source_sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "source_bytes": 40331,
+      "sha256": "e8ba6ba206550484d976b10f15f6f6be675ed79091a7501a7a4661774e0e391a",
+      "bytes": 40196
     },
     {
       "file": "src/simulation/startup_world_runtime_scene.cpp",
@@ -2638,18 +2678,18 @@
     {
       "file": "src/simulation/startup_world_village_activity.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_village_activity.cpp",
-      "source_sha256": "9a690671ccafc8fd8bba327dec465b47785a891b7be0fb889fce94a6a7b18ae2",
-      "source_bytes": 21192,
-      "sha256": "55e74d6c51302328daa88fd429510c0abcfeb979a4361e500d0f0a74ebb29eaa",
-      "bytes": 21134
+      "source_sha256": "97ce3e9bbba3bf550547193ae98e830fe1052160a4b8b038a07baca470b28183",
+      "source_bytes": 21453,
+      "sha256": "d8bcbf65c43c6465e5de160724649a0db6fb45fe1b541d92bd1cd66f8c68b336",
+      "bytes": 21384
     },
     {
       "file": "src/simulation/startup_world_visuals.cpp",
       "source": "research/dungeon_village_1/prototype/src/startup_world_visuals.cpp",
-      "source_sha256": "0efd5f13a9804a2abbcf69594a31c858e431a8a7e2f5be61f8818e9f3be375fb",
-      "source_bytes": 2529,
-      "sha256": "a988127ac93c8fd2e4ad867aa5400b047634fc36fefe97b70c1a846f6c564a18",
-      "bytes": 2498
+      "source_sha256": "8ca5f86b7889f250e319610b2e513a8fc2b5c7d86000db45bbb98bfb5da0ced6",
+      "source_bytes": 8844,
+      "sha256": "8528ba2e49289e8f0a552e99858a4be960ac0ac9fa0bc13f40e1e0f01d44a5fb",
+      "bytes": 8813
     },
     {
       "file": "tests/simulation/replay_file_test.mjs",
@@ -2707,10 +2747,10 @@
     {
       "file": "tests/simulation/startup_world_data_test.mjs",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_data_test.mjs",
-      "source_sha256": "a8540ee708d9240731bdc4fed09d251c1b75f17ddb8f72f3f290f93862c55c6c",
-      "source_bytes": 2542,
-      "sha256": "8c5c6981ac8922263d0d65d6284a6f4db8e991c092702abf825161e03b334d62",
-      "bytes": 2556
+      "source_sha256": "37ab7816fe4a122c44e0507b1165e676ffcb66496bbd9997a2c9edbe859a95cb",
+      "source_bytes": 4257,
+      "sha256": "8740c206b64c4466b9abf6c3b1a3d5579b026c6be2960f5169d239fb436cfb49",
+      "bytes": 4271
     },
     {
       "file": "tests/simulation/startup_world_deadline_test.cpp",
@@ -2723,18 +2763,18 @@
     {
       "file": "tests/simulation/startup_world_pages_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_pages_test.cpp",
-      "source_sha256": "a22d4e6fb6c88de6c30517606b80fe96f9569bb0ecd771ab6fb125188ec132b9",
-      "source_bytes": 137302,
-      "sha256": "e3d72b156f3720ce535a3d96e41bce8ed51c552dc5ccfb470d5f0d9641e2d0d9",
-      "bytes": 137204
+      "source_sha256": "afb9091bbdb4cc527fa0d92e67da4c9f65ae0cc6be5b35c2afc4ebeb4d79c9f9",
+      "source_bytes": 174895,
+      "sha256": "e5d2f061d2c1bfb5cdb18657193f4ca5916ba0f1bd9c3d4c39f4c5e440816124",
+      "bytes": 174786
     },
     {
       "file": "tests/simulation/startup_world_persistence_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_persistence_test.cpp",
-      "source_sha256": "0381a041eb69c14ce8e57c1d2250878a121937146e9fa80a4e7c37e8fb7c282e",
-      "source_bytes": 24936,
-      "sha256": "071091cbea3fd8d950c7561388f61a2582d77f49c795eb8235bc38e68ea609bd",
-      "bytes": 24840,
+      "source_sha256": "e80118fdf6fb8af00a37161c57cc39fc22eeb9865f88dddb650557043dc23601",
+      "source_bytes": 38862,
+      "sha256": "eb1cf910cbd033afb631940ebd86b0d552306549124b161a0e02b96779f26c4e",
+      "bytes": 38755,
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     },
     {
@@ -2764,10 +2804,10 @@
     {
       "file": "tests/simulation/startup_world_restore_checks.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_restore_checks.cpp",
-      "source_sha256": "ac672ec0c0e0960842a139332bffad2eb98cf52e0de762304f2e2be2ac87954d",
-      "source_bytes": 14388,
-      "sha256": "8e783382b2fb4655e63c40d27b449fe13b6f4eca2a07750064560f5d71668803",
-      "bytes": 14354
+      "source_sha256": "dd66adfabb77ec495bcb38fa0c3eed53cbabfadce342af275bd0c26fc617d443",
+      "source_bytes": 21073,
+      "sha256": "bb2a6cd8e2405ad72df88f5bc9cbc8338d7d2500bec40018876f6123c58e639a",
+      "bytes": 21028
     },
     {
       "file": "tests/simulation/startup_world_restore_checks.hpp",
@@ -2804,13 +2844,13 @@
     {
       "file": "tests/simulation/startup_world_runtime_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_runtime_test.cpp",
-      "source_sha256": "d9fcdaf6cfca19f45b645479163d3a950fe44854d71b4920b5e66393c9ac9a27",
-      "source_bytes": 5647,
-      "sha256": "63f7193b04f4d4d20a6bc4b1b2a24f221104d21a10a97a49e176bd9d643ec4d9",
-      "bytes": 7365,
+      "source_sha256": "6a42f759ef4f2cc1dc39f1de7a14995871fac04899268954076797dd9fba7821",
+      "source_bytes": 6398,
+      "sha256": "eaa4d7dd2d9b4385d71cda9947ccfaa6475bf6ad29e60a688294929b0f5860b1",
+      "bytes": 8116,
       "test_fixture_patch": {
-        "imported_sha256": "aa80c818344a15fa75c0245c90788f9bdc921fe2a85e796227a652ca0881c4aa",
-        "reason": "Add successful Session update return candidate completeness, future random stream and independent mutability coverage; retain existing failure and rollback assertions."
+        "imported_sha256": "c0e022c1ed6af8ce16e81e70ab446e000666c222056a32ade0b86fd8ef9541ee",
+        "reason": "Add successful Session update return candidate completeness, future random stream and independent mutability coverage; retain existing failure and rollback assertions. Rebased explicitly on a57958c, preserving the added magic-pot dataset/initial-state oracle."
       }
     },
     {
@@ -2832,10 +2872,10 @@
     {
       "file": "tests/simulation/startup_world_visuals_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_visuals_test.cpp",
-      "source_sha256": "d70c8b444d61fcc16c6c880f0ca13eb0f78a5d998f624e1af3d188ce5c7ab396",
-      "source_bytes": 6780,
-      "sha256": "08cc038274bc3467c9bf249728c17b356b7fa1dd79219e8571e522df1c7d9c27",
-      "bytes": 6707
+      "source_sha256": "1666c2d51de95b7eb5e353e4f27f996c6e3c65c2d19b7a8dbe2b441e40eb6efe",
+      "source_bytes": 23016,
+      "sha256": "bbf1f041b3dffc3c4f6963a05b1011df7e0ac444ad196fd62d2d206d3f8f08dc",
+      "bytes": 22892
     },
     {
       "file": "tests/simulation/support/README.md",
@@ -2871,5 +2911,5 @@
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     }
   ],
-  "source_revision": "29f371db6c5a9a020e771a1b7ff4de580137e6a1"
+  "source_revision": "0a5b5e2bff7e168e50f3b1c565b1af6ae5ab874b"
 }

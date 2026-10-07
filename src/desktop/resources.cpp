@@ -120,12 +120,13 @@ int Sprites::map_image_height(const std::string &sprite, int frame) {
     return texture(root_ / "image" / images_.at(image)).height;
 }
 void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color tint,
-                   Binding binding, float scale, int image_override,
-                   std::optional<Rectangle> clip) {
+                   Binding binding, float scale, int image_override, std::optional<Rectangle> clip,
+                   std::optional<int> selected_layer) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
     const char *group = binding == Binding::farmer || binding == Binding::human       ? "human"
                         : binding == Binding::monster                                 ? "monster"
+                        : binding == Binding::weapon                                  ? "weapon"
                         : binding == Binding::common2                                 ? "common2"
                         : binding == Binding::secretary || binding == Binding::common ? "common"
                                                                                       : "image";
@@ -140,7 +141,13 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
         throw std::runtime_error("Source variant outside sprite frames: " + relative.string() +
                                  " variant=" + std::to_string(frame) +
                                  " frames=" + std::to_string(sprite_data.frame_count));
-    for (const auto &layer : sprite_data.layers)
+    if (selected_layer &&
+        (*selected_layer < 0 || *selected_layer >= static_cast<int>(sprite_data.layers.size())))
+        throw std::runtime_error("Source layer outside sprite layers");
+    for (std::size_t layer_index = 0; layer_index < sprite_data.layers.size(); ++layer_index) {
+        if (selected_layer && layer_index != static_cast<std::size_t>(*selected_layer))
+            continue;
+        const auto &layer = sprite_data.layers[layer_index];
         for (const auto &p : layer.parts) {
             if (p.frame != frame)
                 continue;
@@ -168,6 +175,37 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
             }
             DrawTexturePro(image, blit.source, blit.destination, {0, 0}, 0, tint);
         }
+    }
+}
+void Sprites::indexed_sprite(Binding binding, int sprite, int frame, int layer, int image_override,
+                             Vector2 anchor, float scale) {
+    if (binding != Binding::common && binding != Binding::weapon)
+        throw std::invalid_argument("Unsupported indexed effect binding");
+    const std::string group = binding == Binding::weapon ? "weapon" : "common";
+    if (!actor_sprites_.count(group)) {
+        std::vector<std::string> names;
+        for (const auto &row : assets::parse_tsv(read_bytes(root_ / group / "seb.inf"))) {
+            if (row.size() != 1 || std::filesystem::path(row[0]).has_parent_path())
+                throw std::runtime_error("Invalid effect sprite index");
+            names.push_back(row[0]);
+        }
+        actor_sprites_.emplace(group, std::move(names));
+    }
+    if (image_override >= 0 && !actor_images_.count(group))
+        actor_images_.emplace(group, image_index(root_, group.c_str()));
+    if (sprite < 0)
+        throw std::invalid_argument("Invalid effect sprite index");
+    draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite)), frame, anchor, WHITE,
+         binding, scale, image_override, {}, layer);
+}
+void Sprites::indexed_image(Binding binding, int image_id, Rectangle source,
+                            Rectangle destination) {
+    if (binding != Binding::common && binding != Binding::weapon)
+        throw std::invalid_argument("Unsupported indexed image binding");
+    const std::string group = binding == Binding::weapon ? "weapon" : "common";
+    if (!actor_images_.count(group))
+        actor_images_.emplace(group, image_index(root_, group.c_str()));
+    image(actor_images_.at(group).at(image_id).string(), source, destination, binding);
 }
 void Sprites::human_image(int image_id, Rectangle source, Rectangle destination) {
     if (!actor_images_.count("human"))
@@ -302,6 +340,7 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
                         : binding == Binding::window ? "ui"
                         : binding == Binding::title  ? "title"
                         : binding == Binding::map    ? "image"
+                        : binding == Binding::weapon ? "weapon"
                                                      : "common";
     const auto &value = texture(root_ / group / name);
     if (source.x < 0 || source.y < 0 || source.width <= 0 || source.height <= 0 ||

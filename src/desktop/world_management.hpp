@@ -9,6 +9,7 @@
 #include "ui/world_facility_catalog.hpp"
 #include "ui/world_facility_items.hpp"
 #include "ui/world_human.hpp"
+#include "ui/world_magic_pot.hpp"
 #include "ui/world_panels.hpp"
 #include "ui/world_progression.hpp"
 #include "ui/world_tax.hpp"

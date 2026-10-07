@@ -123,7 +123,8 @@ if(ARK_BUILD_DESKTOP)
     # SEB/TSV parsers. No WindowServer is needed, but headless builds do not depend on raylib.
     ark_test_executable(ark_simulation_startup_world_visuals_test
         SOURCES tests/simulation/startup_world_visuals_test.cpp
-        LIBRARIES ark_world_runtime ark_asset_metadata PkgConfig::RAYLIB)
+        # The frozen no-mutation oracle hashes the complete Owner through maintenance codec.
+        LIBRARIES ark_world_runtime ark_world_persistence ark_asset_metadata PkgConfig::RAYLIB)
     ark_test_case(simulation.startup_world_visuals_test ark_simulation_startup_world_visuals_test
         ARGS "${PROJECT_SOURCE_DIR}/assets" LABELS presentation frozen TIMEOUT 120)
     # World UI suites use the same skin/resource/layout lifetime and dependencies.
@@ -140,6 +141,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
             src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
             src/desktop/ui/world_facility_catalog.cpp
+            src/desktop/ui/world_magic_pot.cpp
             src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp

@@ -69,6 +69,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/world_village_activity.cpp
         src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
         src/desktop/ui/world_facility_catalog.cpp
+        src/desktop/ui/world_magic_pot.cpp
         src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp src/desktop/ui/hud.cpp src/desktop/ui/pages.cpp
         src/desktop/ui/facility_context.cpp src/desktop/ui/facility_page.cpp)
     target_include_directories(ark_village PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")

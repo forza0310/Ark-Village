@@ -154,7 +154,8 @@ class WorldSession::Impl {
         } else if (command.kind == WorldCommandKind::open_menu_tasks ||
                    command.kind == WorldCommandKind::open_menu_build ||
                    command.kind == WorldCommandKind::open_menu_village_activities ||
-                   command.kind == WorldCommandKind::open_menu_commerce) {
+                   command.kind == WorldCommandKind::open_menu_commerce ||
+                   command.kind == WorldCommandKind::open_menu_magic_pot) {
             if (!menu_open) {
                 result.runtime_error = RuntimeError::invalid_page;
             } else {
@@ -270,7 +271,8 @@ class WorldSession::Impl {
         if (kind == WorldCommandKind::acknowledge_page && current_page &&
             (current_page->legacy_page == 76 || current_page->legacy_page == 86 ||
              current_page->legacy_page == 72 || current_page->legacy_page == 79 ||
-             current_page->legacy_page == 82))
+             current_page->legacy_page == 82 ||
+             (current_page->legacy_page >= 41 && current_page->legacy_page <= 47)))
             return apply_decision(current,
                                   input); // Dedicated/automatic pages reject generic late clicks.
         if (detail::is_world_decision(input.value.kind))

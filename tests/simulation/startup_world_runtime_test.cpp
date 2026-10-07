@@ -31,6 +31,15 @@ void initial_owner() {
               s.task_progress.definitions.size() == 81 && s.yearly_statistics.size() == 30 &&
               s.base_variants.size() == 576,
           "full original definitions and zero-allocated calendar arrays present");
+    // 独立原新局oracle：n.c/3355–3362对这五条flags1调用a.i.a，保留首次NEW。
+    const std::set<int> known_recipes{14, 22, 24, 30, 31};
+    check(s.magic_pot_recipes.size() == 40 && s.legacy_n[11] == 1 &&
+              s.magic_pot_comment.empty() && s.magic_pot_output == std::array<std::int32_t, 4>{},
+          "actual new game installs forty recipes and source pot level/display initial values");
+    for (const auto &[id, progress] : s.magic_pot_recipes)
+        check(progress.identity == id && progress.status == (known_recipes.count(id) ? 1 : 0) &&
+                  progress.pending_notice == (known_recipes.count(id) != 0),
+              "source new game recipe bit1 grants known progress without clearing its NEW flag");
     const auto script = startup_world_runtime_scripts(s);
     check(script.finance && script.finance->cash == s.scene.world.world.ai.accounting.funds() &&
               script.finance->legacy_flags14 == 0 &&

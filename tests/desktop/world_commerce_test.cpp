@@ -3,6 +3,7 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_commerce.hpp"
 #include "ui/world_facility_catalog.hpp"
+#include "ui/world_magic_pot.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -29,6 +30,59 @@ Vector2 center(Rectangle box) { return {box.x + box.width / 2, box.y + box.heigh
 } // namespace
 void world_commerce() {
     Checks check{"world_commerce"};
+    {
+        auto state = initial_world();
+        state.scripts.user_flags |= 3U;
+        state.scripts.event_calls[101] = 1;
+        check(sim::open_startup_world_magic_pot(state, sim::StartupMagicPotEntry::main_menu) ==
+                  sim::StartupWorldRuntimeError::none,
+              "Explicit pot gate opens actual source41");
+        auto page = state.scripts.pages.back();
+        const auto layout = ui::world_commerce_layout({240, 256});
+        ui::WorldCommerceInput input;
+        input.enter = true;
+        auto view = ui::world_magic_pot_view(state, page);
+        check(!view.initialized && !ui::world_magic_pot_input(view, layout, input, false),
+              "Pot rendering does not initialize or act on an unpublished payload");
+        check(sim::initialize_startup_world_magic_pot_pages(state), "Source initializes pot41");
+        const auto before = state;
+        view = ui::world_magic_pot_view(state, page);
+        check(view.rows.size() == 2 && view.rows[0].name == "投入道具" &&
+                  view.rows[1].name == "开发" &&
+                  ui::world_magic_pot_input(view, layout, input, false)->action ==
+                      sim::StartupMagicPotAction::confirm &&
+                  !ui::world_magic_pot_input(view, layout, input, true) &&
+                  same_world_clock(state, before) &&
+                  state.scene.random.draws() == before.scene.random.draws(),
+              "Pot UI keeps choice order, pending barrier and read-only drawing");
+        // Explicit processing45 callsite: test source counters through the real view rather
+        // than constructing can_confirm booleans that merely repeat the input implementation.
+        Page processing;
+        processing.kind = sim::rules::WorldScriptPageKind::raw_page;
+        processing.legacy_page = 45;
+        const auto inserted = sim::rules::prepare_world_script_page(
+            sim::startup_world_runtime_scripts(state), processing);
+        check(inserted.candidate &&
+                  sim::write_startup_world_runtime_scripts(state, inserted.candidate->state) &&
+                  sim::initialize_startup_world_magic_pot_pages(state),
+              "Source initializes processing-result callsite");
+        page = state.scripts.pages.back();
+        for (const int count : {0, 76, 77, 82, 83}) {
+            state.page_counters.at(page.id) = count;
+            const auto gate = ui::world_magic_pot_view(state, page);
+            input = {};
+            input.escape = true;
+            check(!gate.can_cancel && !ui::world_magic_pot_input(gate, layout, input, false),
+                  "Pot Back cannot retire a result page without a source cancel consumer");
+            input = {};
+            input.enter = true;
+            check(ui::world_magic_pot_input(gate, layout, input, false).has_value() ==
+                          (count < 77 || count >= 83) &&
+                      state.page_counters.at(page.id) == count,
+                  "Processing45 shows fast-forward, timed hold and finish from immutable source "
+                  "count");
+        }
+    }
     {
         using CatalogAction = sim::StartupFacilityCatalogAction;
         auto source = initial_world();
@@ -69,6 +123,8 @@ void world_commerce() {
                       row.price == definition->shop.price && row.combat == definition->shop.combat,
                   "Catalogue uses store price and real combat values, not gift quote or screenshot "
                   "amounts");
+            check(row.icon_image == 12 && row.icon == definition->shop.type,
+                  "Weapon catalogue binds column2 icon instead of the sparse map PNG index");
         }
         check(!ui::world_facility_catalog_input(view, layout, input, true),
               "Pending catalogue blocks repeated input");

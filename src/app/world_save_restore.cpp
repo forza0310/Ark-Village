@@ -1,4 +1,5 @@
 #include "ark/app/world_save.hpp"
+#include "ark/simulation/rules/world_magic_pot.hpp"
 #include "ark/simulation/rules/world_map_refresh.hpp"
 
 #include <algorithm>
@@ -243,6 +244,13 @@ void clear_presentation(State &s) {
     s.facility_catalog_page_data.clear();
     s.facility_catalog_page_lists.clear();
     s.facility_catalog_page_parents.clear();
+    s.magic_pot_pages_initialized.clear();
+    s.magic_pot_page_data.clear();
+    s.magic_pot_page_lists.clear();
+    s.magic_pot_page_parents.clear();
+    s.magic_pot_display = {};
+    s.magic_pot_comment.clear();
+    s.magic_pot_output = {};
     s.rank_celebration_participants.clear();
     s.exploration_summaries.clear();
     s.exploration_displays.clear();
@@ -320,6 +328,21 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
     const auto &world = s.scene.world.world;
     const auto &ai = world.ai;
     const auto retired_facilities = retired_task_facilities(s);
+    // Recipe discovery is durable; processing/display consumers must not run during restore.
+    if (rules.magic_pot_recipes.size() != 40 ||
+        s.magic_pot_recipes.size() != rules.magic_pot_recipes.size())
+        return invalid("Save magic pot recipes do not cover the fixed dataset");
+    for (const auto &definition : rules.magic_pot_recipes) {
+        const auto progress = s.magic_pot_recipes.find(definition.identity);
+        if (progress == s.magic_pot_recipes.end() ||
+            progress->second.identity != definition.identity ||
+            (progress->second.status != 0 && progress->second.status != 1))
+            return invalid("Save magic pot recipe identity or status is invalid");
+    }
+    if (!ref::valid_world_magic_pot_state(
+            s.legacy_n,
+            {s.scene.calendar.year, s.scene.calendar.month, s.scene.calendar.subperiod}))
+        return invalid("Save magic pot state or processing date is invalid");
     if (!ref::valid_world_calendar_state(s.scene.calendar) || !counter(s.scene.calendar.year) ||
         !counter(s.scene.calendar.month_ticks) || !counter(s.scene.frame_counter) ||
         !counter(s.scene.scene_counter) ||

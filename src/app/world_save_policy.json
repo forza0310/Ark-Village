@@ -1,8 +1,8 @@
 {
   "policy_version": 1,
   "format": "ARKSAVE1",
-  "schema": 2,
-  "scope": "All fields returned by the shared Owner AST inventory: 92 reachable records plus two private wrappers. Standard library internals are not state declarations. Maintenance snapshot helper fields are included solely as an evolution guard.",
+  "schema": 3,
+  "scope": "All fields returned by the shared Owner AST inventory, including recipe progress and two private wrappers. Standard library internals are not state declarations. Maintenance snapshot helper fields are included solely as an evolution guard.",
   "classification_scale": "type.field declaration. A save action applies only below an included ancestor. wire_fields records existing codec inclusion independently: an encoded value may be inherited or rebuilt on load. No automatic format migration, codec generation or policy rewriting.",
   "sources": [
     "docs/MILESTONES.md#adr-0044",
@@ -196,7 +196,8 @@
         "rank_history",
         "simulation_steps",
         "clock_parameter",
-        "calendar_advance"
+        "calendar_advance",
+        "magic_pot_recipes"
       ],
       "groups": [
         {
@@ -309,6 +310,13 @@
           ]
         },
         {
+          "action": "save",
+          "reason": "User-approved schema3 adds the complete fixed recipe progress map; legacy_n and user_flags remain in their existing durable slots. Loading never processes the pot or consumes random.",
+          "fields": [
+            ["magic_pot_recipes", "std::map<int, ref::WorldMagicPotRecipeProgress>"]
+          ]
+        },
+        {
           "action": "rebuild",
           "reason": "Rebind the fixed rule singleton before validation; never serialize a pointer.",
           "fields": [
@@ -411,6 +419,13 @@
             ["facility_catalog_page_data", "std::map<std::uint64_t, std::array<int, 4>>"],
             ["facility_catalog_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
             ["facility_catalog_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
+            ["magic_pot_display", "std::array<std::array<std::int32_t, 5>, 3>"],
+            ["magic_pot_comment", "std::string"],
+            ["magic_pot_output", "std::array<std::int32_t, 4>"],
+            ["magic_pot_pages_initialized", "std::set<std::uint64_t>"],
+            ["magic_pot_page_data", "std::map<std::uint64_t, std::array<int, 3>>"],
+            ["magic_pot_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["magic_pot_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
             ["confirm_input", "bool"],
             ["cancel_input", "bool"],
             ["menu_input", "bool"],
@@ -2327,6 +2342,22 @@
             ["residence_mode", "int"],
             ["resident_definition", "int"],
             ["notices", "std::vector<std::array<int, 2>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldMagicPotRecipeProgress",
+      "reason": "Fixed recipe discovery state persists independently of transient pot pages and result displays.",
+      "wire_fields": ["identity", "status", "pending_notice"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Schema3 retains recipe identity, discovered status and unread discovery flag; fixed definitions are supplied by the frozen dataset.",
+          "fields": [
+            ["identity", "std::int32_t"],
+            ["status", "std::int32_t"],
+            ["pending_notice", "bool"]
           ]
         }
       ]

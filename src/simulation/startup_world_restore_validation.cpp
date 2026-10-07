@@ -4,6 +4,7 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_facility_catalog.hpp"
+#include "ark/simulation/startup_world_magic_pot.hpp"
 #include "ark/simulation/rules/actor_control.hpp"
 #include "ark/simulation/rules/world_perception.hpp"
 
@@ -172,6 +173,13 @@ struct Validation {
         EXACT(s.activity_flags, activities);
         EXACT(s.activity_counts, activities);
         EXACT(s.scripts.activities, activities);
+        std::set<int> recipes;
+        for (const auto &recipe : s.rules->magic_pot_recipes)
+            recipes.insert(recipe.identity);
+        EXACT(s.magic_pot_recipes, recipes);
+        for (const auto &[id, progress] : s.magic_pot_recipes)
+            if (progress.identity != id || progress.status < 0 || progress.status > 1)
+                return fail("magic pot: 配方身份或共享状态非法");
         std::set<int> jobs;
         for (std::size_t n = 0; n < s.rules->jobs.size(); ++n)
             jobs.insert(static_cast<int>(n));
@@ -555,6 +563,9 @@ struct Validation {
         PAGE_MAP(facility_catalog_page_data);
         PAGE_MAP(facility_catalog_page_lists);
         PAGE_MAP(facility_catalog_page_parents);
+        PAGE_MAP(magic_pot_page_data);
+        PAGE_MAP(magic_pot_page_lists);
+        PAGE_MAP(magic_pot_page_parents);
         PAGE_MAP(rank_celebration_participants);
         PAGE_MAP(exploration_summaries);
 #undef PAGE_MAP
@@ -567,9 +578,25 @@ struct Validation {
         PAGE_SET(facility_item_pages_initialized, 75, 76, 77);
         PAGE_SET(commerce_pages_initialized, 83, 84, 85, 86, 93);
         PAGE_SET(facility_catalog_pages_initialized, 72, 79, 82);
+        PAGE_SET(magic_pot_pages_initialized, 41, 42, 43, 44, 45, 46, 47);
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for (const auto &[id, data] : s.magic_pot_page_data) {
+            (void)data;
+            if (!page_kind(id, {41, 42, 43, 44, 45, 46, 47}))
+                return fail("magic pot: 数据附在错误页型");
+        }
+        for (const auto &[id, list] : s.magic_pot_page_lists) {
+            (void)list;
+            if (!page_kind(id, {41, 42, 43, 44, 45, 46, 47}))
+                return fail("magic pot: 目录附在错误页型");
+        }
+        for (const auto &[id, owner] : s.magic_pot_page_parents) {
+            (void)owner;
+            if (!page_kind(id, {42, 43, 44, 47}))
+                return fail("magic pot: 父绑定附在错误页型");
+        }
         for (const auto &[id, data] : s.facility_catalog_page_data) {
             (void)data;
             if (!page_kind(id, {72, 79, 82}))
@@ -755,7 +782,8 @@ struct Validation {
                 return fail("activity page: 缺活动绑定");
             const auto d = std::find_if(s.rules->activities.begin(), s.rules->activities.end(),
                                         [&](const auto &v) { return v.identity == *binding; });
-            if (d->parameters[2] < 0 || d->parameters[2] > 3 || (raw == 54 && d->parameters[2] > 1))
+            if (d->parameters[2] < 0 || d->parameters[2] > 6 || d->parameters[2] == 4 ||
+                (raw == 54 && d->parameters[2] > 1))
                 return fail("activity page: 未接效果类型");
         }
         if (!s.activity_pages_initialized.count(id))
@@ -903,6 +931,9 @@ struct Validation {
             } else if (raw >= 51 && raw <= 54) {
                 if (!activity_page(p))
                     return false;
+            } else if (raw >= 41 && raw <= 47) {
+                if (!valid_startup_world_magic_pot_page(s, p))
+                    return fail("magic pot page: 初始化/绑定/选择载荷非法");
             } else if (raw == 83 || raw == 84 || raw == 85 || raw == 86 || raw == 93) {
                 if (!commerce_page(p))
                     return false;
@@ -1014,6 +1045,13 @@ bool validate_restored_state(const State &s, std::string &reason, bool audit_che
         return false;
     if (!ref::WorldRandomStream::from_snapshot(s.scene.random.snapshot()))
         return v.fail("random: 引擎/磁带/游标非法");
+    if (!ref::valid_world_magic_pot_state(s.legacy_n,
+            {s.scene.calendar.year, s.scene.calendar.month, s.scene.calendar.subperiod}) ||
+        !every(s.magic_pot_output, [](int n) { return n >= 0; }) ||
+        !every(s.magic_pot_display, [](const auto &row) {
+            return std::all_of(row.begin(), row.end(), [](int n) { return n >= 0; });
+        }))
+        return v.fail("magic pot: 级别/容量/日期/演出数据非法");
     if (!ref::valid_world_calendar_state(s.scene.calendar) || s.scene.scene_state < 0 ||
         s.scene.scene_state > 7 || !counter(s.scene.frame_counter) ||
         !counter(s.scene.scene_counter) || (!audit_checkpoint && s.scene.processing_phase != -1) ||

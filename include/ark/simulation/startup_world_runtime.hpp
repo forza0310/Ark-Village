@@ -3,6 +3,7 @@
 #include "ark/simulation/startup_world_projection.hpp"
 #include "ark/simulation/rules/world_award_page.hpp"
 #include "ark/simulation/rules/world_exploration.hpp"
+#include "ark/simulation/rules/world_magic_pot.hpp"
 #include "ark/simulation/rules/world_runtime.hpp"
 #include "ark/simulation/rules/world_task_commands.hpp"
 #include "ark/simulation/rules/world_task_deadline.hpp"
@@ -20,6 +21,8 @@ enum class StartupVillageActivityAction;
 enum class StartupFacilityItemAction;
 enum class StartupCommerceAction;
 enum class StartupFacilityCatalogAction;
+enum class StartupMagicPotEntry;
+enum class StartupMagicPotAction;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -227,6 +230,14 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::array<int, 4>> facility_catalog_page_data;
     std::map<std::uint64_t, std::vector<int>> facility_catalog_page_lists;
     std::map<std::uint64_t, std::uint64_t> facility_catalog_page_parents; // 72→仍存活的79。
+    std::map<int, ref::WorldMagicPotRecipeProgress> magic_pot_recipes; // 原40条共享p/r；定义另存rules。
+    std::array<std::array<std::int32_t, 5>, 3> magic_pot_display{}; // aM：前值、后值、增量；投入仅写前4列。
+    std::string magic_pot_comment; // 原aN已抽评语，恢复不再消费随机。
+    std::array<std::int32_t, 4> magic_pot_output{}; // aQ：日期推进即重写，零输出不改n12。
+    std::set<std::uint64_t> magic_pot_pages_initialized;
+    std::map<std::uint64_t, std::array<int, 3>> magic_pot_page_data; // 选择、首行、原配方/道具绑定。
+    std::map<std::uint64_t, std::vector<int>> magic_pot_page_lists;
+    std::map<std::uint64_t, std::uint64_t> magic_pot_page_parents; // 42/43→41，44→42，47→43。
     int medal_count{};                           // UserData.j，c/n.J新局0，raw87初始化+1。
     std::map<int, int> facility_free_builds;     // br.H真实新对象0；旧接口名，原h()不因此免造价。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
@@ -370,6 +381,9 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError open_task_control_menu();
     StartupWorldRuntimeError open_village_activities();
     StartupWorldRuntimeError open_commerce();
+    StartupWorldRuntimeError open_magic_pot(StartupMagicPotEntry entry);
+    StartupWorldRuntimeError act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
+                                                int selection = 0);
     StartupWorldRuntimeError act_commerce_page(std::uint64_t page, StartupCommerceAction action,
                                                int selection = 0);
     StartupWorldRuntimeError act_facility_item_page(std::uint64_t page,

@@ -1,9 +1,10 @@
 # 运行资源
 
 新增新局静态数据、源地图PNG/SEB、初期建筑、农家人物、秘书与窗底。
-619份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
+670份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
 标题入口新增`title/`背景、236×115 Logo和98×68书本按钮三份原PNG；S038–S040仅参考布局，不把截图或Steam标志/版本信息当作运行资源。
-完整世界新增human/monster/image/common的维护目录副本，由scripts/import_world_assets.mjs原样复制；包含职业/性别图集、全部动作SEB、怪物体型与地图设施，不用农家图片代替所有人物。
+完整世界新增human/monster/image/common/weapon的维护目录副本，由scripts/import_world_assets.mjs原样复制；包含职业/性别图集、全部动作SEB、怪物体型与地图设施，不用农家图片代替所有人物。
+weapon新增51份原PNG/SEB/INF，冻结0a5b5e2。用途为cd15举物的四种风格/四方向及稀疏PNG override；cd21/22和商品79/72使用common既有18×18图标及背景。建筑价格/品质/魅力提示按common原SEB指定层绘制，不把空层或同名PNG当作有效裁片。
 simulation保存完整世界独立发布数据及源码来源清单，构建期生成目录/脚本；与现有data切片版本分别校验，不在运行时互相覆盖。
 人物行走使用human/walk00..03四套原始SEB与同一农家图集；每方向四帧、独立24像素行、统一脚底锚点，启动时校验全部16帧，无运行时research依赖。
 新增common/common2上下栏、菜单/图标/手形、日期/属性数字、人气/点数、内容角/分类/方向箭头等UI资源。

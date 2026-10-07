@@ -15,6 +15,7 @@ struct WorldFacilityCatalogRow {
     std::string name;
     std::array<int, 4> combat{};
     bool fresh{};
+    int icon_image{}, icon{};
 };
 struct WorldFacilityCatalogView {
     std::uint64_t page{};

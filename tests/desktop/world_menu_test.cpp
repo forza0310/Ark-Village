@@ -180,6 +180,17 @@ void world_menu() {
         using Village = ui::WorldVillageMenuIntent;
         for (const bool unlocked : {false, true}) {
             input = {};
+            input.click = middle(layout.menu_rows[2]);
+            const auto action =
+                ui::world_village_menu_input(layout, true, false, false, selected, input, unlocked);
+            check(selected == 2 && (unlocked ? action == Village::magic_pot : !action),
+                  "Magic pot entry uses its own unlock flag, independent of commerce");
+            check(!ui::world_village_menu_input(layout, false, true, false, selected, input,
+                                                unlocked),
+                  "Pause still gates the unlocked magic pot entry");
+        }
+        for (const bool unlocked : {false, true}) {
+            input = {};
             input.click = middle(layout.menu_rows[1]);
             const auto action =
                 ui::world_village_menu_input(layout, true, unlocked, false, selected, input);

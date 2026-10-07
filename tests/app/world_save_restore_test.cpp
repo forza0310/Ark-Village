@@ -2,6 +2,7 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_editing.hpp"
 #include "ark/simulation/startup_world_expansion.hpp"
+#include "ark/simulation/startup_world_magic_pot.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -94,6 +95,34 @@ void invalid_candidates() {
               std::string("no partial restore for ") + scenario);
     };
     auto bad = initial;
+    bad.magic_pot_recipes.erase(bad.magic_pot_recipes.begin());
+    reject(bad, "missing magic pot recipe");
+    bad = initial;
+    bad.magic_pot_recipes.emplace(99999, ref::WorldMagicPotRecipeProgress{99999, 0, false});
+    reject(bad, "unknown magic pot recipe");
+    bad.magic_pot_recipes.erase(bad.magic_pot_recipes.begin());
+    reject(bad, "foreign magic pot recipe replacing a fixed identity");
+    bad = initial;
+    bad.magic_pot_recipes.begin()->second.identity = 99999;
+    reject(bad, "magic pot recipe key and identity mismatch");
+    for (int status : {-1, 2}) {
+        bad = initial;
+        bad.magic_pot_recipes.begin()->second.status = status;
+        reject(bad, "invalid magic pot recipe status");
+    }
+    for (const auto [slot, value] : std::array<std::array<int, 2>, 6>{
+             {{0, 1000}, {1, 11}, {3, 1000}, {7, -1}, {11, 0}, {11, 4}}}) {
+        bad = initial;
+        bad.legacy_n[slot] = value;
+        reject(bad, "invalid durable magic pot slot");
+    }
+    bad = initial;
+    const auto date = ref::world_magic_pot_date(
+        {bad.scene.calendar.year, bad.scene.calendar.month, bad.scene.calendar.subperiod});
+    check(date.value.has_value(), "initial magic pot date is valid");
+    bad.legacy_n[12] = *date.value + 1;
+    reject(bad, "future magic pot processing date");
+    bad = initial;
     bad.scene.world.facility_order.push_back(bad.scene.world.facility_order.front());
     reject(bad, "duplicate facility order identity");
     bad = initial;
@@ -254,6 +283,74 @@ void invalid_candidates() {
     check(!app::world_save_eligible(bad), "village activity answer cannot be discarded");
 }
 
+void magic_pot_roundtrip() {
+    auto state = ark::test::initial_world();
+    // Explicit stable-main callsite with pending processing and mixed discovered recipes.
+    // The fixture does not claim a natural unlock; processing below uses the real consumer.
+    state.scripts.user_flags |= 3U;
+    state.scene.calendar.year = 2;
+    state.scene.calendar.month = 4;
+    state.scene.calendar.subperiod = 1;
+    state.legacy_n = {35, 2, 1, 40, 30, 20, 10, 5, 4, 3, 2, 2, 113};
+    for (auto &[id, progress] : state.magic_pot_recipes) {
+        progress.status = id % 2;
+        progress.pending_notice = id % 3 == 0;
+    }
+    const auto original = state;
+    auto loaded = restored(state);
+    check(loaded.magic_pot_recipes.size() == 40 && loaded.legacy_n == state.legacy_n &&
+              loaded.scripts.user_flags == state.scripts.user_flags,
+          "Schema3 retains all recipes and existing pot slots/unlock flags");
+    for (const auto &[id, expected] : state.magic_pot_recipes) {
+        const auto &actual = loaded.magic_pot_recipes.at(id);
+        check(actual.identity == expected.identity && actual.status == expected.status &&
+                  actual.pending_notice == expected.pending_notice,
+              "Recipe identity, discovery and unread state survive player restore");
+    }
+    const auto clean = app::capture_world_save(state);
+    check(clean.image.has_value(), clean.message);
+    state.magic_pot_display[0][0] = 17;
+    state.magic_pot_output = {1, 2, 3, 4};
+    state.magic_pot_comment = "discarded presentation";
+    state.magic_pot_pages_initialized.insert(999);
+    state.magic_pot_page_data.emplace(999, std::array<int, 3>{1, 0, 7});
+    state.magic_pot_page_lists.emplace(999, std::vector<int>{7});
+    state.magic_pot_page_parents.emplace(999, 998);
+    const auto transient = app::capture_world_save(state);
+    check(transient.image && transient.image->bytes == clean.image->bytes,
+          "Pot presentation and page payloads never enter player bytes");
+    std::string reason;
+    auto current = ark::test::initial_world();
+    current.scene.framework_paused = true;
+    current.scene.speed_setting = 0;
+    current.scene.random = ref::WorldRandomStream::from_java_seed(987);
+    auto cleaned = state;
+    check(app::prepare_world_save_candidate(cleaned, current, reason) == app::WorldSaveError::none,
+          reason);
+    check(cleaned.magic_pot_pages_initialized.empty() && cleaned.magic_pot_page_data.empty() &&
+              cleaned.magic_pot_page_lists.empty() && cleaned.magic_pot_page_parents.empty() &&
+              cleaned.magic_pot_comment.empty() &&
+              cleaned.magic_pot_output == std::array<std::int32_t, 4>{} &&
+              cleaned.magic_pot_display == std::array<std::array<std::int32_t, 5>, 3>{} &&
+              cleaned.scene.framework_paused && cleaned.scene.speed_setting == 0 &&
+              cleaned.scene.random.snapshot().engine_state ==
+                  current.scene.random.snapshot().engine_state,
+          "Restore clears every pot transient and inherits current pause, speed and random");
+    state = original;
+    state.scene.calendar.subperiod = loaded.scene.calendar.subperiod = 2;
+    const auto before = loaded.scene.random.draws();
+    check(sim::open_startup_world_magic_pot(state, sim::StartupMagicPotEntry::main_menu) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::open_startup_world_magic_pot(loaded, sim::StartupMagicPotEntry::main_menu) ==
+                  sim::StartupWorldRuntimeError::none,
+          "Pending processing resumes through the real menu consumer after loading");
+    check(loaded.legacy_n == state.legacy_n && loaded.legacy_n[1] < 2 &&
+              loaded.magic_pot_display == state.magic_pot_display &&
+              loaded.magic_pot_output == state.magic_pot_output &&
+              loaded.scripts.pages.size() == state.scripts.pages.size() &&
+              loaded.scene.random.draws() == before,
+          "Restored processing preserves results/page count without drawing random during load");
+}
 void facility_program_restore() {
     auto state = ark::test::initial_world();
     auto loaded = restored(state);
@@ -261,7 +358,7 @@ void facility_program_restore() {
         check(loaded.scripts.facilities.at(definition.id).icon == definition.legacy_icon,
               "Player restore rebuilds opcode40 category from immutable source definition");
     // Start the actual bun-shop program before saving: its delayed opcode40 must survive
-    // the player codec without adding UI payload or changing schema2/random policy.
+    // the player codec without adding UI payload or changing the player random policy.
     ref::WorldScriptInput program;
     program.event = 2033;
     const auto started = ref::prepare_world_script_program(
@@ -743,6 +840,7 @@ void natural_operation_roundtrip() {
 
 void run_restore_tests() {
     invalid_candidates();
+    magic_pot_roundtrip();
     facility_program_restore();
     management_fields_roundtrip();
     expanded_map_roundtrip();

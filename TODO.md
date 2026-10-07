@@ -4,14 +4,15 @@
 
 ## 本批收口
 
+a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商品图标已完成[本地验收](docs/stages/B1-playable-prototype.md#research-a57958c-design)；类型4无独立效果，不列为缺失按钮。
+
 6061a2c/5eae10a补审、授勋视觉子集、存档覆盖与文档/代码职责整理已完成本地验收，见[B1本批记录](docs/stages/B1-playable-prototype.md#research-save-organization)。标题/开始与两栏继续入口的接入、验收见[标题批次](docs/stages/B1-playable-prototype.md#title-start-flow)。
 
 - [ ] 对应main的desktop-release完整CTest与发布流水线验证；本地检查不替代CI，不自动推送。
 
 ## 研究交付后的接入
 
-- [ ] 29f371d商品79/72与opcode40→82已完成[本地验收](docs/stages/B1-playable-prototype.md#research-29f371d-progression)；继续接新发布a57958c的魔法壶/村办5–6。类型4无独立效果，不列为缺失按钮。
-- [ ] 开局主角配置/到访、标题纪录、购买后举物、设施属性头标及邻接浮标，按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
+- [ ] 开局主角配置/到访、标题纪录、人物设施属性cd13头标，按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
 
 - [ ] 探索底栏：共同随机时点、滑入/背景/资源桥、丢实例清任务与231→aW消费者，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。

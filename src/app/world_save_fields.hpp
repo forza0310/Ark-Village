@@ -187,6 +187,7 @@ ARK_SAVE_FIELDS(r::DungeonTaskSuccessState, x.successes, x.ordinary_explorations
 ARK_SAVE_FIELDS(r::DungeonFinishTask, x.identity, x.definition, x.difficulty,
                 x.pending_completion_value, x.facility, x.site)
 ARK_SAVE_FIELDS(r::DungeonFinishSite, x.occupied_cells)
+ARK_SAVE_FIELDS(r::WorldMagicPotRecipeProgress, x.identity, x.status, x.pending_notice)
 
 ARK_SAVE_FIELDS(
     s::StartupWorldRuntimeState, x.scene, x.task, x.shop_humans, x.shop_actors, x.items,
@@ -211,7 +212,7 @@ ARK_SAVE_FIELDS(
     x.facility_unlock_notices, x.rank, x.quarter_counter, x.legacy_D, x.legacy_n,
     x.yearly_statistics, x.events_held, x.task_subperiods, x.generation_retry, x.completion_mode,
     x.system_completion_mode, x.save_marker, x.system_unlock_data, x.rank_met, x.rank_values,
-    x.rank_history, x.simulation_steps, x.clock_parameter, x.calendar_advance)
+    x.rank_history, x.simulation_steps, x.clock_parameter, x.calendar_advance, x.magic_pot_recipes)
 
 #undef ARK_SAVE_FIELDS
 } // namespace ark::app::save_detail

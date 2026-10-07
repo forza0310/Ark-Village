@@ -76,7 +76,8 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
 }
 std::optional<WorldVillageMenuIntent>
 world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_unlocked,
-                         bool pending, int &selected, const WorldMenuInput &input) {
+                         bool pending, int &selected, const WorldMenuInput &input,
+                         bool magic_unlocked) {
     if (pending)
         return {};
     if (input.toggle ||
@@ -84,14 +85,14 @@ world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_un
         return WorldVillageMenuIntent::close;
     if (input.escape)
         return WorldVillageMenuIntent::back;
-    selected = std::clamp(selected, 0, 2);
+    selected = std::clamp(selected, 0, 3);
     if (input.up)
-        selected = (selected + 2) % 3;
+        selected = (selected + 3) % 4;
     if (input.down)
-        selected = (selected + 1) % 3;
+        selected = (selected + 1) % 4;
     bool activate = input.enter;
     if (input.click)
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 4; ++i)
             if (CheckCollisionPointRec(*input.click, layout.menu_rows[i])) {
                 selected = i;
                 activate = true;
@@ -99,22 +100,27 @@ world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_un
             }
     if (!activate)
         return {};
-    if (selected == 2)
+    if (selected == 3)
         return WorldVillageMenuIntent::back;
     if (can_manage && selected == 0)
         return WorldVillageMenuIntent::activities;
     if (can_manage && commerce_unlocked && selected == 1)
         return WorldVillageMenuIntent::commerce;
+    if (can_manage && magic_unlocked && selected == 2)
+        return WorldVillageMenuIntent::magic_pot;
     return {};
 }
 void draw_world_village_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                             bool commerce_unlocked, const std::string &feedback) {
-    constexpr const char *names[]{"村办活动", "南瓜商会", "返回"};
-    for (int i = 0; i < 3; ++i) {
+                             bool commerce_unlocked, const std::string &feedback,
+                             bool magic_unlocked) {
+    constexpr const char *names[]{"村办活动", "南瓜商会", "魔法壶", "返回"};
+    for (int i = 0; i < 4; ++i) {
         const auto row = layout.menu_rows[i];
         skin.sprites.draw("menu.seb", selected == i ? 2 : 3, {row.x, row.y}, WHITE,
                           Sprites::Binding::common);
-        const bool enabled = i == 2 || (can_manage && (i == 0 || commerce_unlocked));
+        const bool enabled =
+            i == 3 ||
+            (can_manage && (i == 0 || (i == 1 && commerce_unlocked) || (i == 2 && magic_unlocked)));
         skin.text.draw(names[i], row.x + 6, row.y + 8,
                        enabled ? (selected == i ? ink : WHITE) : Color{182, 174, 147, 255});
         if (selected == i)
@@ -122,8 +128,8 @@ void draw_world_village_menu(const Layout &layout, const Skin &skin, int selecte
                               Sprites::Binding::common);
     }
     if (!feedback.empty())
-        skin.text.clipped(feedback, 8, layout.menu_rows[2].y + 33,
-                          {8, layout.menu_rows[2].y + 31, layout.extent.width - 16.F, 30}, MAROON,
+        skin.text.clipped(feedback, 8, layout.menu_rows[3].y + 33,
+                          {8, layout.menu_rows[3].y + 31, layout.extent.width - 16.F, 30}, MAROON,
                           10);
 }
 } // namespace ark::desktop::ui

@@ -8,6 +8,7 @@
 #include "ui/world_building.hpp"
 #include "ui/world_facility_catalog.hpp"
 #include "ui/world_facility_items.hpp"
+#include "ui/world_magic_pot.hpp"
 #include "world_canvas.hpp"
 #include "world_editing.hpp"
 
@@ -186,6 +187,55 @@ void world_facility_static_render_fixture() {
                 "catalogue/publicity source callsite failed");
         return state;
     };
+    auto magic = initial_world();
+    magic.scripts.user_flags |= 3U; // Published unlocked callsite, not natural second-star proof.
+    magic.scripts.event_calls[101] = 1;
+    require(sim::open_startup_world_magic_pot(magic, sim::StartupMagicPotEntry::main_menu) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_magic_pot_pages(magic),
+            "source magic pot entry41 failed");
+    auto deposit_list = magic;
+    require(sim::act_startup_world_magic_pot_page(deposit_list, top_page(deposit_list).id,
+                                                  sim::StartupMagicPotAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_magic_pot_pages(deposit_list),
+            "source pot41 failed to open inventory42");
+    auto deposited = deposit_list;
+    require(sim::act_startup_world_magic_pot_page(deposited, top_page(deposited).id,
+                                                  sim::StartupMagicPotAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_magic_pot_pages(deposited),
+            "source pot42 failed to deposit once into44");
+    auto recipes = magic;
+    const auto pot_menu = top_page(recipes).id;
+    require(sim::act_startup_world_magic_pot_page(recipes, pot_menu,
+                                                  sim::StartupMagicPotAction::select,
+                                                  1) == sim::StartupWorldRuntimeError::none &&
+                sim::act_startup_world_magic_pot_page(recipes, pot_menu,
+                                                      sim::StartupMagicPotAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_magic_pot_pages(recipes),
+            "source pot41 failed to open recipe43");
+    auto development = recipes;
+    bool selected_recipe{};
+    const auto recipe_entries =
+        sim::inspect_startup_world_magic_pot_page(recipes, top_page(recipes).id)->entries;
+    for (std::size_t n = 0; n < recipe_entries.size() && !selected_recipe; ++n) {
+        auto candidate = recipes;
+        const auto menu_id = top_page(candidate).id;
+        if (sim::act_startup_world_magic_pot_page(
+                candidate, menu_id, sim::StartupMagicPotAction::select, static_cast<int>(n)) ==
+                sim::StartupWorldRuntimeError::none &&
+            sim::act_startup_world_magic_pot_page(candidate, menu_id,
+                                                  sim::StartupMagicPotAction::confirm) ==
+                sim::StartupWorldRuntimeError::none &&
+            top_page(candidate).legacy_page == 47 &&
+            sim::initialize_startup_world_magic_pot_pages(candidate)) {
+            development = std::move(candidate);
+            selected_recipe = true;
+        }
+    }
+    require(selected_recipe, "real initial known recipes contain a valid development confirmation");
     auto goods = catalogue_callsite(79, 1, {});
     auto equipment_info = goods;
     require(
@@ -297,6 +347,9 @@ void world_facility_static_render_fixture() {
         glyphs += item.name;
     for (const auto &human : items.rules->humans)
         glyphs += human.name;
+    for (const auto &recipe : items.rules->magic_pot_recipes)
+        glyphs += recipe.name;
+    glyphs += "魔法壶投入道具开发确认处理结果发现配方火冰雷暗等级经验持有";
     glyphs += "商品装备情报设施口碑名称能力正在销售种攻击防御魔法幸运确认可快进继续";
     desktop::Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
@@ -317,7 +370,10 @@ void world_facility_static_render_fixture() {
             BeginTextureMode(canvas.texture);
             ClearBackground({145, 211, 247, 255});
             BeginMode2D(raster);
-            if (ui::world_facility_catalog_page(page))
+            if (ui::world_magic_pot_page(page))
+                ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
+                                         ui::world_commerce_layout(extent), skin, true);
+            else if (ui::world_facility_catalog_page(page))
                 ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
                                                 ui::world_facility_catalog_layout(extent), skin,
                                                 true);
@@ -373,5 +429,10 @@ void world_facility_static_render_fixture() {
     capture(equipment_info, "raw72-equipment.png", true);
     capture(publicity, "raw82-first.png", false);
     capture(publicity_second, "raw82-second.png", true);
+    capture(magic, "raw41-magic-pot.png", true);
+    capture(deposit_list, "raw42-pot-items.png", false);
+    capture(deposited, "raw44-pot-deposit.png", true);
+    capture(recipes, "raw43-pot-recipes.png", false);
+    capture(development, "raw47-pot-develop.png", true);
 }
 } // namespace ark::test

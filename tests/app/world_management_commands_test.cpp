@@ -9,13 +9,65 @@
 #include <stdexcept>
 
 namespace ark::test::world_session {
+void magic_pot_commands() {
+    using Pot = sim::StartupMagicPotAction;
+    using Error = sim::StartupWorldRuntimeError;
+    using Outcome = app::WorldCommandOutcome;
+    auto locked = initial();
+    app::WorldSession closed(locked);
+    input_frame(closed, closed.open_main_menu());
+    const auto refusal = input_frame(closed, closed.open_menu_magic_pot());
+    check(!refusal->failed && refusal->main_menu_open &&
+              input_result(*refusal, refusal->last_command_serial).outcome == Outcome::rejected,
+          "Locked magic pot preserves the desktop overlay without partial date processing");
+    closed.stop();
+
+    auto state = initial();
+    state.scripts.user_flags |=
+        3U; // Explicit unlocked/NEW callsite, not natural second-star proof.
+    state.scripts.event_calls[101] = 1;
+    check(sim::open_startup_world_magic_pot(state, sim::StartupMagicPotEntry::main_menu) ==
+                  Error::none &&
+              sim::initialize_startup_world_magic_pot_pages(state),
+          "Source entry opens and initializes pot41 after processing");
+    const auto menu = task_top(state).id;
+    check(!(state.scripts.user_flags & 2U) &&
+              sim::act_startup_world_magic_pot_page(state, menu, Pot::confirm) == Error::none &&
+              sim::initialize_startup_world_magic_pot_pages(state),
+          "Main entry clears NEW and source41 opens actual owned-item42");
+    const auto page = task_top(state).id;
+    const auto listing = sim::inspect_startup_world_magic_pot_page(state, page);
+    check(listing && listing->raw == 42 && !listing->entries.empty(),
+          "Real new-game inventory supplies a deposit candidate");
+    const auto item = listing->entries.front();
+    const auto amount = state.items.at(item).inventory;
+    const auto before = state;
+    app::WorldSession session(state);
+    const auto generic = session.ack_page(page);
+    const auto deposited = session.act_magic_pot(page, Pot::confirm);
+    const auto duplicate = session.act_magic_pot(page, Pot::confirm);
+    const auto done = input_frame(session, session.set_paused(true));
+    check(!done->failed && input_result(*done, generic).outcome == Outcome::rejected &&
+              input_result(*done, deposited).outcome == Outcome::applied &&
+              input_result(*done, duplicate).outcome == Outcome::rejected &&
+              task_top(*done->state).legacy_page == 44 &&
+              done->state->items.at(item).inventory == amount - 1 &&
+              done->state->catalog.at({0, item}).inventory == amount - 1 &&
+              done->state->legacy_n[1] == before.legacy_n[1] + 1 &&
+              done->state->scene.random.draws() == before.scene.random.draws() + 1 &&
+              done->state->scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds(),
+          "Pot FIFO deposits once, shares inventory, draws one comment and rejects stale "
+          "confirmation");
+    session.stop();
+}
 namespace {
 using Action = sim::StartupVillageActivityAction;
 using Outcome = app::WorldCommandOutcome;
 app::WorldState village_fixture(int unsupported = 28) {
     auto state = initial();
-    // Explicit management callsite fixture: published activity16 costs40 points, while28
-    // has an unsupported activity consumer. This is not a natural unlock/window claim.
+    // Explicit callsite: activity16 costs40, activity28 is the published pot upgrade.
+    // These gates do not claim a natural unlock/window observation.
     state.scripts.event_calls[100] = 1;
     for (auto &entry : state.scripts.activities)
         entry.second.status = 0;
@@ -457,7 +509,7 @@ void village_command_transactions() {
           "Management transport fixture uses the real source page initializer");
     const auto page = task_top(state).id;
     check(state.activity_page_lists.at(page) == std::vector<int>{16, 28},
-          "Published source identities provide supported and unsupported directory entries");
+          "Published source identities provide ordinary and pot directory entries");
     state.scene.framework_paused = true;
     app::WorldSession session(state);
     const auto blocked = input_frame(session, session.act_village_activity(page, Action::confirm));
@@ -466,7 +518,7 @@ void village_command_transactions() {
           "Paused activity input is a recoverable refusal");
     session.set_paused(false);
     session.act_village_activity(page, Action::select, 1);
-    const auto unsupported = session.act_village_activity(page, Action::confirm);
+    const auto unsupported = session.act_village_activity(page, Action::select, 2);
     const auto malformed = session.act_village_activity(page, static_cast<Action>(999));
     session.act_village_activity(page, Action::select, 0);
     const auto preview = session.act_village_activity(page, Action::confirm);
@@ -475,7 +527,7 @@ void village_command_transactions() {
               input_result(*child, unsupported).outcome == Outcome::rejected &&
               input_result(*child, malformed).outcome == Outcome::rejected &&
               input_result(*child, preview).outcome == Outcome::applied,
-          "Unsupported/stale enum inputs cannot fail the world;52 preview does not pay");
+          "Out-of-range/stale enum inputs cannot fail the world;52 preview does not pay");
     const auto child_page = task_top(*child->state).id;
     session.act_village_activity(child_page, Action::cancel);
     const auto parent = ready(session, 51);
@@ -519,13 +571,16 @@ void village_command_transactions() {
         const auto refusal =
             blocked_session.act_village_activity(unsupported_page, Action::confirm);
         const auto frozen = input_frame(blocked_session, blocked_session.set_paused(true));
-        check(
-            !frozen->failed && input_result(*frozen, refusal).outcome == Outcome::rejected &&
-                task_top(*frozen->state).id == unsupported_page &&
-                frozen->state->village_points == unsupported_state.village_points &&
-                frozen->state->quarter_counter == unsupported_state.quarter_counter &&
-                frozen->state->scene.random.draws() == unsupported_state.scene.random.draws(),
-            "Unavailable type4/6 remain recoverable FIFO refusals without a child page or payment");
+        check(!frozen->failed &&
+                  input_result(*frozen, refusal).outcome ==
+                      (unsupported == 27 ? Outcome::rejected : Outcome::applied) &&
+                  (unsupported == 27 ? task_top(*frozen->state).id == unsupported_page
+                                     : task_top(*frozen->state).legacy_page == 52) &&
+                  frozen->state->village_points == unsupported_state.village_points &&
+                  frozen->state->quarter_counter == unsupported_state.quarter_counter &&
+                  frozen->state->scene.random.draws() == unsupported_state.scene.random.draws(),
+              "Type4 still refuses; published type6 opens confirmation without paying or consuming "
+              "RNG");
         blocked_session.stop();
     }
 

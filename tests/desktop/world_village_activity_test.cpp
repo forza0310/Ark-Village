@@ -103,10 +103,12 @@ void world_village_activity() {
         state.activity_page_lists.at(page.id)[3] = unsupported;
         view = ui::world_village_activity_view(state, page);
         check(view.rows[3].definition == unsupported && view.rows[3].points == 100 &&
-                  !view.rows[3].supported && !view.status.empty() && !view.can_confirm &&
-                  !ui::world_village_activity_input(view, layout, input, false),
-              "Unpublished type4/5/6 stay visible with true quote and cannot submit missing-source "
-              "work");
+                  view.rows[3].supported == (unsupported != 27) &&
+                  view.status.empty() == (unsupported != 27) &&
+                  view.can_confirm == (unsupported != 27) &&
+                  ui::world_village_activity_input(view, layout, input, false).has_value() ==
+                      (unsupported != 27),
+              "Type4 remains disabled; a57958c types5/6 retain their real quote and confirmation");
     }
     input = {};
     input.escape = true;

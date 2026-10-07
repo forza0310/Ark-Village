@@ -15,7 +15,8 @@ const hashes = {
   'accessory.txt':'533574fdd2c6704180d7cfec770c2bdd1bbe7fadb7e6293b92c2622234328af2',
   'item.txt':'95e29d253688e30ac623b925a9a5dacd1f6280f60ed0528b551707df1252d6b8',
   'tenantData.txt':'5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a',
-  'asEventData.txt':'11d22c23de2760bbcc7b87450ba70534482afd2533ca7bab1bf6887c46829a1a'
+  'asEventData.txt':'11d22c23de2760bbcc7b87450ba70534482afd2533ca7bab1bf6887c46829a1a',
+  'magicPot.txt':'7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c'
 };
 const scriptHashes = {
   'events.txt':'64a777f2dd590b5e8837a10168bc8dd12353426eb6e286befa4b88753eedb28d',
@@ -35,6 +36,21 @@ const array = values => `{${values.map(n).join(',')}}`;
 const text = JSON.stringify;
 const values = value => value === '' ? [] : value.split('&').map(n);
 const truth = value => value ? 'true' : 'false';
+// 固定配方字段/引用同一验证路径；独立导出供既有输入拒绝套件定向检查。
+// compile入口始终先验证原文哈希，不能通过此函数绕过冻结输入。
+export function validateMagicPotRows(recipes, rewardCounts) {
+  need(Array.isArray(recipes) && recipes.length === 40, '魔法壶固定配方数量不符');
+  need(Array.isArray(rewardCounts) && rewardCounts.length === 5 &&
+    rewardCounts.every(v => Number.isSafeInteger(v) && v > 0), '魔法壶奖励目录数量非法');
+  recipes.forEach((row,index) => {
+    need(Array.isArray(row) && row.length === 10 && n(row[0]) === index &&
+      typeof row[1] === 'string' && row[1].length > 0, '魔法壶配方行/列/身份不符');
+    const type=n(row[2]), reward=n(row[3]), experience=n(row[4]), costs=row.slice(5,9).map(n), flags=n(row[9]);
+    need(type >= 0 && type < 5, '魔法壶奖励类型非法');
+    need(reward >= 0 && reward < rewardCounts[type], '魔法壶奖励跨目录引用缺失');
+    need(experience >= 0 && costs.every(v=>v >= 0) && flags >= 0, '魔法壶经验/成本/标志非法');
+  });
+}
 export function compileStartupWorld(tables, map, sources, state) {
   need(tables.apk_sha256 === apk && map.apk_sha256 === apk, 'APK身份不匹配');
   // 复用已有完整地图重编码/哈希与新局状态交叉校验，不仅相信region.logical。
@@ -47,7 +63,7 @@ export function compileStartupWorld(tables, map, sources, state) {
   for (const [name, contents] of Object.entries(sources)) raw.set(name, contents);
   const rows = {};
   const widths = {'character.txt':14,'job.txt':24,'weapon.txt':19,'monster.txt':17,
-    'questData.txt':17,'armour.txt':13,'accessory.txt':13,'item.txt':25,'tenantData.txt':36,'asEventData.txt':12};
+    'questData.txt':17,'armour.txt':13,'accessory.txt':13,'item.txt':25,'tenantData.txt':36,'asEventData.txt':12,'magicPot.txt':10};
   for (const [name, hash] of Object.entries(hashes)) {
     const content = raw.get(name);
     need(typeof content === 'string' && createHash('sha256').update(content).digest('hex') === hash,
@@ -63,6 +79,9 @@ export function compileStartupWorld(tables, map, sources, state) {
   const facilities = rows['tenantData.txt'], humans = rows['character.txt'];
   need(jobs.length === 23 && weapons.length === 33 && facilities.length === 85,
     '固定目录数量不符');
+  validateMagicPotRows(rows['magicPot.txt'], [rows['item.txt'].length,weapons.length,armor.length,accessory.length,facilities.length]);
+  const recipeOutput=rows['magicPot.txt'].map(row=>
+    `{${n(row[0])},${text(row[1])},${n(row[2])},${n(row[3])},${n(row[4])},${array(row.slice(5,9))},${n(row[9])}}`);
   const spells = Array.from({length:4},(_,slot)=>jobs.find(row=>n(row[18]) >= 10 &&
     n(row[18]) % 10 === slot)).map(row=>{ need(row, '魔法职业缺失'); return n(row[0]); });
   const humanOutput = humans.map(row => {
@@ -88,10 +107,15 @@ export function compileStartupWorld(tables, map, sources, state) {
     const weapon = index===0, flag = n(row[weapon?18:12]), opened = (flag&1)!==0;
     const rank = n(row[weapon?5:4]), type = n(row[weapon?2:2]);
     const price = n(row[weapon?11:5]), combat = row.slice(weapon?12:6,weapon?16:10);
+    const renderImage=n(row[3]), renderStyle=weapon?n(row[6]):0;
+    const weaponImage = [[0,5],[10,15],[20,25],[30,30],[40,46],[50,56]]
+      .some(([lo,hi])=>renderImage>=lo&&renderImage<=hi); // 原weapon/img.inf显式ID域。
+    need(renderImage >= 0 && (weapon ? weaponImage && renderStyle >= 0 && renderStyle < 4
+      : renderImage < (index===1 ? 50 : 30)), '装备举物图片/图标/风格索引越界');
     return `{{${index+1},${n(row[0])},${rank},${type},${truth(opened)},${price},${array(combat)}},`+
       `{${flag},${opened?1:0},0,false,0,${opened?1:0}},`+
       (weapon?`{${n(row[6])},${n(row[7])},${n(row[8])},${n(row[9])},${n(row[10])}}`:'{}')+
-      `,${n(row[weapon?5:4])},${text(row[1])},${n(row[weapon?16:10])},${n(row[weapon?17:11])}}`;
+      `,${n(row[weapon?5:4])},${text(row[1])},${n(row[weapon?16:10])},${n(row[weapon?17:11])},${renderImage},${renderStyle}}`;
   }));
   const monsterOutput = monsters.map(row=>{
     const flag=n(row[16]), opened=(flag&1)!==0;
@@ -112,9 +136,10 @@ export function compileStartupWorld(tables, map, sources, state) {
   });
   const itemOutput=rows['item.txt'].map(row=>{
     const flag=n(row[24]),opened=(flag&1)!==0;
+    need(row.slice(12,16).map(n).every(value=>value>=0), '道具魔法壶四元素非法');
     return `{${n(row[0])},{${flag},${opened?1:0},0,false,${n(row[17])},0},`+
       `{${n(row[0])},${n(row[7])},${n(row[20])},${n(row[18])},${opened?1:0},0,false},${n(row[8])},${text(row[1])},`+
-      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])}}`;
+      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])},${array(row.slice(12,16))}}`;
   });
   const excess=[];
   const facilityOutput=facilities.map(row=>{
@@ -151,13 +176,13 @@ export function compileStartupWorld(tables, map, sources, state) {
     }).join(',')}},\n`+
     `{${Object.keys(scriptHashes).map(name=>text(sources[name])).join(',')}},\n`+
     `{${rows['asEventData.txt'].map(row=>`{${n(row[0])},${text(row[1])},${array(row.slice(2,9))},${text(row[9])},${text(row[10])},${n(row[11])},${n(row[11])&1?1:0}}`).join(',')}},"G",`+
-    `${array(map.cells.flat().map(cell=>cell[1]))}};\nreturn value;\n}\n}\n`;
+    `${array(map.cells.flat().map(cell=>cell[1]))},{${recipeOutput.join(',')}}};\nreturn value;\n}\n}\n`;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [startup,world,tenant,output]=process.argv.slice(2);
   need(startup&&world&&tenant&&output,'参数：startup目录 world目录 tenant原表 输出C++');
   const sources={};
-  for (const name of ['monster.txt','questData.txt','armour.txt','accessory.txt','item.txt','asEventData.txt'])
+  for (const name of ['monster.txt','questData.txt','armour.txt','accessory.txt','item.txt','asEventData.txt','magicPot.txt'])
     sources[name]=readFileSync(`${world}/${name}`,'utf8');
   sources['tenantData.txt']=readFileSync(tenant,'utf8');
   for(const name of Object.keys(scriptHashes))sources[name]=readFileSync(`${world}/../scripts/original/${name}`,'utf8');

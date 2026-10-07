@@ -223,6 +223,12 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State 
                          project(world_actor_render_position(s, id, previous, alpha));
                      const auto pose = world_actor_pose(s, id);
                      sprites.actor(pose.monster, pose.sprite, pose.image, pose.frame, point, zoom);
+                     if (!pose.monster) {
+                         const auto lift = simulation::startup_world_equipment_lift_draws(s, id);
+                         if (!lift)
+                             throw std::runtime_error("Invalid equipment lift display state");
+                         draw_world_visuals(*lift, sprites, point, zoom);
+                     }
                      const auto &hp = a.hp;
                      const CharacterStatusInput status{{hp.requested_delta, hp.displayed, hp.origin,
                                                         hp.target, hp.animating, hp.legacy_tick},
@@ -238,6 +244,22 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State 
                      draw_world_overlay(world_actor_combat_visuals(s, id), sprites, point, zoom);
                  }});
         }
+    // Neighbourhood notices already belong to the instance. Its f() projection is the
+    // source anchor; neither tile centre nor texture height determines this position.
+    for (const auto id : s.scene.world.facility_order) {
+        const auto plan = simulation::startup_world_facility_growth_draws(s, id);
+        if (!plan)
+            throw std::runtime_error("Invalid facility growth display state");
+        if (plan->empty())
+            continue;
+        const auto target = simulation::startup_world_runtime_facility_target(s, id);
+        if (!target)
+            throw std::runtime_error("Facility growth display lost its source anchor");
+        const auto point = raw_anchor(view, (*target)[0], (*target)[1], zoom);
+        queue.push_back({point.y, [&, point, plan = *plan] {
+                             draw_world_visuals(plan, sprites, point, zoom);
+                         }});
+    }
     // The task's bar and ground marker have different source depths. Keep both in the
     // shared stable queue so actors can occlude them according to the same world ordering.
     const auto dungeon = world_dungeon_view(s);

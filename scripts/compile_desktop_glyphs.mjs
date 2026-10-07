@@ -8,7 +8,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
-const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
+// Consume an encoding signature at byte zero; it is not displayed text. Interior/escaped
+// characters remain inventory inputs, and provenance still hashes the original bytes.
+const decoder = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false });
 const groups = [['src', new Set(['.cpp', '.hpp'])], ['include', new Set(['.hpp'])],
   ['assets', new Set(['.txt', '.tsv', '.json'])]];
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;

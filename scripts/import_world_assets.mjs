@@ -10,7 +10,7 @@ const manifestPath = join(destination, 'SOURCES.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const records = new Map(manifest.files.map(record => [record.file, record]));
 const pending = [];
-for (const group of ['image', 'human', 'monster', 'common']) {
+for (const group of ['image', 'human', 'monster', 'common', 'weapon']) {
   for (const entry of readdirSync(join(research, 'assets/original', group), { withFileTypes: true })) {
     if (!entry.isFile() || !/\.(png|seb|inf)$/.test(entry.name)) continue;
     const file = `${group}/${entry.name}`;

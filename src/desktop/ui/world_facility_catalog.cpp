@@ -17,8 +17,22 @@ WorldFacilityCatalogRow equipment(const simulation::StartupWorldRuntimeState &st
         [=](const auto &entry) { return entry.shop.kind == kind && entry.shop.id == id; });
     if (found == state.rules->equipment.end())
         throw std::invalid_argument("Facility catalogue lost equipment definition");
-    return {id, found->shop.price, found->name, found->shop.combat,
-            state.catalog.at({kind, id}).newly_unlocked};
+    return {id,
+            found->shop.price,
+            found->name,
+            found->shop.combat,
+            state.catalog.at({kind, id}).newly_unlocked,
+            kind == 1   ? 12
+            : kind == 2 ? 20
+                        : 21,
+            kind == 1 ? found->shop.type : found->render_image};
+}
+void equipment_icon(const Skin &skin, const WorldFacilityCatalogRow &row, Vector2 point) {
+    // Weapon column2 (shop.type) is its catalogue icon, not the sparse map PNG ID.
+    const Rectangle box{point.x, point.y, 18, 18};
+    skin.sprites.indexed_image(Sprites::Binding::common, 24, {54, 0, 18, 18}, box);
+    skin.sprites.indexed_image(Sprites::Binding::common, row.icon_image,
+                               {18.F * (row.icon % 10), 18.F * (row.icon / 10), 18, 18}, box);
 }
 } // namespace
 bool world_facility_catalog_page(const simulation::rules::WorldScriptPage &page) {
@@ -156,7 +170,8 @@ void draw_world_facility_catalog(const WorldFacilityCatalogView &view,
                 skin.sprites.draw("finger_r.seb", 0, {box.x - 4, box.y + box.height / 2}, WHITE,
                                   Sprites::Binding::common);
             const float y = view.phase == 0 ? box.y + (box.height - 12) / 2 : box.y;
-            fitted(skin, row.name, {box.x + 10, y, box.width - (view.phase == 0 ? 79 : 39), 12});
+            equipment_icon(skin, row, {box.x + 4, box.y + (box.height - 18) / 2});
+            fitted(skin, row.name, {box.x + 25, y, box.width - (view.phase == 0 ? 94 : 54), 12});
             if (row.fresh)
                 skin.sprites.image("wnd_new.png", {0, 0, 20, 9},
                                    {box.x + box.width - 23, box.y + 1, 20, 9});
@@ -179,7 +194,8 @@ void draw_world_facility_catalog(const WorldFacilityCatalogView &view,
         skin.button(layout.inspect, "情报", active);
     } else if (view.initialized && view.raw == 72 && view.choice) {
         const auto &row = *view.choice;
-        fitted(skin, row.name, {layout.rows.x + 6, layout.rows.y + 5, layout.rows.width - 12, 16});
+        equipment_icon(skin, row, {layout.rows.x + 6, layout.rows.y + 3});
+        fitted(skin, row.name, {layout.rows.x + 28, layout.rows.y + 5, layout.rows.width - 34, 16});
         const char *labels[] = {"最大HP", "攻击", "防御", "魔法"};
         const float step = (layout.rows.height - 25) / 4;
         for (int n = 0; n < 4; ++n) {

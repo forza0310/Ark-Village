@@ -53,7 +53,7 @@ struct Header {
     std::size_t payload{};
 };
 Header header(const Bytes &bytes) {
-    // Schema 2: magic8, version4, dataset string, village string, date4*4, funds8, length4.
+    // Schema 3: magic8, version4, dataset string, village string, date4*4, funds8, length4.
     const auto dataset_length = read32(bytes, 12);
     const auto village_length_position = 16U + dataset_length;
     const auto village_length = read32(bytes, village_length_position);
@@ -80,6 +80,7 @@ void rejected(const Bytes &bytes, app::WorldSaveError error, const char *diagnos
 }
 
 void headers(const Bytes &valid, Header layout) {
+    check(read32(valid, 8) == 3, "new captures use schema3");
     auto bytes = valid;
     put32(bytes, 8, 99);
     reseal(bytes);
@@ -88,20 +89,24 @@ void headers(const Bytes &valid, Header layout) {
     bytes[layout.dataset] = bytes[layout.dataset] == '0' ? '1' : '0';
     reseal(bytes);
     rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "foreign frozen dataset");
-    for (const std::string previous_dataset : {
-             "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609",
-             "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c"}) {
+    for (const std::string previous_dataset :
+         {"f34787eabc2e6e1556fe971b57c4d6adbf2f35d79b2aa9c81e35cddbf8ec6b04",
+          "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609",
+          "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c"}) {
         bytes = valid;
         check(read32(bytes, 12) == previous_dataset.size(),
               "previous frozen identity has fixed width");
         std::copy(previous_dataset.begin(), previous_dataset.end(), bytes.begin() + layout.dataset);
         reseal(bytes);
-        rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset", "previous product dataset");
+        rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset",
+                 "previous product dataset");
     }
-    bytes = valid;
-    put32(bytes, 8, 1);
-    reseal(bytes);
-    rejected(bytes, app::WorldSaveError::unsupported_version, "version", "previous schema");
+    for (const auto previous_schema : {1U, 2U}) {
+        bytes = valid;
+        put32(bytes, 8, previous_schema);
+        reseal(bytes);
+        rejected(bytes, app::WorldSaveError::unsupported_version, "version", "previous schema");
+    }
     bytes = valid;
     bytes[0] ^= 1;
     reseal(bytes);

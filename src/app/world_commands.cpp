@@ -76,9 +76,11 @@ bool unsupported_village_choice(const WorldState &state, const WorldCommand &com
     const auto definition =
         std::find_if(state.rules->activities.begin(), state.rules->activities.end(),
                      [id](const auto &v) { return v.identity == id; });
-    // Only type0/1/2/3 have published activity consumers. A stale UI choice cannot turn an
+    // Type4 has no standalone effect; published type5/6 use the real magic-pot Owner.
+    // A stale UI choice cannot turn an
     // intentionally disabled feature into a fatal missing-source error for the whole world.
-    return definition != state.rules->activities.end() && definition->parameters[2] > 3;
+    return definition != state.rules->activities.end() &&
+           (definition->parameters[2] == 4 || definition->parameters[2] > 6);
 }
 bool human_page(const WorldState &state, std::uint64_t id) {
     const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
@@ -139,7 +141,7 @@ bool is_decision_page(const simulation::rules::WorldScriptPage *page) {
     if (!page || page->kind != simulation::rules::WorldScriptPageKind::raw_page)
         return false;
     const auto raw = page->legacy_page;
-    return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || raw == 48 ||
+    return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || (raw >= 41 && raw <= 48) ||
            (raw >= 51 && raw <= 54) || (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 ||
            raw == 69 || raw == 72 || raw == 73 || (raw >= 74 && raw <= 77) || raw == 79 ||
            raw == 80 || raw == 82 || (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 ||
@@ -154,6 +156,18 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         return;
     }
     switch (command.kind) {
+    case Kind::open_menu_magic_pot:
+    case Kind::open_magic_pot:
+        result.runtime_error = simulation::open_startup_world_magic_pot(
+            state, simulation::StartupMagicPotEntry::main_menu);
+        break;
+    case Kind::magic_pot_action:
+        result.runtime_error =
+            state.magic_pot_pages_initialized.count(command.page)
+                ? simulation::act_startup_world_magic_pot_page(
+                      state, command.page, command.magic_pot_action, command.selection)
+                : Error::invalid_page;
+        break;
     case Kind::open_menu_tasks:
     case Kind::open_task_menu:
         result.runtime_error = simulation::open_startup_world_runtime_task_menu(state);
@@ -574,6 +588,25 @@ std::uint64_t WorldSession::act_facility_catalog(std::uint64_t page,
     command.kind = WorldCommandKind::facility_catalog_action;
     command.page = page;
     command.facility_catalog_action = action;
+    command.selection = selection;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_menu_magic_pot() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_menu_magic_pot;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_magic_pot() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_magic_pot;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_magic_pot(std::uint64_t page,
+                                          simulation::StartupMagicPotAction action, int selection) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::magic_pot_action;
+    command.page = page;
+    command.magic_pot_action = action;
     command.selection = selection;
     return submit(command);
 }

@@ -65,7 +65,7 @@ void codec_and_policy() {
     auto old_fast = state;
     old_fast.scene.speed_setting = 1;
     const auto old_fast_file = app::capture_world_save(old_fast);
-    check(old_fast_file.image.has_value(), "Historical speed2 save remains a valid schema2 file");
+    check(old_fast_file.image.has_value(), "Stored speed2 remains a valid schema3 value");
     auto old_fast_candidate = app::decode_world_save(old_fast_file.image->bytes);
     check(old_fast_candidate.state && old_fast_candidate.state->scene.speed_setting == 1,
           "Decode preserves the recorded value before session restoration");

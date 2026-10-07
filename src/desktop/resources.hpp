@@ -22,14 +22,30 @@ struct SpriteBlit {
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip);
 class Sprites {
   public:
-    enum class Binding { map, farmer, secretary, common, common2, window, human, monster, title };
+    enum class Binding {
+        map,
+        farmer,
+        secretary,
+        common,
+        common2,
+        window,
+        human,
+        monster,
+        title,
+        weapon
+    };
     explicit Sprites(std::filesystem::path root);
     ~Sprites();
     Sprites(const Sprites &) = delete;
     Sprites &operator=(const Sprites &) = delete;
     void draw(const std::string &sprite, int frame, Vector2 anchor, Color tint = WHITE,
               Binding binding = Binding::map, float scale = 1, int image_override = -1,
-              std::optional<Rectangle> clip = {});
+              std::optional<Rectangle> clip = {}, std::optional<int> layer = {});
+    // Source SEB row and PNG explicit ID are separate namespaces. Draw only the requested
+    // layer; unused negative/empty records in other layers are not drawing commands.
+    void indexed_sprite(Binding binding, int sprite, int frame, int layer, int image_override,
+                        Vector2 anchor, float scale = 1);
+    void indexed_image(Binding binding, int image, Rectangle source, Rectangle destination);
     // Source actor SEB indices and profession/body image indices are independent namespaces.
     void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor,
                float scale = 1);

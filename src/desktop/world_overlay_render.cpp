@@ -3,6 +3,24 @@
 #include <type_traits>
 
 namespace ark::desktop {
+void draw_world_visuals(const std::vector<simulation::StartupVisualDraw> &plan, Sprites &sprites,
+                        Vector2 anchor, float zoom) {
+    for (const auto &part : plan) {
+        const auto binding = part.resource == simulation::StartupVisualResource::weapon
+                                 ? Sprites::Binding::weapon
+                                 : Sprites::Binding::common;
+        const Vector2 point{anchor.x + part.offset[0] * zoom, anchor.y + part.offset[1] * zoom};
+        if (part.sprite >= 0)
+            sprites.indexed_sprite(binding, part.sprite, part.frame, part.layer, part.image, point,
+                                   zoom);
+        else
+            sprites.indexed_image(
+                binding, part.image,
+                {static_cast<float>(part.crop[0]), static_cast<float>(part.crop[1]),
+                 static_cast<float>(part.crop[2]), static_cast<float>(part.crop[3])},
+                {point.x, point.y, part.crop[2] * zoom, part.crop[3] * zoom});
+    }
+}
 void draw_world_overlay(const OverlayPlan &plan, Sprites &sprites, Vector2 anchor, float zoom) {
     for (const auto &command : plan)
         std::visit(

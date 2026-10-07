@@ -86,7 +86,7 @@ WorldVillageActivityView world_village_activity_view(const State &state, const P
             row.name = activity.name;
             row.points = activity.parameters[4];
             row.kind = activity.parameters[2];
-            row.supported = row.kind >= 0 && row.kind <= 3;
+            row.supported = (row.kind >= 0 && row.kind <= 3) || row.kind == 5 || row.kind == 6;
             row.fresh = state.scripts.activities.at(entry).pending_notice;
         } else {
             const auto human = simulation::startup_world_human_details(state, entry);

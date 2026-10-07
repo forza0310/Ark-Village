@@ -35,6 +35,17 @@ const headerBytes = Buffer.from([...desktopGlyphsHeader(inventory).matchAll(/\\x
 assert.equal(headerBytes.toString('utf8'), expected.map(point => String.fromCodePoint(point)).join(''),
   'generated C++ string and font demand must agree');
 
+for (const file of ['src/a.cpp', 'include/a.hpp', 'assets/a.json']) {
+  const original = readFileSync(path.join(root, file));
+  const marked = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), original]);
+  put(file, marked);
+  const decoded = collectDesktopGlyphs(root);
+  assert.deepEqual(decoded.codepoints, expected, 'leading UTF-8 signature is not a required font glyph');
+  assert.equal(decoded.inputs.find(input => input.file === file).sha256,
+    createHash('sha256').update(marked).digest('hex'), 'BOM handling preserves byte provenance');
+  put(file, original);
+}
+
 const jsonOutput = path.join(root, 'build/glyphs.json');
 const headerOutput = path.join(root, 'build/glyphs.hpp');
 const invoke = extra => spawnSync(process.execPath, [path.join(product, 'scripts/compile_desktop_glyphs.mjs'),

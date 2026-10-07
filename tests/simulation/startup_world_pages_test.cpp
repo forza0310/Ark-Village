@@ -3,6 +3,7 @@
 #include "ark/simulation/startup_world_expansion.hpp"
 #include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_human.hpp"
+#include "ark/simulation/startup_world_magic_pot.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
 #include "ark/simulation/startup_world_village_activity.hpp"
@@ -2227,6 +2228,567 @@ void commerce_after_reward_writeback() {
     }
 }
 
+// 以下是原表上的人工条件组合；不等同于自然经营取得壶、元素或配方。
+StartupWorldRuntimeState magic_pot_fixture() {
+    auto s = test_support::world_fixture(ref::WorldRandomStream::from_raw({1}));
+    s.scripts.pages.front().lifecycle = 3;
+    s.scripts.executing_page.reset();
+    s.scripts.user_flags |= 3U;
+    s.scripts.event_calls[101] = 1; // 隔离首次说明，不跳过被测业务页。
+    s.legacy_n = {};
+    s.legacy_n[11] = 1;
+    s.legacy_n[12] = s.scene.calendar.year * 48 + s.scene.calendar.month * 4 +
+                     s.scene.calendar.subperiod;
+    for (auto &entry : s.magic_pot_recipes)
+        entry.second.status = 1;
+    return s;
+}
+ref::WorldScriptPage magic_pot_top(const StartupWorldRuntimeState &s) {
+    const auto p = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                               [](const auto &v) { return v.lifecycle != 4; });
+    check(p != s.scripts.pages.rend(), "magic pot fixture retains a live framework root");
+    return *p;
+}
+std::uint64_t reach_magic_pot_page(StartupWorldRuntimeState &s, int raw) {
+    for (int n = 0; n < 200; ++n) {
+        const auto before = magic_pot_top(s);
+        if (raw == -1 && before.kind == ref::WorldScriptPageKind::scene)
+            return before.id;
+        page_tick(s); // 栈顶才初始化；下层41保留原生命周期0。
+        const auto p = magic_pot_top(s);
+        if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == raw)
+            return p.id;
+        if (p.kind != ref::WorldScriptPageKind::scene &&
+            !(p.legacy_page >= 41 && p.legacy_page <= 47))
+            check(acknowledge_startup_world_runtime_page(s, p.id) == StartupWorldRuntimeError::none,
+                  "magic pot script dialogue is consumed through its actual framework action");
+    }
+    const auto p = magic_pot_top(s);
+    const auto counter = s.page_counters.find(p.id);
+    throw std::runtime_error("magic pot page sequence exceeded its fixture bound: expected=" +
+        std::to_string(raw) + ", top=" + std::to_string(p.legacy_page) + ", id=" +
+        std::to_string(p.id) + ", lifecycle=" + std::to_string(p.lifecycle) + ", counter=" +
+        std::to_string(counter == s.page_counters.end() ? -1 : counter->second) +
+        ", recipe p2/p5/p7=" + std::to_string(s.magic_pot_recipes.at(2).status) + "/" +
+        std::to_string(s.magic_pot_recipes.at(5).status) + "/" +
+        std::to_string(s.magic_pot_recipes.at(7).status));
+}
+void magic_pot_entry_and_retirement() {
+    using A = StartupMagicPotAction;
+    using E = StartupWorldRuntimeError;
+    for (const auto entry : {StartupMagicPotEntry::main_menu,
+                             StartupMagicPotEntry::development_menu}) {
+        auto s = magic_pot_fixture();
+        s.legacy_n[1] = 3;
+        --s.legacy_n[12]; // 非零日期差、待元素全零：原m重写aQ但不改13槽。
+        s.magic_pot_output = {8, 7, 6, 5};
+        const auto original = s.legacy_n;
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto date = s.scene.calendar.units;
+        check(open_startup_world_magic_pot(s, entry) == E::none && s.legacy_n == original &&
+                  s.magic_pot_output == std::array<std::int32_t, 4>{} &&
+                  (s.scripts.user_flags & 2U) ==
+                      (entry == StartupMagicPotEntry::main_menu ? 0U : 2U) &&
+                  s.scene.random.draws() == 0,
+              "two original entry points differ in bit2; zero production still clears aQ without draws");
+        const auto id = reach_magic_pot_page(s, 41);
+        const auto view = inspect_startup_world_magic_pot_page(s, id);
+        check(view && view->entries.empty() && view->selection == 0 &&
+                  s.magic_pot_recipes.size() == 40 &&
+                  s.scene.world.world.ai.accounting.funds() == cash && s.scene.calendar.units == date,
+              "41 reads one fixed recipe catalogue and leaves cash/calendar untouched");
+        for (int fault = 0; fault < 5; ++fault) {
+            auto broken = s;
+            if (fault == 0) broken.magic_pot_page_data.erase(id);
+            if (fault == 1) broken.magic_pot_page_lists.erase(id);
+            if (fault == 2) broken.page_counters.erase(id);
+            if (fault == 3) broken.magic_pot_page_data.at(id)[0] = 2;
+            if (fault == 4) broken.magic_pot_page_parents[id] = id;
+            check(!inspect_startup_world_magic_pot_page(broken, id) &&
+                      act_startup_world_magic_pot_page(broken, id, A::confirm) == E::missing_source &&
+                      !prepare_startup_world_runtime(broken).candidate && broken.legacy_n == original &&
+                      broken.scene.random.draws() == 0,
+                  "initialized41 rejects missing fields, invalid choice and forged parent explicitly");
+        }
+        check(act_startup_world_magic_pot_page(s, id, A::select, 2) == E::invalid_page &&
+                  s.magic_pot_page_data.at(id)[0] == 0,
+              "41 out-of-range selection cannot leave a partial payload");
+        check(act_startup_world_magic_pot_page(s, id, A::cancel) == E::none &&
+                  act_startup_world_magic_pot_page(s, id, A::confirm) == E::invalid_page,
+              "closed41 refuses stale input before framework retirement");
+        page_tick(s);
+        check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+                  s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty() &&
+                  s.magic_pot_recipes.size() == 40 && s.legacy_n == original &&
+                  s.magic_pot_output == std::array<std::int32_t, 4>{},
+              "actual framework retires four transient payload families and retains global pot state");
+    }
+    auto same_date = magic_pot_fixture();
+    same_date.magic_pot_output = {1, 2, 3, 4};
+    check(open_startup_world_magic_pot(same_date, StartupMagicPotEntry::main_menu) == E::none &&
+              same_date.magic_pot_output == std::array<std::int32_t, 4>{1, 2, 3, 4},
+          "same-date original m early return preserves prior aQ");
+    auto late = magic_pot_fixture();
+    late.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto flags = late.scripts.user_flags;
+    check(open_startup_world_magic_pot(late, StartupMagicPotEntry::main_menu) == E::script_failed &&
+              late.scripts.user_flags == flags && late.scripts.pages.size() == 1,
+          "failed41 insertion rolls back main-menu bit2 consumption");
+}
+void magic_pot_deposit_pages() {
+    using A = StartupMagicPotAction;
+    using E = StartupWorldRuntimeError;
+    auto s = magic_pot_fixture();
+    s.scripts.event_calls[105] = 1; // 返回说明已读，仅隔离这项既有脚本。
+    check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none,
+          "real menu opens deposit parent41");
+    const auto parent = reach_magic_pot_page(s, 41);
+    check(acknowledge_startup_world_runtime_page(s, parent) == E::none,
+          "common confirmation routes original41 into42");
+    const auto list = reach_magic_pot_page(s, 42);
+    auto view = inspect_startup_world_magic_pot_page(s, list);
+    check(view && std::find(view->entries.begin(), view->entries.end(), 0) != view->entries.end(),
+          "42 exposes actual initial potato inventory");
+    const auto choice = static_cast<int>(std::find(view->entries.begin(), view->entries.end(), 0) -
+                                        view->entries.begin());
+    check(act_startup_world_magic_pot_page(s, list, A::select, choice) == E::none,
+          "42 selects actual original item through its input");
+    auto wrong_parent = s;
+    wrong_parent.magic_pot_page_parents.at(list) = wrong_parent.scripts.pages.front().id;
+    check(act_startup_world_magic_pot_page(wrong_parent, list, A::confirm) == E::missing_source &&
+              wrong_parent.items.at(0).inventory == 2 && wrong_parent.scene.random.draws() == 0,
+          "42 wrong parent cannot consume held inventory or common random");
+    auto late = s;
+    late.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto pot = late.legacy_n;
+    check(act_startup_world_magic_pot_page(late, list, A::confirm) == E::script_failed &&
+              late.items.at(0).inventory == 2 && late.catalog.at({0, 0}).inventory == 2 &&
+              late.legacy_n == pot && late.scene.random.draws() == 0 && late.magic_pot_comment.empty(),
+          "late44 insertion failure rolls back inventory, elements, comment and drawn ticket");
+    const auto stock = s.shop_item_stock.at(0).quantity;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    check(act_startup_world_magic_pot_page(s, list, A::confirm) == E::none &&
+              s.items.at(0).inventory == 1 && s.catalog.at({0, 0}).inventory == 1 &&
+              s.shop_item_stock.at(0).quantity == stock && s.legacy_n[1] == 1 &&
+              s.legacy_n[4] == 2 && s.legacy_n[8] == 1 &&
+              s.scene.random.draws() == 1 && s.magic_pot_comment == "就那样吧" &&
+              s.scene.world.world.ai.accounting.funds() == cash,
+          "42 immediately consumes held potato once, not shop A; ice/pending/comment share one ticket");
+    const auto result = reach_magic_pot_page(s, 44);
+    check(act_startup_world_magic_pot_page(s, list, A::confirm) == E::invalid_page,
+          "covered42 rejects stale input while44 owns the top");
+    s.page_counters.at(result) = 35;
+    check(act_startup_world_magic_pot_page(s, result, A::confirm) == E::none &&
+              s.page_counters.at(result) == 35, "44 before36 cannot fast-forward");
+    s.page_counters.at(result) = 36;
+    check(act_startup_world_magic_pot_page(s, result, A::confirm) == E::none &&
+              s.page_counters.at(result) == 85 &&
+              act_startup_world_magic_pot_page(s, result, A::confirm) == E::none &&
+              s.page_counters.at(result) == 91,
+          "44 original confirmation gates advance36 to85 then91 without another deposit");
+    check(cancel_startup_world_runtime_page(s, result) == E::none && s.items.at(0).inventory == 1 &&
+              s.scene.random.draws() == 1 && s.legacy_n[4] == 2,
+          "44 cancel does not refund already committed42 inventory/elements/random");
+    (void)reach_magic_pot_page(s, 42);
+    check(act_startup_world_magic_pot_page(s, list, A::cancel) == E::none,
+          "42 can return to its actual parent after result dismissal");
+    (void)reach_magic_pot_page(s, 41);
+    check(act_startup_world_magic_pot_page(s, parent, A::cancel) == E::none,
+          "complete deposit chain returns41 and exits to the scene");
+    page_tick(s);
+    check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+              s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty() &&
+              s.magic_pot_recipes.size() == 40 && s.magic_pot_comment == "就那样吧" &&
+              s.magic_pot_display[2][1] == 2 && s.sound_requests.empty(),
+          "deposit retirement leaves no dangling page references; global aM/aN stay and no sound replays");
+}
+void magic_pot_processing_and_discovery() {
+    using A = StartupMagicPotAction;
+    using E = StartupWorldRuntimeError;
+    auto s = magic_pot_fixture();
+    const auto stamp = s.legacy_n[12];
+    // 原表列4是经验阈值（2/5/7分别48/30/9），列5..8才是四元素成本。
+    s.legacy_n = {47, 3, 0, 0, 0, 0, 0, 12, 12, 12, 12, 1, stamp - 1};
+    for (int id : {2, 5, 7}) s.magic_pot_recipes.at(id).status = 0;
+    check(open_startup_world_magic_pot(s, StartupMagicPotEntry::development_menu) == E::none &&
+              s.legacy_n == ref::WorldMagicPotState{48, 2, 1, 3, 3, 3, 3, 9, 9, 9, 9, 1, stamp} &&
+              s.magic_pot_output == std::array<std::int32_t, 4>{3, 3, 3, 3} &&
+              s.scene.random.draws() == 0,
+          "menu m consumes one period into literal processed state/output without random");
+    const auto lower = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [](const auto &p) { return p.legacy_page == 41; });
+    check(lower != s.scripts.pages.end() && lower->lifecycle == 0 &&
+              !s.magic_pot_pages_initialized.count(lower->id),
+          "processing stack retains legitimate uninitialized lower41 until its actual turn");
+    check(std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+              [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 46; }) == 3,
+          "processing creates three original46 discoveries for prepared p0 recipes2/5/7");
+    const auto result = reach_magic_pot_page(s, 45);
+    check(act_startup_world_magic_pot_page(s, result, A::cancel) == E::invalid_page &&
+              act_startup_world_magic_pot_page(s, result, A::confirm) == E::none &&
+              s.page_counters.at(result) == 77 &&
+              act_startup_world_magic_pot_page(s, result, A::confirm) == E::none &&
+              magic_pot_top(s).id == result, "45 skips to77 but cannot cancel or close before83");
+    s.page_counters.at(result) = 83;
+    check(act_startup_world_magic_pot_page(s, result, A::confirm) == E::none,
+          "45 at83 closes processed result");
+    for (int expected : {2, 5, 7}) {
+        const auto id = reach_magic_pot_page(s, 46);
+        check(inspect_startup_world_magic_pot_page(s, id)->binding == expected &&
+                  s.magic_pot_recipes.at(expected).status == 0,
+              "46 original static order preserves undiscovered p before confirmation");
+        s.page_counters.at(id) = 6;
+        check(act_startup_world_magic_pot_page(s, id, A::confirm) == E::none &&
+                  s.magic_pot_recipes.at(expected).status == 0,
+              "46 counter6 cannot discover recipe");
+        s.page_counters.at(id) = 7;
+        check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
+                  s.magic_pot_recipes.at(expected).status == 1 &&
+                  s.magic_pot_recipes.at(expected).pending_notice &&
+                  act_startup_world_magic_pot_page(s, id, A::confirm) == E::invalid_page,
+              "46 counter7 commits p/r once and rejects stale discovery");
+    }
+    const auto main = reach_magic_pot_page(s, 41);
+    check(s.magic_pot_output == std::array<std::int32_t, 4>{3, 3, 3, 3} &&
+              s.magic_pot_display[2][4] == 1 && s.magic_pot_recipes.size() == 40 &&
+              ref::world_script_seen(s.scripts, 102) && s.scripts.activities.at(28).status == 1,
+          "processed output and fixed recipes survive discovery page consumption");
+    check(act_startup_world_magic_pot_page(s, main, A::cancel) == E::none,
+          "processed stack finally reaches original41");
+    page_tick(s);
+    check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+              s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty(),
+          "processing/discovery chain retires all transient references");
+}
+void magic_pot_recipe_and_facility_reward() {
+    using A = StartupMagicPotAction;
+    using E = StartupWorldRuntimeError;
+    for (const int recipe : {7, 35}) {
+        auto s = magic_pot_fixture();
+        // 元素仅准备原成本边界；奖励定义仍来自冻结原表，未改表或算法。
+        const std::array<std::int32_t, 4> available = recipe == 7
+            ? std::array<std::int32_t, 4>{20, 20, 20, 20}
+            : std::array<std::int32_t, 4>{30, 0, 30, 5};
+        for (int n = 0; n < 4; ++n) s.legacy_n[3 + n] = available[n];
+        if (recipe == 7) {
+            // 首次低层道具解锁条件夹具；三份原状态字段保持镜像，未改原表。
+            auto &item = s.items.at(29);
+            item.status = 0;
+            item.unlock_counter = 7;
+            item.newly_unlocked = false;
+            s.catalog.at({0, 29}) = item;
+            s.shop_item_stock.at(29).presence = 0;
+            s.shop_item_stock.at(29).legacy_q = 7;
+            s.shop_item_stock.at(29).newly_available = false;
+        }
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto inventory = s.items.at(29).inventory;
+        const auto rewards = s.item_rewards;
+        const auto notices = s.scripts.notices.size();
+        const auto free = s.facility_free_builds.at(44);
+        const auto presence = s.facility_presence.at(44);
+        check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none,
+              "recipe fixture uses real magic pot menu entry");
+        const auto main = reach_magic_pot_page(s, 41);
+        check(act_startup_world_magic_pot_page(s, main, A::select, 1) == E::none &&
+                  acknowledge_startup_world_runtime_page(s, main) == E::none,
+              "41 second row opens original recipe catalogue43");
+        const auto catalogue = reach_magic_pot_page(s, 43);
+        auto view = inspect_startup_world_magic_pot_page(s, catalogue);
+        check(view && std::find(view->entries.begin(), view->entries.end(), 38) == view->entries.end() &&
+                  act_startup_world_magic_pot_page(s, catalogue, A::next_tab) == E::none &&
+                  s.page_phases.at(catalogue) == 1 &&
+                  act_startup_world_magic_pot_page(s, catalogue, A::previous_tab) == E::none &&
+                  s.page_phases.at(catalogue) == 0,
+              "43 respects original bit2 catalogue and exactly two attribute tabs");
+        const auto row = std::find(view->entries.begin(), view->entries.end(), recipe);
+        check(row != view->entries.end() &&
+                  act_startup_world_magic_pot_page(s, catalogue, A::select,
+                      static_cast<int>(row - view->entries.begin())) == E::none,
+              "43 selects actual original reward recipe");
+        auto unknown = s;
+        unknown.magic_pot_recipes.at(recipe).status = 0;
+        const auto size = unknown.scripts.pages.size();
+        check(act_startup_world_magic_pot_page(unknown, catalogue, A::confirm) == E::none &&
+                  unknown.scripts.pages.size() == size && unknown.legacy_n == s.legacy_n,
+              "43 undiscovered selection silently preserves elements and pages");
+        check(acknowledge_startup_world_runtime_page(s, catalogue) == E::none,
+              "43 known original recipe opens47 without consuming cost");
+        const auto question = reach_magic_pot_page(s, 47);
+        const auto before = s.legacy_n;
+        s.page_counters.at(question) = 6;
+        check(acknowledge_startup_world_runtime_page(s, question) == E::none && s.legacy_n == before,
+              "47 counter6 cannot charge recipe or produce reward");
+        s.page_counters.at(question) = 7;
+        for (int fault = 0; fault < 3; ++fault) {
+            auto broken = s;
+            if (fault == 0) broken.magic_pot_page_parents.at(question) = main;
+            if (fault == 1) broken.magic_pot_page_data.at(question)[2] = -1;
+            if (fault == 2) broken.magic_pot_page_data.at(catalogue)[0] = 999;
+            check(!inspect_startup_world_magic_pot_page(broken, question) &&
+                      act_startup_world_magic_pot_page(broken, question, A::confirm) == E::missing_source &&
+                      broken.legacy_n == before && broken.items.at(29).inventory == inventory &&
+                      broken.facility_free_builds.at(44) == free && broken.scene.random.draws() == 0,
+                  "47 rejects wrong parent/binding or damaged parent selection before any cost/reward");
+        }
+        auto late = s;
+        late.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+        check(acknowledge_startup_world_runtime_page(late, question) == E::script_failed &&
+                  late.legacy_n == before && late.items.at(29).inventory == inventory &&
+                  late.facility_free_builds.at(44) == free &&
+                  late.facility_presence.at(44) == presence && !ref::world_script_seen(late.scripts, 107),
+              "47 late107 insertion failure rolls back tentative cost and all reward side effects");
+        auto shortfall = s;
+        shortfall.legacy_n[recipe == 7 ? 5 : 6] = recipe == 7 ? 9 : 4;
+        const auto short_elements = shortfall.legacy_n;
+        check(acknowledge_startup_world_runtime_page(shortfall, question) == E::none &&
+                  shortfall.legacy_n == short_elements && shortfall.items.at(29).inventory == inventory &&
+                  shortfall.facility_free_builds.at(44) == free &&
+                  !ref::world_script_seen(shortfall.scripts, 107),
+              "47 late-element shortfall closes confirmation without partial earlier-element charges");
+        check(acknowledge_startup_world_runtime_page(s, question) == E::none &&
+                  ref::world_script_seen(s.scripts, 107) &&
+                  s.scene.world.world.ai.accounting.funds() == cash && s.scene.random.draws() == 0,
+              "47 ready confirmation creates original107 and reward without charging cash/random");
+        check(act_startup_world_magic_pot_page(s, question, A::confirm) == E::invalid_page,
+              "committed47 stale input cannot grant another reward");
+        if (recipe == 7) {
+            check(s.legacy_n[3] == 10 && s.legacy_n[4] == 10 && s.legacy_n[5] == 10 &&
+                      s.legacy_n[6] == 20 && s.items.at(29).inventory == inventory + 1 &&
+                      s.catalog.at({0, 29}).inventory == inventory + 1 &&
+                      s.items.at(29).status == 1 && s.items.at(29).newly_unlocked &&
+                      s.items.at(29).unlock_counter == 0 &&
+                      s.shop_item_stock.at(29).presence == 1 &&
+                      s.shop_item_stock.at(29).legacy_q == 0 &&
+                      s.shop_item_stock.at(29).newly_available && s.item_rewards == rewards &&
+                      s.scripts.notices.size() == notices && !ref::world_script_seen(s.scripts, 151),
+                  "recipe7 low-level item unlock mirrors p/r/q/inventory without high-level E/notice/151");
+        } else {
+            check(s.legacy_n[3] == 0 && s.legacy_n[4] == 0 && s.legacy_n[5] == 0 &&
+                      s.legacy_n[6] == 0 && s.facility_free_builds.at(44) == free &&
+                      s.facility_presence.at(44) == presence && magic_pot_top(s).legacy_page != 93,
+                  "facility recipe cost commits now;107 precedes93 and facility remains pending");
+            const auto gift = reach_magic_pot_page(s, 93);
+            const auto sounds = s.sound_requests.size();
+            check(sounds > 0 && s.sound_requests.back() == 5 &&
+                      s.facility_free_builds.at(44) == free,
+                  "93 first framework update emits sound5 while reward still waits for confirmation");
+            page_tick(s);
+            check(s.sound_requests.size() == sounds &&
+                      acknowledge_startup_world_runtime_page(s, gift) == E::none &&
+                      s.page_counters.at(gift) == 40 && s.facility_free_builds.at(44) == free,
+                  "93 second update does not replay sound; early confirm only advances40");
+            check(acknowledge_startup_world_runtime_page(s, gift) == E::none &&
+                      s.facility_free_builds.at(44) == free + 1 && s.facility_presence.at(44) == 2 &&
+                      acknowledge_startup_world_runtime_page(s, gift) == E::invalid_page,
+                  "actual93 grants one free original facility and rejects duplicate receipt");
+        }
+        (void)reach_magic_pot_page(s, 43);
+        check(act_startup_world_magic_pot_page(s, catalogue, A::cancel) == E::none,
+              "recipe reward returns original43 before exit");
+        (void)reach_magic_pot_page(s, 41);
+        check(act_startup_world_magic_pot_page(s, main, A::cancel) == E::none,
+              "reward chain exits its actual41 parent");
+        page_tick(s);
+        check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+                  s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty() &&
+                  s.commerce_pages_initialized.empty() && s.commerce_page_data.empty() &&
+                  s.magic_pot_recipes.size() == 40 &&
+                  s.scene.world.world.ai.accounting.funds() == cash,
+              "recipe/reward retirement clears both page owners and retains fixed recipe/global state");
+    }
+    auto owned = magic_pot_fixture();
+    owned.catalog.at({1, 9}).status = 1; // 原装备p1为已持有，测试43而非复制装备奖励规则。
+    check(open_startup_world_magic_pot(owned, StartupMagicPotEntry::main_menu) == E::none,
+          "already-owned equipment fixture enters actual pot menu");
+    auto id = reach_magic_pot_page(owned, 41);
+    check(act_startup_world_magic_pot_page(owned, id, A::select, 1) == E::none &&
+              acknowledge_startup_world_runtime_page(owned, id) == E::none,
+          "already-owned equipment fixture reaches43");
+    id = reach_magic_pot_page(owned, 43);
+    const auto view = inspect_startup_world_magic_pot_page(owned, id);
+    const auto row = std::find(view->entries.begin(), view->entries.end(), 14);
+    const auto original = owned.legacy_n;
+    check(row != view->entries.end() &&
+              act_startup_world_magic_pot_page(owned, id, A::select,
+                  static_cast<int>(row - view->entries.begin())) == E::none &&
+              acknowledge_startup_world_runtime_page(owned, id) == E::none &&
+              ref::world_script_seen(owned.scripts, 106) && owned.legacy_n == original,
+          "43 already-owned weapon emits106 without charging cost or opening47");
+}
+void village_magic_pot_pages() {
+    using E = StartupWorldRuntimeError;
+    for (const auto scenario : {std::array<int, 3>{28, 1, 2}, {29, 2, 3},
+                                {28, 3, 3}, {30, 1, 1}}) {
+        auto s = village_fixture(scenario[0]);
+        s.legacy_n[11] = scenario[1];
+        s.scripts.user_flags &= ~3U;
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto draws = s.scene.random.draws();
+        const auto parent = magic_pot_top(s).id;
+        check(acknowledge_startup_world_runtime_page(s, parent) == E::none,
+              "original village kind5/6 opens52 through actual51 input");
+        page_tick(s);
+        check(acknowledge_startup_world_runtime_page(s, magic_pot_top(s).id) == E::none,
+              "kind5/6 source52 starts original activity");
+        const auto animation = magic_pot_top(s).id;
+        page_tick(s);
+        check(s.village_points == 100 && s.events_held == 1 &&
+                  s.activity_counts.at(scenario[0]) == 1 && s.quarter_counter == 3 &&
+                  s.legacy_n[11] == scenario[1] && (s.scripts.user_flags & 3U) == 0,
+              "kind5/6 52 charges100 points/m/F but defers q and pot effects to53");
+        s.page_counters.at(animation) = 119;
+        check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+                  s.quarter_counter == 3 && s.legacy_n[11] == scenario[1],
+              "kind5/6 counter119 cannot fast-forward the confirmed effect");
+        page_tick(s);
+        const auto continuations = s.scripts.continuations.size();
+        if (scenario[0] == 30) {
+            auto late = s;
+            late.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+            check(acknowledge_startup_world_runtime_page(late, animation) != E::none &&
+                      late.quarter_counter == 3 && (late.scripts.user_flags & 3U) == 0 &&
+                      !ref::world_script_seen(late.scripts, 104) &&
+                      !ref::world_script_seen(late.scripts, 219) &&
+                      late.scripts.continuations.size() == continuations && late.village_points == 100 &&
+                      late.scene.random.draws() == draws,
+                  "kind6 late104 failure rolls back q, user flags, seen/delayed events and pages");
+        }
+        check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+                  s.quarter_counter == 2 && s.legacy_n[11] == scenario[2] &&
+                  s.village_points == 100 && s.scene.random.draws() == draws &&
+                  s.scene.world.world.ai.accounting.funds() == cash &&
+                  std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                               [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 54; }),
+              "kind5/6 ready53 commits q then original capped pot effect without human result54/random/cash");
+        check(acknowledge_startup_world_runtime_page(s, animation) == E::invalid_page,
+              "completed pot activity cannot spend quarterly slot twice");
+        if (scenario[0] == 30)
+            check((s.scripts.user_flags & 3U) == 3U && ref::world_script_seen(s.scripts, 104) &&
+                      ref::world_script_seen(s.scripts, 219) &&
+                      s.scripts.continuations.size() > continuations,
+                  "kind6 enables two original flags, creates104 and schedules219 rather than eager news19");
+    }
+}
+std::uint64_t install_magic_pot_shop(StartupWorldRuntimeState &s, int definition) {
+    const auto &map = s.scene.world.world.map;
+    const auto bounds = s.rules->fences.at(s.fence_level);
+    for (int y = bounds[1].y + 1; y < bounds[0].y; ++y)
+        for (int x = bounds[0].x + 1; x < bounds[1].x; ++x) {
+            const auto footprint = ref::facility_footprint(
+                static_cast<ref::FacilityShape>(s.rules->facilities.at(definition).shape),
+                ref::FacilityOrientation::first, {x, y}, map.width, map.height);
+            if (footprint.error != ref::GeometryError::none ||
+                !std::all_of(footprint.cells.begin(), footprint.cells.end(), [&](const auto &c) {
+                    const auto &tile = map.cells.at(c.position.y * map.width + c.position.x);
+                    return c.position.x > bounds[0].x && c.position.x < bounds[1].x &&
+                           c.position.y > bounds[1].y && c.position.y < bounds[0].y &&
+                           !tile.facility && tile.legacy_state != 1 && tile.legacy_state != 2 &&
+                           tile.legacy_state != 10;
+                })) continue;
+            // 原定义真实Owner安装原语，仅准备商店实例组合；不是自然建设/付款轨迹。
+            const auto result = install_startup_world_facility(s, definition, {x, y},
+                                                               ref::FacilityOrientation::first);
+            check(result.created.has_value(), "magic pot shop fixture installs a real original shop");
+            return *result.created;
+        }
+    throw std::runtime_error("no legal original shop footprint for magic pot fixture");
+}
+void magic_pot_equipment_low_level_rewards() {
+    using A = StartupMagicPotAction;
+    using E = StartupWorldRuntimeError;
+    // 原配方14/22/30分别奖励武器9/防具13/饰品20；最后一槽只标216是否已见。
+    for (const auto scenario : {std::array<int, 4>{14, 1, 9, 0}, {14, 1, 9, 1},
+                                {22, 2, 13, 0}, {30, 3, 20, 0}}) {
+        auto s = magic_pot_fixture();
+        StartupWorldRules private_rules = *s.rules;
+        s.rules = &private_rules;
+        const auto key = std::make_pair(scenario[1], scenario[2]);
+        auto &reward = s.catalog.at(key);
+        reward.status = 0;
+        reward.newly_unlocked = false;
+        reward.free_purchases = 0;
+        if (scenario[1] == 1) {
+            // 原配方武器9旗位4不含32；216分支另用私有规则/目录旗位夹具，不能称真实配方。
+            check((reward.flags & 32U) == 0, "original pot weapon9 does not carry great-weapon flag32");
+            reward.flags |= 32U;
+            const auto definition = std::find_if(private_rules.equipment.begin(),
+                private_rules.equipment.end(), [&](const auto &d) { return d.shop.kind == 1 && d.shop.id == 9; });
+            check(definition != private_rules.equipment.end(), "private flag fixture binds original weapon9");
+            definition->initial.flags |= 32U;
+            if (scenario[3]) s.scripts.event_calls[216] = 1;
+        }
+        const std::array<std::uint64_t, 3> shops{
+            install_magic_pot_shop(s, 30), install_magic_pot_shop(s, 31), install_magic_pot_shop(s, 32)};
+        const auto target = shops[static_cast<std::size_t>(scenario[1] - 1)];
+        const auto another = install_magic_pot_shop(s, scenario[1] == 1 ? 30 : scenario[1] == 2 ? 31 : 32);
+        const int category = scenario[1] == 1 ? 1 : scenario[1] == 2 ? 4 : 5;
+        check(s.shops.at(target).category == category && s.shops.at(another).category == category,
+              "original shop definitions bind equipment categories1/4/5");
+        s.facility_details.at(target).notices.push_back({7, 17}); // 原c(7)按种类去重，保留计数。
+        std::map<std::uint64_t, std::vector<std::array<int, 2>>> shop_notices;
+        for (const auto &shop : s.shops) shop_notices.emplace(shop.first, s.facility_details.at(shop.first).notices);
+        const auto rewards = s.item_rewards;
+        const auto notices = s.scripts.notices.size();
+        const auto continuations = s.scripts.continuations.size();
+        for (int n = 3; n < 7; ++n) s.legacy_n[n] = 999;
+        check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none,
+              "equipment reward combination enters real pot menu");
+        const auto main = reach_magic_pot_page(s, 41);
+        check(act_startup_world_magic_pot_page(s, main, A::select, 1) == E::none &&
+                  acknowledge_startup_world_runtime_page(s, main) == E::none,
+              "equipment reward combination opens real43");
+        const auto catalogue = reach_magic_pot_page(s, 43);
+        const auto view = inspect_startup_world_magic_pot_page(s, catalogue);
+        check(view.has_value(), "equipment combination has initialized original43 payload");
+        const auto row = std::find(view->entries.begin(), view->entries.end(), scenario[0]);
+        check(row != view->entries.end() && act_startup_world_magic_pot_page(s, catalogue, A::select,
+                  static_cast<int>(row - view->entries.begin())) == E::none &&
+                  acknowledge_startup_world_runtime_page(s, catalogue) == E::none,
+              "known equipment recipe43 opens its real47");
+        const auto question = reach_magic_pot_page(s, 47);
+        s.page_counters.at(question) = 7;
+        if (scenario[1] == 1 && !scenario[3]) {
+            auto late = s;
+            late.facility_details.erase(another);
+            const auto pot = late.legacy_n;
+            check(acknowledge_startup_world_runtime_page(late, question) == E::script_failed &&
+                      late.legacy_n == pot && late.catalog.at(key).status == 0 &&
+                      !late.catalog.at(key).newly_unlocked && late.catalog.at(key).free_purchases == 0 &&
+                      !ref::world_script_seen(late.scripts, 107) && !ref::world_script_seen(late.scripts, 216) &&
+                      late.scripts.continuations.size() == continuations &&
+                      late.facility_details.at(target).notices == shop_notices.at(target),
+                  "late missing second shop payload rolls back recipe cost, NEW/free,107/216 and shop notice");
+        }
+        check(acknowledge_startup_world_runtime_page(s, question) == E::none &&
+                  s.catalog.at(key).status == 1 && s.catalog.at(key).newly_unlocked &&
+                  s.catalog.at(key).free_purchases == 1 && s.item_rewards == rewards &&
+                  s.scripts.notices.size() == notices && !ref::world_script_seen(s.scripts, 110) &&
+                  !ref::world_script_seen(s.scripts, 151) && s.scene.random.draws() == 0,
+              "47 low-level equipment unlock grants p/r/free once without high-level110/notice/E151");
+        for (const auto &shop : s.shops) {
+            auto expected = shop_notices.at(shop.first);
+            if (shop.second.category == category &&
+                std::none_of(expected.begin(), expected.end(), [](const auto &n) { return n[0] == 7; }))
+                expected.push_back({7, 0});
+            check(s.facility_details.at(shop.first).notices == expected,
+                  "47 adds deduplicated7 only to matching original shop category and preserves existing counter");
+        }
+        check(ref::world_script_seen(s.scripts, 216) == (scenario[1] == 1) &&
+                  s.scripts.continuations.size() == continuations +
+                      (scenario[1] == 1 && !scenario[3] ? 1U : 0U),
+              "flag32 private weapon schedules216 only first time; armour/accessory create no216");
+        (void)reach_magic_pot_page(s, 43);
+        const auto pot = s.legacy_n;
+        const auto pending = s.scripts.continuations.size();
+        check(acknowledge_startup_world_runtime_page(s, catalogue) == E::none &&
+                  ref::world_script_seen(s.scripts, 106) && s.legacy_n == pot &&
+                  s.catalog.at(key).free_purchases == 1 && s.scripts.continuations.size() == pending &&
+                  s.scripts.notices.size() == notices,
+              "repeat equipment43 emits106 and cannot give another free purchase, cost,216 or global notice");
+    }
+}
+
 } // namespace
 int main() {
     try {
@@ -2236,6 +2798,12 @@ int main() {
         commerce_after_reward_writeback();
         commerce_transactions();
         commerce_facility_and_projection();
+        magic_pot_entry_and_retirement();
+        magic_pot_deposit_pages();
+        magic_pot_processing_and_discovery();
+        magic_pot_recipe_and_facility_reward();
+        magic_pot_equipment_low_level_rewards();
+        village_magic_pot_pages();
         village_activity_initialization();
         village_activity_pages();
         village_expansion_pages();

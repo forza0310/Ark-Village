@@ -4,6 +4,7 @@
 #include "ark/simulation/rules/world_actor_routes.hpp"
 #include "ark/simulation/rules/world_calendar_maintenance.hpp"
 #include "ark/simulation/rules/world_scripts.hpp"
+#include "ark/simulation/rules/world_magic_pot.hpp"
 #include "ark/simulation/rules/world_task_creation.hpp"
 
 namespace ark::simulation {
@@ -46,6 +47,8 @@ struct StartupWorldEquipment {
     std::string name;
     int gift_rating{}; // 原weapon.t / armor.i / accessory.i，仅评价，不是装备准入。
     int gift_order{};  // 原weapon.u / armor.j / accessory.j。
+    int render_image{}; // 武器p.e是weapon图片索引；防具/饰品e是18格图标ID，不能互换。
+    int render_style{}; // 仅武器p.h的挥动/弓/枪/大剑0..3；不取战斗类别代替。
 };
 struct StartupWorldMonster {
     int identity{};
@@ -69,6 +72,7 @@ struct StartupWorldItem {
     int recovery{};                             // 原g.w，实际恢复量。
     std::array<int, 3> facility_improvements{}; // 原g.k，设施三项增量。
     int commerce_price{};                       // 原g.u，商会金币价格，出售向零除2。
+    std::array<int, 4> magic_pot_elements{}; // 原g.l，item索引12..15火／冰／雷／暗。
 };
 struct StartupWorldTask {
     ref::TaskCreationDefinition factory;
@@ -124,6 +128,7 @@ struct StartupWorldRules {
     std::vector<StartupWorldActivity> activities;
     std::string localized_gold_template; // h.f512d未初始化，h.b("G")真实回退"G"。
     std::vector<int> base_variants;      // 固定首局h.i在c/d前保存；实例单格q0，原地表i保留。
+    std::vector<ref::WorldMagicPotRecipeDefinition> magic_pot_recipes; // 固定40定义，p/r在Owner。
 };
 const StartupWorldRules &startup_world_rules();
 struct StartupWorldActorMetadata {

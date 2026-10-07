@@ -48,7 +48,7 @@ export function codecFields(source) {
 }
 
 export function checkPolicy(inventory, policy, codec) {
-    if (policy.format !== 'ARKSAVE1' || policy.schema !== 2 || policy.policy_version !== 1)
+    if (policy.format !== 'ARKSAVE1' || policy.schema !== 3 || policy.policy_version !== 1)
         throw Error('unsupported player classification policy');
     const actual = new Map([...inventory.records, ...inventory.wrappers].map(record =>
         [productName(record.name), record.fields.map(field => ({name: field.name, type: productName(field.type)}))]));
@@ -103,6 +103,7 @@ export function checkPolicy(inventory, policy, codec) {
 
 function refusalChecks(inventory, policy, codec) {
     const cases = [
+        ['old schema', (_i,p) => {p.schema = 2;}, 'unsupported player classification policy'],
         ['top-level field', (i) => i.records.find(r => r.name.endsWith('::StartupWorldRuntimeState')).fields.push({name: 'future_owner_field', type: 'int'}), 'unclassified owner field'],
         ['nested field', (i) => i.records.find(r => r.name.endsWith('::CharacterHpState')).fields.push({name: 'future_hp_field', type: 'int'}), 'unclassified owner field'],
         ['private wrapper field', (i) => i.wrappers[0].fields.push({name: 'future_random_field', type: 'int'}), 'unclassified owner field'],

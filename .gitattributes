@@ -11,3 +11,4 @@ assets/common/*.inf -text -eol whitespace=cr-at-eol
 assets/common2/*.inf -text -eol whitespace=cr-at-eol
 assets/human/*.inf -text -eol whitespace=cr-at-eol
 assets/monster/*.inf -text -eol whitespace=cr-at-eol
+assets/weapon/*.inf -text -eol whitespace=cr-at-eol

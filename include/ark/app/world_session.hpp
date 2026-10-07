@@ -8,6 +8,7 @@
 #include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_human.hpp"
+#include "ark/simulation/startup_world_magic_pot.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
 #include "ark/simulation/startup_world_village_activity.hpp"
@@ -44,6 +45,9 @@ enum class WorldCommandKind {
     commerce_action,
     facility_item_action,
     facility_catalog_action,
+    open_menu_magic_pot,
+    open_magic_pot,
+    magic_pot_action,
     facility_action,
     residence_action,
     open_task_control_menu,
@@ -124,6 +128,7 @@ struct WorldCommand {
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
         simulation::StartupFacilityCatalogAction::confirm};
+    simulation::StartupMagicPotAction magic_pot_action{simulation::StartupMagicPotAction::confirm};
     simulation::rules::Position anchor{};
     // Transient selection binding, distinct from the destination anchor.
     std::optional<simulation::rules::Position> edit_anchor;
@@ -195,6 +200,10 @@ class WorldSession {
                                simulation::rules::FacilityOrientation orientation);
     std::uint64_t cancel_edit(const WorldState &observed);
     std::uint64_t open_commerce();
+    std::uint64_t open_menu_magic_pot();
+    std::uint64_t open_magic_pot();
+    std::uint64_t act_magic_pot(std::uint64_t page, simulation::StartupMagicPotAction action,
+                                int selection = 0);
     std::uint64_t act_commerce(std::uint64_t page, simulation::StartupCommerceAction action,
                                int selection = 0);
     std::uint64_t act_facility_item(std::uint64_t page,

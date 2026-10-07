@@ -320,7 +320,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         if (village_menu) {
             const auto intent = ui::world_village_menu_input(
                 layout, !desired_pause, (current.scripts.user_flags & 16U) != 0, menu_pending,
-                village_selection, menu_input);
+                village_selection, menu_input, (current.scripts.user_flags & 1U) != 0);
             if (intent) {
                 menu_feedback.clear();
                 switch (*intent) {
@@ -335,6 +335,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                     break;
                 case ui::WorldVillageMenuIntent::commerce:
                     pending_menu = session.open_menu_commerce();
+                    break;
+                case ui::WorldVillageMenuIntent::magic_pot:
+                    pending_menu = session.open_menu_magic_pot();
                     break;
                 }
             }
@@ -598,7 +601,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             if (village_menu)
                 ui::draw_world_village_menu(layout, skin, village_selection,
                                             !desired_pause && !failed && !pending_menu,
-                                            (current.scripts.user_flags & 16U) != 0, menu_feedback);
+                                            (current.scripts.user_flags & 16U) != 0, menu_feedback,
+                                            (current.scripts.user_flags & 1U) != 0);
             else
                 ui::draw_world_menu(layout, skin, menu_selection,
                                     !desired_pause && !failed && !pending_menu, menu_feedback,

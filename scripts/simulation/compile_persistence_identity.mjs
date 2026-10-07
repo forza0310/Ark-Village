@@ -7,6 +7,7 @@ if (!root || !output) throw Error('expected product root and generated C++ outpu
 const files = ['data/startup/MAP.json','data/startup/STATE.json','data/startup/TABLES.json',
  'data/original/tenantData.txt','data/world/monster.txt','data/world/questData.txt',
  'data/world/armour.txt','data/world/accessory.txt','data/world/item.txt','data/world/asEventData.txt',
+ 'data/world/magicPot.txt',
  'data/scripts/original/events.txt','data/scripts/original/talk.txt','data/scripts/original/news.txt',
  'data/scripts/original/evtmsgs.txt','data/scripts/original/popularBonus.txt'];
 const hash = b => createHash('sha256').update(b).digest('hex');

@@ -26,6 +26,7 @@ if(ARK_LIBRARIES_ONLY)
         "${ARK_WORLD_DATA}/world/monster.txt" "${ARK_WORLD_DATA}/world/questData.txt"
         "${ARK_WORLD_DATA}/world/armour.txt" "${ARK_WORLD_DATA}/world/accessory.txt"
         "${ARK_WORLD_DATA}/world/item.txt" "${ARK_WORLD_DATA}/world/asEventData.txt"
+        "${ARK_WORLD_DATA}/world/magicPot.txt"
         "${ARK_WORLD_DATA}/scripts/original/events.txt" "${ARK_WORLD_DATA}/scripts/original/talk.txt"
         "${ARK_WORLD_DATA}/scripts/original/news.txt" "${ARK_WORLD_DATA}/scripts/original/evtmsgs.txt"
         "${ARK_WORLD_DATA}/scripts/original/popularBonus.txt")

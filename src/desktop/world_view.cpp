@@ -309,6 +309,13 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         const ui::Layout layout(extent);
         const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
         const auto *input_page = active_page(current);
+        // Key and text events have separate raylib queues. Drain key events for marker resets;
+        // this leaves GetCharPressed and IsKeyPressed available to their existing consumers.
+        const bool keyboard_event = GetKeyPressed() != KEY_NULL;
+        while (GetKeyPressed() != KEY_NULL) {
+        }
+        if (keyboard_event)
+            management.clear_mouse_marker();
         const auto next_pointer_context = std::tuple{generation,
                                                      input_page ? input_page->id : std::uint64_t{},
                                                      publication->main_menu_open,
@@ -343,7 +350,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
-            (hit(layout.left_button) || IsKeyPressed(KEY_SPACE))) {
+            (hit(layout.left_button) ||
+             (IsKeyPressed(KEY_SPACE) &&
+              !(input_page && ui::world_facility_items_page(*input_page))))) {
             desired_pause = !desired_pause;
             pending_pause = session.set_paused(desired_pause);
         }
@@ -454,7 +463,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 task_selection = {};
                 task_feedback.clear();
             }
-            if (management.input_page(current, *page, extent, mouse, click, back,
+            if (management.input_page(current, *page, extent, mouse, click, back, keyboard_event,
                                       desired_pause || failed || pending_task || pending_ack,
                                       session)) {
                 // Management controller owns only selection and forwards explicit FIFO intents.

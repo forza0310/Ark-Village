@@ -44,7 +44,7 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
 }
 void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
                      const std::string &feedback, bool can_system) {
-    constexpr const char *names[]{"建设", "冒险", "村办", "情报", "系统"};
+    constexpr const char *names[]{"建造", "冒险", "办公室", "信息", "系统"}; // S042 labels.
     constexpr int icons[]{0, 1, 2, 5, 6};
     for (int i = 0; i < 5; ++i) {
         const auto row = layout.menu_rows[i];

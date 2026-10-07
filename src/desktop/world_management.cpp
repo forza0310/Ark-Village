@@ -57,18 +57,21 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
     }
 }
 bool WorldManagement::input_page(const State &state, const Page &page, Extent extent,
-                                 std::optional<Vector2> mouse, bool click, bool back, bool blocked,
-                                 app::WorldSession &session) {
+                                 std::optional<Vector2> mouse, bool click, bool back,
+                                 bool keyboard_event, bool blocked, app::WorldSession &session) {
     if (page_ != page.id) {
         page_ = page.id;
         building_ = {};
+        facility_items_ = {};
         award_ = {};
         rank_ = 0;
         feedback_.clear();
     }
     blocked = blocked || pending();
     const auto point = click ? mouse : std::nullopt;
-    const bool enter = IsKeyPressed(KEY_ENTER), escape = back;
+    const bool enter = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+                       (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
+    const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
     if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
@@ -91,9 +94,12 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         const auto view = ui::world_facility_items_view(state, page);
         const auto layout = ui::world_facility_items_layout(extent);
         const ui::WorldFacilityItemsInput input{
-            point, enter, escape,
-            up,    down,  hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
-        if (const auto intent = ui::world_facility_items_input(view, layout, input, blocked))
+            point,         enter,
+            escape,        up,
+            down,          hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0,
+            keyboard_event};
+        if (const auto intent =
+                ui::world_facility_items_input(view, layout, facility_items_, input, blocked))
             queued(session.act_facility_item(page.id, intent->action, intent->selection));
         return true;
     }

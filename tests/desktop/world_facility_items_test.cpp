@@ -44,9 +44,10 @@ void world_facility_items() {
     state.page_phases[page.id] = state.page_counters[page.id] = 0;
     const auto layout = ui::world_facility_items_layout({240, 256});
     ui::WorldFacilityItemsInput input;
+    ui::WorldFacilityItemsSelection marker;
     input.enter = true;
     auto view = ui::world_facility_items_view(state, page);
-    check(!view.initialized && !ui::world_facility_items_input(view, layout, input, false),
+    check(!view.initialized && !ui::world_facility_items_input(view, layout, marker, input, false),
           "Uninitialized item pages cannot consume inventory through presentation");
     state.facility_item_pages_initialized.insert(page.id);
     std::vector<int> ids;
@@ -62,8 +63,14 @@ void world_facility_items() {
     }
     state.facility_item_page_lists[page.id] = ids;
     state.facility_item_page_selections[page.id] = 5;
+    state.facility_monthly_cash.at(instance)[0] = {100, 7};
+    state.facility_monthly_cash.at(instance)[1] = {20, 60};
+    state.facility_monthly_cash.at(instance)[4] = {2000,
+                                                   1}; // Future month is not part of the footer.
     const auto before = state;
     view = ui::world_facility_items_view(state, page);
+    check(view.title == "设施强化" && view.profit == 53,
+          "Strengthening caption follows S044; footer sums actual income-cost only through month3");
     check(
         view.facility == instance && view.selection == 5 && view.first_visible == 1 &&
             view.rows[5].identity == ids[5] && view.rows[5].owned == 16,
@@ -74,13 +81,41 @@ void world_facility_items() {
               "values");
     input = {};
     input.click = Vector2{layout.rows.x + 3, layout.rows.y + layout.row_height / 2};
-    const auto selected = ui::world_facility_items_input(view, layout, input, false);
+    const auto selected = ui::world_facility_items_input(view, layout, marker, input, false);
     check(selected && selected->action == Action::select && selected->selection == 1,
           "Clicking the first visible row selects its source index without using an item");
+    auto committed = view;
+    committed.selection = 1;
+    const auto confirmed = ui::world_facility_items_input(committed, layout, marker, input, false);
+    check(confirmed && confirmed->action == Action::confirm,
+          "User-approved row marker confirms a later click on the same committed absolute row");
+    input.click->y += layout.row_height;
+    check(ui::world_facility_items_input(committed, layout, marker, input, false)->action ==
+                  Action::select &&
+              ui::world_facility_items_input(committed, layout, marker, input, false)->action ==
+                  Action::select,
+          "A different row marks/selects; even a second click cannot use a stale committed row");
+    check(!ui::world_facility_items_input(committed, layout, marker, input, true),
+          "Pending barrier cannot use a marked row or submit duplicate selection");
+    input = {};
+    input.keyboard_event = true;
+    check(!ui::world_facility_items_input(committed, layout, marker, input, false) &&
+              !marker.marked_row,
+          "Any key-down clears mouse marker even when it has no list navigation action");
+    input = {};
+    input.click = Vector2{layout.rows.x + 3, layout.rows.y + 8};
+    check(ui::world_facility_items_input(committed, layout, marker, input, false)->action ==
+              Action::select,
+          "Click after keyboard reset starts a new marker without consuming stock");
+    ++committed.page;
+    check(ui::world_facility_items_input(committed, layout, marker, input, false)->action ==
+              Action::select,
+          "Identical row coordinates on a different page never inherit a confirmation marker");
     input = {};
     input.enter = true;
-    check(ui::world_facility_items_input(view, layout, input, false)->action == Action::confirm &&
-              !ui::world_facility_items_input(view, layout, input, true),
+    check(ui::world_facility_items_input(view, layout, marker, input, false)->action ==
+                  Action::confirm &&
+              !ui::world_facility_items_input(view, layout, marker, input, true),
           "Using an item is one source confirmation blocked while FIFO is pending");
     check(state.items.at(ids[5]).inventory == before.items.at(ids[5]).inventory &&
               state.facility_item_confirmations == before.facility_item_confirmations &&
@@ -95,7 +130,7 @@ void world_facility_items() {
     input.enter = input.escape = input.up = true;
     check(
         !view.can_confirm && !view.can_cancel && !view.graphic.frames.empty() &&
-            !ui::world_facility_items_input(view, layout, input, false),
+            !ui::world_facility_items_input(view, layout, marker, input, false),
         "Improvement76 displays the real bound facility and has no player-driven progress command");
     page.legacy_page = state.scripts.pages.back().legacy_page = 77;
     for (int count : {0, 48, 49, 54, 55}) {
@@ -103,14 +138,14 @@ void world_facility_items() {
         view = ui::world_facility_items_view(state, page);
         input = {};
         input.enter = true;
-        const auto intent = ui::world_facility_items_input(view, layout, input, false);
+        const auto intent = ui::world_facility_items_input(view, layout, marker, input, false);
         check(bool(intent) == (count < 49 || count >= 55) &&
                   view.attributes == state.facility_upgrade_display,
               "Result77 reads source before/after/delta and respects its 49-through54 confirmation "
               "gap");
         input = {};
         input.escape = true;
-        check(!ui::world_facility_items_input(view, layout, input, false),
+        check(!ui::world_facility_items_input(view, layout, marker, input, false),
               "Improvement result cannot cancel its required source completion");
     }
     state.facility_item_page_items.erase(page.id);
@@ -146,10 +181,21 @@ void world_facility_items() {
         ui::WorldFacilityItemsInput row_input;
         row_input.click = Vector2{frame.rows.x + 3, frame.rows.y + 4 * 19 + 8};
         row_input.enter = true;
-        const auto row_choice = ui::world_facility_items_input(listing, frame, row_input, false);
+        const auto row_choice =
+            ui::world_facility_items_input(listing, frame, marker, row_input, false);
         check(row_choice && row_choice->action == Action::select && row_choice->selection == 5,
               "Fifth visible row plus Enter selects the actual scrolled row without using the old "
               "choice");
+        check(
+            frame.result_picture.y + frame.result_picture.height < frame.result_values.y &&
+                frame.result_values.height >= 36 &&
+                frame.result_values.y + frame.result_values.height <=
+                    frame.result.y + frame.result.height,
+            "S045 facility picture and three new-value/delta rows stay separated at minimum size");
+        row_input = {};
+        row_input.click = Vector2{frame.rows.x + frame.rows.width, frame.rows.y + 8};
+        check(!ui::world_facility_items_input(listing, frame, marker, row_input, false),
+              "Researched row hit test excludes its right boundary");
     }
 }
 } // namespace ark::test

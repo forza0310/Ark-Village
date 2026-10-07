@@ -20,9 +20,11 @@ class WorldManagement {
   public:
     void observe(const app::WorldFrame &frame);
     bool pending() const { return pending_ != 0; }
+    // Local keyboard reset also applies while a FIFO command is pending; it changes no Owner.
+    void clear_mouse_marker() { facility_items_.marked_row.reset(); }
     bool input_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                     Extent extent, std::optional<Vector2> mouse, bool click, bool back,
-                    bool blocked, app::WorldSession &session);
+                    bool keyboard_event, bool blocked, app::WorldSession &session);
     bool draw_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                    Extent extent, const ui::Skin &skin, bool enabled) const;
     // Called only for an unobstructed main scene. A click selects a cell; confirmation is a
@@ -50,6 +52,7 @@ class WorldManagement {
     std::optional<std::int64_t> commerce_amount_;
     std::string feedback_;
     ui::WorldBuildingSelection building_;
+    ui::WorldFacilityItemsSelection facility_items_;
     ui::WorldAwardSelection award_;
     int rank_{};
     int edit_mode_{-1};

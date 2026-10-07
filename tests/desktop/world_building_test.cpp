@@ -178,15 +178,15 @@ void world_building() {
         const auto random = editing.scene.random.draws();
         auto catalogue_view = ui::world_building_view(editing, page);
         const auto &first_tab = catalogue_view.catalogs[0];
-        const int moving_row = static_cast<int>(first_tab.size()) - 1;
+        const int moving_row = 2;
         check(first_tab.size() == 6 && first_tab.front().identity == 18 &&
-                  first_tab[1].identity == other && first_tab[2].identity == definition &&
-                  first_tab[first_tab.size() - 2].identity == -1 && first_tab.back().identity == -2,
-              "Desktop road/special rows augment base catalogue while preserving building order");
-        check(first_tab.back().cost == 300 && first_tab.back().common_image == "moveTenant.png" &&
-                  first_tab.back().image_source.width == 63 &&
-                  first_tab.back().image_source.height == 32 &&
-                  first_tab.back().image_offset.x == 1 && first_tab.back().image_offset.y == 0 &&
+                  first_tab[1].identity == -1 && first_tab[2].identity == -2 &&
+                  first_tab[3].identity == other && first_tab[4].identity == definition &&
+                  first_tab[5].identity == other,
+              "S057 places editing tools after roads while base order and duplicates stay intact");
+        check(first_tab[2].cost == 300 && first_tab[2].common_image == "moveTenant.png" &&
+                  first_tab[2].image_source.width == 63 && first_tab[2].image_source.height == 32 &&
+                  first_tab[2].image_offset.x == 1 && first_tab[2].image_offset.y == 0 &&
                   first_tab.front().cost ==
                       sim::startup_world_build_quote(editing, 18)->construction_cost,
               "Moving uses its actual fixed quote/PNG and road uses current economy quote");
@@ -378,6 +378,9 @@ void world_building() {
         for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
                                   desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
             const auto frame = ui::world_building_layout(extent, 74);
+            check(frame.previous.y < frame.body.y && frame.next.y < frame.body.y &&
+                      frame.previous.x + frame.previous.width < frame.next.x,
+                  "S043/S054 facility page navigation is in the title bar, clear of body controls");
             const auto ordinary =
                 ui::world_building_detail_layout(frame, app::WorldFacilityTemplate::ordinary);
             const auto special =

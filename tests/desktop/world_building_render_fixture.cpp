@@ -185,6 +185,20 @@ void world_facility_static_render_fixture() {
                     sim::StartupWorldRuntimeError::none &&
                 sim::initialize_startup_world_facility_item_pages(items),
             "source cannot initialize supplied-stock raw75");
+    auto reinforced = items;
+    require(sim::act_startup_world_facility_item_page(reinforced, top_page(reinforced).id,
+                                                      sim::StartupFacilityItemAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_facility_item_pages(reinforced),
+            "source cannot consume one owned item and initialize its improvement76");
+    for (int update = 0; update < 50 && top_page(reinforced).legacy_page != 77; ++update) {
+        auto candidate = sim::prepare_startup_world_facility_item_page(reinforced);
+        require(candidate.has_value(), "source improvement76 update was rejected");
+        reinforced = std::move(*candidate);
+    }
+    require(top_page(reinforced).legacy_page == 77 &&
+                sim::initialize_startup_world_facility_item_pages(reinforced),
+            "source improvement76 did not reach the real result77");
     auto preview = initial_world();
     preview.scripts.user_flags |= 16U;
     preview.rank = 5; // Explicit eligibility fixture, never a claimed natural rank/commerce unlock.
@@ -251,7 +265,7 @@ void world_facility_static_render_fixture() {
         for (int frame = 0; frame < 4; ++frame) {
             BeginDrawing();
             ClearBackground({145, 211, 247, 255});
-            if (page.legacy_page == 75)
+            if (page.legacy_page >= 75 && page.legacy_page <= 77)
                 ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
                                               ui::world_facility_items_layout(extent), skin, true);
             else
@@ -282,5 +296,8 @@ void world_facility_static_render_fixture() {
     capture(maximum, "raw74-max.png", false);
     capture(preview, "raw74-equipment-preview.png", false);
     capture(items, "raw75-minimum.png", true);
+    capture(items, "raw75-list.png", false);
+    capture(reinforced, "raw77-result.png", false);
+    capture(reinforced, "raw77-minimum.png", true);
 }
 } // namespace ark::test

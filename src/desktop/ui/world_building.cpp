@@ -77,11 +77,12 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
     }
     fitted(skin, view.title, boxes.name, ink);
     if (view.detail_type == Type::ordinary)
-        skin.right(std::to_string(view.attributes[0]) + "G", boxes.price.x + boxes.price.width,
-                   boxes.price.y, blue, 11);
+        fitted(skin, "价格 " + std::to_string(view.attributes[0]) + "G", boxes.price, blue);
     skin.content(boxes.picture, {226, 247, 212, 255});
     skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames, boxes.picture);
     if (view.detail_type == Type::ordinary) {
+        skin.content({boxes.values.x - 3, boxes.values.y - 3, boxes.values.width + 3, 34},
+                     {255, 248, 214, 255});
         constexpr const char *labels[]{"品质", "魅力"};
         for (int row = 0; row < 2; ++row) {
             const float y = boxes.values.y + row * 15;
@@ -152,11 +153,16 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                  world_build_graphic(item, simulation::rules::FacilityOrientation::first)});
         }
         view.catalogs[0].insert(view.catalogs[0].begin(), roads.begin(), roads.end());
-        view.catalogs[0].push_back(
-            {-1, "撤除", 0, {}, {}, "destruct00.png", {0, 0, 60, 29}, {4, 3}});
+        std::vector<WorldBuildingRow> tools{
+            {-1, "撤除", 0, {}, {}, "destruct00.png", {0, 0, 60, 29}, {4, 3}}};
         if (state.scripts.user_flags & 32U)
-            view.catalogs[0].push_back(
-                {-2, "配置更替", 300, {}, {}, "moveTenant.png", {0, 0, 63, 32}, {1, 0}});
+            tools.push_back(
+                {-2, "交换位置", 300, {}, {}, "moveTenant.png", {0, 0, 63, 32}, {1, 0}});
+        // S057 places editing entries directly after roads. Preserve the base building
+        // order/duplicates and all command identities; road-absent behavior stays unchanged.
+        const auto tools_position =
+            roads.empty() ? view.catalogs[0].end() : view.catalogs[0].begin() + roads.size();
+        view.catalogs[0].insert(tools_position, tools.begin(), tools.end());
         for (auto &tab : view.catalogs)
             for (auto &row : tab)
                 if (row.identity >= 0 && definition(state, row.identity).kind == 12)
@@ -249,7 +255,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
 WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Building page requires the supported logical viewport");
-    const float width = std::min(310.F, extent.width - 16.F);
+    const float width = std::min(raw == 74 ? 224.F : 310.F, extent.width - 16.F);
     // Keep five source rows at ordinary desktop heights; a shorter window scrolls the
     // remaining rows. Other management pages retain their existing responsive geometry.
     const float height =
@@ -268,6 +274,10 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     layout.confirm = {p.x + width - 68, p.y + height - 28, 58, 20};
     layout.previous = {p.x + width / 2 - 32, p.y + height - 28, 28, 20};
     layout.next = {p.x + width / 2 + 4, p.y + height - 28, 28, 20};
+    if (raw == 74) {
+        layout.previous = {p.x + 5, p.y + 3, 18, 14};
+        layout.next = {p.x + width - 23, p.y + 3, 18, 14};
+    }
     return layout;
 }
 int world_building_visible_rows(const WorldBuildingLayout &layout) {
@@ -379,12 +389,19 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback) {
-    skin.window(layout.panel, view.title);
+    // S043/S047 label the page, while the real facility name remains in its body.
+    const auto title =
+        view.raw == 74 && !view.definition_preview
+            ? "设施信息" + (view.page_count > 1 ? " " + std::to_string(view.phase + 1) + "/" +
+                                                      std::to_string(view.page_count)
+                                                : "")
+            : view.title;
+    skin.window(layout.panel, title);
     skin.content(layout.body);
     if (view.initialized) {
         if (view.raw == 21 || view.raw == 80) {
             if (view.raw == 21) {
-                constexpr const char *titles[]{"道路植物", "商店", "饮食"};
+                constexpr const char *titles[]{"设备", "一般", "饮食"}; // S057 display wording.
                 for (int tab = 0; tab < 3; ++tab) {
                     if (tab == selection.tab)
                         DrawRectangleRec(layout.tabs[tab], {210, 229, 195, 255});
@@ -459,10 +476,8 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
     if (view.raw != 81)
         skin.button(layout.cancel, "返回", active);
     if (view.raw == 74 && view.page_count > 1) {
-        skin.button(layout.previous, "<", active);
-        skin.button(layout.next, ">", active);
-        skin.right(std::to_string(view.phase + 1) + "/" + std::to_string(view.page_count),
-                   layout.panel.x + layout.panel.width - 12, layout.panel.y + 10, WHITE, 10);
+        skin.centered("<", layout.previous, active ? GOLD : GRAY);
+        skin.centered(">", layout.next, active ? GOLD : GRAY);
     }
     if (view.raw != 74 || view.can_confirm)
         skin.button(layout.confirm,

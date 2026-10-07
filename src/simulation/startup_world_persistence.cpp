@@ -1,5 +1,5 @@
 #include "ark/simulation/startup_world_persistence.hpp"
-#include "ark/assets/archive.hpp"
+#include "ark/assets/sha256.hpp"
 #include "startup_world_codec.hpp"
 #include "startup_world_file_io.hpp"
 #include "startup_world_restore_validation.hpp"

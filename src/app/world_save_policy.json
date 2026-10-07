@@ -1,0 +1,2786 @@
+{
+  "policy_version": 1,
+  "format": "ARKSAVE1",
+  "schema": 2,
+  "scope": "All fields returned by the shared Owner AST inventory: 92 reachable records plus two private wrappers. Standard library internals are not state declarations. Maintenance snapshot helper fields are included solely as an evolution guard.",
+  "classification_scale": "type.field declaration. A save action applies only below an included ancestor. wire_fields records existing codec inclusion independently: an encoded value may be inherited or rebuilt on load. No automatic format migration, codec generation or policy rewriting.",
+  "sources": [
+    "docs/MILESTONES.md#adr-0044",
+    "src/app/world_save.md",
+    "src/app/world_save_fields.hpp",
+    "src/app/world_save_restore.cpp"
+  ],
+  "actions": {
+    "save": "Retain an explicitly encoded field within a supported durable branch; existing conditional cache refresh remains documented.",
+    "inherit": "Use the current session value on restore; a historical encoded speed field is not authoritative.",
+    "rebuild": "Rebind or recreate through the existing stable-main/pure map/reference projection policy without advancing consumers.",
+    "discard": "Exclude transient, omitted default or maintenance-only state from the player file; never synthesize a new gameplay value."
+  },
+  "records": [
+    {
+      "name": "ark::simulation::StartupWorldActorMetadata",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "sex",
+        "profession",
+        "weapon",
+        "cached_view",
+        "render_position",
+        "cached_screen_position"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["sex", "int"],
+            ["profession", "int"],
+            ["weapon", "int"],
+            ["cached_view", "ref::Position"],
+            ["render_position", "ref::CombatPoint"],
+            ["cached_screen_position", "ref::Position"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldFocusActor",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["actor", "ref::BattleActorRecord"],
+            ["perception", "ref::RewardActorContext"],
+            ["routes", "ref::RescueActorContext"],
+            ["metadata", "StartupWorldActorMetadata"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldHumanCalendar",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "absent_months",
+        "yearly_totals",
+        "legacy_F",
+        "legacy_G",
+        "continuation_cost",
+        "contribution",
+        "celebrations"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["absent_months", "int"],
+            ["yearly_totals", "std::array<int, 3>"],
+            ["legacy_F", "int"],
+            ["legacy_G", "int"],
+            ["continuation_cost", "int"],
+            ["contribution", "int"],
+            ["celebrations", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldRuntimeState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "scene",
+        "task",
+        "shop_humans",
+        "shop_actors",
+        "items",
+        "dungeon_facilities",
+        "dungeon_actors",
+        "catalog",
+        "shops",
+        "shop_order",
+        "item_rewards",
+        "human_definition_state",
+        "human_homes",
+        "human_presence",
+        "human_flags",
+        "human_calendar",
+        "actor_metadata",
+        "facility_original_ids",
+        "facility_ordinals",
+        "facility_residents",
+        "facility_difficulties",
+        "facility_flags",
+        "neighbourhood",
+        "neighbourhood_details",
+        "surface",
+        "road_patches",
+        "scripts",
+        "cash_peak",
+        "cash_peak_village",
+        "monthly_cash",
+        "facility_monthly_cash",
+        "facility_month_age",
+        "shop_item_stock",
+        "report_state",
+        "report_counter",
+        "report_snapshot",
+        "report_records",
+        "report_new_records",
+        "report_portraits",
+        "report_kills",
+        "maximum_income",
+        "village_points",
+        "popularity",
+        "maximum_popularity",
+        "popularity_display",
+        "popularity_rewards",
+        "facility_definitions",
+        "facility_presence",
+        "residence_catalog_available",
+        "human_profession_changes",
+        "residence_hint_counter",
+        "activity_flags",
+        "activity_counts",
+        "human_activity_previous",
+        "facility_details",
+        "task_progress",
+        "tasks",
+        "task_order",
+        "task_original_ids",
+        "task_sequence",
+        "next_facility_identity",
+        "next_task_identity",
+        "task_replay_order",
+        "task_special_selection",
+        "task_special_selection_index",
+        "task_special_selection_list",
+        "fence_level",
+        "base_variants",
+        "active_task",
+        "participants",
+        "sites",
+        "ground_definition",
+        "special_ground_definition",
+        "arrival_counter",
+        "event89_count",
+        "entry_updates",
+        "global_updates",
+        "camera",
+        "previous_camera",
+        "camera_velocity",
+        "facility_item_confirmations",
+        "item_commerce_read",
+        "facility_commerce_read",
+        "medal_count",
+        "facility_free_builds",
+        "facility_unlock_counters",
+        "facility_unlock_notices",
+        "rank",
+        "quarter_counter",
+        "legacy_D",
+        "legacy_n",
+        "yearly_statistics",
+        "events_held",
+        "task_subperiods",
+        "generation_retry",
+        "completion_mode",
+        "system_completion_mode",
+        "save_marker",
+        "system_unlock_data",
+        "rank_met",
+        "rank_values",
+        "rank_history",
+        "simulation_steps",
+        "clock_parameter",
+        "calendar_advance"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["scene", "ref::WorldSceneState"],
+            ["task", "ref::WorldEventTask"],
+            ["shop_humans", "std::map<int, ref::ShopHumanRecord>"],
+            ["shop_actors", "std::map<ref::CharacterId, ref::ShopActorRecord>"],
+            ["items", "std::map<int, ref::ObjectCatalogRecord>"],
+            ["dungeon_facilities", "std::map<std::uint64_t, ref::DungeonFacilityProgress>"],
+            ["dungeon_actors", "std::map<ref::CharacterId, ref::DungeonActorProgress>"],
+            ["catalog", "std::map<std::pair<int, int>, ref::ObjectCatalogRecord>"],
+            ["shops", "std::map<std::uint64_t, ref::ObjectShopRecord>"],
+            ["shop_order", "std::vector<std::uint64_t>"],
+            ["item_rewards", "int"],
+            ["human_definition_state", "std::map<int, int>"],
+            ["human_homes", "std::map<int, std::array<int, 4>>"],
+            ["human_presence", "std::map<int, int>"],
+            ["human_flags", "std::map<int, std::uint32_t>"],
+            ["human_calendar", "std::map<int, StartupWorldHumanCalendar>"],
+            ["actor_metadata", "std::map<ref::CharacterId, StartupWorldActorMetadata>"],
+            ["facility_original_ids", "std::map<std::uint64_t, int>"],
+            ["facility_ordinals", "std::map<std::uint64_t, int>"],
+            ["facility_residents", "std::map<std::uint64_t, int>"],
+            ["facility_difficulties", "std::map<std::uint64_t, int>"],
+            ["facility_flags", "std::map<std::uint64_t, std::uint32_t>"],
+            ["neighbourhood_details", "std::map<std::uint64_t, ref::WorldMapNeighbourCache>"],
+            ["surface", "std::vector<ref::DungeonFinishSurface>"],
+            ["scripts", "ref::WorldScriptState"],
+            ["cash_peak", "std::int64_t"],
+            ["cash_peak_village", "std::string"],
+            ["monthly_cash", "std::array<std::array<std::array<int, 2>, 5>, 12>"],
+            ["facility_monthly_cash", "std::map<std::uint64_t, std::array<std::array<int, 2>, 12>>"],
+            ["facility_month_age", "std::map<std::uint64_t, int>"],
+            ["shop_item_stock", "std::map<int, ref::CalendarMaintenanceShopItem>"],
+            ["report_state", "int"],
+            ["report_counter", "int"],
+            ["report_snapshot", "std::array<int, 6>"],
+            ["report_records", "std::array<int, 6>"],
+            ["report_new_records", "std::array<bool, 6>"],
+            ["report_portraits", "std::array<int, 5>"],
+            ["report_kills", "std::vector<int>"],
+            ["maximum_income", "int"],
+            ["village_points", "int"],
+            ["popularity", "int"],
+            ["maximum_popularity", "int"],
+            ["popularity_display", "bool"],
+            ["popularity_rewards", "std::vector<ref::WorldPopularityReward>"],
+            ["facility_definitions", "std::map<int, ref::WorldFacilityUpdateDefinition>"],
+            ["facility_presence", "std::map<int, int>"],
+            ["residence_catalog_available", "std::map<int, bool>"],
+            ["human_profession_changes", "std::map<int, std::vector<int>>"],
+            ["residence_hint_counter", "int"],
+            ["activity_flags", "std::map<int, std::uint32_t>"],
+            ["activity_counts", "std::map<int, int>"],
+            ["human_activity_previous", "std::map<int, int>"],
+            ["facility_details", "std::map<std::uint64_t, ref::WorldFacilityUpdateDetails>"],
+            ["task_progress", "ref::DungeonTaskSuccessState"],
+            ["tasks", "std::map<std::uint64_t, ref::DungeonFinishTask>"],
+            ["task_order", "std::vector<std::uint64_t>"],
+            ["task_original_ids", "std::map<std::uint64_t, int>"],
+            ["task_sequence", "int"],
+            ["next_facility_identity", "std::uint64_t"],
+            ["next_task_identity", "std::uint64_t"],
+            ["task_replay_order", "std::vector<int>"],
+            ["task_special_selection", "int"],
+            ["task_special_selection_index", "int"],
+            ["task_special_selection_list", "std::vector<int>"],
+            ["fence_level", "int"],
+            ["base_variants", "std::vector<int>"],
+            ["active_task", "std::optional<std::uint64_t>"],
+            ["participants", "std::vector<int>"],
+            ["sites", "std::map<std::uint64_t, ref::DungeonFinishSite>"],
+            ["ground_definition", "int"],
+            ["special_ground_definition", "int"],
+            ["arrival_counter", "int"],
+            ["event89_count", "int"],
+            ["entry_updates", "int"],
+            ["global_updates", "int"],
+            ["camera", "std::array<float, 2>"],
+            ["previous_camera", "std::array<float, 2>"],
+            ["camera_velocity", "std::array<float, 2>"],
+            ["facility_item_confirmations", "std::map<std::uint64_t, int>"],
+            ["item_commerce_read", "std::map<int, bool>"],
+            ["facility_commerce_read", "std::map<int, bool>"],
+            ["medal_count", "int"],
+            ["facility_free_builds", "std::map<int, int>"],
+            ["facility_unlock_counters", "std::map<int, int>"],
+            ["facility_unlock_notices", "std::map<int, bool>"],
+            ["rank", "int"],
+            ["quarter_counter", "int"],
+            ["legacy_D", "int"],
+            ["legacy_n", "std::array<std::int32_t, 13>"],
+            ["yearly_statistics", "std::vector<std::array<std::int32_t, 10>>"],
+            ["events_held", "int"],
+            ["task_subperiods", "int"],
+            ["generation_retry", "bool"],
+            ["completion_mode", "int"],
+            ["system_completion_mode", "int"],
+            ["save_marker", "int"],
+            ["system_unlock_data", "std::array<std::vector<std::uint8_t>, 2>"],
+            ["rank_met", "std::array<bool, 4>"],
+            ["rank_values", "std::array<int, 4>"],
+            ["rank_history", "std::array<std::array<int, 2>, 7>"],
+            ["simulation_steps", "std::uint64_t"],
+            ["clock_parameter", "int"],
+            ["calendar_advance", "int"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Rebind the fixed rule singleton before validation; never serialize a pointer.",
+          "fields": [
+            ["rules", "const StartupWorldRules *"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Wire includes the previous map-derived values; prepare restores through the published pure map refresh, preserving its conditional/unscanned behavior.",
+          "fields": [
+            ["neighbourhood", "std::map<std::uint64_t, std::array<int, 3>>"],
+            ["road_patches", "std::vector<std::array<bool, 2>>"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["exploration_summaries", "std::map<std::uint64_t, ref::WorldExplorationSummary>"],
+            ["exploration_displays", "std::vector<ref::WorldExplorationGroundDisplay>"],
+            ["dungeon_labels", "std::vector<ref::DungeonCrewRequest>"],
+            ["popularity_pulses", "std::vector<std::array<int, 3>>"],
+            ["page_human_bindings", "std::map<std::uint64_t, int>"],
+            ["task_abort_questions", "std::map<std::uint64_t, std::uint64_t>"],
+            ["task_abort_answers", "std::map<std::uint64_t, int>"],
+            ["human_pages_initialized", "std::set<std::uint64_t>"],
+            ["human_page_catalogs", "std::map<std::uint64_t, std::vector<int>>"],
+            ["equipment_page_catalogs", "std::map<std::uint64_t, std::array<std::vector<int>, 5>>"],
+            ["human_page_selections", "std::map<std::uint64_t, int>"],
+            ["page_job_bindings", "std::map<std::uint64_t, int>"],
+            ["human_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
+            ["human_page_answers", "std::map<std::uint64_t, int>"],
+            ["human_equipment_choices", "std::map<std::uint64_t, std::array<int, 2>>"],
+            ["human_attribute_display", "std::array<std::array<int, 6>, 3>"],
+            ["equipment_attribute_display", "std::array<std::array<int, 4>, 3>"],
+            ["human_gift_scores", "std::map<std::uint64_t, int>"],
+            ["human_gift_messages", "std::map<std::uint64_t, std::string>"],
+            ["tax_page_residents", "std::map<std::uint64_t, std::vector<int>>"],
+            ["tax_page_selection", "std::map<std::uint64_t, int>"],
+            ["tax_page_scroll", "std::map<std::uint64_t, int>"],
+            ["activity_pages_initialized", "std::set<std::uint64_t>"],
+            ["activity_page_bindings", "std::map<std::uint64_t, int>"],
+            ["activity_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["activity_page_display_humans", "std::map<std::uint64_t, std::array<int, 2>>"],
+            ["activity_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
+            ["activity_page_answers", "std::map<std::uint64_t, int>"],
+            ["activity_page_selections", "std::map<std::uint64_t, int>"],
+            ["activity_page_scroll", "std::map<std::uint64_t, int>"],
+            ["crew_summaries", "std::map<std::uint64_t, std::vector<int>>"],
+            ["camera_delay", "int"],
+            ["camera_follow", "int"],
+            ["build_mode", "int"],
+            ["build_definition", "std::optional<int>"],
+            ["build_anchor", "std::optional<ref::Position>"],
+            ["build_moving_facility", "std::optional<std::uint64_t>"],
+            ["build_feedback_counter", "int"],
+            ["build_feedback_message", "std::string"],
+            ["focus_actor", "StartupWorldFocusActor"],
+            ["focus_held_input", "std::uint32_t"],
+            ["visual_effects", "std::vector<ref::ActorEffectRecord>"],
+            ["delayed_effects", "std::vector<std::array<int, 4>>"],
+            ["global_effects", "std::vector<std::array<int, 2>>"],
+            ["sound_requests", "std::vector<int>"],
+            ["page_counters", "std::map<std::uint64_t, int>"],
+            ["page_phases", "std::map<std::uint64_t, int>"],
+            ["task_page_lists", "std::map<std::uint64_t, std::vector<std::uint64_t>>"],
+            ["task_recruitment_pages", "std::map<std::uint64_t, ref::TaskRecruitmentAnimation>"],
+            ["task_extra_pages", "std::map<std::uint64_t, std::vector<int>>"],
+            ["task_page_predictions", "std::map<std::uint64_t, int>"],
+            ["task_page_acceleration", "std::map<std::uint64_t, bool>"],
+            ["page_secondary_counters", "std::map<std::uint64_t, int>"],
+            ["task_display_table", "std::array<std::array<std::int32_t, 9>, 8>"],
+            ["task_display_initialized", "std::set<std::uint64_t>"],
+            ["deadline_initialized", "std::set<std::uint64_t>"],
+            ["deadline_grades", "std::map<std::uint64_t, int>"],
+            ["deadline_returns", "std::map<std::uint64_t, int>"],
+            ["deadline_closed_page", "std::optional<ref::WorldScriptPage>"],
+            ["award_rankings", "std::map<std::uint64_t, std::vector<int>>"],
+            ["award_announced", "std::map<std::uint64_t, bool>"],
+            ["award_termination_pending", "std::map<std::uint64_t, bool>"],
+            ["award_pending_humans", "std::map<std::uint64_t, int>"],
+            ["reward_display", "std::array<std::array<int, 2>, 3>"],
+            ["effort_display", "std::array<std::array<int, 4>, 3>"],
+            ["facility_page_bindings", "std::map<std::uint64_t, std::uint64_t>"],
+            ["facility_definition_page_bindings", "std::map<std::uint64_t, int>"],
+            ["facility_page_neighbours", "std::map<std::uint64_t, std::vector<ref::NeighbourSource>>"],
+            ["build_page_catalogs", "std::map<std::uint64_t, std::array<std::vector<int>, 3>>"],
+            ["residence_page_candidates", "std::map<std::uint64_t, std::vector<int>>"],
+            ["facility_upgrade_initialized", "std::set<std::uint64_t>"],
+            ["facility_upgrade_display", "std::array<std::array<std::int64_t, 3>, 3>"],
+            ["facility_item_pages_initialized", "std::set<std::uint64_t>"],
+            ["facility_item_page_items", "std::map<std::uint64_t, int>"],
+            ["facility_item_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["facility_item_page_selections", "std::map<std::uint64_t, int>"],
+            ["facility_item_response", "int"],
+            ["commerce_pages_initialized", "std::set<std::uint64_t>"],
+            ["commerce_page_data", "std::map<std::uint64_t, std::array<int, 6>>"],
+            ["commerce_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["confirm_input", "bool"],
+            ["cancel_input", "bool"],
+            ["menu_input", "bool"],
+            ["page_confirm_held", "bool"],
+            ["deadline_page", "std::optional<std::uint64_t>"],
+            ["rank_celebration_participants", "std::map<std::uint64_t, std::vector<std::array<int, 5>>>"]
+          ]
+        },
+        {
+          "action": "inherit",
+          "reason": "Use the current desktop viewport; it is not a saved game parameter.",
+          "fields": [
+            ["reference_viewport", "std::array<int, 4>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::AccountingReport",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["input", "ReportInput"],
+            ["categories", "std::array<CashTotals, 5>"],
+            ["displayed", "CashTotals"],
+            ["displayed_net", "std::int64_t"],
+            ["pending_points", "std::uint64_t"],
+            ["awarded_points", "std::uint16_t"],
+            ["claimed", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ActivityCandidateCell",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "position",
+        "definition",
+        "instance",
+        "cost",
+        "origin",
+        "source_index"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["position", "Position"],
+            ["definition", "CandidateDefinition"],
+            ["instance", "std::optional<CandidateInstance>"],
+            ["cost", "std::optional<std::int64_t>"],
+            ["origin", "CandidateOrigin"],
+            ["source_index", "std::size_t"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["instance_definition", "std::optional<CandidateDefinition>"],
+            ["legacy_state", "int"],
+            ["route_category", "RouteCategory"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ActorControlState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "flags",
+        "state",
+        "action",
+        "action_counter",
+        "alternate_counter",
+        "facing",
+        "queue"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["flags", "std::uint32_t"],
+            ["state", "int"],
+            ["action", "int"],
+            ["action_counter", "int"],
+            ["alternate_counter", "int"],
+            ["facing", "int"],
+            ["queue", "std::vector<LegacyActorControl>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ActorEffectState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["display", "std::vector<ActorEffectRecord>"],
+            ["delayed", "std::vector<ActorEffectRecord>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::AiRewardState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "battle",
+        "retired_actors",
+        "human_order",
+        "monster_order",
+        "contexts",
+        "growth",
+        "professions",
+        "monster_growth",
+        "monster_definition_order",
+        "monster_progress",
+        "monster_limit",
+        "encounters",
+        "encounter_order",
+        "retired_encounters",
+        "projectiles",
+        "projectile_order",
+        "next_projectile_id",
+        "accounting",
+        "next_cash_id",
+        "next_actor_id",
+        "next_encounter_id",
+        "legacy_encounter_counter",
+        "period",
+        "pending_completion",
+        "task_active",
+        "task_completed",
+        "feature16"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["battle", "BattleCommitState"],
+            ["retired_actors", "std::map<CharacterId, BattleActorRecord>"],
+            ["human_order", "std::vector<CharacterId>"],
+            ["monster_order", "std::vector<CharacterId>"],
+            ["contexts", "std::map<CharacterId, RewardActorContext>"],
+            ["growth", "std::map<int, RewardHumanDefinition>"],
+            ["professions", "std::vector<HumanProfessionRule>"],
+            ["monster_growth", "std::map<int, RewardMonsterDefinition>"],
+            ["monster_definition_order", "std::vector<int>"],
+            ["monster_progress", "int"],
+            ["monster_limit", "int"],
+            ["encounters", "std::map<std::uint64_t, RewardEncounter>"],
+            ["encounter_order", "std::vector<std::uint64_t>"],
+            ["retired_encounters", "std::map<std::uint64_t, RewardEncounter>"],
+            ["projectiles", "std::map<std::uint64_t, ProjectileState>"],
+            ["projectile_order", "std::vector<std::uint64_t>"],
+            ["next_projectile_id", "std::uint64_t"],
+            ["accounting", "PeriodAccounting"],
+            ["next_cash_id", "std::uint64_t"],
+            ["next_actor_id", "std::uint64_t"],
+            ["next_encounter_id", "std::uint64_t"],
+            ["legacy_encounter_counter", "int"],
+            ["period", "std::uint64_t"],
+            ["pending_completion", "int"],
+            ["task_active", "bool"],
+            ["task_completed", "bool"],
+            ["feature16", "bool"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Clear temporary non-facility actor roots at the player restore boundary.",
+          "fields": [
+            ["external_actor_roots", "std::set<CharacterId>"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Rebuild facility occupant roots and the current task encounter root; do not revive temporary adapter roots.",
+          "fields": [
+            ["facility_actor_roots", "std::vector<CharacterId>"],
+            ["external_encounter_roots", "std::set<std::uint64_t>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ArrivalBinding",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "goal",
+        "instance_id",
+        "definition_id"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["goal", "Position"],
+            ["instance_id", "BuildingId"],
+            ["definition_id", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::BattleActorRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "id",
+        "kind",
+        "definition",
+        "control",
+        "hp",
+        "capacity",
+        "baseline",
+        "state_counter",
+        "state_parameter",
+        "attack_count",
+        "down_timer",
+        "object_slot",
+        "rescue",
+        "encounter",
+        "group",
+        "attack_slot",
+        "monster_posture",
+        "legacy_id",
+        "body",
+        "sprite",
+        "position",
+        "attack_position",
+        "miss",
+        "damage_total",
+        "hit_count",
+        "hit_flash",
+        "label_timer",
+        "miss_label",
+        "follow",
+        "attack_armed",
+        "combo_index",
+        "combo_count",
+        "attack_idle",
+        "attack_destination",
+        "perceived_enemy",
+        "perceived_distance",
+        "blocked_battle_steps",
+        "attack_cooldown",
+        "decision_start",
+        "physics_pause",
+        "vertical_velocity",
+        "area_after"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["id", "CharacterId"],
+            ["kind", "ActorKind"],
+            ["definition", "int"],
+            ["control", "ActorControlState"],
+            ["hp", "CharacterHpState"],
+            ["capacity", "int"],
+            ["baseline", "int"],
+            ["state_counter", "int"],
+            ["state_parameter", "int"],
+            ["attack_count", "int"],
+            ["down_timer", "int"],
+            ["object_slot", "int"],
+            ["rescue", "std::optional<CharacterId>"],
+            ["encounter", "std::optional<std::uint64_t>"],
+            ["group", "std::optional<std::uint64_t>"],
+            ["attack_slot", "int"],
+            ["monster_posture", "int"],
+            ["legacy_id", "int"],
+            ["body", "int"],
+            ["sprite", "int"],
+            ["position", "CombatPoint"],
+            ["attack_position", "CombatPoint"],
+            ["miss", "bool"],
+            ["damage_total", "int"],
+            ["hit_count", "int"],
+            ["hit_flash", "int"],
+            ["label_timer", "int"],
+            ["miss_label", "bool"],
+            ["follow", "std::optional<CharacterId>"],
+            ["attack_armed", "bool"],
+            ["combo_index", "int"],
+            ["combo_count", "int"],
+            ["attack_idle", "int"],
+            ["attack_destination", "CombatPoint"],
+            ["perceived_enemy", "std::optional<CharacterId>"],
+            ["perceived_distance", "float"],
+            ["blocked_battle_steps", "int"],
+            ["attack_cooldown", "int"],
+            ["decision_start", "CombatPoint"],
+            ["physics_pause", "int"],
+            ["vertical_velocity", "float"],
+            ["area_after", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::BattleCommitState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "actors",
+        "humans",
+        "monsters",
+        "participants",
+        "quest_encounters",
+        "global_downs",
+        "defeated_definitions",
+        "drop_progress",
+        "objects",
+        "next_object_id"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["actors", "std::map<CharacterId, BattleActorRecord>"],
+            ["humans", "std::map<int, HumanBattleRecord>"],
+            ["monsters", "std::map<int, MonsterBattleRecord>"],
+            ["participants", "std::vector<int>"],
+            ["quest_encounters", "std::set<std::uint64_t>"],
+            ["global_downs", "int"],
+            ["defeated_definitions", "std::vector<int>"],
+            ["drop_progress", "int"],
+            ["objects", "std::map<std::uint64_t, GroundObjectState>"],
+            ["next_object_id", "std::uint64_t"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Rebuild positive event membership from durable scripts.event_calls; do not replay scripts.",
+          "fields": [
+            ["events", "std::set<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::BattleGroupMember",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["id", "flags"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["id", "CharacterId"],
+            ["flags", "std::uint32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::BattleGroupState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "tick",
+        "duration",
+        "cycle",
+        "alternating_side",
+        "humans",
+        "monsters"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["tick", "int"],
+            ["duration", "int"],
+            ["cycle", "int"],
+            ["alternating_side", "int"],
+            ["humans", "std::vector<BattleGroupMember>"],
+            ["monsters", "std::vector<BattleGroupMember>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::BuildingId",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "value"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["value", "std::uint64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CalendarMaintenanceShopItem",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition",
+        "minimum_rank",
+        "maximum_quantity",
+        "quantity",
+        "presence",
+        "legacy_q",
+        "newly_available"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition", "int"],
+            ["minimum_rank", "int"],
+            ["maximum_quantity", "std::int32_t"],
+            ["quantity", "std::int32_t"],
+            ["presence", "std::int32_t"],
+            ["legacy_q", "std::int32_t"],
+            ["newly_available", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CandidateDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition_id",
+        "legacy_category",
+        "definition_charm"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition_id", "std::int32_t"],
+            ["legacy_category", "std::int32_t"],
+            ["definition_charm", "std::int64_t"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["legacy_kind", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CandidateInstance",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "instance_id",
+        "definition_id",
+        "legacy_phase"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["instance_id", "BuildingId"],
+            ["definition_id", "std::int32_t"],
+            ["legacy_phase", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CashEntry",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["event_id", "std::uint64_t"],
+            ["period", "std::uint64_t"],
+            ["category", "CashCategory"],
+            ["direction", "CashDirection"],
+            ["amount", "std::int64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CashTotals",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["income", "std::int64_t"],
+            ["expense", "std::int64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CharacterHpState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "requested_delta",
+        "displayed",
+        "origin",
+        "target",
+        "animating",
+        "legacy_tick"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["requested_delta", "std::int32_t"],
+            ["displayed", "std::int32_t"],
+            ["origin", "std::int32_t"],
+            ["target", "std::int32_t"],
+            ["animating", "bool"],
+            ["legacy_tick", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CharacterId",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "value"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["value", "std::uint64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CombatInfluenceCandidate",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "width",
+        "height",
+        "human_field",
+        "monster_field"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["width", "int"],
+            ["height", "int"],
+            ["human_field", "std::vector<int>"],
+            ["monster_field", "std::vector<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::CombatPoint",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "x",
+        "height",
+        "z"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["x", "float"],
+            ["height", "float"],
+            ["z", "float"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DefeatTally",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["definition_id", "std::uint64_t"],
+            ["defeats", "std::uint64_t"],
+            ["points_per_defeat", "std::uint64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DelayedRewardState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["amount", "counter"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["amount", "int"],
+            ["counter", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonActorProgress",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "progress",
+        "previous",
+        "percent",
+        "endurance",
+        "retreat_state",
+        "retreat_updates",
+        "constrained"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["progress", "int"],
+            ["previous", "int"],
+            ["percent", "int"],
+            ["endurance", "int"],
+            ["retreat_state", "int"],
+            ["retreat_updates", "int"],
+            ["constrained", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonCrewRequest",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["kind", "DungeonCrewRequestKind"],
+            ["actor", "std::optional<CharacterId>"],
+            ["first", "int"],
+            ["second", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonFacilityProgress",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "updates",
+        "progress",
+        "extent",
+        "percent",
+        "previous_percent",
+        "challenges"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["updates", "int"],
+            ["progress", "int"],
+            ["extent", "int"],
+            ["percent", "int"],
+            ["previous_percent", "int"],
+            ["challenges", "std::vector<DungeonChallenge>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonFinishSite",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "occupied_cells"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["occupied_cells", "std::vector<Position>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonFinishSurface",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition",
+        "updates",
+        "instance",
+        "fragment",
+        "display_definition",
+        "variant",
+        "road_mask"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition", "int"],
+            ["updates", "int"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Wire includes these map display fields; published pure map refresh replaces them without ticking or drawing.",
+          "fields": [
+            ["instance", "int"],
+            ["fragment", "int"],
+            ["display_definition", "int"],
+            ["variant", "int"],
+            ["road_mask", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonFinishTask",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "identity",
+        "definition",
+        "difficulty",
+        "pending_completion_value",
+        "facility",
+        "site"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["identity", "std::uint64_t"],
+            ["definition", "int"],
+            ["difficulty", "int"],
+            ["pending_completion_value", "int"],
+            ["facility", "std::optional<std::uint64_t>"],
+            ["site", "std::optional<Position>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonMonsterAvailability",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["status", "pending_notice"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["status", "int"],
+            ["pending_notice", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonTaskDefinitionProgress",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "kind",
+        "flags",
+        "completed",
+        "monster_definition"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["kind", "int"],
+            ["flags", "std::uint32_t"],
+            ["completed", "int"],
+            ["monster_definition", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::DungeonTaskSuccessState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "successes",
+        "ordinary_explorations",
+        "exploration_stage",
+        "exploration_dates",
+        "task_pool_progress",
+        "definitions",
+        "monsters",
+        "remaining_task_definitions"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["successes", "int"],
+            ["ordinary_explorations", "int"],
+            ["exploration_stage", "int"],
+            ["exploration_dates", "std::array<std::array<int, 2>, 7>"],
+            ["task_pool_progress", "int"],
+            ["definitions", "std::map<int, DungeonTaskDefinitionProgress>"],
+            ["monsters", "std::map<int, DungeonMonsterAvailability>"],
+            ["remaining_task_definitions", "std::vector<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::EncounterRuntimeState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "id",
+        "center",
+        "state",
+        "counter",
+        "idle",
+        "spawned",
+        "quota",
+        "reward"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["id", "std::uint64_t"],
+            ["center", "Position"],
+            ["state", "int"],
+            ["counter", "int"],
+            ["idle", "int"],
+            ["spawned", "int"],
+            ["quota", "int"],
+            ["reward", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityArrivalState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "legacy_visit_counts",
+        "legacy_category_one_count",
+        "legacy_category_six_counter",
+        "last_visited_instance",
+        "legacy_actor_total",
+        "current_month_facility_sales"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["legacy_visit_counts", "std::array<std::int32_t, 6>"],
+            ["legacy_category_one_count", "std::int32_t"],
+            ["legacy_category_six_counter", "std::int32_t"],
+            ["last_visited_instance", "std::optional<BuildingId>"],
+            ["legacy_actor_total", "std::int32_t"],
+            ["current_month_facility_sales", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityDeparture",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "category",
+        "selection",
+        "binding",
+        "route",
+        "legacy_direction"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["category", "std::int32_t"],
+            ["selection", "SnapshotFacilityTarget"],
+            ["binding", "ArrivalBinding"],
+            ["route", "LegacyPathResult"],
+            ["legacy_direction", "std::optional<std::int32_t>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityEconomyDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "attributes",
+        "upgrade_uses",
+        "construction_cost",
+        "construction_ticks",
+        "legacy_flags",
+        "decoration"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["attributes", "std::array<LevelEndpoints, 4>"],
+            ["upgrade_uses", "LevelEndpoints"],
+            ["construction_cost", "std::int32_t"],
+            ["construction_ticks", "std::int32_t"],
+            ["legacy_flags", "std::uint32_t"],
+            ["decoration", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityPlacement",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "instance_id",
+        "definition_id",
+        "shape",
+        "orientation",
+        "anchor"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["instance_id", "BuildingId"],
+            ["definition_id", "std::int32_t"],
+            ["shape", "FacilityShape"],
+            ["orientation", "FacilityOrientation"],
+            ["anchor", "Position"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityTileBinding",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "instance_id",
+        "definition_id",
+        "fragment_index"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["instance_id", "BuildingId"],
+            ["definition_id", "std::int32_t"],
+            ["fragment_index", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::FacilityUseProgress",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "level",
+        "completed_uses",
+        "upgrade_pending"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["level", "int"],
+            ["completed_uses", "std::int32_t"],
+            ["upgrade_pending", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::GroundObjectState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "id",
+        "state",
+        "counter",
+        "duration",
+        "delay",
+        "kind",
+        "definition",
+        "position",
+        "velocity",
+        "acceleration",
+        "cached_cell",
+        "inside_town"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["id", "ObjectId"],
+            ["state", "int"],
+            ["counter", "int"],
+            ["duration", "int"],
+            ["delay", "int"],
+            ["kind", "int"],
+            ["definition", "int"],
+            ["position", "CombatPoint"],
+            ["velocity", "CombatPoint"],
+            ["acceleration", "CombatPoint"],
+            ["cached_cell", "Position"],
+            ["inside_town", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::HumanBattleRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "kills",
+        "killed_stat1",
+        "battle_reward_stat",
+        "task_kills",
+        "participant_downs",
+        "recent_reward",
+        "recent_kills",
+        "luck"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["kills", "int"],
+            ["killed_stat1", "int"],
+            ["battle_reward_stat", "int"],
+            ["task_kills", "int"],
+            ["participant_downs", "int"],
+            ["recent_reward", "int"],
+            ["recent_kills", "int"],
+            ["luck", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::HumanDefinitionStatsInput",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "current_profession",
+        "legacy_u",
+        "base",
+        "extra",
+        "profession_levels",
+        "equipment",
+        "learned_spells",
+        "spell_professions"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["current_profession", "int"],
+            ["legacy_u", "int"],
+            ["base", "std::array<int, 6>"],
+            ["extra", "std::array<int, 6>"],
+            ["profession_levels", "std::vector<int>"],
+            ["equipment", "std::array<std::optional<std::array<int, 4>>, 4>"],
+            ["learned_spells", "std::array<bool, 4>"],
+            ["spell_professions", "std::vector<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::HumanDerivedStats",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "growth",
+        "attributes",
+        "combat",
+        "available_spells"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["growth", "std::array<int, 6>"],
+            ["attributes", "std::array<int, 6>"],
+            ["combat", "std::array<int, 4>"],
+            ["available_spells", "std::array<bool, 4>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::HumanProfessionRule",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "maximum_growth",
+        "attribute_percent",
+        "difficulty",
+        "unlocked"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["maximum_growth", "std::array<int, 6>"],
+            ["attribute_percent", "std::array<int, 6>"],
+            ["difficulty", "int"],
+            ["unlocked", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::LegacyMap",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "width",
+        "height",
+        "cells"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["width", "int"],
+            ["height", "int"],
+            ["cells", "std::vector<LegacyMapCell>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::LegacyMapCell",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "legacy_state",
+        "category",
+        "facility"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["legacy_state", "int"],
+            ["category", "RouteCategory"],
+            ["facility", "std::optional<FacilityTileBinding>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::LegacyPathResult",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "error",
+        "steps",
+        "cost"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["error", "MapAccessError"],
+            ["steps", "std::vector<Position>"],
+            ["cost", "std::int64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::LevelEndpoints",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["first", "fifth"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["first", "std::int32_t"],
+            ["fifth", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::MonsterBattleRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "human_kills",
+        "stat1",
+        "statF",
+        "death_reward",
+        "rank",
+        "flags"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["human_kills", "int"],
+            ["stat1", "int"],
+            ["statF", "int"],
+            ["death_reward", "int"],
+            ["rank", "int"],
+            ["flags", "std::uint32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::NeighbourSource",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["instance_id", "definition_id"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["instance_id", "BuildingId"],
+            ["definition_id", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ObjectCatalogRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "flags",
+        "status",
+        "unlock_counter",
+        "newly_unlocked",
+        "inventory",
+        "free_purchases"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["flags", "std::uint32_t"],
+            ["status", "int"],
+            ["unlock_counter", "int"],
+            ["newly_unlocked", "bool"],
+            ["inventory", "int"],
+            ["free_purchases", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ObjectId",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "value"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["value", "std::uint64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ObjectShopRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "category"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["category", "int"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "This duplicate shop queue is omitted and cleared; consumer projections read retained facility_details.notices.",
+          "fields": [
+            ["notices", "std::vector<std::array<int, 2>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::PeriodAccountingSnapshot",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Maintenance-only snapshot representation; the player codec does not call snapshot/from_snapshot and does not store this helper.",
+          "fields": [
+            ["funds", "std::int64_t"],
+            ["village_points", "std::uint16_t"],
+            ["entries", "std::map<std::uint64_t, CashEntry>"],
+            ["reports", "std::map<std::uint64_t, AccountingReport>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::Position",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["x", "y"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["x", "int"],
+            ["y", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ProjectileState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "kind",
+        "caster",
+        "original_target",
+        "position",
+        "velocity",
+        "acceleration",
+        "facing",
+        "counter",
+        "delay",
+        "effect",
+        "damage"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["kind", "ProjectileKind"],
+            ["caster", "CharacterId"],
+            ["original_target", "CharacterId"],
+            ["position", "CombatPoint"],
+            ["velocity", "CombatPoint"],
+            ["acceleration", "CombatPoint"],
+            ["facing", "int"],
+            ["counter", "int"],
+            ["delay", "int"],
+            ["effect", "int"],
+            ["damage", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ReportInput",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["period", "std::uint64_t"],
+            ["charges", "std::vector<CashEntry>"],
+            ["defeats", "std::vector<DefeatTally>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RescueActorContext",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "visits",
+        "binding",
+        "path_pending",
+        "on_event_cell",
+        "definition_task_flag",
+        "journey",
+        "waypoint",
+        "horizontal_velocity",
+        "town_updates",
+        "outside_updates",
+        "blocked_updates",
+        "spawn_updates",
+        "no_path_updates",
+        "short_exit_updates",
+        "bad_area_updates",
+        "monster_mode",
+        "destination",
+        "unbound_route"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["visits", "FacilityArrivalState"],
+            ["binding", "std::optional<ArrivalBinding>"],
+            ["path_pending", "bool"],
+            ["on_event_cell", "bool"],
+            ["definition_task_flag", "bool"],
+            ["journey", "std::optional<FacilityDeparture>"],
+            ["waypoint", "std::size_t"],
+            ["horizontal_velocity", "WorldPosition"],
+            ["town_updates", "int"],
+            ["outside_updates", "int"],
+            ["blocked_updates", "int"],
+            ["spawn_updates", "int"],
+            ["no_path_updates", "int"],
+            ["short_exit_updates", "int"],
+            ["bad_area_updates", "int"],
+            ["monster_mode", "int"],
+            ["destination", "std::optional<Position>"],
+            ["unbound_route", "std::optional<LegacyPathResult>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RescueFacility",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "placement",
+        "kind",
+        "category",
+        "detail",
+        "price",
+        "status",
+        "upgrade_uses",
+        "sales",
+        "occupants",
+        "definition_wait"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["placement", "FacilityPlacement"],
+            ["kind", "int"],
+            ["category", "int"],
+            ["detail", "int"],
+            ["price", "int"],
+            ["status", "int"],
+            ["upgrade_uses", "LevelEndpoints"],
+            ["sales", "int"],
+            ["occupants", "std::vector<CharacterId>"],
+            ["definition_wait", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RescueWorldState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "ai",
+        "map",
+        "actors",
+        "facilities",
+        "human_spending",
+        "facility_uses",
+        "month_index",
+        "object_order"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["ai", "AiRewardState"],
+            ["map", "LegacyMap"],
+            ["actors", "std::map<CharacterId, RescueActorContext>"],
+            ["facilities", "std::map<std::uint64_t, RescueFacility>"],
+            ["human_spending", "std::map<int, int>"],
+            ["facility_uses", "std::map<int, FacilityUseProgress>"],
+            ["month_index", "int"],
+            ["object_order", "std::vector<std::uint64_t>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RewardActorContext",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "cell",
+        "inside_town",
+        "facility_category",
+        "move_area",
+        "half_cell",
+        "low_hp"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["cell", "Position"],
+            ["inside_town", "bool"],
+            ["facility_category", "std::optional<int>"],
+            ["move_area", "bool"],
+            ["half_cell", "Position"],
+            ["low_hp", "bool"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["effects", "ActorEffectState"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RewardEncounter",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "runtime",
+        "members",
+        "group_exists",
+        "group",
+        "legacy_id",
+        "influence",
+        "human_scratch",
+        "monster_scratch",
+        "linked_monsters"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["runtime", "EncounterRuntimeState"],
+            ["members", "std::vector<CharacterId>"],
+            ["group_exists", "bool"],
+            ["group", "BattleGroupState"],
+            ["legacy_id", "int"],
+            ["influence", "std::optional<CombatInfluenceCandidate>"],
+            ["human_scratch", "std::vector<int>"],
+            ["monster_scratch", "std::vector<int>"],
+            ["linked_monsters", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RewardHumanDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition",
+        "derived",
+        "experience",
+        "pending",
+        "notice_pending",
+        "notice_attributes"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition", "HumanDefinitionStatsInput"],
+            ["derived", "HumanDerivedStats"],
+            ["experience", "int"],
+            ["pending", "DelayedRewardState"],
+            ["notice_pending", "bool"],
+            ["notice_attributes", "std::array<std::array<int, 2>, 4>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::RewardMonsterDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "defeats",
+        "growth",
+        "base_death_reward",
+        "base_cash_reward",
+        "base_hp",
+        "body",
+        "sprite_variant",
+        "required_progress",
+        "status",
+        "newly_unlocked",
+        "introduced",
+        "has_introduction_script",
+        "base_attack",
+        "base_defense"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["defeats", "int"],
+            ["growth", "int"],
+            ["base_death_reward", "int"],
+            ["base_cash_reward", "int"],
+            ["base_hp", "int"],
+            ["body", "int"],
+            ["sprite_variant", "int"],
+            ["required_progress", "int"],
+            ["status", "int"],
+            ["newly_unlocked", "bool"],
+            ["introduced", "bool"],
+            ["has_introduction_script", "bool"],
+            ["base_attack", "int"],
+            ["base_defense", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ShopActorRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "weapon",
+        "selected_weapon",
+        "selected_armor",
+        "selected_accessory"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["weapon", "int"],
+            ["selected_weapon", "std::optional<int>"],
+            ["selected_armor", "std::optional<int>"],
+            ["selected_accessory", "std::optional<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::ShopHumanRecord",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "equipment",
+        "reselect",
+        "satisfaction"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["equipment", "std::array<std::optional<int>, 4>"],
+            ["reselect", "std::array<int, 4>"],
+            ["satisfaction", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::SnapshotFacilityTarget",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "drawn_active_index",
+        "drawn_snapshot_index",
+        "goal_snapshot_index",
+        "goal"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["drawn_active_index", "std::size_t"],
+            ["drawn_snapshot_index", "std::size_t"],
+            ["goal_snapshot_index", "std::size_t"],
+            ["goal", "ActivityCandidateCell"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::TaskRecruitmentAnimation",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["entries", "std::vector<TaskRecruitmentEntry>"],
+            ["portraits", "std::vector<int>"],
+            ["arrival_extent", "int"],
+            ["completion_tick", "int"],
+            ["portrait_timer", "int"],
+            ["displayed_count", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::TaskRecruitmentEntry",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["human", "int"],
+            ["counter", "int"],
+            ["phrase", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::TownBounds",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "left",
+        "right",
+        "top",
+        "bottom"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["left", "int"],
+            ["right", "int"],
+            ["top", "int"],
+            ["bottom", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldCalendarState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "year",
+        "month",
+        "subperiod",
+        "units",
+        "previous_units",
+        "month_ticks"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["year", "std::int32_t"],
+            ["month", "std::int32_t"],
+            ["subperiod", "std::int32_t"],
+            ["units", "std::int32_t"],
+            ["previous_units", "std::int32_t"],
+            ["month_ticks", "std::int32_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldEventTask",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition_task_flag",
+        "kind",
+        "center",
+        "encounter"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition_task_flag", "bool"],
+            ["kind", "int"],
+            ["center", "Position"],
+            ["encounter", "std::optional<std::uint64_t>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldExplorationGroundDisplay",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["cell", "Position"],
+            ["kind", "int"],
+            ["delay", "int"],
+            ["x_offset", "int"],
+            ["y_offset", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldExplorationSummary",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["legacy_page", "int"],
+            ["task", "std::uint64_t"],
+            ["definition", "int"],
+            ["rewards", "std::vector<std::array<int, 2>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldFacilityUpdateDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["flags", "popularity_reward"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["flags", "std::uint32_t"],
+            ["popularity_reward", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldFacilityUpdateDetails",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "construction_limit",
+        "condition",
+        "completion_popularity",
+        "residence_mode",
+        "resident_definition",
+        "notices"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["construction_limit", "int"],
+            ["condition", "int"],
+            ["completion_popularity", "int"],
+            ["residence_mode", "int"],
+            ["resident_definition", "int"],
+            ["notices", "std::vector<std::array<int, 2>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldMapNeighbourCache",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "current",
+        "previous",
+        "sources",
+        "visited"
+      ],
+      "groups": [
+        {
+          "action": "rebuild",
+          "reason": "Wire includes source-time caches; pure neighbour refresh reconstructs current/source/visited while preserving previous history.",
+          "fields": [
+            ["current", "std::array<int, 3>"],
+            ["sources", "std::vector<NeighbourSource>"],
+            ["visited", "bool"]
+          ]
+        },
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["previous", "std::array<int, 3>"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Do not encode this duplicate queue: pure map reconstruction takes the retained facility_details.notices.",
+          "fields": [
+            ["notices", "std::vector<std::array<int, 2>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldPopularityReward",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "definition",
+        "legacy_tag",
+        "threshold",
+        "human",
+        "facility",
+        "program",
+        "flags",
+        "status",
+        "pending_notice"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["definition", "int"],
+            ["legacy_tag", "int"],
+            ["threshold", "int"],
+            ["human", "int"],
+            ["facility", "int"],
+            ["program", "WorldScriptProgram"],
+            ["flags", "std::uint32_t"],
+            ["status", "int"],
+            ["pending_notice", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldPosition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["x", "z"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["x", "float"],
+            ["z", "float"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldRandomSnapshot",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Maintenance-only snapshot representation; the player codec does not call snapshot/from_snapshot and does not store this helper.",
+          "fields": [
+            ["engine_state", "std::uint64_t"],
+            ["tape", "std::vector<std::int32_t>"],
+            ["cursor", "std::uint64_t"],
+            ["tape_mode", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldSceneState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "world",
+        "calendar",
+        "speed_setting",
+        "frame_counter",
+        "scene_counter",
+        "first_normal_refresh"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["world", "WorldScheduleState"],
+            ["calendar", "WorldCalendarState"],
+            ["frame_counter", "int"],
+            ["scene_counter", "int"],
+            ["first_normal_refresh", "bool"]
+          ]
+        },
+        {
+          "action": "inherit",
+          "reason": "Keep the current session random stream and explicit pause, never restore them from a player file.",
+          "fields": [
+            ["random", "WorldRandomStream"],
+            ["framework_paused", "bool"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Restore ordinary stable main-scene controls; no saved modal execution resumes.",
+          "fields": [
+            ["scene_state", "int"],
+            ["processing_phase", "int"],
+            ["processing_subphase", "int"],
+            ["top_is_main", "bool"]
+          ]
+        },
+        {
+          "action": "inherit",
+          "reason": "The historical speed field is encoded, but player load retains current pacing and cannot reactivate speed2.",
+          "fields": [
+            ["speed_setting", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScheduleState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "world",
+        "surface",
+        "map_flags",
+        "town",
+        "spawn_cells",
+        "facility_order",
+        "updates",
+        "popularity_queue",
+        "rescue_available"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["world", "RescueWorldState"],
+            ["map_flags", "std::vector<std::uint32_t>"],
+            ["town", "TownBounds"],
+            ["spawn_cells", "std::vector<Position>"],
+            ["facility_order", "std::vector<std::uint64_t>"],
+            ["updates", "int"],
+            ["popularity_queue", "std::vector<std::array<int, 3>>"],
+            ["rescue_available", "bool"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Wire includes the old category cache; pure map refresh rewrites it from the restored map.",
+          "fields": [
+            ["surface", "std::vector<int>"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["hints", "std::vector<std::vector<int>>"],
+            ["floating_notes", "std::vector<std::vector<int>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptContinuation",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "event",
+        "next_instruction",
+        "remaining_updates",
+        "legacy_tag",
+        "saved_context",
+        "replacement",
+        "parameters"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["event", "int"],
+            ["next_instruction", "std::size_t"],
+            ["remaining_updates", "int"],
+            ["legacy_tag", "int"],
+            ["saved_context", "int"],
+            ["replacement", "std::string"],
+            ["parameters", "std::optional<std::vector<int>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptFacilityDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "category",
+        "level",
+        "economy",
+        "improvements",
+        "attributes"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["category", "int"],
+            ["level", "int"],
+            ["economy", "FacilityEconomyDefinition"],
+            ["improvements", "std::array<std::int32_t, 4>"],
+            ["attributes", "std::array<std::int32_t, 4>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptFinance",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["cash", "std::int64_t"],
+            ["cash_peak", "std::int64_t"],
+            ["cash_peak_village", "std::string"],
+            ["legacy_flags14", "int"],
+            ["month", "int"],
+            ["localized_gold_template", "std::optional<std::string>"],
+            ["monthly_totals", "std::array<std::array<std::array<int, 2>, 5>, 12>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptNotice",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["message", "int"],
+            ["counter", "int"],
+            ["duration", "int"],
+            ["replacement", "std::string"],
+            ["text", "std::string"],
+            ["definitions", "std::vector<int>"],
+            ["human_definition", "std::optional<int>"],
+            ["attribute_changes", "std::optional<std::array<std::array<int, 2>, 4>>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptPage",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The containing page/animation/effect/history branch is outside the player codec. These fields are deliberately not restored from ARKSAVE1.",
+          "fields": [
+            ["id", "std::uint64_t"],
+            ["lifecycle", "int"],
+            ["kind", "WorldScriptPageKind"],
+            ["legacy_page", "int"],
+            ["source_record", "int"],
+            ["replacement", "std::string"],
+            ["title", "std::string"],
+            ["paragraphs", "std::vector<std::string>"],
+            ["speaker_kind", "int"],
+            ["speaker_definition", "int"],
+            ["legacy_tag", "int"],
+            ["legacy_r", "int"],
+            ["legacy_s", "int"],
+            ["legacy_t", "int"],
+            ["legacy_f", "int"],
+            ["legacy_g", "int"],
+            ["legacy_l", "int"],
+            ["message_commands", "std::vector<int>"],
+            ["task_identity", "std::optional<std::uint64_t>"],
+            ["task_definition", "std::optional<int>"],
+            ["monster_definition", "std::optional<int>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptState",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "event_calls",
+        "continuations",
+        "context",
+        "village_name",
+        "activities",
+        "humans",
+        "professions",
+        "facilities",
+        "human_catalog_complete",
+        "facility_catalog_complete",
+        "job_counts",
+        "user_flags"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["event_calls", "std::map<int, int>"],
+            ["continuations", "std::vector<WorldScriptContinuation>"],
+            ["context", "int"],
+            ["village_name", "std::string"],
+            ["activities", "std::map<int, WorldScriptUnlockDefinition>"],
+            ["humans", "std::map<int, WorldScriptUnlockDefinition>"],
+            ["professions", "std::map<int, WorldScriptUnlockDefinition>"],
+            ["facilities", "std::map<int, WorldScriptFacilityDefinition>"],
+            ["human_catalog_complete", "bool"],
+            ["facility_catalog_complete", "bool"],
+            ["job_counts", "std::array<std::int32_t, 10>"],
+            ["user_flags", "std::uint32_t"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["pending_completion", "int"],
+            ["popularity_queue", "std::vector<std::array<int, 3>>"],
+            ["executing_page", "std::optional<std::uint64_t>"],
+            ["page_mutations_locked", "bool"],
+            ["redraw_requested", "bool"],
+            ["selected_actor", "std::optional<std::uint64_t>"],
+            ["selected_monster", "std::optional<std::uint64_t>"],
+            ["selected_facility", "std::optional<std::uint64_t>"],
+            ["human_order", "std::vector<std::uint64_t>"],
+            ["scene_mode", "int"],
+            ["scene_updates", "int"],
+            ["scene_labels", "std::array<std::string, 2>"],
+            ["selection_mode", "int"],
+            ["finance", "std::optional<WorldScriptFinance>"],
+            ["notices", "std::vector<WorldScriptNotice>"],
+            ["medal_count", "int"],
+            ["exploration_phase", "int"]
+          ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Create the single main-scene page id1 and next page id2; saved modal pages are unsupported.",
+          "fields": [
+            ["pages", "std::vector<WorldScriptPage>"],
+            ["next_page_id", "std::uint64_t"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldScriptUnlockDefinition",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [
+        "status",
+        "pending_notice",
+        "name",
+        "extra",
+        "satisfaction"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["status", "int"],
+            ["pending_notice", "bool"],
+            ["name", "std::string"],
+            ["extra", "int"],
+            ["satisfaction", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::WorldRandomStream",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "inherit",
+          "reason": "Private random wrapper state is inherited as a complete current-session stream; no engine, tape, mode or cursor bytes enter ARKSAVE1.",
+          "fields": [
+            ["engine_", "JavaEngine"],
+            ["tape_", "std::vector<std::int32_t>"],
+            ["cursor_", "std::size_t"],
+            ["tape_mode_", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::rules::PeriodAccounting",
+      "reason": "Declaration policy, not a promise that every Owner path of a reused type persists. Parent inclusion and the documented conditional restore consumers still apply.",
+      "wire_fields": ["funds_", "village_points_"],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema2 value in world_save_fields.hpp. It persists only when every enclosing player-codec branch is included; shared types under dropped pages/focus/output branches do not persist.",
+          "fields": [
+            ["funds_", "std::int64_t"],
+            ["village_points_", "std::uint16_t"]
+          ]
+        },
+        {
+          "action": "discard",
+          "reason": "Deliberately absent from this schema2 declaration visitor; fresh candidate defaults or clear_presentation handle this non-wire field. No inference from aggregates.",
+          "fields": [
+            ["entries_", "std::map<std::uint64_t, CashEntry>"],
+            ["reports_", "std::map<std::uint64_t, AccountingReport>"]
+          ]
+        }
+      ]
+    }
+  ]
+}

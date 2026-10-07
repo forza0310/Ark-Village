@@ -12,6 +12,8 @@
 
 历史接入与验收集中在[B1记录](docs/stages/B1-playable-prototype.md)：33ee056任务闭环冻结298项源/数据，四套588项标准测试及6次长测通过；随后测试整理与菜单/招募展示四套590项通过。此前e8接入通过四套构建、602项标准测试、6次额外自然/年度长测和7个真实窗口检查，最终结果已记入B1。测试结构见[tests/README](tests/README.md)。
 
+设施详情现已补名称/大图、经营值、共享等级/MAX、升级剩余人数与第二页维护费；道具页已补五行原行距布局。工程首批分离维护存取库与窗口检查职责、限制诊断统计，并加入玩家字段分类防漏；两套Debug标准318项（排除三个月）、认证双尾段及Release窗口通过，CI待验证，见[B1](docs/stages/B1-playable-prototype.md#maintainability-ui-batch)。
+
 ## 构建运行
 
 当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：所需Ark、raylib和C++运行库DLL、中文字体与许可随包提供，无需另外安装依赖。开发与测试共用DLL，避免静态代码重复进入每个测试程序。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。

@@ -22,12 +22,92 @@ const simulation::StartupDefinition &definition(const State &state, int id) {
         throw std::invalid_argument("Building page references an unknown definition");
     return *found;
 }
+app::WorldFacilityTemplate detail_type(const simulation::StartupDefinition &d) {
+    using Type = app::WorldFacilityTemplate;
+    // The same published priority applies to definition previews without an instance query.
+    return d.kind == 12                                      ? Type::home
+           : d.detail == 1 || d.detail == 4 || d.detail == 5 ? Type::equipment
+           : d.detail == 6                                   ? Type::recruitment
+           : d.kind == 2                                     ? Type::booster
+                                                             : Type::ordinary;
+}
+std::optional<std::size_t> open_products(const State &state,
+                                         const simulation::StartupDefinition &d) {
+    const int kind = d.detail == 1 ? 1 : d.detail == 4 ? 2 : d.detail == 5 ? 3 : 0;
+    if (kind == 0)
+        return {};
+    std::size_t count{};
+    for (const auto &product : state.rules->equipment)
+        if (product.shop.kind == kind && state.catalog.at({kind, product.shop.id}).status != 0)
+            ++count;
+    return count;
+}
 const std::vector<WorldBuildingRow> &rows(const WorldBuildingView &view, int tab) {
     return view.raw == 21 ? view.catalogs.at(std::clamp(tab, 0, 2)) : view.residents;
 }
 void fitted(const Skin &skin, const std::string &text, Rectangle box, Color color = ink) {
     const float size = std::min(12.F, 12.F * box.width / std::max(1.F, skin.text.width(text)));
     skin.text.draw(text, box.x, box.y, color, size);
+}
+void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layout, const Skin &skin,
+                 const WorldBuildingSelection &selection) {
+    using Type = app::WorldFacilityTemplate;
+    const auto boxes = world_building_detail_layout(layout, view.detail_type);
+    if (view.phase == 1 && !view.definition_preview) {
+        fitted(skin, "周围设施", boxes.source_heading, blue);
+        skin.right("维护费 " + std::to_string(view.attributes[3]) + "G",
+                   boxes.maintenance.x + boxes.maintenance.width, boxes.maintenance.y, blue, 10);
+        if (view.source_names.empty()) {
+            skin.centered("暂无设施来源", boxes.sources, ink, 11);
+        } else {
+            // The page cache preserves original identities/order. Names are the published
+            // subset; no total is split into invented per-source rewards or level factors.
+            const int visible =
+                std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
+            const int first =
+                std::clamp(selection.first_row, 0,
+                           std::max(0, static_cast<int>(view.source_names.size()) - visible));
+            for (int row = 0;
+                 row < visible && first + row < static_cast<int>(view.source_names.size()); ++row)
+                fitted(skin, view.source_names[first + row],
+                       {boxes.sources.x + 3, boxes.sources.y + row * boxes.source_row_height,
+                        boxes.sources.width - 6, 16});
+        }
+        return;
+    }
+    fitted(skin, view.title, boxes.name, ink);
+    if (view.detail_type == Type::ordinary)
+        skin.right(std::to_string(view.attributes[0]) + "G", boxes.price.x + boxes.price.width,
+                   boxes.price.y, blue, 11);
+    skin.content(boxes.picture, {226, 247, 212, 255});
+    skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames, boxes.picture);
+    if (view.detail_type == Type::ordinary) {
+        constexpr const char *labels[]{"品质", "魅力"};
+        for (int row = 0; row < 2; ++row) {
+            const float y = boxes.values.y + row * 15;
+            fitted(skin, labels[row], {boxes.values.x, y, 40, 14}, blue);
+            skin.right(std::to_string(view.attributes[row + 1]),
+                       boxes.values.x + boxes.values.width, y, blue, 11);
+        }
+        skin.sprites.image("wnd_lv.png", {0, 0, 17, 10}, {boxes.level.x, boxes.level.y, 17, 10});
+        if (view.level == 5)
+            skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
+                               {boxes.level.x + 22, boxes.level.y + 2, 20, 6});
+        else {
+            skin.text.draw(std::to_string(view.level), boxes.level.x + 22, boxes.level.y - 1, blue,
+                           10);
+            if (view.remaining_uses)
+                fitted(skin, "距离下个等级还有 " + std::to_string(*view.remaining_uses) + " 人",
+                       boxes.remaining, ink);
+        }
+    } else {
+        const std::string label = view.detail_type == Type::equipment
+                                      ? "商品种类 " + std::to_string(view.product_count.value_or(0))
+                                  : view.detail_type == Type::recruitment ? "入住希望者"
+                                  : view.detail_type == Type::home        ? "住宅"
+                                                                          : "周围设施";
+        skin.centered(label, boxes.remaining, ink, 11);
+    }
 }
 } // namespace
 bool world_building_page(const Page &page) {
@@ -107,15 +187,17 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
         const auto &attributes = state.scripts.facilities.at(id).attributes;
         std::copy(attributes.begin(), attributes.end(), view.attributes.begin());
         view.graphic = world_build_graphic(item, simulation::rules::FacilityOrientation::first);
-        // The source shop template displays already-open merchandise, not an invented instance.
-        const int kind = item.detail == 1 ? 1 : item.detail == 4 ? 2 : item.detail == 5 ? 3 : 0;
-        if (kind != 0) {
-            view.product_count = 0;
-            for (const auto &product : state.rules->equipment)
-                if (product.shop.kind == kind &&
-                    state.catalog.at({kind, product.shop.id}).status != 0)
-                    ++*view.product_count;
+        view.detail_type = detail_type(item);
+        const auto &progress = state.scene.world.world.facility_uses.at(id);
+        view.level = progress.level;
+        if (view.level != 5) {
+            const auto quote = simulation::startup_world_build_quote(state, id);
+            if (!quote)
+                throw std::invalid_argument("Definition preview is missing its shared level quote");
+            view.remaining_uses = quote->upgrade_uses - progress.completed_uses;
         }
+        // The source shop template displays already-open merchandise, not an invented instance.
+        view.product_count = open_products(state, item);
         view.can_confirm = true;
     } else {
         const auto binding = state.facility_page_bindings.find(page.id);
@@ -140,6 +222,17 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             if (!values)
                 throw std::invalid_argument("Facility page is missing its economy projection");
             view.attributes = values->instance_attributes;
+            const auto detail = app::query_world_facility_detail(state, *view.facility);
+            if (!detail.detail)
+                throw std::invalid_argument(
+                    "Facility page is missing its validated read-only detail");
+            view.detail_type = detail.detail->type;
+            view.level = detail.detail->level;
+            view.remaining_uses = detail.detail->remaining_uses;
+            view.graphic = world_build_graphic(item, facility.placement.orientation);
+            view.product_count = open_products(state, item);
+            for (const auto &source : state.facility_page_neighbours.at(page.id))
+                view.source_names.push_back(definition(state, source.definition_id).name);
             view.page_count = simulation::startup_world_facility_page_count(state, page);
             view.income =
                 state.facility_monthly_cash.at(*view.facility).at(state.scene.calendar.month)[0];
@@ -188,6 +281,23 @@ WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int vis
                          32};
     return {clip, {clip.x + 2, clip.y + 10}};
 }
+WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout &layout,
+                                                       app::WorldFacilityTemplate type) {
+    const auto b = layout.body;
+    WorldBuildingDetailLayout out;
+    out.name = {b.x + 3, b.y + 2, b.width - 71, 14};
+    out.price = {b.x + b.width - 64, b.y + 2, 61, 14};
+    out.picture = {type == app::WorldFacilityTemplate::ordinary ? b.x + 3
+                                                                : b.x + (b.width - 97) / 2,
+                   b.y + 21, 97, 74};
+    out.level = {out.picture.x + 3, out.picture.y + 61, 44, 10};
+    out.values = {b.x + 106, b.y + 24, b.width - 109, 74};
+    out.remaining = {b.x + 3, b.y + 98, b.width - 6, 14};
+    out.source_heading = {b.x + 3, b.y + 2, std::max(50.F, b.width - 112), 14};
+    out.maintenance = {b.x + b.width - 106, b.y + 2, 103, 14};
+    out.sources = {b.x + 3, b.y + 23, b.width - 6, b.height - 26};
+    return out;
+}
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
                                                         const WorldBuildingLayout &layout,
                                                         WorldBuildingSelection &selection,
@@ -204,6 +314,16 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
                                        : Action::facility_cancel);
     bool confirm = input.enter || hit(input.click, layout.confirm);
     if (view.raw == 74) {
+        if (view.phase == 1 && !view.definition_preview) {
+            const auto details = world_building_detail_layout(layout, view.detail_type);
+            const int visible =
+                std::min(5, static_cast<int>(details.sources.height / details.source_row_height));
+            const int scroll = input.wheel_rows + (input.down ? 1 : 0) - (input.up ? 1 : 0);
+            selection.first_row =
+                std::clamp(selection.first_row + scroll, 0,
+                           std::max(0, static_cast<int>(view.source_names.size()) - visible));
+        } else
+            selection.first_row = 0;
         if (view.page_count > 1 && (input.left || hit(input.click, layout.previous)))
             return intent(Action::facility_previous);
         if (view.page_count > 1 && (input.right || hit(input.click, layout.next)))
@@ -310,23 +430,8 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                 skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
                            10);
             }
-        } else if (view.definition_preview) {
-            skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
-                                   {layout.body.x + 3, layout.body.y + 7, 85, 75});
-            if (view.product_count) {
-                fitted(skin, "商品种类",
-                       {layout.body.x + 94, layout.body.y + 8, layout.body.width - 98, 16});
-                skin.right(std::to_string(*view.product_count),
-                           layout.body.x + layout.body.width - 4, layout.body.y + 31, blue);
-            } else {
-                constexpr const char *labels[]{"价格", "品质", "魅力"};
-                for (int row = 0; row < 3; ++row) {
-                    const float y = layout.body.y + 8 + row * 25;
-                    fitted(skin, labels[row], {layout.body.x + 94, y, 40, 16});
-                    skin.right(std::to_string(view.attributes[row]),
-                               layout.body.x + layout.body.width - 4, y, blue, 11);
-                }
-            }
+        } else if (view.raw == 74) {
+            draw_detail(view, layout, skin, selection);
         } else {
             constexpr const char *labels[]{"价格", "品质", "魅力", "维护费"};
             for (int row = 0; row < 3; ++row) {
@@ -365,7 +470,7 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                     : view.raw == 81          ? "确定"
                     : view.definition_preview ? "关闭"
                     : view.can_use_items      ? "使用道具"
-                                              : "入住",
+                                              : "入住希望者",
                     active && view.can_confirm &&
                         (view.raw != 21 || !rows(view, selection.tab).empty()));
     if (!feedback.empty())

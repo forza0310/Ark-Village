@@ -3,6 +3,7 @@
 // 2b479f6 building pages read the canonical Owner. Selection and responsive geometry are
 // desktop state; only intents cross to the simulation thread, carrying stable page/definition IDs.
 #include "../world_build_placement.hpp"
+#include "ark/app/world_facility_queries.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "layout.hpp"
 #include <optional>
@@ -28,6 +29,10 @@ struct WorldBuildingView {
     std::string title;
     std::optional<std::uint64_t> facility;
     WorldBuildGraphic graphic;
+    app::WorldFacilityTemplate detail_type{app::WorldFacilityTemplate::ordinary};
+    int level{};
+    std::optional<std::int64_t> remaining_uses; // Source d()-K; absent at shared MAX.
+    std::vector<std::string> source_names; // Page-initialized Y order; no inferred reward rows.
     std::optional<std::size_t> product_count;
     std::array<std::vector<WorldBuildingRow>, 3> catalogs;
     std::vector<WorldBuildingRow> residents;
@@ -42,6 +47,14 @@ struct WorldBuildingLayout {
     std::array<Rectangle, 3> tabs;
     float row_height{38};
 };
+// Responsive desktop positions for the published raw74 static subset. Picture dimensions
+// follow the 97x74 source region; the source image group is fitted inside this desktop region.
+struct WorldBuildingDetailLayout {
+    Rectangle name, price, picture, level, values, remaining, maintenance, sources, source_heading;
+    float source_row_height{19};
+};
+WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout &layout,
+                                                       app::WorldFacilityTemplate type);
 struct WorldBuildingSelection {
     int tab{}, selected{}, first_row{};
 };

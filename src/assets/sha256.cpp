@@ -1,7 +1,7 @@
 // Portable SHA-256 for evidence identity; independent of the game's encrypted-archive CRC.
 // Package responsibilities and evidence boundaries: ../README.md.
 
-#include "ark/assets/archive.hpp"
+#include "ark/assets/sha256.hpp"
 
 #include <array>
 #include <cstdint>

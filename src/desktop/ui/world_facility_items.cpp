@@ -85,13 +85,23 @@ WorldFacilityItemsLayout world_facility_items_layout(Extent extent) {
     out.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto p = out.panel;
     out.heading = {p.x + 10, p.y + 27, width - 20, 14};
-    out.rows = {p.x + 10, p.y + 47, width - 20, height - 118};
-    out.row_height = out.rows.height / 5;
-    out.hints = {p.x + 10, p.y + height - 65, width - 20, 14};
+    // PAGES raw75: five rows at 19 pitch; selected background is 191x16.
+    // Keep result76/77 geometry separate so this list-only adaptation changes no consumer.
+    out.result = {p.x + 10, p.y + 47, width - 20, height - 118};
+    const float row_width = std::min(191.F, width - 20);
+    out.rows = {p.x + (width - row_width) / 2, p.y + 43, row_width, 5 * 19.F};
+    out.row_height = 19;
+    out.hints = {p.x + 10, p.y + 140, width - 20, 14};
     out.feedback = {p.x + 10, p.y + height - 43, width - 20, 12};
     out.cancel = {p.x + 10, p.y + height - 26, 48, 20};
     out.confirm = {p.x + width - 58, p.y + height - 26, 48, 20};
     return out;
+}
+Rectangle world_facility_item_highlight(const WorldFacilityItemsLayout &layout, int visible_row) {
+    if (visible_row < 0 || visible_row >= 5)
+        throw std::invalid_argument("Facility item highlight requires a visible source row");
+    return {layout.rows.x, layout.rows.y + visible_row * 19 - 2, std::min(191.F, layout.rows.width),
+            16};
 }
 std::optional<WorldFacilityItemsIntent>
 world_facility_items_input(const WorldFacilityItemsView &view,
@@ -123,8 +133,8 @@ void draw_world_facility_items(const WorldFacilityItemsView &view,
                                const WorldFacilityItemsLayout &layout, const Skin &skin,
                                bool enabled, const std::string &feedback) {
     skin.window(layout.panel, view.title);
-    skin.content(
-        {layout.rows.x - 2, layout.rows.y - 2, layout.rows.width + 4, layout.rows.height + 4});
+    const auto content = view.raw == 75 ? layout.rows : layout.result;
+    skin.content({content.x - 2, content.y - 3, content.width + 4, content.height + 5});
     if (view.initialized) {
         fitted(skin, view.name, layout.heading, blue);
         if (view.raw == 75) {
@@ -135,9 +145,9 @@ void draw_world_facility_items(const WorldFacilityItemsView &view,
                 Rectangle box{layout.rows.x, layout.rows.y + n * layout.row_height,
                               layout.rows.width, layout.row_height};
                 if (index == view.selection)
-                    DrawRectangleRec(box, {255, 153, 55, 255});
-                fitted(skin, row.name, {box.x + 3, box.y + 2, box.width - 40, box.height});
-                skin.right(std::to_string(row.owned), box.x + box.width - 3, box.y + 2, blue, 10);
+                    DrawRectangleRec(world_facility_item_highlight(layout, n), {255, 153, 55, 255});
+                fitted(skin, row.name, {box.x + 3, box.y, box.width - 40, 16});
+                skin.right(std::to_string(row.owned), box.x + box.width - 3, box.y, blue, 10);
             }
             if (view.choice) {
                 constexpr const char *labels[]{"价格", "品质", "魅力"};
@@ -149,23 +159,23 @@ void draw_world_facility_items(const WorldFacilityItemsView &view,
             }
         } else if (view.raw == 76) {
             skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
-                                   {layout.rows.x + 10, layout.rows.y + 5, layout.rows.width - 20,
-                                    layout.rows.height - 25});
+                                   {layout.result.x + 10, layout.result.y + 5,
+                                    layout.result.width - 20, layout.result.height - 25});
             if (view.choice)
                 skin.centered(view.choice->name,
-                              {layout.rows.x, layout.rows.y + layout.rows.height - 20,
-                               layout.rows.width, 18});
+                              {layout.result.x, layout.result.y + layout.result.height - 20,
+                               layout.result.width, 18});
         } else {
             constexpr const char *labels[]{"价格", "品质", "魅力"};
             for (int n = 0; n < 3; ++n) {
-                const float y = layout.rows.y + n * layout.rows.height / 3;
-                fitted(skin, labels[n], {layout.rows.x + 3, y, 45, 16});
+                const float y = layout.result.y + n * layout.result.height / 3;
+                fitted(skin, labels[n], {layout.result.x + 3, y, 45, 16});
                 skin.right(std::to_string(view.attributes[0][n]) + " > " +
                                std::to_string(view.attributes[1][n]),
-                           layout.rows.x + layout.rows.width - 3, y, blue, 11);
+                           layout.result.x + layout.result.width - 3, y, blue, 11);
                 skin.right((view.attributes[2][n] >= 0 ? "+" : "") +
                                std::to_string(view.attributes[2][n]),
-                           layout.rows.x + layout.rows.width - 3, y + 15, ink, 10);
+                           layout.result.x + layout.result.width - 3, y + 15, ink, 10);
             }
         }
     }

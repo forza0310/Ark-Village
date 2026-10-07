@@ -160,8 +160,8 @@ if (mode === '--record-patch') {
     else if (entry.file.startsWith('prototype/include/dungeon_village_prototype/'))
       target = 'include/ark/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/src/')) target = 'src/simulation/' + basename(entry.file);
-    else if (entry.file.startsWith('tools/include/dungeon_village_tools/'))
-      target = 'include/ark/assets/' + basename(entry.file);
+    else if (entry.file === 'tools/include/dungeon_village_tools/archive.hpp')
+      target = 'src/assets/archive_source.hpp';
     else if (entry.file === 'tools/src/sha256.cpp') target = 'src/assets/sha256.cpp';
     else if (entry.file.startsWith('prototype/scripts/')) target = 'scripts/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/tests/'))
@@ -173,6 +173,10 @@ if (mode === '--record-patch') {
     // Namespace renaming changes C++ access spelling, not the persisted wire schema.
     if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json')) {
       let text = translate(original.toString('utf8'));
+      // Keep the complete archive declaration as private frozen evidence; consumers
+      // expose only the three portable digest overloads actually implemented here.
+      text = text.replaceAll('#include "ark/assets/archive.hpp"',
+        '#include "ark/assets/sha256.hpp"');
       if (target.endsWith('.mjs') && target.startsWith('tests/'))
         text = text.replaceAll("from '../scripts/", "from '../../scripts/simulation/");
       if (target.startsWith('tests/simulation/rules/'))
@@ -194,14 +198,21 @@ if (mode === '--record-patch') {
     if (put(join(destination, target), content)) changed.push(target);
     records.push({ file: target, source: 'research/dungeon_village_1/' + entry.file,
       source_sha256: entry.sha256, source_bytes: entry.bytes,
-      sha256: digest(content), bytes: content.length });
+      sha256: digest(content), bytes: content.length,
+      ...(original.toString('utf8').includes('#include "dungeon_village_tools/archive.hpp"')
+        ? { include_adaptation: 'Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp.' } : {}) });
   }
   put(join(destination, 'assets/simulation/SOURCES.json'), JSON.stringify({
     scope: 'maintained_complete_world_rules_and_single_runtime_owner',
     snapshot_sha256: digest(snapshotBytes), files: records
   }, null, 2) + '\n');
   const rules = records.filter(v => v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
-  const runtime = records.filter(v => v.file.startsWith('src/simulation/') && !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
+  const persistenceModules = new Set(['startup_world_codec.cpp', 'startup_world_file_io.cpp',
+    'startup_world_persistence.cpp', 'startup_world_restore_validation.cpp']);
+  const worldSources = records.filter(v => v.file.startsWith('src/simulation/') &&
+    !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
+  const runtime = worldSources.filter(v => !persistenceModules.has(basename(v.file)));
+  const persistence = worldSources.filter(v => persistenceModules.has(basename(v.file)));
   const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp'));
   const hashes = records.filter(v => v.file === 'src/assets/sha256.cpp');
   const continuousSupport = records.filter(v => v.file === 'tests/simulation/startup_world_replay_driver.cpp');
@@ -210,11 +221,12 @@ if (mode === '--record-patch') {
   cmake += 'set(ARK_WORLD_RULE_SOURCES\n' + rules.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_RUNTIME_SOURCES\n' + runtime.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_TEST_SOURCES\n' + tests.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
-  for (const [name, entries] of [['ARK_WORLD_HASH_SOURCES', hashes],
+  for (const [name, entries] of [['ARK_WORLD_PERSISTENCE_SOURCES', persistence],
+      ['ARK_WORLD_HASH_SOURCES', hashes],
       ['ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES', continuousSupport],
       ['ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES', persistenceSupport]])
     cmake += 'set(' + name + '\n' + entries.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   put(join(destination, 'cmake/WorldSimulationSources.cmake'), cmake);
-  console.log(`Imported ${records.length} files: ${rules.length} rule sources, ${runtime.length} runtime sources, ${tests.length} C++ regressions`);
+  console.log(`Imported ${records.length} files: ${rules.length} rule sources, ${runtime.length} runtime sources, ${persistence.length} persistence sources, ${tests.length} C++ regressions`);
   console.log(`Changed ${changed.length} product files:\n${changed.join('\n')}`);
 }

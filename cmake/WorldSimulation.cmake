@@ -55,10 +55,17 @@ if(ARK_LIBRARIES_ONLY)
     target_include_directories(ark_world_rules PUBLIC "${ARK_WORLD_ROOT}/include")
     ark_world_target(ark_world_rules)
     add_library(ark_world_runtime SHARED ${ARK_WORLD_RUNTIME_SOURCES}
-        "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}" "${ARK_WORLD_PERSISTENCE_CPP}")
+        "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}")
     target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
-    target_link_libraries(ark_world_runtime PUBLIC ark_world_rules PRIVATE ark_world_hash)
+    target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
     ark_world_target(ark_world_runtime)
+    # Maintenance AVRSAVE is a consumer of the one runtime, not part of the player's
+    # world update dependency graph. The player retains its separate ARKSAVE policy.
+    add_library(ark_world_persistence SHARED ${ARK_WORLD_PERSISTENCE_SOURCES}
+        "${ARK_WORLD_PERSISTENCE_CPP}")
+    target_include_directories(ark_world_persistence PUBLIC "${ARK_WORLD_ROOT}/include")
+    target_link_libraries(ark_world_persistence PUBLIC ark_world_runtime PRIVATE ark_world_hash)
+    ark_world_target(ark_world_persistence)
 endif()
 
 option(ARK_LONG_WORLD_TESTS "Run explicit-seed annual world integration checks" OFF)
@@ -76,11 +83,12 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         target_link_libraries(${target} PRIVATE ark_world_runtime)
         if(module STREQUAL "startup_world_continuous_test")
             target_sources(${target} PRIVATE ${ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES})
+            target_link_libraries(${target} PRIVATE ark_world_persistence)
         elseif(module STREQUAL "startup_world_persistence_test")
             # Protocol/platform failures share one fixture lifecycle; helpers are not tests.
             target_sources(${target} PRIVATE ${ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES})
             target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
-            target_link_libraries(${target} PRIVATE ark_world_hash)
+            target_link_libraries(${target} PRIVATE ark_world_persistence ark_world_hash)
         endif()
         if(module MATCHES "^world_(arrivals|calendar_tasks|exploration|facility_update|gift_page|popularity|residence|runtime|scripts|world_entry)_test$")
             target_compile_definitions(${target} PRIVATE "ARK_WORLD_TEST_DATA=\"${ARK_WORLD_DATA}\"")
@@ -134,6 +142,14 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
                 --compiler "${CMAKE_CXX_COMPILER}" --check)
         set_tests_properties(simulation.startup_world_codec_coverage PROPERTIES
             TIMEOUT 120 LABELS "provenance;codec;frozen")
+        # Player ARKSAVE classifies its deliberate subset independently of full AVRSAVE.
+        # Each check owns a separate AST output so parallel CTest cannot overwrite it.
+        add_test(NAME simulation.player_save_policy
+            COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/check_player_save_policy.mjs"
+                --root "${ARK_WORLD_ROOT}" --ast "${CMAKE_CURRENT_BINARY_DIR}/player-save-policy-ast.json"
+                --compiler "${CMAKE_CXX_COMPILER}" --self-test)
+        set_tests_properties(simulation.player_save_policy PROPERTIES
+            TIMEOUT 120 LABELS "provenance;codec;player")
     endif()
     if(ARK_LONG_WORLD_TESTS)
         # Same frozen continuous suite with its explicit real-player housing strategy.

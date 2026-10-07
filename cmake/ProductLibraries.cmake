@@ -71,6 +71,7 @@ target_include_directories(ark_asset_metadata PUBLIC include)
 ark_target(ark_asset_metadata)
 
 set(ARK_PRODUCT_LIBRARIES ark_launch ark_timing ark_world_hash ark_world_rules ark_world_runtime
+    ark_world_persistence
     ark_world_visuals ark_world_queries ark_world_save ark_world_session ark_game ark_asset_metadata)
 
 if(ARK_BUILD_DESKTOP)

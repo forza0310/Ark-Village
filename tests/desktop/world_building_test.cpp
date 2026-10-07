@@ -313,6 +313,111 @@ void world_building() {
               view.attributes ==
                   sim::startup_world_facility_values(state, instance)->instance_attributes,
           "Facility view binds source instance, live economy and actual monthly cash");
+    {
+        auto details = initial_world();
+        auto sources = *details.rules;
+        details.rules = &sources;
+        const auto bun =
+            std::find_if(details.scene.world.world.facilities.begin(),
+                         details.scene.world.world.facilities.end(),
+                         [](const auto &f) { return f.second.placement.definition_id == 33; });
+        check(bun != details.scene.world.world.facilities.end(), "Actual ordinary bun shop exists");
+        auto detail_page = page;
+        detail_page.legacy_f = 33;
+        details.facility_page_bindings[detail_page.id] = bun->first;
+        details.facility_page_neighbours[detail_page.id] = {};
+        details.page_phases[detail_page.id] = 0;
+        const auto source = std::find_if(sources.facilities.begin(), sources.facilities.end(),
+                                         [](const auto &d) { return d.id == 33; });
+        source->economy.upgrade_uses = {100, 100}; // Independent display fixture: remaining100-7.
+        auto &progress = details.scene.world.world.facility_uses.at(33);
+        progress.level = details.scripts.facilities.at(33).level = 2;
+        progress.completed_uses = 7;
+        const auto untouched = details;
+        auto detail = ui::world_building_view(details, detail_page);
+        const auto query = app::query_world_facility_detail(details, bun->first);
+        check(query.detail && detail.detail_type == app::WorldFacilityTemplate::ordinary &&
+                  detail.level == 2 && detail.remaining_uses == 93 &&
+                  detail.attributes == query.detail->attributes && !detail.graphic.frames.empty() &&
+                  detail.source_names.empty(),
+              "Ordinary instance details project actual economy, shared level, remaining uses and "
+              "artwork");
+        check(details.scene.random.draws() == untouched.scene.random.draws() &&
+                  same_world_clock(details, untouched) &&
+                  details.scene.world.world.ai.accounting.funds() ==
+                      untouched.scene.world.world.ai.accounting.funds() &&
+                  details.scene.world.world.facility_uses.at(33).completed_uses == 7 &&
+                  details.scripts.facilities.at(33).level == 2,
+              "Raw74 detail queries cannot advance time, charge, increment uses or upgrade the "
+              "definition");
+        progress.level = details.scripts.facilities.at(33).level = 5;
+        detail = ui::world_building_view(details, detail_page);
+        check(detail.level == 5 && !detail.remaining_uses,
+              "Shared level5 displays MAX without inventing a sixth-level remaining count");
+        const auto maximum_maintenance = detail.attributes[3];
+        // Explicit initialized-page display fixture. These source identities/names are real;
+        // this test does not claim their positions form a naturally produced reward list.
+        const auto a = details.scene.world.facility_order.front();
+        const auto b = details.scene.world.facility_order.back();
+        const int a_definition = details.scene.world.world.facilities.at(a).placement.definition_id;
+        const int b_definition = details.scene.world.world.facilities.at(b).placement.definition_id;
+        details.facility_page_neighbours[detail_page.id] = {{rules::BuildingId{b}, b_definition},
+                                                            {rules::BuildingId{a}, a_definition}};
+        details.page_phases[detail_page.id] = 1;
+        detail = ui::world_building_view(details, detail_page);
+        const auto a_source =
+            std::find_if(sources.facilities.begin(), sources.facilities.end(),
+                         [a_definition](const auto &d) { return d.id == a_definition; });
+        const auto b_source =
+            std::find_if(sources.facilities.begin(), sources.facilities.end(),
+                         [b_definition](const auto &d) { return d.id == b_definition; });
+        check(detail.source_names == std::vector<std::string>{b_source->name, a_source->name} &&
+                  detail.neighbours == 2 && detail.attributes[3] == maximum_maintenance,
+              "Second-page names preserve initialized source order while maintenance stays the "
+              "effective instance value");
+        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
+                                  desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
+            const auto frame = ui::world_building_layout(extent, 74);
+            const auto ordinary =
+                ui::world_building_detail_layout(frame, app::WorldFacilityTemplate::ordinary);
+            const auto special =
+                ui::world_building_detail_layout(frame, app::WorldFacilityTemplate::equipment);
+            check(ordinary.picture.width == 97 && ordinary.picture.height == 74 &&
+                      ordinary.picture.y + ordinary.picture.height <=
+                          frame.body.y + frame.body.height &&
+                      ordinary.remaining.y + ordinary.remaining.height <=
+                          frame.body.y + frame.body.height &&
+                      !CheckCollisionRecs(ordinary.name, ordinary.price) &&
+                      !CheckCollisionRecs(ordinary.picture, ordinary.values) &&
+                      special.picture.x == frame.body.x + (frame.body.width - 97) / 2 &&
+                      ordinary.sources.y + ordinary.sources.height <= frame.cancel.y,
+                  "Static raw74 big-picture/value/remaining/source regions remain inside narrow "
+                  "and large windows");
+            for (const auto type :
+                 {app::WorldFacilityTemplate::equipment, app::WorldFacilityTemplate::home,
+                  app::WorldFacilityTemplate::recruitment, app::WorldFacilityTemplate::booster}) {
+                const auto template_layout = ui::world_building_detail_layout(frame, type);
+                check(
+                    template_layout.picture.x == frame.body.x + (frame.body.width - 97) / 2 &&
+                        template_layout.remaining.y + template_layout.remaining.height <=
+                            frame.body.y + frame.body.height,
+                    "Equipment/home/recruitment/booster layouts use the centered special template");
+            }
+            auto scrolling = detail;
+            scrolling.source_names.assign(8, a_source->name); // Presentation-only long list input.
+            ui::WorldBuildingSelection cursor;
+            ui::WorldBuildingInput navigation;
+            navigation.wheel_rows = 99;
+            check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
+                      cursor.first_row > 0 && cursor.first_row < 8,
+                  "Long source names can scroll locally without sending a facility transaction");
+            const int first = cursor.first_row;
+            navigation.up = true;
+            check(!ui::world_building_input(scrolling, frame, cursor, navigation, true) &&
+                      cursor.first_row == first,
+                  "Pending/paused input blocks local source scrolling as well as source actions");
+        }
+    }
     // Action gating must use current view phase/count, not assume every facility has two pages.
     view.page_count = 1;
     view.can_confirm = false;
@@ -452,7 +557,9 @@ void world_building() {
         preview_state.catalog.at({2, 1}).status = 2;
         view = ui::world_building_view(preview_state, preview);
         check(view.definition_preview && view.product_count == 2 && !view.facility &&
-                  !view.can_use_items,
+                  !view.can_use_items &&
+                  view.detail_type == app::WorldFacilityTemplate::equipment &&
+                  view.source_names.empty() && view.income == 0,
               "Armor-shop preview counts only already-open merchandise without an instance or "
               "item-use command");
     }

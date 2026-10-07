@@ -52,8 +52,10 @@ in tests is user input, not an automatic game policy; immutable checkpoints are 
 not intra-round resume points. Maintenance `startup_world_persistence.hpp` captures the full
 Owner, random and ledger; replay also captures ordered audit history and an external controller
 at a completed outer-round boundary. Restore validates both private candidates before joint
-installation. The player two-slot ARKSAVE1 flow remains separate. The portable `ark_world_hash`
-module has no raylib/image dependency. `simulation.source_provenance` checks every imported product file, including the updated
+installation. The player two-slot ARKSAVE1 flow remains separate. Maintenance codec, file I/O and generated
+identity belong to `ark_world_persistence`, which depends on the one `ark_world_runtime` and
+portable `ark_world_hash`; normal world updates and the player executable do not depend on
+these maintenance modules. The digest module has no raylib/image dependency. `simulation.source_provenance` checks every imported product file, including the updated
 hash of recorded product patches. Newly authored launch/UI files are covered by their normal
 source review and integration tests rather than pretending they came from research.
 

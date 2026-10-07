@@ -26,7 +26,7 @@ struct WorldFacilityItemsView {
     std::array<std::array<std::int64_t, 3>, 3> attributes{};
 };
 struct WorldFacilityItemsLayout {
-    Rectangle panel, heading, rows, hints, feedback, cancel, confirm;
+    Rectangle panel, heading, rows, result, hints, feedback, cancel, confirm;
     float row_height{};
 };
 struct WorldFacilityItemsInput {
@@ -43,6 +43,7 @@ bool world_facility_items_page(const simulation::rules::WorldScriptPage &page);
 WorldFacilityItemsView world_facility_items_view(const simulation::StartupWorldRuntimeState &state,
                                                  const simulation::rules::WorldScriptPage &page);
 WorldFacilityItemsLayout world_facility_items_layout(Extent extent);
+Rectangle world_facility_item_highlight(const WorldFacilityItemsLayout &layout, int visible_row);
 std::optional<WorldFacilityItemsIntent>
 world_facility_items_input(const WorldFacilityItemsView &view,
                            const WorldFacilityItemsLayout &layout,

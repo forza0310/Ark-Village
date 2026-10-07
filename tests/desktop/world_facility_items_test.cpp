@@ -124,10 +124,32 @@ void world_facility_items() {
     for (const auto extent :
          {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const auto frame = ui::world_facility_items_layout(extent);
-        check(frame.panel.y >= 24 && frame.panel.y + frame.panel.height <= extent.height - 29 &&
-                  frame.rows.y + 5 * frame.row_height <= frame.hints.y &&
-                  !CheckCollisionRecs(frame.cancel, frame.confirm),
-              "Five item rows and effect hints remain clear of date/footer and commands");
+        check(
+            frame.panel.y >= 24 && frame.panel.y + frame.panel.height <= extent.height - 29 &&
+                frame.row_height == 19 && frame.rows.height == 95 &&
+                frame.rows.y + 5 * frame.row_height <= frame.hints.y &&
+                frame.hints.y + frame.hints.height <= frame.feedback.y &&
+                frame.feedback.y + frame.feedback.height <= frame.cancel.y &&
+                !CheckCollisionRecs(frame.cancel, frame.confirm),
+            "Five original19-pitch rows and effect hints remain clear of date/footer and commands");
+        for (int row = 0; row < 5; ++row) {
+            const auto highlighted = ui::world_facility_item_highlight(frame, row);
+            check(highlighted.x == frame.rows.x && highlighted.y == frame.rows.y + 19 * row - 2 &&
+                      highlighted.width == 191 && highlighted.height == 16,
+                  "Original selected-item background keeps its191x16 region and y-minus2 offset");
+        }
+        const auto result_height = frame.panel.height - 118;
+        check(frame.result.y == frame.panel.y + 47 && frame.result.height == result_height &&
+                  frame.result.width == frame.panel.width - 20,
+              "Result76/77 keep their existing responsive body separate from the fixed-pitch list");
+        auto listing = ui::world_facility_items_view(before, before.scripts.pages.back());
+        ui::WorldFacilityItemsInput row_input;
+        row_input.click = Vector2{frame.rows.x + 3, frame.rows.y + 4 * 19 + 8};
+        row_input.enter = true;
+        const auto row_choice = ui::world_facility_items_input(listing, frame, row_input, false);
+        check(row_choice && row_choice->action == Action::select && row_choice->selection == 5,
+              "Fifth visible row plus Enter selects the actual scrolled row without using the old "
+              "choice");
     }
 }
 } // namespace ark::test

@@ -1,7 +1,7 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_persistence.hpp"
 #include "ark/simulation/startup_world_village_activity.hpp"
-#include "ark/assets/archive.hpp"
+#include "ark/assets/sha256.hpp"
 #include "startup_world_codec.hpp"
 #include "startup_world_codec_checks.hpp"
 #include "startup_world_restore_checks.hpp"

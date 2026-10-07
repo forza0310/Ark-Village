@@ -96,6 +96,13 @@ const manifest={wire:'owner-le-v1: integer64,bool8,floatIEEE,container-count64; 
  enums:[...selectedEnums.values()].sort((a,b)=>compare(a.name,b.name))};
 const canonical=JSON.stringify(manifest,null,2)+'\n';
 const identity=createHash('sha256').update(canonical).digest('hex');
+// Independent policy audits reuse the exact AST walk without rewriting the maintained codec.
+const inventoryOnly = args.includes('--inventory-only');
+if (inventoryOnly) {
+ const output = get('--inventory-only');
+ if (!output || output.startsWith('--')) throw Error('missing --inventory-only output');
+ writeFileSync(output, canonical);
+}
 let code='// 由 scripts/generate_owner_codec.mjs 生成；不要手改。\n';
 code+='constexpr const char schema_identity[] = "'+identity+'";\n';
 for(const e of manifest.enums)code+='template<> bool valid_enum< ::'+e.name+'>(::'+e.name+' value) { return '+e.values.map(v=>'value == ::'+e.name+'::'+v.name).join(' || ')+'; }\n';
@@ -110,7 +117,7 @@ for(const r of manifest.records){
   code+=' + Codec<decltype(std::declval< ::'+r.name+'>().'+f.name+')>::minimum()';
  code+='; }\n};\n';
 }
-for(const [file,text] of [['startup_world_codec_fields.inc',code],['startup_world_codec_fields.json',canonical]]) {
+if (!inventoryOnly) for(const [file,text] of [['startup_world_codec_fields.inc',code],['startup_world_codec_fields.json',canonical]]) {
  const target=path.join(root,'src/simulation',file);
  const generated = file.endsWith('.inc') ? productName(text) : text;
  if(args.includes('--check')) {if(readFileSync(target,'utf8')!==generated)throw Error('codec field coverage stale: '+target);}

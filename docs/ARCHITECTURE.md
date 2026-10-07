@@ -8,7 +8,7 @@
 
 研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面。系统仅开放稳定主场景两栏手动存读档；2b479f6接续开放村办类型0/1/2、奖励95、普通道具/设施强化及按flag16开放的南瓜商会，898b653继续开放类型3地图扩张。情报和其余未交付操作仍禁用。具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
 
-2026-10-07工程审阅确认当前Owner/线程/依赖主链可继续演进；维护存取目标分离、桌面协调器职责和字段分类防漏等为待实施建议，未改变下述现架构。具体发现/验收见[PRODUCT_REVIEW](PRODUCT_REVIEW.md)，研究历史与可接范围见[当前审计](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)。
+2026-10-07用户批准工程审阅建议后，维护存取已分离为独立目标，桌面自然预运行/存档验收/截图职责移至world_inspection，并加入玩家新增字段分类检查；Owner和正常输入提交政策不变。具体边界见[ADR-0055](MILESTONES.md#adr-0055)，问题来源见[PRODUCT_REVIEW](PRODUCT_REVIEW.md)，研究历史与可接范围见[当前审计](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)。
 
 ## 三层结构
 
@@ -40,7 +40,7 @@
 
 `ark_world_save`显式编解码版本化耐久字段、验证稳定身份/引用/占地并纯重建缓存，独立于raylib。随机、页面栈、held与一次性输出不落盘；账本余额与月度累计分别保存，不重放审计费用。文件层采用同目录临时写入、flush和替换，失败保留旧档；WorldSession在FIFO边界捕获/提交，成功读取更换会话代次并拒绝旧命令。两栏手动档位于Windows用户本地目录，自动轮内恢复另待合同，退出不自动保存。字段覆盖见[存档模块](../src/app/world_save.md)。
 
-维护存取接口为`startup_world_persistence.hpp`，normal保存完整稳定主场景Owner/随机/账本，replay另存有序审计及外部控制器。它不接管玩家系统菜单。读取返回私有Session候选；控制器验证完成后才联合安装，不能将日历轮内审计当作下一帧入口。SHA256用独立纯C++ `ark_world_hash`，文件只读校验、预算及同目录替换失败不改变现Owner/旧有效档；codec字段覆盖按产品Clang AST严格比较规范清单，不编码指针或对象padding。
+维护存取接口为`startup_world_persistence.hpp`，由独立`ark_world_persistence`目标实现，依赖唯一`ark_world_runtime`及私有`ark_world_hash`。玩家运行时不依赖此维护目标；维护测试显式链接，normal保存完整稳定主场景Owner/随机/账本，replay另存有序审计及外部控制器。它不接管玩家系统菜单。读取返回私有Session候选；控制器验证完成后才联合安装，不能将日历轮内审计当作下一帧入口。SHA256用独立纯C++ `ark_world_hash`，文件只读校验、预算及同目录替换失败不改变现Owner/旧有效档；codec字段覆盖按产品Clang AST严格比较规范清单，不编码指针或对象padding。
 
 实时名单、共同c/d前缀、FIFO控制、路线推进、设施使用/退出、非人物消费者、任务成功/收尾、事件续体和日期/月报沿维护运行时组合。不能把已存在的领域函数等同于玩家能通过菜单操作该功能。
 

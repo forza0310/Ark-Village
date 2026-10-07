@@ -2,7 +2,9 @@
 
 从冻结的维护实现迁入领域与运行时回归，保留真实规则断言、错误拒绝和候选回滚检查。
 `rules/`覆盖领域消费者，当前目录覆盖完整目录、初始化、到访、场景、页栈、任务和连续世界。
-普通构建和标准C++排查使用根工程headless-*预设与CTest，不依赖raylib。本目录独立CMake入口已过期，缺少根公共初始化，当前配置会失败；处理建议见[工程审阅](../../docs/PRODUCT_REVIEW.md#independent-simulation-entry)，本轮尚未修改构建实现。
+普通构建和标准C++排查使用根工程headless-*预设与CTest，不依赖raylib。本目录独立CMake入口已撤下，尝试配置会明确提示使用根预设；公共库初始化与测试注册只维护一份。
+首次配置公共库和所需消费者后，可用`node scripts/build_product.mjs headless-debug`按序重建；CTest仍由根预设运行。
+维护文件与回放用例显式链接`ark_world_persistence`，其它Owner/规则用例只链接runtime；不引入第二份Owner或改变现有断言。
 
 脚本夹具由`ARK_WORLD_TEST_DATA`显式指向产品`assets/simulation`；不以当前目录或research路径找数据。
 导入脚本登记机械改写和原始SHA256，`source_provenance`校验产品源码/数据副本；这不等于原APK动态等价。

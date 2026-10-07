@@ -2,6 +2,8 @@
 
 // Explicit schema order. Adding a durable field requires a schema/version review.
 // No rules pointer, random engine, UI page, output queue or ledger history is visited.
+// world_save_policy.json separately classifies every Owner-reachable declaration; the AST
+// audit checks additions and visitor inclusion without generating or changing this wire order.
 #include "ark/app/world_save.hpp"
 
 #include <limits>

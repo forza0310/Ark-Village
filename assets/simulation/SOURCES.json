@@ -2347,11 +2347,11 @@
       "source": "research/dungeon_village_1/prototype/scripts/generate_owner_codec.mjs",
       "source_sha256": "eccd493865d3efdea9d67b84f890b49627c845f1d94e380e33cdc19417d6f049",
       "source_bytes": 7293,
-      "sha256": "fc5333f9399dfc2fc8fa8bcc4206218781717d553cce12ad9c9de59885533756",
-      "bytes": 7906,
+      "sha256": "ba23a87819eee21250ac54bed2b124ab296545b008c77b44d2f827a1dc591655",
+      "bytes": 8265,
       "product_patch": {
         "imported_sha256": "b77df684559d9782a96dac17bc4d7545011316b1534c14003ebe1ad2349bf4e7",
-        "reason": "Inspect product include paths and namespaces, canonicalize reachable AST record/type names back to the source logical schema before real SHA-256 computation, and compare the forward-translated C++ access table with byte-exact canonical JSON; preserve 92 records and 11 enums."
+        "reason": "Inspect product include paths and namespaces, canonicalize reachable AST record/type names back to the source logical schema before real SHA-256 computation, and compare the forward-translated C++ access table with byte-exact canonical JSON; preserve 92 records and 11 enums. Add an explicit --inventory-only output of the same canonical AST enumeration for independent player-save field classification; it does not write or check frozen codec inc/json and leaves the default and --check schema identity unchanged."
       }
     },
     {
@@ -2495,8 +2495,9 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_persistence.cpp",
       "source_sha256": "024132f9b6a3dcabebba73cf91a87133583d921bff791411d1b593127c34c778",
       "source_bytes": 15183,
-      "sha256": "df96e69cb66533f3f744c396815d4402a2c3dfdd303f0d9dd7186bad402f3977",
-      "bytes": 15081
+      "sha256": "c47d28006c6d06c4b3f64397b6d98d1fe22d3c54ca692516553e5cbdc715dd03",
+      "bytes": 15080,
+      "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     },
     {
       "file": "src/simulation/startup_world_projection.cpp",
@@ -2715,8 +2716,9 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_persistence_test.cpp",
       "source_sha256": "97abea691fd3566b5d83d641c6bfc91676a32addc732973ecdc3878167d9726b",
       "source_bytes": 13841,
-      "sha256": "ccc82345384b8cd2cc86041573104be71c2913b1dec7929e1ef3e4cbc5401046",
-      "bytes": 13757
+      "sha256": "eee7341d7904803fabb8f4d06d32340825d86bf50c262c6e18a022b0768a7a19",
+      "bytes": 13756,
+      "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     },
     {
       "file": "tests/simulation/startup_world_projection_test.cpp",
@@ -2835,7 +2837,7 @@
       "bytes": 1124
     },
     {
-      "file": "include/ark/assets/archive.hpp",
+      "file": "src/assets/archive_source.hpp",
       "source": "research/dungeon_village_1/tools/include/dungeon_village_tools/archive.hpp",
       "source_sha256": "21f1f4f19bc33637bda075a58cd9d134eb1e0e725bfb745b9fe06c79d93dd912",
       "source_bytes": 2732,
@@ -2847,8 +2849,9 @@
       "source": "research/dungeon_village_1/tools/src/sha256.cpp",
       "source_sha256": "c5c57d69a8314ce5784b034b94d4f3bec6f28b7cc5675fc8873f4af24653f005",
       "source_bytes": 4708,
-      "sha256": "ad9dd7a89f992d314f7473b9d7d6153899cbe43d2df13b3a9b4591a4a7eef7c1",
-      "bytes": 4677
+      "sha256": "d487ca75a34f073ec66ce59553434a444e482f68cf6bbc792ad0fde8a37d7233",
+      "bytes": 4676,
+      "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     }
   ]
 }

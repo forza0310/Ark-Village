@@ -1,9 +1,12 @@
 // Rendering acceptance at the published editing callsite, not natural flag32 unlock or OS input.
 // Only the gate flag is fixture input. Original map, buildings, prices and source transactions
 // remain real; no world updates are manufactured to obtain the two requested frames.
+#include "ark/simulation/startup_world_commerce.hpp"
 #include "ark/simulation/startup_world_editing.hpp"
 #include "support/world_fixture.hpp"
 #include "ui/skin.hpp"
+#include "ui/world_building.hpp"
+#include "ui/world_facility_items.hpp"
 #include "world_editing.hpp"
 
 #include <algorithm>
@@ -139,5 +142,145 @@ void render_world_edit_fixture() {
                 state.scene.random.draws() == draws && same_world_clock(state, initial),
             "source move did not preserve orientation/time/random and charge exactly300G");
     capture("callsite-moved-map.png", false);
+}
+// One explicit static-page callsite batch, with MAX, rank/commerce gate and stock supplied.
+// Source consumers create/initialize the actual pages; no natural unlock or gameplay claim.
+void world_facility_static_render_fixture() {
+    namespace sim = simulation;
+    namespace ui = desktop::ui;
+    const auto top_page = [](const auto &state) -> const sim::rules::WorldScriptPage & {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        require(page != state.scripts.pages.rend(), "static fixture lost its source top page");
+        return *page;
+    };
+    const auto open_bun = [&]() {
+        auto state = initial_world();
+        const auto bun = std::find_if(
+            state.scene.world.world.facilities.begin(), state.scene.world.world.facilities.end(),
+            [](const auto &f) { return f.second.placement.definition_id == 33; });
+        require(bun != state.scene.world.world.facilities.end(),
+                "static fixture has no real bun shop");
+        require(sim::open_startup_world_facility_page(state, bun->first) ==
+                    sim::StartupWorldRuntimeError::none,
+                "source cannot open real raw74");
+        return state;
+    };
+    auto ordinary = open_bun();
+    auto second = ordinary;
+    require(sim::act_startup_world_facility_page(second, top_page(second).id,
+                                                 sim::StartupFacilityPageAction::next) ==
+                sim::StartupWorldRuntimeError::none,
+            "source cannot turn real raw74 second page");
+    auto maximum = ordinary;
+    maximum.scene.world.world.facility_uses.at(33).level = maximum.scripts.facilities.at(33).level =
+        5;
+    auto items = open_bun();
+    for (int n = 0; n < 6; ++n) {
+        const int id = items.rules->items.at(n).identity;
+        items.items.at(id).inventory = 2 + n;
+        items.catalog.at({0, id}) = items.items.at(id);
+    }
+    require(sim::open_startup_world_facility_items(items, top_page(items).id) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_facility_item_pages(items),
+            "source cannot initialize supplied-stock raw75");
+    auto preview = initial_world();
+    preview.scripts.user_flags |= 16U;
+    preview.rank = 5; // Explicit eligibility fixture, never a claimed natural rank/commerce unlock.
+    // Source open_commerce schedules the first-visit97 introduction above the selection
+    // chain when unseen. This static-page callsite fixture supplies its already-seen gate,
+    // rather than clearing that real modal stack or pretending to have acknowledged it.
+    preview.scripts.event_calls[97] = 1;
+    require(sim::open_startup_world_commerce(preview) == sim::StartupWorldRuntimeError::none,
+            "source open83 failed with supplied rank5/flag16/seen97 gates");
+    require(top_page(preview).legacy_page == 83,
+            "supplied seen97 gate did not expose the actual83 selection page");
+    require(sim::initialize_startup_world_commerce_pages(preview), "source initialize83 failed");
+    auto commerce_page = top_page(preview).id;
+    require(sim::act_startup_world_commerce_page(preview, commerce_page,
+                                                 sim::StartupCommerceAction::select,
+                                                 2) == sim::StartupWorldRuntimeError::none,
+            "source select83 facilities option failed");
+    require(sim::act_startup_world_commerce_page(preview, commerce_page,
+                                                 sim::StartupCommerceAction::confirm) ==
+                sim::StartupWorldRuntimeError::none,
+            "source confirm83 facilities option failed");
+    require(top_page(preview).legacy_page == 85, "source confirm83 did not create actual85");
+    require(sim::initialize_startup_world_commerce_pages(preview), "source initialize85 failed");
+    commerce_page = top_page(preview).id;
+    const auto offers = sim::inspect_startup_world_commerce_page(preview, commerce_page);
+    require(offers.has_value(), "source lost facilities85 offers");
+    int equipment_index = -1;
+    for (std::size_t index = 0; index < offers->entries.size(); ++index) {
+        const auto definition =
+            std::find_if(preview.rules->facilities.begin(), preview.rules->facilities.end(),
+                         [&](const auto &d) { return d.id == offers->entries[index]; });
+        if (definition != preview.rules->facilities.end() &&
+            (definition->detail == 1 || definition->detail == 4 || definition->detail == 5)) {
+            equipment_index = static_cast<int>(index);
+            break;
+        }
+    }
+    require(equipment_index >= 0, "supplied rank has no actual equipment offer");
+    require(sim::act_startup_world_commerce_page(
+                preview, commerce_page, sim::StartupCommerceAction::select, equipment_index) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::act_startup_world_commerce_page(preview, commerce_page,
+                                                     sim::StartupCommerceAction::inspect) ==
+                    sim::StartupWorldRuntimeError::none,
+            "source cannot open real equipment definition preview");
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "facility-details";
+    std::filesystem::create_directories(output);
+    EditFixtureWindow window;
+    desktop::Sprites sprites(ARK_TEST_ASSETS);
+    std::string glyphs = "距离下个等级还有人周围设施暂无来源入住希望者商品种类维护费品质魅力住宅"
+                         "设施情报使用道具设施强化建设返回关闭使用确定价格升级";
+    for (const auto &facility : items.rules->facilities)
+        glyphs += facility.name;
+    for (const auto &item : items.rules->items)
+        glyphs += item.name;
+    desktop::Text text(ARK_TEST_FONT, glyphs);
+    ui::Skin skin(sprites, text);
+    const auto capture = [&](const auto &state, const char *filename, bool narrow) {
+        const auto before = state;
+        const desktop::Extent extent =
+            narrow ? desktop::Extent{240, 256} : desktop::Extent{720, 600};
+        SetWindowSize(static_cast<int>(extent.width), static_cast<int>(extent.height));
+        const auto &page = top_page(state);
+        for (int frame = 0; frame < 4; ++frame) {
+            BeginDrawing();
+            ClearBackground({145, 211, 247, 255});
+            if (page.legacy_page == 75)
+                ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
+                                              ui::world_facility_items_layout(extent), skin, true);
+            else
+                ui::draw_world_building(ui::world_building_view(state, page),
+                                        ui::world_building_layout(extent, 74), skin, {}, true);
+            text.flush(1, {});
+            EndDrawing();
+        }
+        const auto file = output / filename;
+        auto image = LoadImageFromScreen();
+        const bool saved = image.data && ExportImage(image, file.string().c_str());
+        if (image.data)
+            UnloadImage(image);
+        require(saved && std::filesystem::is_regular_file(file), "static fixture capture failed");
+        require(same_world_clock(state, before) &&
+                    state.scene.random.draws() == before.scene.random.draws() &&
+                    state.scene.world.world.ai.accounting.funds() ==
+                        before.scene.world.world.ai.accounting.funds() &&
+                    state.page_counters == before.page_counters &&
+                    state.page_phases == before.page_phases,
+                "static rendering changed cash/random/time or source page phase");
+        std::cout
+            << "Static facility callsite fixture / MAX, rank5/flag16/seen97 gates, stock supplied: "
+            << filename << " frames=4 screenshot=" << file.string() << '\n';
+    };
+    capture(ordinary, "raw74-ordinary.png", false);
+    capture(second, "raw74-second.png", false);
+    capture(maximum, "raw74-max.png", false);
+    capture(preview, "raw74-equipment-preview.png", false);
+    capture(items, "raw75-minimum.png", true);
 }
 } // namespace ark::test

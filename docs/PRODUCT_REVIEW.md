@@ -1,6 +1,6 @@
 # 产品可维护性审阅
 
-2026-10-07。
+2026-10-07。本文保留编码前的审阅基线与发现；用户随后批准推进，已实施范围和当前验收见[B1工程/UI批次](stages/B1-playable-prototype.md#maintainability-ui-batch)。正常输入协调器进一步拆分、字体需求统一与DLL指纹仍为后续建议。
 
 ## 范围与判断
 
@@ -78,7 +78,7 @@ AVRSAVE当前内置runtime，所以玩家也加载hash；依赖见[ProductLibrar
 
 ## P3-01：公开archive头声明未提供的功能
 
-位置：[archive.hpp](../include/ark/assets/archive.hpp#L33)、[sha256.cpp](../src/assets/sha256.cpp#L4)。只导入SHA实现，却公开read_binary_file/CRC/解密/提取等声明；误用会链接失败并误认产品可提取原资源。当前存取仅调用已有摘要，没有发现现有调用失败。
+位置：[原archive声明](../src/assets/archive_source.hpp#L33)（审阅时位于公开include/ark/assets/archive.hpp，本批移为私有来源）、[sha256.cpp](../src/assets/sha256.cpp#L4)。只导入SHA实现，却公开read_binary_file/CRC/解密/提取等声明；误用会链接失败并误认产品可提取原资源。当前存取仅调用已有摘要，没有发现现有调用失败。
 
 建议窄sha256公共接口，完整archive头按冻结需要留内部；include映射登记机械适配/product_patch，不改研究或hash凑通过。assets README区分元数据/维护摘要。验收保持SHA/协议/回放一致，公开接口与实现配套。
 

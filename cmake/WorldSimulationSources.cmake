@@ -90,16 +90,12 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_building.cpp"
-    "${ARK_WORLD_ROOT}/src/simulation/startup_world_codec.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_commerce.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_editing.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_expansion.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_facility_items.cpp"
-    "${ARK_WORLD_ROOT}/src/simulation/startup_world_file_io.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_human.cpp"
-    "${ARK_WORLD_ROOT}/src/simulation/startup_world_persistence.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"
-    "${ARK_WORLD_ROOT}/src/simulation/startup_world_restore_validation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime_arrival.cpp"
@@ -212,6 +208,12 @@ set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_scene_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_task_flow_test.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_visuals_test.cpp"
+)
+set(ARK_WORLD_PERSISTENCE_SOURCES
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_codec.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_file_io.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_persistence.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_restore_validation.cpp"
 )
 set(ARK_WORLD_HASH_SOURCES
     "${ARK_WORLD_ROOT}/src/assets/sha256.cpp"

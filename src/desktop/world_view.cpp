@@ -70,54 +70,6 @@ const rules::WorldScriptPage *active_page(const State &s) {
         return nullptr;
     return &*found;
 }
-std::string glyphs(const State &s) {
-    std::string result =
-        "本月结算打倒怪物获得村子点数收入支出收支成果入手当前活动尚未接入确定姓名打倒数下降倍完成"
-        "村庄升级条件人气最高月收入设施数量住宅任务成功次数活动举办建造满足未"
-        "大家的冒险通信下一页下一屏关闭月报待确认年度授勋持有勋章贡献结束本次吗？是否成果统计倒地"
-        "参加任务征集队员冒险队伍追加准备出发期限延长费用评价加速取消中止再加把劲需要补充战力"
-        "重新来过比较好应该撤退资金不足队伍已满暂无可追加人员页面已变化请重试当前操作不可用"
-        "菜单建设村办情报系统募集入住维护费品质魅力加成价格经营设施居民返回授予勋章转职"
-        "点击选择位置旋转超出地图请建在村庄范围内位置已被占用当前不可建设页面或选择已变化"
-        "村庄晋级能力上升自宅完成现在下级恢复攻击防御魔法条件说明满足尚未达成庆典勇气"
-        "胜利！讨伐真遗憾经费合计因为街道的人气上升了显示全文"
-        // The bundled font subset and this runtime atlas are separate inventories. Include
-        // every human/tax label, even when its page is first opened long after startup.
-        "人物情报转职确认职业变更赠送装备赠送确认礼物评价装备能力职业大师装备情报"
-        "概况属性装备魔法体力力量灵活结实魔力运气最大HP攻击防御武器衣服盾帽饰品"
-        "库存无暂无候选点经验住宅已入住未入住满足努力勋章可使用不可使用"
-        "转职准备中职业已变更赠送给？评价大师保持现状返回关闭确定赠送情报住宅税收合计"
-        "谢谢我要加油!转机好开心合适吗？太好了!感动了!支付维护费Ｇ"
-        "系统保存读取手动存档栏位空覆盖此已有原将被替换当前未进度"
-        "取消确定返回处理中了请稍候无法操作后重试没有不可失败成功损坏格式版本数据不匹配"
-        "稳定主场景才能打开文件目录创建写入载入校验完成忙碌权限路径错误"
-        "周大小限制完整检查临时保留世界有效完毕先并等告容受与游戏和事其离";
-    result += "距离下个等级还有 人周围设施暂无设施来源入住希望者商品种类";
-    result += s.rules->script_sources.talks + s.rules->script_sources.news +
-              s.rules->script_sources.event_messages;
-    for (const auto &f : s.rules->facilities)
-        result += f.name;
-    for (const auto &h : s.rules->humans)
-        result += h.name;
-    for (const auto &job : s.rules->jobs)
-        result += job.name;
-    for (const auto &activity : s.rules->activities)
-        result += activity.name + activity.detail + activity.description;
-    result += "村办活动开展活动进行中结果季度剩余此活动尚未接入完成获得奖励配置更替领取";
-    result += "南瓜商会购买道具出售多谢惠顾持有剩余获得设施使用道具设施强化赠送礼物能力提升商品种类"
-              "出售中";
-    result += "道路撤除配置更替从哪里开始铺呢铺到哪里呢撤到哪里移动哪个移动去哪里路铺好了"
-              "选起点选设施中止";
-    for (const auto &t : s.rules->tasks)
-        result += t.name + t.title;
-    for (const auto &i : s.rules->items)
-        result += i.name;
-    for (const auto &e : s.rules->equipment)
-        result += e.name;
-    for (const auto &monster : s.rules->monsters)
-        result += monster.name;
-    return result;
-}
 std::string page_body(const State &s, const rules::WorldScriptPage &page, int paragraph) {
     std::string body;
     if (!page.paragraphs.empty())
@@ -214,7 +166,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                              inspection_checkpoint);
     WorldCanvas canvas;
     Sprites sprites(assets);
-    Text text(desktop_font_path(assets, options.font), glyphs(state));
+    // Catalogue/scripts/static UI demand is generated once with the common libraries.
+    // The current village name may be supplied dynamically, so it remains explicit.
+    Text text(desktop_font_path(assets, options.font), state.scripts.village_name);
     ui::Skin skin(sprites, text);
     state.scene.framework_paused = options.paused || transient;
     state.scene.speed_setting = 0; // Player windows always use the normal source update count.

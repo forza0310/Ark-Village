@@ -4,6 +4,7 @@
 #include "ark/app/startup_data.hpp"
 #include "ark/assets/table.hpp"
 #include "ark/simulation/startup.hpp"
+#include "desktop_glyphs.hpp"
 #include <algorithm>
 #include <cmath>
 #include <fstream>
@@ -311,20 +312,11 @@ Text::Text(const std::filesystem::path &font_path, const std::string &extra_glyp
     : font_path_(font_path) {
     if (!std::filesystem::is_regular_file(font_path))
         throw std::runtime_error("Chinese font not found; use --font TTF");
-    std::string glyphs =
-        "运行中 · 暂停已暂停 · 继续人物活动待接入：后续活动住所/出口野外遭遇人物更新失败"
-        "建设返回确定旋转设施冒险者名单点数人气年月份道路植物商店饮食金币暂停继续重新开始研究边界"
-        "请选择街道内地域有建筑物金钱不足未知设施不可用状态异常施工剩余招募到访等级农家体力攻击防御"
-        "魔法品质魅力尚无本轮结束建造设备一般办公室信息系统保存菜单网站价格使用道具设施信息"
-        "距离下个级还有人数周农家暂无到访者冒险者一览要建造在哪里建设完毕设施奖励维护费"
-        "没有奖励周围种类正在销售武器防具饰品查看商品入住希望者住宅";
+    // The same traced Unicode demand produces the packaged font and this runtime atlas.
+    // Explicit dynamic/diagnostic text remains additive; no full-font atlas is loaded.
+    std::string glyphs = generated::desktop_glyphs;
     for (int i = 32; i < 127; ++i)
         glyphs += static_cast<char>(i);
-    for (const auto &v : app::startup_data().definitions)
-        glyphs += v.name;
-    for (const auto &v : app::startup_data().first_talk)
-        glyphs += v;
-    glyphs += app::startup_data().first_character.name;
     glyphs += extra_glyphs;
     int count{};
     int *raw = LoadCodepoints(glyphs.c_str(), &count);

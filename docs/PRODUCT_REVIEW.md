@@ -1,6 +1,6 @@
 # 产品可维护性审阅
 
-2026-10-07。本文保留编码前的审阅基线与发现；用户随后批准推进，已实施范围和当前验收见[B1工程/UI批次](stages/B1-playable-prototype.md#maintainability-ui-batch)。正常输入协调器进一步拆分、字体需求统一与DLL指纹仍为后续建议。
+2026-10-07。本文保留编码前的审阅基线与发现；用户随后批准推进，已实施范围和当前验收见[B1工程/UI批次](stages/B1-playable-prototype.md#maintainability-ui-batch)。字形统一也已[完成独立验收](stages/B1-playable-prototype.md#desktop-glyph-inventory)；正常输入协调器进一步拆分与DLL指纹仍为后续建议。
 
 ## 范围与判断
 
@@ -93,6 +93,8 @@ AVRSAVE当前内置runtime，所以玩家也加载hash；依赖见[ProductLibrar
 位置：[prepare_windows_font](../scripts/prepare_windows_font.py#L41)、[glyphs](../src/desktop/world_view.cpp#L87)、[Text](../src/desktop/resources.cpp#L310)。打包扫描源码/数据，运行时另维护手工label串和目录文本。新字可能进入字体文件却未请求进图集；prepare只验证已请求字形，漏请求不一定报错。本轮未证明当前某页已缺字。
 
 建议生成可追踪的运行字形需求给打包和Text共用，保留目录/脚本/ASCII；以一个新增真实页面字形验证端到端需求，不用全字体或生成图片掩盖。
+
+已独立完成：单一Node扫描器生成公共inventory/私有UTF8头，字体子集与Text共同消费，删除两份手工清单；新增source字自动发现、错误输入拒绝和稳定输出进入标准测试，Release六张实际窗口核对。467输入/1731码点，具体配置/排除项与边界见[B1](stages/B1-playable-prototype.md#desktop-glyph-inventory)。
 
 ## P3-04：公共DLL新旧防错只到工具链/架构
 

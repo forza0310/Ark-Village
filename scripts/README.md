@@ -12,7 +12,8 @@
 - import_world_assets.mjs：完整世界的人物/怪物/地图/共用图像目录，已有文件须与维护源相同才复用；不覆盖不同版本。导入前二次核对读取集，统一更新assets/SOURCES.json。
 - import_world_research.mjs：冻结完整世界维护源码/测试/数据，迁入simulation模块，记录源与产品SHA256；仅显式更新时运行。
 - simulation/compile_startup*.mjs：从assets/simulation的固定目录构建完整C++定义/脚本；simulation/verify_sources.mjs独立验证产品快照，不读取research。
-- prepare_windows_font.py：固定Noto Sans CJK SC2.004源/许可哈希，用fonttools==4.59.0从产品src/include与assets文本生成改名后的OFL字体子集，逐字形验证，输出default.otf/OFL.txt/SOURCES.json。运行`python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts`；可用`--source-font`/`--source-license`复用已下载的同哈希文件。仅构建需要Python，游戏运行不需要。
+- compile_desktop_glyphs.mjs：唯一Unicode需求扫描，只读产品src的cpp/hpp、include的hpp和assets的txt/tsv/json，保留ASCII32–126、Unicode escape及JSON解码字形，严格拒绝坏UTF8/无效Unicode。`node scripts/compile_desktop_glyphs.mjs --root . --json build/shared-libraries/desktop-generated/desktop_glyphs.json --header build/shared-libraries/desktop-generated/desktop_glyphs.hpp`生成按源SHA追踪的整数码点清单和私有UTF8串；无`--json`时将清单输出到stdout。不扫描research/build，不把生成头写入源目录；相同输出不改时间戳。
+- prepare_windows_font.py：固定Noto Sans CJK SC2.004源/许可哈希，用fonttools==4.59.0消费上述Node需求清单，生成改名后的OFL字体子集，逐字形验证，输出default.otf/OFL.txt/SOURCES.json。字体准备先刷新唯一公共树desktop-generated的清单/头，与后续CMake和运行图集共用；自定义公共树可用`--glyph-inventory PATH`指定同一清单位置。运行`python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts`；可用`--source-font`/`--source-license`复用已下载的同哈希文件。仅构建需要Python，游戏运行不需要。
 
 导入：`node scripts/import_research.mjs research/dungeon_village_1 assets`。先检查范围/版本，导入后核对差异并重跑验收。
 只刷新已发布UI素材：追加`--ui-only`，保留原数据/地图/人物快照和清单，避免research并行推进时静默升级业务输入。

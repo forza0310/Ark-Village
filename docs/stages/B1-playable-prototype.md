@@ -1,5 +1,27 @@
 # B1：建造与招募可玩切片
 
+<a id="desktop-glyph-inventory"></a>
+
+## 统一桌面字形需求（2026-10-07）
+
+继续用户已批准的工程建议，范围见[ADR-0056](../MILESTONES.md#adr-0056)。产品基线78cc896，规则仍冻结524415a的354项；research源码、构建及在途文档不修改。收口期间研究独立发布2addfec（Steam恢复实验/原档只读交叉），已补当前对照；没有新C++/规则交付，不改变本批运行时输入或玩家存取政策。探索底栏审计已登记[精确消费者缺口](../reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)：背景字段、滑入计数/锚点、资源桥、共同draw(3)资格/频率/顺序、丢实例恢复清任务及231→aW载荷尚未闭合。现abort缺实例分支不清任务，finish要求有效实例且可发奖，不能挪用。对应消费者等待正式合同，不按FPS/publication/update猜抽票或修改既有随机轨迹。
+
+单一compile_desktop_glyphs扫描器只读产品src/include与assets文本，输出按逐源SHA追踪的整数码点JSON和私有UTF8头；公共库每次构建扫描，输出不变不改时间戳，自动发现新增文件。字体准备与Text运行图集消费同一清单，删除resources/world_view两份手工字串；动态村名/显式诊断文字仍可追加。唯一产物在build/shared-libraries/desktop-generated，桌面消费者缺产物明确拒绝；核心/headless不引入raylib或字体头。保留--font、DPI密度、ASCII、控制字符过滤及缺字明确拒绝。
+
+新增Node契约套件desktop_glyph_inventory主责输入发现、Unicode/JSON/转义、错误拒绝、UTF8头与需求对应及write-if-identical；现有资源来源测试只验证已交付字节，不承担此合同。夹具在独立临时目录，验证新增source字及生成输出不自输入，非法输入不覆盖旧有效输出；没有新增C++可执行target或复制规则测试。
+
+| 本地验收 | 结果 |
+| --- | --- |
+| 公共Release库与desktop-debug/headless-debug | 配置/编译通过；桌面按公共库→消费者顺序，无第二套核心库 |
+| desktop-debug标准CTest | 172项通过，86.39秒，精确排除simulation.startup_world_continuous_test |
+| headless-debug标准CTest | 148项通过，78.85秒，同一精确排除；含无raylib的字形工具契约 |
+| Release定向编译/实际窗口 | 玩家EXE及UI runner通过；旅馆74实际页面、普通74/第二页/MAX/装备定义预览/最小75共6张截图退出0、目视核对中文 |
+| 来源与工程检查 | 两套标准覆盖354项冻结源及616素材；3个C++格式、Node语法及diff检查通过 |
+
+两套CTest与Release编译存在并发，耗时不是性能对照。静态页夹具明确供应MAX、rank5/flag16/seen97及库存资格，运行真实页面消费者，不是自然解锁、OS鼠标或原游戏动态验收。规则/Owner/FIFO/随机/存档/47ms/一倍速不变，因此不重复认证长前缀、尾段或年度长跑；三个月注册/参数/断言仍保留，本地未跑Debug三个月，main CI Release完整标准待验证，未推送。
+
+本地复用Noto固定源和fonttools4.59.0，无新下载：467项输入、1731码点，字体387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9；字体manifest记录inventory/generator哈希，实际build/bin字体字节一致。相比前批只删除旧手工列表独有的“碌”，实际文案需求未丢；独立旧扫描语义逐码点对照保留在build/validation/desktop-glyphs-audit。当前日志/结果和六张PNG位于build/validation/desktop-glyphs-20261007；本批未生成新ZIP或发布。
+
 <a id="research-524415a-design"></a>
 
 <a id="maintainability-ui-batch"></a>

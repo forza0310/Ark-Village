@@ -46,7 +46,7 @@ raylib表现层依赖app只读状态、素材元数据和旁置PNG/SEB，不修�
 - character_status.cpp：按[战斗显示契约](../../research/dungeon_village_1/ui/COMBAT_RENDER.md)生成只读HP条矩形计划。正常/预览读取真实HP、容量与动作，显示活动或真实人物选中时出现，动作7和店内隐藏时不画；当前UI尚无人物选中命令。人物绿条/红过渡与怪物蓝条/黄过渡共用接口，正回复不套伤害色。scene按人物锚点与zoom提交、沿用人物深度和场景裁剪；不在绘制时推进HP计数，不为检查运动或尚未创建的怪物注入数据。伤害数字、武器/完整战斗动作及原APK动态对照另验。
 - ui/：共享布局、导航控制、原版皮肤、HUD和页面，详见[模块说明](ui/README.md)。
 - projection.cpp：格与连续世界坐标等距投影/拾取/响应视口/鼠标锚点缩放，绘制和输入共享转换。
-- resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。
+- resources.cpp：RAII纹理/字体、SEB图片绑定、实际绘制帧校验。字体需求由 `scripts/compile_desktop_glyphs.mjs` 单一扫描器生成，运行图集与便携字体子集读取同一Unicode清单；调用方仅补动态或显式诊断文字。
 - desktop_session.cpp：macOS桌面可用性检查。
 
 默认1080×720横屏，窗口改变时扩展逻辑视口而非固定竖屏留黑；最小逻辑240×256与60FPS是适配政策，不宣称原版分辨率/时钟。
@@ -85,3 +85,5 @@ Layout.scene_clip绘制到21单位底栏边缘；Layout.scene命中仍停在29�
 `world_task_inspection` 只供显式 `--inspect-page world-task-team/world-task-result`：真实新局选择当前可负担的实际任务，调用原征集/出发消费者，自然运行到队伍或成果页。普通页/月报复用已有诊断确认；不写人物、任务、奖励或资金，不参与正常窗口策略。
 
 `Sprites::map_frame`统一预览、缩略图、地表和地图图片高度的帧解释：单帧素材请求朝向1时复用帧0，其他越界明确拒绝并报告资源名/帧号。不回写世界fragment或逻辑朝向；原版单帧转向外观仍待研究。建设窗口诊断优先实际目录的募集地块，`world-built`通过真实事务确认朝向1，覆盖此前只检查旅馆遗漏的单帧路径。
+
+公共桌面字形产物仅在 `build/shared-libraries/desktop-generated/` 生成一次：`desktop_glyphs.json` 记录需求/来源，`desktop_glyphs.hpp` 提供运行字符串。公共库的 `ark_desktop_glyphs` 每次构建扫描当前源码和产品目录，内容相同不改文件时间；四套消费者不复制清单。先配置、构建 `shared-libraries`，再配置桌面消费者；缺生成头/JSON会明确拒绝并提示公共构建入口。核心规则/运行时及headless消费者不包含这个桌面头。`--font`、ASCII、显式额外字形、缺字报错和按密度扩图集政策保留。

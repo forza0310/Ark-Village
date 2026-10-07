@@ -43,6 +43,16 @@ foreach(target IN LISTS ark_imported_targets)
         endif()
     endforeach()
 endforeach()
+if(ARK_BUILD_DESKTOP)
+    # Consumers use the single generated desktop inventory beside the common libraries.
+    # They do not rescan sources or silently generate an incompatible private font list.
+    set(ARK_DESKTOP_GENERATED_DIR "${ARK_COMMON_LIBRARY_DIR}/desktop-generated")
+    set(ARK_DESKTOP_GLYPH_HEADER "${ARK_DESKTOP_GENERATED_DIR}/desktop_glyphs.hpp")
+    set(ARK_DESKTOP_GLYPH_INVENTORY "${ARK_DESKTOP_GENERATED_DIR}/desktop_glyphs.json")
+    if(NOT EXISTS "${ARK_DESKTOP_GLYPH_HEADER}" OR NOT EXISTS "${ARK_DESKTOP_GLYPH_INVENTORY}")
+        message(FATAL_ERROR "Missing common desktop glyph inventory. Configure and build the shared-libraries preset before configuring desktop consumers.")
+    endif()
+endif()
 if(ARK_BUILD_DESKTOP AND NOT ARK_DESKTOP_FONT)
     find_file(ark_common_font NAMES default.otf default.ttf
         HINTS "${ARK_SHARED_RUNTIME_DIRECTORY}/fonts" NO_DEFAULT_PATH NO_CACHE)

@@ -65,6 +65,8 @@ class Sprites {
 };
 class Text {
   public:
+    // Product demand comes from the shared generated inventory. Callers add only dynamic
+    // or explicit diagnostic text; atlas density and missing-glyph checks remain local.
     explicit Text(const std::filesystem::path &font_path, const std::string &extra_glyphs = {});
     ~Text();
     Text(const Text &) = delete;

@@ -7,7 +7,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import re
+import subprocess
 import urllib.request
 
 import fontTools
@@ -38,29 +38,24 @@ def source(local, relative, expected):
     return data
 
 
-def product_characters():
-    points = set(range(32, 127))
-    inputs = []
-    for folder, suffixes in (("src", {".cpp", ".hpp"}), ("include", {".hpp"}),
-                             ("assets", {".txt", ".tsv", ".json"})):
-        for path in sorted((ROOT / folder).rglob("*")):
-            if not path.is_file() or path.suffix not in suffixes:
-                continue
-            data = path.read_bytes()
-            text = data.decode("utf-8")
-            # Match Text's runtime filter exactly. Unicode spaces (notably U+3000)
-            # still need cmap entries even though Python considers them non-printable.
-            points.update(ord(char) for char in text if ord(char) >= 32 and ord(char) != 127)
-            # Include Unicode escapes in C++ strings and JSON publishing data as well.
-            for match in re.finditer(r"\\u([0-9a-fA-F]{4})|\\U([0-9a-fA-F]{8})", text):
-                code = int(match.group(1) or match.group(2), 16)
-                if not 0xD800 <= code <= 0xDFFF and code >= 32 and code != 127:
-                    points.add(code)
-            if path.suffix == ".json":
-                decoded = json.dumps(json.loads(text), ensure_ascii=False)
-                points.update(ord(char) for char in decoded if ord(char) >= 32 and ord(char) != 127)
-            inputs.append({"file": path.relative_to(ROOT).as_posix(), "sha256": digest(data)})
-    return points, inputs
+def product_characters(inventory_path):
+    # The shared build and the runtime atlas use this exact Node authority. Refresh
+    # its one common output even when CI prepares the font before CMake configures.
+    inventory_path = inventory_path.resolve()
+    subprocess.run([
+        "node", str(ROOT / "scripts" / "compile_desktop_glyphs.mjs"),
+        "--root", str(ROOT), "--json", str(inventory_path),
+        "--header", str(inventory_path.with_name("desktop_glyphs.hpp")),
+    ], check=True)
+    inventory_bytes = inventory_path.read_bytes()
+    inventory = json.loads(inventory_bytes)
+    points = inventory["codepoints"]
+    if (inventory.get("schema") != 1 or
+            any(type(code) is not int or code < 32 or code == 127 or code > 0x10FFFF or
+                0xD800 <= code <= 0xDFFF for code in points) or
+            points != sorted(set(points)) or not set(range(32, 127)).issubset(points)):
+        raise ValueError("Invalid product Unicode inventory")
+    return set(points), inventory["inputs"], digest(inventory_bytes)
 
 
 def rename(font):
@@ -84,12 +79,15 @@ def main():
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--source-font", type=Path, help="Optional already-downloaded pinned OTF")
     parser.add_argument("--source-license", type=Path, help="Optional already-downloaded pinned OFL")
+    parser.add_argument("--glyph-inventory", type=Path,
+                        default=ROOT / "build" / "shared-libraries" / "desktop-generated" / "desktop_glyphs.json",
+                        help="Common glyph inventory output; Node regenerates it and its private header")
     args = parser.parse_args()
     if fontTools.__version__ != VERSION:
         raise RuntimeError(f"Use fonttools=={VERSION}; found {fontTools.__version__}")
     font_data = source(args.source_font, FONT_PATH, FONT_SHA)
     license_data = source(args.source_license, "LICENSE", LICENSE_SHA)
-    points, inputs = product_characters()
+    points, inputs, inventory_sha = product_characters(args.glyph_inventory)
     from io import BytesIO
     font = TTFont(BytesIO(font_data), recalcTimestamp=False)
     missing = points - set(font.getBestCmap())
@@ -120,6 +118,9 @@ def main():
         "tool": f"fonttools=={VERSION}", "family": "Ark Village CJK Subset",
         "output_sha256": digest(packed), "source_bytes": len(font_data), "output_bytes": len(packed),
         "codepoints": [f"U+{code:04X}" for code in sorted(points)], "inputs": inputs,
+        "glyph_inventory_sha256": inventory_sha,
+        "glyph_generator": "scripts/compile_desktop_glyphs.mjs",
+        "glyph_generator_sha256": digest((ROOT / "scripts" / "compile_desktop_glyphs.mjs").read_bytes()),
     }
     (args.output_dir / "SOURCES.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS {len(points)} product glyphs; font {len(font_data)} -> {len(packed)} bytes; sha256={digest(packed)}")

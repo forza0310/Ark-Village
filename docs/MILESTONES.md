@@ -374,6 +374,12 @@ Accepted，2026-10-07：用户批准按[工程审阅](PRODUCT_REVIEW.md)建议�
 
 验收为两套Debug标准（精确排除三个月）、冻结来源/codec/玩家字段检查、维护认证尾段与Release PE依赖及实际窗口。探索底栏涉及新随机消费时点，仍单独设计；79/82/村办4–6、音频及完整特效等待正式合同。本批不修改或构建research、不自动推送；实现和本地检查结果见[B1](stages/B1-playable-prototype.md#maintainability-ui-batch)。
 
+## ADR-0056
+
+Accepted，2026-10-07：用户继续已批准的维护建议。探索底栏核对发现共同随机、丢实例恢复与显示字段桥未闭合，按来源约定暂停对应消费者并登记[最小研究请求](reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)，不自行按绘制FPS或每世界update增加抽票。继续独立且已批准的P3字形需求统一：单一Node扫描器读取产品src/include/assets，与原Python字形过滤范围一致；它同时生成可追踪inventory和桌面私有UTF8字串，字体子集与Text运行图集共同消费。
+
+唯一桌面生成文件位于shared-libraries，不复制到四消费者；核心仍无raylib/字体/平台坐标依赖。字体版本/许可、--font覆盖、DPI图集密度与缺字明确报错保持，诊断可显式追加字形但不成为玩家需求来源。源文件扫描由有实际职责的生成器完成，CMake不用GLOB；生成内容不变不重写。验收为单一需求的Unicode/JSON/过滤/拒绝/输出稳定性、两套Debug标准（排除三个月）和Release实际中文字形窗口；无规则/存档/随机改动，不重复长前缀或四套回归。实现与当前结果见[B1](stages/B1-playable-prototype.md#desktop-glyph-inventory)，main CI待验证、未推送。
+
 ## 研究历史引用
 
 <a id="adr-0007"></a>

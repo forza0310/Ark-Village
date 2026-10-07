@@ -75,12 +75,28 @@ set(ARK_PRODUCT_LIBRARIES ark_launch ark_timing ark_world_hash ark_world_rules a
     ark_world_visuals ark_world_queries ark_world_save ark_world_session ark_game ark_asset_metadata)
 
 if(ARK_BUILD_DESKTOP)
+    # One shared desktop-only Unicode inventory feeds runtime atlases and the font subset.
+    # Scan on every common build so newly added source/catalog files are included without
+    # GLOB or four consumer copies. The scanner preserves unchanged output timestamps.
+    set(ARK_DESKTOP_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/desktop-generated")
+    set(ARK_DESKTOP_GLYPH_HEADER "${ARK_DESKTOP_GENERATED_DIR}/desktop_glyphs.hpp")
+    set(ARK_DESKTOP_GLYPH_INVENTORY "${ARK_DESKTOP_GENERATED_DIR}/desktop_glyphs.json")
+    add_custom_target(ark_desktop_glyphs ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ARK_DESKTOP_GENERATED_DIR}"
+        COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/compile_desktop_glyphs.mjs"
+            --root "${PROJECT_SOURCE_DIR}"
+            --json "${ARK_DESKTOP_GLYPH_INVENTORY}" --header "${ARK_DESKTOP_GLYPH_HEADER}"
+        BYPRODUCTS "${ARK_DESKTOP_GLYPH_HEADER}" "${ARK_DESKTOP_GLYPH_INVENTORY}"
+        DEPENDS "${PROJECT_SOURCE_DIR}/scripts/compile_desktop_glyphs.mjs"
+        VERBATIM)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     ark_copy_raylib_runtime()
     add_library(ark_world_ui_test_support SHARED src/desktop/ui/layout.cpp
         src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/projection.cpp)
-    target_include_directories(ark_world_ui_test_support PUBLIC src/desktop)
+    target_include_directories(ark_world_ui_test_support PUBLIC src/desktop
+        PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")
+    add_dependencies(ark_world_ui_test_support ark_desktop_glyphs)
     target_link_libraries(ark_world_ui_test_support PUBLIC ark_world_visuals ark_game
         ark_asset_metadata PkgConfig::RAYLIB)
     ark_target(ark_world_ui_test_support)

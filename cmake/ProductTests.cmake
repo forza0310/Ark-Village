@@ -65,6 +65,11 @@ ark_test_case(asset_metadata ark_metadata_tests LABELS rules)
 ark_test_case(startup_data_contract "${ARK_NODE}"
     ARGS "${PROJECT_SOURCE_DIR}/tests/data/startup_data_test.mjs" "${PROJECT_SOURCE_DIR}/assets/data"
     LABELS provenance legacy)
+# Build-time glyph demand has independent Unicode/discovery/rejection contracts;
+# provenance tests only verify existing asset bytes. No extra C++ executable is needed.
+ark_test_case(desktop_glyph_inventory "${ARK_NODE}"
+    ARGS "${PROJECT_SOURCE_DIR}/tests/data/desktop_glyphs_test.mjs"
+    LABELS presentation provenance TIMEOUT 30)
 ark_test_case(source_provenance "${ARK_NODE}"
     ARGS "${PROJECT_SOURCE_DIR}/scripts/verify_assets.mjs" "${PROJECT_SOURCE_DIR}/assets"
     LABELS provenance)

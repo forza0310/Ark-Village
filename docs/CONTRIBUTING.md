@@ -85,7 +85,7 @@ Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈�
 
 raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独共享构建；通过`PKG_CONFIG_LIBS_EXTRA`补齐`winmm/gdi32/opengl32`系统链接依赖。编译器显式选择`x86_64-w64-mingw32-clang++`，开发程序共用目标架构的C++运行库DLL。打包递归读取PE导入，仅复制Release游戏所需的Ark/raylib/C++ DLL并剥离分发副本符号，拒绝未随包提供的非系统依赖。解压后不需要安装Node/CMake/raylib或额外C++运行库。
 
-desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序及依赖DLL、616项清单资源、字体子集/来源/OFL许可、raylib与运行库许可及启动说明。simulation数据已编译进运行库，源码副本、测试、CLI、导入库、调试符号和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；每次构建重新生成，新增文案不会沿用旧字形清单。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
+desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序及依赖DLL、616项清单资源、字体子集/来源/OFL许可、raylib与运行库许可及启动说明。simulation数据已编译进运行库，源码副本、测试、CLI、导入库、调试符号和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；单一Node扫描器生成公共字形inventory/私有UTF8头供字体子集与Text共同消费；字体准备刷新同一清单，新增文案无需维护第二份运行字串。普通公共库构建只刷新需求，若新增码点则须重新运行字体准备，缺字会明确拒绝，不能沿用覆盖不足的旧子集。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
 
 Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job用Windows runner自带的GitHub CLI，将单份ZIP及校验文件作为GitHub Release附件上传；仅此job授予`contents: write`及下载artifact所需的`actions: read`，build job只有读取权限。不再安装ORAS或申请`packages: write`。
 

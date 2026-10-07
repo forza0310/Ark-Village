@@ -146,7 +146,7 @@ H不是造价减免，不因返还资格重复收取募集入住费，也不伪�
 51先检查季度次数再检查点数；52开展才扣点并增加定义m／全局F，季度q和人物效果留到53满120确认。
 53恰70更新请求声音5，提前确认不快进；类型0／1随后进入54只读结果，类型2只请求全局人气。
 类型3地图扩张已接本批维护实现，满120确认后更新边界与地图，不插人物结果54；当前验收状态见验证入口。
-类型4／5／6仍明确拒绝，不显示虚假成功。
+类型5／6已接魔法壶级别及开放事件并验条件组合；类型4仍明确拒绝，不显示虚假成功。
 所有修改由唯一Owner在私有候选内组合，缺绑定／名单／计数、越界选择、错误父页或晚期随机／脚本失败
 拒绝整轮，不留下部分扣款、随机或实体修改；页面附属记录随真实页退休。具体来源见[村办合同](../rules/ACCOUNTING.md#下一批来源村办活动与晋级前置)。
 这些是简化原型入口与维护合同；`2b479f6`普通工具与编辑路径已通过Release标准、五项长测与三个有界窗口，聚合Release入口123项标准及迁移窗口也已通过。本批扩张独立验收，结果见[当前验证](../VERIFICATION.md)。
@@ -352,6 +352,24 @@ research/dungeon_village_1/work/release/bin/dungeon_village_prototype --inspect-
 `--world --inspect-page world-goods --frames 8`及`world-equipment-info`从真实新局现存武器店74进入79／72；
 没有现存实例时只按真实建设／施工继续，拒绝不补资金或实体。它们是有界维护路径检查，不是原APK动态或OS输入。
 全部窗口仍需可用中文字体，原图标和动画并未随本批完整还原。
+
+## 魔法壶与村办5／6
+
+[startup_world_magic_pot](include/dungeon_village_prototype/startup_world_magic_pot.hpp)在唯一Owner中复用`legacy_n`和用户标志，
+维护40配方共享进度、aM／aN／aQ全局展示事实及41–47真实目录／绑定／父页／计数。
+菜单入口按日期处理，42当下扣持有道具及一次共同评语随机；44取消不退款，45只展示处理结果，46才发现，47才扣元素并兑现低层奖励。
+设施奖励107对话先于93领取、最终恢复43；不直接建造。只初始化实际栈顶，关闭载荷在下一框架入口退休。
+村办53满120后先扣q，5升壶级上限3，6开放用户标志／104及首次219延迟；类型4排除不变。
+
+简化窗口开放后用P／“魔法壶”发送主菜单入口；方向键／列表选择、左右配方翻页、Enter／Escape沿各页消费者，45不能取消。
+有界`world-magic-pot`诊断可只读加载已校验normal档并调用真实入口，不能与写档混用：
+
+```powershell
+& research/dungeon_village_1/work/release/bin/dungeon_village_prototype.exe --world --load-file research/dungeon_village_1/work/release/prototype/persistence-tests/magic-pot-window.avrs --inspect-page world-magic-pot --frames 8 --font build/local-tools/NotoSansCJKsc-Regular.otf --asset-root research/dungeon_village_1/assets
+```
+
+上述文件由现有持久化套件产生并读回校验，是明确壶解锁／持有库存前提的组合夹具，不能冒充自然第二星获得壶的路线。
+完整原皮肤、绘制随机、真实OS输入与自然后期路线未验，实际检查见[验证](../VERIFICATION.md#魔法壶与村办56维护消费者2026-10-07)。
 
 ## 旧夹具
 

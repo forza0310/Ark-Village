@@ -817,6 +817,38 @@
           "type": "std::map<std::uint64_t, std::uint64_t>"
         },
         {
+          "name": "magic_pot_recipes",
+          "type": "std::map<int, ref::WorldMagicPotRecipeProgress>"
+        },
+        {
+          "name": "magic_pot_display",
+          "type": "std::array<std::array<std::int32_t, 5>, 3>"
+        },
+        {
+          "name": "magic_pot_comment",
+          "type": "std::string"
+        },
+        {
+          "name": "magic_pot_output",
+          "type": "std::array<std::int32_t, 4>"
+        },
+        {
+          "name": "magic_pot_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "magic_pot_page_data",
+          "type": "std::map<std::uint64_t, std::array<int, 3>>"
+        },
+        {
+          "name": "magic_pot_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "magic_pot_page_parents",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
           "name": "medal_count",
           "type": "int"
         },
@@ -3094,6 +3126,23 @@
         {
           "name": "notices",
           "type": "std::vector<std::array<int, 2>>"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_reference::WorldMagicPotRecipeProgress",
+      "fields": [
+        {
+          "name": "identity",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "status",
+          "type": "std::int32_t"
+        },
+        {
+          "name": "pending_notice",
+          "type": "bool"
         }
       ]
     },

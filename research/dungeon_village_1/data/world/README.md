@@ -14,8 +14,9 @@
 | [accessory.txt](accessory.txt) | 30 | 13 | 饰品开放状态、抽选、价格与属性 |
 | [item.txt](item.txt) | 36 | 25 | 物品库存、月度补充及任务奖励池 |
 | [asEventData.txt](asEventData.txt) | 31 | 12 | 举办活动目录；原 `bx/a.c`，ID0—30，不是职业、任务或物品 |
+| [magicPot.txt](magicPot.txt) | 40 | 10 | 配方定义、五类奖励引用、经验、四元素成本；共享p/r由Owner独立维护 |
 
-前五表的归档/条目哈希在 [SOURCE.tsv](SOURCE.tsv)，活动原表在
+前五表及魔法壶表的归档/条目哈希在 [SOURCE.tsv](SOURCE.tsv)，活动原表在
 [asEventData.txt.SOURCE.tsv](asEventData.txt.SOURCE.tsv)。来源归档固定为 `xls.dat`，
 SHA-256 为 `8baacbb181dcd4eb18435eb39938ef2ad21d7dee9db27654b07c3428f4739958`。
 原字节保持不变，拒绝用改表或补演示值解决测试问题。
@@ -25,7 +26,8 @@ SHA-256 为 `8baacbb181dcd4eb18435eb39938ef2ad21d7dee9db27654b07c3428f4739958`�
 [完整目录编译器](../../prototype/scripts/compile_startup_world.mjs) 同时消费
 [新局发布输入](../startup/)、[完整设施表](../original/tenantData.txt)及
 [固定脚本原表](../scripts/original/)，输出全人物、职业、武器、防具、饰品、怪物、
-任务、物品、设施、活动与五份脚本原文。哈希验证之后还复用新局编译器验证地图重编码
+任务、物品、设施、活动、配方与五份脚本原文。物品第12–15列四元素独立供壶投入，不借设施改良三列。
+配方固定40×10并检查五类奖励引用，存取数据身份同步计入该表。哈希验证之后还复用新局编译器验证地图重编码
 及新局字段，不信任未经交叉验证的 JSON 摘要。
 
 [原表发布器](../../prototype/scripts/export_world_tables.cpp) 复用研究工具包的严格归档、

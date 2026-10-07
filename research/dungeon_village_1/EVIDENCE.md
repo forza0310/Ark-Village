@@ -359,12 +359,15 @@ reference DLL SHA-256 `bb0da82464cf1d8cdf0f5a89c90a3b0f02b18982945738631030624a6
 | `exe/storage-tail-disassembly.json` | `133d47e461e1f5338af3e86acd370ae958780362067d747c36675a578d7b7066` |
 | `exe/storage-local-strings.json` | `8c7e362b16bbf15b0b3d726853fd7e6113555e3fa5d96c5be4aa71cda89c0f57` |
 
-维护文件的字段身份由自有C++声明生成，不来自反编译实现。当前92结构／11枚举、私有包装字段及别名清单见
+维护文件的字段身份由自有C++声明生成，不来自反编译实现。当前93结构／11枚举、私有包装字段及别名清单见
 [codec字段清单](prototype/src/startup_world_codec_fields.json)，当前schema SHA-256为
-`f6b3cd3c538d59b84fc44c41df44556ec3de78ae381d57efd91b211852b30eb1`。
+`e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f`。
 79／72／82新增四组页面载荷及原设施绑定后已同步生成字段清单、恢复校验与往返测试，见[本批验证](VERIFICATION.md#本批797282实现与验收)。
 历史`0500cff0cd937c6967836c6bf7c594ff43dd64c23f408e7ea9188e4fc3423403`的晋级／扩张档及证书保留，当前拒绝加载，不迁移。
-数据集身份另外覆盖15份已发布原表／脚本／新局输入；正常文件、测试控制器与原存档的契约分开，见[模块说明](prototype/PERSISTENCE.md)。
+79批`f6b3cd3c...`也是历史布局；本批新增配方共享进度、aM/aN/aQ及41–47载荷，实际结果见[壶批验证](VERIFICATION.md#魔法壶与村办56维护消费者2026-10-07)。
+数据集身份另外覆盖16份已发布原表／脚本／新局输入，含原字节1379B／40×10配方表hash`7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c`。
+低层47奖励、aQ无输出写入及真实新局配方bit1初始化的有限源见[本批取证](work/magic-pot-implementation/OWNER_EVIDENCE.json)。
+正常文件、测试控制器与原存档的契约分开，见[模块说明](prototype/PERSISTENCE.md)。
 
 ## 共同世界接管与运行证据
 

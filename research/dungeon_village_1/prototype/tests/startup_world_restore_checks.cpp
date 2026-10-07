@@ -2,6 +2,7 @@
 
 #include "startup_world_restore_validation.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 
 #include <algorithm>
 
@@ -288,6 +289,104 @@ int check_startup_world_restore_contracts(
             v.facility_catalog_page_lists.at(animation.id).front() =
                 std::numeric_limits<int>::max();
         });
+    }
+    {
+        // 壶资格/库存是明确条件组合；页面载荷只准备最小结构，不宣称自然新局解锁。
+        auto pot = baseline;
+        pot.scripts.user_flags |= 1U;
+        pot.items.at(0).inventory = 2;
+        pot.catalog.at({0, 0}) = pot.items.at(0);
+        const auto add = [&](auto &state, int raw, int binding = -1,
+                             std::optional<std::uint64_t> parent = {}) {
+            r::WorldScriptPage p;
+            p.id = state.scripts.next_page_id++;
+            p.kind = r::WorldScriptPageKind::raw_page;
+            p.legacy_page = raw;
+            p.legacy_g = binding;
+            state.scripts.pages.push_back(p);
+            if (parent) state.magic_pot_page_parents.emplace(p.id, *parent);
+            return p.id;
+        };
+        const auto root = add(pot, 41);
+        // 41已看过首壶说明后的稳定结构：不注入脚本seen计数或重执初始化。
+        pot.magic_pot_pages_initialized.insert(root);
+        pot.magic_pot_page_data[root] = {0, 0, -1};
+        pot.magic_pot_page_lists[root] = {};
+        pot.page_phases[root] = 0;
+        pot.page_counters[root] = 0;
+        pot.scripts.pages.back().lifecycle = 2;
+        expect(pot, true, "magic41 complete structural fixture");
+        const auto reject = [&](const p::StartupWorldRuntimeState &source, const char *scenario,
+                                const auto &damage) {
+            auto broken = source;
+            damage(broken);
+            expect(broken, false, scenario);
+        };
+        reject(pot, "initialized magic41 missing data", [&](auto &v) { v.magic_pot_page_data.erase(root); });
+        reject(pot, "initialized magic41 missing list", [&](auto &v) { v.magic_pot_page_lists.erase(root); });
+        reject(pot, "initialized magic41 missing counter", [&](auto &v) { v.page_counters.erase(root); });
+        reject(pot, "initialized magic41 missing phase", [&](auto &v) { v.page_phases.erase(root); });
+        reject(pot, "magic payload on wrong raw page", [&](auto &v) { v.scripts.pages.back().legacy_page = 11; });
+        reject(pot, "magic recipe missing definition progress", [&](auto &v) { v.magic_pot_recipes.erase(1); });
+        reject(pot, "magic recipe identity mismatch", [&](auto &v) { v.magic_pot_recipes.at(1).identity = 2; });
+        reject(pot, "magic recipe status2 unsupported", [&](auto &v) { v.magic_pot_recipes.at(1).status = 2; });
+        reject(pot, "magic recipe reward catalog missing", [&](auto &v) { v.catalog.erase({0, 5}); });
+        reject(pot, "magic level outside original range", [&](auto &v) { v.legacy_n[11] = 4; });
+        reject(pot, "magic pending exceeds current capacity", [&](auto &v) { v.legacy_n[1] = 11; });
+        reject(pot, "magic current element negative", [&](auto &v) { v.legacy_n[3] = -1; });
+        reject(pot, "magic future processing timestamp", [&](auto &v) { v.legacy_n[12] = std::numeric_limits<int>::max(); });
+        reject(pot, "magic display negative", [&](auto &v) { v.magic_pot_display[2][0] = -1; });
+        reject(pot, "magic output negative", [&](auto &v) { v.magic_pot_output[0] = -1; });
+        auto deposit = pot;
+        const auto second = add(deposit, 42, -1, root);
+        if (!p::initialize_startup_world_magic_pot_pages(deposit))
+            throw std::runtime_error("restore fixture cannot initialize actual42 catalogue");
+        deposit.scripts.pages.back().lifecycle = 2;
+        expect(deposit, true, "magic42 inventory source and real parent41");
+        reject(deposit, "magic42 missing parent", [&](auto &v) { v.magic_pot_page_parents.erase(second); });
+        reject(deposit, "magic42 wrong parent", [&](auto &v) { v.magic_pot_page_parents.at(second) = v.scripts.pages.front().id; });
+        const auto animation = add(deposit, 44, 0, second);
+        if (!p::initialize_startup_world_magic_pot_pages(deposit))
+            throw std::runtime_error("restore fixture cannot initialize44 binding");
+        deposit.scripts.pages.back().lifecycle = 2;
+        expect(deposit, true, "magic44 real item binding");
+        reject(deposit, "magic44 invalid item binding", [&](auto &v) {
+            v.scripts.pages.back().legacy_g = std::numeric_limits<int>::max();
+            v.magic_pot_page_data.at(animation)[2] = std::numeric_limits<int>::max();
+        });
+        auto recipes = pot;
+        recipes.magic_pot_recipes.at(1).status = 1; // 47只绑定已发现的配方条件夹具。
+        const auto third = add(recipes, 43, -1, root);
+        if (!p::initialize_startup_world_magic_pot_pages(recipes))
+            throw std::runtime_error("restore fixture cannot initialize43 catalogue");
+        recipes.scripts.pages.back().lifecycle = 2;
+        const auto confirmation = add(recipes, 47, 1, third);
+        if (!p::initialize_startup_world_magic_pot_pages(recipes))
+            throw std::runtime_error("restore fixture cannot initialize47 binding");
+        recipes.scripts.pages.back().lifecycle = 2;
+        expect(recipes, true, "magic47 recipe binding and real parent43");
+        reject(recipes, "magic47 wrong parent type", [&](auto &v) { v.magic_pot_page_parents.at(confirmation) = root; });
+        reject(recipes, "magic47 invalid recipe binding", [&](auto &v) {
+            v.scripts.pages.back().legacy_g = std::numeric_limits<int>::max();
+            v.magic_pot_page_data.at(confirmation)[2] = std::numeric_limits<int>::max();
+        });
+        for (int raw : {45, 46}) {
+            auto result = baseline;
+            const auto id = add(result, raw, raw == 46 ? 1 : -1);
+            if (!p::initialize_startup_world_magic_pot_pages(result))
+                throw std::runtime_error("restore fixture cannot initialize45/46 result");
+            result.scripts.pages.back().lifecycle = 2;
+            expect(result, true, raw == 45 ? "magic45 queued result" : "magic46 undiscovered recipe");
+            reject(result, "magic result page cannot acquire fake parent", [&](auto &v) {
+                v.magic_pot_page_parents[id] = v.scripts.pages.front().id;
+            });
+        }
+        auto retired = baseline;
+        const auto stale = retired.scripts.next_page_id++;
+        reject(retired, "retired magic initialized identity", [&](auto &v) { v.magic_pot_pages_initialized.insert(stale); });
+        reject(retired, "retired magic data map", [&](auto &v) { v.magic_pot_page_data[stale] = {0, 0, -1}; });
+        reject(retired, "retired magic list map", [&](auto &v) { v.magic_pot_page_lists[stale] = {}; });
+        reject(retired, "retired magic parent map", [&](auto &v) { v.magic_pot_page_parents[stale] = root; });
     }
     return checks;
 }

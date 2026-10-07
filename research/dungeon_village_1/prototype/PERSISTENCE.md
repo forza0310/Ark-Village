@@ -33,14 +33,18 @@
 ```
 
 正常文件由调用者明确指定，未实现原两栏保存菜单或自动文件保存；当前原日历检查点行为保持不变。
-文件参数不能与inspect-page夹具混用。窗口字体仍按现有`--font`参数选择。
+文件参数通常不能与inspect-page混用；本批仅开放只读normal档＋有界`world-magic-pot`诊断，沿已校验世界调用真实壶入口、禁止同时写档。
+窗口诊断的输入资格（自然／组合）由文件来源决定，不因读档成功升级。窗口字体仍按现有`--font`参数选择。
 
 ## 文件布局与资源预算
 
-本批79／72／82新增Owner附属字段、脚本设施icon和页定义绑定，当前字段布局身份为
-`f6b3cd3c538d59b84fc44c41df44556ec3de78ae381d57efd91b211852b30eb1`。
-此前`0500cff0...`布局的自然晋级／扩张快照保留为旧批次证据，当前读器明确拒绝，不做迁移或修改原证书。
+本批壶41–47新增8组Owner字段，复用13槽／用户标志；当前93可达结构／11枚举布局身份为
+`e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f`。
+固定数据身份新增magicPot原表，16输入身份为`c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690`。
+此前`0500cff0...`自然晋级／扩张档和79批`f6b3cd3c...`档保留为各自历史证据，当前读器明确拒绝，不做迁移或修改证书。
 同布局代码才能复用对应前缀；当前新增消费者的恢复／续跑由本批页面往返及短跨进程用例验收，未重新认证晚期前缀。
+壶45/46先于41展示，未轮到的lower41可以合法未初始化；缺已初始化载荷仍拒绝，恢复不执行m／重抽评语／再扣道具或元素。
+关闭标记和下一框架退休分别保存，aM／aN／aQ全局跨页事实保留；日期差非0零输出重写aQ，不能只按业务changed决定保存内容。
 
 所有协议整数小端，与原APK大端格式无兼容关系。外层依次为：
 
@@ -99,7 +103,7 @@ node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe resea
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/expansion-replay --scenario natural_expansion
 # 首次中后期认证：只生成一次真实前缀，保持原38282黄金终点；成功后独占保留快照。
 # 以下38000历史文件已是旧布局；新布局生成须使用新的独占文件名，不能覆盖旧证据。
-node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay --save-at 38000 --stop-at complete --producer-revision <研究代码提交或源码指纹> --snapshot-file research/dungeon_village_1/work/snapshots/progression38000-f6b3.awr --save-every 5000 --save-directory research/dungeon_village_1/work/snapshots/progression-prefixes-f6b3
+node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay --save-at 38000 --stop-at complete --producer-revision <研究代码提交或源码指纹> --snapshot-file research/dungeon_village_1/work/snapshots/progression38000-e5a4.awr --save-every 5000 --save-directory research/dungeon_village_1/work/snapshots/progression-prefixes-e5a4
 # 已认证快照的后续复用，只运行相关尾段，不重新生成前缀。
 # 此历史命令只适用于对应旧布局代码；当前新布局会明确拒绝这个文件。
 & research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe natural_progression --load-file research/dungeon_village_1/work/snapshots/progression38000.awr --trace-file research/dungeon_village_1/work/validation/tail.trace

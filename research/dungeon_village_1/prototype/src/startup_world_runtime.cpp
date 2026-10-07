@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -744,6 +745,10 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     state_.scripts.pages.push_back({});
     state_.scripts.pages.back().id = 1;
     state_.scripts.next_page_id = 2;
+    for (const auto &recipe : p.rules->magic_pot_recipes)
+        state_.magic_pot_recipes.emplace(recipe.identity,
+            ref::WorldMagicPotRecipeProgress{recipe.identity, (recipe.flags & 1U) ? 1 : 0,
+                                            (recipe.flags & 1U) != 0}); // n.c先J再清p/r，bit1调用a()；不清首次NEW。
     for (const auto &h : p.rules->humans) {
         state_.human_calendar.emplace(h.identity, StartupWorldHumanCalendar{});
         state_.human_activity_previous.emplace(h.identity, 0);
@@ -933,6 +938,13 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) {
     return open_startup_world_human_page(state_, human);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_magic_pot(StartupMagicPotEntry entry) {
+    return open_startup_world_magic_pot(state_, entry);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_magic_pot_page(
+    std::uint64_t page, StartupMagicPotAction action, int selection) {
+    return act_startup_world_magic_pot_page(state_, page, action, selection);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_human_page(std::uint64_t page,
                                                                     StartupHumanPageAction action,
                                                                     int selection) {
@@ -976,6 +988,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.facility_catalog_page_data.erase(page.id);
             admitted.facility_catalog_page_lists.erase(page.id);
             admitted.facility_catalog_page_parents.erase(page.id);
+            admitted.magic_pot_pages_initialized.erase(page.id);
+            admitted.magic_pot_page_data.erase(page.id);
+            admitted.magic_pot_page_lists.erase(page.id);
+            admitted.magic_pot_page_parents.erase(page.id);
             admitted.commerce_page_data.erase(page.id);
             admitted.commerce_pages_initialized.erase(page.id);
             admitted.commerce_page_lists.erase(page.id);
@@ -1031,7 +1047,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||
         !initialize_startup_world_facility_item_pages(admitted) ||
-        !initialize_startup_world_facility_catalog_pages(admitted))
+        !initialize_startup_world_facility_catalog_pages(admitted) ||
+        !initialize_startup_world_magic_pot_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

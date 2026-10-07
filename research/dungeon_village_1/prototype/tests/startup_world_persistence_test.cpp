@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_tools/archive.hpp"
@@ -109,16 +110,12 @@ std::vector<int> advance(StartupWorldRuntimeSession &s) {
               "natural confirm rejected");
     return s.take_sound_requests();
 }
-// 最小页面结构夹具，不注入资金、人物、日期或解锁；目录全来自真实稳定世界。
-void facility_catalog_replay(const StartupWorldRuntimeSession &baseline_session,
-                             const std::filesystem::path &dir,
-                             const StartupWorldSaveMetadata &metadata) {
-    using Action = StartupFacilityCatalogAction;
-    const auto &baseline = baseline_session.state();
-    const auto file = dir / "facility-catalog.avrs";
-    const auto reencoded = dir / "facility-catalog-roundtrip.avrs";
-    const auto broken = dir / "facility-catalog-bad.avrs";
-    const auto capture = [&](const StartupWorldRuntimeState &state, const char *scenario) {
+// 共用严格文件夹具路径；结构输入经真实loader验证后才做保存往返。
+StartupWorldRuntimeState capture_persistence_fixture(
+    const StartupWorldRuntimeSession &baseline_session, const StartupWorldRuntimeState &state,
+    const StartupWorldSaveMetadata &metadata, const std::filesystem::path &file,
+    const std::filesystem::path &reencoded, const std::filesystem::path &broken,
+    const char *scenario) {
         // 现有独立段替换只准备结构夹具，经真实读器校验后才得到私有Session；
         // 不增加测试安装接口，不把被测编码结果用作业务期望。
         const auto seed_file = save_startup_world_file(reencoded, baseline_session, metadata);
@@ -144,6 +141,19 @@ void facility_catalog_replay(const StartupWorldRuntimeSession &baseline_session,
                   read(reencoded) == read(file),
               std::string(scenario) + " canonical file bytes preserved");
         return load.snapshot->session.state();
+}
+// 最小页面结构夹具，不注入资金、人物、日期或解锁；目录全来自真实稳定世界。
+void facility_catalog_replay(const StartupWorldRuntimeSession &baseline_session,
+                             const std::filesystem::path &dir,
+                             const StartupWorldSaveMetadata &metadata) {
+    using Action = StartupFacilityCatalogAction;
+    const auto &baseline = baseline_session.state();
+    const auto file = dir / "facility-catalog.avrs";
+    const auto reencoded = dir / "facility-catalog-roundtrip.avrs";
+    const auto broken = dir / "facility-catalog-bad.avrs";
+    const auto capture = [&](const StartupWorldRuntimeState &state, const char *scenario) {
+        return capture_persistence_fixture(baseline_session, state, metadata, file, reencoded,
+                                           broken, scenario);
     };
     const auto equal = [&](const auto &reference, const auto &restored, const char *scenario) {
         check(startup_world_state_digest(reference) == startup_world_state_digest(restored),
@@ -273,6 +283,214 @@ void facility_catalog_replay(const StartupWorldRuntimeSession &baseline_session,
                                                  metadata.controller_id);
     check(!refused.snapshot && refused.error.find("状态字段布局不兼容") != std::string::npos,
           "prior-layout save explicitly rejected without migration: " + refused.error);
+    std::filesystem::remove(file);
+    std::filesystem::remove(reencoded);
+    std::filesystem::remove(broken);
+}
+void magic_pot_replay(const StartupWorldRuntimeSession &baseline_session,
+                      const std::filesystem::path &dir,
+                      const StartupWorldSaveMetadata &metadata) {
+    using Action = StartupMagicPotAction;
+    const auto &baseline = baseline_session.state();
+    const auto file = dir / "magic-pot.avrs", reencoded = dir / "magic-pot-roundtrip.avrs",
+               broken = dir / "magic-pot-bad.avrs";
+    const auto capture = [&](const auto &state, const char *scenario) {
+        return capture_persistence_fixture(baseline_session, state, metadata, file, reencoded,
+                                           broken, scenario);
+    };
+    const auto same = [&](const auto &a, const auto &b, const char *scenario) {
+        check(startup_world_state_digest(a) == startup_world_state_digest(b),
+              std::string(scenario) + " full state/random/outputs match");
+    };
+    const auto command = [&](auto &state, std::uint64_t id, Action action,
+                             const char *scenario, int selection = 0) {
+        check(act_startup_world_magic_pot_page(state, id, action, selection) ==
+                  StartupWorldRuntimeError::none,
+              std::string(scenario) + " accepted");
+    };
+    const auto initialize = [&](auto &state, const char *scenario) {
+        check(initialize_startup_world_magic_pot_pages(state), std::string(scenario) + " initialize");
+        state.scripts.pages.back().lifecycle = 2;
+    };
+    auto ready = baseline;
+    // 明确壶资格/库存组合夹具；不作为自然新局解锁、首次help或日期前缀证据。
+    ready.scripts.user_flags |= 1U;
+    ready.items.at(0).inventory = 2;
+    ready.catalog.at({0, 0}) = ready.items.at(0);
+    ref::WorldScriptPage menu;
+    menu.id = ready.scripts.next_page_id++;
+    menu.kind = ref::WorldScriptPageKind::raw_page;
+    menu.legacy_page = 41;
+    menu.lifecycle = 2;
+    ready.scripts.pages.push_back(menu);
+    ready.magic_pot_pages_initialized.insert(menu.id);
+    ready.magic_pot_page_data[menu.id] = {0, 0, -1};
+    ready.magic_pot_page_lists[menu.id] = {};
+    ready.page_counters[menu.id] = 0;
+    ready.page_phases[menu.id] = 0;
+    auto original = ready;
+    auto restored = capture(original, "magic41 menu");
+    for (auto *state : {&original, &restored}) {
+        command(*state, menu.id, Action::confirm, "magic41 open42");
+        initialize(*state, "magic42 inventory");
+    }
+    same(original, restored, "restored41 opens exact42");
+    const auto deposit = original.scripts.pages.back().id;
+    auto restored_deposit = capture(original, "magic42 before inventory commit");
+    const auto draws = original.scene.random.draws();
+    for (auto *state : {&original, &restored_deposit}) {
+        command(*state, deposit, Action::select, "magic42 choose fixed item0", 0);
+        command(*state, deposit, Action::confirm, "magic42 actual deposit");
+        initialize(*state, "magic44 deposit result");
+    }
+    same(original, restored_deposit, "restored42 deposits once with same comment");
+    check(original.items.at(0).inventory == 1 && original.catalog.at({0, 0}).inventory == 1 &&
+              original.legacy_n[1] == 1 && original.legacy_n[4] == 2 &&
+              original.legacy_n[8] == 1 && original.scene.random.draws() == draws + 1 &&
+              !original.magic_pot_comment.empty(),
+          "fixed item0 deposit oracle: stock1, ice2, pending ice1, exactly one comment draw");
+    const auto animation = original.scripts.pages.back().id;
+    original.page_counters.at(animation) = 35; // 明确稳定等待计数组合。
+    auto restored_animation = capture(original, "magic44 stable waiting result");
+    const auto applied = original.legacy_n;
+    const auto comment = original.magic_pot_comment;
+    const auto post_draws = original.scene.random.draws();
+    for (auto *state : {&original, &restored_animation}) {
+        command(*state, animation, Action::confirm, "magic44 early confirm waits");
+        command(*state, animation, Action::cancel, "magic44 cancel result");
+    }
+    same(original, restored_animation, "restored44 preserves committed deposit");
+    check(original.items.at(0).inventory == 1 && original.legacy_n == applied &&
+              original.magic_pot_comment == comment && original.scene.random.draws() == post_draws,
+          "44 restore/cancel neither refunds nor repeats inventory/element/comment draw");
+    const auto closing44 = std::find_if(original.scripts.pages.begin(), original.scripts.pages.end(),
+                                      [&](const auto &p) { return p.id == animation; });
+    check(closing44 != original.scripts.pages.end() && closing44->lifecycle == 4,
+          "44 close marks finish mode before the real framework retires payloads");
+    for (auto *state : {&original, &restored_animation}) {
+        auto retired = prepare_startup_world_runtime(*state);
+        check(retired.candidate.has_value(), "44 real framework retirement candidate");
+        *state = std::move(*retired.candidate);
+    }
+    same(original, restored_animation, "restored44 real framework retires identical state");
+    check(!original.magic_pot_pages_initialized.count(animation) &&
+              !original.magic_pot_page_data.count(animation) &&
+              !original.magic_pot_page_lists.count(animation) &&
+              !original.magic_pot_page_parents.count(animation),
+          "44 real framework finish retires every associated payload");
+
+    auto catalogue = ready;
+    catalogue.magic_pot_recipes.at(1).status = 1; // 明确已发现条件夹具，原配方费用未变。
+    catalogue.legacy_n[3] = 100;
+    catalogue.legacy_n[4] = 20;
+    catalogue.legacy_n[5] = 30;
+    catalogue.legacy_n[6] = 0;
+    command(catalogue, menu.id, Action::select, "magic41 development selection", 1);
+    command(catalogue, menu.id, Action::confirm, "magic41 open43");
+    initialize(catalogue, "magic43 recipe list");
+    const auto recipes = catalogue.scripts.pages.back().id;
+    command(catalogue, recipes, Action::next_tab, "magic43 nondefault phase");
+    auto restored_catalogue = capture(catalogue, "magic43 discovered recipe directory");
+    for (auto *state : {&catalogue, &restored_catalogue}) {
+        command(*state, recipes, Action::select, "magic43 choose recipe1", 0);
+        command(*state, recipes, Action::confirm, "magic43 actual recipe47");
+        initialize(*state, "magic47 confirmation");
+    }
+    same(catalogue, restored_catalogue, "restored43 opens same47 without spending elements");
+    const auto confirmation = catalogue.scripts.pages.back().id;
+    check(catalogue.scripts.pages.back().legacy_page == 47 &&
+              catalogue.scripts.pages.back().legacy_g == 1 && catalogue.legacy_n[3] == 100 &&
+              catalogue.legacy_n[4] == 20 && catalogue.legacy_n[5] == 30,
+          "43 binds recipe1 but has not paid its100/20/30/0 costs");
+    catalogue.page_counters.at(confirmation) = 7;
+    auto restored_confirmation = capture(catalogue, "magic47 before recipe commit");
+    const auto reward_inventory = catalogue.items.at(5).inventory;
+    const auto recipe_draws = catalogue.scene.random.draws();
+    for (auto *state : {&catalogue, &restored_confirmation})
+        command(*state, confirmation, Action::confirm, "magic47 craft recipe1");
+    same(catalogue, restored_confirmation, "restored47 crafts exact same reward and message");
+    check(catalogue.legacy_n[3] == 0 && catalogue.legacy_n[4] == 0 &&
+              catalogue.legacy_n[5] == 0 && catalogue.legacy_n[6] == 0 &&
+              catalogue.items.at(5).inventory == reward_inventory + 1 &&
+              catalogue.scene.random.draws() == recipe_draws &&
+              catalogue.scripts.event_calls.at(107) == 1,
+          "47 pays fixed recipe1 four costs once, grants one item5, invokes107 without draw");
+    const auto spent = startup_world_state_digest(catalogue);
+    check(act_startup_world_magic_pot_page(catalogue, confirmation, Action::confirm) ==
+              StartupWorldRuntimeError::invalid_page && startup_world_state_digest(catalogue) == spent,
+          "retired47 cannot charge or grant twice");
+
+    for (int raw : {45, 46}) {
+        auto result = baseline;
+        ref::WorldScriptPage p;
+        p.id = result.scripts.next_page_id++;
+        p.kind = ref::WorldScriptPageKind::raw_page;
+        p.legacy_page = raw;
+        p.legacy_g = raw == 46 ? 1 : -1;
+        result.scripts.pages.push_back(p);
+        initialize(result, raw == 45 ? "magic45 queued display" : "magic46 queued discovery");
+        result.magic_pot_display = {{{{7, 8, 9, 10, 11}}, {{8, 9, 10, 11, 12}}, {{1, 1, 1, 1, 1}}}};
+        result.magic_pot_output = {1, 1, 1, 1}; // 只读演出值组合，不冒充自然处理m的产物。
+        result.magic_pot_comment = "就那样吧";
+        result.page_counters.at(p.id) = raw == 45 ? 83 : 7;
+        auto replay = capture(result, raw == 45 ? "magic45 settled display" : "magic46 undiscovered waiting");
+        const auto slots = result.legacy_n;
+        const auto inventory = result.items;
+        const auto random = result.scene.random.draws();
+        for (auto *state : {&result, &replay}) command(*state, p.id, Action::confirm, "magic45/46 close");
+        same(result, replay, "restored result page closes without replaying settlement");
+        check(result.legacy_n == slots && result.scene.random.draws() == random &&
+                  std::all_of(inventory.begin(), inventory.end(), [&](const auto &v) {
+                      return result.items.at(v.first).inventory == v.second.inventory;
+                  }), "45/46 restored confirmation repeats no element/inventory/random settlement");
+        if (raw == 46)
+            check(result.magic_pot_recipes.at(1).status == 1 &&
+                      result.magic_pot_recipes.at(1).pending_notice &&
+                      !result.scripts.event_calls.count(106),
+                  "46 discovers recipe once with NEW, no106 notification");
+        const auto closing = std::find_if(result.scripts.pages.begin(), result.scripts.pages.end(),
+                                         [&](const auto &page) { return page.id == p.id; });
+        check(closing != result.scripts.pages.end() && closing->lifecycle == 4,
+              "45/46 confirmation marks finish mode before framework retirement");
+        for (auto *state : {&result, &replay}) {
+            auto retired = prepare_startup_world_runtime(*state);
+            check(retired.candidate.has_value(), "45/46 real framework retirement candidate");
+            *state = std::move(*retired.candidate);
+        }
+        same(result, replay, "restored45/46 real framework retirement same");
+        check(!result.magic_pot_pages_initialized.count(p.id) && !result.magic_pot_page_data.count(p.id) &&
+                  !result.magic_pot_page_lists.count(p.id) && !result.magic_pot_page_parents.count(p.id),
+              "45/46 real framework finish retires every associated payload");
+    }
+    // 有界窗口消费的具名normal夹具：真实baseline，仅显式壶资格/库存前提，非自然解锁。
+    auto window_state = baseline;
+    window_state.scripts.user_flags |= 1U;
+    window_state.items.at(0).inventory = 2;
+    window_state.catalog.at({0, 0}) = window_state.items.at(0);
+    const auto expected_window = startup_world_state_digest(window_state);
+    const auto window_path = dir / "magic-pot-window.avrs";
+    StartupWorldSaveMetadata window_metadata;
+    window_metadata.producer_revision = "magic-pot-window:explicit-precondition-fixture-not-natural";
+    check(save_startup_world_file(reencoded, baseline_session, window_metadata).ok,
+          "window normal baseline template");
+    write(broken, replace_state(read(reencoded), window_state));
+    auto window_candidate = load_startup_world_file(broken, startup_world_rules(),
+                                                    StartupWorldSavePurpose::normal);
+    check(window_candidate.snapshot.has_value(), "window normal fixture candidate: " + window_candidate.error);
+    check(save_startup_world_file(window_path, window_candidate.snapshot->session, window_metadata).ok,
+          "publish owned window normal fixture");
+    const auto window_load = load_startup_world_file(window_path, startup_world_rules(),
+                                                     StartupWorldSavePurpose::normal);
+    check(window_load.snapshot.has_value() &&
+              startup_world_state_digest(window_load.snapshot->session.state()) == expected_window &&
+              window_load.snapshot->metadata.producer_revision == window_metadata.producer_revision,
+          "consume window fixture by exact normal readback");
+    const auto window_bytes = std::filesystem::file_size(window_path);
+    check(window_bytes > 0 && window_bytes <= 128U * 1024U * 1024U &&
+              window_bytes == read(window_path).size(),
+          "window fixture published bytes within file budget");
+    std::cout << "magic-pot window fixture=" << window_path.generic_string()
+              << " bytes=" << window_bytes << " qualification=explicit-fixture-not-natural\n";
     std::filesystem::remove(file);
     std::filesystem::remove(reencoded);
     std::filesystem::remove(broken);
@@ -418,6 +636,7 @@ void run(const std::filesystem::path &dir) {
           "initialized missing counter rejected: " + refused.error);
 
     facility_catalog_replay(session, dir, metadata);
+    magic_pot_replay(session, dir, metadata);
 
     const auto normal_before = read(normal);
 #ifdef _WIN32

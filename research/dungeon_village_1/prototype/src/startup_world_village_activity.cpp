@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_reference/world_village_activity.hpp"
 
 #include <algorithm>
@@ -18,6 +19,7 @@ const ref::WorldScriptPage *top(const State &s) {
     return p == s.scripts.pages.rend() ? nullptr : &*p;
 }
 bool supported(int raw) { return raw >= 51 && raw <= 54; }
+bool supported_kind(int kind) { return kind >= 0 && kind <= 6 && kind != 4; }
 bool event(State &s, int id) {
     const auto r = ref::prepare_world_script(startup_world_runtime_catalog(),
                                              startup_world_runtime_scripts(s), {id, {}, {}});
@@ -136,7 +138,7 @@ bool payload(const State &s, std::uint64_t id, int raw) {
         if (binding == s.activity_page_bindings.end())
             return false;
         const auto a = definition(s, binding->second);
-        if (!a || a->kind < 0 || a->kind > 3 || (raw == 54 && a->kind > 1))
+        if (!a || !supported_kind(a->kind) || (raw == 54 && a->kind > 1))
             return false;
     }
     if (raw == 52)
@@ -235,7 +237,7 @@ std::optional<std::uint64_t> parent(const State &s, std::uint64_t child) {
     return p->id;
 }
 bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinition &a) {
-    if (a.kind < 0 || a.kind > 3 || s.quarter_counter == std::numeric_limits<int>::min())
+    if (!supported_kind(a.kind) || s.quarter_counter == std::numeric_limits<int>::min())
         return false;
     --s.quarter_counter;
     if (a.kind == 0 || a.kind == 1) {
@@ -272,7 +274,9 @@ bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinit
     } else if (a.kind == 2) {
         s.scene.world.popularity_queue.insert(s.scene.world.popularity_queue.begin(),
                                               {10, a.magnitude, 1});
-    } else if (!expand_startup_world_map(s)) {
+    } else if (a.kind == 3) {
+        if (!expand_startup_world_map(s)) return false;
+    } else if (!apply_startup_world_magic_pot_activity(s, a.kind)) {
         return false;
     }
     return close(s, page);
@@ -381,7 +385,7 @@ Error act_startup_world_village_activity_page(State &s, std::uint64_t id, Action
                                      : 12))
                     return Error::script_failed;
             } else {
-                if (a->kind > 3)
+                if (!supported_kind(a->kind))
                     return Error::missing_source;
                 const auto child = open(next, 52, a->identity);
                 if (!child)

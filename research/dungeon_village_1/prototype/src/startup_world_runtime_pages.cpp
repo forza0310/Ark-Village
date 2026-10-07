@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -330,6 +331,8 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 41 && top->legacy_page <= 47)
+        return act_startup_world_magic_pot_page(state, id, StartupMagicPotAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 72 || top->legacy_page == 79 || top->legacy_page == 82))
         return act_startup_world_facility_catalog_page(state, id, StartupFacilityCatalogAction::confirm);
@@ -492,6 +495,10 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
                                        [](const auto &p) { return p.lifecycle != 4; });
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         catalogue->kind == ref::WorldScriptPageKind::raw_page &&
+        catalogue->legacy_page >= 41 && catalogue->legacy_page <= 47)
+        return act_startup_world_magic_pot_page(state, id, StartupMagicPotAction::cancel);
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        catalogue->kind == ref::WorldScriptPageKind::raw_page &&
         (catalogue->legacy_page == 72 || catalogue->legacy_page == 79 || catalogue->legacy_page == 82))
         return act_startup_world_facility_catalog_page(state, id, StartupFacilityCatalogAction::cancel);
     const auto activity = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
@@ -637,6 +644,8 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 75 &&
         top->legacy_page <= 77)
         return prepare_startup_world_facility_item_page(state);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 41 && top->legacy_page <= 47)
+        return update_startup_world_magic_pot_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 72 || top->legacy_page == 79 || top->legacy_page == 82))
         return update_startup_world_facility_catalog_page(state, top->id);

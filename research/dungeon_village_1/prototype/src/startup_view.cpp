@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -626,6 +627,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
         glyphs += job.name;
     for (const auto &activity : rules.activities)
         glyphs += activity.name + activity.detail + activity.description;
+    for (const auto &recipe : rules.magic_pot_recipes)
+        glyphs += recipe.name;
+    glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
     glyphs += "道路移动撤除旋转请选择起点终点未开放不可操作街道内地域商品种类装饰信息口碑关闭继续";
@@ -1039,6 +1043,26 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (!reached)
             throw std::runtime_error("共同世界有界检查未到达真实目标状态");
     }
+    if (inspect_page == "world-magic-pot") {
+        if (session.open_magic_pot(StartupMagicPotEntry::main_menu) != StartupWorldRuntimeError::none)
+            throw std::runtime_error("魔法壶诊断需要已合法解锁的稳定世界文件");
+        // 只驱动已证说明/真实初始化，不注入解锁、点数、库存或页面载荷。
+        bool ready{};
+        for (int n = 0; n < 600; ++n) {
+            if (!session.update().candidate) throw std::runtime_error("魔法壶有界入口更新失败");
+            const auto p = std::find_if(session.state().scripts.pages.rbegin(), session.state().scripts.pages.rend(),
+                [](const auto &page) { return page.lifecycle != 4; });
+            if (p == session.state().scripts.pages.rend()) throw std::runtime_error("魔法壶入口空栈");
+            if (p->kind == ref::WorldScriptPageKind::raw_page && p->legacy_page == 41 &&
+                inspect_startup_world_magic_pot_page(session.state(), p->id)) { ready = true; break; }
+            if ((p->kind == ref::WorldScriptPageKind::dialogue || p->kind == ref::WorldScriptPageKind::simple_message) &&
+                session.acknowledge_page(p->id) != StartupWorldRuntimeError::none)
+                throw std::runtime_error("魔法壶说明输入失败");
+            session.take_sound_requests();
+        }
+        if (!ready) throw std::runtime_error("魔法壶有界诊断未到达41");
+        session.take_sound_requests();
+    }
     if (!load_file || paused)
         session.set_paused(paused);
     ref::WorldRenderClock clock;
@@ -1097,7 +1121,32 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
             const int raw = page->legacy_page;
             const bool task_page = raw >= 22 && raw <= 28;
-            if (raw == 72 || raw == 79 || raw == 82) {
+            if (raw >= 41 && raw <= 47) {
+                const auto view = inspect_startup_world_magic_pot_page(session.state(), page->id);
+                if (view) {
+                    using A = StartupMagicPotAction;
+                    std::optional<A> action;
+                    int selected{};
+                    if (raw <= 43) {
+                        if (IsKeyPressed(KEY_UP)) action = A::previous;
+                        if (IsKeyPressed(KEY_DOWN)) action = A::next;
+                        const int count = raw == 41 ? 2 : static_cast<int>(view->entries.size());
+                        for (int n = view->first_visible; n < std::min(count, view->first_visible + 5); ++n)
+                            if (hit({12, 74.F + (n - view->first_visible) * 27, 216, 26})) {
+                                action = A::select;
+                                selected = n;
+                            }
+                    }
+                    if (raw == 43) {
+                        if (IsKeyPressed(KEY_LEFT)) action = A::previous_tab;
+                        if (IsKeyPressed(KEY_RIGHT)) action = A::next_tab;
+                    }
+                    if (raw != 45 && (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))) action = A::cancel;
+                    if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) action = A::confirm;
+                    if (action && session.act_magic_pot_page(page->id, *action, selected) != StartupWorldRuntimeError::none)
+                        throw std::runtime_error("魔法壶输入事务失败");
+                }
+            } else if (raw == 72 || raw == 79 || raw == 82) {
                 const auto view = inspect_startup_world_facility_catalog_page(session.state(), page->id);
                 if (view) {
                     using A = StartupFacilityCatalogAction;
@@ -1586,6 +1635,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                        (IsKeyPressed(KEY_S) || hit({176, 46, 60, 20}))) {
                 if (session.open_commerce() != StartupWorldRuntimeError::none)
                     throw std::runtime_error("商会入口失败");
+            } else if ((session.state().scripts.user_flags & 1U) != 0 &&
+                       (IsKeyPressed(KEY_P) || hit({176, 138, 60, 20}))) {
+                if (session.open_magic_pot(StartupMagicPotEntry::main_menu) != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("魔法壶入口失败");
             } else if (IsKeyPressed(KEY_D) || hit({176, 69, 60, 20})) {
                 const auto road = available_road(session.state());
                 if (road) {
@@ -1961,7 +2014,55 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     title = rules.monsters.at(*page->monster_definition).name;
             }
             font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
-            if (page->legacy_page == 72 || page->legacy_page == 79 || page->legacy_page == 82) {
+            if (page->legacy_page >= 41 && page->legacy_page <= 47) {
+                DrawRectangle(8, 42, 224, 214, paper);
+                const auto view = inspect_startup_world_magic_pot_page(state, page->id);
+                font.text("魔法壶", 16, 48);
+                if (view) {
+                    const int raw = view->raw;
+                    constexpr const char *elements[]{"火", "冰", "雷", "暗", "经验"};
+                    if (raw <= 43) {
+                        const int count = raw == 41 ? 2 : static_cast<int>(view->entries.size());
+                        for (int n = view->first_visible; n < std::min(count, view->first_visible + 5); ++n) {
+                            const int y = 74 + (n - view->first_visible) * 27;
+                            if (n == view->selection) DrawRectangle(12, y, 216, 26, {219, 232, 204, 255});
+                            std::string label, value;
+                            if (raw == 41) label = n == 0 ? "投入道具" : "开发";
+                            else {
+                                const int id = view->entries[n];
+                                if (raw == 42) {
+                                    label = rules.items.at(id).name;
+                                    value = "持有 " + std::to_string(state.items.at(id).inventory);
+                                } else {
+                                    const auto &r = rules.magic_pot_recipes.at(id);
+                                    label = state.magic_pot_recipes.at(id).status == 0 ? "????" : r.name;
+                                    value = view->phase == 0 ? std::to_string(r.experience_required) + "经验"
+                                        : std::to_string(r.costs[0]) + "/" + std::to_string(r.costs[1]);
+                                }
+                            }
+                            font.text(label, 16, y + 3, ink, 10);
+                            font.text(value, 222 - font.measure(value, 9), y + 3, ink, 9);
+                        }
+                        font.text("等级 " + std::to_string(state.legacy_n[11]) + "  投入 " + std::to_string(state.legacy_n[1]), 16, 216, ink, 10);
+                    } else if (raw == 44 || raw == 45) {
+                        const int cols = raw == 44 ? 4 : 5;
+                        for (int n = 0; n < cols; ++n) {
+                            const auto value = std::to_string(state.magic_pot_display[0][n]) + " > " + std::to_string(state.magic_pot_display[1][n]);
+                            font.text(elements[n], 16, 78 + n * 24, ink, 10);
+                            font.text(value, 94, 78 + n * 24, ink, 10);
+                        }
+                        if (raw == 44) font.text(state.magic_pot_comment, 16, 207, ink, 9);
+                    } else {
+                        const auto &r = rules.magic_pot_recipes.at(view->binding);
+                        font.text(raw == 46 ? "新配方" : "开发", 16, 74);
+                        font.text(r.name, 16, 103);
+                        if (raw == 47) for (int n = 0; n < 4; ++n)
+                            font.text(std::string(elements[n]) + " " + std::to_string(r.costs[n]), 16, 134 + n * 22, ink, 10);
+                    }
+                    if (view->raw != 45) font.text("返回", 16, 272, ink, 10);
+                    font.text("确定", 184, 272, ink, 10);
+                }
+            } else if (page->legacy_page == 72 || page->legacy_page == 79 || page->legacy_page == 82) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const auto view = inspect_startup_world_facility_catalog_page(state, page->id);
                 font.text(page->legacy_page == 79 ? "商品" : page->legacy_page == 72 ? "装备信息" : "设施口碑", 16, 48);
@@ -2818,6 +2919,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("取消", 18, 270);
             else if (page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
+                     (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
                                                   state.page_counters.at(page->id) >= 70)))
                 font.text("确定", 190, 270);
@@ -2842,6 +2944,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
             font.text("移动 M", 180, 96, (state.scripts.user_flags & 32U) ? ink : GRAY, 10);
             DrawRectangle(176, 115, 60, 20, paper);
             font.text("撤除 Del", 178, 119, ink, 10);
+            if ((state.scripts.user_flags & 1U) != 0) {
+                DrawRectangle(176, 138, 60, 20, paper);
+                font.text("魔法壶 P", 178, 142, ink, 10);
+            }
             if (!command_feedback.empty()) {
                 DrawRectangle(5, 265, 230, 24, paper);
                 font.text(command_feedback, 12, 270, ink, 11);

@@ -43,7 +43,7 @@ add_custom_command(OUTPUT "${STARTUP_WORLD_CPP}"
             ../data/startup/MAP.json ../data/startup/STATE.json ../data/startup/TABLES.json
             ../data/original/tenantData.txt ../data/world/monster.txt ../data/world/questData.txt
             ../data/world/armour.txt ../data/world/accessory.txt ../data/world/item.txt
-            ../data/world/asEventData.txt
+            ../data/world/asEventData.txt ../data/world/magicPot.txt
             ../data/scripts/original/events.txt ../data/scripts/original/talk.txt
             ../data/scripts/original/news.txt ../data/scripts/original/evtmsgs.txt
             ../data/scripts/original/popularBonus.txt VERBATIM)
@@ -55,7 +55,7 @@ add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
             ../data/startup/MAP.json ../data/startup/STATE.json ../data/startup/TABLES.json
             ../data/original/tenantData.txt ../data/world/monster.txt ../data/world/questData.txt
             ../data/world/armour.txt ../data/world/accessory.txt ../data/world/item.txt
-            ../data/world/asEventData.txt ../data/scripts/original/events.txt
+            ../data/world/asEventData.txt ../data/world/magicPot.txt ../data/scripts/original/events.txt
             ../data/scripts/original/talk.txt ../data/scripts/original/news.txt
             ../data/scripts/original/evtmsgs.txt ../data/scripts/original/popularBonus.txt VERBATIM)
 add_library(dungeon_village_startup_world src/startup_world_projection.cpp
@@ -70,7 +70,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
     src/startup_world_visuals.cpp src/startup_world_building.cpp src/startup_world_expansion.cpp
     src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp
-    src/startup_world_facility_items.cpp src/startup_world_facility_catalog.cpp
+    src/startup_world_facility_items.cpp src/startup_world_facility_catalog.cpp src/startup_world_magic_pot.cpp
     src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
 dungeon_village_library(dungeon_village_startup_world)
 target_link_libraries(dungeon_village_startup_world PUBLIC dungeon_village_startup_model)

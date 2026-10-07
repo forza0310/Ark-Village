@@ -358,10 +358,11 @@ void mixed_surface_roundtrip() {
     state.tasks.at(task).site = position;
     state.sites.at(id).occupied_cells = {position};
     map.cells.at(index) = {8, ref::RouteCategory::terminal,
-                          ref::FacilityTileBinding{{id}, facility.placement.definition_id, 0}};
+                           ref::FacilityTileBinding{{id}, facility.placement.definition_id, 0}};
     state.surface.at(index).definition = facility.placement.definition_id;
     state.surface.at(index).variant = 0;
-    state.surface.at(index).instance = 3; // Source direction m is separate from the stable identity.
+    state.surface.at(index).instance =
+        3; // Source direction m is separate from the stable identity.
     const auto definition = facility.placement.definition_id;
     check(sim::refresh_startup_world_map(state, false), "source refresh validates cave fixture");
     const auto raw = state.facility_original_ids.at(id);
@@ -379,25 +380,28 @@ void mixed_surface_roundtrip() {
             check(sim::begin_startup_world_edit(state, false).error ==
                           sim::StartupWorldRuntimeError::none &&
                       sim::confirm_startup_world_edit(state, position,
-                                                       ref::FacilityOrientation::first)
+                                                      ref::FacilityOrientation::first)
                               .error == sim::StartupWorldRuntimeError::none &&
                       sim::confirm_startup_world_edit(state, position,
-                                                       ref::FacilityOrientation::first)
+                                                      ref::FacilityOrientation::first)
                               .error == sim::StartupWorldRuntimeError::none &&
                       sim::cancel_startup_world_edit(state) == sim::StartupWorldRuntimeError::none,
                   "actual source road removal retains the same cave instance");
         const auto &binding = state.scene.world.world.map.cells.at(index).facility;
         check(binding && binding->instance_id.value == id && binding->definition_id == definition &&
-                  state.surface.at(index).definition == (phase == 0 ? 18 : state.ground_definition) &&
+                  state.surface.at(index).definition ==
+                      (phase == 0 ? 18 : state.ground_definition) &&
                   state.surface.at(index).instance == 3 &&
                   state.scene.world.world.ai.accounting.funds() == funds - 10 &&
                   state.scene.random.draws() == draws,
               "source mixed road/ground has exact binding, one charge and retained direction");
         auto loaded = restored(state);
-        same_durable(state, loaded, phase == 0 ? "road with cave capture" : "ground with cave capture");
+        same_durable(state, loaded,
+                     phase == 0 ? "road with cave capture" : "ground with cave capture");
         check(loaded.facility_original_ids.at(id) == raw &&
                   loaded.scene.world.world.map.cells.at(index).facility->instance_id.value == id &&
-                  loaded.scene.world.world.map.cells.at(index).facility->definition_id == definition,
+                  loaded.scene.world.world.map.cells.at(index).facility->definition_id ==
+                      definition,
               "mixed surface restore keeps actual source instance and original identity");
         auto baseline = state;
         discard_nonpersistent_effects(baseline);
@@ -419,7 +423,8 @@ void mixed_surface_roundtrip() {
             else if (fault == 2)
                 ++cell.facility->fragment_index;
             else if (fault == 3)
-                broken.surface.at(index).definition = 30; // Known ordinary building, not road/ground.
+                broken.surface.at(index).definition =
+                    30; // Known ordinary building, not road/ground.
             else
                 cell.category = ref::RouteCategory::terminal; // Incorrect category for state3/4.
             const auto cash = broken.scene.world.world.ai.accounting.funds();
@@ -602,6 +607,22 @@ void natural_operation_roundtrip() {
                         check(copy.scene.world.world.ai.accounting.funds() ==
                                   state.scene.world.world.ai.accounting.funds(),
                               "construction save does not charge again");
+                        // 6061a2c separates temporary m.p from construction/business state.
+                        // Ark's approved player policy deliberately retains p. This explicit
+                        // nonempty fixture must not silently turn into the original load policy.
+                        auto with_notice = state;
+                        with_notice.facility_details.at(*result.created).notices = {{3, 9}};
+                        auto loaded_notice = restored(with_notice);
+                        check(loaded_notice.facility_details.at(*result.created).notices ==
+                                  std::vector<std::array<int, 2>>{{3, 9}},
+                              "player restore retains nonempty instance p under approved policy");
+                        same_durable(with_notice, loaded_notice,
+                                     "nonempty p and ongoing construction capture");
+                        discard_nonpersistent_effects(with_notice);
+                        advance(with_notice);
+                        advance(loaded_notice);
+                        same_durable(with_notice, loaded_notice,
+                                     "nonempty p construction resumes without replaying payment");
                     }
                 }
             check(built, "natural construction finds legal actual placement");

@@ -1,7 +1,10 @@
 // Tests source identity/order and the actual click-to-action path without a window or fake award.
 #include "support/checks.hpp"
+#include "support/world_fixture.hpp"
+#include "ui/skin.hpp"
 #include "ui/world_award.hpp"
 #include "ui/world_progression.hpp"
+#include <filesystem>
 #include <iostream>
 
 namespace {
@@ -13,6 +16,52 @@ bool contains(Rectangle outer, Rectangle inner) {
 }
 } // namespace
 namespace ark::test {
+// Explicit roster-at-page callsite fixture: it checks S067/S068 composition without replaying
+// an entire year. Eligibility and ranks are supplied, never claimed as a natural annual result.
+void world_award_render_fixture() {
+    using namespace ark::desktop;
+    auto state = initial_world();
+    constexpr std::uint64_t page = 1;
+    for (int id = 0; id < 7; ++id)
+        state.award_rankings[page].push_back(id);
+    state.award_termination_pending[page] = false;
+    const auto before = state;
+    InitWindow(540, 360, "Ark-Village annual UI / supplied roster fixture");
+    struct WindowScope {
+        ~WindowScope() { CloseWindow(); }
+    } window;
+    Sprites sprites(ARK_TEST_ASSETS);
+    Text text(ARK_TEST_FONT, "");
+    ui::Skin skin(sprites, text);
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "award";
+    std::filesystem::create_directories(output);
+    for (const auto extent : {Extent{540, 360}, Extent{240, 256}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const bool pending : {false, true}) {
+            auto view = ui::world_award_view(state, page);
+            view.termination_pending = pending; // Read-only display variant, no award command.
+            for (int frame = 0; frame < 4; ++frame) {
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                ui::draw_world_award(view, ui::world_award_layout(extent, pending), skin, {}, true);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file = output / (std::string(pending ? "question-" : "candidates-") +
+                                        std::to_string(extent.width) + ".png");
+            auto image = LoadImageFromScreen();
+            const bool saved = image.data && ExportImage(image, file.string().c_str());
+            if (image.data)
+                UnloadImage(image);
+            if (!saved)
+                throw std::runtime_error("Annual display fixture capture failed");
+            std::cout << "Annual supplied-roster fixture: " << file.string() << '\n';
+        }
+    }
+    if (!same_world_clock(state, before) || state.medal_count != before.medal_count ||
+        state.scene.random.draws() != before.scene.random.draws())
+        throw std::runtime_error("Annual rendering changed world time, medals or randomness");
+}
 void world_award_ui() {
     Checks check{"world_award_ui"};
     namespace ui = ark::desktop::ui;
@@ -40,11 +89,17 @@ void world_award_ui() {
 
     sim::StartupWorldRuntimeState state;
     sim::StartupWorldRules catalogue;
+    catalogue.humans.resize(43);
+    catalogue.jobs.resize(2);
+    catalogue.jobs[0].sprites = {11, 12};
+    catalogue.jobs[1].sprites = {21, 22};
     for (const int id : {42, 7, 19}) {
         sim::StartupWorldHuman human;
         human.identity = id;
         human.name = "human-" + std::to_string(id);
-        catalogue.humans.push_back(human);
+        catalogue.humans[id] = human;
+        state.scene.world.world.ai.growth[id].definition.current_profession = id == 19 ? 1 : 0;
+        state.scene.world.world.ai.growth[id].definition.legacy_u = id + 5;
         state.human_calendar[id].contribution = id == 7 ? 60 : 80;
     }
     state.rules = &catalogue;
@@ -57,7 +112,9 @@ void world_award_ui() {
     const auto view = ui::world_award_view(state, 123);
     check(view.initialized && view.medals == 7 && view.rows.size() == 3 &&
               view.rows[0].definition == 19 && view.rows[0].name == "human-19" &&
-              view.rows[1].definition == 42 && view.rows[2].contribution == 60,
+              view.rows[1].definition == 42 && view.rows[2].contribution == 60 &&
+              view.rows[0].effort == 24 && view.rows[0].portrait_image == 21 &&
+              view.rows[1].portrait_image == 11,
           "Display must resolve definition identities and preserve source order including tied "
           "ranks");
     check(state.medal_count == 7 && !state.award_termination_pending.at(123),
@@ -71,6 +128,8 @@ void world_award_ui() {
     };
     for (const auto extent : {ark::desktop::Extent{240, 256}, ark::desktop::Extent{540, 360}}) {
         const auto layout = ui::world_award_layout(extent, false);
+        check(layout.row_height >= 16 && layout.rows.height == 5 * layout.row_height,
+              "S067 keeps five readable candidates at the minimum and ordinary viewport");
         check(contains({0, 24, static_cast<float>(extent.width), extent.height - 53.F},
                        layout.panel) &&
                   contains(layout.panel, layout.rows) && contains(layout.panel, layout.terminate),
@@ -89,8 +148,8 @@ void world_award_ui() {
         const auto question = ui::world_award_layout(extent, true);
         check(contains(question.panel, question.prompt) && contains(question.panel, question.yes) &&
                   contains(question.panel, question.no) &&
-                  question.rows.y + question.rows.height + 4 < question.prompt.y,
-              "Termination prompt and ranked rows must not overlap");
+                  question.prompt.y + question.prompt.height < question.yes.y,
+              "S068 separate question keeps its text clear of the Yes/No commands");
         check(click_action(pending, question, middle(question.yes), false, false, false) ==
                       Action::confirm_termination &&
                   click_action(pending, question, middle(question.no), false, false, false) ==

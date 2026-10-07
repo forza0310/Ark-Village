@@ -16,7 +16,6 @@
 #include "world_management.hpp"
 #include "world_management_inspection.hpp"
 #include "world_pointer.hpp"
-#include "world_rank.hpp"
 #include "world_render_statistics.hpp"
 #include "world_save_menu.hpp"
 #include "world_scene.hpp"
@@ -71,53 +70,6 @@ const rules::WorldScriptPage *active_page(const State &s) {
     if (found == s.scripts.pages.rend() || found->kind == rules::WorldScriptPageKind::scene)
         return nullptr;
     return &*found;
-}
-std::string page_body(const State &s, const rules::WorldScriptPage &page, int paragraph) {
-    std::string body;
-    if (!page.paragraphs.empty())
-        body =
-            page.paragraphs.at(std::min(paragraph, static_cast<int>(page.paragraphs.size()) - 1));
-    if (page.task_definition &&
-        (page.legacy_page == 30 || page.legacy_page == 31 || page.legacy_page == 32))
-        body += s.rules->tasks.at(*page.task_definition).name + "完成!";
-    if (page.legacy_page == 49)
-        body = s.page_counters.count(page.id) ? world_rank_conditions(s) : "";
-    if (page.legacy_page == 89 && page.monster_definition && body.empty()) {
-        // This page owns a monster definition identity, not an actor or source-record index.
-        const auto found = std::find_if(
-            s.rules->monsters.begin(), s.rules->monsters.end(),
-            [&](const auto &monster) { return monster.identity == *page.monster_definition; });
-        if (found != s.rules->monsters.end())
-            body = found->name;
-    }
-    return body;
-}
-void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool failed,
-         bool menu_open, bool menu_pending) {
-    const float w = layout.extent.width, h = layout.extent.height;
-    skin.tile("top_bar.png", {22, 0, 90, 24}, {22, 0, w - 150, 24});
-    skin.sprites.image("top_bar.png", {0, 0, 22, 24}, {0, 0, 22, 24});
-    skin.sprites.image("top_bar.png", {112, 0, 128, 24}, {w - 128, 0, 128, 24});
-    const auto cash = std::to_string(s.scene.world.world.ai.accounting.funds()) + "G";
-    ui::draw_world_date(ui::world_date_view(s.scene.calendar), skin,
-                        w - 15 - skin.text.width(cash));
-    skin.right(cash, w - 7, 6);
-    skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
-    skin.number(s.village_points, {w - 3, 27});
-    skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
-    ui::draw_world_popularity(s.popularity, layout, skin);
-    // S057 catalogue owns the footer's return key, so no unrelated pause/menu boxes show behind it.
-    if (const auto *page = active_page(s); page && page->legacy_page == 21)
-        return;
-    skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
-    skin.button(ui::world_menu_button(layout.extent), "菜单",
-                !failed && !menu_pending &&
-                    (menu_open || (s.scene.scene_state == 0 && !active_page(s))));
-    if (failed)
-        skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
-    if (s.report_state && !active_page(s)) {
-        ui::draw_world_month(ui::world_month_view(s), skin);
-    }
 }
 } // namespace
 
@@ -519,7 +471,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 if (!desired_pause && !failed && !pending_ack &&
                     (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
                     const auto decoded =
-                        ui::decode_script_text(page_body(current, *page, paragraph));
+                        ui::decode_script_text(ui::world_page_body(current, *page, paragraph));
                     const auto wrapped =
                         ui::wrap_plain_text(decoded.text, page_layout.body.width,
                                             [&](const auto &value) { return text.width(value); });
@@ -595,7 +547,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         EndMode2D();
         text.flush(raster.zoom, raster.offset);
         BeginMode2D(raster);
-        hud(current, layout, skin, failed, publication->main_menu_open, pending_menu != 0);
+        ui::draw_world_hud(current, layout, skin, failed, publication->main_menu_open,
+                           pending_menu != 0, active_page(current));
         if (const auto *page = active_page(current)) {
             if (management.draw_page(current, *page, extent, skin,
                                      !desired_pause && !failed && !pending_ack && !pending_task)) {
@@ -620,7 +573,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 const auto page_layout = ui::world_page_layout(*page, extent);
                 ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
                 ui::draw_world_task_monster(current, *page, page_layout.body, skin);
-                const auto decoded = ui::decode_script_text(page_body(current, *page, paragraph));
+                const auto decoded =
+                    ui::decode_script_text(ui::world_page_body(current, *page, paragraph));
                 const auto wrapped =
                     ui::wrap_plain_text(decoded.text, page_layout.body.width,
                                         [&](const auto &value) { return text.width(value); });

@@ -1,6 +1,7 @@
 // Frozen research e8f66d9 publishes raw87 ranking, award selection and separate questions.
-// This desktop table uses source ranks and contributions with the existing original artwork.
+// S067/S068 supply the five-row composition and question text; values remain fixed-APK data.
 #include "world_award.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -49,7 +50,12 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
                                         [id](const auto &value) { return value.identity == id; });
         if (human == state.rules->humans.end())
             throw std::invalid_argument("Annual display references an unknown human definition");
-        view.rows.push_back({id, human->name, state.human_calendar.at(id).contribution});
+        const auto portrait = simulation::startup_world_portrait(state, id);
+        if (!portrait)
+            throw std::invalid_argument("Annual display references a missing current portrait");
+        view.rows.push_back({id, human->name, state.human_calendar.at(id).contribution,
+                             state.scene.world.world.ai.growth.at(id).definition.legacy_u,
+                             portrait->image});
         if (view.pending_human == id)
             view.pending_name = human->name;
     }
@@ -58,15 +64,16 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
 WorldAwardLayout world_award_layout(Extent extent, bool pending) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Annual page requires the supported logical viewport");
-    const float width = std::min(310.F, extent.width - 16.F);
-    const float height = std::min(250.F, extent.height - 68.F);
+    const float width = std::min(240.F, extent.width - 16.F);
+    const float height = pending ? 120.F : 188.F;
     WorldAwardLayout layout;
     layout.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &p = layout.panel;
-    layout.rows = {p.x + 12, p.y + 65, width - 24, height - 65 - (pending ? 85.F : 42.F)};
+    layout.rows = {p.x + 12, p.y + 47, width - 24, height - 101};
+    layout.row_height = layout.rows.height / 5;
     layout.terminate = {p.x + 12, p.y + height - 29, 78, 21};
     layout.grant = {p.x + width - 78, p.y + height - 29, 66, 21};
-    layout.prompt = {p.x + 8, p.y + height - 76, width - 16, 38};
+    layout.prompt = {p.x + 12, p.y + 30, width - 24, height - 66};
     layout.yes = {p.x + width / 2 - 66, p.y + height - 29, 58, 21};
     layout.no = {p.x + width / 2 + 8, p.y + height - 29, 58, 21};
     return layout;
@@ -96,7 +103,7 @@ std::optional<WorldAwardIntent> world_award_input(const WorldAwardView &view,
         return {};
     }
     const int count = static_cast<int>(view.rows.size());
-    const int visible = std::max(1, static_cast<int>(layout.rows.height / 18));
+    constexpr int visible = 5;
     if (count) {
         selection.selected = std::clamp(selection.selected, 0, count - 1);
         selection.first_row =
@@ -110,7 +117,8 @@ std::optional<WorldAwardIntent> world_award_input(const WorldAwardView &view,
                 std::clamp(selection.first_row, std::max(0, selection.selected - visible + 1),
                            std::min(selection.selected, std::max(0, count - visible)));
         for (int n = 0; n < visible && n + selection.first_row < count; ++n)
-            if (hit(input.click, {layout.rows.x, layout.rows.y + n * 18, layout.rows.width, 18}))
+            if (hit(input.click, {layout.rows.x, layout.rows.y + n * layout.row_height,
+                                  layout.rows.width, layout.row_height}))
                 selection.selected = selection.first_row + n;
     }
     if (input.escape || hit(input.click, layout.terminate)) {
@@ -125,50 +133,71 @@ std::optional<WorldAwardIntent> world_award_input(const WorldAwardView &view,
 }
 void draw_world_award(const WorldAwardView &view, const WorldAwardLayout &layout, const Skin &skin,
                       const WorldAwardSelection &selection, bool enabled) {
-    skin.window(layout.panel, "年度授勋");
-    skin.text.draw("持有勋章", layout.panel.x + 12, layout.panel.y + 27);
-    skin.right(std::to_string(view.medals), layout.panel.x + layout.panel.width - 12,
-               layout.panel.y + 27, blue);
-    skin.text.draw("冒险者", layout.rows.x, layout.panel.y + 47);
-    skin.right("贡献", layout.rows.x + layout.rows.width, layout.panel.y + 47);
+    if (view.termination_pending || view.pending_human) {
+        // S068 is a separate information question, not another row in the candidate list.
+        skin.window(layout.panel, "信息");
+        const auto question = view.termination_pending ? std::string("要中止授勋仪式吗")
+                                                       : "授予" + view.pending_name + "勋章？";
+        skin.content(layout.prompt);
+        skin.centered(question, layout.prompt, ink,
+                      std::min(12.F, 12.F * (layout.prompt.width - 8) /
+                                         std::max(1.F, skin.text.width(question))));
+        const auto selected = selection.prompt ? layout.no : layout.yes;
+        DrawRectangleRec(selected, {255, 155, 48, 255});
+        const auto color = enabled && view.initialized ? ink : GRAY;
+        skin.centered("是", layout.yes, color);
+        skin.centered("否", layout.no, color);
+        return;
+    }
+    skin.window(layout.panel, "授勋仪式");
+    skin.centered(
+        "勋章 " + std::to_string(view.medals) + "个 剩余",
+        {layout.panel.x, layout.panel.y + layout.panel.height - 48, layout.panel.width, 16});
+    skin.text.draw("名称", layout.rows.x + 4, layout.panel.y + 29);
+    skin.right("贡献", layout.rows.x + layout.rows.width - 47, layout.panel.y + 29, ink, 10);
+    skin.right("勤奋度", layout.rows.x + layout.rows.width - 2, layout.panel.y + 29, ink, 10);
     skin.content(
         {layout.rows.x - 5, layout.rows.y - 4, layout.rows.width + 10, layout.rows.height + 8});
-    const int count = std::max(1, static_cast<int>(layout.rows.height / 18));
+    constexpr int count = 5;
     const int first =
         std::clamp(selection.first_row, 0, std::max(0, static_cast<int>(view.rows.size()) - count));
     for (int index = first; index < static_cast<int>(view.rows.size()) && index < first + count;
          ++index) {
         const auto &row = view.rows[index];
-        const float y = layout.rows.y + (index - first) * 18;
-        if (index == selection.selected)
-            DrawRectangleRec({layout.rows.x, y, layout.rows.width, 18}, Color{219, 232, 204, 255});
+        const float y = layout.rows.y + (index - first) * layout.row_height;
+        if (index == selection.selected) {
+            DrawRectangleRec({layout.rows.x, y, layout.rows.width, layout.row_height},
+                             Color{255, 155, 48, 255});
+            skin.sprites.draw("finger_r.seb", 0, {layout.rows.x - 4, y + layout.row_height / 2},
+                              WHITE, Sprites::Binding::common);
+        }
+        const float portrait_size = std::min(15.F, layout.row_height - 2);
+        skin.sprites.human_image(row.portrait_image, {1, 27, 15, 14},
+                                 {layout.rows.x + 2, y + 1, portrait_size, portrait_size});
         // Scale long names only; ranking and numeric contribution retain their source identity.
-        const auto name = std::to_string(index + 1) + ". " + row.name;
+        const auto &name = row.name;
         const float size =
-            std::min(12.F, 12.F * (layout.rows.width - 40) / std::max(1.F, skin.text.width(name)));
-        skin.text.draw(name, layout.rows.x, y, ink, size);
-        skin.right(std::to_string(row.contribution), layout.rows.x + layout.rows.width, y, blue);
+            std::min({11.F, layout.row_height - 2,
+                      12.F * (layout.rows.width - 106) / std::max(1.F, skin.text.width(name))});
+        skin.text.draw(name, layout.rows.x + 20, y + 1, ink, size);
+        skin.right(std::to_string(row.contribution), layout.rows.x + layout.rows.width - 47, y + 1,
+                   blue, std::min(11.F, layout.row_height - 2));
+        skin.right(std::to_string(row.effort), layout.rows.x + layout.rows.width - 2, y + 1, blue,
+                   std::min(11.F, layout.row_height - 2));
     }
     if (!view.termination_pending && !view.pending_human &&
-        static_cast<int>(view.rows.size()) > count)
-        skin.text.draw(
-            std::to_string(first + 1) + "-" +
-                std::to_string(std::min(first + count, static_cast<int>(view.rows.size()))) + "/" +
-                std::to_string(view.rows.size()),
-            layout.rows.x, layout.panel.y + layout.panel.height - 24, ink, 9);
-    if (view.termination_pending || view.pending_human) {
-        skin.content(layout.prompt);
-        const auto question = view.termination_pending ? std::string("结束本次授勋吗？")
-                                                       : "授予" + view.pending_name + "勋章？";
-        skin.text.paragraph(question, layout.prompt.x + 4, layout.prompt.y + 4,
-                            layout.prompt.width - 8);
-        skin.button(layout.yes, "是", enabled && view.initialized);
-        skin.button(layout.no, "否", enabled && view.initialized);
-        DrawRectangleLinesEx(selection.prompt ? layout.no : layout.yes, 1, blue);
-    } else {
-        skin.button(layout.terminate, "结束授勋", enabled && view.initialized);
-        skin.button(layout.grant, "授予",
-                    enabled && view.initialized && view.medals > 0 && !view.rows.empty());
+        static_cast<int>(view.rows.size()) > count) {
+        const Rectangle track{layout.rows.x + layout.rows.width + 4, layout.rows.y, 4,
+                              layout.rows.height};
+        DrawRectangleRec(track, {33, 20, 91, 255});
+        const float thumb = track.height * count / view.rows.size();
+        DrawRectangleRec({track.x,
+                          track.y + (track.height - thumb) * first / (view.rows.size() - count),
+                          track.width, thumb},
+                         {47, 165, 237, 255});
     }
+    skin.button(layout.terminate, "中止", enabled && view.initialized);
+    skin.button(layout.grant, "授予",
+                enabled && view.initialized && view.medals > 0 && !view.rows.empty());
 }
 } // namespace ark::desktop::ui

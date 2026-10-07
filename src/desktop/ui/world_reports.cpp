@@ -1,5 +1,5 @@
 // research5aa5c37 TASK_REPORT_RENDER supplies the fixed-APK artwork/data contract.
-// Desktop confirmation buttons and expanded (frozen) month overlays are explicit adaptations.
+// Victory confirmation is source-gated; month overlays advance automatically in the runtime.
 #include "world_reports.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"

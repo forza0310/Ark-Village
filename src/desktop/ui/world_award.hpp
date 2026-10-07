@@ -15,6 +15,7 @@ struct WorldAwardRow {
     int definition{};
     std::string name;
     int contribution{};
+    int effort{}, portrait_image{};
 };
 struct WorldAwardView {
     bool initialized{};
@@ -26,6 +27,7 @@ struct WorldAwardView {
 };
 struct WorldAwardLayout {
     Rectangle panel, rows, terminate, grant, prompt, yes, no;
+    float row_height{};
 };
 WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &state,
                                 std::uint64_t page);

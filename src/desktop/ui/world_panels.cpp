@@ -1,14 +1,63 @@
 // S004/S005/S009 supply visual composition; STARTUP supplies page0 and its secretary binding.
 // Responsive panel positioning is a desktop adaptation, not a fixed-APK touch-coordinate claim.
 #include "world_panels.hpp"
+#include "../world_rank.hpp"
 #include "ark/simulation/rules/world_notices.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "script_text.hpp"
 #include "skin.hpp"
+#include "world_menu.hpp"
+#include "world_reports.hpp"
 #include <algorithm>
 #include <stdexcept>
 
 namespace ark::desktop::ui {
+std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
+                            const simulation::rules::WorldScriptPage &page, int paragraph) {
+    std::string body;
+    if (!page.paragraphs.empty())
+        body =
+            page.paragraphs.at(std::min(paragraph, static_cast<int>(page.paragraphs.size()) - 1));
+    if (page.task_definition &&
+        (page.legacy_page == 30 || page.legacy_page == 31 || page.legacy_page == 32))
+        body += s.rules->tasks.at(*page.task_definition).name + "完成!";
+    if (page.legacy_page == 49)
+        body = s.page_counters.count(page.id) ? world_rank_conditions(s) : "";
+    if (page.legacy_page == 89 && page.monster_definition && body.empty()) {
+        // The source binds a definition identity, not an actor or source-record index.
+        const auto found = std::find_if(
+            s.rules->monsters.begin(), s.rules->monsters.end(),
+            [&](const auto &monster) { return monster.identity == *page.monster_definition; });
+        if (found != s.rules->monsters.end())
+            body = found->name;
+    }
+    return body;
+}
+void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout &layout,
+                    const Skin &skin, bool failed, bool menu_open, bool menu_pending,
+                    const simulation::rules::WorldScriptPage *page) {
+    const float w = layout.extent.width, h = layout.extent.height;
+    skin.tile("top_bar.png", {22, 0, 90, 24}, {22, 0, w - 150, 24});
+    skin.sprites.image("top_bar.png", {0, 0, 22, 24}, {0, 0, 22, 24});
+    skin.sprites.image("top_bar.png", {112, 0, 128, 24}, {w - 128, 0, 128, 24});
+    const auto cash = std::to_string(s.scene.world.world.ai.accounting.funds()) + "G";
+    draw_world_date(world_date_view(s.scene.calendar), skin, w - 15 - skin.text.width(cash));
+    skin.right(cash, w - 7, 6);
+    skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
+    skin.number(s.village_points, {w - 3, 27});
+    skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
+    draw_world_popularity(s.popularity, layout, skin);
+    // S057 owns the footer's return key; hidden pause/menu artwork has no input area.
+    if (page && page->legacy_page == 21)
+        return;
+    skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
+    skin.button(world_menu_button(layout.extent), "菜单",
+                !failed && !menu_pending && (menu_open || (s.scene.scene_state == 0 && !page)));
+    if (failed)
+        skin.centered("当前活动尚未接入", {8, 46, w - 16, 20}, MAROON);
+    if (s.report_state && !page)
+        draw_world_month(world_month_view(s), skin);
+}
 namespace {
 using Page = simulation::rules::WorldScriptPage;
 using Kind = simulation::rules::WorldScriptPageKind;

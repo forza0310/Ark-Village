@@ -60,6 +60,32 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 第二次窗口反馈：业务重载与撤除（2026-10-07）
+
+用户交回[20261007-120056-business-reload-p](work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md)，
+标题Steam 2.56，同DLL／metadata身份；APK不替换。A实际冷启动读档及经营／再次保存已经记录，
+库存和共享改良经[前后比较](work/business-reload-analysis/roundtrip/RESULT.json)保留；
+三档75段／42引用与独立读取器交叉，撤除身份、邻接及引用端点见[分析](work/business-reload-analysis/ANALYSIS.md)。
+B没有取得非空p，采样／目标保存时序错开，不将邻接变化或人物表现当作非空载荷。
+
+| 本轮证据 | SHA-256 |
+| --- | --- |
+| work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md | `7105244a60a5eb2f44c8bd78f333809610c3636defd59d2d5c400a8f687e00be` |
+| 同目录EVIDENCE_INDEX.json | `bacb6111c0e558e8233ff7717926ab125701d123d7dd1ddd84cd5dfe51f7a237` |
+| 同目录ACTIONS.json | `535b236c7353f5044c9fdafeaae42ed2ba3f4b99405692d1592686b95c7493d2` |
+| 同目录B-sampler/RESULT.json | `3d130f6fee08e8fff1a757a4c89db9a8fd885331d54c58b8bde93e6d9b6c44e6` |
+| work/business-reload-analysis/INPUT_VALIDATION.json | `1d5396556f37bd4ac0e9b64d724e29407de07a768f1fc44673e680f0a5dd2829` |
+| work/business-reload-analysis/roundtrip/RESULT.json | `1e41209ca9308061cd05f3f9f494ff1386e2815821d3b961587aaa71473a01d7` |
+| work/business-reload-analysis/removal/AUDIT.json | `a17f582725f9f6b75affd763c232b9ec2e2dcc8abadaa4e982b588076b2b3e53` |
+| work/business-reload-analysis/removal/OUTPUT_HASHES.json | `bb5fb39eaae1306a92c897849892969264ed942d3943696192f90565abf13b21` |
+| references/screenshots/2026-10-07-steam-business-reload/MANIFEST.tsv | `8a46e56c0821ac8c8cbb01df7ba85ee2e21ce0649895de4fb522dc1c4e7cbfd6` |
+| data/original/tenantData.txt（固定APK表；本轮只核ID32名称） | `5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a` |
+
+39项索引和五份授权后冻结备份严格核哈希，恢复日志与本轮备份一致；没有重新核实时原件或云端。
+原实验22图精选[S052–S061](references/screenshots/2026-10-07-steam-business-reload/README.md)10张，完整原字节副本、尺寸／格式单列，
+图标签不认证选择对象或确认弹窗。缺失怪物UID1的两次引用仍按样本诊断保留，不补写或判坏档。
+本轮主会话没有运行游戏或原档写回，交付只含research文档／授权截图；账号／key／村名和整档明文不进入数值摘要。
+
 ## 恢复闭环与Steam交互静态收口（2026-10-07）
 
 用户授权并行处理，随后确认设施候选窗口重载尚未完成，继续静态研究。

@@ -40,6 +40,9 @@ Windows六套420项标准与四项长测共424次CTest通过，两个有界窗�
 原程序动态恢复与固定APK设备档仍待验证，后续按[阶段入口](dungeon_village_1/stages/README.md)推进。
 最新已补原版恢复合同：缺失引用按局部消费者跳过、消失中遭遇沿原状态继续，设施p为表现队列，两版中断日历位置与完整帧快照不同。
 Steam另有SaveAll中断写入及加载年月修正；本轮只作静态交叉，窗口管道不可用，动态结果不冒称通过。
+后续用户交回两次Steam窗口实验：设施道具业务已完成真实冷启动恢复及前后档交叉，库存1／共享改良[20,0,2,0]保留；
+撤除对象／邻接／保存引用端点与[S052–S061](dungeon_village_1/references/screenshots/2026-10-07-steam-business-reload/README.md)归档已补。
+非空p仍未取得，完整SaveAll上游仍未闭合；最新状态见[阶段入口](dungeon_village_1/stages/README.md)，不重复已完成业务重载。
 
 用户提供的Steam Windows版已完成[独立静态可行性评估](dungeon_village_1/verification/STEAM_ASSESSMENT.md)：
 IL2CPP语义名可读，部分地图／表格／素材字节相同；已验证方法地址映射及存取／随机代表机器码。

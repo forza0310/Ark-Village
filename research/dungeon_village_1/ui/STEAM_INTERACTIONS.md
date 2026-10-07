@@ -46,6 +46,20 @@
 真实保存的共享改良和库存差异已由[只读审计](../work/window-save-analysis/ANALYSIS.md)交叉；
 两个保存之间有自然经营，不能把全部差异归给这一操作。人物“好满足！”和设施“升级↑”不是已识别的序列化 `p` 冒泡。
 
+## 后续业务重载观察
+
+用户交回[第二次窗口实验](../work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md)，
+已实际加载候选、查看咖啡店详情及坐垫列表、正常保存，未再次使用坐垫。
+[S054／S055](../references/screenshots/2026-10-07-steam-business-reload/README.md)显示510G／21／27、等级1与库存1；
+前后档独立核库存1与定义36共享J[20,0,2,0]保留。业务恢复已覆盖，非空设施p仍未覆盖。
+只替换游戏记录而保留当前系统目录，选择页日期／资金与读入世界不同，是已记录的目录／游戏档分离案例，
+不据此判加载失败；世界运行后的画面和后档不能认证精确首帧或随机回放。
+
+撤除画面[S057–S061](../references/screenshots/2026-10-07-steam-business-reload/README.md)补充设备目录、
+“要撤除哪里”编辑提示、提交前后及返回地图。`removal-selection`图仍高亮道路，
+`flower-target`不认证向日葵，`removal-confirmation`实际为撤除后编辑地图，未出现具名确认弹窗。
+本次局部观察不外推所有撤除路径或把截图坐标当逻辑格；对象与引用差分见[分析](../work/business-reload-analysis/ANALYSIS.md)。
+
 ## 输入：选中、标记与确认分开
 
 `surface.GameView.OnTouchEvent`先允许顶层表单处理事件，再按组件ID分派。

@@ -237,7 +237,7 @@ XOR 密钥由协调器初始化的 11 个 int 拆为 44 字节，拆字节按低
 生命周期／计数、可变历史、锚点、朝向、关联人物定义、月度经营等。
 使用者是人物 UID，写器不序列化 Java 引用；读器先保存 UID 数组 `A`，第二阶段 `a()` 在 `bl` 中逐项查回。
 未找到使用者时打印 `Tenant.java deserialize2()` 诊断并缺少该引用，并非整个原存档统一拒绝。
-设施`p`效果队列**保存后加载丢弃**已由低层确认：
+设施`p`冒泡／表现队列**保存后加载丢弃**已由低层确认：
 `work/persistence-replay-analysis/apk/Tenant.java:603–620`的`L8b→L97→Laa`创建空Vector，
 逐对读取short却未追加；同读器`L107`对w历史实际调用`addElement`，排除了普通输出省略追加的解释。
 
@@ -333,12 +333,12 @@ XOR 密钥由协调器初始化的 11 个 int 拆为 44 字节，拆字节按低
 | --- | --- | --- |
 | 分区与槽号 | 25分区，slot＋手动1／中断3 | `AppData.SaveGame 0x2602D0`逐项调用serializer，末尾按同式选择记录；`LoadGame 0x259F70`有对应读取与二阶段调用；未逐字段证明全格式相同 |
 | 延迟脚本 | 5个int、字符串、参数数量及数组 | `DelayEvent.Serialize/Deserialize 0x2A2AF0/0x2A29D0`顺序相同；支持续体属于保存内容的交叉结论 |
-| 设施效果 | p队列读后丢弃 | `Tenant.Deserialize 0x2C1B40`中`0x2C1DE1..0x2C1EA0`读short数量，空Vector写tenantFukidashi，逐对读short但未加入集合；同一局部现象独立确认 |
+| 设施冒泡 | p队列读后丢弃 | `Tenant.Deserialize 0x2C1B40`中`0x2C1DE1..0x2C1EA0`读short数量，空Vector写tenantFukidashi，逐对读short但未加入集合；同一局部现象独立确认 |
 | 校验外壳 | 32位游戏校验值存8字节long，再XOR／Base64 | `RecordStore.WriteRecord 0x728B80`前置8字节并Encode；名为CRC64的`0x838450/0x8383A0`实际仍是32位反条件递推，不是标准CRC64；完整Encode／Property与APK字节兼容仍未认证 |
 | 存储媒介 | Activity私有SharedPreferences | 初始化创建media4的Storage；SetPreferenceMode虽收到true却实际写false，该初始化且无后续改写时WriteRecord走Storage.Write／文件分支；最终配置目录仍未闭合 |
 | 随机算法 | Java Random／Java48 | `GameUtil.Random 0x2A44E0`调用JRandom再余数／Abs；`JRandom.NextInt 0x7F7E60`按Logic选System.Random、Random2018或Xorshift；实际运行分支未知，不能套用Java48 |
 | 随机持久化 | 已核对共同随机未保存 | 已检查协调与代表serializer未发现保存；全部嵌套及Property分支未遍历，不能升级为全路径排除结论 |
-| 轮内自动保存 | 世界更新后、日期消费者前 | 本轮未完成Steam自动调用点与主循环顺序交叉，不因25分区相同推导时序相同 |
+| 轮内自动保存 | 世界更新后、日期消费者前 | 后续已核GameForm._update→ProgressTime顺序；SaveAll还可写中断槽，不以槽号判断唯一触发来源，详见下文恢复合同 |
 
 Steam校验表对低位为0走多项式分支，32位状态初值／末异或均为`0xFFFFFFFF`，与APK游戏校验结构相符；
 不能从“CRC64”类名判断算法宽度。System.Random已核对为56项减法反馈，Xorshift为11／19／8移位；
@@ -429,6 +429,80 @@ ConvertExtension只替换.gif／.mld，数字记录名不加扩展。实际目�
 投射物两样本均为空，来源／目标域尚不作为已验覆盖，完整几何／旧版本修复亦未验证。
 最小诊断与限制见[内层端点研究](../work/original-save-analysis/apk/SAMPLE_LAYOUT.md)。
 维护CLI仍将业务段作为opaque报告；该内层研究探针不冒充已交付通用原档加载器。
+
+## 原版恢复合同：缺失引用、冒泡与日历（2026-10-07）
+
+本轮继续静态交叉和已授权副本最小计数。原游戏窗口通道两次返回native pipe不可用，未启动原游戏、未生成受控新档，
+以下严格区分方法直接事实、依据样本的条件推论与尚未实测的恢复结果。维护文件格式和规则实现均未改。
+
+### 缺失UID与遭遇消失状态
+
+Steam `MAA.Deserialize2`委托`MAAGroup.Deserialize2`重建两侧名单：逐个保存UID线性查找当前人物／怪物集合，
+找到才追加，找不到就继续处理下一项；不会补建替代实体，也不会仅因缺一项而拒绝全档。
+保存名单中重复UID按出现次数追加同一对象引用，不自动去重。恢复方法不改组状态、计数，也不直接删除遭遇。
+元数据的泛型实例与实际Vector调用已交叉，不能把共享机器码地址的其它类型别名当作此方法语义。
+
+| 既有样本的遭遇163 | 0001手动 | 0003中断 |
+| --- | --- | --- |
+| 保存的怪物名单 | UID0出现3次，当前怪物集合仅UID1 | UID0出现3次，当前怪物集合含UID0、1 |
+| 按所核二阶段方法得到的名单 | 3人／0怪；三次未匹配均跳过 | 3人／3项同一怪物引用；不是3个独立怪物 |
+| 遭遇自身原k／l | state=1（消失中），counter=78 | state=0（普通），counter=131 |
+| 组原group.d／e／f／h | 0／28／0／80 | 0／51／0／80 |
+
+遭遇自身状态与战斗组状态是不同字段；先前读取的遭遇d／e=1／0不能代作组state／counter。
+`MAA.Update`对消失中分支先增加自身counter，再判断100门槛，不调用组Update；
+所以在无其它状态干预且继续获准调用的条件下，0001这条遭遇在第22次该方法调用返回完成信号。
+外层`UserData.Update`在VA `0x102EED1D`取得该返回值，true时于`0x102EED65`按当前索引从活跃遭遇列表移除，
+随后逆序继续；false则跳过移除。这只证明离开活跃列表，不等于所有外部引用已经释放。
+这不是22个可见帧或22秒，也不是“怪名单为空导致立即删遭遇”；该档已处于原消失流程。
+
+普通状态仍可能因地图／围栏等资格提前转消失；只有实际到达组Update，才推进其counter。
+组Update自身不因名为STATE_NONE的state值就停止；回合门槛检查后，任一侧空才进入清标志／清名单流程。
+不能把普通状态样本机械预测为固定时间内走某条战斗分支。
+来源与全部条件见[Steam引用恢复](../work/restore-behavior-analysis/steam-references/REFERENCES.md)。
+
+### p不是全部业务效果
+
+APK `c/m.c(int)`按种类去重并追加`[种类,0]`，`d()`只推进队首计数，到对应F阈值移除；绘制方法读取该队首。
+类型0阈值44，类型1—6为43，类型7为60，均为调用计数。邻接属性差值产生类型1—6时，属性计算已经完成。
+Steam `Tenant.Update`／`Update_fukidashi`也先判队列是否为空，`RegistFukidashi`新建条目计数为0。
+空p不会由这个首个消费者自动重放旧冒泡；后续真实产生点可新增，这不等于恢复旧条目。
+它不同于共享道具改良、实例y计数、k探索记录或全局延迟脚本；不能由“丢p”推出物品回退、奖励重发或所有待执行效果丢失。
+
+两份实际档的39设施均state=1，p总数量0，k探索行总数量14；**现有档没有非空p读后消失的自然覆盖**。
+来源和最小诊断见[设施表现恢复边界](../work/restore-behavior-analysis/EFFECTS.md)。维护精确回放保留p及输出的政策不因此改变。
+
+### 回到完整更新入口，不是回到原保存调用之后
+
+APK标题加载成功后切主场景，场景初始化调用a(0)，重置scene及局部计数；框架初始化分支先返回，之后才调用更新。
+已保存的业务UserData.t与场景计数、未保存的外层计数分别对待，不能一概清零或宣称全部恢复。
+正常更新先处理脚本资格，再共同世界更新，再处理显示／菜单，最后scene仍为0且确实到达日历调用点才推进日期。
+
+固定APK传入日历的参数是协调器`d.a.R=43200/(80×20)=27`，不是MainScene同名实例字段12。
+在正常加载后给定time=oldtime=10773、无阻断且保存调用返回的条件下，首个**有资格日历调用**加27，
+达到10800时临时还原旧10773再调用中断保存，返回后才t++、周归一化及周消费者。下个有资格日历调用通常推进0→27，
+并非每轮连续保存；双轮、开页和脚本可能改变同一外层更新最终到达的位置。
+这是把样本数值作为输入的APK条件推论，不是运行APK读过Steam档，也不等于点击加载立即跨周。
+
+Steam对应链已经独立核到`TitleForm.ContinueGame→LoadGame→ChangeCurrentForm`、`GameForm.Init→ChangeState(0)`；
+普通`GameForm._update`先调用UserData.Update，尾部才`ProgressTime(FRAME_TIME1,frameCount)`。
+ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调用SaveGame(true)，恢复试加值后才monthCnt++及周／月／年消费者。
+本轮未闭合FRAME_TIME1所有赋值，不把APK的27无条件套到Steam全部配置。
+
+原保存位置包含已推进世界与未推进日历，但没有执行游标；读档后重新进入完整更新链，因而不等于精确尾段重放。
+实体动作、资金等已经持久化，不能由多一次世界函数调用就断言同一笔收费或奖励必然重复；
+原周消费者尚未进入跨周中断档，也不能把随后进入该边界直接叫作重复结算。
+
+### 两项不能忽略的Steam加载边界
+
+- `KairoService.SaveAll`在save非null时还能依次调用SaveGame(true)、SaveGame(false)、SaveSystem。其全部生命周期触发器未闭合，
+  但已经足以否定“所有中断槽记录必定来自10800边界”。现存10773/10773与日历保存相容，不独自证明来源。
+- `LoadGame`先NewGame和写系统选择，再安装待加载Property后读取，仍非候选成功才提交的事务。
+  此外它扫描UserData.tpClear_的年／月记录；若root年月落后于最大记录，则把年／月改为该记录值，局部未改周/time/oldtime。
+  前置NewGame临时time初值不等于读入后time被强制归零；本轮尚未实跑两档是否触发年月修正。
+
+完整定位见[APK日历入口](../work/restore-behavior-analysis/apk-calendar/README.md)和[Steam日历交叉](../work/restore-behavior-analysis/steam-calendar/README.md)。
+下一次动态验收须先恢复可操作窗口并确认存储隔离，再分别观察消失中遭遇、非空p档及中断边界；不得在原件上试写或用静态推论替代实际结果。
 
 ## 当前 C++ 边界与下一批
 

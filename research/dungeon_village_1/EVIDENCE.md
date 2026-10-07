@@ -60,6 +60,31 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 恢复行为交叉证据（2026-10-07）
+
+用户继续迭代，沿既有只读副本与脱敏摘要保存授权，新增[恢复合同](rules/PERSISTENCE.md#原版恢复合同缺失引用冒泡与日历2026-10-07)。
+原APK／Steam输入身份均未变；窗口native pipe不可用，本轮未运行原游戏或写回存档。
+APK日历仅复用既有普通／低层文件，设施局部来源为`c/m.java`与`a/o.java`；Steam只读明确方法范围。
+引用恢复13个方法范围／9216字节，另核3个泛型MethodInfo；日历／加载14个新增目标／37504字节，
+另复用先前LoadGame的20544字节；方法尾界可能含padding，不把它当作新语义或完整全路径证明。
+
+| 证据（相对work/restore-behavior-analysis） | SHA-256 |
+| --- | --- |
+| steam-references/restore-methods.json | `b1efe7656ca60d484697beefbfde337e7e39b6b14f09bbe6dbf596eeadfa2a89` |
+| steam-references/direct-callees.json | `d65a3ce4b3224518500096b2f60079e3d9bb31e8807e163bf50c25158c4727fc` |
+| steam-references/generic-bindings.json | `238ed2bd3af91306dc0352a0819b3184f6d24720885c4b8c9272f152e10f63ea` |
+| steam-calendar/manifest.json | `29c6b1857aca880190b51269a39497a67609afcb033f24ec9a49b28801e57db9` |
+| steam-calendar/calendar-disassembly.json | `8eceba2d529db9743ec25319c928049d53c7c062823dd31eeb99cfc81c8e5536` |
+| apk-calendar/README.md | `ff60a13d392e54dbb14ded4cc1cb9ea7e8d9e3aa6ceffe5a7b1660665d77bf26` |
+| effects-sample.json | `fd0b21fef5d31e380882d74ae3bccb23585737acb4f549cf10fce421509f8d83` |
+
+设施普通来源hash：`work/decompiled/sources/c/m.java`为`1002d55a70323e7d03f632bd5fff1c4d4ca8195a5c056383e2d9ab2b8716945c`，
+`a/o.java`为`f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603`。
+报告入口：[Steam引用](work/restore-behavior-analysis/steam-references/REFERENCES.md)、
+[Steam日历](work/restore-behavior-analysis/steam-calendar/README.md)、[APK日历](work/restore-behavior-analysis/apk-calendar/README.md)、
+[设施表现](work/restore-behavior-analysis/EFFECTS.md)。样本只补业务状态／计数，没有原程序加载后导出或非空冒泡覆盖。
+账号、key、姓名与完整明文不进入报告；原件和密文研究副本的哈希在收尾复核，动态和静态分别验收。
+
 ## 存取与快照交叉证据（2026-10-07）
 
 后续原档只读研究的新增静态证据保留在`work/original-save-analysis/`，复用同一APK／DLL／metadata身份。

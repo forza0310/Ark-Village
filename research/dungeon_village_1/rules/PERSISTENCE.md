@@ -505,7 +505,7 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
   前置NewGame临时time初值不等于读入后time被强制归零；两档的条件已由后续只读审计核验，尚未原程序动态加载。
 
 无窗口续批进一步核到`IApplication.OnApplicationPause(true)`经虚槽10到`Main.OnSuspend`，后者只调用共享空实现后返回；
-`OnApplicationQuit`经槽14到`Main.OnDestroy`，后者构造委托交给`RunOnUiThread(wait=true)`，委托目标尚未闭合。
+`OnApplicationQuit`经槽14到`Main.OnDestroy`，后者构造委托交给`RunOnUiThread(wait=true)`；初批未闭合的目标现由下述续批核实为空插件收尾。
 因此不能称Main暂停覆盖直接执行SaveAll，也不能据此断言整个暂停／退出链绝不保存。
 全可执行区直接E8/E9调用没有SaveAll命中，但它是18号虚方法，零直接引用不等于不可达；
 具体VA、候选排除与方法预算见[静态续批证据](../work/headless-save-audit-analysis/steam-static/README.md)。
@@ -544,6 +544,37 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
 实验采用另对话获准的备份恢复：启动副本实际回到原安装，不能称目录隔离已成立。
 报告的本地原档恢复核验与云端状态分开；本分析期间实时原目录后来再次变化，已停用其作为冻结输入，
 仅保留实验备份／证据的严格哈希核验，不恢复或干预其它会话进程。
+
+### 非空p候选续批
+
+已有9份实样p均为空，续批补核5个Steam方法／11,552字节，见[产生点与采样](../work/nonempty-p-capture/TRIGGERS.md)。
+`Tenant.Update`在施工完成且非种类13时去重插入[0,0]再ChangeState(1)；
+`UpdateTenantAroundBonus(effect)`只有effect为true且实例邻接属性有差值才按槽位／正负注册类型1–6。
+`Update_fukidashi`只增队首并按独立静态阈值移除，Update中相同消费被内联；Steam阈值本批不套用APK的44／43／60。
+APK升级提示L/M分支先于p绘制，截图“升级↑”不能代替非空队列证明。
+
+本地[只读探针](../work/nonempty-p-capture/README.md)在60秒、16种不同密文上限内双读确认稳定副本，再调用既有审计器；
+只有p非空才保留候选，原件／游戏内存不写。实际60秒118轮只见2种密文，p均0、零错误，已结束，没有延长经营。
+有限观察不证明运行内存无p，也不证明非空p不能保存；真实非空命中／重载分支仍待验。
+已有道具候选的业务重载独立推进，不必等待p；下一次窗口任务见[续接说明](../work/window-restore-observation/NEXT_RESTORE_PROMPT.md)。
+
+### Steam退出委托与文件失败语义续批
+
+新增13个明确方法／5,808字节及精确metadata槽解析，完整坐标见[生命周期证据](../work/steam-save-lifecycle-analysis/README.md)。
+`Main.OnDestroy`读取的槽`0x110E88B0`实际为`AppPlugin.<>c.<Finish>b__4_0`，MethodDef32292、RVA0x1C9750，共享实现为`ret 0`。
+这闭合了该特定委托，它不执行SaveAll；`wait=true`只等待该委托，不是文件刷新保证。
+退出还有前置`FormManagerBase.ProcessEvent(Exit=3)`、后置另一`KairoPlugin.Finish`，不能由空委托断言整个退出链不保存。
+另一插件委托已核窗口Close／Dispose／清引用，但未穷尽关闭事件；`PlayerPrefs.Save`保存显示配置，不等于游戏0001／0003落盘。
+SaveAll已证true→false→system的顺序保留，完整生命周期上游仍未认证。
+
+普通Storage.Write媒介4路径直接调用`File.WriteAllBytes`；本样本`InternalWriteAllBytes`在VA0x109E8785以
+`FileMode.Create(2)`、Write(2)、FileShare.Read(1)对**原目标路径**构造FileStream，再Write并释放。
+异常展开也释放并重新抛出，所核路径没有候选临时文件替换或旧字节恢复步骤；下层OS适配及所有异常类型未全部闭合。
+所以“成功创建／截断后再写失败可能无法保留旧完整档”是代码顺序风险推断，不是已在用户档实测损坏。
+游戏记录与系统目录逐次写入，不能称多文件统一事务；本地流释放也不认证断电耐久或Steam云已提交。
+
+维护AVRSAVE1继续采用候选校验、临时文件、回读和替换的独立策略，不因原程序直接写目标而降低校验或失败保护。
+菜单保存的state0→1→SaveGame→2与确认仅关提示见[Steam交互合同](../ui/STEAM_INTERACTIONS.md)，界面成功提示与底层保证分别登记。
 
 ## 当前 C++ 边界与下一批
 

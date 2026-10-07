@@ -62,6 +62,26 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 ## 恢复行为交叉证据（2026-10-07）
 
+并行续批交付[S038–S051截图](references/screenshots/2026-10-07-steam-restore/README.md)和[Steam交互](ui/STEAM_INTERACTIONS.md)，
+另补退出委托、普通文件失败及非空p产生链。截图源扩展名.png实际JPEG/JFIF，归档只规范目标为.jpg、不重编码。
+用户本轮明确授权截图作UI设计参考；村名不转录到说明，完整图不作为产品直接运行美术，不混入APK基线。
+
+| 并行续批证据 | SHA-256 |
+| --- | --- |
+| references/screenshots/2026-10-07-steam-restore/MANIFEST.tsv | `a37ac8002e6a546899638ef2946bdf6cdabc92bb20ff61db1f56e5ee773014eb` |
+| work/steam-interaction-analysis/manifest.json | `421064c44371102887421bb0e8956bfe7e0afd665930328e78421fb3c9a11b86` |
+| work/steam-interaction-analysis/disassembly.json | `005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf` |
+| work/steam-save-lifecycle-analysis/manifest.json | `10f49141a2b832a97bdc176e1b81d79c45068d553750407178e86ee8089e4695` |
+| work/steam-save-lifecycle-analysis/slot.json | `8a30efdf95529cb3807b9ba1cfe1cd2d8d81f26ad4d135902fdf976e33f70129` |
+| work/steam-save-lifecycle-analysis/disassembly.json | `339036497b364348553979075508035abf00d33e7ac2d3a0dac585b60cd9546f` |
+| work/nonempty-p-capture/trigger-static.json | `6e03fcc1843be6054b3dd5ea567ae9b924c53bd88a46727674417fdc6795e1ca` |
+| work/nonempty-p-capture/capture.cjs | `ed721039e2d13475e28f8fd1f216b719b88faeb6fe4e8c4463a20dcf703bd567` |
+
+交互19方法／89,840字节，生命周期13方法／5,808字节，p产生与消费5方法／11,552字节分别受白名单预算约束。
+所有机器码仅只读解码，不运行DLL。生命周期全区泛型虚槽扫描被自动审批拒绝，已改精确方法研究；
+拒绝范围与未闭合SaveAll上游见[本地报告](work/steam-save-lifecycle-analysis/README.md)，不以候选未发现证明不可达。
+只读p采样60秒未命中，其零候选结果见[记录](work/nonempty-p-capture/TRIGGERS.md)，不冒充已验证原动态恢复。
+
 用户随后交回[Steam窗口实验](work/window-restore-observation/20261007-102645-backup-restore-trials/RESULT.md)：标题实见ver2.56，
 本机Steam appID1859360、buildID14371088；GameAssembly／metadata仍为此前固定身份。原报告登记截图尺寸，不把截图像素当逻辑客户区／DPI。
 本会话[只读交叉](work/window-save-analysis/ANALYSIS.md)核验37截图、28记录文件、7清单共72项，

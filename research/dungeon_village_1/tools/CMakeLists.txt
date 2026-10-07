@@ -7,7 +7,7 @@ include(../cmake/ResearchLibraries.cmake)
 include(CTest)
 
 include(../cmake/ResearchHash.cmake)
-add_library(dungeon_village_archive src/archive.cpp src/sprite.cpp src/table.cpp)
+add_library(dungeon_village_archive src/archive.cpp src/sprite.cpp src/table.cpp src/original_save.cpp)
 dungeon_village_library(dungeon_village_archive)
 target_link_libraries(dungeon_village_archive PUBLIC dungeon_village_hash)
 target_include_directories(dungeon_village_archive PUBLIC include)
@@ -29,7 +29,7 @@ target_link_libraries(kairo_asset_publish PRIVATE dungeon_village_archive)
 target_compile_features(kairo_asset_publish PRIVATE cxx_std_17)
 set_target_properties(kairo_asset_publish PROPERTIES CXX_EXTENSIONS OFF)
 
-add_executable(dungeon_village_archive_tests tests/archive_test.cpp)
+add_executable(dungeon_village_archive_tests tests/archive_test.cpp tests/original_save_checks.cpp)
 target_link_libraries(dungeon_village_archive_tests PRIVATE dungeon_village_archive)
 target_compile_features(dungeon_village_archive_tests PRIVATE cxx_std_17)
 set_target_properties(dungeon_village_archive_tests PROPERTIES CXX_EXTENSIONS OFF)
@@ -38,6 +38,11 @@ add_executable(kairo_table_inspect src/table_inspect.cpp)
 target_link_libraries(kairo_table_inspect PRIVATE dungeon_village_archive)
 target_compile_features(kairo_table_inspect PRIVATE cxx_std_17)
 set_target_properties(kairo_table_inspect PROPERTIES CXX_EXTENSIONS OFF)
+
+add_executable(kairo_save_inspect src/save_inspect.cpp)
+target_link_libraries(kairo_save_inspect PRIVATE dungeon_village_archive)
+target_compile_features(kairo_save_inspect PRIVATE cxx_std_17)
+set_target_properties(kairo_save_inspect PROPERTIES CXX_EXTENSIONS OFF)
 
 add_executable(dungeon_village_table_tests tests/table_test.cpp)
 target_link_libraries(dungeon_village_table_tests PRIVATE dungeon_village_archive)
@@ -52,7 +57,7 @@ set_target_properties(dungeon_village_item_table_tests PROPERTIES CXX_EXTENSIONS
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     foreach(target dungeon_village_archive kairo_asset_extract kairo_asset_publish kairo_seb_inspect
                    dungeon_village_archive_tests kairo_table_inspect dungeon_village_table_tests
-                   dungeon_village_item_table_tests)
+                   dungeon_village_item_table_tests kairo_save_inspect)
         target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Werror)
     endforeach()
 endif()

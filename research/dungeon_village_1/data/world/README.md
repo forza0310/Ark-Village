@@ -13,7 +13,7 @@
 | [armour.txt](armour.txt) | 50 | 13 | 防具开放状态、抽选、价格与属性 |
 | [accessory.txt](accessory.txt) | 30 | 13 | 饰品开放状态、抽选、价格与属性 |
 | [item.txt](item.txt) | 36 | 25 | 物品库存、月度补充及任务奖励池 |
-| [asEventData.txt](asEventData.txt) | 30 | 12 | 举办活动目录；原 `bx/a.c`，不是职业、任务或物品 |
+| [asEventData.txt](asEventData.txt) | 31 | 12 | 举办活动目录；原 `bx/a.c`，ID0—30，不是职业、任务或物品 |
 
 前五表的归档/条目哈希在 [SOURCE.tsv](SOURCE.tsv)，活动原表在
 [asEventData.txt.SOURCE.tsv](asEventData.txt.SOURCE.tsv)。来源归档固定为 `xls.dat`，

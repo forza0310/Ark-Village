@@ -62,6 +62,40 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 ## 存取与快照交叉证据（2026-10-07）
 
+后续原档只读研究的新增静态证据保留在`work/original-save-analysis/`，复用同一APK／DLL／metadata身份。
+[APK字节合同](work/original-save-analysis/apk/CONTRACT.md)补25段字段顺序和13个固定目录长度，
+[配置链](work/original-save-analysis/exe/CONFIG_CHAIN.md)补正常根应用配置传播，
+[Steam记录合同](work/original-save-analysis/steam-codec/README.md)补独立key、Property／null／字符串差异。
+配置链新增5方法／2800字节，字节合同有界解码36方法／11184字节，均先验输入哈希、按已映射方法范围处理，不加载原DLL。
+
+| 新静态证据（相对work/original-save-analysis） | SHA-256 |
+| --- | --- |
+| exe/config-chain-disassembly.json | `7f6992849c046bf14c3f65ce5b30e79119bec2a1af3fe62c9c4fc207b280e7bd` |
+| exe/config-chain-strings.json | `73877c253d9727d23a9142eb0ddc1147a369f26a28d38e4d8ed5ab99c016a70b` |
+| exe/config-chain-type-references.json | `c9c0c162aa4554cb046e946f5f49bb54d3515c9b1ea288389b62cf58632a8dbe` |
+| steam-codec/manifest.json | `30d10efbc810b379f82d69e8f7612fdc35099fbadbff1e10662047cd14ddba7f` |
+| steam-codec/disassembly.json | `91e0786336dbd91427c34f092d2790058620d80c98d1dab09e3193efd688f8c8` |
+| apk/directories.json | `76f0eae05c981e1ff5453337c337823549cba7bb7118c06107c53afc8802ad4d` |
+| apk/envelope-probe.json | `b7baf897f1950635fcc444a517edce534da662e7a6dcfd2fb4c457146e399120` |
+
+真实样本身份另行登记，不由静态证据替代：
+
+本轮用户提供的Steam记录已按明确授权只读复制；本地观察路径为安装目录下`saves/<SteamID>/000N`，不登记账号值。
+实际安装DLL／metadata仍为本页先前固定哈希；样本不是本轮受控操作生成，不按时间戳推断单一行为。
+
+| 记录 | 字节数 | 密文文件SHA-256 |
+| --- | ---: | --- |
+| 0000 | 301 | `99d4cab451959136cab3667c0e9926415bc1d800a7e865fa58e994c4f7c13207` |
+| 0001 | 31666 | `843fb112add603ef9c92d8d79073e4a86bab03dd91f9847b3bf9102e96bcd288` |
+| 0002 | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| 0003 | 31892 | `88eaf11ba294fd173f21a4a758a72cf0e9f1cbaec64d302e734e26707757cfce` |
+
+副本位于忽略的`work/original-save-analysis/samples/steam-existing`，复制前后原件与副本哈希一致；
+校验、形状与原字节往返见[最小验证数据](work/original-save-analysis/steam-codec/sample-validation.json)。
+维护交付是只读工具和不含账号／key／村名／完整明文的研究摘要，不发布原档或原代码。
+
+以下为前批历史证据：
+
 来源合同见[存档规格](rules/PERSISTENCE.md)，维护设计见[快照与回放](stages/PERSISTENCE_REPLAY.md)。
 本批为静态研究与有界独立探针，不运行原游戏，不更换APK规则输入，不交付文件codec。
 生成Java、IL2CPP映射和探针只保留在忽略的`work/persistence-replay-analysis/`，不作为维护实现或产品素材。

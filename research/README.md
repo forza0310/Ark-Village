@@ -34,6 +34,11 @@ Windows六套420项标准与四项长测共424次CTest通过，两个有界窗�
 构建缓存仅复用项目内[研究work目录](dungeon_village_1/work/)，阶段结束收齐进程并清理不再需要的缓存。
 产品编码由另一智能体管理，本目录不代写产品阶段状态。
 
+最新原档研究已取得用户提供的Steam系统／手动／中断记录，只读校验和两读器610字段交叉通过；
+两份游戏档25个内部段经独立探针全部对齐，并登记平台key／null／槽数差异及缺失怪物引用。
+[原档工具](dungeon_village_1/tools/ORIGINAL_SAVE.md)仅检查和差分，不导入维护世界、不写回原档；
+原程序动态恢复与固定APK设备档仍待验证，后续按[阶段入口](dungeon_village_1/stages/README.md)推进。
+
 用户提供的Steam Windows版已完成[独立静态可行性评估](dungeon_village_1/verification/STEAM_ASSESSMENT.md)：
 IL2CPP语义名可读，部分地图／表格／素材字节相同；已验证方法地址映射及存取／随机代表机器码。
 实际随机选型、存储路径、完整时序和动态行为仍待核对，不更换固定APK研究输入。

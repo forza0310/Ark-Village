@@ -10,6 +10,8 @@
 
 using namespace dungeon_village_tools;
 
+int original_save_checks();
+
 namespace {
 
 int checks = 0;
@@ -222,6 +224,7 @@ int main() {
     malformed_inputs_are_rejected();
     paths_and_crc_are_validated();
     seb_is_parsed_and_validated();
+    checks += original_save_checks();
     std::cout << checks << " 项检查通过\n";
     return 0;
 }

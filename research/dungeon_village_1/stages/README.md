@@ -5,7 +5,18 @@
 
 ## 当前工作
 
-### 当前批次：非空p候选定位与后档取证准备
+### 当前批次：非空p中断实际重载端点已收口
+
+用户交回`20261007-131546-nonempty-p-reload`，原UI自动栏读入非空前档、固定最早0003并正常手动保存，
+[四档交叉](../work/nonempty-p-reload-analysis/ANALYSIS.md)100分区／56引用通过：完整目标身份不变，p[3,9]→空，
+邻接s/w及共享定义40保留，稍后施工phase0→1。达到真实非空输入恢复组合，保留自然消费／首帧／全引用未知。
+重要画面[S062–S068](../references/screenshots/2026-10-07-steam-nonempty-p-reload/README.md)按原字节归档；
+主分析只读冻结证据，产品／维护C++／原件不改，不运行无关CTest或长测，最新检查见[验证入口](../VERIFICATION.md)。
+[窗口任务](../work/window-restore-observation/NEXT_RESTORE_PROMPT.md)已明确无需重复A或本p输入，没有新增窗口操作。
+下一必要静态工作聚焦SaveAll正向上游的明确窗口Close订阅／回调接收者及槽18条件，来源未闭合前不宣称退出统一保存；
+中后期维护回归继续用已验快照尾段，不将原版不保存随机／页面的档当作精确回放。
+
+### 上一批：非空p候选定位与后档取证准备
 
 用户交回`20261007-125641-nonempty-p-only`，只读既有中断档已命中p1；[独立分析](../work/nonempty-p-candidate-analysis/ANALYSIS.md)
 定位UID21／定义40／格(12,8)、p[3,9]，两档50段／28组引用交叉通过，0／17／19首次有非空实际布局。

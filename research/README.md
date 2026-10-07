@@ -43,7 +43,8 @@ Steam另有SaveAll中断写入及加载年月修正；本轮只作静态交叉�
 后续用户交回两次Steam窗口实验：设施道具业务已完成真实冷启动恢复及前后档交叉，库存1／共享改良[20,0,2,0]保留；
 撤除对象／邻接／保存引用端点与[S052–S061](dungeon_village_1/references/screenshots/2026-10-07-steam-business-reload/README.md)归档已补。
 随后已取得非空p中断前档并定位UID21／定义40／p[3,9]，读弃p的两版既有来源复核及后档取证支撑已补；
-实际非空p重载仍待窗口，完整SaveAll上游仍未闭合；最新状态见[阶段入口](dungeon_village_1/stages/README.md)，不重复制造前档或已完成业务重载。
+后续已实际从自动栏读取该非空前档，最早后档p空、同身份邻接／共享业务保留，四档100分区／56引用交叉及后续施工／保存已收口。
+完整SaveAll上游仍未闭合，自然消费完全排除／首帧／全引用域及云端仍未认证；最新状态见[阶段入口](dungeon_village_1/stages/README.md)，不重复制造前档或已完成恢复链。
 
 用户提供的Steam Windows版已完成[独立静态可行性评估](dungeon_village_1/verification/STEAM_ASSESSMENT.md)：
 IL2CPP语义名可读，部分地图／表格／素材字节相同；已验证方法地址映射及存取／随机代表机器码。

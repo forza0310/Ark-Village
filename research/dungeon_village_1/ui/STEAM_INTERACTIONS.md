@@ -60,6 +60,15 @@
 `flower-target`不认证向日葵，`removal-confirmation`实际为撤除后编辑地图，未出现具名确认弹窗。
 本次局部观察不外推所有撤除路径或把截图坐标当逻辑格；对象与引用差分见[分析](../work/business-reload-analysis/ANALYSIS.md)。
 
+## 非空p中断恢复的后续观察
+
+[本次实验](../work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md)实际从“自动”栏恢复非空p候选，
+目录3年12月1周／1448G，最早取得世界已为下一周同现金，随后正常保存为3年12月3周／3285G。
+首个自动后档与后续手动档是不同采样点，p空但同一目标邻接／共享业务字段保持，详情未取得。
+[S062–S068](../references/screenshots/2026-10-07-steam-nonempty-p-reload/README.md)补目录、最早世界、保存、施工外观及自然授勋／中止参考。
+旧“facility-detail”“restaurant-detail”时序标签实际为自然对话，不认证具名详情、UID或旧p图标。
+字节端点与限制见[存取合同](../rules/PERSISTENCE.md#非空p中断前档实际重载已收口)；不为已完成链重复窗口操作。
+
 ## 输入：选中、标记与确认分开
 
 `surface.GameView.OnTouchEvent`先允许顶层表单处理事件，再按组件ID分派。

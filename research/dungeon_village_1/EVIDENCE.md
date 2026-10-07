@@ -60,6 +60,31 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 非空p实际重载端点交叉（2026-10-07）
+
+用户交回[20261007-131546-nonempty-p-reload](work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md)。
+原UI实际从自动栏读取非空前档，固定首次不同0003并正常手动保存，主分析只读冻结证据。
+[四档100分区／56引用交叉](work/nonempty-p-reload-analysis/ANALYSIS.md)及完整目标身份、业务值、p端点已收口。
+静态读弃p事实与本次最早后档相容，但353ms／f差值不代表全部更新次数；不独立消除自然消费混杂。
+
+| 本轮输入／产物 | SHA-256 |
+| --- | --- |
+| work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md | `02fefb40543f1cb02ed759b821b93f2773702d975a248f59f91a69440cdd9f97` |
+| 同目录EVIDENCE_MANIFEST.csv | `41179c0cca75b22465126c3824d28ef1eb4e1ba1ca0cb3f2b53bd6374c7e2bd5` |
+| 同目录timeline.jsonl | `530387f3a78299793a33368283c2700676b62d9e9b9f576636e7dc4af97de71d` |
+| 首次不同0003 | `7f09b86c7ceefc6c64e5177c8e69efc7650b813ec7d44d76a4d5df638a371190` |
+| 正常手动0001 | `4fd3100045ca1dee96c9ec59917cf2a40e4cd3a5d81271c10aae78200254ba2d` |
+| 稍后0003（在手动0001前写入） | `65d07470e6216373ca82c85860d5e3a2129bdd5425182df31690862831c79a47` |
+| work/nonempty-p-reload-analysis/INPUT_VALIDATION.json | `fdfcfacc49d8d39e36c19228f4e1550930ce6a79792566709083ba3a2b9bb5d6` |
+| work/nonempty-p-reload-analysis/audit/AUDIT.json | `6ac1273ce7d4704e3e57554078705d0e0737e03d671a6b82608437678a8247b1` |
+| work/nonempty-p-reload-analysis/audit/OUTPUT_HASHES.json | `1234103892339be8669cdf577de983ce036f88bce806208f00db6ea59858ab79` |
+| references/screenshots/2026-10-07-steam-nonempty-p-reload/MANIFEST.tsv | `ca1cb36dcb6969e7739240607d7aa19995c484c342156eada6bd04a115108859` |
+
+36项公开清单及五份冻结备份核验，恢复日志与最新备份一致；当前原件／云端不在本会话核验范围。
+[S062–S068](references/screenshots/2026-10-07-steam-nonempty-p-reload/README.md)7张重要图按原字节归档，
+13原图和意图标签错误保留，授勋／自然对话不当设施详情。账号／key／村名不转录摘要，不提交原存档或明文。
+输入仍Steam2.56同DLL／metadata，APK不替换，无维护C++／CMake变更。具体限制及本轮实际检查见[验证记录](VERIFICATION.md)。
+
 ## 首份非空p中断前档（2026-10-07）
 
 用户交回`20261007-125641-nonempty-p-only`；只读扫描48ms／1轮／2内容／零错误，取得既有0003，

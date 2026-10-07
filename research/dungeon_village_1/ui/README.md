@@ -12,7 +12,7 @@
 配套[S038–S051完整截图](../references/screenshots/2026-10-07-steam-restore/README.md)作为UI设计参考，不直接作为产品运行美术。
 Steam页号和局部分支独立取证，与APK分开；没有把实验双击成功变成强制双击契约。
 最新[S052–S061业务重载与撤除参考](../references/screenshots/2026-10-07-steam-business-reload/README.md)补充重载后库存／设施详情、
-系统目录与游戏档显示分离、设备目录及撤除前后；文件名不认证对象或确认弹窗，非空p仍待候选。
+系统目录与游戏档显示分离、设备目录及撤除前后；当批尚无非空p候选，后续恢复见下段。
 后续[S062–S068中断重载参考](../references/screenshots/2026-10-07-steam-nonempty-p-reload/README.md)已补实际非空p输入恢复、
 保存及施工／授勋中止外观；旧标签不是设施详情，存档p端点与实际界面分开登记。
 最新 [新局与建设报告](../rules/STARTUP.md)补齐真实源地图、默认资源、首名到访和更新资格；

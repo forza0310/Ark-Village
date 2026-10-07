@@ -7,6 +7,27 @@
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
+## 2026-10-07保存上游与后续消费者
+
+Steam同身份新增[预留保存证据](work/saveall-upstream/README.md)：15个明确方法20,000字节及530字节精确帮助器窗口，
+闭合运行协调尾段到槽18 SaveAll；预留条件、服务接收者和异常重试由机器码／metadata交叉。
+全部关闭／暂停请求产生者仍未穷尽，不把这项静态链声明为原窗口退出验收。
+
+APK[商品79／82证据](work/commodity-effects/README.md)复用已登记GamePage低层，LF SHA-256
+`e4b7eea7f8b2ecb40c0a49ba21cc8175c8177f9ac92222fa1d75b45193de2e56`；原表26条设施程序独立核对。
+本机普通`b/g.java`的raw SHA-256为`0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081`，
+LF为`c81b94c41a10c2144763f0f1da056d6d023e27d9a3a0e0aefc8562dff0bb4ef6`，与旧UI登记的生成稿hash不同。
+固定APK及已固定低层hash一致；保留历史hash校验失败记录，普通稿只作定位辅助，不覆盖旧身份或推定APK规则变化。
+
+魔法壶[本批证据](work/magic-pot-analysis/README.md)从固定APK只定位`Lc/n;::m()V`的DEX code_item，
+指令1,112字节，code_offset548668，指令SHA-256 `4ddaa20048f18bb677c6b287c05772662f3a880b7409cddaccd35bd1ceaca13d`。
+固定配方表40行／10列SHA-256 `7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c`；
+Steam两种语言表仅数字列逐行交叉，不用该版名称替换APK原表。生成DEX／Java／局部证据仍放work，不提交原程序。
+
+[表现／后期有界审计](work/presentation-late-route-audit/README.md)消费已有皮肤合同和16份明确输入，
+定位任务底栏的绘制期共享抽取及通关raw17／系统继承候选。普通巨型Java及缺失历史低层仍保留证据等级，
+不把入口定位写成计分算法或原APK动态已验；无新DLL扫描、窗口操作或全程序反编译。
+
 ## 输入与工具
 
 | 项目 | 观测值 | 证据等级 |
@@ -147,7 +168,7 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 各自遵守24方法／96KiB总量／32KiB单方法预算；重叠方法不合称互不重复的新方法。
 静态码／metadata原字节、已冻结档取证与实际窗口恢复分别记，业务恢复及非空p尚未动态验收。
 正式语义在[Steam交互](ui/STEAM_INTERACTIONS.md)和[存档合同](rules/PERSISTENCE.md#steam退出委托与文件失败语义续批)，
-输入矩形不是截图像素，动画计数不是墙钟秒；完整SaveAll正向上游仍未闭合。
+输入矩形不是截图像素，动画计数不是墙钟秒；该批SaveAll正向上游尚未闭合，本批新增条件分派见本页开头索引。
 
 | 本轮证据（均位于work） | SHA-256 |
 | --- | --- |

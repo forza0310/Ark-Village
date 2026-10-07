@@ -559,7 +559,7 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
 再实际重载取得最早后档。前两次未命中不推内存无p，后续已完成不要求重新制造候选或重复A。
 旧过程状态供追溯，当前[窗口任务](../work/window-restore-observation/NEXT_RESTORE_PROMPT.md)已收口。
 
-完整SaveAll上游、全加载修复、固定APK设备实样、全部引用及云端仍独立未决。
+SaveAll预留分派的正向链已静态闭合；全部请求产生者、关闭／暂停触发、全加载修复、固定APK设备实样、全部引用及云端仍独立未决。
 下面保留精确退出／写文件局部合同；原版直接写目标与维护失败安全策略不能混为一套。
 
 ## Steam退出与文件失败的局部合同
@@ -570,7 +570,8 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
 `Main.OnDestroy`读取的槽`0x110E88B0`实际为`AppPlugin.<>c.<Finish>b__4_0`，MethodDef32292、RVA0x1C9750，共享实现为`ret 0`。
 这闭合了该特定委托，它不执行SaveAll；`wait=true`只等待该委托，不是文件刷新保证。
 退出还有前置`FormManagerBase.ProcessEvent(Exit=3)`、后置另一`KairoPlugin.Finish`，不能由空委托断言整个退出链不保存。
-另一插件委托已核窗口Close／Dispose／清引用，但未穷尽关闭事件；`PlayerPrefs.Save`保存显示配置，不等于游戏0001／0003落盘。
+另一插件委托已核Close／Dispose／清引用；本批确认对象为语言对话框，不是游戏主窗口。
+`PlayerPrefs.Save`保存显示配置，不等于游戏0001／0003落盘。
 SaveAll已证true→false→system的顺序保留，完整生命周期上游仍未认证。
 
 后续[保存分派证据](../work/save-dispatch-closure/README.md)新增12个明确入口／10,304字节：
@@ -583,7 +584,7 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 已登记三个游戏表单的`Finish`均无保存调用；`TerminateCheck`满足条件才进入`Terminate`。
 `Terminate`在VA `0x1078DA42..0x1078DA51`调用KairoBase槽12 `Finish`（类指针偏移0x11C），
 不是槽18 `SaveAll`（偏移0x14C）。已登记KairoService的Finish尾调只置start=false的基础Finish。
-具体窗口Close订阅／框架回调的接收者和槽18调用条件仍是最小未决；完整SaveAll正向上游尚未闭合。
+上述排除仍成立；随后沿框架运行尾段核到槽18的正向条件，见下一节。
 
 普通Storage.Write媒介4路径直接调用`File.WriteAllBytes`；本样本`InternalWriteAllBytes`在VA0x109E8785以
 `FileMode.Create(2)`、Write(2)、FileShare.Read(1)对**原目标路径**构造FileStream，再Write并释放。
@@ -600,7 +601,32 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 菜单保存的state0→1→SaveGame→2与确认仅关提示见[Steam交互合同](../ui/STEAM_INTERACTIONS.md)，界面成功提示与底层保证分别登记。
 
 既有[设施比较器](../work/restore-roundtrip-check/README.md)与[非空输入取证](../work/nonempty-p-candidate-analysis/ANALYSIS.md)
-已经完成工具及实际恢复端点验证，不能用同档自比认证重载；本轮已收口状态见上节，完整SaveAll正向上游仍未知。
+已经完成工具及实际恢复端点验证，不能用同档自比认证重载；本轮已收口状态见上节，全部生命周期触发器仍未穷尽。
+
+### Steam预留保存的正向上游
+
+2026-10-07只读同身份Steam2.56的机器码／metadata，新增15个明确方法20,000字节、3个直接调用窗口530字节；
+完整来源、坐标、66项核验及未决见[本批证据](../work/saveall-upstream/README.md)。没有启动游戏、读取实时档或故障注入。
+这是Steam独立事实，不将APK暂停／退出改判为同样行为。
+
+`FormManagerBase._execute`先取得`KairoBase.GetInstance`，成功尾段VA `0x107EA7D7`调用辅助`0x107E0210`。
+辅助要求对象非null、`reserveSaveEnable`为真、`reserveSave`非零；先复制预留值并清原值，再分派：
+值1→槽17 `Save`，值2→槽18 `SaveAll`；其它非零值在本处清除但不执行这两种保存。
+虚分派帮助器的实际指针公式为类偏移`0xBC+slot*8`，槽18对应`0x14C`；不是由方法名称猜调用。
+`SetReserveSave(all)`取`all+1`并仅提升请求等级，false请求不能覆盖已有值2；使能关闭时本辅助不消费请求。
+
+`KairoService.GetInstance`明确登记同一`KairoBase.instance_`；基础取实例入口无服务时可以返回dummy，不能默认它执行业务。
+服务已注册且`apdat_.save_`非null时，`SaveAll`依次`SaveGame(true)→SaveGame(false)→SaveSystem`。
+三个记录依次写入，和直接目标Create路径一致，没有跨文件回滚保证。
+
+辅助匹配异常槽确认为`System.Exception`；局部最多尝试3次，每次匹配失败传入线程等待500毫秒，包括第三次失败。
+预留在首次保存前已清零，最终失败不恢复；已经部分写入的保存可能重试，不保证幂等或旧档恢复。
+局部临时异常槽在重试后退休，不据此宣称全部世界引用已退休；未匹配异常的路径重新抛出。
+
+原先Close候选的对象是`KairoPlugin.languageDialogWindows_`。其已登记构造仅订阅Click／CheckedChanged／SizeChanged；
+本样本`Form.Close`是交给runtime帮助器的48字节stub，不能补成标准.NET主窗口Closing／Closed事件链。
+因此本批闭合的是运行尾段的预留保存分派；全部请求产生入口、停止运行后是否有消费机会、
+OS关闭／暂停／强制终止是否触发保存仍未知。已有五处Billing setter记录不是完整入口清单或玩家动态认证。
 
 ## 当前C++边界与持续存取
 

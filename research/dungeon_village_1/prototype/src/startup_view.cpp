@@ -48,7 +48,7 @@ std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
 // separately. legacy_tag is retained by the tool parser and is never used as a record count.
 class SourceSprites {
   public:
-    enum class Binding { map, farmer, secretary, human, monster, common };
+    enum class Binding { map, farmer, secretary, human, monster, common, weapon };
     explicit SourceSprites(std::filesystem::path root) : root_(std::move(root)) {
         for (const auto &row :
              dungeon_village_tools::parse_tsv(read_bytes(root_ / "image/img.inf"))) {
@@ -62,7 +62,7 @@ class SourceSprites {
             if (!images_.emplace(id, name).second)
                 throw std::runtime_error("图片索引重复");
         }
-        for (const auto *group : {"human", "monster", "common"}) {
+        for (const auto *group : {"human", "monster", "common", "weapon"}) {
             for (const auto &row :
                  dungeon_village_tools::parse_tsv(read_bytes(root_ / group / "img.inf"))) {
                 if (row.size() != 2)
@@ -91,10 +91,11 @@ class SourceSprites {
     SourceSprites(const SourceSprites &) = delete;
     SourceSprites &operator=(const SourceSprites &) = delete;
     void draw(const std::string &sprite, int frame, Vector2 anchor, Color tint = WHITE,
-              Binding binding = Binding::map, float factor = 1, int image_override = -1) {
+              Binding binding = Binding::map, float factor = 1, int image_override = -1, int layer_only = -1) {
         const char *group = binding == Binding::farmer || binding == Binding::human ? "human"
                             : binding == Binding::monster                           ? "monster"
                             : binding == Binding::secretary || binding == Binding::common ? "common"
+                            : binding == Binding::weapon                            ? "weapon"
                                                                                           : "image";
         const auto relative = std::filesystem::path(group) / sprite;
         auto it = sprites_.find(relative.string());
@@ -109,7 +110,9 @@ class SourceSprites {
             return;
         if (frame < 0 || frame >= it->second.frame_count)
             throw std::runtime_error("源变体超出SEB帧边界");
-        for (const auto &layer : it->second.layers) {
+        for (std::size_t layer_index = 0; layer_index < it->second.layers.size(); ++layer_index) {
+            if (layer_only >= 0 && layer_index != static_cast<std::size_t>(layer_only)) continue;
+            const auto &layer = it->second.layers[layer_index];
             for (const auto &part : layer.parts) {
                 if (part.frame != frame)
                     continue;
@@ -151,6 +154,19 @@ class SourceSprites {
         const char *group = monster ? "monster" : "human";
         draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite_index)), frame, anchor,
              WHITE, monster ? Binding::monster : Binding::human, 1, image_index);
+    }
+    void visual(const StartupVisualDraw &plan, Vector2 anchor) {
+        const char *group = plan.resource == StartupVisualResource::weapon ? "weapon" : "common";
+        const Vector2 p{anchor.x + plan.offset[0], anchor.y + plan.offset[1]};
+        if (plan.sprite >= 0) {
+            draw(actor_sprites_.at(group).at(static_cast<std::size_t>(plan.sprite)), plan.frame, p,
+                 WHITE, plan.resource == StartupVisualResource::weapon ? Binding::weapon : Binding::common,
+                 1, plan.image, plan.layer);
+        } else {
+            crop(std::filesystem::path(group) / actor_images_.at(group).at(plan.image),
+                 {static_cast<float>(plan.crop[0]), static_cast<float>(plan.crop[1]),
+                  static_cast<float>(plan.crop[2]), static_cast<float>(plan.crop[3])}, p);
+        }
     }
     void portrait(const StartupPortrait &plan, Vector2 position) {
         BeginScissorMode(static_cast<int>(position.x), static_cast<int>(position.y),
@@ -1844,6 +1860,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 sprites.actor(true, body * 4 + direction, body * 30 + definition.sprite_variant,
                               action == 9 ? 0 : phase, anchor);
             }
+            const auto held = startup_world_equipment_lift_draws(state, id);
+            if (!held) throw std::runtime_error("人物举物绘制载荷非法");
+            for (const auto &plan : *held) sprites.visual(plan, anchor);
         };
         for (const auto *roster : {&world.ai.human_order, &world.ai.monster_order})
             for (const auto id : *roster) {
@@ -1852,6 +1871,16 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 overlays.push_back({depth, [&, id] { draw_actor(id); }});
             }
         for (const auto id : state.scene.world.facility_order) {
+            const auto growth = startup_world_facility_growth_draws(state, id);
+            if (!growth) throw std::runtime_error("设施增长头标载荷非法");
+            if (!growth->empty()) {
+                const auto target = startup_world_runtime_facility_target(state, id);
+                if (!target) throw std::runtime_error("设施增长头标锚点非法");
+                const Vector2 p{120 + (*target)[0] - camera.x, 160 - (*target)[1] + camera.y};
+                overlays.push_back({p.y, [&, p, growth = *growth] {
+                    for (const auto &plan : growth) sprites.visual(plan, p);
+                }});
+            }
             const auto rows = startup_world_inn_rows(state, id);
             if (!rows)
                 throw std::runtime_error("旅馆占用人物显示投影无效");

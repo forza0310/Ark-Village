@@ -7,6 +7,8 @@
 最新[任务与周期报告表现研究](TASK_REPORT_RENDER.md)覆盖S033–S037，按用户顺序核对任务追加、raw30胜利、讨伐/收支简表与人物成长；固定APK月报与“周报”工作名分开。
 新增[探索表现规格](DUNGEON_RENDER.md)：攻略条/标签、任务菱形、队伍/挑战底栏及g/h百分比，不以攻略中截图认证完成结算。
 新增[战斗表现规格](COMBAT_RENDER.md)：累计伤害/阵营血条、金币/经验/升级三条时间线、升级头标与底栏及本地化素材差异。
+新增[装备与设施属性演出](EQUIPMENT_FACILITY_RENDER.md)：cd15武器专用SEB／定义图片、cd21／22图标与背景、
+设施队首kind1–6原帧／显式图层／整数锚点；只读维护原型已接，完整赠礼／升级模态皮肤仍分开验收。
 新增[道路铺设UI](PAGES.md#road-placement)与[边界栅栏/入口绘制规格](BOUNDARY.md)，不与已交付道路补块混用。
 新增[Steam交互合同](STEAM_INTERACTIONS.md)：标题手动／自动栏、系统保存、设施74–77以及列表“标记后确认”；
 配套[S038–S051完整截图](../references/screenshots/2026-10-07-steam-restore/README.md)作为UI设计参考，不直接作为产品运行美术。

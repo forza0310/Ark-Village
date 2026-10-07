@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
 #include "support/world_fixture.hpp"
@@ -11,6 +12,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <limits>
 #include <stdexcept>
 
 using namespace dungeon_village_prototype;
@@ -119,6 +121,241 @@ void cpu_portraits(const std::filesystem::path &root) {
             UnloadImage(image);
         }
 }
+StartupWorldRuntimeState lift_fixture() {
+    auto s = test_support::world_fixture();
+    ref::BattleActorRecord actor;
+    actor.id = {1};
+    actor.definition = 1;
+    actor.kind = ref::ActorKind::human;
+    actor.control.facing = 0;
+    s.scene.world.world.ai.battle.actors.emplace(actor.id, actor);
+    s.scene.world.world.ai.contexts.emplace(actor.id, ref::RewardActorContext{});
+    return s; // 只准备举物快照条件，不冒称实际购买轨迹。
+}
+void equipment_lift_queries() {
+    auto s = lift_fixture();
+    auto &ai = s.scene.world.world.ai;
+    auto &display = ai.contexts.at({1}).effects.display;
+    const auto draws = s.scene.random.draws();
+    const auto cash = ai.accounting.funds();
+    const auto equipment = s.shop_humans.at(1).equipment;
+    const auto pages = s.scripts.pages.size();
+    // 独立源常量oracle：原武器0图片50，原武器9图片2；同为挥动风格0。
+    const std::array<std::array<int, 3>, 10> stages{{
+        {0,0,50}, {1,5,50}, {7,20,50}, {8,20,50}, {19,20,50},
+        {20,20,2}, {31,20,2}, {32,20,2}, {33,19,2}, {39,0,2}}};
+    constexpr std::array<std::array<int, 2>, 4> offsets{{{-5,-36},{-4,-36},{-19,-37},{-17,-36}}};
+    for (const auto &stage : stages)
+        for (int direction = 0; direction < 4; ++direction) {
+            ai.battle.actors.at({1}).control.facing = direction;
+            display = {{15,stage[0],91,37,0,9,571,-71}};
+            const auto before = display;
+            const auto commands = startup_world_equipment_lift_draws(s,{1});
+            check(commands && commands->size() == 1 &&
+                      commands->front().resource == StartupVisualResource::weapon &&
+                      commands->front().sprite == direction && commands->front().image == stage[2] &&
+                      commands->front().frame == 0 && commands->front().layer == 0 &&
+                      commands->front().offset == std::array<int,2>{offsets[direction][0],offsets[direction][1]-stage[1]} &&
+                      display == before,
+                  "cd15 exact age20 identity switch, integer rise/fall and source direction offsets without advancing cd");
+        }
+    // 显示21/22读定义图标，而非装备定义ID；13/20的原图标为41/20。
+    for (const auto stage : {std::array<int,2>{0,-32}, {1,-34}, {5,-40}, {11,-44}, {12,-44}, {21,-44}})
+        for (int kind : {21,22}) {
+            display = {{kind,stage[0],218,-18,kind==21?13:20}};
+            const auto commands = startup_world_equipment_lift_draws(s,{1});
+            check(commands && commands->size() == 2 &&
+                      commands->at(0).resource == StartupVisualResource::common &&
+                      commands->at(0).sprite == -1 && commands->at(0).image == 24 &&
+                      commands->at(0).crop == std::array<int,4>{54,0,18,18} &&
+                      commands->at(1).image == (kind==21?20:21) &&
+                      commands->at(1).crop == (kind==21?std::array<int,4>{18,72,18,18}:std::array<int,4>{0,36,18,18}) &&
+                      commands->at(0).offset == std::array<int,2>{-8,stage[1]} &&
+                      commands->at(1).offset == commands->at(0).offset,
+                  "cd21/22 draws original background then real18px atlas icon at integer lift height");
+        }
+    display = {{7,-8,0,0},{15,0,0,0,0,9,571,-71},{21,1,218,-18,13},{22,5,218,-18,20},
+               {15,0,0,0,0,9,571,-71}};
+    const auto owner_before = startup_world_state_digest(s);
+    const auto order = startup_world_equipment_lift_draws(s,{1});
+    check(order && order->size() == 6 && order->at(0).resource == StartupVisualResource::weapon &&
+              order->at(1).image == 24 && order->at(2).image == 20 && order->at(3).image == 24 &&
+              order->at(4).image == 21 && order->at(5).resource == StartupVisualResource::weapon,
+          "mixed cd source order and duplicate lifts remain distinct; smoke is delegated rather than guessed");
+    check(startup_world_state_digest(s) == owner_before,
+          "combined weapon/armour/accessory draw query preserves the complete serialized Owner digest");
+    ai.battle.actors.at({1}).control.flags = 1;
+    check(startup_world_equipment_lift_draws(s,{1})->empty(), "original visibility flag1 suppresses complete lift drawing");
+    ai.battle.actors.at({1}).control.flags = 0;
+    display = {{15,-1,0,0,0,9,571,-71}};
+    check(startup_world_equipment_lift_draws(s,{1})->empty(), "negative cd age remains pending and produces no lift pixels");
+    for (const auto &payload : std::vector<ref::ActorEffectRecord>{{15,0,0}, {21,0,218,-18},
+            {15,0,0,0,999,9,571,-71}, {22,0,218,-18,999},
+            {15,std::numeric_limits<int>::max(),0,0,0,9,571,-71},
+            {21,2,std::numeric_limits<int>::max(),-18,13}}) {
+        display = {payload};
+        const auto before = display;
+        check(!startup_world_equipment_lift_draws(s,{1}) && display == before,
+              "truncated, unknown and overflowing lift records explicitly fail without partial output or mutation");
+    }
+    display = {{15,0,0,0,0,9,571,-71}};
+    // 合法原世界+私有规则损坏夹具，检查资源索引拒绝；冻结原表和共享rules不修改。
+    for (const auto fault : {std::array<int,3>{1,0,-1}, {1,0,4},
+                             {1,1,-1}, {1,1,7}, {1,1,57}, {2,1,50}, {3,1,30}}) {
+        auto broken = s;
+        StartupWorldRules private_rules = *s.rules;
+        broken.rules = &private_rules;
+        const int definition = fault[0] == 1 ? 0 : fault[0] == 2 ? 13 : 20;
+        broken.scene.world.world.ai.contexts.at({1}).effects.display = fault[0] == 1
+            ? std::vector<ref::ActorEffectRecord>{{15,0,0,0,definition,9,571,-71}}
+            : std::vector<ref::ActorEffectRecord>{{fault[0] == 2 ? 21 : 22,0,218,-18,definition}};
+        check(startup_world_equipment_lift_draws(broken,{1}).has_value(),
+              "resource rejection fixture starts with an actual valid original definition and lift");
+        auto d = std::find_if(private_rules.equipment.begin(),private_rules.equipment.end(),
+            [&](const auto &v) { return v.shop.kind == fault[0] && v.shop.id == definition; });
+        check(d != private_rules.equipment.end(), "private rule fault binds actual original equipment");
+        if (fault[1] == 0) d->render_style = fault[2];
+        else d->render_image = fault[2];
+        const auto digest = startup_world_state_digest(broken);
+        check(!startup_world_equipment_lift_draws(broken,{1}) &&
+                  startup_world_state_digest(broken) == digest,
+              "bad private render style/image domain explicitly rejects without mutating complete Owner");
+    }
+    for (int fault = 0; fault < 4; ++fault) {
+        auto broken = s;
+        if (fault == 0) broken.scene.world.world.ai.contexts.erase({1});
+        if (fault == 1) broken.scene.world.world.ai.battle.actors.erase({1});
+        if (fault == 2) broken.scene.world.world.ai.battle.actors.at({1}).control.facing = 4;
+        if (fault == 3) broken.rules = nullptr;
+        check(!startup_world_equipment_lift_draws(broken,{1}), "missing actor/context/rules or bad direction rejects source query");
+    }
+    check(s.scene.random.draws() == draws && ai.accounting.funds() == cash &&
+              s.shop_humans.at(1).equipment == equipment && s.scripts.pages.size() == pages &&
+              s.sound_requests.empty(), "all lift queries preserve common random, cash, equipment, pages and sound output");
+}
+void facility_growth_queries() {
+    auto s = test_support::world_fixture();
+    const auto facility = s.scene.world.facility_order.front();
+    constexpr std::array<int,15> phases{0,0,1,1,2,2,3,3,3,4,4,4,5,5,5};
+    constexpr std::array<int,9> down_stages{0,0,0,0,1,1,1,1,1};
+    constexpr std::array<int,7> up_y{-24,-25,-26,-27,-28,-29,-31};
+    constexpr std::array<int,7> down_y{-32,-32,-31,-30,-30,-29,-28};
+    const auto draws = s.scene.random.draws();
+    const auto neighbourhood = s.neighbourhood;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    for (int kind = 1; kind <= 6; ++kind)
+        for (int age = 0; age <= 42; ++age) {
+            auto &notices = s.facility_details.at(facility).notices;
+            notices = {{kind,age},{kind==1?6:1,0}};
+            const auto before = notices;
+            const auto digest = age == 6 ? startup_world_state_digest(s) : std::string{};
+            const auto result = startup_world_facility_growth_draws(s,facility);
+            const int phase = age < 15 ? phases[age] : 6;
+            const int count = kind <= 3 && age >= 6 && age <= 14 ? 2 : 1;
+            check(result && static_cast<int>(result->size()) == count &&
+                      result->front().resource == StartupVisualResource::common &&
+                      result->front().sprite == (kind<=3?68+kind:85) &&
+                      result->front().frame == (kind<=3?phase:(kind-4)*3+(age<9?down_stages[age]:2)) &&
+                      result->front().layer == 0 && result->front().image == -1 &&
+                      result->front().offset == std::array<int,2>{0,kind<=3?up_y[std::min(age,6)]:down_y[std::min(age,6)]} &&
+                      (count==1 || (result->at(1).layer==1 && result->at(1).frame==phase &&
+                                    result->at(1).sprite==result->front().sprite && result->at(1).offset==result->front().offset)) &&
+                      notices == before,
+                  "growth head exact0..42 phase/layer and signed integer anchor; later notice never affects current drawing");
+            if (age == 6)
+                check(startup_world_state_digest(s) == digest,
+                      "each positive/negative growth kind preserves complete Owner digest at active draw/layer boundary");
+        }
+    for (int kind : {0,7}) {
+        s.facility_details.at(facility).notices = {{kind,0},{1,6}};
+        check(startup_world_facility_growth_draws(s,facility)->empty(), "growth query delegates construction/NEW and does not draw second queue element");
+    }
+    for (const auto bad : {std::array<int,2>{1,-1}, {-1,0}, {8,0}}) {
+        s.facility_details.at(facility).notices = {bad};
+        check(!startup_world_facility_growth_draws(s,facility), "invalid growth head rejects without fabricated first frame");
+    }
+    auto broken = s;
+    broken.facility_details.erase(facility);
+    check(!startup_world_facility_growth_draws(broken,facility) &&
+              !startup_world_facility_growth_draws(s,std::numeric_limits<std::uint64_t>::max()) &&
+              s.scene.random.draws()==draws && s.neighbourhood==neighbourhood &&
+              s.scene.world.world.ai.accounting.funds()==cash && s.sound_requests.empty(),
+          "growth query rejects missing owner references and preserves neighbour cache, cash, random and sounds");
+}
+std::map<int,std::filesystem::path> source_images(const std::filesystem::path &root, const char *group) {
+    std::map<int,std::filesystem::path> result;
+    for (const auto &row : dungeon_village_tools::parse_tsv(bytes(root/group/"img.inf"))) {
+        auto p = std::filesystem::path(row.at(1));
+        if (p.extension()==".gif") p.replace_extension(".png");
+        result.emplace(dungeon_village_tools::parse_table_integer(row.at(0)),root/group/p);
+    }
+    return result;
+}
+void cpu_equipment_and_growth(const std::filesystem::path &root) {
+    auto s = lift_fixture();
+    const auto weapon_images = source_images(root,"weapon");
+    const auto common_images = source_images(root,"common");
+    constexpr std::array<const char *,4> styles{"sword","bow","spear","greatSword"};
+    int directions{};
+    for (const auto &d : s.rules->equipment) {
+        if (d.shop.kind==1) {
+            Image image=LoadImage(weapon_images.at(d.render_image).string().c_str());
+            check(image.data!=nullptr,"every original weapon image index decodes from original INF");
+            for (int direction=0;direction<4;++direction) {
+                s.scene.world.world.ai.battle.actors.at({1}).control.facing=direction;
+                s.scene.world.world.ai.contexts.at({1}).effects.display={{15,8,0,0,d.shop.id,d.shop.id,571,-71}};
+                const auto commands=startup_world_equipment_lift_draws(s,{1});
+                const auto filename=std::string(styles.at(d.render_style))+"0"+std::to_string(direction)+".seb";
+                const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/"weapon"/filename));
+                const auto part=std::find_if(seb.layers.at(0).parts.begin(),seb.layers.at(0).parts.end(),[](const auto &p){return p.frame==0;});
+                check(commands && commands->size()==1 && commands->front().image==d.render_image &&
+                          commands->front().sprite==d.render_style*4+direction && part!=seb.layers.at(0).parts.end() &&
+                          part->source_x>=0 && part->source_y>=0 && part->width>0 && part->height>0 &&
+                          part->source_x+part->width<=image.width && part->source_y+part->height<=image.height &&
+                          part->flip_x==0 && part->flip_y==0,
+                      "all33 weapons in four original direction SEBs use valid frame0 on definition override PNG");
+                Image crop=ImageFromImage(image,{static_cast<float>(part->source_x),static_cast<float>(part->source_y),
+                                                static_cast<float>(part->width),static_cast<float>(part->height)});
+                check(crop.data && crop.width==part->width && crop.height==part->height,
+                      "CPU crop materializes real weapon slice without a window or guessed icon frame");
+                UnloadImage(crop); ++directions;
+            }
+            UnloadImage(image);
+        } else if (d.shop.kind==2 || d.shop.kind==3) {
+            s.scene.world.world.ai.contexts.at({1}).effects.display={{d.shop.kind==2?21:22,12,218,-18,d.shop.id}};
+            const auto commands=startup_world_equipment_lift_draws(s,{1});
+            check(commands && commands->size()==2,"every original defensive/accessory definition has two drawing commands");
+            for (const auto &command:*commands) {
+                Image image=LoadImage(common_images.at(command.image).string().c_str());
+                const auto &r=command.crop;
+                check(image.data && r[0]>=0 && r[1]>=0 && r[0]+r[2]<=image.width && r[1]+r[3]<=image.height,
+                      "all original equipment atlas icons and backgrounds fit their decoded PNG");
+                UnloadImage(image);
+            }
+        }
+    }
+    check(directions==132,"CPU resources cover all33 original weapons and four directions");
+    const auto facility=s.scene.world.facility_order.front();
+    for (int kind=1;kind<=6;++kind) {
+        const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/"common"/
+            (kind<=3?std::string("eff_tenantUse0")+std::to_string(kind-1)+".seb":"eff_tenantUse04.seb")));
+        for (const int age:{0,2,4,6,9,12,15,42}) {
+            s.facility_details.at(facility).notices={{kind,age}};
+            const auto commands=startup_world_facility_growth_draws(s,facility);
+            check(commands.has_value(),"CPU growth resource has a source draw plan");
+            for (const auto &command:*commands) {
+                const auto &layer=seb.layers.at(command.layer);
+                const auto p=std::find_if(layer.parts.begin(),layer.parts.end(),[&](const auto &v){return v.frame==command.frame;});
+                check(p!=layer.parts.end() && p->image_index>=0 && p->width>0 && p->height>0,
+                      "explicit original layer selection never feeds legal empty records into image lookup");
+                Image image=LoadImage(common_images.at(p->image_index).string().c_str());
+                check(image.data && p->source_x+p->width<=image.width && p->source_y+p->height<=image.height,
+                      "all positive glow and negative-stage crops resolve actual original images within bounds");
+                UnloadImage(image);
+            }
+        }
+    }
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -127,6 +364,9 @@ int main(int argc, char **argv) {
         SetTraceLogLevel(LOG_WARNING);
         owner_mapping();
         cpu_portraits(argv[1]);
+        equipment_lift_queries();
+        facility_growth_queries();
+        cpu_equipment_and_growth(argv[1]);
         std::cout << "startup world visuals: " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

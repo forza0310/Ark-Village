@@ -47,6 +47,8 @@ struct StartupWorldEquipment {
     std::string name;
     int gift_rating{}; // 原weapon.t / armor.i / accessory.i，仅评价，不是装备准入。
     int gift_order{};  // 原weapon.u / armor.j / accessory.j。
+    int render_image{}; // 武器p.e是weapon图片索引；防具/饰品e是18格图标ID，不能互换。
+    int render_style{}; // 仅武器p.h的挥动/弓/枪/大剑0..3；不取战斗类别代替。
 };
 struct StartupWorldMonster {
     int identity{};

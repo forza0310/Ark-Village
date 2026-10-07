@@ -7,6 +7,17 @@
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
+## 2026-10-08举物与设施增长绘制
+
+正式合同见[装备与设施属性演出](ui/EQUIPMENT_FACILITY_RENDER.md)。
+[装备映射](work/equipment-lift-render-mapping/README.md)核113装备定义、132武器方向绑定，
+并以固定DEX四个明确帮助器994／532／202／96字节交叉商品图标、武器姿态及图片覆盖；
+[设施映射](work/facility-growth-render-mapping/README.md)核9份SEB、6份PNG及有限Java窗口，1081项检查通过。
+设施绘制链仍属普通Java与原资源交叉，未新增单方法DEX或原窗口动态认证。
+[既有资源审计](work/draw-resource-integration-audit/README.md)仅证明其实际比较的十项三份副本一致；
+本批最小绘制消费者与武器运行目录复制另见[集中验收](work/equipment-facility-render-implementation/README.md)。
+没有提取新素材或混入Steam／异版本截图的帧号；原表、共同随机、装备装配和通知退休均由既有Owner维护。
+
 ## 2026-10-07保存上游与后续消费者
 
 Steam同身份新增[预留保存证据](work/saveall-upstream/README.md)：15个明确方法20,000字节及530字节精确帮助器窗口，

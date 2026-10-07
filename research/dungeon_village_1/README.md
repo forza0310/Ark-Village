@@ -22,6 +22,7 @@
 | 原版两栏存档、25分区、引用恢复与维护存取边界 | [存档与恢复](rules/PERSISTENCE.md) |
 | 原APK／Steam外壳、容器、25分区／引用审计和只读差分 | [原档工具](tools/ORIGINAL_SAVE.md) |
 | 页面入口、地图/字体/投影与视觉缺口 | [UI 基线](ui/README.md)、[渲染映射](ui/PAGES.md) |
+| 装备举物／商品图标、设施增长头标及结果演出边界 | [举物与设施属性演出](ui/EQUIPMENT_FACILITY_RENDER.md) |
 | 原始美术、七个逻辑键、换图方式 | [素材说明](assets/README.md) |
 | 原始表与来源 | [数据说明](data/README.md) |
 | 实况截图、版本隔离与逐图观察 | [视觉参考](references/README.md) |

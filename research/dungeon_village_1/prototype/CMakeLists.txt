@@ -221,7 +221,8 @@ set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS
 file(GLOB STARTUP_IMAGE_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/image/*")
 file(GLOB STARTUP_ACTOR_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/*"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/monster/*"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common/*")
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common/*"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/weapon/*")
 set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS ${STARTUP_IMAGE_FILES} ${STARTUP_ACTOR_FILES}
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/chara_flower00.png"
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/human/walk00.seb"
@@ -247,6 +248,8 @@ add_custom_command(TARGET dungeon_village_prototype POST_BUILD
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/monster"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/common"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/common"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/weapon"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/weapon"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../assets/MANIFEST.tsv"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/MANIFEST.tsv"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:dungeon_village_prototype>/data"

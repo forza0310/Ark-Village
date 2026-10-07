@@ -107,10 +107,15 @@ export function compileStartupWorld(tables, map, sources, state) {
     const weapon = index===0, flag = n(row[weapon?18:12]), opened = (flag&1)!==0;
     const rank = n(row[weapon?5:4]), type = n(row[weapon?2:2]);
     const price = n(row[weapon?11:5]), combat = row.slice(weapon?12:6,weapon?16:10);
+    const renderImage=n(row[3]), renderStyle=weapon?n(row[6]):0;
+    const weaponImage = [[0,5],[10,15],[20,25],[30,30],[40,46],[50,56]]
+      .some(([lo,hi])=>renderImage>=lo&&renderImage<=hi); // 原weapon/img.inf显式ID域。
+    need(renderImage >= 0 && (weapon ? weaponImage && renderStyle >= 0 && renderStyle < 4
+      : renderImage < (index===1 ? 50 : 30)), '装备举物图片/图标/风格索引越界');
     return `{{${index+1},${n(row[0])},${rank},${type},${truth(opened)},${price},${array(combat)}},`+
       `{${flag},${opened?1:0},0,false,0,${opened?1:0}},`+
       (weapon?`{${n(row[6])},${n(row[7])},${n(row[8])},${n(row[9])},${n(row[10])}}`:'{}')+
-      `,${n(row[weapon?5:4])},${text(row[1])},${n(row[weapon?16:10])},${n(row[weapon?17:11])}}`;
+      `,${n(row[weapon?5:4])},${text(row[1])},${n(row[weapon?16:10])},${n(row[weapon?17:11])},${renderImage},${renderStyle}}`;
   }));
   const monsterOutput = monsters.map(row=>{
     const flag=n(row[16]), opened=(flag&1)!==0;

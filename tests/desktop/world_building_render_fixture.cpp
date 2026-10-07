@@ -167,6 +167,10 @@ void world_facility_static_render_fixture() {
         return state;
     };
     auto ordinary = open_bun();
+    auto catalogue = initial_world();
+    catalogue.scripts.user_flags |= 32U; // Explicit moving-entry gate for the S057 callsite.
+    require(sim::open_startup_world_build_menu(catalogue) == sim::StartupWorldRuntimeError::none,
+            "source cannot open the real S057 catalogue callsite");
     auto second = ordinary;
     require(sim::act_startup_world_facility_page(second, top_page(second).id,
                                                  sim::StartupFacilityPageAction::next) ==
@@ -270,7 +274,8 @@ void world_facility_static_render_fixture() {
                                               ui::world_facility_items_layout(extent), skin, true);
             else
                 ui::draw_world_building(ui::world_building_view(state, page),
-                                        ui::world_building_layout(extent, 74), skin, {}, true);
+                                        ui::world_building_layout(extent, page.legacy_page), skin,
+                                        {}, true);
             text.flush(1, {});
             EndDrawing();
         }
@@ -299,5 +304,7 @@ void world_facility_static_render_fixture() {
     capture(items, "raw75-list.png", false);
     capture(reinforced, "raw77-result.png", false);
     capture(reinforced, "raw77-minimum.png", true);
+    capture(catalogue, "raw21-s057-catalogue.png", false);
+    capture(catalogue, "raw21-s057-minimum.png", true);
 }
 } // namespace ark::test

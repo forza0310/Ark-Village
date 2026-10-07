@@ -12,6 +12,8 @@ class Skin {
     void window(Rectangle box, const std::string &title) const;
     void content(Rectangle box, Color fill = {250, 254, 248, 255}) const;
     void button(Rectangle box, const std::string &label, bool enabled = true) const;
+    // Orange inline commands seen in S043/S044, distinct from the rounded footer soft keys.
+    void choice(Rectangle box, const std::string &label, bool enabled = true) const;
     void centered(const std::string &value, Rectangle box, Color color = ink,
                   float size = 12) const;
     void right(const std::string &value, float x, float y, Color color = ink,

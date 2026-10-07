@@ -2,6 +2,8 @@
 
 ## 当前状态
 
+- [x] 修正上一批S057仅改分类/顺序而保留旧面板的问题：建设目录改为窄五行/顶端分类/名称橙底与手形/滚动条/屏幕右下返回，无木纹标题与建设方框；圆角软键与橙色文字操作分开。172项标准及最终4项检查、Release原资格目录/最小窗口与明确flag32五行夹具通过，见[B1](docs/stages/B1-playable-prototype.md#s057-catalogue-correction)。
+
 - [x] 对齐已发布cc4fb06/33c09c3的独立UI子集：设施信息标题/标题栏翻页、强化列头/手形、77建筑/新值/非零增量、S042菜单文案与S057道路后的编辑目录；用户批准75先标记后确认，Space不旁路暂停或49/55门槛。desktop-debug172项（排除三个月）、最终4项定向复验及Release两套用例/11张窗口通过，见[B1](docs/stages/B1-playable-prototype.md#latest-ui-evidence)。完整图标/投掷演出、标题及系统全流程继续分项待接。
 
 - [x] 消费1832b8c交互证据并按用户要求接默认世界左键拖动/松开选择、右键菜单及逐级返回；不接入Steam软件/SDK。desktop-debug172项（排除三个月）、Release手势契约及三窗口通过，见[B1](docs/stages/B1-playable-prototype.md#pc-pointer-input)。原marker注册和标题/完整系统流程仍单独待合同。

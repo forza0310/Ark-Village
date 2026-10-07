@@ -217,7 +217,7 @@ void draw_world_facility_items(const WorldFacilityItemsView &view,
     if (view.can_cancel)
         skin.button(layout.cancel, "返回", active);
     if (view.raw != 76)
-        skin.button(layout.confirm, view.raw == 75 ? "使用" : "确定", active && view.can_confirm);
+        skin.choice(layout.confirm, view.raw == 75 ? "使用" : "确定", active && view.can_confirm);
     if (!feedback.empty())
         fitted(skin, feedback, layout.feedback, MAROON);
 }

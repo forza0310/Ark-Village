@@ -133,7 +133,9 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                 if (!quote)
                     throw std::invalid_argument("Building page is missing its current quote");
                 view.catalogs[tab].push_back(
-                    {id, definition(state, id).name, quote->construction_cost,
+                    {id,
+                     definition(state, id).detail == 6 ? "募集入住" : definition(state, id).name,
+                     quote->construction_cost,
                      world_build_graphic(definition(state, id),
                                          simulation::rules::FacilityOrientation::first)});
             }
@@ -149,7 +151,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             if (!quote)
                 throw std::invalid_argument("Road catalogue is missing its current quote");
             roads.push_back(
-                {item.id, item.name, quote->construction_cost,
+                {item.id, "道路", quote->construction_cost,
                  world_build_graphic(item, simulation::rules::FacilityOrientation::first)});
         }
         view.catalogs[0].insert(view.catalogs[0].begin(), roads.begin(), roads.end());
@@ -261,6 +263,26 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     const float height =
         raw == 21 ? std::min(300.F, extent.height - 58.F) : std::min(250.F, extent.height - 68.F);
     WorldBuildingLayout layout;
+    if (raw == 21) {
+        // S057: a narrow catalogue begins with the tabs, then five37-pitch picture rows.
+        // It has no wood title or buy button. Return is the screen's lower-right soft key.
+        constexpr float catalogue_width = 176, catalogue_height = 210;
+        layout.panel = {(extent.width - catalogue_width) / 2,
+                        (extent.height - catalogue_height) / 2, catalogue_width, catalogue_height};
+        if (extent.width < 300)
+            layout.panel.y = std::min(layout.panel.y, extent.height - 29.F - 206);
+        const auto p = layout.panel;
+        layout.row_height = 37;
+        layout.body = {p.x + 3, p.y + 21, 162, 185};
+        layout.rows = layout.body;
+        for (int tab = 0; tab < 3; ++tab)
+            layout.tabs[tab] = {p.x + 3 + tab * 57.F, p.y + 3, 57, 16};
+        layout.previous = {p.x - 9, p.y + 3, 9, 16};
+        layout.next = {p.x + p.width, p.y + 3, 9, 16};
+        layout.cancel = Layout(extent).right_button;
+        layout.confirm = {}; // Row/Enter activates its bound definition; no hidden command box.
+        return layout;
+    }
     layout.row_height = raw == 21 ? 37.F : 38.F;
     layout.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &p = layout.panel;
@@ -348,9 +370,9 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
     selection.tab = std::clamp(selection.tab, 0, 2);
     if (view.raw == 21) {
         const int old = selection.tab;
-        if (input.left)
+        if (input.left || hit(input.click, layout.previous))
             selection.tab = (selection.tab + 2) % 3;
-        if (input.right)
+        if (input.right || hit(input.click, layout.next))
             selection.tab = (selection.tab + 1) % 3;
         for (int tab = 0; tab < 3; ++tab)
             if (hit(input.click, layout.tabs[tab]))
@@ -396,17 +418,32 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                                                       std::to_string(view.page_count)
                                                 : "")
             : view.title;
-    skin.window(layout.panel, title);
-    skin.content(layout.body);
+    if (view.raw == 21) {
+        DrawRectangleRec(layout.panel, {222, 230, 144, 255});
+        DrawRectangleLinesEx(layout.panel, 1, {59, 66, 18, 255});
+        DrawRectangleLinesEx({layout.panel.x + 1, layout.panel.y + 1, layout.panel.width - 2,
+                              layout.panel.height - 2},
+                             1, {139, 142, 53, 255});
+        DrawRectangleRec(layout.body, {250, 254, 248, 255});
+    } else {
+        skin.window(layout.panel, title);
+        skin.content(layout.body);
+    }
     if (view.initialized) {
         if (view.raw == 21 || view.raw == 80) {
             if (view.raw == 21) {
                 constexpr const char *titles[]{"设备", "一般", "饮食"}; // S057 display wording.
                 for (int tab = 0; tab < 3; ++tab) {
-                    if (tab == selection.tab)
-                        DrawRectangleRec(layout.tabs[tab], {210, 229, 195, 255});
+                    DrawRectangleRec(layout.tabs[tab], tab == selection.tab
+                                                           ? Color{0, 241, 115, 255}
+                                                           : Color{225, 255, 69, 255});
+                    DrawRectangleLinesEx(layout.tabs[tab], 1, {60, 96, 6, 255});
                     skin.centered(titles[tab], layout.tabs[tab], ink, 10);
                 }
+                const auto p = layout.panel;
+                DrawTriangle({p.x - 8, p.y + 11}, {p.x, p.y + 18}, {p.x, p.y + 4}, GOLD);
+                DrawTriangle({p.x + p.width + 8, p.y + 11}, {p.x + p.width, p.y + 4},
+                             {p.x + p.width, p.y + 18}, GOLD);
             }
             const auto &list = rows(view, selection.tab);
             if (list.empty())
@@ -417,7 +454,7 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                  ++row) {
                 Rectangle box{layout.rows.x, layout.rows.y + row * layout.row_height,
                               layout.rows.width, layout.row_height};
-                if (first + row == selection.selected)
+                if (view.raw != 21 && first + row == selection.selected)
                     DrawRectangleRec(box, {255, 236, 174, 255});
                 const auto &item = list[first + row];
                 float label_x = box.x + 4;
@@ -440,12 +477,36 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                     }
                     label_x = box.x + 72;
                 }
-                fitted(skin, item.name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
+                const auto &name = item.name;
+                if (view.raw == 21) {
+                    DrawRectangleLinesEx(box, 1, {11, 181, 0, 255});
+                    if (first + row == selection.selected) {
+                        const float label_width =
+                            std::min(box.x + box.width - label_x - 3, skin.text.width(name) + 4);
+                        DrawRectangleRec({label_x - 1, box.y + 2, label_width, 15},
+                                         {255, 185, 87, 255});
+                        skin.sprites.draw("finger_r.seb", 0, {label_x - 8, box.y + 9}, WHITE,
+                                          Sprites::Binding::common);
+                    }
+                }
+                fitted(skin, name, {label_x, box.y + 3, box.x + box.width - label_x - 4, 14});
                 if (item.residence_qualifications)
                     skin.text.draw("H " + std::to_string(*item.residence_qualifications), label_x,
                                    box.y + 22, blue, 10);
                 skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
                            10);
+            }
+            if (view.raw == 21) {
+                const Rectangle track{layout.panel.x + layout.panel.width - 7, layout.rows.y, 5,
+                                      layout.rows.height};
+                DrawRectangleRec(track, {33, 20, 91, 255});
+                const int count = std::max(1, static_cast<int>(list.size()));
+                const float visible = std::min(count, world_building_visible_rows(layout));
+                const float thumb_height = track.height * visible / count;
+                const float thumb_y = track.y + (track.height - thumb_height) * first /
+                                                    std::max(1, count - static_cast<int>(visible));
+                DrawRectangleRec({track.x, thumb_y, track.width, thumb_height},
+                                 {50, 164, 234, 255});
             }
         } else if (view.raw == 74) {
             draw_detail(view, layout, skin, selection);
@@ -479,8 +540,8 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
         skin.centered("<", layout.previous, active ? GOLD : GRAY);
         skin.centered(">", layout.next, active ? GOLD : GRAY);
     }
-    if (view.raw != 74 || view.can_confirm)
-        skin.button(layout.confirm,
+    if (view.raw != 21 && (view.raw != 74 || view.can_confirm))
+        skin.choice(layout.confirm,
                     view.raw == 21            ? "建设"
                     : view.raw == 81          ? "确定"
                     : view.definition_preview ? "关闭"

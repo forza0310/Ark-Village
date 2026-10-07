@@ -40,18 +40,25 @@ void Skin::right(const std::string &value, float x, float y, Color color, float 
     text.draw(value, x - text.width(value, size), y, color, size);
 }
 void Skin::button(Rectangle box, const std::string &label, bool enabled) const {
-    // Gray inset command style observed in S001/S003; metrics are desktop adaptation.
-    DrawRectangleRec(box, Color{107, 75, 28, 255});
-    DrawRectangleLinesEx(box, 1, Color{52, 55, 41, 255});
-    DrawRectangleLinesEx({box.x + 1, box.y + 1, box.width - 2, box.height - 2}, 1,
-                         Color{206, 161, 68, 255});
-    DrawRectangleRec({box.x + 4, box.y + 4, box.width - 8, box.height - 8},
-                     Color{205, 206, 199, 255});
-    DrawRectangleLinesEx({box.x + 5, box.y + 5, box.width - 10, box.height - 10}, 1, WHITE);
-    DrawLine(static_cast<int>(box.x + 6), static_cast<int>(box.y + box.height - 6),
-             static_cast<int>(box.x + box.width - 6), static_cast<int>(box.y + box.height - 6),
-             GRAY);
+    // S057/S048 soft keys have rounded brown/gold chrome and a light beveled face.
+    // Geometry follows the existing hit box; this presentation change adds no action.
+    DrawRectangleRounded(box, .22F, 4, {62, 53, 31, 255});
+    DrawRectangleRounded({box.x + 1, box.y + 1, box.width - 2, box.height - 2}, .22F, 4,
+                         {178, 121, 48, 255});
+    DrawRectangleRounded({box.x + 3, box.y + 3, box.width - 6, box.height - 6}, .2F, 4,
+                         {243, 239, 212, 255});
+    DrawRectangleRounded({box.x + 5, box.y + 5, box.width - 10, box.height - 10}, .18F, 4,
+                         {206, 207, 201, 255});
     centered(label, box, enabled ? Color{32, 30, 29, 255} : GRAY);
+}
+void Skin::choice(Rectangle box, const std::string &label, bool enabled) const {
+    const float width = std::min(box.width - 4, text.width(label) + 8);
+    const Rectangle highlight{box.x + (box.width - width) / 2, box.y + 2, width, box.height - 4};
+    DrawRectangleRec(highlight, enabled ? Color{255, 153, 55, 255} : Color{213, 208, 188, 255});
+    centered(label, box, enabled ? ink : GRAY);
+    if (enabled)
+        sprites.draw("finger_r.seb", 0, {highlight.x - 7, highlight.y + highlight.height / 2},
+                     WHITE, Sprites::Binding::common);
 }
 void Skin::number(std::int64_t value, Vector2 edge, const std::string &sprite) const {
     const auto digits = std::to_string(value);

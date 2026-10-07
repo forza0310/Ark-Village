@@ -227,10 +227,12 @@ void world_building() {
         check(layout.row_height == 37 && ui::world_building_visible_rows(layout) <= 5 &&
                   (extent.height < 360 || ui::world_building_visible_rows(layout) == 5),
               "Raw21 uses source row pitch and five rows when the desktop height permits");
-        check(layout.panel.y >= 24 && layout.panel.y + layout.panel.height <= extent.height - 29 &&
-                  layout.rows.y + ui::world_building_visible_rows(layout) * layout.row_height <=
-                      layout.cancel.y,
-              "Catalogue clears the HUD and playback footer at the actual widescreen canvas size");
+        check(ui::world_building_visible_rows(layout) == 5 && layout.panel.width == 176 &&
+                  layout.rows.height == 185 && layout.tabs[0].y < layout.rows.y &&
+                  layout.cancel.x == ui::Layout(extent).right_button.x &&
+                  layout.cancel.y == ui::Layout(extent).right_button.y &&
+                  layout.confirm.width == 0 && !CheckCollisionRecs(layout.rows, layout.cancel),
+              "S057 is a narrow five-row tab-first catalogue with only the footer return key");
         for (int row = 0; row < ui::world_building_visible_rows(layout); ++row) {
             const auto icon = ui::world_building_icon(layout, row);
             check(icon.clip.width == 64 && icon.clip.height == 32 &&
@@ -243,8 +245,6 @@ void world_building() {
         check(layout.panel.x >= 0 && layout.panel.y >= 0 &&
                   layout.panel.x + layout.panel.width <= extent.width &&
                   layout.panel.y + layout.panel.height <= extent.height &&
-                  layout.rows.y + ui::world_building_visible_rows(layout) * layout.row_height <=
-                      layout.cancel.y &&
                   !CheckCollisionRecs(layout.previous, layout.cancel) &&
                   !CheckCollisionRecs(layout.next, layout.confirm),
               "Responsive page rows and navigation remain on-screen without button overlaps");
@@ -263,6 +263,19 @@ void world_building() {
         (void)ui::world_building_input(view, layout, selection, input, false);
         check(selection.tab == 2 && selection.selected == 0 && selection.first_row == 0,
               "Changing category resets desktop list cursor without changing source catalogue");
+        input = {};
+        input.click = middle(layout.next);
+        check(!ui::world_building_input(view, layout, selection, input, false) &&
+                  selection.tab == 0,
+              "S057 right tab arrow wraps category without submitting a building");
+        input.click = middle(layout.previous);
+        check(!ui::world_building_input(view, layout, selection, input, false) &&
+                  selection.tab == 2,
+              "S057 left tab arrow returns to the previous category without buying");
+        input.click = middle(layout.cancel);
+        check(ui::world_building_input(view, layout, selection, input, false)->action ==
+                  Action::cancel_build,
+              "S057 screen-corner soft key cancels the catalogue through its existing consumer");
         input.click = middle(layout.tabs[1]);
         (void)ui::world_building_input(view, layout, selection, input, false);
         input = {};

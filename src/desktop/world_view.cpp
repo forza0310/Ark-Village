@@ -106,6 +106,9 @@ void hud(const State &s, const ui::Layout &layout, const ui::Skin &skin, bool fa
     skin.number(s.village_points, {w - 3, 27});
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
     ui::draw_world_popularity(s.popularity, layout, skin);
+    // S057 catalogue owns the footer's return key, so no unrelated pause/menu boxes show behind it.
+    if (const auto *page = active_page(s); page && page->legacy_page == 21)
+        return;
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(ui::world_menu_button(layout.extent), "菜单",
                 !failed && !menu_pending &&
@@ -350,7 +353,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
-            (hit(layout.left_button) ||
+            ((!(input_page && input_page->legacy_page == 21) && hit(layout.left_button)) ||
              (IsKeyPressed(KEY_SPACE) &&
               !(input_page && ui::world_facility_items_page(*input_page))))) {
             desired_pause = !desired_pause;

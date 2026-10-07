@@ -60,6 +60,27 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 首份非空p中断前档（2026-10-07）
+
+用户交回`20261007-125641-nonempty-p-only`；只读扫描48ms／1轮／2内容／零错误，取得既有0003，
+不新增游戏画面、产生操作或重载证据。候选与冻结0003一致，五文件字节／hash与报告的收尾清单一致；
+本分析未重新读取实时原件或认证云端。用户手动交回路径已被本会话消费，消息工具两次active writer失败只记交回过程。
+
+| 本轮输入／产物 | SHA-256 |
+| --- | --- |
+| 非空候选中断0003（32541字节） | `3e1caa3c450ddaf8a845669ec7bdfc02c395c13c4e21240d44b1c2f43181b7bc` |
+| work/window-restore-observation/20261007-125641-nonempty-p-only/RESULT.md | `6c083ce8e0166e774f80f9d966972d0be8ce0fbfafe55b98d30b4e5cf67312e2` |
+| work/nonempty-p-candidate-analysis/AUDIT.json | `5b85d85a9f516c69c88da4293f14a1069d2c8a816b3a7a7a99f7d416603aa136` |
+| work/nonempty-p-candidate-analysis/VALIDATION.json | `ac35ae5807c5e6572ca643975b002b2ec2d2fd9ef4d124a011b8ba61cbe31ca1` |
+| work/nonempty-p-candidate-analysis/contract/README.md | `08caa2350053ac63ebf7a881b327f1211a4428b1d48d1030d74b0758f50dea07` |
+| work/nonempty-p-candidate-analysis/capture-after.cjs | `cfa7b93db53f8cb89b7d7119418fd312550cb6c2154fa4f86c5e41fec42b778c` |
+| work/nonempty-p-candidate-analysis/compare.cjs | `8f947ad8fa79a014628a2e1f8f90870fd639823b4e960d296c987de40a326253` |
+
+[候选分析](work/nonempty-p-candidate-analysis/ANALYSIS.md)两档50段／28引用逐项交叉，p定位[3,9]；
+[已有静态源复核](work/nonempty-p-candidate-analysis/contract/README.md)登记8份源哈希和准确读取／消费者坐标，未新增广泛解码。
+0／17／19首次实际非空与投射物引用未覆盖分别记。工具六场景含冻结密文夹具切换，不能冒称原程序重载。
+APK身份与原表不变，Steam仅独立交叉；本批没有维护代码／CMake或原程序写入。
+
 ## 第二次窗口反馈：业务重载与撤除（2026-10-07）
 
 用户交回[20261007-120056-business-reload-p](work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md)，

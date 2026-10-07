@@ -575,6 +575,28 @@ B项完成一次合法原UI撤除，但采样未取得非空p：60秒118轮、�
 下一次仅补非空p前提：先确认对象及准备短保存路径，在同一有界采样窗口内合法提交、立即正常保存并固定副本；
 先审计命中，再决定重载，不继续对空p反复加载。更新[窗口任务](../work/window-restore-observation/NEXT_RESTORE_PROMPT.md)保留原档授权边界。
 
+### 首份非空p前档已取得，重载待验
+
+用户交回[只读取证报告](../work/window-restore-observation/20261007-125641-nonempty-p-only/RESULT.md)：
+最新冻结中断0003已有非空p，本轮没有启动游戏或写回原档。候选32541字节，SHA-256
+`3e1caa3c450ddaf8a845669ec7bdfc02c395c13c4e21240d44b1c2f43181b7bc`。
+本会话独立C++／Node交叉两档50段／28组引用，详见[候选分析](../work/nonempty-p-candidate-analysis/ANALYSIS.md)。
+
+唯一p在UID21／定义40／序号0／格(12,8)，条目[3,9]：类型3为魅力增加、计数9；phase0、f71，
+s[50,10,20]、w[[32,0],[69,0]]，定义40 G/H1、J全0、K0。[固定APK表](../data/original/tenantData.txt)名为西餐厅，
+Steam具名画面尚无。原年月周2/11/0、time=oldtime=10773、1448G；不冒称本轮UI观察或具体产生操作。
+冻结手动0001也通过审计但p0，是另一存储时点，**不是此候选的重载后档**。
+
+候选0段2条延迟脚本、17段1个效果、19段1个投射物，首次补上此前实样为空的非空布局覆盖；
+布局通过不认证其业务执行或投射物引用域。段18怪物缺引用4次（6,1,6,6）保留诊断，不补实体或判坏档。
+APK读取循环L8b→L97→Laa及Steam Tenant.Deserialize VA0x102C1DE1..0x102C1EA0已独立核读弃p，
+来源复核见[恢复契约](../work/nonempty-p-candidate-analysis/contract/README.md)。该局部事实已证，原游戏加载此非空候选仍待验。
+
+后档p0仅能记录端点，不能独立排除自然队首消费；phase0施工完成可能新生p0，邻接可再发p3，
+新的非空条目也不能独自证明旧队列恢复。维护精确快照保留p的策略不变，不套用APK寿命为Steam墙钟时间。
+下一项按[更新窗口任务](../work/window-restore-observation/NEXT_RESTORE_PROMPT.md)直接读取该中断候选，
+有界固定首次不同0003并比较完整目标身份；无需重复制造前档或已完成A。既有消息转交失败不影响用户本次已交回文件。
+
 ### 非空p候选续批
 
 已有9份实样p均为空，续批补核5个Steam方法／11,552字节，见[产生点与采样](../work/nonempty-p-capture/TRIGGERS.md)。

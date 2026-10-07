@@ -567,14 +567,36 @@ APK升级提示L/M分支先于p绘制，截图“升级↑”不能代替非空�
 另一插件委托已核窗口Close／Dispose／清引用，但未穷尽关闭事件；`PlayerPrefs.Save`保存显示配置，不等于游戏0001／0003落盘。
 SaveAll已证true→false→system的顺序保留，完整生命周期上游仍未认证。
 
+后续[保存分派证据](../work/save-dispatch-closure/README.md)新增12个明确入口／10,304字节：
+管理器`OnProcessEvent`虚槽11为`ret 0`，表单`ProcessEvent`虚槽29（0x1D）返回false；
+已登记`FormManager`、`GameForm`、`TitleForm`和`MyFormBase`没有对应业务覆盖。
+因此所核Exit继承分派路径不执行SaveAll；这是具体接收者的局部排除，不代表整个退出绝不保存。
+
+游戏内结束确认先调用`RemoveAllForms`，写表单`formProcMode_=4`；框架退休调度成功后移出列表。
+通用帮助器`0x10097EC0`未全部解析，不将移出列表当作所有引用释放。
+已登记三个游戏表单的`Finish`均无保存调用；`TerminateCheck`满足条件才进入`Terminate`。
+`Terminate`在VA `0x1078DA42..0x1078DA51`调用KairoBase槽12 `Finish`（类指针偏移0x11C），
+不是槽18 `SaveAll`（偏移0x14C）。已登记KairoService的Finish尾调只置start=false的基础Finish。
+具体窗口Close订阅／框架回调的接收者和槽18调用条件仍是最小未决；完整SaveAll正向上游尚未闭合。
+
 普通Storage.Write媒介4路径直接调用`File.WriteAllBytes`；本样本`InternalWriteAllBytes`在VA0x109E8785以
 `FileMode.Create(2)`、Write(2)、FileShare.Read(1)对**原目标路径**构造FileStream，再Write并释放。
 异常展开也释放并重新抛出，所核路径没有候选临时文件替换或旧字节恢复步骤；下层OS适配及所有异常类型未全部闭合。
 所以“成功创建／截断后再写失败可能无法保留旧完整档”是代码顺序风险推断，不是已在用户档实测损坏。
 游戏记录与系统目录逐次写入，不能称多文件统一事务；本地流释放也不认证断电耐久或Steam云已提交。
 
+`Storage.Write`的匹配异常槽VA `0x11103730`已精确解码为`System.UnauthorizedAccessException`
+（usage编码0x20005CB3、TypeIndex11865、TypeDef1372）。所核分支只对该匹配类型构造
+`NotPermitException(type0, message, inner)`并抛出，其他异常再抛；不泛称所有I/O失败都由该包装处理。
+本批未制造权限拒绝、磁盘满或用户档损坏，也未认证完整界面异常传播。
+
 维护AVRSAVE1继续采用候选校验、临时文件、回读和替换的独立策略，不因原程序直接写目标而降低校验或失败保护。
 菜单保存的state0→1→SaveGame→2与确认仅关提示见[Steam交互合同](../ui/STEAM_INTERACTIONS.md)，界面成功提示与底层保证分别登记。
+
+已准备[设施候选前后比较器](../work/restore-roundtrip-check/README.md)，只读冻结副本并调用既有C++审计器，
+比较道具18库存、设施36共享J及最小日期／资金／p／引用诊断。同档明确标为非重载证据；不同档值一致仍须操作日志。
+三种比较结果与系统记录拒绝已验，pending为0、原实验72项哈希未变。用户确认候选重载尚未完成，
+因此实际业务恢复与非空p动态保持待验，工具检查不代替原游戏加载。
 
 ## 当前 C++ 边界与下一批
 

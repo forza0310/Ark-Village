@@ -60,6 +60,37 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 状态setter、漫游与装备提交扩展见[控制规格](rules/ai/CONTROL.md#状态setter和装备提交)。
 完整全局运行仍不以一份普通输出宣称等价。生成文件只留忽略work，不纳入发布源或Git。
 
+## 恢复闭环与Steam交互静态收口（2026-10-07）
+
+用户授权并行处理，随后确认设施候选窗口重载尚未完成，继续静态研究。
+固定APK不变，Steam DLL／metadata沿本页已登记身份；Il2CppDumper 6.7.46方法映射、Node v24.15.0及iced-x86 1.21.0。
+分别交付[输入链](work/steam-input-closure/README.md)、[设施动画](work/facility-animation-closure/README.md)、
+[保存分派](work/save-dispatch-closure/README.md)及[候选前后比较器](work/restore-roundtrip-check/README.md)。
+
+三批解码范围分别为24方法／93,104字节、5方法／45,536字节、12入口／10,304字节，
+各自遵守24方法／96KiB总量／32KiB单方法预算；重叠方法不合称互不重复的新方法。
+静态码／metadata原字节、已冻结档取证与实际窗口恢复分别记，业务恢复及非空p尚未动态验收。
+正式语义在[Steam交互](ui/STEAM_INTERACTIONS.md)和[存档合同](rules/PERSISTENCE.md#steam退出委托与文件失败语义续批)，
+输入矩形不是截图像素，动画计数不是墙钟秒；完整SaveAll正向上游仍未闭合。
+
+| 本轮证据（均位于work） | SHA-256 |
+| --- | --- |
+| steam-input-closure/manifest.json | `dde660a0fc4aed24357578929d3b4848cf83a225920d0a253a8d6cef75d65ccf` |
+| steam-input-closure/check.json | `28010ba32ba36cd787bc7750d3ba96be045d87eb23db48e87b94d4a7def1d30b` |
+| facility-animation-closure/manifest.json | `b0c050ae624c7b137f456f94a04e534b7115e7e905b69fcea80a2fbb8ed979f1` |
+| facility-animation-closure/animation-tables.json | `ecec76d0504a95b0bd5bee5209e21e0f61f45f2956a187414569555db0e5fba5` |
+| save-dispatch-closure/manifest.json | `b0c0a5a7503840f813edbc15ebbccd239e7a37ce118d847123ca6d1bcac4e383` |
+| save-dispatch-closure/metadata.json | `1842965beeb8cb002c955faba383d0a4e4b268030778cf8b1b65023ce6df336e` |
+| save-dispatch-closure/evidence.json | `aa673d96434cf1e3f60c6b64cb6e264ddebada0d13317c7e9c16d5fcfd8a8245` |
+| save-dispatch-closure/output-hashes.json | `718cec3f4a4af066f1027a5cefe57f37c0ace9f610ed041a32b1b27ccfae121b` |
+| restore-roundtrip-check/check.cjs | `afb8de0c523951b4a64decaebf3881d0451ffacb5792be416cdf9634021253cd` |
+| restore-roundtrip-check/VALIDATION.json | `a757352726f2ad4fe6477d324945ceaa639dc718a8325215c63f23de326760f2` |
+
+方法manifest记录RVA／VA／文件偏移和机器码hash；设施表通过指定槽→FieldRef→FieldDefault原字节与消费者交叉，
+权限异常通过单槽→Il2CppType→TypeDef核对，不用同名元数据替代实现。
+比较器只读已授权冻结副本，同档明确拒绝充当重载证据；72项原实验输入哈希未变。
+统一检查见[验证入口](VERIFICATION.md)，无维护C++／CMake变更或新的原窗口观察。
+
 ## 恢复行为交叉证据（2026-10-07）
 
 并行续批交付[S038–S051截图](references/screenshots/2026-10-07-steam-restore/README.md)和[Steam交互](ui/STEAM_INTERACTIONS.md)，

@@ -14,7 +14,7 @@
 
 公共库→desktop-debug与Release玩家/UI runner编译通过；desktop-debug标准172项全通过，74.46秒，精确排除simulation.startup_world_continuous_test。窗口对照补价格标签后，最终重编、4项受影响Debug检查全通过（0.26秒），Release两套UI回归通过。实际默认游戏菜单/建设目录/详情3张，以及普通74/第二页/MAX/定义预览/75普通与最小/77普通与最小8张，共11张PNG退出0且目视核对。原页计数/Owner回归进入标准测试，纯桌面变更不重复headless、Debug三个月、年度或长认证前缀；main CI Release完整标准待验证，未推送。
 
-本地字体刷新468项输入/1731码点，387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9，无新下载或ZIP。证据在build/validation/ui-evidence-20261007；原图只读参考、不作游戏贴图。研究33c09c3的道具业务重载已增加原程序证据，非空p仍未覆盖；这不替换玩家ARKSAVE1/schema2、随机不落盘和候选文件保护政策。标题/自动栏/系统完整流程与SDK无关，仍按各自来源/玩家政策单独设计。
+本地字体刷新468项输入/1731码点，387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9，无新下载或ZIP。证据在build/validation/ui-evidence-20261007；原图只读参考、不作游戏贴图。研究33c09c3的道具业务重载已增加原程序证据；收口补审4b47d0f已取得非空p前档与实际布局，具体原程序重载仍待验，没有新UI/维护实现。它们不替换玩家ARKSAVE1/schema2、随机不落盘和候选文件保护政策。标题/自动栏/系统完整流程与SDK无关，仍按各自来源/玩家政策单独设计。
 
 <a id="pc-pointer-input"></a>
 

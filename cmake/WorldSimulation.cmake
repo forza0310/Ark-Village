@@ -135,6 +135,13 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         TIMEOUT 120 LABELS "runtime;replay;frozen")
     set_tests_properties(simulation.startup_world_replay_process PROPERTIES
         TIMEOUT 360 LABELS "e2e;replay;frozen")
+    # Product CLI/path/qualification checks use real bounded prefixes; the frozen default
+    # progression case above retains its independent original three-process oracle.
+    add_test(NAME simulation.replay_runner_contract
+        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/replay_runner_contract_test.mjs"
+            "$<TARGET_FILE:ark_simulation_startup_world_continuous_test>" "${CMAKE_CURRENT_BINARY_DIR}")
+    set_tests_properties(simulation.replay_runner_contract PROPERTIES
+        TIMEOUT 360 LABELS "e2e;replay;player")
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         add_test(NAME simulation.startup_world_codec_coverage
             COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/generate_owner_codec.mjs"

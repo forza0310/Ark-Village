@@ -4,7 +4,7 @@
 
 默认先显示标题，可新建或继续已有手动档；进入后运行持续世界：地图、设施、人物/怪物、资金、任务、日期和页面由同一Owner持有。已接建设/道路/移动/撤除、人物经营、任务与授勋、晋级/扩张、村办0–3/商会/普通道具，以及两栏手动存读档。情报菜单、部分经营入口和完整动画仍待接。
 
-规则/运行时冻结为 **524415a，354项源/测试/数据**；最新研究证据核对至6061a2c及5eae10a归档，未发布新运行时代码。玩家使用ARKSAVE1/schema2，完整AVRSAVE1仅用于维护与精确回放。建设目录已按S057纠正；本批接S067/S068授勋视觉子集并审计存档，范围/验证见[B1当前批次](docs/stages/B1-playable-prototype.md#research-save-organization)。
+规则/运行时基线为 **524415a，共354项来源记录**；其中回放runner按正式ee687bc单项升级，支持扩张与既有前缀接续，其他冻结输入保持。最新经营来源合同已交付，79/72、82和魔法壶仍待维护实现。玩家使用ARKSAVE1/schema2，完整AVRSAVE1仅用于维护与精确回放。建设目录、授勋视觉子集及标题已接；当前接续与验证见[B1](docs/stages/B1-playable-prototype.md#research-ee687bc-replay)。
 
 [文档分类索引](docs/README.md) · [当前待办](TODO.md) · [架构](docs/ARCHITECTURE.md) · [研究/产品差距](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [历史验收](docs/stages/history/B1-implementation-log.md)
 

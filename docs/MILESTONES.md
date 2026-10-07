@@ -11,6 +11,8 @@
 
 本次6061a2c证据/UI子集、存档审计和文档/代码职责整理沿已批准UI与工程范围，见[当前批次](stages/B1-playable-prototype.md#research-save-organization)。不新增玩家存档政策、自动档或Steam服务。
 
+2026-10-07用户确认按回放工具→79/72及82→魔法壶→精确表现/后期顺序接入。首批仅将ee687bc的runner单项升级，保留产品路径保护和认证等级，规则/数据/存档政策不变；后续玩法等待正式维护消费者，不能导入在途代码。范围、验收与来源增量记录见[接续批次](stages/B1-playable-prototype.md#research-ee687bc-replay)。
+
 所有状态从新产品重新开始。旧M阶段不是新产品的完成依据。
 
 | 阶段 | 范围 | 状态/验收 |

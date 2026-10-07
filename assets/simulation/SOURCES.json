@@ -2638,14 +2638,15 @@
     {
       "file": "tests/simulation/replay_file_test.mjs",
       "source": "research/dungeon_village_1/prototype/tests/replay_file_test.mjs",
-      "source_sha256": "ceee594acaba5f60eda1668b20e9138e6a6ea619a36a6eecdc919c4a22e48118",
-      "source_bytes": 11064,
-      "sha256": "e0eb7d5543027e9788d785bf47b4a77e67ff467c228f709e49b42f5de03913f1",
-      "bytes": 11340,
+      "source_sha256": "89ed2b0101a1d1cf865f7b68a564de56e33ed50cd240867ed958a34ca93309ce",
+      "source_bytes": 21651,
+      "sha256": "713ceb16628b37bb3d598c8c93c71d5405d71fde52f470c2be8236621c39b991",
+      "bytes": 21901,
       "product_patch": {
-        "imported_sha256": "ceee594acaba5f60eda1668b20e9138e6a6ea619a36a6eecdc919c4a22e48118",
-        "reason": "Constrain temporary, periodic and preserved replay files to product build subdirectories with real-path ancestor and owned-cleanup checks; keep the original three-process assertions and golden progression endpoint unchanged."
-      }
+        "imported_sha256": "89ed2b0101a1d1cf865f7b68a564de56e33ed50cd240867ed958a34ca93309ce",
+        "reason": "Retain the existing product build-root/real-ancestor/output/owned-cleanup guards, extend the same boundary to read-only input prefixes and certificates, and map research work paths/messages to product build. Preserve ee687bc scenario limits, identity/qualification checks, three-process assertions, certificate lineage and both golden endpoints."
+      },
+      "source_revision": "ee687bce157e03729c94eaa9012e807ae1c4d1bb"
     },
     {
       "file": "tests/simulation/startup_world_arrival_test.cpp",
@@ -2852,6 +2853,16 @@
       "sha256": "d487ca75a34f073ec66ce59553434a444e482f68cf6bbc792ad0fde8a37d7233",
       "bytes": 4676,
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
+    }
+  ],
+  "incremental_imports": [
+    {
+      "source_revision": "ee687bce157e03729c94eaa9012e807ae1c4d1bb",
+      "files": [
+        "tests/simulation/replay_file_test.mjs"
+      ],
+      "base_snapshot_unchanged": true,
+      "reason": "Only the published replay runner changes; remaining frozen inputs and player/maintenance data identities stay unchanged."
     }
   ]
 }

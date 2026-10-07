@@ -1,5 +1,7 @@
 # 测试组织
 
+`simulation.replay_runner_contract`是产品回放CLI/路径/前缀资格的主责套件，复用现有continuous可执行程序生成真实短扩张快照，验证已认证及裸候选接续、三路一致性与拒绝；不仿造文件解析器。冻结默认晋级`startup_world_replay_process`保留原参数/断言，二者不替代彼此；未按函数或场景新增EXE。长前缀与自然晚期认证仍按风险独立执行，见[工具说明](../scripts/simulation/README.md#场景与既有前缀接续)。
+
 按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；默认本地desktop-debug排除三个月连续模拟，CI desktop-release完整执行，headless按需追加，选择规则见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。
 
 四套测试EXE共用独立`shared-libraries`预设的Release DLL，库源码只编译一次；Debug/Release描述的是测试与应用消费者的编译配置。库内不保留调试符号，测试的有效断言仍按原合同保留。`build/bin/`只保留一套DLL，EXE用配置后缀区分；先重建公共库再构建消费者。CI打包脚本的递归依赖/缺失拒绝/架构合同在`.github/ci/build_test.py`，由CI构建驱动先执行，不增加游戏CTest或新依赖。

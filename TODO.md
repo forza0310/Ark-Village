@@ -10,9 +10,11 @@
 
 ## 研究交付后的接入
 
+- [ ] 回放工具ee687bc已完成本地验收；下一项79/72与opcode40→82，再魔法壶/村办5–6，等待research正式维护C++/codec/回归交付后依序接产品。类型4无独立效果，不列为缺失按钮。见[本批结果](docs/stages/B1-playable-prototype.md#research-ee687bc-replay)。
+
 - [ ] 探索底栏：共同随机时点、滑入/背景/资源桥、丢实例清任务与231→aW消费者，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
-- [ ] 设施74逐来源奖励/类别图标、75道具图标、商品79、传说82/opcode40、村办4–6、情报/设置/标题/音频：按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)接线。
+- [ ] 设施74逐来源奖励/类别图标、75道具图标、情报/设置/标题余项/音频：按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)接线。商品79/72、82和魔法壶按上条正式交付顺序推进。
 - [ ] 跨周自动中断档：正式轮内恢复消费者交付后单独设计；保持当前玩家随机/暂停/格式政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## 产品工程

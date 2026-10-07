@@ -2,6 +2,7 @@
 #include "support/checks.hpp"
 #include "support/world_fixture.hpp"
 #include "ui/world_commerce.hpp"
+#include "ui/world_facility_catalog.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -28,6 +29,79 @@ Vector2 center(Rectangle box) { return {box.x + box.width / 2, box.y + box.heigh
 } // namespace
 void world_commerce() {
     Checks check{"world_commerce"};
+    {
+        using CatalogAction = sim::StartupFacilityCatalogAction;
+        auto source = initial_world();
+        Page page;
+        page.kind = sim::rules::WorldScriptPageKind::raw_page;
+        page.legacy_page = 79;
+        page.legacy_f = 1;
+        const auto opened =
+            sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(source), page);
+        check(opened.candidate &&
+                  sim::write_startup_world_runtime_scripts(source, opened.candidate->state),
+              "Catalogue UI fixture creates its page through the source stack");
+        page = source.scripts.pages.back();
+        const auto layout = ui::world_facility_catalog_layout({240, 256});
+        ui::WorldFacilityCatalogInput input;
+        input.enter = true;
+        auto view = ui::world_facility_catalog_view(source, page);
+        check(!view.initialized && !ui::world_facility_catalog_input(view, layout, input, false),
+              "Catalogue rendering cannot initialize or act on pending source payload");
+        check(sim::initialize_startup_world_facility_catalog_pages(source),
+              "Source initializes commodity catalogue");
+        const auto before = source;
+        view = ui::world_facility_catalog_view(source, page);
+        const auto entries =
+            sim::inspect_startup_world_facility_catalog_page(source, page.id)->entries;
+        check(view.rows.size() == entries.size() && view.rows.front().identity == entries.front() &&
+                  same_world_clock(source, before) &&
+                  source.scene.random.draws() == before.scene.random.draws(),
+              "Read-only commodity view retains source order and does not consume a notification "
+              "or RNG");
+        for (const auto &row : view.rows) {
+            const auto definition =
+                std::find_if(source.rules->equipment.begin(), source.rules->equipment.end(),
+                             [&](const auto &item) {
+                                 return item.shop.kind == 1 && item.shop.id == row.identity;
+                             });
+            check(definition != source.rules->equipment.end() &&
+                      row.price == definition->shop.price && row.combat == definition->shop.combat,
+                  "Catalogue uses store price and real combat values, not gift quote or screenshot "
+                  "amounts");
+        }
+        check(!ui::world_facility_catalog_input(view, layout, input, true),
+              "Pending catalogue blocks repeated input");
+        input = {};
+        input.click = center({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
+        check(ui::world_facility_catalog_input(view, layout, input, false)->action ==
+                  CatalogAction::select,
+              "Commodity row click selects without clearing NEW or purchasing");
+        input = {};
+        input.inspect = true;
+        check(ui::world_facility_catalog_input(view, layout, input, false)->action ==
+                      CatalogAction::inspect &&
+                  sim::act_startup_world_facility_catalog_page(source, page.id,
+                                                               CatalogAction::inspect) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_facility_catalog_pages(source),
+              "Information key opens source72 with its actual parent");
+        view = ui::world_facility_catalog_view(source, source.scripts.pages.back());
+        check(view.raw == 72 && view.choice && view.choice->identity == entries.front(),
+              "Information view binds the selected equipment rather than a human item page");
+        input = {};
+        input.escape = true;
+        check(ui::world_facility_catalog_input(view, layout, input, false)->action ==
+                  CatalogAction::cancel,
+              "Right-click/escape mapping preserves the dedicated information return");
+        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+            const auto frame = ui::world_facility_catalog_layout(extent);
+            check(frame.panel.y >= 24 && frame.panel.y + frame.panel.height <= extent.height - 29 &&
+                      frame.rows.height == frame.row_height * 4 &&
+                      !CheckCollisionRecs(frame.cancel, frame.inspect),
+                  "Four source rows and small soft keys fit minimum and ordinary viewports");
+        }
+    }
     using Action = sim::StartupCommerceAction;
     auto state = initial_world();
     const auto layout = ui::world_commerce_layout({240, 256});

@@ -3,6 +3,7 @@
 
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/rules/actor_control.hpp"
 #include "ark/simulation/rules/world_perception.hpp"
 
@@ -193,6 +194,8 @@ struct Validation {
                 return fail("human: 职业索引或成长数组非法");
         }
         for (int id : facilities) {
+            if (s.scripts.facilities.find(id)->second.icon != facility_defs.find(id)->second->legacy_icon)
+                return fail("facility: 脚本图标与固定定义失配");
             const auto &use = w.facility_uses.find(id)->second;
             if (use.level < 1 || use.level > 5)
                 return fail("facility: 共享等级非法");
@@ -549,6 +552,9 @@ struct Validation {
         PAGE_MAP(facility_item_page_selections);
         PAGE_MAP(commerce_page_data);
         PAGE_MAP(commerce_page_lists);
+        PAGE_MAP(facility_catalog_page_data);
+        PAGE_MAP(facility_catalog_page_lists);
+        PAGE_MAP(facility_catalog_page_parents);
         PAGE_MAP(rank_celebration_participants);
         PAGE_MAP(exploration_summaries);
 #undef PAGE_MAP
@@ -560,9 +566,25 @@ struct Validation {
         PAGE_SET(activity_pages_initialized, 51, 52, 53, 54);
         PAGE_SET(facility_item_pages_initialized, 75, 76, 77);
         PAGE_SET(commerce_pages_initialized, 83, 84, 85, 86, 93);
+        PAGE_SET(facility_catalog_pages_initialized, 72, 79, 82);
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for (const auto &[id, data] : s.facility_catalog_page_data) {
+            (void)data;
+            if (!page_kind(id, {72, 79, 82}))
+                return fail("facility catalogue page: 数据附在错误页型");
+        }
+        for (const auto &[id, list] : s.facility_catalog_page_lists) {
+            (void)list;
+            if (!page_kind(id, {72, 79, 82}))
+                return fail("facility catalogue page: 目录附在错误页型");
+        }
+        for (const auto &[id, parent] : s.facility_catalog_page_parents) {
+            (void)parent;
+            if (!page_kind(id, {72}))
+                return fail("facility catalogue page: 父绑定附在错误页型");
+        }
         for (const auto &[id, n] : s.page_counters)
             if (!counter(n))
                 return fail("page: 计数非法");
@@ -833,6 +855,10 @@ struct Validation {
                 return fail("page: 任务实例与定义失配");
             if (p.monster_definition && !monsters.count(*p.monster_definition))
                 return fail("page: 怪物定义不存在");
+            if (p.facility_definition &&
+                (p.kind != ref::WorldScriptPageKind::raw_page || p.legacy_page != 82 ||
+                 !facilities.count(*p.facility_definition)))
+                return fail("page: 设施定义绑定不存在或不属于82");
         }
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
@@ -886,6 +912,9 @@ struct Validation {
             } else if (raw >= 75 && raw <= 77) {
                 if (!valid_startup_world_facility_item_page(s, p))
                     return fail("facility item page: 载荷非法");
+            } else if (raw == 72 || raw == 79 || raw == 82) {
+                if (!valid_startup_world_facility_catalog_page(s, p))
+                    return fail("facility catalogue page: 初始化/绑定/选择载荷非法");
             }
             if (raw == 90 && (s.tax_page_selection.count(id) || s.tax_page_scroll.count(id)) &&
                 !s.tax_page_residents.count(id))

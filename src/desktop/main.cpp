@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
                          "[--save-dir PATH] "
                          "[--size W H] "
                          "[--frames N] [--verify-play] [--tick-rate 1..240] "
-                         "[--zoom-percent 50..200] [--screenshot PNG] [--inspect-page "
+                         "[--zoom-percent 25..200] [--screenshot PNG] [--inspect-page "
                          "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
                          "arrival|visitor|motion|ai|world-active|world-month|world-rank|world-"
                          "combat|world-reward|world-exp|world-rest|world-rest-hp|world-news|world-"

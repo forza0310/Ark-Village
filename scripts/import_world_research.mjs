@@ -182,6 +182,8 @@ if (mode === '--record-patch') {
       if (target.startsWith('tests/simulation/rules/'))
         text = text.replace(/std::filesystem::path\(__FILE__\)(?:\.parent_path\(\)){3}\s*\/\s*"data\/scripts\/original"/g,
           'std::filesystem::path(ARK_WORLD_TEST_DATA) / "scripts/original"')
+          .replace('const auto root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path();\n    std::istringstream table(read(root / "data/original/tenantData.txt"));',
+            'std::istringstream table(read(std::filesystem::path(ARK_WORLD_TEST_DATA) / "tenantData.txt"));')
           .replace(/const std::string source = __FILE__;\s*const auto root =\s*source\.substr\([^;\n]+?\)\s*\+\s*"\/\.\.\/\.\.\/data\/scripts\/original\/";/g,
             'const auto root = std::string(ARK_WORLD_TEST_DATA) + "/scripts/original/";');
       content = Buffer.from(text);

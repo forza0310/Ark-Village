@@ -3,6 +3,66 @@
 #include <stdexcept>
 
 namespace ark::test::world_session {
+void facility_catalog_commands() {
+    using Action = sim::StartupFacilityCatalogAction;
+    using Outcome = app::WorldCommandOutcome;
+    for (const int raw : {79, 82}) {
+        auto state = initial();
+        rules::WorldScriptPage page;
+        page.kind = rules::WorldScriptPageKind::raw_page;
+        page.legacy_page = raw;
+        page.legacy_f = raw == 79 ? 1 : 0;
+        if (raw == 82)
+            page.facility_definition = 33;
+        const auto opened =
+            rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+        check(opened.candidate &&
+                  sim::write_startup_world_runtime_scripts(state, opened.candidate->state) &&
+                  sim::initialize_startup_world_facility_catalog_pages(state),
+              "Source initializes the explicit commodity/publicity callsite fixture");
+        const auto id = task_top(state).id;
+        auto expected = state;
+        app::WorldSession session(state);
+        // A generic acknowledgement must not bypass NEW clearing or the two publicity gates.
+        const auto generic = session.ack_page(id);
+        const auto invalid = session.act_facility_catalog(id, static_cast<Action>(999));
+        if (raw == 79) {
+            const auto source = sim::inspect_startup_world_facility_catalog_page(expected, id);
+            check(source && !source->entries.empty(),
+                  "Real new-game equipment catalogue is nonempty");
+            check(sim::act_startup_world_facility_catalog_page(expected, id, Action::cancel) ==
+                      sim::StartupWorldRuntimeError::none,
+                  "Sequential commodity close reference");
+            session.act_facility_catalog(id, Action::cancel);
+        } else {
+            for (int n = 0; n < 4; ++n) {
+                check(sim::act_startup_world_facility_catalog_page(expected, id, Action::confirm) ==
+                          sim::StartupWorldRuntimeError::none,
+                      "Sequential two40 publicity reference");
+                session.act_facility_catalog(id, Action::confirm);
+            }
+        }
+        const auto stale = session.act_facility_catalog(id, Action::confirm);
+        const auto frame = input_frame(session, session.set_paused(true));
+        check(!frame->failed && input_result(*frame, generic).outcome == Outcome::rejected &&
+                  input_result(*frame, invalid).outcome == Outcome::rejected &&
+                  input_result(*frame, stale).outcome == Outcome::rejected,
+              "Generic, invalid-enum and retired catalogue inputs reject without failing worker");
+        check(frame->state->scene.world.world.ai.accounting.funds() ==
+                      expected.scene.world.world.ai.accounting.funds() &&
+                  frame->state->scene.random.draws() == expected.scene.random.draws() &&
+                  frame->state->popularity == expected.popularity &&
+                  frame->state->scene.world.popularity_queue ==
+                      expected.scene.world.popularity_queue,
+              "FIFO close preserves cash/random and only queues the source delayed popularity");
+        for (const auto &entry : expected.catalog)
+            check(frame->state->catalog.at(entry.first).newly_unlocked ==
+                          entry.second.newly_unlocked &&
+                      frame->state->catalog.at(entry.first).inventory == entry.second.inventory,
+                  "Commodity closing clears exact category NEW without buying any equipment");
+        session.stop();
+    }
+}
 // These are transport cases. The frozen building suite owns geometry/pricing combinations;
 // here source calls are the sequential oracle for one real placement and page transaction.
 rules::Position one_cell_site(const app::WorldState &state) {

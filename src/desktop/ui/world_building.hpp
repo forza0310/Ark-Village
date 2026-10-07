@@ -25,7 +25,7 @@ struct WorldBuildingRow {
 struct WorldBuildingView {
     int raw{};
     std::uint64_t page{};
-    bool initialized{}, can_confirm{}, definition_preview{}, can_use_items{};
+    bool initialized{}, can_confirm{}, definition_preview{}, can_use_items{}, can_view_products{};
     std::string title;
     std::optional<std::uint64_t> facility;
     WorldBuildGraphic graphic;

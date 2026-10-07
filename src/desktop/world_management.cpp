@@ -73,6 +73,23 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
     const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_facility_catalog_page(page)) {
+        const auto view = ui::world_facility_catalog_view(state, page);
+        const auto layout = ui::world_facility_catalog_layout(extent);
+        const ui::WorldFacilityCatalogInput input{
+            point,
+            enter,
+            escape,
+            up,
+            down,
+            IsKeyPressed(KEY_LEFT),
+            IsKeyPressed(KEY_RIGHT),
+            IsKeyPressed(KEY_I),
+            hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
+        if (const auto intent = ui::world_facility_catalog_input(view, layout, input, blocked))
+            queued(session.act_facility_catalog(page.id, intent->action, intent->selection));
+        return true;
+    }
     if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
         const auto layout = ui::world_commerce_layout(extent);
@@ -233,7 +250,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_commerce_page(page)) {
+    if (ui::world_facility_catalog_page(page)) {
+        ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
+                                        ui::world_facility_catalog_layout(extent), skin, enabled,
+                                        feedback_);
+    } else if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
         ui::draw_world_commerce(view, ui::world_commerce_layout(extent), skin, enabled, feedback_,
                                 receipt_page_ == page.id && view.feedback_counter > 0

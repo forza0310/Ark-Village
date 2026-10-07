@@ -1,5 +1,6 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/rules/world_map_refresh.hpp"
 #include "ark/simulation/rules/world_residence.hpp"
@@ -772,6 +773,22 @@ Error act_startup_world_facility_page(State &s, std::uint64_t id,
         if (!r.candidate || !write_startup_world_runtime_scripts(next, r.candidate->state))
             return Error::script_failed;
     } else if (next.page_phases.at(id) == 0) {
+        if (d->detail == 1 || d->detail == 4 || d->detail == 5) {
+            next.scripts.executing_page = id;
+            ref::WorldScriptPage catalogue;
+            catalogue.kind = ref::WorldScriptPageKind::raw_page;
+            catalogue.legacy_page = 79;
+            catalogue.legacy_f = d->detail;
+            catalogue.title = "商品";
+            const auto opened = ref::prepare_world_script_page(startup_world_runtime_scripts(next), catalogue);
+            if (!opened.candidate || opened.candidate->inserted_pages.size() != 1 ||
+                !write_startup_world_runtime_scripts(next, opened.candidate->state) ||
+                !initialize_startup_world_facility_catalog_pages(next))
+                return Error::script_failed;
+            next.scripts.executing_page.reset();
+            s = std::move(next);
+            return Error::none;
+        }
         if (d->kind != 2 && d->kind != 12 && d->detail != 1 && d->detail != 4 && d->detail != 5 &&
             d->detail != 6)
             return open_startup_world_facility_items(s, id);

@@ -268,9 +268,11 @@ class WorldSession::Impl {
         }
         const auto *current_page = top_page(*current.state);
         if (kind == WorldCommandKind::acknowledge_page && current_page &&
-            (current_page->legacy_page == 76 || current_page->legacy_page == 86))
+            (current_page->legacy_page == 76 || current_page->legacy_page == 86 ||
+             current_page->legacy_page == 72 || current_page->legacy_page == 79 ||
+             current_page->legacy_page == 82))
             return apply_decision(current,
-                                  input); // Automatic presentation pages reject late clicks.
+                                  input); // Dedicated/automatic pages reject generic late clicks.
         if (detail::is_world_decision(input.value.kind))
             return apply_decision(current, input);
         const auto &command = input.value;

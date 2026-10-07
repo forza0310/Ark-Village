@@ -32,7 +32,9 @@ void geometry() {
           "1080x720 logical canvas does not retain desktop aspect ratio");
     check(world_viewport(extent, 1) == std::array<int, 4>{{0, 24, 384, 211}},
           "Desktop canonical viewport does not match scene clipping");
-    for (float zoom : {.5F, 1.F, 1.5F, 2.F}) {
+    check(world_viewport(extent, .25F) == std::array<int, 4>{{0, 96, 1536, 844}},
+          "Quarter-scale viewport must expose the village and field through source visibility");
+    for (float zoom : {.25F, .5F, 1.F, 1.5F, 2.F}) {
         state.reference_viewport = world_viewport(extent, zoom);
         const rules::CombatPoint point{1050, 6, 750};
         const auto source = sim::startup_world_view_projection(state, point);
@@ -56,7 +58,7 @@ void geometry() {
     check(zoom == 2 && close(world_anchor(state, point, zoom), anchor),
           "Upper zoom clamp moved pointer anchor");
     world_zoom_at(state, extent, anchor, -10000, zoom);
-    check(zoom == .5F && close(world_anchor(state, point, zoom), anchor),
+    check(zoom == .25F && close(world_anchor(state, point, zoom), anchor),
           "Lower zoom clamp moved pointer anchor");
 }
 void human_picking() {
@@ -68,7 +70,7 @@ void human_picking() {
     ai.battle.actors[second].position = {300, 7, 200};
     const WorldCameraView view{{23, 11}, {0, 24, 384, 211}};
     const auto draws = state.scene.random.draws();
-    for (float zoom : {.5F, 1.F, 2.F}) {
+    for (float zoom : {.25F, .5F, 1.F, 2.F}) {
         check(world_pick_human(state, view, {319 * zoom, 130 * zoom}, zoom) == first,
               "Human hit uses source roster order rather than ID order after camera/zoom");
         check(!world_pick_human(state, view, {308 * zoom, 130 * zoom}, zoom),

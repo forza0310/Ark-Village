@@ -239,6 +239,10 @@ void clear_presentation(State &s) {
     s.commerce_pages_initialized.clear();
     s.commerce_page_data.clear();
     s.commerce_page_lists.clear();
+    s.facility_catalog_pages_initialized.clear();
+    s.facility_catalog_page_data.clear();
+    s.facility_catalog_page_lists.clear();
+    s.facility_catalog_page_parents.clear();
     s.rank_celebration_participants.clear();
     s.exploration_summaries.clear();
     s.exploration_displays.clear();
@@ -352,9 +356,8 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
     const auto &bounds = rules.fences[s.fence_level];
     if (!counter(s.scene.world.updates) || town.left >= town.right || town.top >= town.bottom ||
         !in_map(world.map, {town.left, town.top}) ||
-        !in_map(world.map, {town.right, town.bottom}) ||
-        town.left != bounds[0].x || town.right != bounds[1].x ||
-        town.top != bounds[1].y || town.bottom != bounds[0].y ||
+        !in_map(world.map, {town.right, town.bottom}) || town.left != bounds[0].x ||
+        town.right != bounds[1].x || town.top != bounds[1].y || town.bottom != bounds[0].y ||
         s.scene.world.spawn_cells != simulation::startup_evidence().spawn_points)
         return invalid("Save town bounds, spawn cells or world update counter is invalid");
     std::map<int, const simulation::StartupDefinition *> definitions;
@@ -732,6 +735,10 @@ WorldSaveError prepare_world_save_candidate(State &candidate, const State &curre
         return error;
     auto restored = candidate;
     clear_presentation(restored);
+    // Opcode40's category is immutable dataset information, not a new player wire field.
+    // Rebuild it before the restored continuations can resume their facility program.
+    for (const auto &definition : restored.rules->facilities)
+        restored.scripts.facilities.at(definition.id).icon = definition.legacy_icon;
     restored.scene.random = current.scene.random;
     restored.scene.framework_paused = current.scene.framework_paused;
     // Loading keeps the current session's pacing; historical saves cannot enable player speed2.

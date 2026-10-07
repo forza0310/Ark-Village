@@ -6,6 +6,7 @@
 #include "ui/world_award.hpp"
 #include "ui/world_building.hpp"
 #include "ui/world_commerce.hpp"
+#include "ui/world_facility_catalog.hpp"
 #include "ui/world_facility_items.hpp"
 #include "ui/world_human.hpp"
 #include "ui/world_panels.hpp"

@@ -2,6 +2,7 @@
 #include "ark/simulation/startup_world_editing.hpp"
 #include "ark/simulation/startup_world_expansion.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
@@ -627,6 +628,46 @@ void facility_item_empty_and_legend() {
     check(update.candidate && update.candidate->scripts.facilities.at(33).improvements[0] == 60 &&
               !update.candidate->facility_item_page_lists.count(directory),
           "exhausted75 retires while framework initializes its queued76 exactly once");
+    s = *update.candidate;
+    bool completed{};
+    std::uint64_t animation{};
+    for (int step = 0; step < 600 && !completed; ++step) {
+        const auto tick = prepare_startup_world_runtime(s);
+        check(tick.candidate.has_value(), "legend integration actual framework continues");
+        s = *tick.candidate;
+        const auto top = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                                    [](const auto &p) { return p.lifecycle != 4; });
+        check(top != s.scripts.pages.rend(), "legend integration retains one actual top page");
+        if (top->legacy_page == 82) {
+            animation = top->id;
+            check(top->facility_definition == 33 && top->legacy_f == 0,
+                  "actual75 continuation2033 creates82 bound to original bun shop definition");
+            if (inspect_startup_world_facility_catalog_page(s, animation)) {
+                const bool finishing = s.page_phases.at(animation) == 1 && s.page_counters.at(animation) >= 40;
+                check(acknowledge_startup_world_runtime_page(s, animation) == StartupWorldRuntimeError::none,
+                      "actual legend82 uses the two phase confirmation consumer");
+                completed = finishing;
+            } // 当轮新插页尚未初始化，玩家输入等下一个框架入口；不补载荷。
+        } else if (top->legacy_page == 74) {
+            check(act_startup_world_facility_page(s, top->id, StartupFacilityPageAction::cancel) == StartupWorldRuntimeError::none,
+                  "legend player returns from parent details so its real delayed program can advance");
+        } else if (top->kind != ref::WorldScriptPageKind::scene && top->legacy_page != 76 &&
+                   (top->legacy_page != 77 || s.facility_item_pages_initialized.count(top->id))) {
+            const auto error = acknowledge_startup_world_runtime_page(s, top->id);
+            check(error == StartupWorldRuntimeError::none,
+                  ("legend prior confirmation raw=" + std::to_string(top->legacy_page) +
+                   " error=" + std::to_string(static_cast<int>(error))).c_str());
+        }
+        s.sound_requests.clear(); // 显式表现消费者领取本次输出，不留下积累声音。
+    }
+    check(completed && s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
+              s.facility_item_confirmations.at(source_facility(s, 33)) == 0,
+          "condition fixture reaches actual75→100-delay→82→one deferred20 request without repeating gift");
+    const auto retired = prepare_startup_world_runtime(s);
+    check(retired.candidate && !retired.candidate->facility_catalog_pages_initialized.count(animation) &&
+              !retired.candidate->facility_catalog_page_data.count(animation) &&
+              !retired.candidate->facility_catalog_page_lists.count(animation),
+          "actual legend page retires its initialized binding and frozen participants on next entry");
 }
 void road_editing() {
     auto s = test_support::world_fixture();

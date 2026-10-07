@@ -407,6 +407,10 @@
             ["commerce_pages_initialized", "std::set<std::uint64_t>"],
             ["commerce_page_data", "std::map<std::uint64_t, std::array<int, 6>>"],
             ["commerce_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["facility_catalog_pages_initialized", "std::set<std::uint64_t>"],
+            ["facility_catalog_page_data", "std::map<std::uint64_t, std::array<int, 4>>"],
+            ["facility_catalog_page_lists", "std::map<std::uint64_t, std::vector<int>>"],
+            ["facility_catalog_page_parents", "std::map<std::uint64_t, std::uint64_t>"],
             ["confirm_input", "bool"],
             ["cancel_input", "bool"],
             ["menu_input", "bool"],
@@ -2571,6 +2575,11 @@
             ["improvements", "std::array<std::int32_t, 4>"],
             ["attributes", "std::array<std::int32_t, 4>"]
           ]
+        },
+        {
+          "action": "rebuild",
+          "reason": "Immutable opcode40 category is rebound from rules.facilities[].legacy_icon by prepare_world_save_candidate; schema2 wire order is unchanged.",
+          "fields": [["icon", "int"]]
         }
       ]
     },
@@ -2644,7 +2653,8 @@
             ["message_commands", "std::vector<int>"],
             ["task_identity", "std::optional<std::uint64_t>"],
             ["task_definition", "std::optional<int>"],
-            ["monster_definition", "std::optional<int>"]
+            ["monster_definition", "std::optional<int>"],
+            ["facility_definition", "std::optional<int>"]
           ]
         }
       ]

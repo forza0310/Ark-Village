@@ -97,8 +97,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             i += 2;
         } else if (argument == "--zoom-percent") {
             if (++i >= arguments.size() || !positive(arguments[i], 200, options.zoom_percent) ||
-                options.zoom_percent < 50)
-                return {std::nullopt, "--zoom-percent requires an integer 50..200"};
+                options.zoom_percent < 25)
+                return {std::nullopt, "--zoom-percent requires an integer 25..200"};
         } else if (argument == "--tick-rate") {
             if (++i >= arguments.size() || !positive(arguments[i], 240, options.tick_rate))
                 return {std::nullopt, "--tick-rate requires an integer 1..240"};
@@ -139,6 +139,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (world_inspection && (explicit_legacy || legacy_diagnostic))
         return {std::nullopt, "World inspection cannot be combined with legacy slice diagnostics"};
     options.world = !explicit_legacy && !legacy_diagnostic;
+    // The legacy diagnostic projection retains its independent 50% wheel clamp.
+    if (!options.world && options.zoom_percent < 50)
+        return {std::nullopt, "Legacy slice --zoom-percent requires an integer 50..200"};
     if ((options.inspect_page == "world-commerce-suite" ||
          options.inspect_page == "world-home-suite") &&
         options.screenshot.empty())

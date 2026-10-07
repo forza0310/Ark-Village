@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结`524415a`，共354项源/测试/数据；维护存取/回放闭包已迁入，玩家两栏政策独立保留。此前村办类型3地图扩张、道路保留特殊实例引用及运行时性能修正已迁入，产品验收及玩家入口按B1分批登记。此前村办0/1/2、raw95、普通道具、设施强化、商会、地图编辑、人物经营与住宅税收已有接线；转职55/197、赠礼子页答案/父页恢复、最大HP缓存不回血及住宅替换记录退休均保持源契约，不由表现层补算。库存`items`与kind0 `catalog`按实际写入方向完整同步。
+当前冻结`29f371d`，共356项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。维护codec同步新layout；玩家两栏schema2不增加页面字段，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 

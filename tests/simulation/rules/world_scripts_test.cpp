@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
 
 using namespace ark::simulation::rules;
@@ -245,13 +246,13 @@ void composed_continuations(WorldScriptCatalog catalog) {
 void failures(WorldScriptCatalog catalog) {
     auto state = fixture();
     state.pending_completion = 21;
-    catalog.events[700] = {700, "fixture", 0, {}, {{22, 0}, {40, 0}}};
+    catalog.events[700] = {700, "fixture", 0, {}, {{22, 0}, {777, 0}}};
     const auto failed = prepare_world_script(catalog, state, {700, {}, {}});
     check(failed.error == WorldScriptError::unsupported_opcode && !failed.candidate &&
               state.event_calls.empty() && state.pending_completion == 21 &&
               state.popularity_queue.empty(),
           "late unsupported opcode rolls back entry count and earlier popularity commit");
-    catalog.events[701] = {701, "fixture", 0, {}, {{6, 1}, {40, 0}}};
+    catalog.events[701] = {701, "fixture", 0, {}, {{6, 1}, {777, 0}}};
     state = invoke(catalog, state, 126);
     state = invoke(catalog, state, 701);
     state.continuations[0].remaining_updates = 1;
@@ -320,6 +321,140 @@ void read_only_preflight(const WorldScriptCatalog &catalog) {
     pending.executing_page = 999;
     check(validate_world_script_state(bad_catalog, pending) == WorldScriptError::invalid_input,
           "invalid owner is reported before invalid catalogue, preserving original order");
+}
+void facility_definition_programs(const WorldScriptCatalog &source) {
+    // 设施E不是events同号记录：直接消费冻结原表，独立核33..58的100次等待/自身ID。
+    std::istringstream table(read(std::filesystem::path(ARK_WORLD_TEST_DATA) / "tenantData.txt"));
+    int programs{};
+    std::string row;
+    while (std::getline(table, row)) {
+        if (!row.empty() && row.back() == '\r')
+            row.pop_back();
+        if (row.empty())
+            continue;
+        std::istringstream fields_stream(row);
+        std::vector<std::string> fields;
+        std::string field;
+        while (std::getline(fields_stream, field, '\t'))
+            fields.push_back(field);
+        check(fields.size() == 36, "published facility table preserves all original columns");
+        if (fields[33].empty())
+            continue;
+        ++programs;
+        const int definition = std::stoi(fields[0]);
+        const int expected_mode = definition <= 44 ? 0 : 1;
+        check(definition >= 33 && definition <= 58 &&
+                  std::stoi(fields[2]) == expected_mode + 2,
+              "only original33..58 carry facilityE,33..44 icon2 and45..58 icon3");
+        const auto parsed = parse_world_script_program(fields[33]);
+        check(parsed && *parsed == WorldScriptProgram{{6, 100}, {40, definition}},
+              "original facilityE uses real100 wait followed by40 with its own definition ID");
+        auto catalog = source;
+        catalog.programs.emplace(2000 + definition, *parsed);
+        auto state = fixture();
+        WorldScriptFacilityDefinition facility;
+        facility.category = std::stoi(fields[3]);
+        facility.icon = std::stoi(fields[2]);
+        state.facilities.emplace(definition, facility);
+        const auto entered =
+            prepare_world_script_program(catalog, state, {2000 + definition, {}, {}});
+        check(entered.candidate && entered.candidate->entered_program &&
+                  entered.candidate->state.continuations.size() == 1 &&
+                  entered.candidate->state.continuations[0].event == 2000 + definition &&
+                  entered.candidate->state.continuations[0].remaining_updates == 100 &&
+                  entered.candidate->state.event_calls.empty() &&
+                  entered.candidate->inserted_pages.empty(),
+              "facility definition program waits without fake event entry or eager82");
+        state = entered.candidate->state;
+        const auto denied = prepare_world_script_continuations(catalog, state, false);
+        check(denied.candidate &&
+                  denied.candidate->state.continuations[0].remaining_updates == 100 &&
+                  denied.candidate->state.pages.size() == 1,
+              "nonadmitted scene does not advance the original facilityE delay");
+        for (int update = 1; update <= 100; ++update) {
+            const auto result = prepare_world_script_continuations(catalog, state, true);
+            check(result.candidate.has_value(), "original facilityE admitted continuation");
+            state = result.candidate->state;
+            if (update < 100)
+                check(state.continuations[0].remaining_updates == 100 - update &&
+                          state.pages.size() == 1 && result.candidate->inserted_pages.empty(),
+                      "no82 before the actual100th admitted continuation update");
+            else
+                check(state.continuations.empty() && state.pages.size() == 2 &&
+                          result.candidate->inserted_pages.size() == 1 &&
+                          state.pages[1].legacy_page == 82 &&
+                          state.pages[1].legacy_f == expected_mode &&
+                          state.pages[1].facility_definition == definition &&
+                          state.event_calls.empty() && state.popularity_queue.empty(),
+                      "100th resumes40,binds real shared definition,does not award popularity");
+        }
+    }
+    check(programs == 26, "all26 real facility definition programs have a continuation consumer");
+
+    // 类型分支与缺定义是解释器主责；两段演出/声音/人气消费由pages主责。
+    auto catalog = source;
+    catalog.programs[2036] = {{40, 36}};
+    for (int icon : {0, 1, 2, 3, 4, 9}) {
+        auto state = fixture();
+        WorldScriptFacilityDefinition facility;
+        facility.category = icon == 2 ? 3 : 2; // 故意不等于icon，防止误用f82e。
+        facility.icon = icon;
+        state.facilities.emplace(36, facility);
+        const auto result = prepare_world_script_program(catalog, state, {2036, {}, {}});
+        const bool expected = icon == 2 || icon == 3;
+        check(result.candidate && result.candidate->state.pages.size() == (expected ? 2u : 1u) &&
+                  result.candidate->inserted_pages.size() == (expected ? 1u : 0u) &&
+                  result.candidate->state.event_calls.empty() &&
+                  result.candidate->state.popularity_queue.empty(),
+              "40 reads icon2/3 exclusively;other real icons succeed without creating82");
+        if (expected) {
+            const auto page = result.candidate->state.pages[1];
+            check(page.facility_definition == 36 && page.legacy_f == icon - 2 &&
+                      page.kind == WorldScriptPageKind::raw_page,
+                  "82 binding keeps shared definition ID distinct from program2036");
+            for (int damage = 0; damage < 3; ++damage) {
+                auto damaged = result.candidate->state;
+                if (damage == 0)
+                    damaged.pages[1].facility_definition.reset();
+                else if (damage == 1)
+                    damaged.pages[1].facility_definition = 999;
+                else
+                    damaged.pages[1].legacy_f = 1 - (icon - 2);
+                check(validate_world_script_state(catalog, damaged) ==
+                          WorldScriptError::invalid_input,
+                      "82 preflight explicitly rejects missing/bad binding and mismatched mode");
+            }
+        }
+    }
+    auto original = fixture();
+    original.pending_completion = 21;
+    WorldScriptFacilityDefinition facility;
+    facility.icon = 2;
+    original.facilities.emplace(36, facility);
+    for (const auto &command : WorldScriptProgram{{40}, {40, 36, 0}, {40, -1}, {40, 999}}) {
+        catalog.programs[2036] = {{22, 0}, command};
+        const auto result = prepare_world_script_program(catalog, original, {2036, {}, {}});
+        check(!result.candidate && result.error == WorldScriptError::invalid_input &&
+                  original.pending_completion == 21 && original.popularity_queue.empty() &&
+                  original.pages.size() == 1 && original.next_page_id == 2,
+              "late malformed40 rolls back earlier22 and does not allocate residual82 identity");
+    }
+    catalog.programs[2036] = {{6, 1}, {40, 36}};
+    const auto waited = prepare_world_script_program(catalog, fixture(), {2036, {}, {}});
+    check(waited.candidate && waited.candidate->state.continuations.size() == 1,
+          "facility definition is read on40 resume rather than prematurely at wait creation");
+    const auto missing = prepare_world_script_continuations(catalog, waited.candidate->state, true);
+    check(!missing.candidate && missing.error == WorldScriptError::invalid_input &&
+              waited.candidate->state.continuations.size() == 1 &&
+              waited.candidate->state.continuations[0].remaining_updates == 1 &&
+              waited.candidate->state.pages.size() == 1,
+          "missing resume definition rejects without retiring saved continuation or page changes");
+    catalog.programs[2036] = {{40, 36}};
+    original.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto overflow = prepare_world_script_program(catalog, original, {2036, {}, {}});
+    check(!overflow.candidate && overflow.error == WorldScriptError::numeric_overflow &&
+              original.pages.size() == 1 && original.popularity_queue.empty(),
+          "82 page identity overflow rejects the complete script candidate");
 }
 void all_fixed_programs(const WorldScriptCatalog &catalog) {
     check(catalog.talks.size() == 182 && catalog.news.size() == 28 &&
@@ -540,6 +675,7 @@ int main() {
         failures(catalog);
         read_only_preflight(catalog);
         all_fixed_programs(catalog);
+        facility_definition_programs(catalog);
         camera_focus(catalog);
         automatic_events(catalog);
         std::cout << "world script checks: " << checks << '\n';

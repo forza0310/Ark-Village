@@ -1,6 +1,7 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_commerce.hpp"
 #include "ark/simulation/startup_world_expansion.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
 #include "ark/simulation/startup_world_tax.hpp"
@@ -21,6 +22,243 @@ void check(bool value, const char *message) {
         throw std::runtime_error(message);
 }
 const auto fixture = test_support::page_fixture;
+void page_tick(StartupWorldRuntimeState &s);
+void facility_commodity_pages() {
+    using A = StartupFacilityCatalogAction;
+    using E = StartupWorldRuntimeError;
+    for (const auto setting : std::array<std::array<int, 3>, 3>{{{1, 1, 0}, {4, 2, 1}, {5, 3, 3}}}) {
+        auto s = fixture(79);
+        s.scripts.pages.back().lifecycle = 0; // 新插入页必须先经过真实初始化。
+        const auto id = s.scripts.pages.back().id;
+        s.scripts.pages.back().legacy_f = setting[0];
+        StartupWorldRules rules = *s.rules; // 私有排序夹具，不改冻结原表或共享规则。
+        s.rules = &rules;
+        std::vector<int> source_ids;
+        for (auto &d : rules.equipment)
+            if (d.shop.kind == setting[1]) {
+                auto &c = s.catalog.at({setting[1], d.shop.id});
+                c.status = 0;
+                c.newly_unlocked = true;
+                if (source_ids.size() < 6) {
+                    static constexpr int order[]{2, 2, 1, 3, 4, 0};
+                    d.gift_order = order[source_ids.size()];
+                    c.status = 1;
+                    source_ids.push_back(d.shop.id);
+                }
+            }
+        check(source_ids.size() == 6, "real equipment category supplies six independent order inputs");
+        const std::vector<int> expected{source_ids[5], source_ids[2], source_ids[1],
+                                        source_ids[0], source_ids[3], source_ids[4]};
+        s.catalog.at({0, 0}).newly_unlocked = true;
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto draws = s.scene.random.draws();
+        const auto date = s.scene.calendar.units;
+        check(!inspect_startup_world_facility_catalog_page(s, id),
+              "79 query cannot initialize its own payload or change NEW flags");
+        page_tick(s);
+        auto view = inspect_startup_world_facility_catalog_page(s, id);
+        check(view && view->entries == expected && view->selection == 0 &&
+                  view->first_visible == 0 && view->phase == 0 && view->binding == -1,
+              "79 original swap traversal reverses these equal keys instead of stable sorting");
+        check(act_startup_world_facility_catalog_page(s, id, A::select, 4) == E::none,
+              "79 selects fifth original ordered row");
+        view = inspect_startup_world_facility_catalog_page(s, id);
+        check(view && view->selection == 4 && view->first_visible == 1,
+              "79 four-row viewport scrolls one row at the fifth choice");
+        check(act_startup_world_facility_catalog_page(s, id, A::previous_tab) == E::none &&
+                  s.page_phases.at(id) == 1 &&
+                  act_startup_world_facility_catalog_page(s, id, A::next_tab) == E::none &&
+                  s.page_phases.at(id) == 0,
+              "79 left/right cycle exactly two attribute pages without moving selection");
+        check(act_startup_world_facility_catalog_page(s, id, A::select, 6) == E::invalid_page &&
+                  s.facility_catalog_page_data.at(id)[1] == 4,
+              "79 out of catalogue selection explicitly rejects without partial scroll");
+        check(act_startup_world_facility_catalog_page(s, id, A::inspect) == E::none,
+              "79 information input inserts actual72 rather than purchasing equipment");
+        const auto child = s.scripts.pages.back().id;
+        page_tick(s);
+        view = inspect_startup_world_facility_catalog_page(s, child);
+        check(view && view->raw == 72 && view->mode == setting[2] &&
+                  view->binding == expected[4] && view->phase == 4 &&
+                  s.facility_catalog_page_parents.at(child) == id &&
+                  s.catalog.at({setting[1], expected[4]}).newly_unlocked,
+              "72 binds selected original equipment and retains parent category NEW flags");
+        for (int fault = 0; fault < 3; ++fault) {
+            auto broken = s;
+            if (fault == 0)
+                broken.facility_catalog_page_parents.at(child) = 999;
+            else if (fault == 1) {
+                broken.scripts.pages.front().legacy_page = 79;
+                broken.facility_catalog_page_parents.at(child) = 1;
+            }
+            else
+                broken.facility_catalog_page_data.at(id)[1] = 99;
+            check(!inspect_startup_world_facility_catalog_page(broken, child) &&
+                      act_startup_world_facility_catalog_page(broken, child, A::cancel) == E::missing_source &&
+                      broken.scene.world.world.ai.accounting.funds() == cash &&
+                      broken.catalog.at({setting[1], expected[4]}).newly_unlocked,
+                  "72 rejects missing/wrong or damaged parent with explicit failure and no charge");
+        }
+        check(cancel_startup_world_runtime_page(s, child) == E::none &&
+                  s.catalog.at({setting[1], expected[4]}).newly_unlocked,
+              "72 return closes only information and leaves complete category NEW untouched");
+        page_tick(s);
+        check(!s.facility_catalog_page_parents.count(child) &&
+                  !s.facility_catalog_page_data.count(child) &&
+                  !s.facility_catalog_page_lists.count(child),
+              "72 retired payload and parent reference are consumed by framework cleanup");
+        view = inspect_startup_world_facility_catalog_page(s, id);
+        check(view && view->selection == 4 && view->first_visible == 1,
+              "information returns to original79 selection and scroll");
+        for (bool cancel : {false, true}) {
+            auto close_state = s;
+            const auto error = cancel ? cancel_startup_world_runtime_page(close_state, id)
+                                      : acknowledge_startup_world_runtime_page(close_state, id);
+            bool all_clear = true;
+            for (const auto &entry : close_state.catalog)
+                if (entry.first.first == setting[1])
+                    all_clear = all_clear && !entry.second.newly_unlocked;
+            check(error == E::none && all_clear && close_state.catalog.at({0, 0}).newly_unlocked &&
+                      close_state.scene.world.world.ai.accounting.funds() == cash &&
+                      close_state.scene.random.draws() == draws && close_state.scene.calendar.units == date,
+                  "79 confirm and cancel clear all category NEW including unavailable rows only");
+            check(act_startup_world_facility_catalog_page(close_state, id, A::confirm) == E::invalid_page,
+                  "retired79 cannot clear or buy again through stale input");
+        }
+        for (int fault = 0; fault < 4; ++fault) {
+            auto broken = s;
+            if (fault == 0) broken.facility_catalog_page_data.erase(id);
+            else if (fault == 1) broken.facility_catalog_page_lists.erase(id);
+            else if (fault == 2) broken.facility_catalog_page_data.at(id)[1] = 999;
+            else broken.page_phases.at(id) = 2;
+            check(!prepare_startup_world_runtime(broken).candidate &&
+                      act_startup_world_facility_catalog_page(broken, id, A::confirm) == E::missing_source &&
+                      broken.scene.random.draws() == draws &&
+                      broken.catalog.at({setting[1], expected[4]}).newly_unlocked,
+                  "initialized79 missing/bad payload rejects explicitly, preserving NEW/random");
+        }
+        auto late_failure = s;
+        late_failure.scripts.pages.front().id = 0; // 下层页身份损坏，候选清r不得越过Owner关闭校验。
+        check(act_startup_world_facility_catalog_page(late_failure, id, A::confirm) == E::script_failed &&
+                  late_failure.catalog.at({setting[1], expected[4]}).newly_unlocked &&
+                  late_failure.scripts.pages.back().lifecycle != 4,
+              "79 late close failure rolls back whole-category NEW clearing and page retirement");
+    }
+    auto empty = fixture(79);
+    empty.scripts.pages.back().lifecycle = 0;
+    empty.scripts.pages.back().legacy_f = 1;
+    for (auto &entry : empty.catalog)
+        if (entry.first.first == 1)
+            entry.second.status = 0;
+    check(!prepare_startup_world_runtime(empty).candidate &&
+              empty.facility_catalog_pages_initialized.empty() &&
+              empty.facility_catalog_page_lists.empty(),
+          "79 genuinely empty category rejects initialization without retained half payload");
+}
+void facility_reputation_pages() {
+    using A = StartupFacilityCatalogAction;
+    using E = StartupWorldRuntimeError;
+    for (int mode : {0, 1}) {
+        auto s = fixture(82);
+        s.scripts.pages.back().lifecycle = 0;
+        const auto id = s.scripts.pages.back().id;
+        s.scripts.pages.back().legacy_f = mode;
+        s.scripts.pages.back().facility_definition = mode == 0 ? 36 : 45;
+        StartupWorldRules rules = *s.rules;
+        s.rules = &rules;
+        // 原序/当前职业夹具；场上无人仍应展示共享定义，不借实例或出生职业。
+        std::swap(rules.humans.at(1), rules.humans.at(4));
+        const int wanted_type = mode == 0 ? 1 : 0;
+        const auto selected_job = std::find_if(rules.jobs.begin(), rules.jobs.end(),
+                                              [wanted_type](const auto &j) { return j.type == wanted_type; });
+        const auto excluded_job = std::find_if(rules.jobs.begin(), rules.jobs.end(),
+                                              [wanted_type](const auto &j) { return j.type != wanted_type; });
+        check(selected_job != rules.jobs.end() && excluded_job != rules.jobs.end(),
+              "real profession table supplies both target and excluded categories");
+        for (auto &entry : s.human_presence)
+            entry.second = 0;
+        for (int human : {1, 2, 3, 4}) {
+            s.human_presence.at(human) = 1;
+            s.scene.world.world.ai.growth.at(human).definition.current_profession =
+                static_cast<int>(selected_job - rules.jobs.begin());
+        }
+        s.human_presence.at(5) = 1;
+        s.scene.world.world.ai.growth.at(5).definition.current_profession =
+            static_cast<int>(excluded_job - rules.jobs.begin());
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto random = s.scene.random.draws();
+        const auto popularity = s.popularity;
+        const auto date = s.scene.calendar.units;
+        s.scene.world.popularity_queue = {{7, 3, 0}};
+        check(!inspect_startup_world_facility_catalog_page(s, id),
+              "82 query does not fabricate frozen members before initialization");
+        page_tick(s);
+        auto view = inspect_startup_world_facility_catalog_page(s, id);
+        check(view && view->entries == std::vector<int>({4, 2, 3}) && view->phase == 0 &&
+                  view->counter == 1 && view->binding == (mode == 0 ? 36 : 45) &&
+                  s.scene.world.world.ai.human_order.empty() && s.scene.random.draws() == random &&
+                  s.sound_requests == std::vector<int>{4},
+              "82 first update freezes original-order first3 current-job definitions,sound4,no draw");
+        s.sound_requests.clear(); // 消费已发声音，不把输出留为持久历史。
+        page_tick(s);
+        check(s.sound_requests.empty(), "82 later phase0 update does not replay its count1 sound");
+        for (int fault = 0; fault < 5; ++fault) {
+            auto broken = s;
+            if (fault == 0) broken.facility_catalog_page_data.erase(id);
+            else if (fault == 1) broken.facility_catalog_page_lists.erase(id);
+            else if (fault == 2) broken.scripts.pages.back().facility_definition.reset();
+            else if (fault == 3) broken.page_phases.at(id) = 2;
+            else broken.facility_catalog_page_lists.at(id).push_back(1);
+            check(!prepare_startup_world_runtime(broken).candidate &&
+                      act_startup_world_facility_catalog_page(broken, id, A::confirm) == E::missing_source &&
+                      broken.popularity == popularity &&
+                      broken.scene.world.popularity_queue == std::vector<std::array<int, 3>>{{7, 3, 0}} &&
+                      broken.scene.random.draws() == random,
+                  "initialized82 rejects damaged binding/list/phase with no eager popularity or draw");
+        }
+        check(cancel_startup_world_runtime_page(s, id) == E::none && s.page_counters.at(id) == 40 &&
+                  s.page_phases.at(id) == 0 && s.scripts.pages.back().lifecycle != 4,
+              "82 early return is a fast-forward to40,not an effect-free cancellation");
+        check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
+                  s.page_phases.at(id) == 1 && s.page_counters.at(id) == 0 &&
+                  s.scene.world.popularity_queue == std::vector<std::array<int, 3>>{{7, 3, 0}},
+              "82 first40 confirmation starts second phase without awarding popularity");
+        page_tick(s);
+        check(s.sound_requests.empty() && s.page_counters.at(id) == 1,
+              "82 second-phase count1 does not replay phase0 sound4");
+        check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
+                  s.page_phases.at(id) == 1 && s.page_counters.at(id) == 40 &&
+                  s.popularity == popularity,
+              "82 second phase early confirmation only fast-forwards its own40 gate");
+        auto late_failure = s;
+        late_failure.scripts.pages.front().id = 0; // 完整页栈校验失败，已候选头插I必须回滚。
+        check(act_startup_world_facility_catalog_page(late_failure, id, A::confirm) == E::script_failed &&
+                  late_failure.scene.world.popularity_queue ==
+                      std::vector<std::array<int, 3>>{{7, 3, 0}} &&
+                  late_failure.scripts.pages.back().lifecycle != 4 &&
+                  late_failure.scene.random.draws() == random,
+              "82 close failure rolls back already-prepared delayed20 request and lifecycle");
+        check(cancel_startup_world_runtime_page(s, id) == E::none &&
+                  s.scripts.pages.back().lifecycle == 4 &&
+                  s.scene.world.popularity_queue == std::vector<std::array<int, 3>>{{10, 20, 1}, {7, 3, 0}} &&
+                  s.popularity == popularity && s.scene.random.draws() == random &&
+                  s.scene.calendar.units == date && s.scene.world.world.ai.accounting.funds() == cash,
+              "82 final return head-inserts10/20/1 once and closes,without immediate popularity");
+        check(acknowledge_startup_world_runtime_page(s, id) == E::invalid_page &&
+                  s.scene.world.popularity_queue.size() == 2,
+              "stale82 final confirm cannot repeat the20-point delayed request");
+    }
+    auto fallback = fixture(82);
+    fallback.scripts.pages.back().lifecycle = 0;
+    const auto id = fallback.scripts.pages.back().id;
+    fallback.scripts.pages.back().facility_definition = 36;
+    for (auto &entry : fallback.human_presence)
+        entry.second = 0;
+    page_tick(fallback);
+    check(fallback.facility_catalog_page_lists.at(id) == std::vector<int>{0} &&
+              fallback.human_presence.at(0) == 0 && fallback.scene.random.draws() == 0,
+          "82 no eligible person falls back to definition0 without opening/creating/drawing it");
+}
 StartupWorldRuntimeState human_fixture(int raw) {
     auto s = fixture(raw);
     s.page_human_bindings[s.scripts.pages.back().id] = 1;
@@ -1992,6 +2230,8 @@ void commerce_after_reward_writeback() {
 } // namespace
 int main() {
     try {
+        facility_commodity_pages();
+        facility_reputation_pages();
         ordinary_item_pages();
         commerce_after_reward_writeback();
         commerce_transactions();

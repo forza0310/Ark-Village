@@ -253,6 +253,38 @@ void invalid_candidates() {
     reject(bad, "unconsumed village activity decision");
     check(!app::world_save_eligible(bad), "village activity answer cannot be discarded");
 }
+
+void facility_program_restore() {
+    auto state = ark::test::initial_world();
+    auto loaded = restored(state);
+    for (const auto &definition : state.rules->facilities)
+        check(loaded.scripts.facilities.at(definition.id).icon == definition.legacy_icon,
+              "Player restore rebuilds opcode40 category from immutable source definition");
+    // Start the actual bun-shop program before saving: its delayed opcode40 must survive
+    // the player codec without adding UI payload or changing schema2/random policy.
+    ref::WorldScriptInput program;
+    program.event = 2033;
+    const auto started = ref::prepare_world_script_program(
+        sim::startup_world_runtime_catalog(), sim::startup_world_runtime_scripts(state), program);
+    check(started.candidate &&
+              sim::write_startup_world_runtime_scripts(state, started.candidate->state),
+          "Actual facility33 program schedules its published delay");
+    loaded = restored(state);
+    discard_nonpersistent_effects(state);
+    bool reached{};
+    for (int n = 0; n < 140 && !reached; ++n) {
+        advance(state);
+        advance(loaded);
+        reached = state.scripts.pages.back().legacy_page == 82 &&
+                  state.scripts.pages.back().lifecycle != 4;
+    }
+    check(reached && loaded.scripts.pages.back().legacy_page == 82 &&
+              loaded.scripts.pages.back().facility_definition == 33 &&
+              loaded.scene.random.draws() == state.scene.random.draws() &&
+              loaded.scene.world.world.ai.accounting.funds() ==
+                  state.scene.world.world.ai.accounting.funds(),
+          "Saved delayed facility program resumes to the same bound publicity82 without a stall");
+}
 void management_fields_roundtrip() {
     auto state = ark::test::initial_world();
     // A byte-coverage fixture for maintained records, not a claim of natural business execution.
@@ -711,6 +743,7 @@ void natural_operation_roundtrip() {
 
 void run_restore_tests() {
     invalid_candidates();
+    facility_program_restore();
     management_fields_roundtrip();
     expanded_map_roundtrip();
     mixed_surface_roundtrip();

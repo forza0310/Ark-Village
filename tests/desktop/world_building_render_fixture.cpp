@@ -6,7 +6,9 @@
 #include "support/world_fixture.hpp"
 #include "ui/skin.hpp"
 #include "ui/world_building.hpp"
+#include "ui/world_facility_catalog.hpp"
 #include "ui/world_facility_items.hpp"
+#include "world_canvas.hpp"
 #include "world_editing.hpp"
 
 #include <algorithm>
@@ -167,6 +169,39 @@ void world_facility_static_render_fixture() {
         return state;
     };
     auto ordinary = open_bun();
+    // Explicit page callsites: source creates and validates all payload. No claim that
+    // a natural popularity threshold or new shop was reached by this rendering fixture.
+    const auto catalogue_callsite = [&](int raw, int mode, std::optional<int> definition) {
+        auto state = initial_world();
+        sim::rules::WorldScriptPage page;
+        page.kind = sim::rules::WorldScriptPageKind::raw_page;
+        page.legacy_page = raw;
+        page.legacy_f = mode;
+        page.facility_definition = definition;
+        const auto created =
+            sim::rules::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+        require(created.candidate &&
+                    sim::write_startup_world_runtime_scripts(state, created.candidate->state) &&
+                    sim::initialize_startup_world_facility_catalog_pages(state),
+                "catalogue/publicity source callsite failed");
+        return state;
+    };
+    auto goods = catalogue_callsite(79, 1, {});
+    auto equipment_info = goods;
+    require(
+        sim::act_startup_world_facility_catalog_page(equipment_info, top_page(equipment_info).id,
+                                                     sim::StartupFacilityCatalogAction::inspect) ==
+                sim::StartupWorldRuntimeError::none &&
+            sim::initialize_startup_world_facility_catalog_pages(equipment_info),
+        "source79 could not open actual information72");
+    auto publicity = catalogue_callsite(82, 0, 36);
+    auto publicity_second = publicity;
+    for (int n = 0; n < 2; ++n)
+        require(sim::act_startup_world_facility_catalog_page(
+                    publicity_second, top_page(publicity_second).id,
+                    sim::StartupFacilityCatalogAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none,
+                "source82 could not reach second phase through its40 gate");
     auto catalogue = initial_world();
     catalogue.scripts.user_flags |= 32U; // Explicit moving-entry gate for the S057 callsite.
     require(sim::open_startup_world_build_menu(catalogue) == sim::StartupWorldRuntimeError::none,
@@ -258,8 +293,14 @@ void world_facility_static_render_fixture() {
         glyphs += facility.name;
     for (const auto &item : items.rules->items)
         glyphs += item.name;
+    for (const auto &item : items.rules->equipment)
+        glyphs += item.name;
+    for (const auto &human : items.rules->humans)
+        glyphs += human.name;
+    glyphs += "商品装备情报设施口碑名称能力正在销售种攻击防御魔法幸运确认可快进继续";
     desktop::Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
+    desktop::WorldCanvas canvas;
     const auto capture = [&](const auto &state, const char *filename, bool narrow) {
         const auto before = state;
         const desktop::Extent extent =
@@ -267,16 +308,37 @@ void world_facility_static_render_fixture() {
         SetWindowSize(static_cast<int>(extent.width), static_cast<int>(extent.height));
         const auto &page = top_page(state);
         for (int frame = 0; frame < 4; ++frame) {
-            BeginDrawing();
+            // Use the production framebuffer path: Windows DPI must scale artwork and
+            // deferred text together, including the minimum-size callsite screenshots.
+            canvas.resize({GetRenderWidth(), GetRenderHeight()});
+            const auto raster = desktop::canvas_camera(
+                desktop::viewport(canvas.size.width, canvas.size.height, extent), extent);
+            text.prepare(raster.zoom);
+            BeginTextureMode(canvas.texture);
             ClearBackground({145, 211, 247, 255});
-            if (page.legacy_page >= 75 && page.legacy_page <= 77)
+            BeginMode2D(raster);
+            if (ui::world_facility_catalog_page(page))
+                ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
+                                                ui::world_facility_catalog_layout(extent), skin,
+                                                true);
+            else if (page.legacy_page >= 75 && page.legacy_page <= 77)
                 ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
                                               ui::world_facility_items_layout(extent), skin, true);
             else
                 ui::draw_world_building(ui::world_building_view(state, page),
                                         ui::world_building_layout(extent, page.legacy_page), skin,
                                         {}, true);
-            text.flush(1, {});
+            EndMode2D();
+            text.flush(raster.zoom, raster.offset);
+            EndTextureMode();
+            BeginDrawing();
+            ClearBackground(BLACK);
+            DrawTexturePro(
+                canvas.texture.texture,
+                {0, 0, static_cast<float>(canvas.size.width),
+                 -static_cast<float>(canvas.size.height)},
+                {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
+                {}, 0, WHITE);
             EndDrawing();
         }
         const auto file = output / filename;
@@ -306,5 +368,10 @@ void world_facility_static_render_fixture() {
     capture(reinforced, "raw77-minimum.png", true);
     capture(catalogue, "raw21-s057-catalogue.png", false);
     capture(catalogue, "raw21-s057-minimum.png", true);
+    capture(goods, "raw79-goods.png", false);
+    capture(goods, "raw79-minimum.png", true);
+    capture(equipment_info, "raw72-equipment.png", true);
+    capture(publicity, "raw82-first.png", false);
+    capture(publicity_second, "raw82-second.png", true);
 }
 } // namespace ark::test

@@ -546,6 +546,7 @@ int main() {
     task_menu_report_and_departure();
     building_command_transactions();
     facility_and_rank_commands();
+    facility_catalog_commands();
     residence_replacement_command();
     human_command_transactions();
     human_gift_parent_transaction();

@@ -1,6 +1,9 @@
 #include "startup_world_restore_checks.hpp"
 
 #include "startup_world_restore_validation.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
+
+#include <algorithm>
 
 #include <limits>
 #include <stdexcept>
@@ -18,6 +21,15 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    // 存活主场景有合法身份，也不能接受其它页型的附属载荷。
+    for (int domain = 0; domain < 3; ++domain) {
+        auto damaged = baseline;
+        const auto id = damaged.scripts.pages.front().id;
+        if (domain == 0) damaged.facility_catalog_page_data[id] = {1, 0, 0, -1};
+        if (domain == 1) damaged.facility_catalog_page_lists[id] = {0};
+        if (domain == 2) damaged.facility_catalog_page_parents[id] = id;
+        expect(damaged, false, "catalogue payload attached to valid wrong page kind");
+    }
     {
         auto damaged = baseline;
         damaged.scripts.pending_completion = 1;
@@ -171,6 +183,111 @@ int check_startup_world_restore_contracts(
                 s.shop_order.push_back(retired);
             });
         }
+    }
+    {
+        // 页面结构夹具；目录、人物、库存和随机均来自已跑到稳定主场景的真实baseline。
+        auto catalogue = baseline;
+        r::WorldScriptPage goods;
+        goods.id = catalogue.scripts.next_page_id++;
+        goods.kind = r::WorldScriptPageKind::raw_page;
+        goods.legacy_page = 79;
+        goods.lifecycle = 0; // 与prepare_world_script_page新插页一致，未初始化不能伪装更新态。
+        goods.legacy_f = 1;
+        catalogue.scripts.pages.push_back(goods);
+        expect(catalogue, true, "uninitialized79 valid source");
+        if (!p::initialize_startup_world_facility_catalog_pages(catalogue))
+            throw std::runtime_error("restore fixture cannot initialize79");
+        catalogue.scripts.pages.back().lifecycle = 2;
+        expect(catalogue, true, "initialized79 complete source");
+        const auto reject = [&](const p::StartupWorldRuntimeState &valid,
+                                const char *scenario, const auto &damage) {
+            auto broken = valid;
+            damage(broken);
+            expect(broken, false, scenario);
+        };
+        reject(catalogue, "initialized79 missing data", [&](auto &v) {
+            v.facility_catalog_page_data.erase(goods.id);
+        });
+        reject(catalogue, "initialized79 missing list", [&](auto &v) {
+            v.facility_catalog_page_lists.erase(goods.id);
+        });
+        reject(catalogue, "initialized79 missing counter", [&](auto &v) {
+            v.page_counters.erase(goods.id);
+        });
+        reject(catalogue, "initialized79 missing phase", [&](auto &v) {
+            v.page_phases.erase(goods.id);
+        });
+        if (p::act_startup_world_facility_catalog_page(
+                catalogue, goods.id, p::StartupFacilityCatalogAction::inspect) !=
+            p::StartupWorldRuntimeError::none ||
+            !p::initialize_startup_world_facility_catalog_pages(catalogue))
+            throw std::runtime_error("restore fixture cannot open real79 information72");
+        const auto info = catalogue.scripts.pages.back().id;
+        catalogue.scripts.pages.back().lifecycle = 2;
+        expect(catalogue, true, "real79 information72 source");
+        reject(catalogue, "information72 missing parent", [&](auto &v) {
+            v.facility_catalog_page_parents.erase(info);
+        });
+        reject(catalogue, "information72 wrong parent", [&](auto &v) {
+            v.facility_catalog_page_parents.at(info) = v.scripts.pages.front().id;
+        });
+        reject(catalogue, "information72 missing equipment binding", [&](auto &v) {
+            v.facility_catalog_page_data.at(info)[3] = std::numeric_limits<int>::max();
+        });
+        reject(catalogue, "information72 wrong parent category", [&](auto &v) {
+            v.scripts.pages[v.scripts.pages.size() - 2].legacy_f = 5;
+        });
+        auto retired = baseline;
+        const auto stale = retired.scripts.next_page_id++;
+        reject(retired, "retired catalogue initialized identity", [&](auto &v) {
+            v.facility_catalog_pages_initialized.insert(stale);
+        });
+        reject(retired, "retired catalogue data map", [&](auto &v) {
+            v.facility_catalog_page_data[stale] = {1, 0, 0, -1};
+        });
+        reject(retired, "retired catalogue list map", [&](auto &v) {
+            v.facility_catalog_page_lists[stale] = {0};
+        });
+        reject(retired, "retired catalogue parent map", [&](auto &v) {
+            v.facility_catalog_page_parents[stale] = goods.id;
+        });
+        auto praise = baseline;
+        const auto d = std::find_if(praise.rules->facilities.begin(), praise.rules->facilities.end(),
+                                   [](const auto &v) { return v.legacy_icon == 2; });
+        if (d == praise.rules->facilities.end())
+            throw std::runtime_error("restore fixture fixed catalogue has no icon2 source");
+        r::WorldScriptPage animation;
+        animation.id = praise.scripts.next_page_id++;
+        animation.kind = r::WorldScriptPageKind::raw_page;
+        animation.legacy_page = 82;
+        animation.lifecycle = 0;
+        animation.legacy_f = 0;
+        animation.facility_definition = d->id;
+        praise.scripts.pages.push_back(animation);
+        expect(praise, true, "uninitialized82 defined source");
+        if (!p::initialize_startup_world_facility_catalog_pages(praise))
+            throw std::runtime_error("restore fixture cannot initialize82");
+        praise.scripts.pages.back().lifecycle = 2;
+        expect(praise, true, "initialized82 complete source");
+        reject(praise, "animation82 missing facility definition", [&](auto &v) {
+            v.scripts.pages.back().facility_definition.reset();
+        });
+        reject(praise, "animation82 invalid source definition", [&](auto &v) {
+            v.scripts.pages.back().facility_definition = std::numeric_limits<int>::max();
+            v.facility_catalog_page_data.at(animation.id)[3] = std::numeric_limits<int>::max();
+        });
+        reject(praise, "animation82 wrong icon for source mode", [&](auto &v) {
+            v.scripts.pages.back().legacy_f = 1;
+            v.facility_catalog_page_data.at(animation.id)[0] = 1;
+        });
+        reject(praise, "animation82 invalid f", [&](auto &v) {
+            v.scripts.pages.back().legacy_f = 2;
+            v.facility_catalog_page_data.at(animation.id)[0] = 2;
+        });
+        reject(praise, "animation82 missing human reference", [&](auto &v) {
+            v.facility_catalog_page_lists.at(animation.id).front() =
+                std::numeric_limits<int>::max();
+        });
     }
     return checks;
 }

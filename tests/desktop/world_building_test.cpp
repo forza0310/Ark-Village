@@ -738,7 +738,7 @@ void world_building() {
                   editing.build_anchor->x == 8 && editing.build_anchor->y == 8,
               "Editing projection and input never mutate canonical anchor, random or funds");
     }
-    for (float zoom : {.5F, 1.F, 2.F}) {
+    for (float zoom : {.25F, .5F, 1.F, 2.F}) {
         desktop::WorldCameraView camera{{23.5F, -17.F}, {3, 19, 539, 299}};
         for (const rules::Position cell : {rules::Position{2, 3}, {11, 14}, {22, 22}}) {
             const float px = zoom * (271 + 30 * (cell.x + cell.y) + 30 - 23.5F);

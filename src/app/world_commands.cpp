@@ -141,8 +141,9 @@ bool is_decision_page(const simulation::rules::WorldScriptPage *page) {
     const auto raw = page->legacy_page;
     return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || raw == 48 ||
            (raw >= 51 && raw <= 54) || (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 ||
-           raw == 69 || raw == 73 || (raw >= 74 && raw <= 77) || raw == 80 ||
-           (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 || raw == 98;
+           raw == 69 || raw == 72 || raw == 73 || (raw >= 74 && raw <= 77) || raw == 79 ||
+           raw == 80 || raw == 82 || (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 ||
+           raw == 98;
 }
 void apply_world_decision(WorldState &state, const WorldCommand &command,
                           WorldCommandResult &result) {
@@ -199,6 +200,15 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         }
         break;
     }
+    case Kind::facility_catalog_action:
+        // Reject input from a pending snapshot; a corrupt initialized payload still fails
+        // through the source validator. Generic acknowledgements cannot bypass this path.
+        result.runtime_error =
+            state.facility_catalog_pages_initialized.count(command.page)
+                ? simulation::act_startup_world_facility_catalog_page(
+                      state, command.page, command.facility_catalog_action, command.selection)
+                : Error::invalid_page;
+        break;
     case Kind::facility_item_action:
         result.runtime_error =
             valid_facility_item_action(command.facility_item_action) &&
@@ -555,6 +565,16 @@ std::uint64_t WorldSession::act_facility(std::uint64_t page,
     command.kind = WorldCommandKind::facility_action;
     command.page = page;
     command.facility_action = action;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_facility_catalog(std::uint64_t page,
+                                                 simulation::StartupFacilityCatalogAction action,
+                                                 int selection) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::facility_catalog_action;
+    command.page = page;
+    command.facility_catalog_action = action;
+    command.selection = selection;
     return submit(command);
 }
 std::uint64_t WorldSession::act_residence(std::uint64_t page, int human, bool cancel) {

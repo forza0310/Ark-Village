@@ -20,6 +20,7 @@ int main() {
     check(defaults.width == 1080 && defaults.height == 720 && !defaults.paused && defaults.world);
     check(ark::app::LaunchOptions{}.world);
     check(defaults.tick_rate == 0);
+    check(defaults.zoom_percent == 100);
     check(defaults.save_directory.empty());
     check(parse_arguments({"--save-dir", "test saves"}).options->save_directory == "test saves");
     check(parse_arguments({"--inspect-page", "world-load", "--frames", "8", "--save-dir", "test"})
@@ -112,6 +113,12 @@ int main() {
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
     check(parse_arguments({"--zoom-percent", "150"}).options->zoom_percent == 150);
+    for (const auto *percent : {"25", "49", "200"}) {
+        const auto zoomed = parse_arguments({"--zoom-percent", percent});
+        check(zoomed.options && zoomed.options->world &&
+              zoomed.options->zoom_percent == std::stoi(percent));
+    }
+    check(parse_arguments({"--legacy-slice", "--zoom-percent", "50"}).options->zoom_percent == 50);
     check(parse_arguments({"--inspect-page", "shops", "--frames", "8"}).options->inspect_page ==
           "shops");
     const auto bounded =
@@ -146,7 +153,11 @@ int main() {
              {"--tick-rate", "20x"},
              {"--tick-rate", "20.5"},
              {"--zoom-percent"},
-             {"--zoom-percent", "49"},
+             {"--zoom-percent", "24"},
+             {"--legacy-slice", "--zoom-percent", "25"},
+             {"--zoom-percent", "25", "--legacy-slice"},
+             {"--ai-preview", "--zoom-percent", "25"},
+             {"--inspect-page", "shops", "--frames", "8", "--zoom-percent", "25"},
              {"--zoom-percent", "201"},
              {"--zoom-percent", "100x"},
              {"--font"},

@@ -34,7 +34,7 @@ const simulation::StartupDisplay &display(int id) {
 } // namespace
 
 std::array<int, 4> world_viewport(Extent extent, float zoom) {
-    if (!std::isfinite(zoom) || zoom < .5F || zoom > 2.F || extent.width < 240 ||
+    if (!std::isfinite(zoom) || zoom < .25F || zoom > 2.F || extent.width < 240 ||
         extent.height < 256)
         throw std::invalid_argument("Invalid desktop world viewport");
     const auto clip = ui::Layout(extent).scene_clip;
@@ -67,7 +67,7 @@ std::optional<rules::CharacterId> world_pick_human(const State &s, const WorldCa
 }
 void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
                        float &zoom) {
-    const auto next = std::clamp(zoom * std::pow(1.05F, wheel), .5F, 2.F);
+    const auto next = std::clamp(zoom * std::pow(1.05F, wheel), .25F, 2.F);
     const auto origin = raw_anchor(view, 0, 0, zoom);
     const float x = (pointer.x - origin.x) / zoom, y = (origin.y - pointer.y) / zoom;
     view.viewport = world_viewport(extent, next);

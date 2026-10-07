@@ -10,7 +10,7 @@ struct WorldActorPose {
     bool monster{};
     int sprite{}, image{}, frame{};
 };
-// Inverse raster zoom supplies source visibility bounds before the next simulation round.
+// Inverse raster zoom (25%-200%) supplies source visibility before the next simulation round.
 std::array<int, 4> world_viewport(Extent extent, float zoom);
 // Project source x/height/z positions, including the canonical camera and viewport midpoint.
 Vector2 world_anchor(const simulation::StartupWorldRuntimeState &state,

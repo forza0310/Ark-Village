@@ -139,6 +139,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_village_activity_test.cpp src/desktop/ui/world_village_activity.cpp
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
             src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
+            src/desktop/ui/world_facility_catalog.cpp
             src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp

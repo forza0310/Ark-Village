@@ -15,6 +15,8 @@
 
 所有状态从新产品重新开始。旧M阶段不是新产品的完成依据。
 
+2026-10-08继续已批准顺序，接29f371d商品79/72与设施口碑82，维护精确存取同步新layout，玩家schema2/随机政策不变。用户另明确缩放下限调小，本批采用25%并保持鼠标锚定。验收与原版表现边界见[当前接续](stages/B1-playable-prototype.md#research-29f371d-progression)，主角/纪录/举物等依赖见[反馈缺口](reference/RESEARCH_REQUESTS.md#player-feedback-20261008)。
+
 | 阶段 | 范围 | 状态/验收 |
 | --- | --- | --- |
 | B0 | 工程/文档/本地Git重置，raylib启动和打包资源 | Completed；四套构建/CTest、资源、两种尺寸窗口和研究边界检查通过 |

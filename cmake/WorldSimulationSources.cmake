@@ -93,6 +93,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_commerce.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_editing.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_expansion.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_facility_catalog.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_facility_items.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_human.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"

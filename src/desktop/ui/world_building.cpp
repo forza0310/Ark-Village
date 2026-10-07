@@ -248,7 +248,10 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.can_use_items = view.phase == 0 && item.kind != 2 && item.kind != 12 &&
                                  item.detail != 1 && item.detail != 4 && item.detail != 5 &&
                                  item.detail != 6;
-            view.can_confirm = (item.detail == 6 && view.phase == 0) || view.can_use_items;
+            view.can_view_products =
+                view.phase == 0 && (item.detail == 1 || item.detail == 4 || item.detail == 5);
+            view.can_confirm = (item.detail == 6 && view.phase == 0) || view.can_use_items ||
+                               view.can_view_products;
         }
     }
     view.initialized = true;
@@ -546,6 +549,7 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                     : view.raw == 81          ? "确定"
                     : view.definition_preview ? "关闭"
                     : view.can_use_items      ? "使用道具"
+                    : view.can_view_products  ? "商品"
                                               : "入住希望者",
                     active && view.can_confirm &&
                         (view.raw != 21 || !rows(view, selection.tab).empty()));

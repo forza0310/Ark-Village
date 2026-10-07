@@ -10,7 +10,8 @@
 
 ## 研究交付后的接入
 
-- [ ] 回放工具ee687bc已完成本地验收；下一项79/72与opcode40→82，再魔法壶/村办5–6，等待research正式维护C++/codec/回归交付后依序接产品。类型4无独立效果，不列为缺失按钮。见[本批结果](docs/stages/B1-playable-prototype.md#research-ee687bc-replay)。
+- [ ] 29f371d商品79/72与opcode40→82已完成[本地验收](docs/stages/B1-playable-prototype.md#research-29f371d-progression)；继续接新发布a57958c的魔法壶/村办5–6。类型4无独立效果，不列为缺失按钮。
+- [ ] 开局主角配置/到访、标题纪录、购买后举物、设施属性头标及邻接浮标，按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
 
 - [ ] 探索底栏：共同随机时点、滑入/背景/资源桥、丢实例清任务与231→aW消费者，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。

@@ -5,6 +5,7 @@
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_commerce.hpp"
 #include "ark/simulation/startup_world_editing.hpp"
+#include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_human.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
@@ -42,6 +43,7 @@ enum class WorldCommandKind {
     open_commerce,
     commerce_action,
     facility_item_action,
+    facility_catalog_action,
     facility_action,
     residence_action,
     open_task_control_menu,
@@ -120,6 +122,8 @@ struct WorldCommand {
     simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
+    simulation::StartupFacilityCatalogAction facility_catalog_action{
+        simulation::StartupFacilityCatalogAction::confirm};
     simulation::rules::Position anchor{};
     // Transient selection binding, distinct from the destination anchor.
     std::optional<simulation::rules::Position> edit_anchor;
@@ -197,6 +201,9 @@ class WorldSession {
                                     simulation::StartupFacilityItemAction action,
                                     int selection = -1);
     std::uint64_t act_facility(std::uint64_t page, simulation::StartupFacilityPageAction action);
+    std::uint64_t act_facility_catalog(std::uint64_t page,
+                                       simulation::StartupFacilityCatalogAction action,
+                                       int selection = 0);
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,
                                 int selection = 0);

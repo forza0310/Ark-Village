@@ -39,13 +39,25 @@ if(ARK_LIBRARIES_ONLY)
         DEPENDS "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"
             "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup_world.mjs" ${ARK_WORLD_DATA_INPUTS}
         VERBATIM)
+    set(ARK_WORLD_PERSISTENCE_CPP "${ARK_WORLD_GENERATED}/persistence_identity.cpp")
+    add_custom_command(OUTPUT "${ARK_WORLD_PERSISTENCE_CPP}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${ARK_WORLD_GENERATED}"
+        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_persistence_identity.mjs"
+            "${ARK_WORLD_ROOT}" "${ARK_WORLD_PERSISTENCE_CPP}"
+        DEPENDS "${ARK_WORLD_ROOT}/scripts/simulation/compile_persistence_identity.mjs"
+            ${ARK_WORLD_DATA_INPUTS}
+        VERBATIM)
+    # Persistence needs only the portable digest implementation, never image parsing.
+    add_library(ark_world_hash SHARED ${ARK_WORLD_HASH_SOURCES})
+    target_include_directories(ark_world_hash PUBLIC "${ARK_WORLD_ROOT}/include")
+    ark_world_target(ark_world_hash)
     add_library(ark_world_rules SHARED ${ARK_WORLD_RULE_SOURCES})
     target_include_directories(ark_world_rules PUBLIC "${ARK_WORLD_ROOT}/include")
     ark_world_target(ark_world_rules)
     add_library(ark_world_runtime SHARED ${ARK_WORLD_RUNTIME_SOURCES}
-        "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}")
+        "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}" "${ARK_WORLD_PERSISTENCE_CPP}")
     target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
-    target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
+    target_link_libraries(ark_world_runtime PUBLIC ark_world_rules PRIVATE ark_world_hash)
     ark_world_target(ark_world_runtime)
 endif()
 
@@ -62,6 +74,14 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         endif()
         add_executable(${target} "${source}")
         target_link_libraries(${target} PRIVATE ark_world_runtime)
+        if(module STREQUAL "startup_world_continuous_test")
+            target_sources(${target} PRIVATE ${ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES})
+        elseif(module STREQUAL "startup_world_persistence_test")
+            # Protocol/platform failures share one fixture lifecycle; helpers are not tests.
+            target_sources(${target} PRIVATE ${ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES})
+            target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
+            target_link_libraries(${target} PRIVATE ark_world_hash)
+        endif()
         if(module MATCHES "^world_(arrivals|calendar_tasks|exploration|facility_update|gift_page|popularity|residence|runtime|scripts|world_entry)_test$")
             target_compile_definitions(${target} PRIVATE "ARK_WORLD_TEST_DATA=\"${ARK_WORLD_DATA}\"")
         endif()
@@ -78,6 +98,9 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         elseif(module STREQUAL "startup_world_continuous_test")
             # Cross the naturally reached raw49 page just after the former two-month boundary.
             add_test(NAME "simulation.${module}" COMMAND ${target} 3 1 0)
+        elseif(module STREQUAL "startup_world_persistence_test")
+            add_test(NAME "simulation.${module}" COMMAND ${target}
+                "${CMAKE_CURRENT_BINARY_DIR}/persistence-tests")
         else()
             add_test(NAME "simulation.${module}" COMMAND ${target})
         endif()
@@ -93,6 +116,25 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             set_tests_properties("simulation.${module}" PROPERTIES TIMEOUT 3600 LABELS "e2e;frozen")
         endif()
     endforeach()
+    # Keep replay controller assertions in the existing continuous-world executable.
+    add_test(NAME simulation.startup_world_replay_driver
+        COMMAND ark_simulation_startup_world_continuous_test replay_driver_contract)
+    add_test(NAME simulation.startup_world_replay_process
+        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/replay_file_test.mjs"
+            --exe "$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
+            --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
+    set_tests_properties(simulation.startup_world_replay_driver PROPERTIES
+        TIMEOUT 120 LABELS "runtime;replay;frozen")
+    set_tests_properties(simulation.startup_world_replay_process PROPERTIES
+        TIMEOUT 360 LABELS "e2e;replay;frozen")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_test(NAME simulation.startup_world_codec_coverage
+            COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/generate_owner_codec.mjs"
+                --root "${ARK_WORLD_ROOT}" --ast "${CMAKE_CURRENT_BINARY_DIR}/owner-codec-coverage.json"
+                --compiler "${CMAKE_CXX_COMPILER}" --check)
+        set_tests_properties(simulation.startup_world_codec_coverage PROPERTIES
+            TIMEOUT 120 LABELS "provenance;codec;frozen")
+    endif()
     if(ARK_LONG_WORLD_TESTS)
         # Same frozen continuous suite with its explicit real-player housing strategy.
         # This is not a numeric-month annual fixture and must not use the annual wrapper.

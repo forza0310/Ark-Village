@@ -13,3 +13,7 @@ e8f66d9接入新增建设/通知/只读头像及原测试，原型共享夹具�
 上游已完整交付勋章共享Owner桥，移除此前runtime.cpp的产品补丁记录，以原维护实现为准。
 
 显式离线性能入口见[性能采样](profile_world.md)；采样副本只写忽略的build目录，正常构建不使用插桩头。计算优化通过既有product_patch登记保留研究/首次导入身份，不改变原消费者、随机和失败回滚。
+
+524415a维护存取另用`compile_persistence_identity.mjs`生成真实15文件数据身份；逻辑文件名保持研究协议，只映射到产品assets读取。`generate_owner_codec.mjs --check`用Clang AST核对92结构/11枚举、源规范JSON及机械namespace翻译inc。运行游戏不依赖这些工具。
+
+精确文件回放在现有continuous套件，`replay_file_test.mjs`短三进程场景进入标准CTest。较长认证档先核对数据/布局/语义和前缀资格，按风险复用相关尾段；完整外层轮是唯一续跑边界，日历轮内审计不能重跑完整框架。命令及证据见[B1](../../docs/stages/B1-playable-prototype.md#research-524415a-design)。

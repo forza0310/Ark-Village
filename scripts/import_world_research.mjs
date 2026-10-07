@@ -19,12 +19,13 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_runtime_arrival', 'startup_world_runtime_calendar', 'startup_world_runtime_scene',
   'startup_world_runtime_focus', 'startup_world_runtime_pages', 'startup_world_runtime_tasks',
   'startup_world_runtime_task_pages', 'startup_world_runtime_deadline',
-  'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals'];
+  'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals',
+  'startup_world_persistence'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
   'startup_world_task_flow', 'startup_world_deadline', 'startup_world_building',
-  'startup_world_visuals'];
+  'startup_world_visuals', 'startup_world_persistence'];
 const translate = text => text.replaceAll('dungeon_village_tools/', 'ark/assets/')
   .replaceAll('dungeon_village_tools', 'ark::assets')
   .replaceAll('dungeon_village_reference/', 'ark/simulation/rules/')
@@ -69,6 +70,12 @@ if (mode === '--record-patch') {
     for (const match of text.matchAll(/^#include "([^"]+)"/gm)) {
       const reference = match[1].startsWith('dungeon_village_reference/');
       const prototype = match[1].startsWith('dungeon_village_prototype/');
+      const tools = match[1].startsWith('dungeon_village_tools/');
+      if (tools && match[1] === 'dungeon_village_tools/archive.hpp') {
+        // Persistence only needs portable SHA-256, not archive extraction or graphics.
+        pending.push('tools/include/' + match[1], 'tools/src/sha256.cpp');
+        continue;
+      }
       if (!reference && !prototype) {
         // CPU portrait regression reuses the product's existing identical SEB/TSV API.
         // Keep the full test body; only its header/namespace and target dependency change.
@@ -79,6 +86,24 @@ if (mode === '--record-patch') {
         // and source identity; never resolve an arbitrary include outside the frozen tree.
         if (relative.startsWith('prototype/tests/') && /^support\/[A-Za-z0-9_]+\.hpp$/.test(match[1])) {
           pending.push(`prototype/tests/${match[1]}`);
+          continue;
+        }
+        // Private maintained codec and test helpers stay beside their consumer.
+        // Only a single safe filename can resolve here; no traversal outside the freeze.
+        if (/^prototype\/(?:src|tests)\//.test(relative) &&
+            /^[A-Za-z0-9_]+\.(?:hpp|inc)$/.test(match[1])) {
+          let sibling = dirname(relative).replaceAll('\\', '/') + '/' + match[1];
+          if (!existsSync(join(source, sibling)) && relative.startsWith('prototype/tests/') &&
+              existsSync(join(source, 'prototype/src', match[1])))
+            sibling = 'prototype/src/' + match[1];
+          if (!existsSync(join(source, sibling)))
+            throw new Error(`Missing local include: ${relative}: ${match[1]}`);
+          pending.push(sibling);
+          const implementation = sibling.replace(/\.hpp$/, '.cpp');
+          if (implementation !== sibling && existsSync(join(source, implementation)))
+            pending.push(implementation);
+          if (sibling.endsWith('startup_world_codec_fields.inc'))
+            pending.push('prototype/src/startup_world_codec_fields.json');
           continue;
         }
         throw new Error(`Unresolved local include: ${relative}: ${match[1]}`);
@@ -97,9 +122,11 @@ if (mode === '--record-patch') {
   files.add('data/scripts/SOURCE.tsv');
   for (const file of readdirSync(join(source, 'data/scripts/original')))
     files.add(`data/scripts/original/${file}`);
-  for (const file of ['compile_startup.mjs', 'compile_startup_world.mjs'])
+  for (const file of ['compile_startup.mjs', 'compile_startup_world.mjs',
+      'compile_persistence_identity.mjs', 'generate_owner_codec.mjs'])
     files.add(`prototype/scripts/${file}`);
   files.add('prototype/tests/startup_world_data_test.mjs');
+  files.add('prototype/tests/replay_file_test.mjs');
   files.add('prototype/tests/support/README.md');
   const records = [...files].sort().map(file => {
     const bytes = readFileSync(join(source, file));
@@ -133,13 +160,18 @@ if (mode === '--record-patch') {
     else if (entry.file.startsWith('prototype/include/dungeon_village_prototype/'))
       target = 'include/ark/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/src/')) target = 'src/simulation/' + basename(entry.file);
+    else if (entry.file.startsWith('tools/include/dungeon_village_tools/'))
+      target = 'include/ark/assets/' + basename(entry.file);
+    else if (entry.file === 'tools/src/sha256.cpp') target = 'src/assets/sha256.cpp';
     else if (entry.file.startsWith('prototype/scripts/')) target = 'scripts/simulation/' + basename(entry.file);
     else if (entry.file.startsWith('prototype/tests/'))
       target = 'tests/simulation/' + entry.file.slice('prototype/tests/'.length);
     else if (entry.file === 'data/original/tenantData.txt') target = 'assets/simulation/tenantData.txt';
     else if (entry.file.startsWith('data/')) target = 'assets/simulation/' + entry.file.slice(5);
     else throw new Error(`Unsupported snapshot path: ${entry.file}`);
-    if (!entry.file.startsWith('data/')) {
+    // The canonical protocol manifest retains source logical names and exact bytes.
+    // Namespace renaming changes C++ access spelling, not the persisted wire schema.
+    if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json')) {
       let text = translate(original.toString('utf8'));
       if (target.endsWith('.mjs') && target.startsWith('tests/'))
         text = text.replaceAll("from '../scripts/", "from '../../scripts/simulation/");
@@ -170,11 +202,18 @@ if (mode === '--record-patch') {
   }, null, 2) + '\n');
   const rules = records.filter(v => v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
   const runtime = records.filter(v => v.file.startsWith('src/simulation/') && !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
-  const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('.cpp'));
+  const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp'));
+  const hashes = records.filter(v => v.file === 'src/assets/sha256.cpp');
+  const continuousSupport = records.filter(v => v.file === 'tests/simulation/startup_world_replay_driver.cpp');
+  const persistenceSupport = records.filter(v => /^tests\/simulation\/startup_world_(?:codec|restore)_checks\.cpp$/.test(v.file));
   let cmake = '# Explicit frozen-source inventory, generated by scripts/import_world_research.mjs.\n';
   cmake += 'set(ARK_WORLD_RULE_SOURCES\n' + rules.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_RUNTIME_SOURCES\n' + runtime.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_TEST_SOURCES\n' + tests.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
+  for (const [name, entries] of [['ARK_WORLD_HASH_SOURCES', hashes],
+      ['ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES', continuousSupport],
+      ['ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES', persistenceSupport]])
+    cmake += 'set(' + name + '\n' + entries.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   put(join(destination, 'cmake/WorldSimulationSources.cmake'), cmake);
   console.log(`Imported ${records.length} files: ${rules.length} rule sources, ${runtime.length} runtime sources, ${tests.length} C++ regressions`);
   console.log(`Changed ${changed.length} product files:\n${changed.join('\n')}`);

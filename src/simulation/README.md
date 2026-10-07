@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结`898b653`，共332项源/测试/数据；村办类型3地图扩张、道路保留特殊实例引用及运行时性能修正已迁入，产品验收及玩家入口按B1分批登记。此前村办0/1/2、raw95、普通道具、设施强化、商会、地图编辑、人物经营与住宅税收已有接线；转职55/197、赠礼子页答案/父页恢复、最大HP缓存不回血及住宅替换记录退休均保持源契约，不由表现层补算。库存`items`与kind0 `catalog`按实际写入方向完整同步。
+当前冻结`524415a`，共354项源/测试/数据；维护存取/回放闭包已迁入，玩家两栏政策独立保留。此前村办类型3地图扩张、道路保留特殊实例引用及运行时性能修正已迁入，产品验收及玩家入口按B1分批登记。此前村办0/1/2、raw95、普通道具、设施强化、商会、地图编辑、人物经营与住宅税收已有接线；转职55/197、赠礼子页答案/父页恢复、最大HP缓存不回血及住宅替换记录退休均保持源契约，不由表现层补算。库存`items`与kind0 `catalog`按实际写入方向完整同步。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 
@@ -33,6 +33,7 @@ all original UI workflows. Product construction, human and tax commands read/wri
 | startup_world_projection | One-time bootstrap, all shared definitions and source identities |
 | startup_world_routes | Current facts for actor decision/control; no durable second world |
 | startup_world_runtime | Unique aggregate, projection writeback and transactional update |
+| startup_world_codec/persistence/file_io/restore_validation | Full maintenance capture, bounded wire codec, private restore and atomic file replacement |
 | startup_world_runtime_arrival | Eligibility, creation, roster and first-visit scripts |
 | startup_world_runtime_scene/focus | Framework scenes, camera and detached focus actor |
 | startup_world_runtime_calendar | Calendar, maintenance, month report and checkpoints |
@@ -48,7 +49,11 @@ all original UI workflows. Product construction, human and tax commands read/wri
 
 Each important interface retains its source contracts and comments. Explicit page confirmation
 in tests is user input, not an automatic game policy; immutable checkpoints are audit artifacts,
-not saves. `simulation.source_provenance` checks every imported product file, including the updated
+not intra-round resume points. Maintenance `startup_world_persistence.hpp` captures the full
+Owner, random and ledger; replay also captures ordered audit history and an external controller
+at a completed outer-round boundary. Restore validates both private candidates before joint
+installation. The player two-slot ARKSAVE1 flow remains separate. The portable `ark_world_hash`
+module has no raylib/image dependency. `simulation.source_provenance` checks every imported product file, including the updated
 hash of recorded product patches. Newly authored launch/UI files are covered by their normal
 source review and integration tests rather than pretending they came from research.
 

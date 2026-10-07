@@ -15,7 +15,7 @@
 | `integration/` | 真实CLI、打包资源变异和长期世界包装器 | `e2e` |
 | `support/` | 断言/进程入口与当前世界夹具；旧切片夹具放`legacy/support/` | 不注册业务用例 |
 
-产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前8f12654已迁入315项源/测试/数据，后续在途研究不纳入本批。
+产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前524415a已迁入354项源/测试/数据，research在途原档工具不纳入本批。
 
 ## 套件与独立进程
 
@@ -41,6 +41,12 @@
 合并的是重复链接和入口，不把不同场景合成串行大流程。正文仍按职责独立文件；CTest使用原名称，每次只选择一个case并启动新进程，错误归属和夹具隔离保留。未指定或指定不存在的case返回2，断言失败返回1；没有隐式“运行全部”。月报/勋章采用相同真实新局夹具与运行时依赖，因此共享可执行；线程会话、长跑、CLI进程检查及冻结来源测试保持独立。
 
 共享`Checks`保留Release断言、单case计数和诊断上下文；六个重构case的原断言表达式、消息和调用顺序逐项保留。其他套件的专有检查暂留在各自文件，只有确认相同语义时才抽取。
+
+## 维护文件与精确回放
+
+`simulation.startup_world_persistence_test`独立于玩家`world_save`，集中同一维护文件协议的codec、完整候选恢复与文件替换支撑源，不将support cpp逐个注册。新协议全Owner/随机/账本和预算/损坏/用途拒绝由该冻结套件负责；`startup_world_replay_driver`复用continuous程序核对全部控制器进度，`startup_world_replay_process`默认420保存、421–840尾段与两个独立载入进程逐帧比较。它们是测试维护策略，不改变玩家随机不落盘的两栏档。
+
+`simulation.startup_world_codec_coverage`在Clang配置中从产品AST反向规范化字段/类型，严格比较源规范JSON/布局真hash及正向机械翻译inc。新增Owner字段必须更新正式交付，不能手改清单漏过覆盖。三个月用例注册、参数和有效断言保留。较长认证前缀只按资格/风险复用尾段；产品双尾段通过不表示重新自然跑过研究前缀，具体证据见[B1](../docs/stages/B1-playable-prototype.md#research-524415a-design)。
 
 ## 运行与扩展
 

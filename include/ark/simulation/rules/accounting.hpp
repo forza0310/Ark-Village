@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <vector>
 
 namespace ark::simulation::rules {
@@ -62,6 +63,13 @@ struct AccountingReport {
     std::uint16_t awarded_points{};
     bool claimed{};
 };
+// 完整维护账本快照；恢复直接安装已核验事实，不重放收费或领取。
+struct PeriodAccountingSnapshot {
+    std::int64_t funds{};
+    std::uint16_t village_points{};
+    std::map<std::uint64_t, CashEntry> entries;
+    std::map<std::uint64_t, AccountingReport> reports;
+};
 
 // Independent Ark contract: events affect cash immediately, reports never pay their net again.
 class PeriodAccounting {
@@ -79,6 +87,8 @@ class PeriodAccounting {
     std::uint16_t village_points() const;
     const std::map<std::uint64_t, CashEntry> &entries() const;
     const std::map<std::uint64_t, AccountingReport> &reports() const;
+    PeriodAccountingSnapshot snapshot() const;
+    static std::optional<PeriodAccounting> from_snapshot(const PeriodAccountingSnapshot &snapshot);
 
   private:
     AccountingError prepare_in_place(const ReportInput &input);

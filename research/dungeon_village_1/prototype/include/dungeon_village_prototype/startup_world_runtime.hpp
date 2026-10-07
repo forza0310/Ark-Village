@@ -19,6 +19,7 @@ enum class StartupWorldTaxAction;
 enum class StartupVillageActivityAction;
 enum class StartupFacilityItemAction;
 enum class StartupCommerceAction;
+enum class StartupFacilityCatalogAction;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -221,6 +222,11 @@ struct StartupWorldRuntimeState {
     // 页mode/tab/selection/scroll/item_binding/feedback；binding=-1表示没有条目。
     std::map<std::uint64_t, std::array<int, 6>> commerce_page_data;
     std::map<std::uint64_t, std::vector<int>> commerce_page_lists;
+    std::set<std::uint64_t> facility_catalog_pages_initialized;
+    // 79/72/82：原类别、选择、首行、绑定；82绑定源设施定义，72绑定装备，79无绑定(-1)。
+    std::map<std::uint64_t, std::array<int, 4>> facility_catalog_page_data;
+    std::map<std::uint64_t, std::vector<int>> facility_catalog_page_lists;
+    std::map<std::uint64_t, std::uint64_t> facility_catalog_page_parents; // 72→仍存活的79。
     int medal_count{};                           // UserData.j，c/n.J新局0，raw87初始化+1。
     std::map<int, int> facility_free_builds;     // br.H真实新对象0；旧接口名，原h()不因此免造价。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
@@ -369,6 +375,9 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError act_facility_item_page(std::uint64_t page,
                                                     StartupFacilityItemAction action,
                                                     int selection = -1);
+    StartupWorldRuntimeError act_facility_catalog_page(std::uint64_t page,
+                                                       StartupFacilityCatalogAction action,
+                                                       int selection = -1);
     StartupWorldRuntimeError act_village_activity_page(std::uint64_t page,
                                                        StartupVillageActivityAction action,
                                                        int selection = 0);

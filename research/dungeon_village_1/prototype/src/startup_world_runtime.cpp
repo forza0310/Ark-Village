@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_editing.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
+#include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -775,6 +776,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         const auto &d = p.rules->facilities[n];
         ref::WorldScriptFacilityDefinition script_definition;
         script_definition.category = d.kind; // 原o.f82e，不是活动类别f83f。
+        script_definition.icon = d.legacy_icon; // 原o.f81d；opcode40区分传说演出类别。
         script_definition.economy = d.economy;
         ref::FacilityEconomyInput economy_input;
         economy_input.legacy_job_counts = state_.scripts.job_counts;
@@ -920,6 +922,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_facility_item_page(
     std::uint64_t page, StartupFacilityItemAction action, int selection) {
     return act_startup_world_facility_item_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::act_facility_catalog_page(
+    std::uint64_t page, StartupFacilityCatalogAction action, int selection) {
+    return act_startup_world_facility_catalog_page(state_, page, action, selection);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_village_activity_page(
     std::uint64_t page, StartupVillageActivityAction action, int selection) {
     return act_startup_world_village_activity_page(state_, page, action, selection);
@@ -966,6 +972,10 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.facility_item_page_items.erase(page.id);
             admitted.facility_item_page_lists.erase(page.id);
             admitted.facility_item_page_selections.erase(page.id);
+            admitted.facility_catalog_pages_initialized.erase(page.id);
+            admitted.facility_catalog_page_data.erase(page.id);
+            admitted.facility_catalog_page_lists.erase(page.id);
+            admitted.facility_catalog_page_parents.erase(page.id);
             admitted.commerce_page_data.erase(page.id);
             admitted.commerce_pages_initialized.erase(page.id);
             admitted.commerce_page_lists.erase(page.id);
@@ -1020,7 +1030,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     if (!initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||
-        !initialize_startup_world_facility_item_pages(admitted))
+        !initialize_startup_world_facility_item_pages(admitted) ||
+        !initialize_startup_world_facility_catalog_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

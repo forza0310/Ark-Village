@@ -83,6 +83,7 @@ struct WorldScriptPage {
     std::optional<std::uint64_t> task_identity{};
     std::optional<int> task_definition{};
     std::optional<int> monster_definition{};
+    std::optional<int> facility_definition{}; // raw82的原o引用；定义ID，不是场景实例或程序ID。
 };
 struct WorldScriptContinuation {
     int event{}; // aL身份；恢复本身不增加aM。
@@ -122,6 +123,7 @@ struct WorldScriptUnlockDefinition {
 };
 struct WorldScriptFacilityDefinition {
     int category{};
+    int icon{}; // 原o.f81d；opcode40按2/3分演出，独立于f82e/category。
     int level{1};
     FacilityEconomyDefinition economy;
     std::array<std::int32_t, 4> improvements{};
@@ -186,7 +188,7 @@ bool world_script_seen(const WorldScriptState &state, int event);
 // 与脚本执行共用同一校验及错误顺序；不复制状态、推进续体或产生页面／输出。
 WorldScriptError validate_world_script_state(const WorldScriptCatalog &catalog,
                                              const WorldScriptState &state);
-// 支持固定200事件实际使用的全部25种opcode及嵌套1；未证opcode显式失败。
+// 支持固定200事件实际使用的25种opcode、设施定义程序40及嵌套1；未证opcode显式失败。
 // 无隐含去重，调用入口立即aM+1；126等待早于调用者累加完成量。
 WorldScriptResult prepare_world_script(const WorldScriptCatalog &catalog,
                                        const WorldScriptState &state,

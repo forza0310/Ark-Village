@@ -100,11 +100,12 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
           options.inspect_page != "world-human" && options.inspect_page != "world-activities" &&
           options.inspect_page != "world-commerce" && options.inspect_page != "world-item-gift" &&
-          options.inspect_page != "world-editing")))
+          options.inspect_page != "world-editing" && options.inspect_page != "world-goods" &&
+          options.inspect_page != "world-equipment-info")))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
                                     "world-building/world-details/world-human/world-activities/"
-                                    "world-commerce/world-item-gift/world-editing");
+                                    "world-commerce/world-item-gift/world-editing/world-goods/world-equipment-info");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
@@ -117,7 +118,8 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-human" || options.inspect_page == "world-activities" ||
              options.inspect_page == "world-commerce" ||
              options.inspect_page == "world-item-gift" ||
-             options.inspect_page == "world-editing")))))
+             options.inspect_page == "world-editing" || options.inspect_page == "world-goods" ||
+             options.inspect_page == "world-equipment-info")))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     if ((options.load_file || options.save_file) &&
         (!options.world || options.fixture || !options.inspect_page.empty() ||

@@ -95,6 +95,17 @@ void validate(const WorldScriptCatalog &catalog, const WorldScriptState &state) 
         if (page.id == 0 || page.id >= state.next_page_id || page.lifecycle < 0 ||
             page.lifecycle > 4 || !ids.insert(page.id).second)
             fail(WorldScriptError::invalid_input);
+    for (const auto &page : state.pages) {
+        if (page.facility_definition && !state.facilities.count(*page.facility_definition))
+            fail(WorldScriptError::invalid_input);
+        if (page.kind == WorldScriptPageKind::raw_page && page.legacy_page == 82) {
+            if (!page.facility_definition)
+                fail(WorldScriptError::invalid_input);
+            const int icon = state.facilities.at(*page.facility_definition).icon;
+            if ((icon != 2 && icon != 3) || page.legacy_f != icon - 2)
+                fail(WorldScriptError::invalid_input);
+        }
+    }
     if (state.executing_page && !ids.count(*state.executing_page))
         fail(WorldScriptError::invalid_input);
     for (const auto &selection :
@@ -573,6 +584,25 @@ struct Runner {
                 constexpr int t[]{3000, 3000, 5000, 10000, 15000, 20000, 20000};
                 constexpr int u[]{100, 100, 150, 200, 250, 300, 300};
                 raw_page(95, opcode == 38 ? 0 : 1, opcode == 38 ? t[phase] : u[phase]);
+                break;
+            }
+            case 40: {
+                // 原设施E续体读取当时的共享定义，图标不是f82e/category或活动类别。
+                instruction_size(command, 2, 2);
+                const auto facility = candidate.state.facilities.find(command[1]);
+                if (facility == candidate.state.facilities.end())
+                    fail(WorldScriptError::invalid_input);
+                const int icon = facility->second.icon;
+                if (icon == 2 || icon == 3) {
+                    WorldScriptPage value;
+                    value.kind = WorldScriptPageKind::raw_page;
+                    value.legacy_page = 82;
+                    value.legacy_f = icon - 2;
+                    value.facility_definition = command[1];
+                    page(candidate, std::move(value));
+                } else {
+                    candidate.last_page.reset(); // 原gVar=null，不制造未接效果成功页。
+                }
                 break;
             }
             default:

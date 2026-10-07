@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
+#include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
@@ -329,6 +330,9 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 72 || top->legacy_page == 79 || top->legacy_page == 82))
+        return act_startup_world_facility_catalog_page(state, id, StartupFacilityCatalogAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 51 &&
         top->legacy_page <= 54)
         return act_startup_world_village_activity_page(state, id,
@@ -484,6 +488,12 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
 }
 
 Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
+    const auto catalogue = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        catalogue->kind == ref::WorldScriptPageKind::raw_page &&
+        (catalogue->legacy_page == 72 || catalogue->legacy_page == 79 || catalogue->legacy_page == 82))
+        return act_startup_world_facility_catalog_page(state, id, StartupFacilityCatalogAction::cancel);
     const auto activity = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
     if (activity != state.scripts.pages.rend() && activity->id == id &&
@@ -627,6 +637,9 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 75 &&
         top->legacy_page <= 77)
         return prepare_startup_world_facility_item_page(state);
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 72 || top->legacy_page == 79 || top->legacy_page == 82))
+        return update_startup_world_facility_catalog_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         ((top->legacy_page >= 83 && top->legacy_page <= 86) || top->legacy_page == 93))
         return update_startup_world_commerce_page(state, top->id);

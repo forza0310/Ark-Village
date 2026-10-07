@@ -801,6 +801,22 @@
           "type": "std::map<std::uint64_t, std::vector<int>>"
         },
         {
+          "name": "facility_catalog_pages_initialized",
+          "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "facility_catalog_page_data",
+          "type": "std::map<std::uint64_t, std::array<int, 4>>"
+        },
+        {
+          "name": "facility_catalog_page_lists",
+          "type": "std::map<std::uint64_t, std::vector<int>>"
+        },
+        {
+          "name": "facility_catalog_page_parents",
+          "type": "std::map<std::uint64_t, std::uint64_t>"
+        },
+        {
           "name": "medal_count",
           "type": "int"
         },
@@ -3324,6 +3340,10 @@
           "type": "int"
         },
         {
+          "name": "icon",
+          "type": "int"
+        },
+        {
           "name": "level",
           "type": "int"
         },
@@ -3496,6 +3516,10 @@
         },
         {
           "name": "monster_definition",
+          "type": "std::optional<int>"
+        },
+        {
+          "name": "facility_definition",
           "type": "std::optional<int>"
         }
       ]

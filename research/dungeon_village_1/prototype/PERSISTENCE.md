@@ -37,6 +37,11 @@
 
 ## 文件布局与资源预算
 
+本批79／72／82新增Owner附属字段、脚本设施icon和页定义绑定，当前字段布局身份为
+`f6b3cd3c538d59b84fc44c41df44556ec3de78ae381d57efd91b211852b30eb1`。
+此前`0500cff0...`布局的自然晋级／扩张快照保留为旧批次证据，当前读器明确拒绝，不做迁移或修改原证书。
+同布局代码才能复用对应前缀；当前新增消费者的恢复／续跑由本批页面往返及短跨进程用例验收，未重新认证晚期前缀。
+
 所有协议整数小端，与原APK大端格式无兼容关系。外层依次为：
 
 1. 8字节`AVRSAVE1`；32位格式版本、状态语义版本、用途（1正常／2回放）。
@@ -81,7 +86,7 @@ Owner编码将整数字段规范为64位，布尔为1字节，float／double按I
 ## 回放命令与验收层级
 
 原持续测试参数、断言及黄金终点保留。新增选项仅作用于`natural_progression`和`natural_expansion`；其它自然控制器暂未提供文件恢复。
-当前晚期自然认证仅为晋级38000→38282；扩张420→840已三路认证短段接线，不能当作扩张晚期认证。
+历史布局的晋级38000→38282及扩张420→840三路结果保持各自版本；新增字段后当前晚期前缀尚未重新认证。
 `--save-at`和`--stop-at`均为原循环零基frame，文件存下一帧；`--trace-from`决定从哪一轮记录完整Session摘要和控制器规范字节。
 可选`--save-every N --save-directory <目录>`在正整数倍frame的同一轮末保存`prefix-<frame>.awr`，默认关闭，
 不会代替主认证点；独占发布，已有同名快照明确拒绝覆盖。首次生成较长前缀时可启用，失败后保留最近成功档和现场。
@@ -93,8 +98,10 @@ node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe resea
 # 扩张使用独立控制器；这是早期有界恢复检查，不含真实扩张里程碑。
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/expansion-replay --scenario natural_expansion
 # 首次中后期认证：只生成一次真实前缀，保持原38282黄金终点；成功后独占保留快照。
-node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay --save-at 38000 --stop-at complete --producer-revision <研究代码提交或源码指纹> --snapshot-file research/dungeon_village_1/work/snapshots/progression38000.awr --save-every 5000 --save-directory research/dungeon_village_1/work/snapshots/progression-prefixes
+# 以下38000历史文件已是旧布局；新布局生成须使用新的独占文件名，不能覆盖旧证据。
+node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay --save-at 38000 --stop-at complete --producer-revision <研究代码提交或源码指纹> --snapshot-file research/dungeon_village_1/work/snapshots/progression38000-f6b3.awr --save-every 5000 --save-directory research/dungeon_village_1/work/snapshots/progression-prefixes-f6b3
 # 已认证快照的后续复用，只运行相关尾段，不重新生成前缀。
+# 此历史命令只适用于对应旧布局代码；当前新布局会明确拒绝这个文件。
 & research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe natural_progression --load-file research/dungeon_village_1/work/snapshots/progression38000.awr --trace-file research/dungeon_village_1/work/validation/tail.trace
 ```
 
@@ -117,8 +124,10 @@ runner现支持从既有前缀继续生成新的参考尾段，源文件只读�
 
 ```powershell
 # 从已认证38000档继续，38001轮捕获新档，只比较38002轮；不重新生成38000前缀。
+# 历史入口验收命令：仅对应旧布局可运行，当前不迁移该源。
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay-resume --load-prefix research/dungeon_village_1/work/snapshots/progression38000.awr --save-at 38001 --stop-at 38002
 # 裸周期候选例：文件实际下一帧421，440轮新捕获、比较441至460；场景与源身份必须相符。
+# 此420候选亦属旧布局；当前调用应选择与当前codec身份相符的新候选。
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/candidate-resume --scenario natural_expansion --load-prefix research/dungeon_village_1/work/expansion-replay-assessment/periodic-candidates/prefix-420.awr --prefix-status candidate --prefix-next-frame 421 --save-at 440 --stop-at 460
 ```
 

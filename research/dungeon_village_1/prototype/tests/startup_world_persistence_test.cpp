@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_tools/archive.hpp"
@@ -6,9 +7,11 @@
 #include "startup_world_codec_checks.hpp"
 #include "startup_world_restore_checks.hpp"
 #include "startup_world_restore_validation.hpp"
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -105,6 +108,174 @@ std::vector<int> advance(StartupWorldRuntimeSession &s) {
         check(s.acknowledge_page(p.id) == StartupWorldRuntimeError::none,
               "natural confirm rejected");
     return s.take_sound_requests();
+}
+// 最小页面结构夹具，不注入资金、人物、日期或解锁；目录全来自真实稳定世界。
+void facility_catalog_replay(const StartupWorldRuntimeSession &baseline_session,
+                             const std::filesystem::path &dir,
+                             const StartupWorldSaveMetadata &metadata) {
+    using Action = StartupFacilityCatalogAction;
+    const auto &baseline = baseline_session.state();
+    const auto file = dir / "facility-catalog.avrs";
+    const auto reencoded = dir / "facility-catalog-roundtrip.avrs";
+    const auto broken = dir / "facility-catalog-bad.avrs";
+    const auto capture = [&](const StartupWorldRuntimeState &state, const char *scenario) {
+        // 现有独立段替换只准备结构夹具，经真实读器校验后才得到私有Session；
+        // 不增加测试安装接口，不把被测编码结果用作业务期望。
+        const auto seed_file = save_startup_world_file(reencoded, baseline_session, metadata);
+        check(seed_file.ok, std::string(scenario) + " baseline fixture: " + seed_file.error);
+        write(broken, replace_state(read(reencoded), state));
+        auto fixture = load_startup_world_file(broken, startup_world_rules(), metadata.purpose,
+                                               metadata.controller_id);
+        check(fixture.snapshot.has_value(), std::string(scenario) + " fixture validate: " + fixture.error);
+        auto source = std::move(fixture.snapshot->session);
+        check(startup_world_state_digest(source.state()) == startup_world_state_digest(state),
+              std::string(scenario) + " independent state fixture preserved");
+        const auto digest = startup_world_session_digest(source);
+        const auto saved = save_startup_world_file(file, source, metadata);
+        check(saved.ok, std::string(scenario) + " capture: " + saved.error);
+        check(startup_world_session_digest(source) == digest,
+              std::string(scenario) + " capture consumes no state/random");
+        auto load = load_startup_world_file(file, startup_world_rules(), metadata.purpose,
+                                            metadata.controller_id);
+        check(load.snapshot.has_value(), std::string(scenario) + " restore: " + load.error);
+        check(startup_world_session_digest(load.snapshot->session) == digest,
+              std::string(scenario) + " complete state/session roundtrip");
+        check(save_startup_world_file(reencoded, load.snapshot->session, load.snapshot->metadata).ok &&
+                  read(reencoded) == read(file),
+              std::string(scenario) + " canonical file bytes preserved");
+        return load.snapshot->session.state();
+    };
+    const auto equal = [&](const auto &reference, const auto &restored, const char *scenario) {
+        check(startup_world_state_digest(reference) == startup_world_state_digest(restored),
+              std::string(scenario) + " full state/random/output same after input");
+    };
+    const auto command = [&](auto &state, std::uint64_t id, Action action, const char *scenario) {
+        check(act_startup_world_facility_catalog_page(state, id, action) ==
+                  StartupWorldRuntimeError::none,
+              std::string(scenario) + " command accepted");
+    };
+    auto goods = baseline;
+    ref::WorldScriptPage page;
+    page.id = goods.scripts.next_page_id++;
+    page.kind = ref::WorldScriptPageKind::raw_page;
+    page.legacy_page = 79;
+    page.lifecycle = 0;
+    page.legacy_f = 1;
+    goods.scripts.pages.push_back(page);
+    check(initialize_startup_world_facility_catalog_pages(goods), "initialize goods79 fixture");
+    goods.scripts.pages.back().lifecycle = 2;
+    command(goods, page.id, Action::next_tab, "goods79 nondefault phase");
+    auto restored = capture(goods, "goods79");
+    for (auto *state : {&goods, &restored}) {
+        command(*state, page.id, Action::inspect, "goods79 open information72");
+        check(initialize_startup_world_facility_catalog_pages(*state), "initialize actual child72");
+        state->scripts.pages.back().lifecycle = 2;
+    }
+    equal(goods, restored, "restored79 opens same72");
+    const auto child = goods.scripts.pages.back().id;
+    check(goods.facility_catalog_page_parents.at(child) == page.id &&
+              goods.scripts.pages.back().legacy_page == 72,
+          "actual information child binds live79");
+    auto restored_child = capture(goods, "information72");
+    for (auto *state : {&goods, &restored_child}) {
+        command(*state, child, Action::next_tab, "information72 browse");
+        command(*state, child, Action::cancel, "information72 close");
+        command(*state, page.id, Action::confirm, "goods79 confirm and retire");
+    }
+    equal(goods, restored_child, "restored72 continues and returns to79");
+    check(goods.scripts.pages.back().lifecycle == 4 && goods.facility_catalog_pages_initialized.count(page.id),
+          "79/72 close marks retirement without pretending the next framework entry already ran");
+    check(std::all_of(goods.catalog.begin(), goods.catalog.end(), [](const auto &v) {
+              return v.first.first != 1 || !v.second.newly_unlocked;
+          }), "79 clears full weapon category NEW after restore");
+    check(goods.scene.random.draws() == baseline.scene.random.draws() &&
+              goods.scene.world.world.ai.accounting.funds() ==
+                  baseline.scene.world.world.ai.accounting.funds(),
+          "79/72 information and close have no draw or payment");
+    for (auto *state : {&goods, &restored_child}) {
+        const auto retired = prepare_startup_world_runtime(*state);
+        check(retired.candidate.has_value(), "79/72 actual framework retirement succeeds");
+        *state = *retired.candidate;
+    }
+    equal(goods, restored_child, "restored72 retires at the same framework entry");
+    check(goods.facility_catalog_pages_initialized.empty() &&
+              goods.facility_catalog_page_data.empty() && goods.facility_catalog_page_lists.empty() &&
+              goods.facility_catalog_page_parents.empty(),
+          "79/72 next framework entry retires every catalogue payload");
+
+    auto praise = baseline;
+    const auto definition = std::find_if(praise.rules->facilities.begin(), praise.rules->facilities.end(),
+                                         [](const auto &v) { return v.legacy_icon == 2; });
+    check(definition != praise.rules->facilities.end(), "fixed table icon2 animation source");
+    ref::WorldScriptPage animation;
+    animation.id = praise.scripts.next_page_id++;
+    animation.kind = ref::WorldScriptPageKind::raw_page;
+    animation.legacy_page = 82;
+    animation.lifecycle = 0;
+    animation.legacy_f = 0;
+    animation.facility_definition = definition->id;
+    praise.scripts.pages.push_back(animation);
+    check(initialize_startup_world_facility_catalog_pages(praise), "initialize animation82 fixture");
+    praise.scripts.pages.back().lifecycle = 2;
+    praise.page_counters.at(animation.id) = 23; // 稳定等待结构夹具，不冒充自然演出可达证据。
+    auto restored_first = capture(praise, "animation82 first phase");
+    for (auto *state : {&praise, &restored_first}) {
+        command(*state, animation.id, Action::confirm, "animation82 fast forward first");
+        command(*state, animation.id, Action::confirm, "animation82 enter second phase");
+    }
+    equal(praise, restored_first, "restored82 preserves phase transition");
+    check(praise.page_phases.at(animation.id) == 1 && praise.page_counters.at(animation.id) == 0,
+          "82 second phase resets counter before deferred reward");
+    praise.page_counters.at(animation.id) = 17;
+    auto restored_second = capture(praise, "animation82 second phase");
+    const auto queue = baseline.scene.world.popularity_queue;
+    for (auto *state : {&praise, &restored_second}) {
+        command(*state, animation.id, Action::confirm, "animation82 fast forward second");
+        command(*state, animation.id, Action::confirm, "animation82 finish");
+    }
+    equal(praise, restored_second, "restored82 completes with one deferred reward");
+    check(praise.scene.world.popularity_queue.size() == queue.size() + 1 &&
+              praise.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
+              std::equal(queue.begin(), queue.end(), praise.scene.world.popularity_queue.begin() + 1),
+          "82 queues exact10/20/1 once and preserves original pending order");
+    check(praise.popularity == baseline.popularity &&
+              praise.scene.random.draws() == baseline.scene.random.draws(),
+          "82 retirement changes neither immediate popularity nor random");
+    const auto retired_digest = startup_world_state_digest(praise);
+    check(act_startup_world_facility_catalog_page(praise, animation.id, Action::confirm) ==
+              StartupWorldRuntimeError::invalid_page &&
+              startup_world_state_digest(praise) == retired_digest,
+          "restored82 cannot queue reward twice after retirement");
+    for (auto *state : {&praise, &restored_second}) {
+        const auto retired = prepare_startup_world_runtime(*state);
+        check(retired.candidate.has_value(), "82 actual framework retirement succeeds");
+        *state = *retired.candidate;
+    }
+    equal(praise, restored_second, "restored82 preserves subsequent world consumption");
+    check(praise.facility_catalog_pages_initialized.empty() &&
+              praise.facility_catalog_page_data.empty() && praise.facility_catalog_page_lists.empty() &&
+              praise.facility_catalog_page_parents.empty(), "82 next framework entry retires all page payloads");
+
+    // 旧布局身份独立改header并重签整文件，拒绝必须来自布局身份而非损坏摘要。
+    auto old_layout = read(file);
+    std::size_t at = 20;
+    skip_text(old_layout, at);
+    const auto length = number(old_layout, at, 4);
+    const std::string old_schema = "0500cff0cd937c6967836c6bf7c594ff43dd64c23f408e7ea9188e4fc3423403";
+    check(length == old_schema.size() &&
+              std::string(old_layout.begin() + static_cast<std::ptrdiff_t>(at),
+                          old_layout.begin() + static_cast<std::ptrdiff_t>(at + length)) != old_schema,
+          "new79/72/82 fields produce a distinct schema identity");
+    std::copy(old_schema.begin(), old_schema.end(), old_layout.begin() + static_cast<std::ptrdiff_t>(at));
+    resign(old_layout);
+    write(broken, old_layout);
+    const auto refused = load_startup_world_file(broken, startup_world_rules(), metadata.purpose,
+                                                 metadata.controller_id);
+    check(!refused.snapshot && refused.error.find("状态字段布局不兼容") != std::string::npos,
+          "prior-layout save explicitly rejected without migration: " + refused.error);
+    std::filesystem::remove(file);
+    std::filesystem::remove(reencoded);
+    std::filesystem::remove(broken);
 }
 void run(const std::filesystem::path &dir) {
     std::filesystem::create_directories(dir);
@@ -245,6 +416,8 @@ void run(const std::filesystem::path &dir) {
                                       metadata.controller_id);
     check(!refused.snapshot && refused.error.find("状态拒绝") != std::string::npos,
           "initialized missing counter rejected: " + refused.error);
+
+    facility_catalog_replay(session, dir, metadata);
 
     const auto normal_before = read(normal);
 #ifdef _WIN32

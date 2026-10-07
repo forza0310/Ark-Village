@@ -340,6 +340,19 @@ research/dungeon_village_1/work/release/bin/dungeon_village_prototype --inspect-
 框架调用链纠正了旧“栈顶更新前限速”的解释：更新路径先返回，下一g才限速/刷新输入/绘制。
 纯等待数值函数未变；不能把其门槛应用在每个1/2逻辑轮之前。
 
+## 设施商品与口碑页面
+
+[startup_world_facility_catalog.hpp](include/dungeon_village_prototype/startup_world_facility_catalog.hpp)及其实现维护79商品目录、
+72装备信息与82两段口碑演出；它属于既有唯一世界target，无raylib依赖。
+四个附属字段保存初始化、目录／选择／首行、绑定与真实父页，共用计数／phase；
+关闭提示及I请求在Owner候选提交，下一框架入口退休载荷。详细合同见[商品](../rules/COMMERCE.md#设施商品79来源已核维护消费者待接)、
+[演出](../rules/FACILITY_EFFECTS.md#设施程序40与演出82来源已核维护消费者待接)。
+
+研究窗口方向键选择／翻页，I查看信息，Enter及Escape调用各原页面消费者；82返回和确认同路径，不能取消奖励。
+`--world --inspect-page world-goods --frames 8`及`world-equipment-info`从真实新局现存武器店74进入79／72；
+没有现存实例时只按真实建设／施工继续，拒绝不补资金或实体。它们是有界维护路径检查，不是原APK动态或OS输入。
+全部窗口仍需可用中文字体，原图标和动画并未随本批完整还原。
+
 ## 旧夹具
 
 `--fixture`显式进入旧7×7场景；`--demo`隐含该模式并自动退出。

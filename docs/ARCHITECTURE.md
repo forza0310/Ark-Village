@@ -8,6 +8,8 @@
 
 研究覆盖、产品接入和原版一致性分别验收。持续世界及任务闭环已有历史验收；此前e8接入已实现五项菜单中的建设/冒险、当前世界建设与设施交互、任务管理、完整授勋操作和晋级页面。系统仅开放稳定主场景两栏手动存读档；2b479f6接续开放村办类型0/1/2、奖励95、普通道具/设施强化及按flag16开放的南瓜商会，898b653继续开放类型3地图扩张。情报和其余未交付操作仍禁用。具体差异集中在 [原版对照](reference/REFERENCE_CHECKLIST.md)与 [研究需求](reference/RESEARCH_REQUESTS.md)。阶段历史保留在 [B1记录](stages/B1-playable-prototype.md)。
 
+2026-10-07工程审阅确认当前Owner/线程/依赖主链可继续演进；维护存取目标分离、桌面协调器职责和字段分类防漏等为待实施建议，未改变下述现架构。具体发现/验收见[PRODUCT_REVIEW](PRODUCT_REVIEW.md)，研究历史与可接范围见[当前审计](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)。
+
 ## 三层结构
 
 按用户最新决定，试玩固定一倍速，已移除切换按钮、world-speed窗口入口及旧切片Tab切换。加载沿用当前会话速度；源规则与无窗口显式速度组合回归仍保留，历史速度字段不要求改格式。

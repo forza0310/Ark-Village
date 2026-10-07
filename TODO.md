@@ -2,6 +2,10 @@
 
 ## 当前状态
 
+- [x] 整理正式研究历史与产品工程审阅（2026-10-07）：按e7f441f核对实际代码，研究补审至aa38825，修正过期菜单/道路/道具/扩张/存档现状与legacy说明。发现6项P2、4项P3，独立CMake失效已定向复现；本批仅文档/审阅，未改实现或重跑游戏回归，见[当前接入候选](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit)和[工程审阅](docs/PRODUCT_REVIEW.md)。
+- [ ] 工程维护候选：先失效入口/普通试玩统计/窄SHA接口，再独立维护存取target与协调器职责、玩家字段防漏；按审阅具体批次确认后编码，不改唯一Owner/源协议或恢复重复库缓存。
+- [ ] 稳定UI下一批候选：设施74名称/大图/经营值/等级/MAX/剩余人数/维护费，再道具75已证布局；逐来源奖励行和类别9/7图标补最小合同，探索底栏先设计Owner/随机消费。见[精确边界](docs/reference/RESEARCH_REQUESTS.md#facility-details-display-gap)。
+
 - [x] 更新本地/CI测试分工：保留四套配置，取消每阶段强制四套；默认本地desktop-debug测试（排除三个月）、CI desktop-release完整测试及唯一玩家游戏包，headless-debug用于核心边界、headless-release用于按需长模拟，见[ADR-0045](docs/MILESTONES.md#adr-0045)。本次仅文档检查。
 
 - [x] 修复Windows建设旋转退出：单帧入住募集/住宅素材在第二逻辑朝向复用唯一图像，预览与建成地表共用；四套602项标准CTest、两朝向预览及旋转建成窗口通过，见[B1记录](docs/stages/B1-playable-prototype.md#build-rotation-fix)。原版单帧朝向外观另待研究。

@@ -1,5 +1,7 @@
 # people
 
+本目录属于显式ark_game/legacy-slice及初局诊断；默认持续世界的人物/AI/战斗/任务消费者在src/simulation。下文“正常Game”“尚未接完整世界”等描述限定这个旧诊断模型，不作为默认产品待办。当前工程审阅见[PRODUCT_REVIEW](../../docs/PRODUCT_REVIEW.md)。
+
 公开接口`include/ark/people/adventurer.hpp`区分定义ID与场景UID，保留首访职业、属性、装备和HP。
 first_visit按已证初值创建角色，标志为2|8192，位置为出生格中心，pending_activity保留0；出生点由app选择，UI不能注入属性。
 人物先创建再触发对话；住宅入住、任务征集与使用设施的到达均不是这里的招募。

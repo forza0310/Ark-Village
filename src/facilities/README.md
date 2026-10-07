@@ -1,5 +1,7 @@
 # facilities
 
+本目录属于显式ark_game/legacy-slice及初局诊断；默认持续世界的设施/经营/地图编辑/任务消费者在src/simulation。下文接入限制限定旧诊断模型；新默认世界功能不能写入本目录补接。当前工程审阅见[PRODUCT_REVIEW](../../docs/PRODUCT_REVIEW.md)。
+
 公开接口`include/ark/facilities`区分不可变设施、定义共享等级/改良/使用累计/提示位、实例和有序占地绑定。
 footprint保留1/2/4格两朝向顺序和分片编号，不按屏幕旋转矩形，不增加接路前置。
 当前可建目录只有单格；多格底层契约已有测试，双格旅店/咖啡厅按真实初局保持未开放。

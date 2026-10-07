@@ -16,6 +16,7 @@
 | kairo_table_inspect / table_inspect | 设施表字段投影与检查 | 不修改源表 |
 | kairo_asset_publish / publish_assets | 确定性发布清单、原始视觉文件和七个逻辑键 | 源哈希、PNG头/帧与SEB绑定核对；像素解码由原型素材测试负责 |
 | kairo_save_inspect / original_save | 原APK／Steam记录外壳与tag容器的只读检查、差分 | [原档工具](ORIGINAL_SAVE.md)；平台key与null协议分开，不导入维护Owner或写回原档 |
+| original_save_audit | 显式profile的25分区边界、计数、引用与日期条件审计 | 缺目标只诊断；不修复、推进世界或认证原加载成功；复用archive测试套件 |
 
 解析失败通过异常报告，不返回部分解析成功结果；文件写入拒绝覆盖不同内容。
 APK、源素材和生成 Java 保持只读，工具输出到独立工作目录。地图文件内部格式尚未作为本包交付。

@@ -428,7 +428,8 @@ ConvertExtension只替换.gif／.mld，数字记录名不加扩展。实际目�
 这是“序列化目标集合中缺失”，不自动判坏档，也不以工具补实体；原加载可能省略缺引用，实际动态结果待验。
 投射物两样本均为空，来源／目标域尚不作为已验覆盖，完整几何／旧版本修复亦未验证。
 最小诊断与限制见[内层端点研究](../work/original-save-analysis/apk/SAMPLE_LAYOUT.md)。
-维护CLI仍将业务段作为opaque报告；该内层研究探针不冒充已交付通用原档加载器。
+上述批次的CLI仅报告opaque分区；后续[显式profile审计](../tools/ORIGINAL_SAVE.md#25分区只读审计)已将已核布局和引用接入维护工具。
+审计与内层探针均不执行原恢复，也不冒充通用原档加载器。
 
 ## 原版恢复合同：缺失引用、冒泡与日历（2026-10-07）
 
@@ -487,7 +488,9 @@ APK标题加载成功后切主场景，场景初始化调用a(0)，重置scene�
 Steam对应链已经独立核到`TitleForm.ContinueGame→LoadGame→ChangeCurrentForm`、`GameForm.Init→ChangeState(0)`；
 普通`GameForm._update`先调用UserData.Update，尾部才`ProgressTime(FRAME_TIME1,frameCount)`。
 ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调用SaveGame(true)，恢复试加值后才monthCnt++及周／月／年消费者。
-本轮未闭合FRAME_TIME1所有赋值，不把APK的27无条件套到Steam全部配置。
+后续无窗口补证已核`AppData..cctor`：VA `0x10268FE8`写DAY_SECOND1=80，
+`0x10268FF7`—`0x10269008`按43200/(80×20)得FRAME_TIME1=27。
+这是Steam默认初始化的直接证据；全部运行期赋值仍未闭合，不把27无条件套到全部配置。
 
 原保存位置包含已推进世界与未推进日历，但没有执行游标；读档后重新进入完整更新链，因而不等于精确尾段重放。
 实体动作、资金等已经持久化，不能由多一次世界函数调用就断言同一笔收费或奖励必然重复；
@@ -499,7 +502,19 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
   但已经足以否定“所有中断槽记录必定来自10800边界”。现存10773/10773与日历保存相容，不独自证明来源。
 - `LoadGame`先NewGame和写系统选择，再安装待加载Property后读取，仍非候选成功才提交的事务。
   此外它扫描UserData.tpClear_的年／月记录；若root年月落后于最大记录，则把年／月改为该记录值，局部未改周/time/oldtime。
-  前置NewGame临时time初值不等于读入后time被强制归零；本轮尚未实跑两档是否触发年月修正。
+  前置NewGame临时time初值不等于读入后time被强制归零；两档的条件已由后续只读审计核验，尚未原程序动态加载。
+
+无窗口续批进一步核到`IApplication.OnApplicationPause(true)`经虚槽10到`Main.OnSuspend`，后者只调用共享空实现后返回；
+`OnApplicationQuit`经槽14到`Main.OnDestroy`，后者构造委托交给`RunOnUiThread(wait=true)`，委托目标尚未闭合。
+因此不能称Main暂停覆盖直接执行SaveAll，也不能据此断言整个暂停／退出链绝不保存。
+全可执行区直接E8/E9调用没有SaveAll命中，但它是18号虚方法，零直接引用不等于不可达；
+具体VA、候选排除与方法预算见[静态续批证据](../work/headless-save-audit-analysis/steam-static/README.md)。
+
+后续只读审计确认`tpClear_`对应UserData的`J[2][7][2]`，不是I队列；APK `d/a.java:1774,2234`亦有年月纠正分支。
+原代码最大年月索引初始0、候选行索引初始0，遍历时只在严格更大时更新候选，比较按int32的`year*12+month`。
+全部记录非正且根索引为负的极端输入仍取J首行，不人为合成0/0；工具只报告候选，不改原值。
+两份实样的最大记录均为零基1年11月，索引23；0001根2年5月索引29、0003根2年4月索引28，均不满足纠正条件。
+这是对保存字节的条件核验，不能写成已观察原游戏加载后的日期。
 
 完整定位见[APK日历入口](../work/restore-behavior-analysis/apk-calendar/README.md)和[Steam日历交叉](../work/restore-behavior-analysis/steam-calendar/README.md)。
 下一次动态验收须先恢复可操作窗口并确认存储隔离，再分别观察消失中遭遇、非空p档及中断边界；不得在原件上试写或用静态推论替代实际结果。

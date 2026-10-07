@@ -62,6 +62,23 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 ## 恢复行为交叉证据（2026-10-07）
 
+无窗口续批将已核25分区／引用合同接入[审计工具](tools/ORIGINAL_SAVE.md#25分区只读审计)，
+新增[Steam静态补证](work/headless-save-audit-analysis/steam-static/README.md)：24个明确方法共45,664字节，
+另复用既有LoadGame 20,544字节与16字节共享空入口。默认步长27有初始化指令证据；完整运行期写入及退出委托仍未闭合。
+两份既有游戏档的50段／28引用组与独立Node探针一致，年月纠正条件均为false；没有运行原游戏或生成动态新档。
+
+| 无窗口续批证据（相对work） | SHA-256 |
+| --- | --- |
+| headless-save-audit-analysis/steam-static/manifest.json | `db61bd97e7f7bad9379d427bfda7b86b6a12bf5de98b0ad4c0096dff8721d5f3` |
+| headless-save-audit-analysis/steam-static/disassembly.json | `b167cbdf31f29c6320b80e79996251fba276eb277eec7af7023fdc493d4959c4` |
+| headless-save-audit-analysis/steam-static/evidence.json | `c5913a24a44f15ab656fabd90e76085750a70393c0dd9f57f3fb3ce33cda1597` |
+| headless-save-audit-analysis/steam-static/save-xrefs.json | `6b31f98ac90c12cfaae63fa1b5a6e12aca3be735d45cb430e6f4e40f59986417` |
+| original-save-analysis/audit-cli-validation.json | `62e1e20633e82756e48fcdb598e12f5c7dfe197114d550924fc152aee852dbf8` |
+| original-save-analysis/audit-calendar-crosscheck.json | `cbcd278b6c0c9eb3abda4f3334f7f1576bc2f7a942ce3c5b57975b9f6a46a32c` |
+
+审计只输出无账号／key／名字的数值、计数、哈希和有界缺引用值；原字节未写回，原件与密文副本前后哈希一致。
+原游戏动态交给用户的另一对话，实验提示词与反馈模板留在`work/window-restore-observation/`，不将准备实验写成已验证。
+
 用户继续迭代，沿既有只读副本与脱敏摘要保存授权，新增[恢复合同](rules/PERSISTENCE.md#原版恢复合同缺失引用冒泡与日历2026-10-07)。
 原APK／Steam输入身份均未变；窗口native pipe不可用，本轮未运行原游戏或写回存档。
 APK日历仅复用既有普通／低层文件，设施局部来源为`c/m.java`与`a/o.java`；Steam只读明确方法范围。

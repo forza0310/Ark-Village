@@ -42,7 +42,9 @@
 
 认证复制档大小35087165及源SHA保持不变，双尾段232368字节/trace SHA为e025e55a28213f20074470811709e4e0f9e95594878c13100b4e705d0d64c893；最终38282帧/23388G/322697抽/154284检查，与原自然终点一致。实际末帧全Session摘要7dc62e131517f2c08d04f517251493742097002655161e9877cd5e722d16b5a6。认证的是已发布前缀资格下的产品x64读取/尾段，本批没有从新局重跑38000前缀；并发构建/测试环境下的耗时不是新性能收益测量。新hash DLL实际AMD64依赖和共享export已核对，发布脚本递归imports可自动收包；本批未生成新ZIP、未执行UI/OS输入或原版窗口对照。
 
-证据位于build/validation/research-524415a（配置/构建/标准日志、source/frozen、认证档副本/双trace及product-certificate），工具证据位于build/validation/persistence524-tools。标准三个月注册/参数/断言保留，本批未重复本地Debug/Release三个月、年度/自然扩张完整长链；CI完整desktop-release待验证，未推送/发布。验收期间research原档工具及证据有另一会话在途修改，未消费、清理或夹带。
+证据位于build/validation/research-524415a（配置/构建/标准日志、source/frozen、认证档副本/双trace及product-certificate），工具证据位于build/validation/persistence524-tools。标准三个月注册/参数/断言保留，本批未重复本地Debug/Release三个月、年度/自然扩张完整长链；CI完整desktop-release待验证，未推送/发布。验收期间research原档工具及证据由另一会话维护；产品未消费其在途内容、清理或夹带。产品checkpoint为a391d05，全部44项为产品文件。
+
+收口时研究正式发布c52b5a2，已只读审阅提交与ORIGINAL_SAVE/Steam证据：新增有界原记录外壳/tag容器解析与差分，APK44字节key和SteamID小端8字节key分开、Steam null与空记录分开，工具不恢复Owner/业务引用、不写回或迁移原档。实际样本/账号内容仅保留研究忽略目录，产品不复制。该提交没有改动本批354项冻结输入，固定APK规则基线/玩家档政策不变；只读工具属于research维护工具，不打包进玩家游戏。产品对照登记这个已发布范围，不能宣称原APK/Steam加载兼容或Steam目标迁移。此补充仅文档审计，不重复游戏回归。
 
 <a id="research-898b653-design"></a>
 

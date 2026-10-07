@@ -31,6 +31,7 @@
 
 ## 后续产品接入
 
+- [x] 核对收口时新发布c52b5a2：原APK/Steam记录的只读外壳/tag结构检查与样本证据已经交付，未改动产品354项冻结输入；保持研究维护工具边界，不增加原档兼容/迁移或切换Steam规则，见[B1](docs/stages/B1-playable-prototype.md#research-524415a-design)。此项仅文档审计。
 - [x] 接入正式研究898b653：用户明确批准后冻结332项，五项同义性能补丁由已发布实现替代；扩张UI/FIFO、道路混合绑定、schema2新数据集及存读续跑已接。两套Debug标准覆盖308项（排除三个月，夹具修正后定向复验）、Release三个月及四窗口通过；CI待验证。见[B1](docs/stages/B1-playable-prototype.md#research-898b653-design)。
 - [x] 接入524415a维护存取/精确回放：冻结354项完整闭包、独立SHA256和normal/replay接口；两套Debug标准316项（排除三个月）、短三进程/字段覆盖及Release认证双尾段通过，纯系统PATH --check通过，CI待验证。用户选择保留玩家ARKSAVE1/schema2及随机/历史政策，新完整格式先用于维护和测试，见[B1](docs/stages/B1-playable-prototype.md#research-524415a-design)。
 - [x] 并行产品输入审阅与增长性能采样：修复隐藏旋转按钮吞地图点击，desktop-debug166项及两尺寸Release渲染通过；12000帧定位prepare内部热点，保持生产所有权契约。采样并发限制/2500帧对照范围见[B1](docs/stages/B1-playable-prototype.md#pc-input-performance)。

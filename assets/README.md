@@ -1,7 +1,8 @@
 # 运行资源
 
 新增新局静态数据、源地图PNG/SEB、初期建筑、农家人物、秘书与窗底。
-616份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
+619份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
+标题入口新增`title/`背景、236×115 Logo和98×68书本按钮三份原PNG；S038–S040仅参考布局，不把截图或Steam标志/版本信息当作运行资源。
 完整世界新增human/monster/image/common的维护目录副本，由scripts/import_world_assets.mjs原样复制；包含职业/性别图集、全部动作SEB、怪物体型与地图设施，不用农家图片代替所有人物。
 simulation保存完整世界独立发布数据及源码来源清单，构建期生成目录/脚本；与现有data切片版本分别校验，不在运行时互相覆盖。
 人物行走使用human/walk00..03四套原始SEB与同一农家图集；每方向四帧、独立24像素行、统一脚底锚点，启动时校验全部16帧，无运行时research依赖。
@@ -19,4 +20,4 @@ STATE.json与本批维护数据同步；快照包括576格/8实例，逻辑、�
 源归档/版本证据见research的EVIDENCE与ASSETS。仅用于用户授权的本地学习。
 运行读取程序旁assets副本，不读取research或APK；用户视频截图不是产品纹理。
 
-中文字体未复制/分发；macOS默认系统Arial Unicode.ttf，其他环境用`--font`指定中文TTF。
+Windows玩家包附带Noto中文子集与许可；构建清单和运行图集共用生成字形需求，显式`--font`可覆盖。历史macOS字体发现只属于保留的平台适配。

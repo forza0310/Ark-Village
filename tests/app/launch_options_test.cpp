@@ -102,6 +102,13 @@ int main() {
     check(!parse_arguments({"--legacy-slice", "--inspect-page", "world-commerce-suite", "--frames",
                             "8", "--screenshot", "suite.png"})
                .options);
+    for (const auto *page : {"world-title", "world-title-slots", "world-title-actions"}) {
+        const auto title = parse_arguments({"--inspect-page", page, "--frames", "8"});
+        check(title.options && title.options->world && title.options->inspect_page == page);
+        check(!parse_arguments({"--inspect-page", page}).options);
+        check(
+            !parse_arguments({"--legacy-slice", "--inspect-page", page, "--frames", "8"}).options);
+    }
     check(parse_arguments({"--paused", "--font", "a.ttf"}).options->paused);
     check(parse_arguments({"--font", "a.ttf"}).options->font == "a.ttf");
     check(parse_arguments({"--zoom-percent", "150"}).options->zoom_percent == 150);

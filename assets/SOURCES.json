@@ -4310,6 +4310,33 @@
       "bytes": 88
     },
     {
+      "file": "title/title_logo.png",
+      "source": "research/dungeon_village_1/assets/original/title/title_logo.png",
+      "sha256": "9e8e90d9b1ed405c2019d90555f8da275d54df61502e42c6c1de18b4ddf72d97",
+      "bytes": 84046,
+      "width": 236,
+      "height": 115,
+      "purpose": "Title background, logo and book menu; S038 layout reference"
+    },
+    {
+      "file": "title/title_window.png",
+      "source": "research/dungeon_village_1/assets/original/title/title_window.png",
+      "sha256": "65e082c57f226bd516033390556e669eca2815bdc90f55bf7010054ec7dacdc4",
+      "bytes": 5533,
+      "width": 98,
+      "height": 68,
+      "purpose": "Title background, logo and book menu; S038 layout reference"
+    },
+    {
+      "file": "title/title00.png",
+      "source": "research/dungeon_village_1/assets/original/title/title00.png",
+      "sha256": "bfd506538ad546e671e33519a51b23941a09d6cb98c4398b688df5afab85f3a5",
+      "bytes": 94947,
+      "width": 240,
+      "height": 330,
+      "purpose": "Title background, logo and book menu; S038 layout reference"
+    },
+    {
       "file": "ui/wnd_back.png",
       "source": "research/dungeon_village_1/assets/original/common/wnd_back.png",
       "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",

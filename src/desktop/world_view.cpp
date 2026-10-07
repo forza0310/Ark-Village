@@ -12,6 +12,7 @@
 #include "ui/world_panels.hpp"
 #include "ui/world_reports.hpp"
 #include "ui/world_tasks.hpp"
+#include "world_canvas.hpp"
 #include "world_inspection.hpp"
 #include "world_management.hpp"
 #include "world_management_inspection.hpp"
@@ -19,6 +20,7 @@
 #include "world_render_statistics.hpp"
 #include "world_save_menu.hpp"
 #include "world_scene.hpp"
+#include "world_title.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -43,26 +45,6 @@ struct WorldWindow {
         SetTargetFPS(0);
     }
     ~WorldWindow() { CloseWindow(); }
-};
-struct WorldCanvas {
-    RenderTexture2D texture{};
-    Extent size{};
-    ~WorldCanvas() {
-        if (texture.id)
-            UnloadRenderTexture(texture);
-    }
-    void resize(Extent next) {
-        if (texture.id && next.width == size.width && next.height == size.height)
-            return;
-        auto created = LoadRenderTexture(next.width, next.height);
-        if (!created.id)
-            throw std::runtime_error("Cannot allocate world framebuffer");
-        SetTextureFilter(created.texture, TEXTURE_FILTER_POINT);
-        if (texture.id)
-            UnloadRenderTexture(texture);
-        texture = created;
-        size = next;
-    }
 };
 const rules::WorldScriptPage *active_page(const State &s) {
     const auto found = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
@@ -106,6 +88,15 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     }();
     // Visibility affects source decisions, so inspection uses the actual window before any round.
     state.reference_viewport = world_viewport(extent, zoom);
+    const bool title_inspection = options.inspect_page.rfind("world-title", 0) == 0;
+    if (title_inspection || (options.inspect_page.empty() && options.frames == 0)) {
+        state.scene.framework_paused = options.paused;
+        state.scene.speed_setting = 0;
+        if (!run_world_title(options, assets, state))
+            return;
+        extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+        state.reference_viewport = world_viewport(extent, zoom);
+    }
     const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
     const bool menu_inspection =
         options.inspect_page == "world-menu" || options.inspect_page == "world-village-menu";

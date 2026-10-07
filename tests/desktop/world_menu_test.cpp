@@ -3,7 +3,9 @@
 #include "support/world_fixture.hpp"
 #include "ui/world_menu.hpp"
 #include "world_save_menu.hpp"
+#include "world_title.hpp"
 #include <chrono>
+#include <fstream>
 #include <iostream>
 
 namespace ark::test {
@@ -12,6 +14,89 @@ void world_menu() {
     namespace ui = desktop::ui;
     using Intent = ui::WorldMenuIntent;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
+    // Title/slot navigation shares this menu suite. Rule and codec combinations remain in
+    // world_save; this verifies the new cold-entry boundary and its actual file re-read.
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+        using Page = desktop::WorldTitlePage;
+        using Action = desktop::WorldTitleAction;
+        auto boxes = desktop::world_title_layout(extent);
+        desktop::WorldTitleSelection selection;
+        std::array<app::WorldSaveSlotInfo, 2> slots{};
+        desktop::WorldTitleInput input;
+        input.click = middle(boxes.records);
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::title,
+              "Unimplemented records cannot start a game or mutate a slot");
+        input.click = middle(boxes.start);
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::slots,
+              "Start opens slots without advancing or starting a world");
+        input.click = middle(boxes.slots[1]);
+        check(desktop::world_title_input(selection, boxes, slots, input) == Action::new_game &&
+                  selection.slot == 1,
+              "An empty manual slot requests a fresh world");
+        slots[1].exists = true;
+        slots[1].metadata = app::WorldSaveMetadata{};
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::actions,
+              "An occupied manual slot opens its submenu before continuing");
+        input.click = middle(boxes.actions[2]);
+        check(!desktop::world_title_input(selection, boxes, slots, input),
+              "Disabled deletion has no file or start action");
+        input.click = middle(boxes.actions[0]);
+        check(desktop::world_title_input(selection, boxes, slots, input) == Action::load,
+              "Continue requests the selected manual file only");
+        slots[1].error = app::WorldSaveError::malformed;
+        check(!desktop::world_title_input(selection, boxes, slots, input),
+              "A now-invalid directory entry cannot continue from stale metadata");
+        input.click = middle(boxes.actions[1]);
+        check(desktop::world_title_input(selection, boxes, slots, input) == Action::new_game,
+              "New game remains independent of an unreadable old file");
+        input = {};
+        input.back = true;
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::slots,
+              "Right/back closes only the manual submenu");
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::title,
+              "Second back returns to title");
+        check(boxes.book.x + boxes.book.width <= extent.width &&
+                  boxes.book.y + boxes.book.height <= extent.height &&
+                  boxes.slots[1].y + boxes.slots[1].height <= boxes.back.y,
+              "Book and slots fit the smallest viewport without footer overlap");
+    }
+    {
+        const auto directory =
+            std::filesystem::current_path() /
+            ("title-save-test-" +
+             std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+        auto saved = initial_world(1);
+        const auto image = app::capture_world_save(saved);
+        check(image.image.has_value(), "Title test uses a valid player image");
+        check(app::write_world_save_slot(directory, 1, *image.image).error ==
+                  app::WorldSaveError::none,
+              "Write isolated title manual slot");
+        auto initial = initial_world(77);
+        initial.scene.framework_paused = true;
+        initial.scene.random.draw(19);
+        auto expected_random = initial.scene.random;
+        std::string reason;
+        check(
+            desktop::load_world_title_slot(directory, 1, initial, reason) &&
+                initial.scene.framework_paused && same_world_clock(initial, saved) &&
+                initial.scene.random.draw(197).ticket == expected_random.draw(197).ticket,
+            "Cold continue installs validated save without updates and retains fresh random/pause");
+        const auto before = initial;
+        std::ofstream(app::world_save_slot_path(directory, 1), std::ios::binary | std::ios::trunc)
+            << "corrupt";
+        check(!desktop::load_world_title_slot(directory, 1, initial, reason) &&
+                  same_world_clock(initial, before) &&
+                  initial.scene.random.draws() == before.scene.random.draws() &&
+                  initial.scene.world.world.ai.accounting.funds() ==
+                      before.scene.world.world.ai.accounting.funds(),
+              "Continue re-reads changed file and leaves the initial owner intact on failure");
+        std::filesystem::remove_all(directory);
+    }
     for (const auto extent :
          {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{960, 640}}) {
         const ui::Layout layout(extent);

@@ -22,7 +22,7 @@ struct SpriteBlit {
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip);
 class Sprites {
   public:
-    enum class Binding { map, farmer, secretary, common, common2, window, human, monster };
+    enum class Binding { map, farmer, secretary, common, common2, window, human, monster, title };
     explicit Sprites(std::filesystem::path root);
     ~Sprites();
     Sprites(const Sprites &) = delete;

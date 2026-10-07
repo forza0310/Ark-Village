@@ -55,7 +55,7 @@ if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
         src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_inspection.cpp
-        src/desktop/world_save_menu.cpp src/desktop/world_scene.cpp
+        src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_scene.cpp
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
         src/desktop/world_management.cpp src/desktop/world_management_inspection.cpp
         src/desktop/world_human_inspection.cpp

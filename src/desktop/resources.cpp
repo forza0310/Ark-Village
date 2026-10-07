@@ -300,6 +300,7 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
         throw std::runtime_error("Unsafe image path");
     const char *group = binding == Binding::common2  ? "common2"
                         : binding == Binding::window ? "ui"
+                        : binding == Binding::title  ? "title"
                         : binding == Binding::map    ? "image"
                                                      : "common";
     const auto &value = texture(root_ / group / name);
@@ -398,6 +399,16 @@ void Text::paragraph(const std::string &value, float x, float y, float width) co
     draw(line, x, y);
 }
 void check_assets(const std::filesystem::path &root) {
+    for (const auto &[name, width, height] :
+         {std::tuple{"title00.png", 240, 330}, std::tuple{"title_logo.png", 236, 115},
+          std::tuple{"title_window.png", 98, 68}}) {
+        auto image = LoadImage((root / "title" / name).string().c_str());
+        const bool valid = image.data && image.width == width && image.height == height;
+        if (image.data)
+            UnloadImage(image);
+        if (!valid)
+            throw std::runtime_error("Missing or invalid title image: " + std::string(name));
+    }
     const auto images = image_index(root);
     const auto common_images = image_index(root, "common");
     const auto common2_images = image_index(root, "common2");

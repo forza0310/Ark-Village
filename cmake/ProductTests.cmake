@@ -149,7 +149,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/world_rank.cpp src/desktop/character_status.cpp
             src/desktop/character_visibility.cpp
             src/desktop/world_task_inspection.cpp
-            src/desktop/world_save_menu.cpp
+            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp
         LIBRARIES ark_world_ui_test_support ark_world_queries ark_world_session)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"

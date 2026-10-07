@@ -41,7 +41,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
                 page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
                 page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
-                page != "ai" && page != "world-active" && page != "world-month" &&
+                page != "ai" && page != "world-title" && page != "world-title-slots" &&
+                page != "world-title-actions" && page != "world-active" && page != "world-month" &&
                 page != "world-rank" && page != "world-combat" && page != "world-reward" &&
                 page != "world-exp" && page != "world-rest" && page != "world-rest-hp" &&
                 page != "world-news" && page != "world-break" && page != "world-award" &&

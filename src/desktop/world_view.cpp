@@ -15,6 +15,7 @@
 #include "world_inspection.hpp"
 #include "world_management.hpp"
 #include "world_management_inspection.hpp"
+#include "world_pointer.hpp"
 #include "world_rank.hpp"
 #include "world_render_statistics.hpp"
 #include "world_save_menu.hpp"
@@ -25,6 +26,7 @@
 #include <iostream>
 #include <random>
 #include <stdexcept>
+#include <tuple>
 
 namespace ark::desktop {
 namespace {
@@ -210,6 +212,10 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     const auto started = GetTime();
     auto next_render = started;
     double last_render{};
+    WorldPointerGesture pointer;
+    std::optional<
+        std::tuple<std::uint64_t, std::uint64_t, bool, bool, bool, int, int, int, int, int>>
+        pointer_context;
     WorldRenderStatistics render_statistics(options.frames);
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
         const auto now = GetTime();
@@ -302,7 +308,37 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         text.prepare(raster.zoom);
         const ui::Layout layout(extent);
         const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
-        const bool click = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        const auto *input_page = active_page(current);
+        const auto next_pointer_context = std::tuple{generation,
+                                                     input_page ? input_page->id : std::uint64_t{},
+                                                     publication->main_menu_open,
+                                                     publication->save_menu_open,
+                                                     village_menu,
+                                                     current.scene.scene_state,
+                                                     current.build_mode,
+                                                     current.build_definition.value_or(-1),
+                                                     extent.width,
+                                                     extent.height};
+        if (pointer_context != next_pointer_context) {
+            pointer.cancel(); // A release never targets a newly opened page or a loaded world.
+            pointer_context = next_pointer_context;
+        }
+        const bool back = IsKeyPressed(KEY_ESCAPE) ||
+                          (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT));
+        const bool pointer_enabled = IsWindowFocused() && mouse && !failed && !pending_menu &&
+                                     !pending_task && !pending_ack && !management.pending() &&
+                                     !save_menu.pending() && !back;
+        bool can_pan = pointer_enabled && !input_page && !publication->main_menu_open &&
+                       !publication->save_menu_open &&
+                       (current.scene.scene_state == 0 || current.scene.scene_state == 1) &&
+                       CheckCollisionPointRec(*mouse, layout.scene);
+        if (can_pan && management.pointer_on_control(current, extent, *mouse))
+            can_pan = false;
+        const auto gesture =
+            pointer.sample(GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                           IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                           IsMouseButtonReleased(MOUSE_BUTTON_LEFT), can_pan, pointer_enabled);
+        const bool click = gesture.click;
         const auto hit = [&](Rectangle rectangle) {
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
@@ -313,8 +349,11 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         }
         ui::WorldMenuInput menu_input;
         menu_input.click = click ? mouse : std::nullopt;
-        menu_input.toggle = IsKeyPressed(KEY_M);
-        menu_input.escape = IsKeyPressed(KEY_ESCAPE);
+        menu_input.toggle =
+            IsKeyPressed(KEY_M) || (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) &&
+                                    !publication->main_menu_open && !publication->save_menu_open &&
+                                    !input_page && current.scene.scene_state == 0);
+        menu_input.escape = back;
         menu_input.up = IsKeyPressed(KEY_UP);
         menu_input.down = IsKeyPressed(KEY_DOWN);
         menu_input.enter = IsKeyPressed(KEY_ENTER);
@@ -386,22 +425,21 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             save_input.left = IsKeyPressed(KEY_LEFT);
             save_input.right = IsKeyPressed(KEY_RIGHT);
             save_input.enter = IsKeyPressed(KEY_ENTER);
-            save_input.escape = IsKeyPressed(KEY_ESCAPE);
+            save_input.escape = back;
             save_menu.input(*publication, extent, save_input, session);
         }
         // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
         // old scene while the simulation worker completes its previous atomic update.
         const bool menu_blocked = publication->main_menu_open || publication->save_menu_open ||
                                   pending_menu || save_menu.pending() || management.pending();
+        if (!menu_blocked && !active_page(current) && (gesture.pan.x != 0 || gesture.pan.y != 0)) {
+            const float factor = destination.width / extent.width * zoom;
+            view.camera[0] -= gesture.pan.x / factor;
+            view.camera[1] += gesture.pan.y / factor;
+            view_changed = true;
+        }
         if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
             !active_page(current)) {
-            if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT)) {
-                const float factor = destination.width / extent.width * zoom;
-                const auto delta = GetMouseDelta();
-                view.camera[0] -= delta.x / factor;
-                view.camera[1] += delta.y / factor;
-                view_changed = view_changed || delta.x != 0 || delta.y != 0;
-            }
             if (const auto wheel = GetMouseWheelMove(); wheel) {
                 world_zoom_camera(view, extent, *mouse, wheel, zoom);
                 view_changed = true;
@@ -416,7 +454,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 task_selection = {};
                 task_feedback.clear();
             }
-            if (management.input_page(current, *page, extent, mouse, click,
+            if (management.input_page(current, *page, extent, mouse, click, back,
                                       desired_pause || failed || pending_task || pending_ack,
                                       session)) {
                 // Management controller owns only selection and forwards explicit FIFO intents.
@@ -426,7 +464,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 ui::WorldTaskInput input;
                 input.click = click ? mouse : std::nullopt;
                 input.enter = IsKeyPressed(KEY_ENTER);
-                input.escape = IsKeyPressed(KEY_ESCAPE);
+                input.escape = back;
                 input.up = IsKeyPressed(KEY_UP);
                 input.down = IsKeyPressed(KEY_DOWN);
                 input.left = IsKeyPressed(KEY_LEFT);
@@ -444,8 +482,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                        page->legacy_page == 83) {
                 const auto box = ui::world_page_layout(*page, extent);
                 const Rectangle cancel{box.panel.x + 10, box.confirm.y, 58, 20};
-                if (!desired_pause && !failed && !pending_task &&
-                    (hit(cancel) || IsKeyPressed(KEY_ESCAPE)))
+                if (!desired_pause && !failed && !pending_task && (hit(cancel) || back))
                     pending_task = session.cancel_page(page->id);
             } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
                        page->legacy_page == 31) {
@@ -507,7 +544,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         }
         const bool main_scene = !menu_blocked && !active_page(current);
         const bool scene_handled =
-            main_scene && management.input_scene(current, view, extent, mouse, click, zoom,
+            main_scene && management.input_scene(current, view, extent, mouse, click, zoom, back,
                                                  desired_pause || failed || pending_task, session);
         if (main_scene && !scene_handled && current.scene.scene_state == 0 && !desired_pause &&
             !failed && !pending_task && IsKeyPressed(KEY_T)) {

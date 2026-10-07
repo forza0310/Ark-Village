@@ -21,15 +21,17 @@ class WorldManagement {
     void observe(const app::WorldFrame &frame);
     bool pending() const { return pending_ != 0; }
     bool input_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
-                    Extent extent, std::optional<Vector2> mouse, bool click, bool blocked,
-                    app::WorldSession &session);
+                    Extent extent, std::optional<Vector2> mouse, bool click, bool back,
+                    bool blocked, app::WorldSession &session);
     bool draw_page(const app::WorldState &state, const simulation::rules::WorldScriptPage &page,
                    Extent extent, const ui::Skin &skin, bool enabled) const;
     // Called only for an unobstructed main scene. A click selects a cell; confirmation is a
     // separate input, preventing one physical click from both choosing and buying a building.
     bool input_scene(const app::WorldState &state, const WorldCameraView &view, Extent extent,
-                     std::optional<Vector2> mouse, bool click, float zoom, bool blocked,
+                     std::optional<Vector2> mouse, bool click, float zoom, bool back, bool blocked,
                      app::WorldSession &session);
+    // Only visible placement controls capture a pointer press; hidden controls stay map space.
+    bool pointer_on_control(const app::WorldState &state, Extent extent, Vector2 mouse) const;
     void draw_placement(const app::WorldState &state, const WorldCameraView &view, Extent extent,
                         std::optional<Vector2> mouse, float zoom, const ui::Skin &skin,
                         bool enabled) const;

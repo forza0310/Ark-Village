@@ -2,6 +2,7 @@
 
 ## 当前状态
 
+- [x] 消费1832b8c交互证据并按用户要求接默认世界左键拖动/松开选择、右键菜单及逐级返回；不接入Steam软件/SDK。desktop-debug172项（排除三个月）、Release手势契约及三窗口通过，见[B1](docs/stages/B1-playable-prototype.md#pc-pointer-input)。原marker注册和标题/完整系统流程仍单独待合同。
 - [x] 整理正式研究历史与产品工程审阅（2026-10-07）：按e7f441f核对实际代码，研究补审至aa38825，修正过期菜单/道路/道具/扩张/存档现状与legacy说明。发现6项P2、4项P3，独立CMake失效已定向复现；本批仅文档/审阅，未改实现或重跑游戏回归，见[当前接入候选](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit)和[工程审阅](docs/PRODUCT_REVIEW.md)。
 - [x] 已批准工程首批：根headless入口引导、有界诊断统计、窄SHA接口、统一公共库重建入口、独立维护存取target、inspection职责拆分与玩家字段分类防漏；两套Debug标准318项（排除三个月）、认证双尾段及实际Release窗口通过，见[B1](docs/stages/B1-playable-prototype.md#maintainability-ui-batch)。正常输入/绘制进一步分责与DLL指纹仍为后续候选，不改Owner/源协议或恢复重复库缓存。
 - [x] raw74已证静态子集与raw75五行布局接入并窗口验收；完整逐来源奖励行/类别9与7图标、道具图标与投掷演出仍待合同。见[B1](docs/stages/B1-playable-prototype.md#maintainability-ui-batch)。

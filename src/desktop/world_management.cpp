@@ -57,7 +57,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
     }
 }
 bool WorldManagement::input_page(const State &state, const Page &page, Extent extent,
-                                 std::optional<Vector2> mouse, bool click, bool blocked,
+                                 std::optional<Vector2> mouse, bool click, bool back, bool blocked,
                                  app::WorldSession &session) {
     if (page_ != page.id) {
         page_ = page.id;
@@ -68,7 +68,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     blocked = blocked || pending();
     const auto point = click ? mouse : std::nullopt;
-    const bool enter = IsKeyPressed(KEY_ENTER), escape = IsKeyPressed(KEY_ESCAPE);
+    const bool enter = IsKeyPressed(KEY_ENTER), escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
     if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
@@ -269,7 +269,7 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
     return true;
 }
 bool WorldManagement::input_scene(const State &state, const WorldCameraView &view, Extent extent,
-                                  std::optional<Vector2> mouse, bool click, float zoom,
+                                  std::optional<Vector2> mouse, bool click, float zoom, bool back,
                                   bool blocked, app::WorldSession &session) {
     const bool editing = world_edit_view(state, {}).active;
     const bool placing =
@@ -287,10 +287,10 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
     if (blocked || pending())
         return placing || editing;
     if (editing) {
-        const auto intent = world_edit_input(world_edit_view(state, anchor_), extent,
-                                             {click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
-                                              IsKeyPressed(KEY_ESCAPE), IsKeyPressed(KEY_R)},
-                                             false);
+        const auto intent = world_edit_input(
+            world_edit_view(state, anchor_), extent,
+            {click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER), back, IsKeyPressed(KEY_R)},
+            false);
         if (!intent)
             return true;
         switch (intent->action) {
@@ -314,8 +314,8 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         return true;
     }
     if (placing) {
-        const WorldBuildInput input{click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER),
-                                    IsKeyPressed(KEY_ESCAPE), IsKeyPressed(KEY_R)};
+        const WorldBuildInput input{click ? mouse : std::nullopt, IsKeyPressed(KEY_ENTER), back,
+                                    IsKeyPressed(KEY_R)};
         const bool rotation_allowed =
             (input.click || input.rotate) &&
             world_build_preview(state, *definition_,
@@ -384,6 +384,20 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         }
     }
     return false;
+}
+bool WorldManagement::pointer_on_control(const State &state, Extent extent, Vector2 mouse) const {
+    const auto edit = world_edit_view(state, {});
+    const bool placing =
+        state.scene.scene_state == 1 && state.build_mode == 0 && state.build_definition.has_value();
+    if (!edit.active && !placing)
+        return false;
+    const bool rotate =
+        edit.active ? edit.rotate_allowed
+                    : world_build_preview(state, *state.build_definition, {0, 0}, orientation_)
+                          .rotation_hint;
+    const auto intent = world_build_input(world_build_controls(extent),
+                                          {mouse, false, false, false}, false, rotate);
+    return intent && intent->action != WorldBuildAction::choose;
 }
 void WorldManagement::draw_footprint(const State &state, const WorldCameraView &view, Extent extent,
                                      std::optional<Vector2> mouse, float zoom,

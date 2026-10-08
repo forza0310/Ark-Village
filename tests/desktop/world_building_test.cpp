@@ -345,6 +345,10 @@ void world_building() {
                                          [](const auto &d) { return d.id == 33; });
         source->economy.upgrade_uses = {100, 100}; // Independent display fixture: remaining100-7.
         auto &progress = details.scene.world.world.facility_uses.at(33);
+        auto &cash = details.facility_monthly_cash.at(bun->first);
+        cash[0] = {120, 20};
+        cash[details.scene.calendar.month] = {50, 80};
+        cash[11] = {9999, 0}; // Future months cannot appear in the current footer.
         progress.level = details.scripts.facilities.at(33).level = 2;
         progress.completed_uses = 7;
         const auto untouched = details;
@@ -356,6 +360,12 @@ void world_building() {
                   detail.source_names.empty(),
               "Ordinary instance details project actual economy, shared level, remaining uses and "
               "artwork");
+        check(detail.cumulative_profit == 70 && detail.income == 50,
+              "Footer binds cumulative net70, not current gross50 or village funds");
+        cash[0] = {0, 300};
+        check(ui::world_building_view(details, detail_page).cumulative_profit == -330,
+              "Footer preserves a negative cumulative result for the source alternate colour");
+        cash[0] = {120, 20};
         check(details.scene.random.draws() == untouched.scene.random.draws() &&
                   same_world_clock(details, untouched) &&
                   details.scene.world.world.ai.accounting.funds() ==
@@ -412,6 +422,11 @@ void world_building() {
                       ordinary.source_footer.y >= frame.body.y + frame.body.height,
                   "S019 compact detail keeps the heading on wood, stacked value/effect fields, "
                   "centered action and independent screen return on both pages");
+            check(frame.footer_name.width > 0 && frame.footer_profit.width > 31 &&
+                      !CheckCollisionRecs(frame.footer_name, frame.footer_profit) &&
+                      !CheckCollisionRecs(frame.footer_profit, frame.cancel) &&
+                      frame.footer_profit.x + frame.footer_profit.width <= frame.cancel.x,
+                  "Facility name and scalable profit digits stay clear of the return key");
             check(ordinary.picture.width == 97 && ordinary.picture.height == 74 &&
                       ordinary.picture.y + ordinary.picture.height <=
                           frame.body.y + frame.body.height &&
@@ -535,7 +550,8 @@ void world_building() {
         const auto preview_before = preview_state;
         view = ui::world_building_view(preview_state, preview);
         check(
-            view.definition_preview && !view.facility && view.page_count == 1 && view.phase == 0 &&
+            view.definition_preview && !view.facility && !view.cumulative_profit &&
+                view.page_count == 1 && view.phase == 0 &&
                 view.attributes == std::array<std::int64_t, 4>{411, 22, 33, 44} &&
                 !view.can_use_items && view.income == 0 && view.neighbours == 0 &&
                 !view.graphic.frames.empty(),

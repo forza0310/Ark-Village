@@ -12,6 +12,9 @@
 #include <stdexcept>
 
 namespace ark::desktop::ui {
+bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
+    return !page || (page->legacy_page != 21 && page->legacy_page != 74);
+}
 std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
                             const simulation::rules::WorldScriptPage &page, int paragraph) {
     std::string body;
@@ -46,9 +49,10 @@ void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout 
     skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
     skin.number(s.village_points, {w - 3, 27});
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
-    draw_world_popularity(s.popularity, layout, skin);
-    // S057 owns the footer's return key; hidden pause/menu artwork has no input area.
-    if (page && page->legacy_page == 21)
+    if (!page || page->legacy_page != 74)
+        draw_world_popularity(s.popularity, layout, skin);
+    // Catalogue/details own the footer; the same predicate rejects their hidden mouse buttons.
+    if (!world_hud_buttons_visible(page))
         return;
     skin.button(layout.left_button, s.scene.framework_paused ? "继续" : "暂停", !failed);
     skin.button(world_menu_button(layout.extent), "菜单",

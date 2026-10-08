@@ -415,6 +415,17 @@ void world_facility_static_render_fixture() {
             << filename << " frames=4 screenshot=" << file.string() << '\n';
     };
     capture(ordinary, "raw74-ordinary.png", false);
+    auto profit_positive = ordinary;
+    const auto profit_instance =
+        profit_positive.facility_page_bindings.at(top_page(profit_positive).id);
+    auto &profit_rows = profit_positive.facility_monthly_cash.at(profit_instance);
+    profit_rows[0] = {400, 60};
+    capture(profit_positive, "raw74-profit-positive-minimum.png", true);
+    profit_rows[0] = {0, 330};
+    capture(profit_positive, "raw74-profit-negative-minimum.png", true);
+    for (auto &month : profit_rows)
+        month = {std::numeric_limits<int>::max(), std::numeric_limits<int>::min()};
+    capture(profit_positive, "raw74-profit-large-minimum.png", true);
     capture(second, "raw74-second.png", false);
     capture(maximum, "raw74-max.png", false);
     capture(preview, "raw74-equipment-preview.png", false);

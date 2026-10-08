@@ -8,6 +8,9 @@
 
 namespace ark::desktop::ui {
 class Skin;
+// One visibility rule governs both footer artwork and pointer admission. Keyboard pause is
+// separate.
+bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page);
 // Shared by input pagination and drawing; reading text never advances the source page.
 std::string world_page_body(const simulation::StartupWorldRuntimeState &state,
                             const simulation::rules::WorldScriptPage &page, int paragraph);

@@ -31,7 +31,8 @@ struct WorldBuildingView {
     WorldBuildGraphic graphic;
     app::WorldFacilityTemplate detail_type{app::WorldFacilityTemplate::ordinary};
     int level{};
-    std::optional<std::int64_t> remaining_uses; // Source d()-K; absent at shared MAX.
+    std::optional<std::int64_t> remaining_uses;    // Source d()-K; absent at shared MAX.
+    std::optional<std::int64_t> cumulative_profit; // Instance kind3/9, source months0..current.
     std::vector<std::string> source_names; // Page-initialized Y order; no inferred reward rows.
     std::optional<std::size_t> product_count;
     std::array<std::vector<WorldBuildingRow>, 3> catalogs;
@@ -44,6 +45,7 @@ struct WorldBuildingView {
 };
 struct WorldBuildingLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next;
+    Rectangle footer_name{}, footer_profit{};
     std::array<Rectangle, 3> tabs;
     float row_height{38};
 };

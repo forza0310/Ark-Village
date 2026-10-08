@@ -12,6 +12,8 @@
 
 `ui/world_building`的设施74使用S019/用户第二页参考的紧凑两页布局：标题字段位于木纹行，原number08/number05数字、arrow02金色左右帧、独立屏幕返回与页内居中动作。第二页仅显示已证来源名称/原序和维护费；类别9/7图标、名称后缀及逐来源加成仍待研究显示桥，不从旧Game或累计值补造。
 
+设施74底栏由绑定实例提供名称和kind3/9累计净收益（0..当前月），定义预览不造收益；number05/number12区分正负，负数显示幅度，长数字按可用宽度缩放。详情页隐藏人气扇面及暂停/菜单鼠标按钮，`world_hud_buttons_visible`同步绘制与鼠标准入；Space仍走原手动暂停，返回仍按绑定页提交关闭。
+
 `world_overlay`定义标准C++绘制计划，`world_combat_visuals`读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals`按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。头像采用e8f66d9的`startup_world_visuals`计划，读取当前职业/性别并裁剪walk01帧0。`world_overlay_render`才调用raylib；布局不扣款/加经验/推进计数，设施精确L锚点和完整恢复特效仍未交付。
 
 经验期间共享定义P真时，cd24自己的计数按12周期/6半周期选择ef_lvUp两帧，55后与经验条继续共存、72结束；不使用FPS或真正cd14时钟，不触发升级/HP恢复。普通身体锚点沿现有适配，弹跳/完整bl及金币X4精确运动缺口另列研究需求。0a5b5e2的建筑队首kind1–6以实例f()原投影绘制升降提示；world_overlay_render执行指定SEB层和PNG override，只应用一次各级偏移。cd15/21/22购买后举物与身体动作9共用原逻辑计数，不在绘制时装配。

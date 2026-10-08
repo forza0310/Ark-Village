@@ -58,6 +58,34 @@ void detail_field(Rectangle box, Color fill, Color border) {
     DrawRectangleRec(box, fill);
     DrawRectangleLinesEx(box, 1, border);
 }
+void draw_facility_footer(const WorldBuildingView &view, const WorldBuildingLayout &layout,
+                          const Skin &skin) {
+    if (!view.initialized || !view.facility || view.definition_preview)
+        return;
+    const auto name = layout.footer_name, profit = layout.footer_profit;
+    // Cover only the footer strip, leaving the return key and the world above it intact.
+    skin.tile("btmbar.png", {116, 1, 4, 20},
+              {name.x, name.y, profit.x + profit.width - name.x, name.height});
+    skin.content(name, {255, 255, 222, 255});
+    fitted(skin, view.title, {name.x + 3, name.y + 2, name.width - 6, 15});
+    if (!view.cumulative_profit)
+        return; // A non-business facility has no invented zero-profit field.
+    fitted(skin, "收益", {profit.x + 2, profit.y + 2, 26, 15});
+    const auto value = *view.cumulative_profit;
+    auto digits = std::to_string(value);
+    if (value < 0)
+        digits.erase(0, 1); // Magnitude without signed negation, including INT64_MIN.
+    const char *sprite = value < 0 ? "number12.seb" : "number05.seb";
+    const float width = 8.F * (digits.size() + 1);
+    const float scale = std::min(1.F, (profit.width - 31) / width);
+    float x = profit.x + profit.width - 2 - width * scale;
+    const float y = profit.y + (profit.height - 10 * scale) / 2;
+    for (const char digit : digits) {
+        skin.sprites.draw(sprite, digit - '0', {x, y}, WHITE, Sprites::Binding::common, scale);
+        x += 8 * scale;
+    }
+    skin.sprites.draw(sprite, 20, {x, y}, WHITE, Sprites::Binding::common, scale);
+}
 void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layout, const Skin &skin,
                  const WorldBuildingSelection &selection) {
     using Type = app::WorldFacilityTemplate;
@@ -266,6 +294,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.detail_type = detail.detail->type;
             view.level = detail.detail->level;
             view.remaining_uses = detail.detail->remaining_uses;
+            view.cumulative_profit = detail.detail->cumulative_profit;
             view.graphic = world_build_graphic(state, item.id, facility.placement.orientation);
             view.product_count = open_products(state, item);
             for (const auto &source : state.facility_page_neighbours.at(page.id))
@@ -303,6 +332,10 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
         layout.body = {p.x + 8, p.y + 40, 208, 110};
         layout.rows = {p.x + 12, p.y + 44, 196, 102};
         layout.cancel = Layout(extent).right_button;
+        const float available = layout.cancel.x - 64;
+        layout.footer_name = {62, extent.height - 20.F, available * .48F, 19};
+        layout.footer_profit = {layout.footer_name.x + layout.footer_name.width + 2,
+                                layout.footer_name.y, available * .52F - 2, 19};
         layout.confirm = {p.x + 62, p.y + 152, 100, 18};
         layout.previous = {p.x + 8, p.y + 2, 14, 17};
         layout.next = {p.x + 202, p.y + 2, 14, 17};
@@ -579,6 +612,8 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
         }
     }
     const bool active = enabled && view.initialized;
+    if (view.raw == 74)
+        draw_facility_footer(view, layout, skin);
     if (view.raw != 81)
         skin.button(layout.cancel, "返回", active);
     if (view.raw == 74 && view.page_count > 1) {

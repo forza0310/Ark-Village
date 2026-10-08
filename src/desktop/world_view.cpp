@@ -295,15 +295,16 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         const auto hit = [&](Rectangle rectangle) {
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
+        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page);
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
-            ((!(input_page && input_page->legacy_page == 21) && hit(layout.left_button)) ||
+            ((hud_mouse_buttons && hit(layout.left_button)) ||
              (IsKeyPressed(KEY_SPACE) &&
               !(input_page && ui::world_facility_items_page(*input_page))))) {
             desired_pause = !desired_pause;
             pending_pause = session.set_paused(desired_pause);
         }
         ui::WorldMenuInput menu_input;
-        menu_input.click = click ? mouse : std::nullopt;
+        menu_input.click = click && hud_mouse_buttons ? mouse : std::nullopt;
         menu_input.toggle =
             IsKeyPressed(KEY_M) || (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) &&
                                     !publication->main_menu_open && !publication->save_menu_open &&

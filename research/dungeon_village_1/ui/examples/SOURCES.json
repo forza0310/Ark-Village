@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "qualification": "UI参考草稿；APK素材与Steam截图分开，人物仅APK合同示意",
+  "sources": [
+    {
+      "path": "assets/original/common/wnd_back.png",
+      "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+      "bytes": 1166,
+      "version": "APK1.0.8",
+      "width": 40,
+      "height": 240,
+      "crop": null,
+      "transform": "CSS二倍平铺",
+      "usage": "示例纹理/图块；非Steam调用绑定认证"
+    },
+    {
+      "path": "assets/original/common/wnd_bar.png",
+      "sha256": "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+      "bytes": 1951,
+      "version": "APK1.0.8",
+      "width": 240,
+      "height": 17,
+      "crop": null,
+      "transform": "CSS标题带适配",
+      "usage": "示例纹理/图块；非Steam调用绑定认证"
+    },
+    {
+      "path": "assets/original/common/icon_tenantInfo.png",
+      "sha256": "84b281a46d2a82d1c8ed75d7ac36c7a90b804d7b6aeee4291986e060c3db7aeb",
+      "bytes": 1009,
+      "version": "APK1.0.8",
+      "width": 112,
+      "height": 16,
+      "crop": [
+        32,
+        0,
+        16,
+        16
+      ],
+      "transform": "类别2裁片二倍",
+      "usage": "示例纹理/图块；非Steam调用绑定认证"
+    },
+    {
+      "path": "assets/original/common/finger_r.png",
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "bytes": 272,
+      "version": "APK1.0.8",
+      "width": 16,
+      "height": 10,
+      "crop": null,
+      "transform": "二倍",
+      "usage": "示例纹理/图块；非Steam调用绑定认证"
+    },
+    {
+      "path": "assets/original/image/t_cafe.png",
+      "sha256": "9f00899dfe930c196687d551ef01a8d5e6de73a77f5c4959b35b3b1b67208283",
+      "bytes": 1260,
+      "version": "APK1.0.8",
+      "width": 60,
+      "height": 60,
+      "crop": null,
+      "transform": "整图二倍",
+      "usage": "示例纹理/图块；非Steam调用绑定认证"
+    },
+    {
+      "path": "references/screenshots/2026-10-07-steam-restore/facilities/S043-details-before.jpg",
+      "sha256": "183d33452d5afa9efb62776d02c6c92c9953d60e5ad97955d2069bc060c726f7",
+      "bytes": 320424,
+      "version": "Steam2.56",
+      "usage": "完整原图对照；不是产品运行素材"
+    },
+    {
+      "path": "references/screenshots/2026-10-07-steam-restore/facilities/S045-reinforcement-result.jpg",
+      "sha256": "daca8707f9fb756e4f1b46dbfe8bbf4ebbfb92bdb763b3193dbe2965a3bbaa18",
+      "bytes": 317347,
+      "version": "Steam2.56",
+      "usage": "完整原图对照；不是产品运行素材"
+    },
+    {
+      "path": "references/screenshots/2026-10-07-steam-restore/menu/S049-system-menu.jpg",
+      "sha256": "209c3fd09713e56f60bb3a7eeaeeb0091fbd4d79d190f934bdf1e65e5975cc35",
+      "bytes": 250780,
+      "version": "Steam2.56",
+      "usage": "完整原图对照；不是产品运行素材"
+    },
+    {
+      "path": "references/screenshots/2026-10-07-steam-restore/menu/S041-save-complete.jpg",
+      "sha256": "3386e5f7fc5adf5aaa56ca565d505298c542c04766e705b0f4c6f316be447f94",
+      "bytes": 328079,
+      "version": "Steam2.56",
+      "usage": "完整原图对照；不是产品运行素材"
+    },
+    {
+      "path": "references/screenshots/2026-10-07-steam-restore/items/S044-facility-item-list-before.jpg",
+      "sha256": "67142d08d0316e9eff738e50e99b8fa5b738c711238b58fb67c4e81ae9d0f9fc",
+      "bytes": 289041,
+      "version": "Steam2.56",
+      "usage": "完整原图对照；不是产品运行素材"
+    }
+  ]
+}

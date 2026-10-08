@@ -1,6 +1,6 @@
 # 《冒险迷宫村》一代参考研究
 
-固定输入是汉化重签 APK 1.0.8，身份、哈希、工具与局限见 [证据索引](EVIDENCE.md)。
+规则与既有轨迹输入是汉化重签 APK 1.0.8；2026-10-08用户指定EXE版本UI与操作为还原目标。两版身份、哈希、工具与局限见 [证据索引](EVIDENCE.md)。
 维护代码是独立 C++17 规则与研究原型，不是反编译实现翻译，也不属于产品主构建。
 
 ## 阅读与功能入口
@@ -15,6 +15,7 @@
 | 人物自主调度、首次活动请求与出发组合 | [人物与寻路](rules/CHARACTERS.md) |
 | 人物/怪物共享AI、感知/战斗/生命周期与控制解释器 | [AI专项](rules/ai/README.md) |
 | 类别计划、候选、重复计权、目标格 | [活动选择](rules/ACTIVITY.md) |
+| 全部活动／任务／逐步解锁定义与消费缺口 | [内容覆盖](rules/PROGRESSION_CONTENT.md) |
 | 到达收费、退出效果、生命值显示协议 | [设施使用](rules/FACILITY_USE.md) |
 | 道具共享改良、实例事件与延迟计划 | [事件与道具](rules/FACILITY_EFFECTS.md) |
 | 商会金币买卖、库存、村点兑换与领取 | [商会工具](rules/COMMERCE.md) |
@@ -22,6 +23,9 @@
 | 原版两栏存档、25分区、引用恢复与维护存取边界 | [存档与恢复](rules/PERSISTENCE.md) |
 | 原APK／Steam外壳、容器、25分区／引用审计和只读差分 | [原档工具](tools/ORIGINAL_SAVE.md) |
 | 页面入口、地图/字体/投影与视觉缺口 | [UI 基线](ui/README.md)、[渲染映射](ui/PAGES.md) |
+| EXE全部页面／组件与操作覆盖 | [Steam覆盖清单](ui/STEAM_UI_COVERAGE.md) |
+| 建筑／人物／菜单小窗参考 | [可打开示例](ui/examples/index.html)、[资格及接入说明](ui/examples/README.md) |
+| APK／EXE全图像与代码反查 | [容器覆盖](assets/IMAGE_COVERAGE.md)、[逐素材反查](assets/RESOURCE_CODE_INDEX.md) |
 | 装备举物／商品图标、设施增长头标及结果演出边界 | [举物与设施属性演出](ui/EQUIPMENT_FACILITY_RENDER.md) |
 | 原始美术、七个逻辑键、换图方式 | [素材说明](assets/README.md) |
 | 原始表与来源 | [数据说明](data/README.md) |

@@ -1,7 +1,10 @@
 # 美术素材与原型接入
 
-本次交付以固定的一代汉化重签 APK 为唯一输入。身份与限制见 [证据索引](../EVIDENCE.md)，
-实施授权见 [R2-A 阶段记录](../stages/history/R2-prototype.md#assets)。这里只描述研究交付，不授权产品接入。
+原始素材发布包以固定的一代汉化重签 APK 为输入。身份与限制见 [证据索引](../EVIDENCE.md)，
+实施授权见 [R2-A 阶段记录](../stages/history/R2-prototype.md#assets)。这里只描述研究交付，产品接入单独验收。
+
+2026-10-08新增[APK／EXE全容器图像覆盖](IMAGE_COVERAGE.md)和[资源代码反查](RESOURCE_CODE_INDEX.md)。
+下文398 PNG／761文件是既有11视觉归档发布范围，**不是全部APK／EXE图像分母**；平台、引擎、语言及重复别名另在新清单登记。
 
 ## 当前交付
 
@@ -85,16 +88,7 @@ R2-C 已纠正旅店绑定：定义 28 是单格普通旅店，通过地图显�
 
 ## 构建与操作
 
-从仓库根目录执行；工具链路径可按本机调整，实际验证环境见 [验证记录](../VERIFICATION.md)。
-
-```sh
-cmake -S research/dungeon_village_1/prototype \
-  -B research/dungeon_village_1/work/prototype-debug-llvm \
-  -DCMAKE_BUILD_TYPE=Debug
-cmake --build research/dungeon_village_1/work/prototype-debug-llvm --parallel 2
-ctest --test-dir research/dungeon_village_1/work/prototype-debug-llvm --output-on-failure
-research/dungeon_village_1/work/prototype-debug-llvm/dungeon_village_prototype
-```
+从仓库根目录按[单Release动态构建约定](../README.md#构建缓存管理)使用研究聚合入口，工具链及运行命令见[原型说明](../prototype/README.md#构建与运行)，实际验证环境见[验证记录](../VERIFICATION.md)。Debug只在定位问题时临时使用，不为素材说明另建常驻Debug树。
 
 构建会在程序旁边打包必要规范化图片、清单与设施表，资源变化也会触发更新。
 可直接在 CLion 中单独打开 [研究 CMake](../prototype/CMakeLists.txt)，不要用产品主 target 代替研究原型。

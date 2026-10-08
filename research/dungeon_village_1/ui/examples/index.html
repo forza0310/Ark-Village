@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>冒险迷宫村 · 小窗研究示例</title>
+<link rel="stylesheet" href="examples.css">
+<body>
+<header><p class="eyebrow">ARK-VILLAGE / RESEARCH</p><h1>小窗口与操作层级</h1><p>产品侧参考：原版截图、可操作示例、数据与来源契约。</p></header>
+<nav aria-label="示例类型" id="samples"></nav>
+<main>
+  <section class="demo-section"><div class="section-label"><h2 id="sample-title"></h2><span id="qualification"></span></div>
+    <div class="viewport" id="viewport"><div class="world"><span>村庄场景</span><small>背景占位 · 保留父场景层级</small></div><div id="stage"></div></div>
+    <div class="toolbar"><button id="back">返回上一层</button><button id="reset">重置示例</button><label>预览宽度 <select id="width"><option value="normal">标准</option><option value="compact">窄窗口</option></select></label></div>
+    <p id="feedback" role="status" aria-live="polite"></p>
+  </section>
+  <aside><h2>对应证据</h2><p id="source-note"></p><a id="reference-link" target="_blank" rel="noopener"><img id="reference" alt="对应原版完整截图"></a><p id="no-reference" hidden>尚无同身份 Steam 人物详情截图。当前仅提供 APK 字段与层级示意，布局不能当作 EXE 精确还原。</p><details open><summary>本例接入说明</summary><div id="contract"></div></details></aside>
+</main>
+<footer>示例中的设施数值来自 S043/S047，人物数据留空；按钮演示页面层级，不执行游戏结算。原图与素材只供内部研究。</footer>
+<script src="examples.js"></script>
+</body>
+</html>

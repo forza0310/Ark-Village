@@ -17,6 +17,8 @@
 | kairo_asset_publish / publish_assets | 确定性发布清单、原始视觉文件和七个逻辑键 | 源哈希、PNG头/帧与SEB绑定核对；像素解码由原型素材测试负责 |
 | kairo_save_inspect / original_save | 原APK／Steam记录外壳与tag容器的只读检查、差分 | [原档工具](ORIGINAL_SAVE.md)；平台key与null协议分开，不导入维护Owner或写回原档 |
 | original_save_audit | 显式profile的25分区边界、计数、引用与日期条件审计 | 缺目标只诊断；不修复、推进世界或认证原加载成功；复用archive测试套件 |
+| scripts/resource_code_index.mjs | 既有761视觉文件的INF／SEB关系及Java字面量／固定槽反查 | [反查合同](../assets/RESOURCE_CODE_INDEX.md)；`--check`只读复算，词法命中不证明完整消费者 |
+| scripts/image_coverage.py | 固定APK／EXE所有已识别图像容器、PNG像素／SEB结构、Unity／managed／PE目录与跨版差分 | [图像覆盖](../assets/IMAGE_COVERAGE.md)；标准库只读原输入，纹理像素、运行时素材与消费者保持未验 |
 
 解析失败通过异常报告，不返回部分解析成功结果；文件写入拒绝覆盖不同内容。
 APK、源素材和生成 Java 保持只读，工具输出到独立工作目录。地图文件内部格式尚未作为本包交付。

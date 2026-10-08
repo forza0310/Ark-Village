@@ -2,7 +2,7 @@
 
 本目录是《冒险迷宫村》一代规则、素材和行为证据的唯一研究入口，与产品工程分开维护。
 目标为C++17＋raylib先还原二维玩法、UI和数值，之后再考虑3D。
-固定APK1.0.8是汉化重签输入，Steam2.56是独立交叉来源，用户异版本截图分别登记。
+固定APK1.0.8是汉化重签规则输入，Steam2.56已由用户指定为UI／操作还原目标；两版合同与用户异版本截图分别登记。
 
 | 需要了解 | 入口 |
 | --- | --- |
@@ -12,6 +12,7 @@
 | 维护正常存取／精确测试快照 | [原型存取模块](dungeon_village_1/prototype/PERSISTENCE.md) |
 | 原版存档剖析／只读检查 | [原版合同](dungeon_village_1/rules/PERSISTENCE.md)、[原档工具](dungeon_village_1/tools/ORIGINAL_SAVE.md) |
 | UI／素材／截图 | [视觉基线](dungeon_village_1/ui/README.md)、[参考归档](dungeon_village_1/references/README.md) |
+| EXE界面／全素材／解锁与产品小窗示例 | [四项覆盖计划](dungeon_village_1/stages/COMPREHENSIVE_RESEARCH.md)、[UI示例](dungeon_village_1/ui/examples/README.md) |
 | 输入身份／来源／工具 | [EVIDENCE](dungeon_village_1/EVIDENCE.md) |
 | 实际检查与历史记录 | [VERIFICATION](dungeon_village_1/VERIFICATION.md) |
 | 研究步骤与两版交叉 | [WORKFLOW](WORKFLOW.md) |

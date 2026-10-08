@@ -7,6 +7,16 @@
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
+## 2026-10-08全量覆盖与产品小窗参考
+
+用户本轮指定EXE版本UI／操作为还原目标，并要求全图像→代码、活动／任务／解锁和产品UI示例。[四项范围](stages/COMPREHENSIVE_RESEARCH.md)集中追踪，APK规则／旧轨迹仍保持来源身份。
+[图像清单](assets/IMAGE_COVERAGE.md)直接核固定APK全部ZIP与15归档、EXE目录25文件及Unity／managed／PE容器：APK432 PNG、EXE955 PNG，114 Texture2D／70 Sprite和包级29 PNG／DIB分别登记。
+[反查索引](assets/RESOURCE_CODE_INDEX.md)覆盖既有761视觉文件、341 SEB及184份本机生成Java，候选引用、默认图片槽、动态下标与未解析项分别保存；不保存反编译实现，不把词法命中当完整消费者。
+[Steam UI分母](ui/STEAM_UI_COVERAGE.md)列101页类型／26组件，19方法66192字节核真实DLL的建设输入／旋转／绘制局部分支，地址范围可能含填充／跳表；完整21列表仍待核。
+[内容分母](rules/PROGRESSION_CONTENT.md)核13表739定义及两语言表差分；用户已补充授权将已核事实／hash／未闭合项归档，原表不改。
+[小窗参考](ui/examples/README.md)复用十份已有原素材／Steam截图并登记hash；建筑与菜单按具名截图示例，人物无同身份EXE截图，仅APK字段示意。浏览器实际预览未验，不能记为原程序动态。
+
+
 ## 2026-10-08输入与绘制请求取证
 
 [输入／绘制合同](ui/INPUT_RENDER_REQUESTS.md)归纳APK列表marker、建设候选p/v/t、原触摸type5及旋转边界；

@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+接续`9ec4c1a`新增[标题／纪录／91／17原皮肤合同](STARTUP_SKIN.md)及[原尺寸素材对照页](examples/startup-sources.html)：资源包序、木框／裁片／字形来源、页面坐标与阶段分别登记。原标题背景人物的共同随机链与纪录装饰名单不同，尚不能宣称完整标题已维护；本轮native pipe失败及历史S038观察见[窗口复核](../work/startup-window-observation/RESULT.md)。
+
 2026-10-08产品需求跟进：[人物六属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)补齐APK来源和只读绘制接口；
 18项受影响测试通过，研究窗口接线与原EXE动态分开验收。逐项接收边界见[需求回应](../verification/PRODUCT_REQUESTS.md)。
 

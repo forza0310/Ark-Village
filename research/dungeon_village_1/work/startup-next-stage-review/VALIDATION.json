@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-08",
+  "base": "9ec4c1a",
+  "qualification_zh": "静态研究／设计审计；无新运行时验收或原窗口动态",
+  "markdown_files": 10,
+  "links": 229,
+  "missing_links": [],
+  "html_references": 13,
+  "artifacts": [
+    {
+      "file": "work/startup-skin-contract/audit.cjs",
+      "bytes": 3960,
+      "sha256": "38e89ae6b618b878c08f38f81a7db866ee7eddec4b8edb380a12cb861dc5bbae"
+    },
+    {
+      "file": "work/startup-skin-contract/EVIDENCE.json",
+      "bytes": 12816,
+      "sha256": "1366ea38e0bd2378ce8361aea91a8412db9364030aad985853e23b80ed58ab76"
+    },
+    {
+      "file": "work/startup-skin-contract/README.md",
+      "bytes": 1527,
+      "sha256": "8a6933ab5f05f648393a61dd99824676b36e006af04d49be1673f69f27d9c217"
+    },
+    {
+      "file": "work/natural-clear-route/audit.cjs",
+      "bytes": 5082,
+      "sha256": "a30a0d652886e9eb86db1ee828cf08988d0e0ea6929cb4236c6a7592854c66eb"
+    },
+    {
+      "file": "work/natural-clear-route/INVENTORY.json",
+      "bytes": 8302,
+      "sha256": "904bcf2e6f684c6f59bc1fe5925ec866028cd403358cb32abfa3887c22f8b58f"
+    },
+    {
+      "file": "work/natural-clear-route/README.md",
+      "bytes": 12223,
+      "sha256": "78e107faeb93e268615996859503bbe8dbcd746fb468ff161a8411be2ae732c0"
+    },
+    {
+      "file": "work/startup-window-observation/RESULT.md",
+      "bytes": 2904,
+      "sha256": "3dd65f8649c8d88bbd1ed4d2d0b3735d3f29a673a72e492363af56c61802a9d5"
+    }
+  ],
+  "artifact_bytes": 46814,
+  "ui_resources_copied": 0,
+  "new_build_trees": 0,
+  "window_channel": {
+    "attempts": 2,
+    "error": "Computer Use native pipe is unavailable (os error 2)",
+    "input_sent": false
+  },
+  "browser_channel": {
+    "apps": 0,
+    "browsers": 0
+  },
+  "pending_decision": "APPLICATION_REPLAY_DESIGN.md：单容器、隔离无覆盖恢复与第一版回放范围"
+}

@@ -6,16 +6,18 @@
 | --- | --- |
 | 当前Owner与任务/建设 | [ADR-0030](#adr-0030)、[ADR-0035](#adr-0035)、[ADR-0039](#adr-0039) |
 | 月报/测试/构建 | [ADR-0042](#adr-0042)、[ADR-0044](#adr-0044)、[ADR-0045](#adr-0045) |
-| 存取、研究迁入与工程 | [ADR-0046](#adr-0046)、[ADR-0053](#adr-0053)、[ADR-0054](#adr-0054)、[ADR-0055](#adr-0055) |
+| 存取、研究迁入与工程 | [ADR-0046](#adr-0046)、[ADR-0053](#adr-0053)、[ADR-0054](#adr-0054)、[ADR-0055](#adr-0055)、[ADR-0061](#adr-0061)、[ADR-0062](#adr-0062) |
 | PC输入与UI | [ADR-0057](#adr-0057)、[ADR-0058](#adr-0058)、[ADR-0059](#adr-0059) |
 
-本次6061a2c证据/UI子集、存档审计和文档/代码职责整理沿已批准UI与工程范围，见[当前批次](stages/B1-playable-prototype.md#research-save-organization)。不新增玩家存档政策、自动档或Steam服务。
+已完成的6061a2c证据/UI子集、存档审计和文档/代码职责整理沿已批准UI与工程范围，见[当前批次](stages/B1-playable-prototype.md#research-save-organization)。不新增玩家存档政策、自动档或Steam服务。
 
 2026-10-07用户确认按回放工具→79/72及82→魔法壶→精确表现/后期顺序接入。首批仅将ee687bc的runner单项升级，保留产品路径保护和认证等级，规则/数据/存档政策不变；后续玩法等待正式维护消费者，不能导入在途代码。范围、验收与来源增量记录见[接续批次](stages/B1-playable-prototype.md#research-ee687bc-replay)。
 
+当前产品已在aead864接入a57958c/0a5b5e2及玩家schema3，361项冻结来源、670项素材。用户2026-10-08确认并行推进真实经营流程验收、公共DLL防错和现状文档清理，见[本批范围](stages/B1-playable-prototype.md#business-validation-dll-docs)。主角创建、标题纪录及人物属性cd13头标等正式研究交付后再接；本批起始98f8edc仅合同提案；收口新发布1e6b291提供显式表现请求/独立回放及建设查询，作为后续独立接入项，不夹带本批或研究在途实现。
+
 所有状态从新产品重新开始。旧M阶段不是新产品的完成依据。
 
-2026-10-08继续已批准顺序，接29f371d商品79/72与设施口碑82，维护精确存取同步新layout，玩家schema2/随机政策不变。用户另明确缩放下限调小，本批采用25%并保持鼠标锚定。验收与原版表现边界见[当前接续](stages/B1-playable-prototype.md#research-29f371d-progression)，主角/纪录/举物等依赖见[反馈缺口](reference/RESEARCH_REQUESTS.md#player-feedback-20261008)。
+历史接续：2026-10-08按已批准顺序接29f371d商品79/72与设施口碑82，维护精确存取同步新layout，玩家schema2/随机政策不变。用户另明确缩放下限调小，本批采用25%并保持鼠标锚定。验收与原版表现边界见[当前接续](stages/B1-playable-prototype.md#research-29f371d-progression)，主角/纪录/举物等依赖见[反馈缺口](reference/RESEARCH_REQUESTS.md#player-feedback-20261008)。
 
 | 阶段 | 范围 | 状态/验收 |
 | --- | --- | --- |
@@ -436,3 +438,7 @@ Accepted，2026-10-07：用户要求接入研究开始界面。消费正式1832b
 ## ADR-0061
 
 Accepted，2026-10-08：用户明确允许破坏旧存档、新增资源及来源清单，接续a57958c/0a5b5e2。玩家两栏升级ARKSAVE1/schema3，仅新增40条配方进度，复用legacy_n/user_flags并清理壶瞬态；旧档明确拒绝，不自动删除或迁移，当前随机/暂停/速度政策不变。装备举物与建筑队首提示消费正式只读接口，商品图标和weapon资源按固定Git交付导入；不改购买/装配/邻接结算。具体范围和验收见[B1](stages/B1-playable-prototype.md#research-a57958c-design)。
+
+## ADR-0062
+
+Accepted，2026-10-08：用户确认真实经营流程验收、公共DLL防错和现状文档清理并行推进。公共库按实际源码/头/数据/工具链设置生成内容指纹，成功构建后记录DLL及导入库字节哈希；消费者配置/构建核对输入与产物，不用Git HEAD或文档变更作为ABI身份。各EXE在访问业务对象前用早期C守卫检查实际加载的Ark依赖指纹，不符向stderr提示重建并退出78；四套消费者继续共享一份Release库，便携玩家包不依赖Node且不额外附未使用的维护库。系统loader可能先报告缺DLL/缺业务导出，守卫不承诺接管该类装载失败。实现细节和验收按[本批记录](stages/B1-playable-prototype.md#business-validation-dll-docs)收口；不改变研究源码、存档格式、随机或经营规则。

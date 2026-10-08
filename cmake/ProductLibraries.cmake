@@ -130,3 +130,6 @@ file(WRITE "${CMAKE_BINARY_DIR}/ArkLibraryBuild.cmake"
     "set(ARK_LIBRARY_COMPILER_VERSION [[${CMAKE_CXX_COMPILER_VERSION}]])\n"
     "set(ARK_LIBRARY_POINTER_SIZE [[${CMAKE_SIZEOF_VOID_P}]])\n"
     "set(ARK_LIBRARY_BUILD_TYPE [[${CMAKE_BUILD_TYPE}]])\n")
+
+include("${CMAKE_CURRENT_LIST_DIR}/LibraryContract.cmake")
+ark_publish_library_contract()

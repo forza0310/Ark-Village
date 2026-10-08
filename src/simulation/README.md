@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结`29f371d`，共356项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。维护codec同步新layout；玩家两栏schema2不增加页面字段，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
+当前冻结`0a5b5e2`，共361项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema3仅新增配方耐久进度，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 
@@ -41,9 +41,12 @@ all original UI workflows. Product construction, human and tax commands read/wri
 | startup_world_runtime_tasks | Creation, encounter/task consumers and exploration restore |
 | startup_world_runtime_task_pages/deadline | Task offer, recruitment, extra members, departure and renewal/abort transactions |
 | startup_world_human/tax | Current human details, profession/gift page transactions and automatic residential tax settlement |
-| startup_world_village_activity | Activity 51–54 type0/1/2/3, source counters, points, human effects and expansion confirmation |
+| startup_world_village_activity | Activity 51–54 type0/1/2/3/5/6, source counters, points, human effects, expansion and pot unlocks |
 | startup_world_expansion | Fixed-map town bounds, ordered retirement/replacement, entrance rebuilding and source actor cleanup |
 | startup_world_facility_items/commerce | Item consumption/improvement phases, gold trades, point payment and later facility receipt |
+| startup_world_facility_catalog | Facility merchandise 79, equipment information 72 and publicity 82 lifecycle |
+| startup_world_magic_pot | Recipe progress, item input, calendar processing, discovery and development pages 41–47 |
+| startup_world_visuals | Read-only equipment lift and facility notice draw plans from existing Owner records |
 | startup_world_building/editing | One map, stable placement/retirement, road axis/pricing and source move/remove transactions |
 | startup_world_runtime_nonactors | Projectile/object/presentation requests and render facts |
 
@@ -66,7 +69,7 @@ source caches once at page initialization; display adapters must only read those
 Three months do not certify annual transitions, arbitrary seeds, or natural task success.
 
 
-以下为33ee056的298项历史接收记录，后续e8已补raw88授予、建筑/设施和活动任务管理，当前8f冻结以上文为准：全局create_encounter保留created/denial，局部任务目录含2700+住宅续体；raw16/57/89与raw87年度页按专门消费者处理。
+以下为33ee056的298项历史接收记录，后续e8已补raw88授予、建筑/设施和活动任务管理，当前冻结以上文为准：全局create_encounter保留created/denial，局部任务目录含2700+住宅续体；raw16/57/89与raw87年度页按专门消费者处理。
 产品唯一勋章Owner为`StartupWorldRuntimeState.medal_count`；脚本读写临时投影共用该字段。早期遗漏的产品桥已被e8同义研究实现覆盖，不再保留重复补丁；独立world_medals回归仍验证真实53/54/108脚本与年度+1、终止、溢出回滚。
 
 任务页22–28/33及相关59/83/97/99/100消费者沿冻结来源执行，费用、参与者、路线、自然成功和成果退栈均提交同一Owner。24的按住加速是源逻辑输入，桌面只发送边沿；28/33在动画中允许源confirm加速，不能由绘制帧自动触发。产品`world_session`负责物理按住的页身份和过期输入拒绝。完整主菜单、活动任务管理、raw74和普通建设不包含在这次交付。

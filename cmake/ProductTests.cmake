@@ -70,6 +70,9 @@ ark_test_case(startup_data_contract "${ARK_NODE}"
 ark_test_case(desktop_glyph_inventory "${ARK_NODE}"
     ARGS "${PROJECT_SOURCE_DIR}/tests/data/desktop_glyphs_test.mjs"
     LABELS presentation provenance TIMEOUT 30)
+ark_test_case(shared_library_contract "${ARK_NODE}"
+    ARGS "${PROJECT_SOURCE_DIR}/tests/integration/shared_library_contract_test.mjs" "${CMAKE_CXX_COMPILER}"
+    LABELS e2e build TIMEOUT 60)
 ark_test_case(source_provenance "${ARK_NODE}"
     ARGS "${PROJECT_SOURCE_DIR}/scripts/verify_assets.mjs" "${PROJECT_SOURCE_DIR}/assets"
     LABELS provenance)
@@ -134,6 +137,7 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
             tests/desktop/world_building_test.cpp tests/desktop/world_building_render_fixture.cpp
+            tests/desktop/world_business_render_fixture.cpp
             src/desktop/ui/world_panels.cpp
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
             tests/desktop/world_combat_render_fixture.cpp

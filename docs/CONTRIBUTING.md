@@ -29,7 +29,13 @@ ctest --preset desktop-debug -E '^simulation\.startup_world_continuous_test$'
 node scripts/build_product.mjs desktop-debug --parallel 4
 ```
 
-它严格先完成`shared-libraries`，再构建指定消费者；失败不继续。该入口复用已配置的预设，不选择新工具链、不运行测试。不要只重建消费者后运行测试，因为消费者导入的DLL不会自动重建其源文件；修改公共接口、实现或数据时同样使用此顺序。
+它严格先完成`shared-libraries`，再构建指定消费者；失败不继续。该入口复用已配置的预设，不选择新工具链、不运行测试。消费者导入的DLL不会自行重建：修改公共接口、实现或数据时同样使用此顺序。
+
+`LibraryContract.cmake`按实际库源码、公开/私有头、编译数据、生成器及工具链设置生成内容身份，公共库成功后才发布DLL及导入库字节哈希清单。消费者配置和构建验证当前源/库产物，防止只配置、部分构建或手工替换DLL后误用旧库；Git提交号、文档和测试正文不决定身份。每个新构建的EXE内嵌期望身份，在业务对象初始化前通过稳定C接口`ark_library_contract_v1`检查实际加载的Ark依赖，不匹配写stderr并退出78。修复方法仍是上述统一构建命令；玩家应重新解压完整Release包，不能只替换EXE或单个DLL。
+
+公共库重建必须串行，且不能与正在运行的消费者/验收重叠；消费者对象目录独立，可在公共库稳定后并行构建。链接后检查重新校验源/产物，并不承诺检测另一轮完整公共构建跨越前后检查的所有竞争；该情况下启动守卫仍会拒绝旧EXE身份。
+
+运行时不读取构建清单，也不需要Node；只检查当前EXE实际加载的依赖，玩家包无需附维护/测试库。缺DLL或缺业务导出可能先由Windows loader拒绝，早期守卫无法接管。引入守卫之前构建的旧EXE没有此保护；首次升级需重建所有仍使用的消费者，之后公共库身份变化再重建需要运行的消费者。
 
 另三套为desktop-release、headless-debug、headless-release，按下表需要替换预设名执行配置/编译。headless不查找raylib，Release测试也保留有效断言，警告视为错误。配置选择如下：
 
@@ -85,7 +91,7 @@ Windows检出关闭Git自动CRLF转换，保留冻结源/资源的字节和哈�
 
 raylib固定到6.0提交`dbc56a87da87d973a9c5baa4e7438a9d20121d28`，单独共享构建；通过`PKG_CONFIG_LIBS_EXTRA`补齐`winmm/gdi32/opengl32`系统链接依赖。编译器显式选择`x86_64-w64-mingw32-clang++`，开发程序共用目标架构的C++运行库DLL。打包递归读取PE导入，仅复制Release游戏所需的Ark/raylib/C++ DLL并剥离分发副本符号，拒绝未随包提供的非系统依赖。解压后不需要安装Node/CMake/raylib或额外C++运行库。
 
-desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序及依赖DLL、616项清单资源、字体子集/来源/OFL许可、raylib与运行库许可及启动说明。simulation数据已编译进运行库，源码副本、测试、CLI、导入库、调试符号和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；单一Node扫描器生成公共字形inventory/私有UTF8头供字体子集与Text共同消费；字体准备刷新同一清单，新增文案无需维护第二份运行字串。普通公共库构建只刷新需求，若新增码点则须重新运行字体准备，缺字会明确拒绝，不能沿用覆盖不足的旧子集。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
+desktop-release全部标准测试成功后，打包剥离调试符号的桌面程序及依赖DLL、670项清单资源、字体子集/来源/OFL许可、raylib与运行库许可及启动说明。simulation数据已编译进运行库，源码副本、测试、CLI、导入库、调试符号和工具链不进入游戏包。字体来自固定Noto Sans CJK SC2.004，使用固定fonttools版本按产品源码/数据提取并验证字形；单一Node扫描器生成公共字形inventory/私有UTF8头供字体子集与Text共同消费；字体准备刷新同一清单，新增文案无需维护第二份运行字串。普通公共库构建只刷新需求，若新增码点则须重新运行字体准备，缺字会明确拒绝，不能沿用覆盖不足的旧子集。直接运行exe或启动脚本即可，保留`--font`覆盖；不猜测系统TTC支持。打包前检查PE32+/导入DLL、字体与资源哈希，并在独立工作目录执行制品`--check`。实际字体窗口加载由本地窗口验收单独记录。
 
 Actions运行页保留7天的ZIP、SHA-256及独立诊断artifact；ZIP使用最高常规压缩等级，上传时关闭二次压缩。失败仍上传构建日志、CTest日志/JUnit，工具链和构建树不作为制品存储。通过后独立publish job用Windows runner自带的GitHub CLI，将单份ZIP及校验文件作为GitHub Release附件上传；仅此job授予`contents: write`及下载artifact所需的`actions: read`，build job只有读取权限。不再安装ORAS或申请`packages: write`。
 

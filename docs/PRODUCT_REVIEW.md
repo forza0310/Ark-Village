@@ -11,11 +11,11 @@
 | P2-03 维护存取混入runtime | 已分离ark_world_persistence；玩家runtime不依赖维护hash | cmake/WorldSimulation |
 | P2-04 协调器职责集中 | 已分离inspection/统计；本批移出HUD和页面文本，输入/回执进一步分责待办 | world_view、world_inspection、ui/world_panels |
 | P2-05 玩家新增字段漏分类 | 已有Clang AST字段分类防漏，独立于维护完整codec | world_save_policy.json |
-| P2-06 历史与现状冲突 | 本批分类索引、B1/TODO/审阅归档并修正无存档旧结论 | docs/README、ARCHITECTURE |
+| P2-06 历史与现状冲突 | 已有分类索引及历史归档；2026-10-08进一步统一schema3、商品/口碑/魔法壶、举物/建筑提示现状，历史版本原身份保留 | docs/README、ARCHITECTURE |
 | P3-01 公开未实现archive API | 已窄化为SHA接口，来源头私有 | include/ark/assets/sha256.hpp |
 | P3-02 payload/页族分散 | 仍需随实际功能渐进明确身份；不强行合并不同资格 | world_session、world_commands |
 | P3-03 两份字体需求 | 已统一扫描器/清单/运行图集 | compile_desktop_glyphs.mjs |
-| P3-04 共享DLL旧库防错 | 已有先公共库后消费者入口；内容指纹仍待办 | build_product.mjs |
+| P3-04 共享DLL旧库防错 | 内容/产物指纹、消费者构建检查与启动早期C守卫已接；本批本地验收通过，四消费者已首次重建；旧守卫前EXE无法追溯保护 | [本批范围](stages/B1-playable-prototype.md#business-validation-dll-docs) |
 
 当前依赖方向是desktop→session/queries/visuals→runtime→rules；玩家save→runtime，维护persistence→runtime/hash。旧Game仍是显式诊断，冻结源不为目录美观重排。私有desktop头不扩为核心公开接口；不按单页新增DLL。
 

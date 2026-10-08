@@ -18,6 +18,8 @@ void world_human_render_fixture();
 void render_world_edit_fixture();
 void world_facility_static_render_fixture();
 void world_combat_render_fixture();
+void world_business_render_fixture();
+void world_business_restore_fixture();
 } // namespace ark::test
 
 int main(int argc, char **argv) {
@@ -38,5 +40,7 @@ int main(int argc, char **argv) {
          {"world_human_render_fixture", ark::test::world_human_render_fixture},
          {"world_edit_render_fixture", ark::test::render_world_edit_fixture},
          {"world_facility_static_render_fixture", ark::test::world_facility_static_render_fixture},
-         {"world_combat_render_fixture", ark::test::world_combat_render_fixture}});
+         {"world_combat_render_fixture", ark::test::world_combat_render_fixture},
+         {"world_business_render_fixture", ark::test::world_business_render_fixture},
+         {"world_business_restore_fixture", ark::test::world_business_restore_fixture}});
 }

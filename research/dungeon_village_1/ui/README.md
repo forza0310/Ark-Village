@@ -10,7 +10,7 @@
 新增[装备与设施属性演出](EQUIPMENT_FACILITY_RENDER.md)：cd15武器专用SEB／定义图片、cd21／22图标与背景、
 设施队首kind1–6原帧／显式图层／整数锚点；只读维护原型已接，完整赠礼／升级模态皮肤仍分开验收。
 新增[输入与绘制请求](INPUT_RENDER_REQUESTS.md)：APK列表marker／候选定位，原整栈／栈顶绘制准入、任务共享随机与66声音出口；
-来源已核，新增Owner请求与回放模式待确认，建设图像维护代码仍待本批新增主责检查。
+用户已确认并接入Session显式请求／独立回放模式，建设图像与主责测试已通过；完整原输入及Android重绘频率仍独立待验。
 新增[道路铺设UI](PAGES.md#road-placement)与[边界栅栏/入口绘制规格](BOUNDARY.md)，不与已交付道路补块混用。
 新增[Steam交互合同](STEAM_INTERACTIONS.md)：标题手动／自动栏、系统保存、设施74–77以及列表“标记后确认”；
 配套[S038–S051完整截图](../references/screenshots/2026-10-07-steam-restore/README.md)作为UI设计参考，不直接作为产品运行美术。

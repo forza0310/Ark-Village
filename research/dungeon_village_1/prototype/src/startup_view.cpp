@@ -33,6 +33,8 @@
 namespace dungeon_village_prototype {
 namespace {
 constexpr int width = 240, height = 320, scale = 2;
+// 原21窗口中心偏移；绘制与本研究窗口拾取共用逻辑坐标，不写入领域状态。
+constexpr int build_menu_x = width / 2 - 87, build_menu_y = height / 2 - 104;
 const Color ink{48, 44, 46, 255}, paper{248, 248, 244, 255};
 
 std::vector<std::uint8_t> read_bytes(const std::filesystem::path &path) {
@@ -167,6 +169,11 @@ class SourceSprites {
                  {static_cast<float>(plan.crop[0]), static_cast<float>(plan.crop[1]),
                   static_cast<float>(plan.crop[2]), static_cast<float>(plan.crop[3])}, p);
         }
+    }
+    void building(const std::vector<StartupBuildingDraw> &plans, Vector2 anchor) {
+        for (const auto &part : plans)
+            draw(part.sprite, part.frame,
+                 {anchor.x + part.offset[0], anchor.y + part.offset[1]});
     }
     void portrait(const StartupPortrait &plan, Vector2 position) {
         BeginScissorMode(static_cast<int>(position.x), static_cast<int>(position.y),
@@ -646,7 +653,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &recipe : rules.magic_pot_recipes)
         glyphs += recipe.name;
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
-    glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取";
+        glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
     glyphs += "道路移动撤除旋转请选择起点终点未开放不可操作街道内地域商品种类装饰信息口碑关闭继续";
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
@@ -1475,7 +1482,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     build_selection = 0;
                 }
                 for (int tab = 0; tab < 3; ++tab)
-                    if (hit({8.F + tab * 74, 45, 74, 20})) {
+                    if (hit({static_cast<float>(build_menu_x + 3 + tab * 57),
+                             static_cast<float>(build_menu_y + 2), 56, 16})) {
                         build_tab = tab;
                         build_selection = 0;
                     }
@@ -1485,8 +1493,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     build_selection = (build_selection + count - 1) % count;
                 if (count && IsKeyPressed(KEY_DOWN))
                     build_selection = (build_selection + 1) % count;
-                for (int row = 0; row < count && row < 5; ++row)
-                    if (hit({12, 72.F + row * 20, 216, 20}))
+                const int first = std::max(0, build_selection - 4);
+                for (int row = first; row < count && row < first + 5; ++row)
+                    if (hit({static_cast<float>(build_menu_x + 4),
+                             static_cast<float>(build_menu_y + 22 + (row-first)*37), 162, 37}))
                         build_selection = row;
                 const auto pid = page->id;
                 if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
@@ -1948,12 +1958,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     world.map.width, world.map.height);
                 for (const auto &part : footprint.cells) {
                     highlight(part.position);
-                    if (state.build_mode == 7 && state.scene.scene_counter % 20 < 10) {
-                        const auto &art = display(d.display_id);
-                        sprites.draw(art.sprite, part.fragment_index,
-                                     project(part.position, camera));
-                    }
                 }
+                const auto preview = startup_world_building_preview_draws(state,*cell,build_orientation);
+                if (!preview) throw std::runtime_error("候选建筑绘制载荷非法");
+                sprites.building(*preview,project(*cell,camera));
             } else if (cell)
                 highlight(*cell);
             DrawRectangle(5, 265, 230, 24, paper);
@@ -2021,7 +2029,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
         }
         if (const auto *page = top_page()) {
-            DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -2042,7 +2050,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
+            if (page->legacy_page != 21)
+                font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const auto view = inspect_startup_world_magic_pot_page(state, page->id);
@@ -2274,27 +2283,38 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.paragraph(reward, 16, 96, 208);
                 font.text("确认领取", 176, 272, ink, 10);
             } else if (page->legacy_page == 21) {
-                DrawRectangle(5, 42, 230, 126, paper);
-                constexpr std::array<const char *, 3> tabs{{"道路植物", "商店", "饮食"}};
+                DrawRectangle(build_menu_x,build_menu_y,175,210,{79,72,48,255});
+                DrawRectangle(build_menu_x+1,build_menu_y+1,173,208,{193,234,94,255});
+                DrawRectangle(build_menu_x+4,build_menu_y+22,162,184,paper);
+                constexpr std::array<const char *, 3> tabs{{"设备", "一般", "饮食"}};
                 for (int tab = 0; tab < 3; ++tab) {
-                    if (tab == build_tab)
-                        DrawRectangle(8 + tab * 74, 45, 74, 20, {210, 229, 195, 255});
-                    font.text(tabs[tab], 12 + tab * 74, 48, ink, 10);
+                    const int x = build_menu_x+3+tab*57;
+                    DrawRectangle(x,build_menu_y+2,56,16,
+                                  tab==build_tab ? Color{3,255,133,255} : Color{223,255,67,255});
+                    font.text(tabs[tab], x+(56-font.measure(tabs[tab],10))/2,build_menu_y+5,ink,10);
                 }
                 const auto &list = state.build_page_catalogs.at(page->id).at(build_tab);
-                for (std::size_t row = 0; row < list.size() && row < 5; ++row) {
+                const int first = std::max(0,build_selection-4);
+                for (int row = first; row < static_cast<int>(list.size()) && row < first+5; ++row) {
                     const auto &d = rules.facilities.at(list[row]);
-                    if (static_cast<int>(row) == build_selection)
-                        DrawRectangle(10, 72 + static_cast<int>(row) * 20, 220, 20,
-                                      {255, 236, 174, 255});
-                    font.text(d.name, 14, 76 + row * 20);
+                    const int x = build_menu_x+10, y = build_menu_y+25+(row-first)*37;
+                    DrawRectangle(x,y,64,32,{190,242,230,255});
+                    const auto icon = startup_world_building_draws(state,d.id,ref::FacilityOrientation::first);
+                    if (!icon) throw std::runtime_error("建设目录建筑绘制载荷非法");
+                    // 原图大小、原分片顺序；不按包围盒居中或缩放。
+                    BeginScissorMode(x,y,64,32);
+                    sprites.building(*icon,{static_cast<float>(x+2),static_cast<float>(y+10)});
+                    EndScissorMode();
+                    if (row == build_selection)
+                        DrawRectangle(x+73,y,static_cast<int>(font.measure(d.name,10))+8,15,{248,193,108,255});
+                    font.text(d.name,x+73,y+3,ink,10);
                     const auto quote = startup_world_build_quote(state, d.id);
                     if (!quote)
                         throw std::runtime_error("建设目录报价缺失");
-                    font.text(std::to_string(quote->construction_cost) + "G", 175, 76 + row * 20,
-                              ink, 10);
+                    const auto price=std::to_string(quote->construction_cost)+"G";
+                    font.text(price,x+154-font.measure(price,10),y+18,ink,10);
                 }
-                font.text(command_feedback, 12, 199, ink, 10);
+                font.text(command_feedback, 65, 272, ink, 10);
                 font.text("返回", 18, 272);
             } else if (page->legacy_page == 74 &&
                        state.facility_definition_page_bindings.count(page->id)) {

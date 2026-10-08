@@ -14,6 +14,8 @@
 
 namespace dungeon_village_prototype {
 struct StartupBuildResult;
+struct StartupPresentationRequest;
+struct StartupPresentationResult;
 enum class StartupFacilityPageAction;
 enum class StartupHumanPageAction;
 enum class StartupWorldTaxAction;
@@ -368,6 +370,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeSession(const StartupState &startup, ref::WorldRandomStream random);
     const StartupWorldRuntimeState &state() const;
     StartupWorldRuntimeResult update(); // 一次框架b入口，内部保留原1/2轮与日历27。
+    StartupPresentationResult present(const StartupPresentationRequest &request);
     void set_paused(bool paused);
     void set_speed(int setting); // 只恰1双轮；不是人物位移乘二。
     void set_page_confirm_held(bool held);

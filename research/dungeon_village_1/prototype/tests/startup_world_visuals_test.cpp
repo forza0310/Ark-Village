@@ -356,6 +356,181 @@ void cpu_equipment_and_growth(const std::filesystem::path &root) {
         }
     }
 }
+// 固定原定义28/29/65分别为单格旅店、双格旅店、四格城堡。oracle直接登记a.o.ah/ai，
+// 不调用被测查询或geometry生成期望；每项为frame、相对屏幕X、相对屏幕Y。
+const std::array<int,3> building_definitions{28,29,65};
+const std::array<std::vector<std::array<int,3>>,6> building_source_parts{{
+    {{0,0,0}}, {{1,0,0}},
+    {{0,30,-15},{2,0,0}}, {{1,-30,-15},{3,0,0}},
+    {{0,0,-30},{2,-30,-15},{4,30,-15},{6,0,0}},
+    {{1,0,-30},{3,30,-15},{5,-30,-15},{7,0,0}}
+}};
+void building_draw_queries() {
+    auto s=test_support::world_fixture();
+    for (int shape=0;shape<3;++shape) {
+        const auto &d=s.rules->facilities.at(building_definitions[shape]);
+        check(d.id==building_definitions[shape] && d.shape==shape,
+              "literal building identities bind actual original single/pair/square definitions");
+        const auto art=std::find_if(startup_evidence().displays.begin(),startup_evidence().displays.end(),
+            [&](const auto &v){return v.id==d.display_id;});
+        check(art!=startup_evidence().displays.end(),"source building display identity resolves actual SEB");
+        for (int direction=0;direction<2;++direction) {
+            const auto digest=startup_world_state_digest(s);
+            const auto plan=startup_world_building_draws(s,d.id,static_cast<ref::FacilityOrientation>(direction));
+            const auto &expected=building_source_parts[shape*2+direction];
+            check(plan && plan->size()==expected.size(),"complete source building fragment count");
+            for (std::size_t n=0;n<expected.size();++n)
+                check(plan->at(n).sprite==art->sprite && plan->at(n).frame==expected[n][0] &&
+                          plan->at(n).offset==std::array<int,2>{expected[n][1],expected[n][2]},
+                      "three shapes/two orientations preserve literal ah/ai order, frame and pixel offsets");
+            check(startup_world_state_digest(s)==digest,"building plan preserves complete Owner digest");
+        }
+    }
+    const auto road=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [](const auto &v){return v.kind==6;});
+    check(road!=s.rules->facilities.end(),"original road definition exists independently of ordinary catalog");
+    for (int direction=0;direction<2;++direction) {
+        const auto plan=startup_world_building_draws(s,road->id,static_cast<ref::FacilityOrientation>(direction));
+        check(plan && plan->size()==1 && plan->front().frame==(direction==0?11:1) &&
+                  plan->front().offset==std::array<int,2>{0,0},
+              "kind6 helper selects original road11/1 rather than ordinary fragment0/1");
+    }
+    // 只读调用点夹具：不创建设施，不伪称自然进入移动模式，不放宽建设审批。
+    s.scene.scene_state=1; s.build_definition=65;
+    for (int mode:{0,7}) {
+        s.build_mode=mode;
+        for (int age=0;age<40;++age) {
+            s.scene.scene_counter=age;
+            const auto digest=startup_world_state_digest(s);
+            for (const auto cursor:{ref::Position{0,0},ref::Position{s.scene.world.world.map.width-1,
+                                                                   s.scene.world.world.map.height-1}})
+                for (int direction=0;direction<2;++direction) {
+                    const auto plan=startup_world_building_preview_draws(s,cursor,
+                        static_cast<ref::FacilityOrientation>(direction));
+                    check(plan && plan->size()==(age%20<10?4U:0U),
+                          "ordinary/moving preview has exact20-counter blink and retains boundary-crossing fragments");
+                    if (!plan->empty())
+                        check(plan->front().offset==std::array<int,2>{0,-30} &&
+                                  plan->at(direction==0?1:2).offset==std::array<int,2>{-30,-15},
+                              "full-map cursor retains original parts lying outside map instead of suppressing candidate");
+                }
+            check(startup_world_state_digest(s)==digest,
+                  "preview preserves complete Owner including counters, common random, cash and references");
+        }
+        for (const auto cursor:{ref::Position{-1,0},ref::Position{0,-1},
+                               ref::Position{s.scene.world.world.map.width,0},
+                               ref::Position{0,s.scene.world.world.map.height}}) {
+            const auto plan=startup_world_building_preview_draws(s,cursor,ref::FacilityOrientation::first);
+            check(plan && plan->empty(),"outside-map cursor is distinct from boundary-crossing footprint");
+        }
+        for (int age:{0,10}) {
+            s.scene.scene_counter=age;
+            for (int direction:{-1,2})
+                check(!startup_world_building_preview_draws(s,{0,0},static_cast<ref::FacilityOrientation>(direction)),
+                      "malformed orientation rejects in visible and hidden phases");
+            auto broken=s; broken.build_definition=9999;
+            check(!startup_world_building_preview_draws(broken,{0,0},ref::FacilityOrientation::first),
+                  "unknown selected definition rejects in visible and hidden phases");
+            broken=s; broken.build_definition.reset();
+            check(!startup_world_building_preview_draws(broken,{0,0},ref::FacilityOrientation::first),
+                  "missing selected definition cannot be concealed by blink phase");
+        }
+    }
+    for (int mode:{1,2,3,4,5,6}) {
+        s.build_mode=mode;
+        const auto plan=startup_world_building_preview_draws(s,{0,0},ref::FacilityOrientation::first);
+        check(plan && plan->empty(),"building preview delegates other management modes");
+    }
+    s.build_mode=0; s.scene.scene_state=0;
+    check(startup_world_building_preview_draws(s,{0,0},ref::FacilityOrientation::first)->empty(),
+          "ordinary scene suppresses stale selected construction image");
+    s.scene.scene_state=1;
+    auto broken=s; broken.scene.scene_counter=-1;
+    check(!startup_world_building_preview_draws(broken,{0,0},ref::FacilityOrientation::first),
+          "negative source scene counter rejects candidate query");
+    broken=s; broken.scene.world.world.map.cells.pop_back();
+    check(!startup_world_building_preview_draws(broken,{0,0},ref::FacilityOrientation::first),
+          "malformed source map rejects candidate query");
+    for (int fault=0;fault<5;++fault) {
+        broken=s;
+        StartupWorldRules private_rules=*s.rules;
+        broken.rules=&private_rules;
+        auto &d=private_rules.facilities.at(65);
+        if (fault==0) broken.rules=nullptr;
+        if (fault==1) d.shape=3;
+        if (fault==2) d.display_id=9999;
+        if (fault==3) private_rules.facilities.erase(private_rules.facilities.begin()+65);
+        if (fault==4) d.display_id=private_rules.facilities.at(28).display_id;
+        const auto digest=startup_world_state_digest(broken);
+        check(!startup_world_building_draws(broken,65,ref::FacilityOrientation::first),
+              "missing rules/definition/display, bad shape and inconsistent display.g explicitly reject");
+        check(startup_world_state_digest(broken)==digest,"malformed private rules never mutate Owner or frozen source tables");
+    }
+}
+// CPU-only组合器消费计划与实际PNG/SEB；期望分片独立由上面的原字面量准备。
+Image building_thumbnail(const std::filesystem::path &root,
+                         const std::map<int,std::filesystem::path> &images,
+                         const std::vector<StartupBuildingDraw> &draws) {
+    Image panel=GenImageColor(64,32,{190,242,230,255});
+    for (const auto &draw:draws) {
+        const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(root/"image"/draw.sprite));
+        if (draw.frame>=seb.frame_count) continue; // 地图缺该朝向帧是空绘，不复用frame0。
+        for (const auto &layer:seb.layers)
+            for (const auto &part:layer.parts) {
+                if (part.frame!=draw.frame) continue;
+                Image image=LoadImage(images.at(part.image_index).string().c_str());
+                check(image.data && part.source_x>=0 && part.source_y>=0 && part.width>0 && part.height>0 &&
+                          part.source_x+part.width<=image.width && part.source_y+part.height<=image.height &&
+                          part.flip_x>=0 && part.flip_x<=1 && part.flip_y>=0 && part.flip_y<=1,
+                      "real building fragment resolves valid original PNG rectangle and raw flips");
+                Image crop=ImageFromImage(image,{static_cast<float>(part.source_x),static_cast<float>(part.source_y),
+                    static_cast<float>(part.width),static_cast<float>(part.height)});
+                if (part.flip_x) ImageFlipHorizontal(&crop);
+                if (part.flip_y) ImageFlipVertical(&crop);
+                ImageDraw(&panel,crop,{0,0,static_cast<float>(crop.width),static_cast<float>(crop.height)},
+                    {static_cast<float>(2+draw.offset[0]+part.offset_x),
+                     static_cast<float>(10+draw.offset[1]+part.offset_y),
+                     static_cast<float>(crop.width),static_cast<float>(crop.height)},WHITE);
+                UnloadImage(crop); UnloadImage(image);
+            }
+    }
+    return panel;
+}
+void cpu_building_thumbnails(const std::filesystem::path &root) {
+    auto s=test_support::world_fixture();
+    const auto images=source_images(root,"image");
+    for (int shape=0;shape<3;++shape) {
+        const auto &d=s.rules->facilities.at(building_definitions[shape]);
+        const auto art=std::find_if(startup_evidence().displays.begin(),startup_evidence().displays.end(),
+            [&](const auto &v){return v.id==d.display_id;});
+        const auto plan=startup_world_building_draws(s,d.id,ref::FacilityOrientation::first);
+        check(plan.has_value(),"catalog fixed orientation0 has complete real building plan");
+        std::vector<StartupBuildingDraw> expected;
+        for (const auto &part:building_source_parts[shape*2])
+            expected.push_back({art->sprite,part[0],{part[1],part[2]}});
+        Image actual=building_thumbnail(root,images,*plan);
+        Image oracle=building_thumbnail(root,images,expected);
+        int painted{};
+        for (int y=0;y<32;++y)
+            for (int x=0;x<64;++x) {
+                const auto a=GetImageColor(actual,x,y), b=GetImageColor(oracle,x,y);
+                check(a.r==b.r && a.g==b.g && a.b==b.b && a.a==b.a,
+                      "64x32 catalog composition matches literal source fragments at2,10 without scale or centering");
+                painted+=a.r!=190 || a.g!=242 || a.b!=230;
+            }
+        check(painted>20,"all three catalog shapes contain real source pixels within64x32 clip");
+        Image framed=GenImageColor(68,36,MAGENTA);
+        ImageDraw(&framed,actual,{0,0,64,32},{2,2,64,32},WHITE);
+        for (int y=0;y<36;++y)
+            for (int x=0;x<68;++x)
+                if (x<2 || x>=66 || y<2 || y>=34) {
+                    const auto p=GetImageColor(framed,x,y);
+                    check(p.r==255 && p.g==0 && p.b==255 && p.a==255,
+                          "catalog64x32 clipping preserves surrounding row pixels");
+                }
+        UnloadImage(framed); UnloadImage(oracle); UnloadImage(actual);
+    }
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -367,6 +542,8 @@ int main(int argc, char **argv) {
         equipment_lift_queries();
         facility_growth_queries();
         cpu_equipment_and_growth(argv[1]);
+        building_draw_queries();
+        cpu_building_thumbnails(argv[1]);
         std::cout << "startup world visuals: " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

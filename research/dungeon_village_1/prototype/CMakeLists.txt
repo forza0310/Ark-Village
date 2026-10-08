@@ -68,7 +68,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_task_pages.cpp
     src/startup_world_runtime_deadline.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
-    src/startup_world_visuals.cpp src/startup_world_building.cpp src/startup_world_expansion.cpp
+    src/startup_world_visuals.cpp src/startup_world_presentation.cpp src/startup_world_building.cpp src/startup_world_expansion.cpp
     src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp
     src/startup_world_facility_items.cpp src/startup_world_facility_catalog.cpp src/startup_world_magic_pot.cpp
     src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
@@ -105,7 +105,8 @@ add_test(NAME dungeon_village_prototype.startup_world_replay_driver
 add_test(NAME dungeon_village_prototype.startup_world_replay_process
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/replay_file_test.mjs"
         --exe "$<TARGET_FILE:dungeon_village_startup_world_continuous_tests>"
-        --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
+        --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests"
+        --presentation-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>")
 set_tests_properties(dungeon_village_prototype.startup_world_replay_process PROPERTIES TIMEOUT 360)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # 重建字段AST检查覆盖；新成员不能只改运行时而静默漏出存档。

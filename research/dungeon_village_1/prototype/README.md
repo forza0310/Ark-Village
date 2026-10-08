@@ -32,6 +32,7 @@
 | [玩家任务页](src/startup_world_runtime_task_pages.cpp) | 页22原名单、23付费接受、24真实征集、25队伍、27追加、28正式出发；临时领域投影同步消费真实脚本/页栈，不另存任务世界 |
 | [期限与返回](src/startup_world_runtime_deadline.cpp) | 页33续费/中止演出、栈外原关闭页引用及真正主场景返回；当前报价/现金/任务清理/地图恢复整轮提交 |
 | [只读世界表现](include/dungeon_village_prototype/startup_world_visuals.hpp)、[实现](src/startup_world_visuals.cpp) | 当前职业/性别头像、旅馆前四占用引用、169/170计时/HP切换；cd15／21／22举物及设施队首kind1–6原帧/图层；不推进计数、装配、邻接或随机 |
+| [显式表现请求](include/dungeon_village_prototype/startup_world_presentation.hpp)、[实现](src/startup_world_presentation.cpp) | Session按物理页栈准入及原序，事务提交任务栏共同抖动／缺绑定恢复和显式栈顶66声音；即时返回冻结计划，与只读像素绘制分开 |
 | [共同世界建设](include/dungeon_village_prototype/startup_world_building.hpp)、[实现](src/startup_world_building.cpp) | 当前普通目录/报价/全占地准入与实例初始化、raw74稳定绑定、募集24→入住80→住宅25/96、共享等级81；刷新/账本/脚本整轮回滚，不复用旧建设世界 |
 | [共同世界编辑](include/dungeon_village_prototype/startup_world_editing.hpp)、[实现](src/startup_world_editing.cpp) | 道路起终点／撤除／移动选择与落点、原模式返回、全占地刷新及旧实例退休；住宅解除绑定及H重建资格仍归同一Owner，重建仍付原800G |
 | [地图扩张](include/dungeon_village_prototype/startup_world_expansion.hpp)、[实现](src/startup_world_expansion.cpp) | 村办类型3的边界级别、原序设施替换／退休、地面／双入口重建与旧ax人物重置；地图仍为576格，逐次刷新和最后c/d分开，失败不提交部分Owner |

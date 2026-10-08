@@ -9,6 +9,9 @@
 
 ## 2026-10-08产品请求与具体绘制消费者
 
+再后继[设施来源页](ui/FACILITY_BONUS_ROWS.md)以APK74初始化Y／绘制与GamePage L712–L93e交叉：名称后缀为同定义最小未用序号+1，kind2显示y0价格／y1品质、其它来源显示y0魅力，不从累计分摊；道路只有累计贡献。固定85定义x/y等长，47条来源满足位置载荷。
+[类别／属性图标](ui/FACILITY_BONUS_ICONS.md)316项及3低层交叉核图91／37、85定义、45槽87加号与合法A尾部；Steam仅共享helper局部，不混成整页已核。只读维护行／五行窗口及类别计划通过集中回归，真实新局来源行已查看，见[本批验收](work/facility-bonus-delivery/README.md)。
+
 后继[Steam工作包](work/steam-attribute-item-render/README.md)核10登记范围22384字节、32明确地址锚点；metadata74项、合同52项检查通过。实际type1字段／默认数组／资源链与cd13绘制帮助器分别闭合；Steam加号GetFig与APK字体测量不同，语言素材／负帧末端另列未验。
 [Owner轨迹](work/hit-reaction-owner-trace/README.md)使用现有world_actor_schedule套件，17合法条件场景与3非法投射拒绝，真实d尾与原投影观察分开。没有新增任意hit-stop或修改原源表；研究自然商会到人物赠礼目录的8帧截图已查看，原EXE动态未运行。
 [建设21](ui/STEAM_BUILD_LIST.md)归档既有Steam字段消费者与APK五行／空行边界；新范围分析与计分补充探针的自动审批阻塞及未完成状态保留，不把未执行动作记作证据。

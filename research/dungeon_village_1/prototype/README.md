@@ -4,6 +4,9 @@
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。
 本包独立于产品主构建，只修改研究代码。
 
+设施74第二页现提供[逐来源只读行及五行视窗](../ui/FACILITY_BONUS_ROWS.md)，配套[类别9／属性7图块与效果加号](../ui/FACILITY_BONUS_ICONS.md)。按原序显示实例后缀与固定y值，不从累计分摊；不会因读页再次计算或提交加成。
+有界`--world --inspect-page world-facility-bonuses --frames 8`仅打开真实新局已有来源详情，不构造示例数值；窗口来源行／标题已接，第一页面完整效果皮肤及原EXE动态另验。
+
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。
 18项受影响Release测试和8帧共同世界窗口通过；窗口未捕获cd13或道具目录，原身体bl偏移／精确原布局／Steam消费者仍未认证，详见[需求回应](../verification/PRODUCT_REQUESTS.md)。

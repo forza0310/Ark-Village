@@ -635,6 +635,62 @@ bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPag
            f->second.placement.definition_id == p.legacy_f &&
            startup_world_runtime_facility_target(s, binding->second).has_value();
 }
+std::optional<std::vector<StartupFacilityBonusRow>>
+startup_world_facility_bonus_rows(const State &s, std::uint64_t page_id) {
+    if (!s.rules)
+        return {};
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [=](const auto &p) { return p.id == page_id; });
+    const auto sources = s.facility_page_neighbours.find(page_id);
+    if (page == s.scripts.pages.end() || page->kind != ref::WorldScriptPageKind::raw_page ||
+        page->legacy_page != 74 || page->lifecycle == 4 ||
+        sources == s.facility_page_neighbours.end() ||
+        s.facility_definition_page_bindings.count(page_id) ||
+        !valid_startup_world_facility_page(s, *page))
+        return {};
+    std::vector<StartupFacilityBonusRow> result;
+    result.reserve(sources->second.size());
+    for (const auto &source : sources->second) {
+        const auto instance = s.scene.world.world.facilities.find(source.instance_id.value);
+        const auto ordinal = s.facility_ordinals.find(source.instance_id.value);
+        const auto *d = definition(s, source.definition_id);
+        if (!d || instance == s.scene.world.world.facilities.end() ||
+            instance->second.placement.definition_id != source.definition_id ||
+            ordinal == s.facility_ordinals.end() || ordinal->second < 0 ||
+            ordinal->second == std::numeric_limits<int>::max() ||
+            d->legacy_icon < 0 || d->legacy_icon > 6)
+            return {};
+        const std::size_t count = d->kind == 2 ? 2 : 1;
+        if (d->neighbour_effects.size() < count)
+            return {}; // 原源y不足不能伪造0；空Y才是“没有奖励”。
+        StartupFacilityBonusRow row;
+        row.instance = source.instance_id.value;
+        row.definition = source.definition_id;
+        row.ordinal = ordinal->second;
+        row.icon = d->legacy_icon;
+        row.name = d->name + std::to_string(ordinal->second + 1);
+        for (std::size_t n = 0; n < count; ++n) {
+            // 固定85定义x/y长度相等，维护pairs保持原位置；这里明确不读x槽标签。
+            const auto value = d->neighbour_effects[n].delta;
+            const int attribute = d->kind == 2 ? static_cast<int>(n) : 2;
+            const char *label = attribute == 0 ? "价格" : attribute == 1 ? "品质" : "魅力";
+            row.values.push_back({attribute, label, value, "+" + std::to_string(value)});
+        }
+        result.push_back(std::move(row)); // 不按定义或实例去重，保留原Y逐行顺序。
+    }
+    return result;
+}
+std::optional<StartupFacilityBonusWindow>
+startup_world_facility_bonus_window(const State &s, std::uint64_t page, std::size_t first) {
+    auto rows = startup_world_facility_bonus_rows(s, page);
+    if (!rows || first > (rows->size() > 5 ? rows->size() - 5 : 0))
+        return {};
+    StartupFacilityBonusWindow window{first, rows->size(), {}};
+    const auto end = std::min(first + 5, rows->size());
+    for (auto n = first; n < end; ++n)
+        window.rows.push_back(std::move((*rows)[n]));
+    return window;
+}
 Error open_startup_world_facility_definition(State &s, int d) {
     const auto *parent = top(s);
     if (!s.rules || s.scene.framework_paused || !parent ||

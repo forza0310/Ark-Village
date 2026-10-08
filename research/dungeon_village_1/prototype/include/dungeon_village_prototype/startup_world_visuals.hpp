@@ -68,6 +68,22 @@ startup_world_attribute_gain_draws(const StartupWorldRuntimeState &state, ref::C
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_item_icon_draws(const StartupWorldRuntimeState &state, int item_definition);
 
+// 设施type9前景，原o.d/common91；0是有效图块，不附普通道具type1背景。
+std::optional<StartupVisualDraw>
+startup_world_facility_icon_draw(const StartupWorldRuntimeState &state, int facility_definition);
+// 原type7六属性16px图块；没有SEB同号或类型化背景，运气ID5是x96特例。
+std::optional<StartupVisualDraw> startup_world_attribute_icon_draw(int attribute);
+struct StartupFacilityExitEffectDraw {
+    std::size_t slot{};
+    int attribute{}, delta{}; // signed原载荷；原页面正值画delta个+，零/负值不补减号。
+    StartupVisualDraw icon;
+    std::vector<StartupVisualDraw> pluses;
+};
+// 74第一页普通经营设施的只读效果行；位置为原页面绝对坐标，调用方保持原页/类别资格。
+// 只按原z长度的exit_effects消费，不画保留的A尾部，不计算/提交访问奖励。
+std::optional<std::vector<StartupFacilityExitEffectDraw>>
+startup_world_facility_exit_effect_draws(const StartupWorldRuntimeState &state, int facility_definition);
+
 // a/j五参数绘制的完整分片，offset相对候选光标／64×32缩略图的(2,10)锚点。
 // 与建设准入分开：只核原定义/形状/朝向，地图边缘候选仍可绘制越界分片。
 struct StartupBuildingDraw {

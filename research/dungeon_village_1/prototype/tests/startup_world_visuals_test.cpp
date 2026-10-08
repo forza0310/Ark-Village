@@ -745,6 +745,106 @@ void ordinary_item_icons(const std::filesystem::path &root) {
     check(startup_world_state_digest(s)==digest,"item icon queries preserve full Owner, inventory, cash, random and page stack");
     UnloadImage(foreground);UnloadImage(background);
 }
+void facility_detail_icons(const std::filesystem::path &root) {
+    auto s = test_support::world_fixture();
+    const auto digest = startup_world_state_digest(s);
+    // 固定原表列2独立oracle；不是调用绘制查询或从原类kind猜类别图标。
+    constexpr std::array<int,85> icons{{
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,5,5,5,0,0,
+        1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+        4,4,4,4,4,4,4,6,6,6,6,6,6,6,6,6,0,0,0,0,0,0,0,0,0,0}};
+    Image image = LoadImage((root/"common/icon_tenantInfo.png").string().c_str());
+    Image params = LoadImage((root/"common/icon_param00.png").string().c_str());
+    Image numbers = LoadImage((root/"common/number08.png").string().c_str());
+    const auto seb = dungeon_village_tools::parse_legacy_seb(bytes(root/"common/number08.seb"));
+    const auto plus = std::find_if(seb.layers.at(0).parts.begin(),seb.layers.at(0).parts.end(),
+        [](const auto &p) {return p.frame == 14;});
+    check(image.data && image.width == 112 && image.height == 16 && params.data && numbers.data &&
+              plus != seb.layers.at(0).parts.end() && plus->image_index == 105 &&
+              plus->source_x == 44 && plus->source_y == 10 && plus->width == 8 && plus->height == 10,
+          "real facility category atlas, attribute atlas and blue+ SEB bind actual PNG identities");
+    int effect_rows{}, plus_count{};
+    for (int id = 0; id < 85; ++id) {
+        const auto icon = startup_world_facility_icon_draw(s,id);
+        check(icon && s.rules->facilities.at(id).legacy_icon == icons[id] &&
+                  icon->image == 91 && icon->sprite == -1 &&
+                  icon->crop == std::array<int,4>{icons[id]*16,0,16,16} &&
+                  icon->offset == std::array<int,2>{0,0} && !icon->record_index,
+              "all85 facility IDs bind original type9 crop; icon0 valid and type1 background absent");
+        Image crop = ImageFromImage(image,{static_cast<float>(icon->crop[0]),0,16,16});
+        check(crop.data && crop.width == 16 && crop.height == 16,
+              "every category0..6 CPU crop uses decoded source image with no guessed frame");
+        UnloadImage(crop);
+        const auto effects = startup_world_facility_exit_effect_draws(s,id);
+        check(effects && effects->size() == s.rules->facilities.at(id).exit_effects.size(),
+              "all85 effect plans preserve z-prefix rows, including legitimate empty definition");
+        for (const auto &row : *effects) {
+            const auto &r = row.icon.crop;
+            check(row.slot == static_cast<std::size_t>(&row-effects->data()) && row.attribute >= 0 &&
+                      row.attribute < 6 && r[0]+r[2]<=params.width && r[1]+r[3]<=params.height &&
+                      row.icon.offset == std::array<int,2>{136,127+17*static_cast<int>(row.slot)},
+                  "every original effect row uses actual attribute crop and original17px page anchor");
+            check(row.pluses.size() == static_cast<std::size_t>(row.delta),
+                  "source positive effect has literal delta count of + glyphs rather than digit+value helper");
+            for (const auto &draw : row.pluses)
+                check(draw.sprite == 15 && draw.frame == 14 && !draw.record_index &&
+                          plus->source_x+plus->width<=numbers.width && plus->source_y+plus->height<=numbers.height,
+                      "each plus command resolves source SEB15/frame14 in actual PNG bounds");
+            ++effect_rows; plus_count += static_cast<int>(row.pluses.size());
+        }
+    }
+    check(effect_rows == 45 && plus_count == 87,"all original45 attribute slots/87+ consumed; raw tails remain separate");
+    constexpr std::array<int,6> x{{0,16,32,48,64,96}};
+    for (int id = 0; id < 6; ++id) {
+        const auto icon = startup_world_attribute_icon_draw(id);
+        check(icon && icon->image == 37 && icon->crop == std::array<int,4>{x[id],16,16,16} &&
+                  icon->offset == std::array<int,2>{0,0},"type7 attributes include source luck96 rather than regular80");
+    }
+    for (int id : {-1,6,std::numeric_limits<int>::max()})
+        check(!startup_world_attribute_icon_draw(id),"invalid attribute is not modulo-wrapped into valid icon");
+    for (int id : {54,56,57,58}) {
+        const auto rows = startup_world_facility_exit_effect_draws(s,id);
+        check(rows && rows->size() == 1 && rows->front().attribute == 5 && rows->front().delta == 3 &&
+                  rows->front().pluses.size() == 3 && s.rules->unconsumed_exit_deltas.at(id) == std::vector<int>{3},
+              "four legal z/A mismatches keep unused tail and draw exactly one luck row with three+ glyphs");
+    }
+    const auto two = startup_world_facility_exit_effect_draws(s,59);
+    check(two && two->size() == 2 && two->at(0).attribute == 1 && two->at(0).delta == 2 &&
+              two->at(1).attribute == 3 && two->at(1).delta == 1 &&
+              two->at(0).pluses.at(0).offset == std::array<int,2>{192,130} &&
+              two->at(0).pluses.at(1).offset == std::array<int,2>{184,130} &&
+              two->at(1).icon.offset == std::array<int,2>{136,144} &&
+              two->at(1).pluses.at(0).offset == std::array<int,2>{192,147},
+          "literal training59 strength2/solid1 keeps original row order and right-to-left plus positions");
+    for (int id : {-1,85,std::numeric_limits<int>::max()})
+        check(!startup_world_facility_icon_draw(s,id) && !startup_world_facility_exit_effect_draws(s,id),
+              "unknown facility definition rejects icon and effects rather than returning empty identity");
+    auto broken=s;broken.rules=nullptr;
+    check(!startup_world_facility_icon_draw(broken,0) && !startup_world_facility_exit_effect_draws(broken,0),
+          "missing rules rejects detail icon and effect plan");
+    StartupWorldRules rules=*s.rules;broken=s;broken.rules=&rules;
+    for (int icon : {-1,7,10,std::numeric_limits<int>::max()}) {
+        rules.facilities[0].legacy_icon=icon;
+        check(!startup_world_facility_icon_draw(broken,0),"bad facility icon cannot modulo-wrap or index missing PNG column");
+    }
+    rules.facilities[0].legacy_icon=6;
+    check(startup_world_facility_icon_draw(broken,0)->crop[0] == 96,
+          "facility legacy_icon field controls category image independently of unchanged definitionID");
+    rules.facilities[33].exit_effects={{2,0},{2,-3},{5,2}};
+    auto rows=startup_world_facility_exit_effect_draws(broken,33);
+    check(rows && rows->size() == 3 && rows->at(0).pluses.empty() && rows->at(1).pluses.empty() &&
+              rows->at(1).delta == -3 && rows->at(2).pluses.size() == 2,
+          "duplicate attribute slots retain raw signed values; zero/negative original loop draws no invented sign");
+    rules.facilities[33].exit_effects={{6,0}};
+    check(!startup_world_facility_exit_effect_draws(broken,33),"invalid attribute rejects even when no+ would be drawn");
+    rules.facilities[33].exit_effects={{0,std::numeric_limits<int>::max()}};
+    check(!startup_world_facility_exit_effect_draws(broken,33),"oversized bad private output rejects before allocating billions of+ commands");
+    rules.facilities[33].exit_effects.assign(4097,{0,0});
+    check(!startup_world_facility_exit_effect_draws(broken,33),"malformed effect list exceeds explicit maintenance output budget");
+    check(startup_world_state_digest(s) == digest,
+          "all facility/attribute icon and effect queries preserve complete Owner including shared uses, economy and random");
+    UnloadImage(image);UnloadImage(params);UnloadImage(numbers);
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -761,6 +861,7 @@ int main(int argc, char **argv) {
         building_draw_queries();
         cpu_building_thumbnails(argv[1]);
         ordinary_item_icons(argv[1]);
+        facility_detail_icons(argv[1]);
         std::cout << "startup world visuals: " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

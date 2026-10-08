@@ -6,6 +6,8 @@
 后继已补Steam两具体绘制消费者，保留属性数字加号定位的版本差异；普通道具自然购买→赠礼目录的研究窗口已观测。
 [建设目录21](STEAM_BUILD_LIST.md)补Steam字段映射与APK专用五行／空行边界，Steam行注册／精确绘制尚未闭合，不能套用通用滚动消费者。
 
+最新[设施74逐来源加成行](FACILITY_BONUS_ROWS.md)及[类别／属性图标](FACILITY_BONUS_ICONS.md)已交付原字段、只读接口、五行窗口与集中验收。名称后缀是同定义实例序号，图标0有效；道路不伪造来源行，原+号／重复项保留。
+
 2026-10-08最新目标：按EXE版本还原UI与操作。[Steam覆盖清单](STEAM_UI_COVERAGE.md)列全部101类型／26组件及逐项证据等级；
 [产品小窗示例](examples/README.md)提供建筑、人物四页、菜单、道具与信息窗，原图、APK合同示意及待验适配分开。
 图像全量与代码反查见[容器覆盖](../assets/IMAGE_COVERAGE.md)、[资源反查](../assets/RESOURCE_CODE_INDEX.md)；下文既有截图与APK合同继续保留其来源。

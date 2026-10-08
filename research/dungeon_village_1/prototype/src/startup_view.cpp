@@ -655,6 +655,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "体力力量灵活结实魔力运气";
+    glyphs += "周围设施的奖励没有";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
     glyphs += "道路移动撤除旋转请选择起点终点未开放不可操作街道内地域商品种类装饰信息口碑关闭继续";
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
@@ -950,6 +951,24 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         if (!ready)
             throw std::runtime_error("村办检查未返回真实目录");
+    } else if (inspect_page == "world-facility-bonuses") {
+        // 仅使用真实新局已装入实例及实际邻接来源，不注入来源名单或示例加成。
+        std::optional<std::uint64_t> target;
+        for (const auto id : session.state().scene.world.facility_order) {
+            const auto &neighbours = session.state().neighbourhood_details.at(id);
+            if (!neighbours.sources.empty() &&
+                session.state().scene.world.world.facilities.at(id).status != 0) {
+                target = id;
+                break;
+            }
+        }
+        if (!target || session.open_facility_page(*target) != StartupWorldRuntimeError::none)
+            throw std::runtime_error("真实新局无可核设施奖励详情");
+        const auto page = session.state().scripts.pages.back().id;
+        if (session.act_facility_page(page, StartupFacilityPageAction::next) !=
+                StartupWorldRuntimeError::none ||
+            !startup_world_facility_bonus_rows(session.state(), page))
+            throw std::runtime_error("真实设施第二页载荷拒绝");
     } else if (inspect_page == "world-building") {
         if (session.open_build_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局建设目录检查入口失败");
@@ -1103,6 +1122,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     int task_selection{}, task_scroll{};
     int award_selection{}, prompt_selection{}, rank_selection{};
     int build_tab{}, build_selection{};
+    int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     auto build_orientation = ref::FacilityOrientation::first;
     std::string command_feedback;
     while (!WindowShouldClose()) {
@@ -1137,6 +1157,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 body_scroll = body_extent = 0;
                 task_selection = task_scroll = 0;
                 build_tab = build_selection = 0;
+                bonus_selection = bonus_scroll = 0;
                 award_selection = prompt_selection = 0;
                 if (page->legacy_page == 1 && session.state().task_abort_questions.count(page->id))
                     prompt_selection = 1; // 原主动中止询问默认“否”，不因新页重置变成“是”。
@@ -1513,6 +1534,24 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
             } else if (raw == 74) {
                 const auto pid = page->id;
+                if (!session.state().facility_definition_page_bindings.count(pid) &&
+                    session.state().page_phases.at(pid) == 1) {
+                    const auto rows = startup_world_facility_bonus_rows(session.state(), pid);
+                    if (!rows) throw std::runtime_error("设施奖励来源载荷非法");
+                    const int count = static_cast<int>(rows->size());
+                    if (count > 0) {
+                        if (IsKeyPressed(KEY_DOWN)) bonus_selection = (bonus_selection + 1) % count;
+                        if (IsKeyPressed(KEY_UP)) bonus_selection = (bonus_selection + count - 1) % count;
+                        for (int n = 0; n < 5 && n + bonus_scroll < count; ++n)
+                            if (hit({17,static_cast<float>(95+n*19),214,18}))
+                                bonus_selection = n + bonus_scroll;
+                        const auto wheel = GetMouseWheelMove();
+                        if (wheel != 0)
+                            bonus_selection = std::clamp(bonus_selection + (wheel > 0 ? -1 : 1),0,count-1);
+                        bonus_scroll = std::clamp(bonus_scroll,bonus_selection-4,bonus_selection);
+                        bonus_scroll = std::clamp(bonus_scroll,0,std::max(count-5,0));
+                    }
+                }
                 if (!session.state().facility_definition_page_bindings.count(pid) &&
                     (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))) {
                     if (session.act_facility_page(pid, StartupFacilityPageAction::next) !=
@@ -2352,7 +2391,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const int definition = state.facility_definition_page_bindings.at(page->id);
                 const auto &d = rules.facilities.at(definition);
                 DrawRectangle(5, 42, 230, 216, paper);
-                font.text(d.name, 12, 48);
+                const auto title_icon = startup_world_facility_icon_draw(state,d.id);
+                if (!title_icon) throw std::runtime_error("设施类别图标载荷非法");
+                sprites.visual(*title_icon,{12,48});
+                font.text(d.name, 32, 48);
                 const auto &art = display(d.display_id);
                 sprites.draw(art.sprite, 0, {65, 119});
                 if (d.detail == 1 || d.detail == 4 || d.detail == 5) {
@@ -2383,7 +2425,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (!values)
                     throw std::runtime_error("设施情报经营投影失败");
                 DrawRectangle(5, 42, 230, 216, paper);
-                font.text(d.name, 12, 48);
+                const auto title_icon = startup_world_facility_icon_draw(state,d.id);
+                if (!title_icon) throw std::runtime_error("设施类别图标载荷非法");
+                sprites.visual(*title_icon,{12,48});
+                font.text(d.name, 32, 48);
                 const auto &growth = world.facility_uses.at(d.id);
                 font.text("Lv." + std::to_string(growth.level), 144, 48, ink, 10);
                 const auto phase = state.page_phases.at(page->id);
@@ -2391,31 +2436,35 @@ int run_startup_world_window(const std::filesystem::path &assets,
                               std::to_string(startup_world_facility_page_count(state, *page)),
                           192, 48, ink, 10);
                 constexpr std::array<const char *, 4> labels{{"价格", "品质", "魅力", "维护费"}};
-                const int start = phase == 0 ? 0 : 3;
-                const int end = phase == 0 ? 3 : 4;
+                const int start = 0;
+                const int end = phase == 0 ? 3 : 0;
                 for (int n = start; n < end; ++n) {
                     const float y = 74 + (n - start) * 23;
                     font.text(labels[n], 16, y);
                     font.text(std::to_string(values->instance_attributes[n]), 170, y);
                 }
                 if (phase == 1) {
-                    font.text("收入", 16, 102);
-                    font.text(std::to_string(state.facility_monthly_cash.at(
-                                  id)[state.scene.calendar.month][0]) +
-                                  "G",
-                              160, 102);
-                    font.text("加成", 16, 126);
-                    font.text(std::to_string(state.facility_page_neighbours.at(page->id).size()),
-                              170, 126);
-                    font.text("支出", 16, 148);
-                    font.text(std::to_string(state.facility_monthly_cash.at(
-                                  id)[state.scene.calendar.month][1]) +
-                                  "G",
-                              160, 148);
-                    const auto &sources = state.facility_page_neighbours.at(page->id);
-                    for (std::size_t n = 0; n < std::min<std::size_t>(4, sources.size()); ++n)
-                        font.text(rules.facilities.at(sources[n].definition_id).name, 16,
-                                  173 + n * 17, ink, 10);
+                    const auto view = startup_world_facility_bonus_window(state,page->id,bonus_scroll);
+                    if (!view) throw std::runtime_error("设施奖励来源投影失败");
+                    font.text("周围设施的奖励", 62, 74, ink, 11);
+                    if (view->rows.empty()) font.text("没有奖励",92,97,ink,11);
+                    for (int n = 0; n < static_cast<int>(view->rows.size()); ++n) {
+                        const auto &row = view->rows[n];
+                        const float y = 97 + n * 19;
+                        if (n + bonus_scroll == bonus_selection)
+                            DrawRectangle(17,static_cast<int>(y)-2,204,18,{219,232,204,255});
+                        const auto icon = startup_world_facility_icon_draw(state,row.definition);
+                        if (!icon) throw std::runtime_error("设施奖励行图标非法");
+                        sprites.visual(*icon,{26,y-2});
+                        font.text(row.name,44,y,ink,10);
+                        for (const auto &value : row.values) {
+                            const float x = value.attribute == 0 ? 121 : value.attribute == 1 ? 171 : 147;
+                            font.text(value.label,x,y,{0,101,255,255},9);
+                            font.text(value.text,x+font.measure(value.label,9),y,ink,9);
+                        }
+                    }
+                    if (view->total > 5)
+                        font.text(std::to_string(bonus_selection+1)+"/"+std::to_string(view->total),190,202,ink,9);
                 } else {
                     font.text("使用 " + std::to_string(growth.completed_uses) + "/" +
                                   std::to_string(values->upgrade_uses),

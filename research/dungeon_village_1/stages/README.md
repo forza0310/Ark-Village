@@ -6,6 +6,8 @@
 
 ## 当前完成范围
 
+最新按产品高优先级交付[设施74来源行／五行窗口](../ui/FACILITY_BONUS_ROWS.md)与[类别图标／效果计划](../ui/FACILITY_BONUS_ICONS.md)，13项相关CTest及最终3项复验通过，真实新局8帧窗口已查看图标／魅力+10。产品迁入、原EXE74动态与第一页完整效果皮肤分开，不将研究接口通过写成产品页面已完成。
+
 接续`f9d8288`：[Steam属性／道具局部消费者](../ui/ATTRIBUTE_GAIN_RENDER.md)已交叉，保留加号定位的版本差异；普通道具研究自然目录窗口已观测。
 [受击Owner短轨迹](../rules/ai/HIT_REACTION.md)17合法场景／3拒绝及2599检查通过，原EXE动态另验；[建设21](../ui/STEAM_BUILD_LIST.md)和[主角系统设计](in-progress/STARTUP_RECORDS_DESIGN.md)分别登记实际缺口／待确认项，不能将持续任务整体标为完成。
 

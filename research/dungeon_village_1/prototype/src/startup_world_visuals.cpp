@@ -241,6 +241,51 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_item_icon_draws(
         {StartupVisualResource::common,-1,24,0,0,{background*18,0,18,18},{-1,-1},{}},
         {StartupVisualResource::common,-1,9,0,0,{(icon%15)*16,(icon/15)*16,16,16},{0,0},{}}};
 }
+std::optional<StartupVisualDraw> startup_world_facility_icon_draw(
+    const StartupWorldRuntimeState &s, int id) {
+    if (!s.rules) return {};
+    const auto definition = std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [=](const auto &d) { return d.id == id; });
+    if (definition == s.rules->facilities.end() || definition->legacy_icon < 0 ||
+        definition->legacy_icon > 6) return {};
+    // common91实际112×16；原85定义只用0..6，不能用%10把坏ID变成合法图块。
+    return StartupVisualDraw{StartupVisualResource::common,-1,91,0,0,
+        {definition->legacy_icon*16,0,16,16},{0,0},{}};
+}
+std::optional<StartupVisualDraw> startup_world_attribute_icon_draw(int id) {
+    if (id < 0 || id >= 6) return {};
+    return StartupVisualDraw{StartupVisualResource::common,-1,37,0,0,
+        {id == 5 ? 96 : id*16,16,16,16},{0,0},{}};
+}
+std::optional<std::vector<StartupFacilityExitEffectDraw>> startup_world_facility_exit_effect_draws(
+    const StartupWorldRuntimeState &s, int id) {
+    if (!s.rules) return {};
+    const auto definition = std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [=](const auto &d) { return d.id == id; });
+    if (definition == s.rules->facilities.end()) return {};
+    // 4096是坏私有rules的输出预算，非原表最大效果/奖励；固定输入最多两行、每行三个+。
+    if (definition->exit_effects.size() > 4096) return {};
+    std::size_t command_count = definition->exit_effects.size();
+    for (const auto &effect : definition->exit_effects) {
+        if (!startup_world_attribute_icon_draw(effect.attribute_index)) return {};
+        const auto positive = static_cast<std::size_t>(std::max(0,effect.delta));
+        if (positive > 4096 - command_count) return {};
+        command_count += positive;
+    }
+    std::vector<StartupFacilityExitEffectDraw> result;
+    for (std::size_t slot = 0; slot < definition->exit_effects.size(); ++slot) {
+        const auto &effect = definition->exit_effects[slot];
+        auto icon = *startup_world_attribute_icon_draw(effect.attribute_index);
+        const int y = 127 + static_cast<int>(slot) * 17;
+        icon.offset = {136,y};
+        StartupFacilityExitEffectDraw row{slot,effect.attribute_index,effect.delta,icon,{}};
+        for (int n = 0; n < effect.delta; ++n)
+            row.pluses.push_back({StartupVisualResource::common,15,-1,14,0,{},
+                                  {192-8*n,y+3},{}});
+        result.push_back(std::move(row));
+    }
+    return result;
+}
 std::optional<std::vector<StartupBuildingDraw>> startup_world_building_draws(
     const StartupWorldRuntimeState &s, int id, ref::FacilityOrientation orientation) {
     if (!s.rules) return {};

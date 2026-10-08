@@ -653,7 +653,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &recipe : rules.magic_pot_recipes)
         glyphs += recipe.name;
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
-        glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
+    glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
+    glyphs += "体力力量灵活结实魔力运气";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
     glyphs += "道路移动撤除旋转请选择起点终点未开放不可操作街道内地域商品种类装饰信息口碑关闭继续";
     glyphs += "任务列表征集队伍征集费出发追加取消候选队伍评价休息成果商店追加"
@@ -1872,7 +1873,27 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
             const auto held = startup_world_equipment_lift_draws(state, id);
             if (!held) throw std::runtime_error("人物举物绘制载荷非法");
-            for (const auto &plan : *held) sprites.visual(plan, anchor);
+            const auto gains = startup_world_attribute_gain_draws(state,id,
+                [&](const std::string &value) { return static_cast<int>(font.measure(value)); });
+            if (!gains) throw std::runtime_error("人物属性头标绘制载荷非法");
+            // 两类计划保留原cd下标，归并后按13背景/文字/数字顺序提交；重复重绘不更新Owner。
+            std::size_t h=0,g=0;
+            while (h<held->size() || g<gains->size()) {
+                if (h<held->size() && !held->at(h).record_index)
+                    throw std::runtime_error("人物绘制缺少cd记录身份");
+                if (g==gains->size() || (h<held->size() &&
+                    *held->at(h).record_index < gains->at(g).record_index)) {
+                    sprites.visual(held->at(h++),anchor);
+                } else {
+                    const auto &gain=gains->at(g++);
+                    for (const auto &plan:gain.before_text) sprites.visual(plan,anchor);
+                    font.text(gain.text,anchor.x+gain.text_offset[0],anchor.y+gain.text_offset[1],
+                              {static_cast<unsigned char>(gain.text_rgb[0]),
+                               static_cast<unsigned char>(gain.text_rgb[1]),
+                               static_cast<unsigned char>(gain.text_rgb[2]),255});
+                    for (const auto &plan:gain.after_text) sprites.visual(plan,anchor);
+                }
+            }
         };
         for (const auto *roster : {&world.ai.human_order, &world.ai.monster_order})
             for (const auto id : *roster) {
@@ -2172,9 +2193,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             if (n == view->selection)
                                 DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
                             const bool facility = raw == 85;
+                            if (!facility) {
+                                const auto icon=startup_world_item_icon_draws(state,entry);
+                                if (!icon) throw std::runtime_error("商会道具图标载荷非法");
+                                for (const auto &plan:*icon) sprites.visual(plan,{18,y});
+                            }
                             font.text(facility ? rules.facilities.at(entry).name
                                                : rules.items.at(entry).name,
-                                      16, y, ink, 10);
+                                      facility?16:40, y, ink, 10);
                             std::string value;
                             if (facility)
                                 value = std::to_string(rules.facility_initial.at(entry).capacity) +
@@ -2230,7 +2256,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             const float y = 78 + (n - first) * 27;
                             if (n == chosen)
                                 DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                            font.text(rules.items.at(list[n]).name, 16, y, ink, 10);
+                            const auto icon=startup_world_item_icon_draws(state,list[n]);
+                            if (!icon) throw std::runtime_error("设施道具图标载荷非法");
+                            for (const auto &plan:*icon) sprites.visual(plan,{18,y});
+                            font.text(rules.items.at(list[n]).name, 40, y, ink, 10);
                             font.text("持有 " + std::to_string(state.items.at(list[n]).inventory),
                                       172, y, ink, 9);
                         }
@@ -2728,7 +2757,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         if (n == chosen)
                             DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
                         if (slot == 4) {
-                            font.text(rules.items.at(list[n]).name, 16, y, ink, 11);
+                            const auto icon=startup_world_item_icon_draws(state,list[n]);
+                            if (!icon) throw std::runtime_error("赠礼道具图标载荷非法");
+                            for (const auto &plan:*icon) sprites.visual(plan,{18,y});
+                            font.text(rules.items.at(list[n]).name, 40, y, ink, 11);
                             font.text("持有 " + std::to_string(state.items.at(list[n]).inventory),
                                       166, y, ink, 9);
                         } else

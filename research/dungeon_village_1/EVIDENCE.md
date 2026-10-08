@@ -7,6 +7,16 @@
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
+## 2026-10-08产品请求与具体绘制消费者
+
+本批以[需求回应](verification/PRODUCT_REQUESTS.md)冻结产品请求文件身份，来源、维护接口、自然路径和原动态分别回应。
+[主角／纪录](rules/STARTUP_RECORDS.md)补raw91定义0与首访定义1的分离、系统J／世界P、最高分／最高资金及继承；22个APK局部窗口739行，Steam11小方法1248字节，66项检查。未接新系统档或取消策略。
+[受击链](rules/ai/HIT_REACTION.md)核APK13方法24108字节、Steam24方法54768字节及17局部窗口857行，114项检查；已核命中不调用独立状态4／NockBack，不能外推全程序没有其他入口，Owner完整逐更新轨迹仍待补。
+[cd13](ui/ATTRIBUTE_GAIN_RENDER.md)核字体宽／固定Y−40／common37属性图标、SEB15有符号数字和40逻辑退休；6个精确DEX方法确认long数值重载与空负帧，不凭JADX重载外观猜测。
+[普通道具图标](ui/ITEM_ICON_RENDER.md)核原列5／分类C89／D背景槽、36定义与common24／9原PNG、64／75／84共享帮助器及各自间距。调用方法偏移228576、994字节，hash保持`c5ddbe5c418800ac0342ab54cd1bd878d506d7a86ec768406ba690c20484c6f8`。
+两项绘制只读接口及窗口适配已接，18项受影响CTest通过；原素材、schema和原短轨迹未改，实际结果见[验证](VERIFICATION.md)。局部APK消费者不冒称Steam全等，8帧维护窗口不冒称原游戏动态。
+专题证据摘要及输出hash见[本地审计](work/item-icon-contract/VALIDATION.json)，新源码全文／原游戏和玩家原档均未写入提交。
+
 ## 2026-10-08全量覆盖与产品小窗参考
 
 用户本轮指定EXE版本UI／操作为还原目标，并要求全图像→代码、活动／任务／解锁和产品UI示例。[四项范围](stages/COMPREHENSIVE_RESEARCH.md)集中追踪，APK规则／旧轨迹仍保持来源身份。

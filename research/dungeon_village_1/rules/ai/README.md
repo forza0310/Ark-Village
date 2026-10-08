@@ -1,5 +1,8 @@
 # 人物与怪物AI专项
 
+2026-10-08新增[受击触发与恢复](HIT_REACTION.md)：APK／EXE已核公共命中链未触发状态4／NockBack，damageCnt不是已证冻结守卫；
+独立击退规则、维护逐更新轨迹和原窗口连续动作分别登记，不以方法存在推定普通受击触发。
+
 日期：2026-10-05。用户授权持续自主研究、文档与独立C++同步推进；仅修改research。
 固定输入/行号/警告见[证据清单](../../EVIDENCE.md)，最新共同世界整线检查见[验证](../../VERIFICATION.md)。
 本目录维护长篇AI专项，既有[活动](../ACTIVITY.md)、[运动](../CHARACTERS.md#continuous-motion)

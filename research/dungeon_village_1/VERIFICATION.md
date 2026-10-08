@@ -1,9 +1,24 @@
 # 当前研究验证与历史索引
 
-更新：2026-10-08，当前批为EXE UI／全图像／内容分母和产品小窗参考，静态检查与未验浏览器分开记录。
+更新：2026-10-08，当前批跟进产品研究请求，补普通道具／cd13绘制与主角纪录／受击来源；前批EXE UI／全图像／内容分母和产品小窗参考分节保留。
 建设／Owner／独立回放基线为`1e6b291`；此前三包共用Release动态树的15项受影响检查通过23.07秒，不计成本批重新运行。
 魔法壶／村办5、6基线为`a57958c`，举物／设施头标基线为`0a5b5e2`，各批结果分节保留；原APK动态、完整模态皮肤与新效果连续窗口观察未验。
 当前能力及下一批见[阶段入口](stages/README.md)，来源见[EVIDENCE](EVIDENCE.md)。产品验收不在本页范围。
+
+## 产品请求、道具图标与人物属性头标2026-10-08
+
+[需求回应表](verification/PRODUCT_REQUESTS.md)按实际接收边界索引产品条目，所读产品文件hash保持`59d03cde5839632962db123e2366dfa49db6a0c018092d5ac76ebbed75eb90e4`；没有修改产品文件。
+
+- 单Release动态树构建成功，18项受影响CTest全部通过，36.11秒。包含projection／scene／runtime／pages／persistence／三进程回放／codec覆盖／visuals／data／assets及facility_items／facility_use／actor_control／actor_effects／human_growth／world_shop／world_control／world_equipment_display；未重跑无关全套或多年长测。
+- visuals 20066检查：普通36道具原图标与分类背景、cd13六属性／延迟与40退休／宽度60–61／signed数字、混合索引、坏载荷及Owner只读；加载实际PNG／SEB检查裁片。属性累计与退出仍由业务套件负责，没有新增逐函数target。
+- persistence 1403检查；codec仍93结构／11枚举，schema `e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f`及16项dataset身份不变。原逻辑短回放snapshot `583cc1f2362cc5bc57eb719defe6a74dcd0488213decdcbe0461a5b6d994eac5`、trace `a8b411befb3b0270507bee46b18b734036a428c799bacfb8b77e3c95b7ea1e93`不变；显式表现回放仍8抽／4请求／4声音，三进程一致。
+- 8帧world-active研究窗口退出0：706更新、3人物、88抽、5300G，截图已查看。没有cd13或道具目录观测；原身体bl偏移、原字体与Steam对应消费者仍未认证。替代字体报告1397/1399请求字形找到，不宣称全字形已验。
+- [主角／纪录](rules/STARTUP_RECORDS.md)66项来源检查，APK22窗口739行、Steam11方法1248字节；[受击](rules/ai/HIT_REACTION.md)114项检查，APK13方法24108字节、Steam24方法54768字节。前者未添加应用Owner／系统档，后者未新增任意硬直规则，完整Owner逐更新轨迹与原EXE动态仍待验。
+- cd13映射40项及6精确DEX方法，普通道具36定义／89分类／10直接调用点与7输入文件均已核；来源分级不因C++通过而升级为原动态。
+
+集中[审计结果](work/item-icon-contract/VALIDATION.json)登记正式文档链接、输出哈希及资源规模，无新增失效链接；四处既有生成缓存缺失保留。删除已消费的codec AST 36271812字节后，Release树94857331字节、1352文件，无.pending。
+没有新原素材副本或像素缓存；绘制计划即时消费释放，cd13仍由逻辑Owner在40退休。现金流水／任务／审计合法历史仍可增长，不宣称永久有界。构建、测试、窗口和三子任务均已退出；产品及原游戏／玩家存档未操作。
+首次构建的默认成员初始化与测试range-loop复制警告已修复，最终构建及上述回归覆盖修复后文件；没有删除有效断言或改原表凑通过。
 
 ## 全量覆盖首批与UI示例2026-10-08
 

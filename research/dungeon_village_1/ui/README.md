@@ -1,5 +1,8 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-08产品需求跟进：[人物六属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)补齐APK来源和只读绘制接口；
+18项受影响测试通过，研究窗口接线与原EXE动态分开验收。逐项接收边界见[需求回应](../verification/PRODUCT_REQUESTS.md)。
+
 2026-10-08最新目标：按EXE版本还原UI与操作。[Steam覆盖清单](STEAM_UI_COVERAGE.md)列全部101类型／26组件及逐项证据等级；
 [产品小窗示例](examples/README.md)提供建筑、人物四页、菜单、道具与信息窗，原图、APK合同示意及待验适配分开。
 图像全量与代码反查见[容器覆盖](../assets/IMAGE_COVERAGE.md)、[资源反查](../assets/RESOURCE_CODE_INDEX.md)；下文既有截图与APK合同继续保留其来源。

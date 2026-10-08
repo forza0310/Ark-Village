@@ -42,4 +42,19 @@ std::optional<std::vector<StartupVisualDraw>>
 startup_world_equipment_lift_draws(const StartupWorldRuntimeState &state, ref::CharacterId actor);
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_facility_growth_draws(const StartupWorldRuntimeState &state, std::uint64_t facility);
+
+// a/j五参数绘制的完整分片，offset相对候选光标／64×32缩略图的(2,10)锚点。
+// 与建设准入分开：只核原定义/形状/朝向，地图边缘候选仍可绘制越界分片。
+struct StartupBuildingDraw {
+    std::string sprite;
+    int frame{};
+    std::array<int, 2> offset{};
+};
+std::optional<std::vector<StartupBuildingDraw>>
+startup_world_building_draws(const StartupWorldRuntimeState &state, int definition,
+                             ref::FacilityOrientation orientation);
+// 原state1、mode0/7、全地图光标资格及scene_counter%20<10；不检查占用/金币或推进计数。
+std::optional<std::vector<StartupBuildingDraw>>
+startup_world_building_preview_draws(const StartupWorldRuntimeState &state, ref::Position cursor,
+                                     ref::FacilityOrientation orientation);
 } // namespace ark::simulation

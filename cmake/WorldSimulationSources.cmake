@@ -98,6 +98,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_facility_items.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_human.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_magic_pot.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_world_presentation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_runtime.cpp"

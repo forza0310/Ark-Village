@@ -136,7 +136,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                     {id,
                      definition(state, id).detail == 6 ? "募集入住" : definition(state, id).name,
                      quote->construction_cost,
-                     world_build_graphic(definition(state, id),
+                     world_build_graphic(state, id,
                                          simulation::rules::FacilityOrientation::first)});
             }
         // The maintained base catalogue contains buildings only. The desktop raw21
@@ -150,9 +150,9 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             const auto quote = simulation::startup_world_build_quote(state, item.id);
             if (!quote)
                 throw std::invalid_argument("Road catalogue is missing its current quote");
-            roads.push_back(
-                {item.id, "道路", quote->construction_cost,
-                 world_build_graphic(item, simulation::rules::FacilityOrientation::first)});
+            roads.push_back({item.id, "道路", quote->construction_cost,
+                             world_build_graphic(state, item.id,
+                                                 simulation::rules::FacilityOrientation::first)});
         }
         view.catalogs[0].insert(view.catalogs[0].begin(), roads.begin(), roads.end());
         std::vector<WorldBuildingRow> tools{
@@ -194,7 +194,8 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
         view.phase = state.page_phases.at(page.id);
         const auto &attributes = state.scripts.facilities.at(id).attributes;
         std::copy(attributes.begin(), attributes.end(), view.attributes.begin());
-        view.graphic = world_build_graphic(item, simulation::rules::FacilityOrientation::first);
+        view.graphic =
+            world_build_graphic(state, item.id, simulation::rules::FacilityOrientation::first);
         view.detail_type = detail_type(item);
         const auto &progress = state.scene.world.world.facility_uses.at(id);
         view.level = progress.level;
@@ -237,7 +238,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.detail_type = detail.detail->type;
             view.level = detail.detail->level;
             view.remaining_uses = detail.detail->remaining_uses;
-            view.graphic = world_build_graphic(item, facility.placement.orientation);
+            view.graphic = world_build_graphic(state, item.id, facility.placement.orientation);
             view.product_count = open_products(state, item);
             for (const auto &source : state.facility_page_neighbours.at(page.id))
                 view.source_names.push_back(definition(state, source.definition_id).name);

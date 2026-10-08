@@ -1,4 +1,5 @@
 #include "world_build_placement.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "ui/layout.hpp"
 #include <algorithm>
 #include <cmath>
@@ -16,27 +17,20 @@ Vector2 anchor(const WorldCameraView &view, float x, float y, float zoom) {
             zoom * (v[1] + v[3] - (v[1] + v[3]) / 2 - y + view.camera[1])};
 }
 } // namespace
-WorldBuildGraphic world_build_graphic(const simulation::StartupDefinition &definition,
+WorldBuildGraphic world_build_graphic(const State &state, int definition,
                                       rules::FacilityOrientation orientation) {
-    const auto &displays = simulation::startup_evidence().displays;
-    const auto display = std::find_if(displays.begin(), displays.end(), [&](const auto &item) {
-        return item.id == definition.display_id;
-    });
-    if (display == displays.end())
-        throw std::invalid_argument("Building graphic references an unknown map display");
-    // A small local grid only obtains source relative offsets, not a second business map.
-    const auto footprint = rules::facility_footprint(
-        static_cast<rules::FacilityShape>(definition.shape), orientation, {1, 0}, 3, 3);
-    if (footprint.error != rules::GeometryError::none)
-        throw std::invalid_argument("Building graphic has an unsupported source footprint");
+    const auto draws = simulation::startup_world_building_draws(state, definition, orientation);
+    if (!draws || draws->empty())
+        throw std::invalid_argument("Building graphic has invalid source bindings");
+    // The maintained query owns fragment selection and offsets. This adapter only converts
+    // its raster coordinates to raylib types for the shared catalogue/ghost drawing paths.
     WorldBuildGraphic graphic;
-    graphic.sprite = display->sprite;
-    for (const auto &cell : footprint.cells) {
-        const int x = cell.position.x - 1, y = cell.position.y;
-        const int frame = definition.kind == 6
-                              ? (orientation == rules::FacilityOrientation::second ? 1 : 11)
-                              : cell.fragment_index;
-        graphic.frames.push_back({frame, {30.F * (x + y), 15.F * (x - y)}});
+    graphic.sprite = draws->front().sprite;
+    for (const auto &part : *draws) {
+        if (part.sprite != graphic.sprite)
+            throw std::invalid_argument("Building graphic mixes source sprite bindings");
+        graphic.frames.push_back(
+            {part.frame, {static_cast<float>(part.offset[0]), static_cast<float>(part.offset[1])}});
     }
     return graphic;
 }
@@ -105,16 +99,24 @@ WorldBuildPreview world_build_preview(const State &state, int id, rules::Positio
         preview.missing_source = true;
         return preview;
     }
-    preview.graphic = world_build_graphic(*item, orientation);
+    if (state.scene.scene_state == 1 && (state.build_mode == 0 || state.build_mode == 7) &&
+        state.build_definition != id) {
+        preview.missing_source = true;
+        return preview;
+    }
+    const auto visible =
+        simulation::startup_world_building_preview_draws(state, position, orientation);
+    if (!visible) {
+        preview.missing_source = true;
+        return preview;
+    }
+    preview.graphic = world_build_graphic(state, id, orientation);
     const auto &world = state.scene.world.world;
     preview.cursor_in_map = position.x >= 0 && position.y >= 0 && position.x < world.map.width &&
                             position.y < world.map.height;
     preview.rotation_hint = (item->flags & 32) != 0;
-    // 2b479f6 PAGES: f103b is the admitted scene-update counter, not render frames/time.
-    // An in-map cursor may still display a building rejected by footprint/funds checks.
-    preview.graphic_visible = preview.cursor_in_map && state.scene.scene_state == 1 &&
-                              (state.build_mode == 0 || state.build_mode == 7) &&
-                              state.scene.scene_counter >= 0 && state.scene.scene_counter % 20 < 10;
+    // Blink/map admission comes from the Owner query, independently of affordability.
+    preview.graphic_visible = !visible->empty();
     const auto footprint =
         rules::facility_footprint(static_cast<rules::FacilityShape>(item->shape), orientation,
                                   position, world.map.width, world.map.height);

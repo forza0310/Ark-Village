@@ -17,7 +17,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 
 - [ ] 开局主角配置/到访、标题纪录、人物设施属性cd13头标，按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
 
-- [ ] 1e6b291建设查询、Owner显式表现请求/独立回放已发布，另批确定桌面请求调度后接入；探索底栏仍需滑入/背景/资源桥、231→aW及实际准入时点，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)。
+- [x] 1e6b291建设查询与Owner显式表现请求/独立回放迁入并本地验收，来源核至88eb658，363项冻结来源；结果见[B1](docs/stages/B1-playable-prototype.md#research-88eb658-integration)。
+- [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
 - [ ] 人物/怪物受击停顿、减速或击退：补齐命中到运动/动作的触发与恢复合同后接入；已有伤害数字/血条和独立状态4不代表自然硬直已接，见[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
 - [ ] 设施74逐来源奖励/类别图标、75道具图标、情报/设置/标题余项/音频：按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)接线。商品79/72、82和魔法壶已接，后续补精确动画与自然流程证据。

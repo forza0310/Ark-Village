@@ -20,6 +20,12 @@ e8f66d9接入新增建设/通知/只读头像及原测试，原型共享夹具�
 
 ee687bc增量迁入只更新该runner，354项清单以`source_revision`与`incremental_imports`追溯；原完整`snapshot_sha256`仍指524415a基础冻结，不能将其解释为本次新全量快照。未改规则/数据/codec，玩家数据集身份及维护数据/布局身份保持。
 
+## 显式表现请求回放
+
+1e6b291接口随88eb658维护闭包迁入。`StartupWorldRuntimeSession::present`在私有Owner候选中核准页序、消费任务抖动随机/失绑清理及有资格的赠礼声音，返回冻结计划；重复展示计划不再次调用它。正常桌面不自动提交该请求，不能将60FPS或逻辑tick当成原绘制准入次数。
+
+标准`simulation.startup_world_replay_process`保留原晋级三进程，并通过`--presentation-exe`指向既有`ark_simulation_startup_world_persistence_test`，执行独立`presentation-request-v1`三进程：请求数0/1/2/1/0，保存后两次恢复，逐字节比较完整Session、控制器、请求上下文、计划及声音。该夹具不认证自然赠礼或Android调度；控制器身份与原自然回放隔离，玩家存档不受它接管。手动运行可在下列runner命令追加`--presentation-exe build/bin/ark_simulation_startup_world_persistence_test-desktop-release.exe`。
+
 ## 场景与既有前缀接续
 
 默认仍是`natural_progression`；`--scenario natural_expansion`使用自己的上限及完整终点oracle。所有临时、周期、保留快照和输入前缀/证书必须位于产品`build`，并拒绝junction/symlink逃逸。程序与参数路径支持空格，不使用shell拼接。不要指向research/work或玩家存档目录。

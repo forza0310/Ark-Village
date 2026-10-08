@@ -66,7 +66,7 @@ WorldFacilityItemsView world_facility_items_view(const State &state, const Page 
         for (int month = 0; month <= state.scene.calendar.month; ++month)
             *out.profit += static_cast<std::int64_t>(months.at(month)[0]) - months.at(month)[1];
     }
-    out.graphic = world_build_graphic(*definition, instance.placement.orientation);
+    out.graphic = world_build_graphic(state, definition->id, instance.placement.orientation);
     out.counter = state.page_counters.at(page.id);
     out.response = state.facility_item_response;
     if (out.raw == 75) {

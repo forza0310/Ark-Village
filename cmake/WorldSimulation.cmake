@@ -131,6 +131,7 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
     add_test(NAME simulation.startup_world_replay_process
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/replay_file_test.mjs"
             --exe "$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
+            --presentation-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
     set_tests_properties(simulation.startup_world_replay_driver PROPERTIES
         TIMEOUT 120 LABELS "runtime;replay;frozen")

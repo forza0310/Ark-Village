@@ -37,13 +37,14 @@ for (let i = 0; i < args.length; i += 2) {
     if (i + 1 === args.length || options.has(args[i]) ||
         !['--exe', '--work-dir', '--save-at', '--stop-at', '--producer-revision',
             '--snapshot-file', '--save-every', '--save-directory', '--scenario', '--load-prefix',
-            '--prefix-status', '--prefix-next-frame'].includes(args[i]))
+            '--prefix-status', '--prefix-next-frame', '--presentation-exe'].includes(args[i]))
         throw new Error('需要 --exe <程序> --work-dir <产品build工作目录> [--save-at 420 --stop-at 840]');
     options.set(args[i], args[i + 1]);
 }
 if (!options.get('--exe') || !options.get('--work-dir'))
     throw new Error('缺少 --exe 或 --work-dir');
 const executable = path.resolve(options.get('--exe'));
+const presentationExecutable = options.has('--presentation-exe') ? path.resolve(options.get('--presentation-exe')) : undefined;
 const workRoot = path.resolve(options.get('--work-dir'));
 await checkedBuildPath(workRoot, '回放临时目录');
 if (options.has('--snapshot-file'))
@@ -208,13 +209,13 @@ const cancel = () => { cancelled = true; child?.kill(); };
 process.on('SIGINT', cancel);
 process.on('SIGTERM', cancel);
 
-async function run(parameters) {
+async function run(parameters, selectedExecutable = executable) {
     if (cancelled) throw new Error('回放验证被取消');
     const started = performance.now();
     const index = invocation++;
     return await new Promise((resolve, reject) => {
-        const current = spawn(executable, parameters, {
-            cwd: path.dirname(executable), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+        const current = spawn(selectedExecutable, parameters, {
+            cwd: path.dirname(selectedExecutable), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
         });
         child = current;
         const out = [], err = [];
@@ -284,6 +285,52 @@ try {
         throw new Error('只读回放修改了源快照');
     if (sourcePrefix && !(await fs.readFile(sourcePrefix.file)).equals(sourcePrefixBytes))
         throw new Error('本轮续跑修改了冻结源前缀');
+    let presentationCertificate;
+    if (presentationExecutable) {
+        // 独立条件组合：原自然driver/字节/黄金终点已在上方完成，显式表现请求另用控制器。
+        const presentationSnapshot = path.join(owned, 'presentation-prefix.awr');
+        const presentationTraces = [0, 1, 2].map(n => path.join(owned, `presentation-tail-${n}.trace`));
+        const presentationOutputs = [await run(['presentation-request-v1', '--save-file', presentationSnapshot,
+            '--trace-file', presentationTraces[0], '--trace-from', '2'], presentationExecutable)];
+        const prefix = await fs.readFile(presentationSnapshot);
+        if (!prefix.length || prefix.length > 128 * 1024 * 1024) throw new Error('表现快照尺寸非法');
+        for (let n = 1; n < 3; ++n)
+            presentationOutputs.push(await run(['presentation-request-v1', '--load-file', presentationSnapshot,
+                '--trace-file', presentationTraces[n]], presentationExecutable));
+        const traces = await Promise.all(presentationTraces.map(p => fs.readFile(p)));
+        const rows = traces[0].toString('utf8').trimEnd().split('\n');
+        if (rows.length !== 3 || rows.some((line, n) => {
+            const fields = line.split(' ');
+            return fields.length !== 5 || fields[0] !== String(n + 2) || !/^[0-9a-f]{64}$/.test(fields[1]) ||
+                fields.slice(2).some(value => !/^(?:[0-9a-f]{2})+$/.test(value));
+        })) throw new Error('表现尾段必须含连续2/3/4轮及完整Session/controller/plan/sound字段');
+        for (let n = 1; n < 3; ++n)
+            if (!traces[0].equals(traces[n])) throw new Error(`表现第${n}次恢复的完整输出尾段不一致`);
+        const summary = output => output.split(/\r?\n/).filter(line => line.startsWith('presentation summary ')).join('\n');
+        const final = summary(presentationOutputs[0]);
+        if (!/^presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=\d+$/.test(final) ||
+            presentationOutputs.some(output => summary(output) !== final))
+            throw new Error('表现短轨迹原票号/请求/声音终点或三路检查数不同');
+        if (!(await fs.readFile(presentationSnapshot)).equals(prefix)) throw new Error('表现恢复修改了输入快照');
+        // CLI未知选项必须直接拒绝，不产生世界捕获或覆盖已有输入。独立等待close收齐进程。
+        const before = sha256(prefix);
+        let rejected = false;
+        try {
+            await run(['presentation-request-v1', '--unknown', '1'], presentationExecutable);
+        } catch (error) {
+            if (cancelled || !String(error.message).includes('presentation unknown option')) throw error;
+            rejected = true;
+        }
+        if (!rejected || sha256(await fs.readFile(presentationSnapshot)) !== before)
+            throw new Error('表现非法CLI未拒绝或破坏既有快照');
+        presentationCertificate = {
+            controller: 'presentation-request-v1', qualification: 'conditional_presentation_request_replay',
+            capture_next_round: 2, tail_rounds: [2, 3, 4], request_counts: [0, 1, 2, 1, 0], process_count: 3,
+            snapshot_bytes: prefix.length, snapshot_sha256: before, trace_bytes: traces[0].length,
+            trace_sha256: sha256(traces[0]), comparison: '完整Session、controller及全plan/request上下文/sound字节三路相同',
+            terminal_output: final, boundary: '人工合法任务进度及66等待页，不认证自然赠礼路线或原Android调度频率',
+        };
+    }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
         await checkedBuildPath(destination, '保留快照');
@@ -292,6 +339,7 @@ try {
         await fs.writeFile(destination, snapshotBytes, { flag: 'wx' });
     }
     const certificate = { scenario, seed: 1, speed: 0,
+        ...(presentationCertificate ? { presentation_replay: presentationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

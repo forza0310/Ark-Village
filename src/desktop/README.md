@@ -8,6 +8,8 @@
 
 玩家窗口固定一倍速，底栏倍速按钮与旧切片Tab切换已移除；旧档加载沿用当前会话速度。`world-active`可验正常运行，旧`world-speed`参数明确拒绝。下方旧切片速度组合说明仅为领域/测试适配历史，不再是玩家操作。
 
+建设目录、设施详情、商会/强化中的建筑图统一经`world_build_graphic`转换维护`startup_world_building_draws`的分片和偏移；候选闪烁/光标范围由`startup_world_building_preview_draws`核准。预览定义须与Owner当前选择一致，审批仍检查完整占地/报价；绘制只转换raylib坐标，不重新实现分片表。显式表现请求接口目前仅由维护回放调用，普通桌面不在60FPS循环中抽随机或清任务。
+
 `world_overlay`定义标准C++绘制计划，`world_combat_visuals`读取累计伤害、X2/X3金币、cd24经验和cd14升级；`world_rest_visuals`按占用名单前4项/flags32生成两阶段休息条，live或retired人物引用均有效。头像采用e8f66d9的`startup_world_visuals`计划，读取当前职业/性别并裁剪walk01帧0。`world_overlay_render`才调用raylib；布局不扣款/加经验/推进计数，设施精确L锚点和完整恢复特效仍未交付。
 
 经验期间共享定义P真时，cd24自己的计数按12周期/6半周期选择ef_lvUp两帧，55后与经验条继续共存、72结束；不使用FPS或真正cd14时钟，不触发升级/HP恢复。普通身体锚点沿现有适配，弹跳/完整bl及金币X4精确运动缺口另列研究需求。0a5b5e2的建筑队首kind1–6以实例f()原投影绘制升降提示；world_overlay_render执行指定SEB层和PNG override，只应用一次各级偏移。cd15/21/22购买后举物与身体动作9共用原逻辑计数，不在绘制时装配。

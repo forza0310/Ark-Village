@@ -39,7 +39,8 @@ WorldCommerceRow facility(const State &state, int id) {
     row.name = found->name;
     row.price = state.rules->facility_initial.at(id).capacity;
     row.fresh = !state.facility_commerce_read.at(id);
-    row.graphic = world_build_graphic(*found, simulation::rules::FacilityOrientation::first);
+    row.graphic =
+        world_build_graphic(state, found->id, simulation::rules::FacilityOrientation::first);
     return row;
 }
 } // namespace

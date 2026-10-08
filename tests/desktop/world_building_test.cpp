@@ -43,7 +43,7 @@ void world_building() {
             continue; // Roads select adjacency masks, not facility orientation fragments.
         for (const auto orientation :
              {rules::FacilityOrientation::first, rules::FacilityOrientation::second}) {
-            const auto graphic = desktop::world_build_graphic(item, orientation);
+            const auto graphic = desktop::world_build_graphic(state, item.id, orientation);
             for (const auto &part : graphic.frames)
                 check(sprites.map_frame(graphic.sprite, part.first) == part.first,
                       "Buildable/house fragments preserve source requests without clamping: " +
@@ -142,7 +142,7 @@ void world_building() {
              {rules::FacilityOrientation::first, rules::FacilityOrientation::second}) {
             const auto context = "definition=" + std::to_string(example.definition) +
                                  " orientation=" + std::to_string(static_cast<int>(orientation));
-            const auto graphic = desktop::world_build_graphic(*item, orientation);
+            const auto graphic = desktop::world_build_graphic(state, item->id, orientation);
             const auto &expected =
                 orientation == rules::FacilityOrientation::first ? example.first : example.second;
             check(graphic.sprite == example.sprite && graphic.frames.size() == expected.size(),
@@ -163,9 +163,10 @@ void world_building() {
                                    [](const auto &item) { return item.id == 18; });
     check(road != catalogue.facilities.end() && road->kind == 6,
           "Published road fixture keeps its source definition and kind");
-    const auto road_first = desktop::world_build_graphic(*road, rules::FacilityOrientation::first);
+    const auto road_first =
+        desktop::world_build_graphic(state, road->id, rules::FacilityOrientation::first);
     const auto road_second =
-        desktop::world_build_graphic(*road, rules::FacilityOrientation::second);
+        desktop::world_build_graphic(state, road->id, rules::FacilityOrientation::second);
     check(road_first.frames.size() == 1 && road_first.frames[0].first == 11 &&
               road_second.frames.size() == 1 && road_second.frames[0].first == 1,
           "Source road candidate uses masks11/1 rather than regular building fragment0/1");
@@ -756,11 +757,18 @@ void world_building() {
         tile.legacy_state = 0;
         tile.facility.reset();
     }
-    catalogue.facilities.at(2).shape = 2;
-    catalogue.facilities.at(2).economy.construction_cost = 0;
+    const int placement_definition =
+        55; // Published four-cell circus; preserve its display binding.
+    auto &placement = *std::find_if(catalogue.facilities.begin(), catalogue.facilities.end(),
+                                    [](const auto &d) { return d.id == 55; });
+    state.build_definition = placement_definition;
+    placement.economy.construction_cost = 0;
     catalogue.fences.at(state.fence_level) = {{{0, map.height - 1}, {map.width - 1, 0}}};
     state.scene.scene_state = 1;
     state.build_mode = 0;
+    check(desktop::world_build_preview(state, 29, {8, 8}, rules::FacilityOrientation::first)
+              .missing_source,
+          "A stale desktop definition cannot preview a different Owner-selected building");
     const auto draws = state.scene.random.draws();
     const auto funds = state.scene.world.world.ai.accounting.funds();
     for (const auto &[counter, visible] :
@@ -773,7 +781,7 @@ void world_building() {
                 state.scene.speed_setting = speed;
                 for (int repaint = 0; repaint < 2; ++repaint) {
                     const auto phase = desktop::world_build_preview(
-                        state, definition, {8, 8}, rules::FacilityOrientation::first);
+                        state, placement_definition, {8, 8}, rules::FacilityOrientation::first);
                     check(phase.cursor_in_map && phase.graphic_visible == visible &&
                               state.scene.scene_counter == counter,
                           "Candidate blink reads logical counter without advancing on repaint: " +
@@ -788,27 +796,28 @@ void world_building() {
     for (const auto &[mode, visible] :
          {std::pair{0, true}, std::pair{1, false}, std::pair{6, false}, std::pair{7, true}}) {
         state.build_mode = mode;
-        check(desktop::world_build_preview(state, definition, {8, 8},
+        check(desktop::world_build_preview(state, placement_definition, {8, 8},
                                            rules::FacilityOrientation::first)
                       .graphic_visible == visible,
               "Normal/moving placement alone selects the source candidate building: mode=" +
                   std::to_string(mode));
     }
     state.build_mode = 0;
-    const auto original_flags = catalogue.facilities.at(2).flags;
+    const auto original_flags = placement.flags;
     for (const bool enabled : {false, true}) {
-        catalogue.facilities.at(2).flags = enabled ? original_flags | 32 : original_flags & ~32;
-        check(desktop::world_build_preview(state, definition, {8, 8},
+        placement.flags = enabled ? original_flags | 32 : original_flags & ~32;
+        check(desktop::world_build_preview(state, placement_definition, {8, 8},
                                            rules::FacilityOrientation::first)
                       .rotation_hint == enabled,
               "Rotation prompt follows source definition bit32");
     }
-    catalogue.facilities.at(2).flags = original_flags;
-    auto preview =
-        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    placement.flags = original_flags;
+    auto preview = desktop::world_build_preview(state, placement_definition, {8, 8},
+                                                rules::FacilityOrientation::first);
     check(preview.valid() && preview.cells.size() == 4 && preview.cells[0].position.x == 7 &&
               preview.cells[0].position.y == 9 && preview.graphic.frames.size() == 4,
           "Construction ghost includes the entire rotated source footprint");
+    state.build_definition = 29;
     const auto pair_first =
         desktop::world_build_preview(state, 29, {8, 8}, rules::FacilityOrientation::first);
     const auto pair_second =
@@ -820,21 +829,22 @@ void world_building() {
               pair_first.graphic.frames[0].first == 0 && pair_first.graphic.frames[1].first == 2 &&
               pair_second.graphic.frames[0].first == 1 && pair_second.graphic.frames[1].first == 3,
           "Rotated placement changes both the full source tenant artwork and its occupied cells");
+    state.build_definition = placement_definition;
     map.cells.at(9 * map.width + 7).legacy_state = 10;
-    preview =
-        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    preview = desktop::world_build_preview(state, placement_definition, {8, 8},
+                                           rules::FacilityOrientation::first);
     check(preview.denial == Denial::occupied && preview.graphic.frames.size() == 4 &&
               preview.graphic_visible,
           "Invalid placement keeps its full ghost artwork while rejecting an occupied outer cell");
     map.cells.at(9 * map.width + 7).legacy_state = 0;
-    catalogue.facilities.at(2).economy.construction_cost = 100000000;
-    preview =
-        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    placement.economy.construction_cost = 100000000;
+    preview = desktop::world_build_preview(state, placement_definition, {8, 8},
+                                           rules::FacilityOrientation::first);
     check(preview.denial == Denial::insufficient_funds && preview.graphic_visible,
           "Unaffordable source candidate remains visible during the visible logical phase");
     state.build_mode = 7;
-    const auto moving =
-        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    const auto moving = desktop::world_build_preview(state, placement_definition, {8, 8},
+                                                     rules::FacilityOrientation::first);
     check(funds >= 300 && moving.valid() && moving.cost == 300 && moving.graphic_visible &&
               moving.cells.size() == 4 && moving.graphic.frames.size() == 4 &&
               state.scene.random.draws() == draws &&
@@ -842,31 +852,34 @@ void world_building() {
           "Moving to a free destination quotes fixed300G with the full ghost, independent of "
           "unaffordable fresh construction and without consuming cash/random");
     map.cells.at(9 * map.width + 7).legacy_state = 10;
-    const auto blocked_move =
-        desktop::world_build_preview(state, definition, {8, 8}, rules::FacilityOrientation::first);
+    const auto blocked_move = desktop::world_build_preview(state, placement_definition, {8, 8},
+                                                           rules::FacilityOrientation::first);
     check(blocked_move.denial == Denial::occupied && blocked_move.graphic_visible &&
               blocked_move.graphic.frames.size() == 4,
           "Moving preview keeps nonoverlap checks and full ghost despite the fixed fee");
     map.cells.at(9 * map.width + 7).legacy_state = 0;
     state.build_mode = 0;
-    catalogue.facilities.at(2).economy.construction_cost = 0;
-    check(desktop::world_build_preview(state, definition, {1, 8}, rules::FacilityOrientation::first)
+    placement.economy.construction_cost = 0;
+    check(desktop::world_build_preview(state, placement_definition, {1, 8},
+                                       rules::FacilityOrientation::first)
                       .denial == Denial::outside_town &&
-              desktop::world_build_preview(state, definition, {0, 8},
+              desktop::world_build_preview(state, placement_definition, {0, 8},
                                            rules::FacilityOrientation::first)
                       .denial == Denial::outside_map,
           "Whole footprint distinguishes town fence crossing from map crossing");
-    preview =
-        desktop::world_build_preview(state, definition, {0, 8}, rules::FacilityOrientation::first);
+    preview = desktop::world_build_preview(state, placement_definition, {0, 8},
+                                           rules::FacilityOrientation::first);
     check(preview.denial == Denial::outside_map && preview.cells.empty() && preview.cursor_in_map &&
               preview.graphic_visible,
           "A footprint crossing the map edge does not hide an in-map cursor's candidate");
-    preview =
-        desktop::world_build_preview(state, definition, {-1, 8}, rules::FacilityOrientation::first);
+    preview = desktop::world_build_preview(state, placement_definition, {-1, 8},
+                                           rules::FacilityOrientation::first);
     check(!preview.cursor_in_map && !preview.graphic_visible,
           "An out-of-map cursor hides the candidate independently of placement eligibility");
     check(state.scene.random.draws() == draws &&
-              state.scene.world.world.ai.accounting.funds() == funds && !state.build_definition,
-          "Preview never spends, consumes random, installs facilities or begins construction mode");
+              state.scene.world.world.ai.accounting.funds() == funds &&
+              state.build_definition == placement_definition,
+          "Preview never spends, consumes random, installs facilities or changes the selected "
+          "definition");
 }
 } // namespace ark::test

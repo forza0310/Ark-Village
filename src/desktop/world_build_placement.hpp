@@ -12,7 +12,8 @@ struct WorldBuildGraphic {
     std::string sprite;
     std::vector<std::pair<int, Vector2>> frames;
 };
-WorldBuildGraphic world_build_graphic(const simulation::StartupDefinition &definition,
+WorldBuildGraphic world_build_graphic(const simulation::StartupWorldRuntimeState &state,
+                                      int definition,
                                       simulation::rules::FacilityOrientation orientation);
 // One physical input frame produces at most one intent. Map clicks precede keyboard
 // confirmation so selecting a new cell can never buy the previously locked anchor.

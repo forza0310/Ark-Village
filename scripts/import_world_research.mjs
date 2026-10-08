@@ -172,7 +172,9 @@ if (mode === '--record-patch') {
     // The canonical protocol manifest retains source logical names and exact bytes.
     // Namespace renaming changes C++ access spelling, not the persisted wire schema.
     if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json')) {
-      let text = translate(original.toString('utf8'));
+      // Product source files are checked out as LF by .gitattributes. Keep their recorded
+      // bytes stable across Windows checkouts; source_bytes/source_sha256 stay byte-exact.
+      let text = translate(original.toString('utf8').replaceAll('\r\n', '\n'));
       // Keep the complete archive declaration as private frozen evidence; consumers
       // expose only the three portable digest overloads actually implemented here.
       text = text.replaceAll('#include "ark/assets/archive.hpp"',

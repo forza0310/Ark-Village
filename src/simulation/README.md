@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结`0a5b5e2`，共361项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema3仅新增配方耐久进度，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
+当前冻结研究`88eb658`中的维护闭包，共363项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema3仅新增配方耐久进度，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 
@@ -46,7 +46,8 @@ all original UI workflows. Product construction, human and tax commands read/wri
 | startup_world_facility_items/commerce | Item consumption/improvement phases, gold trades, point payment and later facility receipt |
 | startup_world_facility_catalog | Facility merchandise 79, equipment information 72 and publicity 82 lifecycle |
 | startup_world_magic_pot | Recipe progress, item input, calendar processing, discovery and development pages 41–47 |
-| startup_world_visuals | Read-only equipment lift and facility notice draw plans from existing Owner records |
+| startup_world_visuals | Read-only building fragments/preview admission, equipment lift and facility notice draw plans |
+| startup_world_presentation | Explicit transactional draw requests, page admission, shared jitter/cleanup/sound outputs; no render-loop scheduling |
 | startup_world_building/editing | One map, stable placement/retirement, road axis/pricing and source move/remove transactions |
 | startup_world_runtime_nonactors | Projectile/object/presentation requests and render facts |
 

@@ -2,6 +2,8 @@
 #include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_magic_pot.hpp"
 #include "ark/simulation/startup_world_persistence.hpp"
+#include "ark/simulation/startup_world_presentation.hpp"
+#include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/startup_world_village_activity.hpp"
 #include "ark/assets/sha256.hpp"
 #include "startup_world_codec.hpp"
@@ -661,9 +663,217 @@ void run(const std::filesystem::path &dir) {
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
+// 独立表现调用控制器，使用既有文件metadata；不修改自然AWDRV1或Owner编码。
+struct PresentationController {
+    std::uint64_t next_round{}, next_ordinal{1}, checked{};
+    bool consumed{true};
+};
+constexpr const char *presentation_controller_id = "presentation-request-v1";
+constexpr std::array<int,5> presentation_calls{0,1,2,1,0};
+Bytes encode_presentation_controller(const PresentationController &driver) {
+    Bytes bytes{'A','V','P','R','Q','0','0','1'};
+    append64(bytes,driver.next_round); append64(bytes,driver.next_ordinal);
+    append64(bytes,driver.checked); bytes.push_back(driver.consumed?1:0);
+    return bytes;
+}
+PresentationController decode_presentation_controller(const Bytes &bytes) {
+    if (bytes.size()!=33 || std::string(bytes.begin(),bytes.begin()+8)!="AVPRQ001")
+        throw std::invalid_argument("presentation controller size/magic mismatch");
+    std::size_t at=8;
+    PresentationController result;
+    result.next_round=number(bytes,at,8); result.next_ordinal=number(bytes,at,8);
+    result.checked=number(bytes,at,8);
+    if (bytes.at(at)!=1 || result.next_round>presentation_calls.size())
+        throw std::invalid_argument("presentation controller pending output/round mismatch");
+    result.consumed=true;
+    std::uint64_t ordinal=1;
+    for (std::size_t n=0;n<result.next_round;++n) ordinal+=presentation_calls[n];
+    if (result.next_ordinal!=ordinal || result.checked>100000)
+        throw std::invalid_argument("presentation controller ordinal/checks mismatch");
+    return result;
+}
+std::string hexadecimal(const Bytes &bytes) {
+    constexpr char digits[]="0123456789abcdef";
+    std::string result; result.reserve(bytes.size()*2);
+    for (const auto b:bytes) { result.push_back(digits[b>>4]); result.push_back(digits[b&15]); }
+    return result;
+}
+Bytes encode_presentation_output(const StartupPresentationRequest &request,
+                                 const StartupPresentationPlan &plan) {
+    Bytes b;
+    append64(b,request.ordinal); append64(b,static_cast<std::uint64_t>(request.mode));
+    b.push_back(request.application_preview); b.push_back(request.sound_paused);
+    b.push_back(request.gift_wrapper_ready);
+    append64(b,request.expected_pages.size()); for (auto id:request.expected_pages) append64(b,id);
+    append64(b,plan.ordinal); append64(b,plan.pages.size()); for (auto id:plan.pages) append64(b,id);
+    append64(b,plan.dungeon_jitters.size());
+    for (const auto &j:plan.dungeon_jitters) {
+        append64(b,j.page); append64(b,j.facility); append64(b,j.challenge);
+        append64(b,static_cast<std::uint64_t>(static_cast<std::int64_t>(j.offset)));
+    }
+    b.push_back(plan.cleared_task.has_value()); if (plan.cleared_task) append64(b,*plan.cleared_task);
+    append64(b,plan.sound_requests); append64(b,plan.random_before); append64(b,plan.random_after);
+    return b;
+}
+StartupWorldRuntimeSession presentation_fixture(const std::filesystem::path &path,
+                                                 PresentationController &driver) {
+    StartupSession initial;
+    StartupWorldRuntimeSession baseline(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    auto state=baseline.state();
+    const auto created=ref::prepare_world_task_creation(startup_world_runtime_factory(state),0);
+    check(created.candidate && created.candidate->created_task &&
+              write_startup_world_runtime_factory(state,created.candidate->state),
+          "presentation condition fixture uses original task factory and complete Owner writer");
+    const auto task=*created.candidate->created_task;
+    check(state.tasks.at(task).facility.has_value(),"presentation factory binds actual dungeon facility");
+    state.active_task=task; state.scene.world.world.ai.task_active=true;
+    state.dungeon_facilities.at(*state.tasks.at(task).facility).challenges=
+        {{0,1,1,10,0,0},{1,1,1,9,0,0},{2,0,1,20,0,0},{3,1,2,20,0,0},{4,1,1,10,0,0}};
+    state.scene.random=ref::WorldRandomStream::from_raw({2,0,1,2,0,1,2,0});
+    state.scripts.pages.front().lifecycle=3;
+    // 66是明确等待页条件夹具，不宣称真实玩家已经赠送或自然到达计数45。
+    ref::WorldScriptPage gift;
+    gift.id=state.scripts.next_page_id++; gift.kind=ref::WorldScriptPageKind::raw_page;
+    gift.legacy_page=66; gift.lifecycle=2;
+    state.scripts.pages.push_back(gift);
+    state.scripts.executing_page.reset();
+    state.page_human_bindings[gift.id]=1; state.human_equipment_choices[gift.id]={4,0};
+    state.human_pages_initialized.insert(gift.id); state.human_page_selections[gift.id]=0;
+    state.page_counters[gift.id]=45; state.page_phases[gift.id]=0;
+    state.human_gift_scores[gift.id]=0; state.human_gift_messages[gift.id]="表现等待条件夹具";
+    state.sound_requests.clear();
+    std::string reason;
+    check(persistence_detail::validate_restored_state(state,reason),"presentation fixture validates: "+reason);
+    StartupWorldSaveMetadata metadata;
+    metadata.purpose=StartupWorldSavePurpose::replay; metadata.controller_id=presentation_controller_id;
+    metadata.controller_state=encode_presentation_controller(driver);
+    const auto seed=std::filesystem::path(path.string()+".seed");
+    const auto fixture=std::filesystem::path(path.string()+".fixture");
+    if (std::filesystem::exists(seed) || std::filesystem::exists(fixture))
+        throw std::invalid_argument("presentation fixture temporary path already exists");
+    const auto saved=save_startup_world_file(seed,baseline,metadata);
+    if (!saved.ok) throw std::runtime_error("presentation fixture baseline save: "+saved.error);
+    write(fixture,replace_state(read(seed),state));
+    auto loaded=load_startup_world_file(fixture,startup_world_rules(),metadata.purpose,presentation_controller_id);
+    check(loaded.snapshot.has_value(),"presentation fixture formal loader: "+loaded.error);
+    std::filesystem::remove(seed); std::filesystem::remove(fixture);
+    driver.checked=checks;
+    return std::move(loaded.snapshot->session);
+}
+void presentation_replay(int argc,const char **argv) {
+    std::map<std::string,std::string> options;
+    for (int n=2;n<argc;n+=2) {
+        if (n+1==argc || !options.emplace(argv[n],argv[n+1]).second)
+            throw std::invalid_argument("presentation options missing value/duplicate");
+        if (std::string(argv[n])!="--save-file" && std::string(argv[n])!="--load-file" &&
+            std::string(argv[n])!="--trace-file" && std::string(argv[n])!="--trace-from")
+            throw std::invalid_argument("presentation unknown option");
+    }
+    if (!options.count("--trace-file") || options.count("--save-file")==options.count("--load-file"))
+        throw std::invalid_argument("presentation requires trace and exactly one save/load mode");
+    const auto file=std::filesystem::path(options.at(options.count("--load-file")?"--load-file":"--save-file"));
+    const auto trace_file=std::filesystem::path(options.at("--trace-file"));
+    if (file.lexically_normal()==trace_file.lexically_normal())
+        throw std::invalid_argument("presentation trace cannot overwrite snapshot");
+    PresentationController driver;
+    auto session=[&] {
+        if (!options.count("--load-file")) return presentation_fixture(file,driver);
+        auto loaded=load_startup_world_file(file,startup_world_rules(),StartupWorldSavePurpose::replay,presentation_controller_id);
+        if (!loaded.snapshot) throw std::runtime_error("presentation load: "+loaded.error);
+        auto candidate=decode_presentation_controller(loaded.snapshot->metadata.controller_state);
+        if (candidate.next_round!=loaded.snapshot->metadata.next_frame || candidate.next_round!=2 ||
+            loaded.snapshot->session.state().scene.random.draws()!=2 ||
+            loaded.snapshot->session.state().scripts.pages.back().legacy_page!=66 ||
+            loaded.snapshot->session.state().page_counters.at(loaded.snapshot->session.state().scripts.pages.back().id)!=45)
+            throw std::invalid_argument("presentation controller/Owner capture boundary mismatch");
+        driver=candidate; checks=static_cast<int>(driver.checked);
+        return std::move(loaded.snapshot->session);
+    }();
+    // 严格控制器拒绝主责与文件用途/Controller身份隔离共用本短模式，不安装失败候选。
+    const auto controller=encode_presentation_controller(driver);
+    const auto before_rejection=startup_world_session_digest(session);
+    auto bad=controller; bad.back()=0;
+    bool refused{};
+    try { (void)decode_presentation_controller(bad); } catch (const std::invalid_argument &) { refused=true; }
+    if (!refused || startup_world_session_digest(session)!=before_rejection)
+        throw std::runtime_error("presentation pending output controller must reject without world install");
+    bad=controller; bad[16]^=1; refused=false;
+    try { (void)decode_presentation_controller(bad); } catch (const std::invalid_argument &) { refused=true; }
+    if (!refused || startup_world_session_digest(session)!=before_rejection)
+        throw std::runtime_error("presentation wrong next ordinal must reject without world install");
+    if (options.count("--trace-from") && (options.at("--trace-from").empty() ||
+        options.at("--trace-from").find_first_not_of("0123456789")!=std::string::npos))
+        throw std::invalid_argument("presentation trace round must be unsigned integer");
+    const auto start=options.count("--trace-from") ? std::stoull(options.at("--trace-from")) : driver.next_round;
+    if (start>presentation_calls.size()) throw std::invalid_argument("presentation trace round out of range");
+    std::ofstream trace(trace_file,std::ios::binary|std::ios::trunc);
+    if (!trace) throw std::runtime_error("presentation trace open failed");
+    for (std::size_t round=driver.next_round;round<presentation_calls.size();++round) {
+        Bytes outputs; append64(outputs,presentation_calls[round]);
+        const auto at_round=startup_world_session_digest(session);
+        const auto draws_before=session.state().scene.random.draws();
+        for (int call=0;call<presentation_calls[round];++call) {
+            driver.consumed=false;
+            StartupPresentationRequest request;
+            request.ordinal=driver.next_ordinal++; request.mode=StartupPresentationMode::full_redraw;
+            request.gift_wrapper_ready=true;
+            const auto pages=startup_world_presentation_pages(session.state(),request.mode);
+            check(pages.has_value(),"presentation actual stack admission available");
+            request.expected_pages=*pages;
+            const auto result=session.present(request);
+            check(result.error==StartupWorldRuntimeError::none && result.plan && result.candidate,
+                  "presentation Session commits actual request transaction");
+            const auto &plan=*result.plan;
+            constexpr std::array<int,8> jitter{1,-1,0,1,-1,0,1,-1};
+            check(plan.ordinal==request.ordinal && plan.pages==request.expected_pages &&
+                      plan.dungeon_jitters.size()==2 && plan.dungeon_jitters[0].challenge==4 &&
+                      plan.dungeon_jitters[1].challenge==0 && plan.random_after==plan.random_before+2 &&
+                      plan.dungeon_jitters[0].offset==jitter.at(plan.random_before) &&
+                      plan.dungeon_jitters[1].offset==jitter.at(plan.random_before+1) &&
+                      !plan.cleared_task && plan.sound_requests==1,
+                  "presentation explicit tickets, inverse challenge order and one ready66 sound per request");
+            const auto encoded=encode_presentation_output(request,plan);
+            append64(outputs,encoded.size()); outputs.insert(outputs.end(),encoded.begin(),encoded.end());
+            driver.consumed=true;
+        }
+        const auto sounds=session.take_sound_requests();
+        check(sounds==std::vector<int>(presentation_calls[round],8),"presentation round consumes exact ordered request sound output");
+        check(session.state().scene.random.draws()==draws_before+2*presentation_calls[round] &&
+                  session.state().page_counters.at(session.state().scripts.pages.back().id)==45 &&
+                  (presentation_calls[round]!=0 || startup_world_session_digest(session)==at_round),
+              "presentation same-state0/1/2 calls do not simulate tick or advance gift counter");
+        Bytes encoded_sounds; append64(encoded_sounds,sounds.size());
+        for (int sound:sounds) append64(encoded_sounds,static_cast<std::uint64_t>(sound));
+        driver.next_round=round+1; driver.checked=checks;
+        if (round>=start)
+            trace<<round<<' '<<startup_world_session_digest(session)<<' '
+                 <<hexadecimal(encode_presentation_controller(driver))<<' '<<hexadecimal(outputs)<<' '
+                 <<hexadecimal(encoded_sounds)<<'\n';
+        if (!trace) throw std::runtime_error("presentation trace write failed");
+        if (round==1 && options.count("--save-file")) {
+            StartupWorldSaveMetadata metadata;
+            metadata.purpose=StartupWorldSavePurpose::replay; metadata.controller_id=presentation_controller_id;
+            metadata.next_frame=driver.next_round; metadata.controller_state=encode_presentation_controller(driver);
+            const auto saved=save_startup_world_file(file,session,metadata);
+            if (!saved.ok) throw std::runtime_error("presentation capture: "+saved.error);
+            const auto before=startup_world_session_digest(session);
+            if (load_startup_world_file(file,startup_world_rules(),metadata.purpose,
+                                       "natural-progression-expansion-v1").snapshot ||
+                load_startup_world_file(file,startup_world_rules(),StartupWorldSavePurpose::normal).snapshot ||
+                startup_world_session_digest(session)!=before)
+                throw std::runtime_error("presentation controller/purpose isolation failed");
+        }
+    }
+    trace.flush(); if (!trace) throw std::runtime_error("presentation trace flush failed");
+    std::cout<<"presentation summary rounds="<<driver.next_round<<" ordinal="<<driver.next_ordinal
+             <<" random="<<session.state().scene.random.draws()<<" requests=4 sounds=4 checks="<<checks<<'\n';
+}
 } // namespace
 int main(int argc, const char **argv) {
     try {
+        if (argc>=2 && std::string(argv[1])==presentation_controller_id) {
+            presentation_replay(argc,argv); return 0;
+        }
         check(argc == 2, "expected test directory");
         run_startup_world_codec_checks();
         run(argv[1]);

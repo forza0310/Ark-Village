@@ -149,4 +149,45 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_facility_growth_draw
     }
     return result;
 }
+std::optional<std::vector<StartupBuildingDraw>> startup_world_building_draws(
+    const StartupWorldRuntimeState &s, int id, ref::FacilityOrientation orientation) {
+    if (!s.rules) return {};
+    const auto definition = std::find_if(s.rules->facilities.begin(), s.rules->facilities.end(),
+        [=](const auto &d) { return d.id == id; });
+    if (definition == s.rules->facilities.end()) return {};
+    const auto &displays = startup_evidence().displays;
+    const auto art = std::find_if(displays.begin(), displays.end(),
+        [&](const auto &d) { return d.id == definition->display_id; });
+    if (art == displays.end() || art->sprite.empty()) return {};
+    const auto source = std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [&](const auto &d) { return d.id == art->definition_id; });
+    // 原helper经bs.g读绘制定义；固定85定义的kind/shape均相同，坏私有映射明确拒绝。
+    if (source == s.rules->facilities.end() || source->shape != definition->shape ||
+        source->kind != definition->kind) return {};
+    // 复用已证ah/ai分片序，但放到完整容纳三种形状的局部坐标，避免真实候选越界时丢图。
+    const auto shape = ref::facility_footprint(static_cast<ref::FacilityShape>(definition->shape),
+                                               orientation, {1,1}, 3,3);
+    if (shape.error != ref::GeometryError::none) return {};
+    std::vector<StartupBuildingDraw> result;
+    for (const auto &part : shape.cells) {
+        const int dx = part.position.x - 1, dy = part.position.y - 1;
+        // 原kind6道路不使用普通ah帧序，朝向0/1分别是11/1。
+        const int frame = definition->kind == 6
+            ? (orientation == ref::FacilityOrientation::second ? 1 : 11) : part.fragment_index;
+        result.push_back({art->sprite, frame, {30*(dx+dy),15*(dx-dy)}});
+    }
+    return result;
+}
+std::optional<std::vector<StartupBuildingDraw>> startup_world_building_preview_draws(
+    const StartupWorldRuntimeState &s, ref::Position cursor, ref::FacilityOrientation orientation) {
+    const auto &map = s.scene.world.world.map;
+    std::vector<StartupBuildingDraw> empty;
+    if (s.scene.scene_state != 1 || (s.build_mode != 0 && s.build_mode != 7)) return empty;
+    if (!s.build_definition || s.scene.scene_counter < 0 || !ref::valid_legacy_map(map)) return {};
+    if (cursor.x < 0 || cursor.y < 0 || cursor.x >= map.width || cursor.y >= map.height) return empty;
+    // 坏定义/朝向仍明确拒绝；隐藏相位不是掩盖坏载荷的兜底。
+    auto result = startup_world_building_draws(s,*s.build_definition,orientation);
+    if (!result) return {};
+    return s.scene.scene_counter % 20 < 10 ? result : std::optional<std::vector<StartupBuildingDraw>>(empty);
+}
 } // namespace ark::simulation

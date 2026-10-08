@@ -1,4 +1,6 @@
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/startup_world_presentation.hpp"
+#include "ark/simulation/startup_world_human.hpp"
 #include "support/world_fixture.hpp"
 
 #include <algorithm>
@@ -390,6 +392,336 @@ void active_management() {
             settled->participants == std::vector<int>({1, 3}),
         "parent restores whole site then80/-10/first162/notice26; no deadlinefee or random shadow");
 }
+
+// 本批仍用真实工厂分配身份；挑战门槛和显式绘制次数是调用点夹具，不冒充自然玩家路线。
+StartupWorldRuntimeState presentation_task(bool retired = false) {
+    auto s = test_support::world_fixture();
+    const auto made = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 0);
+    check(made.candidate && made.candidate->created_task &&
+              write_startup_world_runtime_factory(s, made.candidate->state),
+          "presentation fixture allocates actual original exploration task and map site");
+    const auto task = *made.candidate->created_task;
+    const auto facility = *s.tasks.at(task).facility;
+    if (retired) {
+        s.scene.world.world.facilities.at(facility).status = 2;
+        s.dungeon_facilities.at(facility).updates = 10;
+        const auto ended = prepare_startup_world_runtime_dungeon_finish(s, facility);
+        check(ended && ended->tasks.count(task) &&
+                  !ended->scene.world.world.facilities.count(facility),
+              "missing-binding fixture retires real factory site through actual phase2 consumer");
+        s = *ended;
+        s.task_order = {task};
+    } else {
+        s.dungeon_facilities.at(facility).challenges = {
+            {0,1,1,10,0,0}, {20,1,1,9,0,0}, {40,0,1,10,0,0},
+            {60,1,2,10,0,0}, {80,1,1,10,0,0}};
+    }
+    s.active_task = task;
+    s.scene.world.world.ai.task_active = true;
+    s.task.kind = 0;
+    s.task.center = *s.tasks.at(task).site;
+    s.task.encounter.reset();
+    s.participants = {1,3,2};
+    s.scripts.executing_page.reset();
+    s.scripts.pages.front().lifecycle = 3;
+    s.scene.random = ref::WorldRandomStream::from_raw({2,0,1,2});
+    return s;
+}
+StartupPresentationRequest presentation_request(const StartupWorldRuntimeState &s,
+                                               StartupPresentationMode mode,
+                                               bool gift = false) {
+    const auto pages = startup_world_presentation_pages(s, mode);
+    check(pages.has_value(), "presentation fixture has valid physical page stack");
+    StartupPresentationRequest request;
+    request.ordinal = 7;
+    request.mode = mode;
+    request.expected_pages = *pages;
+    request.gift_wrapper_ready = gift;
+    return request;
+}
+std::uint64_t presentation_gift(StartupWorldRuntimeState &s, int counter = 45) {
+    ref::WorldScriptPage p;
+    p.id = s.scripts.next_page_id++;
+    p.kind = ref::WorldScriptPageKind::raw_page;
+    p.legacy_page = 66;
+    p.lifecycle = 1;
+    s.scripts.pages.push_back(p);
+    s.page_human_bindings[p.id] = 1;
+    s.human_equipment_choices[p.id] = {4,29};
+    s.human_gift_scores[p.id] = 50;
+    s.human_gift_messages[p.id] = "谢谢";
+    check(initialize_startup_world_human_pages(s),
+          "raw66 uses actual human-page initialization and already-consumed recovery item binding");
+    s.scripts.executing_page.reset();
+    s.page_counters[p.id] = counter;
+    return p.id;
+}
+bool same_random(const ref::WorldRandomStream &a, const ref::WorldRandomStream &b) {
+    const auto x = a.snapshot(), y = b.snapshot();
+    return x.engine_state == y.engine_state && x.tape == y.tape && x.cursor == y.cursor &&
+           x.tape_mode == y.tape_mode;
+}
+void presentation_admission_and_random() {
+    using Mode = StartupPresentationMode;
+    auto s = presentation_task();
+    const auto task = *s.active_task;
+    const auto facility = *s.tasks.at(task).facility;
+    const auto scene = s.scripts.pages.front().id;
+    const auto original = s.scene.random;
+    check(s.scene.random.draws() == 0 && s.sound_requests.empty(),
+          "zero admitted presentation calls consume no implicit decorative random or sound");
+    auto request = presentation_request(s, Mode::full_redraw);
+    const auto first = prepare_startup_world_presentation(s, request);
+    check(first.candidate && first.plan && first.plan->dungeon_jitters.size() == 2 &&
+              first.plan->dungeon_jitters[0].page == scene &&
+              first.plan->dungeon_jitters[0].facility == facility &&
+              first.plan->dungeon_jitters[0].challenge == 4 &&
+              first.plan->dungeon_jitters[0].offset == 1 &&
+              first.plan->dungeon_jitters[1].challenge == 0 &&
+              first.plan->dungeon_jitters[1].offset == -1 &&
+              first.plan->random_before == 0 && first.plan->random_after == 2 &&
+              same_random(s.scene.random, original),
+          "one scene invocation draws reverse4 then0; monster age9/treasure/state2 are excluded");
+    s = *first.candidate;
+    const auto second = prepare_startup_world_presentation(s, request);
+    check(second.candidate && second.plan && second.plan->ordinal == 7 &&
+              second.plan->dungeon_jitters.size() == 2 &&
+              second.plan->dungeon_jitters[0].challenge == 4 &&
+              second.plan->dungeon_jitters[0].offset == 0 &&
+              second.plan->dungeon_jitters[1].challenge == 0 &&
+              second.plan->dungeon_jitters[1].offset == 1 &&
+              second.plan->random_before == 2 && second.plan->random_after == 4,
+          "same ordinal identifies another explicitly admitted invocation, never automatic deduplication");
+    s = *second.candidate;
+    const auto frozen = *first.plan;
+    std::vector<int> displayed;
+    for (int repeat = 0; repeat < 2; ++repeat)
+        for (const auto &jitter : frozen.dungeon_jitters) displayed.push_back(jitter.offset);
+    check(displayed == std::vector<int>({1,-1,1,-1}) && s.scene.random.draws() == 4 &&
+              frozen.random_after == 2 && s.tasks.at(task).facility == facility,
+          "re-presenting frozen jitter facts is read-only and does not submit another invocation");
+    auto exhausted = presentation_task();
+    exhausted.scene.random = ref::WorldRandomStream::from_raw({2});
+    const auto tape = exhausted.scene.random;
+    const auto rejected = prepare_startup_world_presentation(exhausted,
+        presentation_request(exhausted, Mode::full_redraw));
+    check(!rejected.candidate && !rejected.plan && same_random(exhausted.scene.random,tape) &&
+              exhausted.active_task == task && exhausted.sound_requests.empty(),
+          "second challenge tape exhaustion discards earlier ticket and every partial drawing plan");
+    auto paused = presentation_task();
+    paused.scene.framework_paused = true;
+    const auto allowed = prepare_startup_world_presentation(paused,
+        presentation_request(paused, Mode::full_redraw));
+    check(allowed.candidate && allowed.plan && allowed.plan->random_after == 2,
+          "world pause is independent of an explicitly admitted actual presentation call");
+
+    s = presentation_task();
+    const auto gift = presentation_gift(s);
+    const auto full = startup_world_presentation_pages(s,Mode::full_redraw);
+    check(full && *full == std::vector<std::uint64_t>({scene,gift}),
+          "full repaint visits live lower scene before top raw66");
+    auto top = presentation_request(s,Mode::top_only);
+    check(top.expected_pages == std::vector<std::uint64_t>{gift},
+          "top-only selection is physical last page rather than last live scene");
+    const auto top_call = prepare_startup_world_presentation(s,top);
+    check(top_call.candidate && top_call.plan->dungeon_jitters.empty() &&
+              top_call.plan->sound_requests == 0 && top_call.plan->random_after == 0,
+          "raw66 wrapper readiness false omits its outlet and top-only does not draw lower task footer");
+    for (const int lifecycle : {0,4}) {
+        auto hidden = s;
+        hidden.scripts.pages.back().lifecycle = lifecycle;
+        const auto top_pages = startup_world_presentation_pages(hidden,Mode::top_only);
+        const auto all_pages = startup_world_presentation_pages(hidden,Mode::full_redraw);
+        check(top_pages && top_pages->empty() && all_pages &&
+                  *all_pages == std::vector<std::uint64_t>{scene},
+              "physical top life0/4 suppresses top-only without falling back; full filters only that page");
+        auto no_top = presentation_request(hidden,Mode::top_only);
+        const auto empty = prepare_startup_world_presentation(hidden,no_top);
+        check(empty.candidate && empty.plan->pages.empty() && empty.plan->random_after == 0,
+              "zero-page admitted request publishes an empty plan without random");
+        no_top.gift_wrapper_ready = true;
+        check(!prepare_startup_world_presentation(hidden,no_top).candidate,
+              "wrapper readiness cannot authorize lifecycle-filtered raw66");
+    }
+    for (int fault = 0; fault < 5; ++fault) {
+        auto bad = presentation_request(s,Mode::full_redraw);
+        if (fault == 0) std::reverse(bad.expected_pages.begin(),bad.expected_pages.end());
+        if (fault == 1) bad.expected_pages.pop_back();
+        if (fault == 2) bad.expected_pages.push_back(gift);
+        if (fault == 3) bad.ordinal = 0;
+        if (fault == 4) bad.mode = static_cast<Mode>(99);
+        const auto rejection = prepare_startup_world_presentation(s,bad);
+        check(!rejection.candidate && !rejection.plan && s.scene.random.draws() == 0,
+              "incorrect page order/missing/duplicate/zero ordinal/unknown mode rejects before any draw");
+    }
+    auto scene_only = presentation_task();
+    auto inappropriate = presentation_request(scene_only,Mode::full_redraw,true);
+    check(!prepare_startup_world_presentation(scene_only,inappropriate).candidate,
+          "explicit gift readiness is only valid for actual physical top raw66");
+    for (int fault = 0; fault < 4; ++fault) {
+        auto broken = s;
+        if (fault == 0) broken.scripts.executing_page = scene;
+        if (fault == 1) broken.scripts.page_mutations_locked = true;
+        if (fault == 2) broken.scripts.pages.back().id = scene;
+        if (fault == 3) broken.scripts.pages.back().lifecycle = 5;
+        check(!startup_world_presentation_pages(broken,Mode::full_redraw),
+              "live executing root/locked mutations/duplicate page identity/bad lifecycle rejects admission");
+    }
+    for (int fault = 0; fault < 4; ++fault) {
+        auto broken = presentation_task();
+        auto &challenge = broken.dungeon_facilities.at(facility).challenges[0];
+        // index4先抽，index0最后失败，仍须退回整批。
+        if (fault == 0) challenge[0] = -1;
+        if (fault == 1) challenge[1] = 2;
+        if (fault == 2) challenge[2] = 4;
+        if (fault == 3) challenge[3] = -1;
+        const auto random = broken.scene.random;
+        const auto bad = prepare_startup_world_presentation(broken,
+            presentation_request(broken,Mode::full_redraw));
+        check(!bad.candidate && !bad.plan && same_random(broken.scene.random,random),
+              "late challenge-domain failure rolls back preceding reverse-order ticket");
+    }
+    auto battle = test_support::world_fixture();
+    const auto made = ref::prepare_world_task_creation(startup_world_runtime_factory(battle),1);
+    check(made.candidate && made.candidate->created_task &&
+              write_startup_world_runtime_factory(battle,made.candidate->state),
+          "non-exploration gate uses actual original kind1 task rather than rewriting kind0 source");
+    battle.active_task = *made.candidate->created_task;
+    battle.scene.world.world.ai.task_active = true;
+    battle.scripts.pages.front().lifecycle = 3;
+    battle.scene.random = ref::WorldRandomStream::from_raw({});
+    const auto skipped = prepare_startup_world_presentation(battle,
+        presentation_request(battle,Mode::full_redraw));
+    check(skipped.candidate && skipped.plan && skipped.plan->dungeon_jitters.empty() &&
+              skipped.plan->random_after == 0 && !skipped.plan->cleared_task &&
+              skipped.candidate->active_task == battle.active_task,
+          "non-exploration active task does not draw dungeon jitter or trigger missing-site cleanup");
+}
+void presentation_gift_sound_and_rollback() {
+    using Mode = StartupPresentationMode;
+    for (const int counter : {44,45,46}) {
+        for (int guard = 0; guard < 3; ++guard) {
+            auto s = test_support::world_fixture();
+            s.scripts.pages.front().lifecycle = 3;
+            const auto page = presentation_gift(s,counter);
+            s.sound_requests = {5};
+            auto request = presentation_request(s,Mode::top_only,true);
+            request.application_preview = guard == 1;
+            request.sound_paused = guard == 2;
+            const auto first = prepare_startup_world_presentation(s,request);
+            const std::size_t count = counter == 45 && guard == 0 ? 1 : 0;
+            check(first.candidate && first.plan && first.plan->sound_requests == count &&
+                      first.candidate->sound_requests ==
+                          (count ? std::vector<int>({5,8}) : std::vector<int>({5})) &&
+                      first.candidate->page_counters.at(page) == counter &&
+                      first.plan->random_before == first.plan->random_after,
+                  "66 literal44/45/46 and app-preview/sound-paused guards emit only counter45 sound8");
+            const auto repeated = prepare_startup_world_presentation(*first.candidate,request);
+            check(repeated.candidate && repeated.plan->sound_requests == count &&
+                      repeated.candidate->sound_requests.size() == 1 + count * 2 &&
+                      repeated.candidate->page_counters.at(page) == counter,
+                  "new same-state66 invocation repeats its original outlet, preserving counter and old outputs");
+        }
+    }
+    auto s = presentation_task();
+    const auto page = presentation_gift(s);
+    auto request = presentation_request(s,Mode::full_redraw,true);
+    const auto valid = prepare_startup_world_presentation(s,request);
+    check(valid.candidate && valid.plan && valid.plan->random_after == 2 &&
+              valid.plan->sound_requests == 1 && valid.candidate->sound_requests.back() == 8,
+          "one actual full repaint commits lower scene random followed by top66 sound8");
+    s.human_gift_messages.erase(page);
+    const auto random = s.scene.random;
+    const auto task = s.active_task;
+    const auto failed = prepare_startup_world_presentation(s,request);
+    check(!failed.candidate && !failed.plan && same_random(s.scene.random,random) &&
+              s.active_task == task && s.sound_requests.empty() && s.page_counters.at(page) == 45,
+          "late invalid66 payload rolls back already-drawn scene tickets and does not publish sound or partial plan");
+}
+void presentation_missing_binding() {
+    using Mode = StartupPresentationMode;
+    auto s = presentation_task(true);
+    const auto id = *s.active_task;
+    const auto task = s.tasks.at(id);
+    const auto position = *task.site;
+    const auto index = static_cast<std::size_t>(position.y*s.scene.world.world.map.width+position.x);
+    s.task_order = {id,id,id};
+    for (auto &human : s.human_flags) human.second |= 2U;
+    // 原定义旗位与活跃人物路线别名不同；最小人物辅助夹具只核此同步，非自然到访。
+    const ref::CharacterId actor{900};
+    ref::BattleActorRecord human;
+    human.id = actor;
+    human.kind = ref::ActorKind::human;
+    human.definition = 1;
+    s.scene.world.world.ai.battle.actors.emplace(actor,human);
+    s.scene.world.world.actors.emplace(actor,ref::RescueActorContext{});
+    s.scene.world.world.actors.at(actor).definition_task_flag = true;
+    auto &surface = s.surface.at(index);
+    surface.updates = 7; // 合法历史格计数夹具；检出tile.a(false)归零且未全图重建。
+    const auto before_surface = surface;
+    const auto original_random = s.scene.random;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto success = s.task_progress.successes;
+    const auto pending = s.scene.world.world.ai.pending_completion;
+    const auto items = s.item_rewards;
+    const auto displays = s.exploration_displays.size();
+    const auto participants = s.participants;
+    const auto request = presentation_request(s,Mode::full_redraw);
+    const auto cleared = prepare_startup_world_presentation(s,request);
+    check(cleared.candidate && cleared.plan && cleared.plan->cleared_task == id &&
+              cleared.plan->dungeon_jitters.empty() && cleared.plan->sound_requests == 0 &&
+              cleared.candidate->task_order == std::vector<std::uint64_t>{id} &&
+              !cleared.candidate->active_task && !cleared.candidate->scene.world.world.ai.task_active &&
+              !cleared.candidate->scene.world.world.actors.at(actor).definition_task_flag &&
+              cleared.candidate->task.kind == 0 && cleared.candidate->task.center == ref::Position{} &&
+              !cleared.candidate->task.encounter &&
+              cleared.candidate->tasks.at(id).facility == task.facility &&
+              cleared.candidate->tasks.at(id).site == task.site &&
+              cleared.candidate->participants == participants,
+          "missing footer restores real retired site, removes exactly two first references, preserves task and participants");
+    const auto &out = *cleared.candidate;
+    check(std::all_of(out.human_flags.begin(),out.human_flags.end(),
+                      [](const auto &h){return (h.second & 2U)==0;}) &&
+              out.human_flags.size() == s.rules->humans.size() &&
+              !out.scene.world.world.map.cells.at(index).facility &&
+              out.scene.world.world.map.cells.at(index).legacy_state == 4 &&
+              out.scene.world.world.map.cells.at(index).category == ref::RouteCategory::ground &&
+              out.surface.at(index).definition == s.ground_definition &&
+              out.surface.at(index).updates == 0 && out.surface.at(index).instance == -1 &&
+              out.surface.at(index).fragment == -1 &&
+              out.surface.at(index).display_definition == before_surface.display_definition &&
+              out.surface.at(index).variant == before_surface.variant &&
+              out.surface.at(index).road_mask == before_surface.road_mask &&
+              out.scene.world.surface.at(index) == static_cast<int>(ref::RouteCategory::ground),
+          "tile(false) synchronizes only original ground fields while preserving h/i/k and clearing all25 definition flags");
+    check(same_random(out.scene.random,original_random) &&
+              out.scene.world.world.ai.accounting.funds() == cash &&
+              out.task_progress.successes == success &&
+              out.scene.world.world.ai.pending_completion == pending && out.item_rewards == items &&
+              out.exploration_displays.size() == displays && out.sound_requests.empty(),
+          "missing-binding cleanup grants no reward/success/popularity/random/smoke or sound");
+    const auto again = prepare_startup_world_presentation(out,request);
+    check(again.candidate && again.plan && !again.plan->cleared_task &&
+              again.candidate->task_order == std::vector<std::uint64_t>{id} &&
+              same_random(again.candidate->scene.random,original_random),
+          "second missing-binding invocation sees no active task and does not consume remaining historical duplicate");
+    auto late = s;
+    const auto page = presentation_gift(late);
+    late.human_equipment_choices.erase(page);
+    const auto failure = prepare_startup_world_presentation(late,
+        presentation_request(late,Mode::full_redraw,true));
+    check(!failure.candidate && !failure.plan && late.active_task == id &&
+              late.task_order == std::vector<std::uint64_t>({id,id,id}) &&
+              late.surface.at(index).updates == 7 &&
+              std::all_of(late.human_flags.begin(),late.human_flags.end(),
+                          [](const auto &h){return (h.second & 2U)!=0;}) &&
+              same_random(late.scene.random,original_random) && late.sound_requests.empty(),
+          "late invalid66 rejects full batch and restores prior missing-site fields, two references and all task flags");
+    auto abort = s;
+    check(abort_startup_world_runtime_task_entities(abort) && abort.active_task == id &&
+              abort.task_order == s.task_order && abort.surface.at(index).updates == 7,
+          "ordinary abort with missing binding retains original h and must not share presentation cleanup semantics");
+}
 } // namespace
 int main() {
     try {
@@ -398,6 +730,9 @@ int main() {
         encounter();
         task_victory_requests();
         active_management();
+        presentation_admission_and_random();
+        presentation_gift_sound_and_rollback();
+        presentation_missing_binding();
         std::cout << "startup runtime task checks: " << checks << '\n';
         return 0;
     } catch (const std::exception &e) {

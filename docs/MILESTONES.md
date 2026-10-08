@@ -15,6 +15,8 @@
 
 当前产品已在aead864接入a57958c/0a5b5e2及玩家schema3，361项冻结来源、670项素材。用户2026-10-08确认并行推进真实经营流程验收、公共DLL防错和现状文档清理，见[本批范围](stages/B1-playable-prototype.md#business-validation-dll-docs)。主角创建、标题纪录及人物属性cd13头标等正式研究交付后再接；本批起始98f8edc仅合同提案；收口新发布1e6b291提供显式表现请求/独立回放及建设查询，作为后续独立接入项，不夹带本批或研究在途实现。
 
+接续88eb658：用户要求接入最新研究，沿既有建设UI、唯一Owner与维护回放范围迁入1e6b291的363项闭包，建设图块接桌面共用查询，新增独立显式表现请求回放；42abf62/88eb658的UI/素材/内容索引进入产品对照。正常桌面的自动表现请求仍待原准入/包装资格映射，不将60FPS当原调用次数；玩家档与旧逻辑回放政策不变。范围及当前验收见[接续批次](stages/B1-playable-prototype.md#research-88eb658-integration)。
+
 所有状态从新产品重新开始。旧M阶段不是新产品的完成依据。
 
 历史接续：2026-10-08按已批准顺序接29f371d商品79/72与设施口碑82，维护精确存取同步新layout，玩家schema2/随机政策不变。用户另明确缩放下限调小，本批采用25%并保持鼠标锚定。验收与原版表现边界见[当前接续](stages/B1-playable-prototype.md#research-29f371d-progression)，主角/纪录/举物等依赖见[反馈缺口](reference/RESEARCH_REQUESTS.md#player-feedback-20261008)。

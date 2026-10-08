@@ -4,6 +4,9 @@
 本表列研究证据分母，不代表产品已实现，也不把规则已维护当作Steam页面已认证。
 本批只读metadata、真实GameAssembly.dll及冻结窗口报告，不启动游戏、不操作原档。
 
+后继具体消费者见[属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)：cd13绘制链及type1分类／裁图已局部核对，数字加号定位与APK不同。页面64／75／84直接调用和原窗口仍未认证，以下页面分母不因此整体升级。
+[建设目录21专题](STEAM_BUILD_LIST.md)补共享字段／滚动与APK特例，保留Steam21实际注册和精确绘制的阻塞。
+
 ## 分母与证据分层
 
 DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证据等级)。本批仅保存中文合同、方法引用、地址／哈希及有限调用摘要，详见[本地证据](../work/steam-ui-coverage/README.md)。

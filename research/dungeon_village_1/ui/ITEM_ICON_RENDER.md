@@ -1,6 +1,6 @@
 # 普通道具图标：定义字段、分类底框与目录复用
 
-2026-10-08。回应产品RQ03／RQ05及人物赠礼、商会目录的图标缺口。固定汉化重签APK1.0.8原表与原帮助器是本页来源；Steam素材是否同字节、同调用及同布局分别取证，本批不宣称EXE消费者已认证。
+2026-10-08。回应产品RQ03／RQ05及人物赠礼、商会目录的图标缺口。固定汉化重签APK1.0.8原表与原帮助器是本页维护来源；后继Steam共享图标帮助器及原列字段已完成静态局部交叉，各页面布局／自然输入和原窗口另验，详见末节。
 
 ## 原字段与资源桥
 
@@ -44,3 +44,24 @@
 [只读证据](../work/item-icon-contract/EVIDENCE.json)核36定义、89分类、两张原PNG、三个目录及结果页的明确调用坐标。
 复用已冻结`Lb/g;::c(Lkairo/android/ui/o;IIII)V`的code_item偏移228576、994指令字节，指令hash为`c5ddbe5c418800ac0342ab54cd1bd878d506d7a86ec768406ba690c20484c6f8`；原DEX身份保持`b4386a0de612fe18196a390633607ef36c69c2a63881244832314e3bf4902d1a`。本批重读字节复核，并核C／D字段引用；未复制反编译实现或重新生成整类源码。
 PNG hash：背景`c80d01870c41132cfd9f96b74d241d1aee412024c059a7db17f7fc379c17df30`，前景`c40493918c5fadeedb3a74afb2ee05b27902c296fa245309515e22ba20ba0982`；全部已有[原素材清单](../assets/MANIFEST.tsv)记录，无新素材副本。
+
+## Steam字段／分类与共享帮助器交叉
+
+[Steam工作包](../work/steam-attribute-item-render/README.md)与 [有限合同摘要](../work/steam-attribute-item-render/CONTRACTS.json)只读固定真实DLL／metadata，不使用dummy DLL实现或图像同名推测调用。
+
+| 链路 | 本轮实际证据 |
+| --- | --- |
+| 原表列5→图标字段 | `data.ItemData.Load` RVA0x21A170，0x1021A23A–0x1021A251校第5列、ParseInt并写`icon_`偏移0x2C；其它type1_/2_/3_分别占0x20/0x24/0x28，未与业务类别混用 |
+| 分类数组初始化 | `ItemData..cctor` RVA0x21A610分别建89项、5项数组，用InitializeArray填充后写静态`ITEMBACK_ROOT`／`ITEMBACK_INDEX`偏移0x8/0xC |
+| 初始化载荷身份 | 使用槽0x110F5718／0x110F22A4→metadata FieldRef→注册类型5607／TypeDef4129→字段默认载荷；356 B位于metadata0x2FBC85，20 B位于0x2FABAA，全部值逐项与APK C／D一致，不仅按二进制搜索命中 |
+| type1实际绘制 | `form.SubForm.Draw_icon` RVA0x30C350，type1分派到0x1030CBEC；分支先读`ITEMBACK_INDEX[ITEMBACK_ROOT[icon]]`，图24槽×18底框18×18、X/Y−1，再图9按15列裁16×16前景。两个实际DrawImage调用在0x1030CCA4／0x1030CD1A |
+
+英／日两份Steam item表各36×25，稳定ID与全部列5图标值逐项等于固定APK；本地化列另保留。89分类和 `[1,4,6,2,3]`背景顺序也已沿真实默认数据链核对。对应图24／图9与APK字节相同；这里是“字段含义＋分类默认值＋type1消费者＋资源身份”的局部组合，不能宣布所有道具业务与所有页面相同。
+
+本轮没有认证Steam64／75／84等页面实际调用的位置、行距、缩放、点击／确认或自然库存路径；APK页面表仍独立有效。也没有原Steam窗口图标测试，不把下面的维护原型窗口当作Steam动态。
+
+## 后继维护窗口与验收层级
+
+研究原型的有界 `world-item-gift` 窗口沿自然商会购买→人物60→目录64 slot4运行，实际读取并显示原道具前景和分类底框。证据为 [窗口截图](../work/item-icon-contract/world-item-gift.png)及 [日志](../work/item-icon-contract/window-item-gift.log)，八帧取样。raw64预运行steps15912，终点4人物／138338次共同随机抽取／2270G；日志末端`updates497`是窗口内部更新计数，不能当成总预运行长度。
+
+这补齐“维护计划已接线并有自然目录路径”层级；完整66／76演出、精确原页面布局、原APK／Steam动态及产品验收仍各自登记。旧窗口日志和上批验收保留，后继证据不覆盖历史。

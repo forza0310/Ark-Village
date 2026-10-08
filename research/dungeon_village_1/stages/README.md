@@ -6,6 +6,9 @@
 
 ## 当前完成范围
 
+接续`f9d8288`：[Steam属性／道具局部消费者](../ui/ATTRIBUTE_GAIN_RENDER.md)已交叉，保留加号定位的版本差异；普通道具研究自然目录窗口已观测。
+[受击Owner短轨迹](../rules/ai/HIT_REACTION.md)17合法场景／3拒绝及2599检查通过，原EXE动态另验；[建设21](../ui/STEAM_BUILD_LIST.md)和[主角系统设计](in-progress/STARTUP_RECORDS_DESIGN.md)分别登记实际缺口／待确认项，不能将持续任务整体标为完成。
+
 最新[产品需求回应](../verification/PRODUCT_REQUESTS.md)将顶部反馈与历史条目分开：普通道具图标／人物六属性头标的来源、只读接口及18项受影响回归已交付；
 主角ID0／首访ID1、系统跨局纪录与两版受击链补来源合同，系统Owner实现及真实受击逐更新轨迹仍待闭合。产品文件未改。
 

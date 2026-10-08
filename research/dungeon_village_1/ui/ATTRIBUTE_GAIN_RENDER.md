@@ -18,7 +18,7 @@
 
 [有限 DEX 摘要](../work/attribute-gain-render/DEX_EVIDENCE.json)核六个方法的精确签名、code_item identity与指令引用：图标994 B、cd绘制7542 B、数字260 B、带加号数值114 B、signed字符串218 B、SEB帧查找1018 B。cd13调用数值重载在绘制方法pc2161。它不认证巨型控制／退出方法的全部控制流，后两条仍复用 [CONTROL](../rules/ai/CONTROL.md)、[设施退出合同](../rules/FACILITY_USE.md#exit-position)及现有维护消费者。
 
-当前 Steam 仅有 [容器盘点](../assets/IMAGE_COVERAGE.md)及同组同名资源候选；本专题未定位／认证 Steam `cd13` 原生消费者，也没有实际原窗口cd13观测。不能将 APK 合同、资源字节一致或维护窗口显示写成 Steam 行为通过。
+后继 Steam 已核两个具体原生绘制消费者的静态局部，见本文末节；原窗口cd13动态仍未观测。APK业务合同、两版图像差分、Steam局部机器码和维护窗口显示分别登记，不能将其中一项代替另一项。
 
 ## 真实退出与累计时点
 
@@ -66,3 +66,24 @@ W≤60时，从common图7 `fukidashi_back.png` 裁 `(36-W/2,0,W,21)`。W>60时�
 本轮单Release构建及18项受影响CTest通过，含visuals 20066检查、world_shop及actor_effects；实际结果见[验证记录](../VERIFICATION.md)。8帧研究窗口已验启动／退出和接线，但未捕获cd13；窗口当前使用人物render_position，完整原bl身体偏移未全部映射，不能宣称原身体锚点逐帧等价。
 
 资源规模：不新增原素材、不生成解码图片缓存；输出命令按现存cd记录线性增长，背景单条受维护测量预算约束。绘制后返回值由窗口消费并释放，显示引用退休仍由唯一逻辑Owner及既有40门槛完成；不据此宣称所有世界历史永久有界。
+
+## Steam具体消费者：相同合同与数值差异
+
+后继只读 [Steam工作包](../work/steam-attribute-item-render/README.md)核固定 `GameAssembly.dll` SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，配套metadata `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。取证为明确登记起点／下一登记起点范围及内部可达分支，不把带padding／跳表的范围字节数称为精确方法长度，未执行DLL或原游戏。
+
+| Steam明确方法／分支 | 本轮已核局部合同 |
+| --- | --- |
+| `Character2.DrawEffect` RVA0x277150，效果13分派0x10277301→0x102790AA，调用0x102790FA | 记录age非负才继续，读record[2]属性、record[3]增量，Y−40委派下面的帮助器 |
+| `Character2.Draw_charaEfTUse` RVA0x27AF60 | 读实际字体对`CharacterData.BP_NAME[attribute]`的宽，加36；60分界、27px重复底纹、中央5px尾尖、SEB28两端与APK结构一致；type7图标、文本左端+18／Y+3、数值SEB15／Y+4 |
+| `SubForm.Draw_icon` RVA0x30C350，type7分支0x1030C762 | 图37、第二行16×16；ID5强制x96，其余id%10×16。与APK本页六属性坐标同构 |
+| `AppData.Draw_plusValue` RVA0x255410 | 数值委派`DrawNumImageComma`，**加号位置改用 `GetFig(value)*8+8`，没有测字体**；仍无条件frame14，包括0和负数 |
+| `AppData.GetFig` RVA0x2578C0 | 按signed64绝对值的十进制位数计，0为1；本页增量是int扩成long，INT_MIN不会在int绝对值步骤溢出 |
+| `DrawNumImageComma` RVA0x24F760／`CommaSeparate` RVA0x24A210 | signed原串长度、8px步距、千分逗号覆盖与APK结构一致；非逗号字符减`'0'`，负号仍请求frame−3。本轮未延伸认证Steam Seb末端负帧的像素结果，不把APK空绘结论直接升级为Steam事实 |
+
+相同气泡结构不意味着数值helper相同：APK加号是右端−`(Font.StringWidth(raw signed串)/6)*8`−8；Steam为右端−`(abs(value)的位数+1)*8`。例如−1234的Steam加号offset是−40，APK若用6px／字符的测量夹具则为−48；夹具只说明差异，不给原字体实际宽造值。维护C++继续实现已确认APK合同，未因Steam差异修改来源或预期。
+
+Steam帮助器取`SubForm.SC_WINDOW_BLUE`，本轮确认字段消费者，未重新核其静态RGB初始化或实际语言字符串；APK的RGB(0,100,255)与六个汉化名字仍属于APK来源。Steam `BP_NAME`文本、字体度量及平台坐标不能由汉化APK文字或raylib字体代替。
+
+资源身份复用 [全量清单](../assets/IMAGE_COVERAGE.json)：common气泡底及SEB28字节一致；默认 `icon_param00.png`／`number08.png`与APK字节不同，属性图集另有English150×32、zh112×32、zh-CN135×32等语言变体。type7消费者选矩形已经局部核对，但当前运行语言究竟装入哪条图、精确字体及最终原窗口画面仍未认证；不能从默认或同名图像直接推断实际语言素材。
+
+本轮只闭合Steam两具体绘制帮助器及数值差分：控制19生成、延迟6、40退休、真实设施退出／自然路径、完整身体bl偏移及原窗口仍未在Steam认证。它们不阻碍保存上述局部证据，也不能因辅助方法已核而标成全路径通过。

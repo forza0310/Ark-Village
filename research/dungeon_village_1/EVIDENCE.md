@@ -9,6 +9,10 @@
 
 ## 2026-10-08产品请求与具体绘制消费者
 
+后继[Steam工作包](work/steam-attribute-item-render/README.md)核10登记范围22384字节、32明确地址锚点；metadata74项、合同52项检查通过。实际type1字段／默认数组／资源链与cd13绘制帮助器分别闭合；Steam加号GetFig与APK字体测量不同，语言素材／负帧末端另列未验。
+[Owner轨迹](work/hit-reaction-owner-trace/README.md)使用现有world_actor_schedule套件，17合法条件场景与3非法投射拒绝，真实d尾与原投影观察分开。没有新增任意hit-stop或修改原源表；研究自然商会到人物赠礼目录的8帧截图已查看，原EXE动态未运行。
+[建设21](ui/STEAM_BUILD_LIST.md)归档既有Steam字段消费者与APK五行／空行边界；新范围分析与计分补充探针的自动审批阻塞及未完成状态保留，不把未执行动作记作证据。
+
 本批以[需求回应](verification/PRODUCT_REQUESTS.md)冻结产品请求文件身份，来源、维护接口、自然路径和原动态分别回应。
 [主角／纪录](rules/STARTUP_RECORDS.md)补raw91定义0与首访定义1的分离、系统J／世界P、最高分／最高资金及继承；22个APK局部窗口739行，Steam11小方法1248字节，66项检查。未接新系统档或取消策略。
 [受击链](rules/ai/HIT_REACTION.md)核APK13方法24108字节、Steam24方法54768字节及17局部窗口857行，114项检查；已核命中不调用独立状态4／NockBack，不能外推全程序没有其他入口，Owner完整逐更新轨迹仍待补。

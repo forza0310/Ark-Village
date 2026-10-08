@@ -18,6 +18,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 
 ## 研究交付后的接入
 
+- [ ] 优先补齐设施加成74第二页的左侧设施图标、右侧逐行价格/品质/魅力增量及名称后缀；f9d8288仍列待交付，当前页面只有来源名称，面板/底栏完成不代表此页完整。见[精确缺口](docs/reference/RESEARCH_REQUESTS.md#facility-details-display-gap)。
+
 - [ ] 开局主角配置/到访、标题纪录、人物设施属性cd13头标，按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
 
 - [x] 1e6b291建设查询与Owner显式表现请求/独立回放迁入并本地验收，来源核至88eb658，363项冻结来源；结果见[B1](docs/stages/B1-playable-prototype.md#research-88eb658-integration)。

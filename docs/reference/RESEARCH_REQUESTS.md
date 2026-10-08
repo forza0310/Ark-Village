@@ -355,6 +355,8 @@ d7ca763亦已发布actor_housekeeping、battle_commit、object_commit和ai_rewar
 2026-10-08用户再次指出[S019花店详情](../../research/dungeon_village_1/references/screenshots/2026-10-03-bv1jc411e7up-03/facilities/S019-florist-information-p1.png)及所附设施加成2/2截图差异。产品本批按[两页外观补正](../stages/B1-playable-prototype.md#facility-detail-visual-correction)收紧布局、改原数字/箭头、分开标题行/内容框/屏幕返回；下列图标与逐来源加成继续是高优先级缺口，不能将布局补正记成完整页面复刻。第二页截图的“罗汉松10/11、防具店1”后缀须明确是实例命名、等级还是其它字段，不按外观猜测；每行价格/品质/魅力的排列、正负符号、重复项与原序需一起交付。
 
 - 74第二页逐来源read-model：原序source identity、显示“层级”具体字段/格式、各行原序奖励载荷、空态；覆盖两同定义实例、重复属性槽、道路修正和无效果来源，说明符号/取整。现有sources只给身份，neighbour_effects是规则输入，不能从累计总额分摊或按level自行倍乘。
+
+2026-10-08再次反馈收窄为**左侧来源设施图标＋右侧具体加成**，优先于继续微调该页面外框。核至正式f9d8288的[研究回应](../../research/dungeon_village_1/verification/PRODUCT_REQUESTS.md)，该行仍列待交付；不是已交付的普通道具type1图标。产品2020437的`WorldBuildingView.source_names`仅携带名称，`draw_detail`第二页只画该字符串，因而不是遮挡/缩放故障。接收时需提供每行稳定实例/定义ID、图标类别9的裁片及原背景、名称后缀、原序属性ID/标签/有符号显示值；以两同定义来源及一条魅力来源验左图/右值、滚动和只读性。产品当前已有`WorldFacilityNeighbour.modifiers`规则输入，不等同已认证的原版显示载荷；加成经营计算与这一UI缺项分别登记。该交付未齐前不得将设施加成页标为完成。
 - 标题类别9及效果类别7的原字段→SEB/PNG帧/裁片/锚点与+数量映射；o.d已有legacy_icon，o.z/o.A及多余尾部已保存，但资源桥尚未闭合。旧ark_game普通初期子集不能当全部85定义合同。
 - 普通道具图标已有独立请求，继续要求原g.g到资源桥、人物赠礼/设施/商会是否共用；不能仅按道具ID猜图。75五行/19行距与提示分档已证且产品已补布局；76完整投掷帧仍分开等待。
 

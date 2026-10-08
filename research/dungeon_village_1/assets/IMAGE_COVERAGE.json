@@ -3,7 +3,7 @@
   "scope": "full_container_identity_inventory_not_code_consumer_certification",
   "analyzer": {
     "path": "tools/scripts/image_coverage.py",
-    "sha256": "c9d3c3f811db6c794a031c9467fe826787636bd0ff2413a862ab0149c55e12aa"
+    "sha256": "af582dac998cd7ddf6b127f0ffa4934a2497efe1b3f4945901a4a68c3fcf7b90"
   },
   "input_apk": {
     "path": "maoxianmigongcun.apk",

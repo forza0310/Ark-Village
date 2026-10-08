@@ -431,8 +431,9 @@ result=dict(schema_version=1,scope='full_container_identity_inventory_not_code_c
  analyzer=dict(path='tools/scripts/image_coverage.py',sha256=sha(Path(__file__).read_bytes())),
  input_apk=dict(path='maoxianmigongcun.apk',bytes=apk.stat().st_size,sha256=sha(apk.read_bytes())),
  containers=containers,exe_input_files=input_files,exe_package_input_files=package_input_files,records=records,image_alias_groups=aliases,summary=summary)
-(ROOT/'assets/IMAGE_COVERAGE.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
-(OUT/'SUMMARY.json').write_text(json.dumps(summary,ensure_ascii=False,indent=2)+'\n',encoding='utf8')
+# 派生JSON统一UTF-8/LF，避免Windows文本模式和Git规范化改变正式清单的字节身份。
+(ROOT/'assets/IMAGE_COVERAGE.json').write_bytes((json.dumps(result,ensure_ascii=False,indent=2)+'\n').encode('utf8'))
+(OUT/'SUMMARY.json').write_bytes((json.dumps(summary,ensure_ascii=False,indent=2)+'\n').encode('utf8'))
 # 初次探针清单已被正式同职责清单替代；仅删除本脚本自己生成的冗余JSON。
 if (OUT/'INVENTORY.json').is_file():(OUT/'INVENTORY.json').unlink()
 print(json.dumps(summary,ensure_ascii=False,indent=2))

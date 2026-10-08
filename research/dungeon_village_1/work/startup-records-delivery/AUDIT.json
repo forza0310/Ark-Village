@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-08",
+  "scope_zh": "当前修改的文档链接与已执行日志／资源规模，不代替行为回归",
+  "logs": [
+    {
+      "file": "build.log",
+      "bytes": 270,
+      "sha256": "d7d3270fe1494033f3f0c00bddef6ba7b50ebf3e7abcb9f669a87f18ef8c4010"
+    },
+    {
+      "file": "ctest-initial.log",
+      "bytes": 2917,
+      "sha256": "46227c0edbcdcb883c00431f7099a298b0c6d8fb400edc4302dfd334b52bab72"
+    },
+    {
+      "file": "ctest-final-persistence.log",
+      "bytes": 295,
+      "sha256": "25a53c56c31c4daf09eb7ed659ef67334673eea668118b71bd4cdd8d43b2eb5b"
+    }
+  ],
+  "changed_markdown": 13,
+  "links": 208,
+  "missing_links": [],
+  "release_tree": {
+    "bytes": 99282796,
+    "files": 1376,
+    "pending": []
+  },
+  "product_requests_sha256": "447e7db0bbcfbf7fcd5d0d455280febf6c1c764b648b41205e6b6b5e6912589a",
+  "retired_ast": {
+    "bytes": 36315062,
+    "sha256": "01ed97674fbcef8608db8a0301484c975d4c7d52fabcc3ebe80b83d0ab54a6ba",
+    "reason_zh": "codec覆盖检查生成的本轮AST，检查成功后清理；与先前生成阶段AST分别记录"
+  },
+  "ownership_zh": "计分完成退休三项controller引用；声音一次领取；标题最多原定义数且每次替换名单；现金/任务/审计历史仍可能合法增长"
+}

@@ -1,0 +1,18 @@
+{
+  "source": "Steam 2.56；固定入口有限窗口，只读stdout，无指令全文产物",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "limits": { "method_whitelist_count": 6, "single_window_bytes": 16384, "unique_total_bytes": 49152, "table_bytes": 404 },
+  "executed_unique_bytes": 3072,
+  "executed_windows": [
+    { "key": "draw", "rva": "0x352E20", "va": "0x10352E20", "offset": "0x351C20", "bytes": 1024, "sha256": "ed60c0a94175c25d48777ff6ecf63813369ef6b878162090c441d9b5f83200d8", "summary": "外层页面绘制资格／分派前段，21绘制分支未达；末尾截断不认语义" },
+    { "key": "update", "rva": "0x321990", "va": "0x10321990", "offset": "0x320790", "bytes": 1024, "sha256": "789ed90a240a4d9d8b219adec9fe7ed251c177bc395611feb38827c36ad23eea", "summary": "计数及分派前段，21选择分支未达；末尾截断不认语义" },
+    { "key": "init", "rva": "0x30E570", "va": "0x1030E570", "offset": "0x30D370", "bytes": 1024, "sha256": "1c69af936c239ed21af1c7c1ca6ffe50261db2e082bfc551534257d0963e4bfd", "summary": "Init2分派前段主要48以上，不能替代Init或21初始化" }
+  ],
+  "not_executed": [
+    { "va": "0x1035321D", "offset": "0x35201D", "bytes": 1024, "reason": "自动审批拒绝非入口窗口的指令边界证据" },
+    { "va": "0x10321D8E", "offset": "0x320B8E", "bytes": 1024, "reason": "自动审批拒绝非入口窗口的指令边界证据" }
+  ],
+  "remaining": "建设21真实绘制、组件注册和初始化／选择仍未认证；不扩大六方法名单",
+  "processes": "无后台进程",
+  "consumer": "../../ui/STEAM_BUILD_LIST.md"
+}

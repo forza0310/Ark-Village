@@ -663,7 +663,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
               "月收入设施数居住数指定建设任务完成数街道人气举办活动达成未暂不可用"
               "概况属性装备魔法体力力量灵活结实魔力运气攻击防御经验职业大师转职"
               "武器防具饰品装备礼物居民税收合计库存可用学会火冰雷恢复营业施工使用支出加成";
-    ChineseFont font(font_path, glyphs);
     // 只在接管前存在旧启动快照；runtime构造后释放，禁止两个可写世界并存。
     std::unique_ptr<StartupSession> initial = std::make_unique<StartupSession>();
     if (inspect_page == "visitor") {
@@ -679,6 +678,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
         file_metadata = std::move(loaded.snapshot->metadata);
         session = std::move(loaded.snapshot->session);
     }
+    const auto human_name = [&session](int id) {
+        const auto profile = startup_world_human_profile(session.state(), id);
+        if (!profile)
+            throw std::runtime_error("窗口人物资料非法");
+        return profile->name;
+    };
+    for (const auto &human : rules.humans)
+        glyphs += human_name(human.identity); // 原字体目录外的自定义中文在载入后一次装入。
+    ChineseFont font(font_path, glyphs);
     const auto available_road = [](const StartupWorldRuntimeState &s) -> std::optional<int> {
         for (const auto &d : s.rules->facilities) {
             const auto presence = s.facility_presence.find(d.id);
@@ -1873,7 +1881,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const int tick = (actor.control.flags & 2U) ? actor.control.action_counter : 0;
             if (actor.kind == ref::ActorKind::human) {
                 const auto &meta = state.actor_metadata.at(id);
-                const int image = rules.jobs.at(meta.profession).sprites.at(meta.sex);
+                const auto profile = startup_world_human_profile(state, actor.definition);
+                if (!profile)
+                    throw std::runtime_error("窗口人物性别非法");
+                const int image = rules.jobs.at(meta.profession).sprites.at(profile->sex);
                 constexpr std::array<int, 12> offsets{{0, 4, 4, 4, 20, 4, 8, 12, 16, 20, 24, 20}};
                 int phase{};
                 if (action == 0 || action == 8)
@@ -2168,7 +2179,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (view->raw == 82) {
                         font.text(rules.facilities.at(view->binding).name, 16, 74);
                         for (std::size_t n = 0; n < view->entries.size(); ++n)
-                            font.text(rules.humans.at(view->entries[n]).name, 16, 103 + n * 24);
+                            font.text(human_name(view->entries[n]), 16, 103 + n * 24);
                         font.text(std::to_string(view->phase + 1) + "/2", 192, 48, ink, 10);
                         font.text("确认继续", 164, 272, ink, 10);
                     } else {
@@ -2473,7 +2484,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     const auto &art = display(d.display_id);
                     sprites.draw(art.sprite, 0, {182, 218});
                     if (d.kind == 12 && state.facility_residents.at(id) >= 0)
-                        font.text(rules.humans.at(state.facility_residents.at(id)).name, 16, 197,
+                        font.text(human_name(state.facility_residents.at(id)), 16, 197,
                                   ink, 10);
                 }
                 font.text("返回", 18, 272);
@@ -2490,11 +2501,14 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto count = state.page_counters.find(page->id);
                 const int tick = count == state.page_counters.end() ? 0 : count->second;
                 DrawRectangle(8, 42, 224, 126, paper);
-                sprites.actor(false, 2, job.sprites.at(human.sex), (tick % 16) / 4, {120, 144});
+                const auto portrait = startup_world_portrait(state, human.identity);
+                if (!portrait)
+                    throw std::runtime_error("到访头像资料非法");
+                sprites.actor(false, 2, portrait->image, (tick % 16) / 4, {120, 144});
                 if (tick >= 60)
                     font.text("多指教", 98, 91);
                 BeginScissorMode(12, 196, 212, 64);
-                font.paragraph(job.name + "的\n" + human.name + "可以到访了!", 12, 198, 208);
+                font.paragraph(job.name + "的\n" + human_name(human.identity) + "可以到访了!", 12, 198, 208);
                 EndScissorMode();
             }
             if (!page->paragraphs.empty()) {
@@ -2520,7 +2534,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     for (std::size_t n = 0; n < crew->second.size() && n < 5; ++n) {
                         const auto definition = crew->second[n];
                         const auto &human = world.ai.battle.humans.at(definition);
-                        const auto &name = rules.humans.at(definition).name;
+                        const auto &name = human_name(definition);
                         const auto y = 77 + static_cast<int>(n) * 17;
                         font.text(name, 18, y, ink, font.measure(name) > 110 ? 10 : 12);
                         font.text(std::to_string(human.task_kills), 151, y);
@@ -2546,7 +2560,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     font.paragraph(
                         ending ? "终止授勋仪式？"
                                : "授予" +
-                                     rules.humans.at(state.award_pending_humans.at(page->id)).name +
+                                     human_name(state.award_pending_humans.at(page->id)) +
                                      "勋章？",
                         17, 83, 204);
                     DrawRectangle(prompt_selection == 0 ? 24 : 120, 194, 96, 28,
@@ -2561,7 +2575,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         const int y = 75 + (n - start) * 22;
                         if (n == award_selection)
                             DrawRectangle(12, y - 3, 216, 20, {219, 232, 204, 255});
-                        font.text(rules.humans.at(human).name, 17, y);
+                        font.text(human_name(human), 17, y);
                         font.text(std::to_string(state.human_calendar.at(human).contribution), 188,
                                   y);
                     }
@@ -2586,7 +2600,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     const int y = 65 + (n - start) * 24;
                     if (n == task_selection)
                         DrawRectangle(12, y - 3, 216, 22, {219, 232, 204, 255});
-                    font.text(human.name, 17, y);
+                    font.text(human_name(human.identity), 17, y);
                     font.text(std::to_string(human.residence_fee) + "G", 178, y);
                 }
                 font.text("返回", 18, 272);
@@ -2618,7 +2632,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                 const int current = activity->parameters[2] == 0
                                                         ? h->satisfaction
                                                         : h->attributes.at(activity->parameters[3]);
-                                font.text(rules.humans.at(entry).name, 16, y, ink, 10);
+                                font.text(human_name(entry), 16, y, ink, 10);
                                 font.text(std::to_string(state.human_activity_previous.at(entry)) +
                                               " > " + std::to_string(current),
                                           154, y, ink, 10);
@@ -2680,7 +2694,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 if (const auto portrait = startup_world_portrait(state, human))
                     sprites.portrait(*portrait, {16, 74});
-                font.text(rules.humans.at(human).name, 40, 74);
+                font.text(human_name(human), 40, 74);
                 font.text(rules.jobs.at(details->profession).name + " Lv." +
                               std::to_string(details->level),
                           16, 98, ink, 11);
@@ -2844,7 +2858,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                        startup_world_human_page_ready(state, page->id)) {
                 DrawRectangle(8, 42, 224, 214, paper);
                 const int human = state.page_human_bindings.at(page->id);
-                font.text(rules.humans.at(human).name, 16, 66);
+                font.text(human_name(human), 16, 66);
                 if (const auto portrait = startup_world_portrait(state, human))
                     sprites.portrait(*portrait, {190, 68});
                 const int raw = page->legacy_page;
@@ -2893,7 +2907,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     const float y = 78 + (n - view->first_visible) * 27;
                     if (n == view->selection)
                         DrawRectangle(12, y - 4, 216, 26, {219, 232, 204, 255});
-                    font.text(rules.humans.at(view->rows[n].definition).name, 16, y, ink, 11);
+                    font.text(human_name(view->rows[n].definition), 16, y, ink, 11);
                     font.text(std::to_string(view->rows[n].amount) + "G", 164, y, ink, 10);
                 }
                 font.text("合计 " + std::to_string(view->total) + "G", 16, 226, ink, 11);
@@ -2910,7 +2924,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto cast = state.rank_celebration_participants.find(page->id);
                 if (cast != state.rank_celebration_participants.end())
                     for (std::size_t n = 0; n < cast->second.size(); ++n)
-                        font.text(rules.humans.at(cast->second[n][0]).name, 17 + (n % 2) * 110,
+                        font.text(human_name(cast->second[n][0]), 17 + (n % 2) * 110,
                                   100 + (n / 2) * 24);
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 48 || page->legacy_page == 49) {
@@ -2936,7 +2950,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             } else if (page->legacy_page == 67 || page->legacy_page == 88 ||
                        page->legacy_page == 96) {
                 if (state.page_human_bindings.count(page->id))
-                    font.text(rules.humans.at(state.page_human_bindings.at(page->id)).name, 17, 66);
+                    font.text(human_name(state.page_human_bindings.at(page->id)), 17, 66);
                 font.text(page->legacy_page == 67   ? "能力上升"
                           : page->legacy_page == 88 ? "勋章授予"
                                                     : "自宅完成",
@@ -2986,7 +3000,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                            ? state.participants
                                            : state.task_extra_pages.at(page->id);
                     for (const auto id : list) {
-                        auto name = rules.humans.at(id).name;
+                        auto name = human_name(id);
                         if (page->legacy_page == 27)
                             name += " " +
                                     std::to_string(state.human_calendar.at(id).continuation_cost) +
@@ -3024,11 +3038,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     DrawRectangle(17, 100, static_cast<int>(198 * ratio), 7, GREEN);
                     if (!animation.portraits.empty()) {
                         const auto &human = rules.humans.at(animation.portraits.front());
-                        font.text(human.name, 17, 118);
-                        const auto profession =
-                            world.ai.growth.at(human.identity).definition.current_profession;
-                        const auto image = rules.jobs.at(profession).sprites.at(human.sex);
-                        sprites.actor(false, 0, image, 0, {196, 141});
+                        font.text(human_name(human.identity), 17, 118);
+                        const auto portrait = startup_world_portrait(state, human.identity);
+                        if (!portrait)
+                            throw std::runtime_error("征集头像资料非法");
+                        sprites.actor(false, 0, portrait->image, 0, {196, 141});
                     }
                 }
                 if (page->legacy_page != 24)

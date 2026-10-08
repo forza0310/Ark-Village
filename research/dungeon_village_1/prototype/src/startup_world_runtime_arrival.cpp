@@ -49,6 +49,9 @@ std::optional<ref::CharacterId> create(State &s, const ref::WorldArrivalCreation
     if (definition == s.rules->humans.end() || !ai.growth.count(input.definition) ||
         ai.next_actor_id == 0 || ai.next_actor_id == std::numeric_limits<std::uint64_t>::max())
         return {};
+    const auto profile = startup_world_human_profile(s, input.definition);
+    if (!profile)
+        return {};
     const ref::CharacterId identity{ai.next_actor_id++};
     if (ai.battle.actors.count(identity) || ai.retired_actors.count(identity) ||
         s.actor_metadata.count(identity))
@@ -112,7 +115,7 @@ std::optional<ref::CharacterId> create(State &s, const ref::WorldArrivalCreation
     const float x = actor.position.x * 0.3f + actor.position.z * 0.3f;
     const float y = actor.position.x * -0.15f + actor.position.z * 0.15f;
     s.actor_metadata.emplace(identity,
-                             StartupWorldActorMetadata{definition->sex,
+                             StartupWorldActorMetadata{profile->sex,
                                                        human.definition.current_profession,
                                                        weapon,
                                                        {static_cast<int>(x), static_cast<int>(y)}});

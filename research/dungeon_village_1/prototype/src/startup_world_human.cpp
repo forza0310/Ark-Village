@@ -146,8 +146,11 @@ bool initialize(State &s, std::uint64_t id, int raw) {
         if (!synchronize_startup_world_human_capacity(s, human))
             return false;
     } else if (raw == 61 || raw == 62) {
+        const auto profile = startup_world_human_profile(s, human);
+        if (!profile)
+            return false;
         const auto list =
-            ref::catalogue_human_professions(s.rules->humans.at(human).sex, professions(s));
+            ref::catalogue_human_professions(profile->sex, professions(s));
         if (!list || list->empty())
             return false;
         s.human_page_catalogs[id] = *list;
@@ -576,7 +579,8 @@ bool synchronize_startup_world_human_capacity(State &s, int human) {
     return true;
 }
 std::optional<StartupHumanDetails> startup_world_human_details(const State &s, int id) {
-    if (!s.rules || id < 0 || id >= static_cast<int>(s.rules->humans.size()))
+    const auto profile = startup_world_human_profile(s, id);
+    if (!profile)
         return {};
     const auto g = s.scene.world.world.ai.growth.find(id);
     const auto shop = s.shop_humans.find(id);
@@ -608,7 +612,7 @@ std::optional<StartupHumanDetails> startup_world_human_details(const State &s, i
                                g->second.derived.combat,
                                shop->second.equipment,
                                g->second.derived.available_spells,
-                               {}};
+                               {}, profile->name, profile->sex};
     for (const auto actor : s.scene.world.world.ai.human_order) {
         const auto found = s.scene.world.world.ai.battle.actors.find(actor);
         if (found == s.scene.world.world.ai.battle.actors.end())

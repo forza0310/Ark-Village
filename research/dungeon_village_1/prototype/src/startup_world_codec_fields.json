@@ -138,6 +138,23 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupWorldHumanProfile",
+      "fields": [
+        {
+          "name": "name",
+          "type": "std::string"
+        },
+        {
+          "name": "sex",
+          "type": "int"
+        },
+        {
+          "name": "custom_name",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldRuntimeState",
       "fields": [
         {
@@ -191,6 +208,10 @@
         {
           "name": "human_definition_state",
           "type": "std::map<int, int>"
+        },
+        {
+          "name": "human_profiles",
+          "type": "std::map<int, StartupWorldHumanProfile>"
         },
         {
           "name": "human_homes",

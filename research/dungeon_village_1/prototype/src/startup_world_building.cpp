@@ -962,10 +962,13 @@ std::optional<State> prepare_startup_world_residence_completion(const State &s, 
     r.reward_display = s.reward_display;
     r.effort_display = s.effort_display;
     for (const auto &h : s.rules->humans) {
+        const auto profile = startup_world_human_profile(s, h.identity);
+        if (!profile)
+            return {};
         const auto &g = s.scene.world.world.ai.growth.at(h.identity);
         r.humans.emplace(h.identity, ref::WorldResidenceHuman{
                                          g.definition, g.derived, h.residence_completion_program,
-                                         h.name, s.human_calendar.at(h.identity).celebrations});
+                                         profile->name, s.human_calendar.at(h.identity).celebrations});
     }
     const auto completed = ref::prepare_world_residence(r, id, adapter.catalog);
     if (!completed.candidate)

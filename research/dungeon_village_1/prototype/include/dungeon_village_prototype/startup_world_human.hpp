@@ -18,6 +18,8 @@ struct StartupHumanDetails {
     std::array<std::optional<int>, 4> equipment;
     std::array<bool, 4> spells{};
     std::optional<ref::CharacterId> live_actor;
+    std::string name; // 统一Owner定义覆盖解析结果，未到访定义也可查询。
+    int sex{};
 };
 // raw60只读当前共享定义/装备；不使用创建时的metadata替代玩家变更。
 std::optional<StartupHumanDetails>

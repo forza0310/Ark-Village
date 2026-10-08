@@ -16,8 +16,10 @@
 
 Steam身份、方法登记范围及哈希继承[既有UI证据](../work/steam-ui-coverage/README.md)，
 对应[方法清单](../work/steam-ui-coverage/methods.json)与[检查记录](../work/steam-ui-coverage/CHECK.json)。
-本次仅用既有`analyze.cjs --inspect`消费SetTouchValue及Update_scrollValue有限指令窗口，没有新增机器码探针。
-外层`SubForm._draw`登记范围197,616字节，本次没有解码；不能宣称全部方法或21绘制已认证。
+先用既有`analyze.cjs --inspect`消费SetTouchValue及Update_scrollValue有限指令窗口。
+用户明确授权后，新增固定入口只读探针，消费外层draw、Update、Init2各1024字节入口，
+合计唯一3072字节，范围／哈希见[入口摘要](../work/steam-build-list-contract/EVIDENCE.json)。
+外层`SubForm._draw`登记范围197,616字节，本次仅核入口前段，尚未到21分支；不能宣称全部方法或21绘制已认证。
 APK巨型Java方法的普通反编译警告仍有效，图块绘制已另以低层窗口交叉，见[图块合同](PAGES.md#固定apk候选建筑两朝向与目录裁剪)。
 
 ## Steam已证的页面字段与输入
@@ -82,5 +84,6 @@ Steam建设候选闪烁、朝向传递及建设确认消费另见[覆盖清单](
 每个窗口须有已核指令边界、方法登记范围、地址／哈希及预算；大型外层不得按完整方法覆盖报告。
 自然窗口仍需在原程序单独认证最终命中区、滚轮／键盘投递及空行输入，不由静态事实替代。
 
-新有界探针当前因自动审批拒绝暂停，详见[专题工作包](../work/steam-build-list-contract/README.md)。
-这不影响上述既有证据整理；本次不新增探针、不增加构建缓存、不留下后台进程。
+用户已明确授权有界探针恢复，固定方法入口只读替代成功；具体非入口续窗仍因自动审批拒绝指令边界证据而暂停，
+详见[专题工作包](../work/steam-build-list-contract/README.md)。
+这不影响上述既有证据整理；本次只保存固定入口脚本与摘要，不增加构建缓存，不留下后台进程。

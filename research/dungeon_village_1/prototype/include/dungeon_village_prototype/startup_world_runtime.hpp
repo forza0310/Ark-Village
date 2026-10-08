@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "dungeon_village_prototype/startup_world_profile.hpp"
 #include "dungeon_village_reference/world_award_page.hpp"
 #include "dungeon_village_reference/world_exploration.hpp"
 #include "dungeon_village_reference/world_magic_pot.hpp"
@@ -66,6 +67,7 @@ struct StartupWorldRuntimeState {
     std::vector<std::uint64_t> shop_order;
     int item_rewards{};
     std::map<int, int> human_definition_state;
+    std::map<int, StartupWorldHumanProfile> human_profiles; // 可变定义身份覆盖，本批只允许0。
     std::map<int, std::array<int, 4>> human_homes;
     std::map<int, int> human_presence;
     std::map<int, std::uint32_t> human_flags; // e.o，住宅希望/季度等动态标志由Owner保存。
@@ -424,6 +426,7 @@ class StartupWorldRuntimeSession {
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;
 
   private:
+    friend class StartupApplication; // 应用只在私有新局候选安装标题配置/继承。
     friend struct StartupWorldPersistenceAccess; // 已完整校验的文件候选唯一安装入口。
     StartupWorldRuntimeSession() = default;
     StartupWorldRuntimeState state_;

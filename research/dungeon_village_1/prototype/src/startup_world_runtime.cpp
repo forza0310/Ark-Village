@@ -336,6 +336,10 @@ ref::WorldScriptState startup_world_runtime_scripts(const State &s) {
     finance.localized_gold_template = s.rules->localized_gold_template;
     r.finance = std::move(finance);
     for (auto &human : r.humans) {
+        const auto profile = startup_world_human_profile(s, human.first);
+        if (!profile)
+            throw std::runtime_error("脚本人物资料非法");
+        human.second.name = profile->name;
         human.second.status = s.human_presence.at(human.first);
         human.second.satisfaction = s.shop_humans.at(human.first).satisfaction;
         const auto profession =
@@ -347,6 +351,11 @@ ref::WorldScriptState startup_world_runtime_scripts(const State &s) {
     return r;
 }
 bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &r) {
+    for (const auto &[id, human] : r.humans) {
+        const auto profile = startup_world_human_profile(s, id);
+        if (!profile || human.name != profile->name)
+            return false;
+    }
     if (!r.finance || !post_finance(s, *r.finance))
         return false;
     s.scripts = r;
@@ -529,10 +538,8 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         if (actor->second.kind != ref::ActorKind::human)
             return {};
         const int human_id = actor->second.definition;
-        const auto human_source =
-            std::find_if(next.rules->humans.begin(), next.rules->humans.end(),
-                         [&](const auto &h) { return h.identity == human_id; });
-        if (human_source == next.rules->humans.end())
+        const auto human_source = startup_world_human_profile(next, human_id);
+        if (!human_source)
             return {};
         auto scripts = startup_world_runtime_scripts(next);
         for (const auto &request : effects.growth) {
@@ -750,6 +757,9 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
             ref::WorldMagicPotRecipeProgress{recipe.identity, (recipe.flags & 1U) ? 1 : 0,
                                             (recipe.flags & 1U) != 0}); // n.c先J再清p/r，bit1调用a()；不清首次NEW。
     for (const auto &h : p.rules->humans) {
+        const auto profile = startup_world_human_profile(state_, h.identity);
+        if (!profile)
+            throw std::runtime_error("新局人物资料缺失");
         state_.human_calendar.emplace(h.identity, StartupWorldHumanCalendar{});
         state_.human_activity_previous.emplace(h.identity, 0);
         state_.human_profession_changes.emplace(h.identity,
@@ -758,7 +768,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.scripts.humans.emplace(
             h.identity,
             ref::WorldScriptUnlockDefinition{
-                h.status, false, h.name, p.rules->jobs.at(h.definition.current_profession).type});
+                h.status, false, profile->name, p.rules->jobs.at(h.definition.current_profession).type});
     }
     for (std::size_t n = 0; n < p.rules->jobs.size(); ++n) {
         const auto &j = p.rules->jobs[n];
@@ -965,6 +975,8 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t
     return act_startup_world_runtime_rank_page(state_, page, selection, cancel);
 }
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
+    if (!valid_startup_world_human_profiles(s))
+        return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
     auto admitted = s;
     for (const auto &page : admitted.scripts.pages)
         if (page.lifecycle == 4) {

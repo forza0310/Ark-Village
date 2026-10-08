@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_application.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -497,6 +498,106 @@ void magic_pot_replay(const StartupWorldRuntimeSession &baseline_session,
     std::filesystem::remove(reencoded);
     std::filesystem::remove(broken);
 }
+void profile_file_roundtrip(const StartupWorldRuntimeSession &baseline, const std::filesystem::path &dir) {
+    auto state = baseline.state(); // 未到访定义0覆盖的合法条件档；未改日期/人物/资金。
+    state.human_profiles.emplace(0, StartupWorldHumanProfile{"存读姓名", 1, true});
+    state.scripts.humans.at(0).name = "存读姓名";
+    StartupWorldSaveMetadata metadata;
+    const auto file = dir / "profile.avrs", encoded = dir / "profile-roundtrip.avrs",
+               broken = dir / "profile-broken.avrs";
+    const auto restored = capture_persistence_fixture(baseline, state, metadata, file, encoded,
+                                                       broken, "named unvisited definition0");
+    const auto profile = startup_world_human_profile(restored, 0);
+    check(profile && profile->name == "存读姓名" && profile->sex == 1 && profile->custom_name &&
+              restored.human_profiles.size() == 1 && restored.scene.world.world.ai.human_order ==
+                  state.scene.world.world.ai.human_order,
+          "normal file keeps main profile independently of actor arrival");
+    auto old_layout = read(file);
+    std::size_t at = 20;
+    skip_text(old_layout, at);
+    const auto length = number(old_layout, at, 4);
+    const std::string old_schema = "e5a40276fe0b1dfc0c8ef3f3f6eb703bcbc475f14e106e0685472acc2df66d7f";
+    check(length == old_schema.size() &&
+              std::string(old_layout.begin() + static_cast<std::ptrdiff_t>(at),
+                          old_layout.begin() + static_cast<std::ptrdiff_t>(at + length)) != old_schema,
+          "new profile fields change layout identity, not original behavior oracle");
+    std::copy(old_schema.begin(), old_schema.end(), old_layout.begin() + static_cast<std::ptrdiff_t>(at));
+    resign(old_layout);
+    write(broken, old_layout);
+    const auto rejected = load_startup_world_file(broken, startup_world_rules(), metadata.purpose);
+    check(!rejected.snapshot && rejected.error.find("状态字段布局不兼容") != std::string::npos,
+          "prior profile-less schema explicitly rejects without migration");
+    std::filesystem::remove(file);
+    std::filesystem::remove(encoded);
+    std::filesystem::remove(broken);
+}
+void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, const std::filesystem::path &dir) {
+    auto state = baseline.state();
+    state.completion_mode = state.system_completion_mode = 1;
+    ref::WorldScriptPage page;
+    page.kind = ref::WorldScriptPageKind::raw_page;
+    page.legacy_page = 17;
+    const auto pushed = ref::prepare_world_script_page(startup_world_runtime_scripts(state), page);
+    check(pushed.candidate && write_startup_world_runtime_scripts(state, pushed.candidate->state),
+          "clear page uses actual script stack factory");
+    const auto id = state.scripts.pages.back().id;
+    StartupWorldSaveMetadata metadata;
+    metadata.purpose = StartupWorldSavePurpose::replay;
+    metadata.controller_id = "application-clear-entry-fixture-v1";
+    metadata.controller_state = {1}; // 版本1入口，无已推进应用计分状态。
+    const auto entry = dir / "clear-entry.avrs", encoded = dir / "clear-encoded.avrs", bad = dir / "clear-bad.avrs";
+    capture_persistence_fixture(baseline, state, metadata, entry, encoded, bad,
+                                "explicit raw17 entry fixture, not natural sixteen years");
+    StartupApplicationPaths paths{dir / "clear-system.avrs", {dir / "clear-world0.avrs", dir / "clear-world1.avrs"}};
+    check(save_startup_system_file(paths.system, {}).empty(), "fresh independent system fixture");
+    StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
+    check(app.load_world_replay(entry, metadata.controller_id).empty(), "load validated raw17 entry");
+    check(app.world()->state().cash_peak == 0 && app.records().cash_peak == 0,
+          "loaded old world cash mirror does not reconstruct system record");
+    for (int i = 0; i < 4000; ++i) {
+        if (app.clear_page() && app.clear_page()->stage == 6 && app.clear_page()->counter == 64) break;
+        const auto error = app.update(true);
+        check(error.empty(), "application clear update: " + error);
+        check(i != 3999, "bounded clear reaches final transaction");
+    }
+    const auto total = app.clear_page()->sum;
+    check(total > 0 && app.records().high_score == 0, "score remains private until actual exit");
+    const auto before = startup_world_session_digest(*app.world());
+    const auto original = read(paths.system);
+#ifdef _WIN32
+    const auto handle = CreateFileW(paths.system.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+                                    OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    check(handle != INVALID_HANDLE_VALUE, "lock clear system fixture");
+    const auto error = app.update();
+    check(CloseHandle(handle) != 0, "close clear lock");
+    check(!error.empty() && app.clear_page() && app.clear_page()->counter == 64 &&
+          startup_world_session_digest(*app.world()) == before && read(paths.system) == original &&
+          app.records().high_score == 0, "failed clear commit preserves page, events, random and record");
+#else
+    (void)before; (void)original;
+#endif
+    check(app.update().empty(), "clear final transaction retry");
+    check(!app.clear_page() && !app.clear_rows() && app.records().high_score == total &&
+          load_startup_system_file(paths.system).records->high_score == total,
+          "clear completes once, persists system and retires controller references");
+    check(app.take_sound_requests() == std::vector<int>{1}, "clear resumes main BGM once");
+    check(!app.acknowledge_page(id).empty(), "retired clear cannot award again");
+    check(!std::filesystem::exists(paths.worlds[0]), "clear system save does not save world");
+    const auto scripts = startup_world_runtime_scripts(app.world()->state());
+    check(scripts.pages.size() >= 3, "event6 then new-record event publish real message pages");
+    // 同一合法入口再次回放：分数相等不能改名或奖杯，不当自然第二次结局。
+    check(app.return_to_title().empty() && app.load_world_replay(entry, metadata.controller_id).empty(),
+          "replay same clear against existing system record");
+    for (int i = 0; i < 4000; ++i) {
+        check(app.update(true).empty(), "equal-score clear update");
+        if (!app.clear_page()) break;
+        check(i != 3999, "bounded equal-score clear completes");
+    }
+    check(app.records().high_score == total && app.records().trophy == 1 &&
+          app.records().score_village == state.scripts.village_name, "equal score preserves existing record owner");
+    app.take_sound_requests();
+    for (const auto &p : {entry, encoded, bad, paths.system}) std::filesystem::remove(p);
+}
 void run(const std::filesystem::path &dir) {
     std::filesystem::create_directories(dir);
     const auto replay = dir / "replay.avrs", normal = dir / "normal.avrs", bad = dir / "bad.avrs";
@@ -514,6 +615,8 @@ void run(const std::filesystem::path &dir) {
     }
     check(frames < 2200, "stable natural capture boundary");
     checks += check_startup_world_restore_contracts(session.state());
+    profile_file_roundtrip(session, dir);
+    application_clear_roundtrip(session, dir);
     const auto before = startup_world_session_digest(session);
     StartupWorldSaveMetadata metadata;
     metadata.purpose = StartupWorldSavePurpose::replay;

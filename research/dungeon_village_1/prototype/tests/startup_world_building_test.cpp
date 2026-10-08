@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_inheritance.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
@@ -20,6 +21,64 @@ void check(bool value, const char *message) {
     ++checks;
     if (!value)
         throw std::runtime_error(message);
+}
+void new_world_inheritance() {
+    auto s = test_support::world_fixture();
+    const auto baseline = startup_world_state_digest(s);
+    std::array<std::vector<std::uint8_t>, 2> sections;
+    check(install_startup_world_inheritance(s, sections) && startup_world_state_digest(s) == baseline,
+          "empty source inheritance sections preserve exact default world");
+    sections[0].resize(s.rules->facilities.size() * 2);
+    sections[1].resize(s.rules->jobs.size() * 2);
+    for (std::size_t n = 1; n < sections[0].size(); n += 2)
+        sections[0][n] = 5;
+    for (std::size_t n = 1; n < sections[1].size(); n += 2)
+        sections[1][n] = 1;
+    const auto before = s;
+    check(install_startup_world_inheritance(s, sections), "full big-endian G then p inheritance installs privately");
+    for (const auto &d : s.rules->facilities) {
+        const auto values = startup_world_build_quote(s, d.id);
+        check(values && s.scene.world.world.facility_uses.at(d.id).level == 5 &&
+                  s.scripts.facilities.at(d.id).level == 5,
+              "inheritance writes every stable shared definition G");
+        for (std::size_t slot = 0; slot < 4; ++slot)
+            check(s.scripts.facilities.at(d.id).attributes[slot] == values->definition_attributes[slot],
+                  "inheritance actual economic setter rebuilds all shared attributes");
+    }
+    bool price_changed{};
+    for (const auto &[id, f] : s.scene.world.world.facilities) {
+        const auto actual = startup_world_facility_values(s, id);
+        check(actual && f.price == actual->instance_attributes[0],
+              "inheritance rebuilds each existing instance price with its own neighbours");
+        price_changed = price_changed || f.price != before.scene.world.world.facilities.at(id).price;
+    }
+    check(price_changed && s.scene.random.draws() == before.scene.random.draws() &&
+              s.scene.world.world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
+              s.scene.world.world.ai.battle.actors.empty() && s.sound_requests.empty(),
+          "real inherited economy changes price without arrival cash random or unconsumed output");
+    for (std::size_t n = 0; n < s.rules->jobs.size(); ++n)
+        check(s.scripts.professions.at(static_cast<int>(n)).status == 1 &&
+                  s.scene.world.world.ai.professions[n].unlocked,
+              "inheritance p opens profession definition not human profession level");
+    for (int variant = 0; variant < 6; ++variant) {
+        auto candidate = before;
+        auto bad = sections;
+        if (variant == 0) bad[0].pop_back();
+        if (variant == 1) bad[1].push_back(0);
+        if (variant == 2) bad[0][1] = 0;
+        if (variant == 3) bad[0][0] = 0xff; // 大端负short，非误解为小端。
+        if (variant == 4) bad[1].back() = 2; // 后段坏p不能留下前段G变化。
+        if (variant == 5) candidate.neighbourhood.erase(candidate.scene.world.facility_order.front());
+        const auto digest = startup_world_state_digest(candidate);
+        check(!install_startup_world_inheritance(candidate, bad) &&
+                  startup_world_state_digest(candidate) == digest,
+              "bad inheritance length value or late reference rolls back every candidate field");
+    }
+    auto running = before;
+    running.simulation_steps = 1;
+    const auto digest = startup_world_state_digest(running);
+    check(!install_startup_world_inheritance(running, sections) && startup_world_state_digest(running) == digest,
+          "inherited system bytes cannot overwrite running world");
 }
 ref::Position empty_anchor(const StartupWorldRuntimeState &s, int definition,
                            ref::FacilityOrientation orientation = ref::FacilityOrientation::first) {
@@ -1343,6 +1402,7 @@ void commerce_definition_preview() {
 int main() {
     try {
         normal_construction();
+        new_world_inheritance();
         multi_tile_and_rollback();
         new_shop_projection();
         details();

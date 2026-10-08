@@ -8,14 +8,14 @@ namespace dungeon_village_prototype {
 std::optional<StartupPortrait> startup_world_portrait(const StartupWorldRuntimeState &s, int id) {
     if (!s.rules || id < 0 || id >= static_cast<int>(s.rules->humans.size()))
         return {};
-    const auto &human = s.rules->humans.at(id);
+    const auto human = startup_world_human_profile(s, id);
     const auto growth = s.scene.world.world.ai.growth.find(id);
-    if (human.identity != id || growth == s.scene.world.world.ai.growth.end())
+    if (!human || growth == s.scene.world.world.ai.growth.end())
         return {};
     const int job = growth->second.definition.current_profession;
-    if (job < 0 || job >= static_cast<int>(s.rules->jobs.size()) || human.sex < 0 || human.sex > 1)
+    if (job < 0 || job >= static_cast<int>(s.rules->jobs.size()))
         return {};
-    return StartupPortrait{s.rules->jobs.at(job).sprites.at(human.sex)};
+    return StartupPortrait{s.rules->jobs.at(job).sprites.at(human->sex)};
 }
 std::optional<std::vector<StartupInnRow>> startup_world_inn_rows(const StartupWorldRuntimeState &s,
                                                                  std::uint64_t id) {

@@ -9,6 +9,8 @@
 
 ## 入口与用途
 
+2026-10-08主角覆盖新增Owner布局，旧无覆盖schema拒绝、不迁移；跨局纪录使用独立AVRSYS01系统文件，不能从单世界恢复重建。具体应用事务、标题回放与计分页快照边界见[标题／系统模块](STARTUP_APPLICATION.md)。
+
 公开接口为[文件存取](include/dungeon_village_prototype/startup_world_persistence.hpp)：
 `save_startup_world_file`不修改Session；`load_startup_world_file`返回完整私有候选，失败只返回错误。
 调用者先校验自己的控制器载荷，再同时安装候选Session和控制器；不得在解析控制器前先替换世界。

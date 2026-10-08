@@ -22,6 +22,22 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    auto profile = baseline; // 合法定义覆盖夹具；不创建定义0实例、不改原表。
+    profile.human_profiles.emplace(0, p::StartupWorldHumanProfile{"恢复姓名", 1, true});
+    profile.scripts.humans.at(0).name = "恢复姓名";
+    expect(profile, true, "profile without main character instance");
+    auto profile_bad = profile;
+    profile_bad.human_profiles.emplace(1, p::StartupWorldHumanProfile{"越权", 0, false});
+    expect(profile_bad, false, "unsupported profile stable definition");
+    profile_bad = profile;
+    profile_bad.human_profiles.at(0).sex = 2;
+    expect(profile_bad, false, "profile invalid sex");
+    profile_bad = profile;
+    profile_bad.human_profiles.at(0).name = std::string("a\0b", 3);
+    expect(profile_bad, false, "profile invalid name");
+    profile_bad = profile;
+    profile_bad.scripts.humans.at(0).name = "旧缓存";
+    expect(profile_bad, false, "profile stale script-name reference");
     // 存活主场景有合法身份，也不能接受其它页型的附属载荷。
     for (int domain = 0; domain < 3; ++domain) {
         auto damaged = baseline;

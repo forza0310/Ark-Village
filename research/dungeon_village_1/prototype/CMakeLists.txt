@@ -62,6 +62,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_codec.cpp src/startup_world_restore_validation.cpp
     src/startup_world_persistence.cpp src/startup_world_file_io.cpp "${PERSISTENCE_IDENTITY_CPP}"
     src/startup_world_routes.cpp src/startup_world_runtime.cpp
+    src/startup_world_profile.cpp src/startup_world_inheritance.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
     src/startup_world_runtime_arrival.cpp src/startup_world_runtime_tasks.cpp
@@ -78,6 +79,26 @@ target_link_libraries(dungeon_village_startup_world PRIVATE dungeon_village_hash
 target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
+# 应用持有跨世界系统纪录；复用世界文件I/O，不让规则层依赖标题或文件。
+add_library(dungeon_village_startup_application src/startup_application.cpp
+    src/startup_system_records.cpp src/startup_world_clear_score.cpp)
+dungeon_village_library(dungeon_village_startup_application)
+target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
+    PRIVATE dungeon_village_hash)
+target_compile_features(dungeon_village_startup_application PUBLIC cxx_std_17)
+set_target_properties(dungeon_village_startup_application PROPERTIES CXX_EXTENSIONS OFF)
+add_executable(dungeon_village_startup_application_cli src/startup_application_main.cpp)
+target_link_libraries(dungeon_village_startup_application_cli PRIVATE dungeon_village_startup_application)
+add_executable(dungeon_village_startup_application_tests tests/startup_application_test.cpp
+    tests/startup_system_records_test.cpp tests/startup_world_clear_score_test.cpp)
+target_link_libraries(dungeon_village_startup_application_tests PRIVATE dungeon_village_startup_application
+    dungeon_village_hash)
+add_test(NAME dungeon_village_prototype.startup_application COMMAND dungeon_village_startup_application_tests)
+if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
+    target_compile_options(dungeon_village_startup_application PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_startup_application_cli PRIVATE -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(dungeon_village_startup_application_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
 foreach(module IN ITEMS startup_world_projection startup_world_routes startup_world_scene startup_world_arrival
                         startup_world_runtime_tasks startup_world_runtime startup_world_continuous startup_world_pages
                         startup_world_runtime_nonactors startup_world_task_flow startup_world_deadline startup_world_building)
@@ -93,7 +114,7 @@ target_sources(dungeon_village_startup_world_continuous_tests PRIVATE tests/star
 add_executable(dungeon_village_startup_world_persistence_tests tests/startup_world_persistence_test.cpp
     tests/startup_world_codec_checks.cpp tests/startup_world_restore_checks.cpp)
 target_include_directories(dungeon_village_startup_world_persistence_tests PRIVATE src)
-target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_world dungeon_village_hash)
+target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_application dungeon_village_hash)
 target_compile_features(dungeon_village_startup_world_persistence_tests PRIVATE cxx_std_17)
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_startup_world_persistence_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)

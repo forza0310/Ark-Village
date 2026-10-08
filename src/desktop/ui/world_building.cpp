@@ -49,14 +49,23 @@ void fitted(const Skin &skin, const std::string &text, Rectangle box, Color colo
     const float size = std::min(12.F, 12.F * box.width / std::max(1.F, skin.text.width(text)));
     skin.text.draw(text, box.x, box.y, color, size);
 }
+void detail_money(const Skin &skin, std::int64_t value, Rectangle box) {
+    skin.number(value, {box.x + box.width - 10, box.y + 2});
+    skin.sprites.draw("number08.seb", 20, {box.x + box.width - 9, box.y + 2}, WHITE,
+                      Sprites::Binding::common);
+}
+void detail_field(Rectangle box, Color fill, Color border) {
+    DrawRectangleRec(box, fill);
+    DrawRectangleLinesEx(box, 1, border);
+}
 void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layout, const Skin &skin,
                  const WorldBuildingSelection &selection) {
     using Type = app::WorldFacilityTemplate;
     const auto boxes = world_building_detail_layout(layout, view.detail_type);
     if (view.phase == 1 && !view.definition_preview) {
-        fitted(skin, "周围设施", boxes.source_heading, blue);
-        skin.right("维护费 " + std::to_string(view.attributes[3]) + "G",
-                   boxes.maintenance.x + boxes.maintenance.width, boxes.maintenance.y, blue, 10);
+        fitted(skin, "设施加成", boxes.source_heading);
+        fitted(skin, "维护费", {boxes.maintenance.x, boxes.maintenance.y, 42, 14}, blue);
+        detail_money(skin, view.attributes[3], boxes.maintenance);
         if (view.source_names.empty()) {
             skin.centered("暂无设施来源", boxes.sources, ink, 11);
         } else {
@@ -70,36 +79,55 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
             for (int row = 0;
                  row < visible && first + row < static_cast<int>(view.source_names.size()); ++row)
                 fitted(skin, view.source_names[first + row],
-                       {boxes.sources.x + 3, boxes.sources.y + row * boxes.source_row_height,
+                       {boxes.sources.x + 3, boxes.sources.y + row * boxes.source_row_height + 3,
                         boxes.sources.width - 6, 16});
         }
+        const int count = std::max(1, static_cast<int>(view.source_names.size()));
+        const int visible =
+            std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
+        const int first = std::clamp(selection.first_row, 0, std::max(0, count - visible));
+        const auto track = boxes.source_scroll;
+        DrawRectangleRec(track, {223, 234, 215, 255});
+        const float height = track.height * std::min(count, visible) / count;
+        const float y = track.y + (track.height - height) * first / std::max(1, count - visible);
+        DrawRectangleRec({track.x, y, track.width, height}, {50, 164, 234, 255});
+        skin.centered("周围设施的加成", boxes.source_footer, ink, 12);
         return;
     }
     fitted(skin, view.title, boxes.name, ink);
-    if (view.detail_type == Type::ordinary)
-        fitted(skin, "价格 " + std::to_string(view.attributes[0]) + "G", boxes.price, blue);
-    skin.content(boxes.picture, {226, 247, 212, 255});
-    skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames, boxes.picture);
     if (view.detail_type == Type::ordinary) {
-        skin.content({boxes.values.x - 3, boxes.values.y - 3, boxes.values.width + 3, 34},
-                     {255, 248, 214, 255});
+        fitted(skin, "价格", {boxes.price.x, boxes.price.y, 32, 14}, blue);
+        detail_money(skin, view.attributes[0], boxes.price);
+    }
+    detail_field(boxes.picture, {226, 247, 212, 255}, {184, 211, 168, 255});
+    skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
+                           {boxes.picture.x + 2, boxes.picture.y + 2, boxes.picture.width - 4,
+                            boxes.picture.height - (view.detail_type == Type::ordinary ? 14 : 4)});
+    if (view.detail_type == Type::ordinary) {
+        detail_field(boxes.values, {255, 248, 214, 255}, {239, 208, 119, 255});
+        // The lower field exists in S019/PAGES independently of its still-unpublished
+        // category7 icon mapping. Do not substitute text or guessed effects from a legacy model.
+        detail_field(boxes.effects, {255, 248, 214, 255}, {239, 208, 119, 255});
         constexpr const char *labels[]{"品质", "魅力"};
         for (int row = 0; row < 2; ++row) {
-            const float y = boxes.values.y + row * 15;
-            fitted(skin, labels[row], {boxes.values.x, y, 40, 14}, blue);
-            skin.right(std::to_string(view.attributes[row + 1]),
-                       boxes.values.x + boxes.values.width, y, blue, 11);
+            const float y = boxes.values.y + 4 + row * 15;
+            fitted(skin, labels[row], {boxes.values.x + 6, y, 40, 14}, blue);
+            skin.number(view.attributes[row + 1], {boxes.values.x + boxes.values.width - 6, y + 1});
         }
         skin.sprites.image("wnd_lv.png", {0, 0, 17, 10}, {boxes.level.x, boxes.level.y, 17, 10});
         if (view.level == 5)
             skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
                                {boxes.level.x + 22, boxes.level.y + 2, 20, 6});
         else {
-            skin.text.draw(std::to_string(view.level), boxes.level.x + 22, boxes.level.y - 1, blue,
-                           10);
-            if (view.remaining_uses)
-                fitted(skin, "距离下个等级还有 " + std::to_string(*view.remaining_uses) + " 人",
-                       boxes.remaining, ink);
+            skin.number(view.level, {boxes.level.x + 31, boxes.level.y}, "number05.seb");
+            if (view.remaining_uses) {
+                fitted(skin, "距离下个等级还有", {boxes.remaining.x, boxes.remaining.y, 126, 14});
+                skin.number(*view.remaining_uses,
+                            {boxes.remaining.x + boxes.remaining.width - 16, boxes.remaining.y + 2},
+                            "number05.seb");
+                skin.text.draw("人", boxes.remaining.x + boxes.remaining.width - 13,
+                               boxes.remaining.y, ink);
+            }
         }
     } else {
         const std::string label = view.detail_type == Type::equipment
@@ -267,6 +295,19 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     const float height =
         raw == 21 ? std::min(300.F, extent.height - 58.F) : std::min(250.F, extent.height - 68.F);
     WorldBuildingLayout layout;
+    if (raw == 74) {
+        // S019 and the supplied page2 share a compact ~224x172 window. PAGES gives
+        // the 97x74 picture and two right-hand fields; desktop centering is an adaptation.
+        layout.panel = {(extent.width - 224.F) / 2, (extent.height - 172.F) / 2, 224, 172};
+        const auto p = layout.panel;
+        layout.body = {p.x + 8, p.y + 40, 208, 110};
+        layout.rows = {p.x + 12, p.y + 44, 196, 102};
+        layout.cancel = Layout(extent).right_button;
+        layout.confirm = {p.x + 62, p.y + 152, 100, 18};
+        layout.previous = {p.x + 8, p.y + 2, 14, 17};
+        layout.next = {p.x + 202, p.y + 2, 14, 17};
+        return layout;
+    }
     if (raw == 21) {
         // S057: a narrow catalogue begins with the tabs, then five37-pitch picture rows.
         // It has no wood title or buy button. Return is the screen's lower-right soft key.
@@ -300,10 +341,6 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     layout.confirm = {p.x + width - 68, p.y + height - 28, 58, 20};
     layout.previous = {p.x + width / 2 - 32, p.y + height - 28, 28, 20};
     layout.next = {p.x + width / 2 + 4, p.y + height - 28, 28, 20};
-    if (raw == 74) {
-        layout.previous = {p.x + 5, p.y + 3, 18, 14};
-        layout.next = {p.x + width - 23, p.y + 3, 18, 14};
-    }
     return layout;
 }
 int world_building_visible_rows(const WorldBuildingLayout &layout) {
@@ -320,18 +357,22 @@ WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int vis
 WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout &layout,
                                                        app::WorldFacilityTemplate type) {
     const auto b = layout.body;
+    const auto p = layout.panel;
     WorldBuildingDetailLayout out;
-    out.name = {b.x + 3, b.y + 2, b.width - 71, 14};
-    out.price = {b.x + b.width - 64, b.y + 2, 61, 14};
-    out.picture = {type == app::WorldFacilityTemplate::ordinary ? b.x + 3
+    out.name = {p.x + 30, p.y + 25, 90, 14};
+    out.price = {p.x + 124, p.y + 25, 87, 14};
+    out.picture = {type == app::WorldFacilityTemplate::ordinary ? p.x + 13
                                                                 : b.x + (b.width - 97) / 2,
-                   b.y + 21, 97, 74};
+                   p.y + 44, 97, 74};
     out.level = {out.picture.x + 3, out.picture.y + 61, 44, 10};
-    out.values = {b.x + 106, b.y + 24, b.width - 109, 74};
-    out.remaining = {b.x + 3, b.y + 98, b.width - 6, 14};
-    out.source_heading = {b.x + 3, b.y + 2, std::max(50.F, b.width - 112), 14};
-    out.maintenance = {b.x + b.width - 106, b.y + 2, 103, 14};
-    out.sources = {b.x + 3, b.y + 23, b.width - 6, b.height - 26};
+    out.values = {p.x + 113, p.y + 44, 90, 34};
+    out.effects = {p.x + 113, p.y + 80, 90, 38};
+    out.remaining = {p.x + 30, p.y + 128, 173, 14};
+    out.source_heading = {p.x + 17, p.y + 25, 88, 14};
+    out.maintenance = {p.x + 124, p.y + 25, 87, 14};
+    out.sources = {b.x + 6, b.y + 6, b.width - 18, b.height - 12};
+    out.source_scroll = {b.x + b.width + 1, b.y, 5, b.height};
+    out.source_footer = {p.x + 15, p.y + 153, p.width - 30, 17};
     return out;
 }
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
@@ -541,8 +582,12 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
     if (view.raw != 81)
         skin.button(layout.cancel, "返回", active);
     if (view.raw == 74 && view.page_count > 1) {
-        skin.centered("<", layout.previous, active ? GOLD : GRAY);
-        skin.centered(">", layout.next, active ? GOLD : GRAY);
+        // arrow02 frames2/3 crop the gold left/right pair; 0/1 are the grey pair.
+        skin.sprites.draw("arrow02.seb", active ? 2 : 0,
+                          {layout.previous.x + 4, layout.previous.y + 9}, WHITE,
+                          Sprites::Binding::common);
+        skin.sprites.draw("arrow02.seb", active ? 3 : 1, {layout.next.x + 4, layout.next.y + 9},
+                          WHITE, Sprites::Binding::common);
     }
     if (view.raw != 21 && (view.raw != 74 || view.can_confirm))
         skin.choice(layout.confirm,

@@ -399,6 +399,19 @@ void world_building() {
                 ui::world_building_detail_layout(frame, app::WorldFacilityTemplate::ordinary);
             const auto special =
                 ui::world_building_detail_layout(frame, app::WorldFacilityTemplate::equipment);
+            check(frame.panel.width == 224 && frame.panel.height == 172 &&
+                      frame.cancel.x == ui::Layout(extent).right_button.x &&
+                      frame.cancel.y == ui::Layout(extent).right_button.y &&
+                      !CheckCollisionRecs(frame.panel, frame.cancel) &&
+                      frame.confirm.x + frame.confirm.width / 2 ==
+                          frame.panel.x + frame.panel.width / 2 &&
+                      ordinary.name.y + ordinary.name.height <= frame.body.y &&
+                      ordinary.price.y + ordinary.price.height <= frame.body.y &&
+                      !CheckCollisionRecs(ordinary.effects, ordinary.values) &&
+                      !CheckCollisionRecs(ordinary.effects, ordinary.picture) &&
+                      ordinary.source_footer.y >= frame.body.y + frame.body.height,
+                  "S019 compact detail keeps the heading on wood, stacked value/effect fields, "
+                  "centered action and independent screen return on both pages");
             check(ordinary.picture.width == 97 && ordinary.picture.height == 74 &&
                       ordinary.picture.y + ordinary.picture.height <=
                           frame.body.y + frame.body.height &&

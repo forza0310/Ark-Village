@@ -50,7 +50,8 @@ struct WorldBuildingLayout {
 // Responsive desktop positions for the published raw74 static subset. Picture dimensions
 // follow the 97x74 source region; the source image group is fitted inside this desktop region.
 struct WorldBuildingDetailLayout {
-    Rectangle name, price, picture, level, values, remaining, maintenance, sources, source_heading;
+    Rectangle name, price, picture, level, values, effects, remaining, maintenance, sources,
+        source_heading, source_footer, source_scroll;
     float source_row_height{19};
 };
 WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout &layout,

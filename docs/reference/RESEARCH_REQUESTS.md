@@ -352,6 +352,8 @@ d7ca763亦已发布actor_housekeeping、battle_commit、object_commit和ai_rewar
 
 74名称/大图/实际经营值、共享等级/MAX、到下级剩余人数及第二页维护费已有来源和只读查询，产品已补显示并完成本地窗口验收，见[B1](../stages/B1-playable-prototype.md#maintainability-ui-batch)。来源名单身份/原序、共享level、legacy_icon、exit_effects和neighbour_effects已经投影，不重复请求这些字段。仍需以下最小显示桥，不要求补整个框架：
 
+2026-10-08用户再次指出[S019花店详情](../../research/dungeon_village_1/references/screenshots/2026-10-03-bv1jc411e7up-03/facilities/S019-florist-information-p1.png)及所附设施加成2/2截图差异。产品本批按[两页外观补正](../stages/B1-playable-prototype.md#facility-detail-visual-correction)收紧布局、改原数字/箭头、分开标题行/内容框/屏幕返回；下列图标与逐来源加成继续是高优先级缺口，不能将布局补正记成完整页面复刻。第二页截图的“罗汉松10/11、防具店1”后缀须明确是实例命名、等级还是其它字段，不按外观猜测；每行价格/品质/魅力的排列、正负符号、重复项与原序需一起交付。
+
 - 74第二页逐来源read-model：原序source identity、显示“层级”具体字段/格式、各行原序奖励载荷、空态；覆盖两同定义实例、重复属性槽、道路修正和无效果来源，说明符号/取整。现有sources只给身份，neighbour_effects是规则输入，不能从累计总额分摊或按level自行倍乘。
 - 标题类别9及效果类别7的原字段→SEB/PNG帧/裁片/锚点与+数量映射；o.d已有legacy_icon，o.z/o.A及多余尾部已保存，但资源桥尚未闭合。旧ark_game普通初期子集不能当全部85定义合同。
 - 普通道具图标已有独立请求，继续要求原g.g到资源桥、人物赠礼/设施/商会是否共用；不能仅按道具ID猜图。75五行/19行距与提示分档已证且产品已补布局；76完整投掷帧仍分开等待。

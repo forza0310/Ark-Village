@@ -4,6 +4,9 @@
 
 ## 本批收口
 
+- [x] S019及设施加成2/2面板部分补正：紧凑布局、原数字/箭头、分区和按钮位置，通过本地测试/窗口；图标及逐来源加成仍未完成，见[B1](docs/stages/B1-playable-prototype.md#facility-detail-visual-correction)。
+- [ ] 设施74场景底栏名称/累计收益接线及对应HUD鼠标热区：已有只读数据，自动审批拒绝追加补丁，具体设计在上述B1，待确认此增补范围。
+
 a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商品图标已完成[本地验收](docs/stages/B1-playable-prototype.md#research-a57958c-design)；类型4无独立效果，不列为缺失按钮。
 
 6061a2c/5eae10a补审、授勋视觉子集、存档覆盖与文档/代码职责整理已完成本地验收，见[B1本批记录](docs/stages/B1-playable-prototype.md#research-save-organization)。标题/开始与两栏继续入口的接入、验收见[标题批次](docs/stages/B1-playable-prototype.md#title-start-flow)。

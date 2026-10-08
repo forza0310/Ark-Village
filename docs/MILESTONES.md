@@ -17,6 +17,8 @@
 
 接续88eb658：用户要求接入最新研究，沿既有建设UI、唯一Owner与维护回放范围迁入1e6b291的363项闭包，建设图块接桌面共用查询，新增独立显式表现请求回放；42abf62/88eb658的UI/素材/内容索引进入产品对照。正常桌面的自动表现请求仍待原准入/包装资格映射，不将60FPS当原调用次数；玩家档与旧逻辑回放政策不变。范围及当前验收见[接续批次](stages/B1-playable-prototype.md#research-88eb658-integration)。
 
+用户随后指出S019/设施加成2/2外观差异，沿现有UI对齐范围补紧凑布局、原数字/箭头、内容分区和软键位置；逐来源数值与类别图标不在缺合同情况下补造，见[设施页补正](stages/B1-playable-prototype.md#facility-detail-visual-correction)。
+
 所有状态从新产品重新开始。旧M阶段不是新产品的完成依据。
 
 历史接续：2026-10-08按已批准顺序接29f371d商品79/72与设施口碑82，维护精确存取同步新layout，玩家schema2/随机政策不变。用户另明确缩放下限调小，本批采用25%并保持鼠标锚定。验收与原版表现边界见[当前接续](stages/B1-playable-prototype.md#research-29f371d-progression)，主角/纪录/举物等依赖见[反馈缺口](reference/RESEARCH_REQUESTS.md#player-feedback-20261008)。

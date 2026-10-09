@@ -1,0 +1,13 @@
+[
+  "ui/STEAM_BUILD_LIST_BUSINESS.md",
+  "ui/STEAM_BUILD_LIST.md",
+  "ui/STEAM_UI_COVERAGE.md",
+  "ui/README.md",
+  "VERIFICATION.md",
+  "work/steam-build-list-business/README.md",
+  "work/steam-build-list-business/inspect.cjs",
+  "work/steam-build-list-business/audit.cjs",
+  "work/steam-build-list-business/EVIDENCE.json",
+  "work/steam-build-list-business/verify_delivery.py",
+  "work/steam-build-list-business/VALIDATION.json"
+]

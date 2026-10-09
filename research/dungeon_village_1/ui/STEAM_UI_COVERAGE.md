@@ -1,5 +1,7 @@
 # Steam 2.56 UI／操作覆盖清单
 
+2026-10-10[raw21业务合同](STEAM_BUILD_LIST_BUSINESS.md)已补Init／Update三目录、空行确认拒绝、滚动及BUILD载荷。下方早期“Init／Update未核”仅为历史定位；仍未闭合的是完整FormManager父栈、最终OS投递与落点后续事务，不以局部分支升级全页动态认证。
+
 2026-10-10[建设资源装载与旋转](STEAM_BUILD_RESOURCE_INSTALL.md)补地图manager安装／退休、image来源与flags32软标签；[两张差异素材](../assets/steam-build-common/README.md)已正式发布。静态素材范围不替代列表Init／Update、全语言覆盖或原窗口输入。
 
 2026-10-08。按本轮已确认范围，以Steam EXE版UI与操作为还原目标，固定汉化重签APK1.0.8暂保留规则基线。
@@ -56,7 +58,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 18 | ENDING | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |
-| 21 | BUILD | 建设目录 | 类目输入／软键、局部绘制／行marker／滚动注册及85定义pattern静态；Init／Update、动态资源安装、OS输入未核 |
+| 21 | BUILD | 建设目录 | Init／Update、绘制／marker／滚动、85定义pattern、资源安装／旋转准入静态已核；完整父栈、最终OS输入／落点后续待证 |
 | 22 | QUEST_SELECT | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 23 | QUEST_GATHER | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 24 | QUEST_GATHERANIME | 任务 | 仅声明；更新／绘制／动态链待逐项 |

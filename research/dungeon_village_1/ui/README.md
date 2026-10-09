@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[Steam建设目录业务](STEAM_BUILD_LIST_BUSINESS.md)补Init／Update、空行／滚动、标记确认、资金预检及BUILD交接。目录确认不扣钱；撤除／移动只切模式，不在该分支重写建筑ID／朝向。原绘制先于frame3输入门槛，最终OS投递与完整父栈退休仍未认证。
+
 2026-10-10[Steam建设差异素材](../assets/steam-build-common/README.md)独立发布图片98／103，新增1,213字节、两份SEB引用既有同字节副本。[资源安装／旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)已追`resMapChip→image`、Dispose／Load／清引用及flags32软标签；46项同时具建设与旋转标志的定义两向裁片有效，不等于它们都已解锁。
 
 [Steam设施图块全集](STEAM_MAPCHIP_PATTERNS.md)已核两套pattern及85定义到图块／SEB／图片对应，保留源帧范围／裁片异常；建设列表固定朝向0全部有效。图片98／103确有Steam像素差异，不能以同SEB替换为APK图片；完整旋转准入与动态资源安装仍独立待研。

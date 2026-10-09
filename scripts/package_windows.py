@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import tempfile
+import uuid
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -41,7 +41,11 @@ def main():
     if dirty.strip():
         parser.error("commit the validated product checkpoint before packaging")
     revision = subprocess.check_output([*git, "rev-parse", "HEAD"], text=True).strip()
-    work = Path(tempfile.mkdtemp(prefix="release-package-", dir=parent))
+    # Python's Windows mkdtemp uses a private owner-only ACL. A reviewable local
+    # artifact must inherit this workspace directory's normal access instead.
+    # Exclusive mkdir still refuses a collision without overwriting any output.
+    work = parent / ("release-package-" + uuid.uuid4().hex)
+    work.mkdir()
     spec = importlib.util.spec_from_file_location("ark_release_package", ROOT / ".github/ci/build.py")
     package = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(package)

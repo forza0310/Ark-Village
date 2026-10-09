@@ -167,6 +167,16 @@ std::array<std::uint64_t, 12> resources(const StartupApplication &app) {
             u.live_encounters, u.retired_encounters, u.retained_tasks, u.continuations,
             app.world()->checkpoints().size(), s.scene.world.world.ai.accounting.entries().size()};
 }
+// 累计流水可能在活动完成的旧月份已经上涨；只有当前原月槽能证明新月实际营业。
+std::uint64_t current_month_facility_income(const StartupWorldRuntimeState &s) {
+    const auto month = s.scene.calendar.month;
+    require(month >= 0 && month < 12, "active current income invalid raw month");
+    const auto amount = s.monthly_cash[static_cast<std::size_t>(month)]
+        [static_cast<std::size_t>(ref::CashCategory::facilities)]
+        [static_cast<std::size_t>(ref::CashDirection::income)];
+    require(amount >= 0, "active current facility income negative");
+    return static_cast<std::uint64_t>(amount);
+}
 // 月日志/终点只读诊断：复用原晋级纯查询的kind3/9与kind12计数，
 // 只准备其实际读取字段，不复制全Session/历史，也不修改rank缓存或Driver身份。
 std::string progress_json(const StartupApplication &app) {
@@ -194,7 +204,8 @@ std::string progress_json(const StartupApplication &app) {
         << ",\"popularity\":" << s.popularity << ",\"maximum_income\":" << s.maximum_income
         << ",\"village_points\":" << s.village_points << ",\"events_held\":" << s.events_held
         << ",\"quarter_counter\":" << s.quarter_counter << ",\"task_successes\":" << s.task_progress.successes
-        << ",\"facilities_kind3_9\":" << *facilities << ",\"houses_kind12\":" << *houses << '}';
+        << ",\"facilities_kind3_9\":" << *facilities << ",\"houses_kind12\":" << *houses
+        << ",\"current_month_facility_income\":" << current_month_facility_income(s) << '}';
     return out.str();
 }
 bool references(const StartupWorldRuntimeState &s) {
@@ -217,6 +228,10 @@ std::uint64_t income(const StartupWorldRuntimeState &s) {
             total += std::uint64_t(entry.second.amount);
         }
     return total;
+}
+bool post_exhibition_income(const StartupWorldRuntimeState &s, const Driver &d) {
+    const auto current = current_month_facility_income(s); // 月份错误始终显式拒绝，不靠数组越界。
+    return income(s) > d.exhibition_income && current > 0;
 }
 std::uint64_t pending_upgrade(const StartupWorldRuntimeState &s) {
     for (auto id : s.scene.world.facility_order)
@@ -357,7 +372,7 @@ std::string validate(const StartupApplication &app, const Metadata &m) {
         for (std::size_t i = 0; i < sizes.size(); ++i) require(d.peaks[i] >= sizes[i], "resource peak");
         if (d.terminal) require(d.bakery && s.rank >= 1 && !d.upgrade_pages.empty() && d.exhibition_count > 0 &&
                                    d.exhibition_month != absent && d.months > d.exhibition_month &&
-                                   p->kind == ref::WorldScriptPageKind::scene && income(s) > d.exhibition_income,
+                                   p->kind == ref::WorldScriptPageKind::scene && post_exhibition_income(s, d),
                                "terminal requires real post-rank business");
         return {};
     } catch (const std::exception &e) { return e.what(); }
@@ -527,7 +542,7 @@ Round step(StartupApplication &app, Driver &d) {
             "calendar stalled or committed history rewound");
     if (d.exhibition_month != absent && month > d.exhibition_month && !d.upgrade_pages.empty() &&
         after.scene.calendar.units >= 27 && top(app)->kind == ref::WorldScriptPageKind::scene &&
-        after.activity_pages_initialized.empty() && income(after) > d.exhibition_income) d.terminal = 1;
+        after.activity_pages_initialized.empty() && post_exhibition_income(after, d)) d.terminal = 1;
     ++d.next_frame; ++d.checks; observe(app, d); good(validate(app, metadata(d))); return round;
 }
 Driver initial(StartupApplication &app) {
@@ -690,6 +705,27 @@ int run_startup_application_active_driver_checks(const fs::path &parent) {
     reject(metadata(bad), "commerce-leave count beyond declared next command accepted");
     m = metadata(d); ++m.next_command; reject(m, "metadata next command accepted");
     m = metadata(d); m.producer_revision = "different-source"; reject(m, "metadata producer accepted");
+    // 只测试Driver门槛：条件副本的历史收入增长不能替代当月营业，不安装进自然应用。
+    auto no_new_month_income = app.world()->state();
+    auto &income_fixture_ai = no_new_month_income.scene.world.world.ai;
+    require(income_fixture_ai.accounting.post_cash({income_fixture_ai.next_cash_id++, 1, ref::CashCategory::facilities,
+                ref::CashDirection::income, 1}) == ref::AccountingError::none, "income gate fixture posting");
+    auto income_baseline = d; income_baseline.exhibition_income = 0;
+    require(income(no_new_month_income) > income_baseline.exhibition_income &&
+                current_month_facility_income(no_new_month_income) == 0 &&
+                !post_exhibition_income(no_new_month_income, income_baseline),
+            "old cumulative income accepted as current-month business"); ++checks;
+    for (const int invalid_month : {-1, 12}) {
+        no_new_month_income.scene.calendar.month = invalid_month;
+        bool refused{};
+        try { (void)post_exhibition_income(no_new_month_income, income_baseline); }
+        catch (const std::runtime_error &e) {
+            refused = std::string(e.what()) == "active: active current income invalid raw month";
+        }
+        require(refused, "income gate invalid month not explicitly rejected"); ++checks;
+    }
+    require(startup_application_replay_digest(app, metadata(d), validate) == before,
+            "income gate condition changed natural application"); ++checks;
     // 最小生命周期条件：只给合法20点/3次，所有51/52/53页均由真实Owner命令产生。
     // 本夹具不作为自然经营前缀，不等待数月积点，也不直接构造测试页。
     auto state = app.world()->state(); state.village_points = 20; state.quarter_counter = 3;

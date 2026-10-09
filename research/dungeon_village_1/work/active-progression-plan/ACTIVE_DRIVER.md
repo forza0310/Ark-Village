@@ -6,6 +6,8 @@
 
 首星以后优先开展真实解锁活动16。真正terminal要求：真实面包房、首星四条件成立并晋级、至少一次自然设施升级、活动16实际完成，且到后续自然月份产生新设施收入并回到主场景。任务接受/出发/成功分别记录，未取得的自然BOSS／二星不因terminal被宣称完成。420→440是有界早期回放，可正常结束但必须报告`terminal=false`。
 
+2026-10-10新月收入门槛纠正：此前“跨活动完成月＋累计设施收入高于活动完成时”可能由前月已增长的收入满足，不能证明新月份营业。`step`和terminal validator保留上述条件，再共同要求权威`monthly_cash[当前原月][facilities][income] > 0`；无新增Driver字段、Owner或预算。月份不在0–11时显式拒绝，诊断`progress.current_month_facility_income`给出真实当月值。原34419证书仍保留其旧terminal条件和三路一致事实，不能据此补宣称新门槛已过；由新的真实尾段认证证明新月份收入。现有Driver检查增加累计已涨／当月仍0的条件反例及坏月份拒绝，不把该条件夹具当自然经营；正向由真实尾段覆盖。
+
 所有跨轮Driver字段编码到既有opaque `controller_state`：seed1／speed0／策略边界、下一轮与命令、面包房身份、升级页去重、活动重试轮／完成计数、任务冷却月／旧任务身份、晋级/活动16月份和收入基准、日期/随机/历史/步骤、栈顶及下一策略、音频累计摘要、资源峰值。读取拒绝截断、尾段、非法集合、下一步与实际Owner不符、未消费输出。没有指针、路径或替代的业务字段。
 
 CLI：`EXE application-active-progression-v1 --work-dir DIR --trace-file FILE --stop-at N`；可带`--save-file FILE --save-at 420 --tail-after-save 20`或`--load-file FILE`，可用`--trace-from`限定非捕获观察。现只按显式轮捕获，不加按星级/月份参数。每次目录独占、文件create-only，所有恢复目标沿现应用路径审查；快照在本轮命令、音频和检查完成后捕获。

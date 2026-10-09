@@ -136,9 +136,11 @@ export async function verifyActiveApplication(options){
              '终点Driver身份/完整字段');
         need(result.progress&&typeof result.progress==='object'&&!Array.isArray(result.progress)&&
              ['cash','popularity','maximum_income','village_points'].every(key=>Number.isSafeInteger(result.progress[key]))&&
-             ['events_held','quarter_counter','task_successes','facilities_kind3_9','houses_kind12']
+             ['events_held','quarter_counter','task_successes','facilities_kind3_9','houses_kind12','current_month_facility_income']
                  .every(key=>natural(result.progress[key]))&&result.progress.task_successes===result.task_successes,
              '终点经营诊断字段/任务统计不一致');
+        need(!result.terminal||result.progress.current_month_facility_income>0,
+             '完整主动终点必须证明当前新月份实际设施收入，不能只看活动后累计增加');
         return result;
     };
     try{

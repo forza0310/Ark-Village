@@ -29,3 +29,5 @@ Computer Use native pipe is unavailable: failed to connect native pipe: 系统�
 5. 新截图保留完整原图、窗口尺寸、版本、前置状态、动作及hash；有账号或真实存档名字时沿此前最小披露约定处理，不把私人标识写进公开索引。
 
 本次无后台窗口或辅助进程需要释放。此协议不是已执行结果。
+
+2026-10-09用户改由外部会话执行窗口观察。可转交的[完整任务提示词](../window-restore-observation/NEXT_STARTUP_UI_PROMPT.md)及[专用反馈模板](../window-restore-observation/STARTUP_UI_FEEDBACK_TEMPLATE.md)已准备；新结果保存在新的独立目录，不覆盖本次通道失败记录。外部会话是否实际可用、是否完成各项观察，仍以其反馈为准。

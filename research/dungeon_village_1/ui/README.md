@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-09新增[收支情报](INFORMATION_MENU.md)的原入口／双页／返回合同和纯统计查询；[音频请求](AUDIO_REQUESTS.md)区分真实26项音频表与播放、替换BGM、jingle三种操作。[Steam标题人物](STEAM_TITLE_ACTORS.md)补基础动作数组和98项资源独立交叉。上述不等于可操作信息菜单、完整音频后端或全部人物动作已完成。
+
 本轮继续补[Steam启动资源／嵌入字体](STEAM_STARTUP_RESOURCES.md)、[原标题调度／随机交接](TITLE_PRESENTATION.md)及[公共窗框图元](../work/startup-frame-font-research/README.md)。窗口框只读计划已接既有皮肤桥；字体选择、Steam实际Draw及原窗口计分另验。外部补证使用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
 
 2026-10-09后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)将APK标题五图、页面背景与计分角色／提示接为只读计划。自定义姓名→切性别→取消重进已由用户取消强制补测，维护沿用保名／保草稿逻辑；Steam动态未知项仍保留。

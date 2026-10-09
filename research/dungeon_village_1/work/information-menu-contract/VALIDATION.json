@@ -1,0 +1,451 @@
+{
+  "date": "2026-10-09",
+  "research_baseline": "3780a3b",
+  "qualification": "?????????????????24???????UI/Steam??",
+  "cpp": {
+    "configuration": "research?Release???",
+    "build": "exit0???????build.log",
+    "ctest": {
+      "count": 2,
+      "seconds": 26.66,
+      "tests": [
+        "startup_application",
+        "startup_world_visuals"
+      ]
+    }
+  },
+  "static": {
+    "income_checks": 45,
+    "income_source_windows": 39,
+    "steam_independent_coordinates": 128,
+    "body_frames": 16,
+    "weapon_frames": 16,
+    "steam_resources": 98,
+    "activity_definitions": 31,
+    "activity_positive_sources": 30,
+    "activity_unclosed": [
+      27
+    ],
+    "audio_checks": 3609,
+    "audio_count": 26,
+    "audio_bytes": 2659933,
+    "audio_manifest_sha256": "7a4661f9603f0edd39856286091bd49feacfbc0b1bd5be1b9a8d5714d8a43ebd",
+    "links": 388
+  },
+  "natural_month24": {
+    "controller": "application-natural-clear-v1",
+    "qualification": "natural_application_tail",
+    "producer_revision": "3780a3b",
+    "seed": 1,
+    "speed": 0,
+    "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+    "world_schema": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7",
+    "application_schema": "40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47",
+    "source_prefix": {
+      "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\month12.avra",
+      "certificate_file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\month12.avra.json",
+      "snapshot_sha256": "ef73fa26cb61f932114143d8ec978532011ada219ba035969164725bbf06afd3",
+      "certificate_sha256": "d216dfa2fdaa570a05c5eea83a98f62b16dd995c9bf1f11f227998c0cad486f0",
+      "next_frame": 19296,
+      "capture_frame": 19295,
+      "months": 12,
+      "qualification": "natural_application_tail"
+    },
+    "capture_frame": 38499,
+    "capture_months": 24,
+    "stop_at": 38519,
+    "tail_frames": 20,
+    "process_count": 3,
+    "snapshot_bytes": 41634364,
+    "snapshot_sha256": "8bbf9fd5d94f0d316cd372bfe9cec1c70835b59dd9f6a044c5571205a329df65",
+    "section_bytes": {
+      "1": 70,
+      "2": 383,
+      "3": 635,
+      "4": 41631084,
+      "5": 1480
+    },
+    "trace_bytes": 4120,
+    "trace_sha256": "a0397f1d924fa5c34d5659735131c17f906c28b986992a455d1c81d13728757d",
+    "terminal": {
+      "capture_frame": 38499,
+      "capture_months": 24,
+      "completed_frame": 38519,
+      "next_frame": 38520,
+      "next_command": 26,
+      "months": 24,
+      "date": [
+        2,
+        3,
+        0,
+        540
+      ],
+      "digest": "9d782a89ece02b7ff8d670de99fa4489e2522e6213cb7a0e08b9c60c7eb5cd61",
+      "resources": [
+        2,
+        9,
+        1,
+        96,
+        313,
+        3
+      ],
+      "peaks": [
+        3,
+        9,
+        5,
+        96,
+        313,
+        3
+      ],
+      "resource_names": [
+        "humans",
+        "facilities",
+        "pages",
+        "audit_history",
+        "cash_entries",
+        "retained_tasks"
+      ],
+      "sound_count": 285,
+      "sound_hash": "8d5d34b44d29c28b8a95fe1a2b9464a75395fedc020403aa8fbd55f09c84827c",
+      "random": 327812,
+      "phase": 0,
+      "trace_rows": 20,
+      "capture_seconds": 1.966,
+      "restore_seconds": 0.342467
+    },
+    "process_wall_seconds": [
+      688.8722679,
+      1.991860400000005,
+      1.9981780999999028
+    ],
+    "certification_boundary": "已认证源恢复后继续；本轮仅认证新捕获尾段",
+    "limitations": [
+      "被动自然日期策略，不认证五星/全部任务/BOSS",
+      "不认证原APK/Steam动态或自动绘制频率"
+    ]
+  },
+  "scope_files": [
+    {
+      "path": "assets/audio/department_levelup.ogg",
+      "bytes": 25104,
+      "sha256": "b02f32a7d8d59cb05fda4615a9df299af6a40fb4e1a0a912b2f42b2d30e94e30"
+    },
+    {
+      "path": "assets/audio/kairoquest_battle.ogg",
+      "bytes": 426088,
+      "sha256": "3b81e5d9060fd61dfd80f3b7a65f4aa7c69161492c4b738219a2b42af6ace9b4"
+    },
+    {
+      "path": "assets/audio/kairoquest_happy.ogg",
+      "bytes": 651232,
+      "sha256": "2def2e235d01c9bfa6b478780c28b8d9d5d7d1af55193efc582e1d0d73403f6d"
+    },
+    {
+      "path": "assets/audio/kairoquest_kanashimi.ogg",
+      "bytes": 73634,
+      "sha256": "5e3ad5a35990ba6c0c3c4d7e18e56f1a056a2c635ba12b31c3677a8d0fd1284c"
+    },
+    {
+      "path": "assets/audio/kairoquest_main.ogg",
+      "bytes": 727419,
+      "sha256": "cc127b1c653f2ace9d34dbd921936217631669e9567bd65faeeeaf0236c52e77"
+    },
+    {
+      "path": "assets/audio/kairoquest_seattacklance.ogg",
+      "bytes": 10818,
+      "sha256": "cbd092f716e43868999096aacbd50b413f75958458663b2285bc4d1ecbb7db53"
+    },
+    {
+      "path": "assets/audio/kairoquest_seattackmnst1.ogg",
+      "bytes": 12701,
+      "sha256": "474e0bcaecadbd1cffe2f6fbc3c97ac9eeadd9757848ec29c59d36ad1d061334"
+    },
+    {
+      "path": "assets/audio/kairoquest_seattackmnst2.ogg",
+      "bytes": 9531,
+      "sha256": "fd9db8059dab35ebb6536737b9918b223eaae8c748efca6cd2b55ddcd7ae8536"
+    },
+    {
+      "path": "assets/audio/kairoquest_seattacksword.ogg",
+      "bytes": 9087,
+      "sha256": "06f4b937fa5744591aab15204a66986c703a162244c3bbdc4c24b2d6d80fda8b"
+    },
+    {
+      "path": "assets/audio/kairoquest_semagicblizzard.ogg",
+      "bytes": 23680,
+      "sha256": "ddc12a7c5974780b51e37aed1781a2c8f7e75901f5f989c6942086000f840bc3"
+    },
+    {
+      "path": "assets/audio/kairoquest_semagicfire.ogg",
+      "bytes": 9954,
+      "sha256": "0891537706d2a662741b63b9300e07ed543107e30d81b324ad7a6890e5150c3f"
+    },
+    {
+      "path": "assets/audio/kairoquest_semagicheal.ogg",
+      "bytes": 13914,
+      "sha256": "dff92a4c69befa18905cd50a62190382012f7426dbb9cc22b694cbb918ac75c1"
+    },
+    {
+      "path": "assets/audio/kairoquest_semagicthunder.ogg",
+      "bytes": 11023,
+      "sha256": "68d44e864fbfab58ac93d9e5f59ef8344d97470cf4921c68f64403267fcf312f"
+    },
+    {
+      "path": "assets/audio/kairoquest_title.ogg",
+      "bytes": 340320,
+      "sha256": "87a3da3b2a48259e7e84de8b098461e24d868887b7eb873645616bf63ffa13f2"
+    },
+    {
+      "path": "assets/audio/kairoquest_yorokobi.ogg",
+      "bytes": 119223,
+      "sha256": "870f532d7434cfd1e549218946206dabfb3655b9d0e51759875271ebdea3b113"
+    },
+    {
+      "path": "assets/audio/kairoquest_yorokobishort.ogg",
+      "bytes": 32489,
+      "sha256": "d730f4b502a113f2f4b5eaab57362a6ec7d76e4c222d0234c98bf43d82c999b6"
+    },
+    {
+      "path": "assets/audio/MANIFEST.json",
+      "bytes": 16660,
+      "sha256": "7a4661f9603f0edd39856286091bd49feacfbc0b1bd5be1b9a8d5714d8a43ebd"
+    },
+    {
+      "path": "assets/audio/README.md",
+      "bytes": 2097,
+      "sha256": "009c376cbeb9b363c006868b6e303c64e6620a2705222abc1cd52078278dd767"
+    },
+    {
+      "path": "assets/audio/se_00.ogg",
+      "bytes": 20523,
+      "sha256": "4eb633e102fb18a7724d7cebd7eed82f4693ba63b3a00cdc556349d3dbf7149b"
+    },
+    {
+      "path": "assets/audio/se_01.ogg",
+      "bytes": 22485,
+      "sha256": "e23f7f8f72aa2b605e6b17dd16c5a89d1a155cd17df81b1c0427f18ddceaa53a"
+    },
+    {
+      "path": "assets/audio/se_03.ogg",
+      "bytes": 11532,
+      "sha256": "1a6d515687b284d8c426aeb43adbe3d221aecac923c3ec84324cea24e34ea207"
+    },
+    {
+      "path": "assets/audio/se_04.ogg",
+      "bytes": 16395,
+      "sha256": "3af6b950429523bf60911256e9cd2b6772582a73df7e0ed89d9ed531f753b538"
+    },
+    {
+      "path": "assets/audio/se_05.ogg",
+      "bytes": 16110,
+      "sha256": "42122d548805d210ac24c8d34d8680e0172de519641d907e2d81dde6e5dbf7e3"
+    },
+    {
+      "path": "assets/audio/se_06.ogg",
+      "bytes": 14085,
+      "sha256": "d01bf477ed6a49e64ac4535aac14509084130563180f2b22153c5a98c60d1d95"
+    },
+    {
+      "path": "assets/audio/se_07.ogg",
+      "bytes": 25771,
+      "sha256": "3e9a9fa68461a4fb69e0b268c0fd23c4dcfb260fbb2e5a7b36d85e3ff3a91f30"
+    },
+    {
+      "path": "assets/audio/se_09.ogg",
+      "bytes": 9421,
+      "sha256": "7d4e8275a9a4d861e8a7aa2680705b0d55ba984dda565e17fd1e4c4547610656"
+    },
+    {
+      "path": "assets/audio/z_se07.ogg",
+      "bytes": 16178,
+      "sha256": "bbb6ac89c3b48bd1419d84f9a955b12475f73898cb78154527b9ea4a6290bc08"
+    },
+    {
+      "path": "assets/audio/z_se08.ogg",
+      "bytes": 11216,
+      "sha256": "727b08f8d704ca8979c663926e04242a5338da71f66758d1eba38a546c8e2780"
+    },
+    {
+      "path": "prototype/CMakeLists.txt",
+      "bytes": 25715,
+      "sha256": "c9ce838e8be4df0751d09df83377760747413ebf35bdd20a2c5741f3777a9b50"
+    },
+    {
+      "path": "prototype/include/dungeon_village_prototype/startup_information.hpp",
+      "bytes": 1065,
+      "sha256": "faa593d0d3f735e538f06d378b8ba72f17aef434c2cc769b871fab8671635887"
+    },
+    {
+      "path": "prototype/src/startup_information.cpp",
+      "bytes": 2281,
+      "sha256": "67f87eadd6648012d6ce0406d49a15e5be66d764b68b776480181181b5e3e716"
+    },
+    {
+      "path": "prototype/tests/startup_skin_checks.cpp",
+      "bytes": 40748,
+      "sha256": "cf009b8f6bc86a920358cbb43f5d9bcde275cb0016a3831dc213b57ba486cc4c"
+    },
+    {
+      "path": "rules/PROGRESSION_ROUTES.md",
+      "bytes": 13203,
+      "sha256": "a77dc9972d6ecfd61c00e0dcc78b0223582d4f4a5466bca93094fd1b4d9cbde6"
+    },
+    {
+      "path": "stages/COMPREHENSIVE_RESEARCH.md",
+      "bytes": 12709,
+      "sha256": "423f6539c6d7248064e71bbd57acdf4007efc07e7a652778099bd6382f6f6a45"
+    },
+    {
+      "path": "stages/README.md",
+      "bytes": 16875,
+      "sha256": "fa628c70e7226403194556c32c996088b5b9e5937cbc69b7e1b98bc088a30864"
+    },
+    {
+      "path": "tools/scripts/publish_audio.py",
+      "bytes": 7768,
+      "sha256": "d4451c30b8a65358b6b9a1b3ab948fdbeb54f0687b7518c50b5ed5ccf2fb801b"
+    },
+    {
+      "path": "ui/AUDIO_REQUESTS.md",
+      "bytes": 9013,
+      "sha256": "71f584a8212b7648bc6d75c6b0eab73e07eb923509882833c5f60cfc742aaf80"
+    },
+    {
+      "path": "ui/INFORMATION_MENU.md",
+      "bytes": 12279,
+      "sha256": "f88c6b5d8fbf30236623df67ff9f452768f19f2c8dde48249b714981d2bf430c"
+    },
+    {
+      "path": "ui/README.md",
+      "bytes": 27377,
+      "sha256": "5ee78e463b2228d8f92a1f98186279fdc6bcbb3e9fed19899f3c49995dd3376a"
+    },
+    {
+      "path": "ui/STEAM_TITLE_ACTORS.md",
+      "bytes": 10973,
+      "sha256": "9c9d90a3112085ad68e00a02ab7398746bbf97a875ad8558bb1e6ed7fdbbde66"
+    },
+    {
+      "path": "verification/PRODUCT_REQUESTS.md",
+      "bytes": 14850,
+      "sha256": "5b6ec09ff5f7f353b91e95a3a0d55170ba13f7bcd44dc81eb92866b71ab3ca9c"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 51976,
+      "sha256": "0ecf2628c7354d8a32a3596fc003c4e7a95d1a894c7eb04ec9d5a070570f9bc9"
+    },
+    {
+      "path": "work/audio-contract/audit.py",
+      "bytes": 6600,
+      "sha256": "0e78c18ff192d6d693092c1dd53784de3f2b31c9f1e3993d769a87f43c7000c6"
+    },
+    {
+      "path": "work/audio-contract/EVIDENCE.json",
+      "bytes": 26439,
+      "sha256": "0d9f4d6b7779d18f898be051daa06fb99b2501f236a975ae89f70ed6902b3c08"
+    },
+    {
+      "path": "work/audio-contract/README.md",
+      "bytes": 2667,
+      "sha256": "766fae098868f6f6e169c4f650f91c1f18ab2839e0a9cfb9923b296709d39df7"
+    },
+    {
+      "path": "work/audio-contract/steam-inspect.cjs",
+      "bytes": 3619,
+      "sha256": "ca55fc1f53c034b030f95bdcc6d5b8985e931e55c8bf67ad1d5c46700d087f4c"
+    },
+    {
+      "path": "work/information-menu-contract/audit.cjs",
+      "bytes": 6009,
+      "sha256": "03336aea25a49aa264cb2776aad3f62d3fec6a40561c7b2d5848562b1d49c2c6"
+    },
+    {
+      "path": "work/information-menu-contract/build.log",
+      "bytes": 915,
+      "sha256": "8a2f6fc3cc5947f990527ffaaba54610941c5af1b15ce7bc114a90b05a8b8562"
+    },
+    {
+      "path": "work/information-menu-contract/ctest.log",
+      "bytes": 434,
+      "sha256": "caf6931f3a8ad5b9c0a7017d7fce41c8a0f3792904602db4f098540592f0d4be"
+    },
+    {
+      "path": "work/information-menu-contract/EVIDENCE.json",
+      "bytes": 15382,
+      "sha256": "751a4b22a4255f40c1c04579939545e6838a222ae98b168d70eb81b6b1c10625"
+    },
+    {
+      "path": "work/information-menu-contract/README.md",
+      "bytes": 3119,
+      "sha256": "eca6591d5fcdcdcb5a37d9a40f77510eb85dbca3ef1fa1595470fa829b3adbda"
+    },
+    {
+      "path": "work/progression-unlock-producers/audit.mjs",
+      "bytes": 7029,
+      "sha256": "c6be6a7f8c5d43a9912f987f5ca6261deeef7e529039950d9ba97f394a214c09"
+    },
+    {
+      "path": "work/progression-unlock-producers/EVIDENCE.json",
+      "bytes": 23343,
+      "sha256": "2988e61537f1b399249131139213e9a175a684f601d10b663c12ccccd76ecc52"
+    },
+    {
+      "path": "work/progression-unlock-producers/README.md",
+      "bytes": 5354,
+      "sha256": "36a4e02ade90b765384a76eb5ccff9972c3318c9710e0e7f6c62ca8a94327f29"
+    },
+    {
+      "path": "work/steam-actor-arrays/arrays.cjs",
+      "bytes": 13083,
+      "sha256": "b0a3002da2fa36633a253bbb0712f972fc187e09a58514dac266aa24487524cd"
+    },
+    {
+      "path": "work/steam-actor-arrays/EVIDENCE.json",
+      "bytes": 33218,
+      "sha256": "4f97ce3064d018452e6da1233acdb374b2b05a84f56d29c7c87068d6e0826019"
+    },
+    {
+      "path": "work/steam-actor-arrays/human.json",
+      "bytes": 28550,
+      "sha256": "2fe03cf4bad0f87a76c72cf7287aa6425b58c16a4825aa12d56cb0a62aa305e8"
+    },
+    {
+      "path": "work/steam-actor-arrays/inspect.cjs",
+      "bytes": 3280,
+      "sha256": "06010b495b2080983c92802262687c8ca6ad9833b2d8430a0191f5d7ba71b8bb"
+    },
+    {
+      "path": "work/steam-actor-arrays/README.md",
+      "bytes": 3765,
+      "sha256": "25b77790ccaae356d46406e499dcb3eb6ffc503160a358aecf9b53f883e7523a"
+    },
+    {
+      "path": "work/steam-actor-arrays/RESOURCES.json",
+      "bytes": 82931,
+      "sha256": "77f11f99fae4eeb81e230bb7c92284b5ad815947a5b152b1b9f6ebd09cdfd1f9"
+    },
+    {
+      "path": "work/steam-actor-arrays/resources.py",
+      "bytes": 7074,
+      "sha256": "42e4a5b13559aa61865fcd56e3891f82b8300452fc74142df5bcc75df1e0c48f"
+    },
+    {
+      "path": "work/steam-actor-arrays/verify-evidence.cjs",
+      "bytes": 3849,
+      "sha256": "74eb63b2f5b1ca5901dcf4478090530524aa7e0c8161d2673b07fc4825190bce"
+    },
+    {
+      "path": "work/steam-actor-arrays/weapon.json",
+      "bytes": 45031,
+      "sha256": "fa6d41b81c490f4a675ad3571b4a3e7a4dd22c2004007ce9e6162ee37b6c15c4"
+    }
+  ],
+  "limitations": [
+    "??9/36????????",
+    "?????????????b/c/d????????",
+    "????????????????",
+    "???????????/BOSS/????",
+    "36???????????????"
+  ]
+}

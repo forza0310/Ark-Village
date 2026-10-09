@@ -57,9 +57,47 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 `DrawDispPlayer`先调用`SetDrawParam`，当共享显示人物`objType_==0`且weaponId!=-1时画武器，最后画身体。因此主路径图层为**阴影→有条件武器→身体**。没有读取防具或饰品另叠衣服；这不代表其它人物效果没有额外层。
 
-`SetDrawParam`的正常人类、action0、`haveObj_==-1`分支：身体SEB取`HUMAN_ANIME_SEB[0]+direct_`，帧取`HUMAN_ANIME_SEB_F[0][step]`，图片取bodyImg；身体偏移从`body_off[0]`取得。本批核了数组消费，未独立解析Steam这些数组的每个元素，不能把APK的0…3／18×24裁片直接当作本次Steam已核值。
+`SetDrawParam`的正常人类、action0、`haveObj_==-1`分支：身体SEB取`HUMAN_ANIME_SEB[0]+direct_`，帧取`HUMAN_ANIME_SEB_F[0][step]`，图片取bodyImg；身体偏移从`body_off[0]`取得。后续[数组与资源专题](../work/steam-actor-arrays/README.md)已独立闭合此分支的Steam常量与裁片，见下节。
 
-`Draw_weapon`沿当前武器定义的`chargeType_`选`WEAPON_ANIME_F[chargeType][0][step]`，SEB取`WeaponData.WEAPON_SEB[chargeType]+direct`，图片取`weapon.imgId_`，锚点加`GetWeponOffset(0,chargeType,direct,step)`。标题传`zsort=false`，直接DrawSeb，不走世界绘制队列。action0不会进入action1／5的斩击光分支。`GetWeaponAnimeIndex(0)`已核返回0；Steam武器偏移及上述静态数组值仍需各自解析，不能按素材列数猜。
+`Draw_weapon`沿当前武器定义的`chargeType_`选`WEAPON_ANIME_F[chargeType][0][step]`，SEB取`WeaponData.WEAPON_SEB[chargeType]+direct`，图片取`weapon.imgId_`，锚点加`GetWeponOffset(0,chargeType,direct,step)`。标题传`zsort=false`，直接DrawSeb，不走世界绘制队列。action0不会进入action1／5的斩击光分支。`GetWeaponAnimeIndex(0)`已核返回0；完整`GetWeponOffset`证明action0选择`WEAPON_WALK_POS[type][direct][step]`，没有额外插值或随机。
+
+## Steam数组、SEB与图片交叉闭合
+
+2026-10-09续批：[独立证据](../work/steam-actor-arrays/EVIDENCE.json)。固定两具名cctor在成功分配／类型检查路径沿显式常量及真实fieldRef解读，目标字段全部发布后停止；Character2前10,513字节、WeaponData前25,697字节。未知值、指令或控制流显式失败；没有执行游戏代码，没有用APK常量补洞。三个编译器小helper由原调用点追到真实入口并分别核≤128字节的成功路径。
+
+| Steam字段 | 正常action0已核值 | 静态发布VA |
+| --- | --- | --- |
+| HUMAN_ANIME_SEB[0] | 0；因此SEB=direction方向号 | `0x10294B8C` |
+| HUMAN_ANIME_SEB_F[0] | `[0,1,2,3]` | `0x10294F8E` |
+| body_off[0] | `[0,0]` | `0x10295E6E` |
+| WEAPON_ANIME_F[type][0] | type0…3均为`[0,0,0,0]` | `0x102958D6` |
+| WEAPON_SEB | `[0,4,8,12]` | `0x1023029E` |
+| WEAPON_WALK_POS | 下表的4类×4方向×4步帧×2坐标 | `0x1022BFA8` |
+
+表中发布点不是消费点；消费顺序仍以上节实际Draw链为准。行走偏移的128个整数额外逐项直接检查原机器码`mov [ebx+disp8],imm32`与有符号立即数，独立于cctor静态解释器。int[]新建后的未写零槽是语言初始化语义；引用数组缺子数组则拒绝，不能把未知值当零。
+
+| chargeType | direction0 | direction1 | direction2 | direction3 |
+| --- | --- | --- | --- | --- |
+| 0 | (-3,-28) | (-3,-28) | (-18,-28) | (-18,-28) |
+| 1 | (-7,-22) | (-7,-22) | (-15,-22) | (-15,-22) |
+| 2 | (-5,-28) | (-5,-28) | (-20,-28) | (-20,-28) |
+| 3 | (-9,-38) | (-9,-37) | (-22,-37) | (-23,-38) |
+
+表为step0/2；step1/3只把y加1。Steam本次读数与APK正常行走偏移相同；这是独立读数后的比较。标题实际只传direction1/2，但数组的四方向均核，不把它们转换成未经证明的世界朝向名称。
+
+从Steam `resources.assets`的human／weapon／common TextAsset分别解码归档，独立解析`img.inf`、`seb.inf`和原SEB。共复核98项：human37图、weapon33图、阴影1图、21个所需SEB和6份目录；96项与APK原件字节相同，common两份目录整体不同，**所消费的common图片3和SEB25实际文件及其槽位已核一致**。不因目录整体不同否认已核局部，也不因局部相同声称整组相同。
+
+| 图层 | Steam独立解析的资源与裁片 |
+| --- | --- |
+| 阴影 | common图片3、SEB25；frame0裁片`(0,0,12,2)`，offset=(-6,-1) |
+| 身体 | human SEB0…3，walk00…03；18×24，四帧x=0、18、0、36，y=24×direction，offset=(-9,-24)，无翻转 |
+| 武器type0/1 | sword／bow方向SEB，frame0；21×25，x=0、y=25×direction，SEB offset=(0,0) |
+| 武器type2 | spear方向SEB，frame0；26×28，x=0、y=28×direction，SEB offset=(0,0) |
+| 武器type3 | greatSword方向SEB，frame0；32×35，x=0、y=35×direction，SEB offset=(0,0) |
+
+human图片索引没有32，现有37图均核实际像素／尺寸及所需身体裁片边界。weapon33图逐个核字节与像素身份；本工具未重解Steam武器表的每条定义→图片／chargeType配对，不能把所有类别SEB交叉套用到每张武器图。body第2帧重复站立列，不等于取PNG第三列；武器frame固定0，不随身体步帧切到第1…3帧。人物锚点、武器行走偏移与SEB内部偏移应各加一次。
+
+本节闭合正常action0的源端常量和资源身份，仍不证明共享scratch在任意历史中都处于该前提。完整其它动作、特效及产品实际绘制应用继续各自验收，不能由解析器通过或文件hash相同替代。
 
 ## scratch副作用与交付边界
 
@@ -67,4 +105,4 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；`haveObj_`残留还会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等，本批未闭合其所有子树与共享状态初始化。所以不能宣称整个标题绘制无随机、任何历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
 
-本次交付可用于Steam模式的后续设计与差分断言，尚未增加C++切源策略、Owner字段或快照schema，也未修改已认证APK标题模式。最小后续是：独立解析正常人物的Steam静态数组和实际SEB身份；追共同显示人物初始化／残留资格、框架更新准入及JRandom交接；再在独立Steam表现模式验边缘与随机差异。窗口观测可交叉人物淡入／淡出与遮挡，但截图不能单独证明内部槽、抽数或逻辑tick。
+本次交付可用于Steam模式的后续设计与差分断言，尚未增加C++切源策略、Owner字段或快照schema，也未修改已认证APK标题模式。正常人物数组和所需SEB／PNG身份现已独立核实；后续追共同显示人物初始化／残留资格、框架更新准入及JRandom交接，再在独立Steam表现模式验边缘与随机差异。窗口观测可交叉人物淡入／淡出与遮挡，但截图不能单独证明内部槽、抽数或逻辑tick。

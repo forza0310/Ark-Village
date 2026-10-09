@@ -6,6 +6,8 @@
 
 ## 后继跟进：Steam消费者与受击短轨迹
 
+2026-10-09接续信息／音频请求：[收支情报](../ui/INFORMATION_MENU.md)已交付原12×5×2现金桶的纯查询，包含完整五类、月／年、Java int回卷与金额格式；Release应用及visuals两项通过。它不改变Owner和快照身份，raw9／36可操作控制器尚未交付。不能借自动月报前三类代替本页。[音频合同](../ui/AUDIO_REQUESTS.md)已核真实`res/raw/snd.inf`26项；普通播放／BGM替换／jingle不能仅由ID推导，当前整数请求尚不足以表达全部操作。素材发布和完整后端分别登记，不把维护请求数量视为实际听到次数。[Steam基础人物](../ui/STEAM_TITLE_ACTORS.md)进一步核动作0身体与武器数组、98项资源身份；完整动作与绘制随机仍缺。
+
 持续研究增量：新增[正常标题／纪录人物基础图层](../ui/TITLE_ACTOR_SKIN.md)维护查询，明确阴影、主武器、职业性别身体的源顺序／裁片／偏移；不涵盖世界人物全部叠加。[Steam字体](../ui/STEAM_FONT_CONSUMER.md)与[标题绘制](../ui/STEAM_TITLE_DRAW.md)交付具名调用链、语言回退及逻辑尺寸，完整中文字体和可操作标题仍未认证。应用更新已补Session原有世界绘制缓存收尾；这会影响声音资格和完整状态，AVRAPP语义升3，旧1／2拒绝，详情见[模块](../prototype/APPLICATION_REPLAY.md)。产品若消费旧应用实现应核对此修正，不要求改变玩家存档格式。
 
 2026-10-09后继皮肤交付补公共窗口边线／木纹／标题带和四角图元，见[维护模块](../prototype/STARTUP_SKIN.md)。[Steam资源身份](../ui/STEAM_STARTUP_RESOURCES.md)确认框图多处相同，但标题背景600×380、Logo／草边不同；字体对象已核不等于中文运行选择已证。[原标题调度](../ui/TITLE_PRESENTATION.md)保持APK身份，本批已接背景人物Owner及独立显式请求；h/j/o菜单路由、人物身体资源展开与Steam动态仍缺，不能按产品FPS自动调用。新增[AVRAPP01](../prototype/APPLICATION_REPLAY.md)为研究短回放，编译绑定research/work，只供研究测试；当前语义2含全部20槽，旧语义1拒绝，不要求产品改变玩家存档或把研究目录写入发布程序。产品迁入仍按具名用途选择维护交付。

@@ -1,0 +1,778 @@
+{
+  "version": 1,
+  "date": "2026-10-09",
+  "qualification": "apk_static_producer_to_consumer_mapping_not_natural_run",
+  "source_profiles": {
+    "apk_sha256": "1e52408aeaebec2d92a5e50b8c0d964566d0038456bc9b081e18b7d3446a4ef5",
+    "xls_sha256": "8baacbb181dcd4eb18435eb39938ef2ad21d7dee9db27654b07c3428f4739958",
+    "steam_dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "steam_metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "denominator": 31,
+  "positive_producer_definitions": 30,
+  "unclosed_positive_producers": [
+    27
+  ],
+  "activity_records": [
+    {
+      "activity_id": 0,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 0
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 5,
+          "threshold": 600,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 6
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 1,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 1
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 10,
+          "threshold": 1100,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 11
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 2,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 2
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 27,
+          "threshold": 2800,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 28
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 3,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 3
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 29,
+          "threshold": 3000,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 30
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 4,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 4
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 1,
+          "threshold": 200,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 2
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 5,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 5
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 35,
+          "threshold": 3600,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 36
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 6,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 6
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 7,
+          "threshold": 800,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 8
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 7,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 7
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 73,
+          "trigger": {
+            "kind": "construction_flag",
+            "flag": 256,
+            "facility_id": 63
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 74
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 8,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 8
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 16,
+          "threshold": 1700,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 17
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 9,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 9
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 38,
+          "threshold": 3900,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 39
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 10,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 10
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 2,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 11,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 11
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 42,
+          "threshold": 4300,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 43
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 12,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 12
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 32,
+          "threshold": 3300,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 33
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 13,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 13
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 74,
+          "trigger": {
+            "kind": "construction_flag",
+            "flag": 512,
+            "facility_id": 62
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 75
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 14,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 14
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 19,
+          "threshold": 2000,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 20
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 15,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 15
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 48,
+          "threshold": 4900,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 49
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 16,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 16
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 1,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 17,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 17
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 24,
+          "threshold": 2500,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 25
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 18,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 18
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 3,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 19,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 19
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 4,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 20,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 20
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 5,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 21,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 21
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 75,
+          "trigger": {
+            "kind": "construction_flag",
+            "flag": 1024,
+            "facility_id": 64
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 76
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 22,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 22
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 76,
+          "trigger": {
+            "kind": "construction_flag",
+            "flag": 2048,
+            "facility_id": 55
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 77
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 23,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 23
+      },
+      "producers": [
+        {
+          "kind": "reset_flag1",
+          "consumer": "c/n.java:3336-3345",
+          "effect": "p1,r最终false,m0",
+          "maintenance": "prototype/src/startup_world_runtime.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 24,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 24
+      },
+      "producers": [
+        {
+          "kind": "rank_commit",
+          "rank": 2,
+          "consumer": "b/g.java:4593-4600",
+          "effect": "a/c.a()直接p1，旧p0才r=true；notice6，不创建95",
+          "maintenance": "prototype/src/startup_world_runtime_pages.cpp"
+        }
+      ]
+    },
+    {
+      "activity_id": 25,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 25
+      },
+      "producers": [
+        {
+          "kind": "popularity_reward_page95",
+          "reward_definition": 9,
+          "threshold": 1000,
+          "source": {
+            "path": "data/scripts/original/popularBonus.txt",
+            "line": 10
+          },
+          "consumer": "c/n.java:738-782 -> d/a.java:904 -> b/g.java:6147",
+          "effect": "首次未领人气奖励调度；33仅生成95/r11；满40确认才a/c.a()"
+        }
+      ]
+    },
+    {
+      "activity_id": 26,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 26
+      },
+      "producers": [
+        {
+          "kind": "rank_event_reward95",
+          "rank": 4,
+          "event": 45,
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 46
+          },
+          "effect": "晋级事件延迟后创建95/r11；满40确认才p1/新r"
+        }
+      ]
+    },
+    {
+      "activity_id": 27,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 27
+      },
+      "producers": []
+    },
+    {
+      "activity_id": 28,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 28
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 102,
+          "trigger": {
+            "kind": "magic_pot_process",
+            "minimum_experience": 30,
+            "priority": "仅未进入>=100分支且未见事件102"
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 103
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 29,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 29
+      },
+      "producers": [
+        {
+          "kind": "event_direct17",
+          "event": 103,
+          "trigger": {
+            "kind": "magic_pot_process",
+            "minimum_experience": 100,
+            "priority": "优先于30分支，未见事件103"
+          },
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 104
+          },
+          "effect": "opcode17即时p1/新r及条件事件61/notice6，不创建95"
+        }
+      ]
+    },
+    {
+      "activity_id": 30,
+      "definition_reference": {
+        "path": "data/PROGRESSION_CONTENT_INDEX.json",
+        "table": "village_activity",
+        "id": 30
+      },
+      "producers": [
+        {
+          "kind": "rank_event_reward95",
+          "rank": 2,
+          "event": 43,
+          "source": {
+            "path": "data/scripts/original/events.txt",
+            "line": 44
+          },
+          "effect": "晋级事件延迟后创建95/r11；满40确认才p1/新r"
+        }
+      ]
+    }
+  ],
+  "museum64": {
+    "source": {
+      "path": "data/original/tenantData.txt",
+      "line": 65
+    },
+    "rank": 4,
+    "exchange_village_points": 200,
+    "ordinary_build_gold": 3000,
+    "flags": 1124,
+    "chain": [
+      "rank4 -> catalogue85 while p!=2",
+      "pay village points -> raw93 r3/s64",
+      "confirm at counter>=40 -> H+1(max99), oldp0:p2/q0/rtrue",
+      "normal build -> actual construction completion -> flag1024 events75/215",
+      "event75 opcode17 -> activity21 p1"
+    ],
+    "limitation": "一条已核普通路径；不证明所有可能获取途径、自然五星或Steam消费者。"
+  },
+  "activity27": {
+    "initial_flags": 0,
+    "rank_producer": -1,
+    "ordinary_catalogue": "explicit index27 exclusion",
+    "positive_producer": "none in confirmed reset/rank/event/popularity routes",
+    "effect_type4": "no dedicated effect/render branch",
+    "persistence": "原活动分区仍逐定义保存o/p/r/m，不能因普通目录排除而丢字段",
+    "limitation": "不将未找到正向产生者证明为全程序/任意外部存档中绝对不可达"
+  },
+  "sources": [
+    {
+      "path": "data/PROGRESSION_CONTENT_INDEX.json",
+      "bytes": 400946,
+      "sha256": "9df55a72b1b0eff7c123c67f32163077eb6492320e8246aa174c60a9f38eb434"
+    },
+    {
+      "path": "data/world/asEventData.txt",
+      "bytes": 2734,
+      "sha256": "11d22c23de2760bbcc7b87450ba70534482afd2533ca7bab1bf6887c46829a1a"
+    },
+    {
+      "path": "data/original/tenantData.txt",
+      "bytes": 11629,
+      "sha256": "5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a"
+    },
+    {
+      "path": "data/scripts/original/events.txt",
+      "bytes": 8078,
+      "sha256": "64a777f2dd590b5e8837a10168bc8dd12353426eb6e286befa4b88753eedb28d"
+    },
+    {
+      "path": "data/scripts/original/popularBonus.txt",
+      "bytes": 3652,
+      "sha256": "19a010efa9bca14e2757a7ede3fd9080ad306cb50cc758157597575f1407bfcb"
+    },
+    {
+      "path": "data/world/magicPot.txt",
+      "bytes": 1379,
+      "sha256": "7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c"
+    },
+    {
+      "path": "work/decompiled/sources/a/c.java",
+      "bytes": 1618,
+      "sha256": "31640db592e9dd2a8a49d0b8fda0c1f6a240321f51ce10a27a4cf28b5915fa45"
+    },
+    {
+      "path": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603"
+    },
+    {
+      "path": "work/decompiled/sources/b/g.java",
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081"
+    },
+    {
+      "path": "work/decompiled/sources/c/n.java",
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7"
+    },
+    {
+      "path": "work/decompiled/sources/c/m.java",
+      "bytes": 35163,
+      "sha256": "1002d55a70323e7d03f632bd5fff1c4d4ca8195a5c056383e2d9ab2b8716945c"
+    },
+    {
+      "path": "work/decompiled/sources/d/a.java",
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b"
+    },
+    {
+      "path": "example/src/world_village_activity.cpp",
+      "bytes": 5816,
+      "sha256": "c7eb2e82b0ca82c07f458e90dd52489901bb5dab486d2fa50b7f442ff554aeed"
+    },
+    {
+      "path": "example/src/world_scripts.cpp",
+      "bytes": 41664,
+      "sha256": "36d5cda82dca354adddd6599bc0c7ee8e485f6059db5c32fd4f4f0986d216644"
+    },
+    {
+      "path": "example/src/world_gift_page.cpp",
+      "bytes": 10319,
+      "sha256": "a91161614538644a502499f9cddedd2d2729e9f267d41ed411f1d4c266570c98"
+    },
+    {
+      "path": "example/src/world_facility_update.cpp",
+      "bytes": 9077,
+      "sha256": "9cba70b2f25a289f4f21959a2c4ceb485f7b235a8b74b3abcc11ebcc91cb0fe9"
+    },
+    {
+      "path": "prototype/src/startup_world_commerce.cpp",
+      "bytes": 18626,
+      "sha256": "c026c4302f6a4ace962b8a05fa988e0951ee6c05f6200b571cf98b251c09a9c1"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "bytes": 40331,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e"
+    },
+    {
+      "path": "prototype/src/startup_world_village_activity.cpp",
+      "bytes": 21453,
+      "sha256": "97ce3e9bbba3bf550547193ae98e830fe1052160a4b8b038a07baca470b28183"
+    },
+    {
+      "path": "prototype/src/startup_world_magic_pot.cpp",
+      "bytes": 27648,
+      "sha256": "dd9e10deaab7aec6ebdde37650a8ca9f1b7972b72547659d6415836bc4a4f9ab"
+    },
+    {
+      "path": "prototype/src/startup_world_codec_fields.json",
+      "bytes": 89877,
+      "sha256": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7"
+    }
+  ]
+}

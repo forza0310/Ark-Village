@@ -1,0 +1,1658 @@
+{
+  "date": "2026-10-09",
+  "qualification": "独立机器码立即数复核128项；Steam SEB结构独立期望抽查；未做窗口或C++测试",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "name": "game.Character2",
+      "begin": 271136096,
+      "end": 271146609,
+      "bytes": 10513,
+      "sha256": "d7e5c0045715785cc2cc56d4a46c4ef2555d8823978e430de904a98713c7e024"
+    },
+    {
+      "name": "data.WeaponData",
+      "begin": 270704192,
+      "end": 270729889,
+      "bytes": 25697,
+      "sha256": "c410911f15323e7f659347a03de3daa980812bb8bfb2126cce5032a0bd5c6e69"
+    }
+  ],
+  "helpers": [
+    {
+      "va": 268445136,
+      "caller": 270726026,
+      "bytes": 128,
+      "sha256": "7c263f945da3fd342ba8216fa1125d1a98b4f1a7559481b92663d63f5a5045bb",
+      "offset": 6608
+    },
+    {
+      "va": 268446640,
+      "caller": 270726039,
+      "bytes": 96,
+      "sha256": "8aaed229605431e5968b8fa65c93468c59ec947a4980c153e159ef24463c90f6",
+      "offset": 8112
+    },
+    {
+      "va": 268446688,
+      "caller": 270726111,
+      "bytes": 64,
+      "sha256": "3ddb887fe18d84f7d27699f714ea7a5cb63e86a370e5935a8be08e17542b58cc",
+      "offset": 8160
+    }
+  ],
+  "independent_walk_immediates": [
+    {
+      "indices": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "va": 270704770,
+      "offset": 2264706,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "va": 270704787,
+      "offset": 2264723,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        1,
+        0
+      ],
+      "va": 270704882,
+      "offset": 2264818,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "va": 270704899,
+      "offset": 2264835,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        2,
+        0
+      ],
+      "va": 270704986,
+      "offset": 2264922,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        2,
+        1
+      ],
+      "va": 270705003,
+      "offset": 2264939,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        3,
+        0
+      ],
+      "va": 270705090,
+      "offset": 2265026,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        0,
+        3,
+        1
+      ],
+      "va": 270705107,
+      "offset": 2265043,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        0,
+        0
+      ],
+      "va": 270705264,
+      "offset": 2265200,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "va": 270705281,
+      "offset": 2265217,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        1,
+        0
+      ],
+      "va": 270705376,
+      "offset": 2265312,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        1,
+        1
+      ],
+      "va": 270705393,
+      "offset": 2265329,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        2,
+        0
+      ],
+      "va": 270705480,
+      "offset": 2265416,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        2,
+        1
+      ],
+      "va": 270705497,
+      "offset": 2265433,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        3,
+        0
+      ],
+      "va": 270705584,
+      "offset": 2265520,
+      "value": -3,
+      "sha256": "df2f8d4a4526779a6e3cedffa00f4cd461be0b0c6943cd9cadfa9d3888206072"
+    },
+    {
+      "indices": [
+        0,
+        1,
+        3,
+        1
+      ],
+      "va": 270705601,
+      "offset": 2265537,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        0,
+        0
+      ],
+      "va": 270705747,
+      "offset": 2265683,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        0,
+        1
+      ],
+      "va": 270705764,
+      "offset": 2265700,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        1,
+        0
+      ],
+      "va": 270705859,
+      "offset": 2265795,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        1,
+        1
+      ],
+      "va": 270705876,
+      "offset": 2265812,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        2,
+        0
+      ],
+      "va": 270705963,
+      "offset": 2265899,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        2,
+        1
+      ],
+      "va": 270705980,
+      "offset": 2265916,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        3,
+        0
+      ],
+      "va": 270706067,
+      "offset": 2266003,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        2,
+        3,
+        1
+      ],
+      "va": 270706084,
+      "offset": 2266020,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        0,
+        0
+      ],
+      "va": 270706230,
+      "offset": 2266166,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        0,
+        1
+      ],
+      "va": 270706247,
+      "offset": 2266183,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        1,
+        0
+      ],
+      "va": 270706342,
+      "offset": 2266278,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        1,
+        1
+      ],
+      "va": 270706359,
+      "offset": 2266295,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        2,
+        0
+      ],
+      "va": 270706446,
+      "offset": 2266382,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        2,
+        1
+      ],
+      "va": 270706463,
+      "offset": 2266399,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        3,
+        0
+      ],
+      "va": 270706550,
+      "offset": 2266486,
+      "value": -18,
+      "sha256": "a9faa0d7518508deb4bc1ce869eac45dc08ae63686cd38dfb4b53d2f4caafaf5"
+    },
+    {
+      "indices": [
+        0,
+        3,
+        3,
+        1
+      ],
+      "va": 270706567,
+      "offset": 2266503,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "va": 270706786,
+      "offset": 2266722,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        0,
+        1
+      ],
+      "va": 270706803,
+      "offset": 2266739,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "va": 270706898,
+      "offset": 2266834,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        1,
+        1
+      ],
+      "va": 270706915,
+      "offset": 2266851,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        2,
+        0
+      ],
+      "va": 270707002,
+      "offset": 2266938,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        2,
+        1
+      ],
+      "va": 270707019,
+      "offset": 2266955,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        3,
+        0
+      ],
+      "va": 270707106,
+      "offset": 2267042,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        0,
+        3,
+        1
+      ],
+      "va": 270707123,
+      "offset": 2267059,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "va": 270707280,
+      "offset": 2267216,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        0,
+        1
+      ],
+      "va": 270707297,
+      "offset": 2267233,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "va": 270707392,
+      "offset": 2267328,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "va": 270707409,
+      "offset": 2267345,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        2,
+        0
+      ],
+      "va": 270707496,
+      "offset": 2267432,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        2,
+        1
+      ],
+      "va": 270707513,
+      "offset": 2267449,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        3,
+        0
+      ],
+      "va": 270707600,
+      "offset": 2267536,
+      "value": -7,
+      "sha256": "98c3f52c15e42a2d465d98a5d1584c57fb9995799499a2ef55f1cf2d1a7914c0"
+    },
+    {
+      "indices": [
+        1,
+        1,
+        3,
+        1
+      ],
+      "va": 270707617,
+      "offset": 2267553,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        0,
+        0
+      ],
+      "va": 270707763,
+      "offset": 2267699,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        0,
+        1
+      ],
+      "va": 270707780,
+      "offset": 2267716,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        1,
+        0
+      ],
+      "va": 270707875,
+      "offset": 2267811,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        1,
+        1
+      ],
+      "va": 270707892,
+      "offset": 2267828,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        2,
+        0
+      ],
+      "va": 270707979,
+      "offset": 2267915,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        2,
+        1
+      ],
+      "va": 270707996,
+      "offset": 2267932,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        3,
+        0
+      ],
+      "va": 270708083,
+      "offset": 2268019,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        2,
+        3,
+        1
+      ],
+      "va": 270708100,
+      "offset": 2268036,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        0,
+        0
+      ],
+      "va": 270708246,
+      "offset": 2268182,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        0,
+        1
+      ],
+      "va": 270708263,
+      "offset": 2268199,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        1,
+        0
+      ],
+      "va": 270708358,
+      "offset": 2268294,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        1,
+        1
+      ],
+      "va": 270708375,
+      "offset": 2268311,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        2,
+        0
+      ],
+      "va": 270708462,
+      "offset": 2268398,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        2,
+        1
+      ],
+      "va": 270708479,
+      "offset": 2268415,
+      "value": -22,
+      "sha256": "15cc920a73a2181b835493a148028a3a014bc2b587c636b0c141bc31b90f0a41"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        3,
+        0
+      ],
+      "va": 270708566,
+      "offset": 2268502,
+      "value": -15,
+      "sha256": "465de4b86f4bfc0f659c07bcce5dfd4bd6dc3ef2e9bc57f8a8030f57cf9e4dc0"
+    },
+    {
+      "indices": [
+        1,
+        3,
+        3,
+        1
+      ],
+      "va": 270708583,
+      "offset": 2268519,
+      "value": -21,
+      "sha256": "aa4f7575efbd126cb593196173a3d65f43fea13b5158c96f8ab9180ca16e77b9"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        0,
+        0
+      ],
+      "va": 270708791,
+      "offset": 2268727,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        0,
+        1
+      ],
+      "va": 270708808,
+      "offset": 2268744,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        1,
+        0
+      ],
+      "va": 270708903,
+      "offset": 2268839,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        1,
+        1
+      ],
+      "va": 270708920,
+      "offset": 2268856,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        2,
+        0
+      ],
+      "va": 270709007,
+      "offset": 2268943,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        2,
+        1
+      ],
+      "va": 270709024,
+      "offset": 2268960,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        3,
+        0
+      ],
+      "va": 270709111,
+      "offset": 2269047,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        0,
+        3,
+        1
+      ],
+      "va": 270709128,
+      "offset": 2269064,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        0,
+        0
+      ],
+      "va": 270709285,
+      "offset": 2269221,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        0,
+        1
+      ],
+      "va": 270709302,
+      "offset": 2269238,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        1,
+        0
+      ],
+      "va": 270709397,
+      "offset": 2269333,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        1,
+        1
+      ],
+      "va": 270709414,
+      "offset": 2269350,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        2,
+        0
+      ],
+      "va": 270709501,
+      "offset": 2269437,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        2,
+        1
+      ],
+      "va": 270709518,
+      "offset": 2269454,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        3,
+        0
+      ],
+      "va": 270709605,
+      "offset": 2269541,
+      "value": -5,
+      "sha256": "1eeb7d76a3a3b3d68cf9963f77ba152d0eaccceb3bb16093827999f54028f72b"
+    },
+    {
+      "indices": [
+        2,
+        1,
+        3,
+        1
+      ],
+      "va": 270709622,
+      "offset": 2269558,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        0,
+        0
+      ],
+      "va": 270709768,
+      "offset": 2269704,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        0,
+        1
+      ],
+      "va": 270709785,
+      "offset": 2269721,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        1,
+        0
+      ],
+      "va": 270709880,
+      "offset": 2269816,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        1,
+        1
+      ],
+      "va": 270709897,
+      "offset": 2269833,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        2,
+        0
+      ],
+      "va": 270709984,
+      "offset": 2269920,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "va": 270710001,
+      "offset": 2269937,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        3,
+        0
+      ],
+      "va": 270710088,
+      "offset": 2270024,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        2,
+        3,
+        1
+      ],
+      "va": 270710105,
+      "offset": 2270041,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        0,
+        0
+      ],
+      "va": 270710251,
+      "offset": 2270187,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        0,
+        1
+      ],
+      "va": 270710268,
+      "offset": 2270204,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        1,
+        0
+      ],
+      "va": 270710363,
+      "offset": 2270299,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        1,
+        1
+      ],
+      "va": 270710380,
+      "offset": 2270316,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        2,
+        0
+      ],
+      "va": 270710467,
+      "offset": 2270403,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        2,
+        1
+      ],
+      "va": 270710484,
+      "offset": 2270420,
+      "value": -28,
+      "sha256": "69522edf70e777228b7f82d1bf2636f420a15bac890e1b2893261d3d392117d8"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        3,
+        0
+      ],
+      "va": 270710571,
+      "offset": 2270507,
+      "value": -20,
+      "sha256": "1ad1f8e2bbbfa5590370276fea9310b931f97852ec8babfde33111716e90d94c"
+    },
+    {
+      "indices": [
+        2,
+        3,
+        3,
+        1
+      ],
+      "va": 270710588,
+      "offset": 2270524,
+      "value": -27,
+      "sha256": "c1a344802f5b6fa9e2e03a7b2cdc6ae9d27fcaff4dfe30c0ad250887bbe2b800"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        0,
+        0
+      ],
+      "va": 270710796,
+      "offset": 2270732,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        0,
+        1
+      ],
+      "va": 270710813,
+      "offset": 2270749,
+      "value": -38,
+      "sha256": "eb7602f9123fc3a77f350aa105448e466d8fcdc9a7a91de5855e10059a35e9b4"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        1,
+        0
+      ],
+      "va": 270710908,
+      "offset": 2270844,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        1,
+        1
+      ],
+      "va": 270710925,
+      "offset": 2270861,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        2,
+        0
+      ],
+      "va": 270711012,
+      "offset": 2270948,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        2,
+        1
+      ],
+      "va": 270711029,
+      "offset": 2270965,
+      "value": -38,
+      "sha256": "eb7602f9123fc3a77f350aa105448e466d8fcdc9a7a91de5855e10059a35e9b4"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        3,
+        0
+      ],
+      "va": 270711116,
+      "offset": 2271052,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        0,
+        3,
+        1
+      ],
+      "va": 270711133,
+      "offset": 2271069,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        0,
+        0
+      ],
+      "va": 270711290,
+      "offset": 2271226,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        0,
+        1
+      ],
+      "va": 270711307,
+      "offset": 2271243,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        1,
+        0
+      ],
+      "va": 270711402,
+      "offset": 2271338,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        1,
+        1
+      ],
+      "va": 270711419,
+      "offset": 2271355,
+      "value": -36,
+      "sha256": "2d39f860c06e1b99be6be14180fcc7a3564282dec7034e2376a06a0898c828ca"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        2,
+        0
+      ],
+      "va": 270711506,
+      "offset": 2271442,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        2,
+        1
+      ],
+      "va": 270711523,
+      "offset": 2271459,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        3,
+        0
+      ],
+      "va": 270711610,
+      "offset": 2271546,
+      "value": -9,
+      "sha256": "23141db3f96f7039daaf7b4f4ae6bad518ae02db30a902a043cf456674e848ee"
+    },
+    {
+      "indices": [
+        3,
+        1,
+        3,
+        1
+      ],
+      "va": 270711627,
+      "offset": 2271563,
+      "value": -36,
+      "sha256": "2d39f860c06e1b99be6be14180fcc7a3564282dec7034e2376a06a0898c828ca"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        0,
+        0
+      ],
+      "va": 270711773,
+      "offset": 2271709,
+      "value": -22,
+      "sha256": "ff3a185c578c363dcdee49efa866712ae60f5239241ef87c9159dd9ec7f48f9a"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        0,
+        1
+      ],
+      "va": 270711790,
+      "offset": 2271726,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "va": 270711885,
+      "offset": 2271821,
+      "value": -22,
+      "sha256": "ff3a185c578c363dcdee49efa866712ae60f5239241ef87c9159dd9ec7f48f9a"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "va": 270711902,
+      "offset": 2271838,
+      "value": -36,
+      "sha256": "2d39f860c06e1b99be6be14180fcc7a3564282dec7034e2376a06a0898c828ca"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        2,
+        0
+      ],
+      "va": 270711989,
+      "offset": 2271925,
+      "value": -22,
+      "sha256": "ff3a185c578c363dcdee49efa866712ae60f5239241ef87c9159dd9ec7f48f9a"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        2,
+        1
+      ],
+      "va": 270712006,
+      "offset": 2271942,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        3,
+        0
+      ],
+      "va": 270712093,
+      "offset": 2272029,
+      "value": -22,
+      "sha256": "ff3a185c578c363dcdee49efa866712ae60f5239241ef87c9159dd9ec7f48f9a"
+    },
+    {
+      "indices": [
+        3,
+        2,
+        3,
+        1
+      ],
+      "va": 270712110,
+      "offset": 2272046,
+      "value": -36,
+      "sha256": "2d39f860c06e1b99be6be14180fcc7a3564282dec7034e2376a06a0898c828ca"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        0,
+        0
+      ],
+      "va": 270712256,
+      "offset": 2272192,
+      "value": -23,
+      "sha256": "ea4007315f32179d378ea2c138165e84d314d4659de2d602446b570ba181d380"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        0,
+        1
+      ],
+      "va": 270712273,
+      "offset": 2272209,
+      "value": -38,
+      "sha256": "eb7602f9123fc3a77f350aa105448e466d8fcdc9a7a91de5855e10059a35e9b4"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        1,
+        0
+      ],
+      "va": 270712368,
+      "offset": 2272304,
+      "value": -23,
+      "sha256": "ea4007315f32179d378ea2c138165e84d314d4659de2d602446b570ba181d380"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        1,
+        1
+      ],
+      "va": 270712385,
+      "offset": 2272321,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        2,
+        0
+      ],
+      "va": 270712472,
+      "offset": 2272408,
+      "value": -23,
+      "sha256": "ea4007315f32179d378ea2c138165e84d314d4659de2d602446b570ba181d380"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        2,
+        1
+      ],
+      "va": 270712489,
+      "offset": 2272425,
+      "value": -38,
+      "sha256": "eb7602f9123fc3a77f350aa105448e466d8fcdc9a7a91de5855e10059a35e9b4"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        3,
+        0
+      ],
+      "va": 270712576,
+      "offset": 2272512,
+      "value": -23,
+      "sha256": "ea4007315f32179d378ea2c138165e84d314d4659de2d602446b570ba181d380"
+    },
+    {
+      "indices": [
+        3,
+        3,
+        3,
+        1
+      ],
+      "va": 270712593,
+      "offset": 2272529,
+      "value": -37,
+      "sha256": "d5618ce1995baf7efc5a0454ea44289ca33176382122dc0b206d495c66c00f23"
+    }
+  ],
+  "resources": {
+    "identity_count": 98,
+    "identical_to_apk": 96,
+    "body_frame_checks": 16,
+    "weapon_frame_checks": 16,
+    "shadow": {
+      "group": "common",
+      "index": 25,
+      "name": "shadow00.seb",
+      "layers": 1,
+      "frames": 4,
+      "parts": [
+        {
+          "layer": 0,
+          "frame": 0,
+          "image": 3,
+          "crop": [
+            0,
+            0,
+            12,
+            2
+          ],
+          "offset": [
+            -6,
+            -1
+          ],
+          "flip": [
+            0,
+            0
+          ],
+          "tag": 4
+        }
+      ]
+    }
+  },
+  "artifacts": [
+    {
+      "name": "arrays.cjs",
+      "bytes": 13083,
+      "sha256": "b0a3002da2fa36633a253bbb0712f972fc187e09a58514dac266aa24487524cd"
+    },
+    {
+      "name": "human.json",
+      "bytes": 28550,
+      "sha256": "2fe03cf4bad0f87a76c72cf7287aa6425b58c16a4825aa12d56cb0a62aa305e8"
+    },
+    {
+      "name": "weapon.json",
+      "bytes": 45031,
+      "sha256": "fa6d41b81c490f4a675ad3571b4a3e7a4dd22c2004007ce9e6162ee37b6c15c4"
+    },
+    {
+      "name": "resources.py",
+      "bytes": 7074,
+      "sha256": "42e4a5b13559aa61865fcd56e3891f82b8300452fc74142df5bcc75df1e0c48f"
+    },
+    {
+      "name": "RESOURCES.json",
+      "bytes": 82931,
+      "sha256": "77f11f99fae4eeb81e230bb7c92284b5ad815947a5b152b1b9f6ebd09cdfd1f9"
+    },
+    {
+      "name": "inspect.cjs",
+      "bytes": 3280,
+      "sha256": "06010b495b2080983c92802262687c8ca6ad9833b2d8430a0191f5d7ba71b8bb"
+    }
+  ],
+  "limits": [
+    "success allocation and array type-check path only",
+    "no general interpreter or actual program execution",
+    "full effects, shared scratch reset and title lifecycle remain separate",
+    "resource byte equality does not certify entire Steam UI"
+  ]
+}

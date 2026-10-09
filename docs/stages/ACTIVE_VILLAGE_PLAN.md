@@ -182,6 +182,8 @@ build/bin/ark_world_campaign_tests-headless-release.exe verify build/validation/
 node tests/app/world_campaign_process.mjs build/bin/ark_world_campaign_tests-headless-release.exe build/validation/research-3780a3b/late --first-star-prefix build/validation/economy-plan/active/active-player-V5uii1
 ```
 
-**首次执行未通过整链**：`build/validation/research-3780a3b/late/second-star-player-LpdIOL`已完成阶段A真实业务保存/独立进程冷载并晋级二星，在原始绝对月37、16任务成功、823人气、77点时超时；活动30与后续营业未完成，RESULT=failed。`--late-resume-prefix`仅接受原始成功且非reused的late-new，核slot0/策略/系统/日志哈希后新建目录，执行late-resume/verify-late并复核原文件、RESULT和marker；不继承失败进程未保存的世界，系统文件可能含失败期间现金最高纪录。当前续跑`build/validation/research-3780a3b/late-resume/second-star-player-x2Xjb8`，整链结果待收口。标准回归/窗口证据见[B1本批记录](B1-playable-prototype.md#research-3780a3b-integration)。收费缓存RQ未修，未重跑五组，也未认证新的最优收益方案。
+**首次执行未通过整链**：`build/validation/research-3780a3b/late/second-star-player-LpdIOL`已完成阶段A真实业务保存/独立进程冷载并晋级二星，在原始绝对月37、16任务成功、823人气、77点时超时；活动30与后续营业未完成，RESULT=failed。`--late-resume-prefix`仅接受原始成功且非reused的late-new，核slot0/策略/系统/日志哈希后新建目录，执行late-resume/verify-late并复核原文件、RESULT和marker；不继承失败进程未保存的世界，系统文件可能含失败期间现金最高纪录。
+
+**最终通过**：`build/validation/research-3780a3b/late-resume/second-star-player-x2Xjb8/RESULT.json`为passed；复用成功stageA，续跑1545.560秒和第三进程只读复核均通过。路线新增6商店、4入住、20赠礼、9任务胜利（总16次），原始绝对月37真实升二星并支付100点完成活动30，到月39仍营业后保存。最终14723G、最低8656G，新店收入30529G；两栏320204/391166字节，源文件未变，进程全部退出。仅证明首星证据之后的二星/导入魔法壶及后续营业，不认证实际炼制、五星/BOSS或计分继承。标准回归/窗口证据见[B1本批记录](B1-playable-prototype.md#research-3780a3b-integration)。收费缓存RQ未修，未重跑五组，也未认证新的最优收益方案。
 
 后继正式2ea65e2进一步交付四星商会85以200点兑换→93确认→博物馆64资格、3000G建设→完工事件75开放活动21的路线依据，未纳入本批402项冻结或实际验证。后续三至五星、明确BOSS、计分/继续/继承仍按真实条件分段扩展，不能将已知静态路线写成产品自然通过。

@@ -1,0 +1,87 @@
+application-natural-capture frame=420 next_frame=421 months=0 bytes=347714
+application-natural-summary {"capture_frame":420,"capture_months":0,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"456616b62ca018f4c4ce1dbfdb95a734f25031d9e595c070f36f9da2d60dc210","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0.0220745,"restore_seconds":0}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"456616b62ca018f4c4ce1dbfdb95a734f25031d9e595c070f36f9da2d60dc210","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0156497}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"456616b62ca018f4c4ce1dbfdb95a734f25031d9e595c070f36f9da2d60dc210","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0154819}
+{
+  "controller": "application-natural-clear-v1",
+  "qualification": "natural_application_tail",
+  "producer_revision": "327fcc9-natural-app",
+  "seed": 1,
+  "speed": 0,
+  "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+  "world_schema": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7",
+  "application_schema": "6645b2f245a830466097cb21ea147f9d5bbdf71e0f4747a750ec8dd59b6421c3",
+  "source_prefix": null,
+  "capture_frame": 420,
+  "capture_months": 0,
+  "stop_at": 440,
+  "tail_frames": 20,
+  "process_count": 3,
+  "snapshot_bytes": 347714,
+  "snapshot_sha256": "74a8ae562de9676f0f6ee1986743abb9e4310c328fa0575428babb2ae5d7495f",
+  "section_bytes": {
+    "1": 70,
+    "2": 380,
+    "3": 635,
+    "4": 344437,
+    "5": 1480
+  },
+  "trace_bytes": 4040,
+  "trace_sha256": "f2ef28aaa794cfe54e6de04b5a72e4ff7c936596dd26a2ad9da2a09350a37229",
+  "terminal": {
+    "capture_frame": 420,
+    "capture_months": 0,
+    "completed_frame": 440,
+    "next_frame": 441,
+    "next_command": 3,
+    "months": 0,
+    "date": [
+      0,
+      3,
+      1,
+      729
+    ],
+    "digest": "456616b62ca018f4c4ce1dbfdb95a734f25031d9e595c070f36f9da2d60dc210",
+    "resources": [
+      1,
+      8,
+      1,
+      1,
+      0,
+      0
+    ],
+    "peaks": [
+      1,
+      8,
+      2,
+      1,
+      0,
+      0
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 0,
+    "sound_hash": "dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66",
+    "random": 5,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0.0220745,
+    "restore_seconds": 0
+  },
+  "process_wall_seconds": [
+    4.2492727,
+    0.21107880000000023,
+    0.20828549999999996
+  ],
+  "certification_boundary": "本轮真实新局reference及指定捕获尾段",
+  "limitations": [
+    "被动自然日期策略，不认证五星/全部任务/BOSS",
+    "不认证原APK/Steam动态或自动绘制频率"
+  ]
+}

@@ -1,0 +1,354 @@
+{
+  "date": "2026-10-09",
+  "baseline": "327fcc9",
+  "checks": 23,
+  "links": 294,
+  "application_schema": "40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47",
+  "current_natural": [
+    {
+      "controller": "application-natural-clear-v1",
+      "qualification": "natural_application_tail",
+      "producer_revision": "ebe08fe-natural-app-sem3",
+      "seed": 1,
+      "speed": 0,
+      "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+      "world_schema": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7",
+      "application_schema": "40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47",
+      "source_prefix": null,
+      "capture_frame": 420,
+      "capture_months": 0,
+      "stop_at": 440,
+      "tail_frames": 20,
+      "process_count": 3,
+      "snapshot_bytes": 347714,
+      "snapshot_sha256": "ea2333e3324bd1822d42c7e855bf6c4173b9b09c845d1eb48066e42fc33de9f0",
+      "section_bytes": {
+        "1": 70,
+        "2": 380,
+        "3": 635,
+        "4": 344437,
+        "5": 1480
+      },
+      "trace_bytes": 4040,
+      "trace_sha256": "418b4744235638ca7c68fb254e9db48e745f8846a6c3a071191860933317550c",
+      "terminal": {
+        "capture_frame": 420,
+        "capture_months": 0,
+        "completed_frame": 440,
+        "next_frame": 441,
+        "next_command": 3,
+        "months": 0,
+        "date": [
+          0,
+          3,
+          1,
+          729
+        ],
+        "digest": "3431823264b151cf431744e36f8c9288c9548257d76922f4bb0c9d8e2263a688",
+        "resources": [
+          1,
+          8,
+          1,
+          1,
+          0,
+          0
+        ],
+        "peaks": [
+          1,
+          8,
+          2,
+          1,
+          0,
+          0
+        ],
+        "resource_names": [
+          "humans",
+          "facilities",
+          "pages",
+          "audit_history",
+          "cash_entries",
+          "retained_tasks"
+        ],
+        "sound_count": 0,
+        "sound_hash": "dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66",
+        "random": 5,
+        "phase": 0,
+        "trace_rows": 20,
+        "capture_seconds": 0.0232931,
+        "restore_seconds": 0
+      },
+      "process_wall_seconds": [
+        4.242734300000004,
+        0.22646119999999792,
+        0.2220243000000046
+      ],
+      "certification_boundary": "本轮真实新局reference及指定捕获尾段",
+      "limitations": [
+        "被动自然日期策略，不认证五星/全部任务/BOSS",
+        "不认证原APK/Steam动态或自动绘制频率"
+      ]
+    },
+    {
+      "controller": "application-natural-clear-v1",
+      "qualification": "natural_application_tail",
+      "producer_revision": "ebe08fe-natural-app-sem3",
+      "seed": 1,
+      "speed": 0,
+      "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+      "world_schema": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7",
+      "application_schema": "40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47",
+      "source_prefix": {
+        "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\frame420.avra",
+        "certificate_file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\frame420.avra.json",
+        "snapshot_sha256": "ea2333e3324bd1822d42c7e855bf6c4173b9b09c845d1eb48066e42fc33de9f0",
+        "certificate_sha256": "92c38eac6d04fb2d390268904d8b1f1dd928546831999942808fd5a30060a529",
+        "next_frame": 421,
+        "capture_frame": 420,
+        "months": 0,
+        "qualification": "natural_application_tail"
+      },
+      "capture_frame": 1634,
+      "capture_months": 1,
+      "stop_at": 1654,
+      "tail_frames": 20,
+      "process_count": 3,
+      "snapshot_bytes": 1401072,
+      "snapshot_sha256": "068f9d1dcca6e7ac87f53c71946c9958145aa8426a92c2a61cae7b679d6839b4",
+      "section_bytes": {
+        "1": 70,
+        "2": 383,
+        "3": 635,
+        "4": 1397792,
+        "5": 1480
+      },
+      "trace_bytes": 4080,
+      "trace_sha256": "b33d4f74335d02858997ce1e81099a8a716eecf91bc8f3492501174ee484f734",
+      "terminal": {
+        "capture_frame": 1634,
+        "capture_months": 1,
+        "completed_frame": 1654,
+        "next_frame": 1655,
+        "next_command": 5,
+        "months": 1,
+        "date": [
+          0,
+          4,
+          0,
+          540
+        ],
+        "digest": "3b5c63807fee184f1087d5ae8ca8400fe564bfe17e7116e88deafcc96db2136b",
+        "resources": [
+          3,
+          8,
+          1,
+          4,
+          6,
+          0
+        ],
+        "peaks": [
+          3,
+          8,
+          3,
+          4,
+          6,
+          0
+        ],
+        "resource_names": [
+          "humans",
+          "facilities",
+          "pages",
+          "audit_history",
+          "cash_entries",
+          "retained_tasks"
+        ],
+        "sound_count": 11,
+        "sound_hash": "ce3c978fbcd4e485b44fc7c97dd55e8b8bea70bd775f556e9e5ec171b7ecb281",
+        "random": 4312,
+        "phase": 0,
+        "trace_rows": 20,
+        "capture_seconds": 0.0704317,
+        "restore_seconds": 0.0171966
+      },
+      "process_wall_seconds": [
+        18.942835900000002,
+        0.5691167999999998,
+        0.5704876000000004
+      ],
+      "certification_boundary": "已认证源恢复后继续；本轮仅认证新捕获尾段",
+      "limitations": [
+        "被动自然日期策略，不认证五星/全部任务/BOSS",
+        "不认证原APK/Steam动态或自动绘制频率"
+      ]
+    }
+  ],
+  "retired_natural": [
+    {
+      "path": "work/snapshots/natural-application-v1/frame420.avra",
+      "bytes": 347714,
+      "sha256": "74a8ae562de9676f0f6ee1986743abb9e4310c328fa0575428babb2ae5d7495f",
+      "status": "修前诊断，当前语义3拒绝"
+    },
+    {
+      "path": "work/snapshots/natural-application-v1/month1.avra",
+      "bytes": 1401072,
+      "sha256": "64526264516fe16bc70b75ff88b0caecc4149739dbad8ba2a97992cd24c29ab7",
+      "status": "修前诊断，当前语义3拒绝"
+    },
+    {
+      "path": "work/snapshots/natural-application-v1/month12.avra",
+      "bytes": 19662928,
+      "sha256": "9e38a8c51feca228bfd6e90031466a91c4f7236a4624d0f17775029d0eef3c5f",
+      "status": "修前诊断，当前语义3拒绝"
+    }
+  ],
+  "current_clear": {
+    "controller": "application-clear-conditions-v1",
+    "qualification": "conditional_raw17_application_replay",
+    "captures": [
+      {
+        "boundary": "row2-44",
+        "next_frame": 660,
+        "tail_frames": 763,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "fd78977ca2bbe25d817daec4c9d2e78a2ca6079111cdb59adabd0bf4502470c0",
+        "trace_bytes": 626115,
+        "trace_sha256": "b8a666a4e9a43e01a6c718fc17ce3c81fa1107466dae14d825c1075fe2fa0365"
+      },
+      {
+        "boundary": "row2-45",
+        "next_frame": 661,
+        "tail_frames": 762,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "144e37b781db8dd5ddb724185b89e3de5b391351ebd619bead2737db22fcd18a",
+        "trace_bytes": 625295,
+        "trace_sha256": "8b13184c50c59cb5d2dcde8f2736e7c1dc924ebca6b139781c6f6e3034a80667"
+      },
+      {
+        "boundary": "final64",
+        "next_frame": 1421,
+        "tail_frames": 2,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "a3b5565f81658edabc556374c73663e226554d2827c0649b209d53a728dafd42",
+        "trace_bytes": 1674,
+        "trace_sha256": "17a3a4e6984224943a32fb38d69c0c3af0c062ed4176b839b350da2ab468c357"
+      },
+      {
+        "boundary": "failed",
+        "next_frame": 1422,
+        "tail_frames": 1,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "7976db084d083120d3080dcc245e1f8e35d8fa5ccdf34e4c604d5c48955495a1",
+        "trace_bytes": 853,
+        "trace_sha256": "d6d7ec50cfd26c55573c6fbb6d926379423f955e3a3b507b846a6df267060e4c"
+      }
+    ],
+    "terminal_output": "application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110",
+    "process_timeout_seconds": 120,
+    "comparison": "完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同",
+    "boundary": "合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容",
+    "preserved_directory": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\application-clear-v3"
+  },
+  "release": {
+    "files": 1444,
+    "bytes": 103654447,
+    "pending": []
+  },
+  "outputs": [
+    {
+      "path": "work/natural-application-delivery/build-final.log",
+      "bytes": 2029,
+      "sha256": "6227b6889bd5bc0e46cd3f1c95f4b364ea0f3ace35cc529d17c8bc3491a75554"
+    },
+    {
+      "path": "work/natural-application-delivery/build.log",
+      "bytes": 1652,
+      "sha256": "369de9a5abc5e15b3e4f4d17b970706539e8a5c5e3a3f661b956a06a6de66f5b"
+    },
+    {
+      "path": "work/natural-application-delivery/ctest-final.log",
+      "bytes": 1065,
+      "sha256": "955080f3dd4ab6729e6dc8a2c83d479c6c7148b781f12bd92fc26a8e610c382e"
+    },
+    {
+      "path": "work/natural-application-delivery/frame420.log",
+      "bytes": 3794,
+      "sha256": "58136bef7e45d46524f42c0d7bc4f53a40ef633c09ce35e3f01057bb03cf9d63"
+    },
+    {
+      "path": "work/natural-application-delivery/month1-final.log",
+      "bytes": 4496,
+      "sha256": "6fc4a283a297e8fdad04c44a8358c80b98fdd54b49f93f6cfc8e7f61de4d0aae"
+    },
+    {
+      "path": "work/natural-application-delivery/month1.log",
+      "bytes": 4348,
+      "sha256": "e1426cd3578c93722dbf561bc49925447da1a261ed6930c35e82e24989503600"
+    },
+    {
+      "path": "work/natural-application-delivery/month12.log",
+      "bytes": 5113,
+      "sha256": "f54dc65331f389f309332e14e62b7b40b6446e28a6f1e1de9b7a5a3b17cff00b"
+    },
+    {
+      "path": "work/natural-application-delivery/persistence.log",
+      "bytes": 1120,
+      "sha256": "ed258f5ad80b9bc0620a90cb2c5ef76afaf93da7b5ddb13f4bddcb2e033d67c2"
+    },
+    {
+      "path": "work/natural-application-delivery/replay-final.log",
+      "bytes": 14904,
+      "sha256": "7829bd83e625ddd66e0ddc79d92d88e0e8642834e7df307a81dc1b3c8d34ca46"
+    },
+    {
+      "path": "work/title-actor-skin/actor-pieces.png",
+      "bytes": 303352,
+      "sha256": "0981498ac56a3650489a6ffe1d6bfe11f15f3375f3a7b7c009c996df479645a2"
+    },
+    {
+      "path": "work/title-actor-skin/EVIDENCE.json",
+      "bytes": 51806,
+      "sha256": "93d3ce9d4599b57e807026c76ce14662851b480165f69b828608ffd90ac6289e"
+    },
+    {
+      "path": "work/title-actor-skin/visuals.log",
+      "bytes": 37,
+      "sha256": "fff3d798c505e1e3f70fc68b69659d6d2e08d934a14680da0963b52dbe393469"
+    },
+    {
+      "path": "work/steam-title-draw/ANIMATION.json",
+      "bytes": 844,
+      "sha256": "2b60d0a1b7bb087b7711e4ec1732d446590b72a8badcdefb7b27e7929f4412e9"
+    },
+    {
+      "path": "work/steam-title-draw/EVIDENCE.json",
+      "bytes": 20125,
+      "sha256": "7a288160c86198d56e77199cfc506ed3ef4c284c761a0b2e5dd97d241a773f9a"
+    },
+    {
+      "path": "work/steam-title-draw/RESOURCE_DATA.json",
+      "bytes": 3332,
+      "sha256": "7f4e69de345702f1db3e363893345d9cbf82c52e12e7b229c7b517e183814c00"
+    }
+  ],
+  "natural_snapshots": {
+    "files": 4,
+    "bytes": 1753482,
+    "pending": []
+  },
+  "conditional_snapshots": {
+    "files": 9,
+    "bytes": 1397587,
+    "pending": []
+  },
+  "actor_source_checks": null,
+  "limits": [
+    "语义3当前只认证420/首月，修前12月不冒充修后",
+    "CPU人物图是基础图层，不是完整窗口",
+    "独立性能窄投影仍在途，未纳入本批二进制结果",
+    "原程序/实时原档/产品/远程推送未操作"
+  ]
+}

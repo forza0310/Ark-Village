@@ -259,6 +259,9 @@ std::string StartupApplication::update(bool confirm) {
     }
     auto result = prepare_startup_world_runtime(world_->state());
     if (!result.candidate) return runtime_error(result.error).empty() ? "世界候选缺失" : runtime_error(result.error);
+    // 与Session::update同一轮末消费者；这些缓存还决定下一轮人物/命中声音资格。
+    // 只写私有候选，失败不能安装世界、消费随机或触发系统纪录落盘。
+    if (!update_startup_world_render_cache(*result.candidate)) return "世界渲染缓存候选拒绝";
     StartupWorldRuntimeSession candidate;
     candidate.state_ = std::move(*result.candidate);
     candidate.checkpoints_ = world_->checkpoints_;

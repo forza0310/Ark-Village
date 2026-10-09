@@ -390,8 +390,9 @@ void corruption(Checks &check,Work &work) {
     const auto schema_size=number(wire.prefix,at,4);
     require(schema_size>0 && schema_size<=wire.prefix.size()-at,"应用schema字段存在");
     wire.prefix[at]=wire.prefix[at]=='0'?'1':'0';reject(pack(wire),"错误应用schema重签后拒绝");
-    wire=decoded;set_number(wire.prefix,12,4,3);reject(pack(wire),"未知应用语义版本拒绝");
+    wire=decoded;set_number(wire.prefix,12,4,4);reject(pack(wire),"未知应用语义版本拒绝");
     wire=decoded;set_number(wire.prefix,12,4,1);reject(pack(wire),"旧应用语义1不静默补零标题q");
+    wire=decoded;set_number(wire.prefix,12,4,2);reject(pack(wire),"旧应用语义2缺世界缓存收尾，不静默接续");
     wire=decoded;set_number(wire.prefix,16,4,2);reject(pack(wire),"未知捕获边界版本拒绝");
     broken=original;set_number(broken,decoded.prefix.size(),4,66);resign(broken);
     reject(broken,"声明超过总分区数量预算拒绝");

@@ -1,0 +1,28 @@
+{
+  "qualification": "Steam固定cctor实参链；非APK替代",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "name": "TitleForm.title_anime",
+  "call": "0x1020DC74",
+  "slot": 286212808,
+  "slotOffset": 17767624,
+  "encoded": 2147484097,
+  "referenceIndex": 224,
+  "refOffset": 4960656,
+  "typeIndex": 5607,
+  "typeDefinition": 4129,
+  "localField": 224,
+  "fieldIndex": 25362,
+  "fieldOffset": 4057744,
+  "fieldName": "AE845E9CAE244E92BC11E763D5B774604315E3A4450400135AB89EB3E6A3C58C",
+  "fieldDefaultOffset": 2970412,
+  "dataIndex": 123939,
+  "dataOffset": 3126979,
+  "length": 3,
+  "values": [
+    10,
+    75,
+    100
+  ],
+  "bytes_sha256": "ae845e9cae244e92bc11e763d5b774604315e3a4450400135ab89eb3e6a3c58c"
+}

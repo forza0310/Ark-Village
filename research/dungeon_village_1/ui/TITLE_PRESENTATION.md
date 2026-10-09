@@ -55,7 +55,7 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 维护`StartupApplication`已持有背景状态`l/f132f/s/t/q`。`advance_title_background`只在`title_presentation`模式的活动标题页接受具名合格更新；背景与随机候选一次提交，失败保持二者及输入消费结果。开纪录仍由独立`open_records`抽名单；`record_view`不抽；`start_game`将当前random交给新世界候选并记录handoff，系统写失败不提交。world→title从当前世界复制随机，保留旧world但它不再推进，同时重置背景q/l/s/t并保留f132f；配置／纪录返回保留完整背景。logic模式不推进背景，保持既有世界黄金轨迹。
 
-`StartupTitleReplay("startup-title-v2")`在旧草稿／页面／名单／随机／requests之外保存背景，仍拒绝含world的应用。requests只计开纪录，不代表背景更新轮数。完整应用文件则使用AVRAPP01应用语义2，包含保留world时的背景和独立当前标题随机；历史handoff不能强制等于当前流。
+`StartupTitleReplay("startup-title-v2")`在旧草稿／页面／名单／随机／requests之外保存背景，仍拒绝含world的应用。requests只计开纪录，不代表背景更新轮数。完整应用文件现使用AVRAPP01应用语义3，包含保留world时的背景和独立当前标题随机；历史handoff不能强制等于当前流。独立内存标题控制器v2与完整应用文件语义3不是同一版本号。
 
 ## 已接线接口与完整输入缺口
 
@@ -75,7 +75,7 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 完整原标题字段分类：f129a和u为资源／可重建scratch；f130b/f131c映射栏位／草稿；f132f/h/j/l/q/s/t是上述表现状态；k是子页／返回载荷绑定，不能存地址；o区分中断／手动行；m/n是长按调试入口状态，g是广告计数；继承aA及finger22动画计数需按真实使用者单独归类。广告／上传／调试不在本候选实施范围，应显式标未还原，不以默认零声称完整原标题逐字段可回放。已绘制但可重复推导的排序u、临时W不落盘；不可把inactive q.age/y误当无效缓存排除。
 
-应用快照现为语义2，背景固定追加496字节；格式／捕获边界仍为1，旧应用语义1明确拒绝，不迁移。字段覆盖登记16个应用直接成员和11个标题嵌套成员，schema为`6645b2f245a830466097cb21ea147f9d5bbdf71e0f4747a750ec8dd59b6421c3`。恢复不重抽出生或名单、不重初始化q、不补更新；logic必须为初始背景。坏状态与磁带耗尽返回错误，不能借world schema未变声称旧应用文件可继续使用。
+应用快照现为语义3；语义2引入的496字节背景布局保持不变，格式／捕获边界仍为1，旧应用语义1／2明确拒绝，不迁移。字段覆盖仍登记16个应用直接成员和11个标题嵌套成员，当前schema为`40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47`。版本更新源于应用普通世界Update补齐Session的轮末人物`render_position/cached_screen_position`缓存收尾，这会改变后续声音／表现输出，不是标题槽字段再次扩张。恢复不重抽出生或名单、不重初始化q、不补更新；logic必须为初始背景。坏状态与磁带耗尽返回错误，不能借world a1ca身份未变声称旧应用文件可继续使用。
 
 ## 后续集中验收
 

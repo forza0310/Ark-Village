@@ -25,6 +25,8 @@ using namespace dungeon_village_prototype;
 int run_startup_application_replay_checks(const std::filesystem::path &);
 int run_startup_application_replay_cli(int, const char **);
 int run_startup_application_actions_checks(const std::filesystem::path &);
+int run_startup_application_natural_replay_cli(int, const char **);
+int run_startup_application_natural_driver_checks(const std::filesystem::path &);
 namespace {
 using Bytes = std::vector<std::uint8_t>;
 int checks{};
@@ -768,6 +770,7 @@ void run(const std::filesystem::path &dir) {
     std::filesystem::remove(bad);
     checks += run_startup_application_replay_checks(dir);
     checks += run_startup_application_actions_checks(dir);
+    checks += run_startup_application_natural_driver_checks(dir);
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
@@ -1044,6 +1047,8 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
 }
 int main(int argc, const char **argv) {
     try {
+        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v1")
+            return run_startup_application_natural_replay_cli(argc, argv);
         if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v1")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {

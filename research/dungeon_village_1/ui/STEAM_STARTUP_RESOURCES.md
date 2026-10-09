@@ -53,4 +53,4 @@ Unity class128共有五对象。默认资源中的Arial只有286字节对象，�
 
 后继[字体实际消费者](STEAM_FONT_CONSUMER.md)已核12个入口，闭合语言地区→基础→Japanese专属→通用资源链、GUIStyle条件替换及两种测宽分支。ResourceManager首表1251行中只有en-switch／hi／ja／th四组字体路径，没有中文或通用default；不能据M+载荷猜中文实际字体。Unity空font回退、实际语言／开关及DrawString基线仍未闭合。
 
-原窗口可补观察实际文字、框线与缩放，但截图不能单独确定字体对象、measure算法、语言回退或内部槽。标题Draw及其后续消费者继续独立交叉。
+[Steam标题Draw](STEAM_TITLE_DRAW.md)后继已核背景按实际尺寸居中贴底、upper／草边按240逻辑宽重复、Logo参数及真实10／75／100阈值；语言／DPI候选及首命中资源链已闭合所列范围。用户中文会话的实际目录、全部菜单及最终Graphics尺度仍未认证。原窗口可补观察实际文字、框线与缩放，但截图不能单独确定字体对象、measure算法、语言回退或内部槽。

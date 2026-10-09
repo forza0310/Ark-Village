@@ -10,9 +10,11 @@
 
 最新[外部启动窗口接收](../work/startup-ui-analysis/ANALYSIS.md)补Steam纪录两页及默认配置的局部动态；34清单文件／25原图完整性通过，主会话查看关键图并保留输入失败与用户干预边界。2026-10-09用户取消“成功自定义姓名→切性别→取消／重进”补测前置，维护采用自定义名不随性别改变、取消保留草稿、开始才安装新世界；Steam该链仍未动态验证。游戏内纪录入口与通关17仍待原窗口证据。
 
-后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)维护标题五图、三页面背景、计分角色／提示以及公共窗口框／标准内框只读计划；[Steam资源](../ui/STEAM_STARTUP_RESOURCES.md)区分相同框图与不同标题背景／Logo／草边。最新[原标题背景Owner](../ui/TITLE_PRESENTATION.md)接入20槽人物、显式更新、只读投影及随机交接，应用快照升级语义2，旧语义1明确拒绝。完整Steam字体、页级皮肤、人物身体裁片和原菜单h/j/o路由仍未交付；原窗口补证用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
+后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)维护标题五图、三页面背景、计分角色／提示以及公共窗口框／标准内框只读计划；[Steam资源](../ui/STEAM_STARTUP_RESOURCES.md)区分相同框图与不同标题背景／Logo／草边。最新[原标题背景Owner](../ui/TITLE_PRESENTATION.md)接入20槽人物、显式更新、只读投影及随机交接，应用快照现为语义3，旧语义1／2明确拒绝。正常人物基础裁片已交付；完整Steam字体、页级皮肤和原菜单h/j/o路由仍未交付；原窗口补证用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
 
-本批[集中交付](../work/title-owner-delivery/README.md)同时补应用年度动作、晋级返回和商会离开三个桥；条件接线与自然触发分开。下一步按[自然应用Driver方案](../work/natural-application-route/README.md)从真实新局认证420轮候选／20轮双恢复，再逐段采样首月、12月成本；当前尚无该Driver或自然通关证书，不先运行多年。背景请求和已有菜单API仍是独立事务，不能冒称完整原输入轮已联合实现。
+此前[标题Owner交付](../work/title-owner-delivery/README.md)补年度动作、晋级返回和商会离开三个桥。最新[自然应用交付](../work/natural-application-delivery/README.md)已实现Driver并认证当前语义3的420轮／首月两档20轮双恢复；同时修复应用更新漏接Session世界绘制缓存收尾，以同初态完整状态／声音oracle验证。旧语义2的12月样本只保修前诊断，不作为当前可复用前缀。下一步先消除已定位的重复路由投影，再从当前首月推进12月成本采样及后期；自然通关尚未完成。背景请求和已有菜单API仍是独立事务。
+
+[人物基础皮肤](../ui/TITLE_ACTOR_SKIN.md)交付原标题阴影→武器→身体、纪录无显式阴影的只读资源计划，已核原图CPU合成；只覆盖正常基础图层，不冒称完整W所有叠加。[Steam字体](../ui/STEAM_FONT_CONSUMER.md)和[标题绘制](../ui/STEAM_TITLE_DRAW.md)已进一步交叉语言回退、测宽、背景居中／上边／草边铺排及Logo动画；原窗口动态和完整菜单仍缺。
 
 2026-10-09用户另外明确批准完整应用快照具体方案及接口／隔离测试，现接[AVRAPP01应用回放](../prototype/APPLICATION_REPLAY.md)：完整应用＋Session＋实际Driver、计分中恢复、新隔离系统无覆盖发布后联合安装。当前认证资格为预算内raw17条件短回放；自然180月Driver及长期历史成本仍独立，不由此宣称自然通关完成。
 

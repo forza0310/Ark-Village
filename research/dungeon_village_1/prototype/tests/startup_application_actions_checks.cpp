@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_application.hpp"
+#include "startup_application_natural_replay.hpp"
 #include <stdexcept>
 
 using namespace dungeon_village_prototype;
@@ -38,6 +39,8 @@ void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expect
     require(expected_error == StartupWorldRuntimeError::none, "reference command accepted");
     require(startup_world_session_digest(*app.world()) == startup_world_session_digest(expected),
             "application bridge preserves full Session, history, order and random");
+    if (!app.world()->state().sound_requests.empty())
+        checks += run_startup_application_natural_pending_sound_check(app);
     require(app.take_sound_requests() == expected.take_sound_requests(),
             "application bridge emits original ordered sounds once");
     require(app.take_sound_requests().empty(), "application output sink consumed once");

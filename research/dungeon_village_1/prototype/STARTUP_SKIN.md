@@ -22,4 +22,6 @@
 research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_visuals_tests.exe research/dungeon_village_1/assets/original research/dungeon_village_1/work/startup-frame-font-delivery/frame-pieces.png
 ```
 
-来源摘要见[静态证据](../work/startup-skin-contract/EVIDENCE.json)，本批结果见[验证入口](../VERIFICATION.md)。原PNG没有复制或修改；图片桥与CPU拼图不是完整原皮肤／窗口验收。Steam实际资源／布局、字体、标题装饰人物更新与随机交接、计分连续动态和完整应用快照仍独立研究。产品迁入时应登记固定研究提交及素材来源，运行不读取research/work。
+后继[人物基础图层](../ui/TITLE_ACTOR_SKIN.md)新增`startup_title_actor_skin`：显式职业／性别／主武器及步帧／朝向，返回可选阴影、可选武器和身体。顺序为shadow→weapon→body，身体仍沿human SEB适配器；不创建临时世界人物或修改Owner。当前可选CPU图扩为760×1230，[实际合成](../work/title-actor-skin/actor-pieces.png)末四行展示四武器风格、两方向、四步；这不是原窗口截图。
+
+来源摘要见[静态证据](../work/startup-skin-contract/EVIDENCE.json)，本批结果见[验证入口](../VERIFICATION.md)。原PNG没有复制或修改；图片桥与CPU拼图不是完整原皮肤／窗口验收。Steam实际资源／布局与字体已有具名局部合同，完整菜单／动态仍独立研究；应用快照和标题背景Owner已交付，不能再整体标为未实施。产品迁入时应登记固定研究提交及素材来源，运行不读取research/work。

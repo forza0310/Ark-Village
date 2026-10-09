@@ -50,6 +50,7 @@ class StartupApplication {
     const StartupSystemRecords &records() const { return records_; }
     const StartupTitleDraft &draft() const { return draft_; }
     StartupApplicationPage page() const { return page_; }
+    StartupApplicationMode mode() const { return mode_; }
     const StartupWorldRuntimeSession *world() const { return world_ ? &*world_ : nullptr; }
     const std::vector<int> &decorations() const { return decorations_; }
     const std::optional<StartupClearScorePageState> &clear_page() const { return clear_; }

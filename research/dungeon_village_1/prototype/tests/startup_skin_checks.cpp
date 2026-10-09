@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_skin.hpp"
+#include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
@@ -10,6 +11,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -431,6 +433,134 @@ void frame_pixels(const AssetTables &assets,Checks &check,Image *contact_sheet) 
         if(contact_sheet) draw(*contact_sheet,panel.image,{0,0,240,240},10+250*i,680);
     }
 }
+// 标题/纪录基础人物的资源展开；不复制世界人物动作机或把实际PNG列数当动画顺序。
+void title_actor_pixels(const std::filesystem::path &root,Checks &check,Image *contact_sheet) {
+    const auto humans=image_table(root,"human",check),weapons=image_table(root,"weapon",check);
+    check(humans.count(32)==0 && humans.size()==37,"human32缺资源，不能补透明图蒙混通过");
+    std::vector<tools::SpriteDefinition> body,arms;
+    std::vector<std::uint8_t> source_sequence;
+    for(const char *package:{"human","weapon"}) {
+        const auto rows=tools::parse_tsv(read_bytes(root/package/"seb.inf"));
+        const int count=std::string(package)=="human"?4:16;
+        for(int i=0;i<count;++i) {
+            check(rows.size()>static_cast<std::size_t>(i) && rows[i].size()==1,"行走SEB包序存在");
+            const auto bytes=read_bytes(root/package/rows[i][0]);
+            source_sequence.insert(source_sequence.end(),bytes.begin(),bytes.end());
+            (std::string(package)=="human"?body:arms).push_back(tools::parse_legacy_seb(bytes));
+        }
+    }
+    const auto shadow_bytes=read_bytes(root/"common/shadow00.seb");
+    source_sequence.insert(source_sequence.end(),shadow_bytes.begin(),shadow_bytes.end());
+    check(tools::sha256_hex(source_sequence)=="0bf84785d4389a36d66eb0a48d1a73db4224907260fd9bf05c98f91144f90723",
+          "四个human、十六个weapon和shadow原SEB顺序内容冻结");
+    const auto shadow=tools::parse_legacy_seb(shadow_bytes);
+    check(shadow.layers.size()==1 && !shadow.layers[0].parts.empty() && shadow.layers[0].parts[0].image_index==3 &&
+          shadow.layers[0].parts[0].width==12 && shadow.layers[0].parts[0].height==2 &&
+          shadow.layers[0].parts[0].offset_x==-6 && shadow.layers[0].parts[0].offset_y==-1,
+          "common25 shadow帧0的12x2裁片及负偏移");
+    constexpr std::array<int,4> frame_x{{0,18,0,36}};
+    for(int face=0;face<4;++face) {
+        check(body[face].frame_count==4 && body[face].layers.size()==1 && body[face].layers[0].parts.size()==4,
+              "human walk四方向均为单层四步");
+        for(int step=0;step<4;++step) {
+            const auto &p=body[face].layers[0].parts[step];
+            check(p.frame==step && p.image_index==0 && p.source_x==frame_x[step] && p.source_y==24*face &&
+                  p.width==18 && p.height==24 && p.offset_x==-9 && p.offset_y==-24 && !p.flip_x && !p.flip_y,
+                  "body步2重复站立列而非第三列；四方向不猜镜像");
+        }
+    }
+    std::set<int> body_images;
+    const auto &rules=startup_world_rules();
+    for(std::size_t job=0;job<rules.jobs.size();++job)
+        for(int sex=0;sex<2;++sex) {
+            const auto p=startup_title_actor_skin(static_cast<int>(job),sex,-1,3,2,false);
+            check(p && !p->shadow && !p->weapon && p->body.image==rules.jobs[job].sprites[sex] &&
+                  p->body.sprite==2 && p->body.frame==3,"职业/性别原表对应身体，无武器-1不造fallback");
+            body_images.insert(p->body.image);
+        }
+    for(int id:body_images) {
+        check(humans.count(id)==1,"全部职业/性别引用实际human资源");
+        CpuImage image(LoadImage(humans.at(id).string().c_str()));
+        for(const auto &s:body)
+            for(const auto &p:s.layers[0].parts) {
+                check(p.source_x+p.width<=image.image.width && p.source_y+p.height<=image.image.height,
+                      "全部37身体图的真实四向四帧裁片不越界");
+            }
+    }
+    constexpr std::array<int,4> weapon_width{{21,21,26,32}},weapon_height{{25,25,28,35}};
+    constexpr std::array<std::array<std::array<int,2>,4>,4> offset_oracle{{
+        {{{-3,-28},{-3,-28},{-18,-28},{-18,-28}}},
+        {{{-7,-22},{-7,-22},{-15,-22},{-15,-22}}},
+        {{{-5,-28},{-5,-28},{-20,-28},{-20,-28}}},
+        {{{-9,-38},{-9,-37},{-22,-37},{-23,-38}}}
+    }};
+    int weapon_count{};
+    for(const auto &definition:rules.equipment) {
+        if(definition.shop.kind!=1)continue;
+        ++weapon_count;
+        const int style=definition.render_style;
+        check(style>=0 && style<4 && weapons.count(definition.render_image)==1,"33武器的稀疏图片及动作风格均有正式资源");
+        CpuImage image(LoadImage(weapons.at(definition.render_image).string().c_str()));
+        for(int face=0;face<4;++face) {
+            const auto &sprite=arms[style*4+face];
+            check(sprite.layers.size()==1 && !sprite.layers[0].parts.empty(),"weapon方向SEB单层");
+            const auto &p=sprite.layers[0].parts.front();
+            check(p.frame==0 && p.source_x==0 && p.source_y==weapon_height[style]*face &&
+                  p.width==weapon_width[style] && p.height==weapon_height[style] &&
+                  p.offset_x==0 && p.offset_y==0 && !p.flip_x && !p.flip_y &&
+                  p.source_x+p.width<=image.image.width && p.source_y+p.height<=image.image.height,
+                  "行走武器固定帧0，指定武器图片覆盖SEB默认图片且裁片合法");
+            for(int step=0;step<4;++step) {
+                const auto plan=startup_title_actor_skin(0,0,definition.shop.id,step,face,true);
+                const auto xy=offset_oracle[style][face];
+                check(plan && plan->shadow && plan->weapon && plan->shadow->sprite==25 &&
+                      plan->shadow->image==3 && plan->shadow->offset==std::array<int,2>{0,0} &&
+                      plan->weapon->resource==StartupVisualResource::weapon && plan->weapon->sprite==style*4+face &&
+                      plan->weapon->image==definition.render_image && plan->weapon->frame==0 &&
+                      plan->weapon->offset==std::array<int,2>{xy[0],xy[1]+step%2} &&
+                      plan->body.image==14 && plan->body.frame==step && plan->body.sprite==face,
+                      "33武器四向四步依原偏移走动，身体和武器帧参数分开");
+            }
+        }
+    }
+    check(weapon_count==33,"固定原表33武器定义均已消费");
+    const auto female=startup_title_actor_skin(0,1,0,0,1,false);
+    check(female && female->body.image==15,"女性独立原图，不以男性镜像代替");
+    for(const auto &input:std::array<std::array<int,5>,8>{{{-1,0,0,0,0},{23,0,0,0,0},{0,-1,0,0,0},
+            {0,2,0,0,0},{0,0,-2,0,0},{0,0,9999,0,0},{0,0,0,4,0},{0,0,0,0,4}}})
+        check(!startup_title_actor_skin(input[0],input[1],input[2],input[3],input[4],true),
+              "坏职业/性别/武器/步帧/朝向显式拒绝，不靠map.at抛出");
+    // 最小CPU输出消费：同一锚点严格shadow→weapon→body，原身体不透明像素最终盖住武器。
+    constexpr std::array<int,4> sample_weapons{{0,13,26,25}};
+    CpuImage body_image(LoadImage(humans.at(14).string().c_str()));
+    CpuImage shadow_image(LoadImage((root/"common/shadow00.png").string().c_str()));
+    for(int style=0;style<4;++style)
+        for(int face=1;face<=2;++face)
+            for(int step=0;step<4;++step) {
+                const auto p=startup_title_actor_skin(0,0,sample_weapons[style],step,face,true);
+                check(p && p->weapon,"四种真实武器样本基础计划");
+                CpuImage panel(GenImageColor(64,56,BLANK));
+                const auto &sp=shadow.layers[0].parts[0];
+                draw(panel.image,shadow_image.image,{sp.source_x,sp.source_y,sp.width,sp.height},32+sp.offset_x,50+sp.offset_y);
+                CpuImage weapon_image(LoadImage(weapons.at(p->weapon->image).string().c_str()));
+                const auto &wp=arms[p->weapon->sprite].layers[0].parts[0];
+                draw(panel.image,weapon_image.image,{wp.source_x,wp.source_y,wp.width,wp.height},
+                     32+p->weapon->offset[0]+wp.offset_x,50+p->weapon->offset[1]+wp.offset_y);
+                const auto &bp=body[p->body.sprite].layers[0].parts[p->body.frame];
+                draw(panel.image,body_image.image,{bp.source_x,bp.source_y,bp.width,bp.height},32+bp.offset_x,50+bp.offset_y);
+                int opaque{};
+                for(int y=0;y<bp.height;++y)for(int x=0;x<bp.width;++x) {
+                    const auto original=GetImageColor(body_image.image,bp.source_x+x,bp.source_y+y);
+                    if(original.a==255) {
+                        ++opaque;
+                        check(same(GetImageColor(panel.image,32+bp.offset_x+x,50+bp.offset_y+y),original),
+                              "身体最后绘制，SEB负偏移只加一次，不遮错武器层序");
+                    }
+                }
+                check(opaque>20,"原身体四步存在实际不透明像素");
+                if(contact_sheet)draw(*contact_sheet,panel.image,{0,0,64,56},10+90*((face-1)*4+step),940+70*style);
+            }
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -444,13 +574,15 @@ int check_startup_skin(const std::filesystem::path &source_root,
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);
         frame_pixels(assets,check,nullptr);
+        title_actor_pixels(source_root,check,nullptr);
     } else {
         check(optional_output_png.extension()==".png" && !optional_output_png.filename().empty(),
               "可选CPU素材输出是明确PNG路径");
-        CpuImage sheet(GenImageColor(760,930,{239,239,221,255}));
+        CpuImage sheet(GenImageColor(760,1230,{239,239,221,255}));
         static_images(assets,check,&sheet.image);
         sprite_pixels(assets,check,&sheet.image);
         frame_pixels(assets,check,&sheet.image);
+        title_actor_pixels(source_root,check,&sheet.image);
         if(!optional_output_png.parent_path().empty())
             std::filesystem::create_directories(optional_output_png.parent_path());
         check(ExportImage(sheet.image,optional_output_png.string().c_str()),"导出CPU静态参考素材拼图");

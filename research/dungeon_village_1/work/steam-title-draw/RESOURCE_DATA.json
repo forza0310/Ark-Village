@@ -1,0 +1,136 @@
+{
+  "qualification": "固定消费者字符串；Logo条目引用已核资产目录，不代表运行窗口当前选择",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "strings": [
+    {
+      "va": 286159204,
+      "offset": 17714020,
+      "encoded": 2684356099,
+      "index": 769,
+      "metadata_offset": 106233,
+      "length": 1,
+      "text": "/"
+    },
+    {
+      "va": 286243100,
+      "offset": 17797916,
+      "encoded": 2684354561,
+      "index": 0,
+      "metadata_offset": 88360,
+      "length": 0,
+      "text": ""
+    },
+    {
+      "va": 286158496,
+      "offset": 17713312,
+      "encoded": 2684356065,
+      "index": 752,
+      "metadata_offset": 106147,
+      "length": 4,
+      "text": ".gif"
+    },
+    {
+      "va": 286158988,
+      "offset": 17713804,
+      "encoded": 2684356089,
+      "index": 764,
+      "metadata_offset": 106204,
+      "length": 4,
+      "text": ".png"
+    },
+    {
+      "va": 286158788,
+      "offset": 17713604,
+      "encoded": 2684356079,
+      "index": 759,
+      "metadata_offset": 106184,
+      "length": 4,
+      "text": ".mld"
+    },
+    {
+      "va": 286158828,
+      "offset": 17713644,
+      "encoded": 2684356081,
+      "index": 760,
+      "metadata_offset": 106188,
+      "length": 4,
+      "text": ".ogg"
+    },
+    {
+      "va": 286158584,
+      "offset": 17713400,
+      "encoded": 2684356069,
+      "index": 754,
+      "metadata_offset": 106156,
+      "length": 4,
+      "text": ".inf"
+    },
+    {
+      "va": 286158624,
+      "offset": 17713440,
+      "encoded": 2684356071,
+      "index": 755,
+      "metadata_offset": 106160,
+      "length": 4,
+      "text": ".ini"
+    },
+    {
+      "va": 286159160,
+      "offset": 17713976,
+      "encoded": 2684356097,
+      "index": 768,
+      "metadata_offset": 106229,
+      "length": 4,
+      "text": ".txt"
+    },
+    {
+      "va": 286274680,
+      "offset": 17829496,
+      "encoded": 2684356017,
+      "index": 728,
+      "metadata_offset": 105983,
+      "length": 3,
+      "text": "..\\"
+    },
+    {
+      "va": 286274592,
+      "offset": 17829408,
+      "encoded": 2684356013,
+      "index": 726,
+      "metadata_offset": 105970,
+      "length": 3,
+      "text": "../"
+    },
+    {
+      "va": 286268168,
+      "offset": 17822984,
+      "encoded": 2684355721,
+      "index": 580,
+      "metadata_offset": 102416,
+      "length": 1,
+      "text": ","
+    }
+  ],
+  "coverage_sha256": "06a4df6926db6a4c5ead409dc308b6095851951acedb738fb67b02afc9789584",
+  "variants": [
+    {
+      "id": "EXE:resources.assets:1138:title:title_logo.png",
+      "entry": "title_logo.png",
+      "bytes": 33672,
+      "sha256": "325bfee44b0bec4f9f77e0a87acc9e6fef595f0535b882db425d0d5d10b20b02",
+      "width": 236,
+      "height": 115,
+      "rgba_sha256": "ff4aebc5766394f670517d40ffe2d3ad04812c90890c5a85f093e4d667e6003a"
+    },
+    {
+      "id": "EXE:resources.assets:1138:title:English.lproj/title_logo.png",
+      "entry": "English.lproj/title_logo.png",
+      "bytes": 34283,
+      "sha256": "54d42e3863b2606143320281210c5ec9e6bf89af50217d0c58bb30deba0a79f4",
+      "width": 236,
+      "height": 132,
+      "rgba_sha256": "39bd1311da6c519970b13a93950d68743f751b19cee46772a15c19f17709ded8"
+    }
+  ]
+}

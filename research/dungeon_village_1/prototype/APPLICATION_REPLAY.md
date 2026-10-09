@@ -12,17 +12,19 @@
 
 `StartupApplicationReplayMetadata.controller_state`是外部Driver的唯一规范状态字节，不能在恢复之后再靠旧局部变量继续策略。调用者必须提供纯验证器，完整解码、检查语义版本、页面关系、下一轮／命令与输出消费；空验证器或空载荷拒绝。库检查通用封装与应用关系，具体Driver负责已登记场景语义，不能传一个始终成功的回调宣称已验证策略。
 
-当前真实Driver为`application-clear-conditions-v1`，资格明确是raw17条件入口。它记录实际阶段、下一轮／命令、页ID、捕获纪录、随机／历史基线、事件4／5／6、声音序列、失败／成功及检查计数。非首行row2计数44→45使用无确认更新，避免同一脉冲直接转到下一阶段；stage6计数64下一次更新自动结算。文件锁故障是测试环境，不保存OS句柄。自然经营Driver尚未交付，条件档不能换标签当自然通关档。
+计分Driver为`application-clear-conditions-v1`，资格明确是raw17条件入口。它记录实际阶段、下一轮／命令、页ID、捕获纪录、随机／历史基线、事件4／5／6、声音序列、失败／成功及检查计数。非首行row2计数44→45使用无确认更新，避免同一脉冲直接转到下一阶段；stage6计数64下一次更新自动结算。文件锁故障是测试环境，不保存OS句柄。另有已实现的`application-natural-clear-v1`被动自然Driver，其观察范围、输出预算及语义修正见[自然路线记录](../work/natural-application-route/README.md)；修后自然前缀待重新认证，条件档不能换标签当自然通关档。
 
 ## 格式和严格校验
 
-头含magic、格式／应用语义／捕获边界版本、dataset、world schema和应用字段schema。当前magic仍为`AVRAPP01`，格式1、应用语义2、捕获边界1；旧应用语义1明确拒绝，不迁移。分区1为metadata，2为原AVRSYS01完整字节，3为应用控制字段，4仅在world存在时保存原AVRSAVE1 replay完整字节，5为Driver；ID≥1024是可选附属段，保留原序、版本和任意字节。控制分区在旧字段末尾固定追加496字节标题背景（4个int32及20×6个int32），原字段偏移不移动，解码必须读尽新载荷。每段和全文件均有SHA-256；摘要仅校验完整性。
+头含magic、格式／应用语义／捕获边界版本、dataset、world schema和应用字段schema。当前magic仍为`AVRAPP01`，格式1、应用语义3、捕获边界1；旧应用语义1／2明确拒绝，不迁移。分区1为metadata，2为原AVRSYS01完整字节，3为应用控制字段，4仅在world存在时保存原AVRSAVE1 replay完整字节，5为Driver；ID≥1024是可选附属段，保留原序、版本和任意字节。语义2曾在控制分区末尾追加496字节标题背景（4个int32及20×6个int32）；语义3保留这份字段布局与偏移。每段和全文件均有SHA-256；摘要仅校验完整性。
+
+语义3修正应用普通`update()`漏接Session轮末`update_startup_world_render_cache`的问题：现在同样先更新候选人物`render_position/cached_screen_position`，成功才联合提交世界与系统。两个缓存影响后续声音可见性及表现，不能仅因字段／world schema未变就沿用旧应用前缀。此修正不把`cached_view`误作漏更新字段；缓存函数本身不额外抽随机，原规则及预算保持。旧文件和证书保持原字节，不补写缓存或偷改版本头迁移。
 
 整体128MiB、应用控制／Driver各1MiB、系统4MiB、可选段每段1MiB且最多60段。world与全部历史共用原16Mi节点／128MiB估计分配预算，不按分区重置，也不删历史。读时容器、分区字节与对象可共存，这些阈值不是整个进程RSS上限。
 
 逐项验证页面与world存在资格、纪录名单与实际human_presence池、系统现金镜像、计分三元组成组、raw17栈顶／counter／phase一致、六行仍等于世界只读投影、累计与已计行关系、捕获最高分与系统相等。恢复复用只读`validate_startup_clear_score_page`，不通过推进一次来验证。无控制器的raw17只允许未推进入口；finished控制器不能保留并再领奖。
 
-[应用字段清单](src/startup_application_replay_fields.json)由[Clang检查](scripts/check_application_replay_fields.mjs)登记全部16个直接成员及11个标题嵌套字段（`StartupTitleSlot`六项、`StartupTitlePresentation`五项），独立schema为`6645b2f245a830466097cb21ea147f9d5bbdf71e0f4747a750ec8dd59b6421c3`。两次AST过滤分别核应用成员与标题类型，新外层或嵌套字段未分类均失败，不只比较`title_`类型名；其它嵌套字段沿具名codec及world/system身份约束。既有world codec coverage同时执行此检查；world schema仍为a1ca开头的既有身份。该检查不证明广告、完整标题菜单或未来UI状态已实现。
+[应用字段清单](src/startup_application_replay_fields.json)由[Clang检查](scripts/check_application_replay_fields.mjs)登记全部16个直接成员及11个标题嵌套字段（`StartupTitleSlot`六项、`StartupTitlePresentation`五项），当前schema为`40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47`。此次schema身份随应用语义3更新，成员数量和布局不变。两次AST过滤分别核应用成员与标题类型，新外层或嵌套字段未分类均失败，不只比较`title_`类型名；其它嵌套字段沿具名codec及world/system身份约束。既有world codec coverage同时执行此检查；world schema仍为a1ca开头的既有身份。该检查不证明广告、完整标题菜单或未来UI状态已实现。
 
 ## 文件隔离和联合安装
 
@@ -38,8 +40,12 @@
 
 扩展现有应用、持久化、codec覆盖和进程隔离套件，不新增CTest或逐函数target。标准条件回放覆盖计分前后、结算失败／重试、等分不换纪录主人和一次收尾；四个捕获点各用两次新进程比较完整应用、Session历史、Driver、实际声音／事件与隔离系统摘要。标题／配置／纪录及保留世界的应用状态另有独立往返与损坏拒绝检查。
 
-最终验收、复用候选和规模见[验证入口](../VERIFICATION.md)。上批语义1的四个条件快照位于[历史证书目录](../work/snapshots/application-clear-v1/CERTIFICATE.json)，当时9文件1395611字节；结算前64档只需2次请求，失败后档只需1次重试。该批历史字节不能直接由当前语义2解码，须由当前代码重新生成并认证，不改旧证书伪装兼容。全套生成／验证可在既有进程runner显式增加`--application-exe`和`--application-snapshot-directory`（后者必须为work内的新目录），默认CTest仍回收临时制品。上批命令与证书摘要见[历史交付记录](../work/application-replay-delivery/README.md)。这些本地二进制条件档不提交为玩家存档，本页不代替本批最终回归记录。
+最终验收、复用候选和规模见[验证入口](../VERIFICATION.md)。语义1的四个条件快照位于[历史证书目录](../work/snapshots/application-clear-v1/CERTIFICATE.json)，当时9文件1395611字节；当时结算前64档只需2次请求，失败后档只需1次重试。旧语义1／2字节不能由当前语义3解码，须由当前代码重新生成并认证，不改旧证书伪装兼容。全套生成／验证可在既有进程runner显式增加`--application-exe`和`--application-snapshot-directory`（后者必须为work内的新目录），默认CTest仍回收临时制品。上批命令与证书摘要见[历史交付记录](../work/application-replay-delivery/README.md)。这些本地二进制条件档不提交为玩家存档，本页不代替本批最终回归记录。
 
-本批已重新生成并认证语义2的四个计分条件档，见[当前证书](../work/snapshots/application-clear-v2/CERTIFICATE.json)，9文件1397567字节。原标题独立Driver `title-background-requests-v2`另认证600→680请求尾段，两次新进程恢复与reference一致，完整保留20槽、实际确认消费／抽数及绘制投影；逻辑world旧轨迹未改。当前结果与修复记录见[本批交付](../work/title-owner-delivery/README.md)。
+标题批次曾生成并认证语义2的四个计分条件档，见[语义2历史证书](../work/snapshots/application-clear-v2/CERTIFICATE.json)，9文件1397567字节。原标题独立Driver `title-background-requests-v2`当时也认证600→680请求尾段，两次新进程恢复与reference一致，完整保留20槽、实际确认消费／抽数及绘制投影；这些是对应版本的历史结果，见[标题批次交付](../work/title-owner-delivery/README.md)。当前四个条件档已在`work/snapshots/application-clear-v3`重生成并认证；历史证书不改写。
+
+`work/snapshots/natural-application-v1`下420轮、首月和第12月三份前缀均产生于轮末缓存修正前。它们曾完成各自20轮三路一致，但现在只保留为修前诊断，不是修后可复用的当前自然档。修后自然候选目录为`work/snapshots/natural-application-v2`，尚待重新生成和认证；不从旧档补缓存续跑来代替自然来源。
 
 自然180月、五星／全部任务／BOSS、完整原标题输入和完整Steam皮肤仍独立推进。标题背景Owner与快照已接线，完整人物资源展开和纪录动画仍有缺口；条件短回放不能换标签成为自然通关证明。
+
+当前语义3已在[本批交付](../work/natural-application-delivery/README.md)认证：`natural-application-v2`内420轮和首月两档各20轮双恢复，`application-clear-v3`内四个计分条件档重新认证。自然第12月仅有修前诊断，当前后期路线仍待推进；新Driver与原独立world策略分别登记。

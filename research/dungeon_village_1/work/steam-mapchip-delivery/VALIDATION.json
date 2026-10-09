@@ -1,0 +1,113 @@
+{
+  "baseline": "aa87318",
+  "files": [
+    {
+      "path": "ui/STEAM_MAPCHIP_PATTERNS.md",
+      "bytes": 6958,
+      "sha256": "f7b90d044fd0cdc507fcce5209764c8011463d9b833c9e288bf25b1aad57d5c7",
+      "lf_sha256": "f7b90d044fd0cdc507fcce5209764c8011463d9b833c9e288bf25b1aad57d5c7"
+    },
+    {
+      "path": "ui/STEAM_BUILD_LIST.md",
+      "bytes": 15723,
+      "sha256": "de47117a5fa2f2c8b86ce85c86c5f114b00014c97f63f6bc0e1c4fae2eb19a24",
+      "lf_sha256": "de47117a5fa2f2c8b86ce85c86c5f114b00014c97f63f6bc0e1c4fae2eb19a24"
+    },
+    {
+      "path": "ui/README.md",
+      "bytes": 29443,
+      "sha256": "cea98fc67cbdb806c1884c5d108b034715967eafd0311457b09870551c629954",
+      "lf_sha256": "cea98fc67cbdb806c1884c5d108b034715967eafd0311457b09870551c629954"
+    },
+    {
+      "path": "ui/STEAM_UI_COVERAGE.md",
+      "bytes": 19682,
+      "sha256": "52e9d6f72ed6c22f32670377a45f228cd4ec2f7dc044f3d15d808f6c57c6e0a8",
+      "lf_sha256": "52e9d6f72ed6c22f32670377a45f228cd4ec2f7dc044f3d15d808f6c57c6e0a8"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 62534,
+      "sha256": "b1214b2b89874fd7efa7229773391ffa09cdda79b625eebb7f0d809bed4ae6fc",
+      "lf_sha256": "b1214b2b89874fd7efa7229773391ffa09cdda79b625eebb7f0d809bed4ae6fc"
+    },
+    {
+      "path": "work/steam-mapchip-delivery/README.md",
+      "bytes": 955,
+      "sha256": "047b895f1f9a56ee0338f5ddb23df64f393e63be149c6c6c468d96c4953f8291",
+      "lf_sha256": "047b895f1f9a56ee0338f5ddb23df64f393e63be149c6c6c468d96c4953f8291"
+    },
+    {
+      "path": "work/steam-mapchip-delivery/audit.py",
+      "bytes": 3101,
+      "sha256": "965e0d44a55f1dd01aeb9df34606febae255eea90ee2372d6208dc32a76ea26f",
+      "lf_sha256": "965e0d44a55f1dd01aeb9df34606febae255eea90ee2372d6208dc32a76ea26f"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/README.md",
+      "bytes": 3420,
+      "sha256": "365596333d184a26607ccc7df3a5e41af32ef91ff3149d79b5d166c87cf0b45c",
+      "lf_sha256": "365596333d184a26607ccc7df3a5e41af32ef91ff3149d79b5d166c87cf0b45c"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/inspect.cjs",
+      "bytes": 3986,
+      "sha256": "b309c385a1e1b7b4c740350d18053d1fb21d85e0ace713305071d49fd187df82",
+      "lf_sha256": "fa6792290307a67a260fdbd74a5586ca7cffbb94982da4a37d92d018747c6982"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/arrays.cjs",
+      "bytes": 11411,
+      "sha256": "66858a21c4e2625ec6b10d8ec85eeb5b538a3e32dbbfa940ed1b49675f8698ee",
+      "lf_sha256": "bb9f38790b928b56c1abefaa740d8585fe43a60cab6d95f959d1d8922d537e52"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/ARRAYS.json",
+      "bytes": 14271,
+      "sha256": "2055618c5eac700e0f45739852ea029dc28b7704d6bbf8eb4f62fa24cdf913ae",
+      "lf_sha256": "2055618c5eac700e0f45739852ea029dc28b7704d6bbf8eb4f62fa24cdf913ae"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/resources.py",
+      "bytes": 10516,
+      "sha256": "8190679cea56c8d13ce0c47ae43d6b3f2c57f11933f92e2bb0edcb8358175c7e",
+      "lf_sha256": "38bdf5e50a449fbe854e58626463e0fb75d46219c963e30cc0ea0670265399d1"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/RESOURCES.json",
+      "bytes": 354587,
+      "sha256": "f132b57f5d6fad2e210f1179062995035754ec940fb19aa8b60c2df7c7356ff4",
+      "lf_sha256": "5e93f975545d7072ccc5c7e515e2fc99a5502ba77e8106ab192d0f7a36b38390"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/audit.cjs",
+      "bytes": 6118,
+      "sha256": "9161899a5c5e7b1c089a2663a94ac20d248804c4d3e26b34801c9df2a237ad64",
+      "lf_sha256": "9161899a5c5e7b1c089a2663a94ac20d248804c4d3e26b34801c9df2a237ad64"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/EVIDENCE.json",
+      "bytes": 13508,
+      "sha256": "00d2ff640cb970b2698eb60cc8cf093390354e4686220528949372070d0b540a",
+      "lf_sha256": "00d2ff640cb970b2698eb60cc8cf093390354e4686220528949372070d0b540a"
+    }
+  ],
+  "links": 236,
+  "source": {
+    "methods": 8,
+    "bytes": 10685,
+    "anchors": 19,
+    "definitions": 85,
+    "sprites": 87,
+    "resources": 194
+  },
+  "new_asset_bytes": 0,
+  "builds": 0,
+  "background_processes": 0,
+  "limits": [
+    "完整语言覆盖/资源动态安装未闭合",
+    "旋转准入不由数组分母推出",
+    "原资源越界和缺图保留",
+    "未运行原程序窗口"
+  ]
+}

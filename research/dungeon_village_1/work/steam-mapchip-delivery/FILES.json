@@ -1,0 +1,18 @@
+[
+  "ui/STEAM_MAPCHIP_PATTERNS.md",
+  "ui/STEAM_BUILD_LIST.md",
+  "ui/README.md",
+  "ui/STEAM_UI_COVERAGE.md",
+  "VERIFICATION.md",
+  "work/steam-mapchip-delivery/README.md",
+  "work/steam-mapchip-delivery/audit.py",
+  "work/steam-mapchip-patterns/README.md",
+  "work/steam-mapchip-patterns/inspect.cjs",
+  "work/steam-mapchip-patterns/arrays.cjs",
+  "work/steam-mapchip-patterns/ARRAYS.json",
+  "work/steam-mapchip-patterns/resources.py",
+  "work/steam-mapchip-patterns/RESOURCES.json",
+  "work/steam-mapchip-patterns/audit.cjs",
+  "work/steam-mapchip-patterns/EVIDENCE.json",
+  "work/steam-mapchip-delivery/VALIDATION.json"
+]

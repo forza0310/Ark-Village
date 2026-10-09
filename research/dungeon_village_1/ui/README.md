@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+[Steam设施图块全集](STEAM_MAPCHIP_PATTERNS.md)已核两套pattern及85定义到图块／SEB／图片对应，保留源帧范围／裁片异常；建设列表固定朝向0全部有效。图片98／103确有Steam像素差异，不能以同SEB替换为APK图片；完整旋转准入与动态资源安装仍独立待研。
+
 最新静态增量：[Steam窗框与裁剪](STEAM_WINDOW_FRAME.md)独立核木纹／双线／白角、标题两次测宽、文字显式颜色及clip交接；[建设21](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)补五行图块、marker16、类目和滚动注册。Steam图98／103与APK不同，不能同图alias；原建设绘制会推进frame计数。此批不包含维护接入或新的窗口观察。
 
 最新维护增量：[Steam标题／选档／raw20／raw1局部计划](../prototype/STEAM_STARTUP_SKIN.md)已过既有visuals与application两项检查，只读资源、遮挡、测宽及触摸注册不修改Owner。[文字后端](STEAM_FONT_BACKEND.md)核默认皮肤／字体对象及后端交接，[GLText消费与退休](STEAM_GLTEXT_LIFECYCLE.md)追至GUI.Label和复用池；中文实际字形仍未知。新增[选档小窗窗口任务](../work/window-restore-observation/NEXT_SAVE_MENU_SKIN_PROMPT.md)待外部执行，不记为已观察。

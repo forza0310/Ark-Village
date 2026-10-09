@@ -5,7 +5,7 @@
 本批只读metadata、真实GameAssembly.dll及冻结窗口报告，不启动游戏、不操作原档。
 
 后继具体消费者见[属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)：cd13绘制链及type1分类／裁图已局部核对，数字加号定位与APK不同。页面64／75／84直接调用和原窗口仍未认证，以下页面分母不因此整体升级。
-[建设目录21专题](STEAM_BUILD_LIST.md)已闭合具名入口的局部绘制、行marker16和滚动注册；Init／Update、pattern全值及最终OS输入仍缺。[公共窗框](STEAM_WINDOW_FRAME.md)补Steam自己的helper、文字样式和裁剪消费，不以APK同图替代。
+[建设目录21专题](STEAM_BUILD_LIST.md)已闭合具名入口的局部绘制、行marker16和滚动注册；后继[图块pattern全集](STEAM_MAPCHIP_PATTERNS.md)已核85定义及两数组全值，Init／Update与最终OS输入仍缺。[公共窗框](STEAM_WINDOW_FRAME.md)补Steam自己的helper、文字样式和裁剪消费，不以APK同图替代。
 
 2026-10-09外部原窗口反馈已补[启动局部动态](../work/startup-ui-analysis/ANALYSIS.md)：标题纪录单击进入、两页右向循环／返回保留选择、2/2空栏进入新局配置、默认性别联动及输入面板。内部页号未由窗口读取；自动输入未实际改名、配置取消未完成、计分页未取得，不能将关联TYPE声明整体升级为完整认证。
 
@@ -54,7 +54,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 18 | ENDING | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |
-| 21 | BUILD | 建设目录 | 类目输入／软键及完整局部绘制／行marker／滚动注册静态；Init／Update、pattern全值、OS输入未核 |
+| 21 | BUILD | 建设目录 | 类目输入／软键、局部绘制／行marker／滚动注册及85定义pattern静态；Init／Update、动态资源安装、OS输入未核 |
 | 22 | QUEST_SELECT | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 23 | QUEST_GATHER | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 24 | QUEST_GATHERANIME | 任务 | 仅声明；更新／绘制／动态链待逐项 |

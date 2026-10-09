@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[金币X4图块](../work/coin-effect-delivery/README.md)已完成固定APK运动／循环帧／原X索引只读查询及既有visuals验收，复用626字节资源，无Owner／随机变化。Steam调用与完整场景层序另验，维护窗口没有借本批调整未经核实的深度。
+
 原窗口后继任务：[建设列表／空行／选择／详情／旋转预览](../work/window-restore-observation/NEXT_BUILD_LIST_INPUT_PROMPT.md)，只做目录和未落地预览，不执行建设／移动／撤除。已输出提示词，尚无本次窗口反馈，不将静态合同当作动态结果。
 
 2026-10-10[Steam建设目录业务](STEAM_BUILD_LIST_BUSINESS.md)补Init／Update、空行／滚动、标记确认、资金预检及BUILD交接。目录确认不扣钱；撤除／移动只切模式，不在该分支重写建筑ID／朝向。原绘制先于frame3输入门槛，最终OS投递与完整父栈退休仍未认证。

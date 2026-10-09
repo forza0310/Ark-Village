@@ -38,8 +38,18 @@ struct StartupVisualDraw {
     int sprite{-1}, image{-1}, frame{}, layer{};
     std::array<int, 4> crop{};
     std::array<int, 2> offset{};
-    std::optional<std::size_t> record_index{}; // 人物cd绘制保留原索引；设施/静态图标无此索引。
+    std::optional<std::size_t> record_index{}; // 所属人物cd或全局X的原索引；设施/静态图标无此索引。
 };
+struct StartupCoinEffectDraw {
+    std::array<int,2> raw_anchor{}; // X4死亡时固定投影坐标，先经原镜头转换，不能再次等距投影。
+    StartupVisualDraw image; // record_index为全局X原索引；offset只含画布dy，SEB(-5,-10)另加一次。
+};
+// 固定APK全局X4：负计数不画，(count%14)/2循环帧，count>=11固定dy=-16。
+// 与X2/X3等按record_index穿插；不声明整场景深度，不推进/退休X或重复发奖。
+// 原Draw没有23上界守卫；本查询同样不暗加。正常Owner更新到23退休，单独传23不是自然可达证据。
+// 六字段缺失/多余、int32中间算术溢出显式拒绝；不依赖C++未定义行为。
+std::optional<std::vector<StartupCoinEffectDraw>>
+startup_world_coin_effect_draws(const StartupWorldRuntimeState &state);
 // 只消费既有cd15/21/22举物事实及设施队首kind1..6；不推进计数、装配、邻接、随机或声音。
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_equipment_lift_draws(const StartupWorldRuntimeState &state, ref::CharacterId actor);

@@ -72,8 +72,46 @@ ap≥2时额外绘连击数与common SEB74/图片83的[ef_hit](../assets/origina
 绘制先镜头变换，Y加af[1]再减10，即相对该点Y-39；数字8像素步距，SEB12/number05帧20附G。
 X3计数非负才显示，更新到20删除（[d/a](../work/decompiled/sources/d/a.java)，4018–4022）；
 不要误用常量ag[1]=23覆盖真实删除条件，也不套到访收费X2的-10延迟/上浮算法。
-金币动画另为X4，common SEB94/图片144，每两计数换帧0..6，23时移除；动画可与文字同时存在。
+金币动画另为X4，common SEB94/图片144，帧为`(count%14)/2`，每两计数换帧0..6后循环，23时移除；动画可与文字同时存在。
 真实现金由账本消费者提交，不等这些字/图完成；静帧不能证明账本时点。
+
+### X4固定APK局部绘制合同（2026-10-10）
+
+回应产品点名的运动／后半帧缺口。本节只核固定APK有限普通Java消费者与已发布SEB，Steam调用、同对象连续窗口和全场景遮挡另验。`d/a.java:3456`的`b(o)`从X索引0向后绘制，kind4在`3577–3590`；`ah[0]=-16`、`ai[0]=23`来自该文件144–145行。没有新增反编译源码副本或凭截图估算曲线。
+
+原记录`{4,count,rawX,rawY,velocity,acceleration}`初始为`{4,-2,rawX,rawY,-320,29}`，来自真正死亡生产，不含金币金额。count<0不画；非负时先按原顺序计算：
+
+```text
+dy = trunc((velocity*count + trunc(acceleration*count*(count+1)/2))/100)
+count >= trunc(23/2) 时 dy = -16
+dy > 0 时 dy = 0
+frame = trunc((count % 14)/2)
+```
+
+截断均向零；门槛为11，不能写成12。原代码先计算再覆盖dy；维护只读接口在该计算中显式拒绝int32中间量溢出，这是坏载荷安全约束，不认证Java溢出输入与C++等价。没有追加最大帧保持或末段隐藏，13→14确实从6回0。查询只遵守count非负绘制资格；23退休归既有Owner更新，不由查询再删记录。
+
+rawX/rawY是死亡时固定投影坐标，先调用`c/a.java:97–102`的镜头转换，再在画布Y加dy：`screenX=M+rawX-trunc(cameraX)`，`screenY=P+R-(N+rawY-trunc(cameraY))`，M/N是原视区两端向零平均。它不是当前人物位置、世界格坐标或X3文本中心，禁止再次做等距投影。common SEB94七帧均引用图片144；源裁片`(10*frame,0,10,10)`，原SEB内部偏移(-5,-10)、无翻转。内部偏移只加一次。
+
+| count | 帧 | dy | 相对转换后原锚点的图左上角 |
+| --- | --- | --- | --- |
+| -2／-1 | 不画 | — | — |
+| 0 | 0 | 0 | (-5,-10) |
+| 2 | 1 | -5 | (-5,-15) |
+| 12 | 6 | -16 | (-5,-26) |
+| 22 | 4 | -16 | (-5,-26) |
+
+这四个样本是原死亡载荷的静态公式结果，不是原窗口逐帧测量。X内部保留原record_index并与X20／X3等穿插，不按类型重新分组、按人物深度排序或自动将X4置顶；整场景调用相位未在本节闭合。
+
+维护纯图块入口为[startup_world_coin_effect_draws](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)，读取Owner既有X，返回固定raw锚点、record_index及common图块计划，不写Owner／随机／资金／声音／格式。实际实现与回归状态见[本批工作包](../work/ui-next-consumers/README.md)。资源沿MANIFEST复用，PNG70×10、478字节，SEB148字节，不重复发布。
+
+| 已读输入 | SHA-256 |
+| --- | --- |
+| `work/decompiled/sources/d/a.java`，仅上述具名有限窗口 | `d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b` |
+| `work/decompiled/sources/c/a.java`，视区／转换88–102 | `b392d8cf68277af430c9d36d8ac5d2681edbc03962cc6181b370b9e48120c135` |
+| `assets/original/common/eff_coin.png` | `64809d749638a027339c2fccbf712c937e5744e3de54f5bb9ec3fd8ae5aaa8ae` |
+| `assets/original/common/eff_coin.seb` | `7a1c24539389ceabb23e875255e5a2344e5616e52a91faccde3a1de350b084d4` |
+
+### 经验与升级
 
 经验来源于普通事件胜利/任务收尾，每人近期J加事件f一半，先清近期统计，再分别排cd24与定义N/O。
 普通显示延迟22+4×序号，成长延迟50+4×序号；任务分别16/44，详见[奖励](../rules/ai/ENCOUNTERS.md#事件与成长提交)。

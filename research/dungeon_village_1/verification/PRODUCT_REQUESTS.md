@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10金币X4已补[只读图块消费者](../work/coin-effect-delivery/README.md)：原锚点、record_index、抛物整数运动、11门槛与14周期帧，复用SEB94／图144，visuals通过0.61秒。产品可以消费该局部计划；完整场景层序和Steam等价仍待证，未擅自把X4置顶或改变奖励到账。
+
 2026-10-10[Steam建设目录素材](../assets/steam-build-common/README.md)新增两张确证差异图：common98／103，按MANIFEST复制原字节并引用已核SEB81／12，不能用APK像素替代。[装载／旋转合同](../ui/STEAM_BUILD_RESOURCE_INSTALL.md)补真实image组和软标签资格；资源可供产品独立消费，本会话未改产品资源或代码。
 
 2026-10-10新增[应用管理／Steam窗框桥](../work/application-management-frame-delivery/README.md)：标准标题窗、内容框／白角、Window2／3可输出完整有序逻辑图元；双次字体测宽由后端提供，不编造中文字体。应用建设、村办、任务、人物等17项管理转发经过既有唯一Owner提交，两项相关检查通过12.20秒。它供产品按实际边界消费，不替产品自动挂载窗口或改玩家档；应用7／世界4身份未改变。

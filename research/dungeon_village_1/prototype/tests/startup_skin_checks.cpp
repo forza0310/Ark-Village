@@ -298,6 +298,139 @@ void sprite_pixels(const AssetTables &assets, Checks &check, Image *contact_shee
     check(opaque>0,"继续箭头非空，不补演示图");
     if(contact_sheet)draw(*contact_sheet,crop.image,{0,0,7,5},536,524);
 }
+void frame_geometry(Checks &check) {
+    const auto records=startup_window_skin(200,170,0,0,-12,73);
+    check(records && records->images.size()==6 && records->title,
+          "纪录窗五块非空木纹与标题带；源第六个零宽请求不形成绘制");
+    check(records->borders[0].rect==std::array<int,4>{19,21,202,173} &&
+          records->borders[1].rect==std::array<int,4>{20,22,200,171} &&
+          records->borders[0].rgb==std::array<int,3>{89,103,91} &&
+          records->borders[1].rgb==std::array<int,3>{239,239,221} &&
+          records->borders[0].outline && records->borders[1].outline,
+          "原o.d末像素差值转半开尺寸，不能漏底边或多加一次1");
+    check((*records->title)[0].offset==std::array<int,2>{84,26} &&
+          (*records->title)[1].offset==std::array<int,2>{84,25} &&
+          (*records->title)[0].rgb==std::array<int,3>{44,54,105} &&
+          (*records->title)[1].rgb==std::array<int,3>{247,253,247},
+          "实际测宽73向零整数居中，阴影先画且低一像素");
+    const auto odd=startup_window_skin(201,171,3,-1,-12);
+    check(odd && !odd->title && odd->images.size()==7 &&
+          odd->borders[0].rect==std::array<int,4>{19,21,203,174} &&
+          odd->images[5].crop==std::array<int,4>{0,0,1,171} &&
+          odd->images[5].offset==std::array<int,2>{220,23} &&
+          odd->images[6].crop==std::array<int,4>{21,0,199,17},
+          "奇数窗/sceneTop分别整数除法，尾木纹裁1且标题带按left取源");
+    const auto low=startup_window_skin(240,216,24,0,0);
+    const auto high=startup_window_skin(240,217,std::numeric_limits<int>::max(),0,
+                                         std::numeric_limits<int>::max());
+    check(low && high && low->images[0].offset==std::array<int,2>{0,24} &&
+          high->images[0].offset==std::array<int,2>{0,12},
+          "216保留sceneTop，217忽略sceneTop/style而不溢出无用算式");
+    const auto content=startup_content_skin(17,81,224,177,-3);
+    check(content && content->rectangles[0].rect==std::array<int,4>{17,80,207,96} &&
+          content->rectangles[1].rect==std::array<int,4>{17,80,207,96} &&
+          content->rectangles[2].rect==std::array<int,4>{18,81,205,94} &&
+          !content->rectangles[0].outline && content->rectangles[1].outline &&
+          content->rectangles[2].outline,"内容填充/双线和负奇数sceneTop向零截断");
+    constexpr std::array<std::array<int,2>,4> anchors{{{17,80},{224,80},{224,176},{17,176}}};
+    for(int i=0;i<4;++i)
+        check(content->corners[i].package==Package::common && content->corners[i].image==30 &&
+              content->corners[i].sprite==6 && content->corners[i].frame==i &&
+              content->corners[i].layer==0 && content->corners[i].offset==anchors[i],
+              "内容框保留原顺时针SEB角锚，不能先减4又加SEB偏移");
+    check(!startup_window_skin(2,170,0,0,0) && !startup_window_skin(241,170,0,0,0) &&
+          !startup_window_skin(200,16,0,0,0) && !startup_window_skin(200,241,0,0,0) &&
+          !startup_window_skin(200,170,0,0,0,-1) &&
+          !startup_window_skin(200,170,std::numeric_limits<int>::max(),0,0) &&
+          !startup_window_skin(200,170,0,std::numeric_limits<int>::max(),0) &&
+          !startup_window_skin(200,170,0,std::numeric_limits<int>::min(),-200),
+          "维护裁片/字宽/坐标拒绝与原Java溢出行为分开");
+    check(!startup_content_skin(17,81,16,177,0) && !startup_content_skin(0,0,3,10,0) &&
+          !startup_content_skin(0,0,10,3,0) &&
+          !startup_content_skin(std::numeric_limits<int>::min(),0,std::numeric_limits<int>::max(),10,0) &&
+          !startup_content_skin(0,0,10,std::numeric_limits<int>::max(),2),
+          "内容框坏顺序/过小边/溢出显式拒绝");
+}
+void paint_rect(Image &image,const StartupSkinRect &part) {
+    const auto &r=part.rect;
+    const Color color{static_cast<unsigned char>(part.rgb[0]),static_cast<unsigned char>(part.rgb[1]),
+                      static_cast<unsigned char>(part.rgb[2]),255};
+    if(!part.outline) { ImageDrawRectangle(&image,r[0],r[1],r[2],r[3],color); return; }
+    ImageDrawRectangle(&image,r[0],r[1],r[2],1,color);
+    ImageDrawRectangle(&image,r[0],r[1]+r[3]-1,r[2],1,color);
+    ImageDrawRectangle(&image,r[0],r[1],1,r[3],color);
+    ImageDrawRectangle(&image,r[0]+r[2]-1,r[1],1,r[3],color);
+}
+void frame_pixels(const AssetTables &assets,Checks &check,Image *contact_sheet) {
+    constexpr std::array<int,3> ids{{28,29,30}};
+    constexpr std::array<const char*,3> names{{"wnd_back.png","wnd_bar.png","wnd_conner.png"}};
+    constexpr std::array<const char*,3> hashes{{
+        "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+        "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+        "15f03b0851257a973487a5ef5e7045d18adda4c017f0f3b6dc3491e7b3602079"}};
+    constexpr std::array<std::array<int,2>,3> sizes{{{40,240},{240,17},{8,8}}};
+    for(int i=0;i<3;++i) {
+        const auto found=assets.common.find(ids[i]);
+        check(found!=assets.common.end() && found->second.filename()==names[i] &&
+              tools::sha256_hex(read_bytes(found->second))==hashes[i],"三种共用窗PNG绑定与冻结身份");
+        CpuImage image(LoadImage(found->second.string().c_str()));
+        check(image.image.width==sizes[i][0] && image.image.height==sizes[i][1],"三种窗PNG尺寸");
+    }
+    check(assets.sprites.size()>6 && assets.sprites[6].filename()=="wnd_conner.seb" &&
+          tools::sha256_hex(read_bytes(assets.sprites[6]))==
+          "cfab2deba8d8c3433498fe05c8fa4bacaa0cba3ae29495cb82c36e4d4df58618","四角SEB原身份");
+    const auto corners=tools::parse_legacy_seb(read_bytes(assets.sprites[6]));
+    check(corners.frame_count==4 && corners.layers.size()==1 && corners.layers[0].parts.size()==4,
+          "四角单层四帧，无拉伸九宫格假设");
+    constexpr std::array<std::array<int,4>,4> expected{{{0,0,0,0},{4,0,-4,0},{4,4,-4,-4},{0,4,0,-4}}};
+    for(int i=0;i<4;++i) {
+        const auto &p=corners.layers[0].parts[i];
+        check(p.frame==i && p.image_index==30 && p.width==4 && p.height==4 &&
+              p.source_x==expected[i][0] && p.source_y==expected[i][1] &&
+              p.offset_x==expected[i][2] && p.offset_y==expected[i][3] && !p.flip_x && !p.flip_y,
+              "角4x4与右/下负偏移均来自SEB，不推测镜像");
+    }
+    constexpr std::array<std::array<int,3>,3> shapes{{{200,170,-12},{220,186,0},{222,155,0}}};
+    for(int i=0;i<3;++i) {
+        CpuImage panel(GenImageColor(240,240,BLANK));
+        const auto plan=startup_window_skin(shapes[i][0],shapes[i][1],0,0,shapes[i][2]);
+        check(plan.has_value(),"三个真实窗口尺寸夹具有效");
+        for(const auto &r:plan->borders) paint_rect(panel.image,r);
+        for(const auto &p:plan->images) {
+            CpuImage image(LoadImage(assets.common.at(p.image).string().c_str()));
+            check(p.crop[0]>=0 && p.crop[1]>=0 && p.crop[2]>0 && p.crop[3]>0 &&
+                  p.crop[0]+p.crop[2]<=image.image.width && p.crop[1]+p.crop[3]<=image.image.height,
+                  "木纹与标题带所有请求实际PNG内、没有零宽裁剪");
+            draw(panel.image,image.image,p.crop,p.offset[0],p.offset[1]);
+        }
+        if(i==0) {
+            check(same(GetImageColor(panel.image,19,21),{89,103,91,255}) &&
+                  same(GetImageColor(panel.image,20,22),{239,239,221,255}) &&
+                  same(GetImageColor(panel.image,220,193),{89,103,91,255}) &&
+                  GetImageColor(panel.image,221,193).a==0,"框外线极值像素及外侧透明边界");
+            CpuImage bar(LoadImage(assets.common.at(29).string().c_str()));
+            check(same(GetImageColor(panel.image,21,23),GetImageColor(bar.image,21,0)),
+                  "标题带沿原横坐标裁片，不把整图横向缩放");
+        }
+        if(i>0) {
+            const auto inner=i==1?startup_content_skin(17,48,219,193,0):
+                                  startup_content_skin(17,81,224,177,0);
+            check(inner.has_value(),"原91/17内容框夹具");
+            for(const auto &r:inner->rectangles) paint_rect(panel.image,r);
+            CpuImage image(LoadImage(assets.common.at(30).string().c_str()));
+            for(int j=0;j<4;++j) {
+                const auto &p=corners.layers[0].parts[j];
+                const auto &a=inner->corners[j].offset;
+                draw(panel.image,image.image,{p.source_x,p.source_y,4,4},a[0]+p.offset_x,a[1]+p.offset_y);
+            }
+            const int y=i==1?48:81;
+            check(same(GetImageColor(panel.image,22,y+5),{247,253,247,255}) &&
+                  same(GetImageColor(panel.image,22,y),{172,202,179,255}) &&
+                  same(GetImageColor(panel.image,22,y+1),{222,234,225,255}),"实际内容框填充和两条1像素边");
+        }
+        if(contact_sheet) draw(*contact_sheet,panel.image,{0,0,240,240},10+250*i,680);
+    }
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -306,15 +439,18 @@ int check_startup_skin(const std::filesystem::path &source_root,
     Checks check;
     const auto assets=tables(source_root,check);
     phases(check);
+    frame_geometry(check);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);
+        frame_pixels(assets,check,nullptr);
     } else {
         check(optional_output_png.extension()==".png" && !optional_output_png.filename().empty(),
               "可选CPU素材输出是明确PNG路径");
-        CpuImage sheet(GenImageColor(600,660,{239,239,221,255}));
+        CpuImage sheet(GenImageColor(760,930,{239,239,221,255}));
         static_images(assets,check,&sheet.image);
         sprite_pixels(assets,check,&sheet.image);
+        frame_pixels(assets,check,&sheet.image);
         if(!optional_output_png.parent_path().empty())
             std::filesystem::create_directories(optional_output_png.parent_path());
         check(ExportImage(sheet.image,optional_output_png.string().c_str()),"导出CPU静态参考素材拼图");

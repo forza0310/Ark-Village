@@ -1,0 +1,21 @@
+Test project D:/code/Ark-Village/research/dungeon_village_1/work/release
+    Start 16: dungeon_village_prototype.startup_world_replay_process
+    Start  1: dungeon_village_prototype.startup_application
+1/8 Test  #1: dungeon_village_prototype.startup_application ............   Passed    8.35 sec
+    Start 14: dungeon_village_prototype.startup_world_persistence
+2/8 Test #14: dungeon_village_prototype.startup_world_persistence ......   Passed  116.00 sec
+    Start 17: dungeon_village_prototype.startup_world_codec_coverage
+3/8 Test #17: dungeon_village_prototype.startup_world_codec_coverage ...   Passed    4.90 sec
+    Start 18: dungeon_village_prototype.startup_world_visuals
+4/8 Test #18: dungeon_village_prototype.startup_world_visuals ..........   Passed    0.58 sec
+    Start 25: dungeon_village_prototype.startup_world_data
+5/8 Test #25: dungeon_village_prototype.startup_world_data .............   Passed    0.09 sec
+    Start 15: dungeon_village_prototype.startup_world_replay_driver
+6/8 Test #15: dungeon_village_prototype.startup_world_replay_driver ....   Passed    0.07 sec
+    Start 42: dungeon_village_prototype.assets
+7/8 Test #42: dungeon_village_prototype.assets .........................   Passed    0.09 sec
+8/8 Test #16: dungeon_village_prototype.startup_world_replay_process ...   Passed  137.01 sec
+
+100% tests passed out of 8
+
+Total Test time (real) = 137.01 sec

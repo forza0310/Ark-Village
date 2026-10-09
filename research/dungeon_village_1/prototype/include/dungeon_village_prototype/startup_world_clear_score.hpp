@@ -38,6 +38,10 @@ struct StartupClearScorePageResult {
     bool finished_pulse{};
     std::vector<int> sounds; // 原i()未直接c(sound)，目前为空。
 };
+// 只核六行与阶段关系，不推进计数、不发出一次完成或声音请求。
+// 恢复候选复用与更新相同的资格，不能靠试推进一次来验证。
+StartupClearScoreError validate_startup_clear_score_page(
+    const StartupClearScoreRows &rows, const StartupClearScorePageState &state);
 // confirm是这一次Update的脉冲；先推进counter，随后才消费确认。
 // 已完成显式拒绝，不把stage7的9999计数误作再次领奖。
 StartupClearScorePageResult prepare_startup_clear_score_page(

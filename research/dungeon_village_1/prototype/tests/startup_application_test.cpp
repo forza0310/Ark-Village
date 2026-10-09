@@ -11,6 +11,8 @@
 using namespace dungeon_village_prototype;
 int run_startup_system_records_tests(const std::filesystem::path &);
 int run_startup_world_clear_score_tests();
+int run_startup_application_replay_paths_checks(const std::filesystem::path &);
+int run_startup_application_replay_state_checks(const std::filesystem::path &);
 namespace {
 int checks{};
 void check(bool ok, const std::string &message) {
@@ -168,6 +170,8 @@ void natural_cash(Work &work) {
 int main() {
     try {
         Work work;
+        checks += run_startup_application_replay_paths_checks(work.path);
+        checks += run_startup_application_replay_state_checks(work.path);
         if (run_startup_system_records_tests(work.path) || run_startup_world_clear_score_tests()) return 1;
         title_and_files(work); title_replay(work); bad_files_and_rollback(work); natural_cash(work);
         std::cout << "应用所有权检查通过：" << checks << '\n';

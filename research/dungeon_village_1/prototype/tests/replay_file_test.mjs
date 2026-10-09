@@ -13,7 +13,8 @@ for (let i = 0; i < args.length; i += 2) {
     if (i + 1 === args.length || options.has(args[i]) ||
         !['--exe', '--work-dir', '--save-at', '--stop-at', '--producer-revision',
             '--snapshot-file', '--save-every', '--save-directory', '--scenario', '--load-prefix',
-            '--prefix-status', '--prefix-next-frame', '--presentation-exe'].includes(args[i]))
+            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe',
+            '--application-snapshot-directory'].includes(args[i]))
         throw new Error('需要 --exe <程序> --work-dir <研究工作目录> [--save-at 420 --stop-at 840]');
     options.set(args[i], args[i + 1]);
 }
@@ -21,10 +22,26 @@ if (!options.get('--exe') || !options.get('--work-dir'))
     throw new Error('缺少 --exe 或 --work-dir');
 const executable = path.resolve(options.get('--exe'));
 const presentationExecutable = options.has('--presentation-exe') ? path.resolve(options.get('--presentation-exe')) : undefined;
+const applicationExecutable = options.has('--application-exe') ? path.resolve(options.get('--application-exe')) : undefined;
+if (options.has('--application-snapshot-directory') && !applicationExecutable)
+    throw new Error('应用认证目录需要同时指定--application-exe');
 const workRoot = path.resolve(options.get('--work-dir'));
 const relativeWork = path.relative(researchRoot, workRoot);
 if (!relativeWork || relativeWork.startsWith('..') || path.isAbsolute(relativeWork))
     throw new Error('回放临时目录必须位于本研究包内的独立工作目录');
+// 可选保留只允许work内的新目录；默认CTest仍完整回收本轮临时制品。
+let applicationSnapshotDirectory;
+if (options.has('--application-snapshot-directory')) {
+    const selected = path.resolve(options.get('--application-snapshot-directory'));
+    const parent = await fs.realpath(path.dirname(selected));
+    const actualWork = await fs.realpath(path.join(researchRoot, 'work'));
+    const relative = path.relative(actualWork, parent);
+    if (relative.startsWith('..') || path.isAbsolute(relative))
+        throw new Error('应用认证目录的真实父目录必须已存在且位于research/work内');
+    applicationSnapshotDirectory = path.join(parent, path.basename(selected));
+    try { await fs.lstat(applicationSnapshotDirectory); throw new Error('应用认证目录必须全新，不能覆盖既有文件或目录'); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+}
 // 场景身份同时决定入口、保护上限和完整尾段oracle；默认保留原晋级验收。
 const scenario = options.get('--scenario') ?? 'natural_progression';
 if (!['natural_progression', 'natural_expansion'].includes(scenario))
@@ -204,7 +221,7 @@ const cancel = () => { cancelled = true; child?.kill(); };
 process.on('SIGINT', cancel);
 process.on('SIGTERM', cancel);
 
-async function run(parameters, selectedExecutable = executable) {
+async function run(parameters, selectedExecutable = executable, timeoutMilliseconds = 180 * 60 * 1000) {
     if (cancelled) throw new Error('回放验证被取消');
     const started = performance.now();
     const index = invocation++;
@@ -216,7 +233,7 @@ async function run(parameters, selectedExecutable = executable) {
         const out = [], err = [];
         let timedOut = false;
         let launchError;
-        const timer = setTimeout(() => { timedOut = true; current.kill(); }, 180 * 60 * 1000);
+        const timer = setTimeout(() => { timedOut = true; current.kill(); }, timeoutMilliseconds);
         current.stdout.on('data', b => { out.push(b); process.stdout.write(b); });
         current.stderr.on('data', b => err.push(b));
         current.on('error', e => { launchError = e; });
@@ -326,6 +343,100 @@ try {
             terminal_output: final, boundary: '人工合法任务进度及66等待页，不认证自然赠礼路线或原Android调度频率',
         };
     }
+    let applicationCertificate;
+    if (applicationExecutable) {
+        // 原自然分支及黄金值保持不变。此分支只认证明确的raw17条件入口和应用完整尾段。
+        const appRoot = path.join(owned, 'application-replay');
+        const captures = path.join(appRoot, 'captures');
+        await fs.mkdir(captures, { recursive: true });
+        const referenceTrace = path.join(appRoot, 'reference.trace');
+        const referenceWork = path.join(appRoot, 'reference');
+        await fs.mkdir(referenceWork);
+        const referenceOutput = await run(['application-clear-conditions-v1', '--work-dir', referenceWork,
+            '--save-directory', captures, '--trace-file', referenceTrace], applicationExecutable, 120000);
+        const reference = await fs.readFile(referenceTrace);
+        const traceRows = reference.toString('utf8').trimEnd().split('\n');
+        const validRow = (line, expectedFrame) => {
+            const f = line.split(' ');
+            return f.length === 7 && f[0] === String(expectedFrame) &&
+                [f[1], f[2], f[6]].every(s => /^[0-9a-f]{64}$/.test(s)) &&
+                f.slice(3, 6).every(s => /^(?:[0-9a-f]{2})+$/.test(s));
+        };
+        if (!traceRows.length || traceRows.length >= 4000 || traceRows.some((r, i) => !validRow(r, i + 1)))
+            throw new Error('应用条件reference必须含连续完整应用/Session/Driver/声音/事件/系统七字段');
+        const summary = output => output.split(/\r?\n/).filter(s => s.startsWith('application replay summary ')).join('\n');
+        const terminal = summary(referenceOutput);
+        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 checks=\d+$/.test(terminal))
+            throw new Error('应用计分缺少真实完成/输出消费终点');
+        const found = new Map();
+        for (const line of referenceOutput.split(/\r?\n/)) {
+            const match = line.match(/^application replay captured boundary=(row2-44|row2-45|final64|failed) next_frame=(\d+)$/);
+            if (!match) continue;
+            if (found.has(match[1])) throw new Error('应用边界重复捕获');
+            found.set(match[1], Number(match[2]));
+        }
+        const expectedNames = process.platform === 'win32' ? ['row2-44', 'row2-45', 'final64', 'failed']
+            : ['row2-44', 'row2-45', 'final64'];
+        if (found.size !== expectedNames.length || expectedNames.some(name => !found.has(name)))
+            throw new Error('应用缺少非首行44/45/最后64/平台故障捕获点');
+        const certificates = [];
+        for (const name of expectedNames) {
+            const nextFrame = found.get(name);
+            if (!Number.isSafeInteger(nextFrame) || nextFrame < 2 || nextFrame > traceRows.length)
+                throw new Error('应用捕获后必须有真实尾段');
+            const file = path.join(captures, `${name}.avra`);
+            const prefix = await fs.readFile(file);
+            if (!prefix.length || prefix.length > 128 * 1024 * 1024) throw new Error('应用快照尺寸非法');
+            const expected = Buffer.from(traceRows.slice(nextFrame - 1).join('\n') + '\n');
+            for (let n = 1; n < 3; ++n) {
+                const actualTrace = path.join(appRoot, `${name}-${n}.trace`);
+                const actualWork = path.join(appRoot, `${name}-${n}`);
+                await fs.mkdir(actualWork);
+                const output = await run(['application-clear-conditions-v1', '--work-dir', actualWork,
+                    '--load-file', file, '--trace-file', actualTrace], applicationExecutable, 120000);
+                if (!expected.equals(await fs.readFile(actualTrace)) || summary(output) !== terminal)
+                    throw new Error(`应用${name}第${n}次全状态/输出/系统尾段不一致`);
+                if (!(await fs.readFile(file)).equals(prefix)) throw new Error('应用恢复修改了冻结源快照');
+            }
+            certificates.push({ boundary: name, next_frame: nextFrame, tail_frames: traceRows.length - nextFrame + 1,
+                process_count: 3, snapshot_bytes: prefix.length, snapshot_sha256: sha256(prefix),
+                trace_bytes: expected.length, trace_sha256: sha256(expected) });
+        }
+        let refused = false;
+        try { await run(['application-clear-conditions-v1', '--unknown', '1'], applicationExecutable, 120000); }
+        catch (error) {
+            if (cancelled || !String(error.message).includes('application unknown option')) throw error;
+            refused = true;
+        }
+        if (!refused) throw new Error('应用非法CLI没有显式拒绝');
+        applicationCertificate = { controller: 'application-clear-conditions-v1', qualification: 'conditional_raw17_application_replay',
+            captures: certificates, terminal_output: terminal, process_timeout_seconds: 120,
+            comparison: '完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同',
+            boundary: '合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容' };
+        if (applicationSnapshotDirectory) {
+            // 所有边界双恢复和非法CLI通过之后才发布；每个文件独占创建，不复制临时trace目录。
+            await fs.mkdir(applicationSnapshotDirectory);
+            for (const capture of certificates) {
+                const source = path.join(captures, `${capture.boundary}.avra`);
+                const bytes = await fs.readFile(source);
+                if (bytes.length !== capture.snapshot_bytes || sha256(bytes) !== capture.snapshot_sha256)
+                    throw new Error('发布前应用源快照身份改变，保留现场');
+                const destination = path.join(applicationSnapshotDirectory, `${capture.boundary}.avra`);
+                await fs.writeFile(destination, bytes, { flag: 'wx' });
+                const certificate = { controller: applicationCertificate.controller,
+                    qualification: applicationCertificate.qualification, ...capture,
+                    terminal_output: terminal, comparison: applicationCertificate.comparison,
+                    certification_boundary: applicationCertificate.boundary,
+                    producer_revision: producer, preserved_snapshot: path.basename(destination) };
+                await fs.writeFile(destination + '.json', JSON.stringify(certificate, null, 2) + '\n', { flag: 'wx' });
+                if (!(await fs.readFile(source)).equals(bytes) || !(await fs.readFile(destination)).equals(bytes))
+                    throw new Error('发布后应用源/保留快照字节不一致');
+            }
+            applicationCertificate.preserved_directory = applicationSnapshotDirectory;
+            await fs.writeFile(path.join(applicationSnapshotDirectory, 'CERTIFICATE.json'),
+                JSON.stringify(applicationCertificate, null, 2) + '\n', { flag: 'wx' });
+        }
+    }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
         const relative = path.relative(researchRoot, destination);
@@ -337,6 +448,7 @@ try {
     }
     const certificate = { scenario, seed: 1, speed: 0,
         ...(presentationCertificate ? { presentation_replay: presentationCertificate } : {}),
+        ...(applicationCertificate ? { application_replay: applicationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

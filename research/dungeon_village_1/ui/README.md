@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+本轮继续补[Steam启动资源／嵌入字体](STEAM_STARTUP_RESOURCES.md)、[原标题调度／随机交接](TITLE_PRESENTATION.md)及[公共窗框图元](../work/startup-frame-font-research/README.md)。窗口框只读计划已接既有皮肤桥；字体选择、Steam实际Draw及原窗口计分另验。外部补证使用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
+
 2026-10-09后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)将APK标题五图、页面背景与计分角色／提示接为只读计划。自定义姓名→切性别→取消重进已由用户取消强制补测，维护沿用保名／保草稿逻辑；Steam动态未知项仍保留。
 
 2026-10-09已接收[Steam启动窗口反馈](../work/startup-ui-analysis/ANALYSIS.md)：纪录两页／右向循环／返回选择、空栏进入配置及默认性别联动有原图支持。25图完整性核验通过；输入测试名未出现、配置取消未完成、通关17未观察，不能标成完整启动皮肤已验。原图仍留本地实验目录，正式[皮肤合同](STARTUP_SKIN.md)已按版本补证。

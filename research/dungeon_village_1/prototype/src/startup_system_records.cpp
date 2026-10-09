@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_system_records.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "startup_world_file_io.hpp"
+#include "startup_persistence_bytes.hpp"
 #include <algorithm>
 #include <limits>
 #include <set>
@@ -211,6 +212,17 @@ StartupSystemRecords decode(Bytes file) {
     return r;
 }
 } // namespace
+namespace persistence_detail {
+Bytes encode_system_records_bytes(const StartupSystemRecords &records) {
+    auto bytes = encode(records);
+    (void)decode(bytes); // 沿用文件写入前自检，不经过临时文件往返。
+    return bytes;
+}
+StartupSystemRecords decode_system_records_bytes(Bytes bytes) {
+    return decode(std::move(bytes));
+}
+} // namespace persistence_detail
+
 std::string validate_startup_system_records(const StartupSystemRecords &r) {
     try {
         valid(r);
@@ -229,7 +241,8 @@ StartupSystemLoadResult load_startup_system_file(const std::filesystem::path &pa
             return {StartupSystemRecords{}, true, {}};
         require(!error, "无法查询系统文件状态");
         require(std::filesystem::is_regular_file(status), "系统文件目标不是普通文件");
-        return {decode(persistence_detail::read_save_file(path, file_budget)), false, {}};
+        return {persistence_detail::decode_system_records_bytes(
+                    persistence_detail::read_save_file(path, file_budget)), false, {}};
     } catch (const std::exception &e) {
         return {std::nullopt, false, e.what()};
     }
@@ -238,8 +251,7 @@ std::string save_startup_system_file(const std::filesystem::path &path,
                                    const StartupSystemRecords &r) {
     try {
         require(!path.empty() && !path.filename().empty(), "系统文件路径为空或无文件名");
-        auto bytes = encode(r);
-        (void)decode(bytes); // 写前同读器自检；文件替换成功由调用方才安装应用候选。
+        auto bytes = persistence_detail::encode_system_records_bytes(r);
         persistence_detail::replace_save_file(path, bytes);
         return {};
     } catch (const std::exception &e) {

@@ -10,7 +10,7 @@
 
 再后继已交叉Steam两具体绘制消费者，明确加号测量差异；Owner受击17短场景及3拒绝通过，并补自然赠礼目录窗口。`9ec4c1a`已交付主角／系统纪录应用及六类计分，旧计分取证暂停已解除；建设21固定入口成功，非入口续窗仍受自动审批阻断。
 
-本次接续完整皮肤、自然通关与应用快照：[启动皮肤合同](../ui/STARTUP_SKIN.md)补标题／纪录／91／17及[原尺寸对照](../ui/examples/startup-sources.html)；[自然路线审计](../work/natural-clear-route/README.md)确认日期通关与五星／BOSS分开，五份旧前缀均不能直接载入新schema；[完整应用回放设计](in-progress/APPLICATION_REPLAY_DESIGN.md)已准备具体方案，正在等待用户确认新增格式／隔离恢复边界，未编码。本轮原窗口native pipe及浏览器列表均不可用，只复核历史S038，不称新动态已验。
+本次接续完整皮肤、自然通关与应用快照：[启动皮肤合同](../ui/STARTUP_SKIN.md)及[只读图块桥](../prototype/STARTUP_SKIN.md)补标题／纪录／91／17和公共窗框；[Steam资源字体](../ui/STEAM_STARTUP_RESOURCES.md)与[原标题调度](../ui/TITLE_PRESENTATION.md)分别交叉，不将相同框图当相同布局。[自然路线审计](../work/natural-clear-route/README.md)仍区分日期通关和五星／BOSS；五份旧前缀均不能直接载入新schema。2026-10-09用户已明确批准[应用回放设计](in-progress/APPLICATION_REPLAY_DESIGN.md)，后继[独立模块](../prototype/APPLICATION_REPLAY.md)接预算内计分条件快照，原多年路线另验。外部窗口新任务见[提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)，没有用维护CPU拼图代替原动态。
 
 建设／Owner显式表现请求与独立回放基线为`1e6b291`。EXE UI／操作的新目标不改写已冻结APK原表、存档身份或黄金轨迹；同名同图也不证明两版消费者一致。后续任何真实规则冲突保留双方证据，暂停依赖冲突的接入。
 

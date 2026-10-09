@@ -1,0 +1,183 @@
+{
+  "date": "2026-10-09",
+  "scope": "固定APK1.0.8窗口图元与Android字体局部静态证据；无Steam动态认证",
+  "sources": [
+    {
+      "path": "work/decompiled/sources/d/a.java",
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "windows": [
+        {
+          "first": 474,
+          "last": 500,
+          "normalized_utf8_sha256": "73e5931a1ecd49a762cc78d55d560b5cf4a75b97f62c79099086a1b14c6ed565"
+        },
+        {
+          "first": 2761,
+          "last": 2804,
+          "normalized_utf8_sha256": "ab73d11f5e95df8bdb3613dc5b34e9d3a1d96a2e2c7ab697d4369988ca65418f"
+        }
+      ]
+    },
+    {
+      "path": "work/decompiled/sources/kairo/android/ui/n.java",
+      "bytes": 4374,
+      "sha256": "dcc02f6de310f694e4e99807a24b7534491141d505cee2b31d562df4598e4485",
+      "windows": [
+        {
+          "first": 1,
+          "last": 172,
+          "normalized_utf8_sha256": "e6e317e07f7f9e986c4f8b11bf669cb1bc685d9589d3c39fc3ba779fe42f2102"
+        }
+      ]
+    },
+    {
+      "path": "work/decompiled/sources/kairo/android/ui/o.java",
+      "bytes": 37245,
+      "sha256": "b011f0ac506f7f5eea72f212ae0e78cdf727b348f6f4db95fe6c704c1c7b7986",
+      "windows": [
+        {
+          "first": 167,
+          "last": 244,
+          "normalized_utf8_sha256": "eb850b94e5551cb8912bff110686a00a09b356a75379d5345edc8167291a6a9c"
+        },
+        {
+          "first": 1013,
+          "last": 1049,
+          "normalized_utf8_sha256": "82d24638c1de40408dfccbad0fa6103e541202c2a680533c287b569f395ddf08"
+        }
+      ]
+    },
+    {
+      "path": "work/decompiled/sources/kairo/android/i/h.java",
+      "bytes": 4059,
+      "sha256": "5b452d22d8aa727a5f3f3b1548d0ba08244f7e223bc4a570ee4236555e551e36",
+      "windows": [
+        {
+          "first": 44,
+          "last": 83,
+          "normalized_utf8_sha256": "6c5ca624e035da8b654db8cef1402ec1791601ff9f95c7a7281c2d0e9eff4992"
+        },
+        {
+          "first": 125,
+          "last": 141,
+          "normalized_utf8_sha256": "ca005bcbedb88341bbb8fb38821cf4b2b950afc69de9cf9d52ad6cf76933e0f7"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/original/common/img.inf",
+      "bytes": 2700,
+      "sha256": "c6b49d06d6ceb9c356a43e37cb3dc205c7cbe4891db63e4a54cd35302129d6c6"
+    },
+    {
+      "path": "assets/original/common/seb.inf",
+      "bytes": 1662,
+      "sha256": "569d0f130e15b3c0a46fe82568e4a648075f19726cd3fe4f325f72a1616a618d"
+    },
+    {
+      "path": "assets/original/common/wnd_back.png",
+      "bytes": 1166,
+      "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+      "width": 40,
+      "height": 240
+    },
+    {
+      "path": "assets/original/common/wnd_bar.png",
+      "bytes": 1951,
+      "sha256": "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+      "width": 240,
+      "height": 17
+    },
+    {
+      "path": "assets/original/common/wnd_conner.png",
+      "bytes": 190,
+      "sha256": "15f03b0851257a973487a5ef5e7045d18adda4c017f0f3b6dc3491e7b3602079",
+      "width": 8,
+      "height": 8
+    },
+    {
+      "path": "assets/original/common/wnd_conner.seb",
+      "bytes": 88,
+      "sha256": "cfab2deba8d8c3433498fe05c8fa4bacaa0cba3ae29495cb82c36e4d4df58618"
+    }
+  ],
+  "corners": [
+    {
+      "frame": 0,
+      "image": 30,
+      "crop": [
+        0,
+        0,
+        4,
+        4
+      ],
+      "offset": [
+        0,
+        0
+      ],
+      "flip": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": 1,
+      "image": 30,
+      "crop": [
+        4,
+        0,
+        4,
+        4
+      ],
+      "offset": [
+        -4,
+        0
+      ],
+      "flip": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": 2,
+      "image": 30,
+      "crop": [
+        4,
+        4,
+        4,
+        4
+      ],
+      "offset": [
+        -4,
+        -4
+      ],
+      "flip": [
+        0,
+        0
+      ]
+    },
+    {
+      "frame": 3,
+      "image": 30,
+      "crop": [
+        0,
+        4,
+        4,
+        4
+      ],
+      "offset": [
+        0,
+        -4
+      ],
+      "flip": [
+        0,
+        0
+      ]
+    }
+  ],
+  "sourceAssetBytes": 7757,
+  "outputConsumer": "startup_world_visuals现有套件；可选760x930 CPU图元拼图；根集中验收"
+}

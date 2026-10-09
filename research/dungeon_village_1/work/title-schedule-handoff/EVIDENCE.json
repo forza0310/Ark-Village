@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-09",
+  "qualification": "APK局部静态／维护源码；未新增Steam解码或原窗口；演算非C++回归",
+  "sources": [
+    {
+      "purpose": "标题字段与构造",
+      "path": "work/decompiled/sources/b/h.java",
+      "first": 17,
+      "last": 54,
+      "bytes": 23669,
+      "source_sha256": "e69e1c6db5504078edcba16f8727b3e4e5946e092c03ba57b54dc90ec90c500e",
+      "window_lf_sha256": "58ff9a99ade26e5856a52b897adef2158fe607804893e38d6b589fffe1a4d5db"
+    },
+    {
+      "purpose": "排序与人物绘制",
+      "path": "work/decompiled/sources/b/h.java",
+      "first": 96,
+      "last": 145,
+      "bytes": 23669,
+      "source_sha256": "e69e1c6db5504078edcba16f8727b3e4e5946e092c03ba57b54dc90ec90c500e",
+      "window_lf_sha256": "db6fcfd2f114e89abc67252162ade0b143cb268be14cee349c12d8c941450ca9"
+    },
+    {
+      "purpose": "标题初始化",
+      "path": "work/decompiled/sources/b/h.java",
+      "first": 278,
+      "last": 315,
+      "bytes": 23669,
+      "source_sha256": "e69e1c6db5504078edcba16f8727b3e4e5946e092c03ba57b54dc90ec90c500e",
+      "window_lf_sha256": "14efa542b799ed19cb6b2b66406e16fc9495ed867c2b11f90129225f460cbf15"
+    },
+    {
+      "purpose": "标题更新与页面请求",
+      "path": "work/decompiled/sources/b/h.java",
+      "first": 407,
+      "last": 553,
+      "bytes": 23669,
+      "source_sha256": "e69e1c6db5504078edcba16f8727b3e4e5946e092c03ba57b54dc90ec90c500e",
+      "window_lf_sha256": "dc31b67bc66a2bce52e8c1fd6c04aeb44adec926cdf99b2167db0bde2aa1d1c0"
+    },
+    {
+      "purpose": "输入脉冲消费",
+      "path": "work/decompiled/sources/kairo/android/ui/a.java",
+      "first": 306,
+      "last": 310,
+      "bytes": 14973,
+      "source_sha256": "dd73565d32da52e1ac9b67082e6935402978042f3024c059423917c77db7e5e9",
+      "window_lf_sha256": "28b972af08fba28c4b7197ff53b559e7fd8db3dcdaaec0eca9d3cadabf815280"
+    },
+    {
+      "purpose": "表单调度",
+      "path": "work/decompiled/sources/kairo/android/a/b.java",
+      "first": 204,
+      "last": 427,
+      "bytes": 14177,
+      "source_sha256": "39f004e17a75750ac320700acb73e0511fda6ce4c9f23eee711bf33617b4e17b",
+      "window_lf_sha256": "f733dd6e65497a20a99c00392074db017398b59afad2cc092bcad941d9367870"
+    },
+    {
+      "purpose": "随机helper",
+      "path": "work/decompiled/sources/c/d.java",
+      "first": 25,
+      "last": 77,
+      "bytes": 6241,
+      "source_sha256": "35ceb09bac73346c33b406cd6ce690dbe3a795561fb8666ad8927d609232d7a1",
+      "window_lf_sha256": "e97f99a48b1c93cc87495159437e0ab1b49202215f12789adac44967f0216898"
+    },
+    {
+      "purpose": "整数插值",
+      "path": "work/decompiled/sources/c/d.java",
+      "first": 118,
+      "last": 133,
+      "bytes": 6241,
+      "source_sha256": "35ceb09bac73346c33b406cd6ce690dbe3a795561fb8666ad8927d609232d7a1",
+      "window_lf_sha256": "0e3f731692d7e69c3c145824459578e4c8e13a1f94bcf1df4548ded670a74bb4"
+    },
+    {
+      "purpose": "纪录初始化和更新",
+      "path": "work/decompiled/sources/b/e.java",
+      "first": 108,
+      "last": 174,
+      "bytes": 5932,
+      "source_sha256": "a098ee9bc77bf3d46a21a5e904c1ddc4820814f49a96e7906e7ac6a072c5ed5f",
+      "window_lf_sha256": "2d1cdaa21132cf8b0535f0848ab808f21a3bff0aaf5c0dc2fe58cb3b3dc500e8"
+    },
+    {
+      "purpose": "当前应用随机交接",
+      "path": "prototype/src/startup_application.cpp",
+      "first": 99,
+      "last": 222,
+      "bytes": 18633,
+      "source_sha256": "a224e5c9e1cac94bb0f5767101bbaf030b4539c19b8d12142f3796ef04c5915a",
+      "window_lf_sha256": "e7bc6d4aff658a1ff9777bf8c3f288ee12bb6f34f5887181b9c1414ce522149b"
+    },
+    {
+      "purpose": "当前应用回放载荷",
+      "path": "prototype/include/dungeon_village_prototype/startup_application.hpp",
+      "first": 9,
+      "last": 35,
+      "bytes": 4666,
+      "source_sha256": "6d0ee6719e69db8cca36a7f54912210a338bd4b542a23af95beb5852a3f137a9",
+      "window_lf_sha256": "e5252b98cf8f5525b592ca7533c7c6464e1abbce8bbe7b6953f3d535e14dd7f6"
+    }
+  ],
+  "checks": 22,
+  "links": 5,
+  "fixture": {
+    "input_y": [
+      212,
+      212,
+      210
+    ],
+    "output_indices": [
+      2,
+      1,
+      0
+    ],
+    "qualification": "局部交换反例"
+  },
+  "resources": {
+    "actor_slots": 20,
+    "slot_integer_fields": 6,
+    "natural_active_upper_bound_inference": 13,
+    "added_asset_copies": 0,
+    "build_trees": 0,
+    "background_processes": 0
+  },
+  "consumer": "../../ui/TITLE_PRESENTATION.md"
+}

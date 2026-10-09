@@ -1,5 +1,7 @@
 # 自然通关路线与完整快照成本审计
 
+2026-10-09接续状态：用户已确认完整应用快照方案，[AVRAPP01及四个计分条件边界](../../prototype/APPLICATION_REPLAY.md)已完成短回放；下文10月8日的“待实现”是当时审计。自然180月Driver与新前缀尚未生成，历史预算风险仍有效；不能将条件档直接换身份成为natural输入。
+
 2026-10-08，接续`9ec4c1a`。本批只读现有驱动、维护快照容器、源合同和历史日志；未编译、运行长测或原游戏，未读取实时原档、改C++／产品、提交。固定APK为规则输入，Steam受阻建设续窗未解码。复算`node research/dungeon_village_1/work/natural-clear-route/audit.cjs`；[清单](INVENTORY.json)保存五档及相关源码身份、容器／分区摘要、Driver头和历史规模，未解码Owner业务字段，不替代C++完整恢复认证。
 
 ## 最短有依据的通关路径

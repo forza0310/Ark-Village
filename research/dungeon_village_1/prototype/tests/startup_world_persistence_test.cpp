@@ -22,6 +22,8 @@
 #endif
 
 using namespace dungeon_village_prototype;
+int run_startup_application_replay_checks(const std::filesystem::path &);
+int run_startup_application_replay_cli(int, const char **);
 namespace {
 using Bytes = std::vector<std::uint8_t>;
 int checks{};
@@ -763,6 +765,7 @@ void run(const std::filesystem::path &dir) {
     std::filesystem::remove(replay);
     std::filesystem::remove(normal);
     std::filesystem::remove(bad);
+    checks += run_startup_application_replay_checks(dir);
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
@@ -972,8 +975,35 @@ void presentation_replay(int argc,const char **argv) {
              <<" random="<<session.state().scene.random.draws()<<" requests=4 sounds=4 checks="<<checks<<'\n';
 }
 } // namespace
+// 应用回放测试沿相同严格文件夹具取得原raw17入口，不把该条件档称自然通关。
+std::filesystem::path create_application_clear_entry_fixture(const std::filesystem::path &dir) {
+    StartupSession initial;
+    StartupWorldRuntimeSession baseline(initial.state(), ref::WorldRandomStream::from_java_seed(1));
+    int frame{};
+    for (; frame < 2200; ++frame) {
+        advance(baseline);
+        if (!baseline.checkpoints().empty() && !baseline.state().scene.world.world.ai.human_order.empty() &&
+            baseline.state().scripts.pages.size() == 1 && baseline.state().scene.scene_state == 0) break;
+    }
+    check(frame < 2200, "application fixture stable source boundary");
+    auto state = baseline.state();
+    state.completion_mode = state.system_completion_mode = 1;
+    ref::WorldScriptPage page; page.kind = ref::WorldScriptPageKind::raw_page; page.legacy_page = 17;
+    const auto pushed = ref::prepare_world_script_page(startup_world_runtime_scripts(state), page);
+    check(pushed.candidate && write_startup_world_runtime_scripts(state, pushed.candidate->state),
+          "application fixture uses actual raw17 factory");
+    StartupWorldSaveMetadata metadata; metadata.purpose = StartupWorldSavePurpose::replay;
+    metadata.controller_id = "application-clear-entry-fixture-v1"; metadata.controller_state = {1};
+    const auto entry = dir / "clear-entry.avrs";
+    const auto encoded = dir / "clear-encoded.avrs", bad = dir / "clear-bad.avrs";
+    capture_persistence_fixture(baseline, state, metadata, entry, encoded, bad,
+                                "explicit raw17 application replay entry, not natural sixteen years");
+    std::filesystem::remove(encoded); std::filesystem::remove(bad); return entry;
+}
 int main(int argc, const char **argv) {
     try {
+        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v1")
+            return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {
             presentation_replay(argc,argv); return 0;
         }

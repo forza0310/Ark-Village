@@ -1,0 +1,82 @@
+{
+  "format": "AVRAPP01",
+  "semantics": 1,
+  "boundary": "complete-outer-round-v1",
+  "fields": [
+    {
+      "name": "paths_",
+      "type": "StartupApplicationPaths",
+      "policy": "rebind: 显式research/work隔离路径；不读取快照旧路径"
+    },
+    {
+      "name": "records_",
+      "type": "StartupSystemRecords",
+      "policy": "save: 完整AVRSYS01字节及未知可选段"
+    },
+    {
+      "name": "draft_",
+      "type": "StartupTitleDraft",
+      "policy": "save: village/main_character{name,sex,custom_name}/slot"
+    },
+    {
+      "name": "random_",
+      "type": "ref::WorldRandomStream",
+      "policy": "save: WorldRandomSnapshot完整引擎/磁带/游标/模式"
+    },
+    {
+      "name": "mode_",
+      "type": "StartupApplicationMode",
+      "policy": "save: logic或title_presentation"
+    },
+    {
+      "name": "page_",
+      "type": "StartupApplicationPage",
+      "policy": "save: 应用页面枚举"
+    },
+    {
+      "name": "record_page_",
+      "type": "int",
+      "policy": "save: 纪录页0或1"
+    },
+    {
+      "name": "decorations_",
+      "type": "std::vector<int>",
+      "policy": "save: 原序定义ID名单"
+    },
+    {
+      "name": "requests_",
+      "type": "std::uint64_t",
+      "policy": "save: 显式纪录请求序号"
+    },
+    {
+      "name": "handoff_",
+      "type": "std::optional<ref::WorldRandomSnapshot>",
+      "policy": "save: 可选历史交接完整随机快照"
+    },
+    {
+      "name": "world_",
+      "type": "std::optional<StartupWorldRuntimeSession>",
+      "policy": "save: 可选AVRSAVE1完整Session与原序审计历史"
+    },
+    {
+      "name": "clear_rows_",
+      "type": "std::optional<StartupClearScoreRows>",
+      "policy": "save: 可选六行count/score"
+    },
+    {
+      "name": "clear_",
+      "type": "std::optional<StartupClearScorePageState>",
+      "policy": "save: 可选stage/counter/row/sum/captured_high_score/finished/new_record/trophy"
+    },
+    {
+      "name": "clear_id_",
+      "type": "std::optional<std::uint64_t>",
+      "policy": "save: 可选稳定raw17页ID"
+    },
+    {
+      "name": "error_",
+      "type": "std::string",
+      "policy": "require-empty: 仅健康应用可捕获；恢复不重演旧错误"
+    }
+  ]
+}

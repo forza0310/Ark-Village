@@ -3,12 +3,21 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 const args = process.argv.slice(2);
 const get = key => args[args.indexOf(key)+1];
 for(const key of ['--root','--ast'])if(!args.includes(key)||!get(key)||get(key).startsWith('--'))throw Error('missing '+key);
 const compare = (a,b) => a<b?-1:a>b?1:0;
 const root = path.resolve(get('--root'));
 const astPath = get('--ast');
+// 完整标准字段检查同时覆盖应用私有直接成员；不把world清单当应用覆盖证明。
+if (args.includes('--check') && args.includes('--compiler')) {
+  const checked = spawnSync(process.execPath,
+    [path.join(path.dirname(fileURLToPath(import.meta.url)), 'check_application_replay_fields.mjs'),
+     '--root', root, '--compiler', get('--compiler'), '--check'], {encoding:'utf8'});
+  if (checked.status !== 0) throw Error(checked.stderr || checked.stdout);
+  process.stdout.write(checked.stdout);
+}
 if (args.includes('--compiler')) {
   const result = spawnSync(get('--compiler'), ['-std=c++17', '-I'+path.join(root,'prototype/include'),
     '-I'+path.join(root,'example/include'), '-x','c++','-fsyntax-only','-Xclang','-ast-dump=json',

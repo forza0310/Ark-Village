@@ -9,6 +9,8 @@
 
 ## 入口与用途
 
+2026-10-09另增[完整应用研究回放](APPLICATION_REPLAY.md)：AVRAPP01保存应用系统／标题／计分控制器＋完整Session＋实际Driver，在新研究隔离目录恢复。它复用本文世界字节codec和既有预算，计分途中不再仅保存世界而漏掉应用控制器；正常AVRSAVE1和AVRSYS01用途保持分开。
+
 2026-10-08主角覆盖新增Owner布局，旧无覆盖schema拒绝、不迁移；跨局纪录使用独立AVRSYS01系统文件，不能从单世界恢复重建。具体应用事务、标题回放与计分页快照边界见[标题／系统模块](STARTUP_APPLICATION.md)。
 
 公开接口为[文件存取](include/dungeon_village_prototype/startup_world_persistence.hpp)：

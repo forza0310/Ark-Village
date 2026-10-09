@@ -29,7 +29,9 @@ std::vector<std::uint8_t> read_save_file(const std::filesystem::path &path, std:
     return bytes;
 }
 
-void replace_save_file(const std::filesystem::path &path, const std::vector<std::uint8_t> &bytes) {
+namespace {
+void publish_save_file(const std::filesystem::path &path, const std::vector<std::uint8_t> &bytes,
+                       bool replace_existing) {
     if (path.filename().empty() || std::filesystem::is_symlink(path))
         throw std::runtime_error("无效存档目标");
     static std::atomic<unsigned long long> sequence{};
@@ -93,9 +95,12 @@ void replace_save_file(const std::filesystem::path &path, const std::vector<std:
         throw std::runtime_error("关闭存档失败");
     if (read_save_file(temporary, bytes.size()) != bytes)
         throw std::runtime_error("临时存档回读校验失败");
-    if (!MoveFileExW(temporary.c_str(), path.c_str(),
-                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-        throw std::runtime_error("替换存档失败，原档保留");
+    // 不以预先exists检查代替原子无覆盖语义，竞争写者创建的目标也必须保留。
+    const DWORD flags = MOVEFILE_WRITE_THROUGH |
+                        (replace_existing ? MOVEFILE_REPLACE_EXISTING : 0);
+    if (!MoveFileExW(temporary.c_str(), path.c_str(), flags))
+        throw std::runtime_error(replace_existing ? "替换存档失败，原档保留"
+                                                 : "新存档发布失败，已有目标保留");
 #else
     struct Close {
         int h;
@@ -121,7 +126,21 @@ void replace_save_file(const std::filesystem::path &path, const std::vector<std:
         throw std::runtime_error("关闭存档失败");
     if (read_save_file(temporary, bytes.size()) != bytes)
         throw std::runtime_error("临时存档回读校验失败");
-    std::filesystem::rename(temporary, path);
+    if (replace_existing)
+        std::filesystem::rename(temporary, path);
+    else {
+        // 同目录硬链接发布具备EEXIST无覆盖保证；成功后仅由RAII移除临时名字。
+        // 不在目标已发布后再执行可能抛错的动作，不把清理或掉电耐久性称为跨文件事务。
+        if (::link(temporary.c_str(), path.c_str()) != 0)
+            throw std::runtime_error("新存档发布失败，已有目标保留");
+    }
 #endif
+}
+} // namespace
+void replace_save_file(const std::filesystem::path &path, const std::vector<std::uint8_t> &bytes) {
+    publish_save_file(path, bytes, true);
+}
+void create_save_file(const std::filesystem::path &path, const std::vector<std::uint8_t> &bytes) {
+    publish_save_file(path, bytes, false);
 }
 } // namespace dungeon_village_prototype::persistence_detail

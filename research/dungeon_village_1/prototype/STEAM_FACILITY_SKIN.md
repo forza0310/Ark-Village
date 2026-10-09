@@ -1,0 +1,15 @@
+# Steam设施页只读皮肤计划
+
+`steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。当前入口仅覆盖已核raw81升级页；74接线方案见[后继边界](../work/facility-skin-integration/README.md)。来源是[Steam81合同](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
+
+调用方提供已初始化页面的定义／mapchip／共享等级、冻结三属性前后差与上限、phase／frame／独立frame2、语言分支、VIEW_Y及原调用对应的真实测宽。两个标题宽必填；非日文第一阶段另填四次测宽，不能用字符串长度估算。接口检查缺测量、阶段／等级／计数、差额关系和整数范围，非法输入返回空；它不能单凭数值输入证明真实Owner绑定，页面view适配器仍须负责身份和初始化资格。
+
+返回有序variant计划：原木窗框／内框、文本位置与颜色、clip push/pop、event两背景、设施Mapchip2请求、数字请求、MAX图、箭头、左右影子／角色，以及双空软标签和原无矩形的确认组件。顺序必须保持，不能先汇总图片再画文字；phase0的提示40可确认但50才画，phase1从55起提示，frame2不随切段归零。
+
+数值动画保留Steam的特殊整数计数与逐步float32抛物取整。差为±1时34–48仍旧值，49才切新值；较小正差提前结束，下降不镜像上升。MAX比较当前显示值。具名资源映射明确区分Steam number05／number08与APK同名图，其余引用已有同字节出版资源，不复制图像。
+
+**数字格式和Mapchip2目前仍是具名helper请求。**金额位置保留调用实参，执行器再依原helper减9；不能在计划及执行器重复偏移。文字仍需真实翻译／字形／测宽后端。此模块不是完整像素渲染器，没有接入研究窗口或认证OS热区，不宣称完整原皮肤已完成。
+
+绘制不会重新执行升级、扣费、递增计数、抽随机、发声或退休页面；这些继续由唯一Owner负责。返回向量是本次短寿命值，不进入存档或第二输出队列。现有visuals套件扩`steam_facility_skin_checks.cpp`，覆盖帧边界、取整、层序、裁剪平衡、输入拒绝、Steam资源和重复查询规模；升级业务仍由原building/pages套件主责，不重复其整组断言。
+
+2026-10-10：单Release目标构建及visuals通过0.60秒。原窗口逐像素、完整中文字体、74全部布局及Owner到该计划的页面桥待后续分别验收。实施与资源清单见[本批交付](../work/steam-facility-skin-delivery/README.md)。

@@ -1,0 +1,82 @@
+#pragma once
+
+#include "dungeon_village_prototype/steam_startup_skin.hpp"
+#include <array>
+#include <optional>
+#include <variant>
+#include <vector>
+
+namespace dungeon_village_prototype {
+// Steam资源身份独立于APK同号槽。路径相对已出版assets目录，不读取work或Unity容器。
+enum class SteamFacilityAsset {
+    wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
+    upgrade_background, mini_background
+};
+struct SteamFacilityResource {
+    const char *group;
+    int image{}, sprite{-1};
+    const char *published_image;
+    const char *published_sprite; // nullptr表示直接图片裁片。
+};
+std::optional<SteamFacilityResource> steam_facility_resource(SteamFacilityAsset asset);
+struct SteamFacilityImage {
+    SteamFacilityAsset asset;
+    std::array<int,2> position{};
+    int frame{};
+    std::optional<std::array<int,4>> crop; // 空值沿已核SEB；内部offset只加一次。
+};
+enum class SteamFacilityTextRole { upgrade_title, facility_notice, level_prefix, level_suffix,
+                                  level_completed, parameter_name };
+struct SteamFacilityText {
+    SteamFacilityTextRole role;
+    int argument{}; // notice为定义ID，parameter为0/1/2；实际翻译由文本消费者提供。
+    std::array<int,4> rectangle{};
+    std::optional<int> anchor;
+    std::array<int,3> rgb{};
+    int font_size{}; // 0保留当前字体；9是原临时请求，画后恢复。
+    bool japanese{}; // notice的名称后缀/翻译分支，不能猜为同一串字。
+};
+enum class SteamFacilityClipKind { push_intersect, pop };
+struct SteamFacilityClip {
+    SteamFacilityClipKind kind;
+    std::array<int,4> rectangle{};
+};
+// 以下是具名未展开helper请求，不冒称完整字体/数字格式或mapchip像素执行器。
+struct SteamFacilityMapchip2 {
+    int mapchip{};
+    std::array<int,2> position{};
+    int orientation{}; // 81固定0；消费者使用Mapchip2居中pattern，不套普通建设锚点。
+};
+enum class SteamFacilityNumberKind { number, money, plus_value };
+struct SteamFacilityNumber {
+    SteamFacilityNumberKind kind;
+    SteamFacilityAsset asset;
+    int value{};
+    std::array<int,2> position{};
+    // 仅number使用padding/anchor；money/plus保留原具名helper，position为调用实参。
+    // money内的dx−9与plus内的加号定位留给helper消费者，不能在接线时重复偏移。
+    int padding{}, anchor{};
+    int parameter{-1}; // -1当前等级；0/1/2对应冻结属性行，不重算业务值。
+};
+using SteamFacilityDraw=std::variant<StartupSkinRect,SteamFacilityImage,SteamFacilityText,
+                                    SteamFacilityClip,SteamFacilityMapchip2,SteamFacilityNumber>;
+struct SteamFacilitySkinPlan {
+    std::vector<SteamFacilityDraw> draws; // 必须原序执行，不能把文本/图/clip分别重排。
+    std::array<int,2> soft_labels{0,0};
+    std::vector<SteamStartupTouch> touches; // 确认组件2 option2，原无矩形重载不猜物理热区。
+};
+struct SteamFacilityUpgradeSkinInput {
+    int definition{}, mapchip{}, level{1};
+    int phase{}, frame{}, frame2{}, view_y{};
+    bool japanese{};
+    std::array<std::array<int,3>,3> attributes{}; // 各slot的[前,后,差]，来自Owner冻结载荷。
+    std::array<int,3> limits{};
+    std::optional<std::array<int,2>> title_widths; // DrawWindow阴影/正文各一次真实StringWidth。
+    // phase0非日文的数字文本、prefix、suffix、再次prefix四次实际整数测宽。
+    std::optional<std::array<int,4>> notice_widths;
+};
+// Steam81独立纯计划；输入必须为已初始化页面事实。无Owner、计数推进、声音、随机或存档。
+// int32算术超界与坏冻结差额拒绝是维护安全约束，不复制原运行时异常/回绕。
+std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
+    const SteamFacilityUpgradeSkinInput &input);
+} // namespace dungeon_village_prototype

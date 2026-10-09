@@ -1,0 +1,12 @@
+[0/2] Re-checking globbed directories...
+[1/2] Re-running CMake...
+-- Configuring done (0.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/code/Ark-Village/research/dungeon_village_1/work/release
+[0/4] Re-checking globbed directories...
+[1/9] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/__/tools/src/sprite.cpp.obj
+[2/9] Building RC object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/research-windows.rc.res
+[3/9] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/__/tools/src/table.cpp.obj
+[4/9] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/tests/startup_skin_checks.cpp.obj
+[5/9] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/tests/startup_world_visuals_test.cpp.obj
+[6/9] Linking CXX executable bin\dungeon_village_startup_world_visuals_tests.exe

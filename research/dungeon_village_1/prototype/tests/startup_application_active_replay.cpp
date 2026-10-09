@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
+#include "dungeon_village_reference/world_calendar_tasks.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "startup_application_replay_paths.hpp"
 #include "startup_world_file_io.hpp"
@@ -166,6 +167,36 @@ std::array<std::uint64_t, 12> resources(const StartupApplication &app) {
             u.live_encounters, u.retired_encounters, u.retained_tasks, u.continuations,
             app.world()->checkpoints().size(), s.scene.world.world.ai.accounting.entries().size()};
 }
+// 月日志/终点只读诊断：复用原晋级纯查询的kind3/9与kind12计数，
+// 只准备其实际读取字段，不复制全Session/历史，也不修改rank缓存或Driver身份。
+std::string progress_json(const StartupApplication &app) {
+    const auto &s = app.world()->state();
+    ref::WorldCalendarTasksState query;
+    query.finish.dungeon.world.facilities = s.scene.world.world.facilities;
+    query.finish.task_progress.successes = s.task_progress.successes;
+    query.facility_order = s.scene.world.facility_order;
+    query.rank_terms = ref::fixed_calendar_task_rank_terms();
+    query.rank = 1; // 仅选有两种计数的第二星查询模板，不是把当前村子升星。
+    query.highest_month_income = s.maximum_income;
+    query.popularity = s.popularity;
+    query.events_held = s.events_held;
+    const auto status = ref::prepare_world_rank_status(query);
+    require(status.has_value(), "progress diagnostic rank query failed");
+    std::optional<int> facilities, houses;
+    const auto &terms = query.rank_terms.at(query.rank);
+    for (std::size_t n = 0; n < terms.size(); ++n) {
+        if (terms[n].type == 1) facilities = status->values[n];
+        if (terms[n].type == 2) houses = status->values[n];
+    }
+    require(facilities && houses, "progress diagnostic missing count terms");
+    std::ostringstream out;
+    out << "{\"cash\":" << s.scene.world.world.ai.accounting.funds()
+        << ",\"popularity\":" << s.popularity << ",\"maximum_income\":" << s.maximum_income
+        << ",\"village_points\":" << s.village_points << ",\"events_held\":" << s.events_held
+        << ",\"quarter_counter\":" << s.quarter_counter << ",\"task_successes\":" << s.task_progress.successes
+        << ",\"facilities_kind3_9\":" << *facilities << ",\"houses_kind12\":" << *houses << '}';
+    return out.str();
+}
 bool references(const StartupWorldRuntimeState &s) {
     const auto owns = [&](std::uint64_t id) { return std::any_of(s.scripts.pages.begin(), s.scripts.pages.end(),
                                                               [&](const auto &p) { return p.id == id; }); };
@@ -285,6 +316,9 @@ Intent plan(const StartupApplication &app, const Driver &d) {
     // 已核任务成果：30确认快进/分阶段，31初始化统计再关闭，32只关闭摘要。
     // 奖励在真实收尾已提交；调用既有Owner确认，不能再次结算或直接退休页面。
     case 30: case 31: case 32: return Intent::acknowledge;
+    // 99/100走现有consume_task_display确认：早确认不快进，>=40才关闭。
+    // 初始化身份/100的E及F随机均由Owner管理，Driver不重建表或额外执行更新。
+    case 99: case 100: return Intent::acknowledge;
     case 11: case 49: case 50: case 59: case 67: case 88: case 89: case 94: case 95: case 96:
         return Intent::acknowledge;
     default: throw std::runtime_error("active unknown raw=" + std::to_string(p->legacy_page) + " page=" + std::to_string(p->id));
@@ -590,7 +624,8 @@ int run_startup_application_active_replay_cli(int argc, const char **argv) {
         }
         if (previous_month != d.months)
             std::cout << "application-active-month months=" << d.months << " frame=" << frame << " rank=" << app.world()->state().rank
-                      << " history=" << d.history << " random=" << d.random << std::endl;
+                      << " history=" << d.history << " random=" << d.random
+                      << " progress=" << progress_json(app) << std::endl;
         if (save && frame == save_at) {
             const auto started = Clock::now();
             good(save_startup_application_replay(root.parent_path(), capture, app, metadata(d), validate,
@@ -618,7 +653,8 @@ int run_startup_application_active_replay_cli(int argc, const char **argv) {
               << ",\"accepted_tasks\":" << d.accepted_tasks << ",\"departed_tasks\":" << d.departed_tasks
               << ",\"task_successes\":" << d.task_successes << ",\"completed_activities\":" << d.completed_activities
               << ",\"upgrades\":" << d.upgrade_pages.size() << ",\"trace_rows\":" << rows
-              << ",\"capture_seconds\":" << capture_seconds << ",\"restore_seconds\":" << restore_seconds << "}\n";
+              << ",\"capture_seconds\":" << capture_seconds << ",\"restore_seconds\":" << restore_seconds
+              << ",\"progress\":" << progress_json(app) << "}\n";
     return 0;
 }
 

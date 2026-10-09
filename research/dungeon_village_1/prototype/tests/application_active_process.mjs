@@ -51,6 +51,49 @@ function traceRows(bytes,capture,tail){
     return rows;
 }
 
+// 源预检不恢复或认证世界；三进程均继续使用同一C++完整应用/Driver/引用验证。
+export async function readActiveApplicationSource(options,trusted,saveAt){
+    need(!(options.loadPrefix!==undefined&&options.loadCandidate!==undefined),'load-prefix与load-candidate互斥');
+    let source=null,sourceBytes,sourceCertificateBytes,uncertifiedHistory=null;
+    if(options.loadPrefix!==undefined){
+        const file=await fs.realpath(path.resolve(options.loadPrefix));need(within(trusted,file),'源前缀越界');
+        sourceBytes=await readBounded(file,128*1024*1024);const meta=identity(sourceBytes);
+        const certificateFile=await fs.realpath(file+'.json');need(within(trusted,certificateFile),'源证书实际路径越界');
+        sourceCertificateBytes=await readBounded(certificateFile,1024*1024);const cert=JSON.parse(sourceCertificateBytes);
+        need(cert.controller===controller&&cert.qualification===qualification&&cert.process_count===3&&
+             cert.producer_revision===meta.producer&&
+             cert.snapshot_sha256===hash(sourceBytes)&&cert.snapshot_bytes===sourceBytes.length&&
+             natural(cert.capture_frame)&&cert.capture_frame+1===meta.next_frame&&
+             natural(cert.capture_rank)&&cert.capture_rank<=5&&natural(cert.tail_frames)&&cert.tail_frames>0&&
+             cert.tail_frames<=1000&&cert.stop_at===cert.capture_frame+cert.tail_frames&&
+             digest(cert.trace_sha256)&&natural(cert.trace_bytes)&&cert.trace_bytes>0,'主动证书与实际前缀不符');
+        for(const key of ['dataset','world_schema','application_schema'])need(cert[key]===meta[key],'源身份不符 '+key);
+        need(saveAt>=meta.next_frame,'捕获必须晚于源前缀');
+        source={file,certificate_file:certificateFile,snapshot_sha256:hash(sourceBytes),
+            certificate_sha256:hash(sourceCertificateBytes),next_frame:meta.next_frame,
+            capture_frame:cert.capture_frame,rank:cert.capture_rank,qualification,source_status:'certified'};
+        uncertifiedHistory=cert.uncertified_history??null;
+    }
+    if(options.loadCandidate!==undefined){
+        const file=await fs.realpath(path.resolve(options.loadCandidate));need(within(trusted,file),'候选实际路径必须位于research/work内');
+        sourceBytes=await readBounded(file,128*1024*1024);const meta=identity(sourceBytes);
+        need(saveAt>=meta.next_frame,'新捕获必须晚于候选');
+        source={file,source_status:'candidate',qualification:'unverified_complete_round_candidate',
+            snapshot_sha256:hash(sourceBytes),snapshot_bytes:sourceBytes.length,
+            next_frame:meta.next_frame,capture_frame:meta.next_frame-1,producer_revision:meta.producer,
+            dataset:meta.dataset,world_schema:meta.world_schema,application_schema:meta.application_schema};
+        uncertifiedHistory={file,snapshot_sha256:source.snapshot_sha256,snapshot_bytes:source.snapshot_bytes,
+            next_frame:meta.next_frame,producer_revision:meta.producer};
+    }
+    if(uncertifiedHistory!==null)need(typeof uncertifiedHistory==='object'&&!Array.isArray(uncertifiedHistory)&&
+        typeof uncertifiedHistory.file==='string'&&digest(uncertifiedHistory.snapshot_sha256)&&
+        natural(uncertifiedHistory.snapshot_bytes)&&uncertifiedHistory.snapshot_bytes>0&&
+        uncertifiedHistory.snapshot_bytes<=128*1024*1024&&natural(uncertifiedHistory.next_frame)&&
+        uncertifiedHistory.next_frame>1&&typeof uncertifiedHistory.producer_revision==='string',
+        '候选未认证历史边界非法');
+    return {source,sourceBytes,sourceCertificateBytes,uncertifiedHistory};
+}
+
 export async function verifyActiveApplication(options){
     const exe=path.resolve(options.exe),trusted=await fs.realpath(path.join(researchRoot,'work'));
     const work=await fs.realpath(path.resolve(options.workDir));need(within(trusted,work),'实际工作目录必须位于research/work内');
@@ -68,25 +111,13 @@ export async function verifyActiveApplication(options){
             try{await fs.lstat(file);throw Error('快照/证书已存在，禁止覆盖');}catch(e){if(e.code!=='ENOENT')throw e;}
         }
     }
-    let source=null,sourceBytes,sourceCertificateBytes;
-    if(options.loadPrefix){
-        const file=await fs.realpath(path.resolve(options.loadPrefix));need(within(trusted,file),'源前缀越界');
-        sourceBytes=await readBounded(file,128*1024*1024);const meta=identity(sourceBytes);
-        const certificateFile=await fs.realpath(file+'.json');need(within(trusted,certificateFile),'源证书实际路径越界');
-        sourceCertificateBytes=await readBounded(certificateFile,1024*1024);const cert=JSON.parse(sourceCertificateBytes);
-        need(cert.controller===controller&&cert.qualification===qualification&&cert.process_count===3&&
-             cert.producer_revision===meta.producer&&
-             cert.snapshot_sha256===hash(sourceBytes)&&cert.snapshot_bytes===sourceBytes.length&&
-             natural(cert.capture_frame)&&cert.capture_frame+1===meta.next_frame&&
-             natural(cert.capture_rank)&&cert.capture_rank<=5&&natural(cert.tail_frames)&&cert.tail_frames>0&&
-             cert.tail_frames<=1000&&cert.stop_at===cert.capture_frame+cert.tail_frames&&
-             digest(cert.trace_sha256)&&natural(cert.trace_bytes)&&cert.trace_bytes>0,'主动证书与实际前缀不符');
-        for(const key of ['dataset','world_schema','application_schema'])need(cert[key]===meta[key],'源身份不符 '+key);
-        need(saveAt>=meta.next_frame,'捕获必须晚于源前缀');
-        source={file,certificate_file:certificateFile,snapshot_sha256:hash(sourceBytes),
-            certificate_sha256:hash(sourceCertificateBytes),next_frame:meta.next_frame,
-            capture_frame:cert.capture_frame,rank:cert.capture_rank,qualification};
-    }
+    const {source,sourceBytes,sourceCertificateBytes,uncertifiedHistory}=
+        await readActiveApplicationSource(options,trusted,saveAt);
+    const sourceUnchanged=async()=>{
+        if(source)need(sourceBytes.equals(await readBounded(source.file,128*1024*1024))&&
+            (!sourceCertificateBytes||sourceCertificateBytes.equals(await readBounded(source.certificate_file,1024*1024))),
+            '冻结主动源或证书发生变化');
+    };
     const owned=await fs.mkdtemp(path.join(work,'application-active-'));
     let passed=false;
     const processes=applicationReplayProcesses(exe,owned,timeout),seconds=processes.seconds;
@@ -102,7 +133,13 @@ export async function verifyActiveApplication(options){
                  result[key].every(natural))&&digest(result.digest)&&digest(result.sound_hash)&&
              typeof result.terminal==='boolean'&&result.phase===(result.terminal?1:0)&&
              result.departed_tasks<=result.accepted_tasks,
-             '终点Driver身份/完整字段');return result;
+             '终点Driver身份/完整字段');
+        need(result.progress&&typeof result.progress==='object'&&!Array.isArray(result.progress)&&
+             ['cash','popularity','maximum_income','village_points'].every(key=>Number.isSafeInteger(result.progress[key]))&&
+             ['events_held','quarter_counter','task_successes','facilities_kind3_9','houses_kind12']
+                 .every(key=>natural(result.progress[key]))&&result.progress.task_successes===result.task_successes,
+             '终点经营诊断字段/任务统计不一致');
+        return result;
     };
     try{
         const dirs=[0,1,2].map(n=>path.join(owned,'process-'+n));for(const dir of dirs)await fs.mkdir(dir);
@@ -125,24 +162,26 @@ export async function verifyActiveApplication(options){
             need(expected.equals(await readBounded(traces[n],8*1024*1024)),'三路实际命令/Driver/世界/目录/声音trace不一致');
             for(const key of ['controller','completed_frame','next_frame','next_command','rank','months','date','digest',
                 'sound_count','sound_hash','random','resources','peaks','phase','trace_rows',
-                'accepted_tasks','departed_tasks','task_successes','completed_activities','upgrades','terminal'])
+                'accepted_tasks','departed_tasks','task_successes','completed_activities','upgrades','terminal','progress'])
                 need(JSON.stringify(restored[key])===JSON.stringify(reference[key]),'完整终点不同 '+key);
             need(bytes.equals(await readBounded(snapshot,128*1024*1024)),'恢复改写源快照');
         }
         const certificate={controller,qualification,producer_revision:meta.producer,seed:1,speed:0,
             dataset:meta.dataset,world_schema:meta.world_schema,application_schema:meta.application_schema,
-            source_prefix:source,capture_frame:capture,capture_rank:reference.capture_rank,stop_at:reference.completed_frame,
+            source_prefix:source,uncertified_history:uncertifiedHistory,
+            capture_frame:capture,capture_rank:reference.capture_rank,stop_at:reference.completed_frame,
             tail_frames:tail,process_count:3,snapshot_bytes:bytes.length,snapshot_sha256:hash(bytes),section_bytes:meta.section_bytes,
             trace_bytes:expected.length,trace_sha256:hash(expected),terminal:reference,process_wall_seconds:seconds,
             comparison:'完整实际命令五元组、规范Driver字节、应用含世界/引用身份、系统实际字节、typed声音逐轮三路相同',
-            certification_boundary:source?'已认证主动前缀恢复后继续；本轮认证新捕获尾段':'真实新局主动经营reference及指定捕获尾段',
+            certification_boundary:uncertifiedHistory?'候选来源的先前历史未认证；仅本轮新捕获后的尾段完成三进程认证':
+                source?'已认证主动前缀恢复后继续；本轮认证新捕获尾段':'真实新局主动经营reference及指定捕获尾段',
             limitations:['短尾段证书不代表自然首星或通关已经完成','不接受被动自然Driver或旧语义证书','不认证原APK/Steam窗口及自动绘制频率']};
+        await sourceUnchanged(); // 发布前核源身份，不能先发证书再发现reference输入已变化。
         if(output)await publishApplicationReplayPair(output,bytes,certificate);
         console.log(JSON.stringify(certificate,null,2));passed=true;return certificate;
     }finally{
         processes.finish();
-        if(source)need(sourceBytes.equals(await readBounded(source.file,128*1024*1024))&&
-            sourceCertificateBytes.equals(await readBounded(source.certificate_file,1024*1024)),'冻结主动源或证书发生变化');
+        await sourceUnchanged();
         need(path.dirname(owned)===work,'临时目录越界');
         if(passed)await fs.rm(owned,{recursive:true});else console.error('主动失败现场保留：'+owned);
     }
@@ -150,7 +189,7 @@ export async function verifyActiveApplication(options){
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
     const args=process.argv.slice(2),options={};
     const keys={'--exe':'exe','--work-dir':'workDir','--save-at':'saveAt','--tail-frames':'tailFrames',
-        '--frame-limit':'frameLimit','--timeout-seconds':'timeoutSeconds','--load-prefix':'loadPrefix',
+        '--frame-limit':'frameLimit','--timeout-seconds':'timeoutSeconds','--load-prefix':'loadPrefix','--load-candidate':'loadCandidate',
         '--snapshot-file':'snapshotFile','--producer-revision':'producerRevision'};
     for(let n=0;n<args.length;n+=2){need(keys[args[n]]&&n+1<args.length&&options[keys[args[n]]]===undefined,'参数非法');
         options[keys[args[n]]]=args[n+1];}

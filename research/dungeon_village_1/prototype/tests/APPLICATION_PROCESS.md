@@ -16,6 +16,16 @@ reference使用真实新局，经应用公开命令到420轮捕获，再继续�
 
 显式`--snapshot-file <新文件>`只在三路通过后无覆盖发布快照与`.json`证书；`--load-prefix`必须持有同一主动Controller、`active_application_management_tail`资格及匹配实际容器hash的证书，捕获边界必须晚于源。此证书只认证所述短尾段，不以420／440结果宣称首星或自然通关已经完成。长阶段使用单独显式观察预算，不改原世界数值、旧黄金或有效断言。
 
+主动runner另提供显式`--load-candidate <完整轮末候选>`，与`--load-prefix`互斥。用途是从失败长跑已捕获的完整应用候选开始**新的reference**，并在之后的新捕获上执行两个独立恢复；不把缺失证书自动当候选，不改`--load-prefix`原有证书校验。候选真实路径必须在research/work内，文件不超过128MiB，预检须满足应用7容器摘要和主动Controller；C++仍完整校验世界4、Driver关系、系统及全部引用blob，不能只靠文件可解析就发布认证。
+
+候选入口仍使用既有AVRAPP01格式和`--load-file`恢复协议，不增加业务格式、不修改原候选字节。新证书`source_prefix`明确写`source_status=candidate`、原hash／字节数／next_frame及来源版本；`uncertified_history`记录此前未认证历史边界，且沿后来`--load-prefix`生成的证书继续保留。新尾段三路相同只认证新捕获以后的短区间，不追认先前失败前缀、首星或全路线已验。所有路径的finally均核原候选字节不变；候选没有证书时不会伪造源证书。
+
+例如从工作包中的晚期候选恢复，必须显式选一个晚于候选next_frame的保存轮数及有界尾段：
+
+```powershell
+node research/dungeon_village_1/prototype/tests/application_active_process.mjs --exe <application测试程序> --work-dir <独立工作目录> --load-candidate research/dungeon_village_1/work/active-application-later/application-active-5D8HYk/process-0/prefix.avra --save-at <新的捕获轮> --tail-frames 20 --frame-limit <捕获轮加20或更大上限>
+```
+
 两入口共用认证文件发布辅助：先独占创建快照，再独占创建证书，**双文件不是原子发布**。第二次创建或写入失败时，仅回收本轮创建、文件身份与实际字节仍匹配的文件；既有证书、源前缀与外部改动不删除。回收失败报告明确残留，不宣称发布成功。进程崩溃仍可能留未认证候选；缺失或不匹配证书的前缀不具备恢复认证资格。
 
 既有`replay_file_test.mjs`的可选`--active-application-exe`挂接同一420／440认证，不新建target或CTest。本页是机制说明，实际构建、进程结果与资源规模以当批交付记录为准。

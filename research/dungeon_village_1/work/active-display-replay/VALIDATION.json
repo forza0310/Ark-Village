@@ -1,0 +1,199 @@
+{
+  "baseline": "131d8ff",
+  "files": [
+    {
+      "path": "prototype/tests/startup_application_active_replay.cpp",
+      "bytes": 52727,
+      "sha256": "565e3523bedb8122d3f6a3ae4cbadb7d5193ec94146e69ac1bb0da08a2a27bc9"
+    },
+    {
+      "path": "prototype/tests/application_active_process.mjs",
+      "bytes": 15619,
+      "sha256": "8908fe23fee650ca8eefbcb99cd34c86e466f95d14a93ae4189d94136fe24092"
+    },
+    {
+      "path": "prototype/tests/replay_file_test.mjs",
+      "bytes": 43862,
+      "sha256": "65536a193aa33918451ac2f81725c3a7640ebbfd626bab40e9a83bf458fc0e44"
+    },
+    {
+      "path": "prototype/tests/APPLICATION_PROCESS.md",
+      "bytes": 5366,
+      "sha256": "1393841e0cd4dcbf1b0627cce394d890c1d2d4a269e1101144009ade09f55439"
+    },
+    {
+      "path": "work/active-progression-plan/ACTIVE_DRIVER.md",
+      "bytes": 8143,
+      "sha256": "238e70aca8a94de8a6db6c08c47f5267dfe014aa1b16c1a89612dc0adc1be79c"
+    },
+    {
+      "path": "work/active-display-replay/README.md",
+      "bytes": 3067,
+      "sha256": "20f05111a051e22bb57ea9463fcbb1feb3d6ef7876671b7a98d5be84687d2315"
+    },
+    {
+      "path": "work/active-display-replay/audit.py",
+      "bytes": 2932,
+      "sha256": "9a91634c18652eee17ff6cbe627ed17f7acd103d29ad9d2d3983b4c75cd69bde"
+    }
+  ],
+  "source_candidate": {
+    "path": "work/active-application-later/application-active-5D8HYk/process-0/prefix.avra",
+    "bytes": 17380140,
+    "sha256": "e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218"
+  },
+  "snapshot": {
+    "path": "work/snapshots/active-application-v1/frame20002.avra",
+    "bytes": 17380182,
+    "sha256": "40376fae3ebe7582effca3cf334a2d667d2efb650ae0e78664497e6fb246f8ad"
+  },
+  "certificate": {
+    "path": "work/snapshots/active-application-v1/frame20002.avra.json",
+    "bytes": 3866,
+    "sha256": "673843cf13a4043eed49d43733869bd81ed1ecb5e3734e322e92678c2467a581"
+  },
+  "result": {
+    "controller": "application-active-progression-v1",
+    "qualification": "active_application_management_tail",
+    "producer_revision": "131d8ff-display-pages",
+    "seed": 1,
+    "speed": 0,
+    "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+    "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+    "application_schema": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c",
+    "source_prefix": {
+      "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\active-application-later\\application-active-5D8HYk\\process-0\\prefix.avra",
+      "source_status": "candidate",
+      "qualification": "unverified_complete_round_candidate",
+      "snapshot_sha256": "e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218",
+      "snapshot_bytes": 17380140,
+      "next_frame": 20001,
+      "capture_frame": 20000,
+      "producer_revision": "87023c3",
+      "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+      "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+      "application_schema": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c"
+    },
+    "uncertified_history": {
+      "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\active-application-later\\application-active-5D8HYk\\process-0\\prefix.avra",
+      "snapshot_sha256": "e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218",
+      "snapshot_bytes": 17380140,
+      "next_frame": 20001,
+      "producer_revision": "87023c3"
+    },
+    "capture_frame": 20002,
+    "capture_rank": 0,
+    "stop_at": 20102,
+    "tail_frames": 100,
+    "process_count": 3,
+    "snapshot_bytes": 17380182,
+    "snapshot_sha256": "40376fae3ebe7582effca3cf334a2d667d2efb650ae0e78664497e6fb246f8ad",
+    "section_bytes": {
+      "1": 78,
+      "2": 555,
+      "3": 679,
+      "4": 17377457,
+      "5": 613,
+      "6": 4
+    },
+    "trace_bytes": 157141,
+    "trace_sha256": "a672c3785166da0856de05d7f8c2489e35dc8da28f73b421443602c2ecb12d66",
+    "terminal": {
+      "controller": "application-active-progression-v1",
+      "capture_frame": 20002,
+      "capture_rank": 0,
+      "completed_frame": 20102,
+      "next_frame": 20103,
+      "next_command": 371,
+      "rank": 0,
+      "months": 11,
+      "date": [
+        1,
+        2,
+        1,
+        1512
+      ],
+      "digest": "423d39e30566dfda2e80d22ad047a3d1fbaeaf754210993ea96317785c60f19b",
+      "resources": [
+        7,
+        1,
+        10,
+        1,
+        0,
+        3,
+        2,
+        1,
+        6,
+        1,
+        45,
+        126
+      ],
+      "peaks": [
+        10,
+        4,
+        10,
+        5,
+        14,
+        6,
+        3,
+        3,
+        6,
+        3,
+        45,
+        126
+      ],
+      "sound_count": 154,
+      "sound_hash": "1bbb5c8737fc4af91d75c49095fd650b35c8653b6143ba704650c3b516ec407c",
+      "random": 163165,
+      "phase": 0,
+      "terminal": false,
+      "accepted_tasks": 3,
+      "departed_tasks": 0,
+      "task_successes": 3,
+      "completed_activities": 5,
+      "upgrades": 0,
+      "trace_rows": 100,
+      "capture_seconds": 0.838554,
+      "restore_seconds": 0.312894,
+      "progress": {
+        "cash": 13460,
+        "popularity": 199,
+        "maximum_income": 3770,
+        "village_points": 23,
+        "events_held": 5,
+        "quarter_counter": 2,
+        "task_successes": 3,
+        "facilities_kind3_9": 4,
+        "houses_kind12": 0
+      }
+    },
+    "process_wall_seconds": [
+      3.9389059,
+      3.0433098,
+      3.0152494000000005
+    ],
+    "comparison": "完整实际命令五元组、规范Driver字节、应用含世界/引用身份、系统实际字节、typed声音逐轮三路相同",
+    "certification_boundary": "候选来源的先前历史未认证；仅本轮新捕获后的尾段完成三进程认证",
+    "limitations": [
+      "短尾段证书不代表自然首星或通关已经完成",
+      "不接受被动自然Driver或旧语义证书",
+      "不认证原APK/Steam窗口及自动绘制频率"
+    ]
+  },
+  "checks": {
+    "release_build": "passed",
+    "pages_task_display_persistence_seconds": 31.12,
+    "persistence_seconds": 31.11,
+    "replay_process_before_candidate_tests_seconds": 53.96,
+    "replay_process_final_seconds": 55.3
+  },
+  "storage": {
+    "release_file_count": 1499,
+    "release_bytes": 115566303,
+    "new_source_text_bytes": 131716,
+    "new_asset_bytes": 0
+  },
+  "boundary": "仅新捕获后100轮认证；候选此前历史不追认；无原窗口或首星完成结论",
+  "retention": "成功临时三进程根/trace已消费回收；失败现场及被引用快照保留；合法历史不删",
+  "processes": "本批构建与测试均退出；后继30000采样不纳入本批结果"
+}

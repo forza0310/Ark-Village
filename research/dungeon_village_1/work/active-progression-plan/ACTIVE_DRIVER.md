@@ -22,6 +22,12 @@ trace每行记录`frame/next_frame/next_command`、完整`commands`五整数数�
 
 集中套件重跑修正：Driver检查使用规范测试父目录下独占时间戳子目录，成功仅清理本轮树，失败打印并保留准确路径。不会删除旧固定`active-driver-contract`或任何先前失败目录；新增53条件链只使用这一次Owner内存，没有第二套固定输出目录。此项修复测试工作区生命周期，不改变业务断言。
 
+2026-10-10月度/终点观察增量：月日志增加`progress={...}`，summary增加同名对象，列当前现金、人气、最高月收入、点数、实际活动F、季度次数、任务成功数、kind3/9设施数及kind12住宅数。两种计数复用`prepare_world_rank_status`第二星条件模板，只投影其所读字段，不复制统计算法或全Session。只在月变/打印终点时查询，未写Driver、rank缓存、世界、随机或音频，不改变trace和已有前缀身份；旧证书缺这些附加诊断不意味着其快照语义失效。新报告三路对比该对象，不从旧报告补造缺失数字。
+
+2026-10-10首次任务展示页准入：20007轮实际raw100曾被严格未知页守卫挡住；按[任务展示合同](../../rules/ai/DUNGEONS.md#演出与成果后的阻塞点)和[页面合同](../../ui/PAGES.md)将99/100明确纳入`acknowledge`白名单。仍每轮先应用update再确认；原`consume_task_display`负责初始化身份、共享8×9表及共同随机，100首次E合计19抽，F只由update推进，99不运行E/F。若本轮刚插新页，首次真实confirm可完成源允许的初始化；同页后续确认不重初始化、不重跑F、不额外抽19。早确认保持原计数，至少40次页面更新后确认才关闭；Driver不自己快进、不改计数，也不加入额外音效。
+
+本改动不扩未知页通用准入，未改Driver字段/格式。可从已保存20000前缀认证20001起含首次raw100的短尾段，不重跑自然前缀。已有`dungeon_village_prototype.startup_world_pages`的`task_display`覆盖真实怪物绑定缺失拒绝、首次19抽、重复早确认无额外抽取、40轮世界/日历冻结及关闭；`dungeon_village_reference.world_task_display`覆盖纯领域随机/溢出。新增风险限于应用Driver接线，由既有`startup_world_replay_process`及20000来源短三路重放覆盖，不重复建立新测试target。以上是本次修复与验收建议，不提前登记通过。
+
 summary前缀`application-active-summary`，记录controller、capture_frame/capture_rank、完成轮/下一命令、rank/months/date、digest、sound_count/hash、random、资源与峰值、phase/terminal、任务/活动/升级计数及保存恢复耗时。跨进程runner独立验证420捕获、reference继续440和双恢复同尾段；本文件记录方案，不预报验证结果。原世界Driver和历史黄金不修改。
 
 2026-10-10后继从已认证2000轮继续时，在7348轮／自然4月遇到实际任务成果raw30，按未知页边界停止，原失败现场保留。复核[任务报告合同](../../ui/TASK_REPORT_RENDER.md#2-任务完成raw30两阶段胜利页)与Owner的30／31／32具名消费者后，补这三页的确认策略：30早确认到40、阶段0转1、阶段1关闭；31初始化统计后关闭；32关闭既有摘要。奖励在任务收尾已提交，不借确认重复发奖，不使用任意raw页兜底。沿旧自然世界策略的实际成果确认，不改之前420／2000已发生的命令、Driver布局、世界或应用语义；新段须重新认证并登记本次producer。

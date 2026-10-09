@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
 
 const researchRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const args = process.argv.slice(2);
@@ -511,13 +512,52 @@ try {
             snapshotFile: options.get('--natural-application-snapshot-file'),
         });
     }
-    let activeApplicationCertificate;
+    let activeApplicationCertificate,activeCandidateCertificate,activeCandidateContinuationCertificate;
     if (activeApplicationExecutable) {
-        const {verifyActiveApplication} = await import('./application_active_process.mjs');
+        const {verifyActiveApplication,readActiveApplicationSource} = await import('./application_active_process.mjs');
+        const activeSnapshot=path.join(owned,'active-certified420.avra');
         activeApplicationCertificate = await verifyActiveApplication({
             exe: activeApplicationExecutable, workDir: owned, producerRevision: producer,
             saveAt: 420, tailFrames: 20, frameLimit: 2000, timeoutSeconds: 120,
+            snapshotFile:activeSnapshot,
         });
+        // 复用刚完成认证的真实应用字节，独占复制为无证书候选；不伪造业务字段或重跑前缀。
+        const candidate=path.join(owned,'active-uncertified420.avra');
+        const originalBytes=await fs.readFile(activeSnapshot);
+        const originalCertificate=await fs.readFile(activeSnapshot+'.json');
+        await fs.writeFile(candidate,originalBytes,{flag:'wx'});
+        const trusted=await fs.realpath(path.join(researchRoot,'work'));
+        await assert.rejects(readActiveApplicationSource({loadPrefix:activeSnapshot,loadCandidate:candidate},trusted,421),
+            /load-prefix与load-candidate互斥/,'候选和证书入口不能混用');
+        await assert.rejects(readActiveApplicationSource({loadPrefix:candidate},trusted,421),
+            error=>error.code==='ENOENT','无证书不得由prefix入口降级成候选');
+        const candidateSnapshot=path.join(owned,'active-candidate421.avra');
+        activeCandidateCertificate=await verifyActiveApplication({
+            exe:activeApplicationExecutable,workDir:owned,producerRevision:producer,
+            loadCandidate:candidate,saveAt:421,tailFrames:1,frameLimit:422,timeoutSeconds:120,
+            snapshotFile:candidateSnapshot,
+        });
+        const history=activeCandidateCertificate.uncertified_history;
+        assert.equal(activeCandidateCertificate.source_prefix.source_status,'candidate');
+        assert.equal(history.snapshot_sha256,sha256(originalBytes));
+        assert.equal(history.snapshot_bytes,originalBytes.length);
+        assert.equal(history.next_frame,421);
+        assert.match(activeCandidateCertificate.certification_boundary,/先前历史未认证/);
+        const candidatePrefixBytes=await fs.readFile(candidateSnapshot);
+        const candidatePrefixCertificate=await fs.readFile(candidateSnapshot+'.json');
+        activeCandidateContinuationCertificate=await verifyActiveApplication({
+            exe:activeApplicationExecutable,workDir:owned,producerRevision:producer,
+            loadPrefix:candidateSnapshot,saveAt:422,tailFrames:1,frameLimit:423,timeoutSeconds:120,
+        });
+        assert.equal(activeCandidateContinuationCertificate.source_prefix.source_status,'certified');
+        assert.deepEqual(activeCandidateContinuationCertificate.uncertified_history,history,
+            '后继已认证尾段不能洗掉原候选未认证历史');
+        assert.match(activeCandidateContinuationCertificate.certification_boundary,/先前历史未认证/);
+        assert.deepEqual(await fs.readFile(candidate),originalBytes,'候选恢复不得改写源');
+        assert.deepEqual(await fs.readFile(activeSnapshot),originalBytes,'原420认证快照保留');
+        assert.deepEqual(await fs.readFile(activeSnapshot+'.json'),originalCertificate,'原420证书保留');
+        assert.deepEqual(await fs.readFile(candidateSnapshot),candidatePrefixBytes,'后继prefix恢复不改写421源');
+        assert.deepEqual(await fs.readFile(candidateSnapshot+'.json'),candidatePrefixCertificate,'后继prefix恢复不重签421证书');
     }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
@@ -535,6 +575,8 @@ try {
         ...(titleMenuCertificate ? { title_menu_file_replay: titleMenuCertificate } : {}),
         ...(naturalApplicationCertificate ? { natural_application_replay: naturalApplicationCertificate } : {}),
         ...(activeApplicationCertificate ? { active_application_replay: activeApplicationCertificate } : {}),
+        ...(activeCandidateCertificate ? { active_candidate_replay: activeCandidateCertificate,
+            active_candidate_continuation: activeCandidateContinuationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

@@ -50,7 +50,8 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-task-recruitment" && page != "world-menu" &&
                 page != "world-building" && page != "world-build-preview" &&
                 page != "world-build-preview-hidden" && page != "world-build-rotated" &&
-                page != "world-details" && page != "world-built" && page != "world-award-granted" &&
+                page != "world-details" && page != "world-facility-bonuses" &&
+                page != "world-built" && page != "world-award-granted" &&
                 page != "world-task-added" && page != "world-level-up" &&
                 page != "world-month-income" && page != "world-month-defeats" &&
                 page != "world-task-victory" && page != "world-task-popularity" &&

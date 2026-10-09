@@ -69,6 +69,10 @@ void world_facility_items() {
                                                    1}; // Future month is not part of the footer.
     const auto before = state;
     view = ui::world_facility_items_view(state, page);
+    check(view.rows[0].identity == 0 && view.rows[0].icon.size() == 2 &&
+              view.rows[0].icon[0].image == 24 && view.rows[0].icon[1].image == 9 &&
+              view.rows[0].icon[1].crop == std::array<int, 4>{80, 0, 16, 16},
+          "Item0 uses original icon5 foreground over category background, not identity0");
     check(view.title == "设施强化" && view.profit == 53,
           "Strengthening caption follows S044; footer sums actual income-cost only through month3");
     check(

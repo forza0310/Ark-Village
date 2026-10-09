@@ -69,6 +69,30 @@ bool valid_startup_world_facility_page(const StartupWorldRuntimeState &state,
 // 详情只读当前共享成长/职业及实例邻接；不刷新提示、不扣款、不升级。
 std::optional<ref::FacilityEconomyValues>
 startup_world_facility_values(const StartupWorldRuntimeState &state, std::uint64_t facility);
+// raw74第二页读初始化Y的原序，不重新扫描邻接或从累计s分摊贡献。
+// 显示标签按原来源kind固定，value按原y位置取；不按规则attribute_slot重排。
+struct StartupFacilityBonusValue {
+    int attribute{}; // 显示0价格、1品质、2魅力，独立于原x规则槽。
+    std::string label;
+    std::int64_t value{};
+    std::string text; // 原串字面量“+”再接signed整数，负值保留“+-3”。
+};
+struct StartupFacilityBonusRow {
+    std::uint64_t instance{};
+    int definition{}, ordinal{}, icon{};
+    std::string name; // 原定义名称 + (同定义最小未用序号+1)，不是共享等级。
+    std::vector<StartupFacilityBonusValue> values;
+};
+// 返回全部有序行供原5行视窗消费；空来源合法，坏引用/字段显式拒绝。查询不改Owner。
+std::optional<std::vector<StartupFacilityBonusRow>>
+startup_world_facility_bonus_rows(const StartupWorldRuntimeState &state, std::uint64_t page);
+struct StartupFacilityBonusWindow {
+    std::size_t first{}, total{};
+    std::vector<StartupFacilityBonusRow> rows; // 原最多5个可见项，first为原bJ；不存入Owner。
+};
+std::optional<StartupFacilityBonusWindow>
+startup_world_facility_bonus_window(const StartupWorldRuntimeState &state, std::uint64_t page,
+                                   std::size_t first);
 // raw80实际住户名单和替换事务；入住收费与住宅建设造价不是两笔扣款。
 StartupBuildResult act_startup_world_residence_page(StartupWorldRuntimeState &state,
                                                     std::uint64_t page, int human,

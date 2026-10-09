@@ -282,6 +282,124 @@ void facility_growth_queries() {
               s.scene.world.world.ai.accounting.funds()==cash && s.sound_requests.empty(),
           "growth query rejects missing owner references and preserves neighbour cache, cash, random and sounds");
 }
+void attribute_gain_queries() {
+    auto s = lift_fixture();
+    auto &ai = s.scene.world.world.ai;
+    auto &display = ai.contexts.at({1}).effects.display;
+    int measurements{};
+    const auto measure = [&](const std::string &text) {
+        ++measurements;
+        return text[0] == '-' || (text[0] >= '0' && text[0] <= '9')
+            ? static_cast<int>(text.size()) * 6 : 24;
+    }; // 仅字体测量夹具；24/6不是原平台动态实测。
+    constexpr std::array<const char *,6> names{"体力","力量","灵活","结实","魔力","运气"};
+    constexpr std::array<int,6> icon_x{0,16,32,48,64,96};
+    for (int attribute = 0; attribute < 6; ++attribute)
+        for (int age : {0,1,6,20,39,40}) {
+            display = {{13,age,attribute,7}};
+            const auto digest = startup_world_state_digest(s);
+            const auto plan = startup_world_attribute_gain_draws(s,{1},measure);
+            check(plan && plan->size() == 1 && plan->front().record_index == 0 &&
+                      plan->front().age == age && plan->front().attribute == attribute &&
+                      plan->front().delta == 7 && plan->front().width == 60 &&
+                      plan->front().text == names[attribute] &&
+                      plan->front().text_rgb == std::array<int,3>{0,100,255} &&
+                      plan->front().text_offset == std::array<int,2>{-12,-37},
+                  "cd13 six source attributes have fixed Y-40 panel rather than age-dependent bounce");
+            const auto &before = plan->front().before_text;
+            const auto &after = plan->front().after_text;
+            check(before.size() == 4 && before[0].image == 7 && before[0].sprite == -1 &&
+                      before[0].crop == std::array<int,4>{6,0,60,21} &&
+                      before[0].offset == std::array<int,2>{-30,-40} &&
+                      before[1].sprite == 28 && before[1].frame == 0 &&
+                      before[1].offset == std::array<int,2>{-36,-40} &&
+                      before[2].sprite == 28 && before[2].frame == 1 &&
+                      before[2].offset == std::array<int,2>{30,-40} &&
+                      before[3].image == 37 && before[3].crop == std::array<int,4>{icon_x[attribute],16,16,16} &&
+                      before[3].offset == std::array<int,2>{-30,-39} &&
+                      after.size() == 2 && after[0].sprite == 15 && after[0].frame == 7 &&
+                      after[0].offset == std::array<int,2>{22,-36} && after[1].frame == 14 &&
+                      after[1].offset == std::array<int,2>{14,-36},
+                  "exact original background/caps and luck icon96,16 precede text then blue digit and plus");
+            check(startup_world_state_digest(s) == digest,
+                  "attribute render preserves complete Owner including cumulative stats, HP, cd, pages and random");
+        }
+    for (int age : {-6,-1}) {
+        display = {{13,age,2,1}};
+        const int old_measurements = measurements;
+        check(startup_world_attribute_gain_draws(s,{1},measure)->empty() && measurements == old_measurements,
+              "negative delay hides pixels without measuring or advancing delayed cd13");
+    }
+    display = {{13,-1,2,1}};
+    const auto ready = ref::advance_actor_effects(ai.contexts.at({1}).effects);
+    check(ready.candidate && ready.candidate->state.display.front()[1] == 0 && display.front()[1] == -1,
+          "only existing logical effect advancement releases delay and leaves input Owner unchanged");
+    display = {{13,39,2,1}};
+    const auto retired = ref::advance_actor_effects(ai.contexts.at({1}).effects);
+    check(retired.candidate && retired.candidate->state.display.empty() &&
+              retired.candidate->removed_display_indices == std::vector<std::size_t>{0},
+          "40 gate belongs to logical retirement; read-only renderer never removes record");
+    for (int delta : {0, -1, -1234, std::numeric_limits<int>::min()}) {
+        display = {{13,0,0,delta}};
+        const auto plan = startup_world_attribute_gain_draws(s,{1},measure);
+        check(plan && plan->front().delta == delta && plan->front().after_text.back().frame == 14 &&
+                  std::all_of(plan->front().after_text.begin(),plan->front().after_text.end(),
+                    [](const auto &v) { return v.sprite == 15 && v.frame >= 0 && v.frame <= 14; }),
+              "signed/zero/INT_MIN values preserve raw measurement and original plus without guessed minus or abs overflow");
+        if (delta == -1234) {
+            const auto &numbers = plan->front().after_text;
+            constexpr std::array<int,6> frames{1,2,10,3,4,14};
+            constexpr std::array<int,6> x{-2,6,4,14,22,-18};
+            check(numbers.size() == frames.size(),"negative1234 keeps empty minus cell and one comma overlay");
+            for (std::size_t n = 0; n < frames.size(); ++n)
+                check(numbers[n].frame == frames[n] && numbers[n].offset == std::array<int,2>{x[n],-36},
+                      "source number glyph order is digit then comma overlay; plus position uses raw signed width");
+        }
+        if (delta == std::numeric_limits<int>::min())
+            check(plan->front().after_text.size() == 14,"INT_MIN materializes ten digits, three commas and original plus");
+    }
+    display = {{13,0,0,1}};
+    const auto wide = startup_world_attribute_gain_draws(s,{1},[](const std::string &text) {
+        return text == "体力" ? 25 : 6;
+    });
+    check(wide && wide->front().width == 61 && wide->front().before_text.size() == 7 &&
+              wide->front().before_text[0].crop == std::array<int,4>{6,0,27,21} &&
+              wide->front().before_text[1].offset == std::array<int,2>{-3,-40} &&
+              wide->front().before_text[2].crop == std::array<int,4>{6,0,7,21} &&
+              wide->front().before_text[3].crop == std::array<int,4>{33,0,5,21} &&
+              wide->front().before_text[3].offset == std::array<int,2>{-2,-40},
+          "width60/61 switches to original27px repeat plus centered5px tail without stretching");
+    display = {{13,0,0,1},{21,12,218,-18,13},{13,0,5,0},{13,-1,2,3},{13,0,0,1}};
+    const auto mixed = startup_world_attribute_gain_draws(s,{1},measure);
+    const auto lifts = startup_world_equipment_lift_draws(s,{1});
+    check(mixed && mixed->size() == 3 && mixed->at(0).record_index == 0 &&
+              mixed->at(1).record_index == 2 && mixed->at(2).record_index == 4 && lifts &&
+              lifts->size() == 2 && lifts->at(0).record_index == 1 && lifts->at(1).record_index == 1,
+          "mixed cd13/21 plans retain source indices and duplicates for caller-order merge");
+    for (const auto &bad : {ref::ActorEffectRecord{13,0,0}, {13,0,-1,1}, {13,-1,6,1},
+                           {13,std::numeric_limits<int>::max(),0,1}}) {
+        display = {bad};
+        check(!startup_world_attribute_gain_draws(s,{1},measure),
+              "missing cd13 payload, invalid attribute even hidden and age overflow reject explicitly");
+    }
+    display = {{13,0,0,1}};
+    check(!startup_world_attribute_gain_draws(s,{99},measure) &&
+              !startup_world_attribute_gain_draws(s,{1},{}) &&
+              !startup_world_attribute_gain_draws(s,{1},[](const std::string &) {return -1;}) &&
+              !startup_world_attribute_gain_draws(s,{1},[](const std::string &) {return std::numeric_limits<int>::max();}) &&
+              !startup_world_attribute_gain_draws(s,{1},[](const std::string &v) {
+                  return v == "体力" ? 24 : std::numeric_limits<int>::max();
+              }),
+          "stale actor, missing metric source, negative/oversized widths and plus-position overflow reject");
+    ai.battle.actors.at({1}).kind = ref::ActorKind::monster;
+    check(!startup_world_attribute_gain_draws(s,{1},measure),"human property label cannot be assigned to monster fixture");
+    ai.battle.actors.at({1}).kind = ref::ActorKind::human;
+    ai.battle.actors.at({1}).control.flags = 1;
+    check(startup_world_attribute_gain_draws(s,{1},measure)->empty(),"original visibility bit1 suppresses cd13 with actor");
+    ai.battle.actors.at({1}).control.flags = 0;
+    ai.contexts.erase({1});
+    check(!startup_world_attribute_gain_draws(s,{1},measure),"missing effect Owner reference rejects attribute query");
+}
 std::map<int,std::filesystem::path> source_images(const std::filesystem::path &root, const char *group) {
     std::map<int,std::filesystem::path> result;
     for (const auto &row : ark::assets::parse_tsv(bytes(root/group/"img.inf"))) {
@@ -355,6 +473,52 @@ void cpu_equipment_and_growth(const std::filesystem::path &root) {
             }
         }
     }
+}
+void cpu_attribute_gains(const std::filesystem::path &root) {
+    auto s = lift_fixture();
+    const auto images = source_images(root,"common");
+    const auto borders = ark::assets::parse_legacy_seb(bytes(root/"common/fukidashi_back.seb"));
+    const auto numbers = ark::assets::parse_legacy_seb(bytes(root/"common/number08.seb"));
+    check(borders.layers.size() == 1 && borders.layers[0].parts.size() == 2 &&
+              borders.layers[0].parts[0].image_index == 7 && borders.layers[0].parts[0].width == 6 &&
+              borders.layers[0].parts[1].image_index == 7 && borders.layers[0].parts[1].source_x == 65 &&
+              borders.layers[0].parts[1].width == 7 && numbers.frame_count == 21,
+          "real common28 caps and common15 numeric SEB match original source identities");
+    for (int attribute = 0; attribute < 6; ++attribute)
+        for (int width : {24,25}) {
+            s.scene.world.world.ai.contexts.at({1}).effects.display = {{13,0,attribute,-1234}};
+            const auto plan = startup_world_attribute_gain_draws(s,{1},[&](const std::string &text) {
+                return text == "-1234" ? 30 : width;
+            });
+            check(plan.has_value(),"CPU attribute resource resolves complete source draw plan");
+            const auto crop = [&](int image_id, std::array<int,4> rect) {
+                Image image = LoadImage(images.at(image_id).string().c_str());
+                check(image.data && rect[0]>=0 && rect[1]>=0 && rect[2]>0 && rect[3]>0 &&
+                          rect[0]+rect[2]<=image.width && rect[1]+rect[3]<=image.height,
+                      "all six attributes, both background branches and signed glyph crops fit decoded real PNG");
+                Image part = ImageFromImage(image,{static_cast<float>(rect[0]),static_cast<float>(rect[1]),
+                    static_cast<float>(rect[2]),static_cast<float>(rect[3])});
+                check(part.data && part.width == rect[2] && part.height == rect[3],
+                      "CPU crop materializes source attribute/background/glyph pixels without window or fabricated icon");
+                UnloadImage(part); UnloadImage(image);
+            };
+            const auto consume = [&](const auto &commands) {
+                for (const auto &command : commands) {
+                    check(command.record_index == 0,"every attribute image command preserves originating cd index");
+                    if (command.sprite < 0) crop(command.image,command.crop);
+                    else {
+                        const auto &seb = command.sprite == 28 ? borders : numbers;
+                        const auto &parts = seb.layers.at(command.layer).parts;
+                        const auto p = std::find_if(parts.begin(),parts.end(),[&](const auto &v) {
+                            return v.frame == command.frame;
+                        });
+                        check(p != parts.end() && p->image_index >= 0,"each nonempty numeric/cap frame has actual original SEB record");
+                        crop(p->image_index,{p->source_x,p->source_y,p->width,p->height});
+                    }
+                }
+            };
+            consume(plan->front().before_text); consume(plan->front().after_text);
+        }
 }
 // 固定原定义28/29/65分别为单格旅店、双格旅店、四格城堡。oracle直接登记a.o.ah/ai，
 // 不调用被测查询或geometry生成期望；每项为frame、相对屏幕X、相对屏幕Y。
@@ -531,6 +695,156 @@ void cpu_building_thumbnails(const std::filesystem::path &root) {
         UnloadImage(framed); UnloadImage(oracle); UnloadImage(actual);
     }
 }
+void ordinary_item_icons(const std::filesystem::path &root) {
+    auto s=test_support::world_fixture();
+    const auto digest=startup_world_state_digest(s);
+    // 原item列5字面量；不能使用被测查询或业务ID生成期望。
+    constexpr std::array<int,36> icons{{5,27,13,23,20,22,35,19,16,42,65,50,56,55,49,30,37,39,
+                                      60,77,36,61,14,75,40,34,59,51,52,78,79,80,82,81,83,84}};
+    check(s.rules->items.size()==icons.size(),"all36 original item definitions remain distinct from atlas slots");
+    const auto images=source_images(root,"common");
+    Image foreground=LoadImage(images.at(9).string().c_str());
+    Image background=LoadImage(images.at(24).string().c_str());
+    check(foreground.data && foreground.width==240 && foreground.height==96 &&
+              background.data && background.width==144 && background.height==18,
+          "type1 resolves actual PNG9 and PNG24, not same-numbered SEB or inferred item image");
+    for(std::size_t id=0;id<icons.size();++id) {
+        check(s.rules->items[id].identity==static_cast<int>(id) && s.rules->items[id].render_icon==icons[id],
+              "startup projection retains exact original g.g for each item");
+        const auto plan=startup_world_item_icon_draws(s,static_cast<int>(id));
+        check(plan && plan->size()==2 && plan->at(0).image==24 && plan->at(1).image==9 &&
+                  plan->at(0).offset==std::array<int,2>{-1,-1} &&
+                  plan->at(1).offset==std::array<int,2>{0,0} &&
+                  plan->at(1).crop==std::array<int,4>{icons[id]%15*16,icons[id]/15*16,16,16} &&
+                  !plan->at(0).record_index && !plan->at(1).record_index,
+              "ordinary gift/facility/commerce icon retains ordered background and foreground with original offsets");
+        for(const auto &p:*plan) {
+            const auto &img=p.image==9?foreground:background;
+            check(p.crop[0]>=0 && p.crop[1]>=0 && p.crop[0]+p.crop[2]<=img.width &&
+                      p.crop[1]+p.crop[3]<=img.height && p.sprite==-1,
+                  "every original item crop is inside decoded source PNG");
+        }
+    }
+    for(const auto sample:std::array<std::array<int,2>,4>{{{{0,18}},{{20,72}},{{25,108}},{{29,36}}}}) {
+        const auto plan=startup_world_item_icon_draws(s,sample[0]);
+        check(plan && plan->front().crop==std::array<int,4>{sample[1],0,18,18},
+              "literal samples cover all four ordinary icon background categories");
+    }
+    for(int id:{-1,36,9999})check(!startup_world_item_icon_draws(s,id),"unknown item identity rejects explicitly");
+    auto broken=s;broken.rules=nullptr;
+    check(!startup_world_item_icon_draws(broken,0),"missing static rules rejects icon query");
+    StartupWorldRules private_rules=*s.rules;broken=s;broken.rules=&private_rules;
+    for(int icon:{-1,89,std::numeric_limits<int>::max()}) {
+        private_rules.items[0].render_icon=icon;
+        check(!startup_world_item_icon_draws(broken,0),"invalid raw icon cannot index classification or clamp to default");
+    }
+    private_rules.items[0].render_icon=14;
+    const auto changed=startup_world_item_icon_draws(broken,0);
+    check(changed && changed->front().crop[0]==72 && changed->back().crop[0]==224,
+          "icon field, not unchanged definition or business category, controls the type1 picture");
+    check(startup_world_state_digest(s)==digest,"item icon queries preserve full Owner, inventory, cash, random and page stack");
+    UnloadImage(foreground);UnloadImage(background);
+}
+void facility_detail_icons(const std::filesystem::path &root) {
+    auto s = test_support::world_fixture();
+    const auto digest = startup_world_state_digest(s);
+    // 固定原表列2独立oracle；不是调用绘制查询或从原类kind猜类别图标。
+    constexpr std::array<int,85> icons{{
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,5,5,5,0,0,
+        1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3,3,3,
+        4,4,4,4,4,4,4,6,6,6,6,6,6,6,6,6,0,0,0,0,0,0,0,0,0,0}};
+    Image image = LoadImage((root/"common/icon_tenantInfo.png").string().c_str());
+    Image params = LoadImage((root/"common/icon_param00.png").string().c_str());
+    Image numbers = LoadImage((root/"common/number08.png").string().c_str());
+    const auto seb = ark::assets::parse_legacy_seb(bytes(root/"common/number08.seb"));
+    const auto plus = std::find_if(seb.layers.at(0).parts.begin(),seb.layers.at(0).parts.end(),
+        [](const auto &p) {return p.frame == 14;});
+    check(image.data && image.width == 112 && image.height == 16 && params.data && numbers.data &&
+              plus != seb.layers.at(0).parts.end() && plus->image_index == 105 &&
+              plus->source_x == 44 && plus->source_y == 10 && plus->width == 8 && plus->height == 10,
+          "real facility category atlas, attribute atlas and blue+ SEB bind actual PNG identities");
+    int effect_rows{}, plus_count{};
+    for (int id = 0; id < 85; ++id) {
+        const auto icon = startup_world_facility_icon_draw(s,id);
+        check(icon && s.rules->facilities.at(id).legacy_icon == icons[id] &&
+                  icon->image == 91 && icon->sprite == -1 &&
+                  icon->crop == std::array<int,4>{icons[id]*16,0,16,16} &&
+                  icon->offset == std::array<int,2>{0,0} && !icon->record_index,
+              "all85 facility IDs bind original type9 crop; icon0 valid and type1 background absent");
+        Image crop = ImageFromImage(image,{static_cast<float>(icon->crop[0]),0,16,16});
+        check(crop.data && crop.width == 16 && crop.height == 16,
+              "every category0..6 CPU crop uses decoded source image with no guessed frame");
+        UnloadImage(crop);
+        const auto effects = startup_world_facility_exit_effect_draws(s,id);
+        check(effects && effects->size() == s.rules->facilities.at(id).exit_effects.size(),
+              "all85 effect plans preserve z-prefix rows, including legitimate empty definition");
+        for (const auto &row : *effects) {
+            const auto &r = row.icon.crop;
+            check(row.slot == static_cast<std::size_t>(&row-effects->data()) && row.attribute >= 0 &&
+                      row.attribute < 6 && r[0]+r[2]<=params.width && r[1]+r[3]<=params.height &&
+                      row.icon.offset == std::array<int,2>{136,127+17*static_cast<int>(row.slot)},
+                  "every original effect row uses actual attribute crop and original17px page anchor");
+            check(row.pluses.size() == static_cast<std::size_t>(row.delta),
+                  "source positive effect has literal delta count of + glyphs rather than digit+value helper");
+            for (const auto &draw : row.pluses)
+                check(draw.sprite == 15 && draw.frame == 14 && !draw.record_index &&
+                          plus->source_x+plus->width<=numbers.width && plus->source_y+plus->height<=numbers.height,
+                      "each plus command resolves source SEB15/frame14 in actual PNG bounds");
+            ++effect_rows; plus_count += static_cast<int>(row.pluses.size());
+        }
+    }
+    check(effect_rows == 45 && plus_count == 87,"all original45 attribute slots/87+ consumed; raw tails remain separate");
+    constexpr std::array<int,6> x{{0,16,32,48,64,96}};
+    for (int id = 0; id < 6; ++id) {
+        const auto icon = startup_world_attribute_icon_draw(id);
+        check(icon && icon->image == 37 && icon->crop == std::array<int,4>{x[id],16,16,16} &&
+                  icon->offset == std::array<int,2>{0,0},"type7 attributes include source luck96 rather than regular80");
+    }
+    for (int id : {-1,6,std::numeric_limits<int>::max()})
+        check(!startup_world_attribute_icon_draw(id),"invalid attribute is not modulo-wrapped into valid icon");
+    for (int id : {54,56,57,58}) {
+        const auto rows = startup_world_facility_exit_effect_draws(s,id);
+        check(rows && rows->size() == 1 && rows->front().attribute == 5 && rows->front().delta == 3 &&
+                  rows->front().pluses.size() == 3 && s.rules->unconsumed_exit_deltas.at(id) == std::vector<int>{3},
+              "four legal z/A mismatches keep unused tail and draw exactly one luck row with three+ glyphs");
+    }
+    const auto two = startup_world_facility_exit_effect_draws(s,59);
+    check(two && two->size() == 2 && two->at(0).attribute == 1 && two->at(0).delta == 2 &&
+              two->at(1).attribute == 3 && two->at(1).delta == 1 &&
+              two->at(0).pluses.at(0).offset == std::array<int,2>{192,130} &&
+              two->at(0).pluses.at(1).offset == std::array<int,2>{184,130} &&
+              two->at(1).icon.offset == std::array<int,2>{136,144} &&
+              two->at(1).pluses.at(0).offset == std::array<int,2>{192,147},
+          "literal training59 strength2/solid1 keeps original row order and right-to-left plus positions");
+    for (int id : {-1,85,std::numeric_limits<int>::max()})
+        check(!startup_world_facility_icon_draw(s,id) && !startup_world_facility_exit_effect_draws(s,id),
+              "unknown facility definition rejects icon and effects rather than returning empty identity");
+    auto broken=s;broken.rules=nullptr;
+    check(!startup_world_facility_icon_draw(broken,0) && !startup_world_facility_exit_effect_draws(broken,0),
+          "missing rules rejects detail icon and effect plan");
+    StartupWorldRules rules=*s.rules;broken=s;broken.rules=&rules;
+    for (int icon : {-1,7,10,std::numeric_limits<int>::max()}) {
+        rules.facilities[0].legacy_icon=icon;
+        check(!startup_world_facility_icon_draw(broken,0),"bad facility icon cannot modulo-wrap or index missing PNG column");
+    }
+    rules.facilities[0].legacy_icon=6;
+    check(startup_world_facility_icon_draw(broken,0)->crop[0] == 96,
+          "facility legacy_icon field controls category image independently of unchanged definitionID");
+    rules.facilities[33].exit_effects={{2,0},{2,-3},{5,2}};
+    auto rows=startup_world_facility_exit_effect_draws(broken,33);
+    check(rows && rows->size() == 3 && rows->at(0).pluses.empty() && rows->at(1).pluses.empty() &&
+              rows->at(1).delta == -3 && rows->at(2).pluses.size() == 2,
+          "duplicate attribute slots retain raw signed values; zero/negative original loop draws no invented sign");
+    rules.facilities[33].exit_effects={{6,0}};
+    check(!startup_world_facility_exit_effect_draws(broken,33),"invalid attribute rejects even when no+ would be drawn");
+    rules.facilities[33].exit_effects={{0,std::numeric_limits<int>::max()}};
+    check(!startup_world_facility_exit_effect_draws(broken,33),"oversized bad private output rejects before allocating billions of+ commands");
+    rules.facilities[33].exit_effects.assign(4097,{0,0});
+    check(!startup_world_facility_exit_effect_draws(broken,33),"malformed effect list exceeds explicit maintenance output budget");
+    check(startup_world_state_digest(s) == digest,
+          "all facility/attribute icon and effect queries preserve complete Owner including shared uses, economy and random");
+    UnloadImage(image);UnloadImage(params);UnloadImage(numbers);
+}
 } // namespace
 int main(int argc, char **argv) {
     try {
@@ -541,9 +855,13 @@ int main(int argc, char **argv) {
         cpu_portraits(argv[1]);
         equipment_lift_queries();
         facility_growth_queries();
+        attribute_gain_queries();
         cpu_equipment_and_growth(argv[1]);
+        cpu_attribute_gains(argv[1]);
         building_draw_queries();
         cpu_building_thumbnails(argv[1]);
+        ordinary_item_icons(argv[1]);
+        facility_detail_icons(argv[1]);
         std::cout << "startup world visuals: " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

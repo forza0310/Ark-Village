@@ -93,6 +93,9 @@ class Text {
                  Color color = {48, 44, 46, 255}, float size = 12) const;
     void paragraph(const std::string &value, float x, float y, float width) const;
     float width(const std::string &value, float size = 12) const;
+    // World effects need text between sprite layers, under the active camera/scissor.
+    // Unlike deferred UI labels this draws immediately in logical scene coordinates.
+    void scene_text(const std::string &value, Vector2 point, Color color, float size) const;
     // Grow glyph rasterization with physical UI scale (including Retina and window resize).
     // Call before layout measurements; retain the atlas until a larger density is needed.
     void prepare(float pixel_scale);

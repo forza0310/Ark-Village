@@ -149,8 +149,8 @@ WorldActorPose world_actor_pose(const State &s, rules::CharacterId id) {
     }
     return pose;
 }
-void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State *previous,
-                      float alpha, const WorldCameraView *override_view) {
+void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float zoom,
+                      const State *previous, float alpha, const WorldCameraView *override_view) {
     const auto &world = s.scene.world.world;
     const auto view =
         override_view ? *override_view : WorldCameraView{s.camera, s.reference_viewport};
@@ -223,12 +223,8 @@ void draw_world_scene(const State &s, Sprites &sprites, float zoom, const State 
                          project(world_actor_render_position(s, id, previous, alpha));
                      const auto pose = world_actor_pose(s, id);
                      sprites.actor(pose.monster, pose.sprite, pose.image, pose.frame, point, zoom);
-                     if (!pose.monster) {
-                         const auto lift = simulation::startup_world_equipment_lift_draws(s, id);
-                         if (!lift)
-                             throw std::runtime_error("Invalid equipment lift display state");
-                         draw_world_visuals(*lift, sprites, point, zoom);
-                     }
+                     if (!pose.monster)
+                         draw_world_actor_effects(s, id, sprites, text, point, zoom);
                      const auto &hp = a.hp;
                      const CharacterStatusInput status{{hp.requested_delta, hp.displayed, hp.origin,
                                                         hp.target, hp.animating, hp.legacy_tick},

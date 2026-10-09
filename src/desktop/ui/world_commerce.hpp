@@ -3,6 +3,7 @@
 // Commerce keeps buy/sell direction, source scroll and the two payment/receipt moments separate.
 #include "../world_build_placement.hpp"
 #include "ark/simulation/startup_world_commerce.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "layout.hpp"
 #include <optional>
 #include <string>
@@ -15,6 +16,7 @@ struct WorldCommerceRow {
     std::string name;
     bool fresh{};
     WorldBuildGraphic graphic;
+    std::vector<simulation::StartupVisualDraw> icon;
 };
 struct WorldCommerceView {
     std::uint64_t page{};

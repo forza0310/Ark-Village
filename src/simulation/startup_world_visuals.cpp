@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <utility>
 
 namespace ark::simulation {
 std::optional<StartupPortrait> startup_world_portrait(const StartupWorldRuntimeState &s, int id) {
@@ -85,11 +86,13 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_equipment_lift_draws
     if (actor->second.control.flags & 1U) return result; // 原绘制总守卫。
     if (!ref::valid_actor_effect_state(context->second.effects)) return {};
     // c/b.cd正序，先身体再各效果；保留重复记录，不替换为一个“当前举物”。
-    for (const auto &r : context->second.effects.display) {
+    for (std::size_t index = 0; index < context->second.effects.display.size(); ++index) {
+        const auto &r = context->second.effects.display[index];
         if (r.size() < 2) return {};
         if (r[0] != 15 && r[0] != 21 && r[0] != 22) continue;
         if (r[1] < 0) continue;
         if (actor->second.kind != ref::ActorKind::human) return {};
+        const auto first_command = result.size();
         if (r[0] == 15) {
             if (r.size() < 8) return {};
             const int age = r[1], phaseAge = age < 8 ? age : age < 32 ? 0 : age - 32 + 8;
@@ -121,6 +124,8 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_equipment_lift_draws
             result.push_back({StartupVisualResource::common, -1, r[0] == 21 ? 20 : 21, 0, 0,
                 {(d->render_image % 10) * 18, (d->render_image / 10) * 18, 18, 18}, offset});
         }
+        for (std::size_t n = first_command; n < result.size(); ++n)
+            result[n].record_index = index;
     }
     return result;
 }
@@ -146,6 +151,138 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_facility_growth_draw
     } else {
         const int frame = (kind - 4) * 3 + (phase <= 1 ? 0 : phase <= 3 ? 1 : 2);
         result.push_back({StartupVisualResource::common, 85, -1, frame, 0, {}, {0,-32 + clamped * 4 / 6}});
+    }
+    return result;
+}
+std::optional<std::vector<StartupAttributeGainDraw>> startup_world_attribute_gain_draws(
+    const StartupWorldRuntimeState &s, ref::CharacterId id,
+    const std::function<int(const std::string &)> &measure) {
+    const auto &ai = s.scene.world.world.ai;
+    const auto actor = ai.battle.actors.find(id);
+    const auto context = ai.contexts.find(id);
+    if (actor == ai.battle.actors.end() || context == ai.contexts.end() || !measure) return {};
+    std::vector<StartupAttributeGainDraw> result;
+    if (actor->second.control.flags & 1U) return result;
+    if (!ref::valid_actor_effect_state(context->second.effects)) return {};
+    constexpr std::array<const char *,6> names{"体力","力量","灵活","结实","魔力","运气"};
+    const auto &display = context->second.effects.display;
+    for (std::size_t index = 0; index < display.size(); ++index) {
+        const auto &r = display[index];
+        if (r[0] != 13) continue;
+        // 隐藏相位也验证属性载荷；不让坏ID等到测量/图像map.at才失败。
+        if (r.size() < 4 || r[2] < 0 || r[2] >= 6 || actor->second.kind != ref::ActorKind::human)
+            return {};
+        if (r[1] < 0) continue;
+        StartupAttributeGainDraw draw;
+        draw.record_index = index; draw.age = r[1]; draw.attribute = r[2]; draw.delta = r[3];
+        draw.text = names[r[2]];
+        const auto raw_number = std::to_string(r[3]);
+        const int label_width = measure(draw.text), number_width = measure(raw_number);
+        // 原12px画布下的实测文字远小于此；4096是维护输出预算，不是原表数值/字体宽事实。
+        if (label_width < 0 || label_width > 4096 || number_width < 0) return {};
+        draw.width = label_width + 36;
+        const int left = -(draw.width / 2), right = draw.width / 2;
+        const auto add = [&](std::vector<StartupVisualDraw> &commands, int sprite, int image,
+                             int frame, std::array<int,4> crop, std::array<int,2> offset) {
+            commands.push_back({StartupVisualResource::common,sprite,image,frame,0,crop,offset,index});
+        };
+        if (draw.width <= 60) {
+            add(draw.before_text,-1,7,0,{36-draw.width/2,0,draw.width,21},{left,-40});
+        } else {
+            // 宽文字重复27px底纹，最后叠中央5px尾尖；原图没有横向缩放。
+            for (int x = left, remaining = draw.width; remaining > 0;) {
+                const int width = std::min(27,remaining);
+                add(draw.before_text,-1,7,0,{6,0,width,21},{x,-40});
+                x += width; remaining -= width;
+            }
+            add(draw.before_text,-1,7,0,{33,0,5,21},{-2,-40});
+        }
+        add(draw.before_text,28,-1,0,{}, {left-6,-40});
+        add(draw.before_text,28,-1,1,{}, {right,-40});
+        add(draw.before_text,-1,37,0,{r[2]==5?96:r[2]*16,16,16,16},{left,-39});
+        draw.text_offset = {left+18,-37};
+        int x = right - static_cast<int>(raw_number.size()) * 8;
+        const std::size_t digit_start = r[3] < 0 ? 1U : 0U;
+        const std::size_t digit_count = raw_number.size() - digit_start;
+        for (std::size_t n = 0; n < raw_number.size(); ++n) {
+            // 原'-'-'0'请求frame−3，SEB首关键帧0之外为空绘，仍占8px；不补猜负号素材。
+            if (raw_number[n] != '-') {
+                add(draw.after_text,15,-1,raw_number[n]-'0',{}, {x,-36});
+                if (n > digit_start && (digit_count - (n - digit_start)) % 3 == 0)
+                    add(draw.after_text,15,-1,10,{}, {x-2,-36});
+            }
+            x += 8;
+        }
+        // DEX确认long数值重载；+始终补帧14，位置单独读字体对raw signed串的测量。
+        const auto plus_x = std::int64_t(right) - (std::int64_t(number_width) / 6) * 8 - 8;
+        if (plus_x < std::numeric_limits<int>::min() || plus_x > std::numeric_limits<int>::max())
+            return {};
+        add(draw.after_text,15,-1,14,{}, {static_cast<int>(plus_x),-36});
+        result.push_back(std::move(draw));
+    }
+    return result;
+}
+std::optional<std::vector<StartupVisualDraw>> startup_world_item_icon_draws(
+    const StartupWorldRuntimeState &s, int id) {
+    if (!s.rules) return {};
+    const auto item = std::find_if(s.rules->items.begin(),s.rules->items.end(),
+        [=](const auto &d) { return d.identity == id; });
+    if (item == s.rules->items.end()) return {};
+    // 原a.g.C/D是图标分类和背景槽，独立于业务category/effect。
+    constexpr std::array<int,89> categories{{
+        0,0,0,3,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,3,3,0,2,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,2,2,0,0,0,0,0,0,2,
+        1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,2,2,2,2,2,2,2,2}};
+    constexpr std::array<int,5> backgrounds{{1,4,6,2,3}};
+    const int icon = item->render_icon;
+    if (icon < 0 || icon >= static_cast<int>(categories.size())) return {};
+    const int background = backgrounds[categories[icon]];
+    return std::vector<StartupVisualDraw>{
+        {StartupVisualResource::common,-1,24,0,0,{background*18,0,18,18},{-1,-1},{}},
+        {StartupVisualResource::common,-1,9,0,0,{(icon%15)*16,(icon/15)*16,16,16},{0,0},{}}};
+}
+std::optional<StartupVisualDraw> startup_world_facility_icon_draw(
+    const StartupWorldRuntimeState &s, int id) {
+    if (!s.rules) return {};
+    const auto definition = std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [=](const auto &d) { return d.id == id; });
+    if (definition == s.rules->facilities.end() || definition->legacy_icon < 0 ||
+        definition->legacy_icon > 6) return {};
+    // common91实际112×16；原85定义只用0..6，不能用%10把坏ID变成合法图块。
+    return StartupVisualDraw{StartupVisualResource::common,-1,91,0,0,
+        {definition->legacy_icon*16,0,16,16},{0,0},{}};
+}
+std::optional<StartupVisualDraw> startup_world_attribute_icon_draw(int id) {
+    if (id < 0 || id >= 6) return {};
+    return StartupVisualDraw{StartupVisualResource::common,-1,37,0,0,
+        {id == 5 ? 96 : id*16,16,16,16},{0,0},{}};
+}
+std::optional<std::vector<StartupFacilityExitEffectDraw>> startup_world_facility_exit_effect_draws(
+    const StartupWorldRuntimeState &s, int id) {
+    if (!s.rules) return {};
+    const auto definition = std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+        [=](const auto &d) { return d.id == id; });
+    if (definition == s.rules->facilities.end()) return {};
+    // 4096是坏私有rules的输出预算，非原表最大效果/奖励；固定输入最多两行、每行三个+。
+    if (definition->exit_effects.size() > 4096) return {};
+    std::size_t command_count = definition->exit_effects.size();
+    for (const auto &effect : definition->exit_effects) {
+        if (!startup_world_attribute_icon_draw(effect.attribute_index)) return {};
+        const auto positive = static_cast<std::size_t>(std::max(0,effect.delta));
+        if (positive > 4096 - command_count) return {};
+        command_count += positive;
+    }
+    std::vector<StartupFacilityExitEffectDraw> result;
+    for (std::size_t slot = 0; slot < definition->exit_effects.size(); ++slot) {
+        const auto &effect = definition->exit_effects[slot];
+        auto icon = *startup_world_attribute_icon_draw(effect.attribute_index);
+        const int y = 127 + static_cast<int>(slot) * 17;
+        icon.offset = {136,y};
+        StartupFacilityExitEffectDraw row{slot,effect.attribute_index,effect.delta,icon,{}};
+        for (int n = 0; n < effect.delta; ++n)
+            row.pluses.push_back({StartupVisualResource::common,15,-1,14,0,{},
+                                  {192-8*n,y+3},{}});
+        result.push_back(std::move(row));
     }
     return result;
 }

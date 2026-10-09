@@ -1,4 +1,5 @@
 #include "world_commerce.hpp"
+#include "../world_overlay_render.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -27,6 +28,10 @@ WorldCommerceRow item(const State &state, int id, bool sale) {
     row.remaining = state.shop_item_stock.at(id).quantity;
     row.owned = state.items.at(id).inventory;
     row.fresh = !state.item_commerce_read.at(id);
+    const auto icon = simulation::startup_world_item_icon_draws(state, id);
+    if (!icon)
+        throw std::invalid_argument("Commerce item has invalid icon data");
+    row.icon = *icon;
     return row;
 }
 WorldCommerceRow facility(const State &state, int id) {
@@ -192,6 +197,10 @@ void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayou
                 if (index == view.selection)
                     DrawRectangleRec(box, {255, 153, 55, 255});
                 float x = box.x + 3;
+                if (!row.icon.empty()) {
+                    draw_world_visuals(row.icon, skin.sprites, {x + 1, box.y + 1}, 1);
+                    x += 20;
+                }
                 if (!row.graphic.frames.empty()) {
                     skin.sprites.thumbnail(row.graphic.sprite, row.graphic.frames,
                                            {box.x + 2, box.y + 2, 42, height - 4});

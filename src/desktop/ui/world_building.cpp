@@ -1,6 +1,7 @@
 // Page21/74/80/81 fields and actions follow the frozen 2b479f6 maintained prototype.
 // Drawing never initializes a page, charges money or changes a facility's shared level.
 #include "world_building.hpp"
+#include "../world_overlay_render.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -94,23 +95,47 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
         fitted(skin, "设施加成", boxes.source_heading);
         fitted(skin, "维护费", {boxes.maintenance.x, boxes.maintenance.y, 42, 14}, blue);
         detail_money(skin, view.attributes[3], boxes.maintenance);
-        if (view.source_names.empty()) {
-            skin.centered("暂无设施来源", boxes.sources, ink, 11);
+        if (view.bonus_rows.empty()) {
+            skin.centered("没有奖励", boxes.sources, ink, 11);
         } else {
-            // The page cache preserves original identities/order. Names are the published
-            // subset; no total is split into invented per-source rewards or level factors.
+            // Published source positions, translated to the existing centered panel.
+            const Vector2 origin{layout.panel.x - 8, layout.panel.y - 44};
             const int visible =
                 std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
             const int first =
                 std::clamp(selection.first_row, 0,
-                           std::max(0, static_cast<int>(view.source_names.size()) - visible));
-            for (int row = 0;
-                 row < visible && first + row < static_cast<int>(view.source_names.size()); ++row)
-                fitted(skin, view.source_names[first + row],
-                       {boxes.sources.x + 3, boxes.sources.y + row * boxes.source_row_height + 3,
-                        boxes.sources.width - 6, 16});
+                           std::max(0, static_cast<int>(view.bonus_rows.size()) - visible));
+            for (int visible_row = 0; visible_row < visible; ++visible_row) {
+                const int source_index = first + visible_row;
+                if (source_index >= static_cast<int>(view.bonus_rows.size()))
+                    break;
+                const auto &bonus = view.bonus_rows[source_index];
+                // Scrolling changes source_index only; vertical position uses visible_row.
+                const float y = origin.y + 97 + visible_row * 19;
+                draw_world_visuals({bonus.icon}, skin.sprites, {origin.x + 26, y - 2}, 1);
+                const float name_x = origin.x + 44;
+                const float first_value_x =
+                    origin.x + (bonus.source.values.size() == 2 ? 121 : 147);
+                const float name_width = first_value_x - name_x - 2;
+                const float name_size =
+                    12 * std::min(1.F, name_width /
+                                           std::max(1.F, skin.text.width(bonus.source.name, 12)));
+                skin.text.draw(bonus.source.name, name_x, y, ink, name_size);
+                for (const auto &value : bonus.source.values) {
+                    const float x = origin.x + (value.attribute == 0   ? 121
+                                                : value.attribute == 1 ? 171
+                                                                       : 147);
+                    const float right = origin.x + (value.attribute == 0 ? 169 : 219);
+                    const float measured =
+                        skin.text.width(value.label, 12) + skin.text.width(value.text, 12);
+                    const float size = 12 * std::min(1.F, (right - x) / std::max(1.F, measured));
+                    skin.text.draw(value.label, x, y, {0, 101, 255, 255}, size);
+                    skin.text.draw(value.text, x + skin.text.width(value.label, size), y, ink,
+                                   size);
+                }
+            }
         }
-        const int count = std::max(1, static_cast<int>(view.source_names.size()));
+        const int count = std::max(1, static_cast<int>(view.bonus_rows.size()));
         const int visible =
             std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
         const int first = std::clamp(selection.first_row, 0, std::max(0, count - visible));
@@ -122,6 +147,9 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
         skin.centered("周围设施的加成", boxes.source_footer, ink, 12);
         return;
     }
+    if (view.category_icon)
+        draw_world_visuals({*view.category_icon}, skin.sprites,
+                           {layout.panel.x + 13, layout.panel.y + 22}, 1);
     fitted(skin, view.title, boxes.name, ink);
     if (view.detail_type == Type::ordinary) {
         fitted(skin, "价格", {boxes.price.x, boxes.price.y, 32, 14}, blue);
@@ -133,9 +161,13 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
                             boxes.picture.height - (view.detail_type == Type::ordinary ? 14 : 4)});
     if (view.detail_type == Type::ordinary) {
         detail_field(boxes.values, {255, 248, 214, 255}, {239, 208, 119, 255});
-        // The lower field exists in S019/PAGES independently of its still-unpublished
-        // category7 icon mapping. Do not substitute text or guessed effects from a legacy model.
+        // Effects carry absolute source coordinates; translate once from panel (8,44).
         detail_field(boxes.effects, {255, 248, 214, 255}, {239, 208, 119, 255});
+        for (const auto &effect : view.exit_effects) {
+            const Vector2 origin{layout.panel.x - 8, layout.panel.y - 44};
+            draw_world_visuals({effect.icon}, skin.sprites, origin, 1);
+            draw_world_visuals(effect.pluses, skin.sprites, origin, 1);
+        }
         constexpr const char *labels[]{"品质", "魅力"};
         for (int row = 0; row < 2; ++row) {
             const float y = boxes.values.y + 4 + row * 15;
@@ -297,8 +329,16 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.cumulative_profit = detail.detail->cumulative_profit;
             view.graphic = world_build_graphic(state, item.id, facility.placement.orientation);
             view.product_count = open_products(state, item);
-            for (const auto &source : state.facility_page_neighbours.at(page.id))
-                view.source_names.push_back(definition(state, source.definition_id).name);
+            const auto bonuses = simulation::startup_world_facility_bonus_rows(state, page.id);
+            if (!bonuses)
+                throw std::invalid_argument("Facility page has invalid bonus rows");
+            for (const auto &source : *bonuses) {
+                const auto icon =
+                    simulation::startup_world_facility_icon_draw(state, source.definition);
+                if (!icon)
+                    throw std::invalid_argument("Facility bonus row has invalid category icon");
+                view.bonus_rows.push_back({source, *icon});
+            }
             view.page_count = simulation::startup_world_facility_page_count(state, page);
             view.income =
                 state.facility_monthly_cash.at(*view.facility).at(state.scene.calendar.month)[0];
@@ -310,6 +350,21 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                 view.phase == 0 && (item.detail == 1 || item.detail == 4 || item.detail == 5);
             view.can_confirm = (item.detail == 6 && view.phase == 0) || view.can_use_items ||
                                view.can_view_products;
+        }
+    }
+    if (view.raw == 74) {
+        const int id =
+            view.definition_preview
+                ? state.facility_definition_page_bindings.at(page.id)
+                : state.scene.world.world.facilities.at(*view.facility).placement.definition_id;
+        view.category_icon = simulation::startup_world_facility_icon_draw(state, id);
+        if (!view.category_icon)
+            throw std::invalid_argument("Facility detail has invalid category icon");
+        if (view.detail_type == app::WorldFacilityTemplate::ordinary) {
+            const auto effects = simulation::startup_world_facility_exit_effect_draws(state, id);
+            if (!effects)
+                throw std::invalid_argument("Facility detail has invalid exit effects");
+            view.exit_effects = *effects;
         }
     }
     view.initialized = true;
@@ -431,7 +486,7 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
             const int scroll = input.wheel_rows + (input.down ? 1 : 0) - (input.up ? 1 : 0);
             selection.first_row =
                 std::clamp(selection.first_row + scroll, 0,
-                           std::max(0, static_cast<int>(view.source_names.size()) - visible));
+                           std::max(0, static_cast<int>(view.bonus_rows.size()) - visible));
         } else
             selection.first_row = 0;
         if (view.page_count > 1 && (input.left || hit(input.click, layout.previous)))

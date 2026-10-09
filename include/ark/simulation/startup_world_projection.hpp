@@ -73,6 +73,7 @@ struct StartupWorldItem {
     std::array<int, 3> facility_improvements{}; // 原g.k，设施三项增量。
     int commerce_price{};                       // 原g.u，商会金币价格，出售向零除2。
     std::array<int, 4> magic_pot_elements{}; // 原g.l，item索引12..15火／冰／雷／暗。
+    int render_icon{}; // 原g.g，item索引5；不是定义ID、种类或属性效果编号。
 };
 struct StartupWorldTask {
     ref::TaskCreationDefinition factory;

@@ -2,6 +2,8 @@
 
 #include "ark/simulation/startup_world_runtime.hpp"
 
+#include <functional>
+
 namespace ark::simulation {
 // b/g.a(o,x,y,image)：15×14裁剪，walk01帧0，脚底相对裁剪原点(8,21)。
 // 坐标仅属于原版表现计划，不进入地图、人物AI或服务规则。
@@ -36,12 +38,51 @@ struct StartupVisualDraw {
     int sprite{-1}, image{-1}, frame{}, layer{};
     std::array<int, 4> crop{};
     std::array<int, 2> offset{};
+    std::optional<std::size_t> record_index{}; // 人物cd绘制保留原索引；设施/静态图标无此索引。
 };
 // 只消费既有cd15/21/22举物事实及设施队首kind1..6；不推进计数、装配、邻接、随机或声音。
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_equipment_lift_draws(const StartupWorldRuntimeState &state, ref::CharacterId actor);
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_facility_growth_draws(const StartupWorldRuntimeState &state, std::uint64_t facility);
+
+// cd13气泡：背景/图标→蓝色属性名→数字/加号；各命令offset相对身体绘制锚点H+bl。
+// 与举物按record_index归并，不能把所有13集中放到所有15/21/22之后。
+struct StartupAttributeGainDraw {
+    std::size_t record_index{};
+    int age{}, attribute{}, delta{}, width{};
+    std::vector<StartupVisualDraw> before_text;
+    std::string text;
+    std::array<int,2> text_offset{};
+    std::array<int,3> text_rgb{0,100,255};
+    std::vector<StartupVisualDraw> after_text;
+};
+// measure只读当前表现字体，分别测原属性名及原始有符号十进制串；不存入Owner/schema。
+// 查询不推进cd、重复累计属性、重新派生HP、消费随机或发声音；退休由逻辑更新完成。
+std::optional<std::vector<StartupAttributeGainDraw>>
+startup_world_attribute_gain_draws(const StartupWorldRuntimeState &state, ref::CharacterId actor,
+                                  const std::function<int(const std::string &)> &measure);
+
+// 原b/g.c type1：先分类底框(-1,-1)，再普通道具g.g的16×16前景(0,0)。
+// 返回相对调用者前景左上角的计划；不读/扣库存，不把定义ID或效果类别当图标。
+std::optional<std::vector<StartupVisualDraw>>
+startup_world_item_icon_draws(const StartupWorldRuntimeState &state, int item_definition);
+
+// 设施type9前景，原o.d/common91；0是有效图块，不附普通道具type1背景。
+std::optional<StartupVisualDraw>
+startup_world_facility_icon_draw(const StartupWorldRuntimeState &state, int facility_definition);
+// 原type7六属性16px图块；没有SEB同号或类型化背景，运气ID5是x96特例。
+std::optional<StartupVisualDraw> startup_world_attribute_icon_draw(int attribute);
+struct StartupFacilityExitEffectDraw {
+    std::size_t slot{};
+    int attribute{}, delta{}; // signed原载荷；原页面正值画delta个+，零/负值不补减号。
+    StartupVisualDraw icon;
+    std::vector<StartupVisualDraw> pluses;
+};
+// 74第一页普通经营设施的只读效果行；位置为原页面绝对坐标，调用方保持原页/类别资格。
+// 只按原z长度的exit_effects消费，不画保留的A尾部，不计算/提交访问奖励。
+std::optional<std::vector<StartupFacilityExitEffectDraw>>
+startup_world_facility_exit_effect_draws(const StartupWorldRuntimeState &state, int facility_definition);
 
 // a/j五参数绘制的完整分片，offset相对候选光标／64×32缩略图的(2,10)锚点。
 // 与建设准入分开：只核原定义/形状/朝向，地图边缘候选仍可绘制越界分片。

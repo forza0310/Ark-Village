@@ -51,7 +51,7 @@ assert.equal(recipes.length,40);++checks;
 assert.deepEqual(recipes[1],['1','烤肉','0','5','60','100','20','30','0','2']);++checks;
 assert.ok(output.includes('{1,"烤肉",0,5,60,{100,20,30,0},2}'));++checks;
 assert.ok(output.includes('{39,"木灵大树",4,74,45,{50,50,50,10},2}'));++checks;
-assert.ok(output.includes(',400,{0,2,0,0}}'));++checks; // 原道具0列12..15。
+assert.ok(output.includes(',400,{0,2,0,0},5}'));++checks; // 原道具0列12..15及列5图标5；不是定义ID0。
 for(const change of [
   r=>r.pop(), r=>r[0].pop(), r=>r[1][0]='0', r=>r[1][1]='',
   r=>r[1][2]='5', r=>r[1][2]='-1', r=>r[1][3]='36', r=>r[1][3]='-1',

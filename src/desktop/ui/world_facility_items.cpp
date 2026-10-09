@@ -1,4 +1,5 @@
 #include "world_facility_items.hpp"
+#include "../world_overlay_render.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -25,6 +26,10 @@ WorldFacilityItemRow item(const State &state, int id) {
     row.identity = id;
     row.name = source->name;
     row.owned = state.items.at(id).inventory;
+    const auto icon = simulation::startup_world_item_icon_draws(state, id);
+    if (!icon)
+        throw std::invalid_argument("Facility item has invalid icon data");
+    row.icon = *icon;
     for (int n = 0; n < 3; ++n) {
         const int value = source->facility_improvements[n];
         row.hint[n] = value == 0                   ? 0
@@ -170,9 +175,10 @@ void draw_world_facility_items(const WorldFacilityItemsView &view,
                               layout.rows.width, layout.row_height};
                 if (index == view.selection) {
                     DrawRectangleRec(world_facility_item_highlight(layout, n), {255, 153, 55, 255});
-                    skin.sprites.draw("finger_r.seb", 0, {box.x + 12, box.y + 7}, WHITE,
+                    skin.sprites.draw("finger_r.seb", 0, {box.x + 2, box.y + 7}, WHITE,
                                       Sprites::Binding::common);
                 }
+                draw_world_visuals(row.icon, skin.sprites, {box.x + 11, box.y - 1}, 1);
                 fitted(skin, row.name, {box.x + 29, box.y, box.width - 61, 16});
                 skin.right(std::to_string(row.owned), box.x + box.width - 3, box.y, blue, 10);
             }

@@ -321,6 +321,8 @@ void world_building() {
     state.facility_page_bindings[page.id] = instance;
     state.facility_page_neighbours[page.id] = {};
     state.page_phases[page.id] = 0;
+    state.page_counters[page.id] = 0;
+    state.scripts.pages.push_back(page);
     state.facility_monthly_cash.at(instance).at(state.scene.calendar.month)[0] = 714;
     view = ui::world_building_view(state, page);
     check(view.facility == instance && view.income == 714 && view.neighbours == 0 &&
@@ -341,6 +343,8 @@ void world_building() {
         details.facility_page_bindings[detail_page.id] = bun->first;
         details.facility_page_neighbours[detail_page.id] = {};
         details.page_phases[detail_page.id] = 0;
+        details.page_counters[detail_page.id] = 0;
+        details.scripts.pages.push_back(detail_page);
         const auto source = std::find_if(sources.facilities.begin(), sources.facilities.end(),
                                          [](const auto &d) { return d.id == 33; });
         source->economy.upgrade_uses = {100, 100}; // Independent display fixture: remaining100-7.
@@ -357,11 +361,16 @@ void world_building() {
         check(query.detail && detail.detail_type == app::WorldFacilityTemplate::ordinary &&
                   detail.level == 2 && detail.remaining_uses == 93 &&
                   detail.attributes == query.detail->attributes && !detail.graphic.frames.empty() &&
-                  detail.source_names.empty(),
+                  detail.bonus_rows.empty(),
               "Ordinary instance details project actual economy, shared level, remaining uses and "
               "artwork");
         check(detail.cumulative_profit == 70 && detail.income == 50,
               "Footer binds cumulative net70, not current gross50 or village funds");
+        check(detail.category_icon && detail.category_icon->image == 91 &&
+                  detail.category_icon->crop == std::array<int, 4>{32, 0, 16, 16} &&
+                  detail.exit_effects.size() == 1 && detail.exit_effects[0].attribute == 0 &&
+                  detail.exit_effects[0].pluses.size() == 1,
+              "Bun33 detail carries its dining category and one vitality plus from source plans");
         cash[0] = {0, 300};
         check(ui::world_building_view(details, detail_page).cumulative_profit == -330,
               "Footer preserves a negative cumulative result for the source alternate colour");
@@ -381,8 +390,14 @@ void world_building() {
         const auto maximum_maintenance = detail.attributes[3];
         // Explicit initialized-page display fixture. These source identities/names are real;
         // this test does not claim their positions form a naturally produced reward list.
-        const auto a = details.scene.world.facility_order.front();
-        const auto b = details.scene.world.facility_order.back();
+        const auto a = bun->first;
+        const auto shop =
+            std::find_if(details.scene.world.world.facilities.begin(),
+                         details.scene.world.world.facilities.end(),
+                         [](const auto &f) { return f.second.placement.definition_id == 30; });
+        check(shop != details.scene.world.world.facilities.end(),
+              "Real initial weapon shop exists");
+        const auto b = shop->first;
         const int a_definition = details.scene.world.world.facilities.at(a).placement.definition_id;
         const int b_definition = details.scene.world.world.facilities.at(b).placement.definition_id;
         details.facility_page_neighbours[detail_page.id] = {{rules::BuildingId{b}, b_definition},
@@ -395,8 +410,15 @@ void world_building() {
         const auto b_source =
             std::find_if(sources.facilities.begin(), sources.facilities.end(),
                          [b_definition](const auto &d) { return d.id == b_definition; });
-        check(detail.source_names == std::vector<std::string>{b_source->name, a_source->name} &&
-                  detail.neighbours == 2 && detail.attributes[3] == maximum_maintenance,
+        check(detail.bonus_rows.size() == 2 &&
+                  detail.bonus_rows[0].source.name == b_source->name + "1" &&
+                  detail.bonus_rows[1].source.name == a_source->name + "1" &&
+                  detail.bonus_rows[0].source.instance == b &&
+                  detail.bonus_rows[0].source.values.size() == 1 &&
+                  detail.bonus_rows[0].source.values[0].label == "魅力" &&
+                  detail.bonus_rows[0].source.values[0].text == "+10" &&
+                  detail.bonus_rows[0].icon.image == 91 && detail.neighbours == 2 &&
+                  detail.attributes[3] == maximum_maintenance,
               "Second-page names preserve initialized source order while maintenance stays the "
               "effective instance value");
         for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{384, 256},
@@ -449,12 +471,12 @@ void world_building() {
                     "Equipment/home/recruitment/booster layouts use the centered special template");
             }
             auto scrolling = detail;
-            scrolling.source_names.assign(8, a_source->name); // Presentation-only long list input.
+            scrolling.bonus_rows.assign(8, detail.bonus_rows[1]); // Presentation-only scroll input.
             ui::WorldBuildingSelection cursor;
             ui::WorldBuildingInput navigation;
             navigation.wheel_rows = 99;
             check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
-                      cursor.first_row > 0 && cursor.first_row < 8,
+                      cursor.first_row == 3,
                   "Long source names can scroll locally without sending a facility transaction");
             const int first = cursor.first_row;
             navigation.up = true;
@@ -502,6 +524,7 @@ void world_building() {
     check(inn != state.scene.world.world.facilities.end(), "Published initial inn instance exists");
     page.legacy_page = 74;
     page.legacy_f = 28;
+    state.scripts.pages.back() = page;
     state.facility_page_bindings[page.id] = inn->first;
     state.page_phases[page.id] = 0;
     view = ui::world_building_view(state, page);
@@ -605,7 +628,7 @@ void world_building() {
         check(view.definition_preview && view.product_count == 2 && !view.facility &&
                   !view.can_use_items &&
                   view.detail_type == app::WorldFacilityTemplate::equipment &&
-                  view.source_names.empty() && view.income == 0,
+                  view.bonus_rows.empty() && view.income == 0,
               "Armor-shop preview counts only already-open merchandise without an instance or "
               "item-use command");
     }

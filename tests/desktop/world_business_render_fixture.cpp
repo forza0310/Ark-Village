@@ -100,6 +100,7 @@ static void run_business_fixture(bool cold_restart) {
         ~Window() { CloseWindow(); }
     } window;
     desktop::Sprites sprites(ARK_TEST_ASSETS);
+    desktop::Text text(ARK_TEST_FONT);
     desktop::WorldCanvas canvas;
     constexpr desktop::Extent extent{384, 256};
     auto state = initial_world(cold_restart ? 20261008 : 1);
@@ -116,10 +117,11 @@ static void run_business_fixture(bool cold_restart) {
             canvas.resize({GetRenderWidth(), GetRenderHeight()});
             const auto raster = desktop::canvas_camera(
                 desktop::viewport(canvas.size.width, canvas.size.height, extent), extent);
+            text.prepare(raster.zoom);
             BeginTextureMode(canvas.texture);
             ClearBackground({145, 211, 247, 255});
             BeginMode2D(raster);
-            desktop::draw_world_scene(state, sprites, 1, nullptr, 1, &camera);
+            desktop::draw_world_scene(state, sprites, text, 1, nullptr, 1, &camera);
             EndMode2D();
             EndTextureMode();
             BeginDrawing();

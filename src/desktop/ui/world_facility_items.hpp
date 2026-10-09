@@ -3,6 +3,7 @@
 // 75 consumes owned items; 76 applies shared improvements; 77 only displays the result.
 #include "../world_build_placement.hpp"
 #include "ark/simulation/startup_world_facility_items.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "layout.hpp"
 #include <optional>
 #include <string>
@@ -14,6 +15,7 @@ struct WorldFacilityItemRow {
     int identity{}, owned{};
     std::string name;
     std::array<int, 3> hint{}; // Source k bins, not the final multiplied/clamped attribute deltas.
+    std::vector<simulation::StartupVisualDraw> icon;
 };
 struct WorldFacilityItemsView {
     std::uint64_t page{}, facility{};

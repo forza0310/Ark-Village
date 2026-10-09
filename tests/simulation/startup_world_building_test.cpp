@@ -4,6 +4,7 @@
 #include "ark/simulation/startup_world_facility_items.hpp"
 #include "ark/simulation/startup_world_facility_catalog.hpp"
 #include "ark/simulation/startup_world_human.hpp"
+#include "ark/simulation/startup_world_persistence.hpp"
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -192,6 +193,89 @@ void details() {
     check(act_startup_world_facility_page(s, page, StartupFacilityPageAction::cancel) ==
               StartupWorldRuntimeError::invalid_page,
           "stale double close rejected");
+}
+void facility_bonus_rows() {
+    auto s = test_support::world_fixture();
+    const auto target = source_facility(s, 33), shop = source_facility(s, 30);
+    const auto tree1 = install_startup_world_facility(s, 71, empty_anchor(s, 71),
+                                                      ref::FacilityOrientation::first);
+    const auto tree2 = install_startup_world_facility(s, 71, empty_anchor(s, 71),
+                                                      ref::FacilityOrientation::first);
+    check(tree1.created && tree2.created, "bonus row fixture creates two distinct real source instances");
+    check(open_startup_world_facility_page(s, target) == StartupWorldRuntimeError::none,
+          "bonus rows use an actual bound74 page");
+    const auto page = s.scripts.pages.back().id;
+    // 明确页面调用点夹具：模拟曾建到10/11且其它实例已退休的合法序号，不称自然建设路径。
+    s.facility_ordinals.at(*tree1.created) = 9;
+    s.facility_ordinals.at(*tree2.created) = 10;
+    s.facility_page_neighbours.at(page) = {
+        {{*tree1.created},71}, {{shop},30}, {{*tree2.created},71}, {{*tree1.created},71}};
+    const auto digest = startup_world_state_digest(s);
+    const auto rows = startup_world_facility_bonus_rows(s, page);
+    check(rows && rows->size() == 4 && rows->at(0).instance == *tree1.created &&
+              rows->at(1).instance == shop && rows->at(2).instance == *tree2.created &&
+              rows->at(3).instance == *tree1.created,
+          "74 Y source order, same-definition identities and repeated page rows survive projection");
+    check(rows->at(0).name == "槙树10" && rows->at(2).name == "槙树11" &&
+              rows->at(0).ordinal == 9 && rows->at(0).icon == 6,
+          "original name suffix is per-definition ordinal plus1, never global ID or shared level");
+    check(rows->at(0).values.size() == 2 && rows->at(0).values[0].attribute == 0 &&
+              rows->at(0).values[0].label == "价格" && rows->at(0).values[0].value == 20 &&
+              rows->at(0).values[0].text == "+20" && rows->at(0).values[1].attribute == 1 &&
+              rows->at(0).values[1].label == "品质" && rows->at(0).values[1].value == 25 &&
+              rows->at(1).values.size() == 1 && rows->at(1).values[0].attribute == 2 &&
+              rows->at(1).values[0].label == "魅力" && rows->at(1).values[0].text == "+10",
+          "literal tenant71 y20/25 and tenant30 y10 produce exact labels/raw signed values");
+    check(startup_world_state_digest(s) == digest,
+          "bonus projection preserves complete Owner, neighbour totals, pages, ordinal, random and cash");
+    auto scroll = s;
+    for (int n = 0; n < 3; ++n)
+        scroll.facility_page_neighbours.at(page).push_back({{shop},30});
+    const auto scroll_digest = startup_world_state_digest(scroll);
+    const auto first = startup_world_facility_bonus_window(scroll,page,0);
+    const auto last = startup_world_facility_bonus_window(scroll,page,2);
+    check(first && last && first->total == 7 && first->rows.size() == 5 &&
+              last->first == 2 && last->rows.size() == 5 && last->rows[0].name == "槙树11" &&
+              last->rows[1].name == "槙树10" && last->rows[4].definition == 30 &&
+              !startup_world_facility_bonus_window(scroll,page,3) &&
+              startup_world_state_digest(scroll) == scroll_digest,
+          "five-row first/last views preserve repeated order, reject excess scroll and remain read-only");
+    StartupWorldRules private_rules = *s.rules;
+    auto conditions = s;
+    conditions.rules = &private_rules;
+    // 规则槽重复／顺序变化不授权重排原显示固定y位置；负数/零为条件夹具。
+    private_rules.facilities[71].neighbour_effects = {{2,-3},{2,0}};
+    conditions.neighbourhood.at(target) = {1234,5678,9012};
+    const auto unusual = startup_world_facility_bonus_rows(conditions, page);
+    check(unusual && unusual->at(0).values[0].attribute == 0 &&
+              unusual->at(0).values[0].text == "+-3" &&
+              unusual->at(0).values[1].attribute == 1 && unusual->at(0).values[1].text == "+0",
+          "fixed display slots preserve literal plus/signed-zero and never split aggregate modifiers");
+    conditions.facility_page_neighbours.at(page).clear();
+    check(startup_world_facility_bonus_rows(conditions, page)->empty(),
+          "empty Y stays empty even with nonzero aggregate road or other modifiers");
+    for (int fault = 0; fault < 8; ++fault) {
+        auto broken = s;
+        auto rules = *s.rules;
+        broken.rules = &rules;
+        if (fault == 0) broken.facility_ordinals.erase(*tree1.created);
+        if (fault == 1) broken.facility_ordinals.at(*tree1.created) = -1;
+        if (fault == 2) broken.facility_ordinals.at(*tree1.created) = std::numeric_limits<int>::max();
+        if (fault == 3) broken.scene.world.world.facilities.erase(*tree1.created);
+        if (fault == 4) broken.facility_page_neighbours.at(page)[0].definition_id = 30;
+        if (fault == 5) rules.facilities[71].neighbour_effects.resize(1);
+        if (fault == 6) rules.facilities[71].legacy_icon = 7;
+        if (fault == 7) broken.page_phases.erase(page);
+        const auto before = startup_world_state_digest(broken);
+        check(!startup_world_facility_bonus_rows(broken, page) &&
+                  startup_world_state_digest(broken) == before,
+              "bad source identity, ordinal, payload, icon or initialized page explicitly refuses without mutation");
+    }
+    auto closed = s;
+    closed.scripts.pages.back().lifecycle = 4;
+    check(!startup_world_facility_bonus_rows(closed,page) &&
+              !startup_world_facility_bonus_rows(s, std::numeric_limits<std::uint64_t>::max()),
+          "closed or unknown74 cannot render stale bonus rows");
 }
 void shared_upgrade() {
     auto s = test_support::world_fixture();
@@ -1262,6 +1346,7 @@ int main() {
         multi_tile_and_rollback();
         new_shop_projection();
         details();
+        facility_bonus_rows();
         shared_upgrade();
         menu_and_current_quotes();
         residence();

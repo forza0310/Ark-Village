@@ -420,6 +420,9 @@ void Text::flush(float scale, Vector2 offset) const {
 float Text::width(const std::string &value, float size) const {
     return MeasureTextEx(font_, value.c_str(), size, 0).x;
 }
+void Text::scene_text(const std::string &value, Vector2 point, Color color, float size) const {
+    DrawTextEx(font_, value.c_str(), point, size, 0, color);
+}
 void Text::paragraph(const std::string &value, float x, float y, float width) const {
     // Raylib decodes codepoints; wrap only at UTF-8 boundaries using actual font measurements.
     std::string line;

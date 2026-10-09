@@ -137,9 +137,10 @@ export function compileStartupWorld(tables, map, sources, state) {
   const itemOutput=rows['item.txt'].map(row=>{
     const flag=n(row[24]),opened=(flag&1)!==0;
     need(row.slice(12,16).map(n).every(value=>value>=0), '道具魔法壶四元素非法');
+    need(n(row[5])>=0 && n(row[5])<89, '道具图标超出原分类表C');
     return `{${n(row[0])},{${flag},${opened?1:0},0,false,${n(row[17])},0},`+
       `{${n(row[0])},${n(row[7])},${n(row[20])},${n(row[18])},${opened?1:0},0,false},${n(row[8])},${text(row[1])},`+
-      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])},${array(row.slice(12,16))}}`;
+      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])},${array(row.slice(12,16))},${n(row[5])}}`;
   });
   const excess=[];
   const facilityOutput=facilities.map(row=>{

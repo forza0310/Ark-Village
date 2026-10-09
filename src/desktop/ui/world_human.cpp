@@ -1,4 +1,5 @@
 #include "world_human.hpp"
+#include "../world_overlay_render.hpp"
 #include "ark/simulation/rules/human_management.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
@@ -62,6 +63,10 @@ WorldHumanRow item(const State &state, int id) {
     row.cost = -1;
     row.stock = owned.inventory;
     row.fresh = owned.newly_unlocked;
+    const auto icon = simulation::startup_world_item_icon_draws(state, id);
+    if (!icon)
+        throw std::invalid_argument("Human gift item has invalid icon data");
+    row.icon = *icon;
     return row;
 }
 std::string quote(const WorldHumanRow &row) {
@@ -315,8 +320,11 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
                 if (n == view.selection)
                     DrawRectangleRec(box, {255, 236, 174, 255});
                 const auto value = view.raw == 61 ? std::to_string(row.cost) + "点" : quote(row);
-                fitted(skin, (row.fresh ? "* " : "") + row.name,
-                       {box.x + 3, box.y + 2, box.width * .60F, box.height});
+                const float icon_width = row.icon.empty() ? 0 : 20;
+                draw_world_visuals(row.icon, skin.sprites, {box.x + 4, box.y + 1}, 1);
+                fitted(
+                    skin, (row.fresh ? "* " : "") + row.name,
+                    {box.x + 3 + icon_width, box.y + 2, box.width * .60F - icon_width, box.height});
                 skin.right(value, box.x + box.width - 3, box.y + 2, blue, 10);
             }
         } else if (view.raw == 60) {

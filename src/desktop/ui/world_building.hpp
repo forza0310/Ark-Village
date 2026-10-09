@@ -5,6 +5,7 @@
 #include "../world_build_placement.hpp"
 #include "ark/app/world_facility_queries.hpp"
 #include "ark/simulation/startup_world_building.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "layout.hpp"
 #include <optional>
 #include <string>
@@ -22,6 +23,10 @@ struct WorldBuildingRow {
     Rectangle image_source{};
     Vector2 image_offset{};
 };
+struct WorldFacilityBonusRow {
+    simulation::StartupFacilityBonusRow source;
+    simulation::StartupVisualDraw icon;
+};
 struct WorldBuildingView {
     int raw{};
     std::uint64_t page{};
@@ -33,7 +38,9 @@ struct WorldBuildingView {
     int level{};
     std::optional<std::int64_t> remaining_uses;    // Source d()-K; absent at shared MAX.
     std::optional<std::int64_t> cumulative_profit; // Instance kind3/9, source months0..current.
-    std::vector<std::string> source_names; // Page-initialized Y order; no inferred reward rows.
+    std::vector<WorldFacilityBonusRow> bonus_rows; // Page Y order, including repeated sources.
+    std::optional<simulation::StartupVisualDraw> category_icon;
+    std::vector<simulation::StartupFacilityExitEffectDraw> exit_effects;
     std::optional<std::size_t> product_count;
     std::array<std::vector<WorldBuildingRow>, 3> catalogs;
     std::vector<WorldBuildingRow> residents;

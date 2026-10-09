@@ -3,6 +3,7 @@
 // Human management presents the current Owner. Source-owned selection and page readiness
 // travel with snapshots; desktop input emits one action and never initializes a page.
 #include "ark/simulation/startup_world_human.hpp"
+#include "ark/simulation/startup_world_visuals.hpp"
 #include "layout.hpp"
 #include <optional>
 #include <string>
@@ -15,6 +16,7 @@ struct WorldHumanRow {
     std::string name;
     bool fresh{};
     std::array<int, 4> combat{};
+    std::vector<simulation::StartupVisualDraw> icon;
 };
 struct WorldHumanView {
     int raw{}, phase{}, selection{}, counter{}, human{}, portrait_image{};

@@ -90,6 +90,10 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             target_sources(${target} PRIVATE ${ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES})
             target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
             target_link_libraries(${target} PRIVATE ark_world_persistence ark_world_hash)
+        elseif(module STREQUAL "startup_world_building_test")
+            # 72a5bf4 verifies that bonus queries preserve the complete Owner digest.
+            # This test-only maintenance dependency does not enter the player/runtime graph.
+            target_link_libraries(${target} PRIVATE ark_world_persistence)
         endif()
         if(module MATCHES "^world_(arrivals|calendar_tasks|exploration|facility_update|gift_page|popularity|residence|runtime|scripts|world_entry)_test$")
             target_compile_definitions(${target} PRIVATE "ARK_WORLD_TEST_DATA=\"${ARK_WORLD_DATA}\"")

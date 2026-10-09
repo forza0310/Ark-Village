@@ -161,6 +161,9 @@ void world_human() {
     state.page_phases[page.id] = 4;
     const auto item_before = state;
     view = ui::world_human_view(state, page);
+    check(view.choice && view.choice->icon.size() == 2 && view.choice->icon[1].image == 9 &&
+              view.choice->icon[1].crop == std::array<int, 4>{112, 16, 16, 16},
+          "Ordinary item5 keeps source icon22 in the gift list instead of equipment artwork");
     check(view.choice && view.choice->slot == 4 && view.choice->identity == ordinary &&
               view.choice->stock == 3 && view.choice->cost == -1 &&
               view.choice->name == state.rules->items.at(5).name,

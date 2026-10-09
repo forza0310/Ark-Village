@@ -41,6 +41,7 @@ void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, fl
                        float &zoom);
 // Stable source depth order for per-cell surfaces, fences, doors, all actors, HP and cash effects.
 void draw_world_scene(const simulation::StartupWorldRuntimeState &state, Sprites &sprites,
-                      float zoom, const simulation::StartupWorldRuntimeState *previous = nullptr,
+                      const Text &text, float zoom,
+                      const simulation::StartupWorldRuntimeState *previous = nullptr,
                       float alpha = 1, const WorldCameraView *view = nullptr);
 } // namespace ark::desktop

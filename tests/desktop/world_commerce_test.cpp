@@ -196,6 +196,10 @@ void world_commerce() {
     state.commerce_page_data[page.id] = {0, 0, 5, 1, -1, 20};
     const auto before = state;
     view = ui::world_commerce_view(state, page);
+    check(view.rows.front().identity == 5 && view.rows.front().icon.size() == 2 &&
+              view.rows.front().icon[1].image == 9 &&
+              view.rows.front().icon[1].crop == std::array<int, 4>{112, 16, 16, 16},
+          "Commerce uses original item5 icon22 regardless of price/stock sorting");
     check(view.rows[0].identity == ids[0] && view.rows[1].identity == ids[1] &&
               view.rows[1].fresh && !view.rows[0].fresh && view.rows[1].remaining == 18 &&
               view.rows[1].owned == 4 && view.selection == 5 && view.first_visible == 1 &&

@@ -340,10 +340,10 @@ bool home_rebuild_input(State &state, const std::string &mode, WorldManagementIn
 }
 } // namespace
 bool management_inspection_mode(const std::string &mode) {
-    return mode == "world-building" || mode == "world-details" || mode == "world-built" ||
-           build_preview_mode(mode) || mode == "world-award-granted" || village_mode(mode) ||
-           mode == "world-reward95" || road_mode(mode) || mode == "world-demolished" ||
-           home_mode(mode) || expansion_mode(mode);
+    return mode == "world-building" || mode == "world-details" ||
+           mode == "world-facility-bonuses" || mode == "world-built" || build_preview_mode(mode) ||
+           mode == "world-award-granted" || village_mode(mode) || mode == "world-reward95" ||
+           road_mode(mode) || mode == "world-demolished" || home_mode(mode) || expansion_mode(mode);
 }
 void begin_management_inspection(State &state, const std::string &mode,
                                  WorldManagementInspection &inspection) {
@@ -379,6 +379,22 @@ void begin_management_inspection(State &state, const std::string &mode,
         if (found == state.scene.world.facility_order.end())
             throw std::runtime_error("Management inspection cannot find the actual startup inn");
         require(simulation::open_startup_world_facility_page(state, *found), "open inn details");
+    }
+    if (mode == "world-facility-bonuses") {
+        const auto found =
+            std::find_if(state.scene.world.facility_order.begin(),
+                         state.scene.world.facility_order.end(), [&](auto id) {
+                             return !state.neighbourhood_details.at(id).sources.empty() &&
+                                    state.scene.world.world.facilities.at(id).status != 0;
+                         });
+        if (found == state.scene.world.facility_order.end())
+            throw std::runtime_error("Initial world has no actual facility bonus sources");
+        require(simulation::open_startup_world_facility_page(state, *found),
+                "open real bonus target");
+        require(
+            simulation::act_startup_world_facility_page(
+                state, state.scripts.pages.back().id, simulation::StartupFacilityPageAction::next),
+            "open actual facility bonus page");
     }
 }
 bool management_inspection_ready(const State &state, const std::string &mode,
@@ -439,6 +455,9 @@ bool management_inspection_ready(const State &state, const std::string &mode,
         return page->legacy_page == 21 && state.build_page_catalogs.count(page->id);
     if (mode == "world-details")
         return page->legacy_page == 74 && state.facility_page_bindings.count(page->id);
+    if (mode == "world-facility-bonuses")
+        return page->legacy_page == 74 && state.page_phases.at(page->id) == 1 &&
+               simulation::startup_world_facility_bonus_rows(state, page->id).has_value();
     if (build_preview_mode(mode)) {
         if (!inspection.selection || !inspection.preview_anchor ||
             state.build_definition != inspection.selection || page->kind != Kind::scene ||

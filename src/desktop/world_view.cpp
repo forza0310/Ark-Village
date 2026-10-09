@@ -108,7 +108,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         options.inspect_page != "world-month" && options.inspect_page != "world-month-income" &&
         options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
         options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
-        !save_inspection;
+        options.inspect_page != "world-facility-bonuses" && !save_inspection;
     WorldManagementInspection management_inspection;
     prepare_world_inspection(state, options, transient, management_inspection, checkpoint,
                              inspection_checkpoint);
@@ -526,7 +526,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 .count();
         const float alpha = static_cast<float>(
             std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
-        draw_world_scene(current, sprites, zoom,
+        draw_world_scene(current, sprites, text, zoom,
                          publication->revision <= discard_interpolation_revision
                              ? nullptr
                              : publication->previous.get(),

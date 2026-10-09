@@ -6,11 +6,13 @@
 #include "support/world_fixture.hpp"
 #include "ui/skin.hpp"
 #include "ui/world_building.hpp"
+#include "ui/world_commerce.hpp"
 #include "ui/world_facility_catalog.hpp"
 #include "ui/world_facility_items.hpp"
 #include "ui/world_magic_pot.hpp"
 #include "world_canvas.hpp"
 #include "world_editing.hpp"
+#include "world_overlay_render.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -98,7 +100,7 @@ void render_world_edit_fixture() {
         for (int frame = 0; frame < 4; ++frame) {
             BeginDrawing();
             ClearBackground({145, 211, 247, 255});
-            desktop::draw_world_scene(state, sprites, 1, nullptr, 1, &camera);
+            desktop::draw_world_scene(state, sprites, text, 1, nullptr, 1, &camera);
             const auto editing = desktop::world_edit_view(state, target);
             if (show_ghost)
                 desktop::draw_world_build_preview(ghost, camera, 1, sprites);
@@ -301,6 +303,20 @@ void world_facility_static_render_fixture() {
             "supplied seen97 gate did not expose the actual83 selection page");
     require(sim::initialize_startup_world_commerce_pages(preview), "source initialize83 failed");
     auto commerce_page = top_page(preview).id;
+    auto buy_items = preview;
+    // New-world merchant stock is empty. Supply only stock for this rendering callsite,
+    // just as raw75 above supplies owned items; initialization still builds the real list.
+    for (int id = 0; id < 6; ++id)
+        buy_items.shop_item_stock.at(id).quantity = 2;
+    require(sim::act_startup_world_commerce_page(buy_items, commerce_page,
+                                                 sim::StartupCommerceAction::select, 0) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::act_startup_world_commerce_page(buy_items, commerce_page,
+                                                     sim::StartupCommerceAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_commerce_pages(buy_items) &&
+                top_page(buy_items).legacy_page == 84,
+            "source cannot open supplied-gate ordinary-item catalogue84");
     require(sim::act_startup_world_commerce_page(preview, commerce_page,
                                                  sim::StartupCommerceAction::select,
                                                  2) == sim::StartupWorldRuntimeError::none,
@@ -352,9 +368,14 @@ void world_facility_static_render_fixture() {
     glyphs += "魔法壶投入道具开发确认处理结果发现配方火冰雷暗等级经验持有";
     glyphs += "商品装备情报设施口碑名称能力正在销售种攻击防御魔法幸运确认可快进继续";
     desktop::Text text(ARK_TEST_FONT, glyphs);
+    std::cout << "Attribute font metrics: digit12=" << text.width("1", 12)
+              << " digit14=" << text.width("1", 14) << " digit16=" << text.width("1", 16)
+              << " label12=" << text.width("灵活", 12) << '\n';
     ui::Skin skin(sprites, text);
     desktop::WorldCanvas canvas;
-    const auto capture = [&](const auto &state, const char *filename, bool narrow) {
+    const auto capture = [&](const auto &state, const char *filename, bool narrow,
+                             const ui::WorldBuildingView *display_override = nullptr,
+                             int first_row = 0) {
         const auto before = state;
         const desktop::Extent extent =
             narrow ? desktop::Extent{240, 256} : desktop::Extent{720, 600};
@@ -373,6 +394,9 @@ void world_facility_static_render_fixture() {
             if (ui::world_magic_pot_page(page))
                 ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
                                          ui::world_commerce_layout(extent), skin, true);
+            else if (ui::world_commerce_page(page))
+                ui::draw_world_commerce(ui::world_commerce_view(state, page),
+                                        ui::world_commerce_layout(extent), skin, true);
             else if (ui::world_facility_catalog_page(page))
                 ui::draw_world_facility_catalog(ui::world_facility_catalog_view(state, page),
                                                 ui::world_facility_catalog_layout(extent), skin,
@@ -381,9 +405,10 @@ void world_facility_static_render_fixture() {
                 ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
                                               ui::world_facility_items_layout(extent), skin, true);
             else
-                ui::draw_world_building(ui::world_building_view(state, page),
+                ui::draw_world_building(display_override ? *display_override
+                                                         : ui::world_building_view(state, page),
                                         ui::world_building_layout(extent, page.legacy_page), skin,
-                                        {}, true);
+                                        {0, 0, first_row}, true);
             EndMode2D();
             text.flush(raster.zoom, raster.offset);
             EndTextureMode();
@@ -427,10 +452,48 @@ void world_facility_static_render_fixture() {
         month = {std::numeric_limits<int>::max(), std::numeric_limits<int>::min()};
     capture(profit_positive, "raw74-profit-large-minimum.png", true);
     capture(second, "raw74-second.png", false);
+    capture(second, "raw74-second-minimum.png", true);
+    // Explicit initialized-page fixture with two real same-definition source instances.
+    // Ordinals/Y are supplied callsite conditions, not a claim of natural adjacent construction.
+    auto bonuses = second;
+    std::vector<std::uint64_t> trees;
+    for (int n = 0; n < 2; ++n) {
+        bool installed = false;
+        for (int y = 1; y < 23 && !installed; ++y)
+            for (int x = 1; x < 23 && !installed; ++x) {
+                auto candidate = bonuses;
+                const auto built = sim::install_startup_world_facility(
+                    candidate, 71, {x, y}, sim::rules::FacilityOrientation::first);
+                if (built.created) {
+                    trees.push_back(*built.created);
+                    bonuses = std::move(candidate);
+                    installed = true;
+                }
+            }
+        require(installed, "bonus display fixture could not install a real tree source");
+    }
+    bonuses.facility_ordinals.at(trees[0]) = 9;
+    bonuses.facility_ordinals.at(trees[1]) = 10;
+    const auto shop = std::find_if(
+        bonuses.scene.world.world.facilities.begin(), bonuses.scene.world.world.facilities.end(),
+        [](const auto &f) { return f.second.placement.definition_id == 30; });
+    require(shop != bonuses.scene.world.world.facilities.end(), "bonus fixture lost real shop30");
+    bonuses.facility_page_neighbours.at(top_page(bonuses).id) = {
+        {{trees[0]}, 71},    {{shop->first}, 30}, {{trees[1]}, 71},   {{trees[0]}, 71},
+        {{shop->first}, 30}, {{trees[1]}, 71},    {{shop->first}, 30}};
+    capture(bonuses, "raw74-bonuses-five-minimum.png", true);
+    capture(bonuses, "raw74-bonuses-scrolled-minimum.png", true, nullptr, 2);
+    auto long_rows = ui::world_building_view(bonuses, top_page(bonuses));
+    // Presentation stress only: use a long label/suffix and signed maximum-width payload.
+    long_rows.bonus_rows[0].source.name = "设施名称设施名称123456789";
+    long_rows.bonus_rows[0].source.values[0].text = "+2147483647";
+    long_rows.bonus_rows[0].source.values[1].text = "+-2147483648";
+    capture(bonuses, "raw74-long-text-minimum.png", true, &long_rows);
     capture(maximum, "raw74-max.png", false);
     capture(preview, "raw74-equipment-preview.png", false);
     capture(items, "raw75-minimum.png", true);
     capture(items, "raw75-list.png", false);
+    capture(buy_items, "raw84-items-minimum.png", true);
     capture(reinforced, "raw77-result.png", false);
     capture(reinforced, "raw77-minimum.png", true);
     capture(catalogue, "raw21-s057-catalogue.png", false);
@@ -445,5 +508,39 @@ void world_facility_static_render_fixture() {
     capture(deposited, "raw44-pot-deposit.png", true);
     capture(recipes, "raw43-pot-recipes.png", false);
     capture(development, "raw47-pot-develop.png", true);
+    // cd13 rendering callsite: six attributes plus mixed lifted-equipment records.
+    // This verifies paint order and actual font measurement, not a natural visit/reward.
+    auto effects = initial_world();
+    sim::rules::BattleActorRecord actor;
+    actor.id = {1};
+    actor.definition = 1;
+    actor.kind = sim::rules::ActorKind::human;
+    effects.scene.world.world.ai.battle.actors.emplace(actor.id, actor);
+    effects.scene.world.world.ai.contexts.emplace(actor.id, sim::rules::RewardActorContext{});
+    auto &display = effects.scene.world.world.ai.contexts.at(actor.id).effects.display;
+    SetWindowSize(720, 360);
+    for (int frame = 0; frame < 4; ++frame) {
+        BeginDrawing();
+        ClearBackground({226, 247, 212, 255});
+        for (int attribute = 0; attribute < 6; ++attribute) {
+            display = {{13, 0, attribute, 1 + attribute}};
+            const auto before = display;
+            desktop::draw_world_actor_effects(
+                effects, actor.id, sprites, text,
+                {80.F + (attribute % 3) * 220, 100.F + (attribute / 3) * 100}, 2);
+            require(display == before, "attribute drawing advanced or removed source records");
+        }
+        display = {{13, 0, 2, 1}, {21, 12, 218, -18, 13}, {13, 0, 5, 7}};
+        const auto before = display;
+        desktop::draw_world_actor_effects(effects, actor.id, sprites, text, {360, 310}, 2);
+        require(display == before, "mixed effects changed source record order");
+        EndDrawing();
+    }
+    auto effect_image = LoadImageFromScreen();
+    const auto effect_file = output / "attribute-gain-callsite.png";
+    const bool saved = effect_image.data && ExportImage(effect_image, effect_file.string().c_str());
+    if (effect_image.data)
+        UnloadImage(effect_image);
+    require(saved, "attribute effect capture failed");
 }
 } // namespace ark::test

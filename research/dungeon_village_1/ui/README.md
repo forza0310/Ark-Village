@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+最新静态增量：[Steam窗框与裁剪](STEAM_WINDOW_FRAME.md)独立核木纹／双线／白角、标题两次测宽、文字显式颜色及clip交接；[建设21](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)补五行图块、marker16、类目和滚动注册。Steam图98／103与APK不同，不能同图alias；原建设绘制会推进frame计数。此批不包含维护接入或新的窗口观察。
+
 最新维护增量：[Steam标题／选档／raw20／raw1局部计划](../prototype/STEAM_STARTUP_SKIN.md)已过既有visuals与application两项检查，只读资源、遮挡、测宽及触摸注册不修改Owner。[文字后端](STEAM_FONT_BACKEND.md)核默认皮肤／字体对象及后端交接，[GLText消费与退休](STEAM_GLTEXT_LIFECYCLE.md)追至GUI.Label和复用池；中文实际字形仍未知。新增[选档小窗窗口任务](../work/window-restore-observation/NEXT_SAVE_MENU_SKIN_PROMPT.md)待外部执行，不记为已观察。
 
 最新静态交叉：[Steam手动档菜单／确认](STEAM_SAVE_MENU.md)区分正常继续与默认“否”的覆盖／删除询问；[Steam语言包安装](STEAM_LANGUAGE_INSTALL.md)核包码、资源目录和翻译分流。SC包码zh-CN、TC为zh，不能从文件名猜语言码或当前字体。两者均为具名静态合同，不是新窗口观察。
@@ -20,7 +22,7 @@
 18项受影响测试通过，研究窗口接线与原EXE动态分开验收。逐项接收边界见[需求回应](../verification/PRODUCT_REQUESTS.md)。
 
 后继已补Steam两具体绘制消费者，保留属性数字加号定位的版本差异；普通道具自然购买→赠礼目录的研究窗口已观测。
-[建设目录21](STEAM_BUILD_LIST.md)补Steam字段映射与APK专用五行／空行边界，Steam行注册／精确绘制尚未闭合，不能套用通用滚动消费者。
+[建设目录21](STEAM_BUILD_LIST.md)已补Steam局部绘制／行注册；Init／Update、pattern数组全值及最终OS热区仍未闭合，不能把APK空行政策直接套到Steam。
 
 最新[设施74逐来源加成行](FACILITY_BONUS_ROWS.md)及[类别／属性图标](FACILITY_BONUS_ICONS.md)已交付原字段、只读接口、五行窗口与集中验收。名称后缀是同定义实例序号，图标0有效；道路不伪造来源行，原+号／重复项保留。
 

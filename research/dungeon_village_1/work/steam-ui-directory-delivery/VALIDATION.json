@@ -1,0 +1,142 @@
+{
+  "baseline": "25f8f96",
+  "qualification": "有界静态来源与文档审计；无新增游戏回归或窗口",
+  "files": [
+    {
+      "path": "ui/STEAM_WINDOW_FRAME.md",
+      "bytes": 9284,
+      "sha256": "12d8efff63ae639c4e840e7c5ddc16f7e3d77d4a2e154b300b94937a7013f64d",
+      "lf_sha256": "12d8efff63ae639c4e840e7c5ddc16f7e3d77d4a2e154b300b94937a7013f64d"
+    },
+    {
+      "path": "ui/STEAM_BUILD_LIST.md",
+      "bytes": 15415,
+      "sha256": "5283a39939a6f5d1c8af7d1d167127e53a933752b62d415bc656f26a6b115037",
+      "lf_sha256": "5283a39939a6f5d1c8af7d1d167127e53a933752b62d415bc656f26a6b115037"
+    },
+    {
+      "path": "ui/STEAM_UI_COVERAGE.md",
+      "bytes": 19592,
+      "sha256": "ff320084d9d56e4e11e388688eab380a1b04b14b537d3eb3e315f3d77aa2d3d0",
+      "lf_sha256": "ff320084d9d56e4e11e388688eab380a1b04b14b537d3eb3e315f3d77aa2d3d0"
+    },
+    {
+      "path": "ui/README.md",
+      "bytes": 29117,
+      "sha256": "f248886f4136160d2a4d4fc1cd09e93527e83db424d2ab2493444f0ba5455f9b",
+      "lf_sha256": "f248886f4136160d2a4d4fc1cd09e93527e83db424d2ab2493444f0ba5455f9b"
+    },
+    {
+      "path": "rules/PERSISTENCE.md",
+      "bytes": 61086,
+      "sha256": "8a80dafbcba8b8afb29f434dad13cdb5c889d7a4261f2d2377376085c1b9237d",
+      "lf_sha256": "8a80dafbcba8b8afb29f434dad13cdb5c889d7a4261f2d2377376085c1b9237d"
+    },
+    {
+      "path": "stages/README.md",
+      "bytes": 19238,
+      "sha256": "5fe3eb40c377df72494b1660d15342ee0624678a5d7261c18cd9317f4015b898",
+      "lf_sha256": "5fe3eb40c377df72494b1660d15342ee0624678a5d7261c18cd9317f4015b898"
+    },
+    {
+      "path": "verification/PRODUCT_REQUESTS.md",
+      "bytes": 17697,
+      "sha256": "0714f1e4db089d72f8dcf3336d2b0c4ffb664f0632ea1108f935884a9310ba27",
+      "lf_sha256": "0714f1e4db089d72f8dcf3336d2b0c4ffb664f0632ea1108f935884a9310ba27"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 61039,
+      "sha256": "942c01130c6c78cea79c76588724c31321c2e57e222d9c6ebfcd5694cd444d02",
+      "lf_sha256": "942c01130c6c78cea79c76588724c31321c2e57e222d9c6ebfcd5694cd444d02"
+    },
+    {
+      "path": "work/steam-ui-directory-delivery/README.md",
+      "bytes": 1429,
+      "sha256": "cc67149169dc835d151dcee312a39050cc0678f3da6fc5ddfd39586941b5ac02",
+      "lf_sha256": "cc67149169dc835d151dcee312a39050cc0678f3da6fc5ddfd39586941b5ac02"
+    },
+    {
+      "path": "work/steam-ui-directory-delivery/audit.py",
+      "bytes": 3156,
+      "sha256": "9eaf9f3a961c931e505b2e9aca8fd6647ee4b6f21eb790df36ae7a22b84856c5",
+      "lf_sha256": "9eaf9f3a961c931e505b2e9aca8fd6647ee4b6f21eb790df36ae7a22b84856c5"
+    },
+    {
+      "path": "work/steam-window-frame-contract/README.md",
+      "bytes": 2869,
+      "sha256": "9bc477929d32d6a91c67757930cf1dcbcb784253329b02d7fa4b58f5601dc641",
+      "lf_sha256": "9bc477929d32d6a91c67757930cf1dcbcb784253329b02d7fa4b58f5601dc641"
+    },
+    {
+      "path": "work/steam-window-frame-contract/inspect.cjs",
+      "bytes": 5855,
+      "sha256": "7625fed1e52af49899404fd0d75b4b449a6a0c6898ddb7e35ce81f5c2027215b",
+      "lf_sha256": "cc8d501636023f23f9b84aa9f9f96d814b95035b46230a230516749acb15e9a0"
+    },
+    {
+      "path": "work/steam-window-frame-contract/audit.cjs",
+      "bytes": 7194,
+      "sha256": "09e0671dbb92ecf994b96d8c1458e86c12683b6356ae3ae4ea7dc52d2e5fe634",
+      "lf_sha256": "09e0671dbb92ecf994b96d8c1458e86c12683b6356ae3ae4ea7dc52d2e5fe634"
+    },
+    {
+      "path": "work/steam-window-frame-contract/EVIDENCE.json",
+      "bytes": 21503,
+      "sha256": "7b4d2cdacb28f3645c338a5b44c607b6f05ab6d513fb81d5f6138ca4f96895a0",
+      "lf_sha256": "7b4d2cdacb28f3645c338a5b44c607b6f05ab6d513fb81d5f6138ca4f96895a0"
+    },
+    {
+      "path": "work/steam-build-list-render/README.md",
+      "bytes": 2843,
+      "sha256": "b44de3890b34a5c6d34df50fe6fc32f01eb01091ccd61bf4b75eb3b5196c9adf",
+      "lf_sha256": "b44de3890b34a5c6d34df50fe6fc32f01eb01091ccd61bf4b75eb3b5196c9adf"
+    },
+    {
+      "path": "work/steam-build-list-render/inspect.cjs",
+      "bytes": 3677,
+      "sha256": "2bcfd606702f0fb10ad471a5df0a7b05cbeb6acde5f45e95a8592e2883a9c583",
+      "lf_sha256": "2bcfd606702f0fb10ad471a5df0a7b05cbeb6acde5f45e95a8592e2883a9c583"
+    },
+    {
+      "path": "work/steam-build-list-render/audit.cjs",
+      "bytes": 6661,
+      "sha256": "5b4d4412074f472f16c6a6293e85fe5dce2aa1221a7dbe85bc7c186308025e5d",
+      "lf_sha256": "5b4d4412074f472f16c6a6293e85fe5dce2aa1221a7dbe85bc7c186308025e5d"
+    },
+    {
+      "path": "work/steam-build-list-render/EVIDENCE.json",
+      "bytes": 16623,
+      "sha256": "e8d1b33311e3528992584944f8228f5ca502a2155ffba014da3d2ffc5702479d",
+      "lf_sha256": "e8d1b33311e3528992584944f8228f5ca502a2155ffba014da3d2ffc5702479d"
+    },
+    {
+      "path": "work/interrupt-directory-lifecycle/README.md",
+      "bytes": 7150,
+      "sha256": "6a40c58dc74477dae075855efa677beb9f3e082c06c60cbc85ea3acc5a63fccf",
+      "lf_sha256": "6a40c58dc74477dae075855efa677beb9f3e082c06c60cbc85ea3acc5a63fccf"
+    },
+    {
+      "path": "work/interrupt-directory-lifecycle/audit.cjs",
+      "bytes": 5618,
+      "sha256": "0aa72496c7381a60da747b0a15c3f3e1bddaecb7f8442e17b3bbd8d9752f7dc0",
+      "lf_sha256": "0aa72496c7381a60da747b0a15c3f3e1bddaecb7f8442e17b3bbd8d9752f7dc0"
+    },
+    {
+      "path": "work/interrupt-directory-lifecycle/EVIDENCE.json",
+      "bytes": 39265,
+      "sha256": "b6a267baaaf482aacdb4f541a2e499a9e4508c8b52399685a67c85e34c70bf2d",
+      "lf_sha256": "b6a267baaaf482aacdb4f541a2e499a9e4508c8b52399685a67c85e34c70bf2d"
+    }
+  ],
+  "links": 428,
+  "new_asset_bytes": 0,
+  "limits": [
+    "完整建设pattern和业务更新另验",
+    "中文实际字形与OS输入未知",
+    "原自动中断未实现",
+    "目录无清除结论仅限已追踪入口",
+    "收费缓存修复和在途12月回放不在本批"
+  ],
+  "bytes": 356311
+}

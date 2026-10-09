@@ -5,7 +5,7 @@
 本批只读metadata、真实GameAssembly.dll及冻结窗口报告，不启动游戏、不操作原档。
 
 后继具体消费者见[属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)：cd13绘制链及type1分类／裁图已局部核对，数字加号定位与APK不同。页面64／75／84直接调用和原窗口仍未认证，以下页面分母不因此整体升级。
-[建设目录21专题](STEAM_BUILD_LIST.md)补共享字段／滚动与APK特例，保留Steam21实际注册和精确绘制的阻塞。
+[建设目录21专题](STEAM_BUILD_LIST.md)已闭合具名入口的局部绘制、行marker16和滚动注册；Init／Update、pattern全值及最终OS输入仍缺。[公共窗框](STEAM_WINDOW_FRAME.md)补Steam自己的helper、文字样式和裁剪消费，不以APK同图替代。
 
 2026-10-09外部原窗口反馈已补[启动局部动态](../work/startup-ui-analysis/ANALYSIS.md)：标题纪录单击进入、两页右向循环／返回保留选择、2/2空栏进入新局配置、默认性别联动及输入面板。内部页号未由窗口读取；自动输入未实际改名、配置取消未完成、计分页未取得，不能将关联TYPE声明整体升级为完整认证。
 
@@ -34,7 +34,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 页值 | Steam TYPE名称 | 功能组 | 当前Steam证据／缺口 |
 | --- | --- | --- | --- |
 | 0 | TALK | 对话 | 自然对话截图只证角色，未绑定TYPE |
-| 1 | DIALOG | 对话 | 仅声明；更新／绘制／动态链待逐项 |
+| 1 | DIALOG | 对话 | raw20重开／删除询问的默认否、横向输入、父页结果及局部绘制已核，见[合同](STEAM_SAVE_MENU.md)；其它调用者／原窗口组合仍待逐项 |
 | 2 | DIALOG_CHARA | 对话 | 仅声明；更新／绘制／动态链待逐项 |
 | 3 | MAIN_MENU | 菜单 | 主菜单局部静态＋S042 |
 | 4 | ADVENTURE_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
@@ -53,8 +53,8 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 17 | CLEARPOINT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 18 | ENDING | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
-| 20 | SAVE_MENU | 事件／系统 | 手动栏子菜单局部静态＋S040 |
-| 21 | BUILD | 建设目录 | 类目输入／软键局部静态，列表绘制未知 |
+| 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |
+| 21 | BUILD | 建设目录 | 类目输入／软键及完整局部绘制／行marker／滚动注册静态；Init／Update、pattern全值、OS输入未核 |
 | 22 | QUEST_SELECT | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 23 | QUEST_GATHER | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 24 | QUEST_GATHERANIME | 任务 | 仅声明；更新／绘制／动态链待逐项 |
@@ -148,7 +148,7 @@ GameView先让顶页处理事件，再通用分派；跳表接受ID0–24，25�
 | 0 TITLEMENU | 通用标题分支 | 路由已核；完整输入未知 |
 | 1 DLGPAGE、18 ARROW | 同入口0x1023CCBE | 具体页翻页／键组合待核 |
 | 2 DLGCMD、9 SUBMENU | 同入口0x1023C9CD | 页面消费者另算 |
-| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；标记后确认 | 75行注册已核，不能认证21列表 |
+| 3 DLGSEL、10 LIST、11 SLIST | 同入口0x1023CA42；标记后确认 | 75及21行注册分别已核；21的Margin不同，不能混用全部输入政策 |
 | 4 KEYCLICK、20 PLUS、21 MINUS | OnTouchKeyClick | 仅调用路由；内部及逐页参数待核 |
 | 5 KEYPRESS | OnTouchKeyPress | 同上 |
 | 6 KEYDOWN、7 KEYUP | 通用内联分支 | 位拆分及完整资格链待核 |
@@ -184,8 +184,7 @@ Steam CANCEL=10，而APK原始Android ACTION_CANCEL=3；事件适配层不同，
 道路／移动／撤除有独立调用锚点，规则保留APK已有合同，Steam费用／人气／引用生命周期待独立交叉。
 本批未把维护Owner原子提交策略改成原游戏实现，也未修改产品。
 
-建设列表marker、图标绑定和最终热区仍未知。已核_draw1_1分派23–32、_draw1_2分派33–40，不能把其中列表16标记／图标登记给21。
-外层_draw注册范围197,616字节，超本批单方法32KiB限制，未完整解码；下一批从21分派精确定位有限块并记地址／边界。
+建设21后继已从具名_draw入口顺序解码8704字节前缀，闭合该局部分支6133字节、marker16及mapchip→pattern→SEB绑定。没有把_draw1_1的23–32或_draw1_2的33–40分派当作21证据；外层197,616字节仍未完整解码。最终OS热区、pattern全部数值及业务更新仍未知。
 
 ## 列表标记、滚动及最小后续
 
@@ -199,7 +198,7 @@ ON13按钮按低16位0/1方向作一步变化；SubForm.Update_scrollValue使选
 
 下一批按独立短链推进：
 
-1. 定位21实际绘制块，核三类标签、图标、行marker、滚动与选中→BUILD载荷；不跑经营长前缀。
+1. 在已核21局部绘制上继续pattern全值、Init／Update与选中→BUILD载荷；最终OS输入另验，不跑经营长前缀。
 2. 固定已有条件，观察DOWN／移动／UP／重复同格输入、旋转／取消／一次确认；记录候选格、方向与实体分别何时变，键盘与鼠标分开。
 3. 同一列表隔离悬停、首击、移开再点、长间隔同key再次点击、键盘确认及滚轮／拖条，每次只改一条件。
 4. 从101清单按功能批次补Init／Update／Draw／输入载荷与局部动态；空栏／删除等另按授权实验范围执行。

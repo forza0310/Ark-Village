@@ -1,0 +1,637 @@
+{
+  "scope": "Steam raw21完整局部分支；不等于完整SubForm或原窗口",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+    "method_index": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42",
+    "dump": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912",
+    "image_coverage": "06a4df6926db6a4c5ead409dc308b6095851951acedb738fb67b02afc9789584"
+  },
+  "method_windows": [
+    {
+      "method": "form.SubForm::private void _draw(Graphics g) { }",
+      "rva": 3485216,
+      "offset": 3480608,
+      "next": 3682832,
+      "bytes": 8704,
+      "type": "form.SubForm",
+      "signature": "private void _draw(Graphics g) { }",
+      "va": 271920672,
+      "sha256": "dce498c72f874c8c69bf94fed4f3a2173444bc872a23054eb5d06b2761b93064",
+      "display_slices": {
+        "dispatch": [
+          271921560,
+          271921769
+        ],
+        "layout": [
+          271923097,
+          271924944
+        ],
+        "rows": [
+          271924944,
+          271926816
+        ],
+        "registration": [
+          271926816,
+          271929248
+        ]
+      },
+      "policy": "decode from named entry; filter output only; no files written"
+    },
+    {
+      "method": "data.MapchipData::public static void DrawMapchip(Graphics g, int dx, int dy, int mapchipId, int inversion) { }",
+      "rva": 2210976,
+      "offset": 2206368,
+      "next": 2211760,
+      "bytes": 784,
+      "type": "data.MapchipData",
+      "signature": "public static void DrawMapchip(Graphics g, int dx, int dy, int mapchipId, int inversion) { }",
+      "va": 270646432,
+      "sha256": "7020b3a6ed821a9aa92dd0d2ff67503097a06ed265e482eaa61a4cc962cada89",
+      "display_slices": {
+        "dispatch": [
+          271921560,
+          271921769
+        ],
+        "layout": [
+          271923097,
+          271924944
+        ],
+        "rows": [
+          271924944,
+          271926816
+        ],
+        "registration": [
+          271926816,
+          271929248
+        ]
+      },
+      "policy": "decode from named entry; filter output only; no files written"
+    },
+    {
+      "method": "main.AppData::public void DrawVerticalScroll2(Graphics g, int x, int y, int w, int h, int value, int maximum, int largeChange) { }",
+      "rva": 2430896,
+      "offset": 2426288,
+      "next": 2431200,
+      "bytes": 304,
+      "type": "main.AppData",
+      "signature": "public void DrawVerticalScroll2(Graphics g, int x, int y, int w, int h, int value, int maximum, int largeChange) { }",
+      "va": 270866352,
+      "sha256": "4e64c9e1531a6f2aa7143c574d4ca4705aa60232aa4808062cf948f4ef97cc52",
+      "display_slices": {
+        "dispatch": [
+          271921560,
+          271921769
+        ],
+        "layout": [
+          271923097,
+          271924944
+        ],
+        "rows": [
+          271924944,
+          271926816
+        ],
+        "registration": [
+          271926816,
+          271929248
+        ]
+      },
+      "policy": "decode from named entry; filter output only; no files written"
+    }
+  ],
+  "unique_prefix_bytes": 9792,
+  "branch": {
+    "dispatch": 271921736,
+    "entry": 271923097,
+    "return": 271929229,
+    "bytes": 6133,
+    "draw_mutation": "frame_先加一再min(3)；不是纯重绘"
+  },
+  "strings": [
+    {
+      "va": 286234852,
+      "offset": 17789668,
+      "index": 10726,
+      "text": "設備",
+      "bytes": 6
+    },
+    {
+      "va": 286212996,
+      "offset": 17767812,
+      "index": 10205,
+      "text": "一般",
+      "bytes": 6
+    },
+    {
+      "va": 286239048,
+      "offset": 17793864,
+      "index": 10826,
+      "text": "飲食",
+      "bytes": 6
+    },
+    {
+      "va": 286237664,
+      "offset": 17792480,
+      "index": 10793,
+      "text": "配置替え",
+      "bytes": 12
+    },
+    {
+      "va": 286224616,
+      "offset": 17779432,
+      "index": 10482,
+      "text": "撤去",
+      "bytes": 6
+    },
+    {
+      "va": 286271072,
+      "offset": 17825888,
+      "index": 646,
+      "text": "---",
+      "bytes": 3
+    },
+    {
+      "va": 286242488,
+      "offset": 17797304,
+      "index": 10908,
+      "text": "Ｇ",
+      "bytes": 3
+    }
+  ],
+  "fields": [
+    {
+      "type": "SubForm",
+      "name": "buildList_",
+      "offset": "0x168",
+      "declaration": "public Vector[] buildList_; // 0x168",
+      "source_line": 225588
+    },
+    {
+      "type": "SubForm",
+      "name": "scrollValue_",
+      "offset": "0x88",
+      "declaration": "private int scrollValue_; // 0x88",
+      "source_line": 225466
+    },
+    {
+      "type": "SubForm",
+      "name": "select_",
+      "offset": "0x90",
+      "declaration": "public int select_; // 0x90",
+      "source_line": 225468
+    },
+    {
+      "type": "SubForm",
+      "name": "page_",
+      "offset": "0xD8",
+      "declaration": "public int page_; // 0xD8",
+      "source_line": 225486
+    },
+    {
+      "type": "SubForm",
+      "name": "frame_",
+      "offset": "0xA0",
+      "declaration": "public int frame_; // 0xA0",
+      "source_line": 225472
+    },
+    {
+      "type": "SubForm",
+      "name": "frame2_",
+      "offset": "0xA4",
+      "declaration": "public int frame2_; // 0xA4",
+      "source_line": 225473
+    },
+    {
+      "type": "TenantData",
+      "name": "mapchipDataId_",
+      "offset": "0x3C",
+      "declaration": "public int mapchipDataId_; // 0x3C",
+      "source_line": 227357
+    },
+    {
+      "type": "TenantData",
+      "name": "mapchipPattern_",
+      "offset": "0x40",
+      "declaration": "public int mapchipPattern_; // 0x40",
+      "source_line": 227358
+    },
+    {
+      "type": "TenantData",
+      "name": "haveNum_",
+      "offset": "0x88",
+      "declaration": "public int haveNum_; // 0x88",
+      "source_line": 227376
+    },
+    {
+      "type": "TenantData",
+      "name": "isBuildNow",
+      "offset": "0xA1",
+      "declaration": "public bool isBuildNow; // 0xA1",
+      "source_line": 227384
+    },
+    {
+      "type": "TenantData",
+      "name": "isResident_",
+      "offset": "0x99",
+      "declaration": "public bool isResident_; // 0x99",
+      "source_line": 227381
+    },
+    {
+      "type": "TenantData",
+      "name": "SETPATTERN_MAPCHIP",
+      "offset": "0x48",
+      "declaration": "public static readonly int[][][] SETPATTERN_MAPCHIP; // 0x48",
+      "source_line": 227489
+    },
+    {
+      "type": "TenantData",
+      "name": "SETMAPCHIP_ADDRESS",
+      "offset": "0x4C",
+      "declaration": "public static readonly int[][][][] SETMAPCHIP_ADDRESS; // 0x4C",
+      "source_line": 227490
+    },
+    {
+      "type": "MapchipData",
+      "name": "seb_",
+      "offset": "0x24",
+      "declaration": "public int seb_; // 0x24",
+      "source_line": 227027
+    },
+    {
+      "type": "MapchipData",
+      "name": "tenantDataId_",
+      "offset": "0x2C",
+      "declaration": "public int tenantDataId_; // 0x2C",
+      "source_line": 227029
+    },
+    {
+      "type": "BaseData",
+      "name": "id_",
+      "offset": "0x8",
+      "declaration": "public int id_; // 0x8",
+      "source_line": 226364
+    },
+    {
+      "type": "UserData",
+      "name": "isBuildNew",
+      "offset": "0x11C",
+      "declaration": "public static bool[] isBuildNew; // 0x11C",
+      "source_line": 223900
+    },
+    {
+      "type": "AppData",
+      "name": "resMapChip_",
+      "offset": "0x20",
+      "declaration": "public ResourceManager resMapChip_; // 0x20",
+      "source_line": 219606
+    },
+    {
+      "type": "AppData",
+      "name": "tenantData_",
+      "offset": "0x108",
+      "declaration": "public TenantData[] tenantData_; // 0x108",
+      "source_line": 220255
+    },
+    {
+      "type": "AppData",
+      "name": "mapchipData_",
+      "offset": "0x10C",
+      "declaration": "public MapchipData[] mapchipData_; // 0x10C",
+      "source_line": 220256
+    }
+  ],
+  "resources": [
+    {
+      "index_kind": "img.inf",
+      "index": 17,
+      "name": "destruct00.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:destruct00.png",
+      "sha256": "4518392887c9fe78a37a16527b5291f122db63e331988bbdaa1373a6ac456b18",
+      "bytes": 403,
+      "published_apk_sha256": "4518392887c9fe78a37a16527b5291f122db63e331988bbdaa1373a6ac456b18",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/destruct00.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 119,
+      "name": "moveTenant.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:moveTenant.png",
+      "sha256": "c6675e94d4f8fd6260769f8727db6dcc41e7dc4cbb88730d88a70e8de06bac5e",
+      "bytes": 893,
+      "published_apk_sha256": "c6675e94d4f8fd6260769f8727db6dcc41e7dc4cbb88730d88a70e8de06bac5e",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/moveTenant.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 147,
+      "name": "wnd_new.png",
+      "modifiers": [
+        "20x9"
+      ],
+      "source_id": "EXE:resources.assets:1148:common:wnd_new.png",
+      "sha256": "97842d7808ba536b175f5a763ccd0f3231e45fad65cc86b82d8aae0ef93f3eb6",
+      "bytes": 224,
+      "published_apk_sha256": "97842d7808ba536b175f5a763ccd0f3231e45fad65cc86b82d8aae0ef93f3eb6",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/wnd_new.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 74,
+      "name": "arrow02.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:arrow02.png",
+      "sha256": "b4463ecc521607a299e809ef9926aa1b8f63f43f023055f249158586b2b7fe4c",
+      "bytes": 262,
+      "published_apk_sha256": "b4463ecc521607a299e809ef9926aa1b8f63f43f023055f249158586b2b7fe4c",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/arrow02.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 72,
+      "name": "arrow01.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:arrow01.png",
+      "sha256": "864fcf16e52634142f776b6245f0964ad12a21d901a4af7308aa6ee939f1ca65",
+      "bytes": 203,
+      "published_apk_sha256": "864fcf16e52634142f776b6245f0964ad12a21d901a4af7308aa6ee939f1ca65",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/arrow01.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 103,
+      "name": "number05.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:number05.png",
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "bytes": 701,
+      "published_apk_sha256": "e3296b1d631999caf99dfc795d062bbb31f8d32bcaac4170bf39d0f28f871dac",
+      "published_bytes_equal": false,
+      "limit": "Steam与APK图片字节不同；不得作为同字节alias消费，须另解析/发布Steam条目"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 70,
+      "name": "finger_r.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:finger_r.png",
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "bytes": 272,
+      "published_apk_sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/finger_r.png"
+    },
+    {
+      "index_kind": "img.inf",
+      "index": 98,
+      "name": "tenant_resident.png",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:tenant_resident.png",
+      "sha256": "1a02c85d1b51db3da5789a6469d60bcf72a44de346f5ec251e9bb56169adb7c7",
+      "bytes": 512,
+      "published_apk_sha256": "b404fa85bef61d6c6dc4d847f80a4368cf3dbe93a8500b31a9e42d2d557ae865",
+      "published_bytes_equal": false,
+      "limit": "Steam与APK图片字节不同；不得作为同字节alias消费，须另解析/发布Steam条目"
+    },
+    {
+      "index_kind": "seb.inf",
+      "index": 3,
+      "name": "arrow02.seb",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:arrow02.seb",
+      "sha256": "ae9d5f75696a001cdadb3d579de0fc4902e0689cb5e2a4fe6ef1ccd22ac574c9",
+      "bytes": 128,
+      "published_apk_sha256": "ae9d5f75696a001cdadb3d579de0fc4902e0689cb5e2a4fe6ef1ccd22ac574c9",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/arrow02.seb",
+      "frame_count": 6,
+      "image_ids": [
+        74,
+        72
+      ],
+      "first_part": [
+        0,
+        74,
+        4,
+        0,
+        4,
+        8,
+        0,
+        -3,
+        0,
+        0
+      ]
+    },
+    {
+      "index_kind": "seb.inf",
+      "index": 12,
+      "name": "number05.seb",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:number05.seb",
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "bytes": 428,
+      "published_apk_sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/number05.seb",
+      "frame_count": 21,
+      "image_ids": [
+        103
+      ],
+      "first_part": [
+        0,
+        103,
+        9,
+        0,
+        8,
+        10,
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "index_kind": "seb.inf",
+      "index": 21,
+      "name": "finger_r.seb",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:finger_r.seb",
+      "sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "bytes": 88,
+      "published_apk_sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/finger_r.seb",
+      "frame_count": 6,
+      "image_ids": [
+        70
+      ],
+      "first_part": [
+        0,
+        70,
+        0,
+        0,
+        16,
+        10,
+        -8,
+        -5,
+        0,
+        0
+      ]
+    },
+    {
+      "index_kind": "seb.inf",
+      "index": 81,
+      "name": "tenant_resident.seb",
+      "modifiers": [],
+      "source_id": "EXE:resources.assets:1148:common:tenant_resident.seb",
+      "sha256": "f63f0d672b9fdcaa274f61e2410c4a45f5031825379f79f99c409faa4140fba6",
+      "bytes": 28,
+      "published_apk_sha256": "f63f0d672b9fdcaa274f61e2410c4a45f5031825379f79f99c409faa4140fba6",
+      "published_bytes_equal": true,
+      "alias": "assets/original/common/tenant_resident.seb",
+      "frame_count": 1,
+      "image_ids": [
+        98
+      ],
+      "first_part": [
+        0,
+        98,
+        0,
+        0,
+        50,
+        15,
+        -25,
+        -15,
+        0,
+        0
+      ]
+    }
+  ],
+  "rows": {
+    "count": 5,
+    "stride": 37,
+    "preview": {
+      "offset": [
+        10,
+        25
+      ],
+      "size": [
+        64,
+        32
+      ],
+      "rgb": [
+        190,
+        242,
+        230
+      ]
+    },
+    "mapchip_anchor": [
+      12,
+      35
+    ],
+    "inversion": 0,
+    "touch": {
+      "id": 11,
+      "offset": [
+        2,
+        22
+      ],
+      "size": [
+        165,
+        37
+      ],
+      "value_type": 131072,
+      "flag": 16,
+      "margin": [
+        10,
+        0,
+        0,
+        0
+      ]
+    }
+  },
+  "tabs": {
+    "count": 3,
+    "stride": 57,
+    "touch": {
+      "id": 3,
+      "offset": [
+        0,
+        2
+      ],
+      "size": [
+        60,
+        20
+      ],
+      "value_type": 327680,
+      "margin": [
+        0,
+        0,
+        30,
+        0
+      ]
+    }
+  },
+  "scroll": {
+    "caller": {
+      "offset": [
+        170,
+        21
+      ],
+      "size": [
+        4,
+        189
+      ],
+      "maximum": "count-1",
+      "large_change": 5
+    },
+    "registered": [
+      {
+        "id": 12,
+        "value": 262144,
+        "width": 3,
+        "height": 189,
+        "args": [
+          "count",
+          5,
+          131072
+        ],
+        "margin": [
+          3,
+          20,
+          0,
+          0
+        ]
+      },
+      {
+        "id": 25,
+        "value": 0,
+        "width": 3,
+        "height": 189,
+        "flag": 4
+      }
+    ]
+  },
+  "limits": [
+    "未核Steam21 Init/Update业务与空行确认政策",
+    "未解Steam SETPATTERN_MAPCHIP/SETMAPCHIP_ADDRESS全部数值",
+    "默认公共素材字节同核不代替语言覆盖运行选择",
+    "Graphics原点/裁剪/事件最终OS映射另验"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "sha256": "2bcfd606702f0fb10ad471a5df0a7b05cbeb6acde5f45e95a8592e2883a9c583"
+    },
+    {
+      "path": "audit.cjs",
+      "sha256": "5b4d4412074f472f16c6a6293e85fe5dce2aa1221a7dbe85bc7c186308025e5d"
+    }
+  ]
+}

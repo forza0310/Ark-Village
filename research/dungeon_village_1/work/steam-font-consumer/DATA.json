@@ -1,0 +1,236 @@
+{
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "strings": [
+    {
+      "va": 286255220,
+      "offset": 17810036,
+      "encoded": 2684360593,
+      "index": 3016,
+      "metadata_offset": 163176,
+      "length": 13,
+      "text": "Fonts/default"
+    },
+    {
+      "va": 286270544,
+      "offset": 17825360,
+      "encoded": 2684355829,
+      "index": 634,
+      "metadata_offset": 102999,
+      "length": 1,
+      "text": "-"
+    },
+    {
+      "va": 286273624,
+      "offset": 17828440,
+      "encoded": 2684355969,
+      "index": 704,
+      "metadata_offset": 105592,
+      "length": 3,
+      "text": "-ja"
+    },
+    {
+      "va": 286267376,
+      "offset": 17822192,
+      "encoded": 2684355685,
+      "index": 562,
+      "metadata_offset": 102253,
+      "length": 1,
+      "text": "*"
+    },
+    {
+      "va": 286222248,
+      "offset": 17777064,
+      "encoded": 2684369951,
+      "index": 7695,
+      "metadata_offset": 275791,
+      "length": 2,
+      "text": "ko"
+    },
+    {
+      "va": 286165496,
+      "offset": 17720312,
+      "encoded": 2684372769,
+      "index": 9104,
+      "metadata_offset": 292500,
+      "length": 2,
+      "text": "zh"
+    }
+  ],
+  "constants": [
+    {
+      "va": 283278364,
+      "offset": 14835740,
+      "float32": 0.8299999833106995,
+      "bytes": "e17a543f"
+    },
+    {
+      "va": 283278368,
+      "offset": 14835744,
+      "float32": 0.9800000190734863,
+      "bytes": "48e17a3f"
+    },
+    {
+      "va": 282977616,
+      "offset": 14534992,
+      "float32": 0.10000000149011612,
+      "bytes": "cdcccc3d"
+    },
+    {
+      "va": 282977612,
+      "offset": 14534988,
+      "float32": 0.009999999776482582,
+      "bytes": "0ad7233c"
+    },
+    {
+      "va": 282977592,
+      "offset": 14534968,
+      "float32": 100,
+      "bytes": "0000c842"
+    },
+    {
+      "va": 282977716,
+      "offset": 14535092,
+      "float32": 0.0010000000474974513,
+      "bytes": "6f12833a"
+    },
+    {
+      "va": 282977668,
+      "offset": 14535044,
+      "float32": 12,
+      "bytes": "00004041"
+    }
+  ],
+  "resources": {
+    "object": "EXE:globalgamemanagers:pathID=13",
+    "offset": 150800,
+    "bytes": 66204,
+    "sha256": "26e9d88b8c46355f8b3fc460bafe6152f595594afb3d20e24005285d17eda515",
+    "entries": 1251,
+    "table_end": 63852,
+    "unparsed_tail_bytes": 2352,
+    "container_sha256": "2edeb87fc462c3f488b2b5f1c4a383dd533438f5c8640a0218b4ba02b03fae16",
+    "font_container_sha256": "75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b",
+    "duplicated_path_rows": 77,
+    "external_files": [
+      {
+        "file_id": 1,
+        "type": 0,
+        "path": "Library/unity default resources"
+      },
+      {
+        "file_id": 2,
+        "type": 0,
+        "path": "Resources/unity_builtin_extra"
+      },
+      {
+        "file_id": 3,
+        "type": 0,
+        "path": "globalgamemanagers.assets"
+      },
+      {
+        "file_id": 4,
+        "type": 0,
+        "path": "resources.assets"
+      }
+    ],
+    "fonts": [
+      {
+        "name": "fonts/default-en-switch",
+        "file_id": 4,
+        "path_id": "1178",
+        "container": "resources.assets",
+        "class_id": 128,
+        "object_sha256": "d18c7bb02ac9bc1d988c69554af4247b1d349966652827c2fb9846dd5983c606"
+      },
+      {
+        "name": "fonts/default-en-switch",
+        "file_id": 4,
+        "path_id": "1",
+        "container": "resources.assets",
+        "class_id": 21,
+        "object_sha256": "bd319dd5667ece8e7bcf877eeeb1ed4426bf9e6cf269b967a7d5ec9130be0822"
+      },
+      {
+        "name": "fonts/default-en-switch",
+        "file_id": 4,
+        "path_id": "14",
+        "container": "resources.assets",
+        "class_id": 28,
+        "object_sha256": "cee4ee01807188f1a091c4c732e747d0c4dbebf026fd5f5a2013483a431eb7cb"
+      },
+      {
+        "name": "fonts/default-hi",
+        "file_id": 4,
+        "path_id": "1181",
+        "container": "resources.assets",
+        "class_id": 128,
+        "object_sha256": "edcad88c806dcf1cbf956ba8ab0cbdb8538e5d3927c64fe7016eef7e1f14df1f"
+      },
+      {
+        "name": "fonts/default-hi",
+        "file_id": 4,
+        "path_id": "4",
+        "container": "resources.assets",
+        "class_id": 21,
+        "object_sha256": "cc31d807c0941267f2beb9ba6c17f88e4d9b38849c66b366cac1c251c989f461"
+      },
+      {
+        "name": "fonts/default-hi",
+        "file_id": 4,
+        "path_id": "64",
+        "container": "resources.assets",
+        "class_id": 28,
+        "object_sha256": "cee4ee01807188f1a091c4c732e747d0c4dbebf026fd5f5a2013483a431eb7cb"
+      },
+      {
+        "name": "fonts/default-ja",
+        "file_id": 4,
+        "path_id": "1180",
+        "container": "resources.assets",
+        "class_id": 128,
+        "object_sha256": "7e0bfca84e6857d2f91998738f26998dab6b2e186b4cbdd2a1f05443f74132c5"
+      },
+      {
+        "name": "fonts/default-ja",
+        "file_id": 4,
+        "path_id": "3",
+        "container": "resources.assets",
+        "class_id": 21,
+        "object_sha256": "b38f93ffc395bf0e966a79fc2b847bd2f48905fba9091e073aa9270579e3c5b1"
+      },
+      {
+        "name": "fonts/default-ja",
+        "file_id": 4,
+        "path_id": "55",
+        "container": "resources.assets",
+        "class_id": 28,
+        "object_sha256": "cee4ee01807188f1a091c4c732e747d0c4dbebf026fd5f5a2013483a431eb7cb"
+      },
+      {
+        "name": "fonts/default-th",
+        "file_id": 4,
+        "path_id": "1179",
+        "container": "resources.assets",
+        "class_id": 128,
+        "object_sha256": "be4166f72597f0412a7e468b09763774b933021299396ece666855b4e9e7c50a"
+      },
+      {
+        "name": "fonts/default-th",
+        "file_id": 4,
+        "path_id": "2",
+        "container": "resources.assets",
+        "class_id": 21,
+        "object_sha256": "5826131af516d89db7e7ce774a7fbf09dfd65dbd8e8d03617d4750110e769ca3"
+      },
+      {
+        "name": "fonts/default-th",
+        "file_id": 4,
+        "path_id": "39",
+        "container": "resources.assets",
+        "class_id": 28,
+        "object_sha256": "cee4ee01807188f1a091c4c732e747d0c4dbebf026fd5f5a2013483a431eb7cb"
+      }
+    ]
+  }
+}

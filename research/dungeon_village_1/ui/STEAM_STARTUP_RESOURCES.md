@@ -51,4 +51,6 @@ Unity class128共有五对象。默认资源中的Arial只有286字节对象，�
 - 标题：`TitleForm.Draw` RVA0x20A640与`_draw` RVA0x20DF30；核600×380背景的裁取／缩放、English.lproj选择、upper槽和层序，不能照抄APK240宽坐标。
 - 木框：从Steam实际纪录／新局／计分页追调用，再核common槽28/29与角SEB6的接收参数；现有同图证据不能证明拉伸／重复／边线策略。
 
-以上仅登记具名入口，不在本批扩展机器码解码范围。原窗口可补观察实际文字、框线与缩放，但截图不能单独确定字体对象、measure算法、语言回退或内部槽。
+后继[字体实际消费者](STEAM_FONT_CONSUMER.md)已核12个入口，闭合语言地区→基础→Japanese专属→通用资源链、GUIStyle条件替换及两种测宽分支。ResourceManager首表1251行中只有en-switch／hi／ja／th四组字体路径，没有中文或通用default；不能据M+载荷猜中文实际字体。Unity空font回退、实际语言／开关及DrawString基线仍未闭合。
+
+原窗口可补观察实际文字、框线与缩放，但截图不能单独确定字体对象、measure算法、语言回退或内部槽。标题Draw及其后续消费者继续独立交叉。

@@ -75,7 +75,10 @@ if(ARK_LIBRARIES_ONLY)
     target_link_libraries(ark_world_persistence PUBLIC ark_world_runtime ark_world_file_io PRIVATE ark_world_hash)
     ark_world_target(ark_world_persistence)
     add_library(ark_startup_application SHARED ${ARK_STARTUP_APPLICATION_SOURCES})
-    target_link_libraries(ark_startup_application PUBLIC ark_world_system ark_world_persistence)
+    target_link_libraries(ark_startup_application PUBLIC ark_world_system ark_world_persistence
+        PRIVATE ark_world_hash)
+    target_compile_definitions(ark_startup_application PRIVATE
+        DUNGEON_VILLAGE_RESEARCH_WORK_ROOT="${ARK_WORLD_ROOT}/build")
     ark_world_target(ark_startup_application)
 endif()
 
@@ -103,6 +106,7 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         elseif(module STREQUAL "startup_application_test")
             target_sources(${target} PRIVATE ${ARK_STARTUP_APPLICATION_TEST_SOURCES})
             target_link_libraries(${target} PRIVATE ark_startup_application ark_world_hash)
+            target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
         elseif(module STREQUAL "startup_world_building_test")
             # 72a5bf4 verifies that bonus queries preserve the complete Owner digest.
             # This test-only maintenance dependency does not enter the player/runtime graph.
@@ -149,6 +153,7 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/replay_file_test.mjs"
             --exe "$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
             --presentation-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
+            --application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
     set_tests_properties(simulation.startup_world_replay_driver PROPERTIES
         TIMEOUT 120 LABELS "runtime;replay;frozen")

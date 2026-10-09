@@ -10,7 +10,7 @@ class Skin {
     void tile(const std::string &name, Rectangle source, Rectangle box,
               Sprites::Binding group = Sprites::Binding::common) const;
     void window(Rectangle box, const std::string &title) const;
-    void content(Rectangle box, Color fill = {250, 254, 248, 255}) const;
+    void content(Rectangle box, Color fill = {247, 253, 247, 255}) const;
     void button(Rectangle box, const std::string &label, bool enabled = true) const;
     // Orange inline commands seen in S043/S044, distinct from the rounded footer soft keys.
     void choice(Rectangle box, const std::string &label, bool enabled = true) const;

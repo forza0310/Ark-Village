@@ -1,6 +1,8 @@
 // Window stripe and title bar follow ui/PAGES: p images28/29; content corners use SEB6.
 #include "skin.hpp"
+#include "ark/simulation/startup_skin.hpp"
 #include <algorithm>
+#include <cmath>
 namespace ark::desktop::ui {
 void Skin::tile(const std::string &name, Rectangle source, Rectangle box,
                 Sprites::Binding group) const {
@@ -12,6 +14,40 @@ void Skin::tile(const std::string &name, Rectangle source, Rectangle box,
         }
 }
 void Skin::window(Rectangle box, const std::string &title) const {
+    // Source plans cover the original <=240 canvas. Larger existing PC panels retain their
+    // explicit desktop tiling below; the narrow source artwork is never stretched to fit them.
+    const int width = static_cast<int>(std::lround(box.width)),
+              height = static_cast<int>(std::lround(box.height));
+    const float size = std::min(12.F, 12.F * (box.width - 4) / std::max(1.F, text.width(title)));
+    const auto plan = simulation::startup_window_skin(
+        width, height, 0, 0, 0, static_cast<int>(text.width(title, size) + .01F));
+    if (plan) {
+        const auto &first = plan->images.front();
+        const Vector2 origin{box.x - first.offset[0], box.y - first.offset[1]};
+        for (const auto &line : plan->borders) {
+            const auto &r = line.rect;
+            const auto &c = line.rgb;
+            DrawRectangleLinesEx({origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])}, 1,
+                                 {static_cast<unsigned char>(c[0]),
+                                  static_cast<unsigned char>(c[1]),
+                                  static_cast<unsigned char>(c[2]), 255});
+        }
+        for (const auto &part : plan->images) {
+            const auto &c = part.crop;
+            sprites.indexed_image(
+                Sprites::Binding::common, part.image,
+                {float(c[0]), float(c[1]), float(c[2]), float(c[3])},
+                {origin.x + part.offset[0], origin.y + part.offset[1], float(c[2]), float(c[3])});
+        }
+        for (const auto &anchor : *plan->title) {
+            const auto &c = anchor.rgb;
+            text.draw(title, origin.x + anchor.offset[0], origin.y + anchor.offset[1],
+                      {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
+                       static_cast<unsigned char>(c[2]), 255},
+                      size);
+        }
+        return;
+    }
     tile("wnd_back.png", {0, 0, 4, 240}, box, Sprites::Binding::window);
     DrawRectangleLinesEx(box, 1, Color{83, 69, 33, 255});
     DrawRectangleLinesEx({box.x + 1, box.y + 1, box.width - 2, box.height - 2}, 1,
@@ -21,14 +57,27 @@ void Skin::window(Rectangle box, const std::string &title) const {
     centered(title, {box.x + 2, box.y + 2, box.width - 4, 17}, WHITE);
 }
 void Skin::content(Rectangle box, Color fill) const {
-    DrawRectangleRec(box, fill);
-    DrawRectangleLinesEx(box, 1, Color{184, 211, 168, 255});
-    const Vector2 corners[] = {{box.x, box.y},
-                               {box.x + box.width, box.y},
-                               {box.x + box.width, box.y + box.height},
-                               {box.x, box.y + box.height}};
-    for (int i = 0; i < 4; ++i)
-        sprites.draw("wnd_conner.seb", i, corners[i], WHITE, Sprites::Binding::common);
+    const auto plan =
+        simulation::startup_content_skin(0, 0, static_cast<int>(std::lround(box.width)),
+                                         static_cast<int>(std::lround(box.height)), 0);
+    if (!plan)
+        return;
+    for (std::size_t i = 0; i < plan->rectangles.size(); ++i) {
+        const auto &part = plan->rectangles[i];
+        const auto &r = part.rect;
+        const auto &c = part.rgb;
+        const Rectangle destination{box.x + r[0], box.y + r[1], float(r[2]), float(r[3])};
+        const Color color{static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
+                          static_cast<unsigned char>(c[2]), 255};
+        if (part.outline)
+            DrawRectangleLinesEx(destination, 1, color);
+        else
+            DrawRectangleRec(destination,
+                             fill); // Explicit coloured selection rows remain desktop variants.
+    }
+    for (const auto &part : plan->corners)
+        sprites.indexed_sprite(Sprites::Binding::common, part.sprite, part.frame, part.layer,
+                               part.image, {box.x + part.offset[0], box.y + part.offset[1]});
 }
 void Skin::centered(const std::string &value, Rectangle box, Color color, float size) const {
     const float actual =

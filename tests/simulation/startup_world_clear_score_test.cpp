@@ -150,10 +150,42 @@ void animation() {
         check(ended.sum == total && ended.new_record && ended.trophy == trophy, "independent trophy boundary table");
     }
 }
+void readonly_validation() {
+    const auto rules = fixture_rules();
+    const auto rows = *startup_world_clear_score(fixture(rules)).candidate;
+    // 第三类前已入账505+900；本行1000只有counter恰45才已入账。
+    // 期望独立于更新函数，不用“推进一次”的返回值构造恢复载荷。
+    for (const auto [counter, sum] : std::array<std::array<int, 2>, 2>{{{44, 1405}, {45, 2405}}}) {
+        StartupClearScorePageState page;
+        page.stage = 3;
+        page.row = 2;
+        page.counter = counter;
+        page.sum = sum;
+        page.captured_high_score = 6000;
+        check(validate_startup_clear_score_page(rows, page) == StartupClearScoreError::none,
+              "read-only restore qualification accepts independent row2 counter44/45");
+        check(page.stage == 3 && page.row == 2 && page.counter == counter && page.sum == sum &&
+                  page.captured_high_score == 6000 && !page.finished && !page.new_record && page.trophy == 0,
+              "read-only qualification does not advance, credit or finish");
+        auto invalid = page;
+        invalid.sum = counter == 44 ? 2405 : 1405;
+        const auto error = validate_startup_clear_score_page(rows, invalid);
+        const auto advanced = prepare_startup_clear_score_page(rows, invalid, true);
+        check(error == StartupClearScoreError::invalid_input && advanced.error == error &&
+                  !advanced.candidate && !advanced.finished_pulse && advanced.sounds.empty(),
+              "read-only and update reject the same pre/post-credit relationship");
+    }
+    StartupClearScorePageState terminal;
+    terminal.stage = 7;
+    terminal.finished = true;
+    check(validate_startup_clear_score_page(rows, terminal) == StartupClearScoreError::already_finished &&
+              prepare_startup_clear_score_page(rows, terminal, false).error == StartupClearScoreError::already_finished,
+          "read-only qualification preserves already-finished precedence");
+}
 } // namespace
 int run_startup_world_clear_score_tests() {
     try {
-        projection(); animation();
+        projection(); animation(); readonly_validation();
         std::cout << "clear score: " << checks << " checks\n";
         return 0;
     } catch (const std::exception &e) {

@@ -3,6 +3,7 @@
 #include "startup_world_codec.hpp"
 #include "startup_world_file_io.hpp"
 #include "startup_world_restore_validation.hpp"
+#include "startup_persistence_bytes.hpp"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -284,13 +285,26 @@ StartupWorldSavedSession decode_file(Bytes file, const StartupWorldRules &rules,
 }
 } // namespace
 
+namespace persistence_detail {
+Bytes encode_world_session_bytes(const StartupWorldRuntimeSession &session,
+                                 const StartupWorldSaveMetadata &metadata) {
+    auto bytes = encode_file(session, metadata);
+    // 保留原写前恢复自检，包含当前Owner与全部历史共用的解码预算。
+    (void)decode_file(bytes, *session.state().rules, metadata.purpose, metadata.controller_id);
+    return bytes;
+}
+StartupWorldSavedSession decode_world_session_bytes(Bytes bytes, const StartupWorldRules &rules,
+                                                     StartupWorldSavePurpose purpose,
+                                                     const std::string &controller) {
+    return decode_file(std::move(bytes), rules, purpose, controller);
+}
+} // namespace persistence_detail
+
 StartupWorldSaveResult save_startup_world_file(const std::filesystem::path &path,
                                                const StartupWorldRuntimeSession &session,
                                                const StartupWorldSaveMetadata &metadata) {
     try {
-        auto bytes = encode_file(session, metadata);
-        // 与读取共用预算和候选校验；不能写出本版本自己无法恢复的成功档。
-        (void)decode_file(bytes, *session.state().rules, metadata.purpose, metadata.controller_id);
+        auto bytes = detail::encode_world_session_bytes(session, metadata);
         detail::replace_save_file(path, bytes);
         return {true, {}};
     } catch (const std::exception &e) {
@@ -302,7 +316,7 @@ StartupWorldLoadResult load_startup_world_file(const std::filesystem::path &path
                                                StartupWorldSavePurpose expected,
                                                const std::string &controller) {
     try {
-        return {decode_file(detail::read_save_file(path, file_budget), rules, expected, controller),
+        return {detail::decode_world_session_bytes(detail::read_save_file(path, file_budget), rules, expected, controller),
                 {}};
     } catch (const std::exception &e) {
         return {{}, e.what()};

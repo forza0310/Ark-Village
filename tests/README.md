@@ -1,5 +1,7 @@
 # 测试组织
 
+现有长跑的实际玩家输入、成功判据与注册范围见[长测审计与建设方案](../docs/stages/ACTIVE_VILLAGE_PLAN.md)。3月/年度持续基线与短回放仍保留原oracle，但不能称为完整经营验收；产品主长测应有建设、活动/培养、任务胜利、逐星条件和新内容消费。被动日期campaign已停止，不计通关/继承通过。
+
 `simulation.replay_runner_contract`是产品回放CLI/路径/前缀资格的主责套件，复用现有continuous可执行程序生成真实短扩张快照，验证已认证及裸候选接续、三路一致性与拒绝；不仿造文件解析器。冻结默认晋级`startup_world_replay_process`保留原参数/断言，二者不替代彼此；未按函数或场景新增EXE。长前缀与自然晚期认证仍按风险独立执行，见[工具说明](../scripts/simulation/README.md#场景与既有前缀接续)。
 
 按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；默认本地desktop-debug排除三个月连续模拟，CI desktop-release完整执行，headless按需追加，选择规则见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。
@@ -17,9 +19,15 @@
 | `integration/` | 真实CLI、打包资源变异和长期世界包装器 | `e2e` |
 | `support/` | 断言/进程入口与当前世界夹具；旧切片夹具放`legacy/support/` | 不注册业务用例 |
 
-产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前524415a已迁入354项源/测试/数据，research在途原档工具不纳入本批。
+产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前89f157c冻结391项源/测试/数据；research在途成果不纳入本批。
 
 ## 套件与独立进程
+
+`ark_world_campaign_tests`与`app/world_campaign_process.mjs`负责主动首星：P1建设营业、真实赠礼培养、任务胜利、活动、原四条件晋级、绘画展消费及继续营业；两进程在真实业务节点跨玩家档重启，策略证据用SHA绑定。它执行生产命令事务消费者，线程FIFO另由会话套件负责。原被动日期路线已替换，不再把日期推进称为完整经营。`--resume-prefix`只能复用已成功new阶段及哈希绑定的真实档案，保留原证据，不能继承失败续跑的世界进度。
+
+`ark_world_economy_tests`与`app/world_economy_process.mjs`执行五组seed1三个月建设对照，最多两个内存世界进程并发，输出实际逐店/分类财务、价格缓存和最低现金，不写玩家档。主责为布局收益分析，不认证首星或全局最优。两个EXE的`--contract`进入默认CTest；耗时路线仅`ARK_LONG_WORLD_TESTS=ON`注册`player_active_first_star`/`player_construction_economy`，默认关闭。费用/随机/三个月冻结oracle不因这些产品策略而改变。
+
+89f157c完整应用AVRAPP01的字段/路径/状态检查归原`startup_application_test`，跨进程短回放复用`startup_world_replay_process`。路径适配只把研究work隔离根映射到产品build，保留外根/别名/链接/覆盖拒绝；玩家EXE不链接维护应用codec。
 
 | 原入口 | 现在的可执行与显式用例 | 保留覆盖 |
 | --- | --- | --- |

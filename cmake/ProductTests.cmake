@@ -39,6 +39,29 @@ ark_test_executable(ark_world_save_tests SOURCES tests/app/world_save_test.cpp
     tests/app/world_save_codec_test.cpp
     LIBRARIES ark_world_save)
 ark_test_case(world_save ark_world_save_tests LABELS runtime TIMEOUT 300)
+# These explicit players have different horizons and process lifetimes from fast worker tests.
+# Quick boundary cases are standard; real economy and first-star routes are opt-in long runs.
+ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_test.cpp
+    tests/app/world_active_strategy.cpp LIBRARIES ark_world_session ark_world_hash)
+target_include_directories(ark_world_campaign_tests PRIVATE src/app)
+ark_test_case(player_active_campaign_contract ark_world_campaign_tests ARGS --contract
+    LABELS runtime player TIMEOUT 30)
+ark_test_executable(ark_world_economy_tests SOURCES tests/app/world_economy_test.cpp
+    LIBRARIES ark_world_runtime)
+ark_test_case(player_construction_economy_contract ark_world_economy_tests ARGS --contract
+    LABELS runtime player TIMEOUT 30)
+if(ARK_LONG_WORLD_TESTS)
+    ark_test_case(player_active_first_star "${ARK_NODE}"
+        ARGS "${PROJECT_SOURCE_DIR}/tests/app/world_campaign_process.mjs"
+            "$<TARGET_FILE:ark_world_campaign_tests>" "${CMAKE_CURRENT_BINARY_DIR}/campaign-validation"
+        LABELS e2e player long_world TIMEOUT 12060)
+    ark_test_case(player_construction_economy "${ARK_NODE}"
+        ARGS "${PROJECT_SOURCE_DIR}/tests/app/world_economy_process.mjs"
+            "$<TARGET_FILE:ark_world_economy_tests>" "${CMAKE_CURRENT_BINARY_DIR}/economy-validation"
+        LABELS e2e player long_world TIMEOUT 1860)
+    set_tests_properties(player_active_first_star player_construction_economy
+        PROPERTIES RUN_SERIAL TRUE)
+endif()
 ark_test_executable(ark_world_contract_tests
     SOURCES tests/app/world_contracts_main.cpp tests/app/world_report_test.cpp
         tests/app/world_medals_test.cpp

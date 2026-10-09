@@ -96,28 +96,35 @@ StartupClearScoreResult startup_world_clear_score(const StartupWorldRuntimeState
     return {Error::none, rows};
 }
 
-StartupClearScorePageResult prepare_startup_clear_score_page(
-    const StartupClearScoreRows &rows, const StartupClearScorePageState &s, bool confirm) {
-    auto fail = [](Error e) { return StartupClearScorePageResult{e, {}, false, {}}; };
+StartupClearScoreError validate_startup_clear_score_page(
+    const StartupClearScoreRows &rows, const StartupClearScorePageState &s) {
     if (s.finished)
-        return fail(Error::already_finished);
+        return Error::already_finished;
     if (!valid_rows(rows) || s.stage < 0 || s.stage > 6 || s.counter < 0 ||
         s.counter > thresholds[s.stage] || s.row < 0 || s.row > 6 ||
         s.captured_high_score < 0 || s.new_record || s.trophy != 0)
-        return fail(Error::invalid_input);
+        return Error::invalid_input;
     const bool end_stage = s.stage == 4 || s.stage == 6;
     if ((s.stage == 0 && s.row != 0) || (end_stage && s.row != 6) ||
         (!end_stage && s.row >= 6) || (s.stage == 5 && s.row == 0))
-        return fail(Error::invalid_input);
+        return Error::invalid_input;
     std::int64_t expected{};
     for (int i = 0; i < s.row; ++i)
         expected += rows[static_cast<std::size_t>(i)].score;
     if (s.stage == 3 && s.counter == thresholds[3])
         expected += rows[static_cast<std::size_t>(s.row)].score;
     if (s.sum != expected)
-        return fail(Error::invalid_input);
+        return Error::invalid_input;
     if (s.stage == 4 && s.sum <= s.captured_high_score)
-        return fail(Error::invalid_input);
+        return Error::invalid_input;
+    return Error::none;
+}
+
+StartupClearScorePageResult prepare_startup_clear_score_page(
+    const StartupClearScoreRows &rows, const StartupClearScorePageState &s, bool confirm) {
+    const auto error = validate_startup_clear_score_page(rows, s);
+    if (error != Error::none)
+        return {error, {}, false, {}};
     auto next = s;
     if (next.counter < thresholds[next.stage]) {
         ++next.counter;

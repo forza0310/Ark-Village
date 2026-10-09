@@ -4,6 +4,7 @@
 #include "ark/simulation/startup_world_clear_score.hpp"
 #include "ark/simulation/startup_world_profile.hpp"
 #include <array>
+#include <utility>
 
 namespace ark::simulation {
 enum class StartupApplicationMode { logic, title_presentation };
@@ -69,6 +70,12 @@ class StartupApplication {
     std::string load_world_replay(const std::filesystem::path &, const std::string &controller);
 
   private:
+    friend struct StartupApplicationReplayAccess;
+    // 已校验持久候选专用构造：不得读取外部系统或建立默认纪录。
+    struct RestoreTag {};
+    StartupApplication(RestoreTag, StartupApplicationPaths paths, ref::WorldRandomStream random,
+                       StartupApplicationMode mode)
+        : paths_(std::move(paths)), random_(std::move(random)), mode_(mode) {}
     std::string install_loaded(StartupWorldLoadResult result, int slot);
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
     std::string update_clear(bool confirm);

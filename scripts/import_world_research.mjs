@@ -59,7 +59,10 @@ if (mode === '--record-patch') {
     throw new Error('Refuse to replace an existing frozen snapshot');
   const files = new Set(), pending = prototypeModules.map(name => `prototype/src/${name}.cpp`);
   for (const name of prototypeTests) pending.push(`prototype/tests/${name}_test.cpp`);
-  pending.push('prototype/tests/startup_skin_checks.cpp');
+  pending.push('prototype/tests/startup_skin_checks.cpp',
+    'prototype/tests/startup_application_replay_checks.cpp',
+    'prototype/tests/startup_application_replay_paths_checks.cpp',
+    'prototype/tests/startup_application_replay_state_checks.cpp');
   for (const name of readdirSync(join(source, 'example/tests')).sort()) {
     if (/^(world_|actor_|ai_|battle_|character_|combat_|encounter_|object_|rescue_|human_|weapon_|accounting|activity_|snapshot_facility_choice|geometry|map_access|navigation|neighbourhood|domain|facility_(arrival|departure|economy|exit|items|service|use))/.test(name) && name.endsWith('_test.cpp'))
       pending.push(`example/tests/${name}`);
@@ -90,6 +93,13 @@ if (mode === '--record-patch') {
           pending.push(`prototype/tests/${match[1]}`);
           continue;
         }
+        if (relative.startsWith('prototype/tests/') && /^\.\.\/src\/[A-Za-z0-9_]+\.hpp$/.test(match[1])) {
+          const header = 'prototype/src/' + basename(match[1]);
+          pending.push(header);
+          const implementation = header.replace(/\.hpp$/, '.cpp');
+          if (existsSync(join(source, implementation))) pending.push(implementation);
+          continue;
+        }
         // Private maintained codec and test helpers stay beside their consumer.
         // Only a single safe filename can resolve here; no traversal outside the freeze.
         if (/^prototype\/(?:src|tests)\//.test(relative) &&
@@ -106,6 +116,8 @@ if (mode === '--record-patch') {
             pending.push(implementation);
           if (sibling.endsWith('startup_world_codec_fields.inc'))
             pending.push('prototype/src/startup_world_codec_fields.json');
+          if (sibling.endsWith('startup_application_replay_fields.inc'))
+            pending.push('prototype/src/startup_application_replay_fields.json');
           continue;
         }
         throw new Error(`Unresolved local include: ${relative}: ${match[1]}`);
@@ -125,7 +137,7 @@ if (mode === '--record-patch') {
   for (const file of readdirSync(join(source, 'data/scripts/original')))
     files.add(`data/scripts/original/${file}`);
   for (const file of ['compile_startup.mjs', 'compile_startup_world.mjs',
-      'compile_persistence_identity.mjs', 'generate_owner_codec.mjs'])
+      'compile_persistence_identity.mjs', 'generate_owner_codec.mjs', 'check_application_replay_fields.mjs'])
     files.add(`prototype/scripts/${file}`);
   files.add('prototype/tests/startup_world_data_test.mjs');
   files.add('prototype/tests/replay_file_test.mjs');
@@ -173,7 +185,8 @@ if (mode === '--record-patch') {
     else throw new Error(`Unsupported snapshot path: ${entry.file}`);
     // The canonical protocol manifest retains source logical names and exact bytes.
     // Namespace renaming changes C++ access spelling, not the persisted wire schema.
-    if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json')) {
+    if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json') &&
+        !entry.file.endsWith('startup_application_replay_fields.json')) {
       // Product source files are checked out as LF by .gitattributes. Keep their recorded
       // bytes stable across Windows checkouts; source_bytes/source_sha256 stay byte-exact.
       let text = translate(original.toString('utf8').replaceAll('\r\n', '\n'));
@@ -181,6 +194,8 @@ if (mode === '--record-patch') {
       // expose only the three portable digest overloads actually implemented here.
       text = text.replaceAll('#include "ark/assets/archive.hpp"',
         '#include "ark/assets/sha256.hpp"');
+      if (target.startsWith('tests/simulation/'))
+        text = text.replaceAll('#include "../src/', '#include "../../src/simulation/');
       if (target.endsWith('.mjs') && target.startsWith('tests/'))
         text = text.replaceAll("from '../scripts/", "from '../../scripts/simulation/");
       if (target.startsWith('tests/simulation/rules/'))
@@ -217,14 +232,17 @@ if (mode === '--record-patch') {
     'startup_world_persistence.cpp', 'startup_world_restore_validation.cpp']);
   const worldSources = records.filter(v => v.file.startsWith('src/simulation/') &&
     !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
-  const separateModules = new Set(['startup_world_file_io.cpp', 'startup_system_records.cpp', 'startup_application.cpp']);
+  const separateModules = new Set(['startup_world_file_io.cpp', 'startup_system_records.cpp',
+    'startup_application.cpp', 'startup_application_replay.cpp', 'startup_application_replay_paths.cpp']);
   const runtime = worldSources.filter(v => !persistenceModules.has(basename(v.file)) && !separateModules.has(basename(v.file)));
   const persistence = worldSources.filter(v => persistenceModules.has(basename(v.file)));
-  const applicationSupport = records.filter(v => /^tests\/simulation\/startup_(?:system_records|world_clear_score)_test\.cpp$/.test(v.file));
+  const applicationSupport = records.filter(v => /^tests\/simulation\/startup_(?:system_records|world_clear_score)_test\.cpp$/.test(v.file) ||
+    /^tests\/simulation\/startup_application_replay_(?:paths|state)_checks\.cpp$/.test(v.file));
   const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp') && !applicationSupport.includes(v));
   const hashes = records.filter(v => v.file === 'src/assets/sha256.cpp');
   const continuousSupport = records.filter(v => v.file === 'tests/simulation/startup_world_replay_driver.cpp');
-  const persistenceSupport = records.filter(v => /^tests\/simulation\/startup_world_(?:codec|restore)_checks\.cpp$/.test(v.file));
+  const persistenceSupport = records.filter(v => /^tests\/simulation\/startup_world_(?:codec|restore)_checks\.cpp$/.test(v.file) ||
+    v.file === 'tests/simulation/startup_application_replay_checks.cpp');
   let cmake = '# Explicit frozen-source inventory, generated by scripts/import_world_research.mjs.\n';
   cmake += 'set(ARK_WORLD_RULE_SOURCES\n' + rules.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_RUNTIME_SOURCES\n' + runtime.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
@@ -232,7 +250,7 @@ if (mode === '--record-patch') {
   for (const [name, entries] of [['ARK_WORLD_PERSISTENCE_SOURCES', persistence],
       ['ARK_WORLD_FILE_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_world_file_io.cpp')],
       ['ARK_WORLD_SYSTEM_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_system_records.cpp')],
-      ['ARK_STARTUP_APPLICATION_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_application.cpp')],
+      ['ARK_STARTUP_APPLICATION_SOURCES', worldSources.filter(v => /^startup_application(?:_replay(?:_paths)?)?\.cpp$/.test(basename(v.file)))],
       ['ARK_STARTUP_APPLICATION_TEST_SOURCES', applicationSupport],
       ['ARK_STARTUP_SKIN_TEST_SOURCES', records.filter(v => v.file === 'tests/simulation/startup_skin_checks.cpp')],
       ['ARK_WORLD_HASH_SOURCES', hashes],

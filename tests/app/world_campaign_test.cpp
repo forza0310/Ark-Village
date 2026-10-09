@@ -1,0 +1,394 @@
+// Active player-file acceptance, distinct from frozen domain trajectories and FIFO tests.
+// Serial real commands precede one real runtime update. Only wall-clock waits are removed.
+#include "ark/app/world_report.hpp"
+#include "ark/assets/sha256.hpp"
+#include "support/world_fixture.hpp"
+#include "world_active_strategy.hpp"
+#include "world_commands.hpp"
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <stdexcept>
+
+namespace {
+namespace app = ark::app;
+namespace sim = ark::simulation;
+namespace ref = sim::rules;
+using State = app::WorldState;
+using Strategy = ark::test::ActiveVillageStrategy;
+using Kind = app::WorldCommandKind;
+void require(bool condition, const std::string &message) {
+    if (!condition)
+        throw std::runtime_error(message);
+}
+void good(const std::string &error) { require(error.empty(), error); }
+const ref::WorldScriptPage *top(const State &state) {
+    for (auto page = state.scripts.pages.rbegin(); page != state.scripts.pages.rend(); ++page)
+        if (page->lifecycle != 4)
+            return &*page;
+    return nullptr;
+}
+int month(const State &state) {
+    return state.scene.calendar.year * 12 + state.scene.calendar.month;
+}
+std::string bytes(const std::filesystem::path &file) {
+    std::ifstream input(file, std::ios::binary);
+    require(bool(input), "Cannot read " + file.string());
+    return {std::istreambuf_iterator<char>(input), {}};
+}
+
+// WorldSession tests own transport. Refuse its menu/save/camera/speed metadata instead of
+// bypassing those gates; decisions use the same private-candidate consumer as the worker.
+app::WorldCommandResult apply(State &candidate, const app::WorldCommand &command) {
+    app::WorldCommandResult result;
+    result.kind = command.kind;
+    result.page = command.page;
+    switch (command.kind) {
+    case Kind::acknowledge_page:
+        require(!app::detail::is_decision_page(top(candidate)) &&
+                    !candidate.task_abort_questions.count(command.page),
+                "Decision page requires explicit action, never generic acknowledgement");
+        result.runtime_error = sim::acknowledge_startup_world_runtime_page(candidate, command.page);
+        break;
+    case Kind::acknowledge_report:
+        require(app::acknowledge_world_report(candidate, command.report_phase),
+                "Report acknowledgement rejected");
+        break;
+    case Kind::open_build_menu:
+    case Kind::select_build_menu:
+    case Kind::cancel_build_menu:
+    case Kind::confirm_build:
+    case Kind::cancel_build:
+    case Kind::open_facility:
+    case Kind::facility_action:
+    case Kind::open_human:
+    case Kind::human_action:
+    case Kind::tax_action:
+    case Kind::open_village_activities:
+    case Kind::village_activity_action:
+    case Kind::open_commerce:
+    case Kind::commerce_action:
+    case Kind::facility_item_action:
+    case Kind::facility_catalog_action:
+    case Kind::residence_action:
+    case Kind::open_task_control_menu:
+    case Kind::open_task_menu:
+    case Kind::task_action:
+    case Kind::cancel_page:
+    case Kind::award_action:
+    case Kind::rank_action:
+        app::detail::apply_world_decision(candidate, command, result);
+        break;
+    default:
+        throw std::runtime_error("Unsupported campaign command " +
+                                 std::to_string(int(command.kind)));
+    }
+    result.outcome = result.runtime_error == sim::StartupWorldRuntimeError::none &&
+                             result.denial == ref::TaskCommandDenial::none &&
+                             result.build_denial == sim::StartupBuildDenial::none
+                         ? app::WorldCommandOutcome::applied
+                         : app::WorldCommandOutcome::rejected;
+    require(result.runtime_error == sim::StartupWorldRuntimeError::none ||
+                result.runtime_error == sim::StartupWorldRuntimeError::invalid_page,
+            "Fatal runtime decision error=" + std::to_string(int(result.runtime_error)));
+    return result;
+}
+
+struct Campaign {
+    State state;
+    app::WorldSystemState system;
+    std::filesystem::path directory;
+    Strategy strategy;
+    std::uint64_t rounds{};
+
+    void command(const app::WorldCommand &input) {
+        auto candidate = state;
+        const auto result = apply(candidate, input);
+        if (result.runtime_error == sim::StartupWorldRuntimeError::none) {
+            auto next = system;
+            good(app::commit_world_system(directory, state, candidate, next));
+            candidate.sound_requests.clear();
+            strategy.observe(state, input, result, candidate);
+            state = std::move(candidate);
+            system = std::move(next);
+        } else {
+            strategy.observe(state, input, result, state); // Rejected candidate is not installed.
+        }
+        std::cout << "command=" << int(input.kind) << " page=" << input.page
+                  << " definition=" << input.definition << " selection=" << input.selection
+                  << " outcome=" << int(result.outcome) << " error=" << int(result.runtime_error)
+                  << " task_denial=" << int(result.denial)
+                  << " build_denial=" << int(result.build_denial) << std::endl;
+    }
+    void step() {
+        const int before_month = month(state);
+        const auto before_random = state.scene.random.draws();
+        require(!app::world_clear_page(state),
+                "First-star acceptance cannot substitute date-clear for business goals");
+        if (const auto input = strategy.next(state))
+            command(*input);
+        auto update = sim::prepare_startup_world_runtime(state);
+        require(update.candidate.has_value(),
+                "Runtime update rejected: runtime=" + std::to_string(int(update.error)) +
+                    " world=" + std::to_string(int(update.world_error)));
+        require(sim::update_startup_world_render_cache(*update.candidate), "Render cache rejected");
+        auto next = system;
+        good(app::commit_world_system(directory, state, *update.candidate, next));
+        update.candidate->sound_requests.clear();
+        strategy.observe_tick(state, *update.candidate);
+        state = std::move(*update.candidate);
+        system = std::move(next);
+        ++rounds;
+        require(state.scene.random.draws() >= before_random, "Random rewound within process");
+        require(month(state) >= before_month && month(state) <= before_month + 1 &&
+                    ref::valid_world_calendar_state(state.scene.calendar),
+                "Natural calendar discontinuity");
+        require(state.scene.speed_setting == 0 && !state.scene.framework_paused,
+                "Active route must keep the normal single-speed runtime");
+        if (month(state) != before_month)
+            std::cout << "MONTH " << strategy.diagnose(state) << std::endl;
+    }
+    void run(bool resume) {
+        const auto start = std::chrono::steady_clock::now();
+        auto report = start;
+        const std::uint64_t budget = resume ? 250000 : 25000;
+        for (;;) {
+            const bool achieved =
+                resume ? strategy.complete(state) : strategy.construction_checkpoint(state);
+            if (achieved && app::world_save_eligible(state))
+                break;
+            require(rounds < budget, "Active business step budget exhausted");
+            step();
+            const auto now = std::chrono::steady_clock::now();
+            require(now - start < std::chrono::minutes(100),
+                    "Active business time budget exhausted");
+            if (now - report >= std::chrono::seconds(30)) {
+                std::cout << "PROGRESS " << strategy.diagnose(state) << std::endl;
+                report = now;
+            }
+        }
+        std::cout << "MILESTONE " << strategy.diagnose(state) << std::endl;
+    }
+    void save(int slot) {
+        require(!std::filesystem::exists(app::world_save_slot_path(directory, slot)),
+                "Campaign never overwrites an existing player slot");
+        const auto captured = app::capture_world_save(state);
+        require(captured.image.has_value(), captured.message);
+        const auto saved = app::write_world_save_slot(directory, slot, *captured.image);
+        require(saved.error == app::WorldSaveError::none, saved.message);
+        const auto sidecar = directory / ("strategy" + std::to_string(slot) + ".txt");
+        require(!std::filesystem::exists(sidecar), "Existing strategy evidence must be preserved");
+        std::ofstream output(sidecar, std::ios::binary);
+        output << "ARK_ACTIVE_CHECKPOINT_1\n"
+               << ark::assets::sha256_hex(bytes(app::world_save_slot_path(directory, slot)))
+               << '\n';
+        strategy.encode(output);
+        output.close();
+        require(bool(output), "Could not write strategy evidence");
+        std::cout << "SAVE slot=" << slot << " bytes=" << captured.image->bytes.size() << " "
+                  << strategy.diagnose(state) << std::endl;
+    }
+};
+
+Campaign load(const std::filesystem::path &directory, int slot = 0) {
+    const auto old_slot = bytes(app::world_save_slot_path(directory, slot));
+    std::ifstream metadata(directory / ("strategy" + std::to_string(slot) + ".txt"),
+                           std::ios::binary);
+    std::string magic, digest;
+    require(bool(std::getline(metadata, magic)) && magic == "ARK_ACTIVE_CHECKPOINT_1" &&
+                bool(std::getline(metadata, digest)) && digest == ark::assets::sha256_hex(old_slot),
+            "Strategy sidecar does not match this exact player file");
+    auto strategy = Strategy::decode(metadata);
+    auto fresh = ark::test::initial_world(20261009);
+    const auto records = app::read_world_system(directory);
+    require(records.records.has_value(), records.error);
+    auto saved = app::read_world_save_slot(directory, slot);
+    require(saved.state.has_value(), saved.message);
+    std::string reason;
+    require(app::prepare_world_save_candidate(*saved.state, fresh, reason) ==
+                app::WorldSaveError::none,
+            reason);
+    // Check all persisted bytes. Audit logs, pages and random use the player's policy.
+    const auto recaptured = app::capture_world_save(*saved.state);
+    require(recaptured.image && std::string(recaptured.image->bytes.begin(),
+                                            recaptured.image->bytes.end()) == old_slot,
+            "Cold player restore changed persisted business state");
+    saved.state->cash_peak = records.records->cash_peak;
+    saved.state->cash_peak_village = records.records->cash_village;
+    auto expected_random = fresh.scene.random;
+    auto restored_random = saved.state->scene.random;
+    require(saved.state->scene.random.draws() == fresh.scene.random.draws() &&
+                restored_random.draw(197).ticket == expected_random.draw(197).ticket,
+            "Cold player load must use the new process stream");
+    require(sim::startup_world_human_profile(*saved.state, 0)->name == "经营验收主角",
+            "Main profile survives the business checkpoint");
+    strategy.reconcile(*saved.state);
+    require(strategy.construction_checkpoint(*saved.state), "Loaded construction milestone lost");
+    return {std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
+}
+
+std::int64_t facility_sales(const State &state) {
+    std::int64_t total{};
+    for (const auto &[id, facility] : state.scene.world.world.facilities) {
+        (void)id;
+        total += facility.sales;
+    }
+    return total;
+}
+
+// Scalar observations of the first checkpoint, not a retained second world or ledger.
+struct BusinessCheckpoint {
+    std::uint64_t world_steps{}, observed_ticks{}, commands{};
+    std::int64_t sales{};
+};
+BusinessCheckpoint checkpoint(const Campaign &campaign) {
+    return {campaign.state.simulation_steps, campaign.strategy.stats().ticks,
+            campaign.strategy.stats().commands, facility_sales(campaign.state)};
+}
+
+// Historical command receipts alone cannot certify a live playable end state. This
+// check also runs on cold-loaded final files; it neither sends input nor writes files.
+void verify_endpoint(const Campaign &campaign, const BusinessCheckpoint &before) {
+    const auto &state = campaign.state;
+    const auto &stats = campaign.strategy.stats();
+    require(campaign.strategy.complete(state) && app::world_save_eligible(state),
+            "Final player world does not satisfy the complete stable business milestone");
+    const auto exhibition = state.activity_counts.find(16);
+    require(state.rank >= 1 && exhibition != state.activity_counts.end() && exhibition->second > 0,
+            "Current Owner lost its first star or actual exhibition consumption");
+    require(stats.task_successes > 0 && state.task_progress.successes >= stats.task_successes,
+            "Current Owner task successes do not support observed victories");
+    require(!stats.upgraded_definitions.empty(), "No observed actual facility upgrade");
+    for (const auto definition : stats.upgraded_definitions) {
+        const auto progress = state.scene.world.world.facility_uses.find(definition);
+        require(progress != state.scene.world.world.facility_uses.end() &&
+                    progress->second.level > 1,
+                "Current Owner lost upgraded facility definition=" + std::to_string(definition));
+    }
+    require(state.simulation_steps > before.world_steps && stats.ticks > before.observed_ticks &&
+                stats.commands > before.commands,
+            "Resumed process must perform actual world rounds and business commands");
+    const auto current_sales = facility_sales(state);
+    require(current_sales > before.sales,
+            "Persisted cumulative facility sales must grow after the player restart");
+    std::cout << "ENDPOINT world_rounds=" << before.world_steps << "->" << state.simulation_steps
+              << " observed_ticks=" << before.observed_ticks << "->" << stats.ticks
+              << " cumulative_facility_sales=" << before.sales << "->" << current_sales
+              << " rank=" << state.rank << " exhibition_count=" << exhibition->second
+              << " task_successes=" << state.task_progress.successes
+              << " upgraded_definitions=" << stats.upgraded_definitions.size() << std::endl;
+}
+
+std::filesystem::path isolated_directory(const char *executable, const char *supplied) {
+    const auto build = std::filesystem::canonical(executable).parent_path().parent_path();
+    require(build.filename() == "build",
+            "Campaign binary must be in the product build/bin directory");
+    const auto directory = std::filesystem::canonical(supplied);
+    const auto relative = directory.lexically_relative(build);
+    require(!relative.empty() && relative != "." && !relative.is_absolute() &&
+                *relative.begin() != ".." && std::filesystem::is_directory(directory),
+            "Campaign files must stay strictly below the real product build directory");
+    require(bytes(directory / "ACTIVE_CAMPAIGN") == "ark-active-first-star-v1\n",
+            "Use the isolated process runner to create a fresh campaign directory");
+    return directory;
+}
+
+void contract() {
+    auto state = ark::test::initial_world();
+    app::WorldCommand command;
+    command.kind = Kind::open_build_menu;
+    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
+            "Real construction menu should open");
+    const auto *page = top(state);
+    require(page != nullptr, "Real menu page missing");
+    command.page = page->id;
+    command.kind = Kind::acknowledge_page;
+    bool refused{};
+    try {
+        apply(state, command);
+    } catch (const std::runtime_error &) {
+        refused = true;
+    }
+    require(refused, "Driver cannot generic-ack a real decision menu");
+    command.kind = Kind::cancel_build_menu;
+    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
+            "Real construction menu return should succeed");
+    Strategy strategy;
+    strategy.reconcile(state);
+    std::ostringstream encoded;
+    strategy.encode(encoded);
+    std::istringstream input(encoded.str());
+    auto restored = Strategy::decode(input);
+    restored.reconcile(state);
+    std::ostringstream encoded_again;
+    restored.encode(encoded_again);
+    require(encoded.str() == encoded_again.str(), "Strategy evidence roundtrip differs");
+    require(!restored.complete(state) && !restored.construction_checkpoint(state),
+            "A fresh village cannot pass business milestones");
+    std::istringstream corrupt("not-a-strategy\n");
+    refused = false;
+    try {
+        Strategy::decode(corrupt);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Malformed strategy evidence must be rejected");
+    std::cout << "PASS active campaign driver contract" << std::endl;
+}
+} // namespace
+
+int main(int argc, char **argv) {
+    std::optional<Campaign> campaign;
+    try {
+        if (argc == 2 && std::string(argv[1]) == "--contract") {
+            contract();
+            return 0;
+        }
+        require(argc == 3, "Expected new|resume|verify and runner-created isolated directory");
+        const std::string mode = argv[1];
+        require(mode == "new" || mode == "resume" || mode == "verify",
+                "Unknown active campaign phase");
+        const auto directory = isolated_directory(argv[0], argv[2]);
+        if (mode == "verify") {
+            // Dispose of the first decoded Owner after extracting read-only scalar evidence.
+            const auto before = checkpoint(load(directory, 0));
+            campaign.emplace(load(directory, 1));
+            verify_endpoint(*campaign, before);
+            std::cout << "PASS read-only cold-file endpoint verification; no route rerun or "
+                         "per-tick revalidation claimed"
+                      << std::endl;
+        } else if (mode == "new") {
+            require(!std::filesystem::exists(app::world_system_path(directory)) &&
+                        !std::filesystem::exists(app::world_save_slot_path(directory, 0)),
+                    "New campaign cannot overwrite previous files");
+            campaign.emplace(Campaign{ark::test::initial_world(), {}, directory, {}});
+            app::WorldNewGameDraft draft;
+            draft.human.name = "经营验收主角";
+            draft.human.custom_name = true;
+            good(app::start_world_draft(campaign->state, campaign->system, draft, directory));
+            campaign->strategy.reconcile(campaign->state);
+            campaign->run(false);
+            campaign->save(0);
+        } else {
+            campaign.emplace(load(directory));
+            const auto before = checkpoint(*campaign);
+            const auto old_slot = bytes(app::world_save_slot_path(directory, 0));
+            campaign->run(true);
+            verify_endpoint(*campaign, before);
+            campaign->save(1);
+            require(bytes(app::world_save_slot_path(directory, 0)) == old_slot,
+                    "Restarted business must preserve the first checkpoint");
+            std::cout << "PASS active first-star campaign: construction, trade, cultivation, "
+                         "task victory, promotion, paid exhibition, continued trade, cold restart"
+                      << std::endl;
+        }
+        return 0;
+    } catch (const std::exception &error) {
+        std::cerr << "Active campaign failed: " << error.what() << std::endl;
+        if (campaign)
+            std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
+        return 1;
+    }
+}

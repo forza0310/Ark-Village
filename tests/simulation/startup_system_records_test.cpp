@@ -1,9 +1,14 @@
 #include "ark/simulation/startup_system_records.hpp"
 #include "ark/assets/sha256.hpp"
+#include "../../src/simulation/startup_persistence_bytes.hpp"
+#include "../../src/simulation/startup_world_file_io.hpp"
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <set>
+#include <atomic>
+#include <thread>
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -78,6 +83,89 @@ struct Workspace {
         std::filesystem::remove_all(path, ignored);
     }
 };
+std::set<std::filesystem::path> file_names(const std::filesystem::path &path) {
+    std::set<std::filesystem::path> names;
+    for (const auto &entry : std::filesystem::directory_iterator(path))
+        names.insert(entry.path().filename());
+    return names;
+}
+// 无覆盖发布的主责验证放在既有系统文件套件；不为内部平台函数新增target。
+void create_only_files(const std::filesystem::path &directory, const Bytes &original) {
+    const auto created = directory / "create-only.avr";
+    persistence_detail::create_save_file(created, original);
+    check(read(created) == original, "无覆盖出口首次发布完整字节");
+    const auto reject_create = [&](const std::filesystem::path &target, const Bytes &bytes) {
+        const auto before = file_names(directory);
+        bool refused = false;
+        try {
+            persistence_detail::create_save_file(target, bytes);
+        } catch (const std::exception &e) {
+            refused = *e.what() != '\0';
+        }
+        check(refused, "无覆盖出口对已有目标或不可创建路径具名拒绝");
+        check(file_names(directory) == before, "无覆盖发布失败不遗留临时文件或新增目录");
+    };
+    reject_create(created, Bytes{1, 2, 3});
+    check(read(created) == original, "无覆盖拒绝保留已有文件原字节");
+    reject_create(created, original);
+    check(read(created) == original, "即便字节相同也拒绝覆盖已有文件");
+    const auto occupied = directory / "occupied-directory";
+    check(std::filesystem::create_directory(occupied), "准备已有目标目录");
+    const auto marker = occupied / "keep.bin";
+    write(marker, Bytes{9, 8, 7});
+    reject_create(occupied, original);
+    check(std::filesystem::is_directory(occupied) && read(marker) == Bytes({9, 8, 7}) &&
+              file_names(occupied) == std::set<std::filesystem::path>{"keep.bin"},
+          "目标目录拒绝后原内容不变");
+    reject_create(directory / "missing-create-parent" / "system.avr", original);
+    check(!std::filesystem::exists(directory / "missing-create-parent"),
+          "无覆盖出口不偷偷建立缺失父目录");
+    // 已有硬链接目标不能经别名覆盖。这里只验证平台出口，不冒称上层路径隔离已完成。
+    const auto alias = directory / "existing-alias.avr";
+    std::filesystem::create_hard_link(created, alias);
+    reject_create(alias, Bytes{4, 5, 6});
+    check(std::filesystem::equivalent(alias, created) && read(alias) == original &&
+              read(created) == original,
+          "无覆盖拒绝保留已有硬链接及两端原字节");
+    const auto raced = directory / "concurrent-create.avr";
+    const auto before_race = file_names(directory);
+    const Bytes offers[2] = {{1, 3, 5, 7}, {2, 4, 6}};
+    bool accepted[2]{};
+    bool rejected[2]{};
+    {
+        // 即使第二个线程创建失败，析构也先放开首线程再收齐，避免留下等待者。
+        struct Writers {
+            std::atomic<bool> start{false};
+            std::vector<std::thread> threads;
+            ~Writers() {
+                start.store(true);
+                for (auto &thread : threads)
+                    if (thread.joinable())
+                        thread.join();
+            }
+        } writers;
+        writers.threads.reserve(2);
+        for (int i = 0; i < 2; ++i)
+            writers.threads.emplace_back([&, i] {
+                while (!writers.start.load())
+                    std::this_thread::yield();
+                try {
+                    persistence_detail::create_save_file(raced, offers[i]);
+                    accepted[i] = true;
+                } catch (const std::exception &) {
+                    rejected[i] = true;
+                }
+            });
+        writers.start.store(true);
+    }
+    check(accepted[0] != accepted[1] && rejected[0] != rejected[1] &&
+              accepted[0] == rejected[1],
+          "同名并发无覆盖发布恰一成功一拒绝");
+    check(read(raced) == offers[accepted[0] ? 0 : 1], "竞争失败者不覆盖成功者字节");
+    auto expected_files = before_race;
+    expected_files.insert(raced.filename());
+    check(file_names(directory) == expected_files, "两写者退出后只留下完整目标且无临时文件");
+}
 void run(const std::filesystem::path &directory) {
     check(!directory.empty(), "测试目录参数为空");
     std::filesystem::create_directories(directory);
@@ -106,6 +194,12 @@ void run(const std::filesystem::path &directory) {
     check(validate_startup_system_records(r).empty(), "有效系统记录校验");
     check(save_startup_system_file(file, r).empty(), "系统文件正常保存");
     const auto original = read(file);
+    const auto in_memory = persistence_detail::encode_system_records_bytes(r);
+    check(in_memory == original, "内部系统字节桥与既有格式完全相同");
+    const auto from_bytes = persistence_detail::decode_system_records_bytes(in_memory);
+    check(persistence_detail::encode_system_records_bytes(from_bytes) == original,
+          "纯字节桥往返保留全部已知字段及未知可选段");
+    create_only_files(work.path, original);
     const auto offsets = sections(original);
     check(std::string(original.begin(), original.begin() + 8) == "AVRSYS01",
           "独立系统magic不冒充世界文件");

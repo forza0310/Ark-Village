@@ -102,4 +102,4 @@ Layout.scene_clip绘制到21单位底栏边缘；Layout.scene命中仍停在29�
 
 公共桌面字形产物仅在 `build/shared-libraries/desktop-generated/` 生成一次：`desktop_glyphs.json` 记录需求/来源，`desktop_glyphs.hpp` 提供运行字符串。公共库的 `ark_desktop_glyphs` 每次构建扫描当前源码和产品目录，内容相同不改文件时间；四套消费者不复制清单。先配置、构建 `shared-libraries`，再配置桌面消费者；缺生成头/JSON会明确拒绝并提示公共构建入口。核心规则/运行时及headless消费者不包含这个桌面头。`--font`、ASCII、显式额外字形、缺字报错和按密度扩图集政策保留。
 
-`ui/world_startup`执行4ef4a98启动图块桥，分开title/event/common索引与阶段/页面计数。raw17读WorldFrame.system.clear，确认由WorldSession专用计分事务消费；系统写失败显示重试，所有世界输入冻结。标题、新局装饰人物完整动态映射尚未交付，不以60FPS补造随机或动画。Text按需增加自定义名字的字形，分发字体保留固定Noto cmap并剥离无用表；不支持的字符明确拒绝。
+`ui/world_startup`执行启动图块桥，分开title/event/common索引与阶段/页面计数。raw17读WorldFrame.system.clear，确认由WorldSession专用计分事务消费；系统写失败显示重试，所有世界输入冻结。`ui/skin`在源支持的宽高范围消费89f157c公共窗框/标题裁片及内容框双线/四角计划，宽PC窗口与彩色选择行保留桌面适配。标题、新局装饰人物完整动态控制器尚未交付，不以60FPS补造随机或动画。Text按需增加自定义名字的字形，分发字体保留固定Noto cmap并剥离无用表；不支持的字符明确拒绝。

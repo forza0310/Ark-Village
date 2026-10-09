@@ -4,7 +4,7 @@
 
 默认先显示标题，可新建或继续已有手动档；进入后运行持续世界：地图、设施、人物/怪物、资金、任务、日期和页面由同一Owner持有。已接建设/道路/移动/撤除、人物经营、任务与授勋、晋级/扩张、村办0–3及5/6、商会/魔法壶/普通道具，以及两栏手动存读档。情报菜单、部分经营入口和完整动画仍待接。
 
-规则/运行时冻结至 **4ef4a98维护闭包，共379项来源记录**，保留商品79/72、设施口碑82、魔法壶41–47与村办5/6、购买后举物与建筑升降提示。建设图块复用研究只读查询；维护回放新增显式表现请求，桌面不按FPS触发随机或任务清理。玩家使用ARKSAVE1/schema4，保存40条配方进度及定义0的主角资料，旧档明确拒绝且不迁移；完整AVRSAVE1仅用于维护与精确回放；独立system.arksys保存跨局纪录及继承。当前批次状态与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-4ef4a98-startup)。
+规则/运行时冻结至 **89f157c维护闭包，共391项来源记录**，保留商品79/72、设施口碑82、魔法壶41–47与村办5/6、购买后举物与建筑升降提示。建设图块复用研究只读查询；维护回放新增显式表现请求，桌面不按FPS触发随机或任务清理。玩家使用ARKSAVE1/schema4，保存40条配方进度及定义0的主角资料，旧档明确拒绝且不迁移；完整AVRSAVE1/AVRAPP01仅用于维护与精确回放；独立system.arksys保存跨局纪录及继承。当前批次状态与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-89f157c-integration)。
 
 [文档分类索引](docs/README.md) · [当前待办](TODO.md) · [架构](docs/ARCHITECTURE.md) · [研究/产品差距](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [历史验收](docs/stages/history/B1-implementation-log.md)
 

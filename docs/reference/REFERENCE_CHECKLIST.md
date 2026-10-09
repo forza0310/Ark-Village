@@ -6,7 +6,9 @@
 
 <a id="research-history-current-audit"></a>
 
-## 研究历史与当前接入候选（2026-10-08）
+## 研究历史与当前接入候选（2026-10-09）
+
+当前冻结**89f157c完整391项维护闭包**：公共窄窗/内容框已接桌面共用皮肤，完整应用AVRAPP01短回放及文件/计分校验修正已迁入；玩家schema4和既有系统事务保持。被动日期长测已因覆盖不足停止，仅新局经营/保存/冷载前缀取得证据；主动经营、逐星条件与通关/继承整链仍待验收，结果见[B1](../stages/B1-playable-prototype.md#research-89f157c-integration)。信息菜单、音频和完整动画按[最小正式合同缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)等待；不消费research在途标题控制器。
 
 2026-10-09上批冻结**72a5bf4**完整363项闭包：设施类别/效果/逐来源加成、普通道具图标、人物cd13已接线；受击Owner轨迹作为配套回归迁入，验收见[B1](../stages/B1-playable-prototype.md#research-72a5bf4-integration)。本批已迁入4ef4a98完整379项，包含9ec4c1a主角/纪录及启动皮肤桥，本地验收通过；玩家schema4新增主角资料，随机/暂停政策不变，见[B1](../stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 

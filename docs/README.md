@@ -11,6 +11,7 @@
 | 当前研究对照 | [对照清单](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)、[研究需求](reference/RESEARCH_REQUESTS.md) | 正式研究身份、已接子集、缺口和原版一致性边界 |
 | 存档合同 | [玩家档模块](../src/app/world_save.md)、[本次审计](stages/B1-playable-prototype.md#research-save-organization) | 玩家ARKSAVE1、维护AVRSAVE1、原游戏档分别说明，不能互换认证 |
 | 阶段验收 | [B1当前批次](stages/B1-playable-prototype.md) | 本批范围、检查、未完成项；旧锚点保留转向历史 |
+| 主动经营与收益 | [长测审计与建设方案](stages/ACTIVE_VILLAGE_PLAN.md) | 现有长跑覆盖、五星原条件、初局报价/布局候选、现金安全与主动玩家验收 |
 | 历史归档 | [B1实现记录](stages/history/B1-implementation-log.md)、[任务台账](stages/history/PRODUCT_TASK_LOG.md)、[审阅基线](stages/history/PRODUCT_REVIEW-20261007.md) | 不改写旧验收结果；旧机器/版本的结果不能替代新检查 |
 
 ## 代码与工具导航

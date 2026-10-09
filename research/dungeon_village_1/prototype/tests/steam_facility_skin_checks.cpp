@@ -192,6 +192,44 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         if(resource->published_sprite)check(std::filesystem::is_regular_file(assets/resource->published_sprite),"SEB引用不复制另一份素材");
     }
     check(!steam_facility_resource(static_cast<A>(99)),"未知资源枚举拒绝");
+    // 已核helper的请求序列oracle；数字步宽由SEB提供，金额/加号固定8且不测Font。
+    SteamFacilityNumber numeric{N::number,A::number09,123,{100,20},1,0,-1};
+    for(const auto anchor:std::array<std::array<int,2>,4>{{{0,100},{2,89},{4,77},{6,89}}}) {
+        numeric.anchor=anchor[0];
+        const auto draws=steam_facility_number_draws(numeric,7);
+        check(draws&&draws->size()==3&&(*draws)[0].frame==1&&(*draws)[1].frame==2&&(*draws)[2].frame==3&&
+              (*draws)[0].position==std::array<int,2>{anchor[1],20}&&
+              (*draws)[2].position==std::array<int,2>{anchor[1]+16,20},
+              "普通数字按SEB宽加padding且anchor6以居中优先");
+    }
+    numeric={N::money,A::number08,1234567,{100,20},0,0,0};
+    auto number_draws=steam_facility_number_draws(numeric,0);
+    const std::array<int,10> money_frames{1,2,10,3,4,5,10,6,7,20};
+    const std::array<int,10> money_x{35,43,41,51,59,67,65,75,83,91};
+    bool money_matches=number_draws&&number_draws->size()==money_frames.size();
+    if(money_matches)for(std::size_t i=0;i<money_frames.size();++i)
+        money_matches=money_matches&&(*number_draws)[i].frame==money_frames[i]&&
+            (*number_draws)[i].position==std::array<int,2>{money_x[i],20};
+    check(money_matches,"金额先dx-9，逗号在后一个数字之后绘制，货币共享右锚");
+    numeric={N::plus_value,A::number05,-12,{190,40},0,0,1};
+    number_draws=steam_facility_number_draws(numeric,0);
+    check(number_draws&&number_draws->size()==4&&(*number_draws)[0].frame==-3&&
+          (*number_draws)[0].position==std::array<int,2>{166,40}&&(*number_draws)[1].frame==1&&
+          (*number_draws)[2].frame==2&&(*number_draws)[3].frame==14&&(*number_draws)[3].position==std::array<int,2>{166,40},
+          "signed串负号请求-3且加号无条件后画，不能猜负帧最终像素");
+    numeric.value=0;number_draws=steam_facility_number_draws(numeric,0);
+    check(number_draws&&number_draws->size()==2&&(*number_draws)[0].frame==0&&
+          (*number_draws)[0].position[0]==182&&(*number_draws)[1].frame==14&&(*number_draws)[1].position[0]==174,
+          "helper自身对零也画加号，81差零隐藏属于外层");
+    numeric={N::number,A::number09,-12,{100,20},0,2,-1};
+    number_draws=steam_facility_number_draws(numeric,7);
+    check(number_draws&&number_draws->size()==1&&number_draws->front().frame==-12&&number_draws->front().position[0]==97,
+          "普通负值保持一位负商请求，不误用逗号helper的signed串");
+    check(!steam_facility_number_draws(numeric,0),"普通数字缺实际SEB步宽拒绝");
+    numeric.kind=N::money;numeric.position[0]=std::numeric_limits<int>::min();
+    check(!steam_facility_number_draws(numeric,0),"金额dx-9溢出拒绝且无部分图元结果");
+    numeric.position[0]=100;numeric.asset=A::mini;
+    check(!steam_facility_number_draws(numeric,8),"不能用人物图集替代数字资源身份");
     const auto blue=steam_facility_resource(A::number08),orange=steam_facility_resource(A::number05);
     check(blue->image==105&&blue->sprite==15&&orange->image==103&&orange->sprite==12&&
           bytes(assets/blue->published_image)!=bytes(source_root/"common/number08.png")&&

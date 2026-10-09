@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[设施数字请求](../work/steam-facility-number-delivery/README.md)已沿Steam原helper展开普通数字／金额／加号，visuals通过0.58秒；负帧仅保留请求，不推断最终像素。Mapchip2、字体与实际窗口接线继续独立补齐。
+
 2026-10-10[Steam81只读皮肤桥](../prototype/STEAM_FACILITY_SKIN.md)已交付有序布局、裁剪、文本位置和角色／数值演出计划，visuals通过0.60秒；数字与Mapchip2仍是具名helper请求，未接原窗口、字体或OS输入，不宣称完整像素皮肤已完成。
 
 2026-10-10[设施页共用绘制helper](STEAM_FACILITY_DRAW_HELPERS.md)补底部提示的扩大触摸区、仅注册输入组件的滚动helper，以及普通／逗号数字的不同步宽、anchor和金额dx−9。74／81接线须保留这些实际请求，不按函数名猜滑块或用字体数字替原SEB。

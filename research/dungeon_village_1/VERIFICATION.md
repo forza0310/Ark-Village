@@ -1,5 +1,9 @@
 # 当前研究验证与历史索引
 
+## Steam设施数字请求展开2026-10-10
+
+[交付](work/steam-facility-number-delivery/README.md)补普通数字、金额和加号的有序SEB请求，现visuals目标构建及检查通过0.58秒。按源保留普通anchor位优先、固定8步宽、逗号覆盖、dx−9与负帧请求；未知负帧最终像素不臆测。缺步宽／资源错误／坐标溢出拒绝，无Owner、格式、素材副本或后台任务变化。完整字体和Mapchip2执行器另验。
+
 ## Steam81只读皮肤桥2026-10-10
 
 [模块](prototype/STEAM_FACILITY_SKIN.md)复用现有应用库和visuals套件，Release目标构建及visuals通过0.60秒。保留Steam差异资源、窗口／背景／MAX原序、裁剪、四次测宽、特殊计数和独立frame2；数字／Mapchip2为具名请求，后端和原窗口未验。无Owner／格式／随机／声音修改，无新target或图片；重复查询规模和输入不变、边界拒绝及实际SEB裁片已验。[本批清单](work/steam-facility-skin-delivery/VALIDATION.json)记录源码身份和现Release树规模。

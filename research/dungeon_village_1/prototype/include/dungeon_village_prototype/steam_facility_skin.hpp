@@ -41,7 +41,7 @@ struct SteamFacilityClip {
     SteamFacilityClipKind kind;
     std::array<int,4> rectangle{};
 };
-// 以下是具名未展开helper请求，不冒称完整字体/数字格式或mapchip像素执行器。
+// 页面计划保留具名helper请求；数字可经下方独立函数展开，Mapchip2执行器仍另接。
 struct SteamFacilityMapchip2 {
     int mapchip{};
     std::array<int,2> position{};
@@ -58,6 +58,11 @@ struct SteamFacilityNumber {
     int padding{}, anchor{};
     int parameter{-1}; // -1当前等级；0/1/2对应冻结属性行，不重算业务值。
 };
+// 展开实际SEB请求；普通数字的步宽来自所选SEB frame0/line0的SP_W，不能用Font字宽。
+// money/plus沿源固定8步宽及逗号原序，digit_width不参与这两类计算。
+// 源负数可能请求负frame；保留请求事实，不能当作已认证的负帧像素/减号映射。
+std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
+    const SteamFacilityNumber &number, int digit_width);
 using SteamFacilityDraw=std::variant<StartupSkinRect,SteamFacilityImage,SteamFacilityText,
                                     SteamFacilityClip,SteamFacilityMapchip2,SteamFacilityNumber>;
 struct SteamFacilitySkinPlan {

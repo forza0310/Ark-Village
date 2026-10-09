@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <string>
 
 namespace dungeon_village_prototype {
 namespace {
@@ -87,6 +88,62 @@ std::optional<SteamFacilityResource> steam_facility_resource(Asset asset) {
     case Asset::mini_background:return SteamFacilityResource{"event",16,-1,"original/event/event_BackMini02.png",nullptr};
     }
     return {};
+}
+std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
+    const SteamFacilityNumber &n,int digit_width) {
+    if(n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    if(n.padding<0)return {}; // 维护输入范围；当前74/81只传0，不推断负padding调用资格。
+    std::vector<SteamFacilityImage> result;
+    const auto emit=[&](std::int64_t x,int frame) {
+        if(!fits(x))return false;
+        result.push_back({n.asset,{static_cast<int>(x),n.position[1]},frame,{}});
+        return true;
+    };
+    std::int64_t x=n.position[0];
+    if(n.kind==SteamFacilityNumberKind::number) {
+        if(digit_width<=0||n.anchor<0)return {};
+        int digits=1;
+        for(auto rest=n.value/10;rest>0;rest/=10)++digits;
+        const auto step=std::int64_t(digit_width)+n.padding;
+        const auto width=digits*step-n.padding;
+        if(!fits(step)||!fits(width))return {};
+        if(n.anchor&2)x-=width/2;
+        else if(n.anchor&4)x-=width;
+        if(n.value<0) {
+            // 原普通数字负值位数保持1，直接把负商交SEB，不改成abs+负号。
+            if(!emit(x,n.value))return {};
+        } else {
+            const auto decimal=std::to_string(n.value);
+            for(const char c:decimal) {
+                if(!emit(x,c-'0'))return {};
+                x+=step;
+            }
+        }
+        return result;
+    }
+    if((n.kind!=SteamFacilityNumberKind::money&&n.kind!=SteamFacilityNumberKind::plus_value)||
+       n.padding!=0)return {};
+    // 两个实际helper都传padding0/comma_padding0/anchor4；signed串长度包含负号。
+    if(n.kind==SteamFacilityNumberKind::money)x-=9;
+    if(!fits(x))return {};
+    const auto right=x;
+    const auto decimal=std::to_string(n.value);
+    x-=static_cast<std::int64_t>(decimal.size())*8;
+    const auto first_digit=n.value<0?std::size_t(1):std::size_t(0);
+    for(std::size_t i=0;i<decimal.size();++i) {
+        if(!emit(x,decimal[i]-'0'))return {};
+        // CommaSeparate的逗号在下一数字左侧，原顺序先画数字再画逗号。
+        if(i>first_digit&&(decimal.size()-i)%3==0)
+            if(!emit(x-2,10))return {};
+        x+=8;
+    }
+    if(n.kind==SteamFacilityNumberKind::money) {
+        if(!emit(right,20))return {};
+    } else {
+        const auto absolute_digits=decimal.size()-first_digit;
+        if(!emit(right-static_cast<std::int64_t>(absolute_digits+1)*8,14))return {};
+    }
+    return result;
 }
 std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(const SteamFacilityUpgradeSkinInput &in) {
     if(in.definition<0||in.mapchip<0||in.level<1||in.level>5||in.phase<0||in.phase>1||

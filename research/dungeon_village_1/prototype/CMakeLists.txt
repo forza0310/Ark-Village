@@ -84,7 +84,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp
     src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
-    src/startup_title_actor_skin.cpp src/startup_information.cpp)
+    src/startup_title_actor_skin.cpp src/startup_information.cpp src/steam_startup_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
     PRIVATE dungeon_village_hash)
@@ -151,7 +151,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             --compiler "${CMAKE_CXX_COMPILER}" --check)
 endif()
 add_executable(dungeon_village_startup_world_visuals_tests tests/startup_world_visuals_test.cpp
-    tests/startup_skin_checks.cpp ../tools/src/sprite.cpp ../tools/src/table.cpp)
+    tests/startup_skin_checks.cpp tests/steam_startup_skin_checks.cpp
+    ../tools/src/sprite.cpp ../tools/src/table.cpp)
 target_include_directories(dungeon_village_startup_world_visuals_tests PRIVATE ../tools/include)
 target_link_libraries(dungeon_village_startup_world_visuals_tests PRIVATE dungeon_village_startup_application
     dungeon_village_hash PkgConfig::RAYLIB)

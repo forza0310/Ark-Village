@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+int check_steam_startup_skin(const std::filesystem::path &source_root);
+
 namespace {
 using namespace dungeon_village_prototype;
 namespace tools = dungeon_village_tools;
@@ -637,5 +639,5 @@ int check_startup_skin(const std::filesystem::path &source_root,
             std::filesystem::create_directories(optional_output_png.parent_path());
         check(ExportImage(sheet.image,optional_output_png.string().c_str()),"导出CPU静态参考素材拼图");
     }
-    return check.count;
+    return check.count + check_steam_startup_skin(source_root);
 }

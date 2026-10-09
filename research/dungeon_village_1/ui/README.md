@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+最新维护增量：[Steam标题／选档／raw20／raw1局部计划](../prototype/STEAM_STARTUP_SKIN.md)已过既有visuals与application两项检查，只读资源、遮挡、测宽及触摸注册不修改Owner。[文字后端](STEAM_FONT_BACKEND.md)核默认皮肤／字体对象及后端交接，[GLText消费与退休](STEAM_GLTEXT_LIFECYCLE.md)追至GUI.Label和复用池；中文实际字形仍未知。新增[选档小窗窗口任务](../work/window-restore-observation/NEXT_SAVE_MENU_SKIN_PROMPT.md)待外部执行，不记为已观察。
+
 最新静态交叉：[Steam手动档菜单／确认](STEAM_SAVE_MENU.md)区分正常继续与默认“否”的覆盖／删除询问；[Steam语言包安装](STEAM_LANGUAGE_INSTALL.md)核包码、资源目录和翻译分流。SC包码zh-CN、TC为zh，不能从文件名猜语言码或当前字体。两者均为具名静态合同，不是新窗口观察。
 
 2026-10-09新增[Steam标题菜单与选档](STEAM_TITLE_MENU.md)：补正常标题两项、手动／中断行、图标裁片与ENTER／UP实际分流；选档不套设施75的首次标记规则。后继[手动档raw20与确认](STEAM_SAVE_MENU.md)补三项原序、默认“否”、返回结果、菜单SEB与询问布局；实际语言选择、平台按钮和窗口皮肤验收仍独立。

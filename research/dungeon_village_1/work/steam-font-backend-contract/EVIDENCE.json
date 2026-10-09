@@ -1,0 +1,203 @@
+{
+  "scope": "Steam text backend state and default skin/font static references; no live font certification",
+  "windows": [
+    {
+      "key": "setSize",
+      "method": "kairo.unity.ui.Font::private void _setSize(int size, bool usePreset = True) { }",
+      "rva": 7863632,
+      "offset": 7859024,
+      "next_rva": 7863856,
+      "bytes": 224,
+      "sha256": "bc2606f0537c75d8252935548adeb184a3777367cadc70c7ecd69a5ea34e6cb2"
+    },
+    {
+      "key": "adjust",
+      "method": "kairo.unity.ui.Font::private void _adjustFontSize(float scaleRatio) { }",
+      "rva": 7859456,
+      "offset": 7854848,
+      "next_rva": 7859664,
+      "bytes": 208,
+      "sha256": "6102672e71f95bac022d893b0dcb9391e565847b9c92ff7d725b41eba74f0835"
+    },
+    {
+      "key": "copy",
+      "method": "kairo.unity.ui.Font::private void _copy(Font font) { }",
+      "rva": 7860240,
+      "offset": 7855632,
+      "next_rva": 7860528,
+      "bytes": 288,
+      "sha256": "58330fda160a2e1a9811550afd6f7faa2780c60949af79a5ee89a783359f944c"
+    },
+    {
+      "key": "set",
+      "method": "kairo.unity.ui.Font::private void _set(Font font) { }",
+      "rva": 7863984,
+      "offset": 7859376,
+      "next_rva": 7864080,
+      "bytes": 96,
+      "sha256": "fdd6d793be59c2b82a8d46206141a0c1a5596b1f636728963b7b63614cabb43a"
+    },
+    {
+      "key": "defaultGet",
+      "method": "kairo.unity.ui.Graphics::public static bool get_DefaultUseFontTexture() { }",
+      "rva": 7847264,
+      "offset": 7842656,
+      "next_rva": 7847328,
+      "bytes": 64,
+      "sha256": "58ce349be975208271e64ba9c3a0e2fb7005fd2b763c6b066c1ffb2e2cbcae6e"
+    },
+    {
+      "key": "defaultSet",
+      "method": "kairo.unity.ui.Graphics::private static void set_DefaultUseFontTexture(bool value) { }",
+      "rva": 7847328,
+      "offset": 7842720,
+      "next_rva": 7847824,
+      "bytes": 80,
+      "sha256": "df771fd22577895be2ce86cd2c21e9f97452bb253714f9c2c5f9eb8cfc2b40e4"
+    },
+    {
+      "key": "push",
+      "method": "kairo.unity.ui.Graphics::public void PushFontTexture(bool use) { }",
+      "rva": 7805168,
+      "offset": 7800560,
+      "next_rva": 7805344,
+      "bytes": 176,
+      "sha256": "42a2439197716f6eeecd8644b0674818dd3044f276193d47be725a37fb0070aa"
+    },
+    {
+      "key": "pop",
+      "method": "kairo.unity.ui.Graphics::public void PopFontTexture() { }",
+      "rva": 7800672,
+      "offset": 7796064,
+      "next_rva": 7800784,
+      "bytes": 112,
+      "sha256": "bab61edb9f42fc26961d0e861ceb11ebd4f2e288c3267557ad4c10e60c9f0da9"
+    },
+    {
+      "key": "graphicsCctor",
+      "method": "kairo.unity.ui.Graphics::private static void .cctor() { }",
+      "rva": 7821712,
+      "offset": 7817104,
+      "next_rva": 7825216,
+      "bytes": 3504,
+      "sha256": "ec26c36ad4f31a443c82ede483a49d52cd3573bdebdf8e73660ae480ac0cc1fb"
+    },
+    {
+      "key": "drawFirst",
+      "method": "kairo.unity.ui.Graphics::public void DrawString(TextFormat lf, string str, float x, float y, int anchor) { }",
+      "rva": 7758800,
+      "offset": 7754192,
+      "next_rva": 7764160,
+      "bytes": 4096,
+      "sha256": "71260c2cf60cdcf68dc6ddc4bf311efa07e31e4694ec4718c69242cf348c9d93"
+    },
+    {
+      "key": "drawTail",
+      "method": "kairo.unity.ui.Graphics::public void DrawString(TextFormat lf, string str, float x, float y, int anchor) { }",
+      "rva": 7758800,
+      "offset": 7754192,
+      "next_rva": 7764160,
+      "bytes": 5360,
+      "sha256": "4832f0d10098b1c44e1e991d8eb85a514aca48d8ae9ed981d92dd97b4f872d5c"
+    },
+    {
+      "key": "setFont",
+      "method": "kairo.unity.ui.Graphics::public void SetFont(Font f) { }",
+      "rva": 7816544,
+      "offset": 7811936,
+      "next_rva": 7816656,
+      "bytes": 112,
+      "sha256": "a06009747506c0b6eea043eec85f0e7f3c99f7ebd27355d04ad94a4b0d2b05d3"
+    },
+    {
+      "key": "pluginWidth",
+      "method": "kairo.unity.native.KairoPlugin::public static SizeF GetFontTextureSize(string text, int size) { }",
+      "rva": 8866208,
+      "offset": 8861600,
+      "next_rva": 8866496,
+      "bytes": 288,
+      "sha256": "22ad82591813cbb3a7c66a35f26a18d2e03d58b675b78bbf764bd0cfe7a6da67"
+    },
+    {
+      "key": "pluginWidthTask",
+      "method": ".KairoPlugin.<>c__DisplayClass156_0::internal object <GetFontTextureSize>b__0() { }",
+      "rva": 8941728,
+      "offset": 8937120,
+      "next_rva": 8942432,
+      "bytes": 704,
+      "sha256": "4bab56d569ee8c274f5f44045e167fa8f8ec4eefee87dac39ee053a8c9263453"
+    },
+    {
+      "key": "initGUI",
+      "method": "kairo.unity.ui.IApplication::protected virtual void InitGUI(float scale) { }",
+      "rva": 7891392,
+      "offset": 7886784,
+      "next_rva": 7892736,
+      "bytes": 1344,
+      "sha256": "3f8f256a2056ec7db875234296fe9dc87e73a7fe4090dbb4cd7000b4cc09a9c7"
+    },
+    {
+      "key": "onGUIFirst",
+      "method": "kairo.unity.ui.IApplication::private void OnGUI() { }",
+      "rva": 7899600,
+      "offset": 7894992,
+      "next_rva": 7906912,
+      "bytes": 4096,
+      "sha256": "0733289305e3b0ae5bae94d1d240ef8f28d02f7856522a39d78a0d04fd8ca6b4"
+    },
+    {
+      "key": "onGUITail",
+      "method": "kairo.unity.ui.IApplication::private void OnGUI() { }",
+      "rva": 7899600,
+      "offset": 7894992,
+      "next_rva": 7906912,
+      "bytes": 7312,
+      "sha256": "cddcbc1747c6adce1404f1fbdc45570526c31fa14c4081ffeefc79485063e3e9"
+    },
+    {
+      "key": "graphicsInit",
+      "method": "kairo.unity.ui.Graphics::internal void Init(object g, Image img, Camera camera) { }",
+      "rva": 7796960,
+      "offset": 7792352,
+      "next_rva": 7798480,
+      "bytes": 1520,
+      "sha256": "c198276247f97b21222b3ab6c34c1fbd49f0d319d8e9bccc77f4347c696ba10c"
+    },
+    {
+      "key": "onGUICleanup",
+      "method": "IApplication.OnGUI generated cleanup::direct call target; bounded cleanup only",
+      "rva": 7847408,
+      "offset": 7842800,
+      "next_rva": 7847824,
+      "bytes": 116,
+      "sha256": "1de6a1340887d54288b8d411d3dd5a9f649e8b249d1f9f00bdb4fb184cf13c23"
+    }
+  ],
+  "unique_registered_methods": 16,
+  "direct_cleanup_helpers": 1,
+  "unique_bytes": 21508,
+  "method_index_sha256": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42",
+  "limits": [
+    "DefaultUseFontTexture setter ends after 80 bytes; indexed next method gap contains unrelated helpers",
+    "OnGUI cleanup is identified by a direct call from a named method, not invented metadata",
+    "GUIStyle null font and Arial resource object do not prove active CJK glyph face",
+    "No complete matrix/clip/TextLayout/font rasterizer or every branch certification"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 6794,
+      "sha256": "e2f55a638cd76fb1b84dd97c9d4fb745dee0b31e093a74d87c1d0f9ef4f495d6"
+    },
+    {
+      "path": "data.cjs",
+      "bytes": 5077,
+      "sha256": "17696730486c115bf5015fd7876a0722177172e4afd268c4c569846bcdc74275"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 1909,
+      "sha256": "05b4262c502488127bac349c8f26c9c5548a083e88ce2614486afdb7a6ba0a6e"
+    }
+  ]
+}

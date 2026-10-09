@@ -1,0 +1,29 @@
+Test project D:/code/Ark-Village/research/dungeon_village_1/work/release
+      Start 16: dungeon_village_prototype.startup_world_replay_process
+      Start  1: dungeon_village_prototype.startup_application
+ 1/12 Test  #1: dungeon_village_prototype.startup_application ...............   Passed   23.32 sec
+      Start 14: dungeon_village_prototype.startup_world_persistence
+ 2/12 Test #16: dungeon_village_prototype.startup_world_replay_process ......   Passed  100.15 sec
+      Start 17: dungeon_village_prototype.startup_world_codec_coverage
+ 3/12 Test #17: dungeon_village_prototype.startup_world_codec_coverage ......   Passed    8.65 sec
+      Start 13: dungeon_village_prototype.startup_world_building
+ 4/12 Test #13: dungeon_village_prototype.startup_world_building ............   Passed    1.83 sec
+      Start  4: dungeon_village_prototype.startup_world_scene
+ 5/12 Test  #4: dungeon_village_prototype.startup_world_scene ...............   Passed    0.30 sec
+      Start  6: dungeon_village_prototype.startup_world_runtime_tasks
+ 6/12 Test  #6: dungeon_village_prototype.startup_world_runtime_tasks .......   Passed    0.11 sec
+      Start 25: dungeon_village_prototype.startup_world_data
+ 7/12 Test #25: dungeon_village_prototype.startup_world_data ................   Passed    0.11 sec
+      Start 15: dungeon_village_prototype.startup_world_replay_driver
+ 8/12 Test #15: dungeon_village_prototype.startup_world_replay_driver .......   Passed    0.07 sec
+      Start  3: dungeon_village_prototype.startup_world_routes
+ 9/12 Test  #3: dungeon_village_prototype.startup_world_routes ..............   Passed    0.03 sec
+      Start  7: dungeon_village_prototype.startup_world_runtime
+10/12 Test  #7: dungeon_village_prototype.startup_world_runtime .............   Passed    0.05 sec
+      Start 10: dungeon_village_prototype.startup_world_runtime_nonactors
+11/12 Test #10: dungeon_village_prototype.startup_world_runtime_nonactors ...   Passed    0.06 sec
+12/12 Test #14: dungeon_village_prototype.startup_world_persistence .........   Passed   96.89 sec
+
+100% tests passed out of 12
+
+Total Test time (real) = 120.23 sec

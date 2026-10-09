@@ -850,11 +850,18 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.shop_item_stock.emplace(i.identity, i.maintenance);
         state_.item_commerce_read.emplace(i.identity, (i.initial.flags & 1U) != 0);
     }
-    for (const auto &t : p.rules->tasks)
+    for (const auto &t : p.rules->tasks) {
         state_.task_progress.definitions.emplace(
             t.factory.identity,
             ref::DungeonTaskDefinitionProgress{t.factory.kind, t.factory.flags,
                                                t.factory.completions, t.factory.monster});
+        // 原标题b/h.a先调c/n.d按定义序建立静态目录；它们不是已完成任务历史。
+        // 独立世界入口也须接入这份初值，不能等待标题绘制或首次任务生成补齐。
+        if (t.factory.flags & 2U)
+            state_.task_special_selection_list.push_back(t.factory.identity);
+        if (t.factory.flags & 4U)
+            state_.task_replay_order.push_back(t.factory.identity);
+    }
     const auto rewards =
         ref::parse_world_popularity_rewards(p.rules->script_sources.popularity_rewards);
     if (!rewards.rewards)

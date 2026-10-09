@@ -174,9 +174,13 @@ void normal_construction() {
               "construction readiness occurs at original threshold, not advance or delayed extra "
               "tick");
     }
+    // o.g先初始化N20；首次完成拷入m.m并排人气，再把定义N减半为10，尚未月更。
     check(s.scene.world.world.ai.accounting.funds() == funds - 1000 &&
-              s.facility_definitions.at(28).popularity_reward == 1,
-          "construction completion does not charge again and consumes source sharedN minimum");
+              s.facility_definitions.at(28).popularity_reward == 10 &&
+              s.facility_details.at(id).completion_popularity == 20 &&
+              !s.scene.world.popularity_queue.empty() &&
+              s.scene.world.popularity_queue.front() == std::array<int, 3>{25, 20, 1},
+          "first-month construction never recharges and queues real sharedN20 popularity before halving to10");
 }
 void multi_tile_and_rollback() {
     for (const auto orientation :

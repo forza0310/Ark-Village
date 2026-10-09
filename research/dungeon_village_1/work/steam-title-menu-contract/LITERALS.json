@@ -1,0 +1,177 @@
+{
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "strings": [
+    {
+      "va": 286207956,
+      "offset": 17762772,
+      "encoded": 2684374731,
+      "index": 10085,
+      "metadata_offset": 344170,
+      "length": 12,
+      "text": "スタート"
+    },
+    {
+      "va": 286209720,
+      "offset": 17764536,
+      "encoded": 2684374815,
+      "index": 10127,
+      "metadata_offset": 345817,
+      "length": 15,
+      "text": "ハイスコア"
+    },
+    {
+      "va": 286228188,
+      "offset": 17783004,
+      "encoded": 2684375695,
+      "index": 10567,
+      "metadata_offset": 355282,
+      "length": 12,
+      "text": "正式版へ"
+    },
+    {
+      "va": 286208332,
+      "offset": 17763148,
+      "encoded": 2684374749,
+      "index": 10094,
+      "metadata_offset": 344422,
+      "length": 27,
+      "text": "セーブスロット <0>/2"
+    },
+    {
+      "va": 286208712,
+      "offset": 17763528,
+      "encoded": 2684374767,
+      "index": 10103,
+      "metadata_offset": 344769,
+      "length": 27,
+      "text": "セーブデータを読込"
+    },
+    {
+      "va": 286213792,
+      "offset": 17768608,
+      "encoded": 2684375009,
+      "index": 10224,
+      "metadata_offset": 348069,
+      "length": 27,
+      "text": "中断データから再開"
+    },
+    {
+      "va": 286231456,
+      "offset": 17786272,
+      "encoded": 2684375851,
+      "index": 10645,
+      "metadata_offset": 357119,
+      "length": 18,
+      "text": "空きスロット"
+    },
+    {
+      "va": 286213836,
+      "offset": 17768652,
+      "encoded": 2684375011,
+      "index": 10225,
+      "metadata_offset": 348096,
+      "length": 21,
+      "text": "中断データなし"
+    },
+    {
+      "va": 286209384,
+      "offset": 17764200,
+      "encoded": 2684374799,
+      "index": 10119,
+      "metadata_offset": 345467,
+      "length": 36,
+      "text": "データを選択してください"
+    },
+    {
+      "va": 286166240,
+      "offset": 17721056,
+      "encoded": 2684356419,
+      "index": 929,
+      "metadata_offset": 108721,
+      "length": 6,
+      "text": "10,,+2"
+    },
+    {
+      "va": 286173452,
+      "offset": 17728268,
+      "encoded": 2684356747,
+      "index": 1093,
+      "metadata_offset": 111680,
+      "length": 18,
+      "text": "<0>年<1>月<2>週"
+    },
+    {
+      "va": 286244728,
+      "offset": 17799544,
+      "encoded": 2684354635,
+      "index": 37,
+      "metadata_offset": 88580,
+      "length": 1,
+      "text": "\t"
+    },
+    {
+      "va": 286242488,
+      "offset": 17797304,
+      "encoded": 2684376377,
+      "index": 10908,
+      "metadata_offset": 362896,
+      "length": 3,
+      "text": "Ｇ"
+    },
+    {
+      "va": 286216816,
+      "offset": 17771632,
+      "encoded": 2684375153,
+      "index": 10296,
+      "metadata_offset": 349871,
+      "length": 24,
+      "text": "冒険ダンジョン村"
+    },
+    {
+      "va": 286198964,
+      "offset": 17753780,
+      "encoded": 2684368841,
+      "index": 7140,
+      "metadata_offset": 268152,
+      "length": 5,
+      "text": "en-US"
+    },
+    {
+      "va": 286267376,
+      "offset": 17822192,
+      "encoded": 2684355685,
+      "index": 562,
+      "metadata_offset": 102253,
+      "length": 1,
+      "text": "*"
+    },
+    {
+      "va": 286265004,
+      "offset": 17819820,
+      "encoded": 2684371961,
+      "index": 8700,
+      "metadata_offset": 287616,
+      "length": 2,
+      "text": "th"
+    },
+    {
+      "va": 286196208,
+      "offset": 17751024,
+      "encoded": 2684374171,
+      "index": 9805,
+      "metadata_offset": 334717,
+      "length": 3,
+      "text": "☆"
+    },
+    {
+      "va": 286173160,
+      "offset": 17727976,
+      "encoded": 2684362195,
+      "index": 3817,
+      "metadata_offset": 182007,
+      "length": 12,
+      "text": "Lite Version"
+    }
+  ]
+}

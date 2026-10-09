@@ -2,6 +2,8 @@
 
 ## 共同世界建筑合同
 
+2026-10-09首次月更前初值修正：原`c/n.c`在各定义`a()`后调用`a/o.g()`，非kind2的共享N为20、kind2为30；月更已有相同重置，不能因此省掉首次新局赋值。施工完成读取共享N到实例m、排入人气请求，再按原公式减半且至少1。旅店第一次完成应为实例m20、定义N10，依赖零初值所得N1已按[DEX证据](../work/startup-catalogue-audit/DEX_STARTUP.json)纠正。收费和实际人气队列消费时点不变，详见[本批验收](../work/task-pool-delivery/README.md)。
+
 2026-10-05沿既有方案补接唯一Owner的普通建设、详情、住宅与设施升级。
 领域主责为[设施经济](../example/include/dungeon_village_reference/facility_economy.hpp)、
 [住宅完成](../example/include/dungeon_village_reference/world_residence.hpp)；跨域主责为

@@ -1,5 +1,7 @@
 # 新局、到访与建设
 
+2026-10-09补核首次初始化：[具名DEX审计](../work/startup-catalogue-audit/DEX_STARTUP.json)确认标题初始化／新局reset先建立任务目录、重置设施共享人气。`a/m.u`六项、`a/m.x`三十项按原定义序建立；它们不是已完成任务历史。设施`o.N`实际reset值为kind2取30、其余20，不能用Java刚分配时0代替。维护遗漏与当前验收见[初始化交付](../work/task-pool-delivery/README.md)，原标题重复初始化次数与同版动态仍分开。
+
 日期：2026-10-03。优先回应首个可玩切片的七类缺口，集中维护，不另拆七份短报告。
 输入与置信度规则见 [证据索引](../EVIDENCE.md)，发布数据见 [新局数据包](../data/startup/README.md)。
 本页的源码坐标沿用固定 JADX 输出；`UserData.e()`、主场景更新和 UI 巨型方法的整体控制流仍有警告。

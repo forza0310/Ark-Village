@@ -1,0 +1,715 @@
+{
+  "date": "2026-10-09",
+  "qualification": "固定APK原局部静态与维护C++来源；未播放、未构建、未改格式",
+  "sources": [
+    {
+      "purpose": "bgm-wrapper",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 3436,
+      "last": 3446,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "c3f41f0dd4d56de39b1c001e097136fd37b7ce95ca9e941d435e2f9f58aee280"
+    },
+    {
+      "purpose": "ordinary-wrapper",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 3787,
+      "last": 3792,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "e725a4c8b71fe22a0febf23cab2f5f36f7efbdda5d6670029f9ec5c0f008e1d9"
+    },
+    {
+      "purpose": "jingle-wrapper",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 3936,
+      "last": 3940,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "1fb7e37ba17426dac3874fa070aaf0518e89e284d78083fdd84d3f8bbdd20b0f"
+    },
+    {
+      "purpose": "restore-bgm-selector",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 4154,
+      "last": 4161,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "fb29297cc99be942502849bce87abd0cc2ea79e63c8f5c03642cd3caf0d313ba"
+    },
+    {
+      "purpose": "rank-music-and-finish",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 4625,
+      "last": 4641,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "abc57d5f06bc931a5fe837be8ca98c8add6494b67fc393b40ca633bed810f6ce"
+    },
+    {
+      "purpose": "activity-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 4719,
+      "last": 4725,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "c7366a59c09a4204da1b38f5e8e9b60613fbd8ad24e2b0fa2e3f9a4f78ec5a8f"
+    },
+    {
+      "purpose": "human-unlock-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 4878,
+      "last": 4886,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "a9ba5d25e5892c714472be39c8be323a2489583bb349917f4ad7fc2dbd4538a4"
+    },
+    {
+      "purpose": "upgrade-facility-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 5699,
+      "last": 5723,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "fea0bf622ae2002f02c823967967528a089fcc39a8ddec0d05044e7d67d5e94c"
+    },
+    {
+      "purpose": "trade-sound",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 5834,
+      "last": 5843,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "85e200214620ef465d51683feb850be1ff4aa810fd72bd2d54e7301e508a9d66"
+    },
+    {
+      "purpose": "award-order",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 5909,
+      "last": 5949,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "0b65aa5d36330608cbf3f56a0132f2cd8824567909ef4cbe535c7e9f10d3e272"
+    },
+    {
+      "purpose": "trade-reward-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 6086,
+      "last": 6092,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "ad6f822afe63bc4f8aa6ccbdee289d9a3a838e2240469f5c15086ad09132e97a"
+    },
+    {
+      "purpose": "gift-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 6116,
+      "last": 6122,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "3e34320f2be24f0f0a2a09edd4bb363c7794469f2ff2536b98f549d222c8ca2e"
+    },
+    {
+      "purpose": "tax-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 6152,
+      "last": 6158,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "a3c446e5fc98c5f45ef8b859bd634718a20f9a1b72dbfac19a6d4dde64290a1d"
+    },
+    {
+      "purpose": "message-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 11366,
+      "last": 11377,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "0271372b41b02341eb4f0c0cb384c7cbeb348efa6a0d5fbb69b2ce7f7d9b4d65"
+    },
+    {
+      "purpose": "task-success-jingle",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 11921,
+      "last": 11927,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "96594580ae83a55abc259e33e0361b0676d41f68c8992b233a1810f902ffb735"
+    },
+    {
+      "purpose": "gift-render-ordinary",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 6508,
+      "last": 6521,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "7b23a76f2e69a2847c63f3605e05282e235ce8f300c10cb47dfd6f7dc92b6080"
+    },
+    {
+      "purpose": "item-use-render-ordinary",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 7604,
+      "last": 7622,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "b037995a17a9040f445df823d99c4d0fa2245f23f0f1cc942f9d56fb2a4a6d16"
+    },
+    {
+      "purpose": "clear-finish-order",
+      "path": "work/decompiled/sources/b/g.java",
+      "first": 6894,
+      "last": 6904,
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081",
+      "window_lf_sha256": "477a76a06ccf38eaec4fe365294b787ef7605bf80b32de681fdd3491197a3cb9"
+    },
+    {
+      "purpose": "build-road-edit-ordinary",
+      "path": "work/decompiled/sources/b/c.java",
+      "first": 1729,
+      "last": 1891,
+      "bytes": 99895,
+      "sha256": "c6aa0357013ba19f4236631b44fca7e79e10f97693fcbff3d362b509642b7fa0",
+      "window_lf_sha256": "de69b5470ce8a5ac96d481d2de76faa87dee54720c02a6b48df7d1f26147feb9"
+    },
+    {
+      "purpose": "global-delay-ordinary",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 3993,
+      "last": 4010,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "bedd49c1ccd7f5d008c2a5bbfc64077809833e645d181faaaf1ad2d111cbf2ac"
+    },
+    {
+      "purpose": "notice-ordinary",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 4234,
+      "last": 4249,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "645e2ffa2404d691c26422829779c6b67a018b71c44ded478052cc199245a6b7"
+    },
+    {
+      "purpose": "notice-factory",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 1039,
+      "last": 1046,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "ba31649511d9b46db36905b2de55d5f91158f8b5db0a22cd6244bbe931e1ba31"
+    },
+    {
+      "purpose": "notice-factory-default-delay",
+      "path": "work/decompiled/sources/d/a.java",
+      "first": 3452,
+      "last": 3454,
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "window_lf_sha256": "010c58f45316dd9643383dc197e87b7d1c55185a9ff67b9cdf7e28f70cd3815d"
+    },
+    {
+      "purpose": "notice-text-and-delay",
+      "path": "work/decompiled/sources/c/n.java",
+      "first": 95,
+      "last": 96,
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7",
+      "window_lf_sha256": "4536a517d9520d8af4f23fa750abf94feb0e5769a1f7a499a099123e3a000d2b"
+    },
+    {
+      "purpose": "actor-sound-wrapper",
+      "path": "work/decompiled/sources/c/n.java",
+      "first": 806,
+      "last": 810,
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7",
+      "window_lf_sha256": "d65ce6436e02b928d6bb40920c084ffbca6e730bbc92803b40cfe94a55250050"
+    },
+    {
+      "purpose": "actor-contact-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 1228,
+      "last": 1248,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "57d29711ce473463f9db726b265d1a2d61e9432989bb5f17d8d50cea4c2e09f6"
+    },
+    {
+      "purpose": "actor-effect-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 4754,
+      "last": 4779,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "9099e5dfd2154df85b67a6abdf02d478add70e5c432a7e9401469968f96aa983"
+    },
+    {
+      "purpose": "actor-cast-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 4988,
+      "last": 4997,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "4c4b527424c40d68045a7985abaa88141eda48bdd524203d43b41e974d2a97e8"
+    },
+    {
+      "purpose": "actor-death-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 5095,
+      "last": 5106,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "f86f83732f77d600d51450dca6ccf8ad7036ad254ecbb077faff204e1de72167"
+    },
+    {
+      "purpose": "actor-rescue-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 5282,
+      "last": 5295,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "b27318a09077314b693985322edd03a629933cde7ac7960be5a7fbf1ec39a4ae"
+    },
+    {
+      "purpose": "actor-delayed-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 5450,
+      "last": 5469,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "92792395245b692cac59e263261dc5213db60285c0cf58c19b39434e3b86e441"
+    },
+    {
+      "purpose": "actor-pickup-ordinary",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 3989,
+      "last": 3998,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "6f6c8294998b4093fae38994d8909cf6b8fd917efab3fc8b70252657efef17ce"
+    },
+    {
+      "purpose": "task-new-bgm",
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 359,
+      "last": 369,
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_lf_sha256": "a203ecdb239ba293cda94dc15ddc704a39e91d1fcd11ef1aaf934db9b5e8fc07"
+    },
+    {
+      "purpose": "task-abort-bgm",
+      "path": "work/decompiled/sources/c/n.java",
+      "first": 4697,
+      "last": 4711,
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7",
+      "window_lf_sha256": "6aaea9caa99e442fb221a20e854c19c4b39d02911a758bf223e31072463ebe20"
+    },
+    {
+      "purpose": "title-bgm",
+      "path": "work/decompiled/sources/b/h.java",
+      "first": 291,
+      "last": 299,
+      "bytes": 23669,
+      "sha256": "e69e1c6db5504078edcba16f8727b3e4e5946e092c03ba57b54dc90ec90c500e",
+      "window_lf_sha256": "615d16071409537cdf5530059103210877cd05fba3e3d008775301357d9fd2cb"
+    },
+    {
+      "purpose": "world-initialize-bgm",
+      "path": "work/decompiled/sources/b/c.java",
+      "first": 1176,
+      "last": 1185,
+      "bytes": 99895,
+      "sha256": "c6aa0357013ba19f4236631b44fca7e79e10f97693fcbff3d362b509642b7fa0",
+      "window_lf_sha256": "cd097aacc5676cfbeb792a4a3d10fccf60e8503211d7488b2970c4cdb8cbe498"
+    },
+    {
+      "purpose": "pot-render-ordinary",
+      "path": "work/decompiled/sources/c/n.java",
+      "first": 3052,
+      "last": 3064,
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7",
+      "window_lf_sha256": "da006aeb80cdcf73c9fc1c5c59c0099afc7a44c1f039f7284733df1ab27a3169"
+    },
+    {
+      "purpose": "task-low-candidate",
+      "path": "example/src/world_encounters.cpp",
+      "first": 81,
+      "last": 89,
+      "bytes": 6803,
+      "sha256": "fe4ef1e1cd3352738efcd13eeac1e2aecac3750a4f7829ade26e35c0ff3d3261",
+      "window_lf_sha256": "2e1ff394816a1ecb4d832e53afd846d2405e2c2f899f614767e7871d994be405"
+    },
+    {
+      "purpose": "task-path-candidate",
+      "path": "example/src/world_departure.cpp",
+      "first": 794,
+      "last": 805,
+      "bytes": 53516,
+      "sha256": "3419ed3753c2f2bd39a680cd8157a0746341fc6907e279fd6e33abe9db53794a",
+      "window_lf_sha256": "464366993e0071ab259b599689fc3b9390d195a981039e15b378d2724315810f"
+    },
+    {
+      "purpose": "task-direct-daily-candidate",
+      "path": "example/src/world_daily.cpp",
+      "first": 126,
+      "last": 159,
+      "bytes": 19971,
+      "sha256": "2dee6220ee8f4a4791415a44f357eff512523c0fbced6f5d9ed49ab720c30e96",
+      "window_lf_sha256": "4af03b3c3c77948071320dec775d7890c28276f4e8f86bc3fe056fe0167dd4cf"
+    },
+    {
+      "purpose": "task-path-state-case",
+      "path": "example/src/world_daily.cpp",
+      "first": 259,
+      "last": 280,
+      "bytes": 19971,
+      "sha256": "2dee6220ee8f4a4791415a44f357eff512523c0fbced6f5d9ed49ab720c30e96",
+      "window_lf_sha256": "e1f346e4b0eb9890e6dac80f547d8598c9af07e33cc3a27f5cf5e07a2f235d40"
+    },
+    {
+      "purpose": "task-direct-state5-case",
+      "path": "example/src/world_daily.cpp",
+      "first": 280,
+      "last": 303,
+      "bytes": 19971,
+      "sha256": "2dee6220ee8f4a4791415a44f357eff512523c0fbced6f5d9ed49ab720c30e96",
+      "window_lf_sha256": "94925338ac71c014835827421793fbb8c59f3aca1c2340bea059df5272252adc"
+    },
+    {
+      "purpose": "task-direct-state11-case",
+      "path": "example/src/world_daily.cpp",
+      "first": 382,
+      "last": 394,
+      "bytes": 19971,
+      "sha256": "2dee6220ee8f4a4791415a44f357eff512523c0fbced6f5d9ed49ab720c30e96",
+      "window_lf_sha256": "20f1a5fd3368a4c5a62587ae94d47aa0d704ab5abb99ba49c07f6d550c3a0e1d"
+    },
+    {
+      "purpose": "task-bind-instead-of-create",
+      "path": "example/src/ai_perception.cpp",
+      "first": 40,
+      "last": 48,
+      "bytes": 7057,
+      "sha256": "3b97b17cfcf8cec745427c011c789b9ee57286e2ad5d153186f848f8de9d933b",
+      "window_lf_sha256": "ac745912c0f639f0630b29720c3def13a5fe8118964d8fa2331ee14c067500f2"
+    },
+    {
+      "purpose": "task-route-handoff",
+      "path": "example/src/world_actor_routes.cpp",
+      "first": 239,
+      "last": 273,
+      "bytes": 36116,
+      "sha256": "cab7e05449034290a12ee6fee7f989d149c16ffb882a29834d18f380b4f95f06",
+      "window_lf_sha256": "7f4efb4ae83c5566074b13d1cdf14105837f112101c12beef85d396ac703632a"
+    },
+    {
+      "purpose": "award-maintained-order",
+      "path": "example/src/world_award_page.cpp",
+      "first": 135,
+      "last": 173,
+      "bytes": 10101,
+      "sha256": "e9fd8340eb477d537a22ade01603e1a4238c5b8b5b10be41c3e374550e4a070e",
+      "window_lf_sha256": "13409cab54608ad0d97d8da996f776ad1d1a36f17a1539131f5b0edcc7f62d70"
+    },
+    {
+      "purpose": "session-commit",
+      "path": "prototype/src/startup_world_runtime.cpp",
+      "first": 1157,
+      "last": 1171,
+      "bytes": 60397,
+      "sha256": "88c5999f2a69f0be94c8b9c6a988df57f4fe5f8dae8b6ebe9beda1283bebebee",
+      "window_lf_sha256": "67400641b1bc86fa5f35fd908fa9a7695e5ada5fbc123d76cc96e5967ebe1695"
+    },
+    {
+      "purpose": "session-output-swap",
+      "path": "prototype/src/startup_world_runtime.cpp",
+      "first": 993,
+      "last": 998,
+      "bytes": 60397,
+      "sha256": "88c5999f2a69f0be94c8b9c6a988df57f4fe5f8dae8b6ebe9beda1283bebebee",
+      "window_lf_sha256": "0afbbc62c111ca81cd069218d80d91bc03eb5ad72c2200b4f3448bdb66c98ead"
+    },
+    {
+      "purpose": "app-output-forward",
+      "path": "prototype/src/startup_application.cpp",
+      "first": 280,
+      "last": 282,
+      "bytes": 19495,
+      "sha256": "35703658beb3ad47e88191b5e1fcb67ad08b41506118637930b436f033ac94fc",
+      "window_lf_sha256": "9c41ed65e932fd5f3ffc921eb354ef064f517e68ee20d03c4c527fee9bbc16c6"
+    },
+    {
+      "purpose": "cli-output-consumer",
+      "path": "prototype/src/startup_application_main.cpp",
+      "first": 53,
+      "last": 61,
+      "bytes": 12273,
+      "sha256": "2fe7f1f6f2f433bdd6ecb935ab93734dddc7c3bb6703ab34c7c5706c4749f1d2",
+      "window_lf_sha256": "93b59fdeed4e69bd387af10e092520994f6696de0ceaf769dbf1939dce5d496b"
+    },
+    {
+      "purpose": "normal-output-empty-boundary",
+      "path": "prototype/src/startup_world_persistence.cpp",
+      "first": 122,
+      "last": 126,
+      "bytes": 15988,
+      "sha256": "86aa9ef459c2119e4d4aaf4eb4ec009961d9436a301d5a4d9bb3d685f43a10af",
+      "window_lf_sha256": "3b952ca18d2c594039eda721c6cee25b336f0d3f6baf3e3f850bc2d99025b30d"
+    }
+  ],
+  "emitters": [
+    {
+      "path": "prototype/src/startup_application.cpp",
+      "line": 347,
+      "sha256": "35703658beb3ad47e88191b5e1fcb67ad08b41506118637930b436f033ac94fc",
+      "operation": "b",
+      "source_group": "d/a.g restore selector"
+    },
+    {
+      "path": "prototype/src/startup_world_building.cpp",
+      "line": 453,
+      "sha256": "52660e9588f5673ee719c0ec32229d4902f4ce5deee222cf1871092464736f7d",
+      "operation": "c",
+      "source_group": "build"
+    },
+    {
+      "path": "prototype/src/startup_world_building.cpp",
+      "line": 1055,
+      "sha256": "52660e9588f5673ee719c0ec32229d4902f4ce5deee222cf1871092464736f7d",
+      "operation": "d",
+      "source_group": "page81"
+    },
+    {
+      "path": "prototype/src/startup_world_commerce.cpp",
+      "line": 343,
+      "sha256": "c026c4302f6a4ace962b8a05fa988e0951ee6c05f6200b571cf98b251c09a9c1",
+      "operation": "c",
+      "source_group": "trade A[B]"
+    },
+    {
+      "path": "prototype/src/startup_world_commerce.cpp",
+      "line": 409,
+      "sha256": "c026c4302f6a4ace962b8a05fa988e0951ee6c05f6200b571cf98b251c09a9c1",
+      "operation": "d",
+      "source_group": "page93"
+    },
+    {
+      "path": "prototype/src/startup_world_editing.cpp",
+      "line": 175,
+      "sha256": "ef6f82db991efde86d8513faa1add339950617ce26b7eec0321ab11dd356176a",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_editing.cpp",
+      "line": 247,
+      "sha256": "ef6f82db991efde86d8513faa1add339950617ce26b7eec0321ab11dd356176a",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_editing.cpp",
+      "line": 373,
+      "sha256": "ef6f82db991efde86d8513faa1add339950617ce26b7eec0321ab11dd356176a",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_facility_catalog.cpp",
+      "line": 391,
+      "sha256": "64f277405bfc3617ea9ec66a1606162bd75f1a450e060f0cf4fe8519e80d0c8a",
+      "operation": "d",
+      "source_group": "page82"
+    },
+    {
+      "path": "prototype/src/startup_world_presentation.cpp",
+      "line": 109,
+      "sha256": "b771671cd566573cb7020d1072916ab9898ab8c532de05f7d37fafeb9be87ebe",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_deadline.cpp",
+      "line": 275,
+      "sha256": "ff9aaf42663e456793a6cd01c725f9b690409d0489f794ee2fafb33dca9e7b76",
+      "operation": "b",
+      "source_group": "d/a.g restore selector"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_nonactors.cpp",
+      "line": 127,
+      "sha256": "1631dbffb83229e3c67bb9f8526ab026129b574f835b41068f80dce97ec1262d",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 127,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "b",
+      "source_group": "page50/87; restore via d/a.g"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 133,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "b",
+      "source_group": "page50/87; restore via d/a.g"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 235,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "b",
+      "source_group": "page50/87; restore via d/a.g"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 237,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "b",
+      "source_group": "page50/87; restore via d/a.g"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 683,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "d",
+      "source_group": "page59/96/11/30/94/95 jingle; exact page in enclosing source"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 691,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "d",
+      "source_group": "page59/96/11/30/94/95 jingle; exact page in enclosing source"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 699,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "d",
+      "source_group": "page59/96/11/30/94/95 jingle; exact page in enclosing source"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 714,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "d",
+      "source_group": "page59/96/11/30/94/95 jingle; exact page in enclosing source"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_pages.cpp",
+      "line": 765,
+      "sha256": "52628d0ac16ebab25852872e62fda14488d8d60d5254fa2a295ff02d9493c36e",
+      "operation": "d",
+      "source_group": "page59/96/11/30/94/95 jingle; exact page in enclosing source"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_scene.cpp",
+      "line": 30,
+      "sha256": "9f29e5a99641a23aa24989df548d924c49f788fa7ce9d7f339040cb111cb3d83",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_scene.cpp",
+      "line": 296,
+      "sha256": "9f29e5a99641a23aa24989df548d924c49f788fa7ce9d7f339040cb111cb3d83",
+      "operation": "c",
+      "source_group": "ordinary direct or c/n.a screen-qualified"
+    },
+    {
+      "path": "prototype/src/startup_world_runtime_tasks.cpp",
+      "line": 606,
+      "sha256": "1cf3a770c79ee53a53383c13def38d674bf617d4c99865aaa0333fd16d812775",
+      "operation": "b",
+      "source_group": "d/a.g restore selector"
+    },
+    {
+      "path": "prototype/src/startup_world_village_activity.cpp",
+      "line": 464,
+      "sha256": "97ce3e9bbba3bf550547193ae98e830fe1052160a4b8b038a07baca470b28183",
+      "operation": "d",
+      "source_group": "page53"
+    }
+  ],
+  "operation_counts": {
+    "b": 7,
+    "c": 9,
+    "d": 9
+  },
+  "missing_music2": {
+    "current_references": [
+      {
+        "path": "example/src/world_departure.cpp",
+        "line": 782
+      },
+      {
+        "path": "example/src/world_departure.cpp",
+        "line": 800
+      },
+      {
+        "path": "example/src/world_encounters.cpp",
+        "line": 87
+      }
+    ],
+    "original": "c/b.java:365 b(2)",
+    "candidate_routes": [
+      "daily.task_entry",
+      "daily.path"
+    ],
+    "qualification": "两路候选已产出，Owner/队列尚无消费；不在胜利/取消恢复处补发"
+  },
+  "missing_notice24": {
+    "text": "战斗任务开始",
+    "initial_counter": -1,
+    "duration": 80,
+    "script_event": false,
+    "order": "successful creation and quota -> B2 -> append notice24; later eligible notice counter1 -> C11",
+    "duplicate_boundary": "state0 path vs state5/11 direct mutually exclusive per daily call; later actors bind installed task.encounter"
+  },
+  "order_notes": {
+    "rank50": [
+      "restore b(1/2)",
+      "close"
+    ],
+    "award87_user_termination": [
+      "event22",
+      "restore b(1/2)",
+      "close"
+    ],
+    "award87_medals_exhausted": [
+      "restore b(1/2)",
+      "event22",
+      "close"
+    ],
+    "clear_end": [
+      "close",
+      "restore b(1/2)",
+      "event6",
+      "event4_or_5"
+    ]
+  },
+  "known_missing_source_groups": [
+    "title b(0)",
+    "world init g()->b(1/2)",
+    "new task encounter b(2)",
+    "raw76 render c(8)",
+    "magic-pot render c(8)",
+    "platform/UI lifecycle operations"
+  ],
+  "consumers": [
+    "README.md",
+    "../../ui/AUDIO_REQUESTS.md"
+  ],
+  "code_changes": 0,
+  "new_audio_files": 0,
+  "played": 0,
+  "builds": 0
+}

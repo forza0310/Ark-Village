@@ -1,0 +1,490 @@
+{
+  "scope": "Steam固定标题菜单与选档静态合同；无窗口认证",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "method_index_sha256": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42",
+  "windows": [
+    {
+      "key": "drawMiddle",
+      "method": "form.TitleForm::public void _draw(Graphics g) { }",
+      "rva": 2154288,
+      "offset": 2149680,
+      "next_rva": 2165296,
+      "bytes": 8192,
+      "sha256": "0eef8a5eadb3afb02e0a9f41654c19096d6193bf31729abacf1147cceb4932ef"
+    },
+    {
+      "key": "menu",
+      "method": "form.TitleForm::public void _draw(Graphics g) { }",
+      "rva": 2154288,
+      "offset": 2149680,
+      "next_rva": 2165296,
+      "bytes": 6400,
+      "sha256": "b13efce05fe130a776c795d5022baa867a5e22b01d8d9e3de02c22c2c06abdea"
+    },
+    {
+      "key": "drawTail",
+      "method": "form.TitleForm::public void _draw(Graphics g) { }",
+      "rva": 2154288,
+      "offset": 2149680,
+      "next_rva": 2165296,
+      "bytes": 11008,
+      "sha256": "bb2a06f761597ed706c60bb004e1a5501415ad997ada2c738c705715919b1752"
+    },
+    {
+      "key": "drawEnd",
+      "method": "form.TitleForm::public void _draw(Graphics g) { }",
+      "rva": 2154288,
+      "offset": 2149680,
+      "next_rva": 2165296,
+      "bytes": 11008,
+      "sha256": "bb2a06f761597ed706c60bb004e1a5501415ad997ada2c738c705715919b1752"
+    },
+    {
+      "key": "updateMenu",
+      "method": "form.TitleForm::public override bool Update() { }",
+      "rva": 2146864,
+      "offset": 2142256,
+      "next_rva": 2151888,
+      "bytes": 2800,
+      "sha256": "588f3f3d9df2f5744892fa0905ef7e8716787f159685da2bdea76e8988119b82"
+    },
+    {
+      "key": "updateTail",
+      "method": "form.TitleForm::public override bool Update() { }",
+      "rva": 2146864,
+      "offset": 2142256,
+      "next_rva": 2151888,
+      "bytes": 5024,
+      "sha256": "671e541010fb8cb6a64d92490c8aa9884314803569aa1c4e19967ffcb9aa1dcc"
+    },
+    {
+      "key": "updateNav",
+      "method": "form.TitleForm::public override bool Update() { }",
+      "rva": 2146864,
+      "offset": 2142256,
+      "next_rva": 2151888,
+      "bytes": 1800,
+      "sha256": "3cb70a669653492aada0ccc941be6d3c2aa1f5d46f6688383c212719961bc642"
+    },
+    {
+      "key": "change",
+      "method": "form.TitleForm::private void ChangeState(int state) { }",
+      "rva": 2138816,
+      "offset": 2134208,
+      "next_rva": 2139040,
+      "bytes": 224,
+      "sha256": "6638f687f01262c9ec7b592203afabd1786f53560cb20a52208c5f9e49e240af"
+    },
+    {
+      "key": "continueGame",
+      "method": "form.TitleForm::private void ContinueGame() { }",
+      "rva": 2139040,
+      "offset": 2134432,
+      "next_rva": 2139712,
+      "bytes": 672,
+      "sha256": "563e3bc705b9ab94bd30f28d503838d20d75e58b8fb705130924886fde524626"
+    },
+    {
+      "key": "newGame",
+      "method": "form.TitleForm::private void NewGame() { }",
+      "rva": 2144480,
+      "offset": 2139872,
+      "next_rva": 2144592,
+      "bytes": 112,
+      "sha256": "910da13bb66801d059a5eb644189323097a26768ac973afd641f448a6acc8395"
+    },
+    {
+      "key": "touchValue",
+      "method": "form.TitleForm::public override void SetTouchValue(int type, int value) { }",
+      "rva": 2145712,
+      "offset": 2141104,
+      "next_rva": 2145792,
+      "bytes": 80,
+      "sha256": "a0e54c30a0330d1d425ad0b9a251bf4b43e7355718e26e8c547dd4388dae706e"
+    },
+    {
+      "key": "touchEvent",
+      "method": "form.TitleForm::public override bool OnTouchEvent(TouchEvent e) { }",
+      "rva": 2144592,
+      "offset": 2139984,
+      "next_rva": 2145456,
+      "bytes": 864,
+      "sha256": "ecf67f12e0b05dcab7f5a84ad6ba58912c965486dbf17c311fe9976eabaaabb1"
+    },
+    {
+      "key": "back",
+      "method": "form.TitleForm::public override bool ProcessBackKey() { }",
+      "rva": 2145456,
+      "offset": 2140848,
+      "next_rva": 2145552,
+      "bytes": 96,
+      "sha256": "b09bb7a96b33d95b88f3393b9d67c3eb125455989015990cf74927b1a8361010"
+    },
+    {
+      "key": "menuTouch",
+      "method": "surface.GameView::internal void OnTouchTitleMenu(int type, int v, TouchEvent e) { }",
+      "rva": 2348496,
+      "offset": 2343888,
+      "next_rva": 2348656,
+      "bytes": 160,
+      "sha256": "57525745b7540c12d746d8c9358718ad0534a2c110005cf67e86ac720f4a90fb"
+    },
+    {
+      "key": "addRect",
+      "method": "surface.GameView::public static TouchComponent AddTouch(Graphics g, int id, int x, int y, int w, int h, int value) { }",
+      "rva": 2334240,
+      "offset": 2329632,
+      "next_rva": 2334352,
+      "bytes": 112,
+      "sha256": "68f8cbdf9a0e078e3fbd20a7a028599a506a999a21211fbde01f58bf2fd981f6"
+    },
+    {
+      "key": "viewEvent",
+      "method": "surface.GameView::protected override void OnTouchEvent(TouchEvent e) { }",
+      "rva": 2344992,
+      "offset": 2340384,
+      "next_rva": 2346768,
+      "bytes": 1776,
+      "sha256": "8f3627f3d5e4dbe270038947cae3c241540771ed31b580eb671fb02be7339b87"
+    },
+    {
+      "key": "touchSelect",
+      "method": "surface.GameView::internal void OnTouchDlgSel(int type, int v, TouchEvent e) { }",
+      "rva": 2344752,
+      "offset": 2340144,
+      "next_rva": 2344992,
+      "bytes": 240,
+      "sha256": "78d3f5369d01745251b719ea618bf631291bff00aeb0a9821022a0d3de2edefa"
+    },
+    {
+      "key": "surfaceAdd",
+      "method": "kairo.unity.surface.SurfaceBase::public TouchComponent AddTouchComponent(int id, int x, int y, int width, int height, int value, TouchOption option) { }",
+      "rva": 8958576,
+      "offset": 8953968,
+      "next_rva": 8959888,
+      "bytes": 1312,
+      "sha256": "d3578ce9ad5ce7c3a6a20625288c373b5be8adfa287412bd9eca39b9c7c21ad9"
+    },
+    {
+      "key": "checkFlag",
+      "method": "kairo.unity.surface.TouchComponent::public bool Check(int bit) { }",
+      "rva": 9002224,
+      "offset": 8997616,
+      "next_rva": 9002256,
+      "bytes": 32,
+      "sha256": "026540c4ad6343380ddd107f5b430df2e8a2bd46288568f30d729a8f7352dc71"
+    },
+    {
+      "key": "setValue",
+      "method": "surface.GameView::internal void Set(int value, TouchComponent c) { }",
+      "rva": 2350400,
+      "offset": 2345792,
+      "next_rva": 2350560,
+      "bytes": 160,
+      "sha256": "c1cb1d4867d9e617a8b27ff4751f088f0341d4bd149ccc3fcdc95496ee3d3df2"
+    },
+    {
+      "key": "setAccessor",
+      "method": "surface.GameView::internal void Set(TouchValueAccessor va, int type, int value, TouchComponent c) { }",
+      "rva": 2350688,
+      "offset": 2346080,
+      "next_rva": 2351056,
+      "bytes": 368,
+      "sha256": "dd68a94faa9189cf6124e501ebb76446938fdc4d100662d1411982a4f91b53d8"
+    },
+    {
+      "key": "drawGate",
+      "method": "form.TitleForm::public void _draw(Graphics g) { }",
+      "rva": 2154288,
+      "offset": 2149680,
+      "next_rva": 2165296,
+      "bytes": 4100,
+      "sha256": "e8b88a529603b37dd8ea28ba61d9b3be253f3ea256a80d784947cd5a342d1638"
+    },
+    {
+      "key": "init",
+      "method": "form.TitleForm::public override bool Init() { }",
+      "rva": 2141680,
+      "offset": 2137072,
+      "next_rva": 2143616,
+      "bytes": 1936,
+      "sha256": "69239673ec7a565173765bd881c144b978a3b4eb2dade3eb1c13695c180f653e"
+    },
+    {
+      "key": "staticInit",
+      "method": "form.TitleForm::private static void .cctor() { }",
+      "rva": 2152944,
+      "offset": 2148336,
+      "next_rva": 2153936,
+      "bytes": 992,
+      "sha256": "8d0a8a4ce43512c7ea8f5fc0a9c1294e17e56deb914d1c82a8e843c8d408e170"
+    }
+  ],
+  "unique_methods": 18,
+  "unique_method_bytes": 25168,
+  "overlap_note": "同一方法多次前缀只计最长一次；范围可含对齐或跳表，不等于业务指令字节。",
+  "touch_dispatch": {
+    "va": 270782112,
+    "bytes": 100,
+    "sha256": "a44e700a06b73b03c4d33b02d56417001a1f3f88ac7f65b6fe79e0cda19c73fe",
+    "targets": [
+      {
+        "id": 0,
+        "va": 270780736
+      },
+      {
+        "id": 1,
+        "va": 270781630
+      },
+      {
+        "id": 2,
+        "va": 270780877
+      },
+      {
+        "id": 3,
+        "va": 270780994
+      },
+      {
+        "id": 4,
+        "va": 270781147
+      },
+      {
+        "id": 5,
+        "va": 270781172
+      },
+      {
+        "id": 6,
+        "va": 270781197
+      },
+      {
+        "id": 7,
+        "va": 270781424
+      },
+      {
+        "id": 8,
+        "va": 270781530
+      },
+      {
+        "id": 9,
+        "va": 270780877
+      },
+      {
+        "id": 10,
+        "va": 270780994
+      },
+      {
+        "id": 11,
+        "va": 270780994
+      },
+      {
+        "id": 12,
+        "va": 270781580
+      },
+      {
+        "id": 13,
+        "va": 270781555
+      },
+      {
+        "id": 14,
+        "va": 270781580
+      },
+      {
+        "id": 15,
+        "va": 270781580
+      },
+      {
+        "id": 16,
+        "va": 270781605
+      },
+      {
+        "id": 17,
+        "va": 270780987
+      },
+      {
+        "id": 18,
+        "va": 270781630
+      },
+      {
+        "id": 19,
+        "va": 270781899
+      },
+      {
+        "id": 20,
+        "va": 270781147
+      },
+      {
+        "id": 21,
+        "va": 270781147
+      },
+      {
+        "id": 22,
+        "va": 270781977
+      },
+      {
+        "id": 23,
+        "va": 270780987
+      },
+      {
+        "id": 24,
+        "va": 270782011
+      }
+    ]
+  },
+  "shared_stub": {
+    "va": 270309200,
+    "bytes": 3,
+    "hex": "c20000",
+    "instruction": "ret 0",
+    "sha256": "b6cbececf1b07e74f37d57710c68c31f0b92cb08d51093252b321b07542e177b"
+  },
+  "reused_input": {
+    "path": "../steam-input-closure/disassembly.json",
+    "sha256": "230701bd97189df0640a1b4eb70c6eaeffbf593d4e460a46d7da9a068f76e7ef",
+    "method": {
+      "rva": 2351120,
+      "offset": 2346512,
+      "va": 270786576,
+      "type": "surface.GameView",
+      "signature": "internal TouchComponent _addTouch(Graphics g, int id, int x, int y, int w, int h, int value, TouchOption opt) { }"
+    },
+    "bytes": 6752,
+    "sha256_method": "ae765bcb5cc4001b96e6fdd3591abd495126e5f3b7ea63a3913664c105d0a478",
+    "consumed_anchors": [
+      "0x1023E0A8",
+      "0x1023EA26",
+      "0x1023F1F0",
+      "0x1023F45E",
+      "0x1023F5CC"
+    ],
+    "note": "复用既有注册原点、id分流及空option消费；不复制旧指令文件。"
+  },
+  "image_reference": {
+    "note": "复用已核资源清单与目录证据，本工具不重新解密资源归档；177为saveload.gif逻辑目录名，实际成员为PNG。",
+    "evidence_sha256": "84255ab00026ce5a676ec6556b47d5d378705ab24a06a7bb227103dc89cdbce4",
+    "coverage_sha256": "06a4df6926db6a4c5ead409dc308b6095851951acedb738fb67b02afc9789584",
+    "directory_sha256": "4ff0561ca9c481085d4469cc672cf8b34a8bc1209ac03060e40a51d417cd25ac",
+    "images": [
+      {
+        "id": "APK:assets/common.dat:saveload.png",
+        "entry": "saveload.png",
+        "bytes": 915,
+        "sha256": "5d35f081a1a5e3402f438b483a2b4cd6b17b65835cc80e3603dae8faa755eb63",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "1068edc9fab51569abe33ab9763ff2dfe151dd4331845385b4628b0a4bb3f67c"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:saveload.png",
+        "entry": "saveload.png",
+        "bytes": 915,
+        "sha256": "5d35f081a1a5e3402f438b483a2b4cd6b17b65835cc80e3603dae8faa755eb63",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "1068edc9fab51569abe33ab9763ff2dfe151dd4331845385b4628b0a4bb3f67c"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:de/saveload.png",
+        "entry": "de/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:es/saveload.png",
+        "entry": "es/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:fr/saveload.png",
+        "entry": "fr/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:hi/saveload.png",
+        "entry": "hi/saveload.png",
+        "bytes": 1846,
+        "sha256": "154a164bab624b680e3ffc5b7ad45aac54971dd95794a117f6f5fa2f070b16c7",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "ebf742c82e24713958f68ef9f5b2515c21a557557d478d9cd11114d112df8e4c"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:it/saveload.png",
+        "entry": "it/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:pt/saveload.png",
+        "entry": "pt/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:ru/saveload.png",
+        "entry": "ru/saveload.png",
+        "bytes": 1829,
+        "sha256": "f4945d85425c5782844f0788d96ab4882d717fa1082506d4e87bced5bdbae08b",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "51e394eb66b509bf0a285b72829caca5b3d7277321d8004a2e7e46480d76797b"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:tr/saveload.png",
+        "entry": "tr/saveload.png",
+        "bytes": 1815,
+        "sha256": "303d1ed9aa65d0e6d2cb83faf86cc5a966448fc85bbeb42b4e6e27032a72f908",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "295caab79a7c8b16261489c923f4a4aa9454d43839ac9a59ece2b3b0cb2a349f"
+      },
+      {
+        "id": "EXE:resources.assets:1148:common:zh-CN/saveload.png",
+        "entry": "zh-CN/saveload.png",
+        "bytes": 1970,
+        "sha256": "50813a3e79bbfbef20314fd4544ca514777ad714dd31c7aa8c51561dbb37789a",
+        "width": 64,
+        "height": 64,
+        "rgba_sha256": "7d9c10f5ee62182f7ae79f741974fcf1115537368a2924a78cc5c066eb28ca0b"
+      }
+    ]
+  },
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 5026,
+      "sha256": "5fcaad1725c03e55f5f9509590b42bd239a52a85837b5ff6c97997fe6be78ffa"
+    },
+    {
+      "path": "literals.cjs",
+      "bytes": 2014,
+      "sha256": "da7d02bb2bd0dcfb1482129990cee202ae35259082deac5ee6966d67f85a0c14"
+    },
+    {
+      "path": "icon-data.cjs",
+      "bytes": 3725,
+      "sha256": "a83b55d6e8fe05a19fac3b6773e2e92421d9e4844699bcd90280d08333f11787"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 4402,
+      "sha256": "f1b9bd0842bfe09c5b14d18f8e1693f2f2c57cb6bcc6c4ca0deb9e0b5190202b"
+    }
+  ]
+}

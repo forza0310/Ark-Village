@@ -1,0 +1,20 @@
+{
+  "checks": [
+    "syntax",
+    "source_decode_png_rgba_seb",
+    "repeat_created_zero",
+    "check_readonly",
+    "preflight_conflict_no_partial_write",
+    "missing_rejected",
+    "sync_failure_created_tree_retired",
+    "38_manifest_paths_and_hashes",
+    "761_apk_original_hashes",
+    "no_unregistered_files"
+  ],
+  "manifest_sha256": "9df2cb371e049f59cd38611d448dac9f86f449ddd2d827cf4cc9931a5606a1e1",
+  "published_files": 19,
+  "published_bytes": 335725,
+  "aliases": 21,
+  "new_payload_files": 17,
+  "probe_retired": true
+}

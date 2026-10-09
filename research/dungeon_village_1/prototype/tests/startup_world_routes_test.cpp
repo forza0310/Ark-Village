@@ -52,11 +52,14 @@ void catalogue() {
           "full original script row counts preserved");
     check(ref::world_popularity_script_catalog(*catalog.catalog, *rewards.rewards).has_value(),
           "raw sources register real continuation programs");
-    check(rules.facility_initial.size() == 85 && rules.facility_initial.at(24).shared_n == 0 &&
+    // 固定DEX c/n.c pc336调o.g；后者pc21写20、pc28仅对kind2写30。
+    check(rules.facility_initial.size() == 85 && rules.facility_initial.at(24).shared_n == 20 &&
+              rules.facility_initial.at(28).shared_n == 20 &&
+              rules.facility_initial.at(66).shared_n == 30 &&
               rules.facility_initial.at(24).construction_limit == 1 &&
               rules.facility_initial.at(28).construction_limit == 280 &&
               rules.facility_initial.at(0).construction_limit == 0,
-          "original sharedN and construction guard not generic defaults");
+          "actual reset sharedN20/30 and construction guards follow source initialization, not allocation zeros");
 }
 void routing() {
     auto p = installed();

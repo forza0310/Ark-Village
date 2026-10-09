@@ -4,6 +4,8 @@
 
 可复算[脚本](../work/steam-startup-resource-map/audit.py)与[机器证据](../work/steam-startup-resource-map/EVIDENCE.json)保留容器／对象／条目身份、字节及解码RGBA SHA-256、目录原行、字体表范围和校验和。来源是[全图像清单](../assets/IMAGE_COVERAGE.md)，这次只深化启动专题，不改变全量分母或素材发布范围。
 
+后继已交付[Steam启动正式素材](../assets/steam-startup/README.md)：38逻辑项以21个同字节别名复用APK发布副本，另发布17个差异文件；原761包分母不变。标题upper、两Logo和十种saveload路径具备可核文件，PNG／SEB／目录均登记；这批不发布未核字体，也不代表完整Steam皮肤或运行时语言选择已经认证。
+
 ## 图块身份
 
 三组均为`KairoGames_Data/resources.assets`的TextAsset：title pathID1138、event pathID1140、common pathID1148。容器SHA-256为`75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b`。ID不是渲染层ID，归档中图片槽必须另看img.inf。

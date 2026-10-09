@@ -150,10 +150,10 @@ struct StartupWorldRuntimeState {
     int task_sequence{};                          // static c/k.m，新局0。
     std::uint64_t next_facility_identity{1};      // 维护ID，首次跳过已装入8实例后递增。
     std::uint64_t next_task_identity{1};          // 与原task_sequence/rawID分开。
-    std::vector<int> task_replay_order;           // a/m.x，新局空。
+    std::vector<int> task_replay_order;           // a/m.x，标题初始化按原序加入flags4定义。
     int task_special_selection{};                 // a/m.v，新局0。
     int task_special_selection_index{};           // a/m.w，新局0。
-    std::vector<int> task_special_selection_list; // a/m.u，新局空。
+    std::vector<int> task_special_selection_list; // a/m.u，标题初始化按原序加入flags2定义。
     int fence_level{};                            // static n.o，J明确写0。
     std::vector<int> base_variants;               // 原h.i读入数组，不能用显示variant补造。
     std::optional<std::uint64_t> active_task;

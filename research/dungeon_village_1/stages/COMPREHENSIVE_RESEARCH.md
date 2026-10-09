@@ -27,6 +27,8 @@
 
 ### 当前连续队列
 
+最新主动路径已认证[7300跨首次任务成果／10000](../work/active-application-route/README.md)：自然任务成功1、村办2，仍0星／升级0。下一从10000接续自然升级与首星。二星[来源方案](../work/active-second-star-plan/README.md)澄清kind3／9设施计数与kind12住宅分开、真实赠礼报价；目前只是策略设计，不伪称新Controller交接或自然二星已完成。
+
 2026-10-10[主动应用首批](../work/application-active-delivery/README.md)已交付独立Driver和420／2000轮跨进程证书，具名命令0–14、真实页面生命周期、完整输出与资源检查通过。当前`active-application-v1/frame2000.avra`是下一主动路径入口，0星／未达terminal；被动`natural-application-economy-v1/month12`只用于日期成本路线。后继先管理链至首星／活动16营业，再二星，不重新跑无关早期前缀。
 
 2026-10-10[应用管理接线](../work/application-management-frame-delivery/README.md)已补17项真实Session命令，无新增持久字段；[主动路线计划](../work/active-progression-plan/README.md)明确优先首星短前缀→第二星／住宅／壶，再首BOSS与高星。主动世界420→440三路一致，应用被动12月另已认证，两个Driver不能互换。Steam四窗框helper维护桥已验，实际后端／字体仍独立待证。

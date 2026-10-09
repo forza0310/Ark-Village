@@ -282,6 +282,9 @@ Intent plan(const StartupApplication &app, const Driver &d) {
     case 48: return Intent::rank;
     case 87: return s.medal_count > 0 ? Intent::award : Intent::wait;
     case 83: return Intent::leave;
+    // 已核任务成果：30确认快进/分阶段，31初始化统计再关闭，32只关闭摘要。
+    // 奖励在真实收尾已提交；调用既有Owner确认，不能再次结算或直接退休页面。
+    case 30: case 31: case 32: return Intent::acknowledge;
     case 11: case 49: case 50: case 59: case 67: case 88: case 89: case 94: case 95: case 96:
         return Intent::acknowledge;
     default: throw std::runtime_error("active unknown raw=" + std::to_string(p->legacy_page) + " page=" + std::to_string(p->id));

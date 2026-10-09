@@ -23,3 +23,5 @@ trace每行记录`frame/next_frame/next_command`、完整`commands`五整数数�
 集中套件重跑修正：Driver检查使用规范测试父目录下独占时间戳子目录，成功仅清理本轮树，失败打印并保留准确路径。不会删除旧固定`active-driver-contract`或任何先前失败目录；新增53条件链只使用这一次Owner内存，没有第二套固定输出目录。此项修复测试工作区生命周期，不改变业务断言。
 
 summary前缀`application-active-summary`，记录controller、capture_frame/capture_rank、完成轮/下一命令、rank/months/date、digest、sound_count/hash、random、资源与峰值、phase/terminal、任务/活动/升级计数及保存恢复耗时。跨进程runner独立验证420捕获、reference继续440和双恢复同尾段；本文件记录方案，不预报验证结果。原世界Driver和历史黄金不修改。
+
+2026-10-10后继从已认证2000轮继续时，在7348轮／自然4月遇到实际任务成果raw30，按未知页边界停止，原失败现场保留。复核[任务报告合同](../../ui/TASK_REPORT_RENDER.md#2-任务完成raw30两阶段胜利页)与Owner的30／31／32具名消费者后，补这三页的确认策略：30早确认到40、阶段0转1、阶段1关闭；31初始化统计后关闭；32关闭既有摘要。奖励在任务收尾已提交，不借确认重复发奖，不使用任意raw页兜底。沿旧自然世界策略的实际成果确认，不改之前420／2000已发生的命令、Driver布局、世界或应用语义；新段须重新认证并登记本次producer。

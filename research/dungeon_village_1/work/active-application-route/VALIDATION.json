@@ -1,0 +1,119 @@
+{
+  "baseline": "e19b97b",
+  "files": [
+    {
+      "path": "prototype/tests/startup_application_active_replay.cpp",
+      "bytes": 50465,
+      "sha256": "dfc827f00657b5ba9dbacb57314263ca9c983cdb21d959579aa0f29d1a0a4153",
+      "lf_sha256": "dfc827f00657b5ba9dbacb57314263ca9c983cdb21d959579aa0f29d1a0a4153"
+    },
+    {
+      "path": "rules/PROGRESSION_ROUTES.md",
+      "bytes": 15244,
+      "sha256": "c09192a3c7338d44fa3a57a3616b8aaabb283d9bb15846a606354617d8d7e556",
+      "lf_sha256": "c09192a3c7338d44fa3a57a3616b8aaabb283d9bb15846a606354617d8d7e556"
+    },
+    {
+      "path": "stages/README.md",
+      "bytes": 21173,
+      "sha256": "8a1124385452a35b82f6321f5c05f9596039158e672d74959b06c09a94c187bc",
+      "lf_sha256": "8a1124385452a35b82f6321f5c05f9596039158e672d74959b06c09a94c187bc"
+    },
+    {
+      "path": "stages/COMPREHENSIVE_RESEARCH.md",
+      "bytes": 16840,
+      "sha256": "bc9d9d286d0fd517ad758cfad170365575adcede4180a51388b019b25becf490",
+      "lf_sha256": "bc9d9d286d0fd517ad758cfad170365575adcede4180a51388b019b25becf490"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 65984,
+      "sha256": "c1d11242063dbd8842ccc20232e069da218f872e0ba97828ef7eb37996cb6a03",
+      "lf_sha256": "c1d11242063dbd8842ccc20232e069da218f872e0ba97828ef7eb37996cb6a03"
+    },
+    {
+      "path": "work/active-progression-plan/ACTIVE_DRIVER.md",
+      "bytes": 6139,
+      "sha256": "cb49526244ab6d33385f9c047336963467415fa78eaf184579c39538c1ba3d8a",
+      "lf_sha256": "cb49526244ab6d33385f9c047336963467415fa78eaf184579c39538c1ba3d8a"
+    },
+    {
+      "path": "work/active-second-star-plan/README.md",
+      "bytes": 12639,
+      "sha256": "f2e9e999f60e6c5ad2af88849d08d758aa5e4412e0cc4617fce85cbbe95af31b",
+      "lf_sha256": "f2e9e999f60e6c5ad2af88849d08d758aa5e4412e0cc4617fce85cbbe95af31b"
+    },
+    {
+      "path": "work/active-second-star-plan/EVIDENCE.json",
+      "bytes": 2645,
+      "sha256": "639c7097fa496b6ec2325f9fc800fa8a32a69ce6c8e053a00c939aaab34a9ba2",
+      "lf_sha256": "eec94b19771146c7b04a32f3008c66dbce0190d820e130d9e3f229d16236c739"
+    },
+    {
+      "path": "work/active-application-route/README.md",
+      "bytes": 2552,
+      "sha256": "419b15b0f6784dfc0536111122947de9a80d9090903cc4deccbbe4a14bca171d",
+      "lf_sha256": "419b15b0f6784dfc0536111122947de9a80d9090903cc4deccbbe4a14bca171d"
+    },
+    {
+      "path": "work/active-application-route/audit.py",
+      "bytes": 3631,
+      "sha256": "943adc5d5effd45c49e15f3d2093ce25074da9d2b719425bae23fc67f69a250c",
+      "lf_sha256": "943adc5d5effd45c49e15f3d2093ce25074da9d2b719425bae23fc67f69a250c"
+    },
+    {
+      "path": "work/active-application-route/build-task-results.log",
+      "bytes": 554,
+      "sha256": "122ea9ff514879c91095a6829fceff382cce163e1ff931c5bb795c9466188548",
+      "lf_sha256": "63c1a0e440a2cd342d96061e1066cbf79a3f3b167e3dcf16f1bdfaa286fc4d01"
+    },
+    {
+      "path": "work/active-application-route/frame10000.log",
+      "bytes": 2614,
+      "sha256": "c0b9ed3893a264a57f616f386a922d851e736f1cdb3d926bb369927a48d0477d",
+      "lf_sha256": "37a3b5e6205c0bc93e99b86c57c17c2ccabf5a82694385abed51dbc46e23e298"
+    },
+    {
+      "path": "work/active-application-route/frame7300.log",
+      "bytes": 10564,
+      "sha256": "7893e69501ae91c379069bdd7082b690d08df4e64844bc785728d8bb5a6fee36",
+      "lf_sha256": "8a0d87ad38955989d8f7f6d00da53a29f72973914f20e514a9321ab768cc6841"
+    },
+    {
+      "path": "work/active-application-route/frame10000-retry.log",
+      "bytes": 10296,
+      "sha256": "e6bdc778972aebd9ec12ed9a8ca32aed7397e1b43f33ddf924bfa2b6137ba591",
+      "lf_sha256": "bb1405c0fdc54745676e9cafe870b3289f74f1576fca5dd916624f7334476f6d"
+    },
+    {
+      "path": "work/active-application-route/FRAME7300.json",
+      "bytes": 3066,
+      "sha256": "b863c573e391aeb285d3b861e8e1dd6451da374a8615025ebc63aff20f31b4c1",
+      "lf_sha256": "b863c573e391aeb285d3b861e8e1dd6451da374a8615025ebc63aff20f31b4c1"
+    },
+    {
+      "path": "work/active-application-route/FRAME10000.json",
+      "bytes": 3070,
+      "sha256": "4542bdd2e806322e0f685669028d965bbd74ecd4a0b74f35da81e70e1b7904f8",
+      "lf_sha256": "4542bdd2e806322e0f685669028d965bbd74ecd4a0b74f35da81e70e1b7904f8"
+    },
+    {
+      "path": "work/active-application-route/application-active-Yrygn6/process-0.log",
+      "bytes": 289,
+      "sha256": "b8d2600a5733f7e74670773cc56cabf15c261190a68523da818f6d741db0d671",
+      "lf_sha256": "030f91ef608eb824000fb30a4dd6ffd87b2d259d673bad6237f3cddc6ffb7e81"
+    }
+  ],
+  "links": 265,
+  "world_semantics": 4,
+  "application_semantics": 7,
+  "schema_changed": false,
+  "new_assets": 0,
+  "background_processes": 0,
+  "limits": [
+    "自然首星/BOSS/二星未完成",
+    "二星Controller交接仅方案未实现",
+    "合法历史增长不删除，128MiB预算不放宽",
+    "departed回执不等同所有自动出发次数"
+  ]
+}

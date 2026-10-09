@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+原窗口后继任务：[建设列表／空行／选择／详情／旋转预览](../work/window-restore-observation/NEXT_BUILD_LIST_INPUT_PROMPT.md)，只做目录和未落地预览，不执行建设／移动／撤除。已输出提示词，尚无本次窗口反馈，不将静态合同当作动态结果。
+
 2026-10-10[Steam建设目录业务](STEAM_BUILD_LIST_BUSINESS.md)补Init／Update、空行／滚动、标记确认、资金预检及BUILD交接。目录确认不扣钱；撤除／移动只切模式，不在该分支重写建筑ID／朝向。原绘制先于frame3输入门槛，最终OS投递与完整父栈退休仍未认证。
 
 2026-10-10[Steam建设差异素材](../assets/steam-build-common/README.md)独立发布图片98／103，新增1,213字节、两份SEB引用既有同字节副本。[资源安装／旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)已追`resMapChip→image`、Dispose／Load／清引用及flags32软标签；46项同时具建设与旋转标志的定义两向裁片有效，不等于它们都已解锁。

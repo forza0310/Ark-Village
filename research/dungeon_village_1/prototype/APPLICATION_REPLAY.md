@@ -1,5 +1,7 @@
 # 完整应用研究回放
 
+2026-10-10新增[主动管理Driver](tests/APPLICATION_PROCESS.md)与严格独立证书，当前420／2000轮20尾段双恢复通过；被动日期Driver保持各自身份。双方只复用容器／子进程基础设施，世界4／应用7布局不变。主动新页生命周期与业务目标见[交付](../work/application-active-delivery/README.md)，短停止边界不等于首星已完成。
+
 2026-10-09。当前使用`AVRAPP01`格式1／应用语义7／轮末边界1，内嵌系统版本2与世界语义4。邻接到达价格缓存修正会影响后续收入，旧应用1–6及旧世界1–3不迁移；历史文件与证书保持原字节。新验收见[收费缓存交付](../work/facility-arrival-cache-delivery/README.md)。此前[应用6集中交付](../work/title-menu-application-delivery/README.md)的103.30秒检查及12月快照仅保历史资格，不等于完整Steam窗口／调度。
 
 模块沿[应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及[已确认的完整目录设计](../work/title-menu-application-design/README.md)。它是维护专用回放，不是APK／Steam原档兼容，也不扩大正常玩家存档的页面范围。存储事务另见[应用存储](APPLICATION_STORAGE.md)，应用行为见[标题与跨局纪录](STARTUP_APPLICATION.md)。

@@ -13,7 +13,7 @@ for (let i = 0; i < args.length; i += 2) {
     if (i + 1 === args.length || options.has(args[i]) ||
         !['--exe', '--work-dir', '--save-at', '--stop-at', '--producer-revision',
             '--snapshot-file', '--save-every', '--save-directory', '--scenario', '--load-prefix',
-            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe', '--title-exe', '--natural-application-exe',
+            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe', '--title-exe', '--natural-application-exe', '--active-application-exe',
             '--application-snapshot-directory', '--natural-application-snapshot-file'].includes(args[i]))
         throw new Error('需要 --exe <程序> --work-dir <研究工作目录> [--save-at 420 --stop-at 840]');
     options.set(args[i], args[i + 1]);
@@ -25,6 +25,7 @@ const presentationExecutable = options.has('--presentation-exe') ? path.resolve(
 const applicationExecutable = options.has('--application-exe') ? path.resolve(options.get('--application-exe')) : undefined;
 const titleExecutable = options.has('--title-exe') ? path.resolve(options.get('--title-exe')) : undefined;
 const naturalApplicationExecutable = options.has('--natural-application-exe') ? path.resolve(options.get('--natural-application-exe')) : undefined;
+const activeApplicationExecutable = options.has('--active-application-exe') ? path.resolve(options.get('--active-application-exe')) : undefined;
 if (options.has('--natural-application-snapshot-file') && !naturalApplicationExecutable)
     throw new Error('自然应用认证输出需要--natural-application-exe');
 if (options.has('--application-snapshot-directory') && !applicationExecutable)
@@ -510,6 +511,14 @@ try {
             snapshotFile: options.get('--natural-application-snapshot-file'),
         });
     }
+    let activeApplicationCertificate;
+    if (activeApplicationExecutable) {
+        const {verifyActiveApplication} = await import('./application_active_process.mjs');
+        activeApplicationCertificate = await verifyActiveApplication({
+            exe: activeApplicationExecutable, workDir: owned, producerRevision: producer,
+            saveAt: 420, tailFrames: 20, frameLimit: 2000, timeoutSeconds: 120,
+        });
+    }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
         const relative = path.relative(researchRoot, destination);
@@ -525,6 +534,7 @@ try {
         ...(titleCertificate ? { title_presentation_replay: titleCertificate } : {}),
         ...(titleMenuCertificate ? { title_menu_file_replay: titleMenuCertificate } : {}),
         ...(naturalApplicationCertificate ? { natural_application_replay: naturalApplicationCertificate } : {}),
+        ...(activeApplicationCertificate ? { active_application_replay: activeApplicationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

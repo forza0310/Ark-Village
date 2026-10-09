@@ -125,7 +125,7 @@ target_sources(dungeon_village_startup_world_continuous_tests PRIVATE tests/star
 add_executable(dungeon_village_startup_world_persistence_tests tests/startup_world_persistence_test.cpp
     tests/startup_world_codec_checks.cpp tests/startup_world_restore_checks.cpp
     tests/startup_application_replay_checks.cpp tests/startup_application_actions_checks.cpp
-    tests/startup_application_natural_replay.cpp)
+    tests/startup_application_natural_replay.cpp tests/startup_application_active_replay.cpp)
 target_include_directories(dungeon_village_startup_world_persistence_tests PRIVATE src)
 target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_application dungeon_village_hash)
 target_compile_features(dungeon_village_startup_world_persistence_tests PRIVATE cxx_std_17)
@@ -143,7 +143,8 @@ add_test(NAME dungeon_village_prototype.startup_world_replay_process
         --presentation-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>"
         --application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>"
         --title-exe "$<TARGET_FILE:dungeon_village_startup_application_tests>"
-        --natural-application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>")
+        --natural-application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>"
+        --active-application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>")
 set_tests_properties(dungeon_village_prototype.startup_world_replay_process PROPERTIES TIMEOUT 360)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # 重建字段AST检查覆盖；新成员不能只改运行时而静默漏出存档。

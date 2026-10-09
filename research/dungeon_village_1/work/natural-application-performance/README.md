@@ -69,4 +69,16 @@ scene日期只读窄投影、设施存在性窄查询、actor共同投影重复�
 
 本次审阅时关键输入SHA-256：修复前`startup_application.cpp`为`d99ff7225c058f6f2a193fee1c71a5ae2fbf79d43e63b428e5ee35927710dc62`；`startup_world_runtime.cpp`为`ebd365e14510d4dfeed8183d436a740b4b8b07363f7144e6ba97718ab9d7ab31`；`example/include/dungeon_village_reference/world_runtime.hpp`为`41c7b02ae5b5d82d5a88ee769c97fdadbe73b9d83c3d76413adbd6e08867144a`。应用修复会改变前者，该hash只定位本次发现现场，不作为修后基线。
 
-本目录仅一份分析文档，无采样二进制、缓存、原素材副本或后台进程。实际优化与受控测量尚未执行；资源审计、合法历史增长及永久有界性仍分别判断。
+## 窄商店投影已实施与验收
+
+本批仅实施优先一。完整人物routes与非人物窄读共用任务旗标引用遍历、商店notice投影；非人物窄读不再构造随即丢弃的world／facts／任务等完整人物路由。仍在原时点拒绝缺human flag或RescueActorContext，不擅自新增ai.contexts／怪物上下文要求；原序notice、空覆盖及缺details保留分别断言。没有改Owner字段、随机、原表、文件身份、页生命周期或历史保留。
+
+完整Release构建成功；非人物调度、共同运行时、旧回放Driver三项通过0.09秒。随后新增可选微基准入口并仅重编该套件，默认无参复验通过0.04秒；无新target／CTest。旧world420→840三进程回放仍保持ddebdf80尾段hash。
+
+从同一当前首月快照继续600轮，优化前后终点完整摘要均为`3b1589d58722a448d77580065800c0096f5928b6a971e13ec52dd6ba83f5b312`，末20轮逐字节相同（`cfa152bd…8a799fe`），随机6509、声音累计17，完整资源统计相同。两次墙钟10.71／21.77秒的执行权限环境不同，不作为速度收益或退化的证据；自动审批超时后改用项目内受限执行，均未更改业务输入。
+
+同进程可选`projection_benchmark`复用一份明确的条件投影夹具，64对预热、7对各1000次，交替full-first／narrow-first，均消费相同checksum且输入摘要不变。局部中位数旧完整投影57.3482ms、新窄投影25.676ms，约减少55.2%；这是**单次商店投影微基准**，不是整局加速倍数。正常测试不执行基准，不以快慢断言通过。
+
+当前语义3的12月已从首月认证前缀接续完成：19295轮捕获19,662,928字节，19315轮终点双恢复与reference一致；reference463.50秒，恢复各约1秒，证书在`work/snapshots/natural-application-v2/month12.avra.json`。这是缓存修正后的当前输入，和旧语义2同名月份诊断分开。下一步先采24月文件与解码成本，再决定是否可到60月，不越过128MiB预算或删历史凑通过。
+
+本批日志、短trace及[审计](VALIDATION.json)保留；仅一个既有Release树，无新构建树／原素材副本，本阶段构建与测试进程已退出。合法历史仍可能增长；未实施优先二和泛型Owner借用。

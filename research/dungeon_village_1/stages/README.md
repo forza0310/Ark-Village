@@ -12,7 +12,7 @@
 
 后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)维护标题五图、三页面背景、计分角色／提示以及公共窗口框／标准内框只读计划；[Steam资源](../ui/STEAM_STARTUP_RESOURCES.md)区分相同框图与不同标题背景／Logo／草边。最新[原标题背景Owner](../ui/TITLE_PRESENTATION.md)接入20槽人物、显式更新、只读投影及随机交接，应用快照现为语义3，旧语义1／2明确拒绝。正常人物基础裁片已交付；完整Steam字体、页级皮肤和原菜单h/j/o路由仍未交付；原窗口补证用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
 
-此前[标题Owner交付](../work/title-owner-delivery/README.md)补年度动作、晋级返回和商会离开三个桥。最新[自然应用交付](../work/natural-application-delivery/README.md)已实现Driver并认证当前语义3的420轮／首月两档20轮双恢复；同时修复应用更新漏接Session世界绘制缓存收尾，以同初态完整状态／声音oracle验证。旧语义2的12月样本只保修前诊断，不作为当前可复用前缀。下一步先消除已定位的重复路由投影，再从当前首月推进12月成本采样及后期；自然通关尚未完成。背景请求和已有菜单API仍是独立事务。
+此前[标题Owner交付](../work/title-owner-delivery/README.md)补年度动作、晋级返回和商会离开三个桥。[自然应用交付](../work/natural-application-delivery/README.md)实现Driver并修复应用更新漏接Session世界绘制缓存收尾；当前语义3的420轮、首月及后继[12月](../work/natural-application-performance/README.md)各20轮双恢复通过。旧语义2样本只保修前诊断，不作为当前前缀。商店窄投影已消除一次无用完整路由，保持完整尾段／原拒绝；下一步从当前12月档采24月规模，再按预算推进后期，自然通关尚未完成。背景请求和已有菜单API仍是独立事务。
 
 [人物基础皮肤](../ui/TITLE_ACTOR_SKIN.md)交付原标题阴影→武器→身体、纪录无显式阴影的只读资源计划，已核原图CPU合成；只覆盖正常基础图层，不冒称完整W所有叠加。[Steam字体](../ui/STEAM_FONT_CONSUMER.md)和[标题绘制](../ui/STEAM_TITLE_DRAW.md)已进一步交叉语言回退、测宽、背景居中／上边／草边铺排及Logo动画；原窗口动态和完整菜单仍缺。
 

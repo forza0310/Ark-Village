@@ -1,0 +1,216 @@
+{
+  "date": "2026-10-09",
+  "baseline": "464becc",
+  "checks": 18,
+  "trace_sha256": "cfa152bdc9fd3ef58e9bd29d0bb70f8a4cbd18ca13fc7ce917ebe943d8a799fe",
+  "terminal": {
+    "capture_frame": null,
+    "capture_months": null,
+    "completed_frame": 2234,
+    "next_frame": 2235,
+    "next_command": 7,
+    "months": 1,
+    "date": [
+      0,
+      4,
+      1,
+      5346
+    ],
+    "digest": "3b1589d58722a448d77580065800c0096f5928b6a971e13ec52dd6ba83f5b312",
+    "resources": [
+      2,
+      8,
+      1,
+      5,
+      10,
+      0
+    ],
+    "peaks": [
+      3,
+      8,
+      3,
+      5,
+      10,
+      0
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 17,
+    "sound_hash": "f67842237f7a97ce632c7a1f0b2c6b92205943177e16f5dcc4e25da7371f44ac",
+    "random": 6509,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0,
+    "restore_seconds": 0.0378502
+  },
+  "microbenchmark": {
+    "qualification": "conditional_projection_only",
+    "pairs": 7,
+    "iterations": 1000,
+    "full_median_ms": 57.3482,
+    "narrow_median_ms": 25.676,
+    "reduction_percent": 55.227888582379215,
+    "not_full_game_speedup": true
+  },
+  "current_month12": {
+    "controller": "application-natural-clear-v1",
+    "qualification": "natural_application_tail",
+    "producer_revision": "464becc-narrow-shops",
+    "seed": 1,
+    "speed": 0,
+    "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+    "world_schema": "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7",
+    "application_schema": "40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47",
+    "source_prefix": {
+      "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\month1.avra",
+      "certificate_file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-v2\\month1.avra.json",
+      "snapshot_sha256": "068f9d1dcca6e7ac87f53c71946c9958145aa8426a92c2a61cae7b679d6839b4",
+      "certificate_sha256": "4e0c568555acf245c97e1da269c439cf8d4424b7efe417c6add356f06425f695",
+      "next_frame": 1635,
+      "capture_frame": 1634,
+      "months": 1,
+      "qualification": "natural_application_tail"
+    },
+    "capture_frame": 19295,
+    "capture_months": 12,
+    "stop_at": 19315,
+    "tail_frames": 20,
+    "process_count": 3,
+    "snapshot_bytes": 19662928,
+    "snapshot_sha256": "ef73fa26cb61f932114143d8ec978532011ada219ba035969164725bbf06afd3",
+    "section_bytes": {
+      "1": 70,
+      "2": 383,
+      "3": 635,
+      "4": 19659648,
+      "5": 1480
+    },
+    "trace_bytes": 4120,
+    "trace_sha256": "f5269fb7e5428fca363f929cf0dd7cbd3823c27aaae062ffcd4818332bd7aaa7",
+    "terminal": {
+      "capture_frame": 19295,
+      "capture_months": 12,
+      "completed_frame": 19315,
+      "next_frame": 19316,
+      "next_command": 22,
+      "months": 12,
+      "date": [
+        1,
+        3,
+        0,
+        540
+      ],
+      "digest": "f203482b3ed55e18228e966d4dc087b580825f38cc8dc97ebcee9cf233af2f06",
+      "resources": [
+        3,
+        9,
+        1,
+        48,
+        161,
+        3
+      ],
+      "peaks": [
+        3,
+        9,
+        5,
+        48,
+        161,
+        3
+      ],
+      "resource_names": [
+        "humans",
+        "facilities",
+        "pages",
+        "audit_history",
+        "cash_entries",
+        "retained_tasks"
+      ],
+      "sound_count": 129,
+      "sound_hash": "42a0ee8faefd6d057da1ca421c128a8906ea09f0f5ccaa25a58b6136ce6a871f",
+      "random": 156747,
+      "phase": 0,
+      "trace_rows": 20,
+      "capture_seconds": 0.920774,
+      "restore_seconds": 0.0439383
+    },
+    "process_wall_seconds": [
+      463.49772390000004,
+      1.2620052000000141,
+      1.278344999999972
+    ],
+    "certification_boundary": "已认证源恢复后继续；本轮仅认证新捕获尾段",
+    "limitations": [
+      "被动自然日期策略，不认证五星/全部任务/BOSS",
+      "不认证原APK/Steam动态或自动绘制频率"
+    ]
+  },
+  "outputs": [
+    {
+      "file": "after-seconds.txt",
+      "bytes": 15,
+      "sha256": "0f5cd09f087ba278218b114b3fd02360d3ce8ecf3a2ca56c99dc327e76ef32b8"
+    },
+    {
+      "file": "after.log",
+      "bytes": 570,
+      "sha256": "ddcbd9a1bdee87317540964fc8e6592cb7dc4b31e888b26bd7c22fe98d88f624"
+    },
+    {
+      "file": "before-seconds.txt",
+      "bytes": 15,
+      "sha256": "9f0cb5c028539a0a43b471905d9429e6b51f01f0cc537c7c4226089643a6b4a6"
+    },
+    {
+      "file": "before.log",
+      "bytes": 570,
+      "sha256": "a8b79df0e619936e727b74def5dfa6dfd6d1d2416379e837e898ee5d5e156d92"
+    },
+    {
+      "file": "benchmark.log",
+      "bytes": 879,
+      "sha256": "0a4b15f1c31607ea318ece3a1903b6b9d60d3999c85b4260a9ad5ed73bc16fdf"
+    },
+    {
+      "file": "build-benchmark.log",
+      "bytes": 288,
+      "sha256": "80a7b76568621927273ce26c05765a2efc4f59af491d5eb8c5c283f92c35340d"
+    },
+    {
+      "file": "build.log",
+      "bytes": 480,
+      "sha256": "ebc3e583db484b4149425860a47ff8144a329e6391070878f926ab7a9a6ef387"
+    },
+    {
+      "file": "ctest-benchmark.log",
+      "bytes": 307,
+      "sha256": "d78a283207cb77d6682a8c788c7cb316ae2dabc0fcc72c93367b1207b3af5ce7"
+    },
+    {
+      "file": "ctest.log",
+      "bytes": 631,
+      "sha256": "034a47b9d5b869631b7fae6f066ac36ea811af67dad109732d8c76906b7757f6"
+    },
+    {
+      "file": "month12-current.log",
+      "bytes": 5263,
+      "sha256": "72ebef6f046051e420c4ddfc343b3d5ec4bc4717ec4123ebf32eedfc0c059556"
+    },
+    {
+      "file": "world-replay.log",
+      "bytes": 2689,
+      "sha256": "b25a805f1a52faed9fe13c8fde917b855e5d3abd0718bf9d25319a038227d71c"
+    }
+  ],
+  "resource_boundary": "20行trace，临时系统副本已消费；现金/任务/审计历史仍可增长，无新构建树",
+  "limits": [
+    "前后600轮的权限环境不同，其10.71/21.77秒不用于速度比较",
+    "12月当前语义已认证，尚非自然通关",
+    "不修改产品/原表/Owner布局/旧黄金"
+  ]
+}

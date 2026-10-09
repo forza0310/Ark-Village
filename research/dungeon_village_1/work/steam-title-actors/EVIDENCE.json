@@ -1,0 +1,312 @@
+{
+  "date": "2026-10-09",
+  "qualification": "Steam2.56 fixed source static bounded inspection; no execution or save modification",
+  "sources": {
+    "dll": {
+      "path": "DungeonVillageEXE/GameAssembly.dll",
+      "sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a"
+    },
+    "metadata": {
+      "path": "DungeonVillageEXE/KairoGames_Data/il2cpp_data/Metadata/global-metadata.dat",
+      "sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+    },
+    "dump": {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  },
+  "method_windows": [
+    {
+      "key": "draw",
+      "method": "form.TitleForm::public void Draw_titleAnime(Graphics g) { }",
+      "rva": 2139920,
+      "offset": 2135312,
+      "next_rva": 2141520,
+      "bytes": 1600,
+      "sha256": "98c0214a2ff528c267360f205ac6ece90287e48295d18d7845755df8bfdd2b84"
+    },
+    {
+      "key": "update",
+      "method": "form.TitleForm::public void Update_titleAnime() { }",
+      "rva": 2151888,
+      "offset": 2147280,
+      "next_rva": 2152944,
+      "bytes": 1056,
+      "sha256": "fb612bbf6937b9d6286c53722cb014e98e109254795037b8da80a4d91fae8e55"
+    },
+    {
+      "key": "interval",
+      "method": "form.TitleForm::private void SetAppearCnt() { }",
+      "rva": 2145616,
+      "offset": 2141008,
+      "next_rva": 2145712,
+      "bytes": 96,
+      "sha256": "2ef0bb09ea49451dfe2edecaf64bd2a3d1ada999f8eda289c9172457a365f1bc"
+    },
+    {
+      "key": "reset",
+      "method": "form.TitleForm::public void ResetHobjExist(int index) { }",
+      "rva": 2145552,
+      "offset": 2140944,
+      "next_rva": 2145616,
+      "bytes": 64,
+      "sha256": "b6679f683436a1cd25c7283a2007b9ad59826f6289378068843d4216b9c376d5"
+    },
+    {
+      "key": "admission",
+      "method": "form.TitleForm::public override bool Update() { }",
+      "rva": 2146864,
+      "offset": 2142256,
+      "next_rva": 2151888,
+      "bytes": 2048,
+      "sha256": "8910eecd946793dd63b7252317358e7b57f7ef4de5fbeb83fcad67c29bf90c32"
+    },
+    {
+      "key": "actor",
+      "method": "game.UserData::public static void DrawDispPlayer(Graphics g, int x, int y, int weaponId, int animeIndex) { }",
+      "rva": 2936480,
+      "offset": 2931872,
+      "next_rva": 2936832,
+      "bytes": 352,
+      "sha256": "5f8c70d6dcd3c9340b17e1ed12ac93a1af27b23987acd0f225489ba24abbfa80"
+    },
+    {
+      "key": "actorState",
+      "method": "game.UserData::public static void SetDispPlayerData(int seb, int bodyImg, int animeIndex, int direct, int updateCnt) { }",
+      "rva": 3042192,
+      "offset": 3037584,
+      "next_rva": 3042368,
+      "bytes": 176,
+      "sha256": "eb081b6ab8c677fae2052bd6f2656394a8dc835355ac689134171b0a558c27f4"
+    },
+    {
+      "key": "job",
+      "method": "data.CharacterData::public JobData GetJob() { }",
+      "rva": 2176240,
+      "offset": 2171632,
+      "next_rva": 2176352,
+      "bytes": 112,
+      "sha256": "ce13d5d0a9029c145ffc89922dd1cdf440dfa7e8563e76aa2b611e7332e885a2"
+    },
+    {
+      "key": "image",
+      "method": "data.JobData::public int GetImgId(CharacterData charaData) { }",
+      "rva": 2206864,
+      "offset": 2202256,
+      "next_rva": 2206912,
+      "bytes": 48,
+      "sha256": "4d42e141ddca29bd858a6779d775013e240cc8ed5980faeb92414522654320c9"
+    },
+    {
+      "key": "random",
+      "method": "game.GameUtil::public static int Random(int n) { }",
+      "rva": 2770144,
+      "offset": 2765536,
+      "next_rva": 2770256,
+      "bytes": 112,
+      "sha256": "13a8118448ad68ba67a2d16abb1a4f662b397f19c11f2cbef102725f97c1c195"
+    },
+    {
+      "key": "alpha",
+      "method": "kairo.unity.ui.Graphics::public void SetRenderMode(int op, int srcRatio) { }",
+      "rva": 7817856,
+      "offset": 7813248,
+      "next_rva": 7817904,
+      "bytes": 48,
+      "sha256": "dcfc5975c8220d9f8710f1ca83e8fa61aaabcf8ca3be65b4f46ec25245f330e2"
+    },
+    {
+      "key": "alphaReset",
+      "method": "kairo.unity.ui.Graphics::public void SetRenderMode() { }",
+      "rva": 7817600,
+      "offset": 7812992,
+      "next_rva": 7817680,
+      "bytes": 80,
+      "sha256": "47b8f633c4fde07a719fd82d912535563c09aee90f8cad7b74fae277bd89d224"
+    },
+    {
+      "key": "alphaFull",
+      "method": "kairo.unity.ui.Graphics::public void SetRenderMode(int op, int srcRatio, int dstRatio) { }",
+      "rva": 7817680,
+      "offset": 7813072,
+      "next_rva": 7817856,
+      "bytes": 176,
+      "sha256": "82a57716d6fef2111277e3653a373a51c913bbda532e4c2199bfa298959243a6"
+    },
+    {
+      "key": "rate",
+      "method": "game.GameUtil::public static int RateConvert(int x, int c1min, int c1max, int c2min, int c2max, bool ch_limit) { }",
+      "rva": 2770816,
+      "offset": 2766208,
+      "next_rva": 2770912,
+      "bytes": 96,
+      "sha256": "e66019b641323e6e3d61e88fda585898e2e8779266d42dc1947ba310d739c00d"
+    },
+    {
+      "key": "pulse",
+      "method": "kairo.unity.ui.Canvas::public bool CheckKeyPulse(int key) { }",
+      "rva": 7634528,
+      "offset": 7629920,
+      "next_rva": 7634832,
+      "bytes": 304,
+      "sha256": "98830d456a683bf90f121ae99483da3cdd44b34236278273a1971d7961a3cbbf"
+    },
+    {
+      "key": "weaponStep",
+      "method": "game.Character2::public static int GetWeaponAnimeIndex(int seb) { }",
+      "rva": 2636928,
+      "offset": 2632320,
+      "next_rva": 2637008,
+      "bytes": 80,
+      "sha256": "d7843035704265fdf407f1ee9e19ae5d22df5bc8d820ef9da83d4f2daac6db2b"
+    },
+    {
+      "key": "body",
+      "method": "game.Character2::public void Draw_human(Graphics g, int x, int y, int layer_id, bool isSoccerForm) { }",
+      "rva": 2604272,
+      "offset": 2599664,
+      "next_rva": 2606432,
+      "bytes": 2160,
+      "sha256": "42c434fec6afc6ca0701eee53a476fbe902a482d3ca80a1b6dbc01a3cb1860e7"
+    },
+    {
+      "key": "weapon",
+      "method": "game.Character2::public static void Draw_weapon(Graphics g, int dx, int dy, int direct, int seb, int weaponId, int animeIndex, int weaponAnimeIndex, bool zsort) { }",
+      "rva": 2613040,
+      "offset": 2608432,
+      "next_rva": 2614560,
+      "bytes": 1520,
+      "sha256": "21e989812a4a7d9ee0f2daba84f9d7b27d41c740f2808cbe6068210f50bc834d"
+    },
+    {
+      "key": "drawParam",
+      "method": "game.Character2::public int SetDrawParam(int body_id, int seb, int animeIndex, int updateCnt) { }",
+      "rva": 2665984,
+      "offset": 2661376,
+      "next_rva": 2669488,
+      "bytes": 3504,
+      "sha256": "85ada996584a8892f89f5b7ebab4fdfd4282a9e9db7512f641dbb76e8be3c7e5"
+    },
+    {
+      "key": "keypadPulse",
+      "method": "kairo.unity.ui.Keypad::public bool CheckKeyPulse(int key) { }",
+      "rva": 8042368,
+      "offset": 8037760,
+      "next_rva": 8042432,
+      "bytes": 64,
+      "sha256": "90bf108da814b2297fcd3323c70c4b33568a131fabf7c21728db22c45d72b15e"
+    },
+    {
+      "key": "joystickIndex",
+      "method": "kairo.unity.ui.Canvas::private static int GetJoystickIndex(int key) { }",
+      "rva": 7650560,
+      "offset": 7645952,
+      "next_rva": 7650720,
+      "bytes": 160,
+      "sha256": "0d8a603adb5e98fda21d49ca099205d0438324c9142946e4e99b15dfe187fbf7"
+    }
+  ],
+  "metadata_fields": [
+    {
+      "name": "Graphics render fields",
+      "first": 37772,
+      "last": 37778,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "aef23563f5ce6d360ed05a3da847f378f09ede4c456150614dd31bf127050577"
+    },
+    {
+      "name": "Character2 identity and scratch",
+      "first": 221261,
+      "last": 221305,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "8c1fa741aad4dbc72a6987d39bf29862774eb0bc5ae591eab5f09a20cabdd74e"
+    },
+    {
+      "name": "Character2 animation arrays and draw fields",
+      "first": 221401,
+      "last": 221446,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "43b4489b5a8c8457feac1b4d54426ce3fa5c7ac010d90a20695982193e9c7113"
+    },
+    {
+      "name": "CharacterData job gender equipment",
+      "first": 226381,
+      "last": 226407,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "08c02dec216d4c09d1374f529091e84ff5be6f4a67ed22ab8382713dd920403e"
+    },
+    {
+      "name": "JobData imgId",
+      "first": 226870,
+      "last": 226895,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "aa874abdd05b4e84f3303fca5d31a5d9140c3ebb24c90db20791f23f710d4d86"
+    },
+    {
+      "name": "WeaponData image style",
+      "first": 227695,
+      "last": 227713,
+      "qualification": "UTF8 line window with LF normalization",
+      "sha256": "9ff84a43e42be5abf3e9e1d1f31d29c74fe564ff0cf51941fda87dff1ba990bc"
+    }
+  ],
+  "title_guest": {
+    "qualification": "Steam固定cctor实参链；非APK替代",
+    "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+    "name": "TitleForm.TITLE_GUEST",
+    "call": "TitleForm.cctor fixed field handle",
+    "slot": 286204160,
+    "slotOffset": 17758976,
+    "encoded": 2147483891,
+    "referenceIndex": 121,
+    "refOffset": 4959832,
+    "typeIndex": 5607,
+    "typeDefinition": 4129,
+    "localField": 121,
+    "fieldIndex": 25259,
+    "fieldOffset": 4056508,
+    "fieldName": "53BFB09A8803B408833184310D7A89203A1665BF87CC3BDF75E5CD512C94352D",
+    "fieldDefaultOffset": 2969176,
+    "dataIndex": 120926,
+    "dataOffset": 3123966,
+    "length": 11,
+    "values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "bytes_sha256": "53bfb09a8803b408833184310d7a89203a1665bf87cc3bdf75e5cd512c94352d"
+  },
+  "consumed_by": "../../ui/STEAM_TITLE_ACTORS.md",
+  "anchors": {
+    "title_update_call": "0x1020C4A7",
+    "shadow": "0x1020AC0A",
+    "scratch_setter": "0x1020AC98",
+    "actor_draw": "0x1020ACF3",
+    "render_reset": "0x1020AD07",
+    "human_layer": "0x1027BFBA",
+    "weapon_layer": "0x1027E22F"
+  },
+  "limitations": [
+    "Update prefix 2048 bytes only",
+    "Steam actor array values and resource crop mapping not independently closed",
+    "Shared scratch historical state and effect descendants not closed",
+    "PRNG implementation and framework admission not closed",
+    "No maintenance mode switch, C++ change, build, window or natural route test"
+  ],
+  "storage": {
+    "window_bytes": 13856,
+    "disassembly_files": 0,
+    "new_binary_copies": 0,
+    "new_background_processes": 0
+  }
+}

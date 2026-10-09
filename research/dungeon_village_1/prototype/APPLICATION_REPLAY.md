@@ -49,3 +49,5 @@
 自然180月、五星／全部任务／BOSS、完整原标题输入和完整Steam皮肤仍独立推进。标题背景Owner与快照已接线，完整人物资源展开和纪录动画仍有缺口；条件短回放不能换标签成为自然通关证明。
 
 当前语义3已在[本批交付](../work/natural-application-delivery/README.md)认证：`natural-application-v2`内420轮和首月两档各20轮双恢复，`application-clear-v3`内四个计分条件档重新认证。自然第12月仅有修前诊断，当前后期路线仍待推进；新Driver与原独立world策略分别登记。
+
+后继[等价窄投影与12月采样](../work/natural-application-performance/README.md)已认证当前语义3的`natural-application-v2/month12.avra`：19295→19315三路，19,662,928字节。此更新取代上一批“当前仅早期”的状态；旧语义2诊断继续保留，不重命名为修后档。下一步先采24月预算，schema不变。

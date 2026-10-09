@@ -1,5 +1,7 @@
 # Steam 2.56 UI／操作覆盖清单
 
+2026-10-10[建设资源装载与旋转](STEAM_BUILD_RESOURCE_INSTALL.md)补地图manager安装／退休、image来源与flags32软标签；[两张差异素材](../assets/steam-build-common/README.md)已正式发布。静态素材范围不替代列表Init／Update、全语言覆盖或原窗口输入。
+
 2026-10-08。按本轮已确认范围，以Steam EXE版UI与操作为还原目标，固定汉化重签APK1.0.8暂保留规则基线。
 本表列研究证据分母，不代表产品已实现，也不把规则已维护当作Steam页面已认证。
 本批只读metadata、真实GameAssembly.dll及冻结窗口报告，不启动游戏、不操作原档。

@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10[Steam建设目录素材](../assets/steam-build-common/README.md)新增两张确证差异图：common98／103，按MANIFEST复制原字节并引用已核SEB81／12，不能用APK像素替代。[装载／旋转合同](../ui/STEAM_BUILD_RESOURCE_INSTALL.md)补真实image组和软标签资格；资源可供产品独立消费，本会话未改产品资源或代码。
+
 2026-10-10新增[应用管理／Steam窗框桥](../work/application-management-frame-delivery/README.md)：标准标题窗、内容框／白角、Window2／3可输出完整有序逻辑图元；双次字体测宽由后端提供，不编造中文字体。应用建设、村办、任务、人物等17项管理转发经过既有唯一Owner提交，两项相关检查通过12.20秒。它供产品按实际边界消费，不替产品自动挂载窗口或改玩家档；应用7／世界4身份未改变。
 
 2026-10-09[建设／邻接收费缓存请求](../../../docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)已由[维护修复](../work/facility-arrival-cache-delivery/README.md)收口：完整地图邻接刷新同步各活跃实例价格，通知关闭也生效；品质已有即时派生。实际Owner建设邻接→到达320G、撤除→到达300G及五类缺源事务拒绝已验。世界4／应用7明确拒旧轨迹；产品需按新交付复验布局收益，不修改旧记录或反算旧收入，本会话未改产品。

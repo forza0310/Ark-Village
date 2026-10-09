@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[Steam建设差异素材](../assets/steam-build-common/README.md)独立发布图片98／103，新增1,213字节、两份SEB引用既有同字节副本。[资源安装／旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)已追`resMapChip→image`、Dispose／Load／清引用及flags32软标签；46项同时具建设与旋转标志的定义两向裁片有效，不等于它们都已解锁。
+
 [Steam设施图块全集](STEAM_MAPCHIP_PATTERNS.md)已核两套pattern及85定义到图块／SEB／图片对应，保留源帧范围／裁片异常；建设列表固定朝向0全部有效。图片98／103确有Steam像素差异，不能以同SEB替换为APK图片；完整旋转准入与动态资源安装仍独立待研。
 
 最新静态增量：[Steam窗框与裁剪](STEAM_WINDOW_FRAME.md)独立核木纹／双线／白角、标题两次测宽、文字显式颜色及clip交接；[建设21](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)补五行图块、marker16、类目和滚动注册。Steam图98／103与APK不同，不能同图alias；原建设绘制会推进frame计数。此批不包含维护接入或新的窗口观察。

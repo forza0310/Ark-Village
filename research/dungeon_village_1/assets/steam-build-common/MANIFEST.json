@@ -1,0 +1,533 @@
+{
+  "format": "ark-research-steam-build-common-1",
+  "source": {
+    "container": "DungeonVillageEXE/KairoGames_Data/resources.assets",
+    "sha256": "75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b",
+    "object": {
+      "id": "EXE:resources.assets:pathID=1148",
+      "name": "common",
+      "offset": 8314752,
+      "bytes": 1021784,
+      "sha256": "4f68bdfe7ad9d2ce7e8e83c4b0ae3d97e91e4ea1f493cd4a9446717449c09166",
+      "payload_sha256": "9178fcbb4bf387affd3fb1d23d02aa21295e6af1a68267d64876aa3fadd36092"
+    }
+  },
+  "logical_count": 4,
+  "new_payload_count": 2,
+  "alias_count": 2,
+  "new_payload_bytes": 1213,
+  "total_logical_bytes": 1669,
+  "scope": "Steam建设目录差异图片98/103及同字节SEB81/12引用；不覆盖既有APK或Steam启动包",
+  "path_base": "file相对本清单目录，alias与published均须逐字节核SHA；产品运行不读取Unity容器或research/work",
+  "language_contract": "固定common根条目；不冒称已认证所有运行时语言替换或fallback",
+  "records": [
+    {
+      "id": "EXE:resources.assets:1148:common:tenant_resident.png",
+      "group": "common",
+      "entry": "tenant_resident.png",
+      "kind": "image",
+      "bytes": 512,
+      "sha256": "1a02c85d1b51db3da5789a6469d60bcf72a44de346f5ec251e9bb56169adb7c7",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "b404fa85bef61d6c6dc4d847f80a4368cf3dbe93a8500b31a9e42d2d557ae865",
+      "storage": "published",
+      "file": "original/common/tenant_resident.png",
+      "index_kind": "img.inf",
+      "index": 98,
+      "width": 50,
+      "height": 15,
+      "rgba_sha256": "53219705bd55d326ca8ea795c1a54e532990b12481e9adedfb6e35aa2f9810b7",
+      "apk_rgba_sha256": "6335fc4a66a37066bf37dc1e8b8b3ccf8d9811e973052f363193d4270ae41048",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../ui/STEAM_MAPCHIP_PATTERNS.md",
+        "page": "Steam raw21",
+        "qualification": "type13且存在入住者",
+        "call": "common SEB81 frame0 lineNo=-1",
+        "anchor": "(J+42,K+40+37*r)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:number05.png",
+      "group": "common",
+      "entry": "number05.png",
+      "kind": "image",
+      "bytes": 701,
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "e3296b1d631999caf99dfc795d062bbb31f8d32bcaac4170bf39d0f28f871dac",
+      "storage": "published",
+      "file": "original/common/number05.png",
+      "index_kind": "img.inf",
+      "index": 103,
+      "width": 100,
+      "height": 21,
+      "rgba_sha256": "a7627a19c217eb14209d7a38b343858218d13a35163ec0cc4ac7f036b7938994",
+      "apk_rgba_sha256": "d74de9a3717fdb46d00a7e55e5148321461793207853847ebf6c391157c1dd74",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../ui/STEAM_MAPCHIP_PATTERNS.md",
+        "page": "Steam raw21",
+        "qualification": "type12住宅数量",
+        "call": "Draw_multiValue common SEB12",
+        "anchor": "(J+75,K+47+37*r)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:tenant_resident.seb",
+      "group": "common",
+      "entry": "tenant_resident.seb",
+      "kind": "SEB",
+      "bytes": 28,
+      "sha256": "f63f0d672b9fdcaa274f61e2410c4a45f5031825379f79f99c409faa4140fba6",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "f63f0d672b9fdcaa274f61e2410c4a45f5031825379f79f99c409faa4140fba6",
+      "storage": "alias",
+      "file": "../original/common/tenant_resident.seb",
+      "index_kind": "seb.inf",
+      "index": 81,
+      "apk_bytes_equal": true,
+      "frames": 1,
+      "image_refs": [
+        98
+      ],
+      "parts": [
+        {
+          "frame": 0,
+          "image": 98,
+          "crop": [
+            0,
+            0,
+            50,
+            15
+          ],
+          "offset": [
+            -25,
+            -15
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        }
+      ],
+      "consumer": {
+        "contract": "../../ui/STEAM_MAPCHIP_PATTERNS.md",
+        "page": "Steam raw21",
+        "qualification": "type13且存在入住者",
+        "call": "common SEB81 frame0 lineNo=-1",
+        "anchor": "(J+42,K+40+37*r)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:number05.seb",
+      "group": "common",
+      "entry": "number05.seb",
+      "kind": "SEB",
+      "bytes": 428,
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "storage": "alias",
+      "file": "../original/common/number05.seb",
+      "index_kind": "seb.inf",
+      "index": 12,
+      "apk_bytes_equal": true,
+      "frames": 21,
+      "image_refs": [
+        103
+      ],
+      "parts": [
+        {
+          "frame": 0,
+          "image": 103,
+          "crop": [
+            9,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 1,
+          "image": 103,
+          "crop": [
+            17,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 2,
+          "image": 103,
+          "crop": [
+            25,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 3,
+          "image": 103,
+          "crop": [
+            33,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 4,
+          "image": 103,
+          "crop": [
+            41,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 5,
+          "image": 103,
+          "crop": [
+            49,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 6,
+          "image": 103,
+          "crop": [
+            57,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 7,
+          "image": 103,
+          "crop": [
+            65,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 8,
+          "image": 103,
+          "crop": [
+            73,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 9,
+          "image": 103,
+          "crop": [
+            81,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 10,
+          "image": 103,
+          "crop": [
+            89,
+            0,
+            3,
+            11
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 11,
+          "image": 103,
+          "crop": [
+            0,
+            0,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 12,
+          "image": 103,
+          "crop": [
+            35,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 13,
+          "image": 103,
+          "crop": [
+            27,
+            10,
+            16,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 14,
+          "image": 103,
+          "crop": [
+            44,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 15,
+          "image": 103,
+          "crop": [
+            53,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 16,
+          "image": 103,
+          "crop": [
+            61,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 17,
+          "image": 103,
+          "crop": [
+            27,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 18,
+          "image": 103,
+          "crop": [
+            70,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 19,
+          "image": 103,
+          "crop": [
+            80,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 20,
+          "image": 103,
+          "crop": [
+            92,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        }
+      ],
+      "consumer": {
+        "contract": "../../ui/STEAM_MAPCHIP_PATTERNS.md",
+        "page": "Steam raw21",
+        "qualification": "type12住宅数量",
+        "call": "Draw_multiValue common SEB12",
+        "anchor": "(J+75,K+47+37*r)"
+      }
+    }
+  ]
+}

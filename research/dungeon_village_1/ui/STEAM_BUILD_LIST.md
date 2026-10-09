@@ -1,5 +1,7 @@
 # 建设目录21：Steam局部合同与APK交叉边界
 
+2026-10-10补[真实资源安装及旋转准入](STEAM_BUILD_RESOURCE_INSTALL.md)；common两张差异图已在[独立Steam包](../assets/steam-build-common/README.md)发布。Init／Update的列表业务及最终OS输入仍待单独核对，不能从flags32直接推断所有设施当前可建。
+
 后继[Steam图块与朝向全集](STEAM_MAPCHIP_PATTERNS.md)已闭合两个pattern数组、85设施反向对应及SEB实际请求，raw21朝向0全部有效；另明确common图98／103跨版像素差异。旋转准入、语言覆盖及资源动态安装仍待证，不以资源索引替代操作合同。
 
 2026-10-08。本专题服务已确认的Steam 2.56 UI／操作还原目标；固定汉化重签APK1.0.8仍作为规则基线。

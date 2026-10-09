@@ -1,5 +1,9 @@
 # 当前研究验证与历史索引
 
+## Steam建设差异图、装载退休与旋转资格2026-10-10
+
+[独立素材包](assets/steam-build-common/README.md)发布两图1,213字节及两SEB同字节引用，原字节／RGBA／尺寸／别名hash和幂等发布、只读check均通过，原图已实际查看。新增[静态合同](ui/STEAM_BUILD_RESOURCE_INSTALL.md)核20具名方法9,344字节、41锚点；57定义有旋转标志，其中46同时有建设标志且双向资源有效。原Init先退休／发布再Load，原非事务与维护安装策略分开；没有运行原窗口、构建、访问原档或残留后台任务。
+
 ## 应用管理入口、Steam窗框与当前两条短回放2026-10-10
 
 [交付](work/application-management-frame-delivery/README.md)完整Release构建通过，application／visuals两项通过12.20秒；17管理转发的真实建设／村办／任务及失败保持、四种Steam窗框的源几何／白角／双测宽有现有套件覆盖。Clang字段仍19／43，世界4／应用7／schema不变。

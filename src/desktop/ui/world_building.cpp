@@ -1,8 +1,9 @@
+#include "ark/simulation/startup_world_profile.hpp"
 // Page21/74/80/81 fields and actions follow the frozen 2b479f6 maintained prototype.
 // Drawing never initializes a page, charges money or changes a facility's shared level.
-#include "world_building.hpp"
 #include "../world_overlay_render.hpp"
 #include "skin.hpp"
+#include "world_building.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -268,7 +269,9 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                                             [id](const auto &item) { return item.identity == id; });
             if (human == people.end())
                 throw std::invalid_argument("Residence page references an unknown human");
-            view.residents.push_back({id, human->name, human->residence_fee});
+            view.residents.push_back(
+                {id, simulation::startup_world_human_profile(state, human->identity).value().name,
+                 human->residence_fee});
         }
         view.can_confirm = !view.residents.empty();
     } else if (view.raw == 74 && state.facility_definition_page_bindings.count(page.id)) {

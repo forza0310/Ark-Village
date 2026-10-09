@@ -53,7 +53,7 @@ struct Header {
     std::size_t payload{};
 };
 Header header(const Bytes &bytes) {
-    // Schema 3: magic8, version4, dataset string, village string, date4*4, funds8, length4.
+    // Schema 4: magic8, version4, dataset string, village string, date4*4, funds8, length4.
     const auto dataset_length = read32(bytes, 12);
     const auto village_length_position = 16U + dataset_length;
     const auto village_length = read32(bytes, village_length_position);
@@ -80,7 +80,7 @@ void rejected(const Bytes &bytes, app::WorldSaveError error, const char *diagnos
 }
 
 void headers(const Bytes &valid, Header layout) {
-    check(read32(valid, 8) == 3, "new captures use schema3");
+    check(read32(valid, 8) == 4, "new captures use schema4");
     auto bytes = valid;
     put32(bytes, 8, 99);
     reseal(bytes);
@@ -101,7 +101,7 @@ void headers(const Bytes &valid, Header layout) {
         rejected(bytes, app::WorldSaveError::dataset_mismatch, "dataset",
                  "previous product dataset");
     }
-    for (const auto previous_schema : {1U, 2U}) {
+    for (const auto previous_schema : {1U, 2U, 3U}) {
         bytes = valid;
         put32(bytes, 8, previous_schema);
         reseal(bytes);

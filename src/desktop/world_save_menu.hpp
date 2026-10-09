@@ -13,7 +13,7 @@ struct WorldSaveMenuInput {
     bool up{}, down{}, left{}, right{}, enter{}, escape{};
 };
 struct WorldSaveMenuLayout {
-    Rectangle panel{}, back{}, confirm{}, cancel{}, message{};
+    Rectangle panel{}, back{}, confirm{}, cancel{}, message{}, records{};
     std::array<Rectangle, 2> slots{}, save{}, load{};
 };
 WorldSaveMenuLayout world_save_menu_layout(Extent extent);
@@ -29,6 +29,8 @@ class WorldSaveMenu {
   private:
     enum class Confirmation { none, overwrite, load };
     int selected_{};
+    bool records_open_{};
+    int record_page_{};
     bool load_selected_{};
     bool opened_{};
     Confirmation confirmation_{Confirmation::none};

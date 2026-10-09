@@ -1,6 +1,7 @@
 #include "world_save_menu.hpp"
 #include "ui/script_text.hpp"
 #include "ui/skin.hpp"
+#include "ui/world_startup.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -45,6 +46,7 @@ WorldSaveMenuLayout world_save_menu_layout(Extent extent) {
     }
     out.back = {p.x + 10, p.y + height - 25, 48, 20};
     out.confirm = {p.x + width - 64, p.y + height - 25, 54, 20};
+    out.records = {p.x + width - 64, p.y + height - 25, 54, 20};
     out.cancel = out.back;
     out.message = {p.x + 10, p.y + height - 44, width - 20, 16};
     return out;
@@ -53,6 +55,7 @@ void WorldSaveMenu::observe(const app::WorldFrame &frame) {
     if (frame.save_menu_open != opened_) {
         opened_ = frame.save_menu_open;
         confirmation_ = Confirmation::none;
+        records_open_ = false;
         feedback_.clear();
     }
     if (pending_ && frame.last_command_serial >= pending_) {
@@ -66,9 +69,25 @@ void WorldSaveMenu::observe(const app::WorldFrame &frame) {
 }
 void WorldSaveMenu::input(const app::WorldFrame &frame, Extent extent,
                           const WorldSaveMenuInput &input, app::WorldSession &session) {
-    if (!frame.save_menu_open || frame.save_busy || pending_ || frame.failed)
+    if (!frame.save_menu_open || frame.save_busy || pending_ || frame.failed ||
+        !frame.system_error.empty())
         return;
     const auto layout = world_save_menu_layout(extent);
+    if (records_open_) {
+        if (input.escape || hit(input, layout.back))
+            records_open_ = false;
+        else if (input.left || input.right ||
+                 (input.click &&
+                  CheckCollisionPointRec(*input.click, {layout.panel.x + 8, layout.panel.y + 24,
+                                                        layout.panel.width - 16, 24})))
+            record_page_ = 1 - record_page_;
+        return;
+    }
+    if (confirmation_ == Confirmation::none && hit(input, layout.records)) {
+        records_open_ = true;
+        record_page_ = 0;
+        return;
+    }
     if (confirmation_ != Confirmation::none) {
         if (input.escape || hit(input, layout.cancel)) {
             confirmation_ = Confirmation::none;
@@ -118,6 +137,11 @@ void WorldSaveMenu::draw(const app::WorldFrame &frame, Extent extent, const ui::
     if (!frame.save_menu_open)
         return;
     const auto layout = world_save_menu_layout(extent);
+    if (records_open_) {
+        ui::draw_world_records(frame.system.records, record_page_, skin, layout.panel);
+        skin.button(layout.back, "返回");
+        return;
+    }
     skin.window(layout.panel, "系统 - 保存 / 读取");
     const bool enabled = !frame.save_busy && !pending_ && !frame.failed;
     if (confirmation_ != Confirmation::none) {
@@ -164,5 +188,6 @@ void WorldSaveMenu::draw(const app::WorldFrame &frame, Extent extent, const ui::
     fitted(skin, frame.save_busy || pending_ ? "处理中，请稍候" : message, layout.message,
            message.empty() ? ui::ink : message_color, 10);
     skin.button(layout.back, "返回", enabled);
+    skin.button(layout.records, "纪录", enabled);
 }
 } // namespace ark::desktop

@@ -32,6 +32,7 @@ class Sprites {
         human,
         monster,
         title,
+        event,
         weapon
     };
     explicit Sprites(std::filesystem::path root);
@@ -99,10 +100,13 @@ class Text {
     // Grow glyph rasterization with physical UI scale (including Retina and window resize).
     // Call before layout measurements; retain the atlas until a larger density is needed.
     void prepare(float pixel_scale);
+    // Add user-entered text on demand; unsupported glyphs leave the old atlas intact.
+    bool include_text(const std::string &value);
     // Replay labels directly into the native framebuffer after logical artwork rendering.
     void flush(float scale, Vector2 offset) const;
 
   private:
+    bool glyphs_dirty_{};
     Font font_{};
     std::filesystem::path font_path_;
     std::vector<int> codepoints_;

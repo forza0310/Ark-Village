@@ -13,7 +13,7 @@ namespace save_detail {
 static_assert(sizeof(int) == 4, "Save schema requires 32-bit world integers");
 static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559,
               "Save schema requires IEEE-754 binary32");
-constexpr std::uint32_t schema_version = 3;
+constexpr std::uint32_t schema_version = 4;
 constexpr std::size_t max_entries = 1000000;
 constexpr char magic[] = "ARKSAVE1";
 struct Failure {

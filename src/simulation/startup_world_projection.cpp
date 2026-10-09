@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_world_projection.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -221,7 +222,10 @@ void install_first(StartupWorldProjection &c, const StartupCharacter &character)
     const float projected_x = actor.position.x * 30.0F / 100.0F + actor.position.z * 30.0F / 100.0F;
     const float projected_y =
         actor.position.x * -15.0F / 100.0F + actor.position.z * 15.0F / 100.0F;
-    c.actor_metadata.emplace(identity, StartupWorldActorMetadata{character.sex,
+    const auto profile = startup_world_human_profile(*c.rules, character.definition_id);
+    if (!profile)
+        throw StartupWorldProjectionError::missing_definition;
+    c.actor_metadata.emplace(identity, StartupWorldActorMetadata{profile->sex,
                                                                  character.job_id,
                                                                  character.equipment[0],
                                                                  {static_cast<int>(projected_x),

@@ -34,8 +34,9 @@ add_library(ark_world_save ${ark_save_library_type} src/app/world_save_codec.cpp
     src/app/world_save_files.cpp)
 target_link_libraries(ark_world_save PUBLIC ark_world_runtime)
 ark_target(ark_world_save)
-add_library(ark_world_session SHARED src/app/world_session.cpp src/app/world_commands.cpp src/app/world_report.cpp)
-target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_timing ark_world_save Threads::Threads)
+add_library(ark_world_session SHARED src/app/world_session.cpp src/app/world_commands.cpp src/app/world_report.cpp
+    src/app/world_system.cpp)
+target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_world_system ark_timing ark_world_save Threads::Threads)
 ark_target(ark_world_session)
 
 set(ARK_STARTUP_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_data.cpp")
@@ -71,7 +72,7 @@ target_include_directories(ark_asset_metadata PUBLIC include)
 ark_target(ark_asset_metadata)
 
 set(ARK_PRODUCT_LIBRARIES ark_launch ark_timing ark_world_hash ark_world_rules ark_world_runtime
-    ark_world_persistence
+    ark_world_file_io ark_world_system ark_world_persistence ark_startup_application
     ark_world_visuals ark_world_queries ark_world_save ark_world_session ark_game ark_asset_metadata)
 
 if(ARK_BUILD_DESKTOP)

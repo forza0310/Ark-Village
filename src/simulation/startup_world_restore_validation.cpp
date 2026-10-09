@@ -124,6 +124,8 @@ struct Validation {
         // codec只能重新绑定当前固定目录；不能接受反序列化的地址或另一份可变原表。
         if (s.rules != &startup_world_rules())
             return fail("rules: 固定目录身份不匹配");
+        if (!valid_startup_world_human_profiles(s))
+            return fail("human_profiles: 覆盖身份/姓名/性别非法");
         for (const auto &v : s.rules->humans)
             humans.insert(v.identity);
         for (const auto &v : s.rules->facilities) {
@@ -194,6 +196,9 @@ struct Validation {
         EXACT(s.catalog, goods);
 #undef EXACT
         for (int id : humans) {
+            const auto profile = startup_world_human_profile(s, id);
+            if (!profile || s.scripts.humans.find(id)->second.name != profile->name)
+                return fail("human_profiles: 脚本姓名缓存与唯一定义覆盖失配");
             const auto &g = ai.growth.find(id)->second.definition;
             if (!profession(g.current_profession) || g.profession_levels.size() != jobs.size() ||
                 s.human_profession_changes.find(id)->second.size() != jobs.size() ||
@@ -422,6 +427,11 @@ struct Validation {
             if (actor(id)->kind == ref::ActorKind::human &&
                 (!s.dungeon_actors.count(id) || !s.shop_actors.count(id)))
                 return fail("actor: 缺少商店/探索辅助载荷");
+            if (actor(id)->kind == ref::ActorKind::human) {
+                const auto profile = startup_world_human_profile(s, actor(id)->definition);
+                if (!profile || s.actor_metadata.find(id)->second.sex != profile->sex)
+                    return fail("human_profiles: 人物实例性别缓存失配");
+            }
             const auto &route = w.actors.find(id)->second;
             const auto *path = route.journey         ? &route.journey->route
                                : route.unbound_route ? &*route.unbound_route

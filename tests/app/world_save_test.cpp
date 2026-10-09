@@ -65,7 +65,7 @@ void codec_and_policy() {
     auto old_fast = state;
     old_fast.scene.speed_setting = 1;
     const auto old_fast_file = app::capture_world_save(old_fast);
-    check(old_fast_file.image.has_value(), "Stored speed2 remains a valid schema3 value");
+    check(old_fast_file.image.has_value(), "Stored speed2 remains a valid schema4 value");
     auto old_fast_candidate = app::decode_world_save(old_fast_file.image->bytes);
     check(old_fast_candidate.state && old_fast_candidate.state->scene.speed_setting == 1,
           "Decode preserves the recorded value before session restoration");
@@ -91,6 +91,28 @@ void codec_and_policy() {
     state.scripts.pages.back().legacy_page = 30;
     check(app::capture_world_save(state).error == app::WorldSaveError::ineligible,
           "Business modal cannot be silently discarded by saving");
+}
+void profile_roundtrip() {
+    auto state = initial();
+    const auto first = ark::simulation::startup_world_human_profile(state, 1).value();
+    check(ark::simulation::install_startup_world_main_character(state, {"UI测试甲", 1, true}),
+          "Install definition0 without an actor");
+    const auto saved = app::capture_world_save(state);
+    check(saved.image.has_value(), saved.message.c_str());
+    auto loaded = app::decode_world_save(saved.image->bytes);
+    check(loaded.state.has_value(), loaded.message.c_str());
+    const auto profile = ark::simulation::startup_world_human_profile(*loaded.state, 0).value();
+    check(profile.name == "UI测试甲" && profile.sex == 1 && profile.custom_name &&
+              ark::simulation::startup_world_human_profile(*loaded.state, 1)->name == first.name &&
+              loaded.state->scene.world.world.ai.battle.actors.size() ==
+                  state.scene.world.world.ai.battle.actors.size(),
+          "Unvisited main profile survives schema4 without changing first visitor or creating "
+          "actors");
+    std::string reason;
+    loaded.state->scripts.humans.at(0).name = "bad cached name";
+    check(app::prepare_world_save_candidate(*loaded.state, state, reason) !=
+              app::WorldSaveError::none,
+          "Mismatched durable script name cannot silently repair a bad save");
 }
 void corrupt_files() {
     auto captured = app::capture_world_save(initial());
@@ -171,6 +193,7 @@ void slots_and_failure() {
 } // namespace
 int main() {
     codec_and_policy();
+    profile_roundtrip();
     corrupt_files();
     slots_and_failure();
     run_restore_tests();

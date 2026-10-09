@@ -4,7 +4,7 @@
 
 默认先显示标题，可新建或继续已有手动档；进入后运行持续世界：地图、设施、人物/怪物、资金、任务、日期和页面由同一Owner持有。已接建设/道路/移动/撤除、人物经营、任务与授勋、晋级/扩张、村办0–3及5/6、商会/魔法壶/普通道具，以及两栏手动存读档。情报菜单、部分经营入口和完整动画仍待接。
 
-规则/运行时冻结至 **72a5bf4维护闭包，共363项来源记录**，保留商品79/72、设施口碑82、魔法壶41–47与村办5/6、购买后举物与建筑升降提示。建设图块复用研究只读查询；维护回放新增显式表现请求，桌面不按FPS触发随机或任务清理。玩家使用ARKSAVE1/schema3，保存40条配方进度，旧档明确拒绝且不迁移；完整AVRSAVE1仅用于维护与精确回放。当前验证与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-72a5bf4-integration)。
+规则/运行时冻结至 **4ef4a98维护闭包，共379项来源记录**，保留商品79/72、设施口碑82、魔法壶41–47与村办5/6、购买后举物与建筑升降提示。建设图块复用研究只读查询；维护回放新增显式表现请求，桌面不按FPS触发随机或任务清理。玩家使用ARKSAVE1/schema4，保存40条配方进度及定义0的主角资料，旧档明确拒绝且不迁移；完整AVRSAVE1仅用于维护与精确回放；独立system.arksys保存跨局纪录及继承。当前批次状态与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 
 [文档分类索引](docs/README.md) · [当前待办](TODO.md) · [架构](docs/ARCHITECTURE.md) · [研究/产品差距](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [历史验收](docs/stages/history/B1-implementation-log.md)
 
@@ -25,7 +25,7 @@ ctest --preset desktop-release
 .\build\bin\ark_village-desktop-release.exe
 ```
 
-默认启动和显式 `--world` 都先进入标题，再启动持续世界；`--check` 无窗口校验资源和世界初始化。标题点“开始游戏”选择两栏手动档，空栏开始新游戏，有档可“继续游戏／新游戏”；新游戏不立即覆盖旧档。右键或Esc逐级返回，Enter/Space确认，上下键选择。纪录和删除暂禁用。有界`--frames`世界诊断仍直达世界；`--inspect-page world-title|world-title-slots|world-title-actions`用于标题截图。来源/边界见[标题批次](docs/stages/B1-playable-prototype.md#title-start-flow)。
+默认启动和显式 `--world` 都先进入标题，再启动持续世界；`--check` 无窗口校验资源和世界初始化。标题点“开始游戏”选择两栏手动档，空栏进入城镇名称／冒险者姓名／性别／开始游戏配置，有档可“继续游戏／新游戏”；取消保留草稿，开始不覆盖旧档。右键或Esc逐级返回，Enter/Space确认，上下键选择。标题和游戏内系统菜单可查看两页跨局纪录，左右翻页；删除仍禁用。有界`--frames`世界诊断仍直达世界；`--inspect-page world-title|world-title-slots|world-title-actions|world-title-records|world-title-cash|world-title-configure|world-title-text|world-title-clear`用于有界截图；计分页是明确阶段夹具。来源/边界见[标题批次](docs/stages/B1-playable-prototype.md#title-start-flow)。
 确认启动介绍和后续事件页后，世界才按原有资格继续推进，首名冒险者在420次有资格的到访更新后自动免费加入。页面等待输入时不会自动跳过教程或奖励。
 
 窗口默认1080×720（3:2），支持 `--size 宽 高`、调整窗口大小、左键拖动地图和滚轮约5%步长缩放（25%～200%）；也可用`--zoom-percent 25`启动全景视图，默认仍100%。左键短点在松开时选择，右键在主场景打开菜单、在菜单/已有返回页逐级退出。底部按钮或Space暂停/继续，试玩固定一倍速，读取旧档沿用当前速度。Retina使用原生framebuffer，素材最近邻采样，文字按显示密度生成。

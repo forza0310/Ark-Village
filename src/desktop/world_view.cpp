@@ -11,6 +11,7 @@
 #include "ui/world_menu.hpp"
 #include "ui/world_panels.hpp"
 #include "ui/world_reports.hpp"
+#include "ui/world_startup.hpp"
 #include "ui/world_tasks.hpp"
 #include "world_canvas.hpp"
 #include "world_inspection.hpp"
@@ -122,7 +123,11 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     state.scene.speed_setting = 0; // Player windows always use the normal source update count.
     WorldCameraView view{state.camera, state.reference_viewport};
     WorldSaveInspection save_inspection_driver(options);
-    app::WorldSession session(std::move(state), save_inspection_driver.directory());
+    const auto session_directory =
+        save_inspection_driver.directory().empty() && !inspecting && !options.frames
+            ? app::default_world_save_directory()
+            : save_inspection_driver.directory();
+    app::WorldSession session(std::move(state), session_directory);
     auto publication = session.frame();
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
@@ -174,7 +179,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         last_render = now;
         publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
         const auto &current = *publication->state;
-        const bool failed = publication->failed;
+        const bool failed = publication->failed || !publication->system_error.empty();
         if (publication->generation != generation) {
             // Loaded IDs may match the discarded world. Drop every local binding before
             // reading input; neither held buttons nor prior interpolation crosses a load.
@@ -251,6 +256,13 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
         const auto raster =
             canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
+        std::string dynamic_text = current.scripts.village_name;
+        for (const auto &[id, profile] : current.human_profiles) {
+            (void)id;
+            dynamic_text += profile.name;
+        }
+        if (!text.include_text(dynamic_text))
+            throw std::runtime_error("当前字体不支持存档中的姓名");
         text.prepare(raster.zoom);
         const ui::Layout layout(extent);
         const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
@@ -295,6 +307,14 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         const auto hit = [&](Rectangle rectangle) {
             return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
         };
+        const Rectangle retry_box{extent.width / 2.F - 48, extent.height - 48.F, 96, 20};
+        if (!publication->system_error.empty() &&
+            (IsKeyPressed(KEY_ENTER) || (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && mouse &&
+                                         CheckCollisionPointRec(*mouse, retry_box)))) {
+            app::WorldCommand retry;
+            retry.kind = app::WorldCommandKind::retry_system_write;
+            session.submit(retry);
+        }
         const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page);
         if (!failed && !publication->save_menu_open && !save_menu.pending() &&
             ((hud_mouse_buttons && hit(layout.left_button)) ||
@@ -413,9 +433,16 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 task_selection = {};
                 task_feedback.clear();
             }
-            if (management.input_page(current, *page, extent, mouse, click, back, keyboard_event,
-                                      desired_pause || failed || pending_task || pending_ack,
-                                      session)) {
+            if (page->legacy_page == 17) {
+                if (!desired_pause && !failed && !pending_ack &&
+                    (IsKeyPressed(KEY_ENTER) ||
+                     (click && mouse &&
+                      CheckCollisionPointRec(*mouse, {(extent.width - 222) / 2.F,
+                                                      (extent.height - 155) / 2.F, 222, 155}))))
+                    pending_ack = session.ack_page(page->id);
+            } else if (management.input_page(
+                           current, *page, extent, mouse, click, back, keyboard_event,
+                           desired_pause || failed || pending_task || pending_ack, session)) {
                 // Management controller owns only selection and forwards explicit FIFO intents.
             } else if (ui::world_task_page(current, *page)) {
                 const auto task = ui::world_task_view(current, *page);
@@ -545,8 +572,12 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         ui::draw_world_hud(current, layout, skin, failed, publication->main_menu_open,
                            pending_menu != 0, active_page(current));
         if (const auto *page = active_page(current)) {
-            if (management.draw_page(current, *page, extent, skin,
-                                     !desired_pause && !failed && !pending_ack && !pending_task)) {
+            if (page->legacy_page == 17) {
+                if (publication->system.clear)
+                    ui::draw_world_clear(*publication->system.clear, extent, skin);
+            } else if (management.draw_page(current, *page, extent, skin,
+                                            !desired_pause && !failed && !pending_ack &&
+                                                !pending_task)) {
                 // Source-bound management pages are drawn by their own small UI modules.
             } else if (ui::world_task_page(current, *page)) {
                 ui::draw_world_task(ui::world_task_view(current, *page),
@@ -597,6 +628,14 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                     : "确定",
                                 !desired_pause && !failed && !pending_ack);
             }
+        }
+        if (!publication->system_error.empty()) {
+            skin.content({8, extent.height - 92.F, extent.width - 16.F, 68});
+            skin.centered("系统纪录写入失败，进度已保留",
+                          {12, extent.height - 89.F, extent.width - 24.F, 18}, MAROON, 10);
+            skin.centered(publication->system_error,
+                          {12, extent.height - 72.F, extent.width - 24.F, 18}, MAROON, 10);
+            skin.button(retry_box, "重试");
         }
         if (publication->main_menu_open) {
             if (village_menu)

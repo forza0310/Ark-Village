@@ -37,6 +37,7 @@ void human_command_transactions();
 void human_gift_parent_transaction();
 void tax_command_transactions();
 void save_command_transactions();
+void system_command_transactions();
 void village_command_transactions();
 void commerce_command_transactions();
 void magic_pot_commands();

@@ -1,4 +1,5 @@
 #include "world_facility_catalog.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -70,7 +71,8 @@ world_facility_catalog_view(const simulation::StartupWorldRuntimeState &state,
                              [id](const auto &entry) { return entry.identity == id; });
             if (human == state.rules->humans.end())
                 throw std::invalid_argument("Facility publicity lost shared human definition");
-            out.participants.push_back(human->name);
+            out.participants.push_back(
+                simulation::startup_world_human_profile(state, human->identity).value().name);
         }
     } else {
         const int kind = out.raw == 79 ? (source->mode == 1   ? 1

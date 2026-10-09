@@ -1,4 +1,5 @@
 #include "world_tax.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
 #include <algorithm>
@@ -37,7 +38,9 @@ WorldTaxView world_tax_view(const simulation::StartupWorldRuntimeState &state,
         const auto portrait = simulation::startup_world_portrait(state, row.definition);
         if (human == state.rules->humans.end() || !portrait)
             throw std::invalid_argument("Tax page references a missing resident portrait");
-        view.rows.push_back({row.definition, row.amount, portrait->image, human->name});
+        view.rows.push_back(
+            {row.definition, row.amount, portrait->image,
+             simulation::startup_world_human_profile(state, human->identity).value().name});
     }
     view.initialized = true;
     return view;

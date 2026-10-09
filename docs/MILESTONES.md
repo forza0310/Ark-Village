@@ -452,3 +452,9 @@ Accepted，2026-10-08：用户确认真实经营流程验收、公共DLL防错�
 ## 72a5bf4接续（2026-10-09）
 
 沿既有Owner/UI方案，用户明确批准完整维护闭包与设施加成页224×172、五行滚动及实测字体缩放适配；来源、边界和验收见[B1](stages/B1-playable-prototype.md#research-72a5bf4-integration)。玩家存档政策、47ms和一倍速不变。
+
+
+<a id="adr-0065"></a>
+## ADR-0065 启动与跨局纪录的产品事务
+
+2026-10-09，沿用户已批准顺序执行；设计与验收见[B1](stages/B1-playable-prototype.md#research-4ef4a98-startup)。玩家schema4与维护AVRSAVE分离，系统单文件替换先于世界/计分发布，失败可重试。标题草稿不持有第二世界，确认开始才安装资料/继承。

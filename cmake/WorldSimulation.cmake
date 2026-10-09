@@ -60,13 +60,23 @@ if(ARK_LIBRARIES_ONLY)
     target_include_directories(ark_world_runtime PUBLIC "${ARK_WORLD_ROOT}/include")
     target_link_libraries(ark_world_runtime PUBLIC ark_world_rules)
     ark_world_target(ark_world_runtime)
+    # Both player system records and maintenance files use the same atomic file primitives
+    # and dataset identity. Keep the full maintenance codec outside the player DLL closure.
+    add_library(ark_world_file_io SHARED ${ARK_WORLD_FILE_SOURCES} "${ARK_WORLD_PERSISTENCE_CPP}")
+    target_link_libraries(ark_world_file_io PUBLIC ark_world_runtime)
+    ark_world_target(ark_world_file_io)
+    add_library(ark_world_system SHARED ${ARK_WORLD_SYSTEM_SOURCES})
+    target_link_libraries(ark_world_system PUBLIC ark_world_runtime PRIVATE ark_world_file_io ark_world_hash)
+    ark_world_target(ark_world_system)
     # Maintenance AVRSAVE is a consumer of the one runtime, not part of the player's
     # world update dependency graph. The player retains its separate ARKSAVE policy.
-    add_library(ark_world_persistence SHARED ${ARK_WORLD_PERSISTENCE_SOURCES}
-        "${ARK_WORLD_PERSISTENCE_CPP}")
+    add_library(ark_world_persistence SHARED ${ARK_WORLD_PERSISTENCE_SOURCES})
     target_include_directories(ark_world_persistence PUBLIC "${ARK_WORLD_ROOT}/include")
-    target_link_libraries(ark_world_persistence PUBLIC ark_world_runtime PRIVATE ark_world_hash)
+    target_link_libraries(ark_world_persistence PUBLIC ark_world_runtime ark_world_file_io PRIVATE ark_world_hash)
     ark_world_target(ark_world_persistence)
+    add_library(ark_startup_application SHARED ${ARK_STARTUP_APPLICATION_SOURCES})
+    target_link_libraries(ark_startup_application PUBLIC ark_world_system ark_world_persistence)
+    ark_world_target(ark_startup_application)
 endif()
 
 option(ARK_LONG_WORLD_TESTS "Run explicit-seed annual world integration checks" OFF)
@@ -89,7 +99,10 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             # Protocol/platform failures share one fixture lifecycle; helpers are not tests.
             target_sources(${target} PRIVATE ${ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES})
             target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
-            target_link_libraries(${target} PRIVATE ark_world_persistence ark_world_hash)
+            target_link_libraries(${target} PRIVATE ark_world_persistence ark_world_hash ark_startup_application)
+        elseif(module STREQUAL "startup_application_test")
+            target_sources(${target} PRIVATE ${ARK_STARTUP_APPLICATION_TEST_SOURCES})
+            target_link_libraries(${target} PRIVATE ark_startup_application ark_world_hash)
         elseif(module STREQUAL "startup_world_building_test")
             # 72a5bf4 verifies that bonus queries preserve the complete Owner digest.
             # This test-only maintenance dependency does not enter the player/runtime graph.

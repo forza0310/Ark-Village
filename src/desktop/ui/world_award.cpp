@@ -1,8 +1,9 @@
+#include "ark/simulation/startup_world_profile.hpp"
 // Frozen research e8f66d9 publishes raw87 ranking, award selection and separate questions.
 // S067/S068 supply the five-row composition and question text; values remain fixed-APK data.
-#include "world_award.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
+#include "world_award.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -53,11 +54,13 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
         const auto portrait = simulation::startup_world_portrait(state, id);
         if (!portrait)
             throw std::invalid_argument("Annual display references a missing current portrait");
-        view.rows.push_back({id, human->name, state.human_calendar.at(id).contribution,
-                             state.scene.world.world.ai.growth.at(id).definition.legacy_u,
-                             portrait->image});
+        view.rows.push_back(
+            {id, simulation::startup_world_human_profile(state, human->identity).value().name,
+             state.human_calendar.at(id).contribution,
+             state.scene.world.world.ai.growth.at(id).definition.legacy_u, portrait->image});
         if (view.pending_human == id)
-            view.pending_name = human->name;
+            view.pending_name =
+                simulation::startup_world_human_profile(state, human->identity).value().name;
     }
     return view;
 }

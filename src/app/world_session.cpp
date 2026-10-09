@@ -37,6 +37,14 @@ class WorldSession::Impl {
             throw std::logic_error("Invalid source world update period");
         period = std::chrono::milliseconds(gate->minimum_period_ms);
         auto initial_frame = std::make_shared<WorldFrame>();
+        const auto system = read_world_system(save_directory);
+        if (!system.records)
+            throw std::runtime_error("System records: " + system.error);
+        initial_frame->system.records = *system.records;
+        if (!save_directory.empty()) {
+            initial.cash_peak = system.records->cash_peak;
+            initial.cash_peak_village = system.records->cash_village;
+        }
         take_sound_outputs(initial, *initial_frame);
         initial_frame->state = std::make_shared<const WorldState>(std::move(initial));
         initial_frame->previous = initial_frame->state;
@@ -105,6 +113,8 @@ class WorldSession::Impl {
     std::uint64_t next_serial{1};
     bool stopping{};
     std::filesystem::path save_directory;
+    // Fully prepared but unpublished transaction; retry never recomputes awards or randomness.
+    std::shared_ptr<WorldFrame> pending_system;
     std::optional<std::uint64_t> held_page; // Worker-only physical input binding, not source state.
 
     static void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
@@ -217,9 +227,27 @@ class WorldSession::Impl {
         return publish(std::move(next));
     }
 
-    std::shared_ptr<const WorldFrame> publish(WorldFrame next) {
+    std::shared_ptr<const WorldFrame> publish(WorldFrame next, bool force_system = false) {
+        // Prepare every allocating publication before the final file replacement. Installation
+        // afterward only swaps shared pointers; a failed write keeps the full old publication.
         next.published = Clock::now();
-        auto result = std::make_shared<const WorldFrame>(std::move(next));
+        auto result = std::make_shared<WorldFrame>(std::move(next));
+        const auto before = frame();
+        if ((result->state != before->state && result->generation == before->generation) ||
+            force_system) {
+            const auto error = commit_world_system(
+                save_directory, *before->state, *result->state, result->system,
+                force_system || (before->system.clear && !result->system.clear));
+            if (!error.empty()) {
+                pending_system = std::move(result);
+                result = std::make_shared<WorldFrame>(*before);
+                result->previous = result->state;
+                result->system_error = error;
+                ++result->revision;
+            } else {
+                pending_system.reset();
+            }
+        }
         {
             std::lock_guard<std::mutex> lock(mutex);
             published = result;
@@ -257,6 +285,33 @@ class WorldSession::Impl {
             return publish(std::move(next));
         }
         const auto kind = input.value.kind;
+        if (!current.system_error.empty()) {
+            if (kind != WorldCommandKind::retry_system_write || !pending_system)
+                return frame();
+            auto retry = *pending_system;
+            retry.system_error.clear();
+            retry.last_command_serial = input.serial;
+            retry.revision = current.revision + 1;
+            return publish(std::move(retry), true);
+        }
+        if (kind == WorldCommandKind::retry_system_write)
+            return frame();
+        if (kind == WorldCommandKind::acknowledge_page && world_clear_page(*current.state)) {
+            const auto *page = top_page(*current.state);
+            auto next = current;
+            next.last_command_serial = input.serial;
+            ++next.revision;
+            if (page->id != input.value.page || current.state->scene.framework_paused)
+                return publish(std::move(next));
+            auto candidate = std::make_shared<WorldState>(*current.state);
+            const auto error = advance_world_clear(*candidate, next.system, true);
+            if (!error.empty())
+                return fail(current, error, input.serial);
+            take_sound_outputs(*candidate, next);
+            next.state = std::move(candidate);
+            next.previous = next.state;
+            return publish(std::move(next));
+        }
         if (kind == WorldCommandKind::open_save_menu || kind == WorldCommandKind::close_save_menu ||
             kind == WorldCommandKind::save_slot || kind == WorldCommandKind::load_slot)
             return apply_save(current, input);
@@ -427,6 +482,10 @@ class WorldSession::Impl {
                          WorldSaveError::none)
                     next.save_message = "读取失败：存档中的世界数据无效";
                 else {
+                    loaded.state->cash_peak = next.system.records.cash_peak;
+                    loaded.state->cash_peak_village = next.system.records.cash_village;
+                    // Loading an older world is not a new cross-game record or inheritance event.
+                    next.system.clear.reset();
                     auto replacement = std::make_shared<const WorldState>(std::move(*loaded.state));
                     std::string success = "读取完毕";
                     next.save_message = std::move(success);
@@ -458,6 +517,20 @@ class WorldSession::Impl {
     }
     std::shared_ptr<const WorldFrame> update(const WorldFrame &current, double interval) {
         const auto started = Clock::now();
+        if (world_clear_page(*current.state)) {
+            auto next = current;
+            auto candidate = std::make_shared<WorldState>(*current.state);
+            const auto error = advance_world_clear(*candidate, next.system, false);
+            if (!error.empty())
+                return fail(current, error);
+            take_sound_outputs(*candidate, next);
+            next.state = std::move(candidate);
+            next.previous = next.state;
+            next.interval_seconds = interval;
+            ++next.revision;
+            ++next.outer_updates;
+            return publish(std::move(next));
+        }
         auto result = simulation::prepare_startup_world_runtime(*current.state);
         if (result.candidate)
             synchronize_held(*result.candidate);
@@ -531,8 +604,8 @@ class WorldSession::Impl {
                 const auto interval = std::chrono::duration<double>(now - last_start).count();
                 last_start = now;
                 deadline = now + period; // Adopt actual start; a slow call creates no tick debt.
-                if (!current->main_menu_open && !current->save_menu_open &&
-                    !current->state->scene.framework_paused)
+                if (current->system_error.empty() && !current->main_menu_open &&
+                    !current->save_menu_open && !current->state->scene.framework_paused)
                     current = update(*current, interval);
             }
         } catch (const std::exception &error) {

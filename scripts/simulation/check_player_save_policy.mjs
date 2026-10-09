@@ -48,7 +48,7 @@ export function codecFields(source) {
 }
 
 export function checkPolicy(inventory, policy, codec) {
-    if (policy.format !== 'ARKSAVE1' || policy.schema !== 3 || policy.policy_version !== 1)
+    if (policy.format !== 'ARKSAVE1' || policy.schema !== 4 || policy.policy_version !== 1)
         throw Error('unsupported player classification policy');
     const actual = new Map([...inventory.records, ...inventory.wrappers].map(record =>
         [productName(record.name), record.fields.map(field => ({name: field.name, type: productName(field.type)}))]));

@@ -1,7 +1,7 @@
 {
   "policy_version": 1,
   "format": "ARKSAVE1",
-  "schema": 3,
+  "schema": 4,
   "scope": "All fields returned by the shared Owner AST inventory, including recipe progress and two private wrappers. Standard library internals are not state declarations. Maintenance snapshot helper fields are included solely as an evolution guard.",
   "classification_scale": "type.field declaration. A save action applies only below an included ancestor. wire_fields records existing codec inclusion independently: an encoded value may be inherited or rebuilt on load. No automatic format migration, codec generation or policy rewriting.",
   "sources": [
@@ -197,7 +197,8 @@
         "simulation_steps",
         "clock_parameter",
         "calendar_advance",
-        "magic_pot_recipes"
+        "magic_pot_recipes",
+        "human_profiles"
       ],
       "groups": [
         {
@@ -439,6 +440,13 @@
           "reason": "Use the current desktop viewport; it is not a saved game parameter.",
           "fields": [
             ["reference_viewport", "std::array<int, 4>"]
+          ]
+        },
+        {
+          "action": "save",
+          "reason": "Approved schema4 retains the main-character definition0 profile even before its first arrival; no extra actor, random or transient page is saved.",
+          "fields": [
+            ["human_profiles", "std::map<int, StartupWorldHumanProfile>"]
           ]
         }
       ]
@@ -2349,7 +2357,11 @@
     {
       "name": "ark::simulation::rules::WorldMagicPotRecipeProgress",
       "reason": "Fixed recipe discovery state persists independently of transient pot pages and result displays.",
-      "wire_fields": ["identity", "status", "pending_notice"],
+      "wire_fields": [
+        "identity",
+        "status",
+        "pending_notice"
+      ],
       "groups": [
         {
           "action": "save",
@@ -2610,7 +2622,9 @@
         {
           "action": "rebuild",
           "reason": "Immutable opcode40 category is rebound from rules.facilities[].legacy_icon by prepare_world_save_candidate; schema2 wire order is unchanged.",
-          "fields": [["icon", "int"]]
+          "fields": [
+            ["icon", "int"]
+          ]
         }
       ]
     },
@@ -2819,6 +2833,26 @@
           "fields": [
             ["entries_", "std::map<std::uint64_t, CashEntry>"],
             ["reports_", "std::map<std::uint64_t, AccountingReport>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldHumanProfile",
+      "reason": "Durable per-definition name, sex and custom-name flag; validated with source profile and cached script/actor facts.",
+      "wire_fields": [
+        "name",
+        "sex",
+        "custom_name"
+      ],
+      "groups": [
+        {
+          "action": "save",
+          "reason": "Explicit schema4 profile payload; old schemas are rejected without migration.",
+          "fields": [
+            ["name", "std::string"],
+            ["sex", "int"],
+            ["custom_name", "bool"]
           ]
         }
       ]

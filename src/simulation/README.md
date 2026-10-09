@@ -10,7 +10,7 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结研究`72a5bf4`中的维护闭包，共363项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物、cd13属性头标、设施类别/效果与普通道具图标及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema3仅新增配方耐久进度，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
+当前冻结研究`4ef4a98`中的维护闭包，共379项源/测试/数据；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物、cd13属性头标、设施类别/效果与普通道具图标及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema4包含配方耐久进度及定义0主角资料，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 
@@ -76,3 +76,5 @@ Three months do not certify annual transitions, arbitrary seeds, or natural task
 任务页22–28/33及相关59/83/97/99/100消费者沿冻结来源执行，费用、参与者、路线、自然成功和成果退栈均提交同一Owner。24的按住加速是源逻辑输入，桌面只发送边沿；28/33在动画中允许源confirm加速，不能由绘制帧自动触发。产品`world_session`负责物理按住的页身份和过期输入拒绝。完整主菜单、活动任务管理、raw74和普通建设不包含在这次交付。
 
 自然任务回归保留研究的全部断言，四套均编译，运行需开启`ARK_LONG_WORLD_TESTS`，标签`natural_tasks;long_world`。阶段矩阵以无窗口Debug验证默认自然轨迹、Release验证两种子与年度轨迹；raylib配置保留页面输入及世界接线检查，不重复同一标准C++长链。
+
+`startup_world_profile`统一解析定义0覆盖及原表回退；`startup_world_inheritance`按原设施/职业顺序安装冷启动继承。`startup_world_clear_score`提供六类binary32计算和计分阶段；`startup_skin`只读图块身份/裁片/人物帧，不推进世界。`ark_world_file_io`承载原子替换/数据身份，`ark_world_system`承载AVRSYS01，完整`ark_startup_application`和AVRSAVE留在维护测试依赖中，玩家复用纯helper并由原WorldSession协调。

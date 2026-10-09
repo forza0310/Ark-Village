@@ -20,7 +20,7 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 
 - [x] 72a5bf4完整闭包及设施74图标/逐来源加成/后缀、普通道具图标、人物cd13头标已接线并完成本地验收，见[B1](docs/stages/B1-playable-prototype.md#research-72a5bf4-integration)。
 
-- [ ] 开局主角配置/到访、标题纪录：后继9ec4c1a已正式交付，另批核对产品入口及存档政策后接入；按[具体依赖](docs/reference/RESEARCH_REQUESTS.md#player-feedback-20261008)接入；不能用漏画推断规则没生效。
+- [x] 4ef4a98主角配置/schema4、跨局系统纪录/六类通关计分和启动皮肤已完成本地验收；见[B1](docs/stages/B1-playable-prototype.md#research-4ef4a98-startup)。装饰人物完整动态、自然16年和AVRAPP01另列边界。
 
 - [x] 1e6b291建设查询与Owner显式表现请求/独立回放迁入并本地验收，来源核至88eb658，363项冻结来源；结果见[B1](docs/stages/B1-playable-prototype.md#research-88eb658-integration)。
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。

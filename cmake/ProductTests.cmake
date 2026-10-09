@@ -125,9 +125,9 @@ if(ARK_BUILD_DESKTOP)
     # Source portrait assertions keep their CPU image oracle and use the existing product
     # SEB/TSV parsers. No WindowServer is needed, but headless builds do not depend on raylib.
     ark_test_executable(ark_simulation_startup_world_visuals_test
-        SOURCES tests/simulation/startup_world_visuals_test.cpp
+        SOURCES tests/simulation/startup_world_visuals_test.cpp ${ARK_STARTUP_SKIN_TEST_SOURCES}
         # The frozen no-mutation oracle hashes the complete Owner through maintenance codec.
-        LIBRARIES ark_world_runtime ark_world_persistence ark_asset_metadata PkgConfig::RAYLIB)
+        LIBRARIES ark_world_runtime ark_world_persistence ark_world_hash ark_asset_metadata PkgConfig::RAYLIB)
     ark_test_case(simulation.startup_world_visuals_test ark_simulation_startup_world_visuals_test
         ARGS "${PROJECT_SOURCE_DIR}/assets" LABELS presentation frozen TIMEOUT 120)
     # World UI suites use the same skin/resource/layout lifetime and dependencies.
@@ -156,7 +156,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/world_rank.cpp src/desktop/character_status.cpp
             src/desktop/character_visibility.cpp
             src/desktop/world_task_inspection.cpp
-            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp
+            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/ui/world_startup.cpp
         LIBRARIES ark_world_ui_test_support ark_world_queries ark_world_session)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"

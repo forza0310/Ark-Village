@@ -93,6 +93,9 @@ def main():
     missing = points - set(font.getBestCmap())
     if missing:
         raise ValueError("Noto lacks requested glyphs: " + " ".join(f"U+{code:04X}" for code in sorted(missing)))
+    # Player-created names are not known at build time. Retain the pinned font cmap,
+    # stripping layout/name overhead while loading only demanded glyphs into the GPU atlas.
+    points |= set(font.getBestCmap())
     options = subset.Options()
     options.recalc_timestamp = False
     options.name_IDs = [0, 1, 2, 3, 4, 5, 6, 13, 14, 16, 17]

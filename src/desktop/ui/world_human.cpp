@@ -1,6 +1,7 @@
 #include "world_human.hpp"
 #include "../world_overlay_render.hpp"
 #include "ark/simulation/rules/human_management.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
 #include <algorithm>
@@ -109,7 +110,7 @@ WorldHumanView world_human_view(const State &state, const Page &page) {
         return view;
     view.human = binding->second;
     view.details = *details;
-    view.name = state.rules->humans.at(view.human).name;
+    view.name = simulation::startup_world_human_profile(state, view.human).value().name;
     view.profession = state.rules->jobs.at(details->profession).name;
     view.portrait_image = portrait->image;
     view.phase = state.page_phases.at(page.id);

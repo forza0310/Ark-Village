@@ -1816,6 +1816,31 @@
       "bytes": 11629
     },
     {
+      "file": "event/event_backGlad.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_backGlad.png",
+      "sha256": "5f95316883cbc9a3aebcd990f48645edd73dbd156a668be0a2dafb9fe898f370",
+      "bytes": 12420,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥",
+      "width": 180,
+      "height": 80
+    },
+    {
+      "file": "event/event_medelCelemony_back2.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_medelCelemony_back2.png",
+      "sha256": "4f8d81b2bd13260c03cd2eaf0ed731e8eb8ed7d6f4ae9b2805f2907c00df1d52",
+      "bytes": 27143,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥",
+      "width": 180,
+      "height": 80
+    },
+    {
+      "file": "event/img.inf",
+      "source": "research/dungeon_village_1/assets/original/event/img.inf",
+      "sha256": "9137c67579ee12fe0ed05e3274f685a67f0a2ed1dcb31c19c76a7bd89fa207a2",
+      "bytes": 435,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥"
+    },
+    {
       "file": "human/buy00.seb",
       "source": "research/dungeon_village_1/assets/original/human/buy00.seb",
       "sha256": "c0af1dca874abfbdaa1d980eabffaebcaa2aa7bc2286ebe761612f5011051f49",
@@ -4308,6 +4333,31 @@
       "source": "research/dungeon_village_1/assets/original/monster/walk_S_03.seb",
       "sha256": "e663f0bbade5640d51688436f733aa2ea8e876d917c1c732f69aba3c0d3a7431",
       "bytes": 88
+    },
+    {
+      "file": "title/img.inf",
+      "source": "research/dungeon_village_1/assets/original/title/img.inf",
+      "sha256": "18a7b9d7743d87c37f8f06ca9eb9345743ca2827f632d59edde69342b75cca1f",
+      "bytes": 93,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥"
+    },
+    {
+      "file": "title/title_cursor.png",
+      "source": "research/dungeon_village_1/assets/original/title/title_cursor.png",
+      "sha256": "09b2e1fb2e2d4747d74d1b4b6e1ee25a86af62f1d13f43f0d8cfc7480c5deb82",
+      "bytes": 3373,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥",
+      "width": 28,
+      "height": 23
+    },
+    {
+      "file": "title/title_grass.png",
+      "source": "research/dungeon_village_1/assets/original/title/title_grass.png",
+      "sha256": "ceacff087df46f74ccf116b54281ba0decbbc306dfb7dac0be6326d70a1c21b0",
+      "bytes": 7076,
+      "purpose": "4ef4a98 启动、纪录和通关皮肤桥",
+      "width": 240,
+      "height": 18
     },
     {
       "file": "title/title_logo.png",

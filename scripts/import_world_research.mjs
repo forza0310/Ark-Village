@@ -20,12 +20,13 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_runtime_focus', 'startup_world_runtime_pages', 'startup_world_runtime_tasks',
   'startup_world_runtime_task_pages', 'startup_world_runtime_deadline',
   'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals',
-  'startup_world_persistence'];
+  'startup_world_persistence', 'startup_application', 'startup_system_records', 'startup_skin'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
   'startup_world_task_flow', 'startup_world_deadline', 'startup_world_building',
-  'startup_world_visuals', 'startup_world_persistence'];
+  'startup_world_visuals', 'startup_world_persistence', 'startup_application',
+  'startup_system_records', 'startup_world_clear_score'];
 const translate = text => text.replaceAll('dungeon_village_tools/', 'ark/assets/')
   .replaceAll('dungeon_village_tools', 'ark::assets')
   .replaceAll('dungeon_village_reference/', 'ark/simulation/rules/')
@@ -58,6 +59,7 @@ if (mode === '--record-patch') {
     throw new Error('Refuse to replace an existing frozen snapshot');
   const files = new Set(), pending = prototypeModules.map(name => `prototype/src/${name}.cpp`);
   for (const name of prototypeTests) pending.push(`prototype/tests/${name}_test.cpp`);
+  pending.push('prototype/tests/startup_skin_checks.cpp');
   for (const name of readdirSync(join(source, 'example/tests')).sort()) {
     if (/^(world_|actor_|ai_|battle_|character_|combat_|encounter_|object_|rescue_|human_|weapon_|accounting|activity_|snapshot_facility_choice|geometry|map_access|navigation|neighbourhood|domain|facility_(arrival|departure|economy|exit|items|service|use))/.test(name) && name.endsWith('_test.cpp'))
       pending.push(`example/tests/${name}`);
@@ -79,7 +81,7 @@ if (mode === '--record-patch') {
       if (!reference && !prototype) {
         // CPU portrait regression reuses the product's existing identical SEB/TSV API.
         // Keep the full test body; only its header/namespace and target dependency change.
-        if (relative === 'prototype/tests/startup_world_visuals_test.cpp' &&
+        if (['prototype/tests/startup_world_visuals_test.cpp', 'prototype/tests/startup_skin_checks.cpp'].includes(relative) &&
             ['dungeon_village_tools/sprite.hpp', 'dungeon_village_tools/table.hpp'].includes(match[1]))
           continue;
         // Maintained prototype regressions share a local fixture. Keep its relative path
@@ -211,13 +213,15 @@ if (mode === '--record-patch') {
     snapshot_sha256: digest(snapshotBytes), files: records
   }, null, 2) + '\n');
   const rules = records.filter(v => v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
-  const persistenceModules = new Set(['startup_world_codec.cpp', 'startup_world_file_io.cpp',
+  const persistenceModules = new Set(['startup_world_codec.cpp',
     'startup_world_persistence.cpp', 'startup_world_restore_validation.cpp']);
   const worldSources = records.filter(v => v.file.startsWith('src/simulation/') &&
     !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
-  const runtime = worldSources.filter(v => !persistenceModules.has(basename(v.file)));
+  const separateModules = new Set(['startup_world_file_io.cpp', 'startup_system_records.cpp', 'startup_application.cpp']);
+  const runtime = worldSources.filter(v => !persistenceModules.has(basename(v.file)) && !separateModules.has(basename(v.file)));
   const persistence = worldSources.filter(v => persistenceModules.has(basename(v.file)));
-  const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp'));
+  const applicationSupport = records.filter(v => /^tests\/simulation\/startup_(?:system_records|world_clear_score)_test\.cpp$/.test(v.file));
+  const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp') && !applicationSupport.includes(v));
   const hashes = records.filter(v => v.file === 'src/assets/sha256.cpp');
   const continuousSupport = records.filter(v => v.file === 'tests/simulation/startup_world_replay_driver.cpp');
   const persistenceSupport = records.filter(v => /^tests\/simulation\/startup_world_(?:codec|restore)_checks\.cpp$/.test(v.file));
@@ -226,6 +230,11 @@ if (mode === '--record-patch') {
   cmake += 'set(ARK_WORLD_RUNTIME_SOURCES\n' + runtime.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_TEST_SOURCES\n' + tests.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   for (const [name, entries] of [['ARK_WORLD_PERSISTENCE_SOURCES', persistence],
+      ['ARK_WORLD_FILE_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_world_file_io.cpp')],
+      ['ARK_WORLD_SYSTEM_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_system_records.cpp')],
+      ['ARK_STARTUP_APPLICATION_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_application.cpp')],
+      ['ARK_STARTUP_APPLICATION_TEST_SOURCES', applicationSupport],
+      ['ARK_STARTUP_SKIN_TEST_SOURCES', records.filter(v => v.file === 'tests/simulation/startup_skin_checks.cpp')],
       ['ARK_WORLD_HASH_SOURCES', hashes],
       ['ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES', continuousSupport],
       ['ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES', persistenceSupport]])

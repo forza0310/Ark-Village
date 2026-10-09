@@ -1,6 +1,7 @@
 #include "ark/app/world_save.hpp"
 #include "ark/simulation/rules/world_magic_pot.hpp"
 #include "ark/simulation/rules/world_map_refresh.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -324,6 +325,24 @@ WorldSaveError validate_world_save_candidate(const State &s, std::string &reason
     };
     if (!s.rules || s.rules != &simulation::startup_world_rules())
         return invalid("Save has no matching immutable world rules");
+    if (!simulation::valid_startup_world_human_profiles(s))
+        return invalid("Save has invalid main-character profiles");
+    for (const auto &[id, profile] : s.human_profiles) {
+        const auto script = s.scripts.humans.find(id);
+        if (script == s.scripts.humans.end() || script->second.name != profile.name)
+            return invalid("Save profile and script name disagree");
+    }
+    for (const auto *actors :
+         {&s.scene.world.world.ai.battle.actors, &s.scene.world.world.ai.retired_actors})
+        for (const auto &[id, actor] : *actors) {
+            if (actor.kind != simulation::rules::ActorKind::human)
+                continue;
+            const auto profile = simulation::startup_world_human_profile(s, actor.definition);
+            const auto metadata = s.actor_metadata.find(id);
+            if (!profile || metadata == s.actor_metadata.end() ||
+                metadata->second.sex != profile->sex)
+                return invalid("Save profile and actor sex disagree");
+        }
     const auto &rules = *s.rules;
     const auto &world = s.scene.world.world;
     const auto &ai = world.ai;

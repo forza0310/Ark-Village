@@ -553,6 +553,7 @@ int main() {
     tax_command_transactions();
     sound_output_sink();
     save_command_transactions();
+    system_command_transactions();
     village_command_transactions();
     commerce_command_transactions();
     magic_pot_commands();

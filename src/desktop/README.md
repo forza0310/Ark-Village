@@ -1,6 +1,6 @@
 # desktop
 
-普通无界启动先由`world_title`显示S038–S040标题/两栏手动目录/继续与新游戏；它在worker创建前运行，没有世界更新。继续重新读取玩家档、候选校验后交给唯一WorldSession，失败保留初始Owner和标题。新游戏不写/删除旧档；纪录/删除禁用。标题图片从产品assets/title读取，尺寸/PC布局不冒充Steam动画或原触控坐标。
+普通无界启动先由`world_title`显示S038–S040标题/两栏手动目录/继续与新游戏；它在worker创建前运行，没有世界更新。继续重新读取玩家档、候选校验后交给唯一WorldSession，失败保留初始Owner和标题。新游戏先配置定义0主角，取消保留草稿，开始只写系统栏位纪录而不写/删除世界旧档；标题和系统菜单开放两页纪录，删除禁用。标题图片从产品assets/title读取，尺寸/PC布局不冒充Steam动画或原触控坐标。
 
 `world_canvas`复用原生framebuffer的RAII分配/缩放，标题与世界共用；图片和延迟文字在同一原生相机中合成后再输出窗口，鼠标仍按窗口点转换，避免Windows DPI导致黑边和文字错位。
 
@@ -101,3 +101,5 @@ Layout.scene_clip绘制到21单位底栏边缘；Layout.scene命中仍停在29�
 `Sprites::map_frame`统一预览、缩略图、地表和地图图片高度的帧解释：沿2b479f6合同保留非负逻辑朝向，缺失帧为空绘而不回退frame0；负帧明确拒绝。不回写世界fragment或逻辑朝向。建设窗口诊断优先实际目录的募集地块，`world-built`通过真实事务确认朝向1，覆盖此前只检查旅馆遗漏的单帧路径。
 
 公共桌面字形产物仅在 `build/shared-libraries/desktop-generated/` 生成一次：`desktop_glyphs.json` 记录需求/来源，`desktop_glyphs.hpp` 提供运行字符串。公共库的 `ark_desktop_glyphs` 每次构建扫描当前源码和产品目录，内容相同不改文件时间；四套消费者不复制清单。先配置、构建 `shared-libraries`，再配置桌面消费者；缺生成头/JSON会明确拒绝并提示公共构建入口。核心规则/运行时及headless消费者不包含这个桌面头。`--font`、ASCII、显式额外字形、缺字报错和按密度扩图集政策保留。
+
+`ui/world_startup`执行4ef4a98启动图块桥，分开title/event/common索引与阶段/页面计数。raw17读WorldFrame.system.clear，确认由WorldSession专用计分事务消费；系统写失败显示重试，所有世界输入冻结。标题、新局装饰人物完整动态映射尚未交付，不以60FPS补造随机或动画。Text按需增加自定义名字的字形，分发字体保留固定Noto cmap并剥离无用表；不支持的字符明确拒绝。

@@ -2,6 +2,7 @@
 
 // The desktop reads immutable publications; only the worker commits the canonical world.
 #include "ark/app/world_save_files.hpp"
+#include "ark/app/world_system.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_commerce.hpp"
 #include "ark/simulation/startup_world_editing.hpp"
@@ -21,6 +22,7 @@
 namespace ark::app {
 using WorldState = simulation::StartupWorldRuntimeState;
 enum class WorldCommandKind {
+    retry_system_write,
     acknowledge_page,
     acknowledge_report,
     award_action,
@@ -95,6 +97,9 @@ struct WorldFrame {
     std::string save_message;
     std::array<WorldSaveSlotInfo, 2> save_slots;
     std::uint64_t generation{1};
+    WorldSystemState system;
+    // A failed durable transaction retains the old world and can be explicitly retried.
+    std::string system_error;
     bool failed{};
     std::string error;
     std::uint64_t outer_updates{};

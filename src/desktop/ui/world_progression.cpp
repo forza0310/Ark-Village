@@ -1,5 +1,6 @@
 #include "world_progression.hpp"
 #include "ark/simulation/rules/world_calendar_tasks.hpp"
+#include "ark/simulation/startup_world_profile.hpp"
 #include "skin.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -16,7 +17,7 @@ std::string human_name(const State &state, int id) {
                                     [id](const auto &h) { return h.identity == id; });
     if (found == state.rules->humans.end())
         throw std::invalid_argument("Progression page references an unknown human definition");
-    return found->name;
+    return simulation::startup_world_human_profile(state, id).value().name;
 }
 } // namespace
 bool world_progression_page(const Page &page) {

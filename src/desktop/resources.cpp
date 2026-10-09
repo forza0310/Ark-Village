@@ -40,13 +40,16 @@ std::map<int, std::filesystem::path> image_index(const std::filesystem::path &ro
                                                  const char *group = "image") {
     std::map<int, std::filesystem::path> result;
     for (const auto &row : assets::parse_tsv(read_bytes(root / group / "img.inf"))) {
-        if (row.size() != 2)
+        const bool ordinal = std::string(group) == "title";
+        if (row.size() != (ordinal ? 1U : 2U))
             throw std::runtime_error("Invalid image index row");
-        auto name = std::filesystem::path(row[1]);
+        auto name = std::filesystem::path(row.back());
         if (name.has_parent_path() || name.is_absolute())
             throw std::runtime_error("Unsafe image path");
         name.replace_extension(".png");
-        if (!result.emplace(assets::parse_table_integer(row[0]), name).second)
+        const int id =
+            ordinal ? static_cast<int>(result.size()) : assets::parse_table_integer(row[0]);
+        if (!result.emplace(id, name).second)
             throw std::runtime_error("Duplicate image index");
     }
     return result;
@@ -200,9 +203,13 @@ void Sprites::indexed_sprite(Binding binding, int sprite, int frame, int layer, 
 }
 void Sprites::indexed_image(Binding binding, int image_id, Rectangle source,
                             Rectangle destination) {
-    if (binding != Binding::common && binding != Binding::weapon)
+    if (binding != Binding::common && binding != Binding::weapon && binding != Binding::title &&
+        binding != Binding::event)
         throw std::invalid_argument("Unsupported indexed image binding");
-    const std::string group = binding == Binding::weapon ? "weapon" : "common";
+    const std::string group = binding == Binding::weapon  ? "weapon"
+                              : binding == Binding::title ? "title"
+                              : binding == Binding::event ? "event"
+                                                          : "common";
     if (!actor_images_.count(group))
         actor_images_.emplace(group, image_index(root_, group.c_str()));
     image(actor_images_.at(group).at(image_id).string(), source, destination, binding);
@@ -339,6 +346,7 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
     const char *group = binding == Binding::common2  ? "common2"
                         : binding == Binding::window ? "ui"
                         : binding == Binding::title  ? "title"
+                        : binding == Binding::event  ? "event"
                         : binding == Binding::map    ? "image"
                         : binding == Binding::weapon ? "weapon"
                                                      : "common";
@@ -377,7 +385,7 @@ void Text::prepare(float pixel_scale) {
     // Current labels are <= 16 logical units. Quantizing growth avoids reloading the glyph
     // atlas on every resize event; map wheel zoom does not change UI density.
     const int pixels = std::max(48, static_cast<int>(std::ceil(16 * pixel_scale / 16)) * 16);
-    if (font_.texture.id && font_.baseSize >= pixels)
+    if (!glyphs_dirty_ && font_.texture.id && font_.baseSize >= pixels)
         return;
     auto next = LoadFontEx(font_path_.string().c_str(), pixels, codepoints_.data(),
                            static_cast<int>(codepoints_.size()));
@@ -393,6 +401,31 @@ void Text::prepare(float pixel_scale) {
     if (font_.texture.id)
         UnloadFont(font_);
     font_ = next;
+    glyphs_dirty_ = false;
+}
+bool Text::include_text(const std::string &value) {
+    int count{};
+    int *raw = LoadCodepoints(value.c_str(), &count);
+    if (!raw)
+        return false;
+    std::set<int> points(codepoints_.begin(), codepoints_.end());
+    for (int i = 0; i < count; ++i)
+        if (raw[i] >= 32 && raw[i] != 127)
+            points.insert(raw[i]);
+    UnloadCodepoints(raw);
+    if (points.size() == codepoints_.size())
+        return true;
+    auto old = codepoints_;
+    codepoints_.assign(points.begin(), points.end());
+    glyphs_dirty_ = true;
+    try {
+        prepare(std::max(1.F, font_.baseSize / 16.F));
+        return true;
+    } catch (const std::exception &) {
+        codepoints_ = std::move(old);
+        glyphs_dirty_ = false;
+        return false;
+    }
 }
 Text::~Text() { UnloadFont(font_); }
 void Text::draw(const std::string &value, float x, float y, Color color, float size) const {

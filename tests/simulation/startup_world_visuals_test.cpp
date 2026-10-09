@@ -16,6 +16,8 @@
 #include <stdexcept>
 
 using namespace ark::simulation;
+// 应用皮肤拥有独立源包；仍复用本套件的真实PNG/SEB与CPU图像生命周期。
+int check_startup_skin(const std::filesystem::path &root, const std::filesystem::path &output);
 namespace {
 int checks{};
 void check(bool condition, const char *message) {
@@ -848,9 +850,11 @@ void facility_detail_icons(const std::filesystem::path &root) {
 } // namespace
 int main(int argc, char **argv) {
     try {
-        if (argc != 2)
-            throw std::runtime_error("需要原素材根目录");
+        if (argc != 2 && argc != 3)
+            throw std::runtime_error("需要原素材根目录，可另给研究皮肤CPU拼图输出路径");
         SetTraceLogLevel(LOG_WARNING);
+        checks += check_startup_skin(argv[1], argc == 3 ? std::filesystem::path(argv[2])
+                                                      : std::filesystem::path{});
         owner_mapping();
         cpu_portraits(argv[1]);
         equipment_lift_queries();

@@ -25,41 +25,88 @@ void world_menu() {
         desktop::WorldTitleInput input;
         input.click = middle(boxes.records);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
-                  selection.page == Page::title,
-              "Unimplemented records cannot start a game or mutate a slot");
+                  selection.page == Page::records,
+              "One record click enters records without starting the world");
+        input = {};
+        input.right = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.record_page == 1, "Record arrow changes to cash page");
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.record_page == 0, "Record pages cycle");
+        input = {};
+        input.back = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.page == Page::title && selection.title_selection == 1,
+              "Back preserves record title selection");
+        input = {};
         input.click = middle(boxes.start);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
                   selection.page == Page::slots,
               "Start opens slots without advancing or starting a world");
         input.click = middle(boxes.slots[1]);
-        check(desktop::world_title_input(selection, boxes, slots, input) == Action::new_game &&
-                  selection.slot == 1,
-              "An empty manual slot requests a fresh world");
-        slots[1].exists = true;
-        slots[1].metadata = app::WorldSaveMetadata{};
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
-                  selection.page == Page::actions,
-              "An occupied manual slot opens its submenu before continuing");
-        input.click = middle(boxes.actions[2]);
-        check(!desktop::world_title_input(selection, boxes, slots, input),
-              "Disabled deletion has no file or start action");
-        input.click = middle(boxes.actions[0]);
-        check(desktop::world_title_input(selection, boxes, slots, input) == Action::load,
-              "Continue requests the selected manual file only");
-        slots[1].error = app::WorldSaveError::malformed;
-        check(!desktop::world_title_input(selection, boxes, slots, input),
-              "A now-invalid directory entry cannot continue from stale metadata");
-        input.click = middle(boxes.actions[1]);
-        check(desktop::world_title_input(selection, boxes, slots, input) == Action::new_game,
-              "New game remains independent of an unreadable old file");
+                  selection.page == Page::configure && selection.slot == 1,
+              "An empty slot enters the four-field configuration");
+        input.click = middle(boxes.fields[2]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.draft.human.sex == 1 && selection.draft.human.name == "冒险花子",
+              "Default name follows sex");
+        input.click = middle(boxes.fields[1]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        selection.edit_text = "UI测试甲乙";
+        input = {};
+        input.erase = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.edit_text == "UI测试甲", "Backspace removes one complete UTF8 character");
+        input = {};
+        input.confirm = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        input = {};
+        input.click = middle(boxes.fields[2]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.draft.human.sex == 0 && selection.draft.human.name == "UI测试甲" &&
+                  selection.draft.human.custom_name,
+              "Custom name survives sex switch");
         input = {};
         input.back = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        input = {};
+        input.click = middle(boxes.slots[1]);
+        desktop::world_title_input(selection, boxes, slots, input);
+        check(selection.page == Page::configure && selection.draft.human.name == "UI测试甲",
+              "Cancel and reenter retains draft");
+        input.click = middle(boxes.fields[3]);
+        check(desktop::world_title_input(selection, boxes, slots, input) == Action::new_game &&
+                  selection.draft.slot == 1,
+              "Only explicit final start requests world installation");
+        input = {};
+        input.back = true;
+        desktop::world_title_input(selection, boxes, slots, input);
+        slots[1].exists = true;
+        slots[1].metadata = app::WorldSaveMetadata{};
+        input = {};
+        input.click = middle(boxes.slots[1]);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
-                  selection.page == Page::slots,
-              "Right/back closes only the manual submenu");
+                  selection.page == Page::actions,
+              "Occupied slot opens actions");
+        input.click = middle(boxes.actions[2]);
+        check(!desktop::world_title_input(selection, boxes, slots, input),
+              "Deletion remains disabled");
+        input.click = middle(boxes.actions[0]);
+        check(desktop::world_title_input(selection, boxes, slots, input) == Action::load,
+              "Continue selects this file");
+        slots[1].error = app::WorldSaveError::malformed;
+        check(!desktop::world_title_input(selection, boxes, slots, input),
+              "Invalid file cannot continue");
+        input.click = middle(boxes.actions[1]);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
-                  selection.page == Page::title,
-              "Second back returns to title");
+                  selection.page == Page::overwrite,
+              "Restart first requests explicit confirmation");
+        input = {};
+        input.confirm = true;
+        check(!desktop::world_title_input(selection, boxes, slots, input) &&
+                  selection.page == Page::configure,
+              "Restart confirmation edits a draft without writing the slot");
         check(boxes.book.x + boxes.book.width <= extent.width &&
                   boxes.book.y + boxes.book.height <= extent.height &&
                   boxes.slots[1].y + boxes.slots[1].height <= boxes.back.y,
@@ -240,6 +287,16 @@ void world_menu() {
               "Two-slot summary/actions fit the minimum viewport without overlapping status");
     }
     desktop::WorldSaveMenuInput click;
+    click.click = middle(slots.records);
+    menu.input(frame, extent, click, session);
+    desktop::WorldSaveMenuInput record_arrow;
+    record_arrow.right = true;
+    menu.input(frame, extent, record_arrow, session);
+    desktop::WorldSaveMenuInput record_back;
+    record_back.escape = true;
+    menu.input(frame, extent, record_back, session);
+    check(!menu.pending() && session.frame()->last_command_serial == 0,
+          "In-game records navigation and return submit no world/save command");
     click.click = middle(slots.save[0]);
     menu.input(frame, extent, click, session);
     check(!menu.pending() && session.frame()->last_command_serial == 0,

@@ -5,3 +5,5 @@ dungeon_village_1/assets/audio/*.ogg -text
 dungeon_village_1/assets/normalized/*.png -text
 dungeon_village_1/data/original/** -text
 dungeon_village_1/data/items/original/** -text
+# CTest混合编码原日志留原始字节，另有UTF-8可读版。
+dungeon_village_1/work/audio-owner-delivery/*.raw -text -eol

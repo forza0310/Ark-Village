@@ -1,0 +1,1699 @@
+{
+  "scope": "Steam raw81 exact local drawing/inputs and shared level consumer; static only",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "key": "draw",
+      "source": "work/steam-input-closure/disassembly.json",
+      "source_sha256": "230701bd97189df0640a1b4eb70c6eaeffbf593d4e460a46d7da9a068f76e7ef",
+      "rva": 3437232,
+      "offset": 3432624,
+      "bytes": 30528,
+      "sha256": "59a8e78647f4e7dfb5851658e62d1ff9b0be668f33178722651af2e3d943cf67",
+      "reused": true
+    },
+    {
+      "key": "input",
+      "source": "work/steam-interaction-analysis/disassembly.json",
+      "source_sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf",
+      "rva": 3242304,
+      "offset": 3237696,
+      "bytes": 37296,
+      "sha256": "99721187d07ee93c06d2f87419eb8319cedc0520ef1dca0b80c24f80e1d413b3",
+      "reused": true
+    },
+    {
+      "key": "init",
+      "source": "work/facility-animation-closure/disassembly.json",
+      "source_sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa",
+      "rva": 3204464,
+      "offset": 3199856,
+      "bytes": 15952,
+      "sha256": "4e4d7fe3aa2560d8dc1b0fcb73eb441f1fc2b596c3615335d4e15c0f70f67b59",
+      "reused": true
+    },
+    {
+      "key": "cctor",
+      "source": "work/facility-animation-closure/disassembly.json",
+      "source_sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa",
+      "rva": 3311072,
+      "offset": 3306464,
+      "bytes": 25168,
+      "sha256": "648fb7c439e6530f96b6dec9bba3352a95d4ac86eb48b5272fcd17b70cfdf1b9",
+      "reused": true
+    },
+    {
+      "key": "prepare",
+      "rva": 2242848,
+      "offset": 2238240,
+      "bytes": 1840,
+      "sha256": "fe4b7329d797572f6fda8be39fbb923a4a643423a5b122c9df0db5732aba4789",
+      "reused": false
+    },
+    {
+      "key": "strength",
+      "rva": 2981072,
+      "offset": 2976464,
+      "bytes": 2832,
+      "sha256": "df94efa229c07de129e1382ce1396f565bb32255b6da462036dee3d7ef5adc9d",
+      "reused": false
+    },
+    {
+      "key": "actor",
+      "rva": 3201216,
+      "offset": 3196608,
+      "bytes": 704,
+      "sha256": "3a308e37870031e9776f38bd59732bee4b384ef69d073de39159f16967e90a40",
+      "reused": false
+    },
+    {
+      "key": "cursor",
+      "rva": 3187072,
+      "offset": 3182464,
+      "bytes": 144,
+      "sha256": "70c163cc79166156719dfc4191f5fb0f2499aa2163e0d8fbe85418425ef8a9e8",
+      "reused": false
+    },
+    {
+      "key": "rate",
+      "rva": 2770816,
+      "offset": 2766208,
+      "bytes": 96,
+      "sha256": "e66019b641323e6e3d61e88fda585898e2e8779266d42dc1947ba310d739c00d",
+      "reused": false
+    },
+    {
+      "key": "count",
+      "rva": 2770464,
+      "offset": 2765856,
+      "bytes": 352,
+      "sha256": "d4b5e0cc718e731f12222127a53823f884c5d4f52ba9d2c7cd6655f3d366a92f",
+      "reused": false
+    },
+    {
+      "key": "parabola",
+      "rva": 2769904,
+      "offset": 2765296,
+      "bytes": 192,
+      "sha256": "f6df834fb5c5509f057b19f3b79543e90d44242bfc7927784f423de11be65b40",
+      "reused": false
+    },
+    {
+      "key": "cursor2",
+      "rva": 2948672,
+      "offset": 2944064,
+      "bytes": 192,
+      "sha256": "31b7daf066699b967612403a326670c792f12950e95ac6f171662cd49810f529",
+      "reused": false
+    }
+  ],
+  "new_method_bytes": 6352,
+  "direct_helper_bytes": 19,
+  "branches": [
+    {
+      "start": 271901634,
+      "end": 271903179,
+      "label": "raw81 full local drawing",
+      "bytes": 1545,
+      "sha256": "5cc468fea3b6daa403a49638546dbcf5398c32c6ff3991dc33b0b870f20256d8"
+    },
+    {
+      "start": 271689314,
+      "end": 271689863,
+      "label": "raw81 input",
+      "bytes": 549,
+      "sha256": "aaa2bb71319bbefd729c3933987b685e11b4e33d72a30e22b6d760fc5404cbfe"
+    },
+    {
+      "start": 271642856,
+      "end": 271642909,
+      "label": "raw81 Init2",
+      "bytes": 53,
+      "sha256": "105f3bcd8cd7c1d10013bc779ddc66dfbc1ce2584a8ef1985aa5ca06c398508d"
+    }
+  ],
+  "anchors": [
+    {
+      "va": 271642892,
+      "target": 270678304,
+      "label": "Init commits shared level and display values",
+      "bytes": 5,
+      "sha256": "cca64180aba13c3564d7f5f29cc9bae9152c67cdf9cfcd902ff8cf7ba01dab03"
+    },
+    {
+      "va": 270678357,
+      "target": 270683344,
+      "label": "refresh old definition params",
+      "bytes": 5,
+      "sha256": "574e6f3e5a849a1c58582d9032408e1075c949b44effef4c462694281408a14b"
+    },
+    {
+      "va": 270679073,
+      "target": 270668848,
+      "label": "old level user threshold",
+      "bytes": 5,
+      "sha256": "fe083316748bbc8dd6c8839bd4496572e60bd0a5ae529974cb8e4b722f69a5f6"
+    },
+    {
+      "va": 270679116,
+      "target": 270683344,
+      "label": "refresh new level params",
+      "bytes": 5,
+      "sha256": "c32cf1259aa8969b6a317587f8943a62aa2caf118ad8240c549297269d0938e8"
+    },
+    {
+      "va": 270680108,
+      "target": 270683344,
+      "label": "final definition refresh",
+      "bytes": 5,
+      "sha256": "5e43a5c9fd98ca8e75a074e5842235af3da76c99f6310411b12e46cad4728302"
+    },
+    {
+      "va": 271689348,
+      "target": 270924016,
+      "label": "phase0 frame1 jingle20",
+      "bytes": 5,
+      "sha256": "cd71d685850f1374d7854e98fddcfb107d639184ec20bee3ad0b56a44f019282"
+    },
+    {
+      "va": 271689378,
+      "target": 276069984,
+      "label": "confirm pulse",
+      "bytes": 5,
+      "sha256": "9688f6515914d7fb0e065a7d59bea7d5f29b8dfe6eef8632826c351fc1fc2575"
+    },
+    {
+      "va": 271689580,
+      "target": 276707872,
+      "label": "final confirm Pop",
+      "bytes": 5,
+      "sha256": "65f4ac3d8b3626e8f194bc37b36cb1abae6ea58e3bb20d9ed45e318186180544"
+    },
+    {
+      "va": 271901667,
+      "target": 270868560,
+      "label": "222x170 window",
+      "bytes": 5,
+      "sha256": "9710a9ff5d70933ab4bc0aefc2de19cc5a2b74f0586a54d020af42bf321b0164"
+    },
+    {
+      "va": 271901707,
+      "target": 270839824,
+      "label": "box15 139 224 202",
+      "bytes": 5,
+      "sha256": "8255764f8f65b304287795d9d7042a0838e2bb8ba7b5226a37c0ff52e6fccf46"
+    },
+    {
+      "va": 271901816,
+      "target": 271206272,
+      "label": "phase0 reveal height",
+      "bytes": 5,
+      "sha256": "897f631772ccca1a1096988bfcb8772e5e33f1017023532d80c8f4abfbed2b75"
+    },
+    {
+      "va": 271901868,
+      "target": 276160368,
+      "label": "message clip",
+      "bytes": 5,
+      "sha256": "caa6ad3808c0521b732b53dbb6111d1c0b09967b9ca063df8326c035e621109b"
+    },
+    {
+      "va": 271902638,
+      "target": 276235664,
+      "label": "message clip retired",
+      "bytes": 5,
+      "sha256": "56d8bb7e8a16fa5f65a23ae5fac06e626a5918e6135bd2da1b14c28e6bc6a40c"
+    },
+    {
+      "va": 271902113,
+      "target": 276293936,
+      "label": "measure level text",
+      "bytes": 5,
+      "sha256": "6ae7204ed369cb3f3ab541ef7c45ec3c3f6078ed4efdb2d3f9039cff80fa9c97"
+    },
+    {
+      "va": 271902124,
+      "target": 276293936,
+      "label": "measure translated prefix",
+      "bytes": 5,
+      "sha256": "230f6336dfb8442bb2d238dee674416d0204fa4b5f9936de9208b615aed6aba0"
+    },
+    {
+      "va": 271902137,
+      "target": 276293936,
+      "label": "measure translated suffix",
+      "bytes": 5,
+      "sha256": "81cff7ccdaf150f8f395fa99188711477d1fb257206ae3133dd80311cc34ffbf"
+    },
+    {
+      "va": 271902299,
+      "target": 270859440,
+      "label": "nonJapanese level SEB16",
+      "bytes": 5,
+      "sha256": "30828170b7ebce2786b91dc4b394b6138a35abddeb282e0555eeb52aa763d10e"
+    },
+    {
+      "va": 271902553,
+      "target": 270859440,
+      "label": "Japanese level SEB16",
+      "bytes": 5,
+      "sha256": "237bda6ddfb49be5cdcbb7b7e70daff721a0bea71aac9742a5c1d14e51cab570"
+    },
+    {
+      "va": 271902729,
+      "target": 271622528,
+      "label": "phase0 cursor at212 204",
+      "bytes": 5,
+      "sha256": "8df50bbdd26898ca51cabaaa3395c3e2ce835d5b1cad5a1f0c8dead293323344"
+    },
+    {
+      "va": 271902760,
+      "target": 271416528,
+      "label": "shared strength renderer dispCombi false",
+      "bytes": 5,
+      "sha256": "065eadfc6d5bb6e49bb3af0c07332bda207ad42404d9b7d6a7fe35b8493c77df"
+    },
+    {
+      "va": 271902845,
+      "target": 271205360,
+      "label": "actors jump distance6 time20",
+      "bytes": 5,
+      "sha256": "5d68b599f80278502e077021fffd6a6e163c5547d43eca1ef91ceef25ee8324c"
+    },
+    {
+      "va": 271902995,
+      "target": 270866160,
+      "label": "left shadow mini80 image93",
+      "bytes": 5,
+      "sha256": "d4c58340cd3e14ec521f13e60762baaea91e9711677e2334b32a1ff82eed998e"
+    },
+    {
+      "va": 271903046,
+      "target": 271636672,
+      "label": "left character5",
+      "bytes": 5,
+      "sha256": "1de311f1ef61f4e2d9bc44ab75c788fa164965d9cb98b414c237c490786f5d0a"
+    },
+    {
+      "va": 271903143,
+      "target": 270866160,
+      "label": "right shadow",
+      "bytes": 5,
+      "sha256": "fd2268e18e63c32a766e9bcaf8d50370c569598130f5641bc6c391fcdcf29e86"
+    },
+    {
+      "va": 271903166,
+      "target": 271636672,
+      "label": "right character6",
+      "bytes": 5,
+      "sha256": "5033ec0ae2768fa8cc2065ce31cee66d4a7a18e46a5d870ff398a1be990db32b"
+    },
+    {
+      "va": 271416700,
+      "target": 276171264,
+      "label": "event image14 background",
+      "bytes": 5,
+      "sha256": "ae4dcb34473d666862bdece0970af383db8b84462f3f698535f3ae91190fd890"
+    },
+    {
+      "va": 271416782,
+      "target": 276171264,
+      "label": "event image16 mini background",
+      "bytes": 5,
+      "sha256": "6b6e6254b1eccc9a42d03b45020a11fdf5232461e711f81996b5cca560be2fd6"
+    },
+    {
+      "va": 271416829,
+      "target": 276160368,
+      "label": "mapchip clip80 74 80 64",
+      "bytes": 5,
+      "sha256": "a0366399dcc4819fadf72d3a7280b1d8ef3f796c3eac4faa81cc3f51edea150e"
+    },
+    {
+      "va": 271416861,
+      "target": 270645696,
+      "label": "mapchip2 center120 105 direction0",
+      "bytes": 5,
+      "sha256": "15593f19d4ea42cf27404255e59f9836e93ffb4b064d9b0a81b47c99010bddf0"
+    },
+    {
+      "va": 271416869,
+      "target": 276235664,
+      "label": "mapchip clip retirement",
+      "bytes": 5,
+      "sha256": "25bbbfce2534075900b8187e55d3a36a95d66c40425b74ecaa450fbeeb4aba87"
+    },
+    {
+      "va": 271417472,
+      "target": 271461264,
+      "label": "nonJapanese label font9",
+      "bytes": 5,
+      "sha256": "a7b51c7cbe5549288c127e61dde5dee1e1aa04983d2a2273a7240e6037e240cc"
+    },
+    {
+      "va": 271417572,
+      "target": 271356800,
+      "label": "restore label font",
+      "bytes": 5,
+      "sha256": "ee633704ec7b87642e056e6f536ff7de9e2275679c351f6f5049e2d0a50c656e"
+    },
+    {
+      "va": 271418300,
+      "target": 271205920,
+      "label": "special count interpolation",
+      "bytes": 5,
+      "sha256": "bdf2de1016e334bcda47bdc21583f036fe846f4d5307567747cd7be1bb8971e2"
+    },
+    {
+      "va": 271418548,
+      "target": 271205360,
+      "label": "delta hop distance8 time12",
+      "bytes": 5,
+      "sha256": "deaa06eaf83fca21456e4086bc966a7e8b40ddb07c64cd82d7f50e1212235dfc"
+    },
+    {
+      "va": 271418651,
+      "target": 270669168,
+      "label": "current displayed value MAX check",
+      "bytes": 5,
+      "sha256": "1f49eccf029b6d6a09448052b929f353add9340332b0a5df95e885bdb529e6c5"
+    },
+    {
+      "va": 271418852,
+      "target": 270859440,
+      "label": "quality charm values SEB15",
+      "bytes": 5,
+      "sha256": "fcad8a0d71cdcd0dda9be45da7f4d8621eb29451aec42f43a1b99560255cb753"
+    },
+    {
+      "va": 271418917,
+      "target": 270881296,
+      "label": "price value money SEB15",
+      "bytes": 5,
+      "sha256": "99bce8aa210b9fb2a3b4942643fb66a6ac42259af19b74c291152a34d4dc93e3"
+    },
+    {
+      "va": 271419009,
+      "target": 270881808,
+      "label": "quality charm delta SEB12",
+      "bytes": 5,
+      "sha256": "2efec8846222b4cfd208df8b0f18c83918aa448793423943b00f7caf7dd9d591"
+    },
+    {
+      "va": 271419081,
+      "target": 270881808,
+      "label": "price delta SEB12",
+      "bytes": 5,
+      "sha256": "0075b00eca2c08d5d4130416519e00baac660491c43d2492da0f63e151b0d888"
+    },
+    {
+      "va": 271419187,
+      "target": 276547344,
+      "label": "price delta currency frame20",
+      "bytes": 5,
+      "sha256": "0303de7acedab92eb00196a8301345edd6d3c06237fe758a43fad7c9e1366560"
+    },
+    {
+      "va": 271419324,
+      "target": 271384128,
+      "label": "phase1 cursor uses frame minus55",
+      "bytes": 5,
+      "sha256": "504a10f01504305be0a81d8581e6730020d280739df7917b06b15c7e90e9a017"
+    },
+    {
+      "va": 271622639,
+      "target": 270866160,
+      "label": "phase0 arrow01 frame0",
+      "bytes": 5,
+      "sha256": "4c6f0ada3dd3dc7e44117395ecd95a9b9185417de79bd8037032b1b9e7f58c1e"
+    },
+    {
+      "va": 271384288,
+      "target": 270866160,
+      "label": "phase1 arrow01 frame0",
+      "bytes": 5,
+      "sha256": "cff07d131597e7ce36bcca79732ef0739f487fc296f676b2c7f1301bf2f0cd1c"
+    },
+    {
+      "va": 271637341,
+      "target": 270866160,
+      "label": "mini character selected frame",
+      "bytes": 5,
+      "sha256": "20fc453a29cf64cd4ad261b2e6a27b93c87a5b695dd2111570c8a78c49afbaba"
+    },
+    {
+      "va": 271874034,
+      "target": 277441088,
+      "label": "touch flag2",
+      "bytes": 5,
+      "sha256": "fd9e8851e13fdbb77a00ae0a4abffdbf357011a0e62f64b26e375f1a58391223"
+    },
+    {
+      "va": 271874070,
+      "target": 270770480,
+      "label": "touch component2",
+      "bytes": 5,
+      "sha256": "b657bdb4880f77f79ad21ab049d0246ad1cdbcfa8f91148359db54cf2e678814"
+    },
+    {
+      "va": 271206135,
+      "target": 270835840,
+      "label": "count interpolation effective endpoint clamp",
+      "bytes": 5,
+      "sha256": "821ec9bd873029d46541cae6cfa3e496b6a9c343d4a172096bfd32459343ed1d"
+    },
+    {
+      "va": 271754457,
+      "label": "81 zero initialized soft label pair",
+      "bytes": 2,
+      "sha256": "c7258cbd5890101bf934d2f9cc038cc12a4d3bd66741410d6d047d060aadece7"
+    },
+    {
+      "va": 271754511,
+      "label": "softLabels outer index81",
+      "bytes": 6,
+      "sha256": "7a928fc3d9a3d39b11a6734c281068907fe6ed90e3d64074af6a45c8c143b428"
+    },
+    {
+      "va": 271762383,
+      "label": "phase0 gate40",
+      "bytes": 7,
+      "sha256": "8c803756fb0c5e6295f504802af69e113f1231eeabc6acb772d2d3fc2df7992a"
+    },
+    {
+      "va": 271762400,
+      "label": "phase0 cursor50",
+      "bytes": 7,
+      "sha256": "aff72e538a9ea41ab7474040778b88b7c28b7247fb3db4a77c87e5262109b0d5"
+    },
+    {
+      "va": 271762416,
+      "label": "publish TIME1 c4",
+      "bytes": 6,
+      "sha256": "6a0c2f36528536a3e605de7ee89629c165451d3032c5e3078e4fbf37d74552fb"
+    },
+    {
+      "va": 271762569,
+      "label": "phase1 second value last item time plus10",
+      "bytes": 3,
+      "sha256": "db19a25ec676854f73789841f96a5617957f245ba29bbb003c5760a9676b4b61"
+    },
+    {
+      "va": 271762584,
+      "label": "publish TIME2 c8",
+      "bytes": 6,
+      "sha256": "c521c75c6e00d4dfc77fd1677b43f228d1197525ff47e183be2a9ca3088b90cd"
+    },
+    {
+      "va": 271689568,
+      "label": "clear shared isLvUp flag only at close",
+      "bytes": 7,
+      "sha256": "22a117183ef7605144cc83a27bf1165a3850c36e16c38b6176cc6a3226846824"
+    },
+    {
+      "va": 271689744,
+      "label": "confirm phase0 becomes phase1",
+      "bytes": 10,
+      "sha256": "01fba0ecfb2a69ef4f25d2f609b224ba3cfda586a0de7deff130a0f671894945"
+    },
+    {
+      "va": 271689757,
+      "label": "phase transition resets frame not frame2",
+      "bytes": 10,
+      "sha256": "136f3198088192a110a4e9ef0fdcc6470625abf1a0d50f70712b6f26281d210c"
+    },
+    {
+      "va": 270679083,
+      "label": "deduct old threshold from cumulative users",
+      "bytes": 6,
+      "sha256": "382fa2c4ed552bfee63f6eee593c18207c3210d2630ac4dea1bd94b5cd6c321a"
+    },
+    {
+      "va": 270679110,
+      "label": "commit shared definition level",
+      "bytes": 6,
+      "sha256": "d771e63a700f3349b6db7c55878f5818b9450187a959b9ebd650674a731bf34e"
+    },
+    {
+      "va": 268445248,
+      "label": "direct called array helper reads requested index; callers push0",
+      "bytes": 19,
+      "sha256": "83f7e05d2bb9c9c18cdbf14da5619dc8e5408e7435ddfb24281ff409e4bf64f3"
+    }
+  ],
+  "timings": {
+    "item_time2": {
+      "values": [
+        2,
+        32,
+        34,
+        49,
+        55
+      ],
+      "data_offset": 3121206,
+      "sha256": "04b2ad03945402449cbeacbfbdb2f1495627b618379a74d1134f9b46fd2ed1e5"
+    },
+    "upgrade_time1": [
+      40,
+      50
+    ],
+    "upgrade_time2": [
+      55,
+      65
+    ]
+  },
+  "strings": [
+    {
+      "va": 286212364,
+      "index": 10190,
+      "text": "レベルアップ"
+    },
+    {
+      "va": 286171560,
+      "index": 1050,
+      "text": "<0>"
+    },
+    {
+      "va": 286172308,
+      "index": 1067,
+      "text": "<0>が"
+    },
+    {
+      "va": 286212324,
+      "index": 10189,
+      "text": "レベル"
+    },
+    {
+      "va": 286253576,
+      "index": 248,
+      "text": "!"
+    },
+    {
+      "va": 286202456,
+      "index": 9954,
+      "text": "に"
+    },
+    {
+      "va": 286246904,
+      "index": 11009,
+      "text": "ﾚﾍﾞﾙｱｯﾌﾟしました!"
+    }
+  ],
+  "resources": [
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 28,
+      "source": "EXE:resources.assets:1148:common:wnd_back.png",
+      "path": "assets/original/common/wnd_back.png",
+      "bytes": 1166,
+      "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+      "width": 40,
+      "height": 240
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 29,
+      "source": "EXE:resources.assets:1148:common:wnd_bar.png",
+      "path": "assets/original/common/wnd_bar.png",
+      "bytes": 1951,
+      "sha256": "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+      "width": 240,
+      "height": 17
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 30,
+      "source": "EXE:resources.assets:1148:common:wnd_conner.png",
+      "path": "assets/original/common/wnd_conner.png",
+      "bytes": 190,
+      "sha256": "15f03b0851257a973487a5ef5e7045d18adda4c017f0f3b6dc3491e7b3602079",
+      "width": 8,
+      "height": 8
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 72,
+      "source": "EXE:resources.assets:1148:common:arrow01.png",
+      "path": "assets/original/common/arrow01.png",
+      "bytes": 203,
+      "sha256": "864fcf16e52634142f776b6245f0964ad12a21d901a4af7308aa6ee939f1ca65",
+      "width": 14,
+      "height": 5
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 93,
+      "source": "EXE:resources.assets:1148:common:chara_mini.png",
+      "path": "assets/original/common/chara_mini.png",
+      "bytes": 1373,
+      "sha256": "6ee40331a580e73930c5dff5c49e5743fba4ac6a48bb616371e5bf43c0f90cab",
+      "width": 53,
+      "height": 53
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 103,
+      "source": "EXE:resources.assets:1148:common:number05.png",
+      "path": "assets/steam-build-common/original/common/number05.png",
+      "bytes": 701,
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 105,
+      "source": "EXE:resources.assets:1148:common:number08.png",
+      "path": "assets/steam-facility-common/original/common/number08.png",
+      "bytes": 648,
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 106,
+      "source": "EXE:resources.assets:1148:common:number09.png",
+      "path": "assets/original/common/number09.png",
+      "bytes": 435,
+      "sha256": "f24e402e6f33bb2c755dacb239808cea6236b91e807a12c9baa96a0a3a40b245",
+      "width": 100,
+      "height": 12
+    },
+    {
+      "group": "common",
+      "kind": "image",
+      "index": 129,
+      "source": "EXE:resources.assets:1148:common:wnd_max.png",
+      "path": "assets/original/common/wnd_max.png",
+      "bytes": 180,
+      "sha256": "668d8afa412bedce9dc59bf172b9f32a03748351a4d945fb6dcac97545aa1346",
+      "width": 20,
+      "height": 6
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 2,
+      "source": "EXE:resources.assets:1148:common:arrow01.seb",
+      "path": "assets/original/common/arrow01.seb",
+      "bytes": 48,
+      "sha256": "15036548a2810b4e8b0b3837d7bf6e49876c4419084efdd5b37f13f1c87f80f8",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          72,
+          0,
+          0,
+          7,
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          72,
+          7,
+          0,
+          7,
+          5,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 6,
+      "source": "EXE:resources.assets:1148:common:wnd_conner.seb",
+      "path": "assets/original/common/wnd_conner.seb",
+      "bytes": 88,
+      "sha256": "cfab2deba8d8c3433498fe05c8fa4bacaa0cba3ae29495cb82c36e4d4df58618",
+      "frames": 4,
+      "parts": [
+        [
+          0,
+          30,
+          0,
+          0,
+          4,
+          4,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          30,
+          4,
+          0,
+          4,
+          4,
+          -4,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          30,
+          4,
+          4,
+          4,
+          4,
+          -4,
+          -4,
+          0,
+          0
+        ],
+        [
+          3,
+          30,
+          0,
+          4,
+          4,
+          4,
+          0,
+          -4,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 12,
+      "source": "EXE:resources.assets:1148:common:number05.seb",
+      "path": "assets/original/common/number05.seb",
+      "bytes": 428,
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          103,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          103,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          103,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          103,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          103,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          103,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          103,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          103,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          103,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          103,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          103,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          103,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          103,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          103,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          103,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          103,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          103,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          103,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          103,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          103,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          103,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 15,
+      "source": "EXE:resources.assets:1148:common:number08.seb",
+      "path": "assets/original/common/number08.seb",
+      "bytes": 428,
+      "sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          105,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          105,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          105,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          105,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          105,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          105,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          105,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          105,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          105,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          105,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          105,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          105,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          105,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          105,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          105,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          105,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          105,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          105,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          105,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          105,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          105,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 16,
+      "source": "EXE:resources.assets:1148:common:number09.seb",
+      "path": "assets/original/common/number09.seb",
+      "bytes": 208,
+      "sha256": "fb49bd75d3dabe077747e082fc979a1bbd6cc414cff7888749f580aeb2174c96",
+      "frames": 10,
+      "parts": [
+        [
+          0,
+          106,
+          0,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          106,
+          10,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          106,
+          20,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          106,
+          30,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          106,
+          40,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          106,
+          50,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          106,
+          60,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          106,
+          70,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          106,
+          80,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          106,
+          90,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "common",
+      "kind": "sprite",
+      "index": 80,
+      "source": "EXE:resources.assets:1148:common:chara_mini.seb",
+      "path": "assets/original/common/chara_mini.seb",
+      "bytes": 168,
+      "sha256": "ec4f33683dd0e45a082221489f56ebfe0a6e39fcedc4e2c8b05460c2010c5969",
+      "frames": 8,
+      "parts": [
+        [
+          0,
+          93,
+          2,
+          51,
+          13,
+          2,
+          -7,
+          -1,
+          0,
+          0
+        ],
+        [
+          1,
+          93,
+          21,
+          51,
+          11,
+          2,
+          -6,
+          -1,
+          0,
+          0
+        ],
+        [
+          2,
+          93,
+          1,
+          0,
+          15,
+          24,
+          -8,
+          -24,
+          0,
+          0
+        ],
+        [
+          3,
+          93,
+          1,
+          24,
+          15,
+          25,
+          -8,
+          -25,
+          0,
+          0
+        ],
+        [
+          4,
+          93,
+          17,
+          0,
+          19,
+          25,
+          -10,
+          -25,
+          0,
+          0
+        ],
+        [
+          5,
+          93,
+          17,
+          24,
+          19,
+          26,
+          -10,
+          -26,
+          0,
+          0
+        ],
+        [
+          6,
+          93,
+          37,
+          1,
+          15,
+          23,
+          -8,
+          -23,
+          0,
+          0
+        ],
+        [
+          7,
+          93,
+          37,
+          26,
+          15,
+          24,
+          -8,
+          -24,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "group": "event",
+      "kind": "image",
+      "index": 14,
+      "source": "EXE:resources.assets:1140:event:event_getItem_back.png",
+      "path": "assets/original/event/event_getItem_back.png",
+      "bytes": 18728,
+      "sha256": "69df8790eba86572be2862457ef1f8dc85ddbf703e9f23e822ba0bacdb81aec4",
+      "width": 180,
+      "height": 80
+    },
+    {
+      "group": "event",
+      "kind": "image",
+      "index": 16,
+      "source": "EXE:resources.assets:1140:event:event_BackMini02.png",
+      "path": "assets/original/event/event_BackMini02.png",
+      "bytes": 378,
+      "sha256": "238f9b2d934033b4571e32307fb8b7d7c2162a3121e3a44c645409fe850c45a8",
+      "width": 86,
+      "height": 70
+    }
+  ],
+  "floats": [
+    {
+      "va": 282977836,
+      "value": -2,
+      "hex": "000000c0"
+    },
+    {
+      "va": 282977576,
+      "value": 0.5,
+      "hex": "0000003f"
+    }
+  ],
+  "colors": [
+    {
+      "start": 271760403,
+      "end": 271760442,
+      "name": "SC_WINDOW_BLACK",
+      "rgb": [
+        92,
+        51,
+        31
+      ],
+      "sha256": "c12a46cd740d792413293bde676c717c4f4ea3f4ce4a5f515913ddec863196ca"
+    },
+    {
+      "start": 271760518,
+      "end": 271760576,
+      "name": "SC_WINDOW_BLUE",
+      "rgb": [
+        0,
+        100,
+        255
+      ],
+      "sha256": "8ccdf174a199a4e07e6c6ea3e5f9086ef4d396fc4e43af43a71cf82a69a45c50"
+    }
+  ],
+  "reused": [
+    {
+      "path": "work/facility-animation-closure/animation-tables.json",
+      "bytes": 1528,
+      "sha256": "ecec76d0504a95b0bd5bee5209e21e0f61f45f2956a187414569555db0e5fba5"
+    },
+    {
+      "path": "work/steam-facility-detail/EVIDENCE.json",
+      "bytes": 36949,
+      "sha256": "fd7e3f377ca1e93a5977042635b11f824deef02ffa2042dbd12055277ca0a425"
+    },
+    {
+      "path": "work/steam-facility-labels/EVIDENCE.json",
+      "bytes": 9040,
+      "sha256": "8f72e24582aa084282471d854457732e3c4c585c7e22a7547b26539d0d01e0da"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    },
+    {
+      "path": "ui/EQUIPMENT_FACILITY_RENDER.md",
+      "bytes": 11226,
+      "sha256": "86ce9db511bcf13903d955874cb19a304fffa757507dbc0276b1aa8e36b21649"
+    }
+  ],
+  "contract": {
+    "raw": 81,
+    "softLabels": [
+      0,
+      0
+    ],
+    "window": [
+      222,
+      170,
+      0
+    ],
+    "box": [
+      15,
+      139,
+      224,
+      202
+    ],
+    "jingle": 20,
+    "confirmed_close_clears_definition_flag": true,
+    "level_committed_at": "Init2",
+    "phase0_frame_for_strength": -1,
+    "dispCombi": false,
+    "touch_component": 2,
+    "touch_flags": 2
+  },
+  "limits": [
+    "No original window/pixel validation or maintained implementation",
+    "Full popup retirement and OS handling not expanded",
+    "Raw timing slots are not seconds",
+    "Original static display arrays not a maintained transactional Owner",
+    "countAnime is not ordinary lerp"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 3453,
+      "sha256": "debffee28ba2a8e74f521a7e4edc46a211566637b2047a068a7175e93e6c5f14"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 9493,
+      "sha256": "427cf5ed6061cfaeb0bcf819f8c322e564d476860ceec3df9223afbdc4f21604"
+    }
+  ]
+}

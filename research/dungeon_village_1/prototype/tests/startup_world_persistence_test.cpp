@@ -553,10 +553,20 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     const auto entry = dir / "clear-entry.avrs", encoded = dir / "clear-encoded.avrs", bad = dir / "clear-bad.avrs";
     capture_persistence_fixture(baseline, state, metadata, entry, encoded, bad,
                                 "explicit raw17 entry fixture, not natural sixteen years");
-    StartupApplicationPaths paths{dir / "clear-system.avrs", {dir / "clear-world0.avrs", dir / "clear-world1.avrs"}};
-    check(save_startup_system_file(paths.system, {}).empty(), "fresh independent system fixture");
+    StartupApplicationPaths paths{dir / "clear-application"};
+    check(std::filesystem::create_directory(paths.root), "exclusive application root for clear conditions");
+    struct ClearRootGuard {
+        std::filesystem::path root;
+        ~ClearRootGuard() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } root_guard{paths.root};
+    const auto system = paths.root / "system.avr";
+    check(save_startup_system_file(system, {}).empty(), "fresh independent system fixture");
     StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
     check(app.load_world_replay(entry, metadata.controller_id).empty(), "load validated raw17 entry");
+    check(app.take_audio_requests() == std::vector<StartupAudioRequest>{
+              {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}} &&
+              app.world()->state().sound_requests.empty(),
+          "conditional entry activates a world and consumes B0/G before clear-page sound oracle");
     check(app.world()->state().cash_peak == 0 && app.records().cash_peak == 0,
           "loaded old world cash mirror does not reconstruct system record");
     for (int i = 0; i < 4000; ++i) {
@@ -568,31 +578,42 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     const auto total = app.clear_page()->sum;
     check(total > 0 && app.records().high_score == 0, "score remains private until actual exit");
     const auto before = startup_world_session_digest(*app.world());
-    const auto original = read(paths.system);
+    const auto original = read(system);
+    const auto original_directory = app.records().save_directory;
 #ifdef _WIN32
-    const auto handle = CreateFileW(paths.system.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+    const auto handle = CreateFileW(system.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     check(handle != INVALID_HANDLE_VALUE, "lock clear system fixture");
     const auto error = app.update();
     check(CloseHandle(handle) != 0, "close clear lock");
     check(!error.empty() && app.clear_page() && app.clear_page()->counter == 64 &&
-          startup_world_session_digest(*app.world()) == before && read(paths.system) == original &&
-          app.records().high_score == 0, "failed clear commit preserves page, events, random and record");
+          startup_world_session_digest(*app.world()) == before && read(system) == original &&
+          app.records().high_score == 0 && app.records().save_directory == original_directory &&
+          app.take_audio_requests().empty(),
+          "failed clear commit preserves page, events, random, directories and pending outputs");
 #else
     (void)before; (void)original;
 #endif
     check(app.update().empty(), "clear final transaction retry");
     check(!app.clear_page() && !app.clear_rows() && app.records().high_score == total &&
-          load_startup_system_file(paths.system).records->high_score == total,
+          load_startup_system_file(system).records->high_score == total,
           "clear completes once, persists system and retires controller references");
     check(app.take_sound_requests() == std::vector<int>{1}, "clear resumes main BGM once");
     check(!app.acknowledge_page(id).empty(), "retired clear cannot award again");
-    check(!std::filesystem::exists(paths.worlds[0]), "clear system save does not save world");
+    const auto storage = load_startup_application_storage(paths.root);
+    check(storage.snapshot.has_value(), "clear system remains a valid application storage snapshot");
+    const auto view = capture_startup_application_storage(paths.root, *storage.snapshot);
+    check(app.records().save_directory == original_directory &&
+          original_directory == StartupSystemRecords{}.save_directory && view.view && view.view->blobs.empty() &&
+          (!std::filesystem::exists(paths.root / "worlds") || std::filesystem::is_empty(paths.root / "worlds")),
+          "clear record save preserves all four empty directories and publishes no world blob");
     const auto scripts = startup_world_runtime_scripts(app.world()->state());
     check(scripts.pages.size() >= 3, "event6 then new-record event publish real message pages");
     // 同一合法入口再次回放：分数相等不能改名或奖杯，不当自然第二次结局。
     check(app.return_to_title().empty() && app.load_world_replay(entry, metadata.controller_id).empty(),
           "replay same clear against existing system record");
+    check(app.take_sound_requests() == std::vector<int>({0,1}),
+          "second conditional activation consumes its own title B0/G before equal-score run");
     for (int i = 0; i < 4000; ++i) {
         check(app.update(true).empty(), "equal-score clear update");
         if (!app.clear_page()) break;
@@ -601,7 +622,7 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     check(app.records().high_score == total && app.records().trophy == 1 &&
           app.records().score_village == state.scripts.village_name, "equal score preserves existing record owner");
     app.take_sound_requests();
-    for (const auto &p : {entry, encoded, bad, paths.system}) std::filesystem::remove(p);
+    for (const auto &p : {entry, encoded, bad}) std::filesystem::remove(p);
 }
 void run(const std::filesystem::path &dir) {
     std::filesystem::create_directories(dir);
@@ -1064,9 +1085,9 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
 }
 int main(int argc, const char **argv) {
     try {
-        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v2")
+        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v3")
             return run_startup_application_natural_replay_cli(argc, argv);
-        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v2")
+        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v3")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {
             presentation_replay(argc,argv); return 0;

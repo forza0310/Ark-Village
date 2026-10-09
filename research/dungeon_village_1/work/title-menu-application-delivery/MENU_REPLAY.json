@@ -1,0 +1,32 @@
+{
+  "controller": "title-menu-files-v1",
+  "qualification": "real_startup_menu_file_tail",
+  "command_count": 17,
+  "trace_rows": 18,
+  "process_count": 3,
+  "process_wall_seconds": [
+    0.2352088,
+    0.19510249999999996,
+    0.18746779999999996
+  ],
+  "snapshot_bytes": 347828,
+  "snapshot_sha256": "ce52bf8bf0354340b42423768a28022c038769df57fe9fd3933efe117dfb4654",
+  "trace_bytes": 5963,
+  "trace_sha256": "2ec91840cf2c514cc59784dc0df6dcc831302e0fa341d9865c537b2b296eff5d",
+  "terminal": {
+    "controller": "title-menu-files-v1",
+    "steps": 17,
+    "digest": "7d214cb1e37daf030561e9946fb5af1a68b5c3727da1144fd08616ba48b776b7",
+    "file_view_digest": "46a3452e1ab70bf0cb896abed338ca15cd590bfdc49fe1e187ba114fc89e114e",
+    "system_sha256": "4d8a177d7502aca4a834a90ba033107b69162f7ad1428e361750ef114a99a17f",
+    "blob_count": 1,
+    "blob_bytes": 172573,
+    "audio_count": 6,
+    "random": 0
+  },
+  "limits": [
+    "原中断自动产生者未覆盖",
+    "不是Steam窗口或输入投递认证",
+    "无世界日期推进、不认证自然通关"
+  ]
+}

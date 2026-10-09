@@ -27,6 +27,8 @@
 
 ### 当前连续队列
 
+最新[应用6批](../work/title-menu-application-delivery/README.md)已验收：系统2四目录／不可变世界文件、稳定ID菜单／分级返回、应用音频和完整文件视图恢复。五项相关检查103.30秒及真实17命令三进程通过，当前前缀为`natural-application-menu-v1`的420轮／首月，旧应用5及以前不接续。接下来从当前首月继续12月及后期规模；同时沿[自动中断最小合同](../work/interrupt-save-continuation/README.md)和Steam完整皮肤补证，绝不因目录存在就声称原轮内自动保存已完成。
+
 2026-10-09连续执行增量：[Steam菜单局部皮肤](../prototype/STEAM_STARTUP_SKIN.md)已验，字体／GLText静态链推进至引擎GUI.Label。完整标题四目录、统一声音及文件视图恢复的[具体设计](../work/title-menu-application-design/README.md)已由用户批准，按独立系统存储→标题控制器与Owner接线→完整快照统一验收推进；保持128MiB及拒绝旧格式，不用普通轮末存档假称原轮内中断。纯计划不改变现有前缀，后继应用状态真正改变时才重新认证。
 
 当前已收口[声音Owner](../work/audio-owner-delivery/README.md)及[Steam手动档菜单](../ui/STEAM_SAVE_MENU.md)／[语言安装](../ui/STEAM_LANGUAGE_INSTALL.md)。世界语义3、应用语义5、自然应用Driver v2的420轮／首月短前缀已重新认证；自然任务闭环也在最终生产代码通过。后续长测从该身份出发，并继续补完整标题菜单／原始输入及未维护的标题音频；不能套用已退休的24月档。普通typed输出及新遭遇通知缺口已消除，设备层和剩余表现仍单独登记。

@@ -25,9 +25,9 @@ function identity(bytes){
             need(n<=BigInt(Number.MAX_SAFE_INTEGER),'不可表示的整数');return Number(n);},
         text(){const n=this.u32();need(n<=4096,'身份文本预算');return this.raw(n).toString('utf8');}});
     const r=reader(bytes.subarray(0,-64));
-    need(r.raw(8).toString()==='AVRAPP01'&&r.u32()===1&&r.u32()===5&&r.u32()===1,'应用版本');
+    need(r.raw(8).toString()==='AVRAPP01'&&r.u32()===1&&r.u32()===6&&r.u32()===1,'应用版本');
     const dataset=r.text(),world_schema=r.text(),application_schema=r.text(),count=r.u32();
-    need(count>=5&&count<=65,'自然应用分区数量');
+    need(count>=6&&count<=66,'自然应用分区数量');
     const sections=new Map();const sizes={};
     for(let i=0;i<count;i++){
         const id=r.u32(),version=r.u32(),required=r.u32(),length=r.u64(),digest=r.raw(64).toString();
@@ -35,10 +35,10 @@ function identity(bytes){
         sections.set(id,{version,required,body});sizes[id]=length;
     }
     need(r.at===r.b.length,'容器尾部');
-    for(const id of [1,2,3,4,5])need(sections.get(id)?.version===1&&sections.get(id)?.required===1,'自然应用缺段');
+    for(const id of [1,2,3,4,5,6])need(sections.get(id)?.version===1&&sections.get(id)?.required===1,'自然应用缺段');
     const meta=reader(sections.get(1).body),controller=meta.text(),producer=meta.text();
     const next_frame=meta.u64(),next_command=meta.u64();need(meta.at===meta.b.length,'metadata尾部');
-    need(controller==='application-natural-clear-v2'&&next_frame>1,'自然Driver身份');
+    need(controller==='application-natural-clear-v3'&&next_frame>1,'自然Driver身份');
     return {controller,producer,next_frame,next_command,dataset,world_schema,application_schema,section_bytes:sizes};
 }
 
@@ -116,7 +116,7 @@ export async function verifyNaturalApplication(options){
     try{
         const dirs=[0,1,2].map(i=>path.join(owned,'process-'+i));for(const p of dirs)await fs.mkdir(p);
         const traces=dirs.map(p=>path.join(p,'tail.jsonl')),snapshot=path.join(dirs[0],'prefix.avra');
-        const reference=summary(await run(['application-natural-clear-v2','--work-dir',dirs[0],
+        const reference=summary(await run(['application-natural-clear-v3','--work-dir',dirs[0],
             '--trace-file',traces[0],'--stop-at',String(limit),'--save-file',snapshot,
             ...(month===null?['--save-at',String(saveAt)]:['--save-month',String(month)]),
             '--tail-after-save',String(tail),...(source?['--load-file',source.file]:[])]));
@@ -129,7 +129,7 @@ export async function verifyNaturalApplication(options){
                 s[0]>=0&&s[0]<=2&&s[1]>=0&&s[1]<26)),
             '尾段完整逐轮字段/顺序');
         for(let i=1;i<3;i++){
-            const actual=summary(await run(['application-natural-clear-v2','--work-dir',dirs[i],
+            const actual=summary(await run(['application-natural-clear-v3','--work-dir',dirs[i],
                 '--trace-file',traces[i],'--stop-at',String(reference.completed_frame),'--load-file',snapshot]));
             need(expected.equals(await fs.readFile(traces[i])),'三路完整trace不同');
             for(const key of ['completed_frame','next_frame','months','digest','sound_count'])

@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 using Bytes = std::vector<std::uint8_t>;
 using Metadata = StartupApplicationReplayMetadata;
 using Clock = std::chrono::steady_clock;
-constexpr const char *controller = "application-natural-clear-v2";
+constexpr const char *controller = "application-natural-clear-v3";
 constexpr std::uint64_t frame_limit = 2000000, stall_limit = 100000, goal_month = 180;
 constexpr std::size_t trace_budget = 8U * 1024U * 1024U;
 constexpr std::uint64_t implicit_trace_frame_limit = 10000;
@@ -63,8 +63,8 @@ struct Driver {
     std::string sound_hash = dungeon_village_tools::sha256_hex(Bytes{});
 };
 Bytes encode(const Driver &d) {
-    Bytes b{'A','V','N','A','T','D','R','2'};
-    for (auto n : {std::uint64_t(2), std::uint64_t(1), std::uint64_t(0), goal_month, frame_limit, stall_limit,
+    Bytes b{'A','V','N','A','T','D','R','3'};
+    for (auto n : {std::uint64_t(3), std::uint64_t(1), std::uint64_t(0), goal_month, frame_limit, stall_limit,
                    d.next_frame, d.next_command, d.months, d.last_month_frame, d.random, d.steps, d.history}) u64(b, n);
     for (auto n : d.date) u64(b, n);
     for (auto n : {std::uint64_t(d.phase), std::uint64_t(d.pending), d.top_id, d.top_kind, d.top_raw,
@@ -80,9 +80,9 @@ Bytes encode(const Driver &d) {
 }
 Driver decode(const Bytes &b) {
     require(b.size() == encode(Driver{}).size() &&
-                std::string(b.begin(), b.begin() + 8) == "AVNATDR2", "natural driver identity/size");
+                std::string(b.begin(), b.begin() + 8) == "AVNATDR3", "natural driver identity/size");
     Reader r{b, 8};
-    require(r.number() == 2 && r.number() == 1 && r.number() == 0 && r.number() == goal_month &&
+    require(r.number() == 3 && r.number() == 1 && r.number() == 0 && r.number() == goal_month &&
                 r.number() == frame_limit && r.number() == stall_limit, "natural driver version/seed/speed/strategy");
     Driver d;
     d.next_frame = r.number(); d.next_command = r.number(); d.months = r.number();
@@ -209,7 +209,7 @@ std::string validate(const StartupApplication &app, const Metadata &m) {
                     app.mode() == StartupApplicationMode::logic &&
                     app.page() == StartupApplicationPage::world && app.world(), "natural app/driver binding");
         const auto &s = app.world()->state(); const auto *p = top(app);
-        require(s.sound_requests.empty(), "natural unconsumed sound requests");
+        require(!app.has_pending_audio_requests() && s.sound_requests.empty(), "natural unconsumed sound requests");
         const auto seed = ref::WorldRandomStream::from_java_seed(1).snapshot();
         require(app.handoff_random() && app.handoff_random()->cursor == 0 &&
                     app.handoff_random()->engine_state == seed.engine_state && !app.handoff_random()->tape_mode &&
@@ -305,7 +305,7 @@ std::vector<StartupAudioRequest> step(StartupApplication &app, Driver &d) {
     return sounds;
 }
 StartupApplicationPaths paths(const fs::path &directory) {
-    return {directory / "system.avr", {directory / "world0.avr", directory / "world1.avr"}};
+    return {directory};
 }
 Driver initial_driver(const StartupApplication &app) {
     Driver d;
@@ -317,6 +317,21 @@ Driver initial_driver(const StartupApplication &app) {
     require(d.top_raw < d.page_observations.size(), "natural opening raw bound");
     d.pending = plan(app); d.peaks = resources(app); d.event_base = d.event_seen = events(app);
     ++d.page_observations[d.top_raw]; return d;
+}
+// v3从真实标题初始化到世界激活的两条输出也入累计摘要，不当作第一次世界更新的声音。
+Driver new_game_driver(StartupApplication &app) {
+    auto d = initial_driver(app);
+    const auto sounds = app.take_audio_requests();
+    require(sounds.size() == 2 && sounds[0].operation == StartupAudioOperation::replace_bgm && sounds[0].id == 0 &&
+            sounds[1].operation == StartupAudioOperation::replace_bgm && sounds[1].id == 1,
+            "natural real title B0 then world activation G1 exactly once");
+    Bytes sound_bytes(d.sound_hash.begin(), d.sound_hash.end()); u64(sound_bytes, 0); u64(sound_bytes, sounds.size());
+    for (const auto &sound : sounds) {
+        u64(sound_bytes, static_cast<std::uint64_t>(sound.operation)); u64(sound_bytes, static_cast<std::uint64_t>(sound.id));
+    }
+    d.sound_hash = dungeon_village_tools::sha256_hex(sound_bytes); d.sound_count = sounds.size();
+    require(app.take_sound_requests().empty(), "natural startup uses one typed output queue");
+    return d;
 }
 std::uint64_t number(const std::map<std::string, std::string> &options, const std::string &key,
                      std::uint64_t fallback, std::uint64_t maximum = frame_limit) {
@@ -379,9 +394,9 @@ int run_startup_application_natural_replay_cli(int argc, const char **argv) {
     (void)persistence_detail::prepare_replay_capture_paths(root, root / ".natural-probe", unused, protected_paths);
     auto trace_protected = protected_paths; trace_protected.erase(trace_protected.begin());
     const auto trace_target = persistence_detail::prepare_replay_capture_paths(root.parent_path(), trace, unused, trace_protected);
-    if (load) (void)persistence_detail::prepare_replay_restore_paths(root, source, unused, restore_protected);
+    if (load) (void)persistence_detail::prepare_replay_restore_paths(live, source, unused, restore_protected);
     if (save) (void)persistence_detail::prepare_replay_capture_paths(root.parent_path(), capture, unused, load ? std::vector<fs::path>{trace, source} : std::vector<fs::path>{trace});
-    require(fs::create_directory(live), "natural exclusive application directory");
+    require(fs::create_directory(load ? unused.root : live), "natural exclusive current application directory");
     StartupApplication app(load ? unused : paths(live), ref::WorldRandomStream::from_java_seed(1)); good(app.error());
     Driver driver;
     double restore_seconds{};
@@ -401,8 +416,7 @@ int run_startup_application_natural_replay_cli(int argc, const char **argv) {
         restore_seconds = std::chrono::duration<double>(Clock::now() - started).count(); driver = decode(m.controller_state);
     } else {
         good(app.request_new_game(0)); good(app.start_game());
-        require(app.take_sound_requests().empty(), "natural start unexpectedly emitted unregistered sound");
-        driver = initial_driver(app);
+        driver = new_game_driver(app);
     }
     good(validate(app, metadata(driver)));
     require(driver.next_frame <= stop_at && (!save_at || (save_at >= driver.next_frame && save_at + tail <= stop_at)), "natural observer window/bound");
@@ -421,7 +435,7 @@ int run_startup_application_natural_replay_cli(int argc, const char **argv) {
         const auto frame = driver.next_frame - 1;
         const auto trace_from = save ? (captured ? captured + 1 : frame_limit + 1) : explicit_trace ? explicit_trace : first_frame;
         if (frame >= trace_from) {
-            const auto line = trace_line(app, driver, sounds, paths(live).system);
+            const auto line = trace_line(app, driver, sounds, live / "system.avr");
             // 独立测试输出预算，不调整Owner、文件或全历史解码预算；追加前拒绝。
             require(line.size() <= trace_budget - trace_bytes, "natural trace exceeds 8MiB observer output budget");
             trace_output << line; require(bool(trace_output), "natural trace buffering failed");
@@ -475,7 +489,7 @@ int run_startup_application_natural_driver_checks(const std::filesystem::path &p
     const auto live = root / "live"; require(fs::create_directory(live), "natural checks live directory");
     StartupApplication app(paths(live), ref::WorldRandomStream::from_java_seed(1));
     good(app.error()); good(app.request_new_game(0)); good(app.start_game());
-    auto d = initial_driver(app); auto m = metadata(d);
+    auto d = new_game_driver(app); auto m = metadata(d);
     check(validate(app, m).empty(), "natural initial driver valid");
     const auto before = startup_application_replay_digest(app, m, validate);
     auto bad = m; bad.controller_state.push_back(0);
@@ -499,7 +513,9 @@ int run_startup_application_natural_driver_checks(const std::filesystem::path &p
 }
 
 int run_startup_application_natural_pending_sound_check(const StartupApplication &app) {
-    require(app.world() && !app.world()->state().sound_requests.empty(),
+    auto output_probe = app;
+    require(app.world() && app.world()->state().sound_requests.empty() &&
+                !output_probe.take_audio_requests().empty(),
             "natural pending-sound check requires an actual unconsumed action output");
     // 夹具只负责实际声音门禁，不能据此取得自然Driver资格；专属错误发生在随机交接资格之前。
     const auto m = metadata(initial_driver(app));

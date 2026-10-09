@@ -64,10 +64,10 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
     Checks check;
     Work work(parent);
     const auto old=work.directory("old-application");
-    StartupApplicationPaths current{old/"system.avr",{old/"world0.avr",old/"world1.avr"}};
-    file(current.system,"old-system-payload");
-    file(current.worlds[0],"old-world-0-payload");
-    file(current.worlds[1],"old-world-1-payload");
+    StartupApplicationPaths current{old};
+    file((current.root/"system.avr"),"old-system-payload");
+    file((current.root/"world0.avr"),"old-world-0-payload");
+    file((current.root/"world1.avr"),"old-world-1-payload");
     const auto capture=work.directory("capture");
     const auto source=capture/"source.avrapp";
     file(source,"source-container-unchanged");
@@ -76,9 +76,9 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
     check(prepared.directory==fs::canonical(capture) && prepared.container==fs::weakly_canonical(output) &&
           !fs::exists(output),"捕获准备仅规范路径，不产生目标");
     rejects(check,[&]{prepare_replay_capture_paths(capture,source,current);},"已有容器拒绝覆盖");
-    rejects(check,[&]{prepare_replay_capture_paths(old,current.system,current);},"捕获拒绝当前系统");
-    rejects(check,[&]{prepare_replay_capture_paths(old,current.worlds[0],current);},"捕获拒绝当前世界0");
-    rejects(check,[&]{prepare_replay_capture_paths(old,current.worlds[1],current);},"捕获拒绝当前世界1");
+    rejects(check,[&]{prepare_replay_capture_paths(old,(current.root/"system.avr"),current);},"捕获拒绝当前系统");
+    rejects(check,[&]{prepare_replay_capture_paths(old,(current.root/"world0.avr"),current);},"捕获拒绝当前世界0");
+    rejects(check,[&]{prepare_replay_capture_paths(old,(current.root/"world1.avr"),current);},"捕获拒绝当前世界1");
     rejects(check,[&]{prepare_replay_capture_paths(capture,output,current,{output});},"不存在trace路径也不能重叠");
     const auto sibling=work.directory("capture-other");
     rejects(check,[&]{prepare_replay_capture_paths(capture,sibling/"other.avrapp",current);},
@@ -95,26 +95,20 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
     const auto occupied=work.directory("directory-target");
     rejects(check,[&]{prepare_replay_capture_paths(work.root,occupied,current);},"目录占目标拒绝");
 
-    const auto restore=work.directory("restore");
-    file(restore/"README.txt","keep-unrelated-notes");
+    const auto restore=work.root/"restore";
+    const auto notes=work.directory("notes");
+    file(notes/"README.txt","keep-unrelated-notes");
     const auto loaded=prepare_replay_restore_paths(restore,source,current);
-    check(loaded.container==fs::canonical(source) && loaded.directory==fs::canonical(restore) &&
-          loaded.application.system==fs::canonical(restore)/"system.avr" &&
-          loaded.application.worlds[0]==fs::canonical(restore)/"world0.avr" &&
-          loaded.application.worlds[1]==fs::canonical(restore)/"world1.avr",
-          "恢复源可在另一研究目录，三目标固定并保留无关文件");
-    check(!fs::exists(loaded.application.system) && !fs::exists(loaded.application.worlds[0]) &&
-          !fs::exists(loaded.application.worlds[1]) && bytes(restore/"README.txt")=="keep-unrelated-notes",
-          "恢复准备没有落盘/清理无关文件");
-    for(int slot=0;slot<3;++slot) {
-        auto alias=current;
-        const auto target=slot==0?loaded.application.system:loaded.application.worlds[slot-1];
-        alias.worlds[1]=target;
-        rejects(check,[&]{prepare_replay_restore_paths(restore,source,alias);},
-                "任一隔离新目标与当前任一不存在栏位同名也拒绝");
+    check(loaded.container==fs::canonical(source) && loaded.directory==fs::weakly_canonical(restore) &&
+          loaded.application.root==fs::weakly_canonical(restore),
+          "恢复源可在另一研究目录，恢复根固定为尚不存在的新目录");
+    check(!fs::exists(loaded.application.root) && bytes(notes/"README.txt")=="keep-unrelated-notes",
+          "恢复准备不创建根或清理邻居资料");
+    auto alias=current;alias.root=restore;
+    rejects(check,[&]{prepare_replay_restore_paths(restore,source,alias);},"恢复根不能与当前预定根重合");
+    for(const auto &target:{restore,restore/"system.avr",restore/"worlds"})
         rejects(check,[&]{prepare_replay_restore_paths(restore,source,current,{target});},
-                "隔离三个目标均不可与trace/证书预定路径重叠");
-    }
+                "恢复整根与trace或证书预定路径重叠时拒绝");
     rejects(check,[&]{prepare_replay_restore_paths(restore,source,current,{source});},"源不能兼作trace");
     rejects(check,[&]{prepare_replay_restore_paths(restore,capture,current);},"目录不能作为容器源");
     rejects(check,[&]{prepare_replay_restore_paths(restore,capture/"no-source.avrapp",current);},
@@ -136,11 +130,10 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
     rejects(check,[&]{prepare_replay_capture_paths(trusted.parent_path(),trusted.parent_path()/"forbidden.avrapp",current);},
             "调用者不能把work外目录自称研究隔离根");
 #ifdef _WIN32
-    auto case_alias=current;
-    case_alias.system=capture/"NEW.AVRAPP";
-    rejects(check,[&]{prepare_replay_capture_paths(capture,output,case_alias);},"未存在目标Windows大小写别名拒绝");
-    case_alias.system=restore/"SYSTEM.AVR";
-    rejects(check,[&]{prepare_replay_restore_paths(restore,source,case_alias);},"恢复目标大小写别名拒绝");
+    rejects(check,[&]{prepare_replay_capture_paths(capture,output,current,{capture/"NEW.AVRAPP"});},
+            "捕获输出Windows大小写别名拒绝");
+    rejects(check,[&]{prepare_replay_restore_paths(restore,source,current,{work.root/"RESTORE"});},
+            "恢复根Windows大小写别名拒绝");
     for(const char *name:{"new.avrapp.","new.avrapp ","file:stream","NUL.avrapp"})
         rejects(check,[&]{prepare_replay_capture_paths(capture,capture/name,current);},
                 "Windows尾点/尾空格/ADS/设备名显式拒绝");
@@ -157,6 +150,7 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
                 "不同名称的源/证书硬链接别名拒绝");
         rejects(check,[&]{prepare_replay_capture_paths(capture,hard,current);},"已有硬链接目标不覆盖");
         check(bytes(hard)=="source-container-unchanged","硬链接原件仍完整");
+        check(fs::remove(hard),"回收本夹具硬链接，使后续独立覆盖符号链接拒绝");
     }
     const auto linked=work.root/"linked-directory";
     ec.clear(); fs::create_directory_symlink(capture,linked,ec);
@@ -175,11 +169,10 @@ int run_startup_application_replay_paths_checks(const std::filesystem::path &par
         check(!ec,"同会话有符号链接资格时建立断链");
         rejects(check,[&]{prepare_replay_capture_paths(capture,dangling,current);},"断链也是已有目标，不能当作缺失");
     }
-    check(!fs::exists(output) && !fs::exists(loaded.application.system) &&
-          !fs::exists(loaded.application.worlds[0]) && !fs::exists(loaded.application.worlds[1]) &&
-          bytes(source)=="source-container-unchanged" && bytes(current.system)=="old-system-payload" &&
-          bytes(current.worlds[0])=="old-world-0-payload" && bytes(current.worlds[1])=="old-world-1-payload" &&
-          bytes(file_parent)=="not-a-directory" && bytes(restore/"README.txt")=="keep-unrelated-notes",
+    check(!fs::exists(output) && !fs::exists(loaded.application.root) &&
+          bytes(source)=="source-container-unchanged" && bytes((current.root/"system.avr"))=="old-system-payload" &&
+          bytes((current.root/"world0.avr"))=="old-world-0-payload" && bytes((current.root/"world1.avr"))=="old-world-1-payload" &&
+          bytes(file_parent)=="not-a-directory" && bytes(notes/"README.txt")=="keep-unrelated-notes",
           "全部准备/拒绝后源、旧应用、无关文件逐字节不变，新目标均未创建");
     return check.count;
 }

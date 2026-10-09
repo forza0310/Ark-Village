@@ -1,51 +1,51 @@
-# 标题、主角配置与跨局纪录
+# 标题、配置、跨局纪录与应用事务
 
-本模块独立实现[已确认设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)，原版事实与Steam差异见[来源合同](../rules/STARTUP_RECORDS.md)。`dungeon_village_startup_application`依赖共同世界，不依赖raylib；它是研究维护消费者，尚不是产品标题窗口或原版存档兼容器。
+2026-10-09。标题菜单控制器、系统2四目录、应用级声音及语义6回放已验，五项相关检查通过103.30秒，结果见[集中交付](../work/title-menu-application-delivery/README.md)。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../work/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
 
-## 所有权与接口
+`dungeon_village_startup_application`是无raylib依赖的研究维护消费者，不是产品窗口或原版档兼容器。[StartupApplication](include/dungeon_village_prototype/startup_application.hpp)协调一份系统观察、标题状态、草稿、音频队列及至多一个世界Session，只向调用方公开只读世界。正常文件协议见[应用存储](APPLICATION_STORAGE.md)，完整回放见[应用回放](APPLICATION_REPLAY.md)，避免在本页复制其线格式和预算。
 
-[StartupApplication](include/dungeon_village_prototype/startup_application.hpp)持有标题草稿、一个系统纪录及至多一个世界Session，只向调用方返回只读世界。村名及主角名使用合法UTF-8／无控制字符／4096字节维护预算，原平台14／12参数和全角7／6文字限制仍未全部闭合。
+## 菜单与配置
 
-新局入口先检查所选世界路径：已有普通文件进入覆盖询问，同意后进入配置。取消配置回标题时保留编辑；切性别只在尚未自定义姓名时选择原默认名。开始在私有新局候选安装[定义0资料与继承](STARTUP_PROFILE.md)，不创建定义0实例，不改变定义1首访。系统最后栏位替换成功才联合安装内存世界；开始不会保存或覆盖世界文件。
+[纯标题控制器](include/dungeon_village_prototype/startup_title_menu.hpp)保存根菜单／两栏模式、选择、稳定递增页ID和有限子页：raw20、默认否的询问、纪录／配置外部页。槽号唯一来自`draft.slot`；目录显示资格来自系统固定四项的日期，不检查世界文件存在性猜UI。
 
-2026-10-09用户停止“成功短姓名→切性别→取消重进”的Steam补测，并授权按上述维护理解收口：`custom_name`之后切性别保名、取消配置保留`draft`、重进继续编辑，标题草稿仅在实际`start`安装到新世界。Steam此链仍无动态闭环，不借用户决策补写原窗口事实。既有[应用测试](tests/startup_application_test.cpp)的`title_and_files`已覆盖该组合及不提前覆盖世界文件，无需新增重复测试。用户随后独立批准[完整应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及隔离目录代码／测试，不能把两项授权混为一次决定。
+中断非空直接请求加载，空中断不能确认并归手动；手动非空打开“继续／重新开始／删除”，空手动进配置。重新开始和隐藏先经过默认否询问；答案先返回，父页通过`consume_return`实际消费，不能将“已回答”当“业务已提交”。否／取消留父选择，raw20取消覆盖旧result为-1；错页、错父、过期目录stamp、越界选择及未消费返回载荷的错误输入明确拒绝。
 
-两页纪录分别读取系统最高通关分／村名和限期最高资金／村名。打开、重画、翻页均不由当前所持金币推算纪录。实际世界现金提交后的峰值变更才同步系统；载入世界时以应用系统为跨局权威覆盖运行镜像，不把历史世界文件当纪录写入事件。维护策略选择峰值发生时立即原子保存；原AddMoney只修改内存、不自行SaveSystem，两者不能混称。
+`apply_title_request(expected_page_id, request)`在候选应用中处理一次具名方向／确认／返回／ENTER／UP／返回消费／菜单frame请求，再执行必要存储意图并共同安装。纯控制器不读写磁盘、不给世界setter，也不发声音。实际加载或新局成功后退休标题子页；world→title再建立新根ID，不重用旧页身份。
 
-`update`与页面确认通过唯一世界Owner；当真正出现raw17时，应用控制器读取六类计分并逐阶段推进。新纪录只采用严格大于初始化旧最高分的结果。收尾先关闭17、请求主BGM、执行事件6，再执行事件4或5；系统文件成功后才安装候选。写失败保留原页面、随机、事件和纪录，下一次可重试同一尾段。完成即退休计分行、控制器及页面ID，不留下可再次领取的完成对象。
+`request_new_game`、`answer_overwrite`、`cancel_configuration`、`start_game`等便利接口沿同一控制器路径。重新开始“是”仅进配置，不提前覆盖档案；真正start在私有候选安装定义0资料与继承，仍不创建定义0实例、不改定义1首访。系统last_slot成功提交后才安装新世界；start本身不写world blob。
 
-普通`update()`现在与Session的完整轮末合同一致：规则候选完成后更新人物`render_position/cached_screen_position`缓存，成功才交给应用系统／世界联合提交。先前应用直接调用prepare后安装，遗漏这一阶段；缓存影响后续声音可见性及表现，不能以三路回放自洽掩盖漏接。`cached_view`原本有独立逻辑尾部更新，此次没有更改它。
+村名／姓名采用合法UTF-8、无控制字符、4096字节维护预算；原14／12参数和全角7／6限制尚未全部闭合。用户已授权维护草稿策略：custom_name后切性别保名，取消配置保留draft，重新进入继续编辑，实际start才安装。Steam“短姓名→切性别→取消重进”动态链仍未闭合，不能把维护决策补成原窗口事实。
 
-新应用套件集中承担当次文件、标题和纯计分职责；已有持久化套件使用合法raw17入口条件档补应用收尾／写失败组合。它不是自然经营到16年4月的证明。Steam额外held加速资格未核，未装进APK维护消费者。
+## 系统、世界与显式刷新
 
-后继[具名动作桥](src/startup_application_actions.cpp)补`act_award_page`、`return_rank_page`、`leave_commerce_page`，只接受活动世界的真实栈顶87／48／83及稳定ID。复制Session执行原消费者，再由应用提交；晋级返回不申请晋级、商会离开不进入买卖。年度终止请求和确认分开，初始化先加勋、已初始化零勋可直接关闭，调用方必须重读实际pending。条件接线、拒绝与退休后重复输入由持久化套件验证，自然触发另验。
+两页纪录只读系统最高通关分／村名、限期最高资金／村名，不由当前所持金币推算。真实现金提交后的峰值变更同步系统；加载按系统跨局权威重绑世界纪录镜像，不把历史世界档当新纪录事件。维护选择峰值发生时立即保存，原AddMoney只改内存而不自行SaveSystem，两者分开。
 
-## 两种独立文件
+应用路径现在只有显式`root`，系统版本2持有两槽×中断／手动四条目录，正常世界为内容摘要不可变文件。保存沿单system提交点；隐藏仅日期=-1、继续引用旧blob。系统修订／摘要与应用旧观察冲突时返回错误，不自动加载新档、不合并写者。`save_world()`显式保存当前手动项，`load_world(slot, kind)`确认后才验证实际载荷。
 
-世界继续使用AVRSAVE1；当前声音操作字段使Owner布局为`7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440`，世界语义3。旧布局／语义明确拒绝，不迁移；固定原表和原行为oracle不改，详见[世界存取](PERSISTENCE.md)。
+调用方可显式`refresh_title_storage()`接纳新系统：只在标题侧／无计分时执行，退休旧子页和返回值、分配新根ID，回到两栏。草稿、背景、随机和现有音频保留；保留世界仅重绑跨局资金纪录镜像，实体、资金、随机和历史不换成其他栏世界。失败不改变应用，成功也不重放旧失败意图或发B0／G。
 
-[系统文件](include/dungeon_village_prototype/startup_system_records.hpp)采用`AVRSYS01`／版本1／固定dataset身份。必需分区1保存最后栏位、两类最高值、村名和奖杯，分区2保存原序设施G与职业开放p的大端short字节串；ID≥1024的未知可选段逐字节、原序往返，未知必需段拒绝。全文件与每分区均有SHA-256校验；这是完整性校验，不是加密或防篡改签名。
+普通更新与页面动作仍通过唯一世界Owner，包含Session的轮末`render_position/cached_screen_position`更新；缓存影响声音可见性和后续表现，不能用回放自洽掩盖漏接。`cached_view`沿自身既有逻辑尾部更新。
 
-文件总预算4MiB，村名各4096字节，两段继承各4096字节且偶长，可选段最多60、单段最多1MiB，总预算仍共同限制。实际继承定义数、G1–5／p0–1与引用在新局候选中再验证。损坏、版本不符、目录、断链和权限失败不当作缺失；真正缺失才生成内存默认，读取本身不写文件。
+raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严格大于捕获最高分；收尾关闭17、请求主BGM、事件6及事件4／5，再提交系统并安装候选。失败保留页面／随机／事件／纪录，成功退休计分行、控制器和页ID，不能重复领奖。`act_award_page`、`return_rank_page`、`leave_commerce_page`沿真实栈顶87／48／83和稳定ID执行已有消费者，仍须区分条件接线与自然触发。
 
-路径由调用方显式提供，系统和两世界栏必须互不重叠，包括Windows大小写别名和已存在硬链接。复用原单文件独占临时写入、刷新、回读与原子替换；异常保留旧文件并清理本次临时文件。系统保存与世界保存分别是独立事务，没有跨两文件原子提交协议。产品位置、格式和接线由产品维护者决定。
+## 输出、随机与恢复
 
-## 标题随机与回放边界
+健康冷构造和world→title真正重入各入队一次`replace_bgm(0)`。纪录／配置／raw20／询问返回不重新初始化，不重复B0。真实start／load激活成功后，沿G的任务／遭遇状态追加B1或B2，排在该事务较早实际输出之后；失败不发，不按ID去重。首次B0尚未领取就start时，B0、G均按原序保留。
 
-`logic`模式不产生标题背景／装饰抽数，保持旧逻辑起点。`title_presentation`模式通过显式`advance_title_background`推进APK背景`l/f132f/s/t`和20个完整人物槽；只有活动标题和具名合格更新才能提交，状态与随机联合安装。任一抽取失败，二者都不推进；返回值提供确认是否提前消费、菜单确认资格和实际抽数，不自行打开页面。只读`project_startup_title_presentation`提供原排序、人物参数及shadow/body顺序，不更新状态或直接展开完整人物皮肤。
+应用公开命令成功边界把当前world声音转入应用唯一typed队列，world当前队列归空，历史checkpoint原声音仍保存。`take_audio_requests()`与兼容ID接口领取的是同一队列，任一领取后另一接口不能再取到同一请求。记录operation＋ID；只比较ID会丢失播放、切换等语义。CLI逐命令／更新消费输出，捕获还要求Driver已消费；精确恢复不重发B0／G。
 
-显式`open_records`仍按p==1池交换、最多5人，空池按原flags1后备；只读重画和翻页不抽取，开始通过`handoff_random`公开交接状态。背景更新与开纪录／新局是独立API事务，调用方可以控制先后，但第二步失败不会撤销已完成的第一步，不能冒称原单轮菜单输入已联合实现。原标题`h/j/o`、方向键顺序、raw20／91返回载荷和纪录`f110a`动画尚未接线，现有页面枚举和草稿slot不能替代它们；完整输入来源见[合同](../work/title-owner-contract/README.md)。
+`logic`不推进标题背景／装饰随机。`title_presentation`通过独立显式`advance_title_background`推进APK的`l/f132f/s/t`与20槽，子页尚未退休时冻结父背景。状态和随机共同提交，任一抽取失败均不推进。只读人物投影给出原序shadow/body等计划，不自动绘制完整皮肤。
 
-world→title复制世界随机，保留不再推进的世界，重置背景q/l/s/t并保留f132f；配置／纪录返回则保留全部背景。logic始终要求初始背景。`startup-title-v2`是新的独立标题控制器身份；无世界时可捕获／恢复内存标题快照，除草稿、页面、原序装饰、请求数、完整随机外还含背景状态，包括退休槽age/y。旧v1身份明确拒绝；坏模式、引用、资格和页面组合也拒绝。此接口不等于磁盘应用快照，不修改原世界回放控制器。
+开纪录按p==1池交换、最多5人，空池按flags1后备；重画和翻页零抽。start通过handoff公开完整交接。world→title复制世界随机，重置q/l/s/t并保留f132f；配置／纪录返回保留背景。背景与菜单为分别具名的事务，Steam75绘制门槛不能覆盖APK100更新门槛，原完整更新／输入相位仍有未证项，不能把API调用数称为原逻辑tick。
 
-原有世界正常保存仍只接受稳定主场景。`load_world_replay`接受经世界loader校验的指定控制器研究入口；若为raw17，额外要求计数／阶段尚未推进。已推进计分页的世界单独快照缺少应用控制器，继续明确拒绝，不从零重新发奖。[完整应用回放](APPLICATION_REPLAY.md)当前以AVRAPP01应用语义5保存系统、世界、背景与已实现的标题／计分控制器、Driver，恢复仅向新研究隔离目录发布系统文件后联合安装。schema为`a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf`，仍覆盖16个应用直接成员及11个标题嵌套字段；内嵌世界使用语义3及typed声音队列。旧应用语义1–4拒绝且不迁移。“完整”不表示未实现的原UI状态已经覆盖。原世界单文件入口与应用入口不能混用，产品图形接线仍独立验收。
+独立标题内存控制器现为`startup-title-v3`：无世界时保存背景、菜单、草稿、页面、装饰、随机、请求和当前目录身份；恢复先核与当前应用的目录观察一致，不重新读取磁盘、不加载文件或发初始化输出。旧v1／v2拒绝。完整磁盘应用使用AVRAPP01语义6，19个直接成员及43个嵌套字段分类，另含完整四目录引用文件视图；恢复到尚不存在的新研究根后联合安装。旧应用1–5和系统1均拒绝，不改旧证书迁移。独立世界语义3／原字段schema保持，已推进raw17仍不能只用世界档从零恢复应用计分。
 
-自然被动Driver已实现真实新局、具名模态页策略、完整Driver捕获及20轮尾段认证工具，见[自然路线](../work/natural-application-route/README.md)。当前Driver v2保存有序声音操作与ID，`natural-application-audio-v1`的420轮／首月已通过20轮双恢复，详见[声音交付](../work/audio-owner-delivery/README.md)。旧`natural-application-v1`至`v4`仅保各身份历史，不作为当前前缀；自然通关仍未完成。
+原自动中断产生者、raw14轮内保存、纪录动画完整调度、精确Steam窗口／字体／全部皮肤和自然通关尚未因此完成。正常世界保存仅支持稳定normal场景，应用快照不替它偷偷扩大资格。
 
-## 有界命令行消费者
+## 有界CLI与交付边界
 
-`work/release/bin/dungeon_village_startup_application_cli.exe`必须显式传`--system`、`--slot0`、`--slot1`；可选`--seed`与`--title-presentation`。只使用研究维护文件，退出或EOF不自动保存。
+`work/release/bin/dungeon_village_startup_application_cli.exe --root <已存在研究根>`，可选`--seed`与`--title-presentation`。旧`--system/--slot0/--slot1`显式拒绝，不静默迁移；退出或EOF不自动保存。
 
-命令包括`new 0`、`overwrite yes`、`village 名称`、`name 姓名`、`sex 1`、`cancel`、`start`、`records`、`next`、`previous`、`view`、`step N`、`confirm`、`save`、`load 0`、`title`、`quit`。单次step最多10000次，声音输出逐步领取；计分输出包含阶段和六行数据。它用于审核维护操作顺序，不声称复刻原像素皮肤或Steam键鼠映射。
+基础命令保留new／overwrite／village／name／sex／cancel／start／records／next／previous／view／step／confirm／save／load／title／quit。菜单具名命令为left／right／up／down／activate／back、consume、frame-menu，冲突接纳使用refresh。`activate`操作标题菜单，`confirm`继续世界／计分页，两者不是同一入口。step每批最多10000次，逐轮领取并打印声音操作和编号，不实际播放音频。它用于审核维护操作次序，不证明Steam键鼠坐标和像素皮肤已还原。
 
-验收结果和资源审计见[当前验证](../VERIFICATION.md)。合法现金账本、任务历史与世界审计检查点仍可能增长，不能由应用只保留一个世界就宣称整个进程永久有界。
+当前实现及新增检查已集中通过，17命令文件操作与420轮／首月各自双恢复一致。历史[声音批](../work/audio-owner-delivery/README.md)的语义5短前缀保留历史资格，在新应用语义6下不可接续；当前自然前缀目录为`natural-application-menu-v1`，后期仍按[研究路线](../work/natural-application-route/README.md)独立认证。仅保留一份活动世界、退休菜单或逐轮消费声音都不保证永久有界；正常账本、任务历史、审计和磁盘候选规模按批记录。

@@ -1,57 +1,57 @@
 # 完整应用研究回放
 
-最新声音操作批使用AVRAPP01格式1、应用语义5、边界1，嵌套世界语义3；应用schema为`a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf`。自然应用Driver v2保存原序operation＋ID摘要，计分条件／显式表现及独立世界回放也区分typed输出；旧应用1–4与旧世界1/2拒绝。当前认证见[声音Owner交付](../work/audio-owner-delivery/README.md)，旧初始化批记录不代表当前快照兼容。
+2026-10-09。应用语义6、标题菜单控制器与四槽文件视图已验，完整Release构建及五项相关检查通过103.30秒。当前使用`AVRAPP01`格式1／应用语义6／轮末边界1，内嵌系统版本2与世界语义3。旧应用1–5、旧系统1及旧标题控制器不迁移；声音批语义5的短前缀在当前代码中已退休，历史文件与证书保持原字节。当前420轮／首月及17命令文件操作尾段见[集中交付](../work/title-menu-application-delivery/README.md)，不等于完整Steam窗口／调度。
 
-2026-10-09上一初始化批已通过12项相关CTest与420轮／首月双恢复：补齐六特殊／三十复发任务目录、实际reset后的设施共享人气20／30。当批世界语义2、应用语义4，旧应用1／2／3与世界语义1拒绝、不迁移，原表及Owner字段布局不变。此前自然24月等快照保留修前证据，36月续跑已在29月中止并收齐研究测试进程；当批最终前缀为natural-application-v4（后继声音语义已退休其资格）。详情见[初始化交付](../work/task-pool-delivery/README.md)，不将日期回放自洽代替后期规则正确。
+模块沿[应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及[已确认的完整目录设计](../work/title-menu-application-design/README.md)。它是维护专用回放，不是APK／Steam原档兼容，也不扩大正常玩家存档的页面范围。存储事务另见[应用存储](APPLICATION_STORAGE.md)，应用行为见[标题与跨局纪录](STARTUP_APPLICATION.md)。
 
-本模块实现[2026-10-09已确认方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)，用于保存应用内存、完整世界Session与实际测试Driver。它是研究专用`AVRAPP01`，不兼容APK／Steam原档，不扩大正常玩家存档的页面范围，不包含外部两栏文件系统镜像。
+## 所有权与完整轮末
 
-## 所有权与捕获边界
+[接口](include/dungeon_village_prototype/startup_application_replay.hpp)提供保存、恢复和规范状态摘要；不开放任意字段setter。应用协调系统／文件／表现输出，Session仍是世界唯一Owner。恢复使用封闭私有候选构造，不执行普通初始化，不调用install_loaded重写世界镜像，不重抽随机、不发标题B0或激活G。
 
-应用仍是跨域协调者，Session仍是世界唯一Owner。新增[接口](include/dungeon_village_prototype/startup_application_replay.hpp)只提供捕获、恢复和完整状态摘要；不暴露任意字段setter。恢复通过封闭私有候选构造，不执行普通构造的系统读取，不调用install_loaded重写世界现金镜像，也不推进页面／重抽随机。
+捕获要求健康应用、无执行中页面、应用音频和当前world音频均已消费，Driver也在完整外层轮末。当前维护状态完整保存：系统records、草稿、模式／页面、纪录名单与请求数、标题随机及历史交接、背景`l/f132f/s/t`及20槽全部字段、标题根模式／选择／稳定ID、raw20／询问／外部子页完整载荷，以及可选Session、全部原序审计历史和计分三元组。returned子页尚未被父消费时仍保存，不“修复”为初始菜单；inactive标题槽的age/y也保留。
 
-捕获在完整研究外层轮末，声音和Driver一次性输出必须已经消费，`scripts.executing_page`为空。快照保存系统副本、草稿、模式／页面、原序纪录装饰名单、请求序号、完整标题随机／历史交接、背景`l/f132f/s/t`及20槽全部六字段、可选世界及其全部原序审计历史，以及计分六行／完整阶段状态／稳定页ID。退休槽age/y仍保存，恢复不重置或补更新；logic模式只接受初始背景。路径重新绑定，构造错误只接受为空。
+应用输出仅允许空队列捕获，控制段显式保存已消费位；恢复队列为空。环境路径不保存，`cleanup_pending`不跨环境带入，新根恢复为false。storage的missing和digest是磁盘观察：发布system后重绑为missing=false及该原字节实际摘要；系统修订和内容保留。raw20目录stamp仍是必须验证的输入资格，不能省略。
 
-标题背景通过Owner显式请求与随机共同提交；开纪录和新局仍为独立菜单API，文件记录的是实际已完成请求边界，不替它们提供同一原版输入轮的联合事务。`h/j/o`、raw20／91返回载荷、方向输入及纪录动画`f110a`尚未实现，不在当前载荷中。“完整应用”指完整保存当前维护应用，不能解释为原版所有UI状态已复刻。
+具名菜单请求各自是事务；原标题背景更新仍有独立显式入口，不能把两次成功API称作同一原版输入轮。未闭合的Steam框架时序、纪录动画、完整皮肤和原自动中断轮内阶段并不因“完整应用”命名而自动获得实现。
 
-`StartupApplicationReplayMetadata.controller_state`是外部Driver的唯一规范状态字节，不能在恢复之后再靠旧局部变量继续策略。调用者必须提供纯验证器，完整解码、检查语义版本、页面关系、下一轮／命令与输出消费；空验证器或空载荷拒绝。库检查通用封装与应用关系，具体Driver负责已登记场景语义，不能传一个始终成功的回调宣称已验证策略。
+## 格式与校验
 
-计分Driver为`application-clear-conditions-v1`，资格明确是raw17条件入口。它记录实际阶段、下一轮／命令、页ID、捕获纪录、随机／历史基线、事件4／5／6、声音序列、失败／成功及检查计数。非首行row2计数44→45使用无确认更新，避免同一脉冲直接转到下一阶段；stage6计数64下一次更新自动结算。文件锁故障是测试环境，不保存OS句柄。另有已实现的`application-natural-clear-v1`被动自然Driver，其观察范围、输出预算及语义修正见[自然路线记录](../work/natural-application-route/README.md)；修后自然前缀待重新认证，条件档不能换标签当自然通关档。
+头包含magic、格式／应用语义／捕获边界、dataset、world schema和应用schema。每段及全容器都有SHA-256，提供完整性校验而非防篡改身份认证。
 
-## 格式和严格校验
+| 分区 | 内容 |
+| --- | --- |
+| 1，必需 | Driver身份、producer、下一轮及下一命令 |
+| 2，必需 | `AVRSYS01`版本2实际原字节，保留合法分区原序 |
+| 3，必需 | 应用控制字段、496字节标题背景、完整菜单及空音频边界 |
+| 4，world存在时必需 | `AVRSAVE1` replay完整Session及全部原序历史 |
+| 5，必需 | 实际Driver规范状态字节 |
+| 6，必需 | 四目录引用的唯一normal blob集合；无引用时也须有空段 |
+| ≥1024，可选 | 原序、版本及任意字节保留 |
 
-头含magic、格式／应用语义／捕获边界版本、dataset、world schema和应用字段schema。当前magic仍为`AVRAPP01`，格式1、应用语义5、捕获边界1；旧应用语义1／2／3／4明确拒绝，不迁移。分区1为metadata，2为原AVRSYS01完整字节，3为应用控制字段，4仅在world存在时保存原AVRSAVE1 replay完整字节，5为Driver；ID≥1024是可选附属段，保留原序、版本和任意字节。语义2曾在控制分区末尾追加496字节标题背景（4个int32及20×6个int32）；语义3保留这份字段布局与偏移。每段和全文件均有SHA-256；摘要仅校验完整性。
+分区6按32字节摘要字典升序保存引用身份和原blob字节，不保存任意路径。集合必须恰好等于系统四目录的引用闭包，包括日期-1隐藏项；缺失、重复、额外、元数据冲突、用途错误或摘要不符均拒绝。正常世界仅临时解码验证，保留原blob字节，不把解码后已清输入的对象重编码覆盖原载荷。
 
-语义3修正应用普通`update()`漏接Session轮末`update_startup_world_render_cache`的问题：现在同样先更新候选人物`render_position/cached_screen_position`，成功才联合提交世界与系统。两个缓存影响后续声音可见性及表现，不能仅因字段／world schema未变就沿用旧应用前缀。此修正不把`cached_view`误作漏更新字段；缓存函数本身不额外抽随机，原规则及预算保持。旧文件和证书保持原字节，不补写缓存或偷改版本头迁移。
+整个容器128MiB，控制／Driver各1MiB，系统4MiB，可选段最多60且各1MiB，含可选world最多66段。活动Session、其历史和最多四个唯一blob共享原16Mi节点／128MiB估计分配预算，单Owner64MiB约束保持；不逐档重置预算、不删历史或隐藏记录凑通过。容器、分区和解码对象可共存，因此这不是进程RSS上限。
 
-整体128MiB、应用控制／Driver各1MiB、系统4MiB、可选段每段1MiB且最多60段。world与全部历史共用原16Mi节点／128MiB估计分配预算，不按分区重置，也不删历史。读时容器、分区字节与对象可共存，这些阈值不是整个进程RSS上限。
+通用校验还核页面与菜单栈映射、world资格、raw20槽号与draft.slot、实际系统摘要／修订、稳定父子ID、返回结果、纪录名单资格、系统现金镜像、计分三元组、raw17栈顶及counter／phase、六行投影及累计。非法关系拒绝，不能通过推进一轮补状态。world激活后标题子页必须已退休；无计分控制器的raw17只允许未推进入口。
 
-逐项验证页面与world存在资格、纪录名单与实际human_presence池、系统现金镜像、计分三元组成组、raw17栈顶／counter／phase一致、六行仍等于世界只读投影、累计与已计行关系、捕获最高分与系统相等。恢复复用只读`validate_startup_clear_score_page`，不通过推进一次来验证。无控制器的raw17只允许未推进入口；finished控制器不能保留并再领奖。
+[字段清单](src/startup_application_replay_fields.json)由[Clang脚本](scripts/check_application_replay_fields.mjs)登记19个应用直接成员及43个嵌套字段，应用schema为`309d5698d851da2d505796fa258316ff3dd3c1a00b99c6b1ead44784266f5ec0`。嵌套覆盖标题背景、菜单各载荷、catalog stamp及storage观察字段；新成员未分类就失败。世界语义3／schema不因标题目录改变；其独立codec coverage继续负责世界嵌套字段。
 
-[应用字段清单](src/startup_application_replay_fields.json)由[Clang检查](scripts/check_application_replay_fields.mjs)登记全部16个直接成员及11个标题嵌套字段（`StartupTitleSlot`六项、`StartupTitlePresentation`五项），当前schema为`a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf`。此次schema身份随应用语义5更新，成员数量和布局不变。两次AST过滤分别核应用成员与标题类型，新外层或嵌套字段未分类均失败，不只比较`title_`类型名；其它嵌套字段沿具名codec及world/system身份约束。既有world codec coverage同时执行此检查；world schema现为7f33开头，新增声音记录及操作枚举也由其字段覆盖检查。该检查不证明广告、完整标题菜单或未来UI状态已实现。
+## 新根恢复与失败边界
 
-## 文件隔离和联合安装
+捕获输出必须位于指定的已存在研究目录且文件尚不存在。恢复源须是research/work内普通无硬链接文件；目标是其下**尚不存在的新应用根**，parent须已存在。路径检查复用存储层规则，保护当前应用整个根、源和调用方声明的trace／证书等路径，拒绝大小写别名、硬链接、符号／重解析点及Windows特殊名称。预检不建目录。
 
-应用库编译绑定本研究包的`work`目录；调用者另传其下已存在的专用研究目录。路径检查规范父组件、大小写／硬链接别名、符号／重解析点及Windows特殊名称，拒绝越界和与当前应用文件重叠。`protected_paths`可声明trace、证书和其它只读输入；它不进入快照。纯预检不创建目录或文件。
+恢复顺序为完整读解／Driver校验、预分配最终观察值、固定父目录句柄、独占同卷临时根、写闭／刷新／回读system与全部blob、复核目标／源／保护路径、以Windows目录句柄无覆盖原子改名发布完整新根，最后仅noexcept联合安装应用与Driver。没有引用也发布空worlds目录。最终目录发布是`FileRenameInfo`且`ReplaceIfExists=false`，不是先exists再逐文件复制。其他平台尚无同等实现，明确拒绝。
 
-捕获目标必须不存在。恢复的固定`system.avr`、`world0.avr`、`world1.avr`也必须全部不存在；目录内无关文件保留。读容器→完整候选及Driver校验→准备可无异常移动的最终对象→再次检查路径→无覆盖发布一份系统文件→noexcept联合安装应用和Driver。任何发布前错误保留旧应用、Driver及源文件；恢复不写两栏世界文件。
+发布前失败保留旧应用、Driver、源容器及竞争写者的既有目标。只清理本次登记文件和空临时目录，不递归删除未知内容；清理失败报告残留。成功后不再读取或分配才安装内存。正常单文件原子替换与本恢复整根发布是两个职责，不能用历史单文件测试替代本批目录发布验收；掉电耐久性也不等同于原子可见性。
 
-无覆盖发布复用独占临时文件、刷新和回读校验。Windows最终MoveFileExW不带REPLACE_EXISTING；POSIX采用同目录link发布，目标存在即失败。该出口与正常单文件替换职责分开，禁止用exists预检代替最终无覆盖语义。实际Windows双写者竞争已测试；POSIX代码尚未在本机执行。路径预检不声称能抵御恶意进程并发替换父目录，掉电耐久性也不等于文件替换原子性。
+## 摘要、Driver与验证归属
 
-## 摘要、复算与适用范围
+`startup_application_replay_digest`是纯内存计算，组合规范system、完整控制字段、包括隐藏项的按摘要去重完整引用身份、Session／历史、Driver及原序可选段。同摘要的长度／用途冲突拒绝；不读取路径、取得租约或创建锁文件，因而也可校验尚未发布的私有恢复候选。它不是容器文件hash或实时磁盘审计，不证明磁盘blob当前仍完整；真正save／restore另完整核实际字节及世界语义。逐轮不重复读取大blob；不可变历史沿弱引用摘要缓存，缓存不延寿退休历史。
 
-`startup_application_replay_digest`比较完整规范状态，组合全部应用控制／系统／Driver及原序扩展和完整Session摘要；它不是容器字节hash，也不以摘要成功代替完整恢复校验或128MiB文件预算通过。每轮无需重复构造并解码磁盘容器；真实save仍执行同一decoder自检，restore仍完整校验。Session摘要复用不可变历史的弱引用缓存，退休引用不会因缓存延寿。
+实际save经完整decoder自检；restore逐层验证。Driver验证器必须纯检查，空验证器或空载荷拒绝；下一轮／命令、策略阶段和一次性输出由对应具名Driver证明，不能用恒成功回调替代策略认证。计分条件入口、自然经营和标题背景／菜单命令轨迹分开登记，条件中断档不能改称自然自动保存。
 
-扩展现有应用、持久化、codec覆盖和进程隔离套件，不新增CTest或逐函数target。标准条件回放覆盖计分前后、结算失败／重试、等分不换纪录主人和一次收尾；四个捕获点各用两次新进程比较完整应用、Session历史、Driver、实际声音／事件与隔离系统摘要。标题／配置／纪录及保留世界的应用状态另有独立往返与损坏拒绝检查。
+现有应用、持久化、codec和进程隔离套件集中覆盖标题／配置／纪录／计分及保留世界、raw20／询问／返回载荷、四槽隐藏引用、重签坏容器与坏blob、联合预算、临时根失败清理、双恢复和实际音频序列。新增测试代码存在与本批测试通过分开记录；当前集中验收中，尚不能把旧证书作为语义6通过结果。
 
-最终验收、复用候选和规模见[验证入口](../VERIFICATION.md)。语义1的四个条件快照位于[历史证书目录](../work/snapshots/application-clear-v1/CERTIFICATE.json)，当时9文件1395611字节；当时结算前64档只需2次请求，失败后档只需1次重试。旧应用语义1–4字节不能由当前语义5解码，须由当前代码重新生成并认证，不改旧证书伪装兼容。全套生成／验证可在既有进程runner显式增加`--application-exe`和`--application-snapshot-directory`（后者必须为work内的新目录），默认CTest仍回收临时制品。上批命令与证书摘要见[历史交付记录](../work/application-replay-delivery/README.md)。这些本地二进制条件档不提交为玩家存档，本页不代替本批最终回归记录。
+历史按身份保留：[最初应用交付](../work/application-replay-delivery/README.md)、[标题背景交付](../work/title-owner-delivery/README.md)、[轮末缓存修正](../work/natural-application-delivery/README.md)、[12月性能采样](../work/natural-application-performance/README.md)、[初始化修正](../work/task-pool-delivery/README.md)、[声音Owner交付](../work/audio-owner-delivery/README.md)。旧自然12／24月与各代条件档不可换头接续；语义5的420轮／首月历史认证也不等于当前语义6认证。下一批沿当前代码重新生成最短前缀，避免重复从头长跑。
 
-标题批次曾生成并认证语义2的四个计分条件档，见[语义2历史证书](../work/snapshots/application-clear-v2/CERTIFICATE.json)，9文件1397567字节。原标题独立Driver `title-background-requests-v2`当时也认证600→680请求尾段，两次新进程恢复与reference一致，完整保留20槽、实际确认消费／抽数及绘制投影；这些是对应版本的历史结果，见[标题批次交付](../work/title-owner-delivery/README.md)。后继语义3四个条件档曾在`work/snapshots/application-clear-v3`重生成并认证；现在也只保历史，旧证书不改写。
-
-`work/snapshots/natural-application-v1`下420轮、首月和第12月三份前缀均产生于轮末缓存修正前。它们曾完成各自20轮三路一致，现在只保留为修前诊断；不从旧档补缓存续跑来代替自然来源。
-
-自然180月、五星／全部任务／BOSS、完整原标题输入和完整Steam皮肤仍独立推进。标题背景Owner与快照已接线，完整人物资源展开和纪录动画仍有缺口；条件短回放不能换标签成为自然通关证明。
-
-语义3当时已在[本批交付](../work/natural-application-delivery/README.md)认证：`natural-application-v2`内420轮和首月两档各20轮双恢复，`application-clear-v3`内四个计分条件档重新认证；新Driver与原独立world策略分别登记。
-
-后继[等价窄投影与12月采样](../work/natural-application-performance/README.md)曾认证应用语义3的`natural-application-v2/month12.avra`：19295→19315三路，19,662,928字节。初始化及typed声音修正后，这些12／24月历史样本均不可接续；当前可用前缀及下一步以本页顶部的声音交付为准。
+自然180月、五星／全部任务／BOSS、精确Steam完整皮肤仍须独立推进；计分条件短回放不证明自然通关。正常账本、任务历史、审计和外部快照允许合法增长，每批记录规模、引用退休与输出消费，不宣称永久有界。

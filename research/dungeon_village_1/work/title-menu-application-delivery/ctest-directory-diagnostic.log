@@ -1,0 +1,20 @@
+Test project D:/code/Ark-Village/research/dungeon_village_1/work/release
+    Start 1: dungeon_village_prototype.startup_application
+1/1 Test #1: dungeon_village_prototype.startup_application ...***Failed    0.33 sec
+应用回放路径：symlink场景未覆盖（权限或平台限制），�ͻ���û���������Ȩ��
+四槽文件视图：完整应用状态回放：four-slots-confirmation：已发布system须为普通文件：D:\code\Ark-Village\research\dungeon_village_1\work\release\prototype\application-test-235007049265100\application-replay-state\four-slots-confirmation-restore
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.33 sec
+
+The following tests FAILED:
+	  1 - dungeon_village_prototype.startup_application (Failed)
+ctest : Errors while running CTest
+所在位置 行:2 字符: 632
++ ... EXITCODE }; ctest --test-dir research/dungeon_village_1/work/release  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Errors while running CTest:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

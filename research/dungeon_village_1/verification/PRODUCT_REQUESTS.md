@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+最新[标题／存储交付](../work/title-menu-application-delivery/README.md)已验系统2四目录、原菜单父子结果、应用统一音频及完整文件视图，五项相关检查通过103.30秒。17命令真实菜单文件尾段／当前420轮和首月双恢复通过；旧应用5短前缀已退休。产品可消费新的菜单与声音契约，但research应用根／格式不要求产品直接覆盖玩家档策略；原自动中断、raw14及完整Steam皮肤／输入仍分别缺，产品源文件未改。
+
 2026-10-09新增[Steam启动局部计划](../prototype/STEAM_STARTUP_SKIN.md)：标题、选档、raw20、raw1按已核坐标及资源输出有序图层和触摸注册，既有visuals/application已验。原字体测宽由调用方提供，未知样式不补值；不是完整可操作标题或玩家文件方案。[字体后端](../ui/STEAM_FONT_BACKEND.md)和[GLText](../ui/STEAM_GLTEXT_LIFECYCLE.md)补真实字体对象交接／消费与引用保留，不能把Arial资源名当中文最终字形。产品可独立消费这些研究合同；四目录与统一声音新方案刚获批准，尚未交付，勿迁入在途代码。
 
 后继声音／Steam菜单批：[typed输出模块](../prototype/AUDIO_REQUESTS.md)以唯一队列保留原b/c/d操作，旧ID接口可继续调用但会消费同一队列，完整播放应使用take_audio_requests。新遭遇的BGM2和普通通知24已补Owner消费者，不当raw24页面；设备后端及标题初始音频仍缺。[Steam手动档菜单](../ui/STEAM_SAVE_MENU.md)与[语言安装](../ui/STEAM_LANGUAGE_INSTALL.md)新增静态合同，当前中文字体不补猜。具体检查／尚在运行的自然路线见[交付](../work/audio-owner-delivery/README.md)；研究语义版本改变不要求产品照搬玩家档策略。

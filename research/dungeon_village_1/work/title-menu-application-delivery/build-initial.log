@@ -1,0 +1,22 @@
+[0/2] Re-checking globbed directories...
+[1/2] Re-running CMake...
+-- Configuring done (0.5s)
+-- Generating done (0.2s)
+-- Build files have been written to: D:/code/Ark-Village/research/dungeon_village_1/work/release
+[0/4] Re-checking globbed directories...
+[1/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_title_menu.cpp.obj
+[2/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_storage.cpp.obj
+[3/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_storage_replay.cpp.obj
+[4/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_system_records.cpp.obj
+[5/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_menu.cpp.obj
+[6/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world.dir/src/startup_world_persistence.cpp.obj
+[7/19] Linking CXX shared library bin\libdungeon_village_startup_world.dll
+[8/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application.cpp.obj
+[9/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_replay_paths.cpp.obj
+[10/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/steam_startup_skin.cpp.obj
+[11/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_title.cpp.obj
+[12/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_cli.dir/src/startup_application_main.cpp.obj
+[13/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_replay.cpp.obj
+[14/19] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_application_actions.cpp.obj
+[15/19] Linking CXX shared library bin\libdungeon_village_startup_application.dll
+[16/19] Linking CXX executable bin\dungeon_village_startup_application_cli.exe

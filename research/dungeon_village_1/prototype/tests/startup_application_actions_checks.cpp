@@ -1,6 +1,8 @@
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
+#include <fstream>
+#include <iterator>
 #include <stdexcept>
 
 using namespace dungeon_village_prototype;
@@ -31,18 +33,29 @@ const ref::WorldScriptPage *top(const StartupWorldRuntimeSession &world) {
     return nullptr;
 }
 StartupApplicationPaths paths(const std::filesystem::path &root, const std::string &name) {
-    return {root / (name + "-system.avr"),
-            {root / (name + "-world0.avr"), root / (name + "-world1.avr")}};
+    const auto storage = root / name;
+    require(std::filesystem::create_directory(storage), "exclusive application storage root");
+    return {storage};
 }
-void audio_ownership(const StartupApplication &source) {
+std::string bytes(const std::filesystem::path &path) {
+    std::ifstream input(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(input), {}};
+}
+bool no_world_blobs(const StartupApplicationPaths &files) {
+    const auto worlds = files.root / "worlds";
+    return !std::filesystem::exists(worlds) || std::filesystem::is_empty(worlds);
+}
+void audio_ownership(const StartupApplication &source, const StartupWorldRuntimeSession &independent) {
     // 条件动作夹具的真实Owner出口：复制待消费输出验证双接口，不注入声音，也不代表自然路径。
     auto typed_app = source;
     auto legacy_app = source;
-    auto typed_session = *source.world();
-    auto legacy_session = *source.world();
-    const auto expected = source.world()->state().sound_requests;
+    auto typed_session = independent;
+    auto legacy_session = independent;
+    const auto expected = independent.state().sound_requests;
     const auto ids = test_support::audio_ids(expected);
     require(!expected.empty(), "双接口领取使用非空真实Owner动作输出");
+    require(source.world()->state().sound_requests.empty(),
+            "应用世界输出已经移交，不能从Session副本再次领取同一请求");
     require(typed_app.take_audio_requests() == expected && typed_app.take_sound_requests().empty() &&
                 typed_app.take_audio_requests().empty(),
             "应用typed先领取，旧ID和typed再领取均为空，不重播同一队列");
@@ -58,12 +71,11 @@ void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expect
                      const std::string &error, StartupWorldRuntimeError expected_error) {
     good(error);
     require(expected_error == StartupWorldRuntimeError::none, "reference command accepted");
-    require(startup_world_session_digest(*app.world()) == startup_world_session_digest(expected),
-            "application bridge preserves full Session, history, order and random");
-    if (!app.world()->state().sound_requests.empty())
+    require(app.world()->state().sound_requests.empty(), "committed application world transfers current outputs once");
+    if (!expected.state().sound_requests.empty())
         checks += run_startup_application_natural_pending_sound_check(app);
-    if (!audio_ownership_checked && !app.world()->state().sound_requests.empty()) {
-        audio_ownership(app);
+    if (!audio_ownership_checked && !expected.state().sound_requests.empty()) {
+        audio_ownership(app, expected);
         audio_ownership_checked = true;
     }
     auto typed_app = app;
@@ -72,7 +84,10 @@ void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expect
             "application bridge preserves source audio operations as well as ordered IDs");
     require(app.take_sound_requests() == expected.take_sound_requests(),
             "application bridge emits original ordered sounds once");
-    require(app.take_sound_requests().empty(), "application output sink consumed once");
+    require(app.take_sound_requests().empty() && app.take_audio_requests().empty(),
+            "application output sink consumed once across both interfaces");
+    require(startup_world_session_digest(*app.world()) == startup_world_session_digest(expected),
+            "after identical output consumption application preserves full Session, history, order and random");
 }
 } // namespace
 
@@ -86,10 +101,20 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
     require(!empty.return_rank_page(1).empty() && !empty.leave_commerce_page(1).empty() &&
                 !empty.act_award_page(1, ref::WorldAwardAction::request_termination).empty(),
             "commands reject title without a world");
+    require(empty.take_sound_requests() == std::vector<int>{0},
+            "rejected world commands preserve the cold title output unchanged");
     for (std::size_t i = 0; i < entries.size(); ++i) {
         const auto files = paths(root, std::to_string(i));
         StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
         good(app.load_world_replay(entries[i], "application-action-entry-fixture-v1"));
+        require(app.take_sound_requests() == std::vector<int>({0,1}) &&
+                    app.world()->state().sound_requests.empty(),
+                "conditional world entry consumes cold title B0 then actual activation G, not exact application restore");
+        const auto system_before = bytes(files.root / "system.avr");
+        const auto directory_before = app.records().save_directory;
+        require(!system_before.empty() && directory_before == StartupSystemRecords{}.save_directory &&
+                    no_world_blobs(files),
+                "world replay entry publishes system activation only, no four-slot world records");
         const auto id = top(*app.world())->id;
         const auto before = startup_world_session_digest(*app.world());
         require(!app.return_rank_page(id + 1).empty() && !app.leave_commerce_page(id + 1).empty() &&
@@ -102,8 +127,9 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
         if (i >= 2) require(!app.act_award_page(id, ref::WorldAwardAction::confirm_termination).empty(),
                             "termination confirm without request rejects");
         require(startup_world_session_digest(*app.world()) == before &&
-                    !std::filesystem::exists(files.system) && !std::filesystem::exists(files.worlds[0]) &&
-                    !std::filesystem::exists(files.worlds[1]),
+                    bytes(files.root / "system.avr") == system_before &&
+                    app.records().save_directory == directory_before && no_world_blobs(files) &&
+                    app.take_audio_requests().empty(),
                 "rejected bridge preserves owner, random, output and files");
         auto expected = *app.world();
         const auto rank = expected.state().rank;
@@ -147,9 +173,9 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
                     !app.act_award_page(id, ref::WorldAwardAction::confirm_termination).empty() &&
                     startup_world_session_digest(*app.world()) == closed,
                 "retired page cannot be consumed twice");
-        require(!std::filesystem::exists(files.system) && !std::filesystem::exists(files.worlds[0]) &&
-                    !std::filesystem::exists(files.worlds[1]),
-                "non-record exits do not write system or world files");
+        require(bytes(files.root / "system.avr") == system_before &&
+                    app.records().save_directory == directory_before && no_world_blobs(files),
+                "non-record exits preserve exact published system bytes and all four directories without world blobs");
     }
     require(audio_ownership_checked, "单队列双接口领取已使用非空条件动作输出验证，空队列不能代替覆盖");
     return checks;

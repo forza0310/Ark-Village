@@ -81,6 +81,8 @@ target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
 # 应用持有跨世界系统纪录；复用世界文件I/O，不让规则层依赖标题或文件。
 add_library(dungeon_village_startup_application src/startup_application.cpp
+    src/startup_application_menu.cpp src/startup_title_menu.cpp src/startup_application_storage.cpp
+    src/startup_application_storage_replay.cpp
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp
     src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
@@ -97,7 +99,8 @@ target_link_libraries(dungeon_village_startup_application_cli PRIVATE dungeon_vi
 add_executable(dungeon_village_startup_application_tests tests/startup_application_test.cpp
     tests/startup_system_records_test.cpp tests/startup_world_clear_score_test.cpp
     tests/startup_application_replay_paths_checks.cpp tests/startup_application_replay_state_checks.cpp
-    tests/startup_title_presentation_checks.cpp)
+    tests/startup_title_presentation_checks.cpp tests/startup_title_menu_checks.cpp
+    tests/startup_title_menu_replay_checks.cpp)
 target_link_libraries(dungeon_village_startup_application_tests PRIVATE dungeon_village_startup_application
     dungeon_village_hash)
 target_include_directories(dungeon_village_startup_application_tests PRIVATE src)

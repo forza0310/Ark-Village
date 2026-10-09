@@ -356,7 +356,7 @@ try {
         const referenceTrace = path.join(appRoot, 'reference.trace');
         const referenceWork = path.join(appRoot, 'reference');
         await fs.mkdir(referenceWork);
-        const referenceOutput = await run(['application-clear-conditions-v2', '--work-dir', referenceWork,
+        const referenceOutput = await run(['application-clear-conditions-v3', '--work-dir', referenceWork,
             '--save-directory', captures, '--trace-file', referenceTrace], applicationExecutable, 120000);
         const reference = await fs.readFile(referenceTrace);
         const traceRows = reference.toString('utf8').trimEnd().split('\n');
@@ -370,7 +370,7 @@ try {
             throw new Error('应用条件reference必须含连续完整应用/Session/Driver/声音/事件/系统七字段');
         const summary = output => output.split(/\r?\n/).filter(s => s.startsWith('application replay summary ')).join('\n');
         const terminal = summary(referenceOutput);
-        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 checks=\d+$/.test(terminal))
+        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 activation_sounds=2 checks=\d+$/.test(terminal))
             throw new Error('应用计分缺少真实完成/输出消费终点');
         const found = new Map();
         for (const line of referenceOutput.split(/\r?\n/)) {
@@ -396,7 +396,7 @@ try {
                 const actualTrace = path.join(appRoot, `${name}-${n}.trace`);
                 const actualWork = path.join(appRoot, `${name}-${n}`);
                 await fs.mkdir(actualWork);
-                const output = await run(['application-clear-conditions-v2', '--work-dir', actualWork,
+                const output = await run(['application-clear-conditions-v3', '--work-dir', actualWork,
                     '--load-file', file, '--trace-file', actualTrace], applicationExecutable, 120000);
                 if (!expected.equals(await fs.readFile(actualTrace)) || summary(output) !== terminal)
                     throw new Error(`应用${name}第${n}次全状态/输出/系统尾段不一致`);
@@ -407,13 +407,13 @@ try {
                 trace_bytes: expected.length, trace_sha256: sha256(expected) });
         }
         let refused = false;
-        try { await run(['application-clear-conditions-v2', '--unknown', '1'], applicationExecutable, 120000); }
+        try { await run(['application-clear-conditions-v3', '--unknown', '1'], applicationExecutable, 120000); }
         catch (error) {
             if (cancelled || !String(error.message).includes('application unknown option')) throw error;
             refused = true;
         }
         if (!refused) throw new Error('应用非法CLI没有显式拒绝');
-        applicationCertificate = { controller: 'application-clear-conditions-v2', qualification: 'conditional_raw17_application_replay',
+        applicationCertificate = { controller: 'application-clear-conditions-v3', qualification: 'conditional_raw17_application_replay',
             captures: certificates, terminal_output: terminal, process_timeout_seconds: 120,
             comparison: '完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同',
             boundary: '合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容' };
@@ -496,6 +496,11 @@ try {
             boundary: '首请求confirm、后续false的原标题表现策略；不认证自然世界通关或Steam输入/绘制频率',
         };
     }
+    let titleMenuCertificate;
+    if (titleExecutable) {
+        const {verifyTitleMenuReplay} = await import('./title_menu_process.mjs');
+        titleMenuCertificate = await verifyTitleMenuReplay({exe:titleExecutable,workDir:owned});
+    }
     let naturalApplicationCertificate;
     if (naturalApplicationExecutable) {
         const {verifyNaturalApplication} = await import('./application_natural_process.mjs');
@@ -518,6 +523,7 @@ try {
         ...(presentationCertificate ? { presentation_replay: presentationCertificate } : {}),
         ...(applicationCertificate ? { application_replay: applicationCertificate } : {}),
         ...(titleCertificate ? { title_presentation_replay: titleCertificate } : {}),
+        ...(titleMenuCertificate ? { title_menu_file_replay: titleMenuCertificate } : {}),
         ...(naturalApplicationCertificate ? { natural_application_replay: naturalApplicationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'

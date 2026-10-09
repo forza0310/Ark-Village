@@ -1,0 +1,98 @@
+application-natural-month months=1 frame=1634 history=4 random=4250
+application-natural-capture frame=1634 next_frame=1635 months=1 bytes=1402816
+application-natural-summary {"capture_frame":1634,"capture_months":1,"completed_frame":1654,"next_frame":1655,"next_command":5,"months":1,"date":[0,4,0,540],"digest":"a6d11278e9a937f513b5bf59b566e5299e206213b683741e7c0e7a2ea40bb9bc","resources":[3,8,1,4,6,0],"peaks":[3,8,3,4,6,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":13,"sound_hash":"5ddd5f9179c765647280e4a51c5eb63009ba5e521e5581f4488913904860197d","random":4312,"phase":0,"trace_rows":20,"capture_seconds":0.203735,"restore_seconds":0.0196706}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":1654,"next_frame":1655,"next_command":5,"months":1,"date":[0,4,0,540],"digest":"a6d11278e9a937f513b5bf59b566e5299e206213b683741e7c0e7a2ea40bb9bc","resources":[3,8,1,4,6,0],"peaks":[3,8,3,4,6,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":13,"sound_hash":"5ddd5f9179c765647280e4a51c5eb63009ba5e521e5581f4488913904860197d","random":4312,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0356937}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":1654,"next_frame":1655,"next_command":5,"months":1,"date":[0,4,0,540],"digest":"a6d11278e9a937f513b5bf59b566e5299e206213b683741e7c0e7a2ea40bb9bc","resources":[3,8,1,4,6,0],"peaks":[3,8,3,4,6,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":13,"sound_hash":"5ddd5f9179c765647280e4a51c5eb63009ba5e521e5581f4488913904860197d","random":4312,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0346097}
+{
+  "controller": "application-natural-clear-v3",
+  "qualification": "natural_application_tail",
+  "producer_revision": "4928cc9-menu-sem6",
+  "seed": 1,
+  "speed": 0,
+  "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+  "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+  "application_schema": "309d5698d851da2d505796fa258316ff3dd3c1a00b99c6b1ead44784266f5ec0",
+  "source_prefix": {
+    "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-menu-v1\\frame420.avra",
+    "certificate_file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-menu-v1\\frame420.avra.json",
+    "snapshot_sha256": "59c71bac41bc23b87c3f898028655429645b70da97f5ae178ff13d7e05f2ddec",
+    "certificate_sha256": "fb825c8ad2751907c33d76720392ee643522c59f01fd03765abbc7b9bae39a5d",
+    "next_frame": 421,
+    "capture_frame": 420,
+    "months": 0,
+    "qualification": "natural_application_tail"
+  },
+  "capture_frame": 1634,
+  "capture_months": 1,
+  "stop_at": 1654,
+  "tail_frames": 20,
+  "process_count": 3,
+  "snapshot_bytes": 1402816,
+  "snapshot_sha256": "8623eb52f03605ab3721149415be9ab2393f0d2d0fc1f2c5230025c567d19227",
+  "section_bytes": {
+    "1": 70,
+    "2": 555,
+    "3": 679,
+    "4": 1399232,
+    "5": 1480,
+    "6": 4
+  },
+  "trace_bytes": 4080,
+  "trace_sha256": "101aec2521ea7feefe6f4c1ecf1ccdfacbb59abe79a18a2a51f1db18443297e1",
+  "terminal": {
+    "capture_frame": 1634,
+    "capture_months": 1,
+    "completed_frame": 1654,
+    "next_frame": 1655,
+    "next_command": 5,
+    "months": 1,
+    "date": [
+      0,
+      4,
+      0,
+      540
+    ],
+    "digest": "a6d11278e9a937f513b5bf59b566e5299e206213b683741e7c0e7a2ea40bb9bc",
+    "resources": [
+      3,
+      8,
+      1,
+      4,
+      6,
+      0
+    ],
+    "peaks": [
+      3,
+      8,
+      3,
+      4,
+      6,
+      0
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 13,
+    "sound_hash": "5ddd5f9179c765647280e4a51c5eb63009ba5e521e5581f4488913904860197d",
+    "random": 4312,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0.203735,
+    "restore_seconds": 0.0196706
+  },
+  "process_wall_seconds": [
+    42.3178252,
+    0.5885086999999986,
+    0.5649928999999975
+  ],
+  "certification_boundary": "已认证源恢复后继续；本轮仅认证新捕获尾段",
+  "limitations": [
+    "被动自然日期策略，不认证五星/全部任务/BOSS",
+    "不认证原APK/Steam动态或自动绘制频率"
+  ]
+}

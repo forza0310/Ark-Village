@@ -59,7 +59,7 @@ inline Wire unpack(const Bytes &bytes) {
     (void)text(bytes,at);(void)text(bytes,at);(void)text(bytes,at);
     Wire result;result.prefix.assign(bytes.begin(),bytes.begin()+static_cast<std::ptrdiff_t>(at));
     const auto count=number(bytes,at,4);
-    require(count<=65,"夹具原段数预算");
+    require(count<=66,"夹具原段数预算");
     for(std::size_t i=0;i<count;++i) {
         Section part;
         part.id=static_cast<std::uint32_t>(number(bytes,at,4));

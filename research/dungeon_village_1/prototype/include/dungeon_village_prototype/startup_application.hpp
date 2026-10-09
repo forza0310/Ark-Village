@@ -5,6 +5,8 @@
 #include "dungeon_village_prototype/startup_world_clear_score.hpp"
 #include "dungeon_village_prototype/startup_world_profile.hpp"
 #include "dungeon_village_prototype/startup_title_presentation.hpp"
+#include "dungeon_village_prototype/startup_title_menu.hpp"
+#include "dungeon_village_prototype/startup_application_storage.hpp"
 #include <array>
 #include <utility>
 
@@ -12,8 +14,7 @@ namespace dungeon_village_prototype {
 enum class StartupApplicationMode { logic, title_presentation };
 enum class StartupApplicationPage { title, overwrite, configure, records, world };
 struct StartupApplicationPaths {
-    std::filesystem::path system;
-    std::array<std::filesystem::path, 2> worlds;
+    std::filesystem::path root; // 显式研究存储根；内部固定system与不可变worlds，不接原档路径。
 };
 struct StartupTitleDraft {
     std::string village{"口袋冒险村"};
@@ -27,7 +28,7 @@ struct StartupRecordView {
 };
 // 只捕获无世界的标题控制器；系统纪录由独立文件验证，世界有自己的快照协议。
 struct StartupTitleReplay {
-    std::string controller{"startup-title-v2"};
+    std::string controller{"startup-title-v3"};
     StartupApplicationMode mode{StartupApplicationMode::logic};
     StartupTitleDraft draft;
     StartupApplicationPage page{StartupApplicationPage::title};
@@ -36,6 +37,8 @@ struct StartupTitleReplay {
     ref::WorldRandomSnapshot random;
     std::uint64_t requests{};
     StartupTitlePresentation title;
+    StartupTitleMenuState menu;
+    StartupTitleCatalogStamp catalog;
 };
 struct StartupTitleApplyResult {
     std::string error;
@@ -48,7 +51,7 @@ class StartupApplication {
     StartupApplication(StartupApplicationPaths paths, ref::WorldRandomStream random,
                        StartupApplicationMode mode = StartupApplicationMode::logic);
     const std::string &error() const { return error_; }
-    const StartupSystemRecords &records() const { return records_; }
+    const StartupSystemRecords &records() const { return storage_.records; }
     const StartupTitleDraft &draft() const { return draft_; }
     StartupApplicationPage page() const { return page_; }
     StartupApplicationMode mode() const { return mode_; }
@@ -58,6 +61,15 @@ class StartupApplication {
     const std::optional<StartupClearScoreRows> &clear_rows() const { return clear_rows_; }
     const std::optional<ref::WorldRandomSnapshot> &handoff_random() const { return handoff_; }
     const StartupTitlePresentation &title_presentation() const { return title_; }
+    const StartupTitleMenuState &title_menu() const { return title_menu_; }
+    bool storage_cleanup_pending() const { return cleanup_pending_; }
+    bool has_pending_audio_requests() const noexcept { return !audio_requests_.empty(); }
+    // 明确接收外部目录的新修订并退休旧标题子页；不自动重试失败的文件意图。
+    std::string refresh_title_storage();
+    std::uint64_t title_page_id() const { return startup_title_menu_top_id(title_menu_); }
+    // 规范输入已获框架准入；控制器、目录意图及必要文件写入在一个候选中共同提交。
+    std::string apply_title_request(std::uint64_t expected_page_id,
+                                   const StartupTitleMenuRequest &request);
     // 明确的一次背景更新请求，不从Draw/FPS推导，不代替h/j/o菜单路由。
     StartupTitleApplyResult advance_title_background(StartupTitleUpdateRequest request);
     std::string request_new_game(int slot);
@@ -81,8 +93,8 @@ class StartupApplication {
     std::vector<StartupAudioRequest> take_audio_requests();
     // 兼容旧ID消费者；同一输出只会被任一领取接口消费一次。
     std::vector<int> take_sound_requests();
-    std::string save_world(); // 仅世界文件，不暗含系统保存。
-    std::string load_world(int slot);
+    std::string save_world(); // 普通轮末：不可变世界字节与手动目录经单系统提交点发布。
+    std::string load_world(int slot, StartupSaveKind kind = StartupSaveKind::manual);
     // 显式研究入口：沿现有已校验世界回放协议载入，拒绝已推进的raw17。
     std::string load_world_replay(const std::filesystem::path &, const std::string &controller);
 
@@ -94,10 +106,14 @@ class StartupApplication {
                        StartupApplicationMode mode)
         : paths_(std::move(paths)), random_(std::move(random)), mode_(mode) {}
     std::string install_loaded(StartupWorldLoadResult result, int slot);
+    std::string start_game_candidate();
+    std::string open_records_candidate();
+    StartupTitleMenuContext title_menu_context() const;
+    void sync_title_page();
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
     std::string update_clear(bool confirm);
     StartupApplicationPaths paths_;
-    StartupSystemRecords records_;
+    StartupApplicationStorageSnapshot storage_;
     StartupTitleDraft draft_;
     ref::WorldRandomStream random_;
     StartupApplicationMode mode_;
@@ -112,5 +128,8 @@ class StartupApplication {
     std::optional<std::uint64_t> clear_id_;
     std::string error_;
     StartupTitlePresentation title_;
+    StartupTitleMenuState title_menu_;
+    std::vector<StartupAudioRequest> audio_requests_;
+    bool cleanup_pending_{}; // 存储环境清理债务，精确恢复不继承源环境的待清理文件。
 };
 } // namespace dungeon_village_prototype

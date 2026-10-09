@@ -1,5 +1,7 @@
 # 可玩研究原型包
 
+[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和应用6完整文件视图，当前集中验收见[交付](../work/title-menu-application-delivery/README.md)。CLI改用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
+
 [Steam启动局部皮肤](STEAM_STARTUP_SKIN.md)提供标题／选档／手动菜单／询问的只读绘制与触摸注册计划，已过visuals和application验收；它不修改应用文件契约或代替完整可操作标题。原资源、真实测宽、未知字体及平台热区边界分别保留。
 
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
@@ -193,7 +195,7 @@ raw49条件页不执行晋级；raw89保留40快进门槛。
 年度raw87在明确测试输入中选择“终止→确认”，未用勋章保留，事件22与背景音乐按原序消费。
 这些输入只用于自然轨迹验收，不代表玩家的选择。窗口已接简化年度名单/授予与终止是非、88/67、
 任务管理/住宅/设施升级显示。完整原皮肤与OS输入仍未认证；正常文件已支持稳定主场景的命令行加载和退出保存，
-原两栏菜单及自动文件保存尚未接入，范围见[存取模块](PERSISTENCE.md)。
+原两栏菜单在独立StartupApplication控制器接入，图形原型未自动接完整菜单；日历自动文件保存仍缺，范围见[存取模块](PERSISTENCE.md)和[应用存储](APPLICATION_STORAGE.md)。
 raw48已接真正晋级/条件说明/返回，raw50三段计数庆典不以早确认跳过；raw49仍只查看条件。
 
 ```sh
@@ -285,7 +287,7 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 `--world --save-file <路径>`在退出时保存，`--load-file <路径>`恢复，合用`--check`只读校验文件。
 测试快照另存完整随机／页面／审计与自然玩家控制器，`natural_progression`／`natural_expansion`可保存和恢复外层轮边界。
 标准新增集中codec／文件恢复、控制器、短跨进程和字段覆盖检查；中后期认证及尾段复用命令见模块说明。
-原两栏菜单和日历自动文件写入未接，原APK／Steam存档不兼容；当前日历检查点继续只作内存审计。
+后继StartupApplication已接四目录菜单及完整应用文件视图，独立world窗口不自动获得该接线；日历自动文件写入仍未接，原APK／Steam存档不兼容；当前日历检查点继续只作内存审计。
 
 `--world --inspect-page world-building`和`world-details`从真实新局用显式命令打开目录/初始旅店详情；
 `world-human`自然等到首个冒险者，再打开60并实际确认首次说明后停在详情，不注入人物或跳过初始化。

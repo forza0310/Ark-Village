@@ -1,5 +1,7 @@
 # 阶段、当前能力与下一步
 
+当前[标题目录／应用6交付](../work/title-menu-application-delivery/README.md)已完成系统2四目录、菜单父子结果、统一B0/G及世界音频、单系统文件事务和完整文件视图恢复。完整Release构建及五项相关CTest通过103.30秒；17命令文件动作三进程一致，420轮／首月短前缀为`natural-application-menu-v1`。世界仍语义3，应用语义6，旧系统1／应用1–5拒绝、不迁移。原自动中断轮内产生者、完整Steam输入／皮肤、自然高星／BOSS／通关仍未完成；[中断预研](../work/interrupt-save-continuation/README.md)只列后继合同，不替代实现。
+
 2026-10-09后继[Steam局部皮肤／字体批](../work/steam-skin-delivery/README.md)：标题、选档、raw20、raw1只读计划及两项Release检查通过，GLText最终消费与池保留已闭合，完整字体与原窗口仍待证。用户已一次批准[四目录／标题事务方案](../work/title-menu-application-design/README.md)：后续系统2、不可变世界引用、菜单与统一声音、完整文件视图恢复连续实现验收，不再逐项确认。当前生产能力仍以声音批世界3／应用5为准，新方案不得提前记为已实现。
 
 最新声音Owner批已收齐22个受影响用例的修后通过记录，含599.07秒自然任务闭环；类型化请求、真实遭遇BGM／通知、旧ID兼容领取与完整typed回放已交付。当前世界语义3／应用语义5，自然应用Driver v2；当前420轮／首月前缀为natural-application-audio-v1，旧版本只保历史。另补Steam手动档菜单／确认及语言安装静态合同。详见[本批交付](../work/audio-owner-delivery/README.md)，设备播放、标题完整消费者、完整自然通关与后期路线仍未完成。

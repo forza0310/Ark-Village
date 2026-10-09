@@ -6,6 +6,8 @@ StartupTitleApplyResult StartupApplication::advance_title_background(StartupTitl
     if (!error_.empty()) return {error_, false, false, 0};
     if (mode_ != StartupApplicationMode::title_presentation || page_ != StartupApplicationPage::title)
         return {"只有具名标题表现模式的活动标题接受背景更新", false, false, 0};
+    if (title_menu_.save_menu || title_menu_.confirmation || title_menu_.external)
+        return {"标题子页尚未退休，父标题背景冻结", false, false, 0};
     auto prepared = prepare_startup_title_update(title_, random_, request);
     if (!prepared.candidate) return {prepared.error, false, false, 0};
     auto &candidate = *prepared.candidate;

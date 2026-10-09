@@ -1,6 +1,6 @@
 {
   "format": "AVRAPP01",
-  "semantics": 5,
+  "semantics": 6,
   "boundary": "complete-outer-round-v1",
   "fields": [
     {
@@ -9,9 +9,9 @@
       "policy": "rebind: 显式research/work隔离路径；不读取快照旧路径"
     },
     {
-      "name": "records_",
-      "type": "StartupSystemRecords",
-      "policy": "save: 完整AVRSYS01字节及未知可选段"
+      "name": "storage_",
+      "type": "StartupApplicationStorageSnapshot",
+      "policy": "save/rebind: records完整系统2及槽位引用闭包；missing/digest在新根发布后重绑"
     },
     {
       "name": "draft_",
@@ -82,9 +82,214 @@
       "name": "title_",
       "type": "StartupTitlePresentation",
       "policy": "save: StartupTitlePresentation完整计数和20槽；logic模式必须为初始态"
+    },
+    {
+      "name": "title_menu_",
+      "type": "StartupTitleMenuState",
+      "policy": "save: 完整根菜单、raw20、询问、外部子页及未消费返回载荷"
+    },
+    {
+      "name": "audio_requests_",
+      "type": "std::vector<StartupAudioRequest>",
+      "policy": "require-empty: 一次性音频请求必须已消费，恢复为空"
+    },
+    {
+      "name": "cleanup_pending_",
+      "type": "bool",
+      "policy": "rebind: 源环境文件清理债务不跨环境恢复，新根置false"
     }
   ],
   "nested": [
+    {
+      "name": "StartupApplicationStorageSnapshot",
+      "fields": [
+        {
+          "name": "records",
+          "type": "StartupSystemRecords",
+          "policy": "save: 完整系统2、四条目录、引用及未知可选段"
+        },
+        {
+          "name": "missing",
+          "type": "bool",
+          "policy": "rebind: 新根已发布system，恒false；不参与行为摘要"
+        },
+        {
+          "name": "digest",
+          "type": "std::string",
+          "policy": "rebind: 发布system原始字节的SHA256；不信任源路径观察"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitleCatalogStamp",
+      "fields": [
+        {
+          "name": "revision",
+          "type": "std::uint64_t",
+          "policy": "save: uint64目录修订"
+        },
+        {
+          "name": "digest",
+          "type": "std::array<std::uint8_t, 32>",
+          "policy": "save: 32字节系统文件身份"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitleSaveMenu",
+      "fields": [
+        {
+          "name": "id",
+          "type": "std::uint64_t",
+          "policy": "save: uint64稳定页ID"
+        },
+        {
+          "name": "parent",
+          "type": "std::uint64_t",
+          "policy": "save: uint64父页ID"
+        },
+        {
+          "name": "slot",
+          "type": "int",
+          "policy": "save: int32栏位"
+        },
+        {
+          "name": "selection",
+          "type": "int",
+          "policy": "save: int32当前行"
+        },
+        {
+          "name": "frame",
+          "type": "int",
+          "policy": "save: int32帧计数"
+        },
+        {
+          "name": "result",
+          "type": "int",
+          "policy": "save: int32返回值"
+        },
+        {
+          "name": "returned",
+          "type": "bool",
+          "policy": "save: bool已返回位"
+        },
+        {
+          "name": "catalog",
+          "type": "std::optional<StartupTitleCatalogStamp>",
+          "policy": "save: 可选目录修订与32字节身份"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitleConfirmation",
+      "fields": [
+        {
+          "name": "id",
+          "type": "std::uint64_t",
+          "policy": "save: uint64稳定页ID"
+        },
+        {
+          "name": "parent",
+          "type": "std::uint64_t",
+          "policy": "save: uint64父页ID"
+        },
+        {
+          "name": "reason",
+          "type": "StartupTitleConfirmationReason",
+          "policy": "save: 重新开始或隐藏"
+        },
+        {
+          "name": "selection",
+          "type": "int",
+          "policy": "save: int32当前行"
+        },
+        {
+          "name": "result",
+          "type": "int",
+          "policy": "save: int32返回值"
+        },
+        {
+          "name": "returned",
+          "type": "bool",
+          "policy": "save: bool已返回位"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitleExternal",
+      "fields": [
+        {
+          "name": "id",
+          "type": "std::uint64_t",
+          "policy": "save: uint64稳定页ID"
+        },
+        {
+          "name": "parent",
+          "type": "std::uint64_t",
+          "policy": "save: uint64父页ID"
+        },
+        {
+          "name": "kind",
+          "type": "StartupTitleExternalPage",
+          "policy": "save: 纪录或配置"
+        },
+        {
+          "name": "returned",
+          "type": "bool",
+          "policy": "save: bool已返回位"
+        },
+        {
+          "name": "completed",
+          "type": "bool",
+          "policy": "save: bool配置完成位"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitleMenuState",
+      "fields": [
+        {
+          "name": "mode",
+          "type": "StartupTitleRootMode",
+          "policy": "save: 根菜单或两栏"
+        },
+        {
+          "name": "selection",
+          "type": "int",
+          "policy": "save: int32根菜单行"
+        },
+        {
+          "name": "row",
+          "type": "int",
+          "policy": "save: int32两栏行"
+        },
+        {
+          "name": "root_id",
+          "type": "std::uint64_t",
+          "policy": "save: uint64根页ID"
+        },
+        {
+          "name": "next_id",
+          "type": "std::uint64_t",
+          "policy": "save: uint64下一页ID"
+        },
+        {
+          "name": "save_menu",
+          "type": "std::optional<StartupTitleSaveMenu>",
+          "policy": "save: 可选raw20完整载荷"
+        },
+        {
+          "name": "confirmation",
+          "type": "std::optional<StartupTitleConfirmation>",
+          "policy": "save: 可选询问完整载荷"
+        },
+        {
+          "name": "external",
+          "type": "std::optional<StartupTitleExternal>",
+          "policy": "save: 可选外部子页完整载荷"
+        }
+      ]
+    },
     {
       "name": "StartupTitleSlot",
       "fields": [

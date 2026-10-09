@@ -20,9 +20,10 @@ template <class Integer> bool integer(std::string_view text, Integer &value) {
     return result.ec == std::errc{} && result.ptr == text.data() + text.size();
 }
 void usage() {
-    std::cout << "用法：startup_application_cli --system 路径 --slot0 路径 --slot1 路径"
+    std::cout << "用法：startup_application_cli --root 已存在的研究存储目录"
                  " [--seed N] [--title-presentation]\n"
-                 "必须显式指定三个维护文件路径；可选seed为无符号整数，默认0仅为研究种子。\n"
+                 "必须显式指定research/work内存储根；旧三路径接口不再接受且不迁移。\n"
+                 "可选seed为无符号整数，默认0仅为研究种子。\n"
                  "本入口不操作原版档，退出和输入结束均不自动保存。\n";
 }
 void help() {
@@ -34,11 +35,14 @@ void help() {
                  "  village 后续全串 / name 后续全串  编辑村名／主角名\n"
                  "  sex 0|1 / cancel / start    性别／取消配置／开始\n"
                  "  records / next / previous   纪录入口／翻页\n"
+                 "  left/right/up/down/activate/back  当前标题菜单的具名键请求\n"
+                 "  consume / frame-menu       父页消费返回结果／一次显式菜单动画请求\n"
+                 "  refresh                     标题显式重读目录，退休旧子页，不重放失败意图\n"
                  "  step [N]                    推进N次页面或世界更新，默认1，上限10000\n"
                  "  confirm                     确认栈顶页，计分页合并为一次更新脉冲\n"
                  "  save / load 0|1             显式保存当前世界／标题读入指定栏\n"
                  "  quit                        退出，不自动保存\n"
-                 "声音请求在本CLI中领取一次并打印编号，不播放音频。\n";
+                 "声音请求在本CLI中领取一次并打印操作与编号，不播放音频。\n";
 }
 const char *page_name(app::StartupApplicationPage page) {
     switch (page) {
@@ -51,10 +55,11 @@ const char *page_name(app::StartupApplicationPage page) {
     return "非法页";
 }
 void sounds(app::StartupApplication &application) {
-    const auto requests = application.take_sound_requests();
+    const auto requests = application.take_audio_requests();
     if (!requests.empty()) {
         std::cout << "声音请求（已领取，仅打印）：";
-        for (const int id : requests) std::cout << ' ' << id;
+        for (const auto &request : requests)
+            std::cout << " [" << static_cast<int>(request.operation) << ',' << request.id << ']';
         std::cout << '\n';
     }
 }
@@ -65,6 +70,18 @@ void view(const app::StartupApplication &application) {
               << "；性别=" << draft.main_character.sex
               << "；自定义姓名=" << (draft.main_character.custom_name ? "是" : "否") << '\n';
     const auto &records = application.records();
+    const auto &menu = application.title_menu();
+    std::cout << "标题控制器：栈顶=" << application.title_page_id()
+              << "；模式=" << static_cast<int>(menu.mode) << "；菜单行=" << menu.selection
+              << "；存档行=" << menu.row << "；系统修订=" << records.revision << '\n';
+    for (std::size_t slot = 0; slot < 2; ++slot)
+        for (std::size_t kind = 0; kind < 2; ++kind) {
+            const auto &entry = records.save_directory[slot][kind];
+            std::cout << "目录 " << slot << '/' << (kind == 0 ? "中断" : "手动")
+                      << "：日期=" << entry.packed_date << "；资金=" << entry.cash
+                      << "；有文件引用=" << (entry.reference ? "是" : "否") << '\n';
+        }
+    if (application.storage_cleanup_pending()) std::cout << "存储已提交，存在待清理文件；不要重放业务。\n";
     std::cout << "系统纪录：最高通关=" << records.high_score << " P（" << records.score_village
               << "）；奖杯=" << records.trophy << "；最高资金=" << records.cash_peak << " G（"
               << records.cash_village << "）\n";
@@ -116,7 +133,7 @@ void view(const app::StartupApplication &application) {
 
 int main(int argc, char **argv) {
     app::StartupApplicationPaths paths;
-    std::array<bool, 3> have_paths{};
+    bool have_root{};
     std::uint64_t seed{};
     bool seed_set{}, presentation{};
     if (argc == 2 && std::string_view(argv[1]) == "--help") { usage(); return 0; }
@@ -126,15 +143,17 @@ int main(int argc, char **argv) {
             if (presentation) { std::cerr << "拒绝：重复的表现模式参数。\n"; return 2; }
             presentation = true; continue;
         }
-        const int slot = option == "--system" ? 0 : option == "--slot0" ? 1 : option == "--slot1" ? 2 : -1;
-        if (slot >= 0) {
-            if (have_paths[slot] || i + 1 >= argc || std::string_view(argv[i + 1]).empty() ||
+        if (option == "--system" || option == "--slot0" || option == "--slot1") {
+            std::cerr << "拒绝：旧三路径接口已经移除；请显式指定新的--root，旧档不迁移。\n";
+            return 2;
+        }
+        if (option == "--root") {
+            if (have_root || i + 1 >= argc || std::string_view(argv[i + 1]).empty() ||
                 std::string_view(argv[i + 1]).substr(0, 2) == "--") {
                 std::cerr << "拒绝：路径参数重复或缺少路径。\n"; return 2;
             }
-            have_paths[slot] = true;
-            const std::filesystem::path value(argv[++i]);
-            if (slot == 0) paths.system = value; else paths.worlds[slot - 1] = value;
+            have_root = true;
+            paths.root = std::filesystem::path(argv[++i]);
         } else if (option == "--seed") {
             if (seed_set || i + 1 >= argc || !integer(std::string_view(argv[++i]), seed)) {
                 std::cerr << "拒绝：seed必须是唯一的无符号整数。\n"; return 2;
@@ -144,7 +163,7 @@ int main(int argc, char **argv) {
             std::cerr << "拒绝：未知启动参数。\n"; usage(); return 2;
         }
     }
-    if (!have_paths[0] || !have_paths[1] || !have_paths[2]) { usage(); return 2; }
+    if (!have_root) { usage(); return 2; }
     try {
         app::StartupApplication application(std::move(paths), app::ref::WorldRandomStream::from_java_seed(seed),
             presentation ? app::StartupApplicationMode::title_presentation : app::StartupApplicationMode::logic);
@@ -190,9 +209,22 @@ int main(int argc, char **argv) {
                     std::cout << "已完成更新：" << completed << '/' << number << '\n';
                 }
             } else if (!trimmed(text).empty()) error = "该命令不接受参数";
+            else if (command == "left" || command == "right" || command == "up" || command == "down" ||
+                     command == "activate" || command == "back" || command == "consume" || command == "frame-menu") {
+                app::StartupTitleMenuRequest request;
+                if (command == "consume") request.kind = app::StartupTitleMenuRequestKind::consume_return;
+                else if (command == "frame-menu") request.kind = app::StartupTitleMenuRequestKind::advance_frame_menu;
+                else {
+                    request.keys.left = command == "left"; request.keys.right = command == "right";
+                    request.keys.up = command == "up"; request.keys.down = command == "down";
+                    request.keys.confirm = command == "activate"; request.keys.back = command == "back";
+                }
+                error = application.apply_title_request(application.title_page_id(), request);
+            }
             else if (command == "help") { help(); shown = true; }
             else if (command == "view") { view(application); shown = true; }
             else if (command == "title") error = application.return_to_title();
+            else if (command == "refresh") error = application.refresh_title_storage();
             else if (command == "cancel") error = application.cancel_configuration();
             else if (command == "start") error = application.start_game();
             else if (command == "records") error = application.open_records();

@@ -4,10 +4,6 @@
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
-#ifdef _WIN32
-#define NOMINMAX
-#include <windows.h>
-#endif
 
 namespace dungeon_village_prototype {
 static_assert(std::is_nothrow_move_assignable_v<StartupSystemRecords>);
@@ -28,57 +24,20 @@ std::string runtime_error(StartupWorldRuntimeError e) {
     return e == StartupWorldRuntimeError::none ? std::string{} :
            "世界命令拒绝：" + std::to_string(static_cast<int>(e));
 }
-bool paths_distinct(const StartupApplicationPaths &p) {
-    std::array<std::filesystem::path, 3> paths{p.system, p.worlds[0], p.worlds[1]};
-    std::error_code ec;
-    for (auto &path : paths) {
-        if (path.empty() || path.filename().empty()) return false;
-        path = std::filesystem::weakly_canonical(path, ec);
-        if (ec) return false;
-    }
-    for (std::size_t i = 0; i < paths.size(); ++i)
-        for (std::size_t j = 0; j < i; ++j) {
-            if (paths[i] == paths[j]) return false;
-#ifdef _WIN32
-            // 两个路径尚不存在时equivalent不能识别NTFS默认大小写别名。
-            if (CompareStringOrdinal(paths[i].c_str(), -1, paths[j].c_str(), -1, TRUE) == CSTR_EQUAL)
-                return false;
-#endif
-            const bool same = std::filesystem::equivalent(paths[i], paths[j], ec);
-            if (!ec && same) return false;
-        }
-    return true;
-}
+
 }
 StartupApplication::StartupApplication(StartupApplicationPaths paths, ref::WorldRandomStream random,
                                        StartupApplicationMode mode)
     : paths_(std::move(paths)), random_(std::move(random)), mode_(mode) {
-    if (!paths_distinct(paths_) || (mode != StartupApplicationMode::logic &&
-                                 mode != StartupApplicationMode::title_presentation)) {
-        error_ = "应用路径重叠、无效或回放模式未知";
-        return;
+    if (mode != StartupApplicationMode::logic && mode != StartupApplicationMode::title_presentation) {
+        error_ = "应用回放模式未知"; return;
     }
-    auto loaded = load_startup_system_file(paths_.system);
-    if (!loaded.records) { error_ = loaded.error; return; }
-    records_ = std::move(*loaded.records);
-    draft_.slot = records_.last_slot;
-}
-std::string StartupApplication::request_new_game(int slot) {
-    if (!error_.empty()) return error_;
-    if (page_ != Page::title || slot < 0 || slot > 1) return "新局入口或栏位非法";
-    std::error_code ec;
-    const auto status = std::filesystem::symlink_status(paths_.worlds[slot], ec);
-    if (ec && ec != std::errc::no_such_file_or_directory) return "不能检查世界栏位";
-    const bool exists = status.type() != std::filesystem::file_type::not_found;
-    if (exists && !std::filesystem::is_regular_file(status)) return "世界栏位不是普通文件";
-    draft_.slot = slot;
-    page_ = exists ? Page::overwrite : Page::configure;
-    return {};
-}
-std::string StartupApplication::answer_overwrite(bool yes) {
-    if (page_ != Page::overwrite) return "没有覆盖询问";
-    page_ = yes ? Page::configure : Page::title;
-    return {};
+    auto loaded = load_startup_application_storage(paths_.root);
+    if (!loaded.snapshot) { error_ = loaded.error; return; }
+    storage_ = std::move(*loaded.snapshot);
+    draft_.slot = storage_.records.last_slot;
+    audio_requests_.push_back({StartupAudioOperation::replace_bgm,0});
+
 }
 std::string StartupApplication::edit_village(std::string name) {
     if (page_ != Page::configure || !valid_text(name)) return "村名或编辑页面非法";
@@ -95,54 +54,41 @@ std::string StartupApplication::edit_sex(int sex) {
         draft_.main_character.name = sex == 0 ? "冒险太郎" : "冒险花子";
     draft_.main_character.sex = sex; return {};
 }
-std::string StartupApplication::cancel_configuration() {
-    if (page_ != Page::configure) return "当前不是配置页";
-    page_ = Page::title; return {}; // 原91取消保留先前编辑。
-}
-std::string StartupApplication::start_game() {
+std::string StartupApplication::start_game_candidate() {
     if (!error_.empty()) return error_;
-    if (!paths_distinct(paths_)) return "应用文件路径已经重叠";
-    if (page_ != Page::configure || !valid_text(draft_.village) ||
+    if (!valid_text(draft_.village) ||
         !valid_startup_world_human_profile(draft_.main_character)) return "新局配置非法";
     try {
         StartupSession reset;
         StartupWorldRuntimeSession candidate(reset.state(), random_);
         if (!install_startup_world_main_character(candidate.state_, draft_.main_character) ||
             !install_startup_world_inheritance(candidate.state_,
-                {records_.facility_levels, records_.profession_status})) return "新局配置或继承拒绝";
+                {storage_.records.facility_levels, storage_.records.profession_status})) return "新局配置或继承拒绝";
         candidate.state_.scripts.village_name = draft_.village;
         // 系统是跨局权威；世界仅在实际现金事务时更新此运行镜像。
-        candidate.state_.cash_peak = records_.cash_peak;
-        candidate.state_.cash_peak_village = records_.cash_village;
-        auto records = records_;
+        candidate.state_.cash_peak = storage_.records.cash_peak;
+        candidate.state_.cash_peak_village = storage_.records.cash_village;
+        auto records = storage_.records;
         records.last_slot = draft_.slot;
         auto handoff = random_.snapshot();
-        const auto error = save_startup_system_file(paths_.system, records);
-        if (!error.empty()) return error;
-        records_ = std::move(records);
+        auto audio = audio_requests_;
+        auto initial = candidate.take_audio_requests();
+        audio.insert(audio.end(), initial.begin(), initial.end());
+        audio.push_back({StartupAudioOperation::replace_bgm,
+                        candidate.state_.active_task && candidate.state_.task.encounter ? 2 : 1});
+        auto committed = commit_startup_application_records(paths_.root, storage_, records);
+        if (!committed.snapshot) return committed.error;
+        storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
+        audio_requests_ = std::move(audio);
         world_ = std::move(candidate);
         handoff_ = std::move(handoff);
         clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear();
+        title_menu_.save_menu.reset(); title_menu_.confirmation.reset(); title_menu_.external.reset();
         page_ = Page::world;
         return {};
     } catch (const std::exception &e) { return e.what(); }
 }
-std::string StartupApplication::return_to_title() {
-    if (!error_.empty()) return error_;
-    if (clear_) return "计分页仍在运行";
-    if (world_ && page_ == Page::world) {
-        auto random = world_->state().scene.random;
-        random_ = std::move(random);
-        // 世界返回重入既有标题a()：q/l/s/t归零，源未重置f132f。子页返回保留整个标题。
-        if (mode_ == StartupApplicationMode::title_presentation) {
-            const int retained = title_.f132f;
-            title_ = {};
-            title_.f132f = retained;
-        }
-    }
-    page_ = Page::title; decorations_.clear(); return {};
-}
-std::string StartupApplication::open_records() {
+std::string StartupApplication::open_records_candidate() {
     if (!error_.empty()) return error_;
     if (page_ != Page::title || requests_ == std::numeric_limits<std::uint64_t>::max())
         return "纪录请求页面或序号非法";
@@ -177,20 +123,36 @@ std::string StartupApplication::turn_record_page(int direction) {
     record_page_ = 1 - record_page_; return {};
 }
 StartupRecordView StartupApplication::record_view() const {
-    return record_page_ == 0 ? StartupRecordView{"最高通关点数", records_.score_village, "P", records_.high_score, 0}
-        : StartupRecordView{"16年为止的最高资金", records_.cash_village, "G", records_.cash_peak, 1};
+    return record_page_ == 0 ? StartupRecordView{"最高通关点数", storage_.records.score_village, "P", storage_.records.high_score, 0}
+        : StartupRecordView{"16年为止的最高资金", storage_.records.cash_village, "G", storage_.records.cash_peak, 1};
 }
 std::optional<StartupTitleReplay> StartupApplication::capture_title_replay() const {
-    if (!error_.empty() || world_ || page_ == Page::world || clear_) return {};
-    return StartupTitleReplay{"startup-title-v2", mode_, draft_, page_, record_page_, decorations_,
-                              random_.snapshot(), requests_, title_};
+    if (!error_.empty() || world_ || page_ == Page::world || clear_ || !audio_requests_.empty() ||
+        !validate_startup_title_menu(title_menu_).empty()) return {};
+    return StartupTitleReplay{"startup-title-v3", mode_, draft_, page_, record_page_, decorations_,
+                              random_.snapshot(), requests_, title_, title_menu_, *title_menu_context().catalog};
 }
 std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s) {
     if (!error_.empty()) return error_;
     if (!validate_startup_title_presentation(s.title).empty() ||
         (s.mode == StartupApplicationMode::logic && !pristine_startup_title_presentation(s.title)))
         return "标题背景状态或逻辑模式不符";
-    if (world_ || s.controller != "startup-title-v2" || s.mode != mode_ ||
+    if (!audio_requests_.empty() || !validate_startup_title_menu(s.menu).empty())
+        return "标题待消费输出或菜单状态非法";
+    const auto catalog = title_menu_context().catalog;
+    if (!catalog || s.catalog.revision != catalog->revision || s.catalog.digest != catalog->digest)
+        return "标题内存快照对应的文件目录已经改变";
+    Page expected_page = Page::title;
+    if (s.menu.external && !s.menu.external->returned)
+        expected_page = s.menu.external->kind == StartupTitleExternalPage::records ? Page::records : Page::configure;
+    else if (s.menu.confirmation && !s.menu.confirmation->returned) expected_page = Page::overwrite;
+    if (s.page != expected_page || (s.menu.save_menu &&
+        (s.menu.save_menu->slot != s.draft.slot || !s.menu.save_menu->catalog ||
+         s.draft.slot < 0 || s.draft.slot > 1 ||
+         storage_.records.save_directory[static_cast<std::size_t>(s.draft.slot)][1].packed_date == -1 ||
+         s.menu.save_menu->catalog->revision != catalog->revision || s.menu.save_menu->catalog->digest != catalog->digest)))
+        return "标题内存快照的菜单、页面或目录引用不一致";
+    if (world_ || s.controller != "startup-title-v3" || s.mode != mode_ ||
         s.page < Page::title || s.page > Page::records || s.record_page < 0 || s.record_page > 1 ||
         s.draft.slot < 0 || s.draft.slot > 1 || !valid_text(s.draft.village) ||
         !valid_startup_world_human_profile(s.draft.main_character)) return "标题快照身份或载荷非法";
@@ -220,6 +182,7 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
                 if (std::find(pool.begin(), pool.end(), id) == pool.end()) return "标题装饰人物尚未开放";
         }
     }
+    auto menu = s.menu;
     auto draft = s.draft;
     auto decorations = s.decorations;
     auto random_candidate = *random;
@@ -227,10 +190,10 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
     static_assert(std::is_nothrow_move_assignable_v<ref::WorldRandomStream>);
     draft_ = std::move(draft); page_ = s.page; record_page_ = s.record_page;
     decorations_ = std::move(decorations); random_ = std::move(random_candidate);
-    requests_ = s.requests; title_ = s.title; return {};
+    requests_ = s.requests; title_ = s.title; title_menu_ = std::move(menu); return {};
 }
 std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidate, bool save_system) {
-    auto records = records_;
+    auto records = storage_.records;
     const auto &s = candidate.state_;
     // 只观察已完成的Owner现金提交；读档另走install_loaded，不重发纪录。
     if (s.cash_peak > records.cash_peak) {
@@ -241,12 +204,16 @@ std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidat
         records.facility_levels = s.system_unlock_data[0];
         records.profession_status = s.system_unlock_data[1]; save_system = true;
     }
+    auto audio = audio_requests_;
+    auto output = candidate.take_audio_requests();
+    audio.insert(audio.end(), output.begin(), output.end());
     if (save_system) {
-        if (!paths_distinct(paths_)) return "应用文件路径已经重叠";
-        const auto error = save_startup_system_file(paths_.system, records);
-        if (!error.empty()) return error;
+        auto committed = commit_startup_application_records(paths_.root, storage_, records);
+        if (!committed.snapshot) return committed.error;
+        storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
     }
-    records_ = std::move(records); world_ = std::move(candidate); return {};
+    world_ = std::move(candidate); audio_requests_ = std::move(audio); return {};
+
 }
 std::string StartupApplication::update(bool confirm) {
     if (!error_.empty()) return error_;
@@ -278,11 +245,12 @@ std::string StartupApplication::acknowledge_page(std::uint64_t id) {
     return error.empty() ? commit_world(std::move(candidate)) : error;
 }
 std::vector<StartupAudioRequest> StartupApplication::take_audio_requests() {
-    return world_ ? world_->take_audio_requests() : std::vector<StartupAudioRequest>{};
+    std::vector<StartupAudioRequest> result;
+    result.swap(audio_requests_); return result;
 }
 std::vector<int> StartupApplication::take_sound_requests() {
     std::vector<int> result;
-    result.reserve(world_ ? world_->state().sound_requests.size() : 0);
+    result.reserve(audio_requests_.size());
     const auto requests = take_audio_requests();
     for (const auto &request : requests)
         result.push_back(request.id);
@@ -290,8 +258,12 @@ std::vector<int> StartupApplication::take_sound_requests() {
 }
 std::string StartupApplication::save_world() {
     if (!world_ || page_ != Page::world || clear_) return "当前不能保存世界";
-    if (!paths_distinct(paths_)) return "应用文件路径已经重叠";
-    return save_startup_world_file(paths_.worlds[draft_.slot], *world_, {}).error;
+    if (!audio_requests_.empty()) return "应用声音输出尚未消费，不能捕获普通存档";
+    auto committed = save_startup_application_slot(paths_.root, storage_, storage_.records,
+        draft_.slot, StartupSaveKind::manual, *world_);
+    if (!committed.snapshot) return committed.error;
+    storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
+    return {};
 }
 std::string StartupApplication::install_loaded(StartupWorldLoadResult loaded, int slot) {
     if (!loaded.snapshot) return loaded.error;
@@ -304,21 +276,36 @@ std::string StartupApplication::install_loaded(StartupWorldLoadResult loaded, in
             (phase != candidate.state_.page_phases.end() && phase->second != 0))
             return "世界回放不含已推进的应用计分控制器";
     }
-    candidate.state_.cash_peak = records_.cash_peak;
-    candidate.state_.cash_peak_village = records_.cash_village;
+    candidate.state_.cash_peak = storage_.records.cash_peak;
+    candidate.state_.cash_peak_village = storage_.records.cash_village;
+    auto records = storage_.records;
+    records.last_slot = slot;
+    auto audio = audio_requests_;
+    auto output = candidate.take_audio_requests();
+    audio.insert(audio.end(), output.begin(), output.end());
+    audio.push_back({StartupAudioOperation::replace_bgm,
+                    candidate.state_.active_task && candidate.state_.task.encounter ? 2 : 1});
+    auto committed = commit_startup_application_records(paths_.root, storage_, records);
+    if (!committed.snapshot) return committed.error;
+    storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
+    audio_requests_ = std::move(audio);
     world_ = std::move(candidate); draft_.slot = slot; page_ = Page::world;
-    clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear(); return {};
+    clear_.reset(); clear_rows_.reset(); clear_id_.reset(); decorations_.clear();
+    title_menu_.save_menu.reset(); title_menu_.confirmation.reset(); title_menu_.external.reset(); return {};
 }
-std::string StartupApplication::load_world(int slot) {
+std::string StartupApplication::load_world(int slot, StartupSaveKind kind) {
     if (!error_.empty()) return error_;
     if (page_ != Page::title || slot < 0 || slot > 1) return "读档页面或栏位非法";
-    return install_loaded(load_startup_world_file(paths_.worlds[slot], startup_world_rules(),
-                                                  StartupWorldSavePurpose::normal), slot);
+    if (title_menu_.save_menu || title_menu_.confirmation || title_menu_.external)
+        return "请先消费实际标题子页结果";
+    return install_loaded(load_startup_application_slot(paths_.root, storage_, slot, kind), slot);
 }
 std::string StartupApplication::load_world_replay(const std::filesystem::path &path,
                                                   const std::string &controller) {
     if (!error_.empty()) return error_;
     if (page_ != Page::title || controller.empty()) return "回放入口或身份非法";
+    if (title_menu_.save_menu || title_menu_.confirmation || title_menu_.external)
+        return "标题子页返回结果尚未消费，不能绕过进入回放";
     return install_loaded(load_startup_world_file(path, startup_world_rules(),
                                                   StartupWorldSavePurpose::replay, controller), draft_.slot);
 }
@@ -334,7 +321,7 @@ std::string StartupApplication::update_clear(bool confirm) {
         if (!score.candidate) return "通关计分输入拒绝";
         rows = score.candidate;
         page = StartupClearScorePageState{};
-        page->captured_high_score = records_.high_score;
+        page->captured_high_score = storage_.records.high_score;
     }
     const auto result = prepare_startup_clear_score_page(*rows, *page, confirm);
     if (!result.candidate) return "通关演出状态拒绝";
@@ -360,15 +347,18 @@ std::string StartupApplication::update_clear(bool confirm) {
             return "通关收尾脚本失败";
     }
     s.scripts.executing_page.reset();
-    auto records = records_;
+    auto records = storage_.records;
     if (result.candidate->new_record) {
         records.high_score = result.candidate->sum; records.score_village = s.scripts.village_name;
         records.trophy = result.candidate->trophy;
     }
-    if (!paths_distinct(paths_)) return "应用文件路径已经重叠";
-    const auto error = save_startup_system_file(paths_.system, records);
-    if (!error.empty()) return error;
-    records_ = std::move(records); world_ = std::move(candidate);
+    auto audio = audio_requests_;
+    auto output = candidate.take_audio_requests();
+    audio.insert(audio.end(), output.begin(), output.end());
+    auto committed = commit_startup_application_records(paths_.root, storage_, records);
+    if (!committed.snapshot) return committed.error;
+    storage_ = std::move(*committed.snapshot); cleanup_pending_ = committed.cleanup_pending;
+    audio_requests_ = std::move(audio); world_ = std::move(candidate);
     clear_.reset(); clear_rows_.reset(); clear_id_.reset(); return {};
 }
 } // namespace dungeon_village_prototype

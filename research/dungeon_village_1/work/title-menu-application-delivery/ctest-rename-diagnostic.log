@@ -1,0 +1,20 @@
+Test project D:/code/Ark-Village/research/dungeon_village_1/work/release
+    Start 1: dungeon_village_prototype.startup_application
+1/1 Test #1: dungeon_village_prototype.startup_application ...***Failed    0.33 sec
+应用回放路径：symlink场景未覆盖（权限或平台限制），�ͻ���û���������Ȩ��
+四槽文件视图：完整应用状态回放：four-slots-confirmation：已发布system须为普通文件；expected=D:\code\Ark-Village\research\dungeon_village_1\work\release\prototype\application-test-235083155996200\application-replay-state\four-slots-confirmation-restore,type=-1,error=2:ϵͳ�Ҳ���ָ�����ļ���,siblings=[{name=four-slot-source,utf16=66,6f,75,72,2d,73,6c,6f,74,2d,73,6f,75,72,63,65,,type=2,children=system.avr:1;worlds:2;write.lock:1;}{name=four-slots-confirmation-capture,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,63,6f,6e,66,69,72,6d,61,74,69,6f,6e,2d,63,61,70,74,75,72,65,,type=2,children=state.avrapp:1;}{name=four-slots-confirmation-old-destination,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,63,6f,6e,66,69,72,6d,61,74,69,6f,6e,2d,6f,6c,64,2d,64,65,73,74,69,6e,61,74,69,6f,6e,,type=2,children=}{name=four-slots-confirmation-restoreon,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,63,6f,6e,66,69,72,6d,61,74,69,6f,6e,2d,72,65,73,74,6f,72,65,6f,6e,,type=2,children=system.avr:1;worlds:2;}{name=four-slots-hidden-capture,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,68,69,64,64,65,6e,2d,63,61,70,74,75,72,65,,type=2,children=state.avrapp:1;}{name=four-slots-hidden-old-destination,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,68,69,64,64,65,6e,2d,6f,6c,64,2d,64,65,73,74,69,6e,61,74,69,6f,6e,,type=2,children=}{name=four-slots-hidden-restore,utf16=66,6f,75,72,2d,73,6c,6f,74,73,2d,68,69,64,64,65,6e,2d,72,65,73,74,6f,72,65,,type=2,children=system.avr:1;worlds:2;}{name=title-cli-boundary-old,utf16=74,69,74,6c,65,2d,63,6c,69,2d,62,6f,75,6e,64,61,72,79,2d,6f,6c,64,,type=2,children=}{name=title-cli-boundary-source,utf16=74,69,74,6c,65,2d,63,6c,69,2d,62,6f,75,6e,64,61,72,79,2d,73,6f,75,72,63,65,,type=2,children=write.lock:1;}{name=title-cli-wrong-boundary,utf16=74,69,74,6c,65,2d,63,6c,69,2d,77,72,6f,6e,67,2d,62,6f,75,6e,64,61,72,79,,type=2,children=frame1.avrapp:1;}{name=title-exhausted,utf16=74,69,74,6c,65,2d,65,78,68,61,75,73,74,65,64,,type=2,children=}{name=title-logic-refuse,utf16=74,69,74,6c,65,2d,6c,6f,67,69,63,2d,72,65,66,75,73,65,,type=2,children=}{name=title-natural-a-old,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,61,2d,6f,6c,64,,type=2,children=}{name=title-natural-ald,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,61,6c,64,,type=2,children=system.avr:1;worlds:2;}{name=title-natural-b-old,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,62,2d,6f,6c,64,,type=2,children=}{name=title-natural-bld,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,62,6c,64,,type=2,children=system.avr:1;worlds:2;}{name=title-natural-capture,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,63,61,70,74,75,72,65,,type=2,children=title.avrapp:1;}{name=title-natural-source,utf16=74,69,74,6c,65,2d,6e,61,74,75,72,61,6c,2d,73,6f,75,72,63,65,,type=2,children=write.lock:1;}{name=title-owner-source,utf16=74,69,74,6c,65,2d,6f,77,6e,65,72,2d,73,6f,75,72,63,65,,type=2,children=system.avr:1;write.lock:1;}]
+
+
+0% tests passed, 1 tests failed out of 1
+
+Total Test time (real) =   0.34 sec
+
+The following tests FAILED:
+	  1 - dungeon_village_prototype.startup_application (Failed)
+ctest : Errors while running CTest
+所在位置 行:2 字符: 498
++ ... EXITCODE }; ctest --test-dir research/dungeon_village_1/work/release  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Errors while running CTest:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

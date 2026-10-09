@@ -195,7 +195,8 @@ Bytes encode_file(const StartupWorldRuntimeSession &session,
 }
 StartupWorldSavedSession decode_file(Bytes file, const StartupWorldRules &rules,
                                      StartupWorldSavePurpose expected_purpose,
-                                     const std::string &expected_controller) {
+                                     const std::string &expected_controller,
+                                     detail::CodecDecodeBudget &budget) {
     need(&rules == &startup_world_rules(), "恢复只支持已登记的固定规则目录");
     need(file.size() >= 64 && file.size() <= file_budget, "存档长度非法");
     const std::string checksum(file.end() - 64, file.end());
@@ -252,7 +253,6 @@ StartupWorldSavedSession decode_file(Bytes file, const StartupWorldRules &rules,
         metadata.extensions.push_back({id, s.version, std::move(s.bytes)});
     }
     valid_metadata(metadata);
-    detail::CodecDecodeBudget budget;
     auto state = detail::decode_state(require_section(2), rules, budget);
     valid_capture(state, purpose);
     valid_state(state);
@@ -291,13 +291,21 @@ Bytes encode_world_session_bytes(const StartupWorldRuntimeSession &session,
                                  const StartupWorldSaveMetadata &metadata) {
     auto bytes = encode_file(session, metadata);
     // 保留原写前恢复自检，包含当前Owner与全部历史共用的解码预算。
-    (void)decode_file(bytes, *session.state().rules, metadata.purpose, metadata.controller_id);
+    CodecDecodeBudget budget;
+    (void)decode_file(bytes, *session.state().rules, metadata.purpose, metadata.controller_id, budget);
     return bytes;
 }
 StartupWorldSavedSession decode_world_session_bytes(Bytes bytes, const StartupWorldRules &rules,
                                                      StartupWorldSavePurpose purpose,
                                                      const std::string &controller) {
-    return decode_file(std::move(bytes), rules, purpose, controller);
+    CodecDecodeBudget budget;
+    return decode_file(std::move(bytes), rules, purpose, controller, budget);
+}
+StartupWorldSavedSession decode_world_session_bytes(Bytes bytes, const StartupWorldRules &rules,
+                                                     StartupWorldSavePurpose purpose,
+                                                     const std::string &controller,
+                                                     CodecDecodeBudget &budget) {
+    return decode_file(std::move(bytes), rules, purpose, controller, budget);
 }
 } // namespace persistence_detail
 

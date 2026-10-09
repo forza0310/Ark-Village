@@ -655,7 +655,7 @@ void run(const std::filesystem::path &dir) {
     check(saved.ok, "replay save: " + saved.error);
     const auto bytes = read(replay);
     check(std::string(bytes.begin(), bytes.begin() + 8) == "AVRSAVE1" && bytes[8] == 1 &&
-              bytes[9] == 0 && bytes[12] == 3 && bytes[13] == 0 && bytes[16] == 2,
+              bytes[9] == 0 && bytes[12] == 4 && bytes[13] == 0 && bytes[16] == 2,
           "format magic/schema/purpose oracle");
     check(startup_world_session_digest(session) == before,
           "capture consumes no state/random/history");
@@ -722,14 +722,14 @@ void run(const std::filesystem::path &dir) {
                    .snapshot,
               "incompatible header rejected after valid checksum");
     }
-    for (const auto old_version : {1, 2}) {
+    for (const auto old_version : {1, 2, 3}) {
         auto old_semantics = bytes;
         old_semantics[12] = static_cast<std::uint8_t>(old_version);
         resign(old_semantics);
         write(bad, old_semantics);
         check(!load_startup_world_file(bad, startup_world_rules(), metadata.purpose,
                                        metadata.controller_id).snapshot,
-              "prior task-pool or integer-only audio semantics rejects without migration");
+              "prior initialization, audio or stale arrival price semantics rejects without migration");
     }
     auto truncated = bytes;
     truncated.pop_back();

@@ -357,7 +357,7 @@ int corrupted_clear_relationships(const std::filesystem::path &root, const std::
     auto decoded = wire::unpack(original);
     require(wire::pack(decoded) == original, "independent application wire reconstruction");
     std::size_t semantics_at=12;
-    require(wire::number(decoded.prefix,semantics_at,4)==6,"condition source uses application semantics6");
+    require(wire::number(decoded.prefix,semantics_at,4)==7,"condition source uses application semantics7");
     const auto &control = wire::section(decoded, 3).bytes;
     const auto base = wire::control_offsets(control);
     std::size_t at = base.world;

@@ -1051,6 +1051,142 @@ void retired_facility_records(const StartupWorldRuntimeState &s, std::uint64_t i
                            }),
           "map replacement retires old occupancy and auxiliary records together");
 }
+// 邻接变化使用真实建设/撤除入口；仅把真实首访人物投影到到达调用点，
+// 不声明为自然寻路覆盖，不改价格、资金、共享属性或邻接缓存。
+void neighbour_changes_reach_actual_income() {
+    auto built = first_arrival_fixture();
+    const auto inn = source_facility(built, 28);
+    const auto anchor = built.scene.world.world.facilities.at(inn).placement.anchor;
+    {
+        auto initial = test_support::world_fixture();
+        const auto before = initial;
+        check(initialize_startup_world_neighbours(initial),
+              "real initial neighbour projection remains admissible after cache synchronization");
+        for (const auto &[id, facility] : initial.scene.world.world.facilities)
+            check(facility.price == before.scene.world.world.facilities.at(id).price &&
+                      initial.neighbourhood.at(id) == before.neighbourhood.at(id),
+                  "initial projection already includes each instance neighbours and is not repriced");
+        check(initial.scene.random.draws() == before.scene.random.draws(),
+              "initial neighbour synchronization consumes no new random draw");
+    }
+    check(built.scene.world.world.facilities.at(inn).price == 300 &&
+              built.neighbourhood.at(inn)[0] == 0,
+          "source initial inn has independent source base price300 and no price neighbour");
+    const auto bounds = built.rules->fences.at(built.fence_level);
+    const auto &map = built.scene.world.world.map;
+    std::optional<ref::Position> flower_cell;
+    for (const auto p : std::array<ref::Position, 4>{{{anchor.x + 1, anchor.y},
+                                                     {anchor.x - 1, anchor.y},
+                                                     {anchor.x, anchor.y + 1},
+                                                     {anchor.x, anchor.y - 1}}}) {
+        if (p.x > bounds[0].x && p.x < bounds[1].x && p.y > bounds[1].y &&
+            p.y < bounds[0].y && !map.cells.at(p.y * map.width + p.x).facility) {
+            flower_cell = p;
+            break;
+        }
+    }
+    check(flower_cell.has_value(), "real initial inn has an empty legal adjacent decoration cell");
+    const auto count = built.scene.world.facility_order.size();
+    const auto draws = built.scene.random.draws();
+    check(begin_startup_world_build(built, 66).error == StartupWorldRuntimeError::none,
+          "actual unlocked sunflower starts through Owner build command");
+    const auto planted =
+        confirm_startup_world_build(built, *flower_cell, ref::FacilityOrientation::first);
+    check(planted.created && cancel_startup_world_build(built) == StartupWorldRuntimeError::none,
+          "actual sunflower construction commits and returns through normal cancellation");
+    const auto flower = *planted.created;
+    const auto quote = startup_world_facility_values(built, inn);
+    check(quote && quote->instance_attributes[0] == 320 && quote->instance_attributes[1] == 10 &&
+              built.scene.world.world.facilities.at(inn).price == 320 &&
+              built.neighbourhood.at(inn)[0] == 20 && built.neighbourhood.at(inn)[1] == 5 &&
+              built.scene.world.facility_order.size() == count + 1 &&
+              built.scene.random.draws() == draws,
+          "source sunflower plus20 price and plus5 quality updates existing inn without random");
+    for (int missing = 0; missing < 5; ++missing) {
+        auto broken = built;
+        const auto actor = broken.scene.world.world.ai.human_order.front();
+        const auto definition = broken.scene.world.world.ai.battle.actors.at(actor).definition;
+        if (missing == 0)
+            broken.scripts.facilities.erase(28);
+        if (missing == 1)
+            broken.scene.world.world.facility_uses.erase(28);
+        if (missing == 2)
+            broken.human_presence.erase(definition);
+        if (missing == 3)
+            broken.scene.world.world.ai.growth.erase(definition);
+        if (missing == 4)
+            broken.scene.world.world.ai.growth.at(definition).definition.current_profession = -1;
+        const auto digest = startup_world_state_digest(broken);
+        check(!refresh_startup_world_map(broken, false) &&
+                  startup_world_state_digest(broken) == digest,
+              "missing or invalid economy source rejects no-notice refresh without partial Owner writes");
+    }
+
+    for (const bool remove : {false, true}) {
+        auto s = built;
+        const int expected = remove ? 300 : 320; // 原表旅店300、向日葵邻接20，独立手写oracle。
+        if (remove) {
+            check(begin_startup_world_edit(s, false).error == StartupWorldRuntimeError::none &&
+                      confirm_startup_world_edit(s, *flower_cell, ref::FacilityOrientation::first)
+                              .error == StartupWorldRuntimeError::none &&
+                      cancel_startup_world_edit(s) == StartupWorldRuntimeError::none,
+                  "decoration removal uses actual Owner editor before later arrival");
+            retired_facility_records(s, flower);
+            check(s.scene.world.facility_order.size() == count &&
+                      s.neighbourhood.at(inn)[0] == 0 && s.neighbourhood.at(inn)[1] == 0,
+                  "removal retires one instance and both neighbour effects without fake history");
+        }
+        check(s.scene.random.draws() == draws &&
+                  s.scene.world.world.facilities.at(inn).price == expected,
+              "positive and negative map changes refresh arrival cache without drawing random");
+        // 本无声测试显式消费建设/撤除输出；它不是持久化历史，也不作为收入oracle。
+        s.sound_requests.clear();
+        const auto actor = s.scene.world.world.ai.human_order.front();
+        auto &a = s.scene.world.world.ai.battle.actors.at(actor);
+        auto &ctx = s.scene.world.world.actors.at(actor);
+        a.position = {static_cast<float>(anchor.x * 100), 0, static_cast<float>(anchor.y * 100)};
+        a.control.state = 0;
+        a.control.action = 0;
+        a.control.flags = 2;
+        a.control.queue.clear();
+        a.state_counter = 0;
+        s.scene.world.world.ai.contexts.at(actor).cell = anchor;
+        s.scene.world.world.ai.contexts.at(actor).inside_town = true;
+        ctx.binding = ref::ArrivalBinding{anchor, {inn}, 28};
+        ctx.destination = anchor;
+        ctx.path_pending = true;
+        ctx.unbound_route.reset();
+        ref::FacilityDeparture route;
+        route.binding = *ctx.binding;
+        route.route.steps = {anchor};
+        ctx.journey = route;
+        ctx.waypoint = 0;
+        const auto definition = a.definition;
+        const auto funds = s.scene.world.world.ai.accounting.funds();
+        const auto sales = s.scene.world.world.facilities.at(inn).sales;
+        const auto spending = s.scene.world.world.human_spending.at(definition);
+        const auto month = s.scene.world.world.month_index;
+        const auto monthly = s.facility_monthly_cash.at(inn).at(month)[0];
+        const auto cash_id = s.scene.world.world.ai.next_cash_id;
+        bool arrived{};
+        for (int n = 0; n < 8; ++n) {
+            const auto tick = prepare_startup_world_runtime(s);
+            check(tick.candidate.has_value(), "complete Owner admits ordinary inn arrival fixture");
+            s = *tick.candidate;
+            s.sound_requests.clear(); // 每轮实际消费，无假定永久有界。
+            if (!s.scene.world.world.actors.at(actor).path_pending) {
+                arrived = true;
+                break;
+            }
+        }
+        check(arrived && s.scene.world.world.ai.accounting.funds() == funds + expected &&
+                  s.scene.world.world.facilities.at(inn).sales == sales + expected &&
+                  s.scene.world.world.human_spending.at(definition) == spending + expected &&
+                  s.facility_monthly_cash.at(inn).at(month)[0] == monthly + expected &&
+                  s.scene.world.world.ai.next_cash_id == cash_id + 1 && s.sound_requests.empty(),
+              "actual Owner arrival posts refreshed price once to cash sales human and month bucket");
+    }
+}
 void expansion_map_and_world() {
     auto s = test_support::world_fixture();
     const auto money = s.scene.world.world.ai.accounting.funds();
@@ -1417,6 +1553,7 @@ int main() {
         residence();
         road_editing();
         move_remove_and_stale_actor();
+        neighbour_changes_reach_actual_income();
         expansion_map_and_world();
         expansion_cleanup_and_rejections();
         expansion_human_cleanup();

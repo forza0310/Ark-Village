@@ -1,5 +1,9 @@
 # 阶段、当前能力与下一步
 
+最新[收费缓存修复](../work/facility-arrival-cache-delivery/README.md)已完成：完整邻接变化同步各实例实际到达价格，建设增益／撤除减益及失败不留部分修改已验，品质沿即时派生。世界语义4／应用7，系统2与布局不变；旧menu-v1首月／12月只保历史，不接续。当前自然首月前缀为`natural-application-economy-v1`，20轮双恢复通过。Steam局部选档／确认样式同时补齐，完整原皮肤与自然后期仍未完成。
+
+以下应用6及更早批次保留当批验收身份，不能将其旧前缀用于当前代码：
+
 当前[标题目录／应用6交付](../work/title-menu-application-delivery/README.md)已完成系统2四目录、菜单父子结果、统一B0/G及世界音频、单系统文件事务和完整文件视图恢复。完整Release构建及五项相关CTest通过103.30秒；17命令文件动作三进程一致，420轮／首月短前缀为`natural-application-menu-v1`。世界仍语义3，应用语义6，旧系统1／应用1–5拒绝、不迁移。原自动中断轮内产生者、完整Steam输入／皮肤、自然高星／BOSS／通关仍未完成；[中断预研](../work/interrupt-save-continuation/README.md)只列后继合同，不替代实现。
 
 此前[Steam局部皮肤／字体批](../work/steam-skin-delivery/README.md)：标题、选档、raw20、raw1只读计划及两项Release检查通过，GLText最终消费与池保留已闭合，完整字体与原窗口仍待证。该批当时为世界3／应用5；后继已按批准的[四目录／标题事务方案](../work/title-menu-application-design/README.md)交付系统2／应用6，当前能力以上方入口为准。

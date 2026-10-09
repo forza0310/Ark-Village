@@ -27,6 +27,8 @@
 
 ### 当前连续队列
 
+最新[邻接价格批](../work/facility-arrival-cache-delivery/README.md)已交付世界4／应用7；实际收费320→撤除300及事务／嵌套旧语义拒绝通过，当前自然前缀为`natural-application-economy-v1`首月20轮双恢复。下面应用6及更早说明保留当批历史，12月修前结果不能继续到24月。下一长段须从当前首月重新认证；不再扩展错误收费身份，也不通过补价改旧历史。
+
 最新[应用6批](../work/title-menu-application-delivery/README.md)已验收：系统2四目录／不可变世界文件、稳定ID菜单／分级返回、应用音频和完整文件视图恢复。五项相关检查103.30秒及真实17命令三进程通过，当前前缀为`natural-application-menu-v1`的420轮／首月，旧应用5及以前不接续。接下来从当前首月继续12月及后期规模；同时沿[自动中断最小合同](../work/interrupt-save-continuation/README.md)和Steam完整皮肤补证，绝不因目录存在就声称原轮内自动保存已完成。
 
 2026-10-09连续执行增量：[Steam菜单局部皮肤](../prototype/STEAM_STARTUP_SKIN.md)已验，字体／GLText静态链推进至引擎GUI.Label。完整标题四目录、统一声音及文件视图恢复的[具体设计](../work/title-menu-application-design/README.md)已由用户批准，按独立系统存储→标题控制器与Owner接线→完整快照统一验收推进；保持128MiB及拒绝旧格式，不用普通轮末存档假称原轮内中断。纯计划不改变现有前缀，后继应用状态真正改变时才重新认证。

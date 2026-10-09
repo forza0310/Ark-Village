@@ -1,6 +1,6 @@
 # 产品研究需求回应与剩余交付
 
-2026-10-09新增请求已接收：[建设／邻接后的收费缓存](../../../docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)。正在核对原即时实例属性与维护`RescueFacility.price`更新边界；已定位地图邻接刷新与到达缓存读取之间的缺口，尚未交付修复。当前经营收益与长回放必须保留源码身份，不将旧报价差异解释为原版规则，也不要求产品修改冻结实现凑收益。
+2026-10-09[建设／邻接收费缓存请求](../../../docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)已由[维护修复](../work/facility-arrival-cache-delivery/README.md)收口：完整地图邻接刷新同步各活跃实例价格，通知关闭也生效；品质已有即时派生。实际Owner建设邻接→到达320G、撤除→到达300G及五类缺源事务拒绝已验。世界4／应用7明确拒旧轨迹；产品需按新交付复验布局收益，不修改旧记录或反算旧收入，本会话未改产品。
 
 最新[标题／存储交付](../work/title-menu-application-delivery/README.md)已验系统2四目录、原菜单父子结果、应用统一音频及完整文件视图，五项相关检查通过103.30秒。17命令真实菜单文件尾段／当前420轮和首月双恢复通过；旧应用5短前缀已退休。产品可消费新的菜单与声音契约，但research应用根／格式不要求产品直接覆盖玩家档策略；原自动中断、raw14及完整Steam皮肤／输入仍分别缺，产品源文件未改。
 

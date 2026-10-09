@@ -1,6 +1,8 @@
 # 可玩研究原型包
 
-[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和应用6完整文件视图，当前集中验收见[交付](../work/title-menu-application-delivery/README.md)。CLI改用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
+[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；当前世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，Driver v3与字段布局不变，集中验收进度见[当前交付](../work/facility-arrival-cache-delivery/README.md)。CLI改用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
+
+旧`natural-application-menu-v1`世界3／应用6的首月、12月前缀仅保历史，不能加载后暗补price接续或重签证书。新`natural-application-economy-v1`首月正在验证，尚未认证通过。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
 
 [Steam启动局部皮肤](STEAM_STARTUP_SKIN.md)提供标题／选档／手动菜单／询问的只读绘制与触摸注册计划，已过visuals和application验收；它不修改应用文件契约或代替完整可操作标题。原资源、真实测宽、未知字体及平台热区边界分别保留。
 

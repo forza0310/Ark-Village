@@ -25,7 +25,7 @@ function identity(bytes){
             need(n<=BigInt(Number.MAX_SAFE_INTEGER),'不可表示的整数');return Number(n);},
         text(){const n=this.u32();need(n<=4096,'身份文本预算');return this.raw(n).toString('utf8');}});
     const r=reader(bytes.subarray(0,-64));
-    need(r.raw(8).toString()==='AVRAPP01'&&r.u32()===1&&r.u32()===6&&r.u32()===1,'应用版本');
+    need(r.raw(8).toString()==='AVRAPP01'&&r.u32()===1&&r.u32()===7&&r.u32()===1,'应用版本');
     const dataset=r.text(),world_schema=r.text(),application_schema=r.text(),count=r.u32();
     need(count>=6&&count<=66,'自然应用分区数量');
     const sections=new Map();const sizes={};

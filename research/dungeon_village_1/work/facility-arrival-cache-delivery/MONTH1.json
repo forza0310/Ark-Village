@@ -1,0 +1,84 @@
+{
+  "controller": "application-natural-clear-v3",
+  "qualification": "natural_application_tail",
+  "producer_revision": "e81520a-economy-sem7",
+  "seed": 1,
+  "speed": 0,
+  "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+  "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+  "application_schema": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c",
+  "source_prefix": null,
+  "capture_frame": 1634,
+  "capture_months": 1,
+  "stop_at": 1654,
+  "tail_frames": 20,
+  "process_count": 3,
+  "snapshot_bytes": 1402816,
+  "snapshot_sha256": "b08da42a443868fb85a4d4c22659f013005d751e21567cb06a2d5109d716f1f6",
+  "section_bytes": {
+    "1": 70,
+    "2": 555,
+    "3": 679,
+    "4": 1399232,
+    "5": 1480,
+    "6": 4
+  },
+  "trace_bytes": 4080,
+  "trace_sha256": "0965ad02f4ee0f7a29f7dad8d1777ac6bbb33b6e212cf2dbfe4479be1c895885",
+  "terminal": {
+    "capture_frame": 1634,
+    "capture_months": 1,
+    "completed_frame": 1654,
+    "next_frame": 1655,
+    "next_command": 5,
+    "months": 1,
+    "date": [
+      0,
+      4,
+      0,
+      540
+    ],
+    "digest": "0f3f290f4d773a4806b4e4515119980c6782e0b358ed121cafbcc2d597824abc",
+    "resources": [
+      3,
+      8,
+      1,
+      4,
+      6,
+      0
+    ],
+    "peaks": [
+      3,
+      8,
+      3,
+      4,
+      6,
+      0
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 13,
+    "sound_hash": "5ddd5f9179c765647280e4a51c5eb63009ba5e521e5581f4488913904860197d",
+    "random": 4312,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0.0746267,
+    "restore_seconds": 0
+  },
+  "process_wall_seconds": [
+    23.5467798,
+    0.6186975999999995,
+    0.6100041999999994
+  ],
+  "certification_boundary": "本轮真实新局reference及指定捕获尾段",
+  "limitations": [
+    "被动自然日期策略，不认证五星/全部任务/BOSS",
+    "不认证原APK/Steam动态或自动绘制频率"
+  ]
+}

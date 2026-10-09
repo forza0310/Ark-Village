@@ -26,8 +26,8 @@ using Bytes = std::vector<std::uint8_t>;
 namespace detail = persistence_detail;
 constexpr std::size_t file_budget = 128U * 1024U * 1024U;
 constexpr std::size_t controller_budget = 1024U * 1024U;
-// 语义3保留声音操作类别并接新遭遇BGM/通知；旧输出轨迹不能作为当前自然前缀。
-constexpr std::uint32_t format_version = 1, state_semantics = 3;
+// 语义4同步邻接变化后的到达价格；旧现金/随机历史不能靠加载时重算缓存迁移。
+constexpr std::uint32_t format_version = 1, state_semantics = 4;
 constexpr char magic[] = "AVRSAVE1";
 void need(bool condition, const char *message) {
     if (!condition)

@@ -395,6 +395,24 @@ void roundtrip(Checks &check,Work &work,const std::string &name,StartupApplicati
             check(a.engine_state==b.engine_state && a.cursor==b.cursor && a.tape==b.tape && a.tape_mode==b.tape_mode,
                   "历史交接完整引擎/游标/磁带保存");
         }
+        if(name=="world-after-handoff") {
+            auto bad=unpack(original);
+            auto &nested=section(bad,4).bytes;
+            set_number(nested,12,4,3);resign(nested);
+            const auto bad_bytes=pack(bad);
+            const auto old_meta=target_meta;
+            const auto bad_path=directory/"nested-world3.avrapp";
+            write(bad_path,bad_bytes);
+            const auto rejected=work.root/"nested-world3-rejected";
+            const auto error=restore_startup_application_replay(
+                bad_path,rejected,controller,target,target_meta,validate_driver);
+            check(error.find("不支持的存档或状态语义版本")!=std::string::npos,
+                  "当前应用中section4世界3全重签后由世界语义守卫拒绝："+error);
+            check(digest(target,target_meta)==before && same_metadata(target_meta,old_meta) &&
+                  read(source)==original && read(bad_path)==bad_bytes,
+                  "旧嵌套世界拒绝不改变应用Driver与新旧来源");
+            fresh_targets(check,rejected);
+        }
     }
     // 未移交前旧应用路径仍未被创建，恢复后写入只作用于新隔离系统。
     check(!fs::exists((target_paths.root/"system.avr")) && !fs::exists((target_paths.root/"worlds")) &&
@@ -464,10 +482,13 @@ void directory_view_roundtrip(Checks &check,Work &work) {
     auto wire=unpack(read(source));
     const auto before=digest(app,meta);
     auto target_meta=meta;
-    const auto reject=[&](application_replay_fixture::Wire bad,const char *name) {
+    const auto reject=[&](application_replay_fixture::Wire bad,const char *name,
+                          const char *expected_error=nullptr) {
         const auto path=capture_dir/(std::string(name)+".avrapp");write(path,pack(bad));
         const auto root=work.root/(std::string("blob-bad-")+name);
-        check(!restore_startup_application_replay(path,root,controller,app,target_meta,validate_driver).empty(),name);
+        const auto error=restore_startup_application_replay(path,root,controller,app,target_meta,validate_driver);
+        check(!error.empty() && (!expected_error || error.find(expected_error)!=std::string::npos),
+              std::string(name)+"："+error);
         check(digest(app,target_meta)==before && !fs::exists(root),"槽位坏载荷拒绝保留旧应用和完整文件视图");
     };
     auto bad=wire;section(bad,6).bytes.back()^=1;reject(std::move(bad),"blob-hash");
@@ -507,6 +528,80 @@ void directory_view_roundtrip(Checks &check,Work &work) {
     bad=wire;set_number(section(bad,3).bytes,raw20_slot,4,1);reject(std::move(bad),"raw20-draft-slot");
     bad=wire;set_number(section(bad,3).bytes,revision,8,0);reject(std::move(bad),"raw20-stale-revision");
     bad=wire;section(bad,3).bytes[hash_at]^=1;reject(std::move(bad),"raw20-stale-hash");
+
+    // 隐藏normal槽仍须核世界语义；同步重签blob、系统引用、目录stamp和外容器，
+    // 避免只触发摘要不符或raw20陈旧守卫，误称旧世界已经拒绝。
+    bad=wire;
+    const auto binary_hash=[](const Bytes &bytes) {
+        const auto hex=dungeon_village_tools::sha256_hex(bytes);
+        const auto digit=[](char c){return c<='9'?c-'0':c-'a'+10;};
+        std::array<std::uint8_t,32> result{};
+        for(std::size_t i=0;i<result.size();++i)
+            result[i]=static_cast<std::uint8_t>(digit(hex[2*i])*16+digit(hex[2*i+1]));
+        return result;
+    };
+    auto blobs=captured.view->blobs;
+    const auto old_blob=std::find_if(blobs.begin(),blobs.end(),[&](const auto &blob) {
+        return blob.reference.sha256==hidden_hash;
+    });
+    require(old_blob!=blobs.end(),"隐藏槽旧语义夹具找到唯一normal源");
+    set_number(old_blob->bytes,12,4,3);resign(old_blob->bytes);
+    old_blob->reference.sha256=binary_hash(old_blob->bytes);
+    const auto replacement=old_blob->reference.sha256;
+    std::sort(blobs.begin(),blobs.end(),[](const auto &a,const auto &b) {
+        return a.reference.sha256<b.reference.sha256;
+    });
+    auto &storage=section(bad,6).bytes;storage.clear();u32(storage,static_cast<std::uint32_t>(blobs.size()));
+    for(const auto &blob:blobs) {
+        storage.insert(storage.end(),blob.reference.sha256.begin(),blob.reference.sha256.end());
+        u64(storage,blob.bytes.size());u32(storage,static_cast<std::uint32_t>(blob.reference.purpose));
+        storage.insert(storage.end(),blob.bytes.begin(),blob.bytes.end());
+    }
+    auto &old_system_bytes=section(bad,2).bytes;
+    std::size_t pos=8;
+    require(number(old_system_bytes,pos,4)==2,"旧世界normal夹具保持系统2");
+    (void)text(old_system_bytes,pos);
+    const auto parts=number(old_system_bytes,pos,4);
+    int replaced{};
+    for(std::uint64_t i=0;i<parts;++i) {
+        const auto id=number(old_system_bytes,pos,4);
+        (void)number(old_system_bytes,pos,4);(void)number(old_system_bytes,pos,4);
+        const auto length=number(old_system_bytes,pos,8);
+        const auto hash_offset=pos;pos+=64;const auto payload=pos;
+        require(payload<=old_system_bytes.size()-64 && length<=old_system_bytes.size()-64-payload,
+                "旧世界normal系统分区范围完整");
+        if(id==3) {
+            auto entry=payload;(void)number(old_system_bytes,entry,8);
+            for(int index=0;index<4;++index) {
+                const auto date=number(old_system_bytes,entry,4);
+                (void)text(old_system_bytes,entry);(void)number(old_system_bytes,entry,8);
+                require(number(old_system_bytes,entry,4)==1 && entry+44<=payload+length,
+                        "四个真实normal引用均存在");
+                if(std::equal(hidden_hash.begin(),hidden_hash.end(),
+                              old_system_bytes.begin()+static_cast<std::ptrdiff_t>(entry))) {
+                    require(index==3 && date==UINT32_MAX,"只替换slot1隐藏手动目录引用");
+                    std::copy(replacement.begin(),replacement.end(),
+                              old_system_bytes.begin()+static_cast<std::ptrdiff_t>(entry));
+                    ++replaced;
+                }
+                entry+=44;
+            }
+            const Bytes payload_bytes(old_system_bytes.begin()+static_cast<std::ptrdiff_t>(payload),
+                                      old_system_bytes.begin()+static_cast<std::ptrdiff_t>(payload+length));
+            const auto hash=dungeon_village_tools::sha256_hex(payload_bytes);
+            std::copy(hash.begin(),hash.end(),old_system_bytes.begin()+static_cast<std::ptrdiff_t>(hash_offset));
+        }
+        pos=payload+static_cast<std::size_t>(length);
+    }
+    require(replaced==1 && pos==old_system_bytes.size()-64,"只替换一个隐藏引用，保留所有系统尾段");
+    resign(old_system_bytes);
+    const auto replacement_records=detail::decode_system_records_bytes(old_system_bytes);
+    require(replacement_records.save_directory[1][1].packed_date==-1 &&
+            replacement_records.save_directory[1][1].reference->sha256==replacement,
+            "重签系统引用可独立解码，隐藏资格不变");
+    const auto stamp=binary_hash(old_system_bytes);
+    std::copy(stamp.begin(),stamp.end(),section(bad,3).bytes.begin()+static_cast<std::ptrdiff_t>(hash_at));
+    reject(std::move(bad),"hidden-normal-world3","不支持的存档或状态语义版本");
 
     // 独立改系统目录可见性，再重签内外摘要及raw20 stamp；不能让旧hash拒绝掩盖新关系守卫。
     bad=wire;
@@ -626,12 +721,13 @@ void corruption(Checks &check,Work &work) {
     const auto schema_size=number(wire.prefix,at,4);
     require(schema_size>0 && schema_size<=wire.prefix.size()-at,"应用schema字段存在");
     wire.prefix[at]=wire.prefix[at]=='0'?'1':'0';reject(pack(wire),"错误应用schema重签后拒绝");
-    wire=decoded;set_number(wire.prefix,12,4,7);reject(pack(wire),"未知应用语义版本拒绝");
+    wire=decoded;set_number(wire.prefix,12,4,8);reject(pack(wire),"未知应用语义版本拒绝");
     wire=decoded;set_number(wire.prefix,12,4,1);reject(pack(wire),"旧应用语义1不静默补零标题q");
     wire=decoded;set_number(wire.prefix,12,4,2);reject(pack(wire),"旧应用语义2缺世界缓存收尾，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,3);reject(pack(wire),"旧应用语义3缺初始任务池，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,4);reject(pack(wire),"旧应用语义4缺声音操作和遭遇输出，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,5);reject(pack(wire),"旧应用语义5缺四目录和菜单栈，不静默接续");
+    wire=decoded;set_number(wire.prefix,12,4,6);reject(pack(wire),"旧应用语义6可能已按过期邻接价格收费，不暗补历史");
     wire=decoded;set_number(wire.prefix,16,4,2);reject(pack(wire),"未知捕获边界版本拒绝");
     broken=original;set_number(broken,decoded.prefix.size(),4,67);resign(broken);
     reject(broken,"声明超过总分区数量预算拒绝");
@@ -647,7 +743,7 @@ void corruption(Checks &check,Work &work) {
     const auto &source_control=section(wire,3).bytes;
     std::size_t title_at=control_offsets(source_control).world;
     for(int i=0;i<4;++i)require(number(source_control,title_at,4)==0,"源无world/rows/clear/id载荷");
-    require(source_control.size()-title_at==124U*4U+44U,"语义6完整标题字段及空菜单/空音频尾部");
+    require(source_control.size()-title_at==124U*4U+44U,"语义7保持完整标题字段及空菜单/空音频尾部布局");
     wire=decoded;set_number(section(wire,3).bytes,title_at+16U+19U*24U,4,2);
     reject(pack(wire),"重签末槽active非法仍由标题语义校验拒绝");
     wire=decoded;section(wire,3).bytes.resize(section(wire,3).bytes.size()-4);

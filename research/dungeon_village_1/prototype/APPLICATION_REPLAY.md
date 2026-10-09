@@ -1,6 +1,6 @@
 # 完整应用研究回放
 
-2026-10-09。应用语义6、标题菜单控制器与四槽文件视图已验，完整Release构建及五项相关检查通过103.30秒。当前使用`AVRAPP01`格式1／应用语义6／轮末边界1，内嵌系统版本2与世界语义3。旧应用1–5、旧系统1及旧标题控制器不迁移；声音批语义5的短前缀在当前代码中已退休，历史文件与证书保持原字节。当前420轮／首月及17命令文件操作尾段见[集中交付](../work/title-menu-application-delivery/README.md)，不等于完整Steam窗口／调度。
+2026-10-09。当前使用`AVRAPP01`格式1／应用语义7／轮末边界1，内嵌系统版本2与世界语义4。邻接到达价格缓存修正会影响后续收入，旧应用1–6及旧世界1–3不迁移；历史文件与证书保持原字节。新验收见[收费缓存交付](../work/facility-arrival-cache-delivery/README.md)。此前[应用6集中交付](../work/title-menu-application-delivery/README.md)的103.30秒检查及12月快照仅保历史资格，不等于完整Steam窗口／调度。
 
 模块沿[应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及[已确认的完整目录设计](../work/title-menu-application-design/README.md)。它是维护专用回放，不是APK／Steam原档兼容，也不扩大正常玩家存档的页面范围。存储事务另见[应用存储](APPLICATION_STORAGE.md)，应用行为见[标题与跨局纪录](STARTUP_APPLICATION.md)。
 
@@ -34,7 +34,7 @@
 
 通用校验还核页面与菜单栈映射、world资格、raw20槽号与draft.slot、实际系统摘要／修订、稳定父子ID、返回结果、纪录名单资格、系统现金镜像、计分三元组、raw17栈顶及counter／phase、六行投影及累计。非法关系拒绝，不能通过推进一轮补状态。world激活后标题子页必须已退休；无计分控制器的raw17只允许未推进入口。
 
-[字段清单](src/startup_application_replay_fields.json)由[Clang脚本](scripts/check_application_replay_fields.mjs)登记19个应用直接成员及43个嵌套字段，应用schema为`309d5698d851da2d505796fa258316ff3dd3c1a00b99c6b1ead44784266f5ec0`。嵌套覆盖标题背景、菜单各载荷、catalog stamp及storage观察字段；新成员未分类就失败。世界语义3／schema不因标题目录改变；其独立codec coverage继续负责世界嵌套字段。
+[字段清单](src/startup_application_replay_fields.json)由[Clang脚本](scripts/check_application_replay_fields.mjs)登记19个应用直接成员及43个嵌套字段，应用schema为`bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c`。嵌套覆盖标题背景、菜单各载荷、catalog stamp及storage观察字段；新成员未分类就失败。本次清单只更新应用语义身份，世界语义4的独立codec coverage继续负责原布局字段。
 
 ## 新根恢复与失败边界
 

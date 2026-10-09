@@ -1,6 +1,6 @@
 # 文件存取与精确回放
 
-最新声音操作批使用AVRSAVE1格式1、状态语义3，world schema为`7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440`。typed输出与新遭遇BGM／通知改变状态及输出资格；旧世界语义1／2拒绝。预算不变、旧档不改写不迁移，当前认证见[声音Owner交付](../work/audio-owner-delivery/README.md)。此前语义2初始化批是历史版本。
+到达价格修正使用AVRSAVE1格式1、状态语义4，world schema仍为`7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440`。字段布局不变，但邻接价格会影响后续收入及轨迹；旧世界语义1–3拒绝，不能加载后重算价格冒称修复旧历史。预算不变、旧档不改写不迁移，新验收见[收费缓存交付](../work/facility-arrival-cache-delivery/README.md)。此前[声音语义3](../work/audio-owner-delivery/README.md)为历史版本。
 
 本模块实现研究维护格式，不读取APK／Steam原档，不迁移旧demo或未知schema。
 来源事实见[原存档分析](../rules/PERSISTENCE.md)，已确认方案见[快照设计](../stages/PERSISTENCE_REPLAY.md)。

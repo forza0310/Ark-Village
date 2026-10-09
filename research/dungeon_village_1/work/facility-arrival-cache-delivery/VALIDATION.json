@@ -1,0 +1,316 @@
+{
+  "baseline": "e81520a",
+  "world_semantics": 4,
+  "application_semantics": 7,
+  "system_format": 2,
+  "world_layout_changed": false,
+  "new_asset_bytes": 0,
+  "tests": {
+    "dungeon_village_prototype.startup_application": {
+      "passed": true,
+      "seconds": 12.22,
+      "log": "ctest-application-final.log"
+    },
+    "dungeon_village_prototype.startup_world_building": {
+      "passed": true,
+      "seconds": 1.71,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_visuals": {
+      "passed": true,
+      "seconds": 0.58,
+      "log": "ctest-first.log"
+    },
+    "dungeon_village_prototype.startup_world_replay_driver": {
+      "passed": true,
+      "seconds": 0.05,
+      "log": "ctest-first.log"
+    },
+    "dungeon_village_prototype.facility_projection": {
+      "passed": true,
+      "seconds": 0.02,
+      "log": "ctest-first.log"
+    },
+    "dungeon_village_prototype.startup_use": {
+      "passed": true,
+      "seconds": 0.01,
+      "log": "ctest-first.log"
+    },
+    "dungeon_village_prototype.startup_world_replay_process": {
+      "passed": true,
+      "seconds": 51.13,
+      "log": "ctest-first.log"
+    },
+    "dungeon_village_prototype.startup_world_pages": {
+      "passed": true,
+      "seconds": 0.96,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_deadline": {
+      "passed": true,
+      "seconds": 0.08,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_data": {
+      "passed": true,
+      "seconds": 0.09,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_runtime": {
+      "passed": true,
+      "seconds": 0.03,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_runtime_nonactors": {
+      "passed": true,
+      "seconds": 0.05,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_codec_coverage": {
+      "passed": true,
+      "seconds": 8.8,
+      "log": "ctest-final.log"
+    },
+    "dungeon_village_prototype.startup_world_persistence": {
+      "passed": true,
+      "seconds": 31.34,
+      "log": "ctest-final.log"
+    }
+  },
+  "links": 502,
+  "files": [
+    {
+      "path": "prototype/src/startup_world_building.cpp",
+      "bytes": 57649,
+      "sha256": "fb493afabc3707ff75d3bf4d748b5ac3c6eff93bff2ff2f0b07385fab1427a9e",
+      "utf8_lf_sha256": "fb493afabc3707ff75d3bf4d748b5ac3c6eff93bff2ff2f0b07385fab1427a9e"
+    },
+    {
+      "path": "prototype/src/startup_world_persistence.cpp",
+      "bytes": 16534,
+      "sha256": "e435642938c490d51c7e45394414bac482107658781d23df443f2bdef212c1dc",
+      "utf8_lf_sha256": "e435642938c490d51c7e45394414bac482107658781d23df443f2bdef212c1dc"
+    },
+    {
+      "path": "prototype/src/startup_application_replay.cpp",
+      "bytes": 34107,
+      "sha256": "71f10f0541a8517edeaacab41f01bc466bfb17680e25fefc150e8a503a82cade",
+      "utf8_lf_sha256": "c67442bb4b01a3f772b859e2a4d7692c224b2ca1d8c570c1b8d5224dd936eaf8"
+    },
+    {
+      "path": "prototype/src/startup_application_replay_fields.inc",
+      "bytes": 179,
+      "sha256": "0d5a6eb0e126d45350ad3011d8733f422e52a920ae67bfe66dea0d0600cb0cc4",
+      "utf8_lf_sha256": "0d5a6eb0e126d45350ad3011d8733f422e52a920ae67bfe66dea0d0600cb0cc4"
+    },
+    {
+      "path": "prototype/src/startup_application_replay_fields.json",
+      "bytes": 9429,
+      "sha256": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c",
+      "utf8_lf_sha256": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c"
+    },
+    {
+      "path": "prototype/src/steam_startup_skin.cpp",
+      "bytes": 9268,
+      "sha256": "2575e6b3bef1b2cb1d28149dec7220b53e1acdadb9530ee7f3c278041b1650ee",
+      "utf8_lf_sha256": "2575e6b3bef1b2cb1d28149dec7220b53e1acdadb9530ee7f3c278041b1650ee"
+    },
+    {
+      "path": "prototype/scripts/check_application_replay_fields.mjs",
+      "bytes": 7304,
+      "sha256": "f2801d3be606e1a511307fdd0ea0fa069c462e2e97cb7b8d18b04986e90e8e74",
+      "utf8_lf_sha256": "d24f7704e9c924f6ecee9fb51cbfd35208435c05858bfa8ea61edaa53e9ba33a"
+    },
+    {
+      "path": "prototype/tests/application_natural_process.mjs",
+      "bytes": 12985,
+      "sha256": "079aeda62d248c93027d02ddda8469494e692b5b8958bfbccdbed4d6e9550265",
+      "utf8_lf_sha256": "079aeda62d248c93027d02ddda8469494e692b5b8958bfbccdbed4d6e9550265"
+    },
+    {
+      "path": "prototype/tests/startup_world_building_test.cpp",
+      "bytes": 98005,
+      "sha256": "d883dd84ce7d9d6ef810c7498efe59626da4321da1166206a22e4e79ab300ac9",
+      "utf8_lf_sha256": "d883dd84ce7d9d6ef810c7498efe59626da4321da1166206a22e4e79ab300ac9"
+    },
+    {
+      "path": "prototype/tests/startup_world_persistence_test.cpp",
+      "bytes": 68169,
+      "sha256": "b0db5f7aa3aa26ba437ebcceacfbd945c9aa18443676feef968e18e7b5cad349",
+      "utf8_lf_sha256": "b0db5f7aa3aa26ba437ebcceacfbd945c9aa18443676feef968e18e7b5cad349"
+    },
+    {
+      "path": "prototype/tests/startup_application_replay_checks.cpp",
+      "bytes": 37061,
+      "sha256": "233950dbfff6d6fd9dee629a2212ae47c7da76e964dc25abb7ee1fd0075eab54",
+      "utf8_lf_sha256": "233950dbfff6d6fd9dee629a2212ae47c7da76e964dc25abb7ee1fd0075eab54"
+    },
+    {
+      "path": "prototype/tests/startup_application_replay_state_checks.cpp",
+      "bytes": 65526,
+      "sha256": "9557e7eac6bb14667170d34a89ee878ed40748c3e239778141b1820fe10d4651",
+      "utf8_lf_sha256": "eee3914cc5aed3e3f2c04063814c74a6785f16d841d559a391c5bf3ae879f39c"
+    },
+    {
+      "path": "prototype/tests/steam_startup_skin_checks.cpp",
+      "bytes": 12015,
+      "sha256": "e5c336813a89d2386ab28e2fdb42129259d9702e6cd2dc7b734313d1432e081d",
+      "utf8_lf_sha256": "e5c336813a89d2386ab28e2fdb42129259d9702e6cd2dc7b734313d1432e081d"
+    },
+    {
+      "path": "prototype/APPLICATION_REPLAY.md",
+      "bytes": 8738,
+      "sha256": "1bbecee4bae107139325d81b411eb31f71c2d3275a41b1f9ec3a56e80141a036",
+      "utf8_lf_sha256": "1bbecee4bae107139325d81b411eb31f71c2d3275a41b1f9ec3a56e80141a036"
+    },
+    {
+      "path": "prototype/PERSISTENCE.md",
+      "bytes": 16685,
+      "sha256": "79cc93e6f7065af6b3bcb2e149edcafc3157d00cd06f83a8c29f7a7b75de21c4",
+      "utf8_lf_sha256": "79cc93e6f7065af6b3bcb2e149edcafc3157d00cd06f83a8c29f7a7b75de21c4"
+    },
+    {
+      "path": "prototype/STEAM_STARTUP_SKIN.md",
+      "bytes": 5171,
+      "sha256": "a5309ef1d5fc6394e43e79df67663f4992626509921b09b98eb0908c517706cb",
+      "utf8_lf_sha256": "a5309ef1d5fc6394e43e79df67663f4992626509921b09b98eb0908c517706cb"
+    },
+    {
+      "path": "prototype/STARTUP_APPLICATION.md",
+      "bytes": 9370,
+      "sha256": "4fed2e04d3a13716635419a1fa78f24d888781ea67f88ddcc775130a953fea46",
+      "utf8_lf_sha256": "4fed2e04d3a13716635419a1fa78f24d888781ea67f88ddcc775130a953fea46"
+    },
+    {
+      "path": "prototype/APPLICATION_STORAGE.md",
+      "bytes": 6034,
+      "sha256": "72c47bdfed1d82afba5a327110d3a485a74d215615d96d39fdbc7b655e191d39",
+      "utf8_lf_sha256": "72c47bdfed1d82afba5a327110d3a485a74d215615d96d39fdbc7b655e191d39"
+    },
+    {
+      "path": "prototype/AUDIO_REQUESTS.md",
+      "bytes": 2810,
+      "sha256": "634c9f67e647335adaf30e0c8ac98600018a52c75f5de822501c3e10223e66af",
+      "utf8_lf_sha256": "634c9f67e647335adaf30e0c8ac98600018a52c75f5de822501c3e10223e66af"
+    },
+    {
+      "path": "prototype/README.md",
+      "bytes": 43971,
+      "sha256": "cb12a5d1b591b1fdf3ca78f957e79040e3cb15f986f463a328cf62d40f74cefb",
+      "utf8_lf_sha256": "cb12a5d1b591b1fdf3ca78f957e79040e3cb15f986f463a328cf62d40f74cefb"
+    },
+    {
+      "path": "rules/FACILITY_USE.md",
+      "bytes": 34040,
+      "sha256": "f0528e1df1c581a742a4b6802054cad0a31205f1ba255b21ec895f332fee6565",
+      "utf8_lf_sha256": "f0528e1df1c581a742a4b6802054cad0a31205f1ba255b21ec895f332fee6565"
+    },
+    {
+      "path": "stages/README.md",
+      "bytes": 19848,
+      "sha256": "cfda01d7a133914d1d6c67372f44eaf1020d3fd5a986b501e6faf49243728df2",
+      "utf8_lf_sha256": "cfda01d7a133914d1d6c67372f44eaf1020d3fd5a986b501e6faf49243728df2"
+    },
+    {
+      "path": "stages/COMPREHENSIVE_RESEARCH.md",
+      "bytes": 15472,
+      "sha256": "8896b811da79129853edb14a1f7c5541a6efb05f0a6f1abd2407fc80e5499652",
+      "utf8_lf_sha256": "8896b811da79129853edb14a1f7c5541a6efb05f0a6f1abd2407fc80e5499652"
+    },
+    {
+      "path": "verification/PRODUCT_REQUESTS.md",
+      "bytes": 17776,
+      "sha256": "6cf969d43bd1ca8b3f10564942bbb293d3c4346372e0c2c2d34bf688f87db078",
+      "utf8_lf_sha256": "6cf969d43bd1ca8b3f10564942bbb293d3c4346372e0c2c2d34bf688f87db078"
+    },
+    {
+      "path": "VERIFICATION.md",
+      "bytes": 62007,
+      "sha256": "57cadf64ead5e5b92ee4d6f1f29fc6f01e5a349d6fb30c858376da5eaa8f3a3a",
+      "utf8_lf_sha256": "57cadf64ead5e5b92ee4d6f1f29fc6f01e5a349d6fb30c858376da5eaa8f3a3a"
+    },
+    {
+      "path": "work/facility-arrival-cache-review/README.md",
+      "bytes": 8774,
+      "sha256": "174f6af5aee61662074cc2afa83e76900189efa8f7ae235cb9e3518de5a5f7d1",
+      "utf8_lf_sha256": "174f6af5aee61662074cc2afa83e76900189efa8f7ae235cb9e3518de5a5f7d1"
+    },
+    {
+      "path": "work/facility-arrival-cache-review/EVIDENCE.json",
+      "bytes": 5360,
+      "sha256": "f8b1e830fc8f94000bd58aeec2668ca73aaec89783a589bf73b3ac79c3a5b117",
+      "utf8_lf_sha256": "8778f4301e8439c13ac9eee31a772a4ce34e313d25427c59049aebba13995e95"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/README.md",
+      "bytes": 3841,
+      "sha256": "8227edc678a770598d04edd5c26e4b2022d9797ffcf01da0f55fb08c18162fd7",
+      "utf8_lf_sha256": "8227edc678a770598d04edd5c26e4b2022d9797ffcf01da0f55fb08c18162fd7"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/audit.py",
+      "bytes": 5756,
+      "sha256": "be8bd8c00f96dd2e356694678d4a42aba3084d7a36798465d0b708b2756fe1f7",
+      "utf8_lf_sha256": "be8bd8c00f96dd2e356694678d4a42aba3084d7a36798465d0b708b2756fe1f7"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/build.log",
+      "bytes": 5380,
+      "sha256": "ea9fac4542b8cd34afce29fc5de3c111f72f3f7505f99c210a610415f412cf8e",
+      "utf8_lf_sha256": "48f4bd3a9fd93db7117313a6bbcf78c8c9710d364c6b7e74f0d52b8d1e35860b"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/build-final.log",
+      "bytes": 1454,
+      "sha256": "34955404e1b8f2240f4716287707d3e1deb3d5a064164875aae27d9765992cc8",
+      "utf8_lf_sha256": "b5ddefeedc65016ad7d3bca08b0265947ff0af716bd9a1b5f9ae6ead90fa396e"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/ctest-first.log",
+      "bytes": 4450,
+      "sha256": "f41af3776948086663377be577cce5445eb02865953c81fecb89c0c3d932b622",
+      "utf8_lf_sha256": "8e1bb54692d988628a92761741bf277fe9794b70e12022245b3b45f03087c091"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/ctest-final.log",
+      "bytes": 2900,
+      "sha256": "fa2570897d6c5ae5edef617e332caf62cfbe5c6fd9e3688a3946a7a21182ea60",
+      "utf8_lf_sha256": "78201cd93557cc8ea7d888e00e7a2632e02721a906335a556d3f262651dd1902"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/ctest-application-final.log",
+      "bytes": 578,
+      "sha256": "188e651d9b30b915131ef45b00edbe0fd8e9320b2e9562813e095b4a2675f292",
+      "utf8_lf_sha256": "1bd452ecff25db427286c9dc26c8d933386449b3dbca1c0dfb5e798afd018ca4"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/month1.log",
+      "bytes": 7816,
+      "sha256": "79150a833a5aaa8bae50dc50c16dce600e63ef17f4ed428aa215fdd741e66cba",
+      "utf8_lf_sha256": "c4ba0e619f4bff8a9f1c660826d783eb4b80b237d4cbe092812fefc779bd7c5e"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/MONTH1.json",
+      "bytes": 2063,
+      "sha256": "78ad4fdbb91b38a3f6a757522f15232408f214792d5dfbeef6b6867dc580b77d",
+      "utf8_lf_sha256": "78ad4fdbb91b38a3f6a757522f15232408f214792d5dfbeef6b6867dc580b77d"
+    },
+    {
+      "path": "work/facility-arrival-cache-delivery/MONTH12_HISTORY.json",
+      "bytes": 2657,
+      "sha256": "c77f9ec46b62c7575e609568c3f064fd0846456db58b6d82a89049ee76a312e7",
+      "utf8_lf_sha256": "c77f9ec46b62c7575e609568c3f064fd0846456db58b6d82a89049ee76a312e7"
+    }
+  ],
+  "release_files": 1496,
+  "release_bytes": 114252003,
+  "retired_ast_bytes": 36380676,
+  "processes": "本批构建/检查/双恢复均已收齐",
+  "limits": [
+    "条件到达不是自然寻路",
+    "原窗口/完整皮肤未验",
+    "修前12月不作当前前缀",
+    "128MiB预算不放宽，合法历史仍增长",
+    "产品复验另算"
+  ]
+}

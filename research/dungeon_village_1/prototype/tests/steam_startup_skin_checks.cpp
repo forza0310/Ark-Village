@@ -71,6 +71,13 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     check(fills.size()==2 && fills[0].source_ratio==128 &&
           fills[0].rectangle==std::array<double,4>{29,154,181,41} &&
           fills[1].rectangle==std::array<double,4>{75,207,102,14},"空中断遮罩和非日文选中区不能混用");
+    const auto slot_texts=parts<SteamStartupText>(*selector);
+    check(slot_texts[0].anchor==2 && slot_texts[0].rgb==std::array<int,3>{60,100,200} &&
+          slot_texts[1].anchor==2 && slot_texts[1].rgb==std::array<int,3>{30,30,30} &&
+          slot_texts[2].anchor==0x22 && slot_texts[2].rgb==std::array<int,3>{30,30,30} &&
+          !slot_texts[3].anchor && slot_texts[3].rgb==std::array<int,3>{30,30,30} &&
+          slot_texts[4].anchor==4 && slot_texts[4].rgb==std::array<int,3>{30,30,30},
+          "Steam类型、空栏及现有档案各自显式样式，日期不猜测重载锚点");
     check(selector->touches[0].image_draw.has_value() && !selector->touches[0].rectangle &&
           selector->touches[2].rectangle==std::array<int,4>{0,196,240,51},"箭头保留helper注册，行保留基矩形");
     selected.japanese=true;
@@ -87,6 +94,12 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     selected.present={true,false}; selected.title_on_top=true;
     selector=steam_save_selector_skin(selected);
     check(selector && selector->touches.size()==4,"有效中断和空手动均注册行");
+    selected.row=1;
+    selector=steam_save_selector_skin(selected);
+    const auto empty_fills=parts<SteamStartupFill>(*selector);
+    check(empty_fills.size()==1 && empty_fills[0].rectangle==std::array<double,4>{85,215,82,14} &&
+          empty_fills[0].rgb==std::array<int,3>{200,200,255},
+          "空手动选中保留原独立底色，不沿用非空村名区域");
     selected.title_frame=74;
     check(steam_save_selector_skin(selected)->draws.empty(),"选档同样受标题75绘制门槛");
 
@@ -133,7 +146,9 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     const auto dialog_texts=parts<SteamStartupText>(*dialog);
     check(dialog_texts.size()==3 && dialog_texts[0].role==Role::message_body &&
           dialog_texts[0].rectangle==std::array<double,4>{26,115,187,32} &&
-          dialog_texts[0].line_space==6 && dialog_texts[1].anchor==2,
+          dialog_texts[0].line_space==6 && dialog_texts[1].anchor==2 &&
+          dialog_texts[1].rgb==std::array<int,3>{92,51,31} &&
+          dialog_texts[2].rgb==std::array<int,3>{92,51,31},
           "正文保留TextLayout/换行间隔，两横向按钮独立锚点");
     const auto highlight=parts<SteamStartupFill>(*dialog);
     check(highlight.size()==1 && highlight[0].rectangle==std::array<double,4>{134.25,164,43.5,17},

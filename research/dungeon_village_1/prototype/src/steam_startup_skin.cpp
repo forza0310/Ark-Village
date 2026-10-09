@@ -9,6 +9,7 @@ namespace {
 using Role = SteamStartupTextRole;
 using Asset = SteamStartupAsset;
 constexpr std::array<int,3> brown{{92,51,31}};
+constexpr std::array<int,3> slot_text{{30,30,30}};
 bool dimensions(int width, int height) { return width > 0 && height > 0; }
 bool measurement(double width) {
     return std::isfinite(width) && width >= 0 && width <= std::numeric_limits<int>::max()-220.0;
@@ -65,7 +66,7 @@ std::optional<SteamStartupSkinPlan> steam_save_selector_skin(const SteamSaveSele
     image(p,Asset::arrows,203+(in.frame%20)/5,v+54,0);
     if(in.title_on_top && in.focused) p.touches.push_back({1,18,{},p.draws.size()-1,0});
     // 箭头AddTouch的最终尺寸由SEB helper注册；本计划不以图片大小猜命中框。
-    text(p,Role::slot_type,in.row,120,v+69,0,0,{},{},0,0,SteamStartupTextPlacement::centered);
+    text(p,Role::slot_type,in.row,120,v+69,0,0,2,std::array<int,3>{60,100,200},0,0,SteamStartupTextPlacement::centered);
     for(int row=0;row<2;++row) {
         const int r=v+84+47*row;
         p.draws.emplace_back(SteamStartupBox{29,r-12,210,r+29});
@@ -75,14 +76,17 @@ std::optional<SteamStartupSkinPlan> steam_save_selector_skin(const SteamSaveSele
             if(row==in.row)
                 p.draws.emplace_back(SteamStartupFill{{in.japanese?79.0:75.0,
                     static_cast<double>(r+6),in.japanese?94.0:102.0,14},{200,200,255}});
-            text(p,Role::slot_name,row,75,r+6,102,14,0x22,{},0,0,SteamStartupTextPlacement::layout);
-            text(p,Role::slot_date,row,34,r+24,0,0,{},{});
-            text(p,Role::slot_cash,row,201,r+24,0,0,{},{},0,0,SteamStartupTextPlacement::right);
+            text(p,Role::slot_name,row,75,r+6,102,14,0x22,slot_text,0,0,SteamStartupTextPlacement::layout);
+            text(p,Role::slot_date,row,34,r+24,0,0,{},slot_text);
+            text(p,Role::slot_cash,row,201,r+24,0,0,4,slot_text,0,0,SteamStartupTextPlacement::right);
             if(row==in.row && in.title_on_top) image(p,Asset::finger_left,181,r+12,-1);
         } else {
+            // Steam空手动栏有独立选中底色，不复用非空村名的裁片位置。
+            if(row==1 && row==in.row)
+                p.draws.emplace_back(SteamStartupFill{{85.0,static_cast<double>(r+14),82,14},{200,200,255}});
             image(p,Asset::save_icon,39+(row==0?-4:0),r+15+(row==0?-2:0),0,1000,
                   row==0?std::array<int,4>{2,23,25,20}:std::array<int,4>{6,3,16,16});
-            text(p,Role::empty_slot,row,126,r+15,0,0,{},{},0,0,SteamStartupTextPlacement::centered);
+            text(p,Role::empty_slot,row,126,r+15,0,0,2,slot_text,0,0,SteamStartupTextPlacement::centered);
             if(row==in.row && in.title_on_top) image(p,Asset::finger_left,177,r+21,-1);
         }
         if(in.present[row] || row==1)
@@ -144,7 +148,7 @@ std::optional<SteamStartupSkinPlan> steam_save_confirmation_skin(int width, int 
         const int center=84+72*row;
         if(row==selection)
             p.draws.emplace_back(SteamStartupFill{{center-b/2-5,164,b+10,17},{255,153,55}});
-        text(p,Role::answer,row,center,167,0,0,2,{});
+        text(p,Role::answer,row,center,167,0,0,2,brown);
         p.touches.push_back({3,0x20000|row,
             std::array<int,4>{static_cast<int>(center-b/2-105),64,static_cast<int>(touch_width),217},{},0});
     }

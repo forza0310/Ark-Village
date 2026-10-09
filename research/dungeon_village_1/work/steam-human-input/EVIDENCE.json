@@ -1,0 +1,385 @@
+{
+  "scope": "Raw60 Init/Update normal paths and touch selection data; no universal claim over all rendering/platform callbacks",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "methods": [
+    {
+      "key": "get",
+      "rva": 3204352,
+      "bytes": 112,
+      "sha256": "e46df9f316af22a8dcddec814aa8d066ff143caf12db8ca7c79137729b649fd4",
+      "partial": false
+    },
+    {
+      "key": "set",
+      "rva": 3241472,
+      "bytes": 128,
+      "sha256": "5aed65601cdd9c77650662564335fb00750e21943f264b07128137da817bf103",
+      "partial": false
+    },
+    {
+      "key": "touch",
+      "rva": 3236016,
+      "bytes": 688,
+      "sha256": "b96b3dacc641a2fa357ac80ae79936e403b92ba7df66727f8abf44762d7a40b7",
+      "partial": false
+    },
+    {
+      "key": "draw",
+      "rva": 3198512,
+      "bytes": 816,
+      "sha256": "f9656c02bc10c4f8e80ffef72196ef284bed453981e783d9529807088031a7a5",
+      "partial": false
+    },
+    {
+      "key": "drawPrefix",
+      "rva": 3485216,
+      "bytes": 1097,
+      "sha256": "0a5d30a4a2b2ee69ba30b38a38bd262469176f362db0dfdd5d7184d9aae70bd9",
+      "partial": true
+    },
+    {
+      "key": "viewSet",
+      "rva": 2350400,
+      "bytes": 160,
+      "sha256": "c1cb1d4867d9e617a8b27ff4751f088f0341d4bd149ccc3fcdc95496ee3d3df2",
+      "partial": false
+    },
+    {
+      "key": "accessSet",
+      "rva": 2350688,
+      "bytes": 368,
+      "sha256": "dd68a94faa9189cf6124e501ebb76446938fdc4d100662d1411982a4f91b53d8",
+      "partial": false
+    },
+    {
+      "key": "viewTouch",
+      "rva": 2344992,
+      "bytes": 1664,
+      "sha256": "bac2520a71f02976d3533fb80845a70c3786f7a1bd49aa9a7a431df148bc8de1",
+      "partial": true
+    },
+    {
+      "key": "update",
+      "rva": 3283344,
+      "bytes": 27424,
+      "sha256": "d4f929859664ee5a2769bfd9101dc7b8bd9293ec33c905f617783facc351ce83",
+      "reused": true,
+      "source": "work/steam-interaction-analysis/disassembly.json",
+      "source_sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf"
+    },
+    {
+      "key": "init",
+      "rva": 3220576,
+      "bytes": 12096,
+      "sha256": "ebec1df47de61e6aace6fee5cc29662b2cbe3c5f26002595452cc921e943d535",
+      "reused": true,
+      "source": "work/steam-interaction-analysis/disassembly.json",
+      "source_sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf"
+    },
+    {
+      "key": "touchDialog",
+      "rva": 2344752,
+      "bytes": 240,
+      "sha256": "78d3f5369d01745251b719ea618bf631291bff00aeb0a9821022a0d3de2edefa",
+      "reused": true,
+      "source": "work/steam-input-closure/disassembly.json",
+      "source_sha256": "230701bd97189df0640a1b4eb70c6eaeffbf593d4e460a46d7da9a068f76e7ef"
+    }
+  ],
+  "anchors": [
+    {
+      "va": 271656685,
+      "target": 276708336,
+      "label": "Init generic two labels",
+      "bytes": 5,
+      "sha256": "ba7674e7a66406095c6c3e53af99b75d79905211ec9d48ca4b0ee10181024384"
+    },
+    {
+      "va": 271656968,
+      "target": 271639920,
+      "label": "raw60 Init falls through Init2",
+      "bytes": 5,
+      "sha256": "b8f449c7a15f47e0c2d54f7df74dbac25fa90eddb3e1b1cdefef68590e88b6ce"
+    },
+    {
+      "va": 271720087,
+      "target": 271677760,
+      "label": "raw60 Update falls through Update2",
+      "bytes": 5,
+      "sha256": "623c744604a42cc4b57e988e14045c0052e4cca3e09b0f054451fc23b0c1f082"
+    },
+    {
+      "va": 271719535,
+      "target": 276561664,
+      "label": "common SEB22 frame",
+      "bytes": 5,
+      "sha256": "b4365dd81185e8de21bd15fc8deb3d0bde71a35b599cfb2c8db002fe8badd36d"
+    },
+    {
+      "va": 271719600,
+      "target": 276561664,
+      "label": "common SEB21 finger frame",
+      "bytes": 5,
+      "sha256": "ee4b2e59d99abd065db119bed172be3306177b0f22d9f3f09ea13eeec78e70dd"
+    },
+    {
+      "va": 271719665,
+      "target": 276561664,
+      "label": "common SEB23 frame",
+      "bytes": 5,
+      "sha256": "1783af19b488f01eb67719e0904b47bf3182ee0671ac83f78eb5bfc010a6ed90"
+    },
+    {
+      "va": 271634356,
+      "target": 276252768,
+      "label": "draw logical origin",
+      "bytes": 5,
+      "sha256": "35d5cdeea7b532e9e978ed5c881856cc83380e6e8a19324322d5e1a5dbebc87e"
+    },
+    {
+      "va": 271634399,
+      "target": 271920672,
+      "label": "draw wrapper delegates",
+      "bytes": 5,
+      "sha256": "9a74501326ab2bdf1aa2ef2fb5a162be1a6d3cd03344d38b7941da55edc8aea8"
+    },
+    {
+      "va": 271921754,
+      "target": 271773056,
+      "label": "raw60 draw prefix delegates draw1_1",
+      "bytes": 5,
+      "sha256": "8766c8c5e9090934a974be386fdbe6b2787b02195ad0a3f47ae8e336272b8f7a"
+    },
+    {
+      "va": 270785907,
+      "target": 276721568,
+      "label": "Set targets top form",
+      "bytes": 5,
+      "sha256": "1adf5f5bbbd77268958cda018ad5b75203dc20fff478847212b1b9de4acf116b"
+    },
+    {
+      "va": 270785944,
+      "target": 277053024,
+      "label": "split touch value",
+      "bytes": 5,
+      "sha256": "6e9eaa94056b69d2b64d995bdb74dfb55a49f06b3b6241557c21f709cbe4ab55"
+    },
+    {
+      "va": 270785981,
+      "target": 270786144,
+      "label": "typed TouchValueAccessor Set",
+      "bytes": 5,
+      "sha256": "bdc5b18fce9a2109705c6f2b8ee19283648395a44cabb223c31b35072bc82b51"
+    },
+    {
+      "va": 270781019,
+      "target": 270785856,
+      "label": "list ENTER/UP writes selection",
+      "bytes": 5,
+      "sha256": "1e51ff717c7c3c987d86970233e7121aaf2a761ceb4052b658023a36d05d95d7"
+    },
+    {
+      "va": 270781049,
+      "target": 277437680,
+      "label": "list UP tests marker bit16",
+      "bytes": 5,
+      "sha256": "3806f93949ac91127e5d5ac910487c1eeed3a620f336f77daa81cb5db392d34d"
+    },
+    {
+      "va": 270780979,
+      "target": 276097824,
+      "label": "list qualifying UP KeyClick",
+      "bytes": 5,
+      "sha256": "e729799a6923f3a52fce6ab3c137a632b3d79acc47ea701903403829a808114d"
+    },
+    {
+      "va": 270781120,
+      "target": 277437808,
+      "label": "list unmarked UP stores key",
+      "bytes": 5,
+      "sha256": "b901c81839a2354914213822ca89102664906612bb68673c6d9564cbe06fddea"
+    },
+    {
+      "va": 270780251,
+      "target": 270785856,
+      "label": "same-RVA named OnTouchList selection",
+      "bytes": 5,
+      "sha256": "384bdf8520f8bc380c0c143f7a36e1dc0c288fb395fa1b7a28c063df407f7a97"
+    },
+    {
+      "va": 270780419,
+      "target": 276097824,
+      "label": "same-RVA named OnTouchList confirm",
+      "bytes": 5,
+      "sha256": "fdf077c24778dd6bec3e57e09aef402285175759897579da39d5b0c48e2d9785"
+    },
+    {
+      "va": 271671555,
+      "label": "OnTouchEvent special branch is raw21 not60",
+      "bytes": 7,
+      "sha256": "7d13fb8d146cc9e8fc572a909d7f915ff2c6f64e71f7dbf02d046528d7be8857"
+    },
+    {
+      "va": 271677024,
+      "label": "touch type20000 writes select",
+      "bytes": 6,
+      "sha256": "96f349e24c6be0aaf64c65ffa5ee09fe6c3f5d9d355ea2e680d32280487c6416"
+    },
+    {
+      "va": 271677045,
+      "label": "touch type40000 writes scroll",
+      "bytes": 6,
+      "sha256": "fe38c72281b1d6d6f0bd2d9ef16f254ee2585135839ab54abc17b8e31a7384e7"
+    },
+    {
+      "va": 271676959,
+      "label": "touch type50000 writes page",
+      "bytes": 6,
+      "sha256": "317461e47ffeca4bc44331bbe8d9aad59a782ef29991a151ef6cd29c0da6339f"
+    },
+    {
+      "va": 270785966,
+      "label": "Set upper16 selector",
+      "bytes": 6,
+      "sha256": "211c519c749a55070540e07c93a9739d5445a79823aa3f4d395ea200d9057c08"
+    },
+    {
+      "va": 270785962,
+      "label": "Set signed lower16 value",
+      "bytes": 4,
+      "sha256": "3d34e3643f2df1853787ec5883cf60d59083dee10625eb9e997023dd8890d227"
+    },
+    {
+      "va": 270780962,
+      "label": "default confirm key100000",
+      "bytes": 5,
+      "sha256": "adf9f288c5405e22633e757c74fae3fb3a593800a6d2b516e806a5fd3fdc8717"
+    },
+    {
+      "va": 270780720,
+      "label": "touch jump table25 entries",
+      "bytes": 3,
+      "sha256": "2016e53e425575a0ff30e0e7f8130cc202868bf54304b8e728ac3b1f43f5a99a"
+    }
+  ],
+  "branches": [
+    {
+      "start": 271656515,
+      "end": 271656983,
+      "label": "Init labels and raw60 dispatch",
+      "bytes": 468,
+      "sha256": "db0f5c984ac37994289f090b59ec118a78fedfa670d893cfeb41836e9ddd7be9"
+    },
+    {
+      "start": 271719242,
+      "end": 271720112,
+      "label": "Update shared prefix and raw60 default",
+      "bytes": 870,
+      "sha256": "5a0414da938fa8c0dee919c410e2f04f6e53514b110fc9098409709d4e1a9c2c"
+    },
+    {
+      "start": 271671555,
+      "end": 271671632,
+      "label": "SubForm touch raw60 normal path",
+      "bytes": 77,
+      "sha256": "59420cea1d2860c14651eec8d30dc6e06355795e92f41e1f907fddb88fa5ffa6"
+    },
+    {
+      "start": 270780994,
+      "end": 270781147,
+      "label": "list selection marker branch",
+      "bytes": 153,
+      "sha256": "d13fa9658020c52e9cca312a3d2263079789bce0551e961643cf8b9c835a3049"
+    },
+    {
+      "start": 270780912,
+      "end": 270780994,
+      "label": "confirm fallback branch",
+      "bytes": 82,
+      "sha256": "6c36b1bb8420df4520228c12c739e402fee8698f556cdc77b6bf38406c6f0915"
+    }
+  ],
+  "touch_jump_table": [
+    {
+      "component": 3,
+      "target": 270780994
+    },
+    {
+      "component": 10,
+      "target": 270780994
+    },
+    {
+      "component": 11,
+      "target": 270780994
+    }
+  ],
+  "touch_aliases": [
+    "internal void OnTouchDlgSel(int type, int v, TouchEvent e) { }",
+    "internal void OnTouchList(int type, int v, TouchEvent e) { }",
+    "internal void OnTouchScrollList(int type, int v, TouchEvent e) { }"
+  ],
+  "reused": [
+    {
+      "path": "work/steam-human-detail/EVIDENCE.json",
+      "bytes": 38615,
+      "sha256": "c095cc400e74d38c2c3ad7da71555ba8163b58bf2d336c331a074889542bebc2"
+    },
+    {
+      "path": "work/steam-facility-labels/EVIDENCE.json",
+      "bytes": 9040,
+      "sha256": "8f72e24582aa084282471d854457732e3c4c585c7e22a7547b26539d0d01e0da"
+    },
+    {
+      "path": "work/steam-input-closure/check.json",
+      "bytes": 239,
+      "sha256": "28010ba32ba36cd787bc7750d3ba96be045d87eb23db48e87b94d4a7def1d30b"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  ],
+  "contracts": {
+    "no_page_dependent_label_write_in_raw60_update": true,
+    "default_labels": [
+      8,
+      2
+    ],
+    "no_chase_labels": [
+      0,
+      2
+    ],
+    "label11_listener_is_not_visibility_evidence": true,
+    "touch_select_type": 131072,
+    "touch_scroll_type": 262144,
+    "touch_page_type": 327680,
+    "raw60_subform_touch_passes_through": true,
+    "list_value_events": [
+      1,
+      2
+    ],
+    "list_confirm_event": 1,
+    "marker_bit": 16,
+    "confirm_key": 1048576
+  },
+  "limitations": [
+    "No original window click acceptance",
+    "Full component default flags and platform focus/drag ordering remain delegated",
+    "Draw prefix delegates draw1_1; not a full draw1 dispatcher closure",
+    "Get/Set raw values have no added clamp and are not maintained payload validators",
+    "No C++/game/save mutation, no new PNG/SEB"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 3533,
+      "sha256": "c96a596782a566fdfe1821b7517735a670f71bec12d5293ea47017d9b892aecd"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 5448,
+      "sha256": "fec2845b38ed813a48ee9cfc09b1a899f1690caad30c861493c01dc5b41db306"
+    }
+  ]
+}

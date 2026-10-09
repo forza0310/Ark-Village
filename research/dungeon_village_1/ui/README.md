@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[Steam人物60四页](STEAM_HUMAN_DETAIL.md)补概览／六属性／四装备／魔法的局部绘制、装备槽内导航、确认子页、初始软标签和共享表现副作用；[image88素材](../assets/steam-human-common/README.md)独立发布。[更新与触摸补证](STEAM_HUMAN_INPUT.md)核普通翻页链不按页重配label11，列表先选择再按UP／marker确认；完整人物调度、字体和平台热区仍待核。
+
 2026-10-10[设施数字请求](../work/steam-facility-number-delivery/README.md)已沿Steam原helper展开普通数字／金额／加号，visuals通过0.58秒；负帧仅保留请求，不推断最终像素。Mapchip2、字体与实际窗口接线继续独立补齐。
 
 2026-10-10[Steam81只读皮肤桥](../prototype/STEAM_FACILITY_SKIN.md)已交付有序布局、裁剪、文本位置和角色／数值演出计划，visuals通过0.60秒；数字与Mapchip2仍是具名helper请求，未接原窗口、字体或OS输入，不宣称完整像素皮肤已完成。

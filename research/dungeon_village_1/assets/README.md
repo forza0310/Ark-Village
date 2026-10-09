@@ -8,6 +8,8 @@
 
 ## 当前交付
 
+- [Steam人物详情差异图](steam-human-common/README.md)：image88 wnd_ato，10×7／187字节；明确源条目／RGBA／APK差异及raw60经验区消费者，不扩称全部语言替换已核。
+
 - [Steam设施详情差异图](steam-facility-common/README.md)：common图片37／105独立发布，共2,438字节；SEB15仅引用已有同字节副本，3逻辑资源共2,866字节。两图均与APK像素不同，消费者见[设施详情74](../ui/STEAM_FACILITY_DETAIL.md)，操作补证见[左右软标签](../ui/STEAM_FACILITY_LABELS.md)；不把静态资源发布当作窗口或产品接入验收。
 - [Steam启动／选档子集](steam-startup/README.md)：38逻辑条目，21项同字节复用原包、17项差异载荷独立发布；保留完整原INF但只允许加载显式发布条目，不含未知中文字体。
 - [APK音频](audio/README.md)：26个原始Ogg与实际ID／通道清单，独立于视觉761项；播放操作与设备后端另验。

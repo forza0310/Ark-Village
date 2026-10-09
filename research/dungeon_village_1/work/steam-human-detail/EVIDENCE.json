@@ -1,0 +1,1795 @@
+{
+  "scope": "Steam raw60 four local pages, Update2, Init2, labels, common image references and explicit portrait delegation",
+  "publication_scope": {
+    "directories": [
+      "assets/original/common",
+      "assets/steam-build-common/original/common",
+      "assets/steam-facility-common/original/common"
+    ],
+    "kind": "fixed historical publication allowlist",
+    "image88": "No matching alias in this batch allowlist; later steam-human-common publication is separate evidence"
+  },
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "key": "draw",
+      "rva": 3389072,
+      "bytes": 14768,
+      "sha256": "64c8c7667979b663f8fc0dd83117edb5fbe9f026577c8335c19b4d4470c2800c",
+      "reused": false
+    },
+    {
+      "key": "portrait",
+      "rva": 2948864,
+      "bytes": 1312,
+      "sha256": "38f0ee534315251f196bda9f69c269ab2fe2c023f9f81e69a7593c5fad90871a",
+      "reused": false
+    },
+    {
+      "key": "lookup",
+      "rva": 2998496,
+      "bytes": 320,
+      "sha256": "6512df75c2e0dc6f3c7e3d829a301e6737e9b869db8f3a17c5424337519f4cd5",
+      "reused": false
+    },
+    {
+      "key": "labels",
+      "rva": 2517600,
+      "bytes": 8068,
+      "sha256": "26c076992947b15ea3fdef3af835f5cffa242bbef5865153e9bf671346cce165",
+      "reused": true
+    },
+    {
+      "key": "names",
+      "rva": 2196048,
+      "bytes": 4080,
+      "sha256": "6bbfaef50d63b657c88bccd686468d8e1878fdd8f4c5ef597062804fa9218328",
+      "reused": false
+    },
+    {
+      "key": "icon",
+      "rva": 3195728,
+      "bytes": 2784,
+      "sha256": "583f0ef7242acb58c941702d292b261f4e073494f18f741112601ca2386a08b1",
+      "reused": true
+    },
+    {
+      "key": "update",
+      "rva": 3242304,
+      "bytes": 37296,
+      "sha256": "99721187d07ee93c06d2f87419eb8319cedc0520ef1dca0b80c24f80e1d413b3",
+      "reused": true,
+      "source": "work/steam-interaction-analysis/disassembly.json",
+      "source_sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf"
+    },
+    {
+      "key": "init",
+      "rva": 3204464,
+      "bytes": 15952,
+      "sha256": "4e4d7fe3aa2560d8dc1b0fcb73eb441f1fc2b596c3615335d4e15c0f70f67b59",
+      "reused": true,
+      "source": "work/facility-animation-closure/disassembly.json",
+      "source_sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa"
+    },
+    {
+      "key": "cctor",
+      "rva": 3311072,
+      "bytes": 25168,
+      "sha256": "648fb7c439e6530f96b6dec9bba3352a95d4ac86eb48b5272fcd17b70cfdf1b9",
+      "reused": true,
+      "source": "work/facility-animation-closure/disassembly.json",
+      "source_sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa"
+    }
+  ],
+  "branches": [
+    {
+      "start": 271831572,
+      "end": 271839276,
+      "label": "raw60 complete local draw",
+      "bytes": 7704,
+      "sha256": "7c5134a947412ed26788cdc278bcf2925efb52bfbced30f2c40547c2d7100606"
+    },
+    {
+      "start": 271704175,
+      "end": 271705660,
+      "label": "raw60 complete local Update2",
+      "bytes": 1485,
+      "sha256": "3491f0e6cbf41f2352db4debdea357cd90d850087eb3934f6e783a32fa05519f"
+    },
+    {
+      "start": 271653322,
+      "end": 271653509,
+      "label": "raw60 Init2",
+      "bytes": 187,
+      "sha256": "5acbce05e9bc871d57688e3cf70b5c4efaf1150d6701b8acd3aaf24153278071"
+    },
+    {
+      "start": 271752651,
+      "end": 271752757,
+      "label": "raw60 soft table",
+      "bytes": 106,
+      "sha256": "2d7c9e9f61474e43421195011408fd709821efdaec7659f525f3e779520efe23"
+    },
+    {
+      "start": 270632079,
+      "end": 270633784,
+      "label": "CharacterData labels local tables",
+      "bytes": 1705,
+      "sha256": "eb7aec7a217679a89116fa72c140c42ff0d037a26ccbf44e0f03506a963a41c1"
+    }
+  ],
+  "anchors": [
+    {
+      "va": 271831605,
+      "target": 270868560,
+      "label": "220x175 window",
+      "sha256": "97d21d51863ae27f91025ee21cf27de500bddac2697b311e16bf71e172853ae3",
+      "bytes": 5
+    },
+    {
+      "va": 271831642,
+      "target": 270839824,
+      "label": "content box",
+      "sha256": "7d0d0323da8dd25323726eb557cab67a04c2f9beb57164041d6c09b1d6cc3c91",
+      "bytes": 5
+    },
+    {
+      "va": 271831714,
+      "target": 270612304,
+      "label": "weapon definition",
+      "sha256": "5649db9f0478476145a24c7b64101711ff8bd24020ecf0c3288891f9a9263b49",
+      "bytes": 5
+    },
+    {
+      "va": 271831727,
+      "target": 270611120,
+      "label": "armour definitions",
+      "sha256": "3f4c6008fc0300b325f7293af0c7435c890a248ee4e4de5fbc5975315d7869d3",
+      "bytes": 5
+    },
+    {
+      "va": 271831740,
+      "target": 270610848,
+      "label": "accessory definition",
+      "sha256": "a26279152c042c7989abd1247ff09ea743f0c09c0c3611f6789cfdb68e559352",
+      "bytes": 5
+    },
+    {
+      "va": 271831771,
+      "target": 271433952,
+      "label": "live instance lookup by definition",
+      "sha256": "c1191647442f110e55268e7f5c312df91199c66a6e1022eb31aec8c7d798ed65",
+      "bytes": 5
+    },
+    {
+      "va": 271831826,
+      "target": 270611904,
+      "label": "shared definition name",
+      "sha256": "9be7d1c3ad271b23d7acaf744927114e6c8104462b21b8614585b71132e7cad7",
+      "bytes": 5
+    },
+    {
+      "va": 271832938,
+      "target": 270611984,
+      "label": "next job level exp",
+      "sha256": "813b961d5e57e91f397d792e8c558182b1909cfbf9a55f02bfacbe7100c4b2b3",
+      "bytes": 5
+    },
+    {
+      "va": 271832996,
+      "target": 271206272,
+      "label": "clamped exp width",
+      "sha256": "908681d7ca6b23c40a41df79e681d0fe49ae90d5665dc1b71d45a5fc2970fa93",
+      "bytes": 5
+    },
+    {
+      "va": 271833766,
+      "target": 270880624,
+      "label": "medal helper",
+      "sha256": "a432c22ee125cabe31f75d9350f421b1ad2cd04d38123cb8c04411bcb478603a",
+      "bytes": 5
+    },
+    {
+      "va": 271833835,
+      "target": 271477648,
+      "label": "down portrait shared display write",
+      "sha256": "93e0761e3e3e677efeafc97d38d50c7e5f50138758576d5387ef4b2556ec1cea",
+      "bytes": 5
+    },
+    {
+      "va": 271833847,
+      "target": 271372288,
+      "label": "down portrait display",
+      "sha256": "959d736bc32d25184623e8ebacc7b413c6a0727a6632ee54dee0b442dc4fad15",
+      "bytes": 5
+    },
+    {
+      "va": 271833916,
+      "target": 271384320,
+      "label": "normal portrait schedule",
+      "sha256": "6bfc289b521464b17849821e4cea89e5da34a5ffa80c490ce40acbfa6aa095db",
+      "bytes": 5
+    },
+    {
+      "va": 271835222,
+      "target": 270770640,
+      "label": "four equipment touch rows",
+      "sha256": "93406ec729d9bb7e2f21bfee1771febd98ac31de96ba01297a8920e432b4cbdc",
+      "bytes": 5
+    },
+    {
+      "va": 271836617,
+      "target": 271631184,
+      "label": "base parameter icon7",
+      "sha256": "949339ce1e021e746a7d84793e8d8d0083b957bbae3142609f579b5b4ef87eef",
+      "bytes": 5
+    },
+    {
+      "va": 271836817,
+      "target": 270859440,
+      "label": "six base numbers",
+      "sha256": "9e9de5065b0917324974c3303e5f3419695339310d2a3b66248ff341e8c95b4a",
+      "bytes": 5
+    },
+    {
+      "va": 271837548,
+      "target": 271631184,
+      "label": "overview four equipment",
+      "sha256": "d40d8116434fb4b00e5461d6a151a83499e9b28be55fa92b10b6dcf4f3ddb1da",
+      "bytes": 5
+    },
+    {
+      "va": 271837826,
+      "target": 271631184,
+      "label": "four battle icon8",
+      "sha256": "867f51cbeca9c77f66a10cae89c4809d7471465ae4cbf8a4b345a0f1dc7356b0",
+      "bytes": 5
+    },
+    {
+      "va": 271837900,
+      "target": 270859440,
+      "label": "four cached battle values",
+      "sha256": "7b07a29d391be4e3eadaa29f136c8378d04b5a88775e866ce4d6bd0f0243818e",
+      "bytes": 5
+    },
+    {
+      "va": 271834426,
+      "target": 271631184,
+      "label": "magic icon14",
+      "sha256": "49c05e8605a105ac8417d87cd7b97c57e1da385c29bbaad9d2ad86badadc99ad",
+      "bytes": 5
+    },
+    {
+      "va": 271838179,
+      "target": 276560064,
+      "label": "equipment selection finger",
+      "sha256": "fb663db5ca4e718f43abbac4e7bf468f3d4cc327347b60f57f174d7c08605537",
+      "bytes": 5
+    },
+    {
+      "va": 271838639,
+      "target": 270881808,
+      "label": "first positive equipment value",
+      "sha256": "6b9a9deb00d94196e6c17b98af65209978ac5669b9c336f7f6aa8b6ece4d77e5",
+      "bytes": 5
+    },
+    {
+      "va": 271838687,
+      "target": 270881808,
+      "label": "second positive equipment value",
+      "sha256": "30f8a44cae98f5e361d3015cbad13e5fdbeac9404eb82166dc4c5fb96e36246c",
+      "bytes": 5
+    },
+    {
+      "va": 271839221,
+      "target": 271622848,
+      "label": "footer text and touch helper",
+      "sha256": "c1efff0980e31d2ac04aaa16bfe3d02dde8e899fec76a1898b759b7e5ca1d3ed",
+      "bytes": 5
+    },
+    {
+      "va": 271839261,
+      "target": 270866352,
+      "label": "four page touch scrollbar",
+      "sha256": "f9779246c6372851ab5e80afdf4c92ac977080490403473642921731a9390379",
+      "bytes": 5
+    },
+    {
+      "va": 271653338,
+      "target": 270834624,
+      "label": "tutorial111 check",
+      "sha256": "69705eff47ce0a3925fbae17691a875f7a3daab0cce47cc215b26c36bed51eb6",
+      "bytes": 5
+    },
+    {
+      "va": 271653370,
+      "target": 270882560,
+      "label": "tutorial111 exec",
+      "sha256": "9ac973c373565ae09d657ad7d868eeb0f380be2d04e342c47a4e0c865555d3ed",
+      "bytes": 5
+    },
+    {
+      "va": 271653467,
+      "target": 276708336,
+      "label": "nonchase blank left/back right",
+      "sha256": "1eada06d05bfda139adc846f0132d40ed16737dff686c53eaac7fa349d3216e2",
+      "bytes": 5
+    },
+    {
+      "va": 271653492,
+      "target": 270627600,
+      "label": "Init2 recomputes battle cache",
+      "sha256": "5f6fce08dacc82352972fd40e334ee17108395202c41bf438744f1a79d79b710",
+      "bytes": 5
+    },
+    {
+      "va": 271704301,
+      "target": 276070992,
+      "label": "equipment up",
+      "sha256": "a65f8b16b58434fb32e5c04d006309934d1cef616a7a218a9b4c420075717283",
+      "bytes": 5
+    },
+    {
+      "va": 271704367,
+      "target": 276070992,
+      "label": "equipment down",
+      "sha256": "9f614df1cc57ecbc4655dcfbc6411c35cd5c8b6b5b1a115216fbaa05e0f4e858",
+      "bytes": 5
+    },
+    {
+      "va": 271704443,
+      "target": 276070992,
+      "label": "other page up",
+      "sha256": "67b65c0bf90101c66f31c218a870f8c308d69c77f76f419972907a5008c2a641",
+      "bytes": 5
+    },
+    {
+      "va": 271704507,
+      "target": 276070992,
+      "label": "other page down",
+      "sha256": "0110734276d5665dfb4aa41094af4bbe17716b59c2ef5699c42a0e400e792484",
+      "bytes": 5
+    },
+    {
+      "va": 271704630,
+      "target": 276069984,
+      "label": "confirm pulse",
+      "sha256": "c5e827143c80596a5fe8dec52a3d5bff972a894a4d14f63364c8dba2a149f2ae",
+      "bytes": 5
+    },
+    {
+      "va": 271704737,
+      "target": 270899984,
+      "label": "back label2",
+      "sha256": "6c4befc6c23fdf1e4a889de6186011d8167b292d8a2863004fc33a374387d3f9",
+      "bytes": 5
+    },
+    {
+      "va": 271704772,
+      "target": 270899984,
+      "label": "job label11",
+      "sha256": "5bbc4de9198b3320424da9062de2ec951981ad0dc7a3d49542bf292def38dd0c",
+      "bytes": 5
+    },
+    {
+      "va": 271704803,
+      "target": 270899984,
+      "label": "chase label8",
+      "sha256": "c828617d7f5ae1e2bdab7b45c2fcd239dd8d62ce3d1229d43d86465ddbac7c83",
+      "bytes": 5
+    },
+    {
+      "va": 271704858,
+      "target": 271459248,
+      "label": "chase command",
+      "sha256": "ce6fa1022a4e45551555a4295e67d2c270a193d03bc5023944a257dd00104093",
+      "bytes": 5
+    },
+    {
+      "va": 271705038,
+      "target": 271772368,
+      "label": "equipment opens64",
+      "sha256": "6fb3cf78f308e5380438dcd03ae232ce708ba983ed6a8cb9d4ec5e797d0130ff",
+      "bytes": 5
+    },
+    {
+      "va": 271705101,
+      "target": 276707952,
+      "label": "push64 selected slot",
+      "sha256": "b9d6a8f05ccfed2e87df4a67edc8fd3a2f03dcdf915911d7ef1dd55d48fbd244",
+      "bytes": 5
+    },
+    {
+      "va": 271705241,
+      "target": 271433952,
+      "label": "confirm checks actual instance",
+      "sha256": "83a214edfba3d57eb219cdf7f1cbe5713e8e4e7e0c871457d6d0525592e64d8e",
+      "bytes": 5
+    },
+    {
+      "va": 271705279,
+      "target": 271450464,
+      "label": "recovery item availability",
+      "sha256": "bd95e4aa0eed8cf9e1b0a2a00ef66a289c66feedfa48ae14a7e9eafde5631fc5",
+      "bytes": 5
+    },
+    {
+      "va": 271705546,
+      "target": 276707952,
+      "label": "push64 recovery page",
+      "sha256": "9f5bac6e2a915e238a05e0af3a4ee9219a9b3c95a5aa648796fc31062ecad2b1",
+      "bytes": 5
+    },
+    {
+      "va": 271705600,
+      "target": 271772368,
+      "label": "job61 or gift64",
+      "sha256": "80f464396a679dac1177309fd98d5d4d2af3251bf30716d2aea69b3898a8d133",
+      "bytes": 5
+    },
+    {
+      "va": 271385163,
+      "target": 271477648,
+      "label": "scheduled portrait shared display write",
+      "sha256": "d99bcbf1d4bad69ba4d064db92214e0c15480098a890a10d398679d3d4ef6f28",
+      "bytes": 5
+    },
+    {
+      "va": 271385204,
+      "target": 271371936,
+      "label": "scheduled portrait weapon",
+      "sha256": "b24fa73d9ab091868526ce80cdbc0acd2303ef7b5367dc795fb36e36e3e00823",
+      "bytes": 5
+    },
+    {
+      "va": 271385241,
+      "target": 271387264,
+      "label": "live portrait power bar",
+      "sha256": "6b196b50bd9efd5f5c6e947be8274a324ad475fb226356f8cd8dce357a994657",
+      "bytes": 5
+    },
+    {
+      "va": 271434214,
+      "target": 271052224,
+      "label": "lookup compares CharacterData id",
+      "sha256": "2e6cd54c8c28fa62518ad1ea3f158991d676f0c5b842ea1d21ae8a29477c73cb",
+      "bytes": 5
+    },
+    {
+      "va": 271752686,
+      "label": "raw60 left label8",
+      "sha256": "676189f905e3ac08733c26a69b3656ca80601f3118f404269e5eef6f9c269cbe",
+      "bytes": 7
+    },
+    {
+      "va": 271752703,
+      "label": "raw60 right label2",
+      "sha256": "823efdfbae7bd54ec7623fbc7b616d32d3213984ceed227e6e0183c4f0509287",
+      "bytes": 7
+    },
+    {
+      "va": 271752742,
+      "label": "soft table index60",
+      "sha256": "9d9a00adf59d02091ad9f2c6bca0ac34532b3ad846c27e97bd3fd0fd9a1ea266",
+      "bytes": 6
+    },
+    {
+      "va": 271705396,
+      "label": "recovery child page4",
+      "sha256": "7363822c5212e0aab7fda5acaba9b2196c85ef685247619b319b5fdc99a455fa",
+      "bytes": 10
+    },
+    {
+      "va": 271833924,
+      "label": "four page selector",
+      "sha256": "6c51a2eccc93c1e0a28cfd8485fba32ce467d8632cb29330f611a099c9d49530",
+      "bytes": 6
+    }
+  ],
+  "strings": [
+    {
+      "va": 286217484,
+      "index": 10312,
+      "text": "冒険者情報"
+    },
+    {
+      "va": 286245056,
+      "index": 10967,
+      "text": "ﾀﾞｳﾝ中"
+    },
+    {
+      "va": 286232296,
+      "index": 10665,
+      "text": "習得魔法"
+    },
+    {
+      "va": 286271072,
+      "index": 646,
+      "text": "---"
+    },
+    {
+      "va": 286233932,
+      "index": 10704,
+      "text": "装備なし"
+    },
+    {
+      "va": 286229112,
+      "index": 10589,
+      "text": "満足"
+    },
+    {
+      "va": 286199484,
+      "index": 9883,
+      "text": "がんばり"
+    },
+    {
+      "va": 286176396,
+      "index": 1160,
+      "text": "<btn=0,0>でプレゼントできます"
+    },
+    {
+      "va": 286236324,
+      "index": 10761,
+      "text": "転職する"
+    },
+    {
+      "va": 286220336,
+      "index": 10380,
+      "text": "回復ｱｲﾃﾑをﾌﾟﾚｾﾞﾝﾄ"
+    },
+    {
+      "va": 286210852,
+      "index": 10154,
+      "text": "プレゼント"
+    },
+    {
+      "va": 286243100,
+      "index": 0,
+      "text": ""
+    },
+    {
+      "va": 286231748,
+      "index": 10652,
+      "text": "終了"
+    },
+    {
+      "va": 286223904,
+      "index": 10465,
+      "text": "戻る"
+    },
+    {
+      "va": 286208208,
+      "index": 10091,
+      "text": "セーブ"
+    },
+    {
+      "va": 286211736,
+      "index": 10175,
+      "text": "メニュー"
+    },
+    {
+      "va": 286244264,
+      "index": 10949,
+      "text": "ｻｲﾄ"
+    },
+    {
+      "va": 286217900,
+      "index": 10322,
+      "text": "切替"
+    },
+    {
+      "va": 286223652,
+      "index": 10459,
+      "text": "情報"
+    },
+    {
+      "va": 286236568,
+      "index": 10767,
+      "text": "追跡"
+    },
+    {
+      "va": 286220380,
+      "index": 10381,
+      "text": "回転"
+    },
+    {
+      "va": 286213920,
+      "index": 10227,
+      "text": "中止"
+    },
+    {
+      "va": 286236280,
+      "index": 10760,
+      "text": "転職"
+    },
+    {
+      "va": 286238084,
+      "index": 10803,
+      "text": "開始"
+    },
+    {
+      "va": 286228188,
+      "index": 10567,
+      "text": "正式版へ"
+    },
+    {
+      "va": 286214928,
+      "index": 10251,
+      "text": "体力"
+    },
+    {
+      "va": 286218236,
+      "index": 10330,
+      "text": "力"
+    },
+    {
+      "va": 286220044,
+      "index": 10373,
+      "text": "器用"
+    },
+    {
+      "va": 286213248,
+      "index": 10211,
+      "text": "丈夫"
+    },
+    {
+      "va": 286239216,
+      "index": 10830,
+      "text": "魔力"
+    },
+    {
+      "va": 286237452,
+      "index": 10788,
+      "text": "運"
+    },
+    {
+      "va": 286242532,
+      "index": 10909,
+      "text": "ＨＰ"
+    },
+    {
+      "va": 286224912,
+      "index": 10489,
+      "text": "攻撃"
+    },
+    {
+      "va": 286238504,
+      "index": 10813,
+      "text": "防御"
+    },
+    {
+      "va": 286239260,
+      "index": 10831,
+      "text": "魔法"
+    },
+    {
+      "va": 286228228,
+      "index": 10568,
+      "text": "武器"
+    },
+    {
+      "va": 286238420,
+      "index": 10811,
+      "text": "防具1"
+    },
+    {
+      "va": 286238460,
+      "index": 10812,
+      "text": "防具2"
+    },
+    {
+      "va": 286242992,
+      "index": 10920,
+      "text": "ｱｸｾｻﾘｰ"
+    },
+    {
+      "va": 286229280,
+      "index": 10593,
+      "text": "火の魔法"
+    },
+    {
+      "va": 286228776,
+      "index": 10581,
+      "text": "氷の魔法"
+    },
+    {
+      "va": 286238672,
+      "index": 10817,
+      "text": "雷の魔法"
+    },
+    {
+      "va": 286220296,
+      "index": 10379,
+      "text": "回復魔法"
+    },
+    {
+      "va": 286229616,
+      "index": 10601,
+      "text": "特定の職業をﾏｽﾀｰすると習得"
+    },
+    {
+      "va": 286242280,
+      "index": 10903,
+      "text": "１つの魔法を習得しています"
+    },
+    {
+      "va": 286242364,
+      "index": 10905,
+      "text": "２つの魔法を習得しています"
+    },
+    {
+      "va": 286242404,
+      "index": 10906,
+      "text": "３つの魔法を習得しています"
+    },
+    {
+      "va": 286197720,
+      "index": 9841,
+      "text": "あらゆる魔法を使えます"
+    },
+    {
+      "va": 286230244,
+      "index": 10616,
+      "text": "男"
+    },
+    {
+      "va": 286221552,
+      "index": 10409,
+      "text": "女"
+    },
+    {
+      "va": 286216860,
+      "index": 10297,
+      "text": "冒険太郎"
+    },
+    {
+      "va": 286217612,
+      "index": 10315,
+      "text": "冒険花子"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "image",
+      "index": 12,
+      "source": "EXE:resources.assets:1148:common:icon_weapon00.png",
+      "filename": "icon_weapon00.png",
+      "sha256": "340bfd52e1d0a169657871eee67eaef5ae0f5baf8e660462730d888d2ea30596",
+      "bytes": 11527,
+      "width": 180,
+      "height": 72,
+      "published_alias": "assets/original/common/icon_weapon00.png"
+    },
+    {
+      "kind": "image",
+      "index": 20,
+      "source": "EXE:resources.assets:1148:common:icon_armour00.png",
+      "filename": "icon_armour00.png",
+      "sha256": "f2f1ef57a8d8b9a752ea6af020dc73efad9814d69e5dc78f85da487baed798e8",
+      "bytes": 22959,
+      "width": 180,
+      "height": 90,
+      "published_alias": "assets/original/common/icon_armour00.png"
+    },
+    {
+      "kind": "image",
+      "index": 21,
+      "source": "EXE:resources.assets:1148:common:icon_accessry00.png",
+      "filename": "icon_accessry00.png",
+      "sha256": "7c2c7c6227c5e10566508d7ef8e62904996ebb5e57e9dd856c8431185cf43895",
+      "bytes": 12423,
+      "width": 180,
+      "height": 54,
+      "published_alias": "assets/original/common/icon_accessry00.png"
+    },
+    {
+      "kind": "image",
+      "index": 22,
+      "source": "EXE:resources.assets:1148:common:ef_pinch.png",
+      "filename": "ef_pinch.png",
+      "sha256": "4fc83dfdcf9d81a7b8a9dba32f3a9f18651083866f23be0702ab705c68639fde",
+      "bytes": 240,
+      "width": 22,
+      "height": 13,
+      "published_alias": "assets/original/common/ef_pinch.png"
+    },
+    {
+      "kind": "image",
+      "index": 24,
+      "source": "EXE:resources.assets:1148:common:icon_back00.png",
+      "filename": "icon_back00.png",
+      "sha256": "c80d01870c41132cfd9f96b74d241d1aee412024c059a7db17f7fc379c17df30",
+      "bytes": 465,
+      "width": 144,
+      "height": 18,
+      "published_alias": "assets/original/common/icon_back00.png"
+    },
+    {
+      "kind": "image",
+      "index": 37,
+      "source": "EXE:resources.assets:1148:common:icon_param00.png",
+      "filename": "icon_param00.png",
+      "sha256": "2b99ce3fa12e25e4d1fab78e06b6cd0ada87f8e3f4bf68c94c8421d7172c22e0",
+      "bytes": 1790,
+      "width": 112,
+      "height": 32,
+      "published_alias": "assets/steam-facility-common/original/common/icon_param00.png"
+    },
+    {
+      "kind": "image",
+      "index": 38,
+      "source": "EXE:resources.assets:1148:common:wnd_lv.png",
+      "filename": "wnd_lv.png",
+      "sha256": "ebe513fa7120f2c7432e29cd7de2df6f222a273f0c689ec7786bb7301ef3d4b2",
+      "bytes": 261,
+      "width": 17,
+      "height": 10,
+      "published_alias": "assets/original/common/wnd_lv.png"
+    },
+    {
+      "kind": "image",
+      "index": 39,
+      "source": "EXE:resources.assets:1148:common:mp_back.png",
+      "filename": "mp_back.png",
+      "sha256": "3d927f257e9e9da503329c3712b21a4d0ab64ce5437727a7bc2979a23cadda48",
+      "bytes": 1823,
+      "width": 93,
+      "height": 82,
+      "published_alias": "assets/original/common/mp_back.png"
+    },
+    {
+      "kind": "image",
+      "index": 50,
+      "source": "EXE:resources.assets:1148:common:wnd_exp.png",
+      "filename": "wnd_exp.png",
+      "sha256": "88eb5966f1e03ca9524ddb64f3e462a95e943575c8cfa2c94e5ad103a32bf01a",
+      "bytes": 286,
+      "width": 26,
+      "height": 9,
+      "published_alias": "assets/original/common/wnd_exp.png"
+    },
+    {
+      "kind": "image",
+      "index": 87,
+      "source": "EXE:resources.assets:1148:common:wnd_expBar.png",
+      "filename": "wnd_expBar.png",
+      "sha256": "3000cb3d0a120e88723cfff3a7a64b4c9aed75018ff6592d834d62016a928b0c",
+      "bytes": 205,
+      "width": 83,
+      "height": 8,
+      "published_alias": "assets/original/common/wnd_expBar.png"
+    },
+    {
+      "kind": "image",
+      "index": 88,
+      "source": "EXE:resources.assets:1148:common:wnd_ato.png",
+      "filename": "wnd_ato.png",
+      "sha256": "ffbf2c65ae896f069228161125df46291121c68555b184603346e745de81c056",
+      "bytes": 187,
+      "width": 10,
+      "height": 7,
+      "published_alias": null
+    },
+    {
+      "kind": "image",
+      "index": 94,
+      "source": "EXE:resources.assets:1148:common:myHomeBack.png",
+      "filename": "myHomeBack.png",
+      "sha256": "dded40df59dfbfb9ce003b9f0d998a9939c9e0c8380233fac71e7d2fcf6c1473",
+      "bytes": 699,
+      "width": 47,
+      "height": 32,
+      "published_alias": "assets/original/common/myHomeBack.png"
+    },
+    {
+      "kind": "image",
+      "index": 115,
+      "source": "EXE:resources.assets:1148:common:smile00.png",
+      "filename": "smile00.png",
+      "sha256": "06829a8e55089603427f5688c7fdf649d16f440b719bb4396126c8030c5fa746",
+      "bytes": 342,
+      "width": 15,
+      "height": 14,
+      "published_alias": "assets/original/common/smile00.png"
+    },
+    {
+      "kind": "image",
+      "index": 118,
+      "source": "EXE:resources.assets:1148:common:icon_magicpot.png",
+      "filename": "icon_magicpot.png",
+      "sha256": "9325e5be2dbacd3c57b792af4de4c3e501a95d2e6b502f50bf14802295342ee8",
+      "bytes": 775,
+      "width": 80,
+      "height": 16,
+      "published_alias": "assets/original/common/icon_magicpot.png"
+    },
+    {
+      "kind": "image",
+      "index": 129,
+      "source": "EXE:resources.assets:1148:common:wnd_max.png",
+      "filename": "wnd_max.png",
+      "sha256": "668d8afa412bedce9dc59bf172b9f32a03748351a4d945fb6dcac97545aa1346",
+      "bytes": 180,
+      "width": 20,
+      "height": 6,
+      "published_alias": "assets/original/common/wnd_max.png"
+    },
+    {
+      "kind": "sprite",
+      "index": 12,
+      "source": "EXE:resources.assets:1148:common:number05.seb",
+      "filename": "number05.seb",
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "bytes": 428,
+      "published_alias": "assets/original/common/number05.seb",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          103,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          103,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          103,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          103,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          103,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          103,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          103,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          103,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          103,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          103,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          103,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          103,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          103,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          103,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          103,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          103,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          103,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          103,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          103,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          103,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          103,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "image",
+      "index": 103,
+      "source": "EXE:resources.assets:1148:common:number05.png",
+      "filename": "number05.png",
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "bytes": 701,
+      "width": 100,
+      "height": 21,
+      "published_alias": "assets/steam-build-common/original/common/number05.png"
+    },
+    {
+      "kind": "sprite",
+      "index": 15,
+      "source": "EXE:resources.assets:1148:common:number08.seb",
+      "filename": "number08.seb",
+      "sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "bytes": 428,
+      "published_alias": "assets/original/common/number08.seb",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          105,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          105,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          105,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          105,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          105,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          105,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          105,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          105,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          105,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          105,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          105,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          105,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          105,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          105,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          105,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          105,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          105,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          105,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          105,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          105,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          105,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "image",
+      "index": 105,
+      "source": "EXE:resources.assets:1148:common:number08.png",
+      "filename": "number08.png",
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "bytes": 648,
+      "width": 100,
+      "height": 21,
+      "published_alias": "assets/steam-facility-common/original/common/number08.png"
+    },
+    {
+      "kind": "sprite",
+      "index": 21,
+      "source": "EXE:resources.assets:1148:common:finger_r.seb",
+      "filename": "finger_r.seb",
+      "sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "bytes": 88,
+      "published_alias": "assets/original/common/finger_r.seb",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          2,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          3,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ],
+        [
+          5,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "image",
+      "index": 70,
+      "source": "EXE:resources.assets:1148:common:finger_r.png",
+      "filename": "finger_r.png",
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "bytes": 272,
+      "width": 16,
+      "height": 10,
+      "published_alias": "assets/original/common/finger_r.png"
+    },
+    {
+      "kind": "sprite",
+      "index": 39,
+      "source": "EXE:resources.assets:1148:common:ef_pinch.seb",
+      "filename": "ef_pinch.seb",
+      "sha256": "fbed488431b4e381849e3e9c758bb9bd0cc76bdb067d172562afebd931d8ca6d",
+      "bytes": 48,
+      "published_alias": "assets/original/common/ef_pinch.seb",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          22,
+          0,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          22,
+          11,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 60,
+      "source": "EXE:resources.assets:1148:common:wnd_exp.seb",
+      "filename": "wnd_exp.seb",
+      "sha256": "d448f76bea06d0e5796afe938150795bbe055141067b863060c1e50efdf5e37e",
+      "bytes": 48,
+      "published_alias": "assets/original/common/wnd_exp.seb",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          50,
+          0,
+          0,
+          17,
+          8,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          50,
+          17,
+          0,
+          9,
+          9,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 84,
+      "source": "EXE:resources.assets:1148:common:smile00.seb",
+      "filename": "smile00.seb",
+      "sha256": "32dc565bbdc51cebce8634a6bd5055256daf09edf865717168e09fdc27e71bbf",
+      "bytes": 28,
+      "published_alias": "assets/original/common/smile00.seb",
+      "frames": 1,
+      "parts": [
+        [
+          0,
+          115,
+          0,
+          0,
+          15,
+          14,
+          -7,
+          -14,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 98,
+      "source": "EXE:resources.assets:1148:common:icon_param00.seb",
+      "filename": "icon_param00.seb",
+      "sha256": "129d3c19fb1b551544198c0bc91ea45996146ca5344665f9ef5c0bc064c7c68a",
+      "bytes": 168,
+      "published_alias": "assets/original/common/icon_param00.seb",
+      "frames": 8,
+      "parts": [
+        [
+          0,
+          37,
+          0,
+          1,
+          27,
+          14,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          37,
+          27,
+          1,
+          27,
+          14,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          37,
+          54,
+          1,
+          27,
+          14,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          37,
+          81,
+          1,
+          27,
+          14,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          37,
+          2,
+          0,
+          17,
+          16,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          37,
+          28,
+          0,
+          25,
+          16,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          37,
+          55,
+          0,
+          24,
+          16,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          37,
+          82,
+          0,
+          25,
+          16,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "contracts": {
+    "window": [
+      220,
+      175,
+      0
+    ],
+    "box": [
+      17,
+      52,
+      219,
+      190
+    ],
+    "pages": [
+      "overview",
+      "six base parameters",
+      "four equipment",
+      "four magic flags"
+    ],
+    "soft_labels_default": [
+      8,
+      2
+    ],
+    "soft_labels_no_chase": [
+      0,
+      2
+    ],
+    "equipment_rows": 4,
+    "shared_display_writes_in_draw": true,
+    "draw_registers_touch": true
+  },
+  "limitations": [
+    "No original window or complete skin pixel acceptance",
+    "Init/Update outer touch dispatch and label refresh not fully closed here",
+    "Human sprite schedule table, power bar, medal and speech helper internals delegated",
+    "Dynamic weapon/human full asset set not included in common-resource denominator",
+    "No APK equivalence claimed and no C++ or original save modification"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 3684,
+      "sha256": "3ba76ad7ed11970dc183813aaedc43c69d7f091bdae5594a7dc685c563d3649f"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 8487,
+      "sha256": "37d19462dd90cfc8e3b0f4e52f140c4fc59924af4e8b7af1d702640f703df953"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "format": "ark-research-steam-human-common-1",
+  "source": {
+    "container": "DungeonVillageEXE/KairoGames_Data/resources.assets",
+    "sha256": "75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b",
+    "object": {
+      "id": "EXE:resources.assets:pathID=1148",
+      "name": "common",
+      "offset": 8314752,
+      "bytes": 1021784,
+      "sha256": "4f68bdfe7ad9d2ce7e8e83c4b0ae3d97e91e4ea1f493cd4a9446717449c09166",
+      "payload_sha256": "9178fcbb4bf387affd3fb1d23d02aa21295e6af1a68267d64876aa3fadd36092"
+    }
+  },
+  "logical_count": 1,
+  "new_payload_count": 1,
+  "alias_count": 0,
+  "new_payload_bytes": 187,
+  "total_logical_bytes": 187,
+  "scope": "Steam人物详情固定common图片88；不是完整人物/字体/窗口/语言变体包",
+  "path_base": "file相对本清单；产品复制资源并核SHA，不读取Unity容器或research/work",
+  "records": [
+    {
+      "id": "EXE:resources.assets:1148:common:wnd_ato.png",
+      "group": "common",
+      "entry": "wnd_ato.png",
+      "kind": "image",
+      "bytes": 187,
+      "sha256": "ffbf2c65ae896f069228161125df46291121c68555b184603346e745de81c056",
+      "source_container": "resources.assets:1148:common",
+      "storage": "published",
+      "file": "original/common/wnd_ato.png",
+      "index_kind": "img.inf",
+      "index": 88,
+      "width": 10,
+      "height": 7,
+      "rgba_sha256": "29274cf1a2912792877382b2ead6da4159777d99e79fa1f0924a93fbfc8eec2d",
+      "apk_file": "../original/common/wnd_ato.png",
+      "apk_sha256": "09b9a9fb010ddc4eb2b399177f63d7a69c39e576b0051ef483c8fc988f4c36c4",
+      "apk_width": 10,
+      "apk_height": 7,
+      "apk_rgba_sha256": "d18b1187caf5b4bccf8bebe77f10760e26031d26e01a018d1b4e4c44b0401c68",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../ui/STEAM_HUMAN_DETAIL.md",
+        "evidence": "../../work/steam-human-detail/EVIDENCE.json",
+        "page": "Steam raw60 四页共用经验区",
+        "call": "SubForm._draw2_1 DrawImage at VA 0x1033D92B",
+        "anchor_non_japanese": [
+          149,
+          113
+        ],
+        "anchor_japanese": [
+          148,
+          112
+        ],
+        "full_image": true
+      }
+    }
+  ]
+}

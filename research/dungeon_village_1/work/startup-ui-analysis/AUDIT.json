@@ -1,0 +1,554 @@
+{
+  "input": "work/window-restore-observation/20261009-110014-startup-ui",
+  "scope": "冻结输入的技术核验；不含图像内容判断、私有字段或原游戏/存档/进程访问",
+  "checks": 466,
+  "integrity_passed": true,
+  "report_consistency_passed": false,
+  "issues": [
+    {
+      "message": "ACTIONS.md标本地时间但整列实际为UTC，需+08:00换算；原反馈冻结不改"
+    }
+  ],
+  "inventory": {
+    "files": 36,
+    "bytes": 4863256,
+    "listed": 34,
+    "missing": [],
+    "unlisted": [
+      "EVIDENCE.json",
+      "RESULT.md"
+    ],
+    "manifest_mismatches": [],
+    "declared_report": {
+      "files": 36,
+      "bytes": 4863256
+    },
+    "all_files": [
+      {
+        "file": "ACTIONS.md",
+        "bytes": 5249,
+        "sha256": "df38f437a9480a5aa52b7e62226fd0e6e4cbc97591cc496a99a3c80147264316"
+      },
+      {
+        "file": "EVIDENCE.json",
+        "bytes": 11404,
+        "sha256": "e33743e290931c53187e9a21d16bb8c588f5b8bb91e0538e7b1f9bb902458bdc"
+      },
+      {
+        "file": "RESULT.md",
+        "bytes": 15406,
+        "sha256": "398aeaa76f927a9fe316b25c92303bcfd218f525b01ed1c6bb06caf488c0406c"
+      },
+      {
+        "file": "actions.jsonl",
+        "bytes": 10932,
+        "sha256": "c8f9ad85b5587c3365211eded13739753ee4aa298679a329f319f64365dffcc1"
+      },
+      {
+        "file": "game-process.json",
+        "bytes": 159,
+        "sha256": "12ddea7cbd24fcdad02c42b456e4d6a2379e20b97def8e502673692f964c0100"
+      },
+      {
+        "file": "handoff-final.json",
+        "bytes": 568,
+        "sha256": "3224f70b87dd11376e7c2d61ba15f77023326bea701b523ec33571e02e6ced3f"
+      },
+      {
+        "file": "handoff.json",
+        "bytes": 387,
+        "sha256": "fae76c5f799144944a924d1083ad3eee2c598d5f9b24227855d1f42629301816"
+      },
+      {
+        "file": "identity.json",
+        "bytes": 453,
+        "sha256": "1f229f408d9d31a18e2cf3ad8d6e6b33517ff72cc3af65dfa7ad73e4611a86d3"
+      },
+      {
+        "file": "preflight.json",
+        "bytes": 349,
+        "sha256": "8031bfc11ae68cfdbd2f9ad03f62d7be5412fac3fc68c7629814af004a014b89"
+      },
+      {
+        "file": "process-baseline.json",
+        "bytes": 1043,
+        "sha256": "2bdcbf9d8c2d38ce86fee629b13ced31a5ed387d82b8685fe543a3c2ff39b16d"
+      },
+      {
+        "file": "screenshot-metadata.json",
+        "bytes": 5863,
+        "sha256": "ca7b81e3065c6477ed8dff35688a82bd7956c2b46a5911ea5d88578ecb3bc8f4"
+      },
+      {
+        "file": "screenshots/A01-title-start-selected.jpg",
+        "bytes": 243122,
+        "sha256": "6516b634154c73d48c297e6a75b8ad7c943c531c52ffd92df26ca74bd9300895"
+      },
+      {
+        "file": "screenshots/A02-title-after-down.jpg",
+        "bytes": 244368,
+        "sha256": "e90c500cd00168ad5d57630f3974b5dfd165e0a428fbbfc5ae4b2cda38aa48e4"
+      },
+      {
+        "file": "screenshots/A04-after-user-input-detection.jpg",
+        "bytes": 232717,
+        "sha256": "a0d0a33473685fb11dbb3179e0c6aa4b95a003bb76b848333366818ab12726bf"
+      },
+      {
+        "file": "screenshots/A05-title-refocused.jpg",
+        "bytes": 242914,
+        "sha256": "37bbeb9529c11131bb8be28654d7f774323f115456f7276481242084b2422869"
+      },
+      {
+        "file": "screenshots/A06-record-single-click-result.jpg",
+        "bytes": 201674,
+        "sha256": "c5044199b950db0b1a18647c78cf6e69272fa4a65a9056c224ca8fbab6d7383b"
+      },
+      {
+        "file": "screenshots/B02-after-right-key.jpg",
+        "bytes": 201657,
+        "sha256": "4908c9fd3cc7d0aec046b235227da0862fe48338aebb2c685a2a33ea8c0a4027"
+      },
+      {
+        "file": "screenshots/B03-record-page2.jpg",
+        "bytes": 204323,
+        "sha256": "3f8187c5cad7eb5b2e6efe1466751863e9d6269d4dfbbd3e97a397378b6e3cbc"
+      },
+      {
+        "file": "screenshots/B04-record-right-wrap-page1.jpg",
+        "bytes": 201423,
+        "sha256": "d2ff06deca822b3aa3d30b99998c852014874cacffbaf20bc808e64aa0433aed"
+      },
+      {
+        "file": "screenshots/B05-return-title-record-selected.jpg",
+        "bytes": 244002,
+        "sha256": "0e900e89800116f52504927502a1906bdde17821b265a8b3aa15285b620ea1c3"
+      },
+      {
+        "file": "screenshots/C01-save-slot-entry.jpg",
+        "bytes": 207477,
+        "sha256": "1f4be7c678b24e9fa2e729239c897dd504102fe1aed23b75073bc121cfdbeece"
+      },
+      {
+        "file": "screenshots/C02-save-slot2-empty.jpg",
+        "bytes": 197140,
+        "sha256": "4cbeccb08210292d87636715c1af8bae4f6eb10cb1d259b3b1febdacbddc699e"
+      },
+      {
+        "file": "screenshots/C03-empty-slot-after-rejection.jpg",
+        "bytes": 196900,
+        "sha256": "8f333a47aafdd71a3c6fcaa16ea1d93e81ea0dee94f8d32c35e077371ea53b8c"
+      },
+      {
+        "file": "screenshots/C04-current-empty-slot-before-authorized-entry.jpg",
+        "bytes": 198287,
+        "sha256": "54615aef67163f2f472dd9bda32b5ba2248897e989333d4efe0c0a39c5af7230"
+      },
+      {
+        "file": "screenshots/C06-empty-slot-final-state.jpg",
+        "bytes": 196970,
+        "sha256": "5d75cb9082a2da6755d998dcaa27157f31a1d0020781b6547ab183a3ce35558d"
+      },
+      {
+        "file": "screenshots/C07-new-turn-current-entry.jpg",
+        "bytes": 240995,
+        "sha256": "dc2c29ffde9102f12745e2a8a62a6c94d57be87f6cb66b93a8923db894a2f4a5"
+      },
+      {
+        "file": "screenshots/C08-retry-slot-entry.jpg",
+        "bytes": 197465,
+        "sha256": "6ffe204a2651c3e93438527ccf85f6b60605b7f140a02d8815433d03780e8911"
+      },
+      {
+        "file": "screenshots/C09-config-default.jpg",
+        "bytes": 184456,
+        "sha256": "6b1516832b9d0d4fbb3ddb683e7ab1252d7a221b51b21a7134ee9c7ff664e351"
+      },
+      {
+        "file": "screenshots/C10-default-after-sex-switch.jpg",
+        "bytes": 184671,
+        "sha256": "b6372211b72da6e6e8a65aca4af40b7210c3aedd1d4a393b52054f783b5177cd"
+      },
+      {
+        "file": "screenshots/C11-name-input-open.jpg",
+        "bytes": 125150,
+        "sha256": "93fe45d31b3785def897491b049170e8a313ededeec1eef46ae03a34890519d8"
+      },
+      {
+        "file": "screenshots/C12-name-input-focus.jpg",
+        "bytes": 125150,
+        "sha256": "93fe45d31b3785def897491b049170e8a313ededeec1eef46ae03a34890519d8"
+      },
+      {
+        "file": "screenshots/C13-edit-field-focused.jpg",
+        "bytes": 124353,
+        "sha256": "2bf61c9229b2beb1983171940af73d90ac8fcd92dcd34832e81b03f33bd581c8"
+      },
+      {
+        "file": "screenshots/C14-name-select-all.jpg",
+        "bytes": 125016,
+        "sha256": "ec313b7d8af478da402bc5305c62eee11a5182a37911bf277e64eebbf0c24210"
+      },
+      {
+        "file": "screenshots/C15-custom-name-input.jpg",
+        "bytes": 124986,
+        "sha256": "fcdeac5dcb3238a87630366c8642514f772e63ae8df98a5fb46c2f5d816939cb"
+      },
+      {
+        "file": "screenshots/C16-name-input-cancel.jpg",
+        "bytes": 183417,
+        "sha256": "0254dcd5795fdc0fb42d296d63f593e3c0546e61933442482c9c81b8d24b06b5"
+      },
+      {
+        "file": "screenshots/C18-state-after-cancel-input-blocked.jpg",
+        "bytes": 182810,
+        "sha256": "e9d2916ede2c3753d33571406f97094b988bed3ef622ae8e26ab86288e4d1722"
+      }
+    ]
+  },
+  "jpeg": {
+    "files": 25,
+    "dimension_sets": [
+      "1067x910"
+    ],
+    "metadata_records": 25,
+    "action_screenshots": 25,
+    "verified": [
+      {
+        "file": "screenshots/A01-title-start-selected.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:01:20.993Z"
+      },
+      {
+        "file": "screenshots/A02-title-after-down.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:01:48.579Z"
+      },
+      {
+        "file": "screenshots/A04-after-user-input-detection.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:02:50.196Z"
+      },
+      {
+        "file": "screenshots/A05-title-refocused.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:07:11.821Z"
+      },
+      {
+        "file": "screenshots/A06-record-single-click-result.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:07:50.334Z"
+      },
+      {
+        "file": "screenshots/B02-after-right-key.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:08:29.753Z"
+      },
+      {
+        "file": "screenshots/B03-record-page2.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:09:21.469Z"
+      },
+      {
+        "file": "screenshots/B04-record-right-wrap-page1.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:09:54.223Z"
+      },
+      {
+        "file": "screenshots/B05-return-title-record-selected.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:10:33.46Z"
+      },
+      {
+        "file": "screenshots/C01-save-slot-entry.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:12:06.065Z"
+      },
+      {
+        "file": "screenshots/C02-save-slot2-empty.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:12:39.017Z"
+      },
+      {
+        "file": "screenshots/C03-empty-slot-after-rejection.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:15:07.519Z"
+      },
+      {
+        "file": "screenshots/C04-current-empty-slot-before-authorized-entry.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:18:15.223Z"
+      },
+      {
+        "file": "screenshots/C06-empty-slot-final-state.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:20:14.443Z"
+      },
+      {
+        "file": "screenshots/C07-new-turn-current-entry.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:23:10.154Z"
+      },
+      {
+        "file": "screenshots/C08-retry-slot-entry.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:23:47.423Z"
+      },
+      {
+        "file": "screenshots/C09-config-default.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:24:23.05Z"
+      },
+      {
+        "file": "screenshots/C10-default-after-sex-switch.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:25:07.642Z"
+      },
+      {
+        "file": "screenshots/C11-name-input-open.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:25:44.804Z"
+      },
+      {
+        "file": "screenshots/C12-name-input-focus.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:26:22.882Z"
+      },
+      {
+        "file": "screenshots/C13-edit-field-focused.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:27:25.366Z"
+      },
+      {
+        "file": "screenshots/C14-name-select-all.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:28:04.566Z"
+      },
+      {
+        "file": "screenshots/C15-custom-name-input.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:28:44.92Z"
+      },
+      {
+        "file": "screenshots/C16-name-input-cancel.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:29:41.574Z"
+      },
+      {
+        "file": "screenshots/C18-state-after-cancel-input-blocked.jpg",
+        "format": "Jpeg",
+        "width": 1067,
+        "height": 910,
+        "captured_utc": "2026-10-09T03:31:09.596Z"
+      }
+    ]
+  },
+  "chronology": {
+    "raw_actions": 53,
+    "raw_utc_problems": [],
+    "first_utc": "2026-10-09T03:00:39.386Z",
+    "last_utc": "2026-10-09T03:31:09.596Z",
+    "elapsed_ms": 1830210,
+    "actions_table_rows": 27,
+    "declared_timezone": "Asia/Shanghai",
+    "utc_clock_matches": 27,
+    "local_clock_matches": 0,
+    "table_timezone_correct": false,
+    "result_first_local": "11:01:20.993",
+    "expected_first_local": "11:01:20.993",
+    "screenshots": [
+      {
+        "file": "screenshots/A01-title-start-selected.jpg",
+        "utc": "2026-10-09T03:01:20.993Z",
+        "local_shanghai": "2026-10-09 11:01:20.993+08:00"
+      },
+      {
+        "file": "screenshots/A02-title-after-down.jpg",
+        "utc": "2026-10-09T03:01:48.579Z",
+        "local_shanghai": "2026-10-09 11:01:48.579+08:00"
+      },
+      {
+        "file": "screenshots/A04-after-user-input-detection.jpg",
+        "utc": "2026-10-09T03:02:50.196Z",
+        "local_shanghai": "2026-10-09 11:02:50.196+08:00"
+      },
+      {
+        "file": "screenshots/A05-title-refocused.jpg",
+        "utc": "2026-10-09T03:07:11.821Z",
+        "local_shanghai": "2026-10-09 11:07:11.821+08:00"
+      },
+      {
+        "file": "screenshots/A06-record-single-click-result.jpg",
+        "utc": "2026-10-09T03:07:50.334Z",
+        "local_shanghai": "2026-10-09 11:07:50.334+08:00"
+      },
+      {
+        "file": "screenshots/B02-after-right-key.jpg",
+        "utc": "2026-10-09T03:08:29.753Z",
+        "local_shanghai": "2026-10-09 11:08:29.753+08:00"
+      },
+      {
+        "file": "screenshots/B03-record-page2.jpg",
+        "utc": "2026-10-09T03:09:21.469Z",
+        "local_shanghai": "2026-10-09 11:09:21.469+08:00"
+      },
+      {
+        "file": "screenshots/B04-record-right-wrap-page1.jpg",
+        "utc": "2026-10-09T03:09:54.223Z",
+        "local_shanghai": "2026-10-09 11:09:54.223+08:00"
+      },
+      {
+        "file": "screenshots/B05-return-title-record-selected.jpg",
+        "utc": "2026-10-09T03:10:33.460Z",
+        "local_shanghai": "2026-10-09 11:10:33.460+08:00"
+      },
+      {
+        "file": "screenshots/C01-save-slot-entry.jpg",
+        "utc": "2026-10-09T03:12:06.065Z",
+        "local_shanghai": "2026-10-09 11:12:06.065+08:00"
+      },
+      {
+        "file": "screenshots/C02-save-slot2-empty.jpg",
+        "utc": "2026-10-09T03:12:39.017Z",
+        "local_shanghai": "2026-10-09 11:12:39.017+08:00"
+      },
+      {
+        "file": "screenshots/C03-empty-slot-after-rejection.jpg",
+        "utc": "2026-10-09T03:15:07.519Z",
+        "local_shanghai": "2026-10-09 11:15:07.519+08:00"
+      },
+      {
+        "file": "screenshots/C04-current-empty-slot-before-authorized-entry.jpg",
+        "utc": "2026-10-09T03:18:15.223Z",
+        "local_shanghai": "2026-10-09 11:18:15.223+08:00"
+      },
+      {
+        "file": "screenshots/C06-empty-slot-final-state.jpg",
+        "utc": "2026-10-09T03:20:14.443Z",
+        "local_shanghai": "2026-10-09 11:20:14.443+08:00"
+      },
+      {
+        "file": "screenshots/C07-new-turn-current-entry.jpg",
+        "utc": "2026-10-09T03:23:10.154Z",
+        "local_shanghai": "2026-10-09 11:23:10.154+08:00"
+      },
+      {
+        "file": "screenshots/C08-retry-slot-entry.jpg",
+        "utc": "2026-10-09T03:23:47.423Z",
+        "local_shanghai": "2026-10-09 11:23:47.423+08:00"
+      },
+      {
+        "file": "screenshots/C09-config-default.jpg",
+        "utc": "2026-10-09T03:24:23.050Z",
+        "local_shanghai": "2026-10-09 11:24:23.050+08:00"
+      },
+      {
+        "file": "screenshots/C10-default-after-sex-switch.jpg",
+        "utc": "2026-10-09T03:25:07.642Z",
+        "local_shanghai": "2026-10-09 11:25:07.642+08:00"
+      },
+      {
+        "file": "screenshots/C11-name-input-open.jpg",
+        "utc": "2026-10-09T03:25:44.804Z",
+        "local_shanghai": "2026-10-09 11:25:44.804+08:00"
+      },
+      {
+        "file": "screenshots/C12-name-input-focus.jpg",
+        "utc": "2026-10-09T03:26:22.882Z",
+        "local_shanghai": "2026-10-09 11:26:22.882+08:00"
+      },
+      {
+        "file": "screenshots/C13-edit-field-focused.jpg",
+        "utc": "2026-10-09T03:27:25.366Z",
+        "local_shanghai": "2026-10-09 11:27:25.366+08:00"
+      },
+      {
+        "file": "screenshots/C14-name-select-all.jpg",
+        "utc": "2026-10-09T03:28:04.566Z",
+        "local_shanghai": "2026-10-09 11:28:04.566+08:00"
+      },
+      {
+        "file": "screenshots/C15-custom-name-input.jpg",
+        "utc": "2026-10-09T03:28:44.920Z",
+        "local_shanghai": "2026-10-09 11:28:44.920+08:00"
+      },
+      {
+        "file": "screenshots/C16-name-input-cancel.jpg",
+        "utc": "2026-10-09T03:29:41.574Z",
+        "local_shanghai": "2026-10-09 11:29:41.574+08:00"
+      },
+      {
+        "file": "screenshots/C18-state-after-cancel-input-blocked.jpg",
+        "utc": "2026-10-09T03:31:09.596Z",
+        "local_shanghai": "2026-10-09 11:31:09.596+08:00"
+      }
+    ]
+  },
+  "references": {
+    "renames": [
+      {
+        "old": "screenshots/A02-title-record-selected.jpg",
+        "current": "screenshots/A02-title-after-down.jpg"
+      }
+    ],
+    "stale_before": []
+  },
+  "representation_notes": [
+    "EVIDENCE实际格式Jpeg与动作/元数据MIME image/jpeg语义一致，且JPEG SOF独立验证",
+    "B05/C09/C15清单UTC分别省略毫秒尾零；按同一UTC instant核验，不误报真实时差"
+  ],
+  "limits": [
+    "捕获UTC来自冻结元数据/动作日志，不由JPEG时间戳独立认证",
+    "文件哈希一致不证明游戏操作无自动保存副作用",
+    "缺号截图不自动判为丢图；被拦截操作的after_label不是成功截图",
+    "未读取或复制账户/村名/原日志私有载荷；未触碰报告交还用户的进程"
+  ]
+}

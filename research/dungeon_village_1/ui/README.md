@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-09已接收[Steam启动窗口反馈](../work/startup-ui-analysis/ANALYSIS.md)：纪录两页／右向循环／返回选择、空栏进入配置及默认性别联动有原图支持。25图完整性核验通过；输入测试名未出现、配置取消未完成、通关17未观察，不能标成完整启动皮肤已验。原图仍留本地实验目录，正式[皮肤合同](STARTUP_SKIN.md)已按版本补证。
+
 接续`9ec4c1a`新增[标题／纪录／91／17原皮肤合同](STARTUP_SKIN.md)及[原尺寸素材对照页](examples/startup-sources.html)：资源包序、木框／裁片／字形来源、页面坐标与阶段分别登记。原标题背景人物的共同随机链与纪录装饰名单不同，尚不能宣称完整标题已维护；本轮native pipe失败及历史S038观察见[窗口复核](../work/startup-window-observation/RESULT.md)。
 
 2026-10-08产品需求跟进：[人物六属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)补齐APK来源和只读绘制接口；

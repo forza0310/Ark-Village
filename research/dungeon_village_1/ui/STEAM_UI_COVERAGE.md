@@ -7,6 +7,8 @@
 后继具体消费者见[属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)：cd13绘制链及type1分类／裁图已局部核对，数字加号定位与APK不同。页面64／75／84直接调用和原窗口仍未认证，以下页面分母不因此整体升级。
 [建设目录21专题](STEAM_BUILD_LIST.md)补共享字段／滚动与APK特例，保留Steam21实际注册和精确绘制的阻塞。
 
+2026-10-09外部原窗口反馈已补[启动局部动态](../work/startup-ui-analysis/ANALYSIS.md)：标题纪录单击进入、两页右向循环／返回保留选择、2/2空栏进入新局配置、默认性别联动及输入面板。内部页号未由窗口读取；自动输入未实际改名、配置取消未完成、计分页未取得，不能将关联TYPE声明整体升级为完整认证。
+
 ## 分母与证据分层
 
 DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证据等级)。本批仅保存中文合同、方法引用、地址／哈希及有限调用摘要，详见[本地证据](../work/steam-ui-coverage/README.md)。
@@ -122,7 +124,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
-| 91 | NEWGAME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
+| 91 | NEWGAME | 新局／奖励／解锁／事件 | 声明及NewGame小方法已核；对应新局配置候选有空栏入口／默认联动局部动态，未读取运行页号；自定义／取消／正式开始未闭合 |
 | 92 | MONSTER_INFO | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
@@ -133,7 +135,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 100 | MANYMONSTER_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 
-标题菜单0／存档栏1有S038／S039/S062局部动态；空栏、2/2、删除／新游戏未覆盖。
+标题菜单0／存档栏1有S038／S039/S062局部动态；2026-10-09补2/2空栏及其进入配置的局部动态，删除／覆盖／配置最终开始仍未覆盖。独立RankForm纪录两页也有同批局部动态，不与SubForm的3 MAIN_MENU混为同一个页号。
 GameForm 0 MAIN、1 BUILD有局部动态角色；2 USER、3 BACK、4 DUNGEON_SELECT、5 DUNGEON_MOVE、6 CHASE_CHARA、7 CHASE_TENANT仅登记声明。
 S066–S068自然对话不按旧标签补写具名详情，见[非空p实验](../work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md)。
 

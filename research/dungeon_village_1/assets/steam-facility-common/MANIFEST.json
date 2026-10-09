@@ -1,0 +1,487 @@
+{
+  "format": "ark-research-steam-facility-common-1",
+  "source": {
+    "container": "DungeonVillageEXE/KairoGames_Data/resources.assets",
+    "sha256": "75a7ac65688841505603393e3b013f26cd581d74f829aec9de3a55c73c21271b",
+    "object": {
+      "id": "EXE:resources.assets:pathID=1148",
+      "name": "common",
+      "offset": 8314752,
+      "bytes": 1021784,
+      "sha256": "4f68bdfe7ad9d2ce7e8e83c4b0ae3d97e91e4ea1f493cd4a9446717449c09166",
+      "payload_sha256": "9178fcbb4bf387affd3fb1d23d02aa21295e6af1a68267d64876aa3fadd36092"
+    }
+  },
+  "logical_count": 3,
+  "new_payload_count": 2,
+  "alias_count": 1,
+  "new_payload_bytes": 2438,
+  "total_logical_bytes": 2866,
+  "scope": "Steam设施详情差异图片37/105及同字节SEB15引用；不修改旧APK/Steam包",
+  "path_base": "file相对清单目录；所有published/alias均须核SHA；产品运行不读取Unity或research/work",
+  "language_contract": "固定common根条目；不冒称所有运行时语言替换已认证",
+  "records": [
+    {
+      "id": "EXE:resources.assets:1148:common:icon_param00.png",
+      "group": "common",
+      "entry": "icon_param00.png",
+      "kind": "image",
+      "bytes": 1790,
+      "sha256": "2b99ce3fa12e25e4d1fab78e06b6cd0ada87f8e3f4bf68c94c8421d7172c22e0",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "4dd4ab45877977306dee487e4c781cb8b8bc4f09844fb51b9a285983afc5c351",
+      "storage": "published",
+      "file": "original/common/icon_param00.png",
+      "index_kind": "img.inf",
+      "index": 37,
+      "width": 112,
+      "height": 32,
+      "rgba_sha256": "3bdacd1e62d5fbc424be72b266bd8ff54f65cda78c88a1c33b719d63baae7bf6",
+      "apk_rgba_sha256": "cb92489285a37ccfa055b02a56a38ee9b0c775f45eaf834e214eda96297e6ab6",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../ui/STEAM_FACILITY_DETAIL.md",
+        "page": "Steam raw74",
+        "qualification": "普通设施页0使用效果",
+        "call": "Draw_icon mode7; image37 source y16,16x16; type5 uses x96, other x16*(type%10)",
+        "anchor": "(136,127+17*i)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:number08.png",
+      "group": "common",
+      "entry": "number08.png",
+      "kind": "image",
+      "bytes": 648,
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "be6037d42fc63b5f61d4f4551fa71376b9854aae42b9cc06dec44a253f4f2c0a",
+      "storage": "published",
+      "file": "original/common/number08.png",
+      "index_kind": "img.inf",
+      "index": 105,
+      "width": 100,
+      "height": 21,
+      "rgba_sha256": "56485255a20499bedb1e4f6b14b4b0cf8a02d411e95391fc1f397b726c8e243d",
+      "apk_rgba_sha256": "b771bf2641da7c3a39fbdf4acb64030203dd1cbd8ad284a50341da8cff816d4e",
+      "apk_bytes_equal": false,
+      "apk_pixels_equal": false,
+      "validation": "signature_chunks_crc_zlib_scanline_filters_palette_rgba",
+      "consumer": {
+        "contract": "../../ui/STEAM_FACILITY_DETAIL.md",
+        "page": "Steam raw74",
+        "qualification": "普通设施两页数字、装备种类及使用效果点数",
+        "call": "common SEB15; DrawNumImage / Draw_money; effect frame14",
+        "anchor": "数值位置见合同；效果点(192-8*j,130+17*i)"
+      }
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:number08.seb",
+      "group": "common",
+      "entry": "number08.seb",
+      "kind": "SEB",
+      "bytes": 428,
+      "sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "source_container": "resources.assets:1148:common",
+      "apk_sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "storage": "alias",
+      "file": "../original/common/number08.seb",
+      "index_kind": "seb.inf",
+      "index": 15,
+      "apk_bytes_equal": true,
+      "frames": 21,
+      "image_refs": [
+        105
+      ],
+      "parts": [
+        {
+          "frame": 0,
+          "image": 105,
+          "crop": [
+            9,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 1,
+          "image": 105,
+          "crop": [
+            17,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 2,
+          "image": 105,
+          "crop": [
+            25,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 3,
+          "image": 105,
+          "crop": [
+            33,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 4,
+          "image": 105,
+          "crop": [
+            41,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 5,
+          "image": 105,
+          "crop": [
+            49,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 6,
+          "image": 105,
+          "crop": [
+            57,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 7,
+          "image": 105,
+          "crop": [
+            65,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 8,
+          "image": 105,
+          "crop": [
+            73,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 9,
+          "image": 105,
+          "crop": [
+            81,
+            0,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 10,
+          "image": 105,
+          "crop": [
+            89,
+            0,
+            3,
+            11
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 11,
+          "image": 105,
+          "crop": [
+            0,
+            0,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 12,
+          "image": 105,
+          "crop": [
+            35,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 13,
+          "image": 105,
+          "crop": [
+            27,
+            10,
+            16,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 14,
+          "image": 105,
+          "crop": [
+            44,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 15,
+          "image": 105,
+          "crop": [
+            53,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 16,
+          "image": 105,
+          "crop": [
+            61,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 17,
+          "image": 105,
+          "crop": [
+            27,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 18,
+          "image": 105,
+          "crop": [
+            70,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 19,
+          "image": 105,
+          "crop": [
+            80,
+            10,
+            9,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        },
+        {
+          "frame": 20,
+          "image": 105,
+          "crop": [
+            92,
+            10,
+            8,
+            10
+          ],
+          "offset": [
+            0,
+            0
+          ],
+          "flip": [
+            0,
+            0
+          ]
+        }
+      ],
+      "consumer": {
+        "contract": "../../ui/STEAM_FACILITY_DETAIL.md",
+        "page": "Steam raw74",
+        "qualification": "普通设施两页数字、装备种类及使用效果点数",
+        "call": "common SEB15; DrawNumImage / Draw_money; effect frame14",
+        "anchor": "数值位置见合同；效果点(192-8*j,130+17*i)"
+      }
+    }
+  ]
+}

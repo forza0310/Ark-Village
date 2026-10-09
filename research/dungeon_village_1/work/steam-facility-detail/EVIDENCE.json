@@ -1,0 +1,1753 @@
+{
+  "scope": "Steam raw74 definition/instance entries, local drawing and inputs; original window and full platform rendering remain separate",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "key": "draw",
+      "source": "work/steam-input-closure/disassembly.json",
+      "source_sha256": "230701bd97189df0640a1b4eb70c6eaeffbf593d4e460a46d7da9a068f76e7ef",
+      "rva": 3419184,
+      "offset": 3414576,
+      "bytes": 18048,
+      "sha256": "1b8f5d4f7ea8b70976175c31c98784dc3acd13c20f5928ce692c010fbd0b42e1",
+      "reused": true
+    },
+    {
+      "key": "update",
+      "source": "work/steam-interaction-analysis/disassembly.json",
+      "source_sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf",
+      "rva": 3242304,
+      "offset": 3237696,
+      "bytes": 37296,
+      "sha256": "99721187d07ee93c06d2f87419eb8319cedc0520ef1dca0b80c24f80e1d413b3",
+      "reused": true
+    },
+    {
+      "key": "init2",
+      "rva": 3204464,
+      "offset": 3199856,
+      "bytes": 15952,
+      "sha256": "4e4d7fe3aa2560d8dc1b0fcb73eb441f1fc2b596c3615335d4e15c0f70f67b59",
+      "reused": false
+    },
+    {
+      "key": "mapchip2",
+      "rva": 2210240,
+      "offset": 2205632,
+      "bytes": 736,
+      "sha256": "fdb8915dc87aa195eafe8329e3cf285fdf5172ab53e8504aed01c0f7e1773da7",
+      "reused": false
+    },
+    {
+      "key": "arrow",
+      "rva": 3201920,
+      "offset": 3197312,
+      "bytes": 320,
+      "sha256": "d8d833877ec570b62e2f910b90a97c16fa45856cd3eab05e1468087e1864c48b",
+      "reused": false
+    },
+    {
+      "key": "icon",
+      "rva": 3195728,
+      "offset": 3191120,
+      "bytes": 2784,
+      "sha256": "583f0ef7242acb58c941702d292b261f4e073494f18f741112601ca2386a08b1",
+      "reused": false
+    },
+    {
+      "key": "scene",
+      "rva": 3159088,
+      "offset": 3154480,
+      "bytes": 10480,
+      "sha256": "60cf1cf8a2bffcd286078ca499a9e82f26038c57055621c013067ccef93fda33",
+      "reused": true
+    }
+  ],
+  "new_method_bytes": 19792,
+  "branches": [
+    {
+      "start": 271644867,
+      "end": 271645784,
+      "label": "Init2 raw74",
+      "bytes": 917,
+      "sha256": "536f2d0cc0681c2789cceed24fac1f555b71cf02f2d287dbb5d8736c160014f8"
+    },
+    {
+      "start": 271864760,
+      "end": 271872651,
+      "label": "complete local raw74 draw",
+      "bytes": 7891,
+      "sha256": "a2faf76d304fcfdc8d6a05b9ed6552dfb92faaad507e131416af52ecc40091bf"
+    },
+    {
+      "start": 271692726,
+      "end": 271693963,
+      "label": "raw74 input local body",
+      "bytes": 1237,
+      "sha256": "9f5eb2220d39834cba4d15e506f1d578a5156f2b548c6740261ccac3ef3a4bc1"
+    },
+    {
+      "start": 271603312,
+      "end": 271604101,
+      "label": "scene facility entry",
+      "bytes": 789,
+      "sha256": "125ab48c6148f6277e7eb9ff991966a51d1953b75065e01d7a47b7dca174f125"
+    }
+  ],
+  "anchors": [
+    {
+      "va": 271644894,
+      "target": 276864016,
+      "label": "Init2 new ary1",
+      "bytes": 5,
+      "sha256": "55e83993922efd2fb3c64e9e7068249de2aa1178880b16cb719c0a6951449cdf"
+    },
+    {
+      "va": 271644991,
+      "target": 270668368,
+      "label": "resident catalogue",
+      "bytes": 5,
+      "sha256": "ebc393e4921fbd489b40796d504d9841d4b61107e1ead1e87a59d048931e1816"
+    },
+    {
+      "va": 271645040,
+      "target": 276864016,
+      "label": "instance ary2",
+      "bytes": 5,
+      "sha256": "044ea3b15f901ed84c9a8ff40e084502500dbb8d5fb5eb5b9d51d067c5379126"
+    },
+    {
+      "va": 271864916,
+      "target": 270535376,
+      "label": "numbered facility title",
+      "bytes": 5,
+      "sha256": "72212780902763fbec197ec458b544d91d03c78fa49f5c76b10cc4ee243e0af3"
+    },
+    {
+      "va": 271864954,
+      "target": 270868560,
+      "label": "220x168 window",
+      "bytes": 5,
+      "sha256": "b9da9cb7a204ef7061f02ff4f06fbe49184a634ad8867093591b76c101b609af"
+    },
+    {
+      "va": 271864991,
+      "target": 270839824,
+      "label": "content box",
+      "bytes": 5,
+      "sha256": "17f84817867fd679d7e784dcc7953f75b50f619c2eb7c45aa40ee6113abcee2a"
+    },
+    {
+      "va": 271865010,
+      "target": 271637376,
+      "label": "only ordinary instance arrows",
+      "bytes": 5,
+      "sha256": "0a422402baa05943c687ec614c60fb4982c931b10ff4e76adac722d2fb9f62b2"
+    },
+    {
+      "va": 271865368,
+      "target": 271631184,
+      "label": "facility type icon mode9",
+      "bytes": 5,
+      "sha256": "b8a878c0f50ccf03b0051a7537fbe679fbf3589ebaf07650efb1c23d8c03835f"
+    },
+    {
+      "va": 271865549,
+      "target": 276605904,
+      "label": "nonJapanese name layout",
+      "bytes": 5,
+      "sha256": "8ff44744b388926c4d89d94cf5637a0d57542176da6be4ccd08993acd6856bd8"
+    },
+    {
+      "va": 271865981,
+      "target": 270669232,
+      "label": "preview base price",
+      "bytes": 5,
+      "sha256": "64d772a660978c329845ec6208243a3c330c43971cdd25d3774c4bb667cc9b94"
+    },
+    {
+      "va": 271865998,
+      "target": 270668976,
+      "label": "instance price plus bonus",
+      "bytes": 5,
+      "sha256": "cbab6eae7f07dff40f60f262449d9363f5c7e38cdff7b64524b56e62f924efb9"
+    },
+    {
+      "va": 271866011,
+      "target": 270669168,
+      "label": "instance price max",
+      "bytes": 5,
+      "sha256": "cc6c4a130e4fff55f68af648ae8f087011034f30da64a113767b62c7e21861b7"
+    },
+    {
+      "va": 271865292,
+      "target": 270668976,
+      "label": "page2 upkeep plus bonus",
+      "bytes": 5,
+      "sha256": "0ed67e57a76bda58456fc7403ab62b09324e715d31f4962c2bcb46275f4b2ba0"
+    },
+    {
+      "va": 271866135,
+      "target": 270881296,
+      "label": "price/upkeep money helper",
+      "bytes": 5,
+      "sha256": "85846519fa9afd5be9dc053c677aeb23c8a79658cec8cbbe3bae559b88027e15"
+    },
+    {
+      "va": 271866617,
+      "target": 270769696,
+      "label": "neighbor rows without marker16",
+      "bytes": 5,
+      "sha256": "67772d2ed7035ffe6cb503068e8721b10d65d57fe64305b4193690eaad5f6057"
+    },
+    {
+      "va": 271866556,
+      "target": 276560064,
+      "label": "selected neighbor finger sprite",
+      "bytes": 5,
+      "sha256": "b68b91b2b0b63105b64d29c8f06d4e6288b7b95b77e7958157dd331f31163f26"
+    },
+    {
+      "va": 271868033,
+      "target": 270866352,
+      "label": "page2 five row scrollbar",
+      "bytes": 5,
+      "sha256": "04af3a4e9dedf872499047efa6734709c5f309338ba0540db4ed04357aa57d93"
+    },
+    {
+      "va": 271868314,
+      "target": 276160368,
+      "label": "preview clip",
+      "bytes": 5,
+      "sha256": "223d395d7b0232757758f7827b31c5ebc52c8ae7748538efb5e0836319ed5fb7"
+    },
+    {
+      "va": 271868336,
+      "target": 270645696,
+      "label": "centered mapchip2 inversion0",
+      "bytes": 5,
+      "sha256": "200129d9c84e143f9ab89a098df5ef03e68ca0e43449f1fb5a6ca9123d04a140"
+    },
+    {
+      "va": 271868344,
+      "target": 276235664,
+      "label": "preview popclip",
+      "bytes": 5,
+      "sha256": "3bdc0a286496d7539d1b3be0bf7f50135384de64525e48079bb000034b9a6e2e"
+    },
+    {
+      "va": 271869472,
+      "target": 270669232,
+      "label": "preview charm",
+      "bytes": 5,
+      "sha256": "6dd29f08d43aa523267771ba9fb0f6a03d6d70fe5b40c9c1ed602eb2a9d14632"
+    },
+    {
+      "va": 271869489,
+      "target": 270669232,
+      "label": "preview quality",
+      "bytes": 5,
+      "sha256": "a4df73c1635d0a36b34b97e5dd534186edd5727dc0599a2eb8c3d2ef6309dc85"
+    },
+    {
+      "va": 271869527,
+      "target": 270668976,
+      "label": "instance quality/charm plus bonus",
+      "bytes": 5,
+      "sha256": "63d19c3bb65c9aee9c1acf85964a91ee62e1b84e258c44c45a3db02956d6addd"
+    },
+    {
+      "va": 271869888,
+      "target": 271631184,
+      "label": "use effect icon7",
+      "bytes": 5,
+      "sha256": "649584d7194f39ee03feeadfc831b291a8b1e68b95eab346851e1de708e767e2"
+    },
+    {
+      "va": 271870042,
+      "target": 276547344,
+      "label": "effect dots number08 frame14",
+      "bytes": 5,
+      "sha256": "943c0dd5f484b74633da8e81561074966b3ce41ed5a8f1ca22a7c35ed7a9033a"
+    },
+    {
+      "va": 271870221,
+      "target": 270668848,
+      "label": "next level users threshold",
+      "bytes": 5,
+      "sha256": "d85189badf71403ee5c080b87ffc618b400e13831528ee4089cd81a0a4cbfc0e"
+    },
+    {
+      "va": 271870378,
+      "target": 270866160,
+      "label": "remaining users unit number05 frame18",
+      "bytes": 5,
+      "sha256": "fc654784ccfaa9e4c8570304993e492a451335d8603fab801a136e6dc029228b"
+    },
+    {
+      "va": 271870735,
+      "target": 271477648,
+      "label": "home resident display request",
+      "bytes": 5,
+      "sha256": "046c97b4679461f4f92b5820f7e563dda046f73fae91e34cc3d57c458846fb29"
+    },
+    {
+      "va": 271870778,
+      "target": 271371936,
+      "label": "home resident weapon draw",
+      "bytes": 5,
+      "sha256": "2f7552493d8e4230a33e945ac8e5a0958a578566840b6910b7666ed991527061"
+    },
+    {
+      "va": 271872555,
+      "target": 271622848,
+      "label": "bottom instruction helper",
+      "bytes": 5,
+      "sha256": "63456b004d63acbecbade617ab62a79f8e6f0904969bebddf0a1070a943ffa84"
+    },
+    {
+      "va": 271872600,
+      "target": 277441088,
+      "label": "preview touch flag2",
+      "bytes": 5,
+      "sha256": "a730ac8d7efff436920bcc7f2a6a93719ee03055a9ccb825ea3647f6631ba77e"
+    },
+    {
+      "va": 271872636,
+      "target": 270770480,
+      "label": "preview touch component2",
+      "bytes": 5,
+      "sha256": "0a4640972f8e03e8e21e4c35c85538f63e5bb8af544d160d966af3320530cc21"
+    },
+    {
+      "va": 271692832,
+      "target": 276070992,
+      "label": "page2 up",
+      "bytes": 5,
+      "sha256": "3b2bb361035328114943a88dafd2ecbdf8bd12fb5538ae208d84216ceefee756"
+    },
+    {
+      "va": 271692887,
+      "target": 276070992,
+      "label": "page2 down",
+      "bytes": 5,
+      "sha256": "73e3bfe485537c9ee929c8c4a329fe3aa5b76ebb4049f048c0181cf0e8422a87"
+    },
+    {
+      "va": 271693083,
+      "target": 276070992,
+      "label": "left toggles",
+      "bytes": 5,
+      "sha256": "c1570b22c59a4186b631555dff5f2bced1436fc0d97cc0682f38461350ac66ba"
+    },
+    {
+      "va": 271693145,
+      "target": 276070992,
+      "label": "right toggles independently",
+      "bytes": 5,
+      "sha256": "22bdb628482075e34aea8baec15637116715a8a49a744b9070ee30b43c715fbd"
+    },
+    {
+      "va": 271693207,
+      "target": 276069984,
+      "label": "confirm pulse",
+      "bytes": 5,
+      "sha256": "d2474e53ca9cec0ad15bd7672373d6dc82d2973928d4c7c669e27d248f113200"
+    },
+    {
+      "va": 271711357,
+      "target": 276707872,
+      "label": "preview confirm Pop",
+      "bytes": 5,
+      "sha256": "84d6e918ffd90525d0512e1ea21f2be1785c8453348710af2c5018cd524033c8"
+    },
+    {
+      "va": 271709779,
+      "target": 270899984,
+      "label": "soft label2",
+      "bytes": 5,
+      "sha256": "b5a3430c751930954ce2c54a3e436d097c25f0470591e9bd7c19f8524a011c68"
+    },
+    {
+      "va": 271709800,
+      "target": 276707872,
+      "label": "cancel Pop",
+      "bytes": 5,
+      "sha256": "a372bc61f4af1cdf40c5cdd272a22b6f7d49d304b64f7d4d2dfb9844a2b7475e"
+    },
+    {
+      "va": 271693439,
+      "target": 271772368,
+      "label": "ordinary75 or resident80",
+      "bytes": 5,
+      "sha256": "800807a0cfdb7838d7ed36b7c5276dbfe51e2c7609d7a038cf113a4520e8ad64"
+    },
+    {
+      "va": 271693498,
+      "target": 276707952,
+      "label": "push with actual instance and definition",
+      "bytes": 5,
+      "sha256": "6260f5bda2683e2107574515e72ac5963adbbcefe8dbf9d31630e6346eaebbe4"
+    },
+    {
+      "va": 271693552,
+      "target": 271772368,
+      "label": "equipment79",
+      "bytes": 5,
+      "sha256": "285e7703634d5fa108d1d708720a07d9987aac414d03251ec5502f2901789ca6"
+    },
+    {
+      "va": 271693891,
+      "target": 271541088,
+      "label": "home action state6",
+      "bytes": 5,
+      "sha256": "17541b9213f59a5d4126f3e6e202ffd5c43b14105c0caa7126159f92bbd83f3b"
+    },
+    {
+      "va": 271693939,
+      "target": 276707872,
+      "label": "home action Pop",
+      "bytes": 5,
+      "sha256": "11cc3b2496ef21623ea6277a27c5f6c4803d9285a7db04d6c6dd93c41e669590"
+    },
+    {
+      "va": 271603336,
+      "target": 271336240,
+      "label": "scene selectedTenant definition",
+      "bytes": 5,
+      "sha256": "10a7c0f078eea1b1c95979e9c8a477c6b6d24aa56ccbe53ab305c17c8c47fbf7"
+    },
+    {
+      "va": 271603460,
+      "target": 271772368,
+      "label": "inhabited home opens60",
+      "bytes": 5,
+      "sha256": "e7e69ec46b12147279c50b98d3c46b6cfc17070f0ec7bafff7f4ca5216dce2db"
+    },
+    {
+      "va": 271603845,
+      "target": 271772368,
+      "label": "ordinary scene opens74",
+      "bytes": 5,
+      "sha256": "f6b15e5200fc412cb4d7597120edff838d1608b6a225698951094b6783e3f7c4"
+    },
+    {
+      "va": 271603972,
+      "target": 276707952,
+      "label": "scene Push74",
+      "bytes": 5,
+      "sha256": "3bfc6b8c0cfb19c49de35a7b9bfc3e941a47792bc58c19b78f5fe940dd02cff3"
+    },
+    {
+      "va": 271604016,
+      "target": 271772368,
+      "label": "pending upgrade opens81",
+      "bytes": 5,
+      "sha256": "71b85b101a14f3796436db5d4761b591900a083b1a40a195a6038254e0e6b24a"
+    },
+    {
+      "va": 270646383,
+      "target": 276547344,
+      "label": "mapchip2 same pattern frame stream",
+      "bytes": 5,
+      "sha256": "e020cbe9118c9e0a9051f51fcbf831f4b78f3cebdd24efffc2054e9283a66bc5"
+    },
+    {
+      "va": 271637565,
+      "target": 270768464,
+      "label": "left arrow component1 value16",
+      "bytes": 5,
+      "sha256": "48b037aca4dd59227da913b3f232fb88a22b283d7b04bd71aa5c1497bc79b044"
+    },
+    {
+      "va": 271637658,
+      "target": 270768464,
+      "label": "right arrow component1 value18",
+      "bytes": 5,
+      "sha256": "d2d110ff94771f485d46c60cf47c6abd8def9d079f18cc5b966930653f677c10"
+    },
+    {
+      "va": 271632112,
+      "target": 276171856,
+      "label": "mode9 icon_tenantInfo crop",
+      "bytes": 5,
+      "sha256": "32494f5541636cd8f2508eac81533716ea28c4ef265d18cde3014d7a586fe627"
+    },
+    {
+      "va": 271632366,
+      "target": 276171856,
+      "label": "mode7 icon_param00 crop",
+      "bytes": 5,
+      "sha256": "724880e8440fb0e2ab87d9d905796b66f0eb95e39c86f4f4c486b17cf7a2659e"
+    },
+    {
+      "va": 271603354,
+      "label": "upgrade flag before construction gate",
+      "bytes": 7,
+      "sha256": "8a99d3c273848b90a7eeffdf36655fef854b21e90daef1694a3dedfa2acf2747"
+    },
+    {
+      "va": 271603367,
+      "label": "construction state0 gate",
+      "bytes": 4,
+      "sha256": "952486d229d132aeee2863cd7d5dc563394bd530e6910f425e7f1ac80f8178e5"
+    },
+    {
+      "va": 271603962,
+      "label": "scene value1=0",
+      "bytes": 10,
+      "sha256": "fe2de1cba4ad786375242a8168277acf6e5e41e23983200544895ee9f0291d14"
+    },
+    {
+      "va": 271693298,
+      "label": "preview exact value1=1 confirm",
+      "bytes": 7,
+      "sha256": "ef7b3f6b6a10e7bcec32b9ed512cb44e0d75332cc438073d2d18afce400356e8"
+    },
+    {
+      "va": 271693311,
+      "label": "page2 confirm returns false",
+      "bytes": 7,
+      "sha256": "eca6c647405a0c5c84b9232b9aa0b030bc16dc6655845be3cc5a1465ca666c7f"
+    },
+    {
+      "va": 271870240,
+      "label": "remaining users subtract tenantUserNum",
+      "bytes": 6,
+      "sha256": "6b715b3c777c75fb2efb27914c5416da005bcbb3a68616e59cdbe99ac547209b"
+    }
+  ],
+  "strings": [
+    {
+      "va": 286226044,
+      "index": 10516,
+      "text": "施設情報 <0>/2"
+    },
+    {
+      "va": 286226004,
+      "index": 10515,
+      "text": "施設情報"
+    },
+    {
+      "va": 286225836,
+      "index": 10511,
+      "text": "施設ボーナス"
+    },
+    {
+      "va": 286232000,
+      "index": 10658,
+      "text": "維持費"
+    },
+    {
+      "va": 286231412,
+      "index": 10644,
+      "text": "種類"
+    },
+    {
+      "va": 286215348,
+      "index": 10261,
+      "text": "価格"
+    },
+    {
+      "va": 286211188,
+      "index": 10162,
+      "text": "ボーナスはありません"
+    },
+    {
+      "va": 286219876,
+      "index": 10369,
+      "text": "品質"
+    },
+    {
+      "va": 286239176,
+      "index": 10829,
+      "text": "魅力"
+    },
+    {
+      "va": 286271072,
+      "index": 646,
+      "text": "---"
+    },
+    {
+      "va": 286228060,
+      "index": 10564,
+      "text": "次のレベルまであと"
+    },
+    {
+      "va": 286226928,
+      "index": 10537,
+      "text": "最高レベルに達しています"
+    },
+    {
+      "va": 286172572,
+      "index": 1073,
+      "text": "<0>さんの住居です"
+    },
+    {
+      "va": 286256584,
+      "index": 3047,
+      "text": "G"
+    },
+    {
+      "va": 286268124,
+      "index": 579,
+      "text": "+"
+    },
+    {
+      "va": 286229868,
+      "index": 10607,
+      "text": "現在<0>名の入居希望者がいます"
+    },
+    {
+      "va": 286230036,
+      "index": 10611,
+      "text": "現在入居希望者はいません"
+    },
+    {
+      "va": 286242992,
+      "index": 10920,
+      "text": "ｱｸｾｻﾘｰ"
+    },
+    {
+      "va": 286238336,
+      "index": 10809,
+      "text": "防具"
+    },
+    {
+      "va": 286228228,
+      "index": 10568,
+      "text": "武器"
+    },
+    {
+      "va": 286173144,
+      "index": 1086,
+      "text": "<0>を販売しています"
+    },
+    {
+      "va": 286219832,
+      "index": 10368,
+      "text": "周囲の施設からのボーナス"
+    },
+    {
+      "va": 286242824,
+      "index": 10916,
+      "text": "ｱｲﾃﾑを使用する"
+    },
+    {
+      "va": 286219792,
+      "index": 10367,
+      "text": "周囲に好影響を与えます"
+    },
+    {
+      "va": 286215976,
+      "index": 10276,
+      "text": "入居希望者"
+    },
+    {
+      "va": 286221172,
+      "index": 10400,
+      "text": "売り物を見る"
+    },
+    {
+      "va": 286171340,
+      "index": 1045,
+      "text": "</co>+"
+    },
+    {
+      "va": 286177320,
+      "index": 1181,
+      "text": "<co=0065FF>"
+    }
+  ],
+  "resources": [
+    {
+      "kind": "image",
+      "index": 28,
+      "source": "EXE:resources.assets:1148:common:wnd_back.png",
+      "path": "assets/original/common/wnd_back.png",
+      "bytes": 1166,
+      "sha256": "9c3d7fbc12329f0b7894bbb0581f268e045ff16031853686b5e006d02c843eb1",
+      "width": 40,
+      "height": 240
+    },
+    {
+      "kind": "image",
+      "index": 29,
+      "source": "EXE:resources.assets:1148:common:wnd_bar.png",
+      "path": "assets/original/common/wnd_bar.png",
+      "bytes": 1951,
+      "sha256": "67b99691cb848805a0070d4f2924c7931da02de6f29191dcb7443e634a8d988e",
+      "width": 240,
+      "height": 17
+    },
+    {
+      "kind": "image",
+      "index": 30,
+      "source": "EXE:resources.assets:1148:common:wnd_conner.png",
+      "path": "assets/original/common/wnd_conner.png",
+      "bytes": 190,
+      "sha256": "15f03b0851257a973487a5ef5e7045d18adda4c017f0f3b6dc3491e7b3602079",
+      "width": 8,
+      "height": 8
+    },
+    {
+      "kind": "image",
+      "index": 37,
+      "source": "EXE:resources.assets:1148:common:icon_param00.png",
+      "path": null,
+      "bytes": 1790,
+      "sha256": "2b99ce3fa12e25e4d1fab78e06b6cd0ada87f8e3f4bf68c94c8421d7172c22e0",
+      "width": 112,
+      "height": 32,
+      "publication": "not published; APK same name is not a usable alias"
+    },
+    {
+      "kind": "image",
+      "index": 38,
+      "source": "EXE:resources.assets:1148:common:wnd_lv.png",
+      "path": "assets/original/common/wnd_lv.png",
+      "bytes": 261,
+      "sha256": "ebe513fa7120f2c7432e29cd7de2df6f222a273f0c689ec7786bb7301ef3d4b2",
+      "width": 17,
+      "height": 10
+    },
+    {
+      "kind": "image",
+      "index": 70,
+      "source": "EXE:resources.assets:1148:common:finger_r.png",
+      "path": "assets/original/common/finger_r.png",
+      "bytes": 272,
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "width": 16,
+      "height": 10
+    },
+    {
+      "kind": "image",
+      "index": 72,
+      "source": "EXE:resources.assets:1148:common:arrow01.png",
+      "path": "assets/original/common/arrow01.png",
+      "bytes": 203,
+      "sha256": "864fcf16e52634142f776b6245f0964ad12a21d901a4af7308aa6ee939f1ca65",
+      "width": 14,
+      "height": 5
+    },
+    {
+      "kind": "image",
+      "index": 74,
+      "source": "EXE:resources.assets:1148:common:arrow02.png",
+      "path": "assets/original/common/arrow02.png",
+      "bytes": 262,
+      "sha256": "b4463ecc521607a299e809ef9926aa1b8f63f43f023055f249158586b2b7fe4c",
+      "width": 16,
+      "height": 8
+    },
+    {
+      "kind": "image",
+      "index": 91,
+      "source": "EXE:resources.assets:1148:common:icon_tenantInfo.png",
+      "path": "assets/original/common/icon_tenantInfo.png",
+      "bytes": 1009,
+      "sha256": "84b281a46d2a82d1c8ed75d7ac36c7a90b804d7b6aeee4291986e060c3db7aeb",
+      "width": 112,
+      "height": 16
+    },
+    {
+      "kind": "image",
+      "index": 103,
+      "source": "EXE:resources.assets:1148:common:number05.png",
+      "path": "assets/steam-build-common/original/common/number05.png",
+      "bytes": 701,
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "kind": "image",
+      "index": 105,
+      "source": "EXE:resources.assets:1148:common:number08.png",
+      "path": null,
+      "bytes": 648,
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "width": 100,
+      "height": 21,
+      "publication": "not published; APK same name is not a usable alias"
+    },
+    {
+      "kind": "image",
+      "index": 106,
+      "source": "EXE:resources.assets:1148:common:number09.png",
+      "path": "assets/original/common/number09.png",
+      "bytes": 435,
+      "sha256": "f24e402e6f33bb2c755dacb239808cea6236b91e807a12c9baa96a0a3a40b245",
+      "width": 100,
+      "height": 12
+    },
+    {
+      "kind": "image",
+      "index": 129,
+      "source": "EXE:resources.assets:1148:common:wnd_max.png",
+      "path": "assets/original/common/wnd_max.png",
+      "bytes": 180,
+      "sha256": "668d8afa412bedce9dc59bf172b9f32a03748351a4d945fb6dcac97545aa1346",
+      "width": 20,
+      "height": 6
+    },
+    {
+      "kind": "image",
+      "index": 178,
+      "source": "EXE:resources.assets:1148:common:ppl.png",
+      "path": "assets/original/common/ppl.png",
+      "bytes": 2931,
+      "sha256": "f0aa1f2fe7fd5c936f7e75abbac06ef5874477e3576c167e0d93e5ef8987f818",
+      "width": 13,
+      "height": 12
+    },
+    {
+      "kind": "sprite",
+      "index": 3,
+      "source": "EXE:resources.assets:1148:common:arrow02.seb",
+      "path": "assets/original/common/arrow02.seb",
+      "bytes": 128,
+      "sha256": "ae9d5f75696a001cdadb3d579de0fc4902e0689cb5e2a4fe6ef1ccd22ac574c9",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          74,
+          4,
+          0,
+          4,
+          8,
+          0,
+          -3,
+          0,
+          0
+        ],
+        [
+          1,
+          74,
+          0,
+          0,
+          4,
+          8,
+          0,
+          -3,
+          0,
+          0
+        ],
+        [
+          2,
+          74,
+          12,
+          0,
+          4,
+          8,
+          0,
+          -3,
+          0,
+          0
+        ],
+        [
+          3,
+          74,
+          8,
+          0,
+          4,
+          8,
+          0,
+          -3,
+          0,
+          0
+        ],
+        [
+          4,
+          72,
+          0,
+          0,
+          7,
+          5,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          72,
+          7,
+          0,
+          7,
+          5,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 6,
+      "source": "EXE:resources.assets:1148:common:wnd_conner.seb",
+      "path": "assets/original/common/wnd_conner.seb",
+      "bytes": 88,
+      "sha256": "cfab2deba8d8c3433498fe05c8fa4bacaa0cba3ae29495cb82c36e4d4df58618",
+      "frames": 4,
+      "parts": [
+        [
+          0,
+          30,
+          0,
+          0,
+          4,
+          4,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          30,
+          4,
+          0,
+          4,
+          4,
+          -4,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          30,
+          4,
+          4,
+          4,
+          4,
+          -4,
+          -4,
+          0,
+          0
+        ],
+        [
+          3,
+          30,
+          0,
+          4,
+          4,
+          4,
+          0,
+          -4,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 12,
+      "source": "EXE:resources.assets:1148:common:number05.seb",
+      "path": "assets/original/common/number05.seb",
+      "bytes": 428,
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          103,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          103,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          103,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          103,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          103,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          103,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          103,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          103,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          103,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          103,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          103,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          103,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          103,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          103,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          103,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          103,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          103,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          103,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          103,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          103,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          103,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 15,
+      "source": "EXE:resources.assets:1148:common:number08.seb",
+      "path": "assets/original/common/number08.seb",
+      "bytes": 428,
+      "sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          105,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          105,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          105,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          105,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          105,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          105,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          105,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          105,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          105,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          105,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          105,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          105,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          105,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          105,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          105,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          105,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          105,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          105,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          105,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          105,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          105,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 16,
+      "source": "EXE:resources.assets:1148:common:number09.seb",
+      "path": "assets/original/common/number09.seb",
+      "bytes": 208,
+      "sha256": "fb49bd75d3dabe077747e082fc979a1bbd6cc414cff7888749f580aeb2174c96",
+      "frames": 10,
+      "parts": [
+        [
+          0,
+          106,
+          0,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          106,
+          10,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          106,
+          20,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          106,
+          30,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          106,
+          40,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          106,
+          50,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          106,
+          60,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          106,
+          70,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          106,
+          80,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          106,
+          90,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 21,
+      "source": "EXE:resources.assets:1148:common:finger_r.seb",
+      "path": "assets/original/common/finger_r.seb",
+      "bytes": 88,
+      "sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          2,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          3,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ],
+        [
+          5,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "reused": [
+    {
+      "path": "work/steam-build-list-business/EVIDENCE.json",
+      "bytes": 21417,
+      "sha256": "049b5bd23e62423e86915e409bfcd887fd10a94f2f102d00e568f37c1be94e25"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/EVIDENCE.json",
+      "bytes": 13508,
+      "sha256": "00d2ff640cb970b2698eb60cc8cf093390354e4686220528949372070d0b540a"
+    },
+    {
+      "path": "work/steam-mapchip-patterns/RESOURCES.json",
+      "bytes": 354587,
+      "sha256": "f132b57f5d6fad2e210f1179062995035754ec940fb19aa8b60c2df7c7356ff4"
+    },
+    {
+      "path": "work/steam-window-frame-contract/EVIDENCE.json",
+      "bytes": 21503,
+      "sha256": "7b4d2cdacb28f3645c338a5b44c607b6f05ab6d513fb81d5f6138ca4f96895a0"
+    },
+    {
+      "path": "work/steam-ui-coverage/methods.json",
+      "bytes": 92789,
+      "sha256": "6aee995cf8e0b76557321de37e5c187a4afb49a49fbdaf72a83d7550d4f99b83"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  ],
+  "contracts": {
+    "preview_value1": 1,
+    "scene_value1": 0,
+    "window": [
+      220,
+      168,
+      0
+    ],
+    "box": [
+      17,
+      74,
+      219,
+      184
+    ],
+    "ordinary_map_x": 23,
+    "other_map_x": 71,
+    "mapchip2_inversion": 0,
+    "mapchip2_pattern_offsets": [
+      [
+        -30,
+        0
+      ],
+      [
+        -45,
+        7
+      ],
+      [
+        -30,
+        15
+      ]
+    ],
+    "neighbor_visible_rows": 5,
+    "neighbor_marker16": false,
+    "paid_action_in_raw74": false
+  },
+  "limitations": [
+    "No original runtime input or pixel comparison this batch",
+    "Soft label table74 exact strings not newly decoded",
+    "Housing drawing branch existence does not prove scene reachability; inhabited homes go60",
+    "SubForm array retirement follows framework; no retained-count bound claim",
+    "Original private payload lacks maintained strict rejection; no C++ change"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 3885,
+      "sha256": "14abe9b59886f72c374510972fef233d0e76745ebb29cf817881f5dc02a64568"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 9497,
+      "sha256": "e4f0567f3d716a993983e20bc1a77c07e157dcb2258b58bb6a623e5258b66984"
+    }
+  ]
+}

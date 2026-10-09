@@ -1,0 +1,364 @@
+{
+  "scope": "Steam2.56 X4静态局部，非原窗口/所有层序",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "methods": {
+    "ranges": [
+      {
+        "key": "draw",
+        "rva": 2407216,
+        "bytes": 13488,
+        "type": "main.AppData",
+        "signature": "public void DrawEffect(Graphics g) { }",
+        "offset": 2402608,
+        "va": 270842672,
+        "next": 2420704,
+        "sha256": "5b830f3a6a60cf4631ddd8a094a8652bcd316238e853a2007959b58d480a6c5c"
+      },
+      {
+        "key": "coin",
+        "rva": 2383936,
+        "bytes": 464,
+        "type": "main.AppData",
+        "signature": "public void AddEffectCoin(int sx, int sy, int wait) { }",
+        "offset": 2379328,
+        "va": 270819392,
+        "next": 2384400,
+        "sha256": "cf7755dc96910e48ff9b9d5d54eb60319560facdd24fa249dc5a8c6315791fa6"
+      },
+      {
+        "key": "update",
+        "rva": 2515152,
+        "bytes": 2000,
+        "type": "main.AppData",
+        "signature": "public void UpdateEffect() { }",
+        "offset": 2510544,
+        "va": 270950608,
+        "next": 2517152,
+        "sha256": "3f298656ceeb0207467d39dcc7e2f34cf3b166b2c53fe77e002084db325882c9"
+      },
+      {
+        "key": "camera",
+        "rva": 2749200,
+        "bytes": 176,
+        "type": "game.Camera",
+        "signature": "public static void ConvertScreenToCamera(int sx, int sy, int[] camera_pos) { }",
+        "offset": 2744592,
+        "va": 271184656,
+        "next": 2749376,
+        "sha256": "d3a52b1e6e9cf5f2b20067632b0378bf9334b01653c65eff3893fbae650371fb"
+      },
+      {
+        "key": "velocity",
+        "rva": 2771568,
+        "bytes": 48,
+        "type": "game.GameUtil",
+        "signature": "public static float SetVStop(float dis, int t) { }",
+        "offset": 2766960,
+        "va": 271207024,
+        "next": 2771616,
+        "sha256": "563975c77bfa270a72c964c7d9ffd4e82522857909da5157b0f44e309a1e3707"
+      },
+      {
+        "key": "acceleration",
+        "rva": 2771344,
+        "bytes": 64,
+        "type": "game.GameUtil",
+        "signature": "public static float SetAStop(float dis, int t) { }",
+        "offset": 2766736,
+        "va": 271206800,
+        "next": 2771408,
+        "sha256": "76b992800d5b332682bcbfba3f552ac4dab8ca6c7befce1a58b8f8ca5604c133"
+      }
+    ],
+    "unique_bytes": 16240
+  },
+  "assertions": [
+    {
+      "va": 270852900,
+      "bytes": 5,
+      "sha256": "9f6a4c956928612c3d7ad551cfc988e1091ecdacf8a68bb9a541430c0946786d",
+      "target": 271184656,
+      "label": "X4固定屏幕点转当前相机"
+    },
+    {
+      "va": 270853333,
+      "bytes": 5,
+      "sha256": "8ad596ecd6856a465c404a33670652ef1067d9440a5d5036f4085440fb04b13f",
+      "target": 270866160,
+      "label": "显式SEB94和图片144绘制"
+    },
+    {
+      "va": 270819588,
+      "bytes": 5,
+      "sha256": "b3a0dc054156b246d8ec84d37cc3b0129a1d400fabae0515b20bdbf03b28d8ae",
+      "target": 271207024,
+      "label": "SetVStop"
+    },
+    {
+      "va": 270819685,
+      "bytes": 5,
+      "sha256": "9fa129f739fb30b2478ea2bedf49b7165ff64cb32c0cc1d647b7600e65b49894",
+      "target": 271206800,
+      "label": "SetAStop"
+    },
+    {
+      "va": 270819826,
+      "bytes": 5,
+      "sha256": "77e305510d4c159ea33aa16e531122677b8206b36ece6b424fd90c544330465b",
+      "target": 275055696,
+      "label": "完整六字段追加到X"
+    },
+    {
+      "va": 270952536,
+      "bytes": 5,
+      "sha256": "75e9631a606390945cb192207f1cb399e17c84da74d32b355279e89b6c3ea111",
+      "target": 275080384,
+      "label": "达到寿命后按当前索引删除"
+    }
+  ],
+  "windows": [
+    {
+      "va": 270842953,
+      "end": 270842962,
+      "bytes": 9,
+      "sha256": "94e1871125f00ddc87a20df8b88b1a4a683e3c39be41a59a1938725ac4bd25d6",
+      "label": "kind4分派"
+    },
+    {
+      "va": 270852816,
+      "end": 270853346,
+      "bytes": 530,
+      "sha256": "b9e1d1dcf69ef7101f9e95331b3f15522e8e993f3380bfae7c61d761889e72b0",
+      "label": "X4完整局部分支"
+    },
+    {
+      "va": 270856103,
+      "end": 270856131,
+      "bytes": 28,
+      "sha256": "03ab7fb36015dfd31ca8698b89132bade29c797c3708fe3e6048e28771888bd0",
+      "label": "原索引前向绘制循环"
+    },
+    {
+      "va": 270952295,
+      "end": 270952359,
+      "bytes": 64,
+      "sha256": "81d10c072ad8eb10c69581f703b89729b364591e56a1d72ec6fe4d10186f98d0",
+      "label": "X4更新增加计数并读TIME"
+    },
+    {
+      "va": 270952519,
+      "end": 270952559,
+      "bytes": 40,
+      "sha256": "68f027716485ea07ea141fe054511f2d69e5b9ed663cb9ca6a7a8b3f3b7f5f8a",
+      "label": "达到上限退休且循环索引继续增加"
+    },
+    {
+      "va": 270963373,
+      "end": 270963524,
+      "bytes": 151,
+      "sha256": "246bd08384ea3710976f5e03f9c7b0ca1afcd00132a83ac03acf624420a48886",
+      "label": "复用静态初始化[-16]与[23]"
+    }
+  ],
+  "static_values": {
+    "dis_y": [
+      -16
+    ],
+    "time": [
+      23
+    ],
+    "acceleration_float": {
+      "va": 282977836,
+      "hex": "000000c0",
+      "value": -2
+    }
+  },
+  "reused_initializer": {
+    "path": "../headless-save-audit-analysis/steam-static/disassembly.json",
+    "sha256": "b167cbdf31f29c6320b80e79996251fba276eb277eec7af7023fdc493d4959c4",
+    "method": {
+      "rva": 2517600,
+      "offset": 2512992,
+      "va": 270953056,
+      "type": "main.AppData",
+      "signature": "private static void .cctor() { }"
+    },
+    "method_sha256": "b8485fa234c83e54ff79acb42c7138325ebf8a18d219f57b1e831b76fe14a68d"
+  },
+  "resource_index": {
+    "path": "../../assets/IMAGE_COVERAGE.json",
+    "sha256": "06a4df6926db6a4c5ead409dc308b6095851951acedb738fb67b02afc9789584"
+  },
+  "resources": [
+    {
+      "kind": "image",
+      "index": 144,
+      "id": "EXE:resources.assets:1148:common:eff_coin.png",
+      "path": "../../assets/original/common/eff_coin.png",
+      "bytes": 478,
+      "sha256": "64809d749638a027339c2fccbf712c937e5744e3de54f5bb9ec3fd8ae5aaa8ae",
+      "size": [
+        70,
+        10
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 94,
+      "id": "EXE:resources.assets:1148:common:eff_coin.seb",
+      "path": "../../assets/original/common/eff_coin.seb",
+      "bytes": 148,
+      "sha256": "7a1c24539389ceabb23e875255e5a2344e5616e52a91faccde3a1de350b084d4",
+      "parts": [
+        [
+          0,
+          144,
+          0,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          1,
+          144,
+          10,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          2,
+          144,
+          20,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          3,
+          144,
+          30,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          4,
+          144,
+          40,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          5,
+          144,
+          50,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ],
+        [
+          6,
+          144,
+          60,
+          0,
+          10,
+          10,
+          -5,
+          -10,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "field_source": {
+    "path": "../persistence-replay-analysis/exe/dumper/dump.cs",
+    "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912",
+    "fields": [
+      {
+        "line": 219802,
+        "text": "public const int EFF_COIN = 4;"
+      },
+      {
+        "line": 219835,
+        "text": "public static readonly int[] EFF_COIN_DIS_Y; // 0xA4"
+      },
+      {
+        "line": 219836,
+        "text": "public static readonly int[] EFF_COIN_TIME; // 0xA8"
+      },
+      {
+        "line": 221087,
+        "text": "public static Vector3D pos; // 0x8"
+      },
+      {
+        "line": 221131,
+        "text": "public static int DRAW_CENTER_X; // 0x68"
+      },
+      {
+        "line": 221132,
+        "text": "public static int DRAW_CENTER_Y; // 0x6C"
+      },
+      {
+        "line": 221133,
+        "text": "public static int DRAW_VIEW_X; // 0x70"
+      },
+      {
+        "line": 221134,
+        "text": "public static int DRAW_VIEW_Y; // 0x74"
+      },
+      {
+        "line": 221135,
+        "text": "public static int DRAW_VIEW_W; // 0x78"
+      },
+      {
+        "line": 221136,
+        "text": "public static int DRAW_VIEW_H; // 0x7C"
+      }
+    ]
+  },
+  "limitations": [
+    "未核死亡调用AddEffectCoin传入wait的Steam具体链",
+    "未核DrawEffect相对场景/HUD完整相位及实际帧频",
+    "未运行原游戏/未改维护代码或档案"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 3939,
+      "sha256": "ea6342dce72cc49bfbb2b3bbae255f27715aeb07b11115b473ee98487d90416b"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 5854,
+      "sha256": "51300fab9e912920b92061f67bc17fcf597ba400913c6a639c028a1295eb0a7e"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 # 原版页面、地图与视觉交互基线
 
-2026-10-10[金币X4图块](../work/coin-effect-delivery/README.md)已完成固定APK运动／循环帧／原X索引只读查询及既有visuals验收，复用626字节资源，无Owner／随机变化。Steam调用与完整场景层序另验，维护窗口没有借本批调整未经核实的深度。
+2026-10-10[Steam设施详情74](STEAM_FACILITY_DETAIL.md)区分建设定义预览与场景实例入口，补两页绘制／邻接来源、住宅人物60与升级81分流；[左右软标签](STEAM_FACILITY_LABELS.md)已证左空／右返回，确认走独立脉冲。[详情差异素材](../assets/steam-facility-common/README.md)新增Steam图片37／105共2,438字节，SEB15复用同字节引用；此后继发布不重签此前“未出版”静态证据。完整字体、父栈退休、OS投递及原窗口逐像素对照仍独立验收。
+
+2026-10-10[金币X4图块](../work/coin-effect-delivery/README.md)已完成固定APK运动／循环帧／原X索引只读查询及既有visuals验收，复用626字节资源，无Owner／随机变化。[Steam局部交叉](STEAM_COIN_RENDER.md)另核运动、相机锚点、资源和退休；死亡调用wait值与完整场景层序另验，维护窗口没有借本批调整未经核实的深度。
 
 原窗口后继任务：[建设列表／空行／选择／详情／旋转预览](../work/window-restore-observation/NEXT_BUILD_LIST_INPUT_PROMPT.md)，只做目录和未落地预览，不执行建设／移动／撤除。已输出提示词，尚无本次窗口反馈，不将静态合同当作动态结果。
 

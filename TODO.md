@@ -4,6 +4,8 @@
 
 ## 本批收口
 
+- [ ] e73bb31新版经营→魔法壶→便携包：[本批进展](docs/stages/B1-playable-prototype.md#product-business-e73bb31)。新版首/二星跨进程链、魔法壶投入/发现/冷载/炼制/真实用药、两Debug标准177/153项已通过；PC标题拖动误激活修复已保存checkpoint。最终ZIP待验收，OS输入通道不可用。
+
 - [x] S019及设施加成2/2面板部分补正：紧凑布局、原数字/箭头、分区和按钮位置，通过本地测试/窗口；当时图标及逐来源加成未完成，后续72a5bf4接线见[B1](docs/stages/B1-playable-prototype.md#facility-detail-visual-correction)。
 - [x] 设施74场景底栏名称/累计收益接线及对应HUD鼠标热区：用户已批准，累计净收益/正负字块/最小窗口完成本地验收，Space暂停保留，见上述B1底栏接续。
 

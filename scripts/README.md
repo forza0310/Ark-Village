@@ -4,6 +4,8 @@
 
 首次按[Windows构建说明](../docs/CONTRIBUTING.md#windows本地构建)配置公共库和消费者后，日常用`node scripts/build_product.mjs desktop-debug --parallel 4`重建。入口先完成唯一Release公共库，再构建指定消费者，任一步失败立即停止；不自动配置工具链、运行测试或发布。其它三个消费者使用对应预设名。
 
+`package_windows.py`将已验证且已提交的本地Release构建打成便携ZIP，复用`.github/ci/build.py`的PE递归依赖、剥离、素材检查和资源启动检查；不执行CI构建入口、不下载或发布。`--work-parent`必须为当前`build`下已存在目录，工具每次新建独立暂存目录，不覆盖旧制品；另提供`--toolchain`、`--font-dir`、`--raylib-license`指向现有固定输入。只包含玩家EXE/DLL/资源/字体和许可，输出`RESULT.json`记录提交、ZIP/解压字节数及SHA；解压后的实际窗口与玩家存读档由阶段验收另记。
+
 - compile_startup.mjs：JSON.parse读取发布包，交叉验证哈希/身份/目录/初值，结合加载后数据生成标准C++只读数据；保留reset边界区域/皮肤0，拒绝与初局加载快照不一致的区域。
 - compile_loaded_map.mjs：固定两份TSV哈希，验证14/6列、576格行主序、8实例原向量顺序与全部交叉绑定；不在产品重建加载流程。
 - compile_initial_ai.mjs：从已校验原表投影23职业/33武器、首访定义和28/30/33/35/45服务字段；校验数组/范围，不猜其他未接设施效果含义。生成initial_ai_rules供严格初局诊断和正常人物生活临时适配器复用，不生成第二套可变世界。

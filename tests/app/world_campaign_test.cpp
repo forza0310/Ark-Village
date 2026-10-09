@@ -4,6 +4,7 @@
 #include "ark/assets/sha256.hpp"
 #include "support/world_fixture.hpp"
 #include "world_active_late_strategy.hpp"
+#include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
 #include "world_commands.hpp"
 #include <chrono>
@@ -20,6 +21,7 @@ namespace ref = sim::rules;
 using State = app::WorldState;
 using Strategy = ark::test::ActiveVillageStrategy;
 using LateStrategy = ark::test::ActiveLateVillageStrategy;
+using PotStrategy = ark::test::ActivePotVillageStrategy;
 using Kind = app::WorldCommandKind;
 void require(bool condition, const std::string &message) {
     if (!condition)
@@ -72,6 +74,8 @@ app::WorldCommandResult apply(State &candidate, const app::WorldCommand &command
     case Kind::village_activity_action:
     case Kind::open_commerce:
     case Kind::commerce_action:
+    case Kind::open_magic_pot:
+    case Kind::magic_pot_action:
     case Kind::facility_item_action:
     case Kind::facility_catalog_action:
     case Kind::residence_action:
@@ -115,8 +119,16 @@ template <> struct Route<LateStrategy> {
         return strategy.checkpoint(state);
     }
 };
+template <> struct Route<PotStrategy> {
+    static constexpr const char *magic = "ARK_ACTIVE_POT_CHECKPOINT_1";
+    static constexpr int minutes = 100;
+    static std::uint64_t budget(bool) { return 360000; }
+    static bool checkpoint(const PotStrategy &strategy, const State &state) {
+        return strategy.checkpoint(state);
+    }
+};
 
-// Both routes share the exact production transaction/update/player-save driver. Only
+// All routes share the exact production transaction/update/player-save driver. Only
 // player decisions, evidence serialization and business milestones vary by route.
 template <class PlayerStrategy> struct CampaignRun {
     State state;
@@ -215,6 +227,7 @@ template <class PlayerStrategy> struct CampaignRun {
 };
 using Campaign = CampaignRun<Strategy>;
 using LateCampaign = CampaignRun<LateStrategy>;
+using PotCampaign = CampaignRun<PotStrategy>;
 
 template <class PlayerStrategy = Strategy>
 CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slot = 0) {
@@ -363,8 +376,40 @@ void verify_late_endpoint(const LateCampaign &campaign, const BusinessCheckpoint
               << " new_shop_income=" << stats.new_shop_income << std::endl;
 }
 
+// Receipts certify the transient element charge and healing, while cold Owner checks
+// certify the discovered recipe, unlocked pot and continued operation still persist.
+void verify_pot_endpoint(const PotCampaign &campaign, const BusinessCheckpoint &before) {
+    const auto &state = campaign.state;
+    const auto &stats = campaign.strategy.stats();
+    require(campaign.strategy.complete(state) && app::world_save_eligible(state),
+            "Magic-pot endpoint is not a complete stable business milestone");
+    const auto recipe = state.magic_pot_recipes.find(stats.recipe);
+    const auto item = state.items.find(stats.item);
+    const auto activity = state.activity_counts.find(30);
+    require(state.rank >= 2 && (state.scripts.user_flags & 1U) != 0 &&
+                activity != state.activity_counts.end() && activity->second > 0 &&
+                recipe != state.magic_pot_recipes.end() && recipe->second.status == 1 &&
+                item != state.items.end(),
+            "Current Owner lost the unlocked pot, discovered recipe or resulting item");
+    require(stats.deposits > 0 && stats.processed > 0 && stats.discoveries > 0 &&
+                stats.crafted > 0 && stats.used > 0 && stats.healed > 0 &&
+                stats.hp_after > stats.hp_before && stats.recipient >= 0 &&
+                sim::startup_world_human_profile(state, stats.recipient).has_value(),
+            "Pot endpoint lacks observed deposit, processing, discovery, craft or actual healing");
+    require(state.simulation_steps > before.world_steps && stats.ticks > before.observed_ticks &&
+                stats.commands > before.commands && facility_sales(state) > before.sales,
+            "Pot restart did not perform actual commands, updates and continued trade");
+    std::cout << "POT_ENDPOINT world_rounds=" << before.world_steps << "->"
+              << state.simulation_steps << " cumulative_facility_sales=" << before.sales << "->"
+              << facility_sales(state) << " recipe=" << stats.recipe << " item=" << stats.item
+              << " deposits=" << stats.deposits << " processed=" << stats.processed
+              << " discoveries=" << stats.discoveries << " crafted=" << stats.crafted
+              << " used=" << stats.used << " healed=" << stats.healed << " hp=" << stats.hp_before
+              << "->" << stats.hp_after << std::endl;
+}
+
 std::filesystem::path isolated_directory(const char *executable, const char *supplied,
-                                         bool late = false) {
+                                         const char *marker = "ark-active-first-star-v1\n") {
     const auto build = std::filesystem::canonical(executable).parent_path().parent_path();
     require(build.filename() == "build",
             "Campaign binary must be in the product build/bin directory");
@@ -373,8 +418,7 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
     require(!relative.empty() && relative != "." && !relative.is_absolute() &&
                 *relative.begin() != ".." && std::filesystem::is_directory(directory),
             "Campaign files must stay strictly below the real product build directory");
-    require(bytes(directory / "ACTIVE_CAMPAIGN") ==
-                (late ? "ark-active-second-star-v1\n" : "ark-active-first-star-v1\n"),
+    require(bytes(directory / "ACTIVE_CAMPAIGN") == marker,
             "Use the isolated process runner to create a fresh campaign directory");
     return directory;
 }
@@ -444,6 +488,31 @@ void contract() {
         refused = true;
     }
     require(refused, "Late strategy must refuse first-star strategy evidence");
+    PotStrategy pot;
+    std::ostringstream pot_encoded;
+    pot.encode(pot_encoded);
+    std::istringstream pot_input(pot_encoded.str());
+    const auto pot_restored = PotStrategy::decode(pot_input);
+    std::ostringstream pot_again;
+    pot_restored.encode(pot_again);
+    require(pot_encoded.str() == pot_again.str() && !pot_restored.complete(state) &&
+                !pot_restored.checkpoint(state),
+            "Fresh pot strategy must roundtrip without claiming business milestones");
+    refused = false;
+    try {
+        pot.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Pot route must refuse an initial unranked village");
+    refused = false;
+    std::istringstream wrong_pot_route(late_encoded.str());
+    try {
+        PotStrategy::decode(wrong_pot_route);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Pot strategy must refuse second-star strategy evidence");
     std::cout << "PASS active campaign driver contract" << std::endl;
 }
 } // namespace
@@ -451,6 +520,7 @@ void contract() {
 int main(int argc, char **argv) {
     std::optional<Campaign> campaign;
     std::optional<LateCampaign> late_campaign;
+    std::optional<PotCampaign> pot_campaign;
     try {
         if (argc == 2 && std::string(argv[1]) == "--contract") {
             contract();
@@ -458,9 +528,65 @@ int main(int argc, char **argv) {
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
+        const bool pot = mode == "pot-new" || mode == "pot-resume" || mode == "verify-pot";
+        if (pot) {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-magic-pot-v1\n");
+            if (mode == "pot-new") {
+                require(!std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
+                            !std::filesystem::exists(app::world_save_slot_path(directory, 1)),
+                        "New pot route cannot overwrite previous player slots");
+                const auto input = std::filesystem::canonical(directory / "input");
+                require(input.parent_path() == directory && input.filename() == "input",
+                        "Second-star input directory must be an isolated local copy");
+                const auto before = checkpoint(load<LateStrategy>(input, 0));
+                auto prefix = load<LateStrategy>(input, 1);
+                verify_late_endpoint(prefix, before);
+                require(bytes(app::world_system_path(directory)) ==
+                            bytes(app::world_system_path(input)),
+                        "Pot route system record differs from the verified prefix");
+                pot_campaign.emplace(
+                    PotCampaign{std::move(prefix.state), std::move(prefix.system), directory, {}});
+                pot_campaign->strategy.reconcile(pot_campaign->state);
+                pot_campaign->run(false);
+                require(pot_campaign->strategy.stats().crafted == 0 &&
+                            pot_campaign->strategy.stats().used == 0,
+                        "Pot business checkpoint must precede crafting and item use");
+                pot_campaign->save(0);
+            } else {
+                const auto before = [&] {
+                    const auto saved = load<PotStrategy>(directory, 0);
+                    require(saved.strategy.stats().crafted == 0 && saved.strategy.stats().used == 0,
+                            "Cold pot checkpoint must precede crafting and item use");
+                    return checkpoint(saved);
+                }();
+                if (mode == "verify-pot") {
+                    pot_campaign.emplace(load<PotStrategy>(directory, 1));
+                    verify_pot_endpoint(*pot_campaign, before);
+                    std::cout << "PASS read-only magic-pot cold-file endpoint verification"
+                              << std::endl;
+                } else {
+                    pot_campaign.emplace(load<PotStrategy>(directory, 0));
+                    const auto first_slot = bytes(app::world_save_slot_path(directory, 0));
+                    const auto first_strategy = bytes(directory / "strategy0.txt");
+                    pot_campaign->run(true);
+                    verify_pot_endpoint(*pot_campaign, before);
+                    pot_campaign->save(1);
+                    require(bytes(app::world_save_slot_path(directory, 0)) == first_slot &&
+                                bytes(directory / "strategy0.txt") == first_strategy,
+                            "Pot restart must preserve its first player checkpoint and evidence");
+                    std::cout << "PASS active magic-pot campaign: deposit, date processing, "
+                                 "discovery, cold restart, paid craft, item consumption, healing, "
+                                 "continued trade"
+                              << std::endl;
+                }
+            }
+            return 0;
+        }
         const bool late = mode == "late-new" || mode == "late-resume" || mode == "verify-late";
         if (late) {
-            const auto directory = isolated_directory(argv[0], argv[2], true);
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-second-star-v1\n");
             if (mode == "late-new") {
                 require(!std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
                             !std::filesystem::exists(app::world_save_slot_path(directory, 1)),
@@ -549,6 +675,9 @@ int main(int argc, char **argv) {
             std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
         if (late_campaign)
             std::cerr << "STATE " << late_campaign->strategy.diagnose(late_campaign->state)
+                      << std::endl;
+        if (pot_campaign)
+            std::cerr << "STATE " << pot_campaign->strategy.diagnose(pot_campaign->state)
                       << std::endl;
         return 1;
     }

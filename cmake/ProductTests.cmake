@@ -43,6 +43,7 @@ ark_test_case(world_save ark_world_save_tests LABELS runtime TIMEOUT 300)
 # Quick boundary cases are standard; real economy and first-star routes are opt-in long runs.
 ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_test.cpp
     tests/app/world_active_strategy.cpp tests/app/world_active_late_strategy.cpp
+    tests/app/world_active_pot_strategy.cpp
     LIBRARIES ark_world_session ark_world_hash)
 target_include_directories(ark_world_campaign_tests PRIVATE src/app)
 ark_test_case(player_active_campaign_contract ark_world_campaign_tests ARGS --contract

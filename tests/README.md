@@ -19,11 +19,15 @@
 | `integration/` | 真实CLI、打包资源变异和长期世界包装器 | `e2e` |
 | `support/` | 断言/进程入口与当前世界夹具；旧切片夹具放`legacy/support/` | 不注册业务用例 |
 
-产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前89f157c冻结391项源/测试/数据；research在途成果不纳入本批。
+产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前e73bb31冻结404项源/测试/数据；research在途成果不纳入本批。
 
 ## 套件与独立进程
 
 `ark_world_campaign_tests`与`app/world_campaign_process.mjs`负责主动首星：P1建设营业、真实赠礼培养、任务胜利、活动、原四条件晋级、绘画展消费及继续营业；两进程在真实业务节点跨玩家档重启，策略证据用SHA绑定。它执行生产命令事务消费者，线程FIFO另由会话套件负责。原被动日期路线已替换，不再把日期推进称为完整经营。`--resume-prefix`只能复用已成功new阶段及哈希绑定的真实档案，保留原证据，不能继承失败续跑的世界进度。
+
+同一campaign目标接二星与魔法壶分段策略，不复制Owner更新/文件驱动。`--first-star-prefix`从真实首星档继续建设/入住/任务/二星/活动30；`--second-star-prefix`要求通过独立终态复核的二星档，再执行真实投入/自然处理/配方发现→第一栏保存→新进程炼制/使用伤药恢复HP→后续营业→第三进程冷文件复核。策略只持证据，所有款项、元素、库存、成长与日期经生产命令/消费者提交；严格区分条件夹具、真实业务前缀和旧数据身份。新e73bb31语义不复用旧空任务池档。
+
+runner记录实际EXE、冻结来源、公共库输入/产物身份，在阶段前和结束重新核验；前缀必须具备真实成功阶段及匹配的存档/策略/日志SHA。后续运行新建input副本，并复核原件和副本未变；失败或复用阶段不冒充完整原始二星证书。魔法壶阶段A明确禁止提前炼制/用药，只有冷载策略证据并验证实际Owner后才开放阶段B。
 
 `ark_world_economy_tests`与`app/world_economy_process.mjs`执行五组seed1三个月建设对照，最多两个内存世界进程并发，输出实际逐店/分类财务、价格缓存和最低现金，不写玩家档。主责为布局收益分析，不认证首星或全局最优。两个EXE的`--contract`进入默认CTest；耗时路线仅`ARK_LONG_WORLD_TESTS=ON`注册`player_active_first_star`/`player_construction_economy`，默认关闭。费用/随机/三个月冻结oracle不因这些产品策略而改变。
 

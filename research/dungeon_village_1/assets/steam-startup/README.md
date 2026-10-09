@@ -2,6 +2,8 @@
 
 2026-10-09。固定Steam研究副本的最小图块集合，供产品依据[MANIFEST.json](MANIFEST.json)复制实际文件到自身assets。运行不读取APK、Unity容器或research/work；本包不修改固定APK的761文件发布包。
 
+原始载荷由research Git属性标记`-text`，INF的CRLF也必须保留。首次归档后发现顶层自动换行会改写3个INF，已补独立Steam路径规则并按原字节重新登记；消费同时校验清单与Git制品，不能只验证现有工作区。
+
 清单38逻辑条目：25PNG、7SEB、6INF，总359,293字节。21项已与Steam条目逐字节核同，显式别名引用兄弟目录`../original`；17项差异文件置于本目录`original`，共304,770字节。`file`始终相对MANIFEST所在目录，`storage=alias`也必须核SHA后消费。按原语言路径保留独立条目，部分语言图相同hash是已核事实；每个副本均有对应逻辑条目和用途，未增加未登记文件。
 
 标题背景、Logo、草边与upper按[Steam标题绘制](../../ui/STEAM_TITLE_DRAW.md)；菜单和手动／中断两裁片按[Steam标题菜单](../../ui/STEAM_TITLE_MENU.md)。event与公共木框另供[纪录／91／17皮肤合同](../../ui/STARTUP_SKIN.md)对应消费者使用。清单`usages`登记这些正式合同中的用途，**同字节图块不把APK页面绘制提升为Steam页面代码已核**；具体坐标、遮挡、帧和调用资格按各合同的来源层级判断。

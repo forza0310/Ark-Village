@@ -4335,6 +4335,36 @@
       "bytes": 88
     },
     {
+      "file": "steam_title/title_grass.png",
+      "source": "research/dungeon_village_1/assets/steam-startup/original/title/title_grass.png",
+      "source_commit": "e73bb31dbb7556fa17e787fa9e76bede14becfe5",
+      "sha256": "3dbd4b5cba8f02c2be133babb330e34be7a5fe8c9a3b72e2cb0e6245abd76971",
+      "bytes": 3825,
+      "width": 240,
+      "height": 18,
+      "usage": "Steam???????????APK indexed title?????????????"
+    },
+    {
+      "file": "steam_title/title00.png",
+      "source": "research/dungeon_village_1/assets/steam-startup/original/title/title00.png",
+      "source_commit": "e73bb31dbb7556fa17e787fa9e76bede14becfe5",
+      "sha256": "ddc612e4229cf15cfee220430dce88850ca02df4e66908bae8d68c71b388e3f9",
+      "bytes": 207910,
+      "width": 600,
+      "height": 380,
+      "usage": "Steam???????????APK indexed title?????????????"
+    },
+    {
+      "file": "steam_title/upper.png",
+      "source": "research/dungeon_village_1/assets/steam-startup/original/title/upper.png",
+      "source_commit": "e73bb31dbb7556fa17e787fa9e76bede14becfe5",
+      "sha256": "1f311279fb86d248557e3752f1d4616384492ccde9a9c838f81a38935645a18c",
+      "bytes": 3883,
+      "width": 240,
+      "height": 9,
+      "usage": "Steam???????????APK indexed title?????????????"
+    },
+    {
       "file": "title/img.inf",
       "source": "research/dungeon_village_1/assets/original/title/img.inf",
       "sha256": "18a7b9d7743d87c37f8f06ca9eb9345743ca2827f632d59edde69342b75cca1f",

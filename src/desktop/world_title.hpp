@@ -17,7 +17,14 @@ struct WorldTitleSelection {
     std::string feedback;
 };
 struct WorldTitleLayout {
+    struct MenuRow {
+        Rectangle highlight, text;
+        Vector2 cursor;
+    };
+    Rectangle viewport;
     Rectangle background, logo, book, start, records, panel, back;
+    // Source touch regions are wider than their painted selection/text rectangles.
+    std::array<MenuRow, 2> menu_rows;
     std::array<Rectangle, 2> slots;
     std::array<Rectangle, 3> actions;
     std::array<Rectangle, 4> fields;

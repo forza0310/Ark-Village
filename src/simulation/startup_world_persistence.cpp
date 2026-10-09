@@ -26,7 +26,8 @@ using Bytes = std::vector<std::uint8_t>;
 namespace detail = persistence_detail;
 constexpr std::size_t file_budget = 128U * 1024U * 1024U;
 constexpr std::size_t controller_budget = 1024U * 1024U;
-constexpr std::uint32_t format_version = 1, state_semantics = 1;
+// 语义2补齐原标题初始化的任务池；旧空池世界不能作为当前自然路线前缀。
+constexpr std::uint32_t format_version = 1, state_semantics = 2;
 constexpr char magic[] = "AVRSAVE1";
 void need(bool condition, const char *message) {
     if (!condition)

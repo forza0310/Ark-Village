@@ -255,7 +255,9 @@ template <class Archive> void fields(Archive &io, WorldSaveMetadata &x) {
 } // namespace save_detail
 
 const char *world_save_dataset() {
-    return "e2e0d0d06765bea97f808cb8903637b4d209770aad404b47088985129df38884";
+    // e73bb31 fixes new-game task catalogs and shared construction rewards. Older
+    // player files retain the incorrect empty catalogs; reject rather than migrate them.
+    return "0dc64ab5626cfbea2f916e244c8127f5a7dbb4ba5c585d8c16edb079820abc9e";
 }
 
 WorldSaveCapture capture_world_save(const simulation::StartupWorldRuntimeState &state) {

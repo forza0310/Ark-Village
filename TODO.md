@@ -25,6 +25,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [x] [五组短收益对照与主动首星验收](docs/stages/ACTIVE_VILLAGE_PLAN.md)：真实建设营业、培养、7次任务胜利、9次活动、升星/绘画展及跨进程玩家存档通过；两个快速合同进入标准CTest。
 - [x] 3780a3b正式维护闭包已迁入：402项、7适配，含标题20槽、基础人物皮肤、商店窄投影及自然应用回放；桌面新局男女静态预览已窗口检查，完整标题宿主动效不在本批接线范围。
 - [x] 3780a3b本地验收：两Debug标准177/153项通过；主动二星真实建设/入住/16次任务胜利、晋级、付费活动30和后续营业、玩家跨进程恢复及终态复核通过，首次超时现场保留；CI待验证，见[B1](docs/stages/B1-playable-prototype.md#research-3780a3b-integration)。
+- [x] e73bb31正式闭包404项/7适配已迁入：新局任务目录与设施人气初值修正、收支只读查询、维护AVRSAVE语义2/AVRAPP语义4；Steam三张静态启动图已接。玩家schema4布局保持，更新数据身份拒绝旧档、不迁移。
+- [x] e73bb31本地验收：desktop-debug177项/headless-debug153项、当前语义自然首月三进程回放和4个Release窗口通过；CI待验证，见[B1](docs/stages/B1-playable-prototype.md#research-e73bb31-integration)。此前首星/二星/五方案结果仅属旧初始化语义，后续主动经营须重新取得本版真实新局前缀。
 - [ ] 建设/邻接变化后到达收费缓存与查询价不一致，已登记[最小维护请求](docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)；等待正式修正后复验受影响收益方案，不宣称当前装饰布局最优。
 - [ ] 主动经营后继：按已批准路线扩展魔法壶实际炼制、三至五星所需住宅/商店数量与任务成功、明确身份的BOSS、计分/继续/继承；已通过首星/二星不替代这些目标。
 
@@ -32,7 +34,7 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
 - [ ] 人物/怪物受击表现：879cb17已补Owner命中短轨迹及拒绝测试，本批随完整闭包迁入；仍不依据观感增设减速/硬直/击退，动态表现按[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
-- [ ] 情报/设置/标题余项/音频：后继2ea65e2已正式交付信息收支只读查询/皮肤检查及26个Ogg，尚未纳入本批冻结；信息raw9/36入口与音频操作类型/PC生命周期仍待闭合。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
+- [ ] 情报/设置/标题余项/音频：收支只读查询已迁入，raw9/36静态入口、返回、分页和模态合同已交付，维护页面消费者及桌面入口未接；37/38等仍缺部分定义投影/消费者。26个Ogg已有正式交付，typed音频输出仍在途；标题20槽宿主调度与完整动画未接。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
 - [ ] 跨周自动中断档：正式轮内恢复消费者交付后单独设计；保持当前玩家随机/暂停/格式政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## 产品工程

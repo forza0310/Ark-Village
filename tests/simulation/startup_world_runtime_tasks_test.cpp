@@ -29,6 +29,15 @@ void factory() {
               projection.generation_bounds == std::array<ref::Position, 2>{{{4, 21}, {19, 15}}} &&
               projection.task_sequence == 0 && projection.rank == 0,
           "source p.J flag16 and region/currentrank/sequence retain actual reset values");
+    // 独立原表oracle：c/n.d在标题初始化时填目录，新局reset不将其清空。
+    const std::vector<int> special{39, 47, 55, 63, 72, 80};
+    const std::vector<int> replay{35, 36, 37, 38, 42, 43, 44, 45, 46, 50,
+                                  51, 52, 53, 54, 58, 59, 60, 61, 62, 66,
+                                  67, 68, 69, 70, 71, 75, 76, 77, 78, 79};
+    check(s.task_special_selection_list == special && s.task_replay_order == replay &&
+              projection.special_selection == special && projection.replay_order == replay &&
+              projection.special_selection_mode == 0 && projection.special_selection_index == 0,
+          "real reset owner projects ordered six special and thirty replay definitions with zero mode/index");
     const auto created = ref::prepare_world_task_creation(projection, 0);
     check(created.candidate && created.candidate->created_task,
           "actual stage0 kind0 factory allocates task/site on real new map");
@@ -76,6 +85,58 @@ void factory() {
                   site &&
               later.candidate->state.finish.tasks.at(task).facility == site,
           "new factory after restored original site cannot alias retired summary/task identity");
+}
+void selection_catalogue_consumers() {
+    StartupSession initial;
+    StartupWorldRuntimeSession session(initial.state(), ref::WorldRandomStream::from_java_seed(3));
+    const auto &original = session.state();
+    auto s = original;
+    // 局部事件资格夹具；不用夹具重填目录，不宣称首次讨伐已自然完成。
+    s.scripts.event_calls[60] = 1;
+    const auto projection = startup_world_runtime_factory(s);
+    check(projection.monsters.at(0).replay_available &&
+              projection.monsters.at(1).replay_available &&
+              projection.monsters.at(2).replay_available &&
+              !projection.monsters.at(3).replay_available,
+          "source initial flags1 y values reach replay qualification independently of task history");
+    const auto replay = ref::prepare_world_task_creation(projection, 1);
+    check(replay.candidate && replay.candidate->created_task &&
+              replay.candidate->selected_definition &&
+              (*replay.candidate->selected_definition == 35 ||
+               *replay.candidate->selected_definition == 36 ||
+               *replay.candidate->selected_definition == 37) &&
+              replay.candidate->random_bounds.size() >= 2 &&
+              replay.candidate->random_bounds[0] == 100 && replay.candidate->random_bounds[1] == 3,
+          "seed3 replay ticket consumes actual reset catalogue and initial introduced monster pool");
+    auto committed = s;
+    check(write_startup_world_runtime_factory(committed, replay.candidate->state) &&
+              committed.tasks.at(*replay.candidate->created_task).definition ==
+                  *replay.candidate->selected_definition &&
+              committed.task_replay_order == original.task_replay_order &&
+              committed.task_special_selection_list == original.task_special_selection_list &&
+              original.tasks.empty() && original.scene.random.draws() == 0,
+          "replay writeback retains definition directories and publishes task/random only to candidate owner");
+    const auto ordinary = ref::prepare_world_task_creation(startup_world_runtime_factory(original), 1);
+    check(ordinary.candidate && ordinary.candidate->selected_definition &&
+              (*ordinary.candidate->selected_definition == 33 ||
+               *ordinary.candidate->selected_definition == 34),
+          "same replay ticket without event60 uses ordinary stage0 catalogue");
+    // 明确y边界夹具：开放p不作为本选择器的替代条件。
+    for (int id = 0; id < 3; ++id)
+        s.scene.world.world.ai.monster_growth.at(id).introduced = false;
+    s.scene.world.world.ai.monster_growth.at(3).introduced = true;
+    const auto discovered = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 1);
+    check(discovered.candidate && discovered.candidate->selected_definition == 38 &&
+              s.scene.world.world.ai.monster_growth.at(3).status == 0,
+          "current y projection selects rabbit definition38 without substituting monster open status");
+    // 原v==1未找到自然启用器；此处仅认证已保留模式的真实目录接线。
+    s = original;
+    s.task_special_selection = 1;
+    s.task_special_selection_index = 5;
+    const auto special = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 1);
+    check(special.candidate && special.candidate->selected_definition == 80 &&
+              !special.candidate->random_bounds.empty() && special.candidate->random_bounds.front() == 30,
+          "explicit special mode resolves original sixth boss without ordinary selection draw");
 }
 void crew_item_reward_writeback() {
     auto s = test_support::world_fixture();
@@ -726,6 +787,7 @@ void presentation_missing_binding() {
 int main() {
     try {
         factory();
+        selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();
         task_victory_requests();

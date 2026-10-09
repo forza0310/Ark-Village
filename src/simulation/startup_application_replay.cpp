@@ -297,7 +297,7 @@ Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &vali
     }
     sections.push_back({5,1,1,m.controller_state});
     for(const auto &e:m.extensions)sections.push_back({e.id,e.version,0,e.bytes});
-    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(3);file.u32(1);
+    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(4);file.u32(1);
     file.text(startup_world_persistence_dataset());file.text(detail::codec_schema_identity());
     file.text(application_schema);file.u32(static_cast<std::uint32_t>(sections.size()));
     for(const auto &section:sections) {
@@ -316,7 +316,7 @@ Candidate decode(Bytes file,StartupApplicationPaths paths,Mode expected,const st
     need(digest==ark::assets::sha256_hex(file),"容器整体摘要不符");
     Reader in{file};const auto signature=in.raw(8);
     need(std::string(signature.begin(),signature.end())=="AVRAPP01","容器标识不符");
-    need(in.u32()==1 && in.u32()==3 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
+    need(in.u32()==1 && in.u32()==4 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
     need(in.text()==startup_world_persistence_dataset(),"数据来源不匹配");
     need(in.text()==detail::codec_schema_identity(),"世界字段身份不匹配");
     need(in.text()==application_schema,"应用字段身份不匹配");

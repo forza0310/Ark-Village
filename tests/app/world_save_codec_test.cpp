@@ -92,7 +92,8 @@ void headers(const Bytes &valid, Header layout) {
     for (const std::string previous_dataset :
          {"f34787eabc2e6e1556fe971b57c4d6adbf2f35d79b2aa9c81e35cddbf8ec6b04",
           "a955854e17b1c57a0d067f0ef95c33164e09c305850995d27505adfc593f3609",
-          "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c"}) {
+          "92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c",
+          "e2e0d0d06765bea97f808cb8903637b4d209770aad404b47088985129df38884"}) {
         bytes = valid;
         check(read32(bytes, 12) == previous_dataset.size(),
               "previous frozen identity has fixed width");

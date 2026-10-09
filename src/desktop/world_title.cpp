@@ -1,5 +1,6 @@
-// S038–S040 and STEAM_INTERACTIONS establish title -> slots -> manual actions. Dimensions
-// adapt published APK artwork to PC windows; two Ark slots remain manual and deletion is disabled.
+// Steam's published static background/menu geometry is independent of APK indexed skins.
+// Logo language fallback and title animation remain unbound; the existing static logo and
+// two manual Ark slots keep their approved product mapping, with deletion disabled.
 #include "world_title.hpp"
 #include "resources.hpp"
 #include "ui/skin.hpp"
@@ -24,17 +25,28 @@ void label(const ui::Skin &skin, const std::string &text, Rectangle box, Color c
 void draw(const WorldTitleSelection &selection, const WorldTitleLayout &layout,
           const std::array<app::WorldSaveSlotInfo, 2> &slots, const ui::Skin &skin,
           const Camera2D &camera, const app::WorldSystemState &system) {
-    skin.sprites.image("title00.png", {0, 0, 240, 330}, layout.background, Sprites::Binding::title);
+    DrawRectangleRec(layout.viewport, {41, 198, 255, 255});
+    const auto background = [&](const char *name, Rectangle source, Rectangle destination) {
+        if (const auto blit = clip_sprite_blit({source, destination}, layout.viewport))
+            skin.sprites.image(name, blit->source, blit->destination,
+                               Sprites::Binding::steam_title);
+    };
+    background("title00.png", {0, 0, 600, 380}, layout.background);
+    for (float x = 0; x < layout.viewport.width; x += 240)
+        background("upper.png", {0, 0, 240, 9}, {x, 0, 240, 9});
+    for (float x = 0; x < layout.viewport.width; x += 240)
+        background("title_grass.png", {0, 0, 240, 18}, {x, layout.viewport.height - 31, 240, 18});
+    // Keep the existing product logo until the Steam Chinese resource choice is evidenced.
     skin.sprites.image("title_logo.png", {0, 0, 236, 115}, layout.logo, Sprites::Binding::title);
     if (selection.page == WorldTitlePage::title) {
         skin.sprites.image("title_window.png", {0, 0, 98, 68}, layout.book,
                            Sprites::Binding::title);
-        const auto chosen = selection.title_selection == 0 ? layout.start : layout.records;
-        DrawRectangleRec(chosen, {255, 155, 100, 255});
+        const auto &chosen = layout.menu_rows[selection.title_selection];
+        DrawRectangleRec(chosen.highlight, {255, 150, 107, 255});
         skin.sprites.indexed_image(Sprites::Binding::title, 3, {0, 0, 28, 23},
-                                   {chosen.x - 20, chosen.y, 28, 23});
-        label(skin, "开始游戏", layout.start);
-        label(skin, "纪录", layout.records);
+                                   {chosen.cursor.x, chosen.cursor.y, 28, 23});
+        label(skin, "开始游戏", layout.menu_rows[0].text, {96, 87, 0, 255});
+        label(skin, "纪录", layout.menu_rows[1].text, {96, 87, 0, 255});
         return;
     }
     if (selection.page == WorldTitlePage::records) {
@@ -130,15 +142,21 @@ WorldTitleLayout world_title_layout(Extent extent) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Title requires supported viewport");
     const float w = extent.width, h = extent.height;
-    const float background_scale = std::max(w / 240, h / 330);
     const float logo_width = std::min({w - 24, 320.F, h * .48F * 236 / 115});
+    const float title_origin = (extent.width - 240) / 2;
     WorldTitleLayout out;
-    out.background = {(w - 240 * background_scale) / 2, h - 330 * background_scale,
-                      240 * background_scale, 330 * background_scale};
+    out.viewport = {0, 0, w, h};
+    out.background = {title_origin - 180, h - 380, 600, 380};
     out.logo = {(w - logo_width) / 2, 12, logo_width, logo_width * 115 / 236};
-    out.book = {w / 2, h - 94, 112, 78};
-    out.start = {out.book.x + 13, out.book.y + 15, 86, 21};
-    out.records = {out.book.x + 13, out.book.y + 42, 86, 21};
+    out.book = {title_origin + 137, h - 72, 98, 68};
+    for (int row = 0; row < 2; ++row) {
+        const float y = h - 60 + 22 * row;
+        out.menu_rows[row] = {{title_origin + 152, y, 73, 16},
+                              {title_origin + 157, y, 63, 16},
+                              {title_origin + 127, y - 13}};
+    }
+    out.start = {title_origin + 138, h - 63, 100, 22};
+    out.records = {title_origin + 138, h - 41, 100, 22};
     out.panel = {(w - 222) / 2, (h - 190) / 2, 222, 190};
     for (int n = 0; n < 2; ++n)
         out.slots[n] = {out.panel.x + 10, out.panel.y + 30 + n * 73, 202, 66};

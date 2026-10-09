@@ -10,9 +10,11 @@ test-only source-justified fixture corrections add the `test_fixture_patch` fina
 the manifest retains the original translated fingerprint and source pin alongside the reason.
 Re-import preserves an unchanged recorded patch, and refuses an implicit rebase to new research.
 
-当前冻结研究`3780a3b`中的维护闭包，共402项源/测试/数据、7项产品适配；`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物、cd13属性头标、设施类别/效果与普通道具图标及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema4包含配方耐久进度及定义0主角资料，清理页面/评语等瞬态，静态设施icon加载时纯重建。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
+当前冻结研究`e73bb31`中的维护闭包，共404项源/测试/数据、7项产品适配；构造唯一Owner时一次安装原序六特殊/三十复发任务目录，生成器按实际reset输出设施共享人气20/30。`startup_world_facility_catalog`维护商品79、信息72、口碑82的真实页载荷与动作，最终人气请求交共同世界后续消费。`startup_world_magic_pot`维护41–47、40条配方与村办5/6链；`startup_world_visuals`只读映射购买后举物、cd13属性头标、设施类别/效果与普通道具图标及建筑队首升降，不推进计数或装配。维护codec保存完整Owner；玩家两栏schema4包含配方耐久进度及定义0主角资料，清理页面/评语等瞬态，静态设施icon加载时纯重建。本批玩家布局不变、数据身份更新，拒绝旧初始化身份档且不迁移。回放runner及既有产品适配保留。此前村办0–3、raw95、普通道具、商会、地图编辑、人物经营与住宅税收均沿既有唯一Owner；转职55/197、赠礼子页答案/父页恢复、最大HP不回血和库存双向同步保持源契约。
 
-`startup_title_presentation`维护标题20槽表现Owner，`startup_title_actor_skin`生成基础人物只读皮肤计划；完整应用动作/标题控制器仍由独立维护应用目标编排，AVRAPP01为语义3。自然应用回放用于维护输入与恢复对照，不能替代产品主动经营及玩家schema4冷载验收。桌面目前只消费配置草稿的静态人物预览，没有以绘制FPS驱动标题控制器。商店维护同步采用本批发布的窄投影，不据此认为建设邻接后的到达收费缓存已修复。
+`startup_title_presentation`维护标题20槽表现Owner，`startup_title_actor_skin`生成基础人物只读皮肤计划；完整应用动作/标题控制器仍由独立维护应用目标编排，AVRAPP01应用语义4、AVRSAVE1状态语义2，旧语义拒绝。自然应用回放用于维护输入与恢复对照，不能替代产品主动经营及玩家schema4冷载验收；旧首星/二星前缀不能穿过本次初始化语义边界。桌面目前只消费配置草稿的静态人物预览，没有以绘制FPS驱动标题控制器。商店窄投影不代表建设邻接后的到达收费缓存已修复。
+
+`startup_information`直接查询Owner的12×5×2现金桶，返回原序五类别月/年收支及利润，显式复刻32位回卷和金额格式，不改变Owner。raw9/36的页面控制器、输入、模态与退休消费者尚未迁入，桌面信息入口仍禁用；此查询不承担自动月报消费。
 
 月报继续使用源自动70/70阶段、关闭后点数一次消费；桌面已撤销旧手动冻结政策。日历、人物、施工和随机是否更新依原场景/框架资格，显式暂停仍保留；绘制不推进报告或日期。日期周内比例仅来自已证`units/10800`，原版视觉几何不属于规则层。
 

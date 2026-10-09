@@ -4,7 +4,7 @@
 
 默认先显示标题，可新建或继续已有手动档；进入后运行持续世界：地图、设施、人物/怪物、资金、任务、日期和页面由同一Owner持有。已接建设/道路/移动/撤除、人物经营、任务与授勋、晋级/扩张、村办0–3及5/6、商会/魔法壶/普通道具，以及两栏手动存读档。情报菜单、部分经营入口和完整动画仍待接。
 
-规则/运行时冻结至 **3780a3b维护闭包，共402项来源记录、7项产品适配**，保留商品79/72、设施口碑82、魔法壶41–47与村办5/6、购买后举物与建筑升降提示。已迁入标题20槽维护控制器、基础人物皮肤、商店窄投影与自然应用回放；桌面新局仅接真实定义0职业/主武器和草稿性别的静态预览，完整标题宿主动效仍待接线。玩家使用ARKSAVE1/schema4，随机和页面政策不变；完整AVRSAVE1及AVRAPP01语义3仅用于维护与精确回放，独立system.arksys保存跨局纪录及继承。当前验证与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-3780a3b-integration)。
+规则/运行时冻结至 **e73bb31维护闭包，共404项来源记录、7项产品适配**。本批修正新局六特殊/三十复发任务目录及设施共享人气20/30，接入收支只读查询和Steam静态标题背景、顶部、草边；信息菜单入口与完整标题宿主动效仍未开放。玩家ARKSAVE1/schema4布局、随机和页面政策保持，但数据身份更新，旧数据身份档明确拒绝、不迁移。完整AVRSAVE1状态语义2及AVRAPP01应用语义4仅用于维护与精确回放，独立system.arksys保存跨局纪录及继承。旧首星/二星与收益对照保留历史证据，不能续作本版自然路线前缀。当前验证与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-e73bb31-integration)。
 
 [文档分类索引](docs/README.md) · [当前待办](TODO.md) · [架构](docs/ARCHITECTURE.md) · [研究/产品差距](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [历史验收](docs/stages/history/B1-implementation-log.md)
 

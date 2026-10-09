@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_skin.hpp"
+#include "ark/simulation/startup_information.hpp"
 #include "ark/simulation/startup_title_actor_skin.hpp"
 #include "ark/assets/sha256.hpp"
 #include "ark/assets/sprite.hpp"
@@ -36,6 +37,54 @@ struct Checks {
             throw std::runtime_error("启动皮肤：" + message);
     }
 };
+void income_information(Checks &check) {
+    // 条件夹具只检验raw36统计口径，不声称这些现金桶由自然经营获得。
+    StartupInformationCash buckets{};
+    buckets[2] = {{{1200,250},{9,50},{0,15},{1800,2000},{7,800}}};
+    buckets[11] = {{{50,9},{5,6},{700,60},{10,90},{11,12}}};
+    const auto before = buckets;
+    const auto month = startup_income_information(buckets,2,0);
+    const auto year = startup_income_information(buckets,2,1);
+    check(month && year,"收支月页和年页接受Owner形状的只读桶");
+    constexpr std::array<std::string_view,5> labels{{"设施","怪物","冒险者","商店","其它"}};
+    constexpr std::array<std::array<int,2>,5> monthly{{{1200,250},{9,50},{0,15},{1800,2000},{7,800}}};
+    constexpr std::array<std::array<int,2>,5> yearly{{{1250,259},{14,56},{700,75},{1810,2090},{18,812}}};
+    for(std::size_t row=0;row<5;++row) {
+        check(month->rows[row].label==labels[row] && year->rows[row].label==labels[row],
+              "五类按原标签序，商店和其它不能借前三类月报省略");
+        check(month->rows[row].income==monthly[row][0] && month->rows[row].expense==monthly[row][1],
+              "月页仅当前月收入与支出，不混前月或净额");
+        check(year->rows[row].income==yearly[row][0] && year->rows[row].expense==yearly[row][1],
+              "年页读取全部12桶，不能只累加到当前月份");
+    }
+    check(month->profit==-99 && month->profit_text=="-99Ｇ" && year->profit==500 && year->profit_text=="500Ｇ",
+          "利润独立oracle包含全部五类，负号与全角单位保留");
+    check(month->rows[0].income_text=="1,200Ｇ" && month->rows[3].expense_text=="2,000Ｇ" &&
+          month->rows[2].income_text=="0Ｇ","收入支出均千位分组，零金额仍显示数字");
+    const auto empty = startup_income_information(buckets,0,0);
+    check(empty && empty->profit==0 && empty->rows[0].income_text=="0Ｇ","未记账月按原桶显示零");
+    for(const auto input:std::array<std::array<int,2>,6>{{{-1,0},{12,0},{-1,1},{12,1},{2,-1},{2,2}}})
+        check(!startup_income_information(buckets,input[0],input[1]),"坏月份或页签显式拒绝，年页也校验月份");
+    check(buckets==before,"查询与拒绝都不修改原120个桶，无副本回写");
+    // 独立32位边界oracle；不调用实现的回卷/格式帮助函数生成期望。
+    StartupInformationCash overflow{};
+    overflow[0][0][0]=2147483647;
+    overflow[11][0][0]=1;
+    auto result = startup_income_information(overflow,0,1);
+    check(result && result->rows[0].income==(-2147483647-1) && result->profit==(-2147483647-1) &&
+          result->rows[0].income_text=="-2,147,483,648Ｇ" && result->profit_text=="-2,147,483,648Ｇ",
+          "年度int回卷后安全扩到long显示，最小负值无C++取负溢出");
+    overflow[0][1][1]=1;
+    result=startup_income_information(overflow,0,1);
+    check(result && result->profit==2147483647 && result->profit_text=="2,147,483,647Ｇ",
+          "利润减支出亦按Java int回卷，不提升为64位年度业务合计");
+    overflow[0][0][0]=0;
+    overflow[11][0][0]=0;
+    overflow[0][1][1]=(-2147483647-1);
+    result=startup_income_information(overflow,0,0);
+    check(result && result->rows[1].expense_text=="-2,147,483,648Ｇ" && result->profit==(-2147483647-1),
+          "负桶边界只用于显示语义测试，不放宽世界业务写入校验");
+}
 // CPU图像持有者只负责本批分配，失败也释放，不创建窗口／纹理或保留静态缓存。
 struct CpuImage {
     Image image{};
@@ -570,6 +619,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     const auto assets=tables(source_root,check);
     phases(check);
     frame_geometry(check);
+    income_information(check);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

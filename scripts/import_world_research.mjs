@@ -21,7 +21,8 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_runtime_task_pages', 'startup_world_runtime_deadline',
   'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals',
   'startup_world_persistence', 'startup_application', 'startup_system_records', 'startup_skin',
-  'startup_application_actions', 'startup_application_title', 'startup_title_actor_skin'];
+  'startup_application_actions', 'startup_application_title', 'startup_title_actor_skin',
+  'startup_information'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',

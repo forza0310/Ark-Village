@@ -89,6 +89,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/loop_pacing.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_information.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_title_actor_skin.cpp"

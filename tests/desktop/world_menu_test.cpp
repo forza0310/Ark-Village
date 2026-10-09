@@ -6,6 +6,7 @@
 #include "world_save_menu.hpp"
 #include "world_title.hpp"
 #include <chrono>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 
@@ -17,13 +18,43 @@ void world_menu() {
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
     // Title/slot navigation shares this menu suite. Rule and codec combinations remain in
     // world_save; this verifies the new cold-entry boundary and its actual file re-read.
-    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+    for (const auto extent :
+         {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{541, 361}}) {
         using Page = desktop::WorldTitlePage;
         using Action = desktop::WorldTitleAction;
         auto boxes = desktop::world_title_layout(extent);
         desktop::WorldTitleSelection selection;
         std::array<app::WorldSaveSlotInfo, 2> slots{};
         desktop::WorldTitleInput input;
+        check(boxes.background.width == 600 && boxes.background.height == 380 &&
+                  boxes.background.y + boxes.background.height == extent.height &&
+                  boxes.background.x == (extent.width - 240) / 2 - 180 && boxes.book.width == 98 &&
+                  boxes.book.height == 68,
+              "Steam background stays native size and bottom anchored, including odd viewports");
+        const auto cropped =
+            desktop::clip_sprite_blit({{0, 0, 600, 380}, boxes.background}, boxes.viewport);
+        check(cropped && cropped->destination.x == 0 && cropped->destination.y == 0 &&
+                  cropped->destination.width == extent.width &&
+                  cropped->destination.height == extent.height &&
+                  std::abs(cropped->source.x + boxes.background.x) < .001F &&
+                  std::abs(cropped->source.y + boxes.background.y) < .001F &&
+                  std::abs(cropped->source.width - cropped->destination.width) < .001F &&
+                  std::abs(cropped->source.height - cropped->destination.height) < .001F,
+              "Small title viewport clips source pixels without stretching the background");
+        {
+            desktop::WorldTitleSelection edge_selection;
+            desktop::WorldTitleInput edge_input;
+            edge_input.click = Vector2{boxes.start.x + 1, boxes.start.y + 1};
+            check(!CheckCollisionPointRec(*edge_input.click, boxes.menu_rows[0].highlight) &&
+                      !desktop::world_title_input(edge_selection, boxes, slots, edge_input) &&
+                      edge_selection.page == Page::slots,
+                  "Title row touch margin activates outside the narrower painted highlight");
+            edge_selection = {};
+            edge_input.click = Vector2{boxes.start.x - 1, boxes.start.y + 1};
+            check(!desktop::world_title_input(edge_selection, boxes, slots, edge_input) &&
+                      edge_selection.page == Page::title,
+                  "A click outside the source title touch region leaves navigation unchanged");
+        }
         input.click = middle(boxes.records);
         check(!desktop::world_title_input(selection, boxes, slots, input) &&
                   selection.page == Page::records,

@@ -32,6 +32,8 @@ class Sprites {
         human,
         monster,
         title,
+        // Explicit Steam background PNGs; APK indexed title skins keep their own binding.
+        steam_title,
         event,
         weapon
     };

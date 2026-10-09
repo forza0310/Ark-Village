@@ -8,9 +8,9 @@
 
 ## 研究历史与当前接入候选（2026-10-09）
 
-当前冻结**3780a3b完整402项维护闭包、7项产品适配**：公共窗框沿用89f157c；新增标题20槽维护控制器、基础人物皮肤、商店窄投影与自然应用回放，AVRAPP01为语义3。玩家schema4和既有系统事务保持。桌面新局已接定义0职业/主武器及草稿性别的静态预览；正常标题的宿主更新/随机交接和纪录人物名单仍未接，不能按绘制FPS驱动维护控制器。当前结果见[B1](../stages/B1-playable-prototype.md#research-3780a3b-integration)。
+当前冻结**e73bb31完整404项维护闭包、7项产品适配**：新局原序六特殊/三十复发目录、设施共享人气20/30已修正，收支只读查询已接。AVRSAVE1状态语义2/AVRAPP01应用语义4拒绝旧维护档；玩家schema4布局保持，但数据身份更新并拒绝旧身份档，不迁移。公共窗框、标题20槽维护控制器、基础人物皮肤与商店窄投影沿前批；桌面新增Steam三张静态背景/顶部/草边，保留定义0草稿预览、原Logo及两手动槽。正常标题宿主更新/随机交接和纪录人物名单仍未接。当前验证见[B1](../stages/B1-playable-prototype.md#research-e73bb31-integration)。
 
-主动首星已通过真实建设营业、培养、7次任务成功、9次活动、升星/绘画展及玩家存档冷载；五组收益对照已完成，但暴露[到达收费缓存缺口](RESEARCH_REQUESTS.md#facility-arrival-price-cache)，不认证最优布局。二星接续另行验证，最终计分/继续/继承、五星及BOSS整链仍未认证。后继2ea65e2已正式交付信息收支只读查询/皮肤检查及26个Ogg，尚未纳入本批冻结；入口控制器与音频操作/生命周期分别按[最小剩余缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)处理，不把部分交付继续登记为全部缺失。
+此前主动首星与3780a3b二星经营/活动30/玩家重启已通过，五组收益对照也已完成；这些使用旧初始化语义，只保留历史证据，不能续作本版后期路线前缀。[到达收费缓存缺口](RESEARCH_REQUESTS.md#facility-arrival-price-cache)仍未修，不认证最优布局。最终计分/继续/继承、五星及BOSS整链仍未认证。收支只读查询已迁入，但raw9/36维护页面入口未接；26个Ogg正式素材已有，typed音频消费者仍在途。具体按[最小剩余缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)处理。
 
 2026-10-09上批冻结**72a5bf4**完整363项闭包：设施类别/效果/逐来源加成、普通道具图标、人物cd13已接线；受击Owner轨迹作为配套回归迁入，验收见[B1](../stages/B1-playable-prototype.md#research-72a5bf4-integration)。本批已迁入4ef4a98完整379项，包含9ec4c1a主角/纪录及启动皮肤桥，本地验收通过；玩家schema4新增主角资料，随机/暂停政策不变，见[B1](../stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 
@@ -53,7 +53,7 @@ S067/S068本批接入五行授勋候选的当前职业头像、名称/贡献/勤
 
 ### 候选接续状态与接入门槛
 
-标题接续：用户要求后按S038–S040及STEAM_INTERACTIONS接标题→两个现有手动栏位→继续/新游戏，见[标题批次](../stages/B1-playable-prototype.md#title-start-flow)。标题背景/Logo/书本消费归档APK PNG，PC横屏布局为适配；本批4ef4a98另接两页纪录、主角配置及系统计分；删除/设置、自动档和完整背景动画仍未接。继续复用ARKSAVE1，不接Steam服务；下方旧“标题待接”仅指完整功能/皮肤余项。
+标题接续：用户要求后按S038–S040及STEAM_INTERACTIONS接标题→两个现有手动栏位→继续/新游戏，见[标题批次](../stages/B1-playable-prototype.md#title-start-flow)。e73bb31已换用正式Steam静态背景/顶部/草边，Logo和书本仍消费原归档素材，PC布局为适配；4ef4a98已接两页纪录、主角配置及系统计分。删除/设置、自动档和完整背景动画仍未接；继续复用ARKSAVE1，不接Steam服务。下方旧“标题待接”仅指完整功能/皮肤余项。
 
 S057版式补正：上一批只接分类文案/顺序，未接整页外观；用户指出后已[独立纠正](../stages/B1-playable-prototype.md#s057-catalogue-correction)为窄五行、顶部分类/名称橙底/手形/滚动条与屏幕右下圆角返回，去掉木纹标题和页内建设方框。NEW源资格和精确原Surface矩阵仍未认证，真实新局不提前解锁交换位置。
 

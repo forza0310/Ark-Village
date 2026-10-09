@@ -75,7 +75,7 @@ const nested=Object.entries(nestedPolicies).map(([name,policies])=>{
   if(fields.length!==Object.keys(policies).length)throw Error('标题嵌套字段移除/重命名，需重审分类：'+name);
   return {name,fields};
 });
-const manifest={format:'AVRAPP01',semantics:3,boundary:'complete-outer-round-v1',fields,nested};
+const manifest={format:'AVRAPP01',semantics:4,boundary:'complete-outer-round-v1',fields,nested};
 const canonical=JSON.stringify(manifest,null,2)+'\n';
 const schema=crypto.createHash('sha256').update(canonical).digest('hex');
 const inc='// 应用字段分类生成身份；不覆盖独立world schema。\nconstexpr const char application_schema[] = "'+schema+'";\n';

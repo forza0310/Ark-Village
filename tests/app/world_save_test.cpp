@@ -59,6 +59,14 @@ void codec_and_policy() {
           "Load keeps current process stream rather than the save-time stream");
     check(decoded.state->scene.world.world.ai.accounting.entries().empty(),
           "Restoration does not replay audit charges");
+    check(state.task_special_selection_list.size() == 6 && state.task_replay_order.size() == 30 &&
+              decoded.state->task_special_selection_list == state.task_special_selection_list &&
+              decoded.state->task_replay_order == state.task_replay_order,
+          "Player cold load preserves both published initial task catalogs and their order");
+    for (const auto &[id, definition] : state.facility_definitions)
+        check(decoded.state->facility_definitions.at(id).popularity_reward ==
+                  definition.popularity_reward,
+              "Player cold load preserves each shared construction popularity balance");
     auto recaptured = app::capture_world_save(*decoded.state);
     check(recaptured.image && recaptured.image->bytes == captured.image->bytes,
           "Durable fields round-trip exactly after pure restoration");
@@ -113,6 +121,22 @@ void profile_roundtrip() {
     check(app::prepare_world_save_candidate(*loaded.state, state, reason) !=
               app::WorldSaveError::none,
           "Mismatched durable script name cannot silently repair a bad save");
+}
+void construction_progress_roundtrip() {
+    auto state = initial();
+    // Persistence fixture: a shared reward already consumed by construction must not be
+    // replaced by the corrected new-game default when the saved world is restored.
+    state.facility_definitions.at(0).popularity_reward = 7;
+    const auto saved = app::capture_world_save(state);
+    check(saved.image.has_value(), saved.message.c_str());
+    auto loaded = app::decode_world_save(saved.image->bytes);
+    check(loaded.state.has_value(), loaded.message.c_str());
+    std::string reason;
+    const auto current = initial();
+    check(app::prepare_world_save_candidate(*loaded.state, current, reason) ==
+                  app::WorldSaveError::none &&
+              loaded.state->facility_definitions.at(0).popularity_reward == 7,
+          "Cold load retains consumed construction reward instead of rebuilding its initial N");
 }
 void corrupt_files() {
     auto captured = app::capture_world_save(initial());
@@ -194,6 +218,7 @@ void slots_and_failure() {
 int main() {
     codec_and_policy();
     profile_roundtrip();
+    construction_progress_roundtrip();
     corrupt_files();
     slots_and_failure();
     run_restore_tests();

@@ -343,13 +343,14 @@ void Sprites::image(const std::string &name, Rectangle source, Rectangle destina
                     Binding binding, Color tint) {
     if (std::filesystem::path(name).has_parent_path())
         throw std::runtime_error("Unsafe image path");
-    const char *group = binding == Binding::common2  ? "common2"
-                        : binding == Binding::window ? "ui"
-                        : binding == Binding::title  ? "title"
-                        : binding == Binding::event  ? "event"
-                        : binding == Binding::map    ? "image"
-                        : binding == Binding::weapon ? "weapon"
-                                                     : "common";
+    const char *group = binding == Binding::common2       ? "common2"
+                        : binding == Binding::window      ? "ui"
+                        : binding == Binding::title       ? "title"
+                        : binding == Binding::steam_title ? "steam_title"
+                        : binding == Binding::event       ? "event"
+                        : binding == Binding::map         ? "image"
+                        : binding == Binding::weapon      ? "weapon"
+                                                          : "common";
     const auto &value = texture(root_ / group / name);
     if (source.x < 0 || source.y < 0 || source.width <= 0 || source.height <= 0 ||
         source.x + source.width > value.width || source.y + source.height > value.height)
@@ -474,6 +475,16 @@ void Text::paragraph(const std::string &value, float x, float y, float width) co
     draw(line, x, y);
 }
 void check_assets(const std::filesystem::path &root) {
+    for (const auto &[name, width, height] :
+         {std::tuple{"title00.png", 600, 380}, std::tuple{"upper.png", 240, 9},
+          std::tuple{"title_grass.png", 240, 18}}) {
+        auto image = LoadImage((root / "steam_title" / name).string().c_str());
+        const bool valid = image.data && image.width == width && image.height == height;
+        if (image.data)
+            UnloadImage(image);
+        if (!valid)
+            throw std::runtime_error("Missing or invalid Steam title image: " + std::string(name));
+    }
     for (const auto &[name, width, height] :
          {std::tuple{"title00.png", 240, 330}, std::tuple{"title_logo.png", 236, 115},
           std::tuple{"title_window.png", 98, 68}}) {

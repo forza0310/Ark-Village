@@ -103,7 +103,7 @@ function replayIdentity(bytes) {
     });
     const input = reader(bytes.subarray(0, -64));
     if (input.raw(8).toString('ascii') !== 'AVRSAVE1' || input.u32() !== 1 ||
-        input.u32() !== 1 || input.u32() !== 2) throw new Error('源不是本版replay文件');
+        input.u32() !== 2 || input.u32() !== 2) throw new Error('源不是本版replay文件');
     const dataset = input.text(), schema = input.text(), count = input.u32(), sections = new Map();
     if (count < 2 || count > 64) throw new Error('源分区数非法');
     for (let n = 0; n < count; ++n) {

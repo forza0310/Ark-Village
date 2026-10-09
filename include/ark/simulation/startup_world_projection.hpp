@@ -88,7 +88,7 @@ struct StartupWorldTask {
 struct StartupWorldFacilityInitial {
     std::uint32_t flags{};
     int status{};
-    int shared_n{};           // 原新对象N=0；存档读取不能与原表字段混合。
+    int shared_n{};           // 原reset的o.g：kind2为30，其余20；读档仍恢复保存的当前N。
     int construction_limit{}; // 原o.o bit64分支：定义24为1，其余280，否则0。
     int capacity{};           // 原o.s，第12列，同时为85的村子点报价，另于施工m.x。
     bool pending_notice{};    // 原a()后r：bit2。

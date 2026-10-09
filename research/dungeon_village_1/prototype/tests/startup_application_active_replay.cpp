@@ -48,8 +48,15 @@ void u64(Bytes &bytes, std::uint64_t n) {
     for (int i = 0; i < 8; ++i) bytes.push_back(static_cast<std::uint8_t>(n >> (8 * i)));
 }
 Bytes read_file(const fs::path &path) {
+    require(fs::is_regular_file(fs::symlink_status(path)), "existing evidence must be regular file");
+    const auto size = fs::file_size(path);
+    require(size > 0 && size <= 128U * 1024U * 1024U, "existing evidence 128MiB read budget");
     std::ifstream in(path, std::ios::binary); require(bool(in), "cannot read existing file");
-    return {std::istreambuf_iterator<char>(in), {}};
+    Bytes bytes(static_cast<std::size_t>(size));
+    in.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(size));
+    require(in.gcount() == static_cast<std::streamsize>(size) && in.peek() == std::char_traits<char>::eof(),
+            "existing evidence changed size while reading");
+    return bytes;
 }
 std::string hex(const Bytes &bytes) {
     constexpr char digits[] = "0123456789abcdef";
@@ -573,6 +580,64 @@ std::uint64_t option_number(const std::map<std::string, std::string> &options, c
     require(used == found->second.size() && value <= frame_limit, "number bound " + key); return value;
 }
 } // namespace
+
+namespace active_replay_support {
+Terminal prepare_v1_terminal(const fs::path &source, const fs::path &live, const fs::path &unused,
+                            const std::vector<fs::path> &protected_paths) {
+    require(dungeon_village_tools::sha256_hex(read_file(source)) ==
+                "16a1b8c48993a96c536e4fc5868c7408355776c3b4631145047a2b4706c8062b",
+            "handoff fixed v1 snapshot identity");
+    require(fs::create_directory(unused), "exclusive handoff unused directory");
+    Terminal out;
+    out.application = std::make_unique<Application>(StartupApplicationPaths{unused}, ref::WorldRandomStream::from_java_seed(1));
+    good(out.application->error());
+    good(restore_startup_application_replay(source, live, controller, *out.application, out.metadata, ::validate, protected_paths));
+    auto driver = decode(out.metadata.controller_state);
+    require(driver.next_frame == 34402 && !driver.terminal && driver.producer_revision == "11818a9-income-gate",
+            "handoff fixed captured boundary");
+    // 整个应用仅由本局部对象持有；任意短尾失败不会交回半推进对象。
+    while (driver.next_frame <= 34429) (void)step(*out.application, driver);
+    out.metadata = metadata(driver);
+    good(validate_v1_origin(out.metadata));
+    require(startup_application_replay_digest(*out.application, out.metadata, ::validate) ==
+                "2ee7ad91c02e2d701fa3ac3b9578930b3c9b9b348c4099621e10958e74f0524b",
+            "handoff certified terminal digest");
+    out.next_task_month = driver.next_task_month;
+    out.sound_count = driver.sound_count; out.sound_hash = driver.sound_hash;
+    return out;
+}
+std::string validate_v1(const Application &app, const Metadata &m) { return ::validate(app, m); }
+std::string validate_v1_origin(const Metadata &m) {
+    try {
+        // frame34429真实probe规范635字节的独立SHA；固定全部旧策略字段，非只核观测子集。
+        require(m.controller_state.size() == 635 && dungeon_village_tools::sha256_hex(m.controller_state) ==
+                    "a76854cfd6a0ad2349648ac89da42b783a3972e7fb1980b1a0be564e0794f0d6",
+                "handoff full v1 terminal driver identity");
+        const auto d = decode(m.controller_state);
+        require(m.controller_id == controller && m.extensions.empty() &&
+                    m.producer_revision == "11818a9-income-gate" && m.producer_revision == d.producer_revision &&
+                    m.next_frame == d.next_frame && m.next_command == d.next_command &&
+                    d.terminal && d.next_frame == 34430 && d.next_command == 881 && d.random == 301077 &&
+                    d.sound_count == 334 && d.date == std::array<std::uint64_t, 4>{1, 10, 0, 297},
+                "handoff canonical v1 terminal metadata");
+        return {};
+    } catch (const std::exception &e) { return e.what(); }
+}
+int check_v1_origin_binding(const Metadata &m) {
+    good(validate_v1_origin(m));
+    auto old = decode(m.controller_state);
+    ++old.next_task_month; // 22→23仍满足v1规范范围，terminal的观测子集无法检出此改动。
+    Metadata changed = m; changed.controller_state = encode(old);
+    (void)decode(changed.controller_state);
+    require(!validate_v1_origin(changed).empty(), "canonical changed origin cooldown accepted");
+    return 1;
+}
+const ref::WorldScriptPage *top(const Application &app) { return ::top(app); }
+std::array<std::uint64_t, 4> date(const Application &app) { return ::date(app); }
+std::array<std::uint64_t, 12> resources(const Application &app) { return ::resources(app); }
+std::string progress_json(const Application &app) { return ::progress_json(app); }
+bool references(const StartupWorldRuntimeState &s) { return ::references(s); }
+} // namespace active_replay_support
 
 int run_startup_application_active_replay_cli(int argc, const char **argv) {
     require(argc > 1 && std::string(argv[1]) == controller, "CLI identity");

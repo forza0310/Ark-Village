@@ -29,3 +29,25 @@ node research/dungeon_village_1/prototype/tests/application_active_process.mjs -
 两入口共用认证文件发布辅助：先独占创建快照，再独占创建证书，**双文件不是原子发布**。第二次创建或写入失败时，仅回收本轮创建、文件身份与实际字节仍匹配的文件；既有证书、源前缀与外部改动不删除。回收失败报告明确残留，不宣称发布成功。进程崩溃仍可能留未认证候选；缺失或不匹配证书的前缀不具备恢复认证资格。
 
 既有`replay_file_test.mjs`的可选`--active-application-exe`挂接同一420／440认证，不新建target或CTest。本页是机制说明，实际构建、进程结果与资源规模以当批交付记录为准。
+
+## 首星到二星策略的有限交接
+
+`application_second_star_process.mjs`对应[交接设计第1批](../../work/active-controller-handoff/README.md)。它不替换容器中的controller字符串，也不将旧世界重新激活为新应用；C++私有恢复先按v1原样完成已核的34402–34429共28轮，再在相同旧metadata下比较交接前后完整摘要及隔离文件清单，构造独立`application-active-progression-v2`／`AVACTDR2`。应用7、世界4、系统2及128MiB限制保持。v2命令及输出计数从自身起点开始，完整旧Driver和334条旧音频的身份仍在origin中。
+
+首次只接受明确的`--handoff-prefix`：已核`frame34401.avra`及相邻证书，producer为`11818a9-income-gate`，快照SHA-256为`16a1b8c48993a96c536e4fc5868c7408355776c3b4631145047a2b4706c8062b`，证书SHA-256为`8484c8cac5578c431dfd307903d7659b24296741eeace84cd875ab176c3332e3`。必须证明34429的当月实际设施收入400G，不能接纳原34419当月收入为0的旧terminal。脚本沿显式证书引用检查最多32层来源，核实际文件／分区摘要、世界4／系统2、捕获轮及来源producer，不扫描“最新”文件。
+
+```powershell
+node research/dungeon_village_1/prototype/tests/application_second_star_process.mjs --exe <application测试程序> --work-dir <research/work下已存在独立目录> --handoff-prefix research/dungeon_village_1/work/snapshots/active-application-v1/frame34401.avra --tail-frames 20 --producer-revision <本批版本> --snapshot-file <新的v2快照路径>
+```
+
+首份v2快照固定捕获在34429轮末、`next_frame=34430`、`next_command=1`，尚未发送v2输入。此后reference与两个独立恢复进程至少执行20轮，逐字节比较完整命令、Driver、应用／目录、系统字节摘要与typed声音。终点除捕获位置和性能计时外全字段比较，新增诊断字段也纳入比较。v2独立命令ID为0等待、1页面确认、2打开任务、3任务动作、4年度授勋动作、5退出商会；不能沿v1同号解释。wait仍是独立全零五元组，不递增命令序号。
+
+证书资格为`active_second_star_management_tail`，保留完整`handoff.origin_metadata`、旧Driver十六进制及摘要、交接前后旧digest、来源快照／证书hash和文件清单摘要。`uncertified_history`原对象及实际候选身份沿所有后继保留：20000轮候选SHA-256为`e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218`，17,380,140字节，producer为`87023c3`；当前回放不会追认更早历史。源链所有实际文件在发布前和finally重新核hash，不能仅保留一行限制文字。
+
+当前固定来源的34429终点旧Driver为635字节，SHA-256为`a76854cfd6a0ad2349648ac89da42b783a3972e7fb1980b1a0be564e0794f0d6`；交接前后目录清单摘要为`ece8dc44f2f2b910d2a9e8498e5f5ead021c676ac61418a7c59b90ebeff6028d`。脚本和C++各自核对这两个已取得的固定值，不能只接受“改写Driver后重算hash仍自洽”或“同时替换前后文件digest且二者相等”。这些是本次有限交接来源的身份，不是任意游戏存档的常量。
+
+`stage_complete`只能由真实任务接受回执计数产生，`active_command_count`另记本尾段实际非wait命令数。20轮完全等待可以认证完整存取一致，但`stage_complete=false`时**不能称主动策略批次完成**。若等待尚未满足任务冷却／资格，继续使用新证书的`--load-prefix`，在显式轮预算内继续经营，再选新的捕获边界与至少20轮尾段；该选项与`--handoff-prefix`互斥，不接纳无证书v2候选。二星、四住宅和活动30真正领取均不由首个任务接受回执认证。
+
+两个`active_command_count`按所属层区分：证书根字段是**本捕获尾段**的非wait输入数；`terminal.active_command_count`来自C++summary，是**自34429交接以来v2累计**的非wait输入数。后继20轮全等待时，前者可以为0、后者仍为3；`stage_complete=true`沿来源链继承先前真实接受回执，不能把它写成本尾段又接受一次。接受量另有根字段`capture_accepted_tasks`和`accepted_tasks_in_tail`，两者之和必须等于`terminal.accepted_tasks`。保留已生成证书字段名及原字节，不通过改档统一这两个不同的计数域。
+
+进程timeout、取消后的close、独占双文件发布及按身份回收共用现有support。每次只删除本次成功运行的临时根；失败保留诊断及未认证候选，不覆盖来源、旧证书或其它进程目录。当前实现是否已实跑、取得了哪条真实操作回执，以当批交付记录为准，本机制文档不代替验收结果。

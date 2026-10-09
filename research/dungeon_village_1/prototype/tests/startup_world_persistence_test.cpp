@@ -12,6 +12,7 @@
 #include "startup_world_restore_checks.hpp"
 #include "startup_world_restore_validation.hpp"
 #include "startup_application_active_replay.hpp"
+#include "startup_application_second_star_replay.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -803,6 +804,7 @@ void run(const std::filesystem::path &dir) {
     checks += run_startup_application_actions_checks(dir);
     checks += run_startup_application_natural_driver_checks(dir);
     checks += run_startup_application_active_driver_checks(dir);
+    checks += run_startup_application_second_star_driver_checks(dir);
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
@@ -1091,6 +1093,8 @@ int main(int argc, const char **argv) {
             return run_startup_application_natural_replay_cli(argc, argv);
         if (argc >= 2 && std::string(argv[1]) == "application-active-progression-v1")
             return run_startup_application_active_replay_cli(argc, argv);
+        if (argc >= 2 && std::string(argv[1]) == "application-active-progression-v2")
+            return run_startup_application_second_star_replay_cli(argc, argv);
         if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v3")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {

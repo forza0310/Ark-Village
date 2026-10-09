@@ -1,6 +1,6 @@
 {
   "format": "AVRAPP01",
-  "semantics": 4,
+  "semantics": 5,
   "boundary": "complete-outer-round-v1",
   "fields": [
     {

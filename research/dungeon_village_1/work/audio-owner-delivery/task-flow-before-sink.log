@@ -1,0 +1,423 @@
+Start testing: Oct 09 21:36 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+----------------------------------------------------------
+16/134 Testing: dungeon_village_prototype.startup_world_replay_process
+16/134 Test: dungeon_village_prototype.startup_world_replay_process
+Command: "D:/software/nodejs/node.exe" "D:/code/Ark-Village/research/dungeon_village_1/prototype/tests/replay_file_test.mjs" "--exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe" "--work-dir" "D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype/replay-process-tests" "--presentation-exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_persistence_tests.exe" "--application-exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_persistence_tests.exe" "--title-exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_application_tests.exe" "--natural-application-exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_persistence_tests.exe"
+Directory: D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype
+"dungeon_village_prototype.startup_world_replay_process" start time: Oct 09 21:36 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+Output:
+----------------------------------------------------------
+progression month popularity=50 peak_income=0 points=10 F=0 q=3 rank=0 frame=0 date=0/3/0/0 month_tick=0 cash=5000 scene=0 B=420 humans=0 tasks=0 random=0 report=0/0
+progression bakery frame=0 date=0/3/0/0 month_tick=0 cash=4400 scene=0 B=420 humans=0 tasks=0 random=0 report=0/0
+natural replay saved next_frame=421 frame=420 date=0/3/1/486 month_tick=418 cash=4400 scene=0 B=2 humans=0 tasks=0 random=0 report=0/0
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=42
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=42
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=42
+application replay captured boundary=row2-44 next_frame=660
+application replay captured boundary=row2-45 next_frame=661
+application replay captured boundary=final64 next_frame=1421
+application replay captured boundary=failed next_frame=1422
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532
+title-background-replay next_frame=680 digest=4c8233de451db52d4d74339ee3c9920329973237c31f22b32f5dc87138a0776a people=5 draws=56
+title-background-replay next_frame=680 digest=4c8233de451db52d4d74339ee3c9920329973237c31f22b32f5dc87138a0776a people=5 draws=56
+title-background-replay next_frame=680 digest=4c8233de451db52d4d74339ee3c9920329973237c31f22b32f5dc87138a0776a people=5 draws=56
+application-natural-capture frame=420 next_frame=421 months=0 bytes=348290
+application-natural-summary {"capture_frame":420,"capture_months":0,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"406f9cbaa850b70a170e0250815a43d2a2605b6facd1bea4770ad9d8877ad0cc","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0.0233772,"restore_seconds":0}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"406f9cbaa850b70a170e0250815a43d2a2605b6facd1bea4770ad9d8877ad0cc","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0174454}
+application-natural-summary {"capture_frame":null,"capture_months":null,"completed_frame":440,"next_frame":441,"next_command":3,"months":0,"date":[0,3,1,729],"digest":"406f9cbaa850b70a170e0250815a43d2a2605b6facd1bea4770ad9d8877ad0cc","resources":[1,8,1,1,0,0],"peaks":[1,8,2,1,0,0],"resource_names":["humans","facilities","pages","audit_history","cash_entries","retained_tasks"],"sound_count":0,"sound_hash":"dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66","random":5,"phase":0,"trace_rows":20,"capture_seconds":0,"restore_seconds":0.0175941}
+{
+  "controller": "application-natural-clear-v2",
+  "qualification": "natural_application_tail",
+  "producer_revision": "unspecified",
+  "seed": 1,
+  "speed": 0,
+  "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+  "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+  "application_schema": "a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf",
+  "source_prefix": null,
+  "capture_frame": 420,
+  "capture_months": 0,
+  "stop_at": 440,
+  "tail_frames": 20,
+  "process_count": 3,
+  "snapshot_bytes": 348290,
+  "snapshot_sha256": "35a8a2d9893df3c0903a6cda51290cd1a7a1ea4651832a4199a7e6b3ecd23977",
+  "section_bytes": {
+    "1": 70,
+    "2": 380,
+    "3": 635,
+    "4": 345013,
+    "5": 1480
+  },
+  "trace_bytes": 4040,
+  "trace_sha256": "d34afea059ff05820c280284e4e0e899d53f059e953532cc761ba81ce02784cd",
+  "terminal": {
+    "capture_frame": 420,
+    "capture_months": 0,
+    "completed_frame": 440,
+    "next_frame": 441,
+    "next_command": 3,
+    "months": 0,
+    "date": [
+      0,
+      3,
+      1,
+      729
+    ],
+    "digest": "406f9cbaa850b70a170e0250815a43d2a2605b6facd1bea4770ad9d8877ad0cc",
+    "resources": [
+      1,
+      8,
+      1,
+      1,
+      0,
+      0
+    ],
+    "peaks": [
+      1,
+      8,
+      2,
+      1,
+      0,
+      0
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 0,
+    "sound_hash": "dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66",
+    "random": 5,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0.0233772,
+    "restore_seconds": 0
+  },
+  "process_wall_seconds": [
+    4.381464299999999,
+    0.2224577999999965,
+    0.22352080000000568
+  ],
+  "certification_boundary": "本轮真实新局reference及指定捕获尾段",
+  "limitations": [
+    "被动自然日期策略，不认证五星/全部任务/BOSS",
+    "不认证原APK/Steam动态或自动绘制频率"
+  ]
+}
+{
+  "scenario": "natural_progression",
+  "seed": 1,
+  "speed": 0,
+  "presentation_replay": {
+    "controller": "presentation-request-v2",
+    "qualification": "conditional_presentation_request_replay",
+    "capture_next_round": 2,
+    "tail_rounds": [
+      2,
+      3,
+      4
+    ],
+    "request_counts": [
+      0,
+      1,
+      2,
+      1,
+      0
+    ],
+    "process_count": 3,
+    "snapshot_bytes": 174188,
+    "snapshot_sha256": "4d756baf06fe246081ed5a910d2f190a68397df9a15c8dfa929dd0f9c2db2d71",
+    "trace_bytes": 1680,
+    "trace_sha256": "6bb9c524331ad78941b3828b1d2843030f18d0de06097c6c38d034870ddb1683",
+    "comparison": "完整Session、controller及全plan/request上下文/sound字节三路相同",
+    "terminal_output": "presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=42",
+    "boundary": "人工合法任务进度及66等待页，不认证自然赠礼路线或原Android调度频率"
+  },
+  "application_replay": {
+    "controller": "application-clear-conditions-v2",
+    "qualification": "conditional_raw17_application_replay",
+    "captures": [
+      {
+        "boundary": "row2-44",
+        "next_frame": 660,
+        "tail_frames": 763,
+        "process_count": 3,
+        "snapshot_bytes": 348579,
+        "snapshot_sha256": "f3603805451b3acb0e7938ad93d03f6b341a731d8d255e80cf111ffd00e9ae24",
+        "trace_bytes": 626147,
+        "trace_sha256": "acbe15b0895c5814ec3cc4531bd7758ad9ef64f824f7abc38dd1158d7a68a2df"
+      },
+      {
+        "boundary": "row2-45",
+        "next_frame": 661,
+        "tail_frames": 762,
+        "process_count": 3,
+        "snapshot_bytes": 348579,
+        "snapshot_sha256": "bf630ecdae2f10274ee99bd17f5d7658000a68a3698ca961e2096649e33c722a",
+        "trace_bytes": 625327,
+        "trace_sha256": "40486931e8d31e8777adca9d6acc630d5f7b27e713535b13cf592c3fc98b6b49"
+      },
+      {
+        "boundary": "final64",
+        "next_frame": 1421,
+        "tail_frames": 2,
+        "process_count": 3,
+        "snapshot_bytes": 348579,
+        "snapshot_sha256": "7ea47369d2783d146f1cba98db0ff4ab26d3de6646e31db4d099e58fda44f5e8",
+        "trace_bytes": 1706,
+        "trace_sha256": "15e40c204d4c9ac7a9f56d86862b1be3fb9240d104f1fa8904bbe01b2dfdf456"
+      },
+      {
+        "boundary": "failed",
+        "next_frame": 1422,
+        "tail_frames": 1,
+        "process_count": 3,
+        "snapshot_bytes": 348579,
+        "snapshot_sha256": "765bda1d08441d979242924efb1cc44e1ae819d88c01de1a9cb7eaa06108baf5",
+        "trace_bytes": 885,
+        "trace_sha256": "30f0402adeb9c0e11085636cc66a6ca0c0ed65f2777c874538b0c0bbd0f90523"
+      }
+    ],
+    "terminal_output": "application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=8532",
+    "process_timeout_seconds": 120,
+    "comparison": "完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同",
+    "boundary": "合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容"
+  },
+  "title_presentation_replay": {
+    "controller": "title-background-requests-v2",
+    "cli": "title-background-replay-v2",
+    "qualification": "title_presentation_replay",
+    "seed": 17,
+    "capture_request_count": 600,
+    "capture_next_frame": 600,
+    "stop_at": 680,
+    "sequence_convention": "next_frame为从0起的下一请求序号，亦等于已完成请求数；尾段完成数601..680",
+    "tail_frames": 80,
+    "process_count": 3,
+    "process_timeout_seconds": 60,
+    "snapshot_bytes": 1730,
+    "snapshot_sha256": "30d32884f05310770222df1e7bd7b95c99fa737af78dbd5d7aae53a388871493",
+    "trace_bytes": 50574,
+    "trace_sha256": "fc73bb8a7df4b7c6e2f89afd5513bef9d743052fedec182e288947143bc10429",
+    "terminal_output": "title-background-replay next_frame=680 digest=4c8233de451db52d4d74339ee3c9920329973237c31f22b32f5dc87138a0776a people=5 draws=56",
+    "comparison": "完整应用及标题Driver逐请求尾段与最终摘要三路相同；源快照字节不变",
+    "boundary": "首请求confirm、后续false的原标题表现策略；不认证自然世界通关或Steam输入/绘制频率"
+  },
+  "natural_application_replay": {
+    "controller": "application-natural-clear-v2",
+    "qualification": "natural_application_tail",
+    "producer_revision": "unspecified",
+    "seed": 1,
+    "speed": 0,
+    "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+    "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+    "application_schema": "a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf",
+    "source_prefix": null,
+    "capture_frame": 420,
+    "capture_months": 0,
+    "stop_at": 440,
+    "tail_frames": 20,
+    "process_count": 3,
+    "snapshot_bytes": 348290,
+    "snapshot_sha256": "35a8a2d9893df3c0903a6cda51290cd1a7a1ea4651832a4199a7e6b3ecd23977",
+    "section_bytes": {
+      "1": 70,
+      "2": 380,
+      "3": 635,
+      "4": 345013,
+      "5": 1480
+    },
+    "trace_bytes": 4040,
+    "trace_sha256": "d34afea059ff05820c280284e4e0e899d53f059e953532cc761ba81ce02784cd",
+    "terminal": {
+      "capture_frame": 420,
+      "capture_months": 0,
+      "completed_frame": 440,
+      "next_frame": 441,
+      "next_command": 3,
+      "months": 0,
+      "date": [
+        0,
+        3,
+        1,
+        729
+      ],
+      "digest": "406f9cbaa850b70a170e0250815a43d2a2605b6facd1bea4770ad9d8877ad0cc",
+      "resources": [
+        1,
+        8,
+        1,
+        1,
+        0,
+        0
+      ],
+      "peaks": [
+        1,
+        8,
+        2,
+        1,
+        0,
+        0
+      ],
+      "resource_names": [
+        "humans",
+        "facilities",
+        "pages",
+        "audit_history",
+        "cash_entries",
+        "retained_tasks"
+      ],
+      "sound_count": 0,
+      "sound_hash": "dabeacc8cffcbac99f664b4d265fb6eeec4126442b4bca620b8c030a2641da66",
+      "random": 5,
+      "phase": 0,
+      "trace_rows": 20,
+      "capture_seconds": 0.0233772,
+      "restore_seconds": 0
+    },
+    "process_wall_seconds": [
+      4.381464299999999,
+      0.2224577999999965,
+      0.22352080000000568
+    ],
+    "certification_boundary": "本轮真实新局reference及指定捕获尾段",
+    "limitations": [
+      "被动自然日期策略，不认证五星/全部任务/BOSS",
+      "不认证原APK/Steam动态或自动绘制频率"
+    ]
+  },
+  "reference_origin": "真实新局不中断继续",
+  "certification_level": "new_game_reference_tail",
+  "source_prefix": null,
+  "producer_revision": "unspecified",
+  "save_at": 420,
+  "stop_at": 840,
+  "periodic_interval": null,
+  "periodic_directory": null,
+  "periodic_status": null,
+  "preserved_snapshot": null,
+  "completion": "有界尾段",
+  "certification": "本证书仅覆盖指定场景主快照与所列尾段",
+  "tail_frames": 420,
+  "process_count": 3,
+  "snapshot_bytes": 347003,
+  "snapshot_sha256": "a29d7278671e1d823d36180bfc3a8f2e30326075e44da8af5b27a46ec433aeff",
+  "trace_bytes": 312060,
+  "trace_sha256": "8f19f2879f8cd13e2fe58ae88bf2202a55060d395076a8c1302a484bb9e37b83",
+  "tail_output": "natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1\n3366 checks passed",
+  "process_wall_seconds": [
+    10.6107444,
+    6.430838700000001,
+    6.389298600000002,
+    0.0871987999999983,
+    0.04014129999999932,
+    0.04346810000000187,
+    8.941779900000002,
+    2.7433531,
+    2.751506699999998,
+    2.7464567000000026,
+    2.7903386000000028,
+    0.06661200000000099,
+    0.06934060000000318,
+    0.05738280000000668,
+    0.05604200000000128,
+    0.12641820000000006,
+    0.05351759999999922,
+    0.051445800000001325
+  ],
+  "comparison": "逐帧全Session和Driver及尾段stdout三路相同",
+  "certification_boundary": "本轮reference从真实新局不中断至终点，双恢复仅认证主快照之后尾段"
+}
+<end of output>
+Test time =  49.02 sec
+----------------------------------------------------------
+Test Passed.
+"dungeon_village_prototype.startup_world_replay_process" end time: Oct 09 21:37 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+"dungeon_village_prototype.startup_world_replay_process" time elapsed: 00:00:49
+----------------------------------------------------------
+
+14/134 Testing: dungeon_village_prototype.startup_world_persistence
+14/134 Test: dungeon_village_prototype.startup_world_persistence
+Command: "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_persistence_tests.exe" "D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype/persistence-tests"
+Directory: D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype
+"dungeon_village_prototype.startup_world_persistence" start time: Oct 09 21:37 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+Output:
+----------------------------------------------------------
+codec startup Owner: wire_bytes=172105 nodes=8592 allocation_budget_bytes=142781
+magic-pot window fixture=D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype/persistence-tests/magic-pot-window.avrs bytes=173805 qualification=explicit-fixture-not-natural
+application replay checks=33
+persistence checks=8110 prefix_frames=433 suffix_frames=90 replay_bytes=346194
+<end of output>
+Test time =  30.96 sec
+----------------------------------------------------------
+Test Passed.
+"dungeon_village_prototype.startup_world_persistence" end time: Oct 09 21:37 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+"dungeon_village_prototype.startup_world_persistence" time elapsed: 00:00:30
+----------------------------------------------------------
+
+1/134 Testing: dungeon_village_prototype.startup_application
+1/134 Test: dungeon_village_prototype.startup_application
+Command: "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_application_tests.exe"
+Directory: D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype
+"dungeon_village_prototype.startup_application" start time: Oct 09 21:37 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+Output:
+----------------------------------------------------------
+应用回放路径：symlink场景未覆盖（权限或平台限制），\xbfͻ\xa7\xb6\xcbû\xd3\xd0\xcb\xf9\xd0\xe8\xb5\xc4\xcc\xd8Ȩ\xa1\xa3
+系统记录文件检查通过：115
+clear score: 25358 checks
+单队列双接口领取已使用非空自然输出验证
+<end of output>
+Test time =  11.83 sec
+----------------------------------------------------------
+Test Failed.
+"dungeon_village_prototype.startup_application" end time: Oct 09 21:37 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+"dungeon_village_prototype.startup_application" time elapsed: 00:00:11
+----------------------------------------------------------
+
+11/134 Testing: dungeon_village_prototype.startup_world_task_flow
+11/134 Test: dungeon_village_prototype.startup_world_task_flow
+Command: "D:/code/Ark-Village/research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_task_flow_tests.exe"
+Directory: D:/code/Ark-Village/research/dungeon_village_1/work/release/prototype
+"dungeon_village_prototype.startup_world_task_flow" start time: Oct 09 21:36 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+Output:
+----------------------------------------------------------
+progress frame=0 date=0/3 raw=0 cash=5000 successes=0 active=0 draws=0 monsters=0
+generated task=1 definition=2 frame=2636 date=0/6 raw=0 cash=12560 successes=0 active=0 draws=13625 dungeon=9:0/0:state1 human=1:state18:action0:op0 human=3:state5:action0:op1 human=2:state0:action0 monsters=2
+natural success frame=4062 date=0/7 raw=30 cash=10260 successes=1 active=0 draws=32548 human=1:state2:action7 human=3:state0:action0 human=2:state0:action0 monsters=3
+generated task=2 definition=1 frame=4236 date=0/7 raw=0 cash=11460 successes=1 active=0 draws=35907 dungeon=10:0/0:state1 human=1:state14:action0:op1 human=3:state14:action0:op1 human=2:state14:action0:op1 monsters=3
+progress frame=5000 date=0/8 raw=0 cash=8960 successes=1 active=2 draws=40099 dungeon=10:3233/9600:state1 human=1:state14:action0 human=3:state14:action0 human=2:state2:action7 monsters=4
+natural success frame=5309 date=0/8 raw=30 cash=8960 successes=2 active=0 draws=45588 human=1:state13:action0 human=3:state13:action0 human=2:state2:action7 monsters=1
+generated task=3 definition=34 frame=5385 date=0/8 raw=0 cash=8960 successes=2 active=0 draws=46163 human=1:state0:action0 human=3:state0:action0 human=2:state16:action7 monsters=1
+generated task=4 definition=2 frame=6931 date=0/10 raw=0 cash=5895 successes=2 active=3 draws=86178 dungeon=11:0/0:state1 human=1:state2:action7 human=3:state2:action7 human=2:state1:action0 battle=24:spawned6:linked3:quota7 monsters=4
+generated task=5 definition=35 frame=7331 date=0/10 raw=0 cash=6270 successes=2 active=3 draws=103980 dungeon=11:0/0:state1 human=1:state1:action0 human=3:state1:action0 human=2:state2:action7 battle=24:spawned7:linked1:quota7 monsters=4
+natural success frame=8512 date=1/0 raw=30 cash=3480 successes=3 active=0 draws=126387 dungeon=11:0/0:state1 human=1:state2:action7 human=3:state10:action0:op1 human=2:state10:action0:op1 monsters=1
+generated task=6 definition=37 frame=8657 date=1/0 raw=0 cash=3480 successes=3 active=0 draws=126883 dungeon=11:0/0:state1 human=1:state16:action7 human=3:state0:action0 human=2:state0:action0 monsters=1
+task flow summary seed=1 speed=1 accepted=3 departed=3 generated=6 frame=8886 date=1/0 raw=0 cash=3780 successes=3 active=0 draws=128537 dungeon=11:0/0:state1 human=1:state14:action0:op1 human=0:state0:action0 human=3:state0:action0 monsters=4
+startup world task flow checks: 8961
+<end of output>
+Test time = 599.07 sec
+----------------------------------------------------------
+Test Passed.
+"dungeon_village_prototype.startup_world_task_flow" end time: Oct 09 21:46 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4
+"dungeon_village_prototype.startup_world_task_flow" time elapsed: 00:09:59
+----------------------------------------------------------
+
+End testing: Oct 09 21:46 \xd6й\xfa\xb1\xea׼ʱ\xbc\xe4

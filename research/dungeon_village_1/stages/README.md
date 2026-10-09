@@ -1,8 +1,10 @@
 # 阶段、当前能力与下一步
 
-2026-10-09最新初始化修正已通过12项相关CTest与420轮／首月双恢复：补齐六特殊／三十复发任务目录、实际reset后的设施共享人气20／30。现世界语义2、应用语义4，旧应用1／2／3与世界语义1拒绝、不迁移，原表及Owner字段布局不变。此前自然24月等快照保留修前证据，36月续跑已在29月中止并收齐研究测试进程；当前最终前缀为natural-application-v4。详情见[初始化交付](../work/task-pool-delivery/README.md)，不将日期回放自洽代替后期规则正确。
+最新声音Owner批已收齐22个受影响用例的修后通过记录，含599.07秒自然任务闭环；类型化请求、真实遭遇BGM／通知、旧ID兼容领取与完整typed回放已交付。当前世界语义3／应用语义5，自然应用Driver v2；当前420轮／首月前缀为natural-application-audio-v1，旧版本只保历史。另补Steam手动档菜单／确认及语言安装静态合同。详见[本批交付](../work/audio-owner-delivery/README.md)，设备播放、标题完整消费者、完整自然通关与后期路线仍未完成。
 
-最新增量：[收支情报](../ui/INFORMATION_MENU.md)纯查询已验，完整信息菜单控制器仍缺；[音频合同](../ui/AUDIO_REQUESTS.md)已核26项及不同调用语义；[Steam人物](../ui/STEAM_TITLE_ACTORS.md)补6数组／98资源独立交叉；[活动产生者](../rules/PROGRESSION_ROUTES.md)定位30/31至少一条正向来源，27保留未闭合。当前语义3自然24月已从12月前缀认证，41,634,364字节，20轮双恢复一致；36月接续采样中，不能据被动日期推进宣称五星／BOSS完成。
+2026-10-09上一初始化批已通过12项相关CTest与420轮／首月双恢复：补齐六特殊／三十复发任务目录、实际reset后的设施共享人气20／30。当批世界语义2、应用语义4，旧应用1／2／3与世界语义1拒绝、不迁移，原表及Owner字段布局不变。此前自然24月等快照保留修前证据，36月续跑已在29月中止并收齐研究测试进程；当批最终前缀为natural-application-v4（后继声音语义已退休其资格）。详情见[初始化交付](../work/task-pool-delivery/README.md)，不将日期回放自洽代替后期规则正确。
+
+此前增量：[收支情报](../ui/INFORMATION_MENU.md)纯查询已验，完整信息菜单控制器仍缺；[音频合同](../ui/AUDIO_REQUESTS.md)已核26项及不同调用语义；[Steam人物](../ui/STEAM_TITLE_ACTORS.md)补6数组／98资源独立交叉；[活动产生者](../rules/PROGRESSION_ROUTES.md)定位30/31至少一条正向来源，27保留未闭合。旧应用语义3自然24月曾取得41,634,364字节、20轮双恢复一致的历史证书；初始化和声音修正后已退休，36月续跑也已停止。不能将该档作为当前前缀或据被动日期推进宣称五星／BOSS完成。
 
 更新：2026-10-09，建设／Owner表现及回放基线为`1e6b291`；当前接续EXE UI／操作、全图像反查、进程内容及产品小窗示例。只维护research；产品实现与验收另算。
 用户已指定Steam2.56为UI／操作还原目标；汉化重签APK1.0.8继续保留规则与既有轨迹基线，两版差异分别取证。
@@ -16,7 +18,7 @@
 
 后继[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)维护标题五图、三页面背景、计分角色／提示以及公共窗口框／标准内框只读计划；[Steam资源](../ui/STEAM_STARTUP_RESOURCES.md)区分相同框图与不同标题背景／Logo／草边。最新[原标题背景Owner](../ui/TITLE_PRESENTATION.md)接入20槽人物、显式更新、只读投影及随机交接，应用快照现为语义3，旧语义1／2明确拒绝。正常人物基础裁片已交付；完整Steam字体、页级皮肤和原菜单h/j/o路由仍未交付；原窗口补证用[新提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)。
 
-此前[标题Owner交付](../work/title-owner-delivery/README.md)补年度动作、晋级返回和商会离开三个桥。[自然应用交付](../work/natural-application-delivery/README.md)实现Driver并修复应用更新漏接Session世界绘制缓存收尾；当前语义3的420轮、首月及后继[12月](../work/natural-application-performance/README.md)各20轮双恢复通过。旧语义2样本只保修前诊断，不作为当前前缀。商店窄投影已消除一次无用完整路由，保持完整尾段／原拒绝；下一步从当前12月档采24月规模，再按预算推进后期，自然通关尚未完成。背景请求和已有菜单API仍是独立事务。
+此前[标题Owner交付](../work/title-owner-delivery/README.md)补年度动作、晋级返回和商会离开三个桥。[自然应用交付](../work/natural-application-delivery/README.md)实现Driver并修复应用更新漏接Session世界绘制缓存收尾；当批应用语义3的420轮、首月及后继[12月](../work/natural-application-performance/README.md)各20轮双恢复通过。这些样本现在只保历史，不作为当前前缀。商店窄投影已消除一次无用完整路由，保持当批完整尾段／原拒绝；后期采样须从本页顶部的当前身份重新认证，自然通关尚未完成。背景请求和已有菜单API仍是独立事务。
 
 [人物基础皮肤](../ui/TITLE_ACTOR_SKIN.md)交付原标题阴影→武器→身体、纪录无显式阴影的只读资源计划，已核原图CPU合成；只覆盖正常基础图层，不冒称完整W所有叠加。[Steam字体](../ui/STEAM_FONT_CONSUMER.md)和[标题绘制](../ui/STEAM_TITLE_DRAW.md)已进一步交叉语言回退、测宽、背景居中／上边／草边铺排及Logo动画；原窗口动态和完整菜单仍缺。
 

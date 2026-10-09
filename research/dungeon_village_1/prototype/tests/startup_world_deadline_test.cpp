@@ -195,7 +195,8 @@ void abort_and_late_denial() {
             } else {
                 const auto &event = result->scene.world.world.ai.encounters.at(7);
                 check(event.runtime.state == 1 && event.runtime.counter == 0 &&
-                          result->sound_requests.back() == 1,
+                          result->sound_requests.back().id == 1 &&
+                          result->sound_requests.back().operation == StartupAudioOperation::replace_bgm,
                       "battle abort retires actual encounter, rebuilds event map and restores "
                       "music1");
             }

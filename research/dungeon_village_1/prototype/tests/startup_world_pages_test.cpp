@@ -8,6 +8,7 @@
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "support/world_fixture.hpp"
+#include "support/audio_requests.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -198,7 +199,8 @@ void facility_reputation_pages() {
         check(view && view->entries == std::vector<int>({4, 2, 3}) && view->phase == 0 &&
                   view->counter == 1 && view->binding == (mode == 0 ? 36 : 45) &&
                   s.scene.world.world.ai.human_order.empty() && s.scene.random.draws() == random &&
-                  s.sound_requests == std::vector<int>{4},
+                  test_support::audio_ids(s.sound_requests) == std::vector<int>{4} &&
+                  s.sound_requests.front().operation == StartupAudioOperation::jingle,
               "82 first update freezes original-order first3 current-job definitions,sound4,no draw");
         s.sound_requests.clear(); // 消费已发声音，不把输出留为持久历史。
         page_tick(s);
@@ -571,7 +573,8 @@ void summary() {
     const auto funds = s.scene.world.world.ai.accounting.funds();
     auto tick = prepare_startup_world_runtime(s);
     check(tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
-              tick.candidate->sound_requests == std::vector<int>{4},
+              test_support::audio_ids(tick.candidate->sound_requests) == std::vector<int>{4} &&
+              tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
           "page30 first phase sound4");
     check(tick.candidate->scene.calendar.units == s.scene.calendar.units &&
               tick.candidate->scene.random.draws() == s.scene.random.draws() &&
@@ -618,7 +621,8 @@ void gift() {
     s.facility_presence.at(0) = 0;
     s.facility_free_builds[0] = 0;
     const auto tick = prepare_startup_world_runtime(s);
-    check(tick.candidate && tick.candidate->sound_requests == std::vector<int>{5},
+    check(tick.candidate && test_support::audio_ids(tick.candidate->sound_requests) == std::vector<int>{5} &&
+              tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
           "gift first update sound5 and no eager claim");
     s = *tick.candidate;
     check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
@@ -646,7 +650,8 @@ void unlock_rewards() {
     const auto draws = s.scene.random.draws();
     const auto date = s.scene.calendar.units;
     page_tick(s);
-    check(s.page_counters.at(id) == 1 && s.sound_requests == std::vector<int>{5} &&
+    check(s.page_counters.at(id) == 1 && test_support::audio_ids(s.sound_requests) == std::vector<int>{5} &&
+              s.sound_requests.front().operation == StartupAudioOperation::jingle &&
               s.scene.world.world.ai.accounting.funds() == cash,
           "95 actual framework first tick emits sound without prepaying");
     s.sound_requests.clear(); // 明确的表现输出消费者，不作为业务前置。
@@ -997,7 +1002,8 @@ void rank_promotion() {
               tick.candidate->rank_celebration_participants.at(celebration_id) ==
                   std::vector<std::array<int, 5>>{{1, 287, 143, 3, 0}} &&
               tick.candidate->scene.random.draws() == 1 &&
-              tick.candidate->sound_requests == std::vector<int>{3},
+              test_support::audio_ids(tick.candidate->sound_requests) == std::vector<int>{3} &&
+              tick.candidate->sound_requests.front().operation == StartupAudioOperation::replace_bgm,
           "celebration initializes current p1 definitions, one shuffle draw and first music3");
     celebration = *tick.candidate;
     check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
@@ -1023,7 +1029,9 @@ void rank_promotion() {
     check(acknowledge_startup_world_runtime_page(celebration, celebration_id) ==
                   StartupWorldRuntimeError::none &&
               celebration.scripts.pages.back().lifecycle == 4 &&
-              celebration.sound_requests.back() == 1 && celebration.scene.world.updates == 0 &&
+              celebration.sound_requests.back().id == 1 &&
+              celebration.sound_requests.back().operation == StartupAudioOperation::replace_bgm &&
+              celebration.scene.world.updates == 0 &&
               celebration.scene.random.draws() == 1,
           "final confirm refreshes original music and closes, no repeat shuffle/world update");
     auto exhausted = fixture(50);
@@ -1045,13 +1053,15 @@ void annual_termination() {
     const auto cash = s.scene.world.world.ai.accounting.funds();
     const auto tick = prepare_startup_world_runtime(s);
     check(tick.candidate && tick.candidate->medal_count == 2 &&
-              tick.candidate->sound_requests == std::vector<int>{3} &&
+              test_support::audio_ids(tick.candidate->sound_requests) == std::vector<int>{3} &&
+              tick.candidate->sound_requests.front().operation == StartupAudioOperation::replace_bgm &&
               tick.candidate->award_rankings.count(id) && tick.candidate->award_announced.at(id),
           "raw87 actual page initialization increments j once and first update sounds3 only");
     s = *tick.candidate;
     const auto repeated = prepare_startup_world_runtime(s);
     check(repeated.candidate && repeated.candidate->medal_count == 2 &&
-              repeated.candidate->sound_requests == std::vector<int>{3},
+              test_support::audio_ids(repeated.candidate->sound_requests) == std::vector<int>{3} &&
+              repeated.candidate->sound_requests.front().operation == StartupAudioOperation::replace_bgm,
           "raw87 later updates neither award another medal nor replay first sound");
     check(acknowledge_startup_world_runtime_page(s, id) ==
                   StartupWorldRuntimeError::missing_source &&
@@ -1074,7 +1084,9 @@ void annual_termination() {
                                                    ref::WorldAwardAction::confirm_termination) ==
                   StartupWorldRuntimeError::none &&
               s.medal_count == 2 && s.scripts.event_calls.at(22) == 1 &&
-              s.sound_requests.back() == 1 && s.scene.world.world.ai.accounting.funds() == cash &&
+              s.sound_requests.back().id == 1 &&
+              s.sound_requests.back().operation == StartupAudioOperation::replace_bgm &&
+              s.scene.world.world.ai.accounting.funds() == cash &&
               s.scene.calendar.units == 0 && s.scene.random.draws() == 0,
           "termination preserves unused medal and cash/date/RNG, runs22 then source BGM refresh");
     check(std::any_of(s.scripts.pages.begin(), s.scripts.pages.end(),
@@ -1222,11 +1234,13 @@ void event_message_and_shop_return() {
         const auto tick = prepare_startup_world_runtime(s);
         check(
             tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
-                tick.candidate->sound_requests ==
+                test_support::audio_ids(tick.candidate->sound_requests) ==
                     (command == 2 ? std::vector<int>{} : std::vector<int>{command == 0 ? 4 : 6}) &&
                 tick.candidate->scene.world.updates == 0 &&
                 tick.candidate->scene.random.draws() == 0,
             "raw11 source sound only on first page update, no world/random tick");
+        check(command == 2 || tick.candidate->sound_requests.front().operation == StartupAudioOperation::jingle,
+              "raw11来源D4/D6保留jingle资格，不是按ID猜普通播放");
         s = *tick.candidate;
         check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
                   s.page_counters.at(id) == 40 && s.scripts.pages.back().lifecycle != 4,
@@ -1335,7 +1349,8 @@ void unlocked_visitor() {
                   tick.candidate->human_calendar.at(2).absent_months == priority,
               "raw59 page clock advances without auto-close, spawn, reward or world tick");
         s = *tick.candidate;
-        check(s.sound_requests == std::vector<int>{5},
+        check(test_support::audio_ids(s.sound_requests) == std::vector<int>{5} &&
+                  s.sound_requests.front().operation == StartupAudioOperation::jingle,
               "raw59 sound5 occurs only on first actual update");
         if (count < 70)
             check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
@@ -1567,7 +1582,8 @@ void village_activity_pages() {
     const auto sounds = s.sound_requests.size();
     page_tick(s);
     check(s.page_counters.at(animation) == 70 && s.sound_requests.size() == sounds + 1 &&
-              s.sound_requests.back() == 5,
+              s.sound_requests.back().id == 5 &&
+              s.sound_requests.back().operation == StartupAudioOperation::jingle,
           "53 update70 produces sound5 once");
     page_tick(s);
     check(s.sound_requests.size() == sounds + 1, "sound70 does not replay on71");
@@ -2570,7 +2586,8 @@ void magic_pot_recipe_and_facility_reward() {
                   "facility recipe cost commits now;107 precedes93 and facility remains pending");
             const auto gift = reach_magic_pot_page(s, 93);
             const auto sounds = s.sound_requests.size();
-            check(sounds > 0 && s.sound_requests.back() == 5 &&
+            check(sounds > 0 && s.sound_requests.back().id == 5 &&
+                      s.sound_requests.back().operation == StartupAudioOperation::jingle &&
                       s.facility_free_builds.at(44) == free,
                   "93 first framework update emits sound5 while reward still waits for confirmation");
             page_tick(s);

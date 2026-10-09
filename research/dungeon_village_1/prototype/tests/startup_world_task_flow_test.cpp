@@ -15,6 +15,23 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
+// 无窗口自然轨迹也须消费一次性输出；只检查并统计请求，不模拟播放器或改动世界业务。
+struct HeadlessAudioSink {
+    std::uint64_t count{};
+    std::size_t peak{};
+    void consume(StartupWorldRuntimeState &s) {
+        for (const auto &request : s.sound_requests) {
+            const int operation = static_cast<int>(request.operation);
+            check(operation >= 0 && operation <= 2,
+                  "natural task audio output operation stays within typed contract");
+            check(request.id >= 0 && request.id <= 25,
+                  "natural task audio output ID stays within original 26-entry table");
+        }
+        peak = std::max(peak, s.sound_requests.size());
+        count += s.sound_requests.size();
+        s.sound_requests.clear();
+    }
+};
 const ref::WorldScriptPage &top(const StartupWorldRuntimeState &s) {
     const auto p = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
                                 [](const auto &v) { return v.lifecycle != 4; });
@@ -179,6 +196,7 @@ void natural_flow(std::uint64_t seed, int speed) {
     bool later_task{};
     std::optional<std::uint64_t> followup_task;
     int last_success{};
+    HeadlessAudioSink audio;
     for (int frame = 0; frame < 150000; ++frame) {
         const auto prior_active = s.active_task;
         auto r = prepare_startup_world_runtime(s);
@@ -262,9 +280,11 @@ void natural_flow(std::uint64_t seed, int speed) {
                     s.scene.world.world.ai.accounting.funds() == cash &&
                     s.scene.random.draws() == draws,
                 "explicit followup cancellation returns real scene without fee or random");
+            audio.consume(s); // 成功提前返回也在最终玩家动作完成后领取，不留下待消费输出。
             std::cout << "task flow summary seed=" << seed << " speed=" << speed
                       << " accepted=" << accepted.size() << " departed=" << departed.size()
-                      << " generated=" << generated.size() << ' ' << describe(s, frame) << '\n';
+                      << " generated=" << generated.size() << " audio_count=" << audio.count
+                      << " audio_peak=" << audio.peak << ' ' << describe(s, frame) << '\n';
             return;
         }
         const auto affordable =
@@ -370,6 +390,7 @@ void natural_flow(std::uint64_t seed, int speed) {
                         s.task_progress.successes == before_success,
                     "real result confirmation never pays reward or commits success a second time");
         }
+        audio.consume(s); // update和本轮玩家命令均完成后消费，同轮次序保留而不跨轮积压。
         if (frame % 5000 == 0)
             std::cout << "progress " << describe(s, frame) << std::endl;
     }

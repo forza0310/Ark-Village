@@ -1,0 +1,660 @@
+{
+  "scope": "Steam raw20／确认页原序、输入、绘制与语言翻译有限消费者；无窗口实验",
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "method_index_sha256": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42",
+  "windows": [
+    {
+      "key": "drawMenu",
+      "method": "form.SubForm::private void DrawMenu2(Graphics g, int type) { }",
+      "rva": 3179840,
+      "offset": 3175232,
+      "next_rva": 3186960,
+      "bytes": 4096,
+      "sha256": "dbfe1b28808db1d3bd263d2d0672947bd2556ad5e9f91b9fddbbccc839421982"
+    },
+    {
+      "key": "drawMenuTail",
+      "method": "form.SubForm::private void DrawMenu2(Graphics g, int type) { }",
+      "rva": 3179840,
+      "offset": 3175232,
+      "next_rva": 3186960,
+      "bytes": 7120,
+      "sha256": "049fee4bee28ae0bb46720a2caa3296c81797851b9550fcc4ab9eb778fd801b4"
+    },
+    {
+      "key": "drawEntry",
+      "method": "form.SubForm::private void _draw(Graphics g) { }",
+      "rva": 3485216,
+      "offset": 3480608,
+      "next_rva": 3682832,
+      "bytes": 4096,
+      "sha256": "7818b887cbf670c936a4be896fe34984871abe7ccf46e8ebb834efc343a2cac6"
+    },
+    {
+      "key": "drawWrapper",
+      "method": "form.SubForm::public override void Draw(Graphics g) { }",
+      "rva": 3198512,
+      "offset": 3193904,
+      "next_rva": 3199328,
+      "bytes": 816,
+      "sha256": "f9656c02bc10c4f8e80ffef72196ef284bed453981e783d9529807088031a7a5"
+    },
+    {
+      "key": "drawDispatch",
+      "method": "form.SubForm::private void _draw(Graphics g) { }",
+      "rva": 3485216,
+      "offset": 3480608,
+      "next_rva": 3682832,
+      "bytes": 16384,
+      "sha256": "05d5a11b1aa2d57957ddcbea5e9092f50b2e21f3431bb7abc0a377bf9fa85cd7"
+    },
+    {
+      "key": "drawDialog",
+      "method": "form.SubForm::private void _draw(Graphics g) { }",
+      "rva": 3485216,
+      "offset": 3480608,
+      "next_rva": 3682832,
+      "bytes": 17312,
+      "sha256": "c916534325908a11a45e905595488dd1757503275327ca6cc4261745b4204c07"
+    },
+    {
+      "key": "ctor",
+      "method": "form.SubForm::public void .ctor(int type, int x, int y) { }",
+      "rva": 3336560,
+      "offset": 3331952,
+      "next_rva": 3336912,
+      "bytes": 352,
+      "sha256": "c995b0d3a9e72970a843c42dbea5d5c0c41afb34404b74d9f05bb0794e5a9d47"
+    },
+    {
+      "key": "defaultCtor",
+      "method": "form.SubForm::public void .ctor() { }",
+      "rva": 3336240,
+      "offset": 3331632,
+      "next_rva": 3336560,
+      "bytes": 320,
+      "sha256": "713d6eabbe24272146376f6b1d4c617bdcd35494c1b3413f7b44c54875bb9da6"
+    },
+    {
+      "key": "titleCtor",
+      "method": "form.TitleForm::public void .ctor() { }",
+      "rva": 2153936,
+      "offset": 2149328,
+      "next_rva": 2154288,
+      "bytes": 352,
+      "sha256": "06116d69482d22e39688e14ececb67f1f4de81ad2b5a3bafde8efd10da88b152"
+    },
+    {
+      "key": "addMenu",
+      "method": "form.SubForm::private void AddMenu(int menuId, int state) { }",
+      "rva": 3169568,
+      "offset": 3164960,
+      "next_rva": 3169856,
+      "bytes": 288,
+      "sha256": "7792c301c768bf4ac4c664b87889b4f3bcb27639c64d19523adf96c7dbbef06d"
+    },
+    {
+      "key": "frameDefault",
+      "method": "form.SubForm::private int[] FrameMenu() { }",
+      "rva": 3203664,
+      "offset": 3199056,
+      "next_rva": 3203696,
+      "bytes": 32,
+      "sha256": "ebfee3aea28ab9dac17bbccfe5e7a63ee269e97b3d90f59b60aea006edec4021"
+    },
+    {
+      "key": "isMenu",
+      "method": "form.SubForm::public bool IsMenu() { }",
+      "rva": 3232736,
+      "offset": 3228128,
+      "next_rva": 3232800,
+      "bytes": 64,
+      "sha256": "aae65707140177c2703995d647caad0ce0b77650c4dcde0f9b9a8bc3b80731a4"
+    },
+    {
+      "key": "makeDialog",
+      "method": "form.SubForm::public static SubForm MakeDialog(string text, string buttons, int defaultSelect) { }",
+      "rva": 3232912,
+      "offset": 3228304,
+      "next_rva": 3233008,
+      "bytes": 96,
+      "sha256": "5406d4b2d9e534b55a067172554000e57e097c9aa03350555a9e3605d1bb1bce"
+    },
+    {
+      "key": "makeDialogBase",
+      "method": "form.SubForm::public static SubForm MakeDialog(string text, string buttons) { }",
+      "rva": 3232800,
+      "offset": 3228192,
+      "next_rva": 3232912,
+      "bytes": 112,
+      "sha256": "9ca1a364abc23bc0f49e607fefde5b194ef4a2beec5621f706e84c75bb39a5a9"
+    },
+    {
+      "key": "pop",
+      "method": "kairo.unity.form.FormBase::public bool Pop() { }",
+      "rva": 8272416,
+      "offset": 8267808,
+      "next_rva": 8272448,
+      "bytes": 32,
+      "sha256": "708eb10e50ac15d4de10ce65021ebc9ca92ba3a1c244974346a65fb33555dc5e"
+    },
+    {
+      "key": "managerPop",
+      "method": "kairo.unity.form.FormManagerBase::public bool Pop(FormBase form) { }",
+      "rva": 8289632,
+      "offset": 8285024,
+      "next_rva": 8289968,
+      "bytes": 336,
+      "sha256": "4dbca203afdc0d9f5623f05c49b3d7d5c5824ef3f395f915a350679bf530ab9a"
+    },
+    {
+      "key": "popBody",
+      "method": ".FormManagerBase.<>c__DisplayClass75_0::internal void <Pop>b__0() { }",
+      "rva": 8333792,
+      "offset": 8329184,
+      "next_rva": 8334944,
+      "bytes": 1152,
+      "sha256": "2f7e5d55b6e293746adb7f47f8061f509cf72eac012e96da3b9ee06996ad8e07"
+    },
+    {
+      "key": "drawString",
+      "method": "kairo.unity.ui.Graphics::public void DrawString(string str, float x, float y) { }",
+      "rva": 7758480,
+      "offset": 7753872,
+      "next_rva": 7758544,
+      "bytes": 64,
+      "sha256": "f7b618dbfedc729d269dbbf85ed3d289afe80e29b083520861f46a6753ae8ace"
+    },
+    {
+      "key": "drawStringCore",
+      "method": "kairo.unity.ui.Graphics::public void DrawString(TextFormat lf, string str, float x, float y, int anchor) { }",
+      "rva": 7758800,
+      "offset": 7754192,
+      "next_rva": 7764160,
+      "bytes": 1024,
+      "sha256": "02846e442024fdc7f2f65e07bd3d46c91e3c46d72cd5b901a90cc88926a65f70"
+    },
+    {
+      "key": "languageLT",
+      "method": "kairo.unity.util.Language::public static string LT(string text, string arg = \"\") { }",
+      "rva": 8464640,
+      "offset": 8460032,
+      "next_rva": 8464784,
+      "bytes": 144,
+      "sha256": "671941d85b74c1f0e851bc0f0a7fade20bf25ce4249f9fecf78243b9bc133ca0"
+    },
+    {
+      "key": "translate",
+      "method": "kairo.unity.util.Language::public static string TranslateText(string text, bool tabCheck = True) { }",
+      "rva": 8524192,
+      "offset": 8519584,
+      "next_rva": 8524608,
+      "bytes": 416,
+      "sha256": "911133e1be8f7d1995b031e0691b73d25556857136a1f0e66439d2f75e0e19dc"
+    },
+    {
+      "key": "translateCall",
+      "method": "kairo.unity.util.Language::private static string CallTranslateText(string text, bool tabCheck = True) { }",
+      "rva": 8437616,
+      "offset": 8433008,
+      "next_rva": 8439152,
+      "bytes": 1536,
+      "sha256": "4f7804686cbadd3ce5aabac627507fad4821e90cb5d78081da9ef66a333c2e39"
+    },
+    {
+      "key": "loadTranslations",
+      "method": "kairo.unity.util.Language::public static void LoadTranslateTable() { }",
+      "rva": 8482160,
+      "offset": 8477552,
+      "next_rva": 8483552,
+      "bytes": 1392,
+      "sha256": "9a2050cf7125c26399ea3a21d8a7b6c2815a40e690cc48090a8d7227213194d2"
+    },
+    {
+      "key": "translateLeaf",
+      "method": "kairo.unity.util.Language::private static string _translateText(string text) { }",
+      "rva": 8612144,
+      "offset": 8607536,
+      "next_rva": 8612512,
+      "bytes": 368,
+      "sha256": "f0becb1eb22666e2b22adb1a48a4661caf094b5bffffe1c17bb7c58f427276da"
+    },
+    {
+      "key": "translateLookup",
+      "method": "kairo.unity.util.Language::private static string _translateText2(string text) { }",
+      "rva": 8609488,
+      "offset": 8604880,
+      "next_rva": 8612144,
+      "bytes": 2656,
+      "sha256": "0d4622de5742552e92ea2975a95e316b10137334b8b07443209a1b2844735ac5"
+    },
+    {
+      "key": "kairoLT",
+      "method": "system.KairoText::public static string LT(string text) { }",
+      "rva": 1950512,
+      "offset": 1945904,
+      "next_rva": 1951408,
+      "bytes": 896,
+      "sha256": "40fdece334356d7123a37c27685c7355bafb481d7b2c7e23c1ec45bdcf3e0b73"
+    },
+    {
+      "key": "initDialog",
+      "method": "form.SubForm::public void InitDialog(string text, string buttons) { }",
+      "rva": 3220416,
+      "offset": 3215808,
+      "next_rva": 3220576,
+      "bytes": 160,
+      "sha256": "8808dfbfc42263a2a7b135e89796040947640833df9b5262f906abbf02424a79"
+    }
+  ],
+  "unique_new_methods": 24,
+  "unique_new_prefix_bytes": 37040,
+  "reused": [
+    {
+      "path": "../steam-interaction-analysis/disassembly.json",
+      "sha256": "005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf",
+      "methods": [
+        {
+          "method": {
+            "rva": 3220576,
+            "offset": 3215968,
+            "va": 271656032,
+            "type": "form.SubForm",
+            "signature": "public override bool Init() { }"
+          },
+          "bytes": 12096,
+          "sha256": "ebec1df47de61e6aace6fee5cc29662b2cbe3c5f26002595452cc921e943d535"
+        },
+        {
+          "method": {
+            "rva": 3283344,
+            "offset": 3278736,
+            "va": 271718800,
+            "type": "form.SubForm",
+            "signature": "public override bool Update() { }"
+          },
+          "bytes": 27424,
+          "sha256": "d4f929859664ee5a2769bfd9101dc7b8bd9293ec33c905f617783facc351ce83"
+        },
+        {
+          "method": {
+            "rva": 3203696,
+            "offset": 3199088,
+            "va": 271639152,
+            "type": "form.SubForm",
+            "signature": "private int[] FrameMenu(int backResult) { }"
+          },
+          "bytes": 656,
+          "sha256": "dffe6118060c9bd300fb3023a8dab5a93526bf0676accc628da3ce8abf6e5904"
+        },
+        {
+          "method": {
+            "rva": 2344992,
+            "offset": 2340384,
+            "va": 270780448,
+            "type": "surface.GameView",
+            "signature": "protected override void OnTouchEvent(TouchEvent e) { }"
+          },
+          "bytes": 1776,
+          "sha256": "8f3627f3d5e4dbe270038947cae3c241540771ed31b580eb671fb02be7339b87"
+        },
+        {
+          "method": {
+            "rva": 2346768,
+            "offset": 2342160,
+            "va": 270782224,
+            "type": "surface.GameView",
+            "signature": "internal void OnTouchKeyClick(int type, int v, TouchEvent e) { }"
+          },
+          "bytes": 240,
+          "sha256": "fa458c043b1394a8a2a9c2349f0da5f8b83de405d80153c89b8206da2f266377"
+        },
+        {
+          "method": {
+            "rva": 3236016,
+            "offset": 3231408,
+            "va": 271671472,
+            "type": "form.SubForm",
+            "signature": "public override bool OnTouchEvent(TouchEvent e) { }"
+          },
+          "bytes": 688,
+          "sha256": "b96b3dacc641a2fa357ac80ae79936e403b92ba7df66727f8abf44762d7a40b7"
+        },
+        {
+          "method": {
+            "rva": 3236704,
+            "offset": 3232096,
+            "va": 271672160,
+            "type": "form.SubForm",
+            "signature": "public override bool ProcessBackKey() { }"
+          },
+          "bytes": 432,
+          "sha256": "9f65bfbce98d0eb95650256ed424a8c127f7d2082fd980f900ff9ac8270a8e6d"
+        }
+      ]
+    },
+    {
+      "path": "../facility-animation-closure/disassembly.json",
+      "sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa",
+      "methods": [
+        {
+          "method": {
+            "rva": 3311072,
+            "offset": 3306464,
+            "va": 271746528,
+            "type": "form.SubForm",
+            "signature": "private static void .cctor() { }"
+          },
+          "bytes": 25168,
+          "sha256": "648fb7c439e6530f96b6dec9bba3352a95d4ac86eb48b5272fcd17b70cfdf1b9"
+        }
+      ]
+    }
+  ],
+  "draw_boundary": {
+    "indexed_next_va": 272118288,
+    "indexed_span_bytes": 197616,
+    "consumed_prefix_end": 271937984,
+    "consumed_prefix_bytes": 17312,
+    "limit": "索引下一具名方法不是真实函数边界；0x103571C0另起prologue，本批不据登记间距解码后续匿名函数。不宣称其他页面分支已逐项审读。"
+  },
+  "floats": [
+    {
+      "va": 282977576,
+      "hex": "0000003f",
+      "value": 0.5,
+      "sha256": "d99e58435243d9fef9c88273b8d553b4fba4d0baf8009d29eae74fa99e0d9f57"
+    },
+    {
+      "va": 282977592,
+      "hex": "0000c842",
+      "value": 100,
+      "sha256": "2238f30df488055daf5e8f362cf904e370011a172d20df193c1b7ae8e5db8e01"
+    },
+    {
+      "va": 282977632,
+      "hex": "00000040",
+      "value": 2,
+      "sha256": "d88c86f15bbea365d658ad95a81d45367c465f7af6f7264fb077f01747ddc77d"
+    },
+    {
+      "va": 282977652,
+      "hex": "0000a040",
+      "value": 5,
+      "sha256": "fca31f1667a6aa1bba12fca4e4ea1becd503379d80da3213af07f6cc5702828d"
+    },
+    {
+      "va": 282977664,
+      "hex": "00002041",
+      "value": 10,
+      "sha256": "80c8a717ccd70c8809eb78e6a9591c003e11c721fe0ccaf62fd592abda1a5593"
+    },
+    {
+      "va": 282977912,
+      "hex": "00004843",
+      "value": 200,
+      "sha256": "531ad685bf4dd31ed89c6b99e76c2b9451d6a6d04d82de7d4b1a73217f55e551"
+    }
+  ],
+  "constants": [
+    {
+      "va": 271760157,
+      "bytes": 42,
+      "purpose": "菜单选中RGB(76,58,50)／非选中RGB(255,242,220)",
+      "sha256": "711be8dadd6651158c28463130552c8422ef66bcebb71b85d41d3fba40f6db93"
+    },
+    {
+      "va": 271760403,
+      "bytes": 44,
+      "purpose": "消息正文RGB(92,51,31)",
+      "sha256": "e80e6a6ff3b5f2f3c0800e3db5725bea00a969246a4c0f8ecfe7042496a3d4e2"
+    },
+    {
+      "va": 271760546,
+      "bytes": 54,
+      "purpose": "消息选中RGB(255,153,55)",
+      "sha256": "e2caedc25dc86083cc5f09019b99eaa58b720dca80b61c4929bbac9ee91f0536"
+    },
+    {
+      "va": 271749304,
+      "bytes": 87,
+      "purpose": "raw20软标签[0,2]",
+      "sha256": "fdfe7bf3e14b2df1c02277e5012c10ccc9e0f2264e7dbf7164c897c2f1f1974e"
+    },
+    {
+      "va": 271768369,
+      "bytes": 137,
+      "purpose": "非日文宽度[91,90,42]及WIDTH_DATA[1]绑定",
+      "sha256": "a7d3f82404ed7cee76199cf5a1f88e64346e18e48f06b52430f85e99d7c42583"
+    },
+    {
+      "va": 271665931,
+      "bytes": 48,
+      "purpose": "raw20菜单[25,1],[26,1],[27,1]原序",
+      "sha256": "74bf19922455cac2cd083be55cd64e003497d81c60439436b1f3b2e511e175fb"
+    }
+  ],
+  "submenu_dispatch": {
+    "va": 270782148,
+    "target": 270780877
+  },
+  "resources": [
+    {
+      "id": "EXE:resources.assets:1148:common:menu.seb",
+      "entry": "menu.seb",
+      "bytes": 88,
+      "sha256": "e1588bfcd1a6107618d2a618529783edc5abed400b088a1df2539e2fd107523a",
+      "published_alias": "../../assets/original/common/menu.seb",
+      "frames": 4,
+      "parts": [
+        [
+          0,
+          25,
+          0,
+          0,
+          68,
+          29,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          25,
+          0,
+          29,
+          68,
+          29,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          25,
+          68,
+          0,
+          89,
+          29,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          25,
+          68,
+          29,
+          89,
+          29,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:menu.png",
+      "entry": "menu.png",
+      "bytes": 7773,
+      "sha256": "52d7afe4770705f15e0505aea5cabfc8e621b71d6dc8e61747842d1cd7671938",
+      "published_alias": "../../assets/original/common/menu.png",
+      "width": 157,
+      "height": 58,
+      "rgba_sha256": "f199f8bc302be1a9996281263c1ae9e5cf8f343beb525e50f7ab702d27b8a9a7"
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:finger_r.seb",
+      "entry": "finger_r.seb",
+      "bytes": 88,
+      "sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "published_alias": "../../assets/original/common/finger_r.seb",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          2,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          3,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ],
+        [
+          5,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:finger_l.seb",
+      "entry": "finger_l.seb",
+      "bytes": 88,
+      "sha256": "cc783b56533f4cc17e8c0717471e5a0f366d35c0ff560e07e460c9616ded44ef",
+      "published_alias": "../../assets/original/common/finger_l.seb",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          1,
+          0
+        ],
+        [
+          2,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          1,
+          0
+        ],
+        [
+          3,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -10,
+          -5,
+          1,
+          0
+        ],
+        [
+          5,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -10,
+          -5,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "id": "EXE:resources.assets:1148:common:finger_r.png",
+      "entry": "finger_r.png",
+      "bytes": 272,
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "published_alias": "../../assets/original/common/finger_r.png",
+      "width": 16,
+      "height": 10,
+      "rgba_sha256": "0d4632be13a29526943be5e372cd2ee4ead704f8cc3d51d726fcc8a2f43c11e6"
+    }
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 5443,
+      "sha256": "b935f7f0572aed1bb25e29b3c684d96e7ae14c36603bd508d0a27eeba01ea138"
+    },
+    {
+      "path": "literals.cjs",
+      "bytes": 2023,
+      "sha256": "5fa41cd9ad8c03adb8813e71cc64f0eb7c8ca3f05f825ff4472ffe38c5761294"
+    },
+    {
+      "path": "width-data.cjs",
+      "bytes": 3716,
+      "sha256": "879e92ee1494ea2c8f466d93b4820255d02cfcdac964c2e642b675d199c18817"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 5200,
+      "sha256": "89c7763d2e6b348a60ce841398d86bcceb8edae71fb10fc5c8a3f6d7c8ce3ac9"
+    }
+  ]
+}

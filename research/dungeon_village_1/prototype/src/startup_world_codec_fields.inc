@@ -1,5 +1,6 @@
 // 由 scripts/generate_owner_codec.mjs 生成；不要手改。
-constexpr const char schema_identity[] = "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7";
+constexpr const char schema_identity[] = "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440";
+template<> bool valid_enum< ::dungeon_village_prototype::StartupAudioOperation>(::dungeon_village_prototype::StartupAudioOperation value) { return value == ::dungeon_village_prototype::StartupAudioOperation::ordinary_play || value == ::dungeon_village_prototype::StartupAudioOperation::replace_bgm || value == ::dungeon_village_prototype::StartupAudioOperation::jingle; }
 template<> bool valid_enum< ::dungeon_village_reference::ActorKind>(::dungeon_village_reference::ActorKind value) { return value == ::dungeon_village_reference::ActorKind::human || value == ::dungeon_village_reference::ActorKind::monster; }
 template<> bool valid_enum< ::dungeon_village_reference::CandidateOrigin>(::dungeon_village_reference::CandidateOrigin value) { return value == ::dungeon_village_reference::CandidateOrigin::map_scan || value == ::dungeon_village_reference::CandidateOrigin::event; }
 template<> bool valid_enum< ::dungeon_village_reference::CashCategory>(::dungeon_village_reference::CashCategory value) { return value == ::dungeon_village_reference::CashCategory::facilities || value == ::dungeon_village_reference::CashCategory::monsters || value == ::dungeon_village_reference::CashCategory::adventurers || value == ::dungeon_village_reference::CashCategory::shop || value == ::dungeon_village_reference::CashCategory::other; }
@@ -11,6 +12,13 @@ template<> bool valid_enum< ::dungeon_village_reference::MapAccessError>(::dunge
 template<> bool valid_enum< ::dungeon_village_reference::ProjectileKind>(::dungeon_village_reference::ProjectileKind value) { return value == ::dungeon_village_reference::ProjectileKind::arrow || value == ::dungeon_village_reference::ProjectileKind::spell || value == ::dungeon_village_reference::ProjectileKind::delayed_damage; }
 template<> bool valid_enum< ::dungeon_village_reference::RouteCategory>(::dungeon_village_reference::RouteCategory value) { return value == ::dungeon_village_reference::RouteCategory::terminal || value == ::dungeon_village_reference::RouteCategory::road || value == ::dungeon_village_reference::RouteCategory::ground || value == ::dungeon_village_reference::RouteCategory::blocked || value == ::dungeon_village_reference::RouteCategory::access; }
 template<> bool valid_enum< ::dungeon_village_reference::WorldScriptPageKind>(::dungeon_village_reference::WorldScriptPageKind value) { return value == ::dungeon_village_reference::WorldScriptPageKind::scene || value == ::dungeon_village_reference::WorldScriptPageKind::dialogue || value == ::dungeon_village_reference::WorldScriptPageKind::simple_message || value == ::dungeon_village_reference::WorldScriptPageKind::newspaper || value == ::dungeon_village_reference::WorldScriptPageKind::raw_page; }
+template<> struct CodecFields< ::dungeon_village_prototype::StartupAudioRequest> {
+ template<class Archive, class Value> static void visit(Archive& a, Value& v) {
+  a.field("dungeon_village_prototype::StartupAudioRequest.operation", v.operation);
+  a.field("dungeon_village_prototype::StartupAudioRequest.id", v.id);
+ }
+ static std::size_t minimum() { return 0 + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupAudioRequest>().operation)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupAudioRequest>().id)>::minimum(); }
+};
 template<> struct CodecFields< ::dungeon_village_prototype::StartupWorldActorMetadata> {
  template<class Archive, class Value> static void visit(Archive& a, Value& v) {
   a.field("dungeon_village_prototype::StartupWorldActorMetadata.sex", v.sex);

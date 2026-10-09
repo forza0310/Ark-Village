@@ -83,7 +83,7 @@ function replayIdentity(bytes) {
     });
     const input = reader(bytes.subarray(0, -64));
     if (input.raw(8).toString('ascii') !== 'AVRSAVE1' || input.u32() !== 1 ||
-        input.u32() !== 2 || input.u32() !== 2) throw new Error('源不是本版replay文件');
+        input.u32() !== 3 || input.u32() !== 2) throw new Error('源不是本版replay文件');
     const dataset = input.text(), schema = input.text(), count = input.u32(), sections = new Map();
     if (count < 2 || count > 64) throw new Error('源分区数非法');
     for (let n = 0; n < count; ++n) {
@@ -98,7 +98,7 @@ function replayIdentity(bytes) {
         if (sections.get(id)?.version !== 1 || sections.get(id)?.required !== 1)
             throw new Error('源缺少必需metadata或controller');
     const meta = reader(sections.get(1).body), revision = meta.text(), controller = meta.text(), nextFrame = meta.u64();
-    if (meta.at !== meta.buffer.length || controller !== 'natural-progression-expansion-v1')
+    if (meta.at !== meta.buffer.length || controller !== 'natural-progression-expansion-v2')
         throw new Error('源controller身份不符');
     const driver = reader(sections.get(4).body);
     if (driver.buffer.length > 1024 * 1024 || driver.u64() !== 0x315652445741)
@@ -306,12 +306,12 @@ try {
         // 独立条件组合：原自然driver/字节/黄金终点已在上方完成，显式表现请求另用控制器。
         const presentationSnapshot = path.join(owned, 'presentation-prefix.awr');
         const presentationTraces = [0, 1, 2].map(n => path.join(owned, `presentation-tail-${n}.trace`));
-        const presentationOutputs = [await run(['presentation-request-v1', '--save-file', presentationSnapshot,
+        const presentationOutputs = [await run(['presentation-request-v2', '--save-file', presentationSnapshot,
             '--trace-file', presentationTraces[0], '--trace-from', '2'], presentationExecutable)];
         const prefix = await fs.readFile(presentationSnapshot);
         if (!prefix.length || prefix.length > 128 * 1024 * 1024) throw new Error('表现快照尺寸非法');
         for (let n = 1; n < 3; ++n)
-            presentationOutputs.push(await run(['presentation-request-v1', '--load-file', presentationSnapshot,
+            presentationOutputs.push(await run(['presentation-request-v2', '--load-file', presentationSnapshot,
                 '--trace-file', presentationTraces[n]], presentationExecutable));
         const traces = await Promise.all(presentationTraces.map(p => fs.readFile(p)));
         const rows = traces[0].toString('utf8').trimEnd().split('\n');
@@ -332,7 +332,7 @@ try {
         const before = sha256(prefix);
         let rejected = false;
         try {
-            await run(['presentation-request-v1', '--unknown', '1'], presentationExecutable);
+            await run(['presentation-request-v2', '--unknown', '1'], presentationExecutable);
         } catch (error) {
             if (cancelled || !String(error.message).includes('presentation unknown option')) throw error;
             rejected = true;
@@ -340,7 +340,7 @@ try {
         if (!rejected || sha256(await fs.readFile(presentationSnapshot)) !== before)
             throw new Error('表现非法CLI未拒绝或破坏既有快照');
         presentationCertificate = {
-            controller: 'presentation-request-v1', qualification: 'conditional_presentation_request_replay',
+            controller: 'presentation-request-v2', qualification: 'conditional_presentation_request_replay',
             capture_next_round: 2, tail_rounds: [2, 3, 4], request_counts: [0, 1, 2, 1, 0], process_count: 3,
             snapshot_bytes: prefix.length, snapshot_sha256: before, trace_bytes: traces[0].length,
             trace_sha256: sha256(traces[0]), comparison: '完整Session、controller及全plan/request上下文/sound字节三路相同',
@@ -356,7 +356,7 @@ try {
         const referenceTrace = path.join(appRoot, 'reference.trace');
         const referenceWork = path.join(appRoot, 'reference');
         await fs.mkdir(referenceWork);
-        const referenceOutput = await run(['application-clear-conditions-v1', '--work-dir', referenceWork,
+        const referenceOutput = await run(['application-clear-conditions-v2', '--work-dir', referenceWork,
             '--save-directory', captures, '--trace-file', referenceTrace], applicationExecutable, 120000);
         const reference = await fs.readFile(referenceTrace);
         const traceRows = reference.toString('utf8').trimEnd().split('\n');
@@ -396,7 +396,7 @@ try {
                 const actualTrace = path.join(appRoot, `${name}-${n}.trace`);
                 const actualWork = path.join(appRoot, `${name}-${n}`);
                 await fs.mkdir(actualWork);
-                const output = await run(['application-clear-conditions-v1', '--work-dir', actualWork,
+                const output = await run(['application-clear-conditions-v2', '--work-dir', actualWork,
                     '--load-file', file, '--trace-file', actualTrace], applicationExecutable, 120000);
                 if (!expected.equals(await fs.readFile(actualTrace)) || summary(output) !== terminal)
                     throw new Error(`应用${name}第${n}次全状态/输出/系统尾段不一致`);
@@ -407,13 +407,13 @@ try {
                 trace_bytes: expected.length, trace_sha256: sha256(expected) });
         }
         let refused = false;
-        try { await run(['application-clear-conditions-v1', '--unknown', '1'], applicationExecutable, 120000); }
+        try { await run(['application-clear-conditions-v2', '--unknown', '1'], applicationExecutable, 120000); }
         catch (error) {
             if (cancelled || !String(error.message).includes('application unknown option')) throw error;
             refused = true;
         }
         if (!refused) throw new Error('应用非法CLI没有显式拒绝');
-        applicationCertificate = { controller: 'application-clear-conditions-v1', qualification: 'conditional_raw17_application_replay',
+        applicationCertificate = { controller: 'application-clear-conditions-v2', qualification: 'conditional_raw17_application_replay',
             captures: certificates, terminal_output: terminal, process_timeout_seconds: 120,
             comparison: '完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同',
             boundary: '合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容' };

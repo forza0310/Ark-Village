@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dungeon_village_prototype/startup_system_records.hpp"
+#include "dungeon_village_prototype/startup_audio.hpp"
 #include "dungeon_village_prototype/startup_world_clear_score.hpp"
 #include "dungeon_village_prototype/startup_world_profile.hpp"
 #include "dungeon_village_prototype/startup_title_presentation.hpp"
@@ -77,6 +78,8 @@ class StartupApplication {
     std::string act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0);
     std::string return_rank_page(std::uint64_t page);
     std::string leave_commerce_page(std::uint64_t page);
+    std::vector<StartupAudioRequest> take_audio_requests();
+    // 兼容旧ID消费者；同一输出只会被任一领取接口消费一次。
     std::vector<int> take_sound_requests();
     std::string save_world(); // 仅世界文件，不暗含系统保存。
     std::string load_world(int slot);

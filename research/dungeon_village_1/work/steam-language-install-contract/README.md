@@ -1,0 +1,20 @@
+# Steam语言安装／选择静态证据
+
+2026-10-09。正式结论见[语言安装合同](../../ui/STEAM_LANGUAGE_INSTALL.md)。仅研究固定Steam2.56副本，不运行原游戏、不访问用户配置／账号／存档，不改C++、CMake、原表或发布素材。
+
+- [EVIDENCE.json](EVIDENCE.json)：8方法、14窗口、共32784字节独立方法范围、实际字段、三个共享泛型绑定、固定注册方法直接调用搜索边界。
+- [LITERALS.json](LITERALS.json)：32个已见指令固定槽，含语言码、CSV判别正则、控制头和地区别名。
+- [RESOURCES.json](RESOURCES.json)：4个TextAsset来源身份、12包大小／hash／六项声明头及23行格式声明；不导出完整译文、字体、原游戏或存档。
+- `inspect.cjs`从固定具名入口顺序解码，单次打印至多4112字节，最大前缀17280字节；未知／截断指令停止，不从任意中途地址启动。没有扫描Language的77600字节静态初始化。
+- `xrefs.cjs`仅对固定RegistTranslateTable入口查E8／E9目标，候选需从已登记调用者入口核指令边界；不搜任意字符串、不解整DLL。零直接候选不等于无内联／间接注册。
+- `generic-bindings.cjs`核资源目录操作的真实MethodInfo；`resources.py`复用已交付纯归档读取器，独立验证container/object/payload哈希；`literals.cjs`核32槽。
+
+复算：
+
+```powershell
+node research/dungeon_village_1/work/steam-language-install-contract/audit.cjs
+```
+
+主要新增：简体包是zh-CN、繁体包是zh；资源候选由完整码／地区别名／基础码产生。SetLanguagePack的save=false不保证完全无写入，原局部六字段回滚不等于外围全事务。当前实际中文字体／当前选择及回调注册者仍未闭合；解析范围存在不等于整份语言模块已还原。
+
+三个派生JSON均由正式合同消费，脚本同步退出，无后台任务。只保存有限研究摘要；全量译文和缓存未新增。归档规模、链接、复算及差异检查由本批记录，不以合法研究增长宣称永久有界。

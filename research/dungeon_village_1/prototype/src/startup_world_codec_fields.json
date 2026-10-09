@@ -55,6 +55,19 @@
   ],
   "records": [
     {
+      "name": "dungeon_village_prototype::StartupAudioRequest",
+      "fields": [
+        {
+          "name": "operation",
+          "type": "StartupAudioOperation"
+        },
+        {
+          "name": "id",
+          "type": "int"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldActorMetadata",
       "fields": [
         {
@@ -663,7 +676,7 @@
         },
         {
           "name": "sound_requests",
-          "type": "std::vector<int>"
+          "type": "std::vector<StartupAudioRequest>"
         },
         {
           "name": "reference_viewport",
@@ -3768,6 +3781,24 @@
     }
   ],
   "enums": [
+    {
+      "name": "dungeon_village_prototype::StartupAudioOperation",
+      "underlying": "int",
+      "values": [
+        {
+          "name": "ordinary_play",
+          "value": "0"
+        },
+        {
+          "name": "replace_bgm",
+          "value": "1"
+        },
+        {
+          "name": "jingle",
+          "value": "2"
+        }
+      ]
+    },
     {
       "name": "dungeon_village_reference::ActorKind",
       "underlying": "int",

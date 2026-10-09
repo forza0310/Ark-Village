@@ -27,7 +27,7 @@ bool display(State &s) {
             continue;
         }
         if (effect[0] >= 4 && effect[0] <= 6)
-            s.sound_requests.push_back(effect[0] + 13);
+            s.sound_requests.push_back({StartupAudioOperation::ordinary_play, effect[0] + 13});
         s.visual_effects.push_back({19, 0, effect[0], effect[2], effect[3]});
         s.delayed_effects.erase(s.delayed_effects.begin() + static_cast<std::ptrdiff_t>(n - 1));
     }
@@ -293,8 +293,8 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             if (!notices)
                 return {};
             s.scripts.notices = notices->notices;
-            s.sound_requests.insert(s.sound_requests.end(), notices->sounds.begin(),
-                                    notices->sounds.end());
+            for (const int sound : notices->sounds)
+                s.sound_requests.push_back({StartupAudioOperation::ordinary_play, sound});
             break;
         }
         case Stage::common_global_flag:

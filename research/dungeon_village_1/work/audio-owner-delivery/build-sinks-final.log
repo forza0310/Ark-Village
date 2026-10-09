@@ -1,0 +1,5 @@
+[0/2] Re-checking globbed directories...
+[1/5] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_persistence_tests.dir/tests/startup_application_actions_checks.cpp.obj
+[2/5] Linking CXX executable bin\dungeon_village_startup_world_persistence_tests.exe
+[3/5] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_application_test.cpp.obj
+[4/5] Linking CXX executable bin\dungeon_village_startup_application_tests.exe

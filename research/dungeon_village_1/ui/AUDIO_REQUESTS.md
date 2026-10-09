@@ -1,5 +1,7 @@
 # 声音资源、播放语义与维护请求
 
+后继Owner交付在[声音操作模块](../prototype/AUDIO_REQUESTS.md)：原25点已显式分类为B／C／D，唯一typed队列与旧ID接口互消费；补接新遭遇BGM2和普通通知24，通知到计数1才C11。集中验收见[交付记录](../work/audio-owner-delivery/README.md)，设备播放／标题独立队列及Steam完整生命周期仍未完成。下文原“整数队列缺口”保留发现时证据，不再代表当前在途接口类型。
+
 2026-10-09。回应产品[信息／音频接入需求](../../../docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。固定APK1.0.8的资源、局部Java与Steam2.56七个具名方法交叉，证据见[工作记录](../work/audio-contract/README.md)及[逐ID哈希](../work/audio-contract/EVIDENCE.json)。后继已发布[独立音频素材](../assets/audio/README.md)及[确定性清单](../assets/audio/MANIFEST.json)；没有播放、操作原游戏、改Owner或schema。
 
 ## 已闭合的APK资源链

@@ -263,6 +263,34 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
         c.state.world = r.candidate->state.world;
         c.state.facts = r.candidate->state.facts;
         c.state.task = r.candidate->state.task;
+        // 同一次daily按旧状态分派，直接F和路径P不能同时给出创建载荷。
+        if (r.candidate->task_entry && r.candidate->path)
+            return fail(WorldActorRouteError::invalid_input);
+        const auto publish_task_start = [&](std::optional<std::uint64_t> created,
+                                            bool music2, bool notice24) {
+            if (music2 != created.has_value() || notice24 != created.has_value() ||
+                (created && c.state.task.encounter != created))
+                return false;
+            if (!created || !i.presentation)
+                return true; // 无消费者的纯规则调用仍保留完整daily审计产物。
+            WorldActorPresentationRequest request;
+            request.actor = i.actor;
+            request.task_encounter_start = created;
+            const auto presented = i.presentation(c.state, request);
+            if (!presented)
+                return false;
+            c.state = *presented;
+            return true;
+        };
+        if (r.candidate->task_entry &&
+            !publish_task_start(r.candidate->task_entry->created,
+                                r.candidate->task_entry->music2,
+                                r.candidate->task_entry->notice24))
+            return fail(WorldActorRouteError::consumer_failed);
+        if (r.candidate->path &&
+            !publish_task_start(r.candidate->path->created_task_encounter,
+                                r.candidate->path->music2, r.candidate->path->notice24))
+            return fail(WorldActorRouteError::consumer_failed);
         for (const int id : r.candidate->event_requests)
             if (!event(c.state, id, i.event, c.consumed_events))
                 return fail(WorldActorRouteError::missing_consumer);

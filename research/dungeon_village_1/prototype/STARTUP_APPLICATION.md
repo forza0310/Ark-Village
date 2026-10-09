@@ -22,7 +22,7 @@
 
 ## 两种独立文件
 
-世界继续使用AVRSAVE1；主角定义覆盖使Owner布局变为`a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7`。旧无覆盖布局明确拒绝，不迁移；固定原表和原行为oracle不改。
+世界继续使用AVRSAVE1；当前声音操作字段使Owner布局为`7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440`，世界语义3。旧布局／语义明确拒绝，不迁移；固定原表和原行为oracle不改，详见[世界存取](PERSISTENCE.md)。
 
 [系统文件](include/dungeon_village_prototype/startup_system_records.hpp)采用`AVRSYS01`／版本1／固定dataset身份。必需分区1保存最后栏位、两类最高值、村名和奖杯，分区2保存原序设施G与职业开放p的大端short字节串；ID≥1024的未知可选段逐字节、原序往返，未知必需段拒绝。全文件与每分区均有SHA-256校验；这是完整性校验，不是加密或防篡改签名。
 
@@ -38,9 +38,9 @@
 
 world→title复制世界随机，保留不再推进的世界，重置背景q/l/s/t并保留f132f；配置／纪录返回则保留全部背景。logic始终要求初始背景。`startup-title-v2`是新的独立标题控制器身份；无世界时可捕获／恢复内存标题快照，除草稿、页面、原序装饰、请求数、完整随机外还含背景状态，包括退休槽age/y。旧v1身份明确拒绝；坏模式、引用、资格和页面组合也拒绝。此接口不等于磁盘应用快照，不修改原世界回放控制器。
 
-原有世界正常保存仍只接受稳定主场景。`load_world_replay`接受经世界loader校验的指定控制器研究入口；若为raw17，额外要求计数／阶段尚未推进。已推进计分页的世界单独快照缺少应用控制器，继续明确拒绝，不从零重新发奖。[完整应用回放](APPLICATION_REPLAY.md)以AVRAPP01应用语义3保存系统、世界、背景与当前已实现的标题／计分控制器、Driver，恢复仅向新研究隔离目录发布系统文件后联合安装。schema为`40dd1a186e1b602a84f0bf6e3d8efcd261feedf6498392c1090add5d96583a47`，仍覆盖16个应用直接成员及11个标题嵌套字段。此次字段／布局没有增加，版本变化来自完整世界缓存收尾输出语义修正；旧应用语义1／2拒绝且不迁移，独立world schema保持a1ca不变。“完整”不表示未实现的原UI状态已经覆盖。原世界单文件入口与应用入口不能混用，产品图形接线仍独立验收。
+原有世界正常保存仍只接受稳定主场景。`load_world_replay`接受经世界loader校验的指定控制器研究入口；若为raw17，额外要求计数／阶段尚未推进。已推进计分页的世界单独快照缺少应用控制器，继续明确拒绝，不从零重新发奖。[完整应用回放](APPLICATION_REPLAY.md)当前以AVRAPP01应用语义5保存系统、世界、背景与已实现的标题／计分控制器、Driver，恢复仅向新研究隔离目录发布系统文件后联合安装。schema为`a1d7f1b59376e72f04e3cfa1df064e656bad3a91fd27fb1256c53c0b5e1463bf`，仍覆盖16个应用直接成员及11个标题嵌套字段；内嵌世界使用语义3及typed声音队列。旧应用语义1–4拒绝且不迁移。“完整”不表示未实现的原UI状态已经覆盖。原世界单文件入口与应用入口不能混用，产品图形接线仍独立验收。
 
-自然被动Driver已实现真实新局、具名模态页策略、完整Driver捕获及20轮尾段认证工具，见[自然路线](../work/natural-application-route/README.md)。修前`natural-application-v1`的420轮／首月／12月只作诊断，修后`natural-application-v2`与语义3计分目录`application-clear-v3`尚待生成验证；不提前宣称自然通关完成。
+自然被动Driver已实现真实新局、具名模态页策略、完整Driver捕获及20轮尾段认证工具，见[自然路线](../work/natural-application-route/README.md)。当前Driver v2保存有序声音操作与ID，`natural-application-audio-v1`的420轮／首月已通过20轮双恢复，详见[声音交付](../work/audio-owner-delivery/README.md)。旧`natural-application-v1`至`v4`仅保各身份历史，不作为当前前缀；自然通关仍未完成。
 
 ## 有界命令行消费者
 

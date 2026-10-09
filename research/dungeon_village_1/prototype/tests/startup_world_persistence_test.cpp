@@ -108,7 +108,7 @@ Bytes replace_state(const Bytes &original, const StartupWorldRuntimeState &state
     result.insert(result.end(), hash.begin(), hash.end());
     return result;
 }
-std::vector<int> advance(StartupWorldRuntimeSession &s) {
+std::vector<StartupAudioRequest> advance(StartupWorldRuntimeSession &s) {
     const auto step = s.update();
     check(step.candidate.has_value(), "natural update rejected");
     const auto p = s.state().scripts.pages.back();
@@ -116,7 +116,7 @@ std::vector<int> advance(StartupWorldRuntimeSession &s) {
         p.legacy_page != 56 && p.legacy_page != 57 && p.legacy_page != 97 && p.legacy_page != 98)
         check(s.acknowledge_page(p.id) == StartupWorldRuntimeError::none,
               "natural confirm rejected");
-    return s.take_sound_requests();
+    return s.take_audio_requests();
 }
 // 共用严格文件夹具路径；结构输入经真实loader验证后才做保存往返。
 StartupWorldRuntimeState capture_persistence_fixture(
@@ -634,7 +634,7 @@ void run(const std::filesystem::path &dir) {
     check(saved.ok, "replay save: " + saved.error);
     const auto bytes = read(replay);
     check(std::string(bytes.begin(), bytes.begin() + 8) == "AVRSAVE1" && bytes[8] == 1 &&
-              bytes[9] == 0 && bytes[12] == 2 && bytes[13] == 0 && bytes[16] == 2,
+              bytes[9] == 0 && bytes[12] == 3 && bytes[13] == 0 && bytes[16] == 2,
           "format magic/schema/purpose oracle");
     check(startup_world_session_digest(session) == before,
           "capture consumes no state/random/history");
@@ -701,13 +701,15 @@ void run(const std::filesystem::path &dir) {
                    .snapshot,
               "incompatible header rejected after valid checksum");
     }
-    auto old_semantics = bytes;
-    old_semantics[12] = 1; // 已知旧空任务池语义；有效重签仍须拒绝，而非补池迁移。
-    resign(old_semantics);
-    write(bad, old_semantics);
-    check(!load_startup_world_file(bad, startup_world_rules(), metadata.purpose,
-                                   metadata.controller_id).snapshot,
-          "prior empty task pools semantics explicitly rejects without migration");
+    for (const auto old_version : {1, 2}) {
+        auto old_semantics = bytes;
+        old_semantics[12] = static_cast<std::uint8_t>(old_version);
+        resign(old_semantics);
+        write(bad, old_semantics);
+        check(!load_startup_world_file(bad, startup_world_rules(), metadata.purpose,
+                                       metadata.controller_id).snapshot,
+              "prior task-pool or integer-only audio semantics rejects without migration");
+    }
     auto truncated = bytes;
     truncated.pop_back();
     write(bad, truncated);
@@ -786,7 +788,7 @@ struct PresentationController {
     std::uint64_t next_round{}, next_ordinal{1}, checked{};
     bool consumed{true};
 };
-constexpr const char *presentation_controller_id = "presentation-request-v1";
+constexpr const char *presentation_controller_id = "presentation-request-v2";
 constexpr std::array<int,5> presentation_calls{0,1,2,1,0};
 Bytes encode_presentation_controller(const PresentationController &driver) {
     Bytes bytes{'A','V','P','R','Q','0','0','1'};
@@ -954,14 +956,22 @@ void presentation_replay(int argc,const char **argv) {
             append64(outputs,encoded.size()); outputs.insert(outputs.end(),encoded.begin(),encoded.end());
             driver.consumed=true;
         }
-        const auto sounds=session.take_sound_requests();
-        check(sounds==std::vector<int>(presentation_calls[round],8),"presentation round consumes exact ordered request sound output");
+        const auto sounds=session.take_audio_requests();
+        std::vector<int> sound_ids;
+        for (const auto &sound : sounds) sound_ids.push_back(sound.id);
+        check(sound_ids==std::vector<int>(presentation_calls[round],8),"presentation round consumes exact ordered request sound output");
+        check(sounds==std::vector<StartupAudioRequest>(presentation_calls[round],
+                  {StartupAudioOperation::ordinary_play,8}) && session.take_sound_requests().empty(),
+              "presentation retains original ordinary-play operations and cannot consume twice");
         check(session.state().scene.random.draws()==draws_before+2*presentation_calls[round] &&
                   session.state().page_counters.at(session.state().scripts.pages.back().id)==45 &&
                   (presentation_calls[round]!=0 || startup_world_session_digest(session)==at_round),
               "presentation same-state0/1/2 calls do not simulate tick or advance gift counter");
         Bytes encoded_sounds; append64(encoded_sounds,sounds.size());
-        for (int sound:sounds) append64(encoded_sounds,static_cast<std::uint64_t>(sound));
+        for (const auto &sound:sounds) {
+            append64(encoded_sounds,static_cast<std::uint64_t>(sound.operation));
+            append64(encoded_sounds,static_cast<std::uint64_t>(sound.id));
+        }
         driver.next_round=round+1; driver.checked=checks;
         if (round>=start)
             trace<<round<<' '<<startup_world_session_digest(session)<<' '
@@ -976,7 +986,7 @@ void presentation_replay(int argc,const char **argv) {
             if (!saved.ok) throw std::runtime_error("presentation capture: "+saved.error);
             const auto before=startup_world_session_digest(session);
             if (load_startup_world_file(file,startup_world_rules(),metadata.purpose,
-                                       "natural-progression-expansion-v1").snapshot ||
+                                       "natural-progression-expansion-v2").snapshot ||
                 load_startup_world_file(file,startup_world_rules(),StartupWorldSavePurpose::normal).snapshot ||
                 startup_world_session_digest(session)!=before)
                 throw std::runtime_error("presentation controller/purpose isolation failed");
@@ -1054,9 +1064,9 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
 }
 int main(int argc, const char **argv) {
     try {
-        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v1")
+        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v2")
             return run_startup_application_natural_replay_cli(argc, argv);
-        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v1")
+        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v2")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {
             presentation_replay(argc,argv); return 0;

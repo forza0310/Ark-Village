@@ -364,7 +364,8 @@ void shared_upgrade() {
     auto tick = prepare_startup_world_runtime(s);
     check(tick.candidate && tick.candidate->facility_upgrade_initialized.count(page) &&
               tick.candidate->sound_requests.size() == sound_count + 1 &&
-              tick.candidate->sound_requests.back() == 20 &&
+              tick.candidate->sound_requests.back().id == 20 &&
+              tick.candidate->sound_requests.back().operation == StartupAudioOperation::jingle &&
               tick.candidate->scene.world.world.facility_uses.at(definition).level == 2 &&
               tick.candidate->scene.world.world.facility_uses.at(definition).completed_uses == 7 &&
               tick.candidate->scene.world.world.facility_uses.at(definition).upgrade_pending &&

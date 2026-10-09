@@ -277,8 +277,16 @@ std::string StartupApplication::acknowledge_page(std::uint64_t id) {
     const auto error = runtime_error(candidate.acknowledge_page(id));
     return error.empty() ? commit_world(std::move(candidate)) : error;
 }
+std::vector<StartupAudioRequest> StartupApplication::take_audio_requests() {
+    return world_ ? world_->take_audio_requests() : std::vector<StartupAudioRequest>{};
+}
 std::vector<int> StartupApplication::take_sound_requests() {
-    return world_ ? world_->take_sound_requests() : std::vector<int>{};
+    std::vector<int> result;
+    result.reserve(world_ ? world_->state().sound_requests.size() : 0);
+    const auto requests = take_audio_requests();
+    for (const auto &request : requests)
+        result.push_back(request.id);
+    return result;
 }
 std::string StartupApplication::save_world() {
     if (!world_ || page_ != Page::world || clear_) return "当前不能保存世界";
@@ -344,7 +352,7 @@ std::string StartupApplication::update_clear(bool confirm) {
     const auto closed = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), p->id);
     if (!closed.candidate || !write_startup_world_runtime_scripts(s, closed.candidate->state))
         return "计分页关闭失败";
-    s.sound_requests.push_back(s.active_task && s.task.encounter ? 2 : 1);
+    s.sound_requests.push_back({StartupAudioOperation::replace_bgm, s.active_task && s.task.encounter ? 2 : 1});
     for (int event : {6, result.candidate->new_record ? 4 : 5}) {
         const auto next = ref::prepare_world_script(startup_world_runtime_catalog(),
                                                    startup_world_runtime_scripts(s), {event, {}, {}});

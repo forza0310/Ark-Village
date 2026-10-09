@@ -106,7 +106,7 @@ bool gift(State &s, const ref::WorldScriptPage &page, const StartupPresentationR
                         [=](const auto &d) { return d.shop.kind == kind && d.shop.id == definition; })) return false;
     }
     if (counter->second == 45 && !request.application_preview && !request.sound_paused) {
-        s.sound_requests.push_back(8); ++plan.sound_requests;
+        s.sound_requests.push_back({StartupAudioOperation::ordinary_play, 8}); ++plan.sound_requests;
     }
     return true;
 }

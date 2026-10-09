@@ -450,7 +450,7 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
                                      price}) != ref::AccountingError::none)
             return {Error::missing_source};
         month += price;
-        next.sound_requests.push_back(11);
+        next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 11});
         next.build_feedback_message = "建设完毕";
         next.build_feedback_counter = 20;
     }
@@ -1052,7 +1052,7 @@ bool consume_startup_world_facility_upgrade(State &s, std::uint64_t page, bool c
         return false;
     if (!confirm) {
         if (phase == 0 && counter == 1)
-            s.sound_requests.push_back(20);
+            s.sound_requests.push_back({StartupAudioOperation::jingle, 20});
         return true;
     }
     if (phase == 0) {

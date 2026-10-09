@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "startup_application_natural_replay.hpp"
+#include "support/audio_requests.hpp"
 #include <stdexcept>
 
 using namespace dungeon_village_prototype;
@@ -7,6 +8,7 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
     const std::filesystem::path &);
 namespace {
 int checks{};
+bool audio_ownership_checked{};
 void require(bool ok, const char *message) {
     ++checks;
     if (!ok) throw std::runtime_error(message);
@@ -32,6 +34,25 @@ StartupApplicationPaths paths(const std::filesystem::path &root, const std::stri
     return {root / (name + "-system.avr"),
             {root / (name + "-world0.avr"), root / (name + "-world1.avr")}};
 }
+void audio_ownership(const StartupApplication &source) {
+    // 条件动作夹具的真实Owner出口：复制待消费输出验证双接口，不注入声音，也不代表自然路径。
+    auto typed_app = source;
+    auto legacy_app = source;
+    auto typed_session = *source.world();
+    auto legacy_session = *source.world();
+    const auto expected = source.world()->state().sound_requests;
+    const auto ids = test_support::audio_ids(expected);
+    require(!expected.empty(), "双接口领取使用非空真实Owner动作输出");
+    require(typed_app.take_audio_requests() == expected && typed_app.take_sound_requests().empty() &&
+                typed_app.take_audio_requests().empty(),
+            "应用typed先领取，旧ID和typed再领取均为空，不重播同一队列");
+    require(legacy_app.take_sound_requests() == ids && legacy_app.take_audio_requests().empty(),
+            "应用旧ID先领取保留顺序，typed不能再领取");
+    require(typed_session.take_audio_requests() == expected && typed_session.take_sound_requests().empty(),
+            "Session完整保留操作和ID，typed与旧接口互相消费");
+    require(legacy_session.take_sound_requests() == ids && legacy_session.take_audio_requests().empty(),
+            "Session旧接口只显式投影ID，没有第二份typed队列");
+}
 // 此层只核应用接线与事务：完整年度计算继续由原授勋套件主责。
 void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expected,
                      const std::string &error, StartupWorldRuntimeError expected_error) {
@@ -41,6 +62,14 @@ void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expect
             "application bridge preserves full Session, history, order and random");
     if (!app.world()->state().sound_requests.empty())
         checks += run_startup_application_natural_pending_sound_check(app);
+    if (!audio_ownership_checked && !app.world()->state().sound_requests.empty()) {
+        audio_ownership(app);
+        audio_ownership_checked = true;
+    }
+    auto typed_app = app;
+    auto typed_expected = expected;
+    require(typed_app.take_audio_requests() == typed_expected.take_audio_requests(),
+            "application bridge preserves source audio operations as well as ordered IDs");
     require(app.take_sound_requests() == expected.take_sound_requests(),
             "application bridge emits original ordered sounds once");
     require(app.take_sound_requests().empty(), "application output sink consumed once");
@@ -49,6 +78,7 @@ void compare_command(StartupApplication &app, StartupWorldRuntimeSession &expect
 
 int run_startup_application_actions_checks(const std::filesystem::path &parent) {
     checks = 0;
+    audio_ownership_checked = false;
     const OwnedDirectory owned(parent / "application-action-bridges");
     const auto &root = owned.path;
     const auto entries = create_application_action_entry_fixtures(root);
@@ -121,5 +151,6 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
                     !std::filesystem::exists(files.worlds[1]),
                 "non-record exits do not write system or world files");
     }
+    require(audio_ownership_checked, "单队列双接口领取已使用非空条件动作输出验证，空队列不能代替覆盖");
     return checks;
 }

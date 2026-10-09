@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 using Bytes = std::vector<std::uint8_t>;
 using Metadata = StartupApplicationReplayMetadata;
 using Clock = std::chrono::steady_clock;
-constexpr const char *controller = "application-natural-clear-v1";
+constexpr const char *controller = "application-natural-clear-v2";
 constexpr std::uint64_t frame_limit = 2000000, stall_limit = 100000, goal_month = 180;
 constexpr std::size_t trace_budget = 8U * 1024U * 1024U;
 constexpr std::uint64_t implicit_trace_frame_limit = 10000;
@@ -63,8 +63,8 @@ struct Driver {
     std::string sound_hash = dungeon_village_tools::sha256_hex(Bytes{});
 };
 Bytes encode(const Driver &d) {
-    Bytes b{'A','V','N','A','T','D','R','1'};
-    for (auto n : {std::uint64_t(1), std::uint64_t(1), std::uint64_t(0), goal_month, frame_limit, stall_limit,
+    Bytes b{'A','V','N','A','T','D','R','2'};
+    for (auto n : {std::uint64_t(2), std::uint64_t(1), std::uint64_t(0), goal_month, frame_limit, stall_limit,
                    d.next_frame, d.next_command, d.months, d.last_month_frame, d.random, d.steps, d.history}) u64(b, n);
     for (auto n : d.date) u64(b, n);
     for (auto n : {std::uint64_t(d.phase), std::uint64_t(d.pending), d.top_id, d.top_kind, d.top_raw,
@@ -80,9 +80,9 @@ Bytes encode(const Driver &d) {
 }
 Driver decode(const Bytes &b) {
     require(b.size() == encode(Driver{}).size() &&
-                std::string(b.begin(), b.begin() + 8) == "AVNATDR1", "natural driver identity/size");
+                std::string(b.begin(), b.begin() + 8) == "AVNATDR2", "natural driver identity/size");
     Reader r{b, 8};
-    require(r.number() == 1 && r.number() == 1 && r.number() == 0 && r.number() == goal_month &&
+    require(r.number() == 2 && r.number() == 1 && r.number() == 0 && r.number() == goal_month &&
                 r.number() == frame_limit && r.number() == stall_limit, "natural driver version/seed/speed/strategy");
     Driver d;
     d.next_frame = r.number(); d.next_command = r.number(); d.months = r.number();
@@ -239,7 +239,7 @@ std::string validate(const StartupApplication &app, const Metadata &m) {
     } catch (const std::exception &error) { return error.what(); }
 }
 // 每个外层轮先完成一次应用Update，再读新栈顶并最多执行一个真实玩家命令。
-std::vector<int> step(StartupApplication &app, Driver &d) {
+std::vector<StartupAudioRequest> step(StartupApplication &app, Driver &d) {
     require(d.phase != Phase::finished && d.next_frame <= frame_limit, "natural absolute frame/phase bound");
     good(validate(app, metadata(d)));
     const auto frame = d.next_frame;
@@ -267,9 +267,14 @@ std::vector<int> step(StartupApplication &app, Driver &d) {
     }
     good(error);
     if (command != Command::wait) { ++d.commands[static_cast<std::size_t>(command)]; ++d.next_command; }
-    auto sounds = app.take_sound_requests();
+    auto sounds = app.take_audio_requests();
     Bytes sound_bytes(d.sound_hash.begin(), d.sound_hash.end()); u64(sound_bytes, frame); u64(sound_bytes, sounds.size());
-    for (int sound : sounds) { require(sound >= 0, "natural negative sound"); u64(sound_bytes, sound); }
+    for (const auto &sound : sounds) {
+        const auto operation = static_cast<std::uint64_t>(sound.operation);
+        require(operation <= 2 && sound.id >= 0 && sound.id < 26, "natural invalid audio request");
+        u64(sound_bytes, operation); u64(sound_bytes, static_cast<std::uint64_t>(sound.id));
+    }
+    require(app.take_sound_requests().empty(), "natural typed and legacy sinks consume one queue");
     d.sound_hash = dungeon_village_tools::sha256_hex(sound_bytes); d.sound_count += sounds.size();
     const auto current = date(app);
     require(current >= d.date, "natural calendar cannot rewind");
@@ -321,14 +326,15 @@ std::uint64_t number(const std::map<std::string, std::string> &options, const st
     std::size_t consumed{}; const auto value = std::stoull(found->second, &consumed);
     require(consumed == found->second.size() && value <= maximum, "natural number bound " + key); return value;
 }
-std::string trace_line(const StartupApplication &app, const Driver &d, const std::vector<int> &sounds,
+std::string trace_line(const StartupApplication &app, const Driver &d, const std::vector<StartupAudioRequest> &sounds,
                        const fs::path &system) {
     const auto m = metadata(d);
     std::ostringstream out;
     out << "{\"frame\":" << d.next_frame - 1 << ",\"next_frame\":" << d.next_frame
         << ",\"digest\":\"" << startup_application_replay_digest(app, m, validate)
         << "\",\"sounds\":[";
-    for (std::size_t i = 0; i < sounds.size(); ++i) out << (i ? "," : "") << sounds[i];
+    for (std::size_t i = 0; i < sounds.size(); ++i)
+        out << (i ? "," : "") << '[' << static_cast<int>(sounds[i].operation) << ',' << sounds[i].id << ']';
     out << "],\"system_digest\":\"" << dungeon_village_tools::sha256_hex(read_file(system)) << "\"}\n";
     return out.str();
 }
@@ -406,7 +412,7 @@ int run_startup_application_natural_replay_cli(int argc, const char **argv) {
     const auto first_frame = driver.next_frame;
     while (driver.next_frame <= stop_at && driver.phase != Phase::finished) {
         const auto before_month = driver.months;
-        std::vector<int> sounds;
+        std::vector<StartupAudioRequest> sounds;
         try { sounds = step(app, driver); }
         catch (const std::exception &error) {
             throw std::runtime_error("natural frame=" + std::to_string(driver.next_frame) + " months=" +

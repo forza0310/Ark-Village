@@ -1,0 +1,294 @@
+{
+  "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+  "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+  "strings": [
+    {
+      "va": 286198964,
+      "offset": 17753780,
+      "encoded": 2684368841,
+      "index": 7140,
+      "metadata_offset": 268152,
+      "length": 5,
+      "text": "en-US"
+    },
+    {
+      "va": 286218976,
+      "offset": 17773792,
+      "encoded": 2684369795,
+      "index": 7617,
+      "metadata_offset": 274672,
+      "length": 5,
+      "text": "ja-JP"
+    },
+    {
+      "va": 286223636,
+      "offset": 17778452,
+      "encoded": 2684370017,
+      "index": 7728,
+      "metadata_offset": 276025,
+      "length": 12,
+      "text": "language.dat"
+    },
+    {
+      "va": 286167192,
+      "offset": 17722008,
+      "encoded": 2684367385,
+      "index": 6412,
+      "metadata_offset": 259498,
+      "length": 21,
+      "text": "_custom_lang_pack.csv"
+    },
+    {
+      "va": 286158896,
+      "offset": 17713712,
+      "encoded": 2684367007,
+      "index": 6223,
+      "metadata_offset": 257208,
+      "length": 54,
+      "text": "^[a-zA-Z0-9_\\-\\(\\)]+\\.csv(,[a-zA-Z0-9_\\-\\(\\)]+\\.csv)?$"
+    },
+    {
+      "va": 286169156,
+      "offset": 17723972,
+      "encoded": 2684362013,
+      "index": 3726,
+      "metadata_offset": 180010,
+      "length": 9,
+      "text": "Kairosoft"
+    },
+    {
+      "va": 286226256,
+      "offset": 17781072,
+      "encoded": 2684375603,
+      "index": 10521,
+      "metadata_offset": 354040,
+      "length": 9,
+      "text": "日本語"
+    },
+    {
+      "va": 286243160,
+      "offset": 17797976,
+      "encoded": 2684360025,
+      "index": 2732,
+      "metadata_offset": 155655,
+      "length": 7,
+      "text": "English"
+    },
+    {
+      "va": 286243100,
+      "offset": 17797916,
+      "encoded": 2684354561,
+      "index": 0,
+      "metadata_offset": 88360,
+      "length": 0,
+      "text": ""
+    },
+    {
+      "va": 286185140,
+      "offset": 17739956,
+      "encoded": 2684368201,
+      "index": 6820,
+      "metadata_offset": 264392,
+      "length": 10,
+      "text": "config.inf"
+    },
+    {
+      "va": 286223676,
+      "offset": 17778492,
+      "encoded": 2684370019,
+      "index": 7729,
+      "metadata_offset": 276037,
+      "length": 24,
+      "text": "language_pack_format.txt"
+    },
+    {
+      "va": 286223760,
+      "offset": 17778576,
+      "encoded": 2684370023,
+      "index": 7731,
+      "metadata_offset": 276104,
+      "length": 29,
+      "text": "language_pack_template_en.txt"
+    },
+    {
+      "va": 286167852,
+      "offset": 17722668,
+      "encoded": 2684367415,
+      "index": 6427,
+      "metadata_offset": 259648,
+      "length": 14,
+      "text": "_language_pack"
+    },
+    {
+      "va": 286167896,
+      "offset": 17722712,
+      "encoded": 2684367417,
+      "index": 6428,
+      "metadata_offset": 259662,
+      "length": 21,
+      "text": "_language_pack_locale"
+    },
+    {
+      "va": 286168116,
+      "offset": 17722932,
+      "encoded": 2684367427,
+      "index": 6433,
+      "metadata_offset": 259763,
+      "length": 26,
+      "text": "_language_pack_userchanged"
+    },
+    {
+      "va": 286167940,
+      "offset": 17722756,
+      "encoded": 2684367419,
+      "index": 6429,
+      "metadata_offset": 259683,
+      "length": 23,
+      "text": "_language_pack_location"
+    },
+    {
+      "va": 286167984,
+      "offset": 17722800,
+      "encoded": 2684367421,
+      "index": 6430,
+      "metadata_offset": 259706,
+      "length": 20,
+      "text": "_language_pack_match"
+    },
+    {
+      "va": 286168072,
+      "offset": 17722888,
+      "encoded": 2684367425,
+      "index": 6432,
+      "metadata_offset": 259744,
+      "length": 19,
+      "text": "_language_pack_send"
+    },
+    {
+      "va": 286181456,
+      "offset": 17736272,
+      "encoded": 2684357111,
+      "index": 1275,
+      "metadata_offset": 115603,
+      "length": 7,
+      "text": "@author"
+    },
+    {
+      "va": 286181632,
+      "offset": 17736448,
+      "encoded": 2684357119,
+      "index": 1279,
+      "metadata_offset": 115644,
+      "length": 9,
+      "text": "@language"
+    },
+    {
+      "va": 286181852,
+      "offset": 17736668,
+      "encoded": 2684357129,
+      "index": 1284,
+      "metadata_offset": 115683,
+      "length": 6,
+      "text": "@title"
+    },
+    {
+      "va": 286181764,
+      "offset": 17736580,
+      "encoded": 2684357125,
+      "index": 1282,
+      "metadata_offset": 115671,
+      "length": 6,
+      "text": "@scale"
+    },
+    {
+      "va": 286181412,
+      "offset": 17736228,
+      "encoded": 2684357109,
+      "index": 1274,
+      "metadata_offset": 115597,
+      "length": 6,
+      "text": "@appli"
+    },
+    {
+      "va": 286174320,
+      "offset": 17729136,
+      "encoded": 2684367709,
+      "index": 6574,
+      "metadata_offset": 261395,
+      "length": 4,
+      "text": "auto"
+    },
+    {
+      "va": 286256656,
+      "offset": 17811472,
+      "encoded": 2684355197,
+      "index": 318,
+      "metadata_offset": 97283,
+      "length": 1,
+      "text": "%"
+    },
+    {
+      "va": 286271544,
+      "offset": 17826360,
+      "encoded": 2684366797,
+      "index": 6118,
+      "metadata_offset": 255465,
+      "length": 11,
+      "text": "[^a-zA-Z\\-]"
+    },
+    {
+      "va": 286270544,
+      "offset": 17825360,
+      "encoded": 2684355829,
+      "index": 634,
+      "metadata_offset": 102999,
+      "length": 1,
+      "text": "-"
+    },
+    {
+      "va": 286165848,
+      "offset": 17720664,
+      "encoded": 2684372785,
+      "index": 9112,
+      "metadata_offset": 292543,
+      "length": 5,
+      "text": "zh-SG"
+    },
+    {
+      "va": 286165628,
+      "offset": 17720444,
+      "encoded": 2684372775,
+      "index": 9107,
+      "metadata_offset": 292514,
+      "length": 5,
+      "text": "zh-CN"
+    },
+    {
+      "va": 286165672,
+      "offset": 17720488,
+      "encoded": 2684372777,
+      "index": 9108,
+      "metadata_offset": 292519,
+      "length": 5,
+      "text": "zh-HK"
+    },
+    {
+      "va": 286165892,
+      "offset": 17720708,
+      "encoded": 2684372787,
+      "index": 9113,
+      "metadata_offset": 292548,
+      "length": 5,
+      "text": "zh-TW"
+    },
+    {
+      "va": 286165804,
+      "offset": 17720620,
+      "encoded": 2684372783,
+      "index": 9111,
+      "metadata_offset": 292538,
+      "length": 5,
+      "text": "zh-MO"
+    }
+  ]
+}

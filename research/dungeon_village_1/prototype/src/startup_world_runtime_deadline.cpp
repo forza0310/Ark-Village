@@ -272,7 +272,7 @@ bool abort_task(State &s) {
             s, {ref::EncounterRequestKind::clear_task, {}, 0, 0, 0}))
         return false;
     if (music)
-        s.sound_requests.push_back(1); // 原d/a.g，清h之后恢复背景音乐，不是额外现金/地图刷新。
+        s.sound_requests.push_back({StartupAudioOperation::replace_bgm, 1}); // 原d/a.g，清h之后恢复背景音乐，不是额外现金/地图刷新。
     return true;
 }
 } // namespace

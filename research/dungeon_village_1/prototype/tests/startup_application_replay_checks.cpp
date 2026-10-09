@@ -25,7 +25,7 @@ std::filesystem::path create_application_clear_entry_fixture(const std::filesyst
 namespace {
 using Bytes = std::vector<std::uint8_t>;
 using Metadata = StartupApplicationReplayMetadata;
-constexpr const char *controller = "application-clear-conditions-v1";
+constexpr const char *controller = "application-clear-conditions-v2";
 constexpr const char *entry_controller = "application-clear-entry-fixture-v1";
 constexpr std::uint64_t limit = 4000;
 enum class Phase : std::uint64_t { advancing, row44, row45, final64, failure_observed, finished };
@@ -67,9 +67,12 @@ std::string hex(const Bytes &bytes) {
     for (auto byte : bytes) { result.push_back(digits[byte >> 4]); result.push_back(digits[byte & 15]); }
     return result;
 }
-Bytes sounds_bytes(const std::vector<int> &sounds) {
+Bytes sounds_bytes(const std::vector<StartupAudioRequest> &sounds) {
     Bytes result; u64(result, sounds.size());
-    for (int sound : sounds) u64(result, static_cast<std::uint64_t>(sound));
+    for (const auto &sound : sounds) {
+        u64(result, static_cast<std::uint64_t>(sound.operation));
+        u64(result, static_cast<std::uint64_t>(sound.id));
+    }
     return result;
 }
 std::array<std::uint64_t, 3> events(const StartupApplication &app) {
@@ -101,21 +104,24 @@ struct Driver {
     bool inject_failure{}, outputs_consumed{true};
 };
 Bytes encode(const Driver &d) {
-    Bytes b; text(b, "AVACDRV1"); text(b, "conditional_raw17");
+    Bytes b; text(b, "AVACDRV2"); text(b, "conditional_raw17");
     u64(b, 1); u64(b, 0); // 固定seed1/speed0，不是外推原版新局资格。
     for (auto n : {d.scenario, d.next_frame, d.next_command, d.clear_id, static_cast<std::uint64_t>(d.phase),
                    d.entry_high, d.entry_trophy, d.total, d.random, d.entry_steps, d.entry_history}) u64(b, n);
     text(b, d.entry_village);
     for (auto n : d.event_base) u64(b, n);
     for (auto n : d.event_seen) u64(b, n);
-    u64(b, d.sounds.size()); for (int n : d.sounds) u64(b, static_cast<std::uint64_t>(n));
+    u64(b, d.sounds.size()); for (int n : d.sounds) {
+        u64(b, static_cast<std::uint64_t>(StartupAudioOperation::replace_bgm));
+        u64(b, static_cast<std::uint64_t>(n));
+    }
     for (auto n : {d.failures, d.successful, d.checks, std::uint64_t(d.inject_failure),
                    std::uint64_t(d.outputs_consumed), limit, std::uint64_t(2)}) u64(b, n);
     return b;
 }
 Driver decode(const Bytes &bytes) {
     require(bytes.size() <= 8192, "driver budget"); Reader r{bytes};
-    require(r.string() == "AVACDRV1" && r.string() == "conditional_raw17" &&
+    require(r.string() == "AVACDRV2" && r.string() == "conditional_raw17" &&
                 r.number() == 1 && r.number() == 0, "driver identity/seed/speed");
     Driver d;
     d.scenario = r.number(); d.next_frame = r.number(); d.next_command = r.number(); d.clear_id = r.number();
@@ -127,6 +133,8 @@ Driver decode(const Bytes &bytes) {
     for (auto &n : d.event_seen) n = r.number();
     const auto count = r.number(); require(count <= 1, "driver sound count");
     for (std::uint64_t i = 0; i < count; ++i) {
+        require(r.number() == static_cast<std::uint64_t>(StartupAudioOperation::replace_bgm),
+                "fixture resumes main track with actual BGM replacement operation");
         const auto sound = r.number(); require(sound == 1, "fixture only resumes BGM1"); d.sounds.push_back(1);
     }
     d.failures = r.number(); d.successful = r.number(); d.checks = r.number();
@@ -136,7 +144,8 @@ Driver decode(const Bytes &bytes) {
     require(r.at == bytes.size() && encode(d) == bytes, "driver canonical encoding/trailing bytes");
     require(d.scenario <= 1 && d.next_frame >= 1 && d.next_frame <= limit &&
                 d.next_command == d.next_frame && d.clear_id && d.failures <= 1 && d.successful < limit &&
-                d.successful + d.failures == d.next_frame - 1 && d.checks == 5 * (d.next_frame - 1) &&
+                // 每轮五项既有oracle加typed操作／单队列领取一项，仍严格检查数量。
+                d.successful + d.failures == d.next_frame - 1 && d.checks == 6 * (d.next_frame - 1) &&
                 d.entry_trophy <= 4 && d.entry_high <= std::uint64_t(std::numeric_limits<std::int64_t>::max()) &&
                 d.total > 0 && d.total <= std::uint64_t(std::numeric_limits<std::int64_t>::max()) &&
                 (!d.failures || d.inject_failure), "driver counters/record relationships");
@@ -246,12 +255,18 @@ std::string step(StartupApplication &app, Metadata &metadata, const std::filesys
     } else
 #endif
         error = app.update(confirm);
-    const auto sounds = app.take_sound_requests();
+    const auto sounds = app.take_audio_requests();
     auto check = [&](bool ok, const char *why) { require(ok, why); ++d.checks; };
     check(failing ? !error.empty() : error.empty(), "actual update/fault result");
     check(!failing || (digest(app, metadata) == before && read(system) == system_before), "failed commit preserves full application and system");
     const bool finished = !app.clear_page();
-    check(sounds == (finished && !failing ? std::vector<int>{1} : std::vector<int>{}), "exact once-only actual BGM output");
+    std::vector<int> sound_ids;
+    for (const auto &sound : sounds) sound_ids.push_back(sound.id);
+    check(sound_ids == (finished && !failing ? std::vector<int>{1} : std::vector<int>{}), "exact once-only actual BGM output");
+    check(sounds == (finished && !failing ?
+              std::vector<StartupAudioRequest>{{StartupAudioOperation::replace_bgm, 1}} :
+              std::vector<StartupAudioRequest>{}) && app.take_sound_requests().empty(),
+          "BGM operation survives conditional replay and both sinks share once-only consumption");
     auto expected_events = d.event_base;
     if (finished && !failing) { ++expected_events[2]; ++expected_events[d.scenario == 0 ? 0 : 1]; }
     d.event_seen = events(app);
@@ -260,7 +275,7 @@ std::string step(StartupApplication &app, Metadata &metadata, const std::filesys
               app.world()->state().simulation_steps == d.entry_steps && app.world()->checkpoints().size() == d.entry_history,
           "clear does not replay world or random/history");
     if (failing) ++d.failures; else ++d.successful;
-    d.sounds.insert(d.sounds.end(), sounds.begin(), sounds.end()); d.outputs_consumed = true;
+    d.sounds.insert(d.sounds.end(), sound_ids.begin(), sound_ids.end()); d.outputs_consumed = true;
     d.phase = Phase::advancing;
     if (finished) d.phase = Phase::finished;
     else {

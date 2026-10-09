@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "support/world_fixture.hpp"
+#include "support/audio_requests.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -67,7 +68,8 @@ void contact_and_spells() {
     check(fields && fields->target_effects &&
               fields->target_effects->display ==
                   std::vector<ref::ActorEffectRecord>{{16, 0, 5, 105, 7}, {10, 0, 1, 2, 0}} &&
-              s.sound_requests == std::vector<int>{18},
+              test_support::audio_ids(s.sound_requests) == std::vector<int>{18} &&
+              s.sound_requests.front().operation == StartupAudioOperation::ordinary_play,
           "spell5 midpoint has height0, inserts cd16 first and emits source18");
     r.visual = 8;
     fields = adapter.nonactors.request(s, r);
@@ -102,7 +104,8 @@ void hit_object_and_projection() {
           "facing resolves ordered self/target cached u; attacker and miss victim use opposite "
           "order");
     r.hit = ref::HitRequest{ref::HitRequestKind::attack_sound, 14};
-    check(adapter.nonactors.request(s, r) && s.sound_requests == std::vector<int>{14},
+    check(adapter.nonactors.request(s, r) && test_support::audio_ids(s.sound_requests) == std::vector<int>{14} &&
+              s.sound_requests.front().operation == StartupAudioOperation::ordinary_play,
           "successful attack sound retained for presentation consumption");
     r.kind = ref::WorldNonactorRequestKind::object;
     r.hit.reset();
@@ -197,7 +200,8 @@ void actor_presentation_and_frame_cache() {
     r.shop.reset();
     r.sound = ref::WorldMiscSoundRequest{{1}, 8, {120, 160}};
     next = adapter.actors.presentation(s, r);
-    check(next && next->sound_requests == std::vector<int>{8},
+    check(next && test_support::audio_ids(next->sound_requests) == std::vector<int>{8} &&
+              next->sound_requests.front().operation == StartupAudioOperation::ordinary_play,
           "front33 presentation sound consumed before same-FIFO continuation");
     auto &monster = s.scene.world.world.ai.battle.actors.at({2});
     monster.control.action = 3;
@@ -234,7 +238,8 @@ void actor_presentation_and_frame_cache() {
               next->visual_effects ==
                   std::vector<ref::ActorEffectRecord>{
                       {20, 0, 60, 70}, {3, -2, 60, 70, reward, 0, 0}, {4, -2, 60, 70, -320, 29}} &&
-              next->sound_requests.back() == 23,
+              next->sound_requests.back().id == 23 &&
+              next->sound_requests.back().operation == StartupAudioOperation::ordinary_play,
           "normal death retains exact X20/X3/X4 source order and sound23, no duplicate cash grant");
     r.lifecycle = ref::LifecycleRequest{ref::LifecycleRequestKind::cancelled_death_effect, 0};
     next = adapter.actors.presentation(s, r);

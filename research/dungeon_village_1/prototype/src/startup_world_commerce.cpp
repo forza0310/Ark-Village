@@ -340,7 +340,7 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
                 scroll(v, static_cast<int>(list.size()), 5);
                 if (!open(next, 86, v[0], entry))
                     return Error::script_failed;
-                next.sound_requests.push_back(25); // 固定APK d/a.B初值0，A[0]。
+                next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 25}); // 固定APK d/a.B初值0，A[0]。
                 if (list.empty()) {
                     if (!event(next, sale ? 14 : 13) || !close(next, id))
                         return Error::script_failed;
@@ -406,7 +406,7 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
             return {};
         ++counter;
         if (original.legacy_page == 93 && counter == 1)
-            next.sound_requests.push_back(5);
+            next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
         auto &feedback = next.commerce_page_data.at(id)[5];
         if (original.legacy_page == 84 && feedback > 0)
             --feedback;

@@ -990,9 +990,17 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_tax_page(std::uint64_t 
                                                                   int selection) {
     return act_startup_world_tax_page(state_, page, action, selection);
 }
+std::vector<StartupAudioRequest> StartupWorldRuntimeSession::take_audio_requests() {
+    std::vector<StartupAudioRequest> result;
+    result.swap(state_.sound_requests);
+    return result;
+}
 std::vector<int> StartupWorldRuntimeSession::take_sound_requests() {
     std::vector<int> result;
-    result.swap(state_.sound_requests);
+    result.reserve(state_.sound_requests.size()); // 分配失败时仍保留尚未领取的原输出。
+    const auto requests = take_audio_requests();
+    for (const auto &request : requests)
+        result.push_back(request.id);
     return result;
 }
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t page,

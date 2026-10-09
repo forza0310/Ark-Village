@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
 #include <array>
 #include <optional>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -47,6 +48,14 @@ struct SteamFacilityMapchip2 {
     std::array<int,2> position{};
     int orientation{}; // 81固定0；消费者使用Mapchip2居中pattern，不套普通建设锚点。
 };
+struct SteamFacilityMapchipDraw {
+    std::string sprite; // image组内已出版SEB文件名，Steam固定85映射与其字节逐项已核。
+    int frame{};
+    std::array<int,2> position{}; // 包含Mapchip2居中偏移，不含SEB内部offset。
+};
+// 固定已核mapchip目录；不借地图可建/旋转资格限制只读helper，也不改道路请求帧。
+std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(
+    const SteamFacilityMapchip2 &request);
 enum class SteamFacilityNumberKind { number, money, plus_value };
 struct SteamFacilityNumber {
     SteamFacilityNumberKind kind;

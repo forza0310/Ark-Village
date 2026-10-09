@@ -1,0 +1,44 @@
+{
+  "baseline": "2c612c9",
+  "files": [
+    {
+      "path": "prototype/include/dungeon_village_prototype/steam_facility_skin.hpp",
+      "bytes": 4901,
+      "sha256": "26d6db76234a074faf0597318c3a1a225d787d655ef296a157ab8767b2b3e2dd"
+    },
+    {
+      "path": "prototype/src/steam_facility_skin.cpp",
+      "bytes": 14129,
+      "sha256": "3bf0f46dbbc8404886459f6c03d8979aeec6a0ec6076dfb1146ec74ec5cb67d9"
+    },
+    {
+      "path": "prototype/tests/steam_facility_skin_checks.cpp",
+      "bytes": 18463,
+      "sha256": "4984d1bd85549c14b5ad97ef69c228e4730fb1699592026adf9fa499fbb67e75"
+    },
+    {
+      "path": "prototype/STEAM_FACILITY_SKIN.md",
+      "bytes": 3684,
+      "sha256": "6f33e68731688465ddc57afb3da56d1221feee437c542847de8635310a43e0e2"
+    },
+    {
+      "path": "ui/STEAM_FACILITY_DETAIL.md",
+      "bytes": 12872,
+      "sha256": "df2469787a1ef5325634d0a141335d9352ca1abb3033e64ad580faa42611679c"
+    },
+    {
+      "path": "work/steam-facility-mapchip-delivery/README.md",
+      "bytes": 1418,
+      "sha256": "37aee5281f7612f2da5495ac3f27213bb1c3beece55d1b415012ca17ef2e6916"
+    }
+  ],
+  "validation": {
+    "release_build": "passed",
+    "visuals_seconds": 0.57,
+    "scope": "85 fixed mapchip requests in both directions; not pixel or rotation eligibility certification"
+  },
+  "new_asset_bytes": 0,
+  "new_targets": 0,
+  "persistence_changed": false,
+  "processes": "all batch commands exited"
+}

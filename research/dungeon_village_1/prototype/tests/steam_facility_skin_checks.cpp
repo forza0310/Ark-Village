@@ -1,4 +1,6 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
+#include "dungeon_village_prototype/startup.hpp"
+#include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -192,6 +194,39 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         if(resource->published_sprite)check(std::filesystem::is_regular_file(assets/resource->published_sprite),"SEB引用不复制另一份素材");
     }
     check(!steam_facility_resource(static_cast<A>(99)),"未知资源枚举拒绝");
+    // 固定Steam85项映射已经逐资源交叉；DrawMapchip2中心偏移不同于建设helper。
+    const std::array<std::vector<std::array<int,2>>,3> first_points{{{{90,105}},{{105,97},{75,112}},
+        {{90,90},{60,105},{120,105},{90,120}}}};
+    const std::array<std::vector<std::array<int,2>>,3> second_points{{{{90,105}},{{45,97},{75,112}},
+        {{90,90},{120,105},{60,105},{90,120}}}};
+    const auto &catalog=startup_evidence();
+    const auto &definitions=startup_world_rules().facilities;
+    std::size_t mapped=0;bool road_seen=false;
+    for(const auto &art:catalog.displays) {
+        const auto def=std::find_if(definitions.begin(),definitions.end(),
+            [&](const auto &d){return d.id==art.definition_id;});
+        check(def!=definitions.end(),"mapchip反查完整世界定义存在，不能读早期切片目录");
+        for(int orientation=0;orientation<2;++orientation) {
+            const auto draws=steam_facility_mapchip2_draws({art.id,{120,105},orientation});
+            const auto &expected=(orientation?second_points:first_points).at(def->shape);
+            bool matches=draws&&draws->size()==expected.size();
+            if(matches)for(std::size_t i=0;i<expected.size();++i)
+                matches=matches&&(*draws)[i].sprite==art.sprite&&(*draws)[i].position==expected[i]&&
+                    (*draws)[i].frame==static_cast<int>(2*i)+orientation;
+            check(matches,"两朝向pattern原序与中心偏移独立oracle，不整图翻转");
+        }
+        if(def->kind==6) {
+            const auto draws=steam_facility_mapchip2_draws({art.id,{120,105},0});
+            check(draws&&draws->front().frame==0,"Mapchip2道路直接pattern0，不套建设道路frame11");road_seen=true;
+        }
+        ++mapped;
+    }
+    check(mapped==85&&road_seen,"覆盖固定85项mapchip及道路分支");
+    check(!steam_facility_mapchip2_draws({-1,{120,105},0})&&
+          !steam_facility_mapchip2_draws({999,{120,105},0})&&
+          !steam_facility_mapchip2_draws({catalog.displays.front().id,{120,105},2})&&
+          !steam_facility_mapchip2_draws({catalog.displays.front().id,{std::numeric_limits<int>::min(),105},0}),
+          "未知图块、朝向及中心算术溢出不返回局部图元");
     // 已核helper的请求序列oracle；数字步宽由SEB提供，金额/加号固定8且不测Font。
     SteamFacilityNumber numeric{N::number,A::number09,123,{100,20},1,0,-1};
     for(const auto anchor:std::array<std::array<int,2>,4>{{{0,100},{2,89},{4,77},{6,89}}}) {

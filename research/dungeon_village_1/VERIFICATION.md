@@ -1,5 +1,9 @@
 # 当前研究验证与历史索引
 
+## Steam设施Mapchip2分片2026-10-10
+
+[交付](work/steam-facility-mapchip-delivery/README.md)复用完整85定义及原pattern，展开详情专用居中分片，明确无建设道路frame11覆盖。修后Release构建、visuals0.57秒通过；初次早期切片目录缺反查已修，保留85项断言和源异常。无新图像、Owner／格式变化或后台进程；请求生成不等于末端裁片、旋转资格或原窗口像素验收。
+
 ## Steam人物60局部合同与差异图2026-10-10
 
 后继[更新与触摸](ui/STEAM_HUMAN_INPUT.md)补8个入口／前缀5033字节、26锚及3跳表项：raw60外层Update直接委托Update2，普通翻页不重配label11；三类触摸值与列表选择／UP确认分层已核。证据复算、语法／编码／链接通过，hash `034e522f…704936`；不据此认证最终flags或原窗口单击。

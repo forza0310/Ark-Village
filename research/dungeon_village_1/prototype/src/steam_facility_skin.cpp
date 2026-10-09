@@ -1,5 +1,8 @@
 // Steam81只读皮肤：具名局部合同见ui/STEAM_FACILITY_UPGRADE.md。
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
+#include "dungeon_village_prototype/startup.hpp"
+#include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "dungeon_village_reference/geometry.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <limits>
@@ -142,6 +145,35 @@ std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     } else {
         const auto absolute_digits=decimal.size()-first_digit;
         if(!emit(right-static_cast<std::int64_t>(absolute_digits+1)*8,14))return {};
+    }
+    return result;
+}
+std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(
+    const SteamFacilityMapchip2 &request) {
+    if(request.mapchip<0||(request.orientation!=0&&request.orientation!=1))return {};
+    const auto &evidence=startup_evidence();
+    const auto art=std::find_if(evidence.displays.begin(),evidence.displays.end(),
+        [&](const auto &d){return d.id==request.mapchip;});
+    if(art==evidence.displays.end()||art->sprite.empty())return {};
+    const auto &definitions=startup_world_rules().facilities;
+    const auto definition=std::find_if(definitions.begin(),definitions.end(),
+        [&](const auto &d){return d.id==art->definition_id;});
+    if(definition==definitions.end()||definition->display_id!=request.mapchip||
+       definition->shape<0||definition->shape>2)return {};
+    const auto pieces=dungeon_village_reference::facility_footprint(
+        static_cast<dungeon_village_reference::FacilityShape>(definition->shape),
+        static_cast<dungeon_village_reference::FacilityOrientation>(request.orientation),{1,1},3,3);
+    if(pieces.error!=dungeon_village_reference::GeometryError::none)return {};
+    constexpr std::array<std::array<int,2>,3> centers{{{-30,0},{-45,7},{-30,15}}};
+    const auto center=centers[definition->shape];
+    std::vector<SteamFacilityMapchipDraw> result;
+    for(const auto &piece:pieces.cells) {
+        const auto u=piece.position.x-1,v=piece.position.y-1;
+        const auto x=std::int64_t(request.position[0])+center[0]+30*(u+v);
+        const auto y=std::int64_t(request.position[1])+center[1]+15*(u-v);
+        if(!fits(x)||!fits(y))return {};
+        // DrawMapchip2没有普通DrawMapchip的道路kind6帧11/1覆盖，直接取pattern帧。
+        result.push_back({art->sprite,piece.fragment_index,{static_cast<int>(x),static_cast<int>(y)}});
     }
     return result;
 }

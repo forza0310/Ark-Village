@@ -12,6 +12,8 @@
 
 此前主动首星与3780a3b二星经营/活动30/玩家重启已通过，五组收益对照也已完成；这些使用旧初始化语义，只保留历史证据，不能续作本版后期路线前缀。[到达收费缓存缺口](RESEARCH_REQUESTS.md#facility-arrival-price-cache)仍未修，不认证最优布局。最终计分/继续/继承、五星及BOSS整链仍未认证。收支只读查询已迁入，但raw9/36维护页面入口未接；26个Ogg正式素材已有，typed音频消费者仍在途。具体按[最小剩余缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)处理。
 
+2026-10-10已从e73bb31真实新局重新建立首/二星业务档，并完成魔法壶投入/发现后保存、独立冷载炼制及伤药真实HP回复、后续营业与终态复核。两Debug标准177/153项及Release便携包解压/启动/隔离存读通过；标题拖动误激活已修，OS输入通道不可用，CI待验证。此批有新版可用业务前缀，但仍不替代后续星级/BOSS/计分继承，具体证据见[B1](../stages/B1-playable-prototype.md#product-business-e73bb31)。
+
 2026-10-09上批冻结**72a5bf4**完整363项闭包：设施类别/效果/逐来源加成、普通道具图标、人物cd13已接线；受击Owner轨迹作为配套回归迁入，验收见[B1](../stages/B1-playable-prototype.md#research-72a5bf4-integration)。本批已迁入4ef4a98完整379项，包含9ec4c1a主角/纪录及启动皮肤桥，本地验收通过；玩家schema4新增主角资料，随机/暂停政策不变，见[B1](../stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 
 上批历史：2026-10-08核至正式**88eb658**：产品本批迁入1e6b291建设图块查询、Owner显式表现请求及独立回放，共363项冻结来源；建设图块接桌面共用查询，正常桌面不自动发有副作用的表现请求。此前a57958c/0a5b5e2经营、举物、建筑提示及schema3继续保留。验收进度见[B1](../stages/B1-playable-prototype.md#research-88eb658-integration)，主角/纪录/人物属性cd13及受击触发见[研究需求](RESEARCH_REQUESTS.md#player-feedback-20261008)。以下有提交日期的段落保留历史状态，不替代当前范围。

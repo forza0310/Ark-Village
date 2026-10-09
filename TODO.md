@@ -4,7 +4,7 @@
 
 ## 本批收口
 
-- [ ] e73bb31新版经营→魔法壶→便携包：[本批进展](docs/stages/B1-playable-prototype.md#product-business-e73bb31)。新版首/二星跨进程链、魔法壶投入/发现/冷载/炼制/真实用药、两Debug标准177/153项已通过；PC标题拖动误激活修复已保存checkpoint。最终ZIP待验收，OS输入通道不可用。
+- [x] e73bb31新版经营→魔法壶→便携包：[本批结果](docs/stages/B1-playable-prototype.md#product-business-e73bb31)。新版首/二星跨进程链、魔法壶投入/发现/冷载/炼制/真实用药、两Debug标准177/153项通过；PC标题拖动误激活已修复。13.45MiB Release ZIP已独立解压、启动和隔离存读验证；OS输入通道不可用，CI待验证，未推送/发布。
 
 - [x] S019及设施加成2/2面板部分补正：紧凑布局、原数字/箭头、分区和按钮位置，通过本地测试/窗口；当时图标及逐来源加成未完成，后续72a5bf4接线见[B1](docs/stages/B1-playable-prototype.md#facility-detail-visual-correction)。
 - [x] 设施74场景底栏名称/累计收益接线及对应HUD鼠标热区：用户已批准，累计净收益/正负字块/最小窗口完成本地验收，Space暂停保留，见上述B1底栏接续。
@@ -30,7 +30,7 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [x] e73bb31正式闭包404项/7适配已迁入：新局任务目录与设施人气初值修正、收支只读查询、维护AVRSAVE语义2/AVRAPP语义4；Steam三张静态启动图已接。玩家schema4布局保持，更新数据身份拒绝旧档、不迁移。
 - [x] e73bb31本地验收：desktop-debug177项/headless-debug153项、当前语义自然首月三进程回放和4个Release窗口通过；CI待验证，见[B1](docs/stages/B1-playable-prototype.md#research-e73bb31-integration)。此前首星/二星/五方案结果仅属旧初始化语义，后续主动经营须重新取得本版真实新局前缀。
 - [ ] 建设/邻接变化后到达收费缓存与查询价不一致，已登记[最小维护请求](docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)；等待正式修正后复验受影响收益方案，不宣称当前装饰布局最优。
-- [ ] 主动经营后继：按已批准路线扩展魔法壶实际炼制、三至五星所需住宅/商店数量与任务成功、明确身份的BOSS、计分/继续/继承；已通过首星/二星不替代这些目标。
+- [ ] 主动经营后继：继续三至五星所需住宅/商店数量与任务成功、明确身份的BOSS、计分/继续/继承；本版首星/二星及魔法壶实际炼制/用药已通过，不替代这些目标。
 
 - [x] 1e6b291建设查询与Owner显式表现请求/独立回放迁入并本地验收，来源核至88eb658，363项冻结来源；结果见[B1](docs/stages/B1-playable-prototype.md#research-88eb658-integration)。
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。

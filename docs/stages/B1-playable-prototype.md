@@ -6,7 +6,7 @@
 
 <a id="product-business-e73bb31"></a>
 
-## 新版主动经营、PC输入与便携包（2026-10-09启动，业务验收通过）
+## 新版主动经营、PC输入与便携包（2026-10-09启动，2026-10-10本地验收完成）
 
 用户批准新版真实新局经营与PC输入并行，随后用本版二星业务档验证魔法壶，最后Release ZIP解压/启动/隔离存读档。范围见[主动经营方案](ACTIVE_VILLAGE_PLAN.md#新版经营pc输入魔法壶与便携包2026-10-09已批准实施)。冻结e73bb31的404项规则/测试/数据与679素材，不消费research在途；收费缓存缺口未修，不重跑五组收益或宣称最优布局。
 
@@ -26,7 +26,11 @@
 
 本批公共Release DLL、两Debug消费者、Release游戏及Release经营驱动构建通过；desktop-debug **177/177**（237.36秒）、headless-debug **153/153**（209.67秒）标准CTest通过，均只排除三个月。Release快速campaign合同及新版首星两栏只读复核通过。标题宽窗540×360和新局配置最小窗240×256均实际截图查看，DPI1.25，分别675×450和300×320，均world_updates=0；不把诊断窗口当作OS鼠标验收。固定本地字体刷新后仍为44810码点/10662328字节、SHA未变，无依赖下载。标准三个月参数/断言保持，额外长测开关OFF；CI未运行、未推送。
 
-标题输入修复已独立保存本地checkpoint `4c91e83`。全部经营进程已正常退出，未读写正常玩家档；本批证据统一位于忽略目录`build/validation/product-business-e73bb31/`。五星彩/BOSS/计分继续与继承、OS输入、原EXE动态一致性不在此次通过范围内。
+标题输入修复已独立保存本地checkpoint `4c91e83`，业务验收实现为`61fae1e`。全部经营进程已正常退出，未读写正常玩家档；本批证据统一位于忽略目录`build/validation/product-business-e73bb31/`。五星/BOSS/计分继续与继承、OS输入、原EXE动态一致性不在此次通过范围内。
+
+最终便携包对应`e3c6790`，路径为上述证据根下`release-package-9fa5efd471ad4e7681857b110f97baed/dist/ark-village-windows10-x64.zip`。ZIP **14100157字节（13.45MiB）**，解压**23488921字节（22.40MiB）**，704文件、16个必要DLL；包含raylib、C++运行库、中文字体及许可，不包含测试EXE、维护DLL或构建工具。SHA-256：`c2c38b4e462fa38bfd0f933bd2cfb651d052b63d52de76c4b13dbb41cbdc44b4`。仅本地生成，未上传发布。
+
+实际解压到全新`unpack-check`目录，704文件逐字节与暂存一致，从空工作目录、仅`C:\WINDOWS\System32;C:\WINDOWS`的PATH分别启动资源检查、标题、保存、新进程读取，4个进程均正常退出。标题/保存/读取原图已逐张查看，字体正常；隔离第一栏87051字节，FIFO保存generation1、冷载generation2，日期/资金/当前随机政策由原诊断检查，读取后存档字节不变。证据为包目录下`unpack-check/RESULT.json`及screenshots；不称OS鼠标操作。首版临时目录因Python的Windows私有ACL不可供另一个本地工具访问，已改成随机唯一目录加排他mkdir，继承工作区权限；未更改现有目录ACL，最终包与截图访问已验证。
 
 <a id="research-e73bb31-integration"></a>
 

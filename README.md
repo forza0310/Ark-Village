@@ -6,6 +6,8 @@
 
 规则/运行时冻结至 **e73bb31维护闭包，共404项来源记录、7项产品适配**。本批修正新局六特殊/三十复发任务目录及设施共享人气20/30，接入收支只读查询和Steam静态标题背景、顶部、草边；信息菜单入口与完整标题宿主动效仍未开放。玩家ARKSAVE1/schema4布局、随机和页面政策保持，但数据身份更新，旧数据身份档明确拒绝、不迁移。完整AVRSAVE1状态语义2及AVRAPP01应用语义4仅用于维护与精确回放，独立system.arksys保存跨局纪录及继承。旧首星/二星与收益对照保留历史证据，不能续作本版自然路线前缀。当前验证与表现边界见[B1](docs/stages/B1-playable-prototype.md#research-e73bb31-integration)。
 
+当前版本已从真实新局重新通过首/二星经营、跨进程玩家存读档及魔法壶投入→发现→冷载→炼制→实际用药；Release便携包已独立解压启动及存读验证。覆盖、包身份和未完成项见[本批验收](docs/stages/B1-playable-prototype.md#product-business-e73bb31)，不代表五星/BOSS/计分继承或OS鼠标已通过。
+
 [文档分类索引](docs/README.md) · [当前待办](TODO.md) · [架构](docs/ARCHITECTURE.md) · [研究/产品差距](docs/reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [历史验收](docs/stages/history/B1-implementation-log.md)
 
 ## 构建运行

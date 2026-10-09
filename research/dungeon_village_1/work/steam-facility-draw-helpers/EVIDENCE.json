@@ -1,0 +1,1217 @@
+{
+  "scope": "Steam facility shared draw helpers; local registrations and numeric requests, not whole renderer",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "key": "bottom",
+      "method": {
+        "rva": 3187392,
+        "offset": 3182784,
+        "va": 271622848,
+        "type": "form.SubForm",
+        "signature": "public static void Draw_btmMsg(Graphics g, string str, int dy, bool flgSelect, bool flgCursor, int widthMax = 200) { }"
+      },
+      "bytes": 816,
+      "sha256": "da3f5f8b10e59819e1e3b5568c559040e6b644db1003a64d2160b3514d3ab20e"
+    },
+    {
+      "key": "scroll",
+      "method": {
+        "rva": 2430896,
+        "offset": 2426288,
+        "va": 270866352,
+        "type": "main.AppData",
+        "signature": "public void DrawVerticalScroll2(Graphics g, int x, int y, int w, int h, int value, int maximum, int largeChange) { }"
+      },
+      "bytes": 304,
+      "sha256": "4e64c9e1531a6f2aa7143c574d4ca4705aa60232aa4808062cf948f4ef97cc52"
+    },
+    {
+      "key": "money",
+      "method": {
+        "rva": 2445840,
+        "offset": 2441232,
+        "va": 270881296,
+        "type": "main.AppData",
+        "signature": "public void Draw_money(Graphics g, int dx, int dy, long value, int seb) { }"
+      },
+      "bytes": 144,
+      "sha256": "dd4e8668bbb99a64de61ac449b8f2d6decbe4d597332607ac65f4d1f3936661e"
+    },
+    {
+      "key": "number",
+      "method": {
+        "rva": 2423984,
+        "offset": 2419376,
+        "va": 270859440,
+        "type": "main.AppData",
+        "signature": "public void DrawNumImage(Graphics g, int seb, long value, int x, int y, int padding, int anchor) { }"
+      },
+      "bytes": 80,
+      "sha256": "3f00084fc6395ca32580f9030e7be9f23061ee7887e4f60a1c3bc40222752c31"
+    },
+    {
+      "key": "numberText",
+      "method": {
+        "rva": 2424064,
+        "offset": 2419456,
+        "va": 270859520,
+        "type": "main.AppData",
+        "signature": "public void DrawNumImage(Graphics g, int seb, string header, long value, string footer, int x, int y, int padding, int anchor) { }"
+      },
+      "bytes": 1104,
+      "sha256": "37d1220d98b17dfd82d7ee46edcbfb731a4f24aaed73a47faba3434b30700b88"
+    },
+    {
+      "key": "plus",
+      "method": {
+        "rva": 2446352,
+        "offset": 2441744,
+        "va": 270881808,
+        "type": "main.AppData",
+        "signature": "public void Draw_plusValue(Graphics g, int dx, int dy, long value, int seb) { }"
+      },
+      "bytes": 224,
+      "sha256": "bc900838fa1deacd5a69f45f65cbfb098b07339164fb7049b1ccfe488df0602b"
+    },
+    {
+      "key": "comma",
+      "method": {
+        "rva": 2422624,
+        "offset": 2418016,
+        "va": 270858080,
+        "type": "main.AppData",
+        "signature": "public void DrawNumImageComma(Graphics g, int seb, long in_value, int x, int y, int padding, int comma_padding, int anchor) { }"
+      },
+      "bytes": 544,
+      "sha256": "d54094b763b8fc33d48471b2d7181fef8ac1a761e4c370a0922d7faed0f1eb40"
+    },
+    {
+      "key": "separate",
+      "method": {
+        "rva": 2400784,
+        "offset": 2396176,
+        "va": 270836240,
+        "type": "main.AppData",
+        "signature": "public static string CommaSeparate(long value) { }"
+      },
+      "bytes": 288,
+      "sha256": "452ae9d4119bf6d9b1682d90746f821e07508d4f1d61ee44aad444defca835a2"
+    },
+    {
+      "key": "fig",
+      "method": {
+        "rva": 2455744,
+        "offset": 2451136,
+        "va": 270891200,
+        "type": "main.AppData",
+        "signature": "public static int GetFig(long value) { }"
+      },
+      "bytes": 240,
+      "sha256": "d5df214c1639f8c69aab67f9e6b68737a27b09c4e5354771e1e4f4642b78c2a2"
+    }
+  ],
+  "method_bytes": 3744,
+  "new_method_bytes": 2144,
+  "reused_method_bytes": 1600,
+  "anchors": [
+    {
+      "va": 271622954,
+      "target": 276293936,
+      "label": "bottom raw text measured by current Font",
+      "bytes": 5,
+      "sha256": "535a2eeb5c2b3e562aa60d020192ebe32890ed402f46812156379f350484f4e4"
+    },
+    {
+      "va": 271623000,
+      "target": 270835712,
+      "label": "width max before padding",
+      "bytes": 5,
+      "sha256": "0ed8029717dc5886f01949194c42604039aa60e79ce8f1ec7170bc3dba1b67f1"
+    },
+    {
+      "va": 271623136,
+      "target": 276212112,
+      "label": "selected orange background",
+      "bytes": 5,
+      "sha256": "eea8f20bbf501439e74cd8314b0744556fc61c548df9e146c69530d649b60446"
+    },
+    {
+      "va": 271623375,
+      "target": 270769696,
+      "label": "bottom active component4 value20",
+      "bytes": 5,
+      "sha256": "21287308045034798b3737eb4ce91a1920221bd8716d3869134048a1c7b2f195"
+    },
+    {
+      "va": 271623538,
+      "target": 276605904,
+      "label": "bottom text layout anchor0x22",
+      "bytes": 5,
+      "sha256": "1844372bd4e05739cb6e404c7983e4519ab73b7078f0c088b93baa483dc0b196"
+    },
+    {
+      "va": 271623629,
+      "target": 276560064,
+      "label": "optional finger current SEB frame",
+      "bytes": 5,
+      "sha256": "86ba07ae88b4421b7fdd819d5cd8ed66e51580e4fc208bf1841d910cdfd05a62"
+    },
+    {
+      "va": 270866504,
+      "target": 277440864,
+      "label": "scroll touch args",
+      "bytes": 5,
+      "sha256": "9157d6c02aa0edb83c93e9120d69da3b81fc0ec74bafaede3e9c82a7935561e5"
+    },
+    {
+      "va": 270866527,
+      "target": 277442800,
+      "label": "scroll margin3 20 0 0",
+      "bytes": 5,
+      "sha256": "4adb23c999959d7aab2cb7b2611ed39dc93c82cf7af8a6fb7613c6b85485babe"
+    },
+    {
+      "va": 270866589,
+      "target": 270770640,
+      "label": "scroll component12 value40000",
+      "bytes": 5,
+      "sha256": "19a5c57274cffc280bdf0463bd17692b7794ed63c04e9b68a29e642cf4d214c9"
+    },
+    {
+      "va": 270866598,
+      "target": 277441088,
+      "label": "overlay touch flag4",
+      "bytes": 5,
+      "sha256": "0443ba03bf99c4314b75a88ed8b7f356e079858c020e81c5a414dfb87e85ae7a"
+    },
+    {
+      "va": 270866623,
+      "target": 270770640,
+      "label": "overlay component25",
+      "bytes": 5,
+      "sha256": "868823ea932277390bf4f6cd2c14b9187af85dda18d5f62c0e5eeef3bd19ba98"
+    },
+    {
+      "va": 270881337,
+      "target": 270858080,
+      "label": "money comma anchored right",
+      "bytes": 5,
+      "sha256": "18f8ada302cf21f263b5f6e4a0fd73c745edfbdc4734556f406706da246b9607"
+    },
+    {
+      "va": 270881414,
+      "target": 276547344,
+      "label": "money frame20 at xminus9",
+      "bytes": 5,
+      "sha256": "31b28eb8d230737c8259df2852e1fd9a1c0f2d4ee43df52df536f252d4f0aa6f"
+    },
+    {
+      "va": 270881875,
+      "target": 270858080,
+      "label": "plus comma anchored right",
+      "bytes": 5,
+      "sha256": "d2aa95ff8a2056eeba3dcfe7e88cc2794ec5fadf935a24026dd05332006e6e35"
+    },
+    {
+      "va": 270881909,
+      "target": 270891200,
+      "label": "plus absolute digit count",
+      "bytes": 5,
+      "sha256": "749c133632d3821ebcd7e860d365f357c4676369e837e084df15d20ab5145c13"
+    },
+    {
+      "va": 270882000,
+      "target": 276547344,
+      "label": "plus frame14 regardless sign",
+      "bytes": 5,
+      "sha256": "690833ec64923c6408b20e16e2c35063a6b386a8349df5c95f84b3d3f97918ac"
+    },
+    {
+      "va": 270859508,
+      "target": 270859520,
+      "label": "number wrapper passes empty header footer",
+      "bytes": 5,
+      "sha256": "c7133a896aa1a08e5c48e58d0f12778c3ca3fd210220a5470d39f65299f99f76"
+    },
+    {
+      "va": 270859617,
+      "target": 276569904,
+      "label": "number width from SEB frame0 layer0",
+      "bytes": 5,
+      "sha256": "35c9b0ecdc0eb25e8f0a3ddc51d8c7e08f2a8750e38f31d3d84b0269762e9e21"
+    },
+    {
+      "va": 270859979,
+      "target": 277052464,
+      "label": "number center bit2 first",
+      "bytes": 5,
+      "sha256": "e8e102a34bdef25792d919fd3add55f8a948800ab8f3efaa2c981395ad612b6d"
+    },
+    {
+      "va": 270860016,
+      "target": 277052464,
+      "label": "number right bit4 second",
+      "bytes": 5,
+      "sha256": "8a68ad1002178d619797f37095d3a9e31dbe74ccacd708a43cb6aab94bc2c747"
+    },
+    {
+      "va": 270860190,
+      "target": 276547344,
+      "label": "header char minus0 frame",
+      "bytes": 5,
+      "sha256": "03d93840391d4f32a6f7623aa4fb8243c8f7f44c0bd1db61cd9d8216f6727acb"
+    },
+    {
+      "va": 270860367,
+      "target": 276547344,
+      "label": "numeric quotient frame",
+      "bytes": 5,
+      "sha256": "dc93f7f5808ae0622ec61427aed012fe0d611ce90ea48ef535a6e5193c2eea81"
+    },
+    {
+      "va": 270860562,
+      "target": 276547344,
+      "label": "footer char minus0 frame",
+      "bytes": 5,
+      "sha256": "1169a1dc6241372999af7d372121b8a78cc5723693b964f56dfd44bdfda87b5e"
+    },
+    {
+      "va": 270858156,
+      "target": 276789760,
+      "label": "comma uses signed raw string length",
+      "bytes": 5,
+      "sha256": "d5a530ec38cd6ba12994c95090b097442d10ceb4832592b2165ad12fa14ace32"
+    },
+    {
+      "va": 270858282,
+      "target": 270836240,
+      "label": "comma formatter",
+      "bytes": 5,
+      "sha256": "cdf844ec8c4bab52da3c25759a32e3bc8d998671818cfc343b2f8b7248c52f2c"
+    },
+    {
+      "va": 270858466,
+      "target": 276547344,
+      "label": "comma noncomma char frame",
+      "bytes": 5,
+      "sha256": "61a47aee262597b7bb85ef1aa7007fbf70fb427129db2acc593209576df38bc7"
+    },
+    {
+      "va": 270858555,
+      "target": 276547344,
+      "label": "comma overlay frame10",
+      "bytes": 5,
+      "sha256": "da7108cc126a0ea34009780132d45f0781397b0476335127156ee2558fbb3435"
+    },
+    {
+      "va": 271767717,
+      "target": 278310416,
+      "label": "bottom margin row0 InitializeArray",
+      "bytes": 5,
+      "sha256": "8b2c57b2e3b629a75fae6bc1b0176351448c7e310d277298bdcfc7e7d8d30cbb"
+    },
+    {
+      "va": 270866444,
+      "label": "scroll maximum plus1",
+      "bytes": 1,
+      "sha256": "559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd"
+    },
+    {
+      "va": 270866567,
+      "label": "scroll width minus1",
+      "bytes": 1,
+      "sha256": "44bd7ae60f478fae1061e11a7739f4b94d1daf917982d33b6fc8a01a63f89c21"
+    },
+    {
+      "va": 270881308,
+      "label": "money xminus9",
+      "bytes": 3,
+      "sha256": "c4d26fde43deead3f082366fe2c6ed199cef80e13735ff8013f06a5933419b32"
+    },
+    {
+      "va": 270881954,
+      "label": "plus width digits8 plus8",
+      "bytes": 7,
+      "sha256": "5132f8d2afb81978c6abb582bb92ee8c575f6debb3333cc6f679ee10acbb3b2a"
+    },
+    {
+      "va": 270859643,
+      "label": "sprite SP_W index4",
+      "bytes": 3,
+      "sha256": "4a3f47431330d9332682e7b3e7537f241ce63711c8dd0171d7d67799f738ae02"
+    },
+    {
+      "va": 270860100,
+      "label": "header space not rendered",
+      "bytes": 3,
+      "sha256": "37571829170628ea3991a6ab7abcefe3f14f9261d69b2c665599aabe9db3375e"
+    },
+    {
+      "va": 270858231,
+      "label": "comma anchor exact2",
+      "bytes": 3,
+      "sha256": "82e926bf91c1b0bedeaedac75549be595199fc1a016ec9e5541c377a54ce8bbd"
+    },
+    {
+      "va": 270858236,
+      "label": "comma anchor exact4",
+      "bytes": 3,
+      "sha256": "ec9d1a6c95187ab3425edbcdf19a43602dabed7b1d6a5c436f9d713baec3f3d1"
+    },
+    {
+      "va": 270858427,
+      "label": "signed minus char requests frame minus3",
+      "bytes": 3,
+      "sha256": "2758f0e398d2725f477824c525daba4d7debf0ea9b1bd98d932ead03930de15c"
+    }
+  ],
+  "margin": {
+    "slot": 286200472,
+    "field": 25215,
+    "data_offset": 3123046,
+    "sha256": "347eafb3eac663325403af4f96fdb9b7ca508ee95768741709b159a87cf89f09",
+    "values": [
+      -20,
+      -20,
+      40,
+      40
+    ]
+  },
+  "resources": [
+    {
+      "kind": "sprite",
+      "index": 12,
+      "path": "assets/original/common/number05.seb",
+      "bytes": 428,
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          103,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          103,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          103,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          103,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          103,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          103,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          103,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          103,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          103,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          103,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          103,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          103,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          103,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          103,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          103,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          103,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          103,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          103,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          103,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          103,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          103,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 15,
+      "path": "assets/original/common/number08.seb",
+      "bytes": 428,
+      "sha256": "1be00528542d4169eb282131e021b0b9776edf0fca4ccc355dd7b08263ef218d",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          105,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          105,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          105,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          105,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          105,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          105,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          105,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          105,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          105,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          105,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          105,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          105,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          105,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          105,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          105,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          105,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          105,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          105,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          105,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          105,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          105,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 16,
+      "path": "assets/original/common/number09.seb",
+      "bytes": 208,
+      "sha256": "fb49bd75d3dabe077747e082fc979a1bbd6cc414cff7888749f580aeb2174c96",
+      "frames": 10,
+      "parts": [
+        [
+          0,
+          106,
+          0,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          106,
+          10,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          106,
+          20,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          106,
+          30,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          106,
+          40,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          106,
+          50,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          106,
+          60,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          106,
+          70,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          106,
+          80,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          106,
+          90,
+          0,
+          10,
+          12,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 21,
+      "path": "assets/original/common/finger_r.seb",
+      "bytes": 88,
+      "sha256": "ae03c24f47c2f1d57ac7c9d1362c03b3380703d8c42821eecde5383a7e017ec8",
+      "frames": 6,
+      "parts": [
+        [
+          0,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          2,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -8,
+          -5,
+          0,
+          0
+        ],
+        [
+          3,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ],
+        [
+          5,
+          70,
+          0,
+          0,
+          16,
+          10,
+          -6,
+          -5,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "image",
+      "index": 70,
+      "path": "assets/original/common/finger_r.png",
+      "bytes": 272,
+      "sha256": "f427a3b1af4d2c46b35c92b1bcafacc6608aafbb7ea90bf8c3277ed5b7ab7161",
+      "width": 16,
+      "height": 10
+    },
+    {
+      "kind": "image",
+      "index": 103,
+      "path": "assets/steam-build-common/original/common/number05.png",
+      "bytes": 701,
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "kind": "image",
+      "index": 105,
+      "path": "assets/steam-facility-common/original/common/number08.png",
+      "bytes": 648,
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "kind": "image",
+      "index": 106,
+      "path": "assets/original/common/number09.png",
+      "bytes": 435,
+      "sha256": "f24e402e6f33bb2c755dacb239808cea6236b91e807a12c9baa96a0a3a40b245",
+      "width": 100,
+      "height": 12
+    }
+  ],
+  "reused": [
+    {
+      "path": "work/steam-attribute-item-render/EXE_METHODS.json",
+      "bytes": 41673,
+      "sha256": "6346e61d02fe11c8666d1ac17bed0aee222ca45134b83b6b9e85775e8e27f9bd"
+    },
+    {
+      "path": "work/steam-build-list-render/EVIDENCE.json",
+      "bytes": 16623,
+      "sha256": "e8d1b33311e3528992584944f8228f5ca502a2155ffba014da3d2ffc5702479d"
+    },
+    {
+      "path": "work/steam-facility-detail/EVIDENCE.json",
+      "bytes": 36949,
+      "sha256": "fd7e3f377ca1e93a5977042635b11f824deef02ffa2042dbd12055277ca0a425"
+    },
+    {
+      "path": "work/facility-animation-closure/disassembly.json",
+      "bytes": 860459,
+      "sha256": "4471a4e9ccb0327d6e07aa67cfb3038e9694a0b2e46dca8b157f85e3f69d9cfa"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  ],
+  "contracts": {
+    "bottom": {
+      "height": 16,
+      "extra_width": 16,
+      "anchor": 34,
+      "component": 4,
+      "value": 20
+    },
+    "scroll": {
+      "args": [
+        "maximum+1",
+        "largeChange",
+        131072
+      ],
+      "margin": [
+        3,
+        20,
+        0,
+        0
+      ],
+      "components": [
+        12,
+        25
+      ],
+      "width": "w-1",
+      "reads_value_argument": false
+    },
+    "money": {
+      "x_shift": -9,
+      "currency_frame": 20
+    },
+    "plus": {
+      "frame": 14,
+      "x_shift": "-(GetFig(value)+1)*8"
+    },
+    "number_anchor": "bit2 before bit4",
+    "comma_anchor": "exact2/exact4"
+  },
+  "limits": [
+    "No actual OS hitbox, scrollbar renderer or retained component lifecycle",
+    "Numeric negative frames recorded as requests; no new full SEB negative pixel certification",
+    "Bottom TextLayout backend remains existing separate contract",
+    "No PNG copied or C++ behavior changed"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 1925,
+      "sha256": "c5ea33b48a0f26eeabeab2c442576f5e4b97db7c08af6b9cadf77fb87487de89"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 7470,
+      "sha256": "5b7d8071387ebf57e032efef7526944f7cb2c458a483bc8a00f0d8f3815c313a"
+    }
+  ]
+}

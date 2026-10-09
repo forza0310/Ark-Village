@@ -1,5 +1,9 @@
 # 当前研究验证与历史索引
 
+## Steam设施页共用绘制helper2026-10-10
+
+[合同](ui/STEAM_FACILITY_DRAW_HELPERS.md)核9个有限方法3744字节（4新2144／5复用1600）、37锚、16字节metadata margin及8资源引用；源hash、语法、幂等、LF、链接与原素材引用检查通过。无新图片、构建或后台任务。Scroll2在已核方法仅注册组件，value未读；最终轨道与OS拖动仍未认证，负帧SEB像素边界亦未据请求数值推定。
+
 ## Steam设施升级81静态合同2026-10-10
 
 [合同](ui/STEAM_FACILITY_UPGRADE.md)及[证据包](work/steam-facility-upgrade/README.md)补8个具名helper共6352字节、直接数组callee19字节，60锚／7原文字／17资源引用。源身份、裁片依赖、语法、LF、链接和证据复算通过；无新增图片或游戏进程。初始化真正升级、确认40／55与APK既有局部合同对应；特殊数字动画和非日文测宽为独立Steam证据，未据此宣称维护逐帧绘制或原窗口已验。

@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_audio.hpp"
 #include "dungeon_village_prototype/startup_world_clear_score.hpp"
 #include "dungeon_village_prototype/startup_world_profile.hpp"
+#include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_title_presentation.hpp"
 #include "dungeon_village_prototype/startup_title_menu.hpp"
 #include "dungeon_village_prototype/startup_application_storage.hpp"
@@ -44,6 +45,18 @@ struct StartupTitleApplyResult {
     std::string error;
     bool confirm_consumed{}, menu_confirm_ready{};
     std::size_t random_draws{};
+};
+// 命令回执，不属于存档字段。error表示事务未提交；denial是原业务拒绝，
+// 可能已经提交不足资金提示等合法页面，调用者不能据此自动重试付款。
+struct StartupApplicationBuildResult {
+    std::string error;
+    StartupBuildDenial denial{StartupBuildDenial::none};
+    std::optional<std::uint64_t> created;
+};
+struct StartupApplicationTaskResult {
+    std::string error;
+    ref::TaskCommandDenial denial{ref::TaskCommandDenial::none};
+    bool accepted{}, departed{};
 };
 // 应用协调系统文件与世界候选；从未向UI暴露可写世界或任意纪录setter。
 class StartupApplication {
@@ -90,6 +103,28 @@ class StartupApplication {
     std::string act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0);
     std::string return_rank_page(std::uint64_t page);
     std::string leave_commerce_page(std::uint64_t page);
+    // 首星/住宅/二星管理命令：复用Session资格与唯一应用提交点，不开放可写world。
+    std::string open_build_menu();
+    StartupApplicationBuildResult select_build_menu(std::uint64_t page, int definition);
+    std::string cancel_build_menu(std::uint64_t page);
+    StartupApplicationBuildResult confirm_build(ref::Position anchor,
+                                                ref::FacilityOrientation orientation);
+    std::string cancel_build();
+    std::string open_facility_page(std::uint64_t facility);
+    std::string act_facility_page(std::uint64_t page, StartupFacilityPageAction action);
+    StartupApplicationBuildResult act_residence_page(std::uint64_t page, int human,
+                                                     bool cancel = false);
+    std::string open_village_activities();
+    std::string act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action,
+                                          int selection = 0);
+    std::string open_task_menu();
+    std::string open_task_control_menu();
+    StartupApplicationTaskResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
+                                               int selection = 0);
+    std::string open_human_page(int human);
+    std::string act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0);
+    std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);
+    std::string cancel_page(std::uint64_t page);
     std::vector<StartupAudioRequest> take_audio_requests();
     // 兼容旧ID消费者；同一输出只会被任一领取接口消费一次。
     std::vector<int> take_sound_requests();
@@ -111,6 +146,7 @@ class StartupApplication {
     StartupTitleMenuContext title_menu_context() const;
     void sync_title_page();
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
+    template <class Action> std::string apply_world_action(Action &&action);
     std::string update_clear(bool confirm);
     StartupApplicationPaths paths_;
     StartupApplicationStorageSnapshot storage_;

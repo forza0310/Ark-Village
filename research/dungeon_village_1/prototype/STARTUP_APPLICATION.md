@@ -1,5 +1,7 @@
 # 标题、配置、跨局纪录与应用事务
 
+2026-10-10增加17项管理转发：建设目录／放置／取消，设施／住宅，村办，任务目录／控制，人物和真正晋级／取消。全部复用Session的资格与候选，再通过`commit_world`统一提交系统纪录和声音；计分或非活动世界拒绝。新增结构化建设／任务回执不是持久状态，事务失败清除created／accepted／departed；业务denial可能提交原不足资源提示，不能据此自动重复付款。世界仍只读公开，没有任意状态注入入口。无新增持久字段，世界4／应用7和既有前缀身份保持；检查见[管理／窗框交付](../work/application-management-frame-delivery/README.md)。
+
 2026-10-09。当前世界语义4／应用语义7修正建设、移动、撤除后邻接到达价格缓存，验收进度见[当前交付](../work/facility-arrival-cache-delivery/README.md)。此前标题菜单控制器、系统2四目录、应用级声音及语义6回放的五项检查通过103.30秒，属于[标题批历史交付](../work/title-menu-application-delivery/README.md)。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../work/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
 
 `dungeon_village_startup_application`是无raylib依赖的研究维护消费者，不是产品窗口或原版档兼容器。[StartupApplication](include/dungeon_village_prototype/startup_application.hpp)协调一份系统观察、标题状态、草稿、音频队列及至多一个世界Session，只向调用方公开只读世界。正常文件协议见[应用存储](APPLICATION_STORAGE.md)，完整回放见[应用回放](APPLICATION_REPLAY.md)，避免在本页复制其线格式和预算。

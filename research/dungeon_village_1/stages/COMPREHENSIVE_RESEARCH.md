@@ -27,6 +27,8 @@
 
 ### 当前连续队列
 
+2026-10-10[应用管理接线](../work/application-management-frame-delivery/README.md)已补17项真实Session命令，无新增持久字段；[主动路线计划](../work/active-progression-plan/README.md)明确优先首星短前缀→第二星／住宅／壶，再首BOSS与高星。主动世界420→440三路一致，应用被动12月另已认证，两个Driver不能互换。Steam四窗框helper维护桥已验，实际后端／字体仍独立待证。
+
 最新[邻接价格批](../work/facility-arrival-cache-delivery/README.md)已交付世界4／应用7；实际收费320→撤除300及事务／嵌套旧语义拒绝通过，当前自然前缀为`natural-application-economy-v1`首月20轮双恢复。下面应用6及更早说明保留当批历史，12月修前结果不能继续到24月。下一长段须从当前首月重新认证；不再扩展错误收费身份，也不通过补价改旧历史。
 
 最新[应用6批](../work/title-menu-application-delivery/README.md)已验收：系统2四目录／不可变世界文件、稳定ID菜单／分级返回、应用音频和完整文件视图恢复。五项相关检查103.30秒及真实17命令三进程通过，当前前缀为`natural-application-menu-v1`的420轮／首月，旧应用5及以前不接续。接下来从当前首月继续12月及后期规模；同时沿[自动中断最小合同](../work/interrupt-save-continuation/README.md)和Steam完整皮肤补证，绝不因目录存在就声称原轮内自动保存已完成。

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dungeon_village_prototype/startup_skin.hpp"
 #include <array>
 #include <cstddef>
 #include <optional>
@@ -51,6 +52,26 @@ struct SteamStartupText {
     int line_space{}, font_size{}; // font_size=0保留当前字号；11为该次请求，画后恢复。
     SteamStartupTextPlacement placement{SteamStartupTextPlacement::source_point};
 };
+// 复用已核同几何/common资源载体，但保持Steam独立helper及原调用顺序。
+// rect为变换前逻辑半开边界，outline表示一逻辑单位内边环，不许诺DPI物理像素。
+using SteamStartupFrameDraw = std::variant<StartupSkinRect, StartupSkinDraw, SteamStartupText>;
+struct SteamStartupFramePlan {
+    std::vector<SteamStartupFrameDraw> draws;
+};
+// VIEW_Y与外层页面origin不同，只在helper原位置使用；本函数不安装或修改clip。
+// measured_title_widths按阴影、正文两次真实StringWidth提供，不能缓存为一次测宽。
+// nullopt对应null标题；{0,0}仍画两次空串。保留原零宽尾图块请求。
+std::optional<SteamStartupFramePlan> steam_startup_window_skin(const SteamStartupWindow &window,
+    int view_y, std::optional<std::array<int, 2>> measured_title_widths = {});
+// mode0/common30，mode1/common121白角；其他mode仍画填充/边环，但不画角。
+std::optional<SteamStartupFramePlan> steam_startup_box_skin(const SteamStartupBox &box,
+    int view_y, int mode = 0);
+// 两个独立原helper：Window2只有木纹；Window3显式坐标、双边环及H+1木纹。
+// 尺寸保护为维护接口约束，不是原Steam规则；不增加Owner/字体/随机/持久化状态。
+std::optional<SteamStartupFramePlan> steam_startup_window2_skin(int width, int height,
+    int vertical, int view_y);
+std::optional<SteamStartupFramePlan> steam_startup_window3_skin(int width, int height,
+    int left, int top);
 using SteamStartupDraw = std::variant<SteamStartupImage, SteamStartupFill,
     SteamStartupWindow, SteamStartupBox, SteamStartupText>;
 struct SteamStartupTouch {

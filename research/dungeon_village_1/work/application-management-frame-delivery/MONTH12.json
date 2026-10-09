@@ -1,0 +1,93 @@
+{
+  "controller": "application-natural-clear-v3",
+  "qualification": "natural_application_tail",
+  "producer_revision": "aa87318",
+  "seed": 1,
+  "speed": 0,
+  "dataset": "c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690",
+  "world_schema": "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440",
+  "application_schema": "bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c",
+  "source_prefix": {
+    "file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-economy-v1\\month1.avra",
+    "certificate_file": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\natural-application-economy-v1\\month1.avra.json",
+    "snapshot_sha256": "b08da42a443868fb85a4d4c22659f013005d751e21567cb06a2d5109d716f1f6",
+    "certificate_sha256": "78ad4fdbb91b38a3f6a757522f15232408f214792d5dfbeef6b6867dc580b77d",
+    "next_frame": 1635,
+    "capture_frame": 1634,
+    "months": 1,
+    "qualification": "natural_application_tail"
+  },
+  "capture_frame": 19295,
+  "capture_months": 12,
+  "stop_at": 19315,
+  "tail_frames": 20,
+  "process_count": 3,
+  "snapshot_bytes": 19677344,
+  "snapshot_sha256": "4deccb78c1bbf0b7cda97c1a7579051c8e511fe8f99f1f91a83f264057c66541",
+  "section_bytes": {
+    "1": 70,
+    "2": 555,
+    "3": 679,
+    "4": 19673760,
+    "5": 1480,
+    "6": 4
+  },
+  "trace_bytes": 4120,
+  "trace_sha256": "7830f8780416481fe933bf747c0fbcd65b458b2899fa9397ea1d52c20c5b586c",
+  "terminal": {
+    "capture_frame": 19295,
+    "capture_months": 12,
+    "completed_frame": 19315,
+    "next_frame": 19316,
+    "next_command": 22,
+    "months": 12,
+    "date": [
+      1,
+      3,
+      0,
+      540
+    ],
+    "digest": "be13a3378aa3469e61a684dbd2bfef3463b55e75318632d99ce8aeecba5a4398",
+    "resources": [
+      3,
+      9,
+      1,
+      48,
+      161,
+      3
+    ],
+    "peaks": [
+      3,
+      9,
+      5,
+      48,
+      161,
+      3
+    ],
+    "resource_names": [
+      "humans",
+      "facilities",
+      "pages",
+      "audit_history",
+      "cash_entries",
+      "retained_tasks"
+    ],
+    "sound_count": 131,
+    "sound_hash": "31183c6f99d17f89061334b1e413160a67be09a60081da94e43d8eb1e7a1c484",
+    "random": 156747,
+    "phase": 0,
+    "trace_rows": 20,
+    "capture_seconds": 0.977198,
+    "restore_seconds": 0.0371949
+  },
+  "process_wall_seconds": [
+    483.15779460000005,
+    1.2965365999999923,
+    1.3956096000000253
+  ],
+  "certification_boundary": "已认证源恢复后继续；本轮仅认证新捕获尾段",
+  "limitations": [
+    "被动自然日期策略，不认证五星/全部任务/BOSS",
+    "不认证原APK/Steam动态或自动绘制频率"
+  ]
+}

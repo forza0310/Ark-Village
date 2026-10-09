@@ -17,7 +17,7 @@ struct Checks {
         if(!ok) throw std::runtime_error(std::string("Steam启动皮肤：")+message);
     }
 };
-template<class T> std::vector<T> parts(const SteamStartupSkinPlan &p) {
+template<class T, class Plan> std::vector<T> parts(const Plan &p) {
     std::vector<T> result;
     for(const auto &draw:p.draws) if(const auto *item=std::get_if<T>(&draw)) result.push_back(*item);
     return result;
@@ -33,6 +33,89 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     Checks check;
     using Asset=SteamStartupAsset;
     using Role=SteamStartupTextRole;
+    // Steam窗口helper独立oracle：变换前几何，不以真实字体或物理像素认证代替。
+    SteamStartupWindow frame{198,146,70,-12,Role::slot_title,2};
+    const auto expanded=steam_startup_window_skin(frame,0,std::array<int,2>{41,44});
+    check(expanded && expanded->draws.size()==10,"标准窗边线、五木纹块、标题带、双文字保持原序");
+    const auto frame_rects=parts<StartupSkinRect>(*expanded);
+    const auto frame_images=parts<StartupSkinDraw>(*expanded);
+    const auto frame_texts=parts<SteamStartupText>(*expanded);
+    check(frame_rects.size()==2 && frame_rects[0].rect==std::array<int,4>{20,103,200,149} &&
+          frame_rects[0].rgb==std::array<int,3>{89,103,91} && frame_rects[0].outline &&
+          frame_rects[1].rect==std::array<int,4>{21,104,198,147} &&
+          frame_rects[1].rgb==std::array<int,3>{239,239,221},"Steam DrawRect双环已转半开边界不可再加1");
+    check(frame_images.size()==6 && frame_images[0].image==28 &&
+          frame_images[4].crop==std::array<int,4>{0,0,38,146} &&
+          frame_images[4].offset==std::array<int,2>{181,105} &&
+          frame_images[5].image==29 && frame_images[5].crop==std::array<int,4>{22,0,196,17},
+          "木纹按40裁尾，标题带按全窗横坐标裁取");
+    check(frame_texts.size()==2 && frame_texts[0].rectangle==std::array<double,4>{100,108,0,0} &&
+          frame_texts[1].rectangle==std::array<double,4>{98,107,0,0} &&
+          frame_texts[0].rgb==std::array<int,3>{44,54,105} &&
+          frame_texts[1].rgb==std::array<int,3>{247,253,247} &&
+          frame_texts[0].role==Role::slot_title && frame_texts[1].row==2 &&
+          !frame_texts[0].anchor && frame_texts[0].font_size==0,
+          "标题两次实测宽分别使用，保留角色值而不猜字体或隐式anchor");
+    check(std::holds_alternative<StartupSkinRect>(expanded->draws[1]) &&
+          std::holds_alternative<StartupSkinDraw>(expanded->draws[2]) &&
+          std::holds_alternative<SteamStartupText>(expanded->draws[8]),"完整展开保持层次而非按后端重排");
+    check(parts<SteamStartupText>(*steam_startup_window_skin(frame,0)).empty() &&
+          parts<SteamStartupText>(*steam_startup_window_skin(frame,0,std::array<int,2>{0,0})).size()==2,
+          "null标题和实测零宽标题有不同原调用数量");
+    frame={120,216,0,0,Role::message_title,0};
+    const auto negative=steam_startup_window_skin(frame,-241);
+    check(negative && parts<StartupSkinDraw>(*negative)[0].offset==std::array<int,2>{60,-108} &&
+          parts<StartupSkinDraw>(*negative)[3].crop==std::array<int,4>{0,0,0,216},
+          "负奇数VIEW_Y向零截断且整40宽保留零宽尾请求");
+    frame.height=217; frame.style=std::numeric_limits<int>::max();
+    check(parts<StartupSkinDraw>(*steam_startup_window_skin(frame,std::numeric_limits<int>::max()))[0]
+              .offset==std::array<int,2>{60,12},"高于216不使用VIEW_Y及style，不能无条件加偏移");
+    const SteamStartupBox box{26,90,213,148};
+    const auto box_plan=steam_startup_box_skin(box,-3,1);
+    const auto box_rects=parts<StartupSkinRect>(*box_plan);
+    const auto corners=parts<StartupSkinDraw>(*box_plan);
+    check(box_plan->draws.size()==7 && box_rects[0].rect==std::array<int,4>{26,89,187,58} &&
+          !box_rects[0].outline && box_rects[1].rect==box_rects[0].rect && box_rects[1].outline &&
+          box_rects[2].rect==std::array<int,4>{27,90,185,56},"Box边界转尺寸，VIEW_Y先独立除2");
+    check(corners.size()==4 && corners[0].image==121 && corners[0].sprite==6 &&
+          corners[0].offset==std::array<int,2>{26,89} &&
+          corners[2].offset==std::array<int,2>{213,147} && corners[3].frame==3,
+          "白角替换图片121而保留SEB6及四边界锚点");
+    check(parts<StartupSkinDraw>(*steam_startup_box_skin(box,0))[0].image==30 &&
+          steam_startup_box_skin(box,0,2)->draws.size()==3 &&
+          steam_startup_box_skin(box,0,-1)->draws.size()==3,"标准角与其他mode无角不能混为默认回退");
+    const auto wood_only=steam_startup_window2_skin(80,40,5,3);
+    check(wood_only && wood_only->draws.size()==3 &&
+          parts<StartupSkinDraw>(*wood_only)[0].offset==std::array<int,2>{80,106} &&
+          parts<StartupSkinDraw>(*wood_only)[2].crop==std::array<int,4>{0,0,0,40},
+          "Window2只画木纹，不能用标准窗null标题代替");
+    const auto explicit_window=steam_startup_window3_skin(81,40,7,9);
+    check(explicit_window && explicit_window->draws.size()==5 &&
+          parts<StartupSkinRect>(*explicit_window)[0].rect==std::array<int,4>{6,8,83,43} &&
+          parts<StartupSkinRect>(*explicit_window)[1].rect==std::array<int,4>{7,9,81,41} &&
+          parts<StartupSkinDraw>(*explicit_window)[2].crop==std::array<int,4>{0,0,1,41},
+          "Window3显式坐标与H加1裁高独立于标准窗");
+    check(!steam_startup_window_skin({2,17,0,0,Role::slot_title,0},0) &&
+          !steam_startup_window_skin({240,16,0,0,Role::slot_title,0},0) &&
+          !steam_startup_window_skin({240,240,0,0,Role::slot_title,0},0,std::array<int,2>{0,-1}) &&
+          !steam_startup_window_skin({240,216,0,0,Role::slot_title,0},std::numeric_limits<int>::max()) &&
+          !steam_startup_window3_skin(81,240,7,9) &&
+          !steam_startup_window3_skin(81,40,std::numeric_limits<int>::min(),9) &&
+          !steam_startup_box_skin({26,90,29,148},0) &&
+          !steam_startup_box_skin({0,0,10,std::numeric_limits<int>::max()},4),
+          "不可裁片尺寸、负测宽与坐标溢出作为维护拒绝，不伪造原保护");
+    const auto corner_sprite=sprite(root/"common/wnd_conner.seb");
+    check(corner_sprite.frame_count==4 && corner_sprite.layers.size()==1 &&
+          corner_sprite.layers[0].parts.size()==4,"原窗角SEB为四帧单层");
+    const std::array<std::array<int,4>,4> corner_oracle{{{0,0,0,0},{4,0,-4,0},
+                                                       {4,4,-4,-4},{0,4,0,-4}}};
+    for (int n=0;n<4;++n) {
+        const auto &part=corner_sprite.layers[0].parts[n];
+        check(part.image_index==30 && part.width==4 && part.height==4 &&
+              part.source_x==corner_oracle[n][0] && part.source_y==corner_oracle[n][1] &&
+              part.offset_x==corner_oracle[n][2] && part.offset_y==corner_oracle[n][3],
+              "白角只替换图片，原四裁片偏移仍由SEB解读一次");
+    }
     const auto title=steam_title_menu_skin(600,380,75,1);
     check(title && title->origin==std::array<int,2>{180,0},"Steam标题逻辑原点按宽度居中");
     const auto title_images=parts<SteamStartupImage>(*title);

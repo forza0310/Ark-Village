@@ -23,6 +23,12 @@
 
 ## 检查归属
 
+2026-10-10补Steam独立窗框展开：`steam_startup_window_skin`、`steam_startup_box_skin`、`steam_startup_window2_skin`、`steam_startup_window3_skin`返回有序`SteamStartupFramePlan`。复用已有图元载体，不调用APK算法冒充Steam实现；独立来源是[完整窗框合同](../ui/STEAM_WINDOW_FRAME.md)。矩形为变换前半开逻辑几何，outline是一逻辑单位内边环，平台缩放／DPI仍由后端处理。
+
+标准窗输入原helper实参与`VIEW_Y`，标题可选两次真实整数测宽（阴影、正文）；null标题省去文字，空串两次宽0仍保留文字调用。H>216忽略VIEW_Y／style分支，木纹保留整40宽的零宽尾请求。内容框按mode0／1使用common30／121和同SEB6四角，其他mode只画填充及边环；Window2仅木纹，Window3使用显式原点及H+1纹理，不以普通窗空标题替代。
+
+尺寸保护是维护接口边界：标准窗宽3…240／高17…240，Window2宽高1…240，Window3宽3…240／高1…239，内容框至少4×4；计算或坐标超int范围拒绝。这些保护不追认为原引擎规则。四入口绘制请求最多12／7／7／9条，按值消费，没有字体缓存、裁剪栈、世界状态或新增素材。其余文字样式、OS裁剪与实际字体保持各自证据限制。
+
 [steam_startup_skin_checks.cpp](tests/steam_startup_skin_checks.cpp)由既有`startup_skin_checks`调用，仍属于同一个visuals target；拆文件只为将Steam坐标／菜单合同与APK原图CPU合成职责分开，不新增CTest。检查覆盖75门槛、奇数向零截断、有效／空目录行、原裁片偏移、层遮挡、窄窗口修正、真实测宽阈值、float按钮矩形、坏输入及原SEB2/3和手形引用。没有修改原自然轨迹或声音断言。
 
 单Release动态树构建通过，既有visuals与application两项CTest通过（合计22.18秒）。正式记录见[集中交付](../work/steam-skin-delivery/README.md)；静态计划与源资源检查不等于原窗口输入、Steam字体运行选择或完整可操作标题已经验收。

@@ -1,0 +1,25 @@
+{
+  "qualification": "natural_world_progression_tail",
+  "producer_revision": "aa87318",
+  "controller": "natural-progression-expansion-v2",
+  "world_semantics": 4,
+  "snapshot_path": "work/active-progression-economy-v1/prefix420.awr",
+  "snapshot_bytes": 346999,
+  "snapshot_sha256": "c33f2f327e7fa2e17836239ac7eff495057d4772822aebb35e53e79d51c84fa7",
+  "capture_frame": 420,
+  "stop_at": 440,
+  "tail_frames": 20,
+  "process_count": 3,
+  "trace_bytes": 14860,
+  "trace_sha256": "ad6dfe898d3bb94380fec56ce5c4c29667c1e062434b96fd7c03a388baa14d13",
+  "terminal_observed": {
+    "funds": 4400,
+    "humans": 1,
+    "tasks": 0,
+    "random_draws": 5
+  },
+  "limits": [
+    "有真实面包房建设，不是首星已完成",
+    "不是应用容器，不能互换被动应用Driver"
+  ]
+}

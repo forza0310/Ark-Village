@@ -14,6 +14,23 @@ bool dimensions(int width, int height) { return width > 0 && height > 0; }
 bool measurement(double width) {
     return std::isfinite(width) && width >= 0 && width <= std::numeric_limits<int>::max()-220.0;
 }
+bool coordinate(std::int64_t value) {
+    return value >= std::numeric_limits<int>::min() && value <= std::numeric_limits<int>::max();
+}
+std::optional<int> window_top(int height, int vertical, int view_y, int style) {
+    const std::int64_t inset = height > 216 ? 0 : static_cast<std::int64_t>(view_y) + 2LL * style;
+    // 安全接口拒绝源int中间值溢出，不复刻有符号回绕。
+    if (!coordinate(inset) || !coordinate(inset + 240)) return {};
+    const auto top = (inset + 240) / 2 - height / 2 + vertical;
+    if (!coordinate(top - 2) || !coordinate(top + height + 2)) return {};
+    return static_cast<int>(top);
+}
+void wood(SteamStartupFramePlan &plan, int width, int height, int left, int top) {
+    // Steam循环包含W/40项；整40宽时最后一次为0宽，保留调用事实而不伪造像素。
+    for (int n = 0; n <= width / 40; ++n)
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,28,-1,0,0,
+            {0,0,std::min(40,width-40*n),height},{left+40*n,top}});
+}
 void text(SteamStartupSkinPlan &p, Role role, int row, double x, double y,
           double w, double h, std::optional<int> anchor, std::optional<std::array<int,3>> rgb, int spacing=0, int size=0,
           SteamStartupTextPlacement placement=SteamStartupTextPlacement::source_point) {
@@ -23,6 +40,75 @@ void image(SteamStartupSkinPlan &p, Asset asset, int x, int y, int frame=0, int 
            std::optional<std::array<int,4>> crop={}) {
     p.draws.emplace_back(SteamStartupImage{asset,{x,y},crop,frame,scale});
 }
+}
+std::optional<SteamStartupFramePlan> steam_startup_window_skin(const SteamStartupWindow &window,
+    int view_y, std::optional<std::array<int, 2>> measured_title_widths) {
+    const int width = window.width, height = window.height;
+    if (width < 3 || width > 240 || height < 17 || height > 240 ||
+        (measured_title_widths && ((*measured_title_widths)[0] < 0 || (*measured_title_widths)[1] < 0)))
+        return {};
+    const auto y = window_top(height, window.vertical, view_y, window.style);
+    if (!y) return {};
+    const int left = 120 - width / 2, top = *y;
+    SteamStartupFramePlan result;
+    result.draws.emplace_back(StartupSkinRect{{left-1,top-2,width+2,height+3},{89,103,91},true});
+    result.draws.emplace_back(StartupSkinRect{{left,top-1,width,height+1},{239,239,221},true});
+    wood(result,width,height,left,top);
+    result.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,29,-1,0,0,
+        {left+1,0,width-2,17},{left+1,top}});
+    if (measured_title_widths) {
+        for (int pass = 0; pass < 2; ++pass)
+            result.draws.emplace_back(SteamStartupText{window.title,window.title_value,
+                {static_cast<double>(120-(*measured_title_widths)[pass]/2),
+                 static_cast<double>(top+3-pass),0,0},{},
+                pass == 0 ? std::array<int,3>{44,54,105} : std::array<int,3>{247,253,247}});
+    }
+    return result;
+}
+std::optional<SteamStartupFramePlan> steam_startup_box_skin(const SteamStartupBox &box,
+    int view_y, int mode) {
+    const auto width = static_cast<std::int64_t>(box.right) - box.left;
+    const auto height = static_cast<std::int64_t>(box.bottom) - box.top;
+    const auto top64 = static_cast<std::int64_t>(box.top) + view_y/2;
+    const auto bottom64 = static_cast<std::int64_t>(box.bottom) + view_y/2;
+    if (width < 4 || height < 4 || !coordinate(width) || !coordinate(height) ||
+        !coordinate(top64) || !coordinate(bottom64)) return {};
+    const int left=box.left, top=static_cast<int>(top64), bottom=static_cast<int>(bottom64);
+    const int w=static_cast<int>(width), h=static_cast<int>(height);
+    SteamStartupFramePlan result;
+    result.draws.emplace_back(StartupSkinRect{{left,top,w,h},{247,253,247},false});
+    result.draws.emplace_back(StartupSkinRect{{left,top,w,h},{172,202,179},true});
+    result.draws.emplace_back(StartupSkinRect{{left+1,top+1,w-2,h-2},{222,234,225},true});
+    if (mode == 0 || mode == 1) {
+        const std::array<std::array<int,2>,4> anchors{{{left,top},{box.right,top},
+                                                     {box.right,bottom},{left,bottom}}};
+        for (int frame=0; frame<4; ++frame)
+            result.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,
+                mode == 0 ? 30 : 121,6,frame,0,{},anchors[frame]});
+    }
+    return result;
+}
+std::optional<SteamStartupFramePlan> steam_startup_window2_skin(int width, int height,
+    int vertical, int view_y) {
+    if (width < 1 || width > 240 || height < 1 || height > 240) return {};
+    const auto top=window_top(height,vertical,view_y,0);
+    if (!top) return {};
+    SteamStartupFramePlan result;
+    wood(result,width,height,120-width/2,*top);
+    return result;
+}
+std::optional<SteamStartupFramePlan> steam_startup_window3_skin(int width, int height,
+    int left, int top) {
+    if (width < 3 || width > 240 || height < 1 || height > 239 ||
+        !coordinate(static_cast<std::int64_t>(left)-1) ||
+        !coordinate(static_cast<std::int64_t>(left)+width+1) ||
+        !coordinate(static_cast<std::int64_t>(top)-1) ||
+        !coordinate(static_cast<std::int64_t>(top)+height+2)) return {};
+    SteamStartupFramePlan result;
+    result.draws.emplace_back(StartupSkinRect{{left-1,top-1,width+2,height+3},{89,103,91},true});
+    result.draws.emplace_back(StartupSkinRect{{left,top,width,height+1},{239,239,221},true});
+    wood(result,width,height+1,left,top);
+    return result;
 }
 std::optional<SteamStartupResource> steam_startup_resource(SteamStartupAsset asset) {
     switch(asset) {

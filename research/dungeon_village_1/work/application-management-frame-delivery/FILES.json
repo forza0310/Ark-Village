@@ -1,0 +1,23 @@
+[
+  "prototype/include/dungeon_village_prototype/startup_application.hpp",
+  "prototype/include/dungeon_village_prototype/steam_startup_skin.hpp",
+  "prototype/src/startup_application.cpp",
+  "prototype/src/steam_startup_skin.cpp",
+  "prototype/tests/startup_application_actions_checks.cpp",
+  "prototype/tests/steam_startup_skin_checks.cpp",
+  "prototype/STARTUP_APPLICATION.md",
+  "prototype/STEAM_STARTUP_SKIN.md",
+  "stages/README.md",
+  "stages/COMPREHENSIVE_RESEARCH.md",
+  "verification/PRODUCT_REQUESTS.md",
+  "VERIFICATION.md",
+  "work/active-progression-plan/README.md",
+  "work/active-progression-plan/EVIDENCE.json",
+  "work/application-management-frame-delivery/README.md",
+  "work/application-management-frame-delivery/audit.py",
+  "work/application-management-frame-delivery/build.log",
+  "work/application-management-frame-delivery/ctest.log",
+  "work/application-management-frame-delivery/ACTIVE420.json",
+  "work/application-management-frame-delivery/MONTH12.json",
+  "work/application-management-frame-delivery/VALIDATION.json"
+]

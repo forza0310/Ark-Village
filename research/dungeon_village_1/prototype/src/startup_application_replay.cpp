@@ -143,6 +143,9 @@ struct StartupApplicationReplayAccess {
     static void validate(const StartupApplication &a) {
         need(a.error_.empty(),"不健康应用不可捕获");
         need(a.mode_==Mode::logic || a.mode_==Mode::title_presentation,"应用模式未知");
+        need(validate_startup_title_presentation(a.title_).empty(),"标题表现状态非法");
+        need(a.mode_!=Mode::logic || pristine_startup_title_presentation(a.title_),
+             "逻辑模式含已推进标题表现状态");
         need(a.page_>=Page::title && a.page_<=Page::world,"应用页面未知");
         need(a.record_page_>=0 && a.record_page_<=1 && a.draft_.slot>=0 && a.draft_.slot<=1,
              "草稿栏位或纪录页非法");
@@ -228,6 +231,12 @@ struct StartupApplicationReplayAccess {
             out.boolean(c.finished);out.boolean(c.new_record);out.i32(c.trophy);
         }
         out.boolean(a.clear_id_.has_value());if(a.clear_id_)out.u64(*a.clear_id_);
+        // 语义 v2 在控制分区尾部追加原标题背景；inactive 槽也完整保存。
+        out.i32(a.title_.l);out.i32(a.title_.f132f);out.i32(a.title_.s);out.i32(a.title_.t);
+        for(const auto &slot:a.title_.slots) {
+            out.i32(slot.active);out.i32(slot.definition);out.i32(slot.x);out.i32(slot.y);
+            out.i32(slot.direction);out.i32(slot.age);
+        }
         return std::move(out.bytes);
     }
     static StartupApplication restore(const Bytes &bytes, StartupApplicationPaths paths,
@@ -261,6 +270,11 @@ struct StartupApplicationReplayAccess {
             c.finished=in.boolean();c.new_record=in.boolean();c.trophy=in.i32();
         }
         if(in.boolean())a.clear_id_=in.u64();
+        a.title_.l=in.i32();a.title_.f132f=in.i32();a.title_.s=in.i32();a.title_.t=in.i32();
+        for(auto &slot:a.title_.slots) {
+            slot.active=in.i32();slot.definition=in.i32();slot.x=in.i32();slot.y=in.i32();
+            slot.direction=in.i32();slot.age=in.i32();
+        }
         in.end(); validate(a); return a;
     }
 };
@@ -283,7 +297,7 @@ Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &vali
     }
     sections.push_back({5,1,1,m.controller_state});
     for(const auto &e:m.extensions)sections.push_back({e.id,e.version,0,e.bytes});
-    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(1);file.u32(1);
+    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(2);file.u32(1);
     file.text(startup_world_persistence_dataset());file.text(detail::codec_schema_identity());
     file.text(application_schema);file.u32(static_cast<std::uint32_t>(sections.size()));
     for(const auto &section:sections) {
@@ -302,7 +316,7 @@ Candidate decode(Bytes file,StartupApplicationPaths paths,Mode expected,const st
     need(digest==dungeon_village_tools::sha256_hex(file),"容器整体摘要不符");
     Reader in{file};const auto signature=in.raw(8);
     need(std::string(signature.begin(),signature.end())=="AVRAPP01","容器标识不符");
-    need(in.u32()==1 && in.u32()==1 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
+    need(in.u32()==1 && in.u32()==2 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
     need(in.text()==startup_world_persistence_dataset(),"数据来源不匹配");
     need(in.text()==detail::codec_schema_identity(),"世界字段身份不匹配");
     need(in.text()==application_schema,"应用字段身份不匹配");

@@ -317,6 +317,9 @@ int corrupted_clear_relationships(const std::filesystem::path &root, const std::
     const auto id_flag_at = at;
     require(wire::number(control, at, 4) == 1, "clear source has binding ID");
     const auto id_at = at; const auto id = wire::number(control, at, 8);
+    // 语义2的标题尾部固定为4计数及20个六字段槽；本logic夹具必须全零。
+    for (int i = 0; i < 4 + 20 * 6; ++i)
+        require(wire::number(control, at, 4) == 0, "logic clear source has pristine title state");
     require(at == control.size(), "clear control fully parsed before mutation");
     std::size_t row_at = row_start + 5 * 16;
     const auto future_count = wire::number(control, row_at, 8), future_score = wire::number(control, row_at, 8);
@@ -344,7 +347,7 @@ int corrupted_clear_relationships(const std::filesystem::path &root, const std::
         case 4: wire::set_number(b, high_at, 8, high + 1); break;
         case 5:
             wire::set_number(b, id_flag_at, 4, 0);
-            b.resize(id_at); break; // 按正式optional布局移除ID，不能让尾字节抢先拒绝。
+            b.erase(b.begin() + id_at, b.begin() + id_at + 8); break; // 只移除optional ID，保留标题尾部。
         }
         const auto bytes = wire::pack(changed);
         const auto damaged = root / ("bad-clear-" + std::to_string(i) + ".avra");

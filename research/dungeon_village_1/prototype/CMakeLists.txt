@@ -82,7 +82,8 @@ set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OF
 # 应用持有跨世界系统纪录；复用世界文件I/O，不让规则层依赖标题或文件。
 add_library(dungeon_village_startup_application src/startup_application.cpp
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp
-    src/startup_application_replay_paths.cpp src/startup_application_replay.cpp)
+    src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
+    src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
     PRIVATE dungeon_village_hash)
@@ -94,9 +95,11 @@ add_executable(dungeon_village_startup_application_cli src/startup_application_m
 target_link_libraries(dungeon_village_startup_application_cli PRIVATE dungeon_village_startup_application)
 add_executable(dungeon_village_startup_application_tests tests/startup_application_test.cpp
     tests/startup_system_records_test.cpp tests/startup_world_clear_score_test.cpp
-    tests/startup_application_replay_paths_checks.cpp tests/startup_application_replay_state_checks.cpp)
+    tests/startup_application_replay_paths_checks.cpp tests/startup_application_replay_state_checks.cpp
+    tests/startup_title_presentation_checks.cpp)
 target_link_libraries(dungeon_village_startup_application_tests PRIVATE dungeon_village_startup_application
     dungeon_village_hash)
+target_include_directories(dungeon_village_startup_application_tests PRIVATE src)
 add_test(NAME dungeon_village_prototype.startup_application COMMAND dungeon_village_startup_application_tests)
 if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang|Clang|GNU")
     target_compile_options(dungeon_village_startup_application PRIVATE -Wall -Wextra -Wpedantic -Werror)
@@ -117,7 +120,7 @@ target_sources(dungeon_village_startup_world_continuous_tests PRIVATE tests/star
 # 文件格式／平台失败隔离使用一个集中套件，业务黄金断言仍属于原持续世界套件。
 add_executable(dungeon_village_startup_world_persistence_tests tests/startup_world_persistence_test.cpp
     tests/startup_world_codec_checks.cpp tests/startup_world_restore_checks.cpp
-    tests/startup_application_replay_checks.cpp)
+    tests/startup_application_replay_checks.cpp tests/startup_application_actions_checks.cpp)
 target_include_directories(dungeon_village_startup_world_persistence_tests PRIVATE src)
 target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_application dungeon_village_hash)
 target_compile_features(dungeon_village_startup_world_persistence_tests PRIVATE cxx_std_17)
@@ -133,7 +136,8 @@ add_test(NAME dungeon_village_prototype.startup_world_replay_process
         --exe "$<TARGET_FILE:dungeon_village_startup_world_continuous_tests>"
         --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests"
         --presentation-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>"
-        --application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>")
+        --application-exe "$<TARGET_FILE:dungeon_village_startup_world_persistence_tests>"
+        --title-exe "$<TARGET_FILE:dungeon_village_startup_application_tests>")
 set_tests_properties(dungeon_village_prototype.startup_world_replay_process PROPERTIES TIMEOUT 360)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     # 重建字段AST检查覆盖；新成员不能只改运行时而静默漏出存档。

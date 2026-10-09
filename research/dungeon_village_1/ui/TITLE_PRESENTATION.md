@@ -1,6 +1,6 @@
 # 标题人物调度、输入与随机交接
 
-2026-10-09。固定APK1.0.8的局部源码审计与维护方案；Steam2.56仍只采用已有小方法身份和窗口事实，不把本页标题循环升级为Steam已证算法。本批不改Owner、快照格式、产品或原游戏。源文件／有限窗口摘要见[审计清单](../work/title-schedule-handoff/EVIDENCE.json)，皮肤基础见[启动皮肤合同](STARTUP_SKIN.md)。
+2026-10-09。固定APK1.0.8的局部源码审计及标题背景 Owner 接线；Steam2.56仍只采用已有小方法身份和窗口事实，不把本页标题循环升级为Steam已证算法。本批新增研究应用背景状态与回放语义，不改产品或原游戏。源文件／有限窗口摘要见[审计清单](../work/title-schedule-handoff/EVIDENCE.json)，输入与生命周期补核见[Owner合同](../work/title-owner-contract/README.md)，皮肤基础见[启动皮肤合同](STARTUP_SKIN.md)。
 
 ## 新发现及证据等级
 
@@ -53,34 +53,39 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 原APK只有共同静态随机对象；原标题、纪录初始化、世界随机消费者顺序影响后继世界流。已核新局路径没有另建标题专用随机或在进入世界时重设seed的局部语句；本批不声称已扫描所有框架初始化以证明任何环境都永不重设。
 
-维护`StartupApplication`当前已实现：open_records在title_presentation模式抽名单；record_view不抽；start_game将当前random交给新世界候选并记录handoff；系统写失败不提交；world→title从当前世界复制随机，保留旧world但它不再推进。logic模式保持既有世界黄金轨迹。**这些事实不代表原标题q已实现。** 当前`StartupTitleReplay("startup-title-v1")`只含draft/page/record_page/decorations/random/requests，且拒绝保留world的应用；requests计的是开纪录，不可借它代表标题更新轮数。
+维护`StartupApplication`已持有背景状态`l/f132f/s/t/q`。`advance_title_background`只在`title_presentation`模式的活动标题页接受具名合格更新；背景与随机候选一次提交，失败保持二者及输入消费结果。开纪录仍由独立`open_records`抽名单；`record_view`不抽；`start_game`将当前random交给新世界候选并记录handoff，系统写失败不提交。world→title从当前世界复制随机，保留旧world但它不再推进，同时重置背景q/l/s/t并保留f132f；配置／纪录返回保留完整背景。logic模式不推进背景，保持既有世界黄金轨迹。
 
-## 待实现接口与应用快照影响
+`StartupTitleReplay("startup-title-v2")`在旧草稿／页面／名单／随机／requests之外保存背景，仍拒绝含world的应用。requests只计开纪录，不代表背景更新轮数。完整应用文件则使用AVRAPP01应用语义2，包含保留world时的背景和独立当前标题随机；历史handoff不能强制等于当前流。
 
-以下是可审阅的维护方案，未新增标题字段或格式，也不替代[完整应用回放设计](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)。用户已在本批确认该设计的预算内短回放；原标题q状态仍不在当前已实现应用中，不能借此宣称已经覆盖。建议以单独标题表现控制器接Owner显式请求，保留logic模式不隐式抽取；控制器与应用共同候选成功后一次提交。
+## 已接线接口与完整输入缺口
 
-| 输入／输出 | 建议职责 |
+背景接口实现于[应用接线](../prototype/src/startup_application_title.cpp)和[纯状态模块](../prototype/include/dungeon_village_prototype/startup_title_presentation.hpp)，应用回放沿[已确认设计](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)增加显式语义版本。
+
+| 输入／输出 | 当前职责 |
 | --- | --- |
-| `initialize_title_presentation` | 明确区分新建／原标题重新初始化／从子页返回；只有前两者重置源所列字段，返回不重置q或l |
-| `advance_title_presentation` | 输入具名已获准标题更新、确认脉冲及方向重复输入；联合候选消费random，返回脉冲是否消费、菜单／页请求及实际随机抽数，不模拟OS按键状态 |
-| `project_title_presentation` | 只读完整状态、viewport与资源定义，返回原排序的绘制请求及Logo／菜单位置；不前进、不抽取 |
-| 独立Driver记录 | 请求序号／下一请求、框架准入与输入脉冲、页切换结果、一次性声音／计划已消费状态；不能以秒数反推合格轮 |
+| 新建／`return_to_title` | 新应用背景全零；world返回重置q/l/s/t但保留f132f；子页返回不重置 |
+| `prepare_startup_title_update` | 纯候选推进，拒绝非法状态／准入／磁带耗尽；不修改输入对象 |
+| `advance_title_background` | Owner联合安装背景与随机，返回`confirm_consumed/menu_confirm_ready/random_draws`；不执行菜单或打开页面 |
+| `project_startup_title_presentation` | 只读返回排序后的slot、definition、age/step/facing、锚点及shadow/body顺序；不展开PNG，不包含Logo／菜单投影 |
+| 独立Driver | 在其规范状态中记录实际请求序号／下一请求和输出消费；不能以秒数反推合格轮 |
 
-最小影响后继绘制／更新的标题载荷包括：l、f132f、s、t、20槽完整六字段、h/j，以及明确绑定的slot/o；纪录页还需要f110a与原序名单。现有draft.slot及应用page不总能等同原标题h/o，需要在实施前明确映射。保留world时还要当前标题random及非权威历史handoff，不能把二者强制等于world当前流。
+`h/j/o`、raw20／91返回载荷、方向输入和纪录动画`f110a`尚未接入；现有`draft.slot`与应用page不能替代这些状态。`menu_confirm_ready`只是脉冲资格，不等于自动调用新局或纪录。调用方随后调用`open_records`等是另一个事务：顺序可由Driver显式维持，但后一个请求失败不回滚前一个已提交背景更新，不能宣称原单轮标题输入已联合实现。原菜单`j=0`仅切同对象h=1存档选择，不能用现有`request_new_game`直接调用冒充。
+
+背景载荷已包括l、f132f、s、t、20槽完整六字段；完整标题还需h/j、明确绑定的slot/o和子页返回载荷，纪录页还需f110a。后三类未实现，不能写进当前“完整应用”的已覆盖状态。该名称表示完整保存当前维护应用，不表示原程序所有UI状态已经实现。
 
 完整原标题字段分类：f129a和u为资源／可重建scratch；f130b/f131c映射栏位／草稿；f132f/h/j/l/q/s/t是上述表现状态；k是子页／返回载荷绑定，不能存地址；o区分中断／手动行；m/n是长按调试入口状态，g是广告计数；继承aA及finger22动画计数需按真实使用者单独归类。广告／上传／调试不在本候选实施范围，应显式标未还原，不以默认零声称完整原标题逐字段可回放。已绘制但可重复推导的排序u、临时W不落盘；不可把inactive q.age/y误当无效缓存排除。
 
-应用快照一旦包含上述控制器，需独立语义版本与字段覆盖登记、状态关系／随机事务校验。恢复不能重抽出生或纪录名单、不能重初始化q、不能补跑一次Update修复状态。坏槽数、active／direction非法、定义缺失、计数超界必须返回具名错误；随机磁带在任一抽取耗尽时保留全部旧状态及游标。不能沿用v1控制器名偷偷扩载荷，亦不能借世界codec schema未变宣称应用字段已覆盖。
+应用快照现为语义2，背景固定追加496字节；格式／捕获边界仍为1，旧应用语义1明确拒绝，不迁移。字段覆盖登记16个应用直接成员和11个标题嵌套成员，schema为`6645b2f245a830466097cb21ea147f9d5bbdf71e0f4747a750ec8dd59b6421c3`。恢复不重抽出生或名单、不重初始化q、不补更新；logic必须为初始背景。坏状态与磁带耗尽返回错误，不能借world schema未变声称旧应用文件可继续使用。
 
 ## 后续集中验收
 
-优先扩已有应用套件覆盖输入／提交与回放，已有visuals套件覆盖排序／只读输出；没有本批C++实现，不运行游戏回归。
+本批扩既有应用／回放套件覆盖背景更新、Owner提交和只读排序，不新增逐函数target。以下区分背景验收与尚待完整菜单接线的验收；最终结果以[验证入口](../VERIFICATION.md)为准，不用上批日志代替本批检查。
 
 1. l=98／99分别加确认；门槛前不生人，首生同轮不移动，原确认脉冲消费差异成立。
 2. 未到s零抽、到s空槽4抽／满槽1抽；固定磁带核bound顺序及ticket0／99端点，不用被测函数生成期望。
 3. x=250／−10边界、刚退休最小槽同轮重用、age保留及2147483646→0；不删age断言凑新人物“自然”。
 4. 相同y排序反例、inactive参与、shadow/body相邻、重复只读查询无随机或状态变化。
-5. 开纪录前先完成本轮标题更新与可能出生抽数；纪录初始化另抽N；翻页／重画零抽；返回q及l不重置；配置子页同理。
+5. 背景更新后再调用独立开纪录请求，核后续名单抽N、翻页／重画零抽、子页返回保q/l；未来完整菜单接线还需核同轮联合失败回滚，当前两API不提供此保证。
 6. 开始交接与系统写失败回滚、world→title保留world、后续标题抽数只推进标题流；logic既有黄金独立保留。
 7. 新控制器双恢复核完整q（含inactive）、random、原序绘制／实际输出和Driver输入序号；坏候选不安装、不吞输出。
 

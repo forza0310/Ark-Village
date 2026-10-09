@@ -13,6 +13,8 @@ int run_startup_system_records_tests(const std::filesystem::path &);
 int run_startup_world_clear_score_tests();
 int run_startup_application_replay_paths_checks(const std::filesystem::path &);
 int run_startup_application_replay_state_checks(const std::filesystem::path &);
+int check_startup_title_presentation();
+int run_startup_title_replay_cli(int, const char **);
 namespace {
 int checks{};
 void check(bool ok, const std::string &message) {
@@ -167,9 +169,14 @@ void natural_cash(Work &work) {
     std::cout << "natural-cash frames=" << frames << " peak=" << peak << '\n';
 }
 }
-int main() {
+int main(int argc, const char **argv) {
     try {
+        if (argc > 1) {
+            if (std::string(argv[1]) == "title-background-replay-v2") return run_startup_title_replay_cli(argc, argv);
+            throw std::runtime_error("未知应用测试模式");
+        }
         Work work;
+        checks += check_startup_title_presentation();
         checks += run_startup_application_replay_paths_checks(work.path);
         checks += run_startup_application_replay_state_checks(work.path);
         if (run_startup_system_records_tests(work.path) || run_startup_world_clear_score_tests()) return 1;

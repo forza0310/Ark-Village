@@ -1,2 +1,2 @@
 // 应用字段分类生成身份；不覆盖独立world schema。
-constexpr const char application_schema[] = "6c0dd5f0f74fd9ffff54e346b7de0622ba531e9d5f93634fb15f0a8488830d90";
+constexpr const char application_schema[] = "6645b2f245a830466097cb21ea147f9d5bbdf71e0f4747a750ec8dd59b6421c3";

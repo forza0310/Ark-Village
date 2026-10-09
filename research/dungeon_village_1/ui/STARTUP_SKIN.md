@@ -160,7 +160,7 @@ common SEB2 arrow01＋图片72，frame0，锚(213,179)，stage6用(213,167)。
 
 ## 维护图块桥
 
-后继[窗口框／字体底层交叉](../work/startup-frame-font-research/README.md)补原1像素边线范围、40宽木纹平铺、横坐标裁取标题带和四个SEB角，已经形成只读几何计划。字体入口基线为top−ascent−0.9，并含半宽缩放／描边；未将同名字体当成同一字形度量。Steam[资源与字体身份](STEAM_STARTUP_RESOURCES.md)确认多数框图相同，但标题背景600×380、Logo／草边不同；同图不认证同调用。原标题[人物调度](TITLE_PRESENTATION.md)新增退休槽age保留、非稳定排序和确认脉冲98／99边界，尚未加入Owner状态。
+后继[窗口框／字体底层交叉](../work/startup-frame-font-research/README.md)补原1像素边线范围、40宽木纹平铺、横坐标裁取标题带和四个SEB角，已经形成只读几何计划。字体入口基线为top−ascent−0.9，并含半宽缩放／描边；未将同名字体当成同一字形度量。Steam[资源与字体身份](STEAM_STARTUP_RESOURCES.md)确认多数框图相同，但标题背景600×380、Logo／草边不同；同图不认证同调用。原标题[人物调度](TITLE_PRESENTATION.md)现已接背景Owner、退休槽age保留、非稳定排序和确认脉冲98／99边界，随应用语义2存取；完整人物资源展开、h/j/o菜单和原自动准入仍未实现。
 
 2026-10-09后继[只读模块](../prototype/STARTUP_SKIN.md)将上述标题五图、三个页面背景和raw17角色／继续箭头接为具名图片计划；原PNG／SEB身份和CPU裁片由既有visuals套件认证。标题五图仅目录，完整框／字体／文字、人物更新和Steam实际布局不由该接口代替。用户已取消自定义姓名→切性别→取消重进的强制补测，采用已维护的保名／保草稿规则，仍不将该决定记作Steam动态事实。
 

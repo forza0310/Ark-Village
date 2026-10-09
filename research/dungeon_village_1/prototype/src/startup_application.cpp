@@ -133,6 +133,12 @@ std::string StartupApplication::return_to_title() {
     if (world_ && page_ == Page::world) {
         auto random = world_->state().scene.random;
         random_ = std::move(random);
+        // 世界返回重入既有标题a()：q/l/s/t归零，源未重置f132f。子页返回保留整个标题。
+        if (mode_ == StartupApplicationMode::title_presentation) {
+            const int retained = title_.f132f;
+            title_ = {};
+            title_.f132f = retained;
+        }
     }
     page_ = Page::title; decorations_.clear(); return {};
 }
@@ -176,12 +182,15 @@ StartupRecordView StartupApplication::record_view() const {
 }
 std::optional<StartupTitleReplay> StartupApplication::capture_title_replay() const {
     if (!error_.empty() || world_ || page_ == Page::world || clear_) return {};
-    return StartupTitleReplay{"startup-title-v1", mode_, draft_, page_, record_page_, decorations_,
-                              random_.snapshot(), requests_};
+    return StartupTitleReplay{"startup-title-v2", mode_, draft_, page_, record_page_, decorations_,
+                              random_.snapshot(), requests_, title_};
 }
 std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s) {
     if (!error_.empty()) return error_;
-    if (world_ || s.controller != "startup-title-v1" || s.mode != mode_ ||
+    if (!validate_startup_title_presentation(s.title).empty() ||
+        (s.mode == StartupApplicationMode::logic && !pristine_startup_title_presentation(s.title)))
+        return "标题背景状态或逻辑模式不符";
+    if (world_ || s.controller != "startup-title-v2" || s.mode != mode_ ||
         s.page < Page::title || s.page > Page::records || s.record_page < 0 || s.record_page > 1 ||
         s.draft.slot < 0 || s.draft.slot > 1 || !valid_text(s.draft.village) ||
         !valid_startup_world_human_profile(s.draft.main_character)) return "标题快照身份或载荷非法";
@@ -218,7 +227,7 @@ std::string StartupApplication::restore_title_replay(const StartupTitleReplay &s
     static_assert(std::is_nothrow_move_assignable_v<ref::WorldRandomStream>);
     draft_ = std::move(draft); page_ = s.page; record_page_ = s.record_page;
     decorations_ = std::move(decorations); random_ = std::move(random_candidate);
-    requests_ = s.requests; return {};
+    requests_ = s.requests; title_ = s.title; return {};
 }
 std::string StartupApplication::commit_world(StartupWorldRuntimeSession candidate, bool save_system) {
     auto records = records_;

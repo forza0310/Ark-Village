@@ -13,7 +13,7 @@ for (let i = 0; i < args.length; i += 2) {
     if (i + 1 === args.length || options.has(args[i]) ||
         !['--exe', '--work-dir', '--save-at', '--stop-at', '--producer-revision',
             '--snapshot-file', '--save-every', '--save-directory', '--scenario', '--load-prefix',
-            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe',
+            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe', '--title-exe',
             '--application-snapshot-directory'].includes(args[i]))
         throw new Error('需要 --exe <程序> --work-dir <研究工作目录> [--save-at 420 --stop-at 840]');
     options.set(args[i], args[i + 1]);
@@ -23,6 +23,7 @@ if (!options.get('--exe') || !options.get('--work-dir'))
 const executable = path.resolve(options.get('--exe'));
 const presentationExecutable = options.has('--presentation-exe') ? path.resolve(options.get('--presentation-exe')) : undefined;
 const applicationExecutable = options.has('--application-exe') ? path.resolve(options.get('--application-exe')) : undefined;
+const titleExecutable = options.has('--title-exe') ? path.resolve(options.get('--title-exe')) : undefined;
 if (options.has('--application-snapshot-directory') && !applicationExecutable)
     throw new Error('应用认证目录需要同时指定--application-exe');
 const workRoot = path.resolve(options.get('--work-dir'));
@@ -437,6 +438,61 @@ try {
                 JSON.stringify(applicationCertificate, null, 2) + '\n', { flag: 'wx' });
         }
     }
+    let titleCertificate;
+    if (titleExecutable) {
+        // 标题表现单独资格：不修改上方自然世界轨迹，不宣称Steam窗口动态已经认证。
+        const titleRoot = path.join(owned, 'title-presentation-replay');
+        await fs.mkdir(titleRoot);
+        const roots = [0, 1, 2].map(n => path.join(titleRoot, `process-${n}`));
+        for (const root of roots) await fs.mkdir(root);
+        const titleTraces = roots.map(root => path.join(root, 'title.trace'));
+        const titleSnapshot = path.join(roots[0], 'title600.avra');
+        const titleOutputs = [await run(['title-background-replay-v2', '--work-dir', roots[0],
+            '--save-file', titleSnapshot, '--trace-file', titleTraces[0]], titleExecutable, 60000)];
+        const source = await fs.readFile(titleSnapshot);
+        if (!source.length || source.length > 128 * 1024 * 1024)
+            throw new Error('标题表现快照尺寸非法');
+        const reference = await fs.readFile(titleTraces[0]);
+        const rows = reference.toString('utf8').trimEnd().split('\n');
+        const validTitleRow = (line, nextFrame) => {
+            const row = JSON.parse(line);
+            return row.next_frame === nextFrame && /^[0-9a-f]{64}$/.test(row.digest) &&
+                typeof row.confirm_consumed === 'boolean' && typeof row.menu_confirm_ready === 'boolean' &&
+                Number.isSafeInteger(row.random_draws) && row.random_draws >= 0 && Array.isArray(row.people) &&
+                row.people.length <= 20 && row.people.every(person =>
+                    ['slot', 'definition', 'age', 'step', 'facing'].every(key => Number.isSafeInteger(person[key])) &&
+                    Array.isArray(person.anchor) && person.anchor.length === 2 && person.anchor.every(Number.isSafeInteger) &&
+                    Array.isArray(person.layers) && person.layers.length === 2 && person.layers.every(Number.isSafeInteger));
+        };
+        if (rows.length !== 680 || rows.some((line, n) => !validTitleRow(line, n + 1)))
+            throw new Error('标题reference必须含连续1..680及完整digest/输入消费/抽数/原序人物字段');
+        const expected = Buffer.from(rows.slice(600).join('\n') + '\n');
+        for (let n = 1; n < 3; ++n) {
+            titleOutputs.push(await run(['title-background-replay-v2', '--work-dir', roots[n],
+                '--load-file', titleSnapshot, '--trace-file', titleTraces[n]], titleExecutable, 60000));
+            if (!expected.equals(await fs.readFile(titleTraces[n])))
+                throw new Error(`标题第${n}次恢复完整尾段与reference不同`);
+            if (!(await fs.readFile(titleSnapshot)).equals(source))
+                throw new Error('标题恢复修改了冻结源快照');
+        }
+        const summary = output => output.split(/\r?\n/)
+            .filter(line => line.startsWith('title-background-replay ')).join('\n');
+        const terminal = summary(titleOutputs[0]);
+        if (!/^title-background-replay next_frame=680 digest=[0-9a-f]{64} people=\d+ draws=\d+$/.test(terminal) ||
+            titleOutputs.some(output => summary(output) !== terminal))
+            throw new Error('标题三路终点或完整Driver计数不同');
+        titleCertificate = {
+            controller: 'title-background-requests-v2', cli: 'title-background-replay-v2',
+            qualification: 'title_presentation_replay', seed: 17,
+            capture_request_count: 600, capture_next_frame: 600, stop_at: 680,
+            sequence_convention: 'next_frame为从0起的下一请求序号，亦等于已完成请求数；尾段完成数601..680',
+            tail_frames: 80, process_count: 3, process_timeout_seconds: 60,
+            snapshot_bytes: source.length, snapshot_sha256: sha256(source),
+            trace_bytes: expected.length, trace_sha256: sha256(expected), terminal_output: terminal,
+            comparison: '完整应用及标题Driver逐请求尾段与最终摘要三路相同；源快照字节不变',
+            boundary: '首请求confirm、后续false的原标题表现策略；不认证自然世界通关或Steam输入/绘制频率',
+        };
+    }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
         const relative = path.relative(researchRoot, destination);
@@ -449,6 +505,7 @@ try {
     const certificate = { scenario, seed: 1, speed: 0,
         ...(presentationCertificate ? { presentation_replay: presentationCertificate } : {}),
         ...(applicationCertificate ? { application_replay: applicationCertificate } : {}),
+        ...(titleCertificate ? { title_presentation_replay: titleCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

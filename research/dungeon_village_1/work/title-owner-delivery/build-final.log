@@ -1,0 +1,17 @@
+[0/2] Re-checking globbed directories...
+[1/2] Re-running CMake...
+-- Configuring done (0.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: D:/code/Ark-Village/research/dungeon_village_1/work/release
+[0/4] Re-checking globbed directories...
+[1/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_application_replay_paths_checks.cpp.obj
+[2/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_system_records_test.cpp.obj
+[3/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_application_test.cpp.obj
+[4/14] Building RC object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/research-windows.rc.res
+[5/14] Linking CXX executable bin\dungeon_village_startup_application_cli.exe
+[6/14] Linking CXX executable bin\dungeon_village_startup_world_persistence_tests.exe
+[7/14] Linking CXX executable bin\dungeon_village_startup_world_visuals_tests.exe
+[8/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_title_presentation_checks.cpp.obj
+[9/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_application_replay_state_checks.cpp.obj
+[10/14] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application_tests.dir/tests/startup_world_clear_score_test.cpp.obj
+[11/14] Linking CXX executable bin\dungeon_village_startup_application_tests.exe

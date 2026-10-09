@@ -6,7 +6,7 @@
 
 ## 后继跟进：Steam消费者与受击短轨迹
 
-2026-10-09后继皮肤交付补公共窗口边线／木纹／标题带和四角图元，见[维护模块](../prototype/STARTUP_SKIN.md)。[Steam资源身份](../ui/STEAM_STARTUP_RESOURCES.md)确认框图多处相同，但标题背景600×380、Logo／草边不同；字体对象已核不等于中文运行选择已证。[原标题调度](../ui/TITLE_PRESENTATION.md)保持APK身份，未接新的标题Owner。新增[AVRAPP01](../prototype/APPLICATION_REPLAY.md)为研究短回放，编译绑定research/work，只供研究测试；不是要求产品改变玩家存档或把研究目录写入发布程序。产品迁入仍按具名用途选择维护交付。
+2026-10-09后继皮肤交付补公共窗口边线／木纹／标题带和四角图元，见[维护模块](../prototype/STARTUP_SKIN.md)。[Steam资源身份](../ui/STEAM_STARTUP_RESOURCES.md)确认框图多处相同，但标题背景600×380、Logo／草边不同；字体对象已核不等于中文运行选择已证。[原标题调度](../ui/TITLE_PRESENTATION.md)保持APK身份，本批已接背景人物Owner及独立显式请求；h/j/o菜单路由、人物身体资源展开与Steam动态仍缺，不能按产品FPS自动调用。新增[AVRAPP01](../prototype/APPLICATION_REPLAY.md)为研究短回放，编译绑定research/work，只供研究测试；当前语义2含全部20槽，旧语义1拒绝，不要求产品改变玩家存档或把研究目录写入发布程序。产品迁入仍按具名用途选择维护交付。
 
 2026-10-09用户授权跳过自定义姓名→切性别→取消重进的原窗口补测，维护沿用保名、取消保草稿、开始才安装世界。新增[启动皮肤图块桥](../prototype/STARTUP_SKIN.md)交付APK标题资源目录、纪录／新局不同背景裁片和计分角色／继续箭头；不新增Owner字段、格式或随机。完整Steam皮肤、字体与标题人物调度继续独立登记，产品接线另验。
 

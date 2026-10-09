@@ -1,0 +1,170 @@
+progression month popularity=50 peak_income=0 points=10 F=0 q=3 rank=0 frame=0 date=0/3/0/0 month_tick=0 cash=5000 scene=0 B=420 humans=0 tasks=0 random=0 report=0/0
+progression bakery frame=0 date=0/3/0/0 month_tick=0 cash=4400 scene=0 B=420 humans=0 tasks=0 random=0 report=0/0
+natural replay saved next_frame=421 frame=420 date=0/3/1/486 month_tick=418 cash=4400 scene=0 B=2 humans=0 tasks=0 random=0 report=0/0
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1
+3366 checks passed
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=37
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=37
+presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=37
+application replay captured boundary=row2-44 next_frame=660
+application replay captured boundary=row2-45 next_frame=661
+application replay captured boundary=final64 next_frame=1421
+application replay captured boundary=failed next_frame=1422
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110
+title-background-replay next_frame=680 digest=3e876bbe0125de2f564524ac3a0b8ad624093916f4a8d968d7802e533048479d people=5 draws=56
+title-background-replay next_frame=680 digest=3e876bbe0125de2f564524ac3a0b8ad624093916f4a8d968d7802e533048479d people=5 draws=56
+title-background-replay next_frame=680 digest=3e876bbe0125de2f564524ac3a0b8ad624093916f4a8d968d7802e533048479d people=5 draws=56
+{
+  "scenario": "natural_progression",
+  "seed": 1,
+  "speed": 0,
+  "presentation_replay": {
+    "controller": "presentation-request-v1",
+    "qualification": "conditional_presentation_request_replay",
+    "capture_next_round": 2,
+    "tail_rounds": [
+      2,
+      3,
+      4
+    ],
+    "request_counts": [
+      0,
+      1,
+      2,
+      1,
+      0
+    ],
+    "process_count": 3,
+    "snapshot_bytes": 173900,
+    "snapshot_sha256": "ad76ce1e7301e9456cbcc90aebc132660aa158df952061d06cdf1a945329aad3",
+    "trace_bytes": 1632,
+    "trace_sha256": "c24c3f0204574c751da7cc0ede1f240e75616029c9db6427d9a4c60a2519bf37",
+    "comparison": "完整Session、controller及全plan/request上下文/sound字节三路相同",
+    "terminal_output": "presentation summary rounds=5 ordinal=5 random=8 requests=4 sounds=4 checks=37",
+    "boundary": "人工合法任务进度及66等待页，不认证自然赠礼路线或原Android调度频率"
+  },
+  "application_replay": {
+    "controller": "application-clear-conditions-v1",
+    "qualification": "conditional_raw17_application_replay",
+    "captures": [
+      {
+        "boundary": "row2-44",
+        "next_frame": 660,
+        "tail_frames": 763,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "2de301f56244452c0e6f0cb5418f0c6be9e4923eb8a550ffd535fde7fe148915",
+        "trace_bytes": 626115,
+        "trace_sha256": "ebd2f27eb6388fa69ab46aab59cb21d2e514dc9e2d909890754c529bcd5b210d"
+      },
+      {
+        "boundary": "row2-45",
+        "next_frame": 661,
+        "tail_frames": 762,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "19be4289a96ab4d1220ae131c3248da7848941553ad684c5ec8c8919df158bb3",
+        "trace_bytes": 625295,
+        "trace_sha256": "42a3d495816173ea72aec2bb7cd3d9f8b6bb2dcf7813fa38cf31af17567cec32"
+      },
+      {
+        "boundary": "final64",
+        "next_frame": 1421,
+        "tail_frames": 2,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "cded0ecd095eaf66109b9fb5fce4dda6c1d1942bea3e51e4895d6b2580397d88",
+        "trace_bytes": 1674,
+        "trace_sha256": "3152345b1f4b7e94f9109a7f2b220167cd7ffc84c8fcac815fcfdd35b0077217"
+      },
+      {
+        "boundary": "failed",
+        "next_frame": 1422,
+        "tail_frames": 1,
+        "process_count": 3,
+        "snapshot_bytes": 348003,
+        "snapshot_sha256": "b165a1d9dd60dfb73a2473272f42dc9ee93b53ffa3dbfbba981342af3fb23aa8",
+        "trace_bytes": 853,
+        "trace_sha256": "f113f86286870e8c6aed76a56c8285d50c8df86a92d8bf61d60fde6d97773c59"
+      }
+    ],
+    "terminal_output": "application replay summary frame=1422 score=7200 failures=1 sounds=1 checks=7110",
+    "process_timeout_seconds": 120,
+    "comparison": "完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同",
+    "boundary": "合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容",
+    "preserved_directory": "D:\\code\\Ark-Village\\research\\dungeon_village_1\\work\\snapshots\\application-clear-v2"
+  },
+  "title_presentation_replay": {
+    "controller": "title-background-requests-v2",
+    "cli": "title-background-replay-v2",
+    "qualification": "title_presentation_replay",
+    "seed": 17,
+    "capture_request_count": 600,
+    "capture_next_frame": 600,
+    "stop_at": 680,
+    "sequence_convention": "next_frame为从0起的下一请求序号，亦等于已完成请求数；尾段完成数601..680",
+    "tail_frames": 80,
+    "process_count": 3,
+    "process_timeout_seconds": 60,
+    "snapshot_bytes": 1730,
+    "snapshot_sha256": "3ca0d6a43f9d53980ab439451123b38f5d828449092bddc889543586755b63f2",
+    "trace_bytes": 50574,
+    "trace_sha256": "8651bc113fe08b491b44e5d404e1bfcd067c6adf5d5729ce4b69a79984eadb39",
+    "terminal_output": "title-background-replay next_frame=680 digest=3e876bbe0125de2f564524ac3a0b8ad624093916f4a8d968d7802e533048479d people=5 draws=56",
+    "comparison": "完整应用及标题Driver逐请求尾段与最终摘要三路相同；源快照字节不变",
+    "boundary": "首请求confirm、后续false的原标题表现策略；不认证自然世界通关或Steam输入/绘制频率"
+  },
+  "reference_origin": "真实新局不中断继续",
+  "certification_level": "new_game_reference_tail",
+  "source_prefix": null,
+  "producer_revision": "89f157c-title-owner",
+  "save_at": 420,
+  "stop_at": 840,
+  "periodic_interval": null,
+  "periodic_directory": null,
+  "periodic_status": null,
+  "preserved_snapshot": null,
+  "completion": "有界尾段",
+  "certification": "本证书仅覆盖指定场景主快照与所列尾段",
+  "tail_frames": 420,
+  "process_count": 3,
+  "snapshot_bytes": 346387,
+  "snapshot_sha256": "f0de4fbb018315a551ac4c12803b60f72232bd2ec730051def216b6975deb327",
+  "trace_bytes": 304920,
+  "trace_sha256": "ddebdf802e54a6dbec103994b7be0e8e35ae0f90e996ba63e08c39e412905ff1",
+  "tail_output": "natural replay bounded prefix next_frame=841 frame=840 date=0/3/2/729 month_tick=827 cash=5400 scene=0 B=70 humans=3 tasks=0 random=248 report=0/0 actor=3:def1:state0:action9:B31:cell11,5:op1 actor=4:def3:state0:action0:B72:cell11,14 actor=5:def2:state14:action0:B24:cell10,5:op1\n3366 checks passed",
+  "process_wall_seconds": [
+    10.6443122,
+    6.2780285000000005,
+    6.148732199999999,
+    0.07376239999999962,
+    0.04222910000000047,
+    0.040418100000002594,
+    8.9798626,
+    2.6316591999999983,
+    2.6586102000000027,
+    2.6080339000000023,
+    2.6522199000000035,
+    0.06433589999999823,
+    0.0664010999999955,
+    0.055046500000004016,
+    0.05671480000000156,
+    0.10628970000000118,
+    0.05193880000000354,
+    0.0499320000000007
+  ],
+  "comparison": "逐帧全Session和Driver及尾段stdout三路相同",
+  "certification_boundary": "本轮reference从真实新局不中断至终点，双恢复仅认证主快照之后尾段"
+}

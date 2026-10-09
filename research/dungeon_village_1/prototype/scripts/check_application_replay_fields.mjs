@@ -1,4 +1,5 @@
-// 只过滤应用类AST；直接私有成员必须逐项分类，不生成/保留大型world AST。
+// 只过滤应用及标题类型 AST；直接成员和新增标题嵌套字段必须逐项分类。
+// 不生成/保留大型 world AST。
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -8,11 +9,14 @@ const option=k=>args[args.indexOf(k)+1];
 for(const k of ['--root','--compiler'])
   if(!args.includes(k)||!option(k)||option(k).startsWith('--'))throw Error('缺参数'+k);
 const root=path.resolve(option('--root'));
+let astBytes=0;
+function readTrees(filter){
 const result=spawnSync(option('--compiler'),['-std=c++17','-I'+path.join(root,'prototype/include'),
   '-I'+path.join(root,'example/include'),'-x','c++','-fsyntax-only','-Xclang','-ast-dump=json',
-  '-Xclang','-ast-dump-filter=dungeon_village_prototype::StartupApplication','-'],{
+  '-Xclang','-ast-dump-filter=dungeon_village_prototype::'+filter,'-'],{
   input:'#include "dungeon_village_prototype/startup_application.hpp"\n',maxBuffer:8*1024*1024});
 if(result.status!==0)throw Error(result.stderr.toString());
+astBytes+=result.stdout.length;
 const source=result.stdout.toString('utf8'), trees=[];
 let depth=0,quoted=false,escaped=false,start=0;
 for(let i=0;i<source.length;i++){
@@ -22,6 +26,9 @@ for(let i=0;i<source.length;i++){
   if(c==='{'){if(depth===0)start=i;depth++;}
   if(c==='}'&&--depth===0)trees.push(JSON.parse(source.slice(start,i+1)));
 }
+return trees;
+}
+const trees=readTrees('StartupApplication');
 const type=trees.find(t=>t.kind==='CXXRecordDecl'&&t.name==='StartupApplication'&&t.completeDefinition);
 if(!type||type.bases?.length)throw Error('应用类型缺失或新增未分类基类');
 const policies={
@@ -30,6 +37,7 @@ const policies={
   draft_:'save: village/main_character{name,sex,custom_name}/slot',
   random_:'save: WorldRandomSnapshot完整引擎/磁带/游标/模式',
   mode_:'save: logic或title_presentation',
+  title_:'save: StartupTitlePresentation完整计数和20槽；logic模式必须为初始态',
   page_:'save: 应用页面枚举', record_page_:'save: 纪录页0或1',
   decorations_:'save: 原序定义ID名单', requests_:'save: 显式纪录请求序号',
   handoff_:'save: 可选历史交接完整随机快照',
@@ -44,7 +52,31 @@ const fields=(type.inner??[]).filter(x=>x.kind==='FieldDecl').map(x=>{
   return {name:x.name,type:x.type.qualType,policy:policies[x.name]};
 });
 if(fields.length!==Object.keys(policies).length)throw Error('应用字段移除/重命名，需重审分类');
-const manifest={format:'AVRAPP01',semantics:1,boundary:'complete-outer-round-v1',fields};
+// 独立过滤 StartupTitle 防止只看到外层类型名，遗漏槽或计数器新增字段。
+const titleTrees=readTrees('StartupTitle');
+const nestedPolicies={
+  StartupTitleSlot:{
+    active:'save: int32活动位',definition:'save: int32人物定义ID',
+    x:'save: int32横坐标',y:'save: int32纵坐标；inactive仍参与排序',
+    direction:'save: int32方向',age:'save: int32步龄；退休和重用仍保留'
+  },
+  StartupTitlePresentation:{
+    l:'save: int32入场计数，饱和递增',f132f:'save: int32标题计数，回卷递增',
+    s:'save: int32出生间隔',t:'save: int32间隔内计数',
+    slots:'save: 原序20槽StartupTitleSlot，含inactive全部字段'
+  }
+};
+const nested=Object.entries(nestedPolicies).map(([name,policies])=>{
+  const type=titleTrees.find(t=>t.kind==='CXXRecordDecl'&&t.name===name&&t.completeDefinition);
+  if(!type||type.bases?.length)throw Error('标题嵌套类型缺失或新增未分类基类：'+name);
+  const fields=(type.inner??[]).filter(x=>x.kind==='FieldDecl').map(x=>{
+    if(!policies[x.name])throw Error('标题嵌套新增未分类成员：'+name+'.'+x.name);
+    return {name:x.name,type:x.type.qualType,policy:policies[x.name]};
+  });
+  if(fields.length!==Object.keys(policies).length)throw Error('标题嵌套字段移除/重命名，需重审分类：'+name);
+  return {name,fields};
+});
+const manifest={format:'AVRAPP01',semantics:2,boundary:'complete-outer-round-v1',fields,nested};
 const canonical=JSON.stringify(manifest,null,2)+'\n';
 const schema=crypto.createHash('sha256').update(canonical).digest('hex');
 const inc='// 应用字段分类生成身份；不覆盖独立world schema。\nconstexpr const char application_schema[] = "'+schema+'";\n';
@@ -53,4 +85,5 @@ for(const [name,content] of [['startup_application_replay_fields.json',canonical
   if(args.includes('--check')){if(fs.readFileSync(output,'utf8')!==content)throw Error('应用字段清单不匹配：'+name);}
   else fs.writeFileSync(output,content);
 }
-console.log(JSON.stringify({fields:fields.length,schema,ast_bytes:result.stdout.length,qualification:'直接应用成员分类；嵌套字段由具名codec与world/system身份约束'}));
+console.log(JSON.stringify({fields:fields.length,nested_fields:nested.reduce((n,t)=>n+t.fields.length,0),schema,
+  ast_bytes:astBytes,qualification:'直接应用成员及标题嵌套字段分类；其余嵌套字段由具名codec与world/system身份约束'}));

@@ -23,6 +23,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [x] 4ef4a98主角配置/schema4、跨局系统纪录/六类通关计分和启动皮肤已完成本地验收；见[B1](docs/stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 - [x] 89f157c公共窗框/内容框、完整应用维护短回放和文件校验修正已接入；冻结391项，玩家schema4政策不变，见[B1](docs/stages/B1-playable-prototype.md#research-89f157c-integration)。
 - [x] [五组短收益对照与主动首星验收](docs/stages/ACTIVE_VILLAGE_PLAN.md)：真实建设营业、培养、7次任务胜利、9次活动、升星/绘画展及跨进程玩家存档通过；两个快速合同进入标准CTest。
+- [x] 3780a3b正式维护闭包已迁入：402项、7适配，含标题20槽、基础人物皮肤、商店窄投影及自然应用回放；桌面新局男女静态预览已窗口检查，完整标题宿主动效不在本批接线范围。
+- [ ] 3780a3b阶段验收收口：本批两Debug标准177/153项通过；主动二星首次已晋级但活动30/后续营业未完成，超时现场保留，按成功业务存档续跑，见[B1](docs/stages/B1-playable-prototype.md#research-3780a3b-integration)。
 - [ ] 建设/邻接变化后到达收费缓存与查询价不一致，已登记[最小维护请求](docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)；等待正式修正后复验受影响收益方案，不宣称当前装饰布局最优。
 - [ ] 主动经营后继：按已批准路线扩展现金预算、二至五星所需住宅/商店数量与任务成功、明确身份的BOSS、计分/继续/继承；本批首星不替代这些目标。
 
@@ -30,7 +32,7 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
 - [ ] 人物/怪物受击表现：879cb17已补Owner命中短轨迹及拒绝测试，本批随完整闭包迁入；仍不依据观感增设减速/硬直/击退，动态表现按[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
-- [ ] 情报/设置/标题余项/音频：按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)接线。信息菜单维护入口/字段/动作、音频素材/通道/生命周期及完整动画缺口见[89f157c核对](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)；已有静态索引不等于完整消费者。
+- [ ] 情报/设置/标题余项/音频：后继2ea65e2已正式交付信息收支只读查询/皮肤检查及26个Ogg，尚未纳入本批冻结；信息raw9/36入口与音频操作类型/PC生命周期仍待闭合。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
 - [ ] 跨周自动中断档：正式轮内恢复消费者交付后单独设计；保持当前玩家随机/暂停/格式政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## 产品工程

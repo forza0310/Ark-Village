@@ -3,6 +3,7 @@
 #include "ark/app/world_report.hpp"
 #include "ark/assets/sha256.hpp"
 #include "support/world_fixture.hpp"
+#include "world_active_late_strategy.hpp"
 #include "world_active_strategy.hpp"
 #include "world_commands.hpp"
 #include <chrono>
@@ -18,6 +19,7 @@ namespace sim = ark::simulation;
 namespace ref = sim::rules;
 using State = app::WorldState;
 using Strategy = ark::test::ActiveVillageStrategy;
+using LateStrategy = ark::test::ActiveLateVillageStrategy;
 using Kind = app::WorldCommandKind;
 void require(bool condition, const std::string &message) {
     if (!condition)
@@ -96,11 +98,31 @@ app::WorldCommandResult apply(State &candidate, const app::WorldCommand &command
     return result;
 }
 
-struct Campaign {
+template <class PlayerStrategy> struct Route;
+template <> struct Route<Strategy> {
+    static constexpr const char *magic = "ARK_ACTIVE_CHECKPOINT_1";
+    static constexpr int minutes = 100;
+    static std::uint64_t budget(bool resume) { return resume ? 250000 : 25000; }
+    static bool checkpoint(const Strategy &strategy, const State &state) {
+        return strategy.construction_checkpoint(state);
+    }
+};
+template <> struct Route<LateStrategy> {
+    static constexpr const char *magic = "ARK_ACTIVE_LATE_CHECKPOINT_1";
+    static constexpr int minutes = 100;
+    static std::uint64_t budget(bool) { return 360000; }
+    static bool checkpoint(const LateStrategy &strategy, const State &state) {
+        return strategy.checkpoint(state);
+    }
+};
+
+// Both routes share the exact production transaction/update/player-save driver. Only
+// player decisions, evidence serialization and business milestones vary by route.
+template <class PlayerStrategy> struct CampaignRun {
     State state;
     app::WorldSystemState system;
     std::filesystem::path directory;
-    Strategy strategy;
+    PlayerStrategy strategy;
     std::uint64_t rounds{};
 
     void command(const app::WorldCommand &input) {
@@ -126,7 +148,7 @@ struct Campaign {
         const int before_month = month(state);
         const auto before_random = state.scene.random.draws();
         require(!app::world_clear_page(state),
-                "First-star acceptance cannot substitute date-clear for business goals");
+                "Active acceptance cannot substitute date-clear for business goals");
         if (const auto input = strategy.next(state))
             command(*input);
         auto update = sim::prepare_startup_world_runtime(state);
@@ -153,16 +175,16 @@ struct Campaign {
     void run(bool resume) {
         const auto start = std::chrono::steady_clock::now();
         auto report = start;
-        const std::uint64_t budget = resume ? 250000 : 25000;
+        const std::uint64_t budget = Route<PlayerStrategy>::budget(resume);
         for (;;) {
-            const bool achieved =
-                resume ? strategy.complete(state) : strategy.construction_checkpoint(state);
+            const bool achieved = resume ? strategy.complete(state)
+                                         : Route<PlayerStrategy>::checkpoint(strategy, state);
             if (achieved && app::world_save_eligible(state))
                 break;
             require(rounds < budget, "Active business step budget exhausted");
             step();
             const auto now = std::chrono::steady_clock::now();
-            require(now - start < std::chrono::minutes(100),
+            require(now - start < std::chrono::minutes(Route<PlayerStrategy>::minutes),
                     "Active business time budget exhausted");
             if (now - report >= std::chrono::seconds(30)) {
                 std::cout << "PROGRESS " << strategy.diagnose(state) << std::endl;
@@ -181,7 +203,7 @@ struct Campaign {
         const auto sidecar = directory / ("strategy" + std::to_string(slot) + ".txt");
         require(!std::filesystem::exists(sidecar), "Existing strategy evidence must be preserved");
         std::ofstream output(sidecar, std::ios::binary);
-        output << "ARK_ACTIVE_CHECKPOINT_1\n"
+        output << Route<PlayerStrategy>::magic << '\n'
                << ark::assets::sha256_hex(bytes(app::world_save_slot_path(directory, slot)))
                << '\n';
         strategy.encode(output);
@@ -191,16 +213,19 @@ struct Campaign {
                   << strategy.diagnose(state) << std::endl;
     }
 };
+using Campaign = CampaignRun<Strategy>;
+using LateCampaign = CampaignRun<LateStrategy>;
 
-Campaign load(const std::filesystem::path &directory, int slot = 0) {
+template <class PlayerStrategy = Strategy>
+CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slot = 0) {
     const auto old_slot = bytes(app::world_save_slot_path(directory, slot));
     std::ifstream metadata(directory / ("strategy" + std::to_string(slot) + ".txt"),
                            std::ios::binary);
     std::string magic, digest;
-    require(bool(std::getline(metadata, magic)) && magic == "ARK_ACTIVE_CHECKPOINT_1" &&
+    require(bool(std::getline(metadata, magic)) && magic == Route<PlayerStrategy>::magic &&
                 bool(std::getline(metadata, digest)) && digest == ark::assets::sha256_hex(old_slot),
             "Strategy sidecar does not match this exact player file");
-    auto strategy = Strategy::decode(metadata);
+    auto strategy = PlayerStrategy::decode(metadata);
     auto fresh = ark::test::initial_world(20261009);
     const auto records = app::read_world_system(directory);
     require(records.records.has_value(), records.error);
@@ -225,7 +250,8 @@ Campaign load(const std::filesystem::path &directory, int slot = 0) {
     require(sim::startup_world_human_profile(*saved.state, 0)->name == "经营验收主角",
             "Main profile survives the business checkpoint");
     strategy.reconcile(*saved.state);
-    require(strategy.construction_checkpoint(*saved.state), "Loaded construction milestone lost");
+    require(Route<PlayerStrategy>::checkpoint(strategy, *saved.state),
+            "Loaded active business milestone lost");
     return {std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
 }
 
@@ -243,7 +269,8 @@ struct BusinessCheckpoint {
     std::uint64_t world_steps{}, observed_ticks{}, commands{};
     std::int64_t sales{};
 };
-BusinessCheckpoint checkpoint(const Campaign &campaign) {
+template <class PlayerStrategy>
+BusinessCheckpoint checkpoint(const CampaignRun<PlayerStrategy> &campaign) {
     return {campaign.state.simulation_steps, campaign.strategy.stats().ticks,
             campaign.strategy.stats().commands, facility_sales(campaign.state)};
 }
@@ -281,7 +308,63 @@ void verify_endpoint(const Campaign &campaign, const BusinessCheckpoint &before)
               << " upgraded_definitions=" << stats.upgraded_definitions.size() << std::endl;
 }
 
-std::filesystem::path isolated_directory(const char *executable, const char *supplied) {
+// Re-open both player slots and check live Owner relationships, rather than accepting
+// the sidecar's historical counters as a substitute for a still-operational village.
+void verify_late_endpoint(const LateCampaign &campaign, const BusinessCheckpoint &before) {
+    const auto &state = campaign.state;
+    const auto &stats = campaign.strategy.stats();
+    require(campaign.strategy.complete(state) && app::world_save_eligible(state),
+            "Second-star endpoint is not a complete stable business milestone");
+    int houses{}, shops{};
+    bool new_shop_traded{};
+    for (const auto &[id, facility] : state.scene.world.world.facilities) {
+        if (facility.status != 1)
+            continue;
+        if (facility.kind == 12)
+            ++houses;
+        if (facility.kind == 3 || facility.kind == 9) {
+            ++shops;
+            if (stats.buildings.count(id) && facility.sales > 0)
+                new_shop_traded = true;
+        }
+    }
+    const auto activity = state.activity_counts.find(30);
+    require(
+        state.rank == 2 && houses >= 4 && shops >= 10 && state.task_progress.successes >= 12 &&
+            activity != state.activity_counts.end() && activity->second > 0,
+        "Current Owner lost second star, completed houses/shops, task victories or activity 30");
+    // Popularity is checked at the real rank application by the strategy; it may fluctuate
+    // afterwards. The final Owner still has to retain the physical and unlock outcomes.
+    require(!stats.residents.empty() && stats.admissions > 0 && new_shop_traded &&
+                stats.new_shop_income > 0 && stats.task_successes > 0 &&
+                state.task_progress.successes >= stats.initial_successes + stats.task_successes,
+            "Current Owner cannot support the observed new residence, trade and victories");
+    for (const auto human : stats.residents) {
+        const auto home = state.human_homes.find(human);
+        require(home != state.human_homes.end() && home->second[2] != 0,
+                "Admitted human no longer has a real home");
+        bool housed{};
+        for (const auto &[id, resident] : state.facility_residents) {
+            const auto facility = state.scene.world.world.facilities.find(id);
+            if (resident == human && facility != state.scene.world.world.facilities.end() &&
+                facility->second.kind == 12 && facility->second.status == 1)
+                housed = true;
+        }
+        require(housed, "Admitted human has no matching finished residential facility");
+    }
+    require(state.simulation_steps > before.world_steps && stats.ticks > before.observed_ticks &&
+                stats.commands > before.commands && facility_sales(state) > before.sales,
+            "Second-star restart did not perform actual commands, updates and continued trade");
+    std::cout << "LATE_ENDPOINT world_rounds=" << before.world_steps << "->"
+              << state.simulation_steps << " cumulative_facility_sales=" << before.sales << "->"
+              << facility_sales(state) << " rank=" << state.rank << " houses=" << houses
+              << " shops=" << shops << " successes=" << state.task_progress.successes
+              << " activity30=" << activity->second << " admissions=" << stats.admissions
+              << " new_shop_income=" << stats.new_shop_income << std::endl;
+}
+
+std::filesystem::path isolated_directory(const char *executable, const char *supplied,
+                                         bool late = false) {
     const auto build = std::filesystem::canonical(executable).parent_path().parent_path();
     require(build.filename() == "build",
             "Campaign binary must be in the product build/bin directory");
@@ -290,7 +373,8 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
     require(!relative.empty() && relative != "." && !relative.is_absolute() &&
                 *relative.begin() != ".." && std::filesystem::is_directory(directory),
             "Campaign files must stay strictly below the real product build directory");
-    require(bytes(directory / "ACTIVE_CAMPAIGN") == "ark-active-first-star-v1\n",
+    require(bytes(directory / "ACTIVE_CAMPAIGN") ==
+                (late ? "ark-active-second-star-v1\n" : "ark-active-first-star-v1\n"),
             "Use the isolated process runner to create a fresh campaign directory");
     return directory;
 }
@@ -335,19 +419,93 @@ void contract() {
         refused = true;
     }
     require(refused, "Malformed strategy evidence must be rejected");
+    LateStrategy late;
+    std::ostringstream late_encoded;
+    late.encode(late_encoded);
+    std::istringstream late_input(late_encoded.str());
+    const auto late_restored = LateStrategy::decode(late_input);
+    std::ostringstream late_again;
+    late_restored.encode(late_again);
+    require(late_encoded.str() == late_again.str() && !late_restored.complete(state) &&
+                !late_restored.checkpoint(state),
+            "Fresh late strategy must roundtrip without claiming business milestones");
+    refused = false;
+    try {
+        late.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Late route must refuse an initial unranked village");
+    refused = false;
+    std::istringstream wrong_route(encoded.str());
+    try {
+        LateStrategy::decode(wrong_route);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Late strategy must refuse first-star strategy evidence");
     std::cout << "PASS active campaign driver contract" << std::endl;
 }
 } // namespace
 
 int main(int argc, char **argv) {
     std::optional<Campaign> campaign;
+    std::optional<LateCampaign> late_campaign;
     try {
         if (argc == 2 && std::string(argv[1]) == "--contract") {
             contract();
             return 0;
         }
-        require(argc == 3, "Expected new|resume|verify and runner-created isolated directory");
+        require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
+        const bool late = mode == "late-new" || mode == "late-resume" || mode == "verify-late";
+        if (late) {
+            const auto directory = isolated_directory(argv[0], argv[2], true);
+            if (mode == "late-new") {
+                require(!std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
+                            !std::filesystem::exists(app::world_save_slot_path(directory, 1)),
+                        "New late route cannot overwrite previous player slots");
+                const auto input = std::filesystem::canonical(directory / "input");
+                require(input.parent_path() == directory && input.filename() == "input",
+                        "First-star input directory must be an isolated local copy");
+                // The first Owner is discarded after scalar observations. Cold-load the exact
+                // verified endpoint, then move its sole Owner into a fresh late strategy.
+                const auto before = checkpoint(load(input, 0));
+                auto prefix = load(input, 1);
+                verify_endpoint(prefix, before);
+                require(bytes(app::world_system_path(directory)) ==
+                            bytes(app::world_system_path(input)),
+                        "Late route system record differs from the verified prefix");
+                late_campaign.emplace(
+                    LateCampaign{std::move(prefix.state), std::move(prefix.system), directory, {}});
+                late_campaign->strategy.reconcile(late_campaign->state);
+                late_campaign->run(false);
+                late_campaign->save(0);
+            } else {
+                const auto before = checkpoint(load<LateStrategy>(directory, 0));
+                if (mode == "verify-late") {
+                    late_campaign.emplace(load<LateStrategy>(directory, 1));
+                    verify_late_endpoint(*late_campaign, before);
+                    std::cout << "PASS read-only second-star cold-file endpoint verification"
+                              << std::endl;
+                } else {
+                    late_campaign.emplace(load<LateStrategy>(directory, 0));
+                    const auto first_slot = bytes(app::world_save_slot_path(directory, 0));
+                    const auto first_strategy = bytes(directory / "strategy0.txt");
+                    late_campaign->run(true);
+                    verify_late_endpoint(*late_campaign, before);
+                    late_campaign->save(1);
+                    require(bytes(app::world_save_slot_path(directory, 0)) == first_slot &&
+                                bytes(directory / "strategy0.txt") == first_strategy,
+                            "Late restart must preserve its first player checkpoint and evidence");
+                    std::cout
+                        << "PASS active second-star campaign: new shops, residence, "
+                           "victories, cold restart, promotion, paid activity 30, continued trade"
+                        << std::endl;
+                }
+            }
+            return 0;
+        }
         require(mode == "new" || mode == "resume" || mode == "verify",
                 "Unknown active campaign phase");
         const auto directory = isolated_directory(argv[0], argv[2]);
@@ -389,6 +547,9 @@ int main(int argc, char **argv) {
         std::cerr << "Active campaign failed: " << error.what() << std::endl;
         if (campaign)
             std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
+        if (late_campaign)
+            std::cerr << "STATE " << late_campaign->strategy.diagnose(late_campaign->state)
+                      << std::endl;
         return 1;
     }
 }

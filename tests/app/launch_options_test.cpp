@@ -105,7 +105,8 @@ int main() {
                .options);
     for (const auto *page :
          {"world-title", "world-title-slots", "world-title-actions", "world-title-records",
-          "world-title-cash", "world-title-configure", "world-title-text", "world-title-clear"}) {
+          "world-title-cash", "world-title-configure", "world-title-configure-female",
+          "world-title-text", "world-title-clear"}) {
         const auto title = parse_arguments({"--inspect-page", page, "--frames", "8"});
         check(title.options && title.options->world && title.options->inspect_page == page);
         check(!parse_arguments({"--inspect-page", page}).options);

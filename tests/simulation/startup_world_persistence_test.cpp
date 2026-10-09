@@ -24,6 +24,9 @@
 using namespace ark::simulation;
 int run_startup_application_replay_checks(const std::filesystem::path &);
 int run_startup_application_replay_cli(int, const char **);
+int run_startup_application_actions_checks(const std::filesystem::path &);
+int run_startup_application_natural_replay_cli(int, const char **);
+int run_startup_application_natural_driver_checks(const std::filesystem::path &);
 namespace {
 using Bytes = std::vector<std::uint8_t>;
 int checks{};
@@ -766,6 +769,8 @@ void run(const std::filesystem::path &dir) {
     std::filesystem::remove(normal);
     std::filesystem::remove(bad);
     checks += run_startup_application_replay_checks(dir);
+    checks += run_startup_application_actions_checks(dir);
+    checks += run_startup_application_natural_driver_checks(dir);
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
@@ -975,8 +980,8 @@ void presentation_replay(int argc,const char **argv) {
              <<" random="<<session.state().scene.random.draws()<<" requests=4 sounds=4 checks="<<checks<<'\n';
 }
 } // namespace
-// 应用回放测试沿相同严格文件夹具取得原raw17入口，不把该条件档称自然通关。
-std::filesystem::path create_application_clear_entry_fixture(const std::filesystem::path &dir) {
+// 多种应用接线条件共享一次可恢复的真实早期世界准备，不跑完整年度。
+static StartupWorldRuntimeSession application_fixture_baseline() {
     StartupSession initial;
     StartupWorldRuntimeSession baseline(initial.state(), ref::WorldRandomStream::from_java_seed(1));
     int frame{};
@@ -986,6 +991,11 @@ std::filesystem::path create_application_clear_entry_fixture(const std::filesyst
             baseline.state().scripts.pages.size() == 1 && baseline.state().scene.scene_state == 0) break;
     }
     check(frame < 2200, "application fixture stable source boundary");
+    return baseline;
+}
+// 应用回放测试沿相同严格文件夹具取得原raw17入口，不把该条件档称自然通关。
+std::filesystem::path create_application_clear_entry_fixture(const std::filesystem::path &dir) {
+    auto baseline = application_fixture_baseline();
     auto state = baseline.state();
     state.completion_mode = state.system_completion_mode = 1;
     ref::WorldScriptPage page; page.kind = ref::WorldScriptPageKind::raw_page; page.legacy_page = 17;
@@ -1000,8 +1010,45 @@ std::filesystem::path create_application_clear_entry_fixture(const std::filesyst
                                 "explicit raw17 application replay entry, not natural sixteen years");
     std::filesystem::remove(encoded); std::filesystem::remove(bad); return entry;
 }
+// 仅插入待测页面及年度勋章条件；四档不是自然到达年度/晋级/商会的证明。
+std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
+    const std::filesystem::path &dir) {
+    auto baseline = application_fixture_baseline();
+    std::array<std::filesystem::path, 4> entries;
+    const std::array<int, 4> raw{48, 83, 87, 87};
+    for (std::size_t i = 0; i < entries.size(); ++i) {
+        auto state = baseline.state();
+        if (raw[i] == 87) state.medal_count = i == 2 ? 1 : 0;
+        ref::WorldScriptPage page;
+        page.kind = ref::WorldScriptPageKind::raw_page; page.legacy_page = raw[i];
+        const auto pushed = ref::prepare_world_script_page(startup_world_runtime_scripts(state), page);
+        check(pushed.candidate && write_startup_world_runtime_scripts(state, pushed.candidate->state),
+              "application action fixture uses actual page factory");
+        if (i == 3) {
+            // 原87首次初始化先增加一枚勋章；零勋关闭只可能检查已初始化后的耗尽条件。
+            const auto id = state.scripts.pages.back().id;
+            check(act_startup_world_runtime_award_page(state, id, ref::WorldAwardAction::update, 0) ==
+                      StartupWorldRuntimeError::none && state.medal_count == 1 &&
+                      state.award_rankings.count(id),
+                  "zero-medal fixture first uses actual annual initialization increment");
+            state.sound_requests.clear(); // 夹具领取并丢弃初始化声音，不混入待测请求输出。
+            state.medal_count = 0; // 明确条件夹具；不声称自然授出过该枚勋章。
+        }
+        StartupWorldSaveMetadata metadata; metadata.purpose = StartupWorldSavePurpose::replay;
+        metadata.controller_id = "application-action-entry-fixture-v1"; metadata.controller_state = {1};
+        entries[i] = dir / ("action-entry-" + std::to_string(i) + ".avrs");
+        const auto encoded = dir / ("action-encoded-" + std::to_string(i) + ".avrs");
+        const auto bad = dir / ("action-input-" + std::to_string(i) + ".avrs");
+        capture_persistence_fixture(baseline, state, metadata, entries[i], encoded, bad,
+                                    "explicit application command fixture, not natural progression");
+        std::filesystem::remove(encoded); std::filesystem::remove(bad);
+    }
+    return entries;
+}
 int main(int argc, const char **argv) {
     try {
+        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v1")
+            return run_startup_application_natural_replay_cli(argc, argv);
         if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v1")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {

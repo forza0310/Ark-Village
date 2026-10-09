@@ -1,4 +1,5 @@
 #include "ark/simulation/startup_application.hpp"
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -13,6 +14,8 @@ int run_startup_system_records_tests(const std::filesystem::path &);
 int run_startup_world_clear_score_tests();
 int run_startup_application_replay_paths_checks(const std::filesystem::path &);
 int run_startup_application_replay_state_checks(const std::filesystem::path &);
+int check_startup_title_presentation();
+int run_startup_title_replay_cli(int, const char **);
 namespace {
 int checks{};
 void check(bool ok, const std::string &message) {
@@ -146,8 +149,32 @@ void natural_cash(Work &work) {
     StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
     good(app.request_new_game(0)); good(app.start_game());
     int frames{};
+    int visible_oracle_rounds{};
     for (; frames < 10000 && app.records().cash_peak == 0; ++frames) {
+        // 复用既有首访经营前缀，从同一旧世界并排验证Session完整消费者。
+        // 出现真实可见人物后再比较8轮即可关闭额外oracle，不重复整条现金长轨迹。
+        std::optional<StartupWorldRuntimeSession> oracle;
+        if (visible_oracle_rounds < 8) {
+            oracle = *app.world();
+            const auto result = oracle->update();
+            check(result.error == StartupWorldRuntimeError::none && result.candidate.has_value(),
+                  "独立Session oracle真实更新成功并保留完整candidate");
+        }
         good(app.update());
+        if (oracle) {
+            const auto expected_sounds = oracle->take_sound_requests();
+            const auto actual_sounds = app.take_sound_requests();
+            check(actual_sounds == expected_sounds, "应用与Session同轮原序声音一致");
+            check(startup_world_session_digest(*app.world()) == startup_world_session_digest(*oracle),
+                  "应用与Session完整轮末Owner/历史/随机/render缓存一致，frame=" + std::to_string(frames));
+            const auto &s = oracle->state();
+            const bool visible = std::any_of(s.scene.world.world.ai.battle.actors.begin(),
+                s.scene.world.world.ai.battle.actors.end(), [&](const auto &entry) {
+                    const auto seen = startup_world_actor_visible(s, entry.first);
+                    return entry.second.kind == ref::ActorKind::human && seen && *seen;
+                });
+            if (visible) ++visible_oracle_rounds;
+        }
         const auto &pages = app.world()->state().scripts.pages;
         const auto &p = pages.back();
         if (p.lifecycle != 4 && p.kind != ref::WorldScriptPageKind::scene &&
@@ -156,6 +183,7 @@ void natural_cash(Work &work) {
             good(app.acknowledge_page(p.id));
         app.take_sound_requests();
     }
+    check(visible_oracle_rounds == 8, "真实可见人物的8轮已由独立Session完整oracle覆盖");
     check(app.records().cash_peak > 0, "真实新局首访经营产生资金纪录");
     const auto peak = app.records().cash_peak;
     check(load_startup_system_file(paths.system).records->cash_peak == peak,
@@ -167,9 +195,14 @@ void natural_cash(Work &work) {
     std::cout << "natural-cash frames=" << frames << " peak=" << peak << '\n';
 }
 }
-int main() {
+int main(int argc, const char **argv) {
     try {
+        if (argc > 1) {
+            if (std::string(argv[1]) == "title-background-replay-v2") return run_startup_title_replay_cli(argc, argv);
+            throw std::runtime_error("未知应用测试模式");
+        }
         Work work;
+        checks += check_startup_title_presentation();
         checks += run_startup_application_replay_paths_checks(work.path);
         checks += run_startup_application_replay_state_checks(work.path);
         if (run_startup_system_records_tests(work.path) || run_startup_world_clear_score_tests()) return 1;

@@ -333,11 +333,14 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
         selection.record_page = options.inspect_page == "world-title-cash";
     }
     if (options.inspect_page == "world-title-configure" ||
+        options.inspect_page == "world-title-configure-female" ||
         options.inspect_page == "world-title-text") {
         selection.page = options.inspect_page == "world-title-text" ? WorldTitlePage::text_edit
                                                                     : WorldTitlePage::configure;
         selection.field = 1;
         selection.edit_text = "UI测试甲";
+        if (options.inspect_page == "world-title-configure-female")
+            app::change_world_draft_sex(selection.draft, 1);
     }
     std::optional<app::WorldClearPage> clear_inspection;
     if (options.inspect_page == "world-title-clear") {

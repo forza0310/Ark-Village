@@ -1,7 +1,10 @@
 #include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/startup_world_persistence.hpp"
 #include "support/world_fixture.hpp"
 
 #include <iostream>
+#include <chrono>
+#include <iomanip>
 #include <stdexcept>
 
 using namespace ark::simulation;
@@ -275,13 +278,153 @@ void tail_direction_projection() {
               published->scene.world.world.ai.battle.actors.at({1}).position.height == 0,
           "published u uses retained physics snapshot, not current n after r cleared height");
 }
+StartupWorldRuntimeState shop_projection_fixture() {
+    auto s = fixture();
+    s.scene.world.world.actors.emplace(ref::CharacterId{1}, ref::RescueActorContext{});
+    s.human_flags.at(0) |= 2U;
+    // 条件投影夹具：三种商店覆盖关系，不虚构成自然建设或世界存档资格。
+    s.shops[1001] = {1, {{7, 91}}};
+    s.shops[1002] = {4, {{3, 6}, {7, 2}}};
+    s.shops[1003] = {5, {{7, 9}}};
+    s.facility_details[1001].notices = {{7, 4}, {1, 8}, {7, 3}};
+    s.facility_details.erase(1002);
+    s.facility_details[1003].notices.clear();
+    s.shop_order = {1003, 1001, 1002};
+    return s;
+}
+void narrow_shop_projection() {
+    auto s = shop_projection_fixture();
+    const auto adapter = startup_world_runtime_adapter();
+    const auto equal = [](const auto &a, const auto &b) {
+        if (a.size() != b.size()) return false;
+        auto x = a.begin(), y = b.begin();
+        for (; x != a.end(); ++x, ++y)
+            if (x->first != y->first || x->second.category != y->second.category ||
+                x->second.notices != y->second.notices) return false;
+        return true;
+    };
+    const auto before = startup_world_state_digest(s);
+    const auto full = startup_world_runtime_routes(s); // 原完整公开投影，保留独立world/facts处理。
+    const auto narrow = adapter.nonactors.read_routes(s);
+    check(equal(full.shops, narrow.objects.shops) && narrow.objects.shop_order == s.shop_order,
+          "窄商店投影逐字段等于旧完整routes oracle，商店顺序不按ID重排");
+    check(narrow.objects.shops.at(1001).notices == std::vector<std::array<int, 2>>{{7, 4}, {1, 8}, {7, 3}} &&
+              narrow.objects.shops.at(1002).notices == std::vector<std::array<int, 2>>{{3, 6}, {7, 2}} &&
+              narrow.objects.shops.at(1003).notices.empty(),
+          "实际details覆盖保留重复种类原序，缺details保留旧notice，空details真正清空");
+    check(full.world.actors.at({1}).definition_task_flag &&
+              !s.scene.world.world.actors.at({1}).definition_task_flag &&
+              startup_world_state_digest(s) == before,
+          "完整投影仍写私有任务旗标，窄读不改Owner/随机/目录/实体");
+    const auto rejection = [](const auto &read) {
+        try { read(); }
+        catch (const std::invalid_argument &error) { return std::string(error.what()); }
+        return std::string{};
+    };
+    for (int variant = 0; variant < 2; ++variant) {
+        auto bad = s;
+        if (variant == 0) bad.human_flags.erase(0);
+        else bad.scene.world.world.actors.erase({1});
+        const auto saved = startup_world_state_digest(bad);
+        const auto old_error = rejection([&] { (void)startup_world_runtime_routes(bad); });
+        const auto new_error = rejection([&] { (void)adapter.nonactors.read_routes(bad); });
+        check(old_error == "共同人物缺原任务旗标投影" && new_error == old_error &&
+                  startup_world_state_digest(bad) == saved,
+              "缺human flag或RescueActorContext仍在原投影时点拒绝，旧输入完整不变");
+    }
+    // 原检查使用world.actors，不能误加强为ai.contexts；非human也不新增该要求。
+    auto reward_context_absent = s;
+    reward_context_absent.scene.world.world.ai.contexts.erase({1});
+    const auto old_without_reward = startup_world_runtime_routes(reward_context_absent);
+    const auto new_without_reward = adapter.nonactors.read_routes(reward_context_absent);
+    check(equal(old_without_reward.shops, new_without_reward.objects.shops) &&
+              !s.scene.world.world.actors.count({2}),
+          "保留原拒绝范围，不把reward context或怪物上下文改成新门槛");
+}
+
+// 只保留被替换的外层组合，不重写规则算法；固定同一DLL中的完整routes作为旧路径。
+ref::WorldNonactorScheduleState full_nonactor_projection(const StartupWorldRuntimeState &s) {
+    ref::WorldNonactorScheduleState r{s.scene.world, s.scene.random, {}};
+    r.objects.catalog = s.catalog;
+    r.objects.shops = startup_world_runtime_routes(s).shops;
+    r.objects.shop_order = s.shop_order;
+    r.objects.item_rewards = s.item_rewards;
+    return r;
+}
+std::uint64_t projection_checksum(const ref::WorldNonactorScheduleState &p) {
+    std::uint64_t hash = 14695981039346656037ULL;
+    const auto mix = [&](std::uint64_t value) { hash = (hash ^ value) * 1099511628211ULL; };
+    mix(p.common.world.ai.battle.actors.size());
+    mix(p.common.world.facilities.size());
+    mix(p.common.world.map.cells.size());
+    mix(p.common.world.ai.accounting.funds());
+    const auto random = p.random.snapshot();
+    mix(random.engine_state); mix(random.cursor); mix(random.tape_mode);
+    for (auto raw : random.tape) mix(static_cast<std::uint32_t>(raw));
+    for (const auto &[id, value] : p.objects.catalog) {
+        mix(id.first); mix(id.second); mix(value.flags); mix(value.status);
+        mix(value.unlock_counter); mix(value.newly_unlocked); mix(value.inventory); mix(value.free_purchases);
+    }
+    for (const auto &[id, shop] : p.objects.shops) {
+        mix(id); mix(shop.category); mix(shop.notices.size());
+        for (const auto &notice : shop.notices) { mix(notice[0]); mix(notice[1]); }
+    }
+    for (auto id : p.objects.shop_order) mix(id);
+    mix(p.objects.item_rewards);
+    return hash;
+}
+int projection_benchmark() {
+    using Clock = std::chrono::steady_clock;
+    const auto s = shop_projection_fixture();
+    const auto adapter = startup_world_runtime_adapter();
+    const auto before = startup_world_state_digest(s);
+    constexpr int warmup = 64, pairs = 7, iterations = 1000;
+    for (int i = 0; i < warmup; ++i)
+        check(projection_checksum(full_nonactor_projection(s)) ==
+                  projection_checksum(adapter.nonactors.read_routes(s)), "诊断预热两路径checksum相同");
+    struct Sample { double milliseconds{}; std::uint64_t checksum{}; };
+    const auto measure = [&](bool full) {
+        Sample sample;
+        const auto start = Clock::now();
+        for (int i = 0; i < iterations; ++i) {
+            // 构造、使用与销毁都在区间内，两路径消费完全相同的投影字段。
+            const auto p = full ? full_nonactor_projection(s) : adapter.nonactors.read_routes(s);
+            sample.checksum = (sample.checksum ^ projection_checksum(p) ^ static_cast<std::uint64_t>(i)) *
+                              1099511628211ULL;
+        }
+        sample.milliseconds = std::chrono::duration<double, std::milli>(Clock::now() - start).count();
+        return sample;
+    };
+    std::cout << "projection_benchmark fixture=conditional-shop-projection pairs=" << pairs
+              << " iterations=" << iterations << " warmup=" << warmup
+              << " qualification=microbenchmark-not-natural-game-speed\n";
+    std::cout << "pair,order,iterations,full_ms,narrow_ms,full_checksum,narrow_checksum\n";
+    std::cout << std::fixed << std::setprecision(6);
+    for (int pair = 0; pair < pairs; ++pair) {
+        Sample full, narrow;
+        if (pair % 2 == 0) { full = measure(true); narrow = measure(false); }
+        else { narrow = measure(false); full = measure(true); }
+        check(full.checksum == narrow.checksum, "诊断实际消费checksum不一致");
+        std::cout << pair + 1 << ',' << (pair % 2 == 0 ? "full-first" : "narrow-first") << ','
+                  << iterations << ',' << full.milliseconds << ',' << narrow.milliseconds << ','
+                  << full.checksum << ',' << narrow.checksum << '\n';
+    }
+    check(startup_world_state_digest(s) == before, "诊断不修改单一输入Owner/随机");
+    std::cout << "projection_benchmark input_digest=" << before << " unchanged=true\n";
+    return 0; // 快慢不影响成功资格，只有行为/checksum或只读性错误才失败。
+}
 } // namespace
-int main() {
+int main(int argc, const char **argv) {
     try {
+        if (argc > 1) {
+            if (argc == 2 && std::string(argv[1]) == "projection_benchmark") return projection_benchmark();
+            throw std::runtime_error("未知nonactor测试模式");
+        }
         contact_and_spells();
         hit_object_and_projection();
         actor_presentation_and_frame_cache();
         tail_direction_projection();
+        narrow_shop_projection();
         std::cout << "startup_world_runtime_nonactors: " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception &error) {

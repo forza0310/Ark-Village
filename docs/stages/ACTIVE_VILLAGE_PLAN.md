@@ -2,7 +2,7 @@
 
 2026-10-09。用户已批准本方案，并要求并行构建短测试与长测试；用于检验游戏推进的产品长测必须含真实世界操作。本文件保留设计依据并记录实际验收，不是已获得全局最优收益或五星通关的报告。
 
-本次按产品冻结89f157c的391项维护闭包、当前产品消费者分析。研究后继标题/应用回放交付不自动改变本次数值基线；不修改或构建research。只读初局探针结果在`build/validation/economy-plan/initial.txt`；后续获批的短对照与主动长测分别登记在末节，不读写正常玩家档。
+初版建设分析、五组短对照及首星结果按产品冻结89f157c的391项维护闭包，保留各自数值身份；本批二星接续改用3780a3b的402项闭包，详见末节，不将后继标题/应用回放证据冒称既有收益复验。不修改或构建research。只读初局探针结果在`build/validation/economy-plan/initial.txt`；后续获批的短对照与主动长测分别登记，不读写正常玩家档。
 
 ## 现有长跑到底测什么
 
@@ -169,3 +169,19 @@ node tests/app/world_campaign_process.mjs build/bin/ark_world_campaign_tests-hea
 # 对已经完成的隔离目录只读复核两栏及实际终态，不重新经营
 build/bin/ark_world_campaign_tests-headless-release.exe verify build/validation/economy-plan/active/active-player-V5uii1
 ```
+
+## 主动二星接续（3780a3b，2026-10-09）
+
+本批沿已批准逐星方案，以`active-player-V5uii1`的通过RESULT、玩家两栏、策略证据与系统纪录为唯一首星前缀。runner的`--first-star-prefix`先核结果/文件SHA/真实首星终态，复制到新证据目录`input/`，结束再核原件和副本未变；拒绝初局伪装首星或混用策略格式。`CampaignRun<Policy>`复用现有同步生产命令事务驱动，二星策略sidecar仅持决策与证据。
+
+策略按动态目录在道路旁合法空格建设，保留未来两月维护现金；装备赠礼读取人物当前装备/资格，不以降级或注入满足度换入住。阶段A要求新增住宅、新店收入和新任务胜利，并在无活动任务/无商店住宅施工的稳定业务点保存第一栏；阶段B用独立进程冷载继续，真实满足10成店、4成屋、12任务成功、800人气后申请二星，再真实举办活动30并继续整月营业。最终`verify-late`核两栏实际Owner与业务成果；活动30开放壶不等于已经投入/炼制。
+
+每阶段100分钟/360000框架调用上限（首次60分钟预算不足，保留失败记录），进展日志明确现金、保留预算、设施、人物入住、任务和晋级缺口。默认额外长测保持OFF；仅开启`ARK_LONG_WORLD_TESTS`并设置有效`ARK_PLAYER_FIRST_STAR_PREFIX`时登记`player_active_second_star`，也可显式执行下方runner。快速驱动合同继续使用现有标准套件，不按新里程碑建立第二份业务驱动。
+
+```powershell
+node tests/app/world_campaign_process.mjs build/bin/ark_world_campaign_tests-headless-release.exe build/validation/research-3780a3b/late --first-star-prefix build/validation/economy-plan/active/active-player-V5uii1
+```
+
+**首次执行未通过整链**：`build/validation/research-3780a3b/late/second-star-player-LpdIOL`已完成阶段A真实业务保存/独立进程冷载并晋级二星，在原始绝对月37、16任务成功、823人气、77点时超时；活动30与后续营业未完成，RESULT=failed。`--late-resume-prefix`仅接受原始成功且非reused的late-new，核slot0/策略/系统/日志哈希后新建目录，执行late-resume/verify-late并复核原文件、RESULT和marker；不继承失败进程未保存的世界，系统文件可能含失败期间现金最高纪录。当前续跑`build/validation/research-3780a3b/late-resume/second-star-player-x2Xjb8`，整链结果待收口。标准回归/窗口证据见[B1本批记录](B1-playable-prototype.md#research-3780a3b-integration)。收费缓存RQ未修，未重跑五组，也未认证新的最优收益方案。
+
+后继正式2ea65e2进一步交付四星商会85以200点兑换→93确认→博物馆64资格、3000G建设→完工事件75开放活动21的路线依据，未纳入本批402项冻结或实际验证。后续三至五星、明确BOSS、计分/继续/继承仍按真实条件分段扩展，不能将已知静态路线写成产品自然通过。

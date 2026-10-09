@@ -1,6 +1,6 @@
 {
   "format": "AVRAPP01",
-  "semantics": 1,
+  "semantics": 3,
   "boundary": "complete-outer-round-v1",
   "fields": [
     {
@@ -77,6 +77,78 @@
       "name": "error_",
       "type": "std::string",
       "policy": "require-empty: 仅健康应用可捕获；恢复不重演旧错误"
+    },
+    {
+      "name": "title_",
+      "type": "StartupTitlePresentation",
+      "policy": "save: StartupTitlePresentation完整计数和20槽；logic模式必须为初始态"
+    }
+  ],
+  "nested": [
+    {
+      "name": "StartupTitleSlot",
+      "fields": [
+        {
+          "name": "active",
+          "type": "int",
+          "policy": "save: int32活动位"
+        },
+        {
+          "name": "definition",
+          "type": "int",
+          "policy": "save: int32人物定义ID"
+        },
+        {
+          "name": "x",
+          "type": "int",
+          "policy": "save: int32横坐标"
+        },
+        {
+          "name": "y",
+          "type": "int",
+          "policy": "save: int32纵坐标；inactive仍参与排序"
+        },
+        {
+          "name": "direction",
+          "type": "int",
+          "policy": "save: int32方向"
+        },
+        {
+          "name": "age",
+          "type": "int",
+          "policy": "save: int32步龄；退休和重用仍保留"
+        }
+      ]
+    },
+    {
+      "name": "StartupTitlePresentation",
+      "fields": [
+        {
+          "name": "l",
+          "type": "int",
+          "policy": "save: int32入场计数，饱和递增"
+        },
+        {
+          "name": "f132f",
+          "type": "int",
+          "policy": "save: int32标题计数，回卷递增"
+        },
+        {
+          "name": "s",
+          "type": "int",
+          "policy": "save: int32出生间隔"
+        },
+        {
+          "name": "t",
+          "type": "int",
+          "policy": "save: int32间隔内计数"
+        },
+        {
+          "name": "slots",
+          "type": "std::array<StartupTitleSlot, 20>",
+          "policy": "save: 原序20槽StartupTitleSlot，含inactive全部字段"
+        }
+      ]
     }
   ]
 }

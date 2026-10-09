@@ -44,6 +44,7 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "ai" && page != "world-title" && page != "world-title-slots" &&
                 page != "world-title-actions" && page != "world-title-records" &&
                 page != "world-title-cash" && page != "world-title-configure" &&
+                page != "world-title-configure-female" &&
                 page != "world-title-text" && page != "world-title-clear" &&
                 page != "world-active" && page != "world-month" && page != "world-rank" &&
                 page != "world-combat" && page != "world-reward" && page != "world-exp" &&

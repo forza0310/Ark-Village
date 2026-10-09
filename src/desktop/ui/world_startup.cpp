@@ -27,6 +27,18 @@ void fit(const Skin &skin, const std::string &value, Rectangle box, Color color 
     skin.centered(value, box, color, size * scale);
 }
 } // namespace
+std::optional<simulation::StartupTitleActorSkin>
+world_configuration_actor(const app::WorldNewGameDraft &draft) {
+    const auto &humans = simulation::startup_world_rules().humans;
+    const auto main = std::find_if(humans.begin(), humans.end(),
+                                   [](const auto &human) { return human.identity == 0; });
+    if (main == humans.end())
+        return {};
+    // The published raw91 a.h.B identity is not yet bound. Preview the actual new-game
+    // definition instead; step0 is deliberately static until its page counter is owned.
+    return simulation::startup_title_actor_skin(main->definition.current_profession,
+                                                draft.human.sex, main->equipment[0], 0, 2, false);
+}
 void draw_world_records(const simulation::StartupSystemRecords &records, int page, const Skin &skin,
                         Rectangle panel) {
     skin.window(panel, "排行榜 " + std::to_string(page + 1) + "/2");
@@ -61,14 +73,42 @@ void draw_world_configuration(const app::WorldNewGameDraft &draft, int selected,
     const std::array<std::string, 4> values{draft.village, draft.human.name,
                                             draft.human.sex == 0 ? "男" : "女", "开始游戏"};
     for (int n = 0; n < 4; ++n) {
-        if (selected == n) {
+        if (selected == n && n != 2) {
             DrawRectangleRec(fields[n], {255, 180, 104, 255});
             skin.sprites.draw("finger_r.seb", 0, {fields[n].x - 4, fields[n].y + 9}, WHITE,
                               Sprites::Binding::common);
         }
-        fit(skin, values[n], fields[n]);
+        if (n == 2) {
+            // The source gender row keeps its text to the left of the actor. The existing
+            // desktop input rectangle stays unchanged; these are only drawing anchors.
+            fit(skin, values[n], {panel.x + 50, fields[n].y, 28, fields[n].height},
+                draft.human.sex == 0 ? ink : Color{255, 14, 1, 255});
+            skin.sprites.draw("arrow02.seb", 3, {origin.x + 118, origin.y + 185}, WHITE,
+                              Sprites::Binding::common);
+            skin.sprites.draw("arrow02.seb", 0, {origin.x + 210, origin.y + 185}, WHITE,
+                              Sprites::Binding::common);
+            if (selected == n)
+                skin.sprites.draw("finger_r.seb", 0, {origin.x + 136, origin.y + 186}, WHITE,
+                                  Sprites::Binding::common);
+        } else
+            fit(skin, values[n], fields[n]);
     }
-    // The published image bridge does not certify the temporary actor's complete crop.
+    if (const auto actor = world_configuration_actor(draft)) {
+        const Vector2 anchor{origin.x + 163, origin.y + 195};
+        // Consume the maintained basic layer plan in order; human SEB and PNG IDs are
+        // separate from common/weapon. This is not the full temporary-W effects renderer.
+        for (const auto *layer : {&actor->shadow, &actor->weapon})
+            if (*layer) {
+                const auto &part = **layer;
+                const auto binding = part.resource == simulation::StartupVisualResource::weapon
+                                         ? Sprites::Binding::weapon
+                                         : Sprites::Binding::common;
+                skin.sprites.indexed_sprite(binding, part.sprite, part.frame, part.layer,
+                                            part.image,
+                                            {anchor.x + part.offset[0], anchor.y + part.offset[1]});
+            }
+        skin.sprites.actor(false, actor->body.sprite, actor->body.image, actor->body.frame, anchor);
+    }
 }
 void draw_world_clear(const app::WorldClearPage &clear, Extent extent, const Skin &skin) {
     const Vector2 origin{(extent.width - 240) / 2.F, (extent.height - 256) / 2.F};

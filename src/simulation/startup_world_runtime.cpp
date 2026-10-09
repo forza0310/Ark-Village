@@ -48,8 +48,11 @@ bool coherent_items(const ref::WorldActorRoutesState &r) {
             return false;
     return true;
 }
-bool project_human_task_flags(ref::RescueWorldState &world,
-                              const std::map<int, std::uint32_t> &flags) {
+// 共用同一遍历与拒绝：窄投影仍校验原完整routes隐含的活跃人物引用，
+// 只有完整私有world投影才通过consumer写任务旗标；不复制world来做只读检查。
+template <class World, class Consumer>
+bool visit_human_task_flags(World &world,
+                           const std::map<int, std::uint32_t> &flags, Consumer consume) {
     for (const auto &actor : world.ai.battle.actors) {
         if (actor.second.kind != ref::ActorKind::human)
             continue;
@@ -57,9 +60,24 @@ bool project_human_task_flags(ref::RescueWorldState &world,
         const auto context = world.actors.find(actor.first);
         if (current == flags.end() || context == world.actors.end())
             return false;
-        context->second.definition_task_flag = (current->second & 2U) != 0;
+        consume(context->second, (current->second & 2U) != 0);
     }
     return true;
+}
+bool project_human_task_flags(ref::RescueWorldState &world,
+                              const std::map<int, std::uint32_t> &flags) {
+    return visit_human_task_flags(world, flags, [](ref::RescueActorContext &context, bool value) {
+        context.definition_task_flag = value;
+    });
+}
+std::map<std::uint64_t, ref::ObjectShopRecord> project_runtime_shops(const State &s) {
+    auto shops = s.shops;
+    for (auto &shop : shops) {
+        const auto detail = s.facility_details.find(shop.first);
+        if (detail != s.facility_details.end())
+            shop.second.notices = detail->second.notices;
+    }
+    return shops;
 }
 ref::WorldCombatFacingConsumer facing_provider(const State &s) {
     return [metadata = s.actor_metadata](ref::CharacterId self,
@@ -241,10 +259,7 @@ ref::WorldActorRoutesState startup_world_runtime_routes(const State &s) {
     r.dungeon_facilities = s.dungeon_facilities;
     r.dungeon_actors = s.dungeon_actors;
     r.catalog = s.catalog;
-    r.shops = s.shops;
-    for (auto &shop : r.shops)
-        if (s.facility_details.count(shop.first))
-            shop.second.notices = s.facility_details.at(shop.first).notices;
+    r.shops = project_runtime_shops(s);
     r.shop_order = s.shop_order;
     r.item_rewards = s.item_rewards;
     r.human_definition_state = s.human_definition_state;
@@ -600,7 +615,10 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
     a.nonactors.read_routes = [](const State &s) {
         ref::WorldNonactorScheduleState r{s.scene.world, s.scene.random, {}};
         r.objects.catalog = s.catalog;
-        r.objects.shops = startup_world_runtime_routes(s).shops;
+        if (!visit_human_task_flags(s.scene.world.world, s.human_flags,
+                                   [](const ref::RescueActorContext &, bool) {}))
+            throw std::invalid_argument("共同人物缺原任务旗标投影");
+        r.objects.shops = project_runtime_shops(s);
         r.objects.shop_order = s.shop_order;
         r.objects.item_rewards = s.item_rewards;
         return r;

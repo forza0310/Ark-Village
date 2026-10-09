@@ -3,6 +3,7 @@
 #include "ark/simulation/startup_system_records.hpp"
 #include "ark/simulation/startup_world_clear_score.hpp"
 #include "ark/simulation/startup_world_profile.hpp"
+#include "ark/simulation/startup_title_presentation.hpp"
 #include <array>
 #include <utility>
 
@@ -25,7 +26,7 @@ struct StartupRecordView {
 };
 // 只捕获无世界的标题控制器；系统纪录由独立文件验证，世界有自己的快照协议。
 struct StartupTitleReplay {
-    std::string controller{"startup-title-v1"};
+    std::string controller{"startup-title-v2"};
     StartupApplicationMode mode{StartupApplicationMode::logic};
     StartupTitleDraft draft;
     StartupApplicationPage page{StartupApplicationPage::title};
@@ -33,6 +34,12 @@ struct StartupTitleReplay {
     std::vector<int> decorations;
     ref::WorldRandomSnapshot random;
     std::uint64_t requests{};
+    StartupTitlePresentation title;
+};
+struct StartupTitleApplyResult {
+    std::string error;
+    bool confirm_consumed{}, menu_confirm_ready{};
+    std::size_t random_draws{};
 };
 // 应用协调系统文件与世界候选；从未向UI暴露可写世界或任意纪录setter。
 class StartupApplication {
@@ -43,11 +50,15 @@ class StartupApplication {
     const StartupSystemRecords &records() const { return records_; }
     const StartupTitleDraft &draft() const { return draft_; }
     StartupApplicationPage page() const { return page_; }
+    StartupApplicationMode mode() const { return mode_; }
     const StartupWorldRuntimeSession *world() const { return world_ ? &*world_ : nullptr; }
     const std::vector<int> &decorations() const { return decorations_; }
     const std::optional<StartupClearScorePageState> &clear_page() const { return clear_; }
     const std::optional<StartupClearScoreRows> &clear_rows() const { return clear_rows_; }
     const std::optional<ref::WorldRandomSnapshot> &handoff_random() const { return handoff_; }
+    const StartupTitlePresentation &title_presentation() const { return title_; }
+    // 明确的一次背景更新请求，不从Draw/FPS推导，不代替h/j/o菜单路由。
+    StartupTitleApplyResult advance_title_background(StartupTitleUpdateRequest request);
     std::string request_new_game(int slot);
     std::string answer_overwrite(bool yes);
     std::string edit_village(std::string name);
@@ -63,6 +74,9 @@ class StartupApplication {
     std::string restore_title_replay(const StartupTitleReplay &snapshot);
     std::string update(bool confirm = false);
     std::string acknowledge_page(std::uint64_t page);
+    std::string act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0);
+    std::string return_rank_page(std::uint64_t page);
+    std::string leave_commerce_page(std::uint64_t page);
     std::vector<int> take_sound_requests();
     std::string save_world(); // 仅世界文件，不暗含系统保存。
     std::string load_world(int slot);
@@ -94,5 +108,6 @@ class StartupApplication {
     std::optional<StartupClearScorePageState> clear_;
     std::optional<std::uint64_t> clear_id_;
     std::string error_;
+    StartupTitlePresentation title_;
 };
 } // namespace ark::simulation

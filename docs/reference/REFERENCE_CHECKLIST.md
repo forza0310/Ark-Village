@@ -8,7 +8,9 @@
 
 ## 研究历史与当前接入候选（2026-10-09）
 
-当前冻结**89f157c完整391项维护闭包**：公共窄窗/内容框已接桌面共用皮肤，完整应用AVRAPP01短回放及文件/计分校验修正已迁入；玩家schema4和既有系统事务保持。被动日期长测已因覆盖不足停止，仅新局经营/保存/冷载前缀取得证据；主动经营、逐星条件与通关/继承整链仍待验收，结果见[B1](../stages/B1-playable-prototype.md#research-89f157c-integration)。信息菜单、音频和完整动画按[最小正式合同缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)等待；不消费research在途标题控制器。
+当前冻结**3780a3b完整402项维护闭包、7项产品适配**：公共窗框沿用89f157c；新增标题20槽维护控制器、基础人物皮肤、商店窄投影与自然应用回放，AVRAPP01为语义3。玩家schema4和既有系统事务保持。桌面新局已接定义0职业/主武器及草稿性别的静态预览；正常标题的宿主更新/随机交接和纪录人物名单仍未接，不能按绘制FPS驱动维护控制器。当前结果见[B1](../stages/B1-playable-prototype.md#research-3780a3b-integration)。
+
+主动首星已通过真实建设营业、培养、7次任务成功、9次活动、升星/绘画展及玩家存档冷载；五组收益对照已完成，但暴露[到达收费缓存缺口](RESEARCH_REQUESTS.md#facility-arrival-price-cache)，不认证最优布局。二星接续另行验证，最终计分/继续/继承、五星及BOSS整链仍未认证。后继2ea65e2已正式交付信息收支只读查询/皮肤检查及26个Ogg，尚未纳入本批冻结；入口控制器与音频操作/生命周期分别按[最小剩余缺口](RESEARCH_REQUESTS.md#information-audio-animation-89f157c)处理，不把部分交付继续登记为全部缺失。
 
 2026-10-09上批冻结**72a5bf4**完整363项闭包：设施类别/效果/逐来源加成、普通道具图标、人物cd13已接线；受击Owner轨迹作为配套回归迁入，验收见[B1](../stages/B1-playable-prototype.md#research-72a5bf4-integration)。本批已迁入4ef4a98完整379项，包含9ec4c1a主角/纪录及启动皮肤桥，本地验收通过；玩家schema4新增主角资料，随机/暂停政策不变，见[B1](../stages/B1-playable-prototype.md#research-4ef4a98-startup)。
 

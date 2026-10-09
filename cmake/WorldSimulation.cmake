@@ -107,8 +107,9 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             target_sources(${target} PRIVATE ${ARK_STARTUP_APPLICATION_TEST_SOURCES})
             target_link_libraries(${target} PRIVATE ark_startup_application ark_world_hash)
             target_include_directories(${target} PRIVATE "${ARK_WORLD_ROOT}/src/simulation")
-        elseif(module STREQUAL "startup_world_building_test")
-            # 72a5bf4 verifies that bonus queries preserve the complete Owner digest.
+        elseif(module STREQUAL "startup_world_building_test" OR
+               module STREQUAL "startup_world_runtime_nonactors_test")
+            # Bonus queries and the narrow shop projection retain full independent Owner digests.
             # This test-only maintenance dependency does not enter the player/runtime graph.
             target_link_libraries(${target} PRIVATE ark_world_persistence)
         endif()
@@ -154,6 +155,8 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             --exe "$<TARGET_FILE:ark_simulation_startup_world_continuous_test>"
             --presentation-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
+            --title-exe "$<TARGET_FILE:ark_simulation_startup_application_test>"
+            --natural-application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
     set_tests_properties(simulation.startup_world_replay_driver PROPERTIES
         TIMEOUT 120 LABELS "runtime;replay;frozen")

@@ -2,6 +2,7 @@
 #include "support/checks.hpp"
 #include "support/world_fixture.hpp"
 #include "ui/world_menu.hpp"
+#include "ui/world_startup.hpp"
 #include "world_save_menu.hpp"
 #include "world_title.hpp"
 #include <chrono>
@@ -51,6 +52,14 @@ void world_menu() {
         desktop::world_title_input(selection, boxes, slots, input);
         check(selection.draft.human.sex == 1 && selection.draft.human.name == "冒险花子",
               "Default name follows sex");
+        const auto &main_definition = simulation::startup_world_rules().humans.front();
+        const auto preview = ui::world_configuration_actor(selection.draft);
+        check(main_definition.identity == 0 && preview && !preview->shadow &&
+                  preview->body.image == simulation::startup_world_rules()
+                                             .jobs.at(main_definition.definition.current_profession)
+                                             .sprites[1] &&
+                  preview->body.sprite == 2 && preview->body.frame == 0,
+              "Configuration previews definition0 and draft sex without a live actor or clock");
         input.click = middle(boxes.fields[1]);
         desktop::world_title_input(selection, boxes, slots, input);
         selection.edit_text = "UI测试甲乙";
@@ -67,6 +76,12 @@ void world_menu() {
         check(selection.draft.human.sex == 0 && selection.draft.human.name == "UI测试甲" &&
                   selection.draft.human.custom_name,
               "Custom name survives sex switch");
+        const auto male_preview = ui::world_configuration_actor(selection.draft);
+        check(male_preview && male_preview->body.image ==
+                                  simulation::startup_world_rules()
+                                      .jobs.at(main_definition.definition.current_profession)
+                                      .sprites[0],
+              "The committed draft sex change also updates the static character preview");
         input = {};
         input.back = true;
         desktop::world_title_input(selection, boxes, slots, input);

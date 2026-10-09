@@ -91,6 +91,8 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_ai.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_map.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_title_actor_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_title_presentation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_building.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_clear_score.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_commerce.cpp"
@@ -231,13 +233,16 @@ set(ARK_WORLD_SYSTEM_SOURCES
 )
 set(ARK_STARTUP_APPLICATION_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_application.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_application_actions.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_replay.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_replay_paths.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_application_title.cpp"
 )
 set(ARK_STARTUP_APPLICATION_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_paths_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_state_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_system_records_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_title_presentation_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_clear_score_test.cpp"
 )
 set(ARK_STARTUP_SKIN_TEST_SOURCES
@@ -250,6 +255,8 @@ set(ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_replay_driver.cpp"
 )
 set(ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_application_actions_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_application_natural_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_codec_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_restore_checks.cpp"

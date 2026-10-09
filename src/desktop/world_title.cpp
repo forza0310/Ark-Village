@@ -6,9 +6,11 @@
 #include "ui/skin.hpp"
 #include "ui/world_startup.hpp"
 #include "world_canvas.hpp"
+#include "world_pointer.hpp"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
+#include <tuple>
 
 namespace ark::desktop {
 namespace {
@@ -386,6 +388,8 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
     }
     SetTargetFPS(60);
     int frames{};
+    WorldPointerGesture pointer;
+    std::optional<std::tuple<WorldTitlePage, int, int>> pointer_context;
     while (!WindowShouldClose() && (!options.frames || frames < options.frames)) {
         const auto extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
         const auto layout = world_title_layout(extent);
@@ -393,14 +397,29 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
         canvas.resize({GetRenderWidth(), GetRenderHeight()});
         const auto camera =
             canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
+        const auto next_pointer_context = std::tuple{selection.page, extent.width, extent.height};
+        if (pointer_context != next_pointer_context) {
+            pointer.cancel();
+            pointer_context = next_pointer_context;
+        }
+        const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
+        const bool enabled = IsWindowFocused() && options.inspect_page.empty();
+        const bool back =
+            enabled && (IsKeyPressed(KEY_ESCAPE) || IsMouseButtonReleased(MOUSE_BUTTON_RIGHT));
+        // Use the same short-release admission as the world. Dragging over a new-game or
+        // overwrite button, or releasing after focus/page changes, must not activate it.
+        const auto gesture = pointer.sample(
+            GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+            IsMouseButtonDown(MOUSE_BUTTON_LEFT), IsMouseButtonReleased(MOUSE_BUTTON_LEFT), false,
+            enabled && mouse.has_value() && !back);
         WorldTitleInput input;
-        if (IsWindowFocused() && options.inspect_page.empty()) {
-            if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-                input.click = logical_mouse(GetMousePosition(), destination, extent);
+        if (enabled) {
+            if (gesture.click)
+                input.click = mouse;
             input.confirm =
                 IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
                 (selection.page != WorldTitlePage::text_edit && IsKeyPressed(KEY_SPACE));
-            input.back = IsKeyPressed(KEY_ESCAPE) || IsMouseButtonReleased(MOUSE_BUTTON_RIGHT);
+            input.back = back;
             input.up = IsKeyPressed(KEY_UP);
             input.down = IsKeyPressed(KEY_DOWN);
             input.left = IsKeyPressed(KEY_LEFT);

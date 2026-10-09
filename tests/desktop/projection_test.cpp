@@ -44,6 +44,12 @@ int main() {
     pointer.sample({100, 100}, true, true, false, true, true);
     expect(!pointer.sample({101, 100}, false, false, true, false, true).click,
            "Even a small release across UI/map boundary cannot change its target domain");
+    expect(!pointer.sample({100, 100}, false, false, true, false, true).click,
+           "A title/button release without a press in the current context cannot activate it");
+    pointer.sample({100, 100}, true, true, false, false, true);
+    input = pointer.sample({101, 100}, false, false, true, false, true);
+    expect(input.click && input.pan.x == 0 && input.pan.y == 0,
+           "A short UI press/release still activates its button without panning the world");
     ark::world::SourceMap map{24, 24, {}};
     for (auto size :
          {Vector2{480, 660}, Vector2{960, 512}, Vector2{1280, 600}, Vector2{240, 256}}) {

@@ -6,6 +6,7 @@
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "world_active_late_strategy.hpp"
+#include "world_steam_budget.hpp"
 #include "world_steam_strategy.hpp"
 #include <algorithm>
 #include <iostream>
@@ -232,10 +233,11 @@ void residence_tax_receipt_contract() {
         auto displayed = before;
         const auto list = install(displayed, 90);
         const auto old_list = displayed;
-        require(sim::act_startup_world_tax_page(displayed, list, sim::StartupWorldTaxAction::confirm) ==
+        require(
+            sim::act_startup_world_tax_page(displayed, list, sim::StartupWorldTaxAction::confirm) ==
                     sim::StartupWorldRuntimeError::none &&
-                    residence_tax_receipts(old_list, displayed).empty(),
-                "Tax list confirmation was certified as income");
+                residence_tax_receipts(old_list, displayed).empty(),
+            "Tax list confirmation was certified as income");
         const auto page = install(before, 98);
         const auto paused = before;
         require(residence_tax_receipts(paused, paused).empty(),
@@ -250,9 +252,10 @@ void residence_tax_receipt_contract() {
             receipts = residence_tax_receipts(before, *update.candidate);
         }
         const auto &after = *update.candidate;
-        require(receipts.size() == 2 && receipts[0].definition == 0 && receipts[1].definition == 1 &&
-                    receipts[1].recipient == 1 && receipts[1].page == page &&
-                    receipts[1].before[1] == amount && receipts[1].after[1] == 0 &&
+        require(receipts.size() == 2 && receipts[0].definition == 0 &&
+                    receipts[1].definition == 1 && receipts[1].recipient == 1 &&
+                    receipts[1].page == page && receipts[1].before[1] == amount &&
+                    receipts[1].after[1] == 0 &&
                     receipts[1].after[0] - receipts[1].before[0] == first_amount + amount &&
                     receipts[1].after[2] - receipts[1].before[2] == first_amount + amount &&
                     residence_tax_receipts(after, after).empty(),
@@ -260,7 +263,9 @@ void residence_tax_receipt_contract() {
         const auto rejected = [&](State bad) {
             try {
                 residence_tax_receipts(before, bad);
-            } catch (const std::runtime_error &) { return; }
+            } catch (const std::runtime_error &) {
+                return;
+            }
             throw std::runtime_error("Unaccounted tax candidate earned a receipt");
         };
         auto bad = after;
@@ -308,15 +313,16 @@ void monster_retirement_receipt_contract() {
     };
     const auto after = consume(before);
     const auto receipt = monster_retirement_receipts(before, after);
-    require(!receipt.gap && receipt.receipts.size() == 1 &&
-                receipt.receipts.front().kind == CampaignReceiptKind::monster_retirement_cash &&
-                receipt.receipts.front().definition == definition &&
-                receipt.receipts.front().subject == actor.value &&
-                receipt.receipts.front().before[1] == 99 && receipt.receipts.front().after[1] == 100 &&
-                receipt.receipts.front().after[2] == 120 && receipt.receipts.front().after[3] == 1 &&
-                after.scene.world.world.ai.accounting.funds() == ai.accounting.funds() + 120 &&
-                ai.battle.actors.count(actor) && ai.monster_growth.at(definition).growth == 99,
-            "receipt must bind actual retirement, tier boundary and posted120, without input mutation");
+    require(
+        !receipt.gap && receipt.receipts.size() == 1 &&
+            receipt.receipts.front().kind == CampaignReceiptKind::monster_retirement_cash &&
+            receipt.receipts.front().definition == definition &&
+            receipt.receipts.front().subject == actor.value &&
+            receipt.receipts.front().before[1] == 99 && receipt.receipts.front().after[1] == 100 &&
+            receipt.receipts.front().after[2] == 120 && receipt.receipts.front().after[3] == 1 &&
+            after.scene.world.world.ai.accounting.funds() == ai.accounting.funds() + 120 &&
+            ai.battle.actors.count(actor) && ai.monster_growth.at(definition).growth == 99,
+        "receipt must bind actual retirement, tier boundary and posted120, without input mutation");
     require(monster_retirement_receipts(after, after).receipts.empty(),
             "cold or unchanged holdings cannot reconstruct a retirement reward");
     // Monthly k.u resets after actor consumers; lifetime k.v and the posted entry remain.
@@ -336,8 +342,10 @@ void monster_retirement_receipt_contract() {
     };
     const auto monthly = monster_retirement_receipts(before, reset_month(after));
     require(!monthly.gap && monthly.receipts.size() == 1 &&
-                monthly.receipts.front().kind == CampaignReceiptKind::monster_retirement_cash_month_reset &&
-                monthly.receipts.front().after[0] == 0 && monthly.receipts.front().after[1] == 100 &&
+                monthly.receipts.front().kind ==
+                    CampaignReceiptKind::monster_retirement_cash_month_reset &&
+                monthly.receipts.front().after[0] == 0 &&
+                monthly.receipts.front().after[1] == 100 &&
                 monthly.receipts.front().after[2] == 120,
             "same-frame monthly reset must retain actual cash/growth and final zero tally");
     const auto quiet_month = monster_retirement_receipts(after, reset_month(after));
@@ -539,6 +547,13 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
     require(housed.scene.world.world.facilities.at(*constructed.created).status == 1,
             "Source recruitment plot must be ready before testing admission");
     housed.shop_humans.at(1).satisfaction = housed.rules->humans.at(1).residence_threshold;
+    // Admission now reserves the new house's maintenance as well. Qualify only
+    // this short decision fixture; real campaigns must earn their own cash.
+    auto ledger = housed.scene.world.world.ai.accounting.snapshot();
+    ledger.funds = steam_residence_reserve(housed) + housed.rules->humans.at(1).residence_fee;
+    const auto qualified_cash = ref::PeriodAccounting::from_snapshot(ledger);
+    require(qualified_cash.has_value(), "Residence fixture cannot qualify its operating budget");
+    housed.scene.world.world.ai.accounting = *qualified_cash;
     ark::test::SteamVillageStrategy homes;
     std::optional<ark::test::CampaignReceipt> admission;
     run_steam_receipt_fixture(

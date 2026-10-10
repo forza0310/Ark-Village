@@ -1,6 +1,7 @@
 #include "world_steam_strategy.hpp"
-#include "support/world_fixture.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
+#include "support/world_fixture.hpp"
+#include "world_steam_budget.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -55,24 +56,7 @@ Command commerce(std::uint64_t page, Commerce action, int selection = 0) {
     c.selection = selection;
     return c;
 }
-// Two months of actual facility maintenance/current profession endpoints stay available
-// for running the town. This is a player budget, not a replacement accounting rule.
-std::int64_t reserve(const State &s) {
-    std::int64_t total{};
-    for (const auto &[id, f] : s.scene.world.world.facilities) {
-        (void)f;
-        const auto values = sim::startup_world_facility_values(s, id);
-        require(values.has_value(), "missing maintenance quote");
-        total += std::max<std::int64_t>(0, values->definition_attributes[3]);
-    }
-    for (const auto &[id, present] : s.human_presence)
-        if (present) {
-            const auto &job = s.rules->jobs.at(
-                s.scene.world.world.ai.growth.at(id).definition.current_profession);
-            total += std::max({0, job.fee[0], job.fee[1]});
-        }
-    return total * 2;
-}
+std::int64_t reserve(const State &s) { return steam_operating_reserve(s); }
 bool outside_targets(const State &s) {
     return std::any_of(steam_village_layout().begin(), steam_village_layout().end(),
                        [&](const auto &t) { return !steam_layout_inside_fence(s, t); });
@@ -99,11 +83,7 @@ bool reserved_cell(const State &s, Position cell) {
                 return true;
     return false;
 }
-bool affordable_task(const State &s, std::uint64_t id) {
-    const auto f = s.tasks.find(id);
-    return f != s.tasks.end() &&
-           s.rules->tasks.at(f->second.definition).recruitment_fee <= cash(s) - reserve(s);
-}
+bool affordable_task(const State &s, std::uint64_t id) { return steam_task_affordable(s, id); }
 bool buildable(const State &s, int definition) {
     const auto catalog = sim::startup_world_build_catalog(s);
     require(catalog.has_value(), "source construction catalogue missing");
@@ -318,7 +298,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
             }
         if (stats_.ticks >= next_management_) {
             next_management_ = stats_.ticks + 100;
-            if (const auto person = SteamPeopleStrategy::eligible_homeless(s, reserve(s))) {
+            if (const auto person =
+                    SteamPeopleStrategy::eligible_homeless(s, steam_residence_reserve(s))) {
                 const bool destination =
                     std::any_of(steam_village_layout().begin(), steam_village_layout().end(),
                                 [&](const auto &t) {
@@ -430,6 +411,8 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                 const bool expansion = a.parameters[2] == 3 && outside_targets(s);
                 if (a.parameters[2] == 3 && !expansion)
                     continue;
+                if (!expansion && !steam_optional_activity_affordable(s))
+                    continue;
                 if (a.parameters[4] > s.village_points - (expansion ? 0 : points_reserve))
                     continue;
                 const auto rank_terms = ref::fixed_calendar_task_rank_terms();
@@ -475,14 +458,15 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
         return task(p.id, selected < 0 ? Task::cancel : Task::confirm, std::max(0, selected));
     }
     if (raw == 23)
-        return task(p.id, Task::confirm);
+        return task(p.id, p.task_identity && affordable_task(s, *p.task_identity) ? Task::confirm
+                                                                                  : Task::cancel);
     if (raw == 25)
         return task(p.id, Task::depart);
     if (raw == 28)
         return s.page_phases.at(p.id) == 0 ? std::optional<Command>{task(p.id, Task::confirm)}
                                            : std::nullopt;
     if (raw == 33)
-        return task(p.id, Task::confirm, cash(s) - reserve(s) >= p.legacy_f ? 0 : 1);
+        return task(p.id, Task::confirm, steam_task_renewable(s, p.legacy_f) ? 0 : 1);
     if (raw == 48) {
         auto c = cmd(Kind::rank_action, p.id);
         c.cancel = !std::all_of(s.rank_met.begin(), s.rank_met.end(), [](bool met) { return met; });
@@ -559,7 +543,7 @@ void SteamVillageStrategy::observe_world(const State &before, const State &after
         ++stats_.victories;
     }
     if (before.active_task && !after.active_task)
-        next_task_month_ = month(after); // Continuous loot supply, subject to real fees.
+        next_task_month_ = steam_task_recovery_month(after);
     if (after.events_held > before.events_held)
         stats_.activities += after.events_held - before.events_held;
     if (stats_.completed_month < 0 && after.rank >= 4 && matching(after, true) == 50)
@@ -746,13 +730,12 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
         << " points=" << s.village_points << " income_record=" << s.maximum_income
         << " quarter_slots=" << s.quarter_counter
         << " expansion_status=" << s.scripts.activities.at(25).status
-        << " expansion_flags=" << s.activity_flags.at(25)
-        << " expansion_count=" << held(s, 25)
+        << " expansion_flags=" << s.activity_flags.at(25) << " expansion_count=" << held(s, 25)
         << " task=" << s.active_task.value_or(0) << " offers=" << s.task_order.size()
-        << " popularity=" << s.popularity << " fence=" << s.fence_level
-        << " layout=" << matching(s, true) << "/50 trading_slots=" << traded_slots_.size()
-        << "/25 builds=" << stats_.builds << " moves=" << stats_.moves
-        << " removals=" << stats_.removals << " roads=" << stats_.roads
+        << " task_resume_month=" << next_task_month_ << " popularity=" << s.popularity
+        << " fence=" << s.fence_level << " layout=" << matching(s, true)
+        << "/50 trading_slots=" << traded_slots_.size() << "/25 builds=" << stats_.builds
+        << " moves=" << stats_.moves << " removals=" << stats_.removals << " roads=" << stats_.roads
         << " items=" << income_.uses() << " victories=" << stats_.victories
         << " activities=" << stats_.activities << " residents=" << stats_.admissions
         << " medals=" << people_.medals() << " equipment=" << people_.gifts();
@@ -820,6 +803,7 @@ SteamVillageStrategy SteamVillageStrategy::decode(std::istream &in) {
 void steam_strategy_contract() {
     steam_layout_contract();
     steam_people_contract();
+    steam_budget_contract();
     SteamVillageStrategy strategy;
     std::stringstream out;
     strategy.encode(out);
@@ -885,5 +869,32 @@ void steam_strategy_contract() {
     require(choice && choice->kind == Kind::village_activity_action &&
                 choice->village_activity_action == Activity::confirm && view->selection == 0,
             "an already-reachable layout unnecessarily reserved expansion points");
+    budget.scene.world.world.ai.accounting = ref::PeriodAccounting(reserve(budget) - 1);
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::cancel,
+            "low-liquidity optional event must wait without consuming points");
+    budget.fence_level = s.fence_level;
+    budget.village_points = 100;
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::select &&
+                view->entries.at(choice->selection) == 25,
+            "necessary point-only expansion must remain available below the cash buffer");
+
+    // Explicit task-end observation: the existing sidecar retains the recovery
+    // month across cold loading, including a calendar year boundary.
+    auto before = initial_world();
+    before.rank = 2;
+    before.scene.calendar.year = 5;
+    before.scene.calendar.month = 11;
+    before.active_task = 1; // Task-end decision qualification, not a natural task grant.
+    auto after = before;
+    after.active_task.reset();
+    SteamVillageStrategy recovery;
+    recovery.observe_tick(before, after);
+    std::stringstream saved;
+    recovery.encode(saved);
+    const auto resumed = SteamVillageStrategy::decode(saved);
+    require(resumed.diagnose(after).find("task_resume_month=73") != std::string::npos,
+            "cold load must preserve the complete business recovery month");
 }
 } // namespace ark::test

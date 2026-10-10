@@ -10,6 +10,7 @@
 #include "world_campaign_coverage.hpp"
 #include "world_campaign_diagnostics.hpp"
 #include "world_campaign_receipts_test.hpp"
+#include "world_steam_budget.hpp"
 #include "world_steam_strategy.hpp"
 #include <chrono>
 #include <filesystem>
@@ -162,10 +163,15 @@ template <class PlayerStrategy> struct CampaignRun {
         // Log the exact input before observation assertions: a failing assertion must
         // not hide the command needed to reproduce the saved pre-command Owner.
         std::cout << "command=" << int(input.kind) << " page=" << input.page
+                  << " raw=" << (top(state) ? top(state)->legacy_page : -1)
+                  << " tick=" << state.simulation_steps << " month=" << month(state)
+                  << " cash_before=" << state.scene.world.world.ai.accounting.funds()
+                  << " cash_after=" << candidate.scene.world.world.ai.accounting.funds()
                   << " definition=" << input.definition << " selection=" << input.selection
                   << " facility=" << input.facility << " anchor=" << input.anchor.x << ','
                   << input.anchor.y << " orientation=" << int(input.orientation)
                   << " commerce=" << int(input.commerce_action)
+                  << " task_action=" << int(input.task_action)
                   << " facility_item=" << int(input.facility_item_action)
                   << " outcome=" << int(result.outcome) << " error=" << int(result.runtime_error)
                   << " task_denial=" << int(result.denial)
@@ -190,6 +196,8 @@ template <class PlayerStrategy> struct CampaignRun {
                 throw;
             }
             coverage.observe(state, candidate);
+            if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+                ark::test::inspect_steam_expenses(state, candidate, "command", std::cout);
             state = std::move(candidate);
             system = std::move(next);
         } else {
@@ -235,9 +243,10 @@ template <class PlayerStrategy> struct CampaignRun {
             pending_receipts.insert(pending_receipts.end(), tax.begin(), tax.end());
             const auto battle = ark::test::monster_retirement_receipts(state, *update.candidate);
             if (battle.gap)
-                std::cout << "COVERAGE_BATTLE_GAP\t" << state.simulation_steps << '\t'
-                          << battle.gap << '\n';
-            pending_receipts.insert(pending_receipts.end(), battle.receipts.begin(), battle.receipts.end());
+                std::cout << "COVERAGE_BATTLE_GAP\t" << state.simulation_steps << '\t' << battle.gap
+                          << '\n';
+            pending_receipts.insert(pending_receipts.end(), battle.receipts.begin(),
+                                    battle.receipts.end());
         } catch (...) {
             // Keep the same pre-update Owner used for a failed observation. A strategy
             // refusal is not a runtime error, and must not be reported as one.
@@ -251,6 +260,8 @@ template <class PlayerStrategy> struct CampaignRun {
         for (const auto &receipt : pending_receipts)
             coverage.record(receipt, std::cout);
         coverage.observe(state, *update.candidate);
+        if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+            ark::test::inspect_steam_expenses(state, *update.candidate, "update", std::cout);
         state = std::move(*update.candidate);
         system = std::move(next);
         ++rounds;
@@ -776,7 +787,8 @@ int main(int argc, char **argv) {
                     if (state.human_presence.at(human.identity))
                         std::cout << "HOME_STATUS human=" << human.identity
                                   << " resident=" << state.human_homes.at(human.identity)[2]
-                                  << " satisfaction=" << state.shop_humans.at(human.identity).satisfaction
+                                  << " satisfaction="
+                                  << state.shop_humans.at(human.identity).satisfaction
                                   << " threshold=" << human.residence_threshold
                                   << " fee=" << human.residence_fee << '\n';
                 ark::test::inspect_income(state, std::cout);

@@ -1,0 +1,136 @@
+#include "world_steam_budget.hpp"
+#include "../support/world_fixture.hpp"
+#include <algorithm>
+#include <sstream>
+#include <stdexcept>
+
+namespace ark::test {
+namespace {
+namespace sim = simulation;
+namespace ref = sim::rules;
+using State = app::WorldState;
+std::int64_t cash(const State &s) { return s.scene.world.world.ai.accounting.funds(); }
+int month(const State &s) { return s.scene.calendar.year * 12 + s.scene.calendar.month; }
+void require(bool condition, const char *message) {
+    if (!condition)
+        throw std::runtime_error(std::string("Steam budget: ") + message);
+}
+} // namespace
+
+std::int64_t steam_operating_reserve(const State &s) {
+    // Two months of maintenance and current profession fee endpoints form a cash
+    // buffer, not a prediction of monthly profit.
+    std::int64_t total{};
+    for (const auto &[id, f] : s.scene.world.world.facilities) {
+        (void)f;
+        const auto values = sim::startup_world_facility_values(s, id);
+        require(values.has_value(), "missing maintenance quote");
+        total += std::max<std::int64_t>(0, values->definition_attributes[3]);
+    }
+    for (const auto &[id, present] : s.human_presence)
+        if (present) {
+            const auto &job = s.rules->jobs.at(
+                s.scene.world.world.ai.growth.at(id).definition.current_profession);
+            total += std::max({0, job.fee[0], job.fee[1]});
+        }
+    return total * 2;
+}
+
+std::int64_t steam_residence_reserve(const State &s) {
+    const auto house = sim::startup_world_build_quote(s, 25);
+    require(house.has_value(), "missing admission house maintenance quote");
+    return steam_operating_reserve(s) +
+           2 * std::max<std::int64_t>(0, house->definition_attributes[3]);
+}
+
+bool steam_task_affordable(const State &s, std::uint64_t id) {
+    const auto f = s.tasks.find(id);
+    return f != s.tasks.end() && s.rules->tasks.at(f->second.definition).recruitment_fee <=
+                                     cash(s) - steam_operating_reserve(s);
+}
+
+bool steam_task_renewable(const State &s, int displayed_fee) {
+    // raw33 quotes once; its parent later consumes the current participants' cached
+    // fees. Keep both checks without copying the profession-level fee formula.
+    std::int64_t current_fee{};
+    for (const int human : s.participants)
+        current_fee += s.human_calendar.at(human).continuation_cost;
+    return cash(s) - steam_operating_reserve(s) >=
+           std::max<std::int64_t>(displayed_fee, current_fee);
+}
+
+bool steam_optional_activity_affordable(const State &s) {
+    return cash(s) >= steam_operating_reserve(s);
+}
+int steam_task_recovery_month(const State &s) { return month(s) + 2; }
+
+void inspect_steam_expenses(const State &before, const State &after, std::string_view phase,
+                            std::ostream &out) {
+    const bool same_month = month(before) == month(after);
+    const int bucket = after.scene.calendar.month;
+    for (int category = 0; category < 5; ++category) {
+        const auto old = same_month ? before.monthly_cash.at(bucket).at(category)[1] : 0;
+        const auto delta = std::int64_t(after.monthly_cash.at(bucket).at(category)[1]) - old;
+        if (delta > 0)
+            out << "BUSINESS_EXPENSE phase=" << phase << " tick=" << after.simulation_steps
+                << " month=" << month(after) << " category=" << category << " amount=" << delta
+                << " cash_before=" << cash(before) << " cash_after=" << cash(after)
+                << " reserve_after=" << steam_operating_reserve(after)
+                << " active_task=" << after.active_task.value_or(0)
+                << " participants=" << after.participants.size() << '\n';
+    }
+}
+
+void steam_budget_contract() {
+    // Explicit cash/fee qualifications test player decisions, not natural acquisition.
+    auto s = initial_world();
+    const auto buffer = steam_operating_reserve(s);
+    require(buffer > 0 && steam_residence_reserve(s) >= buffer,
+            "real new town must reserve its recurring costs");
+    const std::uint64_t task = 1;
+    ref::DungeonFinishTask offered;
+    offered.identity = task;
+    offered.definition = s.rules->tasks.front().factory.identity;
+    s.tasks.emplace(task, offered);
+    const auto fee = s.rules->tasks.at(s.tasks.at(task).definition).recruitment_fee;
+    for (const int spare : {-1, 0, 1}) {
+        s.scene.world.world.ai.accounting = ref::PeriodAccounting(buffer + fee + spare);
+        require(steam_task_affordable(s, task) == (spare >= 0),
+                "fixed recruitment quote must preserve the two-month buffer exactly");
+    }
+    require(!steam_task_affordable(s, 0), "missing task must not be affordable");
+    s.participants = {0, 1};
+    s.human_calendar.at(0).continuation_cost = 200;
+    s.human_calendar.at(1).continuation_cost = 300;
+    for (const auto fees : {std::array<int, 2>{450, 500}, {600, 600}})
+        for (const int spare : {-1, 0}) {
+            s.scene.world.world.ai.accounting = ref::PeriodAccounting(buffer + fees[1] + spare);
+            require(steam_task_renewable(s, fees[0]) == (spare >= 0),
+                    "renewal must reserve both displayed and current participant costs");
+        }
+    for (const int spare : {-1, 0}) {
+        s.scene.world.world.ai.accounting = ref::PeriodAccounting(buffer + spare);
+        require(steam_optional_activity_affordable(s) == (spare >= 0),
+                "optional activities must wait for operating liquidity");
+    }
+    s.scene.calendar.year = 5;
+    s.scene.calendar.month = 11;
+    require(steam_task_recovery_month(s) == 73, "business recovery must cross the year boundary");
+    auto after = s;
+    after.monthly_cash[11][4][1] += 500;
+    std::ostringstream log;
+    inspect_steam_expenses(s, after, "command", log);
+    require(log.str().find("category=4 amount=500") != std::string::npos,
+            "expense diagnostic must retain the actual category and amount");
+    after = s;
+    after.scene.calendar.year = 6;
+    after.scene.calendar.month = 0;
+    s.monthly_cash[0][0][1] = 999; // Ignore the previous year's January bucket.
+    after.monthly_cash = {};
+    after.monthly_cash[0][0][1] = 150;
+    log.str("");
+    inspect_steam_expenses(s, after, "update", log);
+    require(log.str().find("month=72 category=0 amount=150") != std::string::npos,
+            "expense diagnostic must handle the annual bucket reset");
+}
+} // namespace ark::test

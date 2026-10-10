@@ -12,6 +12,8 @@
 
 收支36的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)复用Steam窗框／内框，输出完整局部有序图元、字体金额、源端点线与箭头触摸引用；不修改Owner，不生成数字SEB。调用者提供语言分支、VIEW_Y与标题两次真实测宽，并负责原页面坐标及字体后端；[布局例图](../ui/examples/steam-income.png)使用明确替代字体，仅作产品布局参考。raw9菜单皮肤和其余信息子页仍未由此补齐。
 
+[startup_information](include/dungeon_village_prototype/startup_information.hpp)还提供37正库存原序／原说明和38四类装备的纯目录查询。38显式选择APK或Steam过滤／占位语义，按原交换排序返回未知行及已知种类数；装备列表图标由`startup_world_equipment_icon_draws`读取已有原字段，武器身体PNG与列表icon分开。说明只增加不可变定义文案，没有新增Owner字段；这些查询不替代37清NEW、38翻页／关闭等页面消费者。
+
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。
 本包独立于产品主构建，只修改研究代码。

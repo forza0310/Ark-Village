@@ -122,7 +122,7 @@ Steam已有`INFO_INCOME=36`的[声明索引](STEAM_UI_COVERAGE.md)，尚缺本�
 
 正常从9进入时3/9已退休，37关闭返回底层场景。模态资格同36，绘制不推进世界。维护`items[id]`及`catalog[{0,id}]`已有库存／状态／NEW，清除时须按既有Owner不变量同步；[既有整类清除职责](../prototype/src/startup_world_human.cpp:250)已用于其它道具入口，不能让UI另持第二可变副本。
 
-最小字段缺口是**静态说明`g.y`**：[原item表](../data/world/item.txt)第23列（0起）已保存，现`StartupWorldItem`未导出。后续应通过正式定义生成入口维护，不用效果摘要或自拟文案顶替，不把文案加入世界schema。该页尚未有维护控制器；不能以库存列表字段齐全宣称37已可操作。
+静态说明`g.y`现已由正式生成器读取[原item表](../data/world/item.txt)第23列（0起），导出为`StartupWorldItem.description`，不改原表或加入可变世界schema。[持有查询](../prototype/include/dungeon_village_prototype/startup_information.hpp)按定义原序读取正库存，并拒绝items／catalog镜像不一致；返回原说明、名字、库存、NEW和图标。它不清NEW或使用道具；37关闭消费者仍待接，不能以字段齐全宣称37已可操作。
 
 ## 装备一览38：四类含未知，确认关闭
 
@@ -141,7 +141,9 @@ Steam已有`INFO_INCOME=36`的[声明索引](STEAM_UI_COVERAGE.md)，尚缺本�
 
 [输入12104](../work/decompiled/sources/b/g.java:12104)先左再右，最终页签改变才重置选中／滚动；双向同轮回原页时不重置。随后上／下，空类跳过取模，调整4行窗。确认关闭；否则返回关闭；本关闭分支**不清装备r**。只读绘制没有购买／赠礼／装配操作。
 
-图标字段须严格区分：武器列表用`p.d`（原weapon第2列），取common image12；现`StartupWorldEquipment.render_image`是武器身体`p.e`，不能拿它作列表icon。防具／饰品现render_image分别对应`b.e/a.e`，取common20／21。三类都先画common24第3格背景，再画18×18前景，格坐标`((icon%10)*18,(icon/10)*18)`。原PNG已经发布，尚缺武器列表icon的正式定义投影和查询消费；不复制另一套素材或按定义ID猜图标。
+图标字段须严格区分：武器列表用`p.d`（原weapon第2列），现已存于`StartupWorldEquipment.shop.type`，取common image12；`render_image`是武器身体`p.e`，不能拿它作列表icon，也不需增加同值字段。防具／饰品render_image分别对应`b.e/a.e`，取common20／21。[装备图标计划](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)先画common24第3格背景，再画18×18前景，格坐标`((icon%10)*18,(icon/10)*18)`；分别按原PNG的40／50／30格校验，不按武器定义数33截断图标35。
+
+[装备目录查询](../prototype/include/dungeon_village_prototype/startup_information.hpp)明确要求选择APK1.0.8或Steam2.56语义，分别处理下文的flag过滤与非正属性占位；保留原交换排序、p!=1未知行及当前页已知种类数。版本参数仅选择已证消费者差异，名称／属性仍读调用者安装的rules，不冒称已导入Steam所有原表。输出只含短期展示数据，不复制世界、清NEW、支付或安装页面载荷；38控制器和完整皮肤另行收口。
 
 ## 38→73的条件分支不能冒充可达入口
 
@@ -195,4 +197,33 @@ raw36在`SubForm.Update`的VA `0x103237BB–0x10323879`则依次独立检查`Che
 
 页内位置在父级原点下解释。`SubForm.Draw`（RVA `0x30CE30`）对raw36这类非菜单页面，在画布宽或高超过240时按各轴相对240的半差叠加页面偏移，再`SetOrigin`调用内部绘制；窗框helper自身的VIEW_Y规则仍分别沿既有合同。维护皮肤应保留这些层次，不给所有坐标重复叠同一偏移，不由本次逻辑坐标推断OS客户区／DPI。此局部绘制没有写现金桶、页签或页计数，也未直接调用随机／声音；它会改Graphics颜色／字号状态并注册箭头，不能因此宣称所有深层绘制没有副作用。完整原窗口、实际输入与维护C++接线仍需各自验收。
 
-本页普通文字、分类线／利润线及`Draw_titleBarArrow`没有额外读取VIEW_Y；底部两个false路径仅把输入y加2。VIEW_Y只交给本次调用的窗框／box helper各自处理，页面原点再由父层统一叠加，不能给表格、底部或箭头重复加VIEW_Y。
+raw36普通文字、分类线／利润线及`Draw_titleBarArrow`没有额外读取VIEW_Y；底部两个false路径仅把输入y加2。VIEW_Y只交给该页窗框／box helper各自处理，页面原点再由父层统一叠加，不能给表格、底部或箭头重复加VIEW_Y。
+
+### Steam37／38的目录与关闭消费者
+
+同日独立读固定Steam `SubForm.Init`（RVA `0x312460`）、`Update`（`0x321990`）和`_draw1_3`（`0x337600`），不将前文APK目录自动当作Steam合同。raw37初始化分支VA `0x1031365B–0x10313752`按`AppData.itemData_`原序只收`ItemData.haveNum_ +0x64 > 0`，没有额外state过滤或排序；为空则事件15→Pop，不清NEW。普通Update分支`0x10323658–0x103237BA`先上、再下独立循环，调整5行滚动窗，确认或返回时先`UserData.RefreshNewItem`（RVA `0x2E3990`）再Pop；helper遍历全部itemData并清`BaseData.new_ +0x18`，含库存零项，不改库存／state或装备NEW。这与APK既有消费者一致。
+
+**Steam38的铠甲／饰品过滤与APK有实质差异。** Init从VA `0x10312BEC`新建4个目录，读取的是当前定义对象`BaseData.flag_ +0x0C`，不是`state_ +0x10`；不能将flag0解释为“尚未发现”。`ArmourData.Load`（RVA `0x211210`）及`AccessoryData.Load`（`0x210C80`）将原表零起第12列写入该flag字段，但本项不声称运行期所有写入者已穷尽。按固定原表初始定义，目录如下：
+
+| 页签 | Steam实际准入 | 固定原表结果／APK差异 |
+| --- | --- | --- |
+| 0 武器 | 全部武器，不滤state或flag | 33条，与APK本目录一致 |
+| 1 铠甲 | `type_==2 && flag_!=0`；flag守卫VA `0x10312E08` | 17条type2中排除ID45（英文原名Red Armor），剩16；APK不加flag过滤 |
+| 2 头／盾 | `type_!=2`，不加flag过滤 | 33条，与APK本目录一致 |
+| 3 饰品 | `flag_!=0`；守卫VA `0x10312D08` | 30条中排除ID26／27／28（Bronze／Silver／Gold Medal），剩27；APK全部纳入 |
+
+这些被排定义的flags在两版原表一致，差异位于消费者；维护须以显式版本选择表达，不改原表、不改变APK赠礼或其它已确认目录。残留页签4分支仍被数组长度4和循环条件挡住，不能加第五页。四目录均先按来源顺序收集，再按原“外层向后、内层从末尾向前、后项键严格小于前项才交换”排序；武器键为`older_ +0x50`，防具／饰品为`older_ +0x38`。这与APK交换次序一致，不可替换为稳定排序后宣称所有等键顺序相同。
+
+38更新分支VA `0x1032324B–0x10323657`先独立左／右，只有最终页签改变才清选择与滚动；再独立上／下，当前目录为空则跳过取模；滚动窗4行。确认只Pop，否则软返回2也Pop，均不清装备NEW；空页保留并显示原串`アイテムを所持していません`，不自动退出。37／38另有`kairo.common.cfg.Config.DEBUG_CMD`静态字段+0x83门控的`CheckKeyState(0x40)`确认替代支：普通确认脉冲`0x100000`未命中后，才检查调试开关与该按住状态，随后才到返回软键。实际类型引用与metadata TypeDef551／字段dump已交叉；这是调试命令分支，不增设正常玩家按钮，不据逻辑mask命名PC物理键，也未观察当前运行开关值。
+
+Steam `SubForm.cctor`（RVA `0x3285E0`）独立核出softLabels37／38均为`[0,2]`；上述本地Init／Update／Draw没有把左标签改成7。38虽存在`IsPushSoftLabel(7)`后构造raw73并传槽位／装备定义ID的处理分支，仍不能把字符串或分支存在当作正常玩家可达入口；它不传人物。前文“不伪造人物绑定、不新增情报按钮”的边界在此继续成立。父栈退休、模态和恢复沿同节9／36的真实框架合同。
+
+### Steam37／38的显示字段与资源身份
+
+`_draw1_3`的37分支从VA `0x1033B16C`到`0x1033B658`，38从`0x1033A23D`到`0x1033B16B`。37仍为5行／19单位间距，读取`name_ +0x1C、icon_ +0x2C、haveNum_ +0x64`；底部直接读取选中`explain_ +0x60`并于(120,200)、anchor2画字，不用效果摘要替换静态说明。37使用image147 NEW，38使用image148 GET；这两种标记不可合并。
+
+38每窗4行／24单位间距。仅`state_==1`显示图标、名称、属性和new_对应GET，其余显示灰色`？？？？？`；底部原串`現在 <co=0064FF><0></co> 種類を所持`只计当前目录state1定义数。武器两列读`eq_param_[1]/[3]`，其它两列读`eq_param_[0]/[2]`。**Steam属性值大于0才画SEB12的Draw_plusValue，非正值明确画字面`--`**（两列x146／189、rowY−1）；正值数字锚为x164／207、rowY+1。这里存在第二项版差：APK非正值留空。普通Java及[低层分支](../work/world-page-fallback/GamePage.java:9387)均核，武器L35b→L377、防具L41e→L43a、饰品L4da→L4f6的`<=0`直接跳下一列，第二列`<=0`直接跳L2bf，没有占位文字请求。纯查询用optional表达“无正数”可共用，但消费时APK留空、Steam画`--`，不能悄悄统一。
+
+武器列表明确读取`WeaponData.icon_ +0x20`（VA `0x1033AA5C`），与身体`imgId_ +0x24`不同；现有维护`shop.type`已对应APK的p.d，可作为正式列表图标来源，不需重复新造字段。防具／饰品读各自`icon_ +0x24`。三者交给`Draw_icon`（RVA `0x30C350`）的mode2／3／4：先取`ItemData.ITEMBACK_INDEX`末项铺common24背景，再分别画common12／20／21的18×18十列前景。`ItemData.cctor`（RVA `0x21A610`）的实际fieldRef解码为`[1,4,6,2,3]`，故背景固定为第3格、源(54,0,18,18)，不是未核默认色。
+
+本次重新从固定Steam common TextAsset核身份、解码目录与PNG，确认image12／20／21／24分别为`icon_weapon00、icon_armour00、icon_accessry00、icon_back00`，尺寸180×72、180×90、180×54、144×18；image147／148为20×9的`wnd_new`及23×9的`wnd_get`。这六图均与`assets/original/common`已出版副本逐字节相同，无需另存同图。属性加号的Steam number05仍沿[设施绘制helper](STEAM_FACILITY_DRAW_HELPERS.md)及已出版差异包，不能由上述六图相同推成所有common资源无版差。本批只交静态来源与接入边界，不是完整37／38原窗口或维护消费者验收。

@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "support/world_fixture.hpp"
 #include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include "dungeon_village_tools/archive.hpp"
@@ -719,6 +720,180 @@ void title_actor_pixels(const std::filesystem::path &root,Checks &check,Image *c
                 if(contact_sheet)draw(*contact_sheet,panel.image,{0,0,64,56},10+90*((face-1)*4+step),940+70*style);
             }
 }
+void item_information(Checks &check) {
+    auto s=test_support::world_fixture();
+    // 库存/status/NEW为只读目录条件夹具，不声称发生自然奖励或玩家使用。
+    for(auto &item:s.items) {
+        item.second.inventory=0;
+        s.catalog.at({0,item.first}).inventory=0;
+    }
+    s.items.at(0).inventory=2;s.catalog.at({0,0}).inventory=2;
+    s.items.at(35).inventory=1;s.catalog.at({0,35}).inventory=1;
+    s.items.at(0).status=0;s.catalog.at({0,0}).status=0;
+    s.items.at(35).status=2;s.catalog.at({0,35}).status=2;
+    s.items.at(0).newly_unlocked=true;s.catalog.at({0,0}).newly_unlocked=true;
+    const auto before=startup_world_state_digest(s);
+    auto rows=startup_item_information(s);
+    check(rows && rows->size()==2 && rows->at(0).definition==0 && rows->at(1).definition==35 &&
+          rows->at(0).inventory==2 && rows->at(1).inventory==1,
+          "37正库存按原定义顺序，不过滤status0或2");
+    check(rows->at(0).description=="培育的很好的马铃薯" && rows->at(1).description=="恢复魔法可以学会",
+          "item0/35原第23列说明完整交付，不由效果名称合成");
+    check(rows->at(0).newly_unlocked && startup_world_state_digest(s)==before,
+          "持有查询不清NEW、不使用库存或修改Owner");
+    StartupWorldRules reversed=*s.rules;
+    std::swap(reversed.items.front(),reversed.items.back());
+    auto reverse=s;reverse.rules=&reversed;
+    rows=startup_item_information(reverse);
+    check(rows && rows->size()==2 && rows->at(0).definition==35 && rows->at(1).definition==0,
+          "私有原序夹具证明不按ID或status另排序");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=s;
+        if(fault==0)bad.items.erase(0);
+        if(fault==1)bad.catalog.erase({0,0});
+        if(fault==2)bad.catalog.at({0,0}).inventory=1;
+        if(fault==3)bad.catalog.at({0,0}).status=1;
+        if(fault==4)bad.catalog.at({0,0}).newly_unlocked=false;
+        if(fault==5)++bad.catalog.at({0,0}).unlock_counter;
+        if(fault==6)bad.rules=nullptr;
+        const auto digest=startup_world_state_digest(bad);
+        check(!startup_item_information(bad) && startup_world_state_digest(bad)==digest,
+              "37缺来源或两份镜像不一致显式拒绝，查询不修补Owner");
+    }
+}
+void equipment_information(Checks &check) {
+    using Edition=StartupInformationEdition;
+    auto s=test_support::world_fixture();
+    constexpr std::array<std::size_t,4> apk_counts{33,17,33,30},steam_counts{33,16,33,27};
+    const auto contains=[](const StartupEquipmentInformation &page,int id) {
+        return std::any_of(page.rows.begin(),page.rows.end(),[=](const auto &r){return r.definition==id;});
+    };
+    const auto before=startup_world_state_digest(s);
+    for(int slot=0;slot<4;++slot) {
+        const auto apk=startup_equipment_information(s,slot,Edition::apk_1_0_8);
+        const auto steam=startup_equipment_information(s,slot,Edition::steam_2_56);
+        check(apk && steam && apk->rows.size()==apk_counts[slot] && steam->rows.size()==steam_counts[slot],
+              "38明确版本目录APK33/17/33/30与Steam33/16/33/27");
+        check(apk->edition==Edition::apk_1_0_8 && apk->nonpositive_text.empty() &&
+              steam->edition==Edition::steam_2_56 && steam->nonpositive_text=="--",
+              "已知装备非正属性APK留空、Steam画字面--，版本信息不丢失");
+        check(apk->attributes==(slot==0?std::array<int,2>{1,3}:std::array<int,2>{0,2}),
+              "武器显示攻击/魔法，其余显示HP/防御");
+        if(slot==1)check(contains(*apk,45) && !contains(*steam,45),"Steam铠甲flag0定义45不入目录");
+        if(slot==3)for(int id:{26,27,28})
+            check(contains(*apk,id) && !contains(*steam,id),"Steam饰品flag0定义26/27/28不入目录");
+    }
+    check(startup_world_state_digest(s)==before,"两版本只读目录不修改flags、NEW、库存或Owner");
+    auto current=s;
+    current.catalog.at({2,45}).flags=1;current.catalog.at({3,26}).flags=1;
+    check(startup_equipment_information(current,1,Edition::steam_2_56)->rows.size()==17 &&
+          startup_equipment_information(current,3,Edition::steam_2_56)->rows.size()==28,
+          "Steam过滤读取当前catalog.flags，不缓存定义初值");
+    for(auto &entry:current.catalog)if(entry.first.first!=0) {
+        entry.second.status=0;entry.second.free_purchases=999;entry.second.newly_unlocked=true;
+    }
+    current.catalog.at({1,0}).status=1;current.catalog.at({1,10}).status=1;
+    current.catalog.at({1,1}).status=2;
+    StartupWorldRules rules=*current.rules;current.rules=&rules;
+    for(auto &definition:rules.equipment)if(definition.shop.kind==1) {
+        if(definition.shop.id==0)definition.shop.combat={0,5,0,-4};
+        if(definition.shop.id==10)definition.shop.combat={0,0,0,6};
+    }
+    const auto digest=startup_world_state_digest(current);
+    const auto page=startup_equipment_information(current,0,Edition::apk_1_0_8);
+    const auto steam_page=startup_equipment_information(current,0,Edition::steam_2_56);
+    check(page && page->rows.size()==33 && page->known_count==2,
+          "known_count只数p1定义种类，不数免费份数或所有非零p");
+    for(const auto &row:page->rows) {
+        if(row.definition==0)
+            check(row.visible && row.visible->render_icon==0 && row.visible->newly_unlocked &&
+                  row.visible->values[0]==5 && !row.visible->values[1],"已知武器0只显示正攻击，不显示负魔法");
+        else if(row.definition==10)
+            check(row.visible && row.visible->render_icon==26 && !row.visible->values[0] &&
+                  row.visible->values[1]==6,"已知武器10图标26，零攻击不画，正魔法可画");
+        else check(!row.visible,"p0和p2均保留定义行身份但不暴露名称/图标/属性");
+    }
+    check(steam_page && steam_page->nonpositive_text=="--" &&
+          std::any_of(steam_page->rows.begin(),steam_page->rows.end(),[](const auto &row){
+              return row.definition==10 && row.visible && !row.visible->values[0] && row.visible->values[1]==6;
+          }),"Steam已知零攻击保持visible并交--占位，不误判为整件未知");
+    check(startup_world_state_digest(current)==digest,"已知/未知查询不消费NEW或免费份数");
+    // 四个独立原序/等键定义夹具。严格交换结果是2,1,0,3，稳定排序会错成2,0,1,3。
+    auto ordered=s;StartupWorldRules tiny=*s.rules;tiny.equipment.clear();
+    for(int id=0;id<4;++id) {
+        StartupWorldEquipment definition;
+        definition.shop.kind=1;definition.shop.id=id;definition.gift_order=std::array<int,4>{2,2,1,3}[id];
+        tiny.equipment.push_back(definition);
+    }
+    ordered.rules=&tiny;
+    const auto sorted=startup_equipment_information(ordered,0,Edition::apk_1_0_8);
+    check(sorted && sorted->rows.size()==4 && sorted->rows[0].definition==2 &&
+          sorted->rows[1].definition==1 && sorted->rows[2].definition==0 && sorted->rows[3].definition==3,
+          "38严格逆向内循环交换保留原等键结果，不能改stable_sort");
+    for(const int slot:{-1,4})check(!startup_equipment_information(s,slot,Edition::apk_1_0_8),"38拒绝无效第五页签");
+    auto missing=s;missing.catalog.erase({1,0});
+    const auto missing_digest=startup_world_state_digest(missing);
+    check(!startup_equipment_information(missing,0,Edition::apk_1_0_8) &&
+          startup_world_state_digest(missing)==missing_digest &&
+          !startup_equipment_information(s,0,static_cast<Edition>(99)),"缺当前catalog或未知版本拒绝而不改Owner");
+}
+void equipment_information_icons(Checks &check,const std::filesystem::path &root) {
+    auto s=test_support::world_fixture();
+    CpuImage background(LoadImage((root/"common/icon_back00.png").string().c_str()));
+    check(background.image.width>=72 && background.image.height>=18,"正式common24包含底框源54/0/18/18");
+    int largest_weapon_icon=-1;
+    for(const auto &definition:s.rules->equipment)if(definition.shop.kind==1)
+        largest_weapon_icon=std::max(largest_weapon_icon,definition.shop.type);
+    check(largest_weapon_icon==35,"33条真实武器定义的列表图标最大为35，不与定义数量混用");
+    // 独立原表字段oracle：kind/id/listIcon/bodyPNG，后者仅武器用于防止两字段混淆。
+    constexpr std::array<std::array<int,4>,6> cases{{
+        {{1,0,0,50}},{{1,10,26,3}},{{1,32,22,46}},{{2,6,20,-1}},{{2,49,18,-1}},{{3,29,29,-1}}
+    }};
+    for(const auto sample:cases) {
+        const auto plan=startup_world_equipment_icon_draws(s,sample[0],sample[1]);
+        check(plan && plan->size()==2 && plan->at(0).resource==StartupVisualResource::common &&
+              plan->at(0).image==24 && plan->at(0).sprite==-1 &&
+              plan->at(0).crop==std::array<int,4>{54,0,18,18} && plan->at(0).offset==std::array<int,2>{0,0},
+              "装备列表先画common24第3格底框，不套人物举物底框偏移");
+        check(plan->at(1).image==(sample[0]==1?12:sample[0]==2?20:21) &&
+              plan->at(1).crop==std::array<int,4>{(sample[2]%10)*18,(sample[2]/10)*18,18,18} &&
+              plan->at(1).offset==std::array<int,2>{0,0},"三类装备图标按实际列表字段定位18格");
+        if(sample[0]==1) {
+            const auto definition=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[&](const auto &d){
+                return d.shop.kind==1&&d.shop.id==sample[1];});
+            check(definition!=s.rules->equipment.end() && definition->render_image==sample[3],
+                  "武器bodyPNG字段与列表图标独立，不能拿50/3/46去裁列表");
+        }
+    }
+    const std::array<const char *,3> files{"icon_weapon00.png","icon_armour00.png","icon_accessry00.png"};
+    constexpr std::array<int,3> counts{40,50,30};
+    for(int kind=1;kind<=3;++kind) {
+        CpuImage source(LoadImage((root/"common"/files[kind-1]).string().c_str()));
+        check(source.image.width==180 && source.image.height==(counts[kind-1]/10)*18,
+              "实际图集容量是40/50/30，不是装备定义数");
+        auto private_owner=s;StartupWorldRules rules=*s.rules;private_owner.rules=&rules;
+        auto definition=std::find_if(rules.equipment.begin(),rules.equipment.end(),[=](const auto &d){return d.shop.kind==kind;});
+        check(definition!=rules.equipment.end(),"三类真实原表都有图标入口");
+        int &icon=kind==1?definition->shop.type:definition->render_image;
+        for(const int value:{0,counts[kind-1]-1}) {
+            icon=value;const auto plan=startup_world_equipment_icon_draws(private_owner,kind,definition->shop.id);
+            check(plan && plan->at(1).crop[0]+18<=source.image.width &&
+                  plan->at(1).crop[1]+18<=source.image.height,"私有边界图标最后一格仍可合法裁剪");
+        }
+        if(kind==1) {
+            icon=35;check(startup_world_equipment_icon_draws(private_owner,kind,definition->shop.id).has_value(),
+                          "实际武器最大icon35不被33定义总数错误截断");
+        }
+        for(const int value:{-1,counts[kind-1],std::numeric_limits<int>::max()}) {
+            icon=value;check(!startup_world_equipment_icon_draws(private_owner,kind,definition->shop.id),
+                             "越界图标不靠取模藏成合法裁片");
+        }
+    }
+    const auto digest=startup_world_state_digest(s);
+    check(!startup_world_equipment_icon_draws(s,0,0) && !startup_world_equipment_icon_draws(s,4,0) &&
+          !startup_world_equipment_icon_draws(s,1,-1) && !startup_world_equipment_icon_draws(s,1,999) &&
+          startup_world_state_digest(s)==digest,"坏kind或缺定义拒绝，图标查询不写Owner");
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -730,6 +905,9 @@ int check_startup_skin(const std::filesystem::path &source_root,
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);
+    item_information(check);
+    equipment_information(check);
+    equipment_information_icons(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

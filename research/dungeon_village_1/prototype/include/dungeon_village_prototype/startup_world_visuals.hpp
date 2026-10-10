@@ -78,6 +78,11 @@ startup_world_attribute_gain_draws(const StartupWorldRuntimeState &state, ref::C
 std::optional<std::vector<StartupVisualDraw>>
 startup_world_item_icon_draws(const StartupWorldRuntimeState &state, int item_definition);
 
+// 装备目录type2/3/4：共同18格底框第3格，再叠武器/防具/饰品原列表icon。
+// kind=1/2/3且definition是该类原ID；不以是否解锁限制纯图元，p==1由页面消费者判断。
+std::optional<std::vector<StartupVisualDraw>> startup_world_equipment_icon_draws(
+    const StartupWorldRuntimeState &state, int kind, int definition);
+
 // 设施type9前景，原o.d/common91；0是有效图块，不附普通道具type1背景。
 std::optional<StartupVisualDraw>
 startup_world_facility_icon_draw(const StartupWorldRuntimeState &state, int facility_definition);

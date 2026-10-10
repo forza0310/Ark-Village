@@ -1,6 +1,9 @@
 #include "dungeon_village_prototype/startup_information.hpp"
+#include "dungeon_village_prototype/startup_world_runtime.hpp"
 
+#include <algorithm>
 #include <limits>
+#include <set>
 
 namespace dungeon_village_prototype {
 namespace {
@@ -44,6 +47,80 @@ std::optional<StartupIncomeInformation> startup_income_information(
     }
     result.profit = signed_value(profit);
     result.profit_text = currency(result.profit);
+    return result;
+}
+
+std::optional<std::vector<StartupItemInformation>>
+startup_item_information(const StartupWorldRuntimeState &s) {
+    if (!s.rules) return {};
+    std::vector<StartupItemInformation> result;
+    std::set<int> seen;
+    for (const auto &definition : s.rules->items) {
+        const int id = definition.identity;
+        const auto item = s.items.find(id);
+        const auto catalog = s.catalog.find({0, id});
+        if (id < 0 || !seen.insert(id).second || item == s.items.end() || catalog == s.catalog.end())
+            return {};
+        const auto &a = item->second;
+        const auto &b = catalog->second;
+        // 与恢复入口相同的唯一道具事实；查询不修补不同步的镜像。
+        if (a.inventory < 0 || a.inventory > 999 || a.inventory != b.inventory ||
+            a.status != b.status || a.unlock_counter != b.unlock_counter ||
+            a.newly_unlocked != b.newly_unlocked)
+            return {};
+        if (a.inventory > 0)
+            result.push_back({id, a.inventory, definition.render_icon, a.newly_unlocked,
+                              definition.name, definition.description});
+    }
+    return result;
+}
+
+std::optional<StartupEquipmentInformation> startup_equipment_information(
+    const StartupWorldRuntimeState &s, int slot, StartupInformationEdition edition) {
+    if (!s.rules || slot < 0 || slot > 3 ||
+        (edition != StartupInformationEdition::apk_1_0_8 && edition != StartupInformationEdition::steam_2_56))
+        return {};
+    const int kind = slot == 0 ? 1 : slot == 3 ? 3 : 2;
+    std::vector<const StartupWorldEquipment *> definitions;
+    std::set<int> seen;
+    for (const auto &definition : s.rules->equipment) {
+        if (definition.shop.kind != kind) continue;
+        if (kind == 2 && (definition.shop.type == 2 ? 1 : 2) != slot) continue;
+        const auto current = s.catalog.find({kind, definition.shop.id});
+        if (definition.shop.id < 0 || !seen.insert(definition.shop.id).second || current == s.catalog.end())
+            return {};
+        if (edition == StartupInformationEdition::steam_2_56 && (slot == 1 || slot == 3) &&
+            current->second.flags == 0)
+            continue;
+        definitions.push_back(&definition);
+    }
+    // 原外层向前、内层从末尾向前、严格小于交换；等键不等价于stable_sort。
+    for (std::size_t first = 0; first + 1 < definitions.size(); ++first)
+        for (std::size_t later = definitions.size() - 1; later > first; --later)
+            if (definitions[later]->gift_order < definitions[first]->gift_order)
+                std::swap(definitions[first], definitions[later]);
+    StartupEquipmentInformation result;
+    result.slot = slot;
+    result.edition = edition;
+    result.nonpositive_text = edition == StartupInformationEdition::steam_2_56 ? "--" : "";
+    result.attributes = slot == 0 ? std::array<int, 2>{1, 3} : std::array<int, 2>{0, 2};
+    for (const auto *definition : definitions) {
+        const auto current = s.catalog.find({kind, definition->shop.id});
+        StartupEquipmentInformationRow row{definition->shop.id, {}};
+        if (current->second.status == 1) {
+            StartupEquipmentInformationVisible shown;
+            shown.name = definition->name;
+            shown.render_icon = kind == 1 ? definition->shop.type : definition->render_image;
+            shown.newly_unlocked = current->second.newly_unlocked;
+            for (std::size_t column = 0; column < 2; ++column) {
+                const int value = definition->shop.combat[result.attributes[column]];
+                if (value > 0) shown.values[column] = value;
+            }
+            row.visible = std::move(shown);
+            ++result.known_count;
+        }
+        result.rows.push_back(std::move(row));
+    }
     return result;
 }
 } // namespace dungeon_village_prototype

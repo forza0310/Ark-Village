@@ -260,6 +260,21 @@ std::optional<std::vector<StartupVisualDraw>> startup_world_item_icon_draws(
         {StartupVisualResource::common,-1,24,0,0,{background*18,0,18,18},{-1,-1},{}},
         {StartupVisualResource::common,-1,9,0,0,{(icon%15)*16,(icon/15)*16,16,16},{0,0},{}}};
 }
+std::optional<std::vector<StartupVisualDraw>> startup_world_equipment_icon_draws(
+    const StartupWorldRuntimeState &s, int kind, int id) {
+    if (!s.rules || kind < 1 || kind > 3 || id < 0) return {};
+    const auto definition = std::find_if(s.rules->equipment.begin(), s.rules->equipment.end(),
+        [=](const auto &d) { return d.shop.kind == kind && d.shop.id == id; });
+    if (definition == s.rules->equipment.end()) return {};
+    // 武器shop.type已保存原p.d；render_image是身体PNG，不能用于common12。
+    const int icon = kind == 1 ? definition->shop.type : definition->render_image;
+    const int bound = kind == 1 ? 40 : kind == 2 ? 50 : 30; // 已出版180×72/90/54图集。
+    if (icon < 0 || icon >= bound) return {};
+    return std::vector<StartupVisualDraw>{
+        {StartupVisualResource::common,-1,24,0,0,{54,0,18,18},{0,0},{}},
+        {StartupVisualResource::common,-1,kind == 1 ? 12 : kind == 2 ? 20 : 21,0,0,
+            {(icon%10)*18,(icon/10)*18,18,18},{0,0},{}}};
+}
 std::optional<StartupVisualDraw> startup_world_facility_icon_draw(
     const StartupWorldRuntimeState &s, int id) {
     if (!s.rules) return {};

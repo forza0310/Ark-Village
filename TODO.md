@@ -4,7 +4,7 @@
 
 ## 本批收口
 
-- [ ] 商会建筑一次性解锁：已复现旅店/面包房等8种初始可建定义仍列入85，包子铺实际20点购买后仍可再次入目录。当前研究明确`p!=2`，与用户确认行为冲突；具体最小复现、修正范围及验收见[研究交接](docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint)。产品尚未改规则，未改玩家档。
+- [x] 商会建筑一次性解锁：产品目录/付款/预览/恢复资格及研究规则文档已修正，Debug标准首次138/139、夹具修正后受影响7项及策略合同通过，Release定向3项/真实新局目录窗口/月54冷载通过，见[B1](docs/stages/B1-playable-prototype.md#commerce-blueprint-fix)。研究C++同步及静态冲突仍待研究侧复核，不改玩家档和历史资金。
 
 - [x] b99c6db正式维护及信息接入：442项来源、708项素材、28处适配；正常信息9/35–38和35→60追踪的FIFO/渲染接线完成。desktop-debug139/139通过；headless首次118/119、旧scene夹具补正后6项定向通过，均仅排三个月。Release七窗口及月51玩家业务检查点冷载通过；玩家schema4/身份保持，34/39与完整动态仍待后续。具体边界见[B1](docs/stages/B1-playable-prototype.md#research-b99c6db-integration)。
 - [x] b719030本地Release ZIP 15.85MiB，732文件独立解压核对与纯系统PATH信息窗口启动通过；最新经营前缀已实际推进并冷载到月54，布局21/50、到位营业10/25，仍二星。后续从保存前缀继续，不能以此替代三星和全内容验收。

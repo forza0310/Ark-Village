@@ -1,5 +1,6 @@
 #include "ark/app/save/world_save.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
@@ -7,6 +8,7 @@
 #include "../support/world_fixture.hpp"
 
 #include <iostream>
+#include <algorithm>
 #include <limits>
 #include <stdexcept>
 
@@ -401,6 +403,8 @@ void management_fields_roundtrip() {
     ++owned.unlock_counter;
     state.catalog.at({0, item}) = owned;
     state.facility_item_response = 3;
+    state.facility_presence.at(34) = 2; // Already redeemed blueprint; no change to player save policy.
+    state.facility_free_builds.at(34) = 1;
     state.commerce_page_data[42] = {0, 1, 2, 0, item, 9};
     state.activity_page_display_humans[42] = {human, human};
     const auto loaded = restored(state);
@@ -418,6 +422,22 @@ void management_fields_roundtrip() {
               loaded.activity_page_display_humans.empty(),
           "business page payloads and last result response are transient");
     same_durable(state, loaded, "new management state capture");
+    auto shop = loaded;
+    shop.scene.framework_paused = false;
+    // Catalogue call-site fixture after cold load; first-visit event97/menu navigation is separate.
+    shop.scripts.pages.back().lifecycle = 3;
+    ref::WorldScriptPage catalogue;
+    catalogue.id = shop.scripts.next_page_id++;
+    catalogue.kind = ref::WorldScriptPageKind::raw_page;
+    catalogue.legacy_page = 85;
+    shop.scripts.pages.push_back(catalogue);
+    check(sim::initialize_startup_world_commerce_pages(shop), "restored world initializes blueprint85");
+    const auto &entries = shop.commerce_page_lists.at(shop.scripts.pages.back().id);
+    check(loaded.facility_presence == state.facility_presence &&
+              loaded.facility_free_builds == state.facility_free_builds &&
+              std::find(entries.begin(), entries.end(), 34) == entries.end() &&
+              std::find(entries.begin(), entries.end(), 28) == entries.end(),
+          "player cold load retains unlocks and excludes both initial and purchased blueprints");
 }
 
 void expanded_map_roundtrip() {

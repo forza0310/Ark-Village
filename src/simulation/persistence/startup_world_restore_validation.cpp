@@ -880,9 +880,9 @@ struct Validation {
                     return fail("commerce page: 列表条目没有可消费库存");
             } else {
                 const auto *d = facility_defs.find(definition)->second;
-                if (s.facility_presence.find(definition)->second == 2 || d->unlock_rank < 0 ||
+                if (s.facility_presence.find(definition)->second != 0 || d->unlock_rank < 0 ||
                     d->unlock_rank > s.rank)
-                    return fail("commerce page: 列表设施尚未开放");
+                    return fail("commerce page: facility is already unlocked or rank is insufficient");
             }
         }
         return true;

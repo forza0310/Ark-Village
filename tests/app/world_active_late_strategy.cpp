@@ -367,7 +367,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             }
             if (income_build_definition_ >= 0) {
                 const int d = income_build_definition_;
-                if (s.facility_presence.at(d) == 2 && !has_definition(s, d)) {
+                if (s.facility_presence.at(d) != 0 && !has_definition(s, d)) {
                     const auto place = free_roadside(s, d, true);
                     require(place.has_value(), "reserved income shop site became unavailable");
                     build_definition_ = d;
@@ -375,7 +375,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                     build_committed_ = false;
                     return command(Kind::open_build_menu);
                 }
-                if (s.facility_presence.at(d) != 2 &&
+                if (s.facility_presence.at(d) == 0 &&
                     s.village_points >= s.rules->facility_initial.at(d).capacity)
                     return command(Kind::open_commerce);
             }
@@ -428,7 +428,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             }
             return command(Kind::open_build_menu);
         }
-        const bool needs_western = third && s.rank == 2 && s.facility_presence.at(40) != 2;
+        const bool needs_western = third && s.rank == 2 && s.facility_presence.at(40) == 0;
         const int western_reserve =
             needs_western ? s.rules->facility_initial.at(40).capacity
             : income_build_definition_ >= 0
@@ -587,7 +587,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             income_ && income_build_definition_ >= 0 ? income_build_definition_ : 40;
         if (raw == 83)
             return commerce(p.id,
-                            s.facility_presence.at(requested) == 2 ? Commerce::cancel
+                            s.facility_presence.at(requested) != 0 ? Commerce::cancel
                             : view->selection == 2                 ? Commerce::confirm
                                                                    : Commerce::select,
                             2);
@@ -625,7 +625,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                         s.village_points -
                             (income_build_definition_ >= 0
                                  ? s.rules->facility_initial.at(income_build_definition_).capacity
-                             : stats_.target_rank == 3 && s.facility_presence.at(40) != 2
+                             : stats_.target_rank == 3 && s.facility_presence.at(40) == 0
                                  ? s.rules->facility_initial.at(40).capacity
                                  : 0) &&
                     s.quarter_counter > 0) {

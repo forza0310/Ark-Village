@@ -2808,8 +2808,12 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_building.cpp",
       "source_sha256": "790a6f5743bd4ffb51e5e84c56da33e76d13f91fb623c3a77ee1d16df6ee5f6e",
       "source_bytes": 61966,
-      "sha256": "df4c8d5fb3d923cd60fcd1cdfb90b9e2a610361753d59c9ab3449ed1aa0a7f70",
-      "bytes": 62054
+      "sha256": "c0cc278cc2757ffe30b68f05068815512b2575fd94b5fb9ae7c1e0795368c5cc",
+      "bytes": 62054,
+      "product_patch": {
+        "imported_sha256": "df4c8d5fb3d923cd60fcd1cdfb90b9e2a610361753d59c9ab3449ed1aa0a7f70",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "src/simulation/village/startup_world_clear_score.cpp",
@@ -2856,8 +2860,12 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_commerce.cpp",
       "source_sha256": "511946550c80e8faeeee1e21e9978d05f0b3e178cdbb021cc6f667797493317c",
       "source_bytes": 18699,
-      "sha256": "b433686836c6a6fa93c3fd4893e42545afdcdaf02b47f868a5d3f84700563ea5",
-      "bytes": 18679
+      "sha256": "9d91ae02dcbfd77dea72f23f92e8c6f2ea3a270d8b9a3b4a631b799740e89422",
+      "bytes": 18774,
+      "product_patch": {
+        "imported_sha256": "b433686836c6a6fa93c3fd4893e42545afdcdaf02b47f868a5d3f84700563ea5",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "src/simulation/facilities/startup_world_editing.cpp",
@@ -2977,8 +2985,12 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_restore_validation.cpp",
       "source_sha256": "55d92d30be7fbe64dbc98ca5267cd5e20f8bf3a80e17d32b84dfb39ceb22ee7c",
       "source_bytes": 60694,
-      "sha256": "88f143b96a0a6fdee34beb04b12d6b46268813e19f30fc161c04899675ac65b4",
-      "bytes": 60771
+      "sha256": "7296e040aa43384289a7c09e56e02aa0e280dc65d09254d80e8bc24e0cea67e4",
+      "bytes": 60799,
+      "product_patch": {
+        "imported_sha256": "88f143b96a0a6fdee34beb04b12d6b46268813e19f30fc161c04899675ac65b4",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "src/simulation/persistence/startup_world_restore_validation.hpp",
@@ -3402,8 +3414,12 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_building_test.cpp",
       "source_sha256": "7e8b7b505e656d40b73bc4e2799b13f875c335dfa759dcf7fe53a954249de1a3",
       "source_bytes": 106553,
-      "sha256": "dbe67020e52594192a83ba46c104f8d453e44e225a8e0dfb7d25378c58090928",
-      "bytes": 106529
+      "sha256": "fa45b4e2af679c96378d9a9bbd8f3e71afc1f5927bbf3fca27d4fc302f3a7ec0",
+      "bytes": 108011,
+      "product_patch": {
+        "imported_sha256": "dbe67020e52594192a83ba46c104f8d453e44e225a8e0dfb7d25378c58090928",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "tests/simulation/startup_world_clear_score_test.cpp",
@@ -3458,8 +3474,12 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_pages_test.cpp",
       "source_sha256": "6bcceea4de91662ed673423b07aaf8196aeb837ec0fb2264f4bdfed03c2ccc2c",
       "source_bytes": 229214,
-      "sha256": "ed2bc274a36bc2a7726bb39d7b20ff45dbf1987269f884bdb3291ccf4b296432",
-      "bytes": 229180
+      "sha256": "0a0cd5dc5a34aeb6f69d62c7885871993d7d02b3fdb543638b0bc241d2666ed0",
+      "bytes": 230708,
+      "product_patch": {
+        "imported_sha256": "ed2bc274a36bc2a7726bb39d7b20ff45dbf1987269f884bdb3291ccf4b296432",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "tests/simulation/startup_world_persistence_test.cpp",
@@ -3499,8 +3519,12 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_restore_checks.cpp",
       "source_sha256": "1a58ce1764131676a779fd1b0e4076de8fa11220c662e7aa75e562b17b0f1bfb",
       "source_bytes": 47912,
-      "sha256": "bf99d06f491a94cfeae18394394434a96cb9ba4ea9b108e8eb31809c69e55258",
-      "bytes": 47948
+      "sha256": "6eef706dde265593797c1a25adcb57e76ac43f256eb51d5a8f6055e8ec0fea7b",
+      "bytes": 48853,
+      "product_patch": {
+        "imported_sha256": "bf99d06f491a94cfeae18394394434a96cb9ba4ea9b108e8eb31809c69e55258",
+        "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
+      }
     },
     {
       "file": "tests/simulation/startup_world_restore_checks.hpp",

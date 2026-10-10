@@ -2538,6 +2538,11 @@ void commerce_facility_and_projection() {
     check(initialize_startup_world_commerce_pages(s),
           "85 initializes rank-limited facility catalogue");
     const auto &list = s.commerce_page_lists.at(shop);
+    for (const int initial : {18, 24, 66, 28, 30, 31, 45, 35, 33}) {
+        check(s.facility_presence.at(initial) != 0 &&
+                  std::find(list.begin(), list.end(), initial) == list.end(),
+              "initial road/recruitment/sunflower/inn/shops never sell an unlocked blueprint");
+    }
     const auto found = std::find(list.begin(), list.end(), 34);
     check(found != list.end() && s.rules->facility_initial.at(34).capacity == 30 &&
               s.facility_presence.at(34) == 0,
@@ -2545,6 +2550,17 @@ void commerce_facility_and_projection() {
     const int selected = static_cast<int>(found - list.begin());
     check(act_startup_world_commerce_page(s, shop, A::select, selected) == E::none,
           "85 selection binds original facility identity34");
+    for (const int unlocked : {1, 2}) {
+        auto stale = s;
+        stale.facility_presence.at(34) = unlocked; // Unlock after the catalogue was captured.
+        stale.village_points = 999;
+        const auto before = startup_world_state_digest(stale);
+        check(act_startup_world_commerce_page(stale, shop, A::confirm) != E::none &&
+                  act_startup_world_commerce_page(stale, shop, A::inspect) != E::none &&
+                  open_startup_world_facility_definition(stale, 34) != E::none &&
+                  startup_world_state_digest(stale) == before,
+              "stale p1/p2 blueprint payment and preview reject without any Owner mutation");
+    }
     const auto initial_read = s.facility_commerce_read;
     const auto attributes = s.scripts.facilities.at(34).attributes;
     // 从真实85动作打开定义详情；两种返回都不能借用已建实例、扣款或清NEW。
@@ -2605,6 +2621,14 @@ void commerce_facility_and_projection() {
           "ready93 unlocks once and grants one free build without further payment");
     check(act_startup_world_commerce_page(s, reward, A::confirm) == E::invalid_page,
           "retired93 cannot grant another free build");
+    auto reopened = fixture(85);
+    reopened.facility_presence = s.facility_presence;
+    reopened.facility_free_builds = s.facility_free_builds;
+    const auto reopened_page = reopened.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(reopened), "reopened85 initializes after redemption");
+    const auto &remaining = reopened.commerce_page_lists.at(reopened_page);
+    check(std::find(remaining.begin(), remaining.end(), 34) == remaining.end(),
+          "redeemed blueprint is absent from every subsequent catalogue");
 
     s = fixture(83);
     // 模拟已发生的原奖励解锁，与仍保留旧p/q/r的补货辅助记录刻意不同。

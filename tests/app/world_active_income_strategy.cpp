@@ -170,7 +170,7 @@ void inspect_income(const State &s, std::ostream &out) {
     const auto best = choose_income_investment(s, 10000);
     for (const auto &d : s.rules->facilities)
         if ((d.kind == 3 || d.kind == 9) && d.unlock_rank >= 0 && d.unlock_rank <= s.rank &&
-            s.facility_presence.at(d.id) != 2) {
+            s.facility_presence.at(d.id) == 0) {
             const auto quote = sim::startup_world_build_quote(s, d.id);
             if (quote)
                 out << "CHAMBER definition=" << d.id << " rank=" << d.unlock_rank

@@ -304,7 +304,7 @@ bool affordable_commerce_stock(const State &s) {
 std::optional<int> affordable_commerce_facility(const State &s) {
     std::optional<int> result;
     for (const auto &f : s.rules->facilities)
-        if (s.facility_presence.at(f.id) != 2 && f.unlock_rank >= 0 && f.unlock_rank <= s.rank &&
+        if (s.facility_presence.at(f.id) == 0 && f.unlock_rank >= 0 && f.unlock_rank <= s.rank &&
             s.rules->facility_initial.at(f.id).capacity <= s.village_points &&
             (!result || s.rules->facility_initial.at(f.id).capacity <
                             s.rules->facility_initial.at(*result).capacity))

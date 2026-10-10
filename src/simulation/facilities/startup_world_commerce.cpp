@@ -114,7 +114,7 @@ bool payload(const State &s, const Page &p) {
             if (!item_state(s, id) ||
                 (v[0] == 0 ? s.shop_item_stock.at(id).quantity : s.items.at(id).inventory) <= 0)
                 return false;
-        } else if (!facility_state(s, id) || s.facility_presence.at(id) == 2 ||
+        } else if (!facility_state(s, id) || s.facility_presence.at(id) != 0 ||
                    facility(s, id)->unlock_rank < 0 || facility(s, id)->unlock_rank > s.rank)
             return false;
     }
@@ -148,7 +148,8 @@ bool initialize(State &s, const Page &p) {
         for (const auto &d : s.rules->facilities) {
             if (!facility_state(s, d.id))
                 return false;
-            if (s.facility_presence.at(d.id) != 2 && d.unlock_rank != -1 && d.unlock_rank <= s.rank)
+            // Blueprints unlock once: initial p1 and purchased p2 are both already buildable.
+            if (s.facility_presence.at(d.id) == 0 && d.unlock_rank != -1 && d.unlock_rank <= s.rank)
                 list.push_back(d.id);
         }
         if (list.empty())

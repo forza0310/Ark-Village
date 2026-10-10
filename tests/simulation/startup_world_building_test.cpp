@@ -182,6 +182,29 @@ void normal_construction() {
               s.scene.world.popularity_queue.front() == std::array<int, 3>{25, 20, 1},
           "first-month construction never recharges and queues real sharedN20 popularity before halving to10");
 }
+// Ordinary blueprint ownership allows repeated gold builds, without spending H or village points.
+void repeat_blueprint_construction() {
+    for (int definition : {28, 34}) {
+        auto s = test_support::world_fixture();
+        if (definition == 34) {
+            s.facility_presence.at(34) = 2; // Post-redemption fixture; actual payment belongs to pages.
+            s.facility_free_builds.at(34) = 1;
+        }
+        const auto funds = s.scene.world.world.ai.accounting.funds();
+        const auto points = s.village_points;
+        const auto entitlement = s.facility_free_builds.at(definition);
+        const int price = definition == 28 ? 1000 : 600;
+        check(begin_startup_world_build(s, definition).denial == StartupBuildDenial::none,
+              "initial and redeemed ordinary blueprints enter gold construction");
+        for (int count = 1; count <= 2; ++count) {
+            const auto built = confirm_startup_world_build(
+                s, empty_anchor(s, definition), ref::FacilityOrientation::first);
+            check(built.created && s.scene.world.world.ai.accounting.funds() == funds - count * price &&
+                      s.village_points == points && s.facility_free_builds.at(definition) == entitlement,
+                  "each ordinary build pays gold, never consumes blueprint or points");
+        }
+    }
+}
 // 高星领取后的条件夹具：只准备p/H，不伪造原表flags或自然升星历史。
 // 完工必须经过真实Owner建设和设施消费者，才能开放学校／博物馆活动。
 void progression_building_unlocks() {
@@ -1618,7 +1641,7 @@ void commerce_definition_preview() {
               !s.facility_page_bindings.count(page) && !s.facility_page_neighbours.count(page) &&
               startup_world_facility_page_count(s, s.scripts.pages.back()) == 1,
           "preview retains only definition identity and has no artificial instance or neighbours");
-    for (int fault = 0; fault < 5; ++fault) {
+    for (int fault = 0; fault < 7; ++fault) {
         auto broken = s;
         if (fault == 0)
             broken.facility_definition_page_bindings.erase(page);
@@ -1635,6 +1658,8 @@ void commerce_definition_preview() {
             wrong.legacy_page = 83;
             broken.scripts.pages.insert(broken.scripts.pages.end() - 1, wrong);
         }
+        if (fault == 5 || fault == 6)
+            broken.facility_presence.at(d) = fault - 4;
         check(
             !prepare_startup_world_runtime(broken).candidate &&
                 act_startup_world_facility_page(broken, page, StartupFacilityPageAction::confirm) !=
@@ -1667,6 +1692,7 @@ void commerce_definition_preview() {
 int main() {
     try {
         normal_construction();
+        repeat_blueprint_construction();
         progression_building_unlocks();
         new_world_inheritance();
         multi_tile_and_rollback();

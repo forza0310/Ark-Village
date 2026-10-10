@@ -3,6 +3,7 @@
 #include "../../src/simulation/persistence/startup_world_restore_validation.hpp"
 #include "../../src/simulation/persistence/startup_world_codec.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
@@ -26,6 +27,24 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    {
+        auto shop = baseline;
+        shop.scripts.pages.back().lifecycle = 3;
+        r::WorldScriptPage page;
+        page.id = shop.scripts.next_page_id++;
+        page.kind = r::WorldScriptPageKind::raw_page;
+        page.legacy_page = 85;
+        shop.scripts.pages.push_back(page);
+        if (!p::initialize_startup_world_commerce_pages(shop))
+            throw std::runtime_error("restore fixture cannot initialize blueprint catalogue");
+        expect(shop, true, "unopened blueprint catalogue restore");
+        for (int presence : {1, 2}) {
+            auto stale = shop;
+            const int definition = stale.commerce_page_lists.at(page.id).front();
+            stale.facility_presence.at(definition) = presence;
+            expect(stale, false, "restored catalogue rejects already unlocked blueprint");
+        }
+    }
     {
         auto information = baseline;
         if (p::open_startup_world_information_menu(information) != p::StartupWorldRuntimeError::none)

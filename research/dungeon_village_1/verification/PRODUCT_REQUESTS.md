@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10续补34／35前置：[34权威统计](../prototype/include/dungeon_village_prototype/startup_information.hpp)与[独立贡献候选](../example/include/dungeon_village_reference/world_award_page.hpp)已交付，projection／award／pages短测通过2.35秒。34不沿38的flag过滤；贡献候选无授勋／排序副作用，87保持原算法及奖章事务。完整[35→60追踪合同](../ui/INFORMATION_MENU.md#3560追踪的steam后继合同)已核来源恰1、首个同定义活跃W、缺W事件137、成功退栈／state6、确认重开来源1的60及返回不重清NEW。这些源边界不代表控制器已接，34／35／39入口仍未开放，产品可消费已交投影／算法而不伪造玩家路径。
+
 2026-10-10信息37／38已接[Owner控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)：raw9开放36／37／38，37空目录真实事件15后退休、正常关闭清整类道具NEW，38固定使用Steam四类过滤与原输入顺序、不清装备NEW。typed目录进入codec，旧布局拒绝、不迁移；五项短测最终通过59.80秒，普通档稳定主场景政策不变。后继[Steam完整局部皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)与两张实际差异PNG已交付，visuals通过0.67秒；产品须执行TextLayout／富文本／当前帧请求和原触摸参数，不猜字体、手形时钟或选中底色。真实字体／物理输入仍未认证。
 
 前置[道具原说明与库存目录、分版本装备目录](../prototype/include/dungeon_village_prototype/startup_information.hpp)及[装备列表图标](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)四项短测曾通过9.21秒。纯查询仍要求显式版本，Steam的flag过滤及`--`占位不回写APK规则；武器列表icon从已有shop.type读取，不用身体render_image。该前置只扩不可变说明，不据其旧验收替代本批页面测试。

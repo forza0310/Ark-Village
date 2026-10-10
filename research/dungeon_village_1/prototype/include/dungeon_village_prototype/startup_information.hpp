@@ -59,4 +59,11 @@ struct StartupEquipmentInformation {
 // 名称/属性来自调用者安装的rules，不声称导入Steam全部数据；不创建页、不清NEW。
 std::optional<StartupEquipmentInformation> startup_equipment_information(
     const StartupWorldRuntimeState &state, int slot, StartupInformationEdition edition);
+struct StartupTownInformation {
+    int rank{}, adventurers{}, residents{}, facilities{}, completed_tasks{}, activities_held{};
+    std::array<int,4> known_equipment{}; // 武器/衣(type2)/其它防具/饰品，只计status==1。
+};
+// APK/Steam34的权威统计，不复用38的flag过滤。居民不额外过滤人物presence，
+// 设施按原g每次出现计类型3/9；只读查询不执行Steam入页的平台成就请求。
+std::optional<StartupTownInformation> startup_town_information(const StartupWorldRuntimeState &state);
 } // namespace dungeon_village_prototype

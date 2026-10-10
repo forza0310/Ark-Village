@@ -71,7 +71,7 @@
 | [world_notices.hpp](include/dungeon_village_reference/world_notices.hpp) | 唯一通知队首两项逆序计数/过期与声音11，21/19高度和整数展开/收回布局；不绘皮肤、不过度推进第三条 | [通知合同](../ui/PAGES.md#共同底部通知队列) |
 | world_calendar、world_scene | 年/月/子周期有序合同与主场景1/2轮、真实资格/跳转/绘制门槛；实际日历域消费者必须另接 | [主场景](../rules/ai/WORLD_SCHEDULE.md) |
 | world_month_report、world_calendar_maintenance、world_calendar_tasks | 月报/费用/点数、年度清理、跨月任务/等级提示、raw48真正晋级的有序规则及raw50全范围洗牌/布局；外部请求须同步消费 | [世界跨月](../rules/ai/WORLD_SCHEDULE.md#实际跨月域与组合入口)、[晋级](../rules/ai/WORLD_SCHEDULE.md#城镇真正晋级与庆典) |
-| [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 年度raw87贡献/交换排序、终止与授予的独立询问绑定、扣唯一勋章/奖励请求、raw88旧局部计数与关闭抽选、raw67空窗口推进；Owner执行真实脚本/共享奖励，不宣称原窗口模态等价 | [年度授勋](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
+| [world_award_page.hpp](include/dungeon_village_reference/world_award_page.hpp) | 35/87共用纯贡献候选保持原序，不加奖章；年度87另执行奖章增加/交换排序、终止与授予询问、奖励请求，raw88旧局部计数与关闭抽选、raw67空窗口推进；Owner执行真实脚本/共享奖励，不宣称原窗口模态等价 | [年度授勋](../rules/ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
 | world_task_creation、world_facility_update、world_residence | 真实任务工厂/全占地、设施前缀/施工/共享人气、住宅现有人物奖励和原程序 | [探索](../rules/ai/DUNGEONS.md)、[共同调度](../rules/ai/WORLD_SCHEDULE.md) |
 | [world_task_commands.hpp](include/dungeon_village_reference/world_task_commands.hpp) | 玩家页23/24募集费用、原序全列表随机/入场/队伍提交、页27当前候选与追加费用、页28预测/动画/正式任务启动；回主场景、消息与页面同步请求，取消/拒绝及晚期失败不留部分世界或随机 | [玩家接受与出发](../rules/ai/DUNGEONS.md#玩家接受募集追加与正式出发) |
 | [world_task_display.hpp](include/dungeon_village_reference/world_task_display.hpp) | raw99确认40门槛与raw100共享8×9演出表、19抽初始化、逐行更新和统一随机候选；不生成怪物实例、不重复本帧更新、不承担实际战斗结算 | [演出与成果后的阻塞点](../rules/ai/DUNGEONS.md#演出与成果后的阻塞点) |

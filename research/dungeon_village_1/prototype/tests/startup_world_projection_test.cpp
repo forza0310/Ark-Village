@@ -1,5 +1,9 @@
 #include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "dungeon_village_prototype/startup_information.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "support/world_fixture.hpp"
 
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -16,6 +20,74 @@ StartupSession installed() {
     for (int i = 0; i < 420; ++i)
         check(session.update() == StartupError::none, "actual first arrival steps");
     return session;
+}
+void town_information() {
+    auto state=test_support::world_fixture();
+    // 只构造统计输入，不宣称从真实经营取得。固定原表无kind9定义，
+    // 私有规则变体覆盖原34的kind9分支；不修改原表或创建可运行的演示世界。
+    StartupWorldRules rules=*state.rules;
+    state.rules=&rules;
+    auto type9=std::find_if(rules.facilities.begin(),rules.facilities.end(),[](const auto &d){return d.id==18;});
+    check(type9!=rules.facilities.end(),"town statistics fixture uses an existing private definition");
+    type9->kind=9;
+    for(auto &entry:state.human_presence)entry.second=0;
+    for(auto &entry:state.human_homes)entry.second[2]=0;
+    state.human_presence.at(1)=1;state.human_presence.at(2)=2;state.human_presence.at(3)=1;
+    state.human_homes.at(0)[2]=1;state.human_homes.at(1)[2]=1;state.human_homes.at(2)[2]=2;
+    state.rank=3;state.task_progress.successes=12;state.events_held=7;
+    auto &world=state.scene.world.world;
+    world.facilities.clear();
+    const auto add_facility=[&](std::uint64_t id,int definition) {
+        const auto d=std::find_if(rules.facilities.begin(),rules.facilities.end(),
+                                 [=](const auto &value){return value.id==definition;});
+        check(d!=rules.facilities.end(),"statistics fixture retains original facility definitions");
+        ref::RescueFacility f;
+        f.placement.instance_id={id};f.placement.definition_id=definition;
+        f.kind=d->kind;f.category=d->category;f.detail=d->detail;
+        world.facilities.emplace(id,f);
+    };
+    add_facility(1,35);add_facility(2,18);add_facility(3,25);add_facility(4,28);
+    state.scene.world.facility_order={3,1,2,4,1}; // 原g按出现次数计，不能偷偷唯一化。
+    for(auto &entry:state.catalog)if(entry.first.first>0)entry.second.status=0;
+    for(const auto key:{std::pair<int,int>{1,0},{2,45},{2,0},{3,26},{3,29}}) {
+        state.catalog.at(key).status=1;state.catalog.at(key).flags=0;
+    }
+    state.catalog.at({1,1}).status=2;
+    state.catalog.at({2,0}).inventory=999;
+    const auto before=startup_world_state_digest(state);
+    const auto result=startup_town_information(state);
+    check(result && result->rank==3 && result->adventurers==2 && result->residents==2 &&
+              result->facilities==4 && result->completed_tasks==12 && result->activities_held==7 &&
+              result->known_equipment==std::array<int,4>{1,1,1,2},
+          "raw34 counts p1, D2==1, ordered kind3/9 occurrences and known equipment without38 flag filter");
+    check(startup_world_state_digest(state)==before,
+          "town projection keeps NEW, records, random, medals, pages and outputs unchanged");
+    const std::array<const char*,11> refusals{{
+        "town: missing rules", "town: missing human presence", "town: missing home definition",
+        "town: extra human identity", "town: retired facility reference", "town: missing facility definition",
+        "town: inconsistent facility kind", "town: missing equipment progress", "town: negative rank",
+        "town: negative task total", "town: negative activity total"}};
+    for(int fault=0;fault<static_cast<int>(refusals.size());++fault) {
+        auto bad=state;
+        if(fault==0)bad.rules=nullptr;
+        if(fault==1)bad.human_presence.erase(1);
+        if(fault==2)bad.human_homes.erase(0);
+        if(fault==3)bad.human_presence.emplace(99,1);
+        if(fault==4)bad.scene.world.facility_order.push_back(999);
+        if(fault==5)bad.scene.world.world.facilities.at(1).placement.definition_id=999;
+        if(fault==6)bad.scene.world.world.facilities.at(1).kind=12;
+        if(fault==7)bad.catalog.erase({2,45});
+        if(fault==8)bad.rank=-1;
+        if(fault==9)bad.task_progress.successes=-1;
+        if(fault==10)bad.events_held=-1;
+        const auto unchanged=startup_world_state_digest(bad);
+        check(!startup_town_information(bad) && startup_world_state_digest(bad)==unchanged,
+              refusals[static_cast<std::size_t>(fault)]);
+    }
+    auto duplicated=rules;
+    duplicated.humans.push_back(duplicated.humans.front());
+    state.rules=&duplicated;
+    check(!startup_town_information(state),"duplicate human definitions cannot inflate source counts");
 }
 void catalogue() {
     const auto &rules = startup_world_rules();
@@ -156,6 +228,7 @@ int main() {
         catalogue();
         reset();
         first();
+        town_information();
         std::cout << "startup world projection checks: " << checks << '\n';
         return 0;
     } catch (const std::exception &e) {

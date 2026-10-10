@@ -123,4 +123,54 @@ std::optional<StartupEquipmentInformation> startup_equipment_information(
     }
     return result;
 }
+
+std::optional<StartupTownInformation> startup_town_information(const StartupWorldRuntimeState &s) {
+    if(!s.rules || s.rank<0 || s.task_progress.successes<0 || s.events_held<0)return {};
+    StartupTownInformation result;
+    result.rank=s.rank;
+    result.completed_tasks=s.task_progress.successes;
+    result.activities_held=s.events_held;
+    const auto increment=[](int &value) {
+        if(value==std::numeric_limits<int>::max())return false;
+        ++value;return true;
+    };
+    // 只核本查询的源身份，不把scripts的人物临时投影状态当第二份权威presence。
+    std::set<int> humans;
+    for(const auto &definition:s.rules->humans) {
+        const int id=definition.identity;
+        const auto present=s.human_presence.find(id);
+        const auto home=s.human_homes.find(id);
+        if(id<0 || !humans.insert(id).second || present==s.human_presence.end() ||
+           home==s.human_homes.end())return {};
+        if(present->second==1 && !increment(result.adventurers))return {};
+        if(home->second[2]==1 && !increment(result.residents))return {};
+    }
+    if(humans.size()!=s.human_presence.size() || humans.size()!=s.human_homes.size())return {};
+    std::map<int,int> kinds;
+    for(const auto &definition:s.rules->facilities)
+        if(definition.id<0 || !kinds.emplace(definition.id,definition.kind).second)return {};
+    const auto &instances=s.scene.world.world.facilities;
+    std::set<std::uint64_t> referenced;
+    for(const auto id:s.scene.world.facility_order) {
+        const auto found=instances.find(id);
+        if(id==0 || found==instances.end() || found->second.placement.instance_id.value!=id)return {};
+        const auto kind=kinds.find(found->second.placement.definition_id);
+        if(kind==kinds.end() || found->second.kind!=kind->second)return {};
+        referenced.insert(id); // 仅核孤立实例；重复原g引用仍按每次出现计数。
+        if((kind->second==3 || kind->second==9) && !increment(result.facilities))return {};
+    }
+    if(referenced.size()!=instances.size())return {};
+    std::set<std::pair<int,int>> equipment;
+    for(const auto &definition:s.rules->equipment) {
+        const auto key=std::make_pair(definition.shop.kind,definition.shop.id);
+        const auto current=s.catalog.find(key);
+        if(key.first<1 || key.first>3 || key.second<0 || !equipment.insert(key).second ||
+           current==s.catalog.end())return {};
+        const int slot=key.first==1?0:key.first==3?3:definition.shop.type==2?1:2;
+        if(current->second.status==1 && !increment(result.known_equipment[static_cast<std::size_t>(slot)]))return {};
+    }
+    for(const auto &entry:s.catalog)
+        if(entry.first.first!=0 && !equipment.count(entry.first))return {};
+    return result;
+}
 } // namespace dungeon_village_prototype

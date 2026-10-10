@@ -163,6 +163,30 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 37/38维护已分开纯目录投影与Owner关闭／退休动作，typed载荷交给既有codec和恢复校验；后继Steam完整局部绘制见下节。34／35／39消费者及完整文字／物理输入继续独立收口。前置资源复用与本批新增Steam两图分别登记；列表上界来自真实定义数，页退休释放ID绑定，不把合法世界历史增长当泄漏。维护验收见[当前验证](../VERIFICATION.md)，不以局部计划替代原窗口认证。
 
+### 34统计投影与35贡献计算的维护前置
+
+`startup_town_information`已复用当前唯一Owner给出34的原显示口径。固定APK与Steam raw34绘制分支（VA0x10335781–0x10336227）一致：p1冒险者、D[2]恰1的居民、原g内定义类型3／9的每次出现、任务成功v及活动F；右四种类只数装备p1，不用38的flag过滤，不额外增加住宅数或分母。村名仍属于应用配置，不在世界统计中复制。缺定义／名单引用或定义kind镜像失配显式拒绝，查询不修补Owner、不请求Steam平台成就。固定tenant表没有类型9行，测试仅用明确私有规则变体覆盖该原分支，不宣称发现了自然可建“类型9公园”。
+
+35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。原整数均值／方差、double平方根转float及取整口径、显式溢出拒绝全部保留。35未来初始化可在唯一Owner内消费这份候选，不能直接调用授勋初始化。
+
+现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就、34→39、35贡献写回／NEW／60来源及追踪仍需后继Owner接线，不能据查询存在开放假入口。
+
+### 35→60追踪的Steam后继合同
+
+2026-10-10续核固定Steam2.56的具名方法体。35确认先在自身定义目录内清`BaseData.new_ +0x18`（VA `0x10323BBF`），随后构造60，写所选`CharacterData`至`charaData_ +0x104`，在`0x10323C27`写`charaInfoChase +0x134=1`后Push。不是先找到场上人物才准许打开详情，也不在此复制一个W。原APK对应详情与追踪链可在`c/n.a(a.e)`（生成Java约3086行）局部交叉；本节Steam地址、字段和方法以DLL／metadata为独立来源。
+
+60初始软标签为`[8,2]`，其后`Init2`在VA `0x10311A02`只对来源值**恰0**改成`[0,2]`。`Update2`先处理确认／调试确认、返回2、转职11，才检查追踪8；在`0x1031E2F6`再次要求来源值**恰1**，才调用追踪helper。来源0不显示左追踪；来源1有正常追踪资格；其它整数不会被此Init覆盖左标签，但也不满足追踪分支，不能实现成“来源非零都可追踪”。这项原分支事实不放宽维护层只接受已确认来源值的载荷校验。[软标签与输入合同](STEAM_HUMAN_INPUT.md)已证翻页不自行重设标签。`AppData.IsPushSoftLabel(8)`的无额外键重载委托key0版本，比较当前左右标签与标签表第8项，再读取对应软键脉冲；标签8不是直接等于某个PC键码或任意“确认”。
+
+`UserData.ProcChaseCommandFromInfoWindow`（RVA `0x2E23B0`）从`AppData.humans_ +0xF0`第0项开始，按名单顺序取`Character2.GetCharacterData()`，比较双方`BaseData.id +0x08`，选**首个同定义活跃W**；没有按人物实例UID／定义ID当同一个键，没有筛HP、倒下状态或重新创建人物。只读`GetCharaInTownFromCharaInfoWindow`（RVA `0x2DC0E0`）使用相同名单／定义匹配，缺实例返回null。名单为空或没有匹配是正常业务分支：追踪helper调用事件137，替换参数为当前定义`GetName()`、整数参数null，返回false；不退详情、不切场景、不改镜头引用。外层60在调用后直接返回已处理true，不把这个false当异常。事件137自己的页面退出后恢复实际父60；这与损坏的名单元素／引用应显式拒绝是不同情况。
+
+找到W后原顺序是：`FormManagerBase.ChangeCurrentForm(AppData.frmGame_,false)`→`GameForm.ChangeState(6)`→`Camera.state_ +0x14=1`→`Camera.subPlayer_ +0x18=W`。`ChangeCurrentForm`（RVA `0x7E4A50`）对已经在栈中的目标先移出，给其余表单设mode4，再把目标加入并恢复；这不是仅退休菜单3／9，也不是只Pop60，因此正常35→60追踪成功后35和60都退出。`ChangeState`（RVA `0x2F6360`）设置相应场景软标签、`state_ +0x84=6`、`stateCnt_ +0x88=0`，清非空`Camera.subTenant_ +0x20`；本分支不因此清人物／怪物全部选择，更不改冒险者移动目标。原追踪helper没有检查`ChangeCurrentForm`的bool返回值，不能将原代码称为事务实现；维护Owner仍须联合校验、候选提交。
+
+镜头移动在后续`GameForm._update`（RVA `0x303430`）的state6分支`0x1030385E–0x10303C77`发生，目标是所选W的`screen_pos_ +0x4C`，不是人物定义坐标。距离经`RateConvert(distance,10,150,5,26,true)`确定本轮速度，近于速度时贴合目标并回state0，否则按方向比例推进镜头；这些量不是墙钟秒数，也不是角色移动速度。后续若`subPlayer_`已为空，则回state0并返回false。追踪过程的确认会先回state0，再压新60，同时绑定W及其当前定义，来源仍设1（`0x10303C49`），不能自动改成来源0或回到旧35。维护现有`actor_camera_input`已具备镜头推进，但缺引用与此确认重开详情仍有明确拒绝边界，不能只因state6存在就声明这条玩家操作已维护。
+
+返回和NEW分开：60软返回2走`FormBase.Pop()`（VA `0x1031FECD`），没有来源0／1分支，也不重清35目录NEW；返回哪一页取实际父栈，来源标志并不是父页ID。35已在进入60前清过目录NEW，因此追踪缺W、退出事件137、从60普通返回以及追踪成功的批量退休均不额外重清。`SubForm.Finish`（RVA `0x1EDFA0`）仅返回true，不是另一个NEW消费者；之后用户在35再次确认或返回，才会再次执行35自身的清除分支。
+
+维护接线可复用`scene.world.world.ai.human_order`的原序稳定实例ID、`battle.actors[id].definition`、`actor_metadata[id].cached_view`、`scripts.selected_actor/selection_mode/selected_facility`及`scene.scene_state/scene_counter`，由唯一Owner协调页栈与事件137。须显式保存来源资格和父子引用，不能把定义ID填入实例选择器，或因无活跃W就删去可读的定义详情。本节只交源合同与现有字段映射，未实现35／60追踪控制器，未执行原窗口或自然经营链。
+
 ## Steam9／36的有限交互交叉
 
 2026-10-10续批。固定Steam2.56 GameAssembly及metadata具名方法体的只读交叉，补本页先前仅有INFO_INCOME声明的边界；不是原窗口动态操作、字体／触摸热区或完整收支皮肤验收。此处页号均为十进制，RVA属于该固定样本。

@@ -140,7 +140,7 @@ export function compileStartupWorld(tables, map, sources, state) {
     need(n(row[5])>=0 && n(row[5])<89, '道具图标超出原分类表C');
     return `{${n(row[0])},{${flag},${opened?1:0},0,false,${n(row[17])},0},`+
       `{${n(row[0])},${n(row[7])},${n(row[20])},${n(row[18])},${opened?1:0},0,false},${n(row[8])},${text(row[1])},`+
-      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])},${array(row.slice(12,16))},${n(row[5])}}`;
+      `${n(row[3])},${n(row[4])},${n(row[6])},${n(row[16])},${n(row[21])},${array(row.slice(9,12))},${n(row[19])},${array(row.slice(12,16))},${n(row[5])},${text(row[23])}}`;
   });
   const excess=[];
   const facilityOutput=facilities.map(row=>{

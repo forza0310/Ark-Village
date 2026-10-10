@@ -1,0 +1,410 @@
+#include "ark/simulation/village/startup_world_information.hpp"
+
+#include <algorithm>
+#include <limits>
+#include <utility>
+
+namespace ark::simulation {
+namespace {
+using State = StartupWorldRuntimeState;
+using Error = StartupWorldRuntimeError;
+using Page = ref::WorldScriptPage;
+constexpr std::array<StartupInformationEntry, 5> entries{{
+    {15, "冒险者", 35, true}, {14, "村情报", 34, false},
+    {16, "收支情报", 36, true}, {17, "持有物品", 37, true},
+    {18, "装备一览", 38, true}}};
+bool information(const Page &page) {
+    return page.kind == ref::WorldScriptPageKind::raw_page &&
+           (page.legacy_page == 9 || (page.legacy_page >= 35 && page.legacy_page <= 38));
+}
+bool directory(const Page &page) {
+    return page.legacy_page == 35 || page.legacy_page == 37 || page.legacy_page == 38;
+}
+const Page *find_page(const State &s, std::uint64_t id) {
+    const Page *found = nullptr;
+    for (const auto &page : s.scripts.pages)
+        if (page.id == id) {
+            if (found || id == 0)
+                return nullptr;
+            found = &page;
+        }
+    return found;
+}
+const Page *top(const State &s) {
+    const auto page = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                                  [](const auto &p) { return p.lifecycle != 4; });
+    return page == s.scripts.pages.rend() ? nullptr : &*page;
+}
+std::optional<std::vector<std::vector<int>>> lists(const State &s, int raw) {
+    std::vector<std::vector<int>> result;
+    if (raw == 35) {
+        if (!s.rules) return {};
+        result.emplace_back();
+        for (const auto &human : s.rules->humans) {
+            const auto presence = s.human_presence.find(human.identity);
+            if (presence == s.human_presence.end()) return {};
+            if (presence->second != 0) result.back().push_back(human.identity);
+        }
+        // 原贡献重算对空群体除零；维护显式拒绝，不生成假人物或空页提示。
+        if (result.front().empty()) return {};
+    } else if (raw == 37) {
+        const auto rows = startup_item_information(s);
+        if (!rows) return {};
+        result.emplace_back();
+        for (const auto &row : *rows) result.back().push_back(row.definition);
+    } else if (raw == 38) {
+        for (int slot = 0; slot < 4; ++slot) {
+            const auto rows = startup_equipment_information(s, slot, StartupInformationEdition::steam_2_56);
+            if (!rows) return {};
+            result.emplace_back();
+            for (const auto &row : rows->rows) result.back().push_back(row.definition);
+        }
+    } else return {};
+    for (const auto &list : result)
+        if (list.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) return {};
+    return result;
+}
+bool payload(const State &s, const Page &page) {
+    const auto phase = s.page_phases.find(page.id);
+    const auto counter = s.page_counters.find(page.id);
+    const int last_phase = page.legacy_page == 9 ? 4 :
+                          (page.legacy_page == 35 || page.legacy_page == 38) ? 3 :
+                          page.legacy_page == 36 ? 1 : 0;
+    if (phase == s.page_phases.end() || counter == s.page_counters.end() ||
+        phase->second < 0 || phase->second > last_phase || counter->second < 0 ||
+        counter->second > (page.legacy_page == 9 ? 3 : std::numeric_limits<int>::max() - 1))
+        return false;
+    const auto data = s.information_page_data.find(page.id);
+    if (!directory(page)) return data == s.information_page_data.end();
+    if (data == s.information_page_data.end()) return false;
+    const auto expected = lists(s, page.legacy_page);
+    // 当前维护页模态；35子页可改属性/职业但不改presence，冻结目录须完整一致。
+    // 这是本消费者的恢复约束，不推断原程序所有异步路径都不会改共享定义。
+    if (!expected || data->second.lists != *expected) return false;
+    const auto &v = data->second;
+    const auto &list = v.lists[page.legacy_page == 35 ? 0U : static_cast<std::size_t>(phase->second)];
+    if (v.selection < 0 || v.first_visible < 0) return false;
+    if (list.empty())
+        return (page.legacy_page == 38 || page.lifecycle == 4) && v.selection == 0 && v.first_visible == 0;
+    const int count = static_cast<int>(list.size()), rows = page.legacy_page == 38 ? 4 : 5;
+    return v.selection < count && v.first_visible <= v.selection &&
+           v.selection - v.first_visible < rows && v.first_visible <= std::max(0, count - rows);
+}
+// 仅投影贡献所需字段；原B1/B2分别由战斗累计与消费账本持有，不能读陈旧日历镜像。
+bool refresh_contributions(State &s) {
+    if (!s.rules) return false;
+    std::vector<ref::WorldAwardHuman> humans;
+    for (const auto &human : s.rules->humans) {
+        const int id = human.identity;
+        const auto calendar = s.human_calendar.find(id);
+        const auto presence = s.human_presence.find(id);
+        const auto battle = s.scene.world.world.ai.battle.humans.find(id);
+        const auto spending = s.scene.world.world.human_spending.find(id);
+        if (calendar == s.human_calendar.end() || presence == s.human_presence.end() ||
+            battle == s.scene.world.world.ai.battle.humans.end() ||
+            spending == s.scene.world.world.human_spending.end()) return false;
+        auto totals = calendar->second.yearly_totals;
+        totals[1] = battle->second.killed_stat1;
+        totals[2] = spending->second;
+        humans.push_back({id, presence->second, totals, calendar->second.contribution});
+    }
+    auto result = ref::prepare_world_human_contributions(std::move(humans));
+    if (!result.candidate) return false;
+    for (const auto &human : *result.candidate)
+        s.human_calendar.find(human.definition)->second.contribution = human.contribution;
+    return true;
+}
+bool clear_human_notices(State &s, const std::vector<int> &ids) {
+    for (const int id : ids) if (!s.scripts.humans.count(id)) return false;
+    for (const int id : ids) s.scripts.humans.find(id)->second.pending_notice = false;
+    return true;
+}
+bool close(State &s, std::uint64_t id) {
+    const auto result = ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
+    return result.candidate && write_startup_world_runtime_scripts(s, result.candidate->state);
+}
+bool event(State &s, int id) {
+    const auto result = ref::prepare_world_script(startup_world_runtime_catalog(),
+                                                  startup_world_runtime_scripts(s), {id, {}, {}});
+    // 本入口仅消费固定事件15的真实提示页；页锁吞掉输出不算完成空目录提示。
+    return result.candidate && !result.candidate->inserted_pages.empty() &&
+           write_startup_world_runtime_scripts(s, result.candidate->state);
+}
+bool push(State &s, int raw) {
+    Page child;
+    child.kind = ref::WorldScriptPageKind::raw_page;
+    child.legacy_page = raw;
+    child.title = raw == 9 ? "情报" : raw == 35 ? "冒险者" : raw == 36 ? "收支情报" : raw == 37 ? "持有物品" : "装备一览";
+    const auto result = ref::prepare_world_script_page(startup_world_runtime_scripts(s), child);
+    return result.candidate && result.candidate->inserted_pages.size() == 1 &&
+           write_startup_world_runtime_scripts(s, result.candidate->state);
+}
+bool menu_class(const Page &page) {
+    if (page.kind != ref::WorldScriptPageKind::raw_page)
+        return false;
+    switch (page.legacy_page) {
+    case 3: case 4: case 5: case 7: case 8: case 9: case 10: case 20:
+        return true; // 原b/g.e()；36/37/38均不在菜单类内。
+    default:
+        return false;
+    }
+}
+void scroll(StartupInformationPageData &data, int rows) {
+    if (data.first_visible > data.selection) data.first_visible = data.selection;
+    if (data.selection - data.first_visible >= rows) data.first_visible = data.selection - rows + 1;
+}
+} // namespace
+
+bool valid_startup_world_information_page(const State &s, std::uint64_t id) {
+    const auto *page = find_page(s, id);
+    if (!page || !information(*page) || page->lifecycle < 0 || page->lifecycle > 4)
+        return false;
+    const bool no_payload = !s.page_phases.count(id) && !s.page_counters.count(id) &&
+                            !s.information_page_data.count(id);
+    if (page->lifecycle == 0)
+        return no_payload;
+    if (page->lifecycle == 4 && no_payload)
+        return true; // 允许框架清载荷后的退休对象，不让其再次初始化。
+    return payload(s, *page);
+}
+
+bool initialize_startup_world_information_pages(State &s) {
+    if (s.scene.framework_paused)
+        return true;
+    // 先检查所有页，避免一个坏父页导致前面的新页留下半份初始化。
+    std::vector<std::uint64_t> pending;
+    for (const auto &page : s.scripts.pages) {
+        if (information(page) && !valid_startup_world_information_page(s, page.id))
+            return false;
+        if (information(page) && page.lifecycle == 0) pending.push_back(page.id);
+    }
+    for (const auto &entry : s.information_page_data) {
+        const auto *page = find_page(s, entry.first);
+        if (!page || !information(*page) || !directory(*page)) return false;
+    }
+    if (pending.empty()) return true;
+    auto next = s;
+    const auto executing = next.scripts.executing_page;
+    for (const auto id : pending) {
+        const auto *page = find_page(next, id);
+        if (!page || page->lifecycle != 0) return false;
+        const int raw = page->legacy_page;
+        bool empty_items = false;
+        if (raw == 35 && !refresh_contributions(next)) return false;
+        if (directory(*page)) {
+            auto frozen = lists(next, raw);
+            if (!frozen) return false;
+            empty_items = raw == 37 && frozen->front().empty();
+            next.information_page_data.emplace(id, StartupInformationPageData{std::move(*frozen), 0, 0});
+        }
+        next.page_phases.emplace(id, 0);
+        next.page_counters.emplace(id, 0);
+        for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 1;
+        next.scripts.executing_page = id;
+        // 事件可压新页并使vector重分配；后续只用ID，不能再引用旧page。
+        if (empty_items && (!event(next, 15) || !close(next, id))) return false;
+        if (!valid_startup_world_information_page(next, id)) return false;
+    }
+    next.scripts.executing_page = executing;
+    s = std::move(next);
+    return true;
+}
+
+Error open_startup_world_information_menu(State &s) {
+    const auto *parent = top(s);
+    if (!s.rules || s.scene.framework_paused || !parent || parent->lifecycle != 2 ||
+        !((parent->kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) ||
+          (parent->kind == ref::WorldScriptPageKind::raw_page && parent->legacy_page == 3)))
+        return Error::invalid_page;
+    const auto id = parent->id;
+    auto next = s;
+    next.scripts.executing_page = id;
+    for (auto &page : next.scripts.pages)
+        if (page.id == id)
+            page.lifecycle = 3;
+    if (!push(next, 9))
+        return Error::script_failed;
+    next.scripts.executing_page.reset();
+    s = std::move(next);
+    return Error::none;
+}
+
+Error input_startup_world_information_page(State &s, std::uint64_t id,
+                                          const StartupInformationInput &input) {
+    const auto *page = top(s);
+    if (!s.rules || s.scene.framework_paused || !page || page->id != id ||
+        page->lifecycle != 2 || !information(*page))
+        return Error::invalid_page;
+    if (!valid_startup_world_information_page(s, id))
+        return Error::missing_source;
+    const int raw = page->legacy_page;
+    const bool keys = input.up || input.down || input.left || input.right ||
+                      input.confirm || input.cancel;
+    if (input.select_row) {
+        if (keys || *input.select_row < 0 || raw == 36) return Error::invalid_page;
+        if (raw == 9) {
+            if (*input.select_row > 4) return Error::invalid_page;
+        } else {
+            const auto &data = s.information_page_data.find(id)->second;
+            const auto phase = s.page_phases.find(id)->second;
+            if (static_cast<std::size_t>(*input.select_row) >= data.lists[raw == 35 ? 0U : static_cast<std::size_t>(phase)].size())
+                return Error::invalid_page;
+        }
+    }
+    if (raw == 36 && (input.up || input.down))
+        return Error::invalid_page;
+    if (raw == 37 && (input.left || input.right))
+        return Error::invalid_page;
+    if (!keys && !input.select_row)
+        return Error::none;
+    auto next = s;
+    next.scripts.executing_page = id;
+    auto phase = next.page_phases.find(id);
+    auto counter = next.page_counters.find(id);
+    if (raw == 9) {
+        if (input.select_row)
+            phase->second = *input.select_row;
+        else if (input.up)
+            phase->second = (phase->second + 4) % 5;
+        else if (input.down)
+            phase->second = (phase->second + 1) % 5;
+        else if (input.confirm || input.right) {
+            if (!entries[static_cast<std::size_t>(phase->second)].implemented)
+                return Error::invalid_page;
+            counter->second = 3;
+            // 先压真实目标，后逆序退休菜单；37空目录由后续Init处理。
+            if (!push(next, entries[static_cast<std::size_t>(phase->second)].target_raw))
+                return Error::script_failed;
+            std::vector<std::uint64_t> retiring;
+            for (auto p = next.scripts.pages.rbegin(); p != next.scripts.pages.rend(); ++p)
+                if (p->lifecycle != 4 && menu_class(*p))
+                    retiring.push_back(p->id);
+            for (const auto closing : retiring)
+                if (!close(next, closing))
+                    return Error::script_failed;
+        } else if (input.cancel || input.left) {
+            if (!close(next, id))
+                return Error::script_failed;
+        }
+    } else if (raw == 36) {
+        // 原36左右独立：同轮双向回原页，随后仍可确认/返回关闭。
+        if (input.left)
+            phase->second = (phase->second + 1) % 2;
+        if (input.right)
+            phase->second = (phase->second + 1) % 2;
+        if ((input.confirm || input.cancel) && !close(next, id))
+            return Error::script_failed;
+    } else if (raw == 35) {
+        auto &data = next.information_page_data.find(id)->second;
+        const auto &humans = data.lists.front();
+        const int count = static_cast<int>(humans.size());
+        if (input.select_row) data.selection = *input.select_row;
+        else {
+            if (input.up) data.selection = data.selection == 0 ? count - 1 : data.selection - 1;
+            if (input.down) data.selection = data.selection == count - 1 ? 0 : data.selection + 1;
+        }
+        scroll(data, 5);
+        // 35先上下/滚动、再独立左右；翻页不会重置同一人物目录的选择。
+        if (input.left) phase->second = (phase->second + 3) % 4;
+        if (input.right) phase->second = (phase->second + 1) % 4;
+        if (input.confirm || input.cancel) {
+            if (!clear_human_notices(next, humans)) return Error::missing_source;
+            if (input.confirm) {
+                if (!append_startup_world_human_detail_page(next, humans[data.selection], 1))
+                    return Error::script_failed;
+            } else if (!close(next, id)) return Error::script_failed;
+        }
+    } else {
+        auto &data = next.information_page_data.find(id)->second;
+        if (raw == 38) {
+            const int before = phase->second;
+            if (input.left) phase->second = (phase->second + 3) % 4;
+            if (input.right) phase->second = (phase->second + 1) % 4;
+            if (before != phase->second) data.selection = data.first_visible = 0;
+        }
+        const int count = static_cast<int>(data.lists[static_cast<std::size_t>(phase->second)].size());
+        if (input.select_row) data.selection = *input.select_row;
+        else if (count > 0) {
+            // 上下独立，不能套raw9的互斥优先级；合法空38跳过取模。
+            if (input.up) data.selection = data.selection == 0 ? count - 1 : data.selection - 1;
+            if (input.down) data.selection = data.selection == count - 1 ? 0 : data.selection + 1;
+        }
+        scroll(data, raw == 37 ? 5 : 4);
+        if (input.confirm || input.cancel) {
+            if (raw == 37 && !clear_startup_world_item_notices(next)) return Error::missing_source;
+            if (!close(next, id)) return Error::script_failed;
+        }
+    }
+    if (keys || input.select_row)
+        next.scripts.redraw_requested = true;
+    next.scripts.executing_page.reset();
+    s = std::move(next);
+    return Error::none;
+}
+
+std::optional<State> update_startup_world_information_page(const State &s, std::uint64_t id) {
+    const auto *page = top(s);
+    if (!page || page->id != id || page->lifecycle != 2 || !information(*page) ||
+        !valid_startup_world_information_page(s, id))
+        return {};
+    if (s.scene.framework_paused)
+        return s;
+    auto next = s;
+    auto counter = next.page_counters.find(id);
+    if (page->legacy_page == 9) {
+        counter->second = std::min(counter->second + 2, 3); // 公共update加1，h再加1封顶3。
+        next.scripts.redraw_requested = true; // 原h()每轮调用表单管理器h()请求重画。
+    } else
+        counter->second = counter->second == std::numeric_limits<int>::max() - 1
+                              ? 0 : counter->second + 1;
+    return next;
+}
+
+std::optional<StartupInformationPageView>
+inspect_startup_world_information_page(const State &s, std::uint64_t id) {
+    const auto *page = find_page(s, id);
+    if (!page || !information(*page) || page->lifecycle < 1 || page->lifecycle > 3 ||
+        !valid_startup_world_information_page(s, id))
+        return {};
+    const auto phase = s.page_phases.find(id);
+    const auto counter = s.page_counters.find(id);
+    StartupInformationPageView view{id, page->legacy_page, phase->second, counter->second,
+                                    entries, {}, 0, 0, {}, {}, {}};
+    if (page->legacy_page == 36) {
+        view.income = startup_income_information(s.monthly_cash, s.scene.calendar.month,
+                                                 phase->second);
+        if (!view.income)
+            return {};
+    } else if (directory(*page)) {
+        const auto &data = s.information_page_data.find(id)->second;
+        view.selection = data.selection;
+        view.first_visible = data.first_visible;
+        if (page->legacy_page == 35) {
+            view.humans.emplace();
+            for (const int human : data.lists.front()) {
+                const auto details = startup_world_human_details(s, human);
+                const auto presence = s.human_presence.find(human);
+                const auto calendar = s.human_calendar.find(human);
+                const auto script = s.scripts.humans.find(human);
+                const auto battle = s.scene.world.world.ai.battle.humans.find(human);
+                const auto spending = s.scene.world.world.human_spending.find(human);
+                if (!details || presence == s.human_presence.end() || calendar == s.human_calendar.end() ||
+                    script == s.scripts.humans.end() || battle == s.scene.world.world.ai.battle.humans.end() ||
+                    spending == s.scene.world.world.human_spending.end()) return {};
+                view.humans->push_back({*details, presence->second, calendar->second.contribution,
+                                       battle->second.killed_stat1, spending->second,
+                                       script->second.pending_notice});
+            }
+        } else if (page->legacy_page == 37) {
+            view.items = startup_item_information(s);
+            if (!view.items) return {};
+        } else {
+            view.equipment = startup_equipment_information(s, phase->second,
+                                                            StartupInformationEdition::steam_2_56);
+            if (!view.equipment) return {};
+        }
+        // payload已核冻结列表与当前资格/原序完整相等；此处仅取当前数值和文字。
+    }
+    return view;
+}
+} // namespace ark::simulation

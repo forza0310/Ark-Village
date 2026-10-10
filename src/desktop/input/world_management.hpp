@@ -2,20 +2,21 @@
 
 // Desktop selection/preview and FIFO wiring for management pages. Business state stays in
 // WorldSession; this controller owns no map, ledger, actor roster or simulation clock.
-#include "ark/app/session/world_session.hpp"
-#include "../ui/village/world_award.hpp"
+#include "../scene/world_build_placement.hpp"
+#include "../scene/world_editing.hpp"
+#include "../ui/actors/world_human.hpp"
+#include "../ui/common/world_panels.hpp"
 #include "../ui/facilities/world_building.hpp"
-#include "../ui/village/world_commerce.hpp"
 #include "../ui/facilities/world_facility_catalog.hpp"
 #include "../ui/facilities/world_facility_items.hpp"
-#include "../ui/actors/world_human.hpp"
+#include "../ui/information/world_information.hpp"
+#include "../ui/village/world_award.hpp"
+#include "../ui/village/world_commerce.hpp"
 #include "../ui/village/world_magic_pot.hpp"
-#include "../ui/common/world_panels.hpp"
 #include "../ui/village/world_progression.hpp"
 #include "../ui/village/world_tax.hpp"
 #include "../ui/village/world_village_activity.hpp"
-#include "../scene/world_build_placement.hpp"
-#include "../scene/world_editing.hpp"
+#include "ark/app/session/world_session.hpp"
 
 namespace ark::desktop {
 class WorldManagement {

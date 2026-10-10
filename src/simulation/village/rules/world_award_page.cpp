@@ -43,23 +43,25 @@ int mapped(std::int32_t value, int mean, float sigma) {
                                 : 25.0f);
 }
 } // namespace
-WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageState &state) {
-    if (!valid(state))
-        return {WorldAwardError::invalid_owner, {}};
-    WorldAwardCandidate candidate{state, {}};
-    if (state.initialized)
-        return {WorldAwardError::none, std::move(candidate)};
-    if (state.medal_count == std::numeric_limits<int>::max())
-        return {WorldAwardError::overflow, {}};
-    auto &next = candidate.state;
-    ++next.medal_count;
-    std::array<std::int64_t, 2> totals{};
+WorldContributionResult
+prepare_world_human_contributions(std::vector<WorldAwardHuman> humans) {
+    std::set<int> definitions;
     int count{};
-    for (const auto &human : next.humans) {
+    for (const auto &human : humans) {
+        if (human.definition < 0 || !definitions.insert(human.definition).second)
+            return {WorldAwardError::invalid_owner, {}};
+        if (human.presence != 0) {
+            if (count == std::numeric_limits<int>::max())
+                return {WorldAwardError::overflow, {}};
+            ++count;
+        }
+    }
+    if (count == 0)
+        return {WorldAwardError::invalid_owner, {}};
+    std::array<std::int64_t, 2> totals{};
+    for (const auto &human : humans) {
         if (human.presence == 0)
             continue;
-        ++count;
-        next.ranked_definitions.push_back(human.definition);
         for (std::size_t i = 0; i < totals.size(); ++i) {
             totals[i] += human.yearly_totals[i + 1];
             if (!fits(totals[i]))
@@ -69,7 +71,7 @@ WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageSta
     std::array<int, 2> means{static_cast<int>(totals[0] / count),
                              static_cast<int>(totals[1] / count)};
     std::array<std::int64_t, 2> squares{};
-    for (const auto &human : next.humans) {
+    for (const auto &human : humans) {
         if (human.presence == 0)
             continue;
         for (std::size_t i = 0; i < squares.size(); ++i) {
@@ -85,7 +87,7 @@ WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageSta
     const std::array<float, 2> sigma{
         static_cast<float>(std::sqrt(static_cast<double>(squares[0] / count))),
         static_cast<float>(std::sqrt(static_cast<double>(squares[1] / count)))};
-    for (auto &human : next.humans) {
+    for (auto &human : humans) {
         if (human.presence == 0)
             continue;
         const int earned = mapped(human.yearly_totals[1], means[0], sigma[0]);
@@ -94,6 +96,25 @@ WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageSta
             static_cast<int>(static_cast<float>(spent) * 0.5f + static_cast<float>(earned) * 0.5f),
             0, 100);
     }
+    return {WorldAwardError::none, std::move(humans)};
+}
+WorldAwardResult prepare_world_award_page_initialization(const WorldAwardPageState &state) {
+    if (!valid(state))
+        return {WorldAwardError::invalid_owner, {}};
+    WorldAwardCandidate candidate{state, {}};
+    if (state.initialized)
+        return {WorldAwardError::none, std::move(candidate)};
+    if (state.medal_count == std::numeric_limits<int>::max())
+        return {WorldAwardError::overflow, {}};
+    auto contributions = prepare_world_human_contributions(std::move(candidate.state.humans));
+    if (!contributions.candidate)
+        return {contributions.error, {}};
+    auto &next = candidate.state;
+    next.humans = std::move(*contributions.candidate);
+    ++next.medal_count;
+    for (const auto &human : next.humans)
+        if (human.presence != 0)
+            next.ranked_definitions.push_back(human.definition);
     auto contribution = [&](int definition) {
         return std::find_if(next.humans.begin(), next.humans.end(),
                             [&](const auto &human) { return human.definition == definition; })

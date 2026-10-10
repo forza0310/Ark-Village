@@ -32,30 +32,33 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (page != "world-title" && page != "world-title-slots" &&
                 page != "world-title-actions" && page != "world-title-records" &&
                 page != "world-title-cash" && page != "world-title-configure" &&
-                page != "world-title-configure-female" &&
-                page != "world-title-text" && page != "world-title-clear" &&
-                page != "world-active" && page != "world-month" && page != "world-rank" &&
-                page != "world-combat" && page != "world-reward" && page != "world-exp" &&
-                page != "world-rest" && page != "world-rest-hp" && page != "world-news" &&
-                page != "world-break" && page != "world-award" && page != "world-task-team" &&
-                page != "world-task-result" && page != "world-task-recruitment" &&
-                page != "world-menu" && page != "world-building" && page != "world-build-preview" &&
+                page != "world-title-configure-female" && page != "world-title-text" &&
+                page != "world-title-clear" && page != "world-active" && page != "world-month" &&
+                page != "world-rank" && page != "world-combat" && page != "world-reward" &&
+                page != "world-exp" && page != "world-rest" && page != "world-rest-hp" &&
+                page != "world-news" && page != "world-break" && page != "world-award" &&
+                page != "world-task-team" && page != "world-task-result" &&
+                page != "world-task-recruitment" && page != "world-menu" &&
+                page != "world-building" && page != "world-build-preview" &&
                 page != "world-build-preview-hidden" && page != "world-build-rotated" &&
                 page != "world-details" && page != "world-facility-bonuses" &&
-                page != "world-built" && page != "world-award-granted" &&
-                page != "world-task-added" && page != "world-level-up" &&
-                page != "world-month-income" && page != "world-month-defeats" &&
-                page != "world-task-victory" && page != "world-task-popularity" &&
-                page != "world-human" && page != "world-human-attributes" &&
-                page != "world-human-equipment" && page != "world-human-spells" &&
-                page != "world-professions" && page != "world-profession-preview" &&
-                page != "world-profession-cancel" && page != "world-profession-change" &&
-                page != "world-profession-complete" && page != "world-gift-cancel" &&
-                page != "world-gifts" && page != "world-gifts-armor" &&
-                page != "world-gifts-shield" && page != "world-gifts-accessory" &&
-                page != "world-gift-confirm" && page != "world-equipment-info" &&
-                page != "world-gift-result" && page != "world-equipment-change" &&
-                page != "world-tax" && page != "world-tax-collected" && page != "world-village" &&
+                page != "world-information" && page != "world-information-adventurers" &&
+                page != "world-information-income" && page != "world-information-items" &&
+                page != "world-information-equipment" && page != "world-built" &&
+                page != "world-award-granted" && page != "world-task-added" &&
+                page != "world-level-up" && page != "world-month-income" &&
+                page != "world-month-defeats" && page != "world-task-victory" &&
+                page != "world-task-popularity" && page != "world-human" &&
+                page != "world-human-attributes" && page != "world-human-equipment" &&
+                page != "world-human-spells" && page != "world-professions" &&
+                page != "world-profession-preview" && page != "world-profession-cancel" &&
+                page != "world-profession-change" && page != "world-profession-complete" &&
+                page != "world-gift-cancel" && page != "world-gifts" &&
+                page != "world-gifts-armor" && page != "world-gifts-shield" &&
+                page != "world-gifts-accessory" && page != "world-gift-confirm" &&
+                page != "world-equipment-info" && page != "world-gift-result" &&
+                page != "world-equipment-change" && page != "world-tax" &&
+                page != "world-tax-collected" && page != "world-village" &&
                 page != "world-village-start" && page != "world-village-results" &&
                 page != "world-expansion-catalogue" && page != "world-expansion-start" &&
                 page != "world-expansion-completed" && page != "world-reward95" &&

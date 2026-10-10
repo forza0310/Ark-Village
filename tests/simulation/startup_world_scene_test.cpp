@@ -65,6 +65,13 @@ void camera() {
     StartupWorldRuntimeState s;
     s.scene.scene_state = 6;
     s.scripts.selected_actor = 1;
+    // The maintained tracking consumer requires an actual human in the roster, not
+    // metadata alone. Keep the original strict-distance and update-count oracle below.
+    ref::BattleActorRecord tracked;
+    tracked.id = ref::CharacterId{1};
+    tracked.kind = ref::ActorKind::human;
+    s.scene.world.world.ai.battle.actors.emplace(tracked.id, tracked);
+    s.scene.world.world.ai.human_order.push_back(tracked.id);
     s.actor_metadata.emplace(ref::CharacterId{1}, StartupWorldActorMetadata{0, 0, 0, {0, 0}});
     s.camera = {5, 0};
     auto next = adapter.scene_other(s, {ref::WorldSceneStage::actor_camera_input, -1, {}});

@@ -51,7 +51,8 @@ assert.equal(recipes.length,40);++checks;
 assert.deepEqual(recipes[1],['1','烤肉','0','5','60','100','20','30','0','2']);++checks;
 assert.ok(output.includes('{1,"烤肉",0,5,60,{100,20,30,0},2}'));++checks;
 assert.ok(output.includes('{39,"木灵大树",4,74,45,{50,50,50,10},2}'));++checks;
-assert.ok(output.includes(',400,{0,2,0,0},5}'));++checks; // 原道具0列12..15及列5图标5；不是定义ID0。
+assert.ok(output.includes(',400,{0,2,0,0},5,"培育的很好的马铃薯"}'));++checks; // APK道具0：保留四元素/图标oracle，并验证第23列原说明。
+assert.ok(output.includes(',84,"恢复魔法可以学会"}'));++checks; // APK道具35原文；不是名称或按效果重新生成的文案。
 for(const change of [
   r=>r.pop(), r=>r[0].pop(), r=>r[1][0]='0', r=>r[1][1]='',
   r=>r[1][2]='5', r=>r[1][2]='-1', r=>r[1][3]='36', r=>r[1][3]='-1',

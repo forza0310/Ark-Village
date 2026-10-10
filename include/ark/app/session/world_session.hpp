@@ -3,16 +3,17 @@
 // The desktop reads immutable publications; only the worker commits the canonical world.
 #include "ark/app/save/world_save_files.hpp"
 #include "ark/app/session/world_system.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
-#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
-#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <chrono>
 #include <memory>
@@ -66,7 +67,10 @@ enum class WorldCommandKind {
     cancel_page,
     set_paused,
     set_speed,
-    set_view
+    set_view,
+    open_menu_information,
+    information_input,
+    confirm_tracking
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -128,6 +132,7 @@ struct WorldCommand {
     simulation::StartupVillageActivityAction village_activity_action{
         simulation::StartupVillageActivityAction::confirm};
     simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
+    simulation::StartupInformationInput information_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -201,6 +206,13 @@ class WorldSession {
                                        simulation::StartupVillageActivityAction action,
                                        int selection = 0);
     std::uint64_t open_menu_commerce();
+    // Typed input preserves the information page's source direction/confirmation priority.
+    std::uint64_t open_menu_information();
+    std::uint64_t act_information(std::uint64_t page,
+                                  const simulation::StartupInformationInput &input);
+    // One observed scene6 confirmation edge; the source reopens source1 details.
+    std::uint64_t confirm_tracking(std::uint64_t scene_page,
+                                   simulation::rules::CharacterId expected_actor);
     // Bind the observed stage/start/instance so a delayed click cannot edit a new selection.
     std::uint64_t confirm_edit(const WorldState &observed, simulation::rules::Position target,
                                simulation::rules::FacilityOrientation orientation);

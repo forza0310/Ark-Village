@@ -1,10 +1,11 @@
 #include "world_management_inspection.hpp"
-#include "ark/simulation/village/rules/world_village_activity.hpp"
+#include "../scene/world_build_placement.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
-#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/village/rules/world_village_activity.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
-#include "../scene/world_build_placement.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -14,6 +15,23 @@ using State = simulation::StartupWorldRuntimeState;
 using Error = simulation::StartupWorldRuntimeError;
 using Kind = simulation::rules::WorldScriptPageKind;
 namespace rules = simulation::rules;
+int information_target(const std::string &mode) {
+    if (mode == "world-information")
+        return 9;
+    if (mode == "world-information-adventurers")
+        return 35;
+    if (mode == "world-information-income")
+        return 36;
+    if (mode == "world-information-items")
+        return 37;
+    if (mode == "world-information-equipment")
+        return 38;
+    return 0;
+}
+bool information_available(const State &state, int target) {
+    return target != 35 || std::any_of(state.human_presence.begin(), state.human_presence.end(),
+                                       [](const auto &entry) { return entry.second != 0; });
+}
 bool build_preview_mode(const std::string &mode) {
     return mode == "world-build-preview" || mode == "world-build-preview-hidden" ||
            mode == "world-build-rotated";
@@ -343,10 +361,13 @@ bool management_inspection_mode(const std::string &mode) {
     return mode == "world-building" || mode == "world-details" ||
            mode == "world-facility-bonuses" || mode == "world-built" || build_preview_mode(mode) ||
            mode == "world-award-granted" || village_mode(mode) || mode == "world-reward95" ||
-           road_mode(mode) || mode == "world-demolished" || home_mode(mode) || expansion_mode(mode);
+           road_mode(mode) || mode == "world-demolished" || home_mode(mode) ||
+           expansion_mode(mode) || information_target(mode) != 0;
 }
 void begin_management_inspection(State &state, const std::string &mode,
                                  WorldManagementInspection &inspection) {
+    if (const int target = information_target(mode); target && information_available(state, target))
+        require(simulation::open_startup_world_information_menu(state), "open information menu");
     if (expansion_mode(mode)) {
         // Explicit source-callsite window fixture, not a natural unlock. Only eligibility,
         // points and the quarter slot are prepared; source51/52/53 own all map changes,
@@ -402,6 +423,9 @@ bool management_inspection_ready(const State &state, const std::string &mode,
     const auto *page = top(state);
     if (!page)
         return false;
+    if (const int target = information_target(mode))
+        return page->legacy_page == target && page->lifecycle == 2 &&
+               simulation::inspect_startup_world_information_page(state, page->id).has_value();
     if (expansion_mode(mode)) {
         if (mode == "world-expansion-completed")
             return inspection.activity_completed && page->kind == Kind::scene &&
@@ -486,6 +510,36 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
     if (!current)
         throw std::runtime_error("Management inspection lost the source page stack");
     const auto page = *current; // Source commands may replace/reallocate the stack.
+    if (const int target = information_target(mode)) {
+        if (page.kind == Kind::scene) {
+            // Wait for real first arrivals instead of manufacturing a directory entry.
+            if (state.scene.scene_state == 0 && information_available(state, target))
+                require(simulation::open_startup_world_information_menu(state),
+                        "open information after natural arrival");
+            return true;
+        }
+        if (page.legacy_page == 9) {
+            const auto view = simulation::inspect_startup_world_information_page(state, page.id);
+            if (!view || page.lifecycle != 2 || target == 9)
+                return true;
+            const auto entry =
+                std::find_if(view->entries.begin(), view->entries.end(),
+                             [&](const auto &row) { return row.target_raw == target; });
+            if (entry == view->entries.end() || !entry->implemented)
+                throw std::runtime_error("Information inspection target is not delivered");
+            const int row = static_cast<int>(entry - view->entries.begin());
+            simulation::StartupInformationInput input;
+            if (view->selection_or_period != row)
+                input.select_row = row;
+            else
+                input.confirm = true;
+            require(simulation::input_startup_world_information_page(state, page.id, input),
+                    "select information child");
+            return true;
+        }
+        if (page.legacy_page == target)
+            return true; // The normal update initializes the page and its transition.
+    }
     if (home_mode(mode))
         return home_rebuild_input(state, mode, inspection, page);
     if (expansion_mode(mode)) {

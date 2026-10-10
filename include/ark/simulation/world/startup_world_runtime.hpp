@@ -27,6 +27,7 @@ enum class StartupCommerceAction;
 enum class StartupFacilityCatalogAction;
 enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
+struct StartupInformationInput;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -51,6 +52,16 @@ struct StartupWorldFocusActor {
         return value;
     }();
     StartupWorldActorMetadata metadata{0, 3, 0, {}}; // n.J建W后仅f()写ad3。
+};
+// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID。
+struct StartupInformationPageData {
+    std::vector<std::vector<int>> lists;
+    int selection{}, first_visible{};
+};
+// raw60来源资格与可选实际W绑定；来源不是父页ID，也不以定义ID冒充实例ID。
+struct StartupHumanDetailContext {
+    int chase_mode{}; // 已核来源0普通详情、1可追踪详情。
+    std::optional<ref::CharacterId> actor;
 };
 // 唯一持久世界：所有route/finish/report/script值都是本次调用的投影，不保存第二份world。
 struct StartupWorldRuntimeState {
@@ -115,6 +126,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::uint64_t> task_abort_questions; // raw1→实际raw4父页。
     std::map<std::uint64_t, int> task_abort_answers;             // raw4.bU.K，返回父页才消费。
     std::set<std::uint64_t> human_pages_initialized;             // raw60原f()仅首次重算人物缓存。
+    std::map<std::uint64_t, StartupHumanDetailContext> human_detail_contexts;
     std::map<int, std::vector<int>> human_profession_changes; // 原e.R，每职业转入次数，不是M等级。
     std::map<std::uint64_t, std::vector<int>> human_page_catalogs; // 61/62的X。
     std::map<std::uint64_t, std::array<std::vector<int>, 5>>
@@ -188,13 +200,14 @@ struct StartupWorldRuntimeState {
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
+    std::map<std::uint64_t, StartupInformationPageData> information_page_data;
     std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X快照。
     std::map<std::uint64_t, ref::TaskRecruitmentAnimation>
         task_recruitment_pages;                                 // raw24 X/Y/ap/aq/ar/as。
     std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。
     std::map<std::uint64_t, int> task_page_predictions;         // raw28 f126f，只展示不影响胜负。
     std::map<std::uint64_t, bool> task_page_acceleration;       // raw28 g。
-    std::map<std::uint64_t, int> page_secondary_counters;       // 页24 f125e，与逻辑tick分开。
+    std::map<std::uint64_t, int> page_secondary_counters;       // 页24/81 f125e，与逻辑tick分开。
     std::array<std::array<std::int32_t, 9>, 8>
         task_display_table{};                         // 全局n.bd演出表，不创建战斗实体。
     std::set<std::uint64_t> task_display_initialized; // raw99/100按页初始化，不重复E抽取。
@@ -275,6 +288,8 @@ struct StartupWorldRuntimeState {
     int calendar_advance{27}; // d/a.R的固定新局输入。
 };
 
+// 在唯一候选中清整类普通道具NEW；先核验items/catalog镜像，失败不留下部分清理。
+bool clear_startup_world_item_notices(StartupWorldRuntimeState &candidate);
 ref::WorldActorRoutesState startup_world_runtime_routes(const StartupWorldRuntimeState &state);
 const ref::WorldScriptCatalog &startup_world_runtime_catalog();
 bool write_startup_world_runtime_routes(StartupWorldRuntimeState &state,
@@ -388,6 +403,9 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError open_task_control_menu();
     StartupWorldRuntimeError open_village_activities();
     StartupWorldRuntimeError open_commerce();
+    StartupWorldRuntimeError open_information_menu();
+    StartupWorldRuntimeError input_information_page(std::uint64_t page,
+                                                     const StartupInformationInput &input);
     StartupWorldRuntimeError open_magic_pot(StartupMagicPotEntry entry);
     StartupWorldRuntimeError act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
                                                 int selection = 0);

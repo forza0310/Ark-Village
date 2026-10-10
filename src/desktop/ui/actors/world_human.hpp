@@ -2,9 +2,9 @@
 
 // Human management presents the current Owner. Source-owned selection and page readiness
 // travel with snapshots; desktop input emits one action and never initializes a page.
+#include "../common/layout.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "../common/layout.hpp"
 #include <optional>
 #include <string>
 #include <vector>
@@ -21,9 +21,10 @@ struct WorldHumanRow {
 struct WorldHumanView {
     int raw{}, phase{}, selection{}, counter{}, human{}, portrait_image{};
     std::uint64_t page{};
-    bool initialized{}, can_confirm{}, can_cancel{};
+    bool initialized{}, can_confirm{}, can_cancel{}, can_track{};
     std::string title, name, profession, target_profession, message;
     simulation::StartupHumanDetails details;
+    std::optional<simulation::StartupHumanPresentationLive> live;
     std::array<std::string, 4> equipment_names;
     std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};
     std::array<std::array<int, 4>, 4> equipment_values{};
@@ -34,7 +35,8 @@ struct WorldHumanView {
     int gift_score{}, mastery_attribute{}, mastery_value{};
 };
 struct WorldHumanLayout {
-    Rectangle panel, body, rows, cancel, confirm, previous, next, professions, gifts, inspect;
+    Rectangle panel, body, rows, cancel, confirm, previous, next, professions, gifts, inspect,
+        track;
     std::array<Rectangle, 4> tabs;
     std::array<Rectangle, 5> gift_tabs;
     float row_height{};
@@ -55,6 +57,7 @@ WorldHumanView world_human_view(const simulation::StartupWorldRuntimeState &stat
                                 const simulation::rules::WorldScriptPage &page);
 WorldHumanLayout world_human_layout(Extent extent);
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
+Rectangle world_tracking_confirm(Extent extent);
 int world_human_first_row(const WorldHumanView &view);
 std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
                                                   const WorldHumanLayout &layout,

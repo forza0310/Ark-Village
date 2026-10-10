@@ -5035,6 +5035,36 @@
       "purpose": "Steam facility upgrade81 maintained background request; original published event image",
       "width": 86,
       "height": 70
+    },
+    {
+      "file": "steam_common/menuRT01.png",
+      "source": "research/dungeon_village_1/assets/steam-common/menuRT01.png",
+      "sha256": "25048d8cab92323d436545fd838caeee238bbfe75294597cf7cb8605d22ee5dd",
+      "bytes": 469,
+      "source_revision": "c19ab6a",
+      "purpose": "Steam information inventory/equipment page skin; edition-specific image retained separately from APK pixels",
+      "width": 57,
+      "height": 10
+    },
+    {
+      "file": "steam_common/icon_objRoots.png",
+      "source": "research/dungeon_village_1/assets/steam-common/icon_objRoots.png",
+      "sha256": "d666e7eede385ca71a40bad01582b02e34e9c5dfd8576c7e849a017e616e5d3b",
+      "bytes": 1432,
+      "source_revision": "c19ab6a",
+      "purpose": "Steam information inventory/equipment page skin; edition-specific image retained separately from APK pixels",
+      "width": 148,
+      "height": 36
+    },
+    {
+      "file": "steam_common/icon_result00.png",
+      "source": "research/dungeon_village_1/assets/steam-common/icon_result00.png",
+      "sha256": "ff7262f525db266e26d4b73419f0476c4a3783bd55f725ff9de12143d9f7bd00",
+      "bytes": 1000,
+      "source_revision": "b99c6db",
+      "purpose": "Steam information adventurer directory contribution skin; edition-specific image retained separately from APK pixels",
+      "width": 63,
+      "height": 48
     }
   ]
 }

@@ -1,18 +1,88 @@
 // Menu input owns desktop navigation only; freeze/atomic task opening belongs to session tests.
-#include "../support/checks.hpp"
-#include "../support/world_fixture.hpp"
+#include "../../src/desktop/application/world_title.hpp"
+#include "../../src/desktop/input/world_save_menu.hpp"
+#include "../../src/desktop/ui/information/world_information.hpp"
 #include "../../src/desktop/ui/system/world_menu.hpp"
 #include "../../src/desktop/ui/system/world_startup.hpp"
-#include "../../src/desktop/input/world_save_menu.hpp"
-#include "../../src/desktop/application/world_title.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 #include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 
 namespace ark::test {
+namespace {
+void information_ui(Checks &check) {
+    namespace ui = desktop::ui;
+    namespace sim = simulation;
+    auto s = initial_world();
+    s.scripts.pages.back().lifecycle = 2; // Ready-scene boundary for this input projection fixture.
+    check(sim::open_startup_world_information_menu(s) == sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_information_pages(s),
+          "Information projection starts with the actual source menu catalogue");
+    auto &page = s.scripts.pages.back();
+    page.lifecycle = 2;
+    const auto v = ui::world_information_view(s, page);
+    check(v.interactive && v.source && v.source->entries[0].target_raw == 35 &&
+              v.source->entries[0].implemented && !v.source->entries[1].implemented &&
+              v.source->entries[4].target_raw == 38,
+          "Information keeps all five original rows and disables unshipped town information");
+    const auto l = ui::world_information_layout({240, 256}, 9);
+    ui::WorldInformationInput input;
+    input.click = Vector2{l.menu_rows[1].x + 5, l.menu_rows[1].y + 5};
+    check(!ui::world_information_input(v, l, input, false),
+          "Disabled town row has no hidden input");
+    input.click = Vector2{l.menu_rows[0].x + 5, l.menu_rows[0].y + 5};
+    input.confirm = true;
+    auto action = ui::world_information_input(v, l, input, false);
+    check(
+        action && action->select_row == 0 && !action->confirm &&
+            !ui::world_information_input(v, l, input, true),
+        "Mouse selection is one source action, never mixed with confirmation or a pending command");
+    input = {};
+    input.up = input.down = input.right = input.confirm = true;
+    action = ui::world_information_input(v, l, input, false);
+    check(action && action->up && action->down && action->right && action->confirm,
+          "Keyboard masks preserve original precedence for the Owner to consume");
+    for (const int raw : {35, 36, 37, 38}) {
+        // These snapshots isolate desktop input mapping; source suites own list contents/NEW.
+        auto directory = v;
+        directory.raw = directory.source->raw = raw;
+        directory.source->selection = 1;
+        directory.source->first_visible = 0;
+        directory.source->items = std::vector<sim::StartupItemInformation>(6);
+        const auto boxes = ui::world_information_layout({240, 256}, raw);
+        input = {};
+        input.confirm = true;
+        action = ui::world_information_input(directory, boxes, input, false);
+        check(action && action->confirm && !action->select_row,
+              "Information confirmation stays a source information action, never gift/use/equip");
+        input = {};
+        input.cancel = true;
+        check(ui::world_information_input(directory, boxes, input, false)->cancel,
+              "All information pages return through their own Owner consumer");
+        if (raw != 36) {
+            input = {};
+            input.click = Vector2{boxes.rows.x + 10, boxes.rows.y + (raw == 38 ? 24.F : 19.F) + 2};
+            action = ui::world_information_input(directory, boxes, input, false);
+            check(action && action->select_row == 1 && !action->confirm,
+                  "Visible row hit maps to one absolute frozen-list selection");
+        }
+        directory.interactive = false;
+        check(!ui::world_information_input(directory, boxes, input, false),
+              "Suspended or initializing information pages cannot accept input");
+        check(boxes.back.y >= 0 && boxes.back.y + boxes.back.height <= 256 &&
+                  boxes.confirm.x >= 0 && boxes.rows.x + boxes.rows.width <= 240,
+              "Information rows and independent footer controls fit the minimum window");
+    }
+    check(s.scene.random.draws() == initial_world().scene.random.draws(),
+          "Read-only information UI does not advance the random stream");
+}
+} // namespace
 void world_menu() {
     Checks check{"world_menu"};
+    information_ui(check);
     namespace ui = desktop::ui;
     using Intent = ui::WorldMenuIntent;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
@@ -216,6 +286,7 @@ void world_menu() {
             check(selected == row && (row == 0   ? action == Intent::build
                                       : row == 1 ? action == Intent::tasks
                                       : row == 2 ? action == Intent::village
+                                      : row == 3 ? action == Intent::information
                                       : row == 4 ? action == Intent::system
                                                  : !action.has_value()),
                   "Original five row hit areas select faithfully; construction, adventure and "

@@ -12,6 +12,51 @@ void check(bool condition, const char *message) {
     if (!condition)
         throw std::runtime_error(message);
 }
+void contribution_entry() {
+    // 35无授勋页或奖章状态；定义序故意不按ID排列，p0含不应参与计算的大值。
+    const std::vector<WorldAwardHuman> input{
+        {4, 2, {7, 20, 20}, 93},
+        {9, 0, {8, std::numeric_limits<int>::max(), std::numeric_limits<int>::max()}, 92},
+        {2, 1, {9, 0, 0}, 91}};
+    const auto result = prepare_world_human_contributions(input);
+    check(result.error == WorldAwardError::none && result.candidate &&
+              result.candidate->size() == input.size(),
+          "standalone contribution needs no award page and returns the complete roster");
+    for (std::size_t i = 0; i < input.size(); ++i) {
+        const auto &human = result.candidate->at(i);
+        check(human.definition == input[i].definition && human.presence == input[i].presence &&
+                  human.yearly_totals == input[i].yearly_totals,
+              "standalone contribution preserves original order, identity and accounting inputs");
+    }
+    check(result.candidate->at(0).contribution == 75 &&
+              result.candidate->at(1).contribution == 92 &&
+              result.candidate->at(2).contribution == 25 && input[0].contribution == 93 &&
+              input[1].contribution == 92 && input[2].contribution == 91,
+          "standalone contribution updates only participating candidates, never p0 or input");
+    struct Case {
+        std::vector<WorldAwardHuman> humans;
+        WorldAwardError error;
+    };
+    for (const auto &c : {
+             Case{{}, WorldAwardError::invalid_owner},
+             Case{{{0, 0, {}, 92}}, WorldAwardError::invalid_owner},
+             Case{{{4, 1, {}, 93}, {4, 0, {}, 92}}, WorldAwardError::invalid_owner},
+             Case{{{4, 1, {}, 93}, {-1, 0, {}, 92}}, WorldAwardError::invalid_owner},
+             Case{{{4, 1, {0, std::numeric_limits<int>::max(), 0}, 93},
+                   {2, 1, {0, 1, 0}, 91}},
+                  WorldAwardError::overflow}}) {
+        const auto before = c.humans;
+        const auto rejected = prepare_world_human_contributions(c.humans);
+        check(rejected.error == c.error && !rejected.candidate,
+              "standalone invalid identity, empty population or overflow has no partial candidate");
+        for (std::size_t i = 0; i < before.size(); ++i)
+            check(c.humans[i].definition == before[i].definition &&
+                      c.humans[i].presence == before[i].presence &&
+                      c.humans[i].yearly_totals == before[i].yearly_totals &&
+                      c.humans[i].contribution == before[i].contribution,
+                  "standalone rejection leaves every input field unchanged");
+    }
+}
 void rules() {
     WorldAwardPageState original;
     original.humans = {{0, 1, {0, 0, 0}, 91}, {1, 0, {0, 900, 900}, 92}, {2, 2, {0, 20, 20}, 93}};
@@ -165,6 +210,7 @@ void displays() {
 } // namespace
 int main() {
     try {
+        contribution_entry();
         rules();
         displays();
         std::cout << checks << " award page checks passed\n";

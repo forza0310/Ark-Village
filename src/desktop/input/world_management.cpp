@@ -76,6 +76,26 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
     const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_information_page(page)) {
+        const auto view = ui::world_information_view(state, page);
+        const auto layout = ui::world_information_layout(extent, page.legacy_page);
+        const ui::WorldInformationInput input{
+            point,
+            up,
+            down,
+            IsKeyPressed(KEY_LEFT),
+            IsKeyPressed(KEY_RIGHT),
+            enter,
+            escape,
+            hit(mouse, page.legacy_page == 9
+                           ? Rectangle{layout.menu_rows[0].x, layout.menu_rows[0].y, 89, 140}
+                           : layout.rows)
+                ? -static_cast<int>(GetMouseWheelMove() * 2)
+                : 0};
+        if (const auto action = ui::world_information_input(view, layout, input, blocked))
+            queued(session.act_information(page.id, *action));
+        return true;
+    }
     if (ui::world_magic_pot_page(page)) {
         const auto view = ui::world_magic_pot_view(state, page);
         const auto layout = ui::world_commerce_layout(extent);
@@ -270,7 +290,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_magic_pot_page(page)) {
+    if (ui::world_information_page(page)) {
+        ui::draw_world_information(state, ui::world_information_view(state, page),
+                                   ui::world_information_layout(extent, page.legacy_page), skin,
+                                   enabled, feedback_);
+    } else if (ui::world_magic_pot_page(page)) {
         ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
                                  ui::world_commerce_layout(extent), skin, enabled, feedback_);
     } else if (ui::world_facility_catalog_page(page)) {
@@ -337,6 +361,18 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
     }
     if (blocked || pending())
         return placing || editing;
+    if (state.scene.scene_state == 6) {
+        if (state.scripts.selected_actor &&
+            (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
+             (click && hit(mouse, ui::world_tracking_confirm(extent))))) {
+            const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                           [](const auto &p) { return p.lifecycle != 4; });
+            if (page != state.scripts.pages.rend())
+                queued(session.confirm_tracking(
+                    page->id, simulation::rules::CharacterId{*state.scripts.selected_actor}));
+        }
+        return true; // Right-click and map dragging never invent a chase cancellation.
+    }
     if (editing) {
         const auto intent = world_edit_input(
             world_edit_view(state, anchor_), extent,
@@ -489,6 +525,10 @@ void WorldManagement::inspect_edit(const State &state, simulation::rules::Positi
 void WorldManagement::draw_placement(const State &state, const WorldCameraView &view, Extent extent,
                                      std::optional<Vector2> mouse, float zoom, const ui::Skin &skin,
                                      bool enabled) const {
+    if (state.scene.scene_state == 6) {
+        skin.button(ui::world_tracking_confirm(extent), "人物详情", enabled && !pending());
+        return;
+    }
     if (state.scene.scene_state != 1)
         return;
     auto edit = world_edit_view(state, anchor_);

@@ -1,6 +1,6 @@
 #include "ark/app/session/world_session.hpp"
-#include "ark/app/timing/original_loop.hpp"
 #include "ark/app/session/world_report.hpp"
+#include "ark/app/timing/original_loop.hpp"
 #include "world_commands.hpp"
 
 #include <algorithm>
@@ -22,14 +22,15 @@ const simulation::rules::WorldScriptPage *top_page(const WorldState &state) {
     return found == state.scripts.pages.rend() ? nullptr : &*found;
 }
 std::string update_error(const simulation::StartupWorldRuntimeResult &result) {
-    auto message = "World update rejected: runtime=" + std::to_string(static_cast<int>(result.error)) +
-           " scene=" + std::to_string(static_cast<int>(result.scene_error)) +
-           " world=" + std::to_string(static_cast<int>(result.world_error));
+    auto message =
+        "World update rejected: runtime=" + std::to_string(static_cast<int>(result.error)) +
+        " scene=" + std::to_string(static_cast<int>(result.scene_error)) +
+        " world=" + std::to_string(static_cast<int>(result.world_error));
     if (result.failure) {
         const auto &f = *result.failure;
         message += " stage=" + std::to_string(static_cast<int>(f.stage)) +
-                   " id=" + (f.id ? std::to_string(*f.id) : "none") +
-                   " layer=" + f.layer + " detail=" + std::to_string(f.error);
+                   " id=" + (f.id ? std::to_string(*f.id) : "none") + " layer=" + f.layer +
+                   " detail=" + std::to_string(f.error);
     }
     return message;
 }
@@ -187,6 +188,7 @@ class WorldSession::Impl {
                    command.kind == WorldCommandKind::open_menu_build ||
                    command.kind == WorldCommandKind::open_menu_village_activities ||
                    command.kind == WorldCommandKind::open_menu_commerce ||
+                   command.kind == WorldCommandKind::open_menu_information ||
                    command.kind == WorldCommandKind::open_menu_magic_pot) {
             if (!menu_open) {
                 result.runtime_error = RuntimeError::invalid_page;
@@ -352,7 +354,8 @@ class WorldSession::Impl {
         if (kind == WorldCommandKind::acknowledge_page && current_page &&
             (current_page->legacy_page == 76 || current_page->legacy_page == 86 ||
              current_page->legacy_page == 72 || current_page->legacy_page == 79 ||
-             current_page->legacy_page == 82 ||
+             current_page->legacy_page == 82 || current_page->legacy_page == 9 ||
+             (current_page->legacy_page >= 35 && current_page->legacy_page <= 38) ||
              (current_page->legacy_page >= 41 && current_page->legacy_page <= 47)))
             return apply_decision(current,
                                   input); // Dedicated/automatic pages reject generic late clicks.

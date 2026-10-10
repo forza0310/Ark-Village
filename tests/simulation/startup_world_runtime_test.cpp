@@ -195,6 +195,108 @@ void successful_result_retains_independent_owner() {
               committed.scene.world.world.map.cells.size() == 576,
           "returned candidate remains independently mutable without changing committed owner");
 }
+// 真实高星脚本到奖励页的桥接，不重复通用95的拒绝／回滚矩阵。
+void delayed_rank_rewards() {
+    for (const auto scenario : {std::array<int, 4>{44, 3, 3, 63}, {45, 30, 11, 26}}) {
+        StartupSession startup;
+        StartupWorldRuntimeSession runtime(startup.state(), ref::WorldRandomStream::from_java_seed(1));
+        auto s = runtime.state();
+        const auto count = s.scene.world.facility_order.size();
+        const auto funds = s.scene.world.world.ai.accounting.funds();
+        const auto &catalog = startup_world_runtime_catalog();
+        const auto locked = [&] {
+            return scenario[2] == 3 ? s.facility_presence.at(scenario[3]) == 0
+                                    : s.scripts.activities.at(scenario[3]).status == 0;
+        };
+        check(locked(), "real school or second expansion reward begins locked");
+        const auto started = ref::prepare_world_script(
+            catalog, startup_world_runtime_scripts(s), {scenario[0], {}, {}});
+        check(started.candidate && write_startup_world_runtime_scripts(s, started.candidate->state) &&
+                  s.scripts.continuations.size() == 1 &&
+                  s.scripts.continuations.front().remaining_updates == scenario[1],
+              "actual rank event retains its distinct3 or30 logical-update delay");
+        for (int tick = 1; tick <= scenario[1]; ++tick) {
+            const auto continued = ref::prepare_world_script_continuations(
+                catalog, startup_world_runtime_scripts(s), true);
+            check(continued.candidate && write_startup_world_runtime_scripts(s, continued.candidate->state) &&
+                      locked(),
+                  "school and expansion stay locked throughout script continuation, including reward creation");
+            if (tick < scenario[1])
+                check(std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &p) {
+                          return p.legacy_page == 95;
+                      }),
+                      "actual delayed script does not insert95 before its original threshold");
+        }
+        const auto reward = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(), [&](const auto &p) {
+            return p.legacy_page == 95 && p.legacy_r == scenario[2] && p.legacy_s == scenario[3];
+        });
+        check(reward != s.scripts.pages.end() && s.scripts.continuations.empty(),
+              "actual44 or45 creates correct95 kind and original definition identity");
+        const auto id = reward->id;
+        const auto initialized = prepare_startup_world_runtime(s);
+        check(initialized.candidate.has_value(), "actual rank reward enters common page framework");
+        s = *initialized.candidate;
+        s.sound_requests.clear(); // 消费本轮奖励音；不是业务前置或额外逻辑更新。
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  s.page_counters.at(id) == 40 && locked(),
+              "real delayed reward early confirmation reaches40 while definition remains locked");
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none && !locked(),
+              "actual95 full40 confirmation commits original school or expansion entitlement");
+        if (scenario[2] == 3)
+            check(s.facility_presence.at(63) == 2 && s.facility_free_builds.at(63) == 1 &&
+                      s.facility_unlock_notices.at(63),
+                  "school reward opens definition with one H entitlement, never constructs it");
+        else
+            check(s.scripts.activities.at(26).pending_notice && s.activity_counts.at(26) == 0 &&
+                      s.events_held == 0 && s.fence_level == 0,
+                  "second expansion reward only opens activity, never holds it or expands map");
+        check(s.scene.world.facility_order.size() == count &&
+                  s.scene.world.world.ai.accounting.funds() == funds && s.scene.random.draws() == 0,
+              "upstream rank rewards create no world entity, payment or random draw");
+    }
+}
+// 事件调用点夹具：五星资格由晋级套件负责，这里只验真实46续体与Owner投影。
+void final_rank_profession_unlocks() {
+    StartupSession startup;
+    StartupWorldRuntimeSession runtime(startup.state(), ref::WorldRandomStream::from_java_seed(1));
+    auto s = runtime.state();
+    const auto before = s;
+    const auto &catalog = startup_world_runtime_catalog();
+    check(s.scripts.professions.at(21).status == 0 && s.scripts.professions.at(22).status == 0,
+          "original new-world final professions start locked");
+    const auto started = ref::prepare_world_script(catalog, startup_world_runtime_scripts(s),
+                                                   {46, {}, {}});
+    check(started.candidate && write_startup_world_runtime_scripts(s, started.candidate->state) &&
+              s.scripts.continuations.size() == 1 &&
+              s.scripts.continuations.front().remaining_updates == 30,
+          "actual event46 starts its original30 logical update continuation");
+    for (int tick = 1; tick <= 30; ++tick) {
+        const auto continued = ref::prepare_world_script_continuations(
+            catalog, startup_world_runtime_scripts(s), true);
+        check(continued.candidate && write_startup_world_runtime_scripts(s, continued.candidate->state),
+              "actual event46 continuation synchronizes through script Owner writer");
+        for (int job : {21, 22})
+            check(s.scripts.professions.at(job).status == (tick == 30 ? 1 : 0) &&
+                      s.scene.world.world.ai.professions.at(job).unlocked == (tick == 30),
+                  "both final professions unlock at30, with no stale AI projection or early state");
+    }
+    check(s.scripts.continuations.empty() && s.scripts.professions.at(21).pending_notice &&
+              s.scripts.professions.at(22).pending_notice &&
+              std::any_of(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &p) {
+                  return p.legacy_page == 95 && p.legacy_r == 4 && p.legacy_s == 22;
+              }),
+          "opcode31 already unlocks shared professions while actual95 announcement remains unconfirmed");
+    check(s.human_presence == before.human_presence &&
+              s.scene.world.world.ai.battle.actors.size() == before.scene.world.world.ai.battle.actors.size() &&
+              s.scene.world.world.ai.growth.size() == before.scene.world.world.ai.growth.size() &&
+              s.scene.world.world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
+              s.scene.random.draws() == before.scene.random.draws(),
+          "profession unlock does not fabricate arrival, cash or random draws");
+    for (const auto &[id, growth] : s.scene.world.world.ai.growth)
+        check(growth.definition.current_profession ==
+                  before.scene.world.world.ai.growth.at(id).definition.current_profession,
+              "opening final professions does not automatically change any human profession");
+}
 } // namespace
 int main() {
     try {
@@ -203,6 +305,8 @@ int main() {
         pause_and_private_failure();
         synchronous_event_seen();
         successful_result_retains_independent_owner();
+        delayed_rank_rewards();
+        final_rank_profession_unlocks();
         std::cout << "startup_world_runtime: " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception &error) {

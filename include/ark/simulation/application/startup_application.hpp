@@ -117,11 +117,17 @@ class StartupApplication {
     std::string open_village_activities();
     std::string act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action,
                                           int selection = 0);
+    // 魔法壶沿Session两种原入口与41–47载荷提交，不另建应用层壶状态。
+    std::string open_magic_pot(StartupMagicPotEntry entry);
+    std::string act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
+                                   int selection = 0);
     std::string open_task_menu();
     std::string open_task_control_menu();
     StartupApplicationTaskResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                                int selection = 0);
     std::string open_human_page(int human);
+    std::string open_information_menu();
+    std::string input_information_page(std::uint64_t page, const StartupInformationInput &input);
     std::string act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0);
     std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);
     std::string cancel_page(std::uint64_t page);

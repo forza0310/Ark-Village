@@ -1,8 +1,8 @@
 // Layout contracts keep active text and confirmation inside the viewport at every supported size.
-#include "../support/checks.hpp"
-#include "../support/world_fixture.hpp"
 #include "../../src/desktop/ui/common/world_panels.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -19,12 +19,13 @@ void world_panels() {
     using namespace ark::desktop;
     using namespace ark::simulation::rules;
     check(ui::world_hud_buttons_visible(nullptr), "Main scene retains mouse pause/menu controls");
-    for (const int raw : {21, 74, 75, 60}) {
+    for (const int raw : {9, 21, 35, 36, 37, 38, 74, 75, 60}) {
         WorldScriptPage page;
         page.kind = WorldScriptPageKind::raw_page;
         page.legacy_page = raw;
-        check(ui::world_hud_buttons_visible(&page) == (raw != 21 && raw != 74),
-              "Catalogue and facility detail hide both HUD drawing and pointer admission");
+        check(
+            ui::world_hud_buttons_visible(&page) == (raw == 75 || raw == 60),
+            "Source information and building footers hide both HUD drawing and pointer admission");
     }
     struct DateCase {
         int year, month, week, units;

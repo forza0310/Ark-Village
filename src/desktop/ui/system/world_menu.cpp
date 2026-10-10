@@ -1,7 +1,7 @@
 // PAGES/S001 proves five rows and their artwork. Open/close/freeze is desktop adaptation.
 #include "world_menu.hpp"
-#include "ark/presentation/script_text.hpp"
 #include "../common/skin.hpp"
+#include "ark/presentation/script_text.hpp"
 #include <algorithm>
 
 namespace ark::desktop::ui {
@@ -38,6 +38,8 @@ std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opene
         return selected == 0 ? WorldMenuIntent::build : WorldMenuIntent::tasks;
     if (activate && selected == 2 && can_manage)
         return WorldMenuIntent::village;
+    if (activate && selected == 3 && can_manage)
+        return WorldMenuIntent::information;
     if (activate && selected == 4)
         return WorldMenuIntent::system;
     return std::nullopt;
@@ -53,7 +55,7 @@ void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool 
         skin.sprites.draw("wnd_menuIcon.seb", icons[i], {row.x + 4, row.y + 5}, WHITE,
                           Sprites::Binding::common);
         skin.text.draw(names[i], row.x + 26, row.y + 8,
-                       ((i < 3 && can_manage) || (i == 4 && can_system))
+                       ((i < 4 && can_manage) || (i == 4 && can_system))
                            ? (selected == i ? ink : WHITE)
                            : Color{182, 174, 147, 255});
         if (i == selected)

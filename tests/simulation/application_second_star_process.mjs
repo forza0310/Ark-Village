@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {applicationReplayIdentity,applicationReplayProcesses,publishApplicationReplayPair} from './application_process_support.mjs';
+import {applicationReplayProcesses,publishApplicationReplayPair} from './application_process_support.mjs';
+import {progressionApplicationIdentity} from './application_progression_evidence.mjs';
 
 const controller='application-active-progression-v2',oldController='application-active-progression-v1';
 const qualification='active_second_star_management_tail',oldQualification='active_application_management_tail';
@@ -14,10 +15,7 @@ const known={snapshot:'16a1b8c48993a96c536e4fc5868c7408355776c3b4631145047a2b470
     terminal:'2ee7ad91c02e2d701fa3ac3b9578930b3c9b9b348c4099621e10958e74f0524b',
     origin_driver:'a76854cfd6a0ad2349648ac89da42b783a3972e7fb1980b1a0be564e0794f0d6',
     origin_files:'ece8dc44f2f2b910d2a9e8498e5f5ead021c676ac61418a7c59b90ebeff6028d',
-    candidate:'e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218',
-    dataset:'c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690',
-    world_schema:'7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440',
-    application_schema:'bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c'};
+    candidate:'e6452b6d5b7ab9d9124ffde656144f1f4780c0a19538eb5f1c07a74b32978218'};
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const need=(ok,why)=>{if(!ok)throw Error(why);};
 const digest=n=>typeof n==='string'&&/^[0-9a-f]{64}$/.test(n);
@@ -37,27 +35,8 @@ async function readBounded(file,maximum){
 
 // 共用容器预检之外补世界4/系统2、保留分区和规范Driver的身份；业务语义仍由C++严格核验。
 function identity(bytes,expectedController){
-    const result=applicationReplayIdentity(bytes,expectedController);
-    for(const key of ['dataset','world_schema','application_schema'])need(result[key]===known[key],'固定来源字段身份不符 '+key);
-    let at=20;
-    for(let i=0;i<3;++i){const size=bytes.readUInt32LE(at);at+=4+size;}
-    const count=bytes.readUInt32LE(at);at+=4;
-    const sections=new Map();
-    for(let i=0;i<count;++i){
-        const id=bytes.readUInt32LE(at),version=bytes.readUInt32LE(at+4),required=bytes.readUInt32LE(at+8);
-        const length=Number(bytes.readBigUInt64LE(at+12));at+=84;
-        need(id>=1&&((id<=6&&version===1&&required===1)||(id>=1024&&required===0)),'未知必需段或保留分区');
-        sections.set(id,bytes.subarray(at,at+length));at+=length;
-    }
-    const world=sections.get(4),system=sections.get(2),driver=sections.get(5);
-    need(world.length>=84&&world.subarray(0,8).toString()==='AVRSAVE1'&&world.readUInt32LE(8)===1&&
-        world.readUInt32LE(12)===4&&world.readUInt32LE(16)===2&&
-        hash(world.subarray(0,-64))===world.subarray(-64).toString(),'内嵌世界4完整回放身份');
-    need(system.length>=76&&system.subarray(0,8).toString()==='AVRSYS01'&&system.readUInt32LE(8)===2&&
-        hash(system.subarray(0,-64))===system.subarray(-64).toString(),'内嵌系统2身份');
-    need(driver.length>=8&&driver.length<=1024*1024&&driver.subarray(0,8).toString()===
-        (expectedController===controller?'AVACTDR2':'AVACTDR1'),'策略规范Driver身份');
-    return {...result,driver_digest:hash(driver)};
+    need(expectedController===controller||expectedController===oldController,'未知主动来源Controller');
+    return progressionApplicationIdentity(bytes,expectedController,expectedController===controller?'AVACTDR2':'AVACTDR1');
 }
 
 function history(value){

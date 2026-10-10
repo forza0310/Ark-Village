@@ -49,6 +49,15 @@ struct WorldAwardEffect {
     std::optional<int> event_argument;
 };
 enum class WorldAwardError { none, invalid_owner, overflow, unsupported_action };
+struct WorldContributionResult {
+    WorldAwardError error{WorldAwardError::none};
+    std::optional<std::vector<WorldAwardHuman>> candidate;
+};
+// a/e.l、Steam CharacterData.SetContributeParam：35/87共用的纯贡献重算。
+// 保持定义原序、身份和p0贡献；不授勋、不排序。非法群体/溢出无部分候选。
+// 按值接收窄投影，Owner可移入私有候选，避免再次复制；lvalue输入保持不变。
+WorldContributionResult
+prepare_world_human_contributions(std::vector<WorldAwardHuman> humans);
 struct WorldAwardCandidate {
     WorldAwardPageState state;
     std::vector<WorldAwardEffect> effects; // 必须按顺序由Owner消费，失败不能部分提交。

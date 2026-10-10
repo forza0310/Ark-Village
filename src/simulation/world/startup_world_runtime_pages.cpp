@@ -4,6 +4,7 @@
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
@@ -331,6 +332,12 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 9 || (top->legacy_page >= 35 && top->legacy_page <= 38))) {
+        StartupInformationInput input;
+        input.confirm = true;
+        return input_startup_world_information_page(state, id, input);
+    }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page >= 41 && top->legacy_page <= 47)
         return act_startup_world_magic_pot_page(state, id, StartupMagicPotAction::confirm);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
@@ -495,6 +502,13 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
                                        [](const auto &p) { return p.lifecycle != 4; });
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         catalogue->kind == ref::WorldScriptPageKind::raw_page &&
+        (catalogue->legacy_page == 9 || (catalogue->legacy_page >= 35 && catalogue->legacy_page <= 38))) {
+        StartupInformationInput input;
+        input.cancel = true;
+        return input_startup_world_information_page(state, id, input);
+    }
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        catalogue->kind == ref::WorldScriptPageKind::raw_page &&
         catalogue->legacy_page >= 41 && catalogue->legacy_page <= 47)
         return act_startup_world_magic_pot_page(state, id, StartupMagicPotAction::cancel);
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
@@ -615,6 +629,9 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 9 || (top->legacy_page >= 35 && top->legacy_page <= 38)))
+        return update_startup_world_information_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return update_startup_world_runtime_deadline_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 74 &&
@@ -666,15 +683,18 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
         !initialize_rank_celebration(next, top->id))
         return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 81) {
+        // raw81 自己校验并推进双计数；不得先用通用 [] 隐式补齐缺失的主计数。
+        if (!consume_startup_world_facility_upgrade(next, top->id, false))
+            return {};
+        return next;
+    }
     auto &counter = next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
         !consume_rank_celebration(next, top->id, false))
-        return {};
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 81 &&
-        !consume_startup_world_facility_upgrade(next, top->id, false))
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 59) {
         if (!unlock_human_valid(next, *top))

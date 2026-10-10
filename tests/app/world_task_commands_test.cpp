@@ -411,13 +411,18 @@ void task_menu_report_and_departure() {
 // alternate reward calculation or long-running automatic player lives in transport tests.
 app::WorldState managed_page_fixture(int raw, bool ready = true) {
     auto state = initial();
-    state.scripts.pages.front().lifecycle = 3;
-    rules::WorldScriptPage page;
-    page.id = state.scripts.next_page_id++;
-    page.kind = rules::WorldScriptPageKind::raw_page;
-    page.legacy_page = raw;
-    state.scripts.pages.push_back(page);
-    state.page_human_bindings[page.id] = 1;
+    if (raw == 60) {
+        check(sim::open_startup_world_human_page(state, 1) == sim::StartupWorldRuntimeError::none,
+              "Details fixture obtains its source0 context from the real scene entry");
+    } else {
+        state.scripts.pages.front().lifecycle = 3;
+        rules::WorldScriptPage page;
+        page.id = state.scripts.next_page_id++;
+        page.kind = rules::WorldScriptPageKind::raw_page;
+        page.legacy_page = raw;
+        state.scripts.pages.push_back(page);
+        state.page_human_bindings[page.id] = 1;
+    }
     for (int event : {99, 111, 112, 119})
         state.scripts.event_calls[event] = 1;
     if (ready && raw >= 60 && raw <= 73)
@@ -499,6 +504,98 @@ void human_command_transactions() {
           "Visible automatic report permits actor details while preserving source page ownership");
     reporting.stop();
 }
+void human_tracking_commands() {
+    using Action = sim::StartupHumanPageAction;
+    using Outcome = app::WorldCommandOutcome;
+    auto state = initial();
+    // Narrow arrival callsite fixture: the real producer creates all actor
+    // ownership/context fields. This does not certify natural first-visit timing.
+    state.arrival_counter = 1;
+    for (int event : {89, 99, 111, 112, 119, 218})
+        state.scripts.event_calls[event] = 1;
+    for (int n = 0; n < 4 && state.scene.world.world.ai.human_order.empty(); ++n)
+        state = advance(std::move(state));
+    check(!state.scene.world.world.ai.human_order.empty() &&
+              task_top(state).kind == rules::WorldScriptPageKind::scene,
+          "Source arrival provides a real actor and stable information entry");
+    const auto actor = state.scene.world.world.ai.human_order.front();
+    const auto definition = state.scene.world.world.ai.battle.actors.at(actor).definition;
+    check(sim::open_startup_world_information_menu(state) == sim::StartupWorldRuntimeError::none,
+          "Tracking fixture enters the real information menu");
+    state = advance(std::move(state));
+    sim::StartupInformationInput confirm;
+    confirm.confirm = true;
+    check(sim::input_startup_world_information_page(state, task_top(state).id, confirm) ==
+              sim::StartupWorldRuntimeError::none,
+          "Information row0 opens the real adventurer directory");
+    state = advance(std::move(state));
+    const auto directory = task_top(state).id;
+    const auto &list = state.information_page_data.at(directory).lists.front();
+    const auto found = std::find(list.begin(), list.end(), definition);
+    check(found != list.end(), "Actual live definition occurs in source35 catalogue");
+    sim::StartupInformationInput row;
+    row.select_row = static_cast<int>(found - list.begin());
+    check(sim::input_startup_world_information_page(state, directory, row) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::input_startup_world_information_page(state, directory, confirm) ==
+                  sim::StartupWorldRuntimeError::none,
+          "Source35 creates source1 detail context without synthetic tracking flags");
+    state = advance(std::move(state));
+    const auto detail = task_top(state).id;
+    const auto view = sim::inspect_startup_world_human_presentation(state, detail);
+    check(view && view->tracking_available && task_top(state).lifecycle == 2,
+          "Initialized source1 detail advertises actual tracking eligibility");
+    state.scene.framework_paused = true;
+    app::WorldSession session(state);
+    session.set_paused(false);
+    const auto tracking = session.act_human(detail, Action::track);
+    const auto repeated = session.act_human(detail, Action::track);
+    const auto focused = input_frame(session, session.set_paused(true));
+    check(!focused->failed && input_result(*focused, tracking).outcome == Outcome::applied &&
+              input_result(*focused, repeated).outcome == Outcome::rejected &&
+              focused->state->scene.scene_state == 6 &&
+              focused->state->scripts.selected_actor == actor.value &&
+              task_top(*focused->state).kind == rules::WorldScriptPageKind::scene,
+          "Tracking FIFO retires source35/details once and selects the actual scene6 actor");
+    const auto scene = task_top(*focused->state).id;
+    const auto paused = input_frame(session, session.confirm_tracking(scene, actor));
+    check(!paused->failed &&
+              input_result(*paused, paused->last_command_serial).outcome == Outcome::rejected &&
+              !paused->state->confirm_input,
+          "Paused tracking confirmation cannot plant a deferred input edge");
+    session.set_paused(false);
+    const auto wrong_page = session.confirm_tracking(scene + 1000, actor);
+    const auto wrong_actor = session.confirm_tracking(scene, {actor.value + 1000});
+    const auto accepted = session.confirm_tracking(scene, actor);
+    const auto duplicate = session.confirm_tracking(scene, actor);
+    const auto queued = input_frame(session, session.set_paused(true));
+    check(!queued->failed && input_result(*queued, wrong_page).outcome == Outcome::rejected &&
+              input_result(*queued, wrong_actor).outcome == Outcome::rejected &&
+              input_result(*queued, accepted).outcome == Outcome::applied &&
+              input_result(*queued, duplicate).outcome == Outcome::rejected,
+          "Tracking edge binds page/actor and rejects stale or already pending confirmation");
+    session.set_paused(false);
+    const auto reopened = await(session, [](const auto &frame) {
+        const auto &p = task_top(*frame.state);
+        return frame.failed || (p.legacy_page == 60 && p.lifecycle == 2 &&
+                                sim::startup_world_human_page_ready(*frame.state, p.id));
+    });
+    const auto current = task_top(*reopened->state).id;
+    check(
+        !reopened->failed && current != detail && reopened->state->scene.scene_state == 0 &&
+            !reopened->state->confirm_input &&
+            reopened->state->human_detail_contexts.at(current).chase_mode == 1 &&
+            reopened->state->human_detail_contexts.at(current).actor == actor,
+        "Normal source update consumes tracking edge once and reopens actor-bound source1 details");
+    const auto closed = session.act_human(current, Action::cancel);
+    const auto done = input_frame(session, session.set_paused(true));
+    check(!done->failed && input_result(*done, closed).outcome == Outcome::applied &&
+              task_top(*done->state).kind == rules::WorldScriptPageKind::scene &&
+              done->state->scene.scene_state == 0,
+          "Closing reopened source1 details completes tracking without returning to retired35");
+    session.stop();
+}
+
 void human_gift_parent_transaction() {
     using Action = sim::StartupHumanPageAction;
     using Outcome = app::WorldCommandOutcome;

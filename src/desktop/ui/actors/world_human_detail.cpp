@@ -1,7 +1,10 @@
 #include "world_human_detail.hpp"
 #include "../common/skin.hpp"
+#include "ark/simulation/presentation/steam_human_skin.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <filesystem>
+#include <stdexcept>
 
 namespace ark::desktop::ui {
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base) {
@@ -17,6 +20,7 @@ WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base) {
     out.confirm = {p.x + 170, p.y + 179, 50, 18};
     out.professions = {p.x, p.y + 179, 50, 18};
     out.gifts = {p.x + 55, p.y + 179, 50, 18};
+    out.track = {p.x + 110, p.y + 179, 50, 18};
     return out;
 }
 void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l, const Skin &s,
@@ -88,9 +92,48 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
         DrawRectangleLinesEx(box(25, 69, 89, 56), 1, {148, 148, 148, 255});
         if (v.details.resident)
             image("myHomeBack.png", {0, 0, 47, 32}, 27, 82);
-        // Static source walk01 frame0 preview only. The full Steam motion/weapon/HP helper
-        // remains unpublished, so none of these counters is advanced by the desktop renderer.
+        // Static source walk01 preview; HP comes from the explicitly bound presentation W,
+        // never a different instance with the same definition. Drawing advances no counter.
         s.sprites.actor(false, 1, v.portrait_image, 0, point(75, 121));
+        if (v.live && v.live->state != 7) {
+            const auto hp = simulation::steam_human_power_skin(
+                {75, 121}, 1, v.counter,
+                simulation::SteamHumanHpInput{v.live->hp_now, v.live->hp_after, v.live->hp_max});
+            if (!hp)
+                throw std::runtime_error("Invalid bound human HP plan");
+            for (const auto &request : hp->draws) {
+                if (const auto *part = std::get_if<simulation::StartupSkinRect>(&request)) {
+                    const auto &r = part->rect;
+                    const auto &c = part->rgb;
+                    const Color tint{static_cast<unsigned char>(c[0]),
+                                     static_cast<unsigned char>(c[1]),
+                                     static_cast<unsigned char>(c[2]), 255};
+                    if (part->outline)
+                        DrawRectangleLinesEx(
+                            box(float(r[0]), float(r[1]), float(r[2]), float(r[3])), 1, tint);
+                    else
+                        DrawRectangleRec(box(float(r[0]), float(r[1]), float(r[2]), float(r[3])),
+                                         tint);
+                } else if (const auto *part = std::get_if<simulation::SteamHumanImage>(&request)) {
+                    const auto resource = simulation::steam_human_resource(part->asset);
+                    if (!resource)
+                        throw std::runtime_error("Missing human HP image");
+                    if (part->crop) {
+                        const auto &r = *part->crop;
+                        image(std::filesystem::path(resource->published_image)
+                                  .filename()
+                                  .string()
+                                  .c_str(),
+                              {float(r[0]), float(r[1]), float(r[2]), float(r[3])},
+                              float(part->position[0]), float(part->position[1]));
+                    } else
+                        s.sprites.draw(
+                            std::filesystem::path(resource->published_sprite).filename().string(),
+                            part->frame, point(float(part->position[0]), float(part->position[1])),
+                            WHITE, Sprites::Binding::common);
+                }
+            }
+        }
         label("勋章 " + std::to_string(v.details.medals), 82, 70, 31, 8);
         if (v.phase == 0) {
             DrawRectangleRec(box(25, 153, 89, 36), {193, 238, 247, 255});
@@ -166,6 +209,8 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
     s.button(l.cancel, "返回", enabled && v.initialized);
     s.choice(l.professions, "转职", enabled && v.initialized);
     s.choice(l.gifts, "赠送", enabled && v.initialized);
+    if (v.can_track)
+        s.choice(l.track, "追踪", enabled && v.initialized);
     if (!feedback.empty())
         label(feedback, 25, 197, 180, 9, MAROON);
 }

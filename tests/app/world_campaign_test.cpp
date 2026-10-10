@@ -7,8 +7,9 @@
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
-#include "world_campaign_diagnostics.hpp"
 #include "world_campaign_coverage.hpp"
+#include "world_campaign_diagnostics.hpp"
+#include "world_steam_strategy.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -132,6 +133,15 @@ template <> struct Route<PotStrategy> {
     }
 };
 
+template <> struct Route<ark::test::SteamVillageStrategy> {
+    static constexpr const char *magic = "ARK_STEAM_CHECKPOINT_1";
+    static constexpr int minutes = 100;
+    static std::uint64_t budget(bool) { return 360000; }
+    static bool checkpoint(const ark::test::SteamVillageStrategy &strategy, const State &state) {
+        return strategy.checkpoint(state);
+    }
+};
+
 // All routes share the exact production transaction/update/player-save driver. Only
 // player decisions, evidence serialization and business milestones vary by route.
 template <class PlayerStrategy> struct CampaignRun {
@@ -141,26 +151,45 @@ template <class PlayerStrategy> struct CampaignRun {
     PlayerStrategy strategy;
     std::uint64_t rounds{};
     ark::test::CampaignCoverage coverage{};
+    int saved_steam_month{-1};
+    int steam_prefix_month{-1};
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
         const auto result = apply(candidate, input);
+        // Log the exact input before observation assertions: a failing assertion must
+        // not hide the command needed to reproduce the saved pre-command Owner.
+        std::cout << "command=" << int(input.kind) << " page=" << input.page
+                  << " definition=" << input.definition << " selection=" << input.selection
+                  << " facility=" << input.facility << " anchor=" << input.anchor.x << ','
+                  << input.anchor.y << " orientation=" << int(input.orientation)
+                  << " commerce=" << int(input.commerce_action)
+                  << " facility_item=" << int(input.facility_item_action)
+                  << " outcome=" << int(result.outcome) << " error=" << int(result.runtime_error)
+                  << " task_denial=" << int(result.denial)
+                  << " build_denial=" << int(result.build_denial) << std::endl;
         if (result.runtime_error == sim::StartupWorldRuntimeError::none) {
             auto next = system;
             good(app::commit_world_system(directory, state, candidate, next));
             candidate.sound_requests.clear();
-            strategy.observe(state, input, result, candidate);
+            try {
+                strategy.observe(state, input, result, candidate);
+            } catch (...) {
+                // Strategy assertions are not runtime refusals. Preserve the exact pre-command
+                // Owner without forging a runtime error or overwriting a previous capture.
+                try {
+                    ark::test::capture_campaign_observation(directory, state);
+                } catch (const std::exception &error) {
+                    std::cerr << "Command observation capture: " << error.what() << std::endl;
+                }
+                throw;
+            }
             coverage.observe(state, candidate);
             state = std::move(candidate);
             system = std::move(next);
         } else {
             strategy.observe(state, input, result, state); // Rejected candidate is not installed.
         }
-        std::cout << "command=" << int(input.kind) << " page=" << input.page
-                  << " definition=" << input.definition << " selection=" << input.selection
-                  << " outcome=" << int(result.outcome) << " error=" << int(result.runtime_error)
-                  << " task_denial=" << int(result.denial)
-                  << " build_denial=" << int(result.build_denial) << std::endl;
     }
     void step() {
         const int before_month = month(state);
@@ -200,12 +229,36 @@ template <class PlayerStrategy> struct CampaignRun {
             coverage.save(directory, state);
         if (month(state) != before_month)
             std::cout << "MONTH " << strategy.diagnose(state) << std::endl;
+        if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>) {
+            const int current_month = month(state);
+            if (current_month % 3 == 0 && current_month > steam_prefix_month &&
+                current_month != saved_steam_month &&
+                strategy.checkpoint(state) && app::world_save_eligible(state)) {
+                // Keep genuine player checkpoints at stable quarterly boundaries. A later
+                // strategy bug can resume here instead of replaying the entire business prefix.
+                const auto parent = directory / "checkpoints";
+                std::filesystem::create_directories(parent);
+                const auto destination = parent / ("month-" + std::to_string(current_month));
+                require(std::filesystem::create_directory(destination),
+                        "Quarter checkpoint already exists");
+                std::ofstream(destination / "ACTIVE_CAMPAIGN", std::ios::binary)
+                    << "ark-steam-village-v1\n";
+                std::filesystem::copy_file(app::world_system_path(directory),
+                                           app::world_system_path(destination));
+                CampaignRun snapshot{state, system, destination, strategy};
+                snapshot.save(0);
+                saved_steam_month = current_month;
+                std::cout << "QUARTER_CHECKPOINT " << destination.u8string() << std::endl;
+            }
+        }
     }
-    void run(bool resume) {
+    void run(bool resume, bool quarter_only = false) {
         const auto start = std::chrono::steady_clock::now();
         auto report = start;
         const std::uint64_t budget = Route<PlayerStrategy>::budget(resume);
         for (;;) {
+            if (quarter_only && saved_steam_month >= 0)
+                break;
             const bool achieved = resume ? strategy.complete(state)
                                          : Route<PlayerStrategy>::checkpoint(strategy, state);
             if (achieved && app::world_save_eligible(state))
@@ -220,7 +273,8 @@ template <class PlayerStrategy> struct CampaignRun {
                 report = now;
             }
         }
-        std::cout << "MILESTONE " << strategy.diagnose(state) << std::endl;
+        std::cout << (quarter_only ? "PREFIX " : "MILESTONE ") << strategy.diagnose(state)
+                  << std::endl;
     }
     void save(int slot) {
         coverage.save(directory, state);
@@ -283,7 +337,13 @@ CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slo
     strategy.reconcile(*saved.state);
     require(Route<PlayerStrategy>::checkpoint(strategy, *saved.state),
             "Loaded active business milestone lost");
-    return {std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
+    CampaignRun<PlayerStrategy> result{
+        std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
+    // A cold quarterly prefix must advance to a later quarter; otherwise repeated
+    // segmented runs could each save a few ticks into the same month forever.
+    if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+        result.steam_prefix_month = month(result.state);
+    return result;
 }
 
 std::int64_t facility_sales(const State &state) {
@@ -643,6 +703,7 @@ int main(int argc, char **argv) {
     std::optional<Campaign> campaign;
     std::optional<LateCampaign> late_campaign;
     std::optional<PotCampaign> pot_campaign;
+    std::optional<CampaignRun<ark::test::SteamVillageStrategy>> steam_campaign;
     try {
         if (argc == 2 && std::string(argv[1]) == "--contract") {
             contract();
@@ -650,6 +711,7 @@ int main(int argc, char **argv) {
                 std::filesystem::canonical(argv[0]).parent_path().parent_path());
             ark::test::income_strategy_contract();
             ark::test::campaign_coverage_contract();
+            ark::test::steam_strategy_contract();
             return 0;
         }
         if (argc == 2 && std::string(argv[1]) == "--coverage-inventory") {
@@ -659,6 +721,49 @@ int main(int argc, char **argv) {
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
+        if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
+            mode == "steam-inspect" || mode == "steam-quarter") {
+            const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
+            if (mode == "steam-new") {
+                auto prefix = load<LateStrategy>(directory, 0);
+                steam_campaign.emplace(CampaignRun<ark::test::SteamVillageStrategy>{
+                    std::move(prefix.state), std::move(prefix.system), directory, {}});
+                steam_campaign->strategy.reconcile(steam_campaign->state);
+                steam_campaign->run(false);
+                steam_campaign->save(1);
+                std::cout << "PASS Steam business prefix; layout/loot policy checkpoint only, not "
+                             "four-star completion"
+                          << std::endl;
+            } else if (mode == "steam-resume" || mode == "steam-quarter") {
+                steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
+                steam_campaign->strategy.continue_campaign();
+                steam_campaign->run(true, mode == "steam-quarter");
+                if (mode == "steam-quarter") {
+                    require(steam_campaign->saved_steam_month >= 0,
+                            "Quarter route ended without a saved player prefix");
+                    std::cout << "PASS Steam quarterly player prefix; not four-star completion"
+                              << std::endl;
+                } else {
+                    steam_campaign->save(1);
+                    std::cout
+                        << "PASS Steam four-star layout, connected goals and continued business; "
+                           "not all-content clear"
+                        << std::endl;
+                }
+            } else if (mode == "steam-inspect") {
+                // Cold-load all durable fields and the matching controller without advancing
+                // the world. Useful for verifying periodic prefixes before a costly resume.
+                steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
+                std::cout << "PASS Steam player prefix cold-load; "
+                          << steam_campaign->strategy.diagnose(steam_campaign->state) << std::endl;
+            } else {
+                steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
+                require(steam_campaign->strategy.complete(steam_campaign->state),
+                        "Steam endpoint lacks full layout/business");
+                std::cout << "PASS Steam four-star player cold-load endpoint" << std::endl;
+            }
+            return 0;
+        }
         if (mode == "inspect-observation") {
             const auto directory =
                 isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
@@ -956,14 +1061,22 @@ int main(int argc, char **argv) {
     } catch (const std::exception &error) {
         std::cerr << "Active campaign failed: " << error.what() << std::endl;
         try {
-            if (campaign) campaign->coverage.save(campaign->directory, campaign->state);
-            if (late_campaign) late_campaign->coverage.save(late_campaign->directory, late_campaign->state);
-            if (pot_campaign) pot_campaign->coverage.save(pot_campaign->directory, pot_campaign->state);
+            if (steam_campaign)
+                steam_campaign->coverage.save(steam_campaign->directory, steam_campaign->state);
+            if (campaign)
+                campaign->coverage.save(campaign->directory, campaign->state);
+            if (late_campaign)
+                late_campaign->coverage.save(late_campaign->directory, late_campaign->state);
+            if (pot_campaign)
+                pot_campaign->coverage.save(pot_campaign->directory, pot_campaign->state);
         } catch (const std::exception &diagnostic) {
             std::cerr << "Coverage report failed: " << diagnostic.what() << std::endl;
         }
         if (campaign)
             std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
+        if (steam_campaign)
+            std::cerr << "STATE " << steam_campaign->strategy.diagnose(steam_campaign->state)
+                      << std::endl;
         if (late_campaign)
             std::cerr << "STATE " << late_campaign->strategy.diagnose(late_campaign->state)
                       << std::endl;

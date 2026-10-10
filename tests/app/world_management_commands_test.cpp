@@ -10,6 +10,100 @@
 #include <stdexcept>
 
 namespace ark::test::world_session {
+void information_command_transactions() {
+    using Outcome = app::WorldCommandOutcome;
+    auto state = initial();
+    for (int n = 0; n < 4 && task_top(state).lifecycle != 2; ++n)
+        state = advance(std::move(state));
+    check(task_top(state).kind == rules::WorldScriptPageKind::scene &&
+              task_top(state).lifecycle == 2,
+          "Information test begins at the real stable source scene");
+    state.scene.framework_paused = true;
+    app::WorldSession session(state);
+    input_frame(session, session.open_main_menu());
+    const auto denied = input_frame(session, session.open_menu_information());
+    check(!denied->failed && denied->main_menu_open &&
+              input_result(*denied, denied->last_command_serial).outcome == Outcome::rejected,
+          "Paused information entry preserves the desktop menu and Owner");
+    same_world(state, *denied->state);
+
+    session.set_paused(false);
+    const auto opened_serial = session.open_menu_information();
+    auto ready_information = [&](int raw) {
+        return await(session, [raw](const auto &frame) {
+            const auto &p = task_top(*frame.state);
+            return frame.failed ||
+                   (p.legacy_page == raw && p.lifecycle == 2 &&
+                    sim::inspect_startup_world_information_page(*frame.state, p.id));
+        });
+    };
+    const auto opened = ready_information(9);
+    check(!opened->failed && !opened->main_menu_open &&
+              input_result(*opened, opened_serial).outcome == Outcome::applied,
+          "Information FIFO entry atomically closes overlay and opens initialized source9");
+    const auto page = task_top(*opened->state).id;
+    sim::StartupInformationInput row;
+    row.select_row = 2; // Fixed source menu entry16: income information36.
+    sim::StartupInformationInput confirm;
+    confirm.confirm = true;
+    auto ambiguous = row;
+    ambiguous.confirm = true;
+    const auto generic = session.ack_page(page);
+    const auto mixed = session.act_information(page, ambiguous);
+    app::WorldCommand stale;
+    stale.kind = app::WorldCommandKind::information_input;
+    stale.page = page;
+    stale.generation = opened->generation + 1;
+    stale.information_input = row;
+    const auto old_generation = session.submit(stale);
+    const auto selected = session.act_information(page, row);
+    const auto entered = session.act_information(page, confirm);
+    const auto repeated = session.act_information(page, confirm);
+    const auto stopped = input_frame(session, session.set_paused(true));
+    check(!stopped->failed && input_result(*stopped, generic).outcome == Outcome::rejected &&
+              input_result(*stopped, mixed).outcome == Outcome::rejected &&
+              input_result(*stopped, old_generation).outcome == Outcome::rejected &&
+              input_result(*stopped, selected).outcome == Outcome::applied &&
+              input_result(*stopped, entered).outcome == Outcome::applied &&
+              input_result(*stopped, repeated).outcome == Outcome::rejected &&
+              task_top(*stopped->state).legacy_page == 36,
+          "Information rejects generic/mixed/stale input and cannot confirm the successor page "
+          "twice");
+    check(stopped->state->scene.random.draws() == opened->state->scene.random.draws() &&
+              stopped->state->scene.world.world.ai.accounting.funds() ==
+                  opened->state->scene.world.world.ai.accounting.funds(),
+          "Information navigation has no hidden payment or random consumption");
+
+    session.set_paused(false);
+    const auto income = ready_information(36);
+    check(!income->failed, "Source initializes information36 through its own framework");
+    const auto income_page = task_top(*income->state).id;
+    const auto period = sim::inspect_startup_world_information_page(*income->state, income_page)
+                            ->selection_or_period;
+    sim::StartupInformationInput both_directions;
+    both_directions.left = both_directions.right = true;
+    const auto income_generic = session.ack_page(income_page);
+    const auto invalid_row = session.act_information(income_page, row);
+    const auto both = session.act_information(income_page, both_directions);
+    const auto navigated = input_frame(session, session.set_paused(true));
+    check(!navigated->failed &&
+              input_result(*navigated, income_generic).outcome == Outcome::rejected &&
+              input_result(*navigated, invalid_row).outcome == Outcome::rejected &&
+              input_result(*navigated, both).outcome == Outcome::applied &&
+              sim::inspect_startup_world_information_page(*navigated->state, income_page)
+                      ->selection_or_period == period,
+          "Typed36 transport preserves independent left/right ordering and rejects row input");
+    session.set_paused(false);
+    const auto closed = session.act_information(income_page, confirm);
+    const auto stale_close = session.act_information(income_page, confirm);
+    const auto finished = input_frame(session, session.set_paused(true));
+    check(!finished->failed && input_result(*finished, closed).outcome == Outcome::applied &&
+              input_result(*finished, stale_close).outcome == Outcome::rejected &&
+              task_top(*finished->state).kind == rules::WorldScriptPageKind::scene,
+          "Information closes through the source parent path and rejects a stale repeated close");
+    session.stop();
+}
+
 void magic_pot_commands() {
     using Pot = sim::StartupMagicPotAction;
     using Error = sim::StartupWorldRuntimeError;

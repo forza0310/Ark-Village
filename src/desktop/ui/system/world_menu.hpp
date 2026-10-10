@@ -7,7 +7,7 @@
 
 namespace ark::desktop::ui {
 class Skin;
-enum class WorldMenuIntent { open, close, tasks, build, village, system };
+enum class WorldMenuIntent { open, close, tasks, build, village, information, system };
 enum class WorldVillageMenuIntent { back, close, activities, commerce, magic_pot };
 struct WorldMenuInput {
     std::optional<Vector2> click;

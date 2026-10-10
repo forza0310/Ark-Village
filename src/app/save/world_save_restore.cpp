@@ -189,6 +189,7 @@ void clear_presentation(State &s) {
     s.task_abort_questions.clear();
     s.task_abort_answers.clear();
     s.human_pages_initialized.clear();
+    s.human_detail_contexts.clear();
     s.human_page_catalogs.clear();
     s.equipment_page_catalogs.clear();
     s.human_page_selections.clear();
@@ -211,6 +212,7 @@ void clear_presentation(State &s) {
     s.activity_page_scroll.clear();
     s.page_counters.clear();
     s.page_phases.clear();
+    s.information_page_data.clear();
     s.task_page_lists.clear();
     s.task_recruitment_pages.clear();
     s.task_extra_pages.clear();

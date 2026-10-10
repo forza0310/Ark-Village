@@ -46,6 +46,7 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_active_pot_strategy.cpp
     tests/app/world_campaign_diagnostics.cpp
     tests/app/world_campaign_coverage.cpp
+    tests/app/world_steam_layout.cpp tests/app/world_steam_people.cpp tests/app/world_steam_strategy.cpp
     tests/app/world_active_income_strategy.cpp
     LIBRARIES ark_world_session ark_world_hash ark_world_persistence)
 target_include_directories(ark_world_campaign_tests PRIVATE src/app)
@@ -154,6 +155,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/facilities/world_facility_catalog.cpp
             src/desktop/ui/village/world_magic_pot.cpp
             src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp src/desktop/ui/village/world_tax.cpp
+            src/desktop/ui/information/world_information.cpp
             src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
             src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp
             src/desktop/ui/facilities/world_building_view.cpp

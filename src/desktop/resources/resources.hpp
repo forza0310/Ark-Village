@@ -1,8 +1,8 @@
 #pragma once
 
 // GPU ownership and text measurements. This module never owns village rules or mutable state.
-#include "ark/assets/sprite.hpp"
 #include "../scene/sprite_picking.hpp"
+#include "ark/assets/sprite.hpp"
 #include <filesystem>
 #include <map>
 #include <optional>
@@ -50,11 +50,12 @@ class Sprites {
     // Source SEB row and PNG explicit ID are separate namespaces. Draw only the requested
     // layer; unused negative/empty records in other layers are not drawing commands.
     void indexed_sprite(Binding binding, int sprite, int frame, int layer, int image_override,
-                        Vector2 anchor, float scale = 1);
-    void indexed_image(Binding binding, int image, Rectangle source, Rectangle destination);
+                        Vector2 anchor, float scale = 1, std::optional<Rectangle> clip = {});
+    void indexed_image(Binding binding, int image, Rectangle source, Rectangle destination,
+                       std::optional<Rectangle> clip = {});
     // Source actor SEB indices and profession/body image indices are independent namespaces.
     void actor(bool monster, int sprite_index, int image_index, int frame, Vector2 anchor,
-               float scale = 1);
+               float scale = 1, std::optional<Rectangle> clip = {});
     // CPU-verified portrait crop from the current human image; no nested screen scissor or
     // render-resolution assumptions, so world zoom and Retina use the same source pixels.
     void human_image(int image_index, Rectangle source, Rectangle destination);

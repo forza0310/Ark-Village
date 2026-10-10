@@ -13,10 +13,13 @@ struct IncomeInvestment {
     std::int64_t cost{}, price_delta{}, monthly_gain{};
     bool purchase{};
     bool introduction{};
+    bool amenities{}; // Free quality/charm improvement; no inferred cash return.
+    std::array<std::int64_t, 3> visible_deltas{};
 };
-std::optional<IncomeInvestment>
-choose_income_investment(const app::WorldState &state, std::int64_t available,
-                         std::optional<std::uint64_t> new_shop = {});
+std::optional<IncomeInvestment> choose_income_investment(const app::WorldState &state,
+                                                         std::int64_t available,
+                                                         std::optional<std::uint64_t> new_shop = {},
+                                                         bool inventory_only = false);
 void inspect_income(const app::WorldState &state, std::ostream &out);
 struct IncomeDecision {
     bool handled{};
@@ -24,7 +27,8 @@ struct IncomeDecision {
 };
 class ActiveIncomeStrategy {
   public:
-    explicit ActiveIncomeStrategy(int stop_month) : stop_month_(stop_month) {}
+    explicit ActiveIncomeStrategy(int stop_month, bool reward_only = false)
+        : stop_month_(stop_month), reward_only_(reward_only) {}
     IncomeDecision next(const app::WorldState &state, std::int64_t reserve, bool start);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldState &after);
@@ -32,13 +36,19 @@ class ActiveIncomeStrategy {
     bool active() const { return choice_.has_value(); }
     int uses() const { return uses_; }
     std::int64_t spent() const { return spent_; }
+    bool reward_only() const { return reward_only_; }
     void register_new_shop(std::uint64_t id) { new_shops_.insert(id); }
+    // Only stable controller boundaries are durable: no partially selected,
+    // purchased or consumed gift may silently disappear on reload.
+    void encode(std::ostream &out) const;
+    static ActiveIncomeStrategy decode(std::istream &in);
 
   private:
     std::optional<IncomeInvestment> choice_;
     bool purchased_{}, consumed_{}, improved_{};
     int uses_{};
     int stop_month_{};
+    bool reward_only_{};
     std::int64_t spent_{};
     std::set<std::uint64_t> new_shops_;
 };

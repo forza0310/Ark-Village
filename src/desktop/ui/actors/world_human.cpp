@@ -1,9 +1,9 @@
 #include "world_human.hpp"
 #include "../../scene/world_overlay_render.hpp"
+#include "../common/skin.hpp"
 #include "ark/simulation/actors/rules/human_management.hpp"
 #include "ark/simulation/actors/startup_world_profile.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "../common/skin.hpp"
 #include "world_human_detail.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -105,7 +105,16 @@ WorldHumanView world_human_view(const State &state, const Page &page) {
     const auto binding = state.page_human_bindings.find(page.id);
     if (binding == state.page_human_bindings.end())
         return view;
-    const auto details = simulation::startup_world_human_details(state, binding->second);
+    auto details = simulation::startup_world_human_details(state, binding->second);
+    if (view.raw == 60) {
+        const auto presentation =
+            simulation::inspect_startup_world_human_presentation(state, page.id);
+        if (!presentation)
+            return view;
+        details = presentation->human;
+        view.live = presentation->live;
+        view.can_track = presentation->tracking_available;
+    }
     const auto portrait = simulation::startup_world_portrait(state, binding->second);
     if (!details || !portrait)
         return view;
@@ -221,6 +230,9 @@ WorldHumanLayout world_human_layout(Extent extent) {
     return out;
 }
 int world_human_first_row(const WorldHumanView &view) { return std::max(0, view.selection - 4); }
+Rectangle world_tracking_confirm(Extent extent) {
+    return {extent.width / 2.F - 37, extent.height - 51.F, 74, 20};
+}
 std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
                                                   const WorldHumanLayout &base_layout,
                                                   const WorldHumanInput &input, bool blocked) {
@@ -241,6 +253,8 @@ std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
             return intent(Action::equipment_slot, (view.phase + (input.left ? 4 : 1)) % 5);
     }
     if (view.raw == 60) {
+        if (view.can_track && hit(input.click, layout.track))
+            return intent(Action::track);
         if (input.professions || hit(input.click, layout.professions))
             return intent(Action::professions);
         if (input.gifts || hit(input.click, layout.gifts))

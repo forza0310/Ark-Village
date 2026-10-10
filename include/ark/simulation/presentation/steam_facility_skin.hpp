@@ -2,6 +2,7 @@
 
 #include "ark/simulation/presentation/steam_startup_skin.hpp"
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <variant>
@@ -11,7 +12,7 @@ namespace ark::simulation {
 // Steam资源身份独立于APK同号槽。路径相对已出版assets目录，不读取work或Unity容器。
 enum class SteamFacilityAsset {
     wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
-    upgrade_background, mini_background
+    upgrade_background, mini_background, number03, number11
 };
 struct SteamFacilityResource {
     const char *group;
@@ -69,6 +70,7 @@ struct SteamFacilityNumber {
 };
 // 展开实际SEB请求；普通数字的步宽来自所选SEB frame0/line0的SP_W，不能用Font字宽。
 // money/plus沿源固定8步宽及逗号原序，digit_width不参与这两类计算。
+// 35的number03/number11分别绑定SEB11/20，仅普通数字，实际字格步宽为8/7。
 // 源负数可能请求负frame；保留请求事实，不能当作已认证的负帧像素/减号映射。
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &number, int digit_width);
@@ -93,4 +95,16 @@ struct SteamFacilityUpgradeSkinInput {
 // int32算术超界与坏冻结差额拒绝是维护安全约束，不复制原运行时异常/回绕。
 std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
     const SteamFacilityUpgradeSkinInput &input);
+struct StartupWorldRuntimeState;
+struct SteamFacilityUpgradeSkinOptions {
+    int view_y{};
+    bool japanese{};
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<std::array<int,4>> notice_widths;
+};
+// 从真实已初始化raw81读取冻结值与独立计数；平台只提供语言、视口及实际测宽。
+// 失效页面/绑定/载荷返回空，不初始化、不升级、不推进计数或领取声音。
+std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamFacilityUpgradeSkinOptions &options);
 } // namespace ark::simulation

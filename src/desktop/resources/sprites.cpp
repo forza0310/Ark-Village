@@ -1,7 +1,7 @@
 // Texture ownership, source-frame binding and clipped sprite drawing. No world mutation.
-#include "resources.hpp"
-#include "resource_metadata.hpp"
 #include "ark/assets/table.hpp"
+#include "resource_metadata.hpp"
+#include "resources.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -9,6 +9,14 @@
 
 namespace ark::desktop {
 using namespace resource_detail;
+namespace {
+// Explicit published Steam replacements. A missing replacement is an asset error,
+// not permission to silently fall back to the APK image with the same index.
+bool steam_common_override(int image) {
+    return image == 31 || image == 37 || image == 85 || image == 88 || image == 103 ||
+           image == 105 || image == 128;
+}
+} // namespace
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip) {
     const auto destination = blit.destination;
     if (destination.width <= 0 || destination.height <= 0 || clip.width <= 0 || clip.height <= 0)
@@ -109,13 +117,13 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
             if (binding == Binding::secretary && p.image_index != 126)
                 throw std::runtime_error("Secretary image binding changed");
             const auto path =
-                image_override >= 0 ? root_ / group / actor_images_.at(group).at(image_override)
+                binding == Binding::steam_common &&
+                        steam_common_override(image_override >= 0 ? image_override : p.image_index)
+                    ? root_ / "steam_common" /
+                          common_images_.at(image_override >= 0 ? image_override : p.image_index)
+                : image_override >= 0 ? root_ / group / actor_images_.at(group).at(image_override)
                 : binding == Binding::farmer    ? root_ / "human/chara_flower00.png"
                 : binding == Binding::secretary ? root_ / "common/chara_hishoko01.png"
-                : binding == Binding::steam_common &&
-                        (p.image_index == 103 || p.image_index == 105 || p.image_index == 37 ||
-                         p.image_index == 88)
-                    ? root_ / "steam_common" / common_images_.at(p.image_index)
                 : binding == Binding::common || binding == Binding::steam_common
                     ? root_ / group / common_images_.at(p.image_index)
                 : binding == Binding::common2 ? root_ / group / common2_images_.at(p.image_index)
@@ -139,8 +147,9 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
     }
 }
 void Sprites::indexed_sprite(Binding binding, int sprite, int frame, int layer, int image_override,
-                             Vector2 anchor, float scale) {
-    if (binding != Binding::common && binding != Binding::weapon)
+                             Vector2 anchor, float scale, std::optional<Rectangle> clip) {
+    if (binding != Binding::common && binding != Binding::steam_common &&
+        binding != Binding::weapon)
         throw std::invalid_argument("Unsupported indexed effect binding");
     const std::string group = binding == Binding::weapon ? "weapon" : "common";
     if (!actor_sprites_.count(group)) {
@@ -157,12 +166,12 @@ void Sprites::indexed_sprite(Binding binding, int sprite, int frame, int layer, 
     if (sprite < 0)
         throw std::invalid_argument("Invalid effect sprite index");
     draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite)), frame, anchor, WHITE,
-         binding, scale, image_override, {}, layer);
+         binding, scale, image_override, clip, layer);
 }
-void Sprites::indexed_image(Binding binding, int image_id, Rectangle source,
-                            Rectangle destination) {
-    if (binding != Binding::common && binding != Binding::weapon && binding != Binding::title &&
-        binding != Binding::event)
+void Sprites::indexed_image(Binding binding, int image_id, Rectangle source, Rectangle destination,
+                            std::optional<Rectangle> clip) {
+    if (binding != Binding::common && binding != Binding::steam_common &&
+        binding != Binding::weapon && binding != Binding::title && binding != Binding::event)
         throw std::invalid_argument("Unsupported indexed image binding");
     const std::string group = binding == Binding::weapon  ? "weapon"
                               : binding == Binding::title ? "title"
@@ -170,7 +179,16 @@ void Sprites::indexed_image(Binding binding, int image_id, Rectangle source,
                                                           : "common";
     if (!actor_images_.count(group))
         actor_images_.emplace(group, image_index(root_, group.c_str()));
-    image(actor_images_.at(group).at(image_id).string(), source, destination, binding);
+    if (clip) {
+        const auto blit = clip_sprite_blit({source, destination}, *clip);
+        if (!blit)
+            return;
+        source = blit->source;
+        destination = blit->destination;
+    }
+    image(actor_images_.at(group).at(image_id).string(), source, destination,
+          binding == Binding::steam_common && !steam_common_override(image_id) ? Binding::common
+                                                                               : binding);
 }
 void Sprites::human_image(int image_id, Rectangle source, Rectangle destination) {
     if (!actor_images_.count("human"))
@@ -216,7 +234,7 @@ void Sprites::actor_thumbnail(bool monster, int sprite_index, int image_id, Rect
           scale);
 }
 void Sprites::actor(bool monster, int sprite_index, int image_id, int frame, Vector2 anchor,
-                    float scale) {
+                    float scale, std::optional<Rectangle> clip) {
     const std::string group = monster ? "monster" : "human";
     if (!actor_sprites_.count(group)) {
         std::vector<std::string> sprites;
@@ -231,7 +249,7 @@ void Sprites::actor(bool monster, int sprite_index, int image_id, int frame, Vec
     if (sprite_index < 0 || image_id < 0)
         throw std::runtime_error("Invalid actor sprite/image index");
     draw(actor_sprites_.at(group).at(static_cast<std::size_t>(sprite_index)), frame, anchor, WHITE,
-         monster ? Binding::monster : Binding::human, scale, image_id);
+         monster ? Binding::monster : Binding::human, scale, image_id, clip);
 }
 const assets::SpriteDefinition &Sprites::definition(const std::filesystem::path &relative) {
     auto found = sprites_.find(relative.string());

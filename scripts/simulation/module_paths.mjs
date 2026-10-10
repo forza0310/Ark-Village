@@ -26,7 +26,7 @@ export const simulationModules = {
     startup_world_expansion startup_world_projection`,
   village: `accounting world_award_page world_calendar world_calendar_maintenance
     world_calendar_tasks world_daily world_month_report world_notices world_popularity
-    world_scripts world_village_activity startup_information startup_world_tax
+    world_scripts world_village_activity startup_information startup_world_information startup_world_tax
     startup_world_village_activity startup_world_clear_score startup_world_runtime_calendar`,
   world: `domain world_control world_random world_random_consumers world_runtime world_scene
     world_world_entry loop_pacing startup startup_world_runtime startup_world_runtime_arrival
@@ -38,7 +38,8 @@ export const simulationModules = {
     startup_application_storage startup_application_storage_paths startup_application_storage_replay
     startup_application_title startup_system_records startup_title_menu startup_world_inheritance`,
   presentation: `startup_audio startup_skin startup_title_actor_skin startup_title_presentation
-    startup_world_presentation startup_world_visuals steam_facility_skin steam_startup_skin`,
+    startup_world_presentation startup_world_visuals steam_facility_skin steam_startup_skin
+    steam_human_skin steam_information_skin`,
 };
 
 const owners = new Map();

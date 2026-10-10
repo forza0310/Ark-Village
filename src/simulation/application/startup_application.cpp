@@ -318,6 +318,15 @@ std::string StartupApplication::act_village_activity_page(std::uint64_t page,
 std::string StartupApplication::open_task_menu() {
     return apply_world_action([](auto &world) { return world.open_task_menu(); });
 }
+std::string StartupApplication::open_magic_pot(StartupMagicPotEntry entry) {
+    return apply_world_action([&](auto &world) { return world.open_magic_pot(entry); });
+}
+std::string StartupApplication::act_magic_pot_page(std::uint64_t page,
+                                                   StartupMagicPotAction action, int selection) {
+    return apply_world_action([&](auto &world) {
+        return world.act_magic_pot_page(page, action, selection);
+    });
+}
 std::string StartupApplication::open_task_control_menu() {
     return apply_world_action([](auto &world) { return world.open_task_control_menu(); });
 }
@@ -337,6 +346,13 @@ StartupApplicationTaskResult StartupApplication::act_task_page(std::uint64_t pag
 }
 std::string StartupApplication::open_human_page(int human) {
     return apply_world_action([&](auto &world) { return world.open_human_page(human); });
+}
+std::string StartupApplication::open_information_menu() {
+    return apply_world_action([&](auto &world) { return world.open_information_menu(); });
+}
+std::string StartupApplication::input_information_page(
+    std::uint64_t page, const StartupInformationInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_information_page(page, input); });
 }
 std::string StartupApplication::act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                                int selection) {

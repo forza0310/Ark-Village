@@ -4,6 +4,8 @@
 
 ## 本批收口
 
+- [x] b99c6db正式维护及信息接入：442项来源、708项素材、28处适配；正常信息9/35–38和35→60追踪的FIFO/渲染接线完成。desktop-debug139/139通过；headless首次118/119、旧scene夹具补正后6项定向通过，均仅排三个月。Release七窗口及月51玩家业务检查点冷载通过；玩家schema4/身份保持，34/39与完整动态仍待后续。具体边界见[B1](docs/stages/B1-playable-prototype.md#research-b99c6db-integration)。
+
 - [ ] [全解锁主动经营长跑](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)：按定义ID核对建筑/强化/道具/装备/职业/魔法/活动/配方/副本/BOSS，逐星→自然通关→继续/继承。已补全量目录和分段观测，不等于完成覆盖；当前优先突破三星收入，再补全部驱动、效果和恢复断言。
 - [x] Windows本地文本崩溃诊断：故障线程栈、临近日志和64回执接入；隔离崩溃/轮转、两Debug标准及Release窗口/错误出口检查见[本批结果](docs/stages/B1-playable-prototype.md#campaign-coverage-crash-diagnostics)。
 
@@ -46,8 +48,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
 - [ ] 人物/怪物受击表现：879cb17已补Owner命中短轨迹及拒绝测试，本批随完整闭包迁入；仍不依据观感增设减速/硬直/击退，动态表现按[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
-- [ ] 情报/设置/标题余项：收支只读查询已迁入，raw9/36静态入口、返回、分页和模态合同已交付，维护页面消费者及桌面入口未接；37/38等仍缺部分定义投影/消费者。类型化声音生产者、26个Ogg与桌面一次领取/播放已接并通过本地加载/FIFO回归，不再列在途；标题20槽宿主调度与完整动画仍未接。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
-- [ ] 设施81独立frame2、人物60循环/HP条/奖章等委托补齐后再接精确动态；本批只消费已有Owner字段和静态计划，不猜跳跃周期，见[最小剩余请求](docs/reference/RESEARCH_REQUESTS.md#steam-ui-delegates-1f19c88)。
+- [ ] 情报/设置/标题余项：b99c6db已迁入raw9/35–38维护消费者与目录/说明/图标/皮肤及35→60追踪，本批接桌面FIFO、渲染与输入验收；34/39剩余消费者按后续正式交付接。类型化声音、26资源与桌面播放已有历史验收；标题20槽宿主调度与完整动画未接。见[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)和[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
+- [ ] 设施81独立frame2及人物循环/HP条/危险/奖章等正式计划已随c19ab6a迁入；下一步绑定桌面执行并窗口验收，不再等待重复研究交付，不从绘制帧推进计数，见[剩余接线](docs/reference/RESEARCH_REQUESTS.md#steam-ui-delegates-1f19c88)。
 - [ ] 跨周自动中断档：正式轮内恢复消费者交付后单独设计；保持当前玩家随机/暂停/格式政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## 产品工程

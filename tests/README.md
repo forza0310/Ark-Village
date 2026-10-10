@@ -2,6 +2,8 @@
 
 现有长跑的实际玩家输入、成功判据与注册范围见[长测审计与建设方案](../docs/stages/ACTIVE_VILLAGE_PLAN.md)。3月/年度持续基线与短回放仍保留原oracle，但不能称为完整经营验收；产品主长测应有建设、活动/培养、任务胜利、逐星条件和新内容消费。被动日期campaign已停止，不计通关/继承通过。
 
+`ark_world_campaign_tests`的Steam布局路线复用同一生产命令/玩家存档驱动：`steam-new`接已验证的Late玩家前缀，完成建设/强化/任务胜利后保存；`steam-resume`接Steam前缀推进四星50目标布局，`steam-verify`冷载最终第二栏。独立目录需具备`ark-steam-village-v1`标记，严格位于产品build内，输入前缀先复制、原件只读。季度稳定主场景另存`checkpoints/month-N`的第一栏及控制器；`steam-inspect`仅冷载第一栏并核耐久字段/随机政策，不推进世界，也不把前缀当四星通过。地图目标、人物公平分配、库存强化分别在`world_steam_layout`、`world_steam_people`和`world_active_income_strategy`；组合决策归`world_steam_strategy`，没有新增套件或第二Owner。普通`--contract`覆盖这些策略边界，真实长跑另行显式执行。
+
 `simulation.replay_runner_contract`是产品回放CLI/路径/前缀资格的主责套件，复用现有continuous可执行程序生成真实短扩张快照，验证已认证及裸候选接续、三路一致性与拒绝；不仿造文件解析器。冻结默认晋级`startup_world_replay_process`保留原参数/断言，二者不替代彼此；未按函数或场景新增EXE。长前缀与自然晚期认证仍按风险独立执行，见[工具说明](../scripts/simulation/README.md#场景与既有前缀接续)。
 
 按被测所有者和依赖找用例；迁入研究测试与产品适配测试分开。标准CTest保留全部适用用例；默认本地desktop-debug排除三个月连续模拟，CI desktop-release完整执行，headless按需追加，选择规则见[构建检查](../docs/CONTRIBUTING.md#构建检查)。标签用于定位，不能以单层通过替代阶段验收。

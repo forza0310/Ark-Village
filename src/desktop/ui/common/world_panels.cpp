@@ -13,7 +13,9 @@
 
 namespace ark::desktop::ui {
 bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
-    return !page || (page->legacy_page != 21 && page->legacy_page != 74);
+    return !page || (page->legacy_page != 21 && page->legacy_page != 74 &&
+                    page->legacy_page != 9 &&
+                    (page->legacy_page < 35 || page->legacy_page > 38));
 }
 std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
                             const simulation::rules::WorldScriptPage &page, int paragraph) {
@@ -49,7 +51,10 @@ void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout 
     skin.sprites.image("townPointbar.png", {0, 0, 55, 15}, {w - 55, 24, 55, 15});
     skin.number(s.village_points, {w - 3, 27});
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
-    if (!page || page->legacy_page != 74)
+    // Information footnotes occupy the same area as the village sign at the
+    // minimum window size; those modals own the footer just like facility details.
+    if (!page || (page->legacy_page != 74 && page->legacy_page != 9 &&
+                  (page->legacy_page < 35 || page->legacy_page > 38)))
         draw_world_popularity(s.popularity, layout, skin);
     // Catalogue/details own the footer; the same predicate rejects their hidden mouse buttons.
     if (!world_hud_buttons_visible(page))

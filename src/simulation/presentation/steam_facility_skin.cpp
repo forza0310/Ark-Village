@@ -2,6 +2,7 @@
 #include "ark/simulation/presentation/steam_facility_skin.hpp"
 #include "ark/simulation/world/startup.hpp"
 #include "ark/simulation/map/startup_world_projection.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/map/rules/geometry.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -89,12 +90,18 @@ std::optional<SteamFacilityResource> steam_facility_resource(Asset asset) {
     case Asset::maximum:return SteamFacilityResource{"common",129,-1,"original/common/wnd_max.png",nullptr};
     case Asset::upgrade_background:return SteamFacilityResource{"event",14,-1,"original/event/event_getItem_back.png",nullptr};
     case Asset::mini_background:return SteamFacilityResource{"event",16,-1,"original/event/event_BackMini02.png",nullptr};
+    case Asset::number03:return SteamFacilityResource{"common",102,11,"original/common/number03.png","original/common/number04.seb"};
+    case Asset::number11:return SteamFacilityResource{"common",108,20,"original/common/number11.png","original/common/number13.seb"};
     }
     return {};
 }
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &n,int digit_width) {
-    if(n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    const bool roster_number=n.asset==Asset::number03||n.asset==Asset::number11;
+    if(!roster_number&&n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    // 两套35专用SEB只有数字0..9；不借它们输出money/plus所需的单位、逗号帧。
+    if(roster_number&&(n.kind!=SteamFacilityNumberKind::number||
+        digit_width!=(n.asset==Asset::number03?8:7)))return {};
     if(n.padding<0)return {}; // 维护输入范围；当前74/81只传0，不推断负padding调用资格。
     std::vector<SteamFacilityImage> result;
     const auto emit=[&](std::int64_t x,int frame) {
@@ -176,6 +183,27 @@ std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_dra
         result.push_back({art->sprite,piece.fragment_index,{static_cast<int>(x),static_cast<int>(y)}});
     }
     return result;
+}
+std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamFacilityUpgradeSkinOptions &options) {
+    const auto view=inspect_startup_world_facility_upgrade(state,page);
+    if(!view)return {};
+    SteamFacilityUpgradeSkinInput in;
+    in.definition=view->definition;in.mapchip=view->mapchip;in.level=view->level;
+    in.phase=view->phase;in.frame=view->frame;in.frame2=view->frame2;
+    in.view_y=options.view_y;in.japanese=options.japanese;
+    in.title_widths=options.title_widths;in.notice_widths=options.notice_widths;
+    for(std::size_t slot=0;slot<3;++slot) {
+        if(!fits(view->limits[slot]))return {};
+        in.limits[slot]=static_cast<int>(view->limits[slot]);
+        // Owner的原o.ap按[前/后/差][属性]保存，皮肤输入按[属性][前/后/差]读取。
+        for(std::size_t value=0;value<3;++value) {
+            if(!fits(view->attributes[value][slot]))return {};
+            in.attributes[slot][value]=static_cast<int>(view->attributes[value][slot]);
+        }
+    }
+    return steam_facility_upgrade_skin(in);
 }
 std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(const SteamFacilityUpgradeSkinInput &in) {
     if(in.definition<0||in.mapchip<0||in.level<1||in.level>5||in.phase<0||in.phase>1||

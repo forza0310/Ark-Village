@@ -344,6 +344,7 @@
             ["task_abort_questions", "std::map<std::uint64_t, std::uint64_t>"],
             ["task_abort_answers", "std::map<std::uint64_t, int>"],
             ["human_pages_initialized", "std::set<std::uint64_t>"],
+            ["human_detail_contexts", "std::map<std::uint64_t, StartupHumanDetailContext>"],
             ["human_page_catalogs", "std::map<std::uint64_t, std::vector<int>>"],
             ["equipment_page_catalogs", "std::map<std::uint64_t, std::array<std::vector<int>, 5>>"],
             ["human_page_selections", "std::map<std::uint64_t, int>"],
@@ -383,6 +384,7 @@
             ["sound_requests", "std::vector<StartupAudioRequest>"],
             ["page_counters", "std::map<std::uint64_t, int>"],
             ["page_phases", "std::map<std::uint64_t, int>"],
+            ["information_page_data", "std::map<std::uint64_t, StartupInformationPageData>"],
             ["task_page_lists", "std::map<std::uint64_t, std::vector<std::uint64_t>>"],
             ["task_recruitment_pages", "std::map<std::uint64_t, ref::TaskRecruitmentAnimation>"],
             ["task_extra_pages", "std::map<std::uint64_t, std::vector<int>>"],
@@ -2848,6 +2850,37 @@
           "fields": [
             ["operation", "StartupAudioOperation"],
             ["id", "int"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupHumanDetailContext",
+      "reason": "Detail source and optional tracked actor belong to transient raw60 pages, outside the stable-main player codec.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The human_detail_contexts map is cleared on player restore; no tracking page or instance reference is restored.",
+          "fields": [
+            ["chase_mode", "int"],
+            ["actor", "std::optional<ref::CharacterId>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupInformationPageData",
+      "reason": "Information catalog selection and scroll state belong to transient pages; player saves restore only the stable main scene.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The information_page_data map is cleared on player restore; only maintenance snapshots retain modal page state.",
+          "fields": [
+            ["lists", "std::vector<std::vector<int>>"],
+            ["selection", "int"],
+            ["first_visible", "int"]
           ]
         }
       ]

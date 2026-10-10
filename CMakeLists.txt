@@ -69,6 +69,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/facilities/world_building_view.cpp
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/village/world_progression.cpp
         src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp src/desktop/ui/village/world_tax.cpp
+        src/desktop/ui/information/world_information.cpp
         src/desktop/ui/village/world_village_activity.cpp
         src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
         src/desktop/ui/facilities/world_facility_catalog.cpp

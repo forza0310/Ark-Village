@@ -39,6 +39,7 @@ bool valid_human_action(simulation::StartupHumanPageAction action) {
     case Action::inspect_equipment:
     case Action::view_tab:
     case Action::equipment_slot:
+    case Action::track:
         return true;
     }
     return false;
@@ -141,11 +142,11 @@ bool is_decision_page(const simulation::rules::WorldScriptPage *page) {
     if (!page || page->kind != simulation::rules::WorldScriptPageKind::raw_page)
         return false;
     const auto raw = page->legacy_page;
-    return raw == 4 || (raw >= 21 && raw <= 28) || raw == 33 || (raw >= 41 && raw <= 48) ||
-           (raw >= 51 && raw <= 54) || (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 ||
-           raw == 69 || raw == 72 || raw == 73 || (raw >= 74 && raw <= 77) || raw == 79 ||
-           raw == 80 || raw == 82 || (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 ||
-           raw == 98;
+    return raw == 4 || raw == 9 || (raw >= 21 && raw <= 28) || raw == 33 ||
+           (raw >= 35 && raw <= 38) || (raw >= 41 && raw <= 48) || (raw >= 51 && raw <= 54) ||
+           (raw >= 60 && raw <= 66) || raw == 68 || raw == 70 || raw == 69 || raw == 72 ||
+           raw == 73 || (raw >= 74 && raw <= 77) || raw == 79 || raw == 80 || raw == 82 ||
+           (raw >= 83 && raw <= 86) || raw == 90 || raw == 93 || raw == 98;
 }
 void apply_world_decision(WorldState &state, const WorldCommand &command,
                           WorldCommandResult &result) {
@@ -183,6 +184,38 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
     case Kind::open_commerce:
         result.runtime_error = simulation::open_startup_world_commerce(state);
         break;
+    case Kind::open_menu_information:
+        result.runtime_error = simulation::open_startup_world_information_menu(state);
+        break;
+    case Kind::information_input:
+        // The source checks top identity, lifecycle2, row/key exclusivity and
+        // payload validity. Pending/stale clicks never initialize a page here.
+        result.runtime_error = simulation::input_startup_world_information_page(
+            state, command.page, command.information_input);
+        break;
+    case Kind::confirm_tracking: {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        const auto &ai = state.scene.world.world.ai;
+        const auto actor = ai.battle.actors.find(command.actor);
+        if (state.scene.framework_paused || state.scene.scene_state != 6 ||
+            page == state.scripts.pages.rend() || page->id != command.page ||
+            page->kind != simulation::rules::WorldScriptPageKind::scene || page->lifecycle != 2 ||
+            !state.scripts.selected_actor || *state.scripts.selected_actor != command.actor.value ||
+            state.confirm_input || state.cancel_input || actor == ai.battle.actors.end() ||
+            !(actor->second.id == command.actor) ||
+            actor->second.kind != simulation::rules::ActorKind::human ||
+            !state.actor_metadata.count(command.actor) ||
+            std::find(ai.human_order.begin(), ai.human_order.end(), command.actor) ==
+                ai.human_order.end()) {
+            result.runtime_error = Error::invalid_page;
+        } else {
+            // Transport only the observed edge. The next normal source update
+            // advances its camera and opens details; no scene/selection shortcut.
+            state.confirm_input = true;
+        }
+        break;
+    }
     case Kind::commerce_action: {
         if (!valid_commerce_action(command.commerce_action) ||
             !state.commerce_pages_initialized.count(command.page)) {
@@ -547,6 +580,27 @@ std::uint64_t WorldSession::cancel_edit(const WorldState &observed) {
 std::uint64_t WorldSession::open_menu_commerce() {
     WorldCommand command;
     command.kind = WorldCommandKind::open_menu_commerce;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_menu_information() {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_menu_information;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_information(std::uint64_t page,
+                                            const simulation::StartupInformationInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::information_input;
+    command.page = page;
+    command.information_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::confirm_tracking(std::uint64_t scene_page,
+                                             simulation::rules::CharacterId expected_actor) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::confirm_tracking;
+    command.page = scene_page;
+    command.actor = expected_actor;
     return submit(command);
 }
 std::uint64_t WorldSession::open_commerce() {

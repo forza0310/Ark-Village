@@ -102,6 +102,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_catalog.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_items.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/actors/startup_world_human.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_information.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_world_inheritance.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_magic_pot.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/startup_world_presentation.cpp"
@@ -122,6 +123,8 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_village_activity.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/startup_world_visuals.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_facility_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_information_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_startup_skin.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES
@@ -257,6 +260,7 @@ set(ARK_STARTUP_APPLICATION_TEST_SOURCES
 set(ARK_STARTUP_SKIN_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_skin_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/steam_facility_skin_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/steam_human_skin_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/steam_startup_skin_checks.cpp"
 )
 set(ARK_WORLD_HASH_SOURCES
@@ -270,6 +274,7 @@ set(ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_active_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_natural_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_application_residence_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_second_star_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_codec_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_restore_checks.cpp"

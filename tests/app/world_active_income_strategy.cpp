@@ -4,7 +4,9 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <sstream>
 #include <stdexcept>
+#include <tuple>
 
 namespace ark::test {
 namespace {
@@ -41,7 +43,8 @@ ref::FacilityEconomyInput input(const State &s, std::uint64_t id) {
 std::int64_t last_income(const State &s, std::uint64_t id) {
     // The annual buckets reset in January; do not treat old/partial data as a full month.
     const int month = s.scene.calendar.month;
-    return month > 0 ? s.facility_monthly_cash.at(id)[month - 1][0] : 0;
+    const auto bucket = s.facility_monthly_cash.find(id);
+    return month > 0 && bucket != s.facility_monthly_cash.end() ? bucket->second[month - 1][0] : 0;
 }
 Command command(Kind kind, std::uint64_t page = 0) {
     Command c;
@@ -64,8 +67,11 @@ Command item(std::uint64_t page, Item action, int selection = -1) {
 } // namespace
 
 std::optional<IncomeInvestment> choose_income_investment(const State &s, std::int64_t available,
-                                                         std::optional<std::uint64_t> new_shop) {
+                                                         std::optional<std::uint64_t> new_shop,
+                                                         bool inventory_only) {
     std::optional<IncomeInvestment> best;
+    std::optional<IncomeInvestment> amenities;
+    std::optional<std::tuple<std::int64_t, std::int64_t>> amenities_priority;
     std::int64_t best_introduction_score{};
     for (const auto &[id, f] : s.scene.world.world.facilities) {
         if (new_shop && id != *new_shop)
@@ -77,6 +83,9 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
         const auto in = input(s, id);
         for (const auto &i : s.rules->items) {
             const bool buy = s.items.at(i.identity).inventory == 0;
+            if (inventory_only && buy)
+                continue; // Dungeon rewards are consumed as held inventory, never replenished by
+                          // purchase.
             const auto cost = buy ? i.commerce_price : 0;
             if (cost < 0 || cost > available ||
                 (buy && s.shop_item_stock.at(i.identity).quantity <= 0))
@@ -85,8 +94,25 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
                 {d.id, d.legacy_icon, s.rules->facility_initial.at(d.id).item_affinities,
                  d.economy},
                 {i.identity, i.category, i.facility_improvements}, in);
-            if (!r.candidate || (new_shop ? r.candidate->visible_deltas[2] <= 0
-                                          : r.candidate->visible_deltas[0] <= 0))
+            if (!r.candidate)
+                continue;
+            const auto &deltas = r.candidate->visible_deltas;
+            const bool nonnegative =
+                std::all_of(deltas.begin(), deltas.end(), [](auto delta) { return delta >= 0; });
+            if (inventory_only && !nonnegative)
+                continue;
+            // Quality feeds satisfaction; charm feeds source selection weights.
+            // Neither is converted to invented money. Consider this free-stock
+            // fallback only after the ordinary historical-income choices fail.
+            if (inventory_only && !new_shop && (deltas[1] > 0 || deltas[2] > 0)) {
+                const auto priority = std::make_tuple(last_income(s, id), deltas[1] + deltas[2]);
+                if (!amenities_priority || priority > *amenities_priority) {
+                    amenities_priority = priority;
+                    amenities = IncomeInvestment{id, d.id,  i.identity, 0,    deltas[0],
+                                                 0,  false, false,      true, deltas};
+                }
+            }
+            if (new_shop ? deltas[2] <= 0 : deltas[0] <= 0)
                 continue;
             // New shops have no revenue history. Charm20 is a bounded player goal,
             // using inventory or at most500G per purchase, never invented income.
@@ -97,8 +123,8 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
                     r.candidate->visible_deltas[2] * 1000 + r.candidate->visible_deltas[0];
                 if (score > best_introduction_score) {
                     best_introduction_score = score;
-                    best = IncomeInvestment{
-                        id, d.id, i.identity, cost, r.candidate->visible_deltas[0], 0, buy, true};
+                    best = IncomeInvestment{id, d.id, i.identity, cost,  deltas[0],
+                                            0,  buy,  true,       false, deltas};
                 }
                 continue;
             }
@@ -118,14 +144,14 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
             // A four-month simple payback bound is a player policy, not a revenue guarantee.
             if (gain <= 0 || cost > 4 * gain)
                 continue;
-            IncomeInvestment candidate{id,   d.id, i.identity, cost, r.candidate->visible_deltas[0],
-                                       gain, buy};
+            IncomeInvestment candidate{id,   d.id, i.identity, cost,  deltas[0],
+                                       gain, buy,  false,      false, deltas};
             if (!best || gain * std::max<std::int64_t>(1, best->cost) >
                              best->monthly_gain * std::max<std::int64_t>(1, cost))
                 best = candidate;
         }
     }
-    return best;
+    return best ? best : amenities;
 }
 
 void inspect_income(const State &s, std::ostream &out) {
@@ -191,6 +217,14 @@ void inspect_income(const State &s, std::ostream &out) {
 }
 
 IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, bool start) {
+    // Moving or replacing a building creates a new instance identity. Retire old
+    // introductions instead of dereferencing an instance from a previous layout.
+    for (auto i = new_shops_.begin(); i != new_shops_.end();) {
+        if (!s.scene.world.world.facilities.count(*i))
+            i = new_shops_.erase(i);
+        else
+            ++i;
+    }
     const ref::WorldScriptPage *page{};
     for (auto p = s.scripts.pages.rbegin(); p != s.scripts.pages.rend(); ++p)
         if (p->lifecycle != 4) {
@@ -203,26 +237,45 @@ IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, 
     if (p.kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) {
         if (choice_ && improved_)
             choice_.reset();
-        if (!choice_ && start && uses_ < 24 && s.rank == 2 && s.maximum_income < 35000 &&
+        if (choice_ && !s.scene.world.world.facilities.count(choice_->facility)) {
+            require(!consumed_, "consumed investment lost its target before effect verification");
+            choice_.reset();
+        }
+        if (!choice_ && start &&
+            (reward_only_ || (uses_ < 24 && s.rank == 2 && s.maximum_income < 35000)) &&
             s.scene.calendar.year * 12 + s.scene.calendar.month < stop_month_) {
-            const auto available = std::min(10000 - spent_, cash(s) - reserve);
+            // A free held item needs no cash reservation. Paid experiments retain
+            // their original total budget, two-star boundary and 24-use limit.
+            const auto available = reward_only_ ? 0 : std::min(10000 - spent_, cash(s) - reserve);
             bool constructing{};
             for (const auto id : new_shops_) {
                 if (s.scene.world.world.facilities.at(id).status != 1) {
                     constructing = true;
                     continue;
                 }
-                choice_ = choose_income_investment(s, available, id);
+                choice_ = choose_income_investment(s, available, id, reward_only_);
                 if (choice_)
                     break;
             }
-            if (!choice_ && !constructing)
-                choice_ = choose_income_investment(s, available);
+            if (!choice_ && reward_only_)
+                for (const auto &[id, facility] : s.scene.world.world.facilities) {
+                    (void)facility;
+                    if (last_income(s, id) > 0 || new_shops_.count(id))
+                        continue;
+                    choice_ = choose_income_investment(s, available, id, true);
+                    if (choice_)
+                        break;
+                }
+            if (!choice_ && (!constructing || reward_only_))
+                choice_ = choose_income_investment(s, available, {}, reward_only_);
             purchased_ = consumed_ = improved_ = false;
             if (choice_)
                 std::cout << "INVEST plan facility=" << choice_->facility
                           << " item=" << choice_->item << " cost=" << choice_->cost
                           << " introduction=" << choice_->introduction
+                          << " amenities=" << choice_->amenities
+                          << " quality_delta=" << choice_->visible_deltas[1]
+                          << " charm_delta=" << choice_->visible_deltas[2]
                           << " forecast_gain=" << choice_->monthly_gain << std::endl;
         }
         if (!choice_)
@@ -320,11 +373,51 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after)
         return;
     const auto delta = after.scene.world.world.facilities.at(v.facility).price -
                        before.scene.world.world.facilities.at(v.facility).price;
-    require(delta == v.price_delta && (delta > 0 || v.introduction),
+    require(delta == v.price_delta && (delta > 0 || v.introduction || v.amenities),
             "committed facility price differs from selected forecast");
+    const auto old_values = sim::startup_world_facility_values(before, v.facility);
+    const auto new_values = sim::startup_world_facility_values(after, v.facility);
+    require(old_values && new_values, "investment target lost its economy projection");
+    for (std::size_t slot = 0; slot < v.visible_deltas.size(); ++slot)
+        require(new_values->instance_attributes[slot] - old_values->instance_attributes[slot] ==
+                    v.visible_deltas[slot],
+                "committed price/quality/charm differs from forecast");
+    if (v.amenities)
+        require(reward_only_ && !v.purchase && v.cost == 0 && v.monthly_gain == 0 &&
+                    (v.visible_deltas[1] > 0 || v.visible_deltas[2] > 0),
+                "quality/charm fallback must be a free effective improvement, not cash income");
     improved_ = true;
     std::cout << "INVEST improved facility=" << v.facility << " item=" << v.item
-              << " actual_price_delta=" << delta << " uses=" << uses_ << std::endl;
+              << " actual_price_delta=" << delta << " actual_quality_delta=" << v.visible_deltas[1]
+              << " actual_charm_delta=" << v.visible_deltas[2] << " uses=" << uses_ << std::endl;
+}
+
+void ActiveIncomeStrategy::encode(std::ostream &out) const {
+    require(!choice_, "cannot save an active investment flow");
+    out << "ACTIVE_INCOME_1 " << stop_month_ << ' ' << reward_only_ << ' ' << uses_ << ' ' << spent_
+        << ' ' << new_shops_.size() << '\n';
+    for (const auto id : new_shops_)
+        out << id << '\n';
+    require(bool(out), "failed to encode controller");
+}
+ActiveIncomeStrategy ActiveIncomeStrategy::decode(std::istream &in) {
+    std::string magic;
+    int stop{}, reward{}, uses{}, count{};
+    std::int64_t spent{};
+    require(bool(in >> magic >> stop >> reward >> uses >> spent >> count) &&
+                magic == "ACTIVE_INCOME_1" && stop >= 0 && (reward == 0 || reward == 1) &&
+                uses >= 0 && spent >= 0 && count >= 0 && count <= 8192 &&
+                (reward ? spent == 0 : spent <= 10000 && uses <= 24),
+            "invalid saved income controller");
+    ActiveIncomeStrategy result(stop, reward != 0);
+    result.uses_ = uses;
+    result.spent_ = spent;
+    for (int i = 0; i < count; ++i) {
+        std::uint64_t id{};
+        require(bool(in >> id) && id > 0 && result.new_shops_.insert(id).second,
+                "invalid saved introduction identity");
+    }
+    return result; // next() validates each saved instance against the restored Owner.
 }
 
 void income_strategy_contract() {
@@ -332,5 +425,57 @@ void income_strategy_contract() {
     require(!choose_income_investment(s, -1), "negative budget must never spend inventory or cash");
     require(!choose_income_investment(s, 10000),
             "no observed full-month trade cannot justify a forecast");
+    // The source reset copies item.s into held inventory (FACILITY_EFFECTS.md,
+    // items). Quality/charm fallback can legitimately use that initial stock;
+    // only the price experiment requires observed monthly business history.
+    const auto initial_reward = choose_income_investment(s, 10000, {}, true);
+    require(initial_reward && s.items.at(initial_reward->item).inventory > 0 &&
+                initial_reward->amenities && !initial_reward->purchase &&
+                initial_reward->cost == 0 && initial_reward->monthly_gain == 0,
+            "initial held inventory may improve amenities without invented revenue");
+    auto empty_inventory = s;
+    for (auto &[id, item] : empty_inventory.items) {
+        item.inventory = 0;
+        empty_inventory.catalog.at({0, id}).inventory = 0;
+    }
+    require(!choose_income_investment(empty_inventory, 10000, {}, true),
+            "empty inventory cannot be replenished by the reward-only selector");
+    // Source item0 has price/quality/charm increments 0/2/0. This isolated
+    // selection fixture gives one held unit, without inventing past business.
+    auto quality = empty_inventory;
+    quality.items.at(0).inventory = 1;
+    quality.catalog.at({0, 0}).inventory = 1;
+    const auto quality_choice = choose_income_investment(quality, 0, {}, true);
+    require(quality_choice && quality_choice->item == 0 && quality_choice->amenities &&
+                quality_choice->cost == 0 && !quality_choice->purchase &&
+                quality_choice->price_delta == 0 && quality_choice->visible_deltas[1] > 0 &&
+                quality_choice->monthly_gain == 0,
+            "held quality-only improvement must be usable without invented income");
+    require(!choose_income_investment(quality, 0),
+            "legacy price-only experiment must keep its original decisions");
+    for (auto &[definition, facility] : quality.scripts.facilities) {
+        (void)definition;
+        facility.improvements[1] =
+            1000000; // Deliberately saturated fixture, not a campaign mutation.
+    }
+    require(!choose_income_investment(quality, 0, {}, true),
+            "fully capped quality-only inventory must not be wasted");
+    std::istringstream source("ACTIVE_INCOME_1 240 1 38 0 2\n123\n456\n");
+    auto restored = ActiveIncomeStrategy::decode(source);
+    require(restored.reward_only() && restored.uses() == 38 && restored.spent() == 0,
+            "reward-only history may exceed the old experiment cap");
+    restored.next(s, 0, false); // Saved instance IDs need not survive relocation.
+    std::ostringstream saved;
+    restored.encode(saved);
+    require(saved.str() == "ACTIVE_INCOME_1 240 1 38 0 0\n",
+            "removed instances must not survive controller reconciliation");
+    bool rejected{};
+    try {
+        std::istringstream invalid("ACTIVE_INCOME_1 240 1 1 500 0\n");
+        (void)ActiveIncomeStrategy::decode(invalid);
+    } catch (const std::runtime_error &) {
+        rejected = true;
+    }
+    require(rejected, "reward-only controller cannot contain paid item purchases");
 }
 } // namespace ark::test

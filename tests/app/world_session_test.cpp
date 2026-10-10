@@ -1,8 +1,8 @@
 // Transport tests use the real maintained runtime; no alternative AI/tick consumer is injected.
+#include "../support/world_fixture.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/app/session/world_session.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
-#include "../support/world_fixture.hpp"
 #include "world_session_test_support.hpp"
 
 #include <algorithm>
@@ -557,12 +557,14 @@ int main() {
     residence_replacement_command();
     human_command_transactions();
     human_gift_parent_transaction();
+    human_tracking_commands();
     tax_command_transactions();
     sound_output_sink();
     save_command_transactions();
     system_command_transactions();
     village_command_transactions();
     commerce_command_transactions();
+    information_command_transactions();
     magic_pot_commands();
     facility_item_command_transactions();
     editing_command_transactions();

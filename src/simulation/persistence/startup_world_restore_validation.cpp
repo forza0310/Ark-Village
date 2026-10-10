@@ -5,6 +5,8 @@
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/ai/rules/actor_control.hpp"
 #include "ark/simulation/ai/rules/world_perception.hpp"
 
@@ -527,6 +529,8 @@ struct Validation {
     }
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
+        PAGE_MAP(information_page_data);
+        PAGE_MAP(human_detail_contexts);
         PAGE_MAP(page_human_bindings);
         PAGE_MAP(task_abort_questions);
         PAGE_MAP(task_abort_answers);
@@ -592,6 +596,16 @@ struct Validation {
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for (const auto &[id, context] : s.human_detail_contexts) {
+            (void)context;
+            if (!page_kind(id, {60}) || !valid_startup_world_human_detail_context(s, id))
+                return fail("human detail: 来源或实例上下文非法");
+        }
+        for (const auto &[id, data] : s.information_page_data) {
+            (void)data;
+            if (!page_kind(id, {35, 37, 38}))
+                return fail("information page: 目录数据附在错误页型");
+        }
         for (const auto &[id, data] : s.magic_pot_page_data) {
             (void)data;
             if (!page_kind(id, {41, 42, 43, 44, 45, 46, 47}))
@@ -625,6 +639,9 @@ struct Validation {
         for (const auto &[id, n] : s.page_counters)
             if (!counter(n))
                 return fail("page: 计数非法");
+        for (const auto &[id, n] : s.page_secondary_counters)
+            if (!counter(n))
+                return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
             if (n < 0)
                 return fail("page: 阶段非法");
@@ -735,6 +752,8 @@ struct Validation {
         const auto id = p.id;
         if (!s.page_human_bindings.count(id))
             return fail("human page: 缺人物绑定");
+        if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
+            return fail("human detail: 缺来源或实例上下文非法");
         if ((raw == 62 || raw == 63) && !s.page_job_bindings.count(id))
             return fail("human page: 缺职业绑定");
         if (raw == 62 && !s.human_page_parents.count(id))
@@ -901,6 +920,10 @@ struct Validation {
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                (p.legacy_page == 9 || (p.legacy_page >= 35 && p.legacy_page <= 38)) &&
+                !valid_startup_world_information_page(s, p.id))
+                return fail("information page: 初始化/页签/选择/计数载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;
@@ -1038,7 +1061,9 @@ struct Validation {
                  s.page_phases.find(id)->second > 1 || !s.deadline_grades.count(id)))
                 return fail("task page: 已初始化期限页缺载荷");
             if (s.facility_upgrade_initialized.count(id) &&
-                (!s.page_counters.count(id) || !facilities.count(p.legacy_f)))
+                (!s.page_counters.count(id) || !s.page_secondary_counters.count(id) ||
+                 !s.page_phases.count(id) || s.page_phases.find(id)->second > 1 ||
+                 !facilities.count(p.legacy_f)))
                 return fail("upgrade page: 缺升级载荷");
             if ((raw == 30 || raw == 32) && !s.exploration_summaries.count(id))
                 return fail("task page: 缺成果摘要");

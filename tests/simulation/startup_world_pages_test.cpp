@@ -3,6 +3,8 @@
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
@@ -272,8 +274,570 @@ StartupWorldRuntimeState human_fixture(int raw) {
 }
 void page_tick(StartupWorldRuntimeState &s) {
     const auto r = prepare_startup_world_runtime(s);
+    if (!r.candidate) {
+        std::cerr << "page update error=" << static_cast<int>(r.error) << " stack=";
+        for (const auto &page : s.scripts.pages)
+            std::cerr << page.id << ':' << page.legacy_page << '/' << page.lifecycle
+                      << "/initialized=" << s.human_pages_initialized.count(page.id) << ' ';
+        std::cerr << '\n';
+    }
     check(r.candidate.has_value(), "managed page actual framework update succeeds");
     s = *r.candidate;
+}
+void information_menu_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    check(open_startup_world_information_menu(s)==E::none,
+          "real scene opens maintained information9 without fabricating a main-menu3");
+    const auto id=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==9 && !s.page_phases.count(id) &&
+              !s.page_counters.count(id) && !inspect_startup_world_information_page(s,id),
+          "new9 waits for framework initialization, query does not install payload");
+    auto frozen=startup_world_state_digest(s);
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(s,id,confirm)!=E::none &&
+              startup_world_state_digest(s)==frozen,"uninitialized9 input atomically rejects");
+    auto paused_entry=s;paused_entry.scene.framework_paused=true;
+    page_tick(paused_entry);
+    check(paused_entry.scripts.pages.back().lifecycle==0 &&
+              !paused_entry.page_phases.count(id) && !paused_entry.page_counters.count(id),
+          "pause before first information callback retains uninitialized lifecycle and absent payload");
+    paused_entry.scene.framework_paused=false;page_tick(paused_entry);
+    check(inspect_startup_world_information_page(paused_entry,id).has_value(),
+          "unpaused fresh information page initializes through its real framework entry");
+    page_tick(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->raw==9 && view->selection_or_period==0 && view->frame==2 && !view->income,
+          "raw9 framework global count then menu count gives first frame2");
+    constexpr std::array<int,5> tags{15,14,16,17,18},targets{35,34,36,37,38};
+    for(int row=0;row<5;++row)
+        check(view->entries[row].tag==tags[row] && view->entries[row].target_raw==targets[row] &&
+                  view->entries[row].implemented==(row!=1),
+              "raw9 retains all five original ordered rows; implemented is maintenance capability only");
+    page_tick(s);
+    check(s.page_counters.at(id)==3,"raw9 second update reaches original menu count cap3");
+    StartupInformationInput both;both.up=true;both.down=true;both.confirm=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==4,
+          "raw9 simultaneous up/down/confirm takes up only and wraps to row4 without opening child");
+    StartupInformationInput down;down.down=true;
+    check(input_startup_world_information_page(s,id,down)==E::none && s.page_phases.at(id)==0,
+          "raw9 down wraps row4 back to row0");
+    for(int row:{1}) {
+        StartupInformationInput select;select.select_row=row;
+        check(input_startup_world_information_page(s,id,select)==E::none,
+              "unimplemented target still permits selecting its original menu row");
+        frozen=startup_world_state_digest(s);
+        check(input_startup_world_information_page(s,id,confirm)!=E::none &&
+                  startup_world_state_digest(s)==frozen,
+              "unimplemented child rejects confirmation without inventing page or partial retirement");
+    }
+    for(int fault=0;fault<12;++fault) {
+        auto bad=s;
+        StartupInformationInput input=down;
+        if(fault==0)bad.page_phases.erase(id);
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.page_phases.at(id)=-1;
+        if(fault==3)bad.page_phases.at(id)=5;
+        if(fault==4)bad.page_counters.at(id)=-1;
+        if(fault==5)bad.page_counters.at(id)=4;
+        if(fault==6)bad.scripts.pages.back().lifecycle=1;
+        if(fault==7)bad.scripts.pages.back().lifecycle=3;
+        if(fault==8)bad.scripts.pages.back().lifecycle=4;
+        if(fault==9)bad.scene.framework_paused=true;
+        if(fault==10){input={};input.select_row=5;}
+        if(fault==11){input={};input.select_row=2;input.confirm=true;}
+        const auto digest=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,input)!=E::none &&
+                  startup_world_state_digest(bad)==digest,
+              "raw9 bad payload/selection/lifecycle/pause or mixed row/key input rejects whole action");
+    }
+    auto missing=s;missing.page_phases.erase(id);missing.page_counters.erase(id);
+    check(!prepare_startup_world_runtime(missing).candidate,
+          "initialized9 with both payload maps missing cannot masquerade as a fresh page");
+    StartupInformationInput select;select.select_row=2;
+    check(input_startup_world_information_page(s,id,select)==E::none &&
+              input_startup_world_information_page(s,id,confirm)==E::none,
+          "raw9 income row opens actual36");
+    check(s.scripts.pages.back().legacy_page==36 &&
+              std::any_of(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &p){return p.id==id&&p.lifecycle==4;}),
+          "income selection retires9 after pushing36");
+    const auto income=s.scripts.pages.back().id;
+    page_tick(s);
+    check(inspect_startup_world_information_page(s,income).has_value() &&
+              !s.page_phases.count(id) && !s.page_counters.count(id),
+          "framework removes retired9 and its two maps while initializing36");
+    // 独立原raw3父页条件夹具：不把维护scene快捷入口冒称完整主菜单实现。
+    auto parent=fixture(3);parent.scripts.executing_page.reset();parent.scripts.pages.back().lifecycle=2;
+    const auto main=parent.scripts.pages.back().id;
+    check(open_startup_world_information_menu(parent)==E::none,"actual raw3 parent accepts information entry");
+    const auto menu=parent.scripts.pages.back().id;page_tick(parent);
+    auto cancelled=parent;StartupInformationInput back;back.left=true;
+    check(input_startup_world_information_page(cancelled,menu,back)==E::none &&
+              cancelled.scripts.pages.back().lifecycle==4 &&
+              std::any_of(cancelled.scripts.pages.begin(),cancelled.scripts.pages.end(),[&](const auto &p){
+                  return p.id==main&&p.lifecycle!=4;}),"raw9 left retires only itself and retains actual raw3 parent");
+    check(input_startup_world_information_page(parent,menu,select)==E::none &&
+              input_startup_world_information_page(parent,menu,confirm)==E::none,
+          "raw3-to9 actual stack selects36");
+    for(const auto retired:{main,menu})
+        check(std::any_of(parent.scripts.pages.begin(),parent.scripts.pages.end(),[&](const auto &p){
+                  return p.id==retired&&p.lifecycle==4;}),"raw36 selection retires both actual menu3 and9");
+}
+void income_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    check(open_startup_world_information_menu(s)==E::none,"income test opens real information entry");
+    const auto menu=s.scripts.pages.back().id;page_tick(s);
+    StartupInformationInput select;select.select_row=2;
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(s,menu,select)==E::none &&
+              input_startup_world_information_page(s,menu,confirm)==E::none,"income test selects original row2");
+    const auto id=s.scripts.pages.back().id;page_tick(s);
+    // 仅注入权威桶作投影条件夹具，不声称这些收入已自然赚取；金额算式矩阵归纯查询套件。
+    s.monthly_cash={};const int month=s.scene.calendar.month,other=(month+1)%12;
+    s.monthly_cash[month][0]={123,7};s.monthly_cash[other][0]={20,3};
+    auto before=startup_world_state_digest(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->raw==36 && view->selection_or_period==0 && view->income &&
+              view->income->rows[0].income==123 && view->income->rows[0].expense==7 &&
+              startup_world_state_digest(s)==before,"month view reads current Owner bucket without writes");
+    const auto count=s.page_counters.at(id);
+    const auto updates=s.scene.world.updates;
+    const auto units=s.scene.calendar.units;
+    const auto draws=s.scene.random.draws();
+    page_tick(s);
+    check(s.page_counters.at(id)==count+1 && s.scene.world.updates==updates &&
+              s.scene.calendar.units==units && s.scene.random.draws()==draws,
+          "modal36 advances only page count while world/date/random remain frozen");
+    StartupInformationInput left;left.left=true;
+    check(input_startup_world_information_page(s,id,left)==E::none && s.page_phases.at(id)==1,
+          "36 left from month wraps to year");
+    before=startup_world_state_digest(s);view=inspect_startup_world_information_page(s,id);
+    check(view && view->income && view->income->rows[0].income==143 && view->income->rows[0].expense==10 &&
+              startup_world_state_digest(s)==before,"year view reads same current Owner across twelve buckets");
+    StartupInformationInput both;both.left=true;both.right=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==1,
+          "36 left/right are independent in one input, two flips retain year");
+    StartupInformationInput right;right.right=true;
+    check(input_startup_world_information_page(s,id,right)==E::none && s.page_phases.at(id)==0,
+          "36 right from year wraps to month");
+    auto wrapping=s;wrapping.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+    const auto wrapped=update_startup_world_information_page(wrapping,id);
+    check(wrapped && wrapped->page_counters.at(id)==0,"36 legal count upper endpoint advances moduloINT_MAX");
+    for(int fault=0;fault<10;++fault) {
+        auto bad=s;StartupInformationInput input=right;
+        if(fault==0)bad.page_phases.erase(id);
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.page_phases.at(id)=2;
+        if(fault==3)bad.page_counters.at(id)=-1;
+        if(fault==4)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==5)bad.scripts.pages.back().lifecycle=1;
+        if(fault==6)bad.scripts.pages.back().lifecycle=3;
+        if(fault==7)bad.scripts.pages.back().lifecycle=4;
+        if(fault==8)bad.scene.framework_paused=true;
+        if(fault==9){input={};input.select_row=0;}
+        const auto digest=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,input)!=E::none && startup_world_state_digest(bad)==digest,
+              "36 bad payload/lifecycle/pause/selection rejects; INT_MAX rejection is maintenance overflow policy");
+    }
+    auto paused=s;paused.scene.framework_paused=true;
+    const auto pause_frame=paused.page_counters.at(id);page_tick(paused);
+    check(paused.page_counters.at(id)==pause_frame && paused.scene.world.updates==updates &&
+              paused.scene.random.draws()==draws,"framework pause freezes information counter too");
+    auto double_close=s;both.confirm=true;
+    check(input_startup_world_information_page(double_close,id,both)==E::none &&
+              double_close.page_phases.at(id)==0 && double_close.scripts.pages.back().lifecycle==4,
+          "same input left/right both run before confirm retires36");
+    left.confirm=true;
+    check(input_startup_world_information_page(s,id,left)==E::none && s.page_phases.at(id)==1 &&
+              s.scripts.pages.back().lifecycle==4,"single direction changes period before same-input confirm closes");
+    before=startup_world_state_digest(s);
+    check(input_startup_world_information_page(s,id,confirm)!=E::none && startup_world_state_digest(s)==before,
+          "stale closed36 input cannot flip or close again");
+    const auto steps=s.simulation_steps;page_tick(s);
+    check(!s.page_phases.count(id) && !s.page_counters.count(id) && s.simulation_steps==steps+1,
+          "closed36 releases both maps and restores actual main-scene simulation admission");
+    // 初局介绍仍按真实确认消耗，允许新局脚本先出现；不篡改事件seen去强求同轮经营。
+    for(int n=0;n<16 && s.scripts.pages.back().kind!=ref::WorldScriptPageKind::scene;++n) {
+        const auto top=s.scripts.pages.back();
+        if(top.lifecycle!=4)
+            check(acknowledge_startup_world_runtime_page(s,top.id)==E::none,
+                  "post-information startup dialogue uses real confirmation");
+        page_tick(s);
+    }
+    check(s.scripts.pages.back().kind==ref::WorldScriptPageKind::scene &&
+              open_startup_world_information_menu(s)==E::none,"after real return next information entry is available");
+    const auto next=s.scripts.pages.back().id;page_tick(s);
+    check(next!=menu && !s.page_phases.count(menu) && !s.page_counters.count(menu) &&
+              !s.page_phases.count(id) && !s.page_counters.count(id),"new entry retains no retired information IDs");
+    check(input_startup_world_information_page(s,next,select)==E::none &&
+              input_startup_world_information_page(s,next,confirm)==E::none,"next menu opens a fresh36 object");
+    const auto fresh=s.scripts.pages.back().id;page_tick(s);
+    check(fresh!=id && s.page_phases.at(fresh)==0,"fresh36 starts month0 rather than retaining previous year");
+    check(cancel_startup_world_runtime_page(s,fresh)==E::none && s.scripts.pages.back().lifecycle==4,
+          "runtime cancel bridge closes36 through the maintained Owner action");
+}
+std::uint64_t enter_information_catalog(StartupWorldRuntimeState &s,int row) {
+    using E=StartupWorldRuntimeError;
+    check(open_startup_world_information_menu(s)==E::none,"catalogue path opens actual information9 from scene");
+    const auto menu=s.scripts.pages.back().id;page_tick(s);
+    StartupInformationInput select;select.select_row=row;
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(s,menu,select)==E::none &&
+              input_startup_world_information_page(s,menu,confirm)==E::none,
+          "catalogue path selects original information menu row");
+    const auto id=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==(row==0?35:row==3?37:38) &&
+              s.scripts.pages.back().lifecycle==0 && !s.information_page_data.count(id),
+          "new information directory waits for framework Init before owning frozen IDs");
+    return id;
+}
+void owned_item_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    // 六条正库存为目录/滚动条件夹具；不声称经自然购入，不修改静态原定义顺序。
+    for(auto &item:s.items) {
+        item.second.inventory=item.first<6?1:0;
+        item.second.newly_unlocked=true;
+        s.catalog.at({0,item.first}).inventory=item.second.inventory;
+        s.catalog.at({0,item.first}).newly_unlocked=true;
+    }
+    s.items.at(0).status=0;s.catalog.at({0,0}).status=0;
+    s.catalog.at({1,0}).newly_unlocked=true;
+    const auto id=enter_information_catalog(s,3);
+    auto missing_source=s;missing_source.catalog.erase({0,35});
+    const auto missing_digest=startup_world_state_digest(missing_source);
+    check(!prepare_startup_world_runtime(missing_source).candidate &&
+              startup_world_state_digest(missing_source)==missing_digest &&
+              !missing_source.information_page_data.count(id),
+          "37 initialization source failure leaves no frozen list, page payload or output commit");
+    auto paused=s;paused.scene.framework_paused=true;page_tick(paused);
+    check(!paused.information_page_data.count(id) && paused.scripts.pages.back().lifecycle==0,
+          "paused37 does not install a directory ahead of framework init");
+    page_tick(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->items && view->items->size()==6 && view->selection==0 && view->first_visible==0 &&
+              s.information_page_data.at(id).lists==std::vector<std::vector<int>>{{0,1,2,3,4,5}},
+          "37 init freezes positive stock in original order includingstatus0, starts five-row viewport at0");
+    StartupInformationInput up;up.up=true;
+    check(input_startup_world_information_page(s,id,up)==E::none,"37 up wraps to last owned item");
+    view=inspect_startup_world_information_page(s,id);
+    check(view && view->selection==5 && view->first_visible==1,"37 sixth row scrolls five-row viewport to1");
+    StartupInformationInput both;both.up=true;both.down=true;
+    check(input_startup_world_information_page(s,id,both)==E::none &&
+              s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "37 up/down are independent and both approved directions return to same selected row");
+    StartupInformationInput down;down.down=true;
+    check(input_startup_world_information_page(s,id,down)==E::none &&
+              s.information_page_data.at(id).selection==0 && s.information_page_data.at(id).first_visible==0,
+          "37 down wraps last row back to first and restores viewport0");
+    const auto updates=s.scene.world.updates;
+    const auto random=s.scene.random.draws();const auto date=s.scene.calendar.units;
+    const auto counter=s.page_counters.at(id);page_tick(s);
+    check(s.page_counters.at(id)==counter+1 && s.scene.world.updates==updates &&
+              s.scene.random.draws()==random && s.scene.calendar.units==date,
+          "37 modal callback advances page count without world, random or calendar");
+    StartupInformationInput close;close.confirm=true;
+    const auto wrong_id_state=startup_world_state_digest(s);
+    check(input_startup_world_information_page(s,id+1000,close)!=E::none &&
+              startup_world_state_digest(s)==wrong_id_state,"37 stale or unknown page identity rejects without effects");
+    for(int fault=0;fault<9;++fault) {
+        auto bad=s;
+        if(fault==0)bad.information_page_data.erase(id);
+        if(fault==1)bad.information_page_data.at(id).lists[0][0]=999;
+        if(fault==2)bad.information_page_data.at(id).selection=6;
+        if(fault==3)bad.information_page_data.at(id).first_visible=6;
+        if(fault==4){bad.page_phases.erase(id);bad.page_counters.erase(id);}
+        if(fault==5)bad.scripts.pages.back().lifecycle=3;
+        if(fault==6)bad.scene.framework_paused=true;
+        if(fault==7)bad.information_page_data.at(id).lists.push_back({});
+        if(fault==8)bad.catalog.erase({0,35}); // 零库存仍属正常关闭应清NEW的整类，不能只验可见六项。
+        const auto before=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,close)!=E::none &&
+                  startup_world_state_digest(bad)==before,
+              "37 bad directory/scroll/lifecycle or late zero-stock catalog miss rejects entire Owner with no outputs");
+        if(fault==4)check(!prepare_startup_world_runtime(bad).candidate,
+                         "initialized37 with both common maps missing cannot reinitialize over frozen list");
+    }
+    const auto before_items=s.items;const auto cash=s.scene.world.world.ai.accounting.funds();
+    auto late_close=s;
+    // close_page只按目标ID退休；真正的晚期拒绝来自脚本回写时检查职业同步键。
+    // 该目录不参与37载荷验证，故拒绝发生在候选已清NEW之后。
+    late_close.scripts.professions.emplace(
+        static_cast<int>(late_close.scene.world.world.ai.professions.size()), ref::WorldScriptUnlockDefinition{});
+    const auto late_digest=startup_world_state_digest(late_close);
+    check(input_startup_world_information_page(late_close,id,close)==E::script_failed &&
+              startup_world_state_digest(late_close)==late_digest,
+          "37 late page-close failure rolls back candidate whole-class NEW clearing and all outputs");
+    for(bool cancel:{false,true}) {
+        auto closed=s;StartupInformationInput input;input.cancel=cancel;input.confirm=!cancel;
+        check(input_startup_world_information_page(closed,id,input)==E::none &&
+                  closed.scripts.pages.back().lifecycle==4,"37 confirm and return close without using the selected item");
+        for(const auto &item:closed.items)
+            check(!item.second.newly_unlocked && !closed.catalog.at({0,item.first}).newly_unlocked &&
+                      item.second.inventory==before_items.at(item.first).inventory &&
+                      item.second.status==before_items.at(item.first).status,
+                  "37 normal close clears whole ordinary-item NEW including zero stock, preservesinventory/status");
+        check(closed.catalog.at({1,0}).newly_unlocked && closed.scene.random.draws()==random &&
+                  closed.scene.world.world.ai.accounting.funds()==cash,"37 close does not clear equipment NEW or charge/draw");
+        page_tick(closed);
+        check(!closed.information_page_data.count(id) && !closed.page_phases.count(id) && !closed.page_counters.count(id),
+              "37 retirement releases frozen list, selection, scroll and common page maps");
+    }
+    auto empty=test_support::world_fixture();
+    for(auto &item:empty.items) {
+        item.second.inventory=0;item.second.newly_unlocked=true;
+        empty.catalog.at({0,item.first}).inventory=0;empty.catalog.at({0,item.first}).newly_unlocked=true;
+    }
+    const auto empty_id=enter_information_catalog(empty,3);
+    const auto calls=empty.scripts.event_calls.count(15)?empty.scripts.event_calls.at(15):0;
+    page_tick(empty);
+    check(empty.scripts.event_calls.count(15) && empty.scripts.event_calls.at(15)==calls+1 &&
+              !inspect_startup_world_information_page(empty,empty_id),
+          "empty37 invokes real event15 and retires instead of fabricating an empty selectable list");
+    for(const auto &item:empty.items)
+        check(item.second.newly_unlocked && empty.catalog.at({0,item.first}).newly_unlocked,
+              "empty37 initialization exit does not run normal-close NEW clearing");
+    page_tick(empty);
+    check(empty.scripts.event_calls.at(15)==calls+1 && !empty.information_page_data.count(empty_id) &&
+              !empty.page_phases.count(empty_id) && !empty.page_counters.count(empty_id),
+          "empty37 retirement releases its payload without requesting event15 twice");
+}
+void equipment_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    for(auto &entry:s.catalog)if(entry.first.first>0)entry.second.newly_unlocked=true;
+    const auto id=enter_information_catalog(s,4);page_tick(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->equipment && view->selection_or_period==0 && view->selection==0 && view->first_visible==0,
+          "38 real init opens Steam weapon tab without borrowed human selection");
+    const auto &lists=s.information_page_data.at(id).lists;
+    check(lists.size()==4 && lists[0].size()==33 && lists[1].size()==16 && lists[2].size()==33 && lists[3].size()==27,
+          "38 freezes four actual Steam UI catalogues33/16/33/27");
+    StartupInformationInput select;select.select_row=5;
+    check(input_startup_world_information_page(s,id,select)==E::none &&
+              s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==2,
+          "38 fifth zero-based row scrolls the original four-row window to2");
+    StartupInformationInput both;both.left=true;both.right=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==0 &&
+              s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==2,
+          "38 both tab directions return to original tab without clearing selection or scroll");
+    StartupInformationInput next;next.right=true;next.down=true;
+    check(input_startup_world_information_page(s,id,next)==E::none && s.page_phases.at(id)==1 &&
+              s.information_page_data.at(id).selection==1 && s.information_page_data.at(id).first_visible==0,
+          "38 single tab change resets first, then same-input down selects row1");
+    StartupInformationInput previous;previous.left=true;previous.up=true;
+    check(input_startup_world_information_page(s,id,previous)==E::none && s.page_phases.at(id)==0 &&
+              s.information_page_data.at(id).selection==32 && s.information_page_data.at(id).first_visible==29,
+          "38 tab reset occurs before same-input up wraps weapon list to32");
+    StartupInformationInput close;close.confirm=true;
+    for(int fault=0;fault<6;++fault) {
+        auto bad=s;
+        if(fault==0)bad.information_page_data.erase(id);
+        if(fault==1)bad.information_page_data.at(id).lists[3][0]=999;
+        if(fault==2)bad.information_page_data.at(id).first_visible=33;
+        if(fault==3)bad.page_phases.at(id)=4;
+        if(fault==4)bad.information_page_data.at(id).lists.pop_back();
+        if(fault==5){bad.page_phases.erase(id);bad.page_counters.erase(id);}
+        const auto before=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,close)!=E::none && startup_world_state_digest(bad)==before,
+              "38 validates all four frozen lists, scroll and common maps before any close side effect");
+    }
+    const auto updates=s.scene.world.updates;
+    const auto draws=s.scene.random.draws();
+    const auto count=s.page_counters.at(id);page_tick(s);
+    check(s.page_counters.at(id)==count+1 && s.scene.world.updates==updates && s.scene.random.draws()==draws,
+          "38 is independently registered as modal while its own count advances");
+    auto paused=s;paused.scene.framework_paused=true;
+    const auto paused_count=paused.page_counters.at(id);page_tick(paused);
+    const auto paused_digest=startup_world_state_digest(paused);
+    check(paused.page_counters.at(id)==paused_count &&
+              input_startup_world_information_page(paused,id,close)!=E::none &&
+              startup_world_state_digest(paused)==paused_digest,"38 framework pause freezes counter and refuses close input");
+    const auto old_catalog=s.catalog;
+    const auto old_humans=s.shop_humans;
+    check(acknowledge_startup_world_runtime_page(s,id)==E::none && s.scripts.pages.back().lifecycle==4,
+          "38 runtime confirmation closes the catalogue");
+    for(const auto &entry:old_catalog)if(entry.first.first>0)
+        check(s.catalog.at(entry.first).newly_unlocked==entry.second.newly_unlocked &&
+                  s.catalog.at(entry.first).inventory==entry.second.inventory &&
+                  s.catalog.at(entry.first).free_purchases==entry.second.free_purchases,
+              "38 closing preserves equipment NEW, stock and free grants");
+    for(const auto &human:old_humans)
+        check(s.shop_humans.at(human.first).equipment==human.second.equipment,"38 confirmation never equips any person");
+    page_tick(s);
+    check(!s.information_page_data.count(id),"38 retirement releases all four retained definition lists");
+    // 私有规则空饰品类只验证空目录输入，不改变原表、不把无来源空类称自然状态。
+    auto empty=test_support::world_fixture();StartupWorldRules rules=*empty.rules;
+    rules.equipment.erase(std::remove_if(rules.equipment.begin(),rules.equipment.end(),[](const auto &d){
+        return d.shop.kind==3;}),rules.equipment.end());empty.rules=&rules;
+    const auto empty_id=enter_information_catalog(empty,4);page_tick(empty);
+    StartupInformationInput right;right.right=true;
+    for(int n=0;n<3;++n)check(input_startup_world_information_page(empty,empty_id,right)==E::none,"38 reaches empty accessory tab");
+    both={};both.up=true;both.down=true;
+    check(input_startup_world_information_page(empty,empty_id,both)==E::none &&
+              empty.information_page_data.at(empty_id).selection==0 &&
+              empty.information_page_data.at(empty_id).first_visible==0,
+          "38 empty class skips modulo and retains legal zero selection/scroll");
+    for(bool cancel:{false,true}) {
+        auto closed=empty;StartupInformationInput input;input.cancel=cancel;input.confirm=!cancel;
+        check(input_startup_world_information_page(closed,empty_id,input)==E::none &&
+                  closed.scripts.pages.back().lifecycle==4,"38 empty class still supports confirm and return");
+    }
+}
+void adventurer_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    // 定义状态/业绩是最小目录条件；不创建W或伪称六人已自然到访。
+    for(auto &entry:s.human_presence)entry.second=entry.first>=1&&entry.first<=6?(entry.first==6?2:1):0;
+    for(auto &entry:s.scripts.humans)entry.second.pending_notice=true;
+    for(auto &entry:s.human_calendar)entry.second.contribution=99;
+    s.human_calendar.at(0).contribution=77;
+    s.scene.world.world.ai.battle.humans.at(6).killed_stat1=60;
+    const int medals=s.medal_count;
+    const auto awards=s.award_rankings;
+    const auto id=enter_information_catalog(s,0);
+    auto broken=s;broken.human_calendar.erase(6);
+    const auto broken_before=startup_world_state_digest(broken);
+    check(!prepare_startup_world_runtime(broken).candidate && startup_world_state_digest(broken)==broken_before &&
+          !broken.information_page_data.count(id),"35 missing contribution source rejects entire Init candidate");
+    auto paused=s;paused.scene.framework_paused=true;page_tick(paused);
+    check(!paused.information_page_data.count(id),"35 paused entry cannot calculate contribution or freeze a list");
+    page_tick(s);
+    check(s.information_page_data.at(id).lists==std::vector<std::vector<int>>{{1,2,3,4,5,6}} &&
+          s.page_phases.at(id)==0 && s.information_page_data.at(id).selection==0,
+          "35 includes p2 and preserves source order, not live W count or contribution ranking");
+    check(s.human_calendar.at(6).contribution>s.human_calendar.at(1).contribution &&
+          s.human_calendar.at(1).contribution!=99 && s.human_calendar.at(0).contribution==77 &&
+          s.medal_count==medals && s.award_rankings==awards,
+          "35 commits shared contribution refresh without awarding medals or changing absent definitions");
+    check(std::all_of(s.scripts.humans.begin(),s.scripts.humans.end(),[](const auto &v){return v.second.pending_notice;}),
+          "35 Init recalculates contribution without clearing any person NEW");
+    StartupInformationInput up;up.up=true;
+    check(input_startup_world_information_page(s,id,up)==E::none &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 up wraps original six-person list and scrolls its five-row window");
+    StartupInformationInput page;page.right=true;
+    check(input_startup_world_information_page(s,id,page)==E::none && s.page_phases.at(id)==1 &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 changing tab preserves person selection and scroll unlike equipment38");
+    StartupInformationInput both;both.up=true;both.down=true;both.left=true;both.right=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==1 &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 independent up/down then left/right cancel their own movement without reset");
+    const auto before=startup_world_state_digest(s);
+    const auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->humans && view->humans->size()==6 &&
+          view->humans->back().details.definition==6 && view->humans->back().presence==2 &&
+          view->humans->back().yearly_town_points==60 && view->humans->back().yearly_spending==0 &&
+          view->humans->back().newly_unlocked && !view->humans->back().details.live_actor &&
+          startup_world_state_digest(s)==before,
+          "35 view cannot rerun contribution, clear NEW or advance its clock");
+    const auto cash=s.scene.world.world.ai.accounting.funds();
+    const auto draws=s.scene.random.draws();
+    const auto date=s.scene.calendar.units;
+    page_tick(s);
+    check(s.scene.random.draws()==draws && s.scene.calendar.units==date &&
+          s.scene.world.world.ai.accounting.funds()==cash,"35 modal update does not run world operations");
+    StartupInformationInput confirm;confirm.confirm=true;
+    for(int fault=0;fault<6;++fault) {
+        auto invalid=s;
+        if(fault==0)invalid.information_page_data.erase(id);
+        if(fault==1)invalid.information_page_data.at(id).lists[0][0]=6;
+        if(fault==2)invalid.page_phases.at(id)=4;
+        if(fault==3)invalid.information_page_data.at(id).selection=6;
+        if(fault==4)invalid.information_page_data.at(id).first_visible=2;
+        if(fault==5)invalid.scripts.humans.erase(6);
+        const auto digest=startup_world_state_digest(invalid);
+        check(input_startup_world_information_page(invalid,id,confirm)!=E::none &&
+              startup_world_state_digest(invalid)==digest,"35 bad list/tab/selection/NEW source rejects whole action");
+    }
+    auto blocked=s;blocked.scripts.page_mutations_locked=true;
+    const auto blocked_before=startup_world_state_digest(blocked);
+    check(input_startup_world_information_page(blocked,id,confirm)!=E::none &&
+          startup_world_state_digest(blocked)==blocked_before,"35 late60 insertion failure rolls back complete NEW clearing");
+    auto cancelled=s;StartupInformationInput cancel;cancel.cancel=true;
+    check(input_startup_world_information_page(cancelled,id,cancel)==E::none &&
+          cancelled.scripts.pages.back().lifecycle==4,"35 actual return closes only itself");
+    for(const auto &entry:cancelled.scripts.humans)
+        check(entry.second.pending_notice==(entry.first<1||entry.first>6),
+              "35 return clears all directory NEW including offscreen p2, preserving excluded p0 NEW");
+    page_tick(cancelled);
+    check(!cancelled.information_page_data.count(id) && !cancelled.page_phases.count(id) &&
+          !cancelled.page_counters.count(id),"35 next framework retirement releases every directory payload");
+    check(input_startup_world_information_page(s,id,confirm)==E::none && s.scripts.pages.back().legacy_page==60 &&
+          s.page_human_bindings.at(s.scripts.pages.back().id)==6,
+          "35 confirm opens60 bound to selected definition6 despite absence of a live actor");
+    for(const auto &entry:s.scripts.humans)
+        check(entry.second.pending_notice==(entry.first<1||entry.first>6),
+              "35 confirm shares directory-wide NEW clear with return");
+    const auto parent=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    check(parent!=s.scripts.pages.end() && parent->lifecycle==3 &&
+          s.information_page_data.at(id).selection==5 && s.page_phases.at(id)==1,
+          "60 covers actual35 retaining tab, scroll and frozen selected definition");
+    const auto detail=s.scripts.pages.back().id;
+    check(s.human_detail_contexts.at(detail).chase_mode==1 && !s.human_detail_contexts.at(detail).actor,
+          "35-to60 preserves explicit chase source1 without fabricating a W binding");
+    page_tick(s);
+    // 首次60真实压入111教程；按真实确认恢复父页，不伪造已读标志。
+    for(int n=0;n<16;++n) {
+        const auto top=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),
+                                   [](const auto &p){return p.lifecycle!=4;});
+        check(top!=s.scripts.pages.rend(),"first60 tutorial retains an active page");
+        if(top->id==detail && top->lifecycle==2)break;
+        if(top->id!=detail) {
+            check(top->kind==ref::WorldScriptPageKind::dialogue && top->source_record==88,
+                  "only actual111 character-information tutorial covers first60");
+            check(acknowledge_startup_world_runtime_page(s,top->id)==E::none,
+                  "first60 tutorial uses actual confirmation");
+        }
+        page_tick(s);
+    }
+    check(s.scripts.pages.back().id==detail && s.scripts.pages.back().lifecycle==2,
+          "first60 tutorial returns to active detail within bounded framework updates");
+    const auto presentation=inspect_startup_world_human_presentation(s,detail);
+    check(presentation && presentation->tracking_available && !presentation->live,
+          "source1 view exposes chase eligibility even when no live W exists for this definition");
+    auto returned=s;
+    check(act_startup_world_human_page(returned,detail,StartupHumanPageAction::cancel)==E::none,
+          "source1 detail can return to actual35");
+    page_tick(returned);
+    check(returned.scripts.pages.back().id==id && returned.information_page_data.at(id).selection==5 &&
+          returned.information_page_data.at(id).first_visible==1 && returned.page_phases.at(id)==1 &&
+          !returned.human_detail_contexts.count(detail),"60 retirement restores35 selection/tab and releases context");
+    const auto calls=s.scripts.event_calls.count(137)?s.scripts.event_calls.at(137):0;
+    check(act_startup_world_human_page(s,detail,StartupHumanPageAction::track)==E::none &&
+          s.scripts.event_calls.at(137)==calls+1 && s.human_detail_contexts.count(detail) &&
+          !s.scripts.selected_actor && s.scene.scene_state==0,
+          "source1 without live W runs real137 and retains detail instead of inventing actor/camera");
+    const auto after_prompt=startup_world_state_digest(s);
+    check(act_startup_world_human_page(s,detail,StartupHumanPageAction::track)!=E::none &&
+          startup_world_state_digest(s)==after_prompt,"covered60 cannot issue137 again before prompt is consumed");
+    auto direct=human_fixture(60);const auto direct_id=direct.scripts.pages.back().id;
+    auto paused_detail=direct;paused_detail.scene.framework_paused=true;page_tick(paused_detail);
+    check(paused_detail.scripts.pages.back().lifecycle==0 &&
+          !paused_detail.human_pages_initialized.count(direct_id),"paused new60 retains true uninitialized lifecycle");
+    paused_detail.scene.framework_paused=false;page_tick(paused_detail);
+    check(startup_world_human_page_ready(paused_detail,direct_id),"unpaused60 initializes once through actual framework");
+    page_tick(direct);
+    const auto direct_before=startup_world_state_digest(direct);
+    const auto direct_view=inspect_startup_world_human_presentation(direct,direct_id);
+    check(direct_view && !direct_view->tracking_available,"source0 detail view does not advertise chase input");
+    check(act_startup_world_human_page(direct,direct_id,StartupHumanPageAction::track)!=E::none &&
+          startup_world_state_digest(direct)==direct_before,"source0 management detail refuses source1-only chase atomically");
+    for(int fault=0;fault<6;++fault) {
+        auto invalid=direct;
+        if(fault==0)invalid.human_detail_contexts.erase(direct_id);
+        if(fault==1)invalid.page_phases.at(direct_id)=4;
+        if(fault==2)invalid.human_page_selections.at(direct_id)=-1;
+        if(fault==3)invalid.page_counters.at(direct_id)=std::numeric_limits<int>::max();
+        if(fault==4)invalid.human_detail_contexts.at(direct_id).chase_mode=1; // scene父没有W，不能伪造35来源。
+        if(fault==5)invalid.human_pages_initialized.erase(direct_id);
+        check(!startup_world_human_page_ready(invalid,direct_id) &&
+              !inspect_startup_world_human_presentation(invalid,direct_id) &&
+              !prepare_startup_world_runtime(invalid).candidate,
+              "initialized60 missing context or invalid phase/selection/counter cannot recover by reinitializing");
+    }
 }
 void human_details_and_gifts() {
     using A = StartupHumanPageAction;
@@ -1915,6 +2479,60 @@ void commerce_transactions() {
 void commerce_facility_and_projection() {
     using A = StartupCommerceAction;
     using E = StartupWorldRuntimeError;
+    {
+        // 高星商会调用点的条件夹具，不模拟自然升到四星；不改64原表及后续金币建设费。
+        auto rank3 = fixture(85);
+        rank3.rank = 3;
+        const auto prior_page = rank3.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(rank3) &&
+                  std::find(rank3.commerce_page_lists.at(prior_page).begin(),
+                            rank3.commerce_page_lists.at(prior_page).end(), 64) ==
+                      rank3.commerce_page_lists.at(prior_page).end(),
+              "original museum64 is absent from actual rank3 facility commerce catalogue");
+        auto museum = fixture(85);
+        museum.rank = 4;
+        museum.village_points = 199;
+        const auto page = museum.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(museum), "rank4 actual85 initializes");
+        const auto &entries = museum.commerce_page_lists.at(page);
+        const auto row = std::find(entries.begin(), entries.end(), 64);
+        check(row != entries.end() && museum.rules->facility_initial.at(64).capacity == 200 &&
+                  museum.facility_presence.at(64) == 0 && museum.facility_free_builds.at(64) == 0 &&
+                  act_startup_world_commerce_page(museum, page, A::select,
+                      static_cast<int>(row - entries.begin())) == E::none,
+              "rank4 catalogue selects original museum64 with200-point entitlement price");
+        const auto cash = museum.scene.world.world.ai.accounting.funds();
+        const auto instances = museum.scene.world.world.facilities.size();
+        const auto next_instance = museum.next_facility_identity;
+        auto insufficient = museum;
+        check(act_startup_world_commerce_page(insufficient, page, A::confirm) == E::none &&
+                  ref::world_script_seen(insufficient.scripts, 12) && insufficient.village_points == 199 &&
+                  insufficient.facility_presence.at(64) == 0 && insufficient.facility_free_builds.at(64) == 0 &&
+                  insufficient.scene.world.world.ai.accounting.funds() == cash &&
+                  insufficient.next_facility_identity == next_instance &&
+                  std::none_of(insufficient.scripts.pages.begin(), insufficient.scripts.pages.end(),
+                               [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 93; }),
+              "museum199 points produces actual shortage12 without payment, entitlement or pending93");
+        museum.village_points = 200; // 只调整边界夹具，不回滚或伪造原付款动作。
+        check(act_startup_world_commerce_page(museum, page, A::confirm) == E::none &&
+                  museum.village_points == 0 && museum.facility_presence.at(64) == 0 &&
+                  museum.facility_free_builds.at(64) == 0,
+              "museum200 points pays at85 while actual museum entitlement is still pending");
+        const auto reward = museum.scripts.pages.back();
+        check(reward.legacy_page == 93 && reward.legacy_r == 3 && reward.legacy_s == 64 &&
+                  initialize_startup_world_commerce_pages(museum),
+              "museum purchase binds real93/r3/s64 rather than generic95 or an existing building");
+        check(act_startup_world_commerce_page(museum, reward.id, A::confirm) == E::none &&
+                  museum.page_counters.at(reward.id) == 40 && museum.facility_presence.at(64) == 0 &&
+                  museum.facility_free_builds.at(64) == 0 &&
+                  act_startup_world_commerce_page(museum, reward.id, A::confirm) == E::none &&
+                  museum.facility_presence.at(64) == 2 && museum.facility_free_builds.at(64) == 1 &&
+                  museum.facility_unlock_notices.at(64) && museum.village_points == 0 &&
+                  museum.scene.world.world.ai.accounting.funds() == cash &&
+                  museum.scene.world.world.facilities.size() == instances &&
+                  museum.next_facility_identity == next_instance,
+              "museum93 at40 grants p2/H1 only; it neither spends3000G nor constructs an instance");
+    }
     auto s = fixture(85);
     const auto shop = s.scripts.pages.back().id;
     check(initialize_startup_world_commerce_pages(s),
@@ -2687,6 +3305,126 @@ void village_magic_pot_pages() {
                   "kind6 enables two original flags, creates104 and schedules219 rather than eager news19");
     }
 }
+void second_rank_magic_pot_unlock_chain() {
+    using E = StartupWorldRuntimeError;
+    using A = StartupVillageActivityAction;
+    // 明确的已初始化48条件世界：只给二星条件缓存与200点开展预算。
+    // 不声称四宅/12任务/800人气由自然经营取得；以下开放、领取、扣点和入口均走实际Owner。
+    auto s = fixture(48);
+    const auto rank_page = magic_pot_top(s).id;
+    s.rank = 1;
+    s.rank_met.fill(true);
+    s.page_counters[rank_page] = 1;
+    s.village_points = 200;
+    s.quarter_counter = 3;
+    check(s.scripts.activities.at(30).status == 0 && s.activity_counts.at(30) == 0 &&
+              (s.scripts.user_flags & 3U) == 0,
+          "conditional second-rank source has neither activity30 nor magic-pot permission");
+    const auto initial_n = s.legacy_n;
+    check(act_startup_world_runtime_rank_page(s, rank_page) == E::none && s.rank == 2 &&
+              ref::world_script_seen(s.scripts, 43) && s.scripts.activities.at(30).status == 0 &&
+              s.scripts.activities.at(10).status == 1 && s.scripts.activities.at(24).status == 1 &&
+              s.village_points == 200 && (s.scripts.user_flags & 3U) == 0,
+          "actual second-rank promotion opens j2 activities but leaves30 to delayed43 reward");
+    const auto advance_to = [&](int raw) {
+        for (int tick = 0; tick < 600; ++tick) {
+            const auto before = magic_pot_top(s);
+            if (raw == -1 && before.kind == ref::WorldScriptPageKind::scene &&
+                std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                             [](const auto &page) { return page.lifecycle == 4; })) return before.id;
+            page_tick(s);
+            const auto p = magic_pot_top(s);
+            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == raw &&
+                p.lifecycle != 0 && s.page_counters.count(p.id)) return p.id;
+            if (p.kind == ref::WorldScriptPageKind::dialogue ||
+                p.kind == ref::WorldScriptPageKind::simple_message ||
+                p.kind == ref::WorldScriptPageKind::newspaper ||
+                (p.kind == ref::WorldScriptPageKind::raw_page &&
+                 (p.legacy_page == 50 || (p.legacy_page == 11 && p.source_record == 6)))) {
+                // 二星事件54的原5,6生成raw11/source6，与普通dialogue不是同一页种。
+                check(acknowledge_startup_world_runtime_page(s, p.id) == E::none,
+                      "bounded unlock chain consumes only actual script messages and rank celebration");
+            } else {
+                const bool known = p.kind == ref::WorldScriptPageKind::scene ||
+                          (p.kind == ref::WorldScriptPageKind::raw_page &&
+                           (p.legacy_page == raw || p.legacy_page == 16 || p.legacy_page == 56 ||
+                            p.legacy_page == 57 || p.legacy_page == 97 || p.legacy_page == 98));
+                if (!known) throw std::runtime_error("unlock chain unexpected modal: target=" +
+                    std::to_string(raw) + ", raw=" + std::to_string(p.legacy_page) + ", kind=" +
+                    std::to_string(static_cast<int>(p.kind)) + ", lifecycle=" + std::to_string(p.lifecycle) +
+                    ", id=" + std::to_string(p.id));
+            }
+        }
+        throw std::runtime_error("second-rank functional unlock chain exceeded600 page callbacks");
+    };
+    const auto reward = advance_to(95);
+    const auto reward_page = magic_pot_top(s);
+    check(reward_page.legacy_r == 11 && reward_page.legacy_s == 30 &&
+              s.scripts.activities.at(30).status == 0 && (s.scripts.user_flags & 3U) == 0,
+          "actual delayed43 opcode33 binds reward95/r11/s30 without pot introduction");
+    const auto points = s.village_points;
+    check(s.page_counters.at(reward) < 40 &&
+              acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.page_counters.at(reward) == 40 && s.scripts.activities.at(30).status == 0 &&
+              acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.scripts.activities.at(30).status == 1 && s.scripts.activities.at(30).pending_notice &&
+              s.activity_counts.at(30) == 0 && s.village_points == points &&
+              (s.scripts.user_flags & 3U) == 0 && s.legacy_n == initial_n,
+          "specific30 reward confirms at40 without100-point payment or type6 side effects");
+    (void)advance_to(-1);
+    check(!s.page_counters.count(reward) &&
+              open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::invalid_page,
+          "claiming activity30 retires95 but does not prematurely enable the main magic-pot entry");
+    check(open_startup_world_village_activities(s) == E::none,
+          "claimed30 enters the actual village catalogue without fixture status injection");
+    const auto menu = advance_to(51);
+    const auto view = inspect_startup_world_village_activity_page(s, menu);
+    check(view.has_value(), "actual51 initialized after claimed activity30");
+    const auto row = std::find(view->entries.begin(), view->entries.end(), 30);
+    check(row != view->entries.end() &&
+              act_startup_world_village_activity_page(s, menu, A::select,
+                  static_cast<int>(row - view->entries.begin())) == E::none &&
+              act_startup_world_village_activity_page(s, menu, A::confirm) == E::none,
+          "actual51 includes received30 and opens its bound52");
+    const auto offer = advance_to(52);
+    check(act_startup_world_village_activity_page(s, offer, A::confirm) == E::none,
+          "actual52 pays for the same received30");
+    const auto animation = advance_to(53);
+    check(s.village_points == points - 100 && s.activity_counts.at(30) == 1 &&
+              s.events_held == 1 && s.quarter_counter == 3 && (s.scripts.user_flags & 3U) == 0,
+          "30 payment and holding precede actual magic-pot introduction");
+    for (int tick = 0; tick < 120 && s.page_counters.at(animation) < 120; ++tick) page_tick(s);
+    check(s.page_counters.at(animation) >= 120, "introduced30 reaches120 within bounded modal callbacks");
+    check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+              (s.scripts.user_flags & 3U) == 3U && s.quarter_counter == 2 &&
+              ref::world_script_seen(s.scripts, 104) && ref::world_script_seen(s.scripts, 219),
+          "same30 type6 at120 enables both flags through original104 and delayed219");
+    (void)advance_to(51);
+    check(act_startup_world_village_activity_page(s, menu, A::cancel) == E::none,
+          "introduced activity returns through real51 parent");
+    (void)advance_to(-1);
+    check(s.activity_pages_initialized.empty() && s.activity_page_parents.empty() &&
+              s.activity_page_answers.empty() && s.activity_page_bindings.empty(),
+          "completed introduction retires village transient references before main entry");
+    check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none &&
+              (s.scripts.user_flags & 3U) == 1U && s.village_points == points - 100 &&
+              s.legacy_n == initial_n,
+          "main entry after real introduction clears only tip bit and neither recharges nor repeats pot effect");
+    const auto pot = advance_to(41);
+    check(inspect_startup_world_magic_pot_page(s, pot).has_value() &&
+              act_startup_world_magic_pot_page(s, pot, StartupMagicPotAction::cancel) == E::none,
+          "introduced main entry produces actual ready41 and explicit return");
+    (void)advance_to(-1);
+    check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+              s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty(),
+          "linked41 retires all pot page payloads without deleting shared recipe progress");
+    check(!s.sound_requests.empty() &&
+              std::all_of(s.sound_requests.begin(), s.sound_requests.end(), [](const auto &request) {
+                  return static_cast<int>(request.operation) >= 0 && static_cast<int>(request.operation) <= 2 &&
+                         request.id >= 0 && request.id < 26;
+              }), "linked unlock keeps typed original audio requests available to one consumer");
+    s.sound_requests.clear(); // 条件套件显式消费本链输出；不反复重放主场景或模拟年度。
+}
 std::uint64_t install_magic_pot_shop(StartupWorldRuntimeState &s, int definition) {
     const auto &map = s.scene.world.world.map;
     const auto bounds = s.rules->fences.at(s.fence_level);
@@ -2811,6 +3549,11 @@ int main() {
     try {
         facility_commodity_pages();
         facility_reputation_pages();
+        information_menu_pages();
+        income_information_pages();
+        owned_item_information_pages();
+        equipment_information_pages();
+        adventurer_information_pages();
         ordinary_item_pages();
         commerce_after_reward_writeback();
         commerce_transactions();
@@ -2821,6 +3564,7 @@ int main() {
         magic_pot_recipe_and_facility_reward();
         magic_pot_equipment_low_level_rewards();
         village_magic_pot_pages();
+        second_rank_magic_pot_unlock_chain();
         village_activity_initialization();
         village_activity_pages();
         village_expansion_pages();

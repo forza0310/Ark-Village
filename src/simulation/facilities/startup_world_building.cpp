@@ -844,6 +844,8 @@ Error open_startup_world_facility_page(State &s, std::uint64_t id) {
             !write_startup_world_runtime_scripts(next, page.candidate->state))
             return Error::script_failed;
         next.page_human_bindings[page.candidate->inserted_pages.front().id] = human;
+        next.human_detail_contexts.emplace(page.candidate->inserted_pages.front().id,
+                                           StartupHumanDetailContext{});
         s = std::move(next);
         return Error::none;
     }
@@ -1073,7 +1075,73 @@ std::optional<State> prepare_startup_world_residence_completion(const State &s, 
     }
     return next;
 }
+std::optional<StartupFacilityUpgradeView>
+inspect_startup_world_facility_upgrade(const State &s, std::uint64_t page) {
+    const auto p = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                [page](const auto &value) { return value.id == page; });
+    const auto binding = s.facility_page_bindings.find(page);
+    const auto phase = s.page_phases.find(page);
+    const auto frame = s.page_counters.find(page);
+    const auto frame2 = s.page_secondary_counters.find(page);
+    if (p == s.scripts.pages.end() || p->lifecycle == 4 ||
+        p->kind != ref::WorldScriptPageKind::raw_page || p->legacy_page != 81 ||
+        !s.facility_upgrade_initialized.count(page) || binding == s.facility_page_bindings.end() ||
+        phase == s.page_phases.end() || phase->second < 0 || phase->second > 1 ||
+        frame == s.page_counters.end() || frame->second < 0 ||
+        frame->second >= std::numeric_limits<int>::max() ||
+        frame2 == s.page_secondary_counters.end() || frame2->second < 0 ||
+        frame2->second >= std::numeric_limits<int>::max())
+        return {};
+    const auto facility = s.scene.world.world.facilities.find(binding->second);
+    if (facility == s.scene.world.world.facilities.end())
+        return {};
+    const auto *d = definition(s, facility->second.placement.definition_id);
+    const auto progress = s.scene.world.world.facility_uses.find(p->legacy_f);
+    if (!d || p->legacy_f != d->id || d->display_id < 0 ||
+        progress == s.scene.world.world.facility_uses.end() || progress->second.level < 1 ||
+        progress->second.level > 5 || !progress->second.upgrade_pending)
+        return {};
+    StartupFacilityUpgradeView result;
+    result.facility = binding->second;
+    result.definition = d->id;
+    result.mapchip = d->display_id;
+    result.level = progress->second.level;
+    result.phase = phase->second;
+    result.frame = frame->second;
+    result.frame2 = frame2->second;
+    result.attributes = s.facility_upgrade_display;
+    for (std::size_t n = 0; n < result.limits.size(); ++n) {
+        if (d->economy.attributes[n].fifth < 0)
+            return {};
+        result.limits[n] = 2LL * d->economy.attributes[n].fifth;
+        for (const auto &row : result.attributes)
+            if (row[n] < std::numeric_limits<int>::min() ||
+                row[n] > std::numeric_limits<int>::max())
+                return {};
+        if (result.attributes[2][n] != result.attributes[1][n] - result.attributes[0][n])
+            return {};
+    }
+    return result;
+}
 bool consume_startup_world_facility_upgrade(State &s, std::uint64_t page, bool confirm) {
+    const auto p = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                [page](const auto &value) { return value.id == page; });
+    if (p == s.scripts.pages.end() || p->lifecycle == 4 ||
+        p->kind != ref::WorldScriptPageKind::raw_page || p->legacy_page != 81)
+        return false;
+    // 已初始化页面必须保有完整计时载荷，不能由 map[] 将损坏快照补成新页。
+    const bool initialized = s.facility_upgrade_initialized.count(page) != 0;
+    if (initialized) {
+        const auto phase = s.page_phases.find(page);
+        const auto counter = s.page_counters.find(page);
+        const auto secondary = s.page_secondary_counters.find(page);
+        if (phase == s.page_phases.end() || phase->second < 0 || phase->second > 1 ||
+            counter == s.page_counters.end() || counter->second < 0 ||
+            counter->second >= std::numeric_limits<int>::max() ||
+            secondary == s.page_secondary_counters.end() || secondary->second < 0 ||
+            secondary->second >= std::numeric_limits<int>::max())
+            return false;
+    }
     const auto binding = s.facility_page_bindings.find(page);
     if (binding == s.facility_page_bindings.end())
         return false;
@@ -1082,10 +1150,11 @@ bool consume_startup_world_facility_upgrade(State &s, std::uint64_t page, bool c
         return false;
     const int definition_id = f->second.placement.definition_id;
     const auto *d = definition(s, definition_id);
-    if (!d)
+    const auto use = s.scene.world.world.facility_uses.find(definition_id);
+    if (!d || p->legacy_f != definition_id || use == s.scene.world.world.facility_uses.end())
         return false;
-    auto &progress = s.scene.world.world.facility_uses.at(definition_id);
-    if (!s.facility_upgrade_initialized.count(page)) {
+    auto &progress = use->second;
+    if (!initialized) {
         if (!progress.upgrade_pending)
             return false;
         auto in = input(s, definition_id);
@@ -1120,12 +1189,17 @@ bool consume_startup_world_facility_upgrade(State &s, std::uint64_t page, bool c
         }
         s.facility_upgrade_initialized.insert(page);
         s.page_phases[page] = 0;
+        s.page_counters[page] = 0;
+        s.page_secondary_counters[page] = 0;
     }
-    auto &phase = s.page_phases[page];
-    auto &counter = s.page_counters[page];
-    if (phase < 0 || phase > 1)
-        return false;
+    auto &phase = s.page_phases.at(page);
+    auto &counter = s.page_counters.at(page);
     if (!confirm) {
+        // Steam SubForm.Update / APK b/g.b：独立双计数按实际获准更新递增，
+        // 满 INT_MAX 前回到 0；确认快进、分段重置不改变 frame2。
+        auto &secondary = s.page_secondary_counters.at(page);
+        counter = (counter + 1) % std::numeric_limits<int>::max();
+        secondary = (secondary + 1) % std::numeric_limits<int>::max();
         if (phase == 0 && counter == 1)
             s.sound_requests.push_back({StartupAudioOperation::jingle, 20});
         return true;

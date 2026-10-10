@@ -40,7 +40,7 @@ struct StartupWorldHuman {
     ref::WorldScriptProgram residence_completion_program; // 原e.i，character索引9。
 };
 struct StartupWorldEquipment {
-    ref::ShopEquipmentDefinition shop;
+    ref::ShopEquipmentDefinition shop; // type保存原第2列：武器p.d是列表图标；防具/饰品d是分类。
     ref::ObjectCatalogRecord initial;
     ref::CombatWeaponRule battle; // 只kind1使用，其他命名空间不冒充武器。
     int reward_difficulty{};      // 武器g、防具/饰品f，用于任务奖励池。
@@ -74,6 +74,7 @@ struct StartupWorldItem {
     int commerce_price{};                       // 原g.u，商会金币价格，出售向零除2。
     std::array<int, 4> magic_pot_elements{}; // 原g.l，item索引12..15火／冰／雷／暗。
     int render_icon{}; // 原g.g，item索引5；不是定义ID、种类或属性效果编号。
+    std::string description; // 原g.y，item索引23；持有道具页直接显示，不以效果摘要替代。
 };
 struct StartupWorldTask {
     ref::TaskCreationDefinition factory;

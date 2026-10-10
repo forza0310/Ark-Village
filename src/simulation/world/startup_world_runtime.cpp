@@ -6,6 +6,7 @@
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/actors/startup_world_routes.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
@@ -207,6 +208,20 @@ bool write_report(State &s, const ref::WorldMonthReportState &r) {
     return true;
 }
 } // namespace
+
+bool clear_startup_world_item_notices(StartupWorldRuntimeState &s) {
+    if (!s.rules)
+        return false;
+    // c/n.r()清全部普通道具NEW；先核齐两份目录，失败不留下半份清除。
+    for (const auto &definition : s.rules->items)
+        if (!s.items.count(definition.identity) || !s.catalog.count({0, definition.identity}))
+            return false;
+    for (const auto &definition : s.rules->items) {
+        s.items.find(definition.identity)->second.newly_unlocked = false;
+        s.catalog.find({0, definition.identity})->second.newly_unlocked = false;
+    }
+    return true;
+}
 
 const ref::WorldScriptCatalog &startup_world_runtime_catalog() {
     static const auto catalogue = [] {
@@ -940,6 +955,13 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::open_village_activities() {
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_commerce() {
     return open_startup_world_commerce(state_);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_information_menu() {
+    return open_startup_world_information_menu(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_information_page(
+    std::uint64_t page, const StartupInformationInput &input) {
+    return input_startup_world_information_page(state_, page, input);
+}
 StartupBuildResult StartupWorldRuntimeSession::begin_road(int definition) {
     return begin_startup_world_road(state_, definition);
 }
@@ -1053,6 +1075,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.task_abort_questions.erase(page.id);
             admitted.task_abort_answers.erase(page.id);
             admitted.human_pages_initialized.erase(page.id);
+            admitted.human_detail_contexts.erase(page.id);
             admitted.human_page_catalogs.erase(page.id);
             admitted.equipment_page_catalogs.erase(page.id);
             admitted.human_page_selections.erase(page.id);
@@ -1062,6 +1085,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.human_equipment_choices.erase(page.id);
             admitted.human_gift_scores.erase(page.id);
             admitted.human_gift_messages.erase(page.id);
+            admitted.information_page_data.erase(page.id);
             admitted.tax_page_residents.erase(page.id);
             admitted.tax_page_selection.erase(page.id);
             admitted.tax_page_scroll.erase(page.id);
@@ -1088,13 +1112,28 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::invalid_state,
                 ref::WorldScheduleError::none,
                 {}};
+    // 暂停不初始化信息页/人物详情，也不把尚未具备载荷的生命周期0页改成已就绪2。
+    const auto &pending = admitted.scripts.pages.back();
+    if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
+        (pending.legacy_page == 60 || pending.legacy_page == 9 ||
+         (pending.legacy_page >= 35 && pending.legacy_page <= 38))) {
+        if (!(pending.legacy_page == 60 ? valid_startup_world_human_detail_context(admitted, pending.id)
+                                       : valid_startup_world_information_page(admitted, pending.id)))
+            return {StartupWorldRuntimeError::missing_source, {},
+                    ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};
+        admitted.scripts.executing_page.reset();
+        admitted.scene.top_is_main = false;
+        return {StartupWorldRuntimeError::none, std::move(admitted),
+                ref::WorldSceneError::none, ref::WorldScheduleError::none, {}};
+    }
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
     if (!initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||
         !initialize_startup_world_facility_item_pages(admitted) ||
         !initialize_startup_world_facility_catalog_pages(admitted) ||
-        !initialize_startup_world_magic_pot_pages(admitted))
+        !initialize_startup_world_magic_pot_pages(admitted) ||
+        !initialize_startup_world_information_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

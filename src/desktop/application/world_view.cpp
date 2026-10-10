@@ -406,6 +406,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             case ui::WorldMenuIntent::system:
                 pending_menu = session.open_save_menu();
                 break;
+            case ui::WorldMenuIntent::information:
+                pending_menu = session.open_menu_information();
+                break;
             }
         }
         if (publication->save_menu_open) {

@@ -1,11 +1,11 @@
 // UI owns current-owner projection and action routing. Frozen rule/runtime suites own
 // profession gates, gift rewards and tax posting; those transactions are not duplicated here.
-#include "ark/simulation/facilities/startup_world_commerce.hpp"
-#include "../support/checks.hpp"
-#include "../support/world_fixture.hpp"
+#include "../../src/desktop/inspection/world_human_inspection.hpp"
 #include "../../src/desktop/ui/actors/world_human.hpp"
 #include "../../src/desktop/ui/village/world_tax.hpp"
-#include "../../src/desktop/inspection/world_human_inspection.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include <algorithm>
 
 namespace ark::test {
@@ -21,6 +21,10 @@ Page human_page(sim::StartupWorldRuntimeState &state, int raw, bool ready = true
     page.lifecycle = 1;
     state.scripts.pages.push_back(page);
     state.page_human_bindings[page.id] = 0;
+    // Scene/house/task details carry source0 even in a read-only UI fixture;
+    // the new runtime rejects missing context rather than inventing tracking access.
+    if (raw == 60)
+        state.human_detail_contexts.emplace(page.id, sim::StartupHumanDetailContext{});
     state.page_phases[page.id] = state.page_counters[page.id] =
         state.human_page_selections[page.id] = 0;
     if (ready)
@@ -58,6 +62,19 @@ void world_human() {
               view.details.medals == 7 && view.details.attributes[2] == 103 &&
               view.details.combat[0] == 301,
           "Human detail projects current shared values instead of creation metadata");
+    check(!view.can_track, "Ordinary source0 details never expose directory tracking");
+    {
+        auto tracking = view;
+        ui::WorldHumanInput chase;
+        chase.click = middle(ui::world_human_detail_layout(layout).track);
+        check(!ui::world_human_input(view, layout, chase, false),
+              "Invisible tracking control has no active source0 hit region");
+        tracking.can_track = true; // Source eligibility itself belongs to the Owner suite.
+        const auto action = ui::world_human_input(tracking, layout, chase, false);
+        check(action && action->action == Action::track &&
+                  !ui::world_human_input(tracking, layout, chase, true),
+              "Source1 tracking emits one FIFO intent and blocks duplicates while pending");
+    }
     check(ui::world_human_input(view, layout, input, false)->action == Action::confirm &&
               !ui::world_human_input(view, layout, input, true),
           "Human confirmation is explicit and blocked while an earlier command is pending");

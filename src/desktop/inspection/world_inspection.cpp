@@ -185,8 +185,8 @@ void prepare_world_inspection(State &state, const app::LaunchOptions &options, b
             if (!advance(state))
                 throw std::runtime_error("World inspection failed before its real target state");
             after_human_inspection_update(state, human_inspection);
-            // This synchronous diagnostic is its own Owner; normal windows consume outputs
-            // in WorldSession. No sound playback is implemented in either adapter yet.
+            // This synchronous diagnostic owns its preparation state and discards sound.
+            // Normal play transfers requests through WorldSession to the desktop audio player.
             state.sound_requests.clear();
             // Reports advance automatically alongside the world, including in diagnostics.
             // No synthetic confirmation or report-specific clock is introduced here.

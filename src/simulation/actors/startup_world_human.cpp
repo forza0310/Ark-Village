@@ -1,5 +1,6 @@
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/actors/rules/human_management.hpp"
 
 #include <algorithm>
@@ -94,7 +95,8 @@ bool reward_page(State &s, int human, const ref::HumanRewardCandidate &r) {
 }
 bool initialize(State &s, std::uint64_t id, int raw) {
     const auto h = s.page_human_bindings.find(id);
-    if (h == s.page_human_bindings.end() || !startup_world_human_details(s, h->second))
+    if (h == s.page_human_bindings.end() || !startup_world_human_details(s, h->second) ||
+        (raw == 60 && !valid_startup_world_human_detail_context(s, id)))
         return false;
     const int human = h->second;
     if (raw == 65 || raw == 66 || raw == 69) {
@@ -219,7 +221,14 @@ bool initialize(State &s, std::uint64_t id, int raw) {
     s.page_phases.try_emplace(id, 0);
     s.page_counters.try_emplace(id, 0);
     s.human_page_selections.try_emplace(id, 0);
-    return true;
+    if (raw == 60) {
+        // Init可压入首次说明111，栈顶已不是60；完成Init的本页仍须进入Start阶段。
+        // 不能靠框架仅更新back()把已初始化却被遮住的60遗留为生命周期0。
+        for (auto &page : s.scripts.pages)
+            if (page.id == id && page.lifecycle == 0)
+                page.lifecycle = 1;
+    }
+    return raw != 60 || valid_startup_world_human_detail_context(s, id);
 }
 bool denial(State &s, ref::HumanManagementDenial reason, const StartupWorldJob *job = nullptr) {
     using D = ref::HumanManagementDenial;
@@ -246,18 +255,6 @@ std::optional<std::uint64_t> live_parent(const State &s, std::uint64_t child, in
         person->second != human)
         return {};
     return parent->id;
-}
-// c/n.r()清的是全部普通道具r提示；不是库存、获得状态或住宅请求。
-bool clear_item_notices(State &s) {
-    for (const auto &definition : s.rules->items) {
-        const auto owned = s.items.find(definition.identity);
-        const auto catalog = s.catalog.find({0, definition.identity});
-        if (owned == s.items.end() || catalog == s.catalog.end())
-            return false;
-        owned->second.newly_unlocked = false;
-        catalog->second.newly_unlocked = false;
-    }
-    return true;
 }
 bool commit_gift(State &s, std::uint64_t parent, int human) {
     const auto selected = s.human_equipment_choices.find(parent);
@@ -332,6 +329,7 @@ bool commit_gift(State &s, std::uint64_t parent, int human) {
         if (!open(s, 68, human))
             return false;
     }
+
     if (!reward_page(s, human, c.reward))
         return false;
     for (const auto id : s.scene.world.world.ai.human_order) {
@@ -343,7 +341,7 @@ bool commit_gift(State &s, std::uint64_t parent, int human) {
         s.actor_metadata.at(id).weapon = weapon;
         break; // 原j()只同步首个同定义实例，不广播装备。
     }
-    return clear_item_notices(s);
+    return clear_startup_world_item_notices(s);
 }
 
 // 普通道具在父64直接确认：先评价/结果，再消耗库存；全过程仍在Owner候选内。
@@ -412,7 +410,7 @@ bool commit_item(State &s, std::uint64_t parent, int human, int item) {
             break;
         }
     }
-    return clear_item_notices(s);
+    return clear_startup_world_item_notices(s);
 }
 
 bool item_recovery(State &s, std::uint64_t page, int counter) {
@@ -624,6 +622,165 @@ std::optional<StartupHumanDetails> startup_world_human_details(const State &s, i
     }
     return result;
 }
+std::optional<StartupHumanPresentationView>
+inspect_startup_world_human_presentation(const State &s, std::uint64_t id) {
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [id](const auto &p) { return p.id == id; });
+    if (!s.rules || page == s.scripts.pages.end() ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 60 ||
+        page->lifecycle < 1 || page->lifecycle > 3 ||
+        !s.human_pages_initialized.count(id) ||
+        !valid_startup_world_human_detail_context(s, id))
+        return {};
+    const auto binding = s.page_human_bindings.find(id);
+    const auto tab = s.page_phases.find(id);
+    const auto frame = s.page_counters.find(id);
+    const auto selection = s.human_page_selections.find(id);
+    if (binding == s.page_human_bindings.end() || tab == s.page_phases.end() ||
+        frame == s.page_counters.end() || selection == s.human_page_selections.end() ||
+        tab->second < 0 || tab->second > 3 || frame->second < 0 || selection->second != 0)
+        return {};
+    const auto details = startup_world_human_details(s, binding->second);
+    if (!details)
+        return {};
+    StartupHumanPresentationView view{id, tab->second, frame->second, *details, {}};
+    const auto &context = s.human_detail_contexts.find(id)->second;
+    view.tracking_available = context.chase_mode == 1;
+    if (context.actor)
+        view.human.live_actor = context.actor;
+    const auto &ai = s.scene.world.world.ai;
+    // 镜头确认页保留显式W；仅无W绑定的目录详情才按名单取首个同定义实例。
+    // 两条路径都不回退到退休实例或独立W。
+    for (const auto actor_id : ai.human_order) {
+        const auto actor = ai.battle.actors.find(actor_id);
+        if (actor == ai.battle.actors.end() || !(actor->second.id == actor_id) ||
+            actor->second.kind != ref::ActorKind::human)
+            return {};
+        const auto &live = actor->second;
+        if (!view.human.live_actor || !(actor_id == *view.human.live_actor))
+            continue;
+        const auto growth = ai.growth.find(binding->second);
+        if (growth == ai.growth.end() || growth->second.derived.combat[0] <= 0 ||
+            live.control.state < 0 || live.definition != binding->second)
+            return {};
+        view.live = StartupHumanPresentationLive{actor_id, live.control.state,
+                                                live.hp.displayed, live.hp.target,
+                                                growth->second.derived.combat[0]};
+        break;
+    }
+    if (view.human.live_actor && !view.live)
+        return {};
+    // 无实际实例仍返回定义肖像；不得补一条满HP血条。原HP可以超过新上限。
+    return view;
+}
+bool valid_startup_world_human_detail_context(const State &s, std::uint64_t id) {
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [id](const auto &p) { return p.id == id; });
+    const auto context = s.human_detail_contexts.find(id);
+    const auto binding = s.page_human_bindings.find(id);
+    if (!s.rules || id == 0 || page == s.scripts.pages.end() ||
+        std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                      [id](const auto &p) { return p.id == id; }) != 1 ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 60 ||
+        page->lifecycle < 0 || page->lifecycle > 4 ||
+        context == s.human_detail_contexts.end() || binding == s.page_human_bindings.end() ||
+        !startup_world_human_details(s, binding->second) ||
+        (context->second.chase_mode != 0 && context->second.chase_mode != 1) ||
+        (context->second.chase_mode == 0 && context->second.actor))
+        return false;
+    if (!s.human_pages_initialized.count(id) && page->lifecycle >= 1 && page->lifecycle <= 3)
+        return false; // 已开始页缺标记是坏载荷，不能重新Init并重算/重播首次说明。
+    if (s.human_pages_initialized.count(id)) {
+        if (page->lifecycle == 0)
+            return false;
+        const auto phase = s.page_phases.find(id);
+        const auto counter = s.page_counters.find(id);
+        const auto selection = s.human_page_selections.find(id);
+        if (phase == s.page_phases.end() || counter == s.page_counters.end() ||
+            selection == s.human_page_selections.end() || phase->second < 0 || phase->second > 3 ||
+            counter->second < 0 || counter->second == std::numeric_limits<int>::max() ||
+            selection->second != 0)
+            return false;
+    }
+    // 来源1只来自实际35父页，或scene6确认后带W的新详情；来源不是可随意授予的标志。
+    if (page->lifecycle != 4 && context->second.chase_mode == 1) {
+        auto parent = page;
+        while (parent != s.scripts.pages.begin()) {
+            --parent;
+            if (parent->lifecycle != 4) break;
+        }
+        if (parent == page || parent->lifecycle == 4) return false;
+        if (context->second.actor) {
+            if (parent->kind != ref::WorldScriptPageKind::scene) return false;
+        } else {
+            if (parent->kind != ref::WorldScriptPageKind::raw_page || parent->legacy_page != 35 ||
+                !valid_startup_world_information_page(s, parent->id)) return false;
+            const auto &list = s.information_page_data.find(parent->id)->second;
+            if (list.lists.front()[list.selection] != binding->second) return false;
+        }
+    }
+    if (!context->second.actor)
+        return true;
+    const auto &ai = s.scene.world.world.ai;
+    const auto actor = ai.battle.actors.find(*context->second.actor);
+    return actor != ai.battle.actors.end() && actor->second.id == *context->second.actor &&
+           actor->second.kind == ref::ActorKind::human && actor->second.definition == binding->second &&
+           std::find(ai.human_order.begin(), ai.human_order.end(), *context->second.actor) != ai.human_order.end() &&
+           s.actor_metadata.count(*context->second.actor) != 0;
+}
+
+std::optional<std::uint64_t> append_startup_world_human_detail_page(
+    State &s, int human, int chase_mode, std::optional<ref::CharacterId> actor) {
+    const auto *parent = top(s);
+    if (!s.rules || s.scene.framework_paused || s.scripts.page_mutations_locked ||
+        !parent || parent->id == 0 ||
+        std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                      [parent](const auto &p) { return p.id == parent->id; }) != 1 ||
+        (chase_mode != 0 && chase_mode != 1) || !startup_world_human_details(s, human))
+        return {};
+    const bool scene = parent->kind == ref::WorldScriptPageKind::scene;
+    const bool directory = parent->kind == ref::WorldScriptPageKind::raw_page && parent->legacy_page == 35;
+    // source0保留既有场景命令入口：原调用点夹具可在主场景生命周期0建立详情。
+    // 新增追踪链只由已就绪35或真实scene6回调进入，不扩大其输入资格。
+    if ((chase_mode == 0 && (parent->lifecycle < 0 || parent->lifecycle > 3)) ||
+        (chase_mode == 1 && parent->lifecycle != 2 &&
+         !(parent->lifecycle == 3 && s.scripts.executing_page == parent->id)))
+        return {};
+    if ((!scene && !directory) || (scene && s.scene.scene_state != 0) ||
+        (chase_mode == 0 && (!scene || actor)) ||
+        (chase_mode == 1 && ((scene && !actor) || (directory && actor))))
+        return {};
+    if (directory && !valid_startup_world_information_page(s, parent->id))
+        return {};
+    if (directory) {
+        const auto &list = s.information_page_data.find(parent->id)->second;
+        if (list.lists.front()[list.selection] != human) return {};
+    }
+    if (scene && chase_mode == 0) {
+        const auto presence = s.human_presence.find(human);
+        if (presence == s.human_presence.end() || presence->second == 0)
+            return {};
+    }
+    if (actor) {
+        const auto &ai = s.scene.world.world.ai;
+        const auto found = ai.battle.actors.find(*actor);
+        if (found == ai.battle.actors.end() || !(found->second.id == *actor) ||
+            found->second.kind != ref::ActorKind::human || found->second.definition != human ||
+            std::find(ai.human_order.begin(), ai.human_order.end(), *actor) == ai.human_order.end() ||
+            !s.actor_metadata.count(*actor) || s.scripts.selected_actor != actor->value)
+            return {};
+    }
+    // 原Push覆盖父页；底层script插页只负责位置/ID，不代替表单挂起。
+    const auto parent_id = parent->id;
+    for (auto &page : s.scripts.pages)
+        if (page.id == parent_id)
+            page.lifecycle = 3;
+    const auto id = open(s, 60, human);
+    if (!id || !s.human_detail_contexts.emplace(*id, StartupHumanDetailContext{chase_mode, actor}).second)
+        return {};
+    return id;
+}
+
 Error open_startup_world_human_page(State &s, int human) {
     const auto *p = top(s);
     const auto presence = s.human_presence.find(human);
@@ -635,7 +792,7 @@ Error open_startup_world_human_page(State &s, int human) {
         return Error::missing_source;
     auto next = s;
     next.scripts.executing_page = p->id;
-    if (!open(next, 60, human))
+    if (!append_startup_world_human_detail_page(next, human, 0))
         return Error::script_failed;
     next.scripts.executing_page.reset();
     s = std::move(next);
@@ -649,6 +806,8 @@ bool startup_world_human_page_ready(const State &s, std::uint64_t id) {
         !s.human_page_selections.count(id))
         return false;
     const int raw = p->legacy_page;
+    if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
+        return false;
     if ((raw == 61 || raw == 62) && !s.human_page_catalogs.count(id))
         return false;
     if (raw == 64 || raw == 73) {
@@ -664,13 +823,17 @@ bool initialize_startup_world_human_pages(State &s) {
     if (s.scene.framework_paused)
         return true;
     std::vector<std::pair<std::uint64_t, int>> pending;
-    for (const auto &p : s.scripts.pages)
+    for (const auto &p : s.scripts.pages) {
+        if (p.lifecycle != 4 && p.kind == ref::WorldScriptPageKind::raw_page &&
+            p.legacy_page == 60 && !valid_startup_world_human_detail_context(s, p.id))
+            return false;
         if (p.lifecycle != 4 && p.kind == ref::WorldScriptPageKind::raw_page &&
             ((p.legacy_page >= 60 && p.legacy_page <= 66) ||
              (p.legacy_page == 68 || p.legacy_page == 69) || p.legacy_page == 70 ||
              p.legacy_page == 73) &&
             !s.human_pages_initialized.count(p.id))
             pending.emplace_back(p.id, p.legacy_page);
+    }
     const auto executing = s.scripts.executing_page;
     for (const auto &[id, raw] : pending) {
         s.scripts.executing_page = id;
@@ -691,6 +854,12 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
           (p->legacy_page == 68 || p->legacy_page == 69) || p->legacy_page == 70 ||
           p->legacy_page == 73))
         return Error::invalid_page;
+    if (action == A::track &&
+        (p->legacy_page != 60 || p->lifecycle != 2 || s.scripts.page_mutations_locked ||
+         !s.human_pages_initialized.count(id) ||
+         !valid_startup_world_human_detail_context(s, id) ||
+         s.human_detail_contexts.find(id)->second.chase_mode != 1))
+        return Error::invalid_page;
     auto next = s;
     next.scripts.executing_page = id;
     const int raw = p->legacy_page;
@@ -707,7 +876,53 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
             next.scripts.professions.at(job).pending_notice = false;
     };
     if (raw == 60) {
-        if (action == A::view_tab) {
+        if (action == A::track) {
+            // Steam ProcChaseCommandFromInfoWindow按humans_原序取首个同定义W。
+            // 没有W是业务提示137，不关闭详情，也不移动人物或镜头。
+            const auto &ai = next.scene.world.world.ai;
+            std::optional<ref::CharacterId> target;
+            for (const auto actor_id : ai.human_order) {
+                const auto actor = ai.battle.actors.find(actor_id);
+                if (actor == ai.battle.actors.end() || !(actor->second.id == actor_id) ||
+                    actor->second.kind != ref::ActorKind::human || !next.actor_metadata.count(actor_id))
+                    return Error::missing_source;
+                if (actor->second.definition == human) {
+                    target = actor_id;
+                    break;
+                }
+            }
+            if (!target) {
+                const auto details = startup_world_human_details(next, human);
+                if (!details || !event(next, 137, details->name))
+                    return Error::script_failed;
+            } else {
+                auto scripts = startup_world_runtime_scripts(next);
+                auto scene = scripts.pages.end();
+                for (auto it = scripts.pages.begin(); it != scripts.pages.end(); ++it) {
+                    if (it->kind == ref::WorldScriptPageKind::scene && it->lifecycle != 4) {
+                        if (scene != scripts.pages.end())
+                            return Error::missing_source;
+                        scene = it;
+                    }
+                }
+                if (scene == scripts.pages.end())
+                    return Error::missing_source;
+                auto restored = *scene;
+                scripts.pages.erase(scene);
+                for (auto &page : scripts.pages)
+                    page.lifecycle = 4;
+                restored.lifecycle = 2;
+                scripts.pages.push_back(std::move(restored));
+                scripts.selected_actor = target->value;
+                scripts.selected_facility.reset();
+                scripts.selection_mode = 1;
+                scripts.redraw_requested = true;
+                if (!write_startup_world_runtime_scripts(next, scripts))
+                    return Error::script_failed;
+                next.scene.scene_state = 6;
+                next.scene.scene_counter = 0;
+            }
+        } else if (action == A::view_tab) {
             if (selection < 0 || selection > 3)
                 return Error::invalid_page;
             phase = selection;
@@ -833,7 +1048,7 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 return Error::invalid_page;
             chosen = target;
         } else if (action == A::cancel || (action == A::confirm && raw == 73)) {
-            if (raw == 64 && !clear_item_notices(next))
+            if (raw == 64 && !clear_startup_world_item_notices(next))
                 return Error::missing_source;
             if (!close(next, id))
                 return Error::script_failed;
@@ -946,6 +1161,8 @@ std::optional<State> update_startup_world_human_page(const State &s, std::uint64
     if (counter < 0 || counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if (raw == 60 && !valid_startup_world_human_detail_context(next, id))
+        return {};
     if (!resume_answer(next, id, raw, next.page_human_bindings.at(id)) ||
         !consume_display(next, id, raw, false))
         return {};
@@ -964,10 +1181,12 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
     r.pending_tasks = s.task_order.size();
     r.retained_tasks = s.tasks.size();
     r.pages = s.scripts.pages.size();
-    r.page_payloads = s.page_counters.size() + s.page_phases.size() + s.page_human_bindings.size() +
+    r.page_payloads = s.page_counters.size() + s.page_secondary_counters.size() +
+                      s.page_phases.size() + s.page_human_bindings.size() +
                       s.human_pages_initialized.size() + s.human_page_catalogs.size() +
                       s.equipment_page_catalogs.size() + s.human_page_selections.size() +
                       s.page_job_bindings.size() + s.human_page_parents.size() +
+                      s.human_detail_contexts.size() +
                       s.human_page_answers.size() + s.human_equipment_choices.size() +
                       s.human_gift_scores.size() + s.human_gift_messages.size() +
                       s.tax_page_residents.size() + s.tax_page_selection.size() +

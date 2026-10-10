@@ -1,5 +1,6 @@
 // Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
 #include "world_view.hpp"
+#include "../platform/crash_report.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/app/session/world_session.hpp"
 #include "../platform/desktop_session.hpp"
@@ -131,6 +132,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             : save_inspection_driver.directory();
     app::WorldSession session(std::move(state), session_directory);
     auto publication = session.frame();
+    WorldDiagnostics diagnostics;
     audio.consume(
         {{simulation::StartupAudioOperation::replace_bgm,
           publication->state->active_task && publication->state->task.encounter ? 2 : 1}});
@@ -185,6 +187,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         render_statistics.interval(frames, (now - last_render) * 1000);
         last_render = now;
         publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
+        diagnostics.observe(*publication);
         audio.consume(session.take_audio_requests());
         audio.update(now);
         const auto &current = *publication->state;
@@ -684,6 +687,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     }
     session.stop();
     publication = session.frame();
+    diagnostics.observe(*publication);
     const auto &final_state = *publication->state;
     const bool failed = publication->failed;
     if (menu_inspection) {

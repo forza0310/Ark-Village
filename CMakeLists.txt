@@ -53,6 +53,7 @@ ark_target(ark_world_simulation)
 
 if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/platform/desktop_session.cpp
+        src/desktop/platform/crash_report.cpp src/desktop/platform/world_diagnostics.cpp
         src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
         src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp src/desktop/scene/projection.cpp
         src/desktop/application/world_view.cpp src/desktop/inspection/world_inspection.cpp

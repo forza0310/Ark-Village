@@ -3,6 +3,9 @@
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include "resources/resources.hpp"
 #include "application/world_view.hpp"
+#include "platform/crash_report.hpp"
+#include <cstdarg>
+#include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -16,6 +19,13 @@
 #endif
 
 namespace {
+void diagnostic_raylib_log(int, const char *format, va_list args) {
+    char line[4096]{};
+    const auto count = std::vsnprintf(line, sizeof(line), format, args);
+    if (count > 0) {
+        std::cerr << "raylib: " << line << '\n'; // The process tee keeps the bounded recent log.
+    }
+}
 void report_error(const std::string &message) {
     const auto line = "Ark-Village: " + message + '\n';
 #ifdef _WIN32
@@ -42,6 +52,7 @@ void report_error(const std::string &message) {
 } // namespace
 
 int main(int argc, char **argv) {
+    ark::desktop::CrashReporter diagnostics;
     try {
         const auto parsed = ark::app::parse_arguments({argv + 1, argv + argc});
         if (!parsed.options)
@@ -61,6 +72,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         SetTraceLogLevel(LOG_WARNING);
+        SetTraceLogCallback(diagnostic_raylib_log);
         const auto assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
         ark::desktop::check_assets(assets);
         if (options.mode == ark::app::LaunchMode::check) {
@@ -81,7 +93,9 @@ int main(int argc, char **argv) {
         }
         return 0;
     } catch (const std::exception &error) {
+        diagnostics.report("caught-exception", error.what());
         report_error(error.what());
+        if (diagnostics.ready()) report_error("Diagnostics: " + diagnostics.directory().u8string());
         return 1;
     }
 }

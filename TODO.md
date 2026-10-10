@@ -4,6 +4,9 @@
 
 ## 本批收口
 
+- [ ] [全解锁主动经营长跑](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)：按定义ID核对建筑/强化/道具/装备/职业/魔法/活动/配方/副本/BOSS，逐星→自然通关→继续/继承。已补全量目录和分段观测，不等于完成覆盖；当前优先突破三星收入，再补全部驱动、效果和恢复断言。
+- [x] Windows本地文本崩溃诊断：故障线程栈、临近日志和64回执接入；隔离崩溃/轮转、两Debug标准及Release窗口/错误出口检查见[本批结果](docs/stages/B1-playable-prototype.md#campaign-coverage-crash-diagnostics)。
+
 - [x] 按建筑/人物/AI/战斗等11个大模块重排源码与公开头，拆资源/建筑UI、补重要注释和导航；两Debug标准138/118项、Release资源/窗口通过，build净减约2.28GiB（36.31%），见[B1](docs/stages/B1-playable-prototype.md#source-domain-modules)。
 
 - [x] 产品冗余与旧切片退役：删除172个跟踪文件，保留当前世界/DLL防错/存档身份；两Debug标准138/118项、Release构建/资源/标题/拾取窗口通过。用户旧默认档按明确删除指令处理后已恢复标题启动，详见[本批记录](docs/stages/B1-playable-prototype.md#product-cleanup-legacy-retirement)。

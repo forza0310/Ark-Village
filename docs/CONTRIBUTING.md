@@ -77,6 +77,14 @@ python scripts/prepare_windows_font.py --output-dir build/local-tools/fonts
 
 字体工具仅用于构建。先按README配置/构建`shared-libraries`，再选择消费者预设：日常开发用`desktop-debug`，试玩/打包用`desktop-release`；两套headless按需配置，不查找raylib/字体。仅核心开发可用`shared-libraries`加`-DARK_BUILD_DESKTOP=OFF`构建核心库，桌面使用前须以ON重新构建公共库。共享配置不能沿用`-static`、`-static-libstdc++`或`-static-libgcc`；编译器身份、版本、路径和指针宽度必须与公共库一致。pkg-config不在PATH时可显式传`-DPKG_CONFIG_EXECUTABLE=<pkgconf.exe路径>`。路径含空格时保留PowerShell引号，CLion也可将相同编译器/缓存项配置在CMake profile。公共库阶段将`ARK_DESKTOP_FONT`/`ARK_DESKTOP_FONT_LICENSE`指定的OTF/许可复制至`build/bin/fonts/`。Windows可执行文件嵌入`asInvoker`，避免带update字样的测试程序被系统误认为安装器。
 
+## Windows故障诊断
+
+游戏默认把本地文本报告写入`%TEMP%/Ark-Village/diagnostics/ark-时间-PID/`。`report.txt`包含故障种类、Windows异常码、线程、EXE/DLL构建身份及模块/RVA调用栈；`recent-0/1.log`是轮转的标准输出/错误与raylib近期日志，`context-0/1.txt`是双槽世界摘要及最近64命令回执。用摘要的generation/revision判断新旧，不把两个文件名当时间先后。正常退出会清理本次无报告目录，既有报告保留；默认不写玩家档、转储或网络。
+
+仅`windows-unhandled`栈来自故障线程的异常现场。`std-terminate`为terminate处理器栈，`caught-exception`为catch边界，`runtime-rejection`/`system-rejection`为桌面观察位置；后两者须结合stage/实例ID/领域错误定位worker。Release提供模块相对地址，不承诺源码行。报告是尽力诊断，不保证强杀/断电/严重栈或内存损坏时可用。运行中的报告组不被轮转清理，其他情况下最多保留5组已结束报告，每组文本小于384KiB；详细范围见[方案](MILESTONES.md#windows-crash-diagnostics)。
+
+`windows_crash_report`是专用进程隔离测试，用自己的子进程触发访问异常/terminate，不向试玩进程注入故障。经营测试的`failure-state.bin`另用于完整Owner单轮复现，和玩家文本报告用途不同。经营覆盖用`ark_world_campaign_tests-<配置>.exe --coverage-inventory`查看固定目录，主动路线将分段证据写入隔离目录`coverage-segment-*.tsv`；未观察到的条目保持`UNOBSERVED`，来源目录/既有库存不构成消费证明。完整验收标准见[经营计划](stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。
+
 ## GitHub CI与制品
 
 [Build and test](../.github/workflows/ci.yml)在push到main时运行，也支持在main上手动触发。CI构建与测试在GitHub runner上执行，按[构建检查](#构建检查)承担三个月行为覆盖并提供其余额外检查。用户持续允许本地配置、编译、测试和窗口验收；两类结果分别记录，不以本地结果代替远程验收。

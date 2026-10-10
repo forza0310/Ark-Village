@@ -45,6 +45,7 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_active_strategy.cpp tests/app/world_active_late_strategy.cpp
     tests/app/world_active_pot_strategy.cpp
     tests/app/world_campaign_diagnostics.cpp
+    tests/app/world_campaign_coverage.cpp
     tests/app/world_active_income_strategy.cpp
     LIBRARIES ark_world_session ark_world_hash ark_world_persistence)
 target_include_directories(ark_world_campaign_tests PRIVATE src/app)
@@ -96,6 +97,16 @@ ark_test_case(original_loop_pacing ark_original_loop_tests LABELS rules)
 ark_test_executable(ark_world_audio_tests SOURCES tests/desktop/world_audio_test.cpp)
 target_include_directories(ark_world_audio_tests PRIVATE include src/desktop)
 ark_test_case(world_audio ark_world_audio_tests LABELS presentation)
+
+# Native crash hooks require isolated child processes, unlike the in-process UI suites.
+if(WIN32)
+    ark_test_executable(ark_crash_report_tests
+        SOURCES tests/desktop/crash_report_test.cpp src/desktop/platform/crash_report.cpp
+            src/desktop/platform/world_diagnostics.cpp
+        LIBRARIES ark_world_session)
+    target_include_directories(ark_crash_report_tests PRIVATE src/desktop)
+    ark_test_case(windows_crash_report ark_crash_report_tests LABELS platform TIMEOUT 60)
+endif()
 
 foreach(module IN ITEMS world_combat_visuals world_rest_visuals world_dungeon_visuals script_text)
     ark_test_executable(ark_${module}_tests

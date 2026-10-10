@@ -1,5 +1,7 @@
 # desktop
 
+`platform/crash_report`管理Windows进程文本诊断及标准流/raylib日志，`platform/world_diagnostics`只读已发布快照，每秒保存摘要及64条回执，首次失败立即报告。它不改Owner、不写玩家档；调用栈种类、限额及测试方式见[故障诊断](../../docs/CONTRIBUTING.md#windows故障诊断)。原生异常的栈来自故障线程，catch/terminate/桌面观察栈单独标记。文件写入失败不能阻止游戏启动或推进。
+
 当前目录按职责分为 `application/`（标题和窗口协调）、`input/`（经营/存档控制与指针手势）、`scene/`（投影、深度绘制、拾取与放置预览）、`resources/`（精灵/字体/校验）、`platform/`（窗口平台与音频设备）、`inspection/`（显式窗口验收）。`ui/` 再按 facilities、actors、tasks、village、system、common 分组。
 
 无 raylib 的战斗/休息/任务表现计划与脚本文字已移到 [presentation](../presentation/README.md)。建筑页面拆为 `world_building_view.cpp`、`world_building_input.cpp`、`world_building_render.cpp`；资源职责见 [resources](resources/README.md)。`world_view` 是窗口协调器，经营规则、AI、战斗和世界提交均由 simulation/app 承担。

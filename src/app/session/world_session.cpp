@@ -22,9 +22,16 @@ const simulation::rules::WorldScriptPage *top_page(const WorldState &state) {
     return found == state.scripts.pages.rend() ? nullptr : &*found;
 }
 std::string update_error(const simulation::StartupWorldRuntimeResult &result) {
-    return "World update rejected: runtime=" + std::to_string(static_cast<int>(result.error)) +
+    auto message = "World update rejected: runtime=" + std::to_string(static_cast<int>(result.error)) +
            " scene=" + std::to_string(static_cast<int>(result.scene_error)) +
            " world=" + std::to_string(static_cast<int>(result.world_error));
+    if (result.failure) {
+        const auto &f = *result.failure;
+        message += " stage=" + std::to_string(static_cast<int>(f.stage)) +
+                   " id=" + (f.id ? std::to_string(*f.id) : "none") +
+                   " layer=" + f.layer + " detail=" + std::to_string(f.error);
+    }
+    return message;
 }
 } // namespace
 

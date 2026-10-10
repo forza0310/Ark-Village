@@ -8,6 +8,7 @@
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
 #include "world_campaign_diagnostics.hpp"
+#include "world_campaign_coverage.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -139,6 +140,7 @@ template <class PlayerStrategy> struct CampaignRun {
     std::filesystem::path directory;
     PlayerStrategy strategy;
     std::uint64_t rounds{};
+    ark::test::CampaignCoverage coverage{};
 
     void command(const app::WorldCommand &input) {
         auto candidate = state;
@@ -148,6 +150,7 @@ template <class PlayerStrategy> struct CampaignRun {
             good(app::commit_world_system(directory, state, candidate, next));
             candidate.sound_requests.clear();
             strategy.observe(state, input, result, candidate);
+            coverage.observe(state, candidate);
             state = std::move(candidate);
             system = std::move(next);
         } else {
@@ -169,6 +172,7 @@ template <class PlayerStrategy> struct CampaignRun {
         auto update = sim::prepare_startup_world_runtime(state);
         if (!update.candidate) {
             try {
+                coverage.save(directory, state);
                 ark::test::capture_campaign_failure(directory, state, update, rounds);
             } catch (const std::exception &error) {
                 std::cerr << "Failure snapshot could not be captured: " << error.what()
@@ -182,6 +186,7 @@ template <class PlayerStrategy> struct CampaignRun {
         good(app::commit_world_system(directory, state, *update.candidate, next));
         update.candidate->sound_requests.clear();
         strategy.observe_tick(state, *update.candidate);
+        coverage.observe(state, *update.candidate);
         state = std::move(*update.candidate);
         system = std::move(next);
         ++rounds;
@@ -191,6 +196,8 @@ template <class PlayerStrategy> struct CampaignRun {
                 "Natural calendar discontinuity");
         require(state.scene.speed_setting == 0 && !state.scene.framework_paused,
                 "Active route must keep the normal single-speed runtime");
+        if (rounds == 1 || month(state) != before_month)
+            coverage.save(directory, state);
         if (month(state) != before_month)
             std::cout << "MONTH " << strategy.diagnose(state) << std::endl;
     }
@@ -216,6 +223,7 @@ template <class PlayerStrategy> struct CampaignRun {
         std::cout << "MILESTONE " << strategy.diagnose(state) << std::endl;
     }
     void save(int slot) {
+        coverage.save(directory, state);
         require(!std::filesystem::exists(app::world_save_slot_path(directory, slot)),
                 "Campaign never overwrites an existing player slot");
         const auto captured = app::capture_world_save(state);
@@ -641,6 +649,12 @@ int main(int argc, char **argv) {
             ark::test::campaign_diagnostic_contract(
                 std::filesystem::canonical(argv[0]).parent_path().parent_path());
             ark::test::income_strategy_contract();
+            ark::test::campaign_coverage_contract();
+            return 0;
+        }
+        if (argc == 2 && std::string(argv[1]) == "--coverage-inventory") {
+            ark::test::CampaignCoverage coverage;
+            coverage.write(std::cout, ark::test::initial_world());
             return 0;
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
@@ -941,6 +955,13 @@ int main(int argc, char **argv) {
         return 0;
     } catch (const std::exception &error) {
         std::cerr << "Active campaign failed: " << error.what() << std::endl;
+        try {
+            if (campaign) campaign->coverage.save(campaign->directory, campaign->state);
+            if (late_campaign) late_campaign->coverage.save(late_campaign->directory, late_campaign->state);
+            if (pot_campaign) pot_campaign->coverage.save(pot_campaign->directory, pot_campaign->state);
+        } catch (const std::exception &diagnostic) {
+            std::cerr << "Coverage report failed: " << diagnostic.what() << std::endl;
+        }
         if (campaign)
             std::cerr << "STATE " << campaign->strategy.diagnose(campaign->state) << std::endl;
         if (late_campaign)

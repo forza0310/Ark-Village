@@ -54,7 +54,6 @@ struct WorldBuildingView {
     std::array<std::array<std::int64_t, 3>, 3> upgrade{};
     std::optional<simulation::SteamFacilityUpgradeSkinInput> upgrade_skin;
     std::string facility_name;
-    bool upgrade_secondary_available{};
 };
 struct WorldBuildingLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next;

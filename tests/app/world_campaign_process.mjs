@@ -19,27 +19,34 @@ const inside = candidate => {
 };
 const sha256 = content => createHash('sha256').update(content).digest('hex');
 const runFile = promisify(execFile);
-// The exact Git blob from formal c2cc0a4 also works in a shallow clone whose tree
+// The exact Git blob from formal 932fa45 also works in a shallow clone whose tree
 // contains this blob. Never read the mutable research checkout or add it to save identity.
 const coverageSource = {
-  revision: 'c2cc0a4', blob: '184a53ec358532009907d98bc5c0c27910bde639',
+  revision: '932fa45', blob: '26a0f1c56a605d65620d3ccab65c48be0a84046c',
   file: 'research/dungeon_village_1/data/PROGRESSION_CONTENT_INDEX.json',
-  bytes: 211865, sha256: '1f8d45d26e6c85441f45a6c93747a0fd8674cd6d8b83e7c21fad2b87effb1cca'
+  bytes: 212601, sha256: '8bd283f5834d17dc29c25f1773c7f086b0f2285721dfc1fa72b5e51e7da08a6c'
 };
 const aliases = {activity: 'village_activity', task: 'quest', recipe: 'magic_recipe'};
 const sourceKey = (kind, id) => `${aliases[kind] ?? kind}:${kind === 'rank' ? id - 1 : id}`;
 const need = (ok, message) => { if (!ok) throw Error(`Campaign coverage: ${message}`); };
+const sharedContracts = {
+  village_activity: ['persistence_contract'], quest: ['persistence_contract'],
+  popularity_bonus: ['persistence_contract'], event: ['caller_contract'],
+  facility: ['instance_contract', 'use_effect_contract'], human: ['persistence_contract', 'appearance_contract'],
+  profession: ['persistence_contract', 'effect_contract'], weapon: ['effect_contract'],
+  armour: ['effect_contract'], accessory: ['effect_contract'], item: ['effect_contract'],
+  magic_recipe: ['persistence_contract'], monster: ['persistence_contract']
+};
 function indexRecords(index) {
-  need(index.version === 4 && index.definitions === 775 && Array.isArray(index.tables), 'index version/denominator');
+  need(index.version === 8 && index.definitions === 775 && Array.isArray(index.tables), 'index version/denominator');
   const records = new Map(), kinds = new Set();
   for (const table of index.tables) {
     need(!kinds.has(table.kind) && Array.isArray(table.records) &&
-      table.records.length === table.definitions && index.contracts[table.kind] === table.chain_contract,
+      table.records.length === table.definitions,
       'table identity/count/contract');
     kinds.add(table.kind);
-    const requiredContracts = ['weapon', 'armour', 'accessory', 'item'].includes(table.kind) ? ['effect_contract']
-      : ['village_activity', 'human', 'profession'].includes(table.kind) ? ['persistence_contract']
-      : table.kind === 'facility' ? ['instance_contract'] : table.kind === 'event' ? ['caller_contract'] : [];
+    // Schema6 keeps each chain contract at its table; the duplicated top-level map was removed.
+    const requiredContracts = ['chain_contract', ...(sharedContracts[table.kind] ?? [])];
     for (const field of requiredContracts)
       need(typeof table[field] === 'string' && table[field].startsWith('../rules/'), 'missing shared contract ' + table.kind + '.' + field);
     for (const record of table.records) {
@@ -55,6 +62,12 @@ function indexRecords(index) {
     }
   }
   need(records.size === 775 && kinds.size === 14, 'source catalogue incomplete');
+  const differences = index.version_differences, arrival = differences?.[0];
+  need(Array.isArray(differences) && differences.length === 1 &&
+    arrival?.feature === 'simultaneous_arrival_limit' && arrival.apk?.soft === 20 && arrival.apk?.hard === 20 &&
+    arrival.steam?.value === 25 && arrival.steam?.basis === 'character_definition_directory_length' &&
+    arrival.contract === index.tables.find(table => table.kind === 'human').appearance_contract,
+    'APK/Steam arrival metadata');
   return records;
 }
 const coverageBytes = (await runFile('git', ['-c', `safe.directory=${root.replaceAll('\\', '/')}`,
@@ -66,6 +79,14 @@ const coverageIndex = JSON.parse(coverageBytes.toString('utf8'));
 const catalogue = indexRecords(coverageIndex);
 function eventCallers(index, records) {
   const table = index.tables.find(value => value.kind === 'event'), callers = new Map();
+  const surface = table.script_surface;
+  need(surface?.programs === 552 && surface.nonempty_programs === 465 && surface.instructions === 835 &&
+    surface.literal_nested_calls === 81 && Array.isArray(surface.nested_targets) &&
+    typeof surface.nested_evidence === 'string' && surface.nested_evidence.includes('不是运行时调用数') &&
+    surface.nested_targets.join(',') === '77' && surface.parameterized_nested_targets === 0 &&
+    Array.isArray(surface.used_opcodes) && surface.used_opcodes.join(',') ===
+      '0,1,2,3,4,5,6,7,12,13,14,15,16,17,18,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40',
+    'compact script surface');
   const add = (category, id, reference) => {
     need(Number.isSafeInteger(id) && records.has(`event:${id}`), 'invalid event caller reference');
     const previous = callers.get(id);
@@ -84,10 +105,11 @@ function eventCallers(index, records) {
     for (const id of entry.event_ids) add('formula', id, group);
   }
   for (const id of table.automatic_candidates) add('automatic', id, 'automatic_candidates');
-  const scriptGroups = {};
+  const tableReferences = {};
   for (const record of table.records) if (record.script_callers?.length) {
     for (const caller of record.script_callers) {
-      need(caller.table === 'quest' && caller.definition_encoding === 'inclusive_range' &&
+      need(caller.table === 'quest' && caller.evidence === 'table_reference_only' &&
+        caller.column === 13 && caller.instruction === 0 && caller.definition_encoding === 'inclusive_range' &&
         Array.isArray(caller.definitions) && caller.definitions.length === 2 &&
         caller.definitions.every(Number.isSafeInteger) && caller.definitions[0] >= 0 &&
         caller.definitions[1] >= caller.definitions[0], 'compact script caller range');
@@ -95,16 +117,22 @@ function eventCallers(index, records) {
         need(records.has(`quest:${id}`), 'unknown quest in script caller range');
     }
     // Keep the one inclusive 0..80 range, rather than expanding 81 identical edges.
-    scriptGroups[record.id] = record.script_callers;
-    add('script', record.id, record.id);
+    // A stored opcode reference has no certified runtime caller in either audited version.
+    tableReferences[record.id] = record.script_callers;
+    add('table_reference_only', record.id, record.id);
   }
   for (const id of table.unresolved_callers) add('unresolved', id, 'unresolved_callers');
-  const counts = Object.fromEntries(['literal', 'formula', 'automatic', 'script', 'unresolved']
+  const counts = Object.fromEntries(['literal', 'formula', 'automatic', 'table_reference_only', 'unresolved']
     .map(category => [category, [...callers.values()].filter(entry => entry.category === category).length]));
   need(callers.size === 200 && Object.values(counts).join(',') === '121,37,7,1,34', 'event source partition');
-  return {callers, shared: {contract: table.caller_contract, counts,
+  const runtimeUnresolved = [...callers].filter(([, entry]) =>
+    ['table_reference_only', 'unresolved'].includes(entry.category)).map(([id]) => id).sort((a, b) => a - b);
+  need(counts.literal + counts.formula + counts.automatic === 165 && runtimeUnresolved.length === 35,
+    'actual entry and caller gap counts');
+  return {callers, shared: {contract: table.caller_contract, counts, known_entry_count: 165,
+    runtime_unresolved_count: runtimeUnresolved.length, runtime_unresolved: runtimeUnresolved,
     literal: table.literal_caller_groups, formula: table.formula_caller_groups,
-    automatic_candidates: table.automatic_candidates, script: scriptGroups,
+    automatic_candidates: table.automatic_candidates, table_references: tableReferences,
     script_surface: table.script_surface, unresolved_callers: table.unresolved_callers}};
 }
 const eventSources = eventCallers(coverageIndex, catalogue);
@@ -162,8 +190,10 @@ function report(rows) {
     source: coverageSource, index_schema: coverageIndex.version, definitions: 775,
     scope: 'Source definitions and segment evidence only; no natural reachability or full-campaign certificate',
     contract_groups: Object.fromEntries(coverageIndex.tables.map(table => [table.kind,
-      Object.fromEntries(['chain_contract', 'effect_contract', 'persistence_contract', 'instance_contract', 'caller_contract']
+      Object.fromEntries(['chain_contract', 'effect_contract', 'persistence_contract', 'instance_contract',
+        'caller_contract', 'use_effect_contract', 'appearance_contract']
         .filter(field => table[field] !== undefined).map(field => [field, table[field]]))])),
+    version_differences: coverageIndex.version_differences,
     event_source_groups: eventSources.shared,
     records: [...catalogue].map(([key, {table, record}]) => ({
       key, source_id: record.id, runtime_id: rows.get(key)?.id, name: record.name_zh,
@@ -173,7 +203,7 @@ function report(rows) {
       event_type: record.event_type, caller_refs: table.kind === 'event' ? eventSources.callers.get(record.id) : undefined,
       source_limit: record.source_limit ?? table.callers_status,
       observed: [], verified_receipts: {}, required_evidence: rows.get(key)?.required_evidence ??
-        (table.kind === 'event' && eventSources.callers.get(record.id).category === 'unresolved'
+        (table.kind === 'event' && ['table_reference_only', 'unresolved'].includes(eventSources.callers.get(record.id).category)
           ? 'resolve_caller_gap;actual_trigger_and_effect_if_reachable;successor;applicable_persistence'
           : ['event', 'popularity_bonus'].includes(table.kind)
             ? 'source_contract;actual_trigger_and_effect_if_reachable;successor;applicable_persistence' : undefined)
@@ -216,31 +246,86 @@ function coverageContract(rows) {
     get('human:0').dependencies.includes('popularity_bonus:0') &&
     get('magic_recipe:7').verified_receipts.elements_paid_and_crafted === undefined &&
     get('item:29').observed.length === 0, 'source links inferred historical consumption');
-  need(actual.index_schema === 4 && actual.contract_groups.item.effect_contract.includes('#逐id效果') &&
+  need(actual.index_schema === 8 && actual.contract_groups.item.effect_contract.includes('#逐id效果') &&
     actual.contract_groups.human.persistence_contract.includes('#人物职业与活动') &&
     actual.contract_groups.profession.persistence_contract === actual.contract_groups.human.persistence_contract &&
-    actual.contract_groups.facility.instance_contract.includes('#85定义'), 'shared effects/persistence/instance contracts');
+    actual.contract_groups.facility.instance_contract.includes('#85定义'),
+    'shared effects/persistence/instance contracts');
+  need(actual.contract_groups.quest.persistence_contract === '../rules/PERSISTENCE.md#任务与怪物共享定义当前任务和已抽结果' &&
+    actual.contract_groups.quest.persistence_contract === actual.contract_groups.monster.persistence_contract &&
+    actual.contract_groups.magic_recipe.persistence_contract === '../rules/MAGIC_POT.md' &&
+    actual.contract_groups.popularity_bonus.chain_contract === '../rules/ACCOUNTING.md#popularity-rewards' &&
+    actual.contract_groups.popularity_bonus.persistence_contract === actual.contract_groups.popularity_bonus.chain_contract &&
+    actual.contract_groups.facility.use_effect_contract === '../rules/FACILITY_USE.md#definition-exit-effects' &&
+    actual.contract_groups.human.appearance_contract === '../rules/STARTUP.md#25人物共用的自然到访重访与住宅资格' &&
+    actual.contract_groups.profession.effect_contract === '../rules/CHARACTERS.md#23职业的转入精通及魔法后继',
+    'task/reward/recipe persistence and arrival/career/facility effect contracts');
+  const surface = actual.event_source_groups.script_surface;
+  need(surface.programs === 552 && surface.nonempty_programs === 465 && surface.instructions === 835 &&
+    surface.literal_nested_calls === 81 && surface.nested_targets.join(',') === '77' &&
+    surface.nested_evidence.includes('不是运行时调用数') &&
+    surface.parameterized_nested_targets === 0 && surface.used_opcodes.join(',') ===
+      '0,1,2,3,4,5,6,7,12,13,14,15,16,17,18,21,22,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40',
+    'compact script surface');
+  const arrival = actual.version_differences[0];
+  need(actual.version_differences.length === 1 && arrival.feature === 'simultaneous_arrival_limit' &&
+    arrival.apk.soft === 20 && arrival.apk.hard === 20 && arrival.steam.value === 25 &&
+    arrival.steam.basis === 'character_definition_directory_length' &&
+    arrival.contract === actual.contract_groups.human.appearance_contract, 'APK/Steam arrival distinction');
   need(get('facility:23').scope === 'visual_contract' &&
     get('facility:23').non_directory_sources[0].route === 'sky_mapchip_flag2' &&
     get('facility:25').scope === 'residence_contract' &&
     get('facility:25').unlock_sources[0].route === 'residence_demolition_return', 'non-directory and residence sources');
   need(get('event:7').caller_refs.category === 'automatic' &&
-    get('event:77').caller_refs.category === 'script' &&
+    get('event:77').caller_refs.category === 'table_reference_only' &&
+    get('event:77').required_evidence.startsWith('resolve_caller_gap') &&
+    typeof get('event:77').source_limit === 'string' &&
     get('event:217').caller_refs.category === 'literal' &&
     get('event:96').caller_refs.category === 'unresolved' &&
     get('event:96').required_evidence.startsWith('resolve_caller_gap') &&
     get('event:96').event_type === 0 && !('flags' in get('event:96')) &&
-    actual.event_source_groups.script[77].length === 1 &&
-    actual.event_source_groups.script[77][0].definitions.join(',') === '0,80', 'event type/source groups/range/gap');
+    actual.event_source_groups.table_references[77].length === 1 &&
+    actual.event_source_groups.table_references[77][0].definitions.join(',') === '0,80' &&
+    actual.event_source_groups.table_references[77][0].evidence === 'table_reference_only' &&
+    actual.event_source_groups.counts.table_reference_only === 1 && actual.event_source_groups.counts.unresolved === 34 &&
+    actual.event_source_groups.known_entry_count === 165 && actual.event_source_groups.runtime_unresolved_count === 35 &&
+    actual.event_source_groups.runtime_unresolved.includes(77) &&
+    actual.records.filter(row => row.key.startsWith('event:') && row.required_evidence.startsWith('resolve_caller_gap')).length === 35,
+    'event type/source groups/range/caller gaps');
   const expectReject = action => { let rejected = false; try { action(); } catch { rejected = true; }
     need(rejected, 'invalid coverage input was accepted'); };
   const duplicate = {...coverageIndex, tables: coverageIndex.tables.map(table => ({...table, records: [...table.records]}))};
   duplicate.tables[0].records[1] = duplicate.tables[0].records[0];
   expectReject(() => indexRecords(duplicate));
   expectReject(() => indexRecords({...coverageIndex, version: 2}));
-  const missingEffect = {...coverageIndex, tables: coverageIndex.tables.map(table => ({...table}))};
-  delete missingEffect.tables.find(table => table.kind === 'item').effect_contract;
-  expectReject(() => indexRecords(missingEffect));
+  for (const table of coverageIndex.tables) {
+    for (const field of ['chain_contract', ...(sharedContracts[table.kind] ?? [])]) {
+      const missing = {...coverageIndex, tables: coverageIndex.tables.map(value => ({...value}))};
+      delete missing.tables.find(value => value.kind === table.kind)[field];
+      expectReject(() => indexRecords(missing));
+    }
+  }
+  expectReject(() => indexRecords({...coverageIndex, version_differences: []}));
+  const mixedArrival = {...coverageIndex, version_differences: coverageIndex.version_differences.map(value =>
+    ({...value, apk: {...value.apk, hard: 25}}))};
+  expectReject(() => indexRecords(mixedArrival));
+  for (const field of ['nonempty_programs', 'used_opcodes', 'nested_evidence']) {
+    const missing = {...coverageIndex, tables: coverageIndex.tables.map(table => ({...table}))};
+    const event = missing.tables.find(table => table.kind === 'event');
+    event.script_surface = {...event.script_surface};
+    delete event.script_surface[field];
+    expectReject(() => eventCallers(missing, indexRecords(missing)));
+  }
+  for (const change of [caller => { delete caller.evidence; },
+    caller => { caller.evidence = 'runtime_call'; }, caller => { caller.definitions = [0, 81]; }]) {
+    const invalid = {...coverageIndex, tables: coverageIndex.tables.map(table => ({...table, records: [...table.records]}))};
+    const event = invalid.tables.find(table => table.kind === 'event');
+    const position = event.records.findIndex(record => record.id === 77);
+    event.records[position] = {...event.records[position],
+      script_callers: event.records[position].script_callers.map(caller => ({...caller}))};
+    change(event.records[position].script_callers[0]);
+    expectReject(() => eventCallers(invalid, indexRecords(invalid)));
+  }
   const badGroups = {...coverageIndex, tables: coverageIndex.tables.map(table => ({...table}))};
   badGroups.tables.find(table => table.kind === 'event').unresolved_callers = [7,
     ...badGroups.tables.find(table => table.kind === 'event').unresolved_callers];
@@ -254,6 +339,13 @@ function coverageContract(rows) {
   const queued = [...receipts('COVERAGE_RECEIPT\tactivity\t16\teffect_queued\t0\t1\t-1\t0\t0\t0\t0\t0\t10\t20\t1\t1', 'contract')];
   need(queued.length === 1 && queued[0].stage === 'effect_queued', 'queued effect promoted to actual effect');
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
+  const validReceipt = 'COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t1\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0';
+  need([...receipts(validReceipt, 'contract')].length === 1, 'actual receipt rejected');
+  for (const [field, value] of [[1, 'activity'], [2, '9999'], [3, 'effect_queued'], [4, '-1'],
+    [5, '0'], [6, '-1'], [7, '0'], [8, '9007199254740992']]) {
+    const invalid = validReceipt.split('\t'); invalid[field] = value;
+    expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+  }
 }
 async function captureCoverage(directory, phases, initialRows) {
   const result = report(initialRows), byKey = new Map(result.records.map(row => [row.key, row]));
@@ -282,7 +374,7 @@ if (contractOnly) {
   await runFile(exe, ['--contract'], {windowsHide: true, timeout: 30000, maxBuffer: 8 * 1024 * 1024});
   const output = await runFile(exe, ['--coverage-inventory'], {windowsHide: true, timeout: 30000, maxBuffer: 1024 * 1024});
   coverageContract(inventory(output.stdout));
-  console.log('PASS campaign source/receipt contract: c2 schema4, 775 definitions, shared contracts and 200 event source groups');
+  console.log('PASS campaign source/receipt contract: 932fa45 schema8, 775 definitions, 165 known event entries and 35 caller gaps');
   process.exit(0);
 }
 // These are captured before launching any phase, separately from the executable's own

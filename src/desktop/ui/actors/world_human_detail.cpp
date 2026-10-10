@@ -92,16 +92,10 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
         DrawRectangleLinesEx(box(25, 69, 89, 56), 1, {148, 148, 148, 255});
         if (v.details.resident)
             image("myHomeBack.png", {0, 0, 47, 32}, 27, 82);
-        // Static source walk01 preview; HP comes from the explicitly bound presentation W,
-        // never a different instance with the same definition. Drawing advances no counter.
-        s.sprites.actor(false, 1, v.portrait_image, 0, point(75, 121));
-        if (v.live && v.live->state != 7) {
-            const auto hp = simulation::steam_human_power_skin(
-                {75, 121}, 1, v.counter,
-                simulation::SteamHumanHpInput{v.live->hp_now, v.live->hp_after, v.live->hp_max});
-            if (!hp)
-                throw std::runtime_error("Invalid bound human HP plan");
-            for (const auto &request : hp->draws) {
+        if (!v.detail_skin)
+            throw std::runtime_error("Human detail rendering requires a measured portrait plan");
+        const auto draw_plan = [&](const simulation::SteamHumanSkinPlan &plan) {
+            for (const auto &request : plan.draws) {
                 if (const auto *part = std::get_if<simulation::StartupSkinRect>(&request)) {
                     const auto &r = part->rect;
                     const auto &c = part->rgb;
@@ -117,7 +111,10 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
                 } else if (const auto *part = std::get_if<simulation::SteamHumanImage>(&request)) {
                     const auto resource = simulation::steam_human_resource(part->asset);
                     if (!resource)
-                        throw std::runtime_error("Missing human HP image");
+                        throw std::runtime_error("Missing human detail image");
+                    const auto binding = part->asset == simulation::SteamHumanAsset::number05
+                                             ? Sprites::Binding::steam_common
+                                             : Sprites::Binding::common;
                     if (part->crop) {
                         const auto &r = *part->crop;
                         image(std::filesystem::path(resource->published_image)
@@ -125,16 +122,39 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
                                   .string()
                                   .c_str(),
                               {float(r[0]), float(r[1]), float(r[2]), float(r[3])},
-                              float(part->position[0]), float(part->position[1]));
+                              float(part->position[0]), float(part->position[1]), binding);
                     } else
                         s.sprites.draw(
                             std::filesystem::path(resource->published_sprite).filename().string(),
                             part->frame, point(float(part->position[0]), float(part->position[1])),
-                            WHITE, Sprites::Binding::common);
+                            WHITE, binding);
+                } else if (const auto *part = std::get_if<simulation::SteamHumanText>(&request)) {
+                    if (part->role != simulation::SteamHumanTextRole::down || part->anchor != 2)
+                        throw std::runtime_error("Unsupported human detail text request");
+                    const auto &c = part->rgb;
+                    s.text.draw(world_human_down_text,
+                                o.x + part->position[0] - s.text.width(world_human_down_text) / 2,
+                                o.y + part->position[1],
+                                {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
+                                 static_cast<unsigned char>(c[2]), 255});
                 }
             }
+        };
+        // These requests already contain the two independent source cycles and residence
+        // offset. Apply SEB part offsets once, in medal -> weapon -> body -> HP/bubble order.
+        const auto &plan = *v.detail_skin;
+        draw_plan(plan.medals);
+        const auto anchor =
+            point(float(plan.portrait_position[0]), float(plan.portrait_position[1]));
+        if (plan.portrait.weapon) {
+            const auto &weapon = *plan.portrait.weapon;
+            s.sprites.indexed_sprite(Sprites::Binding::weapon, weapon.sprite, weapon.frame,
+                                     weapon.layer, weapon.image,
+                                     {anchor.x + weapon.offset[0], anchor.y + weapon.offset[1]});
         }
-        label("勋章 " + std::to_string(v.details.medals), 82, 70, 31, 8);
+        const auto &body = plan.portrait.body;
+        s.sprites.actor(false, body.sprite, body.image, body.frame, anchor);
+        draw_plan(plan.after_portrait);
         if (v.phase == 0) {
             DrawRectangleRec(box(25, 153, 89, 36), {193, 238, 247, 255});
             label("满意", 30, 157, 40, 10);

@@ -610,6 +610,7 @@ void world_facility_static_render_fixture() {
                     state.scene.world.world.ai.accounting.funds() ==
                         before.scene.world.world.ai.accounting.funds() &&
                     state.page_counters == before.page_counters &&
+                    state.page_secondary_counters == before.page_secondary_counters &&
                     state.page_phases == before.page_phases,
                 "static rendering changed cash/random/time or source page phase");
         std::cout
@@ -631,9 +632,14 @@ void world_facility_static_render_fixture() {
     require(sim::consume_startup_world_facility_upgrade(upgrade, upgrade_id, false),
             "upgrade rendering fixture failed to consume its real upgrade");
     upgrade.page_counters[upgrade_id] = 50;
+    upgrade.page_secondary_counters[upgrade_id] = 10;
     capture(upgrade, "raw81-notice-minimum.png", true);
     require(sim::consume_startup_world_facility_upgrade(upgrade, upgrade_id, true),
             "upgrade rendering fixture failed to enter its second phase");
+    require(upgrade.page_counters.at(upgrade_id) == 0 &&
+                upgrade.page_secondary_counters.at(upgrade_id) == 10,
+            "upgrade phase change restarted its independent mini-character clock");
+    capture(upgrade, "raw81-phase-change-secondary10-minimum.png", true);
     // Source-counter callsites preserve the real frozen upgrade payload. These extra
     // captures check the desktop 15-pixel row pitch during bounce and number counting.
     upgrade.page_counters[upgrade_id] = 2;
@@ -643,6 +649,13 @@ void world_facility_static_render_fixture() {
     upgrade.page_counters[upgrade_id] = 55;
     capture(upgrade, "raw81-values-minimum.png", true);
     capture(upgrade, "raw81-values.png", false);
+    // Hold the primary number-animation clock fixed while sampling the actual
+    // independent Owner field. Repeated drawing above must leave both clocks intact.
+    for (const int secondary : {0, 20}) {
+        upgrade.page_secondary_counters[upgrade_id] = secondary;
+        const auto name = "raw81-values-secondary" + std::to_string(secondary) + "-minimum.png";
+        capture(upgrade, name.c_str(), true);
+    }
     auto profit_positive = ordinary;
     const auto profit_instance =
         profit_positive.facility_page_bindings.at(top_page(profit_positive).id);

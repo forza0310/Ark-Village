@@ -5,12 +5,14 @@
 #include "../common/layout.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/presentation/steam_human_skin.hpp"
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace ark::desktop::ui {
 class Skin;
+inline constexpr const char *world_human_down_text = "倒下中";
 struct WorldHumanRow {
     int identity{}, slot{}, cost{}, stock{}, medals{}, level{};
     std::string name;
@@ -25,6 +27,8 @@ struct WorldHumanView {
     std::string title, name, profession, target_profession, message;
     simulation::StartupHumanDetails details;
     std::optional<simulation::StartupHumanPresentationLive> live;
+    // Input-only projections may omit the measured down text width; rendering must supply it.
+    std::optional<simulation::SteamHumanDetailSkin> detail_skin;
     std::array<std::string, 4> equipment_names;
     std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};
     std::array<std::array<int, 4>, 4> equipment_values{};
@@ -54,7 +58,8 @@ struct WorldHumanIntent {
 };
 bool world_human_page(const simulation::rules::WorldScriptPage &page);
 WorldHumanView world_human_view(const simulation::StartupWorldRuntimeState &state,
-                                const simulation::rules::WorldScriptPage &page);
+                                const simulation::rules::WorldScriptPage &page,
+                                std::optional<int> down_text_width = {});
 WorldHumanLayout world_human_layout(Extent extent);
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
 Rectangle world_tracking_confirm(Extent extent);

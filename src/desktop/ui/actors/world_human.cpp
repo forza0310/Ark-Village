@@ -83,7 +83,8 @@ bool world_human_page(const Page &page) {
            ((page.legacy_page >= 60 && page.legacy_page <= 66) || page.legacy_page == 68 ||
             page.legacy_page == 69 || page.legacy_page == 70 || page.legacy_page == 73);
 }
-WorldHumanView world_human_view(const State &state, const Page &page) {
+WorldHumanView world_human_view(const State &state, const Page &page,
+                                std::optional<int> down_text_width) {
     if (!state.rules || !world_human_page(page))
         throw std::invalid_argument("Human view requires a supported page and catalogue");
     WorldHumanView view;
@@ -114,6 +115,13 @@ WorldHumanView world_human_view(const State &state, const Page &page) {
         details = presentation->human;
         view.live = presentation->live;
         view.can_track = presentation->tracking_available;
+        // Source plan preserves medal/weapon/body/HP order and reads only the Owner page tick.
+        // Keyboard/mouse routing needs no font; only a down portrait waits for real text width.
+        if (!view.live || view.live->state != 7 || down_text_width) {
+            view.detail_skin = simulation::steam_human_detail_skin(state, page.id, down_text_width);
+            if (!view.detail_skin)
+                throw std::runtime_error("Invalid human detail presentation plan");
+        }
     }
     const auto portrait = simulation::startup_world_portrait(state, binding->second);
     if (!details || !portrait)

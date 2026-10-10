@@ -51,10 +51,8 @@ void draw_world_facility_upgrade(const WorldBuildingView &view, const WorldBuild
     };
     std::optional<Rectangle> clip;
     const auto image = [&](const sim::SteamFacilityImage &part) {
-        // Independent frame2 is absent from older maintained Owners. Until supplied,
-        // leave only that unbound animation out rather than resetting it on phase changes.
-        if (part.asset == Asset::mini && !view.upgrade_secondary_available)
-            return;
+        // The validated view carries the Owner's independent frame2. Drawing does not
+        // advance it or restart the two mini characters when the main phase changes.
         const auto resource = sim::steam_facility_resource(part.asset);
         if (!resource)
             throw std::invalid_argument("Unknown Steam facility resource");

@@ -147,6 +147,16 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
         view.product_count = open_products(state, item);
         view.can_confirm = true;
     } else {
+        std::optional<simulation::StartupFacilityUpgradeView> upgrade;
+        if (view.raw == 81) {
+            // Init belongs to the simulation thread. Once it has run, both clocks and
+            // the frozen instance payload must pass the maintained read-only contract.
+            if (!state.facility_upgrade_initialized.count(page.id))
+                return view;
+            upgrade = simulation::inspect_startup_world_facility_upgrade(state, page.id);
+            if (!upgrade)
+                throw std::invalid_argument("Initialized facility upgrade has invalid source payload");
+        }
         const auto binding = state.facility_page_bindings.find(page.id);
         if (binding == state.facility_page_bindings.end())
             return view;
@@ -160,21 +170,16 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             return view;
         view.phase = phase->second;
         if (view.raw == 81) {
-            if (!state.facility_upgrade_initialized.count(page.id))
-                return view;
             view.title = "设施升级";
-            view.upgrade = state.facility_upgrade_display;
+            view.upgrade = upgrade->attributes;
             view.facility_name = item.name;
             simulation::SteamFacilityUpgradeSkinInput input;
-            input.definition = item.id;
-            input.mapchip = item.display_id;
-            input.level = state.scene.world.world.facility_uses.at(item.id).level;
-            input.phase = view.phase;
-            input.frame = state.page_counters.at(page.id);
-            const auto secondary = state.page_secondary_counters.find(page.id);
-            view.upgrade_secondary_available = secondary != state.page_secondary_counters.end();
-            if (view.upgrade_secondary_available)
-                input.frame2 = secondary->second;
+            input.definition = upgrade->definition;
+            input.mapchip = upgrade->mapchip;
+            input.level = upgrade->level;
+            input.phase = upgrade->phase;
+            input.frame = upgrade->frame;
+            input.frame2 = upgrade->frame2;
             const auto checked = [](std::int64_t n) {
                 if (n < std::numeric_limits<int>::min() || n > std::numeric_limits<int>::max())
                     throw std::invalid_argument("Upgrade display outside source integer range");
@@ -183,7 +188,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             for (int slot = 0; slot < 3; ++slot) {
                 for (int phase = 0; phase < 3; ++phase)
                     input.attributes[slot][phase] = checked(view.upgrade[phase][slot]);
-                input.limits[slot] = checked(std::int64_t(item.economy.attributes[slot].fifth) * 2);
+                input.limits[slot] = checked(upgrade->limits[slot]);
             }
             view.upgrade_skin = input;
             view.can_confirm = true;

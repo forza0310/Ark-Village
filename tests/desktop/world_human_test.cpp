@@ -64,6 +64,64 @@ void world_human() {
           "Human detail projects current shared values instead of creation metadata");
     check(!view.can_track, "Ordinary source0 details never expose directory tracking");
     {
+        // Display-only snapshots: source suites own cycle arithmetic and HP thresholds.
+        // This boundary verifies that the desktop actually carries the complete source plan.
+        auto portrait = state;
+        portrait.page_counters.at(page.id) = 100;
+        portrait.human_homes.at(0)[2] = 0;
+        portrait.scene.world.world.ai.growth.at(0).definition.current_profession = 2;
+        portrait.shop_humans.at(0).equipment[0] = 0;
+        const auto walking = ui::world_human_view(portrait, page);
+        check(walking.detail_skin &&
+                  walking.detail_skin->portrait_position == std::array<int, 2>{63, 121} &&
+                  walking.detail_skin->portrait.body.frame == 1 &&
+                  walking.detail_skin->portrait.body.image ==
+                      portrait.rules->jobs.at(2).sprites.at(walking.details.sex) &&
+                  walking.detail_skin->portrait.weapon && !walking.detail_skin->portrait.shadow,
+              "Desktop retains current job/sex/weapon, nonresident offset and independent cycles");
+        check(walking.detail_skin->medals.draws.size() == 3 &&
+                  std::get<sim::SteamHumanImage>(walking.detail_skin->medals.draws[1]).asset ==
+                      sim::SteamHumanAsset::number05,
+              "Seven medals carry the source image, multiplication frame and Steam number plan");
+        auto &ai = portrait.scene.world.world.ai;
+        sim::rules::BattleActorRecord live;
+        live.id = {900};
+        live.kind = sim::rules::ActorKind::human;
+        live.definition = 0;
+        live.hp.displayed = 80;
+        live.hp.target = 0;
+        ai.battle.actors.emplace(live.id, live);
+        ai.human_order = {live.id};
+        ai.growth.at(0).derived.combat[0] = 100;
+        portrait.page_counters.at(page.id) = 0;
+        const auto danger = ui::world_human_view(portrait, page);
+        check(
+            danger.live && danger.live->id == live.id && danger.detail_skin &&
+                danger.detail_skin->after_portrait.draws.size() == 5 &&
+                std::get<sim::StartupSkinRect>(danger.detail_skin->after_portrait.draws[2])
+                        .rect[2] == 14 &&
+                std::get<sim::SteamHumanImage>(danger.detail_skin->after_portrait.draws[4]).asset ==
+                    sim::SteamHumanAsset::pinch,
+            "Desktop preserves distinct display HP bar and target HP danger requests");
+        ai.battle.actors.at(live.id).control.state = 7;
+        const auto input_only = ui::world_human_view(portrait, page);
+        check(input_only.initialized && !input_only.detail_skin,
+              "Down input projection stays usable without guessing a font width");
+        const auto down = ui::world_human_view(portrait, page, 36);
+        check(down.detail_skin && down.detail_skin->portrait.body.sprite == 13 &&
+                  down.detail_skin->portrait.body.frame == 0 &&
+                  !down.detail_skin->portrait.weapon &&
+                  std::holds_alternative<sim::SteamHumanText>(
+                      down.detail_skin->after_portrait.draws.back()),
+              "Measured down view replaces walk/weapon/HP with body13/frame0 and bubble text");
+        check(portrait.page_counters.at(page.id) == 0 &&
+                  ai.battle.actors.at(live.id).hp.displayed == 80 &&
+                  ai.battle.actors.at(live.id).hp.target == 0 &&
+                  same_world_clock(portrait, state) &&
+                  portrait.scene.random.draws() == state.scene.random.draws(),
+              "Repeated UI projection does not advance source counters, HP or random");
+    }
+    {
         auto tracking = view;
         ui::WorldHumanInput chase;
         chase.click = middle(ui::world_human_detail_layout(layout).track);

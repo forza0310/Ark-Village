@@ -3,6 +3,7 @@
 #include "../ui/system/world_menu.hpp"
 #include "world_save_menu.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace ark::desktop {
 namespace {
@@ -368,8 +369,10 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::draw_world_script_reward(ui::world_script_reward_view(state, page),
                                      ui::world_page_layout(page, extent), skin, enabled);
     } else if (ui::world_human_page(page)) {
-        ui::draw_world_human(ui::world_human_view(state, page), ui::world_human_layout(extent),
-                             skin, enabled, feedback_);
+        const auto down_width =
+            static_cast<int>(std::ceil(skin.text.width(ui::world_human_down_text)));
+        ui::draw_world_human(ui::world_human_view(state, page, down_width),
+                             ui::world_human_layout(extent), skin, enabled, feedback_);
     } else if (ui::world_tax_page(page)) {
         ui::draw_world_tax(ui::world_tax_view(state, page), ui::world_tax_layout(extent), skin,
                            enabled);

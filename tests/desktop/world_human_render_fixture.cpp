@@ -1,10 +1,11 @@
 // Explicit renderer fixture, never a natural-world or mastery-reward acceptance result.
 // This case is invoked manually and is deliberately absent from standard CTest registration.
 #include "../../src/desktop/resources/resources.hpp"
-#include "../support/world_fixture.hpp"
-#include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/actors/world_human.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
+#include "../support/world_fixture.hpp"
 
+#include <cmath>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -14,7 +15,7 @@ namespace {
 class FixtureWindow {
   public:
     FixtureWindow() {
-        InitWindow(720, 600, "Ark-Village UI fixture / synthetic - raw70 mastery");
+        InitWindow(720, 600, "Ark-Village UI fixture / synthetic human presentation");
         if (!IsWindowReady())
             throw std::runtime_error("Synthetic UI fixture could not create a window");
         SetTargetFPS(60);
@@ -54,6 +55,8 @@ void world_human_render_fixture() {
     std::string glyphs = "职业大师体力力量灵活结实魔力运气魔法转职保持现状确定";
     glyphs += state.rules->humans.at(human).name;
     glyphs += state.rules->jobs.at(growth.definition.current_profession).name;
+    glyphs += state.rules->jobs.at(2).name;
+    glyphs += ui::world_human_down_text;
     desktop::Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
     const auto layout = ui::world_human_layout({720, 600});
@@ -92,6 +95,72 @@ void world_human_render_fixture() {
                 "Rendering synthetic mastery unexpectedly changed world state");
         std::cout << "UI fixture / synthetic raw70 phase=" << phase
                   << " frames=8 screenshot=" << file.string() << '\n';
+    }
+    // Four display snapshots cover plain/resident, nonresident cycle100, target-HP danger
+    // and down body/bubble. They deliberately do not claim natural combat or job progression.
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int phase = 0; phase < 4; ++phase) {
+            auto owner = initial_world();
+            auto detail = page;
+            detail.legacy_page = 60;
+            owner.scripts.pages.push_back(detail);
+            owner.page_human_bindings[detail.id] = human;
+            owner.human_detail_contexts.emplace(detail.id, simulation::StartupHumanDetailContext{});
+            owner.human_pages_initialized.insert(detail.id);
+            owner.page_phases[detail.id] = phase;
+            owner.page_counters[detail.id] = std::array<int, 4>{0, 100, 25, 0}[phase];
+            owner.human_page_selections[detail.id] = 0;
+            owner.human_homes.at(human)[2] = phase == 1 ? 0 : 1;
+            owner.human_calendar.at(human).celebrations = std::array<int, 4>{4, 7, 7, 12}[phase];
+            auto &ai = owner.scene.world.world.ai;
+            ai.growth.at(human).definition.current_profession = 2;
+            owner.shop_humans.at(human).equipment[0] = 0;
+            if (phase >= 2) {
+                rules::BattleActorRecord actor;
+                actor.id = {900};
+                actor.kind = rules::ActorKind::human;
+                actor.definition = human;
+                actor.hp.displayed = 80;
+                actor.hp.target = 0;
+                actor.control.state = phase == 3 ? 7 : 0;
+                ai.battle.actors.emplace(actor.id, actor);
+                ai.human_order = {actor.id};
+                ai.growth.at(human).derived.combat[0] = 100;
+            }
+            const auto before = owner;
+            const auto frame = ui::world_human_layout(extent);
+            const int down_width =
+                static_cast<int>(std::ceil(text.width(ui::world_human_down_text)));
+            const auto view = ui::world_human_view(owner, detail, down_width);
+            if (!view.initialized || !view.detail_skin)
+                throw std::runtime_error("Synthetic raw60 fixture has no complete portrait plan");
+            for (int draw = 0; draw < 8; ++draw) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Synthetic raw60 fixture was closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC raw60", 4, 4, 12, BLACK);
+                ui::draw_world_human(view, frame, skin, true);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file = output / ("synthetic-raw60-" + std::to_string(extent.width) +
+                                        "-phase" + std::to_string(phase) + ".png");
+            auto capture = LoadImageFromScreen();
+            const bool saved = capture.data && ExportImage(capture, file.string().c_str());
+            UnloadImage(capture);
+            if (!saved || !std::filesystem::is_regular_file(file) ||
+                std::filesystem::file_size(file) == 0)
+                throw std::runtime_error("Synthetic raw60 fixture failed to write its screenshot");
+            if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds())
+                throw std::runtime_error("Rendering raw60 unexpectedly changed the Owner");
+            std::cout << "UI fixture / synthetic raw60 phase=" << phase
+                      << " frames=8 screenshot=" << file.string() << '\n';
+        }
     }
 }
 } // namespace ark::test

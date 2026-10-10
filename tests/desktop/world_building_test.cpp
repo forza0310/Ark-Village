@@ -522,7 +522,10 @@ void world_building() {
     page.legacy_page = 81;
     check(!ui::world_building_view(state, page).initialized,
           "Upgrade display cannot initialize or apply an unconsumed source upgrade");
+    state.scripts.pages.back() = page;
     state.facility_upgrade_initialized.insert(page.id);
+    state.scene.world.world.facility_uses.at(page.legacy_f).upgrade_pending = true;
+    state.page_secondary_counters[page.id] = 17;
     state.facility_upgrade_display = {{{11, 12, 13}, {14, 15, 16}, {3, 3, 3}}};
     view = ui::world_building_view(state, page);
     check(view.initialized && view.upgrade[0][2] == 13 && view.upgrade[1][0] == 14,
@@ -530,8 +533,59 @@ void world_building() {
     check(view.upgrade_skin && view.upgrade_skin->attributes[0] == std::array<int, 3>{11, 14, 3} &&
               view.upgrade_skin->attributes[2] == std::array<int, 3>{13, 16, 3} &&
               view.upgrade_skin->frame == state.page_counters.at(page.id) &&
-              !view.upgrade_secondary_available,
-          "Steam upgrade binds each attribute's frozen old/new/delta and never invents frame2");
+              view.upgrade_skin->frame2 == 17,
+          "Steam upgrade binds the frozen matrix and the Owner's independent secondary clock");
+    const auto rejects_upgrade = [&](const auto &broken) {
+        try {
+            (void)ui::world_building_view(broken, page);
+        } catch (const std::invalid_argument &) {
+            return true;
+        }
+        return false;
+    };
+    auto broken = state;
+    broken.page_secondary_counters.erase(page.id);
+    check(rejects_upgrade(broken), "Initialized upgrade cannot silently drop missing frame2");
+    broken = state;
+    broken.facility_page_bindings.erase(page.id);
+    check(rejects_upgrade(broken), "Initialized upgrade cannot wait forever on a missing binding");
+    broken = state;
+    broken.scripts.pages.back().legacy_f = -1;
+    check(rejects_upgrade(broken), "Upgrade instance and source definition must agree");
+    for (const int secondary : {0, 10, 20}) {
+        state.page_secondary_counters[page.id] = secondary;
+        const auto mapped = ui::world_building_view(state, page);
+        auto request = *mapped.upgrade_skin;
+        request.title_widths = std::array<int, 2>{48, 48};
+        request.notice_widths = std::array<int, 4>{6, 24, 12, 24};
+        const auto plan = sim::steam_facility_upgrade_skin(request);
+        check(plan.has_value(), "Mapped upgrade facts produce the maintained draw plan");
+        std::vector<sim::SteamFacilityImage> minis;
+        for (const auto &draw : plan->draws)
+            if (const auto *image = std::get_if<sim::SteamFacilityImage>(&draw);
+                image && image->asset == sim::SteamFacilityAsset::mini)
+                minis.push_back(*image);
+        const bool jumping = secondary < 20;
+        check(minis.size() == 4 && minis[0].frame == (jumping ? 1 : 0) &&
+                  minis[1].frame == (jumping ? 5 : 3) &&
+                  minis[2].frame == (jumping ? 1 : 0) &&
+                  minis[3].frame == (jumping ? 4 : 2) &&
+                  minis[0].position == std::array<int, 2>{52, 144} &&
+                  minis[2].position == std::array<int, 2>{188, 144} &&
+                  minis[1].position[0] == 52 && minis[3].position[0] == 188 &&
+                  minis[1].position[1] == minis[3].position[1] &&
+                  (secondary == 10 ? minis[1].position[1] < 144
+                                   : minis[1].position[1] == 144) &&
+                  mapped.upgrade_skin->frame == 0 && request.frame2 == secondary,
+              "Secondary clock alone drives left shadow/body then right shadow/body");
+    }
+    state.page_counters[page.id] = 40;
+    state.page_secondary_counters[page.id] = 17;
+    check(sim::consume_startup_world_facility_upgrade(state, page.id, true),
+          "Existing consumer changes the upgrade phase");
+    view = ui::world_building_view(state, page);
+    check(view.phase == 1 && view.upgrade_skin->frame == 0 && view.upgrade_skin->frame2 == 17,
+          "Desktop phase transition preserves secondary time instead of restarting the minis");
     check(!ui::world_building_input(view, layout, selection, input, false),
           "Escape does not skip the upgrade consumer's required confirmation phases");
     input = {};

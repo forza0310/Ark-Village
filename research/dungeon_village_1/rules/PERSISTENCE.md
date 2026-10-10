@@ -295,7 +295,7 @@ APK来源是`a/e.java:440–484,610–713,774–781`、`a/h`读写及重置、`d
 
 任务原小方法为`a/m`读写／新局、`a/k`读写／新局及`c/k`读写。Steam逐字段交叉入口：`QuestData.Serialize/Deserialize` RVA `21DB90/21D5B0`，`NewGame` `21DB20`；`MonsterData.Serialize/Deserialize` `21C970/21C430`，`NewGame` `21C8D0`；任务实例`Quest.Serialize/Deserialize` `2BF7C0/2BE900`。任务t读入写点为`1021D60E`；怪物u/v/w/x/y依次写于`1021C48E/1021C499/1021C4A4/1021C4AF/1021C4BA`，没有用开放状态替代介绍状态。Steam `UserData.Serialize/Deserialize`还独立保存成功数／普通探索数／章节／子周期（写`102E45A9–102E45CA`，读入`102CC0D4–102CC0F5`）、G（`102E4812/102CC341`）和待入账完成量（`102E431F/102CBEF3`）；新局Init明确分别清零。
 
-完成t、章节与G的有序变化沿[任务成功合同](ai/DUNGEONS.md#任务成功的精确统计与顺序)：先记成功及t，再按flags推进章节，最后扫描仍存在的特殊任务决定是否增加G。y介绍资格不由“完成一次”自动置真；发出介绍请求时置真，见[产生者证据](../verification/task-selection-producers/README.md)。两种y分别属于怪物定义与UserData，切勿合并。六BOSS／三十复发静态目录来自Setting，CH_MODE／CH_INDEX及原任务UID分配计数也不是上述定义记录；其来源和未闭合入口沿[路线合同](PROGRESSION_ROUTES.md)。
+完成t、章节与G的有序变化沿[任务成功合同](ai/DUNGEONS.md#任务成功的精确统计与顺序)：先记成功及t，再按flags推进章节，最后扫描仍存在的特殊任务决定是否增加G。y介绍资格不由“完成一次”自动置真；发出介绍请求时置真，见[产生者及精确读写定位](STEAM_MONSTER_PROGRESSION.md#新局与复发关系)。两种y分别属于怪物定义与UserData，切勿合并。六BOSS／三十复发静态目录来自Setting，CH_MODE／CH_INDEX及原任务UID分配计数也不是上述定义记录；其来源和未闭合入口沿[路线合同](PROGRESSION_ROUTES.md)。
 
 原档保存的是已经抽出的挑战／掉落结果和推进状态，**不保存随机tickets、seed或游标**，因此原版恢复不能保证未来抽签重放。维护普通档／精确回放均使用自有格式，已维护字段及随机按该格式保存；`task_sequence`、静态选择目录和表现页的快照政策不因此变成原版事实。当前维护任务定义进度模型不承载原p／r，怪物成长模型不承载上述w；本批没有发现它们的新增运行消费者或当前维护往返丢失的最小复现，不能宣布实现缺陷，也不能把自有模型全量恢复称为原档完整导入。原档只读分析须继续保留这些已知边界的字节，后续引入业务消费／导入时再明确映射，不扩大本批格式。
 

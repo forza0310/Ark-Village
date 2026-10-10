@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "date": "2026-10-11",
   "scope": "逐ID的定义参数与已定位入口；共享时点、效果和后继引用主责合同。入口存在、消费者存在、全部来源闭合和自然可达分别处理；本索引不标记全量已完成。",
   "definitions": 775,
@@ -445,7 +445,7 @@
         {"id": 74,"name_zh": "设施配置：魔法研究所","source": {"entry": "events.txt","line": 75},"program": "17,13","conditions": [[0,0]],"event_type": 0},
         {"id": 75,"name_zh": "设施配置：博物馆","source": {"entry": "events.txt","line": 76},"program": "17,21","conditions": [[0,0]],"event_type": 0},
         {"id": 76,"name_zh": "设施配置：马戏团","source": {"entry": "events.txt","line": 77},"program": "17,22","conditions": [[0,0]],"event_type": 0},
-        {"id": 77,"name_zh": "怪物讨伐成功1","source": {"entry": "events.txt","line": 78},"program": "5,7&6,10&22,0","conditions": [[0,0]],"event_type": 0,"script_callers": [{"table": "quest","definitions": [0,80],"definition_encoding": "inclusive_range","column": 13,"instruction": 0,"evidence": "table_reference_only"}],"source_limit": "固定APK任务程序字段l只见构造写入、无读取；本字段登记原表引用，不认证实际执行77。Steam该字段消费者另核。"},
+        {"id": 77,"name_zh": "怪物讨伐成功1","source": {"entry": "events.txt","line": 78},"program": "5,7&6,10&22,0","conditions": [[0,0]],"event_type": 0,"script_callers": [{"table": "quest","definitions": [0,80],"definition_encoding": "inclusive_range","column": 13,"instruction": 0,"evidence": "table_reference_only"}],"source_limit": "APK程序字段只构造写、无读取；Steam具名任务成功及脚本入口未见消费execsScript_。仅表内引用，不认证执行77；Steam间接别名仍未穷尽。"},
         {"id": 78,"name_zh": "怪物讨伐成功2","source": {"entry": "events.txt","line": 79},"program": "5,7&6,10&22,0","conditions": [[0,0]],"event_type": 0},
         {"id": 79,"name_zh": "怪物讨伐成功3","source": {"entry": "events.txt","line": 80},"program": "5,7&6,10&22,0","conditions": [[0,0]],"event_type": 0},
         {"id": 80,"name_zh": "任务中止","source": {"entry": "events.txt","line": 81},"program": "5,8&6,10&22,0","conditions": [[0,0]],"event_type": 0},
@@ -593,7 +593,7 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "callers_status": "完整表内程序；自动条件、直接调用、动态参数与跨版本上游尚未全部闭合。",
+      "callers_status": "165项有已核入口；77仅表内引用。34未知及77在固定APK已核调用/正常自动/实际表程序/正常续体内无来源；Steam及全程序间接别名仍未穷尽。",
       "chain_contract": "../rules/PROGRESSION_CONTENT.md#请求与真正消费",
       "automatic_candidates": [7,35,200,204,225,226,227],
       "caller_contract": "../rules/PROGRESSION_ROUTES.md#200事件的自动条件与实际执行入口",

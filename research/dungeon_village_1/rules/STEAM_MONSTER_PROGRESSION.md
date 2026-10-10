@@ -1,6 +1,6 @@
 # Steam普通怪物开放、介绍与任务资格
 
-2026-10-10。固定Steam2.56样本的两处怪物方法及共享状态helper静态交叉，共1,584字节；不是原窗口动态或整套Steam任务选择器认证。逐指令、字段、原文件hash和复算入口见[证据包](../verification/steam-monster-progression/README.md)。固定APK的完整具名字段扫描已在[任务产生者](../verification/task-selection-producers/README.md)完成，本批不重复它，也不要求研究自然经营到后期。
+2026-10-10。固定Steam2.56样本的两处怪物方法及共享状态helper静态交叉，共1,584字节；不是原窗口动态或整套Steam任务选择器认证。逐指令、字段、原文件hash和复算入口见[证据包](../verification/steam-monster-progression/README.md)。固定APK具名字段写者合入下文“新局与复发关系”，任务目录与选择器归[路线合同](PROGRESSION_ROUTES.md)，不要求研究自然经营到后期。
 
 ## 普通怪物按定义顺序开放
 
@@ -45,6 +45,8 @@
 `MonsterData.NewGame()` RVA0x21C8D0清state、NEW、四个计数字段及isAppearWindow；flags1定义才同时置state1／NEW和isAppearWindow=true。这与APK reset的结果相符，Steam不重复执行APK源码中的第二次清y语句，不要求指令数量一致。
 
 APK的a/k.y所有具名直接写点已核为新局、介绍及读档恢复；复发任务选择在event60、40票号、任务章节及逆序目录筛选之外还使用该y。维护`monster_growth.introduced`由介绍消费者写回，Owner再投影到`TaskCreationMonster.replay_available`。这条APK及维护消费链已有证据；本批Steam只交叉到介绍资格产生，不将其扩大为Steam完整复发选择算法已相同。
+
+APK精确写点（pc为16位code unit）：`La/k;::b()V`的pc6／16重复清y，flags1分支pc29写真；`La/k;::a(InputStream)V`的pc40安装读取的bool；`Lc/b;::k()I`的pc190在介绍脚本及raw89请求之后写真。后者完整195 code unit已核，选择器`Lc/n;::f(I)Lc/k;`的pc399读取y；开放p、介绍y和首次击杀不是同一时点。以上是固定DEX具名直接写范围，不将读取／序列化当新产生者。
 
 现功能测试主责为`encounter_creation_test::creation/synchronous_intro`及任务选择套件：覆盖开放参与本次选择、介绍在spawn之前、活动任务抑制介绍、相同定义只介绍一次、晚失败回滚和复发空池回退。本批没有改业务或新增重复测试；这些是维护契约覆盖，不是Steam动态证据。真实经营到各怪物、BOSS胜利与完整任务复发交产品长跑验证。
 

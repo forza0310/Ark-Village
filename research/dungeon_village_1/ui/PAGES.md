@@ -213,13 +213,14 @@ S025同帧的禁止图标不能证明那个非法位置已建立设施、扣款�
 
 用户本次明确反馈主程序的建设目录与放置预览都没有建筑图像，并期望候选建筑闪烁、旋转后改变朝向。
 这是产品窗口观察和用户期望，不是固定APK的新增动态证据。以下为产品提交`b9dfe94`时的只读核查，未修改产品：
-[共同世界预览](../../../src/desktop/world_build_placement.cpp)的`draw_world_build_preview`只绘红绿占地菱形；
-[共同世界目录](../../../src/desktop/ui/world_building.cpp)只投影、绘制名称与报价。
-[输入接线](../../../src/desktop/world_management.cpp)已切换两朝向并传给占地和确认，单格占地不变时不能据此看出建筑转向。
-旧切片的[预览](../../../src/desktop/scene.cpp)和[目录](../../../src/desktop/ui/pages.cpp)已有精灵／缩略图绘制，
+当批`src/desktop/world_build_placement.cpp`的`draw_world_build_preview`只绘红绿占地菱形；
+当批`src/desktop/ui/world_building.cpp`只投影、绘制名称与报价。
+当批`src/desktop/world_management.cpp`已切换两朝向并传给占地和确认，单格占地不变时不能据此看出建筑转向。
+旧切片的`src/desktop/scene.cpp`和`src/desktop/ui/pages.cpp`已有精灵／缩略图绘制，
 但不属于当前共同世界入口，不能用其完成情况代替当前窗口验收。
 随后产品维护者在`3d94c3c`记录了建设目录／候选建筑图像修复；以上缺图描述保留为反馈历史，
 不代表该提交之后的当前产品状态。产品窗口／输入验收由产品维护者独立报告。
+上述路径按当批提交保留；旧切片已退休，当前重排后的产品入口见[源码导航](../../../src/README.md)，不提供失效文件链接。
 
 现有交付足以定位建筑图像与两朝向分片：[设施占地／朝向／精灵绑定](../rules/FACILITIES.md#definitions-占地与朝向直接证据)、
 [几何消费者](../example/src/geometry.cpp)、[完整显示原表](../data/startup/TABLES.json)及
@@ -309,6 +310,46 @@ S001五项菜单与默认结构相符；“五项对七标签”不能单独证�
 菜单行间距28，选中背景由SEB menu绘制，主菜单图标由SEB wnd_menuIcon按标签映射。
 [输入区599](../work/decompiled/sources/b/g.java)主菜单与子菜单注册方式不同，
 需叠加当前窗口/绘图偏移，28不是截图物理像素。
+
+### Steam主菜单缓存、输入与局部皮肤
+
+2026-10-10交叉固定Steam2.56实际GameAssembly与APK。正式只读入口为[steam_main_menu_skin](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)，复用应用库与现visuals套件；原主菜单Owner／缓存生命周期尚未接入，不能把场景快捷入口当raw3。下列地址是固定样本VA，RVA另标，不是窗口运行地址。
+
+`GameForm.Init`在`102FA951–102FA969`缓存`SubForm(3,0,25)`；构造在`1032EA88`置选择0。重开复用缓存，`FormManager.<Push>b__0`在`107F2768–107F2778`把不在栈内的页设生命周期0，随后重新Init。`MyFormBase.Init`（RVA `2008A0`）、`SubForm.Init`公共段及raw3分支不重设选择／x／y；frame清0，`10315176–10315224`刷新建设NEW缓存，重建`0,1,2,(flag1?3),5,6`并请求内部光标跳转。被子菜单覆盖后恢复不重新Init。重开保留的是**行号**，解锁插入tag3后不按旧tag重新定位；缺载荷／非法行必须显式拒绝。
+
+`FrameMenu`（RVA `30E270`）按上重复`0x20000`→否则下重复`0x80000`→否则确认`0x100000`／右`0x40000`→否则返回软标签2／左`0x10000`，选择循环，确认置frame3并返回当前条目。helper无条目返回后raw3仍检查软标签3／5：`10327ED3–10327F48`的软3先Pop再开raw14，不能把helper优先级扩大成整个页的输入互斥。raw3既存dialog的result−1另触发退休全部菜单；普通子菜单取消不套此路径。
+
+| tag | raw3确认的实际消费者 |
+| --- | --- |
+| 0 | 未登记114先执行114，压21，再退休全部菜单 |
+| 1／2 | 压4／7，保留父菜单 |
+| 3 | 先清flag2、真正处理魔法壶，再压41 |
+| 5／6 | 压9／10，保留父菜单 |
+| 4 | Update有83分支，但本目录不生成4，不能增加“交易”行 |
+
+raw4／7／9／10位置为`xChild=xParent+68+(En?28:0)`、`yChild=yParent+28×选择行`（`10327E74–10327EC0`、`10327FD7–103281BB`），取父页**存储位置**，不取safe-left或居中修正后的Graphics原点。独立`steam_main_menu_child_position`只处理这四种子页；非英语不加28，魔法壶41不借该定位。
+
+**ID8与ID9不同。** `GameView.OnTouchMainMenu`（RVA `23D340`）从栈底找首个Form ID4／raw3，仅处理TYPE_ENTER2和TYPE_UP1。没有id9组件时Set当前栈顶行，UP再发确认；存在id9时，目标行与找到的raw3相同则返回，不同则直接Pop当前栈顶、Set到raw3，**不发确认**（`1023D431–1023D514`）。APK `f/b.java:762`相应JADX文本为先发左脉冲、再Set栈顶，带反编译告警，尚未低层复证：只登记待复核差异，不改APK既有维护链。物理命中、重叠组件及退休当轮输入仍另核，不能将裸鼠标事件直接当此处理器。
+
+**DrawMenu2(type0)，不是另一个DrawMenu1。** RVA `308540`：布局宽JP63／其它91，高`行数×28+5`；初始dx=safe-left、dy=0。若`Ox+宽>W`，dx改`W−宽−Ox`；若`Oy+高>H`，dy改`H−高−Oy`。判断不额外加safe-left，也不夹负局部坐标。每行Y=dy+28×行号，按下列原序执行：
+
+| 原序 | Steam请求 |
+| --- | --- |
+| 底图 | common SEB0/image25，选中frame0源`(0,0,68,29)`、其它frame1源`(0,29,68,29)`，锚`(dx+1,Y+1)` |
+| 图标 | common SEB7/image168，tag对应18格，源`(18×tag,0,18,18)`，锚`(dx+4,Y+6)`；本目录没有tag4 |
+| 触摸 | **真实栈顶raw3**才注册ID8，矩形`(dx,Y,布局宽,28)`、value=`0x20000|行`、无option；frame0也注册，不等于手形的IsTopForm(this) |
+| 正文 | frame≥3，`MENU_STR[tag]`，锚`(dx+28−(En?2:0),Y+9)`，选中RGB(76,58,50)，其它(255,242,220)；不走raw9测宽／字号11分支 |
+| NEW／GET | frame≥3。L初0、英语36、JP覆盖8；NEW/image147锚`(dx+47+L,Y+16)`。冒险GET/image148非JP为dx+44+L、JP为dx+47+L；NEW优先，不同时画GET |
+| 魔法壶期间 | tag3、独立显示查询>0才画；见下述期间合同，在NEW后、手形前 |
+| 手形 | 选中且本页栈顶；dx<120用SEB22于`(dx+布局宽+6,Y+13)`，否则SEB21于`(dx−2,Y+13)`；都引用image70，当前SEB帧独立 |
+
+底图与图标以`trunc(frame×1000/3)`缩短源宽／高，不拉伸纹理：frame1底图22×9、图标5×5，frame2底图45×19、图标11×11，frame3分别68×29、18×18；源起点及offset0保持。触摸尺寸不随展开变化。语言判断独立，JP与En同时为真时NEW／期间偏移按JP覆盖，但正文En减2仍执行。
+
+**NEW的真实来源。** raw3局部`10309543–1030986C`：建设读Init刷新后的三类aY任一；冒险为任务实例j任一且没有选中任务，否则装备`p!=0&&r`画GET；村办为`flag16&&(商品未阅||设施未阅)`或可举办活动NEW；情报为人物`p!=0&&r`；开发仅flag2。建设aY／定义P在raw3 Init及21选中后重算，P、解锁r与商会O各自独立。任务j构造置true且存档保存，22确认／返回／追踪三个出口才清，不能以任务数量、瞬态created_task或入页动作代替。维护已有其它NEW消费者，但任务j与建设原时点缓存仍缺；纯皮肤必须显式传入已核查询结果，未知不能默认false。原商会未阅设施过滤p!=2与维护已批准p0策略分别登记。
+
+**期间显示与真正处理分开。** APK `c/n.l:4589`及Steam `IsOpenMPotDevelWindow`（RVA `2E0260`）取日期差与n1较小值，整数映射到百分比后逐一检查n7..10的整数产出，首个正值才返回期间；全0返回0，没有真正process的满容量补1。[只读查询](../prototype/include/dungeon_village_prototype/startup_world_magic_pot.hpp)复用Owner的13槽和日期，不写壶或计数。期间P初0、英语28、JP覆盖10；依次画common2/image0于`(dx+69+P,Y+4)`、SEB15期间数字于`(dx+104+P,Y+10)`、SEB76/frame5斜线于`(dx+112+P,Y+10)`、SEB15的**n1分母**于`(dx+128+P,Y+10)`，数字padding0／anchor2。SEB15是Steam number08/image105，不是SEB12的number05；分母不是壶容量。
+
+局部行绘制后还有[HUD及任务摘要](INFORMATION_MENU.md#菜单右上hud与四行摘要)、一次性内部光标消费；`_draw`在`10356CC9`调用helper后，按`sysSave_.i[9]==1`调用平台Review，再注册KEYCLICK `(4,22,flag2)`。系统index9是OPEN_HIGHSPEED，**不是index16的REVIEW字段**。本批纯计划只交付上表行及其触摸，不消费光标，也不借raw9页面查询冒充raw3完整HUD宿主；Review后端、完整字体／多页输入与原窗口动态仍未认证。
 
 ## 设施详情的条件与字段
 

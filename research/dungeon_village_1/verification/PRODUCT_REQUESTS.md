@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+主菜单新增[raw3合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[正式只读皮肤](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)：五／六项原图标、缩源展开、NEW／GET优先级、壶期间及ID8基矩形，并提供raw4／7／9／10按父存储行定位。`startup_magic_pot_menu_information`返回当前可显示期间和n1分母，与真正process满容量补1独立；pages／visuals短测通过，参考[四面板图](../ui/examples/steam-main-menu.png)。任务j、建设aY/P原时点缓存和真实raw3 Owner仍缺，不能用数量或未消费的瞬态输出代替。平台Review由系统i9而非i16条件进入，完整光标／物理输入／字体分别待证；本批不改产品或快照格式。
+
 2026-10-10响应用户临时性能研究：[共同调度性能合同](../rules/ai/WORLD_SCHEDULE.md#更新耗时原版结构与维护成本)交叉APK／Steam对象引用更新、每轮感知和事件触发邻接／派生缓存，并核现产品月54短采样。当前约48.5ms热点转到人物决策／控制，设施私有窄投影已在产品在途实现，不重复提出旧设施改造。具体候选为同调用点routes复用／权威字段单次写回、决策内部消费式候选、按状态准备目录；原时点、随机、完整候选和整轮回滚保持。只读研究与日志复核，不是产品优化已完成或原程序耗时测量；本会话未改产品／重建DLL或启动长测。
 
 [商会重复出售请求](../../../docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint)已交叉并修正维护：原APK／Steam初始开放的九定义均应p2，生成器误写p1是根因；原85的p!=2事实保留，维护按用户确认另收紧p0资格。支付／定义预览／93领取／恢复拒绝同口径，普通建筑连续建设每次付金币且不消耗H。七项短测47.84秒通过；世界5／应用8拒旧、不迁移。具体源址与策略边界见[商会合同](../rules/COMMERCE.md)，产品继续按自身玩家政策和自然路径验收，不把新的研究版本自动用于产品旧档。

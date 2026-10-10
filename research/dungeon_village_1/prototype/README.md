@@ -4,9 +4,11 @@
 
 [应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。信息目录与追踪上下文另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
 
-旧`natural-application-menu-v1`世界3／应用6的首月、12月前缀仅保历史，不能加载后暗补price接续或重签证书。新`natural-application-economy-v1`首月正在验证，尚未认证通过。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
+旧多年研究前缀仅保历史，恢复资格以当前语义／布局／数据身份为准，不暗补price、重签或恢复退休研究长跑队列。产品负责自然经营全链，研究仅做本批短功能／必要恢复检查。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
 
 [Steam启动局部皮肤](STEAM_STARTUP_SKIN.md)提供标题／选档／手动菜单／询问的只读绘制与触摸注册计划，已过visuals和application验收；它不修改应用文件契约或代替完整可操作标题。原资源、真实测宽、未知字体及平台热区边界分别保留。
+
+[steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner，NEW必须显式传真实查询结果；任务j、建设aY/P缓存与真实raw3入口仍缺，不能以数量或场景快捷入口补造。局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接；[完整局部合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列维护和未知边界，未改世界5／应用8／系统2。
 
 人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
 

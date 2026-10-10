@@ -40,7 +40,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 0 | TALK | 对话 | 自然对话截图只证角色，未绑定TYPE |
 | 1 | DIALOG | 对话 | raw20重开／删除询问的默认否、横向输入、父页结果及局部绘制已核，见[合同](STEAM_SAVE_MENU.md)；其它调用者／原窗口组合仍待逐项 |
 | 2 | DIALOG_CHARA | 对话 | 仅声明；更新／绘制／动态链待逐项 |
-| 3 | MAIN_MENU | 菜单 | 主菜单局部静态＋S042 |
+| 3 | MAIN_MENU | 菜单 | 静态：[缓存重入、目录／NEW、父位置、ID8及DrawMenu2(type0)](PAGES.md#steam主菜单缓存输入与局部皮肤)已核；维护：逐行图标／NEW／GET／期间块纯计划及壶只读查询已接，真实raw3 Owner仍缺。动态：S042仅外观，原字体／整栈输入／光标与Review独立待验 |
 | 4 | ADVENTURE_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
 | 5 | DEVELOP_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
 | 6 | SHOPPING_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |

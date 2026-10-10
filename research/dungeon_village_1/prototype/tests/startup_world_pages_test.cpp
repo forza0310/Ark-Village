@@ -3033,6 +3033,59 @@ StartupWorldRuntimeState magic_pot_fixture() {
         entry.second.status = 1;
     return s;
 }
+void magic_pot_menu_information() {
+    auto s=magic_pot_fixture();
+    s.scene.calendar.year=0;s.scene.calendar.month=0;s.scene.calendar.subperiod=0;
+    s.legacy_n[12]=0;
+    // period0 / 截断后不足一元素 / 部分 / 时间超待件数 / 零待件数。
+    struct Case {int week,pending,element,expected;};
+    for(const auto test:std::array<Case,6>{{{0,3,100,0},{1,3,3,0},{1,3,4,1},
+                                         {2,3,4,2},{5,3,4,3},{5,0,4,0}}}) {
+        s.scene.calendar.month=test.week/4;s.scene.calendar.subperiod=test.week%4;
+        s.legacy_n[1]=test.pending;s.legacy_n[7]=test.element;
+        const auto before=startup_world_state_digest(s);
+        const auto shown=startup_magic_pot_menu_information(s);
+        check(shown && shown->processed==test.expected && shown->pending_materials==test.pending &&
+                  startup_world_state_digest(s)==before,
+              "magic menu uses two integer truncations, current pending denominator and no Owner writes");
+    }
+    s.scene.calendar.month=3;s.scene.calendar.subperiod=0;
+    s.legacy_n[1]=10;s.legacy_n[7]=0;
+    const auto before=startup_world_state_digest(s);
+    const auto hidden=startup_magic_pot_menu_information(s);
+    const auto actual=ref::prepare_world_magic_pot_processing(s.legacy_n,{0,3,0});
+    check(hidden && hidden->processed==0 && hidden->pending_materials==10 && actual.candidate &&
+              actual.candidate->changed && actual.candidate->processed==10 &&
+              actual.candidate->produced==std::array<std::int32_t,4>{1,1,1,0} &&
+              startup_world_state_digest(s)==before,
+          "zero-element full pot has hidden menu period despite actual processing fallback output");
+    s.legacy_n[10]=1;
+    const auto fourth=startup_magic_pot_menu_information(s);
+    check(fourth && fourth->processed==10,"fourth pending element can make menu period visible");
+    const std::array<const char*,9> errors{{"magic menu bad level","magic menu excessive material",
+        "magic menu future timestamp","magic menu negative pending element","magic menu invalid month",
+        "magic menu invalid subperiod","magic menu date overflow","magic menu element product overflow",
+        "magic menu excessive stored element"}};
+    for(int fault=0;fault<static_cast<int>(errors.size());++fault) {
+        auto bad=s;
+        if(fault==0)bad.legacy_n[11]=0;
+        if(fault==1)bad.legacy_n[1]=11;
+        if(fault==2)bad.legacy_n[12]=13;
+        if(fault==3)bad.legacy_n[7]=-1;
+        if(fault==4)bad.scene.calendar.month=12;
+        if(fault==5)bad.scene.calendar.subperiod=4;
+        if(fault==6)bad.scene.calendar.year=std::numeric_limits<int>::max();
+        if(fault==7)bad.legacy_n[7]=std::numeric_limits<int>::max();
+        if(fault==8)bad.legacy_n[3]=1000;
+        const auto unchanged=startup_world_state_digest(bad);
+        check(!startup_magic_pot_menu_information(bad) && startup_world_state_digest(bad)==unchanged,
+              errors[static_cast<std::size_t>(fault)]);
+    }
+    s.legacy_n[7]=1;s.legacy_n[8]=std::numeric_limits<int>::max();
+    const auto first=startup_magic_pot_menu_information(s);
+    check(first && first->processed==10,
+          "display exits after first positive output without evaluating later overflowing product");
+}
 ref::WorldScriptPage magic_pot_top(const StartupWorldRuntimeState &s) {
     const auto p = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
                                [](const auto &v) { return v.lifecycle != 4; });
@@ -3715,6 +3768,7 @@ int main() {
         commerce_after_reward_writeback();
         commerce_transactions();
         commerce_facility_and_projection();
+        magic_pot_menu_information();
         magic_pot_entry_and_retirement();
         magic_pot_deposit_pages();
         magic_pot_processing_and_discovery();

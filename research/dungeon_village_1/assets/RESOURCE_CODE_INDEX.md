@@ -38,6 +38,8 @@
 
 发现文件、解析结构、定位代码、还原消费者、动态认证和产品接入是不同状态。当前已核专题继续复用[装备／设施提示](../ui/EQUIPMENT_FACILITY_RENDER.md)、[建设／绘制请求](../ui/INPUT_RENDER_REQUESTS.md)、[战斗](../ui/COMBAT_RENDER.md)和[探索](../ui/DUNGEON_RENDER.md)，不重复建立互相矛盾的规则正文。
 
+Steam主菜单[完整逐行合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)进一步闭合menu SEB0/frame0–1、wnd_menuIcon SEB7按实际tag的图集格、NEW／GET、手形及common2/image0期间图的条件和原序；期间数字为SEB15／Steam image105，斜线为SEB76/frame5。底图／图标缩短源裁片，未将图集列数推成全部可选条目。原字体、完整raw3宿主与一次性光标仍另核；本增量不重生成早期APK候选索引或增加交付核对产物。
+
 ## 复算
 
 在仓库根目录执行：

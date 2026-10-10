@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
+#include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -26,6 +27,117 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+void main_menu(Checks &check,const std::filesystem::path &root) {
+    SteamMainMenuSkinInput input;input.selection=1;
+    SteamMainMenuSkinOptions options;
+    constexpr std::array<int,4> widths{0,22,45,68},heights{0,9,19,29},icon_sizes{0,5,11,18};
+    for(int frame=0;frame<4;++frame) {
+        input.frame=frame;
+        input.notices=frame==3?std::optional<SteamMainMenuNotices>{SteamMainMenuNotices{}}:std::nullopt;
+        const auto plan=steam_main_menu_skin(input,options);
+        check(plan && plan->touches.size()==5 && plan->origin==options.origin,"主菜单五项包含全尺寸frame0触摸");
+        const auto images=parts<SteamMainMenuImage>(*plan);
+        const auto labels=parts<SteamMainMenuText>(*plan);
+        std::vector<SteamMainMenuImage> backgrounds,icons;
+        for(const auto &part:images) {
+            if(part.image==25)backgrounds.push_back(part);
+            if(part.image==168)icons.push_back(part);
+        }
+        check(images.size()==(frame==0?0U:frame==3?11U:10U) && labels.size()==(frame==3?5U:0U),
+              "主菜单原展开先缩源底图/图标，文字与手形等待3");
+        constexpr std::array<int,5> tags{0,1,2,5,6};
+        for(int row=0;row<5;++row) {
+            const auto &touch=plan->touches[row];
+            check(touch.component==8 && touch.value==(0x20000|row) && touch.option==0 &&
+                  touch.rectangle==std::array<int,4>{0,28*row,91,28},"ID8原整行与tag4不入目录");
+            if(frame)check(backgrounds.at(row).crop==std::array<int,4>{0,row==1?0:29,widths[frame],heights[frame]} &&
+                  icons.at(row).crop==std::array<int,4>{18*tags[row],0,icon_sizes[frame],icon_sizes[frame]},
+                  "主菜单68宽底图与18格图标使用已核源裁片，不按91宽拉伸");
+            if(frame==3)check(labels[row].tag==tags[row] && labels[row].position==std::array<int,2>{28,28*row+9} &&
+                  labels[row].rgb==(row==1?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220}),
+                  "主菜单文字取MENU_STR真实tag与选中颜色");
+        }
+    }
+    input.magic_unlocked=true;input.selection=3;input.magic_period=StartupMagicPotMenuInformation{2,3};
+    input.notices=SteamMainMenuNotices{true,true,false,true,true,true,true,true,true,true};
+    const auto full=*steam_main_menu_skin(input,options);
+    check(full.touches.size()==6 && parts<SteamMainMenuText>(full)[3].tag==3,
+          "flag1只在2与5之间插开发，仍无tag4");
+    const auto period=std::find_if(full.draws.begin(),full.draws.end(),[](const auto &part) {
+        const auto *image=std::get_if<SteamMainMenuImage>(&part);
+        return image&&image->package==SteamMainMenuPackage::common2;
+    });
+    check(period!=full.draws.end() && std::get<SteamMainMenuImage>(*period).position==std::array<int,2>{69,88} &&
+          std::get<SteamFacilityNumber>(*(period+1)).asset==SteamFacilityAsset::number08 &&
+          std::get<SteamFacilityNumber>(*(period+1)).value==2 &&
+          std::get<SteamFacilityNumber>(*(period+1)).position==std::array<int,2>{104,94} &&
+          std::get<SteamMainMenuImage>(*(period+2)).crop==std::array<int,4>{47,0,7,10} &&
+          std::get<SteamFacilityNumber>(*(period+3)).value==3 &&
+          std::get<SteamMainMenuImage>(*(period+4)).sprite==22,
+          "NEW后期间底图/SEB15数字/斜线/待件分母/手形保持原序");
+    // 原冒险NEW优先；选中任务会屏蔽任务NEW，但不会屏蔽装备GET。
+    for(const auto scenario:std::array<std::array<int,4>,5>{{{1,0,1,147},{1,1,1,148},{0,0,1,148},{1,1,0,-1},{0,0,0,-1}}}) {
+        input.notices->quest=scenario[0];input.notices->selected_quest=scenario[1];input.notices->equipment=scenario[2];
+        const auto plan=*steam_main_menu_skin(input,options);
+        const auto images=parts<SteamMainMenuImage>(plan);
+        const auto mark=std::find_if(images.begin(),images.end(),[](const auto &p){return (p.image==147||p.image==148)&&p.position[1]==44;});
+        check(scenario[3]<0?mark==images.end():mark!=images.end()&&mark->image==scenario[3],
+              "任务NEW和装备GET按源优先级，不能两个标签一起画");
+    }
+    input.notices->quest=false;input.notices->equipment=true;
+    for(const auto scenario:std::array<std::array<int,4>,4>{{{0,1,0,0},{0,1,1,1},{1,1,0,1},{1,0,0,0}}}) {
+        input.notices->commerce_open=scenario[0];input.notices->commerce_items=scenario[1];
+        input.notices->commerce_facilities=false;input.notices->activities=scenario[2];
+        const auto images=parts<SteamMainMenuImage>(*steam_main_menu_skin(input,options));
+        const bool shown=std::any_of(images.begin(),images.end(),[](const auto &p){return p.image==147&&p.position[1]==72;});
+        check(shown==(scenario[3]!=0),"村办活动NEW独立于商会flag16，未阅商会须同时开放");
+    }
+    for(const auto language:std::array<std::array<int,6>,4>{{{0,0,91,28,44,69},{0,1,91,26,80,97},
+                                                         {1,0,63,28,55,79},{1,1,63,26,55,79}}}) {
+        options.japanese=language[0];options.english=language[1];
+        const auto plan=*steam_main_menu_skin(input,options);const auto images=parts<SteamMainMenuImage>(plan);
+        check(plan.touches[0].rectangle->at(2)==language[2] && parts<SteamMainMenuText>(plan)[0].position[0]==language[3] &&
+              std::find_if(images.begin(),images.end(),[&](const auto &p){return p.image==148&&p.position[0]==language[4];})!=images.end() &&
+              std::find_if(images.begin(),images.end(),[&](const auto &p){return p.package==SteamMainMenuPackage::common2&&p.position[0]==language[5];})!=images.end(),
+              "JP覆盖NEW/期间附加偏移，En文字减2仍独立，不使用raw9测宽规则");
+    }
+    options={};options.origin={200,200};options.safe_left=10;
+    const auto overflow=*steam_main_menu_skin(input,options);
+    check(overflow.touches[0].rectangle==std::array<int,4>{-51,-133,91,28},"六行右底修正覆盖safe-left，允许负局部原点");
+    options={};options.on_top=false;
+    check(steam_main_menu_skin(input,options)->touches.size()==6,"touch资格是栈顶raw3，不与手形IsTopForm合并");
+    const auto covered_images=parts<SteamMainMenuImage>(*steam_main_menu_skin(input,options));
+    check(std::none_of(covered_images.begin(),covered_images.end(),[](const auto &p){return p.image==70;}),
+          "不是本页栈顶不绘制手形");
+    options.on_top=true;options.top_is_main_menu=false;
+    check(steam_main_menu_skin(input,options)->touches.empty(),"非raw3栈顶不登记ID8，手形资格独立");
+    options.covered_by_nonmenu_subform=true;input.notices.reset();input.magic_period.reset();
+    const auto hidden=steam_main_menu_skin(input,options);
+    check(hidden&&hidden->draws.empty()&&hidden->touches.empty(),"非菜单覆盖不读取未绘制NEW/期间源");
+    options={};
+    check(!steam_main_menu_skin(input,options),"可见稳定菜单缺NEW或期间查询结果显式拒绝");
+    input.notices=SteamMainMenuNotices{};input.magic_period=StartupMagicPotMenuInformation{4,3};
+    check(!steam_main_menu_skin(input,options),"期间超待件分母拒绝");
+    input.magic_period=StartupMagicPotMenuInformation{0,3};input.selection=6;
+    check(!steam_main_menu_skin(input,options),"六行选择越界拒绝，不靠数组异常");
+    input.selection=0;options.safe_left=std::numeric_limits<int>::max();
+    check(!steam_main_menu_skin(input,options),"图元锚点溢出拒绝");
+    check(steam_main_menu_child_position({0,25},3,false,false)==std::array<int,2>{68,109} &&
+          !steam_main_menu_child_position({0,25},3,true,false) &&
+          steam_main_menu_child_position({0,25},4,true,true)==std::array<int,2>{96,137} &&
+          !steam_main_menu_child_position({std::numeric_limits<int>::max(),25},1,false,false),
+          "子页定位用父存储位置/行号/En，不按tag迁移，不取绘制safe-left");
+    const auto source=sprite(root/"common/menu.seb");
+    check(source.layers[0].parts[0].width==68 && source.layers[0].parts[1].source_y==29,
+          "主菜单底图独立SEB源oracle");
+    const auto icons=sprite(root/"common/wnd_menuIcon.seb");
+    check(icons.frame_count==7 && icons.layers[0].parts[6].image_index==168 &&
+          icons.layers[0].parts[6].source_x==108 && icons.layers[0].parts[6].width==18,
+          "七标签图集独立源oracle不等于七项均可选");
+    const auto path=steam_main_menu_image(SteamMainMenuPackage::common2,0);
+    check(path=="steam-common/mpot_event.png" && std::filesystem::file_size(root.parent_path()/std::string(*path))==744 &&
+          !steam_main_menu_image(SteamMainMenuPackage::common2,168),"Steam期间差异原图独立出版，组域不能混用");
 }
 }
 // 挂既有visuals套件：局部合同与源资源oracle，不建立新target或窗口状态机。
@@ -260,5 +372,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     check(icon && icon->image==177 && icon->sprite==-1 && icon->language_variant,
           "saveload177保留语言变体资格，不能由本函数猜中文fallback");
     check(!steam_startup_resource(static_cast<Asset>(999)),"未知资源枚举拒绝");
+    main_menu(check,root);
     return check.count;
 }

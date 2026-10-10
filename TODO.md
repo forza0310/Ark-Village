@@ -5,6 +5,7 @@
 ## 本批收口
 
 - [x] b99c6db正式维护及信息接入：442项来源、708项素材、28处适配；正常信息9/35–38和35→60追踪的FIFO/渲染接线完成。desktop-debug139/139通过；headless首次118/119、旧scene夹具补正后6项定向通过，均仅排三个月。Release七窗口及月51玩家业务检查点冷载通过；玩家schema4/身份保持，34/39与完整动态仍待后续。具体边界见[B1](docs/stages/B1-playable-prototype.md#research-b99c6db-integration)。
+- [x] b719030本地Release ZIP 15.85MiB，732文件独立解压核对与纯系统PATH信息窗口启动通过；最新经营前缀已实际推进并冷载到月54，布局21/50、到位营业10/25，仍二星。后续从保存前缀继续，不能以此替代三星和全内容验收。
 
 - [ ] [全解锁主动经营长跑](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)：按定义ID核对建筑/强化/道具/装备/职业/魔法/活动/配方/副本/BOSS，逐星→自然通关→继续/继承。已补全量目录和分段观测，不等于完成覆盖；当前优先突破三星收入，再补全部驱动、效果和恢复断言。
 - [x] Windows本地文本崩溃诊断：故障线程栈、临近日志和64回执接入；隔离崩溃/轮转、两Debug标准及Release窗口/错误出口检查见[本批结果](docs/stages/B1-playable-prototype.md#campaign-coverage-crash-diagnostics)。

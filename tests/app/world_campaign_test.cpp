@@ -233,6 +233,11 @@ template <class PlayerStrategy> struct CampaignRun {
                                     loot.receipts.end());
             const auto tax = ark::test::residence_tax_receipts(state, *update.candidate);
             pending_receipts.insert(pending_receipts.end(), tax.begin(), tax.end());
+            const auto battle = ark::test::monster_retirement_receipts(state, *update.candidate);
+            if (battle.gap)
+                std::cout << "COVERAGE_BATTLE_GAP\t" << state.simulation_steps << '\t'
+                          << battle.gap << '\n';
+            pending_receipts.insert(pending_receipts.end(), battle.receipts.begin(), battle.receipts.end());
         } catch (...) {
             // Keep the same pre-update Owner used for a failed observation. A strategy
             // refusal is not a runtime error, and must not be reported as one.

@@ -1,6 +1,7 @@
 #include "world_active_income_strategy.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/rules/facility_items.hpp"
+#include "ark/simulation/village/startup_information.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -158,11 +159,28 @@ std::optional<IncomeInvestment> choose_income_investment(const State &s, std::in
 void inspect_income(const State &s, std::ostream &out) {
     out << "INCOME_INPUT month=" << s.scene.calendar.year * 12 + s.scene.calendar.month
         << " cash=" << cash(s) << " record=" << s.maximum_income << '\n';
+    for (int month = 0; month <= s.scene.calendar.month; ++month) {
+        const auto account = sim::startup_income_information(s.monthly_cash, month, 0);
+        require(account.has_value(), "income inspection lost the source monthly accounts");
+        std::int64_t qualifying_income{};
+        out << "MONTH_ACCOUNT year=" << s.scene.calendar.year << " month=" << month
+            << " complete=" << (month < s.scene.calendar.month);
+        for (int category = 0; category < 5; ++category) {
+            const auto &row = account->rows[category];
+            out << " category" << category << "_income=" << row.income
+                << " category" << category << "_expense=" << row.expense;
+            if (category < 3)
+                qualifying_income += row.income;
+        }
+        out << " qualifying_income=" << qualifying_income << " net=" << account->profit << '\n';
+    }
     for (const auto &[id, f] : s.scene.world.world.facilities)
         if (f.kind == 2 || f.kind == 3 || f.kind == 9) {
             const auto values = sim::startup_world_facility_values(s, id);
             require(values.has_value(), "income inspection lost its source facility values");
             out << "SHOP id=" << id << " definition=" << f.placement.definition_id
+                << " name=" << s.rules->facilities.at(f.placement.definition_id).name
+                << " definition_kind=" << s.rules->facilities.at(f.placement.definition_id).kind
                 << " anchor=" << f.placement.anchor.x << ',' << f.placement.anchor.y
                 << " status=" << f.status << " flags=" << s.facility_flags.at(id)
                 << " category=" << f.category << " shared_charm="

@@ -42,7 +42,9 @@ enum class CampaignReceiptKind {
     weapon_task_loot_claimed,
     armour_task_loot_claimed,
     accessory_task_loot_claimed,
-    human_home_tax_collected
+    human_home_tax_collected,
+    monster_retirement_cash,
+    monster_retirement_cash_month_reset
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -74,12 +76,16 @@ std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &befor
                                                     std::uint64_t departed_task);
 // Direct exploration grants only: source challenge0->2 plus matching catalog effects.
 // A same-frame competing origin remains unverified instead of receiving invented credit.
-struct CampaignLootObservation {
+struct CampaignRewardObservation {
     std::vector<CampaignReceipt> receipts;
     const char *gap{};
 };
-CampaignLootObservation task_loot_receipts(const app::WorldState &before,
+CampaignRewardObservation task_loot_receipts(const app::WorldState &before,
                                            const app::WorldState &after);
+// Definition-level corpse batches plus actual new monster-income entries, not lethal hits.
+// subject is the first bound corpse; before/after[3] preserves the batch size.
+CampaignRewardObservation monster_retirement_receipts(const app::WorldState &before,
+                                                       const app::WorldState &after);
 
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.

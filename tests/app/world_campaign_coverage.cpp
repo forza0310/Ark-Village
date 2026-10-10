@@ -73,6 +73,10 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"human", "home_admitted", 25, true, true, 25};
     case Kind::human_home_tax_collected:
         return {"human", "home_tax_collected", 25, true, false, 25};
+    case Kind::monster_retirement_cash:
+        return {"monster", "retirement_cash_committed", 36, false, true};
+    case Kind::monster_retirement_cash_month_reset:
+        return {"monster", "retirement_cash_month_reset", 36, false, true};
     case Kind::task_victory_committed:
         return {"task", "victory_committed", 81, false, true};
     case Kind::item_commerce_bought:
@@ -226,6 +230,18 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
         (receipt.before[3] < 0 || receipt.before[3] >= 12 ||
          receipt.before[3] != receipt.after[3] || receipt.after[1] != 0))
         throw std::runtime_error("Residence tax receipt lost its month/reset binding");
+    if (receipt.kind == CampaignReceiptKind::monster_retirement_cash ||
+        receipt.kind == CampaignReceiptKind::monster_retirement_cash_month_reset) {
+        const auto &old = receipt.before, &now = receipt.after;
+        if (receipt.recipient != -1 || old[0] < 0 || old[1] < 0 || old[2] != 0 || old[3] <= 0 ||
+            old[0] > std::numeric_limits<int>::max() ||
+            old[1] > std::numeric_limits<int>::max() ||
+            old[3] > std::numeric_limits<int>::max() || now[0] > std::numeric_limits<int>::max() ||
+            now[1] > std::numeric_limits<int>::max() || now[2] < 0 || now[3] != old[3] ||
+            now[0] != (receipt.kind == CampaignReceiptKind::monster_retirement_cash_month_reset
+                           ? 0 : old[0] + old[3]) || now[1] != old[1] + old[3])
+            throw std::runtime_error("Monster retirement receipt lost its counters/cash/batch");
+    }
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
         << identity.stage << '\t' << receipt.step << '\t' << receipt.page << '\t'

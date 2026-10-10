@@ -278,6 +278,142 @@ void residence_tax_receipt_contract() {
     }
 }
 
+// Source-call fixture: real encounter allocation, then explicit corpse/tier qualifications.
+// Death results come from the maintained consumer; this is not a natural defeat or full tick.
+void monster_retirement_receipt_contract() {
+    ref::EncounterCreationInput input;
+    input.center = {10, 18};
+    input.month_index = 3;
+    const auto spawned = sim::prepare_startup_world_runtime_encounter(initial_world(), input);
+    require(spawned && !spawned->scene.world.world.ai.monster_order.empty(),
+            "retirement fixture needs a real allocated monster");
+    auto before = *spawned;
+    auto &ai = before.scene.world.world.ai;
+    const auto actor = ai.monster_order.front();
+    const int definition = ai.battle.actors.at(actor).definition;
+    ai.battle.actors.at(actor).control.state = 3;
+    ai.battle.actors.at(actor).hp = {};
+    ai.battle.actors.at(actor).state_counter = 12;
+    ai.battle.actors.at(actor).state_parameter = 0;
+    // Independent published oracle: ordinary growth99 ->100 pays120 for base100.
+    ai.monster_growth.at(definition).growth = 99;
+    ai.monster_growth.at(definition).base_cash_reward = 100;
+    ai.battle.monsters.at(definition).flags &= ~4U;
+    const auto consume = [&](const State &source) {
+        const auto death = ref::prepare_monster_death_commit(source.scene.world.world.ai, actor);
+        require(death.candidate.has_value(), "actual source corpse consumer rejected fixture");
+        auto result = source;
+        result.scene.world.world.ai = death.candidate->state;
+        return result;
+    };
+    const auto after = consume(before);
+    const auto receipt = monster_retirement_receipts(before, after);
+    require(!receipt.gap && receipt.receipts.size() == 1 &&
+                receipt.receipts.front().kind == CampaignReceiptKind::monster_retirement_cash &&
+                receipt.receipts.front().definition == definition &&
+                receipt.receipts.front().subject == actor.value &&
+                receipt.receipts.front().before[1] == 99 && receipt.receipts.front().after[1] == 100 &&
+                receipt.receipts.front().after[2] == 120 && receipt.receipts.front().after[3] == 1 &&
+                after.scene.world.world.ai.accounting.funds() == ai.accounting.funds() + 120 &&
+                ai.battle.actors.count(actor) && ai.monster_growth.at(definition).growth == 99,
+            "receipt must bind actual retirement, tier boundary and posted120, without input mutation");
+    require(monster_retirement_receipts(after, after).receipts.empty(),
+            "cold or unchanged holdings cannot reconstruct a retirement reward");
+    // Monthly k.u resets after actor consumers; lifetime k.v and the posted entry remain.
+    const auto reset_month = [&](const State &source) {
+        const auto adapter = sim::startup_world_runtime_adapter();
+        auto date = source.scene.calendar;
+        if (++date.month == 12) {
+            date.month = 0;
+            ++date.year;
+        }
+        auto dated = source; // The real calendar caller installs the normalized date first.
+        dated.scene.calendar = date;
+        const auto reset = ref::prepare_owned_world_runtime_calendar(
+            dated, date, ref::WorldCalendarStage::month_kill_reset, adapter);
+        require(reset.has_value(), "actual monthly kill reset consumer rejected fixture");
+        return *reset;
+    };
+    const auto monthly = monster_retirement_receipts(before, reset_month(after));
+    require(!monthly.gap && monthly.receipts.size() == 1 &&
+                monthly.receipts.front().kind == CampaignReceiptKind::monster_retirement_cash_month_reset &&
+                monthly.receipts.front().after[0] == 0 && monthly.receipts.front().after[1] == 100 &&
+                monthly.receipts.front().after[2] == 120,
+            "same-frame monthly reset must retain actual cash/growth and final zero tally");
+    const auto quiet_month = monster_retirement_receipts(after, reset_month(after));
+    require(!quiet_month.gap && quiet_month.receipts.empty(),
+            "a monthly tally reset alone is neither a cash grant nor a counter failure");
+    auto early = before;
+    early.scene.world.world.ai.battle.actors.at(actor).state_counter = 11;
+    require(monster_retirement_receipts(early, consume(early)).receipts.empty(),
+            "B11 cannot certify retirement cash");
+    auto cancelled = before;
+    cancelled.scene.world.world.ai.battle.actors.at(actor).state_parameter = 1;
+    const auto unpaid = consume(cancelled);
+    require(!unpaid.scene.world.world.ai.battle.actors.count(actor) &&
+                monster_retirement_receipts(cancelled, unpaid).receipts.empty() &&
+                unpaid.scene.world.world.ai.accounting.funds() == ai.accounting.funds(),
+            "C1 removal has no definition growth or retirement cash");
+    // A second corpse is a minimal call-point roster qualification, not another
+    // simulated encounter. Two real death commits test same-definition aggregation.
+    auto multiple = before;
+    auto &pair = multiple.scene.world.world.ai;
+    const ref::CharacterId second{pair.next_actor_id++};
+    auto clone = pair.battle.actors.at(actor);
+    clone.id = second;
+    clone.legacy_id += 1;
+    pair.battle.actors.emplace(second, clone);
+    pair.monster_order.push_back(second);
+    pair.contexts.emplace(second, pair.contexts.at(actor));
+    if (clone.encounter)
+        pair.encounters.at(*clone.encounter).members.push_back(second);
+    auto both = consume(multiple);
+    const auto second_death = ref::prepare_monster_death_commit(both.scene.world.world.ai, second);
+    require(second_death.candidate.has_value(), "second source corpse commit failed");
+    both.scene.world.world.ai = second_death.candidate->state;
+    const auto combined = monster_retirement_receipts(multiple, both);
+    require(!combined.gap && combined.receipts.size() == 1 &&
+                combined.receipts.front().before[3] == 2 &&
+                combined.receipts.front().after[1] == 101 &&
+                combined.receipts.front().after[2] == 240,
+            "two corpses share one definition batch, with two actual120 entries");
+    const auto gap = [&](const State &invalid) {
+        const auto result = monster_retirement_receipts(before, invalid);
+        require(result.gap && result.receipts.empty(),
+                "bad binding must not produce partial retirement success");
+    };
+    auto bad = after;
+    bad.scene.world.world.ai.monster_growth.at(definition).growth -= 1;
+    gap(bad);
+    bad = after;
+    bad.scene.world.world.ai.monster_order.push_back(actor);
+    gap(bad);
+    bad = after;
+    auto ledger = bad.scene.world.world.ai.accounting.snapshot();
+    ledger.entries.at(ai.next_cash_id).amount = 100; // XP-side old tier is not the cash amount.
+    ledger.funds -= 20;
+    const auto changed = ref::PeriodAccounting::from_snapshot(ledger);
+    require(changed.has_value(), "valid contradictory cash fixture could not be prepared");
+    bad.scene.world.world.ai.accounting = *changed;
+    gap(bad);
+    CampaignCoverage coverage;
+    std::ostringstream log;
+    coverage.record(receipt.receipts.front(), log);
+    require(log.str().find("\tretirement_cash_committed\t") != std::string::npos,
+            "bound retirement receipt must retain its distinct stage");
+    const auto saved_log = log.str();
+    auto invalid = receipt.receipts.front();
+    invalid.after[0] -= 1;
+    bool rejected{};
+    try {
+        coverage.record(invalid, log);
+    } catch (const std::runtime_error &) {
+        rejected = true;
+    }
+    require(rejected && log.str() == saved_log,
+            "invalid retirement evidence cannot alter the emitted log");
+}
+
 void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
     using Receipt = ark::test::CampaignReceiptKind;
     // Explicit reward qualifications test consumption; they do not prove a natural
@@ -760,6 +896,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
         throw std::invalid_argument("Receipt fixtures require the campaign command consumer");
     source_transaction_receipt_contract(apply);
     task_loot_receipt_contract();
+    monster_retirement_receipt_contract();
     residence_tax_receipt_contract();
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);

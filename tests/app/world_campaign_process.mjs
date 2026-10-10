@@ -219,7 +219,7 @@ const receiptStages = {
   blueprint_claimed: 'facility', construction_paid: 'facility',
   reward_equipped: ['weapon', 'armour', 'accessory'],
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
-  home_tax_collected: 'human',
+  home_tax_collected: 'human', retirement_cash_committed: 'monster', retirement_cash_month_reset: 'monster',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
   item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory']
 };
@@ -236,7 +236,7 @@ function* receipts(text, phase) {
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
-    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage))
+    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed', 'retirement_cash_committed', 'retirement_cash_month_reset'].includes(stage))
       need(numbers[3] > 0, 'receipt actual subject binding');
     if (['medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
     if (stage === 'home_tax_collected')
@@ -246,6 +246,12 @@ function* receipts(text, phase) {
         catalogue.has(`${stage === 'task_loot_claimed' ? 'quest' : stage === 'facility_bound_use' ? 'facility' : 'item'}:${numbers[7]}`),
       'receipt related definition binding');
     if (stage === 'task_loot_claimed') need(numbers[6] > 0 && numbers[6] === numbers[10], 'receipt direct grant count');
+    if (stage === 'retirement_cash_committed' || stage === 'retirement_cash_month_reset')
+      need(numbers[2] === -1 && [4, 5, 7, 8, 9].every(n => numbers[n] >= 0 && numbers[n] <= 2147483647) &&
+        numbers[6] === 0 && numbers[10] >= 0 && numbers[7] > 0 && numbers[7] === numbers[11] &&
+        numbers[8] === (stage === 'retirement_cash_month_reset' ? 0 : numbers[4] + numbers[7]) &&
+        numbers[9] === numbers[5] + numbers[7],
+      'receipt retirement cash/counters/batch');
     yield {key: `${category}:${id}`, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
@@ -418,6 +424,17 @@ function coverageContract(rows) {
     }
   }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
+  const retired = 'COVERAGE_RECEIPT\tmonster\t35\tretirement_cash_committed\t2\t1\t-1\t7\t0\t99\t0\t1\t1\t100\t120\t1';
+  need([...receipts(retired, 'contract')].length === 1, 'bound retirement receipt rejected');
+  const reset = retired.split('\t'); reset[3] = 'retirement_cash_month_reset'; reset[12] = '0';
+  need([...receipts(reset.join('\t'), 'contract')].length === 1, 'monthly reset lost actual cash/growth');
+  reset[12] = '1';
+  expectReject(() => [...receipts(reset.join('\t'), 'contract')]);
+  for (const [field, value] of [[2, '36'], [5, '0'], [6, '0'], [7, '0'], [8, '-1'],
+    [9, '2147483648'], [10, '1'], [11, '0'], [12, '0'], [13, '99'], [14, '-1'], [15, '2']]) {
+    const invalid = retired.split('\t'); invalid[field] = value;
+    expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+  }
   const validReceipt = 'COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t1\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0';
   need([...receipts(validReceipt, 'contract')].length === 1, 'actual receipt rejected');
   for (const [field, value] of [[1, 'activity'], [2, '9999'], [3, 'effect_queued'], [4, '-1'],

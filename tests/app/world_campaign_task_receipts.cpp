@@ -78,7 +78,7 @@ std::optional<CampaignReceipt> task_victory_receipt(const State &before, const S
                            values(after)};
 }
 
-CampaignLootObservation task_loot_receipts(const State &before, const State &after) {
+CampaignRewardObservation task_loot_receipts(const State &before, const State &after) {
     if (!before.active_task || before.active_task != after.active_task)
         return {}; // A result page or a loaded inventory is not a direct challenge grant.
     const auto task_id = *before.active_task;
@@ -145,7 +145,7 @@ CampaignLootObservation task_loot_receipts(const State &before, const State &aft
                                       CampaignReceiptKind::weapon_task_loot_claimed,
                                       CampaignReceiptKind::armour_task_loot_claimed,
                                       CampaignReceiptKind::accessory_task_loot_claimed};
-    CampaignLootObservation result;
+    CampaignRewardObservation result;
     for (const auto &[key, count] : counts) {
         if (key.first < 0 || key.first > 3 || !before.catalog.count(key) ||
             !after.catalog.count(key))

@@ -1127,6 +1127,44 @@ void human_profession_and_mastery() {
               wrong_parent.human_profession_changes.at(1).at(job) == 0 &&
               wrong_parent.human_page_answers.empty(),
           "62 cannot charge or reward through another human's profession parent");
+    {
+        // 第二次转入的最小历史条件；APK DEX g()的v1初值2，Steam也传2/1，不是0/1。
+        auto repeat = s;
+        repeat.human_profession_changes.at(1).at(job) = 1;
+        repeat.shop_humans.at(1).satisfaction = 10;
+        const auto completion = repeat.scene.world.world.ai.pending_completion;
+        check(acknowledge_startup_world_runtime_page(repeat, question) == E::none &&
+                  repeat.shop_humans.at(1).satisfaction == 12 &&
+                  repeat.scene.world.world.ai.pending_completion == completion + 2 &&
+                  repeat.scene.world.world.ai.growth.at(1).definition.legacy_u == effort + 1 &&
+                  repeat.village_points == 999 - cost &&
+                  repeat.human_profession_changes.at(1).at(job) == 2 &&
+                  repeat.human_page_answers.at(id) == 0 &&
+                  repeat.scene.world.world.ai.growth.at(1).definition.current_profession == old_job,
+              "second62 grants2 satisfaction and completion plus1 effort, pays once and queues63");
+        page_tick(repeat);
+        check(repeat.scripts.pages.back().legacy_page == 63 &&
+                  !repeat.human_pages_initialized.count(question) &&
+                  !repeat.page_human_bindings.count(question),
+              "second62 retires into63 without an effort-decade result page");
+        const auto repeated_animation = repeat.scripts.pages.back().id;
+        for (int n = 0; n < 197 && repeat.page_counters.at(repeated_animation) < 197; ++n)
+            page_tick(repeat);
+        check(repeat.page_counters.at(repeated_animation) == 197 &&
+                  acknowledge_startup_world_runtime_page(repeat, repeated_animation) == E::none &&
+                  repeat.scene.world.world.ai.growth.at(1).definition.current_profession == job,
+              "second profession animation reaches its original final confirmation");
+        page_tick(repeat);
+        check(!repeat.page_human_bindings.count(repeated_animation) &&
+                  !repeat.page_job_bindings.count(repeated_animation) &&
+                  !repeat.page_counters.count(repeated_animation) &&
+                  repeat.scripts.pages.back().id == id &&
+                  repeat.scripts.pages.back().lifecycle == 4 &&
+                  !repeat.human_page_answers.count(id) &&
+                  repeat.human_profession_changes.at(1).at(job) == 2 &&
+                  repeat.village_points == 999 - cost,
+              "second63 retires its payload and returning K0 closes61 without another reward or charge");
+    }
     check(acknowledge_startup_world_runtime_page(s, question) == E::none &&
               s.village_points == 999 - cost && s.human_profession_changes.at(1).at(job) == 1 &&
               s.scene.world.world.ai.growth.at(1).definition.current_profession == old_job &&

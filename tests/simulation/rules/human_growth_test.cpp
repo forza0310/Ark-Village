@@ -267,7 +267,8 @@ void profession_management() {
     change.medals = 2;
     change.satisfaction = 99;
     change.pending_completion = -10;
-    constexpr std::array<std::array<int, 2>, 4> requests{{{3, 3}, {0, 1}, {1, 0}, {1, 0}}};
+    // 原DEX g() pc2默认v1=2，R==1仅置v6=1；Steam同样传2/1。
+    constexpr std::array<std::array<int, 2>, 4> requests{{{3, 3}, {2, 1}, {1, 0}, {1, 0}}};
     for (int count = 0; count < 4; ++count) {
         change.prior_changes = count;
         const auto result = prepare_human_profession_change(change);

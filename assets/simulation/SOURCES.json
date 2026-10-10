@@ -1,7 +1,7 @@
 {
   "scope": "maintained_complete_world_rules_and_single_runtime_owner",
   "layout_adaptation": "Domain module paths maintained by scripts/simulation/module_paths.mjs; upstream identity, namespaces, wire fields and assertions preserved.",
-  "snapshot_sha256": "c070ce3a2f35e988f405d1ad348046a250b0e01b26c1c95781eb58be00173c6f",
+  "snapshot_sha256": "79eb2dfdbdb11ffa3af2bba0c87dd10e02217fdf64faefdf0f9d7461c2a436b1",
   "files": [
     {
       "file": "assets/simulation/tenantData.txt",
@@ -1194,10 +1194,10 @@
     {
       "file": "src/simulation/actors/rules/human_management.cpp",
       "source": "research/dungeon_village_1/example/src/human_management.cpp",
-      "source_sha256": "489f355f5053b27f12c72fc9360ec10d192d5dbb921ee16888dea7964e2e800b",
-      "source_bytes": 14298,
-      "sha256": "5896d5cdb66a81c41f3154f7092ede05bdb80f0201d3fa02eacedaa99960d1b6",
-      "bytes": 14294
+      "source_sha256": "00adc6a3c78c00e3ee1c97a0a2e6f508f2c0bcee9673a319b04feba3adaf33ca",
+      "source_bytes": 14396,
+      "sha256": "79ceaafb1e88eb082a353770fd83ce6bb8de695e37f708ed4c1789669413564f",
+      "bytes": 14392
     },
     {
       "file": "src/simulation/map/rules/map_access.cpp",
@@ -1878,10 +1878,10 @@
     {
       "file": "tests/simulation/rules/human_growth_test.cpp",
       "source": "research/dungeon_village_1/example/tests/human_growth_test.cpp",
-      "source_sha256": "2da8897122d8a7fcf7a7652f276f575eddf8a99c170743fcec8d54e280e16cef",
-      "source_bytes": 37314,
-      "sha256": "5b44e948698e0f9c10e10ff6edd42b2c1ad047e01a631019e8d01ca0e289434d",
-      "bytes": 37318
+      "source_sha256": "cf073d5c49b59d1883ea4bea30a4fc2548c735a5f189a32e9aeae7c31a6e3202",
+      "source_bytes": 37386,
+      "sha256": "a472ce85943c0c070895be78b1db5a4b7fdd03c93e6c23fe0913add3668f9c9f",
+      "bytes": 37390
     },
     {
       "file": "tests/simulation/rules/map_access_test.cpp",
@@ -3708,12 +3708,12 @@
     {
       "file": "tests/simulation/startup_world_pages_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_pages_test.cpp",
-      "source_sha256": "f2c0b9b3af7f3fba18a18877f41eeba45d486b2893ccb2c4d1890423b121b5e1",
-      "source_bytes": 282457,
-      "sha256": "30698afc52c393d1a7b6baa6c4544212d26ea1ac4198199c399875107d2bd595",
-      "bytes": 283034,
+      "source_sha256": "7d5c318be42a80385f3e455f032b2ccddd2655d01dd0b29fabe603845b581a54",
+      "source_bytes": 285010,
+      "sha256": "1e54ca761c1aceca6ee639c039ae6b2081c2f8310e295e9a62fb63cc64604bf0",
+      "bytes": 285587,
       "product_patch": {
-        "imported_sha256": "194b91ed3953a540be6b212cd245688f0bffc72bfbfeaef59f15f9c0877096f3",
+        "imported_sha256": "fbae6d49320e77e197e6df962d9cce40d4bcfd59c889a449d4191ddf7c670cf7",
         "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
       }
     },
@@ -3953,5 +3953,5 @@
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     }
   ],
-  "research_commit": "4fc562e"
+  "research_commit": "d9955d0"
 }

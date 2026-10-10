@@ -97,7 +97,8 @@ HumanProfessionChangeResult prepare_human_profession_change(const HumanProfessio
     const auto stats = derive_human_stats(i.definition, i.professions);
     if (!stats.candidate)
         return {stats.error, {}, {}};
-    const int satisfaction = i.prior_changes == 0 ? 3 : i.prior_changes == 1 ? 0 : 1;
+    // APK g()入口保留满足度默认2；第二次仅把努力改1，不将满足度清零。
+    const int satisfaction = i.prior_changes == 0 ? 3 : i.prior_changes == 1 ? 2 : 1;
     const int effort = i.prior_changes == 0 ? 3 : i.prior_changes == 1 ? 1 : 0;
     const auto reward = prepare_human_reward(i.definition, i.professions, i.satisfaction, i.medals,
                                              i.pending_completion, satisfaction, effort, false);

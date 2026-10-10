@@ -8,6 +8,7 @@
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/world/startup_world_save.hpp"
+#include "ark/simulation/world/startup_world_manual.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/ai/rules/actor_control.hpp"
 #include "ark/simulation/ai/rules/world_perception.hpp"
@@ -533,6 +534,7 @@ struct Validation {
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
         PAGE_MAP(information_page_data);
+        PAGE_MAP(manual_page_data);
         PAGE_MAP(menu_page_data);
         PAGE_MAP(menu_page_positions);
         PAGE_MAP(human_detail_contexts);
@@ -610,6 +612,10 @@ struct Validation {
             (void)data;
             if (!page_kind(id, {35, 37, 38, 39, 40}))
                 return fail("information page: 目录数据附在错误页型");
+        }
+        for (const auto &[id, data] : s.manual_page_data) {
+            (void)data;
+            if (!page_kind(id, {13})) return fail("manual page: 装饰名单附在错误页型");
         }
         for (const auto &[id, data] : s.menu_page_data) {
             (void)data;
@@ -960,6 +966,9 @@ struct Validation {
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                p.legacy_page == 13 && !valid_startup_world_manual_page(s,p.id))
+                return fail("manual page: 来源/页码/装饰名单/父栈或载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 14 && !valid_startup_world_save_page(s,p.id))
                 return fail("save page: 来源/阶段/结果/父栈或载荷非法");

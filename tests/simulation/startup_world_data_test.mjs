@@ -11,7 +11,7 @@ const state=JSON.parse(readFileSync(`${startup}/STATE.json`));
 const sources={'tenantData.txt':readFileSync(tenant,'utf8')};
 for(const name of ['monster.txt','questData.txt','armour.txt','accessory.txt','item.txt','asEventData.txt','magicPot.txt'])
   sources[name]=readFileSync(`${world}/${name}`,'utf8');
-for(const name of ['events.txt','talk.txt','news.txt','evtmsgs.txt','popularBonus.txt'])
+for(const name of ['events.txt','talk.txt','news.txt','evtmsgs.txt','popularBonus.txt','manual.txt'])
   sources[name]=readFileSync(`${world}/../scripts/original/${name}`,'utf8');
 const output=compileStartupWorld(tables,map,sources,state);
 assert.match(output,/const StartupWorldRules &startup_world_rules\(\)/);

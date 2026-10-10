@@ -385,6 +385,7 @@
             ["page_counters", "std::map<std::uint64_t, int>"],
             ["page_phases", "std::map<std::uint64_t, int>"],
             ["information_page_data", "std::map<std::uint64_t, StartupInformationPageData>"],
+            ["manual_page_data", "std::map<std::uint64_t, StartupManualPageData>"],
             ["task_page_lists", "std::map<std::uint64_t, std::vector<std::uint64_t>>"],
             ["task_recruitment_pages", "std::map<std::uint64_t, ref::TaskRecruitmentAnimation>"],
             ["task_extra_pages", "std::map<std::uint64_t, std::vector<int>>"],
@@ -2910,6 +2911,22 @@
             ["name", "std::string"],
             ["sex", "int"],
             ["custom_name", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupManualPageData",
+      "reason": "Manual decorations and text-layout selection are modal presentation state, independent of durable player progression.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Cold player restore clears manual_page_data and returns to the stable scene; complete maintenance replay alone preserves this modal cache.",
+          "fields": [
+            ["decorations", "std::vector<int>"],
+            ["text_page", "int"],
+            ["localize_text", "bool"]
           ]
         }
       ]

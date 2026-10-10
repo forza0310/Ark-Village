@@ -332,7 +332,11 @@ void ActiveVillageStrategy::observe_world(const State &before, const State &afte
 }
 
 void ActiveVillageStrategy::observe(const State &before, const Command &c,
-                                    const app::WorldCommandResult &result, const State &after) {
+                                    const app::WorldCommandResult &result, const State &after,
+                                    const CampaignReceiptSink &receipts) {
+    const auto gifts_before = stats_.gifts;
+    const bool paid_before = stats_.exhibition_paid;
+    std::optional<CampaignReceipt> queued_effect;
     require(result.outcome == app::WorldCommandOutcome::applied &&
                 result.runtime_error == sim::StartupWorldRuntimeError::none &&
                 result.denial == ref::TaskCommandDenial::none &&
@@ -384,6 +388,19 @@ void ActiveVillageStrategy::observe(const State &before, const Command &c,
         }
         if (view->raw == 53 && view->counter >= 120 && top(after).id != c.page) {
             ++stats_.activities;
+            if (view->activity && before.rules->activities.at(*view->activity).parameters[2] == 2) {
+                const auto &old_queue = before.scene.world.popularity_queue;
+                const auto &new_queue = after.scene.world.popularity_queue;
+                const int amount = before.rules->activities.at(*view->activity).parameters[5];
+                require(new_queue.size() == old_queue.size() + 1 &&
+                            new_queue.front() == std::array<int, 3>{10, amount, 1} &&
+                            std::equal(old_queue.begin(), old_queue.end(), new_queue.begin() + 1),
+                        "completed popularity activity must queue its exact source effect once");
+                queued_effect = CampaignReceipt{CampaignReceiptKind::activity_effect_queued,
+                    *view->activity, after.simulation_steps, c.page, 0, -1,
+                    {0, 0, 0, static_cast<std::int64_t>(old_queue.size())},
+                    {10, amount, 1, static_cast<std::int64_t>(new_queue.size())}};
+            }
             if (view->activity && *view->activity == 16 && stats_.exhibition_month < 0) {
                 require(stats_.exhibition_paid, "exhibition completed without paid application");
                 stats_.exhibition_month = month(after);
@@ -392,6 +409,21 @@ void ActiveVillageStrategy::observe(const State &before, const Command &c,
         }
     }
     observe_world(before, after);
+    // Publish after every observation assertion, including the cross-domain world checks.
+    if (receipts) {
+        if (stats_.gifts > gifts_before) {
+            receipts({CampaignReceiptKind::item_consumed, 0, after.simulation_steps, c.page, 0,
+                recipient_, {before.items.at(0).inventory}, {after.items.at(0).inventory}});
+            receipts({CampaignReceiptKind::item_attribute_applied, 0, after.simulation_steps,
+                c.page, 0, recipient_,
+                {before.scene.world.world.ai.growth.at(recipient_).definition.extra[0]},
+                {after.scene.world.world.ai.growth.at(recipient_).definition.extra[0]}});
+        }
+        if (!paid_before && stats_.exhibition_paid)
+            receipts({CampaignReceiptKind::activity_points_paid, 16, after.simulation_steps,
+                c.page, 0, -1, {before.village_points}, {after.village_points}});
+        if (queued_effect) receipts(*queued_effect);
+    }
 }
 
 void ActiveVillageStrategy::observe_tick(const State &before, const State &after) {

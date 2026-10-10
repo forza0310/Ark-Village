@@ -29,7 +29,8 @@ if(ARK_LIBRARIES_ONLY)
         "${ARK_WORLD_DATA}/world/magicPot.txt"
         "${ARK_WORLD_DATA}/scripts/original/events.txt" "${ARK_WORLD_DATA}/scripts/original/talk.txt"
         "${ARK_WORLD_DATA}/scripts/original/news.txt" "${ARK_WORLD_DATA}/scripts/original/evtmsgs.txt"
-        "${ARK_WORLD_DATA}/scripts/original/popularBonus.txt")
+        "${ARK_WORLD_DATA}/scripts/original/popularBonus.txt"
+        "${ARK_WORLD_DATA}/scripts/original/manual.txt")
     add_custom_command(OUTPUT "${ARK_WORLD_STARTUP_CPP}" "${ARK_WORLD_CATALOG_CPP}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${ARK_WORLD_GENERATED}"
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/compile_startup.mjs"

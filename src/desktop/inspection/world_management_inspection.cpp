@@ -7,6 +7,7 @@
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
 #include "ark/simulation/world/startup_world_menu.hpp"
+#include "ark/simulation/world/startup_world_manual.hpp"
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
@@ -43,6 +44,8 @@ bool information_available(const State &state, int target) {
                                        [](const auto &entry) { return entry.second != 0; });
 }
 int navigation_target(const std::string &mode) {
+    if (mode == "world-manual" || mode == "world-manual-about")
+        return 13;
     if (mode == "world-menu-six")
         return 3;
     if (mode == "world-source-adventure")
@@ -455,6 +458,11 @@ bool management_inspection_ready(const State &state, const std::string &mode,
         return page->legacy_page == target && page->lifecycle == 2 && view && view->frame >= 3;
     }
     if (const int target = navigation_target(mode)) {
+        if (target == 13) {
+            const auto view = simulation::inspect_startup_world_manual_page(state, page->id);
+            return page->legacy_page == 13 && page->lifecycle == 2 && view &&
+                   view->counter >= 3 && view->about == (mode == "world-manual-about");
+        }
         const auto view = simulation::inspect_startup_world_menu_page(state, page->id);
         return page->legacy_page == target && page->lifecycle == 2 && view && view->frame >= 3;
     }
@@ -559,7 +567,10 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
             if (!view || page.lifecycle != 2 || view->frame < 3 ||
                 page.legacy_page == navigation_target(mode))
                 return true;
-            const int tag = page.legacy_page == 3 ? (mode == "world-source-system" ? 6 : 1) : 9;
+            const bool manual = navigation_target(mode) == 13;
+            const int tag = page.legacy_page == 3
+                                ? (mode == "world-source-system" || manual ? 6 : 1)
+                                : (manual && page.legacy_page == 10 ? 22 : 9);
             const auto item = std::find(view->tags.begin(), view->tags.end(), tag);
             if (item == view->tags.end())
                 throw std::runtime_error("Source menu inspection lost its actual target tag");
@@ -571,6 +582,14 @@ bool apply_management_inspection_input(State &state, const std::string &mode,
                 input.confirm = true;
             require(simulation::input_startup_world_menu_page(state, page.id, input),
                     "select source navigation target");
+            return true;
+        }
+        if (page.legacy_page == 13) {
+            const auto view = simulation::inspect_startup_world_manual_page(state, page.id);
+            if (view && view->counter >= 3 && mode == "world-manual-about" && !view->about)
+                require(simulation::input_startup_world_manual_page(
+                            state, page.id, {true, false, false, false}),
+                        "advance actual manual body to about page");
             return true;
         }
         if (page.legacy_page == 40)

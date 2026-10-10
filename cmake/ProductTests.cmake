@@ -50,7 +50,9 @@ ark_test_executable(ark_world_campaign_tests SOURCES tests/app/world_campaign_te
     tests/app/world_active_income_strategy.cpp
     LIBRARIES ark_world_session ark_world_hash ark_world_persistence)
 target_include_directories(ark_world_campaign_tests PRIVATE src/app)
-ark_test_case(player_active_campaign_contract ark_world_campaign_tests ARGS --contract
+ark_test_case(player_active_campaign_contract "${ARK_NODE}"
+    ARGS "${PROJECT_SOURCE_DIR}/tests/app/world_campaign_process.mjs"
+        "$<TARGET_FILE:ark_world_campaign_tests>" --contract
     LABELS runtime player TIMEOUT 30)
 ark_test_executable(ark_world_economy_tests SOURCES tests/app/world_economy_test.cpp
     LIBRARIES ark_world_runtime)
@@ -158,6 +160,7 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/information/world_information.cpp
             src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
             src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp
+            src/desktop/ui/system/world_manual.cpp # raw13 reuses the existing world_menu scenarios.
             src/desktop/ui/facilities/world_building_view.cpp
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/village/world_progression.cpp
             src/desktop/scene/world_build_placement.cpp src/desktop/inspection/world_human_inspection.cpp

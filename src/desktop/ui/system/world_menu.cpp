@@ -63,7 +63,7 @@ bool world_source_menu_page(const simulation::rules::WorldScriptPage &p) {
     return p.kind == simulation::rules::WorldScriptPageKind::raw_page &&
            (p.legacy_page == 3 || p.legacy_page == 4 || p.legacy_page == 7 || p.legacy_page == 10);
 }
-bool world_source_menu_enabled(int raw, int tag) { return raw != 10 || tag == 20; }
+bool world_source_menu_enabled(int raw, int tag) { return raw != 10 || tag == 20 || tag == 22; }
 WorldSourceMenuLayout world_source_menu_layout(const simulation::StartupWorldMenuView &v,
                                                Extent e) {
     const float width = v.raw == 3 ? 91.F : 90.F, height = float(v.tags.size() * 28 + 5);

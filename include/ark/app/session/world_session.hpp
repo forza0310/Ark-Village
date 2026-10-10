@@ -13,6 +13,7 @@
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
+#include "ark/simulation/world/startup_world_manual.hpp"
 #include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 
@@ -73,7 +74,8 @@ enum class WorldCommandKind {
     information_input,
     confirm_tracking,
     menu_input,
-    open_source_save_menu
+    open_source_save_menu,
+    manual_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -138,6 +140,7 @@ struct WorldCommand {
     simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
     simulation::StartupInformationInput information_input;
     simulation::StartupWorldMenuInput menu_input;
+    simulation::StartupManualInput manual_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -183,6 +186,7 @@ class WorldSession {
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();
     std::uint64_t act_menu(std::uint64_t page, const simulation::StartupWorldMenuInput &input);
+    std::uint64_t act_manual(std::uint64_t page, const simulation::StartupManualInput &input);
     std::uint64_t open_source_save_menu(std::uint64_t page);
     std::uint64_t open_save_menu();
     std::uint64_t close_save_menu();

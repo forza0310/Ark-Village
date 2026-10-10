@@ -4,21 +4,21 @@
 Node只用于构建。脚本不会提取APK，也不会在构建时更新research或产品输入。
 
 显式升级使用上一级`import_world_research.mjs`：先`--snapshot`冻结维护源码/测试/数据，再`--import`导入产品；
-源与产品哈希记录于`assets/simulation/SOURCES.json`。不再运行单独的交付文件指纹核对。
+当前正式来源、冻结文件和产品适配以[`assets/simulation/SOURCES.json`](../../assets/simulation/SOURCES.json)为准，不在本模块重复维护数量或历史快照身份。不再运行单独的交付文件指纹核对。
 命名空间、include路径与测试数据路径是机械适配，规则算法与回归断言保持维护版本。
 
-e8f66d9接入新增建设/通知/只读头像及原测试，原型共享夹具保留在`tests/simulation/support`。
+冻结维护测试的共享夹具保留在`tests/simulation/support`。
 头像CPU测试的SEB/TSV头与命名空间映射到现有`ark::assets`等价API，保留全部图片裁剪断言；
 该测试只在桌面配置链接raylib，运行时及其他规则测试保持标准C++依赖。
-上游已完整交付勋章共享Owner桥，移除此前runtime.cpp的产品补丁记录，以原维护实现为准。
 
-显式离线性能入口见[性能采样](profile_world.md)；采样副本只写忽略的build目录，正常构建不使用插桩头。计算优化通过既有product_patch登记保留研究/首次导入身份，不改变原消费者、随机和失败回滚。
+显式离线性能工具见[性能采样](profile_world.md)；专项已停止追加，工具保留供后续明确授权的诊断。采样副本只写忽略的build目录，正常构建不使用插桩头。既有计算适配通过product_patch保留研究/首次导入身份，不改变原消费者、随机和失败回滚。
 
-524415a维护存取另用`compile_persistence_identity.mjs`生成真实15文件数据身份；逻辑文件名保持研究协议，只映射到产品assets读取。`generate_owner_codec.mjs --check`用Clang AST核对92结构/11枚举、源规范JSON及机械namespace翻译inc。运行游戏不依赖这些工具。
+[`compile_persistence_identity.mjs`](compile_persistence_identity.mjs)从显式数据输入生成维护文件恢复身份；逻辑文件名保持研究协议，只映射到产品assets读取。数据输入集合以脚本与正式来源为准。
+[`generate_owner_codec.mjs`](generate_owner_codec.mjs)的`--check`用Clang AST核对当前Owner结构、源规范JSON及机械namespace翻译inc；[`check_player_save_policy.mjs`](check_player_save_policy.mjs)独立核对玩家字段分类，不把维护全量codec当成玩家保存政策。结构/字段数随正式交付演进，运行游戏不依赖这些构建工具。
 
 精确文件回放在现有continuous套件，`replay_file_test.mjs`短三进程场景进入标准CTest。较长认证档先核对数据/布局/语义和前缀资格，按风险复用相关尾段；完整外层轮是唯一续跑边界，日历轮内审计不能重跑完整框架。命令及证据见[B1](../../docs/stages/B1-playable-prototype.md#research-524415a-design)。
 
-ee687bc增量迁入只更新该runner，354项清单以`source_revision`与`incremental_imports`追溯；原完整`snapshot_sha256`仍指524415a基础冻结，不能将其解释为本次新全量快照。未改规则/数据/codec，玩家数据集身份及维护数据/布局身份保持。
+全量快照与增量导入按当前来源清单分别追溯；历史批次的冻结身份和检查结果见[B1](../../docs/stages/B1-playable-prototype.md)，不能用旧快照身份认证新交付或新的业务前缀。
 
 ## 显式表现请求回放
 

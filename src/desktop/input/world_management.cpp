@@ -39,6 +39,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         receipt_page_ = 0;
         commerce_amount_.reset();
         building_ = {};
+        manual_layout_.reset();
     }
     if (!pending_)
         return;
@@ -64,6 +65,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                                  bool keyboard_event, bool blocked, app::WorldSession &session) {
     if (page_ != page.id) {
         page_ = page.id;
+        manual_layout_.reset();
         building_ = {};
         facility_items_ = {};
         award_ = {};
@@ -78,6 +80,15 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
     const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (ui::world_manual_page(page)) {
+        const auto view = ui::world_manual_view(state, page);
+        const ui::WorldManualInput input{point, enter, IsKeyPressed(KEY_RIGHT),
+                                         IsKeyPressed(KEY_LEFT), escape};
+        if (const auto action =
+                ui::world_manual_input(view, extent, manual_layout_, input, blocked))
+            queued(session.act_manual(page.id, *action));
+        return true;
+    }
     if (page.kind == simulation::rules::WorldScriptPageKind::raw_page && page.legacy_page == 14) {
         if (!blocked && world_source_save_ready(state, page.id) &&
             (enter || escape || hit(point, world_source_save_confirm(extent))))
@@ -316,6 +327,11 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
+    if (ui::world_manual_page(page)) {
+        manual_layout_ =
+            ui::draw_world_manual(state, ui::world_manual_view(state, page), extent, skin, enabled);
+        return true;
+    }
     if (page.kind == simulation::rules::WorldScriptPageKind::raw_page && page.legacy_page == 14) {
         draw_world_source_save(state, page.id, extent, skin);
     } else if (ui::world_source_menu_page(page)) {

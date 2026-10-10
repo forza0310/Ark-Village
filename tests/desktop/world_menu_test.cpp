@@ -2,6 +2,7 @@
 #include "../../src/desktop/application/world_title.hpp"
 #include "../../src/desktop/input/world_save_menu.hpp"
 #include "../../src/desktop/ui/information/world_information.hpp"
+#include "../../src/desktop/ui/system/world_manual.hpp"
 #include "../../src/desktop/ui/system/world_menu.hpp"
 #include "../../src/desktop/ui/system/world_startup.hpp"
 #include "../support/checks.hpp"
@@ -138,8 +139,8 @@ void source_navigation_ui(Checks &check) {
         ui::WorldMenuInput input;
         input.enter = true;
         const auto action = ui::world_source_menu_input(system, boxes, input, false, false, false);
-        check(row == 0 ? bool(action && action->confirm) : !action,
-              "Only system save is enabled; settings/manual/ranking/exit lack consumers");
+        check(row == 0 || row == 2 ? bool(action && action->confirm) : !action,
+              "System save and manual are enabled; settings/ranking/exit lack consumers");
         input = {};
         input.escape = true;
         check(ui::world_source_menu_input(system, boxes, input, false, false, false)->cancel,
@@ -170,11 +171,120 @@ void source_navigation_ui(Checks &check) {
     check(!desktop::world_source_save_ready(*completed, id),
           "Manual pause also blocks raw14 confirmation");
 }
+void manual_ui(Checks &check) {
+    namespace ui = desktop::ui;
+    namespace sim = simulation;
+    auto state = initial_world();
+    state.scripts.pages.back().lifecycle = 2;
+    check(sim::open_startup_world_main_menu(state) == sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_menu_pages(state),
+          "Manual fixture starts with actual main menu");
+    state.scripts.pages.back().lifecycle = 2;
+    sim::StartupWorldMenuInput input;
+    input.select_row = 4;
+    check(sim::input_startup_world_menu_page(state, state.scripts.pages.back().id, input) ==
+              sim::StartupWorldRuntimeError::none,
+          "Select actual system tag6");
+    input = {};
+    input.confirm = true;
+    check(sim::input_startup_world_menu_page(state, state.scripts.pages.back().id, input) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_menu_pages(state),
+          "Open actual raw10");
+    state.scripts.pages.back().lifecycle = 2;
+    input = {};
+    input.select_row = 2;
+    check(sim::input_startup_world_menu_page(state, state.scripts.pages.back().id, input) ==
+              sim::StartupWorldRuntimeError::none,
+          "Select actual manual tag22");
+    input = {};
+    input.confirm = true;
+    check(sim::input_startup_world_menu_page(state, state.scripts.pages.back().id, input) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_manual_pages(state),
+          "Open and initialize actual raw13 once");
+    state.scripts.pages.back().lifecycle = 2;
+    const auto page = state.scripts.pages.back();
+    auto view = ui::world_manual_view(state, page);
+    check(view.interactive && view.source && !view.source->about && view.source->index == 0,
+          "Desktop reads the actual manual body and lifetime");
+    const auto draws = state.scene.random.draws();
+    const auto decorations = view.source->decorations;
+    ui::WorldManualInput key;
+    key.confirm = key.right = true;
+    auto action = ui::world_manual_input(view, {240, 256}, {}, key, false);
+    check(action && action->confirm && action->right && !action->left &&
+              !ui::world_manual_input(view, {240, 256}, {}, key, true),
+          "One typed manual input preserves simultaneous confirm/right and blocks pending");
+    check(sim::input_startup_world_manual_page(state, page.id, *action) ==
+              sim::StartupWorldRuntimeError::none,
+          "Manual keyboard projection reaches the source consumer");
+    view = ui::world_manual_view(state, state.scripts.pages.back());
+    check(view.source->index == 1 && state.scene.random.draws() == draws &&
+              view.source->decorations == decorations,
+          "Confirm/right advances once without reshuffling the frozen display cast");
+    key.left = true;
+    action = ui::world_manual_input(view, {240, 256}, {}, key, false);
+    check(action && action->left &&
+              sim::input_startup_world_manual_page(state, page.id, *action) ==
+                  sim::StartupWorldRuntimeError::none &&
+              sim::inspect_startup_world_manual_page(state, page.id)->index == 1,
+          "Independent left follows the merged forward pulse without changing the net page");
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{1080, 720}}) {
+        ui::WorldManualLayout painted;
+        painted.page = page.id;
+        painted.index = 1;
+        painted.extent = extent;
+        painted.arrows = {Rectangle{10, 50, 12, 15}, Rectangle{210, 50, 12, 15}};
+        painted.back = {extent.width - 61.F, extent.height - 25.F, 53, 20};
+        key = {};
+        key.click = Vector2{216, 56};
+        key.confirm = key.left = true;
+        action = ui::world_manual_input(view, extent, painted, key, false);
+        check(action && action->right && !action->confirm && !action->left,
+              "Click uses the painted arrow and emits one action without mixing keyboard input");
+        ++painted.index;
+        check(!ui::world_manual_input(view, extent, painted, key, false),
+              "Page change rejects stale painted manual controls");
+        --painted.index;
+        --painted.extent.width;
+        check(!ui::world_manual_input(view, extent, painted, key, false),
+              "Resize rejects stale arrow coordinates");
+        painted.extent = extent;
+        ++painted.page;
+        check(!ui::world_manual_input(view, extent, painted, key, false),
+              "Replacement page cannot consume retired controls");
+    }
+    key = {};
+    key.left = true;
+    for (int n = 0; n < 2; ++n) {
+        action = ui::world_manual_input(view, {240, 256}, {}, key, false);
+        check(action && sim::input_startup_world_manual_page(state, page.id, *action) ==
+                            sim::StartupWorldRuntimeError::none,
+              "Previous page follows source wrap");
+        view = ui::world_manual_view(state, state.scripts.pages.back());
+    }
+    check(view.source->about && view.source->decorations == decorations &&
+              state.scene.random.draws() == draws,
+          "About page wraps through the same Owner and retains frozen identity/random state");
+    auto paused = view;
+    paused.interactive = false;
+    check(!ui::world_manual_input(paused, {240, 256}, {}, key, false),
+          "Paused or uninitialized manual rejects input");
+    key = {};
+    key.cancel = true;
+    action = ui::world_manual_input(view, {240, 256}, {}, key, false);
+    check(action && action->cancel &&
+              sim::input_startup_world_manual_page(state, page.id, *action) ==
+                  sim::StartupWorldRuntimeError::none,
+          "Manual back uses its typed close and returns to the real scene");
+}
 } // namespace
 void world_menu() {
     Checks check{"world_menu"};
     information_ui(check);
     source_navigation_ui(check);
+    manual_ui(check);
     namespace ui = desktop::ui;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
     // Title/slot navigation shares this menu suite. Rule and codec combinations remain in

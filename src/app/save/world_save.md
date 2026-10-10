@@ -60,7 +60,7 @@ u32 负载长度、负载、u64 FNV-1a 校验。全部整数小端；领域 `int
 | 24 完整设施 | `facilities/dungeon_facilities/facility_details/facility_*` 的占用、施工、销售、月/年历史、原实例ID/同定义序号及`facility_item_confirmations`原m.y[0]计数 |
 
 地图扩张沿用已有 `fence_level/town/map/facilities`、实例原序和分配身份字段，
-该批没有增加负载槽位；当前schema3仅另追加魔法壶配方，旧2b479f6等数据集档明确拒绝。
+扩张本身没有增加负载槽位；历史schema3追加魔法壶配方，后续主角与任务NEW字段沿当前schema5保存。旧2b479f6等数据集档明确拒绝。
 恢复检查村界与该围栏级别的原表边界一致，固定24×24地图及新局到访spawn列表保持原合同。
 实际入口设施、地格入口方向和人物旧路径/缓存则按扩张后的当前Owner保存。
 
@@ -98,7 +98,7 @@ inventory、free_purchases），读取分歧直接拒绝，不猜哪份更新。
 
 ## 新增字段分类检查
 
-`world_save_policy.json`独立登记玩家ARKSAVE1/schema3的保存、沿用、重建和丢弃决定。
+[`world_save_policy.json`](world_save_policy.json)独立登记玩家ARKSAVE1/schema5的保存、沿用、重建和丢弃决定，与[`world_save_codec.cpp`](world_save_codec.cpp)的显式协议版本一致。
 `check_player_save_policy.mjs`复用维护codec生成器的真实Clang AST枚举，覆盖Owner可达结构及两个
 私有随机/账本包装类，不复制AST反射实现；未知字段、类型变化、过期/重复分类和访问表漂移都明确失败。
 维护快照辅助结构纳入演进检查，但玩家codec不调用这些快照接口。标准库容器内部不属于业务字段清单。
@@ -126,3 +126,5 @@ inventory、free_purchases），读取分歧直接拒绝，不猜哪份更新。
 schema4在配方表后追加human_profiles，当前仅允许定义0覆盖姓名、性别和custom_name；必须与已保存的脚本名字及现存/退休人物性别一致。未到访也可往返，不造人物实例、不改首访定义1。旧schema1/2/3拒绝，不迁移。
 
 world_system协调标题草稿、主角/继承安装及raw17纯计分。WorldFrame共同发布世界与系统候选；system.arksys使用源AVRSYS01协议及原子单文件替换，玩家世界仍ARKSAVE1。世界与系统文件不是联合原子事务；新局不替换世界栏。读旧世界采用系统现金峰值，不把读取当收入/继承提交。正常收入、继承及通关尾段写系统失败时保留原发布与完整待提交候选，重试不重算奖励/随机/事件。此为产品应用协调，不建立第二持续世界。
+
+说明正文及维护布局升级涉及系统档数据身份；产品系统身份与无关说明数据解耦的提案仍[待用户确认](../../../docs/MILESTONES.md#research-6d35391-integration)，不得把提案当成已实现兼容或静默重置系统纪录。

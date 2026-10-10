@@ -158,6 +158,12 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         return;
     }
     switch (command.kind) {
+    case Kind::manual_input:
+        // Pass all edges together: the source owns confirm-or-right, then left,
+        // then cancel ordering and rolls back the complete candidate on refusal.
+        result.runtime_error =
+            simulation::input_startup_world_manual_page(state, command.page, command.manual_input);
+        break;
     case Kind::acknowledge_page: {
         const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                        [](const auto &p) { return p.lifecycle != 4; });
@@ -175,7 +181,10 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
             const bool confirm = !in.select_row && !in.up && !in.down && (in.confirm || in.right);
             // raw10 save must first bind a selected player slot. Unsupported platform
             // routes remain recoverable input rejection, never a fatal missing consumer.
-            const bool unsupported = view && view->raw == 10 && confirm;
+            const bool manual = view && view->raw == 10 && view->selection >= 0 &&
+                                static_cast<std::size_t>(view->selection) < view->tags.size() &&
+                                view->tags[view->selection] == 22;
+            const bool unsupported = view && view->raw == 10 && confirm && !manual;
             result.runtime_error =
                 in.save_shortcut || in.browser_shortcut || unsupported
                     ? Error::invalid_page

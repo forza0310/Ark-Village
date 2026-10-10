@@ -16,6 +16,7 @@
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <type_traits>
 
 namespace {
 namespace app = ark::app;
@@ -173,7 +174,13 @@ template <class PlayerStrategy> struct CampaignRun {
             good(app::commit_world_system(directory, state, candidate, next));
             candidate.sound_requests.clear();
             try {
-                strategy.observe(state, input, result, candidate);
+                if constexpr (std::is_same_v<PlayerStrategy, Strategy> ||
+                              std::is_same_v<PlayerStrategy, PotStrategy>)
+                    strategy.observe(state, input, result, candidate,
+                        [&](const ark::test::CampaignReceipt &receipt) {
+                            coverage.record(receipt, std::cout);
+                        });
+                else strategy.observe(state, input, result, candidate);
             } catch (...) {
                 // Strategy assertions are not runtime refusals. Preserve the exact pre-command
                 // Owner without forging a runtime error or overwriting a previous capture.
@@ -214,7 +221,12 @@ template <class PlayerStrategy> struct CampaignRun {
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
         update.candidate->sound_requests.clear();
-        strategy.observe_tick(state, *update.candidate);
+        if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>)
+            strategy.observe_tick(state, *update.candidate,
+                [&](const ark::test::CampaignReceipt &receipt) {
+                    coverage.record(receipt, std::cout);
+                });
+        else strategy.observe_tick(state, *update.candidate);
         coverage.observe(state, *update.candidate);
         state = std::move(*update.candidate);
         system = std::move(next);
@@ -549,6 +561,16 @@ void contract() {
     require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
             "Real construction menu return should succeed");
     Strategy strategy;
+    int rejected_receipts{};
+    bool rejected_observation{};
+    app::WorldCommandResult rejected_result;
+    rejected_result.outcome = app::WorldCommandOutcome::rejected;
+    try {
+        strategy.observe(state, command, rejected_result, state,
+            [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
+    } catch (const std::runtime_error &) { rejected_observation = true; }
+    require(rejected_observation && rejected_receipts == 0,
+            "Rejected business observation emitted a verified receipt");
     strategy.reconcile(state);
     std::ostringstream encoded;
     strategy.encode(encoded);

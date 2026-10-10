@@ -28,7 +28,7 @@ const Page *top(const State &s) {
 bool extra_payload(const State &s,std::uint64_t id) {
     // raw14只拥有counter/phase，不能借其它页载荷伪造可恢复绑定。
 #define EXTRA(name) if(s.name.count(id))return true
-    EXTRA(information_page_data);EXTRA(menu_page_data);EXTRA(menu_page_positions);
+    EXTRA(information_page_data);EXTRA(manual_page_data);EXTRA(menu_page_data);EXTRA(menu_page_positions);
     EXTRA(page_secondary_counters);EXTRA(page_human_bindings);EXTRA(page_job_bindings);
     EXTRA(human_detail_contexts);EXTRA(human_pages_initialized);EXTRA(human_page_catalogs);
     EXTRA(equipment_page_catalogs);EXTRA(human_page_selections);EXTRA(human_page_parents);

@@ -266,6 +266,30 @@ const assets::SpriteDefinition &Sprites::definition(const std::filesystem::path 
 void Sprites::thumbnail(const std::string &sprite, int frame, Rectangle box, Color tint) {
     thumbnail(sprite, std::vector<std::pair<int, Vector2>>{{frame, {0, 0}}}, box, tint);
 }
+Rectangle Sprites::frame_bounds(const std::string &sprite, int frame, Binding binding) {
+    if (std::filesystem::path(sprite).has_parent_path() ||
+        (binding != Binding::common && binding != Binding::steam_common))
+        throw std::invalid_argument("Unsupported UI bounds binding");
+    const auto &data = definition(std::filesystem::path("common") / sprite);
+    if (frame < 0 || frame >= data.frame_count)
+        throw std::out_of_range("UI bounds frame outside source");
+    bool found = false;
+    int left{}, top{}, right{}, bottom{};
+    for (const auto &layer : data.layers)
+        for (const auto &part : layer.parts)
+            if (part.frame == frame && part.width > 0 && part.height > 0) {
+                left = found ? std::min(left, int(part.offset_x)) : part.offset_x;
+                top = found ? std::min(top, int(part.offset_y)) : part.offset_y;
+                right = found ? std::max(right, int(part.offset_x) + part.width)
+                              : int(part.offset_x) + part.width;
+                bottom = found ? std::max(bottom, int(part.offset_y) + part.height)
+                               : int(part.offset_y) + part.height;
+                found = true;
+            }
+    if (!found)
+        throw std::runtime_error("UI bounds frame has no image parts");
+    return {float(left), float(top), float(right - left), float(bottom - top)};
+}
 void Sprites::thumbnail(const std::string &sprite,
                         const std::vector<std::pair<int, Vector2>> &frames, Rectangle box,
                         Color tint) {

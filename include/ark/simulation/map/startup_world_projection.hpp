@@ -131,6 +131,7 @@ struct StartupWorldRules {
     std::string localized_gold_template; // h.f512d未初始化，h.b("G")真实回退"G"。
     std::vector<int> base_variants;      // 固定首局h.i在c/d前保存；实例单格q0，原地表i保留。
     std::vector<ref::WorldMagicPotRecipeDefinition> magic_pot_recipes; // 固定40定义，p/r在Owner。
+    std::vector<std::string> manual_pages; // 固定APK manual.txt；trim且保留空段，关于页由raw13另加。
 };
 const StartupWorldRules &startup_world_rules();
 struct StartupWorldActorMetadata {

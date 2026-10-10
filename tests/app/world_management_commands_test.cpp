@@ -10,7 +10,83 @@
 #include <stdexcept>
 
 namespace ark::test::world_session {
+namespace {
+void manual_command_transactions() {
+    using Outcome = app::WorldCommandOutcome;
+    app::WorldSession session(initial());
+    input_frame(session, session.open_main_menu());
+    menu_tag(session, 3, 6);
+    menu_tag(session, 10, 22);
+    auto ready = await(session, [](const auto &frame) {
+        const auto &page = task_top(*frame.state);
+        return frame.failed ||
+               (page.legacy_page == 13 && page.lifecycle == 2 &&
+                sim::inspect_startup_world_manual_page(*frame.state, page.id).has_value());
+    });
+    check(!ready->failed, "actual system tag22 enters an initialized source manual");
+    const auto page = task_top(*ready->state).id;
+    const auto original = sim::inspect_startup_world_manual_page(*ready->state, page).value();
+    const auto random = ready->state->scene.random.draws();
+    const auto cash = ready->state->scene.world.world.ai.accounting.funds();
+    auto paused = input_frame(session, session.set_paused(true));
+    sim::StartupManualInput both;
+    both.confirm = both.right = true;
+    const auto refused = input_frame(session, session.act_manual(page, both));
+    check(!refused->failed &&
+              input_result(*refused, refused->last_command_serial).outcome == Outcome::rejected,
+          "manual input cannot bypass explicit pause");
+    same_world(*paused->state, *refused->state);
+    session.set_paused(false);
+    const auto generic = session.ack_page(page);
+    const auto wrong_page = session.act_manual(page + 100, both);
+    app::WorldCommand stale;
+    stale.kind = app::WorldCommandKind::manual_input;
+    stale.page = page;
+    stale.generation = ready->generation + 1;
+    stale.manual_input = both;
+    const auto old_generation = session.submit(stale);
+    sim::StartupManualInput independent = both;
+    independent.left = true;
+    const auto cancelled_directions = session.act_manual(page, independent);
+    auto result = input_frame(session, session.set_paused(true));
+    auto view = sim::inspect_startup_world_manual_page(*result->state, page);
+    check(!result->failed && view && view->index == original.index &&
+              view->text_page == original.text_page &&
+              view->localize_text == original.localize_text &&
+              input_result(*result, generic).outcome == Outcome::rejected &&
+              input_result(*result, wrong_page).outcome == Outcome::rejected &&
+              input_result(*result, old_generation).outcome == Outcome::rejected &&
+              input_result(*result, cancelled_directions).outcome == Outcome::applied,
+          "manual FIFO rejects generic/stale inputs and preserves (confirm-or-right) then "
+          "independent-left order");
+    session.set_paused(false);
+    const auto advanced = session.act_manual(page, both);
+    result = input_frame(session, session.set_paused(true));
+    view = sim::inspect_startup_world_manual_page(*result->state, page);
+    check(!result->failed && view && view->index == 1 && view->text_page == 1 &&
+              !view->localize_text && input_result(*result, advanced).outcome == Outcome::applied &&
+              view->decorations == original.decorations &&
+              result->state->scene.random.draws() == random &&
+              result->state->scene.world.world.ai.accounting.funds() == cash,
+          "combined confirm/right advances once, retains frozen decoration and consumes no new "
+          "random/payment");
+    session.set_paused(false);
+    sim::StartupManualInput back;
+    back.left = back.cancel = true;
+    const auto close = session.act_manual(page, back);
+    const auto repeated = session.act_manual(page, both);
+    result = input_frame(session, session.set_paused(true));
+    check(!result->failed && input_result(*result, close).outcome == Outcome::applied &&
+              input_result(*result, repeated).outcome == Outcome::rejected &&
+              task_top(*result->state).kind == rules::WorldScriptPageKind::scene &&
+              result->state->scene.random.draws() == random,
+          "left and cancel share one source transaction; retired-page input cannot affect "
+          "successor world");
+    session.stop();
+}
+} // namespace
 void information_command_transactions() {
+    manual_command_transactions();
     using Outcome = app::WorldCommandOutcome;
     auto state = initial();
     for (int n = 0; n < 4 && task_top(state).lifecycle != 2; ++n)
@@ -22,7 +98,8 @@ void information_command_transactions() {
     app::WorldSession session(state);
     const auto blocked_main = input_frame(session, session.open_main_menu());
     check(!blocked_main->failed && !blocked_main->main_menu_open &&
-              input_result(*blocked_main, blocked_main->last_command_serial).outcome == Outcome::rejected,
+              input_result(*blocked_main, blocked_main->last_command_serial).outcome ==
+                  Outcome::rejected,
           "Paused information navigation refuses raw3 and preserves the source Owner");
     const auto denied = input_frame(session, session.open_menu_information());
     check(!denied->failed && !denied->main_menu_open &&
@@ -134,7 +211,8 @@ void magic_pot_commands() {
               refusal->state->scene.random.draws() == main->state->scene.random.draws() &&
               refusal->state->scene.world.world.ai.accounting.funds() ==
                   main->state->scene.world.world.ai.accounting.funds(),
-          "Locked pot cannot be selected through an invalid row or retired shortcut; raw3 stays modal");
+          "Locked pot cannot be selected through an invalid row or retired shortcut; raw3 stays "
+          "modal");
     closed.stop();
 
     auto state = initial();
@@ -604,7 +682,8 @@ void village_command_transactions() {
     app::WorldSession menu(state);
     const auto blocked_main = input_frame(menu, menu.open_main_menu());
     check(!blocked_main->failed && !blocked_main->main_menu_open &&
-              input_result(*blocked_main, blocked_main->last_command_serial).outcome == Outcome::rejected,
+              input_result(*blocked_main, blocked_main->last_command_serial).outcome ==
+                  Outcome::rejected,
           "Paused village navigation refuses raw3 and preserves explicit pause");
     const auto denied = input_frame(menu, menu.open_menu_village_activities());
     check(!denied->failed && !denied->main_menu_open &&
@@ -851,18 +930,20 @@ void commerce_command_transactions() {
         const auto opened = input_frame(session, session.open_main_menu());
         if (paused) {
             check(!opened->failed && !opened->main_menu_open &&
-                      input_result(*opened, opened->last_command_serial).outcome == Outcome::rejected,
+                      input_result(*opened, opened->last_command_serial).outcome ==
+                          Outcome::rejected,
                   "Paused Commerce navigation cannot create the real main menu");
             const auto refusal = input_frame(session, session.open_menu_commerce());
             check(!refusal->failed && !refusal->main_menu_open &&
-                      input_result(*refusal, refusal->last_command_serial).outcome == Outcome::rejected,
+                      input_result(*refusal, refusal->last_command_serial).outcome ==
+                          Outcome::rejected,
                   "Retired Commerce shortcut cannot bypass the source framework pause");
             same_world(state, *refusal->state);
         } else {
             menu_tag(session, 3, 2);
             const auto village = menu_ready(session, 7);
-            const auto view = sim::inspect_startup_world_menu_page(
-                *village->state, task_top(*village->state).id);
+            const auto view =
+                sim::inspect_startup_world_menu_page(*village->state, task_top(*village->state).id);
             check(view && std::find(view->tags.begin(), view->tags.end(), 11) == view->tags.end(),
                   "Missing flag16 excludes Commerce/tag11 from the actual raw7 directory");
             sim::StartupWorldMenuInput invalid_row;
@@ -875,7 +956,8 @@ void commerce_command_transactions() {
                       task_top(*refusal->state).legacy_page == 7 &&
                       input_result(*refusal, unavailable).outcome == Outcome::rejected &&
                       input_result(*refusal, legacy).outcome == Outcome::rejected,
-                  "Unavailable Commerce row and retired shortcut preserve the real raw7 instead of opening83");
+                  "Unavailable Commerce row and retired shortcut preserve the real raw7 instead of "
+                  "opening83");
             auto expected = *village->state;
             for (auto n = village->outer_updates; n < refusal->outer_updates; ++n)
                 expected = advance(std::move(expected));

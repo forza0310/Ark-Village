@@ -10,6 +10,7 @@
 #include "../ui/facilities/world_facility_catalog.hpp"
 #include "../ui/facilities/world_facility_items.hpp"
 #include "../ui/information/world_information.hpp"
+#include "../ui/system/world_manual.hpp"
 #include "../ui/village/world_award.hpp"
 #include "../ui/village/world_commerce.hpp"
 #include "../ui/village/world_magic_pot.hpp"
@@ -57,6 +58,7 @@ class WorldManagement {
     ui::WorldBuildingSelection building_;
     ui::WorldFacilityItemsSelection facility_items_;
     ui::WorldAwardSelection award_;
+    mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     int rank_{};
     int edit_mode_{-1};
     std::optional<int> definition_;

@@ -2,6 +2,7 @@
 
 #include "ark/app/session/world_session.hpp"
 #include "world_active_trade_evidence.hpp"
+#include "world_campaign_coverage.hpp"
 #include <iosfwd>
 #include <set>
 
@@ -27,7 +28,8 @@ class ActiveVillageStrategy {
   public:
     std::optional<app::WorldCommand> next(const app::WorldState &state);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
-                 const app::WorldCommandResult &result, const app::WorldState &after);
+                 const app::WorldCommandResult &result, const app::WorldState &after,
+                 const CampaignReceiptSink &receipts = {});
     void observe_tick(const app::WorldState &before, const app::WorldState &after);
     // A cold player load may change random stream and clear transient page state. Rebind
     // identities from the loaded Owner, while retaining externally recorded business facts.

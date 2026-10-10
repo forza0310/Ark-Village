@@ -17,10 +17,40 @@ std::string clean(std::string text) {
             c = ' ';
     return text;
 }
+struct ReceiptIdentity { const char *category, *stage; int definitions; bool bound_human; };
+ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
+    using Kind = CampaignReceiptKind;
+    switch (kind) {
+    case Kind::activity_points_paid: return {"activity", "points_paid", 31, false};
+    case Kind::activity_effect_queued: return {"activity", "effect_queued", 31, false};
+    case Kind::item_consumed: return {"item", "bound_use", 36, true};
+    case Kind::item_attribute_applied: return {"item", "attribute_applied", 36, true};
+    case Kind::item_obtained: return {"item", "obtained", 36, false};
+    case Kind::recipe_discovered: return {"recipe", "discovered", 40, false};
+    case Kind::recipe_crafted: return {"recipe", "elements_paid_and_crafted", 40, false};
+    case Kind::item_hp_restored: return {"item", "hp_restored", 36, true};
+    }
+    throw std::runtime_error("Unknown campaign receipt kind");
+}
 } // namespace
 
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
     observations_[{kind, id}].insert(event);
+}
+void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log) {
+    const auto identity = receipt_identity(receipt.kind);
+    if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
+        (identity.bound_human && receipt.recipient < 0) ||
+        (receipt.kind == CampaignReceiptKind::item_hp_restored && !receipt.subject))
+        throw std::runtime_error("Campaign receipt lacks its source definition/page/human binding");
+    // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
+    log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
+        << identity.stage << '\t' << receipt.step << '\t' << receipt.page << '\t'
+        << receipt.recipient << '\t' << receipt.subject;
+    for (const auto value : receipt.before) log << '\t' << value;
+    for (const auto value : receipt.after) log << '\t' << value;
+    log << '\n';
+    receipts_[{identity.category, receipt.definition}].insert(identity.stage);
 }
 void CampaignCoverage::observe(const State &before, const State &after) {
     if (segment_.empty()) {
@@ -28,6 +58,16 @@ void CampaignCoverage::observe(const State &before, const State &after) {
         first_step_ = before.simulation_steps;
     }
     last_step_ = after.simulation_steps;
+    for (const auto &[id, value] : after.human_definition_state) {
+        const auto old = before.human_definition_state.find(id);
+        if (old != before.human_definition_state.end() && value != old->second)
+            mark("human", id, "definition_state_changed");
+    }
+    for (const auto &[id, value] : after.human_presence) {
+        const auto old = before.human_presence.find(id);
+        if (old != before.human_presence.end() && value != old->second)
+            mark("human", id, "presence_changed"); // Not an arrival/admission proof by itself.
+    }
     for (const auto &[id, facility] : after.scene.world.world.facilities) {
         const auto old = before.scene.world.world.facilities.find(id);
         const int definition = facility.placement.definition_id;
@@ -102,7 +142,7 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
            "require contracts.\n"
         << "# steps=" << first_step_ << ".." << last_step_ << " rank=" << state.rank
         << " maximum_income=" << state.maximum_income << '\n'
-        << "category\tid\tname\tsource_kind\trank_hint\tobserved_in_segment\trequired_evidence\n";
+        << "category\tid\tname\tsource_kind\trank_hint\tobserved_in_segment\tverified_receipts\trequired_evidence\n";
     const auto row = [&](const char *kind, int id, const std::string &name, int source_kind,
                          int rank, const char *required) {
         out << kind << '\t' << id << '\t' << clean(name) << '\t' << source_kind << '\t' << rank
@@ -114,6 +154,10 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
             for (const auto &event : evidence->second)
                 out << event << ';';
         }
+        out << '\t';
+        const auto receipts = receipts_.find({kind, id});
+        if (receipts == receipts_.end()) out << "UNVERIFIED";
+        else for (const auto &stage : receipts->second) out << stage << ';';
         out << '\t' << required << '\n';
     };
     for (const auto &d : state.rules->facilities)
@@ -125,6 +169,9 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
         row("item", d.identity, d.name, d.category, -1,
             "obtain;bound_use;stock_and_cost;actual_human_or_facility_effect;deposit_or_sale_not_"
             "use");
+    for (const auto &d : state.rules->humans)
+        row("human", d.identity, d.name, d.definition.current_profession, -1,
+            "legal_unlock;actual_arrival;admission_where_applicable;growth;mastery_and_successor;restore");
     for (const auto &d : state.rules->equipment)
         row(equipment_kind(d.shop.kind), d.shop.id, d.name, d.shop.type, -1,
             "unlock;paid_or_valid_free_acquisition;equip;stats_and_combat_use");
@@ -184,8 +231,30 @@ void campaign_coverage_contract() {
         text.find("equipped;") != std::string::npos ||
         text.find("promoted;") != std::string::npos ||
         text.find("spell\t3\t") == std::string::npos ||
-        text.find("campaign\t0\t") == std::string::npos)
+        text.find("campaign\t0\t") == std::string::npos ||
+        text.find("human\t24\t") == std::string::npos ||
+        text.find("verified_receipts") == std::string::npos ||
+        text.find("\tbound_use;") != std::string::npos)
         throw std::runtime_error(
             "Coverage inferred consumption from a snapshot or omitted a required domain");
+    std::ostringstream log;
+    const CampaignReceipt queued{CampaignReceiptKind::activity_effect_queued, 16, 0, 1, 0, -1,
+                                 {0, 0, 0, 0}, {10, 20, 1, 0}};
+    coverage.record(queued, log);
+    std::ostringstream recorded;
+    coverage.write(recorded, state);
+    if (recorded.str().find("effect_queued;") == std::string::npos ||
+        recorded.str().find("effect_applied;") != std::string::npos ||
+        log.str().find("COVERAGE_RECEIPT\tactivity\t16\teffect_queued\t") == std::string::npos)
+        throw std::runtime_error("Queued popularity was certified as an actual activity effect");
+    bool rejected{};
+    const auto validated_log = log.str();
+    try {
+        auto invalid = queued;
+        invalid.page = 0;
+        coverage.record(invalid, log);
+    } catch (const std::runtime_error &) { rejected = true; }
+    if (!rejected || log.str() != validated_log)
+        throw std::runtime_error("Unbound campaign receipt was accepted or partially published");
 }
 } // namespace ark::test

@@ -378,10 +378,10 @@ class WorldSession::Impl {
         if (kind == WorldCommandKind::acknowledge_page && current_page &&
             (current_page->legacy_page == 3 || current_page->legacy_page == 4 ||
              current_page->legacy_page == 7 || current_page->legacy_page == 10 ||
-             current_page->legacy_page == 14 || current_page->legacy_page == 76 ||
-             current_page->legacy_page == 86 || current_page->legacy_page == 72 ||
-             current_page->legacy_page == 79 || current_page->legacy_page == 82 ||
-             current_page->legacy_page == 9 ||
+             current_page->legacy_page == 13 || current_page->legacy_page == 14 ||
+             current_page->legacy_page == 76 || current_page->legacy_page == 86 ||
+             current_page->legacy_page == 72 || current_page->legacy_page == 79 ||
+             current_page->legacy_page == 82 || current_page->legacy_page == 9 ||
              (current_page->legacy_page >= 34 && current_page->legacy_page <= 40) ||
              (current_page->legacy_page >= 41 && current_page->legacy_page <= 47)))
             return apply_decision(current,
@@ -844,6 +844,14 @@ std::uint64_t WorldSession::act_menu(std::uint64_t page,
     command.kind = WorldCommandKind::menu_input;
     command.page = page;
     command.menu_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_manual(std::uint64_t page,
+                                       const simulation::StartupManualInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::manual_input;
+    command.page = page;
+    command.manual_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::open_source_save_menu(std::uint64_t page) {

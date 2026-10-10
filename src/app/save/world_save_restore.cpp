@@ -213,6 +213,7 @@ void clear_presentation(State &s) {
     s.page_counters.clear();
     s.page_phases.clear();
     s.information_page_data.clear();
+    s.manual_page_data.clear();
     s.menu_page_data.clear();
     s.menu_page_positions.clear();
     s.main_menu_selection = 0;

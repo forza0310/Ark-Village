@@ -105,6 +105,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_information.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_world_inheritance.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_magic_pot.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_manual.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_menu.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/startup_world_presentation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/actors/startup_world_profile.cpp"
@@ -128,6 +129,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_information_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_main_menu_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_manual_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_startup_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_update_private.cpp"
 )

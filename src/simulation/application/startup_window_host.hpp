@@ -151,6 +151,9 @@ class StartupWindowHost {
     StartupWorldRuntimeError input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input) {
         return command([&](auto &owner) { return owner.input_menu_page(page, input); });
     }
+    StartupWorldRuntimeError input_manual_page(std::uint64_t page, const StartupManualInput &input) {
+        return command([&](auto &owner) { return owner.input_manual_page(page, input); });
+    }
     StartupWorldRuntimeError input_information_page(std::uint64_t page, const StartupInformationInput &input) {
         return command([&](auto &owner) { return owner.input_information_page(page, input); });
     }

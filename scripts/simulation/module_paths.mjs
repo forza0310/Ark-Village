@@ -31,7 +31,7 @@ export const simulationModules = {
   world: `domain world_control world_random world_random_consumers world_runtime world_scene
     world_world_entry loop_pacing startup startup_world_runtime startup_world_runtime_arrival
     startup_world_runtime_nonactors startup_world_runtime_pages startup_world_runtime_scene
-    startup_world_menu startup_world_save`,
+    startup_world_menu startup_world_save startup_world_manual`,
   persistence: `startup_persistence_bytes startup_world_codec startup_world_codec_fields
     startup_world_file_io startup_world_persistence startup_world_restore_validation`,
   application: `startup_application startup_application_actions startup_application_menu
@@ -41,7 +41,7 @@ export const simulationModules = {
     startup_system_records startup_title_menu startup_world_inheritance`,
   presentation: `startup_audio startup_skin startup_title_actor_skin startup_title_presentation
     startup_world_presentation startup_world_visuals steam_facility_skin steam_startup_skin
-    steam_human_skin steam_information_skin steam_main_menu_skin`,
+    steam_human_skin steam_information_skin steam_main_menu_skin steam_manual_skin`,
 };
 
 const owners = new Map();

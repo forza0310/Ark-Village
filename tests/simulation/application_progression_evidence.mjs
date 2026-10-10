@@ -4,8 +4,8 @@ import {applicationReplayIdentity} from './application_process_support.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const need=(ok,why)=>{if(!ok)throw Error(why);};
 // 正式776508c生成字段身份：世界5含原菜单/存档载荷；旧世界4身份不授予新档资格。
-const schema={dataset:'c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690',
-    world_schema:'d4aa2a6fdd5578ead2d56550c88e46dbdf7475cf1eb169c2d5411fd5d8f43f26',
+const schema={dataset:"8b626af10ba232d3c2050ae6ce4c4ec0306d215bf7d89a33bb69627c83bcba16",
+    world_schema:"45d69d967b55ef50a4dceb077b780f2058e63fbb43edcb6e1b59de4ee2f58d74",
     application_schema:'bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c'};
 
 export function progressionApplicationIdentity(bytes,controller,driverMagic){

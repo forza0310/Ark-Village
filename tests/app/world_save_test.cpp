@@ -175,6 +175,31 @@ void task_notice_and_menu_cache_roundtrip() {
                            [](const auto &entry) { return entry.second; }),
           "cold construction cache contains every definition with original false startup state");
 }
+void manual_cache_is_not_player_state() {
+    auto stable = initial();
+    const auto baseline = app::capture_world_save(stable);
+    check(baseline.image.has_value(), baseline.message.c_str());
+    // Modal decoration is deliberately absent from the stable player wire format.
+    stable.manual_page_data.emplace(77, ark::simulation::StartupManualPageData{{0, 1}, 2, false});
+    const auto transient = app::capture_world_save(stable);
+    check(transient.image && transient.image->bytes == baseline.image->bytes,
+          "manual text-layout and decoration cache is absent from player encoding");
+    auto decoded = app::decode_world_save(baseline.image->bytes);
+    check(decoded.state.has_value(), decoded.message.c_str());
+    decoded.state->manual_page_data = stable.manual_page_data;
+    auto live = initial();
+    live.scene.random.draw(97);
+    const auto draws = live.scene.random.draws();
+    std::string reason;
+    check(app::prepare_world_save_candidate(*decoded.state, live, reason) ==
+                  app::WorldSaveError::none &&
+              decoded.state->manual_page_data.empty() && app::world_save_eligible(*decoded.state) &&
+              decoded.state->scene.random.draws() == draws &&
+              decoded.state->scene.world.world.ai.accounting.funds() ==
+                  stable.scene.world.world.ai.accounting.funds(),
+          "same-schema cold restore discards manual cache without replaying Init or its random "
+          "selection");
+}
 void corrupt_files() {
     auto captured = app::capture_world_save(initial());
     check(captured.image.has_value(), captured.message.c_str());
@@ -257,6 +282,7 @@ int main() {
     profile_roundtrip();
     construction_progress_roundtrip();
     task_notice_and_menu_cache_roundtrip();
+    manual_cache_is_not_player_state();
     corrupt_files();
     slots_and_failure();
     run_restore_tests();

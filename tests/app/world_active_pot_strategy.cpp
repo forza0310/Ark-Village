@@ -358,7 +358,10 @@ void ActivePotVillageStrategy::observe_world(const State &before, const State &a
 }
 
 void ActivePotVillageStrategy::observe(const State &before, const Command &c,
-                                       const app::WorldCommandResult &result, const State &after) {
+                                       const app::WorldCommandResult &result, const State &after,
+                                       const CampaignReceiptSink &receipts) {
+    const int discovered_before = stats_.discoveries, crafted_before = stats_.crafted,
+              used_before = stats_.used, healed_before = stats_.healed;
     require(result.outcome == app::WorldCommandOutcome::applied &&
                 result.runtime_error == sim::StartupWorldRuntimeError::none &&
                 result.denial == ref::TaskCommandDenial::none,
@@ -424,15 +427,42 @@ void ActivePotVillageStrategy::observe(const State &before, const Command &c,
         stats_.use_income = stats_.facility_income;
     }
     observe_world(before, after);
+    if (receipts) {
+        if (stats_.discoveries > discovered_before)
+            receipts({CampaignReceiptKind::recipe_discovered, 7, after.simulation_steps, c.page,
+                0, -1, {before.magic_pot_recipes.at(7).status, before.legacy_n[0]},
+                {after.magic_pot_recipes.at(7).status, after.legacy_n[0]}});
+        if (stats_.crafted > crafted_before) {
+            receipts({CampaignReceiptKind::recipe_crafted, 7, after.simulation_steps, c.page,
+                29, -1, {before.legacy_n[3], before.legacy_n[4], before.legacy_n[5], before.legacy_n[6]},
+                {after.legacy_n[3], after.legacy_n[4], after.legacy_n[5], after.legacy_n[6]}});
+            receipts({CampaignReceiptKind::item_obtained, 29, after.simulation_steps, c.page,
+                7, -1, {before.items.at(29).inventory}, {after.items.at(29).inventory}});
+        }
+        if (stats_.used > used_before)
+            receipts({CampaignReceiptKind::item_consumed, 29, after.simulation_steps, c.page,
+                stats_.healed_actor, stats_.recipient, {before.items.at(29).inventory},
+                {after.items.at(29).inventory}});
+        if (stats_.healed > healed_before)
+            receipts({CampaignReceiptKind::item_hp_restored, 29, after.simulation_steps,
+                top(before).id, stats_.healed_actor, stats_.recipient,
+                {stats_.hp_before}, {stats_.hp_after}});
+    }
 }
 
-void ActivePotVillageStrategy::observe_tick(const State &before, const State &after) {
+void ActivePotVillageStrategy::observe_tick(const State &before, const State &after,
+                                           const CampaignReceiptSink &receipts) {
+    const int healed_before = stats_.healed;
     ++stats_.ticks;
     require(month(after) >= month(before) && month(after) <= month(before) + 1 &&
                 ref::valid_world_calendar_state(after.scene.calendar) &&
                 after.scene.random.draws() >= before.scene.random.draws(),
             "calendar/random discontinuity");
     observe_world(before, after);
+    if (receipts && stats_.healed > healed_before)
+        receipts({CampaignReceiptKind::item_hp_restored, 29, after.simulation_steps,
+            top(before).id, stats_.healed_actor, stats_.recipient,
+            {stats_.hp_before}, {stats_.hp_after}});
 }
 bool ActivePotVillageStrategy::checkpoint(const State &s) const {
     return stable(s) && stats_.deposits >= 9 && stats_.processed >= 9 && stats_.discoveries == 1 &&

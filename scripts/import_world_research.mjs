@@ -26,7 +26,7 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_information', 'startup_application_menu', 'startup_title_menu',
   'steam_startup_skin', 'steam_facility_skin', 'steam_human_skin', 'steam_information_skin',
   'startup_world_information', 'startup_world_menu', 'startup_world_save',
-  'steam_main_menu_skin', 'startup_application_world_save'];
+  'steam_main_menu_skin', 'startup_application_world_save', 'startup_world_manual', 'steam_manual_skin'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',

@@ -96,9 +96,19 @@ struct SteamSystemMenuSkinInput {
     int frame{}, selection{};
 };
 // Steam raw10固定五项20..24，复用DrawMenu2(type1)；稳定帧显式消费五项实际测宽。
-// 只生成皮肤，不建立页面，不执行保存、纪录、配置、RankForm、退出或浏览器动作。
+// 只生成皮肤，不建立页面，不执行保存、设置、游戏说明、RankForm、退出或浏览器动作。
 std::optional<SteamInformationSkinPlan> steam_system_menu_skin(
     const SteamSystemMenuSkinInput &input,const SteamInformationMenuSkinOptions &options);
+struct SteamNavigationMenuSkinOptions {
+    std::array<int,2> canvas{240,240}, origin{}; // 实际Graphics原点；Owner存储位置由调用方只换算一次。
+    int safe_left{};
+    bool japanese{}, english{}, on_top{true}, covered_by_nonmenu_subform{};
+    std::optional<std::vector<int>> measured_text_widths; // 与实际冻结tags逐行对应，不补齐到五项。
+};
+// Steam raw4/7的DrawMenu2(type1)局部。只读已初始化Owner，不重新按当前flag生成目录。
+// NEW/GET逐条独立消费：任务与装备、商会与活动不互相短路；缺实际使用来源显式拒绝。
+std::optional<SteamInformationSkinPlan> steam_navigation_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamNavigationMenuSkinOptions &options);
 // 在五行局部计划后按相同origin消费：右上HUD抵消origin，四摘要保留原局部坐标。
 // 读唯一Owner的村点、选中任务及全名单，不重数遭遇缓存，不消费帧/随机/输出。
 // 被非菜单SubForm覆盖返回空计划；摘要人物保留普通clip与ImageClip完整原序。

@@ -348,7 +348,7 @@ const char *menu_label(int tag) {
     case 9:return "赠送礼物";case 10:return "晋级";case 11:return "商会";case 12:return "活动";
     case 14:return "村情报";case 15:return "冒险者";case 16:return "收支情报";
     case 17:return "持有物品";case 18:return "装备一览";
-    case 20:return "保存";case 21:return "纪录";case 22:return "配置";case 23:return "排行榜";
+    case 20:return "保存";case 21:return "设置变更";case 22:return "游戏方法";case 23:return "排行榜";
     case 24:return "结束游戏";default:throw std::runtime_error("菜单标签缺文字适配");
     }
 }
@@ -356,7 +356,6 @@ struct WindowNavigationPlan {
     std::array<int,2> origin{};
     std::optional<SteamMainMenuSkinPlan> main;
     std::optional<SteamInformationSkinPlan> system;
-    std::optional<StartupWorldMenuView> fallback;
     std::vector<SteamStartupTouch> touches;
 };
 std::optional<WindowNavigationPlan> window_navigation_plan(const StartupWorldRuntimeState &state,
@@ -408,11 +407,17 @@ std::optional<WindowNavigationPlan> window_navigation_plan(const StartupWorldRun
         if (!result.system) return {};
         for (const auto &touch:result.system->touches) result.touches.push_back(touch);
     } else {
-        // raw4/7本批只接真实目录与输入。此短列表是维护适配，不能冒认为已证完整皮肤。
-        result.fallback=view;
-        for (std::size_t row=0;row<view->tags.size();++row)
-            result.touches.push_back({9,0x20000|static_cast<int>(row),
-                                      std::array<int,4>{0,28*static_cast<int>(row),90,28},{},0});
+        SteamNavigationMenuSkinOptions options;options.canvas={width,height};options.origin=result.origin;
+        options.on_top=on_top;
+        if(view->frame==3) {
+            std::vector<int> widths;
+            for(const int tag:view->tags)
+                widths.push_back(static_cast<int>(font.measure(menu_label(tag))));
+            options.measured_text_widths=std::move(widths);
+        }
+        result.system=steam_navigation_menu_skin(state,id,options);
+        if(!result.system)return {};
+        for(const auto &touch:result.system->touches)result.touches.push_back(touch);
     }
     return result;
 }
@@ -447,13 +452,6 @@ void draw_navigation_plan(const WindowNavigationPlan &plan,SourceSprites &sprite
             font.text(menu_label(label->argument),origin.x+label->position[0],origin.y+label->position[1],
                       {static_cast<unsigned char>(label->rgb[0]),static_cast<unsigned char>(label->rgb[1]),
                        static_cast<unsigned char>(label->rgb[2]),255},label->font_size?float(label->font_size):12.F);
-    }
-    if (plan.fallback) for(std::size_t row=0;row<plan.fallback->tags.size();++row) {
-        const int y=plan.origin[1]+28*static_cast<int>(row);
-        DrawRectangle(plan.origin[0],y,90,27,paper);
-        if(static_cast<int>(row)==plan.fallback->selection)
-            DrawRectangleLines(plan.origin[0],y,90,27,ORANGE);
-        font.text(menu_label(plan.fallback->tags[row]),origin.x+5,float(y+8),ink,11);
     }
 }
 struct Window {
@@ -802,7 +800,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &recipe : rules.magic_pot_recipes)
         glyphs += recipe.name;
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
-    glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存纪录配置排行榜结束游戏输入未接入"
+    glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存设置变更游戏方法排行榜结束游戏输入未接入"
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "体力力量灵活结实魔力运气";
@@ -847,7 +845,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         return {};
     };
-    if (inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information") {
+    if (inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information" ||
+        inspect_page == "world-adventure" || inspect_page == "world-village") {
         // 有界验收只使用真实入口与输入，不注入选择、页计数、资金或随机。
         if (session.open_main_menu()!=StartupWorldRuntimeError::none)
             throw std::runtime_error("导航检查主菜单入口失败");
@@ -857,7 +856,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto id=session.state().scripts.pages.back().id;
             const auto view=inspect_startup_world_menu_page(session.state(),id);
             if(!view)throw std::runtime_error("导航检查主菜单投影失败");
-            const int tag=inspect_page=="world-system"?6:5;
+            const int tag=inspect_page=="world-system"?6:inspect_page=="world-information"?5:
+                          inspect_page=="world-adventure"?1:2;
             const auto entry=std::find(view->tags.begin(),view->tags.end(),tag);
             if(entry==view->tags.end())throw std::runtime_error("导航检查所需标签不存在");
             StartupWorldMenuInput selection;selection.select_row=static_cast<int>(entry-view->tags.begin());

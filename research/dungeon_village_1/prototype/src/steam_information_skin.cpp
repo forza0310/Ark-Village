@@ -1,6 +1,8 @@
 // Steam情报菜单及目录的局部皮肤：ui/INFORMATION_MENU.md；不借APK坐标推同版布局。
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include <algorithm>
@@ -98,11 +100,56 @@ void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,in
             SteamFacilityNumberKind kind=SteamFacilityNumberKind::number) {
     plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
 }
-// raw9/raw10实际共用DrawMenu2(type1)的有序局部绘制；Owner读取与页面动作留在调用层。
+// 以下是子菜单实际逐行调用的原谓词，不使用raw3跨行NEW优先级或业务目录过滤。
+std::optional<bool> equipment_notice(const StartupWorldRuntimeState &s) {
+    for(int kind:{1,2,3})for(const auto &d:s.rules->equipment) {
+        if(d.shop.kind!=kind)continue;
+        const auto current=s.catalog.find({kind,d.shop.id});
+        if(current==s.catalog.end())return {};
+        if(current->second.status!=0 && current->second.newly_unlocked)return true;
+    }
+    return false;
+}
+std::optional<bool> commerce_notice(const StartupWorldRuntimeState &s) {
+    for(const auto &d:s.rules->items) {
+        const auto stock=s.shop_item_stock.find(d.identity);
+        if(stock==s.shop_item_stock.end())return {};
+        if(stock->second.quantity<=0)continue;
+        const auto read=s.item_commerce_read.find(d.identity);
+        if(read==s.item_commerce_read.end())return {};
+        if(!read->second)return true;
+    }
+    for(const auto &d:s.rules->facilities) {
+        const auto presence=s.facility_presence.find(d.id);
+        if(presence==s.facility_presence.end())return {};
+        if(presence->second==2 || d.unlock_rank==-1 || d.unlock_rank>s.rank)continue;
+        const auto read=s.facility_commerce_read.find(d.id);
+        if(read==s.facility_commerce_read.end())return {};
+        if(!read->second)return true;
+    }
+    return false;
+}
+std::optional<bool> activity_notice(const StartupWorldRuntimeState &s) {
+    for(const auto &d:s.rules->activities) {
+        const auto record=s.scripts.activities.find(d.identity);
+        if(record==s.scripts.activities.end())return {};
+        if(record->second.status!=1)continue;
+        const auto flags=s.activity_flags.find(d.identity);
+        if(flags==s.activity_flags.end())return {};
+        if(flags->second&2U) {
+            const auto count=s.activity_counts.find(d.identity);
+            if(count==s.activity_counts.end())return {};
+            if(count->second>0)continue;
+        }
+        if(!(flags->second&4U) && record->second.pending_notice)return true;
+    }
+    return false;
+}
+// Steam DrawMenu2(type1)：4/7/9/10共用源裁片与ID9；目录长度决定边界高和触摸数。
 void menu_type1(SteamInformationSkinPlan &plan,int menu_frame,int selection,
-                const std::array<int,5> &tags,bool human_new,int width,int dx,int dy,
+                const int *tags,int count,const int *widths,const int *badges,int width,int dx,int dy,
                 const SteamInformationMenuSkinOptions &options) {
-    for(int row=0;row<5;++row) {
+    for(int row=0;row<count;++row) {
         const int row_y=dy+28*row;
         const bool selected=row==selection;
         // DrawSeb比例0..1000缩短源裁片，offset和锚点不随比例缩放。
@@ -115,10 +162,14 @@ void menu_type1(SteamInformationSkinPlan &plan,int menu_frame,int selection,
         if(menu_frame<3)continue;
         text(plan,Role::menu_entry,0,row,dx+7,row_y+9,{},
              selected?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220},
-             (*options.measured_text_widths)[static_cast<std::size_t>(row)]>width-10?11:0);
-        std::get<SteamInformationText>(plan.draws.back()).argument=tags[static_cast<std::size_t>(row)];
-        if(row==0&&human_new)
-            image(plan,147,20,9,dx+68+(options.japanese?10:options.english?6:0),row_y+16);
+             widths[row]>width-10?11:0);
+        std::get<SteamInformationText>(plan.draws.back()).argument=tags[row];
+        if(badges && badges[row]) {
+            // VA10309112/10308FF8：raw4日文8，raw7/9日文10；非JP的GET再减3。
+            const int language=options.japanese?(plan.raw==4?8:10):options.english?6:0;
+            const bool get=badges[row]==148;
+            image(plan,badges[row],get?23:20,9,dx+68+language-(get&&!options.japanese?3:0),row_y+16);
+        }
         if(selected&&options.on_top) {
             if(dx<120)sprite(plan,70,22,-1,dx+width+6,row_y+13);
             else sprite(plan,70,21,-1,dx-2,row_y+13);
@@ -159,7 +210,9 @@ std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
     }
     std::array<int,5> tags{};
     for(std::size_t row=0;row<tags.size();++row)tags[row]=view->entries[row].tag;
-    menu_type1(plan,view->frame,view->selection_or_period,tags,human_new,width,
+    const std::array<int,5> badges{human_new?147:0,0,0,0,0};
+    menu_type1(plan,view->frame,view->selection_or_period,tags.data(),5,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,badges.data(),width,
                static_cast<int>(x),static_cast<int>(y),options);
     return plan;
 }
@@ -184,8 +237,53 @@ std::optional<SteamInformationSkinPlan> steam_system_menu_skin(
         for(const int value:*options.measured_text_widths)if(value<0)return {};
     }
     // Steam Init五项state1，末项24；APK末项28不得混入本版本。
-    menu_type1(plan,input.frame,input.selection,{20,21,22,23,24},false,width,
+    constexpr std::array<int,5> tags{20,21,22,23,24};
+    menu_type1(plan,input.frame,input.selection,tags.data(),5,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,nullptr,width,
                static_cast<int>(x),static_cast<int>(y),options);
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_navigation_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamNavigationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_menu_page(state,page);
+    if(!view || (view->raw!=4 && view->raw!=7) || view->frame<0 || view->frame>3 || !state.rules || options.canvas[0]<=0 ||
+       options.canvas[1]<=0 || options.safe_left<0)return {};
+    SteamInformationSkinPlan plan;plan.raw=view->raw;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const int count=static_cast<int>(view->tags.size()),width=options.japanese?84:90,height=count*28+5;
+    std::int64_t x=options.safe_left,y=0;
+    if(std::int64_t(options.origin[0])+width>options.canvas[0])
+        x=std::int64_t(options.canvas[0])-width-options.origin[0];
+    if(std::int64_t(options.origin[1])+height>options.canvas[1])
+        y=std::int64_t(options.canvas[1])-height-options.origin[1];
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    if(!fits(x-2)||!fits(x+width+6)||!fits(y)||!fits(y+height+22))return {};
+    std::vector<int> badges(view->tags.size());
+    if(view->frame>=3) {
+        if(!options.measured_text_widths || options.measured_text_widths->size()!=view->tags.size())return {};
+        for(int value:*options.measured_text_widths)if(value<0)return {};
+        for(std::size_t row=0;row<view->tags.size();++row) {
+            const int tag=view->tags[row];
+            std::optional<bool> shown=false;
+            // Steam VA10309257先问任务NEW，再检查active；tag9独立GET不被tag7灯号遮住。
+            if(view->raw==4 && tag==7) {
+                shown=startup_world_has_new_tasks(state);
+                if(shown && *shown)*shown=!state.active_task;
+            } else if(view->raw==4 && tag==9)shown=equipment_notice(state);
+            // VA10309085先商品后设施；tag12另查活动，不额外重验当前flag16。
+            else if(view->raw==7 && tag==11)shown=commerce_notice(state);
+            else if(view->raw==7 && tag==12)shown=activity_notice(state);
+            if(!shown)return {};
+            if(*shown)badges[row]=view->raw==4&&tag==9?148:147;
+        }
+    }
+    SteamInformationMenuSkinOptions shared;
+    shared.japanese=options.japanese;shared.english=options.english;shared.on_top=options.on_top;
+    menu_type1(plan,view->frame,view->selection,view->tags.data(),count,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,badges.data(),width,
+               static_cast<int>(x),static_cast<int>(y),shared);
     return plan;
 }
 std::optional<SteamInformationSkinPlan> steam_information_menu_status_skin(

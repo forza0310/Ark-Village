@@ -162,7 +162,7 @@ Error dispatch(State &s, std::uint64_t id, int raw, int tag, bool english) {
         if (e != Error::none) return e;
         return retire_startup_world_menu_pages(s) ? Error::none : Error::script_failed;
     } else if (raw == 10) {
-        // 系统保存、纪录、配置、平台高分及结束须由应用层接管。
+        // 系统保存、设置、游戏说明、平台高分及结束须由应用层接管。
         // 在缺真实消费者时保持原Owner，不能造一个可通用关闭的raw页冒称已完成。
         return Error::missing_source;
     }

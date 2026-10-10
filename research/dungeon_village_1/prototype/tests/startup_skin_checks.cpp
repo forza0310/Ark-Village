@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
 #include "support/world_fixture.hpp"
@@ -1679,6 +1680,117 @@ void information_menu_skin(Checks &check,const std::filesystem::path &root) {
               "raw9两方向手形SEB均引用finger_r.png的image70，不能寻找不存在的finger_l.png");
     }
 }
+void navigation_menu_skin(Checks &check) {
+    const auto fixture=[&](int raw,int count) {
+        auto s=test_support::page_fixture(raw);s.scene.framework_paused=false;
+        s.scripts.pages.back().lifecycle=0;
+        if(raw==4) {
+            s.scripts.user_flags=count>1?4U:0U;
+            if(count==3) {
+                s.tasks[1].identity=1;s.next_task_identity=2;s.active_task=1;
+            }
+        } else s.scripts.user_flags=count==3?24U:count==2?16U:0U;
+        check(initialize_startup_world_menu_pages(s),"raw4/7条件夹具由真实Init冻结可变目录");
+        s.scripts.pages.back().lifecycle=2;
+        return s;
+    };
+    const auto images=[](const auto &plan,int id) {
+        std::vector<StartupSkinDraw> result;
+        for(const auto &draw:plan.draws)if(const auto *part=std::get_if<StartupSkinDraw>(&draw))
+            if(part->image==id)result.push_back(*part);
+        return result;
+    };
+    constexpr std::array<int,4> crop_widths{0,29,59,89},crop_heights{0,9,19,29};
+    for(int raw:{4,7})for(int count:{1,2,3}) {
+        auto s=fixture(raw,count);const auto id=s.scripts.pages.back().id;
+        const auto tags=s.menu_page_data.at(id).tags;
+        check(static_cast<int>(tags.size())==count,"条件fixture包含一至三项，不伪填五项");
+        s.menu_page_data.at(id).selection=count-1;
+        SteamNavigationMenuSkinOptions options;options.origin={200,280};options.safe_left=9;
+        for(int frame=0;frame<4;++frame) {
+            s.page_counters.at(id)=frame;
+            options.measured_text_widths=frame==3?std::optional<std::vector<int>>(std::vector<int>(count,81)):std::nullopt;
+            const auto plan=steam_navigation_menu_skin(s,id,options);
+            check(plan && plan->raw==raw && plan->origin==options.origin && plan->touches.size()==std::size_t(count+1),
+                  "raw4/7读真实Owner且边界高/触摸数随冻结目录长度");
+            const auto backgrounds=images(*plan,25);
+            check(backgrounds.size()==(frame?std::size_t(count):0U),"子菜单底图保持原缩源展开时点");
+            const int dy=240-(count*28+5)-280;
+            for(int row=0;row<count;++row) {
+                check(plan->touches[row].component==9 && plan->touches[row].value==(0x20000|row) &&
+                      plan->touches[row].rectangle==std::array<int,4>{-10,dy+28*row,50,28},
+                      "Steam type1 ID9从dx40开始，不能套APK整行热区");
+                if(frame)check(backgrounds[row].crop==std::array<int,4>{68,row==count-1?0:29,crop_widths[frame],crop_heights[frame]},
+                              "一至三行都复用menu.seb原89x29裁片");
+            }
+            if(frame==3) {
+                std::vector<SteamInformationText> labels;
+                for(const auto &draw:plan->draws)if(const auto *part=std::get_if<SteamInformationText>(&draw))labels.push_back(*part);
+                check(labels.size()==tags.size(),"每冻结条目消费一条实际测宽");
+                for(int row=0;row<count;++row)
+                    check(labels[row].argument==tags[row] && labels[row].font_size==11 &&
+                          labels[row].position==std::array<int,2>{-43,dy+28*row+9},"保留真实tag和超过80临时11字号");
+            } else {
+                options.measured_text_widths=std::vector<int>{-1};
+                check(steam_navigation_menu_skin(s,id,options).has_value(),"展开期不消费错误长度/负测宽");
+            }
+        }
+        const auto before=startup_world_state_digest(s);
+        check(steam_navigation_menu_skin(s,id,options).has_value() && startup_world_state_digest(s)==before,
+              "子菜单绘制不清NEW、不消费随机/输出或改缓存位置");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=s;auto altered=options;
+            if(fault==0)altered.measured_text_widths.reset();
+            if(fault==1)altered.measured_text_widths->push_back(0);
+            if(fault==2)(*altered.measured_text_widths)[0]=-1;
+            if(fault==3)bad.menu_page_positions.erase(id);
+            if(fault==4)bad.menu_page_data.at(id).selection=count;
+            check(!steam_navigation_menu_skin(bad,id,altered),"稳定子菜单缺测宽/错长度/位置/行号显式拒绝");
+        }
+    }
+    for(int raw:{4,7}) {
+        auto minimal=fixture(raw,1);const auto id=minimal.scripts.pages.back().id;
+        minimal.page_counters.at(id)=3;
+        if(raw==4)minimal.task_order={minimal.next_task_identity};
+        else {minimal.shop_item_stock.clear();minimal.facility_presence.clear();}
+        SteamNavigationMenuSkinOptions options;options.measured_text_widths=std::vector<int>{0};
+        check(steam_navigation_menu_skin(minimal,id,options).has_value(),
+              "未冻结tag7/11的菜单不消费其悬空任务或商会字段");
+    }
+    auto adventure=fixture(4,2);const auto aid=adventure.scripts.pages.back().id;
+    adventure.page_counters.at(aid)=3;adventure.task_order={1};adventure.next_task_identity=2;
+    adventure.tasks[1].identity=1;adventure.tasks[1].newly_available=true;
+    for(auto &[key,item]:adventure.catalog)item.newly_unlocked=false;
+    adventure.catalog.at({1,0}).status=-1;adventure.catalog.at({1,0}).newly_unlocked=true;
+    SteamNavigationMenuSkinOptions options;options.measured_text_widths=std::vector<int>{74,75};
+    for(const auto language:std::array<std::array<int,4>,4>{{{0,0,68,65},{0,1,74,71},{1,0,76,76},{1,1,76,76}}}) {
+        options.japanese=language[0];options.english=language[1];
+        const auto plan=*steam_navigation_menu_skin(adventure,aid,options);
+        check(images(plan,147).size()==1 && images(plan,148).size()==1 &&
+              images(plan,147)[0].offset==std::array<int,2>{language[2],16} &&
+              images(plan,148)[0].offset==std::array<int,2>{language[3],44},
+              "raw4任务NEW与赠礼GET独立共存，JP8覆盖En6且仅非JP GET减3");
+    }
+    adventure.catalog.erase({1,0});
+    check(!steam_navigation_menu_skin(adventure,aid,options),"任务NEW不能跳过tag9的缺装备来源");
+    options.covered_by_nonmenu_subform=true;options.measured_text_widths.reset();
+    check(steam_navigation_menu_skin(adventure,aid,options)->draws.empty(),"非菜单遮挡不读NEW/GET或测宽");
+    auto village=fixture(7,3);const auto vid=village.scripts.pages.back().id;village.page_counters.at(vid)=3;
+    for(auto &[id,a]:village.scripts.activities)a.status=0;
+    const int activity=village.rules->activities.front().identity;
+    village.scripts.activities.at(activity).status=1;village.scripts.activities.at(activity).pending_notice=true;
+    village.activity_flags.at(activity)=0;village.activity_counts.erase(activity);
+    const int item=village.rules->items.front().identity;
+    village.shop_item_stock.at(item).quantity=1;village.item_commerce_read.at(item)=false;
+    village.facility_presence.clear(); // 首商品命中，原OR不读设施。
+    village.scripts.user_flags=0; // Init冻结11仍存在，绘制不按当前flag16重新筛选。
+    options={};options.japanese=true;options.english=true;options.measured_text_widths=std::vector<int>{74,75,0};
+    const auto plan=steam_navigation_menu_skin(village,vid,options);
+    check(plan && images(*plan,147).size()==2 && images(*plan,147)[0].offset==std::array<int,2>{78,44} &&
+          images(*plan,147)[1].offset==std::array<int,2>{78,72},"raw7商会与活动NEW独立，JP10，缓存11不重查当前flag16");
+    village.scripts.activities.erase(activity);
+    check(!steam_navigation_menu_skin(village,vid,options),"商会NEW不能遮蔽独立tag12缺活动源");
+}
 void system_menu_skin(Checks &check) {
     SteamSystemMenuSkinInput input;input.selection=4;
     SteamInformationMenuSkinOptions options;
@@ -1906,6 +2018,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     town_facility_information_skin(check,source_root);
     information_menu_skin(check,source_root);
     system_menu_skin(check);
+    navigation_menu_skin(check);
     information_menu_status_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);

@@ -359,14 +359,20 @@ raw4／7／9／10位置为`xChild=xParent+68+(En?28:0)`、`yChild=yParent+28×�
 | --- | --- | --- |
 | raw4冒险 | APK Init：flag4才列tag7、当前任务非空列tag8、始终tag9。7无当前任务→22；有任务先58→事件62(任务名)→26。8→中止询问；9→40。非询问结果退休菜单 | 已接无当前任务的真实4、任务跟踪／中止与40赠礼目录；中止是答先公共加一后直接退休集合，跳过FrameMenu，其退休frame可为4 |
 | raw7村办 | APK Init：flag8列tag10→48(mode1)，flag16列tag11→按需事件97→83，始终tag12→51；确认后退休菜单 | 已经真实7分派到原晋级／商会／活动消费者；事件先插页后仍借原执行锚创建目标，晚期失败整候选撤销 |
-| raw9情报 | 固定tags `15,14,16,17,18`→raw `35,34,36,37,38`；确认退休菜单、返回仅关9 | 已接raw3父资格及退休集合，父存储位置仍待接 |
+| raw9情报 | 固定tags `15,14,16,17,18`→raw `35,34,36,37,38`；确认退休菜单、返回仅关9 | 已接raw3父资格、存储位置及退休集合，子页返回不重新Init父菜单 |
 | raw10系统 | **Steam Init tags `20,21,22,23,24`；APK为`20,21,22,23,28`** | Steam最后一行结束游戏，不能增加未生成的tag28回标题；raw10用DrawMenu2(type1)／ID9，不用raw3 type0／ID8 |
 
-Steam raw10证据：`SubForm.Init` RVA `312460`在VA `10314FF2–1031502C`写五项state1；Update在`10327837–10327895`分别分派tag20→保存14、21→纪录12、22→配置13，公共`10328228–10328248`先Push目标再退休菜单。tag23在`1032777D`检查`Config.TRIAL_VERSION`：非试玩构造`form.RankForm`（RVA `2035A0`）；试玩只压“高分仅正式版可用”提示并保留菜单。APK `new b.e()`也对应RankForm，不能标成设置窗口；分支存在不认证当前窗口的试玩flag。
+Steam raw10证据：`SubForm.Init` RVA `312460`在VA `10314FF2–1031502C`写五项state1；Update在`10327837–10327895`分别分派tag20→保存14、21→设置变更12、22→游戏方法13，公共`10328228–10328248`先Push目标再退休菜单。metadata的`TYPE_CONFIG=12`／`TYPE_MANUAL=13`与APK `b/g.java:113`的MENU_STR一致；此前“纪录12／配置13”的正文和窗口译文是误标，本批更正。tag23在`1032777D`检查`Config.TRIAL_VERSION`：非试玩构造`form.RankForm`（RVA `2035A0`）；试玩只压“高分仅正式版可用”提示并保留菜单。APK `new b.e()`也对应RankForm，不能标成设置窗口；分支存在不认证当前窗口的试玩flag。
 
 tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1、保留父菜单；后续`10327587–103275BF`消费dialog，结果0且dialogId不为99才调用`FormManager.RemoveAllForms()`并立即返回。结果非0清dialog引用后继续菜单，不重设选择。此局部不能直接认证进程关闭、立即存档或回标题，结束／保存上游须另核；id99及无菜单结果时软5的OpenBrowser属于独立平台请求，维护不自动打开。tag28代码虽仍在`103276ED–10327714`，Init不列28。`_draw`在`103531F7–10356CB6`分派raw10到DrawMenu2(type1)，沿用已核子菜单皮肤／测宽，不把主菜单图标与safe-left套入系统菜单。
 
-维护`steam_system_menu_skin`已给raw10五项的正式只读行计划，与raw9复用同一type1绘制循环；frame／selection由真实控制器提供，稳定帧须传五项实际测宽。保留缩源裁片、ID9基矩形、语言阈值、选中手形和共尾KEYCLICK；无NEW或分类图标。它不创建页面，不执行保存、纪录、配置、RankForm、结束或浏览器动作；HUD、内部光标、平台输入及外层软标签另接。[四条件例图](examples/steam-system-menu.png)直接消费正式计划与原素材，字体／中文词条为明确离线适配，不是原窗口动态。visuals定向0.80秒通过，Owner、schema及保存契约未变。
+维护`steam_system_menu_skin`已给raw10五项的正式只读行计划，与raw9复用同一type1绘制循环；frame／selection由真实控制器提供，稳定帧须传五项实际测宽。保留缩源裁片、ID9基矩形、语言阈值、选中手形和共尾KEYCLICK；无NEW或分类图标。它不创建页面，不执行保存、设置、游戏说明、RankForm、结束或浏览器动作；HUD、内部光标、平台输入及外层软标签另接。[四条件例图](examples/steam-system-menu.png)直接消费正式计划与原素材，字体／中文词条为明确离线适配，不是原窗口动态；本批按正确标签重新导出，保留全部四个条件。
+
+**冒险／村办的独立标记与正式皮肤。** `steam_navigation_menu_skin`只读真实raw4／7冻结目录及帧，逐冻结行消费实测宽，沿type1公用循环绘制；窗口不再用短列表替代。Steam `_draw`的VA `103531CA/103531DC`共同到`10356CB6`并调用`DrawMenu2`（`10308540`）。raw4灯号`103090BD–10309295`：tag7查任务NEW且无当前任务，tag9独立查装备GET；任务NEW不能短路装备。raw7 `10308FA3–103090B8`：tag11先商品再设施未阅，tag12独立查活动NEW；商会NEW不能屏蔽活动。JP偏移raw4为8、raw7为10，英语为6，非JP的GET再减3；隐藏／frame0..2不访问尚未消费的测宽和灯号源。Steam行触摸为`dx+40,width-40`；APK `b/g.java:539`同type1的整行触摸、初dx0及无上述JP额外偏移分开。NEW只读原谓词，不套维护商会p0售卖过滤，也不重筛已冻结tags；坏实际消费源显式拒绝，计划不写Owner／随机／输出。
+
+**系统目标页及返回副作用。** 设置raw12在APK `b/g:10641,11386–11467`及`b/d:117–137,191–246`读写世界／系统设置，音量立即作用，SE改值另试听7；Steam Update `1032692E–103271A0`返回实际调用`SaveSystem`，部分分支再ResetOffscreen／Pop。因此“返回”不是撤销；Steam全部选项／平台setter仍未闭合。说明raw13在APK `10593–10634,11468`从p非零人物池逐项随机交换后反向取最多4人；Steam Init `10314BF0–10314FF2`含`10314EBB`的Random调用，Update `103267E2–1032692E`翻页，不能用标题纪录装饰替代。RankForm Init／Update RVA `202E60/203420`沿p==1名单和共同随机，左右互斥、返回Pop。世界内三条入口先退休菜单，返回露出GameForm；标题入口返回标题。维护`open_records()`现仅接受标题，不能直接改变活世界的返回目标或借标题随机驱动它。
+
+**结束的上游边界。** `RemoveAllForms` RVA `7E8840`在`107E88E9–107E8912`排除平台`kairo.unity.form.DialogForm`，其余标退休，随后框架才Finish／删除；平台DialogForm不是游戏raw1。`GameForm.Finish` RVA `2FA040`释放地图资源并GC，未见保存。`TerminateCheck`（`78D6A0`）还需使能、空表单等门槛，`1078D806`进入Terminate后依平台路径在`1078D8DA`调用Quit或在`1078D8E9`置延迟状态。本轮未证明结束按钮设置reserveSave，不能由此认证立即关闭或立即保存；预留保存尾段沿[存档合同](../rules/PERSISTENCE.md)另核。
 
 维护菜单使用冻结tags而非每轮按当前flag重建；缓存仅与活跃3选择／位置同步，退休旧3可保留后来已改变的旧行。初始化后缺字段、错父、越界行与孤立载荷显式拒绝；精确恢复保留原目录、位置与帧，不再次刷新P/aY。普通世界无待Init菜单时不额外复制Owner。3→建设、冒险、村办、情报及魔法壶的副作用由唯一候选提交；raw10导航可用，五业务项仍因缺应用／平台消费者明确拒绝，不能用可关闭空页假装保存或结束成功。
 

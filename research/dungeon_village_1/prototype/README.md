@@ -8,11 +8,13 @@
 
 [Steam启动局部皮肤](STEAM_STARTUP_SKIN.md)提供标题／选档／手动菜单／询问的只读绘制与触摸注册计划，已过visuals和application验收；它不修改应用文件契约或代替完整可操作标题。原资源、真实测宽、未知字体及平台热区边界分别保留。
 
-`steam_system_menu_skin`在[Steam菜单／情报模块](include/dungeon_village_prototype/steam_information_skin.hpp)提供raw10固定tags20～24的type1行计划，复用raw9源裁片、测宽、ID9和手形；纯函数不执行系统操作。Steam末项为结束游戏，APK末项回标题分开；[例图](../ui/examples/steam-system-menu.png)与[源合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)保留原字体／动态及保存、高分、退出等接线缺口。visuals定向0.80秒通过，无Owner或格式变化。
+`steam_system_menu_skin`在[Steam菜单／情报模块](include/dungeon_village_prototype/steam_information_skin.hpp)提供raw10固定tags20～24的type1行计划，复用raw9源裁片、测宽、ID9和手形；纯函数不执行系统操作。21为设置变更12、22为游戏方法13、23为独立RankForm，旧误译已修正；Steam末项为结束游戏，APK末项回标题分开。[例图](../ui/examples/steam-system-menu.png)与[源合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)保留原字体／动态及系统业务接线缺口。
+
+`steam_navigation_menu_skin`补真实4／7的type1局部计划，可变冻结目录、逐行独立NEW／GET、原触摸宽度及语言偏移已有短测；研究窗口改用正式计划，替换临时短列表。`world-adventure`／`world-village`两个有界入口只经真实新局菜单选行确认，不注入Owner，初期各只有一个实际条目；[示例](../ui/examples/steam-navigation-submenus.png)与[当前验证](../VERIFICATION.md)分开维护窗口、条件组合及原Steam动态。
 
 [steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner；`steam_main_menu_notices`接任务实例j查询及建设aY/P缓存，raw22确认／取消清当前完整任务名单的j，raw21普通／道路定义选择显式刷新建设缓存。缓存初始false、允许陈旧、随完整Owner保存；局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接。[完整合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列来源、当前接线与尚缺边界，不以场景快捷入口代替原菜单。
 
-[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10目录可操作，但保存／纪录／配置／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
+[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10目录可操作，但保存／设置／游戏说明／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
 
 本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
 

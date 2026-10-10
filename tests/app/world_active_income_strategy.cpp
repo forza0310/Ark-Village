@@ -159,15 +159,21 @@ void inspect_income(const State &s, std::ostream &out) {
     out << "INCOME_INPUT month=" << s.scene.calendar.year * 12 + s.scene.calendar.month
         << " cash=" << cash(s) << " record=" << s.maximum_income << '\n';
     for (const auto &[id, f] : s.scene.world.world.facilities)
-        if (f.kind == 3 || f.kind == 9)
+        if (f.kind == 2 || f.kind == 3 || f.kind == 9) {
+            const auto values = sim::startup_world_facility_values(s, id);
+            require(values.has_value(), "income inspection lost its source facility values");
             out << "SHOP id=" << id << " definition=" << f.placement.definition_id
                 << " anchor=" << f.placement.anchor.x << ',' << f.placement.anchor.y
                 << " status=" << f.status << " flags=" << s.facility_flags.at(id)
                 << " category=" << f.category << " shared_charm="
-                << sim::startup_world_facility_values(s, id)->definition_attributes[2]
-                << " price=" << f.price << " level="
+                << values->definition_attributes[2]
+                << " price=" << f.price << " quality=" << values->instance_attributes[1]
+                << " charm=" << values->instance_attributes[2]
+                << " maintenance=" << values->definition_attributes[3] << " level="
                 << s.scene.world.world.facility_uses.at(f.placement.definition_id).level
+                << " previous_month_available=" << (s.scene.calendar.month > 0)
                 << " previous_month_income=" << last_income(s, id) << " sales=" << f.sales << '\n';
+        }
     const auto best = choose_income_investment(s, 10000);
     for (const auto &d : s.rules->facilities)
         if ((d.kind == 3 || d.kind == 9) && d.unlock_rank >= 0 && d.unlock_rank <= s.rank &&
@@ -195,6 +201,7 @@ void inspect_income(const State &s, std::ostream &out) {
         if (!input || !input->landing_departure)
             continue;
         auto catalogue = input->landing_departure->catalogue;
+        const int activity = catalogue.legacy_activity;
         catalogue.legacy_activity = 0;
         const auto cell = s.scene.world.world.ai.contexts.at(actor).cell;
         const auto field = ref::prepare_world_departure_field(s.scene.world.world.map, cell,
@@ -203,6 +210,13 @@ void inspect_income(const State &s, std::ostream &out) {
             continue;
         const auto candidates = ref::collect_activity_candidates(*field.field, catalogue);
         out << "CUSTOMER actor=" << actor.value << " cell=" << cell.x << ',' << cell.y
+            << " human=" << s.scene.world.world.ai.battle.actors.at(actor).definition
+            << " state=" << s.scene.world.world.ai.battle.actors.at(actor).control.state
+            << " activity=" << activity
+            << " task_member="
+            << (std::find(s.participants.begin(), s.participants.end(),
+                          s.scene.world.world.ai.battle.actors.at(actor).definition) !=
+                s.participants.end())
             << " snapshot_error=" << int(candidates.error);
         if (candidates.snapshot) {
             std::map<int, int> counts;

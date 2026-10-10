@@ -774,6 +774,7 @@ int main(int argc, char **argv) {
                                   << " satisfaction=" << state.shop_humans.at(human.identity).satisfaction
                                   << " threshold=" << human.residence_threshold
                                   << " fee=" << human.residence_fee << '\n';
+                ark::test::inspect_income(state, std::cout);
             } else {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
                 require(steam_campaign->strategy.complete(steam_campaign->state),

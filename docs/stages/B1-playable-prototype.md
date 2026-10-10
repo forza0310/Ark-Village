@@ -25,6 +25,8 @@
 
 设施强化回执续批区分商会实际购入、75库存消耗与76首次价格/品质/魅力改良，绑定设施实例及相关道具/设施定义；复用原16列、套件及子策略暂存，不改世界、玩家档或sidecar格式。真实500G交易及两种强化短夹具通过；准备商店存货/星级的初次夹具失败已按实际前提补齐，未改消费者或断言阈值。desktop-debug标准139/139（34.36秒、仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-investment-final.log`、`ctest-headless-investment-final.log`、`ctest-release-investment-final.log`。自然月45→48接续和独立冷载通过，两次强化、8次授勋及其他真实输入见[经营记录](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)，证据在`steam-facility-receipts-b439db3d0a8640e0a068201e6cafd746/RESULT.json`。仍未达三星或全内容，当前程序/数据资格与旧证书分别保留；CI待对应main，未重签玩家包。
 
+同一经营套件按职责拆出`world_campaign_receipts_test.cpp`的540行资格/交易夹具，驱动缩至1087行；通过临时命令回调复用原提交入口，无复制开关、额外Owner或新套件/target。原夹具正文、断言顺序及诊断字符串按498b8c4核对，仅签名/转发/格式变化。desktop-debug标准139/139（34.35秒）、headless-debug标准119/119（25.26秒）均仅排三个月，Release合同及只读月48冷载通过；日志与一次性保留核对在`build/validation/research-e700aac/receipt-structure/`。未重复自然长链、改研究来源或重签旧业务证书，CI仍待对应main。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

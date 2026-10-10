@@ -71,6 +71,7 @@ add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_runtime_pages.cpp src/startup_world_runtime_nonactors.cpp
     src/startup_world_visuals.cpp src/startup_world_presentation.cpp src/startup_world_building.cpp src/startup_world_expansion.cpp
     src/startup_world_human.cpp src/startup_world_tax.cpp src/startup_world_village_activity.cpp
+    src/startup_information.cpp src/startup_world_information.cpp
     src/startup_world_facility_items.cpp src/startup_world_facility_catalog.cpp src/startup_world_magic_pot.cpp
     src/startup_world_commerce.cpp src/startup_world_editing.cpp "${STARTUP_WORLD_CPP}")
 dungeon_village_library(dungeon_village_startup_world)
@@ -86,7 +87,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp
     src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
-    src/startup_title_actor_skin.cpp src/startup_information.cpp src/steam_startup_skin.cpp
+    src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp
     src/steam_facility_skin.cpp src/steam_human_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world

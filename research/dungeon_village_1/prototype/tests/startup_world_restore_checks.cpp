@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
 
 #include <algorithm>
 
@@ -24,6 +25,57 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    {
+        auto information = baseline;
+        if (p::open_startup_world_information_menu(information) != p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore fixture cannot open information menu9");
+        expect(information, true, "information9 uninitialized entry");
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            if (!result.candidate)
+                throw std::runtime_error("restore fixture information framework rejected");
+            state = std::move(*result.candidate);
+        };
+        tick(information);
+        p::StartupInformationInput select;
+        select.select_row = 2;
+        if (p::input_startup_world_information_page(information, information.scripts.pages.back().id,
+                                                   select) != p::StartupWorldRuntimeError::none ||
+            p::acknowledge_startup_world_runtime_page(information, information.scripts.pages.back().id) !=
+                p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore fixture cannot select income36");
+        // 新页0与已关闭菜单4同时存在，恢复不提前初始化或执行Finish。
+        expect(information, true, "information9 closed with income36 pending");
+        auto broken_closed = information;
+        const auto closed_id = broken_closed.scripts.pages[broken_closed.scripts.pages.size() - 2].id;
+        broken_closed.page_counters.erase(closed_id);
+        expect(broken_closed, false, "retiring information9 cannot retain half a payload");
+        tick(information);
+        const auto id = information.scripts.pages.back().id;
+        p::StartupInformationInput right;
+        right.right = true;
+        if (p::input_startup_world_information_page(information, id, right) !=
+            p::StartupWorldRuntimeError::none)
+            throw std::runtime_error("restore fixture income year selection rejected");
+        const auto wire = p::persistence_detail::encode_state(information);
+        auto restored = p::persistence_detail::decode_state(wire, *information.rules);
+        expect(restored, true, "income36 initialized year exact restore");
+        ++checks;
+        if (restored.page_phases.at(id) != 1 || p::persistence_detail::encode_state(restored) != wire)
+            throw std::runtime_error("restore fixture income36 exact codec roundtrip");
+        tick(information); tick(restored);
+        ++checks;
+        if (p::persistence_detail::encode_state(restored) != p::persistence_detail::encode_state(information))
+            throw std::runtime_error("restore fixture income36 same-input continuation");
+        for (int fault = 0; fault < 5; ++fault) {
+            auto damaged = restored;
+            if (fault == 0 || fault == 2) damaged.page_counters.erase(id);
+            if (fault == 1 || fault == 2) damaged.page_phases.erase(id);
+            if (fault == 3) damaged.page_phases.at(id) = 2;
+            if (fault == 4) damaged.page_counters.at(id) = -1;
+            expect(damaged, false, "income36 refuses absent or malformed initialized payload");
+        }
+    }
     {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。
         auto upgrade = baseline;

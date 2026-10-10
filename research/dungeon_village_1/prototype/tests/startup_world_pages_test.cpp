@@ -3,6 +3,8 @@
 #include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -274,6 +276,199 @@ void page_tick(StartupWorldRuntimeState &s) {
     const auto r = prepare_startup_world_runtime(s);
     check(r.candidate.has_value(), "managed page actual framework update succeeds");
     s = *r.candidate;
+}
+void information_menu_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    check(open_startup_world_information_menu(s)==E::none,
+          "real scene opens maintained information9 without fabricating a main-menu3");
+    const auto id=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==9 && !s.page_phases.count(id) &&
+              !s.page_counters.count(id) && !inspect_startup_world_information_page(s,id),
+          "new9 waits for framework initialization, query does not install payload");
+    auto frozen=startup_world_state_digest(s);
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(s,id,confirm)!=E::none &&
+              startup_world_state_digest(s)==frozen,"uninitialized9 input atomically rejects");
+    auto paused_entry=s;paused_entry.scene.framework_paused=true;
+    page_tick(paused_entry);
+    check(paused_entry.scripts.pages.back().lifecycle==0 &&
+              !paused_entry.page_phases.count(id) && !paused_entry.page_counters.count(id),
+          "pause before first information callback retains uninitialized lifecycle and absent payload");
+    paused_entry.scene.framework_paused=false;page_tick(paused_entry);
+    check(inspect_startup_world_information_page(paused_entry,id).has_value(),
+          "unpaused fresh information page initializes through its real framework entry");
+    page_tick(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->raw==9 && view->selection_or_period==0 && view->frame==2 && !view->income,
+          "raw9 framework global count then menu count gives first frame2");
+    constexpr std::array<int,5> tags{15,14,16,17,18},targets{35,34,36,37,38};
+    for(int row=0;row<5;++row)
+        check(view->entries[row].tag==tags[row] && view->entries[row].target_raw==targets[row] &&
+                  view->entries[row].implemented==(row==2),
+              "raw9 retains all five original ordered rows; implemented is maintenance capability only");
+    page_tick(s);
+    check(s.page_counters.at(id)==3,"raw9 second update reaches original menu count cap3");
+    StartupInformationInput both;both.up=true;both.down=true;both.confirm=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==4,
+          "raw9 simultaneous up/down/confirm takes up only and wraps to row4 without opening child");
+    StartupInformationInput down;down.down=true;
+    check(input_startup_world_information_page(s,id,down)==E::none && s.page_phases.at(id)==0,
+          "raw9 down wraps row4 back to row0");
+    for(int row:{0,1,3,4}) {
+        StartupInformationInput select;select.select_row=row;
+        check(input_startup_world_information_page(s,id,select)==E::none,
+              "unimplemented target still permits selecting its original menu row");
+        frozen=startup_world_state_digest(s);
+        check(input_startup_world_information_page(s,id,confirm)!=E::none &&
+                  startup_world_state_digest(s)==frozen,
+              "unimplemented child rejects confirmation without inventing page or partial retirement");
+    }
+    for(int fault=0;fault<12;++fault) {
+        auto bad=s;
+        StartupInformationInput input=down;
+        if(fault==0)bad.page_phases.erase(id);
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.page_phases.at(id)=-1;
+        if(fault==3)bad.page_phases.at(id)=5;
+        if(fault==4)bad.page_counters.at(id)=-1;
+        if(fault==5)bad.page_counters.at(id)=4;
+        if(fault==6)bad.scripts.pages.back().lifecycle=1;
+        if(fault==7)bad.scripts.pages.back().lifecycle=3;
+        if(fault==8)bad.scripts.pages.back().lifecycle=4;
+        if(fault==9)bad.scene.framework_paused=true;
+        if(fault==10){input={};input.select_row=5;}
+        if(fault==11){input={};input.select_row=2;input.confirm=true;}
+        const auto digest=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,input)!=E::none &&
+                  startup_world_state_digest(bad)==digest,
+              "raw9 bad payload/selection/lifecycle/pause or mixed row/key input rejects whole action");
+    }
+    auto missing=s;missing.page_phases.erase(id);missing.page_counters.erase(id);
+    check(!prepare_startup_world_runtime(missing).candidate,
+          "initialized9 with both payload maps missing cannot masquerade as a fresh page");
+    StartupInformationInput select;select.select_row=2;
+    check(input_startup_world_information_page(s,id,select)==E::none &&
+              input_startup_world_information_page(s,id,confirm)==E::none,
+          "raw9 income row opens actual36");
+    check(s.scripts.pages.back().legacy_page==36 &&
+              std::any_of(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &p){return p.id==id&&p.lifecycle==4;}),
+          "income selection retires9 after pushing36");
+    const auto income=s.scripts.pages.back().id;
+    page_tick(s);
+    check(inspect_startup_world_information_page(s,income).has_value() &&
+              !s.page_phases.count(id) && !s.page_counters.count(id),
+          "framework removes retired9 and its two maps while initializing36");
+    // 独立原raw3父页条件夹具：不把维护scene快捷入口冒称完整主菜单实现。
+    auto parent=fixture(3);parent.scripts.executing_page.reset();parent.scripts.pages.back().lifecycle=2;
+    const auto main=parent.scripts.pages.back().id;
+    check(open_startup_world_information_menu(parent)==E::none,"actual raw3 parent accepts information entry");
+    const auto menu=parent.scripts.pages.back().id;page_tick(parent);
+    auto cancelled=parent;StartupInformationInput back;back.left=true;
+    check(input_startup_world_information_page(cancelled,menu,back)==E::none &&
+              cancelled.scripts.pages.back().lifecycle==4 &&
+              std::any_of(cancelled.scripts.pages.begin(),cancelled.scripts.pages.end(),[&](const auto &p){
+                  return p.id==main&&p.lifecycle!=4;}),"raw9 left retires only itself and retains actual raw3 parent");
+    check(input_startup_world_information_page(parent,menu,select)==E::none &&
+              input_startup_world_information_page(parent,menu,confirm)==E::none,
+          "raw3-to9 actual stack selects36");
+    for(const auto retired:{main,menu})
+        check(std::any_of(parent.scripts.pages.begin(),parent.scripts.pages.end(),[&](const auto &p){
+                  return p.id==retired&&p.lifecycle==4;}),"raw36 selection retires both actual menu3 and9");
+}
+void income_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    check(open_startup_world_information_menu(s)==E::none,"income test opens real information entry");
+    const auto menu=s.scripts.pages.back().id;page_tick(s);
+    StartupInformationInput select;select.select_row=2;
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(s,menu,select)==E::none &&
+              input_startup_world_information_page(s,menu,confirm)==E::none,"income test selects original row2");
+    const auto id=s.scripts.pages.back().id;page_tick(s);
+    // 仅注入权威桶作投影条件夹具，不声称这些收入已自然赚取；金额算式矩阵归纯查询套件。
+    s.monthly_cash={};const int month=s.scene.calendar.month,other=(month+1)%12;
+    s.monthly_cash[month][0]={123,7};s.monthly_cash[other][0]={20,3};
+    auto before=startup_world_state_digest(s);
+    auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->raw==36 && view->selection_or_period==0 && view->income &&
+              view->income->rows[0].income==123 && view->income->rows[0].expense==7 &&
+              startup_world_state_digest(s)==before,"month view reads current Owner bucket without writes");
+    const auto count=s.page_counters.at(id);
+    const auto updates=s.scene.world.updates;
+    const auto units=s.scene.calendar.units;
+    const auto draws=s.scene.random.draws();
+    page_tick(s);
+    check(s.page_counters.at(id)==count+1 && s.scene.world.updates==updates &&
+              s.scene.calendar.units==units && s.scene.random.draws()==draws,
+          "modal36 advances only page count while world/date/random remain frozen");
+    StartupInformationInput left;left.left=true;
+    check(input_startup_world_information_page(s,id,left)==E::none && s.page_phases.at(id)==1,
+          "36 left from month wraps to year");
+    before=startup_world_state_digest(s);view=inspect_startup_world_information_page(s,id);
+    check(view && view->income && view->income->rows[0].income==143 && view->income->rows[0].expense==10 &&
+              startup_world_state_digest(s)==before,"year view reads same current Owner across twelve buckets");
+    StartupInformationInput both;both.left=true;both.right=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==1,
+          "36 left/right are independent in one input, two flips retain year");
+    StartupInformationInput right;right.right=true;
+    check(input_startup_world_information_page(s,id,right)==E::none && s.page_phases.at(id)==0,
+          "36 right from year wraps to month");
+    auto wrapping=s;wrapping.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+    const auto wrapped=update_startup_world_information_page(wrapping,id);
+    check(wrapped && wrapped->page_counters.at(id)==0,"36 legal count upper endpoint advances moduloINT_MAX");
+    for(int fault=0;fault<10;++fault) {
+        auto bad=s;StartupInformationInput input=right;
+        if(fault==0)bad.page_phases.erase(id);
+        if(fault==1)bad.page_counters.erase(id);
+        if(fault==2)bad.page_phases.at(id)=2;
+        if(fault==3)bad.page_counters.at(id)=-1;
+        if(fault==4)bad.page_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==5)bad.scripts.pages.back().lifecycle=1;
+        if(fault==6)bad.scripts.pages.back().lifecycle=3;
+        if(fault==7)bad.scripts.pages.back().lifecycle=4;
+        if(fault==8)bad.scene.framework_paused=true;
+        if(fault==9){input={};input.select_row=0;}
+        const auto digest=startup_world_state_digest(bad);
+        check(input_startup_world_information_page(bad,id,input)!=E::none && startup_world_state_digest(bad)==digest,
+              "36 bad payload/lifecycle/pause/selection rejects; INT_MAX rejection is maintenance overflow policy");
+    }
+    auto paused=s;paused.scene.framework_paused=true;
+    const auto pause_frame=paused.page_counters.at(id);page_tick(paused);
+    check(paused.page_counters.at(id)==pause_frame && paused.scene.world.updates==updates &&
+              paused.scene.random.draws()==draws,"framework pause freezes information counter too");
+    auto double_close=s;both.confirm=true;
+    check(input_startup_world_information_page(double_close,id,both)==E::none &&
+              double_close.page_phases.at(id)==0 && double_close.scripts.pages.back().lifecycle==4,
+          "same input left/right both run before confirm retires36");
+    left.confirm=true;
+    check(input_startup_world_information_page(s,id,left)==E::none && s.page_phases.at(id)==1 &&
+              s.scripts.pages.back().lifecycle==4,"single direction changes period before same-input confirm closes");
+    before=startup_world_state_digest(s);
+    check(input_startup_world_information_page(s,id,confirm)!=E::none && startup_world_state_digest(s)==before,
+          "stale closed36 input cannot flip or close again");
+    const auto steps=s.simulation_steps;page_tick(s);
+    check(!s.page_phases.count(id) && !s.page_counters.count(id) && s.simulation_steps==steps+1,
+          "closed36 releases both maps and restores actual main-scene simulation admission");
+    // 初局介绍仍按真实确认消耗，允许新局脚本先出现；不篡改事件seen去强求同轮经营。
+    for(int n=0;n<16 && s.scripts.pages.back().kind!=ref::WorldScriptPageKind::scene;++n) {
+        const auto top=s.scripts.pages.back();
+        if(top.lifecycle!=4)
+            check(acknowledge_startup_world_runtime_page(s,top.id)==E::none,
+                  "post-information startup dialogue uses real confirmation");
+        page_tick(s);
+    }
+    check(s.scripts.pages.back().kind==ref::WorldScriptPageKind::scene &&
+              open_startup_world_information_menu(s)==E::none,"after real return next information entry is available");
+    const auto next=s.scripts.pages.back().id;page_tick(s);
+    check(next!=menu && !s.page_phases.count(menu) && !s.page_counters.count(menu) &&
+              !s.page_phases.count(id) && !s.page_counters.count(id),"new entry retains no retired information IDs");
+    check(input_startup_world_information_page(s,next,select)==E::none &&
+              input_startup_world_information_page(s,next,confirm)==E::none,"next menu opens a fresh36 object");
+    const auto fresh=s.scripts.pages.back().id;page_tick(s);
+    check(fresh!=id && s.page_phases.at(fresh)==0,"fresh36 starts month0 rather than retaining previous year");
+    check(cancel_startup_world_runtime_page(s,fresh)==E::none && s.scripts.pages.back().lifecycle==4,
+          "runtime cancel bridge closes36 through the maintained Owner action");
 }
 void human_details_and_gifts() {
     using A = StartupHumanPageAction;
@@ -2985,6 +3180,8 @@ int main() {
     try {
         facility_commodity_pages();
         facility_reputation_pages();
+        information_menu_pages();
+        income_information_pages();
         ordinary_item_pages();
         commerce_after_reward_writeback();
         commerce_transactions();

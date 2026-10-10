@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
 
@@ -904,6 +905,10 @@ struct Validation {
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                (p.legacy_page == 9 || p.legacy_page == 36) &&
+                !valid_startup_world_information_page(s, p.id))
+                return fail("information page: 初始化/页签/选择/计数载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

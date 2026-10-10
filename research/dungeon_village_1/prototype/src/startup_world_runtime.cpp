@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -940,6 +941,13 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::open_village_activities() {
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_commerce() {
     return open_startup_world_commerce(state_);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_information_menu() {
+    return open_startup_world_information_menu(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_information_page(
+    std::uint64_t page, const StartupInformationInput &input) {
+    return input_startup_world_information_page(state_, page, input);
+}
 StartupBuildResult StartupWorldRuntimeSession::begin_road(int definition) {
     return begin_startup_world_road(state_, definition);
 }
@@ -1087,13 +1095,26 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::invalid_state,
                 ref::WorldScheduleError::none,
                 {}};
+    // 暂停不初始化信息页，也不把尚未具备载荷的生命周期0页改成已就绪2。
+    const auto &pending = admitted.scripts.pages.back();
+    if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
+        (pending.legacy_page == 9 || pending.legacy_page == 36)) {
+        if (!valid_startup_world_information_page(admitted, pending.id))
+            return {StartupWorldRuntimeError::missing_source, {},
+                    ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};
+        admitted.scripts.executing_page.reset();
+        admitted.scene.top_is_main = false;
+        return {StartupWorldRuntimeError::none, std::move(admitted),
+                ref::WorldSceneError::none, ref::WorldScheduleError::none, {}};
+    }
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
     if (!initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||
         !initialize_startup_world_facility_item_pages(admitted) ||
         !initialize_startup_world_facility_catalog_pages(admitted) ||
-        !initialize_startup_world_magic_pot_pages(admitted))
+        !initialize_startup_world_magic_pot_pages(admitted) ||
+        !initialize_startup_world_information_pages(admitted))
         return {StartupWorldRuntimeError::missing_source,
                 {},
                 ref::WorldSceneError::missing_consumer,

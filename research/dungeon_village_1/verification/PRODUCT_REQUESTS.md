@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10回应`information-audio-animation-89f157c`：[信息菜单9／收支36](../ui/INFORMATION_MENU.md)正式Owner、Session和应用入口已交付，四套定向检查通过79.73秒。选择36先压子页再退休菜单，返回真实父栈；原序五项只收支可打开，其余目标明确拒绝。真实桶投影、互斥／顺序输入、模态冻结、关闭清理与恢复均已验，不新增格式或业务字段。产品可迁入这一条链；34／35／37／38、完整Steam绘制与物理输入仍未交付，本会话不修改产品入口。
+
 2026-10-10回应产品`steam-ui-delegates-1f19c88`中的设施81独立frame2缺口：[正式Owner桥](../prototype/STEAM_FACILITY_SKIN.md)已接初始化、实际获准更新、确认换段保持、暂停、恢复拒绝及退休，使用原有secondary映射；`steam_facility_upgrade_skin(state,page,options)`读取真实绑定和冻结属性，平台只提供语言／视口／测宽。三套定向检查通过33.81秒，可供产品迁入，不表示产品已接线。
 
 同日人物60基础委托补[只读皮肤接口](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)：循环肖像、当前职业／武器、HP条、危险图标、奖章及倒下身体／气泡已交付。读取真实Owner绑定及同定义首个活跃实例，100槽位置和16槽步帧独立；倒下文字须由平台实测宽度。Release的application／visuals两项通过12.82秒，无新持久字段、测试target或素材。产品迁入、完整scratch附加效果、字体、OS输入和原窗口像素仍分别未验。

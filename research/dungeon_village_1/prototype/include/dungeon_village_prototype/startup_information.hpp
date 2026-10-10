@@ -21,7 +21,7 @@ struct StartupIncomeInformation {
 };
 // 固定APK raw36：period=0读取当前月，1累加本年全部12桶。
 // 非法month/period显式拒绝；原Java int回卷后转long的金额语义保留。
-// 不更新世界、NEW标记、随机、页栈或文件，不等于已维护raw9/36控制器。
+// 不更新世界、NEW标记、随机、页栈或文件；raw9/36控制器见startup_world_information.hpp。
 std::optional<StartupIncomeInformation> startup_income_information(
     const StartupInformationCash &monthly_cash, int current_month, int period);
 } // namespace dungeon_village_prototype

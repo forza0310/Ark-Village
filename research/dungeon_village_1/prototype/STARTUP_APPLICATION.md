@@ -34,6 +34,8 @@ raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严
 
 ## 输出、随机与恢复
 
+信息入口`open_information_menu()`和`input_information_page(page,input)`同样经过唯一`apply_world_action`提交；未初始化、过期、暂停或未维护目标不安装候选。通用确认／返回转发真实9／36消费者；菜单选择收支后退休菜单类，36返回实际父栈，不额外经营一轮。既有世界phase／counter完整保存选择、页签和计数，不复制现金桶或改应用格式；页面功能与输入顺序见[信息合同](../ui/INFORMATION_MENU.md)，完整Steam皮肤及物理输入仍分开。
+
 健康冷构造和world→title真正重入各入队一次`replace_bgm(0)`。纪录／配置／raw20／询问返回不重新初始化，不重复B0。真实start／load激活成功后，沿G的任务／遭遇状态追加B1或B2，排在该事务较早实际输出之后；失败不发，不按ID去重。首次B0尚未领取就start时，B0、G均按原序保留。
 
 应用公开命令成功边界把当前world声音转入应用唯一typed队列，world当前队列归空，历史checkpoint原声音仍保存。`take_audio_requests()`与兼容ID接口领取的是同一队列，任一领取后另一接口不能再取到同一请求。记录operation＋ID；只比较ID会丢失播放、切换等语义。CLI逐命令／更新消费输出，捕获还要求Driver已消费；精确恢复不重发B0／G。

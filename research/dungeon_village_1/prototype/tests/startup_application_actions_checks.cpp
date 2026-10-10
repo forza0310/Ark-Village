@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
 #include <fstream>
@@ -125,6 +126,7 @@ void management_bridges(const std::filesystem::path &root) {
     rejected([&]{return !app.open_magic_pot(StartupMagicPotEntry::main_menu).empty();});
     rejected([&]{return !app.act_magic_pot_page(1,StartupMagicPotAction::confirm).empty();});
     rejected([&]{return !app.open_task_menu().empty();});
+    rejected([&]{return !app.open_information_menu().empty();});
     good(app.request_new_game(0)); good(app.start_game());
     require(app.take_audio_requests()==std::vector<StartupAudioRequest>{
                 {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}},
@@ -133,7 +135,31 @@ void management_bridges(const std::filesystem::path &root) {
     rejected([&]{return !app.open_magic_pot(StartupMagicPotEntry::main_menu).empty();});
     const auto directory=app.records().save_directory;
     auto expected=*app.world();
-    auto error=expected.open_build_menu();
+    auto error=expected.open_information_menu();
+    compare_command(app,expected,app.open_information_menu(),error);
+    const auto information_menu=top(*app.world())->id;
+    StartupInformationInput info_input;
+    info_input.select_row=2;
+    rejected([&]{return !app.input_information_page(information_menu,info_input).empty();});
+    auto info_tick=expected.update();
+    compare_command(app,expected,app.update(),info_tick.error);
+    error=expected.input_information_page(information_menu,info_input);
+    compare_command(app,expected,app.input_information_page(information_menu,info_input),error);
+    error=expected.acknowledge_page(information_menu);
+    compare_command(app,expected,app.acknowledge_page(information_menu),error);
+    const auto income_page=top(*app.world())->id;
+    require(top(*app.world())->legacy_page==36,"information menu opens real income page36");
+    info_tick=expected.update();
+    compare_command(app,expected,app.update(),info_tick.error);
+    info_input={}; info_input.right=true;
+    error=expected.input_information_page(income_page,info_input);
+    compare_command(app,expected,app.input_information_page(income_page,info_input),error);
+    require(app.world()->state().page_phases.at(income_page)==1,
+            "application forwards income year selection to the single Owner");
+    error=expected.cancel_page(income_page);
+    compare_command(app,expected,app.cancel_page(income_page),error);
+    rejected([&]{return !app.input_information_page(income_page,info_input).empty();});
+    error=expected.open_build_menu();
     compare_command(app,expected,app.open_build_menu(),error);
     const auto build_page=top(*app.world())->id;
     rejected([&]{return !app.select_build_menu(build_page+1,35).error.empty();});

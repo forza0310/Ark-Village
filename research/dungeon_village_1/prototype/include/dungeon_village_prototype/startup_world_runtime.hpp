@@ -27,6 +27,7 @@ enum class StartupCommerceAction;
 enum class StartupFacilityCatalogAction;
 enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
+struct StartupInformationInput;
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -387,6 +388,9 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError open_task_control_menu();
     StartupWorldRuntimeError open_village_activities();
     StartupWorldRuntimeError open_commerce();
+    StartupWorldRuntimeError open_information_menu();
+    StartupWorldRuntimeError input_information_page(std::uint64_t page,
+                                                     const StartupInformationInput &input);
     StartupWorldRuntimeError open_magic_pot(StartupMagicPotEntry entry);
     StartupWorldRuntimeError act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
                                                 int selection = 0);

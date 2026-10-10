@@ -347,6 +347,13 @@ StartupApplicationTaskResult StartupApplication::act_task_page(std::uint64_t pag
 std::string StartupApplication::open_human_page(int human) {
     return apply_world_action([&](auto &world) { return world.open_human_page(human); });
 }
+std::string StartupApplication::open_information_menu() {
+    return apply_world_action([&](auto &world) { return world.open_information_menu(); });
+}
+std::string StartupApplication::input_information_page(
+    std::uint64_t page, const StartupInformationInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_information_page(page, input); });
+}
 std::string StartupApplication::act_human_page(std::uint64_t page, StartupHumanPageAction action,
                                                int selection) {
     return apply_world_action([&](auto &world) { return world.act_human_page(page, action, selection); });

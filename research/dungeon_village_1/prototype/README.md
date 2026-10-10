@@ -8,6 +8,8 @@
 
 人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
 
+信息菜单与收支页由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护，复用世界库的收支纯查询。Session／Application提供`open_information_menu`和`input_information_page`；后者接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，当前只开放收支36，其余目标拒绝且状态不变；主场景快捷入口属于维护适配，不代表完整主菜单／OS输入。页面载荷复用现有phase／counter，关闭后由框架统一退休；窗口皮肤及34／35／37／38仍沿[信息合同](../ui/INFORMATION_MENU.md)逐项交付。
+
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。
 本包独立于产品主构建，只修改研究代码。

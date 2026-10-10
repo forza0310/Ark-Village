@@ -99,6 +99,10 @@ class StartupApplication {
     std::optional<StartupTitleReplay> capture_title_replay() const;
     std::string restore_title_replay(const StartupTitleReplay &snapshot);
     std::string update(bool confirm = false);
+    // 窗口桥仅提交明确设置，不开放可写Session；同值输入通过资格检查后不复制世界。
+    std::string set_paused(bool paused);
+    std::string set_speed(int setting);
+    std::string set_page_confirm_held(bool held);
     std::string acknowledge_page(std::uint64_t page);
     std::string act_award_page(std::uint64_t page, ref::WorldAwardAction action, int selection = 0);
     std::string return_rank_page(std::uint64_t page);
@@ -110,11 +114,25 @@ class StartupApplication {
     StartupApplicationBuildResult confirm_build(ref::Position anchor,
                                                 ref::FacilityOrientation orientation);
     std::string cancel_build();
+    StartupApplicationBuildResult begin_build(int definition);
+    StartupApplicationBuildResult begin_road(int definition);
+    StartupApplicationBuildResult begin_edit(bool move);
+    StartupApplicationBuildResult confirm_edit(ref::Position position,
+                                               ref::FacilityOrientation orientation);
+    std::string cancel_edit();
     std::string open_facility_page(std::uint64_t facility);
     std::string act_facility_page(std::uint64_t page, StartupFacilityPageAction action);
     StartupApplicationBuildResult act_residence_page(std::uint64_t page, int human,
                                                      bool cancel = false);
     std::string open_village_activities();
+    std::string open_commerce();
+    std::string act_commerce_page(std::uint64_t page, StartupCommerceAction action,
+                                   int selection = 0);
+    std::string act_facility_item_page(std::uint64_t page, StartupFacilityItemAction action,
+                                       int selection = -1);
+    std::string act_facility_catalog_page(std::uint64_t page, StartupFacilityCatalogAction action,
+                                          int selection = -1);
+    std::string act_tax_page(std::uint64_t page, StartupWorldTaxAction action, int selection = 0);
     std::string act_village_activity_page(std::uint64_t page, StartupVillageActivityAction action,
                                           int selection = 0);
     // 魔法壶沿Session两种原入口与41–47载荷提交，不另建应用层壶状态。
@@ -154,6 +172,7 @@ class StartupApplication {
     StartupTitleMenuContext title_menu_context() const;
     void sync_title_page();
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
+    std::string world_action_error() const;
     template <class Action> std::string apply_world_action(Action &&action);
     std::string update_clear(bool confirm);
     // raw14请求经严格稳定导出及既有单系统发布点处理；结果页不成为普通档的一部分。

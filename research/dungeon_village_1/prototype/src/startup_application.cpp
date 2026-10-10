@@ -254,12 +254,17 @@ std::string StartupApplication::acknowledge_page(std::uint64_t id) {
 }
 // 每次输入只复制一份Session候选。领域拒绝不提交；业务denial保留原合法提示，
 // 文件提交失败则保留旧应用、世界、音频与系统目录，不把失败动作伪报成已创建/已接受。
-template <class Action> std::string StartupApplication::apply_world_action(Action &&action) {
+std::string StartupApplication::world_action_error() const {
     if (!error_.empty()) return error_;
     if (!world_ || page_ != Page::world || clear_ || clear_rows_ || clear_id_)
         return "当前没有可操作的普通世界页面";
     const auto *page = top(world_->state());
     if (!page || is_clear(page)) return "管理命令不能绕过计分或缺失页面";
+    return {};
+}
+template <class Action> std::string StartupApplication::apply_world_action(Action &&action) {
+    const auto eligibility = world_action_error();
+    if (!eligibility.empty()) return eligibility;
     try {
         auto candidate = *world_;
         const auto error = runtime_error(action(candidate));
@@ -267,6 +272,31 @@ template <class Action> std::string StartupApplication::apply_world_action(Actio
     } catch (const std::exception &error) {
         return std::string("世界管理候选拒绝：") + error.what();
     }
+}
+std::string StartupApplication::set_paused(bool paused) {
+    const auto eligibility = world_action_error();
+    if (!eligibility.empty()) return eligibility;
+    if (world_->state().scene.framework_paused == paused) return {};
+    return apply_world_action([&](auto &world) {
+        world.set_paused(paused); return StartupWorldRuntimeError::none;
+    });
+}
+std::string StartupApplication::set_speed(int setting) {
+    const auto eligibility = world_action_error();
+    if (!eligibility.empty()) return eligibility;
+    if (setting != 0 && setting != 1) return "窗口速度设置仅允许0或1";
+    if (world_->state().scene.speed_setting == setting) return {};
+    return apply_world_action([&](auto &world) {
+        world.set_speed(setting); return StartupWorldRuntimeError::none;
+    });
+}
+std::string StartupApplication::set_page_confirm_held(bool held) {
+    const auto eligibility = world_action_error();
+    if (!eligibility.empty()) return eligibility;
+    if (world_->state().page_confirm_held == held) return {};
+    return apply_world_action([&](auto &world) {
+        world.set_page_confirm_held(held); return StartupWorldRuntimeError::none;
+    });
 }
 std::string StartupApplication::open_build_menu() {
     return apply_world_action([](auto &world) { return world.open_build_menu(); });
@@ -297,6 +327,46 @@ StartupApplicationBuildResult StartupApplication::confirm_build(ref::Position an
 std::string StartupApplication::cancel_build() {
     return apply_world_action([](auto &world) { return world.cancel_build(); });
 }
+StartupApplicationBuildResult StartupApplication::begin_build(int definition) {
+    StartupApplicationBuildResult result;
+    result.error = apply_world_action([&](auto &world) {
+        const auto r = world.begin_build(definition);
+        result.denial = r.denial; result.created = r.created; return r.error;
+    });
+    if (!result.error.empty()) { result.denial = StartupBuildDenial::none; result.created.reset(); }
+    return result;
+}
+StartupApplicationBuildResult StartupApplication::begin_road(int definition) {
+    StartupApplicationBuildResult result;
+    result.error = apply_world_action([&](auto &world) {
+        const auto r = world.begin_road(definition);
+        result.denial = r.denial; result.created = r.created; return r.error;
+    });
+    if (!result.error.empty()) { result.denial = StartupBuildDenial::none; result.created.reset(); }
+    return result;
+}
+StartupApplicationBuildResult StartupApplication::begin_edit(bool move) {
+    StartupApplicationBuildResult result;
+    result.error = apply_world_action([&](auto &world) {
+        const auto r = world.begin_edit(move);
+        result.denial = r.denial; result.created = r.created; return r.error;
+    });
+    if (!result.error.empty()) { result.denial = StartupBuildDenial::none; result.created.reset(); }
+    return result;
+}
+StartupApplicationBuildResult StartupApplication::confirm_edit(ref::Position position,
+                                                               ref::FacilityOrientation orientation) {
+    StartupApplicationBuildResult result;
+    result.error = apply_world_action([&](auto &world) {
+        const auto r = world.confirm_edit(position, orientation);
+        result.denial = r.denial; result.created = r.created; return r.error;
+    });
+    if (!result.error.empty()) { result.denial = StartupBuildDenial::none; result.created.reset(); }
+    return result;
+}
+std::string StartupApplication::cancel_edit() {
+    return apply_world_action([](auto &world) { return world.cancel_edit(); });
+}
 std::string StartupApplication::open_facility_page(std::uint64_t facility) {
     return apply_world_action([&](auto &world) { return world.open_facility_page(facility); });
 }
@@ -315,6 +385,25 @@ StartupApplicationBuildResult StartupApplication::act_residence_page(std::uint64
 }
 std::string StartupApplication::open_village_activities() {
     return apply_world_action([](auto &world) { return world.open_village_activities(); });
+}
+std::string StartupApplication::open_commerce() {
+    return apply_world_action([](auto &world) { return world.open_commerce(); });
+}
+std::string StartupApplication::act_commerce_page(std::uint64_t page,
+                                                 StartupCommerceAction action, int selection) {
+    return apply_world_action([&](auto &world) { return world.act_commerce_page(page, action, selection); });
+}
+std::string StartupApplication::act_facility_item_page(std::uint64_t page,
+                                                      StartupFacilityItemAction action, int selection) {
+    return apply_world_action([&](auto &world) { return world.act_facility_item_page(page, action, selection); });
+}
+std::string StartupApplication::act_facility_catalog_page(std::uint64_t page,
+                                                         StartupFacilityCatalogAction action, int selection) {
+    return apply_world_action([&](auto &world) { return world.act_facility_catalog_page(page, action, selection); });
+}
+std::string StartupApplication::act_tax_page(std::uint64_t page,
+                                            StartupWorldTaxAction action, int selection) {
+    return apply_world_action([&](auto &world) { return world.act_tax_page(page, action, selection); });
 }
 std::string StartupApplication::act_village_activity_page(std::uint64_t page,
                                                           StartupVillageActivityAction action,

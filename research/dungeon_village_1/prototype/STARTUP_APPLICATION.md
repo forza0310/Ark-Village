@@ -1,8 +1,8 @@
 # 标题、配置、跨局纪录与应用事务
 
-2026-10-10增加17项管理转发：建设目录／放置／取消，设施／住宅，村办，任务目录／控制，人物和真正晋级／取消。全部复用Session的资格与候选，再通过`commit_world`统一提交系统纪录和声音；计分或非活动世界拒绝。新增结构化建设／任务回执不是持久状态，事务失败清除created／accepted／departed；业务denial可能提交原不足资源提示，不能据此自动重复付款。世界仍只读公开，没有任意状态注入入口。无新增持久字段，世界4／应用7和既有前缀身份保持；检查见[管理／窗框交付](../VERIFICATION.md#应用管理入口steam窗框与当前两条短回放2026-10-10)。
+2026-10-10此前批增加17项管理转发：建设目录／放置／取消，设施／住宅，村办，任务目录／控制，人物和真正晋级／取消。全部复用Session的资格与候选，再通过`commit_world`统一提交系统纪录和声音；计分或非活动世界拒绝。新增结构化建设／任务回执不是持久状态，事务失败清除created／accepted／departed；业务denial可能提交原不足资源提示，不能据此自动重复付款。世界仍只读公开，没有任意状态注入入口。该批无新增持久字段，当时世界4／应用7和既有前缀身份保持；检查见[管理／窗框交付](../VERIFICATION.md#应用管理入口steam窗框与当前两条短回放2026-10-10)。
 
-2026-10-09。当前世界语义4／应用语义7修正建设、移动、撤除后邻接到达价格缓存，验收进度见[当前交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。此前标题菜单控制器、系统2四目录、应用级声音及语义6回放的五项检查通过103.30秒，属于[标题批历史交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../verification/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
+2026-10-09历史批以世界语义4／应用语义7修正建设、移动、撤除后邻接到达价格缓存，验收见[当批交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。此前标题菜单控制器、系统2四目录、应用级声音及语义6回放的五项检查通过103.30秒，属于[标题批历史交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)。当前世界5／应用8／系统2以[存取模块](PERSISTENCE.md)为准，本批窗口宿主不改格式。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../verification/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
 
 `dungeon_village_startup_application`是无raylib依赖的研究维护消费者，不是产品窗口或原版档兼容器。[StartupApplication](include/dungeon_village_prototype/startup_application.hpp)协调一份系统观察、标题状态、草稿、音频队列及至多一个世界Session，只向调用方公开只读世界。正常文件协议见[应用存储](APPLICATION_STORAGE.md)，完整回放见[应用回放](APPLICATION_REPLAY.md)，避免在本页复制其线格式和预算。
 
@@ -44,11 +44,15 @@ raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严
 
 开纪录按p==1池交换、最多5人，空池按flags1后备；重画和翻页零抽。start通过handoff公开完整交接。world→title复制世界随机，重置q/l/s/t并保留f132f；配置／纪录返回保留背景。背景与菜单为分别具名的事务，Steam75绘制门槛不能覆盖APK100更新门槛，原完整更新／输入相位仍有未证项，不能把API调用数称为原逻辑tick。
 
-独立标题内存控制器现为`startup-title-v3`：无世界时保存背景、菜单、草稿、页面、装饰、随机、请求和当前目录身份；恢复先核与当前应用的目录观察一致，不重新读取磁盘、不加载文件或发初始化输出。旧v1／v2拒绝。完整磁盘应用使用AVRAPP01语义7，19个直接成员及43个嵌套字段分类，另含完整四目录引用文件视图；恢复到尚不存在的新研究根后联合安装。旧应用1–6和系统1均拒绝，不改旧证书迁移。独立世界语义4；容器格式、字段schema、系统版本2和Driver v3保持。本次语义退休针对旧邻接收入可能已经改变资金、随机及历史，不是加载时补算price就能修复。已推进raw17仍不能只用世界档从零恢复应用计分。
+独立标题内存控制器现为`startup-title-v3`：无世界时保存背景、菜单、草稿、页面、装饰、随机、请求和当前目录身份；恢复先核与当前应用的目录观察一致，不重新读取磁盘、不加载文件或发初始化输出。旧v1／v2拒绝。完整磁盘应用AVRAPP01当前语义8，另含完整四目录引用文件视图；恢复到尚不存在的新研究根后联合安装。旧应用1–7和系统1均拒绝，不改旧证书迁移；独立世界当前语义5，字段及版本演进见[存取模块](PERSISTENCE.md)。此前邻接收入可能已经改变资金、随机及历史，不能加载后补算price冒称修复旧档。已推进raw17仍不能只用世界档从零恢复应用计分。
 
-原自动中断产生者、raw14轮内保存、纪录动画完整调度、精确Steam窗口／字体／全部皮肤和自然通关尚未因此完成。正常世界保存仅支持稳定normal场景，应用快照不替它偷偷扩大资格。
+raw14轮内保存已接应用事务，普通档仍只保存严格导出的稳定normal场景，不直接保存结果模态页。原自动中断产生者、完整标题、设置12、说明13、RankForm、纪录动画完整调度、精确Steam字体／全部皮肤和自然通关尚未因此完成；应用快照不替普通档扩大资格。
 
 ## 有界CLI与交付边界
+
+研究窗口本批应用宿主已通过[定向与短窗口检查](../VERIFICATION.md#研究窗口应用宿主与真实保存2026-10-10)：`dungeon_village_prototype.exe --world --application-root <现存research/dungeon_village_1/work子目录> --application-new 0|1`或`--application-load 0|1`。参数先canonical核研究范围，new仅接受目标手动／中断两条完整空目录，隐藏引用也拒绝；load沿现应用手动读档。私有`StartupWindowHost`以variant只持应用或独立Session，世界只读、所有typed写命令经应用Owner；应用命令错误转为`runtime_failed`并保留原文，可预期输入拒绝不会假装成功。初始和命令输出静默领取一次，真实菜单raw14保存当前manual，窗口退出不补存。raw17只读六行适配、确认按逻辑gate单次消费，不代表完整计分皮肤或原物理输入认证。
+
+应用窗口可合用有界`--inspect-page world-save`，经真实3→10→20检查保存结果；与文件load／save、fixture／check及其他inspect互斥。默认独立Session的保存页仍只预览，显式`--save-file`保持原稳定场景退出保存边界。窗口宿主不增持久字段，世界5／应用8／系统2及128MiB不变；完整标题与上述平台页面后继接入，不把这次接线当作全部窗口完成。
 
 `work/release/bin/dungeon_village_startup_application_cli.exe --root <已存在研究根>`，可选`--seed`与`--title-presentation`。旧`--system/--slot0/--slot1`显式拒绝，不静默迁移；退出或EOF不自动保存。
 

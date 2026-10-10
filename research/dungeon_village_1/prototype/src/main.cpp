@@ -27,6 +27,8 @@ struct Options {
     std::filesystem::path table;
     std::optional<std::filesystem::path> screenshot;
     std::optional<std::filesystem::path> load_file, save_file;
+    std::optional<std::filesystem::path> application_root;
+    std::optional<int> application_new, application_load;
     bool demo{};
     bool check{};
     int frames{};
@@ -56,6 +58,16 @@ Options parse_options(int argc, char **argv) {
             options.load_file = argv[++i];
         else if (arg == "--save-file" && i + 1 < argc)
             options.save_file = argv[++i];
+        else if (arg == "--application-root" && i + 1 < argc) {
+            if(options.application_root)throw std::invalid_argument("应用根参数重复");
+            options.application_root=argv[++i];
+        } else if ((arg == "--application-new" || arg == "--application-load") && i + 1 < argc) {
+            const std::string value=argv[++i];
+            if(value!="0" && value!="1")throw std::invalid_argument("应用栏位只能是0或1");
+            if(options.application_new || options.application_load)
+                throw std::invalid_argument("应用新局/读档参数必须唯一");
+            (arg=="--application-new"?options.application_new:options.application_load)=value=="0"?0:1;
+        }
         else if (arg == "--demo")
             options.demo = options.fixture = true;
         else if (arg == "--fixture")
@@ -135,6 +147,20 @@ Options parse_options(int argc, char **argv) {
          (!options.inspect_page.empty() && !(options.load_file && !options.save_file && options.inspect_page == "world-magic-pot")) ||
          (options.check && options.save_file)))
         throw std::invalid_argument("文件存取只用于真实共同世界，不与页面夹具混用；check只读档");
+    if(options.application_root || options.application_new || options.application_load) {
+        if(!options.application_root || (!options.application_new && !options.application_load) ||
+           !options.world || options.fixture || options.check || options.load_file || options.save_file ||
+           (!options.inspect_page.empty() && options.inspect_page!="world-save"))
+            throw std::invalid_argument("应用窗口需--world、研究根及唯一new/load栏位；仅允许world-save诊断");
+        // 先验证全部参数和路径，再构造可能写系统目录的应用。
+        const auto allowed=std::filesystem::canonical(DUNGEON_VILLAGE_RESEARCH_WORK_ROOT);
+        const auto root=std::filesystem::canonical(*options.application_root);
+        const auto relative=root.lexically_relative(allowed);
+        if(!std::filesystem::is_directory(root) || relative.empty() || relative=="." ||
+           relative.is_absolute() || *relative.begin()=="..")
+            throw std::invalid_argument("应用根必须是本仓库research/work内已存在的独立目录");
+        options.application_root=root;
+    }
     return options;
 }
 
@@ -553,7 +579,11 @@ int main(int argc, char **argv) {
                 }
                 return run_startup_world_window(options.assets, options.font, options.paused,
                                                 options.frames, options.screenshot,
-                                                options.inspect_page, options.load_file, options.save_file);
+                                                options.inspect_page, options.load_file, options.save_file,
+                                                options.application_root ? std::optional<StartupWindowApplicationOptions>{
+                                                    {*options.application_root,
+                                                     options.application_new.value_or(options.application_load.value_or(0)),
+                                                     options.application_load.has_value()}} : std::nullopt);
             }
             if (options.check) {
                 check_startup();

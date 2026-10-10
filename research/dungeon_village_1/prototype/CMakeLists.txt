@@ -249,7 +249,10 @@ set_target_properties(dungeon_village_village_tests PROPERTIES CXX_EXTENSIONS OF
 add_test(NAME dungeon_village_prototype.village COMMAND dungeon_village_village_tests
          "${CMAKE_CURRENT_SOURCE_DIR}/../data/original/tenantData.txt")
 
-add_executable(dungeon_village_prototype src/main.cpp src/asset_manifest.cpp src/startup_view.cpp ../tools/src/sprite.cpp)
+add_executable(dungeon_village_prototype src/main.cpp src/asset_manifest.cpp src/startup_view.cpp
+    src/startup_window_host.hpp ../tools/src/sprite.cpp)
+target_compile_definitions(dungeon_village_prototype PRIVATE
+    DUNGEON_VILLAGE_RESEARCH_WORK_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/../work")
 target_include_directories(dungeon_village_prototype PRIVATE include ../tools/include)
 target_link_libraries(dungeon_village_prototype PRIVATE dungeon_village_prototype_model dungeon_village_startup_application PkgConfig::RAYLIB)
 target_compile_features(dungeon_village_prototype PRIVATE cxx_std_17)

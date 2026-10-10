@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_view.hpp"
+#include "startup_window_host.hpp"
 #include "dungeon_village_prototype/road_render.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
@@ -858,7 +859,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                              const std::optional<std::filesystem::path> &screenshot,
                              const std::string &inspect_page,
                              const std::optional<std::filesystem::path> &load_file,
-                             const std::optional<std::filesystem::path> &save_file) {
+                             const std::optional<std::filesystem::path> &save_file,
+                             const std::optional<StartupWindowApplicationOptions> &application) {
+    if(application && (load_file || save_file ||
+       (!inspect_page.empty() && inspect_page!="world-save") || application->slot<0 || application->slot>1))
+        throw std::invalid_argument("应用窗口参数组合非法");
     Window window;
     Canvas canvas;
     SourceSprites sprites(assets / "original");
@@ -892,21 +897,37 @@ int run_startup_world_window(const std::filesystem::path &assets,
               "年度贡献勋章授予终止是非满足努力能力上升自宅完成设施升级城镇等级晋级申请"
               "月收入设施数居住数指定建设任务完成数街道人气举办活动达成未暂不可用"
               "概况属性装备魔法体力力量灵活结实魔力运气攻击防御经验职业大师转职"
-              "武器防具饰品装备礼物居民税收合计库存可用学会火冰雷恢复营业施工使用支出加成";
-    // 只在接管前存在旧启动快照；runtime构造后释放，禁止两个可写世界并存。
-    std::unique_ptr<StartupSession> initial = std::make_unique<StartupSession>();
-    if (inspect_page == "visitor") {
-        for (int n = 0; n < 420; ++n)
-            initial->update();
-    }
-    StartupWorldRuntimeSession session(initial->state(), ref::WorldRandomStream::from_java_seed(1));
-    initial.reset();
+              "武器防具饰品装备礼物居民税收合计库存可用学会火冰雷恢复营业施工使用支出加成"
+              "通关计分研究适配累计原最高阶段街道人气任务完成数设施发现数冒险者全员LV合计自宅数努力度总和";
+    // 两种宿主互斥；应用模式只读其唯一世界，不复制Session以绕过文件事务。
+    auto session=[&]() {
+        if(application) {
+            StartupApplication app({application->root},ref::WorldRandomStream::from_java_seed(1));
+            if(!app.error().empty())throw std::runtime_error(app.error());
+            std::string error;
+            if(application->load)error=app.load_world(application->slot);
+            else {
+                for(const auto &entry:app.records().save_directory[application->slot])
+                    if(entry.reference || entry.packed_date!=-1 || !entry.village.empty() || entry.cash!=0)
+                        throw std::runtime_error("应用新局仅允许空栏，隐藏记录仍保留，不能覆盖");
+                error=app.request_new_game(application->slot);
+                if(error.empty())error=app.start_game();
+            }
+            if(!error.empty())throw std::runtime_error(error);
+            return StartupWindowHost(std::move(app));
+        }
+        StartupSession initial;
+        if(inspect_page=="visitor")for(int n=0;n<420;++n)initial.update();
+        return StartupWindowHost(StartupWorldRuntimeSession(initial.state(),ref::WorldRandomStream::from_java_seed(1)));
+    }();
+    // 平台当前只作静默音频sink；初始化B0/G也在首次保存请求前恰一次消费。
+    (void)session.take_audio_requests();
     StartupWorldSaveMetadata file_metadata;
     if (load_file) {
         auto loaded = load_startup_world_file(*load_file, rules, StartupWorldSavePurpose::normal);
         if (!loaded.snapshot) throw std::runtime_error("读取失败：" + loaded.error);
         file_metadata = std::move(loaded.snapshot->metadata);
-        session = std::move(loaded.snapshot->session);
+        session = StartupWindowHost(std::move(loaded.snapshot->session));
     }
     const auto human_name = [&session](int id) {
         const auto profile = startup_world_human_profile(session.state(), id);
@@ -932,7 +953,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (session.open_main_menu()!=StartupWorldRuntimeError::none)
             throw std::runtime_error("导航检查主菜单入口失败");
         for(int step=0;step<3;++step)
-            if(!session.update().candidate)throw std::runtime_error("导航检查主菜单初始化失败");
+            if(!session.update().committed)throw std::runtime_error("导航检查主菜单初始化失败");
         if(inspect_page!="world-menu") {
             const auto id=session.state().scripts.pages.back().id;
             const auto view=inspect_startup_world_menu_page(session.state(),id);
@@ -947,16 +968,23 @@ int run_startup_world_window(const std::filesystem::path &assets,
                session.input_menu_page(id,confirm)!=StartupWorldRuntimeError::none)
                 throw std::runtime_error("导航检查实际选行确认失败");
             for(int step=0;step<3;++step)
-                if(!session.update().candidate)throw std::runtime_error("导航检查子菜单初始化失败");
+                if(!session.update().committed)throw std::runtime_error("导航检查子菜单初始化失败");
             if(inspect_page=="world-save") {
-                // 当前窗口只持Session，明确停在真实文件请求；不凭本地页面回调创建应用档。
+                // Session停在请求；应用宿主消费声音后通过已验事务真正写当前栏。
                 const auto save_menu=session.state().scripts.pages.back().id;
                 if(session.input_menu_page(save_menu,confirm)!=StartupWorldRuntimeError::none ||
-                   !session.update().candidate)
+                   !session.update().committed)
                     throw std::runtime_error("保存页真实请求检查失败");
             }
         }
         session.take_audio_requests();
+        if(inspect_page=="world-save" && session.application_mode()) {
+            if(!session.update().committed)throw std::runtime_error("应用保存检查更新失败");
+            const auto page=session.state().scripts.pages.back().id;
+            const auto saved=inspect_startup_world_save_page(session.state(),page);
+            if(!saved || saved->stage!=2 || saved->saved!=true)
+                throw std::runtime_error("应用保存检查没有成功结果");
+        }
     } else if (inspect_page == "world-editing") {
         const auto road = available_road(session.state());
         if (!road)
@@ -1048,7 +1076,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         // 有界玩家策略：真实任务成功/开放/补货后主动进商会，不重复接任务来等待延迟83。
         for (int step = 0; step < 20000 && !reached; ++step) {
             const auto update = session.update();
-            if (!update.candidate) {
+            if (!update.committed) {
                 std::cerr << "商会更新失败 step=" << step
                           << " error=" << static_cast<int>(update.error)
                           << " scene_error=" << static_cast<int>(update.scene_error)
@@ -1209,7 +1237,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("真实村办目录检查入口失败");
         bool ready{};
         for (int n = 0; n < 100 && !ready; ++n) {
-            if (!session.update().candidate)
+            if (!session.update().committed)
                 throw std::runtime_error("村办首次说明推进失败");
             const auto p = session.state().scripts.pages.back();
             ready = p.legacy_page == 51 &&
@@ -1263,7 +1291,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if (!shop || session.cancel_build() != StartupWorldRuntimeError::none)
                 throw std::runtime_error("自然商品检查未形成合法建设");
             for (int n = 0; n < 2000 && session.state().scene.world.world.facilities.at(*shop).status == 0; ++n) {
-                if (!session.update().candidate) throw std::runtime_error("自然商品检查施工推进失败");
+                if (!session.update().committed) throw std::runtime_error("自然商品检查施工推进失败");
                 const auto p = session.state().scripts.pages.back();
                 if (p.kind != ref::WorldScriptPageKind::scene &&
                     session.acknowledge_page(p.id) != StartupWorldRuntimeError::none)
@@ -1281,7 +1309,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("自然79检查未形成合法目录");
         if (inspect_page == "world-equipment-info") {
             if (session.act_facility_catalog_page(goods, StartupFacilityCatalogAction::inspect) != StartupWorldRuntimeError::none ||
-                !session.update().candidate)
+                !session.update().committed)
                 throw std::runtime_error("自然79信息72检查失败");
         }
     } else if (inspect_page == "world-details") {
@@ -1294,7 +1322,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
             const auto result = session.update();
-            if (!result.candidate)
+            if (!result.committed)
                 throw std::runtime_error("共同世界检查预运行失败，step=" + std::to_string(step));
             const auto &s = session.state();
             const auto top = s.scripts.pages.back();
@@ -1329,7 +1357,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (session.open_human_page(human) != StartupWorldRuntimeError::none)
                     throw std::runtime_error("自然人物详情检查入口失败");
                 for (int n = 0; n < 100; ++n) {
-                    if (!session.update().candidate)
+                    if (!session.update().committed)
                         throw std::runtime_error("人物详情首次说明推进失败");
                     const auto current_page = session.state().scripts.pages.back();
                     if (current_page.legacy_page == 60 && current_page.lifecycle != 4 &&
@@ -1361,7 +1389,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         // 只驱动已证说明/真实初始化，不注入解锁、点数、库存或页面载荷。
         bool ready{};
         for (int n = 0; n < 600; ++n) {
-            if (!session.update().candidate) throw std::runtime_error("魔法壶有界入口更新失败");
+            if (!session.update().committed) throw std::runtime_error("魔法壶有界入口更新失败");
             const auto p = std::find_if(session.state().scripts.pages.rbegin(), session.state().scripts.pages.rend(),
                 [](const auto &page) { return page.lifecycle != 4; });
             if (p == session.state().scripts.pages.rend()) throw std::runtime_error("魔法壶入口空栈");
@@ -1375,7 +1403,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (!ready) throw std::runtime_error("魔法壶有界诊断未到达41");
         session.take_sound_requests();
     }
-    if (!load_file || paused)
+    if ((!application && !load_file) || paused)
         session.set_paused(paused);
     ref::WorldRenderClock clock;
     Vector2 camera{static_cast<float>(startup_evidence().camera.x),
@@ -1394,17 +1422,22 @@ int run_startup_world_window(const std::filesystem::path &assets,
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     auto build_orientation = ref::FacilityOrientation::first;
     std::string command_feedback;
+    std::optional<std::uint64_t> clear_confirm_pending; // 绑定计分页，按逻辑门槛只消费一次。
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        const auto current_top=std::find_if(session.state().scripts.pages.rbegin(),session.state().scripts.pages.rend(),
+                                            [](const auto &page){return page.lifecycle!=4;});
+        const bool application_clear=session.application_mode() && current_top!=session.state().scripts.pages.rend() &&
+            current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
         bool pointer_consumed{};
         const auto hit = [&](Rectangle r) { return pressed && !pointer_consumed && CheckCollisionPointRec(mouse, r); };
-        if (hit({4, 295, 44, 22})) {
+        if (!application_clear && hit({4, 295, 44, 22})) {
             pointer_consumed=true;
             ++pause_inputs;
             session.set_paused(!session.state().scene.framework_paused);
         }
-        if (hit({176, 295, 58, 22})) {
+        if (!application_clear && hit({176, 295, 58, 22})) {
             // 全局研究控件先消费该click，不能同时落入raw14原有的大触摸区域。
             pointer_consumed=true;
             ++speed_inputs;
@@ -1415,15 +1448,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
             view_offset.x -= delta.x / scale;
             view_offset.y += delta.y / scale;
         }
-        const auto top_page = [&]() -> const ref::WorldScriptPage * {
+        const auto top_page = [&]() -> std::optional<ref::WorldScriptPage> {
             const auto &pages = session.state().scripts.pages;
             for (auto it = pages.rbegin(); it != pages.rend(); ++it)
                 if (it->kind != ref::WorldScriptPageKind::scene && it->lifecycle != 4)
-                    return &*it;
-            return nullptr;
+                    return *it; // 命令会安装新候选；不让页面指针跨命令失效。
+            return {};
         };
         // 暂停时不派发页面输入，避免把合法的暂停拒绝误报成窗口消费者故障。
-        if (const auto *page = top_page(); page && !session.state().scene.framework_paused) {
+        if (const auto page = top_page(); page && !session.state().scene.framework_paused) {
             if (viewed_page != page->id) {
                 viewed_page = page->id;
                 paragraph_index = 0;
@@ -1457,7 +1490,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(input.up||input.down||input.left||input.right||input.confirm||input.cancel||input.select_row) {
                         const auto error=session.input_menu_page(page->id,input);
                         if(error==StartupWorldRuntimeError::none)command_feedback.clear();
-                        else command_feedback="输入未接入"; // raw10平台动作显式拒绝，窗口保留现场。
+                        else command_feedback=session.last_error().empty()?"输入未接入":session.last_error();
                     }
                 }
             } else if (raw==9 || (raw>=34 && raw<=40)) {
@@ -1759,14 +1792,17 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             act(A::next);
                         if (raw == 61 || raw == 64) {
                             const int start = std::max(0, chosen - 4);
-                            const auto &list = raw == 61
-                                                   ? session.state().human_page_catalogs.at(pid)
-                                                   : session.state().equipment_page_catalogs.at(
-                                                         pid)[session.state().page_phases.at(pid)];
+                            // App命令会整体安装新世界，循环只保留大小，不借用旧目录。
+                            const auto count = raw == 61
+                                ? session.state().human_page_catalogs.at(pid).size()
+                                : session.state().equipment_page_catalogs.at(pid)
+                                      [session.state().page_phases.at(pid)].size();
                             for (int row = 0;
-                                 row < 5 && start + row < static_cast<int>(list.size()); ++row)
-                                if (hit({12, 74.F + row * 27, 216, 26}))
+                                 row < 5 && start + row < static_cast<int>(count); ++row)
+                                if (hit({12, 74.F + row * 27, 216, 26})) {
                                     act(A::select, start + row);
+                                    break;
+                                }
                         }
                         if (raw == 62 || raw == 73) {
                             if (IsKeyPressed(KEY_LEFT))
@@ -1878,7 +1914,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     const auto error =
                         session.act_facility_page(pid, StartupFacilityPageAction::confirm);
                     if (error != StartupWorldRuntimeError::none)
-                        command_feedback = "暂不可用";
+                        command_feedback = session.last_error().empty()?"暂不可用":session.last_error();
                 }
             } else if (raw == 33) {
                 const auto phase = session.state().page_phases.find(page->id);
@@ -1947,6 +1983,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (session.act_task_page(page->id, action, selection).error !=
                         StartupWorldRuntimeError::none)
                         throw std::runtime_error("任务输入消费者失败");
+                }
+            } else if (raw==17 && session.application_mode()) {
+                // 应用确认本身推进计分；只在下面获准的Update里消费，避免绘制帧双推进。
+                if(IsKeyPressed(KEY_ENTER) || hit({176,265,58,24})) {
+                    clear_confirm_pending=page->id;
+                    ++confirmation_inputs;
                 }
             } else if (raw==14) {
                 const auto view=inspect_startup_world_save_page(session.state(),page->id);
@@ -2091,8 +2133,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             IsKeyPressed(KEY_X) &&
             session.open_task_control_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("任务管理菜单打开失败");
-        const auto *held_page = top_page();
-        session.set_page_confirm_held(
+        const auto held_page = top_page();
+        if(!session.application_mode() || !held_page || held_page->legacy_page!=17)
+            session.set_page_confirm_held(
             held_page && held_page->legacy_page == 24 &&
             (IsKeyDown(KEY_ENTER) || (IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
                                       CheckCollisionPointRec(mouse, {176, 265, 58, 24}))));
@@ -2103,11 +2146,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("共同世界绘制时钟失败");
         if (gate.clock) {
             clock = *gate.clock;
-            const auto *page=top_page();
+            (void)session.take_audio_requests(); // 命令可能产生输出，先消费再进入应用保存事务。
+            const auto page = top_page();
             const auto save=page && page->kind==ref::WorldScriptPageKind::raw_page && page->legacy_page==14
                 ? inspect_startup_world_save_page(session.state(),page->id) : std::nullopt;
-            if(!save || save->stage!=1) {
-                const auto result = session.update();
+            if(session.application_mode() || !save || save->stage!=1) {
+                const bool clear_confirm=page && clear_confirm_pending && page->id==*clear_confirm_pending &&
+                    page->kind==ref::WorldScriptPageKind::raw_page && page->legacy_page==17;
+                const auto result = session.update(clear_confirm);
+                clear_confirm_pending.reset();
                 if (result.error != StartupWorldRuntimeError::none)
                     throw std::runtime_error(
                         "共同世界更新失败：" + std::to_string(static_cast<int>(result.error)) + "/" +
@@ -2425,7 +2472,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
             }
         }
-        if (const auto *page=top_page(); page && (navigation_menu(page->legacy_page)||page->legacy_page==9)) {
+        if (const auto page = top_page(); page && (navigation_menu(page->legacy_page)||page->legacy_page==9)) {
             // 真实菜单栈逐页画；被菜单覆盖的raw3保留底图但不登记主菜单ID8短适配。
             for (const auto &entry:state.scripts.pages)
                 if(entry.lifecycle!=4 && entry.kind==ref::WorldScriptPageKind::raw_page &&
@@ -2435,14 +2482,35 @@ int run_startup_world_window(const std::filesystem::path &assets,
             DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,8,285,ink,10);
-        } else if (const auto *page=top_page(); page && page->legacy_page==14) {
+        } else if (const auto page = top_page(); page && page->legacy_page==14) {
             if(const auto view=inspect_startup_world_save_page(state,page->id)) {
                 const auto plan=window_save_plan(*view,font);
                 if(!plan)throw std::runtime_error("保存页皮肤拒绝");
                 draw_save_plan(*plan,*view,sprites,font);
-                if(view->stage==1)font.text("本窗口仅预览保存页",12,270,ink,11);
+                if(view->stage==1 && !session.application_mode())font.text("本窗口仅预览保存页",12,270,ink,11);
             }
-        } else if (const auto *page=top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
+        } else if (const auto page = top_page(); page && page->legacy_page==17 && session.application_mode()) {
+            // 应用已冻结的六行及累计值只读展示；完整原计分动画/字体不由此适配认证。
+            DrawRectangle(5,42,230,247,paper);
+            font.text("通关计分 / 研究适配",12,48,ink,11);
+            const auto *app=session.application();
+            if(app->clear_page() && app->clear_rows()) {
+                const auto &score=*app->clear_page();
+                constexpr const char *labels[]{"街道人气","任务完成数","设施发现数",
+                                               "冒险者全员LV合计","自宅数","努力度总和"};
+                for(std::size_t row=0;row<app->clear_rows()->size();++row) {
+                    const auto &value=app->clear_rows()->at(row);
+                    if(int(row)==score.row)DrawRectangle(9,71+int(row)*23,222,22,{219,232,204,255});
+                    font.text(labels[row],12,74+float(row)*23,ink,9);
+                    const auto numbers=std::to_string(value.count)+" / "+std::to_string(value.score);
+                    font.text(numbers,227-font.measure(numbers,9),74+float(row)*23,ink,9);
+                }
+                font.text("累计 "+std::to_string(score.sum),12,217,ink,11);
+                font.text("原最高 "+std::to_string(score.captured_high_score),12,238,ink,10);
+                font.text("阶段 "+std::to_string(score.stage)+" / "+std::to_string(score.counter),12,269,ink,9);
+            } else font.text("计分初始化中",12,80,ink,11);
+            font.text("确定 Enter",172,269,ink,9);
+        } else if (const auto page = top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
             // 仅研究短适配：显示Owner真实行/页签，完整Steam详情字体与图元后端另批接入。
             DrawRectangle(5,42,230,247,paper);
             font.text(page->title+" / 研究适配",12,48,ink,11);
@@ -2470,7 +2538,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
-        } else if (const auto *page = top_page()) {
+        } else if (const auto page = top_page()) {
             if (page->legacy_page != 21) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
@@ -3515,11 +3583,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
     }
     if (save_file) {
-        const auto result = save_startup_world_file(*save_file, session, file_metadata);
+        const auto result = save_startup_world_file(*save_file, session.standalone(), file_metadata);
         if (!result.ok) throw std::runtime_error("保存失败：" + result.error);
         std::cout << "normal save written: " << save_file->string() << '\n';
     }
-    std::cout << "world window closed: frames=" << frame_count
+    std::cout << "world window closed: host=" << (session.application_mode()?"application":"session")
+              << " frames=" << frame_count
               << " updates=" << session.state().scene.world.updates
               << " actors=" << session.state().scene.world.world.ai.human_order.size()
               << " random_draws=" << session.state().scene.random.draws()

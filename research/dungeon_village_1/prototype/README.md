@@ -16,7 +16,9 @@
 
 [startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10的tag20已接raw14；设置／游戏说明／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
 
-[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。`--inspect-page world-save`的独立Session窗口只预览stage1，不访问应用文件；应用桥见[验证](../VERIFICATION.md#菜单保存页与应用事务桥2026-10-10)。`steam_save_page_skin`已接原木框／内容框、阶段单按钮及触摸计划，窗口按已核初始VIEW_Y23展开；[三状态示例](../ui/examples/steam-save-page.png)供产品使用。完整字体／TextLayout后端与窗口应用宿主仍待接，局部皮肤不代替GUI保存全链。
+[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。默认独立Session的`--inspect-page world-save`仍只预览stage1；新增应用窗口宿主可实际处理请求，入口及验收状态见下文和[验证](../VERIFICATION.md)。`steam_save_page_skin`已接原木框／内容框、阶段单按钮及触摸计划，窗口按已核初始VIEW_Y23展开；[三状态示例](../ui/examples/steam-save-page.png)供产品使用。完整字体／TextLayout后端仍待接，局部皮肤不代替GUI保存全链。
+
+应用窗口宿主已通过[本批短测与保存／冷载窗口检查](../VERIFICATION.md#研究窗口应用宿主与真实保存2026-10-10)：`--world --application-root <现存research/dungeon_village_1/work子目录> --application-new 0|1`进入空栏新局，或以`--application-load 0|1`读取该栏手动档。参数先canonical校验研究根；新局要求目标栏手动／中断两项全部为空，隐藏引用也拒绝，不自动覆盖。窗口私有variant只持应用或独立Session之一，绘制只读世界，所有typed命令经同一Owner；应用错误保留原文并返回`runtime_failed`，可预期输入拒绝留在窗口反馈。初始与命令输出由静默sink领取一次，真实菜单保存经raw14写当前manual，退出不补存。应用模式可合用有界`--inspect-page world-save`检查实际保存结果，与`--load-file`／`--save-file`、fixture／check及其他inspect互斥；独立Session预览和显式文件入口保持。raw17只读六行适配、确认按逻辑gate单次消费，不是完整计分皮肤。世界5／应用8／系统2及128MiB不变；完整标题、设置12、说明13、RankForm、自动中断与完整字体仍待接。
 
 本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
 
@@ -325,7 +327,7 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 `--world --save-file <路径>`在退出时保存，`--load-file <路径>`恢复，合用`--check`只读校验文件。
 测试快照另存完整随机／页面／审计与自然玩家控制器，`natural_progression`／`natural_expansion`可保存和恢复外层轮边界。
 标准新增集中codec／文件恢复、控制器、短跨进程和字段覆盖检查；中后期认证及尾段复用命令见模块说明。
-后继StartupApplication已接四目录菜单及完整应用文件视图，独立world窗口不自动获得该接线；日历自动文件写入仍未接，原APK／Steam存档不兼容；当前日历检查点继续只作内存审计。
+StartupApplication已接四目录菜单及完整应用文件视图；上述独立world入口保持原用途，显式应用宿主入口见本页前文，本批验收另记。日历自动文件写入仍未接，原APK／Steam存档不兼容；当前日历检查点继续只作内存审计。
 
 `--world --inspect-page world-building`和`world-details`从真实新局用显式命令打开目录/初始旅店详情；
 `world-human`自然等到首个冒险者，再打开60并实际确认首次说明后停在详情，不注入人物或跳过初始化。

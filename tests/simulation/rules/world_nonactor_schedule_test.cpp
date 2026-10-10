@@ -231,6 +231,47 @@ void projectile_and_objects() {
               removed->state.catalog.at({0, 4}).inventory == 1,
           "j60 removes exact bp identity once without re-grant");
 }
+void spell_contact_target() {
+    auto owner = fixture();
+    actor(owner, 1, ActorKind::human, {});
+    actor(owner, 2, ActorKind::monster, {20, 0, 0});
+    actor(owner, 3, ActorKind::monster, {1000, 0, 0});
+    ProjectileState spell;
+    spell.kind = ProjectileKind::spell;
+    spell.caster = {1};
+    spell.original_target = {3}; // Another monster intercepts the landing spell.
+    spell.position = {20, 0, 0};
+    spell.velocity = {0, -1, 0};
+    spell.effect = 4;
+    spell.damage = 20;
+    owner.common.world.ai.projectiles.emplace(9, spell);
+    owner.common.world.ai.projectile_order = {9};
+    owner.common.world.ai.next_projectile_id = 10;
+    auto a = adapter();
+    int requests{};
+    a.request = [&](Owner &current, const WorldNonactorRequest &r)
+        -> std::optional<WorldNonactorWriteback> {
+        check(r.kind == WorldNonactorRequestKind::projectile_visual && r.visual == 4 &&
+                  r.target == std::optional<CharacterId>{{2}} && r.source_position.has_value(),
+              "spell visual binds actual collision target, not absent damage target or aim target");
+        ++requests;
+        auto effects = current.common.world.ai.contexts.at({2}).effects;
+        effects.display.push_back({16, 0, 4, 0, 0}); // Typed callback fixture, not a projection oracle.
+        return WorldNonactorWriteback{encounter_external_writeback(current.common.world.ai), {}, {}, effects};
+    };
+    const auto result = prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}}, field(), a);
+    check(result && requests == 1 && result->state.common.world.ai.projectiles.size() == 1 &&
+              result->state.common.world.ai.projectiles.at(10).kind == ProjectileKind::delayed_damage &&
+              result->state.common.world.ai.projectiles.at(10).original_target == CharacterId{2} &&
+              result->state.common.world.ai.battle.actors.at({2}).hp.target == 500 &&
+              result->state.random.draws() == 0,
+          "contact schedules delayed damage without early HP mutation or random draw");
+    a.request = [](Owner &, const WorldNonactorRequest &) -> std::optional<WorldNonactorWriteback> { return {}; };
+    check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}}, field(), a) &&
+              owner.common.world.ai.projectiles.count(9) && owner.common.world.ai.projectiles.size() == 1 &&
+              owner.common.world.ai.next_projectile_id == 10 && owner.random.draws() == 0,
+          "rejected spell presentation rolls back removal and delayed spawn");
+}
 void synchronous_event() {
     auto owner = fixture({999, 0, 0, 0});
     actor(owner, 1, ActorKind::human, {350, 0, 350});
@@ -455,6 +496,7 @@ void typed_task_monster_unlock() {
 int main() {
     try {
         projectile_and_objects();
+        spell_contact_target();
         synchronous_event();
         final_and_missing_domains();
         spawned_context_and_stale_projection();

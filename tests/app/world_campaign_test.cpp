@@ -1,12 +1,13 @@
 // Active player-file acceptance, distinct from frozen domain trajectories and FIFO tests.
 // Serial real commands precede one real runtime update. Only wall-clock waits are removed.
+#include "../../src/app/session/world_commands.hpp"
+#include "../support/world_fixture.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/assets/sha256.hpp"
-#include "../support/world_fixture.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
-#include "../../src/app/session/world_commands.hpp"
+#include "world_campaign_diagnostics.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -166,9 +167,16 @@ template <class PlayerStrategy> struct CampaignRun {
         if (const auto input = strategy.next(state))
             command(*input);
         auto update = sim::prepare_startup_world_runtime(state);
-        require(update.candidate.has_value(),
-                "Runtime update rejected: runtime=" + std::to_string(int(update.error)) +
-                    " world=" + std::to_string(int(update.world_error)));
+        if (!update.candidate) {
+            try {
+                ark::test::capture_campaign_failure(directory, state, update, rounds);
+            } catch (const std::exception &error) {
+                std::cerr << "Failure snapshot could not be captured: " << error.what()
+                          << std::endl;
+            }
+            throw std::runtime_error("Runtime update rejected: " +
+                                     ark::test::describe_campaign_failure(update));
+        }
         require(sim::update_startup_world_render_cache(*update.candidate), "Render cache rejected");
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
@@ -630,10 +638,96 @@ int main(int argc, char **argv) {
     try {
         if (argc == 2 && std::string(argv[1]) == "--contract") {
             contract();
+            ark::test::campaign_diagnostic_contract(
+                std::filesystem::canonical(argv[0]).parent_path().parent_path());
+            ark::test::income_strategy_contract();
             return 0;
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
+        if (mode == "inspect-observation") {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
+            ark::test::inspect_income(ark::test::read_campaign_observation(directory), std::cout);
+            return 0;
+        }
+        if (mode == "inspect-income" || mode == "income-baseline" || mode == "income-improved") {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
+            late_campaign.emplace(load<LateStrategy>(directory, 0));
+            auto &run = *late_campaign;
+            const auto original_slot = bytes(app::world_save_slot_path(directory, 0));
+            const auto original_strategy = bytes(directory / "strategy0.txt");
+            ark::test::inspect_income(run.state, std::cout);
+            if (mode == "inspect-income")
+                return 0;
+            const auto start_month = month(run.state);
+            const auto start_income = run.strategy.stats().facility_income;
+            const auto start_cash = run.state.scene.world.world.ai.accounting.funds();
+            if (mode == "income-improved")
+                run.strategy.enable_income_investment(start_month + 2);
+            const auto started = std::chrono::steady_clock::now();
+            for (int n = 0; month(run.state) < start_month + 3; ++n) {
+                require(n < 12000 &&
+                            std::chrono::steady_clock::now() - started < std::chrono::minutes(40),
+                        "Income comparison exhausted its explicit budget");
+                run.step();
+                if (n % 500 == 0)
+                    std::cout << "INCOME_PROGRESS " << run.strategy.diagnose(run.state)
+                              << std::endl;
+            }
+            const auto &investment = run.strategy.income();
+            ark::test::capture_campaign_observation(directory, run.state);
+            ark::test::inspect_income(run.state, std::cout);
+            if (investment)
+                require(investment->uses() > 0 && !investment->active(),
+                        "Improved route must finish a real facility item transaction");
+            if (investment)
+                run.strategy.verify_income_business(run.state);
+            require(bytes(app::world_save_slot_path(directory, 0)) == original_slot &&
+                        bytes(directory / "strategy0.txt") == original_strategy,
+                    "Income comparison must preserve its input checkpoint");
+            std::cout << "INCOME_RESULT mode=" << mode << " start_month=" << start_month
+                      << " end_month=" << month(run.state)
+                      << " revenue=" << run.strategy.stats().facility_income - start_income
+                      << " cash_delta="
+                      << run.state.scene.world.world.ai.accounting.funds() - start_cash
+                      << " spent=" << (investment ? investment->spent() : 0)
+                      << " items_used=" << (investment ? investment->uses() : 0) << std::endl;
+            for (const auto &[m, revenue] : run.strategy.stats().trade.revenue)
+                if (m > start_month && m < month(run.state))
+                    std::cout << "FULL_MONTH month=" << m << " observed_sales=" << revenue
+                              << std::endl;
+            ark::test::inspect_income(run.state, std::cout);
+            std::cout << "PASS bounded income observation; not a rank-three certificate"
+                      << std::endl;
+            return 0;
+        }
+        if (mode == "replay-failure" || mode == "verify-failure-fixed") {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
+            ark::test::replay_campaign_failure(directory, mode == "verify-failure-fixed");
+            return 0;
+        }
+        if (mode == "diagnose-third") {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-third-star-v1\n");
+            late_campaign.emplace(load<LateStrategy>(directory, 0));
+            require(late_campaign->strategy.stats().target_rank == 3,
+                    "Diagnostic prefix must be a completed third-star preparation");
+            const auto started = std::chrono::steady_clock::now();
+            for (int round = 0; round < 18000; ++round) {
+                late_campaign->step();
+                if (round % 500 == 0)
+                    std::cout << "DIAGNOSE "
+                              << late_campaign->strategy.diagnose(late_campaign->state)
+                              << std::endl;
+                require(std::chrono::steady_clock::now() - started < std::chrono::minutes(45),
+                        "Diagnostic wall-clock budget exhausted");
+            }
+            throw std::runtime_error(
+                "Failure not reproduced within 18000 updates; no success certified");
+        }
         if (mode == "inspect-third-input" || mode == "check-third-layout") {
             const auto directory =
                 isolated_directory(argv[0], argv[2], "ark-active-second-star-v1\n");

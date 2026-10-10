@@ -406,6 +406,9 @@ void actual_facility_completion(const WorldScriptCatalog &catalog) {
     // 原adapter的L通过默认真实重叠路径，不借未注册request占位；清空read_routes触发晚期拒绝。
     a.nonactors.read_routes = {};
     const auto rejected = prepare_owned_world_runtime(source, {27}, a);
+    check(rejected.failure && rejected.failure->stage == WorldScheduleStage::finalize &&
+              !rejected.failure->id,
+          "whole-runtime rejection preserves failing schedule identity through all wrappers");
     check(!rejected.state && rejected.worlds.empty() &&
               source.scene.world.facility_order == std::vector<std::uint64_t>{10, 11, 12} &&
               source.scene.world.world.facilities.count(10) &&

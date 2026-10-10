@@ -2,7 +2,18 @@
 
 验证分工（2026-10-10用户确认）：研究交付以短时功能/逻辑及必要边界、拒绝、顺序、回滚测试为准；产品侧负责带真实经营输入的世界长跑、跨进程存读档和全链验收，不要求研究为每次交付重复整段长跑。产品发现问题后交回明确身份及最小复现，研究定向修正后由产品复验。既有有效断言/冻结基线保留，详见[开发流程](../CONTRIBUTING.md#研究与产品的验证分工)。
 
-2026-10-10现状：正式1f19c88的430项闭包已迁入，当前运行素材705项；本地标准/窗口/便携包及修后五组收益、首/二星通过。三星前段营业/保存/冷载通过，后段月56遇共同消费者拒绝，见[实际阻断](../stages/ACTIVE_VILLAGE_PLAN.md#third-star-consumer-failure)。最小诊断缺口是失败调用的stage/实例ID及下层错误；当前runtime3/world3不足以认定具体人物或任务。产品保留隔离旧EXE和有效前缀，先定向定位，不要求研究重跑完整长链。下方旧提交段保留发现与交付历史，不把已交付收费/类型化音频继续登记为research缺口。
+2026-10-10现状：正式1f19c88的430项闭包已迁入，当前运行素材705项；本地标准/窗口/便携包及修后五组收益、首/二星通过。三星前段营业/保存/冷载通过，后段月56的消费者拒绝已定向复现为投射71法术接触表现缺目标，详见下节；不是任务24或源码重排的直接归因。产品保留隔离旧EXE、有效前缀和失败前完整Owner，研究只需短例回归，不需要重跑整段长链。下方旧提交段保留发现与交付历史，不把已交付收费/类型化音频继续登记为research缺口。
+
+<a id="spell-contact-visual-target"></a>
+## 法术接触表现目标丢失（2026-10-10，产品已有来源明确的修正）
+
+冻结1f19c88的真实三星前缀，月49冷载后第13086次更新失败；策略ticks30545，world_steps85707，投射ID71。已用完整Owner/随机单轮精确重放，失败为projectile/nonactor.stage/external_failed；只读转发原adapter进一步捕获`projectile_visual/visual4/caster675/target空/accepted=false`。
+
+根因在`world_nonactor_schedule.cpp`：法术碰撞当轮只生成延迟投射，`ProjectileStepCandidate.damage_target`为空；实际碰撞目标在`spawned.original_target`。统一表现请求误用本轮damage_target，`startup_world_runtime_nonactors.cpp`要求4..9表现必须绑定目标，因此整轮拒绝。已发布[CONTROL攻击/投射合同](../../research/dungeon_village_1/rules/ai/CONTROL.md)及维护`combat_execution.cpp::advance_projectile`明确先目标表现、后延迟伤害，且实际碰撞目标可能不是原瞄准目标。
+
+产品已将表现目标绑定到新生成延迟投射的actual target，未提前扣HP、不加随机、不吞错误。既有nonactor套件补“瞄准3、碰撞2”的表现目标/延迟HP/随机及消费者拒绝回滚；原失败完整Owner在修复后单次更新成功。此补正作为SOURCES产品适配保留，未改research；后续正式研究维护同义修正时删除该产品补丁。
+
+最小复现根：`build/validation/third-star-diagnostics/`。`runtime-original-strategy/build/validation/prefix/failure-state.bin`和同名txt保存850059字节完整状态及格式/数据/库身份；同隔离bin的旧EXE执行`replay-failure <prefix>`稳定重现。当前测试EXE执行`verify-failure-fixed <prefix>`检查同一输入成功且原Owner不变。`request-trace.log`为请求层定位，`fixed-replay.log`为修复回归；都只读原快照，不读写正常玩家档。尚未据此认证完整三星后继通过。
 
 <a id="facility-arrival-price-cache"></a>
 

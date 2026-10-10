@@ -147,7 +147,10 @@ bool valid_world_schedule_owner(const WorldScheduleState &s) {
 WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                                            const WorldScheduleInput &input,
                                            const WorldScheduleConsumer &consumer) {
-    const auto fail = [](WorldScheduleError error) -> WorldScheduleResult { return {error, {}}; };
+    std::optional<WorldScheduleFailure> failure;
+    const auto fail = [&](WorldScheduleError error) -> WorldScheduleResult {
+        return {error, {}, failure};
+    };
     if (!valid_world_schedule_owner(s) || !input.dispatch_limit || input.dispatch_limit > 1000000)
         return fail(WorldScheduleError::invalid_owner);
     WorldScheduleCandidate c;
@@ -174,6 +177,7 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
         auto step = consumer(c.state, call, *c.start_field);
         if (!step) {
             error = WorldScheduleError::consumer_failed;
+            failure = WorldScheduleFailure{call.stage, call.id, "schedule.consumer", 0};
             return {};
         }
         c.state = std::move(step->state);

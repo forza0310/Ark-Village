@@ -177,7 +177,8 @@ template <class Owner>
 std::optional<OwnedWorldScheduleStep<Owner>>
 prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &call,
                                    const CombatInfluenceCandidate &field,
-                                   const WorldRuntimeAdapter<Owner> &adapter) {
+                                   const WorldRuntimeAdapter<Owner> &adapter,
+                                   std::optional<WorldScheduleFailure> *failure = nullptr) {
     if (call.stage == WorldScheduleStage::prefix_effects) {
         if (!call.effects || !adapter.prefix_effects)
             return {};
@@ -224,8 +225,13 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
                 published.random = adapter.read_random(next);
                 return published;
             });
-        if (!result.candidate || !adapter.facilities.write(next, result.candidate->state))
+        if (!result.candidate || !adapter.facilities.write(next, result.candidate->state)) {
+            if (failure)
+                *failure = WorldScheduleFailure{call.stage, call.id,
+                                                 result.candidate ? "facility.write" : "facility.update",
+                                                 static_cast<int>(result.error)};
             return {};
+        }
         adapter.write_random(next) = result.candidate->state.random;
         // c/m阶段2会在c内部恢复地图并从g撤除当前实例；没有虚构的void返回true请求。
         const bool present =
@@ -252,7 +258,7 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
         adapter.write_random(owner) = routes.random;
         return true;
     };
-    return prepare_owned_world_nonactor_stage(state, call, field, nonactors);
+    return prepare_owned_world_nonactor_stage(state, call, field, nonactors, failure);
 }
 
 template <class Owner> struct WorldRuntimeResult {
@@ -261,6 +267,7 @@ template <class Owner> struct WorldRuntimeResult {
     std::optional<Owner> state;
     std::optional<WorldSceneCandidate> scene;
     std::vector<WorldScheduleCandidate> worlds; // 审计，不是可写副本。
+    std::optional<WorldScheduleFailure> failure{};
 };
 
 // MainScene的共同组合入口。只推进已获框架资格的场景；保存的1/2轮数不因脚本推页重算。
@@ -389,13 +396,16 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
                     return {};
                 return consumed;
             };
+            std::optional<WorldScheduleFailure> domain_failure;
             actors.other = [&](const Owner &owner, const WorldScheduleCall &request,
                                const CombatInfluenceCandidate &field) {
-                return prepare_owned_world_runtime_domain(owner, request, field, adapter);
+                return prepare_owned_world_runtime_domain(owner, request, field, adapter,
+                                                           &domain_failure);
             };
             auto world = prepare_world_actor_schedule(next, {true}, actors);
             if (!world.state) {
                 output.world_error = world.error;
+                output.failure = domain_failure ? std::move(domain_failure) : std::move(world.failure);
                 return {};
             }
             if (world.audit)

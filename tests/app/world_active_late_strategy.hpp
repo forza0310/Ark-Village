@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ark/app/session/world_session.hpp"
+#include "world_active_income_strategy.hpp"
 #include "world_active_trade_evidence.hpp"
 #include <iosfwd>
 #include <set>
@@ -46,6 +47,13 @@ class ActiveLateVillageStrategy {
     bool complete(const app::WorldState &state) const;
     std::string diagnose(const app::WorldState &state) const;
     std::string diagnose_construction(const app::WorldState &state) const;
+    // Explicit experiment switch: existing saved-prefix diagnostics keep the old decisions.
+    void enable_income_investment(int stop_month) {
+        income_.emplace(stop_month);
+        income_stop_month_ = stop_month;
+    }
+    const std::optional<ActiveIncomeStrategy> &income() const { return income_; }
+    void verify_income_business(const app::WorldState &state) const;
     const ActiveLateVillageStats &stats() const { return stats_; }
     void encode(std::ostream &stream) const;
     static ActiveLateVillageStrategy decode(std::istream &stream);
@@ -53,6 +61,11 @@ class ActiveLateVillageStrategy {
   private:
     void observe_world(const app::WorldState &before, const app::WorldState &after);
     ActiveLateVillageStats stats_;
+    std::optional<ActiveIncomeStrategy> income_;
+    std::uint64_t next_income_tick_{};
+    int income_stop_month_{}, income_build_definition_{-1};
+    std::map<int, int> income_unlock_paid_;
+    std::map<int, std::uint64_t> income_buildings_;
     std::uint64_t requested_task_{}, recruitment_{}, next_management_tick_{}, next_activity_tick_{};
     int next_task_month_{}, recipient_{-1}, build_definition_{-1};
     simulation::rules::Position build_anchor_{};

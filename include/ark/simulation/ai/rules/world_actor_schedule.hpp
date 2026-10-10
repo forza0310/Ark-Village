@@ -39,6 +39,7 @@ template <class Owner> struct WorldActorScheduleResult {
     std::optional<WorldScheduleCandidate> audit;
     std::vector<WorldActorDecisionCandidate> decisions;
     std::vector<WorldActorControlCandidate> controls;
+    std::optional<WorldScheduleFailure> failure{};
 };
 // 共同c前段→全状态路由；共同d/成长→携物表情→全码v→原d尾部/删除点。
 // 审计候选只保存读取时点，不是可写世界，不能把它们长期作为第二个Owner。
@@ -136,8 +137,11 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                     return adapter.read_routes(next);
                 };
             auto r = prepare_world_actor_decision(routes, *i);
-            if (!r.candidate)
+            if (!r.candidate) {
+                output.failure = WorldScheduleFailure{call.stage, call.id, "actor.decision",
+                                                       static_cast<int>(r.error)};
                 return {};
+            }
             routes = r.candidate->state;
             disposition = r.candidate->removed ? WorldScheduleDisposition::already_removed
                           : r.candidate->delete_requested
@@ -162,8 +166,11 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
                 return input;
             };
             auto r = prepare_world_actor_control(routes, actor, command);
-            if (!r.candidate)
+            if (!r.candidate) {
+                output.failure = WorldScheduleFailure{call.stage, call.id, "actor.control",
+                                                       static_cast<int>(r.error)};
                 return {};
+            }
             routes = r.candidate->state;
             if (r.candidate->flow == WorldControlFlow::delete_requested)
                 disposition = WorldScheduleDisposition::remove_requested;
@@ -174,8 +181,14 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
             const auto r = prepare_world_random_expression(
                 routes.random, routes.world.ai.contexts.at(actor).effects, 17, 0,
                 *adapter.primary_expression_table);
-            if (!r.candidate)
+            if (!r.candidate) {
+                output.failure = WorldScheduleFailure{
+                    call.stage, call.id,
+                    r.random_error != WorldRandomError::none ? "actor.expression_random" : "actor.expression",
+                    r.random_error != WorldRandomError::none ? static_cast<int>(r.random_error)
+                                                             : static_cast<int>(r.expression_error)};
                 return {};
+            }
             routes.world.ai.contexts.at(actor).effects = r.candidate->state;
         }
         if (!publish(routes))
@@ -186,7 +199,7 @@ prepare_world_actor_schedule(const Owner &state, const WorldScheduleInput &input
     schedule_input.publish_actor_tail = static_cast<bool>(adapter.tail_cache);
     auto result = prepare_owned_world_schedule(state, schedule_input, owned);
     if (!result.state)
-        return {result.error, {}, {}, {}, {}};
+        return {result.error, {}, {}, {}, {}, output.failure ? output.failure : result.failure};
     output.error = WorldScheduleError::none;
     output.state = std::move(result.state);
     output.audit = std::move(result.audit);

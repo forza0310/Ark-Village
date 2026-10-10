@@ -192,8 +192,12 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         }
         for (const int effect : {step.ground_effect22 ? 22 : 0, step.visual_effect})
             if (effect) {
+                // Spell contact schedules delayed damage: its actual collision target
+                // lives on the spawned projectile, not on this tick's damage_target.
+                const auto visual_target = step.spawned
+                    ? std::optional<CharacterId>{step.spawned->original_target} : target;
                 WorldNonactorRequest request{WorldNonactorRequestKind::projectile_visual,
-                    *call.id, caster, target, effect, {}, {}, {}};
+                    *call.id, caster, visual_target, effect, {}, {}, {}};
                 request.source_position = step.state.position;
                 if (!consume(request))
                     return failure();

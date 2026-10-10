@@ -8,7 +8,7 @@
 
 - [x] 产品冗余与旧切片退役：删除172个跟踪文件，保留当前世界/DLL防错/存档身份；两Debug标准138/118项、Release构建/资源/标题/拾取窗口通过。用户旧默认档按明确删除指令处理后已恢复标题启动，详见[本批记录](docs/stages/B1-playable-prototype.md#product-cleanup-legacy-retirement)。
 - [x] 1f19c88维护/UI/音频本地验收：430项冻结来源、711项素材通过；两Debug标准178/154项通过（仅排三个月），Steam窗框/建设/81/74/60静态四页、X4金币及可见建筑像素拾取完成Release绘制检查，26音频全部加载。实际听音/OS输入不在认证内，完整动态委托仍见剩余请求。玩家schema4两栏及随机政策保持，维护世界4/应用7/系统2不替换玩家存档。
-- [ ] 修后主动三星：P0–P4、新局首星/二星通过；三星前段已实际搬店铺路、西餐厅兑换/营业600G、20胜并保存冷载，后段月56被共同世界消费者拒绝（runtime3/world3），未晋级。保留隔离旧版本现场，先定位具体消费者并复验，再校验学校/活动7与后续营业；此失败不归因于源码重排，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#third-star-consumer-failure)。
+- [ ] 修后主动三星：前段搬店铺路、西餐厅兑换/营业、20胜及保存冷载通过；月56法术接触表现丢目标已定位并补正，失败Owner单轮复验通过，见[研究交接](docs/reference/RESEARCH_REQUESTS.md#spell-contact-visual-target)。收益策略增加点数购买新建筑、道具强化与预算，并参考用户四星档布局；三星/学校/活动7仍未认证，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#third-star-diagnostics-income)。
 - [x] 本批b6a5099 Release便携包16.00MiB，736文件逐字节解压检查、纯系统PATH启动与隔离保存/新进程读取通过；仅本地制品，CI待验证、未推送或发布。
 
 - [x] e73bb31新版经营→魔法壶→便携包：[本批结果](docs/stages/B1-playable-prototype.md#product-business-e73bb31)。新版首/二星跨进程链、魔法壶投入/发现/冷载/炼制/真实用药、两Debug标准177/153项通过；PC标题拖动误激活已修复。13.45MiB Release ZIP已独立解压、启动和隔离存读验证；OS输入通道不可用，CI待验证，未推送/发布。

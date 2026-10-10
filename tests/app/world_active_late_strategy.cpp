@@ -2,6 +2,7 @@
 
 #include "ark/simulation/actors/rules/human_management.hpp"
 #include <algorithm>
+#include <iostream>
 #include <istream>
 #include <limits>
 #include <ostream>
@@ -285,6 +286,11 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {};
+    if (income_ && income_->active()) {
+        const auto action = income_->next(s, reserve(s), false);
+        if (action.handled)
+            return action.command;
+    }
     if (stats_.target_rank == 3 && stats_.layout_old_shop && !stats_.layout_complete &&
         s.scene.scene_state == 1 && s.build_mode != 0) {
         auto c = command(Kind::confirm_edit);
@@ -334,6 +340,52 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                 return c;
             }
         const bool third = stats_.target_rank == 3;
+        // Newly unlocked rank-two shops have priority over spending points on optional
+        // activities. A source-valid roadside footprint (excluding the school) is mandatory.
+        if (income_ && third && s.rank == 2 &&
+            (month(s) < income_stop_month_ || income_build_definition_ >= 0)) {
+            if (income_build_definition_ < 0 && month(s) < income_stop_month_) {
+                std::int64_t best_price{};
+                for (const auto &d : s.rules->facilities) {
+                    if (d.unlock_rank != 2 || (d.kind != 3 && d.kind != 9) ||
+                        has_definition(s, d.id))
+                        continue;
+                    const auto quote = sim::startup_world_build_quote(s, d.id);
+                    if (!quote || !free_roadside(s, d.id, true) ||
+                        cash(s) < reserve(s) + quote->construction_cost +
+                                      2 * quote->definition_attributes[3])
+                        continue;
+                    if (quote->definition_attributes[0] > best_price) {
+                        best_price = quote->definition_attributes[0];
+                        income_build_definition_ = d.id;
+                    }
+                }
+                if (income_build_definition_ >= 0)
+                    std::cout << "EXPAND plan definition=" << income_build_definition_ << " points="
+                              << s.rules->facility_initial.at(income_build_definition_).capacity
+                              << " price=" << best_price << std::endl;
+            }
+            if (income_build_definition_ >= 0) {
+                const int d = income_build_definition_;
+                if (s.facility_presence.at(d) == 2 && !has_definition(s, d)) {
+                    const auto place = free_roadside(s, d, true);
+                    require(place.has_value(), "reserved income shop site became unavailable");
+                    build_definition_ = d;
+                    build_anchor_ = *place;
+                    build_committed_ = false;
+                    return command(Kind::open_build_menu);
+                }
+                if (s.facility_presence.at(d) != 2 &&
+                    s.village_points >= s.rules->facility_initial.at(d).capacity)
+                    return command(Kind::open_commerce);
+            }
+        }
+        if (income_ && stats_.ticks >= next_income_tick_) {
+            next_income_tick_ = stats_.ticks + 50;
+            const auto action = income_->next(s, reserve(s), true);
+            if (action.handled)
+                return action.command;
+        }
         if (third && !stats_.layout_complete && (stats_.layout_old_shop || !free_roadside(s, 40))) {
             const auto road_quote = sim::startup_world_build_quote(s, 18);
             require(road_quote.has_value(), "road expansion lacks current construction quote");
@@ -377,7 +429,11 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             return command(Kind::open_build_menu);
         }
         const bool needs_western = third && s.rank == 2 && s.facility_presence.at(40) != 2;
-        const int western_reserve = needs_western ? s.rules->facility_initial.at(40).capacity : 0;
+        const int western_reserve =
+            needs_western ? s.rules->facility_initial.at(40).capacity
+            : income_build_definition_ >= 0
+                ? s.rules->facility_initial.at(income_build_definition_).capacity
+                : 0;
         if ((!third && stats_.pot_month >= 0) || (third && stats_.school_activity_month >= 0))
             return {}; // After import, let the town actually trade for a whole month.
         // Rank two unlocks the chamber offer, not the construction catalogue. Preserve
@@ -395,7 +451,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             next_activity_tick_ = stats_.ticks + 300;
             return command(Kind::open_village_activities);
         }
-        if (third && stats_.ticks >= next_management_tick_) {
+        if (third && stats_.ticks >= next_management_tick_ && !income_) {
             next_management_tick_ = stats_.ticks + 300;
             const int mandatory = s.rank == 3 ? 63 : 40;
             const auto catalog = sim::startup_world_build_catalog(s);
@@ -527,19 +583,23 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
         const auto view = sim::inspect_startup_world_commerce_page(s, p.id);
         if (!view)
             return {};
+        const int requested =
+            income_ && income_build_definition_ >= 0 ? income_build_definition_ : 40;
         if (raw == 83)
             return commerce(p.id,
-                            s.facility_presence.at(40) == 2 ? Commerce::cancel
-                            : view->selection == 2          ? Commerce::confirm
-                                                            : Commerce::select,
+                            s.facility_presence.at(requested) == 2 ? Commerce::cancel
+                            : view->selection == 2                 ? Commerce::confirm
+                                                                   : Commerce::select,
                             2);
         if (raw == 93) {
-            require(view->binding == 40 && stats_.western_unlock_paid,
+            require(view->binding == requested &&
+                        (requested == 40 ? stats_.western_unlock_paid
+                                         : income_unlock_paid_.count(requested) != 0),
                     "unexpected facility claim in restaurant route");
             return commerce(p.id, Commerce::confirm);
         }
-        const auto found = std::find(view->entries.begin(), view->entries.end(), 40);
-        require(found != view->entries.end(), "rank-two chamber must offer locked restaurant40");
+        const auto found = std::find(view->entries.begin(), view->entries.end(), requested);
+        require(found != view->entries.end(), "chamber must offer selected locked building");
         const int index = static_cast<int>(found - view->entries.begin());
         return commerce(p.id, view->selection == index ? Commerce::confirm : Commerce::select,
                         index);
@@ -563,7 +623,9 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                                    : a.parameters[2] <= 2) &&
                     a.parameters[4] <=
                         s.village_points -
-                            (stats_.target_rank == 3 && s.facility_presence.at(40) != 2
+                            (income_build_definition_ >= 0
+                                 ? s.rules->facility_initial.at(income_build_definition_).capacity
+                             : stats_.target_rank == 3 && s.facility_presence.at(40) != 2
                                  ? s.rules->facility_initial.at(40).capacity
                                  : 0) &&
                     s.quarter_counter > 0) {
@@ -749,6 +811,8 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
             "command rejected kind=" + std::to_string(static_cast<int>(c.kind)) + "; " +
                 diagnose(before));
     ++stats_.commands;
+    if (income_)
+        income_->observe(before, c, after);
     if (stats_.target_rank == 3 && c.kind == Kind::confirm_edit && before.build_mode == 7) {
         const auto old_id = stats_.layout_old_shop;
         require(result.created && old_id && !stats_.layout_moved_shop,
@@ -814,26 +878,52 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
         const auto view = sim::inspect_startup_world_commerce_page(before, c.page);
         require(view.has_value(), "commerce receipt lacks initialized page");
         if (view->raw == 85) {
-            const int price = before.rules->facility_initial.at(40).capacity;
-            require(!stats_.western_unlock_paid && before.rank == 2 &&
-                        view->entries.at(view->selection) == 40 &&
-                        before.village_points - after.village_points == price &&
-                        cash(before) == cash(after) && top(after).legacy_page == 93 &&
-                        top(after).legacy_s == 40 &&
-                        after.facility_presence.at(40) == before.facility_presence.at(40),
-                    "restaurant chamber payment must charge points once before claim");
-            stats_.western_unlock_points = price;
-            stats_.western_unlock_paid = true;
+            const int definition = view->entries.at(view->selection);
+            if (income_ && definition != 40) {
+                const int points = before.rules->facility_initial.at(definition).capacity;
+                require(definition == income_build_definition_ &&
+                            !income_unlock_paid_.count(definition) &&
+                            before.village_points - after.village_points == points &&
+                            cash(before) == cash(after) && top(after).legacy_page == 93 &&
+                            top(after).legacy_s == definition,
+                        "new shop unlock must charge its own source point price once");
+                income_unlock_paid_[definition] = points;
+                std::cout << "EXPAND paid definition=" << definition << " points=" << points
+                          << std::endl;
+            } else {
+                const int price = before.rules->facility_initial.at(40).capacity;
+                require(!stats_.western_unlock_paid && before.rank == 2 &&
+                            view->entries.at(view->selection) == 40 &&
+                            before.village_points - after.village_points == price &&
+                            cash(before) == cash(after) && top(after).legacy_page == 93 &&
+                            top(after).legacy_s == 40 &&
+                            after.facility_presence.at(40) == before.facility_presence.at(40),
+                        "restaurant chamber payment must charge points once before claim");
+                stats_.western_unlock_points = price;
+                stats_.western_unlock_paid = true;
+            }
         }
         if (view->raw == 93 && view->counter >= 40) {
-            require(stats_.western_unlock_paid && !stats_.western_unlock_claimed &&
-                        view->binding == 40 && after.facility_presence.at(40) == 2 &&
-                        after.facility_free_builds.at(40) ==
-                            std::min(99, before.facility_free_builds.at(40) + 1) &&
-                        before.village_points == after.village_points &&
-                        cash(before) == cash(after),
-                    "restaurant claim must unlock once without a second charge");
-            stats_.western_unlock_claimed = true;
+            if (income_ && view->binding != 40) {
+                const int definition = view->binding;
+                require(income_unlock_paid_.count(definition) &&
+                            after.facility_presence.at(definition) == 2 &&
+                            after.facility_free_builds.at(definition) ==
+                                std::min(99, before.facility_free_builds.at(definition) + 1) &&
+                            before.village_points == after.village_points &&
+                            cash(before) == cash(after),
+                        "new shop claim must unlock once without a second point charge");
+                std::cout << "EXPAND claimed definition=" << definition << std::endl;
+            } else {
+                require(stats_.western_unlock_paid && !stats_.western_unlock_claimed &&
+                            view->binding == 40 && after.facility_presence.at(40) == 2 &&
+                            after.facility_free_builds.at(40) ==
+                                std::min(99, before.facility_free_builds.at(40) + 1) &&
+                            before.village_points == after.village_points &&
+                            cash(before) == cash(after),
+                        "restaurant claim must unlock once without a second charge");
+                stats_.western_unlock_claimed = true;
+            }
         }
     }
     if (c.kind == Kind::confirm_build) {
@@ -845,6 +935,15 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
                     !(after.facility_flags.at(id) & 1U),
                 "planned roadside building is disconnected");
         stats_.construction_cost += q->construction_cost;
+        if (income_ && build_definition_ == income_build_definition_) {
+            require(income_unlock_paid_.count(build_definition_) &&
+                        income_buildings_.emplace(build_definition_, id).second,
+                    "income expansion requires a real point purchase before construction");
+            std::cout << "EXPAND built definition=" << build_definition_ << " instance=" << id
+                      << " cost=" << q->construction_cost << std::endl;
+            income_->register_new_shop(id);
+            income_build_definition_ = -1;
+        }
         if (build_definition_ == 24)
             recruitment_ = id;
         else
@@ -914,6 +1013,8 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
 
 void ActiveLateVillageStrategy::observe_tick(const State &before, const State &after) {
     ++stats_.ticks;
+    if (income_)
+        income_->observe_tick(before, after);
     require(month(after) >= month(before) && month(after) <= month(before) + 1 &&
                 ref::valid_world_calendar_state(after.scene.calendar) &&
                 after.scene.random.draws() >= before.scene.random.draws(),
@@ -1032,7 +1133,24 @@ std::string ActiveLateVillageStrategy::diagnose_construction(const State &s) con
     }
     return out.str();
 }
+void ActiveLateVillageStrategy::verify_income_business(const State &s) const {
+    require(income_ && !income_buildings_.empty(),
+            "improved route must buy and build newly unlocked shops");
+    std::int64_t sales{};
+    for (const auto &[definition, id] : income_buildings_) {
+        const auto &f = s.scene.world.world.facilities.at(id);
+        require(income_unlock_paid_.count(definition) && f.status == 1 &&
+                    !(s.facility_flags.at(id) & 1U),
+                "point-purchased shop must finish and remain road-connected");
+        sales += f.sales;
+        std::cout << "EXPAND trade definition=" << definition << " instance=" << id
+                  << " points=" << income_unlock_paid_.at(definition) << " sales=" << f.sales
+                  << std::endl;
+    }
+    require(sales > 0, "new point-purchased buildings must actually earn revenue");
+}
 void ActiveLateVillageStrategy::encode(std::ostream &out) const {
+    require(!income_, "income experiment is not a resumable business certificate");
     const auto &v = stats_;
     out << "ARK_ACTIVE_LATE_2\n"
         << v.commands << ' ' << v.ticks << ' ' << v.departed_task << ' ' << v.minimum_cash << ' '

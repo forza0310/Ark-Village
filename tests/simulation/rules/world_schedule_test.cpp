@@ -511,8 +511,11 @@ void errors_and_atomic_extension() {
     check(!r.candidate && r.error == WorldScheduleError::consumer_failed &&
               s.world.facilities.at(3).occupants.empty() && s.updates == 0,
           "late missing L/random consumer rolls back counters, wait and occupation together");
+    check(r.failure && r.failure->stage == WorldScheduleStage::finalize && !r.failure->id &&
+              r.failure->layer == "schedule.consumer",
+          "rejection retains the failed call without exposing a partial candidate");
     r = prepare_world_schedule(s, {false, 1000000}, {});
-    check(r.candidate && !r.candidate->start_field && r.candidate->calls.empty() &&
+    check(r.candidate && !r.failure && !r.candidate->start_field && r.candidate->calls.empty() &&
               r.candidate->state.world.ai.battle.actors.at({1}).state_counter == 0,
           "nonadmitted world does not accumulate AI work or run any handler");
     check(prepare_world_schedule(s, {}, {}).error == WorldScheduleError::missing_consumer,

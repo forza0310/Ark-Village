@@ -1155,7 +1155,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto result = ref::prepare_owned_world_runtime_with_calendar(
         admitted, {s.calendar_advance, true}, a, calendar_other);
     if (!result.state)
-        return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {}};
+        return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {},
+                std::move(result.failure)};
     // 局部运行结果的Owner最后一次移交；scene审计仍完整，继续读取其实际轮数。
     auto next = std::move(*result.state);
     next.scripts.executing_page.reset(); // kairo/android/a/b.g的finally清j；检查点不保留回调根。

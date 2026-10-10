@@ -519,8 +519,12 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_actor_schedule.hpp",
       "source_sha256": "702ac82438bae0ae825bc4b2227165335461a89cc2326360894c9bb1404fd802",
       "source_bytes": 10197,
-      "sha256": "788671db9e061d90023065ab547de3bdc92c12b8d8e8b37e23e778fa3aef3f3e",
-      "bytes": 10191
+      "sha256": "a0c67c0d611f74541788c25a3d10758ff9aedb01367dc4b596ab9a346399b835",
+      "bytes": 11096,
+      "product_patch": {
+        "imported_sha256": "788671db9e061d90023065ab547de3bdc92c12b8d8e8b37e23e778fa3aef3f3e",
+        "reason": "Product diagnostic metadata retains actor decision/control errors and distinct expression/random errors on failure; original candidate, ordering and rollback unchanged."
+      }
     },
     {
       "file": "include/ark/simulation/actors/rules/world_actor_tail.hpp",
@@ -711,8 +715,12 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_nonactor_schedule.hpp",
       "source_sha256": "80a27f35b01e7304968ced2d5ed0f9144e684c997f0c51c0e678d67a3bde9a5f",
       "source_bytes": 6646,
-      "sha256": "83fd26605cf3f94565936810bbe2bdf5329a9ec5d412dbe30b58dc82d40fc30d",
-      "bytes": 6643
+      "sha256": "034c62ba83d789e4fec8e08df739055472837ab91226d8aa8fd43efcf3a1c05d",
+      "bytes": 7007,
+      "product_patch": {
+        "imported_sha256": "83fd26605cf3f94565936810bbe2bdf5329a9ec5d412dbe30b58dc82d40fc30d",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "include/ark/simulation/village/rules/world_notices.hpp",
@@ -775,8 +783,12 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_runtime.hpp",
       "source_sha256": "41c7b02ae5b5d82d5a88ee769c97fdadbe73b9d83c3d76413adbd6e08867144a",
       "source_bytes": 22463,
-      "sha256": "cbaa6e5c88069a07db666801a0f8b5fe4e13653a25b02b605e4455145a4d4dad",
-      "bytes": 22474
+      "sha256": "0f3e040312db23b38403c02c96befd4c62575c0810c38154ab8825264c1ceeb9",
+      "bytes": 23163,
+      "product_patch": {
+        "imported_sha256": "cbaa6e5c88069a07db666801a0f8b5fe4e13653a25b02b605e4455145a4d4dad",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "include/ark/simulation/world/rules/world_scene.hpp",
@@ -791,8 +803,12 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_schedule.hpp",
       "source_sha256": "a22e22755308797efdb2a18ad1b3571cf87ed13d66d977ef1d7557ac98b5099a",
       "source_bytes": 7501,
-      "sha256": "84ec116b93d23c2f6efe4f67eb2fac213121094281a00d11899017dfa604091e",
-      "bytes": 7494
+      "sha256": "c1c1746160b8bb94c38bbdc4ce5838121024dda5f171e0659d9ece09712188d5",
+      "bytes": 7968,
+      "product_patch": {
+        "imported_sha256": "84ec116b93d23c2f6efe4f67eb2fac213121094281a00d11899017dfa604091e",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "include/ark/simulation/village/rules/world_scripts.hpp",
@@ -1383,8 +1399,12 @@
       "source": "research/dungeon_village_1/example/src/world_nonactor_schedule.cpp",
       "source_sha256": "7b1c962724af8adc158a57de81ef93a000b1caac6aa5e34ee54fc18aef24e69b",
       "source_bytes": 16126,
-      "sha256": "e73b9145beb2dd7e758365c1228bd9b3a8fcb71dae2ca38f318c502034248d63",
-      "bytes": 16118
+      "sha256": "218073b887815678101238f8d3ca8a589d89205726674bf0c311f20fa0199154",
+      "bytes": 16444,
+      "product_patch": {
+        "imported_sha256": "e73b9145beb2dd7e758365c1228bd9b3a8fcb71dae2ca38f318c502034248d63",
+        "reason": "Product failure replay: bind spell contact visual to spawned delayed projectile collision target; preserve source damage timing and random order."
+      }
     },
     {
       "file": "src/simulation/village/rules/world_notices.cpp",
@@ -1455,8 +1475,12 @@
       "source": "research/dungeon_village_1/example/src/world_schedule.cpp",
       "source_sha256": "38e312cfeb1e60b103ea501c44ec1350b64ca21a3e500e7d22dc42ae06a313a6",
       "source_bytes": 19722,
-      "sha256": "142faadc29b4a52253825214cf945a990fc940201a2d4cfdad592e7616e832b0",
-      "bytes": 19714
+      "sha256": "3b65bf8ab6897792551890ac5a09844c0f3d94572eeb5d3cebfabae92d2536c9",
+      "bytes": 19874,
+      "product_patch": {
+        "imported_sha256": "142faadc29b4a52253825214cf945a990fc940201a2d4cfdad592e7616e832b0",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "src/simulation/village/rules/world_scripts.cpp",
@@ -2039,8 +2063,12 @@
       "source": "research/dungeon_village_1/example/tests/world_nonactor_schedule_test.cpp",
       "source_sha256": "140fe5ad289674952822b09089db544838363acac7fb7bde9b63f06dcd8a179e",
       "source_bytes": 24510,
-      "sha256": "f49e97d326890affc44026a6d91a346c3be5d567d0429eb2117d3965c360e0c2",
-      "bytes": 24508
+      "sha256": "bf1b2cc53aac334be1170a83bfcd80fedb8ce48faed22ff76aaca4facf56bc9e",
+      "bytes": 27101,
+      "product_patch": {
+        "imported_sha256": "f49e97d326890affc44026a6d91a346c3be5d567d0429eb2117d3965c360e0c2",
+        "reason": "Regress spell visual target differing from aim target, delayed HP/random and rejected-consumer rollback."
+      }
     },
     {
       "file": "tests/simulation/rules/world_notices_test.cpp",
@@ -2103,8 +2131,12 @@
       "source": "research/dungeon_village_1/example/tests/world_runtime_test.cpp",
       "source_sha256": "279a3f7b52f7be1f5a252bd36321b10133ebefd4b3a65477111a45c74356174d",
       "source_bytes": 20987,
-      "sha256": "c06c96cbf190045002f71a6c2431553a60364c095d14a87d335870ce68cd294e",
-      "bytes": 20913
+      "sha256": "bb99ced25b0e5cc81e216b36f9fb6c78ded1543c8dc5091f0f14400cdbc86cc4",
+      "bytes": 21134,
+      "product_patch": {
+        "imported_sha256": "c06c96cbf190045002f71a6c2431553a60364c095d14a87d335870ce68cd294e",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "tests/simulation/rules/world_scene_test.cpp",
@@ -2119,8 +2151,12 @@
       "source": "research/dungeon_village_1/example/tests/world_schedule_test.cpp",
       "source_sha256": "3bd372de2975a8db54f27aece8dd833ba7ad5230f5d4a15a6d6674fa3f2f81c4",
       "source_bytes": 48876,
-      "sha256": "084242b22daeec20b505387d78daf28c0f93e6a2b7ac1bee62f1e844ee00a25a",
-      "bytes": 48876
+      "sha256": "2f21d1dd42249edcbfc5cce23001881a5f7bae072dc90c896b2296f74bab6a92",
+      "bytes": 49123,
+      "product_patch": {
+        "imported_sha256": "084242b22daeec20b505387d78daf28c0f93e6a2b7ac1bee62f1e844ee00a25a",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "tests/simulation/rules/world_scripts_test.cpp",
@@ -2431,8 +2467,12 @@
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/startup_world_runtime.hpp",
       "source_sha256": "cb47450caae19e3e70a17782ffa1f945af1f12b8480f914e0bca7008c4048aab",
       "source_bytes": 28810,
-      "sha256": "9de719c1f039e1d1a7e96643a8ba850695e30265ff79b701d007d9ebb5233870",
-      "bytes": 28795
+      "sha256": "070d2f6cf583e5a9e5184ca093f5f4d64f487a0e967cb88ca40930b52265a9d1",
+      "bytes": 28897,
+      "product_patch": {
+        "imported_sha256": "9de719c1f039e1d1a7e96643a8ba850695e30265ff79b701d007d9ebb5233870",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "include/ark/simulation/tasks/startup_world_runtime_tasks.hpp",
@@ -2928,8 +2968,12 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_runtime.cpp",
       "source_sha256": "3947746d2586d0bd5c0d5ad0580a2eec6b92eb4ffbca0d0ca64f0e67f54f4034",
       "source_bytes": 60781,
-      "sha256": "bbf3b9b8516c1c70d2ef5116d55ea0daf54444868b2bc6a4acbc8293f3fb7c3c",
-      "bytes": 60839
+      "sha256": "0fa53b0df7360a9820772cf4e2465408f2c4272549cc2b23a934023b50d0c881",
+      "bytes": 60882,
+      "product_patch": {
+        "imported_sha256": "bbf3b9b8516c1c70d2ef5116d55ea0daf54444868b2bc6a4acbc8293f3fb7c3c",
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions."
+      }
     },
     {
       "file": "src/simulation/world/startup_world_runtime_arrival.cpp",

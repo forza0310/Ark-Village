@@ -91,7 +91,8 @@ template <class Owner>
 std::optional<OwnedWorldScheduleStep<Owner>>
 prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &call,
                                    const CombatInfluenceCandidate &field,
-                                   const WorldNonactorScheduleAdapter<Owner> &adapter) {
+                                   const WorldNonactorScheduleAdapter<Owner> &adapter,
+                                   std::optional<WorldScheduleFailure> *failure = nullptr) {
     if (call.stage == WorldScheduleStage::arrival_front ||
         call.stage == WorldScheduleStage::popularity || call.stage == WorldScheduleStage::facility)
         return adapter.other ? adapter.other(state, call, field) : std::nullopt;
@@ -122,8 +123,13 @@ prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &
             return fields;
         };
     const auto result = prepare_world_nonactor_stage(routes, input, field, consume);
-    if (!result.candidate || !adapter.write_routes(next, result.candidate->state))
+    if (!result.candidate || !adapter.write_routes(next, result.candidate->state)) {
+        if (failure)
+            *failure = WorldScheduleFailure{call.stage, call.id,
+                                             result.candidate ? "nonactor.write" : "nonactor.stage",
+                                             static_cast<int>(result.error)};
         return {};
+    }
     adapter.write_common(next) = result.candidate->state.common;
     return OwnedWorldScheduleStep<Owner>{std::move(next), result.candidate->disposition};
 }

@@ -6,6 +6,7 @@
 #include "ark/simulation/map/rules/world_overlap.hpp"
 
 #include <utility>
+#include <string>
 
 namespace ark::simulation::rules {
 struct WorldScheduleState {
@@ -69,6 +70,14 @@ enum class WorldScheduleError {
     common_segment_failed,
     dispatch_limit
 };
+// Failure metadata is not an Owner/candidate: it carries no partial world or random state.
+// The named layer determines the meaning of error; zero means no finer error was available.
+struct WorldScheduleFailure {
+    WorldScheduleStage stage{};
+    std::optional<std::uint64_t> id;
+    std::string layer;
+    int error{};
+};
 struct WorldScheduleCandidate {
     WorldScheduleState state;
     std::optional<CombatInfluenceCandidate> start_field;
@@ -79,6 +88,7 @@ struct WorldScheduleCandidate {
 struct WorldScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
     std::optional<WorldScheduleCandidate> candidate;
+    std::optional<WorldScheduleFailure> failure{};
 };
 WorldMapFacts world_schedule_facts(const WorldScheduleState &state);
 bool valid_world_schedule_owner(const WorldScheduleState &state);
@@ -113,6 +123,7 @@ template <class Owner> struct OwnedWorldScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
     std::optional<Owner> state;
     std::optional<WorldScheduleCandidate> audit;
+    std::optional<WorldScheduleFailure> failure{};
 };
 template <class Owner>
 OwnedWorldScheduleResult<Owner>
@@ -138,7 +149,7 @@ prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input
             return WorldScheduleStep{adapter.read(scratch), step->disposition};
         });
     if (!result.candidate)
-        return {result.error, {}, {}};
+        return {result.error, {}, {}, std::move(result.failure)};
     adapter.write(scratch) = result.candidate->state;
     // 最后写回已完成；移动完整审计，既不清内容也不改变它记录的时点。
     return {WorldScheduleError::none, std::move(scratch), std::move(result.candidate)};

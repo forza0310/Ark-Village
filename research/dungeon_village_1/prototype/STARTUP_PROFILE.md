@@ -1,6 +1,6 @@
 # 主角定义覆盖与新局继承
 
-本模块实现已批准[启动记录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)中的世界侧部分。原版事实见[主角／纪录](../rules/STARTUP_RECORDS.md)，应用标题及系统文件事务由应用模块管理；本文件不表示原皮肤标题窗口已完成。
+本模块实现已批准[启动记录设计](STARTUP_APPLICATION.md)中的世界侧部分。原版事实见[主角／纪录](../rules/STARTUP_RECORDS.md)，应用标题及系统文件事务由应用模块管理；本文件不表示原皮肤标题窗口已完成。
 
 `StartupWorldRuntimeState::human_profiles`按稳定定义ID保存姓名、性别和自定义标志，本批只允许定义0。冻结rules不修改，没有覆盖时读取冻结默认值；已命名但尚未到访的定义0仍完整保存。`startup_world_human_profile`是共同只读解析入口，详情、职业目录、成长对白、住宅完成、头像、解锁提示、到访实例及世界窗口读取同一结果。世界Owner建立前的默认投影使用rules重载，安装后使用Owner重载。没有为了展示主角而创建定义0实例，既有定义1首访及人气100开放定义0规则沿用。
 

@@ -1,5 +1,7 @@
 # 阶段、当前能力与下一步
 
+2026-10-10新goal以[逐ID解锁链](COMPREHENSIVE_RESEARCH.md#当前连续队列)为主线，完整条件、触发／领取时点、效果和后继均须可追溯；UI只优先补解释这些链的输入／演出边界。[现有内容索引](../data/PROGRESSION_CONTENT_INDEX.json)版本2加入36怪物、任务五组及入口／参数引用，共775定义，同时删除冗余指纹，尚不表示全部链已闭合。最新静态增量见[本批验证](../VERIFICATION.md#逐id解锁链与研究收敛2026-10-10)；旧字体／选档续核暂放后继队列，不重复经营长跑。
+
 2026-10-10[说明页Owner与Steam局部皮肤](../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)已接真实菜单、29段APK中文／关于页、Init冻结人物与共同随机、完整应用恢复短回放及App／Session窗口；最终pages／visuals复验3.44秒，三个8帧窗口通过。[并排例图](../ui/examples/steam-manual.png)供产品参考，原字体／完整TextLayout／人物scratch与物理输入仍待核。字段与数据身份变更拒旧，语义5／8／2保持。后继核选档箭头的同类GameView纹理消费、设置12持久／平台输出、RankForm、完整标题与字体；不重跑研究经营长前缀。
 
 设置／说明静态续核见[两版消费边界](../VERIFICATION.md#设置与说明的两版消费边界2026-10-10)：Steam非日文四行设置与APK五行不同，返回SaveSystem不保存世界画质／速度；说明确认先消费为翻页，两版正文已识别29段。当前完整设置仍缺持久／平台输出契约，不能由已完成的raw14或raw13替代。
@@ -80,14 +82,14 @@
 
 2026-10-09用户另外明确批准完整应用快照具体方案及接口／隔离测试，现接[AVRAPP01应用回放](../prototype/APPLICATION_REPLAY.md)：完整应用＋Session＋实际Driver、计分中恢复、新隔离系统无覆盖发布后联合安装。当前认证资格为预算内raw17条件短回放；自然180月Driver及长期历史成本仍独立，不由此宣称自然通关完成。
 
-`9ec4c1a`之后的10月8日研究增量见[启动皮肤合同](../ui/STARTUP_SKIN.md)、[自然通关路线及成本](../rules/PROGRESSION_ROUTES.md)、[完整应用快照具体设计](in-progress/APPLICATION_REPLAY_DESIGN.md)。该批只有静态合同、素材对照和设计审计；没有新窗口动态／自然180月结果／快照实现。当时主会话窗口通道复核失败，设计确认仅约束新增格式实现，独立研究继续。
+`9ec4c1a`之后的10月8日研究增量见[启动皮肤合同](../ui/STARTUP_SKIN.md)、[自然通关路线及成本](../rules/PROGRESSION_ROUTES.md)、[完整应用快照具体设计](../prototype/APPLICATION_REPLAY.md)。该批只有静态合同、素材对照和设计审计；没有新窗口动态／自然180月结果／快照实现。当时主会话窗口通道复核失败，设计确认仅约束新增格式实现，独立研究继续。
 
 接续`72a5bf4`，用户已确认的[主角／系统应用](../prototype/STARTUP_APPLICATION.md)完成维护实现：定义0覆盖与继承、两页跨局纪录、独立系统文件、六类计分收尾事务、独立标题内存回放及中文CLI。13项相关检查最终通过，正常存档／写失败／计分尾段使用短场景验证；不代表产品标题、原皮肤、原档兼容或自然16年路线。旧schema拒绝、不迁移。Steam建设21固定入口已读，非入口续窗仍受自动审批阻断。
 
 最新按产品高优先级交付[设施74来源行／五行窗口](../ui/FACILITY_BONUS_ROWS.md)与[类别图标／效果计划](../ui/FACILITY_BONUS_ICONS.md)，13项相关CTest及最终3项复验通过，真实新局8帧窗口已查看图标／魅力+10。产品迁入、原EXE74动态与第一页完整效果皮肤分开，不将研究接口通过写成产品页面已完成。
 
 接续`f9d8288`：[Steam属性／道具局部消费者](../ui/ATTRIBUTE_GAIN_RENDER.md)已交叉，保留加号定位的版本差异；普通道具研究自然目录窗口已观测。
-[受击Owner短轨迹](../rules/ai/HIT_REACTION.md)17合法场景／3拒绝及2599检查通过，原EXE动态另验；[建设21](../ui/STEAM_BUILD_LIST.md)登记实际缺口；[主角系统设计](in-progress/STARTUP_RECORDS_DESIGN.md)已批准并实施，不能将持续任务整体标为完成。
+[受击Owner短轨迹](../rules/ai/HIT_REACTION.md)17合法场景／3拒绝及2599检查通过，原EXE动态另验；[建设21](../ui/STEAM_BUILD_LIST.md)登记实际缺口；[主角系统设计](../prototype/STARTUP_APPLICATION.md)已批准并实施，不能将持续任务整体标为完成。
 
 最新[产品需求回应](../verification/PRODUCT_REQUESTS.md)将顶部反馈与历史条目分开：普通道具图标／人物六属性头标的来源、只读接口及18项受影响回归已交付；
 主角ID0／首访ID1、系统跨局纪录已有来源合同及维护Owner；原版受击连续动态仍待补证。产品文件未改。

@@ -1,6 +1,6 @@
 # 任务选择目录、模式与怪物介绍资格的产生者
 
-2026-10-09。固定汉化重签APK1.0.8静态研究；没有运行原APK／Steam，也没有取得高星自然任务认证。本批沿原字段的具名DEX指令扫描，补出一个维护新局初值缺口。与[路线合同](../../rules/PROGRESSION_ROUTES.md)和[既有后期闭合](../late-progression-closure/README.md)配合使用，不替换原表。
+2026-10-09。固定汉化重签APK1.0.8静态研究；没有运行原APK／Steam，也没有取得高星自然任务认证。本批沿原字段的具名DEX指令扫描，补出一个维护新局初值缺口。与[路线合同](../../rules/PROGRESSION_ROUTES.md)和[既有后期闭合](../../rules/PROGRESSION_ROUTES.md)配合使用，不替换原表。
 
 ## 结论及证据范围
 

@@ -62,7 +62,7 @@
 - [普通道具](../ui/ITEM_ICON_RENDER.md)：Steam原列5／图标字段、89分类／5背景及type1两次裁图已核；研究窗口自然商会购买→人物赠礼64已观测原图标和底框。不同页面的Steam布局／输入不借此升级。
 - [受击](../rules/ai/HIT_REACTION.md)：现有唯一Owner套件已增加17个合法短轨迹、3个非法投射拒绝，2599检查通过；人物／怪物移动双轨道、真实d尾及表现投影分开记录。9项相关CTest通过，最终尾部观测修正后主责套件再通过；未改规则或新增target。原EXE连续画面仍未采集，不能称RQ11完整关闭。
 - [建设21](../ui/STEAM_BUILD_LIST.md)：用户已明确允许有界取证；固定六入口工具中的draw／update／init三个入口共3072字节通过。非入口续窗仍被自动审批以指令边界证据不足拒绝，未执行；不是仍待用户回答原授权问题。
-- [主角／纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)已批准；[应用维护模块](../prototype/STARTUP_APPLICATION.md)交付定义0覆盖／继承、独立系统文件、两页纪录、六类计分收尾、标题独立回放及中文CLI。13项相关检查最终通过，产品图形接线另验；计分取证已闭合所列合同，完整原皮肤／自然结局仍未认证。
+- [主角／纪录设计](../prototype/STARTUP_APPLICATION.md)已批准；[应用维护模块](../prototype/STARTUP_APPLICATION.md)交付定义0覆盖／继承、独立系统文件、两页纪录、六类计分收尾、标题独立回放及中文CLI。13项相关检查最终通过，产品图形接线另验；计分取证已闭合所列合同，完整原皮肤／自然结局仍未认证。
 
 完整结果、引用／资源检查见[验证入口](../VERIFICATION.md)。HTML示例可用通道清单仍为空，没有浏览器布局／点击验收；原窗口任务可按[短受击观察提示](../work/window-restore-observation/NEXT_HIT_REACTION_PROMPT.md)交给可用通道执行，当前未执行该实验。
 

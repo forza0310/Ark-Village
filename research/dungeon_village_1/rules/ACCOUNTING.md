@@ -54,6 +54,10 @@
 自然晋级验收必须实际开展两次活动、建设指定设施并继续营业；不能注入F、人气、收入或rank。
 已验维护范围含类型0／1／2及51—54页面链、第一次自然类型3扩张；本批[魔法壶](MAGIC_POT.md)接5／6并验条件组合。
 类型4仍无专用效果、定义27排除；5／6的自然第二星路线未认证，实际完成等级以验证入口为准。
+
+2026-10-10补核固定Steam的活动27局部消费者，与APK `b/g.java:9043,4723–4774`交叉：`SubForm.Update_asEventList` RVA `320EC0`在VA `10320F9C–10320F9F`直接排除**数组索引27**，随后才检查state=1、一次性bit2与actNum、季度bit4；不是先列出祭典再由确认按钮禁用。`SubForm.Update2` RVA `317940`的raw53在`1031F79B`先减季度名额；`1031F7D5–1031F7D8`令efType4跳过效果到公共尾段，`1031FA70–1031FA7A`又跳过仅0／1的两次人物抽签和54，最终`1031FC7D`调用Pop。故“无专用效果”不等于强行构造53后整个确认无副作用；它仍消费名额并关闭。此为局部分支证明，不提供活动27的自然入口，也不改变维护Owner对未接类型4的拒绝政策。
+
+NEW提示查询与可开展目录须分开：APK `c/n.java:2258–2265`和Steam `UserData.IsExistAsEventNew` RVA `2DF930`均遍历全部定义，检查state1、一次性次数、季度位及NEW，而无索引27过滤；Steam锚点`102DF9ED–102DFA56`。如果外部状态使27符合提示条件，灯号可能成立而51仍不列出它；不能由灯号反推已找到自然解锁操作。`AsEventData.NewGame` RVA `2118F0`在`10211918–10211956`清state／NEW／actNum，再仅按flags1开放；其Serialize RVA `211960`仍按flag/int、state/short、NEW/bool、actNum/int保存27。以上没有补祭典玩法、删持久字段或认证所有版本全程序不可达；31项逐ID产生者及其覆盖限制仍见[路线合同](PROGRESSION_ROUTES.md#31项活动已定位产生者的覆盖及第27项边界)。
 验收沿现有页面／日历／连续运行套件，加入季度边界、取消、两计数时点、随机顺序、晚期回滚和页载荷退休检查。
 
 [领域接口](../example/include/dungeon_village_reference/world_village_activity.hpp)只准备目录、拒绝、开展及人物效果候选；

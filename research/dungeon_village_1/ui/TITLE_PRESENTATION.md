@@ -61,7 +61,7 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 ## 已接线接口与完整输入缺口
 
-背景接口实现于[应用接线](../prototype/src/startup_application_title.cpp)和[纯状态模块](../prototype/include/dungeon_village_prototype/startup_title_presentation.hpp)，应用回放沿[已确认设计](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)增加显式语义版本。
+背景接口实现于[应用接线](../prototype/src/startup_application_title.cpp)和[纯状态模块](../prototype/include/dungeon_village_prototype/startup_title_presentation.hpp)，应用回放沿[已确认设计](../prototype/APPLICATION_REPLAY.md)增加显式语义版本。
 
 | 输入／输出 | 当前职责 |
 | --- | --- |

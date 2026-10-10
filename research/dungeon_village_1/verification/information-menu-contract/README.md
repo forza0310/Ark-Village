@@ -14,6 +14,6 @@ EVIDENCE.json（本地核对材料，不随仓库交付）以用途／源码窗�
 
 主会话已登记源文件，单Release完整构建通过；既有应用／visuals两项CTest通过26.66秒（26.65／0.52秒），日志为[build.log](../../work/information-menu-contract/build.log)、[ctest.log](../../work/information-menu-contract/ctest.log)。仅新增纯查询和既有套件的边界oracle，没有Owner字段、页面载荷、随机、schema或新target。前述“本分支未构建”仅描述子分支工作，不代表当前集中交付未验。
 
-同批归档[Steam基础动作数组](../steam-actor-arrays/README.md)、[31活动产生者](../progression-unlock-producers/README.md)、[音频合同](../audio-contract/README.md)，并认证当前语义3自然12→24月。24月源与结果完整证书摘要、日志hash、文件规模和链接检查见VALIDATION.json（本地核对材料，不随仓库交付）；本地41.6MB快照留在ignored工作区，摘要不替代恢复时完整文件校验。
+同批归档[Steam基础动作数组](../steam-actor-arrays/README.md)、[31活动产生者](../../rules/PROGRESSION_ROUTES.md)、[音频合同](../audio-contract/README.md)，并认证当前语义3自然12→24月。24月源与结果完整证书摘要、日志hash、文件规模和链接检查见VALIDATION.json（本地核对材料，不随仓库交付）；本地41.6MB快照留在ignored工作区，摘要不替代恢复时完整文件校验。
 
 24月reference约689秒，双恢复20轮各约2秒，说明后续局部回归可以复用当前前缀。96份审计历史、313流水和3保留任务属于合法增长；终点页1、峰值5，声音已消费。文件仍在128MiB内，后继36月按现预算采样，不提高预算或删除历史。当前阶段构建／测试／24月进程已收齐，下一阶段采样独立继续。

@@ -6,7 +6,7 @@
 
 当前[应用](../../prototype/STARTUP_APPLICATION.md)只有标题／覆盖询问／配置／纪录／世界页面及两个`worlds`路径；系统`AVRSYS01`版本1没有手动／中断的目录记录。[应用回放](../../prototype/APPLICATION_REPLAY.md)语义5明确不包含外部两栏文件，恢复只发布系统文件。不能把`worlds[2]`机械改成四个可覆盖文件，就宣称标题原输入、四条目录、文件失败回滚和跨局回放都已经解决。
 
-已确认[应用回放方案](../../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)明确：跨捕获尾段执行新局／覆盖／正常保存／加载，需要另设计槽位文件视图。本文正是该后续设计。当前世界语义3和世界字段schema保持基线；现有128MiB上限、完整历史、单Release动态构建及唯一Owner约定不变。
+已确认[应用回放方案](../../prototype/APPLICATION_REPLAY.md)明确：跨捕获尾段执行新局／覆盖／正常保存／加载，需要另设计槽位文件视图。本文正是该后续设计。当前世界语义3和世界字段schema保持基线；现有128MiB上限、完整历史、单Release动态构建及唯一Owner约定不变。
 
 来源分别为[Steam标题与选档](../../ui/STEAM_TITLE_MENU.md)、[Steam raw20／raw1](../../ui/STEAM_SAVE_MENU.md)、[APK标题调度](../title-owner-contract/README.md)、[原存档](../../rules/PERSISTENCE.md)、[声音来源](../../ui/AUDIO_REQUESTS.md)。Steam作为UI目标，APK仍为世界／旧逻辑轨迹基线。Steam的75绘制门槛不能覆盖APK100更新准入，尚未闭合的Steam更新计数和平台事件顺序继续标待证，不猜成相同常量。
 

@@ -35,6 +35,8 @@
 
 desktop-debug标准139/139（37.79秒，仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-tax-final.log`、`ctest-headless-tax-final.log`和`ctest-release-tax-final.log`。同一只读月48前缀另建隔离分支，实际经营至月51并冷载通过：4名居民税额560/390/550/110G，合计1610G只入账一次，接续建设/强化/战利品/胜利也通过。证据`build/validation/research-e700aac/steam-tax-quarter-d395eaf2a5af4c2b96e61e3484144a5d/RESULT.json`；二星/收入缺口及来源身份保持，未认证新入住、全部人物税收、三星或自然通关，未重签旧报告或玩家包，CI待对应main。
 
+扩张预算按既定优先策略补齐点数积累：只预留真实活动目录已提供且布局需要的扩张，避免低价可选活动抢用预算；99/100点边界及无扩张需求时释放预算由原经营合同验证，未增加目标/套件或改变世界规则。desktop-debug标准139/139（33.59秒，仅排三个月），headless-debug及Release经营合同通过；后补季度名额/扩张状态诊断在三消费者合同定向通过，最终日志为`ctest-*-expansion-diagnostics.log`。修后从有效月51至54，再至57并冷载，实际活动25付100点扩张、新区建设及两次入住通过，详见[经营计划](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。新业务证据在`build/validation/research-e700aac/steam-expansion-quarter-0a16fa6788724632be55bc68d5ca1a87/RESULT.json`，仍二星，新增完整营业月与税收/三星待续；既有证书只读。README按实际源菜单/字体脚本删除“情报禁用、菜单生命周期未交付、仅静态字形子集”的过期描述，未改UI或打包行为；CI待对应main。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

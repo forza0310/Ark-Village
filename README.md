@@ -12,7 +12,7 @@
 
 ## 构建运行
 
-当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：所需Ark、raylib和C++运行库DLL、中文字体与许可随包提供，无需另外安装依赖。开发与测试共用DLL，避免静态代码重复进入每个测试程序。字体按当前产品字形生成子集，包内只保留运行文件；Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
+当前以Windows x64为构建和分发平台。[GitHub Actions](.github/workflows/ci.yml)仅在Windows runner执行desktop-release构建及全部标准CTest，成功后提供`ark-village-windows10-x64.zip`及SHA-256。解压后直接运行`ark_village.exe`：所需Ark、raylib和C++运行库DLL、中文字体与许可随包提供，无需另外安装依赖。开发与测试共用DLL，避免静态代码重复进入每个测试程序。字体保留来源字体的完整字符映射，GPU字形按需加载；包内只保留运行文件，Actions制品保留7天。只有desktop-release发布玩家游戏包，Debug/headless均为开发配置。本地默认desktop-debug验收，排除三个月测试；核心边界或长模拟检查按需使用headless，详见[构建检查](docs/CONTRIBUTING.md#构建检查)。
 
 成功构建会发布到[GitHub Releases](https://github.com/forza0310/Ark-Village/releases/latest)，直接下载Windows ZIP及SHA-256附件，无需容器工具；历史版本按提交保留。实际CI系统为Windows Server 2022，Windows 10真机另验。CI按上述分工执行，首次Releases发布仍待main运行确认；工具版本、存储策略和下载方式见[CI说明](docs/CONTRIBUTING.md#github-ci与制品)。
 
@@ -36,7 +36,7 @@ ctest --preset desktop-release
 
 左上月报自动显示击倒/点数和收支两阶段，无需确认，也不暂停世界或阻断菜单、人物与任务操作。每阶段沿原消费者累计70次有资格更新，关闭时只发放一次村子点数，维护费不重复扣除；其他源模态与场景资格照常生效。玩家显式暂停仍冻结世界与报告，只有明确继续才恢复。日期显示年/月/周，周内进度条只映射已证的`units/10800`；精确原版皮肤、尺寸和方向尚待研究。
 
-主场景无其他模态页面时，点击底部“菜单”或按M打开五项菜单；可见月报不阻止开菜单。M、Esc或再次点击菜单关闭。菜单期间冻结世界，关闭不改变手动暂停。未暂停时可选择“建设”、“冒险”或“村办”，“系统”在手动暂停时也可用；情报禁用。原版完整菜单生命周期尚未交付，开关属于已确认的桌面适配。
+主场景无其他模态页面时，点击底部“菜单”或按M打开菜单；可见月报不阻止开菜单。M、Esc或再次点击菜单返回。已接原raw3/4/7/10导航：建造、冒险、办公室、情报、系统，魔法壶开放后另显示。菜单与子页通过源消费者管理冻结和返回，绘制不推进计数，关闭不改变手动暂停；系统中保存和游戏方法可用，设置、世界内高分和结束游戏仍禁用。
 
 “系统→保存/读取”提供两个手动栏位，显示村名、日期与资金；覆盖已有档和读取均须明确确认。首版只接受稳定主场景，未结束的月报、事件/问答页或离村处理中不能存读档。默认目录为`%LOCALAPPDATA%/Ark-Village/saves`，可用`--save-dir PATH`指定隔离目录。保存失败保留旧档，读取失败保留当前世界；读取保留玩家当前手动暂停。共同随机不写入文件，同进程沿用当前流，冷启动使用新流。文件是当前版本Ark格式，不兼容原APK/旧demo档；自动中断档仍待轮内恢复合同。退出不自动保存。
 

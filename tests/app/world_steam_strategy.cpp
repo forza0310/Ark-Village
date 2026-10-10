@@ -1,5 +1,6 @@
 #include "world_steam_strategy.hpp"
 #include "support/world_fixture.hpp"
+#include "ark/simulation/village/startup_world_village_activity.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -410,6 +411,20 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                     s.rules->facilities.at(t.definition).unlock_rank <= s.rank)
                     points_reserve = std::max(points_reserve,
                                               s.rules->facility_initial.at(t.definition).capacity);
+            // An unaffordable expansion must accumulate its budget. Merely giving
+            // it a high score lets cheaper optional events spend those points first.
+            // Reserve only an expansion currently offered by the source catalogue.
+            if (outside_targets(s)) {
+                std::optional<int> expansion_cost;
+                for (const int id : v->entries) {
+                    const auto &a = s.rules->activities.at(id);
+                    if (a.parameters[2] == 3 &&
+                        (!expansion_cost || a.parameters[4] < *expansion_cost))
+                        expansion_cost = a.parameters[4];
+                }
+                if (expansion_cost)
+                    points_reserve = std::max(points_reserve, *expansion_cost);
+            }
             for (int n = 0; n < static_cast<int>(v->entries.size()); ++n) {
                 const auto &a = s.rules->activities.at(v->entries[n]);
                 const bool expansion = a.parameters[2] == 3 && outside_targets(s);
@@ -729,6 +744,10 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
     out << "raw=" << top(s).legacy_page << " month=" << month(s) << " ticks=" << stats_.ticks
         << " rank=" << s.rank << " cash=" << cash(s) << " reserve=" << reserve(s)
         << " points=" << s.village_points << " income_record=" << s.maximum_income
+        << " quarter_slots=" << s.quarter_counter
+        << " expansion_status=" << s.scripts.activities.at(25).status
+        << " expansion_flags=" << s.activity_flags.at(25)
+        << " expansion_count=" << held(s, 25)
         << " task=" << s.active_task.value_or(0) << " offers=" << s.task_order.size()
         << " popularity=" << s.popularity << " fence=" << s.fence_level
         << " layout=" << matching(s, true) << "/50 trading_slots=" << traded_slots_.size()
@@ -814,5 +833,57 @@ void steam_strategy_contract() {
     require(buildable(available, 28), "status1 must not trigger repeated chamber purchases");
     available.facility_presence.at(28) = 0;
     require(!buildable(available, 28), "unavailable definitions must wait for actual unlock");
+
+    // Explicit catalogue qualifications; normal Init builds the real offered list.
+    // This tests a legal test-player decision, not natural activity unlocking.
+    auto budget = initial_world();
+    budget.rank = 2;
+    for (auto &[id, activity] : budget.scripts.activities)
+        activity.status = id == 23 || id == 25 ? 1 : 0;
+    for (const auto &t : steam_village_layout())
+        budget.facility_presence.at(t.definition) = 1;
+    budget.quarter_counter = 1;
+    budget.village_points = 99;
+    ref::WorldScriptPage menu;
+    menu.kind = ref::WorldScriptPageKind::raw_page;
+    menu.legacy_page = 51;
+    const auto inserted =
+        ref::prepare_world_script_page(sim::startup_world_runtime_scripts(budget), menu);
+    require(inserted.candidate &&
+                sim::write_startup_world_runtime_scripts(budget, inserted.candidate->state),
+            "activity budget fixture lost its source page");
+    const auto page = budget.scripts.pages.back().id;
+    require(sim::initialize_startup_world_village_activity_pages(budget),
+            "activity budget fixture did not initialize its source catalogue");
+    for (int step = 0; step < 30 && top(budget).id != page; ++step) {
+        const auto &introduced = top(budget);
+        if (introduced.kind == ref::WorldScriptPageKind::dialogue && introduced.lifecycle == 2)
+            require(sim::acknowledge_startup_world_runtime_page(budget, introduced.id) ==
+                        sim::StartupWorldRuntimeError::none,
+                    "activity budget introduction did not close through its source consumer");
+        const auto update = sim::prepare_startup_world_runtime(budget);
+        require(update.candidate.has_value(), "activity budget introduction update failed");
+        budget = *update.candidate;
+    }
+    const auto view = sim::inspect_startup_world_village_activity_page(budget, page);
+    require(view && view->entries == std::vector<int>({23, 25}),
+            "activity budget fixture lost its optional/expansion offers");
+    SteamVillageStrategy player;
+    auto choice = player.next(budget);
+    require(choice && choice->kind == Kind::village_activity_action &&
+                choice->village_activity_action == Activity::cancel,
+            "optional event spent the points needed for an offered expansion");
+    budget.village_points = 100;
+    choice = player.next(budget);
+    require(choice && choice->kind == Kind::village_activity_action &&
+                choice->village_activity_action == Activity::select &&
+                view->entries.at(choice->selection) == 25,
+            "affordable expansion did not take priority over the optional event");
+    budget.fence_level = 2; // Planning qualification only; no expansion effect certificate.
+    budget.village_points = 20;
+    choice = player.next(budget);
+    require(choice && choice->kind == Kind::village_activity_action &&
+                choice->village_activity_action == Activity::confirm && view->selection == 0,
+            "an already-reachable layout unnecessarily reserved expansion points");
 }
 } // namespace ark::test

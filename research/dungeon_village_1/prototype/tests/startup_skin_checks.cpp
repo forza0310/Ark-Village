@@ -894,6 +894,244 @@ void equipment_information_icons(Checks &check,const std::filesystem::path &root
           !startup_world_equipment_icon_draws(s,1,-1) && !startup_world_equipment_icon_draws(s,1,999) &&
           startup_world_state_digest(s)==digest,"坏kind或缺定义拒绝，图标查询不写Owner");
 }
+void information_directory_skin(Checks &check,const std::filesystem::path &root) {
+    using Role=SteamInformationTextRole;
+    using Mode=SteamInformationTextMode;
+    using Number=SteamInformationNumberKind;
+    const auto label=[&](const SteamInformationSkinPlan &plan,Role role,int row=-1) -> const SteamInformationText & {
+        const auto found=std::find_if(plan.draws.begin(),plan.draws.end(),[&](const auto &draw) {
+            const auto *text=std::get_if<SteamInformationText>(&draw);
+            return text && text->role==role && (row<0 || text->slot==row);
+        });
+        check(found!=plan.draws.end(),"目录计划存在所需文字角色/绝对行");
+        return std::get<SteamInformationText>(*found);
+    };
+    const auto image_index=[&](const SteamInformationSkinPlan &plan,int image) {
+        const auto found=std::find_if(plan.draws.begin(),plan.draws.end(),[=](const auto &draw) {
+            const auto *part=std::get_if<StartupSkinDraw>(&draw);
+            return part && part->image==image;
+        });
+        check(found!=plan.draws.end(),"目录计划含真实资源请求");
+        return static_cast<std::size_t>(found-plan.draws.begin());
+    };
+    const auto scrolling=[&](const SteamInformationSkinPlan &plan,int count,int visible,
+                             std::array<int,4> thumb,std::array<int,3> color) {
+        check(plan.draws.size()>=3 && plan.touches.size()>=2,"滚动输出不能空遍历通过");
+        const auto &track=std::get<StartupSkinRect>(plan.draws[plan.draws.size()-3]);
+        const auto &slider=std::get<StartupSkinRect>(plan.draws[plan.draws.size()-2]);
+        check(track.rect==std::array<int,4>{220,85,5,110} && track.rgb==std::array<int,3>{7,5,78} &&
+              slider.rect==thumb && slider.rgb==color && !track.outline && !slider.outline,
+              "组件12下游真实轨道及滑块+1高度，不按helper名漏画或猜尺寸");
+        const auto &bar=plan.touches[plan.touches.size()-2],&back=plan.touches.back();
+        check(bar.component==12 && bar.value==0x40000 && bar.rectangle==std::array<int,4>{221,85,3,110} &&
+              bar.margin==std::array<int,4>{3,20,0,0} && bar.option==0 &&
+              bar.scroll_arguments==std::array<int,3>{count,visible,0x20000} &&
+              back.component==25 && back.value==0 && back.rectangle==bar.rectangle && back.option==4 &&
+              !back.scroll_arguments,"滚动条与背景独立注册，原margin/args/优先级不丢失");
+    };
+    // 仅造可见库存/NEW条件；保留全部原定义，不把布局夹具称为自然获得。
+    auto items=test_support::page_fixture(37);
+    const auto item_page=items.scripts.pages.back().id;
+    items.scripts.pages.back().lifecycle=0;
+    for(auto &entry:items.items) {
+        entry.second.inventory=entry.first<7?(entry.first==0?123:1):0;
+        entry.second.newly_unlocked=entry.first==0;
+        auto &mirror=items.catalog.at({0,entry.first});
+        mirror.inventory=entry.second.inventory;mirror.newly_unlocked=entry.second.newly_unlocked;
+    }
+    check(initialize_startup_world_information_pages(items),"37皮肤使用真实Init冻结七项原序目录");
+    SteamInformationSkinOptions options{0,false,std::array<int,2>{80,82},false};
+    const auto before=startup_world_state_digest(items);
+    const auto item_result=steam_item_information_skin(items,item_page,options);
+    check(item_result && startup_world_state_digest(items)==before,"37只读皮肤不清NEW/改库存/推进输出");
+    const auto &item_plan=*item_result;
+    check(item_plan.raw==37 && item_plan.soft_labels==std::array<int,2>{0,2} && item_plan.touches.size()==7 &&
+          label(item_plan,Role::name_header).position==std::array<int,2>{30,69} &&
+          label(item_plan,Role::inventory_header).position==std::array<int,2>{175,69},
+          "37五行及两滚动组件，不产生标题箭头或额外确认按钮");
+    const auto start=image_index(item_plan,147);
+    const auto &notice=std::get<StartupSkinDraw>(item_plan.draws[start]);
+    const auto &hand=std::get<StartupSkinDraw>(item_plan.draws[start+1]);
+    const auto &background=std::get<StartupSkinDraw>(item_plan.draws[start+2]);
+    const auto &icon=std::get<StartupSkinDraw>(item_plan.draws[start+3]);
+    const auto &name=std::get<SteamInformationText>(item_plan.draws[start+4]);
+    const auto &quantity=std::get<SteamInformationNumber>(item_plan.draws[start+5]);
+    check(notice.offset==std::array<int,2>{10,99} && notice.crop==std::array<int,4>{0,0,20,9} &&
+          hand.image==70 && hand.sprite==21 && hand.frame==-1 && hand.offset==std::array<int,2>{21,105} &&
+          background.image==24 && background.crop==std::array<int,4>{18,0,18,18} &&
+          background.offset==std::array<int,2>{29,94} && icon.image==9 &&
+          icon.crop==std::array<int,4>{80,0,16,16} && icon.offset==std::array<int,2>{30,95},
+          "37独立源顺序NEW→当前帧手形→分类背景→原icon5，不能拿定义ID0裁片");
+    check(name.role==Role::row_name && name.value=="北国马铃薯" && name.slot==0 &&
+          name.position==std::array<int,2>{50,95} && name.extent==std::array<int,2>{130,15} &&
+          name.mode==Mode::layout && name.anchor==0x20 && name.line_space==0 && name.font_size==0 &&
+          quantity.kind==Number::inventory_count && quantity.value==123 && quantity.position==std::array<int,2>{210,98},
+          "37名称保持TextLayout实际矩形后才画数量，不借APK普通文字或字号");
+    check(label(item_plan,Role::row_name,4).position==std::array<int,2>{50,171} &&
+          label(item_plan,Role::item_description).value=="培育的很好的马铃薯" &&
+          label(item_plan,Role::item_description).position==std::array<int,2>{120,200} &&
+          label(item_plan,Role::item_description).anchor==2,"37原19行距与选中说明，非效果摘要");
+    check(item_plan.touches[0].component==11 && item_plan.touches[0].value==0x20000 &&
+          item_plan.touches[0].rectangle==std::array<int,4>{3,95,231,16} &&
+          item_plan.touches[0].margin==std::array<int,4>{0,-20,0,0} && item_plan.touches[0].option==0 &&
+          std::none_of(item_plan.draws.begin(),item_plan.draws.end(),[](const auto &draw) {
+              const auto *rect=std::get_if<StartupSkinRect>(&draw);
+              return rect && rect->rgb==std::array<int,3>{255,153,55};
+          }),"37原flag0行注册，无凭SetColor猜造的橙色选中背景");
+    scrolling(item_plan,7,5,{220,85,5,79},{48,160,255});
+    options.scroll_first_touch=true;
+    auto shifted_items=items;
+    shifted_items.information_page_data.at(item_page).selection=6;
+    shifted_items.information_page_data.at(item_page).first_visible=2;
+    const auto scrolled=*steam_item_information_skin(shifted_items,item_page,options);
+    scrolling(scrolled,7,5,{220,116,5,79},{246,129,0});
+    check(scrolled.touches.front().value==0x20002 && label(scrolled,Role::item_description).value=="让人心荡神驰的起司",
+          "滚动后行输入保留绝对索引，说明读取实际选中定义");
+    options.view_y=20;options.japanese=true;
+    const auto moved=*steam_item_information_skin(items,item_page,options);
+    check(label(moved,Role::inventory_header).position==std::array<int,2>{185,69} &&
+          label(moved,Role::title).position[1]==label(item_plan,Role::title).position[1]+10 &&
+          label(moved,Role::row_name,0).position==name.position &&
+          std::get<StartupSkinDraw>(moved.draws[image_index(moved,70)]).offset==hand.offset &&
+          moved.touches[0].rectangle==item_plan.touches[0].rectangle,
+          "日文表头分支与VIEW_Y仅框/box偏移，行/手形/触摸不重复移动");
+    check(std::any_of(moved.draws.begin(),moved.draws.end(),[](const auto &draw) {
+              const auto *rect=std::get_if<StartupSkinRect>(&draw);
+              return rect && !rect->outline && rect->rect==std::array<int,4>{17,84,202,110} &&
+                     rect->rgb==std::array<int,3>{247,253,247};
+          }),"内框也接VIEW_Y半偏移，后两项原边界不能当作宽高");
+
+    // p1/NEW只是展示条件；不改原属性表，强击剑70/52和短剑5/0提供正值/占位oracle。
+    auto equipment=test_support::page_fixture(38);
+    const auto equipment_page=equipment.scripts.pages.back().id;
+    equipment.scripts.pages.back().lifecycle=0;
+    for(auto &entry:equipment.catalog)if(entry.first.first!=0) {
+        entry.second.status=0;entry.second.newly_unlocked=false;
+    }
+    equipment.catalog.at({1,25}).status=1;equipment.catalog.at({1,25}).newly_unlocked=true;
+    equipment.catalog.at({1,0}).status=1;
+    check(initialize_startup_world_information_pages(equipment),"38皮肤使用真实Steam目录Init");
+    options={0,false,std::array<int,2>{80,82},false};
+    const auto equipment_before=startup_world_state_digest(equipment);
+    const auto equipment_result=steam_equipment_information_skin(equipment,equipment_page,options);
+    check(equipment_result && startup_world_state_digest(equipment)==equipment_before,"38绘制保留Owner/装备NEW/随机");
+    const auto &equipment_plan=*equipment_result;
+    const auto known=image_index(equipment_plan,12);
+    const auto &weapon=std::get<StartupSkinDraw>(equipment_plan.draws[known]);
+    const auto &weapon_name=std::get<SteamInformationText>(equipment_plan.draws[known+1]);
+    const auto &attack=std::get<SteamInformationNumber>(equipment_plan.draws[known+2]);
+    const auto &magic=std::get<SteamInformationNumber>(equipment_plan.draws[known+3]);
+    const auto &get=std::get<StartupSkinDraw>(equipment_plan.draws[known+4]);
+    const auto &weapon_hand=std::get<StartupSkinDraw>(equipment_plan.draws[known+5]);
+    check(weapon.crop==std::array<int,4>{108,0,18,18} && weapon.offset==std::array<int,2>{30,94} &&
+          weapon_name.value=="强击剑" && weapon_name.mode==Mode::layout && weapon_name.extent==std::array<int,2>{85,15} &&
+          weapon_name.position==std::array<int,2>{50,95} && weapon_name.font_size==11 && weapon_name.anchor==0x20 &&
+          attack.value==70 && attack.position==std::array<int,2>{164,98} &&
+          magic.value==52 && magic.position==std::array<int,2>{207,98} &&
+          attack.kind==Number::positive_attribute && magic.kind==Number::positive_attribute &&
+          get.image==148 && get.offset==std::array<int,2>{10,99} &&
+          weapon_hand.sprite==21 && weapon_hand.frame==-1 && weapon_hand.offset==std::array<int,2>{21,105},
+          "38图标→非日文名字→两属性→GET→手形，不能套37 NEW在前的顺序");
+    check(label(equipment_plan,Role::unknown_row,1).position==std::array<int,2>{30,121} &&
+          label(equipment_plan,Role::unknown_row,1).rgb==std::array<int,3>{156,155,155} &&
+          label(equipment_plan,Role::known_count).mode==Mode::rich_text &&
+          label(equipment_plan,Role::known_count).argument==2 &&
+          label(equipment_plan,Role::known_count).extent==std::array<int,2>{-1,-1} &&
+          !label(equipment_plan,Role::known_count).line_space && label(equipment_plan,Role::known_count).anchor==2,
+          "未知行保留灰色角色，底部是整个目录已知种类数的原富文本点重载");
+    scrolling(equipment_plan,33,4,{220,85,5,14},{48,160,255});
+    options.japanese=true;
+    const auto jp=*steam_equipment_information_skin(equipment,equipment_page,options);
+    check(label(jp,Role::row_name,0).mode==Mode::plain && label(jp,Role::row_name,0).font_size==0 &&
+          !label(jp,Role::row_name,0).anchor && label(jp,Role::row_name,0).position==std::array<int,2>{50,97},
+          "38日文直接使用默认DrawString，不继承非日文11字号或TextLayout");
+    auto unknown_selected=equipment;unknown_selected.information_page_data.at(equipment_page).selection=1;
+    const auto unknown_plan=*steam_equipment_information_skin(unknown_selected,equipment_page,options);
+    const auto unknown_hand=image_index(unknown_plan,70);
+    check(unknown_hand>0 && std::get<SteamInformationText>(unknown_plan.draws[unknown_hand-1]).role==Role::unknown_row &&
+          std::get<StartupSkinDraw>(unknown_plan.draws[unknown_hand]).offset==std::array<int,2>{21,129},
+          "未知装备行仍在灰色占位之后画选中手形，不因p0跳过整行");
+    auto last=equipment;
+    last.information_page_data.at(equipment_page).selection=32;
+    last.information_page_data.at(equipment_page).first_visible=29;
+    const auto last_plan=*steam_equipment_information_skin(last,equipment_page,options);
+    check(label(last_plan,Role::attribute_placeholder,32).value=="--" &&
+          label(last_plan,Role::attribute_placeholder,32).position==std::array<int,2>{189,168},
+          "短剑原魔法0由Steam明确画--，不能沿APK空白或伪造正值");
+    for(int tab=0;tab<4;++tab) {
+        auto page=equipment;page.page_phases.at(equipment_page)=tab;
+        const auto plan=*steam_equipment_information_skin(page,equipment_page,options);
+        const auto &head=std::get<StartupSkinDraw>(plan.draws[image_index(plan,128)]);
+        const auto attr=image_index(plan,37);
+        check(head.sprite==88 && head.frame==tab+1 && head.offset==std::array<int,2>{25,66} &&
+              std::get<StartupSkinDraw>(plan.draws[attr]).frame==(tab==0?1:0) &&
+              std::get<StartupSkinDraw>(plan.draws[attr+1]).frame==(tab==0?3:2),
+              "38四页头实际SEB帧与属性列，不按定义ID或PNG列数猜帧");
+    }
+    auto empty=test_support::page_fixture(38);
+    const auto empty_page=empty.scripts.pages.back().id;
+    empty.scripts.pages.back().lifecycle=0;
+    for(auto &entry:empty.catalog)if(entry.first.first==3)entry.second.flags=0;
+    check(initialize_startup_world_information_pages(empty),"空类只改变条件flags，通过真实Init");
+    empty.page_phases.at(empty_page)=3;options.scroll_first_touch=true;
+    const auto empty_plan=*steam_equipment_information_skin(empty,empty_page,options);
+    check(label(empty_plan,Role::empty_directory).position==std::array<int,2>{120,97} &&
+          label(empty_plan,Role::known_count).argument==0 && empty_plan.touches.size()==4,
+          "合法空38仍有空文本、页头/箭头和滚动注册，无伪造行");
+    scrolling(empty_plan,0,4,{220,85,5,111},{48,160,255});
+    check(!steam_item_information_skin(equipment,equipment_page,options) &&
+          !steam_equipment_information_skin(items,item_page,options),"37/38不能读取对方页面身份");
+    for(auto widths:{std::optional<std::array<int,2>>{},std::optional<std::array<int,2>>{{-1,80}}}) {
+        options.title_widths=widths;
+        check(!steam_item_information_skin(items,item_page,options) &&
+              !steam_equipment_information_skin(equipment,equipment_page,options),"目录缺失/负标题实测宽拒绝整份计划");
+    }
+    const auto counted=steam_information_number_draws({Number::inventory_count,123,{210,98}});
+    const auto plus=steam_information_number_draws({Number::positive_attribute,1200,{164,98}});
+    check(counted && counted->size()==4 && counted->at(0).frame==1 && counted->at(0).offset==std::array<int,2>{176,98} &&
+          counted->at(2).frame==3 && counted->at(2).offset==std::array<int,2>{192,98} &&
+          counted->back().image==85 && counted->back().sprite==76 && counted->back().frame==2 &&
+          counted->back().offset==std::array<int,2>{200,98},"库存右锚先减10，三数字之后才画独立数量单位");
+    check(plus && plus->size()==6 && plus->at(1).frame==2 && plus->at(2).frame==10 &&
+          plus->at(2).offset==std::array<int,2>{138,98} && plus->back().frame==14 &&
+          plus->back().offset==std::array<int,2>{124,98},"正属性复用Steam逗号后覆盖顺序和末尾加号");
+    check(!steam_information_number_draws({Number::inventory_count,1000,{210,98}}) &&
+          !steam_information_number_draws({Number::positive_attribute,0,{164,98}}) &&
+          !steam_information_number_draws({Number::inventory_count,1,{std::numeric_limits<int>::min(),0}}),
+          "目录数字边界拒绝，不夹库存或溢出坐标生成部分输出");
+    const auto assets=root.parent_path();
+    check(steam_information_image(9)=="original/common/tresureIcon00.png" &&
+          steam_information_image(85)=="steam-common/menuRT01.png" &&
+          steam_information_image(128)=="steam-common/icon_objRoots.png" && !steam_information_image(-1),
+          "实际common9文件名及两份Steam差异图明确解析，不借同名APK资源");
+    for(const auto record:std::array<std::array<int,3>,2>{{{85,57,10},{128,148,36}}}) {
+        const auto path=steam_information_image(record[0]);
+        check(path.has_value(),"新增Steam图有正式路径");
+        CpuImage decoded(LoadImage((assets/std::string(*path)).string().c_str()));
+        check(decoded.image.width==record[1] && decoded.image.height==record[2],"已发布Steam差异PNG实际解码尺寸");
+    }
+    const auto roots=tools::parse_legacy_seb(read_bytes(root/"common/icon_objRoots.seb"));
+    for(int frame=1;frame<=4;++frame) {
+        const auto &parts=roots.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+        check(part!=parts.end() && part->image_index==128 && part->source_x>=0 && part->source_y>=0 &&
+              part->source_x+part->width<=148 && part->source_y+part->height<=36,
+              "38四类页头的实际SEB帧都落在新版148×36图内，不能空遍历");
+    }
+    for(const auto &draw:*counted) {
+        const auto seb=tools::parse_legacy_seb(read_bytes(root/"common"/(draw.sprite==76?"menuRT01.seb":"number05.seb")));
+        const auto &parts=seb.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[&](const auto &p){return p.frame==draw.frame;});
+        check(part!=parts.end() && part->image_index==draw.image,"数量每个实际SEB请求有对应原帧");
+        const auto path=steam_information_image(draw.image);
+        check(path.has_value(),"数字及单位图片有显式版本资源");
+        CpuImage decoded(LoadImage((assets/std::string(*path)).string().c_str()));
+        check(part->source_x>=0 && part->source_y>=0 && part->source_x+part->width<=decoded.image.width &&
+              part->source_y+part->height<=decoded.image.height,"数值/单位SEB裁片落在真正Steam图内");
+        if(draw.image==85)check(part->source_x==20 && part->source_y==0 && part->width==10 && part->height==10 &&
+                               part->offset_x==0 && part->offset_y==0,"数量单位帧2原裁片/offset独立oracle");
+    }
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -908,6 +1146,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     item_information(check);
     equipment_information(check);
     equipment_information_icons(check,source_root);
+    information_directory_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

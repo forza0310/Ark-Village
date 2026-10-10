@@ -1,10 +1,10 @@
 # 产品研究需求回应与剩余交付
 
-2026-10-10信息37／38本批续接[Owner控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)：raw9开放36／37／38，37空目录真实事件15后退休、正常关闭清整类道具NEW，38固定使用Steam四类过滤与原输入顺序、不清装备NEW。typed冻结目录、选择与滚动进入既有codec，布局身份自动变化，旧精确快照拒绝、不迁移；普通档稳定主场景政策不变。本批集中短测结果另记，完整37／38皮肤和原窗口输入仍待交付。
+2026-10-10信息37／38已接[Owner控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)：raw9开放36／37／38，37空目录真实事件15后退休、正常关闭清整类道具NEW，38固定使用Steam四类过滤与原输入顺序、不清装备NEW。typed目录进入codec，旧布局拒绝、不迁移；五项短测最终通过59.80秒，普通档稳定主场景政策不变。后继[Steam完整局部皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)与两张实际差异PNG已交付，visuals通过0.67秒；产品须执行TextLayout／富文本／当前帧请求和原触摸参数，不猜字体、手形时钟或选中底色。真实字体／物理输入仍未认证。
 
 前置[道具原说明与库存目录、分版本装备目录](../prototype/include/dungeon_village_prototype/startup_information.hpp)及[装备列表图标](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)四项短测曾通过9.21秒。纯查询仍要求显式版本，Steam的flag过滤及`--`占位不回写APK规则；武器列表icon从已有shop.type读取，不用身体render_image。该前置只扩不可变说明，不据其旧验收替代本批页面测试。
 
-2026-10-10回应`information-audio-animation-89f157c`的此前9／36批：[信息菜单9／收支36](../ui/INFORMATION_MENU.md)正式Owner、Session和应用入口已交付，四套定向检查通过79.73秒。选择36先压子页再退休菜单，返回真实父栈；当批仅开放收支，其后37／38见上文。真实桶投影、互斥／顺序输入、模态冻结、关闭清理与恢复均已验，当批未新增格式或业务字段。36的[Steam只读皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)通过visuals 0.60秒，并有[双页布局例图](../ui/examples/steam-income.png)；示例字体／翻译不作原版认证。34／35、raw9及37／38完整皮肤、原字体后端与物理输入仍未交付，本会话不修改产品入口。
+2026-10-10回应`information-audio-animation-89f157c`的此前9／36批：[信息菜单9／收支36](../ui/INFORMATION_MENU.md)正式Owner、Session和应用入口已交付，四套定向检查通过79.73秒。选择36先压子页再退休菜单，返回真实父栈；当批仅开放收支，其后37／38见上文。真实桶投影、互斥／顺序输入、模态冻结、关闭清理与恢复均已验，当批未新增格式或业务字段。36的[Steam只读皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)通过visuals 0.60秒，并有[双页布局例图](../ui/examples/steam-income.png)；示例字体／翻译不作原版认证。34／35／39消费者、raw9完整皮肤、原字体后端与物理输入仍未交付，本会话不修改产品入口。
 
 2026-10-10回应产品`steam-ui-delegates-1f19c88`中的设施81独立frame2缺口：[正式Owner桥](../prototype/STEAM_FACILITY_SKIN.md)已接初始化、实际获准更新、确认换段保持、暂停、恢复拒绝及退休，使用原有secondary映射；`steam_facility_upgrade_skin(state,page,options)`读取真实绑定和冻结属性，平台只提供语言／视口／测宽。三套定向检查通过33.81秒，可供产品迁入，不表示产品已接线。
 

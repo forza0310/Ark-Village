@@ -114,3 +114,17 @@
 4. **资源与引用**：目录上界来自真实定义数，页退役时释放目录及ID绑定；状态NEW保留唯一Owner，无第二可变账本。原素材不重复复制；审计只有文本、哈希、尺寸，输出被本报告消费。合法历史流水不因这些小目录有界而宣称永久有界。
 
 未完成清单：维护控制器／页面schema、37说明和武器icon正式投影、38→73输入可达性、39Q/B全消费者、35贡献入页接线和Steam真实界面／键鼠／字体交叉。原版静态局部闭合，不等于完整EXE UI已完成。
+
+## 2026-10-10续核：Steam34／35／39与最小接入缺口
+
+本节更新上述2026-10-09时点判断；37／38交付以[信息菜单维护合同](../../ui/INFORMATION_MENU.md)为准。本次只读固定Steam样本的`SubForm.Init`（RVA `312460`）、`Update`（`321990`）、相关具名方法及字段；未运行原窗口、未改产品。样本身份沿用[Steam评估](../STEAM_ASSESSMENT.md)。下述方法体局部认证不等于完整页面皮肤或键鼠实测。
+
+**初始化存在平台成就版差。** 34在VA `1031529F–10315329`比较`UserData.townAddressIndex`与`Map.TOWN_ADDRESS.Length-1`，达到末档时调用`Trophy.Unlock(AppData.TROPHY_EXTENDMAX,true)`。35在VA `10313753–10313A37`按人物定义原序收`BaseData.state_ != 0`，重算贡献后，依次按人数≥20、16、12、8、4请求`TROPHY_MANYGUESTS`及`_16/_12/_8/_4`；成就方法为`kairo.unity.util.Trophy.Unlock`（RVA `86DD10`）。APK对应初始化没有这些调用。后续维护必须区分业务入页动作与平台成就请求，不能把Steam入页称为仅只读，也不能据调用点宣称平台实际授予已观察。
+
+**35贡献、NEW及60上下文与APK相符。** `CharacterData.SetContributeParam`（RVA `216330`）对状态非0群体按`records_[1]/[2]`求整数均值及整数方差，double平方根转float，经`GameUtil.RateConvert`（`2A47E0`）不截断映射25..75；各项先截整、各乘0.5后再截整，最终限制0..100并写`contribute_`（偏移`B4`）。维护现有算法的显式溢出拒绝仍是安全边界，不因原32位运算而移除。Update的VA `1032388A–10323C49`先独立上下及5行滚动，再独立左右四页，切页不清选择；确认或soft2返回均清目录所有人物的`BaseData.new_`（`18`）。确认新建60，绑定`charaData_`（`104`）为所选定义，置`charaInfoChase`（`134`）为`CHARAINFO_CHASE_OK=1`，再Push。确认后备分支受`Config.DEBUG_CMD`限制，不是正常实体键绑定。本次未继续认证60的Steam追踪完整分支。
+
+**39计数缓存身份与名称序号不同。** Init的VA `10312A0F–10312BEB`清所有`TenantData.tenantNum_`（`A4`），按`UserData.tenantList_`原序仅收类型3，累加定义计数并写`Tenant.tenantNum_`（`78`），对应APK的Q/B；空目录事件17并关闭。完整39绘制分支VA `10339D48–1033A23C`没有读取这两个计数，名称实际取`TenantData.name_`和`Tenant.tenantUId_`（`14`）加1。利润调用`Tenant.GetRecordIncome`（RVA `2C4170`），累计0至当前月的收入减支出，负数使用另一数字皮肤。Q/B在其它页面及全程序的消费者尚未穷尽，不能称为死字段，也不能拿B覆盖维护的`facility_ordinals`。
+
+**39确认的镜头基础已经维护。** Steam Update在VA `10323176–10323238`依次`ChangeCurrentForm(gameForm,false)`（RVA `7E4A50`）、`GameForm.ChangeState(7)`（`2F6360`）、绑定选中设施并将选择器状态置0，与APK退栈定位相符。维护的[startup_world_runtime_scene.cpp](../../prototype/src/startup_world_runtime_scene.cpp)已有state7、`scripts.selected_facility`、设施目标投影及逐轮镜头逼近；缺的是39页面确认到这些消费者的事务接线，不能再笼统称镜头消费者缺失。34确认打开39、soft2关闭也已在Steam Update局部核对。
+
+后继最小工作为：34复用`human_presence/human_homes`、真实设施类型、`task_progress.successes`、`events_held`和装备状态；35复用人物详情及`scripts.humans[id].pending_notice`，从既有年度模块抽出共享贡献计算，不能直接调用还会增加奖章计数并排序的授勋Init；补35→60来源上下文、追踪与返回。35定义列表可复用`information_page_data`，39须保存稳定的`uint64_t`实例引用，不能塞入其`vector<int>`定义目录。两者统一补Owner拒绝与回滚、初始化／关闭待退休／恢复校验、页载荷释放；39另核Q/B其它消费者及目标退休，Steam成就单列来源与消费边界。这些仍是研究维护缺口，未宣称产品接入、自然路径或完整原皮肤完成。

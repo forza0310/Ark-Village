@@ -161,7 +161,7 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 [34/39与35/60分析](../verification/information-statistics-contract/ANALYSIS.md)已登记：34按p1统计冒险者而35按p非0建定义目录；34设施数包含类型3/9，39只含类型3。39利润只累加实例0…当前月，区别于36年页全部12桶；39确认实际退出表单并以mode7移动镜头到设施，不能只因“点击进店”文字就直接开商店详情。35入页重算贡献，确认／返回清目录内人物NEW；进60传定义及y1，追踪时才寻找实际W，缺W则事件137。
 
-37/38维护现已分开纯目录投影与Owner关闭／退休动作，新增typed载荷交给既有codec和恢复校验；本批执行结果由集中验收记录，未据源码存在预写通过。34／35／39的其它消费者及37／38完整皮肤继续独立收口。资源复用10个PNG／3个SEB，未复制图片；列表上界来自真实定义数，页退休释放ID绑定，不把合法世界历史增长当泄漏。统计目录静态来源与维护代码／原窗口验收分别登记。
+37/38维护已分开纯目录投影与Owner关闭／退休动作，typed载荷交给既有codec和恢复校验；后继Steam完整局部绘制见下节。34／35／39消费者及完整文字／物理输入继续独立收口。前置资源复用与本批新增Steam两图分别登记；列表上界来自真实定义数，页退休释放ID绑定，不把合法世界历史增长当泄漏。维护验收见[当前验证](../VERIFICATION.md)，不以局部计划替代原窗口认证。
 
 ## Steam9／36的有限交互交叉
 
@@ -230,4 +230,30 @@ Steam `SubForm.cctor`（RVA `0x3285E0`）独立核出softLabels37／38均为`[0,
 
 武器列表明确读取`WeaponData.icon_ +0x20`（VA `0x1033AA5C`），与身体`imgId_ +0x24`不同；现有维护`shop.type`已对应APK的p.d，可作为正式列表图标来源，不需重复新造字段。防具／饰品读各自`icon_ +0x24`。三者交给`Draw_icon`（RVA `0x30C350`）的mode2／3／4：先取`ItemData.ITEMBACK_INDEX`末项铺common24背景，再分别画common12／20／21的18×18十列前景。`ItemData.cctor`（RVA `0x21A610`）的实际fieldRef解码为`[1,4,6,2,3]`，故背景固定为第3格、源(54,0,18,18)，不是未核默认色。
 
-本次重新从固定Steam common TextAsset核身份、解码目录与PNG，确认image12／20／21／24分别为`icon_weapon00、icon_armour00、icon_accessry00、icon_back00`，尺寸180×72、180×90、180×54、144×18；image147／148为20×9的`wnd_new`及23×9的`wnd_get`。这六图均与`assets/original/common`已出版副本逐字节相同，无需另存同图。属性加号的Steam number05仍沿[设施绘制helper](STEAM_FACILITY_DRAW_HELPERS.md)及已出版差异包，不能由上述六图相同推成所有common资源无版差。本批只交静态来源与接入边界，不是完整37／38原窗口或维护消费者验收。
+本次重新从固定Steam common TextAsset核身份、解码目录与PNG，确认image12／20／21／24分别为`icon_weapon00、icon_armour00、icon_accessry00、icon_back00`，尺寸180×72、180×90、180×54、144×18；image147／148为20×9的`wnd_new`及23×9的`wnd_get`。这六图均与`assets/original/common`已出版副本逐字节相同，无需另存同图。属性加号的Steam number05仍沿[设施绘制helper](STEAM_FACILITY_DRAW_HELPERS.md)及已出版差异包，不能由上述六图相同推成所有common资源无版差。后继完整局部绘制与维护接线如下，原窗口及文字后端另验。
+
+### Steam37／38的完整局部绘制
+
+2026-10-10继续读取上述两段完整分支，并展开实际helper及触摸下游。正式入口为[steam_information_skin](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)的`steam_item_information_skin`和`steam_equipment_information_skin`；输入为已初始化Owner与平台实际标题双测宽、语言及`CheckFirstTouch(12,0x40000)`结果。绘制不初始化、清NEW或推进随机／声音／页计数，局部计划不代替原字体与OS输入认证。
+
+两页先`DrawWindow(220,168,0,title)`，再`DrawBox(17,74,219,184)`。37标题原串`所持ｱｲﾃﾑ`，无标题箭头；棕色表头`名前`在(30,69)，`所持`在(日文185／非日文175,69)，普通文字默认anchor0x11，没有显式字号请求。38标题为本地化`装備一覧 <0>/<1>`（tab+1、4），箭头左(26−q,55)／右(214+q,55)，q=3×((frame%16)/8)，SEB3帧3／0，组件1值16／18。
+
+38头部先在(25,66)画common SEB88／image128，合法四页帧1／2／3／4。映射来自`CharacterData.cctor`的`PRESENT_ICON=[1,2,3,4,0]`，不能扩第五页；四帧源矩形分别(50,0,46,18)、(96,0,52,18)、(0,18,53,18)、(53,18,63,18)，offset0。再在(137,67)／(180,67)画SEB98／image37，武器帧1／3、其它页帧0／2；四帧源x=0／27／54／81、y1、27×14，offset0，不能套74的第二行16px属性图。
+
+| 局部原序 | 37持有道具 | 38装备目录 |
+| --- | --- | --- |
+| 行与选择注册 | 最多5行，rowY=97+19×可见行号 | 最多4行，rowY=97+24×可见行号 |
+| 行注册后 | 有NEW先画image147完整20×9，锚(10,rowY+2)；选中手形随后画；再普通道具背景／图标(30,rowY−2) | 未知项先用灰(156,155,155)普通文字`？？？？？`于(30,rowY)，无名称／属性泄露；已知项先装备背景／图标(30,rowY−3) |
+| 名称 | 棕(92,51,31)，`TextLayout`矩形(50,rowY−2,130,15)，lineSpace0、anchor0x20；保持当前字号 | 日文普通文字(50,rowY)，默认0x11；非日文临时size11，`TextLayout`矩形(50,rowY−2,85,15)，lineSpace0、anchor0x20，随后恢复字号 |
+| 数字与标记 | `Draw_count(210,rowY+1,inventory,SEB12)`：先数字右锚x200，再SEB76 frame2同锚(200,rowY+1)，不能先画单位 | 两列正值依次`Draw_plusValue(164／207,rowY+1,value,12)`；非正值棕色字面`--`在(146／189,rowY−1)。属性后才画GET image148完整23×9于(10,rowY+2)，选中手形最后画 |
+| 行后 | 滚动两组件／轨道→选中原说明，棕色普通文字(120,200)、anchor2 | 滚动两组件／轨道→当前整个目录p1数量富文本；空目录仍画棕色提示(120,97)、anchor2，并继续滚动及底部 |
+
+两页每行先注册SLIST组件11，矩形(3,rowY−2,231,16)，value=`0x20000|绝对行号`，`TouchOption.Create()`的flag0，Margin(0,−20,0,0)。选中分支虽设置SC_WINDOW_SELECT=(255,153,55)，**没有FillRect**；`GameView._addTouch`对flag16／128／256／2048才走marker／描框／闪底／触亮，本页flag0均跳过，不画自拟橙色选中底。手形均是common SEB21／image70，锚(21,rowY+8)、当前SEB帧／lineNo−1；未知装备选中仍画，空类无行所以不画。实际6帧中0／2偏移(−8,−5)、3／5偏移(−6,−5)，不由page.frame推固定帧。维护`frame=-1`保留当前帧请求，平台执行时仍需沿原`PushThisFrameRender`调度，不能把纯计划生成当动画已推进。
+
+库存数字的`Draw_count`先调用`DrawNumImageComma`（padding0、comma_padding0、anchor4），再数量单位；库存合法1..999，因此这一域无逗号／负号，可复用已核8步宽普通数字的逐项输出，但不宣称两个原helper算法普遍相同。数量单位SEB76 frame2源image85的(20,0,10,10)，offset0。装备正数沿真实`Draw_plusValue`，复用[正式数字展开器](../prototype/include/dungeon_village_prototype/steam_facility_skin.hpp)，不重新估字体宽度。
+
+38底部原串`現在 <co=0064FF><0></co> 種類を所持`经LT后调用`DrawString2(120,200,anchor2)`，不是普通DrawString。RVA0x7642A0委托TextLayout，再由点重载RVA0x7CA250传width=height=−1、全局行距；基色棕、数字蓝。维护保留`rich_text`与数量参数、extent(−1,−1)、空line_space表示全局值，不能打印原标签或按字符数猜宽。完整tag解析／缩放／最终字形仍未认证，示例的中文翻译和字体适配不能冒充原后端。
+
+两页`DrawVerticalScroll2(221,85,4,110,first_visible,count−1,可见行数)`先登记组件12，再组件25：原矩形均(221,85,3,110)；12的value0x40000、参数[count,5或4,0x20000]、Margin(3,20,0,0)，25的value0、flag4。helper虽只注册，但组件12在`_addTouch`中同步调用`GameView.DrawVerticalScroll`（RVA0x23A720），从表单GetTouchValue取得真实滚动值。type0先画RGB(7,5,78)轨道(220,85,5,110)，令D=max(count,可见行数)、Y=85+trunc(110×first_visible/D)、H=trunc(110×可见行数/D)，再画(220,Y,5,H+1)滑块。默认蓝(48,160,255)，仅实际first-touch且count大于可见行数时橙(246,129,0)；少量／空目录仍有111高滑块，不自行隐藏或截成110。合法Owner滚动边界以外的原异常裁高不作为维护输入契约。
+
+上述窗框／box各自消费VIEW_Y，其余内容／箭头／滚动不额外叠加；父页面origin仍由外层统一安装。新增[Steam数量单位](../assets/steam-common/menuRT01.png)及[装备分类图](../assets/steam-common/icon_objRoots.png)共1901字节，SEB76／88同字节复用既有原包；image9的真实条目是`tresureIcon00.png`，与APK同字节，不能误写不存在的`icon_item00.png`。属性头image37与数字image103沿既有Steam差异包。统一图片路径由`steam_information_image`明确提供，不按同名图擅自跨版本复用；来源索引见[素材入口](../assets/README.md)。

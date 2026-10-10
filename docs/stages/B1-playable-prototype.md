@@ -37,6 +37,8 @@ desktop-debug标准139/139（37.79秒，仅排三个月）、headless-debug与Re
 
 扩张预算按既定优先策略补齐点数积累：只预留真实活动目录已提供且布局需要的扩张，避免低价可选活动抢用预算；99/100点边界及无扩张需求时释放预算由原经营合同验证，未增加目标/套件或改变世界规则。desktop-debug标准139/139（33.59秒，仅排三个月），headless-debug及Release经营合同通过；后补季度名额/扩张状态诊断在三消费者合同定向通过，最终日志为`ctest-*-expansion-diagnostics.log`。修后从有效月51至54，再至57并冷载，实际活动25付100点扩张、新区建设及两次入住通过，详见[经营计划](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。新业务证据在`build/validation/research-e700aac/steam-expansion-quarter-0a16fa6788724632be55bc68d5ca1a87/RESULT.json`，仍二星，新增完整营业月与税收/三星待续；既有证书只读。README按实际源菜单/字体脚本删除“情报禁用、菜单生命周期未交付、仅静态字形子集”的过期描述，未改UI或打包行为；CI待对应main。
 
+无后续代码变化，从该月57前缀继续建设、道路、强化、装备、任务和授勋至60并独立冷载通过；到位营业13/25、布局36/50，但收入纪录仍未达三星。最终证据为`build/validation/research-e700aac/steam-expansion-quarter-ae52957662be49a1b45fe1718269d3ce/RESULT.json`，具体输入/费用/计数和后继范围集中经营计划；没有重复标准CTest、重签前段或宣称全内容/新居民税收通过。本次只同步当前前缀与文档，检查链接和差异。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

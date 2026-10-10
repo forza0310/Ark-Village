@@ -1,6 +1,8 @@
 #include "startup_world_restore_checks.hpp"
 
 #include "startup_world_restore_validation.hpp"
+#include "startup_world_codec.hpp"
+#include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 
@@ -22,6 +24,74 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    {
+        // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。
+        auto upgrade = baseline;
+        const auto facility = std::find_if(upgrade.scene.world.world.facilities.begin(),
+            upgrade.scene.world.world.facilities.end(),
+            [](const auto &entry) { return entry.second.placement.definition_id == 28; });
+        if (facility == upgrade.scene.world.world.facilities.end())
+            throw std::runtime_error("restore fixture missing original inn28 instance");
+        auto &progress = upgrade.scene.world.world.facility_uses.at(28);
+        progress.upgrade_pending = true;
+        progress.completed_uses = 57; // 原旅店一级门槛50；升级计算矩阵由building套件负责。
+        if (progress.level != 1 ||
+            p::open_startup_world_facility_page(upgrade, facility->first) != p::StartupWorldRuntimeError::none ||
+            upgrade.scripts.pages.back().legacy_page != 81)
+            throw std::runtime_error("restore fixture cannot open real inn upgrade81");
+        const auto id = upgrade.scripts.pages.back().id;
+        const auto tick = [&](p::StartupWorldRuntimeState &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            ++checks;
+            if (!result.candidate)
+                throw std::runtime_error("restore fixture upgrade81 update rejected");
+            state = std::move(*result.candidate);
+        };
+        tick(upgrade);
+        if (!upgrade.facility_upgrade_initialized.count(id))
+            throw std::runtime_error("restore fixture upgrade81 did not initialize");
+        upgrade.sound_requests.clear(); // 首次升级声音已领取；恢复不得重新触发它。
+        tick(upgrade);
+        const auto secondary = upgrade.page_secondary_counters.at(id);
+        // 原确认先快进40，再进入phase1并将frame重置0，frame2保持独立。
+        for (int input = 0; input < 2; ++input) {
+            ++checks;
+            if (p::acknowledge_startup_world_runtime_page(upgrade, id) != p::StartupWorldRuntimeError::none)
+                throw std::runtime_error("restore fixture upgrade81 phase transition rejected");
+        }
+        ++checks;
+        if (secondary <= 0 || upgrade.page_secondary_counters.at(id) != secondary ||
+            upgrade.page_phases.at(id) != 1 || upgrade.page_counters.at(id) != 0)
+            throw std::runtime_error("restore fixture upgrade81 independent phase counters");
+        expect(upgrade, true, "initialized81 independent secondary counter");
+        const auto wire = p::persistence_detail::encode_state(upgrade);
+        auto restored = p::persistence_detail::decode_state(wire, *upgrade.rules);
+        expect(restored, true, "decoded81 initialized payload");
+        ++checks;
+        if (p::persistence_detail::encode_state(restored) != wire ||
+            restored.page_secondary_counters.at(id) != secondary || restored.page_phases.at(id) != 1 ||
+            restored.page_counters.at(id) != 0)
+            throw std::runtime_error("restore fixture upgrade81 exact codec roundtrip");
+        const auto level = upgrade.scene.world.world.facility_uses.at(28).level;
+        const auto uses = upgrade.scene.world.world.facility_uses.at(28).completed_uses;
+        tick(upgrade);
+        tick(restored);
+        ++checks;
+        if (p::persistence_detail::encode_state(restored) != p::persistence_detail::encode_state(upgrade) ||
+            restored.page_secondary_counters.at(id) <= secondary ||
+            restored.scene.world.world.facility_uses.at(28).level != level ||
+            restored.scene.world.world.facility_uses.at(28).completed_uses != uses ||
+            !restored.sound_requests.empty())
+            throw std::runtime_error("restore fixture upgrade81 continues without repeated upgrade or sound");
+        for (int fault = 0; fault < 3; ++fault) {
+            auto damaged = restored;
+            if (fault == 0) damaged.page_secondary_counters.erase(id);
+            if (fault == 1) damaged.page_secondary_counters.at(id) = -1;
+            if (fault == 2) damaged.page_phases.erase(id);
+            expect(damaged, false, fault == 0 ? "initialized81 missing secondary" :
+                fault == 1 ? "initialized81 negative secondary" : "initialized81 missing phase");
+        }
+    }
     auto profile = baseline; // 合法定义覆盖夹具；不创建定义0实例、不改原表。
     profile.human_profiles.emplace(0, p::StartupWorldHumanProfile{"恢复姓名", 1, true});
     profile.scripts.humans.at(0).name = "恢复姓名";

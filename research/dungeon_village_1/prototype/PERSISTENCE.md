@@ -118,9 +118,8 @@ node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe resea
 # 首次中后期认证：只生成一次真实前缀，保持原38282黄金终点；成功后独占保留快照。
 # 以下38000历史文件已是旧布局；新布局生成须使用新的独占文件名，不能覆盖旧证据。
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay --save-at 38000 --stop-at complete --producer-revision <研究代码提交或源码指纹> --snapshot-file research/dungeon_village_1/work/snapshots/progression38000-e5a4.awr --save-every 5000 --save-directory research/dungeon_village_1/work/snapshots/progression-prefixes-e5a4
-# 已认证快照的后续复用，只运行相关尾段，不重新生成前缀。
-# 此历史命令只适用于对应旧布局代码；当前新布局会明确拒绝这个文件。
-& research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe natural_progression --load-file research/dungeon_village_1/work/snapshots/progression38000.awr --trace-file research/dungeon_village_1/work/validation/tail.trace
+# 后续复用只运行相关尾段；current-qualified.awr是路径占位，须换成实际已核当前版本文件。
+& research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe natural_progression --load-file research/dungeon_village_1/work/snapshots/current-qualified.awr --trace-file research/dungeon_village_1/work/validation/tail.trace
 ```
 
 runner核对三路逐帧全Session和Driver、尾段stdout／检查数、源文件未变；默认场景仍为晋级。
@@ -141,9 +140,8 @@ runner现支持从既有前缀继续生成新的参考尾段，源文件只读�
 已成功加载的裸候选仍只认证本轮新捕获后的尾段，之前的自然可达性／历史重放需要独立证据。
 
 ```powershell
-# 从已认证38000档继续，38001轮捕获新档，只比较38002轮；不重新生成38000前缀。
-# 历史入口验收命令：仅对应旧布局可运行，当前不迁移该源。
-node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay-resume --load-prefix research/dungeon_village_1/work/snapshots/progression38000.awr --save-at 38001 --stop-at 38002
+# 从已核当前版本前缀继续；文件名是占位，save/stop须匹配实际源轮数。
+node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/replay-resume --load-prefix research/dungeon_village_1/work/snapshots/current-qualified.awr --save-at 38001 --stop-at 38002
 # 裸周期候选例：文件实际下一帧421，440轮新捕获、比较441至460；场景与源身份必须相符。
 # 此420候选亦属旧布局；当前调用应选择与当前codec身份相符的新候选。
 node research/dungeon_village_1/prototype/tests/replay_file_test.mjs --exe research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_continuous_tests.exe --work-dir research/dungeon_village_1/work/validation/candidate-resume --scenario natural_expansion --load-prefix research/dungeon_village_1/work/expansion-replay-assessment/periodic-candidates/prefix-420.awr --prefix-status candidate --prefix-next-frame 421 --save-at 440 --stop-at 460

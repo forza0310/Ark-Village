@@ -95,6 +95,19 @@ phase1箭头在frame≥55时调用Draw_btmCursor(212,204,frame−55)，同样模
 
 SEB裁片／偏移：影frame0为(2,51,13,2)、offset(−7,−1)，frame1为(21,51,11,2)、offset(−6,−1)；角色frame2/3/4/5分别(1,0,15,24)/(1,24,15,25)/(17,0,19,25)/(17,24,19,26)，offset分别(−8,−24)/(−8,−25)/(−10,−25)/(−10,−26)。当前计数的画面锚再加这些内部offset。阶段切换只清frame而非frame2，不能让小角色每次切段重启跳跃。
 
+独立计数生命周期已从具名方法入口交叉字段偏移：SubForm.frame_为对象+0xA0，frame2_为+0xA4。以下VA按固定GameAssembly基址0x10000000登记，不能把其它对象的+0xA4写入当成本页面重置。
+
+| 生命周期 | Steam代码与已核范围 |
+| --- | --- |
+| 创建 | 四个SubForm构造器RVA 0x32E830／0x32E970／0x32EAD0／0x32EC20均未见显式写本页frame／frame2。新托管对象的整数初值为0；这是托管默认初始化语义，不等于每次Init都重置，也未以此声称展开验证了IL2CPP分配器全路径 |
+| Init／Init2 | Init RVA 0x312460，在VA 0x10312616明确只清当前页frame；Init2 RVA 0x30E570未见本页两计数字段写入。Init中另有+0xA4操作，但对象来源是数组元素、设施／定义或静态对象，不能归到当前页frame2 |
+| 实际Update | SubForm.Update RVA 0x321990，VA 0x10321B63–0x10321B84先依次执行frame与frame2的`(n+1)%INT_MAX`，早于delayEvent延迟早返；每次进入该更新回调都推进独立计数。APK普通反编译源b/g.java的`b()`第11088／11089行同样先增f124d／f125e，再处理L延迟 |
+| raw81确认／换段 | 使用上文40／55门槛，确认快进与phase0→1只改frame；未见重置frame2，不应为绘制方便另造分段计时 |
+
+更新资格还受FormManager约束。`_execute` RVA 0x7E98D0中，VA 0x107E9FE6–0x107E9FEA检查管理器自身pause_并跳过常规更新循环；0x107EA218–0x107EA252从formStack取栈末对象，0x107EA2EA确认初始化／结束处理后目标仍是栈末。目标由PREUPDATE进入UPDATE，再于0x107EA4C9–0x107EA4D2分派DoMethod的Update类型1。DoMethod RVA 0x7E52C0在VA 0x107E5400–0x107E540F调用FormBase虚槽19，与SubForm.Update元数据对应；0x107EA4F0–0x107EA4F8再核栈顶变化，变更即停止当前更新循环。
+
+管理器还在VA 0x107EA32C起读取updateFrameRate_，结合GetTargetFps、frameRateBuf与后续frameSkip／时间补偿决定更新次数；0x107EA4A4和0x107EA522–0x107EA52B允许一次`_execute`中的多次Update。本次只核计数的回调准入与局部重复边界，未认证全部调速配置或线程调度。**绘制帧率、Unity帧、`_execute`次数、世界逻辑tick与SubForm.Update次数不能直接等同。** 弹窗暂停世界不等于管理器pause_：世界可以不推进而栈顶81继续更新；管理器暂停或页面被其它栈顶覆盖时，不应按世界tick或截图间隔补增该页frame2。
+
 这段局部绘制及已展开helper未见共同随机调用、升级写入或声音调用；不据此声称整个Graphics/SEB后端没有缓存、变换或平台副作用。表现计划应保存原显示参数，声音继续从更新请求消费。
 
 ## 资源、引用与剩余边界

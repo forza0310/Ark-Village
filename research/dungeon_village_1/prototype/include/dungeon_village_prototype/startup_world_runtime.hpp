@@ -194,7 +194,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。
     std::map<std::uint64_t, int> task_page_predictions;         // raw28 f126f，只展示不影响胜负。
     std::map<std::uint64_t, bool> task_page_acceleration;       // raw28 g。
-    std::map<std::uint64_t, int> page_secondary_counters;       // 页24 f125e，与逻辑tick分开。
+    std::map<std::uint64_t, int> page_secondary_counters;       // 页24/81 f125e，与逻辑tick分开。
     std::array<std::array<std::int32_t, 9>, 8>
         task_display_table{};                         // 全局n.bd演出表，不创建战斗实体。
     std::set<std::uint64_t> task_display_initialized; // raw99/100按页初始化，不重复E抽取。

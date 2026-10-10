@@ -666,15 +666,18 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
         !initialize_rank_celebration(next, top->id))
         return {};
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 81) {
+        // raw81 自己校验并推进双计数；不得先用通用 [] 隐式补齐缺失的主计数。
+        if (!consume_startup_world_facility_upgrade(next, top->id, false))
+            return {};
+        return next;
+    }
     auto &counter = next.page_counters[top->id];
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 50 &&
         !consume_rank_celebration(next, top->id, false))
-        return {};
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 81 &&
-        !consume_startup_world_facility_upgrade(next, top->id, false))
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 59) {
         if (!unlock_human_valid(next, *top))

@@ -625,6 +625,9 @@ struct Validation {
         for (const auto &[id, n] : s.page_counters)
             if (!counter(n))
                 return fail("page: 计数非法");
+        for (const auto &[id, n] : s.page_secondary_counters)
+            if (!counter(n))
+                return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
             if (n < 0)
                 return fail("page: 阶段非法");
@@ -1038,7 +1041,9 @@ struct Validation {
                  s.page_phases.find(id)->second > 1 || !s.deadline_grades.count(id)))
                 return fail("task page: 已初始化期限页缺载荷");
             if (s.facility_upgrade_initialized.count(id) &&
-                (!s.page_counters.count(id) || !facilities.count(p.legacy_f)))
+                (!s.page_counters.count(id) || !s.page_secondary_counters.count(id) ||
+                 !s.page_phases.count(id) || s.page_phases.find(id)->second > 1 ||
+                 !facilities.count(p.legacy_f)))
                 return fail("upgrade page: 缺升级载荷");
             if ((raw == 30 || raw == 32) && !s.exploration_summaries.count(id))
                 return fail("task page: 缺成果摘要");

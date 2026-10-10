@@ -1,6 +1,9 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "dungeon_village_prototype/startup_world_building.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "support/world_fixture.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -51,6 +54,43 @@ std::vector<std::uint8_t> bytes(const std::filesystem::path &p) {
 // 挂既有visuals套件；只验页面只读计划和资源绑定，不复制升级/声音/Owner状态机。
 int check_steam_facility_skin(const std::filesystem::path &source_root) {
     Checks check;
+    // 此层只补Owner到皮肤的绑定与矩阵方向；完整升级业务／暂停／恢复由既有套件主责。
+    auto owner=test_support::world_fixture();
+    const auto facility=std::uint64_t{4};
+    const int definition=owner.scene.world.world.facilities.at(facility).placement.definition_id;
+    auto &progress=owner.scene.world.world.facility_uses.at(definition);
+    progress.upgrade_pending=true;progress.completed_uses=57; // 明确条件夹具，不代表自然升级。
+    check(open_startup_world_facility_page(owner,facility)==StartupWorldRuntimeError::none,
+          "真实升级入口提供页面绑定");
+    const auto page=owner.scripts.pages.back().id;
+    const SteamFacilityUpgradeSkinOptions options{0,false,std::array<int,2>{80,82},
+                                                  std::array<int,4>{12,30,4,34}};
+    check(!steam_facility_upgrade_skin(owner,page,options),"皮肤查询不代替页面初始化");
+    auto tick=prepare_startup_world_runtime(owner);
+    check(tick.candidate.has_value(),"升级页初始化候选");
+    owner=std::move(*tick.candidate);
+    check(acknowledge_startup_world_runtime_page(owner,page)==StartupWorldRuntimeError::none&&
+          acknowledge_startup_world_runtime_page(owner,page)==StartupWorldRuntimeError::none,
+          "真实确认切到属性页");
+    const auto frozen=startup_world_state_digest(owner);
+    const auto bound=steam_facility_upgrade_skin(owner,page,options);
+    check(bound.has_value(),"已初始化绑定产生完整只读皮肤");
+    const auto bound_values=values(*bound);
+    for(std::size_t slot=0;slot<3;++slot)
+        check(bound_values[slot]==owner.facility_upgrade_display[0][slot],
+              "冻结矩阵按属性转置，phase1 frame0显示各属性前值");
+    const auto bound_mini=parts<SteamFacilityImage>(*bound);
+    check(owner.page_counters.at(page)==0&&owner.page_secondary_counters.at(page)==1&&
+          std::any_of(bound_mini.begin(),bound_mini.end(),[](const auto &image) {
+              return image.asset==SteamFacilityAsset::mini&&image.frame==5;
+          }),"主计数换段清零，角色仍用独立frame2的跳跃帧");
+    check(steam_facility_upgrade_skin(owner,page,options).has_value()&&
+          startup_world_state_digest(owner)==frozen,"重绘不改变Owner／随机／输出");
+    auto malformed=owner;malformed.page_secondary_counters.erase(page);
+    check(!steam_facility_upgrade_skin(malformed,page,options),"缺独立计数不能猜主计数");
+    check(!steam_facility_upgrade_skin(owner,page+1000,options),"未知页面不能借当前绑定绘图");
+    malformed=owner;malformed.scripts.pages.back().lifecycle=4;
+    check(!steam_facility_upgrade_skin(malformed,page,options),"已退休页面不再投影");
     using A=SteamFacilityAsset;using R=SteamFacilityTextRole;using N=SteamFacilityNumberKind;
     auto in=input();
     const auto original=steam_facility_upgrade_skin(in);

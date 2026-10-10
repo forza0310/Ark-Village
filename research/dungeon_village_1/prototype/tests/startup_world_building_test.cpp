@@ -417,6 +417,8 @@ void shared_upgrade() {
               s.scene.world.world.facility_uses.at(definition).level == 1,
           "upgrade hint opens raw81 ahead of details without early level mutation");
     const auto page = s.scripts.pages.back().id;
+    check(!inspect_startup_world_facility_upgrade(s, page),
+          "uninitialized raw81 has no fabricated presentation projection");
     const auto funds = s.scene.world.world.ai.accounting.funds();
     const auto sound_count = s.sound_requests.size();
     auto tick = prepare_startup_world_runtime(s);
@@ -431,6 +433,11 @@ void shared_upgrade() {
           "first initialization upgrades shared definition once, keeps hint until close, freezes "
           "world");
     s = *tick.candidate;
+    const auto first_view = inspect_startup_world_facility_upgrade(s, page);
+    check(first_view && first_view->facility == id && first_view->definition == definition &&
+              first_view->level == 2 && first_view->phase == 0 && first_view->frame == 1 &&
+              first_view->frame2 == 1 && first_view->attributes == s.facility_upgrade_display,
+          "initialized upgrade projects frozen Owner facts and independent first update clocks");
     check(s.scene.world.world.facilities.at(*another.created).price == 337 + neighbour_price &&
               s.scene.world.world.facilities.at(id).price == 337 + s.neighbourhood.at(id)[0],
           "shared level changes effective arrival prices for both instances with their own "
@@ -441,13 +448,71 @@ void shared_upgrade() {
               tick.candidate->scene.world.world.facility_uses.at(definition).completed_uses == 7,
           "repeated page update does not consume another threshold");
     s = *tick.candidate;
-    for (int n = 0; n < 4; ++n)
+    check(s.page_secondary_counters.at(page) == 2,
+          "second actual raw81 update advances independent clock exactly once");
+    auto paused = s;
+    paused.scene.framework_paused = true;
+    const auto paused_tick = prepare_startup_world_runtime(paused);
+    check(paused_tick.candidate && paused_tick.candidate->page_counters.at(page) == 2 &&
+              paused_tick.candidate->page_secondary_counters.at(page) == 2 &&
+              acknowledge_startup_world_runtime_page(paused, page) ==
+                  StartupWorldRuntimeError::invalid_page,
+          "framework pause freezes both upgrade clocks and rejects confirmation");
+    auto wrap = s;
+    wrap.page_counters.at(page) = wrap.page_secondary_counters.at(page) =
+        std::numeric_limits<int>::max() - 1;
+    const auto wrapped = prepare_startup_world_runtime(wrap);
+    check(wrapped.candidate && wrapped.candidate->page_counters.at(page) == 0 &&
+              wrapped.candidate->page_secondary_counters.at(page) == 0,
+          "raw81 actual update follows original modulo INT_MAX without overflow");
+    for (int fault = 0; fault < 7; ++fault) {
+        auto corrupt = s;
+        if (fault == 0) corrupt.page_counters.erase(page);
+        if (fault == 1) corrupt.page_phases.erase(page);
+        if (fault == 2) corrupt.page_secondary_counters.erase(page);
+        if (fault == 3) corrupt.page_secondary_counters.at(page) = -1;
+        if (fault == 4) corrupt.page_secondary_counters.at(page) = std::numeric_limits<int>::max();
+        if (fault == 5) corrupt.page_phases.at(page) = 2;
+        if (fault == 6) corrupt.page_counters.at(page) = -1;
+        const auto before = startup_world_state_digest(corrupt);
+        check(!inspect_startup_world_facility_upgrade(corrupt, page) &&
+                  !prepare_startup_world_runtime(corrupt).candidate &&
+                  acknowledge_startup_world_runtime_page(corrupt, page) ==
+                      StartupWorldRuntimeError::missing_source &&
+                  startup_world_state_digest(corrupt) == before,
+              "initialized upgrade rejects missing or illegal clocks without silent repair or mutation");
+    }
+    const auto usage = startup_world_resource_usage(s);
+    auto without_secondary = s;
+    without_secondary.page_secondary_counters.erase(page);
+    check(startup_world_resource_usage(without_secondary).page_payloads + 1 == usage.page_payloads,
+          "resource accounting includes independent page clock ownership");
+    for (int n = 0; n < 4; ++n) {
         check(acknowledge_startup_world_runtime_page(s, page) == StartupWorldRuntimeError::none,
               "source40/phase1/55/close confirmations execute");
+        check(s.page_secondary_counters.at(page) == 2,
+              "confirmation fast-forward and phase transition preserve independent clock");
+        if (n == 1) {
+            check(s.page_phases.at(page) == 1 && s.page_counters.at(page) == 0,
+                  "phase transition resets only primary upgrade counter");
+            const auto resumed = prepare_startup_world_runtime(s);
+            check(resumed.candidate && resumed.candidate->page_counters.at(page) == 1 &&
+                      resumed.candidate->page_secondary_counters.at(page) == 3,
+                  "next phase update continues independent clock rather than restarting it");
+        }
+    }
     check(!s.scene.world.world.facility_uses.at(definition).upgrade_pending &&
               s.scripts.pages.back().lifecycle == 4 &&
               s.scene.world.world.ai.accounting.funds() == funds,
           "only finished page clears shared hint without charging or resetting uses");
+    check(!inspect_startup_world_facility_upgrade(s, page),
+          "closed upgrade page cannot expose stale frozen presentation");
+    const auto retired = prepare_startup_world_runtime(s);
+    check(retired.candidate && !retired.candidate->page_counters.count(page) &&
+              !retired.candidate->page_phases.count(page) &&
+              !retired.candidate->page_secondary_counters.count(page) &&
+              !retired.candidate->facility_upgrade_initialized.count(page),
+          "actual framework retirement releases both clocks and upgrade initialization owner");
     auto early = test_support::world_fixture();
     auto &p = early.scene.world.world.facility_uses.at(definition);
     p.upgrade_pending = true;
@@ -458,7 +523,8 @@ void shared_upgrade() {
     check(acknowledge_startup_world_runtime_page(early, early_page) ==
                   StartupWorldRuntimeError::none &&
               early.scene.world.world.facility_uses.at(definition).level == 2 &&
-              early.page_counters.at(early_page) == 40,
+              early.page_counters.at(early_page) == 40 &&
+              early.page_secondary_counters.at(early_page) == 0,
           "input cannot skip first-time upgrade initialization");
     auto broken = test_support::world_fixture();
     broken.scene.world.world.facility_uses.at(definition).upgrade_pending = true;

@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/startup.hpp"
 #include "dungeon_village_prototype/startup_world_projection.hpp"
+#include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_reference/geometry.hpp"
 #include <algorithm>
 #include <cstdint>
@@ -176,6 +177,27 @@ std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_dra
         result.push_back({art->sprite,piece.fragment_index,{static_cast<int>(x),static_cast<int>(y)}});
     }
     return result;
+}
+std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamFacilityUpgradeSkinOptions &options) {
+    const auto view=inspect_startup_world_facility_upgrade(state,page);
+    if(!view)return {};
+    SteamFacilityUpgradeSkinInput in;
+    in.definition=view->definition;in.mapchip=view->mapchip;in.level=view->level;
+    in.phase=view->phase;in.frame=view->frame;in.frame2=view->frame2;
+    in.view_y=options.view_y;in.japanese=options.japanese;
+    in.title_widths=options.title_widths;in.notice_widths=options.notice_widths;
+    for(std::size_t slot=0;slot<3;++slot) {
+        if(!fits(view->limits[slot]))return {};
+        in.limits[slot]=static_cast<int>(view->limits[slot]);
+        // Owner的原o.ap按[前/后/差][属性]保存，皮肤输入按[属性][前/后/差]读取。
+        for(std::size_t value=0;value<3;++value) {
+            if(!fits(view->attributes[value][slot]))return {};
+            in.attributes[slot][value]=static_cast<int>(view->attributes[value][slot]);
+        }
+    }
+    return steam_facility_upgrade_skin(in);
 }
 std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(const SteamFacilityUpgradeSkinInput &in) {
     if(in.definition<0||in.mapchip<0||in.level<1||in.level>5||in.phase<0||in.phase>1||

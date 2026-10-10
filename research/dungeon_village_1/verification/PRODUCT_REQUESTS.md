@@ -1,5 +1,7 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10回应产品`steam-ui-delegates-1f19c88`中的设施81独立frame2缺口：[正式Owner桥](../prototype/STEAM_FACILITY_SKIN.md)已接初始化、实际获准更新、确认换段保持、暂停、恢复拒绝及退休，使用原有secondary映射；`steam_facility_upgrade_skin(state,page,options)`读取真实绑定和冻结属性，平台只提供语言／视口／测宽。三套定向检查通过33.81秒，可供产品迁入，不表示产品已接线；人物60循环／HP条／奖章仍单列未闭合。
+
 2026-10-10金币X4已补[只读图块消费者](../VERIFICATION.md#金币x4局部表现2026-10-10)：原锚点、record_index、抛物整数运动、11门槛与14周期帧，复用SEB94／图144，visuals通过0.61秒。产品可以消费该局部计划；完整场景层序和Steam等价仍待证，未擅自把X4置顶或改变奖励到账。
 
 2026-10-10[Steam建设目录素材](../assets/steam-build-common/README.md)新增两张确证差异图：common98／103，按MANIFEST复制原字节并引用已核SEB81／12，不能用APK像素替代。[装载／旋转合同](../ui/STEAM_BUILD_RESOURCE_INSTALL.md)补真实image组和软标签资格；资源可供产品独立消费，本会话未改产品资源或代码。

@@ -104,4 +104,14 @@ std::optional<StartupWorldRuntimeState>
 refresh_startup_world_residence_requests(const StartupWorldRuntimeState &state, bool notify);
 bool consume_startup_world_facility_upgrade(StartupWorldRuntimeState &state, std::uint64_t page,
                                             bool confirm);
+// raw81 已初始化事实投影；attributes 保留 Owner 的 [前/后/差][slot] 布局。
+// 不推进计数、不重复升级，不以缺失载荷生成默认演出。
+struct StartupFacilityUpgradeView {
+    std::uint64_t facility{};
+    int definition{}, mapchip{}, level{}, phase{}, frame{}, frame2{};
+    std::array<std::array<std::int64_t, 3>, 3> attributes{};
+    std::array<std::int64_t, 3> limits{};
+};
+std::optional<StartupFacilityUpgradeView>
+inspect_startup_world_facility_upgrade(const StartupWorldRuntimeState &state, std::uint64_t page);
 } // namespace dungeon_village_prototype

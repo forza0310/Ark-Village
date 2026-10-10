@@ -192,8 +192,12 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         }
         for (const int effect : {step.ground_effect22 ? 22 : 0, step.visual_effect})
             if (effect) {
+                // c/j.d：法术对实际碰撞者先画4..9，再给同一对象创建延迟伤害。
+                // 此轮damage_target尚空；不能借最初瞄准对象或提前提交延迟HP。
+                const auto visual_target = effect >= 4 && effect <= 9 && step.spawned
+                    ? std::optional<CharacterId>{step.spawned->original_target} : target;
                 WorldNonactorRequest request{WorldNonactorRequestKind::projectile_visual,
-                    *call.id, caster, target, effect, {}, {}, {}};
+                    *call.id, caster, visual_target, effect, {}, {}, {}};
                 request.source_position = step.state.position;
                 if (!consume(request))
                     return failure();

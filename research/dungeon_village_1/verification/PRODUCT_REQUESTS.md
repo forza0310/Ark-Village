@@ -1,5 +1,9 @@
 # 产品研究需求回应与剩余交付
 
+2026-10-10当前交付：`8cbc11f`／`b99c6db`已接35→60人物目录／追踪及四页皮肤；`a45642c`已接34→39统计、设施原序目录、镜头定位及恢复；`5f142f9`补34／39完整局部Steam计划与[双窗示例](../ui/examples/steam-town-facilities.png)。raw9五个子入口全部开放；下方早期“尚未交付”保留当批历史，完整raw9皮肤、原字体／物理输入及平台成就仍独立待核。
+
+[法术接触表现目标请求](../../../docs/reference/RESEARCH_REQUESTS.md#spell-contact-visual-target)已补维护同义修复：4…9表现使用新延迟投射绑定的实际碰撞对象，原伤害时点／随机保持。Release的combat_execution／world_nonactor_schedule／runtime_nonactors三项短测共0.08秒通过，包括瞄准3但碰撞2、当轮不扣HP、六轮等待／第七轮伤害、仅实际目标表现、晚期拒绝整体回滚及无目标地效22。产品可以在迁入这一正式源后撤下同义适配；本批未读取或重签产品旧完整Owner、未重新运行三星长链，最终自然复验仍由产品负责。
+
 2026-10-10续补34／35前置：[34权威统计](../prototype/include/dungeon_village_prototype/startup_information.hpp)与[独立贡献候选](../example/include/dungeon_village_reference/world_award_page.hpp)已交付，projection／award／pages短测通过2.35秒。34不沿38的flag过滤；贡献候选无授勋／排序副作用，87保持原算法及奖章事务。完整[35→60追踪合同](../ui/INFORMATION_MENU.md#3560追踪的steam后继合同)已核来源恰1、首个同定义活跃W、缺W事件137、成功退栈／state6、确认重开来源1的60及返回不重清NEW。这些源边界不代表控制器已接，34／35／39入口仍未开放，产品可消费已交投影／算法而不伪造玩家路径。
 
 2026-10-10信息37／38已接[Owner控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)：raw9开放36／37／38，37空目录真实事件15后退休、正常关闭清整类道具NEW，38固定使用Steam四类过滤与原输入顺序、不清装备NEW。typed目录进入codec，旧布局拒绝、不迁移；五项短测最终通过59.80秒，普通档稳定主场景政策不变。后继[Steam完整局部皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)与两张实际差异PNG已交付，visuals通过0.67秒；产品须执行TextLayout／富文本／当前帧请求和原触摸参数，不猜字体、手形时钟或选中底色。真实字体／物理输入仍未认证。

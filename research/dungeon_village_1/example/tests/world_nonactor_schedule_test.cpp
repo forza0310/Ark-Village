@@ -142,6 +142,79 @@ WorldNonactorScheduleAdapter<Owner> adapter() {
     };
     return result;
 }
+void spell_contact_target() {
+    auto owner=fixture();
+    actor(owner,1,ActorKind::human,{});
+    actor(owner,2,ActorKind::monster,{20,0,0});
+    actor(owner,3,ActorKind::monster,{100,0,0});
+    // 明确落地碰撞条件：最初瞄准3，怪物原名单中的2才是实际接触者。
+    ProjectileState spell;spell.kind=ProjectileKind::spell;spell.caster={1};spell.original_target={3};
+    spell.position={20,-1,0};spell.effect=4;spell.damage=10;
+    owner.common.world.ai.projectiles.emplace(9,spell);owner.common.world.ai.projectile_order={9};
+    owner.common.world.ai.next_projectile_id=10;
+    auto consumer=adapter();const auto existing=consumer.request;
+    int visual_calls{};
+    consumer.request=[&](Owner &current,const WorldNonactorRequest &request)->std::optional<WorldNonactorWriteback> {
+        if(request.kind!=WorldNonactorRequestKind::projectile_visual || request.visual!=4)
+            return existing(current,request);
+        ++visual_calls;
+        check(request.identity==9 && request.caster==CharacterId{1} && request.target==CharacterId{2} &&
+              request.source_position && request.source_position->x==20 && request.source_position->height==0,
+              "spell4 presentation binds actual collision2, never absent damage_target or original aim3");
+        check(current.common.world.ai.battle.actors.at({2}).hp.target==500 &&
+              current.common.world.ai.battle.actors.at({3}).hp.target==500 && current.random.draws()==0,
+              "spell contact presentation precedes delayedHP and introduces no random draw");
+        current.visual.push_back(request.visual);
+        auto effects=current.common.world.ai.contexts.at(*request.target).effects;
+        effects.display.push_back({4,0,0,0,0}); // typed表现写回夹具，不代替原绘制序列或位置投影。
+        return WorldNonactorWriteback{encounter_external_writeback(current.common.world.ai),{},{},effects};
+    };
+    const auto contact=prepare_owned_world_nonactor_stage(owner,{WorldScheduleStage::projectile,9,{}},field(),consumer);
+    check(contact && visual_calls==1 && contact->disposition==WorldScheduleDisposition::already_removed &&
+          contact->state.common.world.ai.projectile_order==std::vector<std::uint64_t>{10} &&
+          contact->state.common.world.ai.projectiles.at(10).original_target==CharacterId{2} &&
+          contact->state.common.world.ai.projectiles.at(10).counter==0 &&
+          contact->state.common.world.ai.projectiles.at(10).delay==6 &&
+          contact->state.common.world.ai.contexts.at({2}).effects.display.size()==1 &&
+          contact->state.common.world.ai.contexts.at({3}).effects.display.empty(),
+          "successful spell contact installs one delayed object and only actual target presentation");
+    auto rejected=consumer;
+    rejected.request=[&](Owner &current,const WorldNonactorRequest &request)->std::optional<WorldNonactorWriteback> {
+        const auto accepted=consumer.request(current,request);
+        if(request.kind==WorldNonactorRequestKind::projectile_visual)return {};
+        return accepted;
+    };
+    check(!prepare_owned_world_nonactor_stage(owner,{WorldScheduleStage::projectile,9,{}},field(),rejected) &&
+          owner.common.world.ai.projectile_order==std::vector<std::uint64_t>{9} &&
+          owner.common.world.ai.next_projectile_id==10 && owner.common.world.ai.projectiles.size()==1 &&
+          owner.common.world.ai.battle.actors.at({2}).hp.target==500 && owner.random.draws()==0 && owner.visual.empty() &&
+          owner.common.world.ai.contexts.at({2}).effects.display.empty(),
+          "late visual consumer rejection publishes no delayed entity,HP,effects,allocator or random mutation");
+    auto delayed=contact->state;
+    for(int old_counter=0;old_counter<6;++old_counter) {
+        const auto waiting=prepare_owned_world_nonactor_stage(delayed,{WorldScheduleStage::projectile,10,{}},field(),consumer);
+        check(waiting && waiting->state.common.world.ai.projectiles.at(10).counter==old_counter+1 &&
+              waiting->state.common.world.ai.battle.actors.at({2}).hp.target==500 &&
+              waiting->state.random.draws()==0 && waiting->state.visual==std::vector<int>{4},
+              "old delay counter0..5 waits without repeat presentation,early damage or random");
+        delayed=waiting->state;
+    }
+    const auto hit=prepare_owned_world_nonactor_stage(delayed,{WorldScheduleStage::projectile,10,{}},field(),consumer);
+    check(hit && hit->state.common.world.ai.projectiles.empty() &&
+          hit->state.common.world.ai.battle.actors.at({2}).hp.target==490 &&
+          hit->state.common.world.ai.battle.actors.at({3}).hp.target==500 && hit->state.random.draws()==0,
+          "seventh delayed check damages actual collision2 with saved10, never original aim3");
+    auto ground=owner;ground.common.world.ai.projectiles.at(9).position.x=1000;
+    auto ground_consumer=adapter();const auto ground_existing=ground_consumer.request;
+    ground_consumer.request=[&](Owner &current,const WorldNonactorRequest &request)->std::optional<WorldNonactorWriteback> {
+        check(request.kind==WorldNonactorRequestKind::projectile_visual && request.visual==22 && !request.target,
+              "noncontact ground22 retains its targetless request");
+        return ground_existing(current,request);
+    };
+    const auto landed=prepare_owned_world_nonactor_stage(ground,{WorldScheduleStage::projectile,9,{}},field(),ground_consumer);
+    check(landed && landed->state.common.world.ai.projectiles.empty() && landed->state.visual==std::vector<int>{22} &&
+          landed->state.random.draws()==0,"spell ground miss creates no delayed target or random draw");
+}
 void projectile_and_objects() {
     auto owner = fixture({0});
     actor(owner, 1, ActorKind::human, {});
@@ -455,6 +528,7 @@ void typed_task_monster_unlock() {
 int main() {
     try {
         projectile_and_objects();
+        spell_contact_target();
         synchronous_event();
         final_and_missing_domains();
         spawned_context_and_stale_projection();

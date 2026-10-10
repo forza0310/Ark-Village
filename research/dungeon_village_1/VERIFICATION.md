@@ -2,6 +2,12 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 法术接触表现目标补正2026-10-10
+
+响应[产品最小复现](../../docs/reference/RESEARCH_REQUESTS.md#spell-contact-visual-target)，独立核`c/j.d`及[投射合同](rules/ai/CONTROL.md)：法术落地碰撞当轮先向实际接触者请求表现，再创建延迟伤害。维护转发此前误用尚空的damage_target；现4…9从step.spawned.original_target取目标，箭／真正伤害和无目标地效22保持。
+
+单Release完整增量构建通过，combat_execution 0.02秒、world_nonactor_schedule 0.01秒、runtime_nonactors 0.05秒，共0.08秒。现套件补瞄准3／碰撞2、表现仅写2、当轮HP不变／随机0、唯一延迟实体、六轮等待后第七轮扣10及晚期消费者拒绝回滚。没有新增target、Owner字段、资源、永久队列或格式版本；修复原先拒绝的分支，不改变已成功路径的伤害／随机语义。临时表现结果按调用消费，延迟投射最终退休；不将局部释放外推世界历史有界。构建和测试进程均退出，未改产品或执行自然长跑。
+
 ## Steam村情报与设施名单皮肤2026-10-10
 
 [34／39完整局部皮肤](ui/INFORMATION_MENU.md#steam3439完整局部绘制合同)已交付正式有序计划：原星级、统计／语言布局、实际测宽底栏及触摸、设施图标／双参数名称、正负利润和滚动。number12的Steam差异图636字节已从固定common原条目出版，复用SEB19；INT_MIN保留原32位取负后仍负的请求，不改成64位绝对值或发明减号帧。

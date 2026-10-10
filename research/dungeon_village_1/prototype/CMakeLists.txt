@@ -88,7 +88,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp
     src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
     src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp
-    src/steam_facility_skin.cpp src/steam_human_skin.cpp)
+    src/steam_facility_skin.cpp src/steam_human_skin.cpp src/steam_information_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)
 target_link_libraries(dungeon_village_startup_application PUBLIC dungeon_village_startup_world
     PRIVATE dungeon_village_hash)

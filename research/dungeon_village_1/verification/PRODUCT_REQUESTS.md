@@ -1,6 +1,6 @@
 # 产品研究需求回应与剩余交付
 
-2026-10-10回应`information-audio-animation-89f157c`：[信息菜单9／收支36](../ui/INFORMATION_MENU.md)正式Owner、Session和应用入口已交付，四套定向检查通过79.73秒。选择36先压子页再退休菜单，返回真实父栈；原序五项只收支可打开，其余目标明确拒绝。真实桶投影、互斥／顺序输入、模态冻结、关闭清理与恢复均已验，不新增格式或业务字段。产品可迁入这一条链；34／35／37／38、完整Steam绘制与物理输入仍未交付，本会话不修改产品入口。
+2026-10-10回应`information-audio-animation-89f157c`：[信息菜单9／收支36](../ui/INFORMATION_MENU.md)正式Owner、Session和应用入口已交付，四套定向检查通过79.73秒。选择36先压子页再退休菜单，返回真实父栈；原序五项只收支可打开，其余目标明确拒绝。真实桶投影、互斥／顺序输入、模态冻结、关闭清理与恢复均已验，不新增格式或业务字段。后继36的[Steam只读皮肤](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)通过visuals 0.60秒，并有[双页布局例图](../ui/examples/steam-income.png)；示例字体／翻译不作原版认证。产品可迁入这一条链；34／35／37／38、raw9完整皮肤、原字体后端与物理输入仍未交付，本会话不修改产品入口。
 
 2026-10-10回应产品`steam-ui-delegates-1f19c88`中的设施81独立frame2缺口：[正式Owner桥](../prototype/STEAM_FACILITY_SKIN.md)已接初始化、实际获准更新、确认换段保持、暂停、恢复拒绝及退休，使用原有secondary映射；`steam_facility_upgrade_skin(state,page,options)`读取真实绑定和冻结属性，平台只提供语言／视口／测宽。三套定向检查通过33.81秒，可供产品迁入，不表示产品已接线。
 

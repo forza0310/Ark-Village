@@ -10,6 +10,8 @@
 
 信息菜单与收支页由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护，复用世界库的收支纯查询。Session／Application提供`open_information_menu`和`input_information_page`；后者接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，当前只开放收支36，其余目标拒绝且状态不变；主场景快捷入口属于维护适配，不代表完整主菜单／OS输入。页面载荷复用现有phase／counter，关闭后由框架统一退休；窗口皮肤及34／35／37／38仍沿[信息合同](../ui/INFORMATION_MENU.md)逐项交付。
 
+收支36的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)复用Steam窗框／内框，输出完整局部有序图元、字体金额、源端点线与箭头触摸引用；不修改Owner，不生成数字SEB。调用者提供语言分支、VIEW_Y与标题两次真实测宽，并负责原页面坐标及字体后端；[布局例图](../ui/examples/steam-income.png)使用明确替代字体，仅作产品布局参考。raw9菜单皮肤和其余信息子页仍未由此补齐。
+
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。
 本包独立于产品主构建，只修改研究代码。

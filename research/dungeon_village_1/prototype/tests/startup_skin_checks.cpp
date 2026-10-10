@@ -1,5 +1,9 @@
 #include "dungeon_village_prototype/startup_skin.hpp"
 #include "dungeon_village_prototype/startup_information.hpp"
+#include "dungeon_village_prototype/steam_information_skin.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "support/world_fixture.hpp"
 #include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "dungeon_village_tools/sprite.hpp"
@@ -88,6 +92,107 @@ void income_information(Checks &check) {
     result=startup_income_information(overflow,0,0);
     check(result && result->rows[1].expense_text=="-2,147,483,648Ｇ" && result->profit==(-2147483647-1),
           "负桶边界只用于显示语义测试，不放宽世界业务写入校验");
+}
+void income_skin(Checks &check,const std::filesystem::path &source_root) {
+    using Role=SteamInformationTextRole;
+    // 只准备页面与现金桶表现条件；业务累计与金额回卷已有独立主责测试。
+    auto owner=test_support::page_fixture(36);
+    owner.scripts.pages.back().lifecycle=0; // 公共夹具默认ready；本场景须先走真实Init。
+    const auto id=owner.scripts.pages.back().id;
+    check(initialize_startup_world_information_pages(owner),"收支皮肤夹具使用实际初始化");
+    owner.monthly_cash={};owner.monthly_cash[owner.scene.calendar.month][0]={1200,1300};
+    owner.monthly_cash[(owner.scene.calendar.month+1)%12][1]={500,0};
+    SteamInformationSkinOptions options{0,false,std::array<int,2>{80,82}};
+    const auto before=startup_world_state_digest(owner);
+    const auto result=steam_income_information_skin(owner,id,options);
+    check(result && startup_world_state_digest(owner)==before,"完整收支计划保持Owner与输出不变");
+    const auto &plan=*result;
+    const auto labels=[&](const SteamInformationSkinPlan &p,Role role) {
+        std::vector<const SteamInformationText*> out;
+        for(const auto &draw:p.draws)
+            if(const auto *label=std::get_if<SteamInformationText>(&draw);label && label->role==role)
+                out.push_back(label);
+        return out;
+    };
+    const auto titles=labels(plan,Role::title);
+    check(titles.size()==2 && titles[0]->position==std::array<int,2>{80,35} &&
+              titles[1]->position==std::array<int,2>{79,34} && titles[0]->period==0,
+          "标题阴影与正文保留两次实际测宽和原位置，不能合并测宽");
+    const auto period=labels(plan,Role::period),income_head=labels(plan,Role::income_header),
+               expense_head=labels(plan,Role::expense_header);
+    check(period.size()==1 && period[0]->position==std::array<int,2>{26,65} && period[0]->font_size==0 && !period[0]->anchor &&
+              income_head.size()==1 && income_head[0]->position==std::array<int,2>{108,65} &&
+              income_head[0]->font_size==10 && expense_head.size()==1 &&
+              expense_head[0]->position==std::array<int,2>{178,65} && expense_head[0]->font_size==10,
+          "非日文页签先用当前字体，仅收入支出表头临时字号10");
+    int money_count{},category_count{},line_count{};
+    for(std::size_t index=0;index<plan.draws.size();++index) {
+        if(const auto *text=std::get_if<SteamInformationText>(&plan.draws[index])) {
+            if(!text->value.empty())++money_count;
+            if(text->role==Role::category) {
+                const int row=category_count++,y=90+18*row;
+                check(text->slot==row && text->position==std::array<int,2>{22,y},"五行分类原序与18步距");
+                const std::size_t first_amount=index+(row<4?2:1);
+                const auto *income=std::get_if<SteamInformationText>(&plan.draws.at(first_amount));
+                const auto *expense=std::get_if<SteamInformationText>(&plan.draws.at(first_amount+1));
+                check(income && expense && income->role==Role::income && expense->role==Role::expense &&
+                          income->anchor==4 && expense->anchor==4 &&
+                          income->position==std::array<int,2>{143,y} && expense->position==std::array<int,2>{216,y},
+                      "标签/前四行线/收入/支出保持绘制次序与右锚");
+            }
+        } else if(const auto *line=std::get_if<SteamInformationLine>(&plan.draws[index])) {
+            const int row=line_count++;
+            const int y=row<4?104+18*row:180;
+            check(line->from==std::array<int,2>{22,y} && line->to==std::array<int,2>{220,y} && line->width==1,
+                  "只四条分类线与一条利润线，保留源端点/线宽");
+        }
+    }
+    check(money_count==11 && category_count==5 && line_count==5,"11个金额全部Font文字，没有数字SEB或第六分类");
+    const auto incomes=labels(plan,Role::income),expenses=labels(plan,Role::expense),profit=labels(plan,Role::profit_value);
+    check(incomes[0]->value=="1,200Ｇ" && expenses[0]->value=="1,300Ｇ" && profit.size()==1 &&
+              profit[0]->value=="-100Ｇ" && profit[0]->rgb==std::array<int,3>{255,14,1},
+          "Owner格式金额直达计划，负利润保留负号与红色");
+    const auto description=labels(plan,Role::description);
+    check(description.size()==1 && description[0]->position==std::array<int,2>{120,204} &&
+              description[0]->anchor==2 && plan.soft_labels==std::array<int,2>{0,2} && plan.touches.size()==2,
+          "底部只居中文字，右软标签返回，仅两箭头注册触摸");
+    for(std::size_t side=0;side<2;++side) {
+        const auto &touch=plan.touches[side];
+        check(touch.component==1 && touch.value==(side==0?16:18) && touch.image_draw && !touch.rectangle,
+              "箭头保留原SEB帮助器注册，不猜物理热区");
+        const auto &image=std::get<StartupSkinDraw>(plan.draws.at(*touch.image_draw));
+        check(image.image==74 && image.sprite==3 && image.frame==(side==0?3:0) &&
+                  image.offset==std::array<int,2>{side==0?22:218,51},"箭头原身份/帧/初始锚");
+    }
+    owner.page_phases.at(id)=1;owner.page_counters.at(id)=8;options.japanese=true;options.view_y=20;
+    const auto year=*steam_income_information_skin(owner,id,options);
+    check(labels(year,Role::period)[0]->position[0]==28 && labels(year,Role::income_header)[0]->position[0]==121 &&
+              labels(year,Role::income_header)[0]->font_size==0 && labels(year,Role::expense_header)[0]->position[0]==194 &&
+              labels(year,Role::profit_value)[0]->value=="400Ｇ" &&
+              labels(year,Role::profit_value)[0]->rgb==std::array<int,3>{0,100,255},
+          "日文分支原表头与年统计正利润，未借非日文临时字体");
+    check(labels(year,Role::title)[0]->position[1]==45 && labels(year,Role::category)[0]->position[1]==90 &&
+              std::get<StartupSkinDraw>(year.draws.at(*year.touches[0].image_draw)).offset==std::array<int,2>{19,51} &&
+              std::get<StartupSkinDraw>(year.draws.at(*year.touches[1].image_draw)).offset==std::array<int,2>{221,51},
+          "VIEW_Y只进入窗口/内框帮助器，正文与16槽箭头不重复叠偏移");
+    owner.scripts.pages.back().lifecycle=3;
+    check(steam_income_information_skin(owner,id,options).has_value(),"挂起年页可只读绘制");
+    auto bad=owner;bad.page_phases.erase(id);
+    check(!steam_income_information_skin(bad,id,options),"初始化页缺页签拒绝，不制造默认月页");
+    options.title_widths.reset();check(!steam_income_information_skin(owner,id,options),"缺真实标题双测宽不猜字符宽");
+    options.title_widths=std::array<int,2>{-1,80};
+    check(!steam_income_information_skin(owner,id,options),"负测宽拒绝");
+    options.title_widths=std::array<int,2>{80,80};options.view_y=std::numeric_limits<int>::max();
+    check(!steam_income_information_skin(owner,id,options),"窗框中间算术溢出不发布部分图元");
+    const auto seb=tools::parse_legacy_seb(read_bytes(source_root/"common/arrow02.seb"));
+    int arrow_parts{};
+    for(const auto &layer:seb.layers)for(const auto &part:layer.parts)if(part.frame==0||part.frame==3) {
+        ++arrow_parts;
+        check(part.image_index==74 && part.source_x==(part.frame==0?4:8) && part.source_y==0 &&
+                  part.width==4 && part.height==8 && part.offset_x==0 && part.offset_y==-3,
+              "已出版箭头实际裁片和内部offset与Steam调用独立对应");
+    }
+    check(arrow_parts==2,"两个实际消费的箭头帧都存在，不能空遍历通过");
 }
 // CPU图像持有者只负责本批分配，失败也释放，不创建窗口／纹理或保留静态缓存。
 struct CpuImage {
@@ -624,6 +729,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     phases(check);
     frame_geometry(check);
     income_information(check);
+    income_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

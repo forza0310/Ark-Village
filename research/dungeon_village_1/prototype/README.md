@@ -1,6 +1,6 @@
 # 可玩研究原型包
 
-[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；当前世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，Driver v3与字段布局不变，集中验收进度见[当前交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。CLI改用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
+[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。本批37／38目录另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
 
 旧`natural-application-menu-v1`世界3／应用6的首月、12月前缀仅保历史，不能加载后暗补price接续或重签证书。新`natural-application-economy-v1`首月正在验证，尚未认证通过。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
 
@@ -8,11 +8,11 @@
 
 人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
 
-信息菜单与收支页由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护，复用世界库的收支纯查询。Session／Application提供`open_information_menu`和`input_information_page`；后者接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，当前只开放收支36，其余目标拒绝且状态不变；主场景快捷入口属于维护适配，不代表完整主菜单／OS输入。页面载荷复用现有phase／counter，关闭后由框架统一退休；窗口皮肤及34／35／37／38仍沿[信息合同](../ui/INFORMATION_MENU.md)逐项交付。
+信息页面由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护。Session／Application提供`open_information_menu`和`input_information_page`；接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，现开放36／37／38，34／35拒绝且状态不变；选子页先压页再退休菜单，主场景快捷入口仍属维护适配。37／38在既有phase／counter之外增加typed目录载荷，分别冻结一组／四组ID及选择／滚动；38采用Steam目录过滤，关闭后由框架统一退休。完整皮肤与OS输入沿[信息合同](../ui/INFORMATION_MENU.md)分别交付，本批短测结果另记。
 
 收支36的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)复用Steam窗框／内框，输出完整局部有序图元、字体金额、源端点线与箭头触摸引用；不修改Owner，不生成数字SEB。调用者提供语言分支、VIEW_Y与标题两次真实测宽，并负责原页面坐标及字体后端；[布局例图](../ui/examples/steam-income.png)使用明确替代字体，仅作产品布局参考。raw9菜单皮肤和其余信息子页仍未由此补齐。
 
-[startup_information](include/dungeon_village_prototype/startup_information.hpp)还提供37正库存原序／原说明和38四类装备的纯目录查询。38显式选择APK或Steam过滤／占位语义，按原交换排序返回未知行及已知种类数；装备列表图标由`startup_world_equipment_icon_draws`读取已有原字段，武器身体PNG与列表icon分开。说明只增加不可变定义文案，没有新增Owner字段；这些查询不替代37清NEW、38翻页／关闭等页面消费者。
+[startup_information](include/dungeon_village_prototype/startup_information.hpp)提供37正库存原序／原说明和38四类装备的纯目录查询，保留显式APK／Steam版本选择；维护38页面固定使用Steam过滤／占位语义。37正常关闭在Owner候选中清全部道具NEW，空目录初始化则请求事件15并退休、不清NEW；38依次处理左右、最终换页重置、上下和关闭，不清装备NEW。装备列表图标复用`startup_world_equipment_icon_draws`，与武器身体PNG分开。新增页面map使codec布局身份自动变化，旧精确快照拒绝、不迁移；普通稳定场景存档政策不变。
 
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。

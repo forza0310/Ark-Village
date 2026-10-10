@@ -247,18 +247,6 @@ std::optional<std::uint64_t> live_parent(const State &s, std::uint64_t child, in
         return {};
     return parent->id;
 }
-// c/n.r()清的是全部普通道具r提示；不是库存、获得状态或住宅请求。
-bool clear_item_notices(State &s) {
-    for (const auto &definition : s.rules->items) {
-        const auto owned = s.items.find(definition.identity);
-        const auto catalog = s.catalog.find({0, definition.identity});
-        if (owned == s.items.end() || catalog == s.catalog.end())
-            return false;
-        owned->second.newly_unlocked = false;
-        catalog->second.newly_unlocked = false;
-    }
-    return true;
-}
 bool commit_gift(State &s, std::uint64_t parent, int human) {
     const auto selected = s.human_equipment_choices.find(parent);
     if (selected == s.human_equipment_choices.end())
@@ -343,7 +331,7 @@ bool commit_gift(State &s, std::uint64_t parent, int human) {
         s.actor_metadata.at(id).weapon = weapon;
         break; // 原j()只同步首个同定义实例，不广播装备。
     }
-    return clear_item_notices(s);
+    return clear_startup_world_item_notices(s);
 }
 
 // 普通道具在父64直接确认：先评价/结果，再消耗库存；全过程仍在Owner候选内。
@@ -412,7 +400,7 @@ bool commit_item(State &s, std::uint64_t parent, int human, int item) {
             break;
         }
     }
-    return clear_item_notices(s);
+    return clear_startup_world_item_notices(s);
 }
 
 bool item_recovery(State &s, std::uint64_t page, int counter) {
@@ -879,7 +867,7 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 return Error::invalid_page;
             chosen = target;
         } else if (action == A::cancel || (action == A::confirm && raw == 73)) {
-            if (raw == 64 && !clear_item_notices(next))
+            if (raw == 64 && !clear_startup_world_item_notices(next))
                 return Error::missing_source;
             if (!close(next, id))
                 return Error::script_failed;

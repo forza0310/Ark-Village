@@ -68,6 +68,23 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupInformationPageData",
+      "fields": [
+        {
+          "name": "lists",
+          "type": "std::vector<std::vector<int>>"
+        },
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "first_visible",
+          "type": "int"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldActorMetadata",
       "fields": [
         {
@@ -689,6 +706,10 @@
         {
           "name": "page_phases",
           "type": "std::map<std::uint64_t, int>"
+        },
+        {
+          "name": "information_page_data",
+          "type": "std::map<std::uint64_t, StartupInformationPageData>"
         },
         {
           "name": "task_page_lists",

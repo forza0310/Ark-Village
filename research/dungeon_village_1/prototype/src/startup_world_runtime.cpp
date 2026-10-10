@@ -209,6 +209,20 @@ bool write_report(State &s, const ref::WorldMonthReportState &r) {
 }
 } // namespace
 
+bool clear_startup_world_item_notices(StartupWorldRuntimeState &s) {
+    if (!s.rules)
+        return false;
+    // c/n.r()清全部普通道具NEW；先核齐两份目录，失败不留下半份清除。
+    for (const auto &definition : s.rules->items)
+        if (!s.items.count(definition.identity) || !s.catalog.count({0, definition.identity}))
+            return false;
+    for (const auto &definition : s.rules->items) {
+        s.items.find(definition.identity)->second.newly_unlocked = false;
+        s.catalog.find({0, definition.identity})->second.newly_unlocked = false;
+    }
+    return true;
+}
+
 const ref::WorldScriptCatalog &startup_world_runtime_catalog() {
     static const auto catalogue = [] {
         const auto &rules = startup_world_rules();
@@ -1069,6 +1083,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.human_equipment_choices.erase(page.id);
             admitted.human_gift_scores.erase(page.id);
             admitted.human_gift_messages.erase(page.id);
+            admitted.information_page_data.erase(page.id);
             admitted.tax_page_residents.erase(page.id);
             admitted.tax_page_selection.erase(page.id);
             admitted.tax_page_scroll.erase(page.id);
@@ -1098,7 +1113,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     // 暂停不初始化信息页，也不把尚未具备载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
-        (pending.legacy_page == 9 || pending.legacy_page == 36)) {
+        (pending.legacy_page == 9 || (pending.legacy_page >= 36 && pending.legacy_page <= 38))) {
         if (!valid_startup_world_information_page(admitted, pending.id))
             return {StartupWorldRuntimeError::missing_source, {},
                     ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};

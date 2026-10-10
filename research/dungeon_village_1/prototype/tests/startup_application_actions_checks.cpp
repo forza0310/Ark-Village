@@ -159,6 +159,32 @@ void management_bridges(const std::filesystem::path &root) {
     error=expected.cancel_page(income_page);
     compare_command(app,expected,app.cancel_page(income_page),error);
     rejected([&]{return !app.input_information_page(income_page,info_input).empty();});
+    // 上层只验目录命令桥与一次输出；NEW/滚动/损坏载荷由pages和restore套件主责。
+    info_tick=expected.update();
+    compare_command(app,expected,app.update(),info_tick.error);
+    error=expected.open_information_menu();
+    compare_command(app,expected,app.open_information_menu(),error);
+    const auto equipment_menu=top(*app.world())->id;
+    info_tick=expected.update();
+    compare_command(app,expected,app.update(),info_tick.error);
+    info_input={}; info_input.select_row=4;
+    error=expected.input_information_page(equipment_menu,info_input);
+    compare_command(app,expected,app.input_information_page(equipment_menu,info_input),error);
+    error=expected.acknowledge_page(equipment_menu);
+    compare_command(app,expected,app.acknowledge_page(equipment_menu),error);
+    const auto equipment_page=top(*app.world())->id;
+    require(top(*app.world())->legacy_page==38,"application opens real equipment directory38");
+    info_tick=expected.update();
+    compare_command(app,expected,app.update(),info_tick.error);
+    info_input={}; info_input.right=true; info_input.down=true;
+    error=expected.input_information_page(equipment_page,info_input);
+    compare_command(app,expected,app.input_information_page(equipment_page,info_input),error);
+    require(app.world()->state().page_phases.at(equipment_page)==1 &&
+                app.world()->state().information_page_data.at(equipment_page).selection==1,
+            "application forwards directory tab and row to the single Owner");
+    error=expected.cancel_page(equipment_page);
+    compare_command(app,expected,app.cancel_page(equipment_page),error);
+    rejected([&]{return !app.input_information_page(equipment_page,info_input).empty();});
     error=expected.open_build_menu();
     compare_command(app,expected,app.open_build_menu(),error);
     const auto build_page=top(*app.world())->id;

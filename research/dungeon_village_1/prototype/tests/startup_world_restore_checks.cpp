@@ -77,6 +77,128 @@ int check_startup_world_restore_contracts(
         }
     }
     {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore information directory: ") + scenario);
+        };
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(), "framework admission");
+            state = std::move(*result.candidate);
+        };
+        const auto input = [&](auto &state, std::uint64_t id, const p::StartupInformationInput &action) {
+            require(p::input_startup_world_information_page(state, id, action) ==
+                        p::StartupWorldRuntimeError::none, "real page input");
+        };
+        for (int raw : {37, 38}) {
+            auto state = baseline;
+            // 最小库存条件用于取得可滚动37；目录/页签由真实9入口及框架Init生成。
+            // 38仅置一条装备NEW，检验恢复与关闭不会误用37的整类清理。
+            if (raw == 37) {
+                require(state.rules->items.size() >= 6, "source supplies six ordinary item definitions");
+                for (std::size_t n = 0; n < 6; ++n) {
+                    const int item = state.rules->items[n].identity;
+                    state.items.at(item).inventory = 1;
+                    state.items.at(item).newly_unlocked = true;
+                    state.catalog.at({0, item}) = state.items.at(item);
+                }
+            } else {
+                state.catalog.at({1, 0}).newly_unlocked = true;
+            }
+            require(p::open_startup_world_information_menu(state) == p::StartupWorldRuntimeError::none,
+                    "open actual menu9");
+            tick(state);
+            const auto menu = state.scripts.pages.back().id;
+            p::StartupInformationInput selection;
+            selection.select_row = raw == 37 ? 3 : 4;
+            input(state, menu, selection);
+            p::StartupInformationInput confirm;
+            confirm.confirm = true;
+            input(state, menu, confirm);
+            const auto id = state.scripts.pages.back().id;
+            require(state.scripts.pages.back().legacy_page == raw, "menu opens requested directory");
+            expect(state, true, "directory pending Init with retired parent menu");
+            tick(state);
+            if (raw == 38) {
+                p::StartupInformationInput right;
+                right.right = true;
+                input(state, id, right);
+            }
+            selection.select_row = 5;
+            input(state, id, selection);
+            const auto &data = state.information_page_data.at(id);
+            require(data.selection == 5 && data.first_visible == (raw == 37 ? 1 : 2) &&
+                        state.page_phases.at(id) == (raw == 37 ? 0 : 1),
+                    "nonfirst row, scroll and equipment tab reached through actual input");
+            const auto wire = p::persistence_detail::encode_state(state);
+            auto restored = p::persistence_detail::decode_state(wire, *state.rules);
+            expect(restored, true, "initialized37/38 frozen directory restore");
+            require(p::persistence_detail::encode_state(restored) == wire,
+                    "exact directory payload and NEW survive codec without initialization");
+
+            const auto reject = [&](const char *scenario, const auto &damage) {
+                auto broken = restored;
+                damage(broken);
+                expect(broken, false, scenario);
+            };
+            reject("directory missing entire map", [&](auto &v) { v.information_page_data.clear(); });
+            reject("directory missing phase", [&](auto &v) { v.page_phases.erase(id); });
+            reject("directory wrong group count", [&](auto &v) { v.information_page_data.at(id).lists.pop_back(); });
+            reject("directory duplicate definition", [&](auto &v) {
+                auto &list = v.information_page_data.at(id).lists.front(); list[1] = list[0];
+            });
+            reject("directory unknown definition", [&](auto &v) {
+                v.information_page_data.at(id).lists.front().front() = std::numeric_limits<int>::max();
+            });
+            reject("directory omitted source row", [&](auto &v) { v.information_page_data.at(id).lists.front().pop_back(); });
+            reject("directory negative selection", [&](auto &v) { v.information_page_data.at(id).selection = -1; });
+            reject("directory selection outside current group", [&](auto &v) {
+                auto &d = v.information_page_data.at(id);
+                d.selection = static_cast<int>(d.lists.at(v.page_phases.at(id)).size());
+            });
+            reject("directory negative scroll", [&](auto &v) { v.information_page_data.at(id).first_visible = -1; });
+            reject("directory scroll past selection", [&](auto &v) { v.information_page_data.at(id).first_visible = 6; });
+            reject("directory selection outside visible rows", [&](auto &v) { v.information_page_data.at(id).first_visible = 0; });
+            reject("directory payload on wrong raw type", [&](auto &v) { v.scripts.pages.back().legacy_page = 36; });
+            reject("directory orphaned payload identity", [&](auto &v) {
+                v.information_page_data.emplace(v.scripts.next_page_id++, v.information_page_data.at(id));
+            });
+            if (raw == 38) {
+                reject("equipment hidden tab invalid definition", [&](auto &v) {
+                    v.information_page_data.at(id).lists.at(3).front() = std::numeric_limits<int>::max();
+                });
+                reject("equipment excluded Steam flag-zero row injected", [&](auto &v) {
+                    v.information_page_data.at(id).lists.at(3).push_back(26);
+                });
+            }
+
+            p::StartupInformationInput down;
+            down.down = true;
+            input(state, id, down); input(restored, id, down);
+            tick(state); tick(restored);
+            require(p::persistence_detail::encode_state(restored) == p::persistence_detail::encode_state(state),
+                    "same input and update continue exact restored directory state");
+            input(state, id, confirm);
+            require(state.scripts.pages.back().lifecycle == 4 && state.information_page_data.count(id),
+                    "real close retains complete payload until framework retirement");
+            const auto closed_wire = p::persistence_detail::encode_state(state);
+            auto closed = p::persistence_detail::decode_state(closed_wire, *state.rules);
+            expect(closed, true, "complete closed37/38 survives pre-Finish snapshot");
+            require(p::persistence_detail::encode_state(closed) == closed_wire,
+                    "closed snapshot does not run Init, clear NEW or consume inputs");
+            if (raw == 38)
+                require(closed.catalog.at({1, 0}).newly_unlocked,
+                        "equipment close and restore preserve existing NEW");
+            else
+                require(std::none_of(closed.items.begin(), closed.items.end(),
+                            [](const auto &entry) { return entry.second.newly_unlocked; }),
+                        "item NEW clearing is already committed by actual close");
+            tick(closed);
+            require(!closed.information_page_data.count(id) && !closed.page_phases.count(id) &&
+                        !closed.page_counters.count(id), "real framework retires directory references");
+        }
+    }
+    {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。
         auto upgrade = baseline;
         const auto facility = std::find_if(upgrade.scene.world.world.facilities.begin(),

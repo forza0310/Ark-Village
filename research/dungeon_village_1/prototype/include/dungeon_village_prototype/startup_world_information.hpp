@@ -4,7 +4,7 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 
 namespace dungeon_village_prototype {
-// 已解析的平台输入；raw9显式行选择不得与按键混用，原按键优先级由Owner消费。
+// 已解析的平台输入；显式行选择不得与按键混用，原按键优先级由Owner消费。
 struct StartupInformationInput {
     bool up{}, down{}, left{}, right{}, confirm{}, cancel{};
     std::optional<int> select_row;
@@ -22,13 +22,16 @@ struct StartupInformationPageView {
     int frame{};
     std::array<StartupInformationEntry, 5> entries;
     std::optional<StartupIncomeInformation> income;
+    int selection{}, first_visible{}; // raw37/38当前列表，selection_or_period仍为页签。
+    std::optional<std::vector<StartupItemInformation>> items;
+    std::optional<StartupEquipmentInformation> equipment;
 };
 // 稳定scene是维护主菜单适配入口；实际raw3父页也可进入，不伪造主菜单页。
 StartupWorldRuntimeError open_startup_world_information_menu(StartupWorldRuntimeState &state);
 // 仅栈顶生命周期2接受动作；不支持的子页显式拒绝并保留完整Owner。
 StartupWorldRuntimeError input_startup_world_information_page(
     StartupWorldRuntimeState &state, std::uint64_t page, const StartupInformationInput &input);
-// 框架初始化：仅生命周期0且两份载荷均不存在时创建；已有页缺字段不能补默认值。
+// 框架初始化：仅生命周期0且全部载荷均不存在时创建；空37经真实事件15后退休。
 bool initialize_startup_world_information_pages(StartupWorldRuntimeState &candidate);
 std::optional<StartupWorldRuntimeState> update_startup_world_information_page(
     const StartupWorldRuntimeState &state, std::uint64_t page);

@@ -528,6 +528,7 @@ struct Validation {
     }
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
+        PAGE_MAP(information_page_data);
         PAGE_MAP(page_human_bindings);
         PAGE_MAP(task_abort_questions);
         PAGE_MAP(task_abort_answers);
@@ -593,6 +594,11 @@ struct Validation {
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for (const auto &[id, data] : s.information_page_data) {
+            (void)data;
+            if (!page_kind(id, {37, 38}))
+                return fail("information page: 目录数据附在错误页型");
+        }
         for (const auto &[id, data] : s.magic_pot_page_data) {
             (void)data;
             if (!page_kind(id, {41, 42, 43, 44, 45, 46, 47}))
@@ -906,7 +912,7 @@ struct Validation {
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
-                (p.legacy_page == 9 || p.legacy_page == 36) &&
+                (p.legacy_page == 9 || (p.legacy_page >= 36 && p.legacy_page <= 38)) &&
                 !valid_startup_world_information_page(s, p.id))
                 return fail("information page: 初始化/页签/选择/计数载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)

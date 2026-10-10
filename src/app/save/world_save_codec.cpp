@@ -13,7 +13,7 @@ namespace save_detail {
 static_assert(sizeof(int) == 4, "Save schema requires 32-bit world integers");
 static_assert(sizeof(float) == 4 && std::numeric_limits<float>::is_iec559,
               "Save schema requires IEEE-754 binary32");
-constexpr std::uint32_t schema_version = 4;
+constexpr std::uint32_t schema_version = 5;
 constexpr std::size_t max_entries = 1000000;
 constexpr char magic[] = "ARKSAVE1";
 struct Failure {
@@ -255,9 +255,9 @@ template <class Archive> void fields(Archive &io, WorldSaveMetadata &x) {
 } // namespace save_detail
 
 const char *world_save_dataset() {
-    // 1f19c88 includes synchronized neighbour arrival prices and typed outputs.
-    // Old files can retain incorrect revenue history; reject without silently repairing it.
-    return "ca2f87ddf567b52d5a5fd89911d4e0863d825c0c914c632df73a54242190c168";
+    // Formal world5 corrects initial facility p2 and persists task NEW per instance.
+    // Never repair prior initialization or transaction history while loading a player file.
+    return "a686bb01b6cb3fa54db48e96049f7f2fb186b020cf299a17e0db574864d77ac9";
 }
 
 WorldSaveCapture capture_world_save(const simulation::StartupWorldRuntimeState &state) {

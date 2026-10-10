@@ -20,15 +20,20 @@ void information_command_transactions() {
           "Information test begins at the real stable source scene");
     state.scene.framework_paused = true;
     app::WorldSession session(state);
-    input_frame(session, session.open_main_menu());
+    const auto blocked_main = input_frame(session, session.open_main_menu());
+    check(!blocked_main->failed && !blocked_main->main_menu_open &&
+              input_result(*blocked_main, blocked_main->last_command_serial).outcome == Outcome::rejected,
+          "Paused information navigation refuses raw3 and preserves the source Owner");
     const auto denied = input_frame(session, session.open_menu_information());
-    check(!denied->failed && denied->main_menu_open &&
+    check(!denied->failed && !denied->main_menu_open &&
               input_result(*denied, denied->last_command_serial).outcome == Outcome::rejected,
-          "Paused information entry preserves the desktop menu and Owner");
+          "Stable-scene information shortcut still cannot bypass explicit source pause");
     same_world(state, *denied->state);
 
     session.set_paused(false);
-    const auto opened_serial = session.open_menu_information();
+    input_frame(session, session.open_main_menu());
+    const auto selected_menu = menu_tag(session, 3, 5);
+    const auto opened_serial = selected_menu->last_command_serial;
     auto ready_information = [&](int raw) {
         return await(session, [raw](const auto &frame) {
             const auto &p = task_top(*frame.state);
@@ -40,7 +45,7 @@ void information_command_transactions() {
     const auto opened = ready_information(9);
     check(!opened->failed && !opened->main_menu_open &&
               input_result(*opened, opened_serial).outcome == Outcome::applied,
-          "Information FIFO entry atomically closes overlay and opens initialized source9");
+          "Information FIFO follows raw3 tag5 into initialized source9 with its actual parent");
     const auto page = task_top(*opened->state).id;
     sim::StartupInformationInput row;
     row.select_row = 2; // Fixed source menu entry16: income information36.
@@ -111,10 +116,25 @@ void magic_pot_commands() {
     auto locked = initial();
     app::WorldSession closed(locked);
     input_frame(closed, closed.open_main_menu());
-    const auto refusal = input_frame(closed, closed.open_menu_magic_pot());
+    const auto main = menu_ready(closed, 3);
+    const auto view = sim::inspect_startup_world_menu_page(*main->state, task_top(*main->state).id);
+    check(view && std::find(view->tags.begin(), view->tags.end(), 3) == view->tags.end(),
+          "Locked magic pot is absent from the real raw3 frozen source directory");
+    sim::StartupWorldMenuInput invalid_row;
+    invalid_row.select_row = static_cast<int>(view->tags.size());
+    const auto refused_row = closed.act_menu(view->page, invalid_row);
+    const auto legacy = closed.open_menu_magic_pot();
+    const auto refusal = input_frame(closed, closed.set_paused(true));
     check(!refusal->failed && refusal->main_menu_open &&
-              input_result(*refusal, refusal->last_command_serial).outcome == Outcome::rejected,
-          "Locked magic pot preserves the desktop overlay without partial date processing");
+              input_result(*refusal, refused_row).outcome == Outcome::rejected &&
+              input_result(*refusal, legacy).outcome == Outcome::rejected &&
+              task_top(*refusal->state).id == view->page &&
+              refusal->state->simulation_steps == main->state->simulation_steps &&
+              refusal->state->scene.calendar.units == main->state->scene.calendar.units &&
+              refusal->state->scene.random.draws() == main->state->scene.random.draws() &&
+              refusal->state->scene.world.world.ai.accounting.funds() ==
+                  main->state->scene.world.world.ai.accounting.funds(),
+          "Locked pot cannot be selected through an invalid row or retired shortcut; raw3 stays modal");
     closed.stop();
 
     auto state = initial();
@@ -582,19 +602,26 @@ void village_command_transactions() {
     auto state = village_fixture();
     state.scene.framework_paused = true;
     app::WorldSession menu(state);
-    input_frame(menu, menu.open_main_menu());
+    const auto blocked_main = input_frame(menu, menu.open_main_menu());
+    check(!blocked_main->failed && !blocked_main->main_menu_open &&
+              input_result(*blocked_main, blocked_main->last_command_serial).outcome == Outcome::rejected,
+          "Paused village navigation refuses raw3 and preserves explicit pause");
     const auto denied = input_frame(menu, menu.open_menu_village_activities());
-    check(!denied->failed && denied->main_menu_open &&
+    check(!denied->failed && !denied->main_menu_open &&
               input_result(*denied, denied->last_command_serial).outcome == Outcome::rejected,
-          "Paused village menu preserves the overlay and explicit pause on source refusal");
+          "Retired Village shortcut cannot bypass the source pause or create51");
+    same_world(state, *denied->state);
     menu.set_paused(false);
-    const auto opened = menu.open_menu_village_activities();
+    input_frame(menu, menu.open_main_menu());
+    menu_tag(menu, 3, 2);
+    const auto chosen = menu_tag(menu, 7, 12);
+    const auto opened = chosen->last_command_serial;
     const auto listing = input_frame(menu, menu.set_paused(true));
     check(!listing->failed && !listing->main_menu_open &&
               task_top(*listing->state).legacy_page == 51 &&
               input_result(*listing, opened).outcome == Outcome::applied &&
               listing->state->village_points == 100,
-          "Village menu and real51 page transition commit together without charging points");
+          "Village raw3-to7 tag12 retires menus and opens real51 without charging points");
     menu.stop();
 
     state = village_fixture();
@@ -813,7 +840,7 @@ void commerce_command_transactions() {
         session.stop();
         std::filesystem::remove_all(directory);
     }
-    // Both independent menu gates retain the overlay and never create a source page.
+    // Pause rejects raw3 itself; flag16 hides Commerce in the frozen village directory.
     for (const bool paused : {false, true}) {
         auto state = initial(paused);
         if (paused)
@@ -821,12 +848,40 @@ void commerce_command_transactions() {
         else
             state.scripts.user_flags &= ~16U;
         app::WorldSession session(state);
-        const auto overlay = input_frame(session, session.open_main_menu());
-        const auto refusal = input_frame(session, session.open_menu_commerce());
-        check(!refusal->failed && refusal->main_menu_open &&
-                  input_result(*refusal, refusal->last_command_serial).outcome == Outcome::rejected,
-              "Commerce flag16/pause refusal preserves the menu instead of opening83");
-        same_world(*overlay->state, *refusal->state);
+        const auto opened = input_frame(session, session.open_main_menu());
+        if (paused) {
+            check(!opened->failed && !opened->main_menu_open &&
+                      input_result(*opened, opened->last_command_serial).outcome == Outcome::rejected,
+                  "Paused Commerce navigation cannot create the real main menu");
+            const auto refusal = input_frame(session, session.open_menu_commerce());
+            check(!refusal->failed && !refusal->main_menu_open &&
+                      input_result(*refusal, refusal->last_command_serial).outcome == Outcome::rejected,
+                  "Retired Commerce shortcut cannot bypass the source framework pause");
+            same_world(state, *refusal->state);
+        } else {
+            menu_tag(session, 3, 2);
+            const auto village = menu_ready(session, 7);
+            const auto view = sim::inspect_startup_world_menu_page(
+                *village->state, task_top(*village->state).id);
+            check(view && std::find(view->tags.begin(), view->tags.end(), 11) == view->tags.end(),
+                  "Missing flag16 excludes Commerce/tag11 from the actual raw7 directory");
+            sim::StartupWorldMenuInput invalid_row;
+            invalid_row.select_row = static_cast<int>(view->tags.size());
+            const auto unavailable = session.act_menu(view->page, invalid_row);
+            const auto legacy = session.open_menu_commerce();
+            const auto refusal = input_frame(session, session.set_paused(true));
+            check(!refusal->failed && !refusal->main_menu_open &&
+                      task_top(*refusal->state).id == view->page &&
+                      task_top(*refusal->state).legacy_page == 7 &&
+                      input_result(*refusal, unavailable).outcome == Outcome::rejected &&
+                      input_result(*refusal, legacy).outcome == Outcome::rejected,
+                  "Unavailable Commerce row and retired shortcut preserve the real raw7 instead of opening83");
+            auto expected = *village->state;
+            for (auto n = village->outer_updates; n < refusal->outer_updates; ++n)
+                expected = advance(std::move(expected));
+            expected.scene.framework_paused = true;
+            same_world(expected, *refusal->state);
+        }
         session.stop();
     }
     {

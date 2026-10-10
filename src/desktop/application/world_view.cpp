@@ -139,17 +139,17 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
     std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
-    int menu_selection = 1;
-    bool village_menu = options.inspect_page == "world-village-menu";
-    int village_selection{};
+    int menu_inspection_phase{};
     std::string menu_feedback;
     // Menu inspection exercises the real asynchronous desktop command after natural startup.
     // This explicit diagnostic player pause permits checking the exact loaded date before
     // another source round. Loading must preserve it and the current fresh-session random stream.
     if (options.inspect_page == "world-load")
         session.set_paused(true);
-    if (menu_inspection || save_inspection)
+    if (menu_inspection)
         pending_menu = session.open_main_menu();
+    else if (save_inspection)
+        pending_menu = session.open_save_menu();
     WorldManagement management;
     SpritePickMap scene_picks;
     std::uint64_t pick_generation = publication->generation;
@@ -174,7 +174,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     double last_render{};
     WorldPointerGesture pointer;
     std::optional<
-        std::tuple<std::uint64_t, std::uint64_t, bool, bool, bool, int, int, int, int, int>>
+        std::tuple<std::uint64_t, std::uint64_t, bool, bool, int, int, int, int, int>>
         pointer_context;
     WorldRenderStatistics render_statistics(options.frames);
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
@@ -290,7 +290,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                                      input_page ? input_page->id : std::uint64_t{},
                                                      publication->main_menu_open,
                                                      publication->save_menu_open,
-                                                     village_menu,
                                                      current.scene.scene_state,
                                                      current.build_mode,
                                                      current.build_definition.value_or(-1),
@@ -335,80 +334,37 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             desired_pause = !desired_pause;
             pending_pause = session.set_paused(desired_pause);
         }
-        ui::WorldMenuInput menu_input;
-        menu_input.click = click && hud_mouse_buttons ? mouse : std::nullopt;
-        menu_input.toggle =
-            IsKeyPressed(KEY_M) || (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) &&
-                                    !publication->main_menu_open && !publication->save_menu_open &&
-                                    !input_page && current.scene.scene_state == 0);
-        menu_input.escape = back;
-        menu_input.up = IsKeyPressed(KEY_UP);
-        menu_input.down = IsKeyPressed(KEY_DOWN);
-        menu_input.enter = IsKeyPressed(KEY_ENTER);
-        if (!publication->main_menu_open && !pending_menu)
-            village_menu = false;
+        // The desktop opens raw3; its selection, children and return paths belong to the Owner.
         const bool menu_pending = failed || pending_menu || pending_task || management.pending() ||
                                   publication->save_menu_open || save_menu.pending();
-        const bool was_village_menu = village_menu;
-        if (village_menu) {
-            const auto intent = ui::world_village_menu_input(
-                layout, !desired_pause, (current.scripts.user_flags & 16U) != 0, menu_pending,
-                village_selection, menu_input, (current.scripts.user_flags & 1U) != 0);
-            if (intent) {
-                menu_feedback.clear();
-                switch (*intent) {
-                case ui::WorldVillageMenuIntent::back:
-                    village_menu = false;
-                    break;
-                case ui::WorldVillageMenuIntent::close:
-                    pending_menu = session.close_main_menu();
-                    break;
-                case ui::WorldVillageMenuIntent::activities:
-                    pending_menu = session.open_menu_village_activities();
-                    break;
-                case ui::WorldVillageMenuIntent::commerce:
-                    pending_menu = session.open_menu_commerce();
-                    break;
-                case ui::WorldVillageMenuIntent::magic_pot:
-                    pending_menu = session.open_menu_magic_pot();
-                    break;
-                }
-            }
-        }
-        const auto menu_intent =
-            was_village_menu
-                ? std::nullopt
-                : ui::world_menu_input(
-                      layout, publication->main_menu_open,
-                      !active_page(current) && current.scene.scene_state == 0, !desired_pause,
-                      failed || pending_menu || pending_task || management.pending() ||
-                          publication->save_menu_open || save_menu.pending(),
-                      menu_selection, menu_input);
-        if (menu_intent) {
+        if (!menu_pending && !input_page && current.scene.scene_state == 0 &&
+            (IsKeyPressed(KEY_M) ||
+             (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) ||
+             (hud_mouse_buttons && hit(ui::world_menu_button(extent))))) {
             menu_feedback.clear();
-            switch (*menu_intent) {
-            case ui::WorldMenuIntent::open:
-                pending_menu = session.open_main_menu();
-                break;
-            case ui::WorldMenuIntent::close:
-                pending_menu = session.close_main_menu();
-                break;
-            case ui::WorldMenuIntent::build:
-                pending_menu = session.open_menu_build();
-                break;
-            case ui::WorldMenuIntent::tasks:
-                pending_menu = session.open_menu_tasks();
-                break;
-            case ui::WorldMenuIntent::village:
-                village_menu = true;
-                village_selection = 0;
-                break;
-            case ui::WorldMenuIntent::system:
-                pending_menu = session.open_save_menu();
-                break;
-            case ui::WorldMenuIntent::information:
-                pending_menu = session.open_menu_information();
-                break;
+            pending_menu = session.open_main_menu();
+        } else if (!menu_pending && !input_page && current.scene.scene_state == 0 &&
+                   IsKeyPressed(KEY_F5)) {
+            menu_feedback.clear();
+            pending_menu = session.open_save_menu();
+        }
+        // This bounded diagnostic navigates the same source menu commands as the player.
+        if (options.inspect_page == "world-village-menu" && !menu_pending && input_page &&
+            input_page->legacy_page == 3) {
+            if (const auto source = simulation::inspect_startup_world_menu_page(current, input_page->id)) {
+                simulation::StartupWorldMenuInput input;
+                if (menu_inspection_phase == 0) {
+                    const auto tag = std::find(source->tags.begin(), source->tags.end(), 2);
+                    if (tag == source->tags.end())
+                        throw std::runtime_error("Village menu source tag is unavailable");
+                    input.select_row = static_cast<int>(tag - source->tags.begin());
+                    pending_menu = session.act_menu(input_page->id, input);
+                    menu_inspection_phase = 1;
+                } else if (menu_inspection_phase == 1) {
+                    input.confirm = true;
+                    pending_menu = session.act_menu(input_page->id, input);
+                    menu_inspection_phase = 2;
+                }
             }
         }
         if (publication->save_menu_open) {
@@ -424,7 +380,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         }
         // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
         // old scene while the simulation worker completes its previous atomic update.
-        const bool menu_blocked = publication->main_menu_open || publication->save_menu_open ||
+        const bool menu_blocked = publication->save_menu_open ||
                                   pending_menu || save_menu.pending() || management.pending();
         if (!menu_blocked && !active_page(current) && (gesture.pan.x != 0 || gesture.pan.y != 0)) {
             const float factor = destination.width / extent.width * zoom;
@@ -660,17 +616,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                           {12, extent.height - 72.F, extent.width - 24.F, 18}, MAROON, 10);
             skin.button(retry_box, "重试");
         }
-        if (publication->main_menu_open) {
-            if (village_menu)
-                ui::draw_world_village_menu(layout, skin, village_selection,
-                                            !desired_pause && !failed && !pending_menu,
-                                            (current.scripts.user_flags & 16U) != 0, menu_feedback,
-                                            (current.scripts.user_flags & 1U) != 0);
-            else
-                ui::draw_world_menu(layout, skin, menu_selection,
-                                    !desired_pause && !failed && !pending_menu, menu_feedback,
-                                    !failed && !pending_menu);
-        } else if (!publication->save_menu_open && !menu_feedback.empty())
+        if (!publication->save_menu_open && !menu_feedback.empty())
             skin.text.draw(menu_feedback, 8, extent.height - 58.F, MAROON);
         save_menu.draw(*publication, extent, skin);
         EndMode2D();
@@ -696,7 +642,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     if (menu_inspection) {
         std::cout << "World menu inspection: open=" << publication->main_menu_open
                   << " explicit_pause=" << final_state.scene.framework_paused << '\n';
-        if (!publication->main_menu_open || failed)
+        const auto *page = active_page(final_state);
+        const int expected = options.inspect_page == "world-village-menu" ? 7 : 3;
+        if (!page || page->legacy_page != expected || page->lifecycle != 2 || failed)
             throw std::runtime_error("World menu inspection did not receive successful FIFO open");
     }
     capture_world_screenshot(options, frames);

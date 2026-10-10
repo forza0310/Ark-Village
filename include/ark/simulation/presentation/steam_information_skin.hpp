@@ -15,7 +15,10 @@ enum class SteamInformationTextRole {
     profit_label, profit_value, description, name_header, inventory_header,
     row_name, unknown_row, item_description, empty_directory, known_count, attribute_placeholder,
     satisfaction_header, effort_header, equipment_header, contribution_header,
-    town_points_header, spending_header, adventurer_count
+    town_points_header, spending_header, adventurer_count,
+    village_name, town_stat_label, town_adventurer_count, town_equipment_count,
+    town_equipment_kinds, facility_income_list, facility_profit_header,
+    facility_name, facility_tracking_hint, menu_entry
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -30,7 +33,7 @@ struct SteamInformationText {
     SteamInformationTextMode mode{SteamInformationTextMode::plain};
     std::array<int,2> extent{}; // 仅layout使用；原TextLayout宽/高，不按字符数测量。
     std::optional<int> line_space{}; // layout显式0；rich_text空值沿原TextLayout全局行距。
-    int argument{}; // known_count为当前整个目录p1定义数。
+    int argument{}; // 数量角色传计数；facility_name传ordinal+1，value仍为未拼接原定义名。
 };
 // 保留Steam DrawLine原端点及lineWidth；后端不可把端点差擅自当FillRect尺寸。
 struct SteamInformationLine {
@@ -38,35 +41,80 @@ struct SteamInformationLine {
     int width{1};
     std::array<int,3> rgb{};
 };
-enum class SteamInformationNumberKind { inventory_count, positive_attribute };
+enum class SteamInformationNumberKind { inventory_count, positive_attribute, person_count, monster_count };
 struct SteamInformationNumber {
     SteamInformationNumberKind kind;
     int value{};
     std::array<int,2> position{}; // 原Draw_count或Draw_plusValue的实参，偏移由展开器处理。
+    bool japanese{}; // 仅count3/count4使用；日文数字先左移10，再画各自数量单位。
 };
-// 目录层有界合法输入：库存1..999，正属性1..INT_MAX。数字与单位保留原绘序。
+// 库存1..999，正属性1..INT_MAX，名单数量0..INT_MAX。数字与单位保留原绘序。
 std::optional<std::vector<StartupSkinDraw>> steam_information_number_draws(
     const SteamInformationNumber &number);
 struct SteamInformationTouch : SteamStartupTouch {
     std::array<int,4> margin{}; // 保留原TouchOption.Margin，不提前混成OS热区。
     std::optional<std::array<int,3>> scroll_arguments; // count、可见行数、0x20000。
 };
-// Steam35的静态职业身体：在有序clip内部消费human包SEB，内部offset仅加一次。
+// Steam35及菜单摘要的静态职业身体：在有序clip内部消费human包SEB，offset仅加一次。
 // 不创建W，不附武器/HP，不把共享scratch未知附加效果伪装成已还原。
 struct SteamInformationHumanBody {
     StartupTitleBodyDraw body;
     std::array<int,2> position{};
 };
+enum class SteamInformationImageClipKind { set, clear };
+// 独立于普通clip栈；clear令ImageClip无效，不恢复旧值，也不改变普通clip。
+struct SteamInformationImageClip {
+    SteamInformationImageClipKind kind;
+    std::array<int,4> rectangle{}; // set原局部x/y/w/h，平台按float32消费，不预加origin。
+};
 using SteamInformationDraw = std::variant<StartupSkinRect,StartupSkinDraw,
     SteamInformationText,SteamInformationLine,SteamInformationNumber,
-    SteamFacilityClip,SteamInformationHumanBody,SteamFacilityNumber>;
+    SteamFacilityClip,SteamInformationHumanBody,SteamFacilityNumber,SteamInformationImageClip>;
 struct SteamInformationSkinPlan {
     std::vector<SteamInformationDraw> draws;
     // image_draw引用有序draws下标；目录行及两项滚动组件保留原矩形和附加参数。
     std::vector<SteamInformationTouch> touches;
     std::array<int,2> soft_labels{0,2};
     int raw{36};
+    std::array<int,2> origin{}; // raw9保存实际进入helper的原点；调用方只安装一次。
 };
+struct SteamInformationMenuSkinOptions {
+    std::array<int,2> canvas{240,240}, origin{};
+    int safe_left{}; // 原GetBezellessSafeArea.Left；不是Top，也不加入边界条件的原点。
+    int view_y{}; // HUD调用的VIEW_Y；与画布高度及页面origin不同。
+    bool japanese{}, english{}, on_top{true}, covered_by_nonmenu_subform{};
+    // 原当前Font对五项MENU_STR的实际整数测宽；展开到frame3才消费。
+    std::optional<std::array<int,5>> measured_text_widths{};
+};
+// raw9五行局部：实际原点由平台提供，完整HUD/任务摘要和一次性光标请求独立交付。
+// 图片直接返回源裁片缩短后的crop，不要求后端把比例误消费为纹理缩放。
+// covered_by_nonmenu_subform时返回空计划；基触摸仍须经过真实500ms/clip/hit框架。
+std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationMenuSkinOptions &options);
+struct SteamSystemMenuSkinInput {
+    int frame{}, selection{};
+};
+// Steam raw10固定五项20..24，复用DrawMenu2(type1)；稳定帧显式消费五项实际测宽。
+// 只生成皮肤，不建立页面，不执行保存、设置、游戏说明、RankForm、退出或浏览器动作。
+std::optional<SteamInformationSkinPlan> steam_system_menu_skin(
+    const SteamSystemMenuSkinInput &input,const SteamInformationMenuSkinOptions &options);
+struct SteamNavigationMenuSkinOptions {
+    std::array<int,2> canvas{240,240}, origin{}; // 实际Graphics原点；Owner存储位置由调用方只换算一次。
+    int safe_left{};
+    bool japanese{}, english{}, on_top{true}, covered_by_nonmenu_subform{};
+    std::optional<std::vector<int>> measured_text_widths; // 与实际冻结tags逐行对应，不补齐到五项。
+};
+// Steam raw4/7的DrawMenu2(type1)局部。只读已初始化Owner，不重新按当前flag生成目录。
+// NEW/GET逐条独立消费：任务与装备、商会与活动不互相短路；缺实际使用来源显式拒绝。
+std::optional<SteamInformationSkinPlan> steam_navigation_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamNavigationMenuSkinOptions &options);
+// 在五行局部计划后按相同origin消费：右上HUD抵消origin，四摘要保留原局部坐标。
+// 读唯一Owner的村点、选中任务及全名单，不重数遭遇缓存，不消费帧/随机/输出。
+// 被非菜单SubForm覆盖返回空计划；摘要人物保留普通clip与ImageClip完整原序。
+std::optional<SteamInformationSkinPlan> steam_information_menu_status_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationMenuSkinOptions &options);
 struct SteamInformationSkinOptions {
     int view_y{};
     bool japanese{};
@@ -74,7 +122,15 @@ struct SteamInformationSkinOptions {
     std::optional<std::array<int,2>> title_widths;
     bool scroll_first_touch{}; // 平台实际CheckFirstTouch(12,0x40000)，非“鼠标悬停”。
     bool english{}; // Steam35属性标题独立En分支，不能由!japanese推导。
+    std::optional<int> bottom_width{}; // 仅34必需：当前Font对底部原字符串的真实StringWidth。
 };
+// Steam34统计/星级/真实测宽底栏及39设施目录/利润；只读现有页面，不执行入页副作用。
+std::optional<SteamInformationSkinPlan> steam_town_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
+std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
 // Steam35四页完整局部计划；按有序draws执行clip/身体/文字/数字，不推进Owner。
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,

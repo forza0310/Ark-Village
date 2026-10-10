@@ -1,31 +1,33 @@
 #pragma once
 
-// Desktop menu metadata never masquerades as a source raw3 page or a second game owner.
+// Desktop projects the Owner menu tree and submits typed input.
 #include "../common/layout.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ark::desktop::ui {
 class Skin;
-enum class WorldMenuIntent { open, close, tasks, build, village, information, system };
-enum class WorldVillageMenuIntent { back, close, activities, commerce, magic_pot };
 struct WorldMenuInput {
     std::optional<Vector2> click;
     bool toggle{}, escape{}, up{}, down{}, enter{};
 };
 Rectangle world_menu_button(Extent extent);
-// Selection is local; every resulting action must be acknowledged by WorldSession FIFO.
-std::optional<WorldMenuIntent> world_menu_input(const Layout &layout, bool opened, bool can_open,
-                                                bool can_manage, bool pending, int &selected,
-                                                const WorldMenuInput &input);
-void draw_world_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                     const std::string &feedback = {}, bool can_system = true);
-// Desktop management chooser; the source raw7/menu11 hierarchy is not yet fully mapped.
-std::optional<WorldVillageMenuIntent>
-world_village_menu_input(const Layout &layout, bool can_manage, bool commerce_unlocked,
-                         bool pending, int &selected, const WorldMenuInput &input,
-                         bool magic_unlocked = false);
-void draw_world_village_menu(const Layout &layout, const Skin &skin, int selected, bool can_manage,
-                             bool commerce_unlocked, const std::string &feedback = {},
-                             bool magic_unlocked = false);
+std::string world_source_menu_label(int tag);
+bool world_source_menu_page(const simulation::rules::WorldScriptPage &page);
+struct WorldSourceMenuLayout {
+    Vector2 origin;
+    std::vector<Rectangle> rows;
+    Rectangle confirm, back;
+};
+WorldSourceMenuLayout world_source_menu_layout(const simulation::StartupWorldMenuView &view,
+                                               Extent extent);
+bool world_source_menu_enabled(int raw, int tag);
+std::optional<simulation::StartupWorldMenuInput>
+world_source_menu_input(const simulation::StartupWorldMenuView &view,
+                        const WorldSourceMenuLayout &layout, const WorldMenuInput &input, bool left,
+                        bool right, bool blocked);
+void draw_world_source_menus(const simulation::StartupWorldRuntimeState &state, Extent extent,
+                             const Skin &skin, bool enabled, const std::string &feedback = {});
 } // namespace ark::desktop::ui

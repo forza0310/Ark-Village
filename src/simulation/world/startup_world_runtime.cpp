@@ -9,6 +9,8 @@
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
@@ -507,6 +509,24 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
     s.scripts.human_order.clear();
     s.scripts.scene_mode = s.scripts.scene_updates = s.scripts.exploration_phase = 0;
     return true;
+}
+bool activate_startup_world_main_page(State &s) {
+    if (s.scripts.page_mutations_locked) return false;
+    auto scripts = startup_world_runtime_scripts(s);
+    auto scene = scripts.pages.end();
+    for (auto it = scripts.pages.begin(); it != scripts.pages.end(); ++it) {
+        if (it->kind != ref::WorldScriptPageKind::scene || it->lifecycle == 4) continue;
+        if (scene != scripts.pages.end()) return false;
+        scene = it;
+    }
+    if (scene == scripts.pages.end()) return false;
+    auto restored = *scene;
+    scripts.pages.erase(scene);
+    for (auto &page : scripts.pages) page.lifecycle = 4;
+    restored.lifecycle = 2;
+    scripts.pages.push_back(std::move(restored));
+    scripts.redraw_requested = true;
+    return write_startup_world_runtime_scripts(s, scripts);
 }
 ref::DungeonFinishState startup_world_runtime_finish(const State &s) {
     ref::DungeonFinishState f;
@@ -1014,6 +1034,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_presence.emplace(d.id, initial.status);
         state_.residence_catalog_available.emplace(d.id, false);
         state_.facility_unlock_notices.emplace(d.id, initial.pending_notice);
+        state_.facility_build_present.emplace(d.id, false);
         state_.facility_free_builds.emplace(d.id, 0);
         state_.facility_commerce_read.emplace(d.id, initial.initial_available);
         state_.facility_unlock_counters.emplace(d.id, 0);
@@ -1108,6 +1129,13 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::cancel_page(std::uint64_t i
 }
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_task_menu() {
     return open_startup_world_runtime_task_menu(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::open_main_menu() {
+    return open_startup_world_main_menu(state_);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_menu_page(
+    std::uint64_t page, const StartupWorldMenuInput &input) {
+    return input_startup_world_menu_page(state_, page, input);
 }
 StartupWorldTaskPageResult StartupWorldRuntimeSession::act_task_page(std::uint64_t page,
                                                                      StartupWorldTaskAction action,
@@ -1262,6 +1290,8 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.human_gift_scores.erase(page.id);
             admitted.human_gift_messages.erase(page.id);
             admitted.information_page_data.erase(page.id);
+            admitted.menu_page_data.erase(page.id);
+            admitted.menu_page_positions.erase(page.id);
             admitted.tax_page_residents.erase(page.id);
             admitted.tax_page_selection.erase(page.id);
             admitted.tax_page_scroll.erase(page.id);
@@ -1288,19 +1318,22 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::invalid_state,
                 ref::WorldScheduleError::none,
                 {}};
-    // 暂停不初始化信息页/人物详情，也不把尚未具备载荷的生命周期0页改成已就绪2。
+    // 暂停不初始化菜单/信息页/人物详情，也不把缺载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
-        (pending.legacy_page == 60 || pending.legacy_page == 9 ||
-         (pending.legacy_page >= 35 && pending.legacy_page <= 38))) {
-        if (!(pending.legacy_page == 60
-                  ? valid_startup_world_human_detail_context(admitted, pending.id)
-                  : valid_startup_world_information_page(admitted, pending.id)))
-            return {StartupWorldRuntimeError::missing_source,
-                    {},
-                    ref::WorldSceneError::missing_consumer,
-                    ref::WorldScheduleError::none,
-                    {}};
+        (pending.legacy_page == 3 || pending.legacy_page == 4 || pending.legacy_page == 7 ||
+         pending.legacy_page == 10 || pending.legacy_page == 14 || pending.legacy_page == 60 || pending.legacy_page == 9 ||
+         (pending.legacy_page >= 34 && pending.legacy_page <= 40))) {
+        const bool navigation = pending.legacy_page == 3 || pending.legacy_page == 4 ||
+                                pending.legacy_page == 7 || pending.legacy_page == 10;
+        if (!(navigation ? valid_startup_world_menu_page(admitted, pending.id)
+                         : pending.legacy_page == 14
+                               ? valid_startup_world_save_page(admitted, pending.id)
+                         : pending.legacy_page == 60
+                               ? valid_startup_world_human_detail_context(admitted, pending.id)
+                               : valid_startup_world_information_page(admitted, pending.id)))
+            return {StartupWorldRuntimeError::missing_source, {},
+                    ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};
         admitted.scripts.executing_page.reset();
         admitted.scene.top_is_main = false;
         return {StartupWorldRuntimeError::none,
@@ -1310,7 +1343,9 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 {}};
     }
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
-    if (!initialize_startup_world_human_pages(admitted) ||
+    if (!initialize_startup_world_menu_pages(admitted) ||
+        !initialize_startup_world_save_pages(admitted) ||
+        !initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||
         !initialize_startup_world_facility_item_pages(admitted) ||

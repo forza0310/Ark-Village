@@ -4,6 +4,9 @@
 
 ## 本批收口
 
+- [x] 776508c正式导航/NEW/保存接入：450项维护闭包、713项素材、真实3/4/7/9/10、34/39、40静态适配及两栏raw14桥完成本地验收；两Debug完整标准＋修后受影响复验、Release11窗/隔离跨进程存取通过，见[B1](docs/stages/B1-playable-prototype.md#research-776508c-integration)。旧业务前缀须按schema5重新建立；raw39极端金额列宽适配待确认，CI/便携包另记。
+- [ ] f1d25d7说明13生命周期/Steam皮肤与6d35391逐定义解锁来源接续；复用已有页面与经营套件，索引枚举不等于实际全内容验收。
+
 - [x] 五年档设施/人物性能批次：同调用点routes复用、私有候选消费、按实际分支准备输入及Release IPO已接，400轮完整Owner/检查点对照一致；两Debug标准139/119项通过（仅排三个月），Release冷载与运行中窗口通过。最新平均25.082ms、P95 29.184ms，见[本批](docs/stages/B1-playable-prototype.md#loaded-world-performance)。
 - [x] 五年档规则计算P95预算：用户明确P95<30ms，最大值单独记录；本轮三个固定80轮样本P95为29.018/29.652/29.339ms，400轮完整Owner/检查点对照一致。最终两Debug标准139/119项（仅排三个月）及Release运行中窗口通过，见[续批记录](docs/stages/B1-playable-prototype.md#loaded-world-performance)。
 - [ ] 完整事务尾部与更多经营规模：包含缓存/安装/结果析构后三次P95为29.463/30.132/29.664ms，仍有一次略超30ms，不宣称所有规模或全部tick达标；保留完整candidate、回滚、随机与47ms政策，见[性能专项](docs/MILESTONES.md#loaded-world-performance)。
@@ -39,7 +42,7 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 
 ## 研究交付后的接入
 
-- [ ] 本批冻结b99c6db后，研究正式提交a45642c交付城镇统计/设施目录与镜头流程（34/39等）。已核提交范围，尚未迁入；下一批集中核其维护布局、玩家字段分类与桌面皮肤，不再称该维护消费者“研究未交付”。本批运行及ZIP仍对应b99c6db。
+- [x] a45642c城镇统计/设施目录与镜头流程（34/39等）已随776508c完整闭包迁入并接线；本地窗口与玩家字段分类见上方批次。
 
 - [x] 72a5bf4完整闭包及设施74图标/逐来源加成/后缀、普通道具图标、人物cd13头标已接线并完成本地验收，见[B1](docs/stages/B1-playable-prototype.md#research-72a5bf4-integration)。
 

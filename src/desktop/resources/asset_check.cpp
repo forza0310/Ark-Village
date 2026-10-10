@@ -12,6 +12,8 @@ using namespace resource_detail;
 void check_assets(const std::filesystem::path &root) {
     for (const auto &[name, width, height] :
          {std::tuple{"number05.png", 100, 21}, std::tuple{"number08.png", 100, 21},
+          std::tuple{"number12.png", 100, 21},
+          std::tuple{"menuRT00.png", 59, 45}, std::tuple{"menuRT04.png", 11, 11},
           std::tuple{"icon_param00.png", 112, 32}, std::tuple{"wnd_ato.png", 10, 7}}) {
         auto image = LoadImage((root / "steam_common" / name).string().c_str());
         const bool valid = image.data && image.width == width && image.height == height;
@@ -169,7 +171,7 @@ void check_assets(const std::filesystem::path &root) {
         for (int frame = 0; frame < definition.frame_count; ++frame)
             validate_frame(path, frame, Sprites::Binding::common2);
     }
-    for (const auto &name : {"number05.seb", "number08.seb"}) {
+    for (const auto &name : {"number05.seb", "number08.seb", "number12.seb"}) {
         const auto path = root / "common" / name;
         const auto definition = assets::parse_legacy_seb(read_bytes(path));
         for (int frame = 0; frame < definition.frame_count; ++frame)

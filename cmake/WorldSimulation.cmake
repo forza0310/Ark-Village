@@ -98,6 +98,9 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         if(module STREQUAL "startup_world_continuous_test")
             target_sources(${target} PRIVATE ${ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES})
             target_link_libraries(${target} PRIVATE ark_world_persistence)
+        elseif(module STREQUAL "startup_world_runtime_tasks_test")
+            # NEW-bound task refusal now uses the maintained whole-Owner digest oracle.
+            target_link_libraries(${target} PRIVATE ark_world_persistence)
         elseif(module STREQUAL "startup_world_persistence_test")
             # Protocol/platform failures share one fixture lifecycle; helpers are not tests.
             target_sources(${target} PRIVATE ${ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES})

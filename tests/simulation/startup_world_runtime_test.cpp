@@ -2,6 +2,7 @@
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -14,6 +15,32 @@ void check(bool condition, const char *message) {
     ++checks;
     if (!condition)
         throw std::runtime_error(message);
+}
+void main_menu_scene_gate() {
+    StartupSession startup;
+    StartupWorldRuntimeSession session(startup.state(), ref::WorldRandomStream::from_java_seed(1));
+    session.set_paused(false);
+    auto input = session.state();
+    input.menu_input = true; // 显式已解析菜单输入，仍经实际主场景顺序消费。
+    // STARTUP.md：新局空条件事件7为6,3&2,4，首次实际进入脚本走L159，尚不到菜单尾门。
+    // 先消费真实首轮，不伪造已见标志/日期/页状态；下一轮延迟尚未到期才可进入公共尾门。
+    const auto first = prepare_startup_world_runtime(input);
+    check(first.candidate && first.candidate->menu_input &&
+              ref::world_script_seen(first.candidate->scripts,7) &&
+              std::none_of(first.candidate->scripts.pages.begin(),first.candidate->scripts.pages.end(),
+                           [](const auto &p){return p.lifecycle!=4 && p.legacy_page==3;}),
+          "fresh automatic event7 skips menu tail before any menu input consumption");
+    input = *first.candidate;
+    const auto result = prepare_startup_world_runtime(input);
+    check(result.candidate && !result.candidate->menu_input &&
+              std::count_if(result.candidate->scripts.pages.begin(), result.candidate->scripts.pages.end(),
+                            [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 3; }) == 1,
+          "scene common menu gate consumes input once and creates a single real raw3");
+    const auto initialized = prepare_startup_world_runtime(*result.candidate);
+    check(initialized.candidate &&
+              inspect_startup_world_menu_page(*initialized.candidate,
+                                               initialized.candidate->scripts.pages.back().id).has_value(),
+          "scene-produced menu uses normal framework Init rather than a separate shortcut payload");
 }
 void main_character_profile() {
     StartupSession startup;
@@ -639,6 +666,7 @@ void final_rank_profession_unlocks() {
 int main() {
     try {
         initial_owner();
+        main_menu_scene_gate();
         main_character_profile();
         pause_and_private_failure();
         synchronous_event_seen();

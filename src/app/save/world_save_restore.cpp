@@ -1,7 +1,7 @@
 #include "ark/app/save/world_save.hpp"
+#include "ark/simulation/actors/startup_world_profile.hpp"
 #include "ark/simulation/facilities/rules/world_magic_pot.hpp"
 #include "ark/simulation/map/rules/world_map_refresh.hpp"
-#include "ark/simulation/actors/startup_world_profile.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -213,6 +213,14 @@ void clear_presentation(State &s) {
     s.page_counters.clear();
     s.page_phases.clear();
     s.information_page_data.clear();
+    s.menu_page_data.clear();
+    s.menu_page_positions.clear();
+    s.main_menu_selection = 0;
+    s.main_menu_position = {{0, 25}};
+    s.facility_build_present.clear();
+    for (const auto &definition : s.rules->facilities)
+        s.facility_build_present.emplace(definition.id, false);
+    s.build_category_new = {};
     s.task_page_lists.clear();
     s.task_recruitment_pages.clear();
     s.task_extra_pages.clear();

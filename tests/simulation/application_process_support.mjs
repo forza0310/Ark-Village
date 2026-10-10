@@ -46,7 +46,7 @@ export async function publishApplicationReplayPair(destination,snapshot,certific
     }
 }
 
-// 完整世界4/应用7与Driver语义由C++核验；本层仅验证相同的容器、分区及指定controller身份。
+// 完整世界5/应用8/系统2与Driver语义由C++核验；本层仅验证相同的容器、分区及指定controller身份。
 export function applicationReplayIdentity(bytes,expectedController){
     need(bytes.length>84&&bytes.length<=128*1024*1024,'应用文件预算');
     need(bytes.subarray(-64).toString('ascii')===hash(bytes.subarray(0,-64)),'应用整体摘要');
@@ -56,7 +56,7 @@ export function applicationReplayIdentity(bytes,expectedController){
             need(value<=BigInt(Number.MAX_SAFE_INTEGER),'不可表示的整数');return Number(value);},
         text(){const size=this.u32();need(size<=4096,'身份文本预算');return this.raw(size).toString('utf8');}});
     const r=reader(bytes.subarray(0,-64));
-    need(r.raw(8).toString('ascii')==='AVRAPP01'&&r.u32()===1&&r.u32()===7&&r.u32()===1,'应用版本');
+    need(r.raw(8).toString('ascii')==='AVRAPP01'&&r.u32()===1&&r.u32()===8&&r.u32()===1,'应用版本');
     const dataset=r.text(),world_schema=r.text(),application_schema=r.text(),count=r.u32();
     need(count>=6&&count<=66,'应用分区数量');
     const sections=new Map(),sizes={};

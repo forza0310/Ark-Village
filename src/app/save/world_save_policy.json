@@ -1,7 +1,7 @@
 {
   "policy_version": 1,
   "format": "ARKSAVE1",
-  "schema": 4,
+  "schema": 5,
   "scope": "All fields returned by the shared Owner AST inventory, including recipe progress and two private wrappers. Standard library internals are not state declarations. Maintenance snapshot helper fields are included solely as an evolution guard.",
   "classification_scale": "type.field declaration. A save action applies only below an included ancestor. wire_fields records existing codec inclusion independently: an encoded value may be inherited or rebuilt on load. No automatic format migration, codec generation or policy rewriting.",
   "sources": [
@@ -434,7 +434,13 @@
             ["menu_input", "bool"],
             ["page_confirm_held", "bool"],
             ["deadline_page", "std::optional<std::uint64_t>"],
-            ["rank_celebration_participants", "std::map<std::uint64_t, std::vector<std::array<int, 5>>>"]
+            ["rank_celebration_participants", "std::map<std::uint64_t, std::vector<std::array<int, 5>>>"],
+            ["main_menu_selection", "int"],
+            ["main_menu_position", "std::array<int, 2>"],
+            ["menu_page_data", "std::map<std::uint64_t, StartupWorldMenuPageData>"],
+            ["menu_page_positions", "std::map<std::uint64_t, std::array<int, 2>>"],
+            ["facility_build_present", "std::map<int, bool>"],
+            ["build_category_new", "std::array<bool, 3>"]
           ]
         },
         {
@@ -1203,7 +1209,8 @@
         "difficulty",
         "pending_completion_value",
         "facility",
-        "site"
+        "site",
+        "newly_available"
       ],
       "groups": [
         {
@@ -1215,7 +1222,8 @@
             ["difficulty", "int"],
             ["pending_completion_value", "int"],
             ["facility", "std::optional<std::uint64_t>"],
-            ["site", "std::optional<Position>"]
+            ["site", "std::optional<Position>"],
+            ["newly_available", "bool"]
           ]
         }
       ]
@@ -2880,7 +2888,8 @@
           "fields": [
             ["lists", "std::vector<std::vector<int>>"],
             ["selection", "int"],
-            ["first_visible", "int"]
+            ["first_visible", "int"],
+            ["facilities", "std::vector<std::uint64_t>"]
           ]
         }
       ]
@@ -2901,6 +2910,22 @@
             ["name", "std::string"],
             ["sex", "int"],
             ["custom_name", "bool"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupWorldMenuPageData",
+      "reason": "Source navigation page payload is transient; cold player restore returns to the stable scene.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "Raw navigation caches are cleared on player restore; maintenance snapshots retain the complete page.",
+          "fields": [
+            ["tags", "std::vector<int>"],
+            ["selection", "int"],
+            ["parent", "std::optional<std::uint64_t>"]
           ]
         }
       ]

@@ -26,8 +26,8 @@ using Bytes = std::vector<std::uint8_t>;
 namespace detail = persistence_detail;
 constexpr std::size_t file_budget = 128U * 1024U * 1024U;
 constexpr std::size_t controller_budget = 1024U * 1024U;
-// 语义4同步邻接变化后的到达价格；旧现金/随机历史不能靠加载时重算缓存迁移。
-constexpr std::uint32_t format_version = 1, state_semantics = 4;
+// 语义5修正初始设施p2并采用未开放图纸目录；旧初值/交易历史不在加载时迁移。
+constexpr std::uint32_t format_version = 1, state_semantics = 5;
 constexpr char magic[] = "AVRSAVE1";
 void need(bool condition, const char *message) {
     if (!condition)

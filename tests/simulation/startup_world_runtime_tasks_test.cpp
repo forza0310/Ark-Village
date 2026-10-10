@@ -1,12 +1,15 @@
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/presentation/startup_world_presentation.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/village/rules/world_notices.hpp"
 #include "support/world_fixture.hpp"
 #include "support/audio_requests.hpp"
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace ark::simulation;
@@ -61,8 +64,8 @@ void factory() {
           "new exploration source tenant is usable/no resident/difficulty plus real first weapon");
     check(next.scene.world.world.ai.accounting.funds() == s.scene.world.world.ai.accounting.funds(),
           "task creation is not a build transaction and never charges source funds");
-    check(t.pending_completion_value == 20,
-          "first-stage original quest column14 keeps twenty pending popularity, not zero");
+    check(t.pending_completion_value == 20 && t.newly_available,
+          "first-stage original quest keeps twenty pending popularity and constructor NEW=true");
     const auto roundtrip = startup_world_runtime_factory(next);
     check(roundtrip.finish.tasks.at(task).site == t.site &&
               roundtrip.facility_order == next.scene.world.facility_order &&
@@ -72,11 +75,13 @@ void factory() {
     check(!failed && next.tasks.count(task) && next.scene.world.world.facilities.count(site),
           "missing finish site leaves world/reference/metadata untouched");
     // 显式阶段2调用点夹具，仅认证真实生成site后的组合提交，不冒充自然完成计时。
+    next.tasks.at(task).newly_available=false;
     next.scene.world.world.facilities.at(site).status = 2;
     next.dungeon_facilities.at(site).updates = 10;
     const auto cleaned = prepare_startup_world_runtime_dungeon_finish(next, site);
     check(cleaned && !cleaned->scene.world.world.facilities.count(site) &&
               cleaned->task_order.empty() && cleaned->tasks.at(task).facility == site &&
+              !cleaned->tasks.at(task).newly_available &&
               cleaned->scene.world.facility_order == s.scene.world.facility_order,
           "real stage2 no-active-task restores map/removesorder but retains old task object "
           "reference");
@@ -85,8 +90,69 @@ void factory() {
               *later.candidate->created_task != task &&
               later.candidate->state.finish.tasks.at(*later.candidate->created_task).facility !=
                   site &&
-              later.candidate->state.finish.tasks.at(task).facility == site,
-          "new factory after restored original site cannot alias retired summary/task identity");
+              later.candidate->state.finish.tasks.at(task).facility == site &&
+              !later.candidate->state.finish.tasks.at(task).newly_available &&
+              later.candidate->state.finish.tasks.at(*later.candidate->created_task).newly_available,
+          "new factory preserves retired task read state and gives distinct new task its own NEW=true");
+}
+void task_new_notices() {
+    auto s=test_support::world_fixture();
+    check(startup_world_has_new_tasks(s)==false,"empty current task list has no NEW");
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(made.candidate && made.candidate->created_task &&
+              write_startup_world_runtime_factory(s,made.candidate->state),
+          "task NEW fixture starts from real factory instance");
+    const auto first=*made.candidate->created_task;
+    check(open_startup_world_runtime_task_menu(s)==StartupWorldRuntimeError::none,
+          "raw22 opens for task NEW checks");
+    const auto page=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==22 && s.tasks.at(first).newly_available &&
+              startup_world_has_new_tasks(s)==true,
+          "opening raw22 does not clear task NEW");
+    // 明确调用点夹具：入页后多一个当前任务和一个仅历史对象，检验清理范围。
+    const auto second=s.next_task_identity++;
+    const auto historical=s.next_task_identity++;
+    auto task=s.tasks.at(first);task.identity=second;s.tasks.emplace(second,task);
+    task.identity=historical;s.tasks.emplace(historical,task);
+    s.task_order={first,second,first};
+    const auto before=startup_world_state_digest(s);
+    check(startup_world_has_new_tasks(s)==true && startup_world_state_digest(s)==before,
+          "NEW query preserves Owner outputs, random and duplicate current references");
+    for(const auto action:{StartupWorldTaskAction::confirm,StartupWorldTaskAction::cancel}) {
+        auto next=s;
+        check(act_startup_world_runtime_task_page(next,page,action,0).error==StartupWorldRuntimeError::none &&
+                  !next.tasks.at(first).newly_available && !next.tasks.at(second).newly_available &&
+                  next.tasks.at(historical).newly_available && startup_world_has_new_tasks(next)==false &&
+                  next.task_order==s.task_order && next.scene.random.draws()==s.scene.random.draws(),
+              "raw22 exit clears complete current list, including later entry and duplicates, retaining history");
+    }
+    auto invalid=s;invalid.task_order.push_back(99999);
+    check(startup_world_has_new_tasks(invalid)==true,
+          "source NEW query stops at first true and does not inspect unread suffix");
+    for(const auto action:{StartupWorldTaskAction::confirm,StartupWorldTaskAction::cancel}) {
+        const auto unchanged=startup_world_state_digest(invalid);
+        check(act_startup_world_runtime_task_page(invalid,page,action,0).error==StartupWorldRuntimeError::missing_source &&
+                  startup_world_state_digest(invalid)==unchanged,
+              "raw22 clearing checks full current list and rejects late missing reference atomically");
+    }
+    invalid.tasks.at(first).newly_available=false;
+    invalid.tasks.at(second).newly_available=false;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects missing reference reached after false entries");
+    invalid=s;invalid.tasks.at(first).identity=second;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects mismatched stable identity");
+    invalid=s;invalid.task_order={historical};invalid.next_task_identity=historical;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects allocator-outside identity");
+    invalid=s;invalid.task_order.clear();invalid.rules=nullptr;
+    check(startup_world_has_new_tasks(invalid)==false,"empty query ignores unconsumed rules and retained NEW tasks");
+    for(const bool locked:{false,true}) {
+        auto late=s;
+        late.scripts.page_mutations_locked=locked;
+        const auto unchanged=startup_world_state_digest(late);
+        const int row=locked?0:99;
+        check(act_startup_world_runtime_task_page(late,page,StartupWorldTaskAction::confirm,row).error!=
+                  StartupWorldRuntimeError::none && startup_world_state_digest(late)==unchanged,
+              "failed row or later locked child insertion rolls back already prepared NEW clearing and page state");
+    }
 }
 void selection_catalogue_consumers() {
     StartupSession initial;
@@ -566,6 +632,9 @@ void active_management() {
           "detail and team return independently, no fee or active task cancellation");
     check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none,
           "source adventure4 task-control entry opens without cancelling task");
+    const auto initialized = prepare_startup_world_runtime(s);
+    check(initialized.candidate.has_value(), "real raw4 Init precedes task abort input");
+    s = *initialized.candidate;
     const auto parent =
         std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(), [](const auto &p) {
             return p.lifecycle != 4;
@@ -633,6 +702,64 @@ StartupWorldRuntimeState presentation_task(bool retired = false) {
     s.scripts.pages.front().lifecycle = 3;
     s.scene.random = ref::WorldRandomStream::from_raw({2,0,1,2});
     return s;
+}
+void task_tracking_menu() {
+    auto s = presentation_task();
+    s.scripts.pages.front().lifecycle = 2;
+    check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none &&
+              initialize_startup_world_menu_pages(s),
+          "real adventure menu can initialize selected-task navigation");
+    auto &menu = s.scripts.pages.back();
+    const auto parent = menu.id;
+    menu.lifecycle = 2;
+    s.scripts.executing_page = parent;
+    auto broken = s;
+    broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    check(open_startup_world_runtime_task_tracking(broken) != StartupWorldRuntimeError::none &&
+              broken.scripts.pages.size() == s.scripts.pages.size() &&
+              !ref::world_script_seen(broken.scripts, 62),
+          "tracking page allocation rejection does not leave event or partial menu retirement");
+    const auto draws = s.scene.random.draws();
+    check(open_startup_world_runtime_task_tracking(s) == StartupWorldRuntimeError::none,
+          "selected task opens actual tracking/event/team chain");
+    const auto camera_page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.legacy_page == 58; });
+    const auto team = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.legacy_page == 26; });
+    check(camera_page != s.scripts.pages.end() && team != s.scripts.pages.end() &&
+              camera_page > team && camera_page->task_identity == s.active_task &&
+              s.scripts.event_calls.at(62) == 1 && s.scene.random.draws() == draws &&
+              std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                  [&](const auto &p) { return p.id == parent; })->lifecycle == 4,
+          "same executing anchor leaves58 above event62 and team26 while source menu retires without random draws");
+    const auto id = camera_page->id;
+    for (auto &p : s.scripts.pages) if (p.id != id) p.lifecycle = 4;
+    for (auto &p : s.scripts.pages) if (p.id == id) p.lifecycle = 2;
+    s.scripts.executing_page.reset();
+    const auto site = *s.tasks.at(*s.active_task).site;
+    const std::array<float, 2> target{
+        static_cast<float>((site.x + site.y) * 30 + 30),
+        static_cast<float>((site.y - site.x) * 15)};
+    s.camera = {target[0] - 5, target[1]};
+    s.previous_camera = {0, 0};
+    const auto step = update_startup_world_runtime_task_tracking_page(s, id);
+    check(step && step->camera == target && step->previous_camera == std::array<float, 2>{5, 0} &&
+              std::find_if(step->scripts.pages.begin(), step->scripts.pages.end(),
+                  [&](const auto &p) { return p.id == id; })->lifecycle != 4 &&
+              step->scene.random.draws() == draws,
+          "58 projects task grid independently of facility shape and preserves strict equality step");
+    auto bad_site = s;
+    bad_site.tasks.at(*s.active_task).site->x = -1;
+    check(!update_startup_world_runtime_task_tracking_page(bad_site, id) &&
+              bad_site.camera == s.camera && bad_site.page_counters.at(id) == s.page_counters.at(id),
+          "58 invalid current task site rejects without partial camera or counter update");
+    auto vanished = s;
+    vanished.active_task.reset();
+    const auto closed = update_startup_world_runtime_task_tracking_page(vanished, id);
+    check(closed && closed->camera == vanished.camera &&
+              std::find_if(closed->scripts.pages.begin(), closed->scripts.pages.end(),
+                  [&](const auto &p) { return p.id == id; })->lifecycle == 4,
+          "58 follows current task reference and closes when it disappears");
 }
 StartupPresentationRequest presentation_request(const StartupWorldRuntimeState &s,
                                                StartupPresentationMode mode,
@@ -945,12 +1072,14 @@ void presentation_missing_binding() {
 int main() {
     try {
         factory();
+        task_new_notices();
         selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();
         task_start_audio();
         task_victory_requests();
         active_management();
+        task_tracking_menu();
         presentation_admission_and_random();
         presentation_gift_sound_and_rollback();
         presentation_missing_binding();

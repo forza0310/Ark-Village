@@ -66,4 +66,30 @@ struct StartupTownInformation {
 // APK/Steam34的权威统计，不复用38的flag过滤。居民不额外过滤人物presence，
 // 设施按原g每次出现计类型3/9；只读查询不执行Steam入页的平台成就请求。
 std::optional<StartupTownInformation> startup_town_information(const StartupWorldRuntimeState &state);
+struct StartupFacilityInformation {
+    std::uint64_t instance{};
+    int definition{}, ordinal{}, icon{};
+    std::string name; // 原定义名；显示时按本地化模板组合ordinal+1，不用目录计数Q/B。
+    std::int32_t profit{};
+};
+// raw39按合法Owner活动实例原序取kind3，包含施工中实例；不按方向改变定义图标。
+// 利润仅累加0..当前月且保留原int32回卷。缺实例/载荷、重复顺序、非法月份显式拒绝。
+// 同定义ordinal须唯一，INT_MAX沿既有设施名称查询的维护拒绝，非声称原版拒绝回卷。
+// 空目录合法；不写Q/B缓存，不创建页、不发事件17或移动镜头。
+std::optional<std::vector<StartupFacilityInformation>>
+startup_facility_information(const StartupWorldRuntimeState &state);
+
+// 菜单四摘要读取全活动名单；portrait取首W当前职业/性别，空名单只用定义0，不造W。
+struct StartupMenuTaskInformation {
+    int type{}, humans{}, monsters{}, residences{}, remaining_subperiods{};
+    int portrait_definition{}, portrait_profession{}, portrait_sex{}, portrait_body{};
+};
+struct StartupMenuInformation {
+    int village_points{};
+    std::optional<int> monster_remaining; // 仅选中任务没有设施引用时；使用既有遭遇缓存。
+    std::optional<StartupMenuTaskInformation> task;
+};
+// 不新增统计缓存、页面或稳定引用；只校验本查询实际读取的映射。
+// 无选中任务只读村点；非法/已退休引用、重复名单与数值溢出显式拒绝。
+std::optional<StartupMenuInformation> startup_menu_information(const StartupWorldRuntimeState &state);
 } // namespace ark::simulation

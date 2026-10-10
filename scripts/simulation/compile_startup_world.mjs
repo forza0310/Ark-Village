@@ -174,7 +174,8 @@ export function compileStartupWorld(tables, map, sources, state) {
     `{${facilities.map(row=>{const f=n(row[35]);
       const program=row[33]===''?'{}':`{${row[33].split('&').map(op=>array(op.split(','))).join(',')}}`;
       // c/n.c在逐定义a()后调用o.g：实际新局N为种类2取30，其余20，不是Java分配时0。
-      return `{${f},${f&1?1:0},${n(row[3])===2?30:20},${f&64?(n(row[0])===24?1:280):0},${n(row[12])},${truth(f&2)},${truth(f&1)},${program},${array(values(row[34]))}}`;
+      // o.a()的bit1分支调用o.b()，后者写p=2；Steam TenantData.NewGame亦如此。
+      return `{${f},${f&1?2:0},${n(row[3])===2?30:20},${f&64?(n(row[0])===24?1:280):0},${n(row[12])},${truth(f&2)},${truth(f&1)},${program},${array(values(row[34]))}}`;
     }).join(',')}},\n`+
     `{${Object.keys(scriptHashes).map(name=>text(sources[name])).join(',')}},\n`+
     `{${rows['asEventData.txt'].map(row=>`{${n(row[0])},${text(row[1])},${array(row.slice(2,9))},${text(row[9])},${text(row[10])},${n(row[11])},${n(row[11])&1?1:0}}`).join(',')}},"G",`+

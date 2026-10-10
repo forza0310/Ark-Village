@@ -94,6 +94,10 @@
         {
           "name": "first_visible",
           "type": "int"
+        },
+        {
+          "name": "facilities",
+          "type": "std::vector<std::uint64_t>"
         }
       ]
     },
@@ -194,6 +198,23 @@
         {
           "name": "custom_name",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "dungeon_village_prototype::StartupWorldMenuPageData",
+      "fields": [
+        {
+          "name": "tags",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "parent",
+          "type": "std::optional<std::uint64_t>"
         }
       ]
     },
@@ -729,6 +750,22 @@
           "type": "std::map<std::uint64_t, StartupInformationPageData>"
         },
         {
+          "name": "main_menu_selection",
+          "type": "int"
+        },
+        {
+          "name": "main_menu_position",
+          "type": "std::array<int, 2>"
+        },
+        {
+          "name": "menu_page_data",
+          "type": "std::map<std::uint64_t, StartupWorldMenuPageData>"
+        },
+        {
+          "name": "menu_page_positions",
+          "type": "std::map<std::uint64_t, std::array<int, 2>>"
+        },
+        {
           "name": "task_page_lists",
           "type": "std::map<std::uint64_t, std::vector<std::uint64_t>>"
         },
@@ -935,6 +972,14 @@
         {
           "name": "facility_unlock_notices",
           "type": "std::map<int, bool>"
+        },
+        {
+          "name": "facility_build_present",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "build_category_new",
+          "type": "std::array<bool, 3>"
         },
         {
           "name": "confirm_input",
@@ -1935,6 +1980,10 @@
         {
           "name": "site",
           "type": "std::optional<Position>"
+        },
+        {
+          "name": "newly_available",
+          "type": "bool"
         }
       ]
     },

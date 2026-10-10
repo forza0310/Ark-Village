@@ -13,6 +13,7 @@
 #include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <chrono>
@@ -70,7 +71,9 @@ enum class WorldCommandKind {
     set_view,
     open_menu_information,
     information_input,
-    confirm_tracking
+    confirm_tracking,
+    menu_input,
+    open_source_save_menu
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -94,9 +97,10 @@ struct WorldFrame {
     double interval_seconds{.047};
     std::uint64_t revision{};
     std::uint64_t last_command_serial{};
-    // Desktop adaptation only: this gate is not a synthetic source raw3 page or user pause.
+    // Derived visibility of the real source raw3 page, never an independent update gate.
     bool main_menu_open{};
     bool save_menu_open{};
+    std::optional<std::uint64_t> save_source_page;
     bool save_busy{};
     std::string save_message;
     std::array<WorldSaveSlotInfo, 2> save_slots;
@@ -133,6 +137,7 @@ struct WorldCommand {
         simulation::StartupVillageActivityAction::confirm};
     simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
     simulation::StartupInformationInput information_input;
+    simulation::StartupWorldMenuInput menu_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -174,9 +179,11 @@ class WorldSession {
     std::uint64_t act_award(std::uint64_t page, simulation::rules::WorldAwardAction action,
                             int selection = 0);
     std::uint64_t act_rank(std::uint64_t page, int selection = 0, bool cancel = false);
-    // Menu visibility is worker-owned metadata; closing never changes explicit pause.
+    // Navigation belongs to the source Owner; the frame only exposes derived visibility.
     std::uint64_t open_main_menu();
     std::uint64_t close_main_menu();
+    std::uint64_t act_menu(std::uint64_t page, const simulation::StartupWorldMenuInput &input);
+    std::uint64_t open_source_save_menu(std::uint64_t page);
     std::uint64_t open_save_menu();
     std::uint64_t close_save_menu();
     std::uint64_t save_slot(int slot);

@@ -1,6 +1,7 @@
 #include "ark/app/session/world_session.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/app/timing/original_loop.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "world_commands.hpp"
 
 #include <algorithm>
@@ -137,6 +138,12 @@ class WorldSession::Impl {
     AudioBatches audio_outputs;                 // Mutex-protected, independent of immutable frames.
     AudioBatches prepared_audio, pending_audio; // Worker-only transaction staging.
     std::optional<std::uint64_t> held_page; // Worker-only physical input binding, not source state.
+    struct SaveRequest {
+        int slot{};
+        std::uint64_t page{}, generation{};
+        bool await_menu{};
+    };
+    std::optional<SaveRequest> save_request;
 
     void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
         if (candidate.sound_requests.empty())
@@ -161,46 +168,42 @@ class WorldSession::Impl {
     std::shared_ptr<const WorldFrame> apply_decision(const WorldFrame &current,
                                                      const QueuedCommand &input) {
         const auto &command = input.value;
-        const bool menu_toggle = command.kind == WorldCommandKind::open_main_menu ||
-                                 command.kind == WorldCommandKind::close_main_menu;
-        // Visibility changes publish metadata only; they do not copy the entire world.
-        auto candidate = menu_toggle ? std::shared_ptr<WorldState>{}
-                                     : std::make_shared<WorldState>(*current.state);
+        auto candidate = std::make_shared<WorldState>(*current.state);
         WorldCommandResult result;
         result.serial = input.serial;
         result.page = command.page;
         result.kind = command.kind;
-        bool menu_open = current.main_menu_open;
         if (!current.state->rules) {
             result.runtime_error = RuntimeError::missing_source;
         } else if (command.kind == WorldCommandKind::open_main_menu) {
-            const auto *page = top_page(*current.state);
-            if (menu_open || !page || page->kind != simulation::rules::WorldScriptPageKind::scene)
-                result.runtime_error = RuntimeError::invalid_page;
-            else
-                menu_open = true;
+            result.runtime_error = simulation::open_startup_world_main_menu(*candidate);
         } else if (command.kind == WorldCommandKind::close_main_menu) {
-            if (!menu_open)
+            const auto *page = top_page(*candidate);
+            if (!page || page->kind != simulation::rules::WorldScriptPageKind::raw_page ||
+                page->legacy_page != 3)
                 result.runtime_error = RuntimeError::invalid_page;
-            else
-                menu_open = false;
+            else {
+                simulation::StartupWorldMenuInput close;
+                close.cancel = true;
+                result.runtime_error =
+                    simulation::input_startup_world_menu_page(*candidate, page->id, close);
+            }
         } else if (command.kind == WorldCommandKind::open_menu_tasks ||
                    command.kind == WorldCommandKind::open_menu_build ||
                    command.kind == WorldCommandKind::open_menu_village_activities ||
                    command.kind == WorldCommandKind::open_menu_commerce ||
                    command.kind == WorldCommandKind::open_menu_information ||
                    command.kind == WorldCommandKind::open_menu_magic_pot) {
-            if (!menu_open) {
-                result.runtime_error = RuntimeError::invalid_page;
-            } else {
-                // Closing the overlay and opening the source page are one FIFO transaction.
-                // Source rejection preserves the overlay, including explicit pause.
+            // Retired desktop menu shortcuts cannot bypass the real source navigation.
+            // A stable-world information shortcut remains useful to existing tooling.
+            const auto *page = top_page(*candidate);
+            if (command.kind == WorldCommandKind::open_menu_information && page &&
+                page->kind == simulation::rules::WorldScriptPageKind::scene)
                 detail::apply_world_decision(*candidate, command, result);
-                if (result.runtime_error == RuntimeError::none)
-                    menu_open = false;
-            }
-        } else if (current.main_menu_open) {
-            // A stale direct task shortcut cannot bypass this desktop modal gate.
+            else
+                result.runtime_error = RuntimeError::invalid_page;
+        } else if (save_request && command.kind != WorldCommandKind::acknowledge_page &&
+                   command.kind != WorldCommandKind::cancel_page) {
             result.runtime_error = RuntimeError::invalid_page;
         } else if (command.kind == WorldCommandKind::page_confirm_held) {
             if (!command.held) {
@@ -243,7 +246,6 @@ class WorldSession::Impl {
                     take_sound_outputs(*candidate, next);
                 next.state = std::move(candidate);
             }
-            next.main_menu_open = menu_open;
         }
         next.previous = next.state;
         next.last_command_serial = input.serial;
@@ -252,6 +254,10 @@ class WorldSession::Impl {
     }
 
     std::shared_ptr<const WorldFrame> publish(WorldFrame next, bool force_system = false) {
+        const auto *visible = top_page(*next.state);
+        next.main_menu_open = visible &&
+                              visible->kind == simulation::rules::WorldScriptPageKind::raw_page &&
+                              visible->legacy_page == 3;
         // Prepare every allocating publication before the final file replacement. Installation
         // afterward only swaps shared pointers; a failed write keeps the full old publication.
         next.published = Clock::now();
@@ -312,6 +318,22 @@ class WorldSession::Impl {
             return publish(std::move(next));
         }
         const auto kind = input.value.kind;
+        if (save_request && save_request->await_menu && kind != WorldCommandKind::set_paused &&
+            kind != WorldCommandKind::set_view && kind != WorldCommandKind::retry_system_write) {
+            auto next = current;
+            WorldCommandResult result;
+            result.serial = input.serial;
+            result.kind = kind;
+            result.page = input.value.page;
+            result.outcome = WorldCommandOutcome::rejected;
+            result.runtime_error = RuntimeError::invalid_page;
+            next.command_results.push_back(result);
+            if (next.command_results.size() > 64)
+                next.command_results.erase(next.command_results.begin());
+            next.last_command_serial = input.serial;
+            ++next.revision;
+            return publish(std::move(next));
+        }
         if (!current.system_error.empty()) {
             if (kind != WorldCommandKind::retry_system_write || !pending_system)
                 return frame();
@@ -340,8 +362,10 @@ class WorldSession::Impl {
             next.previous = next.state;
             return publish(std::move(next));
         }
-        if (kind == WorldCommandKind::open_save_menu || kind == WorldCommandKind::close_save_menu ||
-            kind == WorldCommandKind::save_slot || kind == WorldCommandKind::load_slot)
+        if (kind == WorldCommandKind::open_save_menu ||
+            kind == WorldCommandKind::open_source_save_menu ||
+            kind == WorldCommandKind::close_save_menu || kind == WorldCommandKind::save_slot ||
+            kind == WorldCommandKind::load_slot)
             return apply_save(current, input);
         if (current.save_menu_open) {
             auto next = current;
@@ -352,10 +376,13 @@ class WorldSession::Impl {
         }
         const auto *current_page = top_page(*current.state);
         if (kind == WorldCommandKind::acknowledge_page && current_page &&
-            (current_page->legacy_page == 76 || current_page->legacy_page == 86 ||
-             current_page->legacy_page == 72 || current_page->legacy_page == 79 ||
-             current_page->legacy_page == 82 || current_page->legacy_page == 9 ||
-             (current_page->legacy_page >= 35 && current_page->legacy_page <= 38) ||
+            (current_page->legacy_page == 3 || current_page->legacy_page == 4 ||
+             current_page->legacy_page == 7 || current_page->legacy_page == 10 ||
+             current_page->legacy_page == 14 || current_page->legacy_page == 76 ||
+             current_page->legacy_page == 86 || current_page->legacy_page == 72 ||
+             current_page->legacy_page == 79 || current_page->legacy_page == 82 ||
+             current_page->legacy_page == 9 ||
+             (current_page->legacy_page >= 34 && current_page->legacy_page <= 40) ||
              (current_page->legacy_page >= 41 && current_page->legacy_page <= 47)))
             return apply_decision(current,
                                   input); // Dedicated/automatic pages reject generic late clicks.
@@ -461,21 +488,36 @@ class WorldSession::Impl {
         };
         if (kind == WorldCommandKind::close_save_menu) {
             next.save_menu_open = false;
+            next.save_source_page.reset();
             applied = current.save_menu_open;
             return complete();
         }
         std::string reason;
-        if (!world_save_eligible(*current.state, &reason)) {
+        const auto source_valid = [&](std::uint64_t page) {
+            const auto *top = top_page(*current.state);
+            const auto view = simulation::inspect_startup_world_menu_page(*current.state, page);
+            return top && top->id == page && top->lifecycle == 2 && view && view->raw == 10 &&
+                   !current.state->scene.framework_paused && view->selection >= 0 &&
+                   static_cast<std::size_t>(view->selection) < view->tags.size() &&
+                   view->tags[view->selection] == 20;
+        };
+        const auto source = kind == WorldCommandKind::open_source_save_menu
+                                ? std::optional<std::uint64_t>{input.value.page}
+                                : current.save_source_page;
+        if (save_request ||
+            (source ? !source_valid(*source) : !world_save_eligible(*current.state, &reason))) {
             next.save_message = "当前世界尚不能存读档：" + reason;
             return complete();
         }
         try {
             if (save_directory.empty())
                 save_directory = default_world_save_directory();
-            if (kind == WorldCommandKind::open_save_menu) {
+            if (kind == WorldCommandKind::open_save_menu ||
+                kind == WorldCommandKind::open_source_save_menu) {
                 next.save_slots = inspect_world_save_slots(save_directory);
                 next.main_menu_open = false;
                 next.save_menu_open = true;
+                next.save_source_page = source;
                 held_page.reset();
                 applied = true;
                 return complete();
@@ -490,19 +532,44 @@ class WorldSession::Impl {
             busy.last_command_serial = current.last_command_serial;
             publish(std::move(busy)); // Completion is acknowledged only after file I/O finishes.
             if (kind == WorldCommandKind::save_slot) {
-                auto capture = capture_world_save(*current.state);
-                if (!capture.image)
-                    next.save_message =
-                        std::string("保存失败：") + world_save_error_text(capture.error);
-                else {
-                    const auto result = write_world_save_slot(save_directory, slot, *capture.image);
-                    applied = result.error == WorldSaveError::none;
-                    next.save_message = result.error == WorldSaveError::none
-                                            ? "保存完毕"
-                                            : "保存失败：" + result.message;
+                if (current.state->scene.framework_paused) {
+                    next.save_busy = false;
+                    next.save_message = "请恢复游戏后保存";
+                    return complete();
                 }
-                next.save_slots = inspect_world_save_slots(save_directory);
+                if (current.state->build_mode != 0) {
+                    next.save_busy = false;
+                    next.save_message = "当前建设工具状态不满足保存页导出条件";
+                    return complete();
+                }
+                auto candidate = std::make_shared<WorldState>(*current.state);
+                RuntimeError error;
+                if (source) {
+                    simulation::StartupWorldMenuInput confirm;
+                    confirm.confirm = true;
+                    error = simulation::input_startup_world_menu_page(*candidate, *source, confirm);
+                } else {
+                    error = simulation::open_startup_world_main_menu(*candidate);
+                }
+                const auto *opened = top_page(*candidate);
+                if (error != RuntimeError::none || !opened ||
+                    opened->legacy_page != (source ? 14 : 3)) {
+                    next.save_message = "保存入口已失效";
+                } else {
+                    take_sound_outputs(*candidate, next);
+                    save_request = SaveRequest{slot, opened->id, current.generation, !source};
+                    next.state = std::move(candidate);
+                    next.previous = next.state;
+                    next.save_menu_open = false;
+                    next.save_source_page.reset();
+                    applied = true;
+                }
             } else {
+                if (source) {
+                    next.save_busy = false;
+                    next.save_message = "当前入口只允许保存";
+                    return complete();
+                }
                 auto loaded = read_world_save_slot(save_directory, slot);
                 if (!loaded.state)
                     next.save_message =
@@ -529,6 +596,7 @@ class WorldSession::Impl {
                     next.command_results.clear();
                     held_page.reset();
                     next.save_menu_open = false;
+                    next.save_source_page.reset();
                     next.main_menu_open = false;
                     applied = true;
                 }
@@ -552,6 +620,37 @@ class WorldSession::Impl {
     }
     std::shared_ptr<const WorldFrame> update(const WorldFrame &current, double interval) {
         const auto started = Clock::now();
+        if (save_request && save_request->generation == current.generation) {
+            const auto *page = top_page(*current.state);
+            if (!page || page->id != save_request->page)
+                return fail(current, "Save request lost its source page");
+            if (save_request->await_menu && page->lifecycle == 2 &&
+                simulation::inspect_startup_world_menu_page(*current.state, page->id)) {
+                auto candidate = std::make_shared<WorldState>(*current.state);
+                // F5 is an explicitly approved application entry, transported through
+                // the same ready raw3 callback that owns the source save request.
+                candidate->scripts.executing_page = page->id;
+                const auto error = simulation::open_startup_world_save_page(*candidate);
+                candidate->scripts.executing_page.reset();
+                const auto *opened = top_page(*candidate);
+                if (error != RuntimeError::none || !opened || opened->legacy_page != 14)
+                    return fail(current, "Stable save entry rejected by source callback");
+                save_request->page = opened->id;
+                save_request->await_menu = false;
+                auto next = current;
+                take_sound_outputs(*candidate, next);
+                next.state = std::move(candidate);
+                next.previous = next.state;
+                ++next.revision;
+                return publish(std::move(next));
+            }
+            if (!save_request->await_menu) {
+                const auto view =
+                    simulation::inspect_startup_world_save_page(*current.state, page->id);
+                if (view && view->stage == 1)
+                    return finish_save(current);
+            }
+        }
         if (world_clear_page(*current.state)) {
             auto next = current;
             auto candidate = std::make_shared<WorldState>(*current.state);
@@ -585,6 +684,56 @@ class WorldSession::Impl {
         ++next.revision;
         ++next.outer_updates;
         return publish(std::move(next));
+    }
+    std::shared_ptr<const WorldFrame> finish_save(const WorldFrame &current) {
+        const auto request = *save_request;
+        auto exported = simulation::prepare_startup_world_save_export(*current.state, request.page);
+        auto success =
+            simulation::complete_startup_world_save_page(*current.state, request.page, true);
+        auto failure = simulation::complete_startup_world_save_page(
+            *current.state, request.page, false, "玩家存档写入失败，原档已保留");
+        if (!exported || !success || !failure ||
+            !simulation::update_startup_world_render_cache(*success) ||
+            !simulation::update_startup_world_render_cache(*failure) ||
+            !success->sound_requests.empty() || !failure->sound_requests.empty())
+            return fail(current, "Source save export or completion candidate rejected");
+        auto capture = capture_world_save(*exported);
+        // Allocate both immutable result publications before the irreversible file replace.
+        // raw14 changes no business, random, cross-game record or audio output; publication
+        // therefore only installs the prebuilt result, without a second durable transaction.
+        auto make_result = [&](WorldState state, bool saved) {
+            auto result = std::make_shared<WorldFrame>(current);
+            result->state = std::make_shared<const WorldState>(std::move(state));
+            result->previous = result->state;
+            result->main_menu_open = false;
+            result->save_busy = false;
+            result->save_message = saved ? "保存完毕" : "保存失败，原存档已保留";
+            result->published = Clock::now();
+            ++result->revision;
+            ++result->outer_updates;
+            return result;
+        };
+        auto good = make_result(std::move(*success), true);
+        auto bad = make_result(std::move(*failure), false);
+        if (capture.image) {
+            auto &slot = good->save_slots[static_cast<std::size_t>(request.slot)];
+            slot.exists = true;
+            slot.metadata = capture.image->metadata;
+            slot.error = WorldSaveError::none;
+            slot.message.clear();
+        }
+        const bool saved =
+            capture.image &&
+            write_world_save_slot(save_directory, request.slot, *capture.image).error ==
+                WorldSaveError::none;
+        const auto result = saved ? std::move(good) : std::move(bad);
+        save_request.reset();
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            published = result;
+        }
+        publications.notify_all();
+        return result;
     }
     void run() {
         auto current = frame();
@@ -639,8 +788,8 @@ class WorldSession::Impl {
                 const auto interval = std::chrono::duration<double>(now - last_start).count();
                 last_start = now;
                 deadline = now + period; // Adopt actual start; a slow call creates no tick debt.
-                if (current->system_error.empty() && !current->main_menu_open &&
-                    !current->save_menu_open && !current->state->scene.framework_paused)
+                if (current->system_error.empty() && !current->save_menu_open &&
+                    !current->state->scene.framework_paused)
                     current = update(*current, interval);
             }
         } catch (const std::exception &error) {
@@ -687,6 +836,20 @@ std::uint64_t WorldSession::open_main_menu() {
 std::uint64_t WorldSession::close_main_menu() {
     WorldCommand command;
     command.kind = WorldCommandKind::close_main_menu;
+    return submit(command);
+}
+std::uint64_t WorldSession::act_menu(std::uint64_t page,
+                                     const simulation::StartupWorldMenuInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::menu_input;
+    command.page = page;
+    command.menu_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::open_source_save_menu(std::uint64_t page) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::open_source_save_menu;
+    command.page = page;
     return submit(command);
 }
 std::uint64_t WorldSession::open_save_menu() {

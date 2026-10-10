@@ -6,6 +6,7 @@
 #include "../../src/desktop/ui/system/world_startup.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -25,14 +26,14 @@ void information_ui(Checks &check) {
     page.lifecycle = 2;
     const auto v = ui::world_information_view(s, page);
     check(v.interactive && v.source && v.source->entries[0].target_raw == 35 &&
-              v.source->entries[0].implemented && !v.source->entries[1].implemented &&
+              v.source->entries[0].implemented && v.source->entries[1].implemented &&
               v.source->entries[4].target_raw == 38,
-          "Information keeps all five original rows and disables unshipped town information");
+          "Information keeps all five original rows and opens the delivered town information");
     const auto l = ui::world_information_layout({240, 256}, 9);
     ui::WorldInformationInput input;
     input.click = Vector2{l.menu_rows[1].x + 5, l.menu_rows[1].y + 5};
-    check(!ui::world_information_input(v, l, input, false),
-          "Disabled town row has no hidden input");
+    check(ui::world_information_input(v, l, input, false)->select_row == 1,
+          "Town row emits only a selection before its independent confirmation");
     input.click = Vector2{l.menu_rows[0].x + 5, l.menu_rows[0].y + 5};
     input.confirm = true;
     auto action = ui::world_information_input(v, l, input, false);
@@ -45,7 +46,7 @@ void information_ui(Checks &check) {
     action = ui::world_information_input(v, l, input, false);
     check(action && action->up && action->down && action->right && action->confirm,
           "Keyboard masks preserve original precedence for the Owner to consume");
-    for (const int raw : {35, 36, 37, 38}) {
+    for (const int raw : {34, 35, 36, 37, 38, 39, 40}) {
         // These snapshots isolate desktop input mapping; source suites own list contents/NEW.
         auto directory = v;
         directory.raw = directory.source->raw = raw;
@@ -62,7 +63,7 @@ void information_ui(Checks &check) {
         input.cancel = true;
         check(ui::world_information_input(directory, boxes, input, false)->cancel,
               "All information pages return through their own Owner consumer");
-        if (raw != 36) {
+        if (raw != 34 && raw != 36) {
             input = {};
             input.click = Vector2{boxes.rows.x + 10, boxes.rows.y + (raw == 38 ? 24.F : 19.F) + 2};
             action = ui::world_information_input(directory, boxes, input, false);
@@ -78,13 +79,103 @@ void information_ui(Checks &check) {
     }
     check(s.scene.random.draws() == initial_world().scene.random.draws(),
           "Read-only information UI does not advance the random stream");
+    {
+        auto town = v;
+        town.raw = town.source->raw = 34;
+        input = {};
+        input.up = input.down = input.left = input.right = true;
+        input.wheel_rows = 2;
+        check(!ui::world_information_input(town, ui::world_information_layout({240, 256}, 34),
+                                           input, false),
+              "Town statistics has no fictional row selection, scrolling or tabs");
+        auto facilities = v;
+        facilities.raw = facilities.source->raw = 39;
+        input = {};
+        input.left = input.right = true;
+        check(!ui::world_information_input(facilities, ui::world_information_layout({240, 256}, 39),
+                                           input, false),
+              "Facility directory ignores left/right instead of sending invalid source input");
+    }
+}
+void source_navigation_ui(Checks &check) {
+    namespace ui = desktop::ui;
+    namespace sim = simulation;
+    for (bool magic : {false, true}) {
+        auto s = initial_world();
+        s.scripts.pages.back().lifecycle = 2;
+        if (magic)
+            s.scripts.user_flags |= 1U;
+        check(sim::open_startup_world_main_menu(s) == sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_menu_pages(s),
+              "Main navigation opens a real Owner page");
+        const auto view = sim::inspect_startup_world_menu_page(s, s.scripts.pages.back().id);
+        check(view && view->tags.size() == (magic ? 6U : 5U) && view->tags.back() == 6,
+              "Only the actual magic flag inserts the sixth source main-menu row");
+        for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{540, 360}}) {
+            const auto boxes = ui::world_source_menu_layout(*view, extent);
+            check(boxes.rows.size() == view->tags.size() &&
+                      boxes.rows.back().y + 28 <= extent.height,
+                  "Source five/six-row geometry remains inside the smallest supported viewport");
+            ui::WorldMenuInput input;
+            input.click = Vector2{boxes.rows.back().x + 5, boxes.rows.back().y + 5};
+            input.enter = true;
+            const auto action =
+                ui::world_source_menu_input(*view, boxes, input, false, false, false);
+            check(action && action->select_row == int(view->tags.size() - 1) && !action->confirm &&
+                      !ui::world_source_menu_input(*view, boxes, input, false, false, true),
+                  "Source-menu pointer selection cannot confirm or bypass pending input");
+        }
+    }
+    sim::StartupWorldMenuView system;
+    system.raw = 10;
+    system.tags = {20, 21, 22, 23, 24};
+    system.stored_position = {210, 210};
+    const auto boxes = ui::world_source_menu_layout(system, {240, 256});
+    check(boxes.rows.front().x == 150 && boxes.rows.back().y + 28 <= 256,
+          "Submenu bounds use source stored position and native row dimensions");
+    for (int row = 0; row < 5; ++row) {
+        system.selection = row;
+        ui::WorldMenuInput input;
+        input.enter = true;
+        const auto action = ui::world_source_menu_input(system, boxes, input, false, false, false);
+        check(row == 0 ? bool(action && action->confirm) : !action,
+              "Only system save is enabled; settings/manual/ranking/exit lack consumers");
+        input = {};
+        input.escape = true;
+        check(ui::world_source_menu_input(system, boxes, input, false, false, false)->cancel,
+              "Disabled system selection still returns without invoking a placeholder page");
+    }
+    auto save = initial_world();
+    save.scripts.pages.back().lifecycle = 2;
+    check(sim::open_startup_world_main_menu(save) == sim::StartupWorldRuntimeError::none &&
+              sim::initialize_startup_world_menu_pages(save),
+          "Save UI fixture opens actual main menu");
+    save.scripts.pages.back().lifecycle = 2;
+    save.scripts.executing_page = save.scripts.pages.back().id;
+    check(sim::open_startup_world_save_page(save) == sim::StartupWorldRuntimeError::none,
+          "Save UI fixture enters raw14 through its real source callback");
+    save.scripts.executing_page.reset();
+    check(sim::initialize_startup_world_save_pages(save), "Initialize source save phase");
+    save.scripts.pages.back().lifecycle = 2;
+    const auto id = save.scripts.pages.back().id;
+    check(!desktop::world_source_save_ready(save, id),
+          "Save phase0 cannot close from desktop input");
+    auto saving = sim::update_startup_world_save_page(save, id);
+    check(saving && !desktop::world_source_save_ready(*saving, id),
+          "Save phase1 waits for file consumer");
+    auto completed = sim::complete_startup_world_save_page(*saving, id, false, "test failure");
+    check(completed && desktop::world_source_save_ready(*completed, id),
+          "Save result can close after one completion");
+    completed->scene.framework_paused = true;
+    check(!desktop::world_source_save_ready(*completed, id),
+          "Manual pause also blocks raw14 confirmation");
 }
 } // namespace
 void world_menu() {
     Checks check{"world_menu"};
     information_ui(check);
+    source_navigation_ui(check);
     namespace ui = desktop::ui;
-    using Intent = ui::WorldMenuIntent;
     const auto middle = [](Rectangle r) { return Vector2{r.x + r.width / 2, r.y + r.height / 2}; };
     // Title/slot navigation shares this menu suite. Rule and codec combinations remain in
     // world_save; this verifies the new cold-entry boundary and its actual file re-read.
@@ -267,117 +358,7 @@ void world_menu() {
         check(!CheckCollisionRecs(button, layout.left_button) &&
                   !CheckCollisionRecs(button, layout.right_button) &&
                   button.x + button.width <= layout.right_button.x - 77,
-              "Menu button clears pause, speed and original popularity artwork at every size");
-        int selected = 1;
-        ui::WorldMenuInput input;
-        input.click = middle(button);
-        check(ui::world_menu_input(layout, false, true, false, false, selected, input) ==
-                  Intent::open,
-              "Menu can open while explicitly paused; task availability is independent");
-        check(!ui::world_menu_input(layout, false, false, true, false, selected, input),
-              "Source modal/report blocks opening");
-        check(ui::world_menu_input(layout, true, false, false, false, selected, input) ==
-                  Intent::close,
-              "Same menu button closes even while paused or task entry disabled");
-        for (int row = 0; row < 5; ++row) {
-            input.click = middle(layout.menu_rows[row]);
-            const auto action =
-                ui::world_menu_input(layout, true, true, true, false, selected, input);
-            check(selected == row && (row == 0   ? action == Intent::build
-                                      : row == 1 ? action == Intent::tasks
-                                      : row == 2 ? action == Intent::village
-                                      : row == 3 ? action == Intent::information
-                                      : row == 4 ? action == Intent::system
-                                                 : !action.has_value()),
-                  "Original five row hit areas select faithfully; construction, adventure and "
-                  "system are "
-                  "executable");
-            const auto paused_action =
-                ui::world_menu_input(layout, true, true, false, false, selected, input);
-            check(row == 4 ? paused_action == Intent::system : !paused_action,
-                  "Explicit pause permits system files while blocking gameplay menu actions");
-            check(layout.menu_rows[row].x >= 0 &&
-                      layout.menu_rows[row].x + layout.menu_rows[row].width <= extent.width &&
-                      layout.menu_rows[row].y + layout.menu_rows[row].height <= button.y,
-                  "All rows fit small and large viewports above footer");
-        }
-        input = {};
-        input.down = true;
-        selected = 0;
-        check(!ui::world_menu_input(layout, true, true, true, false, selected, input) &&
-                  selected == 1,
-              "Arrow navigation changes selection without opening task page");
-        input = {};
-        input.enter = true;
-        check(ui::world_menu_input(layout, true, true, true, false, selected, input) ==
-                  Intent::tasks,
-              "Enter invokes atomic menu-to-task action");
-        check(!ui::world_menu_input(layout, true, true, false, false, selected, input),
-              "Enter cannot bypass disabled adventure");
-        input = {};
-        input.escape = true;
-        check(ui::world_menu_input(layout, true, true, false, false, selected, input) ==
-                  Intent::close,
-              "Escape closes independently of explicit pause");
-        input = {};
-        input.toggle = true;
-        check(ui::world_menu_input(layout, true, true, true, false, selected, input) ==
-                      Intent::close &&
-                  ui::world_menu_input(layout, false, true, true, false, selected, input) ==
-                      Intent::open,
-              "M toggles both directions through one input contract");
-        input.up = input.enter = true;
-        input.click = middle(layout.menu_rows[0]);
-        selected = 1;
-        check(!ui::world_menu_input(layout, true, true, true, true, selected, input) &&
-                  selected == 1,
-              "Pending/failed barrier rejects duplicate input and leaves selection unchanged");
-        input = {};
-        input.up = true;
-        selected = 0;
-        (void)ui::world_menu_input(layout, true, true, true, false, selected, input);
-        check(selected == 4, "Up wraps to system without activating it");
-        input = {};
-        input.down = true;
-        (void)ui::world_menu_input(layout, true, true, true, false, selected, input);
-        check(selected == 0, "Down wraps to construction without activating disabled row");
-        using Village = ui::WorldVillageMenuIntent;
-        for (const bool unlocked : {false, true}) {
-            input = {};
-            input.click = middle(layout.menu_rows[2]);
-            const auto action =
-                ui::world_village_menu_input(layout, true, false, false, selected, input, unlocked);
-            check(selected == 2 && (unlocked ? action == Village::magic_pot : !action),
-                  "Magic pot entry uses its own unlock flag, independent of commerce");
-            check(!ui::world_village_menu_input(layout, false, true, false, selected, input,
-                                                unlocked),
-                  "Pause still gates the unlocked magic pot entry");
-        }
-        for (const bool unlocked : {false, true}) {
-            input = {};
-            input.click = middle(layout.menu_rows[1]);
-            const auto action =
-                ui::world_village_menu_input(layout, true, unlocked, false, selected, input);
-            check(selected == 1 && (unlocked ? action == Village::commerce : !action),
-                  "Desktop management chooser gates commerce on the real unlock flag");
-            check(!ui::world_village_menu_input(layout, false, unlocked, false, selected, input),
-                  "Explicit pause cannot bypass the commerce gate");
-        }
-        input = {};
-        input.click = middle(layout.menu_rows[0]);
-        check(ui::world_village_menu_input(layout, true, false, false, selected, input) ==
-                  Village::activities,
-              "Activity entry does not depend on commerce unlock");
-        input = {};
-        input.escape = true;
-        check(ui::world_village_menu_input(layout, false, false, false, selected, input) ==
-                  Village::back,
-              "Escape returns from management chooser to its parent while paused");
-        input.toggle = true;
-        check(ui::world_village_menu_input(layout, true, true, false, selected, input) ==
-                      Village::close &&
-                  !ui::world_village_menu_input(layout, true, true, true, selected, input),
-              "Menu toggle closes the chooser; pending barrier blocks duplicate navigation");
+              "Menu button clears pause and original popularity artwork at every size");
     }
     // These are explicit read-only slot view fixtures. Their paused worker has no file overlay,
     // so submitted actions are rejected without writing a file; this suite owns only the UI's
@@ -394,6 +375,40 @@ void world_menu() {
     menu.observe(frame);
     const desktop::Extent extent{240, 256};
     const auto slots = desktop::world_save_menu_layout(extent);
+    {
+        // Source-save selection is save-only, including after a stale load draft.
+        desktop::WorldSaveMenu source_menu;
+        source_menu.observe(frame);
+        desktop::WorldSaveMenuInput input;
+        input.click = middle(slots.load[0]);
+        source_menu.input(frame, extent, input, session);
+        auto source_frame = frame;
+        source_frame.save_source_page = 987;
+        source_menu.observe(source_frame);
+        input = {};
+        input.click = middle(slots.load[0]);
+        source_menu.input(source_frame, extent, input, session);
+        input = {};
+        input.right = true;
+        input.enter = true;
+        source_menu.input(source_frame, extent, input, session);
+        check(!source_menu.pending() && session.frame()->last_command_serial == 0,
+              "Source selector clears stale load confirmation and ignores load toggle/click");
+        input = {};
+        input.escape = true;
+        source_menu.input(source_frame, extent, input, session);
+        input = {};
+        input.click = middle(slots.records);
+        source_menu.input(source_frame, extent, input, session);
+        input = {};
+        input.enter = true;
+        source_menu.input(source_frame, extent, input, session);
+        input = {};
+        input.escape = true;
+        source_menu.input(source_frame, extent, input, session);
+        check(!source_menu.pending() && session.frame()->last_command_serial == 0,
+              "Source selector record hit cannot hide save confirmation or submit a command");
+    }
     for (int slot = 0; slot < 2; ++slot) {
         check(slots.slots[slot].x >= slots.panel.x &&
                   slots.slots[slot].x + slots.slots[slot].width <=

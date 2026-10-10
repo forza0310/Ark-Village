@@ -1,5 +1,6 @@
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/village/rules/world_notices.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 
@@ -314,6 +315,8 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 startup_world_runtime_facility_target(s, *s.scripts.selected_facility);
             if (!target || !camera_focus(s, *target))
                 return {};
+            // 原ChangeState(0)清subTenant；贴合后仍走共同尾，不重开设施详情。
+            if (s.scene.scene_state == 0) s.scripts.selected_facility.reset();
             break;
         }
         case Stage::common_display_tail: {
@@ -338,8 +341,12 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             }
             break;
         case Stage::common_menu_gate:
-            if (s.menu_input)
-                return {};
+            if (s.menu_input) {
+                if (open_startup_world_main_menu(s) != StartupWorldRuntimeError::none)
+                    return {};
+                s.menu_input = false;
+                return ref::WorldSceneDisposition::end_frame;
+            }
             break;
         default:
             return {};

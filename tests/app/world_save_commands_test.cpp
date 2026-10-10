@@ -1,9 +1,108 @@
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "world_session_test_support.hpp"
 #include <filesystem>
 #include <fstream>
 
 namespace ark::test::world_session {
+namespace {
+std::string file_bytes(const std::filesystem::path &path) {
+    std::ifstream in(path, std::ios::binary);
+    return {std::istreambuf_iterator<char>(in), {}};
+}
+void source_save_bridge() {
+    const auto directory = std::filesystem::current_path() / "world-source-save-session-test";
+    std::filesystem::remove_all(directory);
+    app::WorldSession session(initial(false), directory);
+    input_frame(session, session.open_main_menu());
+    menu_tag(session, 3, 6);
+    auto frame = menu_ready(session, 10);
+    const auto page = task_top(*frame->state).id;
+    const auto old = frame->state;
+    frame = input_frame(session, session.open_source_save_menu(page));
+    check(frame->save_menu_open && frame->save_source_page == page && frame->state == old,
+          "source system save opens player slots without creating raw14 or advancing Owner");
+    const auto revision = frame->revision;
+    check(session.wait_for_frame_after(revision, std::chrono::milliseconds(100)) == frame,
+          "slot selection freezes source menu lifecycle and world");
+    frame = input_frame(session, session.load_slot(0));
+    check(frame->save_menu_open && frame->state == old && frame->generation == 1 &&
+              input_result(*frame, frame->last_command_serial).outcome ==
+                  app::WorldCommandOutcome::rejected,
+          "source-only save overlay cannot silently load another world");
+    frame = input_frame(session, session.close_save_menu());
+    check(!frame->save_menu_open && task_top(*frame->state).id == page,
+          "cancel returns to the same system parent and selection");
+    input_frame(session, session.open_source_save_menu(page));
+    frame = input_frame(session, session.save_slot(0));
+    const auto save_page = task_top(*frame->state).id;
+    check(!frame->failed && !frame->save_menu_open && task_top(*frame->state).legacy_page == 14,
+          "selected player slot opens actual source raw14 once");
+    input_frame(session,
+                session.ack_page(save_page)); // Early input must neither close nor write twice.
+    frame = await(session, [save_page](const auto &f) {
+        const auto view = sim::inspect_startup_world_save_page(*f.state, save_page);
+        return f.failed || (view && view->stage == 2);
+    });
+    const auto view = sim::inspect_startup_world_save_page(*frame->state, save_page);
+    check(!frame->failed && view && view->saved == true && frame->save_slots[0].metadata &&
+              frame->state->scene.random.draws() == old->scene.random.draws(),
+          "stage1 publishes one player file and stage2 result with original random stream");
+    const auto saved = file_bytes(app::world_save_slot_path(directory, 0));
+    auto loaded = app::read_world_save_slot(directory, 0);
+    check(loaded.error == app::WorldSaveError::none && loaded.state &&
+              loaded.state->scripts.pages.empty(),
+          "raw14 player decode contains durable data and no persisted result/modal page");
+    std::string restore_reason;
+    const auto restored =
+        app::prepare_world_save_candidate(*loaded.state, *frame->state, restore_reason);
+    check(restored == app::WorldSaveError::none && restore_reason.empty() &&
+              app::world_save_eligible(*loaded.state) && loaded.state->scripts.pages.size() == 1 &&
+              loaded.state->scene.world.world.ai.accounting.funds() ==
+                  old->scene.world.world.ai.accounting.funds(),
+          "raw14 export stores a stable player scene rather than its modal result page");
+    input_frame(session, session.ack_page(save_page));
+    frame = await(session,
+                  [](const auto &f) { return f.failed || app::world_save_eligible(*f.state); });
+    input_frame(session, session.set_paused(true));
+    check(!frame->failed && file_bytes(app::world_save_slot_path(directory, 0)) == saved,
+          "closing result never writes the file a second time");
+    session.stop();
+    // Replacement failure keeps the existing target and all business/random data.
+    const auto blocked = directory / "blocked";
+    std::filesystem::create_directories(app::world_save_slot_path(blocked, 0));
+    app::WorldSession denied(initial(false), blocked);
+    input_frame(denied, denied.open_save_menu());
+    frame = input_frame(denied, denied.save_slot(0));
+    frame = await(denied, [](const auto &f) {
+        const auto &p = task_top(*f.state);
+        const auto v = sim::inspect_startup_world_save_page(*f.state, p.id);
+        return f.failed || (v && v->stage == 2);
+    });
+    const auto failed_view =
+        sim::inspect_startup_world_save_page(*frame->state, task_top(*frame->state).id);
+    check(!frame->failed && failed_view && failed_view->saved == false &&
+              std::filesystem::is_directory(app::world_save_slot_path(blocked, 0)) &&
+              frame->state->scene.world.world.ai.accounting.funds() == 5000 &&
+              frame->state->scene.random.draws() == initial(false).scene.random.draws(),
+          "failed F5 source save preserves target, initial business and random with usable failure "
+          "result");
+    denied.stop();
+    auto dormant = initial(false);
+    dormant.build_mode = 7;
+    app::WorldSession tools(dormant, directory / "dormant");
+    frame = input_frame(tools, tools.open_save_menu());
+    const auto unchanged = frame->state;
+    frame = input_frame(tools, tools.save_slot(0));
+    check(!frame->failed && frame->state == unchanged && frame->save_menu_open &&
+              input_result(*frame, frame->last_command_serial).outcome ==
+                  app::WorldCommandOutcome::rejected &&
+              !std::filesystem::exists(app::world_save_slot_path(directory / "dormant", 0)),
+          "dormant build tool refuses strict raw14 export before creating a save page or file");
+    tools.stop();
+    std::filesystem::remove_all(directory);
+}
+} // namespace
 void system_command_transactions() {
     const auto directory = std::filesystem::current_path() / "world-system-session-test";
     std::filesystem::remove_all(directory);
@@ -102,6 +201,7 @@ void system_command_transactions() {
     std::filesystem::remove_all(directory);
 }
 void save_command_transactions() {
+    source_save_bridge();
     const auto directory = std::filesystem::current_path() / "world-save-session-test";
     std::filesystem::remove_all(directory);
     auto state = initial(true);
@@ -112,12 +212,16 @@ void save_command_transactions() {
           "Opening save menu preserves explicit pause and complete immutable Owner");
     const auto original = frame->state;
     frame = input_frame(session, session.save_slot(0));
-    // Busy publication acknowledges serial for observers; wait for file completion too.
-    frame = await(session, [](const auto &f) { return !f.save_busy && f.save_slots[0].metadata; });
     check(!frame->failed && frame->state == original && frame->save_menu_open &&
-              frame->save_slots[0].metadata->funds == state.scene.world.world.ai.accounting.funds(),
-          "Save captures at FIFO boundary without mutating world or unpausing");
+              frame->state->scene.framework_paused &&
+              !std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
+              input_result(*frame, frame->last_command_serial).outcome ==
+                  app::WorldCommandOutcome::rejected,
+          "Paused save refuses source page creation without silently resuming or writing");
     const auto saved = app::capture_world_save(*frame->state);
+    check(saved.image && app::write_world_save_slot(directory, 0, *saved.image).error ==
+                             app::WorldSaveError::none,
+          "Prepare independent stable file for load transaction checks");
     const auto generation = frame->generation;
     app::WorldCommand stale;
     stale.kind = app::WorldCommandKind::set_speed;

@@ -1,5 +1,6 @@
 #include "world_commands.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 
 #include <algorithm>
 
@@ -157,6 +158,30 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         return;
     }
     switch (command.kind) {
+    case Kind::acknowledge_page: {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        result.runtime_error = page != state.scripts.pages.rend() && page->id == command.page &&
+                                       page->legacy_page == 14
+                                   ? simulation::act_startup_world_save_page(state, command.page)
+                                   : Error::invalid_page;
+        break;
+    }
+    case Kind::menu_input:
+        // Platform shortcuts still need their own application/file consumers.
+        {
+            const auto view = simulation::inspect_startup_world_menu_page(state, command.page);
+            const auto &in = command.menu_input;
+            const bool confirm = !in.select_row && !in.up && !in.down && (in.confirm || in.right);
+            // raw10 save must first bind a selected player slot. Unsupported platform
+            // routes remain recoverable input rejection, never a fatal missing consumer.
+            const bool unsupported = view && view->raw == 10 && confirm;
+            result.runtime_error =
+                in.save_shortcut || in.browser_shortcut || unsupported
+                    ? Error::invalid_page
+                    : simulation::input_startup_world_menu_page(state, command.page, in);
+        }
+        break;
     case Kind::open_menu_magic_pot:
     case Kind::open_magic_pot:
         result.runtime_error = simulation::open_startup_world_magic_pot(

@@ -316,6 +316,92 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     check(!steam_facility_number_draws(numeric,0),"金额dx-9溢出拒绝且无部分图元结果");
     numeric.position[0]=100;numeric.asset=A::mini;
     check(!steam_facility_number_draws(numeric,8),"不能用人物图集替代数字资源身份");
+    // 39新SEB19只补资产准入与自身边界，不重复旧money完整逗号矩阵。
+    const auto loss=steam_facility_resource(A::number12);
+    check(loss && loss->image==109 && loss->sprite==19 &&
+          std::string(loss->published_image)=="steam-common/number12.png" &&
+          std::string(loss->published_sprite)=="original/common/number12.seb",
+          "39负利润SEB19绑定Steam差异image109并复用同字节SEB");
+    numeric={N::number,A::number12,12,{100,20},0,4,-1};
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws && number_draws->size()==2 && number_draws->at(0).frame==1 &&
+          number_draws->at(1).frame==2 && number_draws->at(0).position==std::array<int,2>{84,20} &&
+          number_draws->at(1).position==std::array<int,2>{92,20},"SEB19普通数右锚实际8步宽");
+    check(!steam_facility_number_draws(numeric,7),"SEB19拒绝错误步宽，不推测另一数字图集宽度");
+    numeric.kind=N::money;numeric.value=std::numeric_limits<int>::min();
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws && number_draws->size()==15 && number_draws->front().frame==-3 &&
+          number_draws->front().position==std::array<int,2>{3,20} && number_draws->back().frame==20 &&
+          number_draws->back().position==std::array<int,2>{91,20},
+          "SEB19金额INT_MIN保留signed串负帧和逗号/单位，不声称负帧已知像素");
+    numeric.kind=N::plus_value;
+    check(!steam_facility_number_draws(numeric,8),"SEB19没有加号调用资格，不能借旧资产允许plus");
+    const auto loss_seb=ark::assets::parse_legacy_seb(bytes(packaged(source_root,loss->published_sprite)));
+    for(const int frame:{0,9,10,20}) {
+        const auto &parts=loss_seb.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+        check(part!=parts.end() && part->image_index==109 && part->source_x>=0 && part->source_y>=0 &&
+              part->source_x+part->width<=100 && part->source_y+part->height<=21,
+              "SEB19普通数字/逗号/单位实际帧裁片均落在Steam100×21图内");
+    }
+    // HUD普通SEB10与既有等级SEB11共享PNG但不是同一源行/资源身份。
+    const auto hud=steam_facility_resource(A::number03_hud),level=steam_facility_resource(A::number03);
+    check(hud && level && hud->image==102 && hud->sprite==10 && level->sprite==11 &&
+          std::string(hud->published_image)=="original/common/number03.png" &&
+          std::string(hud->published_sprite)=="original/common/number03.seb" &&
+          std::string(level->published_sprite)=="original/common/number04.seb","SEB10/11独立身份不能因同PNG合并");
+    const auto hud_seb=ark::assets::parse_legacy_seb(bytes(packaged(source_root,hud->published_sprite)));
+    for(const int frame:{0,9}) {
+        const auto &parts=hud_seb.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+        check(part!=parts.end() && part->image_index==102 && part->source_x==8*frame && part->source_y==0 &&
+              part->width==8 && part->height==12 && part->offset_x==0 && part->offset_y==0,
+              "HUD SEB10实际首末帧为8×12/sourceY0，不能误用SEB11的Y12");
+    }
+    numeric={N::number,A::number03_hud,12,{100,20},0,2,-1};
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws && number_draws->size()==2 && number_draws->at(0).position[0]==92 &&
+          number_draws->at(1).position[0]==100 && number_draws->at(0).frame==1 && number_draws->at(1).frame==2,
+          "HUD普通数字保留8步宽与原居中锚");
+    check(!steam_facility_number_draws(numeric,7),"HUD普通数字拒绝错误字格宽");
+    for(const auto kind:{N::money,N::plus_value,N::comma_number}) {
+        numeric.kind=kind;
+        check(!steam_facility_number_draws(numeric,8),"HUD SEB10只开放已核普通数字，不借单位/Comma资格");
+    }
+    struct CommaCase {int value,half_width;std::vector<int> frames,x;};
+    const std::vector<CommaCase> commas{
+        {0,4,{0},{92}},
+        {123,12,{1,2,3},{76,84,92}},
+        {1234,16,{1,2,10,3,4},{68,76,74,84,92}},
+        {1234567,28,{1,2,10,3,4,5,10,6,7},{44,52,50,60,68,76,74,84,92}},
+        {-1234,20,{-3,1,2,10,3,4},{60,68,76,74,84,92}},
+        {std::numeric_limits<int>::min(),44,{-3,2,1,10,4,7,4,10,8,3,6,10,4,8},
+            {12,20,28,26,36,44,52,50,60,68,76,74,84,92}}
+    };
+    for(const auto asset:{A::number05,A::number11})for(const auto &sample:commas)for(const int anchor:{2,4}) {
+        const SteamFacilityNumber request{N::comma_number,asset,sample.value,{100,20},0,anchor,-1};
+        const auto draws=steam_facility_number_draws(request,8);
+        bool matches=draws && draws->size()==sample.frames.size();
+        if(matches)for(std::size_t i=0;i<sample.frames.size();++i)
+            matches=matches&&draws->at(i).asset==asset&&draws->at(i).frame==sample.frames[i]&&
+                draws->at(i).position==std::array<int,2>{sample.x[i]+(anchor==2?sample.half_width:0),20};
+        check(matches,"Comma零/3/4/7位/负数/INT_MIN使用独立原序与2/4锚，无money偏移或单位");
+    }
+    numeric={N::comma_number,A::number11,1234,{100,20},0,4,-1};
+    const auto comma_seb=ark::assets::parse_legacy_seb(bytes(packaged(source_root,steam_facility_resource(A::number11)->published_sprite)));
+    const auto &comma_parts=comma_seb.layers.at(0).parts;
+    check(comma_parts.size()==10 && std::none_of(comma_parts.begin(),comma_parts.end(),[](const auto &p){return p.frame==10;}) &&
+          steam_facility_number_draws(numeric,8)->at(2).frame==10,
+          "SEB20实际缺逗号帧但Comma计划仍保留frame10/原位置，由已核下游空绘制消费");
+    for(int fault=0;fault<5;++fault) {
+        auto invalid=numeric;int width=8;
+        if(fault==0)invalid.anchor=6;
+        if(fault==1)invalid.padding=1;
+        if(fault==2)width=7;
+        if(fault==3)invalid.asset=A::number08;
+        if(fault==4)invalid.position[0]=std::numeric_limits<int>::min();
+        check(!steam_facility_number_draws(invalid,width),"Comma拒绝位合并锚/额外padding/错误步宽/未核资产/坐标溢出");
+    }
     const auto blue=steam_facility_resource(A::number08),orange=steam_facility_resource(A::number05);
     check(blue->image==105&&blue->sprite==15&&orange->image==103&&orange->sprite==12&&
           bytes(packaged(source_root,blue->published_image))!=bytes(source_root/"common/number08.png")&&

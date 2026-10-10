@@ -105,12 +105,12 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_information.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_world_inheritance.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_magic_pot.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_menu.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/startup_world_presentation.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/actors/startup_world_profile.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/map/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/actors/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_runtime.cpp"
-    "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_update_private.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_runtime_arrival.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_runtime_calendar.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/tasks/startup_world_runtime_deadline.cpp"
@@ -120,13 +120,16 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_runtime_scene.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/tasks/startup_world_runtime_task_pages.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/tasks/startup_world_runtime_tasks.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_save.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_tax.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_village_activity.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/startup_world_visuals.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_facility_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_human_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_information_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_main_menu_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_startup_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_update_private.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/accounting_test.cpp"
@@ -247,6 +250,7 @@ set(ARK_STARTUP_APPLICATION_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_application_storage.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_application_storage_replay.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_application_title.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/application/startup_application_world_save.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/application/startup_title_menu.cpp"
 )
 set(ARK_STARTUP_APPLICATION_TEST_SOURCES

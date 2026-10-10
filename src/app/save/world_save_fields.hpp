@@ -185,7 +185,7 @@ ARK_SAVE_FIELDS(r::DungeonTaskSuccessState, x.successes, x.ordinary_explorations
                 x.exploration_stage, x.exploration_dates, x.task_pool_progress, x.definitions,
                 x.monsters, x.remaining_task_definitions)
 ARK_SAVE_FIELDS(r::DungeonFinishTask, x.identity, x.definition, x.difficulty,
-                x.pending_completion_value, x.facility, x.site)
+                x.pending_completion_value, x.facility, x.site, x.newly_available)
 ARK_SAVE_FIELDS(r::DungeonFinishSite, x.occupied_cells)
 ARK_SAVE_FIELDS(r::WorldMagicPotRecipeProgress, x.identity, x.status, x.pending_notice)
 ARK_SAVE_FIELDS(s::StartupWorldHumanProfile, x.name, x.sex, x.custom_name)

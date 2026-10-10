@@ -19,6 +19,9 @@ struct StartupBuildResult {
 // 原页21普通可建子集（含募集、排除私人住宅/道路），按原定义顺序与j分组。
 std::optional<std::array<std::vector<int>, 3>>
 startup_world_build_catalog(const StartupWorldRuntimeState &state);
+// 原c/n.w()/SetIsExistBuildNew：显式刷新P与三类NEW缓存，不是即时查询。
+// 完整验证后一起安装；页面绘制、实体创建/退休不会隐式刷新此历史缓存。
+bool refresh_startup_world_build_notices(StartupWorldRuntimeState &state);
 std::optional<ref::FacilityEconomyValues>
 startup_world_build_quote(const StartupWorldRuntimeState &state, int definition);
 int startup_world_facility_page_count(const StartupWorldRuntimeState &state,

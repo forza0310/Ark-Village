@@ -3,8 +3,9 @@ import {createHash} from 'node:crypto';
 import {applicationReplayIdentity} from './application_process_support.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const need=(ok,why)=>{if(!ok)throw Error(why);};
+// 正式776508c生成字段身份：世界5含原菜单/存档载荷；旧世界4身份不授予新档资格。
 const schema={dataset:'c3f9419d56e2db0c4a4fcf582f3b34fe5100a12b6acaa2b3bbf3ca0273faa690',
-    world_schema:'7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440',
+    world_schema:'d4aa2a6fdd5578ead2d56550c88e46dbdf7475cf1eb169c2d5411fd5d8f43f26',
     application_schema:'bd1940f2adef221c3da305403518082e34fd5eb2b1756e478240f564725edf0c'};
 
 export function progressionApplicationIdentity(bytes,controller,driverMagic){
@@ -24,8 +25,8 @@ export function progressionApplicationIdentity(bytes,controller,driverMagic){
     }
     const world=sections.get(4),system=sections.get(2),driver=sections.get(5);
     need(world.length>=84&&world.subarray(0,8).toString()==='AVRSAVE1'&&world.readUInt32LE(8)===1&&
-        world.readUInt32LE(12)===4&&world.readUInt32LE(16)===2&&
-        hash(world.subarray(0,-64))===world.subarray(-64).toString(),'内嵌世界4完整回放身份');
+        world.readUInt32LE(12)===5&&world.readUInt32LE(16)===2&&
+        hash(world.subarray(0,-64))===world.subarray(-64).toString(),'内嵌世界5完整回放身份');
     need(system.length>=76&&system.subarray(0,8).toString()==='AVRSYS01'&&system.readUInt32LE(8)===2&&
         hash(system.subarray(0,-64))===system.subarray(-64).toString(),'内嵌系统2身份');
     need(driver.length>=8&&driver.length<=1024*1024&&driver.subarray(0,8).toString()===driverMagic,'策略规范Driver身份');

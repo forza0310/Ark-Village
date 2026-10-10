@@ -22,6 +22,8 @@ const rules::WorldScriptPage &task_top(const app::WorldState &state);
 std::shared_ptr<const app::WorldFrame> input_frame(app::WorldSession &session,
                                                    std::uint64_t serial);
 const app::WorldCommandResult &input_result(const app::WorldFrame &frame, std::uint64_t serial);
+std::shared_ptr<const app::WorldFrame> menu_ready(app::WorldSession &session, int raw);
+std::shared_ptr<const app::WorldFrame> menu_tag(app::WorldSession &session, int raw, int tag);
 
 void main_menu_gate_and_pause();
 void main_menu_task_transaction();

@@ -1,5 +1,6 @@
 // 商会购买即时提交；设施兑换先付村点，93满40确认再领取，不混同金币建设费。
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 
 #include <algorithm>
@@ -96,7 +97,9 @@ bool payload(const State &s, const Page &p) {
                item_state(s, v[4]);
     if (raw == 93)
         return v[2] == 0 && v[3] == 0 && v[4] == p.legacy_s && p.legacy_r == 3 &&
-               facility_state(s, v[4]);
+               facility_state(s, v[4]) &&
+               (s.facility_presence.at(v[4]) == 0 ||
+                (p.lifecycle == 4 && s.facility_presence.at(v[4]) == 2));
     const auto list = s.commerce_page_lists.find(p.id);
     if (list == s.commerce_page_lists.end() || list->second.empty() || v[4] != -1 ||
         list->second.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
@@ -148,7 +151,7 @@ bool initialize(State &s, const Page &p) {
         for (const auto &d : s.rules->facilities) {
             if (!facility_state(s, d.id))
                 return false;
-            // Blueprints unlock once: initial p1 and purchased p2 are both already buildable.
+            // 用户确认的未开放图纸策略；原APK/Steam85为p!=2，新局原初值已另修为p2。
             if (s.facility_presence.at(d.id) == 0 && d.unlock_rank != -1 && d.unlock_rank <= s.rank)
                 list.push_back(d.id);
         }
@@ -192,11 +195,12 @@ bool cash(State &s, int amount, bool sale) {
 
 Error open_startup_world_commerce(State &s) {
     const auto p = top(s);
-    if (!s.rules || !p || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
+    const bool menu = startup_world_menu_callback(s, 7);
+    if (!s.rules || !p || (!menu && p->kind != ref::WorldScriptPageKind::scene) || s.scene.scene_state != 0 ||
         s.scene.framework_paused || (s.scripts.user_flags & 16U) == 0)
         return Error::invalid_page;
     auto next = s;
-    next.scripts.executing_page = p->id;
+    next.scripts.executing_page = menu ? s.scripts.executing_page : std::optional<std::uint64_t>{p->id};
     if (!ref::world_script_seen(next.scripts, 97) && !event(next, 97))
         return Error::script_failed;
     if (!open(next, 83))

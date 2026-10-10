@@ -5065,6 +5065,54 @@
       "purpose": "Steam information adventurer directory contribution skin; edition-specific image retained separately from APK pixels",
       "width": 63,
       "height": 48
+    },
+    {
+      "file": "steam_common/number12.png",
+      "source": "research/dungeon_village_1/assets/steam-common/number12.png",
+      "sha256": "86ebb38510edf6bceaa4f7c4736f4a7603c16c5f8443190cb32b0a907190c0ba",
+      "bytes": 636,
+      "source_revision": "776508c",
+      "purpose": "Steam facility-income39 loss digit image109; independent edition-specific PNG with published common SEB19",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "file": "steam_common/menuRT00.png",
+      "source": "research/dungeon_village_1/assets/steam-common/menuRT00.png",
+      "sha256": "cb91235b2fccb45e841fa6691b6325ac69c3aaa1c639ece9597bf3b571a53a17",
+      "bytes": 945,
+      "source_revision": "776508c",
+      "purpose": "Steam source main menu HUD/status summary; version-specific image or sprite retained separately",
+      "width": 59,
+      "height": 45
+    },
+    {
+      "file": "steam_common/menuRT00.seb",
+      "source": "research/dungeon_village_1/assets/steam-common/menuRT00.seb",
+      "sha256": "fc1bb92c3937bd8c5524ff4f0202060098226f0d7348423386b8584c33804698",
+      "bytes": 88,
+      "source_revision": "776508c",
+      "purpose": "Steam source main menu HUD/status summary; version-specific image or sprite retained separately"
+    },
+    {
+      "file": "steam_common/menuRT04.png",
+      "source": "research/dungeon_village_1/assets/steam-common/menuRT04.png",
+      "sha256": "944376eacea53e57787b85a3adc4e327e201b26c337fac2634413ba5822c47e5",
+      "bytes": 224,
+      "source_revision": "776508c",
+      "purpose": "Steam source main menu HUD/status summary; version-specific image or sprite retained separately",
+      "width": 11,
+      "height": 11
+    },
+    {
+      "file": "steam_common/mpot_event.png",
+      "source": "research/dungeon_village_1/assets/steam-common/mpot_event.png",
+      "sha256": "f27a8aa7b0549dc7846c0f9dbe6d5b5778da6f09388841e3365edc0f5e796522",
+      "bytes": 744,
+      "source_revision": "776508c",
+      "purpose": "Steam source main-menu magic-pot processing summary; independent common2 consumer PNG",
+      "width": 94,
+      "height": 22
     }
   ]
 }

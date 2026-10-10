@@ -1,5 +1,6 @@
 // 魔法壶业务只在已证菜单/页面调用点消费；库存、元素、共同随机及整栈由私有Owner候选提交。
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "ark/simulation/facilities/rules/world_magic_pot.hpp"
 
 #include <algorithm>
@@ -329,13 +330,34 @@ std::optional<StartupMagicPotView> inspect_startup_world_magic_pot_page(const St
     return StartupMagicPotView{p->legacy_page, s.page_phases.find(id)->second,
         s.page_counters.find(id)->second, v[0], v[1], v[2], s.magic_pot_page_lists.find(id)->second};
 }
+std::optional<StartupMagicPotMenuInformation> startup_magic_pot_menu_information(const State &s) {
+    const auto time=ref::world_magic_pot_date(date(s));
+    if(!time.value || !ref::valid_world_magic_pot_state(s.legacy_n,date(s)))return {};
+    const auto &n=s.legacy_n;
+    StartupMagicPotMenuInformation result{0,n[1]};
+    const int elapsed=*time.value-n[12];
+    if(elapsed==0)return result;
+    const int processed=std::min(elapsed,n[1]);
+    // 已校验待件数不超过原容量30；保留RateConvert与元素除100的两次整数截断。
+    const int percentage=n[1]==0?0:processed*100/n[1];
+    for(int index=7;index<11;++index) {
+        const auto product=static_cast<std::int64_t>(n[index])*percentage;
+        if(product>std::numeric_limits<std::int32_t>::max())return {};
+        if(product/100>0) {
+            result.processed=processed;
+            return result; // 原显示查询找到首个正产出即返回，不提前检查未读元素乘积。
+        }
+    }
+    return result;
+}
 Error open_startup_world_magic_pot(State &s, StartupMagicPotEntry entry) {
     const auto p = top(s);
-    if (!p || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
+    const bool menu = entry == StartupMagicPotEntry::main_menu && startup_world_menu_callback(s, 3);
+    if (!p || (!menu && p->kind != ref::WorldScriptPageKind::scene) || s.scene.scene_state != 0 ||
         s.scene.framework_paused || (s.scripts.user_flags & 1U) == 0 ||
         (entry != StartupMagicPotEntry::main_menu && entry != StartupMagicPotEntry::development_menu)) return Error::invalid_page;
     if (!definitions(s)) return Error::missing_source;
-    auto next = s; next.scripts.executing_page = p->id;
+    auto next = s; next.scripts.executing_page = menu ? s.scripts.executing_page : std::optional<std::uint64_t>{p->id};
     if (entry == StartupMagicPotEntry::main_menu) next.scripts.user_flags &= ~2U;
     if (!process(next) || !open(next, 41)) return Error::script_failed;
     next.scripts.executing_page.reset(); s = std::move(next); return Error::none;

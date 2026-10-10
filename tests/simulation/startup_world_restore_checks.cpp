@@ -7,14 +7,18 @@
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 
 #include <algorithm>
 
 #include <limits>
 #include <stdexcept>
 
-int check_startup_world_restore_contracts(
+namespace {
+int check_navigation_restore(
     const ark::simulation::StartupWorldRuntimeState &baseline) {
     namespace p = ark::simulation;
     namespace r = ark::simulation::rules;
@@ -26,7 +30,6 @@ int check_startup_world_restore_contracts(
         if (p::persistence_detail::validate_restored_state(state, reason) != valid)
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
-    expect(baseline, true, "natural baseline");
     {
         auto shop = baseline;
         shop.scripts.pages.back().lifecycle = 3;
@@ -45,6 +48,267 @@ int check_startup_world_restore_contracts(
             expect(stale, false, "restored catalogue rejects already unlocked blueprint");
         }
     }
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore manual save: ") + scenario);
+        };
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(), "actual framework admission");
+            state = std::move(*result.candidate);
+        };
+        const auto choose = [&](auto &state, int tag) {
+            const auto id = state.scripts.pages.back().id;
+            const auto view = p::inspect_startup_world_menu_page(state, id);
+            require(view.has_value(), "initialized source menu");
+            const auto row = std::find(view->tags.begin(), view->tags.end(), tag);
+            require(row != view->tags.end(), "source tag exists");
+            p::StartupWorldMenuInput select;
+            select.select_row = static_cast<int>(row - view->tags.begin());
+            p::StartupWorldMenuInput confirm; confirm.confirm = true;
+            require(p::input_startup_world_menu_page(state, id, select) == p::StartupWorldRuntimeError::none &&
+                        p::input_startup_world_menu_page(state, id, confirm) == p::StartupWorldRuntimeError::none,
+                    "real navigation consumes menu row");
+        };
+        auto save = baseline;
+        require(p::open_startup_world_main_menu(save) == p::StartupWorldRuntimeError::none, "open3");
+        tick(save); choose(save, 6); tick(save); choose(save, 20);
+        const auto id = save.scripts.pages.back().id;
+        expect(save, true, "raw14 pending Init with source menu retirement");
+        require(p::initialize_startup_world_save_pages(save), "raw14 actual Init");
+        const auto check_roundtrip = [&](const auto &state, const char *scenario) {
+            expect(state, true, scenario);
+            const auto bytes = p::persistence_detail::encode_state(state);
+            const auto restored = p::persistence_detail::decode_state(bytes, *state.rules);
+            expect(restored, true, scenario);
+            require(p::persistence_detail::encode_state(restored) == bytes,
+                    "save stage/counter/result/provenance restore without Init or file writes");
+            for (int fault = 0; fault < 6; ++fault) {
+                auto bad = restored;
+                auto page = std::find_if(bad.scripts.pages.begin(), bad.scripts.pages.end(),
+                    [&](const auto &entry) { return entry.id == id; });
+                require(page != bad.scripts.pages.end(), "restored save page exists");
+                if (fault == 0) bad.page_phases.erase(id);
+                if (fault == 1) bad.page_counters.erase(id);
+                if (fault == 2) bad.page_phases.at(id) = 3;
+                if (fault == 3) page->source_record = 9;
+                if (fault == 4) page->legacy_tag = 21;
+                if (fault == 5) page->legacy_f = 7;
+                expect(bad, false, "raw14 malformed initialized provenance/stage/result rejects");
+            }
+        };
+        check_roundtrip(save, "raw14 initialized stage0 exact restore");
+        tick(save);
+        require(save.page_phases.at(id) == 1, "first update reaches awaiting application writer");
+        check_roundtrip(save, "raw14 stage1 exact restore does not repeat earlier world prefix");
+        auto source3 = save;
+        // 已核raw3来源的专用消费者条件夹具；不宣称save_shortcut已接或重放双Pop。
+        source3.scripts.pages.back().source_record = 3;
+        check_roundtrip(source3, "raw14 declared source3 consumer payload exact restore");
+        for (const bool success : {false, true}) {
+            const auto result = p::complete_startup_world_save_page(save, id, success,
+                success ? "" : "disk write failed");
+            require(result.has_value(), "prepare explicit result");
+            check_roundtrip(*result, "raw14 stage2 success/failure exact restore does not write again");
+            auto bad = *result;
+            bad.page_counters.at(id) = 0;
+            expect(bad, false, "raw14 result cannot masquerade as unexecuted first frame");
+            if(success) {
+                bad=*result;bad.save_marker=0;
+                expect(bad,false,"raw14 successful result requires actual committed save marker");
+            }
+        }
+    }
+    {
+        auto tracking = baseline;
+        // 当前任务已消失但镜头页尚未获准更新的合法短边界；下一轮自行退休。
+        r::WorldScriptPage page;
+        page.id = tracking.scripts.next_page_id++;
+        page.kind = r::WorldScriptPageKind::raw_page;
+        page.legacy_page = 58;
+        tracking.scripts.pages.front().lifecycle = 3;
+        tracking.scripts.pages.push_back(page);
+        tracking.page_counters.emplace(page.id, 0);
+        expect(tracking, true, "58 pending real update with no current task retains counter");
+        tracking.page_counters.erase(page.id);
+        expect(tracking, false, "58 missing mandatory counter rejects before installation");
+    }
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore navigation menu: ") + scenario);
+        };
+        auto menu = baseline;
+        require(p::open_startup_world_main_menu(menu) == p::StartupWorldRuntimeError::none,
+                "actual raw3 entry");
+        const auto id = menu.scripts.pages.back().id;
+        expect(menu, true, "raw3 pending initialization");
+        auto initialized = p::prepare_startup_world_runtime(menu);
+        require(initialized.candidate.has_value(), "framework initializes real menu");
+        menu = std::move(*initialized.candidate);
+        expect(menu, true, "raw3 initialized with source position and cached row");
+        const auto wire = p::persistence_detail::encode_state(menu);
+        const auto restored = p::persistence_detail::decode_state(wire, *menu.rules);
+        expect(restored, true, "raw3 exact restore");
+        require(p::persistence_detail::encode_state(restored) == wire &&
+                    restored.menu_page_data.at(id).tags == menu.menu_page_data.at(id).tags &&
+                    restored.menu_page_positions == menu.menu_page_positions,
+                "menu payload and original positions are serialized rather than reinitialized");
+        for (int fault = 0; fault < 8; ++fault) {
+            auto bad = restored;
+            if (fault == 0) bad.menu_page_data.erase(id);
+            if (fault == 1) bad.menu_page_positions.erase(id);
+            if (fault == 2) bad.menu_page_data.at(id).selection = -1;
+            if (fault == 3) bad.menu_page_data.at(id).tags.clear();
+            if (fault == 4) bad.menu_page_data.at(id).parent = bad.scripts.next_page_id;
+            if (fault == 5) bad.main_menu_selection = (bad.menu_page_data.at(id).selection + 1) % 5;
+            if (fault == 6) bad.menu_page_data.emplace(bad.scripts.next_page_id, bad.menu_page_data.at(id));
+            if (fault == 7) bad.menu_page_positions.emplace(bad.scripts.pages.front().id, std::array<int,2>{});
+            expect(bad, false, "menu rejects missing data, wrong row/parent/cache or orphaned position");
+            if (fault < 4) {
+                bad.scene.framework_paused = true;
+                const auto before = p::persistence_detail::encode_state(bad);
+                require(!p::prepare_startup_world_runtime(bad).candidate &&
+                            !p::update_startup_world_runtime_page(bad) &&
+                            p::persistence_detail::encode_state(bad) == before,
+                        "paused initialized menu rejects missing source without repair");
+            }
+        }
+        require(p::retire_startup_world_menu_pages(menu), "retire actual navigation menu");
+        menu.main_menu_selection = (menu.menu_page_data.at(id).selection + 1) % 5;
+        expect(menu, true, "retiring raw3 retains old choice independently of later global cache");
+        auto cleaned = p::prepare_startup_world_runtime(menu);
+        require(cleaned.candidate && cleaned.candidate->menu_page_data.count(id) == 0 &&
+                    cleaned.candidate->menu_page_positions.count(id) == 0,
+                "framework Finish releases menu payload and original position");
+    }
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore navigation child: ") + scenario);
+        };
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(), "actual framework admission");
+            state = std::move(*result.candidate);
+        };
+        const auto select_menu = [&](auto &state, int tag, bool english) {
+            const auto id = state.scripts.pages.back().id;
+            const auto &tags = state.menu_page_data.at(id).tags;
+            const auto row = std::find(tags.begin(), tags.end(), tag);
+            require(row != tags.end(), "actual frozen menu contains target tag");
+            p::StartupWorldMenuInput select;
+            select.select_row = static_cast<int>(row - tags.begin());
+            require(p::input_startup_world_menu_page(state, id, select) == p::StartupWorldRuntimeError::none,
+                    "select real parent row");
+            p::StartupWorldMenuInput confirm;
+            confirm.confirm = true; confirm.english = english;
+            require(p::input_startup_world_menu_page(state, id, confirm) == p::StartupWorldRuntimeError::none,
+                    "confirm real parent row");
+        };
+        auto information = baseline;
+        require(p::open_startup_world_main_menu(information) == p::StartupWorldRuntimeError::none, "open3");
+        tick(information);
+        select_menu(information, 5, true);
+        const auto menu = information.scripts.pages.back().id;
+        require(information.scripts.pages.back().legacy_page == 9, "tag5 opens9");
+        for (int initialized = 0; initialized < 2; ++initialized) {
+            const auto wire = p::persistence_detail::encode_state(information);
+            const auto restored = p::persistence_detail::decode_state(wire, *information.rules);
+            expect(restored, true, "actual3-to9 pending/initialized position roundtrip");
+            require(p::persistence_detail::encode_state(restored) == wire,
+                    "restored raw9 retains parent position without reconstructing it");
+            for (int fault = 0; fault < 3; ++fault) {
+                auto bad = restored;
+                if (fault == 0) bad.menu_page_positions.erase(menu);
+                if (fault == 1) ++bad.menu_page_positions.at(menu)[0];
+                if (fault == 2) ++bad.menu_page_positions.at(menu)[1];
+                expect(bad, false, "real3-to9 missing or mismatched stored child position");
+            }
+            if (initialized == 0) tick(information);
+        }
+        auto direct = baseline;
+        require(p::open_startup_world_information_menu(direct) == p::StartupWorldRuntimeError::none,
+                "explicit scene shortcut remains available");
+        direct.menu_page_positions.emplace(direct.scripts.pages.back().id, std::array<int,2>{96,109});
+        expect(direct, false, "scene shortcut cannot forge a stored raw3 child position");
+
+        auto gifts = baseline;
+        require(p::open_startup_world_navigation_submenu(gifts, 4) == p::StartupWorldRuntimeError::none, "open4");
+        tick(gifts);
+        select_menu(gifts, 9, false);
+        const auto directory = gifts.scripts.pages.back().id;
+        require(gifts.scripts.pages.back().legacy_page == 40, "tag9 opens actual gift directory40");
+        tick(gifts);
+        for (int n = 0; n < 16; ++n) {
+            const auto active = std::find_if(gifts.scripts.pages.rbegin(), gifts.scripts.pages.rend(),
+                                            [](const auto &page) { return page.lifecycle != 4; });
+            require(active != gifts.scripts.pages.rend(), "gift tutorial has active page");
+            if (active->id == directory && active->lifecycle == 2) break;
+            if (active->id != directory)
+                require(active->kind == r::WorldScriptPageKind::dialogue &&
+                            p::acknowledge_startup_world_runtime_page(gifts, active->id) == p::StartupWorldRuntimeError::none,
+                        "98 returns through real dialogue consumer");
+            tick(gifts);
+        }
+        p::StartupInformationInput confirm; confirm.confirm = true;
+        require(p::input_startup_world_information_page(gifts, directory, confirm) == p::StartupWorldRuntimeError::none,
+                "40 selects person and opens64");
+        const auto child = gifts.scripts.pages.back().id;
+        const int human = gifts.page_human_bindings.at(child);
+        const auto other = std::find_if(gifts.rules->humans.begin(), gifts.rules->humans.end(),
+                                        [&](const auto &h) { return h.identity != human; });
+        require(other != gifts.rules->humans.end(), "source provides a distinct valid definition");
+        for (int initialized = 0; initialized < 2; ++initialized) {
+            const auto wire = p::persistence_detail::encode_state(gifts);
+            const auto restored = p::persistence_detail::decode_state(wire, *gifts.rules);
+            expect(restored, true, "actual40-to64 pending/initialized parent binding roundtrip");
+            require(p::persistence_detail::encode_state(restored) == wire, "40-to64 exact payload roundtrip");
+            auto bad = restored;
+            bad.page_human_bindings.at(child) = other->identity;
+            expect(bad, false, "64 cannot change to another existing person behind frozen40 selection");
+            if (initialized == 0) tick(gifts);
+        }
+    }
+    {
+        auto stale=baseline;
+        const auto inn=std::find_if(stale.scene.world.world.facilities.begin(),stale.scene.world.world.facilities.end(),
+            [](const auto &entry){return entry.second.placement.definition_id==28;});
+        if(inn==stale.scene.world.world.facilities.end() || !p::refresh_startup_world_build_notices(stale))
+            throw std::runtime_error("restore fixture cannot prepare actual construction notice cache");
+        const auto inn_id=inn->first;
+        if(!p::retire_startup_world_facility(stale,inn_id) || !p::refresh_startup_world_map(stale,false))
+            throw std::runtime_error("restore fixture cannot retire original inn and refresh actual map");
+        ++checks;
+        if(!stale.facility_build_present.at(28))
+            throw std::runtime_error("restore fixture retirement unexpectedly cleared cached P");
+        // 原P/aY可能落后于实际地图，精确恢复不得以当前实体重算或要求相等。
+        const auto wire=p::persistence_detail::encode_state(stale);
+        const auto copy=p::persistence_detail::decode_state(wire,*stale.rules);
+        expect(copy,true,"stale construction notice cache is legitimate");
+        ++checks;
+        if(copy.facility_build_present!=stale.facility_build_present || copy.build_category_new!=stale.build_category_new)
+            throw std::runtime_error("restore fixture rewrote construction notice cache");
+        stale.facility_build_present.erase(stale.facility_build_present.begin());
+        expect(stale,false,"construction cache missing definition key");
+        stale=baseline;stale.facility_build_present.emplace(std::numeric_limits<int>::max(),false);
+        expect(stale,false,"construction cache unknown definition key");
+    }
+    return checks;
+}
+int check_information_restore(
+    const ark::simulation::StartupWorldRuntimeState &baseline) {
+    namespace p = ark::simulation;
+    namespace r = ark::simulation::rules;
+    int checks{};
+    const auto expect = [&](const p::StartupWorldRuntimeState &state, bool valid,
+                            const char *scenario) {
+        std::string reason;
+        ++checks;
+        if (p::persistence_detail::validate_restored_state(state, reason) != valid)
+            throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
+    };
     {
         auto information = baseline;
         if (p::open_startup_world_information_menu(information) != p::StartupWorldRuntimeError::none)
@@ -256,12 +520,13 @@ int check_startup_world_restore_contracts(
         auto restored=p::persistence_detail::decode_state(directory_wire,*state.rules);
         expect(restored,true,"35 contribution and tab2 exact restore");
         require(p::persistence_detail::encode_state(restored)==directory_wire,"35 decode does not recalculate contribution or clearNEW");
-        for(int fault=0;fault<4;++fault) {
+        for(int fault=0;fault<5;++fault) {
             auto invalid=restored;
             if(fault==0)invalid.information_page_data.erase(directory);
             if(fault==1)invalid.page_phases.at(directory)=4;
             if(fault==2)invalid.information_page_data.at(directory).lists[0].push_back(definition);
             if(fault==3)invalid.information_page_data.at(directory).lists[0].clear();
+            if(fault==4)invalid.information_page_data.at(directory).facilities.push_back(1);
             expect(invalid,false,"35 absent/malformed frozen definition catalogue");
         }
         input(state,directory,confirm);input(restored,directory,confirm);
@@ -360,6 +625,179 @@ int check_startup_world_restore_contracts(
                 "reopened60 Finish retires actor-context references");
     }
     {
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;
+            if(!valid)throw std::runtime_error(std::string("restore town34/facility39: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"actual framework admission");
+            state=std::move(*result.candidate);
+        };
+        const auto input=[&](auto &state,std::uint64_t page,const p::StartupInformationInput &action) {
+            require(p::input_startup_world_information_page(state,page,action)==p::StartupWorldRuntimeError::none,
+                    "actual information input");
+        };
+        auto state=baseline;
+        require(p::open_startup_world_information_menu(state)==p::StartupWorldRuntimeError::none,"open9");
+        const auto menu=state.scripts.pages.back().id;tick(state);
+        p::StartupInformationInput selected;selected.select_row=1;
+        p::StartupInformationInput confirm;confirm.confirm=true;
+        input(state,menu,selected);input(state,menu,confirm);
+        const auto town=state.scripts.pages.back().id;
+        expect(state,true,"34 pending Init with retired9");tick(state);
+        const auto town_wire=p::persistence_detail::encode_state(state);
+        auto restored=p::persistence_detail::decode_state(town_wire,*state.rules);
+        require(p::persistence_detail::encode_state(restored)==town_wire,"34 exact payload roundtrip");
+        expect(restored,true,"initialized34");
+        auto malformed=restored;malformed.information_page_data.emplace(town,p::StartupInformationPageData{});
+        expect(malformed,false,"34 cannot own a directory payload");
+        input(state,town,confirm);input(restored,town,confirm);
+        const auto directory=state.scripts.pages.back().id;
+        expect(state,true,"39 pending Init with actual34 parent");
+        auto pending=p::persistence_detail::decode_state(p::persistence_detail::encode_state(state),*state.rules);
+        require(pending.scripts.pages.back().legacy_page==39 && !pending.information_page_data.count(directory),
+                "pending39 decode cannot initialize its list");
+        tick(state);tick(restored);
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "34 identical confirmation and39 Init across restore");
+        const auto fixture_actor=state.scene.world.world.ai.human_order.front();
+        state.scripts.selected_actor=fixture_actor.value;
+        const auto facility=state.information_page_data.at(directory).facilities.front();
+        const auto camera=p::startup_world_runtime_facility_target(state,facility);
+        require(camera.has_value(),"original selected facility has actual target");
+        // 镜头已在目标是显式短边界条件；不移动人物/建筑，不跑重复世界前缀。
+        state.camera=*camera;state.previous_camera=*camera;
+        const auto wire=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(wire,*state.rules);
+        require(p::persistence_detail::encode_state(restored)==wire,"39 exact stable-ID catalogue and selection restore");
+        expect(restored,true,"initialized39 with current original facility");
+        for(int fault=0;fault<9;++fault) {
+            auto invalid=restored;
+            if(fault==0)invalid.information_page_data.erase(directory);
+            if(fault==1)invalid.information_page_data.at(directory).lists={{1}};
+            if(fault==2)invalid.information_page_data.at(directory).facilities.clear();
+            if(fault==3)invalid.information_page_data.at(directory).facilities.front()=std::uint64_t{1}<<40;
+            if(fault==4)invalid.information_page_data.at(directory).selection=
+                static_cast<int>(invalid.information_page_data.at(directory).facilities.size());
+            if(fault==5)invalid.information_page_data.emplace(invalid.scripts.next_page_id++,invalid.information_page_data.at(directory));
+            if(fault==6)for(auto &page:invalid.scripts.pages)if(page.id==town)page.legacy_page=36;
+            if(fault==7)invalid.facility_monthly_cash.erase(facility);
+            if(fault==8)for(auto &page:invalid.scripts.pages)if(page.id==town)page.lifecycle=2;
+            expect(invalid,false,"39 missing/wrong/retired reference or parent/source rejects restore");
+            if(fault==3) {
+                const auto high=p::persistence_detail::decode_state(p::persistence_detail::encode_state(invalid),*invalid.rules);
+                require(high.information_page_data.at(directory).facilities.front()==(std::uint64_t{1}<<40),
+                        "typed39 codec preserves uint64 before validation; cannot truncate into a live low ID");
+            }
+        }
+        auto closed=restored;p::StartupInformationInput cancel;cancel.cancel=true;
+        input(closed,directory,cancel);expect(closed,true,"closed39 before actual Finish retains complete catalogue");
+        closed=p::persistence_detail::decode_state(p::persistence_detail::encode_state(closed),*closed.rules);
+        tick(closed);
+        require(closed.scripts.pages.back().id==town && !closed.information_page_data.count(directory),
+                "closed39 restored next frame retires catalogue and recovers34");
+        input(state,directory,confirm);input(restored,directory,confirm);
+        require(state.scene.scene_state==7 && state.scripts.selected_facility==facility &&
+                state.scripts.selected_actor==fixture_actor.value && state.scripts.selection_mode==0,
+                "39 confirm chooses scene7 facility while preserving actual actor selector");
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "39 restored confirmation keeps exact owner and random order");
+        expect(state,true,"scene7 retains closing34/39 payloads before Finish");
+        const auto focus=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(focus,*state.rules);
+        tick(state);tick(restored);
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored) &&
+                state.scene.scene_state==0 && !state.scripts.selected_facility &&
+                state.scripts.selected_actor==fixture_actor.value &&
+                !state.information_page_data.count(directory) && !state.page_phases.count(town) &&
+                !state.page_counters.count(directory),
+                "actual scene7 completion clears facility only, retires pages and replays identically");
+    }
+    {
+        using A=p::StartupCommerceAction;
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;if(!valid)throw std::runtime_error(std::string("restore commerce85/93: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"real framework admission");state=std::move(*result.candidate);
+        };
+        auto state=baseline;
+        // 只准备85调用点和30村点；原p0定义/资金来自共同baseline，不重复商会解锁长链。
+        r::WorldScriptPage entry;entry.kind=r::WorldScriptPageKind::raw_page;entry.legacy_page=85;
+        const auto inserted=r::prepare_world_script_page(p::startup_world_runtime_scripts(state),entry);
+        require(inserted.candidate && p::write_startup_world_runtime_scripts(state,inserted.candidate->state),"actual85 page factory");
+        const auto shop=state.scripts.pages.back().id;
+        state.village_points=30;expect(state,true,"pending85 with actual p0 definitions");tick(state);
+        const auto &list=state.commerce_page_lists.at(shop);
+        const auto drink=std::find(list.begin(),list.end(),34);
+        require(drink!=list.end() && state.facility_presence.at(34)==0,"original p0 drink34 in initialized85");
+        require(p::act_startup_world_commerce_page(state,shop,A::select,static_cast<int>(drink-list.begin()))==
+                p::StartupWorldRuntimeError::none,"select actual drink34");
+        const auto wire=p::persistence_detail::encode_state(state);
+        auto restored=p::persistence_detail::decode_state(wire,*state.rules);
+        expect(restored,true,"p0 commerce85 exact restore");
+        require(p::persistence_detail::encode_state(restored)==wire,"85 decode does not re-list or clear read flags");
+        for(const int presence:{1,2}) {
+            auto stale=restored;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"85 frozen list cannot restore a now-p1/p2 definition");
+        }
+        auto preview=restored;
+        require(p::act_startup_world_commerce_page(preview,shop,A::inspect)==p::StartupWorldRuntimeError::none,
+                "85 actual definition preview entry");
+        expect(preview,true,"p0 definition74 with actual85 parent");
+        for(const int presence:{1,2}) {
+            auto stale=preview;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"74 definition preview cannot restore already-open p1/p2 definition");
+        }
+        for(auto *owner:{&state,&restored})
+            require(p::act_startup_world_commerce_page(*owner,shop,A::confirm)==p::StartupWorldRuntimeError::none,
+                    "actual85 payment on both restored owners");
+        const auto reward=state.scripts.pages.back().id;
+        require(state.scripts.pages.back().legacy_page==93 && state.village_points==0 &&
+                state.facility_presence.at(34)==0 && state.facility_free_builds.at(34)==0 &&
+                p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "85 deducts points identically but leaves p0/H0 pending93");
+        expect(state,true,"uninitialized93 after points payment");
+        for(const int presence:{1,2}) {
+            auto stale=state;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"pending Init93 also requires unclaimed p0 definition");
+        }
+        tick(state);tick(restored);
+        const auto waiting=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(waiting,*state.rules);
+        expect(restored,true,"initialized live93 p0 pending entitlement");
+        for(const int presence:{1,2}) {
+            auto stale=restored;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"live93 cannot restore after external p1/p2 unlock");
+        }
+        for(int confirmations=0;confirmations<2;++confirmations)
+            for(auto *owner:{&state,&restored})
+                require(p::act_startup_world_commerce_page(*owner,reward,A::confirm)==p::StartupWorldRuntimeError::none,
+                        "real93 early fast-forward then entitlement confirmation");
+        require(state.facility_presence.at(34)==2 && state.facility_free_builds.at(34)==1 &&
+                state.village_points==0 && p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "same93 inputs grant p2/H1 once without second point deduction");
+        expect(state,true,"retired claimed93 p2 remains valid before Finish");
+        for(int fault=0;fault<3;++fault) {
+            auto invalid=state;
+            if(fault==0)invalid.facility_presence.at(34)=1;
+            if(fault==1)invalid.page_counters.erase(reward);
+            if(fault==2)invalid.commerce_page_data.at(reward)[4]=-1;
+            expect(invalid,false,"retired93 p1,half payload or missing binding cannot bypass restore validation");
+        }
+        const auto claimed=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(claimed,*state.rules);
+        require(p::act_startup_world_commerce_page(restored,reward,A::confirm)!=p::StartupWorldRuntimeError::none &&
+                p::persistence_detail::encode_state(restored)==claimed,"restored closed93 cannot grant twice");
+        tick(state);tick(restored);
+        require(!restored.commerce_pages_initialized.count(reward) && !restored.commerce_page_data.count(reward) &&
+                !restored.page_counters.count(reward) && restored.facility_free_builds.at(34)==1 &&
+                p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "real Finish releases93 payload; replay does not refill or repeat payment");
+    }
+    {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。
         auto upgrade = baseline;
         const auto facility = std::find_if(upgrade.scene.world.world.facilities.begin(),
@@ -452,6 +890,20 @@ int check_startup_world_restore_contracts(
         if (domain == 2) damaged.facility_catalog_page_parents[id] = id;
         expect(damaged, false, "catalogue payload attached to valid wrong page kind");
     }
+    return checks;
+}
+int check_domain_restore(
+    const ark::simulation::StartupWorldRuntimeState &baseline) {
+    namespace p = ark::simulation;
+    namespace r = ark::simulation::rules;
+    int checks{};
+    const auto expect = [&](const p::StartupWorldRuntimeState &state, bool valid,
+                            const char *scenario) {
+        std::string reason;
+        ++checks;
+        if (p::persistence_detail::validate_restored_state(state, reason) != valid)
+            throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
+    };
     {
         auto damaged = baseline;
         damaged.scripts.pending_completion = 1;
@@ -809,5 +1261,25 @@ int check_startup_world_restore_contracts(
         reject(retired, "retired magic list map", [&](auto &v) { v.magic_pot_page_lists[stale] = {}; });
         reject(retired, "retired magic parent map", [&](auto &v) { v.magic_pot_page_parents[stale] = root; });
     }
+    return checks;
+}
+} // namespace
+
+int check_startup_world_restore_contracts(
+    const ark::simulation::StartupWorldRuntimeState &baseline) {
+    namespace p = ark::simulation;
+    namespace r = ark::simulation::rules;
+    int checks{};
+    const auto expect = [&](const p::StartupWorldRuntimeState &state, bool valid,
+                            const char *scenario) {
+        std::string reason;
+        ++checks;
+        if (p::persistence_detail::validate_restored_state(state, reason) != valid)
+            throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
+    };
+    expect(baseline, true, "natural baseline");
+    checks += check_navigation_restore(baseline);
+    checks += check_information_restore(baseline);
+    checks += check_domain_restore(baseline);
     return checks;
 }

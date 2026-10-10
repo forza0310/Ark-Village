@@ -1,5 +1,6 @@
 #include "world_session_test_support.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace ark::test::world_session {
@@ -78,21 +79,73 @@ void building_command_transactions() {
     using Outcome = app::WorldCommandOutcome;
     auto state = initial(true);
     app::WorldSession session(state);
+    const auto blocked_open = input_frame(session, session.open_main_menu());
+    check(!blocked_open->failed && !blocked_open->main_menu_open &&
+              input_result(*blocked_open, blocked_open->last_command_serial).outcome ==
+                  Outcome::rejected,
+          "Paused framework refuses the real main menu without resuming or creating raw3");
+    same_world(state, *blocked_open->state);
+    const auto legacy_menu = input_frame(session, session.open_menu_build());
+    check(!legacy_menu->failed && !legacy_menu->main_menu_open &&
+              input_result(*legacy_menu, legacy_menu->last_command_serial).outcome ==
+                  Outcome::rejected,
+          "Retired Construction shortcut cannot bypass paused source navigation");
+    same_world(state, *legacy_menu->state);
+    session.set_paused(false);
     input_frame(session, session.open_main_menu());
-    const auto blocked = input_frame(session, session.open_menu_build());
+    const auto main = menu_ready(session, 3);
+    check(!main->failed && task_top(*main->state).legacy_page == 3,
+          "Construction input waits for the actual initialized main menu");
+    const auto paused_menu = input_frame(session, session.set_paused(true));
+    sim::StartupWorldMenuInput confirm;
+    confirm.confirm = true; // The actual initial raw3 selection is Construction/tag0.
+    const auto blocked = input_frame(session, session.act_menu(task_top(*main->state).id, confirm));
     check(!blocked->failed && blocked->main_menu_open &&
               input_result(*blocked, blocked->last_command_serial).outcome == Outcome::rejected,
-          "Paused Construction menu selection preserves overlay and explicit pause");
+          "Paused Construction confirmation preserves the real menu and explicit pause");
+    same_world(*paused_menu->state, *blocked->state);
     session.set_paused(false);
-    const auto opened = session.open_menu_build();
+    const auto first_directory = menu_tag(session, 3, 0);
+    const auto first_page = std::find_if(
+        first_directory->state->scripts.pages.begin(), first_directory->state->scripts.pages.end(),
+        [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 21; });
+    const auto &tutorial = task_top(*first_directory->state);
+    check(!first_directory->failed && first_page != first_directory->state->scripts.pages.end() &&
+              tutorial.kind == rules::WorldScriptPageKind::dialogue &&
+              tutorial.source_record == 91 && tutorial.id < first_page->id &&
+              event_count(*first_directory->state, 114) == 1,
+          "First Construction creates tutorial91 before21; retiring menus exposes the dialogue "
+          "without deleting21");
+    const auto tutorial_closed = session.ack_page(tutorial.id);
+    const auto after_tutorial = input_frame(session, tutorial_closed);
+    check(!after_tutorial->failed && task_top(*after_tutorial->state).legacy_page == 21 &&
+              task_top(*after_tutorial->state).id == first_page->id,
+          "Confirming actual first-build dialogue reveals the original construction directory");
+    const auto cancelled_directory =
+        input_frame(session, session.cancel_build_menu(first_page->id));
+    check(
+        !cancelled_directory->failed &&
+            task_top(*cancelled_directory->state).kind == rules::WorldScriptPageKind::scene &&
+            input_result(*cancelled_directory, cancelled_directory->last_command_serial).outcome ==
+                Outcome::applied,
+        "Closing21 after its tutorial returns to the existing source scene");
+    const auto reopened = session.open_main_menu();
+    const auto read_main = menu_ready(session, 3);
+    check(!read_main->failed && input_result(*read_main, reopened).outcome == Outcome::applied &&
+              event_count(*read_main->state, 114) == 1,
+          "Tutorial and directory retirement precede reopening raw3 without repeating114");
+    const auto chosen = menu_tag(session, 3, 0);
+    const auto opened = chosen->last_command_serial;
     const auto page_frame = input_frame(session, session.set_paused(true));
     const auto page = task_top(*page_frame->state).id;
-    check(!page_frame->failed && !page_frame->main_menu_open &&
-              task_top(*page_frame->state).legacy_page == 21 &&
-              input_result(*page_frame, opened).outcome == Outcome::applied &&
-              page_frame->state->scene.world.world.ai.accounting.funds() ==
-                  state.scene.world.world.ai.accounting.funds(),
-          "Construction source directory replaces menu atomically without charge or world work");
+    check(
+        !page_frame->failed && !page_frame->main_menu_open &&
+            task_top(*page_frame->state).legacy_page == 21 &&
+            input_result(*page_frame, opened).outcome == Outcome::applied &&
+            event_count(*page_frame->state, 114) == 1 &&
+            page_frame->state->scene.world.world.ai.accounting.funds() ==
+                state.scene.world.world.ai.accounting.funds(),
+        "Construction source directory retires real menus atomically without charge or world work");
     session.set_paused(false);
     const auto selected = session.select_build_menu(page, 28);
     const auto stale_page = session.select_build_menu(page, 30);

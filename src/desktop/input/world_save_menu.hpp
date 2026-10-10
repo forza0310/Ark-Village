@@ -1,8 +1,8 @@
 #pragma once
 
 // Desktop-only slot selection/confirmation. The worker owns file I/O and the world freeze.
-#include "ark/app/session/world_session.hpp"
 #include "../ui/common/layout.hpp"
+#include "ark/app/session/world_session.hpp"
 
 namespace ark::desktop {
 namespace ui {
@@ -17,6 +17,10 @@ struct WorldSaveMenuLayout {
     std::array<Rectangle, 2> slots{}, save{}, load{};
 };
 WorldSaveMenuLayout world_save_menu_layout(Extent extent);
+Rectangle world_source_save_confirm(Extent extent);
+bool world_source_save_ready(const app::WorldState &state, std::uint64_t page);
+void draw_world_source_save(const app::WorldState &state, std::uint64_t page, Extent extent,
+                            const ui::Skin &skin);
 
 class WorldSaveMenu {
   public:
@@ -33,6 +37,7 @@ class WorldSaveMenu {
     int record_page_{};
     bool load_selected_{};
     bool opened_{};
+    std::optional<std::uint64_t> source_page_;
     Confirmation confirmation_{Confirmation::none};
     std::uint64_t pending_{};
     std::string feedback_;

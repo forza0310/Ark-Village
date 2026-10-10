@@ -863,16 +863,18 @@ prepare_world_script_camera_focus(const WorldScriptState &state,
         return std::all_of(values.begin(), values.end(),
                            [](float value) { return std::isfinite(value); });
     };
-    if (found == state.pages.end() || (found->legacy_page != 56 && found->legacy_page != 57) ||
+    if (found == state.pages.end() || (found->legacy_page != 56 && found->legacy_page != 57 && found->legacy_page != 58) ||
         found->kind != WorldScriptPageKind::raw_page || !finite(input.camera) ||
         !finite(input.previous_camera) || !finite(input.previous_velocity) ||
         (input.first_monster_cached_view && !finite(*input.first_monster_cached_view)) ||
-        (input.first_task_facility_view && !finite(*input.first_task_facility_view)))
+        (input.first_task_facility_view && !finite(*input.first_task_facility_view)) ||
+        (input.selected_task_view && !finite(*input.selected_task_view)))
         return {WorldScriptError::invalid_input, {}};
     WorldScriptCameraFocusCandidate candidate{state, input.camera, input.previous_camera,
                                               input.previous_velocity, true};
     const auto view =
-        found->legacy_page == 56 ? input.first_monster_cached_view : input.first_task_facility_view;
+        found->legacy_page == 56 ? input.first_monster_cached_view :
+        found->legacy_page == 57 ? input.first_task_facility_view : input.selected_task_view;
     if (!view) {
         close_page(candidate.state, input.page);
         return {WorldScriptError::none, std::move(candidate)};

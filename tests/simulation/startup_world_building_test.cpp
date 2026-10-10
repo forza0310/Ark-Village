@@ -7,6 +7,7 @@
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -121,6 +122,111 @@ std::uint64_t source_facility(const StartupWorldRuntimeState &s, int definition)
     check(found != s.scene.world.facility_order.end(),
           "requested source facility exists in actual initial map");
     return *found;
+}
+void construction_notice_cache() {
+    auto s = test_support::world_fixture();
+    check(s.facility_build_present.size() == s.rules->facilities.size() &&
+              std::none_of(s.facility_build_present.begin(), s.facility_build_present.end(),
+                           [](const auto &entry) { return entry.second; }) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "new Owner starts with source false P and three category cache flags");
+    // 只改变条件夹具的开放状态；不修改原表或把条件验证登记为自然解锁。
+    for (auto &[id, presence] : s.facility_presence)
+        presence = 0;
+    const auto notices = s.facility_unlock_notices;
+    const auto shop_read = s.facility_commerce_read;
+    for (const auto sample : {std::array<int, 2>{67, 0}, {31, 1}, {35, 2}}) {
+        for (const int presence : {0, 1, 2}) {
+            s.facility_presence.at(sample[0]) = presence;
+            check(refresh_startup_world_build_notices(s), "three real source categories refresh");
+            std::array<bool, 3> expected{};
+            expected[sample[1]] = presence != 0;
+            check(s.build_category_new == expected && !s.facility_build_present.at(sample[0]),
+                  "unbuilt kind2 and kind3 definitions contribute only when p is nonzero");
+        }
+        s.facility_presence.at(sample[0]) = 0;
+    }
+    for (const int definition : {18, 25, 26, 29}) {
+        s.facility_presence.at(definition) = 2;
+        s.facility_free_builds.at(definition) = 1;
+    }
+    check(refresh_startup_world_build_notices(s) && s.build_category_new == std::array<bool, 3>{} &&
+              s.facility_unlock_notices == notices && s.facility_commerce_read == shop_read,
+          "road and residence with H1 never produce category NEW; kind3 without flag4 is excluded; r/O preserved");
+    const auto inn = source_facility(s, 28);
+    s.facility_presence.at(28) = 2;
+    s.scene.world.world.facilities.at(inn).status = 0;
+    check(refresh_startup_world_build_notices(s) && s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "actual unfinished non-operating inn still contributes P through full instance list");
+    check(retire_startup_world_facility(s, inn) && s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "actual retirement preserves stale cached P and categories until explicit source refresh");
+    check(refresh_startup_world_build_notices(s) && !s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{false, true, false},
+          "later explicit refresh alone discovers retired definition as unbuilt");
+    for (int fault = 0; fault < 10; ++fault) {
+        auto bad = s;
+        auto rules = *s.rules;
+        bad.rules = &rules;
+        const auto id = bad.scene.world.facility_order.front();
+        if (fault == 0) bad.facility_presence.erase(28);
+        if (fault == 1) bad.facility_build_present.erase(28);
+        if (fault == 2) bad.facility_free_builds.erase(28);
+        if (fault == 3) bad.scene.world.facility_order.front() = 999999;
+        if (fault == 4) bad.scene.world.facility_order.back() = id;
+        if (fault == 5) bad.scene.world.world.facilities.at(id).placement.definition_id = 999999;
+        if (fault == 6) bad.scene.world.world.facilities.at(id).placement.instance_id.value = 999999;
+        if (fault == 7) bad.scene.world.facility_order.pop_back();
+        if (fault == 8) {
+            auto &d = *std::find_if(rules.facilities.begin(), rules.facilities.end(),
+                                    [](const auto &v) { return v.id == 28; });
+            d.tab = 3; // 损坏输入拒绝夹具，原表不变。
+        }
+        if (fault == 9) rules.facilities.back().id = rules.facilities.front().id;
+        const auto digest = startup_world_state_digest(bad);
+        check(!refresh_startup_world_build_notices(bad) && startup_world_state_digest(bad) == digest,
+              "missing cache key or source field, bad instance order/reference/category rolls back all cache fields");
+    }
+    auto menu = test_support::world_fixture();
+    menu.facility_unlock_notices.at(28) = true;
+    check(open_startup_world_build_menu(menu) == StartupWorldRuntimeError::none &&
+              !menu.facility_build_present.at(28),
+          "opening raw21 catalogue alone does not invent source cache refresh");
+    const auto page = menu.scripts.pages.back().id;
+    auto broken = menu;
+    broken.facility_build_present.erase(28);
+    const auto digest = startup_world_state_digest(broken);
+    check(select_startup_world_build_menu(broken, page, 28).error ==
+                  StartupWorldRuntimeError::missing_source && startup_world_state_digest(broken) == digest,
+          "raw21 refresh rejection preserves page r build mode cash and random atomically");
+    broken = menu;
+    broken.facility_unlock_notices.erase(28);
+    const auto missing_notice = startup_world_state_digest(broken);
+    check(select_startup_world_build_menu(broken, page, 28).error ==
+                  StartupWorldRuntimeError::missing_source &&
+              startup_world_state_digest(broken) == missing_notice,
+          "raw21 cannot silently recreate a missing selected definition r field");
+    check(select_startup_world_build_menu(menu, page, 28).error == StartupWorldRuntimeError::none &&
+              !menu.facility_unlock_notices.at(28) && menu.facility_build_present.at(28) &&
+              menu.build_category_new == std::array<bool, 3>{false, true, true},
+          "actual raw21 success clears selected r then refreshes category and present caches");
+    auto road = test_support::world_fixture();
+    road.facility_unlock_notices.at(18) = true;
+    auto bad_road = road;
+    bad_road.facility_build_present.erase(28);
+    const auto road_digest = startup_world_state_digest(bad_road);
+    check(begin_startup_world_road(bad_road, 18).error == StartupWorldRuntimeError::missing_source &&
+              startup_world_state_digest(bad_road) == road_digest,
+          "road selection refresh failure cannot clear r or enter placement mode");
+    check(begin_startup_world_road(road, 18).error == StartupWorldRuntimeError::none &&
+              !road.facility_unlock_notices.at(18) && road.facility_build_present.at(28) &&
+              road.build_category_new == std::array<bool, 3>{false, true, true},
+          "road definition selection uses the same original clear r then cache refresh sequence");
+    auto edit = test_support::world_fixture();
+    check(begin_startup_world_edit(edit, false).error == StartupWorldRuntimeError::none &&
+              !edit.facility_build_present.at(28) && edit.build_category_new == std::array<bool, 3>{},
+          "remove sentinel enters edit mode without executing definition selection cache refresh");
 }
 void normal_construction() {
     auto s = test_support::world_fixture();
@@ -1782,12 +1888,13 @@ void commerce_definition_preview() {
             wrong.legacy_page = 83;
             broken.scripts.pages.insert(broken.scripts.pages.end() - 1, wrong);
         }
-        if (fault == 5 || fault == 6)
-            broken.facility_presence.at(d) = fault - 4;
+        if(fault==5)broken.facility_presence.at(d)=1;
+        if(fault==6)broken.facility_presence.at(d)=2;
+        const auto digest=startup_world_state_digest(broken);
         check(
             !prepare_startup_world_runtime(broken).candidate &&
                 act_startup_world_facility_page(broken, page, StartupFacilityPageAction::confirm) !=
-                    StartupWorldRuntimeError::none,
+                    StartupWorldRuntimeError::none && startup_world_state_digest(broken)==digest,
             "damaged initialized definition preview explicitly refuses without map.at exceptions");
     }
     check(act_startup_world_facility_page(s, page, static_cast<StartupFacilityPageAction>(99)) ==
@@ -1811,10 +1918,54 @@ void commerce_definition_preview() {
     check(retired.candidate && !retired.candidate->facility_definition_page_bindings.count(page) &&
               retired.candidate->commerce_page_data.at(parent) == row,
           "definition preview payload retires on real framework update while85 selection survives");
+    s=*retired.candidate;
+    for(const int presence:{1,2}) {
+        auto unavailable=s;unavailable.facility_presence.at(d)=presence;
+        const auto digest=startup_world_state_digest(unavailable);
+        check(open_startup_world_facility_definition(unavailable,d)!=StartupWorldRuntimeError::none &&
+              startup_world_state_digest(unavailable)==digest,"p1/p2 cannot open a stale commerce definition preview");
+    }
+    // 同一真实85→93链只准备30村点；原5000G不注入，领取后真实放置三次。
+    const auto &list=s.commerce_page_lists.at(parent);
+    const auto drink=std::find(list.begin(),list.end(),34);
+    check(drink!=list.end() && s.facility_presence.at(34)==0,"cold drink34 remains an actual p0 commerce choice");
+    s.village_points=30;
+    check(act_startup_world_commerce_page(s,parent,StartupCommerceAction::select,
+              static_cast<int>(drink-list.begin()))==StartupWorldRuntimeError::none &&
+          act_startup_world_commerce_page(s,parent,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none,
+          "actual85 buys previously unavailable drink34 entitlement for30 points");
+    const auto reward=s.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(s) &&
+          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
+          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
+          s.facility_presence.at(34)==2 && s.facility_free_builds.at(34)==1 && s.village_points==0,
+          "actual93 grants H1 and permanent p2 ordinary construction eligibility, not a free-building coupon");
+    const auto funds=s.scene.world.world.ai.accounting.funds();
+    const auto initial_count=s.scene.world.facility_order.size();
+    std::int64_t spent{};
+    for(int placement=0;placement<3;++placement) {
+        const auto quote=startup_world_build_quote(s,34);
+        check(quote && quote->construction_cost>0,
+              "all ordinary placements quote gold even after93 increments H");
+        const auto price=quote->construction_cost;
+        check(begin_startup_world_build(s,34).error==StartupWorldRuntimeError::none,
+              "claimed facility remains in ordinary build catalogue for repeat copies");
+        const auto built=confirm_startup_world_build(s,empty_anchor(s,34),ref::FacilityOrientation::first);
+        spent+=price;
+        check(built.created && s.facility_free_builds.at(34)==1 && s.facility_presence.at(34)==2 &&
+              s.village_points==0 && s.scene.world.facility_order.size()==initial_count+placement+1 &&
+              s.scene.world.world.ai.accounting.funds()==funds-spent &&
+              cancel_startup_world_build(s)==StartupWorldRuntimeError::none,
+              "three real ordinary placements charge gold every time, preserve H1 and never rebuy unlock");
+    }
+    const auto completed=startup_world_state_digest(s);
+    check(act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)!=StartupWorldRuntimeError::none &&
+          startup_world_state_digest(s)==completed,"old93 cannot refund or increment H again after repeated gold construction");
 }
 } // namespace
 int main() {
     try {
+        construction_notice_cache();
         normal_construction();
         ordinary_facility_writeback();
         repeat_blueprint_construction();

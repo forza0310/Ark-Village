@@ -56,7 +56,7 @@ try {
     const original = await fs.readFile(snapshot);
     assert.equal(original.subarray(0, 8).toString('ascii'), 'AVRSAVE1');
     assert.equal(original.readUInt32LE(8), 1, 'Published world container format');
-    assert.equal(original.readUInt32LE(12), 4, 'Published world semantics retires old income histories');
+    assert.equal(original.readUInt32LE(12), 5, 'Published world semantics uses corrected initial facilities and locked blueprints');
     assert.equal(original.readUInt32LE(16), 2, 'Runner consumes replay purpose, not normal saves');
     const originalCertificate = await fs.readFile(snapshot + '.json');
     const candidate = path.join(periodic, 'prefix-420.awr');
@@ -97,7 +97,7 @@ try {
     await fs.writeFile(invalid, corrupted);
     await run(['--scenario', 'natural_expansion', '--load-prefix', invalid, '--save-at', '440'], /整体摘要不符/);
     // Rehash deliberately altered headers so rejection checks semantic identity, not checksum.
-    for (const retired of [1, 2, 3, 5]) {
+    for (const retired of [1, 2, 3, 4, 6]) {
         const body = Buffer.from(original.subarray(0, -64));
         body.writeUInt32LE(retired, 12);
         await fs.writeFile(invalid, Buffer.concat([body, Buffer.from(hash(body), 'ascii')]));

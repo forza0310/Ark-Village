@@ -1,4 +1,5 @@
 #include "ark/simulation/presentation/steam_startup_skin.hpp"
+#include "ark/simulation/presentation/steam_main_menu_skin.hpp"
 #include "ark/assets/sprite.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -26,6 +27,313 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return ark::assets::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+void save_page(Checks &check) {
+    using Role=SteamStartupTextRole;
+    SteamSavePageSkinInput input;
+    for(int stage:{0,1}) {
+        input.stage=stage;
+        // 保存中根本不读取字体测宽，故缺值及未消费的坏值均不影响正文。
+        for(const auto width:std::vector<std::optional<float>>{{},-1.0F,
+                std::numeric_limits<float>::quiet_NaN()}) {
+            input.measured_button_width=width;
+            const auto plan=steam_save_page_skin(input);
+            check(plan && plan->origin==std::array<int,2>{0,0} && plan->draws.size()==3 &&
+                  plan->touches.empty(),"raw14阶段0/1只画正文框，不提前要求了解按钮测宽或注册触摸");
+            check(std::holds_alternative<SteamStartupWindow>(plan->draws[0]) &&
+                  std::holds_alternative<SteamStartupBox>(plan->draws[1]) &&
+                  std::holds_alternative<SteamStartupText>(plan->draws[2]),
+                  "raw14保留窗口、内框、正文的原调用顺序");
+            const auto &window=std::get<SteamStartupWindow>(plan->draws[0]);
+            const auto &box=std::get<SteamStartupBox>(plan->draws[1]);
+            const auto &text=std::get<SteamStartupText>(plan->draws[2]);
+            check(window.width==210 && window.height==110 && window.vertical==0 && window.style==0 &&
+                  window.title==Role::message_title && window.title_value==0 &&
+                  box.left==26 && box.top==90 && box.right==213 && box.bottom==148,
+                  "raw14正式窗口和DrawBox端点不冒充宽高或手动选栏皮肤");
+            check(text.role==Role::message_body && text.rectangle==std::array<double,4>{26,115,187,32} &&
+                  text.anchor==34 && text.rgb==std::array<int,3>{92,51,31} &&
+                  text.line_space==6 && text.font_size==0 && text.placement==SteamStartupTextPlacement::layout,
+                  "raw14正文沿原TextLayout锚点、行距、棕色和当前字号");
+        }
+    }
+    input.stage=2;input.measured_button_width=31.5F;
+    const auto completed=steam_save_page_skin(input);
+    check(completed && completed->draws.size()==5 && completed->touches.size()==1 &&
+          std::holds_alternative<SteamStartupFill>(completed->draws[3]) &&
+          std::holds_alternative<SteamStartupText>(completed->draws[4]),
+          "raw14完成页追加一个高亮和一个了解，不复用raw1双答案或raw20三行");
+    const auto &fill=std::get<SteamStartupFill>(completed->draws[3]);
+    const auto &answer=std::get<SteamStartupText>(completed->draws[4]);
+    const auto outer=steam_startup_window_skin(std::get<SteamStartupWindow>(completed->draws[0]),23);
+    const auto inner=steam_startup_box_skin(std::get<SteamStartupBox>(completed->draws[1]),23);
+    check(outer && inner && parts<StartupSkinDraw>(*outer)[0].offset==std::array<int,2>{15,76} &&
+          parts<StartupSkinRect>(*inner)[0].rect==std::array<int,4>{26,101,187,58},
+          "GameForm原静态VIEW_Y23只移动两种窗框，不能把0条件例图当源默认");
+    check(fill.rectangle==std::array<double,4>{98.25,164,43.5,17} &&
+          fill.rgb==std::array<int,3>{255,153,55} && fill.source_ratio==256 &&
+          answer.role==Role::answer && answer.row==0 &&
+          answer.rectangle==std::array<double,4>{120,167,0,0} && answer.anchor==2 &&
+          answer.rgb==std::array<int,3>{92,51,31} && answer.font_size==0,
+          "实测31.5的单按钮保留float半像素高亮和中心120正文");
+    const auto &touch=completed->touches.front();
+    check(touch.component==3 && touch.value==0x20000 &&
+          touch.rectangle==std::array<int,4>{-1,64,243,217} && !touch.image_draw && touch.option==0,
+          "raw14了解触摸使用原ID3与负数向零截断，不添加全局KEYCLICK或option");
+    input.measured_button_width=0.0F;
+    const auto zero=steam_save_page_skin(input);
+    check(zero && zero->touches.front().rectangle==std::array<int,4>{14,64,212,217},
+          "零宽仍是合法实际测宽，按钮补2且保留触摸额外210");
+    input.width=200;input.height=260;
+    check(steam_save_page_skin(input)->origin==std::array<int,2>{-20,10},
+          "raw14任一维超过240时共同居中，窄维保留负偏移");
+    input.width=200;input.height=200;
+    check(steam_save_page_skin(input)->origin==std::array<int,2>{0,0},
+          "raw14两维均小于240时不自行居中或缩放窗口");
+    for(const auto width:std::vector<std::optional<float>>{{},-1.0F,
+            std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity(),
+            std::numeric_limits<float>::max(),static_cast<float>(std::numeric_limits<int>::max())}) {
+        input.measured_button_width=width;
+        check(!steam_save_page_skin(input),"raw14可见结果页缺测宽或转换越界必须显式拒绝");
+        for(int gate=0;gate<3;++gate) {
+            auto hidden=input;
+            if(gate==0)hidden.on_top=false;
+            if(gate==1)hidden.until_active_hide=true;
+            if(gate==2)hidden.wait=1;
+            const auto plan=steam_save_page_skin(hidden);
+            check(plan && plan->draws.empty() && plan->touches.empty(),
+                  "raw14非顶、隐藏或等待先阻挡整块绘制，未消费的按钮测宽不额外拒绝");
+        }
+    }
+    for(int fault=0;fault<5;++fault) {
+        auto bad=SteamSavePageSkinInput{};
+        if(fault==0)bad.stage=-1;
+        if(fault==1)bad.stage=3;
+        if(fault==2)bad.width=0;
+        if(fault==3)bad.height=-1;
+        if(fault==4)bad.wait=-1;
+        check(!steam_save_page_skin(bad),"raw14非法阶段、维度和等待值拒绝");
+        bad.on_top=false;
+        check(!steam_save_page_skin(bad),"隐藏资格不能修补非法原始几何或阶段");
+    }
+}
+void main_menu_notices(Checks &check) {
+    // 仅准备实际消费的Owner字段；故意缺少短路后的数据，防止查询扩大为全世界校验。
+    StartupWorldRules rules;
+    StartupWorldRuntimeState state;
+    check(!steam_main_menu_notices(state),"NEW查询缺规则源显式拒绝");
+    state.rules=&rules;
+    state.build_category_new={false,true,false};
+    const auto initial=steam_main_menu_notices(state);
+    check(initial && initial->construction && !initial->quest && !initial->equipment &&
+          !initial->activities && !initial->adventurers,"建设NEW直接消费原缓存，不重建建设列表");
+    StartupWorldEquipment armour,weapon,accessory;
+    armour.shop.kind=2;armour.shop.id=4;armour.shop.type=2;
+    weapon.shop.kind=1;weapon.shop.id=9;
+    accessory.shop.kind=3;accessory.shop.id=2;
+    rules.equipment={armour,accessory,weapon}; // 混排不应改变原武器→全防具→饰品查询次序。
+    state.task_order={1,2};state.next_task_identity=3;
+    state.tasks[1].identity=1;state.tasks[1].newly_available=true;
+    auto notice=steam_main_menu_notices(state);
+    check(notice && notice->quest && !notice->equipment,
+          "首任务NEW短路后续缺任务和全装备来源");
+    state.active_task=1;
+    check(!steam_main_menu_notices(state),"已有选中任务时继续读装备，缺实际武器源拒绝");
+    state.catalog[{1,9}].status=-1;state.catalog[{1,9}].newly_unlocked=true;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->quest && notice->selected_quest && notice->equipment,
+          "装备p非零而非正数，零flags/库存仍有GET；首武器命中不读防具饰品");
+    SteamMainMenuSkinInput input;input.frame=3;input.selection=1;input.notices=notice;
+    const auto plan=steam_main_menu_skin(input,{});
+    check(plan.has_value(),"Owner通知可接稳定raw3绘制");
+    const auto images=parts<SteamMainMenuImage>(*plan);
+    check(std::any_of(images.begin(),images.end(),[](const auto &part){return part.image==148&&part.position[1]==44;}),
+          "Owner选中任务屏蔽NEW后实际绘制装备GET");
+    state.tasks[1].newly_available=false;
+    check(!steam_main_menu_notices(state),"未命中首任务时后续悬空引用拒绝");
+    state.task_order.clear();state.active_task.reset();state.catalog[{1,9}].status=0;
+    check(!steam_main_menu_notices(state),"武器p0不命中后检查防具实际来源");
+    state.catalog[{2,4}].status=1;state.catalog[{2,4}].newly_unlocked=true;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->equipment,"全防具查询不复用Steam装备页flags0排除");
+    state.catalog[{2,4}].newly_unlocked=false;
+    check(!steam_main_menu_notices(state),"防具无NEW后读取饰品，缺源拒绝");
+    state.catalog[{3,2}].status=2;state.catalog[{3,2}].newly_unlocked=true;
+    check(steam_main_menu_notices(state)->equipment,"饰品p2仍命中GET");
+
+    StartupWorldItem item;item.identity=5;rules.items={item};
+    StartupDefinition facility;facility.id=7;facility.unlock_rank=0;rules.facilities={facility};
+    StartupWorldActivity activity;activity.identity=3;rules.activities={activity};
+    state.scripts.activities[3].status=0;
+    check(steam_main_menu_notices(state).has_value(),"商会flag16关不读取商会源，活动status0不读flags/count");
+    state.scripts.user_flags=16;
+    check(!steam_main_menu_notices(state),"商会开启后缺库存来源拒绝");
+    state.shop_item_stock[5].quantity=0;state.facility_presence[7]=2;
+    check(steam_main_menu_notices(state).has_value(),"商品零库存与设施p2跳过各自已阅字段");
+    state.shop_item_stock[5].quantity=1;
+    check(!steam_main_menu_notices(state),"正库存实际需要已阅来源");
+    state.item_commerce_read[5]=false;state.scripts.activities.clear();state.facility_presence.clear();
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->commerce_items && !notice->commerce_facilities && !notice->activities,
+          "商会首商品命中跳过设施与活动缺源");
+    state.item_commerce_read[5]=true;
+    check(!steam_main_menu_notices(state),"商品已阅后需要设施presence来源");
+    state.facility_presence[7]=1;
+    check(!steam_main_menu_notices(state),"原设施p1仍进入商会NEW已阅检查");
+    state.facility_commerce_read[7]=false;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->commerce_facilities && !notice->activities,
+          "设施NEW使用p不等于2而非维护商会p0策略，命中后不读活动");
+    state.scripts.activities[3].status=0;state.facility_commerce_read.clear();
+    for(int required:{-1,1}) {
+        rules.facilities[0].unlock_rank=required;
+        check(steam_main_menu_notices(state).has_value(),"未开放等级或高于当前星级不读取设施已阅");
+    }
+    rules.facilities[0].unlock_rank=0;state.facility_presence[7]=2;
+    state.scripts.activities[3].status=1;state.scripts.activities[3].pending_notice=true;
+    check(!steam_main_menu_notices(state),"status1活动缺flags拒绝");
+    state.activity_flags[3]=0;
+    check(steam_main_menu_notices(state)->activities,"未设bit2不读count，NEW不检查点数季度或效果支持");
+    state.activity_flags[3]=6;
+    check(!steam_main_menu_notices(state),"活动bit2计数在bit4前读取，不能先用bit4跳过缺count");
+    state.activity_counts[3]=0;
+    check(!steam_main_menu_notices(state)->activities,"活动bit4屏蔽NEW");
+    state.activity_flags[3]=2;state.activity_counts[3]=1;
+    check(!steam_main_menu_notices(state)->activities,"限次活动已举办屏蔽NEW");
+    state.activity_counts[3]=-1;
+    check(steam_main_menu_notices(state)->activities,"原计数小于等于0判断不改成等于0");
+    StartupWorldActivity later_activity;later_activity.identity=8;rules.activities.push_back(later_activity);
+    check(steam_main_menu_notices(state)->activities,"首活动NEW跳过后续缺活动状态");
+
+    StartupWorldHuman human;human.identity=4;rules.humans={human};
+    check(!steam_main_menu_notices(state),"人物目录缺presence拒绝");
+    state.human_presence[4]=0;
+    check(!steam_main_menu_notices(state)->adventurers,"人物p0不读取脚本通知");
+    state.human_presence[4]=-1;
+    check(!steam_main_menu_notices(state),"人物p非零实际消费脚本通知");
+    state.scripts.humans[4].pending_notice=true;
+    StartupWorldHuman later_human;later_human.identity=9;rules.humans.push_back(later_human);
+    check(steam_main_menu_notices(state)->adventurers,"首人物NEW跳过后续缺presence来源");
+    for(unsigned flags:{0U,1U,2U,3U}) {
+        state.scripts.user_flags=flags;
+        check(steam_main_menu_notices(state)->magic_pot==(flags==3U),"壶NEW只在flag1可见时消费flag2");
+    }
+    check(state.build_category_new==std::array<bool,3>{false,true,false} &&
+          state.catalog.at({3,2}).newly_unlocked && state.item_commerce_read.at(5) &&
+          state.scripts.activities.at(3).pending_notice && state.scripts.humans.at(4).pending_notice &&
+          state.scripts.user_flags==3U && state.activity_counts.at(3)==-1 && state.task_order.empty(),
+          "查询不刷新缓存、不清NEW/已阅、不改计数或任务目录");
+}
+void main_menu(Checks &check,const std::filesystem::path &root) {
+    SteamMainMenuSkinInput input;input.selection=1;
+    SteamMainMenuSkinOptions options;
+    constexpr std::array<int,4> widths{0,22,45,68},heights{0,9,19,29},icon_sizes{0,5,11,18};
+    for(int frame=0;frame<4;++frame) {
+        input.frame=frame;
+        input.notices=frame==3?std::optional<SteamMainMenuNotices>{SteamMainMenuNotices{}}:std::nullopt;
+        const auto plan=steam_main_menu_skin(input,options);
+        check(plan && plan->touches.size()==5 && plan->origin==options.origin,"主菜单五项包含全尺寸frame0触摸");
+        const auto images=parts<SteamMainMenuImage>(*plan);
+        const auto labels=parts<SteamMainMenuText>(*plan);
+        std::vector<SteamMainMenuImage> backgrounds,icons;
+        for(const auto &part:images) {
+            if(part.image==25)backgrounds.push_back(part);
+            if(part.image==168)icons.push_back(part);
+        }
+        check(images.size()==(frame==0?0U:frame==3?11U:10U) && labels.size()==(frame==3?5U:0U),
+              "主菜单原展开先缩源底图/图标，文字与手形等待3");
+        constexpr std::array<int,5> tags{0,1,2,5,6};
+        for(int row=0;row<5;++row) {
+            const auto &touch=plan->touches[row];
+            check(touch.component==8 && touch.value==(0x20000|row) && touch.option==0 &&
+                  touch.rectangle==std::array<int,4>{0,28*row,91,28},"ID8原整行与tag4不入目录");
+            if(frame)check(backgrounds.at(row).crop==std::array<int,4>{0,row==1?0:29,widths[frame],heights[frame]} &&
+                  icons.at(row).crop==std::array<int,4>{18*tags[row],0,icon_sizes[frame],icon_sizes[frame]},
+                  "主菜单68宽底图与18格图标使用已核源裁片，不按91宽拉伸");
+            if(frame==3)check(labels[row].tag==tags[row] && labels[row].position==std::array<int,2>{28,28*row+9} &&
+                  labels[row].rgb==(row==1?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220}),
+                  "主菜单文字取MENU_STR真实tag与选中颜色");
+        }
+    }
+    input.magic_unlocked=true;input.selection=3;input.magic_period=StartupMagicPotMenuInformation{2,3};
+    input.notices=SteamMainMenuNotices{true,true,false,true,true,true,true,true,true,true};
+    const auto full=*steam_main_menu_skin(input,options);
+    check(full.touches.size()==6 && parts<SteamMainMenuText>(full)[3].tag==3,
+          "flag1只在2与5之间插开发，仍无tag4");
+    const auto period=std::find_if(full.draws.begin(),full.draws.end(),[](const auto &part) {
+        const auto *image=std::get_if<SteamMainMenuImage>(&part);
+        return image&&image->package==SteamMainMenuPackage::common2;
+    });
+    check(period!=full.draws.end() && std::get<SteamMainMenuImage>(*period).position==std::array<int,2>{69,88} &&
+          std::get<SteamFacilityNumber>(*(period+1)).asset==SteamFacilityAsset::number08 &&
+          std::get<SteamFacilityNumber>(*(period+1)).value==2 &&
+          std::get<SteamFacilityNumber>(*(period+1)).position==std::array<int,2>{104,94} &&
+          std::get<SteamMainMenuImage>(*(period+2)).crop==std::array<int,4>{47,0,7,10} &&
+          std::get<SteamFacilityNumber>(*(period+3)).value==3 &&
+          std::get<SteamMainMenuImage>(*(period+4)).sprite==22,
+          "NEW后期间底图/SEB15数字/斜线/待件分母/手形保持原序");
+    // 原冒险NEW优先；选中任务会屏蔽任务NEW，但不会屏蔽装备GET。
+    for(const auto scenario:std::array<std::array<int,4>,5>{{{1,0,1,147},{1,1,1,148},{0,0,1,148},{1,1,0,-1},{0,0,0,-1}}}) {
+        input.notices->quest=scenario[0];input.notices->selected_quest=scenario[1];input.notices->equipment=scenario[2];
+        const auto plan=*steam_main_menu_skin(input,options);
+        const auto images=parts<SteamMainMenuImage>(plan);
+        const auto mark=std::find_if(images.begin(),images.end(),[](const auto &p){return (p.image==147||p.image==148)&&p.position[1]==44;});
+        check(scenario[3]<0?mark==images.end():mark!=images.end()&&mark->image==scenario[3],
+              "任务NEW和装备GET按源优先级，不能两个标签一起画");
+    }
+    input.notices->quest=false;input.notices->equipment=true;
+    for(const auto scenario:std::array<std::array<int,4>,4>{{{0,1,0,0},{0,1,1,1},{1,1,0,1},{1,0,0,0}}}) {
+        input.notices->commerce_open=scenario[0];input.notices->commerce_items=scenario[1];
+        input.notices->commerce_facilities=false;input.notices->activities=scenario[2];
+        const auto images=parts<SteamMainMenuImage>(*steam_main_menu_skin(input,options));
+        const bool shown=std::any_of(images.begin(),images.end(),[](const auto &p){return p.image==147&&p.position[1]==72;});
+        check(shown==(scenario[3]!=0),"村办活动NEW独立于商会flag16，未阅商会须同时开放");
+    }
+    for(const auto language:std::array<std::array<int,6>,4>{{{0,0,91,28,44,69},{0,1,91,26,80,97},
+                                                         {1,0,63,28,55,79},{1,1,63,26,55,79}}}) {
+        options.japanese=language[0];options.english=language[1];
+        const auto plan=*steam_main_menu_skin(input,options);const auto images=parts<SteamMainMenuImage>(plan);
+        check(plan.touches[0].rectangle->at(2)==language[2] && parts<SteamMainMenuText>(plan)[0].position[0]==language[3] &&
+              std::find_if(images.begin(),images.end(),[&](const auto &p){return p.image==148&&p.position[0]==language[4];})!=images.end() &&
+              std::find_if(images.begin(),images.end(),[&](const auto &p){return p.package==SteamMainMenuPackage::common2&&p.position[0]==language[5];})!=images.end(),
+              "JP覆盖NEW/期间附加偏移，En文字减2仍独立，不使用raw9测宽规则");
+    }
+    options={};options.origin={200,200};options.safe_left=10;
+    const auto overflow=*steam_main_menu_skin(input,options);
+    check(overflow.touches[0].rectangle==std::array<int,4>{-51,-133,91,28},"六行右底修正覆盖safe-left，允许负局部原点");
+    options={};options.on_top=false;
+    check(steam_main_menu_skin(input,options)->touches.size()==6,"touch资格是栈顶raw3，不与手形IsTopForm合并");
+    const auto covered_images=parts<SteamMainMenuImage>(*steam_main_menu_skin(input,options));
+    check(std::none_of(covered_images.begin(),covered_images.end(),[](const auto &p){return p.image==70;}),
+          "不是本页栈顶不绘制手形");
+    options.on_top=true;options.top_is_main_menu=false;
+    check(steam_main_menu_skin(input,options)->touches.empty(),"非raw3栈顶不登记ID8，手形资格独立");
+    options.covered_by_nonmenu_subform=true;input.notices.reset();input.magic_period.reset();
+    const auto hidden=steam_main_menu_skin(input,options);
+    check(hidden&&hidden->draws.empty()&&hidden->touches.empty(),"非菜单覆盖不读取未绘制NEW/期间源");
+    options={};
+    check(!steam_main_menu_skin(input,options),"可见稳定菜单缺NEW或期间查询结果显式拒绝");
+    input.notices=SteamMainMenuNotices{};input.magic_period=StartupMagicPotMenuInformation{4,3};
+    check(!steam_main_menu_skin(input,options),"期间超待件分母拒绝");
+    input.magic_period=StartupMagicPotMenuInformation{0,3};input.selection=6;
+    check(!steam_main_menu_skin(input,options),"六行选择越界拒绝，不靠数组异常");
+    input.selection=0;options.safe_left=std::numeric_limits<int>::max();
+    check(!steam_main_menu_skin(input,options),"图元锚点溢出拒绝");
+    check(steam_main_menu_child_position({0,25},3,false,false)==std::array<int,2>{68,109} &&
+          !steam_main_menu_child_position({0,25},3,true,false) &&
+          steam_main_menu_child_position({0,25},4,true,true)==std::array<int,2>{96,137} &&
+          !steam_main_menu_child_position({std::numeric_limits<int>::max(),25},1,false,false),
+          "子页定位用父存储位置/行号/En，不按tag迁移，不取绘制safe-left");
+    const auto source=sprite(root/"common/menu.seb");
+    check(source.layers[0].parts[0].width==68 && source.layers[0].parts[1].source_y==29,
+          "主菜单底图独立SEB源oracle");
+    const auto icons=sprite(root/"common/wnd_menuIcon.seb");
+    check(icons.frame_count==7 && icons.layers[0].parts[6].image_index==168 &&
+          icons.layers[0].parts[6].source_x==108 && icons.layers[0].parts[6].width==18,
+          "七标签图集独立源oracle不等于七项均可选");
+    const auto path=steam_main_menu_image(SteamMainMenuPackage::common2,0);
+    check(path=="steam-common/mpot_event.png" && std::filesystem::file_size(root/"steam_common"/std::filesystem::path(*path).filename())==744 &&
+          !steam_main_menu_image(SteamMainMenuPackage::common2,168),"Steam期间差异原图独立出版，组域不能混用");
 }
 }
 // 挂既有visuals套件：局部合同与源资源oracle，不建立新target或窗口状态机。
@@ -260,5 +568,8 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     check(icon && icon->image==177 && icon->sprite==-1 && icon->language_variant,
           "saveload177保留语言变体资格，不能由本函数猜中文fallback");
     check(!steam_startup_resource(static_cast<Asset>(999)),"未知资源枚举拒绝");
+    main_menu_notices(check);
+    main_menu(check,root);
+    save_page(check);
     return check.count;
 }

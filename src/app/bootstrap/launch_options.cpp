@@ -45,6 +45,9 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
                 page != "world-information" && page != "world-information-adventurers" &&
                 page != "world-information-income" && page != "world-information-items" &&
                 page != "world-information-equipment" && page != "world-built" &&
+                page != "world-information-town" && page != "world-information-facilities" &&
+                page != "world-source-adventure" && page != "world-source-system" &&
+                page != "world-source-gifts" && page != "world-menu-six" &&
                 page != "world-award-granted" && page != "world-task-added" &&
                 page != "world-level-up" && page != "world-month-income" &&
                 page != "world-month-defeats" && page != "world-task-victory" &&

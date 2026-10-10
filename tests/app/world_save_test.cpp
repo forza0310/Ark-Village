@@ -1,6 +1,8 @@
 // Byte/file isolation is a separate responsibility from rule and worker transport tests.
-#include "ark/app/save/world_save_files.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/app/save/world_save_files.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -139,6 +141,40 @@ void construction_progress_roundtrip() {
               loaded.state->facility_definitions.at(0).popularity_reward == 7,
           "Cold load retains consumed construction reward instead of rebuilding its initial N");
 }
+void task_notice_and_menu_cache_roundtrip() {
+    auto state = initial();
+    namespace sim = ark::simulation;
+    const auto task =
+        sim::rules::prepare_world_task_creation(sim::startup_world_runtime_factory(state), 0);
+    check(task.candidate && task.candidate->created_task &&
+              sim::write_startup_world_runtime_factory(state, task.candidate->state),
+          "Create real task for durable read-state fixture");
+    const auto id = *task.candidate->created_task;
+    state.tasks.at(id).newly_available = false;
+    state.main_menu_selection = 3;
+    state.main_menu_position = {{11, 42}};
+    state.build_category_new = {{true, true, true}};
+    for (auto &entry : state.facility_build_present)
+        entry.second = true;
+    const auto saved = app::capture_world_save(state);
+    check(saved.image.has_value(), saved.message.c_str());
+    auto loaded = app::decode_world_save(saved.image->bytes);
+    check(loaded.state.has_value(), loaded.message.c_str());
+    std::string reason;
+    check(app::prepare_world_save_candidate(*loaded.state, initial(), reason) ==
+              app::WorldSaveError::none,
+          reason.c_str());
+    check(!loaded.state->tasks.at(id).newly_available && loaded.state->main_menu_selection == 0 &&
+              loaded.state->main_menu_position == std::array<int, 2>{0, 25} &&
+              loaded.state->menu_page_data.empty() && loaded.state->menu_page_positions.empty() &&
+              loaded.state->build_category_new == std::array<bool, 3>{false, false, false},
+          "schema5 retains task read-state but resets navigation and construction NEW caches");
+    check(loaded.state->facility_build_present.size() == state.facility_build_present.size() &&
+              std::none_of(loaded.state->facility_build_present.begin(),
+                           loaded.state->facility_build_present.end(),
+                           [](const auto &entry) { return entry.second; }),
+          "cold construction cache contains every definition with original false startup state");
+}
 void corrupt_files() {
     auto captured = app::capture_world_save(initial());
     check(captured.image.has_value(), captured.message.c_str());
@@ -220,6 +256,7 @@ int main() {
     codec_and_policy();
     profile_roundtrip();
     construction_progress_roundtrip();
+    task_notice_and_menu_cache_roundtrip();
     corrupt_files();
     slots_and_failure();
     run_restore_tests();

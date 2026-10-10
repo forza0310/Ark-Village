@@ -13,8 +13,8 @@ namespace {
 // Explicit published Steam replacements. A missing replacement is an asset error,
 // not permission to silently fall back to the APK image with the same index.
 bool steam_common_override(int image) {
-    return image == 31 || image == 37 || image == 85 || image == 88 || image == 103 ||
-           image == 105 || image == 128;
+    return image == 31 || image == 37 || image == 84 || image == 85 || image == 88 || image == 103 ||
+           image == 105 || image == 109 || image == 128 || image == 151;
 }
 } // namespace
 std::optional<SpriteBlit> clip_sprite_blit(SpriteBlit blit, Rectangle clip) {
@@ -93,7 +93,10 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                                 binding == Binding::steam_common
                             ? "common"
                             : "image";
-    const auto relative = std::filesystem::path(group) / sprite;
+    // Steam status SEB17 has its own crop; same filename does not imply APK geometry.
+    const auto relative = std::filesystem::path(
+                              binding == Binding::steam_common && sprite == "menuRT00.seb"
+                                  ? "steam_common" : group) / sprite;
     const auto &sprite_data = definition(relative);
     if (binding == Binding::map) {
         frame = map_frame_index(sprite, sprite_data, frame);

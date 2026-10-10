@@ -28,6 +28,13 @@ enum class StartupFacilityCatalogAction;
 enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
 struct StartupInformationInput;
+struct StartupWorldMenuInput;
+// 原菜单Init冻结条目；已初始化页的缺字段不能由默认值补齐。
+struct StartupWorldMenuPageData {
+    std::vector<int> tags;
+    int selection{};
+    std::optional<std::uint64_t> parent;
+};
 struct StartupWorldHumanCalendar {
     int absent_months{}; // e.aq：月度累计/到访排序优先值，页59确认可置10，不是单纯缺席月数。
     std::array<int, 3> yearly_totals{}; // B2在调用点投影world.human_spending。
@@ -53,10 +60,11 @@ struct StartupWorldFocusActor {
     }();
     StartupWorldActorMetadata metadata{0, 3, 0, {}}; // n.J建W后仅f()写ad3。
 };
-// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID。
+// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID，raw39单独保存实例ID。
 struct StartupInformationPageData {
     std::vector<std::vector<int>> lists;
     int selection{}, first_visible{};
+    std::vector<std::uint64_t> facilities{}; // 39原X；不得把稳定实例ID截成定义int。
 };
 // raw60来源资格与可选实际W绑定；来源不是父页ID，也不以定义ID冒充实例ID。
 struct StartupHumanDetailContext {
@@ -201,6 +209,11 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
     std::map<std::uint64_t, StartupInformationPageData> information_page_data;
+    // 缓存raw3行号/存储位置跨关闭保留；重新入栈使用新维护页ID，不复用退休身份。
+    int main_menu_selection{};
+    std::array<int, 2> main_menu_position{{0, 25}};
+    std::map<std::uint64_t, StartupWorldMenuPageData> menu_page_data; // raw3/4/7/10。
+    std::map<std::uint64_t, std::array<int, 2>> menu_page_positions; // 另保留实际raw3→9位置。
     std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X快照。
     std::map<std::uint64_t, ref::TaskRecruitmentAnimation>
         task_recruitment_pages;                                 // raw24 X/Y/ap/aq/ar/as。
@@ -260,6 +273,8 @@ struct StartupWorldRuntimeState {
     std::map<int, int> facility_free_builds;     // br.H真实新对象0；旧接口名，原h()不因此免造价。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
     std::map<int, bool> facility_unlock_notices; // br.r按当前定义维护。
+    std::map<int, bool> facility_build_present; // br.P：上次w()刷新的已建定义，不持实例引用。
+    std::array<bool, 3> build_category_new{}; // static aY：原刷新时点缓存，不能每帧重算。
     bool confirm_input{};                        // 桌面输入一次性快照；不是自动确认。
     bool cancel_input{};
     bool menu_input{};
@@ -297,6 +312,9 @@ bool write_startup_world_runtime_routes(StartupWorldRuntimeState &state,
 ref::WorldScriptState startup_world_runtime_scripts(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_scripts(StartupWorldRuntimeState &state,
                                          const ref::WorldScriptState &scripts);
+// 原ChangeCurrentForm(game,false)：仅在私有候选中恢复唯一主场景并退休其它页。
+// 场景模式/镜头引用由具体命令随后设置；载荷由统一Finish释放，不在此提前删引用。
+bool activate_startup_world_main_page(StartupWorldRuntimeState &candidate);
 ref::DungeonFinishState startup_world_runtime_finish(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_finish(StartupWorldRuntimeState &state,
                                         const ref::DungeonFinishState &finish);
@@ -404,6 +422,8 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError open_village_activities();
     StartupWorldRuntimeError open_commerce();
     StartupWorldRuntimeError open_information_menu();
+    StartupWorldRuntimeError open_main_menu();
+    StartupWorldRuntimeError input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input);
     StartupWorldRuntimeError input_information_page(std::uint64_t page,
                                                      const StartupInformationInput &input);
     StartupWorldRuntimeError open_magic_pot(StartupMagicPotEntry entry);

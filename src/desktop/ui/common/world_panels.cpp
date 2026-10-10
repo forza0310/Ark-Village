@@ -1,12 +1,12 @@
 // S004/S005/S009 supply visual composition; STARTUP supplies page0 and its secretary binding.
 // Responsive panel positioning is a desktop adaptation, not a fixed-APK touch-coordinate claim.
 #include "world_panels.hpp"
-#include "ark/presentation/world_rank.hpp"
-#include "ark/simulation/village/rules/world_notices.hpp"
-#include "ark/simulation/presentation/startup_world_visuals.hpp"
-#include "ark/presentation/script_text.hpp"
-#include "skin.hpp"
 #include "../system/world_menu.hpp"
+#include "ark/presentation/script_text.hpp"
+#include "ark/presentation/world_rank.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/village/rules/world_notices.hpp"
+#include "skin.hpp"
 #include "world_reports.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -14,8 +14,8 @@
 namespace ark::desktop::ui {
 bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
     return !page || (page->legacy_page != 21 && page->legacy_page != 74 &&
-                    page->legacy_page != 9 &&
-                    (page->legacy_page < 35 || page->legacy_page > 38));
+                     !world_source_menu_page(*page) && page->legacy_page != 9 &&
+                     page->legacy_page != 14 && (page->legacy_page < 34 || page->legacy_page > 40));
 }
 std::string world_page_body(const simulation::StartupWorldRuntimeState &s,
                             const simulation::rules::WorldScriptPage &page, int paragraph) {
@@ -53,8 +53,9 @@ void draw_world_hud(const simulation::StartupWorldRuntimeState &s, const Layout 
     skin.tile("btmbar.png", {116, 1, 4, 20}, {0, h - 21, w, 20});
     // Information footnotes occupy the same area as the village sign at the
     // minimum window size; those modals own the footer just like facility details.
-    if (!page || (page->legacy_page != 74 && page->legacy_page != 9 &&
-                  (page->legacy_page < 35 || page->legacy_page > 38)))
+    if (!page ||
+        (page->legacy_page != 74 && page->legacy_page != 9 && !world_source_menu_page(*page) &&
+         page->legacy_page != 14 && (page->legacy_page < 34 || page->legacy_page > 40)))
         draw_world_popularity(s.popularity, layout, skin);
     // Catalogue/details own the footer; the same predicate rejects their hidden mouse buttons.
     if (!world_hud_buttons_visible(page))

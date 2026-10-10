@@ -1,6 +1,7 @@
 // Bounded source inspections and capture checks, separated from ordinary player input.
 #include "world_inspection.hpp"
 #include "ark/app/session/world_report.hpp"
+#include "ark/simulation/world/startup_world_save.hpp"
 #include "../ui/village/world_award.hpp"
 #include "../ui/common/world_panels.hpp"
 #include "../ui/tasks/world_tasks.hpp"
@@ -352,9 +353,8 @@ void WorldSaveInspection::observe(const app::WorldFrame &publication, app::World
     const auto &current = *publication.state;
     const bool failed = publication.failed;
     if (enabled_ && !ready_ && !pending_menu && !publication.save_busy) {
-        if (stage_ == 0 && publication.main_menu_open) {
+        if (stage_ == 0 && publication.save_menu_open) {
             frozen_ = publication.state;
-            pending_menu = session.open_save_menu();
             stage_ = 1;
         } else if (stage_ == 1 && publication.save_menu_open) {
             // Explicit error probe uses a nonexistent isolated slot through the worker.
@@ -379,11 +379,16 @@ void WorldSaveInspection::observe(const app::WorldFrame &publication, app::World
                 mode_ == "world-save" ? publication.save_message == "保存完毕"
                 : loading             ? publication.save_message == "读取完毕"
                                       : publication.save_message.rfind("读取失败", 0) == 0;
+            const auto *page = active_page(current);
+            const auto save = page && page->legacy_page == 14
+                                  ? simulation::inspect_startup_world_save_page(current, page->id)
+                                  : std::nullopt;
+            const bool saving = mode_ == "world-save";
             if (!expected_message ||
                 (loading ? publication.save_menu_open || publication.generation != 2 ||
                                publication.state == frozen_
-                         : !publication.save_menu_open || (mode_ == "world-save" && !saved) ||
-                               publication.state != frozen_))
+                 : saving ? publication.save_menu_open || !saved || !save || save->stage != 2
+                          : !publication.save_menu_open || publication.state != frozen_))
                 throw std::runtime_error(
                     "Save inspection did not preserve the expected file/overlay result");
             if (loading) {
@@ -404,6 +409,14 @@ void WorldSaveInspection::observe(const app::WorldFrame &publication, app::World
                         throw std::runtime_error(
                             "Cold-load inspection replaced the current random stream");
             }
+            if (saving && (current.scene.calendar.year != frozen_->scene.calendar.year ||
+                           current.scene.calendar.month != frozen_->scene.calendar.month ||
+                           current.scene.calendar.subperiod != frozen_->scene.calendar.subperiod ||
+                           current.scene.calendar.units != frozen_->scene.calendar.units ||
+                           current.scene.world.world.ai.accounting.funds() !=
+                               frozen_->scene.world.world.ai.accounting.funds() ||
+                           current.scene.random.draws() != frozen_->scene.random.draws()))
+                throw std::runtime_error("Save page changed date, funds or random cursor");
             ready_ = true;
             std::cout << "World save inspection: target=" << mode_
                       << " directory=" << directory_.string() << " saved=" << saved

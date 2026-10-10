@@ -1,6 +1,8 @@
-// Steam raw36具名局部合同：ui/INFORMATION_MENU.md末节；不是APK坐标的同名替代。
+// Steam情报菜单及目录的局部皮肤：ui/INFORMATION_MENU.md；不借APK坐标推同版布局。
 #include "ark/simulation/presentation/steam_information_skin.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
 #include "ark/simulation/presentation/steam_facility_skin.hpp"
 #include <algorithm>
@@ -98,7 +100,341 @@ void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,in
             SteamFacilityNumberKind kind=SteamFacilityNumberKind::number) {
     plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
 }
+// 以下是子菜单实际逐行调用的原谓词，不使用raw3跨行NEW优先级或业务目录过滤。
+std::optional<bool> equipment_notice(const StartupWorldRuntimeState &s) {
+    for(int kind:{1,2,3})for(const auto &d:s.rules->equipment) {
+        if(d.shop.kind!=kind)continue;
+        const auto current=s.catalog.find({kind,d.shop.id});
+        if(current==s.catalog.end())return {};
+        if(current->second.status!=0 && current->second.newly_unlocked)return true;
+    }
+    return false;
 }
+std::optional<bool> commerce_notice(const StartupWorldRuntimeState &s) {
+    for(const auto &d:s.rules->items) {
+        const auto stock=s.shop_item_stock.find(d.identity);
+        if(stock==s.shop_item_stock.end())return {};
+        if(stock->second.quantity<=0)continue;
+        const auto read=s.item_commerce_read.find(d.identity);
+        if(read==s.item_commerce_read.end())return {};
+        if(!read->second)return true;
+    }
+    for(const auto &d:s.rules->facilities) {
+        const auto presence=s.facility_presence.find(d.id);
+        if(presence==s.facility_presence.end())return {};
+        if(presence->second==2 || d.unlock_rank==-1 || d.unlock_rank>s.rank)continue;
+        const auto read=s.facility_commerce_read.find(d.id);
+        if(read==s.facility_commerce_read.end())return {};
+        if(!read->second)return true;
+    }
+    return false;
+}
+std::optional<bool> activity_notice(const StartupWorldRuntimeState &s) {
+    for(const auto &d:s.rules->activities) {
+        const auto record=s.scripts.activities.find(d.identity);
+        if(record==s.scripts.activities.end())return {};
+        if(record->second.status!=1)continue;
+        const auto flags=s.activity_flags.find(d.identity);
+        if(flags==s.activity_flags.end())return {};
+        if(flags->second&2U) {
+            const auto count=s.activity_counts.find(d.identity);
+            if(count==s.activity_counts.end())return {};
+            if(count->second>0)continue;
+        }
+        if(!(flags->second&4U) && record->second.pending_notice)return true;
+    }
+    return false;
+}
+// Steam DrawMenu2(type1)：4/7/9/10共用源裁片与ID9；目录长度决定边界高和触摸数。
+void menu_type1(SteamInformationSkinPlan &plan,int menu_frame,int selection,
+                const int *tags,int count,const int *widths,const int *badges,int width,int dx,int dy,
+                const SteamInformationMenuSkinOptions &options) {
+    for(int row=0;row<count;++row) {
+        const int row_y=dy+28*row;
+        const bool selected=row==selection;
+        // DrawSeb比例0..1000缩短源裁片，offset和锚点不随比例缩放。
+        if(menu_frame>0) {
+            const int ratio=menu_frame*1000/3;
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,25,-1,0,0,
+                {68,selected?0:29,89*ratio/1000,29*ratio/1000},{dx+1,row_y+1}});
+        }
+        plan.touches.push_back({{9,0x20000|row,std::array<int,4>{dx+40,row_y,width-40,28},{},0},{},{}});
+        if(menu_frame<3)continue;
+        text(plan,Role::menu_entry,0,row,dx+7,row_y+9,{},
+             selected?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220},
+             widths[row]>width-10?11:0);
+        std::get<SteamInformationText>(plan.draws.back()).argument=tags[row];
+        if(badges && badges[row]) {
+            // VA10309112/10308FF8：raw4日文8，raw7/9日文10；非JP的GET再减3。
+            const int language=options.japanese?(plan.raw==4?8:10):options.english?6:0;
+            const bool get=badges[row]==148;
+            image(plan,badges[row],get?23:20,9,dx+68+language-(get&&!options.japanese?3:0),row_y+16);
+        }
+        if(selected&&options.on_top) {
+            if(dx<120)sprite(plan,70,22,-1,dx+width+6,row_y+13);
+            else sprite(plan,70,21,-1,dx-2,row_y+13);
+        }
+    }
+    // 原_draw共用KEYCLICK注册没有显式矩形，不能在这里扩成全屏热区。
+    plan.touches.push_back({{4,22,{},{},2},{},{}});
+}
+}
+std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=9||options.canvas[0]<=0||options.canvas[1]<=0||options.safe_left<0)return {};
+    SteamInformationSkinPlan plan;
+    plan.raw=9;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const int width=options.japanese?84:90;
+    std::int64_t x=options.safe_left,y=0;
+    if(std::int64_t(options.origin[0])+width>options.canvas[0])
+        x=std::int64_t(options.canvas[0])-width-options.origin[0];
+    if(std::int64_t(options.origin[1])+145>options.canvas[1])
+        y=std::int64_t(options.canvas[1])-145-options.origin[1];
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    if(!fits(x-2)||!fits(x+width+6)||!fits(y)||!fits(y+4*28+29))return {};
+    bool human_new{};
+    if(view->frame>=3) {
+        if(!options.measured_text_widths||!state.rules)return {};
+        for(const int value:*options.measured_text_widths)if(value<0)return {};
+        // 原IsExistCharaNew只看定义state!=0与new，不要求地图上存在W。
+        for(const auto &human:state.rules->humans) {
+            const auto presence=state.human_presence.find(human.identity);
+            const auto script=state.scripts.humans.find(human.identity);
+            if(presence==state.human_presence.end()||script==state.scripts.humans.end())return {};
+            human_new=human_new||(presence->second!=0&&script->second.pending_notice);
+        }
+    }
+    std::array<int,5> tags{};
+    for(std::size_t row=0;row<tags.size();++row)tags[row]=view->entries[row].tag;
+    const std::array<int,5> badges{human_new?147:0,0,0,0,0};
+    menu_type1(plan,view->frame,view->selection_or_period,tags.data(),5,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,badges.data(),width,
+               static_cast<int>(x),static_cast<int>(y),options);
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_system_menu_skin(
+    const SteamSystemMenuSkinInput &input,const SteamInformationMenuSkinOptions &options) {
+    if(input.frame<0||input.frame>3||input.selection<0||input.selection>=5||
+       options.canvas[0]<=0||options.canvas[1]<=0||options.safe_left<0)return {};
+    SteamInformationSkinPlan plan;plan.raw=10;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const int width=options.japanese?84:90;
+    std::int64_t x=options.safe_left,y=0;
+    if(std::int64_t(options.origin[0])+width>options.canvas[0])
+        x=std::int64_t(options.canvas[0])-width-options.origin[0];
+    if(std::int64_t(options.origin[1])+145>options.canvas[1])
+        y=std::int64_t(options.canvas[1])-145-options.origin[1];
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    if(!fits(x-2)||!fits(x+width+6)||!fits(y)||!fits(y+4*28+29))return {};
+    if(input.frame>=3) {
+        if(!options.measured_text_widths)return {};
+        for(const int value:*options.measured_text_widths)if(value<0)return {};
+    }
+    // Steam Init五项state1，末项24；APK末项28不得混入本版本。
+    constexpr std::array<int,5> tags{20,21,22,23,24};
+    menu_type1(plan,input.frame,input.selection,tags.data(),5,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,nullptr,width,
+               static_cast<int>(x),static_cast<int>(y),options);
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_navigation_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamNavigationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_menu_page(state,page);
+    if(!view || (view->raw!=4 && view->raw!=7) || view->frame<0 || view->frame>3 || !state.rules || options.canvas[0]<=0 ||
+       options.canvas[1]<=0 || options.safe_left<0)return {};
+    SteamInformationSkinPlan plan;plan.raw=view->raw;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const int count=static_cast<int>(view->tags.size()),width=options.japanese?84:90,height=count*28+5;
+    std::int64_t x=options.safe_left,y=0;
+    if(std::int64_t(options.origin[0])+width>options.canvas[0])
+        x=std::int64_t(options.canvas[0])-width-options.origin[0];
+    if(std::int64_t(options.origin[1])+height>options.canvas[1])
+        y=std::int64_t(options.canvas[1])-height-options.origin[1];
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    if(!fits(x-2)||!fits(x+width+6)||!fits(y)||!fits(y+height+22))return {};
+    std::vector<int> badges(view->tags.size());
+    if(view->frame>=3) {
+        if(!options.measured_text_widths || options.measured_text_widths->size()!=view->tags.size())return {};
+        for(int value:*options.measured_text_widths)if(value<0)return {};
+        for(std::size_t row=0;row<view->tags.size();++row) {
+            const int tag=view->tags[row];
+            std::optional<bool> shown=false;
+            // Steam VA10309257先问任务NEW，再检查active；tag9独立GET不被tag7灯号遮住。
+            if(view->raw==4 && tag==7) {
+                shown=startup_world_has_new_tasks(state);
+                if(shown && *shown)*shown=!state.active_task;
+            } else if(view->raw==4 && tag==9)shown=equipment_notice(state);
+            // VA10309085先商品后设施；tag12另查活动，不额外重验当前flag16。
+            else if(view->raw==7 && tag==11)shown=commerce_notice(state);
+            else if(view->raw==7 && tag==12)shown=activity_notice(state);
+            if(!shown)return {};
+            if(*shown)badges[row]=view->raw==4&&tag==9?148:147;
+        }
+    }
+    SteamInformationMenuSkinOptions shared;
+    shared.japanese=options.japanese;shared.english=options.english;shared.on_top=options.on_top;
+    menu_type1(plan,view->frame,view->selection,view->tags.data(),count,
+               options.measured_text_widths?options.measured_text_widths->data():nullptr,badges.data(),width,
+               static_cast<int>(x),static_cast<int>(y),shared);
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_information_menu_status_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=9||options.canvas[0]<=0||options.canvas[1]<=0)return {};
+    SteamInformationSkinPlan plan;plan.raw=9;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const auto data=startup_menu_information(state);
+    if(!data)return {};
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    const auto hud_x=std::int64_t(options.canvas[0])-options.origin[0];
+    const auto hud_y=std::int64_t(options.view_y)-options.origin[1];
+    if(!fits(hud_x)||!fits(hud_x-77)||!fits(hud_y)||!fits(hud_y+23))return {};
+    const int x=static_cast<int>(hud_x);int y=static_cast<int>(hud_y);
+    if(data->monster_remaining) {
+        image(plan,86,77,18,x-77,y);
+        sprite(plan,84,75,1,x-74,y+2);
+        plan.draws.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,
+            SteamFacilityAsset::number03_hud,*data->monster_remaining,
+            {x-(options.japanese?20:27),y+3},0,2,-1});
+        sprite(plan,options.japanese?85:84,options.japanese?76:75,
+               options.japanese?1:3,x-(options.japanese?12:18),y+6);
+        y+=18;
+    }
+    sprite(plan,84,75,2,x-57,y);
+    plan.draws.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::comma_number,
+        SteamFacilityAsset::number11,data->village_points,{x-2,y+5},0,4,-1});
+    if(!data->task)return plan;
+    const auto &task=*data->task;
+    // 原整数RateConvert朝零截断，frame1/2是W−19/W−38，不先截正向进度。
+    const auto animated_x=std::int64_t(options.canvas[0])+(-58LL*view->frame)/3;
+    if(!fits(animated_x)||!fits(animated_x+55))return {};
+    const int a=static_cast<int>(animated_x),b=task.type==1?36:18;
+    for(int row=0;row<4;++row) {
+        const int row_y=b+18*row;
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,86,-1,0,0,
+                                               {0,0,58,18},{a,row_y}});
+        if(view->frame<3)continue;
+        if(row==0) {
+            plan.draws.emplace_back(StartupSkinRect{{a+6,row_y+1,16,16},{196,236,169},false});
+            plan.draws.emplace_back(StartupSkinRect{{a+6,row_y+1,16,16},{204,204,204},true});
+            const std::array<int,4> clip{a+6,row_y+2,15,14};
+            plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,clip});
+            plan.draws.emplace_back(SteamInformationImageClip{SteamInformationImageClipKind::set,clip});
+            plan.draws.emplace_back(SteamInformationHumanBody{{task.portrait_body,1,0},{a+14,row_y+23}});
+            plan.draws.emplace_back(SteamInformationImageClip{SteamInformationImageClipKind::clear,{}});
+            plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+            plan.draws.emplace_back(SteamInformationNumber{SteamInformationNumberKind::person_count,
+                task.humans,{a+55,row_y+5},options.japanese});
+        } else if(row==1) {
+            sprite(plan,31,44,3,a+6,row_y+1);
+            plan.draws.emplace_back(SteamInformationNumber{SteamInformationNumberKind::monster_count,
+                task.monsters,{a+55,row_y+5},options.japanese});
+        } else if(row==2) {
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,91,-1,0,0,
+                                                   {80,0,16,16},{a+6,row_y+1}});
+            number(plan,SteamFacilityAsset::number05,task.residences,a+55,row_y+5);
+        } else {
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,152,-1,0,0,
+                                                   {16*(1-task.type),0,16,16},{a+6,row_y+1}});
+            number(plan,SteamFacilityAsset::number05,task.remaining_subperiods,a+44,row_y+4);
+            image(plan,151,11,11,a+44,row_y+3);
+        }
+    }
+    return plan;
+}
+std::optional<SteamInformationSkinPlan> steam_town_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=34||!view->town||!options.bottom_width||*options.bottom_width<0)return {};
+    SteamInformationSkinPlan plan;
+    if(!directory_frame(plan,options,34,0))return {};
+    const auto &town=*view->town;
+    text(plan,Role::village_name,0,-1,30,69,{},brown,0,view->village_name);
+    // Draw_star(207,69,rank,5)首锚固定dx-60，不把末星位置当首星位置。
+    for(int slot=0;slot<5;++slot)sprite(plan,13,33,slot<town.rank?0:1,147+12*slot,69);
+    const std::array<int,5> statistics{{town.adventurers,town.residents,town.facilities,
+                                      town.completed_tasks,town.activities_held}};
+    for(int slot=0;slot<5;++slot) {
+        const int y=95+20*slot,value=statistics[static_cast<std::size_t>(slot)];
+        if(options.japanese)text(plan,Role::town_stat_label,0,slot,27,y,{},blue);
+        else {
+            text(plan,Role::town_stat_label,0,slot,22,y-2,0x20,blue,slot==0?9:slot==3?8:10);
+            auto &label=std::get<SteamInformationText>(plan.draws.back());
+            label.mode=SteamInformationTextMode::layout;label.extent={68,15};label.line_space=0;
+        }
+        if(options.japanese&&slot==0) {
+            text(plan,Role::town_adventurer_count,0,slot,109,y,4,brown);
+            std::get<SteamInformationText>(plan.draws.back()).argument=value;
+        } else number(plan,SteamFacilityAsset::number05,value,109,y+1);
+    }
+    for(int slot=0;slot<4;++slot) {
+        sprite(plan,128,88,slot+1,options.japanese?122:121,91+20*slot);
+        const int count=town.known_equipment[static_cast<std::size_t>(slot)];
+        text(plan,options.japanese?Role::town_equipment_kinds:Role::town_equipment_count,
+             0,slot,options.japanese?211:213,(options.japanese?93:94)+20*slot,4,brown,
+             options.japanese?0:11,options.japanese?std::string{}:std::to_string(count));
+        std::get<SteamInformationText>(plan.draws.back()).argument=count;
+    }
+    // Draw_btmMsg以原字符串测宽为输入，橙底、扩展触摸、TextLayout、手形依次输出。
+    const int width=std::min(*options.bottom_width,200)+16,left=120-width/2;
+    plan.draws.emplace_back(StartupSkinRect{{left,197,width,16},{255,153,55},false});
+    plan.touches.push_back({{4,20,std::array<int,4>{left-20,177,width+40,56},{},0},{},{}});
+    text(plan,Role::facility_income_list,0,-1,left,197,0x22,brown);
+    auto &footer=std::get<SteamInformationText>(plan.draws.back());
+    footer.mode=SteamInformationTextMode::layout;footer.extent={width,16};footer.line_space=0;
+    sprite(plan,70,21,-1,left-4,206);
+    return plan;
+}
+
+std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=39||!view->facilities||view->facilities->empty()||
+       view->facilities->size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return {};
+    SteamInformationSkinPlan plan;
+    if(!directory_frame(plan,options,39,0))return {};
+    text(plan,Role::name_header,0,-1,options.japanese?26:28,69,{},brown);
+    text(plan,Role::facility_profit_header,0,-1,options.japanese?185:179,69,{},brown);
+    const int count=static_cast<int>(view->facilities->size());
+    for(int row=view->first_visible;row<count&&row-view->first_visible<5;++row) {
+        const auto &facility=(*view->facilities)[static_cast<std::size_t>(row)];
+        if(facility.icon<0||facility.icon>=7||facility.ordinal<0||
+           facility.ordinal==std::numeric_limits<int>::max())return {};
+        const int y=97+19*(row-view->first_visible);
+        if(row==view->selection)
+            plan.draws.emplace_back(StartupSkinRect{{23,y-2,191,16},{255,153,55},false});
+        row_touch(plan,row,y);
+        if(row==view->selection)sprite(plan,70,21,-1,21,y+8);
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,91,-1,0,0,
+                                               {16*facility.icon,0,16,16},{30,y-2}});
+        text(plan,Role::facility_name,0,row,48,y,0x20,brown,0,facility.name);
+        auto &name=std::get<SteamInformationText>(plan.draws.back());
+        name.mode=SteamInformationTextMode::layout;name.extent={110,11};name.line_space=0;
+        name.argument=facility.ordinal+1;
+        // Steam先neg int32再扩long：INT_MIN仍负；不使用溢出的C++取负或64位abs。
+        const bool negative=facility.profit<0;
+        const int amount=negative&&facility.profit!=std::numeric_limits<std::int32_t>::min()
+            ?-facility.profit:facility.profit;
+        number(plan,negative?SteamFacilityAsset::number12:SteamFacilityAsset::number05,
+               amount,210,y+1,SteamFacilityNumberKind::money);
+    }
+    scroll(plan,count,view->first_visible,5,options.scroll_first_touch);
+    // 原普通DrawString含<btn>标记；不额外生成底部按钮热区、选中底或第二个手形。
+    text(plan,Role::facility_tracking_hint,0,-1,120,198,2,blue);
+    return plan;
+}
+
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
     const auto view=inspect_startup_world_information_page(state,page);
@@ -243,6 +579,20 @@ std::optional<SteamInformationSkinPlan> steam_income_information_skin(
 std::optional<std::vector<StartupSkinDraw>> steam_information_number_draws(
     const SteamInformationNumber &number) {
     using Kind=SteamInformationNumberKind;
+    if(number.kind==Kind::person_count||number.kind==Kind::monster_count) {
+        if(number.value<0)return {};
+        const auto x=std::int64_t(number.position[0])-(number.japanese?10:0);
+        if(x<std::numeric_limits<int>::min()||x>std::numeric_limits<int>::max())return {};
+        const auto digits=steam_facility_number_draws({SteamFacilityNumberKind::comma_number,
+            SteamFacilityAsset::number05,number.value,{static_cast<int>(x),number.position[1]},0,4,-1},8);
+        if(!digits)return {};
+        std::vector<StartupSkinDraw> result;
+        for(const auto &digit:*digits)
+            result.push_back({StartupSkinPackage::common,103,12,digit.frame,0,{},digit.position});
+        if(number.japanese)result.push_back({StartupSkinPackage::common,85,76,
+            number.kind==Kind::person_count?4:1,0,{},{static_cast<int>(x),number.position[1]}});
+        return result;
+    }
     if(number.value<=0 || (number.kind!=Kind::inventory_count&&number.kind!=Kind::positive_attribute))return {};
     const bool inventory=number.kind==Kind::inventory_count;
     if(inventory&&number.value>999)return {};
@@ -338,9 +688,11 @@ std::optional<std::string_view> steam_information_image(int image) {
     switch(image) {
     case 9:return "original/common/tresureIcon00.png";
     case 12:return "original/common/icon_weapon00.png";
+    case 13:return "original/common/icon_star00.png";
     case 20:return "original/common/icon_armour00.png";
     case 21:return "original/common/icon_accessry00.png";
     case 24:return "original/common/icon_back00.png";
+    case 25:return "original/common/menu.png";
     case 28:return "original/common/wnd_back.png";
     case 29:return "original/common/wnd_bar.png";
     case 30:return "original/common/wnd_conner.png";
@@ -351,17 +703,23 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 50:return "original/common/wnd_exp.png";
     case 70:return "original/common/finger_r.png";
     case 74:return "original/common/arrow02.png";
+    case 84:return "steam-common/menuRT00.png";
     case 85:return "steam-common/menuRT01.png";
+    case 86:return "original/common/menuRT02.png";
     case 87:return "original/common/wnd_expBar.png";
+    case 91:return "original/common/icon_tenantInfo.png";
     case 102:return "original/common/number03.png";
     case 103:return "steam-build-common/original/common/number05.png";
     case 104:return "original/common/number06.png";
     case 105:return "steam-facility-common/original/common/number08.png";
     case 108:return "original/common/number11.png";
+    case 109:return "steam-common/number12.png";
     case 128:return "steam-common/icon_objRoots.png";
     case 129:return "original/common/wnd_max.png";
     case 147:return "original/common/wnd_new.png";
     case 148:return "original/common/wnd_get.png";
+    case 151:return "steam-common/menuRT04.png";
+    case 152:return "original/common/icon_quest.png";
     default:return {};
     }
 }

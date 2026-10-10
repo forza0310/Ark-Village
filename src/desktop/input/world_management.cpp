@@ -1,5 +1,7 @@
 #include "world_management.hpp"
 #include "../ui/common/skin.hpp"
+#include "../ui/system/world_menu.hpp"
+#include "world_save_menu.hpp"
 #include <algorithm>
 
 namespace ark::desktop {
@@ -76,9 +78,33 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
     const bool escape = back;
     const bool up = IsKeyPressed(KEY_UP), down = IsKeyPressed(KEY_DOWN);
+    if (page.kind == simulation::rules::WorldScriptPageKind::raw_page && page.legacy_page == 14) {
+        if (!blocked && world_source_save_ready(state, page.id) &&
+            (enter || escape || hit(point, world_source_save_confirm(extent))))
+            queued(session.ack_page(page.id));
+        return true;
+    }
+    if (ui::world_source_menu_page(page)) {
+        const auto view = simulation::inspect_startup_world_menu_page(state, page.id);
+        if (!view)
+            return true;
+        const auto layout = ui::world_source_menu_layout(*view, extent);
+        const ui::WorldMenuInput input{point, false, escape, up, down, enter};
+        if (const auto action = ui::world_source_menu_input(
+                *view, layout, input, IsKeyPressed(KEY_LEFT), IsKeyPressed(KEY_RIGHT),
+                blocked || page.lifecycle != 2 || state.scene.framework_paused)) {
+            if (view->raw == 10 && !action->up && !action->down &&
+                (action->confirm || action->right) && view->tags.at(view->selection) == 20)
+                queued(session.open_source_save_menu(page.id));
+            else
+                queued(session.act_menu(page.id, *action));
+        }
+        return true;
+    }
     if (ui::world_information_page(page)) {
         const auto view = ui::world_information_view(state, page);
-        const auto layout = ui::world_information_layout(extent, page.legacy_page);
+        const auto layout =
+            ui::world_information_layout(extent, page.legacy_page, view.menu_position);
         const ui::WorldInformationInput input{
             point,
             up,
@@ -88,7 +114,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             enter,
             escape,
             hit(mouse, page.legacy_page == 9
-                           ? Rectangle{layout.menu_rows[0].x, layout.menu_rows[0].y, 89, 140}
+                           ? Rectangle{layout.menu_rows[0].x, layout.menu_rows[0].y, 90, 140}
                            : layout.rows)
                 ? -static_cast<int>(GetMouseWheelMove() * 2)
                 : 0};
@@ -290,10 +316,17 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
 bool WorldManagement::draw_page(const State &state, const Page &page, Extent extent,
                                 const ui::Skin &skin, bool enabled) const {
     enabled = enabled && !pending();
-    if (ui::world_information_page(page)) {
-        ui::draw_world_information(state, ui::world_information_view(state, page),
-                                   ui::world_information_layout(extent, page.legacy_page), skin,
-                                   enabled, feedback_);
+    if (page.kind == simulation::rules::WorldScriptPageKind::raw_page && page.legacy_page == 14) {
+        draw_world_source_save(state, page.id, extent, skin);
+    } else if (ui::world_source_menu_page(page)) {
+        ui::draw_world_source_menus(state, extent, skin, enabled, feedback_);
+    } else if (ui::world_information_page(page)) {
+        if (page.legacy_page == 9)
+            ui::draw_world_source_menus(state, extent, skin, enabled);
+        const auto view = ui::world_information_view(state, page);
+        ui::draw_world_information(
+            state, view, ui::world_information_layout(extent, page.legacy_page, view.menu_position),
+            skin, enabled, feedback_);
     } else if (ui::world_magic_pot_page(page)) {
         ui::draw_world_magic_pot(ui::world_magic_pot_view(state, page),
                                  ui::world_commerce_layout(extent), skin, enabled, feedback_);

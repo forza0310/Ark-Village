@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "date": "2026-10-11",
   "scope": "逐ID的定义参数与已定位入口；共享时点、效果和后继引用主责合同。入口存在、消费者存在、全部来源闭合和自然可达分别处理；本索引不标记全量已完成。",
   "definitions": 775,
@@ -770,7 +770,8 @@
         }
       ],
       "chain_contract": "../rules/PROGRESSION_CONTENT.md#设施装备道具与配方的入口覆盖",
-      "instance_contract": "../rules/FACILITIES.md#85定义的目录资格实例来源与继承"
+      "instance_contract": "../rules/FACILITIES.md#85定义的目录资格实例来源与继承",
+      "use_effect_contract": "../rules/FACILITY_USE.md#definition-exit-effects"
     },
     {
       "kind": "human",
@@ -830,7 +831,8 @@
         }
       ],
       "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源",
-      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界"
+      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界",
+      "appearance_contract": "../rules/STARTUP.md#25人物共用的自然到访重访与住宅资格"
     },
     {
       "kind": "profession",
@@ -888,7 +890,8 @@
         }
       ],
       "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源",
-      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界"
+      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界",
+      "effect_contract": "../rules/CHARACTERS.md#23职业的转入精通及魔法后继"
     },
     {
       "kind": "weapon",
@@ -1317,22 +1320,6 @@
   ],
   "gaps": ["全部事件调用者/动态参数及EXE写入者尚未穷尽；字面脚本边不能标自然可达。","活动27、设施58、防具45、饰品26至28、配方0/38的目录边界已有有限证据；正常额外来源未发现。","所有定义的实际效果、后继与持久/继承逐项认证尚未收口；共享合同引用不是全量完成标志。","特殊模式v/w自然产生者仍未知；不补演示解锁。","自然经营全链由产品验证，研究功能夹具和静态证据分别标识。"],
   "source_identity": "../EVIDENCE.md",
-  "contracts": {
-    "facility": "../rules/PROGRESSION_CONTENT.md#设施装备道具与配方的入口覆盖",
-    "weapon": "../rules/CHARACTERS.md#装备礼物现金和库存",
-    "armour": "../rules/CHARACTERS.md#装备礼物现金和库存",
-    "accessory": "../rules/CHARACTERS.md#装备礼物现金和库存",
-    "item": "../rules/CHARACTERS.md",
-    "magic_recipe": "../rules/MAGIC_POT.md",
-    "human": "../rules/CHARACTERS.md#人物与职业的开放来源",
-    "profession": "../rules/CHARACTERS.md#人物与职业的开放来源",
-    "village_activity": "../rules/ACCOUNTING.md#村办活动与晋级前置",
-    "quest": "../rules/PROGRESSION_ROUTES.md",
-    "monster": "../rules/STEAM_MONSTER_PROGRESSION.md",
-    "rank": "../rules/PROGRESSION_ROUTES.md#星级与章节分别推进",
-    "popularity_bonus": "../rules/ACCOUNTING.md#popularity-rewards",
-    "event": "../rules/PROGRESSION_CONTENT.md#请求与真正消费"
-  },
   "route_contracts": {
     "reset_flag1": "新局按flags1设开放态；装备首次库存、设施p2、道具p与库存分开，见内容合同。",
     "commerce85_rank": "未开放p0且D!=-1、D<=村星级；先付村点，93满40确认才开放与H+1；另付金币建造。",
@@ -1363,5 +1350,19 @@
     "monster_boss_task": "BOSS由特殊任务创建，不能套普通相邻开放扫描；击杀、任务整体成功、阶段推进与152延迟领取分开。",
     "residence_demolition_return": "现kind12住宅绑定有效住户时，撤除先解除住宅关系，向住宅原序首项25返还H（封顶99），旧p0才开放p2/NEW；正常入住直接建25而不先开目录，复建需H及800G。",
     "sky_mapchip_flag2": "初始化按mapchip唯一flag2选择42；地图外且与视口相交时直接画设施23的sky00.seb，不创建实体、不改变目录开放或库存。"
-  }
+  },
+  "version_differences": [
+    {
+      "feature": "simultaneous_arrival_limit",
+      "apk": {
+        "soft": 20,
+        "hard": 20
+      },
+      "steam": {
+        "value": 25,
+        "basis": "character_definition_directory_length"
+      },
+      "contract": "../rules/STARTUP.md#25人物共用的自然到访重访与住宅资格"
+    }
+  ]
 }

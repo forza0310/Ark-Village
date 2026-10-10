@@ -202,6 +202,8 @@ Steam GetAppearCharaId（RVA 2DB8E0）在102DBB1F筛state非0，经Character2.Ge
 
 事件原程序为`6,300&4,18`：调用时先登记事件已见并排延迟续体，经过300次获准续体更新才请求新闻18，不在到访当场显示，不给金币、点数或另开人物。原事件计数及续体保存，页面不保存；新局事件计数另行重建，不把新闻已见当作两段通关继承内容，见[存档合同](PERSISTENCE.md)。维护[到访消费者](../example/src/world_arrivals.cpp)在创建回调返回后才读`job_history`（这里实际映射Q，不是泛职业履历）；[Owner接线](../prototype/src/startup_world_runtime_arrival.cpp)用刷新后的`derived.available_spells`重新投影。既有到访套件已包含刷新后读取、89→218顺序、等待及晚失败回滚断言；本批只核对现有实现／断言，未重跑测试。Steam方法分组已定位到`UserData.Update_appear`，本段精确门槛仍仅认证APK及维护对应，不以事件表相同代证Steam分支。
 
+Steam独立交叉`UserData.Update_appear`（RVA`2ECFA0`）：VA`102ED56D`创建后，`102ED584`追加`[8,0]`，`102ED5C8`加入场景；首访`102ED62F`执行89，随后`102ED665`查218已见。未见才从本次新增实例取得共享人物定义，`102ED688`读取`magic_ +0xAC`，`102ED694–102ED6AC`按数组实际长度扫描非零槽，命中于`102ED6DC`执行218。正常Init在`10213B3C–10213B53`分配四槽；它不同于永久学习位`magicLearn_ +0x4C`，重访亦可满足。能力在创建后的SetWeapon→UpdateBattleParam已经刷新；创建当前HP则在此之前取旧共享最大HP，不能倒填刷新后的数值。本段认证创建／刷新／追加及89→218门槛与APK正常合同相符，未新增认证Steam延迟300续体执行器。
+
 ## 3. 首名人物初值与加入顺序
 
 ### 默认字段

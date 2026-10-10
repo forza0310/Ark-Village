@@ -1,6 +1,8 @@
 #include "startup_world_codec_checks.hpp"
 #include "startup_world_codec.hpp"
+#include "startup_world_restore_validation.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -103,6 +105,21 @@ void run_startup_world_codec_checks() {
     const auto restored = detail::decode_state(bytes, *session.state().rules);
     check(restored.rules == session.state().rules && detail::encode_state(restored) == bytes,
           "真实新局逐字节往返及规则重绑");
+    {
+        // 调用点夹具：由真实介绍消费者产生载荷，恢复不能重查原talk默认说话者覆盖它。
+        const auto introduced = consume_startup_world_runtime_encounter_request(
+            session.state(), {ref::EncounterCreationRequestKind::definition_script, 3});
+        check(introduced.has_value(), "实际怪物介绍页可准备");
+        const auto wire = detail::encode_state(*introduced);
+        const auto copy = detail::decode_state(wire, *introduced->rules);
+        std::string reason;
+        check(detail::validate_restored_state(copy, reason),
+              "带外层怪物说话者的介绍页通过严格恢复校验");
+        check(copy.scripts.pages.back().speaker_kind == 2 &&
+                  copy.scripts.pages.back().speaker_definition == 3 &&
+                  detail::encode_state(copy) == wire,
+              "外层说话者绑定完整往返，不重新按原对话表初始化");
+    }
     {
         // 类型夹具只验证原j/P/aY耐久字段，不代表这两个任务来自自然经营。
         auto notices=session.state();

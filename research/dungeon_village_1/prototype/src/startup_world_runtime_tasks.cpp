@@ -377,10 +377,20 @@ consume_startup_world_runtime_encounter_request(const State &state,
         const int identity = 2500 + request.definition; // 研究适配程序身份，不冒充aL原事件ID。
         auto programs = c;
         programs.programs.emplace(identity, found->introduction_program);
-        const auto executed =
+        auto executed =
             ref::prepare_world_script_program(programs, scripts, {identity, {}, {}});
-        if (!executed.candidate ||
-            !write_startup_world_runtime_scripts(next, executed.candidate->state))
+        if (!executed.candidate)
+            return {};
+        // 原c/b介绍调用a(program,...,0,2,monster)：仅给本次没有显式说话者
+        // 的对话补怪物身份。固定8条均为即时opcode2，不改原表或长期程序目录。
+        for (auto &page : executed.candidate->state.pages)
+            if (page.id >= scripts.next_page_id &&
+                page.kind == ref::WorldScriptPageKind::dialogue &&
+                page.speaker_definition == -1) {
+                page.speaker_kind = 2;
+                page.speaker_definition = request.definition;
+            }
+        if (!write_startup_world_runtime_scripts(next, executed.candidate->state))
             return {};
     }
     return next;

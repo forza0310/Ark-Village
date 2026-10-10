@@ -20,17 +20,9 @@ APK仅取`c/b.java:141`和`c/n.java:1645–1660`两窗口共17行，分别核表
 
 ## 复现与输出
 
-```powershell
-node --check research/dungeon_village_1/tools/steam-human-pinch-offset/inspect.cjs
-node --check research/dungeon_village_1/tools/steam-human-pinch-offset/audit.cjs
-node research/dungeon_village_1/tools/steam-human-pinch-offset/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-human-pinch-offset/inspect.cjs locate
-node research/dungeon_village_1/tools/steam-human-pinch-offset/inspect.cjs offset
-node research/dungeon_village_1/tools/steam-human-pinch-offset/inspect.cjs consumer
-node research/dungeon_village_1/tools/steam-human-pinch-offset/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
-inspect只接受固定键、只写stdout，不输出整个cctor。audit只覆盖本新目录的[EVIDENCE.json](EVIDENCE.json)，检查固定DLL／metadata、方法真实边界、28锚、四立即数、资源引用／裁片、旧肖像证据与APK局部窗口；同时记录脚本自身hash和限制。
+inspect只接受固定键、只写stdout，不输出整个cctor。audit只覆盖本新目录的EVIDENCE.json（本地核对材料，不随仓库交付），检查固定DLL／metadata、方法真实边界、28锚、四立即数、资源引用／裁片、旧肖像证据与APK局部窗口；同时记录脚本自身hash和限制。
 
 本次语法、源hash、字节锚、两版局部交叉和资源核验通过；两次audit幂等，EVIDENCE SHA-256为`c3b137ebcb0af2698b5c1620aaea564f5a0d3d6d054b29eac0fa080175a191b4`。UTF-8无BOM／LF、7个Markdown本地链接及差异检查通过。证据由本包README及新正式合同消费；不改旧证据、共享索引、CMake或C++。只有前台短审计，没有游戏、构建、后台进程或新增资源缓存，静态包规模不宣称原程序运行内存永久有界。
 

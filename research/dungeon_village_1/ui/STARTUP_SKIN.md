@@ -9,7 +9,7 @@ APK布局、中文译名、Android字体不得自动冒充Steam精确皮肤。
 
 可直接打开[原尺寸素材对照页](examples/startup-sources.html)，查看五张原标题素材、91／17背景、
 角色原图及完整S038。它只呈现已有图像，不填演示业务数值、不拼成假称已认证的完整运行窗口。
-有限来源窗口、资源包序、尺寸与SHA-256见[证据摘要](../verification/startup-skin-contract/EVIDENCE.json)。
+有限来源窗口、资源包序、尺寸与SHA-256见证据摘要（本地核对材料，不随仓库交付）。
 
 ## 画布、木框和字形
 

@@ -4,7 +4,7 @@
 
 ## 固定来源及新增范围
 
-GameAssembly SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`；metadata `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。沿原methods索引逐项检查具名入口、最近下一入口、PE映射及方法hash；索引／dump映射及旧字体包的hash写入[EVIDENCE.json](EVIDENCE.json)。
+GameAssembly SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`；metadata `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。沿原methods索引逐项检查具名入口、最近下一入口、PE映射及方法hash；索引／dump映射及旧字体包的hash写入EVIDENCE.json（本地核对材料，不随仓库交付）。
 
 | 方法范围 | RVA | 字节 |
 | --- | --- | ---: |
@@ -32,16 +32,7 @@ GameAssembly SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b
 
 ## 复现与验收
 
-```powershell
-node --check research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs
-node --check research/dungeon_village_1/tools/steam-font-draw-contract/audit.cjs
-node research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs shadow
-node research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs position
-node research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs gui
-node research/dungeon_village_1/tools/steam-font-draw-contract/inspect.cjs setClip
-node research/dungeon_village_1/tools/steam-font-draw-contract/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 其它固定inspect键有plain、anchor、start、draw-calls、checkClip、width、beginMatrix、transRect、texture；最后一项仅供明确后继边界查看，不改变当前合同覆盖等级。inspect无文件写入；audit仅更新本包EVIDENCE，核固定源、方法、原指令与调用目标、常量位型、字段／别名、旧证据和脚本hash。
 

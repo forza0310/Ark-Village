@@ -13,9 +13,9 @@
 | 目标菱形 | [c/n:2721](../work/decompiled/sources/c/n.java)类型6独立命令 | 任务种类0、有绑定实例；普通cursor_rect02帧0，定义flags524288另用cursor_rect03；不与临时选中框混合 |
 | 底部路线/头像/攻略百分比 | [b/c:987](../work/decompiled/sources/b/c.java)调用[c/n:4208](../work/decompiled/sources/c/n.java)的e(o) | 全局活动任务种类0；路线读挑战k与人物o/X/Z/aa，右端读实例g，不是人物等级/伤害/奖励栏 |
 
-生成Java对数值helper有重载歧义，精确参数使用[Tenant低层](../work/ai-fallback/Tenant.java)1689–1818交叉：
+生成Java对数值helper有重载歧义，精确参数使用Tenant低层（历史中间文件，当前未保留）1689–1818交叉：
 百分比传入long，实际调用[d/a:2784](../work/decompiled/sources/d/a.java)百分比helper，
-不是同名2734的整数星数绘制。底栏经[UserData低层](../work/user-data-fallback/UserData.java)13614–14165交叉，
+不是同名2734的整数星数绘制。底栏经UserData低层（历史中间文件，当前未保留）13614–14165交叉，
 包括真实画布裁剪、取当前任务实例及百分比调用；这些仍是静态证据，不是运行帧认证。
 
 ## 场景锚点、进度条与菱形

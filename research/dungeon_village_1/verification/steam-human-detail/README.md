@@ -1,6 +1,6 @@
 # Steam人物详情60静态研究包
 
-2026-10-10。[正式合同](../../ui/STEAM_HUMAN_DETAIL.md)；[EVIDENCE.json](EVIDENCE.json)。本包只读固定Steam原文件，输出四页局部绘制、输入、初始化、软标签、人物展示委托及common图像对应。
+2026-10-10。[正式合同](../../ui/STEAM_HUMAN_DETAIL.md)；EVIDENCE.json（本地核对材料，不随仓库交付）。本包只读固定Steam原文件，输出四页局部绘制、输入、初始化、软标签、人物展示委托及common图像对应。
 
 ## 证据与规模
 
@@ -15,14 +15,7 @@ GameAssembly SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b
 
 ## 复核与交付边界
 
-```powershell
-node --check research/dungeon_village_1/tools/steam-human-detail/inspect.cjs
-node --check research/dungeon_village_1/tools/steam-human-detail/audit.cjs
-node research/dungeon_village_1/tools/steam-human-detail/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-human-detail/inspect.cjs layout
-node research/dungeon_village_1/tools/steam-human-detail/inspect.cjs input
-node research/dungeon_village_1/tools/steam-human-detail/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 inspect固定键还有dispatch、magic、equipment、stats、overview、footer、pop、init、table、labels、names、portrait、lookup、icon；只写stdout。audit只覆盖本目录EVIDENCE，不改旧证据、游戏、存档或用户数据。脚本、JSON、Markdown均UTF-8无BOM、LF；先规范化再登记脚本哈希。收口检查语法、字节锚、同字节资源引用、SEB边界、重复生成幂等、Markdown本地链接和差异。
 

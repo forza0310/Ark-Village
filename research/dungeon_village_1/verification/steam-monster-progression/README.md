@@ -10,17 +10,9 @@
 
 各范围截止于真实最近更高具名入口，校验PE节与offset、固定DLL和metadata身份；不把methods数组顺序当地址顺序。共享ChangeState单独核全部别名及真实字段写点，避免以反汇编显示的最后类型名推定接收对象。`GetMonsterUniqueId`是实例身份分配，不能因为名字相近拿它替代本包的定义选择入口。
 
-主会话读取并交叉完整选择方法与两个短方法；[audit.cjs](../../tools/steam-monster-progression/audit.cjs)冻结62个明确指令锚、9个具名字段、APK已有产生者证据以及维护实现／现测试文件身份。输出[EVIDENCE.json](EVIDENCE.json)上限64KiB，不导出第二份DLL／DEX或图像。Steam直接事实、APK既有DEX结果及维护事务保护分别登记。
+主会话读取并交叉完整选择方法与两个短方法；audit.cjs（本地核对材料，不随仓库交付）冻结62个明确指令锚、9个具名字段、APK已有产生者证据以及维护实现／现测试文件身份。输出EVIDENCE.json（本地核对材料，不随仓库交付）上限64KiB，不导出第二份DLL／DEX或图像。Steam直接事实、APK既有DEX结果及维护事务保护分别登记。
 
-```powershell
-node --check research/dungeon_village_1/tools/steam-monster-progression/inspect.cjs
-node --check research/dungeon_village_1/tools/steam-monster-progression/audit.cjs
-node research/dungeon_village_1/tools/steam-monster-progression/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-monster-progression/inspect.cjs reset
-node research/dungeon_village_1/tools/steam-monster-progression/inspect.cjs choose
-node research/dungeon_village_1/tools/steam-monster-progression/inspect.cjs change
-node research/dungeon_village_1/tools/steam-monster-progression/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 本批只有静态审计：固定源／方法边界／指令锚／字段交叉及证据复算通过；未运行原Steam、研究世界或产品测试，没有构建／后台进程。现维护测试的覆盖通过源码查明，不把此前运行结果重记为本轮通过。新增素材0，临时候选与声明式证据由短前台脚本消费并退出；不宣称整个运行世界永久有界。
 

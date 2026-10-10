@@ -4,21 +4,15 @@
 
 ## 固定窗口与复算
 
-[inspect.cjs](../../tools/steam-build-list-business/inspect.cjs)登记8个具名方法，核DLL／metadata、方法下一入口、PE可执行范围。Init从入口0x10312460顺序解码9899字节；Update从入口0x10321990顺序解码18761字节，display_ranges仅控制stdout显示，绝不从中间地址初始化解码器。其余6个是软键、OnTouchEvent、ChangeTBMode、SetHelpMsgInit、类型构造和Pop小方法；总30276字节。
+inspect.cjs（本地核对材料，不随仓库交付）登记8个具名方法，核DLL／metadata、方法下一入口、PE可执行范围。Init从入口0x10312460顺序解码9899字节；Update从入口0x10321990顺序解码18761字节，display_ranges仅控制stdout显示，绝不从中间地址初始化解码器。其余6个是软键、OnTouchEvent、ChangeTBMode、SetHelpMsgInit、类型构造和Pop小方法；总30276字节。
 
 旧专题曾拒绝从非入口续窗，本批不执行旧被拒方案。由当前具名入口的真实分派直接定位Init→0x10314793和Update→0x1032599A，再保持入口顺序解码；Update分支距入口16394字节，完整后继必要前缀18761字节，固定上限20KiB，显示只限已见raw21分支／已见返回调用目标。本包不改变旧专题16KiB账本、不进行自动跳表扫描或导出指令全文。
 
 实际Update分支地址为**0x1032599A**，结束0x103262D9；Init分支0x10314793–0x10314B0B。两个局部共3255字节；其它prefix字节只用于入口顺序与边界，不声称其他页面已认证。
 
-[audit.cjs](../../tools/steam-build-list-business/audit.cjs)复核52个真实E8调用／参数／赋值锚和两条提示literal，保存[EVIDENCE.json](EVIDENCE.json)。旧通用marker输入、raw21登记和共享true返回复用已有源hash；APK仅保固定源hash与具名行引用，未再落盘反编译全文。
+audit.cjs（本地核对材料，不随仓库交付）复核52个真实E8调用／参数／赋值锚和两条提示literal，保存EVIDENCE.json（本地核对材料，不随仓库交付）。旧通用marker输入、raw21登记和共享true返回复用已有源hash；APK仅保固定源hash与具名行引用，未再落盘反编译全文。
 
-```powershell
-node research/dungeon_village_1/tools/steam-build-list-business/inspect.cjs init
-node research/dungeon_village_1/tools/steam-build-list-business/inspect.cjs update
-node research/dungeon_village_1/tools/steam-build-list-business/inspect.cjs softBuild
-node research/dungeon_village_1/tools/steam-build-list-business/inspect.cjs touch
-node research/dungeon_village_1/tools/steam-build-list-business/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 ## 增量和重要限制
 

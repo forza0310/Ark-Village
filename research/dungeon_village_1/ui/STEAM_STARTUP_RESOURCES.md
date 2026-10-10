@@ -2,7 +2,7 @@
 
 2026-10-09。此批从已登记Steam2.56研究副本的Unity对象重新读取、解开Kairo归档，并与固定APK1.0.8发布素材比较；没有运行游戏、读取实时档案或导出字体文件。结论是**多数共用木框图块相同，但标题背景、Logo和草边不同，字体不能沿用Android字体假定**。原布局消费者见[启动皮肤合同](STARTUP_SKIN.md)；本批不把相同图片升级为相同Steam绘制代码。
 
-可复算[脚本](../tools/steam-startup-resource-map/audit.py)与[机器证据](../verification/steam-startup-resource-map/EVIDENCE.json)保留容器／对象／条目身份、字节及解码RGBA SHA-256、目录原行、字体表范围和校验和。来源是[全图像清单](../assets/IMAGE_COVERAGE.md)，这次只深化启动专题，不改变全量分母或素材发布范围。
+可复算脚本（本地核对材料，不随仓库交付）与机器证据（本地核对材料，不随仓库交付）保留容器／对象／条目身份、字节及解码RGBA SHA-256、目录原行、字体表范围和校验和。来源是[全图像清单](../assets/IMAGE_COVERAGE.md)，这次只深化启动专题，不改变全量分母或素材发布范围。
 
 后继已交付[Steam启动正式素材](../assets/steam-startup/README.md)：38逻辑项以21个同字节别名复用APK发布副本，另发布17个差异文件；原761包分母不变。标题upper、两Logo和十种saveload路径具备可核文件，PNG／SEB／目录均登记；这批不发布未核字体，也不代表完整Steam皮肤或运行时语言选择已经认证。
 

@@ -6,12 +6,9 @@
 
 ## 证据与复算
 
-[dex-audit.cjs](../../tools/task-selector-dex-contract/dex-audit.cjs)只读固定DEX、原表和维护文件，生成[DEX_SELECTOR.json](DEX_SELECTOR.json)。不创建伪造fallback，不把普通Java坏反编译重新作为期望值。
+dex-audit.cjs（本地核对材料，不随仓库交付）只读固定DEX、原表和维护文件，生成DEX_SELECTOR.json（本地核对材料，不随仓库交付）。不创建伪造fallback，不把普通Java坏反编译重新作为期望值。
 
-```powershell
-node --check research/dungeon_village_1/tools/task-selector-dex-contract/dex-audit.cjs
-node research/dungeon_village_1/tools/task-selector-dex-contract/dex-audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 | 身份 | 本轮值 |
 | --- | --- |

@@ -1,6 +1,6 @@
 # 中后期开放链静态收口
 
-2026-10-09。只读固定APK普通Java、正式原表／既有739定义索引和维护C++消费者；未构建、未启动原游戏、未运行自然路线、未读取实时档案。本批不改表、Owner、schema、旧黄金或产品。来源身份及26文件hash见[EVIDENCE.json](EVIDENCE.json)，复算`node research/dungeon_village_1/tools/late-progression-closure/audit.mjs`。
+2026-10-09。只读固定APK普通Java、正式原表／既有739定义索引和维护C++消费者；未构建、未启动原游戏、未运行自然路线、未读取实时档案。本批不改表、Owner、schema、旧黄金或产品。来源身份及26文件hash见EVIDENCE.json（本地核对材料，不随仓库交付），复算`node research/dungeon_village_1/tools/late-progression-closure/audit.mjs`。
 
 正式增量合同为[高星／BOSS／任务路线](../../rules/PROGRESSION_ROUTES.md)。这是后期路线的实际消费条件图，不是事后描述一条已跑成功的路线。81任务和31活动仍分别为分母；81分成27普通探索、6稀有探索、12普通战斗、30flags4战斗、6flags2特殊战斗。此分类来自既有原表，没有重建另一份定义索引。
 

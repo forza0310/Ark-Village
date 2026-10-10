@@ -31,7 +31,7 @@
 
 ### 当前连续队列
 
-最新主动路径已认证[7300跨首次任务成果／10000](../verification/active-application-route/README.md)：自然任务成功1、村办2，仍0星／升级0。下一从10000接续自然升级与首星。二星[来源方案](../prototype/tests/APPLICATION_PROCESS.md)澄清kind3／9设施计数与kind12住宅分开、真实赠礼报价；目前只是策略设计，不伪称新Controller交接或自然二星已完成。
+最新主动路径已认证[7300跨首次任务成果／10000](../prototype/tests/APPLICATION_PROCESS.md)：自然任务成功1、村办2，仍0星／升级0。下一从10000接续自然升级与首星。二星[来源方案](../prototype/tests/APPLICATION_PROCESS.md)澄清kind3／9设施计数与kind12住宅分开、真实赠礼报价；目前只是策略设计，不伪称新Controller交接或自然二星已完成。
 
 2026-10-10[主动应用首批](../VERIFICATION.md#主动应用driver与2000轮前缀2026-10-10)已交付独立Driver和420／2000轮跨进程证书，具名命令0–14、真实页面生命周期、完整输出与资源检查通过。当前`active-application-v1/frame2000.avra`是下一主动路径入口，0星／未达terminal；被动`natural-application-economy-v1/month12`只用于日期成本路线。后继先管理链至首星／活动16营业，再二星，不重新跑无关早期前缀。
 

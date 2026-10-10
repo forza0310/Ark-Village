@@ -10,12 +10,9 @@
 
 `a/m.v/w`在本固定DEX全部具名直接写引用中只有静态初始化的0。消费端保留`v==1 && kind==1`时取`u[w]`的分支，但本次没有找到启用1或改变索引的直接写入者。不能把这一结果扩大成已排除反射、JNI、外部修改或其他版本的全程序不可达证明。
 
-本次重新只读核对固定APK完整hash，并在内存中解压唯一`classes.dex`，与既有DEX逐字节相等；没有再导出一份DEX。证据为[DEX_FIELD_REFS.json](DEX_FIELD_REFS.json)，复算入口为[dex-audit.cjs](../../tools/task-selection-producers/dex-audit.cjs)：
+本次重新只读核对固定APK完整hash，并在内存中解压唯一`classes.dex`，与既有DEX逐字节相等；没有再导出一份DEX。证据为DEX_FIELD_REFS.json（本地核对材料，不随仓库交付），复算入口为dex-audit.cjs（本地核对材料，不随仓库交付）：
 
-```powershell
-node --check research/dungeon_village_1/tools/task-selection-producers/dex-audit.cjs
-node research/dungeon_village_1/tools/task-selection-producers/dex-audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 | 输入／扫描 | 本轮实际结果 |
 | --- | --- |

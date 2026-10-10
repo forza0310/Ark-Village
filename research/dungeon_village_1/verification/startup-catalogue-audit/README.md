@@ -6,12 +6,9 @@
 
 ## 固定证据与复查
 
-[DEX_STARTUP.json](DEX_STARTUP.json)由[dex-audit.cjs](../../tools/startup-catalogue-audit/dex-audit.cjs)生成，绑定DEX SHA-256 `b4386a0de612fe18196a390633607ef36c69c2a63881244832314e3bf4902d1a`。固定APK与该DEX本轮逐字节对应已在前一专题验证，本工具不重新导出DEX、不修改旧`DEX_FIELD_REFS.json`的修前hash。
+DEX_STARTUP.json（本地核对材料，不随仓库交付）由dex-audit.cjs（本地核对材料，不随仓库交付）生成，绑定DEX SHA-256 `b4386a0de612fe18196a390633607ef36c69c2a63881244832314e3bf4902d1a`。固定APK与该DEX本轮逐字节对应已在前一专题验证，本工具不重新导出DEX、不修改旧`DEX_FIELD_REFS.json`的修前hash。
 
-```powershell
-node --check research/dungeon_village_1/tools/startup-catalogue-audit/dex-audit.cjs
-node research/dungeon_village_1/tools/startup-catalogue-audit/dex-audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 实际扫描1906个有代码方法；登记`c/n.d`的47处直接字段写、全部具名调用、这些字段及8项补充字段的具名引用索引。设施N的10处字段引用／重置调用保留有限窗口，`a/o.g()`及`a/o.a(m,o)`两个小方法保留完整原字节；JSON 115814字节，限制128KiB。19个引用源文件记录path／hash／bytes，C++文件hash为本次修正后的现场，不与前一专题修前hash混用。pc均为16位code unit。
 

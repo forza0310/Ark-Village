@@ -8,12 +8,9 @@ Java窗口记录源文件hash及行范围，加载C→sound目录→snd.inf→ra
 
 `steam-inspect.cjs`限定7个具名方法及真实下一入口，校验固定DLL／metadata和PE范围，单窗≤4096字节，指令只输出stdout。七窗共1,168字节，已消费PlayBgm／PlaySe／PlayJingle／StopBgm及SoundPlayer.Play／Suspend／Resume；EXE音频加载、字节身份、AudioSource和焦点消费尚未闭合。
 
-```powershell
-python research/dungeon_village_1/tools/audio-contract/audit.py
-node research/dungeon_village_1/tools/audio-contract/steam-inspect.cjs manifest
-```
+核对命令属于本地研究过程，不随仓库交付。
 
-首条仅更新本目录[EVIDENCE.json](EVIDENCE.json)：26个完整文件hash、实际raw路径、通道、循环资格、容器头、21个Java窗口及7个Steam窗口。正式合同逐项消费；没有保存新反编译全文／机器码全文。自动校验3609项仅是输入与结构检查，不能代替原窗口、真实听音、C++播放或回放语义验收。
+首条仅更新本目录EVIDENCE.json（本地核对材料，不随仓库交付）：26个完整文件hash、实际raw路径、通道、循环资格、容器头、21个Java窗口及7个Steam窗口。正式合同逐项消费；没有保存新反编译全文／机器码全文。自动校验3609项仅是输入与结构检查，不能代替原窗口、真实听音、C++播放或回放语义验收。
 
 后继发布由[小发布器](../../tools/scripts/publish_audio.py)从固定APK直接读取，26份Ogg及清单位于assets/audio；不修改original视觉包／761分母。同内容重复发布新增0项，`--check`通过；项目内隔离冲突探针确认异内容MANIFEST拒绝、原字节不变且新音频0项，探针目录已清理。发布清单SHA-256为`7a4661f9603f0edd39856286091bd49feacfbc0b1bd5be1b9a8d5714d8a43ebd`。
 

@@ -1,6 +1,6 @@
 # Steam 标题背景、上边与 Logo 绘制
 
-2026-10-09。只读固定Steam2.56研究副本，核`TitleForm.Draw`及`_draw`入口前4096字节，交叉`SmartBeginPaint`、动画常量真实字段和Logo资源选择链；不是完整`_draw`、标题菜单或原窗口复刻验收。方法和资源证据见[专题包](../verification/steam-title-draw/README.md)，图像身份沿[启动资源](STEAM_STARTUP_RESOURCES.md)，APK坐标独立保留于[启动皮肤合同](STARTUP_SKIN.md)。
+2026-10-09。只读固定Steam2.56研究副本，核`TitleForm.Draw`及`_draw`入口前4096字节，交叉`SmartBeginPaint`、动画常量真实字段和Logo资源选择链；不是完整`_draw`、标题菜单或原窗口复刻验收。方法和资源证据见专题包，图像身份沿[启动资源](STEAM_STARTUP_RESOURCES.md)，APK坐标独立保留于[启动皮肤合同](STARTUP_SKIN.md)。
 
 已闭合的关键差异：Steam title00按实际Image宽高居中并贴底，upper在逻辑画面顶部按240宽重复，草边也横向重复；不能把APK240宽标题画布整体放大冒充Steam。此层仅发`DrawImage(image,x,y)`，没有给背景传入拉伸目标矩形，但底层Graphics／窗口缩放仍在边界之外。
 
@@ -30,7 +30,7 @@
 
 ## Logo 入场与弹跳
 
-令`frame=titleFrame_`，源静态`title_anime`三个元素`A0/A1/A2`已独立核为**10／75／100**。证据链是`.cctor`调用`InitializeArray`实参槽`0x110F42C8`→fieldRef224→私有数据type4129／local224→field25362→metadata默认值区12字节。该12字节SHA-256与私有字段名`AE845E9C…3E6A3C58C`完整匹配，原值见[ANIMATION.json](../verification/steam-title-draw/ANIMATION.json)；与APK一致是交叉结果，不是借APK填写。
+令`frame=titleFrame_`，源静态`title_anime`三个元素`A0/A1/A2`已独立核为**10／75／100**。证据链是`.cctor`调用`InitializeArray`实参槽`0x110F42C8`→fieldRef224→私有数据type4129／local224→field25362→metadata默认值区12字节。该12字节SHA-256与私有字段名`AE845E9C…3E6A3C58C`完整匹配，原值见ANIMATION.json（本地核对材料，不随仓库交付）；与APK一致是交叉结果，不是借APK填写。
 
 当`frame≥A0`时，入口确认以下参数：
 

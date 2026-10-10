@@ -1,6 +1,6 @@
 # Steam人物60：外层更新、软标签与触摸值
 
-2026-10-10。[人物四页合同](STEAM_HUMAN_DETAIL.md)的后继局部认证；[研究包](../verification/steam-human-input/README.md)与[证据清单](../verification/steam-human-input/EVIDENCE.json)。固定Steam DLL，未执行原窗口点击，不以APK填补动态平台行为。
+2026-10-10。[人物四页合同](STEAM_HUMAN_DETAIL.md)的后继局部认证；[研究包](../verification/steam-human-input/README.md)与证据清单（本地核对材料，不随仓库交付）。固定Steam DLL，未执行原窗口点击，不以APK填补动态平台行为。
 
 ## 翻页不会在已核Update路径改写标签
 

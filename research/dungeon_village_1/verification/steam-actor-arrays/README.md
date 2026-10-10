@@ -16,14 +16,9 @@
 
 `resources.py`只读现有纯归档／PNG解析函数，重新验证Steam容器、TextAsset和payload身份后解码human／weapon／common三组。图片不导出，仅写`RESOURCES.json`：98项中96项与APK字节同一，差异是common两目录整体；当前消费的图片3／SEB25仍独立解析一致。正文列出Steam裁片，APK比较在独立解析之后完成。
 
-`verify-evidence.cjs`没有重用cctor读数算法：对行走128个坐标的实际机器码立即数逐项验证；对Steam解析后的16身体帧／16武器帧核独立裁片期望。hash、坐标锚点、资源摘要见[EVIDENCE.json](EVIDENCE.json)。本次没有C++构建、原窗口观察或自然路线测试。
+`verify-evidence.cjs`没有重用cctor读数算法：对行走128个坐标的实际机器码立即数逐项验证；对Steam解析后的16身体帧／16武器帧核独立裁片期望。hash、坐标锚点、资源摘要见EVIDENCE.json（本地核对材料，不随仓库交付）。本次没有C++构建、原窗口观察或自然路线测试。
 
-```powershell
-node research/dungeon_village_1/tools/steam-actor-arrays/arrays.cjs human
-node research/dungeon_village_1/tools/steam-actor-arrays/arrays.cjs weapon
-python research/dungeon_village_1/tools/steam-actor-arrays/resources.py
-node research/dungeon_village_1/tools/steam-actor-arrays/verify-evidence.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 前两条只输出结构化摘要，需归档时保存到对应human.json／weapon.json；后两条只更新本目录派生JSON。没有导出原游戏图片／二进制、没有存档读取或进程操作，没有额外构建缓存或后台任务。全部证据由正式合同消费，旧归档与其它会话文件不退休、不清理。
 

@@ -1,6 +1,6 @@
 # Steam文字后端、默认皮肤与字体绑定
 
-2026-10-09。接续[字体选择／测宽](STEAM_FONT_CONSUMER.md)和[语言包安装](STEAM_LANGUAGE_INSTALL.md)，只读固定Steam2.56研究副本，新增16个具名方法、1个由具名调用者定位的清理helper和3个Unity对象引用。证据及复算见[专题包](../verification/steam-font-backend-contract/README.md)。没有运行游戏、查看当前进程字体、访问系统字库／用户设置、导出字体或修改产品。
+2026-10-09。接续[字体选择／测宽](STEAM_FONT_CONSUMER.md)和[语言包安装](STEAM_LANGUAGE_INSTALL.md)，只读固定Steam2.56研究副本，新增16个具名方法、1个由具名调用者定位的清理helper和3个Unity对象引用。证据及复算见专题包。没有运行游戏、查看当前进程字体、访问系统字库／用户设置、导出字体或修改产品。
 
 本批闭合两个先前缺口：**纹理文字开关如何装入当前字体及压栈恢复；Unity内置GameSkin实际指向哪个字体对象。** 同时把DrawString的后端落点追到GUI.Label／GL文字队列／纹理／Image任务，不能据此宣称完整栅格化和中文实际字体已还原。
 
@@ -14,7 +14,7 @@
 | GUISkin MonoScript | 12001／115 | 92字节；类GUISkin、命名空间UnityEngine、程序集UnityEngine.IMGUIModule.dll |
 | Arial Font | 10102／128 | 286字节；对象名Arial，与前批字体清单同一对象 |
 
-GameSkin的script引用也是file0/path12001。MonoBehaviour公共前缀、对齐名称、两个本地引用、随后box样式名称及`GUISkin`的`[SerializeField] m_Font/m_box`声明共同约束字段位置；不是搜索到Arial字样便认为所有窗口都用它。容器／三对象哈希、相对偏移和读取范围见[DATA.json](../verification/steam-font-backend-contract/DATA.json)。未解析GameSkin全部样式或Font剩余字段，不把这段前缀视为完整Unity序列化格式。
+GameSkin的script引用也是file0/path12001。MonoBehaviour公共前缀、对齐名称、两个本地引用、随后box样式名称及`GUISkin`的`[SerializeField] m_Font/m_box`声明共同约束字段位置；不是搜索到Arial字样便认为所有窗口都用它。容器／三对象哈希、相对偏移和读取范围见DATA.json（本地核对材料，不随仓库交付）。未解析GameSkin全部样式或Font剩余字段，不把这段前缀视为完整Unity序列化格式。
 
 **现在可以说默认资源包的GameSkin引用Arial对象，仍不能说中文字形来自Arial。** 还缺引擎实际选用该皮肤的运行状态、null-font处理、中文缺字回退的字体身份与尺寸。Arial的286字节对象也不是本批可导出的完整TTF；此前没有中文/default资源路径的结论保持不变。
 

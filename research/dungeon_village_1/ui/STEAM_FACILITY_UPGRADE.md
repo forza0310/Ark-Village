@@ -1,6 +1,6 @@
 # Steam设施升级81的绘制与确认
 
-2026-10-10。固定Steam2.56；[工作包与复算](../verification/steam-facility-upgrade/README.md)复用已冻结具名SubForm方法，补8个有限helper和一个直接调用数组读取段。APK既有[演出合同](EQUIPMENT_FACILITY_RENDER.md)只交叉，不填Steam缺口；没有新窗口、C++或产品验收。
+2026-10-10。固定Steam2.56；工作包与复算复用已冻结具名SubForm方法，补8个有限helper和一个直接调用数组读取段。APK既有[演出合同](EQUIPMENT_FACILITY_RENDER.md)只交叉，不填Steam缺口；没有新窗口、C++或产品验收。
 
 ## 入口与真正升级
 

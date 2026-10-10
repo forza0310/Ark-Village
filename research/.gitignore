@@ -1,6 +1,52 @@
-# 原始安装包与可再生成的研究工作目录不进入版本管理。
+# 原程序与本地工作目录不进入版本管理。
 *.apk
-# work仅保留本地输入、缓存与候选输出；正式归档放verification，长期工具放tools，不使用force-add绕过。
 dungeon_village_1/work/
-# 用户提供的Steam安装文件仅作独立只读研究输入，不提交原程序或资源副本。
 dungeon_village_1/DungeonVillageEXE/
+
+# 只保留通用解析/提取工具的标准目录；专题探针和交付核对留本地。
+dungeon_village_1/tools/*/
+!dungeon_village_1/tools/include/
+!dungeon_village_1/tools/src/
+!dungeon_village_1/tools/tests/
+!dungeon_village_1/tools/scripts/
+dungeon_village_1/tools/work_archive_paths.*
+dungeon_village_1/tools/scripts/*audit*
+dungeon_village_1/tools/scripts/*verify*
+dungeon_village_1/tools/scripts/*check*
+dungeon_village_1/tools/scripts/catalogue_unlocks.mjs
+dungeon_village_1/tools/scripts/character_job_unlocks.cjs
+dungeon_village_1/tools/scripts/steam_task_selection.cjs
+
+# 机器核对产物、交付指纹和已退休草稿不归档。
+dungeon_village_1/verification/**/*.json
+dungeon_village_1/verification/.gitattributes
+dungeon_village_1/data/CATALOGUE_UNLOCK_INDEX.json
+dungeon_village_1/data/CHARACTER_JOB_UNLOCK_INDEX.json
+dungeon_village_1/stages/in-progress/village-activity/
+
+# 已确认冗余的过程文档。
+dungeon_village_1/verification/active-application-route/README.md
+dungeon_village_1/verification/active-display-replay/README.md
+dungeon_village_1/verification/active-first-star-route/README.md
+dungeon_village_1/verification/startup-records-profile/README.md
+dungeon_village_1/verification/steam-startup-publication/README.md
+dungeon_village_1/verification/title-schedule-handoff/README.md
+dungeon_village_1/verification/steam-title-menu-contract/CONTRACT_DRAFT.md
+dungeon_village_1/verification/steam-title-menu-contract/README.md
+dungeon_village_1/verification/information-statistics-contract/README.md
+dungeon_village_1/verification/startup-skin-contract/README.md
+dungeon_village_1/verification/endgame-records-contract/README.md
+dungeon_village_1/verification/steam-build-list-render/README.md
+dungeon_village_1/verification/steam-coin-render/README.md
+dungeon_village_1/verification/steam-facility-draw-helpers/README.md
+dungeon_village_1/verification/steam-facility-labels/README.md
+dungeon_village_1/verification/steam-facility-upgrade/README.md
+dungeon_village_1/verification/steam-font-backend-contract/README.md
+dungeon_village_1/verification/steam-gltext-lifecycle/README.md
+dungeon_village_1/verification/steam-startup-resource-map/README.md
+dungeon_village_1/verification/steam-title-draw/README.md
+dungeon_village_1/verification/title-actor-skin/README.md
+dungeon_village_1/verification/progression-feature-audit/README.md
+dungeon_village_1/verification/progression-feature-audit/HIGH_STARS.md
+dungeon_village_1/verification/progression-feature-audit/MAGIC_POT.md
+dungeon_village_1/verification/natural-application-performance/README.md

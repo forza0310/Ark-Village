@@ -4,17 +4,12 @@
 
 ## 工具与证据
 
-- [inspect.cjs](../../tools/steam-mapchip-patterns/inspect.cjs)：8个具名入口，核固定样本、方法边界与PE映射，共10685字节；逐入口stdout，不保存指令全文。cctor仅4381字节必要前缀，另外7个窗口核表字段和SEB范围边界。
-- [arrays.cjs](../../tools/steam-mapchip-patterns/arrays.cjs)：复用已验人物数组探针的窄静态解释方案，限制到TenantData两个目标字段、固定4381字节；未知指令／调用／引用空洞失败。成功分配路径不是运行原函数。两个InitializeArray从真实metadata私有字段链核blob哈希；[ARRAYS.json](ARRAYS.json)保留2数组42个整型叶、发布与写入锚点。
-- [resources.py](../../tools/steam-mapchip-patterns/resources.py)：复用[既有纯归档／PNG读取器](../../tools/scripts/image_coverage.py)，先核容器／TextAsset／payload，再在内存解common、image、xls；只写[RESOURCES.json](RESOURCES.json)。85定义、87 SEB、194资源及异常记录，不导出图片、整归档或重复原表。
-- [audit.cjs](../../tools/steam-mapchip-patterns/audit.cjs)：独立核手审数组、两发布点、表列→字段锚及SEB范围／null边界，冻结源异常的精确列表；[EVIDENCE.json](EVIDENCE.json)登记19锚、规模和两图身份。
+- inspect.cjs（本地核对材料，不随仓库交付）：8个具名入口，核固定样本、方法边界与PE映射，共10685字节；逐入口stdout，不保存指令全文。cctor仅4381字节必要前缀，另外7个窗口核表字段和SEB范围边界。
+- arrays.cjs（本地核对材料，不随仓库交付）：复用已验人物数组探针的窄静态解释方案，限制到TenantData两个目标字段、固定4381字节；未知指令／调用／引用空洞失败。成功分配路径不是运行原函数。两个InitializeArray从真实metadata私有字段链核blob哈希；ARRAYS.json（本地核对材料，不随仓库交付）保留2数组42个整型叶、发布与写入锚点。
+- resources.py（本地核对材料，不随仓库交付）：复用[既有纯归档／PNG读取器](../../tools/scripts/image_coverage.py)，先核容器／TextAsset／payload，再在内存解common、image、xls；只写RESOURCES.json（本地核对材料，不随仓库交付）。85定义、87 SEB、194资源及异常记录，不导出图片、整归档或重复原表。
+- audit.cjs（本地核对材料，不随仓库交付）：独立核手审数组、两发布点、表列→字段锚及SEB范围／null边界，冻结源异常的精确列表；EVIDENCE.json（本地核对材料，不随仓库交付）登记19锚、规模和两图身份。
 
-```powershell
-node research/dungeon_village_1/tools/steam-mapchip-patterns/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-mapchip-patterns/arrays.cjs tenant
-python research/dungeon_village_1/tools/steam-mapchip-patterns/resources.py
-node research/dungeon_village_1/tools/steam-mapchip-patterns/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 第二条只输出摘要；归档ARRAYS.json时保留UTF-8及真实换行，其余两条只更新本专题派生摘要。原输入／源码hash在证据中，所有路径仅来自现有具名方法／原表／INF，不做全DLL盲扫。
 

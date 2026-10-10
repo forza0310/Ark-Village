@@ -4,9 +4,9 @@
 
 ## 范围与复算
 
-- [inspect.cjs](../../tools/steam-font-consumer/inspect.cjs)：只接受12个具名固定入口，逐项核DLL／metadata哈希、方法表身份、下一方法起点、PE可执行节和raw范围；单方法≤2048字节。本批12入口合计6416字节，包含方法异常尾和填充，不作为6416字节全为业务指令的证明。使用已安装iced-x86 1.21.0，仅stdout输出，未保存解码全文。
-- [data.cjs](../../tools/steam-font-consumer/data.cjs)：只读上述入口已实际引用的6个字符串使用槽及7个float32常量；核metadata字符串区界与固定PE映射。另完整读取已盘点ResourceManager首表1251行，并核Unity v22外部文件表及字体对象引用。
-- [EVIDENCE.json](EVIDENCE.json)：固定来源、12方法窗口哈希与资格；[DATA.json](DATA.json)：有限常量／字符串／字体资源引用，不含字体字节。
+- inspect.cjs（本地核对材料，不随仓库交付）：只接受12个具名固定入口，逐项核DLL／metadata哈希、方法表身份、下一方法起点、PE可执行节和raw范围；单方法≤2048字节。本批12入口合计6416字节，包含方法异常尾和填充，不作为6416字节全为业务指令的证明。使用已安装iced-x86 1.21.0，仅stdout输出，未保存解码全文。
+- data.cjs（本地核对材料，不随仓库交付）：只读上述入口已实际引用的6个字符串使用槽及7个float32常量；核metadata字符串区界与固定PE映射。另完整读取已盘点ResourceManager首表1251行，并核Unity v22外部文件表及字体对象引用。
+- EVIDENCE.json（本地核对材料，不随仓库交付）：固定来源、12方法窗口哈希与资格；DATA.json（本地核对材料，不随仓库交付）：有限常量／字符串／字体资源引用，不含字体字节。
 
 复算示例：`node inspect.cjs select`；其它键为`update,widthF,width,scale,needScale,offset,updateScale,init,construct,staticInit,draw`。`node data.cjs`输出数据证据，脚本不自动覆盖已归档JSON。未知键、多余参数、越界、源身份变化均拒绝。没有扩大到历史被拒的建设非入口续窗；本批全部固定字体入口通过工具执行，没有审批阻断。
 

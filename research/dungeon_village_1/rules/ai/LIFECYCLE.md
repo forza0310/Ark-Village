@@ -67,7 +67,7 @@
 ### 依据与调用差异
 
 本轮只读复用固定APK已有普通`c/b.java`和低层
-[Character.java](../../work/activity-choice-fallback/Character.java)，没有新反编译任务。
+Character.java（历史中间文件，当前未保留），没有新反编译任务。
 
 | 规则 | 普通常规/低层定位 | 共同所有者提交 |
 | --- | --- | --- |

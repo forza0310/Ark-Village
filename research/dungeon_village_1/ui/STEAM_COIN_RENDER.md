@@ -1,6 +1,6 @@
 # Steam金币X4：独立局部交叉
 
-2026-10-10。固定Steam2.56的独立机器码与资源证据见[工作包](../verification/steam-coin-render/README.md)及[复算清单](../verification/steam-coin-render/EVIDENCE.json)。这是只读静态交叉，不运行原游戏，不修改已验APK维护接口、世界随机或文件格式。APK正式合同继续见[COMBAT_RENDER](COMBAT_RENDER.md)，两者不因同图自动等价。
+2026-10-10。固定Steam2.56的独立机器码与资源证据见工作包及复算清单（本地核对材料，不随仓库交付）。这是只读静态交叉，不运行原游戏，不修改已验APK维护接口、世界随机或文件格式。APK正式合同继续见[COMBAT_RENDER](COMBAT_RENDER.md)，两者不因同图自动等价。
 
 ## 具名入口与绘制资格
 

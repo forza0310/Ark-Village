@@ -1,6 +1,6 @@
 # Steam标题人物调度与基础绘制
 
-2026-10-09。固定Steam2.56 `GameAssembly.dll`及metadata的具名方法静态交叉，补充[标题Draw](STEAM_TITLE_DRAW.md)。[证据清单](../verification/steam-title-actors/EVIDENCE.json)和[复查方式](../verification/steam-title-actors/README.md)保留来源身份、入口、字节范围与摘要；未启动游戏、读写内存或原档。APK合同见[标题调度](TITLE_PRESENTATION.md)与[人物皮肤](TITLE_ACTOR_SKIN.md)，两种来源分别认证。
+2026-10-09。固定Steam2.56 `GameAssembly.dll`及metadata的具名方法静态交叉，补充[标题Draw](STEAM_TITLE_DRAW.md)。证据清单（本地核对材料，不随仓库交付）和[复查方式](../verification/steam-title-actors/README.md)保留来源身份、入口、字节范围与摘要；未启动游戏、读写内存或原档。APK合同见[标题调度](TITLE_PRESENTATION.md)与[人物皮肤](TITLE_ACTOR_SKIN.md)，两种来源分别认证。
 
 ## 已证版本差异
 
@@ -63,7 +63,7 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 ## Steam数组、SEB与图片交叉闭合
 
-2026-10-09续批：[独立证据](../verification/steam-actor-arrays/EVIDENCE.json)。固定两具名cctor在成功分配／类型检查路径沿显式常量及真实fieldRef解读，目标字段全部发布后停止；Character2前10,513字节、WeaponData前25,697字节。未知值、指令或控制流显式失败；没有执行游戏代码，没有用APK常量补洞。三个编译器小helper由原调用点追到真实入口并分别核≤128字节的成功路径。
+2026-10-09续批：独立证据（本地核对材料，不随仓库交付）。固定两具名cctor在成功分配／类型检查路径沿显式常量及真实fieldRef解读，目标字段全部发布后停止；Character2前10,513字节、WeaponData前25,697字节。未知值、指令或控制流显式失败；没有执行游戏代码，没有用APK常量补洞。三个编译器小helper由原调用点追到真实入口并分别核≤128字节的成功路径。
 
 | Steam字段 | 正常action0已核值 | 静态发布VA |
 | --- | --- | --- |

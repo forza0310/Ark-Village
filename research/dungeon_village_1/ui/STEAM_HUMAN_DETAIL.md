@@ -2,7 +2,7 @@
 
 后继：[外层更新与触摸补证](STEAM_HUMAN_INPUT.md)已确认普通Update／Update2翻页链不按页重配label11；本页原“外层Update尚未闭合”属于初批边界。完整平台覆盖仍未验，不扩大成任何外部回调均不改标签。
 
-2026-10-10。固定Steam DLL、metadata身份及字节锚见[研究包](../verification/steam-human-detail/README.md)和[证据清单](../verification/steam-human-detail/EVIDENCE.json)。本页只认证具名方法中的局部静态消费者；没有本轮原窗口截图或完整皮肤像素验收。既有[人物UI示例](examples/README.md)是APK示意，不能反过来证明Steam坐标或文字。
+2026-10-10。固定Steam DLL、metadata身份及字节锚见[研究包](../verification/steam-human-detail/README.md)和证据清单（本地核对材料，不随仓库交付）。本页只认证具名方法中的局部静态消费者；没有本轮原窗口截图或完整皮肤像素验收。既有[人物UI示例](examples/README.md)是APK示意，不能反过来证明Steam坐标或文字。
 
 ## 范围与所有权
 
@@ -81,7 +81,7 @@ SubForm静态表60默认`[8,2]`，AppData标签8原文字“追跡”、2“戻�
 
 ## 图像映射与表现副作用
 
-[EVIDENCE](../verification/steam-human-detail/EVIDENCE.json)登记25个common逻辑引用：18图＋7SEB，包括SEB派生图，限定本批出版白名单有24个字节匹配路径；image88 `wnd_ato.png`（Steam 10×7）不在该历史白名单。其后已由[Steam人物素材包](../assets/steam-human-common/README.md)独立发布，当前不再缺此图；原静态清单不随新包增多改写历史匹配数。这是本批直接common分母，不是完整人物皮肤素材总数；窗口、字体、奖章、气泡、power-bar及动态人物／武器资源仍有委托边界。
+EVIDENCE（本地核对材料，不随仓库交付）登记25个common逻辑引用：18图＋7SEB，包括SEB派生图，限定本批出版白名单有24个字节匹配路径；image88 `wnd_ato.png`（Steam 10×7）不在该历史白名单。其后已由[Steam人物素材包](../assets/steam-human-common/README.md)独立发布，当前不再缺此图；原静态清单不随新包增多改写历史匹配数。这是本批直接common分母，不是完整人物皮肤素材总数；窗口、字体、奖章、气泡、power-bar及动态人物／武器资源仍有委托边界。
 
 | Draw_icon模式 | 本页用途与资源 |
 |---|---|

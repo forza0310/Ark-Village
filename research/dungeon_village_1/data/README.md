@@ -4,7 +4,6 @@
 
 - [来源清单](SOURCE.tsv) 固定归档、条目 SHA-256 和字节/行/列数量。
 - [内容覆盖索引](PROGRESSION_CONTENT_INDEX.json)列13表739定义及APK／Steam两语言来源和差分；[说明](../rules/PROGRESSION_CONTENT.md)区分定义存在、触发、领取及自然可达，不能把同表数值当EXE消费者已证。
-- [人物／职业来源](CHARACTER_JOB_UNLOCK_INDEX.json)逐项连接25人物、23职业与初态、人气、脚本、大师及加载／继承；[目录开放来源](CATALOGUE_UNLOCK_INDEX.json)连接274个设施／装备／道具／配方定义与各类入口资格。它们是带来源的派生索引，不是世界存档或全部自然可达证明。
 - [新局数据包](startup/README.md)交付24×24源地图、六张完整源表、指定对话与有前置的静态状态；不是原版运行快照。
 - [设施表原件](original/tenantData.txt) 保持恢复出的 UTF-8 字节，不编辑、不换行规范化。
 - [精灵绑定](SPRITE_BINDINGS.tsv) 保存普通/双格旅店和咖啡厅经地图显示记录定位的帧、图片、偏移及翻转。

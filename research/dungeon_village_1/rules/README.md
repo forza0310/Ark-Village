@@ -1,6 +1,6 @@
 # 规则规格
 
-2026-10-10新要素按[功能覆盖审计](../verification/progression-feature-audit/README.md)交付，研究仅做短功能／逻辑检查，真实世界长跑由产品负责。[Steam怪物开放与介绍](STEAM_MONSTER_PROGRESSION.md)新增固定EXE消费者交叉；下列长测数量均保留历史时点，不是当前每批验收要求。
+2026-10-10新要素按[功能覆盖审计](PROGRESSION_ROUTES.md)交付，研究仅做短功能／逻辑检查，真实世界长跑由产品负责。[Steam怪物开放与介绍](STEAM_MONSTER_PROGRESSION.md)新增固定EXE消费者交叉；下列长测数量均保留历史时点，不是当前每批验收要求。
 
 本包文档按功能维护固定 APK 的行为证据与独立 C++ 契约。输入和证据等级见 [证据索引](../EVIDENCE.md)；
 文件内的生成源码坐标保持原始行号，不代表维护代码位置。

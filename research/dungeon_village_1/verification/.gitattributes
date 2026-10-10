@@ -1,2 +1,0 @@
-# 历史JSON按证据原始字节归档；CRLF属于冻结输入，禁止行尾转换使SHA失效。
-**/*.json -text whitespace=cr-at-eol

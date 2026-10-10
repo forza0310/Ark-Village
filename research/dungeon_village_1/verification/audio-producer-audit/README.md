@@ -2,7 +2,7 @@
 
 2026-10-09。接续[声音合同](../../ui/AUDIO_REQUESTS.md)，只读逐项核维护声音入队点、底层来源、输出领取和仍未维护的原声音来源。没有C++／schema／原表改动，没有构建、播放、原窗口或存档操作。
 
-[EVIDENCE.json](EVIDENCE.json)由[audit.cjs](../../tools/audio-producer-audit/audit.cjs)登记所有现`prototype/src`的`state.sound_requests.push_back/insert`位置及源码哈希，并逐类关联APK具名窗口。它是来源审计，不把“查到整数”算作实际听见声音；现窗口仍消费后丢弃，CLI只打印。
+EVIDENCE.json（本地核对材料，不随仓库交付）由audit.cjs（本地核对材料，不随仓库交付）登记所有现`prototype/src`的`state.sound_requests.push_back/insert`位置及源码哈希，并逐类关联APK具名窗口。它是来源审计，不把“查到整数”算作实际听见声音；现窗口仍消费后丢弃，CLI只打印。
 
 ## 操作分类必须来自调用者
 

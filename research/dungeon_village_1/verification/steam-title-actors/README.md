@@ -8,11 +8,7 @@
 
 `guest-data.cjs`从已核TitleForm.cctor的固定RuntimeFieldHandle槽`0x110F2100`解析metadata v29的fieldRef→私有数据字段→默认数据，校验44字节blob的SHA-256等于字段名。TITLE_GUEST独立得出0…10，不采用APK替代。
 
-```powershell
-node research/dungeon_village_1/tools/steam-title-actors/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-title-actors/guest-data.cjs
-# 单个已登记方法可用draw、update、actor、drawParam等固定键复查；仅stdout。
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 `EVIDENCE.json`保存两来源哈希、21窗口的范围和哈希、guest metadata链及关键消费位置。共享methods／dump只作为带来源身份的既有解析索引，不是新增二进制副本。
 

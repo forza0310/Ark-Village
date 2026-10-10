@@ -2,9 +2,9 @@
 
 2026-10-09。正式结论见[raw20菜单与确认](../../ui/STEAM_SAVE_MENU.md)。本批只读原DLL／metadata与既有证据，不操作窗口、原档或账号目录，不构建、不提交。
 
-- [EVIDENCE.json](EVIDENCE.json)：新具名窗口范围与SHA、复用旧8方法证据、原图／SEB引用、宽度／颜色／浮点立即数及分发锚点。
-- [LITERALS.json](LITERALS.json)：菜单三文字、覆盖／删除询问、按钮及有限翻译链固定槽。
-- [WIDTH.json](WIDTH.json)：Steam cctor的日文宽数组独立字段句柄解析。
+- EVIDENCE.json（本地核对材料，不随仓库交付）：新具名窗口范围与SHA、复用旧8方法证据、原图／SEB引用、宽度／颜色／浮点立即数及分发锚点。
+- LITERALS.json（本地核对材料，不随仓库交付）：菜单三文字、覆盖／删除询问、按钮及有限翻译链固定槽。
+- WIDTH.json（本地核对材料，不随仓库交付）：Steam cctor的日文宽数组独立字段句柄解析。
 - `inspect.cjs`：从固定具名入口顺序解码，只按白名单过滤stdout，不写指令全文；`audit.cjs`只汇集三份摘要；`literals.cjs`和`width-data.cjs`解析固定metadata槽。
 
 复算：`node research/dungeon_village_1/tools/steam-save-menu-contract/audit.cjs`。Init／Update／FrameMenu／触摸／cctor复用旧证据，先核旧JSON与原方法字节SHA，不复制约2.7MB反汇编文件。新读取最大前缀17,312字节，单次可打印范围不超过4,112字节；所有终点截断指令均不当事实。

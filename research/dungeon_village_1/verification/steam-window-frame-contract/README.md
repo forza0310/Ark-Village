@@ -4,14 +4,11 @@
 
 ## 来源和复算
 
-[inspect.cjs](../../tools/steam-window-frame-contract/inspect.cjs)固定登记19个具名方法入口／末界，共13,264字节；逐次只接受manifest或白名单键，核DLL、metadata、方法索引和PE执行区映射。默认打印有界反汇编供审读，不落盘方法全文，不用全镜像扫描推测调用者。可用键为windowDefault/window/boxDefault/box/window2/window3/whiteCorner/drawRect/fillRect/pushClip/popClip/setClip/clipRect/guiGroup/setClipInternal/updateGLClip/transRect/beginMatrix/transRectGL。
+inspect.cjs（本地核对材料，不随仓库交付）固定登记19个具名方法入口／末界，共13,264字节；逐次只接受manifest或白名单键，核DLL、metadata、方法索引和PE执行区映射。默认打印有界反汇编供审读，不落盘方法全文，不用全镜像扫描推测调用者。可用键为windowDefault/window/boxDefault/box/window2/window3/whiteCorner/drawRect/fillRect/pushClip/popClip/setClip/clipRect/guiGroup/setClipInternal/updateGLClip/transRect/beginMatrix/transRectGL。
 
-```powershell
-node research/dungeon_village_1/tools/steam-window-frame-contract/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-window-frame-contract/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
-[audit.cjs](../../tools/steam-window-frame-contract/audit.cjs)复核27个E8调用锚点、两个实际float常量、3个颜色初始化窗口、7个已有调用窗口、5项资源身份与图片／SEB索引，生成唯一[EVIDENCE.json](EVIDENCE.json)。19方法总预算≤16KiB；调用窗口均在旧标题／SubForm已核范围内，复用来源hash单独登记，不将它们算新增方法字节。
+audit.cjs（本地核对材料，不随仓库交付）复核27个E8调用锚点、两个实际float常量、3个颜色初始化窗口、7个已有调用窗口、5项资源身份与图片／SEB索引，生成唯一EVIDENCE.json（本地核对材料，不随仓库交付）。19方法总预算≤16KiB；调用窗口均在旧标题／SubForm已核范围内，复用来源hash单独登记，不将它们算新增方法字节。
 
 固定DLL SHA-256 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，metadata SHA-256 `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。方法末界取下一已知入口，可能含padding，不把padding解释成逻辑；不同重载机器码相同不合并方法身份。
 

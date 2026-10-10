@@ -213,6 +213,8 @@ research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_contin
 无窗口长测直接循环调用`StartupWorldRuntimeSession::update()`，不使用sleep、FPS或墙钟节拍，已经按CPU可承受速度运行。
 `speed=1`仅表示原版主场景在框架入口保存两轮逻辑；自动玩家在每次框架更新后观察并下达命令，
 因此改成1可能改变页面、命令和随机消费的交错，不能代替`seed=1/speed=0`的黄金轨迹验收。
+非人物商店消费者使用窄投影，与完整人物routes共用任务旗标引用遍历和商店notice投影，不再构造随后丢弃的完整人物路由。缺human flag或RescueActorContext仍在原时点拒绝；原序notice、空覆盖及缺details保留不变。历史条件微基准中位数由57.3482ms降至25.676ms，仅代表单次投影，不能当整局加速倍数。
+
 增大CTest超时不会提速。保持同轨迹的性能工作应先采样Owner候选复制、投影、分配与验证成本，
 再以相同结果、操作时点、随机抽数及回滚断言验收优化；目前没有额外的等价加速参数。
 

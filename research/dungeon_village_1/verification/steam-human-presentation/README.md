@@ -21,7 +21,7 @@ metadata映射列PB_NOW=1、PB_AFTER=3；机器码分别读`powerBar_[1]`作为�
 
 ## 素材引用与证据消费
 
-[EVIDENCE.json](EVIDENCE.json)记录7个资源引用：4 PNG共1,807字节、3 SEB共524字节；不复制资源。PNG为image7／35／22／103，SEB为28／39／12，所有SEB图片索引及裁片范围已核。image103明确复用Steam建设资源包；其余通过EXE覆盖清单逐文件证明已有路径字节相同，不按APK同名自动认证。
+EVIDENCE.json（本地核对材料，不随仓库交付）记录7个资源引用：4 PNG共1,807字节、3 SEB共524字节；不复制资源。PNG为image7／35／22／103，SEB为28／39／12，所有SEB图片索引及裁片范围已核。image103明确复用Steam建设资源包；其余通过EXE覆盖清单逐文件证明已有路径字节相同，不按APK同名自动认证。
 
 `inspect.cjs`只接受固定键，stdout输出有限指定范围；`audit.cjs`只重写本包EVIDENCE，记录固定来源、方法摘要、36锚、六blob、资源、旧证据及脚本自身hash。不会扫描“最新”游戏文件或向产品目录写入。
 
@@ -31,16 +31,7 @@ metadata映射列PB_NOW=1、PB_AFTER=3；机器码分别读`powerBar_[1]`作为�
 
 在仓库根执行：
 
-```powershell
-node --check research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs
-node --check research/dungeon_village_1/tools/steam-human-presentation/audit.cjs
-node research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs medal
-node research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs bubble
-node research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs power
-node research/dungeon_village_1/tools/steam-human-presentation/inspect.cjs schedule
-node research/dungeon_village_1/tools/steam-human-presentation/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 复用肖像consumer可执行`node research/dungeon_village_1/tools/steam-human-detail/inspect.cjs portrait`。`schedule-location`只列已命名静态初始化方法中访问+0x128字段的指令；不将其它静态表一并宣布解析完成。
 

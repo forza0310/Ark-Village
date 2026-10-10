@@ -4,17 +4,11 @@
 
 ## 来源与复算
 
-[inspect.cjs](../../tools/steam-build-resource-install/inspect.cjs)固定20个具名窗口共9344字节。分别核GameForm.Init／Finish／ChangeState、软标签与逻辑脉冲、RecordStore资源分支、Storage media3、AssetReader具名回调及ResourceManager字节入口。所有入口按方法索引和PE边界核验，输出只到stdout，不保存原实现全文。
+inspect.cjs（本地核对材料，不随仓库交付）固定20个具名窗口共9344字节。分别核GameForm.Init／Finish／ChangeState、软标签与逻辑脉冲、RecordStore资源分支、Storage media3、AssetReader具名回调及ResourceManager字节入口。所有入口按方法索引和PE边界核验，输出只到stdout，不保存原实现全文。
 
-[audit.cjs](../../tools/steam-build-resource-install/audit.cjs)核固定DLL／metadata、41个真实调用／参数／赋值锚、3个literal、85原定义及46项“可建设＋可旋转”子集，两方向裁片继续消费上一批完整来源；输出[EVIDENCE.json](EVIDENCE.json)。AppData.Init／cctor及GameForm更新复用旧具名反汇编包，所需窗口另核原DLL字节hash，不重拷大包。
+audit.cjs（本地核对材料，不随仓库交付）核固定DLL／metadata、41个真实调用／参数／赋值锚、3个literal、85原定义及46项“可建设＋可旋转”子集，两方向裁片继续消费上一批完整来源；输出EVIDENCE.json（本地核对材料，不随仓库交付）。AppData.Init／cctor及GameForm更新复用旧具名反汇编包，所需窗口另核原DLL字节hash，不重拷大包。
 
-```powershell
-node research/dungeon_village_1/tools/steam-build-resource-install/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-build-resource-install/inspect.cjs gameInit
-node research/dungeon_village_1/tools/steam-build-resource-install/inspect.cjs gameState
-node research/dungeon_village_1/tools/steam-build-resource-install/audit.cjs
-python -B research/dungeon_village_1/tools/scripts/publish_steam_build_common.py --check
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 首轮按具名BootForm.Load／Download及初始化线索探查，发现resMapChip不在BootForm.Load安装；最终正式入口是GameForm.Init。探索stdout未另落盘，也未把未闭合的语言候选／LoadReady全部流程列入20方法交付窗口。无盲扫、原游戏执行或构建。
 

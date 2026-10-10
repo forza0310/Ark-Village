@@ -17,17 +17,7 @@
 
 在仓库根运行：
 
-```powershell
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs manifest
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs layout
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs neighbors
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs main
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs main2
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs input
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs init2
-node research/dungeon_village_1/tools/steam-facility-detail/inspect.cjs scene
-node research/dungeon_village_1/tools/steam-facility-detail/audit.cjs
-```
+核对命令属于本地研究过程，不随仓库交付。
 
 其他固定键为returns、previewReturn、mapchip2、arrow、icon。inspect只写stdout；audit只生成本目录EVIDENCE.json。脚本、JSON与Markdown统一UTF-8无BOM、LF，先规范化再生成哈希。检查包括语法、锚点、资源别名、重复生成幂等、文档链接和Git差异；不触发游戏回归。
 

@@ -817,16 +817,8 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
     std::vector<CampaignReceipt> pending;
     const auto facility_receipt = [&](CampaignReceiptKind kind, int definition,
                                       std::uint64_t subject = 0) {
-        pending.push_back({kind,
-                           definition,
-                           after.simulation_steps,
-                           top(before).id,
-                           subject,
-                           -1,
-                           {before.village_points, before.facility_presence.at(definition),
-                            before.facility_free_builds.at(definition), cash(before)},
-                           {after.village_points, after.facility_presence.at(definition),
-                            after.facility_free_builds.at(definition), cash(after)}});
+        pending.push_back(
+            facility_transaction_receipt(kind, definition, before, after, top(before).id, subject));
     };
     ++stats_.commands;
     if (income_)

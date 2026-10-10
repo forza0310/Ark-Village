@@ -17,26 +17,59 @@ std::string clean(std::string text) {
             c = ' ';
     return text;
 }
-struct ReceiptIdentity { const char *category, *stage; int definitions; bool bound_human; };
+struct ReceiptIdentity {
+    const char *category, *stage;
+    int definitions;
+    bool bound_human;
+};
 ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
     using Kind = CampaignReceiptKind;
     switch (kind) {
-    case Kind::activity_points_paid: return {"activity", "points_paid", 31, false};
-    case Kind::activity_effect_queued: return {"activity", "effect_queued", 31, false};
-    case Kind::item_consumed: return {"item", "bound_use", 36, true};
-    case Kind::item_attribute_applied: return {"item", "attribute_applied", 36, true};
-    case Kind::item_obtained: return {"item", "obtained", 36, false};
-    case Kind::recipe_discovered: return {"recipe", "discovered", 40, false};
-    case Kind::recipe_crafted: return {"recipe", "elements_paid_and_crafted", 40, false};
-    case Kind::item_hp_restored: return {"item", "hp_restored", 36, true};
-    case Kind::facility_blueprint_paid: return {"facility", "blueprint_points_paid", 85, false};
-    case Kind::facility_blueprint_claimed: return {"facility", "blueprint_claimed", 85, false};
-    case Kind::facility_construction_paid: return {"facility", "construction_paid", 85, false};
-    case Kind::activity_pot_opened: return {"activity", "pot_opened", 31, false};
+    case Kind::activity_points_paid:
+        return {"activity", "points_paid", 31, false};
+    case Kind::activity_effect_queued:
+        return {"activity", "effect_queued", 31, false};
+    case Kind::item_consumed:
+        return {"item", "bound_use", 36, true};
+    case Kind::item_attribute_applied:
+        return {"item", "attribute_applied", 36, true};
+    case Kind::item_obtained:
+        return {"item", "obtained", 36, false};
+    case Kind::recipe_discovered:
+        return {"recipe", "discovered", 40, false};
+    case Kind::recipe_crafted:
+        return {"recipe", "elements_paid_and_crafted", 40, false};
+    case Kind::item_hp_restored:
+        return {"item", "hp_restored", 36, true};
+    case Kind::facility_blueprint_paid:
+        return {"facility", "blueprint_points_paid", 85, false};
+    case Kind::facility_blueprint_claimed:
+        return {"facility", "blueprint_claimed", 85, false};
+    case Kind::facility_construction_paid:
+        return {"facility", "construction_paid", 85, false};
+    case Kind::activity_pot_opened:
+        return {"activity", "pot_opened", 31, false};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
 } // namespace
+
+CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int definition,
+                                             const State &before, const State &after,
+                                             std::uint64_t page, std::uint64_t instance) {
+    return {kind,
+            definition,
+            after.simulation_steps,
+            page,
+            instance,
+            -1,
+            {before.village_points, before.facility_presence.at(definition),
+             before.facility_free_builds.at(definition),
+             before.scene.world.world.ai.accounting.funds()},
+            {after.village_points, after.facility_presence.at(definition),
+             after.facility_free_builds.at(definition),
+             after.scene.world.world.ai.accounting.funds()}};
+}
 
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
     observations_[{kind, id}].insert(event);
@@ -46,14 +79,17 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
     if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
         (identity.bound_human && receipt.recipient < 0) ||
         ((receipt.kind == CampaignReceiptKind::item_hp_restored ||
-          receipt.kind == CampaignReceiptKind::facility_construction_paid) && !receipt.subject))
+          receipt.kind == CampaignReceiptKind::facility_construction_paid) &&
+         !receipt.subject))
         throw std::runtime_error("Campaign receipt lacks its source definition/page/human binding");
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
         << identity.stage << '\t' << receipt.step << '\t' << receipt.page << '\t'
         << receipt.recipient << '\t' << receipt.subject;
-    for (const auto value : receipt.before) log << '\t' << value;
-    for (const auto value : receipt.after) log << '\t' << value;
+    for (const auto value : receipt.before)
+        log << '\t' << value;
+    for (const auto value : receipt.after)
+        log << '\t' << value;
     log << '\n';
     receipts_[{identity.category, receipt.definition}].insert(identity.stage);
 }
@@ -147,7 +183,8 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
            "require contracts.\n"
         << "# steps=" << first_step_ << ".." << last_step_ << " rank=" << state.rank
         << " maximum_income=" << state.maximum_income << '\n'
-        << "category\tid\tname\tsource_kind\trank_hint\tobserved_in_segment\tverified_receipts\trequired_evidence\n";
+        << "category\tid\tname\tsource_kind\trank_hint\tobserved_in_segment\tverified_"
+           "receipts\trequired_evidence\n";
     const auto row = [&](const char *kind, int id, const std::string &name, int source_kind,
                          int rank, const char *required) {
         out << kind << '\t' << id << '\t' << clean(name) << '\t' << source_kind << '\t' << rank
@@ -161,8 +198,11 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
         }
         out << '\t';
         const auto receipts = receipts_.find({kind, id});
-        if (receipts == receipts_.end()) out << "UNVERIFIED";
-        else for (const auto &stage : receipts->second) out << stage << ';';
+        if (receipts == receipts_.end())
+            out << "UNVERIFIED";
+        else
+            for (const auto &stage : receipts->second)
+                out << stage << ';';
         out << '\t' << required << '\n';
     };
     for (const auto &d : state.rules->facilities)
@@ -176,7 +216,8 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
             "use");
     for (const auto &d : state.rules->humans)
         row("human", d.identity, d.name, d.definition.current_profession, -1,
-            "legal_unlock;actual_arrival;admission_where_applicable;growth;mastery_and_successor;restore");
+            "legal_unlock;actual_arrival;admission_where_applicable;growth;mastery_and_successor;"
+            "restore");
     for (const auto &d : state.rules->equipment)
         row(equipment_kind(d.shop.kind), d.shop.id, d.name, d.shop.type, -1,
             "unlock;paid_or_valid_free_acquisition;equip;stats_and_combat_use");
@@ -213,9 +254,11 @@ void CampaignCoverage::write(std::ostream &out, const State &state) const {
         "expansion:all_legal_levels;cost_once;new_area_construction_and_use",
         "reports_and_events:natural_trigger;automatic_or_confirmed_lifecycle;rewards_once;resume",
         "combat_recovery:damage;down;rescue;rest;actual_hp_recovery;return_to_battle",
-        "player_save:business_checkpoints;fresh_process;continued_business;original_slot_preserved"};
+        ("player_save:business_checkpoints;fresh_process;continued_business;original_slot_"
+         "preserved")};
     for (std::size_t id = 0; id < std::size(functions); ++id)
-        row("function", static_cast<int>(id), "product acceptance checklist", -1, -1, functions[id]);
+        row("function", static_cast<int>(id), "product acceptance checklist", -1, -1,
+            functions[id]);
 }
 void CampaignCoverage::save(const std::filesystem::path &directory, const State &state) const {
     if (segment_.empty())
@@ -243,8 +286,8 @@ void campaign_coverage_contract() {
         throw std::runtime_error(
             "Coverage inferred consumption from a snapshot or omitted a required domain");
     std::ostringstream log;
-    const CampaignReceipt queued{CampaignReceiptKind::activity_effect_queued, 16, 0, 1, 0, -1,
-                                 {0, 0, 0, 0}, {10, 20, 1, 0}};
+    const CampaignReceipt queued{
+        CampaignReceiptKind::activity_effect_queued, 16, 0, 1, 0, -1, {0, 0, 0, 0}, {10, 20, 1, 0}};
     coverage.record(queued, log);
     std::ostringstream recorded;
     coverage.write(recorded, state);
@@ -259,7 +302,9 @@ void campaign_coverage_contract() {
         auto invalid = queued;
         invalid.page = 0;
         coverage.record(invalid, log);
-    } catch (const std::runtime_error &) { rejected = true; }
+    } catch (const std::runtime_error &) {
+        rejected = true;
+    }
     if (!rejected || log.str() != validated_log)
         throw std::runtime_error("Unbound campaign receipt was accepted or partially published");
     const auto expect_rejected = [&](const CampaignReceipt &invalid) {
@@ -267,12 +312,17 @@ void campaign_coverage_contract() {
         std::ostringstream previous_inventory;
         coverage.write(previous_inventory, state);
         bool refused{};
-        try { coverage.record(invalid, log); }
-        catch (const std::runtime_error &) { refused = true; }
+        try {
+            coverage.record(invalid, log);
+        } catch (const std::runtime_error &) {
+            refused = true;
+        }
         std::ostringstream current_inventory;
         coverage.write(current_inventory, state);
-        if (!refused || log.str() != previous_log || current_inventory.str() != previous_inventory.str())
-            throw std::runtime_error("Rejected campaign receipt changed its log or definition evidence");
+        if (!refused || log.str() != previous_log ||
+            current_inventory.str() != previous_inventory.str())
+            throw std::runtime_error(
+                "Rejected campaign receipt changed its log or definition evidence");
     };
     struct Case {
         CampaignReceiptKind kind;
@@ -286,15 +336,18 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
         {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0}};
     for (const auto &entry : cases) {
-        const CampaignReceipt receipt{entry.kind, entry.definitions - 1, 2, 1, entry.subject, -1,
-                                      {120, 0, 2, 0}, {0, 1, 2, 0}};
+        const CampaignReceipt receipt{
+            entry.kind, entry.definitions - 1, 2,           1, entry.subject,
+            -1,         {120, 0, 2, 0},        {0, 1, 2, 0}};
         const auto start = log.str().size();
         coverage.record(receipt, log);
         const auto expected = std::string("COVERAGE_RECEIPT\t") + entry.category + '\t' +
-            std::to_string(receipt.definition) + '\t' + entry.stage + "\t2\t1\t-1\t" +
-            std::to_string(entry.subject) + "\t120\t0\t2\t0\t0\t1\t2\t0\n";
+                              std::to_string(receipt.definition) + '\t' + entry.stage +
+                              "\t2\t1\t-1\t" + std::to_string(entry.subject) +
+                              "\t120\t0\t2\t0\t0\t1\t2\t0\n";
         if (log.str().substr(start) != expected)
-            throw std::runtime_error("Facility/pot receipt lost its namespace, stage or numeric evidence");
+            throw std::runtime_error(
+                "Facility/pot receipt lost its namespace, stage or numeric evidence");
         auto invalid = receipt;
         invalid.definition = -1;
         expect_rejected(invalid);
@@ -309,8 +362,8 @@ void campaign_coverage_contract() {
             expect_rejected(invalid);
         }
     }
-    const CampaignReceipt hp{CampaignReceiptKind::item_hp_restored, 29, 2, 1, 1, 0,
-                             {1, 0, 0, 0}, {51, 0, 0, 0}};
+    const CampaignReceipt hp{
+        CampaignReceiptKind::item_hp_restored, 29, 2, 1, 1, 0, {1, 0, 0, 0}, {51, 0, 0, 0}};
     auto invalid_hp = hp;
     invalid_hp.recipient = -1;
     expect_rejected(invalid_hp);

@@ -5,6 +5,7 @@
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 namespace ark::test {
 namespace {
@@ -550,13 +551,17 @@ void SteamVillageStrategy::observe_world(const State &before, const State &after
         stats_.completed_month = month(after);
 }
 void SteamVillageStrategy::observe(const State &before, const Command &c,
-                                   const app::WorldCommandResult &r, const State &after) {
+                                   const app::WorldCommandResult &r, const State &after,
+                                   const CampaignReceiptSink &receipts) {
     require(r.outcome == app::WorldCommandOutcome::applied &&
                 r.runtime_error == sim::StartupWorldRuntimeError::none &&
                 r.build_denial == sim::StartupBuildDenial::none &&
                 r.denial == ref::TaskCommandDenial::none,
             "command rejected kind=" + std::to_string(int(c.kind)) +
                 " build=" + std::to_string(int(r.build_denial)));
+    // Keep the segment evidence private until every command/cross-domain oracle
+    // passes. A cold load or a queued page answer does not certify a past effect.
+    std::vector<CampaignReceipt> pending;
     ++stats_.commands;
     people_.observe(before, c, r, after);
     income_.observe(before, c, after);
@@ -565,7 +570,8 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         require(r.created && quote && cash(before) - cash(after) == quote->construction_cost,
                 "building charge mismatch");
         const auto &f = after.scene.world.world.facilities.at(*r.created);
-        require(f.placement.anchor == target_.anchor &&
+        require(f.placement.definition_id == target_.definition &&
+                    f.placement.anchor == target_.anchor &&
                     f.placement.orientation == target_.orientation,
                 "construction did not match Steam goal");
         stats_.construction_cost += quote->construction_cost;
@@ -573,6 +579,9 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         operation_committed_ = true;
         if (target_.role == SteamLayoutRole::shop)
             income_.register_new_shop(*r.created);
+        pending.push_back(facility_transaction_receipt(
+            CampaignReceiptKind::facility_construction_paid, target_.definition, before, after,
+            top(before).id, *r.created));
     }
     if (c.kind == Kind::confirm_edit && operation_ == Operation::move && before.build_mode == 7) {
         require(r.created && cash(before) - cash(after) == 300 &&
@@ -614,14 +623,72 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         recruitment_ = 0;
         resident_ = -1;
     }
-    if (c.kind == Kind::commerce_action && c.commerce_action == Commerce::confirm &&
-        top(before).legacy_page == 85) {
-        const int price = before.rules->facility_initial.at(unlock_).capacity;
-        require(before.village_points - after.village_points == price,
-                "chamber building did not pay actual points");
-        stats_.village_points_spent += price;
+    if (c.kind == Kind::commerce_action && c.commerce_action == Commerce::confirm) {
+        const auto view = sim::inspect_startup_world_commerce_page(before, c.page);
+        require(view.has_value(), "chamber observation lacks its initialized source page");
+        if (view->raw == 85) {
+            const int definition = view->entries.at(view->selection);
+            const int price = before.rules->facility_initial.at(definition).capacity;
+            require(definition == unlock_ && before.facility_presence.at(definition) == 0 &&
+                        before.village_points - after.village_points == price &&
+                        cash(before) == cash(after) && top(after).legacy_page == 93 &&
+                        top(after).legacy_s == definition &&
+                        before.facility_presence.at(definition) ==
+                            after.facility_presence.at(definition),
+                    "chamber must pay the selected blueprint before its later claim");
+            stats_.village_points_spent += price;
+            pending.push_back(facility_transaction_receipt(
+                CampaignReceiptKind::facility_blueprint_paid, definition, before, after, c.page));
+        }
+        if (view->raw == 93 && view->counter >= 40) {
+            const int definition = view->binding;
+            require(definition == unlock_ && before.facility_presence.at(definition) == 0 &&
+                        after.facility_presence.at(definition) == 2 &&
+                        after.facility_free_builds.at(definition) ==
+                            std::min(99, before.facility_free_builds.at(definition) + 1) &&
+                        before.village_points == after.village_points &&
+                        cash(before) == cash(after) && top(after).id != c.page,
+                    "blueprint claim must open the paid definition once without another charge");
+            pending.push_back(
+                facility_transaction_receipt(CampaignReceiptKind::facility_blueprint_claimed,
+                                             definition, before, after, c.page));
+        }
+    }
+    if (c.kind == Kind::village_activity_action && c.village_activity_action == Activity::confirm) {
+        const auto view = sim::inspect_startup_world_village_activity_page(before, c.page);
+        require(view.has_value(), "activity observation lacks its initialized source page");
+        if (view->raw == 52 && view->activity) {
+            const int definition = *view->activity;
+            require(before.village_points - after.village_points ==
+                            before.rules->activities.at(definition).parameters[4] &&
+                        held(after, definition) == held(before, definition) + 1,
+                    "activity must pay its actual point quote and begin exactly once");
+            pending.push_back({CampaignReceiptKind::activity_points_paid,
+                               definition,
+                               after.simulation_steps,
+                               c.page,
+                               0,
+                               -1,
+                               {before.village_points, held(before, definition)},
+                               {after.village_points, held(after, definition)}});
+        }
+        if (view->raw == 53 && view->counter >= 120 && view->activity == 30 &&
+            top(after).id != c.page && !(before.scripts.user_flags & 1U)) {
+            require(after.scripts.user_flags & 1U, "completed import did not open the magic pot");
+            pending.push_back({CampaignReceiptKind::activity_pot_opened,
+                               30,
+                               after.simulation_steps,
+                               c.page,
+                               0,
+                               -1,
+                               {before.scripts.user_flags},
+                               {after.scripts.user_flags}});
+        }
     }
     observe_world(before, after);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
 void SteamVillageStrategy::observe_tick(const State &before, const State &after) {
     people_.observe_tick(before, after);

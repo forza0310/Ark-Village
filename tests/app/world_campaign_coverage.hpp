@@ -34,6 +34,13 @@ struct CampaignReceipt {
 };
 using CampaignReceiptSink = std::function<void(const CampaignReceipt &)>;
 
+// Capture fields only after a strategy has verified its real source transaction.
+// This shares the wire mapping, not the payment/unlock oracle or player decisions.
+CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int definition,
+                                             const app::WorldState &before,
+                                             const app::WorldState &after, std::uint64_t page,
+                                             std::uint64_t instance = 0);
+
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.
 class CampaignCoverage {
@@ -47,7 +54,8 @@ class CampaignCoverage {
     using Key = std::pair<std::string, int>;
     void mark(const char *kind, int id, const char *event);
     std::map<Key, std::set<std::string>> observations_;
-    std::map<Key, std::set<std::string>> receipts_; // Bounded stages per definition, no history queue.
+    std::map<Key, std::set<std::string>>
+        receipts_; // Bounded stages per definition, no history queue.
     std::string segment_;
     std::uint64_t first_step_{}, last_step_{};
 };

@@ -174,15 +174,10 @@ template <class PlayerStrategy> struct CampaignRun {
             good(app::commit_world_system(directory, state, candidate, next));
             candidate.sound_requests.clear();
             try {
-                if constexpr (std::is_same_v<PlayerStrategy, Strategy> ||
-                              std::is_same_v<PlayerStrategy, PotStrategy> ||
-                              std::is_same_v<PlayerStrategy, LateStrategy>)
-                    strategy.observe(state, input, result, candidate,
-                                     [&](const ark::test::CampaignReceipt &receipt) {
-                                         coverage.record(receipt, std::cout);
-                                     });
-                else
-                    strategy.observe(state, input, result, candidate);
+                strategy.observe(state, input, result, candidate,
+                                 [&](const ark::test::CampaignReceipt &receipt) {
+                                     coverage.record(receipt, std::cout);
+                                 });
             } catch (...) {
                 // Strategy assertions are not runtime refusals. Preserve the exact pre-command
                 // Owner without forging a runtime error or overwriting a previous capture.
@@ -545,6 +540,68 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
 
 // Source-page transactions use isolated eligibility fixtures; they certify receipts,
 // not natural star progression. Keep them separate from driver/sidecar contracts.
+void steam_transaction_receipt_contract() {
+    auto state = ark::test::initial_world();
+    // Source-menu eligibility only. This bounded fixture must still pay/build/claim
+    // through production commands; it is not a natural second-star certificate.
+    state.rank = 2;
+    state.village_points = 120;
+    state.scripts.user_flags |= 16U;
+    ark::test::SteamVillageStrategy strategy;
+    std::set<ark::test::CampaignReceiptKind> stages;
+    int receipt_count{};
+    const auto receive = [&](const ark::test::CampaignReceipt &receipt) {
+        ++receipt_count;
+        using Receipt = ark::test::CampaignReceiptKind;
+        require(receipt.page != 0, "Steam receipt lost its actual source page");
+        if (receipt.kind == Receipt::facility_blueprint_paid)
+            require(receipt.before[0] > receipt.after[0] && receipt.before[1] == receipt.after[1],
+                    "Steam blueprint payment must precede its unlock");
+        if (receipt.kind == Receipt::facility_blueprint_claimed)
+            require(receipt.before[0] == receipt.after[0] && receipt.before[1] == 0 &&
+                        receipt.after[1] == 2 && receipt.after[2] == receipt.before[2] + 1,
+                    "Steam claim lost its separate unlock/free-build effect");
+        if (receipt.kind == Receipt::facility_construction_paid)
+            require(receipt.subject &&
+                        state.scene.world.world.facilities.count(receipt.subject) == 0,
+                    "Steam construction must bind a new actual instance");
+        stages.insert(receipt.kind);
+    };
+    using Receipt = ark::test::CampaignReceiptKind;
+    const auto achieved = [&] {
+        return stages.count(Receipt::facility_blueprint_paid) &&
+               stages.count(Receipt::facility_blueprint_claimed) &&
+               stages.count(Receipt::facility_construction_paid);
+    };
+    for (int step = 0; step < 600 && !achieved(); ++step) {
+        if (const auto action = strategy.next(state)) {
+            auto candidate = state;
+            const auto result = apply(candidate, *action);
+            strategy.observe(state, *action, result, candidate, receive);
+            state = std::move(candidate);
+        }
+        if (achieved())
+            break;
+        auto update = sim::prepare_startup_world_runtime(state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Steam source-transaction fixture update failed");
+        strategy.observe_tick(state, *update.candidate);
+        state = std::move(*update.candidate);
+    }
+    require(achieved(), "Steam route lacks actual construction and blueprint receipts; " +
+                            strategy.diagnose(state));
+    const auto count = receipt_count;
+    app::WorldCommandResult rejected;
+    rejected.outcome = app::WorldCommandOutcome::rejected;
+    bool refused{};
+    try {
+        strategy.observe(state, {}, rejected, state, receive);
+    } catch (const std::runtime_error &) {
+        refused = true;
+    }
+    require(refused && receipt_count == count, "Rejected Steam command published a receipt");
+}
+
 void source_transaction_receipt_contract() {
     // A bounded decision fixture, not a natural second-star certificate. Keep 119
     // points for the real 120-point offer, then exercise actual 83/85/93 consumers.
@@ -642,6 +699,8 @@ void source_transaction_receipt_contract() {
     pot_open_state.scripts.activities.at(30).status = 1;
     LateStrategy pot_open_route;
     std::vector<ark::test::CampaignReceipt> pot_open_receipts;
+    ark::test::SteamVillageStrategy steam_pot_observer;
+    std::vector<ark::test::CampaignReceipt> steam_pot_receipts;
     for (int step = 0; step < 300 && pot_open_route.stats().pot_month < 0; ++step) {
         std::optional<app::WorldCommand> action;
         const auto *page = top(pot_open_state);
@@ -678,6 +737,10 @@ void source_transaction_receipt_contract() {
                                    [&](const ark::test::CampaignReceipt &receipt) {
                                        pot_open_receipts.push_back(receipt);
                                    });
+            steam_pot_observer.observe(pot_open_state, *action, result, candidate,
+                                       [&](const ark::test::CampaignReceipt &receipt) {
+                                           steam_pot_receipts.push_back(receipt);
+                                       });
             pot_open_state = std::move(candidate);
         }
         if (pot_open_route.stats().pot_month >= 0)
@@ -686,6 +749,7 @@ void source_transaction_receipt_contract() {
         require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
                 "Pot-open short fixture runtime failed");
         pot_open_route.observe_tick(pot_open_state, *update.candidate);
+        steam_pot_observer.observe_tick(pot_open_state, *update.candidate);
         pot_open_state = std::move(*update.candidate);
     }
     require(pot_open_receipts.size() == 2 &&
@@ -701,6 +765,16 @@ void source_transaction_receipt_contract() {
                 " raw=" + std::to_string(top(pot_open_state)->legacy_page) +
                 " points=" + std::to_string(pot_open_state.village_points) +
                 " flags=" + std::to_string(pot_open_state.scripts.user_flags));
+    require(steam_pot_receipts.size() == pot_open_receipts.size() &&
+                std::equal(steam_pot_receipts.begin(), steam_pot_receipts.end(),
+                           pot_open_receipts.begin(),
+                           [](const auto &a, const auto &b) {
+                               return a.kind == b.kind && a.definition == b.definition &&
+                                      a.page == b.page && a.step == b.step &&
+                                      a.subject == b.subject && a.recipient == b.recipient &&
+                                      a.before == b.before && a.after == b.after;
+                           }),
+            "Steam bridge lost the already-verified source activity payment/unlock receipt");
 }
 
 void contract() {
@@ -830,6 +904,7 @@ void contract() {
     }
     require(refused, "Third-star route must refuse an unranked world");
     source_transaction_receipt_contract();
+    steam_transaction_receipt_contract();
     const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
     require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
     std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));

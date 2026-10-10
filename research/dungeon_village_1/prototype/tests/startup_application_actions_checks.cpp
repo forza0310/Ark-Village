@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "dungeon_village_prototype/startup_application_replay.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
+#include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
 #include <fstream>
@@ -121,12 +122,15 @@ void management_bridges(const std::filesystem::path &root) {
     };
     rejected([&]{return !app.open_build_menu().empty();});
     rejected([&]{return !app.open_village_activities().empty();});
+    rejected([&]{return !app.open_magic_pot(StartupMagicPotEntry::main_menu).empty();});
+    rejected([&]{return !app.act_magic_pot_page(1,StartupMagicPotAction::confirm).empty();});
     rejected([&]{return !app.open_task_menu().empty();});
     good(app.request_new_game(0)); good(app.start_game());
     require(app.take_audio_requests()==std::vector<StartupAudioRequest>{
                 {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}},
             "real new management world consumes actual B0 and G activation outputs");
     const auto system=bytes(files.root/"system.avr");
+    rejected([&]{return !app.open_magic_pot(StartupMagicPotEntry::main_menu).empty();});
     const auto directory=app.records().save_directory;
     auto expected=*app.world();
     auto error=expected.open_build_menu();
@@ -216,6 +220,121 @@ void management_bridges(const std::filesystem::path &root) {
                 !app.has_pending_audio_requests(),
             "short management actions retire outputs without publishing world files or changing save directory");
 }
+// 复用同套件已校验的独立壶资格/库存档；每个入口重新载入，不共享动作后的世界。
+// 只核应用接线与事务，费用、发现及炼制组合仍由pages套件主责。
+void magic_pot_bridges(const std::filesystem::path &parent, const std::filesystem::path &root) {
+    using Action = StartupMagicPotAction;
+    auto fixture = load_startup_world_file(parent / "magic-pot-window.avrs", startup_world_rules(),
+                                          StartupWorldSavePurpose::normal);
+    require(fixture.snapshot.has_value(), "existing validated magic-pot condition fixture");
+    fixture.snapshot->session.take_audio_requests(); // 消费夹具出口，不注入声音。
+    StartupWorldSaveMetadata metadata;
+    metadata.purpose = StartupWorldSavePurpose::replay;
+    metadata.controller_id = "application-magic-pot-bridge-fixture-v1";
+    metadata.controller_state = {1};
+    const auto replay = root / "magic-pot-entry.avrs";
+    require(save_startup_world_file(replay, fixture.snapshot->session, metadata).ok,
+            "encode private magic-pot application input through existing codec");
+    for (const auto entry : {StartupMagicPotEntry::main_menu, StartupMagicPotEntry::development_menu}) {
+        const auto files = paths(root, entry == StartupMagicPotEntry::main_menu ? "pot-main" : "pot-development");
+        StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
+        good(app.load_world_replay(replay, metadata.controller_id));
+        app.take_audio_requests(); // 正常载入的BGM由本测试领取，后续逐动作核对输出。
+        auto expected = *app.world();
+        const auto system = bytes(files.root / "system.avr");
+        const auto directory = app.records().save_directory;
+        const auto rejected = [&](const auto &action) {
+            const auto before = management_observation(app);
+            require(!action().empty(), "invalid magic-pot bridge returns explicit error");
+            require(management_observation(app) == before && bytes(files.root / "system.avr") == system &&
+                        app.records().save_directory == directory && no_world_blobs(files),
+                    "magic-pot rejection preserves application, random, outputs and storage");
+        };
+        const auto command = [&](std::uint64_t page, Action action, int selection = 0) {
+            const auto error = expected.act_magic_pot_page(page, action, selection);
+            compare_command(app, expected, app.act_magic_pot_page(page, action, selection), error);
+        };
+        const auto update = [&] {
+            const auto result = expected.update();
+            compare_command(app, expected, app.update(), result.error);
+        };
+        const auto reach = [&](int raw) {
+            for (int step = 0; step < 128; ++step) {
+                const auto *page = top(*app.world());
+                require(page != nullptr, "magic-pot bridge retains a current page");
+                if (page->legacy_page == raw &&
+                    inspect_startup_world_magic_pot_page(app.world()->state(), page->id)) return page->id;
+                // 首次101/退出105通过dialogue页阻挡壶父页，须走应用真实确认而非只等计数。
+                // 45也由真实确认快进/关闭，不能因它拒绝取消就跳过确认。
+                if (page->legacy_page != raw && page->kind != ref::WorldScriptPageKind::scene &&
+                    page->lifecycle == 2) {
+                    const auto id = page->id;
+                    const auto error = expected.acknowledge_page(id);
+                    compare_command(app, expected, app.acknowledge_page(id), error);
+                }
+                update();
+            }
+            const auto *page = top(*app.world());
+            const auto &state = app.world()->state();
+            const auto counter = page ? state.page_counters.find(page->id) : state.page_counters.end();
+            throw std::runtime_error("magic-pot application page did not initialize within bounded updates: entry=" +
+                std::to_string(static_cast<int>(entry)) + " target_raw=" + std::to_string(raw) +
+                " top_kind=" + std::to_string(page ? static_cast<int>(page->kind) : -1) +
+                " top_raw=" + std::to_string(page ? page->legacy_page : -1) +
+                " lifecycle=" + std::to_string(page ? page->lifecycle : -1) +
+                " counter=" + std::to_string(counter == state.page_counters.end() ? -1 : counter->second));
+        };
+        rejected([&] { return app.open_magic_pot(static_cast<StartupMagicPotEntry>(99)); });
+        const auto error = expected.open_magic_pot(entry);
+        compare_command(app, expected, app.open_magic_pot(entry), error);
+        const auto uninitialized = top(*app.world())->id;
+        rejected([&] { return app.act_magic_pot_page(uninitialized, Action::confirm); });
+        const auto menu = reach(41);
+        rejected([&] { return app.open_magic_pot(entry); });
+        rejected([&] { return app.act_magic_pot_page(menu + 1000, Action::confirm); });
+        rejected([&] { return app.act_magic_pot_page(menu, static_cast<Action>(99)); });
+        rejected([&] { return app.act_magic_pot_page(menu, Action::select, 2); });
+        if (entry == StartupMagicPotEntry::main_menu) {
+            command(menu, Action::confirm);
+            const auto deposit = reach(42);
+            const auto view = inspect_startup_world_magic_pot_page(app.world()->state(), deposit);
+            require(view && !view->entries.empty() && view->entries.front() == 0,
+                    "existing magic-pot fixture selects actual item0 inventory");
+            command(deposit, Action::select, 0);
+            const auto inventory = app.world()->state().items.at(0).inventory;
+            const auto draws = app.world()->state().scene.random.draws();
+            const auto result_error = expected.act_magic_pot_page(deposit, Action::confirm);
+            const auto actual_error = app.act_magic_pot_page(deposit, Action::confirm);
+            rejected([&] { return app.act_magic_pot_page(deposit, Action::confirm); });
+            compare_command(app, expected, actual_error, result_error);
+            require(app.world()->state().items.at(0).inventory == inventory - 1 &&
+                        app.world()->state().scene.random.draws() == draws + 1,
+                    "application deposit consumes one actual inventory and one original comment draw");
+            command(reach(44), Action::cancel);
+            const auto restored_deposit = reach(42);
+            command(restored_deposit, Action::cancel);
+        } else {
+            command(menu, Action::select, 1);
+            command(menu, Action::confirm);
+            const auto recipes = reach(43);
+            command(recipes, Action::next_tab);
+            require(inspect_startup_world_magic_pot_page(app.world()->state(), recipes)->phase == 1,
+                    "application forwards recipe tab input");
+            command(recipes, Action::previous_tab);
+            command(recipes, Action::cancel);
+        }
+        command(reach(41), Action::cancel);
+        rejected([&] { return app.act_magic_pot_page(menu, Action::confirm); });
+        update();
+        const auto &state = app.world()->state();
+        require(state.magic_pot_pages_initialized.empty() && state.magic_pot_page_data.empty() &&
+                    state.magic_pot_page_lists.empty() && state.magic_pot_page_parents.empty(),
+                "application update retires all closed magic-pot payloads");
+        require(bytes(files.root / "system.avr") == system && app.records().save_directory == directory &&
+                    no_world_blobs(files) && !app.has_pending_audio_requests(),
+                "short magic-pot management leaves storage unchanged and outputs consumed");
+    }
+}
 } // namespace
 
 int run_startup_application_actions_checks(const std::filesystem::path &parent) {
@@ -224,6 +343,7 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
     const OwnedDirectory owned(parent / "application-action-bridges");
     const auto &root = owned.path;
     management_bridges(root);
+    magic_pot_bridges(parent, root);
     const auto entries = create_application_action_entry_fixtures(root);
     StartupApplication empty(paths(root, "empty"), ref::WorldRandomStream::from_java_seed(1));
     require(!empty.return_rank_page(1).empty() && !empty.leave_commerce_page(1).empty() &&

@@ -30,6 +30,8 @@
 
 raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严格大于捕获最高分；收尾关闭17、请求主BGM、事件6及事件4／5，再提交系统并安装候选。失败保留页面／随机／事件／纪录，成功退休计分行、控制器和页ID，不能重复领奖。`act_award_page`、`return_rank_page`、`leave_commerce_page`沿真实栈顶87／48／83和稳定ID执行已有消费者，仍须区分条件接线与自然触发。
 
+魔法壶`open_magic_pot(entry)`与`act_magic_pot_page(page,action,selection)`转发已有Session命令，经相同`apply_world_action`／`commit_world`提交。标题、计分或无活动世界不能绕过准入；坏入口、过期页、未初始化或越界输入保持原应用、随机、音频和文件。main入口清bit2、development保留，业务资格及41–47载荷仍由[魔法壶Owner](../rules/MAGIC_POT.md)决定；通用确认继续负责脚本说明对话。此桥不增加第二份库存／配方或计数，沿现有世界codec恢复，不修改应用语义版本；C++入口接通不代表CLI新增命令或Steam物理操作已还原。
+
 ## 输出、随机与恢复
 
 健康冷构造和world→title真正重入各入队一次`replace_bgm(0)`。纪录／配置／raw20／询问返回不重新初始化，不重复B0。真实start／load激活成功后，沿G的任务／遭遇状态追加B1或B2，排在该事务较早实际输出之后；失败不发，不按ID去重。首次B0尚未领取就start时，B0、G均按原序保留。

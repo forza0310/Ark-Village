@@ -173,4 +173,42 @@ std::optional<StartupTownInformation> startup_town_information(const StartupWorl
         if(entry.first.first!=0 && !equipment.count(entry.first))return {};
     return result;
 }
+std::optional<std::vector<StartupFacilityInformation>>
+startup_facility_information(const StartupWorldRuntimeState &s) {
+    const int month=s.scene.calendar.month;
+    if(!s.rules || month<0 || month>=12)return {};
+    std::map<int,const StartupDefinition *> definitions;
+    for(const auto &definition:s.rules->facilities)
+        if(definition.id<0 || !definitions.emplace(definition.id,&definition).second)return {};
+    const auto &instances=s.scene.world.world.facilities;
+    std::set<std::uint64_t> seen;
+    std::set<std::pair<int,int>> ordinals;
+    std::vector<StartupFacilityInformation> result;
+    for(const auto id:s.scene.world.facility_order) {
+        const auto instance=instances.find(id);
+        if(!id || id>=s.next_facility_identity || !seen.insert(id).second ||
+           instance==instances.end() || instance->second.placement.instance_id.value!=id)return {};
+        const int definition_id=instance->second.placement.definition_id;
+        const auto definition=definitions.find(definition_id);
+        if(definition==definitions.end() || instance->second.kind!=definition->second->kind)return {};
+        const auto &d=*definition->second;
+        if(d.kind!=3)continue;
+        const auto ordinal=s.facility_ordinals.find(id);
+        const auto cash=s.facility_monthly_cash.find(id);
+        if(ordinal==s.facility_ordinals.end() || ordinal->second<0 ||
+           ordinal->second==std::numeric_limits<int>::max() ||
+           !ordinals.emplace(definition_id,ordinal->second).second ||
+           cash==s.facility_monthly_cash.end() || d.legacy_icon<0 || d.legacy_icon>6)return {};
+        std::uint32_t profit{};
+        // APK(total+收入)-支出与Steam先收入-支出再累计均为mod2^32；禁止有符号溢出。
+        for(int index=0;index<=month;++index) {
+            profit+=static_cast<std::uint32_t>(cash->second[static_cast<std::size_t>(index)][0]);
+            profit-=static_cast<std::uint32_t>(cash->second[static_cast<std::size_t>(index)][1]);
+        }
+        result.push_back({id,definition_id,ordinal->second,d.legacy_icon,d.name,signed_value(profit)});
+    }
+    // 历史账目可以保留；目录必须恰好覆盖全部活动实例，不从账目map复活退休设施。
+    if(seen.size()!=instances.size())return {};
+    return result;
+}
 } // namespace dungeon_village_prototype

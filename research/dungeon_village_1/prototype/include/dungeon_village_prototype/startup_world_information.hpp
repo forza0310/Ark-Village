@@ -32,6 +32,9 @@ struct StartupInformationPageView {
     std::optional<std::vector<StartupItemInformation>> items;
     std::optional<StartupEquipmentInformation> equipment;
     std::optional<std::vector<StartupHumanInformation>> humans;
+    std::optional<StartupTownInformation> town;
+    std::string village_name; // 34读取实际应用安装到Owner的村名，不借最高资金纪录名称。
+    std::optional<std::vector<StartupFacilityInformation>> facilities;
 };
 // 稳定scene是维护主菜单适配入口；实际raw3父页也可进入，不伪造主菜单页。
 StartupWorldRuntimeError open_startup_world_information_menu(StartupWorldRuntimeState &state);

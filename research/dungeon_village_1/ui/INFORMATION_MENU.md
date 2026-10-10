@@ -1,6 +1,6 @@
 # 情报菜单与统计页面
 
-2026-10-09。回应产品[信息菜单最小缺口](../../../docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)，先闭合固定APK1.0.8的“主菜单→情报→收支36→翻页／返回→权威统计”原程序静态消费者链。2026-10-10的[维护页面控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)续接37／38，raw9现开放36／37／38；34／35保留条目但显式拒绝打开。38页面采用已核Steam2.56消费者差异，原表身份不变；本批集中验收另记，不宣称完整情报菜单或原窗口已验。
+2026-10-09。回应产品[信息菜单最小缺口](../../../docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)，先闭合固定APK1.0.8的“主菜单→情报→收支36→翻页／返回→权威统计”原程序静态消费者链。2026-10-10的[维护页面控制器](../prototype/include/dungeon_village_prototype/startup_world_information.hpp)已开放raw9的全部五项，接34→39设施名单及35→60人物追踪。38页面采用已核Steam2.56消费者差异，原表身份不变；本批集中验收另记，不宣称完整情报菜单或原窗口已验。
 
 已有[UI索引](README.md)负责页面定位，[主菜单合同](PAGES.md#主菜单修正)负责默认五项，[周期账本](../rules/ACCOUNTING.md)负责资金与月报消费者。本文不重复设施74／商品79／人物60等已交付目录，不拿自动月报替代本页面；先完整交付一个无需人物稳定引用的新子页。
 
@@ -161,7 +161,7 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 [34/39与35/60分析](../verification/information-statistics-contract/ANALYSIS.md)已登记：34按p1统计冒险者而35按p非0建定义目录；34设施数包含类型3/9，39只含类型3。39利润只累加实例0…当前月，区别于36年页全部12桶；39确认实际退出表单并以mode7移动镜头到设施，不能只因“点击进店”文字就直接开商店详情。35入页重算贡献，确认／返回清目录内人物NEW；进60传定义及y1，追踪时才寻找实际W，缺W则事件137。
 
-37/38维护已分开纯目录投影与Owner关闭／退休动作，typed载荷交给既有codec和恢复校验；后继Steam完整局部绘制见下节。34／35／39消费者及完整文字／物理输入继续独立收口。前置资源复用与本批新增Steam两图分别登记；列表上界来自真实定义数，页退休释放ID绑定，不把合法世界历史增长当泄漏。维护验收见[当前验证](../VERIFICATION.md)，不以局部计划替代原窗口认证。
+37/38维护已分开纯目录投影与Owner关闭／退休动作，typed载荷交给既有codec和恢复校验；后继Steam完整局部绘制见下节。34／35／39维护消费者见下文；完整文字／物理输入继续独立收口。前置资源复用与本批新增Steam两图分别登记；列表上界来自真实定义数，页退休释放ID绑定，不把合法世界历史增长当泄漏。维护验收见[当前验证](../VERIFICATION.md)，不以局部计划替代原窗口认证。
 
 ### 34统计投影与35贡献计算的维护前置
 
@@ -169,7 +169,17 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。原整数均值／方差、double平方根转float及取整口径、显式溢出拒绝全部保留。35初始化在唯一Owner内消费这份候选，不调用授勋初始化。
 
-现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就和34→39仍需后继接线；35维护链见下节，不据查询存在开放假入口。
+现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就仍未接；34→39及35维护链见下节，不据查询存在开放假入口。
+
+### 34→39设施名单与镜头维护链
+
+原34确认优先软返回，创建39并保留实际父34；不消费方向选择。Steam Update的VA `10323C9B–10323D23`及共用Push尾与APK一致。39在VA `1032305F–1032324A`先独立上／下、调整五行滚动，再确认优先返回；左右无消费者。确认依次恢复原主场景、ChangeState7、绑定所选设施、Camera.state=0，**保留人物／怪物选择**，不控制人物移动或打开71／74。state7 VA `10303596–1030385D`按设施中心与原float RateConvert逼近，严格距离小于速度才贴合；ChangeState0清设施引用后走共同尾。空设施选择则回0并跳过本轮；此段没有确认／返回开详情分支。
+
+维护`startup_facility_information`按完整合法活动序列只收kind3，不过滤施工／使用状态，返回uint64实例、定义、原ordinal／图标／名称。利润按0…当前月收入减支出、uint32运算后转int32，保留原回卷；历史账目／序号键可继续存在，不据其创建目录。定义计数Q／实例B与显示ordinal分开；已核APK直接访问及Steam局部范围见[计数缓存交叉](../verification/information-statistics-contract/ANALYSIS.md#2026-10-10续核steam343539与最小接入缺口)，不新增未证消费者的持久缓存。
+
+Owner真实初始化34统计及39冻结实例目录；空39执行原事件17后退休，不能伪造空行或吞掉提示。`information_page_data.facilities`与其它页的int定义列表互斥，检查实际父34、初始化标记、原序、选择与滚动。确认前重验目标活跃／类型及占地，再在同一私有候选退出其它页并进入scene7；失败不留半份页栈、资金、随机、选择或镜头修改。实例完整序列、非法ordinal／INT_MAX拒绝和确认重验是维护安全策略，不声称原对象引用消费者也做这些校验。
+
+39返回恢复实际34，成功定位则退休两页；下一框架统一释放目录／phase／counter。纯查询不修改NEW、贡献或账本；目录恢复不重做初始化。typed字段纳入既有Owner codec，旧布局拒绝、不迁移；无新增测试target或自然经营前缀，原平台成就请求与完整34／39皮肤另列。实际验收见[验证入口](../VERIFICATION.md)。
 
 ### 35→60追踪的Steam后继合同
 
@@ -215,6 +225,49 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 后继资源逐字节核对：image38／50／87／129对应已出版`original/common/wnd_lv、wnd_exp、wnd_expBar、wnd_max.png`，image104／SEB13对应`number06.png/.seb`，SEB60为`wnd_exp.seb`，均可复用APK同字节副本。SEB11实际是`number04.seb`引用image102 `number03.png`，数字源(8×digit,12,8,12)；SEB20是`number13.seb`引用image108 `number11.png`，源(7×digit,9,7,9)，不可由SEB名字猜图名。SEB12／15分别使用已出版Steam差异包中的number05／number08 PNG。image31 `icon_result00.png`已原字节出版到`assets/steam-common`（63×48、1000字节），SEB44本身同字节；frame4源(0,16,16,16)也有透明像素RGBA差异，不合并来源。human包67项全与已出版副本一致，walk01帧0源(0,24,18,24)、offset(−9,−24)，先按锚得到(28,rowY−3)再裁剪。
 
 Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。facility数字helper沿用SEB12／15及money，另新增`number03`／`number11`资产对应SEB11／20，普通数步宽分别8／7，保留零值和原负帧请求，错误步宽及无对应帧的money／plus模式拒绝。information数字helper仍只处理正库存／正属性，本页通过有序`SteamFacilityNumber`请求使用通用展开器。空装备mode5在VA `1030CDB8–1030CE16`直接传dx／dy，无其它图标的−1偏移；经验条在VA `10334461–1033446F`调用整数RateConvert（RVA `2A4780`），按范围截限、整数乘除向零截断，不是浮点百分比。
+
+### Steam34／39完整局部绘制合同（待维护皮肤）
+
+2026-10-10续核固定Steam2.56 DLL，34使用`SubForm._draw1_2`的VA `10335781–10336226`，39使用`_draw1_3`的VA `10339D48–1033A23B`。以下是具名方法体、逻辑资源索引与字串metadata的静态合同，**当前尚无34／39正式绘制计划**；不代表原窗口、完整字体／输入后端或产品皮肤已认证。业务统计及页栈维护与这里的绘制请求分别验收。
+
+两页均先`DrawWindow(220,168,0,title)`，再`DrawBox(17,74,219,184)`，复用[Steam完整窗框](STEAM_WINDOW_FRAME.md)，没有标题翻页箭头。VIEW_Y只交窗框／Box及父级变换，不能给每项图元重复加一次。原文字棕色为SC_WINDOW_BLACK=(92,51,31)，蓝色为SC_WINDOW_BLUE=(0,100,255)，选中橙色为SC_WINDOW_SELECT=(255,153,55)。普通字号继承原Font，临时字号画后恢复；TextLayout仍须真实测宽／裁剪，不按字符数省略。
+
+**34街情报的原序。** 标题字面`街情報`（字串槽VA `110F9428`），先棕色村名(30,69)，来源为系统配置第0项；维护只读`scripts.village_name`，不重复创建村名Owner。随后`Draw_star(207,69,星级,5)`（RVA `255600`）：依次在(147+12×i,69)画5次common image13／SEB33，i<星级用frame0，否则frame1；这里没有文字星号或缩放请求。SEB内部偏移另加一次，不能把dx207直接作为首星锚点。
+
+| 34内容 | Steam原请求 |
+| --- | --- |
+| 左五行次序 | 冒险者、居民、设施、完成任务、举办活动；数值沿前述34统计口径。标签来自`SubForm.INFOTOWN_STR_FRONT`静态区+12C，行基准Y=95+20×slot。 |
+| 日文左标签 | 蓝色普通文字(27,Y)，保留字号。 |
+| 非日文左标签 | 蓝色TextLayout(22,Y−2,68,15)，lineSpace0、anchor0x20；slot0临时字号9、slot3字号8，其余字号10，随后ResetFontSize。这是Steam与前述APK旧绘制坐标的差异，不能混成一套。 |
+| 左值 | 仅日文slot0以棕色普通文字`十进制数量 + LT(INFOTOWN_STR_BACK[0])`画(109,Y,anchor4)。其它情况均DrawNumImage(SEB12,value,109,Y+1,padding0,anchor4)，包含零值，不追加自行猜测的单位。 |
+| 右四种类 | 原序武器、防具1、防具2、饰品；每行先common image128／SEB88，帧1／2／3／4，锚(日文122、非日文121,91+20×slot)。随后棕色数量文本：日文LT(`<0>種`,count)在(211,93+20×slot,anchor4)；非日文临时字号11，LT(`<0>`,count)在(213,94+20×slot,anchor4)，然后恢复字号。原字串槽分别`110EAAF0`／`110EA1A8`。 |
+| 底部入口 | `Draw_btmMsg("施設の収支一覧",197,true,true,200)`，调用VA `10336202–10336219`；字串槽`110F74D8`。没有其它行选择、滚动条或计数动画。 |
+
+34底部复用[Draw_btmMsg真实合同](STEAM_FACILITY_DRAW_HELPERS.md#draw_btmmsg可选的背景触摸与手形)：须提供当前Font对原字符串的真实宽度M；w=min(M,200)、W=w+16、L=120−trunc(W/2)。先橙色FillRect(L,197,W,16)，注册组件4/value20的扩展矩形(L−20,177,W+40,56)，再棕色TextLayout(L,197,W,16,lineSpace0,anchor0x22)，最后common SEB21当前帧手形(L−4,206)。不能把200当按钮最终宽，也不能用固定截图热区代替原测宽。
+
+**39设施一览的原序。** 标题`施設一覧`（字串槽`110F75D4`）；表头棕色`名前`在(日文26／非日文28,69)，`利益`在(日文185／非日文179,69)，均普通文字、无临时字号。字串槽分别`110F5D68`／`110F5780`。循环最多五行，Y=97+19×(绝对行−first_visible)，每行严格如下：
+
+1. 选中行先橙色FillRect(23,Y−2,191,16)；与35的Y−3、18高不同。
+2. 注册组件11/value=`0x20000|绝对行`，矩形(3,Y−2,231,16)、flag0、Margin(0,−20,0,0)；随后仅选中行画SEB21当前帧手形(21,Y+8)。
+3. `Draw_icon(mode9,定义icon)`锚(30,Y−2)，取common image91 `icon_tenantInfo.png`，源(16×(icon%10),0,16,16)，无类别底板；不能把设施定义ID当icon。
+4. 棕色名称先拼`TenantData.name_ + "\t" + (Tenant.tenantUId_+1)`，再交LT模板`<0> その<1>`；两个字串槽分别`110FBF78`／`110EA2DC`。随后所有语言均TextLayout(48,Y,110,11,currentColor,lineSpace0,anchor0x20)，没有本分支临时字号。维护query保留原定义名与ordinal，交翻译后端组合，不能直接把目录Q/B缓存写进名称。
+5. `Tenant.GetRecordIncome()`（RVA `2C4170`）取得截至当前月的有符号int利润后画Draw_money(210,Y+1,value,seb)：非负用SEB12；负数先32位`neg`、再符号扩展long，改用SEB19。它通过独立数字资产区分负利润，不另外画负号文本或统一给正常数字染红。
+
+39利润分支VA `1033A143–1033A176`的**INT_MIN不能按64位abs改为2147483648**：原`neg eax`仍为INT_MIN，再`cdq`成为long −2147483648。已核money helper（RVA `255210`）先dx−9，再原Comma数字，最后同SEB的frame20单位；signed字符串含负号，其负帧请求沿既有数字合同保留，不发明减号图。维护可用明确的32位回卷转换或INT_MIN特判，避免C++有符号取负未定义行为。profit本身仍来自唯一Owner的原32位累计，不用皮肤修正资金或统计。
+
+行后39调用`DrawVerticalScroll2(221,85,4,110,first_visible,count−1,5)`，高度110，复用37／38的组件12／25、原轨道与滑块算法，不能套35的111。最后蓝色普通文字`<btn=0,0>でお店に移動します`在(120,198,anchor2)，字串槽`110EB460`，没有Draw_btmMsg底色、手形或附加底栏触摸注册；`<btn>`最终解释仍交原文字后端。这里只画输入提示，不代表确认会打开详情，实际39后继仍是state7镜头定位。
+
+**新增资源与复用边界。** 以下别名来自固定EXE common的img.inf／seb.inf，内容证据复用[全量素材索引](../assets/IMAGE_COVERAGE.json)，不能仅凭helper名猜PNG：
+
+| 消费 | Steam资源与出版要求 |
+| --- | --- |
+| 34星级 | image13／SEB33＝`icon_star00.png`／`icon_star00.seb`，分别25×14／304字节、48字节，均与已出版APK副本逐字节相同。不是另一套`star.png`／`star.seb`。 |
+| 34种类 | image128／SEB88，复用已出版Steam `icon_objRoots.png`差异图与原SEB；同35／38明确来源。 |
+| 39设施图标 | image91 `icon_tenantInfo.png`，112×16／1009字节，与已出版副本逐字节相同。 |
+| 正数／零值 | image103／SEB12 `number05`，复用Steam建设差异包及已核普通数／money helper。 |
+| 39负利润 | image109／SEB19＝`number12.png`／`number12.seb`；Steam PNG100×21、636字节，与APK607字节不同，需新增Steam出版入口；SEB428字节同原副本，可复用。不要用APK同名图替代，RGBA差异是否全为可见像素需另外判断。 |
+
+后继最小维护缺口：34需要独立底部真实测宽输入及有序底栏图元／触摸计划；34星级可直接展开5个已核SEB请求；39可复用现信息页有序行／110高滚动计划，但需增加number12资产与money模式、按原int取负处理INT_MIN，以及名称双参数翻译载荷。输出为纯查询，不执行成就、统计重算、目录初始化、NEW清理、页栈变化或随机。正式实现与针对性边界测试完成前，不把本节静态合同登记成已消费皮肤。
 
 ## Steam9／36的有限交互交叉
 

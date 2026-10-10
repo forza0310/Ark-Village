@@ -237,12 +237,13 @@ int check_startup_world_restore_contracts(
         auto restored=p::persistence_detail::decode_state(directory_wire,*state.rules);
         expect(restored,true,"35 contribution and tab2 exact restore");
         require(p::persistence_detail::encode_state(restored)==directory_wire,"35 decode does not recalculate contribution or clearNEW");
-        for(int fault=0;fault<4;++fault) {
+        for(int fault=0;fault<5;++fault) {
             auto invalid=restored;
             if(fault==0)invalid.information_page_data.erase(directory);
             if(fault==1)invalid.page_phases.at(directory)=4;
             if(fault==2)invalid.information_page_data.at(directory).lists[0].push_back(definition);
             if(fault==3)invalid.information_page_data.at(directory).lists[0].clear();
+            if(fault==4)invalid.information_page_data.at(directory).facilities.push_back(1);
             expect(invalid,false,"35 absent/malformed frozen definition catalogue");
         }
         input(state,directory,confirm);input(restored,directory,confirm);
@@ -339,6 +340,96 @@ int check_startup_world_restore_contracts(
         tick(recovered);
         require(!recovered.human_detail_contexts.count(reopened) && !recovered.page_human_bindings.count(reopened),
                 "reopened60 Finish retires actor-context references");
+    }
+    {
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;
+            if(!valid)throw std::runtime_error(std::string("restore town34/facility39: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"actual framework admission");
+            state=std::move(*result.candidate);
+        };
+        const auto input=[&](auto &state,std::uint64_t page,const p::StartupInformationInput &action) {
+            require(p::input_startup_world_information_page(state,page,action)==p::StartupWorldRuntimeError::none,
+                    "actual information input");
+        };
+        auto state=baseline;
+        require(p::open_startup_world_information_menu(state)==p::StartupWorldRuntimeError::none,"open9");
+        const auto menu=state.scripts.pages.back().id;tick(state);
+        p::StartupInformationInput selected;selected.select_row=1;
+        p::StartupInformationInput confirm;confirm.confirm=true;
+        input(state,menu,selected);input(state,menu,confirm);
+        const auto town=state.scripts.pages.back().id;
+        expect(state,true,"34 pending Init with retired9");tick(state);
+        const auto town_wire=p::persistence_detail::encode_state(state);
+        auto restored=p::persistence_detail::decode_state(town_wire,*state.rules);
+        require(p::persistence_detail::encode_state(restored)==town_wire,"34 exact payload roundtrip");
+        expect(restored,true,"initialized34");
+        auto malformed=restored;malformed.information_page_data.emplace(town,p::StartupInformationPageData{});
+        expect(malformed,false,"34 cannot own a directory payload");
+        input(state,town,confirm);input(restored,town,confirm);
+        const auto directory=state.scripts.pages.back().id;
+        expect(state,true,"39 pending Init with actual34 parent");
+        auto pending=p::persistence_detail::decode_state(p::persistence_detail::encode_state(state),*state.rules);
+        require(pending.scripts.pages.back().legacy_page==39 && !pending.information_page_data.count(directory),
+                "pending39 decode cannot initialize its list");
+        tick(state);tick(restored);
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "34 identical confirmation and39 Init across restore");
+        const auto fixture_actor=state.scene.world.world.ai.human_order.front();
+        state.scripts.selected_actor=fixture_actor.value;
+        const auto facility=state.information_page_data.at(directory).facilities.front();
+        const auto camera=p::startup_world_runtime_facility_target(state,facility);
+        require(camera.has_value(),"original selected facility has actual target");
+        // 镜头已在目标是显式短边界条件；不移动人物/建筑，不跑重复世界前缀。
+        state.camera=*camera;state.previous_camera=*camera;
+        const auto wire=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(wire,*state.rules);
+        require(p::persistence_detail::encode_state(restored)==wire,"39 exact stable-ID catalogue and selection restore");
+        expect(restored,true,"initialized39 with current original facility");
+        for(int fault=0;fault<9;++fault) {
+            auto invalid=restored;
+            if(fault==0)invalid.information_page_data.erase(directory);
+            if(fault==1)invalid.information_page_data.at(directory).lists={{1}};
+            if(fault==2)invalid.information_page_data.at(directory).facilities.clear();
+            if(fault==3)invalid.information_page_data.at(directory).facilities.front()=std::uint64_t{1}<<40;
+            if(fault==4)invalid.information_page_data.at(directory).selection=
+                static_cast<int>(invalid.information_page_data.at(directory).facilities.size());
+            if(fault==5)invalid.information_page_data.emplace(invalid.scripts.next_page_id++,invalid.information_page_data.at(directory));
+            if(fault==6)for(auto &page:invalid.scripts.pages)if(page.id==town)page.legacy_page=36;
+            if(fault==7)invalid.facility_monthly_cash.erase(facility);
+            if(fault==8)for(auto &page:invalid.scripts.pages)if(page.id==town)page.lifecycle=2;
+            expect(invalid,false,"39 missing/wrong/retired reference or parent/source rejects restore");
+            if(fault==3) {
+                const auto high=p::persistence_detail::decode_state(p::persistence_detail::encode_state(invalid),*invalid.rules);
+                require(high.information_page_data.at(directory).facilities.front()==(std::uint64_t{1}<<40),
+                        "typed39 codec preserves uint64 before validation; cannot truncate into a live low ID");
+            }
+        }
+        auto closed=restored;p::StartupInformationInput cancel;cancel.cancel=true;
+        input(closed,directory,cancel);expect(closed,true,"closed39 before actual Finish retains complete catalogue");
+        closed=p::persistence_detail::decode_state(p::persistence_detail::encode_state(closed),*closed.rules);
+        tick(closed);
+        require(closed.scripts.pages.back().id==town && !closed.information_page_data.count(directory),
+                "closed39 restored next frame retires catalogue and recovers34");
+        input(state,directory,confirm);input(restored,directory,confirm);
+        require(state.scene.scene_state==7 && state.scripts.selected_facility==facility &&
+                state.scripts.selected_actor==fixture_actor.value && state.scripts.selection_mode==0,
+                "39 confirm chooses scene7 facility while preserving actual actor selector");
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "39 restored confirmation keeps exact owner and random order");
+        expect(state,true,"scene7 retains closing34/39 payloads before Finish");
+        const auto focus=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(focus,*state.rules);
+        tick(state);tick(restored);
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored) &&
+                state.scene.scene_state==0 && !state.scripts.selected_facility &&
+                state.scripts.selected_actor==fixture_actor.value &&
+                !state.information_page_data.count(directory) && !state.page_phases.count(town) &&
+                !state.page_counters.count(directory),
+                "actual scene7 completion clears facility only, retires pages and replays identically");
     }
     {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。

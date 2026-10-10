@@ -1,5 +1,5 @@
 // 由 scripts/generate_owner_codec.mjs 生成；不要手改。
-constexpr const char schema_identity[] = "8af417e3aa669e375feacbd46c4b96c7c5651bcabdd46e2804c98c5ce78e247f";
+constexpr const char schema_identity[] = "02758791953af33c795913fc1ea70f7b567fd57d181f169ac78d4f15cdd2ab80";
 template<> bool valid_enum< ::dungeon_village_prototype::StartupAudioOperation>(::dungeon_village_prototype::StartupAudioOperation value) { return value == ::dungeon_village_prototype::StartupAudioOperation::ordinary_play || value == ::dungeon_village_prototype::StartupAudioOperation::replace_bgm || value == ::dungeon_village_prototype::StartupAudioOperation::jingle; }
 template<> bool valid_enum< ::dungeon_village_reference::ActorKind>(::dungeon_village_reference::ActorKind value) { return value == ::dungeon_village_reference::ActorKind::human || value == ::dungeon_village_reference::ActorKind::monster; }
 template<> bool valid_enum< ::dungeon_village_reference::CandidateOrigin>(::dungeon_village_reference::CandidateOrigin value) { return value == ::dungeon_village_reference::CandidateOrigin::map_scan || value == ::dungeon_village_reference::CandidateOrigin::event; }
@@ -31,8 +31,9 @@ template<> struct CodecFields< ::dungeon_village_prototype::StartupInformationPa
   a.field("dungeon_village_prototype::StartupInformationPageData.lists", v.lists);
   a.field("dungeon_village_prototype::StartupInformationPageData.selection", v.selection);
   a.field("dungeon_village_prototype::StartupInformationPageData.first_visible", v.first_visible);
+  a.field("dungeon_village_prototype::StartupInformationPageData.facilities", v.facilities);
  }
- static std::size_t minimum() { return 0 + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().lists)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().selection)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().first_visible)>::minimum(); }
+ static std::size_t minimum() { return 0 + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().lists)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().selection)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().first_visible)>::minimum() + Codec<decltype(std::declval< ::dungeon_village_prototype::StartupInformationPageData>().facilities)>::minimum(); }
 };
 template<> struct CodecFields< ::dungeon_village_prototype::StartupWorldActorMetadata> {
  template<class Archive, class Value> static void visit(Archive& a, Value& v) {

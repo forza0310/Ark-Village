@@ -896,29 +896,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 if (!details || !event(next, 137, details->name))
                     return Error::script_failed;
             } else {
-                auto scripts = startup_world_runtime_scripts(next);
-                auto scene = scripts.pages.end();
-                for (auto it = scripts.pages.begin(); it != scripts.pages.end(); ++it) {
-                    if (it->kind == ref::WorldScriptPageKind::scene && it->lifecycle != 4) {
-                        if (scene != scripts.pages.end())
-                            return Error::missing_source;
-                        scene = it;
-                    }
-                }
-                if (scene == scripts.pages.end())
-                    return Error::missing_source;
-                auto restored = *scene;
-                scripts.pages.erase(scene);
-                for (auto &page : scripts.pages)
-                    page.lifecycle = 4;
-                restored.lifecycle = 2;
-                scripts.pages.push_back(std::move(restored));
-                scripts.selected_actor = target->value;
-                scripts.selected_facility.reset();
-                scripts.selection_mode = 1;
-                scripts.redraw_requested = true;
-                if (!write_startup_world_runtime_scripts(next, scripts))
-                    return Error::script_failed;
+                if (!activate_startup_world_main_page(next)) return Error::script_failed;
+                next.scripts.selected_actor = target->value;
+                next.scripts.selected_facility.reset();
+                next.scripts.selection_mode = 1;
                 next.scene.scene_state = 6;
                 next.scene.scene_counter = 0;
             }

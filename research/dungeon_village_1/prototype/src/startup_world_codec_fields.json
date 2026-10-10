@@ -94,6 +94,10 @@
         {
           "name": "first_visible",
           "type": "int"
+        },
+        {
+          "name": "facilities",
+          "type": "std::vector<std::uint64_t>"
         }
       ]
     },

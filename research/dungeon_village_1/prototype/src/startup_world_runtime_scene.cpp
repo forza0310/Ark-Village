@@ -305,6 +305,8 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 startup_world_runtime_facility_target(s, *s.scripts.selected_facility);
             if (!target || !camera_focus(s, *target))
                 return {};
+            // 原ChangeState(0)清subTenant；贴合后仍走共同尾，不重开设施详情。
+            if (s.scene.scene_state == 0) s.scripts.selected_facility.reset();
             break;
         }
         case Stage::common_display_tail: {

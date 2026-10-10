@@ -66,6 +66,11 @@ void camera() {
     s.scene.scene_state = 6;
     s.scripts.selected_actor = 1;
     s.actor_metadata.emplace(ref::CharacterId{1}, StartupWorldActorMetadata{0, 0, 0, {0, 0}});
+    // 追踪对象须为在籍活跃W；旧仅坐标的夹具不满足已交付的稳定引用校验。
+    auto &actor = s.scene.world.world.ai.battle.actors[ref::CharacterId{1}];
+    actor.id = ref::CharacterId{1};
+    actor.kind = ref::ActorKind::human;
+    s.scene.world.world.ai.human_order.push_back(ref::CharacterId{1});
     s.camera = {5, 0};
     auto next = adapter.scene_other(s, {ref::WorldSceneStage::actor_camera_input, -1, {}});
     check(next && next->state.scene.scene_state == 6 && next->state.camera[0] == 0 &&
@@ -184,8 +189,8 @@ void facility_cameras() {
             next = adapter.scene_other(next->state,
                                        {ref::WorldSceneStage::facility_camera_input, 0, {}});
             check(next && next->state.scene.scene_state == 0 &&
-                      next->state.scene.scene_counter == 0,
-                  "next strict zero-distance facility focus switches0 and resets scene counter");
+                      next->state.scene.scene_counter == 0 && !next->state.scripts.selected_facility,
+                  "next strict zero-distance facility focus switches0, resets counter and releases subTenant");
             auto invalid = s;
             const auto index = cell.y * 8 + cell.x;
             invalid.scene.world.world.map.cells.at(index).facility.reset();

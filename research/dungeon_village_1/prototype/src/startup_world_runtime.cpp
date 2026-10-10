@@ -422,6 +422,24 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
     s.scripts.scene_mode = s.scripts.scene_updates = s.scripts.exploration_phase = 0;
     return true;
 }
+bool activate_startup_world_main_page(State &s) {
+    if (s.scripts.page_mutations_locked) return false;
+    auto scripts = startup_world_runtime_scripts(s);
+    auto scene = scripts.pages.end();
+    for (auto it = scripts.pages.begin(); it != scripts.pages.end(); ++it) {
+        if (it->kind != ref::WorldScriptPageKind::scene || it->lifecycle == 4) continue;
+        if (scene != scripts.pages.end()) return false;
+        scene = it;
+    }
+    if (scene == scripts.pages.end()) return false;
+    auto restored = *scene;
+    scripts.pages.erase(scene);
+    for (auto &page : scripts.pages) page.lifecycle = 4;
+    restored.lifecycle = 2;
+    scripts.pages.push_back(std::move(restored));
+    scripts.redraw_requested = true;
+    return write_startup_world_runtime_scripts(s, scripts);
+}
 ref::DungeonFinishState startup_world_runtime_finish(const State &s) {
     ref::DungeonFinishState f;
     const auto r = startup_world_runtime_routes(s);
@@ -1115,7 +1133,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     const auto &pending = admitted.scripts.pages.back();
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
         (pending.legacy_page == 60 || pending.legacy_page == 9 ||
-         (pending.legacy_page >= 35 && pending.legacy_page <= 38))) {
+         (pending.legacy_page >= 34 && pending.legacy_page <= 39))) {
         if (!(pending.legacy_page == 60 ? valid_startup_world_human_detail_context(admitted, pending.id)
                                        : valid_startup_world_information_page(admitted, pending.id)))
             return {StartupWorldRuntimeError::missing_source, {},

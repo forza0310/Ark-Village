@@ -53,10 +53,11 @@ struct StartupWorldFocusActor {
     }();
     StartupWorldActorMetadata metadata{0, 3, 0, {}}; // n.J建W后仅f()写ad3。
 };
-// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID。
+// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID，raw39单独保存实例ID。
 struct StartupInformationPageData {
     std::vector<std::vector<int>> lists;
     int selection{}, first_visible{};
+    std::vector<std::uint64_t> facilities{}; // 39原X；不得把稳定实例ID截成定义int。
 };
 // raw60来源资格与可选实际W绑定；来源不是父页ID，也不以定义ID冒充实例ID。
 struct StartupHumanDetailContext {
@@ -297,6 +298,9 @@ bool write_startup_world_runtime_routes(StartupWorldRuntimeState &state,
 ref::WorldScriptState startup_world_runtime_scripts(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_scripts(StartupWorldRuntimeState &state,
                                          const ref::WorldScriptState &scripts);
+// 原ChangeCurrentForm(game,false)：仅在私有候选中恢复唯一主场景并退休其它页。
+// 场景模式/镜头引用由具体命令随后设置；载荷由统一Finish释放，不在此提前删引用。
+bool activate_startup_world_main_page(StartupWorldRuntimeState &candidate);
 ref::DungeonFinishState startup_world_runtime_finish(const StartupWorldRuntimeState &state);
 bool write_startup_world_runtime_finish(StartupWorldRuntimeState &state,
                                         const ref::DungeonFinishState &finish);

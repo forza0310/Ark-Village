@@ -312,7 +312,7 @@ void information_menu_pages() {
     constexpr std::array<int,5> tags{15,14,16,17,18},targets{35,34,36,37,38};
     for(int row=0;row<5;++row)
         check(view->entries[row].tag==tags[row] && view->entries[row].target_raw==targets[row] &&
-                  view->entries[row].implemented==(row!=1),
+                  view->entries[row].implemented,
               "raw9 retains all five original ordered rows; implemented is maintenance capability only");
     page_tick(s);
     check(s.page_counters.at(id)==3,"raw9 second update reaches original menu count cap3");
@@ -322,15 +322,6 @@ void information_menu_pages() {
     StartupInformationInput down;down.down=true;
     check(input_startup_world_information_page(s,id,down)==E::none && s.page_phases.at(id)==0,
           "raw9 down wraps row4 back to row0");
-    for(int row:{1}) {
-        StartupInformationInput select;select.select_row=row;
-        check(input_startup_world_information_page(s,id,select)==E::none,
-              "unimplemented target still permits selecting its original menu row");
-        frozen=startup_world_state_digest(s);
-        check(input_startup_world_information_page(s,id,confirm)!=E::none &&
-                  startup_world_state_digest(s)==frozen,
-              "unimplemented child rejects confirmation without inventing page or partial retirement");
-    }
     for(int fault=0;fault<12;++fault) {
         auto bad=s;
         StartupInformationInput input=down;
@@ -487,10 +478,149 @@ std::uint64_t enter_information_catalog(StartupWorldRuntimeState &s,int row) {
               input_startup_world_information_page(s,menu,confirm)==E::none,
           "catalogue path selects original information menu row");
     const auto id=s.scripts.pages.back().id;
-    check(s.scripts.pages.back().legacy_page==(row==0?35:row==3?37:38) &&
+    check(s.scripts.pages.back().legacy_page==(row==0?35:row==1?34:row==3?37:38) &&
               s.scripts.pages.back().lifecycle==0 && !s.information_page_data.count(id),
           "new information directory waits for framework Init before owning frozen IDs");
     return id;
+}
+void town_facility_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    const auto town=enter_information_catalog(s,1);page_tick(s);
+    const auto before=startup_world_state_digest(s);
+    const auto view=inspect_startup_world_information_page(s,town);
+    check(view && view->raw==34 && view->town && view->town->rank==s.rank &&
+          view->village_name==s.scripts.village_name && !view->facilities &&
+          startup_world_state_digest(s)==before,"34 reads existing statistics/village name without hidden state writes");
+    StartupInformationInput confirm;confirm.confirm=true;
+    StartupInformationInput cancel;cancel.cancel=true;
+    for(int fault=0;fault<7;++fault) {
+        auto invalid=s;StartupInformationInput input;
+        if(fault==0)input.up=true;
+        if(fault==1)input.down=true;
+        if(fault==2)input.left=true;
+        if(fault==3)input.right=true;
+        if(fault==4)input.select_row=0;
+        if(fault==5){input=confirm;invalid.page_phases.at(town)=1;}
+        if(fault==6){input=confirm;invalid.page_counters.erase(town);}
+        const auto digest=startup_world_state_digest(invalid);
+        check(input_startup_world_information_page(invalid,town,input)!=E::none &&
+              startup_world_state_digest(invalid)==digest,"34 unsupported directions/selection/bad payload reject atomically");
+    }
+    auto blocked=s;blocked.scripts.page_mutations_locked=true;
+    const auto blocked_before=startup_world_state_digest(blocked);
+    check(input_startup_world_information_page(blocked,town,confirm)!=E::none &&
+          startup_world_state_digest(blocked)==blocked_before,"34 failed39 insertion preserves parent lifecycle and outputs");
+    auto returned=s;
+    check(input_startup_world_information_page(returned,town,cancel)==E::none &&
+          returned.scripts.pages.back().lifecycle==4,"34 cancel retires only itself");
+    const auto units=s.scene.calendar.units;
+    const auto draws=s.scene.random.draws();
+    page_tick(s);
+    check(s.scene.calendar.units==units && s.scene.random.draws()==draws,"34 modal frame does not run world");
+    StartupInformationInput both=confirm;both.cancel=true;
+    check(input_startup_world_information_page(s,town,both)==E::none && s.scripts.pages.back().legacy_page==39,
+          "34 confirm wins simultaneous cancel and creates39 with real34 parent");
+    const auto id=s.scripts.pages.back().id;
+    auto wrong_parent=s;
+    for(auto &page:wrong_parent.scripts.pages)if(page.id==town)page.legacy_page=36;
+    check(!prepare_startup_world_runtime(wrong_parent).candidate,"39 cannot initialize beneath a different parent kind");
+    const auto pending=s;
+    page_tick(s);
+    const auto &data=s.information_page_data.at(id);
+    check(data.lists.empty() && !data.facilities.empty(),"39 owns stable instance IDs, never definition int lists");
+    std::vector<std::uint64_t> expected;
+    for(const auto facility:s.scene.world.facility_order)
+        if(s.scene.world.world.facilities.at(facility).kind==3)expected.push_back(facility);
+    check(data.facilities==expected,"39 filters original live order to kind3 without sorting or counting historical ledgers");
+    const auto selected=expected.front();
+    // 原月3：利润只计0..3；本段是账目/编号显示条件，不宣称已自然收入。
+    s.facility_ordinals.at(selected)=7;
+    s.facility_monthly_cash.at(selected)={};
+    s.facility_monthly_cash.at(selected)[0]={100,7};
+    s.facility_monthly_cash.at(selected)[3]={20,40};
+    s.facility_monthly_cash.at(selected)[4]={999,0};
+    const auto projection=inspect_startup_world_information_page(s,id);
+    const auto definition=s.scene.world.world.facilities.at(selected).placement.definition_id;
+    const auto source=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),
+                                  [=](const auto &d){return d.id==definition;});
+    check(projection && projection->facilities && projection->facilities->front().instance==selected &&
+          projection->facilities->front().ordinal==7 && projection->facilities->front().name==source->name &&
+          projection->facilities->front().icon==source->legacy_icon && projection->facilities->front().profit==73,
+          "39 profit ends at current month; displayed ordinal is original7 plus1, not directory countQ/B");
+    s.facility_monthly_cash.at(selected)[3]={0,140};
+    check(inspect_startup_world_information_page(s,id)->facilities->front().profit==-47,
+          "39 preserves negative per-instance profit, not world funds or all12 buckets");
+    s.facility_monthly_cash.at(selected)={};
+    s.facility_monthly_cash.at(selected)[0]={std::numeric_limits<int>::max(),0};
+    s.facility_monthly_cash.at(selected)[3]={1,0};
+    check(inspect_startup_world_information_page(s,id)->facilities->front().profit==std::numeric_limits<int>::min(),
+          "39 original int32 accumulation wraps explicitly, without C++ signed overflow");
+    for(int fault=0;fault<10;++fault) {
+        auto invalid=s;
+        if(fault==0)invalid.information_page_data.erase(id);
+        if(fault==1)invalid.information_page_data.at(id).lists={{1}};
+        if(fault==2)invalid.information_page_data.at(id).facilities.front()=std::uint64_t{1}<<40;
+        if(fault==3)invalid.information_page_data.at(id).selection=static_cast<int>(expected.size());
+        if(fault==4)invalid.facility_monthly_cash.erase(selected);
+        if(fault==5)invalid.facility_ordinals.erase(selected);
+        if(fault==6)invalid.scene.world.world.facilities.erase(selected);
+        if(fault==7)invalid.scene.world.world.facilities.at(selected).kind=9;
+        if(fault==8)invalid.scene.world.facility_order.push_back(selected);
+        if(fault==9)invalid.page_phases.at(id)=1;
+        const auto digest=startup_world_state_digest(invalid);
+        check(input_startup_world_information_page(invalid,id,confirm)!=E::none &&
+              !inspect_startup_world_information_page(invalid,id) && startup_world_state_digest(invalid)==digest,
+              "39 stale/typed/bad ledger/source/selection rejects without partial scene switch");
+    }
+    auto closed=s;
+    check(input_startup_world_information_page(closed,id,cancel)==E::none,"39 actual return accepts");page_tick(closed);
+    check(closed.scripts.pages.back().id==town && !closed.information_page_data.count(id) &&
+          !closed.page_counters.count(id) && !closed.page_phases.count(id),"39 return restores real34 and retires all directory references");
+    auto scroll=pending;
+    // 只供目录/输入的六实例条件：不声称新建或推进该副本的经营/镜头。
+    for(int count=static_cast<int>(expected.size()),ordinal=20;count<6;++count,++ordinal) {
+        const auto extra=scroll.next_facility_identity++;
+        auto instance=scroll.scene.world.world.facilities.at(selected);instance.placement.instance_id={extra};
+        scroll.scene.world.world.facilities.emplace(extra,instance);scroll.scene.world.facility_order.push_back(extra);
+        scroll.facility_ordinals.emplace(extra,ordinal);scroll.facility_monthly_cash[extra]={};
+    }
+    page_tick(scroll);
+    StartupInformationInput up;up.up=true;
+    check(input_startup_world_information_page(scroll,id,up)==E::none &&
+          scroll.information_page_data.at(id).selection==5 && scroll.information_page_data.at(id).first_visible==1,
+          "39 six-row condition wraps up and scrolls original five-row window");
+    StartupInformationInput directions;directions.up=true;directions.down=true;
+    check(input_startup_world_information_page(scroll,id,directions)==E::none &&
+          scroll.information_page_data.at(id).selection==5,"39 independent up/down cancel, unlike menu9 priority");
+    auto denied=s;denied.scripts.page_mutations_locked=true;
+    const auto denied_before=startup_world_state_digest(denied);
+    check(input_startup_world_information_page(denied,id,confirm)!=E::none &&
+          startup_world_state_digest(denied)==denied_before,"39 late scene activation failure rolls back stack and camera");
+    StartupInformationInput focus=both;focus.down=true;
+    const auto destination=expected[expected.size()>1?1:0];
+    check(input_startup_world_information_page(s,id,focus)==E::none && s.scene.scene_state==7 &&
+          s.scripts.selection_mode==0 && s.scripts.selected_facility==destination &&
+          s.scripts.pages.back().kind==ref::WorldScriptPageKind::scene && s.scripts.pages.back().lifecycle==2,
+          "39 moves selection before confirm, confirm beats cancel and activates scene7 rather than a shop page");
+    for(const auto old:{town,id})check(std::any_of(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p) {
+        return p.id==old&&p.lifecycle==4;
+    }),"39 focus retires both actual34/39 instead of retaining hidden modal parent");
+    // 空目录保留地图实体且只在私有规则变体改kind镜像；不删除真实世界关联数据。
+    auto empty=test_support::world_fixture();StartupWorldRules rules=*empty.rules;empty.rules=&rules;
+    for(auto &d:rules.facilities)if(d.kind==3)d.kind=9;
+    for(auto &entry:empty.scene.world.world.facilities)if(entry.second.kind==3)entry.second.kind=9;
+    const auto empty_town=enter_information_catalog(empty,1);page_tick(empty);
+    check(input_startup_world_information_page(empty,empty_town,confirm)==E::none,"empty type3 condition enters real39");
+    const auto empty_id=empty.scripts.pages.back().id;
+    auto failed_empty=empty;failed_empty.scripts.page_mutations_locked=true;
+    const auto failed_before=startup_world_state_digest(failed_empty);
+    check(!prepare_startup_world_runtime(failed_empty).candidate && startup_world_state_digest(failed_empty)==failed_before,
+          "39 empty17 insertion failure does not commit directory or closure");
+    page_tick(empty);
+    check(empty.scripts.event_calls.at(17)==1 && std::any_of(empty.scripts.pages.begin(),empty.scripts.pages.end(),[=](const auto &p) {
+        return p.id==empty_id&&p.lifecycle==4;
+    }),"39 empty directory issues actual17 and closes, never imports kind9 facilities");
 }
 void owned_item_information_pages() {
     using E=StartupWorldRuntimeError;
@@ -740,7 +870,7 @@ void adventurer_information_pages() {
     check(s.scene.random.draws()==draws && s.scene.calendar.units==date &&
           s.scene.world.world.ai.accounting.funds()==cash,"35 modal update does not run world operations");
     StartupInformationInput confirm;confirm.confirm=true;
-    for(int fault=0;fault<6;++fault) {
+    for(int fault=0;fault<7;++fault) {
         auto invalid=s;
         if(fault==0)invalid.information_page_data.erase(id);
         if(fault==1)invalid.information_page_data.at(id).lists[0][0]=6;
@@ -748,6 +878,7 @@ void adventurer_information_pages() {
         if(fault==3)invalid.information_page_data.at(id).selection=6;
         if(fault==4)invalid.information_page_data.at(id).first_visible=2;
         if(fault==5)invalid.scripts.humans.erase(6);
+        if(fault==6)invalid.information_page_data.at(id).facilities.push_back(1);
         const auto digest=startup_world_state_digest(invalid);
         check(input_startup_world_information_page(invalid,id,confirm)!=E::none &&
               startup_world_state_digest(invalid)==digest,"35 bad list/tab/selection/NEW source rejects whole action");
@@ -3551,6 +3682,7 @@ int main() {
         facility_reputation_pages();
         information_menu_pages();
         income_information_pages();
+        town_facility_information_pages();
         owned_item_information_pages();
         equipment_information_pages();
         adventurer_information_pages();

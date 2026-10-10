@@ -10,15 +10,15 @@ using State = StartupWorldRuntimeState;
 using Error = StartupWorldRuntimeError;
 using Page = ref::WorldScriptPage;
 constexpr std::array<StartupInformationEntry, 5> entries{{
-    {15, "冒险者", 35, true}, {14, "村情报", 34, false},
+    {15, "冒险者", 35, true}, {14, "村情报", 34, true},
     {16, "收支情报", 36, true}, {17, "持有物品", 37, true},
     {18, "装备一览", 38, true}}};
 bool information(const Page &page) {
     return page.kind == ref::WorldScriptPageKind::raw_page &&
-           (page.legacy_page == 9 || (page.legacy_page >= 35 && page.legacy_page <= 38));
+           (page.legacy_page == 9 || (page.legacy_page >= 34 && page.legacy_page <= 39));
 }
 bool directory(const Page &page) {
-    return page.legacy_page == 35 || page.legacy_page == 37 || page.legacy_page == 38;
+    return page.legacy_page == 35 || page.legacy_page == 37 || page.legacy_page == 38 || page.legacy_page == 39;
 }
 const Page *find_page(const State &s, std::uint64_t id) {
     const Page *found = nullptr;
@@ -75,18 +75,30 @@ bool payload(const State &s, const Page &page) {
         counter->second > (page.legacy_page == 9 ? 3 : std::numeric_limits<int>::max() - 1))
         return false;
     const auto data = s.information_page_data.find(page.id);
-    if (!directory(page)) return data == s.information_page_data.end();
+    if (!directory(page))
+        return data == s.information_page_data.end() &&
+               (page.legacy_page != 34 || startup_town_information(s).has_value());
     if (data == s.information_page_data.end()) return false;
-    const auto expected = lists(s, page.legacy_page);
-    // 当前维护页模态；35子页可改属性/职业但不改presence，冻结目录须完整一致。
-    // 这是本消费者的恢复约束，不推断原程序所有异步路径都不会改共享定义。
-    if (!expected || data->second.lists != *expected) return false;
     const auto &v = data->second;
-    const auto &list = v.lists[page.legacy_page == 35 ? 0U : static_cast<std::size_t>(phase->second)];
+    std::size_t list_size{};
+    if (page.legacy_page == 39) {
+        const auto rows = startup_facility_information(s);
+        if (!rows || !v.lists.empty() || rows->size() != v.facilities.size()) return false;
+        for (std::size_t i = 0; i < rows->size(); ++i)
+            if ((*rows)[i].instance != v.facilities[i]) return false;
+        list_size = v.facilities.size();
+    } else {
+        const auto expected = lists(s, page.legacy_page);
+        // 当前维护页模态；35子页可改属性/职业但不改presence，冻结目录须完整一致。
+        // 这是本消费者的恢复约束，不推断原程序所有异步路径都不会改共享定义。
+        if (!expected || v.lists != *expected || !v.facilities.empty()) return false;
+        list_size = v.lists[page.legacy_page == 35 ? 0U : static_cast<std::size_t>(phase->second)].size();
+    }
     if (v.selection < 0 || v.first_visible < 0) return false;
-    if (list.empty())
+    if (list_size == 0)
         return (page.legacy_page == 38 || page.lifecycle == 4) && v.selection == 0 && v.first_visible == 0;
-    const int count = static_cast<int>(list.size()), rows = page.legacy_page == 38 ? 4 : 5;
+    if (list_size > static_cast<std::size_t>(std::numeric_limits<int>::max())) return false;
+    const int count = static_cast<int>(list_size), rows = page.legacy_page == 38 ? 4 : 5;
     return v.selection < count && v.first_visible <= v.selection &&
            v.selection - v.first_visible < rows && v.first_visible <= std::max(0, count - rows);
 }
@@ -126,7 +138,7 @@ bool close(State &s, std::uint64_t id) {
 bool event(State &s, int id) {
     const auto result = ref::prepare_world_script(startup_world_runtime_catalog(),
                                                   startup_world_runtime_scripts(s), {id, {}, {}});
-    // 本入口仅消费固定事件15的真实提示页；页锁吞掉输出不算完成空目录提示。
+    // 空37/39分别消费固定事件15/17；页锁吞掉输出不算完成空目录提示。
     return result.candidate && !result.candidate->inserted_pages.empty() &&
            write_startup_world_runtime_scripts(s, result.candidate->state);
 }
@@ -134,7 +146,8 @@ bool push(State &s, int raw) {
     Page child;
     child.kind = ref::WorldScriptPageKind::raw_page;
     child.legacy_page = raw;
-    child.title = raw == 9 ? "情报" : raw == 35 ? "冒险者" : raw == 36 ? "收支情报" : raw == 37 ? "持有物品" : "装备一览";
+    child.title = raw == 9 ? "情报" : raw == 34 ? "村情报" : raw == 35 ? "冒险者" :
+                  raw == 36 ? "收支情报" : raw == 37 ? "持有物品" : raw == 38 ? "装备一览" : "设施收支一览";
     const auto result = ref::prepare_world_script_page(startup_world_runtime_scripts(s), child);
     return result.candidate && result.candidate->inserted_pages.size() == 1 &&
            write_startup_world_runtime_scripts(s, result.candidate->state);
@@ -159,6 +172,16 @@ bool valid_startup_world_information_page(const State &s, std::uint64_t id) {
     const auto *page = find_page(s, id);
     if (!page || !information(*page) || page->lifecycle < 0 || page->lifecycle > 4)
         return false;
+    if (page->legacy_page == 39 && page->lifecycle != 4) {
+        const Page *parent = nullptr;
+        for (const auto &p : s.scripts.pages) {
+            if (p.id == id) break;
+            if (p.lifecycle != 4) parent = &p;
+        }
+        if (!parent || parent->kind != ref::WorldScriptPageKind::raw_page ||
+            parent->legacy_page != 34 || parent->lifecycle != 3 ||
+            !valid_startup_world_information_page(s, parent->id)) return false;
+    }
     const bool no_payload = !s.page_phases.count(id) && !s.page_counters.count(id) &&
                             !s.information_page_data.count(id);
     if (page->lifecycle == 0)
@@ -189,20 +212,28 @@ bool initialize_startup_world_information_pages(State &s) {
         const auto *page = find_page(next, id);
         if (!page || page->lifecycle != 0) return false;
         const int raw = page->legacy_page;
-        bool empty_items = false;
+        int empty_event{};
         if (raw == 35 && !refresh_contributions(next)) return false;
-        if (directory(*page)) {
+        if (raw == 34 && !startup_town_information(next)) return false;
+        if (raw == 39) {
+            const auto rows = startup_facility_information(next);
+            if (!rows) return false;
+            StartupInformationPageData data;
+            for (const auto &row : *rows) data.facilities.push_back(row.instance);
+            if (data.facilities.empty()) empty_event = 17;
+            next.information_page_data.emplace(id, std::move(data));
+        } else if (directory(*page)) {
             auto frozen = lists(next, raw);
             if (!frozen) return false;
-            empty_items = raw == 37 && frozen->front().empty();
-            next.information_page_data.emplace(id, StartupInformationPageData{std::move(*frozen), 0, 0});
+            if (raw == 37 && frozen->front().empty()) empty_event = 15;
+            next.information_page_data.emplace(id, StartupInformationPageData{std::move(*frozen), 0, 0, {}});
         }
         next.page_phases.emplace(id, 0);
         next.page_counters.emplace(id, 0);
         for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 1;
         next.scripts.executing_page = id;
         // 事件可压新页并使vector重分配；后续只用ID，不能再引用旧page。
-        if (empty_items && (!event(next, 15) || !close(next, id))) return false;
+        if (empty_event && (!event(next, empty_event) || !close(next, id))) return false;
         if (!valid_startup_world_information_page(next, id)) return false;
     }
     next.scripts.executing_page = executing;
@@ -241,19 +272,23 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
     const bool keys = input.up || input.down || input.left || input.right ||
                       input.confirm || input.cancel;
     if (input.select_row) {
-        if (keys || *input.select_row < 0 || raw == 36) return Error::invalid_page;
+        if (keys || *input.select_row < 0 || raw == 34 || raw == 36) return Error::invalid_page;
         if (raw == 9) {
             if (*input.select_row > 4) return Error::invalid_page;
         } else {
             const auto &data = s.information_page_data.find(id)->second;
             const auto phase = s.page_phases.find(id)->second;
-            if (static_cast<std::size_t>(*input.select_row) >= data.lists[raw == 35 ? 0U : static_cast<std::size_t>(phase)].size())
+            const auto count = raw == 39 ? data.facilities.size() :
+                data.lists[raw == 35 ? 0U : static_cast<std::size_t>(phase)].size();
+            if (static_cast<std::size_t>(*input.select_row) >= count)
                 return Error::invalid_page;
         }
     }
     if (raw == 36 && (input.up || input.down))
         return Error::invalid_page;
-    if (raw == 37 && (input.left || input.right))
+    if ((raw == 37 || raw == 39) && (input.left || input.right))
+        return Error::invalid_page;
+    if (raw == 34 && (input.up || input.down || input.left || input.right))
         return Error::invalid_page;
     if (!keys && !input.select_row)
         return Error::none;
@@ -286,6 +321,32 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
             if (!close(next, id))
                 return Error::script_failed;
         }
+    } else if (raw == 34) {
+        // 原确认优先返回，39保留实际34为父页；没有方向键业务消费者。
+        if (input.confirm) {
+            for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 3;
+            if (!push(next, 39)) return Error::script_failed;
+        } else if (input.cancel && !close(next, id)) return Error::script_failed;
+    } else if (raw == 39) {
+        auto &data = next.information_page_data.find(id)->second;
+        const int count = static_cast<int>(data.facilities.size());
+        if (input.select_row) data.selection = *input.select_row;
+        else {
+            if (input.up) data.selection = data.selection == 0 ? count - 1 : data.selection - 1;
+            if (input.down) data.selection = data.selection == count - 1 ? 0 : data.selection + 1;
+        }
+        scroll(data, 5);
+        if (input.confirm) {
+            const auto facility = data.facilities[static_cast<std::size_t>(data.selection)];
+            // 源直接拿对象引用；维护重验稳定ID/占地后才退栈，缺实体不能半切镜头。
+            if (!startup_world_runtime_facility_target(next, facility)) return Error::missing_source;
+            if (!activate_startup_world_main_page(next)) return Error::script_failed;
+            next.scene.scene_state = 7;
+            next.scene.scene_counter = 0;
+            next.scripts.selected_facility = facility;
+            next.scripts.selection_mode = 0;
+            // 原39不清subPlayer/subMonster，保留两者选择。
+        } else if (input.cancel && !close(next, id)) return Error::script_failed;
     } else if (raw == 36) {
         // 原36左右独立：同轮双向回原页，随后仍可确认/返回关闭。
         if (input.left)
@@ -369,8 +430,12 @@ inspect_startup_world_information_page(const State &s, std::uint64_t id) {
     const auto phase = s.page_phases.find(id);
     const auto counter = s.page_counters.find(id);
     StartupInformationPageView view{id, page->legacy_page, phase->second, counter->second,
-                                    entries, {}, 0, 0, {}, {}, {}};
-    if (page->legacy_page == 36) {
+                                    entries, {}, 0, 0, {}, {}, {}, {}, {}, {}};
+    if (page->legacy_page == 34) {
+        view.town = startup_town_information(s);
+        view.village_name = s.scripts.village_name;
+        if (!view.town) return {};
+    } else if (page->legacy_page == 36) {
         view.income = startup_income_information(s.monthly_cash, s.scene.calendar.month,
                                                  phase->second);
         if (!view.income)
@@ -379,7 +444,10 @@ inspect_startup_world_information_page(const State &s, std::uint64_t id) {
         const auto &data = s.information_page_data.find(id)->second;
         view.selection = data.selection;
         view.first_visible = data.first_visible;
-        if (page->legacy_page == 35) {
+        if (page->legacy_page == 39) {
+            view.facilities = startup_facility_information(s);
+            if (!view.facilities) return {};
+        } else if (page->legacy_page == 35) {
             view.humans.emplace();
             for (const int human : data.lists.front()) {
                 const auto details = startup_world_human_details(s, human);

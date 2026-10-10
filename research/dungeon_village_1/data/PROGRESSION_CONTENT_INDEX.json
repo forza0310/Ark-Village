@@ -1,6 +1,6 @@
 {
-  "version": 3,
-  "date": "2026-10-10",
+  "version": 4,
+  "date": "2026-10-11",
   "scope": "逐ID的定义参数与已定位入口；共享时点、效果和后继引用主责合同。入口存在、消费者存在、全部来源闭合和自然可达分别处理；本索引不标记全量已完成。",
   "definitions": 775,
   "tables": [
@@ -67,7 +67,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/ACCOUNTING.md#村办活动与晋级前置"
+      "chain_contract": "../rules/ACCOUNTING.md#村办活动与晋级前置",
+      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界"
     },
     {
       "kind": "quest",
@@ -600,7 +601,52 @@
         "literal_nested_calls": 81,
         "nested_targets": [77],
         "parameterized_nested_targets": 0
-      }
+      },
+      "literal_caller_groups": {
+        "CharacterData.AddExp": [109],
+        "CharacterData.LvUp": [109],
+        "CharacterData.Aura_chStart": [116],
+        "CharacterData.UpdateStockExp": [113],
+        "WeaponData.ChangeState": [216],
+        "WeaponData.NewGame": [216],
+        "AppData.ExecuteScript": [21,61,120,121],
+        "Character2.AddDamage": [131,217],
+        "Character2.Control": [90],
+        "ItemObj.Proc_getTreasure2": [110,151],
+        "ItemObj.Proc_getTreasure": [151],
+        "MAA.Update": [91,126,128,152,205],
+        "RouteSearch.SetTenantRoute": [115],
+        "Tenant.Update": [73,74,75,76,88,92,117,118,126,201,202,211,212,213,214,215],
+        "UserData.AddTownPopularPointNow": [124,125,220,221,222,223,224],
+        "UserData.OpenMPotDevelWindowSetParam": [102,103],
+        "UserData.ProcChaseCommandFromInfoWindow": [137],
+        "UserData.SetMedalParam": [58],
+        "UserData.Update_appear": [89,218],
+        "UserData.Update_residentFlg": [82,83],
+        "GameForm.AddQuest": [59,60,132,133,134,138,165,166,167],
+        "GameForm.ProcBuild": [135,136],
+        "GameForm.ProgressTime": [3,26,36,65,122,123,163,203],
+        "GameForm.Update": [11,80,162],
+        "GameForm._update": [11,62,81,84,85,86,87,161,164],
+        "SubForm.Init2": [13,15,16,48,49,99,100,111],
+        "SubForm.Init": [15,17,29,63,98,101],
+        "SubForm.Update2": [11,12,13,14,20,22,23,27,37,38,39,41,46,47,50,104,112,119,219],
+        "SubForm.Update_clearPoint": [4,5,6],
+        "SubForm.Update": [8,9,11,19,62,63,64,80,97,105,106,107,114,162]
+      },
+      "formula_caller_groups": [
+        {"method": "SubForm.Update2","expression": "Random(2)+24","event_ids": [24,25]},
+        {"method": "SubForm.Update2","expression": "rank+41","event_ids": [42,43,44,45]},
+        {"method": "SubForm.Update2","expression": "rank+52","event_ids": [53,54,55,56,57]},
+        {"method": "RankUpTerm.UpRank","expression": "old_rank+53","event_ids": [53,54,55,56,57]},
+        {"method": "GameForm.AddQuest","expression": "boss_index+139","event_ids": [139,140,141,142,143,144]},
+        {"method": "MAA.Update","expression": "quest.appearRank+145","event_ids": [145,146,147,148,149,150]},
+        {"method": "SubForm.Update2","expression": "rank_term_type+154","event_ids": [154,155,156,157,158,159,160]},
+        {"method": "Tenant.AddTenantUseHuman","expression": "Random(2)+168","event_ids": [168,169]},
+        {"method": "Tenant.AddTenantUseHuman","expression": "Random(2)+170","event_ids": [170,171]},
+        {"method": "SubForm.Update2","expression": "rank+205 (rank in 1,3,5)","event_ids": [206,208,210]}
+      ],
+      "unresolved_callers": [0,1,2,10,18,28,30,31,32,33,34,40,51,52,66,67,68,69,70,71,72,78,79,93,94,95,96,108,127,129,130,153,207,209]
     },
     {
       "kind": "facility",
@@ -632,9 +678,9 @@
         {"id": 20,"name_zh": "海","source": {"entry": "tenantData.txt","line": 21},"kind": 11,"unlock_rank": -1,"flags": 0,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
         {"id": 21,"name_zh": "海","source": {"entry": "tenantData.txt","line": 22},"kind": 11,"unlock_rank": -1,"flags": 0,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
         {"id": 22,"name_zh": "海","source": {"entry": "tenantData.txt","line": 23},"kind": 11,"unlock_rank": -1,"flags": 0,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
-        {"id": 23,"name_zh": "空","source": {"entry": "tenantData.txt","line": 24},"kind": 10,"unlock_rank": -1,"flags": 0,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
+        {"id": 23,"name_zh": "空","source": {"entry": "tenantData.txt","line": 24},"kind": 10,"unlock_rank": -1,"flags": 0,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。","non_directory_sources": [{"route": "sky_mapchip_flag2","mapchip": 42,"level": "static_visual_consumer"}]},
         {"id": 24,"name_zh": "入住募集","source": {"entry": "tenantData.txt","line": 25},"kind": 13,"unlock_rank": 0,"flags": 69,"unlock_sources": [{"route": "reset_flag1","level": "static_initial_state"}]},
-        {"id": 25,"name_zh": "住宅","source": {"entry": "tenantData.txt","line": 26},"kind": 12,"unlock_rank": -1,"flags": 228,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
+        {"id": 25,"name_zh": "住宅","source": {"entry": "tenantData.txt","line": 26},"kind": 12,"unlock_rank": -1,"flags": 228,"unlock_sources": [{"route": "residence_demolition_return","level": "static_normal_source","source_facility_kind": 12,"target_residence_index": 0}]},
         {"id": 26,"name_zh": "住宅2","source": {"entry": "tenantData.txt","line": 27},"kind": 12,"unlock_rank": -1,"flags": 192,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
         {"id": 27,"name_zh": "住宅3","source": {"entry": "tenantData.txt","line": 28},"kind": 12,"unlock_rank": -1,"flags": 196,"unlock_sources": [],"source_limit": "上述正常入口未找到；目录排除或实例生成不能据此等同全程序不可达。"},
         {"id": 28,"name_zh": "旅店","source": {"entry": "tenantData.txt","line": 29},"kind": 3,"unlock_rank": 0,"flags": 101,"unlock_sources": [{"route": "reset_flag1","level": "static_initial_state"}]},
@@ -719,7 +765,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/PROGRESSION_CONTENT.md#设施装备道具与配方的入口覆盖"
+      "chain_contract": "../rules/PROGRESSION_CONTENT.md#设施装备道具与配方的入口覆盖",
+      "instance_contract": "../rules/FACILITIES.md#85定义的目录资格实例来源与继承"
     },
     {
       "kind": "human",
@@ -778,7 +825,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源"
+      "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源",
+      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界"
     },
     {
       "kind": "profession",
@@ -835,7 +883,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源"
+      "chain_contract": "../rules/CHARACTERS.md#人物与职业的开放来源",
+      "persistence_contract": "../rules/PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界"
     },
     {
       "kind": "weapon",
@@ -902,7 +951,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存"
+      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存",
+      "effect_contract": "../rules/CHARACTERS.md#逐id效果分类与消费后继"
     },
     {
       "kind": "armour",
@@ -986,7 +1036,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存"
+      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存",
+      "effect_contract": "../rules/CHARACTERS.md#逐id效果分类与消费后继"
     },
     {
       "kind": "accessory",
@@ -1050,7 +1101,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存"
+      "chain_contract": "../rules/CHARACTERS.md#装备礼物现金和库存",
+      "effect_contract": "../rules/CHARACTERS.md#逐id效果分类与消费后继"
     },
     {
       "kind": "item",
@@ -1120,7 +1172,8 @@
           "evidence": "原表逐单元词法比较；不是EXE消费者/玩法等价认证"
         }
       ],
-      "chain_contract": "../rules/CHARACTERS.md"
+      "chain_contract": "../rules/CHARACTERS.md",
+      "effect_contract": "../rules/CHARACTERS.md#逐id效果分类与消费后继"
     },
     {
       "kind": "magic_recipe",
@@ -1301,6 +1354,8 @@
     "quest_boss": "正常日历资格；默认G>=500且kind1按章节选flags2，原目标累计及最高章回退另见路线合同；v1直接模式自然产生者未知。",
     "monster_initial": "flags1新局state1/NEW及introduced=true；不是首次击杀。",
     "monster_normal_successor": "相邻定义前项已开、次项未开/非BOSS且章<=当前章，前项累计>=8；本轮仅第一个有效相邻对。",
-    "monster_boss_task": "BOSS由特殊任务创建，不能套普通相邻开放扫描；击杀、任务整体成功、阶段推进与152延迟领取分开。"
+    "monster_boss_task": "BOSS由特殊任务创建，不能套普通相邻开放扫描；击杀、任务整体成功、阶段推进与152延迟领取分开。",
+    "residence_demolition_return": "现kind12住宅绑定有效住户时，撤除先解除住宅关系，向住宅原序首项25返还H（封顶99），旧p0才开放p2/NEW；正常入住直接建25而不先开目录，复建需H及800G。",
+    "sky_mapchip_flag2": "初始化按mapchip唯一flag2选择42；地图外且与视口相交时直接画设施23的sky00.seb，不创建实体、不改变目录开放或库存。"
   }
 }

@@ -61,6 +61,10 @@ Steam直接调用复核补充了消费者范围：`TenantData.ChangeState`（RVA
 
 防具45血红护甲及饰品26／27／28三种奖章仍无正常正向获取来源。它们的flags0同时排除初始bit1和宝物bit2，既有事件／人气／人物程序及配方结果也未指向它们；年度授勋的名称不能代替装备定义引用。Steam `ArmourData.ChangeState`（RVA `0x211130`）直接调用点为`ItemObj.Proc_getTreasure2`的`0x102A7765`、`Proc_getTreasure`的`0x102A79A9`、`SubForm.Update2`的`0x10318457`和`SubForm.Update`的`0x103220DB`；饰品对应RVA `0x210B60`及`0x102A770B／0x102A793D／0x103183FF／0x1032208B`。两helper均只在旧state0且新state1时给共享库存1／NEW并通知匹配商店，随后写state；它们本身不另挑奖励ID。普通宝物、奖励页与壶三类调用未暴露额外的专属获得入口。
 
+年度授勋与通关奖杯另作有限交叉，不能因为译名同为奖章就补这三件装备来源。APK raw87真正父确认调用`c/n.a(e,...,true):492–515`：人物E加1；Steam `SubForm.Update2`在`0x1031960C`减少全局待授勋`UserData.medalNum_ +0x2C`，`0x10319667`调用`SetMedalParam`（RVA `0x2E8420`），helper只在授勋参数为真时于`0x102E8717`增人物`medalNum_ +0x7C`，随后建立raw88演出。所核分支不修改人物`equipDataId_ +0x58`、饰品状态或库存；事件58的`6,3&22,0`只延迟结算人气。人物E因此确为已授勋计数，与全局待授勋j、道具取得计数或饰品定义ID分开。
+
+通关系统奖杯是`J.int[10]`的1..4档：Steam `Update_clearPoint`（RVA `0x321190`）在`0x1032150F/43/74/A5`写该项，事件4／5／6只有对话，没有装备奖励指令；APK同义尾段另保存最高分与村名。控制18和显示18是表情／表现请求，不给装备。以上只排除这些具体正常消费者作为四件缺口装备的授予者；它们究竟是未启用残留还是另有未定位入口，仍不能据此定论。
+
 上述直接调用数来自固定GameAssembly的可执行节内`E8 rel32`目标筛查，再从具名方法入口解码确认指令边界；输入身份沿[内容来源](PROGRESSION_CONTENT.md#apk与exe表格交叉)。它不覆盖虚分派、间接调用、内联赋值或任意旧档输入，不能包装成全程序写点穷尽证明。[加载尾声](PERSISTENCE.md#加载尾声的目录修复)另有直接状态修复；四件装备均不在原初装中，该修复也不是它们的正常奖励来源。逐ID验收应保留这些明确缺口，不注入开放位来制造自然路线。
 
 进一步核对metadata的字段归属：四类定义继承`BaseData`的`id_ +0x08／flag_ +0x0C／state_ +0x10／stateCnt_ +0x14／new_ +0x18`；防具／饰品`haveNum_ +0x3C`及设施`haveNum_ +0x88`是不同派生类字段，不能把世界实体的同偏移或别名helper混算为目录写点。Steam新局确有**内联开放赋值**：`AppData.NewGame`在`0x1025F37D`调用`UserData.NewGame`，后者遍历各目录，在`0x102E051F／0x102E05AF／0x102E0B9F`分别调用饰品／防具／设施NewGame。饰品`0x10210E58–0x10210E63`、防具`0x102113E8–0x102113F3`先清state／NEW／库存，只在flag1检查通过后直接赋state1／库存1，最后清NEW；设施仍沿已核flag1→state2。故四件flag0装备从这个正常新局入口不能开放或得到库存，不以先前直接call数量作为理由。

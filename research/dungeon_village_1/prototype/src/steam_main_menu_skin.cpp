@@ -1,5 +1,6 @@
 // 原版局部合同见ui/PAGES.md：raw3缓存/输入与Steam DrawMenu2(type0)。
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include <algorithm>
 #include <limits>
 
@@ -13,6 +14,80 @@ void image(SteamMainMenuSkinPlan &plan,int id,int x,int y,std::array<int,4> crop
            SteamMainMenuPackage package=SteamMainMenuPackage::common) {
     plan.draws.emplace_back(SteamMainMenuImage{package,id,-1,0,crop,{x,y}});
 }
+}
+std::optional<SteamMainMenuNotices> steam_main_menu_notices(const StartupWorldRuntimeState &s) {
+    if(!s.rules)return {};
+    SteamMainMenuNotices result;
+    result.construction=std::any_of(s.build_category_new.begin(),s.build_category_new.end(),
+                                    [](bool value){return value;});
+    const auto quest=startup_world_has_new_tasks(s);
+    if(!quest)return {};
+    result.quest=*quest;
+    result.selected_quest=s.active_task.has_value();
+    // NEW优先于GET：被NEW遮住的装备目录不应触发额外缺源拒绝。
+    if(!result.quest || result.selected_quest) {
+        for(int kind:{1,2,3}) {
+            for(const auto &definition:s.rules->equipment) {
+                if(definition.shop.kind!=kind)continue;
+                const auto record=s.catalog.find({kind,definition.shop.id});
+                if(record==s.catalog.end())return {};
+                if(record->second.status!=0 && record->second.newly_unlocked) {
+                    result.equipment=true;
+                    break;
+                }
+            }
+            if(result.equipment)break;
+        }
+    }
+    result.commerce_open=(s.scripts.user_flags&16U)!=0;
+    if(result.commerce_open) {
+        for(const auto &definition:s.rules->items) {
+            const auto stock=s.shop_item_stock.find(definition.identity);
+            if(stock==s.shop_item_stock.end())return {};
+            if(stock->second.quantity<=0)continue;
+            const auto read=s.item_commerce_read.find(definition.identity);
+            if(read==s.item_commerce_read.end())return {};
+            if(!read->second) { result.commerce_items=true;break; }
+        }
+        if(!result.commerce_items) {
+            for(const auto &definition:s.rules->facilities) {
+                const auto presence=s.facility_presence.find(definition.id);
+                if(presence==s.facility_presence.end())return {};
+                if(presence->second==2 || definition.unlock_rank==-1 || definition.unlock_rank>s.rank)continue;
+                const auto read=s.facility_commerce_read.find(definition.id);
+                if(read==s.facility_commerce_read.end())return {};
+                if(!read->second) { result.commerce_facilities=true;break; }
+            }
+        }
+    }
+    if(!result.commerce_items && !result.commerce_facilities) {
+        for(const auto &definition:s.rules->activities) {
+            const auto record=s.scripts.activities.find(definition.identity);
+            if(record==s.scripts.activities.end())return {};
+            if(record->second.status!=1)continue;
+            const auto flags=s.activity_flags.find(definition.identity);
+            if(flags==s.activity_flags.end())return {};
+            if((flags->second&2U)!=0) {
+                const auto count=s.activity_counts.find(definition.identity);
+                if(count==s.activity_counts.end())return {};
+                if(count->second>0)continue;
+            }
+            if((flags->second&4U)==0 && record->second.pending_notice) {
+                result.activities=true;
+                break;
+            }
+        }
+    }
+    result.magic_pot=(s.scripts.user_flags&1U)!=0 && (s.scripts.user_flags&2U)!=0;
+    for(const auto &definition:s.rules->humans) {
+        const auto presence=s.human_presence.find(definition.identity);
+        if(presence==s.human_presence.end())return {};
+        if(presence->second==0)continue;
+        const auto record=s.scripts.humans.find(definition.identity);
+        if(record==s.scripts.humans.end())return {};
+        if(record->second.pending_notice) { result.adventurers=true;break; }
+    }
+    return result;
 }
 std::optional<SteamMainMenuSkinPlan> steam_main_menu_skin(
     const SteamMainMenuSkinInput &input,const SteamMainMenuSkinOptions &options) {

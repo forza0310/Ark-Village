@@ -859,6 +859,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.facility_presence.emplace(d.id, initial.status);
         state_.residence_catalog_available.emplace(d.id, false);
         state_.facility_unlock_notices.emplace(d.id, initial.pending_notice);
+        state_.facility_build_present.emplace(d.id, false);
         state_.facility_free_builds.emplace(d.id, 0);
         state_.facility_commerce_read.emplace(d.id, initial.initial_available);
         state_.facility_unlock_counters.emplace(d.id, 0);

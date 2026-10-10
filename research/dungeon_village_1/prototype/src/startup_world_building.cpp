@@ -238,6 +238,48 @@ bool refresh_startup_world_profession_economy(State &s) {
     }
     return true;
 }
+bool refresh_startup_world_build_notices(State &s) {
+    if (!s.rules || s.facility_build_present.size() != s.rules->facilities.size() ||
+        s.facility_presence.size() != s.rules->facilities.size() ||
+        s.facility_free_builds.size() != s.rules->facilities.size())
+        return false;
+    std::map<int, bool> present;
+    for (const auto &d : s.rules->facilities) {
+        const auto count = s.facility_free_builds.find(d.id);
+        if (!present.emplace(d.id, false).second || !s.facility_build_present.count(d.id) ||
+            !s.facility_presence.count(d.id) || count == s.facility_free_builds.end() ||
+            count->second < 0 || count->second > 99)
+            return false;
+    }
+    const auto &instances = s.scene.world.world.facilities;
+    if (s.scene.world.facility_order.size() != instances.size())
+        return false;
+    std::set<std::uint64_t> seen;
+    for (const auto id : s.scene.world.facility_order) {
+        const auto instance = instances.find(id);
+        if (!id || !seen.insert(id).second || instance == instances.end() ||
+            instance->second.placement.instance_id.value != id)
+            return false;
+        const auto flag = present.find(instance->second.placement.definition_id);
+        if (flag == present.end())
+            return false;
+        // 原tenantList全名单：施工中、未营业及非经营设施同样写P，不筛实例状态。
+        flag->second = true;
+    }
+    std::array<bool, 3> categories{};
+    for (const auto &d : s.rules->facilities) {
+        if (s.facility_presence.find(d.id)->second == 0 || !(d.flags & 4) ||
+            (d.kind == 12 && s.facility_free_builds.find(d.id)->second <= 0) ||
+            (d.kind != 3 && d.kind != 2) || present.find(d.id)->second)
+            continue;
+        if (d.tab < 0 || d.tab >= static_cast<int>(categories.size()))
+            return false;
+        categories[static_cast<std::size_t>(d.tab)] = true;
+    }
+    s.facility_build_present = std::move(present);
+    s.build_category_new = categories;
+    return true;
+}
 std::optional<std::array<std::vector<int>, 3>> startup_world_build_catalog(const State &s) {
     if (!s.rules)
         return {};
@@ -343,12 +385,17 @@ StartupBuildResult select_startup_world_build_menu(State &s, std::uint64_t page,
             return std::find(group.begin(), group.end(), definition_id) != group.end();
         }))
         return {Error::invalid_page};
+    if (!s.facility_unlock_notices.count(definition_id))
+        return {Error::missing_source};
     auto next = s;
     if (cancel_startup_world_build_menu(next, page) != Error::none)
         return {Error::invalid_page};
     const auto result = begin_startup_world_build(next, definition_id);
     if (result.error != Error::none || result.denial != StartupBuildDenial::none)
         return result; // 拒绝时菜单仍在，不提交候选close。
+    // raw21真实定义选择先清r，再刷新aY/P；放置、撤除与直接建设入口不补此调用。
+    if (!refresh_startup_world_build_notices(next))
+        return {Error::missing_source};
     s = std::move(next);
     return result;
 }

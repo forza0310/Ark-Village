@@ -167,6 +167,7 @@ struct Validation {
         EXACT(s.facility_free_builds, facilities);
         EXACT(s.facility_unlock_counters, facilities);
         EXACT(s.facility_unlock_notices, facilities);
+        EXACT(s.facility_build_present, facilities); // 陈旧P合法；只验完整定义键，不按当前地图重算。
         EXACT(s.facility_commerce_read, facilities);
         EXACT(s.items, items);
         EXACT(s.shop_item_stock, items);

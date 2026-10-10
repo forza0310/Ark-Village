@@ -28,6 +28,30 @@ int check_startup_world_restore_contracts(
     };
     expect(baseline, true, "natural baseline");
     {
+        auto stale=baseline;
+        const auto inn=std::find_if(stale.scene.world.world.facilities.begin(),stale.scene.world.world.facilities.end(),
+            [](const auto &entry){return entry.second.placement.definition_id==28;});
+        if(inn==stale.scene.world.world.facilities.end() || !p::refresh_startup_world_build_notices(stale))
+            throw std::runtime_error("restore fixture cannot prepare actual construction notice cache");
+        const auto inn_id=inn->first;
+        if(!p::retire_startup_world_facility(stale,inn_id) || !p::refresh_startup_world_map(stale,false))
+            throw std::runtime_error("restore fixture cannot retire original inn and refresh actual map");
+        ++checks;
+        if(!stale.facility_build_present.at(28))
+            throw std::runtime_error("restore fixture retirement unexpectedly cleared cached P");
+        // 原P/aY可能落后于实际地图，精确恢复不得以当前实体重算或要求相等。
+        const auto wire=p::persistence_detail::encode_state(stale);
+        const auto copy=p::persistence_detail::decode_state(wire,*stale.rules);
+        expect(copy,true,"stale construction notice cache is legitimate");
+        ++checks;
+        if(copy.facility_build_present!=stale.facility_build_present || copy.build_category_new!=stale.build_category_new)
+            throw std::runtime_error("restore fixture rewrote construction notice cache");
+        stale.facility_build_present.erase(stale.facility_build_present.begin());
+        expect(stale,false,"construction cache missing definition key");
+        stale=baseline;stale.facility_build_present.emplace(std::numeric_limits<int>::max(),false);
+        expect(stale,false,"construction cache unknown definition key");
+    }
+    {
         auto information = baseline;
         if (p::open_startup_world_information_menu(information) != p::StartupWorldRuntimeError::none)
             throw std::runtime_error("restore fixture cannot open information menu9");

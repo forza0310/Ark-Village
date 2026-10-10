@@ -110,6 +110,111 @@ std::uint64_t source_facility(const StartupWorldRuntimeState &s, int definition)
           "requested source facility exists in actual initial map");
     return *found;
 }
+void construction_notice_cache() {
+    auto s = test_support::world_fixture();
+    check(s.facility_build_present.size() == s.rules->facilities.size() &&
+              std::none_of(s.facility_build_present.begin(), s.facility_build_present.end(),
+                           [](const auto &entry) { return entry.second; }) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "new Owner starts with source false P and three category cache flags");
+    // 只改变条件夹具的开放状态；不修改原表或把条件验证登记为自然解锁。
+    for (auto &[id, presence] : s.facility_presence)
+        presence = 0;
+    const auto notices = s.facility_unlock_notices;
+    const auto shop_read = s.facility_commerce_read;
+    for (const auto sample : {std::array<int, 2>{67, 0}, {31, 1}, {35, 2}}) {
+        for (const int presence : {0, 1, 2}) {
+            s.facility_presence.at(sample[0]) = presence;
+            check(refresh_startup_world_build_notices(s), "three real source categories refresh");
+            std::array<bool, 3> expected{};
+            expected[sample[1]] = presence != 0;
+            check(s.build_category_new == expected && !s.facility_build_present.at(sample[0]),
+                  "unbuilt kind2 and kind3 definitions contribute only when p is nonzero");
+        }
+        s.facility_presence.at(sample[0]) = 0;
+    }
+    for (const int definition : {18, 25, 26, 29}) {
+        s.facility_presence.at(definition) = 2;
+        s.facility_free_builds.at(definition) = 1;
+    }
+    check(refresh_startup_world_build_notices(s) && s.build_category_new == std::array<bool, 3>{} &&
+              s.facility_unlock_notices == notices && s.facility_commerce_read == shop_read,
+          "road and residence with H1 never produce category NEW; kind3 without flag4 is excluded; r/O preserved");
+    const auto inn = source_facility(s, 28);
+    s.facility_presence.at(28) = 2;
+    s.scene.world.world.facilities.at(inn).status = 0;
+    check(refresh_startup_world_build_notices(s) && s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "actual unfinished non-operating inn still contributes P through full instance list");
+    check(retire_startup_world_facility(s, inn) && s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{},
+          "actual retirement preserves stale cached P and categories until explicit source refresh");
+    check(refresh_startup_world_build_notices(s) && !s.facility_build_present.at(28) &&
+              s.build_category_new == std::array<bool, 3>{false, true, false},
+          "later explicit refresh alone discovers retired definition as unbuilt");
+    for (int fault = 0; fault < 10; ++fault) {
+        auto bad = s;
+        auto rules = *s.rules;
+        bad.rules = &rules;
+        const auto id = bad.scene.world.facility_order.front();
+        if (fault == 0) bad.facility_presence.erase(28);
+        if (fault == 1) bad.facility_build_present.erase(28);
+        if (fault == 2) bad.facility_free_builds.erase(28);
+        if (fault == 3) bad.scene.world.facility_order.front() = 999999;
+        if (fault == 4) bad.scene.world.facility_order.back() = id;
+        if (fault == 5) bad.scene.world.world.facilities.at(id).placement.definition_id = 999999;
+        if (fault == 6) bad.scene.world.world.facilities.at(id).placement.instance_id.value = 999999;
+        if (fault == 7) bad.scene.world.facility_order.pop_back();
+        if (fault == 8) {
+            auto &d = *std::find_if(rules.facilities.begin(), rules.facilities.end(),
+                                    [](const auto &v) { return v.id == 28; });
+            d.tab = 3; // 损坏输入拒绝夹具，原表不变。
+        }
+        if (fault == 9) rules.facilities.back().id = rules.facilities.front().id;
+        const auto digest = startup_world_state_digest(bad);
+        check(!refresh_startup_world_build_notices(bad) && startup_world_state_digest(bad) == digest,
+              "missing cache key or source field, bad instance order/reference/category rolls back all cache fields");
+    }
+    auto menu = test_support::world_fixture();
+    menu.facility_unlock_notices.at(28) = true;
+    check(open_startup_world_build_menu(menu) == StartupWorldRuntimeError::none &&
+              !menu.facility_build_present.at(28),
+          "opening raw21 catalogue alone does not invent source cache refresh");
+    const auto page = menu.scripts.pages.back().id;
+    auto broken = menu;
+    broken.facility_build_present.erase(28);
+    const auto digest = startup_world_state_digest(broken);
+    check(select_startup_world_build_menu(broken, page, 28).error ==
+                  StartupWorldRuntimeError::missing_source && startup_world_state_digest(broken) == digest,
+          "raw21 refresh rejection preserves page r build mode cash and random atomically");
+    broken = menu;
+    broken.facility_unlock_notices.erase(28);
+    const auto missing_notice = startup_world_state_digest(broken);
+    check(select_startup_world_build_menu(broken, page, 28).error ==
+                  StartupWorldRuntimeError::missing_source &&
+              startup_world_state_digest(broken) == missing_notice,
+          "raw21 cannot silently recreate a missing selected definition r field");
+    check(select_startup_world_build_menu(menu, page, 28).error == StartupWorldRuntimeError::none &&
+              !menu.facility_unlock_notices.at(28) && menu.facility_build_present.at(28) &&
+              menu.build_category_new == std::array<bool, 3>{false, true, true},
+          "actual raw21 success clears selected r then refreshes category and present caches");
+    auto road = test_support::world_fixture();
+    road.facility_unlock_notices.at(18) = true;
+    auto bad_road = road;
+    bad_road.facility_build_present.erase(28);
+    const auto road_digest = startup_world_state_digest(bad_road);
+    check(begin_startup_world_road(bad_road, 18).error == StartupWorldRuntimeError::missing_source &&
+              startup_world_state_digest(bad_road) == road_digest,
+          "road selection refresh failure cannot clear r or enter placement mode");
+    check(begin_startup_world_road(road, 18).error == StartupWorldRuntimeError::none &&
+              !road.facility_unlock_notices.at(18) && road.facility_build_present.at(28) &&
+              road.build_category_new == std::array<bool, 3>{false, true, true},
+          "road definition selection uses the same original clear r then cache refresh sequence");
+    auto edit = test_support::world_fixture();
+    check(begin_startup_world_edit(edit, false).error == StartupWorldRuntimeError::none &&
+              !edit.facility_build_present.at(28) && edit.build_category_new == std::array<bool, 3>{},
+          "remove sentinel enters edit mode without executing definition selection cache refresh");
+}
 void normal_construction() {
     auto s = test_support::world_fixture();
     const auto groups = startup_world_build_catalog(s);
@@ -1713,6 +1818,7 @@ void commerce_definition_preview() {
 } // namespace
 int main() {
     try {
+        construction_notice_cache();
         normal_construction();
         progression_building_unlocks();
         new_world_inheritance();

@@ -9,6 +9,17 @@ using State = StartupWorldRuntimeState;
 using Error = StartupWorldRuntimeError;
 using Command = ref::WorldTaskCommandState;
 using Effect = ref::TaskCommandEffect;
+bool valid_task_reference(const State &s,std::uint64_t id) {
+    const auto task=s.tasks.find(id);
+    return id!=0 && id<s.next_task_identity && task!=s.tasks.end() && task->second.identity==id;
+}
+// 原n.s()清操作当时的全bq；先核全名单，重复引用幂等，不误清历史对象或只清入页X。
+bool clear_current_task_notices(State &s) {
+    for(const auto id:s.task_order)
+        if(!valid_task_reference(s,id))return false;
+    for(const auto id:s.task_order)s.tasks.find(id)->second.newly_available=false;
+    return true;
+}
 const ref::WorldScriptPage *top(const State &s) {
     const auto p = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
                                 [](const auto &v) { return v.lifecycle != 4; });
@@ -197,6 +208,14 @@ StartupWorldTaskPageResult commit(State &state, State &next, std::uint64_t targe
 }
 } // namespace
 
+std::optional<bool> startup_world_has_new_tasks(const State &s) {
+    for(const auto id:s.task_order) {
+        if(!valid_task_reference(s,id))return {};
+        if(s.tasks.find(id)->second.newly_available)return true;
+    }
+    return false;
+}
+
 Error open_startup_world_runtime_task_menu(State &state) {
     const auto p = top(state);
     if (!state.rules || state.scene.framework_paused || !p ||
@@ -292,6 +311,8 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
                    ? act_startup_world_runtime_deadline_page(state, id, selection)
                    : StartupWorldTaskPageResult{Error::invalid_page};
     if (raw == 22 || raw == 25 || raw == 26) {
+        if(raw==22 && (action==StartupWorldTaskAction::confirm || action==StartupWorldTaskAction::cancel) &&
+           !clear_current_task_notices(next))return {Error::missing_source};
         if (action == StartupWorldTaskAction::cancel) {
             if (!close(next, id))
                 return {Error::script_failed};

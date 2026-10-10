@@ -28,6 +28,113 @@ auto sprite(const std::filesystem::path &p) {
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
 }
+void main_menu_notices(Checks &check) {
+    // 仅准备实际消费的Owner字段；故意缺少短路后的数据，防止查询扩大为全世界校验。
+    StartupWorldRules rules;
+    StartupWorldRuntimeState state;
+    check(!steam_main_menu_notices(state),"NEW查询缺规则源显式拒绝");
+    state.rules=&rules;
+    state.build_category_new={false,true,false};
+    const auto initial=steam_main_menu_notices(state);
+    check(initial && initial->construction && !initial->quest && !initial->equipment &&
+          !initial->activities && !initial->adventurers,"建设NEW直接消费原缓存，不重建建设列表");
+    StartupWorldEquipment armour,weapon,accessory;
+    armour.shop.kind=2;armour.shop.id=4;armour.shop.type=2;
+    weapon.shop.kind=1;weapon.shop.id=9;
+    accessory.shop.kind=3;accessory.shop.id=2;
+    rules.equipment={armour,accessory,weapon}; // 混排不应改变原武器→全防具→饰品查询次序。
+    state.task_order={1,2};state.next_task_identity=3;
+    state.tasks[1].identity=1;state.tasks[1].newly_available=true;
+    auto notice=steam_main_menu_notices(state);
+    check(notice && notice->quest && !notice->equipment,
+          "首任务NEW短路后续缺任务和全装备来源");
+    state.active_task=1;
+    check(!steam_main_menu_notices(state),"已有选中任务时继续读装备，缺实际武器源拒绝");
+    state.catalog[{1,9}].status=-1;state.catalog[{1,9}].newly_unlocked=true;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->quest && notice->selected_quest && notice->equipment,
+          "装备p非零而非正数，零flags/库存仍有GET；首武器命中不读防具饰品");
+    SteamMainMenuSkinInput input;input.frame=3;input.selection=1;input.notices=notice;
+    const auto plan=steam_main_menu_skin(input,{});
+    check(plan.has_value(),"Owner通知可接稳定raw3绘制");
+    const auto images=parts<SteamMainMenuImage>(*plan);
+    check(std::any_of(images.begin(),images.end(),[](const auto &part){return part.image==148&&part.position[1]==44;}),
+          "Owner选中任务屏蔽NEW后实际绘制装备GET");
+    state.tasks[1].newly_available=false;
+    check(!steam_main_menu_notices(state),"未命中首任务时后续悬空引用拒绝");
+    state.task_order.clear();state.active_task.reset();state.catalog[{1,9}].status=0;
+    check(!steam_main_menu_notices(state),"武器p0不命中后检查防具实际来源");
+    state.catalog[{2,4}].status=1;state.catalog[{2,4}].newly_unlocked=true;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->equipment,"全防具查询不复用Steam装备页flags0排除");
+    state.catalog[{2,4}].newly_unlocked=false;
+    check(!steam_main_menu_notices(state),"防具无NEW后读取饰品，缺源拒绝");
+    state.catalog[{3,2}].status=2;state.catalog[{3,2}].newly_unlocked=true;
+    check(steam_main_menu_notices(state)->equipment,"饰品p2仍命中GET");
+
+    StartupWorldItem item;item.identity=5;rules.items={item};
+    StartupDefinition facility;facility.id=7;facility.unlock_rank=0;rules.facilities={facility};
+    StartupWorldActivity activity;activity.identity=3;rules.activities={activity};
+    state.scripts.activities[3].status=0;
+    check(steam_main_menu_notices(state).has_value(),"商会flag16关不读取商会源，活动status0不读flags/count");
+    state.scripts.user_flags=16;
+    check(!steam_main_menu_notices(state),"商会开启后缺库存来源拒绝");
+    state.shop_item_stock[5].quantity=0;state.facility_presence[7]=2;
+    check(steam_main_menu_notices(state).has_value(),"商品零库存与设施p2跳过各自已阅字段");
+    state.shop_item_stock[5].quantity=1;
+    check(!steam_main_menu_notices(state),"正库存实际需要已阅来源");
+    state.item_commerce_read[5]=false;state.scripts.activities.clear();state.facility_presence.clear();
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->commerce_items && !notice->commerce_facilities && !notice->activities,
+          "商会首商品命中跳过设施与活动缺源");
+    state.item_commerce_read[5]=true;
+    check(!steam_main_menu_notices(state),"商品已阅后需要设施presence来源");
+    state.facility_presence[7]=1;
+    check(!steam_main_menu_notices(state),"原设施p1仍进入商会NEW已阅检查");
+    state.facility_commerce_read[7]=false;
+    notice=steam_main_menu_notices(state);
+    check(notice && notice->commerce_facilities && !notice->activities,
+          "设施NEW使用p不等于2而非维护商会p0策略，命中后不读活动");
+    state.scripts.activities[3].status=0;state.facility_commerce_read.clear();
+    for(int required:{-1,1}) {
+        rules.facilities[0].unlock_rank=required;
+        check(steam_main_menu_notices(state).has_value(),"未开放等级或高于当前星级不读取设施已阅");
+    }
+    rules.facilities[0].unlock_rank=0;state.facility_presence[7]=2;
+    state.scripts.activities[3].status=1;state.scripts.activities[3].pending_notice=true;
+    check(!steam_main_menu_notices(state),"status1活动缺flags拒绝");
+    state.activity_flags[3]=0;
+    check(steam_main_menu_notices(state)->activities,"未设bit2不读count，NEW不检查点数季度或效果支持");
+    state.activity_flags[3]=6;
+    check(!steam_main_menu_notices(state),"活动bit2计数在bit4前读取，不能先用bit4跳过缺count");
+    state.activity_counts[3]=0;
+    check(!steam_main_menu_notices(state)->activities,"活动bit4屏蔽NEW");
+    state.activity_flags[3]=2;state.activity_counts[3]=1;
+    check(!steam_main_menu_notices(state)->activities,"限次活动已举办屏蔽NEW");
+    state.activity_counts[3]=-1;
+    check(steam_main_menu_notices(state)->activities,"原计数小于等于0判断不改成等于0");
+    StartupWorldActivity later_activity;later_activity.identity=8;rules.activities.push_back(later_activity);
+    check(steam_main_menu_notices(state)->activities,"首活动NEW跳过后续缺活动状态");
+
+    StartupWorldHuman human;human.identity=4;rules.humans={human};
+    check(!steam_main_menu_notices(state),"人物目录缺presence拒绝");
+    state.human_presence[4]=0;
+    check(!steam_main_menu_notices(state)->adventurers,"人物p0不读取脚本通知");
+    state.human_presence[4]=-1;
+    check(!steam_main_menu_notices(state),"人物p非零实际消费脚本通知");
+    state.scripts.humans[4].pending_notice=true;
+    StartupWorldHuman later_human;later_human.identity=9;rules.humans.push_back(later_human);
+    check(steam_main_menu_notices(state)->adventurers,"首人物NEW跳过后续缺presence来源");
+    for(unsigned flags:{0U,1U,2U,3U}) {
+        state.scripts.user_flags=flags;
+        check(steam_main_menu_notices(state)->magic_pot==(flags==3U),"壶NEW只在flag1可见时消费flag2");
+    }
+    check(state.build_category_new==std::array<bool,3>{false,true,false} &&
+          state.catalog.at({3,2}).newly_unlocked && state.item_commerce_read.at(5) &&
+          state.scripts.activities.at(3).pending_notice && state.scripts.humans.at(4).pending_notice &&
+          state.scripts.user_flags==3U && state.activity_counts.at(3)==-1 && state.task_order.empty(),
+          "查询不刷新缓存、不清NEW/已阅、不改计数或任务目录");
+}
 void main_menu(Checks &check,const std::filesystem::path &root) {
     SteamMainMenuSkinInput input;input.selection=1;
     SteamMainMenuSkinOptions options;
@@ -372,6 +479,7 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     check(icon && icon->image==177 && icon->sprite==-1 && icon->language_variant,
           "saveload177保留语言变体资格，不能由本函数猜中文fallback");
     check(!steam_startup_resource(static_cast<Asset>(999)),"未知资源枚举拒绝");
+    main_menu_notices(check);
     main_menu(check,root);
     return check.count;
 }

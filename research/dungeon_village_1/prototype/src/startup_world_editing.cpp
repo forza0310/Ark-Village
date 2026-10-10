@@ -254,7 +254,8 @@ StartupBuildResult begin_startup_world_road(State &s, int d) {
         return {Error::invalid_page};
     const auto *source = definition(s, d);
     const auto availability = s.facility_presence.find(d);
-    if (!source || availability == s.facility_presence.end())
+    const auto notice = s.facility_unlock_notices.find(d);
+    if (!source || availability == s.facility_presence.end() || notice == s.facility_unlock_notices.end())
         return {Error::missing_source};
     if (source->kind != 6 || !(source->flags & 4) || availability->second == 0)
         return {Error::none, Denial::unavailable};
@@ -266,6 +267,9 @@ StartupBuildResult begin_startup_world_road(State &s, int d) {
     auto next = s;
     next.build_definition = d;
     next.facility_unlock_notices.at(d) = false;
+    // 维护道路直达入口对应原21选道路：先清r，再刷新P/aY；不是每次放置时刷新。
+    if (!refresh_startup_world_build_notices(next))
+        return {Error::missing_source};
     enter(next, 1);
     s = std::move(next);
     return {};

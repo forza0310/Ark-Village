@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_presentation.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 #include "support/world_fixture.hpp"
 #include "support/audio_requests.hpp"
@@ -61,8 +62,8 @@ void factory() {
           "new exploration source tenant is usable/no resident/difficulty plus real first weapon");
     check(next.scene.world.world.ai.accounting.funds() == s.scene.world.world.ai.accounting.funds(),
           "task creation is not a build transaction and never charges source funds");
-    check(t.pending_completion_value == 20,
-          "first-stage original quest column14 keeps twenty pending popularity, not zero");
+    check(t.pending_completion_value == 20 && t.newly_available,
+          "first-stage original quest keeps twenty pending popularity and constructor NEW=true");
     const auto roundtrip = startup_world_runtime_factory(next);
     check(roundtrip.finish.tasks.at(task).site == t.site &&
               roundtrip.facility_order == next.scene.world.facility_order &&
@@ -72,11 +73,13 @@ void factory() {
     check(!failed && next.tasks.count(task) && next.scene.world.world.facilities.count(site),
           "missing finish site leaves world/reference/metadata untouched");
     // 显式阶段2调用点夹具，仅认证真实生成site后的组合提交，不冒充自然完成计时。
+    next.tasks.at(task).newly_available=false;
     next.scene.world.world.facilities.at(site).status = 2;
     next.dungeon_facilities.at(site).updates = 10;
     const auto cleaned = prepare_startup_world_runtime_dungeon_finish(next, site);
     check(cleaned && !cleaned->scene.world.world.facilities.count(site) &&
               cleaned->task_order.empty() && cleaned->tasks.at(task).facility == site &&
+              !cleaned->tasks.at(task).newly_available &&
               cleaned->scene.world.facility_order == s.scene.world.facility_order,
           "real stage2 no-active-task restores map/removesorder but retains old task object "
           "reference");
@@ -85,8 +88,69 @@ void factory() {
               *later.candidate->created_task != task &&
               later.candidate->state.finish.tasks.at(*later.candidate->created_task).facility !=
                   site &&
-              later.candidate->state.finish.tasks.at(task).facility == site,
-          "new factory after restored original site cannot alias retired summary/task identity");
+              later.candidate->state.finish.tasks.at(task).facility == site &&
+              !later.candidate->state.finish.tasks.at(task).newly_available &&
+              later.candidate->state.finish.tasks.at(*later.candidate->created_task).newly_available,
+          "new factory preserves retired task read state and gives distinct new task its own NEW=true");
+}
+void task_new_notices() {
+    auto s=test_support::world_fixture();
+    check(startup_world_has_new_tasks(s)==false,"empty current task list has no NEW");
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(made.candidate && made.candidate->created_task &&
+              write_startup_world_runtime_factory(s,made.candidate->state),
+          "task NEW fixture starts from real factory instance");
+    const auto first=*made.candidate->created_task;
+    check(open_startup_world_runtime_task_menu(s)==StartupWorldRuntimeError::none,
+          "raw22 opens for task NEW checks");
+    const auto page=s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page==22 && s.tasks.at(first).newly_available &&
+              startup_world_has_new_tasks(s)==true,
+          "opening raw22 does not clear task NEW");
+    // 明确调用点夹具：入页后多一个当前任务和一个仅历史对象，检验清理范围。
+    const auto second=s.next_task_identity++;
+    const auto historical=s.next_task_identity++;
+    auto task=s.tasks.at(first);task.identity=second;s.tasks.emplace(second,task);
+    task.identity=historical;s.tasks.emplace(historical,task);
+    s.task_order={first,second,first};
+    const auto before=startup_world_state_digest(s);
+    check(startup_world_has_new_tasks(s)==true && startup_world_state_digest(s)==before,
+          "NEW query preserves Owner outputs, random and duplicate current references");
+    for(const auto action:{StartupWorldTaskAction::confirm,StartupWorldTaskAction::cancel}) {
+        auto next=s;
+        check(act_startup_world_runtime_task_page(next,page,action,0).error==StartupWorldRuntimeError::none &&
+                  !next.tasks.at(first).newly_available && !next.tasks.at(second).newly_available &&
+                  next.tasks.at(historical).newly_available && startup_world_has_new_tasks(next)==false &&
+                  next.task_order==s.task_order && next.scene.random.draws()==s.scene.random.draws(),
+              "raw22 exit clears complete current list, including later entry and duplicates, retaining history");
+    }
+    auto invalid=s;invalid.task_order.push_back(99999);
+    check(startup_world_has_new_tasks(invalid)==true,
+          "source NEW query stops at first true and does not inspect unread suffix");
+    for(const auto action:{StartupWorldTaskAction::confirm,StartupWorldTaskAction::cancel}) {
+        const auto unchanged=startup_world_state_digest(invalid);
+        check(act_startup_world_runtime_task_page(invalid,page,action,0).error==StartupWorldRuntimeError::missing_source &&
+                  startup_world_state_digest(invalid)==unchanged,
+              "raw22 clearing checks full current list and rejects late missing reference atomically");
+    }
+    invalid.tasks.at(first).newly_available=false;
+    invalid.tasks.at(second).newly_available=false;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects missing reference reached after false entries");
+    invalid=s;invalid.tasks.at(first).identity=second;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects mismatched stable identity");
+    invalid=s;invalid.task_order={historical};invalid.next_task_identity=historical;
+    check(!startup_world_has_new_tasks(invalid),"NEW query rejects allocator-outside identity");
+    invalid=s;invalid.task_order.clear();invalid.rules=nullptr;
+    check(startup_world_has_new_tasks(invalid)==false,"empty query ignores unconsumed rules and retained NEW tasks");
+    for(const bool locked:{false,true}) {
+        auto late=s;
+        late.scripts.page_mutations_locked=locked;
+        const auto unchanged=startup_world_state_digest(late);
+        const int row=locked?0:99;
+        check(act_startup_world_runtime_task_page(late,page,StartupWorldTaskAction::confirm,row).error!=
+                  StartupWorldRuntimeError::none && startup_world_state_digest(late)==unchanged,
+              "failed row or later locked child insertion rolls back already prepared NEW clearing and page state");
+    }
 }
 void selection_catalogue_consumers() {
     StartupSession initial;
@@ -937,6 +1001,7 @@ void presentation_missing_binding() {
 int main() {
     try {
         factory();
+        task_new_notices();
         selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();

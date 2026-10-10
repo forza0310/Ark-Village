@@ -261,6 +261,8 @@ struct StartupWorldRuntimeState {
     std::map<int, int> facility_free_builds;     // br.H真实新对象0；旧接口名，原h()不因此免造价。
     std::map<int, int> facility_unlock_counters; // br.q真实新对象0。
     std::map<int, bool> facility_unlock_notices; // br.r按当前定义维护。
+    std::map<int, bool> facility_build_present; // br.P：上次w()刷新的已建定义，不持实例引用。
+    std::array<bool, 3> build_category_new{}; // static aY：原刷新时点缓存，不能每帧重算。
     bool confirm_input{};                        // 桌面输入一次性快照；不是自动确认。
     bool cancel_input{};
     bool menu_input{};

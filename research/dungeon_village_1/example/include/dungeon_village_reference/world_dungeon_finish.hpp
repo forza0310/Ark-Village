@@ -11,6 +11,7 @@ struct DungeonFinishTask {
     int pending_completion_value{};
     std::optional<std::uint64_t> facility;
     std::optional<Position> site; // c.k.e；kind1也有坐标但无facility，已移除实例仍可被引用。
+    bool newly_available{true}; // 原c.k.j／Quest.new_：新实例true，已阅状态随实例保存。
 };
 struct DungeonFinishSite {
     std::vector<Position> occupied_cells; // 原z顺序，首项是阶段2恢复调用格。

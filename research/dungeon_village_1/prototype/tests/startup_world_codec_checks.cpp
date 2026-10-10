@@ -1,5 +1,6 @@
 #include "startup_world_codec_checks.hpp"
 #include "startup_world_codec.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -102,6 +103,29 @@ void run_startup_world_codec_checks() {
     const auto restored = detail::decode_state(bytes, *session.state().rules);
     check(restored.rules == session.state().rules && detail::encode_state(restored) == bytes,
           "真实新局逐字节往返及规则重绑");
+    {
+        // 类型夹具只验证原j/P/aY耐久字段，不代表这两个任务来自自然经营。
+        auto notices=session.state();
+        notices.tasks.emplace(1,ref::DungeonFinishTask{1,35,1,0,{},{},false});
+        notices.tasks.emplace(2,ref::DungeonFinishTask{2,36,1,0,{},{},true});
+        notices.task_order={1,2};notices.next_task_identity=3;
+        notices.facility_build_present.begin()->second=true;
+        notices.build_category_new={true,false,true};
+        const auto wire=detail::encode_state(notices);
+        const auto copy=detail::decode_state(wire,*notices.rules);
+        check(!copy.tasks.at(1).newly_available && copy.tasks.at(2).newly_available &&
+                  copy.facility_build_present==notices.facility_build_present &&
+                  copy.build_category_new==notices.build_category_new && detail::encode_state(copy)==wire,
+              "已阅/未阅任务与陈旧建设缓存按原值完整编码，不靠默认值重建");
+        auto toggled=notices;toggled.tasks.at(1).newly_available=true;
+        auto corrupt=wire;corrupt[changed_byte(wire,detail::encode_state(toggled))]=2;
+        rejects([&]{detail::decode_state(corrupt,*notices.rules);},"任务NEW非法bool拒绝");
+        check(startup_world_state_digest(toggled)!=startup_world_state_digest(notices),
+              "任务NEW变化进入正式Owner摘要");
+        toggled=notices;toggled.build_category_new[1]=true;
+        corrupt=wire;corrupt[changed_byte(wire,detail::encode_state(toggled))]=2;
+        rejects([&]{detail::decode_state(corrupt,*notices.rules);},"建设类别缓存非法bool拒绝");
+    }
     auto changed = session.state();
     changed.confirm_input = !changed.confirm_input;
     auto invalid = bytes;

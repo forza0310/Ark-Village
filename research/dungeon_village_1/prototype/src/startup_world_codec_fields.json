@@ -941,6 +941,14 @@
           "type": "std::map<int, bool>"
         },
         {
+          "name": "facility_build_present",
+          "type": "std::map<int, bool>"
+        },
+        {
+          "name": "build_category_new",
+          "type": "std::array<bool, 3>"
+        },
+        {
           "name": "confirm_input",
           "type": "bool"
         },
@@ -1939,6 +1947,10 @@
         {
           "name": "site",
           "type": "std::optional<Position>"
+        },
+        {
+          "name": "newly_available",
+          "type": "bool"
         }
       ]
     },

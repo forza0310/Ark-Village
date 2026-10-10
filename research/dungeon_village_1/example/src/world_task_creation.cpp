@@ -357,7 +357,7 @@ void create_task(TaskCreationCandidate &c, const TaskCreationDefinition &d, Posi
     const auto identity = stable_id(identities, s.next_task_identity);
     s.task_original_ids.emplace(identity, sequence);
     s.finish.tasks.emplace(identity, DungeonFinishTask{identity, d.identity, difficulty,
-                                                       d.pending_completion_value, facility, p});
+                                                       d.pending_completion_value, facility, p, true});
     s.finish.task_order.push_back(identity);
     c.created_task = identity;
 }

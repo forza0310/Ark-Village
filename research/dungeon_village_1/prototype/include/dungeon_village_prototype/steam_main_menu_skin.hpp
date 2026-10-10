@@ -11,6 +11,9 @@ struct SteamMainMenuNotices {
     bool commerce_open{}, commerce_items{}, commerce_facilities{}, activities{};
     bool adventurers{}, magic_pot{};
 };
+// 唯一Owner的只读NEW/GET投影，保留原目录次序与短路；仅实际读取的缺源返回nullopt。
+// 不刷新建设缓存、不清已阅标志，不使用商会目录策略或装备页筛选代替原谓词。
+std::optional<SteamMainMenuNotices> steam_main_menu_notices(const StartupWorldRuntimeState &state);
 enum class SteamMainMenuPackage { common, common2 };
 struct SteamMainMenuImage {
     SteamMainMenuPackage package{SteamMainMenuPackage::common};

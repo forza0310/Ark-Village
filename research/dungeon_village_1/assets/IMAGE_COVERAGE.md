@@ -29,6 +29,8 @@ APK 的 432 PNG 全部字节唯一。EXE 的 955 PNG 有 847 个唯一字节载�
 
 EXE PNG 先按资源组和条目名匹配 APK，语言 `.lproj` 前缀单独记录：382 个同名候选字节与 RGBA 像素相同，74 个同名候选不同，499 个没有同组同名候选。这个分母保留所有语言条目；不能将 499 当成 499 个新增画面，也不能把字节一致当作两版本消费者相同。
 
+35人物目录后继消费已核：Steam common31的`icon_result00.png`以原条目出版到[共用差异包](steam-common/icon_result00.png)，63×48、1000字节；SEB44沿既有同字节副本，实际frame4也有透明像素RGBA差异，不将两版整图混为同一身份。该页其它已出版图片及human包67项已逐字节交叉，数字SEB11／20分别实际引用image102／108，详见[35资源对应](../ui/INFORMATION_MENU.md#steam35完整局部绘制合同)。此增量不改变上表原容器分母，也不认证索引语言后缀或字体后端。
+
 `kairolib` 在 Unity TextAsset 与 IL2CPP managed 两种容器中都存在，分别有 20 和 38 张 PNG。清单保留不同容器 ID 和 `archive_origin`，不能只凭逻辑组名合并。此前仅数 TextAsset 会漏掉托管归档，此次已补齐。
 
 ## 已验证与未验证

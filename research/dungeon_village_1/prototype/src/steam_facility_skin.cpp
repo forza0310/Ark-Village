@@ -90,12 +90,18 @@ std::optional<SteamFacilityResource> steam_facility_resource(Asset asset) {
     case Asset::maximum:return SteamFacilityResource{"common",129,-1,"original/common/wnd_max.png",nullptr};
     case Asset::upgrade_background:return SteamFacilityResource{"event",14,-1,"original/event/event_getItem_back.png",nullptr};
     case Asset::mini_background:return SteamFacilityResource{"event",16,-1,"original/event/event_BackMini02.png",nullptr};
+    case Asset::number03:return SteamFacilityResource{"common",102,11,"original/common/number03.png","original/common/number04.seb"};
+    case Asset::number11:return SteamFacilityResource{"common",108,20,"original/common/number11.png","original/common/number13.seb"};
     }
     return {};
 }
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &n,int digit_width) {
-    if(n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    const bool roster_number=n.asset==Asset::number03||n.asset==Asset::number11;
+    if(!roster_number&&n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    // 两套35专用SEB只有数字0..9；不借它们输出money/plus所需的单位、逗号帧。
+    if(roster_number&&(n.kind!=SteamFacilityNumberKind::number||
+        digit_width!=(n.asset==Asset::number03?8:7)))return {};
     if(n.padding<0)return {}; // 维护输入范围；当前74/81只传0，不推断负padding调用资格。
     std::vector<SteamFacilityImage> result;
     const auto emit=[&](std::int64_t x,int frame) {

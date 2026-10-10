@@ -12,6 +12,8 @@
 
 收支36的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)复用Steam窗框／内框，输出完整局部有序图元、字体金额、源端点线与箭头触摸引用；不修改Owner，不生成数字SEB。调用者提供语言分支、VIEW_Y与标题两次真实测宽，并负责原页面坐标及字体后端；[布局例图](../ui/examples/steam-income.png)使用明确替代字体，仅作产品布局参考。raw9菜单皮肤和其余信息子页仍未由此补齐。
 
+`steam_adventurer_information_skin`进一步提供35四页完整局部计划：橙色选择底、16×16人物边框／15×15裁剪与静态职业身体、NEW／手形、四页文字／数字、独立英语表头及111高滚动。`SteamInformationDraw`保留具名clip／身体／通用数字请求的有序执行，SEB11／20数字沿现facility展开器新增明确资源映射；只读查询不初始化、重算贡献、清NEW或推进世界。原字体后端与物理输入仍另验。
+
 同模块的`steam_item_information_skin`／`steam_equipment_information_skin`已补Steam37／38完整局部计划及原序触摸注册，visuals定向通过0.67秒；数字展开和`steam_information_image`提供差异资源实际路径。名称保留TextLayout、38数量底部保留富文本、手形保留独立SEB当前帧请求；实际字体／标签后端及物理输入仍另验。页内不猜橙色选中底，滚动组件下游的真实轨道和滑块均已展开，详见[合同](../ui/INFORMATION_MENU.md#steam3738的完整局部绘制)。本批不修改Owner／存档布局。
 
 [startup_information](include/dungeon_village_prototype/startup_information.hpp)提供37正库存原序／原说明和38四类装备的纯目录查询，保留显式APK／Steam版本选择；维护38页面固定使用Steam过滤／占位语义。37正常关闭在Owner候选中清全部道具NEW，空目录初始化则请求事件15并退休、不清NEW；38依次处理左右、最终换页重置、上下和关闭，不清装备NEW。装备列表图标复用`startup_world_equipment_icon_draws`，与武器身体PNG分开。新增页面map使codec布局身份自动变化，旧精确快照拒绝、不迁移；普通稳定场景存档政策不变。

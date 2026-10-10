@@ -191,30 +191,30 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 `startup_world_information`已开放9→35，按定义原序冻结presence非0目录；真实Init重算贡献，不授勋、不排序、不调用60重算人物。空群体显式拒绝原除零路径。35先独立上下、调整五行滚动，再独立左右四页；切页保留选择。确认／返回在候选Owner内清冻结目录全部人物NEW，确认压来源1的60并挂起35，返回退休35；后继写回失败不残留NEW、贡献、页栈、随机或现金修改。
 
-只读`StartupHumanInformation`复用当前姓名／职业／经验、满足／努力／装备、四战斗值与获勋次数，另提供贡献、NEW、年度村点／消费。Steam `_draw1_2` VA `10333805–103349D1`与APK四页字段一致：第0页姓名／等级／经验，第1页满足／努力／四装备，第2页四战斗值／获勋次数，第3页贡献／`year_record_[1]/[2]`。B1是获得村子点数（`YEARRECORD_TOWNPOINT`），由`battle.humans.killed_stat1`持有；B2消费由`world.human_spending`持有，不读滞后的日历镜像。列表读取已有属性缓存，不为绘制触发60 Init或要求存在W。静态职业人物裁片／大师图与完整35皮肤仍须按绘制合同单独接入。
+只读`StartupHumanInformation`复用当前姓名／职业／经验、满足／努力／装备、四战斗值与获勋次数，另提供贡献、NEW、年度村点／消费。Steam `_draw1_2` VA `10333805–103349D1`与APK四页字段一致：第0页姓名／等级／经验，第1页满足／努力／四装备，第2页四战斗值／获勋次数，第3页贡献／`year_record_[1]/[2]`。B1是获得村子点数（`YEARRECORD_TOWNPOINT`），由`battle.humans.killed_stat1`持有；B2消费由`world.human_spending`持有，不读滞后的日历镜像。列表读取已有属性缓存，不为绘制触发60 Init或要求存在W。静态职业人物裁片／大师图及完整35局部皮肤由`steam_adventurer_information_skin`消费，字段与原序见下节。
 
 `human_detail_contexts`在各合法60创建入口写来源0／1和可选真实W，已初始化缺字段或坏值显式拒绝；来源不充当父页ID。`StartupHumanPageAction::track`仅对已就绪来源1执行：缺W触发一次真实137，详情等待子页返回；有W退休其它页面、恢复唯一主场景并进入state6／selection1，清设施选择，不更改人物移动。scene6确认先回state0，再新建来源1、绑定该W的60；空选择回state0，损坏非空引用拒绝。只读表现返回`tracking_available`并优先使用显式W的HP，不用同定义的另一实例替代。
 
 新context跟随Owner codec保存和页面统一退休；35目录、phase／选择／滚动及60上下文恢复不再初始化、不重清NEW或重发137。Session／Application仍转发到同一Owner。研究短测与真实窗口输入、Steam平台成就实际授予分别验收；本批不接Steam SDK，也不把业务链完成称为完整原版皮肤完成。
 
-### Steam35完整局部绘制合同（待维护皮肤）
+### Steam35完整局部绘制合同
 
 固定`_draw1_2` VA `10333805–103349D1`：先Window(220,168)，标题`冒険者リスト <0>/<1>`传page+1／4；Box(17,74,219,184)，随后与38同式标题左右箭头，再表头／五行／滚动／底栏。每行`rowY=97+19×可见行号`；选中时先橙色(255,153,55) FillRect(23,rowY−3,191,18)，**35确有底色，不套37／38分支**。接着注册组件11，矩形(3,rowY−3,231,18)、value=0x20000|绝对行、flag0、Margin(0,−20,0,0)。
 
-人物依次绿(196,236,169) FillRect(29,rowY−2,16,16)、灰(204,204,204) DrawRect(29,rowY−2,15,15)、同15×15裁剪；`SetDispPlayerData(0,job.GetImgId(human),0,1,0)`后简版`DrawDispPlayer(37,rowY+21)`，最后PopClip。静态action0／step0／direction1，无武器，不采用60动态肖像／血条；可复用基础身体计划但必须保留有序裁剪，共享scratch附加效果仍沿既有限制。随后NEW image147在(10,rowY+2)、选中手形SEB21当前帧在(21,rowY+8)，再页内字段。
+人物依次绿(196,236,169) FillRect(29,rowY−2,16,16)、灰(204,204,204) DrawRect(29,rowY−2,15,15)、15×15裁剪；Steam `Graphics.DrawRect` RVA `0x763590`的原w/h为末端差，正式半开矩形实际16×16，不能将边框与clip尺寸混为一项（见[窗框底层](STEAM_WINDOW_FRAME.md)）。随后`SetDispPlayerData(0,job.GetImgId(human),0,1,0)`后简版`DrawDispPlayer(37,rowY+21)`，最后PopClip。静态action0／step0／direction1，无武器，不采用60动态肖像／血条；可复用基础身体计划但必须保留有序裁剪，共享scratch附加效果仍沿既有限制。随后NEW image147在(10,rowY+2)、选中手形SEB21当前帧在(21,rowY+8)，再页内字段。
 
 | 页签 | 表头／行内容 |
 | --- | --- |
 | 0 | 表头普通姓名(30,69)、image38(133,70)、image50／SEB60帧0(179,72)。行姓名(48,rowY)；等级非10用SEB11右锚(147,rowY)，10用image129大师图(132,rowY+2)。经验条image87源(0,0,44,5)与(82,0,1,5)依次画(164,rowY+4)，源(2,5,width,3)画(165,rowY+5)；width按经验／阈值映射并截限0..42，等级10固定42。 |
 | 1 | 三表头TextLayout为满足(47,69,40,12)、努力(95,69,40,12)、装备(142,69,60,12)，lineSpace0、anchor0x22。行满足／努力SEB12右锚(80／119,rowY+1)，四装备(141+18×slot,rowY−3)；空防具／饰品mode5/index7，武器用列表图标。 |
 | 2 | 属性头mode8/index0..3锚(x+36×index,67)，`SubForm.En()`为真时x48，否则53；这是独立英语分支，不等价于“非日文”。奖章mode6/index1在(199,67)。行四战斗值SEB15右锚(80+36×index,rowY+2)，获勋次数E为SEB12右锚(211,rowY+1)。 |
-| 3 | 日文表头贡献(82,69,anchor2)、SEB44帧4(116,67)、获得(136,69,anchor1)、消费(196,69,anchor2)。非日文临时size10：贡献TextLayout(48,70,60,10,anchor0x20)、SEB44帧4(114,67)、获得(132,70,40,10,anchor0x20)、消费(179,70,40,10,anchor0x22)，lineSpace0后恢复字号。行贡献SEB12右锚(83,rowY+1)；百分号SEB13帧13在(84,rowY)，非日文y再+2；B1为SEB20右锚(152,rowY+1)，B2用Draw_money(212,rowY+1,value,SEB15)。 |
+| 3 | 日文表头贡献(82,69,anchor2)、SEB44帧4(116,67)、获得(136,69,anchor1)、消费(196,69,anchor2)。非日文临时size10：贡献TextLayout(48,70,60,10,anchor0x20)、SEB44帧4(114,67)、获得(132,70,40,10,anchor0x20)、消费(179,70,40,10,anchor0x22)，lineSpace0后恢复字号。行贡献SEB12右锚(83,rowY+1)；点数单位图SEB13帧13在(84,rowY)，非日文y再+2；B1为SEB20右锚(152,rowY+1)，B2用Draw_money(212,rowY+1,value,SEB15)。 |
 
-以上普通文字均棕(92,51,31)，未说明处保留原字号；普通数字padding0、anchor4，金额须沿真实money算法。滚动实参为(221,85,4,111,first_visible,count−1,5)，高度111而非37／38的110，复用其组件12／25和轨道算法时必须参数化。底部富文本`現在 <co=0064FF><0></co> 名の冒険者が訪れます`在(120,200,anchor2)，参数为完整目录人数。VIEW_Y仅交窗框／box，再统一父原点；不重复叠到每项图元。上述是静态消费者合同；完整皮肤、字体后端和原窗口动态未由此认证。
+以上普通文字均棕(92,51,31)，未说明处保留原字号；普通数字padding0、anchor4，金额须沿真实money算法。滚动实参为(221,85,4,111,first_visible,count−1,5)，高度111而非37／38的110，复用其组件12／25和轨道算法时必须参数化。底部富文本`現在 <co=0064FF><0></co> 名の冒険者が訪れます`在(120,200,anchor2)，参数为完整目录人数。VIEW_Y仅交窗框／box，再统一父原点；不重复叠到每项图元。正式`steam_adventurer_information_skin`输出完整局部有序计划，复用现有模块与visuals套件；具名Clip／静态身体／数字请求不能由后端重排。维护计划通过不等于完整原字体后端、原共享scratch附加效果或原窗口动态认证。
 
-后继资源逐字节核对：image38／50／87／129对应已出版`original/common/wnd_lv、wnd_exp、wnd_expBar、wnd_max.png`，image104／SEB13对应`number06.png/.seb`，SEB60为`wnd_exp.seb`，均可复用APK同字节副本。SEB11实际是`number04.seb`引用image102 `number03.png`，数字源(8×digit,12,8,12)；SEB20是`number13.seb`引用image108 `number11.png`，源(7×digit,9,7,9)，不可由SEB名字猜图名。SEB12／15分别使用已出版Steam差异包中的number05／number08 PNG。image31 `icon_result00.png`仍缺Steam出版入口（63×48、1000字节），SEB44本身同字节；frame4源(0,16,16,16)也有透明像素RGBA差异，不合并来源。human包67项全与已出版副本一致，walk01帧0源(0,24,18,24)、offset(−9,−24)，先按锚得到(28,rowY−3)再裁剪。
+后继资源逐字节核对：image38／50／87／129对应已出版`original/common/wnd_lv、wnd_exp、wnd_expBar、wnd_max.png`，image104／SEB13对应`number06.png/.seb`，SEB60为`wnd_exp.seb`，均可复用APK同字节副本。SEB11实际是`number04.seb`引用image102 `number03.png`，数字源(8×digit,12,8,12)；SEB20是`number13.seb`引用image108 `number11.png`，源(7×digit,9,7,9)，不可由SEB名字猜图名。SEB12／15分别使用已出版Steam差异包中的number05／number08 PNG。image31 `icon_result00.png`已原字节出版到`assets/steam-common`（63×48、1000字节），SEB44本身同字节；frame4源(0,16,16,16)也有透明像素RGBA差异，不合并来源。human包67项全与已出版副本一致，walk01帧0源(0,24,18,24)、offset(−9,−24)，先按锚得到(28,rowY−3)再裁剪。
 
-Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。现有facility数字helper可处理SEB12／15及money，SEB11／20尚需明确资产与步宽8／7扩展；information数字helper只接受正库存／正属性，不能直接用于本页零值／普通数／金额。
+Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。facility数字helper沿用SEB12／15及money，另新增`number03`／`number11`资产对应SEB11／20，普通数步宽分别8／7，保留零值和原负帧请求，错误步宽及无对应帧的money／plus模式拒绝。information数字helper仍只处理正库存／正属性，本页通过有序`SteamFacilityNumber`请求使用通用展开器。空装备mode5在VA `1030CDB8–1030CE16`直接传dx／dy，无其它图标的−1偏移；经验条在VA `10334461–1033446F`调用整数RateConvert（RVA `2A4780`），按范围截限、整数乘除向零截断，不是浮点百分比。
 
 ## Steam9／36的有限交互交叉
 

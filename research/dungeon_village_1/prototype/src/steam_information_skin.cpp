@@ -56,15 +56,15 @@ void row_touch(SteamInformationSkinPlan &plan,int row,int y) {
     plan.touches.push_back({{11,0x20000|row,std::array<int,4>{3,y-2,231,16},{},0},
                            {0,-20,0,0},{}});
 }
-void scroll(SteamInformationSkinPlan &plan,int count,int first,int visible,bool first_touch) {
-    const std::array<int,4> rectangle{221,85,3,110};
+void scroll(SteamInformationSkinPlan &plan,int count,int first,int visible,bool first_touch,int track_height=110) {
+    const std::array<int,4> rectangle{221,85,3,track_height};
     plan.touches.push_back({{12,0x40000,rectangle,{},0},{3,20,0,0},
                            std::array<int,3>{count,visible,0x20000}});
     // _addTouch的组件12同步调用GameView.DrawVerticalScroll；type0原轨道扩大1。
     const int denominator=std::max(count,visible);
-    const int top=85+static_cast<int>(std::int64_t(110)*first/denominator);
-    const int height=110*visible/denominator;
-    plan.draws.emplace_back(StartupSkinRect{{220,85,5,110},{7,5,78},false});
+    const int top=85+static_cast<int>(std::int64_t(track_height)*first/denominator);
+    const int height=track_height*visible/denominator;
+    plan.draws.emplace_back(StartupSkinRect{{220,85,5,track_height},{7,5,78},false});
     plan.draws.emplace_back(StartupSkinRect{{220,top,5,height+1},
         first_touch&&count>visible?std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false});
     plan.touches.push_back({{25,0,rectangle,{},4},{},{}});
@@ -74,7 +74,7 @@ bool directory_frame(SteamInformationSkinPlan &plan,const SteamInformationSkinOp
     if(!options.title_widths)return false;
     for(const int width:*options.title_widths)if(width<0)return false;
     const auto outer=steam_startup_window_skin(
-        {220,168,0,0,SteamStartupTextRole::message_title,raw==38?tab+1:0},options.view_y,options.title_widths);
+        {220,168,0,0,SteamStartupTextRole::message_title,(raw==35||raw==38)?tab+1:0},options.view_y,options.title_widths);
     const auto inner=steam_startup_box_skin({17,74,219,184},options.view_y);
     plan.raw=raw;
     return outer&&inner&&frame(plan,*outer,tab)&&frame(plan,*inner,tab);
@@ -86,6 +86,119 @@ void layout(SteamInformationSkinPlan &plan,int tab,int row,int y,int width,int s
     label.extent={width,15};
     label.line_space=0;
 }
+void heading_layout(SteamInformationSkinPlan &plan,Role role,int tab,int x,int y,
+                    int width,int height,int anchor,int size=0) {
+    text(plan,role,tab,-1,x,y,anchor,brown,size);
+    auto &label=std::get<SteamInformationText>(plan.draws.back());
+    label.mode=SteamInformationTextMode::layout;
+    label.extent={width,height};
+    label.line_space=0;
+}
+void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,int x,int y,
+            SteamFacilityNumberKind kind=SteamFacilityNumberKind::number) {
+    plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
+}
+}
+std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=35||!view->humans||view->humans->empty()||
+       view->humans->size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return {};
+    SteamInformationSkinPlan plan;
+    const int tab=view->selection_or_period;
+    if(tab<0||tab>3||!directory_frame(plan,options,35,tab))return {};
+    const int shift=3*((view->frame%16)/8);
+    arrow(plan,26-shift,3,16,55);arrow(plan,214+shift,0,18,55);
+    if(tab==0) {
+        text(plan,Role::name_header,tab,-1,30,69,{},brown);
+        image(plan,38,17,10,133,70);
+        sprite(plan,50,60,0,179,72);
+    } else if(tab==1) {
+        heading_layout(plan,Role::satisfaction_header,tab,47,69,40,12,0x22);
+        heading_layout(plan,Role::effort_header,tab,95,69,40,12,0x22);
+        heading_layout(plan,Role::equipment_header,tab,142,69,60,12,0x22);
+    } else if(tab==2) {
+        for(int slot=0;slot<4;++slot)sprite(plan,37,98,slot,(options.english?48:53)+36*slot,67);
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,35,-1,0,0,
+                                               {14,0,14,14},{199,67}});
+    } else if(options.japanese) {
+        text(plan,Role::contribution_header,tab,-1,82,69,2,brown);
+        sprite(plan,31,44,4,116,67);
+        text(plan,Role::town_points_header,tab,-1,136,69,1,brown);
+        text(plan,Role::spending_header,tab,-1,196,69,2,brown);
+    } else {
+        heading_layout(plan,Role::contribution_header,tab,48,70,60,10,0x20,10);
+        sprite(plan,31,44,4,114,67);
+        heading_layout(plan,Role::town_points_header,tab,132,70,40,10,0x20,10);
+        heading_layout(plan,Role::spending_header,tab,179,70,40,10,0x22,10);
+    }
+    const int count=static_cast<int>(view->humans->size());
+    for(int row=view->first_visible;row<count&&row-view->first_visible<5;++row) {
+        const auto &entry=(*view->humans)[static_cast<std::size_t>(row)];
+        const auto &human=entry.details;
+        const int y=97+19*(row-view->first_visible);
+        if(row==view->selection)
+            plan.draws.emplace_back(StartupSkinRect{{23,y-3,191,18},{255,153,55},false});
+        plan.touches.push_back({{11,0x20000|row,std::array<int,4>{3,y-3,231,18},{},0},
+                               {0,-20,0,0},{}});
+        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{196,236,169},false});
+        // Steam Graphics.DrawRect的15×15参数含端点，半开描边为16×16；clip仍15×15。
+        plan.draws.emplace_back(StartupSkinRect{{29,y-2,16,16},{204,204,204},true});
+        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{29,y-2,15,15}});
+        const auto body=startup_title_actor_skin(human.profession,human.sex,-1,0,1,false);
+        if(!body)return {};
+        plan.draws.emplace_back(SteamInformationHumanBody{body->body,{37,y+21}});
+        plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+        if(entry.newly_unlocked)image(plan,147,20,9,10,y+2);
+        if(row==view->selection)sprite(plan,70,21,-1,21,y+8);
+        if(tab==0) {
+            if(human.level<1||human.level>10||human.experience<0||human.threshold<=0)return {};
+            text(plan,Role::row_name,tab,row,48,y,{},brown,0,human.name);
+            if(human.level==10)image(plan,129,20,6,132,y+2);
+            else number(plan,SteamFacilityAsset::number03,human.level,147,y);
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,87,-1,0,0,
+                                                   {0,0,44,5},{164,y+4}});
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,87,-1,0,0,
+                                                   {82,0,1,5},{164,y+4}});
+            // Steam int RateConvert先有界检查，再整数乘42/阈值向零截断。
+            // 有效等级/难度阈值内乘法不溢出；int64也让超阈值的已存经验安全夹到42。
+            const int width=human.level==10?42:static_cast<int>(std::clamp(
+                std::int64_t(human.experience)*42/human.threshold,std::int64_t{0},std::int64_t{42}));
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,87,-1,0,0,
+                                                   {2,5,width,3},{165,y+5}});
+        } else if(tab==1) {
+            number(plan,SteamFacilityAsset::number05,human.satisfaction,80,y+1);
+            number(plan,SteamFacilityAsset::number05,human.effort,119,y+1);
+            for(int slot=0;slot<4;++slot) {
+                const auto equipment=human.equipment[static_cast<std::size_t>(slot)];
+                if(equipment) {
+                    if(!icons(plan,startup_world_equipment_icon_draws(state,slot==0?1:slot==3?3:2,*equipment),
+                              141+18*slot,y-3))return {};
+                } else {
+                    if(slot==0)return {};
+                    // Draw_icon mode5直接使用dx/dy；不能套普通道具mode1的背景(-1,-1)。
+                    plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,24,-1,0,0,
+                                                           {126,0,18,18},{141+18*slot,y-3}});
+                }
+            }
+        } else if(tab==2) {
+            for(int slot=0;slot<4;++slot)
+                number(plan,SteamFacilityAsset::number08,human.combat[static_cast<std::size_t>(slot)],80+36*slot,y+2);
+            number(plan,SteamFacilityAsset::number05,human.medals,211,y+1);
+        } else {
+            number(plan,SteamFacilityAsset::number05,entry.contribution,83,y+1);
+            sprite(plan,104,13,13,84,y+(options.japanese?0:2));
+            number(plan,SteamFacilityAsset::number11,entry.yearly_town_points,152,y+1);
+            number(plan,SteamFacilityAsset::number08,entry.yearly_spending,212,y+1,SteamFacilityNumberKind::money);
+        }
+    }
+    scroll(plan,count,view->first_visible,5,options.scroll_first_touch,111);
+    text(plan,Role::adventurer_count,tab,-1,120,200,2,brown);
+    auto &footer=std::get<SteamInformationText>(plan.draws.back());
+    footer.mode=SteamInformationTextMode::rich_text;
+    footer.extent={-1,-1};
+    footer.argument=count;
+    return plan;
 }
 std::optional<SteamInformationSkinPlan> steam_income_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,
@@ -231,12 +344,22 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 28:return "original/common/wnd_back.png";
     case 29:return "original/common/wnd_bar.png";
     case 30:return "original/common/wnd_conner.png";
+    case 31:return "steam-common/icon_result00.png";
+    case 35:return "original/common/icon_medal00.png";
     case 37:return "steam-facility-common/original/common/icon_param00.png";
+    case 38:return "original/common/wnd_lv.png";
+    case 50:return "original/common/wnd_exp.png";
     case 70:return "original/common/finger_r.png";
     case 74:return "original/common/arrow02.png";
     case 85:return "steam-common/menuRT01.png";
+    case 87:return "original/common/wnd_expBar.png";
+    case 102:return "original/common/number03.png";
     case 103:return "steam-build-common/original/common/number05.png";
+    case 104:return "original/common/number06.png";
+    case 105:return "steam-facility-common/original/common/number08.png";
+    case 108:return "original/common/number11.png";
     case 128:return "steam-common/icon_objRoots.png";
+    case 129:return "original/common/wnd_max.png";
     case 147:return "original/common/wnd_new.png";
     case 148:return "original/common/wnd_get.png";
     default:return {};

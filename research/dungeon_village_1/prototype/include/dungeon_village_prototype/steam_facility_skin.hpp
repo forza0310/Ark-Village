@@ -12,7 +12,7 @@ namespace dungeon_village_prototype {
 // Steam资源身份独立于APK同号槽。路径相对已出版assets目录，不读取work或Unity容器。
 enum class SteamFacilityAsset {
     wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
-    upgrade_background, mini_background
+    upgrade_background, mini_background, number03, number11
 };
 struct SteamFacilityResource {
     const char *group;
@@ -70,6 +70,7 @@ struct SteamFacilityNumber {
 };
 // 展开实际SEB请求；普通数字的步宽来自所选SEB frame0/line0的SP_W，不能用Font字宽。
 // money/plus沿源固定8步宽及逗号原序，digit_width不参与这两类计算。
+// 35的number03/number11分别绑定SEB11/20，仅普通数字，实际字格步宽为8/7。
 // 源负数可能请求负frame；保留请求事实，不能当作已认证的负帧像素/减号映射。
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &number, int digit_width);

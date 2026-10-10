@@ -1132,6 +1132,232 @@ void information_directory_skin(Checks &check,const std::filesystem::path &root)
                                part->offset_x==0 && part->offset_y==0,"数量单位帧2原裁片/offset独立oracle");
     }
 }
+void adventurer_information_skin(Checks &check,const std::filesystem::path &root) {
+    using Role=SteamInformationTextRole;
+    using Mode=SteamInformationTextMode;
+    using Asset=SteamFacilityAsset;
+    using Number=SteamFacilityNumberKind;
+    // 最小六人目录/成长/NEW/HP展示条件，不声称这些人物已自然到访。
+    auto owner=test_support::page_fixture(35);
+    const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=0;
+    for(auto &entry:owner.human_presence)entry.second=entry.first>=1&&entry.first<=6?1:0;
+    owner.scripts.humans.at(1).pending_notice=true;
+    auto &ai=owner.scene.world.world.ai;
+    ai.growth.at(1).experience=0;
+    auto &master=ai.growth.at(2);
+    master.definition.profession_levels.at(master.definition.current_profession)=10;
+    master.experience=0;
+    owner.shop_humans.at(1).equipment[1].reset();
+    owner.shop_humans.at(1).equipment[2].reset();
+    owner.shop_humans.at(1).equipment[3].reset();
+    ref::BattleActorRecord actor;actor.id={900};actor.kind=ref::ActorKind::human;actor.definition=1;
+    actor.hp.displayed=7;actor.hp.target=19;actor.capacity=999;
+    ai.battle.actors.emplace(actor.id,actor);ai.human_order.push_back(actor.id);
+    SteamInformationSkinOptions options{0,false,std::array<int,2>{80,82},false};
+    check(!steam_adventurer_information_skin(owner,id,options),"35未Init不由绘制补载荷");
+    check(initialize_startup_world_information_pages(owner),"35真实Init冻结六人目录并计算贡献");
+    const auto label=[&](const auto &plan,Role role) -> const SteamInformationText & {
+        const auto it=std::find_if(plan.draws.begin(),plan.draws.end(),[=](const auto &draw) {
+            const auto *text=std::get_if<SteamInformationText>(&draw);return text&&text->role==role;
+        });
+        check(it!=plan.draws.end(),"35必需文字角色存在");return std::get<SteamInformationText>(*it);
+    };
+    const auto image=[&](const auto &plan,int resource,int occurrence=0) -> const StartupSkinDraw & {
+        for(const auto &draw:plan.draws)if(const auto *part=std::get_if<StartupSkinDraw>(&draw))
+            if(part->image==resource && occurrence--==0)return *part;
+        check(false,"35必需图片及出现次数存在");throw std::runtime_error("unreachable");
+    };
+    const auto number=[&](const auto &plan,Asset asset,std::array<int,2> position) -> const SteamFacilityNumber & {
+        const auto it=std::find_if(plan.draws.begin(),plan.draws.end(),[=](const auto &draw) {
+            const auto *value=std::get_if<SteamFacilityNumber>(&draw);
+            return value&&value->asset==asset&&value->position==position;
+        });
+        check(it!=plan.draws.end(),"35必需数字SEB及原锚存在");return std::get<SteamFacilityNumber>(*it);
+    };
+    const auto baseline=startup_world_state_digest(owner);
+    const auto result=steam_adventurer_information_skin(owner,id,options);
+    check(result.has_value(),"35合法Owner产生完整计划");const auto &plan=*result;
+    check(plan.raw==35 && plan.touches.size()==9 && plan.soft_labels==std::array<int,2>{0,2} &&
+          label(plan,Role::adventurer_count).argument==6 &&
+          label(plan,Role::adventurer_count).position==std::array<int,2>{120,200} &&
+          label(plan,Role::adventurer_count).mode==Mode::rich_text,"35两箭头五行两滚动及全目录底栏");
+    const auto selected=std::find_if(plan.draws.begin(),plan.draws.end(),[](const auto &draw) {
+        const auto *rect=std::get_if<StartupSkinRect>(&draw);
+        return rect&&rect->rgb==std::array<int,3>{255,153,55};
+    });
+    check(selected!=plan.draws.end(),"35实际画选中底，不能套37/38无底色规则");
+    const auto first=static_cast<std::size_t>(selected-plan.draws.begin());
+    const auto &fill=std::get<StartupSkinRect>(plan.draws.at(first));
+    const auto &green=std::get<StartupSkinRect>(plan.draws.at(first+1));
+    const auto &border=std::get<StartupSkinRect>(plan.draws.at(first+2));
+    const auto &clip=std::get<SteamFacilityClip>(plan.draws.at(first+3));
+    const auto &body=std::get<SteamInformationHumanBody>(plan.draws.at(first+4));
+    const auto &pop=std::get<SteamFacilityClip>(plan.draws.at(first+5));
+    const auto &notice=std::get<StartupSkinDraw>(plan.draws.at(first+6));
+    const auto &hand=std::get<StartupSkinDraw>(plan.draws.at(first+7));
+    check(fill.rect==std::array<int,4>{23,94,191,18} && !fill.outline &&
+          green.rect==std::array<int,4>{29,95,16,16} && green.rgb==std::array<int,3>{196,236,169} &&
+          border.rect==std::array<int,4>{29,95,16,16} && border.outline &&
+          clip.kind==SteamFacilityClipKind::push_intersect && clip.rectangle==std::array<int,4>{29,95,15,15} &&
+          body.body.sprite==1 && body.body.frame==0 && body.position==std::array<int,2>{37,118} &&
+          body.body.image==owner.rules->jobs.at(ai.growth.at(1).definition.current_profession).sprites.at(owner.rules->humans.at(1).sex) &&
+          pop.kind==SteamFacilityClipKind::pop && notice.image==147 && notice.offset==std::array<int,2>{10,99} &&
+          hand.sprite==21 && hand.frame==-1 && hand.offset==std::array<int,2>{21,105},
+          "35选中→底/边→15格裁剪→静态身体→pop→NEW→当前帧手形保留原序");
+    check(std::get<SteamInformationText>(plan.draws.at(first+8)).position==std::array<int,2>{48,97} &&
+          number(plan,Asset::number03,{147,97}).kind==Number::number &&
+          number(plan,Asset::number03,{147,97}).anchor==4 &&
+          image(plan,129).offset==std::array<int,2>{132,118} &&
+          image(plan,87,0).crop==std::array<int,4>{0,0,44,5} &&
+          image(plan,87,1).crop==std::array<int,4>{82,0,1,5} &&
+          image(plan,87,2).crop==std::array<int,4>{2,5,0,3} &&
+          image(plan,87,2).offset==std::array<int,2>{165,102} &&
+          image(plan,87,5).crop==std::array<int,4>{2,5,42,3},"35零经验与10级大师强制满条保持三次裁片请求");
+    check(plan.touches.at(2).component==11 && plan.touches.at(2).value==0x20000 &&
+          plan.touches.at(2).rectangle==std::array<int,4>{3,94,231,18} &&
+          plan.touches.at(2).margin==std::array<int,4>{0,-20,0,0},"35行热区18高及绝对索引");
+    const auto &bar=plan.touches.at(7);
+    check(bar.component==12 && bar.rectangle==std::array<int,4>{221,85,3,111} &&
+          bar.scroll_arguments==std::array<int,3>{6,5,0x20000} &&
+          std::get<StartupSkinRect>(plan.draws.at(plan.draws.size()-3)).rect==std::array<int,4>{220,85,5,111} &&
+          std::get<StartupSkinRect>(plan.draws.at(plan.draws.size()-2)).rect==std::array<int,4>{220,85,5,93},
+          "35真实111高轨道/滑块，不能硬套37/38的110");
+    auto scrolled=owner;
+    scrolled.information_page_data.at(id).selection=5;
+    scrolled.information_page_data.at(id).first_visible=1;
+    options.scroll_first_touch=true;
+    const auto scrolling=*steam_adventurer_information_skin(scrolled,id,options);
+    check(scrolling.touches.at(2).value==0x20001 && scrolling.touches.at(6).value==0x20005 &&
+          std::get<StartupSkinRect>(scrolling.draws.at(scrolling.draws.size()-2)).rect==std::array<int,4>{220,103,5,93} &&
+          std::get<StartupSkinRect>(scrolling.draws.at(scrolling.draws.size()-2)).rgb==std::array<int,3>{246,129,0},
+          "35滚动保留绝对行、111高度的18像素位移和真实首次触摸颜色");
+    options.scroll_first_touch=false;options.view_y=20;
+    const auto shifted=*steam_adventurer_information_skin(owner,id,options);
+    check(label(shifted,Role::title).position[1]==label(plan,Role::title).position[1]+10 &&
+          label(shifted,Role::row_name).position==label(plan,Role::row_name).position &&
+          shifted.touches.at(2).rectangle==plan.touches.at(2).rectangle,
+          "35 VIEW_Y仅框/box，行内容与热区不重复位移");
+    options.view_y=0;
+    owner.page_phases.at(id)=1;
+    const auto second=*steam_adventurer_information_skin(owner,id,options);
+    check(label(second,Role::satisfaction_header).position==std::array<int,2>{47,69} &&
+          label(second,Role::effort_header).position==std::array<int,2>{95,69} &&
+          label(second,Role::equipment_header).extent==std::array<int,2>{60,12} &&
+          label(second,Role::equipment_header).anchor==0x22 &&
+          label(second,Role::equipment_header).line_space==0 &&
+          number(second,Asset::number05,{80,98}).value==owner.shop_humans.at(1).satisfaction &&
+          number(second,Asset::number05,{119,98}).value==ai.growth.at(1).definition.legacy_u,
+          "35第二页三个TextLayout与满足/努力独立数字位置");
+    for(int slot=1;slot<4;++slot) {
+        const auto empty=std::find_if(second.draws.begin(),second.draws.end(),[=](const auto &draw) {
+            const auto *part=std::get_if<StartupSkinDraw>(&draw);
+            return part&&part->image==24&&part->crop==std::array<int,4>{126,0,18,18}&&
+                   part->offset==std::array<int,2>{141+18*slot,94};
+        });
+        check(empty!=second.draws.end(),"35空防具/饰品严格mode5/index7，18像素等距");
+    }
+    owner.page_phases.at(id)=2;
+    const auto third=*steam_adventurer_information_skin(owner,id,options);
+    options.english=true;
+    const auto english=*steam_adventurer_information_skin(owner,id,options);
+    check(image(third,37).offset[0]==53 && image(english,37).offset[0]==48,
+          "英语表头独立于非日文；中文不能误用英语48锚");
+    for(int slot=0;slot<4;++slot)
+        check(number(third,Asset::number08,{80+36*slot,99}).value==ai.growth.at(1).derived.combat[slot],
+              "35第三页只读既有四战斗值缓存");
+    check(number(third,Asset::number05,{211,98}).value==owner.human_calendar.at(1).celebrations,
+          "35获勋次数不借贡献值");
+    owner.page_phases.at(id)=3;options.english=false;
+    const auto fourth=*steam_adventurer_information_skin(owner,id,options);
+    check(label(fourth,Role::contribution_header).mode==Mode::layout &&
+          label(fourth,Role::contribution_header).position==std::array<int,2>{48,70} &&
+          label(fourth,Role::contribution_header).font_size==10 &&
+          image(fourth,31).sprite==44 && image(fourth,31).frame==4 &&
+          image(fourth,31).offset==std::array<int,2>{114,67} &&
+          image(fourth,104).frame==13 && image(fourth,104).offset==std::array<int,2>{84,99} &&
+          number(fourth,Asset::number11,{152,98}).value==ai.battle.humans.at(1).killed_stat1 &&
+          number(fourth,Asset::number08,{212,98}).kind==Number::money,"35第四页SEB44/点数单位/年度村点/消费各走原helper");
+    options.japanese=true;
+    const auto japanese=*steam_adventurer_information_skin(owner,id,options);
+    check(label(japanese,Role::contribution_header).position==std::array<int,2>{82,69} &&
+          label(japanese,Role::contribution_header).font_size==0 &&
+          image(japanese,31).offset==std::array<int,2>{116,67} &&
+          image(japanese,104).offset==std::array<int,2>{84,97},"35日文第四页普通字号及点数单位图原y");
+    owner.page_phases.at(id)=0;options.japanese=false;
+    for(int count=0;count<8;++count) {
+        const auto repeated=steam_adventurer_information_skin(owner,id,options);
+        check(repeated && repeated->draws.size()==plan.draws.size() && repeated->touches.size()==plan.touches.size() &&
+              startup_world_state_digest(owner)==baseline,"35重复查询不增长请求/Owner/随机/HP或消费NEW");
+    }
+    for(int fault=0;fault<6;++fault) {
+        auto invalid=owner;
+        if(fault==0)invalid.information_page_data.erase(id);
+        if(fault==1)invalid.page_phases.at(id)=4;
+        if(fault==2)invalid.information_page_data.at(id).selection=6;
+        if(fault==3)invalid.scene.world.world.ai.growth.erase(1);
+        if(fault==4)invalid.scripts.pages.back().lifecycle=4;
+        if(fault==5)invalid.page_counters.erase(id);
+        const auto before=startup_world_state_digest(invalid);
+        check(!steam_adventurer_information_skin(invalid,id,options) && startup_world_state_digest(invalid)==before,
+              "35缺载荷/源/阶段或越界索引拒绝整份计划且不修补Owner");
+    }
+    options.title_widths.reset();
+    check(!steam_adventurer_information_skin(owner,id,options),"35缺真实标题测宽拒绝而非猜字宽");
+    const auto assets=root.parent_path();
+    for(const auto asset:{Asset::number03,Asset::number11}) {
+        const int width=asset==Asset::number03?8:7;
+        const int expected_image=asset==Asset::number03?102:108;
+        const int expected_sprite=asset==Asset::number03?11:20;
+        const int height=asset==Asset::number03?12:9;
+        const auto resource=steam_facility_resource(asset);
+        check(resource && resource->image==expected_image && resource->sprite==expected_sprite &&
+              resource->published_sprite,"35数字SEB11/20明确绑定image102/108而非同名图");
+        SteamFacilityNumber request{Number::number,asset,0,{100,20},0,4,-1};
+        const auto zero=steam_facility_number_draws(request,width);
+        check(zero && zero->size()==1 && zero->front().frame==0 &&
+              zero->front().position==std::array<int,2>{100-width,20},"35新数字零值仍展开frame0并右锚");
+        request.value=12;
+        const auto digits=steam_facility_number_draws(request,width);
+        check(digits && digits->size()==2 && digits->at(0).frame==1 && digits->at(1).frame==2 &&
+              digits->at(0).position==std::array<int,2>{100-2*width,20} &&
+              digits->at(1).position==std::array<int,2>{100-width,20},"35新数字按各自8/7步宽而非统一Font宽");
+        request.value=-12;
+        const auto negative=steam_facility_number_draws(request,width);
+        check(negative && negative->size()==1 && negative->front().frame==-12 &&
+              negative->front().position==std::array<int,2>{100-width,20},
+              "35新数字负值保留单个负帧请求，不abs或伪造减号像素");
+        check(!steam_facility_number_draws(request,width+1),"35新增数字拒绝不匹配的SEB步宽");
+        for(const auto kind:{Number::money,Number::plus_value}) {
+            request.kind=kind;
+            check(!steam_facility_number_draws(request,width),"35纯数字图集不接受金额/加号单位帧");
+        }
+        const auto seb=tools::parse_legacy_seb(read_bytes(assets/resource->published_sprite));
+        CpuImage png(LoadImage((assets/resource->published_image).string().c_str()));
+        check(png.image.width>0 && png.image.height>0,"35两张数字图片实际解码成功");
+        for(const int frame:{0,9}) {
+            const auto &parts=seb.layers.at(0).parts;
+            const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+            check(part!=parts.end() && part->image_index==expected_image &&
+                  part->source_x==width*frame && part->source_y==height &&
+                  part->width==width && part->height==height &&
+                  part->source_x+part->width<=png.image.width && part->source_y+part->height<=png.image.height,
+                  "35新增SEB首末数字真实裁片边界及源行，不由文件名推断");
+        }
+    }
+    const auto result_path=steam_information_image(31);
+    check(result_path=="steam-common/icon_result00.png","35贡献图明确使用Steam差异PNG31");
+    CpuImage result_png(LoadImage((assets/std::string(*result_path)).string().c_str()));
+    check(result_png.image.width==63 && result_png.image.height==48,"35已发布PNG31实际63×48");
+    const auto result_seb=tools::parse_legacy_seb(read_bytes(root/"common/icon_result00.seb"));
+    const auto &parts=result_seb.layers.at(0).parts;
+    const auto contribution=std::find_if(parts.begin(),parts.end(),[](const auto &part){return part.frame==4;});
+    check(contribution!=parts.end() && contribution->image_index==31 && contribution->source_x==0 &&
+          contribution->source_y==16 && contribution->width==16 && contribution->height==16 &&
+          contribution->source_x+contribution->width<=result_png.image.width &&
+          contribution->source_y+contribution->height<=result_png.image.height,
+          "35贡献SEB44 frame4真实裁片落在Steam图内，不以PNG列数猜帧");
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -1147,6 +1373,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     equipment_information(check);
     equipment_information_icons(check,source_root);
     information_directory_skin(check,source_root);
+    adventurer_information_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

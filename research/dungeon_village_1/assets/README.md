@@ -8,7 +8,7 @@
 
 ## 当前交付
 
-- [Steam共用差异图](steam-common)：本批`menuRT01.png`（image85，57×10／469字节）与`icon_objRoots.png`（image128，148×36／1432字节），共1901字节。均是固定`resources.assets`的common对象pathID1148原条目，源身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1148:common:<文件名>`记录；已核同名APK像素差异，不复制同字节SEB76／88。消费者及坐标见[信息37／38](../ui/INFORMATION_MENU.md#steam3738的完整局部绘制)，正式[资源路径查询](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)供产品复制后使用。这里不另建发布指纹清单，语言替换与原字体另验。
+- [Steam共用差异图](steam-common)：`menuRT01.png`（image85，57×10／469字节）、`icon_objRoots.png`（image128，148×36／1432字节）及`icon_result00.png`（image31，63×48／1000字节），共2901字节。均是固定`resources.assets`的common对象pathID1148原条目，源身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1148:common:<文件名>`记录；同名APK整图有像素差异，不复制同字节SEB76／88／44。image31用于35贡献表头的SEB44帧4，未裁切或重绘。消费者及坐标见[信息菜单](../ui/INFORMATION_MENU.md)，正式[资源路径查询](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)供产品复制后使用。这里不另建发布指纹清单，语言替换与原字体另验。
 
 - [Steam人物详情差异图](steam-human-common/README.md)：image88 wnd_ato，10×7／187字节；明确源条目／RGBA／APK差异及raw60经验区消费者，不扩称全部语言替换已核。
 

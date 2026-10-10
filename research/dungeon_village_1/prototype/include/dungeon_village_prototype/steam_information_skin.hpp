@@ -1,6 +1,8 @@
 #pragma once
 
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
+#include "dungeon_village_prototype/steam_facility_skin.hpp"
+#include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -11,7 +13,9 @@ struct StartupWorldRuntimeState;
 enum class SteamInformationTextRole {
     title, period, income_header, expense_header, category, income, expense,
     profit_label, profit_value, description, name_header, inventory_header,
-    row_name, unknown_row, item_description, empty_directory, known_count, attribute_placeholder
+    row_name, unknown_row, item_description, empty_directory, known_count, attribute_placeholder,
+    satisfaction_header, effort_header, equipment_header, contribution_header,
+    town_points_header, spending_header, adventurer_count
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -47,8 +51,15 @@ struct SteamInformationTouch : SteamStartupTouch {
     std::array<int,4> margin{}; // 保留原TouchOption.Margin，不提前混成OS热区。
     std::optional<std::array<int,3>> scroll_arguments; // count、可见行数、0x20000。
 };
+// Steam35的静态职业身体：在有序clip内部消费human包SEB，内部offset仅加一次。
+// 不创建W，不附武器/HP，不把共享scratch未知附加效果伪装成已还原。
+struct SteamInformationHumanBody {
+    StartupTitleBodyDraw body;
+    std::array<int,2> position{};
+};
 using SteamInformationDraw = std::variant<StartupSkinRect,StartupSkinDraw,
-    SteamInformationText,SteamInformationLine,SteamInformationNumber>;
+    SteamInformationText,SteamInformationLine,SteamInformationNumber,
+    SteamFacilityClip,SteamInformationHumanBody,SteamFacilityNumber>;
 struct SteamInformationSkinPlan {
     std::vector<SteamInformationDraw> draws;
     // image_draw引用有序draws下标；目录行及两项滚动组件保留原矩形和附加参数。
@@ -62,7 +73,12 @@ struct SteamInformationSkinOptions {
     // 标题阴影/正文的两次真实StringWidth，必需；0宽仍请求空串两遍。
     std::optional<std::array<int,2>> title_widths;
     bool scroll_first_touch{}; // 平台实际CheckFirstTouch(12,0x40000)，非“鼠标悬停”。
+    bool english{}; // Steam35属性标题独立En分支，不能由!japanese推导。
 };
+// Steam35四页完整局部计划；按有序draws执行clip/身体/文字/数字，不推进Owner。
+std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
 // 仅Steam raw36局部绘制：调用方安装SubForm原点，不能再给每条图元重复叠VIEW_Y。
 // VIEW_Y只进入原窗口/内框helper，不替代画布尺寸或OS/DPI变换。
 // 读取已初始化生命周期1/2/3，复用Owner月年投影；不推进计数、随机、声音或页栈。

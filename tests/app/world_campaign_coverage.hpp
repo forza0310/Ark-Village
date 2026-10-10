@@ -19,7 +19,11 @@ enum class CampaignReceiptKind {
     item_obtained,
     recipe_discovered,
     recipe_crafted,
-    item_hp_restored
+    item_hp_restored,
+    facility_blueprint_paid,
+    facility_blueprint_claimed,
+    facility_construction_paid,
+    activity_pot_opened
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};

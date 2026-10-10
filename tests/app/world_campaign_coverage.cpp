@@ -29,6 +29,10 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
     case Kind::recipe_discovered: return {"recipe", "discovered", 40, false};
     case Kind::recipe_crafted: return {"recipe", "elements_paid_and_crafted", 40, false};
     case Kind::item_hp_restored: return {"item", "hp_restored", 36, true};
+    case Kind::facility_blueprint_paid: return {"facility", "blueprint_points_paid", 85, false};
+    case Kind::facility_blueprint_claimed: return {"facility", "blueprint_claimed", 85, false};
+    case Kind::facility_construction_paid: return {"facility", "construction_paid", 85, false};
+    case Kind::activity_pot_opened: return {"activity", "pot_opened", 31, false};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -41,7 +45,8 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
     const auto identity = receipt_identity(receipt.kind);
     if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
         (identity.bound_human && receipt.recipient < 0) ||
-        (receipt.kind == CampaignReceiptKind::item_hp_restored && !receipt.subject))
+        ((receipt.kind == CampaignReceiptKind::item_hp_restored ||
+          receipt.kind == CampaignReceiptKind::facility_construction_paid) && !receipt.subject))
         throw std::runtime_error("Campaign receipt lacks its source definition/page/human binding");
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
@@ -245,6 +250,7 @@ void campaign_coverage_contract() {
     coverage.write(recorded, state);
     if (recorded.str().find("effect_queued;") == std::string::npos ||
         recorded.str().find("effect_applied;") != std::string::npos ||
+        recorded.str().find("pot_opened;") != std::string::npos ||
         log.str().find("COVERAGE_RECEIPT\tactivity\t16\teffect_queued\t") == std::string::npos)
         throw std::runtime_error("Queued popularity was certified as an actual activity effect");
     bool rejected{};
@@ -256,5 +262,63 @@ void campaign_coverage_contract() {
     } catch (const std::runtime_error &) { rejected = true; }
     if (!rejected || log.str() != validated_log)
         throw std::runtime_error("Unbound campaign receipt was accepted or partially published");
+    const auto expect_rejected = [&](const CampaignReceipt &invalid) {
+        const auto previous_log = log.str();
+        std::ostringstream previous_inventory;
+        coverage.write(previous_inventory, state);
+        bool refused{};
+        try { coverage.record(invalid, log); }
+        catch (const std::runtime_error &) { refused = true; }
+        std::ostringstream current_inventory;
+        coverage.write(current_inventory, state);
+        if (!refused || log.str() != previous_log || current_inventory.str() != previous_inventory.str())
+            throw std::runtime_error("Rejected campaign receipt changed its log or definition evidence");
+    };
+    struct Case {
+        CampaignReceiptKind kind;
+        const char *category, *stage;
+        int definitions;
+        std::uint64_t subject;
+    };
+    const Case cases[] = {
+        {CampaignReceiptKind::facility_blueprint_paid, "facility", "blueprint_points_paid", 85, 0},
+        {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
+        {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
+        {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0}};
+    for (const auto &entry : cases) {
+        const CampaignReceipt receipt{entry.kind, entry.definitions - 1, 2, 1, entry.subject, -1,
+                                      {120, 0, 2, 0}, {0, 1, 2, 0}};
+        const auto start = log.str().size();
+        coverage.record(receipt, log);
+        const auto expected = std::string("COVERAGE_RECEIPT\t") + entry.category + '\t' +
+            std::to_string(receipt.definition) + '\t' + entry.stage + "\t2\t1\t-1\t" +
+            std::to_string(entry.subject) + "\t120\t0\t2\t0\t0\t1\t2\t0\n";
+        if (log.str().substr(start) != expected)
+            throw std::runtime_error("Facility/pot receipt lost its namespace, stage or numeric evidence");
+        auto invalid = receipt;
+        invalid.definition = -1;
+        expect_rejected(invalid);
+        invalid.definition = entry.definitions;
+        expect_rejected(invalid);
+        invalid = receipt;
+        invalid.page = 0;
+        expect_rejected(invalid);
+        if (entry.kind == CampaignReceiptKind::facility_construction_paid) {
+            invalid = receipt;
+            invalid.subject = 0;
+            expect_rejected(invalid);
+        }
+    }
+    const CampaignReceipt hp{CampaignReceiptKind::item_hp_restored, 29, 2, 1, 1, 0,
+                             {1, 0, 0, 0}, {51, 0, 0, 0}};
+    auto invalid_hp = hp;
+    invalid_hp.recipient = -1;
+    expect_rejected(invalid_hp);
+    invalid_hp = hp;
+    invalid_hp.subject = 0;
+    expect_rejected(invalid_hp);
+    auto unknown = queued;
+    unknown.kind = static_cast<CampaignReceiptKind>(-1);
+    expect_rejected(unknown);
 }
 } // namespace ark::test

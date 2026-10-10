@@ -213,9 +213,10 @@ function report(rows) {
 }
 // Receipt values describe the already-asserted observation; no business algorithm is run here.
 const receiptStages = {
-  points_paid: 'village_activity', effect_queued: 'village_activity', bound_use: 'item',
+  points_paid: 'village_activity', effect_queued: 'village_activity', pot_opened: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', discovered: 'magic_recipe',
-  elements_paid_and_crafted: 'magic_recipe'
+  elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
+  blueprint_claimed: 'facility', construction_paid: 'facility'
 };
 function* receipts(text, phase) {
   for (const [line, content] of text.split(/\r?\n/).entries()) {
@@ -228,7 +229,7 @@ function* receipts(text, phase) {
     need(numbers.every(Number.isSafeInteger) && numbers[0] >= 0 && numbers[1] > 0 && numbers[3] >= 0 &&
       receiptStages[stage] === category && catalogue.has(`${category}:${id}`), 'receipt identity/binding');
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
-    if (stage === 'hp_restored') need(numbers[3] > 0, 'receipt actual actor binding');
+    if (['hp_restored', 'construction_paid'].includes(stage)) need(numbers[3] > 0, 'receipt actual subject binding');
     yield {key: `${category}:${id}`, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
@@ -338,6 +339,23 @@ function coverageContract(rows) {
   expectReject(() => inventory(header + '\nitem\t29\tmedicine\t0\t0\tUNOBSERVED\tUNVERIFIED\tuse'));
   const queued = [...receipts('COVERAGE_RECEIPT\tactivity\t16\teffect_queued\t0\t1\t-1\t0\t0\t0\t0\t0\t10\t20\t1\t1', 'contract')];
   need(queued.length === 1 && queued[0].stage === 'effect_queued', 'queued effect promoted to actual effect');
+  for (const [category, stage, id, limit, subject] of [
+    ['facility', 'blueprint_points_paid', 40, 85, 0], ['facility', 'blueprint_claimed', 40, 85, 0],
+    ['facility', 'construction_paid', 40, 85, 1], ['activity', 'pot_opened', 30, 31, 0]]) {
+    const fields = ['COVERAGE_RECEIPT', category, String(id), stage, '2', '1', '-1', String(subject),
+      '120', '0', '2', '0', '0', '1', '2', '0'];
+    const parsed = [...receipts(fields.join('\t'), 'contract')];
+    need(parsed.length === 1 && parsed[0].key === sourceKey(category, id) && parsed[0].stage === stage &&
+      parsed[0].subject === subject && parsed[0].before.join(',') === '120,0,2,0' &&
+      parsed[0].after.join(',') === '0,1,2,0', 'facility/pot numeric receipt mapping');
+    const last = [...fields]; last[2] = String(limit - 1);
+    need([...receipts(last.join('\t'), 'contract')].length === 1, 'last source definition receipt rejected');
+    for (const [field, value] of [[2, '-1'], [2, String(limit)], [5, '0'],
+      [1, category === 'facility' ? 'activity' : 'facility'], ...(stage === 'construction_paid' ? [[7, '0']] : [])]) {
+      const invalid = [...fields]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
+  }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
   const validReceipt = 'COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t1\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0';
   need([...receipts(validReceipt, 'contract')].length === 1, 'actual receipt rejected');

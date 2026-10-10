@@ -175,12 +175,14 @@ template <class PlayerStrategy> struct CampaignRun {
             candidate.sound_requests.clear();
             try {
                 if constexpr (std::is_same_v<PlayerStrategy, Strategy> ||
-                              std::is_same_v<PlayerStrategy, PotStrategy>)
+                              std::is_same_v<PlayerStrategy, PotStrategy> ||
+                              std::is_same_v<PlayerStrategy, LateStrategy>)
                     strategy.observe(state, input, result, candidate,
-                        [&](const ark::test::CampaignReceipt &receipt) {
-                            coverage.record(receipt, std::cout);
-                        });
-                else strategy.observe(state, input, result, candidate);
+                                     [&](const ark::test::CampaignReceipt &receipt) {
+                                         coverage.record(receipt, std::cout);
+                                     });
+                else
+                    strategy.observe(state, input, result, candidate);
             } catch (...) {
                 // Strategy assertions are not runtime refusals. Preserve the exact pre-command
                 // Owner without forging a runtime error or overwriting a previous capture.
@@ -223,10 +225,11 @@ template <class PlayerStrategy> struct CampaignRun {
         update.candidate->sound_requests.clear();
         if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>)
             strategy.observe_tick(state, *update.candidate,
-                [&](const ark::test::CampaignReceipt &receipt) {
-                    coverage.record(receipt, std::cout);
-                });
-        else strategy.observe_tick(state, *update.candidate);
+                                  [&](const ark::test::CampaignReceipt &receipt) {
+                                      coverage.record(receipt, std::cout);
+                                  });
+        else
+            strategy.observe_tick(state, *update.candidate);
         coverage.observe(state, *update.candidate);
         state = std::move(*update.candidate);
         system = std::move(next);
@@ -244,8 +247,8 @@ template <class PlayerStrategy> struct CampaignRun {
         if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>) {
             const int current_month = month(state);
             if (current_month % 3 == 0 && current_month > steam_prefix_month &&
-                current_month != saved_steam_month &&
-                strategy.checkpoint(state) && app::world_save_eligible(state)) {
+                current_month != saved_steam_month && strategy.checkpoint(state) &&
+                app::world_save_eligible(state)) {
                 // Keep genuine player checkpoints at stable quarterly boundaries. A later
                 // strategy bug can resume here instead of replaying the entire business prefix.
                 const auto parent = directory / "checkpoints";
@@ -567,8 +570,10 @@ void contract() {
     rejected_result.outcome = app::WorldCommandOutcome::rejected;
     try {
         strategy.observe(state, command, rejected_result, state,
-            [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
-    } catch (const std::runtime_error &) { rejected_observation = true; }
+                         [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
+    } catch (const std::runtime_error &) {
+        rejected_observation = true;
+    }
     require(rejected_observation && rejected_receipts == 0,
             "Rejected business observation emitted a verified receipt");
     strategy.reconcile(state);
@@ -591,6 +596,15 @@ void contract() {
     }
     require(refused, "Malformed strategy evidence must be rejected");
     LateStrategy late;
+    rejected_observation = false;
+    try {
+        late.observe(state, command, rejected_result, state,
+                     [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
+    } catch (const std::runtime_error &) {
+        rejected_observation = true;
+    }
+    require(rejected_observation && rejected_receipts == 0,
+            "Rejected late-route observation emitted a verified receipt");
     std::ostringstream late_encoded;
     late.encode(late_encoded);
     std::istringstream late_input(late_encoded.str());
@@ -676,11 +690,15 @@ void contract() {
     restaurant_state.village_points = 120;
     LateStrategy restaurant(3);
     restaurant.reconcile(restaurant_state);
+    std::vector<ark::test::CampaignReceipt> restaurant_receipts;
     for (int step = 0; step < 300 && !restaurant.stats().western_unlock_claimed; ++step) {
         if (const auto action = restaurant.next(restaurant_state)) {
             auto candidate = restaurant_state;
             const auto result = apply(candidate, *action);
-            restaurant.observe(restaurant_state, *action, result, candidate);
+            restaurant.observe(restaurant_state, *action, result, candidate,
+                               [&](const ark::test::CampaignReceipt &receipt) {
+                                   restaurant_receipts.push_back(receipt);
+                               });
             restaurant_state = std::move(candidate);
         }
         if (restaurant.stats().western_unlock_claimed)
@@ -697,6 +715,115 @@ void contract() {
                 restaurant_state.village_points == 0 &&
                 restaurant_state.facility_presence.at(40) == 2,
             "Actual restaurant chamber purchase/claim did not complete exactly once");
+    using Receipt = ark::test::CampaignReceiptKind;
+    require(restaurant_receipts.size() == 2 &&
+                restaurant_receipts[0].kind == Receipt::facility_blueprint_paid &&
+                restaurant_receipts[0].definition == 40 && restaurant_receipts[0].page &&
+                restaurant_receipts[0].before[0] == 120 && restaurant_receipts[0].after[0] == 0 &&
+                restaurant_receipts[0].before[1] == restaurant_receipts[0].after[1] &&
+                restaurant_receipts[1].kind == Receipt::facility_blueprint_claimed &&
+                restaurant_receipts[1].definition == 40 && restaurant_receipts[1].page &&
+                restaurant_receipts[1].before[1] == 0 && restaurant_receipts[1].after[1] == 2 &&
+                restaurant_receipts[1].before[2] + 1 == restaurant_receipts[1].after[2] &&
+                restaurant_receipts[1].before[0] == restaurant_receipts[1].after[0],
+            "Actual blueprint payment and later claim lack separate source-bound receipts");
+    auto construction_state = ark::test::initial_world();
+    construction_state.rank = 1; // Explicit source-menu eligibility, not a natural first star.
+    LateStrategy construction_route;
+    construction_route.reconcile(construction_state);
+    std::optional<ark::test::CampaignReceipt> construction_receipt;
+    for (int step = 0; step < 150 && !construction_receipt; ++step) {
+        if (const auto action = construction_route.next(construction_state)) {
+            auto candidate = construction_state;
+            const auto result = apply(candidate, *action);
+            construction_route.observe(construction_state, *action, result, candidate,
+                                       [&](const ark::test::CampaignReceipt &receipt) {
+                                           if (receipt.kind == Receipt::facility_construction_paid)
+                                               construction_receipt = receipt;
+                                       });
+            construction_state = std::move(candidate);
+        }
+        if (construction_receipt)
+            break;
+        auto update = sim::prepare_startup_world_runtime(construction_state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Construction-receipt fixture runtime failed");
+        construction_route.observe_tick(construction_state, *update.candidate);
+        construction_state = std::move(*update.candidate);
+    }
+    require(construction_receipt && construction_receipt->page && construction_receipt->subject &&
+                construction_state.scene.world.world.facilities.at(construction_receipt->subject)
+                        .placement.definition_id == construction_receipt->definition &&
+                construction_receipt->before[3] > construction_receipt->after[3],
+            "Real gold construction lacks its installed instance and actual charge receipt");
+    // Isolated eligibility fixture: consume the real activity pages, not a synthetic
+    // flag change. The natural second-star route remains a separate business acceptance.
+    auto pot_open_state = ark::test::initial_world();
+    pot_open_state.rank = 2;
+    pot_open_state.village_points = 100;
+    pot_open_state.quarter_counter = 1;
+    pot_open_state.scripts.activities.at(30).status = 1;
+    LateStrategy pot_open_route;
+    std::vector<ark::test::CampaignReceipt> pot_open_receipts;
+    for (int step = 0; step < 300 && pot_open_route.stats().pot_month < 0; ++step) {
+        std::optional<app::WorldCommand> action;
+        const auto *page = top(pot_open_state);
+        require(page != nullptr, "Pot-open fixture lost its source page");
+        if (page->kind == ref::WorldScriptPageKind::scene) {
+            action.emplace();
+            action->kind = Kind::open_village_activities;
+        } else if (page->kind == ref::WorldScriptPageKind::dialogue) {
+            // The actual new-world introduction can precede this isolated menu path.
+            action.emplace();
+            action->kind = Kind::acknowledge_page;
+            action->page = page->id;
+        } else if (const auto view =
+                       sim::inspect_startup_world_village_activity_page(pot_open_state, page->id)) {
+            if (view->raw != 53 || view->counter >= 120) {
+                action.emplace();
+                action->kind = Kind::village_activity_action;
+                action->page = page->id;
+                action->village_activity_action = sim::StartupVillageActivityAction::confirm;
+                if (view->raw == 51) {
+                    const auto selected = std::find(view->entries.begin(), view->entries.end(), 30);
+                    require(selected != view->entries.end(),
+                            "Pot import not in eligible fixture catalogue");
+                    action->selection = static_cast<int>(selected - view->entries.begin());
+                    if (view->selection != action->selection)
+                        action->village_activity_action = sim::StartupVillageActivityAction::select;
+                }
+            }
+        }
+        if (action) {
+            auto candidate = pot_open_state;
+            const auto result = apply(candidate, *action);
+            pot_open_route.observe(pot_open_state, *action, result, candidate,
+                                   [&](const ark::test::CampaignReceipt &receipt) {
+                                       pot_open_receipts.push_back(receipt);
+                                   });
+            pot_open_state = std::move(candidate);
+        }
+        if (pot_open_route.stats().pot_month >= 0)
+            break;
+        auto update = sim::prepare_startup_world_runtime(pot_open_state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Pot-open short fixture runtime failed");
+        pot_open_route.observe_tick(pot_open_state, *update.candidate);
+        pot_open_state = std::move(*update.candidate);
+    }
+    require(pot_open_receipts.size() == 2 &&
+                pot_open_receipts[0].kind == Receipt::activity_points_paid &&
+                pot_open_receipts[0].definition == 30 && pot_open_receipts[0].before[0] == 100 &&
+                pot_open_receipts[0].after[0] == 0 &&
+                pot_open_receipts[1].kind == Receipt::activity_pot_opened &&
+                pot_open_receipts[1].definition == 30 && pot_open_receipts[1].page &&
+                !(pot_open_receipts[1].before[0] & 1) && (pot_open_receipts[1].after[0] & 1) &&
+                (pot_open_state.scripts.user_flags & 1U),
+            "Real pot import must expose separate payment and applied unlock receipts: count=" +
+                std::to_string(pot_open_receipts.size()) +
+                " raw=" + std::to_string(top(pot_open_state)->legacy_page) +
+                " points=" + std::to_string(pot_open_state.village_points) +
+                " flags=" + std::to_string(pot_open_state.scripts.user_flags));
     const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
     require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
     std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));

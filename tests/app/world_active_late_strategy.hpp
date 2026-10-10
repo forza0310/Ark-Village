@@ -3,6 +3,7 @@
 #include "ark/app/session/world_session.hpp"
 #include "world_active_income_strategy.hpp"
 #include "world_active_trade_evidence.hpp"
+#include "world_campaign_coverage.hpp"
 #include <iosfwd>
 #include <set>
 
@@ -40,7 +41,8 @@ class ActiveLateVillageStrategy {
     explicit ActiveLateVillageStrategy(int target_rank);
     std::optional<app::WorldCommand> next(const app::WorldState &state);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
-                 const app::WorldCommandResult &result, const app::WorldState &after);
+                 const app::WorldCommandResult &result, const app::WorldState &after,
+                 const CampaignReceiptSink &receipts = {});
     void observe_tick(const app::WorldState &before, const app::WorldState &after);
     void reconcile(const app::WorldState &state);
     bool checkpoint(const app::WorldState &state) const;

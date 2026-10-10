@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>
+#include <vector>
 
 namespace ark::test {
 namespace {
@@ -803,13 +804,30 @@ void ActiveLateVillageStrategy::observe_world(const State &before, const State &
 }
 
 void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
-                                        const app::WorldCommandResult &result, const State &after) {
+                                        const app::WorldCommandResult &result, const State &after,
+                                        const CampaignReceiptSink &receipts) {
     require(result.outcome == app::WorldCommandOutcome::applied &&
                 result.runtime_error == sim::StartupWorldRuntimeError::none &&
                 result.denial == ref::TaskCommandDenial::none &&
                 result.build_denial == sim::StartupBuildDenial::none,
             "command rejected kind=" + std::to_string(static_cast<int>(c.kind)) + "; " +
                 diagnose(before));
+    // Keep receipts private until all command and cross-domain observations pass.
+    // They describe this commit, never a reconstructed history from a cold save.
+    std::vector<CampaignReceipt> pending;
+    const auto facility_receipt = [&](CampaignReceiptKind kind, int definition,
+                                      std::uint64_t subject = 0) {
+        pending.push_back({kind,
+                           definition,
+                           after.simulation_steps,
+                           top(before).id,
+                           subject,
+                           -1,
+                           {before.village_points, before.facility_presence.at(definition),
+                            before.facility_free_builds.at(definition), cash(before)},
+                           {after.village_points, after.facility_presence.at(definition),
+                            after.facility_free_builds.at(definition), cash(after)}});
+    };
     ++stats_.commands;
     if (income_)
         income_->observe(before, c, after);
@@ -902,6 +920,7 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
                 stats_.western_unlock_points = price;
                 stats_.western_unlock_paid = true;
             }
+            facility_receipt(CampaignReceiptKind::facility_blueprint_paid, definition);
         }
         if (view->raw == 93 && view->counter >= 40) {
             if (income_ && view->binding != 40) {
@@ -924,6 +943,7 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
                         "restaurant claim must unlock once without a second charge");
                 stats_.western_unlock_claimed = true;
             }
+            facility_receipt(CampaignReceiptKind::facility_blueprint_claimed, view->binding);
         }
     }
     if (c.kind == Kind::confirm_build) {
@@ -949,6 +969,9 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
         else
             require(stats_.buildings.insert(id).second, "duplicate construction receipt");
         build_committed_ = true;
+        // A source-granted free build can have a zero quote. This proves installation
+        // and its actual fee/quota, not completion or subsequent business revenue.
+        facility_receipt(CampaignReceiptKind::facility_construction_paid, build_definition_, id);
     }
     if (c.kind == Kind::residence_action && !c.cancel) {
         require(result.created && eligible(before, recipient_) &&
@@ -977,6 +1000,21 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
     if (c.kind == Kind::village_activity_action && c.village_activity_action == Activity::confirm) {
         const auto v = sim::inspect_startup_world_village_activity_page(before, c.page);
         require(v.has_value(), "activity lacks initialized page");
+        if (v->raw == 52 && v->activity) {
+            require(before.village_points - after.village_points ==
+                            before.rules->activities.at(*v->activity).parameters[4] &&
+                        activity_count(after, *v->activity) ==
+                            activity_count(before, *v->activity) + 1,
+                    "activity must pay its source quote and begin exactly once");
+            pending.push_back({CampaignReceiptKind::activity_points_paid,
+                               *v->activity,
+                               after.simulation_steps,
+                               c.page,
+                               0,
+                               -1,
+                               {before.village_points, activity_count(before, *v->activity)},
+                               {after.village_points, activity_count(after, *v->activity)}});
+        }
         if (v->raw == 52 && v->activity && *v->activity == 30) {
             require(before.rank == 2 && before.scripts.activities.at(30).status != 0 &&
                         before.village_points - after.village_points ==
@@ -999,8 +1037,18 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
             ++stats_.activities;
             if (v->activity && *v->activity == 30) {
                 require(stats_.pot_paid, "pot import completed without payment");
+                require(!(before.scripts.user_flags & 1U) && (after.scripts.user_flags & 1U),
+                        "pot import completion must actually enable the previously locked pot");
                 stats_.pot_month = month(after);
                 stats_.pot_income = stats_.facility_income;
+                pending.push_back({CampaignReceiptKind::activity_pot_opened,
+                                   30,
+                                   after.simulation_steps,
+                                   c.page,
+                                   0,
+                                   -1,
+                                   {before.scripts.user_flags},
+                                   {after.scripts.user_flags}});
             }
             if (stats_.target_rank == 3 && v->activity && *v->activity == 7) {
                 require(stats_.school_activity_paid, "school activity completed without payment");
@@ -1009,6 +1057,9 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
         }
     }
     observe_world(before, after);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
 
 void ActiveLateVillageStrategy::observe_tick(const State &before, const State &after) {

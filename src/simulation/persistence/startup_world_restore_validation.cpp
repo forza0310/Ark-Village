@@ -1016,7 +1016,7 @@ struct Validation {
             if (raw == 94 || raw == 95) {
                 const int mode = p.legacy_r, definition = p.legacy_s;
                 const bool supported = raw == 94
-                                           ? mode == 3 || (mode >= 5 && mode <= 8)
+                                           ? (mode >= 3 && mode <= 8)
                                            : mode == 0 || mode == 1 || mode == 3 || mode == 4 ||
                                                  mode == 9 || mode == 10 || mode == 11;
                 if (!supported || definition < 0 || (mode == 3 && !facilities.count(definition)) ||

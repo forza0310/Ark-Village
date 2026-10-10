@@ -335,6 +335,74 @@ void encounter() {
                             static_cast<int>(n.x * -15.0F / 100.0F + n.z * 15.0F / 100.0F)},
           "local initial cached-u preserves actual floating spawn jitter");
 }
+void encounter_introduction_speakers() {
+    auto original = test_support::world_fixture();
+    // 既有无指定说话者页面用于检测覆盖范围；不能把旧页一起改成新怪物。
+    ref::WorldScriptPage prior;
+    prior.kind = ref::WorldScriptPageKind::dialogue;
+    prior.source_record = 125;
+    prior.paragraphs = {"已有对话夹具"};
+    const auto inserted = ref::prepare_world_script_page(original.scripts, prior);
+    check(inserted.candidate && inserted.candidate->last_page,
+          "existing dialogue fixture uses actual page allocator");
+    original.scripts = inserted.candidate->state;
+    const auto prior_id = *inserted.candidate->last_page;
+    const auto original_digest = startup_world_state_digest(original);
+    // 固定monster.txt列15的八个独立原表绑定；不是按被测目录生成期望。
+    const std::array<std::array<int, 2>, 8> introductions{{
+        {3,125},{4,126},{9,129},{13,130},{14,127},{20,131},{23,132},{25,128}}};
+    for (const auto &entry : introductions) {
+        const auto result = consume_startup_world_runtime_encounter_request(
+            original, {ref::EncounterCreationRequestKind::definition_script, entry[0]});
+        check(result.has_value(), "original monster introduction has actual Owner consumer");
+        const auto id = original.scripts.next_page_id;
+        const auto page = std::find_if(result->scripts.pages.begin(), result->scripts.pages.end(),
+                                      [&](const auto &p) { return p.id == id; });
+        const auto old = std::find_if(result->scripts.pages.begin(), result->scripts.pages.end(),
+                                     [&](const auto &p) { return p.id == prior_id; });
+        check(page != result->scripts.pages.end() && page->kind == ref::WorldScriptPageKind::dialogue &&
+                  page->source_record == entry[1] && page->speaker_kind == 2 &&
+                  page->speaker_definition == entry[0] && old != result->scripts.pages.end() &&
+                  old->speaker_kind == 0 && old->speaker_definition == -1,
+              "source outer speaker2 binds only the current definition's new dialogue");
+        check(result->scripts.event_calls == original.scripts.event_calls &&
+                  result->scripts.continuations.empty() &&
+                  result->scene.random.draws() == original.scene.random.draws() &&
+                  result->sound_requests == original.sound_requests &&
+                  result->scene.world.world.ai.accounting.funds() ==
+                      original.scene.world.world.ai.accounting.funds(),
+              "definition introduction creates no fake event count, delay, random, sound or money");
+        auto closed = *result;
+        check(acknowledge_startup_world_runtime_page(closed, id) == StartupWorldRuntimeError::none,
+              "monster-bound dialogue closes through existing page lifecycle");
+        const auto retired = prepare_startup_world_runtime(closed);
+        check(retired.candidate &&
+                  std::none_of(retired.candidate->scripts.pages.begin(), retired.candidate->scripts.pages.end(),
+                               [&](const auto &p) { return p.id == id; }) &&
+                  !retired.candidate->page_counters.count(id),
+              "framework retires speaker payload with the page, without extra bindings");
+    }
+    check(startup_world_state_digest(original) == original_digest,
+          "all eight introduction candidates leave original Owner untouched");
+    // 显式参数边界夹具只改局部程序副本；原表及来源metadata均保持。
+    auto rules = *original.rules;
+    auto explicit_speaker = original;
+    explicit_speaker.rules = &rules;
+    rules.monsters.at(3).introduction_program = {{3,125,1,0}};
+    const auto preserved = consume_startup_world_runtime_encounter_request(
+        explicit_speaker, {ref::EncounterCreationRequestKind::definition_script,3});
+    check(preserved.has_value(), "explicit-speaker introduction fixture accepted");
+    const auto page = std::find_if(preserved->scripts.pages.begin(), preserved->scripts.pages.end(),
+                                 [&](const auto &p) { return p.id == original.scripts.next_page_id; });
+    check(page != preserved->scripts.pages.end() && page->speaker_kind == 1 && page->speaker_definition == 0,
+          "outer monster context preserves an explicitly named original speaker");
+    rules.monsters.at(3).introduction_program = {{2,125},{42,0}};
+    const auto before_failure = startup_world_state_digest(explicit_speaker);
+    check(!consume_startup_world_runtime_encounter_request(
+              explicit_speaker, {ref::EncounterCreationRequestKind::definition_script,3}) &&
+              startup_world_state_digest(explicit_speaker) == before_failure,
+          "late unsupported instruction rejects earlier dialogue and all candidate speaker changes");
+}
 StartupWorldRuntimeState task_start_fixture(int first_state) {
     StartupSession startup;
     for (int n = 0; n < 420; ++n)
@@ -1076,6 +1144,7 @@ int main() {
         selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();
+        encounter_introduction_speakers();
         task_start_audio();
         task_victory_requests();
         active_management();

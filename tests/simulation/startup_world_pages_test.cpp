@@ -1215,6 +1215,81 @@ void human_profession_and_mastery() {
               acknowledge_startup_world_runtime_page(s, mastery) == E::invalid_page,
           "mastery final return grants once and stale duplicate rejects");
 }
+// 规则层负责94/r4矩阵；本例专测真实成长请求、Owner页顺序及晚期拒绝/退休。
+void mastery_profession_announcement() {
+    using E = StartupWorldRuntimeError;
+    using A = StartupHumanPageAction;
+    auto s = test_support::mastery_fixture();
+    const auto reward_it = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.legacy_page == 94 && p.legacy_r == 4; });
+    check(reward_it != s.scripts.pages.end() && reward_it->legacy_s == 4 &&
+              reward_it->legacy_t == s.rules->humans.at(4).sex &&
+              s.scripts.pages.back().legacy_page == 70 &&
+              s.scripts.professions.at(4).status == 1 &&
+              s.scripts.professions.at(4).pending_notice &&
+              s.scene.world.world.ai.professions.at(4).unlocked &&
+              s.scene.world.world.ai.growth.at(4).definition.profession_levels.at(4) == 10,
+          "real mastery creates70 before94r4 and opens profession before either confirmation");
+    const auto reward = reward_it->id;
+    const auto mastery = s.scripts.pages.back().id;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto catalog = s.catalog;
+    const auto date = s.scene.calendar.units;
+    const auto draws = s.scene.random.draws();
+    auto before = startup_world_state_digest(s);
+    check(acknowledge_startup_world_runtime_page(s, reward) == E::invalid_page &&
+              startup_world_state_digest(s) == before,
+          "pending94 cannot bypass top70 or change the already-open profession");
+    // 70本身的三阶段奖励矩阵已在human_profession_and_mastery；这里仅正常走到后继94。
+    for (int phase = 0; phase < 2; ++phase)
+        for (int press = 0; press < 2; ++press)
+            check(acknowledge_startup_world_runtime_page(s, mastery) == E::none,
+                  "actual mastery advances through its existing confirmation phases");
+    check(act_startup_world_human_page(s, mastery, A::select, 1) == E::none &&
+              acknowledge_startup_world_runtime_page(s, mastery) == E::none &&
+              acknowledge_startup_world_runtime_page(s, mastery) == E::none,
+          "actual mastery keeps current profession and closes before its announcement");
+    page_tick(s);
+    check(s.scripts.pages.back().id == reward && s.page_counters.at(reward) == 1 &&
+              !s.page_human_bindings.count(mastery) && !s.page_counters.count(mastery),
+          "actual framework retires70 payload and updates94r4 instead of rejecting its type");
+    s.sound_requests.clear(); // 表现消费者领取；未改变业务或源随机。
+    s.scripts.professions.at(4).pending_notice = false; // NEW已读条件：公告不能再次置新。
+    const auto extra = s.scene.world.world.ai.growth.at(4).definition.extra;
+    check(acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.page_counters.at(reward) == 40 && s.scripts.pages.back().lifecycle == 2 &&
+              !s.scripts.professions.at(4).pending_notice,
+          "94r4 early confirmation only reaches40 without rearming profession NEW");
+    auto invalid = s;
+    invalid.scripts.pages.back().legacy_s = 999;
+    before = startup_world_state_digest(invalid);
+    check(acknowledge_startup_world_runtime_page(invalid, reward) == E::script_failed &&
+              startup_world_state_digest(invalid) == before,
+          "94r4 bad profession at actual claim rolls back whole Owner and page close");
+    check(acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.scripts.pages.back().lifecycle == 4 &&
+              s.scripts.professions.at(4).status == 1 &&
+              !s.scripts.professions.at(4).pending_notice &&
+              s.scene.world.world.ai.professions.at(4).unlocked &&
+              s.scene.world.world.ai.growth.at(4).definition.extra == extra &&
+              s.scene.world.world.ai.accounting.funds() == cash &&
+              s.scene.random.draws() == draws && s.scene.calendar.units == date,
+          "94r4 final confirmation closes without repeating mastery bonus or cash/random/time");
+    check(std::all_of(catalog.begin(), catalog.end(), [&](const auto &entry) {
+              const auto &now = s.catalog.at(entry.first);
+              return now.inventory == entry.second.inventory &&
+                     now.free_purchases == entry.second.free_purchases;
+          }), "profession announcement does not grant shared equipment or item inventory");
+    before = startup_world_state_digest(s);
+    check(acknowledge_startup_world_runtime_page(s, reward) == E::invalid_page &&
+              startup_world_state_digest(s) == before,
+          "retired94 rejects stale repeated confirmation without touching older state");
+    page_tick(s);
+    check(!s.page_counters.count(reward) && !s.page_human_bindings.count(reward) &&
+              std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                           [&](const auto &p) { return p.id == reward; }),
+          "94r4 counter, human binding and page retire together at the next framework entry");
+}
 void tax_pages() {
     using E = StartupWorldRuntimeError;
     auto s = fixture(90);
@@ -4315,6 +4390,7 @@ int main() {
         manual_help_page();
         present_directory_pages();
         human_profession_and_mastery();
+        mastery_profession_announcement();
         tax_pages();
         std::cout << "startup world pages checks: " << checks << '\n';
     } catch (const std::exception &error) {

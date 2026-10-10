@@ -65,6 +65,8 @@ app::WorldCommandResult apply(State &candidate, const app::WorldCommand &command
     case Kind::cancel_build_menu:
     case Kind::confirm_build:
     case Kind::cancel_build:
+    case Kind::confirm_edit:
+    case Kind::cancel_edit:
     case Kind::open_facility:
     case Kind::facility_action:
     case Kind::open_human:
@@ -632,13 +634,45 @@ int main(int argc, char **argv) {
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
-        if (mode == "inspect-third-input") {
+        if (mode == "inspect-third-input" || mode == "check-third-layout") {
             const auto directory =
                 isolated_directory(argv[0], argv[2], "ark-active-second-star-v1\n");
             const auto before = checkpoint(load<LateStrategy>(directory, 0));
-            const auto prefix = load<LateStrategy>(directory, 1);
+            auto prefix = load<LateStrategy>(directory, 1);
             verify_late_endpoint(prefix, before);
             std::cout << prefix.strategy.diagnose_construction(prefix.state) << std::endl;
+            if (mode == "check-third-layout") {
+                const auto old_slot = bytes(app::world_save_slot_path(directory, 1));
+                LateStrategy strategy(3);
+                strategy.reconcile(prefix.state);
+                for (int n = 0; n < 1000 && !strategy.stats().layout_complete; ++n) {
+                    if (const auto action = strategy.next(prefix.state)) {
+                        auto candidate = prefix.state;
+                        const auto result = apply(candidate, *action);
+                        strategy.observe(prefix.state, *action, result, candidate);
+                        prefix.state = std::move(candidate);
+                    }
+                    if (strategy.stats().layout_complete)
+                        break;
+                    auto next = sim::prepare_startup_world_runtime(prefix.state);
+                    require(next.candidate.has_value(), "Real-prefix road smoke update rejected");
+                    require(sim::update_startup_world_render_cache(*next.candidate),
+                            "Real-prefix road smoke render cache rejected");
+                    strategy.observe_tick(prefix.state, *next.candidate);
+                    prefix.state = std::move(*next.candidate);
+                }
+                require(
+                    strategy.stats().layout_complete && strategy.stats().layout_road_cells == 6 &&
+                        strategy.stats().layout_cost == 360 &&
+                        bytes(app::world_save_slot_path(directory, 1)) == old_slot,
+                    "Actual road strategy failed its bounded real-prefix smoke or modified input");
+                std::cout << "LAYOUT_SMOKE " << strategy.diagnose(prefix.state) << std::endl;
+                std::cout << strategy.diagnose_construction(prefix.state) << std::endl;
+                std::cout
+                    << "PASS actual command road-branch smoke in temporary Owner; no files saved"
+                    << std::endl;
+                return 0;
+            }
             std::cout << "PASS read-only third-star construction input inspection; no updates or "
                          "mutations"
                       << std::endl;

@@ -16,6 +16,8 @@
 
 用户默认目录另有旧系统版本1及旧e73手动档，当前系统版本2按既有政策拒绝。用户明确要求删除后，仅删除已核实的两个旧文件，并保留忽略目录中的副本；默认目录的标题读取/实际窗口随后exit0、音频26/26。Windows错误输出改用控制台Unicode API，重定向仍为UTF-8，不改变调用者代码页。这是本地旧档处理，不增加迁移或静默丢档政策。
 
+清理checkpoint为`4d3b0d1`。后继`808110b`仅补自动经营测试，玩家包对应此提交：`build/validation/product-cleanup/release-package-ec176e5954e640c79f631e0531872ed0/dist/ark-village-windows10-x64.zip`，16520637字节（15.76MiB），解压25629659字节，729文件/15个必要DLL，已不带ark_game。独立解压、纯系统PATH/空cwd下资源检查、标题、保存和新进程读取均通过；87051字节手动档读取后不变，三个窗口已检查，进程全部收齐。结果在同根`unpack-check-912e5e8c1c0f42baab8d1ffd0041bbc6/RESULT.json`，没有上传发布或新增OS鼠标/听音认证。
+
 <a id="research-1f19c88-integration"></a>
 
 ## 1f19c88维护更新、Steam UI、音频与三星（2026-10-10，实施中）

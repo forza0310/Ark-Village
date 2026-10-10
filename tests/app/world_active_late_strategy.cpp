@@ -260,6 +260,15 @@ void ActiveLateVillageStrategy::reconcile(const State &s) {
     require(stats_.pot_month < 0 || activity_count(s, 30) > 0, "pot import lost across reload");
     require(!stats_.western_unlock_claimed || s.facility_presence.at(40) == 2,
             "claimed restaurant qualification lost across reload");
+    if (stats_.layout_old_shop) {
+        require(stats_.layout_complete && stats_.layout_road_cells == 6 &&
+                    stats_.layout_moved_shop &&
+                    !s.scene.world.world.facilities.count(stats_.layout_old_shop) &&
+                    s.scene.world.world.facilities.at(stats_.layout_moved_shop).placement.anchor ==
+                        ref::Position{8, 7} &&
+                    !(s.facility_flags.at(stats_.layout_moved_shop) & 1U),
+                "road-expansion business checkpoint lost its completed connected moved shop");
+    }
     for (const auto id : stats_.residents)
         require(s.human_homes.at(id)[2] != 0, "admitted resident lost across reload");
     for (const auto id : stats_.buildings)
@@ -276,6 +285,35 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
     const auto &p = top(s);
     if (p.lifecycle == 0)
         return {};
+    if (stats_.target_rank == 3 && stats_.layout_old_shop && !stats_.layout_complete &&
+        s.scene.scene_state == 1 && s.build_mode != 0) {
+        auto c = command(Kind::confirm_edit);
+        c.orientation = ref::FacilityOrientation::first;
+        c.selection = s.build_mode;
+        c.definition = s.build_definition.value_or(-1);
+        c.edit_anchor = s.build_anchor;
+        c.facility = s.build_moving_facility.value_or(0);
+        if (s.build_mode == 6) {
+            if (stats_.layout_moved_shop) {
+                c.kind = Kind::cancel_edit;
+                return c;
+            }
+            c.anchor = {10, 7};
+        } else if (s.build_mode == 7) {
+            c.anchor = {8, 7};
+        } else if (s.build_mode == 1) {
+            if (stats_.layout_road_cells == 6) {
+                c.kind = Kind::cancel_edit;
+                return c;
+            }
+            c.anchor = stats_.layout_road_cells == 0 ? ref::Position{10, 7} : ref::Position{9, 3};
+        } else if (s.build_mode == 2) {
+            c.anchor = stats_.layout_road_cells == 0 ? ref::Position{10, 7} : ref::Position{9, 7};
+        } else {
+            require(false, "unexpected edit mode in road-expansion route");
+        }
+        return c;
+    }
     if (s.build_definition) {
         require(*s.build_definition == build_definition_, "unexpected placement definition");
         auto c = command(build_committed_ ? Kind::cancel_build : Kind::confirm_build);
@@ -296,6 +334,48 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                 return c;
             }
         const bool third = stats_.target_rank == 3;
+        if (third && !stats_.layout_complete && (stats_.layout_old_shop || !free_roadside(s, 40))) {
+            const auto road_quote = sim::startup_world_build_quote(s, 18);
+            require(road_quote.has_value(), "road expansion lacks current construction quote");
+            if (cash(s) < reserve(s) + 300 + 6 * road_quote->construction_cost)
+                return {};
+            if (!stats_.layout_old_shop) {
+                require(s.fence_level == 0 && (s.scripts.user_flags & 32U) != 0,
+                        "road expansion requires the observed fence and real move qualification");
+                const auto &map = s.scene.world.world.map;
+                const auto &cell = map.cells.at(7 * map.width + 10);
+                require(cell.facility.has_value(), "observed branch-entry shop is absent");
+                const auto id = cell.facility->instance_id.value;
+                const auto &shop = s.scene.world.world.facilities.at(id);
+                require(shop.kind == 3 && shop.status == 1 &&
+                            shop.placement.shape == ref::FacilityShape::single &&
+                            shop.placement.definition_id == 45 &&
+                            shop.placement.anchor == ref::Position{10, 7} &&
+                            map.cells.at(7 * map.width + 11).category == ref::RouteCategory::road,
+                        "unknown branch-entry layout; refuse automatic relocation");
+                for (const auto point : {ref::Position{8, 7},
+                                         {9, 3},
+                                         {9, 4},
+                                         {9, 5},
+                                         {9, 6},
+                                         {9, 7},
+                                         {7, 3},
+                                         {8, 3},
+                                         {7, 4},
+                                         {8, 4}}) {
+                    const auto &tile = map.cells.at(point.y * map.width + point.x);
+                    require(!tile.facility && tile.legacy_state == 4,
+                            "observed branch, destination or school reservation is occupied");
+                }
+                stats_.layout_old_shop = id;
+                build_definition_ = -2;
+            } else {
+                require(stats_.layout_moved_shop && stats_.layout_road_cells < 6,
+                        "incomplete road expansion has no next action");
+                build_definition_ = 18;
+            }
+            return command(Kind::open_build_menu);
+        }
         const bool needs_western = third && s.rank == 2 && s.facility_presence.at(40) != 2;
         const int western_reserve = needs_western ? s.rules->facility_initial.at(40).capacity : 0;
         if ((!third && stats_.pot_month >= 0) || (third && stats_.school_activity_month >= 0))
@@ -669,6 +749,66 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
             "command rejected kind=" + std::to_string(static_cast<int>(c.kind)) + "; " +
                 diagnose(before));
     ++stats_.commands;
+    if (stats_.target_rank == 3 && c.kind == Kind::confirm_edit && before.build_mode == 7) {
+        const auto old_id = stats_.layout_old_shop;
+        require(result.created && old_id && !stats_.layout_moved_shop,
+                "relocation lacks unique source/destination receipt");
+        const auto new_id = *result.created;
+        const auto &old_shop = before.scene.world.world.facilities.at(old_id);
+        const auto &new_shop = after.scene.world.world.facilities.at(new_id);
+        require(
+            !after.scene.world.world.facilities.count(old_id) &&
+                old_shop.placement.definition_id == new_shop.placement.definition_id &&
+                new_shop.placement.anchor == ref::Position{8, 7} &&
+                old_shop.status == new_shop.status && old_shop.sales == new_shop.sales &&
+                before.facility_monthly_cash.at(old_id) == after.facility_monthly_cash.at(new_id) &&
+                before.facility_ordinals.at(old_id) == after.facility_ordinals.at(new_id) &&
+                before.facility_original_ids.at(old_id) == after.facility_original_ids.at(new_id) &&
+                cash(before) - cash(after) == 300,
+            "real relocation must preserve shop identity/receipts and charge exactly 300G");
+        for (std::size_t n = 0; n < before.scene.world.world.map.cells.size(); ++n)
+            if (before.scene.world.world.map.cells[n].category == ref::RouteCategory::road)
+                require(after.scene.world.world.map.cells[n].category == ref::RouteCategory::road,
+                        "relocation changed an existing road");
+        stats_.layout_moved_shop = new_id;
+        if (stats_.buildings.erase(old_id))
+            stats_.buildings.insert(new_id);
+        stats_.layout_cost += 300;
+    }
+    if (stats_.target_rank == 3 && c.kind == Kind::confirm_edit && before.build_mode == 2 &&
+        stats_.layout_old_shop && !stats_.layout_complete) {
+        const auto quote = sim::startup_world_build_quote(before, 18);
+        require(quote.has_value(), "road receipt has no current price");
+        const auto &old_map = before.scene.world.world.map;
+        const auto &new_map = after.scene.world.world.map;
+        int changed{};
+        for (int y = 0; y < old_map.height; ++y)
+            for (int x = 0; x < old_map.width; ++x) {
+                const auto n = y * old_map.width + x;
+                if (old_map.cells[n].category == new_map.cells[n].category)
+                    continue;
+                require(((x == 10 && y == 7) || (x == 9 && y >= 3 && y <= 7)) &&
+                            old_map.cells[n].category == ref::RouteCategory::ground &&
+                            new_map.cells[n].category == ref::RouteCategory::road &&
+                            !old_map.cells[n].facility && !new_map.cells[n].facility,
+                        "road input changed an unplanned cell or occupied facility");
+                ++changed;
+            }
+        require(changed == (stats_.layout_road_cells == 0 ? 1 : 5) &&
+                    cash(before) - cash(after) == changed * quote->construction_cost,
+                "road must charge current quote for exactly its actual changed cells");
+        stats_.layout_road_cells += changed;
+        stats_.layout_cost += cash(before) - cash(after);
+    }
+    if (stats_.target_rank == 3 && c.kind == Kind::cancel_edit && before.build_mode == 1 &&
+        stats_.layout_road_cells == 6) {
+        require(after.scene.scene_state == 0 && !after.build_definition &&
+                    !(after.facility_flags.at(stats_.layout_moved_shop) & 1U) &&
+                    free_roadside(after, 63).has_value() &&
+                    free_roadside(after, 40, true).has_value(),
+                "completed road branch must connect the moved shop, school and restaurant sites");
+        stats_.layout_complete = true;
+    }
     if (stats_.target_rank == 3 && c.kind == Kind::commerce_action &&
         c.commerce_action == Commerce::confirm) {
         const auto view = sim::inspect_startup_world_commerce_page(before, c.page);
@@ -788,7 +928,10 @@ bool ActiveLateVillageStrategy::checkpoint(const State &s) const {
                       stats_.western_initial_sales &&
                   stats_.task_successes > 0
             : stats_.admissions > 0 && stats_.new_shop_income > 0 && stats_.task_successes > 0;
-    return business && top(s).kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
+    return business &&
+           (!stats_.layout_old_shop ||
+            (stats_.layout_complete && !(s.facility_flags.at(stats_.layout_moved_shop) & 1U))) &&
+           top(s).kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
            !s.build_definition && !s.active_task && s.activity_pages_initialized.empty() &&
            std::all_of(s.scene.world.world.facilities.begin(), s.scene.world.world.facilities.end(),
                        [](const auto &f) {
@@ -828,7 +971,10 @@ std::string ActiveLateVillageStrategy::diagnose(const State &s) const {
         << " school_activity_month=" << stats_.school_activity_month
         << " western_presence=" << s.facility_presence.at(40)
         << " western_unlock_points=" << stats_.western_unlock_points
-        << " western_unlock_claimed=" << stats_.western_unlock_claimed;
+        << " western_unlock_claimed=" << stats_.western_unlock_claimed
+        << " moved_shop=" << stats_.layout_old_shop << "->" << stats_.layout_moved_shop
+        << " road_cells=" << stats_.layout_road_cells << " layout_cost=" << stats_.layout_cost
+        << " layout_complete=" << stats_.layout_complete;
     return out.str();
 }
 std::string ActiveLateVillageStrategy::diagnose_construction(const State &s) const {
@@ -873,6 +1019,17 @@ std::string ActiveLateVillageStrategy::diagnose_construction(const State &s) con
         if (place)
             out << " first_site=" << place->x << ',' << place->y;
     }
+    for (int y = bounds[1].y + 1; y < bounds[0].y; ++y) {
+        out << "\nMAP_ROW y=" << y;
+        for (int x = bounds[0].x + 1; x < bounds[1].x; ++x) {
+            const auto &cell = map.cells.at(y * map.width + x);
+            out << " x" << x << '=';
+            if (cell.facility)
+                out << 'F' << cell.facility->instance_id.value;
+            else
+                out << 'S' << cell.legacy_state;
+        }
+    }
     return out.str();
 }
 void ActiveLateVillageStrategy::encode(std::ostream &out) const {
@@ -901,6 +1058,8 @@ void ActiveLateVillageStrategy::encode(std::ostream &out) const {
     v.trade.encode(out);
     out << "WESTERN_UNLOCK_1 " << v.western_unlock_points << ' ' << v.western_unlock_paid << ' '
         << v.western_unlock_claimed << '\n';
+    out << "ROAD_BRANCH_1 " << v.layout_old_shop << ' ' << v.layout_moved_shop << ' '
+        << v.layout_road_cells << ' ' << v.layout_cost << ' ' << v.layout_complete << '\n';
     require(bool(out), "cannot encode strategy evidence");
 }
 ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
@@ -940,6 +1099,15 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
         in >> extension >> v.western_unlock_points >> v.western_unlock_paid >>
             v.western_unlock_claimed;
         require(extension == "WESTERN_UNLOCK_1", "unknown restaurant receipt extension");
+        in >> std::ws;
+        if (in.peek() != std::char_traits<char>::eof()) {
+            in >> extension >> v.layout_old_shop >> v.layout_moved_shop >> v.layout_road_cells >>
+                v.layout_cost >> v.layout_complete;
+            require(extension == "ROAD_BRANCH_1", "unknown road branch receipt extension");
+        } else {
+            require(v.target_rank == 2, "third-star evidence lacks road branch receipts");
+            in.clear();
+        }
     } else {
         require(v.target_rank == 2, "third-star evidence lacks restaurant receipt extension");
         in.clear();
@@ -948,6 +1116,9 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
                 v.gifts >= 0 && v.admissions >= 0 && v.western_unlock_points >= 0 &&
                 (!v.western_unlock_claimed || v.western_unlock_paid) &&
                 (v.western_unlock_paid == (v.western_unlock_points > 0)) &&
+                v.layout_road_cells >= 0 && v.layout_road_cells <= 6 && v.layout_cost >= 0 &&
+                (!v.layout_complete ||
+                 (v.layout_old_shop && v.layout_moved_shop && v.layout_road_cells == 6)) &&
                 v.task_successes == static_cast<int>(v.successful_tasks.size()) &&
                 v.admissions == static_cast<int>(v.residents.size()),
             "invalid late evidence totals");

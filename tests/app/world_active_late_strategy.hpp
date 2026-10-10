@@ -22,6 +22,10 @@ struct ActiveLateVillageStats {
     bool third_star_conditions{}, school_activity_paid{};
     int western_unlock_points{};
     bool western_unlock_paid{}, western_unlock_claimed{};
+    std::uint64_t layout_old_shop{}, layout_moved_shop{};
+    int layout_road_cells{};
+    std::int64_t layout_cost{};
+    bool layout_complete{};
     std::set<std::uint64_t> buildings, successful_tasks;
     std::set<int> residents;
 };

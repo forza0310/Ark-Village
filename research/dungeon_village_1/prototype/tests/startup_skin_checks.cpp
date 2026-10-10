@@ -1679,6 +1679,88 @@ void information_menu_skin(Checks &check,const std::filesystem::path &root) {
               "raw9两方向手形SEB均引用finger_r.png的image70，不能寻找不存在的finger_l.png");
     }
 }
+void system_menu_skin(Checks &check) {
+    SteamSystemMenuSkinInput input;input.selection=4;
+    SteamInformationMenuSkinOptions options;
+    constexpr std::array<int,4> widths{0,29,59,89},heights{0,9,19,29};
+    const auto images=[](const SteamInformationSkinPlan &plan,int image) {
+        std::vector<StartupSkinDraw> result;
+        for(const auto &draw:plan.draws)if(const auto *p=std::get_if<StartupSkinDraw>(&draw))
+            if(p->image==image)result.push_back(*p);
+        return result;
+    };
+    for(int frame=0;frame<4;++frame) {
+        input.frame=frame;
+        options.measured_text_widths=frame==3?std::optional<std::array<int,5>>{{80,81,0,80,81}}:std::nullopt;
+        const auto plan=steam_system_menu_skin(input,options);
+        check(plan && plan->raw==10 && plan->origin==options.origin && plan->touches.size()==6,
+              "Steam raw10纯计划沿原五行及共尾KEYCLICK，不建立Owner系统页");
+        const auto backgrounds=images(*plan,25),hands=images(*plan,70);
+        check(backgrounds.size()==(frame?5U:0U) && hands.size()==(frame==3?1U:0U) &&
+              plan->draws.size()==(frame==0?0U:frame==3?11U:5U) &&
+              images(*plan,147).empty() && images(*plan,168).empty(),
+              "raw10展开只画底图，稳定五文字一手形，无NEW或主菜单图标");
+        for(int row=0;row<5;++row) {
+            const auto &touch=plan->touches[row];
+            check(touch.component==9 && touch.value==(0x20000|row) && touch.option==0 &&
+                  touch.rectangle==std::array<int,4>{40,28*row,50,28},
+                  "raw10使用ID9与原右侧热区，不误用主菜单ID8");
+            if(frame)check(backgrounds[row].crop==std::array<int,4>{68,row==4?0:29,widths[frame],heights[frame]} &&
+                  backgrounds[row].offset==std::array<int,2>{1,28*row+1},
+                  "raw10复用type1源裁片缩短与选中底图");
+            if(frame==3) {
+                const auto &label=std::get<SteamInformationText>(plan->draws[2*row+1]);
+                check(label.role==SteamInformationTextRole::menu_entry && label.argument==20+row &&
+                      label.slot==row && label.position==std::array<int,2>{7,28*row+9} &&
+                      label.rgb==(row==4?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220}) &&
+                      label.font_size==((row==1||row==4)?11:0),
+                      "Steam系统五tag20..24，末项不套APK28；严格实测宽阈值80");
+            }
+        }
+        const auto &key=plan->touches.back();
+        check(key.component==4 && key.value==22 && key.option==2 && !key.rectangle,
+              "raw10尾KEYCLICK无矩形不扩成全屏退出按钮");
+        if(frame<3) {
+            options.measured_text_widths=std::array<int,5>{-1,-1,-1,-1,-1};
+            check(steam_system_menu_skin(input,options).has_value(),"未稳定帧不提前消费未绘制测宽");
+        }
+    }
+    for(const auto language:std::array<std::array<int,2>,4>{{{0,0},{0,1},{1,0},{1,1}}}) {
+        options.japanese=language[0];options.english=language[1];
+        options.measured_text_widths=std::array<int,5>{74,75,0,0,0};
+        const auto plan=*steam_system_menu_skin(input,options);
+        check(plan.touches[0].rectangle==std::array<int,4>{40,0,options.japanese?44:50,28} &&
+              std::get<SteamInformationText>(plan.draws[1]).font_size==0 &&
+              std::get<SteamInformationText>(plan.draws[3]).font_size==(options.japanese?11:0),
+              "raw10日文84宽与74阈值、英语独立，不因菜单类别改变type1布局");
+    }
+    options={};options.measured_text_widths=std::array<int,5>{};
+    options.origin={200,200};options.safe_left=10;
+    const auto overflow=*steam_system_menu_skin(input,options);
+    check(overflow.origin==options.origin && overflow.touches[0].rectangle==std::array<int,4>{-10,-105,50,28} &&
+          images(overflow,70)[0].offset==std::array<int,2>{46,20},
+          "raw10右底修正覆盖safe-left，保留原点及负局部坐标");
+    options.origin={0,0};options.safe_left=120;
+    const auto left=*steam_system_menu_skin(input,options);
+    check(images(left,70)[0].sprite==21 && images(left,70)[0].offset==std::array<int,2>{118,125},
+          "raw10手形按局部dx恰120转向，仍用独立当前SEB帧");
+    options.on_top=false;
+    check(images(*steam_system_menu_skin(input,options),70).empty() &&
+          steam_system_menu_skin(input,options)->touches.size()==6,"菜单覆盖保留raw10触摸但不画手形");
+    options.covered_by_nonmenu_subform=true;options.measured_text_widths.reset();
+    const auto hidden=steam_system_menu_skin(input,options);
+    check(hidden && hidden->draws.empty() && hidden->touches.empty(),"非菜单遮挡跳过raw10测宽与绘制");
+    options={};options.measured_text_widths=std::array<int,5>{};
+    for(int fault=0;fault<9;++fault) {
+        auto bad=input;auto changed=options;
+        if(fault==0)bad.frame=-1;if(fault==1)bad.frame=4;
+        if(fault==2)bad.selection=-1;if(fault==3)bad.selection=5;
+        if(fault==4)changed.measured_text_widths.reset();if(fault==5)(*changed.measured_text_widths)[4]=-1;
+        if(fault==6)changed.canvas[1]=0;if(fault==7)changed.safe_left=-1;
+        if(fault==8)changed.safe_left=std::numeric_limits<int>::max();
+        check(!steam_system_menu_skin(bad,changed),"raw10非法帧/选择/测宽/画布/溢出显式拒绝");
+    }
+}
 void information_menu_status_skin(Checks &check,const std::filesystem::path &root) {
     using NK=SteamInformationNumberKind;
     auto owner=test_support::page_fixture(9);
@@ -1823,6 +1905,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     adventurer_information_skin(check,source_root);
     town_facility_information_skin(check,source_root);
     information_menu_skin(check,source_root);
+    system_menu_skin(check);
     information_menu_status_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);

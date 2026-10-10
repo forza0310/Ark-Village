@@ -1,5 +1,7 @@
 # 阶段、当前能力与下一步
 
+2026-10-10[Steam系统子菜单](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)已核真实五项20～24、RankForm与结束询问，明确APK末项28版差；正式type1只读计划与[四条件示例](../ui/examples/steam-system-menu.png)已交付，visuals短测0.80秒通过。保存／纪录／配置／高分／结束平台结果及真实菜单Owner继续接线，不能用纯皮肤宣称系统操作完成。
+
 2026-10-10[任务NEW与建设缓存](../VERIFICATION.md#任务new建设缓存与菜单owner投影2026-10-10)已接真实工厂、raw22确认／返回、raw21选择和完整Owner恢复，菜单NEW／GET只读投影保留原短路。八项受影响短测55.66秒通过；字段schema扩展、旧布局拒绝不迁移，世界5／应用8／系统2及128MiB保持。下一批接真实raw3缓存与原Init时点、raw4／7／10及Session／框架输入；任务追踪和完整光标仍单列，不把现快捷入口当原菜单。
 
 2026-10-10[情报菜单HUD／四摘要](../ui/INFORMATION_MENU.md#菜单右上hud与四行摘要)已接唯一Owner只读投影、正式有序计划和[三类参考图](../ui/examples/steam-information-status.png)。projection／visuals两项短测0.93秒通过，覆盖完整名单、当前职业／性别、遭遇缓存、真实工厂设施引用、缺失／退休拒绝、数字与独立ImageClip顺序；无Owner／保存格式变化。下一步继续原输入／虚拟光标、字体和余下皮肤消费者，不扩研究经营长跑。

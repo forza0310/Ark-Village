@@ -47,7 +47,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 7 | ACTION_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
 | 8 | SETTING_MENU | 菜单 | 仅声明；更新／绘制／动态链待逐项 |
 | 9 | INFO_MENU | 菜单 | 静态：[五标签／输入、菜单及HUD摘要](INFORMATION_MENU.md)已核；维护：Owner、五行与HUD摘要只读计划已接。动态：无本页完整窗口认证；实际父原点、字体／触摸保护和一次性光标消费仍独立 |
-| 10 | SYSTEM_MENU | 菜单 | 系统子菜单局部静态＋S049 |
+| 10 | SYSTEM_MENU | 菜单 | 静态：[Steam五tags20～24、系统结果与type1绘制](PAGES.md#steam主菜单缓存输入与局部皮肤)已核，末项与APK28不同。维护：正式只读行计划及[四条件示例](examples/steam-system-menu.png)已接；真实Owner、保存／RankForm／结束与平台请求仍缺。动态：S049局部外观，不认证全输入或结果 |
 | 11 | EVENT | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 12 | CONFIG | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 13 | MANUAL | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |

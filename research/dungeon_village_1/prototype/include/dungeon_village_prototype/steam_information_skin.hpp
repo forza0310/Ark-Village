@@ -92,6 +92,13 @@ struct SteamInformationMenuSkinOptions {
 std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     const SteamInformationMenuSkinOptions &options);
+struct SteamSystemMenuSkinInput {
+    int frame{}, selection{};
+};
+// Steam raw10固定五项20..24，复用DrawMenu2(type1)；稳定帧显式消费五项实际测宽。
+// 只生成皮肤，不建立页面，不执行保存、纪录、配置、RankForm、退出或浏览器动作。
+std::optional<SteamInformationSkinPlan> steam_system_menu_skin(
+    const SteamSystemMenuSkinInput &input,const SteamInformationMenuSkinOptions &options);
 // 在五行局部计划后按相同origin消费：右上HUD抵消origin，四摘要保留原局部坐标。
 // 读唯一Owner的村点、选中任务及全名单，不重数遭遇缓存，不消费帧/随机/输出。
 // 被非菜单SubForm覆盖返回空计划；摘要人物保留普通clip与ImageClip完整原序。

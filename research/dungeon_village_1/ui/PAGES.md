@@ -366,6 +366,8 @@ Steam raw10证据：`SubForm.Init` RVA `312460`在VA `10314FF2–1031502C`写五
 
 tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1、保留父菜单；后续`10327587–103275BF`消费dialog，结果0且dialogId不为99才调用`FormManager.RemoveAllForms()`并立即返回。结果非0清dialog引用后继续菜单，不重设选择。此局部不能直接认证进程关闭、立即存档或回标题，结束／保存上游须另核；id99及无菜单结果时软5的OpenBrowser属于独立平台请求，维护不自动打开。tag28代码虽仍在`103276ED–10327714`，Init不列28。`_draw`在`103531F7–10356CB6`分派raw10到DrawMenu2(type1)，沿用已核子菜单皮肤／测宽，不把主菜单图标与safe-left套入系统菜单。
 
+维护`steam_system_menu_skin`已给raw10五项的正式只读行计划，与raw9复用同一type1绘制循环；frame／selection由真实控制器提供，稳定帧须传五项实际测宽。保留缩源裁片、ID9基矩形、语言阈值、选中手形和共尾KEYCLICK；无NEW或分类图标。它不创建页面，不执行保存、纪录、配置、RankForm、结束或浏览器动作；HUD、内部光标、平台输入及外层软标签另接。[四条件例图](examples/steam-system-menu.png)直接消费正式计划与原素材，字体／中文词条为明确离线适配，不是原窗口动态。visuals定向0.80秒通过，Owner、schema及保存契约未变。
+
 ## 设施详情的条件与字段
 
 [页面74分类6955](../work/decompiled/sources/b/g.java)按顺序区分：定义f82e=12住宅；

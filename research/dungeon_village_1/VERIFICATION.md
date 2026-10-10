@@ -2,6 +2,12 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## Steam系统菜单type1皮肤2026-10-10
+
+`steam_system_menu_skin`按真实Init固定tags20～24，复用raw9有序type1绘制循环；原raw9 Owner检查、人物NEW查询及独立oracle保留。现visuals套件补帧／选择／测宽、语言阈值、负局部坐标、ID9、遮挡／手形及拒绝，受影响target构建及定向CTest通过0.80秒。Owner、schema、语义／预算、原素材和CMake target均未变；真实系统菜单控制器及保存、纪录、高分、结束结果不在此纯计划范围。
+
+正式CPU例图960×960／44054字节实际查看，32条绘制全部消费；字体、译文、帧与原点条件在[示例入口](ui/examples/README.md)明确，触摸未由静图提升为平台验收。未复制新原资源或建永久根／输出队列；临时导出CPP／EXE／JSON清理，代码与构建依赖仍在各自既有职责内，无新核对脚本／指纹／过程报告。构建、短测和子任务均已收齐，产品与住宅在途修改保留，不推送。
+
 ## 任务NEW、建设缓存与菜单Owner投影2026-10-10
 
 任务实例j新增正式耐久字段，真实工厂置true；raw22确认／返回原子清操作当时完整任务名单，入页不清、不误清历史任务。建设P／三类aY由唯一Owner持有，raw21普通／道路定义选择清r后刷新；包括施工中实例，撤除后允许陈旧值，恢复保留缓存、不按地图猜回最新。`steam_main_menu_notices`只读真实Owner，按原任务NEW／装备GET、商品→设施→活动及人物条件短路；缺实际消费源拒绝，不提前校验被屏蔽分支。真实raw3 Init、完整菜单控制器及任务追踪出口仍待接。

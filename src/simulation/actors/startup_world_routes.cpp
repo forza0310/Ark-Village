@@ -1,4 +1,5 @@
 #include "ark/simulation/actors/startup_world_routes.hpp"
+#include "startup_world_route_facts_private.hpp"
 
 #include "ark/simulation/facilities/facility_projection.hpp"
 
@@ -7,25 +8,33 @@
 
 namespace ark::simulation {
 namespace {
-const StartupDefinition *definition(const StartupWorldRouteFacts &f, int id) {
+const std::array<int, 4> *improvement(const StartupWorldRouteFacts &f, int id) {
+    const auto found = f.facility_improvements.find(id);
+    return found == f.facility_improvements.end() ? nullptr : &found->second;
+}
+const std::array<int, 4> *improvement(const StartupWorldRouteFactsView &f, int id) {
+    return f.facility_improvements(id);
+}
+// Share calculations without copying callbacks ahead of the original refusal.
+template <class Facts> const StartupDefinition *definition(const Facts &f, int id) {
     if (!f.rules)
         return nullptr;
     const auto found = std::find_if(f.rules->facilities.begin(), f.rules->facilities.end(),
                                     [id](const auto &d) { return d.id == id; });
     return found == f.rules->facilities.end() ? nullptr : &*found;
 }
+template <class Facts>
 std::optional<ref::FacilityEconomyValues> economy(const ref::WorldActorRoutesState &r,
-                                                  const StartupWorldRouteFacts &f,
-                                                  const StartupDefinition &d,
+                                                  const Facts &f, const StartupDefinition &d,
                                                   std::optional<std::uint64_t> instance = {}) {
     const auto use = r.world.facility_uses.find(d.id);
-    const auto improvement = f.facility_improvements.find(d.id);
-    if (use == r.world.facility_uses.end() || improvement == f.facility_improvements.end())
+    const auto improvements = improvement(f, d.id);
+    if (use == r.world.facility_uses.end() || !improvements)
         return {};
     ref::FacilityEconomyInput input;
     input.level = use->second.level;
     input.completed_definition_uses = use->second.completed_uses;
-    input.definition_improvements = improvement->second;
+    input.definition_improvements = *improvements;
     input.legacy_job_counts = f.job_counts;
     if (instance) {
         const auto neighbour = f.neighbourhood.find(*instance);
@@ -36,12 +45,14 @@ std::optional<ref::FacilityEconomyValues> economy(const ref::WorldActorRoutesSta
     }
     return ref::derive_facility_economy(d.economy, input).values;
 }
+template <class Facts>
 std::optional<std::vector<ref::ShopEquipmentDefinition>>
-equipment(const ref::WorldActorRoutesState &r, const StartupWorldRouteFacts &f,
-          bool materialize = true) {
+equipment(const ref::WorldActorRoutesState &r, const Facts &f, bool materialize = true) {
     if (!f.rules)
         return {};
     std::vector<ref::ShopEquipmentDefinition> result;
+    if (materialize)
+        result.reserve(f.rules->equipment.size());
     for (const auto &d : f.rules->equipment) {
         const auto current = r.catalog.find({d.shop.kind, d.shop.id});
         if (current == r.catalog.end())
@@ -54,9 +65,9 @@ equipment(const ref::WorldActorRoutesState &r, const StartupWorldRouteFacts &f,
     }
     return result;
 }
+template <class Facts>
 std::optional<ref::WorldDepartureInput> departure(const ref::WorldActorRoutesState &r,
-                                                  ref::CharacterId id,
-                                                  const StartupWorldRouteFacts &f,
+                                                  ref::CharacterId id, const Facts &f,
                                                   bool materialize = true) {
     if (!f.rules || f.surface.size() != r.world.map.cells.size())
         return {};
@@ -68,18 +79,36 @@ std::optional<ref::WorldDepartureInput> departure(const ref::WorldActorRoutesSta
     if (ground == f.rules->facilities.end())
         return {};
     input.catalogue.ground_definition = ground->id; // c/n初始化o.S取首个kind7。
-    if (materialize)
+    // Call-local first-definition index: source IDs fit this bounded scratch,
+    // while arbitrary fixture/future IDs retain the original linear lookup.
+    // Never cache economy values or reorder the original catalogue traversal.
+    std::array<const StartupDefinition *, 128> first_definitions{};
+    for (const auto &d : f.rules->facilities)
+        if (d.id >= 0 && static_cast<std::size_t>(d.id) < first_definitions.size() &&
+            !first_definitions[static_cast<std::size_t>(d.id)])
+            first_definitions[static_cast<std::size_t>(d.id)] = &d;
+    const auto first_definition = [&](int id) {
+        return id >= 0 && static_cast<std::size_t>(id) < first_definitions.size()
+                   ? first_definitions[static_cast<std::size_t>(id)]
+                   : definition(f, id);
+    };
+    if (materialize) {
+        input.catalogue.cell_definition_ids.reserve(f.surface.size());
+        input.catalogue.definitions.reserve(f.rules->facilities.size());
+        input.catalogue.instances.reserve(r.world.facilities.size());
         for (const auto &cell : f.surface)
             input.catalogue.cell_definition_ids.push_back(cell.definition);
+    }
     // 实际出发复用明细索引；未消费的出发输入不建节点，但仍按原序验证每项
     // 经济值并使用重复ID的首项。没有跨调用缓存等级／职业相关结果。
     for (const auto &d : f.rules->facilities) {
         const StartupDefinition *first;
         if (!materialize)
-            first = definition(f, d.id);
+            first = first_definition(d.id);
         else
-            first =
-                input.definition_details.emplace(d.id, d.detail).second ? &d : definition(f, d.id);
+            first = input.definition_details.emplace(d.id, d.detail).second
+                        ? &d
+                        : first_definition(d.id);
         const auto values = economy(r, f, *first);
         if (!values)
             return {};
@@ -103,8 +132,9 @@ std::optional<ref::WorldDepartureInput> departure(const ref::WorldActorRoutesSta
         input.home = ref::WorldDepartureHome{{home->second[0], home->second[1]}, home->second[2]};
     return input;
 }
+template <class Facts>
 std::optional<ref::CombatWeaponRule> weapon(const ref::WorldActorRoutesState &r,
-                                            ref::CharacterId id, const StartupWorldRouteFacts &f) {
+                                            ref::CharacterId id, const Facts &f) {
     const auto actor = r.world.ai.battle.actors.find(id);
     if (actor == r.world.ai.battle.actors.end() || !f.rules)
         return {};
@@ -123,8 +153,9 @@ std::optional<ref::CombatWeaponRule> weapon(const ref::WorldActorRoutesState &r,
             return d.battle;
     return {};
 }
+template <class Facts>
 std::optional<ref::WorldPathInput> path(const ref::WorldActorRoutesState &r, ref::CharacterId id,
-                                        const StartupWorldRouteFacts &f, bool materialize = true) {
+                                        const Facts &f, bool materialize = true) {
     if (!f.rules)
         return {};
     ref::WorldPathInput p;
@@ -166,9 +197,9 @@ bool live(const ref::WorldActorRoutesState &r, ref::CharacterId id) {
     return r.world.ai.battle.actors.count(id) && r.world.actors.count(id) &&
            r.world.ai.contexts.count(id);
 }
+template <class Facts>
 std::optional<ref::WorldActorDecisionInput> decision_input(const ref::WorldActorRoutesState &r,
-                                                           ref::CharacterId id,
-                                                           const StartupWorldRouteFacts &f,
+                                                           ref::CharacterId id, const Facts &f,
                                                            bool selective) {
     if (!live(r, id) || !f.rules)
         return {};
@@ -294,11 +325,15 @@ std::optional<ref::WorldActorDecisionInput> prepare_startup_world_decision_input
     const ref::WorldActorRoutesState &r, ref::CharacterId id, const StartupWorldRouteFacts &f) {
     return decision_input(r, id, f, true);
 }
+std::optional<ref::WorldActorDecisionInput> prepare_startup_world_decision_input_borrowed(
+    const ref::WorldActorRoutesState &r, ref::CharacterId id, const StartupWorldRouteFactsView &f) {
+    return decision_input(r, id, f, true);
+}
 namespace {
+template <class Facts>
 std::optional<ref::WorldActorCommandInput>
 command_input(const ref::WorldActorRoutesState &r, ref::CharacterId id,
-              const ref::LegacyActorControl &command, const StartupWorldRouteFacts &f,
-              bool selective) {
+              const ref::LegacyActorControl &command, const Facts &f, bool selective) {
     if (!live(r, id) || command.empty() || !f.rules)
         return {};
     // 19的成长提示及27..30的装备显示/提交共用商店消费者，均须完整目录。
@@ -318,10 +353,11 @@ command_input(const ref::WorldActorRoutesState &r, ref::CharacterId id,
         input.cached_view = metadata->second.cached_view;
     input.sound_projection = f.sound_projection;
     if (command[0] == 8) {
-        const auto d = departure(r, id, f);
+        auto d = departure(r, id, f);
         if (!d)
             return {};
-        input.departure = ref::WorldDepartureControlInput{*d, {}, {}};
+        // This local owns the complete catalogue and is not read after transfer.
+        input.departure = ref::WorldDepartureControlInput{std::move(*d), {}, {}};
     }
     if (command[0] == 24) {
         const auto &binding = r.world.actors.at(id).binding;
@@ -384,11 +420,14 @@ prepare_startup_world_command_input(const ref::WorldActorRoutesState &r, ref::Ch
                                     const StartupWorldRouteFacts &f) {
     return command_input(r, id, command, f, false);
 }
-std::optional<ref::WorldActorCommandInput>
-prepare_startup_world_command_input_for_command(const ref::WorldActorRoutesState &r,
-                                                ref::CharacterId id,
-                                                const ref::LegacyActorControl &command,
-                                                const StartupWorldRouteFacts &f) {
+std::optional<ref::WorldActorCommandInput> prepare_startup_world_command_input_for_command(
+    const ref::WorldActorRoutesState &r, ref::CharacterId id,
+    const ref::LegacyActorControl &command, const StartupWorldRouteFacts &f) {
+    return command_input(r, id, command, f, true);
+}
+std::optional<ref::WorldActorCommandInput> prepare_startup_world_command_input_borrowed(
+    const ref::WorldActorRoutesState &r, ref::CharacterId id,
+    const ref::LegacyActorControl &command, const StartupWorldRouteFactsView &f) {
     return command_input(r, id, command, f, true);
 }
 } // namespace ark::simulation

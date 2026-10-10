@@ -1,7 +1,7 @@
 #include "ark/simulation/combat/rules/combat_commit.hpp"
-#include "ark/simulation/world/rules/world_control.hpp"
 #include "ark/simulation/facilities/rules/world_facilities.hpp"
 #include "ark/simulation/facilities/rules/world_shop.hpp"
+#include "ark/simulation/world/rules/world_control.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -383,6 +383,62 @@ void no_target_monster() {
               r.candidate->state.shop.world.ai.growth.at(0).definition.extra[0] == 0,
           "real monster17 with no target still holds while animation remains unfinished");
 }
+void private_domain_boundaries() {
+    enum class Outcome { advance, hold, remove, fail, unchanged, malformed, stale };
+    struct Scenario {
+        Outcome outcome;
+        WorldControlError error;
+        WorldControlFlow flow;
+    };
+    const Scenario scenarios[]{
+        {Outcome::advance, WorldControlError::none, WorldControlFlow::finished},
+        {Outcome::hold, WorldControlError::none, WorldControlFlow::held},
+        {Outcome::remove, WorldControlError::none, WorldControlFlow::delete_requested},
+        {Outcome::fail, WorldControlError::consumer_failed, {}},
+        {Outcome::unchanged, WorldControlError::no_progress, {}},
+        {Outcome::malformed, WorldControlError::malformed_control, {}},
+        {Outcome::stale, WorldControlError::stale_actor, {}}};
+    for (const auto &scenario : scenarios) {
+        auto source = fixture();
+        source.shop.world.ai.battle.actors.at({1}).control.queue = {{6, 4}, {21}};
+        auto a = adapter();
+        a.domain = [](const Owner &, CharacterId) -> std::optional<WorldControlStep<Owner>> {
+            throw std::runtime_error("private refusal must not retry the value consumer");
+        };
+        int calls{};
+        a.domain_private = [&](Owner &draft, CharacterId id) -> std::optional<WorldControlAction> {
+            ++calls;
+            draft.consumed.push_back(21);
+            auto &control = draft.shop.world.ai.battle.actors.at(id).control;
+            if (scenario.outcome == Outcome::unchanged)
+                return WorldControlAction::continue_same_call;
+            control.queue.clear();
+            if (scenario.outcome == Outcome::fail)
+                return {};
+            if (scenario.outcome == Outcome::malformed)
+                control.state = 21;
+            if (scenario.outcome == Outcome::stale || scenario.outcome == Outcome::remove)
+                draft.shop.world.ai.battle.actors.erase(id);
+            return scenario.outcome == Outcome::hold     ? WorldControlAction::hold_false
+                   : scenario.outcome == Outcome::remove ? WorldControlAction::delete_true
+                                                         : WorldControlAction::continue_same_call;
+        };
+        const auto result = prepare_world_control(source, {1}, a);
+        check(result.error == scenario.error && calls == 1 &&
+                  result.candidate.has_value() == (scenario.error == WorldControlError::none),
+              "private domain preserves refusal, progress and action exit boundaries");
+        if (result.candidate)
+            check(result.candidate->flow == scenario.flow &&
+                      result.candidate->domain_segments == 1 &&
+                      result.candidate->local_commands == 1,
+                  "private domain keeps local/domain accounting and deletion-before-read order");
+        check(source.consumed.empty() &&
+                  source.shop.world.ai.battle.actors.at({1}).control.flags == 0 &&
+                  source.shop.world.ai.battle.actors.at({1}).control.queue ==
+                      std::vector<LegacyActorControl>{{6, 4}, {21}},
+              "private failure or success never publishes the caller's source draft");
+    }
+}
 } // namespace
 int main() {
     try {
@@ -393,6 +449,7 @@ int main() {
         fresh_waits_and_motion();
         setters_and_equipment();
         no_target_monster();
+        private_domain_boundaries();
         std::cout << "world_control checks: " << checks << '\n';
         return 0;
     } catch (const std::exception &e) {

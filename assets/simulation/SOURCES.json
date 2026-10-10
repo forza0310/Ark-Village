@@ -596,11 +596,11 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_control.hpp",
       "source_sha256": "44fd0451da054ac76871ae38c54c8c8c44dfcce7ea5816397f5f09b60aec7ab6",
       "source_bytes": 6011,
-      "sha256": "1612bb22d34420a19d2989f3eeacd41196c49d8b11433b55adb080cbfeb4399d",
-      "bytes": 6732,
+      "sha256": "5b27a9c2e4a4bc776799541faddb0bbb84e94cabdbc8474ba253910228447562",
+      "bytes": 7264,
       "product_patch": {
         "imported_sha256": "ee46752bb686baad53d807b494367daaf56fbfe530a6a76ff4b688aa5d3c34a0",
-        "reason": "Five-year save performance: consuming control kernel keeps FIFO, validation and rollback while moving last-use disposable Owner. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Five-year save performance: consuming control kernel keeps FIFO, validation and rollback while moving last-use disposable Owner. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Add an optional synchronous domain consumer for an already independent private control draft; preserve progress, action exits, no-fallback refusal and outer rollback."
       }
     },
     {
@@ -776,11 +776,11 @@
       "source": "research/dungeon_village_1/example/include/dungeon_village_reference/world_perception.hpp",
       "source_sha256": "756c1c042e4c0f4964429de19ec44d27a554f092996ab3c9a78a0ddf6ccd63f7",
       "source_bytes": 7060,
-      "sha256": "c03ef28e995d16c6111770c712e20cd2425a42cd9ce40c4f13cdb0f552620d57",
-      "bytes": 8673,
+      "sha256": "1e9ea11e46edbd7265e8c1d95c1dfd4c8fba0a353b7f5dc7c27b64535d26ed0c",
+      "bytes": 9007,
       "product_patch": {
         "imported_sha256": "4a439346b1ec847afad946348b8e44c13bacb75d0d293b9dcab51982bb4528c5",
-        "reason": "Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime."
       }
     },
     {
@@ -1268,11 +1268,11 @@
       "source": "research/dungeon_village_1/example/src/world_actor_routes.cpp",
       "source_sha256": "efbe2896774e7e1289e12536c125afcd7c728c35bde85a845fa0edb727f62081",
       "source_bytes": 37710,
-      "sha256": "4aa8e02722e10c04e9cb56afff9e2c49c1c44a5feb2f8c9b07ece2b736b9086b",
-      "bytes": 40429,
+      "sha256": "95a86cbd92d527ee90c726d9ca8aea0978c3bf7053784933cf7c485d651a0d05",
+      "bytes": 42252,
       "product_patch": {
         "imported_sha256": "b50a9ec50b869a6c46e1366fad5346adcb6cc67fd915ac08c89e00dcc31f3ffc",
-        "reason": "Five-year save performance: consume disposable control state and move only last-use candidates; preserve validation, provider order, nested audits and RNG. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Five-year save performance: consume disposable control state and move only last-use candidates; preserve validation, provider order, nested audits and RNG. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume non-attack domain segments in the same independent routes draft; retain the value oracle and callback-sensitive attack source, single provider call, early provider refusal, old event116 observation and complete audit."
       }
     },
     {
@@ -1496,11 +1496,11 @@
       "source": "research/dungeon_village_1/example/src/world_perception.cpp",
       "source_sha256": "afa3cbe06681f054c79b28a877b0bec5b709fc558d478c444a95a61abf86c3a6",
       "source_bytes": 29758,
-      "sha256": "00ee589c50febdf192c8c98263e62c72a275c8bc8874f5ac3f86c8caceb0b1c0",
-      "bytes": 32791,
+      "sha256": "128275023e8b79c1c24621419a77e5e6e3401df8a0ff70e473fe6050faa39ffb",
+      "bytes": 33016,
       "product_patch": {
         "imported_sha256": "e11d2ac5c79ed65bd25614f9445288c2cf0752a479e552e4ea9e57bd664a876a",
-        "reason": "Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime."
       }
     },
     {
@@ -1552,11 +1552,11 @@
       "source": "research/dungeon_village_1/example/src/world_schedule.cpp",
       "source_sha256": "38e312cfeb1e60b103ea501c44ec1350b64ca21a3e500e7d22dc42ae06a313a6",
       "source_bytes": 19722,
-      "sha256": "d37b94dd2c4b18d9f0b00b6fb7e96b8ac019ae95d5774dc731a06d702f88ee56",
-      "bytes": 21729,
+      "sha256": "091b5aa38a14407446154792cff84ec49a47326ef79a4e336dabf6095d6df8c5",
+      "bytes": 21749,
       "product_patch": {
         "imported_sha256": "142faadc29b4a52253825214cf945a990fc940201a2d4cfdad592e7616e832b0",
-        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions. Five-year save performance: const and ownership-transfer consumers share the same scheduling/validation kernel; do not hold popularity references across draft transfer. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions. Five-year save performance: const and ownership-transfer consumers share the same scheduling/validation kernel; do not hold popularity references across draft transfer. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime."
       }
     },
     {
@@ -1944,11 +1944,11 @@
       "source": "research/dungeon_village_1/example/tests/world_actor_routes_test.cpp",
       "source_sha256": "f1fdb24e49ded336ce9a79d250687c51f8f6162984a1b313784e573fb499ad3f",
       "source_bytes": 22315,
-      "sha256": "ceaffa1db2291def73aabf1c1dd40252f1dfe0a1b41b300287fe0f532975d27a",
-      "bytes": 28122,
+      "sha256": "7a26747b72022e19151d4166d8fb613c345002e5987aed0ab8bde3ace14d81f4",
+      "bytes": 35221,
       "product_patch": {
         "imported_sha256": "96b611e1d30df0f768e9a89ca71aa78b7f7c50c13026d13d9a4e866e9261c9da",
-        "reason": "Five-year save performance: run existing control cases through const and consuming APIs, retain all assertions, and check independent candidates plus full nested audits. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion."
+        "reason": "Five-year save performance: run existing control cases through const and consuming APIs, retain all assertions, and check independent candidates plus full nested audits. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend both existing control entry paths with once-only event116, single provider call, callback Owner replacement during attack and late failure rollback; preserve all prior assertions."
       }
     },
     {
@@ -2032,8 +2032,12 @@
       "source": "research/dungeon_village_1/example/tests/world_control_test.cpp",
       "source_sha256": "a7041aa5d32e6c947ba26716105a3741d4b86eb63bd91abbf2e6ba81df8ae10a",
       "source_bytes": 23022,
-      "sha256": "06df911fc7deef93f64ee2f77f05a8d1f455c6557c506bc98ce7570bf07ca40a",
-      "bytes": 23034
+      "sha256": "432491a32ea99e4a39d9096538a36f1cd06c831635479279c70d1d070be743b0",
+      "bytes": 26256,
+      "product_patch": {
+        "imported_sha256": "06df911fc7deef93f64ee2f77f05a8d1f455c6557c506bc98ce7570bf07ca40a",
+        "reason": "Extend the existing control suite with private domain action/progress/refusal/source-immutability boundaries, preserving every prior assertion."
+      }
     },
     {
       "file": "tests/simulation/rules/world_daily_test.cpp",
@@ -2200,11 +2204,11 @@
       "source": "research/dungeon_village_1/example/tests/world_perception_test.cpp",
       "source_sha256": "52d7c7c84bd5fa6258f94c55121a4352c16a2b5cf1633a6b43aadcee4b90eb97",
       "source_bytes": 23088,
-      "sha256": "0167ad2b3bae5ac2ea1c67e9163ab7900c9ade9f2e8e9bd34f4bdceb871c1d8d",
-      "bytes": 30433,
+      "sha256": "28a75e914598e9fab07aee4dce2bb154a741c37d8ea5219f7cfd5bd0f7ede0ad",
+      "bytes": 32479,
       "product_patch": {
         "imported_sha256": "9613f4a6c0fe1a835720ea70e6a93fb23de7ee865b97f7b91263cf2b5674075f",
-        "reason": "Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion."
+        "reason": "Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime."
       }
     },
     {
@@ -2268,11 +2272,11 @@
       "source": "research/dungeon_village_1/example/tests/world_schedule_test.cpp",
       "source_sha256": "3bd372de2975a8db54f27aece8dd833ba7ad5230f5d4a15a6d6674fa3f2f81c4",
       "source_bytes": 48876,
-      "sha256": "6607eb6b31e10c4c68a2ddcd03b1bf4bf229b0fbe352f23c54cd434ffa307171",
-      "bytes": 58033,
+      "sha256": "a4e8384618a35612e89602295626ad294cdbe89bbc673882a80f57e9ca360594",
+      "bytes": 59304,
       "product_patch": {
         "imported_sha256": "084242b22daeec20b505387d78daf28c0f93e6a2b7ac1bee62f1e844ee00a25a",
-        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions. Five-year save performance: compare private/value schedules, projected-facing observation point, invalid removal/Owner, late RNG rollback and complete audit. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion."
+        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions. Five-year save performance: compare private/value schedules, projected-facing observation point, invalid removal/Owner, late RNG rollback and complete audit. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime."
       }
     },
     {
@@ -3125,11 +3129,11 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_routes.cpp",
       "source_sha256": "e7e70d3097756d01a40b05820e79573228fe7a00e172d8176b6c41a535da95d0",
       "source_bytes": 14692,
-      "sha256": "60b65b8a84bed01811abecb5d6c8d8237f9738e4ecbc0341e8e2799ec5e8d6fc",
-      "bytes": 18625,
+      "sha256": "7e78ae5ec81e5b855ca9fd8856836036e11eb5681a1e864da0164937986d9c65",
+      "bytes": 20534,
       "product_patch": {
         "imported_sha256": "f8d32175fba88ba1a2d802ab317e4df823c2d70bc13f970099383d77102b40e1",
-        "reason": "Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime. Owning and borrowed inputs share a template kernel without pre-copying callbacks; retain early refusal and unused callback-copy behavior, including throwing copy targets. Complete route context copies preserve sorted historical keys and nested values using hinted insertion and in-place key merge, with all eight world members retained. Departure uses a bounded call-local first-definition index with original lookup fallback for arbitrary IDs; catalogue order and complete economy validation remain unchanged. Transfer the last-use departure input and reserve complete materialized catalogue storage without changing definition order, validation or economic derivation."
       }
     },
     {
@@ -3137,11 +3141,11 @@
       "source": "research/dungeon_village_1/prototype/src/startup_world_runtime.cpp",
       "source_sha256": "9f2cd4da5facd3942d9a41173ff38cd66a8dc276023040ba5bd2748747506ed7",
       "source_bytes": 63013,
-      "sha256": "463cae7a6e143c2693f654051ca24c7076586128c777669ac81979f6172e05b0",
-      "bytes": 69152,
+      "sha256": "1e16040a50e717878a2f6ef8466af9dc570055a9d3f53a90df92153d2d452dad",
+      "bytes": 72984,
       "product_patch": {
         "imported_sha256": "8dbfcae7af5a39c175f318c2ca1bb2d4de1105e7de0520e5049c849a68b95ae3",
-        "reason": "Product failure diagnostics: propagate rejected call stage/identity and available lower error without a candidate, Owner mutation or wire-format change; retain original rejection/rollback assertions. Five-year save performance: ordinary facility narrow projection preserves full writer normalization and scripts; actor tail cache updates only private metadata. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available. Consume only independent frame-private AI, daily or nonactor projections at their final use, preserving original validation, prefix-effects routing, authoritative random synchronization, full candidates and audits; const consumers remain available."
+        "reason": "Keep all original private projection/consuming, authoritative random and callback adapters. Borrow call-local facts, retain complete facing value snapshots, copy all eight world fields, clone fresh context trees and linearly merge existing writeback nodes; preserve all historical IDs, validation and normalization."
       }
     },
     {
@@ -3671,11 +3675,11 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_routes_test.cpp",
       "source_sha256": "2f18f9530675c264dc556987fa03fb3ed682482ace925aa432e9a925ea778885",
       "source_bytes": 8829,
-      "sha256": "730e8bef4d8f1da76873321ece3482f57022a24f7b6eb07143789779a26eee3e",
-      "bytes": 24506,
+      "sha256": "92ab1e1a536c2d7b37cf4590648c5bd2ba13df4b50815e75d5faa78f009b10f1",
+      "bytes": 36513,
       "product_patch": {
         "imported_sha256": "9a4025a445a143a6e852bb28f3220de0aaf22e709c273561e43bbd8e7e84213f",
-        "reason": "Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion."
+        "reason": "Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Approved five-year tick optimization: synchronously borrow large input facts and read-only map validation components; returned inputs own observations, validation order, complete candidates/audits, random order and whole-frame rollback remain intact. Existing suites cover value/borrowed rejection boundaries and input lifetime. Owning and borrowed inputs share a template kernel without pre-copying callbacks; retain early refusal and unused callback-copy behavior, including throwing copy targets. Complete route context copies preserve sorted historical keys and nested values using hinted insertion and in-place key merge, with all eight world members retained. Departure uses a bounded call-local first-definition index with original lookup fallback for arbitrary IDs; catalogue order and complete economy validation remain unchanged."
       }
     },
     {
@@ -3703,11 +3707,15 @@
       "source": "research/dungeon_village_1/prototype/tests/startup_world_runtime_test.cpp",
       "source_sha256": "99585e7982fb27babcc67a473ca026cfbdcbcc8e4e07c3a6c1d6104ca42fda89",
       "source_bytes": 19026,
-      "sha256": "8b318af24ae22f3517a826cbab4225d02239f6bd79bdbe890e71e981e9519a11",
-      "bytes": 29613,
+      "sha256": "efaa17f6b003205ca1c64c3b5cdc813904090317b3320a1e87970682ff15bc1b",
+      "bytes": 39082,
       "test_fixture_patch": {
         "imported_sha256": "2a473f4b5721961ebbb28f21fdde4974d49a08882f2f78f6b9b9d56fea7b5013",
         "reason": "Rebased on formal 1f19c88; retain product paths, namespace and independent assertions; adopt published world4/application7/system2 contracts. Approved loaded-world performance: reuse private route/scene/decision/daily/tail drafts and state-selective inputs while retaining original validation, observation points, full independent candidates/audits, RNG order and whole-frame rollback; existing tests exercise legacy and consuming paths with all original assertions. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion. Extend the existing behavior suite to compare const and consuming private projections, complete independent candidates, source-order refusal, authoritative randomness and late frame rollback; preserve every previous assertion."
+      },
+      "product_patch": {
+        "imported_sha256": "2a473f4b5721961ebbb28f21fdde4974d49a08882f2f78f6b9b9d56fea7b5013",
+        "reason": " Facing snapshots retain all historical IDs and cached xy in flat owned storage, preserving exact quadrant/equality/missing-key behavior and the pre-callback observation across mutation or Owner destruction. Complete route context copies preserve sorted historical keys and nested values using hinted insertion and in-place key merge, with all eight world members retained. Departure uses a bounded call-local first-definition index with original lookup fallback for arbitrary IDs; catalogue order and complete economy validation remain unchanged."
       }
     },
     {

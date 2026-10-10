@@ -95,7 +95,7 @@ prepare_world_schedule_overlap(const WorldScheduleState &s, const std::vector<in
     return next;
 }
 bool valid_world_schedule_owner(const WorldScheduleState &s) {
-    if (!valid_world_map_facts(world_schedule_facts(s)) || s.updates < 0 ||
+    if (!valid_world_map_facts(s.world.map, s.surface, s.map_flags, s.town) || s.updates < 0 ||
         s.updates >= std::numeric_limits<int>::max())
         return false;
     const auto r = rosters(s);

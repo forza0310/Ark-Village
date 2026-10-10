@@ -1,4 +1,5 @@
 #include "ark/simulation/world/startup_world_runtime.hpp"
+#include "../actors/startup_world_route_facts_private.hpp"
 #include "../facilities/startup_world_facility_update_private.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/actors/startup_world_routes.hpp"
@@ -82,14 +83,25 @@ std::map<std::uint64_t, ref::ObjectShopRecord> project_runtime_shops(const State
     return shops;
 }
 ref::WorldCombatFacingConsumer facing_provider(const State &s) {
-    return [metadata = s.actor_metadata](ref::CharacterId self,
-                                         ref::CharacterId target) -> std::optional<int> {
-        const auto a = metadata.find(self), t = metadata.find(target);
-        if (a == metadata.end() || t == metadata.end())
+    // Keep every ID and the original cached-view observation, including retired
+    // references. Only xy is consumed here; a flat snapshot avoids one map node
+    // allocation per historical actor and remains independent of later writes.
+    std::vector<std::pair<ref::CharacterId, ref::Position>> views;
+    views.reserve(s.actor_metadata.size());
+    for (const auto &[id, metadata] : s.actor_metadata)
+        views.emplace_back(id, metadata.cached_view);
+    return [views = std::move(views)](ref::CharacterId self,
+                                      ref::CharacterId target) -> std::optional<int> {
+        const auto find = [&](ref::CharacterId id) {
+            return std::lower_bound(
+                views.begin(), views.end(), id,
+                [](const auto &entry, ref::CharacterId key) { return entry.first < key; });
+        };
+        const auto a = find(self), t = find(target);
+        if (a == views.end() || t == views.end() || !(a->first == self) || !(t->first == target))
             return {};
-        return t->second.cached_view.y > a->second.cached_view.y
-                   ? (t->second.cached_view.x > a->second.cached_view.x ? 0 : 3)
-                   : (t->second.cached_view.x > a->second.cached_view.x ? 1 : 2);
+        return t->second.y > a->second.y ? (t->second.x > a->second.x ? 0 : 3)
+                                         : (t->second.x > a->second.x ? 1 : 2);
     };
 }
 bool post_finance(State &s, const ref::WorldScriptFinance &finance) {
@@ -115,14 +127,7 @@ bool post_finance(State &s, const ref::WorldScriptFinance &finance) {
     s.monthly_cash = finance.monthly_totals;
     return true;
 }
-StartupWorldRouteFacts facts(const State &s) {
-    StartupWorldRouteFacts f;
-    f.rules = s.rules;
-    f.surface = s.surface;
-    f.exits = startup_evidence().spawn_points; // 固定h.f加载后原序。
-    f.human_homes = s.human_homes;
-    f.neighbourhood = s.neighbourhood;
-    f.actor_metadata = s.actor_metadata;
+template <class Facts> void populate_route_call_facts(Facts &f, const State &s) {
     f.calendar = {s.scene.calendar.year, s.scene.calendar.month, s.scene.calendar.subperiod,
                   s.scene.calendar.units};
     f.actor_box = ref::CollisionBox{-4, 4, 4, 4};  // n.a(0,0)，ah0矩形左/下角。
@@ -134,8 +139,6 @@ StartupWorldRouteFacts facts(const State &s) {
             f.tasks.push_back({*task.site, s.task_progress.definitions.at(task.definition).kind});
     }
     f.job_counts = s.scripts.job_counts;
-    for (const auto &d : s.scripts.facilities)
-        f.facility_improvements.emplace(d.first, d.second.improvements);
     for (const auto &a : s.scene.world.world.ai.battle.actors) {
         f.facing.emplace(a.first, a.second.control.facing);
         const auto visible = startup_world_hit_sound_visible(s, a.first);
@@ -150,6 +153,36 @@ StartupWorldRouteFacts facts(const State &s) {
                              viewport[1] + viewport[3] -
                                  (middle_y + raw.y - static_cast<int>(camera[1]))};
     };
+}
+StartupWorldRouteFacts facts(const State &s) {
+    StartupWorldRouteFacts f;
+    f.rules = s.rules;
+    f.surface = s.surface;
+    f.exits = startup_evidence().spawn_points; // 固定h.f加载后原序。
+    f.human_homes = s.human_homes;
+    f.neighbourhood = s.neighbourhood;
+    f.actor_metadata = s.actor_metadata;
+    for (const auto &d : s.scripts.facilities)
+        f.facility_improvements.emplace(d.first, d.second.improvements);
+    populate_route_call_facts(f, s);
+    return f;
+}
+StartupWorldRouteFactsView borrowed_facts(const State &s) {
+    StartupWorldRouteFactsView f{s.rules,
+                                 s.surface,
+                                 startup_evidence().spawn_points,
+                                 s.human_homes,
+                                 s.neighbourhood,
+                                 s.actor_metadata,
+                                 [&s](int id) -> const std::array<int, 4> * {
+                                     const auto found = s.scripts.facilities.find(id);
+                                     return found == s.scripts.facilities.end()
+                                                ? nullptr
+                                                : &found->second.improvements;
+                                 }};
+    // Rebuild at every original call point, including task and visibility checks.
+    // Input builders copy all observations that outlive this synchronous view.
+    populate_route_call_facts(f, s);
     return f;
 }
 std::optional<State> script(const State &s, int id) {
@@ -261,12 +294,52 @@ const ref::WorldScriptCatalog &startup_world_runtime_catalog() {
 }
 
 namespace {
+// Routes carry hundreds of historical contexts, even with a small live roster.
+// Preserve every key/value independently, but avoid rebuilding a tree whose
+// keys mostly survive publication. New keys use the known sorted insertion hint.
+void copy_route_actor_contexts(std::map<ref::CharacterId, ref::RescueActorContext> &destination,
+                               const std::map<ref::CharacterId, ref::RescueActorContext> &source) {
+    if (&destination == &source)
+        return;
+    if (destination.empty()) {
+        // A fresh projection can clone the source tree without rebalancing each
+        // sorted insertion. The merge below is useful for existing writeback nodes.
+        destination = source;
+        return;
+    }
+    auto current = destination.begin();
+    for (const auto &[id, context] : source) {
+        while (current != destination.end() && current->first < id)
+            current = destination.erase(current);
+        if (current != destination.end() && current->first == id) {
+            current->second = context;
+            ++current;
+        } else {
+            destination.emplace_hint(current, id, context);
+        }
+    }
+    destination.erase(current, destination.end());
+}
+// Complete RescueWorldState copy in its member order. This changes storage work
+// only; callbacks, route audits and the destination never borrow source fields.
+void copy_route_world(ref::RescueWorldState &destination, const ref::RescueWorldState &source) {
+    // A new source member must fail compilation rather than be silently omitted.
+    const auto &[ai, map, actors, facilities, spending, uses, month, objects] = source;
+    destination.ai = ai;
+    destination.map = map;
+    copy_route_actor_contexts(destination.actors, actors);
+    destination.facilities = facilities;
+    destination.human_spending = spending;
+    destination.facility_uses = uses;
+    destination.month_index = month;
+    destination.object_order = objects;
+}
 // A finish write replaces these domains outright. Construct the final projection
 // once, but retain the original owner's task-flag refusal before any write.
 ref::WorldActorRoutesState project_runtime_routes(const State &s,
                                                   const ref::DungeonWorldState *finish = nullptr) {
     ref::WorldActorRoutesState r;
-    r.world = finish ? finish->world : s.scene.world.world;
+    copy_route_world(r.world, finish ? finish->world : s.scene.world.world);
     const bool flags_valid =
         finish ? visit_human_task_flags(s.scene.world.world, s.human_flags,
                                         [](const ref::RescueActorContext &, bool) {})
@@ -333,7 +406,7 @@ bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesSta
             return false;
         s.facility_monthly_cash[facility.first].at(month)[0] = static_cast<int>(value);
     }
-    s.scene.world.world = r.world;
+    copy_route_world(s.scene.world.world, r.world);
     s.scene.world.surface = r.facts.surface;
     s.scene.world.map_flags = r.facts.flags;
     s.scene.world.town = r.facts.town;
@@ -570,7 +643,7 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
     };
     a.actors.decision_from_routes = [](const State &s, const ref::WorldActorRoutesState &r,
                                        ref::CharacterId id) {
-        auto current_facts = facts(s);
+        auto current_facts = borrowed_facts(s);
         current_facts.task_entry = startup_world_runtime_task_entry(s, id);
         bool matches = true;
         if (!visit_human_task_flags(r.world, s.human_flags,
@@ -580,8 +653,8 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
             throw std::invalid_argument("共同人物缺原任务旗标投影");
         // A same-round event may change authoritative flags. Preserve the old
         // decision input's fresh projection on that boundary, including refusal.
-        auto input = matches ? prepare_startup_world_decision_input_for_state(r, id, current_facts)
-                             : prepare_startup_world_decision_input_for_state(
+        auto input = matches ? prepare_startup_world_decision_input_borrowed(r, id, current_facts)
+                             : prepare_startup_world_decision_input_borrowed(
                                    startup_world_runtime_routes(s), id, current_facts);
         if (input && input->combat)
             input->combat->facing_for = facing_provider(s);
@@ -589,7 +662,7 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
     };
     a.actors.owned_command = [](const State &s, const auto &r, ref::CharacterId id,
                                 const auto &op) {
-        auto input = prepare_startup_world_command_input_for_command(r, id, op, facts(s));
+        auto input = prepare_startup_world_command_input_borrowed(r, id, op, borrowed_facts(s));
         if (input && input->attack) {
             input->attack->facing_for = facing_provider(s);
             if (r.world.ai.battle.actors.at(id).kind == ref::ActorKind::human)

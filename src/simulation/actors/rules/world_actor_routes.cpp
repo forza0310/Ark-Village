@@ -490,10 +490,11 @@ WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesStat
     return prepare_world_actor_decision_consuming(WorldActorRoutesState(s), i);
 }
 
+namespace {
 WorldActorControlResult
-prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
-                                      const WorldActorCommandProvider &provider,
-                                      std::size_t budget) {
+prepare_world_actor_control_kernel(WorldActorRoutesState s, CharacterId id,
+                                   const WorldActorCommandProvider &provider, std::size_t budget,
+                                   bool private_domain) {
     if (!live(s, id))
         return {WorldActorRouteError::stale_actor, {}, WorldControlError::stale_actor};
     if (!valid_world_map_facts(s.facts) || !same_map(s.world.map, s.facts.map))
@@ -512,17 +513,16 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
         a->second.control = control;
         return true;
     };
-    adapter.domain =
-        [&](const WorldActorRoutesState &owner,
-            CharacterId actor) -> std::optional<WorldControlStep<WorldActorRoutesState>> {
+    const auto consume_domain = [&](const WorldActorRoutesState &owner, WorldActorRoutesState &next,
+                                    CharacterId actor) -> std::optional<WorldControlAction> {
         if (!provider) {
             error = WorldActorRouteError::missing_consumer;
             return {};
         }
-        const auto &command = owner.world.ai.battle.actors.at(actor).control.queue.front();
+        const auto &queued_command = owner.world.ai.battle.actors.at(actor).control.queue.front();
         std::optional<WorldActorCommandInput> provided;
         try {
-            provided = provider(owner, actor, command);
+            provided = provider(owner, actor, queued_command);
         } catch (...) {
             error = WorldActorRouteError::consumer_failed;
             return {};
@@ -532,14 +532,19 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
             return {};
         }
         auto i = std::move(*provided);
-        WorldControlStep<WorldActorRoutesState> next{owner};
-        const auto fail = [&]() -> std::optional<WorldControlStep<WorldActorRoutesState>> {
+        // Preserve the value path's early refusal before allocating its copy.
+        if (&owner != &next)
+            next = owner;
+        // A consumer may replace the draft and invalidate its queue references.
+        const auto command = queued_command;
+        WorldControlAction action{WorldControlAction::continue_same_call};
+        const auto fail = [&]() -> std::optional<WorldControlAction> {
             error = WorldActorRouteError::preparation_failed;
             return {};
         };
         const int op = command[0];
         const auto draw = [&](int bound) -> std::optional<int> {
-            const auto r = next.state.random.draw(bound);
+            const auto r = next.random.draw(bound);
             return r.error == WorldRandomError::none ? std::optional<int>(r.ticket) : std::nullopt;
         };
         if (i.use_shared_random && op == 2 && command[1] == 18 &&
@@ -552,9 +557,9 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
             auto r = prepare_world_state_command(owner.world, {actor, i.boost_ticket});
             if (!r.candidate)
                 return fail();
-            next.state.world = std::move(r.candidate->state);
+            next.world = std::move(r.candidate->state);
             for (const int e : r.candidate->event_requests)
-                if (!event(next.state, e, i.event, audit.consumed_events))
+                if (!event(next, e, i.event, audit.consumed_events))
                     return fail();
         } else if (op == 8) {
             if (!i.departure || !(i.departure->departure.actor == actor))
@@ -570,22 +575,22 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                         int type) -> std::optional<WorldExpressionTicket> {
                     if (!i.primary_expression_table)
                         return {};
-                    return prepare_world_random_expression(next.state.random, effects, type, 0,
+                    return prepare_world_random_expression(next.random, effects, type, 0,
                                                            *i.primary_expression_table)
                         .ticket;
                 };
+            // Capture the old event observation before publishing into an aliased draft.
+            const bool had_event116 = owner.world.ai.battle.events.count(116) != 0;
             auto r = prepare_world_departure_control(owner.world, *i.departure);
             if (!r.candidate)
                 return fail();
-            next.state.world = std::move(r.candidate->state);
-            next.action = r.candidate->delete_instance ? WorldControlAction::delete_true
-                          : r.candidate->departure_succeeded
-                              ? WorldControlAction::hold_false
-                              : WorldControlAction::continue_same_call;
+            next.world = std::move(r.candidate->state);
+            action = r.candidate->delete_instance       ? WorldControlAction::delete_true
+                     : r.candidate->departure_succeeded ? WorldControlAction::hold_false
+                                                        : WorldControlAction::continue_same_call;
             // o的116已记录在battle.events，实际解释器仍必须同步消费一次。
-            if (!owner.world.ai.battle.events.count(116) &&
-                next.state.world.ai.battle.events.count(116) &&
-                !event(next.state, 116, i.event, audit.consumed_events))
+            if (!had_event116 && next.world.ai.battle.events.count(116) &&
+                !event(next, 116, i.event, audit.consumed_events))
                 return fail();
         } else if (op == 10 || op == 12 || op == 13) {
             auto r = prepare_world_wander(
@@ -594,7 +599,7 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                                                   : std::function<std::optional<int>(int)>{}});
             if (!r.candidate)
                 return fail();
-            next.state.world = std::move(r.candidate->state);
+            next.world = std::move(r.candidate->state);
         } else if (op >= 14 && op <= 17) {
             if (!i.attack || !(i.attack->actor == actor))
                 return fail();
@@ -606,7 +611,7 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                     if (!i.primary_expression_table)
                         return {};
                     const auto result = prepare_world_random_expression(
-                        next.state.random, effects, type, delay, *i.primary_expression_table);
+                        next.random, effects, type, delay, *i.primary_expression_table);
                     return result.candidate
                                ? std::optional<ActorEffectState>(result.candidate->state)
                                : std::nullopt;
@@ -615,23 +620,22 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
             if (i.event) {
                 input.event = [&](const AiRewardState &current,
                                   int code) -> std::optional<WorldCombatExternalWriteback> {
-                    next.state.world.ai = current;
-                    if (!event(next.state, code, i.event, audit.consumed_events))
+                    next.world.ai = current;
+                    if (!event(next, code, i.event, audit.consumed_events))
                         return {};
-                    return WorldCombatExternalWriteback{
-                        encounter_external_writeback(next.state.world.ai),
-                        next.state.popularity_queue};
+                    return WorldCombatExternalWriteback{encounter_external_writeback(next.world.ai),
+                                                        next.popularity_queue};
                 };
             }
             auto r = prepare_world_attack_control(owner.world.ai, input);
             if (!r.candidate)
                 return fail();
-            next.state.world.ai = std::move(r.candidate->state);
+            next.world.ai = std::move(r.candidate->state);
             // 原hit创建时已追加bp；人物分支也必须在本轮后续物体阶段前发布同序名单。
             for (const auto object : r.candidate->objects)
-                next.state.world.object_order.push_back(object);
+                next.world.object_order.push_back(object);
             if (r.candidate->popularity_queue)
-                next.state.popularity_queue = *r.candidate->popularity_queue;
+                next.popularity_queue = *r.candidate->popularity_queue;
             audit.attack_requests.insert(audit.attack_requests.end(), r.candidate->requests.begin(),
                                          r.candidate->requests.end());
             if (i.presentation) {
@@ -640,41 +644,41 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                         if (request.kind == HitRequestKind::face_attacker ||
                             request.kind == HitRequestKind::attack_sound) {
                             auto p = i.presentation(
-                                next.state, {actor, r.candidate->target, {}, request, {}, {}});
+                                next, {actor, r.candidate->target, {}, request, {}, {}});
                             if (!p)
                                 return fail();
-                            next.state = std::move(*p);
+                            next = std::move(*p);
                         }
                 for (const auto &request : r.candidate->requests) {
-                    auto p = i.presentation(next.state,
-                                            {request.actor, request.target, request, {}, {}, {}});
+                    auto p =
+                        i.presentation(next, {request.actor, request.target, request, {}, {}, {}});
                     if (!p)
                         return fail();
-                    next.state = std::move(*p);
+                    next = std::move(*p);
                 }
             }
-            next.action = r.candidate->completed ? WorldControlAction::continue_same_call
-                                                 : WorldControlAction::hold_false;
+            action = r.candidate->completed ? WorldControlAction::continue_same_call
+                                            : WorldControlAction::hold_false;
         } else if (op == 19 || op == 27 || op == 28 || op == 29 || op == 30) {
             auto r = prepare_world_shop_command(shop(owner), actor, i.equipment);
             if (!r.candidate)
                 return fail();
-            if (!write_shop(next.state, std::move(r.candidate->state)))
+            if (!write_shop(next, std::move(r.candidate->state)))
                 return fail();
             for (const auto &request : r.candidate->requests) {
                 if (request.kind == ShopWorldRequestKind::equipment_display) {
-                    auto display = prepare_world_equipment_display(next.state.world,
+                    auto display = prepare_world_equipment_display(next.world,
                                                                    {actor, request, i.cached_view});
                     if (!display.candidate)
                         return fail();
-                    next.state.world = std::move(display.candidate->state);
+                    next.world = std::move(display.candidate->state);
                 } else
                     audit.shop_requests.push_back(request);
                 if (request.kind != ShopWorldRequestKind::equipment_display && i.presentation) {
-                    auto p = i.presentation(next.state, {actor, {}, {}, {}, {}, request});
+                    auto p = i.presentation(next, {actor, {}, {}, {}, {}, request});
                     if (!p)
                         return fail();
-                    next.state = std::move(*p);
+                    next = std::move(*p);
                 }
             }
         } else if (op == 25 || op == 26 || op == 32 || op == 33) {
@@ -682,18 +686,17 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                                                 {actor, i.cached_view, i.sound_projection});
             if (!r.candidate)
                 return fail();
-            next.state.world = std::move(r.candidate->state.world);
-            next.state.human_definition_state =
-                std::move(r.candidate->state.human_definition_state);
-            next.action = r.candidate->action;
+            next.world = std::move(r.candidate->state.world);
+            next.human_definition_state = std::move(r.candidate->state.human_definition_state);
+            action = r.candidate->action;
             audit.sounds.insert(audit.sounds.end(), r.candidate->sounds.begin(),
                                 r.candidate->sounds.end());
             for (const auto &request : r.candidate->sounds)
                 if (i.presentation) {
-                    auto p = i.presentation(next.state, {actor, {}, {}, {}, request, {}});
+                    auto p = i.presentation(next, {actor, {}, {}, {}, request, {}});
                     if (!p)
                         return fail();
-                    next.state = std::move(*p);
+                    next = std::move(*p);
                 }
         } else if (op == 21 && current_facility(owner, actor, true) &&
                    current_facility(owner, actor, true)->category == 5) {
@@ -703,10 +706,10 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                                                      : std::function<std::optional<int>(int)>{});
             if (!r.candidate)
                 return fail();
-            if (!write_dungeon(next.state, std::move(r.candidate->state)))
+            if (!write_dungeon(next, std::move(r.candidate->state)))
                 return fail();
             if (r.candidate->entry_event &&
-                !event(next.state, *r.candidate->entry_event, i.event, audit.consumed_events))
+                !event(next, *r.candidate->entry_event, i.event, audit.consumed_events))
                 return fail();
         } else if (op == 24 && current_facility(owner, actor, false) &&
                    current_facility(owner, actor, false)->category == 1) {
@@ -718,16 +721,16 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
             auto r = prepare_world_shop_exit(shop(owner), input);
             if (!r.candidate)
                 return fail();
-            if (!write_shop(next.state, std::move(r.candidate->state)))
+            if (!write_shop(next, std::move(r.candidate->state)))
                 return fail();
             audit.shop_requests.insert(audit.shop_requests.end(), r.candidate->requests.begin(),
                                        r.candidate->requests.end());
             for (const auto &request : r.candidate->requests)
                 if (i.presentation) {
-                    auto p = i.presentation(next.state, {actor, {}, {}, {}, {}, request});
+                    auto p = i.presentation(next, {actor, {}, {}, {}, {}, request});
                     if (!p)
                         return fail();
-                    next.state = std::move(*p);
+                    next = std::move(*p);
                 }
         } else {
             auto input = i.facility;
@@ -737,8 +740,8 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
                 if (!i.primary_expression_table)
                     return fail();
                 const auto r = prepare_world_random_expression(
-                    next.state.random, owner.world.ai.contexts.at(actor).effects, command[1],
-                    command[2], *i.primary_expression_table);
+                    next.random, owner.world.ai.contexts.at(actor).effects, command[1], command[2],
+                    *i.primary_expression_table);
                 if (!r.ticket)
                     return fail();
                 input.expressions.push_back(*r.ticket);
@@ -752,13 +755,38 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
             auto r = prepare_world_facility_control(owner.world, input);
             if (!r.candidate)
                 return fail();
-            next.state.world = std::move(r.candidate->state);
+            next.world = std::move(r.candidate->state);
             if (r.candidate->flow == ActorControlFlow::moving ||
                 r.candidate->flow == ActorControlFlow::waiting)
-                next.action = WorldControlAction::hold_false;
+                action = WorldControlAction::hold_false;
         }
-        return next;
+        return action;
     };
+    // Retain the value path for const callers and callback-sensitive attacks.
+    adapter.domain =
+        [&](const WorldActorRoutesState &owner,
+            CharacterId actor) -> std::optional<WorldControlStep<WorldActorRoutesState>> {
+        WorldActorRoutesState next;
+        const auto action = consume_domain(owner, next, actor);
+        if (!action)
+            return {};
+        return WorldControlStep<WorldActorRoutesState>{std::move(next), *action};
+    };
+    if (private_domain)
+        adapter.domain_private = [&](WorldActorRoutesState &draft,
+                                     CharacterId actor) -> std::optional<WorldControlAction> {
+            const int op = draft.world.ai.battle.actors.at(actor).control.queue.front()[0];
+            if (op >= 14 && op <= 17) {
+                // Attack event consumers can replace AI while its source is still
+                // being read. Keep an independent source through that callback.
+                auto step = adapter.domain(draft, actor);
+                if (!step)
+                    return {};
+                draft = std::move(step->state);
+                return step->action;
+            }
+            return consume_domain(draft, draft, actor);
+        };
     auto r = prepare_world_control_consuming(std::move(s), id, adapter, budget);
     if (!r.candidate)
         return {error == WorldActorRouteError::none ? WorldActorRouteError::control_failed : error,
@@ -771,6 +799,14 @@ prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
     return {WorldActorRouteError::none, std::move(audit), WorldControlError::none};
 }
 
+} // namespace
+WorldActorControlResult
+prepare_world_actor_control_consuming(WorldActorRoutesState s, CharacterId id,
+                                      const WorldActorCommandProvider &provider,
+                                      std::size_t budget) {
+    return prepare_world_actor_control_kernel(std::move(s), id, provider, budget, true);
+}
+
 WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState &s, CharacterId id,
                                                     const WorldActorCommandProvider &provider,
                                                     std::size_t budget) {
@@ -779,6 +815,7 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
         return {WorldActorRouteError::stale_actor, {}, WorldControlError::stale_actor};
     if (!valid_world_map_facts(s.facts) || !same_map(s.world.map, s.facts.map))
         return {WorldActorRouteError::invalid_input, {}, WorldControlError::invalid_adapter};
-    return prepare_world_actor_control_consuming(WorldActorRoutesState(s), id, provider, budget);
+    return prepare_world_actor_control_kernel(WorldActorRoutesState(s), id, provider, budget,
+                                              false);
 }
 } // namespace ark::simulation::rules

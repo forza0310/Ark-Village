@@ -1029,9 +1029,37 @@ void actual_facility_self_removal() {
               source.world.facilities.count(3) && source.updates == 0,
           "late L refusal rolls back domain self-removal, new facility and common counters");
 }
+void borrowed_map_validation() {
+    const auto source = fixture();
+    check(valid_world_schedule_owner(source), "complete schedule owner passes borrowed map validation");
+    for (int invalid = 0; invalid < 4; ++invalid) {
+        auto state = source;
+        if (invalid == 0)
+            state.surface.back() = -1;
+        else if (invalid == 1)
+            state.map_flags.pop_back();
+        else if (invalid == 2)
+            state.world.map.cells.pop_back();
+        else
+            state.updates = -1;
+        int callbacks{};
+        const auto rejected = prepare_world_schedule(
+            state, {}, [&](const auto &, const auto &, const auto &)
+                -> std::optional<WorldScheduleStep> {
+                ++callbacks;
+                return {};
+            });
+        check(!valid_world_schedule_owner(state) && !rejected.candidate &&
+                  rejected.error == WorldScheduleError::invalid_owner && callbacks == 0,
+              "borrowed map validation preserves complete owner rejection before any domain callback");
+    }
+    check(source.surface.back() == 1 && source.map_flags.size() == 36 && source.updates == 0,
+          "read-only map validation leaves source owner components unchanged");
+}
 } // namespace
 int main() {
     try {
+        borrowed_map_validation();
         prelude_and_round();
         arrival_field_visibility();
         live_rosters_and_removal();

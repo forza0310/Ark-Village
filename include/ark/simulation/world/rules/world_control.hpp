@@ -32,6 +32,9 @@ template <class Owner> struct WorldControlAdapter {
     std::function<const ActorControlState *(const Owner &, CharacterId)> read;
     std::function<bool(Owner &, CharacterId, const ActorControlState &)> write;
     std::function<std::optional<WorldControlStep<Owner>>(const Owner &, CharacterId)> domain;
+    // Synchronously consumes this call's independent draft. A failure discards
+    // the whole candidate; callbacks must not retain references to the draft.
+    std::function<std::optional<WorldControlAction>(Owner &, CharacterId)> domain_private{};
 };
 
 template <class Owner> struct WorldControlCandidate {
@@ -102,17 +105,25 @@ WorldControlResult<Owner> prepare_world_control_consuming(Owner state, Character
         }
         if (local.candidate->flow == ActorControlFlow::empty)
             return {WorldControlError::none, std::move(c)};
-        if (!adapter.domain)
+        if (!adapter.domain && !adapter.domain_private)
             return failed(WorldControlError::missing_consumer);
 
         // 捕获值仅用于进度校验，不作为人物控制权威，更不能恢复清队列前的旧尾部。
         const ActorControlState before = local.candidate->state;
-        auto step = adapter.domain(c.state, actor);
-        if (!step)
+        std::optional<WorldControlAction> action;
+        if (adapter.domain_private)
+            action = adapter.domain_private(c.state, actor);
+        else {
+            auto step = adapter.domain(c.state, actor);
+            if (step) {
+                action = step->action;
+                c.state = std::move(step->state);
+            }
+        }
+        if (!action)
             return failed(WorldControlError::consumer_failed);
-        c.state = std::move(step->state);
         ++c.domain_segments;
-        if (step->action == WorldControlAction::delete_true) {
+        if (*action == WorldControlAction::delete_true) {
             c.flow = WorldControlFlow::delete_requested;
             return {WorldControlError::none, std::move(c)};
         }
@@ -121,7 +132,7 @@ WorldControlResult<Owner> prepare_world_control_consuming(Owner state, Character
             return failed(WorldControlError::stale_actor);
         if (!world_control_detail::valid_control(*after))
             return failed(WorldControlError::malformed_control);
-        if (step->action == WorldControlAction::hold_false) {
+        if (*action == WorldControlAction::hold_false) {
             c.flow = WorldControlFlow::held;
             return {WorldControlError::none, std::move(c)};
         }

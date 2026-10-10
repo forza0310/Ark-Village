@@ -5,7 +5,8 @@
 ## 本批收口
 
 - [x] 五年档设施/人物性能批次：同调用点routes复用、私有候选消费、按实际分支准备输入及Release IPO已接，400轮完整Owner/检查点对照一致；两Debug标准139/119项通过（仅排三个月），Release冷载与运行中窗口通过。最新平均25.082ms、P95 29.184ms，见[本批](docs/stages/B1-playable-prototype.md#loaded-world-performance)。
-- [ ] 30ms极值预算：同压力档离线最大31.621ms，运行中完整更新最大30.2707ms，尚不能声明全部tick低于30ms；继续定位尾部，保留完整candidate、回滚、随机与47ms政策，见[性能专项](docs/MILESTONES.md#loaded-world-performance)。
+- [x] 五年档规则计算P95预算：用户明确P95<30ms，最大值单独记录；本轮三个固定80轮样本P95为29.018/29.652/29.339ms，400轮完整Owner/检查点对照一致。最终两Debug标准139/119项（仅排三个月）及Release运行中窗口通过，见[续批记录](docs/stages/B1-playable-prototype.md#loaded-world-performance)。
+- [ ] 完整事务尾部与更多经营规模：包含缓存/安装/结果析构后三次P95为29.463/30.132/29.664ms，仍有一次略超30ms，不宣称所有规模或全部tick达标；保留完整candidate、回滚、随机与47ms政策，见[性能专项](docs/MILESTONES.md#loaded-world-performance)。
 
 - [x] 商会建筑一次性解锁：产品目录/付款/预览/恢复资格及研究规则文档已修正，Debug标准首次138/139、夹具修正后受影响7项及策略合同通过，Release定向3项/真实新局目录窗口/月54冷载通过，见[B1](docs/stages/B1-playable-prototype.md#commerce-blueprint-fix)。研究C++同步及静态冲突仍待研究侧复核，不改玩家档和历史资金。
 

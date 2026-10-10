@@ -440,6 +440,148 @@ void delivered_item_catalogue(ControlEntry entry) {
           "missing ordinary-item catalogue mirror rejects arrival without partial delivery or "
           "income");
 }
+void departure_event_boundary(ControlEntry entry) {
+    for (bool seen : {false, true}) {
+        auto s = fixture();
+        s.world.ai.task_active = true;
+        s.world.actors.at({1}).definition_task_flag = true;
+        s.world.ai.growth.at(0).definition.legacy_u = 100;
+        s.world.ai.battle.actors.at({1}).control.queue = {{8, 0}};
+        s.random = WorldRandomStream::from_raw({0});
+        if (seen)
+            s.world.ai.battle.events.insert(116);
+        int providers{}, events{};
+        bool reject{};
+        const WorldActorCommandProvider provider =
+            [&](const WorldActorRoutesState &owner, CharacterId id,
+                const LegacyActorControl &command) -> std::optional<WorldActorCommandInput> {
+            ++providers;
+            check(command == LegacyActorControl{8, 0},
+                  "departure provider observes its original front exactly once");
+            WorldActorCommandInput i;
+            i.use_shared_random = true;
+            i.departure = WorldDepartureControlInput{};
+            auto &d = i.departure->departure;
+            d.actor = id;
+            d.task_center = {4, 5};
+            d.catalogue.town = owner.facts.town;
+            d.catalogue.definitions = {{0, 0, 0}};
+            d.catalogue.cell_definition_ids.assign(owner.world.map.cells.size(), 0);
+            d.catalogue.events = {{{4, 5}, 1}};
+            d.exits = {{0, 0}};
+            i.event = [&](const WorldActorRoutesState &current,
+                          int event) -> std::optional<WorldActorRoutesState> {
+                ++events;
+                check(event == 116 && current.world.ai.battle.events.count(116) &&
+                          (current.world.ai.battle.actors.at({1}).control.flags & 2048U),
+                      "op8 dispatches newly published116 after the real boost state change");
+                auto replacement = current;
+                replacement.human_definition_state.at(0) = 7;
+                if (reject)
+                    return {};
+                return replacement;
+            };
+            return i;
+        };
+        const auto result = control(entry, s, {1}, provider);
+        check(result.candidate && providers == 1 && events == (seen ? 0 : 1) &&
+                  result.candidate->consumed_events ==
+                      (seen ? std::vector<int>{} : std::vector<int>{116}) &&
+                  result.candidate->state.human_definition_state.at(0) == (seen ? 0 : 7) &&
+                  result.candidate->state.random.draws() == 1 && s.random.draws() == 0 &&
+                  !(s.world.ai.battle.actors.at({1}).control.flags & 2048U) &&
+                  s.world.ai.battle.actors.at({1}).control.queue ==
+                      std::vector<LegacyActorControl>{{8, 0}},
+              "private/value op8 preserve once-only116, one provider call and full original input");
+        if (!seen) {
+            providers = events = 0;
+            reject = true;
+            const auto failed = control(entry, s, {1}, provider);
+            check(!failed.candidate && providers == 1 && events == 1 && s.random.draws() == 0 &&
+                      !s.world.ai.battle.events.count(116) && s.human_definition_state.at(0) == 0 &&
+                      s.world.ai.battle.actors.at({1}).control.queue ==
+                          std::vector<LegacyActorControl>{{8, 0}},
+                  "late116 consumer rejection rolls back boost, callback replacement, random and "
+                  "command");
+        }
+    }
+}
+
+void attack_owner_replacement(ControlEntry entry) {
+    auto s = fixture(1);
+    auto &human = s.world.ai.battle.actors.at({1});
+    human.control.queue = {{14}};
+    human.control.action = 1;
+    human.control.action_counter = 5;
+    human.attack_armed = true;
+    human.combo_count = 1;
+    human.encounter = 0;
+    auto monster = human;
+    monster.id = {2};
+    monster.kind = ActorKind::monster;
+    monster.definition = 7;
+    monster.control.queue.clear();
+    monster.control.action = 6;
+    monster.hp = {0, 1, 1, 1, false, 0};
+    monster.position.x += 40;
+    monster.attack_position = monster.position;
+    s.world.ai.battle.actors.emplace(monster.id, monster);
+    s.world.ai.monster_order = {monster.id};
+    s.world.ai.contexts.emplace(monster.id, s.world.ai.contexts.at({1}));
+    s.world.actors.emplace(monster.id, RescueActorContext{});
+    auto &definition = s.world.ai.battle.monsters[7];
+    definition.flags = 4;
+    definition.rank = 5;
+    auto &growth = s.world.ai.monster_growth[7];
+    growth.base_hp = 100;
+    growth.base_attack = growth.base_defense = 1;
+    s.world.ai.encounters.emplace(0,
+                                  RewardEncounter{{0, {5, 5}, 0, 0, 0, 1, 1, 0}, {{2}}, true, {}});
+    int providers{}, events{};
+    bool reject{};
+    const WorldActorCommandProvider provider =
+        [&](const WorldActorRoutesState &, CharacterId id,
+            const LegacyActorControl &) -> std::optional<WorldActorCommandInput> {
+        ++providers;
+        WorldActorCommandInput input;
+        input.attack = WorldAttackInput{};
+        input.attack->actor = id;
+        input.attack->weapon = {0, 100, 1, 0, 0};
+        input.attack->physical_jitter = 0;
+        input.attack->drop_ticket = 99;
+        input.event = [&](const WorldActorRoutesState &owner,
+                          int event) -> std::optional<WorldActorRoutesState> {
+            ++events;
+            check(event == 217 && owner.world.ai.battle.actors.at({2}).control.state == 3,
+                  "attack event sees the live post-hit candidate before replacing the outer owner");
+            auto replacement = owner;
+            replacement.world.ai.battle.events.insert(300);
+            replacement.human_definition_state.at(0) = 9;
+            if (reject)
+                return {};
+            return replacement;
+        };
+        return input;
+    };
+    const auto result = control(entry, s, {1}, provider);
+    check(result.candidate && providers == 1 && events == 1 &&
+              result.candidate->consumed_events == std::vector<int>{217} &&
+              result.candidate->state.world.ai.battle.events.count(300) &&
+              result.candidate->state.human_definition_state.at(0) == 9 &&
+              result.candidate->state.world.ai.battle.defeated_definitions == std::vector<int>{7} &&
+              s.world.ai.battle.actors.at({2}).hp.target == 1 &&
+              !s.world.ai.battle.events.count(217) && s.human_definition_state.at(0) == 0,
+          "attack keeps value-source semantics across event Owner replacement in both control "
+          "entries");
+    providers = events = 0;
+    reject = true;
+    const auto failed = control(entry, s, {1}, provider);
+    check(!failed.candidate && providers == 1 && events == 1 &&
+              s.world.ai.battle.actors.at({2}).hp.target == 1 &&
+              s.world.ai.battle.defeated_definitions.empty() && s.random.draws() == 0,
+          "attack event refusal publishes no partial HP, records, callback replacement or random");
+}
+
 void every_control_route(ControlEntry entry) {
     const std::vector<LegacyActorControl> commands{
         {0, 550, 550}, {1, 1, 0},   {2, 0},     {3, 0},  {4, 0},     {5, 16},       {6, 16},
@@ -521,6 +663,8 @@ int main() {
                 delivered_item_catalogue(entry);
                 fifo_and_failures(entry);
                 shared_random_sequence(entry);
+                departure_event_boundary(entry);
+                attack_owner_replacement(entry);
                 every_control_route(entry);
             } catch (const std::exception &e) {
                 throw std::runtime_error(std::string(entry == ControlEntry::copied

@@ -80,6 +80,47 @@ WorldMapFacts facts() {
             std::vector<std::uint32_t>(25),
             {0, 4, 0, 4}};
 }
+void map_validation_components() {
+    struct Case {
+        const char *name;
+        std::function<void(WorldMapFacts &)> arrange;
+        bool valid;
+    };
+    const Case cases[]{
+        {"complete map", [](auto &) {}, true},
+        {"zero width", [](auto &f) { f.map.width = 0; }, false},
+        {"negative height", [](auto &f) { f.map.height = -1; }, false},
+        {"missing cell", [](auto &f) { f.map.cells.pop_back(); }, false},
+        {"invalid cell", [](auto &f) { f.map.cells.front().legacy_state = -1; }, false},
+        {"short surface", [](auto &f) { f.surface.pop_back(); }, false},
+        {"long surface", [](auto &f) { f.surface.push_back(1); }, false},
+        {"short flags", [](auto &f) { f.flags.pop_back(); }, false},
+        {"long flags", [](auto &f) { f.flags.push_back(0); }, false},
+        {"empty town width", [](auto &f) { f.town.right = f.town.left; }, false},
+        {"reversed town height", [](auto &f) { f.town.bottom = f.town.top - 1; }, false},
+        {"negative first surface", [](auto &f) { f.surface.front() = -1; }, false},
+        {"negative last surface", [](auto &f) { f.surface.back() = -1; }, false},
+        {"surface endpoints", [](auto &f) {
+             f.surface.front() = 0;
+             f.surface.back() = std::numeric_limits<int>::max();
+         }, true},
+        {"unrestricted source flag bits", [](auto &f) {
+             f.flags.front() = std::numeric_limits<std::uint32_t>::max();
+         }, true},
+        {"town ordering does not impose map clipping", [](auto &f) {
+             f.town = {-2, 8, -3, 9};
+         }, true},
+    };
+    for (const auto &test : cases) {
+        auto f = facts();
+        test.arrange(f);
+        const bool value = valid_world_map_facts(f);
+        const bool components = valid_world_map_facts(f.map, f.surface, f.flags, f.town);
+        if (value != test.valid || components != test.valid)
+            throw std::runtime_error(std::string("map validation components: ") + test.name);
+        ++checks;
+    }
+}
 void prefix_and_cache(bool consuming) {
     auto s = fixture();
     const auto f = facts();
@@ -552,6 +593,7 @@ void battle_preparation_world() {
 }
 } // namespace
 int main() {
+    map_validation_components();
     consuming_early_rejections();
     for (const bool consuming : {false, true}) {
         geometry(consuming);

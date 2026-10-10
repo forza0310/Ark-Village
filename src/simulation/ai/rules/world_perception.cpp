@@ -40,10 +40,14 @@ std::optional<Position> half_cell(CombatPoint p) {
 WorldPerceptionResult fail(AiRewardError e) { return {e, {}}; }
 } // namespace
 bool valid_world_map_facts(const WorldMapFacts &f) {
-    return valid_legacy_map(f.map) && f.surface.size() == f.map.cells.size() &&
-           f.flags.size() == f.map.cells.size() && f.town.left < f.town.right &&
-           f.town.top < f.town.bottom &&
-           std::none_of(f.surface.begin(), f.surface.end(), [](int v) { return v < 0; });
+    return valid_world_map_facts(f.map, f.surface, f.flags, f.town);
+}
+bool valid_world_map_facts(const LegacyMap &map, const std::vector<int> &surface,
+                           const std::vector<std::uint32_t> &flags, const TownBounds &town) {
+    return valid_legacy_map(map) && surface.size() == map.cells.size() &&
+           flags.size() == map.cells.size() && town.left < town.right &&
+           town.top < town.bottom &&
+           std::none_of(surface.begin(), surface.end(), [](int v) { return v < 0; });
 }
 std::optional<MoveAreaCandidate> query_world_move_area(const AiRewardState &s, CharacterId id,
                                                        const WorldMapFacts &f) {

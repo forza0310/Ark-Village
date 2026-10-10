@@ -25,6 +25,10 @@ struct WorldPerceptionResult {
     std::optional<WorldPerceptionCandidate> candidate;
 };
 bool valid_world_map_facts(const WorldMapFacts &facts);
+// Read-only validation of owner components; no temporary full map projection.
+// The value overload uses this same contract and retains its complete payload.
+bool valid_world_map_facts(const LegacyMap &map, const std::vector<int> &surface,
+                           const std::vector<std::uint32_t> &flags, const TownBounds &town);
 // K from current n+four unit probes; db may reference an object already removed from bn.
 std::optional<MoveAreaCandidate>
 query_world_move_area(const AiRewardState &state, CharacterId actor, const WorldMapFacts &facts);

@@ -181,6 +181,171 @@ void synchronous_event_seen() {
               s.scene.world.world.ai.battle.events.count(116) && s.scripts.event_calls.at(116) == 2,
           "finish writer regenerates seen from counts without a second persistent event owner");
 }
+void facing_snapshot_boundaries(const StartupWorldRuntimeState &baseline,
+                                ref::CharacterId live_actor) {
+    const auto adapter = startup_world_runtime_adapter().actors;
+    const auto providers = [&](const StartupWorldRuntimeState &owner) {
+        const auto routes = adapter.read_current_routes(owner);
+        const auto full = adapter.decision(owner, live_actor);
+        const auto reused = adapter.decision_from_routes(owner, routes, live_actor);
+        const auto attack = adapter.owned_command(owner, routes, live_actor, {14});
+        check(full && full->combat && full->combat->facing_for && reused && reused->combat &&
+                  reused->combat->facing_for && attack && attack->attack &&
+                  attack->attack->facing_for,
+              "all three production input paths retain an owned facing callback");
+        return std::array<ref::WorldCombatFacingConsumer, 3>{
+            full->combat->facing_for, reused->combat->facing_for, attack->attack->facing_for};
+    };
+    std::array<ref::WorldCombatFacingConsumer, 3> retained;
+    const ref::CharacterId historical_self{800}, target{1000}, added{900};
+    {
+        auto owner = baseline;
+        owner.scene.world.world.ai.battle.actors.at(live_actor).control.state = 1;
+        owner.actor_metadata[historical_self] = owner.actor_metadata.at(live_actor);
+        owner.actor_metadata[target] = owner.actor_metadata.at(live_actor);
+        owner.actor_metadata[historical_self].cached_view = {10, 20};
+        check(!owner.scene.world.world.ai.battle.actors.count(historical_self) &&
+                  !owner.scene.world.world.ai.battle.actors.count(target),
+              "facing fixture uses historical metadata-only IDs without inventing live actors");
+        struct Case {
+            ref::Position target;
+            int direction;
+        };
+        const std::array<Case, 9> cases{{{{11, 21}, 0},
+                                         {{11, 19}, 1},
+                                         {{9, 19}, 2},
+                                         {{9, 21}, 3},
+                                         {{10, 21}, 3},
+                                         {{10, 19}, 2},
+                                         {{11, 20}, 1},
+                                         {{9, 20}, 2},
+                                         {{10, 20}, 2}}};
+        for (const auto &test : cases) {
+            owner.actor_metadata.at(target).cached_view = test.target;
+            const auto snapshot = providers(owner);
+            for (const auto &facing : snapshot) {
+                check(facing(historical_self, target) == test.direction,
+                      "metadata-only facing preserves four quadrants and equality boundaries");
+                check(!facing({0}, target) && !facing(historical_self, {2000}) &&
+                          !facing(added, target) && !facing(historical_self, added),
+                      "missing first/last and interior keys cannot alias lower_bound neighbours");
+            }
+        }
+        owner.actor_metadata.at(target).cached_view = {11, 21};
+        retained = providers(owner);
+        owner.actor_metadata.at(historical_self).cached_view = {100, 100};
+        owner.actor_metadata.at(target).cached_view = {90, 90};
+        owner.actor_metadata[added] = owner.actor_metadata.at(target);
+        const auto changed = providers(owner);
+        for (std::size_t n = 0; n < retained.size(); ++n)
+            check(
+                retained[n](historical_self, target) == 0 && !retained[n](historical_self, added) &&
+                    changed[n](historical_self, target) == 2 &&
+                    changed[n](historical_self, added) == 2,
+                "old facing keeps prior positions and absent keys while a new call reads changes");
+        owner.actor_metadata.erase(historical_self);
+        owner.actor_metadata.erase(target);
+        const auto deleted = providers(owner);
+        for (std::size_t n = 0; n < retained.size(); ++n)
+            check(retained[n](historical_self, target) == 0 &&
+                      !deleted[n](historical_self, added) && !deleted[n](added, target),
+                  "deleting historical IDs affects only new callbacks and preserves old snapshots");
+    }
+    for (const auto &facing : retained)
+        check(facing(historical_self, target) == 0 && !facing(historical_self, added),
+              "facing callback owns its original key/xy snapshot beyond Owner lifetime");
+}
+
+void route_context_map_boundaries(const StartupWorldRuntimeState &baseline,
+                                  ref::CharacterId live_actor) {
+    const auto adapter = startup_world_runtime_adapter().actors;
+    auto source = baseline;
+    // Historical route contexts remain legitimate projection data even when no
+    // live actor references them. They must not be filtered to the active roster.
+    for (std::uint64_t key : {10, 20, 30, 40, 50}) {
+        ref::RescueActorContext context;
+        context.binding = ref::ArrivalBinding{{2, 3}, {77}, 28};
+        context.destination = ref::Position{2, 3};
+        context.journey = ref::FacilityDeparture{};
+        context.journey->binding = *context.binding;
+        context.journey->route.steps = {{1, 2}, {2, 3}};
+        context.journey->legacy_direction = 2;
+        context.path_pending = true;
+        context.waypoint = 1;
+        context.town_updates = static_cast<int>(key);
+        context.outside_updates = 7;
+        source.scene.world.world.actors.emplace(ref::CharacterId{key}, context);
+        source.actor_metadata.emplace(ref::CharacterId{key}, source.actor_metadata.at(live_actor));
+    }
+    const auto original = startup_world_state_digest(source);
+    auto routes = adapter.read_current_routes(source);
+    auto projection_oracle = source;
+    projection_oracle.scene.world.world = routes.world;
+    check(startup_world_state_digest(projection_oracle) == original,
+          "fresh route projection preserves the complete world and all historical nested contexts");
+    for (std::uint64_t key : {10, 30, 50})
+        routes.world.actors.erase({key});
+    for (std::uint64_t key : {5, 25, 60}) {
+        auto context = routes.world.actors.at({20});
+        context.town_updates = static_cast<int>(key);
+        context.journey->route.steps.push_back({4, 5});
+        routes.world.actors.emplace(ref::CharacterId{key}, std::move(context));
+    }
+    auto &changed = routes.world.actors.at({20});
+    changed.binding.reset();
+    changed.journey.reset();
+    changed.destination = ref::Position{6, 7};
+    changed.unbound_route = ref::LegacyPathResult{};
+    changed.unbound_route->steps = {{4, 5}, {6, 7}};
+    changed.waypoint = 0;
+    changed.on_event_cell = true;
+    changed.definition_task_flag = true;
+    changed.horizontal_velocity = {3.5F, -2.5F};
+    changed.blocked_updates = 3;
+    changed.spawn_updates = 4;
+    changed.no_path_updates = 5;
+    changed.short_exit_updates = 6;
+    changed.bad_area_updates = 7;
+    changed.monster_mode = 4;
+    routes.world.actors.at({40}).journey->route.steps = {{7, 8}};
+    routes.world.actors.at({40}).journey->legacy_direction.reset();
+    auto published = source;
+    check(adapter.write_current_routes(published, routes),
+          "route publication accepts inserted/deleted historical keys and complete changed values");
+    auto expected = published;
+    expected.scene.world.world =
+        routes.world; // Complete member-assignment oracle, no merge helper.
+    check(startup_world_state_digest(published) == startup_world_state_digest(expected) &&
+              startup_world_state_digest(source) == original &&
+              published.scene.world.world.actors.size() == source.scene.world.world.actors.size() &&
+              !published.scene.world.world.actors.count({10}) &&
+              !published.scene.world.world.actors.count({30}) &&
+              !published.scene.world.world.actors.count({50}) &&
+              published.scene.world.world.actors.count({5}) &&
+              published.scene.world.world.actors.count({25}) &&
+              published.scene.world.world.actors.count({60}),
+          "publication matches full-world assignment with exact leading/interior/trailing key "
+          "changes");
+    const auto committed = startup_world_state_digest(published);
+    routes.world.actors.at({20}).unbound_route->steps.clear();
+    routes.world.actors.at({40}).journey->route.steps.clear();
+    source.scene.world.world.actors.at({20}).journey->route.steps.clear();
+    source.scene.world.world.actors.erase({40});
+    check(startup_world_state_digest(published) == committed,
+          "published complete contexts do not alias later route or source nested changes");
+    auto retained = adapter.read_current_routes(published);
+    published.scene.world.world.actors.at({20}).unbound_route->steps.clear();
+    published.scene.world.world.actors.erase({60});
+    auto retained_oracle = expected;
+    retained_oracle.scene.world.world = retained.world;
+    check(startup_world_state_digest(retained_oracle) == committed &&
+              retained.random.draws() == baseline.scene.random.draws() &&
+              retained.world.ai.accounting.funds() ==
+                  baseline.scene.world.world.ai.accounting.funds(),
+          "returned projection retains full independent nested contexts, cash and random after "
+          "Owner edits");
+}
+
 // 只比较本批完整路线适配边界；源初访、模板事务与规则计算各有主责套件。
 void current_route_adapter_boundaries() {
     StartupSession reset;
@@ -200,6 +365,8 @@ void current_route_adapter_boundaries() {
         source = std::move(*arrived);
     }
     const auto id = source.scene.world.world.ai.human_order.front();
+    facing_snapshot_boundaries(source, id);
+    route_context_map_boundaries(source, id);
     const int definition = source.scene.world.world.ai.battle.actors.at(id).definition;
     const auto &a = production.actors;
     check(a.read_current_routes && a.write_current_routes && a.decision_from_routes,

@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 
 #include <algorithm>
 
@@ -197,6 +198,147 @@ int check_startup_world_restore_contracts(
             require(!closed.information_page_data.count(id) && !closed.page_phases.count(id) &&
                         !closed.page_counters.count(id), "real framework retires directory references");
         }
+    }
+    {
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;
+            if(!valid)throw std::runtime_error(std::string("restore adventurer35/detail60: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"actual framework admission");
+            state=std::move(*result.candidate);
+        };
+        const auto input=[&](auto &state,std::uint64_t id,const p::StartupInformationInput &action) {
+            require(p::input_startup_world_information_page(state,id,action)==p::StartupWorldRuntimeError::none,
+                    "actual information input");
+        };
+        auto state=baseline;
+        // 复用现套件已自然取得的首访W；不重复新局前缀，也不手造actor/context。
+        require(!state.scene.world.world.ai.human_order.empty(),"natural baseline provides live human");
+        const auto actor=state.scene.world.world.ai.human_order.front();
+        const int definition=state.scene.world.world.ai.battle.actors.at(actor).definition;
+        state.scripts.humans.at(definition).pending_notice=true; // 单独验证NEW消费的条件。
+        require(p::open_startup_world_information_menu(state)==p::StartupWorldRuntimeError::none,"open9");
+        const auto menu=state.scripts.pages.back().id;tick(state);
+        p::StartupInformationInput selected;selected.select_row=0;
+        p::StartupInformationInput confirm;confirm.confirm=true;
+        input(state,menu,selected);input(state,menu,confirm);
+        const auto directory=state.scripts.pages.back().id;
+        require(state.scripts.pages.back().legacy_page==35,"row0 opens35");
+        expect(state,true,"new35 waiting for real Init");tick(state);
+        const auto &list=state.information_page_data.at(directory).lists.at(0);
+        const auto target=std::find(list.begin(),list.end(),definition);
+        require(target!=list.end(),"original definition directory includes natural live actor definition");
+        selected.select_row=static_cast<int>(target-list.begin());input(state,directory,selected);
+        p::StartupInformationInput right;right.right=true;
+        input(state,directory,right);input(state,directory,right);
+        const auto directory_wire=p::persistence_detail::encode_state(state);
+        auto restored=p::persistence_detail::decode_state(directory_wire,*state.rules);
+        expect(restored,true,"35 contribution and tab2 exact restore");
+        require(p::persistence_detail::encode_state(restored)==directory_wire,"35 decode does not recalculate contribution or clearNEW");
+        for(int fault=0;fault<4;++fault) {
+            auto invalid=restored;
+            if(fault==0)invalid.information_page_data.erase(directory);
+            if(fault==1)invalid.page_phases.at(directory)=4;
+            if(fault==2)invalid.information_page_data.at(directory).lists[0].push_back(definition);
+            if(fault==3)invalid.information_page_data.at(directory).lists[0].clear();
+            expect(invalid,false,"35 absent/malformed frozen definition catalogue");
+        }
+        input(state,directory,confirm);input(restored,directory,confirm);
+        const auto detail=state.scripts.pages.back().id;
+        require(state.scripts.pages.back().legacy_page==60 &&
+                state.human_detail_contexts.at(detail).chase_mode==1 &&
+                !state.human_detail_contexts.at(detail).actor &&
+                !state.scripts.humans.at(definition).pending_notice,
+                "35 confirmation binds source1 definition-only60 and commits directory NEW");
+        expect(state,true,"source160 pending Init with actual35 parent");
+        tick(state);tick(restored);
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "same input continues restored35 through real60 Init");
+        const auto detail_wire=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(detail_wire,*state.rules);
+        expect(restored,true,"initialized source160 exact restore");
+        require(p::persistence_detail::encode_state(restored)==detail_wire,"60 context codec survives unchanged");
+        for(int fault=0;fault<8;++fault) {
+            auto invalid=restored;
+            if(fault==0)invalid.human_detail_contexts.erase(detail);
+            if(fault==1)invalid.human_detail_contexts.at(detail).chase_mode=2;
+            if(fault==2)invalid.human_detail_contexts.at(detail)={0,actor};
+            if(fault==3)invalid.human_detail_contexts.emplace(directory,p::StartupHumanDetailContext{1,{}});
+            if(fault==4)invalid.human_detail_contexts.emplace(invalid.scripts.next_page_id++,p::StartupHumanDetailContext{1,{}});
+            if(fault==5)invalid.page_human_bindings.at(detail)=(definition+1)%static_cast<int>(invalid.rules->humans.size());
+            if(fault==6)invalid.human_pages_initialized.erase(detail);
+            if(fault==7)std::find_if(invalid.scripts.pages.begin(),invalid.scripts.pages.end(),[&](const auto &page){return page.id==detail;})->lifecycle=0;
+            expect(invalid,false,"60 missing/bad/wrong-parent/orphan context or inconsistent Init stage");
+        }
+        // 首次60可能被真实111教程遮住；快照两侧消费同一提示并恢复父页。
+        for(int n=0;n<16;++n) {
+            const auto top=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
+                                       [](const auto &page){return page.lifecycle!=4;});
+            require(top!=state.scripts.pages.rend(),"first60 tutorial retains active page");
+            if(top->id==detail && top->lifecycle==2)break;
+            if(top->id!=detail) {
+                require(top->kind==r::WorldScriptPageKind::dialogue && top->source_record==88,
+                        "only actual111 tutorial is consumed before chase");
+                const auto prompt=top->id;
+                for(auto *owner:{&state,&restored})
+                    require(p::acknowledge_startup_world_runtime_page(*owner,prompt)==
+                                p::StartupWorldRuntimeError::none,"actual tutorial confirmation on both owners");
+            }
+            tick(state);tick(restored);
+            require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                    "restored60 tutorial follows identical real inputs");
+        }
+        require(state.scripts.pages.back().id==detail && state.scripts.pages.back().lifecycle==2,
+                "first60 tutorial restores active detail within bounded updates");
+        const auto actor_before=state.scene.world.world.ai.battle.actors.at(actor).position;
+        for(auto *owner:{&state,&restored})
+            require(p::act_startup_world_human_page(*owner,detail,p::StartupHumanPageAction::track)==
+                        p::StartupWorldRuntimeError::none,"source1 real chase command");
+        require(state.scene.scene_state==6 && state.scripts.selection_mode==1 &&
+                state.scripts.selected_actor==actor.value && !state.scripts.selected_facility &&
+                state.scripts.pages.back().kind==r::WorldScriptPageKind::scene &&
+                state.scripts.pages.back().lifecycle==2 &&
+                state.scene.world.world.ai.battle.actors.at(actor).position.x==actor_before.x &&
+                state.scene.world.world.ai.battle.actors.at(actor).position.height==actor_before.height &&
+                state.scene.world.world.ai.battle.actors.at(actor).position.z==actor_before.z,
+                "tracking restores actual scene6 and selector1 without moving autonomous human");
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "live tracking produces identical restored owner");
+        expect(state,true,"retired35/60 payloads before framework Finish");
+        const auto tracking_wire=p::persistence_detail::encode_state(state);
+        auto tracking=p::persistence_detail::decode_state(tracking_wire,*state.rules);
+        expect(tracking,true,"tracking scene and complete retired contexts restore");
+        const int updates=tracking.global_updates;
+        state.confirm_input=true;tracking.confirm_input=true;
+        tick(state);tick(tracking);
+        require(!tracking.information_page_data.count(directory) && !tracking.human_detail_contexts.count(detail) &&
+                !tracking.page_human_bindings.count(detail),"framework retires list/context/binding references once");
+        const auto reopened=tracking.scripts.pages.back().id;
+        require(reopened!=detail && tracking.scripts.pages.back().legacy_page==60 &&
+                tracking.human_detail_contexts.at(reopened).chase_mode==1 &&
+                tracking.human_detail_contexts.at(reopened).actor==actor &&
+                tracking.scene.scene_state==0 && !tracking.confirm_input && tracking.global_updates==updates,
+                "scene6 confirm opens fresh source160 bound to actual W and consumes input once");
+        require(p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(tracking),
+                "same scene-confirm input continues exact tracking snapshot");
+        expect(tracking,true,"actor-bound source160 pending Init restore");
+        const auto reopened_wire=p::persistence_detail::encode_state(tracking);
+        auto recovered=p::persistence_detail::decode_state(reopened_wire,*tracking.rules);
+        require(p::persistence_detail::encode_state(recovered)==reopened_wire,"optional actual actor context roundtrips");
+        auto stale=recovered;
+        stale.human_detail_contexts.at(reopened).actor=r::CharacterId{std::numeric_limits<std::uint64_t>::max()};
+        expect(stale,false,"60 context cannot restore missing W");
+        tick(recovered);
+        require(recovered.scripts.pages.back().id==reopened && !recovered.confirm_input,
+                "following detail Init cannot replay the consumed scene confirmation");
+        require(p::act_startup_world_human_page(recovered,reopened,p::StartupHumanPageAction::cancel)==
+                    p::StartupWorldRuntimeError::none,"real reopened60 return");
+        expect(recovered,true,"closed actor-bound60 retains context before Finish");
+        tick(recovered);
+        require(!recovered.human_detail_contexts.count(reopened) && !recovered.page_human_bindings.count(reopened),
+                "reopened60 Finish retires actor-context references");
     }
     {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。

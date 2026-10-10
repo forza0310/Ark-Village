@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 
 #include <algorithm>
@@ -264,15 +265,33 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             }
             break;
         case Stage::actor_camera_input: {
-            if (!s.scripts.selected_actor)
-                return {};
+            if (!s.scripts.selected_actor) {
+                s.scene.scene_state = 0;
+                s.scene.scene_counter = 0;
+                return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
+            }
             const auto id = ref::CharacterId{*s.scripts.selected_actor};
+            const auto &ai = s.scene.world.world.ai;
+            const auto human = ai.battle.actors.find(id);
             const auto actor = s.actor_metadata.find(id);
-            if (actor == s.actor_metadata.end() || s.confirm_input)
+            if (human == ai.battle.actors.end() || !(human->second.id == id) ||
+                human->second.kind != ref::ActorKind::human || actor == s.actor_metadata.end() ||
+                std::find(ai.human_order.begin(), ai.human_order.end(), id) == ai.human_order.end())
                 return {};
             if (!camera_focus(s, {static_cast<float>(actor->second.cached_view.x),
-                                  static_cast<float>(actor->second.cached_view.y)}) ||
-                !increment(s.global_updates))
+                                  static_cast<float>(actor->second.cached_view.y)}))
+                return {};
+            if (s.confirm_input) {
+                // Steam state6先推进镜头再确认，新详情继续source1并保存实际W；不返回旧35。
+                const int definition = human->second.definition;
+                s.scene.scene_state = 0;
+                s.scene.scene_counter = 0;
+                s.confirm_input = false;
+                if (!append_startup_world_human_detail_page(s, definition, 1, id))
+                    return {};
+                return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
+            }
+            if (!increment(s.global_updates))
                 return {};
             break;
         }

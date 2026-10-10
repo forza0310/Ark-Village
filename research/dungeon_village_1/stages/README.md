@@ -6,7 +6,7 @@
 
 2026-10-10[外部皮肤观察已接收](../verification/skin-observation-analysis/ANALYSIS.md)：纪录木框／蓝色退出框及标题书本遮挡补局部动态；16项身份／11图通过。无需重复纪录采图，后续窗口只补现成经营状态的人物／建筑／菜单与具备自然条件的计分，字体和调度仍靠静态消费者交叉，不以静帧推算随机。
 
-2026-10-10[人物基础表现](../ui/STEAM_HUMAN_PRESENTATION.md)已接只读Owner计划；[升级81](../ui/examples/STEAM_FACILITY_UPGRADE.md)已有六阶段CPU示例和独立计数桥。[信息菜单](../ui/INFORMATION_MENU.md)现开放36／37／38；37／38页面与恢复五项短测最终通过59.80秒，新增目录使旧布局研究档拒绝、不迁移。后继Steam37／38完整局部绘制、两张差异图及[目录UI示例](../ui/examples/steam-inventory-equipment.png)已交付，visuals通过0.67秒；字体／标签后端、手形完整调度和物理输入仍单列。34／35／39已补[Steam成就版差及最小接线缺口](../verification/information-statistics-contract/ANALYSIS.md#2026-10-10续核steam343539与最小接入缺口)，消费者、raw9皮肤及人物附加效果继续推进；研究交付不代表产品已迁入。
+2026-10-10[人物基础表现](../ui/STEAM_HUMAN_PRESENTATION.md)已接只读Owner计划；[升级81](../ui/examples/STEAM_FACILITY_UPGRADE.md)已有六阶段CPU示例和独立计数桥。[信息菜单](../ui/INFORMATION_MENU.md)现开放35／36／37／38；35新增目录贡献／NEW／来源1详情追踪及恢复，集中验收见验证入口。此前37／38页面与恢复五项短测最终通过59.80秒，新增目录使旧布局研究档拒绝、不迁移。后继Steam37／38完整局部绘制、两张差异图及[目录UI示例](../ui/examples/steam-inventory-equipment.png)已交付，visuals通过0.67秒；字体／标签后端、手形完整调度和物理输入仍单列。34／35／39已补[Steam成就版差及最小接线缺口](../verification/information-statistics-contract/ANALYSIS.md#2026-10-10续核steam343539与最小接入缺口)，消费者、raw9皮肤及人物附加效果继续推进；研究交付不代表产品已迁入。
 
 2026-10-10[自然住宅后继](../VERIFICATION.md#自然四住宅十经营设施及付款回放2026-10-10)已完成17次实际赠礼、四住宅施工、十个完工且可达经营设施，继承任务7自然成功。已认证付款边界和最终38820→38840短回放，快照保持应用7／世界4／系统2与128MiB预算。终点人气516、7次任务成功，仍1星；下一步作显式策略交接补800人气／12成功，再二星与活动30，不重复首星前缀、不重解释旧Driver。
 

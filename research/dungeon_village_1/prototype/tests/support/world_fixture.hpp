@@ -23,7 +23,9 @@ inline StartupWorldRuntimeState page_fixture(int raw) {
     p.id = s.scripts.next_page_id++;
     p.kind = ref::WorldScriptPageKind::raw_page;
     p.legacy_page = raw;
+    if (raw == 60) p.lifecycle = 0; // 新详情须先经过真实Init，不能使用结构体默认的更新阶段。
     s.scripts.pages.push_back(p);
+    if (raw == 60) s.human_detail_contexts.emplace(p.id, StartupHumanDetailContext{});
     s.scripts.executing_page = p.id;
     return s;
 }

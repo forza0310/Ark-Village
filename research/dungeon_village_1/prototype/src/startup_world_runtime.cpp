@@ -1074,6 +1074,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.task_abort_questions.erase(page.id);
             admitted.task_abort_answers.erase(page.id);
             admitted.human_pages_initialized.erase(page.id);
+            admitted.human_detail_contexts.erase(page.id);
             admitted.human_page_catalogs.erase(page.id);
             admitted.equipment_page_catalogs.erase(page.id);
             admitted.human_page_selections.erase(page.id);
@@ -1110,11 +1111,13 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
                 ref::WorldSceneError::invalid_state,
                 ref::WorldScheduleError::none,
                 {}};
-    // 暂停不初始化信息页，也不把尚未具备载荷的生命周期0页改成已就绪2。
+    // 暂停不初始化信息页/人物详情，也不把尚未具备载荷的生命周期0页改成已就绪2。
     const auto &pending = admitted.scripts.pages.back();
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
-        (pending.legacy_page == 9 || (pending.legacy_page >= 36 && pending.legacy_page <= 38))) {
-        if (!valid_startup_world_information_page(admitted, pending.id))
+        (pending.legacy_page == 60 || pending.legacy_page == 9 ||
+         (pending.legacy_page >= 35 && pending.legacy_page <= 38))) {
+        if (!(pending.legacy_page == 60 ? valid_startup_world_human_detail_context(admitted, pending.id)
+                                       : valid_startup_world_information_page(admitted, pending.id)))
             return {StartupWorldRuntimeError::missing_source, {},
                     ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};
         admitted.scripts.executing_page.reset();

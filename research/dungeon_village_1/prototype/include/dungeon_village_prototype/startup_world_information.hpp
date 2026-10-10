@@ -2,6 +2,7 @@
 
 #include "dungeon_village_prototype/startup_information.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 
 namespace dungeon_village_prototype {
 // 已解析的平台输入；显式行选择不得与按键混用，原按键优先级由Owner消费。
@@ -15,6 +16,11 @@ struct StartupInformationEntry {
     int target_raw{};
     bool implemented{};
 };
+struct StartupHumanInformation {
+    StartupHumanDetails details;
+    int presence{}, contribution{}, yearly_town_points{}, yearly_spending{};
+    bool newly_unlocked{};
+};
 struct StartupInformationPageView {
     std::uint64_t page_id{};
     int raw{};
@@ -22,9 +28,10 @@ struct StartupInformationPageView {
     int frame{};
     std::array<StartupInformationEntry, 5> entries;
     std::optional<StartupIncomeInformation> income;
-    int selection{}, first_visible{}; // raw37/38当前列表，selection_or_period仍为页签。
+    int selection{}, first_visible{}; // raw35/37/38当前列表，selection_or_period仍为页签。
     std::optional<std::vector<StartupItemInformation>> items;
     std::optional<StartupEquipmentInformation> equipment;
+    std::optional<std::vector<StartupHumanInformation>> humans;
 };
 // 稳定scene是维护主菜单适配入口；实际raw3父页也可进入，不伪造主菜单页。
 StartupWorldRuntimeError open_startup_world_information_menu(StartupWorldRuntimeState &state);

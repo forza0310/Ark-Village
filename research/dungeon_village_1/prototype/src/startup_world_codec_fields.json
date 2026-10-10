@@ -68,6 +68,19 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupHumanDetailContext",
+      "fields": [
+        {
+          "name": "chase_mode",
+          "type": "int"
+        },
+        {
+          "name": "actor",
+          "type": "std::optional<ref::CharacterId>"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupInformationPageData",
       "fields": [
         {
@@ -422,6 +435,10 @@
         {
           "name": "human_pages_initialized",
           "type": "std::set<std::uint64_t>"
+        },
+        {
+          "name": "human_detail_contexts",
+          "type": "std::map<std::uint64_t, StartupHumanDetailContext>"
         },
         {
           "name": "human_profession_changes",

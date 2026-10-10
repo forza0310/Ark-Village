@@ -8,7 +8,7 @@
 
 人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
 
-信息页面由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护。Session／Application提供`open_information_menu`和`input_information_page`；接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，现开放36／37／38，34／35拒绝且状态不变；选子页先压页再退休菜单，主场景快捷入口仍属维护适配。37／38在既有phase／counter之外增加typed目录载荷，分别冻结一组／四组ID及选择／滚动；38采用Steam目录过滤，关闭后由框架统一退休。完整皮肤与OS输入沿[信息合同](../ui/INFORMATION_MENU.md)分别交付，本批短测结果另记。
+信息页面由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护。Session／Application提供`open_information_menu`和`input_information_page`；接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序保留，现开放35／36／37／38，34拒绝且状态不变；选子页先压页再退休菜单，主场景快捷入口仍属维护适配。37／38在既有phase／counter之外增加typed目录载荷，分别冻结一组／四组ID及选择／滚动；38采用Steam目录过滤，关闭后由框架统一退休。完整皮肤与OS输入沿[信息合同](../ui/INFORMATION_MENU.md)分别交付，本批短测结果另记。
 
 收支36的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)复用Steam窗框／内框，输出完整局部有序图元、字体金额、源端点线与箭头触摸引用；不修改Owner，不生成数字SEB。调用者提供语言分支、VIEW_Y与标题两次真实测宽，并负责原页面坐标及字体后端；[布局例图](../ui/examples/steam-income.png)使用明确替代字体，仅作产品布局参考。raw9菜单皮肤和其余信息子页仍未由此补齐。
 
@@ -16,7 +16,7 @@
 
 [startup_information](include/dungeon_village_prototype/startup_information.hpp)提供37正库存原序／原说明和38四类装备的纯目录查询，保留显式APK／Steam版本选择；维护38页面固定使用Steam过滤／占位语义。37正常关闭在Owner候选中清全部道具NEW，空目录初始化则请求事件15并退休、不清NEW；38依次处理左右、最终换页重置、上下和关闭，不清装备NEW。装备列表图标复用`startup_world_equipment_icon_draws`，与武器身体PNG分开。新增页面map使codec布局身份自动变化，旧精确快照拒绝、不迁移；普通稳定场景存档政策不变。
 
-`startup_town_information`提供APK／Steam34共有的权威统计：p1冒险者、D[2]==1居民、原设施序列类型3／9每次出现、真实任务成功／活动次数及四类p1装备种类数，不套38的flag过滤，不额外造住宅数或分母。35所需纯贡献计算已从授勋模块分离为`prepare_world_human_contributions`，保持原序与p0贡献，不增加奖章或排序；87仍执行原入页动作。这些前置不等于34／35入口、Steam平台成就或人物追踪已接，后继见[信息合同](../ui/INFORMATION_MENU.md)。
+`startup_town_information`提供APK／Steam34共有的权威统计：p1冒险者、D[2]==1居民、原设施序列类型3／9每次出现、真实任务成功／活动次数及四类p1装备种类数，不套38的flag过滤，不额外造住宅数或分母。35所需纯贡献计算已从授勋模块分离为`prepare_world_human_contributions`，保持原序与p0贡献，不增加奖章或排序；87仍执行原入页动作。35已接真实贡献写回、NEW清除及来源1详情／追踪；34入口、Steam平台成就和完整信息皮肤仍分别未接，见[信息合同](../ui/INFORMATION_MENU.md)。
 
 默认运行已发布的新局建设/首访保护切片；`--world`显式运行完整目录的共同世界AI。
 旧7×7自主访问演示只在`--fixture`运行，三者不共享可写世界，也不冒充完整原版复刻。

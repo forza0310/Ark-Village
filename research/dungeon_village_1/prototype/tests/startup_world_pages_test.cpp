@@ -274,6 +274,13 @@ StartupWorldRuntimeState human_fixture(int raw) {
 }
 void page_tick(StartupWorldRuntimeState &s) {
     const auto r = prepare_startup_world_runtime(s);
+    if (!r.candidate) {
+        std::cerr << "page update error=" << static_cast<int>(r.error) << " stack=";
+        for (const auto &page : s.scripts.pages)
+            std::cerr << page.id << ':' << page.legacy_page << '/' << page.lifecycle
+                      << "/initialized=" << s.human_pages_initialized.count(page.id) << ' ';
+        std::cerr << '\n';
+    }
     check(r.candidate.has_value(), "managed page actual framework update succeeds");
     s = *r.candidate;
 }
@@ -305,7 +312,7 @@ void information_menu_pages() {
     constexpr std::array<int,5> tags{15,14,16,17,18},targets{35,34,36,37,38};
     for(int row=0;row<5;++row)
         check(view->entries[row].tag==tags[row] && view->entries[row].target_raw==targets[row] &&
-                  view->entries[row].implemented==(row>=2),
+                  view->entries[row].implemented==(row!=1),
               "raw9 retains all five original ordered rows; implemented is maintenance capability only");
     page_tick(s);
     check(s.page_counters.at(id)==3,"raw9 second update reaches original menu count cap3");
@@ -315,7 +322,7 @@ void information_menu_pages() {
     StartupInformationInput down;down.down=true;
     check(input_startup_world_information_page(s,id,down)==E::none && s.page_phases.at(id)==0,
           "raw9 down wraps row4 back to row0");
-    for(int row:{0,1}) {
+    for(int row:{1}) {
         StartupInformationInput select;select.select_row=row;
         check(input_startup_world_information_page(s,id,select)==E::none,
               "unimplemented target still permits selecting its original menu row");
@@ -480,9 +487,9 @@ std::uint64_t enter_information_catalog(StartupWorldRuntimeState &s,int row) {
               input_startup_world_information_page(s,menu,confirm)==E::none,
           "catalogue path selects original information menu row");
     const auto id=s.scripts.pages.back().id;
-    check(s.scripts.pages.back().legacy_page==(row==3?37:38) &&
+    check(s.scripts.pages.back().legacy_page==(row==0?35:row==3?37:38) &&
               s.scripts.pages.back().lifecycle==0 && !s.information_page_data.count(id),
-          "new37/38 waits for real framework init before owning frozen directory");
+          "new information directory waits for framework Init before owning frozen IDs");
     return id;
 }
 void owned_item_information_pages() {
@@ -676,6 +683,160 @@ void equipment_information_pages() {
         auto closed=empty;StartupInformationInput input;input.cancel=cancel;input.confirm=!cancel;
         check(input_startup_world_information_page(closed,empty_id,input)==E::none &&
                   closed.scripts.pages.back().lifecycle==4,"38 empty class still supports confirm and return");
+    }
+}
+void adventurer_information_pages() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    // 定义状态/业绩是最小目录条件；不创建W或伪称六人已自然到访。
+    for(auto &entry:s.human_presence)entry.second=entry.first>=1&&entry.first<=6?(entry.first==6?2:1):0;
+    for(auto &entry:s.scripts.humans)entry.second.pending_notice=true;
+    for(auto &entry:s.human_calendar)entry.second.contribution=99;
+    s.human_calendar.at(0).contribution=77;
+    s.scene.world.world.ai.battle.humans.at(6).killed_stat1=60;
+    const int medals=s.medal_count;
+    const auto awards=s.award_rankings;
+    const auto id=enter_information_catalog(s,0);
+    auto broken=s;broken.human_calendar.erase(6);
+    const auto broken_before=startup_world_state_digest(broken);
+    check(!prepare_startup_world_runtime(broken).candidate && startup_world_state_digest(broken)==broken_before &&
+          !broken.information_page_data.count(id),"35 missing contribution source rejects entire Init candidate");
+    auto paused=s;paused.scene.framework_paused=true;page_tick(paused);
+    check(!paused.information_page_data.count(id),"35 paused entry cannot calculate contribution or freeze a list");
+    page_tick(s);
+    check(s.information_page_data.at(id).lists==std::vector<std::vector<int>>{{1,2,3,4,5,6}} &&
+          s.page_phases.at(id)==0 && s.information_page_data.at(id).selection==0,
+          "35 includes p2 and preserves source order, not live W count or contribution ranking");
+    check(s.human_calendar.at(6).contribution>s.human_calendar.at(1).contribution &&
+          s.human_calendar.at(1).contribution!=99 && s.human_calendar.at(0).contribution==77 &&
+          s.medal_count==medals && s.award_rankings==awards,
+          "35 commits shared contribution refresh without awarding medals or changing absent definitions");
+    check(std::all_of(s.scripts.humans.begin(),s.scripts.humans.end(),[](const auto &v){return v.second.pending_notice;}),
+          "35 Init recalculates contribution without clearing any person NEW");
+    StartupInformationInput up;up.up=true;
+    check(input_startup_world_information_page(s,id,up)==E::none &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 up wraps original six-person list and scrolls its five-row window");
+    StartupInformationInput page;page.right=true;
+    check(input_startup_world_information_page(s,id,page)==E::none && s.page_phases.at(id)==1 &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 changing tab preserves person selection and scroll unlike equipment38");
+    StartupInformationInput both;both.up=true;both.down=true;both.left=true;both.right=true;
+    check(input_startup_world_information_page(s,id,both)==E::none && s.page_phases.at(id)==1 &&
+          s.information_page_data.at(id).selection==5 && s.information_page_data.at(id).first_visible==1,
+          "35 independent up/down then left/right cancel their own movement without reset");
+    const auto before=startup_world_state_digest(s);
+    const auto view=inspect_startup_world_information_page(s,id);
+    check(view && view->humans && view->humans->size()==6 &&
+          view->humans->back().details.definition==6 && view->humans->back().presence==2 &&
+          view->humans->back().yearly_town_points==60 && view->humans->back().yearly_spending==0 &&
+          view->humans->back().newly_unlocked && !view->humans->back().details.live_actor &&
+          startup_world_state_digest(s)==before,
+          "35 view cannot rerun contribution, clear NEW or advance its clock");
+    const auto cash=s.scene.world.world.ai.accounting.funds();
+    const auto draws=s.scene.random.draws();
+    const auto date=s.scene.calendar.units;
+    page_tick(s);
+    check(s.scene.random.draws()==draws && s.scene.calendar.units==date &&
+          s.scene.world.world.ai.accounting.funds()==cash,"35 modal update does not run world operations");
+    StartupInformationInput confirm;confirm.confirm=true;
+    for(int fault=0;fault<6;++fault) {
+        auto invalid=s;
+        if(fault==0)invalid.information_page_data.erase(id);
+        if(fault==1)invalid.information_page_data.at(id).lists[0][0]=6;
+        if(fault==2)invalid.page_phases.at(id)=4;
+        if(fault==3)invalid.information_page_data.at(id).selection=6;
+        if(fault==4)invalid.information_page_data.at(id).first_visible=2;
+        if(fault==5)invalid.scripts.humans.erase(6);
+        const auto digest=startup_world_state_digest(invalid);
+        check(input_startup_world_information_page(invalid,id,confirm)!=E::none &&
+              startup_world_state_digest(invalid)==digest,"35 bad list/tab/selection/NEW source rejects whole action");
+    }
+    auto blocked=s;blocked.scripts.page_mutations_locked=true;
+    const auto blocked_before=startup_world_state_digest(blocked);
+    check(input_startup_world_information_page(blocked,id,confirm)!=E::none &&
+          startup_world_state_digest(blocked)==blocked_before,"35 late60 insertion failure rolls back complete NEW clearing");
+    auto cancelled=s;StartupInformationInput cancel;cancel.cancel=true;
+    check(input_startup_world_information_page(cancelled,id,cancel)==E::none &&
+          cancelled.scripts.pages.back().lifecycle==4,"35 actual return closes only itself");
+    for(const auto &entry:cancelled.scripts.humans)
+        check(entry.second.pending_notice==(entry.first<1||entry.first>6),
+              "35 return clears all directory NEW including offscreen p2, preserving excluded p0 NEW");
+    page_tick(cancelled);
+    check(!cancelled.information_page_data.count(id) && !cancelled.page_phases.count(id) &&
+          !cancelled.page_counters.count(id),"35 next framework retirement releases every directory payload");
+    check(input_startup_world_information_page(s,id,confirm)==E::none && s.scripts.pages.back().legacy_page==60 &&
+          s.page_human_bindings.at(s.scripts.pages.back().id)==6,
+          "35 confirm opens60 bound to selected definition6 despite absence of a live actor");
+    for(const auto &entry:s.scripts.humans)
+        check(entry.second.pending_notice==(entry.first<1||entry.first>6),
+              "35 confirm shares directory-wide NEW clear with return");
+    const auto parent=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    check(parent!=s.scripts.pages.end() && parent->lifecycle==3 &&
+          s.information_page_data.at(id).selection==5 && s.page_phases.at(id)==1,
+          "60 covers actual35 retaining tab, scroll and frozen selected definition");
+    const auto detail=s.scripts.pages.back().id;
+    check(s.human_detail_contexts.at(detail).chase_mode==1 && !s.human_detail_contexts.at(detail).actor,
+          "35-to60 preserves explicit chase source1 without fabricating a W binding");
+    page_tick(s);
+    // 首次60真实压入111教程；按真实确认恢复父页，不伪造已读标志。
+    for(int n=0;n<16;++n) {
+        const auto top=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),
+                                   [](const auto &p){return p.lifecycle!=4;});
+        check(top!=s.scripts.pages.rend(),"first60 tutorial retains an active page");
+        if(top->id==detail && top->lifecycle==2)break;
+        if(top->id!=detail) {
+            check(top->kind==ref::WorldScriptPageKind::dialogue && top->source_record==88,
+                  "only actual111 character-information tutorial covers first60");
+            check(acknowledge_startup_world_runtime_page(s,top->id)==E::none,
+                  "first60 tutorial uses actual confirmation");
+        }
+        page_tick(s);
+    }
+    check(s.scripts.pages.back().id==detail && s.scripts.pages.back().lifecycle==2,
+          "first60 tutorial returns to active detail within bounded framework updates");
+    const auto presentation=inspect_startup_world_human_presentation(s,detail);
+    check(presentation && presentation->tracking_available && !presentation->live,
+          "source1 view exposes chase eligibility even when no live W exists for this definition");
+    auto returned=s;
+    check(act_startup_world_human_page(returned,detail,StartupHumanPageAction::cancel)==E::none,
+          "source1 detail can return to actual35");
+    page_tick(returned);
+    check(returned.scripts.pages.back().id==id && returned.information_page_data.at(id).selection==5 &&
+          returned.information_page_data.at(id).first_visible==1 && returned.page_phases.at(id)==1 &&
+          !returned.human_detail_contexts.count(detail),"60 retirement restores35 selection/tab and releases context");
+    const auto calls=s.scripts.event_calls.count(137)?s.scripts.event_calls.at(137):0;
+    check(act_startup_world_human_page(s,detail,StartupHumanPageAction::track)==E::none &&
+          s.scripts.event_calls.at(137)==calls+1 && s.human_detail_contexts.count(detail) &&
+          !s.scripts.selected_actor && s.scene.scene_state==0,
+          "source1 without live W runs real137 and retains detail instead of inventing actor/camera");
+    const auto after_prompt=startup_world_state_digest(s);
+    check(act_startup_world_human_page(s,detail,StartupHumanPageAction::track)!=E::none &&
+          startup_world_state_digest(s)==after_prompt,"covered60 cannot issue137 again before prompt is consumed");
+    auto direct=human_fixture(60);const auto direct_id=direct.scripts.pages.back().id;
+    auto paused_detail=direct;paused_detail.scene.framework_paused=true;page_tick(paused_detail);
+    check(paused_detail.scripts.pages.back().lifecycle==0 &&
+          !paused_detail.human_pages_initialized.count(direct_id),"paused new60 retains true uninitialized lifecycle");
+    paused_detail.scene.framework_paused=false;page_tick(paused_detail);
+    check(startup_world_human_page_ready(paused_detail,direct_id),"unpaused60 initializes once through actual framework");
+    page_tick(direct);
+    const auto direct_before=startup_world_state_digest(direct);
+    const auto direct_view=inspect_startup_world_human_presentation(direct,direct_id);
+    check(direct_view && !direct_view->tracking_available,"source0 detail view does not advertise chase input");
+    check(act_startup_world_human_page(direct,direct_id,StartupHumanPageAction::track)!=E::none &&
+          startup_world_state_digest(direct)==direct_before,"source0 management detail refuses source1-only chase atomically");
+    for(int fault=0;fault<6;++fault) {
+        auto invalid=direct;
+        if(fault==0)invalid.human_detail_contexts.erase(direct_id);
+        if(fault==1)invalid.page_phases.at(direct_id)=4;
+        if(fault==2)invalid.human_page_selections.at(direct_id)=-1;
+        if(fault==3)invalid.page_counters.at(direct_id)=std::numeric_limits<int>::max();
+        if(fault==4)invalid.human_detail_contexts.at(direct_id).chase_mode=1; // scene父没有W，不能伪造35来源。
+        if(fault==5)invalid.human_pages_initialized.erase(direct_id);
+        check(!startup_world_human_page_ready(invalid,direct_id) &&
+              !inspect_startup_world_human_presentation(invalid,direct_id) &&
+              !prepare_startup_world_runtime(invalid).candidate,
+              "initialized60 missing context or invalid phase/selection/counter cannot recover by reinitializing");
     }
 }
 void human_details_and_gifts() {
@@ -3392,6 +3553,7 @@ int main() {
         income_information_pages();
         owned_item_information_pages();
         equipment_information_pages();
+        adventurer_information_pages();
         ordinary_item_pages();
         commerce_after_reward_writeback();
         commerce_transactions();

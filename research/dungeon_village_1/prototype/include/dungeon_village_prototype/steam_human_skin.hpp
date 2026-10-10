@@ -54,7 +54,8 @@ struct SteamHumanDetailSkin {
     StartupTitleActorSkin portrait; // 武器(若有)→身体；本页不加标题阴影。
     SteamHumanSkinPlan after_portrait; // 普通为HP/危险图标，倒下为气泡/文字。
 };
-// 当前职业/性别/武器及同定义首实例来自只读Owner view；不推进页面或共享scratch。
+// 当前职业/性别/武器和实际实例来自只读Owner view；显式W优先，否则取同定义首实例。
+// 不推进页面或共享scratch。
 // down_text_width只在state7使用，必须来自实际字体测宽；其它情况不需要测宽。
 // 这里只展开已核基础肖像，不认证原共享scratch任意历史残留的附加效果。
 std::optional<SteamHumanDetailSkin> steam_human_detail_skin(

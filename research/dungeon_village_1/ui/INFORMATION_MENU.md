@@ -167,9 +167,9 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 `startup_town_information`已复用当前唯一Owner给出34的原显示口径。固定APK与Steam raw34绘制分支（VA0x10335781–0x10336227）一致：p1冒险者、D[2]恰1的居民、原g内定义类型3／9的每次出现、任务成功v及活动F；右四种类只数装备p1，不用38的flag过滤，不额外增加住宅数或分母。村名仍属于应用配置，不在世界统计中复制。缺定义／名单引用或定义kind镜像失配显式拒绝，查询不修补Owner、不请求Steam平台成就。固定tenant表没有类型9行，测试仅用明确私有规则变体覆盖该原分支，不宣称发现了自然可建“类型9公园”。
 
-35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。原整数均值／方差、double平方根转float及取整口径、显式溢出拒绝全部保留。35未来初始化可在唯一Owner内消费这份候选，不能直接调用授勋初始化。
+35所需`prepare_world_human_contributions`从既有[授勋模块](../example/include/dungeon_village_reference/world_award_page.hpp)抽出同一算法：p非0参与，保持定义顺序、其它字段及p0原贡献，返回完整候选或明确错误；不加奖章、不排序、不产生输出。87仍独立验证页状态、增加一枚奖章及按原严格反向交换排序，调用时移动已有私有人物列表，避免重复复制。原整数均值／方差、double平方根转float及取整口径、显式溢出拒绝全部保留。35初始化在唯一Owner内消费这份候选，不调用授勋初始化。
 
-现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就、34→39、35贡献写回／NEW／60来源及追踪仍需后继Owner接线，不能据查询存在开放假入口。
+现有projection／world_award_page／pages三套短测通过，总耗时2.35秒。统计条件、纯算法及年度页面分别由所属套件主责，无新增target或持久字段。这只是34／35入口所需的数据和算法前置；34平台成就和34→39仍需后继接线；35维护链见下节，不据查询存在开放假入口。
 
 ### 35→60追踪的Steam后继合同
 
@@ -185,7 +185,36 @@ Steam36的具名方法体交叉见后文，实际字体／热区的原窗口动�
 
 返回和NEW分开：60软返回2走`FormBase.Pop()`（VA `0x1031FECD`），没有来源0／1分支，也不重清35目录NEW；返回哪一页取实际父栈，来源标志并不是父页ID。35已在进入60前清过目录NEW，因此追踪缺W、退出事件137、从60普通返回以及追踪成功的批量退休均不额外重清。`SubForm.Finish`（RVA `0x1EDFA0`）仅返回true，不是另一个NEW消费者；之后用户在35再次确认或返回，才会再次执行35自身的清除分支。
 
-维护接线可复用`scene.world.world.ai.human_order`的原序稳定实例ID、`battle.actors[id].definition`、`actor_metadata[id].cached_view`、`scripts.selected_actor/selection_mode/selected_facility`及`scene.scene_state/scene_counter`，由唯一Owner协调页栈与事件137。须显式保存来源资格和父子引用，不能把定义ID填入实例选择器，或因无活跃W就删去可读的定义详情。本节只交源合同与现有字段映射，未实现35／60追踪控制器，未执行原窗口或自然经营链。
+维护接线可复用`scene.world.world.ai.human_order`的原序稳定实例ID、`battle.actors[id].definition`、`actor_metadata[id].cached_view`、`scripts.selected_actor/selection_mode/selected_facility`及`scene.scene_state/scene_counter`，由唯一Owner协调页栈与事件137。须显式保存来源资格和父子引用，不能把定义ID填入实例选择器，或因无活跃W就删去可读的定义详情。后继维护接线见下节；本项未执行原窗口或自然经营链。
+
+### 35目录与60追踪维护链
+
+`startup_world_information`已开放9→35，按定义原序冻结presence非0目录；真实Init重算贡献，不授勋、不排序、不调用60重算人物。空群体显式拒绝原除零路径。35先独立上下、调整五行滚动，再独立左右四页；切页保留选择。确认／返回在候选Owner内清冻结目录全部人物NEW，确认压来源1的60并挂起35，返回退休35；后继写回失败不残留NEW、贡献、页栈、随机或现金修改。
+
+只读`StartupHumanInformation`复用当前姓名／职业／经验、满足／努力／装备、四战斗值与获勋次数，另提供贡献、NEW、年度村点／消费。Steam `_draw1_2` VA `10333805–103349D1`与APK四页字段一致：第0页姓名／等级／经验，第1页满足／努力／四装备，第2页四战斗值／获勋次数，第3页贡献／`year_record_[1]/[2]`。B1是获得村子点数（`YEARRECORD_TOWNPOINT`），由`battle.humans.killed_stat1`持有；B2消费由`world.human_spending`持有，不读滞后的日历镜像。列表读取已有属性缓存，不为绘制触发60 Init或要求存在W。静态职业人物裁片／大师图与完整35皮肤仍须按绘制合同单独接入。
+
+`human_detail_contexts`在各合法60创建入口写来源0／1和可选真实W，已初始化缺字段或坏值显式拒绝；来源不充当父页ID。`StartupHumanPageAction::track`仅对已就绪来源1执行：缺W触发一次真实137，详情等待子页返回；有W退休其它页面、恢复唯一主场景并进入state6／selection1，清设施选择，不更改人物移动。scene6确认先回state0，再新建来源1、绑定该W的60；空选择回state0，损坏非空引用拒绝。只读表现返回`tracking_available`并优先使用显式W的HP，不用同定义的另一实例替代。
+
+新context跟随Owner codec保存和页面统一退休；35目录、phase／选择／滚动及60上下文恢复不再初始化、不重清NEW或重发137。Session／Application仍转发到同一Owner。研究短测与真实窗口输入、Steam平台成就实际授予分别验收；本批不接Steam SDK，也不把业务链完成称为完整原版皮肤完成。
+
+### Steam35完整局部绘制合同（待维护皮肤）
+
+固定`_draw1_2` VA `10333805–103349D1`：先Window(220,168)，标题`冒険者リスト <0>/<1>`传page+1／4；Box(17,74,219,184)，随后与38同式标题左右箭头，再表头／五行／滚动／底栏。每行`rowY=97+19×可见行号`；选中时先橙色(255,153,55) FillRect(23,rowY−3,191,18)，**35确有底色，不套37／38分支**。接着注册组件11，矩形(3,rowY−3,231,18)、value=0x20000|绝对行、flag0、Margin(0,−20,0,0)。
+
+人物依次绿(196,236,169) FillRect(29,rowY−2,16,16)、灰(204,204,204) DrawRect(29,rowY−2,15,15)、同15×15裁剪；`SetDispPlayerData(0,job.GetImgId(human),0,1,0)`后简版`DrawDispPlayer(37,rowY+21)`，最后PopClip。静态action0／step0／direction1，无武器，不采用60动态肖像／血条；可复用基础身体计划但必须保留有序裁剪，共享scratch附加效果仍沿既有限制。随后NEW image147在(10,rowY+2)、选中手形SEB21当前帧在(21,rowY+8)，再页内字段。
+
+| 页签 | 表头／行内容 |
+| --- | --- |
+| 0 | 表头普通姓名(30,69)、image38(133,70)、image50／SEB60帧0(179,72)。行姓名(48,rowY)；等级非10用SEB11右锚(147,rowY)，10用image129大师图(132,rowY+2)。经验条image87源(0,0,44,5)与(82,0,1,5)依次画(164,rowY+4)，源(2,5,width,3)画(165,rowY+5)；width按经验／阈值映射并截限0..42，等级10固定42。 |
+| 1 | 三表头TextLayout为满足(47,69,40,12)、努力(95,69,40,12)、装备(142,69,60,12)，lineSpace0、anchor0x22。行满足／努力SEB12右锚(80／119,rowY+1)，四装备(141+18×slot,rowY−3)；空防具／饰品mode5/index7，武器用列表图标。 |
+| 2 | 属性头mode8/index0..3锚(x+36×index,67)，`SubForm.En()`为真时x48，否则53；这是独立英语分支，不等价于“非日文”。奖章mode6/index1在(199,67)。行四战斗值SEB15右锚(80+36×index,rowY+2)，获勋次数E为SEB12右锚(211,rowY+1)。 |
+| 3 | 日文表头贡献(82,69,anchor2)、SEB44帧4(116,67)、获得(136,69,anchor1)、消费(196,69,anchor2)。非日文临时size10：贡献TextLayout(48,70,60,10,anchor0x20)、SEB44帧4(114,67)、获得(132,70,40,10,anchor0x20)、消费(179,70,40,10,anchor0x22)，lineSpace0后恢复字号。行贡献SEB12右锚(83,rowY+1)；百分号SEB13帧13在(84,rowY)，非日文y再+2；B1为SEB20右锚(152,rowY+1)，B2用Draw_money(212,rowY+1,value,SEB15)。 |
+
+以上普通文字均棕(92,51,31)，未说明处保留原字号；普通数字padding0、anchor4，金额须沿真实money算法。滚动实参为(221,85,4,111,first_visible,count−1,5)，高度111而非37／38的110，复用其组件12／25和轨道算法时必须参数化。底部富文本`現在 <co=0064FF><0></co> 名の冒険者が訪れます`在(120,200,anchor2)，参数为完整目录人数。VIEW_Y仅交窗框／box，再统一父原点；不重复叠到每项图元。上述是静态消费者合同；完整皮肤、字体后端和原窗口动态未由此认证。
+
+后继资源逐字节核对：image38／50／87／129对应已出版`original/common/wnd_lv、wnd_exp、wnd_expBar、wnd_max.png`，image104／SEB13对应`number06.png/.seb`，SEB60为`wnd_exp.seb`，均可复用APK同字节副本。SEB11实际是`number04.seb`引用image102 `number03.png`，数字源(8×digit,12,8,12)；SEB20是`number13.seb`引用image108 `number11.png`，源(7×digit,9,7,9)，不可由SEB名字猜图名。SEB12／15分别使用已出版Steam差异包中的number05／number08 PNG。image31 `icon_result00.png`仍缺Steam出版入口（63×48、1000字节），SEB44本身同字节；frame4源(0,16,16,16)也有透明像素RGBA差异，不合并来源。human包67项全与已出版副本一致，walk01帧0源(0,24,18,24)、offset(−9,−24)，先按锚得到(28,rowY−3)再裁剪。
+
+Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。现有facility数字helper可处理SEB12／15及money，SEB11／20尚需明确资产与步宽8／7扩展；information数字helper只接受正库存／正属性，不能直接用于本页零值／普通数／金额。
 
 ## Steam9／36的有限交互交叉
 

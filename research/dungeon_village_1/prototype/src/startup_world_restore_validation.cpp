@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
 
@@ -529,6 +530,7 @@ struct Validation {
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
         PAGE_MAP(information_page_data);
+        PAGE_MAP(human_detail_contexts);
         PAGE_MAP(page_human_bindings);
         PAGE_MAP(task_abort_questions);
         PAGE_MAP(task_abort_answers);
@@ -594,9 +596,14 @@ struct Validation {
         PAGE_SET(task_display_initialized, 99, 100);
         PAGE_SET(facility_upgrade_initialized, 81);
 #undef PAGE_SET
+        for (const auto &[id, context] : s.human_detail_contexts) {
+            (void)context;
+            if (!page_kind(id, {60}) || !valid_startup_world_human_detail_context(s, id))
+                return fail("human detail: 来源或实例上下文非法");
+        }
         for (const auto &[id, data] : s.information_page_data) {
             (void)data;
-            if (!page_kind(id, {37, 38}))
+            if (!page_kind(id, {35, 37, 38}))
                 return fail("information page: 目录数据附在错误页型");
         }
         for (const auto &[id, data] : s.magic_pot_page_data) {
@@ -745,6 +752,8 @@ struct Validation {
         const auto id = p.id;
         if (!s.page_human_bindings.count(id))
             return fail("human page: 缺人物绑定");
+        if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
+            return fail("human detail: 缺来源或实例上下文非法");
         if ((raw == 62 || raw == 63) && !s.page_job_bindings.count(id))
             return fail("human page: 缺职业绑定");
         if (raw == 62 && !s.human_page_parents.count(id))
@@ -912,7 +921,7 @@ struct Validation {
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
-                (p.legacy_page == 9 || (p.legacy_page >= 36 && p.legacy_page <= 38)) &&
+                (p.legacy_page == 9 || (p.legacy_page >= 35 && p.legacy_page <= 38)) &&
                 !valid_startup_world_information_page(s, p.id))
                 return fail("information page: 初始化/页签/选择/计数载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)

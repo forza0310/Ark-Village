@@ -333,7 +333,7 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
-        (top->legacy_page == 9 || (top->legacy_page >= 36 && top->legacy_page <= 38))) {
+        (top->legacy_page == 9 || (top->legacy_page >= 35 && top->legacy_page <= 38))) {
         StartupInformationInput input;
         input.confirm = true;
         return input_startup_world_information_page(state, id, input);
@@ -502,7 +502,7 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
                                        [](const auto &p) { return p.lifecycle != 4; });
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         catalogue->kind == ref::WorldScriptPageKind::raw_page &&
-        (catalogue->legacy_page == 9 || (catalogue->legacy_page >= 36 && catalogue->legacy_page <= 38))) {
+        (catalogue->legacy_page == 9 || (catalogue->legacy_page >= 35 && catalogue->legacy_page <= 38))) {
         StartupInformationInput input;
         input.cancel = true;
         return input_startup_world_information_page(state, id, input);
@@ -630,7 +630,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
-        (top->legacy_page == 9 || (top->legacy_page >= 36 && top->legacy_page <= 38)))
+        (top->legacy_page == 9 || (top->legacy_page >= 35 && top->legacy_page <= 38)))
         return update_startup_world_information_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return update_startup_world_runtime_deadline_page(state, top->id);

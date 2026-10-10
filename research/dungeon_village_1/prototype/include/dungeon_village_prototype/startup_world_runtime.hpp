@@ -53,10 +53,15 @@ struct StartupWorldFocusActor {
     }();
     StartupWorldActorMetadata metadata{0, 3, 0, {}}; // n.J建W后仅f()写ad3。
 };
-// raw37保存一组正库存ID，raw38保存四类原排序ID；选择/滚动仅属于当前页签。
+// raw35/37保存一组人物/正库存ID，raw38保存四类原排序ID。
 struct StartupInformationPageData {
     std::vector<std::vector<int>> lists;
     int selection{}, first_visible{};
+};
+// raw60来源资格与可选实际W绑定；来源不是父页ID，也不以定义ID冒充实例ID。
+struct StartupHumanDetailContext {
+    int chase_mode{}; // 已核来源0普通详情、1可追踪详情。
+    std::optional<ref::CharacterId> actor;
 };
 // 唯一持久世界：所有route/finish/report/script值都是本次调用的投影，不保存第二份world。
 struct StartupWorldRuntimeState {
@@ -121,6 +126,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, std::uint64_t> task_abort_questions; // raw1→实际raw4父页。
     std::map<std::uint64_t, int> task_abort_answers;             // raw4.bU.K，返回父页才消费。
     std::set<std::uint64_t> human_pages_initialized;             // raw60原f()仅首次重算人物缓存。
+    std::map<std::uint64_t, StartupHumanDetailContext> human_detail_contexts;
     std::map<int, std::vector<int>> human_profession_changes; // 原e.R，每职业转入次数，不是M等级。
     std::map<std::uint64_t, std::vector<int>> human_page_catalogs; // 61/62的X。
     std::map<std::uint64_t, std::array<std::vector<int>, 5>>

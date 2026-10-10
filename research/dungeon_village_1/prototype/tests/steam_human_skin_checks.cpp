@@ -167,6 +167,13 @@ void owner_checks(Checks &check) {
     ai.human_order={first.id,second.id};plan=*steam_human_detail_skin(owner,id);
     check(parts<StartupSkinRect>(plan.after_portrait)[2].rect[2]==14 &&
           parts<SteamHumanImage>(plan.after_portrait).empty(),"HP最大取共享定义100，不借旧实例capacity999");
+    auto bound=owner;
+    bound.actor_metadata.emplace(second.id,StartupWorldActorMetadata{1,3,0,{}});
+    bound.human_detail_contexts.at(id)={1,second.id}; // 镜头确认来源的明确W条件，不宣称自然双实例。
+    const auto bound_plan=steam_human_detail_skin(bound,id);
+    check(bound_plan && parts<StartupSkinRect>(bound_plan->after_portrait)[2].rect[2]==0 &&
+          parts<SteamHumanImage>(bound_plan->after_portrait).size()==1,
+          "source1显式W优先于同定义首实例，不能误显示另一人的HP");
     ai.battle.actors.at(first.id).control.state=7;
     check(!steam_human_detail_skin(owner,id),"倒下缺实际测宽不猜字宽");
     plan=*steam_human_detail_skin(owner,id,60);

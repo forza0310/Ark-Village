@@ -320,6 +320,7 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
                 if (!detail)
                     return {Error::script_failed};
                 next.page_human_bindings[*detail] = state.participants.at(selection);
+                next.human_detail_contexts.emplace(*detail, StartupHumanDetailContext{});
             } else if (raw == 26 && action == StartupWorldTaskAction::confirm) {
                 if (!close(next, id))
                     return {Error::script_failed};

@@ -843,6 +843,8 @@ Error open_startup_world_facility_page(State &s, std::uint64_t id) {
             !write_startup_world_runtime_scripts(next, page.candidate->state))
             return Error::script_failed;
         next.page_human_bindings[page.candidate->inserted_pages.front().id] = human;
+        next.human_detail_contexts.emplace(page.candidate->inserted_pages.front().id,
+                                           StartupHumanDetailContext{});
         s = std::move(next);
         return Error::none;
     }

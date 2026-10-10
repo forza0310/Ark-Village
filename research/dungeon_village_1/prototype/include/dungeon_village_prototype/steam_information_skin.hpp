@@ -18,7 +18,7 @@ enum class SteamInformationTextRole {
     town_points_header, spending_header, adventurer_count,
     village_name, town_stat_label, town_adventurer_count, town_equipment_count,
     town_equipment_kinds, facility_income_list, facility_profit_header,
-    facility_name, facility_tracking_hint
+    facility_name, facility_tracking_hint, menu_entry
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -69,7 +69,21 @@ struct SteamInformationSkinPlan {
     std::vector<SteamInformationTouch> touches;
     std::array<int,2> soft_labels{0,2};
     int raw{36};
+    std::array<int,2> origin{}; // raw9保存实际进入helper的原点；调用方只安装一次。
 };
+struct SteamInformationMenuSkinOptions {
+    std::array<int,2> canvas{240,240}, origin{};
+    int safe_left{}; // 原GetBezellessSafeArea.Left；不是Top，也不加入边界条件的原点。
+    bool japanese{}, english{}, on_top{true}, covered_by_nonmenu_subform{};
+    // 原当前Font对五项MENU_STR的实际整数测宽；展开到frame3才消费。
+    std::optional<std::array<int,5>> measured_text_widths{};
+};
+// raw9五行局部：实际原点由平台提供，完整HUD/任务摘要和一次性光标请求独立交付。
+// 图片直接返回源裁片缩短后的crop，不要求后端把比例误消费为纹理缩放。
+// covered_by_nonmenu_subform时返回空计划；基触摸仍须经过真实500ms/clip/hit框架。
+std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationMenuSkinOptions &options);
 struct SteamInformationSkinOptions {
     int view_y{};
     bool japanese{};

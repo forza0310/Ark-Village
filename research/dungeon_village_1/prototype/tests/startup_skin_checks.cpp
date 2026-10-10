@@ -1552,6 +1552,133 @@ void town_facility_information_skin(Checks &check,const std::filesystem::path &r
           read_bytes(assets/"steam-common/number12.png")!=read_bytes(root/"common/number12.png"),
           "39负利润明确Steam差异PNG而非APK同名资源");
 }
+void information_menu_skin(Checks &check,const std::filesystem::path &root) {
+    auto owner=test_support::page_fixture(9);const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=0;
+    SteamInformationMenuSkinOptions options;
+    check(!steam_information_menu_skin(owner,id,options),"raw9皮肤不初始化Owner页面");
+    check(initialize_startup_world_information_pages(owner),"raw9实际Init建立选择/计数载荷");
+    owner.page_phases.at(id)=2;
+    for(auto &p:owner.human_presence)p.second=0;
+    for(auto &h:owner.scripts.humans)h.second.pending_notice=true;
+    const auto images=[](const auto &plan,int image) {
+        std::vector<StartupSkinDraw> result;
+        for(const auto &draw:plan.draws)if(const auto *part=std::get_if<StartupSkinDraw>(&draw))
+            if(part->image==image)result.push_back(*part);
+        return result;
+    };
+    const auto labels=[](const auto &plan) {
+        std::vector<SteamInformationText> result;
+        for(const auto &draw:plan.draws)if(const auto *text=std::get_if<SteamInformationText>(&draw))result.push_back(*text);
+        return result;
+    };
+    constexpr std::array<int,4> widths{0,29,59,89},heights{0,9,19,29};
+    constexpr std::array<int,5> tags{15,14,16,17,18};
+    for(int frame=0;frame<4;++frame) {
+        owner.page_counters.at(id)=frame;
+        options.measured_text_widths=frame==3?std::optional<std::array<int,5>>{{80,81,0,80,81}}:std::nullopt;
+        const auto plan=steam_information_menu_skin(owner,id,options);
+        check(plan && plan->raw==9 && plan->origin==std::array<int,2>{0,0} && plan->touches.size()==6,
+              "raw9所有展开阶段登记五行及共用KEYCLICK基触摸");
+        const auto backgrounds=images(*plan,25);const auto text=labels(*plan);
+        check(backgrounds.size()==(frame?5U:0U) && text.size()==(frame==3?5U:0U) &&
+              images(*plan,147).empty() && images(*plan,70).size()==(frame==3?1U:0U),
+              "raw9 frame0不画底图；文字/手形等待frame3；p0的NEW不显示");
+        for(int row=0;row<5;++row) {
+            const auto &touch=plan->touches[row];
+            check(touch.component==9 && touch.value==(0x20000|row) && touch.option==0 &&
+                  touch.rectangle==std::array<int,4>{40,28*row,50,28},"raw9触摸全尺寸不随展开裁片缩小");
+            if(frame)check(backgrounds[row].crop==std::array<int,4>{68,row==2?0:29,widths[frame],heights[frame]} &&
+                  backgrounds[row].offset==std::array<int,2>{1,28*row+1},
+                  "raw9原menu89×29裁片缩源，保留源起点和选择帧，不能拉伸");
+            if(frame==3)check(text[row].role==SteamInformationTextRole::menu_entry && text[row].argument==tags[row] &&
+                  text[row].slot==row && text[row].position==std::array<int,2>{7,28*row+9} &&
+                  text[row].rgb==(row==2?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220}) &&
+                  text[row].font_size==((row==1||row==4)?11:0),
+                  "raw9五原tag及选中色，只有实测宽严格超过80才用11字号");
+        }
+        const auto &key=plan->touches.back();
+        check(key.component==4 && key.value==22 && key.option==2 && !key.rectangle,
+              "raw9尾KEYCLICK无矩形，不能解释为全屏点击关闭");
+    }
+    // NEW由定义状态与pending决定，没有地图W仍合法；其余目录NEW不是本页的灯号。
+    owner.human_presence.at(1)=2;
+    check(owner.scene.world.world.ai.human_order.empty(),"raw9 NEW夹具没有伪造场上人物");
+    for(const auto language:std::array<std::array<int,4>,4>{{{0,0,68,50},{0,1,74,50},{1,0,78,44},{1,1,78,44}}}) {
+        options.japanese=language[0]!=0;options.english=language[1]!=0;
+        options.measured_text_widths=std::array<int,5>{74,75,0,0,0};
+        const auto plan=*steam_information_menu_skin(owner,id,options);
+        const auto notice=images(plan,147);const auto text=labels(plan);
+        check(notice.size()==1 && notice[0].offset==std::array<int,2>{language[2],16} &&
+              plan.touches.front().rectangle==std::array<int,4>{40,0,language[3],28} &&
+              text[0].font_size==0 && text[1].font_size==(options.japanese?11:0),
+              "raw9 NEW英语加6但日文覆盖为10，日文布局84与测宽阈值74独立");
+    }
+    options.japanese=false;options.english=false;
+    owner.human_presence.at(1)=0;
+    for(auto &item:owner.items)item.second.newly_unlocked=true;
+    for(auto &item:owner.catalog)item.second.newly_unlocked=true;
+    check(images(*steam_information_menu_skin(owner,id,options),147).empty(),"raw9道具/装备NEW不代替唯一人物NEW资格");
+    owner.human_presence.at(1)=1;
+    // 只提供已知Graphics原点；本函数不能擅自为场景直达入口造raw3或居中。
+    options.canvas={400,300};options.origin={200,0};options.safe_left=10;
+    const auto ordinary=*steam_information_menu_skin(owner,id,options);
+    check(ordinary.origin==options.origin && images(ordinary,25).front().offset==std::array<int,2>{11,1} &&
+          images(ordinary,70).front().sprite==22 && images(ordinary,70).front().offset==std::array<int,2>{106,69},
+          "raw9宽画布不再居中，手形按局部dx10选22而非屏幕x210");
+    options.canvas={240,240};options.origin={200,200};options.safe_left=10;
+    const auto overflow=*steam_information_menu_skin(owner,id,options);
+    check(overflow.origin==options.origin && images(overflow,25).front().offset==std::array<int,2>{-49,-104} &&
+          overflow.touches.front().rectangle==std::array<int,4>{-10,-105,50,28} &&
+          images(overflow,70).front().sprite==22 && images(overflow,70).front().offset==std::array<int,2>{46,-36},
+          "raw9右底越界覆盖safe-left为负局部偏移，保留负锚而非硬夹到零");
+    options.origin={0,0};options.safe_left=120;
+    const auto left_hand=*steam_information_menu_skin(owner,id,options);
+    check(images(left_hand,70).front().sprite==21 && images(left_hand,70).front().offset==std::array<int,2>{118,69},
+          "raw9局部dx恰120使用21，21/22都消费image70");
+    options.safe_left=200;
+    check(images(*steam_information_menu_skin(owner,id,options),25).front().offset==std::array<int,2>{201,1},
+          "raw9溢出判断不把safe-left再加入Ox，不自行追加右侧裁限");
+    options.safe_left=0;options.on_top=false;
+    const auto covered_menu=*steam_information_menu_skin(owner,id,options);
+    check(images(covered_menu,25).size()==5 && images(covered_menu,70).empty() && covered_menu.touches.size()==6,
+          "被菜单覆盖仍画五行但非栈顶不画手形");
+    options.covered_by_nonmenu_subform=true;options.measured_text_widths.reset();
+    const auto hidden=steam_information_menu_skin(owner,id,options);
+    check(hidden && hidden->draws.empty() && hidden->touches.empty(),"被非菜单SubForm覆盖时返回空计划，无需猜不可见文字宽");
+    options.covered_by_nonmenu_subform=false;options.on_top=true;options.measured_text_widths=std::array<int,5>{80,81,0,80,81};
+    const auto before=startup_world_state_digest(owner);const auto base=*steam_information_menu_skin(owner,id,options);
+    for(int repeat=0;repeat<8;++repeat) {
+        const auto again=steam_information_menu_skin(owner,id,options);
+        check(again && again->draws.size()==base.draws.size() && again->touches.size()==base.touches.size() &&
+              startup_world_state_digest(owner)==before,"raw9重复查询不增长图元/触摸或消费NEW、计数、随机、一次性输出");
+    }
+    for(int fault=0;fault<9;++fault) {
+        auto bad=owner;auto input=options;
+        if(fault==0)bad.page_phases.erase(id);if(fault==1)bad.page_counters.at(id)=4;
+        if(fault==2)input.measured_text_widths.reset();if(fault==3)(*input.measured_text_widths)[1]=-1;
+        if(fault==4)input.canvas[0]=0;if(fault==5)input.safe_left=-1;
+        if(fault==6)input.safe_left=std::numeric_limits<int>::max();
+        if(fault==7){input.canvas={1,1};input.origin={std::numeric_limits<int>::max(),std::numeric_limits<int>::max()};}
+        if(fault==8)bad.scripts.humans.erase(1);
+        const auto digest=startup_world_state_digest(bad);
+        check(!steam_information_menu_skin(bad,id,input) && startup_world_state_digest(bad)==digest,
+              "raw9缺已Init载荷/NEW源、未知测宽、坏画布或算术越界拒绝，不修补Owner");
+    }
+    const auto menu=tools::parse_legacy_seb(read_bytes(root/"common/menu.seb"));
+    for(const int frame:{2,3}) {
+        const auto &parts=menu.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+        check(part!=parts.end() && part->image_index==25 && part->source_x==68 && part->source_y==(frame==2?0:29) &&
+              part->width==89 && part->height==29,"raw9 menu选中/普通真实SEB裁片oracle");
+    }
+    for(const auto file:{"finger_r.seb","finger_l.seb"}) {
+        const auto seb=tools::parse_legacy_seb(read_bytes(root/"common"/file));
+        check(!seb.layers.empty() && !seb.layers[0].parts.empty() &&
+              std::all_of(seb.layers[0].parts.begin(),seb.layers[0].parts.end(),[](const auto &part){return part.image_index==70;}),
+              "raw9两方向手形SEB均引用finger_r.png的image70，不能寻找不存在的finger_l.png");
+    }
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -1569,6 +1696,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     information_directory_skin(check,source_root);
     adventurer_information_skin(check,source_root);
     town_facility_information_skin(check,source_root);
+    information_menu_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

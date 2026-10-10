@@ -366,9 +366,9 @@ Steam `SubForm.cctor`（RVA `0x3285E0`）独立核出softLabels37／38均为`[0,
 
 上述窗框／box各自消费VIEW_Y，其余内容／箭头／滚动不额外叠加；父页面origin仍由外层统一安装。新增[Steam数量单位](../assets/steam-common/menuRT01.png)及[装备分类图](../assets/steam-common/icon_objRoots.png)共1901字节，SEB76／88同字节复用既有原包；image9的真实条目是`tresureIcon00.png`，与APK同字节，不能误写不存在的`icon_item00.png`。属性头image37与数字image103沿既有Steam差异包。统一图片路径由`steam_information_image`明确提供，不按同名图擅自跨版本复用；来源索引见[素材入口](../assets/README.md)。
 
-## Steam9菜单局部与父级原点（静态已核，待维护皮肤）
+## Steam9菜单局部与父级原点
 
-2026-10-10续核固定Steam2.56的`SubForm.Draw`（RVA `30CE30`）、`_draw`（`352E20`）及`DrawMenu2`（`308540`）。本节补五行菜单的几何、资源、注册与明确下游边界，不重复已交五标签／Owner输入规则；尚无raw9正式皮肤计划，不据静态合同认证产品字体、物理点击或原窗口动态。
+2026-10-10续核固定Steam2.56的`SubForm.Draw`（RVA `30CE30`）、`_draw`（`352E20`）及`DrawMenu2`（`308540`）。五行正式局部入口为`steam_information_menu_skin`，读取已初始化选择／计数，显式接实际原点、语言、safe-left及真实测宽，输出有序图元和触摸；现visuals短测及[展开示例](examples/steam-information-menu.png)已验。其余下游边界分别记录，不以局部计划认证字体、物理点击或原窗口动态。
 
 **真实父位置不能由画布居中猜。** raw3确认标签5在VA `1032802C–1032807C`构造raw9，`x9=x3+68+(English?28:0)`、`y9=y3+28×父选中行`；英语判断是独立`SubForm.En()`，`MAINMENUBAR_ADD=28`由cctor VA `1032DAC2`写入。`Draw`以自身x_/y_为原点：任一画布维度大于240时，一般同时加两轴`trunc((size−240)/2)`；但**根Form ID为9且当前页属于菜单集合时跳过居中**，raw9在该集合内。不能套标题raw20的根页位置，也不能为维护的场景直达入口伪造一个raw3父页。
 
@@ -392,7 +392,58 @@ NEW条件来自`IsExistCharaNew`（RVA `2DFB50`）：逐人物定义检查`state
 
 - `_draw`共用尾VA `10356D9C–10356DDF`注册组件4/value22、TouchOption flag2，无矩形重载；不可擅自解释为全屏点击关闭。
 - raw9不是raw20，DrawMenu2在VA `10309A1B–10309A9A`调用`GameForm.Draw_rightTopInfo(g,VIEW_W−Ox,VIEW_Y−Oy)`，之后还有选中任务的四条摘要。世界HUD、任务摘要及其内部原点／文字消费者尚待本方向正式交付。
-- VA `10309953–103099F5`在静态`jumpScreenCursorNeed_`为真时清标志并调用`Canvas.JumpScreenCursor`，使用实际原点与surface缩放百分比。这是一次性表现副作用；触发上游尚未闭合，后继沿已授权的Owner显式表现请求处理，纯查询不能消费标志或移动系统光标。
-- `SubForm.Draw`的finally helper（RVA `305C80`）先`SetOrigin(0,0)`，不是恢复某个猜测的旧原点；`touchInvalidTime_!=0`且距`CurrentTimeMillis`不足500ms时，还调用`ClearTouchComponent`。故登记热区不等于本轮可点击，该真实墙钟门槛不能换成逻辑tick；时间戳上游及完整平台输入仍另核。
+- VA `10309953–103099F5`在静态`jumpScreenCursorNeed_`为真时清标志并调用`Canvas.JumpScreenCursor`，改变内部屏幕光标，不是已证的系统鼠标移动。上游与几何见下文；一次性消费仍待Owner显式表现请求接入，纯查询不能消费标志。
+- `SubForm.Draw`的finally helper（RVA `305C80`）先`SetOrigin(0,0)`，不是恢复某个猜测的旧原点；特定对话切换后的墙钟保护还会清本轮触摸组件，不能换成逻辑tick或推广到所有弹窗。
 
-最小后继是有明确实际原点、语言、safe-left及五项真实测宽输入的raw9局部计划，读取现有Owner选择／计数／人物NEW；源裁片展开、HUD任务和一次性光标分别保留显式消费者及未闭合范围。当前场景直达适配不自动拥有原raw3的x/y和父选中行证据。
+五行局部计划已按上述输入交付，不消费人物NEW、随机、输出或计数，坏载荷与算术越界显式拒绝；HUD任务和一次性光标分别保留显式消费者及未闭合范围。当前场景直达适配不自动拥有原raw3的x/y和父选中行证据。
+
+### 内部光标与对话触摸保护上游（静态已核，维护待接）
+
+`SubForm.Init`公共段VA `1031263C`先清全局`jumpScreenCursorNeed_`；只有raw3主菜单分支（`103126FB→10315176`）在`10315224`置真，cctor在`1032DAB3`初始化为假。raw9初始化不置真，且会清父raw3尚未消费的请求，不能为每个新菜单自动制造跳转。直接编译访问扫描仅见这些写入及DrawMenu2的读取／清零；不外推反射或任意内存写入。
+
+DrawMenu2只有frame≥3、当前行选中且`AppData.IsTopForm(this)`为真时才到达消费点。raw9/type1的局部目标X在dx<120时为dx+m−2，否则dx+6，目标Y为行Y+13；先加真实Graphics原点，再逐轴转float32、乘`GameView.scaleRatio_`、除float100。`Canvas.JumpScreenCursor`（RVA `74EA30`）调用`SetScreenCursor`（`752200`）写内部`screenCursor_`，先夹下界8、再夹上界`KairoPlugin.GetWidth()−8`／`Canvas.GetHeight()−8`，随后置`screenCursorResumptionFrame_=12`。本路径没有系统光标API、随机、收费或页栈修改；后续输入命中会受内部光标影响，12也不是已证的毫秒数。
+
+`FormManager.PreUpdate`（RVA `1FFCE0`）先执行基类并取得栈顶：**上次栈顶Form ID9（GameForm）→当前Form ID4且SubForm.type_0（TYPE_TALK）**时才将`CurrentTimeMillis()`写入当前页`touchInvalidTime_`，随后更新上次栈顶记录。raw9信息菜单与Form ID9不是同一编号域。Draw正常及异常finally均在时间戳非零且signed64差值`now−stamp<500`时清GameView的`components_`；恰500不清，时钟回退的负差仍进入清理，时间戳本身不清零。`ClearTouchComponent`（RVA `88C020`）不同时清按下／历史触点、事件队列或键盘状态。
+
+维护接入沿[已确认Owner方案](INPUT_RENDER_REQUESTS.md#已确认的维护owner请求设计)：全局请求及页面转换顺序由真实应用控制器持有；墙钟样本、实际原点与缩放须显式进入可回放请求，Owner核准后输出内部光标／清触摸计划，重复展示冻结计划不重做消费。若纳入应用快照，须保存或明确重建全局请求、页面时间戳、上次栈顶识别及内部光标状态，不能只存raw9选择与frame。**完整虚拟光标更新／输入合成、跨进程墙钟恢复政策、整栈多页清理后继续注册的顺序仍未闭合**；原局部调用已证不等于维护平台消费者已实现。
+
+### 菜单右上HUD与四行摘要（静态已核，维护待接）
+
+2026-10-10继续核固定Steam2.56的`GameForm.Draw_rightTopInfo`（RVA `2F94C0`）及`DrawMenu2`尾段（VA `10309A9D–1030A0E3`）。以下为原版调用合同与现有Owner映射，不表示维护皮肤、原窗口或产品消费者已验收。两段本身没有新增随机、声音、字体测宽、文字字符串或触摸注册；人物共享绘制scratch仍沿基础肖像的限制，不能据此认证完整原共享表现状态。
+
+**右上HUD。** 调用传入`X=VIEW_W−Graphics.GetOriginX()`、`Y=VIEW_Y−Graphics.GetOriginY()`；第二项是VIEW_Y，不能写成VIEW_H。helper内不修改原点，按如下顺序绘制：
+
+| 条件／原序 | 已核请求 |
+| --- | --- |
+| 怪物栏准入 | `UserData.selectQuest_!=null && Quest.dungeon_==null`。`IsSelectQuest`（RVA `2E03A0`）仅判断选中任务非空；Quest偏移`+20`是设施引用，不是state，也不能用任务type1代替此条件 |
+| 怪物栏底与图标 | common image86 `menuRT02.png`整图于`(X−77,Y)`，再SEB75/image84 frame1于`(X−74,Y+2)` |
+| 怪物数 | 基数为`Quest.GetQuestData().GetMonsterNum()`；若`Quest.maa_ +24`非空，再加`MAA.appearNum_ +44−appearNumSum_ +18`。SEB10普通数字、padding0、anchor2，日文锚`(X−20,Y+3)`，其他语言`(X−27,Y+3)` |
+| 怪物单位 | 日文SEB76/image85 frame1于`(X−12,Y+6)`；其他语言SEB75/image84 frame3于`(X−18,Y+6)`。随后局部Y加18 |
+| 常驻村点 | 无论怪物栏是否出现，先SEB75/image84 frame2于`(X−57,当前Y)`，再`DrawNumImageComma(SEB20,townPoint_,X−2,当前Y+5,padding0,comma_padding0,anchor4)`。这是村子点数，不是现金 |
+
+`GetMonsterNum`（RVA `21D620`）无flag4时返回定义`monster_num_ +44`；有flag4时再加`min(clearNum_×2,10)`。维护已有`prepare_task_encounter_quota(encounter_quota,completed,flags)`；选中任务、设施引用及村点复用`active_task`、`tasks[id].facility`和`village_points`。MAA映射复用现有`RewardEncounter`：`runtime.spawned`对应appearNumSum，**`linked_monsters`对应appearNum缓存**，不实时重数怪物，也不新增第二缓存。既有`startup_world_runtime_deadline.cpp`已按`remaining -= runtime.spawned-linked_monsters`消费同一关系；实际引用从`s.task.encounter`连接`scene.world.world.ai.encounters`，仍须遵守既有退休校验。
+
+**四行摘要。** 准入仅为选中任务非空，不额外检查出发状态、参与者或人数。令`A=RateConvert(frame,0,3,VIEW_W,VIEW_W−58,true)`（整数重载），`B=(QuestData.type_==1?36:18)`，第i行`Yi=B+18×i`。每行先将image86源`(0,0,58,18)`画于`(A,Yi)`；frame小于3只画背景，达到3才画内容。**此处A/B不减Graphics原点**，前一HUD调用也没有改原点；不能为了右对齐自行改坐标。菜单父页仍可能参与绘制，不等于只保留栈顶的一份摘要。
+
+| 行 | 内容及顺序 |
+| --- | --- |
+| 0 全活跃人物 | 读`AppData.humans_`完整长度，维护为`ai.human_order`，不按参与者或HP过滤。非空取首个W的当前CharacterData；为空用定义0肖像、人数0，不创建W。先`Draw_charaBackRect(A+6,Y0+1,16,16)`：RGB(196,236,169)填16×16，再RGB(204,204,204)画15×15端点框，Steam端点语义占半开16×16。再`Draw_charaClip(A+6,Y0+2,当前身体图,direct1,clipW15,clipH14)`，最后`Draw_count4(A+55,Y0+5,人物数,SEB12)` |
+| 1 全怪物 | SEB44/image31 frame3于`(A+6,Y1+1)`，再`Draw_count3(A+55,Y1+5,AppData.monsters_长度,SEB12)`。维护为`ai.monster_order`完整长度，不过滤死亡、战斗中或当前任务 |
+| 2 type12设施 | `Draw_icon(mode9,index5)`，image91源`(80,0,16,16)`于`(A+6,Y2+1)`；按全`UserData.tenantList_`原序计当前定义type12，维护使用facility_order及实际定义。SEB12普通数字于`(A+55,Y2+5)`、padding0、anchor4。不是所有地下城、当前任务设施或地图格数 |
+| 3 剩余期间 | `Draw_icon(mode16,index=1−QuestData.type_)`，image152 `icon_quest.png`的16×16格于`(A+6,Y3+1)`。SEB12普通数字`12−questActWeekNum_`于`(A+44,Y3+4)`、padding0、anchor4；最后image151 `menuRT04.png`整图于`(A+44,Y3+3)`。维护复用`task_subperiods`，不换成月份或另造计数；type0/1对应图格1/0，不把非法类型取模成合法图 |
+
+肖像必须取**当前职业与当前性别**。`CharacterData.GetJob`（RVA `2134F0`，VA `1021353C–1021354B`）读`jobId_ +50`后索引职业；`JobData.GetImgId(CharacterData)`（RVA `21AC90`，VA `1021AC9A–1021ACB0`）按`gender_ +20`索引职业图片数组`+24`。维护用`growth.definition.current_profession`与`startup_world_human_profile(state,id).sex`，包含主角覆盖，不能用实例创建metadata、初始职业或原表固定性别。`Draw_charaClip`（RVA `30AF70`）原序是普通`ClipRect(push=true)`→`SetImageClip`→`SetDispPlayerData(action0,body,anime0,direct1,update0)`→`DrawDispPlayer(x+8,y+21)`→`ClearImageClip`→`PopClip`；实际身体锚`(A+14,Y0+23)`，不画武器／HP。**ImageClip保留独立有序请求**，不能直接并成普通clip。
+
+`Draw_count3`（RVA `252EA0`）及`Draw_count4`（`252FA0`）的非日文分支只画Comma数字，右锚为传入dx。日文先在dx−10画Comma数字，再同锚画SEB76单位：count3为frame1，count4为frame4。frame1的image85实际裁片是`(10,0,10,10)`，frame4是**`(38,0,9,10)`**，offset均0；不能按等宽10格推成x40。这与库存count使用frame2不同。Comma数字沿其固定8步宽，不从普通数字助手猜值。
+
+**数字与资源补核。** `Seb.SP_W`是metadata中的`const int SP_W=4`，不是cctor可变字段。普通`DrawNumImage`（RVA `24FD00`）在VA `1024FD5A–1024FD61`取`GetSprite(0,0)`，`1024FD71`检查长度大于4，`1024FD7B`读数组索引4。因此SEB10 `number03.seb`首记录`[0,102,0,0,8,12,0,0,0,0]`证明普通数字步宽8、源y0；现有名为number03的SEB11绑定源y12，不能混用身份。SEB20/image108是`number13.seb/number11.png`，HUD须独立Comma请求，不能借现金请求扣x9或画单位20。SEB20只有10帧，Comma大值会请求frame10；该请求在Steam实际下游不画图，具体返回链见下段，不补自制逗号或借另一数字资产。
+
+**SEB20逗号的空绘制已闭合（Steam静态事实）。** `DrawNumImageComma`（RVA `24F760`）遇字符串逗号先置标志，下一位先画数字，再于该数字x−2调用frame10（VA `1024F913–1024F93B`），lineNo为−1。真实调用链是`Seb.DrawFrame`（RVA `7BC710`）→`_draw`（`7C4C20`）→`GetSpritesLocal`（`7C28E0`）→逐layer的`GetSpriteLocal`（`7C1500`），**并非public GetSprite**。`number13.seb`实际208字节，1层10条记录、关键帧0至9，均image108、源y9、7×9、offset0；不仅是头部宣称10帧。`GetSpriteLocal`在VA `107C1A7C–107C1A83`比较请求帧与该层最后关键帧，10大于9则到`107C1EF6`返回null；`GetSpritesLocal`保留该层null，`_draw`仍调用`Seb.Draw`（RVA `7BF970`）。后者在`107BF9BC–107BF9BE`判空并直接到`107BFE97–107BFE9B`返回，没有DrawImage、末帧回退或这个缺帧引起的异常。维护计划须保留Comma的顺序、位数布局与frame10请求，像素展开对这一已证空帧输出零裁片；不能把整个数字判失败、删除布局间隔或推导任意损坏SEB都可忽略。其他结构／数组边界仍有原异常分支，本结论仅关闭固定资源的缺帧行为，未宣称APK下游相同。
+
+**整数展开边界。** Steam整数`RateConvert`（RVA `2A4780`）先执行ch_limit边界判断，区间宽为0时返回c2min；区间内为`c2min + truncTowardZero(int32((c2max−c2min)×(x−c1min))/(c1max−c1min))`，VA `102A47BD–102A47CC`是32位乘法后带符号idiv，不是浮点插值或向下取整。四摘要固定区间0至3、输出W至W−58：frame≤0返回W，frame1为W−19，frame2为W−38，frame≥3为W−58；内容门槛仍独立为frame≥3。原 helper还支持反向输入区间，本页没有调用该分支。纯计划用明确整数边界计算本页四种位置，拒绝不合契约的坐标／溢出；不为仿原32位乘法引入C++有符号溢出，也不把未证任意RateConvert参数扩大成公开维护契约。
+
+**ImageClip的参数与清除语义。** `Draw_charaClip`在VA `1030AF9E–1030AFE3`将传入x/y/w/h各转float32交`ClipRect(...,push=true)`；在`1030AFE8–1030B028`重新读取同四个输入，交`SetImageClip`，没有加Graphics原点或身体锚偏移。故本摘要两次请求均是`(A+6,Y0+2,15,14)`，不是身体绘制锚。`SetImageClip`（RVA `7745D0`）只把四个float依序写到`Graphics.imageClip_ +AC`数组，不做坐标转换、交集、Push或保存旧ImageClip。身体绘制后，`ClearImageClip`（RVA `75DD30`）将四槽写为`0x7FC00000`（NaN无效标记），**不是恢复调用前的ImageClip**；随后`PopClip`（RVA `770590`）仅从普通clip栈恢复普通裁剪，不碰imageClip_。这条helper没有调用PushImageClip／PopImageClip，也没有finally保护异常中途的恢复。维护须保持普通clip与ImageClip各自有序状态：普通clip push／交集、ImageClip set、身体绘制、ImageClip clear、普通clip pop；可用显式清除操作表达NaN无效态，无需把NaN写入快照。维护自身若原子验证整份纯计划或以RAII处理异常，那是维护保证，不得登记成原helper已保证。
+
+资源身份已按[图像覆盖索引](../assets/IMAGE_COVERAGE.json)的EXE common `img.inf/seb.inf`核对：image84/SEB75 `menuRT00.png/.seb`与APK均不同（Steam图59×45、945字节；SEB4帧、88字节），image151 `menuRT04.png`亦不同（11×11、224字节），接线需要正式出版Steam副本。image85 `menuRT01.png`已有Steam副本，SEB76与APK同字节；image86 `menuRT02.png`为77×18、729字节，image152 `icon_quest.png`为32×16、454字节，两者及SEB10/image102、SEB20/image108均同字节可复用原出版副本。SEB44/image31已有Steam图，image91已有同字节资源。具体哈希以覆盖索引及正式资源入口为准，不因同名默认跨版本复用。
+
+后续维护使用只读HUD投影（村点、可选怪物剩余数、可选四行摘要），复用唯一Owner与引用退休合同，不增加第二套世界统计或快照schema。实际资源出版、SEB及独立ImageClip消费、普通／Comma／count3／count4图元、整数边界拒绝、短测和示例仍按对应实现验收；本静态补核不把这些待接项目记成已完成。

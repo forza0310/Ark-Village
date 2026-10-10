@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## Steam情报菜单五行局部皮肤2026-10-10
+
+[raw9局部计划](prototype/include/dungeon_village_prototype/steam_information_skin.hpp)读取既有选择／计数，保留实际原点、安全区与原负局部偏移，输出0…3源裁片展开、五行完整触摸、原tag／颜色／测宽、人物NEW及栈顶手形。两方向手形SEB都引用image70，不寻找不存在的finger_l.png；覆盖非菜单页时返回空计划。原图与SEB逐字节核同已出版副本，无新增原素材或Owner／保存字段；原点归零、500ms触摸框架及一次性内部光标仍由后继控制器接，不把纯查询当消费。
+
+单Release受影响target构建通过，现visuals套件0.74秒通过；集中覆盖展开、严格测宽门槛、语言／NEW、安全区与算术边界、覆盖状态、坏载荷显式拒绝及重复只读。已实际查看[1440×528三阶段示例](ui/examples/steam-information-menu.png)，24,717字节，正式计划5／5／12图元与每阶段6触摸；字体、原点、中文及条件人物状态的适配限制见示例说明。无新增target或重复经营长测，临时导出器／JSON／渲染器验后清理，构建、测试与并行任务均已退出；其他研究／产品在途文件保留。
+
+并行补核[HUD／四摘要及内部光标上游](ui/INFORMATION_MENU.md)：SEB10步宽8、逗号SEB20缺帧为空绘制、整数展开截断和独立ImageClip已闭合，尚未接入维护皮肤；虚拟光标输入合成、墙钟回放及整栈触摸注册仍未闭合。没有新增过程报告、指纹清单或长期核对脚本。
+
 ## 初始设施p2与商会一次图纸资格2026-10-10
 
 [商会交叉](rules/COMMERCE.md)定位实际初值错误：固定APK o.a→o.b及Steam TenantData.NewGame都令flags bit1设施p2，生成器却输出p1。已精准修正九定义18／24／28／30／31／33／35／45／66的生成初值，不改原表或人工p1夹具。原85仍是p!=2；维护另按用户已确认策略收紧为p0，目录、支付前、定义预览及恢复一致。93尚未初始化也验身份／p0，活页不接受已开放状态，领取退休态保留合法p2并拒绝半份载荷。

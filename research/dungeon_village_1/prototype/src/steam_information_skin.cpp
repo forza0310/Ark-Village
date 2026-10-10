@@ -1,4 +1,4 @@
-// Steam raw36具名局部合同：ui/INFORMATION_MENU.md末节；不是APK坐标的同名替代。
+// Steam情报菜单及目录的局部皮肤：ui/INFORMATION_MENU.md；不借APK坐标推同版布局。
 #include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
@@ -98,6 +98,62 @@ void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,in
             SteamFacilityNumberKind kind=SteamFacilityNumberKind::number) {
     plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
 }
+}
+std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=9||options.canvas[0]<=0||options.canvas[1]<=0||options.safe_left<0)return {};
+    SteamInformationSkinPlan plan;
+    plan.raw=9;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const int width=options.japanese?84:90;
+    std::int64_t x=options.safe_left,y=0;
+    if(std::int64_t(options.origin[0])+width>options.canvas[0])
+        x=std::int64_t(options.canvas[0])-width-options.origin[0];
+    if(std::int64_t(options.origin[1])+145>options.canvas[1])
+        y=std::int64_t(options.canvas[1])-145-options.origin[1];
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    if(!fits(x-2)||!fits(x+width+6)||!fits(y)||!fits(y+4*28+29))return {};
+    bool human_new{};
+    if(view->frame>=3) {
+        if(!options.measured_text_widths||!state.rules)return {};
+        for(const int value:*options.measured_text_widths)if(value<0)return {};
+        // 原IsExistCharaNew只看定义state!=0与new，不要求地图上存在W。
+        for(const auto &human:state.rules->humans) {
+            const auto presence=state.human_presence.find(human.identity);
+            const auto script=state.scripts.humans.find(human.identity);
+            if(presence==state.human_presence.end()||script==state.scripts.humans.end())return {};
+            human_new=human_new||(presence->second!=0&&script->second.pending_notice);
+        }
+    }
+    const int dx=static_cast<int>(x),dy=static_cast<int>(y);
+    for(int row=0;row<5;++row) {
+        const int row_y=dy+28*row;
+        const bool selected=row==view->selection_or_period;
+        // DrawSeb比例0..1000缩短源裁片，offset和锚点不随比例缩放。
+        if(view->frame>0) {
+            const int ratio=view->frame*1000/3;
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,25,-1,0,0,
+                {68,selected?0:29,89*ratio/1000,29*ratio/1000},{dx+1,row_y+1}});
+        }
+        plan.touches.push_back({{9,0x20000|row,std::array<int,4>{dx+40,row_y,width-40,28},{},0},{},{}});
+        if(view->frame<3)continue;
+        text(plan,Role::menu_entry,0,row,dx+7,row_y+9,{},
+             selected?std::array<int,3>{76,58,50}:std::array<int,3>{255,242,220},
+             (*options.measured_text_widths)[static_cast<std::size_t>(row)]>width-10?11:0);
+        std::get<SteamInformationText>(plan.draws.back()).argument=view->entries[static_cast<std::size_t>(row)].tag;
+        if(row==0&&human_new)
+            image(plan,147,20,9,dx+68+(options.japanese?10:options.english?6:0),row_y+16);
+        if(selected&&options.on_top) {
+            if(dx<120)sprite(plan,70,22,-1,dx+width+6,row_y+13);
+            else sprite(plan,70,21,-1,dx-2,row_y+13);
+        }
+    }
+    // 原_draw共用KEYCLICK注册没有显式矩形，不能在这里扩成全屏热区。
+    plan.touches.push_back({{4,22,{},{},2},{},{}});
+    return plan;
 }
 std::optional<SteamInformationSkinPlan> steam_town_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
@@ -424,6 +480,7 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 20:return "original/common/icon_armour00.png";
     case 21:return "original/common/icon_accessry00.png";
     case 24:return "original/common/icon_back00.png";
+    case 25:return "original/common/menu.png";
     case 28:return "original/common/wnd_back.png";
     case 29:return "original/common/wnd_bar.png";
     case 30:return "original/common/wnd_conner.png";

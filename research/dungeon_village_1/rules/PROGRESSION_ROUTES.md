@@ -24,6 +24,8 @@ APK目录定位：`Lb/h;::a()Z`的pc215调用`Lc/n;::d()V`；后者（方法999�
 
 来源`a/n.java:44–135`、固定`rankUpTerm`索引、`b/g.java:4538`起及事件42–47。维护[晋级规则](../example/src/world_calendar_tasks.cpp)与[Owner页48](../prototype/src/startup_world_runtime_pages.cpp)已消费。条件0使用历史最高月收入A，不是当前现金；条件1计非失效类别3／9，条件2计非失效类别12；条件3扫描指定设施定义存在，不能套用另两项的失效过滤。页面49是条件说明／置标志后返回，不能误走48真正晋级。
 
+真正raw48提交、`k+1/J[0]`、活动／设施通知、raw50及其53–57／41／大臣／新闻后继，统一沿[城镇真正晋级与庆典](ai/WORLD_SCHEDULE.md#城镇真正晋级与庆典)，不以条件满足替代提交或庆典关闭。原世界分区11逐晋级定义的p/r与分区21的村星级k／晋级日期J[0]各自保存；它们都不随只传设施G／职业p的系统e0/e1跨局继承，见[保存与继承](PERSISTENCE.md#人物职业与活动逐定义保存新局及继承边界)。
+
 第二星是最小积极路线：真实补齐4座kind12住宅、10个有效kind3／9设施、12成功任务及800人气→实际页48晋级→领完43产生的活动30→开展30并等待53满120提交→实际投入／日期处理／发现／炼制魔法壶。当前仅有首星／住宅／任务／壶条件消费者的分别验收，不能将这些拼成第二星已自然完成。完整壶边界仍归[魔法壶](MAGIC_POT.md)。
 
 2026-10-10补正第二星计数措辞：[固定APK a/n.java:59](../work/decompiled/sources/a/n.java:59)在非失效实例循环中只把kind3／9计入第一项，kind12住宅另计；四住宅不能同时拿来凑十设施，募集kind13、装饰和道路也不能补这个计数。现有维护消费者保持该判断，本次只修文档。具体推进与预算见[第二星只读方案](../prototype/tests/APPLICATION_PROCESS.md)：当前固定短剑0原价400G，无共享库存时装备赠礼为600G；旧自然住宅Driver的`入住费+150`只是历史策略预留值，不是原版报价，不能用于新路线预算。该方案尚不代表四住宅／第二星自然已完成，也未实施新Driver或Controller交接。
@@ -95,6 +97,12 @@ APK目录定位：`Lb/h;::a()Z`的pc215调用`Lc/n;::d()V`；后者（方法999�
 固定DEX选择器复核已重新闭合缺失旧fallback所承担的关键分支，当前维护算法无须修改：默认v0、G≥500、kind1即可按chapter选择上述六BOSS，不需要伪造v1、event60或怪物y。日历外层第一年≤8显示月的探索限制在G强制之后，不能由达到G就断言立即出BOSS。定义完成次数t在该选择方法中读取后被flags覆盖，没有“未完成t==0才进入候选”的过滤；不得按普通Java表面变量补规则。这里只升级静态来源资格，自然六BOSS仍未完成。
 
 精确入口是`Lc/n;::f(I)Lc/k;`（方法1008、code offset546136、540 code unit）：pc18–38为显式模式；39–74原序扫描保留最后匹配的同chapter特殊任务，60–62的t读值被flags覆盖；75–96为G／kind门槛及当前未胜BOSS；97–176对全部六项压cap，177–219严格取最小并保原序平局；221–333为稀有／普通探索，305命中即跳创建，不再抽普通池；335–447为复发，449–528为普通战斗，479异chapter跳过。唯一具名直接调用者`Lb/c;::c(I)V`的pc1307前先处理G强制，再处理早年探索覆盖。该方法的54个直接跳转已按真实指令边界核对；定位保留固定APK字节码范围，不假装补回缺失的历史fallback，也不代证Steam或自然实跑。
+
+### 任务生成后的BOSS与复发对话
+
+APK `b/c.java:431–470`在实际战斗任务已生成后，flags2分支先请求134并绑定所选人物，创建绑定末怪物的99；随后仅未见时请求`怪物列4+139`（六BOSS对应139–144），再无已见守卫请求138并传怪物名。接着独立检查：该怪物累计击败数`v>0`且165未见则请求165；`v>=9`且166未见则请求166，两项都绑定说话者类型2／实际末怪物ID。两项是独立if，达到9且都未见时可以同轮请求；随后G归0，不在对话确认时归0。其程序分别只有talk175／176，不因此击杀BOSS或清零成长。
+
+flags4复发分支则请求133、创建100演出；只有该任务定义完成数`t>0`且167未见才请求167，绑定同样的怪物说话者。167只有talk177，内部名称“增长量使数值回归了”不表示该事件实际重置数值；任务配额随t增长沿[遭遇创建](ai/ENCOUNTERS.md)。维护`world_calendar_tasks.cpp`在真实工厂成功后保持上述次序及守卫，既有`special_generation`用例覆盖v为0／1／8／9；本段不代表六BOSS自然全部生成，也不以Steam调用方法名代证每个分支。
 
 ### 本次闭合：最终BOSS新闻不按事件内部标签猜目标
 
@@ -203,6 +211,15 @@ Steam `Quest.ClearQuest(QuestData)`（RVA `0x2BE3B0`）新交叉到与APK `c/k.j
 
 后续连续世界与自然高星／六BOSS路线交产品侧验证。研究可使用明确标注的条件夹具检查G、章节、领取和奖励边界，不能称其为自然取得；原版窗口、重复初始化准入及尚未核的外围helper分别登记，不因未跑自然路线而重复建设研究长跑Driver。
 
+## 日历提醒与全员住宅新闻
+
+以下两项都有实际代码入口，不走事件表的七项自动条件。固定APK日历`b/c.c(int)`的普通源码与既有维护消费者相互核对；本批不把Steam `ProgressTime`的方法分组提升为全部分支已逐指令认证。
+
+- **163建设提醒**：只在子周期确实改变后、新子周期恰3、村星级恰3且事件未见时检查。分母是全部设施定义中`p!=0`的数量，分子是当前`g`实例中类别恰3的数量；分母须大于0，按整数计算`分子×100/分母 < 150`才触发。这里没有把分母限定为营业设施，也没有给分子加施工／失效／可达性过滤；它不是第三星晋级的设施数量条件。替换参数为村名、制表符、当前分子数量；程序`2,173`只请求对话173，不补建设资格、资金或实际建筑。来源`b/c.java:483–500`；维护`world_calendar_tasks.cpp`的`subperiod_capacity_hint`与既有`capacity`用例保留零分母、严格150及参数断言。
+- **203全员入住新闻**：月字段确实改变时，住宅税处理之后、清击杀展示目录之前，尚未见事件203才按全部人物定义检查每项`D[2]==1`。固定目录是25人，**未开放p0、当前不在场的人也参与检查**；不是“当前到访者都有房”或“已开放的人都有房”，也不限定每年四月。刚完成最后一间住宅不会由此入口同步发报，要等后续月界。原程序`6,300&4,4`先登记并延迟，再请求新闻4，没有另付住宅税或给予奖励。来源`b/c.java:299–317`；维护`world_calendar_maintenance.cpp`的`month_all_residents_script`按全定义投影，已有p0仍阻挡、已见不重排断言。
+
+两者已见状态来自真正事件调用计数，不由准备请求伪写完成；203的300为获准续体更新次数。Owner日历按[阶段顺序](../example/src/world_calendar.cpp)调用对应消费者，人物完整投影见[日历接线](../prototype/src/startup_world_runtime_calendar.cpp)。事件计数和延迟续体沿[存档合同](PERSISTENCE.md)保存，显示页面本身不在原档内；两段通关继承不传递这些世界事件进度。现有规则消费者与断言存在不代表这两条自然后期玩家路线或Steam动态已验，本批未改代码或重跑测试。
+
 ## 200事件的自动条件与实际执行入口
 
 固定APK与Steam日／英语`events.txt`的200行ID原序、零基列2、条件和程序逐项一致；ID有空洞但严格升序。列2全部为0：APK `a/f.java:22`存到f27b，Steam `EventData.Load`（RVA `0x2195F0`，写点`0x10219677`）存到`type_ +0x20`，不是任务／设施的开放flags。当前自动选择器不检查这列，不能由0推导事件禁用或一次性位；一次性来自调用计数的已见检查。
@@ -235,8 +252,39 @@ Steam `Quest.ClearQuest(QuestData)`（RVA `0x2BE3B0`）新交叉到与APK `c/k.j
 
 维护`world_scripts.cpp`的条件／自动／续体消费者、`world_runtime.hpp`的skip_round和`startup_world_runtime_scene.cpp`的负资金前置与这些已核分支一致；现有`world_scripts_test::automatic_events`覆盖六组日期边界、首项7、未见与次轮延迟，运行时套件覆盖触发轮跳尾。本批不改实现、不新增重复测试，也未重新运行旧测试。原程序计数回绕、坏引用与失败后的部分修改不具有维护Owner的事务保证；193项无表内自动资格不等于193项不可达，全部动态调用者和Steam外层平台暂停／输入准入仍不能由这段局部扫描证明已穷尽。
 
+负资金前置的精确门槛另补为：APK `b/c.java:1523–1535`只在正常state0且当前现金严格小于0时进入。161未见优先执行161；已见161时，才在164未见、原年字段至少3且全部`p!=0`普通道具库存z累计至少20时请求164，不计装备、不以种类数代替库存。原年3对应显示第4年，不能照164内部名称的“第3年之后”写成原年2。161的`2,171&6,5&0,3000`先对话171，再等5次获准续体更新才入账3000G；不是现金变负立即归零或每轮救济。164仅对话174，不售卖道具、减库存或补款。维护`startup_world_runtime_scene.cpp`保持161优先／164后备，执行之后继续正常自动事件扫描；两者各自事件已见计数与161续体按世界档保存，不在恢复后重新发一笔救济。
+
 <a id="全部200定义的已知上游归组"></a>
 ### 全部200定义的调用与表内引用归组
+
+索引的方法名用于定位调用组，具体资格、实际效果与后继按下表回到已有合同；大型Init／Update按业务页分流，不能把同一方法中的所有事件当作同一门槛。下表是阅读导航，各合同自身标明APK、Steam及维护的证据等级，不因采用Steam方法名而扩大认证范围。事件原程序仍查索引对应ID；原计数／续体的[持久边界](PERSISTENCE.md#游戏的-25-个分区)与领域奖励真正提交时点分开。
+
+| 索引方法组 | 成立条件、效果及后继主责 |
+| --- | --- |
+| `CharacterData.AddExp`、`CharacterData.LvUp`、`CharacterData.UpdateStockExp` | [真实升级与延迟成长](ai/CONTROL.md)、[职业大师与开放](CHARACTERS.md#真正切职业与职业大师)；升级109、职业开放113不是收到经验显示就触发 |
+| `CharacterData.Aura_chStart` | [真实出发的增强抽签](ai/WORLD_DEPARTURE.md#原顺序与身份)及[控制消费者](ai/CONTROL.md) |
+| `WeaponData.ChangeState`、`WeaponData.NewGame` | [武器25首次开放216](CHARACTERS.md#逐id效果分类与消费后继)及[低层领取区别](PROGRESSION_CONTENT.md) |
+| `AppData.ExecuteScript` | 下述15／17的21／61；[商会36的120／121与菜单后继](COMMERCE.md)；不是扫描事件表自动条件 |
+| `Character2.AddDamage`、`Character2.Control` | [致死131／217与首战90](ai/CONTROL.md)、[状态8／9及正常／取消死亡](ai/ENCOUNTERS.md) |
+| `ItemObj.Proc_getTreasure2`、`ItemObj.Proc_getTreasure` | [拾物、目录提交及110／151](ai/LIFECYCLE.md#拾物与目录实际提交)；普通道具计数与装备首次开放分开 |
+| `MAA.Update` | [普通胜利与任务胜利](ai/ENCOUNTERS.md#完整事件候选与延迟成长)、[BOSS152续体奖励](#本次闭合boss奖励在续体执行时读取阶段) |
+| `RouteSearch.SetTenantRoute` | [道路可达位与115](MAP_ACCESS.md)；选目标、寻路失败、到达分别处理 |
+| `Tenant.Update` | [施工完成活动／新闻](FACILITY_EFFECTS.md)、[探索阶段2收尾](ai/DUNGEONS.md#阶段2与任务收尾)、[设施使用](FACILITY_USE.md) |
+| `Tenant.AddTenantUseHuman` | [首次进入探索设施的168–171](ai/DUNGEONS.md#进入与共享字段)，要求人数／阶段及挑战前缀，保留两次随机分支 |
+| `UserData.AddTownPopularPointNow` | [124／125、人气奖励和220–224](ACCOUNTING.md#popularity-rewards)；单条普通奖励与多个新闻门槛不同 |
+| `UserData.OpenMPotDevelWindowSetParam` | [壶处理经验102／103](MAGIC_POT.md)，100分支先于30的else-if |
+| `UserData.ProcChaseCommandFromInfoWindow` | [缺在场W时137及追踪成功](../ui/INFORMATION_MENU.md#3560追踪的steam后继合同) |
+| `UserData.SetMedalParam` | [年度真正授勋及58](ai/WORLD_SCHEDULE.md#年度授勋最小闭环)，个人勋章、待授勋数及完成人气分开 |
+| `UserData.Update_appear`、`UserData.Update_residentFlg` | [到访89／218、住宅请求82／83](STARTUP.md#25人物共用的自然到访重访与住宅资格)；218另见其后专节 |
+| `GameForm.AddQuest` | [任务真实生成](ai/DUNGEONS.md#后续任务的真实生成条件)及本页六章／BOSS；139–144、165–167另由末怪物家族、累计和已见守卫决定 |
+| `GameForm.ProcBuild` | [住宅解除与撤除135／136](STATE_CONSTRUCTION.md)；建筑选择不是完成提交 |
+| `GameForm.ProgressTime` | [月份／授税](ACCOUNTING.md)、[通关3](STARTUP_RECORDS.md)、[期限65](ai/DUNGEONS.md#期限页与返回主场景)、本页163／203；26到年度续体沿[授勋](ai/WORLD_SCHEDULE.md#年度授勋最小闭环) |
+| `GameForm.Update`、`GameForm._update` | [建设与住宅输入](STATE_CONSTRUCTION.md)、[任务中止／恢复](ai/DUNGEONS.md)、[主场景轮次](ai/WORLD_SCHEDULE.md)及上文自动条件／负资金161、164 |
+| `SubForm.Init2`、`SubForm.Init`、`SubForm.Update2`、`SubForm.Update` | 按实际raw页查[页面入口](../ui/PAGES.md)，分流至[人物成长赠礼](CHARACTERS.md)、[商会](COMMERCE.md)、[壶](MAGIC_POT.md)、[村办／领奖](ACCOUNTING.md)、[任务页面](ai/DUNGEONS.md)、[年度授勋](ai/WORLD_SCHEDULE.md#年度授勋最小闭环)；错误／空目录事件不改变这些业务资格 |
+| `RankUpTerm.UpRank` | 本页星级四条件及真正48提交；53–57先于后续部长奖励，条件说明49不晋级 |
+| `SubForm.Update_clearPoint` | [六项计分及4／5／6纪录收尾](STARTUP_RECORDS.md)，不是五星或六BOSS完结条件 |
+
+两个容易被方法组掩盖的脚本内直接调用：APK `d/a.java:779–800`的opcode15先无额外已见守卫调用事件21（`2,18`），再创建授勋页87；其正常年度来源为26的`6,1340&15,0`，不在21中直接发勋章。opcode17仅目标活动旧`p!=1`时真正开放；先调用活动开放helper，再仅事件61未见时调用61并传活动名，随后没有现存同类通知6才追加通知。61的`6,40&2,56`只是首次开放说明，不开展活动、不扣季度次数或点数；目标已开放则这一整段不重复执行。维护`world_scripts.cpp`两分支同序，活动产生者及52／53实际开展另见上文，不能按61的内部名称“第一次举办活动”误定触发时点。
 
 2026-10-11以固定APK已定位调用记录、Steam具名直接call及共享尾段前驱、两版表内程序合并；[内容索引](../data/PROGRESSION_CONTENT_INDEX.json)以共享调用组登记方法→ID，避免逐定义重复方法和地址。当前五组互斥、合计200：具名字面量121、十条局部算式路径37、上述自动7、仅有任务表内引用的77一项、尚无已核上游34。前三组合计165项有具名调用／条件入口；77保留为表内引用且尚无实际调用者，不能将它计入已核运行入口。各组均不证明全部路径或自然可达；调用的成立条件与时点仍由各领域合同判定。
 

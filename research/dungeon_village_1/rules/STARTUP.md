@@ -196,6 +196,12 @@ Steam GetAppearCharaId（RVA 2DB8E0）在102DBB1F筛state非0，经Character2.Ge
 
 共同Owner的startup_world_runtime_arrival按原人物顺序投影存在态、aq及flags，world_arrivals保留前抽／覆盖／出生抽签；月界与raw59更新同一个human_calendar.absent_months。住宅请求由refresh_startup_world_residence_requests先置旗再发布脚本。只读核对未发现本批接线缺失，不改核心、不重跑自然前缀；这些是静态条件及接线证据，不提升为25人物全部自然到访／住宅完成验收，原程序失败语义与维护候选回滚仍分开。
 
+### 到访后的魔法新闻218
+
+固定APK `c/n.java:4093–4118`在实际创建、装备／能力刷新并追加人物到`bl`之后检查事件218；若本次为首访，事件89仍先执行。218只要求尚未见过、**本次新增人物重算后的Q四槽至少一项为true**，不是当前职业名字含“魔法”、已经施放过法术或首次解锁魔法职业。Q的来源是学习位、当前魔法职业及相应职业恰10级，沿[魔法能力派生](CHARACTERS.md#23职业的转入精通及魔法后继)；普通重访同样可以满足。已有魔法人物一直留场而没有新的创建，不由这一个入口立即发新闻。
+
+事件原程序为`6,300&4,18`：调用时先登记事件已见并排延迟续体，经过300次获准续体更新才请求新闻18，不在到访当场显示，不给金币、点数或另开人物。原事件计数及续体保存，页面不保存；新局事件计数另行重建，不把新闻已见当作两段通关继承内容，见[存档合同](PERSISTENCE.md)。维护[到访消费者](../example/src/world_arrivals.cpp)在创建回调返回后才读`job_history`（这里实际映射Q，不是泛职业履历）；[Owner接线](../prototype/src/startup_world_runtime_arrival.cpp)用刷新后的`derived.available_spells`重新投影。既有到访套件已包含刷新后读取、89→218顺序、等待及晚失败回滚断言；本批只核对现有实现／断言，未重跑测试。Steam方法分组已定位到`UserData.Update_appear`，本段精确门槛仍仅认证APK及维护对应，不以事件表相同代证Steam分支。
+
 ## 3. 首名人物初值与加入顺序
 
 ### 默认字段

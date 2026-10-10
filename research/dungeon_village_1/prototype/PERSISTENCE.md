@@ -24,6 +24,8 @@ NEW批追加任务实例`newly_available`及Owner的`facility_build_present`／`
 
 ## 入口与用途
 
+菜单保存14经[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)与`StartupApplication::update_save_page`接入已确认的四目录事务。严格导出仅接受已初始化stage1、唯一scene3＋14、普通世界且无建设／执行锚／未消费声音；导出候选移除14、清两项页面载荷及输入、恢复scene2，仍通过normal完整校验。live保留结果页：成功前预备全部候选、发布一次当前manual目录后无抛出安装；写入拒绝时提交失败结果且不改旧目录／marker／业务／随机。stage1完整应用快照恢复后可同输入完成保存，普通冷载只得到稳定主场景。stage0／1早输入不写盘，stage2关闭不重存；暂停冻结、坏载荷或缺消费者显式拒绝。世界5／应用8／系统2、字段布局和128MiB不变，无旧档迁移；独立world窗口只预览保存请求，应用桥验收不等于GUI保存已接。
+
 2026-10-09另增[完整应用研究回放](APPLICATION_REPLAY.md)：AVRAPP01保存应用系统／标题／计分控制器＋完整Session＋实际Driver，在新研究隔离目录恢复。它复用本文世界字节codec和既有预算，计分途中不再仅保存世界而漏掉应用控制器；正常AVRSAVE1和AVRSYS01用途保持分开。
 
 2026-10-08主角覆盖新增Owner布局，旧无覆盖schema拒绝、不迁移；跨局纪录使用独立AVRSYS01系统文件，不能从单世界恢复重建。具体应用事务、标题回放与计分页快照边界见[标题／系统模块](STARTUP_APPLICATION.md)。
@@ -56,7 +58,7 @@ Owner同步提交并返回当次计划，不保留等待输出字段，schema不
 & research/dungeon_village_1/work/release/bin/dungeon_village_prototype.exe --world --load-file research/dungeon_village_1/work/manual.avrs --check
 ```
 
-正常文件由调用者明确指定，未实现原两栏保存菜单或自动文件保存；当前原日历检查点行为保持不变。
+上述独立world窗口的正常文件由调用者明确指定，尚未接应用两栏菜单或自动文件保存；应用层raw14桥见本节入口，当前原日历检查点行为保持不变。
 文件参数通常不能与inspect-page混用；本批仅开放只读normal档＋有界`world-magic-pot`诊断，沿已校验世界调用真实壶入口、禁止同时写档。
 窗口诊断的输入资格（自然／组合）由文件来源决定，不因读档成功升级。窗口字体仍按现有`--font`参数选择。
 

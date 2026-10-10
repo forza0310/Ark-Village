@@ -4,11 +4,14 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
+#include <algorithm>
+#include <tuple>
 
 using namespace dungeon_village_prototype;
 std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
@@ -411,6 +414,165 @@ void magic_pot_bridges(const std::filesystem::path &parent, const std::filesyste
                 "short magic-pot management leaves storage unchanged and outputs consumed");
     }
 }
+// 此层只核应用文件提交与真实菜单接线；raw14载荷边界由pages/restore套件主责。
+std::uint64_t enter_save_request(StartupApplication &app) {
+    good(app.open_main_menu());
+    good(app.update());
+    const auto choose = [&](int tag) {
+        const auto id = top(*app.world())->id;
+        const auto view = inspect_startup_world_menu_page(app.world()->state(), id);
+        require(view.has_value(), "save bridge enters initialized source menu");
+        const auto row = std::find(view->tags.begin(), view->tags.end(), tag);
+        require(row != view->tags.end(), "source menu contains actual save navigation tag");
+        StartupWorldMenuInput input;
+        input.select_row = static_cast<int>(row - view->tags.begin());
+        good(app.input_menu_page(id, input));
+        input = {}; input.confirm = true;
+        good(app.input_menu_page(id, input));
+    };
+    choose(6);
+    good(app.update());
+    require(top(*app.world())->legacy_page == 10, "main menu opens actual system submenu10");
+    choose(20);
+    const auto id = top(*app.world())->id;
+    require(top(*app.world())->legacy_page == 14, "system save tag20 creates actual raw14");
+    require(!app.save_world().empty(), "ordinary save cannot bypass pending modal save page");
+    good(app.update());
+    const auto view = inspect_startup_world_save_page(app.world()->state(), id);
+    require(view && view->stage == 1 && !view->saved,
+            "first raw14 update only creates application save request");
+    const auto before = startup_world_session_digest(*app.world());
+    good(app.acknowledge_page(id)); good(app.cancel_page(id)); good(app.update(true));
+    require(startup_world_session_digest(*app.world()) == before,
+            "early confirm and cancel preserve pending save request without writing");
+    return id;
+}
+auto save_business(const StartupApplication &app) {
+    const auto &s = app.world()->state();
+    const auto random = s.scene.random.snapshot();
+    return std::make_tuple(s.simulation_steps, s.scene.calendar.units,
+        s.scene.world.world.ai.accounting.funds(), s.scene.world.updates,
+        random.engine_state, random.tape, random.cursor, random.tape_mode);
+}
+void save_page_bridges(const std::filesystem::path &root) {
+    for (int slot = 0; slot != 2; ++slot) {
+        const auto files = paths(root, "save-slot-" + std::to_string(slot));
+        StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
+        good(app.request_new_game(slot)); good(app.start_game()); app.take_audio_requests();
+        good(app.save_world()); // 保留一份真实稳定旧档，检验替换而非仅首次创建。
+        const auto before_directory = app.records().save_directory;
+        const auto before_revision = app.records().revision;
+        const auto before_system = bytes(files.root / "system.avr");
+        const auto business = save_business(app);
+        const auto page = enter_save_request(app);
+        app.take_audio_requests();
+        require(bytes(files.root / "system.avr") == before_system &&
+                    app.records().save_directory == before_directory && save_business(app) == business,
+                "menu and first save update preserve storage money date and complete random stream");
+
+        StartupApplication restored(paths(root, "save-replay-placeholder-" + std::to_string(slot)),
+                                    ref::WorldRandomStream::from_java_seed(99));
+        StartupApplicationReplayMetadata metadata;
+        metadata.controller_id = "save-page-bridge-v1"; metadata.controller_state = {1};
+        const auto validator = [](const StartupApplication &, const StartupApplicationReplayMetadata &m) {
+            return m.controller_id == "save-page-bridge-v1" && m.controller_state == std::vector<std::uint8_t>{1} &&
+                m.next_frame == 0 && m.next_command == 0 && m.extensions.empty()
+                ? std::string{} : std::string{"invalid save bridge replay driver"};
+        };
+        if (slot == 0) {
+            const auto replay = root / "save-stage1.avra";
+            good(save_startup_application_replay(root, replay, app, metadata, validator));
+            good(restore_startup_application_replay(replay, root / "save-stage1-restored",
+                metadata.controller_id, restored, metadata, validator));
+            require(startup_application_replay_digest(app, metadata, validator) ==
+                        startup_application_replay_digest(restored, metadata, validator),
+                    "full application replay preserves pending save page and old directory bytes");
+            good(restored.update());
+        }
+        good(app.update());
+        const auto view = inspect_startup_world_save_page(app.world()->state(), page);
+        require(view && view->stage == 2 && view->saved == true && app.world()->state().save_marker == 1 &&
+                    app.records().revision == before_revision + 1 && save_business(app) == business,
+                "second save update commits exactly one manual record without advancing business or random");
+        for (int s = 0; s != 2; ++s)
+            for (int kind = 0; kind != 2; ++kind)
+                if (s != slot || kind != static_cast<int>(StartupSaveKind::manual))
+                    require(app.records().save_directory[s][kind] == before_directory[s][kind],
+                            "manual save leaves other slot and both interrupt directories intact");
+        if (slot == 0)
+            require(startup_application_replay_digest(app, metadata, validator) ==
+                        startup_application_replay_digest(restored, metadata, validator),
+                    "restored phase1 request and uninterrupted application commit identical results");
+        const auto saved_system = bytes(files.root / "system.avr");
+        good(app.update());
+        if (slot == 0) good(app.acknowledge_page(page)); else good(app.cancel_page(page));
+        require(bytes(files.root / "system.avr") == saved_system &&
+                    app.records().revision == before_revision + 1 && save_business(app) == business,
+                "result idle update and either exit cannot submit save again");
+        StartupApplication cold(files, ref::WorldRandomStream::from_java_seed(99));
+        good(cold.load_world(slot)); cold.take_audio_requests();
+        require(cold.world()->state().save_marker == 1 && save_business(cold) == business &&
+                    top(*cold.world())->kind == ref::WorldScriptPageKind::scene &&
+                    cold.world()->state().scene.top_is_main,
+                "ordinary cold load restores stable saved world instead of modal result page");
+    }
+
+    const auto files = paths(root, "save-revision-conflict");
+    StartupApplication conflict(files, ref::WorldRandomStream::from_java_seed(1));
+    good(conflict.request_new_game(0)); good(conflict.start_game()); conflict.take_audio_requests();
+    good(conflict.save_world());
+    const auto old_directory = conflict.records().save_directory;
+    const auto marker = conflict.world()->state().save_marker;
+    const auto business = save_business(conflict);
+    const auto page = enter_save_request(conflict); conflict.take_audio_requests();
+    const auto disk = load_startup_application_storage(files.root);
+    require(disk.snapshot.has_value(), "conflict fixture starts from actual valid storage");
+    const auto concurrent = commit_startup_application_records(files.root, *disk.snapshot, disk.snapshot->records);
+    require(concurrent.snapshot.has_value(), "real concurrent revision update creates stale application storage");
+    const auto concurrent_bytes = bytes(files.root / "system.avr");
+    good(conflict.update());
+    const auto failed = inspect_startup_world_save_page(conflict.world()->state(), page);
+    require(failed && failed->stage == 2 && failed->saved == false &&
+                conflict.world()->state().save_marker == marker && save_business(conflict) == business &&
+                conflict.records().save_directory == old_directory &&
+                bytes(files.root / "system.avr") == concurrent_bytes,
+            "failed application save shows result while preserving old directory world money date and random");
+    const auto retained = load_startup_application_slot(files.root, *concurrent.snapshot, 0, StartupSaveKind::manual);
+    require(retained.snapshot.has_value() && retained.snapshot->session.state().save_marker == marker,
+            "revision conflict leaves previous real manual blob readable");
+    good(conflict.cancel_page(page));
+    require(bytes(files.root / "system.avr") == concurrent_bytes, "failure result exit never retries storage commit");
+
+    const auto pending_files = paths(root, "save-pending-audio");
+    StartupApplication pending(pending_files, ref::WorldRandomStream::from_java_seed(1));
+    good(pending.request_new_game(0)); good(pending.start_game());
+    enter_save_request(pending); // 真实标题及激活输出留在应用队列，不注入音频。
+    require(pending.has_pending_audio_requests(), "pending gate uses real unconsumed application audio");
+    const auto before = management_observation(pending);
+    const auto system = bytes(pending_files.root / "system.avr");
+    require(!pending.update().empty() && management_observation(pending) == before &&
+                bytes(pending_files.root / "system.avr") == system && no_world_blobs(pending_files),
+            "phase1 pending audio rejects without consuming output or publishing a world file");
+
+    auto paused_session = *pending.world();
+    paused_session.set_paused(true);
+    StartupWorldSaveMetadata paused_metadata;
+    paused_metadata.purpose = StartupWorldSavePurpose::replay;
+    paused_metadata.controller_id = "application-paused-save-fixture-v1";
+    paused_metadata.controller_state = {1};
+    const auto paused_file = root / "paused-save.avrs";
+    require(save_startup_world_file(paused_file, paused_session, paused_metadata).ok,
+            "paused save condition fixture uses existing world replay codec");
+    const auto paused_paths = paths(root, "save-paused");
+    StartupApplication paused(paused_paths, ref::WorldRandomStream::from_java_seed(1));
+    good(paused.load_world_replay(paused_file, paused_metadata.controller_id)); paused.take_audio_requests();
+    const auto paused_before = management_observation(paused);
+    const auto paused_system = bytes(paused_paths.root / "system.avr");
+    good(paused.update(false));
+    require(management_observation(paused) == paused_before &&
+                bytes(paused_paths.root / "system.avr") == paused_system && no_world_blobs(paused_paths),
+            "paused application phase1 update freezes request and does not publish world storage");
+}
 } // namespace
 
 int run_startup_application_actions_checks(const std::filesystem::path &parent) {
@@ -420,6 +582,7 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
     const auto &root = owned.path;
     management_bridges(root);
     magic_pot_bridges(parent, root);
+    save_page_bridges(root);
     const auto entries = create_application_action_entry_fixtures(root);
     StartupApplication empty(paths(root, "empty"), ref::WorldRandomStream::from_java_seed(1));
     require(!empty.return_rank_page(1).empty() && !empty.leave_commerce_page(1).empty() &&

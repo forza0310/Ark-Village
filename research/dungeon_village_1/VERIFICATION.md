@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 菜单保存页与应用事务桥2026-10-10
+
+`startup_world_save`与应用文件桥接真实3→10→20→14，保持Init保存中、首轮只置stage1、下一次应用Update写当前manual栏、stage2才退出。复用原页面字段及两项counter／phase载荷，无新Owner字段、target或文件格式；世界5／应用8／系统2与128MiB保持。严格稳定导出不吞额外页、执行锚、建设或声音，normal完整校验仍有效；成功候选在单系统发布前准备完毕，发布后仅无抛出安装。原游戏的失败半状态不复制，失败页保留旧有效档、业务与随机。
+
+Release相关库／窗口构建成功，application／runtime／pages／persistence／codec coverage五项定向CTest通过56.09秒；随后增加成功结果必须marker1的恢复守卫并重建，最终persistence复验31.99秒通过。覆盖真实菜单两栏保存／旧档替换、其它三目录不动、普通冷载、stage1完整应用快照恢复短回放、真实revision竞争失败、早输入／暂停／未消费音频及错误载荷拒绝。沿现有pages、restore和application actions套件分工，没有新增逐功能target。工作区保留其它住宅在途测试，本批未提交那三份文件，不将其扩展归入本批交付。
+
+`--world --inspect-page world-save --frames 8`有界研究窗口已实际查看并正常退出，5000G、0世界更新／随机，stage1明确显示“本窗口仅预览保存页”；字体报告1402／1404。此窗口仅持Session，不访问应用存储，保存框仍属研究适配，不能认证GUI保存全链或完整原皮肤。没有新增素材、持久队列或codec字段；关闭后框架释放counter／phase并移除退休页，成功／失败结果和音频消费边界经过测试与独立审查。未重跑经营长前缀，构建与测试进程已收齐；后继继续原保存皮肤／窗口应用宿主和其余系统页面。
+
 ## 冒险村办皮肤与系统目标页纠正2026-10-10
 
 `steam_navigation_menu_skin`补raw4／7真实可变目录的type1只读计划，复用9／10有序循环，保留原触摸、动态边界、实测宽、独立NEW／GET及JP／En差异。既有visuals套件扩一至三行、四帧、遮挡／未消费源、缺失及坏载荷拒绝和Owner／随机／输出只读；原9／10独立oracle保留。受影响Release target构建及visuals定向1项通过0.83秒，最终研究窗口EXE增量构建成功后，页面／视觉两项复验通过3.38秒；无新target、Owner字段或存档格式。

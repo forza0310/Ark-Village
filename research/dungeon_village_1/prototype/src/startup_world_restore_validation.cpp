@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
@@ -959,6 +960,9 @@ struct Validation {
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                p.legacy_page == 14 && !valid_startup_world_save_page(s,p.id))
+                return fail("save page: 来源/阶段/结果/父栈或载荷非法");
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 (p.legacy_page == 3 || p.legacy_page == 4 || p.legacy_page == 7 || p.legacy_page == 10) &&
                 !valid_startup_world_menu_page(s, p.id))

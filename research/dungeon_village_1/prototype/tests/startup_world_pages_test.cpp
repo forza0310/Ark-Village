@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
@@ -3759,6 +3760,138 @@ void magic_pot_equipment_low_level_rewards() {
     }
 }
 
+// 保存页的两次Update与应用写盘边界分开；这里不使用文件系统或伪造保存成功。
+void manual_save_page() {
+    using E = StartupWorldRuntimeError;
+    auto s = test_support::world_fixture();
+    const auto marker = s.save_marker;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+    const auto draws = s.scene.random.draws();
+    const auto date = s.scene.calendar.units;
+    const auto updates = s.scene.world.updates;
+    check(open_startup_world_main_menu(s) == E::none, "save enters actual raw3");
+    page_tick(s);
+    const auto choose = [&](StartupWorldRuntimeState &state, int tag) {
+        const auto id = state.scripts.pages.back().id;
+        const auto view = inspect_startup_world_menu_page(state, id);
+        check(view.has_value(), "save navigation has initialized source menu");
+        const auto row = std::find(view->tags.begin(), view->tags.end(), tag);
+        check(row != view->tags.end(), "save navigation contains source tag");
+        StartupWorldMenuInput select;
+        select.select_row = static_cast<int>(row - view->tags.begin());
+        StartupWorldMenuInput confirm; confirm.confirm = true;
+        check(input_startup_world_menu_page(state, id, select) == E::none &&
+                  input_startup_world_menu_page(state, id, confirm) == E::none,
+              "save navigation consumes actual selected row");
+    };
+    choose(s, 6);
+    page_tick(s);
+    auto missing_source = s;
+    missing_source.menu_page_data.erase(missing_source.scripts.pages.back().id);
+    const auto missing_wire = startup_world_state_digest(missing_source);
+    StartupWorldMenuInput confirm; confirm.confirm = true;
+    check(input_startup_world_menu_page(missing_source, missing_source.scripts.pages.back().id, confirm) != E::none &&
+              startup_world_state_digest(missing_source) == missing_wire,
+          "save rejects missing initialized source menu instead of rebuilding and retiring it");
+    auto exhausted = s;
+    exhausted.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    const auto exhausted_wire = startup_world_state_digest(exhausted);
+    check(input_startup_world_menu_page(exhausted, exhausted.scripts.pages.back().id, confirm) != E::none &&
+              startup_world_state_digest(exhausted) == exhausted_wire,
+          "save page allocation failure preserves menus and complete state");
+    choose(s, 20);
+    const auto id = s.scripts.pages.back().id;
+    check(s.scripts.pages.back().legacy_page == 14 &&
+              s.scripts.pages.back().source_record == 10 && s.scripts.pages.back().legacy_tag == 20 &&
+              initialize_startup_world_save_pages(s),
+          "raw10 save carries actual source provenance into raw14 Init");
+    auto view = inspect_startup_world_save_page(s, id);
+    check(view && view->stage == 0 && view->counter == 0 && !view->saved &&
+              s.save_marker == marker, "save Init only prepares saving text and stage0");
+    auto early = s;
+    early.scripts.pages.back().lifecycle = 2; // 明确输入准入夹具，不冒充额外Update。
+    const auto early_wire = startup_world_state_digest(early);
+    check(act_startup_world_save_page(early, id) == E::none &&
+              startup_world_state_digest(early) == early_wire,
+          "stage0 completion input does not bypass saving");
+    page_tick(s);
+    view = inspect_startup_world_save_page(s, id);
+    check(view && view->stage == 1 && view->counter == 1 && !view->saved &&
+              s.save_marker == marker && s.scene.world.updates == updates &&
+              s.scene.calendar.units == date && s.scene.random.draws() == draws &&
+              s.scene.world.world.ai.accounting.funds() == cash && s.sound_requests.empty(),
+          "first save Update only reaches stage1 without world, marker, random or sound effects");
+    const auto wire = startup_world_state_digest(s);
+    check(acknowledge_startup_world_runtime_page(s, id) == E::none &&
+              cancel_startup_world_runtime_page(s, id) == E::none &&
+              startup_world_state_digest(s) == wire &&
+              !prepare_startup_world_runtime(s).candidate &&
+              startup_world_state_digest(s) == wire,
+          "stage1 early input is inert and standalone Session refuses missing application writer");
+    auto paused = s; paused.scene.framework_paused = true;
+    const auto pause_wire = startup_world_state_digest(paused);
+    const auto pause_result = update_startup_world_save_page(paused, id);
+    check(pause_result && startup_world_state_digest(*pause_result) == pause_wire,
+          "paused valid save page does not request a write or advance phase");
+    for (int fault = 0; fault < 6; ++fault) {
+        auto bad = s;
+        if (fault == 0) bad.page_phases.erase(id);
+        if (fault == 1) bad.page_counters.erase(id);
+        if (fault == 2) bad.page_phases.at(id) = 3;
+        if (fault == 3) bad.page_counters.at(id) = -1;
+        if (fault == 4) bad.scripts.pages.back().source_record = 9;
+        if (fault == 5) bad.scripts.pages.back().legacy_f = 2;
+        bad.scene.framework_paused = true;
+        check(!valid_startup_world_save_page(bad, id) && !inspect_startup_world_save_page(bad, id) &&
+                  !update_startup_world_save_page(bad, id) && !prepare_startup_world_save_export(bad, id),
+              "invalid initialized save payload rejects even while paused without repairing fields");
+    }
+    const auto exported = prepare_startup_world_save_export(s, id);
+    check(exported && exported->save_marker == 1 && exported->scripts.pages.size() == 1 &&
+              exported->scripts.pages.front().kind == ref::WorldScriptPageKind::scene &&
+              exported->scripts.pages.front().lifecycle == 2 && !exported->page_counters.count(id) &&
+              !exported->page_phases.count(id) && !exported->scripts.executing_page &&
+              startup_world_state_digest(s) == wire,
+          "application export is a separate stable scene candidate with marker1, leaving live result page");
+    for (int fault = 0; fault < 4; ++fault) {
+        auto bad = s;
+        if (fault == 0) bad.sound_requests.push_back({StartupAudioOperation::ordinary_play, 1});
+        if (fault == 1) bad.scripts.executing_page = id;
+        if (fault == 2) bad.build_mode = 1;
+        if (fault == 3) {
+            auto extra = bad.scripts.pages.back();
+            extra.id = bad.scripts.next_page_id++;
+            extra.legacy_page = 60;
+            extra.lifecycle = 3;
+            bad.scripts.pages.insert(bad.scripts.pages.end() - 1, extra);
+        }
+        const auto before = startup_world_state_digest(bad);
+        check(!prepare_startup_world_save_export(bad, id) && startup_world_state_digest(bad) == before,
+              "export cannot consume old sound, transaction, construction or unrelated modal page");
+    }
+    for (const bool success : {false, true}) {
+        const auto completed = complete_startup_world_save_page(s, id, success,
+            success ? "" : "disk write failed");
+        check(completed.has_value(), "application supplies one explicit save outcome");
+        auto result = *completed;
+        view = inspect_startup_world_save_page(result, id);
+        check(view && view->stage == 2 && view->saved == std::optional<bool>{success} &&
+                  !view->text.empty() && result.scene.random.draws() == draws &&
+                  result.save_marker == (success ? 1 : marker) &&
+                  result.sound_requests.empty() &&
+                  !complete_startup_world_save_page(result, id, success),
+              "save result records outcome without retrying writer or producing audio/random");
+        check((success ? acknowledge_startup_world_runtime_page(result, id) :
+                         cancel_startup_world_runtime_page(result, id)) == E::none,
+              "completed success/failure acknowledges through ordinary page retirement");
+        page_tick(result);
+        check(!result.page_phases.count(id) && !result.page_counters.count(id) &&
+                  std::none_of(result.scripts.pages.begin(), result.scripts.pages.end(),
+                      [&](const auto &p) { return p.id == id; }),
+              "framework Finish releases save page and its actual lifecycle payload");
+    }
+}
+
 void navigation_menu_pages() {
     using E = StartupWorldRuntimeError;
     auto s = test_support::world_fixture();
@@ -3859,7 +3992,11 @@ void navigation_menu_pages() {
     page_tick(system);
     check(inspect_startup_world_menu_page(system, system_id)->tags ==
               std::vector<int>({20,21,22,23,24}), "Steam system menu keeps five actual tags and no APK28");
-    for (int row = 0; row < 5; ++row) {
+    auto saving = system;
+    check(input_startup_world_menu_page(saving, system_id, confirm) == E::none &&
+              saving.scripts.pages.back().legacy_page == 14,
+          "Steam system row20 opens actual save page instead of reporting missing consumer");
+    for (int row = 1; row < 5; ++row) {
         select.select_row = row;
         check(input_startup_world_menu_page(system, system_id, select) == E::none,
               "system row selection is a real menu operation");
@@ -4053,6 +4190,7 @@ int main() {
         unlocked_visitor();
         human_details_and_gifts();
         navigation_menu_pages();
+        manual_save_page();
         present_directory_pages();
         human_profession_and_mastery();
         tax_pages();

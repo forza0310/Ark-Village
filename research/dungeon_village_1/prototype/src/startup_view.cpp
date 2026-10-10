@@ -12,6 +12,7 @@
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
@@ -803,6 +804,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存设置变更游戏方法排行榜结束游戏输入未接入"
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
+    glyphs += "保存中保存完成保存失败本窗口仅预览保存页";
     glyphs += "体力力量灵活结实魔力运气";
     glyphs += "周围设施的奖励没有";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
@@ -846,7 +848,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         return {};
     };
     if (inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information" ||
-        inspect_page == "world-adventure" || inspect_page == "world-village") {
+        inspect_page == "world-adventure" || inspect_page == "world-village" || inspect_page == "world-save") {
         // 有界验收只使用真实入口与输入，不注入选择、页计数、资金或随机。
         if (session.open_main_menu()!=StartupWorldRuntimeError::none)
             throw std::runtime_error("导航检查主菜单入口失败");
@@ -856,7 +858,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto id=session.state().scripts.pages.back().id;
             const auto view=inspect_startup_world_menu_page(session.state(),id);
             if(!view)throw std::runtime_error("导航检查主菜单投影失败");
-            const int tag=inspect_page=="world-system"?6:inspect_page=="world-information"?5:
+            const int tag=(inspect_page=="world-system"||inspect_page=="world-save")?6:inspect_page=="world-information"?5:
                           inspect_page=="world-adventure"?1:2;
             const auto entry=std::find(view->tags.begin(),view->tags.end(),tag);
             if(entry==view->tags.end())throw std::runtime_error("导航检查所需标签不存在");
@@ -867,6 +869,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 throw std::runtime_error("导航检查实际选行确认失败");
             for(int step=0;step<3;++step)
                 if(!session.update().candidate)throw std::runtime_error("导航检查子菜单初始化失败");
+            if(inspect_page=="world-save") {
+                // 当前窗口只持Session，明确停在真实文件请求；不凭本地页面回调创建应用档。
+                const auto save_menu=session.state().scripts.pages.back().id;
+                if(session.input_menu_page(save_menu,confirm)!=StartupWorldRuntimeError::none ||
+                   !session.update().candidate)
+                    throw std::runtime_error("保存页真实请求检查失败");
+            }
         }
         session.take_audio_requests();
     } else if (inspect_page == "world-editing") {
@@ -1996,12 +2005,17 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("共同世界绘制时钟失败");
         if (gate.clock) {
             clock = *gate.clock;
-            const auto result = session.update();
-            if (result.error != StartupWorldRuntimeError::none)
-                throw std::runtime_error(
-                    "共同世界更新失败：" + std::to_string(static_cast<int>(result.error)) + "/" +
-                    std::to_string(static_cast<int>(result.scene_error)) + "/" +
-                    std::to_string(static_cast<int>(result.world_error)));
+            const auto *page=top_page();
+            const auto save=page && page->kind==ref::WorldScriptPageKind::raw_page && page->legacy_page==14
+                ? inspect_startup_world_save_page(session.state(),page->id) : std::nullopt;
+            if(!save || save->stage!=1) {
+                const auto result = session.update();
+                if (result.error != StartupWorldRuntimeError::none)
+                    throw std::runtime_error(
+                        "共同世界更新失败：" + std::to_string(static_cast<int>(result.error)) + "/" +
+                        std::to_string(static_cast<int>(result.scene_error)) + "/" +
+                        std::to_string(static_cast<int>(result.world_error)));
+            }
         }
         // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
         (void)session.take_sound_requests();
@@ -3311,10 +3325,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("取消", 18, 270);
             else if (page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
+                     (page->legacy_page != 14 || (state.page_phases.count(page->id) &&
+                                                   state.page_phases.at(page->id)==2)) &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
                                                   state.page_counters.at(page->id) >= 70)))
                 font.text("确定", 190, 270);
+            if(page->legacy_page==14 && state.page_phases.count(page->id) &&
+               state.page_phases.at(page->id)==1)
+                font.text("本窗口仅预览保存页",12,270,ink,11);
             if ((page->legacy_page == 99 || page->legacy_page == 100) && page->monster_definition) {
                 const auto &monster = world.ai.monster_growth.at(*page->monster_definition);
                 sprites.actor(true, monster.body * 4 + 1,

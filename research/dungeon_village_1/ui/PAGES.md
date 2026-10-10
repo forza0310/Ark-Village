@@ -364,6 +364,8 @@ raw4／7／9／10位置为`xChild=xParent+68+(En?28:0)`、`yChild=yParent+28×�
 
 Steam raw10证据：`SubForm.Init` RVA `312460`在VA `10314FF2–1031502C`写五项state1；Update在`10327837–10327895`分别分派tag20→保存14、21→设置变更12、22→游戏方法13，公共`10328228–10328248`先Push目标再退休菜单。metadata的`TYPE_CONFIG=12`／`TYPE_MANUAL=13`与APK `b/g.java:113`的MENU_STR一致；此前“纪录12／配置13”的正文和窗口译文是误标，本批更正。tag23在`1032777D`检查`Config.TRIAL_VERSION`：非试玩构造`form.RankForm`（RVA `2035A0`）；试玩只压“高分仅正式版可用”提示并保留菜单。APK `new b.e()`也对应RankForm，不能标成设置窗口；分支存在不认证当前窗口的试玩flag。
 
+维护tag20现经真实3→10创建14并退休菜单：Init保存中，首次Update仅stage0→1，下次应用Update完成当前manual目录事务，stage2才显示确认并可关闭。早确认／取消不消费请求；独立Session在stage1缺文件消费者时拒绝，研究窗口`world-save`有界诊断明确停在预览。成功／失败结果、严格导出和恢复边界见[保存合同](../rules/PERSISTENCE.md#steam手动保存页的局部交叉)；当前保存框仍为研究适配，完整原窗框／按钮皮肤与窗口应用文件宿主不能列为已完成。
+
 tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1、保留父菜单；后续`10327587–103275BF`消费dialog，结果0且dialogId不为99才调用`FormManager.RemoveAllForms()`并立即返回。结果非0清dialog引用后继续菜单，不重设选择。此局部不能直接认证进程关闭、立即存档或回标题，结束／保存上游须另核；id99及无菜单结果时软5的OpenBrowser属于独立平台请求，维护不自动打开。tag28代码虽仍在`103276ED–10327714`，Init不列28。`_draw`在`103531F7–10356CB6`分派raw10到DrawMenu2(type1)，沿用已核子菜单皮肤／测宽，不把主菜单图标与safe-left套入系统菜单。
 
 维护`steam_system_menu_skin`已给raw10五项的正式只读行计划，与raw9复用同一type1绘制循环；frame／selection由真实控制器提供，稳定帧须传五项实际测宽。保留缩源裁片、ID9基矩形、语言阈值、选中手形和共尾KEYCLICK；无NEW或分类图标。它不创建页面，不执行保存、设置、游戏说明、RankForm、结束或浏览器动作；HUD、内部光标、平台输入及外层软标签另接。[四条件例图](examples/steam-system-menu.png)直接消费正式计划与原素材，字体／中文词条为明确离线适配，不是原窗口动态；本批按正确标签重新导出，保留全部四个条件。

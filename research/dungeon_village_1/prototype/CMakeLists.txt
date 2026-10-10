@@ -61,7 +61,7 @@ add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
 add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_codec.cpp src/startup_world_restore_validation.cpp
     src/startup_world_persistence.cpp src/startup_world_file_io.cpp "${PERSISTENCE_IDENTITY_CPP}"
-    src/startup_world_routes.cpp src/startup_world_runtime.cpp src/startup_world_menu.cpp
+    src/startup_world_routes.cpp src/startup_world_runtime.cpp src/startup_world_menu.cpp src/startup_world_save.cpp
     src/startup_world_profile.cpp src/startup_world_inheritance.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
@@ -81,7 +81,7 @@ target_include_directories(dungeon_village_startup_world PUBLIC include)
 target_compile_features(dungeon_village_startup_world PUBLIC cxx_std_17)
 set_target_properties(dungeon_village_startup_world PROPERTIES CXX_EXTENSIONS OFF)
 # 应用持有跨世界系统纪录；复用世界文件I/O，不让规则层依赖标题或文件。
-add_library(dungeon_village_startup_application src/startup_application.cpp
+add_library(dungeon_village_startup_application src/startup_application.cpp src/startup_application_world_save.cpp
     src/startup_application_menu.cpp src/startup_title_menu.cpp src/startup_application_storage.cpp
     src/startup_application_storage_replay.cpp
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp

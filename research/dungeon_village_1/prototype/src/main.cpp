@@ -104,12 +104,13 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "world-equipment-info" && options.inspect_page != "world-magic-pot" &&
           options.inspect_page != "world-facility-bonuses" && options.inspect_page != "world-menu" &&
           options.inspect_page != "world-adventure" && options.inspect_page != "world-village" &&
+          options.inspect_page != "world-save" &&
           options.inspect_page != "world-system" && options.inspect_page != "world-information")))
         throw std::invalid_argument("共同世界不能与旧夹具混用；快照检查支持 "
                                     "visitor/world-month/world-active/task-team/world-award/"
                                     "world-building/world-details/world-human/world-activities/"
                                     "world-commerce/world-item-gift/world-editing/world-goods/world-equipment-info/world-magic-pot/world-facility-bonuses/"
-                                    "world-menu/world-system/world-information/world-adventure/world-village");
+                                    "world-menu/world-system/world-information/world-adventure/world-village/world-save");
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.fixture || options.check ||
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
@@ -126,6 +127,7 @@ Options parse_options(int argc, char **argv) {
              options.inspect_page == "world-equipment-info" || options.inspect_page == "world-magic-pot" ||
              options.inspect_page == "world-facility-bonuses" || options.inspect_page == "world-menu" ||
              options.inspect_page == "world-adventure" || options.inspect_page == "world-village" ||
+             options.inspect_page == "world-save" ||
              options.inspect_page == "world-system" || options.inspect_page == "world-information")))))
         throw std::invalid_argument("页面检查需要有界窗口及对应模式的页面名称");
     if ((options.load_file || options.save_file) &&

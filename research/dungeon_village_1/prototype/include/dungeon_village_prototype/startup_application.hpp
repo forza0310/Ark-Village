@@ -156,6 +156,8 @@ class StartupApplication {
     std::string commit_world(StartupWorldRuntimeSession candidate, bool save_system = false);
     template <class Action> std::string apply_world_action(Action &&action);
     std::string update_clear(bool confirm);
+    // raw14请求经严格稳定导出及既有单系统发布点处理；结果页不成为普通档的一部分。
+    std::string update_save_page(std::uint64_t page);
     StartupApplicationPaths paths_;
     StartupApplicationStorageSnapshot storage_;
     StartupTitleDraft draft_;

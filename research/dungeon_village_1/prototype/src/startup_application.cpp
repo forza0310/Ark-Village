@@ -1,5 +1,6 @@
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -220,6 +221,13 @@ std::string StartupApplication::update(bool confirm) {
     if (!world_ || page_ != Page::world) return "当前没有活动世界";
     if (is_clear(top(world_->state()))) return update_clear(confirm);
     if (clear_) return "计分页引用已不匹配";
+    const auto *save_page = top(world_->state());
+    if (save_page && save_page->kind == ref::WorldScriptPageKind::raw_page &&
+        save_page->legacy_page == 14) {
+        const auto view = inspect_startup_world_save_page(world_->state(), save_page->id);
+        if (save_page->lifecycle == 2 && !view) return "保存页载荷拒绝";
+        if (!confirm && view && view->stage == 1) return update_save_page(save_page->id);
+    }
     if (confirm) {
         const auto *p = top(world_->state());
         return p ? acknowledge_page(p->id) : "世界无页面";

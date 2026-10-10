@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 
@@ -28,6 +29,78 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore manual save: ") + scenario);
+        };
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(), "actual framework admission");
+            state = std::move(*result.candidate);
+        };
+        const auto choose = [&](auto &state, int tag) {
+            const auto id = state.scripts.pages.back().id;
+            const auto view = p::inspect_startup_world_menu_page(state, id);
+            require(view.has_value(), "initialized source menu");
+            const auto row = std::find(view->tags.begin(), view->tags.end(), tag);
+            require(row != view->tags.end(), "source tag exists");
+            p::StartupWorldMenuInput select;
+            select.select_row = static_cast<int>(row - view->tags.begin());
+            p::StartupWorldMenuInput confirm; confirm.confirm = true;
+            require(p::input_startup_world_menu_page(state, id, select) == p::StartupWorldRuntimeError::none &&
+                        p::input_startup_world_menu_page(state, id, confirm) == p::StartupWorldRuntimeError::none,
+                    "real navigation consumes menu row");
+        };
+        auto save = baseline;
+        require(p::open_startup_world_main_menu(save) == p::StartupWorldRuntimeError::none, "open3");
+        tick(save); choose(save, 6); tick(save); choose(save, 20);
+        const auto id = save.scripts.pages.back().id;
+        expect(save, true, "raw14 pending Init with source menu retirement");
+        require(p::initialize_startup_world_save_pages(save), "raw14 actual Init");
+        const auto check_roundtrip = [&](const auto &state, const char *scenario) {
+            expect(state, true, scenario);
+            const auto bytes = p::persistence_detail::encode_state(state);
+            const auto restored = p::persistence_detail::decode_state(bytes, *state.rules);
+            expect(restored, true, scenario);
+            require(p::persistence_detail::encode_state(restored) == bytes,
+                    "save stage/counter/result/provenance restore without Init or file writes");
+            for (int fault = 0; fault < 6; ++fault) {
+                auto bad = restored;
+                auto page = std::find_if(bad.scripts.pages.begin(), bad.scripts.pages.end(),
+                    [&](const auto &entry) { return entry.id == id; });
+                require(page != bad.scripts.pages.end(), "restored save page exists");
+                if (fault == 0) bad.page_phases.erase(id);
+                if (fault == 1) bad.page_counters.erase(id);
+                if (fault == 2) bad.page_phases.at(id) = 3;
+                if (fault == 3) page->source_record = 9;
+                if (fault == 4) page->legacy_tag = 21;
+                if (fault == 5) page->legacy_f = 7;
+                expect(bad, false, "raw14 malformed initialized provenance/stage/result rejects");
+            }
+        };
+        check_roundtrip(save, "raw14 initialized stage0 exact restore");
+        tick(save);
+        require(save.page_phases.at(id) == 1, "first update reaches awaiting application writer");
+        check_roundtrip(save, "raw14 stage1 exact restore does not repeat earlier world prefix");
+        auto source3 = save;
+        // 已核raw3来源的专用消费者条件夹具；不宣称save_shortcut已接或重放双Pop。
+        source3.scripts.pages.back().source_record = 3;
+        check_roundtrip(source3, "raw14 declared source3 consumer payload exact restore");
+        for (const bool success : {false, true}) {
+            const auto result = p::complete_startup_world_save_page(save, id, success,
+                success ? "" : "disk write failed");
+            require(result.has_value(), "prepare explicit result");
+            check_roundtrip(*result, "raw14 stage2 success/failure exact restore does not write again");
+            auto bad = *result;
+            bad.page_counters.at(id) = 0;
+            expect(bad, false, "raw14 result cannot masquerade as unexecuted first frame");
+            if(success) {
+                bad=*result;bad.save_marker=0;
+                expect(bad,false,"raw14 successful result requires actual committed save marker");
+            }
+        }
+    }
     {
         auto tracking = baseline;
         // 当前任务已消失但镜头页尚未获准更新的合法短边界；下一轮自行退休。

@@ -2,7 +2,7 @@
 
 当前世界语义5／应用8已修正新局九设施原初值p2，并按用户确认使85仅列p0未开放图纸；预览、支付、93领取及恢复同资格，旧研究档拒绝、不迁移。原85的p!=2事实与维护p0策略分别登记在[商会合同](../rules/COMMERCE.md)，不修改原表、玩家旧进度或追溯退款。
 
-[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。信息目录与追踪上下文另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；自动中断原轮内产生者／raw14及原游戏档兼容仍未实现。
+[应用存储](APPLICATION_STORAGE.md)与[标题控制器](TITLE_MENU.md)已接系统2四目录、显式菜单输入和完整文件视图；世界语义4／应用语义7修复建设、移动、撤除后的到达价格缓存，当批Driver v3与字段布局未变，验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。信息目录与追踪上下文另行扩展Owner字段，旧布局研究普通档及精确快照均拒绝，见[存取模块](PERSISTENCE.md)。CLI使用显式`--root`，旧三路径接口拒绝且不迁移；raw14已接下述应用保存桥，自动中断原轮内产生者及原游戏档兼容仍未实现。
 
 旧多年研究前缀仅保历史，恢复资格以当前语义／布局／数据身份为准，不暗补price、重签或恢复退休研究长跑队列。产品负责自然经营全链，研究仅做本批短功能／必要恢复检查。价格在完整邻接刷新中同步所有实例，品质在退出时由当前邻接即时派生，没有同类长期实例缓存；原版依据与条件到达覆盖见[设施使用](../rules/FACILITY_USE.md#arrival-cache)。
 
@@ -14,7 +14,9 @@
 
 [steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner；`steam_main_menu_notices`接任务实例j查询及建设aY/P缓存，raw22确认／取消清当前完整任务名单的j，raw21普通／道路定义选择显式刷新建设缓存。缓存初始false、允许陈旧、随完整Owner保存；局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接。[完整合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列来源、当前接线与尚缺边界，不以场景快捷入口代替原菜单。
 
-[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10目录可操作，但保存／设置／游戏说明／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
+[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10的tag20已接raw14；设置／游戏说明／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
+
+[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。`--inspect-page world-save`的独立Session窗口只预览stage1，不访问应用文件；完整原皮肤和窗口应用宿主继续接线，见[本批验证](../VERIFICATION.md#菜单保存页与应用事务桥2026-10-10)。
 
 本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
 

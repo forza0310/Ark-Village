@@ -28,6 +28,95 @@ auto sprite(const std::filesystem::path &p) {
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
 }
+void save_page(Checks &check) {
+    using Role=SteamStartupTextRole;
+    SteamSavePageSkinInput input;
+    for(int stage:{0,1}) {
+        input.stage=stage;
+        // 保存中根本不读取字体测宽，故缺值及未消费的坏值均不影响正文。
+        for(const auto width:std::vector<std::optional<float>>{{},-1.0F,
+                std::numeric_limits<float>::quiet_NaN()}) {
+            input.measured_button_width=width;
+            const auto plan=steam_save_page_skin(input);
+            check(plan && plan->origin==std::array<int,2>{0,0} && plan->draws.size()==3 &&
+                  plan->touches.empty(),"raw14阶段0/1只画正文框，不提前要求了解按钮测宽或注册触摸");
+            check(std::holds_alternative<SteamStartupWindow>(plan->draws[0]) &&
+                  std::holds_alternative<SteamStartupBox>(plan->draws[1]) &&
+                  std::holds_alternative<SteamStartupText>(plan->draws[2]),
+                  "raw14保留窗口、内框、正文的原调用顺序");
+            const auto &window=std::get<SteamStartupWindow>(plan->draws[0]);
+            const auto &box=std::get<SteamStartupBox>(plan->draws[1]);
+            const auto &text=std::get<SteamStartupText>(plan->draws[2]);
+            check(window.width==210 && window.height==110 && window.vertical==0 && window.style==0 &&
+                  window.title==Role::message_title && window.title_value==0 &&
+                  box.left==26 && box.top==90 && box.right==213 && box.bottom==148,
+                  "raw14正式窗口和DrawBox端点不冒充宽高或手动选栏皮肤");
+            check(text.role==Role::message_body && text.rectangle==std::array<double,4>{26,115,187,32} &&
+                  text.anchor==34 && text.rgb==std::array<int,3>{92,51,31} &&
+                  text.line_space==6 && text.font_size==0 && text.placement==SteamStartupTextPlacement::layout,
+                  "raw14正文沿原TextLayout锚点、行距、棕色和当前字号");
+        }
+    }
+    input.stage=2;input.measured_button_width=31.5F;
+    const auto completed=steam_save_page_skin(input);
+    check(completed && completed->draws.size()==5 && completed->touches.size()==1 &&
+          std::holds_alternative<SteamStartupFill>(completed->draws[3]) &&
+          std::holds_alternative<SteamStartupText>(completed->draws[4]),
+          "raw14完成页追加一个高亮和一个了解，不复用raw1双答案或raw20三行");
+    const auto &fill=std::get<SteamStartupFill>(completed->draws[3]);
+    const auto &answer=std::get<SteamStartupText>(completed->draws[4]);
+    const auto outer=steam_startup_window_skin(std::get<SteamStartupWindow>(completed->draws[0]),23);
+    const auto inner=steam_startup_box_skin(std::get<SteamStartupBox>(completed->draws[1]),23);
+    check(outer && inner && parts<StartupSkinDraw>(*outer)[0].offset==std::array<int,2>{15,76} &&
+          parts<StartupSkinRect>(*inner)[0].rect==std::array<int,4>{26,101,187,58},
+          "GameForm原静态VIEW_Y23只移动两种窗框，不能把0条件例图当源默认");
+    check(fill.rectangle==std::array<double,4>{98.25,164,43.5,17} &&
+          fill.rgb==std::array<int,3>{255,153,55} && fill.source_ratio==256 &&
+          answer.role==Role::answer && answer.row==0 &&
+          answer.rectangle==std::array<double,4>{120,167,0,0} && answer.anchor==2 &&
+          answer.rgb==std::array<int,3>{92,51,31} && answer.font_size==0,
+          "实测31.5的单按钮保留float半像素高亮和中心120正文");
+    const auto &touch=completed->touches.front();
+    check(touch.component==3 && touch.value==0x20000 &&
+          touch.rectangle==std::array<int,4>{-1,64,243,217} && !touch.image_draw && touch.option==0,
+          "raw14了解触摸使用原ID3与负数向零截断，不添加全局KEYCLICK或option");
+    input.measured_button_width=0.0F;
+    const auto zero=steam_save_page_skin(input);
+    check(zero && zero->touches.front().rectangle==std::array<int,4>{14,64,212,217},
+          "零宽仍是合法实际测宽，按钮补2且保留触摸额外210");
+    input.width=200;input.height=260;
+    check(steam_save_page_skin(input)->origin==std::array<int,2>{-20,10},
+          "raw14任一维超过240时共同居中，窄维保留负偏移");
+    input.width=200;input.height=200;
+    check(steam_save_page_skin(input)->origin==std::array<int,2>{0,0},
+          "raw14两维均小于240时不自行居中或缩放窗口");
+    for(const auto width:std::vector<std::optional<float>>{{},-1.0F,
+            std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity(),
+            std::numeric_limits<float>::max(),static_cast<float>(std::numeric_limits<int>::max())}) {
+        input.measured_button_width=width;
+        check(!steam_save_page_skin(input),"raw14可见结果页缺测宽或转换越界必须显式拒绝");
+        for(int gate=0;gate<3;++gate) {
+            auto hidden=input;
+            if(gate==0)hidden.on_top=false;
+            if(gate==1)hidden.until_active_hide=true;
+            if(gate==2)hidden.wait=1;
+            const auto plan=steam_save_page_skin(hidden);
+            check(plan && plan->draws.empty() && plan->touches.empty(),
+                  "raw14非顶、隐藏或等待先阻挡整块绘制，未消费的按钮测宽不额外拒绝");
+        }
+    }
+    for(int fault=0;fault<5;++fault) {
+        auto bad=SteamSavePageSkinInput{};
+        if(fault==0)bad.stage=-1;
+        if(fault==1)bad.stage=3;
+        if(fault==2)bad.width=0;
+        if(fault==3)bad.height=-1;
+        if(fault==4)bad.wait=-1;
+        check(!steam_save_page_skin(bad),"raw14非法阶段、维度和等待值拒绝");
+        bad.on_top=false;
+        check(!steam_save_page_skin(bad),"隐藏资格不能修补非法原始几何或阶段");
+    }
+}
 void main_menu_notices(Checks &check) {
     // 仅准备实际消费的Owner字段；故意缺少短路后的数据，防止查询扩大为全世界校验。
     StartupWorldRules rules;
@@ -481,5 +570,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     check(!steam_startup_resource(static_cast<Asset>(999)),"未知资源枚举拒绝");
     main_menu_notices(check);
     main_menu(check,root);
+    save_page(check);
     return check.count;
 }

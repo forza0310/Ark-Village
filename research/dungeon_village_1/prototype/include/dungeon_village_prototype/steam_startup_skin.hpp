@@ -105,4 +105,12 @@ std::optional<SteamStartupSkinPlan> steam_save_menu_skin(const SteamSaveMenuSkin
 // 两个实测StringWidthF决定共同按钮宽度，不能由字符数推导。
 std::optional<SteamStartupSkinPlan> steam_save_confirmation_skin(int width, int height,
     int selection, const std::array<float, 2> &measured_button_widths);
+struct SteamSavePageSkinInput {
+    int width{240}, height{240}, stage{}, wait{};
+    bool on_top{true}, until_active_hide{};
+    std::optional<float> measured_button_width;
+};
+// raw14保存页：前两阶段无按钮；完成阶段使用单项“了解”的真实StringWidthF。
+// 隐藏页不消费测宽；这里只读Owner阶段，保存与确认由Owner处理。
+std::optional<SteamStartupSkinPlan> steam_save_page_skin(const SteamSavePageSkinInput &input);
 } // namespace dungeon_village_prototype

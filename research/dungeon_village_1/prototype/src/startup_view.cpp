@@ -455,6 +455,85 @@ void draw_navigation_plan(const WindowNavigationPlan &plan,SourceSprites &sprite
                        static_cast<unsigned char>(label->rgb[2]),255},label->font_size?float(label->font_size):12.F);
     }
 }
+std::optional<SteamStartupSkinPlan> window_save_plan(const StartupWorldSavePageView &view,
+                                                    const ChineseFont &font) {
+    SteamSavePageSkinInput input;
+    input.width=width;input.height=height;input.stage=view.stage;
+    if(view.stage==2)input.measured_button_width=font.measure("了解");
+    return steam_save_page_skin(input);
+}
+// 执行正式raw14图元；12号Noto字体及中文译文是研究窗口适配，不认证Unity字体。
+// 普通同字号正文按原TextLayout中心对齐；标签、混合字号及fallback仍由后续后端接入。
+void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageView &view,
+                    SourceSprites &sprites,const ChineseFont &font) {
+    const Vector2 origin{float(plan.origin[0]),float(plan.origin[1])};
+    // GameForm..cctor的已核静态初值；只由Window/Box使用，正文和按钮不再加此偏移。
+    constexpr int initial_view_y=23;
+    const auto color=[](const std::array<int,3> &rgb) {
+        return Color{static_cast<unsigned char>(rgb[0]),static_cast<unsigned char>(rgb[1]),
+                     static_cast<unsigned char>(rgb[2]),255};
+    };
+    const auto label=[&](const SteamStartupText &part) {
+        if(!part.rgb)throw std::runtime_error("保存页文字缺来源颜色");
+        const std::string value=part.role==SteamStartupTextRole::message_title ? "消息"
+            : part.role==SteamStartupTextRole::message_body ? view.text : "了解";
+        const auto &r=part.rectangle;
+        const float size=part.font_size?float(part.font_size):12.F;
+        if(part.placement==SteamStartupTextPlacement::layout) {
+            std::vector<std::string> lines;
+            std::string line;
+            for(std::size_t at=0;at<value.size();) {
+                const auto lead=static_cast<unsigned char>(value[at]);
+                const std::size_t count=lead<128?1:lead<224?2:lead<240?3:4;
+                const auto next=value.substr(at,count);at+=count;
+                if(next=="\n") { lines.push_back(std::move(line));line.clear();continue; }
+                if(!line.empty() && font.measure(line+next,size)>r[2]) {
+                    lines.push_back(std::move(line));line.clear();
+                }
+                line+=next;
+            }
+            lines.push_back(std::move(line));
+            const float block_height=float(lines.size())*size+float(lines.size()-1)*part.line_space;
+            float y=origin.y+float(r[1])+std::max(0.F,(float(r[3])-block_height)/2);
+            for(const auto &row:lines) {
+                font.text(row,origin.x+float(r[0])+(float(r[2])-font.measure(row,size))/2,
+                          y,color(*part.rgb),size);
+                y+=size+part.line_space;
+            }
+        } else {
+            const float x=origin.x+float(r[0])-(part.anchor==2?font.measure(value,size)/2:0.F);
+            font.text(value,x,origin.y+float(r[1]),color(*part.rgb),size);
+        }
+    };
+    const auto frame=[&](const std::optional<SteamStartupFramePlan> &parts) {
+        if(!parts)throw std::runtime_error("保存页源窗框拒绝");
+        for(const auto &part:parts->draws) {
+            if(const auto *rect=std::get_if<StartupSkinRect>(&part)) {
+                const auto &r=rect->rect;
+                const Rectangle bounds{origin.x+r[0],origin.y+r[1],float(r[2]),float(r[3])};
+                if(rect->outline)DrawRectangleLinesEx(bounds,1,color(rect->rgb));
+                else DrawRectangleRec(bounds,color(rect->rgb));
+            } else if(const auto *image=std::get_if<StartupSkinDraw>(&part)) {
+                if(image->package!=StartupSkinPackage::common)
+                    throw std::runtime_error("保存页窗框出现未知资源组");
+                if(image->sprite<0 && (!image->crop[2] || !image->crop[3]))continue;
+                sprites.visual({StartupVisualResource::common,image->sprite,image->image,
+                    image->frame,image->layer,image->crop,image->offset},origin);
+            } else if(const auto *text=std::get_if<SteamStartupText>(&part))label(*text);
+        }
+    };
+    for(const auto &part:plan.draws) {
+        if(const auto *window=std::get_if<SteamStartupWindow>(&part))
+            frame(steam_startup_window_skin(*window,initial_view_y,std::array<int,2>{
+                int(font.measure("消息")),int(font.measure("消息"))}));
+        else if(const auto *box=std::get_if<SteamStartupBox>(&part))frame(steam_startup_box_skin(*box,initial_view_y));
+        else if(const auto *fill=std::get_if<SteamStartupFill>(&part)) {
+            const auto &r=fill->rectangle;
+            DrawRectangleRec({origin.x+float(r[0]),origin.y+float(r[1]),float(r[2]),float(r[3])},color(fill->rgb));
+        } else if(const auto *text=std::get_if<SteamStartupText>(&part))label(*text);
+        else throw std::runtime_error("保存页出现未接图元");
+    }
+}
 struct Window {
     Window() {
         SetTraceLogLevel(LOG_WARNING);
@@ -804,7 +883,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
     glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存设置变更游戏方法排行榜结束游戏输入未接入"
               "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
-    glyphs += "保存中保存完成保存失败本窗口仅预览保存页";
+    glyphs += "保存中保存完成保存失败本窗口仅预览保存页消息了解";
     glyphs += "体力力量灵活结实魔力运气";
     glyphs += "周围设施的奖励没有";
     glyphs += "南瓜商会购买出售持有剩余价格道具使用强化反应赠送多谢惠顾免费建设返回";
@@ -1318,12 +1397,16 @@ int run_startup_world_window(const std::filesystem::path &assets,
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-        const auto hit = [&](Rectangle r) { return pressed && CheckCollisionPointRec(mouse, r); };
+        bool pointer_consumed{};
+        const auto hit = [&](Rectangle r) { return pressed && !pointer_consumed && CheckCollisionPointRec(mouse, r); };
         if (hit({4, 295, 44, 22})) {
+            pointer_consumed=true;
             ++pause_inputs;
             session.set_paused(!session.state().scene.framework_paused);
         }
         if (hit({176, 295, 58, 22})) {
+            // 全局研究控件先消费该click，不能同时落入raw14原有的大触摸区域。
+            pointer_consumed=true;
             ++speed_inputs;
             session.set_speed(session.state().scene.speed_setting == 1 ? 0 : 1);
         }
@@ -1865,6 +1948,21 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         StartupWorldRuntimeError::none)
                         throw std::runtime_error("任务输入消费者失败");
                 }
+            } else if (raw==14) {
+                const auto view=inspect_startup_world_save_page(session.state(),page->id);
+                bool clicked{};
+                if(view)if(const auto plan=window_save_plan(*view,font))
+                    for(const auto &touch:plan->touches)if(touch.component==3 && touch.rectangle) {
+                        const auto &r=*touch.rectangle;
+                        clicked=clicked || hit({float(plan->origin[0]+r[0]),float(plan->origin[1]+r[1]),
+                                                float(r[2]),float(r[3])});
+                    }
+                // 原单按钮基矩形；鼠标短适配不替代完整Steam surface的ENTER/UP认证。
+                if(clicked || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE)) {
+                    ++confirmation_inputs;
+                    if(session.acknowledge_page(page->id)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("保存结果确认失败");
+                }
             } else if (page->legacy_page != 58 && page->legacy_page != 97 && page->legacy_page != 98 &&
                        (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
@@ -2337,6 +2435,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,8,285,ink,10);
+        } else if (const auto *page=top_page(); page && page->legacy_page==14) {
+            if(const auto view=inspect_startup_world_save_page(state,page->id)) {
+                const auto plan=window_save_plan(*view,font);
+                if(!plan)throw std::runtime_error("保存页皮肤拒绝");
+                draw_save_plan(*plan,*view,sprites,font);
+                if(view->stage==1)font.text("本窗口仅预览保存页",12,270,ink,11);
+            }
         } else if (const auto *page=top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
             // 仅研究短适配：显示Owner真实行/页签，完整Steam详情字体与图元后端另批接入。
             DrawRectangle(5,42,230,247,paper);
@@ -3325,15 +3430,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("取消", 18, 270);
             else if (page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
-                     (page->legacy_page != 14 || (state.page_phases.count(page->id) &&
-                                                   state.page_phases.at(page->id)==2)) &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&
                                                   state.page_counters.at(page->id) >= 70)))
                 font.text("确定", 190, 270);
-            if(page->legacy_page==14 && state.page_phases.count(page->id) &&
-               state.page_phases.at(page->id)==1)
-                font.text("本窗口仅预览保存页",12,270,ink,11);
             if ((page->legacy_page == 99 || page->legacy_page == 100) && page->monster_definition) {
                 const auto &monster = world.ai.monster_growth.at(*page->monster_definition);
                 sprites.actor(true, monster.body * 4 + 1,

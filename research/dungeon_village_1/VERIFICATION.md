@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 保存页皮肤与VIEW_Y初值2026-10-10
+
+固定Steam静态交叉闭合raw14绘制资格、210×110消息木框、内容框、正文和单项“了解”；`steam_save_page_skin`与raw1复用小型对话helper，前两阶段3绘制／0触摸，完成阶段5／1。已核GameForm初始化VIEW_Y23，只有两种窗框消费；普通同字号TextLayout按原布局区域及行距6居中，不改为白框整体居中。地址、原文字、float测宽与字体限制集中在[保存皮肤](ui/STEAM_SAVE_MENU.md#raw14保存页的局部皮肤)及[窗框合同](ui/STEAM_WINDOW_FRAME.md)，没有新增Owner字段、存档格式、target或原素材副本。
+
+单Release相关库／窗口构建成功，pages＋visuals两项通过3.40秒；补VIEW_Y23独立几何断言并修正窗口的全局点击消费后，再构建、visuals复验0.87秒和8帧`world-save`窗口通过。最终截图已查看：5000G、0世界更新／随机，保留stage1预览限制，Noto字体报告1402／1404。独立审查发现原大触摸框覆盖研究底部倍速控件，现暂停／倍速先消费点击，后续页面不再重复命中；原触摸几何保持，尚无OS输入认证。原raw1及SEB独立断言均保留。
+
+[三状态例图](ui/examples/steam-save-page.png)已实际查看，使用正式计划和原PNG／SEB、VIEW_Y23与Microsoft YaHei12实测字体；状态／文案是展示条件，不是原游戏或GUI保存结果。只新增这张必要示例PNG，图元本轮消费后释放，无新永久队列；临时导出CPP／EXE／绘图脚本验后清理。构建、窗口和并行子任务已收齐；下一步继续窗口应用宿主，完整字体／TextLayout与平台输入边界保留。
+
 ## 菜单保存页与应用事务桥2026-10-10
 
 `startup_world_save`与应用文件桥接真实3→10→20→14，保持Init保存中、首轮只置stage1、下一次应用Update写当前manual栏、stage2才退出。复用原页面字段及两项counter／phase载荷，无新Owner字段、target或文件格式；世界5／应用8／系统2与128MiB保持。严格稳定导出不吞额外页、执行锚、建设或声音，normal完整校验仍有效；成功候选在单系统发布前准备完毕，发布后仅无抛出安装。原游戏的失败半状态不复制，失败页保留旧有效档、业务与随机。

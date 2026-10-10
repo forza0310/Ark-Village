@@ -40,6 +40,36 @@ void image(SteamStartupSkinPlan &p, Asset asset, int x, int y, int frame=0, int 
            std::optional<std::array<int,4>> crop={}) {
     p.draws.emplace_back(SteamStartupImage{asset,{x,y},crop,frame,scale});
 }
+SteamStartupSkinPlan dialog_plan(int width, int height) {
+    SteamStartupSkinPlan p;
+    const bool centered=width>240 || height>240;
+    p.origin={centered?(width-240)/2:0,centered?(height-240)/2:0};
+    return p;
+}
+void dialog_body(SteamStartupSkinPlan &p) {
+    p.draws.emplace_back(SteamStartupWindow{210,110,0,0,Role::message_title,0});
+    p.draws.emplace_back(SteamStartupBox{26,90,213,148});
+    text(p,Role::message_body,0,26,115,187,32,0x22,brown,6,0,SteamStartupTextPlacement::layout);
+}
+std::optional<float> dialog_button_span(float measured_width) {
+    if(!measurement(measured_width)) return {};
+    // 原StringWidthF及后续运算为float；转换前拒绝不可表示的触摸框。
+    const float b=measured_width+2.0F;
+    const float touch_width=b+210.0F;
+    if(!std::isfinite(touch_width) || touch_width>=static_cast<float>(std::numeric_limits<int>::max())) return {};
+    return b;
+}
+void dialog_buttons(SteamStartupSkinPlan &p, int count, int selection, float b) {
+    for(int row=0;row<count;++row) {
+        const int center=120-(72*count-72)/2+72*row;
+        if(row==selection)
+            p.draws.emplace_back(SteamStartupFill{{center-b/2-5,164,b+10,17},{255,153,55}});
+        text(p,Role::answer,row,center,167,0,0,2,brown);
+        // 原命中框包含额外边距，不以视觉色块代替。
+        p.touches.push_back({3,0x20000|row,
+            std::array<int,4>{static_cast<int>(center-b/2-105),64,static_cast<int>(b+210.0F),217},{},0});
+    }
+}
 }
 std::optional<SteamStartupFramePlan> steam_startup_window_skin(const SteamStartupWindow &window,
     int view_y, std::optional<std::array<int, 2>> measured_title_widths) {
@@ -220,23 +250,23 @@ std::optional<SteamStartupSkinPlan> steam_save_confirmation_skin(int width, int 
     int selection, const std::array<float,2> &widths) {
     if(!dimensions(width,height) || selection<0 || selection>1 ||
        !std::all_of(widths.begin(),widths.end(),measurement)) return {};
-    // 原StringWidthF及后续运算为float；先验转换边界，不将double近似反写成原字宽。
-    const float b=std::max(widths[0],widths[1])+2.0F;
-    const float touch_width=b+210.0F;
-    if(!std::isfinite(touch_width) || touch_width>=static_cast<float>(std::numeric_limits<int>::max())) return {};
-    SteamStartupSkinPlan p;
-    const bool centered=width>240 || height>240;
-    p.origin={centered?(width-240)/2:0,centered?(height-240)/2:0};
-    p.draws.emplace_back(SteamStartupWindow{210,110,0,0,Role::message_title,0});
-    p.draws.emplace_back(SteamStartupBox{26,90,213,148});
-    text(p,Role::message_body,0,26,115,187,32,0x22,brown,6,0,SteamStartupTextPlacement::layout);
-    for(int row=0;row<2;++row) {
-        const int center=84+72*row;
-        if(row==selection)
-            p.draws.emplace_back(SteamStartupFill{{center-b/2-5,164,b+10,17},{255,153,55}});
-        text(p,Role::answer,row,center,167,0,0,2,brown);
-        p.touches.push_back({3,0x20000|row,
-            std::array<int,4>{static_cast<int>(center-b/2-105),64,static_cast<int>(touch_width),217},{},0});
+    const auto b=dialog_button_span(std::max(widths[0],widths[1]));
+    if(!b) return {};
+    auto p=dialog_plan(width,height);
+    dialog_body(p);
+    dialog_buttons(p,2,selection,*b);
+    return p;
+}
+std::optional<SteamStartupSkinPlan> steam_save_page_skin(const SteamSavePageSkinInput &in) {
+    if(!dimensions(in.width,in.height) || in.stage<0 || in.stage>2 || in.wait<0) return {};
+    auto p=dialog_plan(in.width,in.height);
+    if(!in.on_top || in.until_active_hide || in.wait>0) return p;
+    dialog_body(p);
+    if(in.stage==2) {
+        if(!in.measured_button_width) return {};
+        const auto b=dialog_button_span(*in.measured_button_width);
+        if(!b) return {};
+        dialog_buttons(p,1,0,*b);
     }
     return p;
 }

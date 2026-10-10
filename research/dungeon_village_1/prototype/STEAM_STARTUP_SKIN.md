@@ -1,8 +1,10 @@
-# Steam标题与选档局部绘制计划
+# Steam标题、选档与保存局部绘制计划
 
 接口为[steam_startup_skin.hpp](include/dungeon_village_prototype/steam_startup_skin.hpp)，实现为[steam_startup_skin.cpp](src/steam_startup_skin.cpp)。本模块把[Steam标题／选档合同](../ui/STEAM_TITLE_MENU.md)和[手动菜单／询问合同](../ui/STEAM_SAVE_MENU.md)中的已核局部调用组织为只读C++17计划。它与[APK启动图块桥](STARTUP_SKIN.md)分开，不创建Owner、打开文件、推进动画、读取随机或产生声音。
 
-四个查询分别返回标题两项、选档小窗、raw20三行和raw1询问。`draws`保留图片、填充、文字和窗口helper的穿插次序，不能先画全部图片再画全部文字；`origin`是Steam游戏逻辑坐标原点。TitleForm横向按`(W-240)/2`向零截断；标题根页下SubForm只要任一维大于240，就同时加两个居中偏移，另一窄维可以产生负值（Draw包装`0x1030CEA3–0x1030CF88`）。W/H不是截图或OS客户区像素。
+五个查询分别返回标题两项、选档小窗、raw20三行、raw1询问和raw14保存。`draws`保留图片、填充、文字和窗口helper的穿插次序，不能先画全部图片再画全部文字；`origin`是Steam游戏逻辑坐标原点。TitleForm横向按`(W-240)/2`向零截断；标题根页下SubForm只要任一维大于240，就同时加两个居中偏移，另一窄维可以产生负值（Draw包装`0x1030CEA3–0x1030CF88`）。W/H不是截图或OS客户区像素。
+
+`steam_save_page_skin`接收真实raw14阶段及显示资格：非顶页、untilActiveHide或wait>0不输出；stage0／1只输出窗、内容框与正文，stage2要求单按钮真实float测宽。默认按钮原文“了解”，沿原几何／宽触摸框，不塞假第二项；与raw1共享内部对话helper，原两项独立oracle保留。结果最多5项绘制、1项触摸，前两阶段3／0；没有Owner字段、格式、素材或输出队列。维度正、stage0..2、wait非负及安全测宽是维护边界。窗口展开使用已核初始VIEW_Y23，文字／按钮不重复平移；正文普通同字号布局与完整字体限制见[原合同](../ui/STEAM_SAVE_MENU.md#raw14保存页的局部皮肤)。
 
 ## 文本、图块与交互交接
 

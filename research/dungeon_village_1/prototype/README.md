@@ -16,7 +16,7 @@
 
 [startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10的tag20已接raw14；设置／游戏说明／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
 
-[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。`--inspect-page world-save`的独立Session窗口只预览stage1，不访问应用文件；完整原皮肤和窗口应用宿主继续接线，见[本批验证](../VERIFICATION.md#菜单保存页与应用事务桥2026-10-10)。
+[startup_world_save](include/dungeon_village_prototype/startup_world_save.hpp)持有raw14来源、阶段与结果；`StartupApplication`协调当前栏手动文件事务。真实3→10→20先初始化“保存中”，首次Update只到stage1，下次应用Update写盘；stage0／1确认、取消无效果，stage2才关闭。只从严格scene3＋14准备稳定导出，不放宽普通模态保存拒绝；成功更新marker与目录，失败保留旧档、业务和随机并显示失败结果。复用既有counter／phase及页面字段，无新Owner字段或格式。`--inspect-page world-save`的独立Session窗口只预览stage1，不访问应用文件；应用桥见[验证](../VERIFICATION.md#菜单保存页与应用事务桥2026-10-10)。`steam_save_page_skin`已接原木框／内容框、阶段单按钮及触摸计划，窗口按已核初始VIEW_Y23展开；[三状态示例](../ui/examples/steam-save-page.png)供产品使用。完整字体／TextLayout后端与窗口应用宿主仍待接，局部皮肤不代替GUI保存全链。
 
 本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
 

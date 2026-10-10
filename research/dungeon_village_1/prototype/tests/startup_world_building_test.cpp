@@ -182,6 +182,64 @@ void normal_construction() {
               s.scene.world.popularity_queue.front() == std::array<int, 3>{25, 20, 1},
           "first-month construction never recharges and queues real sharedN20 popularity before halving to10");
 }
+// 高星领取后的条件夹具：只准备p/H，不伪造原表flags或自然升星历史。
+// 完工必须经过真实Owner建设和设施消费者，才能开放学校／博物馆活动。
+void progression_building_unlocks() {
+    for (const auto scenario : {std::array<int, 3>{63, 7, 73}, {64, 21, 75}}) {
+        const int definition = scenario[0], activity = scenario[1], event = scenario[2];
+        auto s = test_support::world_fixture();
+        check(s.facility_presence.at(definition) == 0 &&
+                  s.scripts.activities.at(activity).status == 0,
+              "real new-world school and museum definitions start locked");
+        s.facility_presence.at(definition) = 2;
+        s.facility_free_builds.at(definition) = 1;
+        const auto funds = s.scene.world.world.ai.accounting.funds();
+        const auto draws = s.scene.random.draws();
+        const auto count = s.scene.world.facility_order.size();
+        const auto quote = startup_world_build_quote(s, definition);
+        check(quote && quote->construction_cost > 0 &&
+                  (definition != 64 || quote->construction_cost == 3000),
+              "actual museum still costs3000G after its H entitlement, independent of200 points");
+        check(begin_startup_world_build(s, definition).denial == StartupBuildDenial::none,
+              "real redeemed school or museum enters ordinary construction");
+        const auto built = confirm_startup_world_build(
+            s, empty_anchor(s, definition), ref::FacilityOrientation::first);
+        check(built.created && s.scene.world.facility_order.size() == count + 1 &&
+                  s.scene.world.world.ai.accounting.funds() == funds - quote->construction_cost &&
+                  s.scripts.activities.at(activity).status == 0,
+              "Owner pays real construction gold and creates one unfinished instance, no early activity");
+        const auto id = *built.created;
+        check(cancel_startup_world_build(s) == StartupWorldRuntimeError::none,
+              "accepted construction leaves build mode through normal cancellation");
+        const auto limit = s.facility_details.at(id).construction_limit;
+        check(limit > 0 && limit <= 2000, "real source construction has a bounded functional fixture");
+        const auto adapter = startup_world_runtime_adapter();
+        for (int tick = 0; tick < limit; ++tick) {
+            const auto prepared = ref::prepare_world_facility_update(
+                adapter.facilities.read(s), id, adapter.catalog);
+            check(prepared.candidate && adapter.facilities.write(s, prepared.candidate->state),
+                  "actual school or museum facility step writes through common Owner");
+            check(s.scene.world.world.facilities.at(id).status == (tick + 1 == limit ? 1 : 0) &&
+                      s.scripts.activities.at(activity).status == (tick + 1 == limit ? 1 : 0),
+                  "source construction threshold alone opens matching activity, never a preceding tick");
+        }
+        check(s.scripts.event_calls.at(event) == 1 &&
+                  s.scripts.activities.at(activity).pending_notice &&
+                  s.activity_counts.at(activity) == 0 && s.events_held == 0 &&
+                  s.scene.world.world.ai.accounting.funds() == funds - quote->construction_cost &&
+                  s.scene.random.draws() == draws,
+              "first real completion opens definition only, without holding activity or extra payment/random");
+        if (definition == 64)
+            check(s.scripts.event_calls.at(215) == 1,
+                  "real museum flags additionally execute original completion news215");
+        const auto events = s.scripts.event_calls;
+        const auto repeated = ref::prepare_world_facility_update(
+            adapter.facilities.read(s), id, adapter.catalog);
+        check(repeated.candidate && adapter.facilities.write(s, repeated.candidate->state) &&
+                  s.scripts.event_calls == events && s.scene.world.facility_order.size() == count + 1,
+              "completed instance neither repeats first scripts nor creates another entity");
+    }
+}
 void multi_tile_and_rollback() {
     for (const auto orientation :
          {ref::FacilityOrientation::first, ref::FacilityOrientation::second}) {
@@ -1543,6 +1601,7 @@ void commerce_definition_preview() {
 int main() {
     try {
         normal_construction();
+        progression_building_unlocks();
         new_world_inheritance();
         multi_tile_and_rollback();
         new_shop_projection();

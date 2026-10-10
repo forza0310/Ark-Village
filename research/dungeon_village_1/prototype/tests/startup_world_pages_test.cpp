@@ -1915,6 +1915,60 @@ void commerce_transactions() {
 void commerce_facility_and_projection() {
     using A = StartupCommerceAction;
     using E = StartupWorldRuntimeError;
+    {
+        // 高星商会调用点的条件夹具，不模拟自然升到四星；不改64原表及后续金币建设费。
+        auto rank3 = fixture(85);
+        rank3.rank = 3;
+        const auto prior_page = rank3.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(rank3) &&
+                  std::find(rank3.commerce_page_lists.at(prior_page).begin(),
+                            rank3.commerce_page_lists.at(prior_page).end(), 64) ==
+                      rank3.commerce_page_lists.at(prior_page).end(),
+              "original museum64 is absent from actual rank3 facility commerce catalogue");
+        auto museum = fixture(85);
+        museum.rank = 4;
+        museum.village_points = 199;
+        const auto page = museum.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(museum), "rank4 actual85 initializes");
+        const auto &entries = museum.commerce_page_lists.at(page);
+        const auto row = std::find(entries.begin(), entries.end(), 64);
+        check(row != entries.end() && museum.rules->facility_initial.at(64).capacity == 200 &&
+                  museum.facility_presence.at(64) == 0 && museum.facility_free_builds.at(64) == 0 &&
+                  act_startup_world_commerce_page(museum, page, A::select,
+                      static_cast<int>(row - entries.begin())) == E::none,
+              "rank4 catalogue selects original museum64 with200-point entitlement price");
+        const auto cash = museum.scene.world.world.ai.accounting.funds();
+        const auto instances = museum.scene.world.world.facilities.size();
+        const auto next_instance = museum.next_facility_identity;
+        auto insufficient = museum;
+        check(act_startup_world_commerce_page(insufficient, page, A::confirm) == E::none &&
+                  ref::world_script_seen(insufficient.scripts, 12) && insufficient.village_points == 199 &&
+                  insufficient.facility_presence.at(64) == 0 && insufficient.facility_free_builds.at(64) == 0 &&
+                  insufficient.scene.world.world.ai.accounting.funds() == cash &&
+                  insufficient.next_facility_identity == next_instance &&
+                  std::none_of(insufficient.scripts.pages.begin(), insufficient.scripts.pages.end(),
+                               [](const auto &p) { return p.lifecycle != 4 && p.legacy_page == 93; }),
+              "museum199 points produces actual shortage12 without payment, entitlement or pending93");
+        museum.village_points = 200; // 只调整边界夹具，不回滚或伪造原付款动作。
+        check(act_startup_world_commerce_page(museum, page, A::confirm) == E::none &&
+                  museum.village_points == 0 && museum.facility_presence.at(64) == 0 &&
+                  museum.facility_free_builds.at(64) == 0,
+              "museum200 points pays at85 while actual museum entitlement is still pending");
+        const auto reward = museum.scripts.pages.back();
+        check(reward.legacy_page == 93 && reward.legacy_r == 3 && reward.legacy_s == 64 &&
+                  initialize_startup_world_commerce_pages(museum),
+              "museum purchase binds real93/r3/s64 rather than generic95 or an existing building");
+        check(act_startup_world_commerce_page(museum, reward.id, A::confirm) == E::none &&
+                  museum.page_counters.at(reward.id) == 40 && museum.facility_presence.at(64) == 0 &&
+                  museum.facility_free_builds.at(64) == 0 &&
+                  act_startup_world_commerce_page(museum, reward.id, A::confirm) == E::none &&
+                  museum.facility_presence.at(64) == 2 && museum.facility_free_builds.at(64) == 1 &&
+                  museum.facility_unlock_notices.at(64) && museum.village_points == 0 &&
+                  museum.scene.world.world.ai.accounting.funds() == cash &&
+                  museum.scene.world.world.facilities.size() == instances &&
+                  museum.next_facility_identity == next_instance,
+              "museum93 at40 grants p2/H1 only; it neither spends3000G nor constructs an instance");
+    }
     auto s = fixture(85);
     const auto shop = s.scripts.pages.back().id;
     check(initialize_startup_world_commerce_pages(s),
@@ -2687,6 +2741,126 @@ void village_magic_pot_pages() {
                   "kind6 enables two original flags, creates104 and schedules219 rather than eager news19");
     }
 }
+void second_rank_magic_pot_unlock_chain() {
+    using E = StartupWorldRuntimeError;
+    using A = StartupVillageActivityAction;
+    // 明确的已初始化48条件世界：只给二星条件缓存与200点开展预算。
+    // 不声称四宅/12任务/800人气由自然经营取得；以下开放、领取、扣点和入口均走实际Owner。
+    auto s = fixture(48);
+    const auto rank_page = magic_pot_top(s).id;
+    s.rank = 1;
+    s.rank_met.fill(true);
+    s.page_counters[rank_page] = 1;
+    s.village_points = 200;
+    s.quarter_counter = 3;
+    check(s.scripts.activities.at(30).status == 0 && s.activity_counts.at(30) == 0 &&
+              (s.scripts.user_flags & 3U) == 0,
+          "conditional second-rank source has neither activity30 nor magic-pot permission");
+    const auto initial_n = s.legacy_n;
+    check(act_startup_world_runtime_rank_page(s, rank_page) == E::none && s.rank == 2 &&
+              ref::world_script_seen(s.scripts, 43) && s.scripts.activities.at(30).status == 0 &&
+              s.scripts.activities.at(10).status == 1 && s.scripts.activities.at(24).status == 1 &&
+              s.village_points == 200 && (s.scripts.user_flags & 3U) == 0,
+          "actual second-rank promotion opens j2 activities but leaves30 to delayed43 reward");
+    const auto advance_to = [&](int raw) {
+        for (int tick = 0; tick < 600; ++tick) {
+            const auto before = magic_pot_top(s);
+            if (raw == -1 && before.kind == ref::WorldScriptPageKind::scene &&
+                std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                             [](const auto &page) { return page.lifecycle == 4; })) return before.id;
+            page_tick(s);
+            const auto p = magic_pot_top(s);
+            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == raw &&
+                p.lifecycle != 0 && s.page_counters.count(p.id)) return p.id;
+            if (p.kind == ref::WorldScriptPageKind::dialogue ||
+                p.kind == ref::WorldScriptPageKind::simple_message ||
+                p.kind == ref::WorldScriptPageKind::newspaper ||
+                (p.kind == ref::WorldScriptPageKind::raw_page &&
+                 (p.legacy_page == 50 || (p.legacy_page == 11 && p.source_record == 6)))) {
+                // 二星事件54的原5,6生成raw11/source6，与普通dialogue不是同一页种。
+                check(acknowledge_startup_world_runtime_page(s, p.id) == E::none,
+                      "bounded unlock chain consumes only actual script messages and rank celebration");
+            } else {
+                const bool known = p.kind == ref::WorldScriptPageKind::scene ||
+                          (p.kind == ref::WorldScriptPageKind::raw_page &&
+                           (p.legacy_page == raw || p.legacy_page == 16 || p.legacy_page == 56 ||
+                            p.legacy_page == 57 || p.legacy_page == 97 || p.legacy_page == 98));
+                if (!known) throw std::runtime_error("unlock chain unexpected modal: target=" +
+                    std::to_string(raw) + ", raw=" + std::to_string(p.legacy_page) + ", kind=" +
+                    std::to_string(static_cast<int>(p.kind)) + ", lifecycle=" + std::to_string(p.lifecycle) +
+                    ", id=" + std::to_string(p.id));
+            }
+        }
+        throw std::runtime_error("second-rank functional unlock chain exceeded600 page callbacks");
+    };
+    const auto reward = advance_to(95);
+    const auto reward_page = magic_pot_top(s);
+    check(reward_page.legacy_r == 11 && reward_page.legacy_s == 30 &&
+              s.scripts.activities.at(30).status == 0 && (s.scripts.user_flags & 3U) == 0,
+          "actual delayed43 opcode33 binds reward95/r11/s30 without pot introduction");
+    const auto points = s.village_points;
+    check(s.page_counters.at(reward) < 40 &&
+              acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.page_counters.at(reward) == 40 && s.scripts.activities.at(30).status == 0 &&
+              acknowledge_startup_world_runtime_page(s, reward) == E::none &&
+              s.scripts.activities.at(30).status == 1 && s.scripts.activities.at(30).pending_notice &&
+              s.activity_counts.at(30) == 0 && s.village_points == points &&
+              (s.scripts.user_flags & 3U) == 0 && s.legacy_n == initial_n,
+          "specific30 reward confirms at40 without100-point payment or type6 side effects");
+    (void)advance_to(-1);
+    check(!s.page_counters.count(reward) &&
+              open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::invalid_page,
+          "claiming activity30 retires95 but does not prematurely enable the main magic-pot entry");
+    check(open_startup_world_village_activities(s) == E::none,
+          "claimed30 enters the actual village catalogue without fixture status injection");
+    const auto menu = advance_to(51);
+    const auto view = inspect_startup_world_village_activity_page(s, menu);
+    check(view.has_value(), "actual51 initialized after claimed activity30");
+    const auto row = std::find(view->entries.begin(), view->entries.end(), 30);
+    check(row != view->entries.end() &&
+              act_startup_world_village_activity_page(s, menu, A::select,
+                  static_cast<int>(row - view->entries.begin())) == E::none &&
+              act_startup_world_village_activity_page(s, menu, A::confirm) == E::none,
+          "actual51 includes received30 and opens its bound52");
+    const auto offer = advance_to(52);
+    check(act_startup_world_village_activity_page(s, offer, A::confirm) == E::none,
+          "actual52 pays for the same received30");
+    const auto animation = advance_to(53);
+    check(s.village_points == points - 100 && s.activity_counts.at(30) == 1 &&
+              s.events_held == 1 && s.quarter_counter == 3 && (s.scripts.user_flags & 3U) == 0,
+          "30 payment and holding precede actual magic-pot introduction");
+    for (int tick = 0; tick < 120 && s.page_counters.at(animation) < 120; ++tick) page_tick(s);
+    check(s.page_counters.at(animation) >= 120, "introduced30 reaches120 within bounded modal callbacks");
+    check(acknowledge_startup_world_runtime_page(s, animation) == E::none &&
+              (s.scripts.user_flags & 3U) == 3U && s.quarter_counter == 2 &&
+              ref::world_script_seen(s.scripts, 104) && ref::world_script_seen(s.scripts, 219),
+          "same30 type6 at120 enables both flags through original104 and delayed219");
+    (void)advance_to(51);
+    check(act_startup_world_village_activity_page(s, menu, A::cancel) == E::none,
+          "introduced activity returns through real51 parent");
+    (void)advance_to(-1);
+    check(s.activity_pages_initialized.empty() && s.activity_page_parents.empty() &&
+              s.activity_page_answers.empty() && s.activity_page_bindings.empty(),
+          "completed introduction retires village transient references before main entry");
+    check(open_startup_world_magic_pot(s, StartupMagicPotEntry::main_menu) == E::none &&
+              (s.scripts.user_flags & 3U) == 1U && s.village_points == points - 100 &&
+              s.legacy_n == initial_n,
+          "main entry after real introduction clears only tip bit and neither recharges nor repeats pot effect");
+    const auto pot = advance_to(41);
+    check(inspect_startup_world_magic_pot_page(s, pot).has_value() &&
+              act_startup_world_magic_pot_page(s, pot, StartupMagicPotAction::cancel) == E::none,
+          "introduced main entry produces actual ready41 and explicit return");
+    (void)advance_to(-1);
+    check(s.magic_pot_pages_initialized.empty() && s.magic_pot_page_data.empty() &&
+              s.magic_pot_page_lists.empty() && s.magic_pot_page_parents.empty(),
+          "linked41 retires all pot page payloads without deleting shared recipe progress");
+    check(!s.sound_requests.empty() &&
+              std::all_of(s.sound_requests.begin(), s.sound_requests.end(), [](const auto &request) {
+                  return static_cast<int>(request.operation) >= 0 && static_cast<int>(request.operation) <= 2 &&
+                         request.id >= 0 && request.id < 26;
+              }), "linked unlock keeps typed original audio requests available to one consumer");
+    s.sound_requests.clear(); // 条件套件显式消费本链输出；不反复重放主场景或模拟年度。
+}
 std::uint64_t install_magic_pot_shop(StartupWorldRuntimeState &s, int definition) {
     const auto &map = s.scene.world.world.map;
     const auto bounds = s.rules->fences.at(s.fence_level);
@@ -2821,6 +2995,7 @@ int main() {
         magic_pot_recipe_and_facility_reward();
         magic_pot_equipment_low_level_rewards();
         village_magic_pot_pages();
+        second_rank_magic_pot_unlock_chain();
         village_activity_initialization();
         village_activity_pages();
         village_expansion_pages();

@@ -1,5 +1,6 @@
 #include "world_campaign_coverage.hpp"
 #include "support/world_fixture.hpp"
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <sstream>
@@ -8,6 +9,7 @@
 namespace ark::test {
 namespace {
 using State = app::WorldState;
+namespace ref = simulation::rules;
 const char *equipment_kind(int kind) {
     return kind == 1 ? "weapon" : kind == 2 ? "armour" : "accessory";
 }
@@ -67,6 +69,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"human", "medal_awarded", 25, true, false, 25};
     case Kind::human_home_admitted:
         return {"human", "home_admitted", 25, true, true, 25};
+    case Kind::task_victory_committed:
+        return {"task", "victory_committed", 81, false, true};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -102,6 +106,71 @@ CampaignReceipt residence_transaction_receipt(int human, const State &before, co
              before.shop_humans.at(human).satisfaction, fee},
             {after.scene.world.world.ai.accounting.funds(), after.human_homes.at(human)[2],
              after.shop_humans.at(human).satisfaction, fee}};
+}
+
+std::optional<CampaignReceipt> task_victory_receipt(const State &before, const State &after,
+                                                    std::uint64_t departed_task) {
+    if (before.task_progress.successes == after.task_progress.successes)
+        return {}; // Cold-loaded totals and queued results do not reconstruct a victory.
+    const auto need = [](bool value) {
+        if (!value)
+            throw std::runtime_error(
+                "Task victory lost its departure, completion or result binding");
+    };
+    need(departed_task && before.active_task == departed_task && !after.active_task &&
+         !after.scene.world.world.ai.task_active && before.tasks.count(departed_task) &&
+         after.tasks.count(departed_task) && !before.participants.empty() &&
+         before.participants == after.participants &&
+         std::int64_t(after.task_progress.successes) ==
+             std::int64_t(before.task_progress.successes) + 1);
+    const auto &task = before.tasks.at(departed_task);
+    need(task.definition == after.tasks.at(departed_task).definition &&
+         before.task_progress.definitions.size() == after.task_progress.definitions.size());
+    for (const auto &[definition, progress] : before.task_progress.definitions) {
+        const auto updated = after.task_progress.definitions.find(definition);
+        need(updated != after.task_progress.definitions.end() &&
+             std::int64_t(updated->second.completed) ==
+                 std::int64_t(progress.completed) + (definition == task.definition ? 1 : 0));
+    }
+    // The source removes the first list reference; duplicate task references remain legal.
+    const auto references = [&](const State &s) {
+        return std::count(s.task_order.begin(), s.task_order.end(), departed_task);
+    };
+    need(references(before) == references(after) + 1);
+    std::uint64_t page{};
+    for (const auto &[id, summary] : after.exploration_summaries) {
+        if (summary.legacy_page != 30 || summary.task != departed_task ||
+            before.exploration_summaries.count(id))
+            continue;
+        const auto source_id = id;
+        const auto source = std::find_if(after.scripts.pages.begin(), after.scripts.pages.end(),
+                                         [source_id](const auto &p) { return p.id == source_id; });
+        need(!page && summary.definition == task.definition &&
+             source != after.scripts.pages.end() && source->lifecycle != 4 &&
+             source->kind == ref::WorldScriptPageKind::raw_page &&
+             // Exploration binds only its summary payload; encounter pages also carry
+             // the optional duplicate references. Any present duplicate must agree.
+             source->legacy_page == 30 &&
+             (!source->task_identity || source->task_identity == departed_task) &&
+             (!source->task_definition || source->task_definition == task.definition) &&
+             std::none_of(before.scripts.pages.begin(), before.scripts.pages.end(),
+                          [source_id](const auto &p) { return p.id == source_id; }));
+        page = id;
+    }
+    need(page && before.task_progress.definitions.count(task.definition));
+    const auto values = [&](const State &s) -> std::array<std::int64_t, 4> {
+        return {s.task_progress.successes,
+                s.task_progress.definitions.at(task.definition).completed,
+                s.task_progress.ordinary_explorations, s.task_progress.task_pool_progress};
+    };
+    return CampaignReceipt{CampaignReceiptKind::task_victory_committed,
+                           task.definition,
+                           after.simulation_steps,
+                           page,
+                           departed_task,
+                           -1,
+                           values(before),
+                           values(after)};
 }
 
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
@@ -303,7 +372,129 @@ void CampaignCoverage::save(const std::filesystem::path &directory, const State 
     out.exceptions(std::ios::badbit | std::ios::failbit);
     write(out, state);
 }
+namespace {
+// Receipt-binding fixtures only. Victory and reward algorithms remain covered by the
+// frozen task suites and the natural business route; no fabricated result certifies them.
+void task_receipt_binding_contract() {
+    auto before = initial_world();
+    constexpr std::uint64_t task_id = 42, page_id = 77;
+    ref::DungeonFinishTask task;
+    task.identity = task_id;
+    task.definition = 0;
+    before.tasks.emplace(task_id, task);
+    before.task_order = {task_id, task_id};
+    before.active_task = task_id;
+    before.scene.world.world.ai.task_active = true;
+    before.participants = {0, 1, 0}; // Original ordered lists may contain duplicates.
+    before.task_progress.successes = 20;
+    before.task_progress.definitions.at(0).completed = 3;
+    auto after = before;
+    after.task_progress.successes = 21;
+    after.task_progress.definitions.at(0).completed = 4;
+    after.active_task.reset();
+    after.scene.world.world.ai.task_active = false;
+    after.task_order.erase(after.task_order.begin());
+    ref::WorldScriptPage result;
+    result.id = page_id;
+    result.kind = ref::WorldScriptPageKind::raw_page;
+    result.legacy_page = 30;
+    result.task_identity = task_id;
+    result.task_definition = 0;
+    after.scripts.pages.push_back(result);
+    after.exploration_summaries.emplace(page_id, ref::WorldExplorationSummary{30, task_id, 0, {}});
+    const auto receipt = task_victory_receipt(before, after, task_id);
+    if (!receipt || receipt->kind != CampaignReceiptKind::task_victory_committed ||
+        receipt->definition != 0 || receipt->page != page_id || receipt->subject != task_id ||
+        receipt->before[0] != 20 || receipt->after[0] != 21 || receipt->before[1] != 3 ||
+        receipt->after[1] != 4 || task_victory_receipt(after, after, task_id))
+        throw std::runtime_error("Task receipt failed binding or reconstructed loaded history");
+    auto exploration = after;
+    exploration.scripts.pages.back().task_identity.reset();
+    exploration.scripts.pages.back().task_definition.reset();
+    const auto exploration_receipt = task_victory_receipt(before, exploration, task_id);
+    if (!exploration_receipt || exploration_receipt->page != receipt->page ||
+        exploration_receipt->subject != receipt->subject ||
+        exploration_receipt->definition != receipt->definition)
+        throw std::runtime_error("Exploration summary binding required encounter-only duplicates");
+    // Corrupt one external source binding at a time. No log is published on refusal.
+    for (int fault = 0; fault < 19; ++fault) {
+        auto old = before, changed = after;
+        auto departed = task_id;
+        switch (fault) {
+        case 0:
+            departed = task_id + 1;
+            break;
+        case 1:
+            old.active_task.reset();
+            break;
+        case 2:
+            changed.tasks.at(task_id).definition = 1;
+            break;
+        case 3:
+            changed.exploration_summaries.at(page_id).definition = 1;
+            break;
+        case 4:
+            changed.scripts.pages.back().task_definition = 1;
+            break;
+        case 5:
+            changed.scripts.pages.back().task_identity = task_id + 1;
+            break;
+        case 6:
+            changed.active_task = task_id;
+            break;
+        case 7:
+            changed.scene.world.world.ai.task_active = true;
+            break;
+        case 8:
+            ++changed.task_progress.successes;
+            break;
+        case 9:
+            ++changed.task_progress.definitions.at(0).completed;
+            break;
+        case 10:
+            ++changed.task_progress.definitions.at(1).completed;
+            break;
+        case 11:
+            changed.task_order = old.task_order;
+            break;
+        case 12:
+            changed.participants = {1, 0, 0};
+            break;
+        case 13:
+            changed.exploration_summaries.clear();
+            break;
+        case 14:
+            old.exploration_summaries = changed.exploration_summaries;
+            break;
+        case 15:
+            changed.scripts.pages.pop_back();
+            break;
+        case 16:
+            changed.scripts.pages.back().lifecycle = 4;
+            break;
+        case 17:
+            old.scripts.pages.push_back(result);
+            break;
+        case 18:
+            changed.scripts.pages.back().kind = ref::WorldScriptPageKind::scene;
+            break;
+        }
+        bool rejected{};
+        try {
+            (void)task_victory_receipt(old, changed, departed);
+        } catch (const std::runtime_error &) {
+            rejected = true;
+        }
+        if (!rejected)
+            throw std::runtime_error("Invalid task receipt binding accepted: " +
+                                     std::to_string(fault));
+    }
+}
+
+} // namespace
+
 void campaign_coverage_contract() {
+    task_receipt_binding_contract();
     const auto state = initial_world();
     CampaignCoverage coverage;
     coverage.observe(state,
@@ -382,7 +573,8 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::accessory_combat_applied, "accessory", "combat_attributes_applied",
          30, 1, 24},
         {CampaignReceiptKind::human_medal_awarded, "human", "medal_awarded", 25, 0, 24},
-        {CampaignReceiptKind::human_home_admitted, "human", "home_admitted", 25, 1, 24}};
+        {CampaignReceiptKind::human_home_admitted, "human", "home_admitted", 25, 1, 24},
+        {CampaignReceiptKind::task_victory_committed, "task", "victory_committed", 81, 1}};
     for (const auto &entry : cases) {
         const CampaignReceipt receipt{
             entry.kind,      entry.definitions - 1, 2,           1, entry.subject,

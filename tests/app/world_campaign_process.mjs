@@ -218,7 +218,8 @@ const receiptStages = {
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
   blueprint_claimed: 'facility', construction_paid: 'facility',
   reward_equipped: ['weapon', 'armour', 'accessory'],
-  combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human'
+  combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
+  victory_committed: 'quest'
 };
 function* receipts(text, phase) {
   for (const [line, content] of text.split(/\r?\n/).entries()) {
@@ -233,7 +234,7 @@ function* receipts(text, phase) {
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
-    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted'].includes(stage))
+    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed'].includes(stage))
       need(numbers[3] > 0, 'receipt actual subject binding');
     if (['medal_awarded', 'home_admitted'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
     yield {key: `${category}:${id}`, stage, phase, line: line + 1,
@@ -351,7 +352,8 @@ function coverageContract(rows) {
     ['weapon', 'reward_equipped', 32, 33, 1, 24], ['armour', 'reward_equipped', 49, 50, 1, 24],
     ['accessory', 'reward_equipped', 29, 30, 1, 24], ['weapon', 'combat_attributes_applied', 32, 33, 1, 24],
     ['armour', 'combat_attributes_applied', 49, 50, 1, 24], ['accessory', 'combat_attributes_applied', 29, 30, 1, 24],
-    ['human', 'medal_awarded', 24, 25, 0, 24], ['human', 'home_admitted', 24, 25, 1, 24]]) {
+    ['human', 'medal_awarded', 24, 25, 0, 24], ['human', 'home_admitted', 24, 25, 1, 24],
+    ['task', 'victory_committed', 80, 81, 1, -1]]) {
     const fields = ['COVERAGE_RECEIPT', category, String(id), stage, '2', '1', String(recipient), String(subject),
       '120', '0', '2', '0', '0', '1', '2', '0'];
     const parsed = [...receipts(fields.join('\t'), 'contract')];

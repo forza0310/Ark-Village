@@ -15,6 +15,8 @@
 
 并行接线已交付Steam人物60完整有序只读计划：住宅偏移、100槽位置/16槽步帧、当前职业/性别/武器、奖章、HP_NOW与HP_AFTER危险、倒下身体及实际字体测宽气泡。表现仍复用现actors模块与已确认PC控件；设施81沿正式inspect核ready，独立frame2读取Owner，补跨阶段不复位及左右mini/阴影正向验收，不新增动画时钟或框架。复用现human/building/render套件和原target，集中desktop-debug及核心改动所需headless-debug标准检查，仅排三个月；Release实际窗口单独记录。新二星/壶前缀保留6d执行身份，更新底座后另核续测资格，不修改原证书或反向认证全775项。
 
+后继经营回执复用现campaign模块及16列：人物资格消费/装配、属性写回、授勋和入住分别记录；任务胜利绑定真实出发实例、单定义完成数、参与名单、清除及新30页。探索以摘要载荷绑定，战斗页的重复引用若存在须一致，不把一种消费者的存储形态强加给另一种。完整主线使用统一tick观察接口，回执只在本批oracle全部通过后发布；取证失败保存更新前Owner，和运行时拒绝分别报告。奖励到账、战斗使用、税收及后继仍独立验收，不改变世界/玩家存档或新建套件；实际结果集中[B1](stages/B1-playable-prototype.md#research-932fa45-ui)与[经营计划](stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。
+
 <a id="research-6d35391-integration"></a>
 ## 说明页与逐定义来源接续（2026-10-11，沿持续goal授权）
 

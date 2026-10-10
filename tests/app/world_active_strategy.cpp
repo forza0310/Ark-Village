@@ -396,10 +396,15 @@ void ActiveVillageStrategy::observe(const State &before, const Command &c,
                             new_queue.front() == std::array<int, 3>{10, amount, 1} &&
                             std::equal(old_queue.begin(), old_queue.end(), new_queue.begin() + 1),
                         "completed popularity activity must queue its exact source effect once");
-                queued_effect = CampaignReceipt{CampaignReceiptKind::activity_effect_queued,
-                    *view->activity, after.simulation_steps, c.page, 0, -1,
-                    {0, 0, 0, static_cast<std::int64_t>(old_queue.size())},
-                    {10, amount, 1, static_cast<std::int64_t>(new_queue.size())}};
+                queued_effect =
+                    CampaignReceipt{CampaignReceiptKind::activity_effect_queued,
+                                    *view->activity,
+                                    after.simulation_steps,
+                                    c.page,
+                                    0,
+                                    -1,
+                                    {0, 0, 0, static_cast<std::int64_t>(old_queue.size())},
+                                    {10, amount, 1, static_cast<std::int64_t>(new_queue.size())}};
             }
             if (view->activity && *view->activity == 16 && stats_.exhibition_month < 0) {
                 require(stats_.exhibition_paid, "exhibition completed without paid application");
@@ -410,23 +415,44 @@ void ActiveVillageStrategy::observe(const State &before, const Command &c,
     }
     observe_world(before, after);
     // Publish after every observation assertion, including the cross-domain world checks.
+    const auto victory = task_victory_receipt(before, after, stats_.departed_task);
     if (receipts) {
         if (stats_.gifts > gifts_before) {
-            receipts({CampaignReceiptKind::item_consumed, 0, after.simulation_steps, c.page, 0,
-                recipient_, {before.items.at(0).inventory}, {after.items.at(0).inventory}});
-            receipts({CampaignReceiptKind::item_attribute_applied, 0, after.simulation_steps,
-                c.page, 0, recipient_,
-                {before.scene.world.world.ai.growth.at(recipient_).definition.extra[0]},
-                {after.scene.world.world.ai.growth.at(recipient_).definition.extra[0]}});
+            receipts({CampaignReceiptKind::item_consumed,
+                      0,
+                      after.simulation_steps,
+                      c.page,
+                      0,
+                      recipient_,
+                      {before.items.at(0).inventory},
+                      {after.items.at(0).inventory}});
+            receipts({CampaignReceiptKind::item_attribute_applied,
+                      0,
+                      after.simulation_steps,
+                      c.page,
+                      0,
+                      recipient_,
+                      {before.scene.world.world.ai.growth.at(recipient_).definition.extra[0]},
+                      {after.scene.world.world.ai.growth.at(recipient_).definition.extra[0]}});
         }
         if (!paid_before && stats_.exhibition_paid)
-            receipts({CampaignReceiptKind::activity_points_paid, 16, after.simulation_steps,
-                c.page, 0, -1, {before.village_points}, {after.village_points}});
-        if (queued_effect) receipts(*queued_effect);
+            receipts({CampaignReceiptKind::activity_points_paid,
+                      16,
+                      after.simulation_steps,
+                      c.page,
+                      0,
+                      -1,
+                      {before.village_points},
+                      {after.village_points}});
+        if (queued_effect)
+            receipts(*queued_effect);
+        if (victory)
+            receipts(*victory);
     }
 }
 
-void ActiveVillageStrategy::observe_tick(const State &before, const State &after) {
+void ActiveVillageStrategy::observe_tick(const State &before, const State &after,
+                                         const CampaignReceiptSink &receipts) {
     ++stats_.ticks;
     require(month(after) >= month(before) && month(after) <= month(before) + 1 &&
                 ref::valid_world_calendar_state(after.scene.calendar),
@@ -434,6 +460,9 @@ void ActiveVillageStrategy::observe_tick(const State &before, const State &after
     require(after.scene.random.draws() >= before.scene.random.draws(),
             "random stream rewound within one process");
     observe_world(before, after);
+    const auto victory = task_victory_receipt(before, after, stats_.departed_task);
+    if (receipts && victory)
+        receipts(*victory);
 }
 
 bool ActiveVillageStrategy::construction_checkpoint(const State &s) const {

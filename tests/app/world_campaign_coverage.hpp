@@ -6,6 +6,7 @@
 #include <functional>
 #include <iosfwd>
 #include <map>
+#include <optional>
 #include <set>
 
 namespace ark::test {
@@ -31,7 +32,8 @@ enum class CampaignReceiptKind {
     armour_combat_applied,
     accessory_combat_applied,
     human_medal_awarded,
-    human_home_admitted
+    human_home_admitted,
+    task_victory_committed
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -52,6 +54,11 @@ CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int defin
 CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &before,
                                               const app::WorldState &after, std::uint64_t page,
                                               std::uint64_t facility);
+// Bind an already-observed victory to the submitted task and its new raw30 page.
+// This checks the receipt's source identity, not loot, combat rewards or successor generation.
+std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &before,
+                                                    const app::WorldState &after,
+                                                    std::uint64_t departed_task);
 
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.

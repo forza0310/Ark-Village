@@ -43,7 +43,8 @@ class ActiveLateVillageStrategy {
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});
-    void observe_tick(const app::WorldState &before, const app::WorldState &after);
+    void observe_tick(const app::WorldState &before, const app::WorldState &after,
+                      const CampaignReceiptSink &receipts = {});
     void reconcile(const app::WorldState &state);
     bool checkpoint(const app::WorldState &state) const;
     bool complete(const app::WorldState &state) const;

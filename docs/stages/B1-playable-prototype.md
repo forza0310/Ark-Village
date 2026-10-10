@@ -21,6 +21,8 @@
 
 人物回执续批保留统一16列，补真实装备资格消费/装配及战斗属性写回、授勋和住宅付款/人物实例绑定；Steam组合策略全部oracle成功后才发布。复用经营合同的三装备命名空间、年度和入住短夹具，明确准备资格后运行原消费者，不认证自然取得、战斗使用或住宅税收。desktop-debug标准139/139（25.90秒、仅排三个月）、headless-debug经营合同通过，最终日志为`build/validation/research-e700aac/ctest-desktop-people-receipts-final.log`与`ctest-headless-people-receipts-final.log`。未重签旧经营证书或便携包，CI仍待对应main。263e426十二份正式文档的具名合同已审阅，无运行增量，后继验收边界集中在[经营计划](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。
 
+任务回执续批统一策略tick观察接口，复用原经营套件；真实出发/完成/清除/新30摘要绑定分别核验。定向经营揭示探索摘要不复制战斗页任务字段，已按冻结源修正取证断言，保留19项错绑定拒绝；不改奖励或世界规则。修后desktop-debug标准139/139（26.47秒、仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-task-exploration-fixed.log`、`ctest-headless-task-exploration-fixed.log`、`ctest-release-task-exploration-fixed.log`。6d二星档隔离接续至月42，再新进程至45并冷载通过，真实建设/强化、装备与4次探索/战斗胜利形成新回执；失败和修后RESULT分别留`steam-task-quarter-d2476ad974fb41339a506a08640c6d7f/`与`steam-task-quarter-fixed-c6d62e8698704c7fa00246a76741d55b/`。仍未达三星、全定义消费或自然通关，具体数字及可恢复前缀集中经营计划；CI待对应main，未重签玩家包或旧证书。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

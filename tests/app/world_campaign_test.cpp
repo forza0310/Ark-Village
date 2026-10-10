@@ -219,14 +219,21 @@ template <class PlayerStrategy> struct CampaignRun {
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
         update.candidate->sound_requests.clear();
-        if constexpr (std::is_same_v<PlayerStrategy, PotStrategy> ||
-                      std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
+        try {
             strategy.observe_tick(state, *update.candidate,
                                   [&](const ark::test::CampaignReceipt &receipt) {
                                       coverage.record(receipt, std::cout);
                                   });
-        else
-            strategy.observe_tick(state, *update.candidate);
+        } catch (...) {
+            // Keep the same pre-update Owner used for a failed observation. A strategy
+            // refusal is not a runtime error, and must not be reported as one.
+            try {
+                ark::test::capture_campaign_observation(directory, state);
+            } catch (const std::exception &error) {
+                std::cerr << "Update observation capture: " << error.what() << std::endl;
+            }
+            throw;
+        }
         coverage.observe(state, *update.candidate);
         state = std::move(*update.candidate);
         system = std::move(next);

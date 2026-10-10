@@ -692,6 +692,8 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         }
     }
     observe_world(before, after);
+    if (const auto victory = task_victory_receipt(before, after, departed_task_))
+        pending.push_back(*victory);
     if (receipts)
         for (const auto &receipt : pending)
             receipts(receipt);
@@ -704,6 +706,8 @@ void SteamVillageStrategy::observe_tick(const State &before, const State &after,
     income_.observe_tick(before, after);
     ++stats_.ticks;
     observe_world(before, after);
+    if (const auto victory = task_victory_receipt(before, after, departed_task_))
+        pending.push_back(*victory);
     if (receipts)
         for (const auto &receipt : pending)
             receipts(receipt);

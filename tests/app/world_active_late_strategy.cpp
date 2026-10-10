@@ -1053,12 +1053,15 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
         }
     }
     observe_world(before, after);
+    if (const auto victory = task_victory_receipt(before, after, stats_.departed_task))
+        pending.push_back(*victory);
     if (receipts)
         for (const auto &receipt : pending)
             receipts(receipt);
 }
 
-void ActiveLateVillageStrategy::observe_tick(const State &before, const State &after) {
+void ActiveLateVillageStrategy::observe_tick(const State &before, const State &after,
+                                             const CampaignReceiptSink &receipts) {
     ++stats_.ticks;
     if (income_)
         income_->observe_tick(before, after);
@@ -1067,6 +1070,9 @@ void ActiveLateVillageStrategy::observe_tick(const State &before, const State &a
                 after.scene.random.draws() >= before.scene.random.draws(),
             "calendar/random discontinuity");
     observe_world(before, after);
+    const auto victory = task_victory_receipt(before, after, stats_.departed_task);
+    if (receipts && victory)
+        receipts(*victory);
 }
 bool ActiveLateVillageStrategy::checkpoint(const State &s) const {
     const bool business =

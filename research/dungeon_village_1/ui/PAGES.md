@@ -412,9 +412,26 @@ Init `b/g.java:10593–10634`先建TextLayout并载入当前正文，再按定�
 
 Update `b/g.java:11468–11484`先以确认或右重复输入向后循环，再独立处理左重复输入；仅实际换页且非末页时重装正文并Flush。确认`ui.a.b(mask)`会清输入位（完整路径`kairo/android/ui/a.java:306–309`），故后面的返回检查不会再消费同一次确认并关页；返回软键仍可关闭。Steam同样在VA10326818先CheckKeyPulse(0x100000)／右repeat(0x40000)，随后左repeat(0x10000)，最后103268FA检查返回软键；Keypad.CheckKeyPulse RVA7AB780在107AB792–107AB79D清旧pulse位，Canvas的10747F41–10747F59再将未映射动作的mask交给Keypad。这证明已路由到同一Keypad的脉冲消费，不证明OS按键与物理鼠标映射已全部等价。
 
-页码及冻结X属于页面生命周期，返回／退休后不能留作下一次Init的随机捷径。世界入口先压子页再退休菜单，返回露出GameForm；本次APK构造引用只证世界入口，标题入口不可据此补证。维护页码与抽取后的四人名单需纳入完整Owner／应用恢复，而非绘制线程临时重抽；本批没有新增这些持久字段。
+页码及冻结X属于页面生命周期，返回／退休后不能留作下一次Init的随机捷径。世界入口先压子页再退休菜单，返回露出GameForm；本次APK构造引用只证世界入口，标题入口不可据此补证。维护`startup_world_manual`现接真实tag22，`manual_page_data`保存冻结定义、上次正文页及初次LT标记，页码／计数沿原phase／counter；关于页保留旧正文，净页码未变也不重新SetText。恢复先验证、不执行Init或重抽，Finish清页载荷；完整应用短回放与窗口结果见[本批验证](../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)。
 
-说明文字的“16年3月末”和资金／通关说明只作为原文本；真正触发时点、分数与继承仍以[启动纪录消费者](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)为准。以上是静态合同，尚未新增raw12／13维护消费者、配置文件格式或原窗口验收。
+说明文字的“16年3月末”和资金／通关说明只作为原文本；真正触发时点、分数与继承仍以[启动纪录消费者](../rules/STARTUP_RECORDS.md#通关六类计分固定apk及steam有限交叉)为准。raw12系统设置及原窗口动态仍未由说明页交付。
+
+`steam_manual_skin`的Steam局部原序来自SubForm._draw RVA352E20的VA103554E5–10355DC9。令extra=日文0／非日文40、half=extra/2、a=(frame%20)/5：先DrawWindow(180+extra,166,0)及“游戏方法 当前／总页”，左右AddTouch请求锚分别(44−a−half,56)和(193+a+half,56)，参数为common SEB3的bounds帧3／0、component1／value16、18；**这些SEB帧用于取边界，实际箭头不是直接绘制arrow02**。随后DrawBox(37−half,60,203+half,197)。正文TextLayout.Draw在(48−half,80)，日文146×124／行距6／沿当前字号，非日文186×124／行距8／字号10，颜色30/30/30；初始VIEW_Y23只由Window／Box使用，文字和箭头不重复加偏移。Init先LT正文，换页直接SetText的区别由Owner记录，纯计划不执行翻译。
+
+箭头实际消费者为GameView.AddTouch RVA239950→2399B0：VA102399E7先取Seb.GetBoundingRect，10239A56–10239ADF对component1／18按CheckTouch(id,value)选择独立TEX；bounds帧1／3对应左普通0／选中2，其余对应右普通1／选中3。DrawImage RVA23A460→DrawScaledImage RVA23A530读取GameView的`buttoneffect.png`，不是common图74。已从cctor RVA23FA70及metadata默认数组核前四行，列为偏移和128宽基准图的源裁片：
+
+| TEX | 偏移x／y | 源x／y／宽／高 |
+| --- | --- | --- |
+| 左普通0 | −5／−8 | 0／57／15／20 |
+| 右普通1 | −4／−8 | 15／57／15／20 |
+| 左选中2 | −9／−12 | 31／57／20／26 |
+| 右选中3 | −6／−12 | 52／57／20／26 |
+
+`steam_manual_arrow_skin`保留这个helper的两层变换：偏移及目标宽高先乘float32常量0.75（VA10DDE554），以SEB bounds中心重新配准锚点，向零截断配准差；DrawScaledImage再用实际图片宽／128的密度比，将源裁片各项乘该比、加0.5并截断。绘制目标保留小数，`_addTouch`基矩形则分别截断，SetPaint保留重新配准的锚及原bounds帧。这里的密度比不是逻辑0.75，不能用换SEB帧或交换左右图来修视觉。raw13的arrow02实际为单层六记录／六帧，所用frame0／3均为offset(0,−3)、size4×8、无翻转；正式[Steam mdpi图](../assets/steam-common/buttoneffect.png)128×128的四裁片分别为15×20或20×26且均在图内。发布尺寸是显式素材选择，不证明原窗口当时采用mdpi。参数及消费边界见[纯计划接口](../prototype/include/dungeon_village_prototype/steam_manual_skin.hpp)。
+
+末页依次绘制关于(120,80)、游戏名(120,166)、版权(120,182)，均anchor2；仅游戏名明确LT，试玩再拼空格＋LT体验版。随后push裁剪(43,101,154,56)，common39三裁片依序(0,0,93,82)→(30,90)、(1,0,91,82)→(109,90)、(1,0,20,82)→(189,90)，不是翻转。冻结人物按原序依次GetWeapon／GetJob／GetImgId，SetDispPlayerData(0,body,(frame%16)/4,2,frame)再DrawDispPlayer；x为80、106、133、160，y148，少于四人不重新均分。RateConvert(int) RVA2A4780及DrawDispPlayer的int参数已交叉，不能换成浮点等距坐标。PopClip后RGB43/116/190的DrawRect(43,101,153,55)，共尾component2／option2 KEYCLICK请求保持，不补不存在的确认按钮。
+
+关于图层与触摸顺序完整保留为只读请求，但原共享表现scratch可能带历史附加状态。研究窗口仅消费已核基础武器／身体、当前共享职业性别，不认证任意旧scratch叠加；中文正文来自固定APK，Noto字体和br/co标签执行器不是Unity字体或完整TextLayout。箭头触摸引用helper请求及其实际基矩形，窗口键盘翻页／Esc返回不代表原OS触摸margin、clip、缩放与命中已验。原common39及arrow02两版同字节，可复用底图及bounds来源；Steam buttoneffect与APK同名图不同像素，须独立发布。旧选档箭头也调用同AddTouch helper，其既有直接SEB绘制消费仍待重新核接，不能因本批raw13修正就称旧选档箭头已正确；不无证改写历史验收。
 
 ## 设施详情的条件与字段
 

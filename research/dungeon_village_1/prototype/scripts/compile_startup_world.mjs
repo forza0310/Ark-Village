@@ -25,6 +25,8 @@ const scriptHashes = {
   'evtmsgs.txt':'143faa1f2f9ba243e9e37cde06999f9cd080d7d329b6c3355f570d8fe6dd48f0',
   'popularBonus.txt':'19a010efa9bca14e2757a7ede3fd9080ad306cb50cc758157597575f1407bfcb'
 };
+// 正文参与运行规则身份，不是一次性交付指纹；不能在恢复后换另一组页数/文本。
+const manualHash = 'f2efb234b8eb49a78e71681d50943ec48f603803c5a30ad0da3fe86b118500c7';
 const need = (condition, message) => { if (!condition) throw new Error(message); };
 const n = value => {
   need(/^-?\d+$/.test(String(value)), '整数格式错误');
@@ -52,6 +54,11 @@ export function validateMagicPotRows(recipes, rewardCounts) {
   });
 }
 export function compileStartupWorld(tables, map, sources, state) {
+  const manual = sources['manual.txt'];
+  need(typeof manual === 'string' && createHash('sha256').update(manual).digest('hex') === manualHash,
+       'manual.txt哈希不符');
+  // kairo.android.i.m.b: Java trim只去掉首尾<=U+0020，空分段仍占页码。
+  const manualPages = manual.length ? manual.split('|').map(p=>p.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g,'')) : [];
   need(tables.apk_sha256 === apk && map.apk_sha256 === apk, 'APK身份不匹配');
   // 复用已有完整地图重编码/哈希与新局状态交叉校验，不仅相信region.logical。
   compileStartup(map, state, tables, sources['tenantData.txt']);
@@ -179,7 +186,7 @@ export function compileStartupWorld(tables, map, sources, state) {
     }).join(',')}},\n`+
     `{${Object.keys(scriptHashes).map(name=>text(sources[name])).join(',')}},\n`+
     `{${rows['asEventData.txt'].map(row=>`{${n(row[0])},${text(row[1])},${array(row.slice(2,9))},${text(row[9])},${text(row[10])},${n(row[11])},${n(row[11])&1?1:0}}`).join(',')}},"G",`+
-    `${array(map.cells.flat().map(cell=>cell[1]))},{${recipeOutput.join(',')}}};\nreturn value;\n}\n}\n`;
+    `${array(map.cells.flat().map(cell=>cell[1]))},{${recipeOutput.join(',')}},{${manualPages.map(text).join(',')}}};\nreturn value;\n}\n}\n`;
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [startup,world,tenant,output]=process.argv.slice(2);
@@ -189,6 +196,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     sources[name]=readFileSync(`${world}/${name}`,'utf8');
   sources['tenantData.txt']=readFileSync(tenant,'utf8');
   for(const name of Object.keys(scriptHashes))sources[name]=readFileSync(`${world}/../scripts/original/${name}`,'utf8');
+  sources['manual.txt']=readFileSync(`${world}/../scripts/original/manual.txt`,'utf8');
   writeFileSync(output,compileStartupWorld(JSON.parse(readFileSync(`${startup}/TABLES.json`)),
     JSON.parse(readFileSync(`${startup}/MAP.json`)),sources,
     JSON.parse(readFileSync(`${startup}/STATE.json`))));

@@ -1,8 +1,8 @@
 # 固定事件脚本与展示载荷
 
-本目录保留一代固定APK中`xls.dat`的五个原始条目，用于研究脚本结算顺序和维护示例输入。
+本目录保留一代固定APK中`xls.dat`的六个原始条目，用于研究脚本结算顺序、游戏说明和维护示例输入。
 不使用后来截图中的视觉版本替换这些数值/指令，不改原表，也不把实例夹具冒充真实新局。
-源归档和每个原始条目的SHA-256、字节数见[来源清单](SOURCE.tsv)。
+旧五项的源归档及条目SHA-256、字节数见[来源清单](SOURCE.tsv)；该历史清单不包含本批新增的`manual.txt`。
 
 | 原始条目 | 结构 | 本次严格解析结果 |
 | --- | --- | --- |
@@ -11,11 +11,14 @@
 | [news.txt](original/news.txt) | 竖线分隔记录，内部3字段：保留字段、标题、正文 | 28条；空标题仍占原下标 |
 | [evtmsgs.txt](original/evtmsgs.txt) | 竖线分隔记录；内部为指令编号与文本组成的展示序列 | 10条；文本内原换行不当作新记录 |
 | [popularBonus.txt](original/popularBonus.txt) | 7列TSV：保留字段、门槛、人物、设施、程序、标志、其他字段 | 100条、3652字节、无尾部换行；顺序不能按门槛重新排序 |
+| [manual.txt](original/manual.txt) | 竖线分隔正文，保留原文、换行及标签 | 固定APK `assets/xls.dat/manual.txt`原4446字节、29条正文；raw13另加一页关于页 |
 
-`SOURCE.tsv`的`rows`对后三张表表示逻辑竖线记录数，不是物理换行数。
+`SOURCE.tsv`的`rows`对talk／news／evtmsgs表示逻辑竖线记录数，不是物理换行数。
 原字节由既有严格归档解码器读取；UTF-8、整数范围、矩阵、ID唯一性与展示边界再次由
 [维护解析器](../../example/src/world_scripts.cpp)验证。归档SHA-256为
 `8baacbb181dcd4eb18435eb39938ef2ad21d7dee9db27654b07c3428f4739958`。
+
+`manual.txt`是正式编译依赖，进入`StartupWorldRules.manual_pages`及当前运行／恢复来源身份；缺失或变更不能沿用旧来源快照。raw13按原序引用这29条正文，不把关于页伪造为第30条原文。固定APK原文与Steam本地化分别登记；新增此输入不代表Steam语言资源或完整TextLayout已实现。交付检查见[说明页面批](../../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)。
 
 ## 探索完成与登场脚本
 

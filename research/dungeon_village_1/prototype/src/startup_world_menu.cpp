@@ -1,6 +1,7 @@
 // 真实导航菜单只修改唯一Owner候选；冻结目录、原位置和退休身份分别保存。
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
@@ -129,6 +130,7 @@ void suspend(State &s, std::uint64_t id) {
 }
 Error dispatch(State &s, std::uint64_t id, int raw, int tag, bool english) {
     if(raw==10 && tag==20)return open_startup_world_save_page(s);
+    if(raw==10 && tag==22)return open_startup_world_manual_page(s);
     if (raw == 3) {
         if (tag == 1 || tag == 2 || tag == 6)
             return open_startup_world_navigation_submenu(s, tag == 1 ? 4 : tag == 2 ? 7 : 10,

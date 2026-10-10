@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_application.hpp"
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -280,6 +281,9 @@ std::string StartupApplication::set_paused(bool paused) {
     return apply_world_action([&](auto &world) {
         world.set_paused(paused); return StartupWorldRuntimeError::none;
     });
+}
+std::string StartupApplication::input_manual_page(std::uint64_t page, const StartupManualInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_manual_page(page, input); });
 }
 std::string StartupApplication::set_speed(int setting) {
     const auto eligibility = world_action_error();

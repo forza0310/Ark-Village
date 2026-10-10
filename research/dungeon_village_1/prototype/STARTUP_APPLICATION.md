@@ -36,6 +36,8 @@ raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严
 
 信息入口`open_information_menu()`和`input_information_page(page,input)`同样经过唯一`apply_world_action`提交；未初始化、过期、暂停或未维护目标不安装候选。通用确认／返回转发真实9／36消费者；菜单选择收支后退休菜单类，36返回实际父栈，不额外经营一轮。既有世界phase／counter完整保存选择、页签和计数，不复制现金桶或改应用格式；页面功能与输入顺序见[信息合同](../ui/INFORMATION_MENU.md)，完整Steam皮肤及物理输入仍分开。
 
+说明raw13已沿真实3→10→tag22及`input_manual_page(page,input)`接入同一应用／窗口宿主。Init按p非零人物定义全池N次Random(N)交换后尾部反取最多4人；翻页不抽随机，confirm或right前进一次、left随后独立处理、cancel最后关闭，返回露出真实GameForm。初始正文标记LT，只有最终页码真正改变且为非关于页才安装未LT正文；关于页保留隐藏正文。`manual_page_data`保存人物、`text_page`、`localize_text`，完整应用回放原样恢复，不重抽或重新LT；普通存档仍拒绝模态页。应用与宿主只转发typed输入、不增加第二Owner，新增来源与布局身份拒绝旧快照、不迁移，语义版本保持世界5／应用8／系统2。
+
 健康冷构造和world→title真正重入各入队一次`replace_bgm(0)`。纪录／配置／raw20／询问返回不重新初始化，不重复B0。真实start／load激活成功后，沿G的任务／遭遇状态追加B1或B2，排在该事务较早实际输出之后；失败不发，不按ID去重。首次B0尚未领取就start时，B0、G均按原序保留。
 
 应用公开命令成功边界把当前world声音转入应用唯一typed队列，world当前队列归空，历史checkpoint原声音仍保存。`take_audio_requests()`与兼容ID接口领取的是同一队列，任一领取后另一接口不能再取到同一请求。记录operation＋ID；只比较ID会丢失播放、切换等语义。CLI逐命令／更新消费输出，捕获还要求Driver已消费；精确恢复不重发B0／G。
@@ -46,13 +48,15 @@ raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严
 
 独立标题内存控制器现为`startup-title-v3`：无世界时保存背景、菜单、草稿、页面、装饰、随机、请求和当前目录身份；恢复先核与当前应用的目录观察一致，不重新读取磁盘、不加载文件或发初始化输出。旧v1／v2拒绝。完整磁盘应用AVRAPP01当前语义8，另含完整四目录引用文件视图；恢复到尚不存在的新研究根后联合安装。旧应用1–7和系统1均拒绝，不改旧证书迁移；独立世界当前语义5，字段及版本演进见[存取模块](PERSISTENCE.md)。此前邻接收入可能已经改变资金、随机及历史，不能加载后补算price冒称修复旧档。已推进raw17仍不能只用世界档从零恢复应用计分。
 
-raw14轮内保存已接应用事务，普通档仍只保存严格导出的稳定normal场景，不直接保存结果模态页。原自动中断产生者、完整标题、设置12、说明13、RankForm、纪录动画完整调度、精确Steam字体／全部皮肤和自然通关尚未因此完成；应用快照不替普通档扩大资格。
+raw14轮内保存已接应用事务，普通档仍只保存严格导出的稳定normal场景，不直接保存结果模态页。raw13功能与局部皮肤见本批接线；原自动中断产生者、完整标题、设置12、RankForm、纪录动画完整调度、精确Steam字体／全部皮肤和自然通关尚未因此完成；应用快照不替普通档扩大资格。
 
 ## 有界CLI与交付边界
 
 研究窗口本批应用宿主已通过[定向与短窗口检查](../VERIFICATION.md#研究窗口应用宿主与真实保存2026-10-10)：`dungeon_village_prototype.exe --world --application-root <现存research/dungeon_village_1/work子目录> --application-new 0|1`或`--application-load 0|1`。参数先canonical核研究范围，new仅接受目标手动／中断两条完整空目录，隐藏引用也拒绝；load沿现应用手动读档。私有`StartupWindowHost`以variant只持应用或独立Session，世界只读、所有typed写命令经应用Owner；应用命令错误转为`runtime_failed`并保留原文，可预期输入拒绝不会假装成功。初始和命令输出静默领取一次，真实菜单raw14保存当前manual，窗口退出不补存。raw17只读六行适配、确认按逻辑gate单次消费，不代表完整计分皮肤或原物理输入认证。
 
 应用窗口可合用有界`--inspect-page world-save`，经真实3→10→20检查保存结果；与文件load／save、fixture／check及其他inspect互斥。默认独立Session的保存页仍只预览，显式`--save-file`保持原稳定场景退出保存边界。窗口宿主不增持久字段，世界5／应用8／系统2及128MiB不变；完整标题与上述平台页面后继接入，不把这次接线当作全部窗口完成。
+
+说明有界入口分别为`--inspect-page world-manual`与`--inspect-page world-manual-about`，经真实菜单链打开正文／关于页，不注入页载荷。当前窗口采用Noto及`br`／`co`标签局部适配，不能等同原字体或完整TextLayout；关于页基础人物与完整scratch效果未认证，鼠标箭头及平台命中仍待接。固定APK29条正文进入正式规则，不代表Steam本地化完成；本批构建、短回放及窗口结果统一见[说明页面验证](../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)，此处不预记通过。
 
 `work/release/bin/dungeon_village_startup_application_cli.exe --root <已存在研究根>`，可选`--seed`与`--title-presentation`。旧`--system/--slot0/--slot1`显式拒绝，不静默迁移；退出或EOF不自动保存。
 

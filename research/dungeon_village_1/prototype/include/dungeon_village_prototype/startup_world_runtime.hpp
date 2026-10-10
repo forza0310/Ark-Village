@@ -29,6 +29,12 @@ enum class StartupMagicPotEntry;
 enum class StartupMagicPotAction;
 struct StartupInformationInput;
 struct StartupWorldMenuInput;
+struct StartupManualInput;
+struct StartupManualPageData {
+    std::vector<int> decorations;
+    int text_page{}; // 关于页保留上次已装入TextLayout的正文索引。
+    bool localize_text{true}; // Init先LT；后续实际正文换页直接SetText。
+};
 // 原菜单Init冻结条目；已初始化页的缺字段不能由默认值补齐。
 struct StartupWorldMenuPageData {
     std::vector<int> tags;
@@ -209,6 +215,7 @@ struct StartupWorldRuntimeState {
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
     std::map<std::uint64_t, StartupInformationPageData> information_page_data;
+    std::map<std::uint64_t, StartupManualPageData> manual_page_data; // raw13冻结装饰与正文缓存时点。
     // 缓存raw3行号/存储位置跨关闭保留；重新入栈使用新维护页ID，不复用退休身份。
     int main_menu_selection{};
     std::array<int, 2> main_menu_position{{0, 25}};
@@ -425,6 +432,7 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input);
     StartupWorldRuntimeError input_information_page(std::uint64_t page,
                                                      const StartupInformationInput &input);
+    StartupWorldRuntimeError input_manual_page(std::uint64_t page, const StartupManualInput &input);
     StartupWorldRuntimeError open_magic_pot(StartupMagicPotEntry entry);
     StartupWorldRuntimeError act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
                                                 int selection = 0);

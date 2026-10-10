@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -3761,6 +3762,110 @@ void magic_pot_equipment_low_level_rewards() {
 }
 
 // 保存页的两次Update与应用写盘边界分开；这里不使用文件系统或伪造保存成功。
+void manual_help_page() {
+    using E = StartupWorldRuntimeError;
+    // 显式调用点夹具覆盖空池/单人/混合p状态；不向真实自然路线注入人物。
+    for (const int count : {0, 1, 6}) {
+        auto s = fixture(13);
+        StartupWorldRules rules = *s.rules;
+        s.rules = &rules;
+        std::swap(rules.humans.at(1), rules.humans.at(4));
+        check(!rules.manual_pages.empty(), "manual source contains actual text pages");
+        for (auto &entry : s.human_presence) entry.second = 0;
+        for (int id = 0; id < count; ++id) s.human_presence.at(id) = id % 2 ? 2 : 1;
+        s.scene.random = ref::WorldRandomStream::from_raw(std::vector<std::int32_t>(count, 0));
+        auto &page = s.scripts.pages.back();
+        page.lifecycle = 0; page.source_record = 10; page.legacy_tag = 22;
+        page.title = "游戏方法"; s.scene.top_is_main = false;
+        const auto id = page.id;
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        const auto date = s.scene.calendar.units;
+        check(!inspect_startup_world_manual_page(s, id), "manual query cannot initialize or shuffle");
+        if (count == 6) {
+            auto exhausted = s;
+            exhausted.scene.random = ref::WorldRandomStream::from_raw({0, 0, 0, 0, 0});
+            const auto before = startup_world_state_digest(exhausted);
+            check(!initialize_startup_world_manual_pages(exhausted) &&
+                      startup_world_state_digest(exhausted) == before,
+                  "last manual shuffle draw exhaustion rolls back entire page payload and random");
+        }
+        check(initialize_startup_world_manual_pages(s), "manual initializes through original pool traversal");
+        const std::vector<int> expected = count == 0 ? std::vector<int>{} :
+            count == 1 ? std::vector<int>{0} : std::vector<int>{1, 3, 2, 4};
+        // 六个全0票将原序[0,4,2,3,1,5]轮换，再反向取尾4；独立手算oracle。
+        auto view = inspect_startup_world_manual_page(s, id);
+        check(view && view->index == 0 && !view->about && view->text_page == 0 && view->localize_text &&
+                  view->text == rules.manual_pages.front() &&
+                  view->decorations == expected && s.scene.random.draws() == static_cast<std::size_t>(count) &&
+                  s.scene.world.world.ai.accounting.funds() == cash && s.scene.calendar.units == date,
+              "manual uses all p-nonzero definitions in source order, N full-range draws and reverse tail4");
+        const auto initialized = startup_world_state_digest(s);
+        check(initialize_startup_world_manual_pages(s) && startup_world_state_digest(s) == initialized,
+              "repeated manual initialization preserves frozen decorations and does not draw again");
+        page_tick(s);
+        const auto draws = s.scene.random.draws();
+        StartupManualInput net_zero; net_zero.confirm = true; net_zero.left = true;
+        check(input_startup_world_manual_page(s, id, net_zero) == E::none &&
+                  inspect_startup_world_manual_page(s, id)->index == 0 &&
+                  inspect_startup_world_manual_page(s, id)->localize_text,
+              "confirm then left returning to initial index does not replace the localized Init cache");
+        StartupManualInput forward; forward.confirm = true; forward.right = true;
+        check(input_startup_world_manual_page(s, id, forward) == E::none &&
+                  inspect_startup_world_manual_page(s, id)->index == 1,
+              "manual confirm and right together advance once without consuming a second confirmation as exit");
+        view = inspect_startup_world_manual_page(s, id);
+        check(view && (view->about ? (view->text_page == 0 && view->localize_text) :
+                                     (view->text_page == 1 && !view->localize_text)),
+              "manual reloads changed non-about text without LT, while about preserves initialized cache");
+        const auto retained_text_page = view->text_page;
+        const auto retained_localize = view->localize_text;
+        StartupManualInput cancel_motion; cancel_motion.right = true; cancel_motion.left = true;
+        check(input_startup_world_manual_page(s, id, cancel_motion) == E::none &&
+                  inspect_startup_world_manual_page(s, id)->index == 1 &&
+                  inspect_startup_world_manual_page(s, id)->text_page == retained_text_page &&
+                  inspect_startup_world_manual_page(s, id)->localize_text == retained_localize,
+              "manual left applies independently after forward, net unchanged index does not reload text");
+        StartupManualInput left; left.left = true;
+        check(input_startup_world_manual_page(s, id, left) == E::none &&
+                  input_startup_world_manual_page(s, id, left) == E::none,
+              "manual backward wraps through about page");
+        view = inspect_startup_world_manual_page(s, id);
+        check(view && view->index == static_cast<int>(rules.manual_pages.size()) && view->about &&
+                  view->text_page == 0 && !view->localize_text && view->text == rules.manual_pages.front() &&
+                  view->decorations == expected && s.scene.random.draws() == draws,
+              "about hides but retains last actual unlocalized text cache and frozen members without random");
+        for (int fault = 0; fault != 8; ++fault) {
+            auto bad = s;
+            if (fault == 0) bad.manual_page_data.erase(id);
+            if (fault == 1) bad.page_phases.erase(id);
+            if (fault == 2) bad.page_counters.erase(id);
+            if (fault == 3) bad.page_phases.at(id) = static_cast<int>(rules.manual_pages.size()) + 1;
+            if (fault == 4) bad.scripts.pages.back().source_record = 9;
+            if (fault == 5) bad.scripts.pages.back().legacy_tag = 21;
+            if (fault == 6) bad.page_counters.at(id) = -1;
+            if (fault == 7) bad.scripts.pages.front().kind = ref::WorldScriptPageKind::raw_page;
+            const auto before = startup_world_state_digest(bad);
+            check(!inspect_startup_world_manual_page(bad, id) &&
+                      input_startup_world_manual_page(bad, id, forward) != E::none &&
+                      !initialize_startup_world_manual_pages(bad) &&
+                      startup_world_state_digest(bad) == before,
+                  "initialized manual missing payload bad provenance or out-of-range phase rejects atomically");
+        }
+        check(input_startup_world_manual_page(s, id, forward) == E::none &&
+                  inspect_startup_world_manual_page(s, id)->index == 0,
+              "manual forward wraps about to first real source page");
+        forward.cancel = true;
+        check(input_startup_world_manual_page(s, id, forward) == E::none &&
+                  s.scripts.pages.back().lifecycle == 4 && s.scene.random.draws() == draws,
+              "manual cancel is a separate final pulse after forward and retires without shuffle");
+        page_tick(s);
+        check(!s.manual_page_data.count(id) && !s.page_phases.count(id) && !s.page_counters.count(id) &&
+                  std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                      [id](const auto &p) { return p.id == id; }),
+              "manual Finish releases frozen references and all page payload");
+    }
+}
+
 void manual_save_page() {
     using E = StartupWorldRuntimeError;
     auto s = test_support::world_fixture();
@@ -3996,7 +4101,14 @@ void navigation_menu_pages() {
     check(input_startup_world_menu_page(saving, system_id, confirm) == E::none &&
               saving.scripts.pages.back().legacy_page == 14,
           "Steam system row20 opens actual save page instead of reporting missing consumer");
-    for (int row = 1; row < 5; ++row) {
+    // 22现有真实说明消费者；此拒绝契约继续覆盖仍缺平台接线的21/23/24。
+    auto manual = system;
+    select.select_row = 2;
+    check(input_startup_world_menu_page(manual, system_id, select) == E::none &&
+              input_startup_world_menu_page(manual, system_id, confirm) == E::none &&
+              manual.scripts.pages.back().legacy_page == 13,
+          "Steam system row22 opens actual manual page without silently discarding its parent");
+    for (const int row : {1, 3, 4}) {
         select.select_row = row;
         check(input_startup_world_menu_page(system, system_id, select) == E::none,
               "system row selection is a real menu operation");
@@ -4191,6 +4303,7 @@ int main() {
         human_details_and_gifts();
         navigation_menu_pages();
         manual_save_page();
+        manual_help_page();
         present_directory_pages();
         human_profession_and_mastery();
         tax_pages();

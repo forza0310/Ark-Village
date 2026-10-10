@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 说明页面Owner与Steam局部皮肤2026-10-10
+
+raw13已从真实3→10→tag22接入唯一Owner、Session／Application及研究窗口。正文原样取固定APK manual的29段，另加关于页；Init按源人物池抽N次Random(N)，冻结最多4人，翻页不重抽。确认／右键先消费一次、左键随后独立处理，取消回到GameForm并释放页面载荷；首次LT与换页SetText、关于页隐藏正文分别保存。恢复严格检查来源、父栈、页码、人物及载荷；字段布局和数据身份更新拒旧不迁移，世界5／应用8／系统2及128MiB预算保持。正式规则与适配范围见[说明合同](ui/PAGES.md#说明13固定正文输入消费与装饰随机)。
+
+单Release整树增量构建通过，八项定向初验六项通过（application、projection、runtime、persistence、codec coverage、world data），pages及visuals分别发现旧tag22拒绝预期和arrow02帧数错误。按来源修正为真实说明入口及六帧，再修正箭头真正走GameView独立纹理；最终相关目标构建与pages／visuals两项复验通过3.44秒。正式PNG改沿视觉套件已有raylib解码，解决临时引入归档函数的未链接错误，没有为此增加工具依赖或放宽断言。现有套件覆盖输入组合、零／单人池随机、暂停、错页／坏载荷拒绝、退休及完整应用恢复短回放，未新建target或重复经营长测。三份住宅在途测试参与工作区构建但不归本批提交。
+
+两个应用宿主及一个独立Session的8帧窗口均正常退出并实际查看：正文1/30、关于30/30，5000G、0世界更新／活跃实体、3次Init随机。箭头用Steam mdpi buttoneffect及0.75逻辑缩放，版权文字沿APK；[并排示例](ui/examples/steam-manual.png)为研究截图，非原Steam窗口。Noto字体报告1425／1427，原字体、完整TextLayout、共享人物scratch及物理箭头点击仍未认证。新增正文4446字节、原PNG14563字节与示例74568字节，无新永久历史队列；一次性声音在捕获前消费，取消／Finish清除冻结人物及页面载荷。原common39／SEB复用，旧选档同类箭头消费另待核。清理本轮两份共73012912字节AST临时缓存，构建、窗口及并行任务已收齐；未修改产品、原游戏或原档，不承诺合法账本／任务历史永久有界。
+
 ## 设置与说明的两版消费边界2026-10-10
 
 续核APK raw12／13和Steam getter／setter／Update／Finish，结论合入[页面合同](ui/PAGES.md#设置12值所属与返回边界)及[原存档合同](rules/PERSISTENCE.md#设置返回的系统保存)：Steam非日文设置四行、APK五行分别处理；设置返回只写系统J，世界P12／P13不随之保存；键盘速度锁不能未经触摸准入分析推广给鼠标setter。确认脉冲的消费在APK源码与Steam机器码交叉，说明翻页不会用同一确认再关闭；Init抽取人物池与返回后重新初始化仍须保留共同随机顺序。

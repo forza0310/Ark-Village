@@ -9,6 +9,7 @@
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_routes.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -990,6 +991,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_information_page(
     std::uint64_t page, const StartupInformationInput &input) {
     return input_startup_world_information_page(state_, page, input);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_manual_page(
+    std::uint64_t page, const StartupManualInput &input) {
+    return input_startup_world_manual_page(state_, page, input);
+}
 StartupBuildResult StartupWorldRuntimeSession::begin_road(int definition) {
     return begin_startup_world_road(state_, definition);
 }
@@ -1113,6 +1118,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.human_gift_scores.erase(page.id);
             admitted.human_gift_messages.erase(page.id);
             admitted.information_page_data.erase(page.id);
+            admitted.manual_page_data.erase(page.id);
             admitted.menu_page_data.erase(page.id);
             admitted.menu_page_positions.erase(page.id);
             admitted.tax_page_residents.erase(page.id);
@@ -1145,11 +1151,13 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     const auto &pending = admitted.scripts.pages.back();
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
         (pending.legacy_page == 3 || pending.legacy_page == 4 || pending.legacy_page == 7 ||
-         pending.legacy_page == 10 || pending.legacy_page == 14 || pending.legacy_page == 60 || pending.legacy_page == 9 ||
+         pending.legacy_page == 10 || pending.legacy_page == 13 || pending.legacy_page == 14 || pending.legacy_page == 60 || pending.legacy_page == 9 ||
          (pending.legacy_page >= 34 && pending.legacy_page <= 40))) {
         const bool navigation = pending.legacy_page == 3 || pending.legacy_page == 4 ||
                                 pending.legacy_page == 7 || pending.legacy_page == 10;
         if (!(navigation ? valid_startup_world_menu_page(admitted, pending.id)
+                         : pending.legacy_page == 13
+                               ? valid_startup_world_manual_page(admitted, pending.id)
                          : pending.legacy_page == 14
                                ? valid_startup_world_save_page(admitted, pending.id)
                          : pending.legacy_page == 60
@@ -1165,6 +1173,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
     if (!initialize_startup_world_menu_pages(admitted) ||
         !initialize_startup_world_save_pages(admitted) ||
+        !initialize_startup_world_manual_pages(admitted) ||
         !initialize_startup_world_human_pages(admitted) ||
         !initialize_startup_world_village_activity_pages(admitted) ||
         !initialize_startup_world_commerce_pages(admitted) ||

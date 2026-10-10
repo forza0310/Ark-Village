@@ -14,6 +14,9 @@
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
+#include "dungeon_village_prototype/steam_manual_skin.hpp"
+#include "dungeon_village_prototype/startup_title_actor_skin.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
 #include "dungeon_village_prototype/steam_information_skin.hpp"
@@ -189,7 +192,7 @@ class SourceSprites {
         EndScissorMode();
     }
     void crop(const std::filesystem::path &relative, Rectangle source, Vector2 position,
-              bool published = false) {
+              bool published = false, std::optional<Vector2> extent = {}) {
         if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
             throw std::runtime_error("裁剪资源路径无效");
         const auto path = (published ? root_.parent_path() : root_) / relative;
@@ -205,7 +208,27 @@ class SourceSprites {
             source.x + source.width > found->second.width ||
             source.y + source.height > found->second.height)
             throw std::runtime_error("裁剪资源矩形越界");
-        DrawTextureRec(found->second, source, position, WHITE);
+        if(extent) {
+            if(!std::isfinite(extent->x) || !std::isfinite(extent->y) || extent->x<=0 || extent->y<=0)
+                throw std::runtime_error("原图缩放尺寸拒绝");
+            DrawTexturePro(found->second,source,{position.x,position.y,extent->x,extent->y},{0,0},0,WHITE);
+        } else DrawTextureRec(found->second, source, position, WHITE);
+    }
+    // raw13只用arrow02的单层单部件帧作Touch边界，不把这些帧当作可见箭头。
+    std::array<int,4> manual_arrow_bounds(int frame) {
+        if(frame!=0 && frame!=3)throw std::runtime_error("说明箭头边界帧拒绝");
+        const auto key=std::string("common/arrow02.seb");
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(read_bytes(root_/key))).first;
+        if(found->second.layers.size()!=1)throw std::runtime_error("说明箭头边界源层数变化");
+        const dungeon_village_tools::SpritePart *part{};
+        for(const auto &candidate:found->second.layers.front().parts)if(candidate.frame==frame) {
+            if(part)throw std::runtime_error("说明箭头边界出现复合部件");
+            part=&candidate;
+        }
+        if(!part || part->image_index!=74 || part->flip_x || part->flip_y)
+            throw std::runtime_error("说明箭头边界源拒绝");
+        return {part->offset_x,part->offset_y,part->width,part->height};
     }
     void image(const std::filesystem::path &relative, Vector2 position) {
         if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
@@ -335,6 +358,33 @@ class ChineseFont {
         }
         text(line, x, y);
         return y - start_y + 17;
+    }
+    // 仅执行本批原manual实际使用的br/co标签，保持真实测宽；不是完整Unity TextLayout。
+    void manual_text(const std::string &value,float x,float y,float max_width,
+                     float size,int spacing,Color base) const {
+        Color current=base;
+        std::string line;
+        for(std::size_t at=0;at<value.size();) {
+            if(value.compare(at,4,"<br>")==0 || value[at]=='\n') {
+                at+=value[at]=='\n'?1:4;line.clear();y+=size+spacing;continue;
+            }
+            if(value.compare(at,5,"</co>")==0) {current=base;at+=5;continue;}
+            if(value.compare(at,4,"<co=")==0) {
+                const auto end=value.find('>',at+4);
+                if(end!=at+10)throw std::runtime_error("说明颜色标签尚未接入");
+                const auto digits=value.substr(at+4,6);
+                if(digits.find_first_not_of("0123456789abcdefABCDEF")!=std::string::npos)
+                    throw std::runtime_error("说明颜色参数拒绝");
+                const auto rgb=std::stoul(digits,nullptr,16);
+                current={static_cast<unsigned char>(rgb>>16),static_cast<unsigned char>(rgb>>8),
+                         static_cast<unsigned char>(rgb),255};at=end+1;continue;
+            }
+            if(value[at]=='<')throw std::runtime_error("说明出现未支持的文字标签");
+            const auto lead=static_cast<unsigned char>(value[at]);
+            const auto next=value.substr(at,lead<128?1:lead<224?2:lead<240?3:4);
+            if(!line.empty() && measure(line+next,size)>max_width) {line.clear();y+=size+spacing;}
+            text(next,x+measure(line,size),y,current,size);line+=next;at+=next.size();
+        }
     }
 
   private:
@@ -534,6 +584,90 @@ void draw_save_plan(const SteamStartupSkinPlan &plan,const StartupWorldSavePageV
         } else if(const auto *text=std::get_if<SteamStartupText>(&part))label(*text);
         else throw std::runtime_error("保存页出现未接图元");
     }
+}
+std::optional<SteamManualSkinPlan> window_manual_plan(const StartupWorldRuntimeState &state,
+                                                     const StartupManualPageView &view) {
+    if(!state.rules)return {};
+    SteamManualSkinInput input;input.width=width;input.height=height;
+    input.body_pages=static_cast<int>(state.rules->manual_pages.size());input.page=view.index;
+    input.frame=view.counter;input.body_text=view.text;input.localize_text=view.localize_text;
+    input.frozen_definitions=view.decorations;input.definition_count=static_cast<int>(state.rules->humans.size());
+    return steam_manual_skin(input);
+}
+// 原图元顺序的研究执行器：Noto中文/正文标签及基础人物单独限定，不伪造平台scratch历史。
+void draw_manual_plan(const SteamManualSkinPlan &plan,const StartupWorldRuntimeState &state,
+                      SourceSprites &sprites,const ChineseFont &font) {
+    const Vector2 origin{float(plan.origin[0]),float(plan.origin[1])};
+    const auto color=[](const std::array<int,3> &rgb) {
+        return Color{static_cast<unsigned char>(rgb[0]),static_cast<unsigned char>(rgb[1]),
+                     static_cast<unsigned char>(rgb[2]),255};
+    };
+    const auto rectangle=[&](const StartupSkinRect &part) {
+        const auto &r=part.rect;const Rectangle bounds{origin.x+r[0],origin.y+r[1],float(r[2]),float(r[3])};
+        if(part.outline)DrawRectangleLinesEx(bounds,1,color(part.rgb));
+        else DrawRectangleRec(bounds,color(part.rgb));
+    };
+    const auto image=[&](const StartupSkinDraw &part) {
+        if(part.package!=StartupSkinPackage::common)throw std::runtime_error("说明图元资源组拒绝");
+        if(part.sprite<0 && (!part.crop[2] || !part.crop[3]))return;
+        sprites.visual({StartupVisualResource::common,part.sprite,part.image,part.frame,part.layer,
+                        part.crop,part.offset},origin);
+    };
+    const auto frame=[&](const std::optional<SteamStartupFramePlan> &parts,const std::string &title) {
+        if(!parts)throw std::runtime_error("说明窗框拒绝");
+        for(const auto &draw:parts->draws) {
+            if(const auto *r=std::get_if<StartupSkinRect>(&draw))rectangle(*r);
+            else if(const auto *i=std::get_if<StartupSkinDraw>(&draw))image(*i);
+            else if(const auto *t=std::get_if<SteamStartupText>(&draw)) {
+                if(!t->rgb)throw std::runtime_error("说明标题缺色彩");
+                font.text(title,origin.x+float(t->rectangle[0]),origin.y+float(t->rectangle[1]),color(*t->rgb));
+            }
+        }
+    };
+    bool clipped{};
+    for(const auto &draw:plan.draws) {
+        if(const auto *w=std::get_if<SteamManualWindow>(&draw)) {
+            const auto title="游戏方法 "+std::to_string(w->page_number)+"/"+std::to_string(w->total_pages);
+            frame(steam_startup_window_skin(w->source,23,std::array<int,2>{int(font.measure(title)),int(font.measure(title))}),title);
+        } else if(const auto *b=std::get_if<SteamStartupBox>(&draw))frame(steam_startup_box_skin(*b,23),{});
+        else if(const auto *request=std::get_if<SteamManualArrowRequest>(&draw)) {
+            const auto arrow=steam_manual_arrow_skin(*request,sprites.manual_arrow_bounds(request->bounds_frame),128);
+            if(!arrow)throw std::runtime_error("说明按钮效果计划拒绝");
+            const auto &s=arrow->crop;const auto &d=arrow->destination;
+            // 明确使用已出版mdpi原图；不声称原运行时当前选择的资源密度已核。
+            sprites.crop("steam-common/buttoneffect.png",{float(s[0]),float(s[1]),float(s[2]),float(s[3])},
+                         {origin.x+d[0],origin.y+d[1]},true,Vector2{d[2],d[3]});
+        } else if(const auto *t=std::get_if<SteamManualText>(&draw)) {
+            const auto &r=t->rectangle;
+            const float size=t->font_size?float(t->font_size):12.F;
+            if(t->role==SteamManualTextRole::body)
+                font.manual_text(t->body,origin.x+r[0],origin.y+r[1],float(r[2]),size,t->line_space,color(t->rgb));
+            else {
+                const std::string value=t->role==SteamManualTextRole::about?"关于本游戏":
+                    t->role==SteamManualTextRole::copyright?"(C)开罗软件":
+                    t->trial_version?"冒险迷宫村 体验版":"冒险迷宫村";
+                font.text(value,origin.x+r[0]-(t->anchor==2?font.measure(value,size)/2:0.F),origin.y+r[1],color(t->rgb),size);
+            }
+        } else if(const auto *c=std::get_if<SteamManualClip>(&draw)) {
+            if(c->push) {
+                if(clipped)throw std::runtime_error("说明裁剪嵌套拒绝");
+                BeginScissorMode(int(origin.x)+c->rectangle[0],int(origin.y)+c->rectangle[1],c->rectangle[2],c->rectangle[3]);
+                clipped=true;
+            } else {if(!clipped)throw std::runtime_error("说明裁剪栈缺失");EndScissorMode();clipped=false;}
+        } else if(const auto *i=std::get_if<StartupSkinDraw>(&draw))image(*i);
+        else if(const auto *a=std::get_if<SteamManualActorRequest>(&draw)) {
+            const auto details=startup_world_human_details(state,a->definition);
+            if(!details)throw std::runtime_error("说明人物定义缺失");
+            const auto actor=startup_title_actor_skin(details->profession,details->sex,details->equipment[0].value_or(-1),
+                                                     a->anime_index,a->direction,false);
+            if(!actor)throw std::runtime_error("说明基础人物计划拒绝");
+            const Vector2 position{origin.x+a->position[0],origin.y+a->position[1]};
+            if(actor->weapon)sprites.visual(*actor->weapon,position);
+            sprites.actor(false,actor->body.sprite,actor->body.image,actor->body.frame,position);
+        } else if(const auto *r=std::get_if<StartupSkinRect>(&draw))rectangle(*r);
+        else if(!std::holds_alternative<SteamStartupTouch>(draw))throw std::runtime_error("说明未接绘制命令");
+    }
+    if(clipped){EndScissorMode();throw std::runtime_error("说明裁剪未闭合");}
 }
 struct Window {
     Window() {
@@ -861,8 +995,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                              const std::optional<std::filesystem::path> &load_file,
                              const std::optional<std::filesystem::path> &save_file,
                              const std::optional<StartupWindowApplicationOptions> &application) {
+    const bool manual_inspection=inspect_page=="world-manual" || inspect_page=="world-manual-about";
     if(application && (load_file || save_file ||
-       (!inspect_page.empty() && inspect_page!="world-save") || application->slot<0 || application->slot>1))
+       (!inspect_page.empty() && inspect_page!="world-save" && !manual_inspection) || application->slot<0 || application->slot>1))
         throw std::invalid_argument("应用窗口参数组合非法");
     Window window;
     Canvas canvas;
@@ -870,6 +1005,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
     const auto &rules = startup_world_rules();
     std::string glyphs = rules.script_sources.talks + rules.script_sources.news +
                          rules.script_sources.event_messages;
+    for(const auto &body:rules.manual_pages)glyphs+=body;
+    glyphs+="游戏方法关于本游戏冒险迷宫村体验版开罗软件返回";
     for (const auto &human : rules.humans)
         glyphs += human.name;
     for (const auto &task : rules.tasks)
@@ -948,7 +1085,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         return {};
     };
     if (inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information" ||
-        inspect_page == "world-adventure" || inspect_page == "world-village" || inspect_page == "world-save") {
+        inspect_page == "world-adventure" || inspect_page == "world-village" || inspect_page == "world-save" || manual_inspection) {
         // 有界验收只使用真实入口与输入，不注入选择、页计数、资金或随机。
         if (session.open_main_menu()!=StartupWorldRuntimeError::none)
             throw std::runtime_error("导航检查主菜单入口失败");
@@ -958,7 +1095,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto id=session.state().scripts.pages.back().id;
             const auto view=inspect_startup_world_menu_page(session.state(),id);
             if(!view)throw std::runtime_error("导航检查主菜单投影失败");
-            const int tag=(inspect_page=="world-system"||inspect_page=="world-save")?6:inspect_page=="world-information"?5:
+            const int tag=(inspect_page=="world-system"||inspect_page=="world-save"||manual_inspection)?6:inspect_page=="world-information"?5:
                           inspect_page=="world-adventure"?1:2;
             const auto entry=std::find(view->tags.begin(),view->tags.end(),tag);
             if(entry==view->tags.end())throw std::runtime_error("导航检查所需标签不存在");
@@ -975,6 +1112,24 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if(session.input_menu_page(save_menu,confirm)!=StartupWorldRuntimeError::none ||
                    !session.update().committed)
                     throw std::runtime_error("保存页真实请求检查失败");
+            }
+            if(manual_inspection) {
+                const auto system=session.state().scripts.pages.back().id;
+                const auto menu=inspect_startup_world_menu_page(session.state(),system);
+                if(!menu)throw std::runtime_error("说明诊断缺系统菜单");
+                const auto entry=std::find(menu->tags.begin(),menu->tags.end(),22);
+                if(entry==menu->tags.end())throw std::runtime_error("说明诊断缺真实条目");
+                StartupWorldMenuInput select;select.select_row=static_cast<int>(entry-menu->tags.begin());
+                if(session.input_menu_page(system,select)!=StartupWorldRuntimeError::none ||
+                   session.input_menu_page(system,confirm)!=StartupWorldRuntimeError::none)
+                    throw std::runtime_error("说明诊断菜单入口拒绝");
+                for(int step=0;step<3;++step)
+                    if(!session.update().committed)throw std::runtime_error("说明诊断初始化拒绝");
+                if(inspect_page=="world-manual-about") {
+                    StartupManualInput input;input.left=true;
+                    if(session.input_manual_page(session.state().scripts.pages.back().id,input)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("说明诊断末页翻页拒绝");
+                }
             }
         }
         session.take_audio_requests();
@@ -1984,6 +2139,16 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         StartupWorldRuntimeError::none)
                         throw std::runtime_error("任务输入消费者失败");
                 }
+            } else if (raw==13) {
+                StartupManualInput input;
+                input.confirm=IsKeyPressed(KEY_ENTER);
+                input.right=IsKeyPressed(KEY_RIGHT);
+                input.left=IsKeyPressed(KEY_LEFT);
+                input.cancel=IsKeyPressed(KEY_ESCAPE) || hit({8,265,58,24});
+                if(input.confirm||input.right||input.left||input.cancel) {
+                    if(session.input_manual_page(page->id,input)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("说明翻页输入拒绝");
+                }
             } else if (raw==17 && session.application_mode()) {
                 // 应用确认本身推进计分；只在下面获准的Update里消费，避免绘制帧双推进。
                 if(IsKeyPressed(KEY_ENTER) || hit({176,265,58,24})) {
@@ -2482,6 +2647,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,8,285,ink,10);
+        } else if (const auto page = top_page(); page && page->legacy_page==13) {
+            const auto view=inspect_startup_world_manual_page(state,page->id);
+            if(!view)throw std::runtime_error("说明页面载荷拒绝");
+            const auto plan=window_manual_plan(state,*view);
+            if(!plan)throw std::runtime_error("说明页面皮肤拒绝");
+            draw_manual_plan(*plan,state,sprites,font);
+            font.text("返回 Esc",12,272,ink,10);
         } else if (const auto page = top_page(); page && page->legacy_page==14) {
             if(const auto view=inspect_startup_world_save_page(state,page->id)) {
                 const auto plan=window_save_plan(*view,font);

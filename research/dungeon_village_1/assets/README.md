@@ -8,7 +8,9 @@
 
 ## 当前交付
 
-- 主菜单期间新增Steam `common2/mpot_event.png`（image0、94×22／744字节），出版为[steam-common/mpot_event.png](steam-common/mpot_event.png)。来源为固定resources.assets的common2对象pathID1146，沿[全量索引](IMAGE_COVERAGE.json)原记录；与APK同名图不同，不覆写原包。主菜单底图、七图标及NEW／GET／手形使用已核同字节副本，期间数字复用Steam设施number08；[消费者合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[路径接口](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)明确组域。加此图后steam-common共七PNG＋一SEB、5538字节，不新增指纹清单。
+- 说明页箭头新增[Steam buttoneffect.png](steam-common/buttoneffect.png)：128×128、14563字节，原样来自固定`resources.assets`的system对象pathID1136、`drawable-mdpi/buttoneffect.png`，身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1136:system:drawable-mdpi/buttoneffect.png`。同对象另有hdpi／ldpi，当前显式选择mdpi，不声称原窗口运行密度已核；与APK同名图不同像素，不覆写原包。GameView AddTouch使用arrow02的SEB bounds，再消费此独立纹理的普通／选中箭头裁片；逻辑0.75缩放和图片密度比各自处理，合同见[说明页](../ui/PAGES.md#说明13固定正文输入消费与装饰随机)。实查`steam-common`当前共8张PNG＋1个SEB、20101字节；保留来源入口，不新增指纹清单。
+
+- 主菜单期间新增Steam `common2/mpot_event.png`（image0、94×22／744字节），出版为[steam-common/mpot_event.png](steam-common/mpot_event.png)。来源为固定resources.assets的common2对象pathID1146，沿[全量索引](IMAGE_COVERAGE.json)原记录；与APK同名图不同，不覆写原包。主菜单底图、七图标及NEW／GET／手形使用已核同字节副本，期间数字复用Steam设施number08；[消费者合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)与[路径接口](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)明确组域。此图加入时`steam-common`为七PNG＋一SEB、5538字节，当前规模以上项为准。
 
 - [Steam共用差异资源](steam-common)：其中common对象子集为六张PNG及一个SEB共4794字节。既有`menuRT01.png`（image85，57×10／469字节）、`icon_objRoots.png`（image128，148×36／1432字节）、`icon_result00.png`（image31，63×48／1000字节）、`number12.png`（image109，100×21／636字节）；菜单状态栏新增`menuRT00.png`（image84，59×45／945字节）及其SEB75（88字节／四帧）、`menuRT04.png`（image151，11×11／224字节）。均为固定`resources.assets`的common对象pathID1148原条目，源身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1148:common:<文件名>`记录；同名APK有差异，不复制其它同字节SEB。image31用于35贡献及菜单怪物摘要，image109用于39负利润，84／151用于菜单HUD与剩余期；均未裁切或重绘。消费者见[信息菜单](../ui/INFORMATION_MENU.md)，正式[资源路径查询](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)供产品复制后使用；不另建指纹清单，语言替换与原字体另验。
 

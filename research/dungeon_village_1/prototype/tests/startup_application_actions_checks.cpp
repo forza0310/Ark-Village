@@ -4,6 +4,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "../src/startup_window_host.hpp"
@@ -462,7 +463,7 @@ void magic_pot_bridges(const std::filesystem::path &parent, const std::filesyste
     }
 }
 // 此层只核应用文件提交与真实菜单接线；raw14载荷边界由pages/restore套件主责。
-std::uint64_t enter_save_request(StartupApplication &app) {
+std::uint64_t enter_system_request(StartupApplication &app, int tag, int raw) {
     good(app.open_main_menu());
     good(app.update());
     const auto choose = [&](int tag) {
@@ -480,9 +481,13 @@ std::uint64_t enter_save_request(StartupApplication &app) {
     choose(6);
     good(app.update());
     require(top(*app.world())->legacy_page == 10, "main menu opens actual system submenu10");
-    choose(20);
+    choose(tag);
     const auto id = top(*app.world())->id;
-    require(top(*app.world())->legacy_page == 14, "system save tag20 creates actual raw14");
+    require(top(*app.world())->legacy_page == raw, "system source tag creates its actual target page");
+    return id;
+}
+std::uint64_t enter_save_request(StartupApplication &app) {
+    const auto id = enter_system_request(app, 20, 14);
     require(!app.save_world().empty(), "ordinary save cannot bypass pending modal save page");
     good(app.update());
     const auto view = inspect_startup_world_save_page(app.world()->state(), id);
@@ -618,6 +623,65 @@ void window_host_save(const std::filesystem::path &root) {
             "destroyed window host cold-loads stable scene with same funds and random, not raw14");
 }
 
+void manual_page_bridges(const std::filesystem::path &root) {
+    const auto files = paths(root, "manual-bridge");
+    StartupApplication app(files, ref::WorldRandomStream::from_java_seed(1));
+    good(app.request_new_game(0)); good(app.start_game());
+    const auto id = enter_system_request(app, 22, 13);
+    require(!app.save_world().empty(), "ordinary storage rejects transient manual page");
+    good(app.update());
+    const auto view = inspect_startup_world_manual_page(app.world()->state(), id);
+    require(view && view->index == 0 && !view->about && !view->text.empty() && view->localize_text,
+            "real application3-to10-tag22 initializes source manual text through unique Owner");
+    // 先经过真实换页，再到关于页；快照必须保留隐藏正文及“不再LT”的来源状态。
+    StartupManualInput previous; previous.left = true;
+    good(app.input_manual_page(id, previous));
+    StartupManualInput first; first.right = true;
+    good(app.input_manual_page(id, first));
+    good(app.input_manual_page(id, previous));
+    const auto about = inspect_startup_world_manual_page(app.world()->state(), id);
+    require(about && about->about && about->text_page == 0 && !about->localize_text && about->text == view->text,
+            "about retains first-page cache after real SetText without replaying Init localization");
+    const auto audio = app.take_audio_requests();
+    require(!audio.empty() && app.take_audio_requests().empty(),
+            "application owns real startup and menu outputs, consumed exactly once before capture");
+    const auto business = save_business(app);
+    const auto system = bytes(files.root / "system.avr");
+    StartupApplicationReplayMetadata metadata;
+    metadata.controller_id = "manual-page-bridge-v1"; metadata.controller_state = {1};
+    const StartupApplicationReplayValidator validator = [](const auto &, const auto &m) {
+        return m.controller_id=="manual-page-bridge-v1" && m.controller_state==std::vector<std::uint8_t>{1} &&
+               m.next_frame==0 && m.next_command==0 && m.extensions.empty()
+            ? std::string{} : std::string{"invalid manual bridge replay driver"};
+    };
+    const auto replay = root / "manual-page.avra";
+    good(save_startup_application_replay(root, replay, app, metadata, validator));
+    StartupApplication restored(paths(root, "manual-replay-placeholder"), ref::WorldRandomStream::from_java_seed(99));
+    StartupApplicationReplayMetadata restored_metadata;
+    good(restore_startup_application_replay(replay, root / "manual-replay-restored",
+        metadata.controller_id, restored, restored_metadata, validator));
+    require(startup_application_replay_digest(app, metadata, validator) ==
+                startup_application_replay_digest(restored, restored_metadata, validator),
+            "full application replay restores initialized manual text phase frozen pool and random without Init");
+    const auto restored_about = inspect_startup_world_manual_page(restored.world()->state(), id);
+    require(restored_about && restored_about->about && !restored_about->localize_text &&
+                restored_about->text_page == about->text_page && restored_about->text == about->text,
+            "replay retains hidden manual text and cannot reapply initial LT");
+    StartupManualInput next; next.confirm = true; next.right = true;
+    good(app.input_manual_page(id, next)); good(restored.input_manual_page(id, next));
+    good(app.update()); good(restored.update());
+    require(startup_application_replay_digest(app, metadata, validator) ==
+                startup_application_replay_digest(restored, restored_metadata, validator) &&
+                save_business(app) == business && bytes(files.root / "system.avr") == system &&
+                app.take_audio_requests().empty() && restored.take_audio_requests().empty(),
+            "manual short replay consumes the same command without world advancement storage or duplicate sound");
+    good(app.cancel_page(id)); good(app.update());
+    require(top(*app.world())->kind == ref::WorldScriptPageKind::scene &&
+                !app.world()->state().manual_page_data.count(id) &&
+                app.world()->state().menu_page_data.empty(),
+            "manual returns to actual GameForm and releases both retired navigation menus and frozen members");
+}
+
 void save_page_bridges(const std::filesystem::path &root) {
     for (int slot = 0; slot != 2; ++slot) {
         const auto files = paths(root, "save-slot-" + std::to_string(slot));
@@ -747,6 +811,7 @@ int run_startup_application_actions_checks(const std::filesystem::path &parent) 
     management_bridges(root);
     magic_pot_bridges(parent, root);
     save_page_bridges(root);
+    manual_page_bridges(root);
     window_host_save(root);
     // 复用计分套件条件，只验窗口宿主的单次确认接线，不重复六类分值组合。
     const auto clear_entry=create_application_clear_entry_fixture(root);

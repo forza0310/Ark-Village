@@ -1,6 +1,8 @@
 #include "dungeon_village_prototype/steam_startup_skin.hpp"
 #include "dungeon_village_prototype/steam_main_menu_skin.hpp"
+#include "dungeon_village_prototype/steam_manual_skin.hpp"
 #include "dungeon_village_tools/sprite.hpp"
+#include <raylib.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
@@ -27,6 +29,176 @@ auto sprite(const std::filesystem::path &p) {
     std::ifstream input(p,std::ios::binary);
     if(!input) throw std::runtime_error("Steam皮肤公共资源缺失："+p.string());
     return dungeon_village_tools::parse_legacy_seb({std::istreambuf_iterator<char>(input),{}});
+}
+void manual_page(Checks &check,const std::filesystem::path &root) {
+    SteamManualSkinInput input;
+    input.width=240;input.height=320;input.body_pages=29;input.page=0;input.frame=19;
+    input.body_text="Owner已缓存的说明正文";input.localize_text=true;
+    // 正文不读取末页演员；旧缓存可以尚未准备，不能扩大只读查询资格。
+    input.definition_count=-1;input.frozen_definitions={-1,99,99,99,99};
+    const auto body=steam_manual_skin(input);
+    check(body && body->origin==std::array<int,2>{0,40} && body->draws.size()==8,
+          "raw13正文保留SubForm共同居中，不消费未使用人物名单");
+    const auto &window=std::get<SteamManualWindow>(body->draws[0]);
+    const auto &left=std::get<SteamManualArrowRequest>(body->draws[1]);
+    const auto &left_touch=std::get<SteamStartupTouch>(body->draws[2]);
+    const auto &right=std::get<SteamManualArrowRequest>(body->draws[3]);
+    const auto &right_touch=std::get<SteamStartupTouch>(body->draws[4]);
+    const auto &box=std::get<SteamStartupBox>(body->draws[5]);
+    const auto &text=std::get<SteamManualText>(body->draws[6]);
+    const auto &tail=std::get<SteamStartupTouch>(body->draws[7]);
+    check(window.source.width==220 && window.source.height==166 && window.source.vertical==0 &&
+          window.page_number==1 && window.total_pages==30 && box.left==17 && box.top==60 &&
+          box.right==223 && box.bottom==197,
+          "非JP说明窗220x166、内框端点和1/30语义来自独立机器码实参");
+    check(left.position==std::array<int,2>{21,56} && left.bounds_frame==3 && !left.selected &&
+          right.position==std::array<int,2>{216,56} && right.bounds_frame==0 && !right.selected &&
+          left_touch.component==1 && left_touch.value==16 && left_touch.image_draw==1 && !left_touch.rectangle &&
+          right_touch.component==1 && right_touch.value==18 && right_touch.image_draw==3 &&
+          tail.component==2 && tail.option==2 && !tail.rectangle && !tail.image_draw,
+          "箭头helper请求后登记原触摸，bounds帧不充当绘制帧，共尾不捏造确定按钮");
+    check(text.role==SteamManualTextRole::body && text.body==*input.body_text &&
+          text.rectangle==std::array<int,4>{28,80,186,124} && text.font_size==10 &&
+          text.line_space==8 && text.rgb==std::array<int,3>{30,30,30} &&
+          !text.anchor && text.localize_text,
+          "Owner缓存原样投影，非JP正文10号字与8行距，不重复LT或用白框居中");
+    input.japanese=true;input.page=28;input.frame=20;input.localize_text=false;
+    const auto japanese=steam_manual_skin(input);
+    const auto jptext=parts<SteamManualText>(*japanese).front();
+    check(std::get<SteamManualWindow>(japanese->draws[0]).source.width==180 &&
+          std::get<SteamManualWindow>(japanese->draws[0]).page_number==29 &&
+          jptext.rectangle==std::array<int,4>{48,80,146,124} && jptext.font_size==0 &&
+          jptext.line_space==6 && !jptext.localize_text &&
+          std::get<SteamManualArrowRequest>(japanese->draws[1]).position==std::array<int,2>{44,56},
+          "JP保留当前字号，换页后的直接SetText标记与20帧箭头复位独立");
+    input.page=29;input.body_text.reset();input.definition_count=25;
+    input.frozen_definitions={24,0,8,3};input.frame=31;input.trial_version=true;
+    const auto about=steam_manual_skin(input);
+    check(about && about->draws.size()==20 &&
+          std::get<SteamManualWindow>(about->draws[0]).page_number==30,
+          "关于页30/30不要求旧正文缓存，四人输出大小有限");
+    const auto labels=parts<SteamManualText>(*about);
+    check(labels.size()==3 && labels[0].role==SteamManualTextRole::about &&
+          labels[0].rectangle==std::array<int,4>{120,80,0,0} && !labels[0].localize_text &&
+          labels[1].role==SteamManualTextRole::game_name && labels[1].localize_text && labels[1].trial_version &&
+          labels[1].rectangle==std::array<int,4>{120,166,0,0} &&
+          labels[2].role==SteamManualTextRole::copyright &&
+          labels[2].rectangle==std::array<int,4>{120,182,0,0} && labels[2].anchor==2,
+          "关于/游戏名/版权按原序，trial仅游戏名语义，不默认为正式版");
+    check(std::get<SteamManualClip>(about->draws[9]).push &&
+          std::get<SteamManualClip>(about->draws[9]).rectangle==std::array<int,4>{43,101,154,56} &&
+          !std::get<SteamManualClip>(about->draws[17]).push &&
+          std::get<StartupSkinRect>(about->draws[18]).rect==std::array<int,4>{43,101,153,55} &&
+          std::get<StartupSkinRect>(about->draws[18]).rgb==std::array<int,3>{43,116,190} &&
+          std::get<SteamStartupTouch>(about->draws[19]).component==2,
+          "先clip再背景人物，pop恢复旧clip后画蓝描边，最后共尾触摸");
+    const auto crops=parts<StartupSkinDraw>(*about);
+    check(crops.size()==3 && crops[0].image==39 && crops[0].sprite==-1 &&
+          crops[0].crop==std::array<int,4>{0,0,93,82} && crops[0].offset==std::array<int,2>{30,90} &&
+          crops[1].crop==std::array<int,4>{1,0,91,82} && crops[1].offset==std::array<int,2>{109,90} &&
+          crops[2].crop==std::array<int,4>{1,0,20,82} && crops[2].offset==std::array<int,2>{189,90},
+          "mp_back39三个源裁片保持sx1而非镜像，不替换整张截图");
+    const auto actors=parts<SteamManualActorRequest>(*about);
+    const std::array<int,4> positions{80,106,133,160};
+    for(std::size_t i=0;i<actors.size();++i)
+        check(actors[i].definition==input.frozen_definitions[i] &&
+              actors[i].position==std::array<int,2>{positions[i],148} && actors[i].seb==0 &&
+              actors[i].anime_index==3 && actors[i].direction==2 && actors[i].update_counter==31,
+              "冻结人物原序及完整SetDispPlayerData参数不消费随机或重排少人数位置");
+    input.frozen_definitions={8};input.frame=32;input.trial_version=false;
+    const auto single=steam_manual_skin(input);
+    check(parts<SteamManualActorRequest>(*single).front().position==std::array<int,2>{80,148} &&
+          parts<SteamManualActorRequest>(*single).front().anime_index==0 &&
+          !parts<SteamManualText>(*single)[1].trial_version,
+          "一人仍取原位置80，16帧步态独立复位，正式版不携试玩文字");
+    input.frozen_definitions.clear();input.definition_count=0;
+    check(steam_manual_skin(input) && parts<SteamManualActorRequest>(*steam_manual_skin(input)).empty(),
+          "合法空人物池不制造后备人或表现请求");
+    for(const auto &ids:std::vector<std::vector<int>>{{-1},{25},{1,1},{0,1,2,3,4}}) {
+        auto invalid=input;invalid.definition_count=25;invalid.frozen_definitions=ids;
+        check(!steam_manual_skin(invalid),"末页拒绝负/越界/重复定义和超过四人载荷");
+        invalid.on_top=false;
+        check(steam_manual_skin(invalid)->draws.empty(),"隐藏页不消费非法未用人物名单");
+    }
+    auto missing=input;missing.page=0;
+    check(!steam_manual_skin(missing),"可见正文缺缓存明确拒绝");
+    missing.body_text="";
+    check(steam_manual_skin(missing).has_value(),"已提供空正文与缺缓存不同");
+    missing.body_text.reset();
+    for(int gate=0;gate!=3;++gate) {
+        auto hidden=missing;
+        if(gate==0)hidden.on_top=false;
+        if(gate==1)hidden.until_active_hide=true;
+        if(gate==2)hidden.wait=1;
+        check(steam_manual_skin(hidden)->draws.empty(),"非顶/隐藏/等待阻挡正文和触摸请求");
+    }
+    for(int fault=0;fault!=7;++fault) {
+        auto invalid=input;
+        if(fault==0)invalid.body_pages=0;
+        if(fault==1)invalid.body_pages=std::numeric_limits<int>::max();
+        if(fault==2)invalid.page=30;
+        if(fault==3)invalid.frame=-1;
+        if(fault==4)invalid.wait=-1;
+        if(fault==5)invalid.width=0;
+        if(fault==6)invalid.origin[1]=std::numeric_limits<int>::max();
+        check(!steam_manual_skin(invalid),"说明页原始维度/页号/计数/居中溢出拒绝");
+    }
+    const auto arrows=sprite(root/"common/arrow02.seb");
+    check(arrows.frame_count==6 && arrows.layers.size()==1 && arrows.layers[0].parts.size()==6,
+          "原arrow02实际六帧，不能从raw13只用0/3推成四帧");
+    for(int frame:{0,3}) {
+        const auto &part=arrows.layers[0].parts[frame];
+        check(part.frame==frame && part.image_index==74 && part.offset_x==0 && part.offset_y==-3 &&
+              part.width==4 && part.height==8 && part.source_x==(frame==0?4:8),
+              "raw13所取SEB bounds源记录独立核验，原PNG箭头不是最终显示贴图");
+    }
+    const std::array<int,4> bounds{0,-3,4,8};
+    // 沿视觉套件已有raylib依赖解码正式图；不为PNG头检查另链接完整归档工具。
+    auto button_image=LoadImage((root.parent_path()/"steam-common/buttoneffect.png").string().c_str());
+    const bool button_decoded=button_image.data!=nullptr;
+    const int button_width=button_image.width, button_height=button_image.height;
+    UnloadImage(button_image);
+    check(button_decoded && button_width==128 && button_height==128,
+          "正式Steam独立buttoneffect纹理必须存在且为已发布128x128 PNG，不借APK同名文件");
+    for(int frame:{3,0})for(bool selected:{false,true}) {
+        const auto part=steam_manual_arrow_skin({{120,56},frame,selected},bounds,
+                                                button_width);
+        check(part && part->crop[0]>=0 && part->crop[1]>=0 && part->crop[2]>0 && part->crop[3]>0 &&
+              part->crop[0]+part->crop[2]<=button_width &&
+              part->crop[1]+part->crop[3]<=button_height &&
+              part->crop[2]==(selected?20:15) && part->crop[3]==(selected?26:20),
+              "四种箭头均实际消费正式PNG宽度，裁片尺寸及二维边界完整可用");
+    }
+    const auto arrow_left=steam_manual_arrow_skin({{21,56},3,false},bounds,128);
+    const auto arrow_right=steam_manual_arrow_skin({{216,56},0,false},bounds,128);
+    check(arrow_left && arrow_right && arrow_left->texture_index==0 && arrow_right->texture_index==1 &&
+          arrow_left->crop==std::array<int,4>{0,57,15,20} &&
+          arrow_right->crop==std::array<int,4>{15,57,15,20} &&
+          arrow_left->destination==std::array<float,4>{17.25F,50,11.25F,15} &&
+          arrow_right->destination==std::array<float,4>{213,50,11.25F,15} &&
+          arrow_left->touch_rectangle==std::array<int,4>{17,50,11,15} &&
+          arrow_left->paint_origin==std::array<int,2>{21,56} && arrow_left->paint_frame==3,
+          "默认左右取buttoneffect0/1，0.75与居中重配准后绘制/触摸/SetPaint不同");
+    const auto active_left=steam_manual_arrow_skin({{21,56},3,true},bounds,256);
+    const auto active_right=steam_manual_arrow_skin({{216,56},0,true},bounds,256);
+    check(active_left && active_right && active_left->texture_index==2 && active_right->texture_index==3 &&
+          active_left->crop==std::array<int,4>{62,114,40,52} &&
+          active_right->crop==std::array<int,4>{104,114,40,52} &&
+          active_left->destination==std::array<float,4>{15.25F,47,15,19.5F} &&
+          active_right->destination==std::array<float,4>{210.5F,47,15,19.5F} &&
+          active_left->paint_origin==std::array<int,2>{22,56} &&
+          active_right->paint_origin==std::array<int,2>{215,56} &&
+          active_right->touch_rectangle==std::array<int,4>{210,47,15,19},
+          "选中用2/3独立大裁片，纹理密度2不改变逻辑0.75，配准向零截断");
+    input.arrow_selected={true,false};
+    check(std::get<SteamManualArrowRequest>(steam_manual_skin(input)->draws[1]).selected &&
+          !std::get<SteamManualArrowRequest>(steam_manual_skin(input)->draws[3]).selected,
+          "调用方CheckTouch资格分别传入，不由皮肤查询鼠标或重建选择");
+    check(!steam_manual_arrow_skin({{0,0},2,false},bounds,128) &&
+          !steam_manual_arrow_skin({{0,0},3,false},{0,0,0,8},128) &&
+          !steam_manual_arrow_skin({{0,0},3,false},bounds,0) &&
+          !steam_manual_arrow_skin({{std::numeric_limits<int>::max(),0},3,true},bounds,128),
+          "本页未证bounds帧、缺尺寸和配准溢出显式拒绝，不用猜帧或补纹理");
 }
 void save_page(Checks &check) {
     using Role=SteamStartupTextRole;
@@ -571,5 +743,6 @@ int check_steam_startup_skin(const std::filesystem::path &root) {
     main_menu_notices(check);
     main_menu(check,root);
     save_page(check);
+    manual_page(check,root);
     return check.count;
 }

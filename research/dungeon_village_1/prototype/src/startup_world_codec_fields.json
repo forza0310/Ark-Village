@@ -102,6 +102,23 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupManualPageData",
+      "fields": [
+        {
+          "name": "decorations",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "text_page",
+          "type": "int"
+        },
+        {
+          "name": "localize_text",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldActorMetadata",
       "fields": [
         {
@@ -748,6 +765,10 @@
         {
           "name": "information_page_data",
           "type": "std::map<std::uint64_t, StartupInformationPageData>"
+        },
+        {
+          "name": "manual_page_data",
+          "type": "std::map<std::uint64_t, StartupManualPageData>"
         },
         {
           "name": "main_menu_selection",

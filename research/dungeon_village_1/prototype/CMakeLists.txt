@@ -46,7 +46,7 @@ add_custom_command(OUTPUT "${STARTUP_WORLD_CPP}"
             ../data/world/asEventData.txt ../data/world/magicPot.txt
             ../data/scripts/original/events.txt ../data/scripts/original/talk.txt
             ../data/scripts/original/news.txt ../data/scripts/original/evtmsgs.txt
-            ../data/scripts/original/popularBonus.txt VERBATIM)
+            ../data/scripts/original/popularBonus.txt ../data/scripts/original/manual.txt VERBATIM)
 set(PERSISTENCE_IDENTITY_CPP "${CMAKE_CURRENT_BINARY_DIR}/persistence_identity.cpp")
 add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
     COMMAND "${STARTUP_NODE_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/compile_persistence_identity.mjs"
@@ -57,11 +57,13 @@ add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
             ../data/world/armour.txt ../data/world/accessory.txt ../data/world/item.txt
             ../data/world/asEventData.txt ../data/world/magicPot.txt ../data/scripts/original/events.txt
             ../data/scripts/original/talk.txt ../data/scripts/original/news.txt
-            ../data/scripts/original/evtmsgs.txt ../data/scripts/original/popularBonus.txt VERBATIM)
+            ../data/scripts/original/evtmsgs.txt ../data/scripts/original/popularBonus.txt
+            ../data/scripts/original/manual.txt VERBATIM)
 add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_codec.cpp src/startup_world_restore_validation.cpp
     src/startup_world_persistence.cpp src/startup_world_file_io.cpp "${PERSISTENCE_IDENTITY_CPP}"
     src/startup_world_routes.cpp src/startup_world_runtime.cpp src/startup_world_menu.cpp src/startup_world_save.cpp
+    src/startup_world_manual.cpp
     src/startup_world_profile.cpp src/startup_world_inheritance.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
@@ -87,7 +89,7 @@ add_library(dungeon_village_startup_application src/startup_application.cpp src/
     src/startup_system_records.cpp src/startup_world_clear_score.cpp src/startup_skin.cpp
     src/startup_application_replay_paths.cpp src/startup_application_replay.cpp
     src/startup_title_presentation.cpp src/startup_application_title.cpp src/startup_application_actions.cpp
-    src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp
+    src/startup_title_actor_skin.cpp src/steam_startup_skin.cpp src/steam_manual_skin.cpp
     src/steam_facility_skin.cpp src/steam_human_skin.cpp src/steam_information_skin.cpp
     src/steam_main_menu_skin.cpp)
 dungeon_village_library(dungeon_village_startup_application)

@@ -281,7 +281,7 @@ XOR 密钥由协调器初始化的 11 个 int 拆为 44 字节，拆字节按低
 
 ## 加载尾声的目录修复
 
-加载尾声另有[人物开放修复](CHARACTERS.md#原加载尾声的重新开放)：固定DEX的`d/a.a(IZ)`仅对p0定义，在满足度C>0、努力u>0或已载入实例引用该定义时直接写p1，不调用普通开放i()。普通Java在该局部给出相反条件，已用DEX分支核正。此为原加载语义，不改变维护正常存档或精确快照的已确认恢复契约；Steam该修复尚未逐方法交叉。
+加载尾声另有[人物开放修复](CHARACTERS.md#原加载尾声的重新开放)：固定DEX的`d/a.a(IZ)`仅对p0定义，在满足度C>0、努力u>0或已载入实例引用该定义时直接写p1，不调用普通开放i()。普通Java在该局部给出相反条件，已用DEX分支核正。Steam的`AppData.LoadGame(int,bool)`在`0x1025D640–0x1025D7BC`局部同义：`D687/D68B`跳过非0状态，`D691–D69F`检查`niconicoValue_ +0x74`／`putUp_ +0x54`，否则遍历`humans_ +0xF0`经`Character2.GetCharacterData`比较定义ID，`D73B`直接写state=1；没有通过Find设置NEW。此为原加载语义，不改变维护正常存档或精确快照的已确认恢复契约，也不认证加载异常引用或其余迁移分支。
 
 同一APK加载方法`Ld/a;::a(IZ)V`的DEX code-unit偏移2447–2533还包含两段独立修复，已交叉Steam2.56的`main.AppData.LoadGame(int,bool)`（RVA `0x259F70`）：
 

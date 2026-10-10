@@ -118,7 +118,7 @@
 
 ### 稀有概率与标题初始化目录
 
-`UserData.cctor`（RVA `0x2F0040`）在`0x102F232B`分配6元素数组，`0x102F233A`读取RuntimeFieldHandle槽`0x110F2AD4`，`0x102F2343`调用`InitializeArray`，随后`0x102F2352`写入静态`QUESTDUNGEON_RARE_RATE +0xD0`。独立解析Steam metadata的fieldRef151、field25289，实际数据位于字节偏移3124642，共24字节，六个小端int为**0、0、10、20、30、100**。这是Steam原数据的直接交叉，不以APK同值代证；ClampMax和Random的内部算法仍未由此认证。
+`UserData.cctor`（RVA `0x2F0040`）在`0x102F232B`分配6元素数组，`0x102F233A`读取RuntimeFieldHandle槽`0x110F2AD4`，`0x102F2343`调用`InitializeArray`，随后`0x102F2352`写入静态`QUESTDUNGEON_RARE_RATE +0xD0`。独立解析Steam metadata的fieldRef151、field25289，实际数据位于字节偏移3124642，共24字节，六个小端int为**0、0、10、20、30、100**。这是Steam原数据的直接交叉，不以APK同值代证；ClampMax另在下节交叉，Random内部算法仍待核。
 
 `QuestData.cctor`（RVA `0x21DC00`）先创建空`BOSS_QUESTS +8`和`MANYMONSTER_QUESTS +0x14`，并将`CH_MODE +0xC`、`CH_INDEX +0x10`初始化为0。目录的真实填充者是`UserData.Setting`（RVA `0x2E89D0`）末段`0x102EB0EB–0x102EB246`：按`AppData.questData +0x138`原序从第0项遍历，flags2追加BOSS目录，flags4追加复发目录。两次检查独立，不是互斥分支；该追加段不按章节、完成次数或开放状态过滤。`TitleForm.Init`（RVA `0x20ADF0`）在`0x1020B322`实际调用Setting，因此这些目录不是任务完成历史，也不是新局时应保持为空的容器。
 
@@ -133,6 +133,37 @@
 
 新局重置另行处理。`QuestData.Init`（RVA `0x21D880`）只清`state +0x10`和`clearNum +0x54`；`QuestData.NewGame`（RVA `0x21DB20`）清这两个实例字段后按flags1开放定义并设置NEW位，不清上述静态目录。`UserData.NewGame`的`0x102E0A6F`实际调用各定义的NewGame，不能把定义完成数清零误解为目录退休。Setting追加段没有去重／清空，但本批尚未闭合所有标题重复进入的上游准入，不能据此断言原完整流程一定重复追加，也不能宣称Setting本身幂等。静态模式初值0同样不证明其永远不会被其他入口开启。
 
-这里闭合的是选择器局部分支、概率数组、目录初始化及wrapper的调用顺序，不是Steam全链自然通关认证。双参创建的难度／地点／实例、Random和ClampMax内部算法仍分别待核；不能由同名调用宣布全部相同。维护Owner把选择副作用与后继创建联合提交的失败回滚是既有保护契约，不反称原方法具有相同事务。
+### 双参创建：难度、地点与探索奖励顺序
 
-后续连续世界与自然高星／六BOSS路线交产品侧验证。研究可使用明确标注的条件夹具检查G、章节、领取和奖励边界，不能称其为自然取得；原版窗口、重复初始化准入及外围创建分别登记，不因未跑自然路线而重复建设研究长跑Driver。
+`UserData.GenerateQuest(int,QuestData)`（RVA `0x2DB570`，880字节）与[现有APK维护任务工厂](../example/src/world_task_creation.cpp)的已核顺序相符；以下只覆盖合法kind0／1，不替原函数补非法kind拒绝。
+
+1. 村星`nowRank`与章节`questRank`各按0..5→0..50整数映射后相加。探索加`Random(30)−10`，再将所有`state!=0`人物定义的`baseParam[5]`整数平均值按0..30→0..20映射加入；无人时平均0，不只统计参战者或活跃实例。战斗只加`Random(30)−20`。
+2. 总值按0..100→1..9得到难度；任务flags8再加1封顶9。`RateConvert`（RVA `0x2A4780`）在本调用的正向区间按端点夹取，整数乘法后有符号除法向零截断；`ClampMax`（RVA `0x24A000`）是有符号min，只封上界。不能把它们替换成浮点四舍五入或双侧通用clamp。
+3. `0x102DB80F`才调用`Quest.GetQuestAppearAddress`。无地点在`0x102DB81C`分支返回null，前面的难度随机以及选择器已发生的副作用没有倒放；这是普通无地点结果，不是零随机的失败预检。
+4. 战斗直接调用`Quest.GenerateQuest`，再写任务`treasureLv +0x18`。探索先`Proc_buildDungeon`，再写设施`treasureLv +0x38`，用设施`baseAddress +0x50`创建Quest，写任务难度，最后绑定`Quest.dungeon +0x20`。`0x102DB8B2`调用的共享setter地址`0x101D90A0`同时登记Quest的SetDungeonData／SetDungeon，receiver与字段确认它是设施绑定，不能误认成该地址的Unity输入别名。
+
+`Quest.GetQuestAppearAddress`（RVA `0x2BF1B0`，1120字节）从`Map.MONSTERAPPEAR_ADDRESS[0]`半开矩形先抽X、后抽Y，最多20次。先拒绝地图外、严格村内或格状态不为4，再拒绝与任一现有任务位置或怪物事件中心同时满足`|dx|≤3 && |dy|≤3`的候选。`Map.IsInTown`（RVA `0x2B65C0`）独立核为当前围栏级的四个严格不等式，边界线上不算村内；该入口没有接路、寻路或可达性检查。
+
+`Quest.GenerateQuest`（RVA `0x2BEB80`，864字节）分配实例后，序列先32位加1、再有符号`% INT_MAX`；与当前任务ID冲突则加1并从头扫描。随后写原ID、定义ID、复制两坐标、追加`AppData.quests`并清state／计数，不以随机数分配任务身份。
+
+探索的`Proc_buildDungeon`（RVA `0x2E2610`，1408字节）按以下原序处理：
+
+- 从任务定义的设施候选随机选一项，调用`TenantData.Build(address,id,0,true,false)`，再清该设施挑战列表。
+- 按任务上下限抽取包含两端的奖励数量，`0x102E2805`调用`GetQuestItemList(difficulty,count,0)`先选完整奖励名单；之后才决定挑战替换，不能按实际宝箱数提前减少奖励抽签。
+- 默认怪物替换票号阈值40；该任务曾完成且不含flags8时，先抽100，票<5改100；否则再抽100，票<5改0。两次抽签短路，不合成一张票。
+- 每项先按索引0..数量→10..93算进度，再抽10减5；最后一项**仍消费这张10票，随后才覆盖进度97**（`0x102E291B–0x102E2933`），并跳过怪物替换票。其余项抽100命中阈值时，按`min(difficulty/2,5)`怪物池抽取，保存ID与`dungeonHp +0x48`；否则保存此前该项的奖励类别／ID。两种记录均为六字段，年龄与状态初值0。
+
+`GetQuestItemList`（RVA `0x2DCB60`，3920字节）的资格和抽签顺序如下，不在此复制原定义表：
+
+| 环节 | 已核Steam行为 |
+| --- | --- |
+| 建池 | 每次清四个临时池；按道具→武器→防具→饰品及各自定义原序筛flags2，装备另排除state1。奖励难度≤当前进普通池，恰为当前+1进稀有池 |
+| 普通位置 | 先抽100，票<35且普通装备池非空才抽装备；否则抽普通道具。装备选中后移出本次池，道具不移出 |
+| 最后位置、总任务成功数0 | 直接写武器类别与`WeaponData.initQuestWeapon`，不抽最后位置95票；该武器由Setting原序首项flags16确定，不凭名称硬编码短剑 |
+| 最后位置、已有成功 | 先抽100，票<95且稀有装备池非空则抽装备；否则稀有道具池非空就抽道具，两者均未选中才回普通逻辑。稀有装备同样移出，稀有道具不移出 |
+
+35／95由Steam `UserData.cctor`在`0x102F249B/0x102F24AC`直接写入两元素数组，再由`0x102F24BC`发布到`GETEQUIP_RATE +0xE4`；首任务武器的flags16扫描与赋值在Setting `0x102EAFE0–0x102EB0CA`。这些值和顺序均有Steam自身消费者交叉，不靠APK同名调用推定。
+
+本节尚未闭合`TenantData.Build`内部地图／邻接／实体处理、生成矩形与怪物挑战池原始全值，以及Random内部算法；整数溢出和坏引用也不能据正常调用推定安全。上述创建与临时池操作没有因此获得维护Owner式事务保证，维护把选择副作用与后继创建联合提交的失败回滚仍是保护契约。
+
+后续连续世界与自然高星／六BOSS路线交产品侧验证。研究可使用明确标注的条件夹具检查G、章节、领取和奖励边界，不能称其为自然取得；原版窗口、重复初始化准入及尚未核的外围helper分别登记，不因未跑自然路线而重复建设研究长跑Driver。

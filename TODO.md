@@ -33,6 +33,8 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 
 ## 研究交付后的接入
 
+- [ ] 本批冻结b99c6db后，研究正式提交a45642c交付城镇统计/设施目录与镜头流程（34/39等）。已核提交范围，尚未迁入；下一批集中核其维护布局、玩家字段分类与桌面皮肤，不再称该维护消费者“研究未交付”。本批运行及ZIP仍对应b99c6db。
+
 - [x] 72a5bf4完整闭包及设施74图标/逐来源加成/后缀、普通道具图标、人物cd13头标已接线并完成本地验收，见[B1](docs/stages/B1-playable-prototype.md#research-72a5bf4-integration)。
 
 - [x] 4ef4a98主角配置/schema4、跨局系统纪录/六类通关计分和启动皮肤已完成本地验收；见[B1](docs/stages/B1-playable-prototype.md#research-4ef4a98-startup)。

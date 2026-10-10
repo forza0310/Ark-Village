@@ -77,6 +77,14 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"item", "facility_bound_use", 36, false, true};
     case Kind::facility_item_improved:
         return {"facility", "item_improvement_applied", 85, false, true};
+    case Kind::item_task_loot_claimed:
+        return {"item", "task_loot_claimed", 36, false, true};
+    case Kind::weapon_task_loot_claimed:
+        return {"weapon", "task_loot_claimed", 33, false, true};
+    case Kind::armour_task_loot_claimed:
+        return {"armour", "task_loot_claimed", 50, false, true};
+    case Kind::accessory_task_loot_claimed:
+        return {"accessory", "task_loot_claimed", 30, false, true};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -114,71 +122,6 @@ CampaignReceipt residence_transaction_receipt(int human, const State &before, co
              after.shop_humans.at(human).satisfaction, fee}};
 }
 
-std::optional<CampaignReceipt> task_victory_receipt(const State &before, const State &after,
-                                                    std::uint64_t departed_task) {
-    if (before.task_progress.successes == after.task_progress.successes)
-        return {}; // Cold-loaded totals and queued results do not reconstruct a victory.
-    const auto need = [](bool value) {
-        if (!value)
-            throw std::runtime_error(
-                "Task victory lost its departure, completion or result binding");
-    };
-    need(departed_task && before.active_task == departed_task && !after.active_task &&
-         !after.scene.world.world.ai.task_active && before.tasks.count(departed_task) &&
-         after.tasks.count(departed_task) && !before.participants.empty() &&
-         before.participants == after.participants &&
-         std::int64_t(after.task_progress.successes) ==
-             std::int64_t(before.task_progress.successes) + 1);
-    const auto &task = before.tasks.at(departed_task);
-    need(task.definition == after.tasks.at(departed_task).definition &&
-         before.task_progress.definitions.size() == after.task_progress.definitions.size());
-    for (const auto &[definition, progress] : before.task_progress.definitions) {
-        const auto updated = after.task_progress.definitions.find(definition);
-        need(updated != after.task_progress.definitions.end() &&
-             std::int64_t(updated->second.completed) ==
-                 std::int64_t(progress.completed) + (definition == task.definition ? 1 : 0));
-    }
-    // The source removes the first list reference; duplicate task references remain legal.
-    const auto references = [&](const State &s) {
-        return std::count(s.task_order.begin(), s.task_order.end(), departed_task);
-    };
-    need(references(before) == references(after) + 1);
-    std::uint64_t page{};
-    for (const auto &[id, summary] : after.exploration_summaries) {
-        if (summary.legacy_page != 30 || summary.task != departed_task ||
-            before.exploration_summaries.count(id))
-            continue;
-        const auto source_id = id;
-        const auto source = std::find_if(after.scripts.pages.begin(), after.scripts.pages.end(),
-                                         [source_id](const auto &p) { return p.id == source_id; });
-        need(!page && summary.definition == task.definition &&
-             source != after.scripts.pages.end() && source->lifecycle != 4 &&
-             source->kind == ref::WorldScriptPageKind::raw_page &&
-             // Exploration binds only its summary payload; encounter pages also carry
-             // the optional duplicate references. Any present duplicate must agree.
-             source->legacy_page == 30 &&
-             (!source->task_identity || source->task_identity == departed_task) &&
-             (!source->task_definition || source->task_definition == task.definition) &&
-             std::none_of(before.scripts.pages.begin(), before.scripts.pages.end(),
-                          [source_id](const auto &p) { return p.id == source_id; }));
-        page = id;
-    }
-    need(page && before.task_progress.definitions.count(task.definition));
-    const auto values = [&](const State &s) -> std::array<std::int64_t, 4> {
-        return {s.task_progress.successes,
-                s.task_progress.definitions.at(task.definition).completed,
-                s.task_progress.ordinary_explorations, s.task_progress.task_pool_progress};
-    };
-    return CampaignReceipt{CampaignReceiptKind::task_victory_committed,
-                           task.definition,
-                           after.simulation_steps,
-                           page,
-                           departed_task,
-                           -1,
-                           values(before),
-                           values(after)};
-}
-
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
     observations_[{kind, id}].insert(event);
 }
@@ -186,7 +129,12 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
     const auto identity = receipt_identity(receipt.kind);
     // The fourth value links the item-use row to a facility definition, and the
     // improvement row to an item. Both namespaces remain independently validated.
-    const int related_limit = receipt.kind == CampaignReceiptKind::item_facility_consumed   ? 85
+    const bool task_loot = receipt.kind == CampaignReceiptKind::item_task_loot_claimed ||
+                           receipt.kind == CampaignReceiptKind::weapon_task_loot_claimed ||
+                           receipt.kind == CampaignReceiptKind::armour_task_loot_claimed ||
+                           receipt.kind == CampaignReceiptKind::accessory_task_loot_claimed;
+    const int related_limit = task_loot                                                     ? 81
+                              : receipt.kind == CampaignReceiptKind::item_facility_consumed ? 85
                               : receipt.kind == CampaignReceiptKind::facility_item_improved ? 36
                                                                                             : 0;
     if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
@@ -201,7 +149,9 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
     if (related_limit &&
         (receipt.recipient != -1 || receipt.before[3] < 0 || receipt.before[3] >= related_limit ||
          receipt.after[3] != receipt.before[3]))
-        throw std::runtime_error("Facility item receipt lost its related source definition");
+        throw std::runtime_error("Campaign receipt lost its related source definition");
+    if (task_loot && (receipt.before[2] <= 0 || receipt.before[2] != receipt.after[2]))
+        throw std::runtime_error("Task loot receipt lost its actual challenge grant count");
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
         << identity.stage << '\t' << receipt.step << '\t' << receipt.page << '\t'
@@ -593,6 +543,11 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::item_commerce_bought, "item", "commerce_bought", 36, 0},
         {CampaignReceiptKind::item_facility_consumed, "item", "facility_bound_use", 36, 1},
         {CampaignReceiptKind::facility_item_improved, "facility", "item_improvement_applied", 85,
+         1},
+        {CampaignReceiptKind::item_task_loot_claimed, "item", "task_loot_claimed", 36, 1},
+        {CampaignReceiptKind::weapon_task_loot_claimed, "weapon", "task_loot_claimed", 33, 1},
+        {CampaignReceiptKind::armour_task_loot_claimed, "armour", "task_loot_claimed", 50, 1},
+        {CampaignReceiptKind::accessory_task_loot_claimed, "accessory", "task_loot_claimed", 30,
          1}};
     for (const auto &entry : cases) {
         const CampaignReceipt receipt{
@@ -638,7 +593,9 @@ void campaign_coverage_contract() {
             coverage.record(invalid,
                             log); // Both endpoints of the source person directory are valid.
         }
-        const int related_limit = entry.kind == CampaignReceiptKind::item_facility_consumed   ? 85
+        const bool task_loot = std::string(entry.stage) == "task_loot_claimed";
+        const int related_limit = task_loot                                                   ? 81
+                                  : entry.kind == CampaignReceiptKind::item_facility_consumed ? 85
                                   : entry.kind == CampaignReceiptKind::facility_item_improved ? 36
                                                                                               : 0;
         if (related_limit) {
@@ -655,6 +612,14 @@ void campaign_coverage_contract() {
             expect_rejected(invalid);
             invalid = receipt;
             invalid.recipient = 0;
+            expect_rejected(invalid);
+        }
+        if (task_loot) {
+            invalid = receipt;
+            invalid.before[2] = 0;
+            expect_rejected(invalid);
+            invalid = receipt;
+            invalid.after[2] = 1;
             expect_rejected(invalid);
         }
     }

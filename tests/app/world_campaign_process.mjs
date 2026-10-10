@@ -220,7 +220,7 @@ const receiptStages = {
   reward_equipped: ['weapon', 'armour', 'accessory'],
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
-  item_improvement_applied: 'facility'
+  item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory']
 };
 function* receipts(text, phase) {
   for (const [line, content] of text.split(/\r?\n/).entries()) {
@@ -235,13 +235,14 @@ function* receipts(text, phase) {
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
-    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied'].includes(stage))
+    if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage))
       need(numbers[3] > 0, 'receipt actual subject binding');
     if (['medal_awarded', 'home_admitted'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
-    if (['facility_bound_use', 'item_improvement_applied'].includes(stage))
+    if (['facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage))
       need(numbers[2] === -1 && numbers[7] === numbers[11] &&
-        catalogue.has(`${stage === 'facility_bound_use' ? 'facility' : 'item'}:${numbers[7]}`),
+        catalogue.has(`${stage === 'task_loot_claimed' ? 'quest' : stage === 'facility_bound_use' ? 'facility' : 'item'}:${numbers[7]}`),
       'receipt related definition binding');
+    if (stage === 'task_loot_claimed') need(numbers[6] > 0 && numbers[6] === numbers[10], 'receipt direct grant count');
     yield {key: `${category}:${id}`, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
@@ -360,7 +361,9 @@ function coverageContract(rows) {
     ['human', 'medal_awarded', 24, 25, 0, 24], ['human', 'home_admitted', 24, 25, 1, 24],
     ['task', 'victory_committed', 80, 81, 1, -1], ['item', 'commerce_bought', 35, 36, 0, -1],
     ['item', 'facility_bound_use', 35, 36, 1, -1],
-    ['facility', 'item_improvement_applied', 84, 85, 1, -1]]) {
+    ['facility', 'item_improvement_applied', 84, 85, 1, -1],
+    ['item', 'task_loot_claimed', 35, 36, 1, -1], ['weapon', 'task_loot_claimed', 32, 33, 1, -1],
+    ['armour', 'task_loot_claimed', 49, 50, 1, -1], ['accessory', 'task_loot_claimed', 29, 30, 1, -1]]) {
     const fields = ['COVERAGE_RECEIPT', category, String(id), stage, '2', '1', String(recipient), String(subject),
       '120', '0', '2', '0', '0', '1', '2', '0'];
     const parsed = [...receipts(fields.join('\t'), 'contract')];
@@ -380,8 +383,8 @@ function coverageContract(rows) {
       if (category === 'human') first[2] = '0';
       need([...receipts(first.join('\t'), 'contract')].length === 1, 'first source person receipt rejected');
     }
-    if (['facility_bound_use', 'item_improvement_applied'].includes(stage)) {
-      const relatedLimit = stage === 'facility_bound_use' ? 85 : 36;
+    if (['facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage)) {
+      const relatedLimit = stage === 'task_loot_claimed' ? 81 : stage === 'facility_bound_use' ? 85 : 36;
       for (const related of [-1, relatedLimit]) {
         const invalid = [...fields]; invalid[11] = invalid[15] = String(related);
         expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
@@ -393,6 +396,11 @@ function coverageContract(rows) {
         expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
       }
     }
+    if (stage === 'task_loot_claimed')
+      for (const [field, value] of [[10, '0'], [14, '1']]) {
+        const invalid = [...fields]; invalid[field] = value;
+        expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+      }
   }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
   const validReceipt = 'COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t1\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0';

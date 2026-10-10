@@ -27,6 +27,10 @@
 
 同一经营套件按职责拆出`world_campaign_receipts_test.cpp`的540行资格/交易夹具，驱动缩至1087行；通过临时命令回调复用原提交入口，无复制开关、额外Owner或新套件/target。原夹具正文、断言顺序及诊断字符串按498b8c4核对，仅签名/转发/格式变化。desktop-debug标准139/139（34.35秒）、headless-debug标准119/119（25.26秒）均仅排三个月，Release合同及只读月48冷载通过；日志与一次性保留核对在`build/validation/research-e700aac/receipt-structure/`。未重复自然长链、改研究来源或重签旧业务证书，CI仍待对应main。
 
+任务直接战利品续批绑定探索挑战0→2、任务实例/定义与实际目录效果，沿原16列区分普通库存和装备免费购买资格；合并同定义多份、999封顶及已开放装备不补资格。页面记录本轮真实上下文，不伪造奖励页；暂停/不变挑战不重发，同定义地面拾取竞争只记缺口，其他普通拾取只计共享E而不发任务回执。任务胜利/战利品纯查询合入`world_campaign_task_receipts.cpp`，复用原经营套件与target，世界、来源和玩家档不变。
+
+两Debug标准139/139（34.38秒）及119/119（29.80秒）仅排三个月；收口的异定义地面拾取修正/回归在两Debug与Release经营合同通过，最终日志为`ctest-*-loot-ground-final.log`。自然月48→51和独立冷载通过，6次直接领取及两件装备后续装配/属性写回，另有建设、强化和3次胜利；未出现战利品来源缺口。证据为`build/validation/research-e700aac/steam-task-loot-915efdbd8dbd42d891be3db9f6d51e7f/RESULT.json`，实际数值与限制见[经营记录](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。仍为二星，不认证全部定义、BOSS或通关；短夹具后续重建与该次执行身份分别记录，未重签旧证书/玩家包，CI待对应main。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

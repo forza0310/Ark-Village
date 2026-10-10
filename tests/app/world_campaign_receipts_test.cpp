@@ -3,6 +3,7 @@
 #include "world_campaign_receipts_test.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_steam_strategy.hpp"
 #include <algorithm>
@@ -97,6 +98,105 @@ State steam_people_fixture() {
         state = std::move(*update.candidate);
     }
     throw std::runtime_error("People fixture has not reached its initialized main scene");
+}
+
+// Qualification fixture: factory identity and actor allocation are genuine; the
+// arrived crew and reached reward threshold are supplied, then the real grant runs.
+void task_loot_receipt_contract() {
+    struct Case {
+        int kind, definition, grants, held, status;
+    };
+    const Case cases[]{{0, 0, 1, 0, 0},  {0, 0, 2, 998, 1}, {1, 1, 1, 0, 0},
+                       {2, 33, 1, 0, 0}, {3, 0, 1, 0, 0},   {1, 1, 1, 0, 1}};
+    for (const auto &entry : cases) {
+        auto before = steam_people_fixture();
+        const auto created =
+            ref::prepare_world_task_creation(sim::startup_world_runtime_factory(before), 0);
+        require(created.candidate && created.candidate->created_task &&
+                    sim::write_startup_world_runtime_factory(before, created.candidate->state),
+                "Loot receipt fixture must use a real factory task and site");
+        const auto task = *created.candidate->created_task;
+        const auto facility = *before.tasks.at(task).facility;
+        before.active_task = task;
+        before.scene.world.world.ai.task_active = true;
+        const auto human = sim::startup_world_human_details(before, 1);
+        require(human && human->live_actor, "Loot receipt fixture lost its allocated visitor");
+        const auto actor = *human->live_actor;
+        auto &site = before.scene.world.world.facilities.at(facility);
+        const auto cell = site.placement.anchor;
+        site.status = 1;
+        site.occupants = {actor};
+        before.scene.world.world.ai.battle.actors.at(actor).control.state = 14;
+        before.scene.world.world.ai.battle.actors.at(actor).position = {float(cell.x * 100 + 50), 0,
+                                                                        float(cell.y * 100 + 50)};
+        before.scene.world.world.ai.contexts.at(actor) =
+            ref::RewardActorContext{cell, false, {}, {}};
+        before.scene.world.world.actors.at(actor).binding =
+            ref::ArrivalBinding{cell, {facility}, site.placement.definition_id};
+        before.dungeon_actors.at(actor) = ref::DungeonActorProgress{};
+        auto &progress = before.dungeon_facilities.at(facility);
+        progress.extent = *ref::dungeon_extent(1, 80); // Source Q80; not a wall-clock duration.
+        progress.challenges.assign(entry.grants, {0, 0, 0, 0, entry.kind, entry.definition});
+        auto &stock = before.catalog.at({entry.kind, entry.definition});
+        stock.status = entry.status;
+        stock.free_purchases = 0;
+        if (entry.kind == 0) {
+            stock.inventory = entry.held;
+            before.items.at(entry.definition) = stock;
+        }
+        const auto result = sim::prepare_startup_world_runtime_dungeon_crew(before, facility);
+        require(result.has_value(), "Loot fixture direct source grant was rejected");
+        const auto observed = task_loot_receipts(before, *result);
+        require(!observed.gap && observed.receipts.size() == 1,
+                "Source direct grant lost its task/catalog receipt");
+        const auto &receipt = observed.receipts.front();
+        require(receipt.definition == entry.definition && receipt.subject == task && receipt.page &&
+                    receipt.before[1] == entry.status && receipt.before[2] == entry.grants &&
+                    receipt.before[3] == before.tasks.at(task).definition &&
+                    receipt.after[0] == (entry.kind == 0 ? std::min(999, entry.held + entry.grants)
+                                         : entry.status == 0 ? 1
+                                                             : 0),
+                "Direct loot receipt confused item inventory, equipment qualification or task ID");
+        const auto repeated = sim::prepare_startup_world_runtime_dungeon_crew(*result, facility);
+        require(repeated && task_loot_receipts(*result, *repeated).receipts.empty() &&
+                    task_loot_receipts(*result, *result).receipts.empty(),
+                "Unchanged/aged challenge or loaded snapshot was re-granted by observation");
+        auto bad = *result;
+        bad.catalog.at({entry.kind, entry.definition}).status = 3;
+        const auto rejected = task_loot_receipts(before, bad);
+        require(rejected.gap && rejected.receipts.empty(),
+                "Unaccounted catalog mutation earned a receipt");
+        if (entry.kind == 0) {
+            auto conflict_before = before, conflict_after = *result;
+            ref::GroundObjectState object;
+            object.id = ref::ObjectId{900};
+            object.state = 5;
+            object.counter = 19;
+            object.kind = entry.kind;
+            object.definition = entry.definition;
+            conflict_before.scene.world.world.ai.battle.objects.emplace(900, object);
+            object.counter = 20;
+            conflict_after.scene.world.world.ai.battle.objects.emplace(900, object);
+            const auto ambiguous = task_loot_receipts(conflict_before, conflict_after);
+            require(ambiguous.gap && ambiguous.receipts.empty(),
+                    "Same-definition timed pickup was attributed to the task");
+
+            // A different ground item shares the source E counter, but must not
+            // gain a task receipt merely because its pickup happened this round.
+            object.definition = 1;
+            object.counter = 19;
+            conflict_before.scene.world.world.ai.battle.objects.at(900) = object;
+            object.counter = 20;
+            conflict_after.scene.world.world.ai.battle.objects.at(900) = object;
+            ++conflict_after.item_rewards;
+            ++conflict_after.catalog.at({0, 1}).inventory;
+            conflict_after.items.at(1) = conflict_after.catalog.at({0, 1});
+            const auto isolated = task_loot_receipts(conflict_before, conflict_after);
+            require(!isolated.gap && isolated.receipts.size() == 1 &&
+                        isolated.receipts.front().definition == entry.definition,
+                    "Independent ground pickup confused the shared counter or earned task credit");
+        }
+    }
 }
 
 void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
@@ -580,6 +680,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
     if (!apply)
         throw std::invalid_argument("Receipt fixtures require the campaign command consumer");
     source_transaction_receipt_contract(apply);
+    task_loot_receipt_contract();
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);
     steam_investment_receipt_contract(apply);

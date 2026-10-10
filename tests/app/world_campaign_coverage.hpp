@@ -8,6 +8,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <vector>
 
 namespace ark::test {
 // Emitted only after the strategy's independent business assertions have passed.
@@ -36,7 +37,11 @@ enum class CampaignReceiptKind {
     task_victory_committed,
     item_commerce_bought,
     item_facility_consumed,
-    facility_item_improved
+    facility_item_improved,
+    item_task_loot_claimed,
+    weapon_task_loot_claimed,
+    armour_task_loot_claimed,
+    accessory_task_loot_claimed
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -62,6 +67,14 @@ CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &
 std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &before,
                                                     const app::WorldState &after,
                                                     std::uint64_t departed_task);
+// Direct exploration grants only: source challenge0->2 plus matching catalog effects.
+// A same-frame competing origin remains unverified instead of receiving invented credit.
+struct CampaignLootObservation {
+    std::vector<CampaignReceipt> receipts;
+    const char *gap{};
+};
+CampaignLootObservation task_loot_receipts(const app::WorldState &before,
+                                           const app::WorldState &after);
 
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.

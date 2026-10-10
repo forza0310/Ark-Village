@@ -219,11 +219,18 @@ template <class PlayerStrategy> struct CampaignRun {
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
         update.candidate->sound_requests.clear();
+        std::vector<ark::test::CampaignReceipt> pending_receipts;
         try {
             strategy.observe_tick(state, *update.candidate,
                                   [&](const ark::test::CampaignReceipt &receipt) {
-                                      coverage.record(receipt, std::cout);
+                                      pending_receipts.push_back(receipt);
                                   });
+            const auto loot = ark::test::task_loot_receipts(state, *update.candidate);
+            if (loot.gap)
+                std::cout << "COVERAGE_LOOT_GAP\t" << state.active_task.value_or(0) << '\t'
+                          << state.simulation_steps << '\t' << loot.gap << '\n';
+            pending_receipts.insert(pending_receipts.end(), loot.receipts.begin(),
+                                    loot.receipts.end());
         } catch (...) {
             // Keep the same pre-update Owner used for a failed observation. A strategy
             // refusal is not a runtime error, and must not be reported as one.
@@ -234,6 +241,8 @@ template <class PlayerStrategy> struct CampaignRun {
             }
             throw;
         }
+        for (const auto &receipt : pending_receipts)
+            coverage.record(receipt, std::cout);
         coverage.observe(state, *update.candidate);
         state = std::move(*update.candidate);
         system = std::move(next);

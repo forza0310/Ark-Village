@@ -1,6 +1,7 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 
 #include <algorithm>
@@ -331,8 +332,12 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             }
             break;
         case Stage::common_menu_gate:
-            if (s.menu_input)
-                return {};
+            if (s.menu_input) {
+                if (open_startup_world_main_menu(s) != StartupWorldRuntimeError::none)
+                    return {};
+                s.menu_input = false;
+                return Step{std::move(s), ref::WorldSceneDisposition::end_frame};
+            }
             break;
         default:
             return {};

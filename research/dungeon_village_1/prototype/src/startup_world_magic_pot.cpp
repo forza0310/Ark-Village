@@ -1,5 +1,6 @@
 // 魔法壶业务只在已证菜单/页面调用点消费；库存、元素、共同随机及整栈由私有Owner候选提交。
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_reference/world_magic_pot.hpp"
 
 #include <algorithm>
@@ -351,11 +352,12 @@ std::optional<StartupMagicPotMenuInformation> startup_magic_pot_menu_information
 }
 Error open_startup_world_magic_pot(State &s, StartupMagicPotEntry entry) {
     const auto p = top(s);
-    if (!p || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
+    const bool menu = entry == StartupMagicPotEntry::main_menu && startup_world_menu_callback(s, 3);
+    if (!p || (!menu && p->kind != ref::WorldScriptPageKind::scene) || s.scene.scene_state != 0 ||
         s.scene.framework_paused || (s.scripts.user_flags & 1U) == 0 ||
         (entry != StartupMagicPotEntry::main_menu && entry != StartupMagicPotEntry::development_menu)) return Error::invalid_page;
     if (!definitions(s)) return Error::missing_source;
-    auto next = s; next.scripts.executing_page = p->id;
+    auto next = s; next.scripts.executing_page = menu ? s.scripts.executing_page : std::optional<std::uint64_t>{p->id};
     if (entry == StartupMagicPotEntry::main_menu) next.scripts.user_flags &= ~2U;
     if (!process(next) || !open(next, 41)) return Error::script_failed;
     next.scripts.executing_page.reset(); s = std::move(next); return Error::none;

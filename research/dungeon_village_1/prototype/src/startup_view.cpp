@@ -11,6 +11,10 @@
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
+#include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/steam_main_menu_skin.hpp"
+#include "dungeon_village_prototype/steam_information_skin.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
@@ -182,8 +186,11 @@ class SourceSprites {
               {position.x + plan.anchor_x, position.y + plan.anchor_y});
         EndScissorMode();
     }
-    void crop(const std::filesystem::path &relative, Rectangle source, Vector2 position) {
-        const auto path = root_ / relative;
+    void crop(const std::filesystem::path &relative, Rectangle source, Vector2 position,
+              bool published = false) {
+        if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
+            throw std::runtime_error("裁剪资源路径无效");
+        const auto path = (published ? root_.parent_path() : root_) / relative;
         auto found = textures_.find(path.string());
         if (found == textures_.end()) {
             const auto texture = LoadTexture(path.string().c_str());
@@ -211,6 +218,31 @@ class SourceSprites {
             found = textures_.emplace(path.string(), texture).first;
         }
         DrawTextureV(found->second, position, WHITE);
+    }
+    void menu_number(const SteamFacilityNumber &number, Vector2 origin) {
+        const auto resource = steam_facility_resource(number.asset);
+        if (!resource || !resource->published_sprite)
+            throw std::runtime_error("菜单数字缺资源映射");
+        const auto key = std::string(resource->published_sprite);
+        auto found = sprites_.find(key);
+        if (found == sprites_.end())
+            found = sprites_.emplace(key, dungeon_village_tools::parse_legacy_seb(
+                read_bytes(root_.parent_path() / key))).first;
+        const auto &definition = found->second;
+        if (definition.layers.empty() || definition.layers[0].parts.empty())
+            throw std::runtime_error("菜单数字缺字宽来源");
+        const auto digits = steam_facility_number_draws(number, definition.layers[0].parts[0].width);
+        if (!digits) throw std::runtime_error("菜单数字计划无效");
+        for (const auto &digit : *digits)
+            for (const auto &layer : definition.layers)
+                for (const auto &part : layer.parts) {
+                    if (part.frame != digit.frame) continue;
+                    if (part.flip_x || part.flip_y) throw std::runtime_error("菜单数字翻转尚未接入");
+                    crop(resource->published_image,
+                         {float(part.source_x), float(part.source_y), float(part.width), float(part.height)},
+                         {origin.x + digit.position[0] + part.offset_x,
+                          origin.y + digit.position[1] + part.offset_y}, true);
+                }
     }
 
   private:
@@ -307,6 +339,123 @@ class ChineseFont {
     Font font_{};
 };
 
+bool navigation_menu(int raw) { return raw == 3 || raw == 4 || raw == 7 || raw == 10; }
+// 研究窗口中文适配，不认证Steam翻译/字体；标签编号来自真实Owner冻结目录。
+const char *menu_label(int tag) {
+    switch (tag) {
+    case 0:return "建设";case 1:return "冒险";case 2:return "村办";case 3:return "开发";
+    case 5:return "情报";case 6:return "系统";case 7:return "任务进度";case 8:return "中止任务";
+    case 9:return "赠送礼物";case 10:return "晋级";case 11:return "商会";case 12:return "活动";
+    case 14:return "村情报";case 15:return "冒险者";case 16:return "收支情报";
+    case 17:return "持有物品";case 18:return "装备一览";
+    case 20:return "保存";case 21:return "纪录";case 22:return "配置";case 23:return "排行榜";
+    case 24:return "结束游戏";default:throw std::runtime_error("菜单标签缺文字适配");
+    }
+}
+struct WindowNavigationPlan {
+    std::array<int,2> origin{};
+    std::optional<SteamMainMenuSkinPlan> main;
+    std::optional<SteamInformationSkinPlan> system;
+    std::optional<StartupWorldMenuView> fallback;
+    std::vector<SteamStartupTouch> touches;
+};
+std::optional<WindowNavigationPlan> window_navigation_plan(const StartupWorldRuntimeState &state,
+    std::uint64_t id,const ChineseFont &font,bool on_top) {
+    const auto information=inspect_startup_world_information_page(state,id);
+    if (information && information->raw==9) {
+        WindowNavigationPlan result;
+        const auto position=state.menu_page_positions.find(id);
+        if(position!=state.menu_page_positions.end()) result.origin=position->second;
+        SteamInformationMenuSkinOptions options;options.canvas={width,height};options.origin=result.origin;
+        options.on_top=on_top;
+        if(information->frame==3) {
+            std::array<int,5> widths{};
+            for(std::size_t row=0;row<widths.size();++row)
+                widths[row]=static_cast<int>(font.measure(menu_label(information->entries[row].tag)));
+            options.measured_text_widths=widths;
+        }
+        result.system=steam_information_menu_skin(state,id,options);
+        if(!result.system)return {};
+        for(const auto &touch:result.system->touches)result.touches.push_back(touch);
+        return result;
+    }
+    const auto view = inspect_startup_world_menu_page(state,id);
+    if (!view) return {};
+    WindowNavigationPlan result;result.origin=view->stored_position;
+    if (view->raw == 3) {
+        SteamMainMenuSkinInput input;
+        input.frame=view->frame;input.selection=view->selection;
+        input.magic_unlocked=std::find(view->tags.begin(),view->tags.end(),3)!=view->tags.end();
+        if (input.frame==3) {
+            input.notices=steam_main_menu_notices(state);
+            if (input.magic_unlocked) input.magic_period=startup_magic_pot_menu_information(state);
+        }
+        SteamMainMenuSkinOptions options;options.canvas={width,height};options.origin=result.origin;
+        options.on_top=on_top;options.top_is_main_menu=on_top;
+        result.main=steam_main_menu_skin(input,options);
+        if (!result.main) return {};
+        result.touches=result.main->touches;
+    } else if (view->raw == 10) {
+        SteamInformationMenuSkinOptions options;options.canvas={width,height};options.origin=result.origin;
+        options.on_top=on_top;
+        if (view->frame==3) {
+            std::array<int,5> widths{};
+            for (std::size_t row=0;row<widths.size();++row)
+                widths[row]=static_cast<int>(font.measure(menu_label(view->tags[row])));
+            options.measured_text_widths=widths;
+        }
+        result.system=steam_system_menu_skin({view->frame,view->selection},options);
+        if (!result.system) return {};
+        for (const auto &touch:result.system->touches) result.touches.push_back(touch);
+    } else {
+        // raw4/7本批只接真实目录与输入。此短列表是维护适配，不能冒认为已证完整皮肤。
+        result.fallback=view;
+        for (std::size_t row=0;row<view->tags.size();++row)
+            result.touches.push_back({9,0x20000|static_cast<int>(row),
+                                      std::array<int,4>{0,28*static_cast<int>(row),90,28},{},0});
+    }
+    return result;
+}
+void draw_navigation_plan(const WindowNavigationPlan &plan,SourceSprites &sprites,const ChineseFont &font) {
+    const Vector2 origin{float(plan.origin[0]),float(plan.origin[1])};
+    const auto draw_image=[&](const std::string &path,int sprite,int frame,
+                              const std::array<int,4> &crop,const std::array<int,2> &position) {
+        if (sprite>=0) {
+            // 独立展示帧0不推进世界；Steam绘制动画/内部光标时序仍由后续平台消费者认证。
+            sprites.visual({StartupVisualResource::common,sprite,70,std::max(0,frame),0,{},position},origin);
+        } else if(crop[2]>0 && crop[3]>0)
+            sprites.crop(path,{float(crop[0]),float(crop[1]),float(crop[2]),float(crop[3])},
+                         {origin.x+position[0],origin.y+position[1]},true);
+    };
+    if (plan.main) for (const auto &draw:plan.main->draws) {
+        if (const auto *part=std::get_if<SteamMainMenuImage>(&draw)) {
+            const auto path=steam_main_menu_image(part->package,part->image);
+            if(!path) throw std::runtime_error("主菜单缺出版资源");
+            draw_image(std::string(*path),part->sprite,part->frame,part->crop,part->position);
+        } else if(const auto *label=std::get_if<SteamMainMenuText>(&draw))
+            font.text(menu_label(label->tag),origin.x+label->position[0],origin.y+label->position[1],
+                      {static_cast<unsigned char>(label->rgb[0]),static_cast<unsigned char>(label->rgb[1]),
+                       static_cast<unsigned char>(label->rgb[2]),255});
+        else if(const auto *number=std::get_if<SteamFacilityNumber>(&draw))sprites.menu_number(*number,origin);
+    }
+    if (plan.system) for (const auto &draw:plan.system->draws) {
+        if (const auto *part=std::get_if<StartupSkinDraw>(&draw)) {
+            const auto path=steam_information_image(part->image);
+            if(!path) throw std::runtime_error("系统菜单缺出版资源");
+            draw_image(std::string(*path),part->sprite,part->frame,part->crop,part->offset);
+        } else if(const auto *label=std::get_if<SteamInformationText>(&draw))
+            font.text(menu_label(label->argument),origin.x+label->position[0],origin.y+label->position[1],
+                      {static_cast<unsigned char>(label->rgb[0]),static_cast<unsigned char>(label->rgb[1]),
+                       static_cast<unsigned char>(label->rgb[2]),255},label->font_size?float(label->font_size):12.F);
+    }
+    if (plan.fallback) for(std::size_t row=0;row<plan.fallback->tags.size();++row) {
+        const int y=plan.origin[1]+28*static_cast<int>(row);
+        DrawRectangle(plan.origin[0],y,90,27,paper);
+        if(static_cast<int>(row)==plan.fallback->selection)
+            DrawRectangleLines(plan.origin[0],y,90,27,ORANGE);
+        font.text(menu_label(plan.fallback->tags[row]),origin.x+5,float(y+8),ink,11);
+    }
+}
 struct Window {
     Window() {
         SetTraceLogLevel(LOG_WARNING);
@@ -653,6 +802,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
     for (const auto &recipe : rules.magic_pot_recipes)
         glyphs += recipe.name;
     glyphs += "魔法壶投入配方开发暗相性似乎不错成功感觉就那样吧嗯";
+    glyphs += "菜单冒险情报系统任务进度中止任务赠送礼物保存纪录配置排行榜结束游戏输入未接入"
+              "研究适配页签设施列表持有物品装备一览村情报";
     glyphs += "村办季度剩余次数村子点开展活动完成等待尚未接入获得奖励金币配置更替确认领取设备一般";
     glyphs += "体力力量灵活结实魔力运气";
     glyphs += "周围设施的奖励没有";
@@ -696,7 +847,29 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         return {};
     };
-    if (inspect_page == "world-editing") {
+    if (inspect_page == "world-menu" || inspect_page == "world-system" || inspect_page == "world-information") {
+        // 有界验收只使用真实入口与输入，不注入选择、页计数、资金或随机。
+        if (session.open_main_menu()!=StartupWorldRuntimeError::none)
+            throw std::runtime_error("导航检查主菜单入口失败");
+        for(int step=0;step<3;++step)
+            if(!session.update().candidate)throw std::runtime_error("导航检查主菜单初始化失败");
+        if(inspect_page!="world-menu") {
+            const auto id=session.state().scripts.pages.back().id;
+            const auto view=inspect_startup_world_menu_page(session.state(),id);
+            if(!view)throw std::runtime_error("导航检查主菜单投影失败");
+            const int tag=inspect_page=="world-system"?6:5;
+            const auto entry=std::find(view->tags.begin(),view->tags.end(),tag);
+            if(entry==view->tags.end())throw std::runtime_error("导航检查所需标签不存在");
+            StartupWorldMenuInput selection;selection.select_row=static_cast<int>(entry-view->tags.begin());
+            StartupWorldMenuInput confirm;confirm.confirm=true;
+            if(session.input_menu_page(id,selection)!=StartupWorldRuntimeError::none ||
+               session.input_menu_page(id,confirm)!=StartupWorldRuntimeError::none)
+                throw std::runtime_error("导航检查实际选行确认失败");
+            for(int step=0;step<3;++step)
+                if(!session.update().candidate)throw std::runtime_error("导航检查子菜单初始化失败");
+        }
+        session.take_audio_requests();
+    } else if (inspect_page == "world-editing") {
         const auto road = available_road(session.state());
         if (!road)
             throw std::runtime_error("真实新局没有已开放道路定义");
@@ -1174,7 +1347,55 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
             const int raw = page->legacy_page;
             const bool task_page = raw >= 22 && raw <= 28;
-            if (raw >= 41 && raw <= 47) {
+            if (navigation_menu(raw)) {
+                const auto plan=window_navigation_plan(session.state(),page->id,font,true);
+                if (plan) {
+                    StartupWorldMenuInput input;
+                    input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.left=IsKeyPressed(KEY_LEFT);input.right=IsKeyPressed(KEY_RIGHT);
+                    input.confirm=IsKeyPressed(KEY_ENTER)||hit({166,258,66,22});
+                    input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({8,258,62,22});
+                    // 维护鼠标短适配：单击选择、Enter确认；不冒认Steam物理ENTER/UP合成已认证。
+                    if (!input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel)
+                        for(const auto &touch:plan->touches) if(touch.rectangle&&(touch.component==8||touch.component==9)) {
+                            const auto &r=*touch.rectangle;
+                            if(hit({float(plan->origin[0]+r[0]),float(plan->origin[1]+r[1]),float(r[2]),float(r[3])}))
+                                input.select_row=touch.value&0xffff;
+                        }
+                    if(input.up||input.down||input.left||input.right||input.confirm||input.cancel||input.select_row) {
+                        const auto error=session.input_menu_page(page->id,input);
+                        if(error==StartupWorldRuntimeError::none)command_feedback.clear();
+                        else command_feedback="输入未接入"; // raw10平台动作显式拒绝，窗口保留现场。
+                    }
+                }
+            } else if (raw==9 || (raw>=34 && raw<=40)) {
+                const auto view=inspect_startup_world_information_page(session.state(),page->id);
+                if(view) {
+                    StartupInformationInput input;
+                    input.up=IsKeyPressed(KEY_UP);input.down=IsKeyPressed(KEY_DOWN);
+                    input.left=IsKeyPressed(KEY_LEFT);input.right=IsKeyPressed(KEY_RIGHT);
+                    input.confirm=IsKeyPressed(KEY_ENTER)||hit({166,258,66,22});
+                    input.cancel=IsKeyPressed(KEY_ESCAPE)||hit({8,258,62,22});
+                    if(raw==9 && !input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel)
+                        if(const auto plan=window_navigation_plan(session.state(),page->id,font,true))
+                            for(const auto &touch:plan->touches)if(touch.component==9 && touch.rectangle) {
+                                const auto &r=*touch.rectangle;
+                                if(hit({float(plan->origin[0]+r[0]),float(plan->origin[1]+r[1]),float(r[2]),float(r[3])}))
+                                    input.select_row=touch.value&0xffff;
+                            }
+                    if(raw!=9 && raw!=34 && raw!=36 &&
+                       !input.up&&!input.down&&!input.left&&!input.right&&!input.confirm&&!input.cancel) {
+                        const auto count=view->humans?view->humans->size():view->items?view->items->size():
+                            view->equipment?view->equipment->rows.size():view->facilities?view->facilities->size():0U;
+                        for(int row=view->first_visible;row<static_cast<int>(count)&&row<view->first_visible+5;++row)
+                            if(hit({10,float(86+28*(row-view->first_visible)),220,25}))input.select_row=row;
+                    }
+                    if(input.up||input.down||input.left||input.right||input.confirm||input.cancel||input.select_row) {
+                        const auto error=session.input_information_page(page->id,input);
+                        command_feedback=error==StartupWorldRuntimeError::none?"":"输入未接入";
+                    }
+                }
+            } else if (raw >= 41 && raw <= 47) {
                 const auto view = inspect_startup_world_magic_pot_page(session.state(), page->id);
                 if (view) {
                     using A = StartupMagicPotAction;
@@ -1381,16 +1602,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (action && session.act_award_page(page->id, *action, award_selection) !=
                                   StartupWorldRuntimeError::none)
                     throw std::runtime_error("授勋页面输入失败");
-            } else if (raw == 4) {
-                if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
-                    if (session.act_task_page(page->id, StartupWorldTaskAction::cancel).error !=
-                        StartupWorldRuntimeError::none)
-                        throw std::runtime_error("任务管理返回失败");
-                } else if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) {
-                    if (session.act_task_page(page->id, StartupWorldTaskAction::request_abort)
-                            .error != StartupWorldRuntimeError::none)
-                        throw std::runtime_error("主动中止询问失败");
-                }
             } else if (raw == 1 && session.state().task_abort_questions.count(page->id)) {
                 if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))
                     prompt_selection = 1 - prompt_selection;
@@ -1645,7 +1856,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         StartupWorldRuntimeError::none)
                         throw std::runtime_error("任务输入消费者失败");
                 }
-            } else if (page->legacy_page != 97 && page->legacy_page != 98 &&
+            } else if (page->legacy_page != 58 && page->legacy_page != 97 && page->legacy_page != 98 &&
                        (hit({176, 265, 58, 24}) || IsKeyPressed(KEY_ENTER))) {
                 ++confirmation_inputs;
                 if (paragraph_index + 1 < static_cast<int>(page->paragraphs.size())) {
@@ -1699,7 +1910,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
             }
         } else if (!top_page() && session.state().scene.scene_state == 0 &&
                    !session.state().scene.framework_paused) {
-            if (hit({52, 295, 52, 22}) || IsKeyPressed(KEY_B)) {
+            if (hit({52, 295, 52, 22}) || IsKeyPressed(KEY_ESCAPE)) {
+                if (session.open_main_menu() != StartupWorldRuntimeError::none)
+                    throw std::runtime_error("主菜单打开失败");
+            } else if (IsKeyPressed(KEY_B)) {
                 if (session.open_build_menu() != StartupWorldRuntimeError::none)
                     throw std::runtime_error("建设目录打开失败");
             } else if (IsKeyPressed(KEY_V) || hit({176, 23, 60, 20})) {
@@ -2099,7 +2313,45 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
             }
         }
-        if (const auto *page = top_page()) {
+        if (const auto *page=top_page(); page && (navigation_menu(page->legacy_page)||page->legacy_page==9)) {
+            // 真实菜单栈逐页画；被菜单覆盖的raw3保留底图但不登记主菜单ID8短适配。
+            for (const auto &entry:state.scripts.pages)
+                if(entry.lifecycle!=4 && entry.kind==ref::WorldScriptPageKind::raw_page &&
+                   (navigation_menu(entry.legacy_page)||entry.legacy_page==9))
+                    if(const auto plan=window_navigation_plan(state,entry.id,font,entry.id==page->id))
+                        draw_navigation_plan(*plan,sprites,font);
+            DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
+            font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
+            if(!command_feedback.empty())font.text(command_feedback,8,285,ink,10);
+        } else if (const auto *page=top_page(); page && page->legacy_page>=34 && page->legacy_page<=40) {
+            // 仅研究短适配：显示Owner真实行/页签，完整Steam详情字体与图元后端另批接入。
+            DrawRectangle(5,42,230,247,paper);
+            font.text(page->title+" / 研究适配",12,48,ink,11);
+            if(const auto view=inspect_startup_world_information_page(state,page->id)) {
+                font.text("页签 "+std::to_string(view->selection_or_period+1),12,66,ink,10);
+                std::vector<std::string> rows;
+                if(view->humans)for(const auto &human:*view->humans)rows.push_back(human.details.name);
+                if(view->items)for(const auto &item:*view->items)rows.push_back(item.name+" "+std::to_string(item.inventory));
+                if(view->equipment)for(const auto &item:view->equipment->rows)
+                    rows.push_back(item.visible?item.visible->name:"????");
+                if(view->facilities)for(const auto &facility:*view->facilities)
+                    rows.push_back(facility.name+" "+std::to_string(facility.profit));
+                for(int row=view->first_visible;row<static_cast<int>(rows.size())&&row<view->first_visible+5;++row) {
+                    const int y=88+28*(row-view->first_visible);
+                    if(row==view->selection)DrawRectangle(10,y-2,220,25,{219,232,204,255});
+                    font.text(rows[row],14,float(y),ink,11);
+                }
+                if(view->income)for(std::size_t row=0;row<view->income->rows.size();++row) {
+                    const auto &entry=view->income->rows[row];
+                    font.text(std::string(entry.label)+" "+entry.income_text+" / "+entry.expense_text,
+                              14,float(88+28*row),ink,10);
+                }
+                if(view->raw==34)font.text("Enter 设施列表",14,88,ink,11);
+            }
+            DrawRectangle(8,258,62,22,paper);DrawRectangle(166,258,66,22,paper);
+            font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
+            if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
+        } else if (const auto *page = top_page()) {
             if (page->legacy_page != 21) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
@@ -2582,10 +2834,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     font.text("终止", 18, 272);
                 }
                 font.text(ending || awarding ? "确定" : "授予", 190, 272);
-            } else if (page->legacy_page == 4) {
-                font.paragraph("任务实施中", 17, 66, 204);
-                font.text("返回", 18, 272);
-                font.text("中止", 190, 272);
             } else if (page->legacy_page == 1 && state.task_abort_questions.count(page->id)) {
                 DrawRectangle(prompt_selection == 0 ? 24 : 120, 194, 96, 28, {219, 232, 204, 255});
                 font.text("是", 62, 202);
@@ -3104,7 +3352,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         DrawRectangle(0, 294, width, 26, paper);
         font.text(state.scene.framework_paused ? "继续" : "暂停", 8, 301);
         font.text(state.scene.speed_setting == 1 ? "2倍" : "1倍", 193, 301);
-        font.text(state.scene.scene_state == 1 ? "返回" : "建设", 60, 301);
+        font.text(state.scene.scene_state == 1 ? "返回" : "菜单", 60, 301);
         font.text("任务", 121, 301);
         EndTextureMode();
         BeginDrawing();

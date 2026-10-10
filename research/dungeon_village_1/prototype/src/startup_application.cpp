@@ -350,6 +350,12 @@ std::string StartupApplication::open_human_page(int human) {
 std::string StartupApplication::open_information_menu() {
     return apply_world_action([&](auto &world) { return world.open_information_menu(); });
 }
+std::string StartupApplication::open_main_menu() {
+    return apply_world_action([](auto &world) { return world.open_main_menu(); });
+}
+std::string StartupApplication::input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_menu_page(page, input); });
+}
 std::string StartupApplication::input_information_page(
     std::uint64_t page, const StartupInformationInput &input) {
     return apply_world_action([&](auto &world) { return world.input_information_page(page, input); });

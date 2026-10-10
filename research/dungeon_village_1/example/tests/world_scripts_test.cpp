@@ -603,6 +603,32 @@ void camera_focus(const WorldScriptCatalog &catalog) {
                        std::array<float, 2>{std::numeric_limits<float>::infinity(), 0}})
                .candidate,
           "non-finite adapter input rejects camera candidate without partial lifecycle mutation");
+    // raw58目标来自当前任务；不误读raw57第一任务设施或raw56人物缓存。
+    auto selected = state;
+    selected.pages[1].legacy_page = 58;
+    WorldScriptCameraFocusInput tracking;
+    tracking.page = id;
+    tracking.previous_camera = {20, 30};
+    tracking.previous_velocity = {8, 9};
+    tracking.first_monster_cached_view = std::array<float, 2>{100, 100};
+    tracking.first_task_facility_view = std::array<float, 2>{200, 200};
+    tracking.selected_task_view = std::array<float, 2>{5, 0};
+    const auto equal = prepare_world_script_camera_focus(selected, tracking);
+    check(equal.candidate && equal.candidate->camera == std::array<float, 2>{5, 0} &&
+              equal.candidate->previous_camera == std::array<float, 2>{25, 30} &&
+              equal.candidate->state.pages[1].lifecycle != 4,
+          "58 uses selected task and equality moves before closing on later update");
+    tracking.camera = {5, 0};
+    const auto arrived = prepare_world_script_camera_focus(selected, tracking);
+    check(arrived.candidate && arrived.candidate->state.pages[1].lifecycle == 4 &&
+              arrived.candidate->previous_camera == std::array<float, 2>{5, 0} &&
+              arrived.candidate->velocity == tracking.previous_velocity,
+          "58 arrival aligns both cameras while preserving prior velocity");
+    tracking.selected_task_view.reset();
+    const auto missing = prepare_world_script_camera_focus(selected, tracking);
+    check(missing.candidate && missing.candidate->state.pages[1].lifecycle == 4 &&
+              missing.candidate->previous_camera == tracking.previous_camera,
+          "58 absent current task closes without following other focus sources");
 }
 void automatic_events(const WorldScriptCatalog &catalog) {
     struct Gate {

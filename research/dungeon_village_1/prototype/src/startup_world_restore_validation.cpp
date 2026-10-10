@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
@@ -531,6 +532,8 @@ struct Validation {
         PAGE_MAP(page_counters);
         PAGE_MAP(page_phases);
         PAGE_MAP(information_page_data);
+        PAGE_MAP(menu_page_data);
+        PAGE_MAP(menu_page_positions);
         PAGE_MAP(human_detail_contexts);
         PAGE_MAP(page_human_bindings);
         PAGE_MAP(task_abort_questions);
@@ -604,8 +607,19 @@ struct Validation {
         }
         for (const auto &[id, data] : s.information_page_data) {
             (void)data;
-            if (!page_kind(id, {35, 37, 38, 39}))
+            if (!page_kind(id, {35, 37, 38, 39, 40}))
                 return fail("information page: 目录数据附在错误页型");
+        }
+        for (const auto &[id, data] : s.menu_page_data) {
+            (void)data;
+            if (!page_kind(id, {3, 4, 7, 10}))
+                return fail("menu page: 菜单载荷附在错误页型");
+        }
+        for (const auto &[id, position] : s.menu_page_positions) {
+            (void)position;
+            // raw9直达入口没有父存储位置；有位置时才验其合法页型，不为旧快捷入口补造。
+            if (!page_kind(id, {3, 4, 7, 9, 10}))
+                return fail("menu page: 存储位置附在错误页型");
         }
         for (const auto &[id, data] : s.magic_pot_page_data) {
             (void)data;
@@ -753,6 +767,23 @@ struct Validation {
         const auto id = p.id;
         if (!s.page_human_bindings.count(id))
             return fail("human page: 缺人物绑定");
+        if (raw == 64) {
+            const Page *owner = nullptr;
+            for (const auto &candidate : s.scripts.pages) {
+                if (candidate.id == id) break;
+                if (candidate.lifecycle != 4) owner = &candidate;
+            }
+            // 只约束真实40父链，不把其它既有60→64入口改成赠礼目录。
+            if (owner && owner->kind == ref::WorldScriptPageKind::raw_page && owner->legacy_page == 40) {
+                if (owner->lifecycle != 3 || !valid_startup_world_information_page(s, owner->id))
+                    return fail("human page: 赠礼目录父页非法");
+                const auto data = get(s.information_page_data, owner->id);
+                if (!data || data->lists.size() != 1 ||
+                    !selected(data->selection, data->lists.front().size()) || data->lists.front().empty() ||
+                    data->lists.front()[static_cast<std::size_t>(data->selection)] != s.page_human_bindings.find(id)->second)
+                    return fail("human page: 赠礼人物与父目录选择失配");
+            }
+        }
         if (raw == 60 && !valid_startup_world_human_detail_context(s, id))
             return fail("human detail: 缺来源或实例上下文非法");
         if ((raw == 62 || raw == 63) && !s.page_job_bindings.count(id))
@@ -929,7 +960,11 @@ struct Validation {
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
         for (const auto &p : s.scripts.pages) {
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
-                (p.legacy_page == 9 || (p.legacy_page >= 34 && p.legacy_page <= 39)) &&
+                (p.legacy_page == 3 || p.legacy_page == 4 || p.legacy_page == 7 || p.legacy_page == 10) &&
+                !valid_startup_world_menu_page(s, p.id))
+                return fail("menu page: 初始化/父页/位置/缓存行号载荷非法");
+            if (p.kind == ref::WorldScriptPageKind::raw_page &&
+                (p.legacy_page == 9 || (p.legacy_page >= 34 && p.legacy_page <= 40)) &&
                 !valid_startup_world_information_page(s, p.id))
                 return fail("information page: 初始化/页签/选择/计数载荷非法");
             // 93领取后的关闭态仍保存交易载荷；不能以通用退休跳过掩盖重复领取资格。
@@ -943,6 +978,11 @@ struct Validation {
                 continue;
             const auto id = p.id;
             const int raw = p.legacy_page;
+            if (p.kind == ref::WorldScriptPageKind::raw_page && raw == 58) {
+                const auto frame = get(s.page_counters, id);
+                if (!frame || !counter(*frame))
+                    return fail("task tracking58: 缺少合法逐更新计数");
+            }
             if (p.kind != ref::WorldScriptPageKind::raw_page) {
                 const auto phase = get(s.page_phases, id);
                 if (phase && !selected(*phase, p.paragraphs.size()))
@@ -1044,7 +1084,7 @@ struct Validation {
                     !every(*list, [&](auto n) { return s.tasks.count(n) != 0; }))
                     return fail("task page: 缺任务目录");
             }
-            if ((raw >= 23 && raw <= 28) || raw == 4) {
+            if (raw >= 23 && raw <= 28) {
                 if (!p.task_identity || !s.page_counters.count(id))
                     return fail("task page: 缺任务/计数绑定");
             }
@@ -1107,6 +1147,7 @@ bool validate_restored_state(const State &s, std::string &reason, bool audit_che
         !counter(s.scene.scene_counter) || (!audit_checkpoint && s.scene.processing_phase != -1) ||
         (audit_checkpoint && s.scene.processing_phase != -1 && s.scene.processing_phase != 1) ||
         s.scripts.executing_page || s.scripts.page_mutations_locked || s.clock_parameter != 80 ||
+        s.main_menu_selection < 0 || s.main_menu_selection > 5 ||
         s.calendar_advance != 27 || s.build_mode < 0 || s.build_mode > 7 ||
         !every(s.camera, [](float n) { return std::isfinite(n); }) ||
         !every(s.previous_camera, [](float n) { return std::isfinite(n); }) ||

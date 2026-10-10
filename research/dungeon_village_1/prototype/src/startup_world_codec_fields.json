@@ -202,6 +202,23 @@
       ]
     },
     {
+      "name": "dungeon_village_prototype::StartupWorldMenuPageData",
+      "fields": [
+        {
+          "name": "tags",
+          "type": "std::vector<int>"
+        },
+        {
+          "name": "selection",
+          "type": "int"
+        },
+        {
+          "name": "parent",
+          "type": "std::optional<std::uint64_t>"
+        }
+      ]
+    },
+    {
       "name": "dungeon_village_prototype::StartupWorldRuntimeState",
       "fields": [
         {
@@ -731,6 +748,22 @@
         {
           "name": "information_page_data",
           "type": "std::map<std::uint64_t, StartupInformationPageData>"
+        },
+        {
+          "name": "main_menu_selection",
+          "type": "int"
+        },
+        {
+          "name": "main_menu_position",
+          "type": "std::array<int, 2>"
+        },
+        {
+          "name": "menu_page_data",
+          "type": "std::map<std::uint64_t, StartupWorldMenuPageData>"
+        },
+        {
+          "name": "menu_page_positions",
+          "type": "std::map<std::uint64_t, std::array<int, 2>>"
         },
         {
           "name": "task_page_lists",

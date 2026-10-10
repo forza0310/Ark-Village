@@ -2,6 +2,7 @@
 #include "dungeon_village_prototype/startup_world_facility_items.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_reference/world_map_refresh.hpp"
 #include "dungeon_village_reference/world_residence.hpp"
 
@@ -345,7 +346,7 @@ int startup_world_facility_page_count(const State &s, const ref::WorldScriptPage
                : 1;
 }
 Error open_startup_world_build_menu(State &s) {
-    if (!main(s) || s.scene.scene_state != 0)
+    if ((!main(s) && !startup_world_menu_callback(s, 3)) || s.scene.scene_state != 0)
         return Error::invalid_page;
     const auto catalog = startup_world_build_catalog(s);
     if (!catalog)

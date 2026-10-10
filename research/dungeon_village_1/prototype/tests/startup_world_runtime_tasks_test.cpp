@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_presentation.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
@@ -8,6 +9,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 
 using namespace dungeon_village_prototype;
@@ -622,6 +624,9 @@ void active_management() {
           "detail and team return independently, no fee or active task cancellation");
     check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none,
           "source adventure4 task-control entry opens without cancelling task");
+    const auto initialized = prepare_startup_world_runtime(s);
+    check(initialized.candidate.has_value(), "real raw4 Init precedes task abort input");
+    s = *initialized.candidate;
     const auto parent =
         std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(), [](const auto &p) {
             return p.lifecycle != 4;
@@ -689,6 +694,64 @@ StartupWorldRuntimeState presentation_task(bool retired = false) {
     s.scripts.pages.front().lifecycle = 3;
     s.scene.random = ref::WorldRandomStream::from_raw({2,0,1,2});
     return s;
+}
+void task_tracking_menu() {
+    auto s = presentation_task();
+    s.scripts.pages.front().lifecycle = 2;
+    check(open_startup_world_runtime_task_control_menu(s) == StartupWorldRuntimeError::none &&
+              initialize_startup_world_menu_pages(s),
+          "real adventure menu can initialize selected-task navigation");
+    auto &menu = s.scripts.pages.back();
+    const auto parent = menu.id;
+    menu.lifecycle = 2;
+    s.scripts.executing_page = parent;
+    auto broken = s;
+    broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+    check(open_startup_world_runtime_task_tracking(broken) != StartupWorldRuntimeError::none &&
+              broken.scripts.pages.size() == s.scripts.pages.size() &&
+              !ref::world_script_seen(broken.scripts, 62),
+          "tracking page allocation rejection does not leave event or partial menu retirement");
+    const auto draws = s.scene.random.draws();
+    check(open_startup_world_runtime_task_tracking(s) == StartupWorldRuntimeError::none,
+          "selected task opens actual tracking/event/team chain");
+    const auto camera_page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.legacy_page == 58; });
+    const auto team = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.legacy_page == 26; });
+    check(camera_page != s.scripts.pages.end() && team != s.scripts.pages.end() &&
+              camera_page > team && camera_page->task_identity == s.active_task &&
+              s.scripts.event_calls.at(62) == 1 && s.scene.random.draws() == draws &&
+              std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                  [&](const auto &p) { return p.id == parent; })->lifecycle == 4,
+          "same executing anchor leaves58 above event62 and team26 while source menu retires without random draws");
+    const auto id = camera_page->id;
+    for (auto &p : s.scripts.pages) if (p.id != id) p.lifecycle = 4;
+    for (auto &p : s.scripts.pages) if (p.id == id) p.lifecycle = 2;
+    s.scripts.executing_page.reset();
+    const auto site = *s.tasks.at(*s.active_task).site;
+    const std::array<float, 2> target{
+        static_cast<float>((site.x + site.y) * 30 + 30),
+        static_cast<float>((site.y - site.x) * 15)};
+    s.camera = {target[0] - 5, target[1]};
+    s.previous_camera = {0, 0};
+    const auto step = update_startup_world_runtime_task_tracking_page(s, id);
+    check(step && step->camera == target && step->previous_camera == std::array<float, 2>{5, 0} &&
+              std::find_if(step->scripts.pages.begin(), step->scripts.pages.end(),
+                  [&](const auto &p) { return p.id == id; })->lifecycle != 4 &&
+              step->scene.random.draws() == draws,
+          "58 projects task grid independently of facility shape and preserves strict equality step");
+    auto bad_site = s;
+    bad_site.tasks.at(*s.active_task).site->x = -1;
+    check(!update_startup_world_runtime_task_tracking_page(bad_site, id) &&
+              bad_site.camera == s.camera && bad_site.page_counters.at(id) == s.page_counters.at(id),
+          "58 invalid current task site rejects without partial camera or counter update");
+    auto vanished = s;
+    vanished.active_task.reset();
+    const auto closed = update_startup_world_runtime_task_tracking_page(vanished, id);
+    check(closed && closed->camera == vanished.camera &&
+              std::find_if(closed->scripts.pages.begin(), closed->scripts.pages.end(),
+                  [&](const auto &p) { return p.id == id; })->lifecycle == 4,
+          "58 follows current task reference and closes when it disappears");
 }
 StartupPresentationRequest presentation_request(const StartupWorldRuntimeState &s,
                                                StartupPresentationMode mode,
@@ -1008,6 +1071,7 @@ int main() {
         task_start_audio();
         task_victory_requests();
         active_management();
+        task_tracking_menu();
         presentation_admission_and_random();
         presentation_gift_sound_and_rollback();
         presentation_missing_binding();

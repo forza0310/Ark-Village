@@ -1,5 +1,6 @@
 // 商会购买即时提交；设施兑换先付村点，93满40确认再领取，不混同金币建设费。
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
 
 #include <algorithm>
@@ -194,11 +195,12 @@ bool cash(State &s, int amount, bool sale) {
 
 Error open_startup_world_commerce(State &s) {
     const auto p = top(s);
-    if (!s.rules || !p || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
+    const bool menu = startup_world_menu_callback(s, 7);
+    if (!s.rules || !p || (!menu && p->kind != ref::WorldScriptPageKind::scene) || s.scene.scene_state != 0 ||
         s.scene.framework_paused || (s.scripts.user_flags & 16U) == 0)
         return Error::invalid_page;
     auto next = s;
-    next.scripts.executing_page = p->id;
+    next.scripts.executing_page = menu ? s.scripts.executing_page : std::optional<std::uint64_t>{p->id};
     if (!ref::world_script_seen(next.scripts, 97) && !event(next, 97))
         return Error::script_failed;
     if (!open(next, 83))

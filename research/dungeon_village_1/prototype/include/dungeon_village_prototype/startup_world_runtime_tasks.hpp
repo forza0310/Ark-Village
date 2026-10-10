@@ -9,9 +9,14 @@ namespace dungeon_village_prototype {
 std::optional<bool> startup_world_has_new_tasks(const StartupWorldRuntimeState &state);
 // 玩家显式打开任务列表/操作栈顶页；不自动接任务，不绕过征集、费用或出发动画。
 StartupWorldRuntimeError open_startup_world_runtime_task_menu(StartupWorldRuntimeState &state);
-// 原冒险页4的已证任务中止入口；普通任务目录入口不替玩家选择中止。
+// 原冒险页4入口由导航菜单维护；不替玩家选择任务或中止。
 StartupWorldRuntimeError
 open_startup_world_runtime_task_control_menu(StartupWorldRuntimeState &state);
+// 仅供已验证raw4执行锚调用：无任务开22；有任务严格58→事件62→26，再退休菜单。
+StartupWorldRuntimeError open_startup_world_runtime_task_tracking(StartupWorldRuntimeState &state);
+// raw58每轮读取当前任务并平移镜头，不接受确认跳过。
+std::optional<StartupWorldRuntimeState> update_startup_world_runtime_task_tracking_page(
+    const StartupWorldRuntimeState &state, std::uint64_t page);
 std::optional<StartupWorldRuntimeState>
 update_startup_world_runtime_task_control_page(const StartupWorldRuntimeState &state,
                                                std::uint64_t page);

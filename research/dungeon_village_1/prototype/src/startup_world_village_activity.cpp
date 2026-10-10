@@ -1,5 +1,6 @@
 // 村办51—54的唯一Owner消费者：页面、资源、人物效果与共同随机整轮提交。
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_expansion.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
@@ -285,11 +286,12 @@ bool finish(State &s, std::uint64_t page, const ref::WorldVillageActivityDefinit
 
 Error open_startup_world_village_activities(State &s) {
     const auto p = top(s);
-    if (!s.rules || !p || p->kind != ref::WorldScriptPageKind::scene || s.scene.scene_state != 0 ||
+    const bool menu = startup_world_menu_callback(s, 7);
+    if (!s.rules || !p || (!menu && p->kind != ref::WorldScriptPageKind::scene) || s.scene.scene_state != 0 ||
         s.scene.framework_paused)
         return Error::invalid_page;
     auto next = s;
-    next.scripts.executing_page = p->id;
+    next.scripts.executing_page = menu ? s.scripts.executing_page : std::optional<std::uint64_t>{p->id};
     if (!open(next, 51))
         return Error::script_failed;
     next.scripts.executing_page.reset();

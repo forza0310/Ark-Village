@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_prototype/startup_world_tax.hpp"
@@ -332,8 +333,16 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
     if (state.scene.framework_paused || top == state.scripts.pages.rend() || top->id != id ||
         top->kind == ref::WorldScriptPageKind::scene)
         return Error::invalid_page;
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 58)
+        return Error::invalid_page; // 镜头页由真实逐帧跟踪收尾，确认不提前关闭。
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
-        (top->legacy_page == 9 || (top->legacy_page >= 34 && top->legacy_page <= 39))) {
+        (top->legacy_page == 3 || top->legacy_page == 4 || top->legacy_page == 7 || top->legacy_page == 10)) {
+        StartupWorldMenuInput input;
+        input.confirm = true;
+        return input_startup_world_menu_page(state, id, input);
+    }
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 9 || (top->legacy_page >= 34 && top->legacy_page <= 40))) {
         StartupInformationInput input;
         input.confirm = true;
         return input_startup_world_information_page(state, id, input);
@@ -502,7 +511,18 @@ Error cancel_startup_world_runtime_page(State &state, std::uint64_t id) {
                                        [](const auto &p) { return p.lifecycle != 4; });
     if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
         catalogue->kind == ref::WorldScriptPageKind::raw_page &&
-        (catalogue->legacy_page == 9 || (catalogue->legacy_page >= 34 && catalogue->legacy_page <= 39))) {
+        (catalogue->legacy_page == 3 || catalogue->legacy_page == 4 ||
+         catalogue->legacy_page == 7 || catalogue->legacy_page == 10)) {
+        StartupWorldMenuInput input;
+        input.cancel = true;
+        return input_startup_world_menu_page(state, id, input);
+    }
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        catalogue->kind == ref::WorldScriptPageKind::raw_page && catalogue->legacy_page == 58)
+        return Error::invalid_page;
+    if (catalogue != state.scripts.pages.rend() && catalogue->id == id &&
+        catalogue->kind == ref::WorldScriptPageKind::raw_page &&
+        (catalogue->legacy_page == 9 || (catalogue->legacy_page >= 34 && catalogue->legacy_page <= 40))) {
         StartupInformationInput input;
         input.cancel = true;
         return input_startup_world_information_page(state, id, input);
@@ -623,15 +643,27 @@ Error act_startup_world_runtime_rank_page(State &state, std::uint64_t id, int se
 }
 
 std::optional<State> update_startup_world_runtime_page(const State &state) {
-    if (state.scene.framework_paused)
+    if (state.scene.framework_paused) {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                      [](const auto &p) { return p.lifecycle != 4; });
+        if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
+            (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
+             page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
+            return {};
         return state;
+    }
     const auto top = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
                                   [](const auto &p) { return p.lifecycle != 4; });
     if (top == state.scripts.pages.rend() || top->kind == ref::WorldScriptPageKind::scene)
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
-        (top->legacy_page == 9 || (top->legacy_page >= 34 && top->legacy_page <= 39)))
+        (top->legacy_page == 3 || top->legacy_page == 4 || top->legacy_page == 7 || top->legacy_page == 10))
+        return update_startup_world_menu_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page &&
+        (top->legacy_page == 9 || (top->legacy_page >= 34 && top->legacy_page <= 40)))
         return update_startup_world_information_page(state, top->id);
+    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 58)
+        return update_startup_world_runtime_task_tracking_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 33)
         return update_startup_world_runtime_deadline_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 74 &&
@@ -650,8 +682,6 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 24 || top->legacy_page == 28))
         return update_startup_world_runtime_task_page(state, top->id, state.page_confirm_held);
-    if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 4)
-        return update_startup_world_runtime_task_control_page(state, top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 90 || top->legacy_page == 98))
         return update_startup_world_tax_page(state, top->id);

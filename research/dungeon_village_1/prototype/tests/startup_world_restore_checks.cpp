@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_commerce.hpp"
 
@@ -27,6 +28,157 @@ int check_startup_world_restore_contracts(
             throw std::runtime_error(std::string("restore fixture ") + scenario + ": " + reason);
     };
     expect(baseline, true, "natural baseline");
+    {
+        auto tracking = baseline;
+        // 当前任务已消失但镜头页尚未获准更新的合法短边界；下一轮自行退休。
+        r::WorldScriptPage page;
+        page.id = tracking.scripts.next_page_id++;
+        page.kind = r::WorldScriptPageKind::raw_page;
+        page.legacy_page = 58;
+        tracking.scripts.pages.front().lifecycle = 3;
+        tracking.scripts.pages.push_back(page);
+        tracking.page_counters.emplace(page.id, 0);
+        expect(tracking, true, "58 pending real update with no current task retains counter");
+        tracking.page_counters.erase(page.id);
+        expect(tracking, false, "58 missing mandatory counter rejects before installation");
+    }
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore navigation menu: ") + scenario);
+        };
+        auto menu = baseline;
+        require(p::open_startup_world_main_menu(menu) == p::StartupWorldRuntimeError::none,
+                "actual raw3 entry");
+        const auto id = menu.scripts.pages.back().id;
+        expect(menu, true, "raw3 pending initialization");
+        auto initialized = p::prepare_startup_world_runtime(menu);
+        require(initialized.candidate.has_value(), "framework initializes real menu");
+        menu = std::move(*initialized.candidate);
+        expect(menu, true, "raw3 initialized with source position and cached row");
+        const auto wire = p::persistence_detail::encode_state(menu);
+        const auto restored = p::persistence_detail::decode_state(wire, *menu.rules);
+        expect(restored, true, "raw3 exact restore");
+        require(p::persistence_detail::encode_state(restored) == wire &&
+                    restored.menu_page_data.at(id).tags == menu.menu_page_data.at(id).tags &&
+                    restored.menu_page_positions == menu.menu_page_positions,
+                "menu payload and original positions are serialized rather than reinitialized");
+        for (int fault = 0; fault < 8; ++fault) {
+            auto bad = restored;
+            if (fault == 0) bad.menu_page_data.erase(id);
+            if (fault == 1) bad.menu_page_positions.erase(id);
+            if (fault == 2) bad.menu_page_data.at(id).selection = -1;
+            if (fault == 3) bad.menu_page_data.at(id).tags.clear();
+            if (fault == 4) bad.menu_page_data.at(id).parent = bad.scripts.next_page_id;
+            if (fault == 5) bad.main_menu_selection = (bad.menu_page_data.at(id).selection + 1) % 5;
+            if (fault == 6) bad.menu_page_data.emplace(bad.scripts.next_page_id, bad.menu_page_data.at(id));
+            if (fault == 7) bad.menu_page_positions.emplace(bad.scripts.pages.front().id, std::array<int,2>{});
+            expect(bad, false, "menu rejects missing data, wrong row/parent/cache or orphaned position");
+            if (fault < 4) {
+                bad.scene.framework_paused = true;
+                const auto before = p::persistence_detail::encode_state(bad);
+                require(!p::prepare_startup_world_runtime(bad).candidate &&
+                            !p::update_startup_world_runtime_page(bad) &&
+                            p::persistence_detail::encode_state(bad) == before,
+                        "paused initialized menu rejects missing source without repair");
+            }
+        }
+        require(p::retire_startup_world_menu_pages(menu), "retire actual navigation menu");
+        menu.main_menu_selection = (menu.menu_page_data.at(id).selection + 1) % 5;
+        expect(menu, true, "retiring raw3 retains old choice independently of later global cache");
+        auto cleaned = p::prepare_startup_world_runtime(menu);
+        require(cleaned.candidate && cleaned.candidate->menu_page_data.count(id) == 0 &&
+                    cleaned.candidate->menu_page_positions.count(id) == 0,
+                "framework Finish releases menu payload and original position");
+    }
+    {
+        const auto require = [&](bool valid, const char *scenario) {
+            ++checks;
+            if (!valid) throw std::runtime_error(std::string("restore navigation child: ") + scenario);
+        };
+        const auto tick = [&](auto &state) {
+            auto result = p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(), "actual framework admission");
+            state = std::move(*result.candidate);
+        };
+        const auto select_menu = [&](auto &state, int tag, bool english) {
+            const auto id = state.scripts.pages.back().id;
+            const auto &tags = state.menu_page_data.at(id).tags;
+            const auto row = std::find(tags.begin(), tags.end(), tag);
+            require(row != tags.end(), "actual frozen menu contains target tag");
+            p::StartupWorldMenuInput select;
+            select.select_row = static_cast<int>(row - tags.begin());
+            require(p::input_startup_world_menu_page(state, id, select) == p::StartupWorldRuntimeError::none,
+                    "select real parent row");
+            p::StartupWorldMenuInput confirm;
+            confirm.confirm = true; confirm.english = english;
+            require(p::input_startup_world_menu_page(state, id, confirm) == p::StartupWorldRuntimeError::none,
+                    "confirm real parent row");
+        };
+        auto information = baseline;
+        require(p::open_startup_world_main_menu(information) == p::StartupWorldRuntimeError::none, "open3");
+        tick(information);
+        select_menu(information, 5, true);
+        const auto menu = information.scripts.pages.back().id;
+        require(information.scripts.pages.back().legacy_page == 9, "tag5 opens9");
+        for (int initialized = 0; initialized < 2; ++initialized) {
+            const auto wire = p::persistence_detail::encode_state(information);
+            const auto restored = p::persistence_detail::decode_state(wire, *information.rules);
+            expect(restored, true, "actual3-to9 pending/initialized position roundtrip");
+            require(p::persistence_detail::encode_state(restored) == wire,
+                    "restored raw9 retains parent position without reconstructing it");
+            for (int fault = 0; fault < 3; ++fault) {
+                auto bad = restored;
+                if (fault == 0) bad.menu_page_positions.erase(menu);
+                if (fault == 1) ++bad.menu_page_positions.at(menu)[0];
+                if (fault == 2) ++bad.menu_page_positions.at(menu)[1];
+                expect(bad, false, "real3-to9 missing or mismatched stored child position");
+            }
+            if (initialized == 0) tick(information);
+        }
+        auto direct = baseline;
+        require(p::open_startup_world_information_menu(direct) == p::StartupWorldRuntimeError::none,
+                "explicit scene shortcut remains available");
+        direct.menu_page_positions.emplace(direct.scripts.pages.back().id, std::array<int,2>{96,109});
+        expect(direct, false, "scene shortcut cannot forge a stored raw3 child position");
+
+        auto gifts = baseline;
+        require(p::open_startup_world_navigation_submenu(gifts, 4) == p::StartupWorldRuntimeError::none, "open4");
+        tick(gifts);
+        select_menu(gifts, 9, false);
+        const auto directory = gifts.scripts.pages.back().id;
+        require(gifts.scripts.pages.back().legacy_page == 40, "tag9 opens actual gift directory40");
+        tick(gifts);
+        for (int n = 0; n < 16; ++n) {
+            const auto active = std::find_if(gifts.scripts.pages.rbegin(), gifts.scripts.pages.rend(),
+                                            [](const auto &page) { return page.lifecycle != 4; });
+            require(active != gifts.scripts.pages.rend(), "gift tutorial has active page");
+            if (active->id == directory && active->lifecycle == 2) break;
+            if (active->id != directory)
+                require(active->kind == r::WorldScriptPageKind::dialogue &&
+                            p::acknowledge_startup_world_runtime_page(gifts, active->id) == p::StartupWorldRuntimeError::none,
+                        "98 returns through real dialogue consumer");
+            tick(gifts);
+        }
+        p::StartupInformationInput confirm; confirm.confirm = true;
+        require(p::input_startup_world_information_page(gifts, directory, confirm) == p::StartupWorldRuntimeError::none,
+                "40 selects person and opens64");
+        const auto child = gifts.scripts.pages.back().id;
+        const int human = gifts.page_human_bindings.at(child);
+        const auto other = std::find_if(gifts.rules->humans.begin(), gifts.rules->humans.end(),
+                                        [&](const auto &h) { return h.identity != human; });
+        require(other != gifts.rules->humans.end(), "source provides a distinct valid definition");
+        for (int initialized = 0; initialized < 2; ++initialized) {
+            const auto wire = p::persistence_detail::encode_state(gifts);
+            const auto restored = p::persistence_detail::decode_state(wire, *gifts.rules);
+            expect(restored, true, "actual40-to64 pending/initialized parent binding roundtrip");
+            require(p::persistence_detail::encode_state(restored) == wire, "40-to64 exact payload roundtrip");
+            auto bad = restored;
+            bad.page_human_bindings.at(child) = other->identity;
+            expect(bad, false, "64 cannot change to another existing person behind frozen40 selection");
+            if (initialized == 0) tick(gifts);
+        }
+    }
     {
         auto stale=baseline;
         const auto inn=std::find_if(stale.scene.world.world.facilities.begin(),stale.scene.world.world.facilities.end(),

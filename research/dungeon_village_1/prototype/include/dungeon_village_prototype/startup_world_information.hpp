@@ -28,7 +28,7 @@ struct StartupInformationPageView {
     int frame{};
     std::array<StartupInformationEntry, 5> entries;
     std::optional<StartupIncomeInformation> income;
-    int selection{}, first_visible{}; // raw35/37/38当前列表，selection_or_period仍为页签。
+    int selection{}, first_visible{}; // raw35/37/38/40当前列表，selection_or_period仍为页签。
     std::optional<std::vector<StartupItemInformation>> items;
     std::optional<StartupEquipmentInformation> equipment;
     std::optional<std::vector<StartupHumanInformation>> humans;
@@ -36,8 +36,11 @@ struct StartupInformationPageView {
     std::string village_name; // 34读取实际应用安装到Owner的村名，不借最高资金纪录名称。
     std::optional<std::vector<StartupFacilityInformation>> facilities;
 };
-// 稳定scene是维护主菜单适配入口；实际raw3父页也可进入，不伪造主菜单页。
-StartupWorldRuntimeError open_startup_world_information_menu(StartupWorldRuntimeState &state);
+// 稳定scene是维护适配入口；raw3须由已验证执行锚进入，保存实际父位置与行号。
+StartupWorldRuntimeError open_startup_world_information_menu(StartupWorldRuntimeState &state,
+                                                             bool english = false);
+// 原raw4赠礼入口40；仅接受已验证的真实raw4执行锚，不借装备目录38。
+StartupWorldRuntimeError open_startup_world_present_directory(StartupWorldRuntimeState &state);
 // 仅栈顶生命周期2接受动作；不支持的子页显式拒绝并保留完整Owner。
 StartupWorldRuntimeError input_startup_world_information_page(
     StartupWorldRuntimeState &state, std::uint64_t page, const StartupInformationInput &input);

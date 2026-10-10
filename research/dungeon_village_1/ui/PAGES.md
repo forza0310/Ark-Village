@@ -313,7 +313,7 @@ S001五项菜单与默认结构相符；“五项对七标签”不能单独证�
 
 ### Steam主菜单缓存、输入与局部皮肤
 
-2026-10-10交叉固定Steam2.56实际GameAssembly与APK。正式只读入口为[steam_main_menu_skin](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)，复用应用库与现visuals套件；任务NEW与建设缓存已有Owner字段及局部消费者，真实raw3 Owner及其Init刷新仍未接入，不能把场景快捷入口当raw3。下列地址是固定样本VA，RVA另标，不是窗口运行地址。
+2026-10-10交叉固定Steam2.56实际GameAssembly与APK。正式只读入口为[steam_main_menu_skin](../prototype/include/dungeon_village_prototype/steam_main_menu_skin.hpp)，真实Owner入口为[startup_world_menu](../prototype/include/dungeon_village_prototype/startup_world_menu.hpp)。任务NEW、建设缓存、raw3 Init刷新与3／4／7／9／10父菜单链已有维护消费者；场景快捷入口仍分别保留，不当作原菜单身份。下列地址是固定样本VA，RVA另标，不是窗口运行地址。
 
 `GameForm.Init`在`102FA951–102FA969`缓存`SubForm(3,0,25)`；构造在`1032EA88`置选择0。重开复用缓存，`FormManager.<Push>b__0`在`107F2768–107F2778`把不在栈内的页设生命周期0，随后重新Init。`MyFormBase.Init`（RVA `2008A0`）、`SubForm.Init`公共段及raw3分支不重设选择／x／y；frame清0，`10315176–10315224`刷新建设NEW缓存，重建`0,1,2,(flag1?3),5,6`并请求内部光标跳转。被子菜单覆盖后恢复不重新Init。重开保留的是**行号**，解锁插入tag3后不按旧tag重新定位；缺载荷／非法行必须显式拒绝。
 
@@ -347,18 +347,18 @@ raw4／7／9／10位置为`xChild=xParent+68+(En?28:0)`、`yChild=yParent+28×�
 
 **NEW的真实来源。** raw3局部`10309543–1030986C`：建设读Init刷新后的三类aY任一；冒险为任务实例j任一且没有选中任务，否则装备`p!=0&&r`画GET；村办为`flag16&&(商品未阅||设施未阅)`或可举办活动NEW；情报为人物`p!=0&&r`；开发仅flag2。raw3 Init只刷新建设aY／定义P，不清r；21选中定义才先清该定义r再刷新P／aY，商会O另行维护。任务j构造置true且原档保存，22确认／返回／追踪三个出口才清，不能以任务数量、瞬态created_task或入页动作代替。原商会未阅设施过滤p!=2与维护已批准p0策略分别登记。
 
-维护任务实例现持`newly_available`，`startup_world_has_new_tasks`按当前task_order查询；raw22确认／取消在候选上清**操作当时完整task_order**，不只清入页冻结X，不改不在名单中的保留历史对象，后续拒绝不提交清标志。追踪出口仍未接。建设`facility_build_present`与`build_category_new`初始全false，由`refresh_startup_world_build_notices`原子刷新：所有真实设施实例先标P，再由开放非零、flag4、kind2／3且无P的定义按tab置三类aY；住宅／道路不贡献类别NEW。raw21普通及道路定义选择先清r再刷新，放置／撤除不自动刷新，陈旧P／aY合法；实际raw3初始化消费者仍待接。`steam_main_menu_notices`只读这些字段及其它已核NEW资格供局部皮肤使用，不隐式刷新缓存。字段保存边界见[存取模块](../prototype/PERSISTENCE.md)，本批验证尚待集中收口。
+维护任务实例现持`newly_available`，`startup_world_has_new_tasks`按当前task_order查询；raw22确认／取消在候选上清**操作当时完整task_order**，不只清入页冻结X，不改不在名单中的保留历史对象，后续拒绝不提交清标志。22软追踪出口仍未接。建设`facility_build_present`与`build_category_new`初始全false，由`refresh_startup_world_build_notices`原子刷新：所有真实设施实例先标P，再由开放非零、flag4、kind2／3且无P的定义按tab置三类aY；住宅／道路不贡献类别NEW。raw21普通及道路定义选择先清r再刷新，放置／撤除不自动刷新，陈旧P／aY合法；真实raw3 Init现也调用同一刷新。`steam_main_menu_notices`只读这些字段及其它已核NEW资格供局部皮肤使用，不隐式刷新缓存。字段保存边界见[存取模块](../prototype/PERSISTENCE.md)，NEW批已验，真实菜单与窗口接线的本批范围见[当前验证](../VERIFICATION.md)。
 
 **期间显示与真正处理分开。** APK `c/n.l:4589`及Steam `IsOpenMPotDevelWindow`（RVA `2E0260`）取日期差与n1较小值，整数映射到百分比后逐一检查n7..10的整数产出，首个正值才返回期间；全0返回0，没有真正process的满容量补1。[只读查询](../prototype/include/dungeon_village_prototype/startup_world_magic_pot.hpp)复用Owner的13槽和日期，不写壶或计数。期间P初0、英语28、JP覆盖10；依次画common2/image0于`(dx+69+P,Y+4)`、SEB15期间数字于`(dx+104+P,Y+10)`、SEB76/frame5斜线于`(dx+112+P,Y+10)`、SEB15的**n1分母**于`(dx+128+P,Y+10)`，数字padding0／anchor2。SEB15是Steam number08/image105，不是SEB12的number05；分母不是壶容量。
 
 局部行绘制后还有[HUD及任务摘要](INFORMATION_MENU.md#菜单右上hud与四行摘要)、一次性内部光标消费；`_draw`在`10356CC9`调用helper后，按`sysSave_.i[9]==1`调用平台Review，再注册KEYCLICK `(4,22,flag2)`。系统index9是OPEN_HIGHSPEED，**不是index16的REVIEW字段**。本批纯计划只交付上表行及其触摸，不消费光标，也不借raw9页面查询冒充raw3完整HUD宿主；Review后端、完整字体／多页输入与原窗口动态仍未认证。
 
-**下一控制器的已核边界。** 缓存raw3选择／存储位置独立于活跃页面载荷；原对象长期保留，维护稳定页ID是否重用不是原对象身份规则。Init仅刷P/aY、重建目录并清展开帧，子页返回不重新Init。公共Update先增frame，FrameMenu再增并封顶3，通常0→2→3；helper取消置结果−1并Pop本页，raw3仍继续检查软3／5。真正“退休全部菜单”按`d/a.java:545`／Steam `RemoveAllMenuForms` RVA `25FDC0`逆序，只收Form ID4的raw `{3,4,5,7,10,20,9,8}`，不清整个页栈。当前scene的`common_menu_gate`仍无raw3消费者；快捷入口不替代以下父菜单链。
+**控制器的已核边界。** 缓存raw3选择／存储位置独立于活跃页面载荷；原对象长期保留，维护重开用新稳定页ID，退休身份不复用，不能声称原对象也如此。Init仅刷P/aY、重建目录并清展开帧，子页返回不重新Init。公共Update先增frame，FrameMenu再增并封顶3，通常0→2→3；helper局部无直接音效调用，不猜补1／2。取消置结果−1并Pop本页，raw3仍继续检查软3／5；维护缺这两种应用／平台消费者时拒绝整个输入，不把两个原Pop请求归并。真正“退休全部菜单”按`d/a.java:545`／Steam `RemoveAllMenuForms` RVA `25FDC0`逆序，只收Form ID4的raw `{3,4,5,7,10,20,9,8}`，不清整个页栈。scene的`common_menu_gate`、Session及Application现接真实raw3和菜单输入。
 
 | 父菜单 | 已核条目及结果 | 维护接线限制 |
 | --- | --- | --- |
-| raw4冒险 | APK Init：flag4才列tag7、当前任务非空列tag8、始终tag9。7无当前任务→22；有任务先58→事件62(任务名)→26。8→中止询问；9→40。非询问结果退休菜单 | 当前4仅有中止／返回消费者，且快捷入口要求任务；完整原4无任务也能进入。中止成功需在有raw3父时退休菜单集合，不能只关4 |
-| raw7村办 | APK Init：flag8列tag10→48(mode1)，flag16列tag11→按需事件97→83，始终tag12→51；确认后退休菜单 | 已有晋级／商会／活动消费者需经真实7分派，不按快捷入口反推父菜单选择 |
+| raw4冒险 | APK Init：flag4才列tag7、当前任务非空列tag8、始终tag9。7无当前任务→22；有任务先58→事件62(任务名)→26。8→中止询问；9→40。非询问结果退休菜单 | 已接无当前任务的真实4、任务跟踪／中止与40赠礼目录；中止是答先公共加一后直接退休集合，跳过FrameMenu，其退休frame可为4 |
+| raw7村办 | APK Init：flag8列tag10→48(mode1)，flag16列tag11→按需事件97→83，始终tag12→51；确认后退休菜单 | 已经真实7分派到原晋级／商会／活动消费者；事件先插页后仍借原执行锚创建目标，晚期失败整候选撤销 |
 | raw9情报 | 固定tags `15,14,16,17,18`→raw `35,34,36,37,38`；确认退休菜单、返回仅关9 | 已接raw3父资格及退休集合，父存储位置仍待接 |
 | raw10系统 | **Steam Init tags `20,21,22,23,24`；APK为`20,21,22,23,28`** | Steam最后一行结束游戏，不能增加未生成的tag28回标题；raw10用DrawMenu2(type1)／ID9，不用raw3 type0／ID8 |
 
@@ -367,6 +367,10 @@ Steam raw10证据：`SubForm.Init` RVA `312460`在VA `10314FF2–1031502C`写五
 tag24在`1032772D–10327764`创建“结束游戏”是／否询问，默认1、保留父菜单；后续`10327587–103275BF`消费dialog，结果0且dialogId不为99才调用`FormManager.RemoveAllForms()`并立即返回。结果非0清dialog引用后继续菜单，不重设选择。此局部不能直接认证进程关闭、立即存档或回标题，结束／保存上游须另核；id99及无菜单结果时软5的OpenBrowser属于独立平台请求，维护不自动打开。tag28代码虽仍在`103276ED–10327714`，Init不列28。`_draw`在`103531F7–10356CB6`分派raw10到DrawMenu2(type1)，沿用已核子菜单皮肤／测宽，不把主菜单图标与safe-left套入系统菜单。
 
 维护`steam_system_menu_skin`已给raw10五项的正式只读行计划，与raw9复用同一type1绘制循环；frame／selection由真实控制器提供，稳定帧须传五项实际测宽。保留缩源裁片、ID9基矩形、语言阈值、选中手形和共尾KEYCLICK；无NEW或分类图标。它不创建页面，不执行保存、纪录、配置、RankForm、结束或浏览器动作；HUD、内部光标、平台输入及外层软标签另接。[四条件例图](examples/steam-system-menu.png)直接消费正式计划与原素材，字体／中文词条为明确离线适配，不是原窗口动态。visuals定向0.80秒通过，Owner、schema及保存契约未变。
+
+维护菜单使用冻结tags而非每轮按当前flag重建；缓存仅与活跃3选择／位置同步，退休旧3可保留后来已改变的旧行。初始化后缺字段、错父、越界行与孤立载荷显式拒绝；精确恢复保留原目录、位置与帧，不再次刷新P/aY。普通世界无待Init菜单时不额外复制Owner。3→建设、冒险、村办、情报及魔法壶的副作用由唯一候选提交；raw10导航可用，五业务项仍因缺应用／平台消费者明确拒绝，不能用可关闭空页假装保存或结束成功。
+
+raw4的tag9为赠礼人物目录40，**不是装备情报38**。APK `b/g:10809–10822,12018–12062`及Steam Init `10313753–10313A7B`／Update `1032388A–10323C82`核全人物p非零原序、仅35重算贡献、40三页签及五行滚动、两种关闭清冻结X的NEW，40确认绑定所选人物到64并保留父40。首98说明与64首99说明均走真实对话返回，不以注入seen或通用关页跳过。58则按当前任务site地图投影加(30,−15)逐更新跟踪，无任务自动关闭，严格距离小于步长才直接对齐；沿既有56／57算法，确认／取消不能跳过，坏site拒绝。
 
 ## 设施详情的条件与字段
 

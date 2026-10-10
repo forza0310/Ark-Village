@@ -1163,6 +1163,7 @@ StartupWorldResourceUsage startup_world_resource_usage(const State &s) {
     r.retained_tasks = s.tasks.size();
     r.pages = s.scripts.pages.size();
     r.page_payloads = s.page_counters.size() + s.page_secondary_counters.size() +
+                      s.menu_page_data.size() + s.menu_page_positions.size() +
                       s.page_phases.size() + s.page_human_bindings.size() +
                       s.human_pages_initialized.size() + s.human_page_catalogs.size() +
                       s.equipment_page_catalogs.size() + s.human_page_selections.size() +

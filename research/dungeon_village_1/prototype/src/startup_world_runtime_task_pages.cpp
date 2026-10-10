@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -240,17 +241,80 @@ Error open_startup_world_runtime_task_menu(State &state) {
     return Error::none;
 }
 Error open_startup_world_runtime_task_control_menu(State &state) {
-    const auto *p = top(state);
-    if (!state.rules || state.scene.framework_paused || !p ||
-        p->kind != ref::WorldScriptPageKind::scene || !state.active_task)
+    return open_startup_world_navigation_submenu(state, 4);
+}
+
+Error open_startup_world_runtime_task_tracking(State &state) {
+    if (!state.rules || state.scene.framework_paused ||
+        !startup_world_menu_callback(state, 4))
         return Error::invalid_page;
     auto next = state;
-    next.scripts.executing_page = p->id;
-    if (!open(next, 4, state.active_task))
-        return Error::script_failed;
-    next.scripts.executing_page.reset();
+    if (next.active_task) {
+        if (!valid_task_reference(next, *next.active_task)) return Error::missing_source;
+        const auto &task = next.tasks.find(*next.active_task)->second;
+        const auto definition = std::find_if(next.rules->tasks.begin(), next.rules->tasks.end(),
+            [&](const auto &d) { return d.factory.identity == task.definition; });
+        if (definition == next.rules->tasks.end() || !task.site ||
+            !open(next, 58, next.active_task)) return Error::missing_source;
+        const auto event = ref::prepare_world_script(startup_world_runtime_catalog(),
+            startup_world_runtime_scripts(next), {62, definition->name, {}});
+        if (!event.candidate || !write_startup_world_runtime_scripts(next, event.candidate->state) ||
+            !open(next, 26, next.active_task)) return Error::script_failed;
+    } else {
+        for (const auto task : next.task_order)
+            if (!valid_task_reference(next, task)) return Error::missing_source;
+        const auto page = open(next, 22, {});
+        if (!page) return Error::script_failed;
+        next.task_page_lists[*page] = next.task_order;
+        if (next.task_order.empty()) {
+            const auto event = ref::prepare_world_script(startup_world_runtime_catalog(),
+                startup_world_runtime_scripts(next), {29, {}, {}});
+            if (!event.candidate || !write_startup_world_runtime_scripts(next, event.candidate->state) ||
+                !close(next, *page)) return Error::script_failed;
+        }
+    }
+    if (!retire_startup_world_menu_pages(next)) return Error::script_failed;
     state = std::move(next);
     return Error::none;
+}
+
+std::optional<State> update_startup_world_runtime_task_tracking_page(const State &state,
+                                                                    std::uint64_t id) {
+    const auto *page = top(state);
+    if (!state.rules || !page || page->id != id || page->legacy_page != 58 ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->lifecycle != 2)
+        return {};
+    if (state.scene.framework_paused) return state;
+    const auto counter = state.page_counters.find(id);
+    if (counter == state.page_counters.end() || counter->second < 0 ||
+        counter->second >= std::numeric_limits<int>::max()) return {};
+    ref::WorldScriptCameraFocusInput input;
+    input.page = id;
+    input.camera = state.camera;
+    input.previous_camera = state.previous_camera;
+    input.previous_velocity = state.camera_velocity;
+    if (state.active_task) {
+        if (!valid_task_reference(state, *state.active_task)) return {};
+        const auto &task = state.tasks.find(*state.active_task)->second;
+        const auto &map = state.scene.world.world.map;
+        if (!task.site || !ref::valid_legacy_map(map) || task.site->x < 0 || task.site->y < 0 ||
+            task.site->x >= map.width || task.site->y >= map.height) return {};
+        // 原h.j[y][x]是地图格投影，再偏移(30,-15)，与设施占地首格无关。
+        const auto x = static_cast<std::int64_t>(task.site->x);
+        const auto y = static_cast<std::int64_t>(task.site->y);
+        input.selected_task_view = std::array<float, 2>{
+            static_cast<float>((x + y) * 30 + 30), static_cast<float>((y - x) * 15)};
+    }
+    const auto result = ref::prepare_world_script_camera_focus(startup_world_runtime_scripts(state), input);
+    if (!result.candidate) return {};
+    auto next = state;
+    if (!write_startup_world_runtime_scripts(next, result.candidate->state)) return {};
+    next.page_counters.find(id)->second = (counter->second + 1) % std::numeric_limits<int>::max();
+    next.camera = result.candidate->camera;
+    next.previous_camera = result.candidate->previous_camera;
+    next.camera_velocity = result.candidate->velocity;
+    next.scripts.redraw_requested = true;
+    return next;
 }
 
 StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std::uint64_t id,
@@ -278,7 +342,8 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
             std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(), [&](const auto &v) {
                 return v.id == parent && v.lifecycle != 4 && v.legacy_page == 4;
             });
-        if (owner == next.scripts.pages.end() || next.task_abort_answers.count(parent) ||
+        if (owner == next.scripts.pages.end() || !valid_startup_world_menu_page(next, parent) ||
+            !next.menu_page_data.count(parent) || next.task_abort_answers.count(parent) ||
             !close(next, id))
             return {Error::invalid_page};
         next.task_abort_answers[parent] = selection;
@@ -287,17 +352,23 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
         return {};
     }
     if (raw == 4) {
+        if (!valid_startup_world_menu_page(next, id) || !next.menu_page_data.count(id))
+            return {Error::missing_source};
+        if (p->lifecycle != 2) return {Error::invalid_page};
         if (action == StartupWorldTaskAction::cancel) {
             if (!close(next, id))
                 return {Error::script_failed};
         } else if (action == StartupWorldTaskAction::request_abort) {
-            if (std::any_of(next.task_abort_questions.begin(), next.task_abort_questions.end(),
+            if (!next.active_task || !valid_task_reference(next, *next.active_task) ||
+                std::any_of(next.task_abort_questions.begin(), next.task_abort_questions.end(),
                             [&](const auto &q) { return q.second == id; }) ||
                 next.task_abort_answers.count(id))
                 return {Error::invalid_page};
             const auto question = open(next, 1, state.active_task);
             if (!question)
                 return {Error::script_failed};
+            for (auto &parent : next.scripts.pages)
+                if (parent.id == id) parent.lifecycle = 3;
             next.task_abort_questions[*question] = id;
             next.scripts.pages.back().paragraphs = {"要终止任务吗"};
         } else
@@ -387,6 +458,7 @@ std::optional<State> update_startup_world_runtime_task_control_page(const State 
     const auto *p = top(state);
     if (!p || p->id != id || p->legacy_page != 4 || state.scene.framework_paused)
         return {};
+    if (!valid_startup_world_menu_page(state, id) || !state.menu_page_data.count(id)) return {};
     auto next = state;
     next.scripts.executing_page = id;
     const auto answer = next.task_abort_answers.find(id);
@@ -412,7 +484,7 @@ std::optional<State> update_startup_world_runtime_task_control_page(const State 
             }
         }
         next.scripts.notices.push_back({26, -1, 80, "", "任务中止。街道人气<co=FF0E01>-10</co>"});
-        if (!close(next, id))
+        if (!retire_startup_world_menu_pages(next))
             return {};
     }
     next.task_abort_answers.erase(id);

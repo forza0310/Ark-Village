@@ -1,4 +1,5 @@
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -15,10 +16,10 @@ constexpr std::array<StartupInformationEntry, 5> entries{{
     {18, "装备一览", 38, true}}};
 bool information(const Page &page) {
     return page.kind == ref::WorldScriptPageKind::raw_page &&
-           (page.legacy_page == 9 || (page.legacy_page >= 34 && page.legacy_page <= 39));
+           (page.legacy_page == 9 || (page.legacy_page >= 34 && page.legacy_page <= 40));
 }
 bool directory(const Page &page) {
-    return page.legacy_page == 35 || page.legacy_page == 37 || page.legacy_page == 38 || page.legacy_page == 39;
+    return page.legacy_page == 35 || page.legacy_page == 37 || page.legacy_page == 38 || page.legacy_page == 39 || page.legacy_page == 40;
 }
 const Page *find_page(const State &s, std::uint64_t id) {
     const Page *found = nullptr;
@@ -37,7 +38,7 @@ const Page *top(const State &s) {
 }
 std::optional<std::vector<std::vector<int>>> lists(const State &s, int raw) {
     std::vector<std::vector<int>> result;
-    if (raw == 35) {
+    if (raw == 35 || raw == 40) {
         if (!s.rules) return {};
         result.emplace_back();
         for (const auto &human : s.rules->humans) {
@@ -45,7 +46,7 @@ std::optional<std::vector<std::vector<int>>> lists(const State &s, int raw) {
             if (presence == s.human_presence.end()) return {};
             if (presence->second != 0) result.back().push_back(human.identity);
         }
-        // 原贡献重算对空群体除零；维护显式拒绝，不生成假人物或空页提示。
+        // 35贡献重算及35/40循环选行都要求非空群体；维护拒绝，不生成假人物。
         if (result.front().empty()) return {};
     } else if (raw == 37) {
         const auto rows = startup_item_information(s);
@@ -69,6 +70,7 @@ bool payload(const State &s, const Page &page) {
     const auto counter = s.page_counters.find(page.id);
     const int last_phase = page.legacy_page == 9 ? 4 :
                           (page.legacy_page == 35 || page.legacy_page == 38) ? 3 :
+                          page.legacy_page == 40 ? 2 :
                           page.legacy_page == 36 ? 1 : 0;
     if (phase == s.page_phases.end() || counter == s.page_counters.end() ||
         phase->second < 0 || phase->second > last_phase || counter->second < 0 ||
@@ -89,10 +91,10 @@ bool payload(const State &s, const Page &page) {
         list_size = v.facilities.size();
     } else {
         const auto expected = lists(s, page.legacy_page);
-        // 当前维护页模态；35子页可改属性/职业但不改presence，冻结目录须完整一致。
+        // 当前维护页模态；35/40子页可改属性/职业但不改presence，冻结目录须完整一致。
         // 这是本消费者的恢复约束，不推断原程序所有异步路径都不会改共享定义。
         if (!expected || v.lists != *expected || !v.facilities.empty()) return false;
-        list_size = v.lists[page.legacy_page == 35 ? 0U : static_cast<std::size_t>(phase->second)].size();
+        list_size = v.lists[(page.legacy_page == 35 || page.legacy_page == 40) ? 0U : static_cast<std::size_t>(phase->second)].size();
     }
     if (v.selection < 0 || v.first_visible < 0) return false;
     if (list_size == 0)
@@ -142,25 +144,18 @@ bool event(State &s, int id) {
     return result.candidate && !result.candidate->inserted_pages.empty() &&
            write_startup_world_runtime_scripts(s, result.candidate->state);
 }
-bool push(State &s, int raw) {
+bool push(State &s, int raw, std::uint64_t *created = nullptr) {
     Page child;
     child.kind = ref::WorldScriptPageKind::raw_page;
     child.legacy_page = raw;
     child.title = raw == 9 ? "情报" : raw == 34 ? "村情报" : raw == 35 ? "冒险者" :
-                  raw == 36 ? "收支情报" : raw == 37 ? "持有物品" : raw == 38 ? "装备一览" : "设施收支一览";
+                  raw == 36 ? "收支情报" : raw == 37 ? "持有物品" : raw == 38 ? "装备一览" :
+                  raw == 40 ? "赠送礼物" : raw == 64 ? "装备与道具" : "设施收支一览";
     const auto result = ref::prepare_world_script_page(startup_world_runtime_scripts(s), child);
-    return result.candidate && result.candidate->inserted_pages.size() == 1 &&
-           write_startup_world_runtime_scripts(s, result.candidate->state);
-}
-bool menu_class(const Page &page) {
-    if (page.kind != ref::WorldScriptPageKind::raw_page)
-        return false;
-    switch (page.legacy_page) {
-    case 3: case 4: case 5: case 7: case 8: case 9: case 10: case 20:
-        return true; // 原b/g.e()；36/37/38均不在菜单类内。
-    default:
-        return false;
-    }
+    if (!result.candidate || result.candidate->inserted_pages.size() != 1 ||
+        !write_startup_world_runtime_scripts(s, result.candidate->state)) return false;
+    if (created) *created = result.candidate->inserted_pages.front().id;
+    return true;
 }
 void scroll(StartupInformationPageData &data, int rows) {
     if (data.first_visible > data.selection) data.first_visible = data.selection;
@@ -172,6 +167,28 @@ bool valid_startup_world_information_page(const State &s, std::uint64_t id) {
     const auto *page = find_page(s, id);
     if (!page || !information(*page) || page->lifecycle < 0 || page->lifecycle > 4)
         return false;
+    if (page->legacy_page == 9 && page->lifecycle != 4) {
+        const Page *parent = nullptr;
+        for (const auto &p : s.scripts.pages) {
+            if (p.id == id) break;
+            if (p.lifecycle != 4) parent = &p;
+        }
+        if (!parent || parent->lifecycle != 3) return false;
+        const auto position = s.menu_page_positions.find(id);
+        if (parent->kind == ref::WorldScriptPageKind::scene) {
+            if (position != s.menu_page_positions.end()) return false;
+        } else {
+            if (parent->kind != ref::WorldScriptPageKind::raw_page || parent->legacy_page != 3 ||
+                position == s.menu_page_positions.end()) return false;
+            const auto menu = inspect_startup_world_menu_page(s, parent->id);
+            if (!menu) return false;
+            const auto x = static_cast<std::int64_t>(menu->stored_position[0]) + 68;
+            const auto y = static_cast<std::int64_t>(menu->stored_position[1]) + 28LL * menu->selection;
+            // 未持久化语言；只接受原非英语/英语两种实际偏移，不用当前flag重建父目录。
+            if (position->second[1] != y ||
+                (position->second[0] != x && position->second[0] != x + 28)) return false;
+        }
+    }
     if (page->legacy_page == 39 && page->lifecycle != 4) {
         const Page *parent = nullptr;
         for (const auto &p : s.scripts.pages) {
@@ -234,6 +251,8 @@ bool initialize_startup_world_information_pages(State &s) {
         next.scripts.executing_page = id;
         // 事件可压新页并使vector重分配；后续只用ID，不能再引用旧page。
         if (empty_event && (!event(next, empty_event) || !close(next, id))) return false;
+        // APK b/g:10809：40与35共用原序人物目录，但仅35重算贡献；98仅40首次执行。
+        if (raw == 40 && !ref::world_script_seen(next.scripts, 98) && !event(next, 98)) return false;
         if (!valid_startup_world_information_page(next, id)) return false;
     }
     next.scripts.executing_page = executing;
@@ -241,21 +260,44 @@ bool initialize_startup_world_information_pages(State &s) {
     return true;
 }
 
-Error open_startup_world_information_menu(State &s) {
-    const auto *parent = top(s);
-    if (!s.rules || s.scene.framework_paused || !parent || parent->lifecycle != 2 ||
+Error open_startup_world_information_menu(State &s, bool english) {
+    const bool callback = startup_world_menu_callback(s, 3);
+    const auto *parent = callback ? find_page(s, *s.scripts.executing_page) : top(s);
+    if (!s.rules || s.scene.framework_paused || !parent || (!callback && parent->lifecycle != 2) ||
         !((parent->kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0) ||
-          (parent->kind == ref::WorldScriptPageKind::raw_page && parent->legacy_page == 3)))
+          callback))
         return Error::invalid_page;
     const auto id = parent->id;
+    std::optional<std::array<int, 2>> position;
+    if (callback) {
+        const auto menu = inspect_startup_world_menu_page(s, id);
+        if (!menu) return Error::missing_source;
+        const auto x = static_cast<std::int64_t>(menu->stored_position[0]) + 68 + (english ? 28 : 0);
+        const auto y = static_cast<std::int64_t>(menu->stored_position[1]) + 28LL * menu->selection;
+        if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max() ||
+            y < std::numeric_limits<int>::min() || y > std::numeric_limits<int>::max())
+            return Error::missing_source;
+        position = std::array<int, 2>{static_cast<int>(x), static_cast<int>(y)};
+    }
     auto next = s;
     next.scripts.executing_page = id;
     for (auto &page : next.scripts.pages)
         if (page.id == id)
             page.lifecycle = 3;
-    if (!push(next, 9))
+    std::uint64_t child{};
+    if (!push(next, 9, &child))
         return Error::script_failed;
+    if (position) next.menu_page_positions.emplace(child, *position);
     next.scripts.executing_page.reset();
+    s = std::move(next);
+    return Error::none;
+}
+
+Error open_startup_world_present_directory(State &s) {
+    if (!s.rules || s.scene.framework_paused || !startup_world_menu_callback(s, 4))
+        return Error::invalid_page;
+    auto next = s;
+    if (!push(next, 40)) return Error::script_failed;
     s = std::move(next);
     return Error::none;
 }
@@ -279,7 +321,7 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
             const auto &data = s.information_page_data.find(id)->second;
             const auto phase = s.page_phases.find(id)->second;
             const auto count = raw == 39 ? data.facilities.size() :
-                data.lists[raw == 35 ? 0U : static_cast<std::size_t>(phase)].size();
+                data.lists[(raw == 35 || raw == 40) ? 0U : static_cast<std::size_t>(phase)].size();
             if (static_cast<std::size_t>(*input.select_row) >= count)
                 return Error::invalid_page;
         }
@@ -310,13 +352,7 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
             // 先压真实目标，后逆序退休菜单；37空目录由后续Init处理。
             if (!push(next, entries[static_cast<std::size_t>(phase->second)].target_raw))
                 return Error::script_failed;
-            std::vector<std::uint64_t> retiring;
-            for (auto p = next.scripts.pages.rbegin(); p != next.scripts.pages.rend(); ++p)
-                if (p->lifecycle != 4 && menu_class(*p))
-                    retiring.push_back(p->id);
-            for (const auto closing : retiring)
-                if (!close(next, closing))
-                    return Error::script_failed;
+            if (!retire_startup_world_menu_pages(next)) return Error::script_failed;
         } else if (input.cancel || input.left) {
             if (!close(next, id))
                 return Error::script_failed;
@@ -355,7 +391,7 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
             phase->second = (phase->second + 1) % 2;
         if ((input.confirm || input.cancel) && !close(next, id))
             return Error::script_failed;
-    } else if (raw == 35) {
+    } else if (raw == 35 || raw == 40) {
         auto &data = next.information_page_data.find(id)->second;
         const auto &humans = data.lists.front();
         const int count = static_cast<int>(humans.size());
@@ -365,14 +401,27 @@ Error input_startup_world_information_page(State &s, std::uint64_t id,
             if (input.down) data.selection = data.selection == count - 1 ? 0 : data.selection + 1;
         }
         scroll(data, 5);
-        // 35先上下/滚动、再独立左右；翻页不会重置同一人物目录的选择。
-        if (input.left) phase->second = (phase->second + 3) % 4;
-        if (input.right) phase->second = (phase->second + 1) % 4;
+        // 35/40先上下/滚动、再独立左右；翻页不会重置同一人物目录的选择。
+        const int pages = raw == 35 ? 4 : 3;
+        if (input.left) phase->second = (phase->second + pages - 1) % pages;
+        if (input.right) phase->second = (phase->second + 1) % pages;
         if (input.confirm || input.cancel) {
             if (!clear_human_notices(next, humans)) return Error::missing_source;
             if (input.confirm) {
-                if (!append_startup_world_human_detail_page(next, humans[data.selection], 1))
-                    return Error::script_failed;
+                if (raw == 35) {
+                    if (!append_startup_world_human_detail_page(next, humans[data.selection], 1))
+                        return Error::script_failed;
+                } else {
+                    const int human = humans[data.selection];
+                    if (!startup_world_human_details(next, human)) return Error::missing_source;
+                    for (auto &p : next.scripts.pages) if (p.id == id) p.lifecycle = 3;
+                    std::uint64_t child{};
+                    if (!push(next, 64, &child)) return Error::script_failed;
+                    next.page_human_bindings.emplace(child, human);
+                    next.page_phases.emplace(child, 0);
+                    next.page_counters.emplace(child, 0);
+                    next.human_page_selections.emplace(child, 0);
+                }
             } else if (!close(next, id)) return Error::script_failed;
         }
     } else {
@@ -447,7 +496,7 @@ inspect_startup_world_information_page(const State &s, std::uint64_t id) {
         if (page->legacy_page == 39) {
             view.facilities = startup_facility_information(s);
             if (!view.facilities) return {};
-        } else if (page->legacy_page == 35) {
+        } else if (page->legacy_page == 35 || page->legacy_page == 40) {
             view.humans.emplace();
             for (const int human : data.lists.front()) {
                 const auto details = startup_world_human_details(s, human);

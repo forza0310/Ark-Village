@@ -61,7 +61,7 @@ add_custom_command(OUTPUT "${PERSISTENCE_IDENTITY_CPP}"
 add_library(dungeon_village_startup_world src/startup_world_projection.cpp
     src/startup_world_codec.cpp src/startup_world_restore_validation.cpp
     src/startup_world_persistence.cpp src/startup_world_file_io.cpp "${PERSISTENCE_IDENTITY_CPP}"
-    src/startup_world_routes.cpp src/startup_world_runtime.cpp
+    src/startup_world_routes.cpp src/startup_world_runtime.cpp src/startup_world_menu.cpp
     src/startup_world_profile.cpp src/startup_world_inheritance.cpp
     src/startup_world_runtime_calendar.cpp src/startup_world_runtime_scene.cpp
     src/startup_world_runtime_focus.cpp
@@ -251,7 +251,7 @@ add_test(NAME dungeon_village_prototype.village COMMAND dungeon_village_village_
 
 add_executable(dungeon_village_prototype src/main.cpp src/asset_manifest.cpp src/startup_view.cpp ../tools/src/sprite.cpp)
 target_include_directories(dungeon_village_prototype PRIVATE include ../tools/include)
-target_link_libraries(dungeon_village_prototype PRIVATE dungeon_village_prototype_model dungeon_village_startup_world PkgConfig::RAYLIB)
+target_link_libraries(dungeon_village_prototype PRIVATE dungeon_village_prototype_model dungeon_village_startup_application PkgConfig::RAYLIB)
 target_compile_features(dungeon_village_prototype PRIVATE cxx_std_17)
 set_target_properties(dungeon_village_prototype PROPERTIES CXX_EXTENSIONS OFF)
 set_property(TARGET dungeon_village_prototype APPEND PROPERTY LINK_DEPENDS
@@ -296,6 +296,10 @@ add_custom_command(TARGET dungeon_village_prototype POST_BUILD
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/common"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/original/weapon"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/original/weapon"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/steam-common"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/steam-common"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/../assets/steam-facility-common"
+            "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/steam-facility-common"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_CURRENT_SOURCE_DIR}/../assets/MANIFEST.tsv"
             "$<TARGET_FILE_DIR:dungeon_village_prototype>/assets/MANIFEST.tsv"
     COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:dungeon_village_prototype>/data"

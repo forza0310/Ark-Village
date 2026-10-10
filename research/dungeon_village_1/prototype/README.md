@@ -10,7 +10,11 @@
 
 `steam_system_menu_skin`在[Steam菜单／情报模块](include/dungeon_village_prototype/steam_information_skin.hpp)提供raw10固定tags20～24的type1行计划，复用raw9源裁片、测宽、ID9和手形；纯函数不执行系统操作。Steam末项为结束游戏，APK末项回标题分开；[例图](../ui/examples/steam-system-menu.png)与[源合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)保留原字体／动态及保存、高分、退出等接线缺口。visuals定向0.80秒通过，无Owner或格式变化。
 
-[steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner；`steam_main_menu_notices`接任务实例j查询及建设aY/P缓存，raw22确认／取消清当前完整任务名单的j，raw21普通／道路定义选择显式刷新建设缓存。缓存初始false、允许陈旧、随完整Owner保存；真实raw3 Init与任务追踪出口仍缺，不能以数量或场景快捷入口补造。局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接；[完整局部合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列原版与维护边界。本批八项受影响短测55.66秒通过，字段schema已扩展、拒绝旧布局不迁移，世界5／应用8／系统2及128MiB不变。
+[steam_main_menu_skin](include/dungeon_village_prototype/steam_main_menu_skin.hpp)提供raw3五／六行的原图标、缩源展开、NEW／GET、独立魔法壶期间块及ID8基矩形，另给raw4／7／9／10父存储位置计算。期间数据由`startup_magic_pot_menu_information`只读Owner；`steam_main_menu_notices`接任务实例j查询及建设aY/P缓存，raw22确认／取消清当前完整任务名单的j，raw21普通／道路定义选择显式刷新建设缓存。缓存初始false、允许陈旧、随完整Owner保存；局部函数不消费光标、随机或输出，HUD／Review／KEYCLICK外层依原序另接。[完整合同](../ui/PAGES.md#steam主菜单缓存输入与局部皮肤)分列来源、当前接线与尚缺边界，不以场景快捷入口代替原菜单。
+
+[startup_world_menu](include/dungeon_village_prototype/startup_world_menu.hpp)维护真实raw3／4／7／10、冻结目录、父存储位置、缓存行号和菜单集合退休。Session／Application开放`open_main_menu`／`input_menu_page`；主场景门控也接真实3。3的Init才刷新P／aY，子页返回不重建，重开保留行号并分配新维护ID；任务进度接58→事件62→26，人物赠礼接40→64，村办接晋级／商会／活动，魔法壶保留父3。世界5／应用8／系统2与128MiB不变，新增字段布局拒旧不迁移。raw10目录可操作，但保存／纪录／配置／平台高分／结束与软快捷键缺应用消费者时显式拒绝；完整原触摸、字体和HUD调度另接。
+
+本批最终九项短测58.26秒通过，`--world --inspect-page world-menu/world-system/world-information --frames 8`三个入口各走真实导航并正常退出，截图已查看。验收及缺口见[当前验证](../VERIFICATION.md#真实导航菜单与任务镜头2026-10-10)；三个名称须分别传入，不把斜线写成单个参数。
 
 人物60基础委托位于[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)，复用现应用库和visuals套件。`steam_human_detail_skin(state,page,down_text_width)`读取已初始化Owner视图，返回奖章→人物／武器→血条和危险提示或倒下气泡的有序计划；100槽位置与16槽步帧独立，HP显示值／目标值及当前共享最大值分开。已挂起父页仍可只读投影，可绘制不等于可交互。数字绑定Steam差异PNG，倒下文字宽度由平台实测；4096像素是气泡维护输出预算，不是原游戏字符串上限。模块无raylib依赖，不新增持久字段，也不推进随机／计数／声音；完整scratch附加效果、字体和原窗口像素仍独立未验，来源见[人物表现合同](../ui/STEAM_HUMAN_PRESENTATION.md)。
 

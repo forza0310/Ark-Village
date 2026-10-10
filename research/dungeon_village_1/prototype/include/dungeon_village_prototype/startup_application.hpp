@@ -127,6 +127,8 @@ class StartupApplication {
                                                int selection = 0);
     std::string open_human_page(int human);
     std::string open_information_menu();
+    std::string open_main_menu();
+    std::string input_menu_page(std::uint64_t page, const StartupWorldMenuInput &input);
     std::string input_information_page(std::uint64_t page, const StartupInformationInput &input);
     std::string act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0);
     std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);

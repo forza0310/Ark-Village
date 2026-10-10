@@ -3,6 +3,7 @@
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
+#include "dungeon_village_prototype/startup_world_menu.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
 #include <fstream>
@@ -127,6 +128,7 @@ void management_bridges(const std::filesystem::path &root) {
     rejected([&]{return !app.act_magic_pot_page(1,StartupMagicPotAction::confirm).empty();});
     rejected([&]{return !app.open_task_menu().empty();});
     rejected([&]{return !app.open_information_menu().empty();});
+    rejected([&]{return !app.open_main_menu().empty();});
     good(app.request_new_game(0)); good(app.start_game());
     require(app.take_audio_requests()==std::vector<StartupAudioRequest>{
                 {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}},
@@ -250,7 +252,29 @@ void management_bridges(const std::filesystem::path &root) {
     error=expected.act_village_activity_page(activity,StartupVillageActivityAction::cancel);
     compare_command(app,expected,
         app.act_village_activity_page(activity,StartupVillageActivityAction::cancel),error);
-    rejected([&]{return !app.open_task_control_menu().empty();});
+    error=expected.open_task_control_menu();
+    compare_command(app,expected,app.open_task_control_menu(),error);
+    const auto adventure=top(*app.world())->id;
+    auto adventure_tick=expected.update();
+    compare_command(app,expected,app.update(),adventure_tick.error);
+    require(top(*app.world())->legacy_page==4 && !app.world()->state().active_task,
+            "real adventure menu is valid without selected task; source tag9 remains available");
+    rejected([&]{return !app.act_task_page(adventure,StartupWorldTaskAction::request_abort).error.empty();});
+    error=expected.cancel_page(adventure);
+    compare_command(app,expected,app.cancel_page(adventure),error);
+    error=expected.open_main_menu();
+    compare_command(app,expected,app.open_main_menu(),error);
+    const auto main_menu=top(*app.world())->id;
+    adventure_tick=expected.update();
+    compare_command(app,expected,app.update(),adventure_tick.error);
+    StartupWorldMenuInput menu_input;menu_input.down=true;
+    error=expected.input_menu_page(main_menu,menu_input);
+    compare_command(app,expected,app.input_menu_page(main_menu,menu_input),error);
+    require(app.world()->state().main_menu_selection==1,
+            "application forwards actual main menu input to sole world Owner");
+    menu_input={};menu_input.cancel=true;
+    error=expected.input_menu_page(main_menu,menu_input);
+    compare_command(app,expected,app.input_menu_page(main_menu,menu_input),error);
     error=expected.open_task_menu();
     compare_command(app,expected,app.open_task_menu(),error);
     const auto task_page=top(*app.world())->id;

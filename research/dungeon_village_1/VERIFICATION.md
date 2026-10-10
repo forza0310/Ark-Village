@@ -2,6 +2,12 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 设置与说明的两版消费边界2026-10-10
+
+续核APK raw12／13和Steam getter／setter／Update／Finish，结论合入[页面合同](ui/PAGES.md#设置12值所属与返回边界)及[原存档合同](rules/PERSISTENCE.md#设置返回的系统保存)：Steam非日文设置四行、APK五行分别处理；设置返回只写系统J，世界P12／P13不随之保存；键盘速度锁不能未经触摸准入分析推广给鼠标setter。确认脉冲的消费在APK源码与Steam机器码交叉，说明翻页不会用同一确认再关闭；Init抽取人物池与返回后重新初始化仍须保留共同随机顺序。
+
+主会话只读使用现有归档解析器在内存读取固定APK manual，并检查已提取Steam英／日正文；三者均29段、无空段，APK拆分函数保留空项及关于页追加另核。未导出新文本副本、日志／指纹或过程脚本，没有原程序运行、产品构建或C++功能变更；检查差异、引用及原方法地址，不重跑游戏测试。系统设置持久字段和平台输出仍属待设计能力，说明Owner／完整皮肤尚未实现，不以静态页数与setter存在称可操作窗口完成。并行只读任务已收齐。
+
 ## 研究窗口应用宿主与真实保存2026-10-10
 
 研究窗口新增显式`--application-root`及互斥的`--application-new/--application-load`栏位入口，先验证现存research/work子目录，新局拒绝非空及隐藏引用。私有variant只持应用或独立Session之一，所有写命令走同一应用Owner；默认Session保存预览保持。raw14实际保存当前manual，退出不补存，声音逐次静默消费；无新Owner字段、文件格式或target，世界5／应用8／系统2及128MiB保持。

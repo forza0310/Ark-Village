@@ -846,6 +846,13 @@ struct Validation {
     bool commerce_page(const Page &p) {
         const auto id = p.id;
         const int raw = p.legacy_page;
+        if (raw == 93) {
+            const auto presence = s.facility_presence.find(p.legacy_s);
+            if (p.legacy_r != 3 || !facilities.count(p.legacy_s) ||
+                presence == s.facility_presence.end() ||
+                !(presence->second == 0 || (p.lifecycle == 4 && presence->second == 2)))
+                return fail("commerce page: 领取设施身份或未开放资格非法");
+        }
         if (!s.commerce_pages_initialized.count(id))
             return p.lifecycle == 0 || fail("commerce page: 缺初始化标记");
         const auto v = get(s.commerce_page_data, id);
@@ -880,9 +887,9 @@ struct Validation {
                     return fail("commerce page: 列表条目没有可消费库存");
             } else {
                 const auto *d = facility_defs.find(definition)->second;
-                if (s.facility_presence.find(definition)->second == 2 || d->unlock_rank < 0 ||
+                if (s.facility_presence.find(definition)->second != 0 || d->unlock_rank < 0 ||
                     d->unlock_rank > s.rank)
-                    return fail("commerce page: 列表设施尚未开放");
+                    return fail("commerce page: 列表设施已开放或尚无售卖资格");
             }
         }
         return true;
@@ -924,6 +931,13 @@ struct Validation {
                 (p.legacy_page == 9 || (p.legacy_page >= 34 && p.legacy_page <= 39)) &&
                 !valid_startup_world_information_page(s, p.id))
                 return fail("information page: 初始化/页签/选择/计数载荷非法");
+            // 93领取后的关闭态仍保存交易载荷；不能以通用退休跳过掩盖重复领取资格。
+            // Finish全量清除后的退休对象可以无载荷，其它半清状态仍由同一消费者拒绝。
+            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == 93 &&
+                p.lifecycle == 4 && (s.commerce_pages_initialized.count(p.id) ||
+                s.commerce_page_data.count(p.id) || s.page_counters.count(p.id)) &&
+                !commerce_page(p))
+                return false;
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

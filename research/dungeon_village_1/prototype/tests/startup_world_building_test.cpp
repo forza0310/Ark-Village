@@ -6,6 +6,7 @@
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_inheritance.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
 
@@ -1618,7 +1619,7 @@ void commerce_definition_preview() {
               !s.facility_page_bindings.count(page) && !s.facility_page_neighbours.count(page) &&
               startup_world_facility_page_count(s, s.scripts.pages.back()) == 1,
           "preview retains only definition identity and has no artificial instance or neighbours");
-    for (int fault = 0; fault < 5; ++fault) {
+    for (int fault = 0; fault < 7; ++fault) {
         auto broken = s;
         if (fault == 0)
             broken.facility_definition_page_bindings.erase(page);
@@ -1635,10 +1636,13 @@ void commerce_definition_preview() {
             wrong.legacy_page = 83;
             broken.scripts.pages.insert(broken.scripts.pages.end() - 1, wrong);
         }
+        if(fault==5)broken.facility_presence.at(d)=1;
+        if(fault==6)broken.facility_presence.at(d)=2;
+        const auto digest=startup_world_state_digest(broken);
         check(
             !prepare_startup_world_runtime(broken).candidate &&
                 act_startup_world_facility_page(broken, page, StartupFacilityPageAction::confirm) !=
-                    StartupWorldRuntimeError::none,
+                    StartupWorldRuntimeError::none && startup_world_state_digest(broken)==digest,
             "damaged initialized definition preview explicitly refuses without map.at exceptions");
     }
     check(act_startup_world_facility_page(s, page, static_cast<StartupFacilityPageAction>(99)) ==
@@ -1662,6 +1666,49 @@ void commerce_definition_preview() {
     check(retired.candidate && !retired.candidate->facility_definition_page_bindings.count(page) &&
               retired.candidate->commerce_page_data.at(parent) == row,
           "definition preview payload retires on real framework update while85 selection survives");
+    s=*retired.candidate;
+    for(const int presence:{1,2}) {
+        auto unavailable=s;unavailable.facility_presence.at(d)=presence;
+        const auto digest=startup_world_state_digest(unavailable);
+        check(open_startup_world_facility_definition(unavailable,d)!=StartupWorldRuntimeError::none &&
+              startup_world_state_digest(unavailable)==digest,"p1/p2 cannot open a stale commerce definition preview");
+    }
+    // 同一真实85→93链只准备30村点；原5000G不注入，领取后真实放置三次。
+    const auto &list=s.commerce_page_lists.at(parent);
+    const auto drink=std::find(list.begin(),list.end(),34);
+    check(drink!=list.end() && s.facility_presence.at(34)==0,"cold drink34 remains an actual p0 commerce choice");
+    s.village_points=30;
+    check(act_startup_world_commerce_page(s,parent,StartupCommerceAction::select,
+              static_cast<int>(drink-list.begin()))==StartupWorldRuntimeError::none &&
+          act_startup_world_commerce_page(s,parent,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none,
+          "actual85 buys previously unavailable drink34 entitlement for30 points");
+    const auto reward=s.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(s) &&
+          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
+          act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)==StartupWorldRuntimeError::none &&
+          s.facility_presence.at(34)==2 && s.facility_free_builds.at(34)==1 && s.village_points==0,
+          "actual93 grants H1 and permanent p2 ordinary construction eligibility, not a free-building coupon");
+    const auto funds=s.scene.world.world.ai.accounting.funds();
+    const auto initial_count=s.scene.world.facility_order.size();
+    std::int64_t spent{};
+    for(int placement=0;placement<3;++placement) {
+        const auto quote=startup_world_build_quote(s,34);
+        check(quote && quote->construction_cost>0,
+              "all ordinary placements quote gold even after93 increments H");
+        const auto price=quote->construction_cost;
+        check(begin_startup_world_build(s,34).error==StartupWorldRuntimeError::none,
+              "claimed facility remains in ordinary build catalogue for repeat copies");
+        const auto built=confirm_startup_world_build(s,empty_anchor(s,34),ref::FacilityOrientation::first);
+        spent+=price;
+        check(built.created && s.facility_free_builds.at(34)==1 && s.facility_presence.at(34)==2 &&
+              s.village_points==0 && s.scene.world.facility_order.size()==initial_count+placement+1 &&
+              s.scene.world.world.ai.accounting.funds()==funds-spent &&
+              cancel_startup_world_build(s)==StartupWorldRuntimeError::none,
+              "three real ordinary placements charge gold every time, preserve H1 and never rebuy unlock");
+    }
+    const auto completed=startup_world_state_digest(s);
+    check(act_startup_world_commerce_page(s,reward,StartupCommerceAction::confirm)!=StartupWorldRuntimeError::none &&
+          startup_world_state_digest(s)==completed,"old93 cannot refund or increment H again after repeated gold construction");
 }
 } // namespace
 int main() {

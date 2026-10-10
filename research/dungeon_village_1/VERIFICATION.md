@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## 初始设施p2与商会一次图纸资格2026-10-10
+
+[商会交叉](rules/COMMERCE.md)定位实际初值错误：固定APK o.a→o.b及Steam TenantData.NewGame都令flags bit1设施p2，生成器却输出p1。已精准修正九定义18／24／28／30／31／33／35／45／66的生成初值，不改原表或人工p1夹具。原85仍是p!=2；维护另按用户已确认策略收紧为p0，目录、支付前、定义预览及恢复一致。93尚未初始化也验身份／p0，活页不接受已开放状态，领取退休态保留合法p2并拒绝半份载荷。
+
+单Release完整增量构建通过，最终七项有效短测合计47.84秒：application 12.11、routes 0.03、runtime 0.06、pages 2.38、building 1.89、persistence 31.28、data 0.09秒。固定九ID由独立oracle核编译后的85定义；真实85→93分时付款／领取、p1/p2过期拒绝与回滚、同输入恢复、目录退出及普通建筑三次金币放置均通过。建设保持H1，不将H字段名误解为免费券；只准备30村点条件，原5000G未注入。首轮存档外壳oracle仍写旧版本4，已按新协议改为5并保留、扩展旧1…4拒绝，单独复验通过；原有效断言未放宽。
+
+世界语义5／应用8明确拒旧，字段schema、系统格式2、128MiB预算和正常稳定场景政策保持；不迁移、退款或重签历史。新规则无额外Owner字段、资源、队列、target或自然Driver。目录／预览／领取载荷通过统一Finish释放，重复输入不能再扣点或补H；不宣称世界历史永久有界。构建／测试进程已退出，无本批后台工具或核对脚本产物。既存住宅三文件的在途改动保留；只收取持久测试中本批版本oracle及旧版拒绝两处变更，不夹带住宅CLI接线。产品玩家档／长跑／原窗口未由本批验证。
+
 ## 法术接触表现目标补正2026-10-10
 
 响应[产品最小复现](../../docs/reference/RESEARCH_REQUESTS.md#spell-contact-visual-target)，独立核`c/j.d`及[投射合同](rules/ai/CONTROL.md)：法术落地碰撞当轮先向实际接触者请求表现，再创建延迟伤害。维护转发此前误用尚空的damage_target；现4…9从step.spawned.original_target取目标，箭／真正伤害和无目标地效22保持。

@@ -96,7 +96,9 @@ bool payload(const State &s, const Page &p) {
                item_state(s, v[4]);
     if (raw == 93)
         return v[2] == 0 && v[3] == 0 && v[4] == p.legacy_s && p.legacy_r == 3 &&
-               facility_state(s, v[4]);
+               facility_state(s, v[4]) &&
+               (s.facility_presence.at(v[4]) == 0 ||
+                (p.lifecycle == 4 && s.facility_presence.at(v[4]) == 2));
     const auto list = s.commerce_page_lists.find(p.id);
     if (list == s.commerce_page_lists.end() || list->second.empty() || v[4] != -1 ||
         list->second.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()))
@@ -114,7 +116,7 @@ bool payload(const State &s, const Page &p) {
             if (!item_state(s, id) ||
                 (v[0] == 0 ? s.shop_item_stock.at(id).quantity : s.items.at(id).inventory) <= 0)
                 return false;
-        } else if (!facility_state(s, id) || s.facility_presence.at(id) == 2 ||
+        } else if (!facility_state(s, id) || s.facility_presence.at(id) != 0 ||
                    facility(s, id)->unlock_rank < 0 || facility(s, id)->unlock_rank > s.rank)
             return false;
     }
@@ -148,7 +150,8 @@ bool initialize(State &s, const Page &p) {
         for (const auto &d : s.rules->facilities) {
             if (!facility_state(s, d.id))
                 return false;
-            if (s.facility_presence.at(d.id) != 2 && d.unlock_rank != -1 && d.unlock_rank <= s.rank)
+            // 用户确认的未开放图纸策略；原APK/Steam85为p!=2，新局原初值已另修为p2。
+            if (s.facility_presence.at(d.id) == 0 && d.unlock_rank != -1 && d.unlock_rank <= s.rank)
                 list.push_back(d.id);
         }
         if (list.empty())

@@ -7,6 +7,7 @@
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
 #include "dungeon_village_prototype/startup_world_information.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 
 #include <algorithm>
 
@@ -430,6 +431,89 @@ int check_startup_world_restore_contracts(
                 !state.information_page_data.count(directory) && !state.page_phases.count(town) &&
                 !state.page_counters.count(directory),
                 "actual scene7 completion clears facility only, retires pages and replays identically");
+    }
+    {
+        using A=p::StartupCommerceAction;
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;if(!valid)throw std::runtime_error(std::string("restore commerce85/93: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"real framework admission");state=std::move(*result.candidate);
+        };
+        auto state=baseline;
+        // 只准备85调用点和30村点；原p0定义/资金来自共同baseline，不重复商会解锁长链。
+        r::WorldScriptPage entry;entry.kind=r::WorldScriptPageKind::raw_page;entry.legacy_page=85;
+        const auto inserted=r::prepare_world_script_page(p::startup_world_runtime_scripts(state),entry);
+        require(inserted.candidate && p::write_startup_world_runtime_scripts(state,inserted.candidate->state),"actual85 page factory");
+        const auto shop=state.scripts.pages.back().id;
+        state.village_points=30;expect(state,true,"pending85 with actual p0 definitions");tick(state);
+        const auto &list=state.commerce_page_lists.at(shop);
+        const auto drink=std::find(list.begin(),list.end(),34);
+        require(drink!=list.end() && state.facility_presence.at(34)==0,"original p0 drink34 in initialized85");
+        require(p::act_startup_world_commerce_page(state,shop,A::select,static_cast<int>(drink-list.begin()))==
+                p::StartupWorldRuntimeError::none,"select actual drink34");
+        const auto wire=p::persistence_detail::encode_state(state);
+        auto restored=p::persistence_detail::decode_state(wire,*state.rules);
+        expect(restored,true,"p0 commerce85 exact restore");
+        require(p::persistence_detail::encode_state(restored)==wire,"85 decode does not re-list or clear read flags");
+        for(const int presence:{1,2}) {
+            auto stale=restored;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"85 frozen list cannot restore a now-p1/p2 definition");
+        }
+        auto preview=restored;
+        require(p::act_startup_world_commerce_page(preview,shop,A::inspect)==p::StartupWorldRuntimeError::none,
+                "85 actual definition preview entry");
+        expect(preview,true,"p0 definition74 with actual85 parent");
+        for(const int presence:{1,2}) {
+            auto stale=preview;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"74 definition preview cannot restore already-open p1/p2 definition");
+        }
+        for(auto *owner:{&state,&restored})
+            require(p::act_startup_world_commerce_page(*owner,shop,A::confirm)==p::StartupWorldRuntimeError::none,
+                    "actual85 payment on both restored owners");
+        const auto reward=state.scripts.pages.back().id;
+        require(state.scripts.pages.back().legacy_page==93 && state.village_points==0 &&
+                state.facility_presence.at(34)==0 && state.facility_free_builds.at(34)==0 &&
+                p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "85 deducts points identically but leaves p0/H0 pending93");
+        expect(state,true,"uninitialized93 after points payment");
+        for(const int presence:{1,2}) {
+            auto stale=state;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"pending Init93 also requires unclaimed p0 definition");
+        }
+        tick(state);tick(restored);
+        const auto waiting=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(waiting,*state.rules);
+        expect(restored,true,"initialized live93 p0 pending entitlement");
+        for(const int presence:{1,2}) {
+            auto stale=restored;stale.facility_presence.at(34)=presence;
+            expect(stale,false,"live93 cannot restore after external p1/p2 unlock");
+        }
+        for(int confirmations=0;confirmations<2;++confirmations)
+            for(auto *owner:{&state,&restored})
+                require(p::act_startup_world_commerce_page(*owner,reward,A::confirm)==p::StartupWorldRuntimeError::none,
+                        "real93 early fast-forward then entitlement confirmation");
+        require(state.facility_presence.at(34)==2 && state.facility_free_builds.at(34)==1 &&
+                state.village_points==0 && p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "same93 inputs grant p2/H1 once without second point deduction");
+        expect(state,true,"retired claimed93 p2 remains valid before Finish");
+        for(int fault=0;fault<3;++fault) {
+            auto invalid=state;
+            if(fault==0)invalid.facility_presence.at(34)=1;
+            if(fault==1)invalid.page_counters.erase(reward);
+            if(fault==2)invalid.commerce_page_data.at(reward)[4]=-1;
+            expect(invalid,false,"retired93 p1,half payload or missing binding cannot bypass restore validation");
+        }
+        const auto claimed=p::persistence_detail::encode_state(state);
+        restored=p::persistence_detail::decode_state(claimed,*state.rules);
+        require(p::act_startup_world_commerce_page(restored,reward,A::confirm)!=p::StartupWorldRuntimeError::none &&
+                p::persistence_detail::encode_state(restored)==claimed,"restored closed93 cannot grant twice");
+        tick(state);tick(restored);
+        require(!restored.commerce_pages_initialized.count(reward) && !restored.commerce_page_data.count(reward) &&
+                !restored.page_counters.count(reward) && restored.facility_free_builds.at(34)==1 &&
+                p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
+                "real Finish releases93 payload; replay does not refill or repeat payment");
     }
     {
         // 只准备旅店升级资格；页面及独立计时由真实Owner初始化，不手填已初始化载荷。

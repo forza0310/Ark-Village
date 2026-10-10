@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 
 using namespace dungeon_village_prototype;
 namespace {
@@ -60,6 +61,18 @@ void catalogue() {
               rules.facility_initial.at(28).construction_limit == 280 &&
               rules.facility_initial.at(0).construction_limit == 0,
           "actual reset sharedN20/30 and construction guards follow source initialization, not allocation zeros");
+    // 固定APK与Steam原表共同的九项初始开放定义；不从被测flags重新计算期望。
+    // APK o.a→o.b、Steam TenantData.NewGame均写p=2，而非其他目录常见的p=1。
+    const std::vector<int> initially_available{18, 24, 28, 30, 31, 33, 35, 45, 66};
+    std::vector<int> actual_available;
+    for (std::size_t id = 0; id < rules.facility_initial.size(); ++id) {
+        const auto status = rules.facility_initial[id].status;
+        check(status == 0 || status == 2, "real new-game facility state is closed0 or available2");
+        if (status == 2)
+            actual_available.push_back(static_cast<int>(id));
+    }
+    check(actual_available == initially_available,
+          "fixed nine initially available facilities use state2, excluding closed definitions");
 }
 void routing() {
     auto p = installed();

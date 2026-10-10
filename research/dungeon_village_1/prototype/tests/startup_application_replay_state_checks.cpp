@@ -395,19 +395,19 @@ void roundtrip(Checks &check,Work &work,const std::string &name,StartupApplicati
             check(a.engine_state==b.engine_state && a.cursor==b.cursor && a.tape==b.tape && a.tape_mode==b.tape_mode,
                   "历史交接完整引擎/游标/磁带保存");
         }
-        if(name=="world-after-handoff") {
+        if(name=="world-after-handoff") for(const int old_semantics:{3,4}) {
             auto bad=unpack(original);
             auto &nested=section(bad,4).bytes;
-            set_number(nested,12,4,3);resign(nested);
+            set_number(nested,12,4,old_semantics);resign(nested);
             const auto bad_bytes=pack(bad);
             const auto old_meta=target_meta;
-            const auto bad_path=directory/"nested-world3.avrapp";
+            const auto bad_path=directory/("nested-world"+std::to_string(old_semantics)+".avrapp");
             write(bad_path,bad_bytes);
-            const auto rejected=work.root/"nested-world3-rejected";
+            const auto rejected=work.root/("nested-world"+std::to_string(old_semantics)+"-rejected");
             const auto error=restore_startup_application_replay(
                 bad_path,rejected,controller,target,target_meta,validate_driver);
             check(error.find("不支持的存档或状态语义版本")!=std::string::npos,
-                  "当前应用中section4世界3全重签后由世界语义守卫拒绝："+error);
+                  "当前应用中section4旧世界语义全重签后仍拒绝："+error);
             check(digest(target,target_meta)==before && same_metadata(target_meta,old_meta) &&
                   read(source)==original && read(bad_path)==bad_bytes,
                   "旧嵌套世界拒绝不改变应用Driver与新旧来源");
@@ -721,13 +721,14 @@ void corruption(Checks &check,Work &work) {
     const auto schema_size=number(wire.prefix,at,4);
     require(schema_size>0 && schema_size<=wire.prefix.size()-at,"应用schema字段存在");
     wire.prefix[at]=wire.prefix[at]=='0'?'1':'0';reject(pack(wire),"错误应用schema重签后拒绝");
-    wire=decoded;set_number(wire.prefix,12,4,8);reject(pack(wire),"未知应用语义版本拒绝");
+    wire=decoded;set_number(wire.prefix,12,4,9);reject(pack(wire),"未知应用语义版本拒绝");
     wire=decoded;set_number(wire.prefix,12,4,1);reject(pack(wire),"旧应用语义1不静默补零标题q");
     wire=decoded;set_number(wire.prefix,12,4,2);reject(pack(wire),"旧应用语义2缺世界缓存收尾，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,3);reject(pack(wire),"旧应用语义3缺初始任务池，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,4);reject(pack(wire),"旧应用语义4缺声音操作和遭遇输出，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,5);reject(pack(wire),"旧应用语义5缺四目录和菜单栈，不静默接续");
     wire=decoded;set_number(wire.prefix,12,4,6);reject(pack(wire),"旧应用语义6可能已按过期邻接价格收费，不暗补历史");
+    wire=decoded;set_number(wire.prefix,12,4,7);reject(pack(wire),"旧应用语义7有错误设施初值或重复图纸交易历史，不迁移");
     wire=decoded;set_number(wire.prefix,16,4,2);reject(pack(wire),"未知捕获边界版本拒绝");
     broken=original;set_number(broken,decoded.prefix.size(),4,67);resign(broken);
     reject(broken,"声明超过总分区数量预算拒绝");

@@ -678,7 +678,7 @@ bool valid_startup_world_facility_page(const State &s, const ref::WorldScriptPag
         const auto status = s.facility_presence.find(preview->second);
         if (!d || preview->second != p.legacy_f || p.legacy_g != 1 ||
             s.facility_page_bindings.count(p.id) || s.facility_page_neighbours.count(p.id) ||
-            status == s.facility_presence.end() || status->second == 2 || d->unlock_rank < 0 ||
+            status == s.facility_presence.end() || status->second != 0 || d->unlock_rank < 0 ||
             d->unlock_rank > s.rank || !s.scripts.facilities.count(d->id))
             return false;
         const ref::WorldScriptPage *parent = nullptr;
@@ -775,7 +775,7 @@ Error open_startup_world_facility_definition(State &s, int d) {
     const auto presence = s.facility_presence.find(d);
     const auto list = s.commerce_page_lists.find(parent->id);
     const auto data = s.commerce_page_data.find(parent->id);
-    if (!source || presence == s.facility_presence.end() || presence->second == 2 ||
+    if (!source || presence == s.facility_presence.end() || presence->second != 0 ||
         source->unlock_rank < 0 || source->unlock_rank > s.rank || !s.scripts.facilities.count(d) ||
         list == s.commerce_page_lists.end() || data == s.commerce_page_data.end() ||
         data->second[2] < 0 || static_cast<std::size_t>(data->second[2]) >= list->second.size() ||

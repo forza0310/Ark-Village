@@ -2669,6 +2669,10 @@ void commerce_facility_and_projection() {
     check(initialize_startup_world_commerce_pages(s),
           "85 initializes rank-limited facility catalogue");
     const auto &list = s.commerce_page_lists.at(shop);
+    // 原表九项bit1定义的独立名单；生成器p2初值完整矩阵由routes套件主责。
+    for(const int initial:{18,24,28,30,31,33,35,45,66})
+        check(s.facility_presence.at(initial)==2 && std::find(list.begin(),list.end(),initial)==list.end(),
+              "nine original p2 facilities never reappear in the initial85 entitlement catalogue");
     const auto found = std::find(list.begin(), list.end(), 34);
     check(found != list.end() && s.rules->facility_initial.at(34).capacity == 30 &&
               s.facility_presence.at(34) == 0,
@@ -2676,6 +2680,20 @@ void commerce_facility_and_projection() {
     const int selected = static_cast<int>(found - list.begin());
     check(act_startup_world_commerce_page(s, shop, A::select, selected) == E::none,
           "85 selection binds original facility identity34");
+    for(const int presence:{1,2}) {
+        auto newly_opened=fixture(85);newly_opened.facility_presence.at(34)=presence;
+        const auto page=newly_opened.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(newly_opened) &&
+              std::find(newly_opened.commerce_page_lists.at(page).begin(),newly_opened.commerce_page_lists.at(page).end(),34)==
+                  newly_opened.commerce_page_lists.at(page).end(),"85 only sells p0 definitions; p1 and p2 are excluded at entry");
+        auto expired=s;expired.facility_presence.at(34)=presence;
+        const auto digest=startup_world_state_digest(expired);
+        check(!inspect_startup_world_commerce_page(expired,shop) &&
+              act_startup_world_commerce_page(expired,shop,A::confirm)!=E::none &&
+              act_startup_world_commerce_page(expired,shop,A::inspect)!=E::none &&
+              startup_world_state_digest(expired)==digest,
+              "85 frozen selection becoming p1/p2 cannot charge points or open stale definition preview");
+    }
     const auto initial_read = s.facility_commerce_read;
     const auto attributes = s.scripts.facilities.at(34).attributes;
     // 从真实85动作打开定义详情；两种返回都不能借用已建实例、扣款或清NEW。
@@ -2729,6 +2747,13 @@ void commerce_facility_and_projection() {
     check(act_startup_world_commerce_page(s, reward, A::confirm) == E::none &&
               s.page_counters.at(reward) == 40 && s.facility_free_builds.at(34) == 0,
           "early93 confirm only fast-forwards40");
+    for(const int presence:{1,2}) {
+        auto expired=s;expired.facility_presence.at(34)=presence;
+        const auto digest=startup_world_state_digest(expired);
+        check(act_startup_world_commerce_page(expired,reward,A::confirm)!=E::none &&
+              !initialize_startup_world_commerce_pages(expired) && startup_world_state_digest(expired)==digest,
+              "active93 whose definition is already p1/p2 refuses duplicate entitlement atomically");
+    }
     check(act_startup_world_commerce_page(s, reward, A::confirm) == E::none &&
               s.facility_free_builds.at(34) == 1 && s.facility_presence.at(34) == 2 &&
               s.facility_unlock_notices.at(34) && s.village_points == 0 &&

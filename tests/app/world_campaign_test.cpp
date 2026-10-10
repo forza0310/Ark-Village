@@ -373,7 +373,8 @@ void verify_late_endpoint(const LateCampaign &campaign, const BusinessCheckpoint
               << facility_sales(state) << " rank=" << state.rank << " houses=" << houses
               << " shops=" << shops << " successes=" << state.task_progress.successes
               << " activity30=" << activity->second << " admissions=" << stats.admissions
-              << " new_shop_income=" << stats.new_shop_income << std::endl;
+              << " new_shop_income=" << stats.new_shop_income
+              << " commerce_open=" << ((state.scripts.user_flags & 16U) != 0) << std::endl;
 }
 
 // Receipts certify the transient element charge and healing, while cold Owner checks
@@ -554,6 +555,62 @@ void contract() {
         refused = true;
     }
     require(refused, "Third-star route must refuse an unranked world");
+    // A bounded decision fixture, not a natural second-star certificate. Keep 119
+    // points for the real 120-point offer, then exercise actual 83/85/93 consumers.
+    auto restaurant_state = ark::test::initial_world();
+    restaurant_state.rank = 2;
+    restaurant_state.village_points = 119;
+    restaurant_state.quarter_counter = 1;
+    // Explicit chamber-entry eligibility for this isolated decision fixture. The
+    // real route must cold-load this flag from the independently verified prefix.
+    restaurant_state.scripts.user_flags |= 16U;
+    require(restaurant_state.rules->facility_initial.at(40).capacity == 120 &&
+                restaurant_state.facility_presence.at(40) == 0,
+            "Restaurant fixture differs from the published 120-point locked offer");
+    LateStrategy restaurant_budget(3);
+    restaurant_budget.reconcile(restaurant_state);
+    const auto reserved = restaurant_budget.next(restaurant_state);
+    require(!reserved || (reserved->kind != Kind::open_village_activities &&
+                          reserved->kind != Kind::open_commerce),
+            "Restaurant budget must not spend its reserved points or open an unaffordable offer");
+    restaurant_state.village_points = 120;
+    LateStrategy restaurant(3);
+    restaurant.reconcile(restaurant_state);
+    for (int step = 0; step < 300 && !restaurant.stats().western_unlock_claimed; ++step) {
+        if (const auto action = restaurant.next(restaurant_state)) {
+            auto candidate = restaurant_state;
+            const auto result = apply(candidate, *action);
+            restaurant.observe(restaurant_state, *action, result, candidate);
+            restaurant_state = std::move(candidate);
+        }
+        if (restaurant.stats().western_unlock_claimed)
+            break;
+        auto candidate = sim::prepare_startup_world_runtime(restaurant_state);
+        require(candidate.candidate.has_value(), "Restaurant quick fixture update failed");
+        require(sim::update_startup_world_render_cache(*candidate.candidate),
+                "Restaurant quick fixture render cache failed");
+        restaurant.observe_tick(restaurant_state, *candidate.candidate);
+        restaurant_state = std::move(*candidate.candidate);
+    }
+    require(restaurant.stats().western_unlock_paid && restaurant.stats().western_unlock_claimed &&
+                restaurant.stats().western_unlock_points == 120 &&
+                restaurant_state.village_points == 0 &&
+                restaurant_state.facility_presence.at(40) == 2,
+            "Actual restaurant chamber purchase/claim did not complete exactly once");
+    const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
+    require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
+    std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));
+    require(LateStrategy::decode(verified_second_prefix).stats().target_rank == 2,
+            "Verified target-two evidence must remain readable without a third-star extension");
+    refused = false;
+    std::istringstream unextended_third(
+        third_encoded.str().substr(0, third_encoded.str().find("WESTERN_UNLOCK_1")));
+    try {
+        LateStrategy::decode(unextended_third);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Old target-three evidence cannot claim the new restaurant receipt contract");
     ark::test::ActiveTradeEvidence trade;
     trade.revenue.emplace(9, 100);
     require(!trade.full_month_after(9, 11), "Milestone-month sales cannot certify the next month");
@@ -575,6 +632,18 @@ int main(int argc, char **argv) {
         }
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
+        if (mode == "inspect-third-input") {
+            const auto directory =
+                isolated_directory(argv[0], argv[2], "ark-active-second-star-v1\n");
+            const auto before = checkpoint(load<LateStrategy>(directory, 0));
+            const auto prefix = load<LateStrategy>(directory, 1);
+            verify_late_endpoint(prefix, before);
+            std::cout << prefix.strategy.diagnose_construction(prefix.state) << std::endl;
+            std::cout << "PASS read-only third-star construction input inspection; no updates or "
+                         "mutations"
+                      << std::endl;
+            return 0;
+        }
         const bool pot = mode == "pot-new" || mode == "pot-resume" || mode == "verify-pot";
         if (pot) {
             const auto directory =

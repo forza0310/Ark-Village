@@ -18,6 +18,7 @@ using Command = app::WorldCommand;
 using Kind = app::WorldCommandKind;
 using Human = sim::StartupHumanPageAction;
 using Activity = sim::StartupVillageActivityAction;
+using Commerce = sim::StartupCommerceAction;
 using Task = sim::StartupWorldTaskAction;
 void require(bool condition, const std::string &message) {
     if (!condition)
@@ -52,6 +53,12 @@ Command activity(std::uint64_t page, Activity action, int selection = 0) {
 Command task(std::uint64_t page, Task action, int selection = 0) {
     auto c = command(Kind::task_action, page);
     c.task_action = action;
+    c.selection = selection;
+    return c;
+}
+Command commerce(std::uint64_t page, Commerce action, int selection = 0) {
+    auto c = command(Kind::commerce_action, page);
+    c.commerce_action = action;
     c.selection = selection;
     return c;
 }
@@ -100,7 +107,8 @@ std::int64_t reserve(const State &s) {
     return fee * 2;
 }
 std::optional<ref::Position> free_roadside(const State &s, int definition = 35,
-                                           bool reserve_school = false) {
+                                           bool reserve_school = false,
+                                           std::size_t *candidate_count = nullptr) {
     const auto &m = s.scene.world.world.map;
     const auto bounds = s.rules->fences.at(s.fence_level);
     std::vector<ref::FootprintCell> reserved;
@@ -115,6 +123,7 @@ std::optional<ref::Position> free_roadside(const State &s, int definition = 35,
     }
     const auto paths = ref::search_legacy_map(m, sim::startup_evidence().spawn_points.at(0));
     require(paths.field.has_value(), "roadside plan has no current distance field");
+    std::optional<ref::Position> first;
     for (int y = bounds[1].y + 1; y < bounds[0].y; ++y)
         for (int x = bounds[0].x + 1; x < bounds[1].x; ++x) {
             const auto &cell = m.cells.at(y * m.width + x);
@@ -141,11 +150,17 @@ std::optional<ref::Position> free_roadside(const State &s, int definition = 35,
                     continue;
                 const auto index = ny * m.width + nx;
                 if (m.cells.at(index).category == ref::RouteCategory::road &&
-                    paths.field->distances.at(index))
-                    return ref::Position{x, y};
+                    paths.field->distances.at(index)) {
+                    if (!candidate_count)
+                        return ref::Position{x, y};
+                    ++*candidate_count;
+                    if (!first)
+                        first = ref::Position{x, y};
+                    break;
+                }
             }
         }
-    return {};
+    return first;
 }
 bool homeless(const State &s, int id) {
     return s.human_presence.at(id) != 0 && s.human_homes.at(id)[2] == 0;
@@ -224,6 +239,8 @@ ActiveLateVillageStrategy::ActiveLateVillageStrategy(int target_rank) {
 
 void ActiveLateVillageStrategy::reconcile(const State &s) {
     require(s.rules && s.rank >= 1, "late route requires a real first-star player save");
+    require(stats_.target_rank != 3 || (s.scripts.user_flags & 16U) != 0,
+            "third-star prefix must already have the real chamber-entry qualification");
     if (!initialized_) {
         stats_.minimum_cash = cash(s);
         stats_.initial_successes = s.task_progress.successes;
@@ -241,6 +258,8 @@ void ActiveLateVillageStrategy::reconcile(const State &s) {
     require(stats_.promoted_month < 0 || s.rank >= stats_.target_rank,
             "promoted star lost across reload");
     require(stats_.pot_month < 0 || activity_count(s, 30) > 0, "pot import lost across reload");
+    require(!stats_.western_unlock_claimed || s.facility_presence.at(40) == 2,
+            "claimed restaurant qualification lost across reload");
     for (const auto id : stats_.residents)
         require(s.human_homes.at(id)[2] != 0, "admitted resident lost across reload");
     for (const auto id : stats_.buildings)
@@ -277,13 +296,22 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                 return c;
             }
         const bool third = stats_.target_rank == 3;
+        const bool needs_western = third && s.rank == 2 && s.facility_presence.at(40) != 2;
+        const int western_reserve = needs_western ? s.rules->facility_initial.at(40).capacity : 0;
         if ((!third && stats_.pot_month >= 0) || (third && stats_.school_activity_month >= 0))
             return {}; // After import, let the town actually trade for a whole month.
+        // Rank two unlocks the chamber offer, not the construction catalogue. Preserve
+        // its real point quote before ordinary activities and pay through 85 then 93.
+        if (needs_western && s.village_points >= western_reserve &&
+            stats_.ticks >= next_management_tick_) {
+            next_management_tick_ = stats_.ticks + 300;
+            return command(Kind::open_commerce);
+        }
         if (s.quarter_counter > 0 && stats_.ticks >= next_activity_tick_ &&
-            s.village_points >= (third
-                                     ? (s.rank == 3 ? s.rules->activities.at(7).parameters[4] : 20)
-                                 : s.rank >= 2 ? s.rules->activities.at(30).parameters[4]
-                                               : 20)) {
+            s.village_points - western_reserve >=
+                (third         ? (s.rank == 3 ? s.rules->activities.at(7).parameters[4] : 20)
+                 : s.rank >= 2 ? s.rules->activities.at(30).parameters[4]
+                               : 20)) {
             next_activity_tick_ = stats_.ticks + 300;
             return command(Kind::open_village_activities);
         }
@@ -415,6 +443,27 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
         return {};
     }
     const int raw = p.legacy_page;
+    if (stats_.target_rank == 3 && (raw == 83 || raw == 85 || raw == 93)) {
+        const auto view = sim::inspect_startup_world_commerce_page(s, p.id);
+        if (!view)
+            return {};
+        if (raw == 83)
+            return commerce(p.id,
+                            s.facility_presence.at(40) == 2 ? Commerce::cancel
+                            : view->selection == 2          ? Commerce::confirm
+                                                            : Commerce::select,
+                            2);
+        if (raw == 93) {
+            require(view->binding == 40 && stats_.western_unlock_paid,
+                    "unexpected facility claim in restaurant route");
+            return commerce(p.id, Commerce::confirm);
+        }
+        const auto found = std::find(view->entries.begin(), view->entries.end(), 40);
+        require(found != view->entries.end(), "rank-two chamber must offer locked restaurant40");
+        const int index = static_cast<int>(found - view->entries.begin());
+        return commerce(p.id, view->selection == index ? Commerce::confirm : Commerce::select,
+                        index);
+    }
     if (raw == 21) {
         auto c = command(Kind::select_build_menu, p.id);
         c.definition = build_definition_;
@@ -432,7 +481,12 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                          ? (s.rank == 3 ? a.identity == 7 : a.parameters[2] <= 2)
                      : s.rank >= 2 ? a.identity == 30
                                    : a.parameters[2] <= 2) &&
-                    a.parameters[4] <= s.village_points && s.quarter_counter > 0) {
+                    a.parameters[4] <=
+                        s.village_points -
+                            (stats_.target_rank == 3 && s.facility_presence.at(40) != 2
+                                 ? s.rules->facility_initial.at(40).capacity
+                                 : 0) &&
+                    s.quarter_counter > 0) {
                     if (chosen < 0 || a.parameters[2] == 2)
                         chosen = n;
                 }
@@ -615,6 +669,33 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
             "command rejected kind=" + std::to_string(static_cast<int>(c.kind)) + "; " +
                 diagnose(before));
     ++stats_.commands;
+    if (stats_.target_rank == 3 && c.kind == Kind::commerce_action &&
+        c.commerce_action == Commerce::confirm) {
+        const auto view = sim::inspect_startup_world_commerce_page(before, c.page);
+        require(view.has_value(), "commerce receipt lacks initialized page");
+        if (view->raw == 85) {
+            const int price = before.rules->facility_initial.at(40).capacity;
+            require(!stats_.western_unlock_paid && before.rank == 2 &&
+                        view->entries.at(view->selection) == 40 &&
+                        before.village_points - after.village_points == price &&
+                        cash(before) == cash(after) && top(after).legacy_page == 93 &&
+                        top(after).legacy_s == 40 &&
+                        after.facility_presence.at(40) == before.facility_presence.at(40),
+                    "restaurant chamber payment must charge points once before claim");
+            stats_.western_unlock_points = price;
+            stats_.western_unlock_paid = true;
+        }
+        if (view->raw == 93 && view->counter >= 40) {
+            require(stats_.western_unlock_paid && !stats_.western_unlock_claimed &&
+                        view->binding == 40 && after.facility_presence.at(40) == 2 &&
+                        after.facility_free_builds.at(40) ==
+                            std::min(99, before.facility_free_builds.at(40) + 1) &&
+                        before.village_points == after.village_points &&
+                        cash(before) == cash(after),
+                    "restaurant claim must unlock once without a second charge");
+            stats_.western_unlock_claimed = true;
+        }
+    }
     if (c.kind == Kind::confirm_build) {
         const auto q = sim::startup_world_build_quote(before, build_definition_);
         require(result.created && q && cash(before) - cash(after) == q->construction_cost,
@@ -744,7 +825,54 @@ std::string ActiveLateVillageStrategy::diagnose(const State &s) const {
         << " income_record=" << s.maximum_income << " events_held=" << s.events_held
         << " western=" << stats_.western << " school=" << stats_.school
         << " school_sales=" << stats_.school_sales
-        << " school_activity_month=" << stats_.school_activity_month;
+        << " school_activity_month=" << stats_.school_activity_month
+        << " western_presence=" << s.facility_presence.at(40)
+        << " western_unlock_points=" << stats_.western_unlock_points
+        << " western_unlock_claimed=" << stats_.western_unlock_claimed;
+    return out.str();
+}
+std::string ActiveLateVillageStrategy::diagnose_construction(const State &s) const {
+    const auto catalog = sim::startup_world_build_catalog(s);
+    const auto &map = s.scene.world.world.map;
+    const auto bounds = s.rules->fences.at(s.fence_level);
+    std::ostringstream out;
+    out << "READ_ONLY_BUILD_INPUT cash=" << cash(s) << " reserve=" << reserve(s)
+        << " rank=" << s.rank << " fence_level=" << s.fence_level << " bounds=" << bounds[0].x
+        << ',' << bounds[0].y << ':' << bounds[1].x << ',' << bounds[1].y;
+    for (const int definition : {40, 63}) {
+        bool listed{};
+        if (catalog)
+            for (const auto &group : *catalog)
+                listed = listed || std::find(group.begin(), group.end(), definition) != group.end();
+        std::size_t source_sites{}, roadside{}, reserved{};
+        for (int y = bounds[1].y + 1; y < bounds[0].y; ++y)
+            for (int x = bounds[0].x + 1; x < bounds[1].x; ++x) {
+                const auto footprint = ref::facility_footprint(
+                    static_cast<ref::FacilityShape>(s.rules->facilities.at(definition).shape),
+                    ref::FacilityOrientation::first, {x, y}, map.width, map.height);
+                if (footprint.error != ref::GeometryError::none)
+                    continue;
+                if (std::all_of(footprint.cells.begin(), footprint.cells.end(),
+                                [&](const auto &part) {
+                                    const auto p = part.position;
+                                    if (p.x <= bounds[0].x || p.x >= bounds[1].x ||
+                                        p.y >= bounds[0].y || p.y <= bounds[1].y)
+                                        return false;
+                                    const auto &tile = map.cells.at(p.y * map.width + p.x);
+                                    return !tile.facility && tile.legacy_state != 1 &&
+                                           tile.legacy_state != 2 && tile.legacy_state != 10;
+                                }))
+                    ++source_sites;
+            }
+        const auto place = free_roadside(s, definition, false, &roadside);
+        free_roadside(s, definition, definition != 63, &reserved);
+        out << " definition=" << definition << " shape=" << s.rules->facilities.at(definition).shape
+            << " presence=" << s.facility_presence.at(definition) << " in_catalog=" << listed
+            << " source_footprint_sites=" << source_sites << " strategy_roadside_sites=" << roadside
+            << " after_school_reservation=" << reserved;
+        if (place)
+            out << " first_site=" << place->x << ',' << place->y;
+    }
     return out.str();
 }
 void ActiveLateVillageStrategy::encode(std::ostream &out) const {
@@ -771,6 +899,8 @@ void ActiveLateVillageStrategy::encode(std::ostream &out) const {
     write(v.successful_tasks);
     write(v.residents);
     v.trade.encode(out);
+    out << "WESTERN_UNLOCK_1 " << v.western_unlock_points << ' ' << v.western_unlock_paid << ' '
+        << v.western_unlock_claimed << '\n';
     require(bool(out), "cannot encode strategy evidence");
 }
 ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
@@ -802,8 +932,22 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
     read(v.successful_tasks);
     read(v.residents);
     v.trade.decode(in);
+    // Keep the already verified target-two prefix readable. Only target-three
+    // evidence requires the new, independent restaurant purchase receipts.
+    in >> std::ws;
+    if (in.peek() != std::char_traits<char>::eof()) {
+        std::string extension;
+        in >> extension >> v.western_unlock_points >> v.western_unlock_paid >>
+            v.western_unlock_claimed;
+        require(extension == "WESTERN_UNLOCK_1", "unknown restaurant receipt extension");
+    } else {
+        require(v.target_rank == 2, "third-star evidence lacks restaurant receipt extension");
+        in.clear();
+    }
     require(bool(in) && (v.target_rank == 2 || v.target_rank == 3) && v.minimum_cash >= 0 &&
-                v.gifts >= 0 && v.admissions >= 0 &&
+                v.gifts >= 0 && v.admissions >= 0 && v.western_unlock_points >= 0 &&
+                (!v.western_unlock_claimed || v.western_unlock_paid) &&
+                (v.western_unlock_paid == (v.western_unlock_points > 0)) &&
                 v.task_successes == static_cast<int>(v.successful_tasks.size()) &&
                 v.admissions == static_cast<int>(v.residents.size()),
             "invalid late evidence totals");

@@ -20,6 +20,8 @@ struct ActiveLateVillageStats {
     std::uint64_t western{}, school{};
     std::int64_t western_initial_sales{}, school_sales{};
     bool third_star_conditions{}, school_activity_paid{};
+    int western_unlock_points{};
+    bool western_unlock_paid{}, western_unlock_claimed{};
     std::set<std::uint64_t> buildings, successful_tasks;
     std::set<int> residents;
 };
@@ -39,6 +41,7 @@ class ActiveLateVillageStrategy {
     bool checkpoint(const app::WorldState &state) const;
     bool complete(const app::WorldState &state) const;
     std::string diagnose(const app::WorldState &state) const;
+    std::string diagnose_construction(const app::WorldState &state) const;
     const ActiveLateVillageStats &stats() const { return stats_; }
     void encode(std::ostream &stream) const;
     static ActiveLateVillageStrategy decode(std::istream &stream);

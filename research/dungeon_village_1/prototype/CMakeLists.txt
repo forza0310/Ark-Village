@@ -127,7 +127,7 @@ add_executable(dungeon_village_startup_world_persistence_tests tests/startup_wor
     tests/startup_world_codec_checks.cpp tests/startup_world_restore_checks.cpp
     tests/startup_application_replay_checks.cpp tests/startup_application_actions_checks.cpp
     tests/startup_application_natural_replay.cpp tests/startup_application_active_replay.cpp
-    tests/startup_application_second_star_replay.cpp)
+    tests/startup_application_second_star_replay.cpp tests/startup_application_residence_replay.cpp)
 target_include_directories(dungeon_village_startup_world_persistence_tests PRIVATE src)
 target_link_libraries(dungeon_village_startup_world_persistence_tests PRIVATE dungeon_village_startup_application dungeon_village_hash)
 target_compile_features(dungeon_village_startup_world_persistence_tests PRIVATE cxx_std_17)

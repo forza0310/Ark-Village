@@ -51,3 +51,25 @@ node research/dungeon_village_1/prototype/tests/application_second_star_process.
 两个`active_command_count`按所属层区分：证书根字段是**本捕获尾段**的非wait输入数；`terminal.active_command_count`来自C++summary，是**自34429交接以来v2累计**的非wait输入数。后继20轮全等待时，前者可以为0、后者仍为3；`stage_complete=true`沿来源链继承先前真实接受回执，不能把它写成本尾段又接受一次。接受量另有根字段`capture_accepted_tasks`和`accepted_tasks_in_tail`，两者之和必须等于`terminal.accepted_tasks`。保留已生成证书字段名及原字节，不通过改档统一这两个不同的计数域。
 
 进程timeout、取消后的close、独占双文件发布及按身份回收共用现有support。每次只删除本次成功运行的临时根；失败保留诊断及未认证候选，不覆盖来源、旧证书或其它进程目录。当前实现是否已实跑、取得了哪条真实操作回执，以当批交付记录为准，本机制文档不代替验收结果。
+
+## 从任务募集接续真实住宅与经营建设
+
+`application_residence_process.mjs`沿[住宅策略设计](../../work/second-star-residence-plan/README.md)，使用独立`application-active-residence-v1`／`AVRESDR1`。首次`--handoff-prefix`只接受已核v2 `frame34469.avra`及相邻证书：快照SHA-256为`dc30d31a83c021d6af6ac66fbb31fbb40ea01e49a2679c6823f9567724a3f8f6`，证书为`4dcb2135d5ee4045b7a176df31b124af3fd04ab3121031a25469372ee27889ad`。固定producer为`2c612c9-handoff-audit`。原v2完整恢复并推进34470–34489的20轮后，才只读构造住宅策略；不取消任务7、不改变募集页、世界、随机、文件或输出。
+
+34489终点旧metadata完整摘要为`62aaa3970f616e4af63c8cf4c12685b0e510aee9c70f7b84ed9553068063ba25`；旧Driver为1572字节，SHA-256为`f293d9463eb014cb6a61f62a3f5fae2d285b50197dc7f77f138d3ea98358afc7`，next_frame34490、next_command4。后者与快照捕获34469的Driver不是同一份字节。脚本固定核这些身份及交接文件清单摘要，`handoff.prior_handoff`必须与原v2证书中的完整v1交接对象相同；两层来源不能压成controller名字或几个终点数值。
+
+```powershell
+node research/dungeon_village_1/prototype/tests/application_residence_process.mjs --exe <application测试程序> --work-dir <research/work下已存在独立目录> --handoff-prefix research/dungeon_village_1/work/snapshots/active-application-v2/frame34469.avra --tail-frames 20 --producer-revision <本批版本> --snapshot-file <新住宅策略快照>
+```
+
+首捕固定34489完整轮末、零新策略输入；next_command从1开始。后续`--load-prefix`只接`active_residence_management_tail`资格的已认证住宅前缀，使用显式`--save-at`和至少20轮尾段捕获父答案消费、入住或完工边界，无需重复新局、v1首星或原v2交接前缀。其来源递归最终必须回到上述固定v2证书；旧v2/v1链由既有`readSecondStarSource`核验。共用`application_progression_evidence.mjs`只预检数据集、应用7／世界4／系统2、分区摘要及显式Driver magic，不代替C++语义校验或来源资格。旧v2接口和严格映射保持。
+
+住宅命令ID独立登记：0等待、1确认具名页面、2任务动作、3授勋、4退出商会、5打开建设、6选择建筑、7确认放置、8取消放置、9打开设施、10设施动作、11入住动作、12打开人物、13人物动作。全部五元组及实际参数进入trace；自动更新、父64消费和完工不伪装为新玩家命令。未知输入、wait混其他命令、命令序号失配均拒绝。
+
+回执分为`gifts_committed`（父64实际消费）、`recruitments_created`（实际募集创建）、`homes_admitted`（80入住替换）、`completed_houses`（Owner当前已完工住宅）与`completed_business_facilities`（当前已完工且连接合格的kind3/9）。首捕前3项为0，经营设施原有4座不强制清零。`capture_receipts`加本尾段`tail_receipts`等于终点同型计数；自动消费可出现在没有新输入的尾段，不能因此删掉合法回执或补造一次确认。
+
+`homes`只记录施工完成、绑定正确、旧募集退休且完成演出退回场景后的`human/instance/completed_frame`，不放施工候选；人物0合法，以`first_home_frame>0`判断是否取得首住宅。`stage_complete`只表示第一住宅完整生命周期完成，`terminal`还须四座完工住宅和十座可经营设施。赠礼父提交、募集创建、入住施工、首住宅完工分别交付，不能由`created`宣称住宅完成或二星通过。
+
+新证书根字段`tail_active_command_count`明确只计本尾段；C++summary的累计计数留在`terminal`对象。完整summary除捕获位置、捕获回执／待消费标志、性能计时及入口检查诊断外全字段三路比较，包含住宅观察、已有任务7、页绑定、资源及嵌套origin。入口另强制`driver_checks=13+(entry_gift_pending?12:0)`，两个恢复入口的待消费标志须等于reference捕获值。待消费时清空标志／支付字段仍拒绝；已初始化65的Driver父子页错误在恢复发布前拒绝。源链保留完整`uncertified_history`，所有实际源文件在发布前及finally复核未变；文件／trace／进程／层数预算、独占发布及失败保留沿现协议。没有新业务格式、迁移或预算放宽；三路短尾段通过仍不代表已自然完成四宅十店。
+
+住宅`stage_complete`表示策略历史上已取得第一住宅，不表示本尾段又完成一套。恢复来源审计逐项检查`capture_receipts + tail_receipts = terminal`，根capture回执与summary捕获回执相同；`homes`按真实完成轮排序且数量等于已完成住宅计数，完成轮不晚于捕获轮的记录数必须等于捕获时住宅数。根尾段命令数等于终点next_command减真实快照metadata.next_command，summary累计命令数等于终点next_command减1。比如36000→36060允许stage=true、所有tail回执和尾段命令均0，首住宅仍是35202的人物0／实例16；这不认证36000尾段发生了首住宅动作。来源预检不能替代C++恢复时对业务状态和规范Driver的绑定校验。

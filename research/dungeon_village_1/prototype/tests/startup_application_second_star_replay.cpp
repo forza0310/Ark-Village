@@ -1,5 +1,6 @@
 #include "startup_application_second_star_replay.hpp"
 #include "startup_application_active_replay.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_tools/archive.hpp"
 #include "startup_application_replay_paths.hpp"
 #include "startup_world_file_io.hpp"
@@ -33,7 +34,7 @@ constexpr std::uint64_t origin_next_frame = 34430, frame_limit = 180000, stall_l
 constexpr std::size_t trace_budget = 8U * 1024U * 1024U;
 enum class Intent : std::uint64_t { wait, acknowledge, tasks, select, confirm, depart, deadline, award, leave };
 enum class Input : std::uint64_t { wait, acknowledge, open_task, task, award, leave, count };
-struct Round { std::vector<Command> commands; std::vector<StartupAudioRequest> sounds; };
+using Round = second_star_replay_support::Round;
 void require(bool condition, const std::string &reason) {
     if (!condition) throw std::runtime_error("second-star: " + reason);
 }
@@ -148,17 +149,11 @@ bool affordable(const StartupWorldRuntimeState &s, std::uint64_t id) {
     require(definition >= 0 && static_cast<std::size_t>(definition) < s.rules->tasks.size(), "task definition range");
     return s.rules->tasks.at(definition).recruitment_fee <= s.scene.world.world.ai.accounting.funds();
 }
-Intent plan(const StartupApplication &app, const Driver &d) {
+Intent modal_plan(const StartupApplication &app) {
     const auto *p = support::top(app); require(p, "missing top page"); const auto &s = app.world()->state();
     if (p->kind == ref::WorldScriptPageKind::dialogue || p->kind == ref::WorldScriptPageKind::simple_message ||
         p->kind == ref::WorldScriptPageKind::newspaper) return Intent::acknowledge;
-    if (p->kind == ref::WorldScriptPageKind::scene) {
-        const auto month = s.scene.calendar.year * 12 + s.scene.calendar.month;
-        if (s.scene.scene_state == 0 && !s.active_task && !d.accepted && month >= 0 &&
-            std::uint64_t(month) >= d.next_task_month &&
-            std::any_of(s.task_order.begin(), s.task_order.end(), [&](auto id) { return affordable(s, id); })) return Intent::tasks;
-        return Intent::wait;
-    }
+    if (p->kind == ref::WorldScriptPageKind::scene) return Intent::wait;
     require(p->kind == ref::WorldScriptPageKind::raw_page, "unknown page kind");
     switch (p->legacy_page) {
     case 16: case 24: case 56: case 57: case 97: case 98: return Intent::wait;
@@ -179,6 +174,17 @@ Intent plan(const StartupApplication &app, const Driver &d) {
     case 88: case 89: case 94: case 95: case 96: case 99: case 100: return Intent::acknowledge;
     default: throw std::runtime_error("second-star unknown raw=" + std::to_string(p->legacy_page) + " page=" + std::to_string(p->id));
     }
+}
+Intent plan(const StartupApplication &app, const Driver &d) {
+    const auto *p = support::top(app); require(p, "missing top page"); const auto &s = app.world()->state();
+    if (p->kind == ref::WorldScriptPageKind::scene) {
+        const auto month = s.scene.calendar.year * 12 + s.scene.calendar.month;
+        if (s.scene.scene_state == 0 && !s.active_task && !d.accepted && month >= 0 &&
+            std::uint64_t(month) >= d.next_task_month &&
+            std::any_of(s.task_order.begin(), s.task_order.end(), [&](auto id) { return affordable(s, id); })) return Intent::tasks;
+        return Intent::wait;
+    }
+    return modal_plan(app);
 }
 void observe(const StartupApplication &app, Driver &d) {
     const auto &s = app.world()->state(); const auto *p = support::top(app); require(p, "missing observed page");
@@ -333,17 +339,27 @@ std::string handoff_json(const Driver &d) {
         << "\",\"uncertified_history_sha256\":\"" << history_hash << "\",\"files_before_digest\":\"" << d.files_digest
         << "\",\"files_after_digest\":\"" << d.files_digest << "\"}"; return out.str();
 }
-std::string trace_line(const StartupApplication &app, const Driver &d, const Round &round, const fs::path &system) {
-    const auto bytes = encode(d); std::ostringstream out;
-    out << "{\"frame\":" << d.next_frame - 1 << ",\"next_frame\":" << d.next_frame << ",\"next_command\":" << d.next_command << ",\"commands\":[";
-    for (std::size_t n = 0; n < round.commands.size(); ++n) {
-        out << (n ? ",[" : "["); for (std::size_t i = 0; i < 5; ++i) out << (i ? "," : "") << round.commands[n][i]; out << ']';
+// 只在终点打印真实到访人物的入住观察，不创建80目录、不补满足度、不进入Driver。
+std::string residence_observation(const StartupApplication &app) {
+    const auto &s=app.world()->state();
+    std::ostringstream out; out << '['; bool first=true;
+    for(const auto &h:s.rules->humans) {
+        const auto presence=s.human_presence.find(h.identity);
+        require(presence!=s.human_presence.end(),"residence observation missing presence");
+        if(!presence->second)continue;
+        const auto home=s.human_homes.find(h.identity);
+        const auto person=startup_world_human_details(s,h.identity);
+        require(home!=s.human_homes.end()&&person.has_value(),"residence observation missing human/home");
+        out << (first?"":",") << "{\"definition\":" << h.identity << ",\"presence\":" << presence->second
+            << ",\"satisfaction\":" << person->satisfaction << ",\"threshold\":" << h.residence_threshold
+            << ",\"fee\":" << h.residence_fee << ",\"home_state\":" << home->second[2]
+            << ",\"live_actor\":" << (person->live_actor?std::to_string(person->live_actor->value):"null") << '}';
+        first=false;
     }
-    out << "],\"driver\":\"" << hex(bytes) << "\",\"driver_digest\":\"" << hash(bytes)
-        << "\",\"digest\":\"" << startup_application_replay_digest(app, metadata(d), validate)
-        << "\",\"system_digest\":\"" << hash(read(system)) << "\",\"sounds\":[";
-    for (std::size_t n = 0; n < round.sounds.size(); ++n) out << (n ? "," : "") << '[' << static_cast<int>(round.sounds[n].operation) << ',' << round.sounds[n].id << ']';
-    out << "]}\n"; return out.str();
+    out << ']'; return out.str();
+}
+std::string trace_line(const StartupApplication &app, const Driver &d, const Round &round, const fs::path &system) {
+    return second_star_replay_support::round_trace(app, metadata(d), validate, round, system);
 }
 std::uint64_t option_number(const std::map<std::string, std::string> &options, const std::string &key, std::uint64_t fallback) {
     const auto p = options.find(key); if (p == options.end()) return fallback;
@@ -351,6 +367,71 @@ std::uint64_t option_number(const std::map<std::string, std::string> &options, c
     const auto n = std::stoull(p->second); require(n <= frame_limit, "number bound " + key); return n;
 }
 } // namespace
+
+namespace second_star_replay_support {
+Handoff prepare_v2_handoff(const fs::path &source, const fs::path &live, const fs::path &unused,
+                          const std::vector<fs::path> &protected_paths) {
+    require(hash(read(source)) == "dc30d31a83c021d6af6ac66fbb31fbb40ea01e49a2679c6823f9567724a3f8f6",
+            "fixed residence source snapshot");
+    require(fs::create_directory(unused), "exclusive residence handoff unused directory");
+    Handoff out;
+    out.application = std::make_unique<Application>(StartupApplicationPaths{unused}, ref::WorldRandomStream::from_java_seed(1));
+    good(out.application->error());
+    good(restore_startup_application_replay(source, live, controller, *out.application, out.metadata, ::validate, protected_paths));
+    auto d = decode(out.metadata.controller_state);
+    require(d.next_frame == 34470 && d.next_command == 4 && d.producer == "2c612c9-handoff-audit", "fixed residence captured boundary");
+    while (d.next_frame <= 34489) (void)step(*out.application, d);
+    out.metadata = metadata(d); good(validate_v2_origin(out.metadata));
+    require(startup_application_replay_digest(*out.application, out.metadata, ::validate) ==
+                "62aaa3970f616e4af63c8cf4c12685b0e510aee9c70f7b84ed9553068063ba25" &&
+                files_digest(live) == origin_files_digest, "fixed residence handoff application/files");
+    out.next_task_month = d.next_task_month; return out;
+}
+std::string validate_v2(const Application &app, const Metadata &m) { return ::validate(app, m); }
+std::string validate_v2_origin(const Metadata &m) {
+    try {
+        require(m.controller_state.size() == 1572 && hash(m.controller_state) ==
+                    "f293d9463eb014cb6a61f62a3f5fae2d285b50197dc7f77f138d3ea98358afc7",
+                "full fixed v2 origin driver");
+        const auto d = decode(m.controller_state);
+        require(m.controller_id == controller && m.extensions.empty() && m.producer_revision == d.producer &&
+                    m.next_frame == d.next_frame && m.next_command == d.next_command && d.next_frame == 34490 &&
+                    d.next_command == 4 && d.accepted == 1 && d.accepted_task == 7 && d.departed == 0,
+                "v2 origin metadata binding"); return {};
+    } catch (const std::exception &e) { return e.what(); }
+}
+std::string previous_handoff_json(const Metadata &m) { good(validate_v2_origin(m)); return handoff_json(decode(m.controller_state)); }
+Modal inherited_modal(const Application &app) {
+    const auto *p = support::top(app); require(p, "inherited modal missing top");
+    require(p->kind != ref::WorldScriptPageKind::raw_page || (p->legacy_page != 22 && p->legacy_page != 23), "new task offer outside residence policy");
+    switch (modal_plan(app)) {
+    case Intent::wait: return Modal::wait;
+    case Intent::acknowledge: return Modal::acknowledge;
+    case Intent::confirm: return Modal::confirm_task;
+    case Intent::depart: return Modal::depart_task;
+    case Intent::deadline: return Modal::deadline;
+    case Intent::award: return Modal::award;
+    case Intent::leave: return Modal::leave;
+    default: throw std::runtime_error("residence cannot start a new task");
+    }
+}
+Bytes read_bounded_file(const fs::path &p) { return read(p); }
+std::string directory_digest(const fs::path &p) { return files_digest(p); }
+std::string residence_observation(const Application &app) { return ::residence_observation(app); }
+std::string round_trace(const Application &app, const Metadata &m, const StartupApplicationReplayValidator &validator,
+                       const Round &round, const fs::path &system) {
+    const auto &bytes = m.controller_state; std::ostringstream out;
+    out << "{\"frame\":" << m.next_frame - 1 << ",\"next_frame\":" << m.next_frame << ",\"next_command\":" << m.next_command << ",\"commands\":[";
+    for (std::size_t n = 0; n < round.commands.size(); ++n) {
+        out << (n ? ",[" : "["); for (std::size_t i = 0; i < 5; ++i) out << (i ? "," : "") << round.commands[n][i]; out << ']';
+    }
+    out << "],\"driver\":\"" << hex(bytes) << "\",\"driver_digest\":\"" << hash(bytes)
+        << "\",\"digest\":\"" << startup_application_replay_digest(app, m, validator)
+        << "\",\"system_digest\":\"" << hash(read(system)) << "\",\"sounds\":[";
+    for (std::size_t n = 0; n < round.sounds.size(); ++n) out << (n ? "," : "") << '[' << static_cast<int>(round.sounds[n].operation) << ',' << round.sounds[n].id << ']';
+    out << "]}\n"; return out.str();
+}
+} // namespace second_star_replay_support
 
 int run_startup_application_second_star_replay_cli(int argc, const char **argv) {
     require(argc > 1 && std::string(argv[1]) == controller, "CLI identity");
@@ -449,7 +530,8 @@ int run_startup_application_second_star_replay_cli(int argc, const char **argv) 
         << ",\"task_successes\":" << d.task_successes << ",\"active_command_count\":" << d.next_command - 1 << ",\"trace_rows\":" << rows
         << ",\"driver_checks\":" << driver_checks
         << ",\"capture_seconds\":" << capture_seconds << ",\"restore_seconds\":" << restore_seconds
-        << ",\"progress\":" << support::progress_json(*app) << ",\"handoff\":" << handoff_json(d) << "}\n";
+        << ",\"progress\":" << support::progress_json(*app) << ",\"handoff\":" << handoff_json(d)
+        << ",\"residence_observation\":" << residence_observation(*app) << "}\n";
     return 0;
 }
 

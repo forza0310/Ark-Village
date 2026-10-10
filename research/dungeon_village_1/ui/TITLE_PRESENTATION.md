@@ -1,5 +1,7 @@
 # 标题人物调度、输入与随机交接
 
+2026-10-10[Steam皮肤窗口反馈](../work/skin-observation-analysis/ANALYSIS.md)补六张31.328秒有限标题采样及纪录进入／返回。只证外观、位置、Logo高低与书本局部遮挡；纪录两采样外露背景相同仍不足以认证内部暂停、20槽身份或随机交接，不改变下文APK证据等级。
+
 2026-10-09。固定APK1.0.8的局部源码审计及标题背景 Owner 接线；Steam2.56仍只采用已有小方法身份和窗口事实，不把本页标题循环升级为Steam已证算法。本批新增研究应用背景状态与回放语义，不改产品或原游戏。源文件／有限窗口摘要见[审计清单](../work/title-schedule-handoff/EVIDENCE.json)，输入与生命周期补核见[Owner合同](../work/title-owner-contract/README.md)，皮肤基础见[启动皮肤合同](STARTUP_SKIN.md)。
 
 ## 新发现及证据等级

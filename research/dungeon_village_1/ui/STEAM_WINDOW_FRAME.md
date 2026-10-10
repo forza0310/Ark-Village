@@ -1,5 +1,7 @@
 # Steam窗口框、内容框与裁剪边界
 
+2026-10-10[外部皮肤反馈接收](../work/skin-observation-analysis/ANALYSIS.md)增加Steam2.56纪录两页木纹框及蓝色退出确认框外观。16项清单／11图完整性通过；原图含标题栏与纹理带，不把1067×910当逻辑客户区或由截图反定helper参数。经营详情三类仍未取得，本页静态身份不因可见版本号被追认为该运行DLL相同。
+
 2026-10-09。固定Steam2.56的有界静态合同：19个具名方法、13,264字节，复用标题／raw1调用证据及5份已出版同字节资源。证据和复算入口见[工作包](../work/steam-window-frame-contract/README.md)。本页不运行原游戏、不改C++或产品，不把APK同图当Steam同调用；本批已独立核到Steam自己的helper和Graphics消费者。
 
 ## 木纹标题窗的完整helper

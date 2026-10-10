@@ -1,5 +1,9 @@
 # 当前研究验证与历史索引
 
+## 外部Steam皮肤观察接收2026-10-10
+
+[接收分析](work/skin-observation-analysis/ANALYSIS.md)核`20261010-075500-skin-observation`16项文件身份、11张JPEG尺寸／总2,476,775字节，主会话查看A01／A02／B06／Z01。窗口框／文字和标题人物部分完成，计分未覆盖；没有由稀疏静帧认证字体、内部暂停或随机。原图留本地work，未改原实验；历史PID5348交还用户不等于本轮启动或当前仍存活，本会话无窗口操作／后台进程。纯文档与证据审计，未重跑C++。
+
 ## Steam人物表现与设施升级例图2026-10-10
 
 [人物合同](ui/STEAM_HUMAN_PRESENTATION.md)及[研究包](work/steam-human-presentation/README.md)复核四方法22,736字节、36锚、六MOVE_DATA数组、7资源。主会话重跑audit，EVIDENCE身份保持`10fc0b79…98fe`；不由静态调度表推定秒数或完整原窗口行为。

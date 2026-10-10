@@ -391,7 +391,7 @@ NEW条件来自`IsExistCharaNew`（RVA `2DFB50`）：逐人物定义检查`state
 五行之后还存在以下调用，必须分别交付，不能用局部菜单图元宣称完整原版界面：
 
 - `_draw`共用尾VA `10356D9C–10356DDF`注册组件4/value22、TouchOption flag2，无矩形重载；不可擅自解释为全屏点击关闭。
-- raw9不是raw20，DrawMenu2在VA `10309A1B–10309A9A`调用`GameForm.Draw_rightTopInfo(g,VIEW_W−Ox,VIEW_Y−Oy)`，之后还有选中任务的四条摘要。世界HUD、任务摘要及其内部原点／文字消费者尚待本方向正式交付。
+- raw9不是raw20，DrawMenu2在VA `10309A1B–10309A9A`调用`GameForm.Draw_rightTopInfo(g,VIEW_W−Ox,VIEW_Y−Oy)`，之后还有选中任务的四条摘要。HUD与任务摘要已由本批独立计划交付，平台完整原点／文字后端另验。
 - VA `10309953–103099F5`在静态`jumpScreenCursorNeed_`为真时清标志并调用`Canvas.JumpScreenCursor`，改变内部屏幕光标，不是已证的系统鼠标移动。上游与几何见下文；一次性消费仍待Owner显式表现请求接入，纯查询不能消费标志。
 - `SubForm.Draw`的finally helper（RVA `305C80`）先`SetOrigin(0,0)`，不是恢复某个猜测的旧原点；特定对话切换后的墙钟保护还会清本轮触摸组件，不能换成逻辑tick或推广到所有弹窗。
 
@@ -407,9 +407,9 @@ DrawMenu2只有frame≥3、当前行选中且`AppData.IsTopForm(this)`为真时�
 
 维护接入沿[已确认Owner方案](INPUT_RENDER_REQUESTS.md#已确认的维护owner请求设计)：全局请求及页面转换顺序由真实应用控制器持有；墙钟样本、实际原点与缩放须显式进入可回放请求，Owner核准后输出内部光标／清触摸计划，重复展示冻结计划不重做消费。若纳入应用快照，须保存或明确重建全局请求、页面时间戳、上次栈顶识别及内部光标状态，不能只存raw9选择与frame。**完整虚拟光标更新／输入合成、跨进程墙钟恢复政策、整栈多页清理后继续注册的顺序仍未闭合**；原局部调用已证不等于维护平台消费者已实现。
 
-### 菜单右上HUD与四行摘要（静态已核，维护待接）
+### 菜单右上HUD与四行摘要
 
-2026-10-10继续核固定Steam2.56的`GameForm.Draw_rightTopInfo`（RVA `2F94C0`）及`DrawMenu2`尾段（VA `10309A9D–1030A0E3`）。以下为原版调用合同与现有Owner映射，不表示维护皮肤、原窗口或产品消费者已验收。两段本身没有新增随机、声音、字体测宽、文字字符串或触摸注册；人物共享绘制scratch仍沿基础肖像的限制，不能据此认证完整原共享表现状态。
+2026-10-10继续核固定Steam2.56的`GameForm.Draw_rightTopInfo`（RVA `2F94C0`）及`DrawMenu2`尾段（VA `10309A9D–1030A0E3`）。维护已交付`startup_menu_information`只读投影与`steam_information_menu_status_skin`有序计划，projection／visuals两项短测通过0.93秒；[三类示例](examples/steam-information-status.png)直接消费正式计划和资源。以下原合同与维护保证分别登记，原窗口／产品消费者尚未由此认证。两段没有新增随机、声音、字体测宽、字符串或触摸注册；人物共享scratch附加效果仍沿基础肖像的限制。
 
 **右上HUD。** 调用传入`X=VIEW_W−Graphics.GetOriginX()`、`Y=VIEW_Y−Graphics.GetOriginY()`；第二项是VIEW_Y，不能写成VIEW_H。helper内不修改原点，按如下顺序绘制：
 
@@ -446,4 +446,16 @@ DrawMenu2只有frame≥3、当前行选中且`AppData.IsTopForm(this)`为真时�
 
 资源身份已按[图像覆盖索引](../assets/IMAGE_COVERAGE.json)的EXE common `img.inf/seb.inf`核对：image84/SEB75 `menuRT00.png/.seb`与APK均不同（Steam图59×45、945字节；SEB4帧、88字节），image151 `menuRT04.png`亦不同（11×11、224字节），接线需要正式出版Steam副本。image85 `menuRT01.png`已有Steam副本，SEB76与APK同字节；image86 `menuRT02.png`为77×18、729字节，image152 `icon_quest.png`为32×16、454字节，两者及SEB10/image102、SEB20/image108均同字节可复用原出版副本。SEB44/image31已有Steam图，image91已有同字节资源。具体哈希以覆盖索引及正式资源入口为准，不因同名默认跨版本复用。
 
-后续维护使用只读HUD投影（村点、可选怪物剩余数、可选四行摘要），复用唯一Owner与引用退休合同，不增加第二套世界统计或快照schema。实际资源出版、SEB及独立ImageClip消费、普通／Comma／count3／count4图元、整数边界拒绝、短测和示例仍按对应实现验收；本静态补核不把这些待接项目记成已完成。
+维护投影现复用唯一Owner与引用退休合同，不增加第二套世界统计或快照schema。状态栏在五行计划后以相同origin消费，保持原绘序；普通／Comma／count3／count4及独立ImageClip已接并验整数边界、拒绝与只读。三项差异资源已出版，SEB10／20及其它同字节副本复用；平台按缺帧空绘制、ImageClip clear无效态、普通clip独立pop执行。此交付不补原共享scratch附加效果、整栈原点／输入调度或完整字体后端。
+
+### Steam9选行、确认与虚拟光标后继（静态已核）
+
+`GameView.OnTouchEvent`（RVA `23C820`）的组件id9分支VA `1023C9CD`先让真实栈顶表单处理；raw9在`SubForm.OnTouchEvent`（`3160B0`）没有专项拦截，正常返回true。id9只消费TYPE_ENTER2与TYPE_UP1，两者先`GameView.Set(value,component)`；ENTER随后结束，UP再`Canvas.KeyClick(0x100000)`，没有双击、原先已选中或TYPE_CLICK5条件。`Set`（`23DD40`）取真实栈顶、拆`0x20000|row`，`SubForm.SetTouchValue`（`317600`，VA `10317653–10317660`）写选择；`KeyClick`（`74EB20`）把mask并入焦点Keypad并分派down／up，之后`FrameMenu`（`30E270`）才按上→下→确认／右→返回／左消费。选行与真正压子页分处两层，不能由绘制计划直接执行。
+
+**ENTER不是裸鼠标悬停的同义词。** `SurfaceBase.DoEvent`（RVA `88DA20`）先将当前点减surface x/y、除scaleRatio/100并朝零截整，做半开矩形命中（VA `1088DAAE–1088DB7D`）；当前点在外立即返回。action跳表`1088ECA4`令DOWN0到`1088DD33`：component key不在lastTouchList时先生成ENTER2，没有startTouch key再生成DOWN0并登记起点。MOVE2到`1088E0F9`，进入新组件也产生ENTER；UP1到`1088DE0D`，普通已有触点及大位移分支都可能产生UP1，CLICK5是可选先行事件，raw9不消费5。缺last key另有补ENTER→UP路径`1088DEFA–1088DF29`；CANCEL3独立，不借UP确认。因此首轮按下可以选行，不需要第二次点击；仍不能绕过命中、guard与取消，将任意物理松手直接映射确认。
+
+**恢复12是表现计数，不是禁输入12轮。** `Canvas.<DecideKeyState>b__325_0`（RVA `752BB0`，VA `10754D12–10754D1D`）每次回调对正的screenCursorResumptionFrame减1；本轮内部光标活动且旧stopFrame≥100时在`10754D3F`又置12并将stop归0，无活动且stop≤100时自增，最终停101。`DrawScreenCursor`（`7497B0`）每次绘制独立增加drawFrame、192回0，不递减resume；resume>0仅进入附加缩放／透明绘制（`10749B4E`起），已核触摸合成分支不检查它。这些调用不能换成墙钟或世界tick。
+
+`DecideKeyState`（RVA `748780`）清24项joystick down/up，调用begin更新并调度上述回调；在非Joystick模式及输入门槛通过时，VA `10754869–10754BEE`检查当前确认映射、Return或KeypadEnter。首次按下令screenCurosorClick从−1置0并产ACTION_DOWN0；保持按下仅在朝零截整坐标差平方和>0时产MOVE2；松开回−1并产UP1。坐标来自内部screenCursor，部分显示模式另加居中偏移；单pointer ID0、isMousePointer=true，经`Canvas.OnTouchEvent`（`751000`）分派，没有系统鼠标移动API。`IsScreenCursor`（`74E6D0`）检查当前controller值是否2；方向／WASD仍受相应模式与门槛，不能全局替代为菜单选行。
+
+这些事实闭合raw9的ENTER选行／UP请求确认及光标恢复计数。整栈组件重叠优先级／注册退休、输入guard／取消／延迟队列、全部物理鼠标与InputSystem分支、回调与页面Update完整次序、跨进程墙钟恢复政策仍未闭合；**未实现完整输入控制器，不新增持久化字段来冒认平台快照完成**。本节只读Steam静态分析，没有原窗口动态或APK等价认证。

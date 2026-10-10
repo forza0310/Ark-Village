@@ -8,7 +8,7 @@
 
 ## 当前交付
 
-- [Steam共用差异图](steam-common)：`menuRT01.png`（image85，57×10／469字节）、`icon_objRoots.png`（image128，148×36／1432字节）、`icon_result00.png`（image31，63×48／1000字节）及`number12.png`（image109，100×21／636字节），共3537字节。均是固定`resources.assets`的common对象pathID1148原条目，源身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1148:common:<文件名>`记录；同名APK整图有像素差异，不复制同字节SEB76／88／44／19。image31用于35贡献表头的SEB44帧4，image109用于39负利润的SEB19；均未裁切或重绘。消费者及坐标见[信息菜单](../ui/INFORMATION_MENU.md)，正式[资源路径查询](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)供产品复制后使用。这里不另建发布指纹清单，语言替换与原字体另验。
+- [Steam共用差异资源](steam-common)：六张PNG及一个SEB共4794字节。既有`menuRT01.png`（image85，57×10／469字节）、`icon_objRoots.png`（image128，148×36／1432字节）、`icon_result00.png`（image31，63×48／1000字节）、`number12.png`（image109，100×21／636字节）；菜单状态栏新增`menuRT00.png`（image84，59×45／945字节）及其SEB75（88字节／四帧）、`menuRT04.png`（image151，11×11／224字节）。均为固定`resources.assets`的common对象pathID1148原条目，源身份沿[全量索引](IMAGE_COVERAGE.json)的`EXE:resources.assets:1148:common:<文件名>`记录；同名APK有差异，不复制其它同字节SEB。image31用于35贡献及菜单怪物摘要，image109用于39负利润，84／151用于菜单HUD与剩余期；均未裁切或重绘。消费者见[信息菜单](../ui/INFORMATION_MENU.md)，正式[资源路径查询](../prototype/include/dungeon_village_prototype/steam_information_skin.hpp)供产品复制后使用；不另建指纹清单，语言替换与原字体另验。
 
 - [Steam人物详情差异图](steam-human-common/README.md)：image88 wnd_ato，10×7／187字节；明确源条目／RGBA／APK差异及raw60经验区消费者，不扩称全部语言替换已核。
 

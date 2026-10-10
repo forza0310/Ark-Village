@@ -12,7 +12,9 @@
 
 信息页面由[startup_world_information](include/dungeon_village_prototype/startup_world_information.hpp)维护。Session／Application提供`open_information_menu`和`input_information_page`；接收已解析输入，raw9上下优先互斥，raw36左右依次执行。五项原序全部开放34／35／36／37／38；选子页先压页再退休菜单，主场景快捷入口仍属维护适配。37／38在既有phase／counter之外增加typed目录载荷，分别冻结一组／四组ID及选择／滚动；38采用Steam目录过滤，关闭后由框架统一退休。完整皮肤与OS输入沿[信息合同](../ui/INFORMATION_MENU.md)分别交付，本批短测结果另记。
 
-信息页的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)已提供34／35／36／37／38／39完整局部计划；收支36复用Steam窗框／内框、字体金额、源端点线与箭头触摸，不生成数字SEB。调用者提供语言、VIEW_Y与真实测宽并执行字体／触摸后端；各[布局例图](../ui/examples/README.md)用明确替代字体，仅作产品参考。raw9五行菜单另输出原裁片展开、文字／NEW／手形与触摸计划，保留实际原点；不消费Owner、随机或一次性光标请求。右上HUD／任务摘要、父级原点获取及完整输入框架仍待接，不以局部计划宣称完整原版皮肤。
+信息页的[steam_information_skin](include/dungeon_village_prototype/steam_information_skin.hpp)已提供34／35／36／37／38／39完整局部计划；收支36复用Steam窗框／内框、字体金额、源端点线与箭头触摸，不生成数字SEB。调用者提供语言、VIEW_Y与真实测宽并执行字体／触摸后端；各[布局例图](../ui/examples/README.md)用明确替代字体，仅作产品参考。raw9五行菜单另输出原裁片展开、文字／NEW／手形与触摸计划，保留实际原点；不消费Owner、随机或一次性光标请求。右上HUD／任务摘要见下述独立计划；父级原点获取及完整输入框架仍待接，不以局部计划宣称完整原版皮肤。
+
+raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在五行后以相同原点消费；HUD按VIEW_Y／origin抵消，摘要保留局部位置和整数展开，不能统一移到屏幕边缘。只读`startup_menu_information`复用唯一Owner的村点、真实任务设施引用、遭遇缓存和全名单；不造参与者统计。普通SEB10、Comma、count3／4和独立ImageClip完整原序已验，三项Steam差异资源已出版。后端须执行ImageClip clear为无效态、普通clip pop独立恢复及SEB缺帧空绘制；不将静图参考当成完整共享scratch、原字体／输入或光标控制器已完成。
 
 `steam_adventurer_information_skin`进一步提供35四页完整局部计划：橙色选择底、16×16人物边框／15×15裁剪与静态职业身体、NEW／手形、四页文字／数字、独立英语表头及111高滚动。`SteamInformationDraw`保留具名clip／身体／通用数字请求的有序执行，SEB11／20数字沿现facility展开器新增明确资源映射；只读查询不初始化、重算贡献、清NEW或推进世界。原字体后端与物理输入仍另验。
 

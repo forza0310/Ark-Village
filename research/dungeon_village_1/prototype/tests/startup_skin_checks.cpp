@@ -1679,6 +1679,132 @@ void information_menu_skin(Checks &check,const std::filesystem::path &root) {
               "raw9两方向手形SEB均引用finger_r.png的image70，不能寻找不存在的finger_l.png");
     }
 }
+void information_menu_status_skin(Checks &check,const std::filesystem::path &root) {
+    using NK=SteamInformationNumberKind;
+    auto owner=test_support::page_fixture(9);
+    owner.scripts.pages.back().lifecycle=0;
+    const auto id=owner.scripts.pages.back().id;
+    check(initialize_startup_world_information_pages(owner),"菜单状态栏使用真实raw9 Init");
+    SteamInformationMenuSkinOptions options;
+    options.origin={20,30};options.view_y=7;
+    owner.village_points=345;
+    const auto village=*steam_information_menu_status_skin(owner,id,options);
+    check(village.draws.size()==2 && village.touches.empty() && village.origin==options.origin,
+          "没有选中任务仍画村点，不制造四摘要或交互／声音");
+    const auto &label=std::get<StartupSkinDraw>(village.draws[0]);
+    const auto &point=std::get<SteamFacilityNumber>(village.draws[1]);
+    check(label.image==84 && label.sprite==75 && label.frame==2 && label.offset==std::array<int,2>{163,-23} &&
+          point.kind==SteamFacilityNumberKind::comma_number && point.asset==SteamFacilityAsset::number11 &&
+          point.value==345 && point.position==std::array<int,2>{218,-18} && point.anchor==4,
+          "村点HUD抵消真实origin，用VIEW_Y而非画布高度，SEB20保留Comma右锚");
+    // 选中任务/名册均为表现条件；自然接受及遭遇quota由既有规则／projection主责。
+    const auto definition=std::find_if(owner.rules->tasks.begin(),owner.rules->tasks.end(),[](const auto &t) {
+        return t.factory.kind==1;
+    });
+    check(definition!=owner.rules->tasks.end(),"原目录含type1任务供摘要条件使用");
+    ref::DungeonFinishTask task;task.identity=1;task.definition=definition->factory.identity;
+    owner.tasks.emplace(1,task);owner.task_order={1};owner.active_task=1;owner.next_task_identity=2;
+    owner.task_subperiods=5;
+    constexpr std::array<int,4> animated_x{240,221,202,182};
+    for(int count=0;count<=3;++count) {
+        owner.page_counters.at(id)=count;
+        const auto plan=steam_information_menu_status_skin(owner,id,options);
+        check(plan && plan->draws.size()==(count<3?10U:25U),"HUD先完成，四摘要背景每阶段存在且内容只在3展开");
+        const auto &background=std::get<StartupSkinDraw>(plan->draws[6]);
+        check(background.image==86 && background.crop==std::array<int,4>{0,0,58,18} &&
+              background.offset==std::array<int,2>{animated_x[count],36},
+              "四摘要整数RateConvert朝零截断，不减origin或加入VIEW_Y");
+    }
+    const auto before=startup_world_state_digest(owner);
+    const auto plan=*steam_information_menu_status_skin(owner,id,options);
+    const auto &monster_number=std::get<SteamFacilityNumber>(plan.draws[2]);
+    check(monster_number.asset==SteamFacilityAsset::number03_hud && monster_number.anchor==2 &&
+          monster_number.position==std::array<int,2>{193,-20} &&
+          std::get<StartupSkinDraw>(plan.draws[3]).image==84 &&
+          std::get<StartupSkinDraw>(plan.draws[3]).frame==3,
+          "非日文怪物HUD使用独立SEB10及正确普通数字锚／单位");
+    const auto &push=std::get<SteamFacilityClip>(plan.draws[9]);
+    const auto &set=std::get<SteamInformationImageClip>(plan.draws[10]);
+    const auto &body=std::get<SteamInformationHumanBody>(plan.draws[11]);
+    const auto &clear=std::get<SteamInformationImageClip>(plan.draws[12]);
+    const auto &pop=std::get<SteamFacilityClip>(plan.draws[13]);
+    check(push.kind==SteamFacilityClipKind::push_intersect && push.rectangle==std::array<int,4>{188,38,15,14} &&
+          set.kind==SteamInformationImageClipKind::set && set.rectangle==push.rectangle &&
+          body.position==std::array<int,2>{196,59} && body.body.sprite==1 && body.body.frame==0 &&
+          body.body.image==owner.rules->jobs.at(owner.scene.world.world.ai.growth.at(0).definition.current_profession).sprites.at(0) &&
+          clear.kind==SteamInformationImageClipKind::clear && pop.kind==SteamFacilityClipKind::pop,
+          "空名单用定义0当前职业身体；普通clip／ImageClip／body／clear／pop完整原序");
+    const auto &people=std::get<SteamInformationNumber>(plan.draws[14]);
+    const auto &monsters=std::get<SteamInformationNumber>(plan.draws[17]);
+    const auto &residence=std::get<StartupSkinDraw>(plan.draws[19]);
+    const auto &time=std::get<SteamFacilityNumber>(plan.draws[23]);
+    check(people.kind==NK::person_count && people.value==0 && people.position==std::array<int,2>{237,41} &&
+          monsters.kind==NK::monster_count && monsters.value==0 && monsters.position==std::array<int,2>{237,59} &&
+          residence.image==91 && residence.crop==std::array<int,4>{80,0,16,16} &&
+          time.value==7 && time.position==std::array<int,2>{226,94} &&
+          std::get<StartupSkinDraw>(plan.draws[24]).image==151,
+          "四摘要数字分别全名单／type12／12减周期间，末覆盖框在期间数字之后");
+    for(int repeat=0;repeat<5;++repeat) {
+        const auto again=steam_information_menu_status_skin(owner,id,options);
+        check(again && again->draws.size()==plan.draws.size() && again->touches.empty() &&
+              startup_world_state_digest(owner)==before,"重复状态栏查询不增长Owner、缓存、随机或一次性输出");
+    }
+    options.japanese=true;
+    const auto jp=*steam_information_menu_status_skin(owner,id,options);
+    check(std::get<SteamFacilityNumber>(jp.draws[2]).position==std::array<int,2>{200,-20} &&
+          std::get<StartupSkinDraw>(jp.draws[3]).image==85 && std::get<StartupSkinDraw>(jp.draws[3]).frame==1 &&
+          std::get<SteamInformationNumber>(jp.draws[14]).japanese,
+          "日文HUD独立数值位置／怪物单位，count3/4同步保留语言参数");
+    for(const auto kind:{NK::person_count,NK::monster_count}) {
+        const auto digits=steam_information_number_draws({kind,1234,{100,7},true});
+        check(digits && digits->size()==6 && digits->front().offset==std::array<int,2>{58,7} &&
+              digits->at(2).frame==10 && digits->at(2).offset==std::array<int,2>{64,7} &&
+              digits->back().sprite==76 && digits->back().frame==(kind==NK::person_count?4:1) &&
+              digits->back().offset==std::array<int,2>{90,7},"日文count3/4先减10再Comma，数字先于逗号，各自单位最后");
+        const auto zero=steam_information_number_draws({kind,0,{100,7},false});
+        check(zero && zero->size()==1 && zero->front().frame==0 &&
+              zero->front().offset==std::array<int,2>{92,7},"非日文空名单仍显示0，不附单位或按库存拒零");
+        check(!steam_information_number_draws({kind,-1,{100,7},false}) &&
+              !steam_information_number_draws({kind,0,{std::numeric_limits<int>::min(),7},true}),
+              "名单数量负值及日文定位溢出显式拒绝");
+    }
+    const auto type0=std::find_if(owner.rules->tasks.begin(),owner.rules->tasks.end(),[](const auto &t) {
+        return t.factory.kind==0;
+    });
+    check(type0!=owner.rules->tasks.end(),"原目录含type0任务");
+    owner.tasks.at(1).definition=type0->factory.identity;
+    const auto dungeon=*steam_information_menu_status_skin(owner,id,options);
+    check(std::get<StartupSkinDraw>(dungeon.draws[6]).offset==std::array<int,2>{182,18} &&
+          std::get<StartupSkinDraw>(dungeon.draws[22]).crop==std::array<int,4>{16,0,16,16},
+          "type0摘要始于18并取quest格1，不错误套type1位置或图标");
+    options.covered_by_nonmenu_subform=true;
+    check(steam_information_menu_status_skin(owner,id,options)->draws.empty(),"非菜单遮挡使HUD摘要也无绘制／触摸");
+    options.covered_by_nonmenu_subform=false;
+    for(int fault=0;fault<5;++fault) {
+        auto bad=owner;auto input=options;
+        if(fault==0)bad.page_counters.erase(id);
+        if(fault==1)bad.tasks.erase(1);
+        if(fault==2)input.canvas[0]=0;
+        if(fault==3)input.origin[0]=std::numeric_limits<int>::min();
+        if(fault==4){input.view_y=std::numeric_limits<int>::max();input.origin[1]=-1;}
+        const auto digest=startup_world_state_digest(bad);
+        check(!steam_information_menu_status_skin(bad,id,input) && startup_world_state_digest(bad)==digest,
+              "坏菜单／已退休任务／画布及坐标算术显式拒绝，不留下状态");
+    }
+    for(const auto file:{"menuRT00.png","menuRT04.png"}) {
+        const auto path=root.parent_path()/"steam-common"/file;
+        auto image=LoadImage(path.string().c_str());
+        check(image.data && image.width==(std::string(file)=="menuRT00.png"?59:11) &&
+              image.height==(std::string(file)=="menuRT00.png"?45:11),"新Steam状态栏PNG真实解码和尺寸通过");
+        UnloadImage(image);
+    }
+    const auto seb=tools::parse_legacy_seb(read_bytes(root.parent_path()/"steam-common/menuRT00.seb"));
+    check(seb.frame_count==4 && seb.layers.size()==1 && seb.layers[0].parts.size()==4,
+          "Steam SEB75真实四帧身份，不能借APK版SEB");
+    for(const auto &part:seb.layers[0].parts)
+        check(part.image_index==84 && part.source_x>=0 && part.source_y>=0 &&
+              part.source_x+part.width<=59 && part.source_y+part.height<=45,"状态栏SEB75裁片在新PNG内");
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -1697,6 +1823,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     adventurer_information_skin(check,source_root);
     town_facility_information_skin(check,source_root);
     information_menu_skin(check,source_root);
+    information_menu_status_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

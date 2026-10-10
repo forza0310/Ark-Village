@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：经用户明确授权，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`，以及 `progression38000.awr` 和其 JSON 侧车均已删除。下文保留对应历史验收结论、规模和当批目录名，不再提供这些载荷的恢复入口；其余快照不属于本次删除范围，保留文件也不代表兼容当前读器。
 
+## Steam菜单HUD与任务摘要2026-10-10
+
+[菜单状态栏](ui/INFORMATION_MENU.md#菜单右上hud与四行摘要)已接唯一Owner的村点、选中任务设施准入、quota／遭遇缓存、全活动名单、type12住宅、剩余期及当前职业／性别肖像；空名单沿定义0，不造W，不实时重数缓存怪物。正式计划保留HUD抵消origin与四摘要局部坐标的差别、整数展开、普通／Comma数字、日文count3／4单位，以及普通clip push→ImageClip set→身体→clear→pop原序。新增普通SEB10身份区别既有SEB11，Comma保留缺帧请求，后端按已核源为空绘制。没有Owner字段、codec语义、系统格式、target或世界规则改变。
+
+完整单Release增量构建通过，projection 0.14秒／visuals 0.78秒，CTest合计0.93秒通过。现套件覆盖真实工厂设施引用、全名单而非参与者／HP过滤、当前资料、缓存算术、23类非法映射／退休／溢出拒绝、各展开帧／语言／原点、有序clip、普通／Comma／INT_MIN／单位资源及重复只读，无新经营Driver或重复持久化长测。三项Steam差异资源共1257字节已从固定common原条目核身份出版；主会话已实际查看[三类菜单图](ui/examples/steam-information-status.png)，40,207字节，示例条件／字体／原点边界见说明。
+
+查询结果及绘制计划均局部持有，不新增永久统计、实体引用或输出队列；源名册扫描受当前Owner规模约束，不宣称合法世界历史永久有界。示例普通clip／ImageClip操作均已消费，原图资源及CPU图像释放，临时导出器／JSON／渲染器验后清理，构建与测试进程收齐。产品、住宅在途试验及原游戏未改；完整输入、字体后端、虚拟光标控制及人物共享scratch附加效果仍独立待接。
+
 ## Steam情报菜单五行局部皮肤2026-10-10
 
 [raw9局部计划](prototype/include/dungeon_village_prototype/steam_information_skin.hpp)读取既有选择／计数，保留实际原点、安全区与原负局部偏移，输出0…3源裁片展开、五行完整触摸、原tag／颜色／测宽、人物NEW及栈顶手形。两方向手形SEB都引用image70，不寻找不存在的finger_l.png；覆盖非菜单页时返回空计划。原图与SEB逐字节核同已出版副本，无新增原素材或Owner／保存字段；原点归零、500ms触摸框架及一次性内部光标仍由后继控制器接，不把纯查询当消费。

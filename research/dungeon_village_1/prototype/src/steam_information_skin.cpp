@@ -155,6 +155,73 @@ std::optional<SteamInformationSkinPlan> steam_information_menu_skin(
     plan.touches.push_back({{4,22,{},{},2},{},{}});
     return plan;
 }
+std::optional<SteamInformationSkinPlan> steam_information_menu_status_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationMenuSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=9||options.canvas[0]<=0||options.canvas[1]<=0)return {};
+    SteamInformationSkinPlan plan;plan.raw=9;plan.origin=options.origin;
+    if(options.covered_by_nonmenu_subform)return plan;
+    const auto data=startup_menu_information(state);
+    if(!data)return {};
+    const auto fits=[](std::int64_t n) {
+        return n>=std::numeric_limits<int>::min()&&n<=std::numeric_limits<int>::max();
+    };
+    const auto hud_x=std::int64_t(options.canvas[0])-options.origin[0];
+    const auto hud_y=std::int64_t(options.view_y)-options.origin[1];
+    if(!fits(hud_x)||!fits(hud_x-77)||!fits(hud_y)||!fits(hud_y+23))return {};
+    const int x=static_cast<int>(hud_x);int y=static_cast<int>(hud_y);
+    if(data->monster_remaining) {
+        image(plan,86,77,18,x-77,y);
+        sprite(plan,84,75,1,x-74,y+2);
+        plan.draws.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,
+            SteamFacilityAsset::number03_hud,*data->monster_remaining,
+            {x-(options.japanese?20:27),y+3},0,2,-1});
+        sprite(plan,options.japanese?85:84,options.japanese?76:75,
+               options.japanese?1:3,x-(options.japanese?12:18),y+6);
+        y+=18;
+    }
+    sprite(plan,84,75,2,x-57,y);
+    plan.draws.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::comma_number,
+        SteamFacilityAsset::number11,data->village_points,{x-2,y+5},0,4,-1});
+    if(!data->task)return plan;
+    const auto &task=*data->task;
+    // 原整数RateConvert朝零截断，frame1/2是W−19/W−38，不先截正向进度。
+    const auto animated_x=std::int64_t(options.canvas[0])+(-58LL*view->frame)/3;
+    if(!fits(animated_x)||!fits(animated_x+55))return {};
+    const int a=static_cast<int>(animated_x),b=task.type==1?36:18;
+    for(int row=0;row<4;++row) {
+        const int row_y=b+18*row;
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,86,-1,0,0,
+                                               {0,0,58,18},{a,row_y}});
+        if(view->frame<3)continue;
+        if(row==0) {
+            plan.draws.emplace_back(StartupSkinRect{{a+6,row_y+1,16,16},{196,236,169},false});
+            plan.draws.emplace_back(StartupSkinRect{{a+6,row_y+1,16,16},{204,204,204},true});
+            const std::array<int,4> clip{a+6,row_y+2,15,14};
+            plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::push_intersect,clip});
+            plan.draws.emplace_back(SteamInformationImageClip{SteamInformationImageClipKind::set,clip});
+            plan.draws.emplace_back(SteamInformationHumanBody{{task.portrait_body,1,0},{a+14,row_y+23}});
+            plan.draws.emplace_back(SteamInformationImageClip{SteamInformationImageClipKind::clear,{}});
+            plan.draws.emplace_back(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+            plan.draws.emplace_back(SteamInformationNumber{SteamInformationNumberKind::person_count,
+                task.humans,{a+55,row_y+5},options.japanese});
+        } else if(row==1) {
+            sprite(plan,31,44,3,a+6,row_y+1);
+            plan.draws.emplace_back(SteamInformationNumber{SteamInformationNumberKind::monster_count,
+                task.monsters,{a+55,row_y+5},options.japanese});
+        } else if(row==2) {
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,91,-1,0,0,
+                                                   {80,0,16,16},{a+6,row_y+1}});
+            number(plan,SteamFacilityAsset::number05,task.residences,a+55,row_y+5);
+        } else {
+            plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,152,-1,0,0,
+                                                   {16*(1-task.type),0,16,16},{a+6,row_y+1}});
+            number(plan,SteamFacilityAsset::number05,task.remaining_subperiods,a+44,row_y+4);
+            image(plan,151,11,11,a+44,row_y+3);
+        }
+    }
+    return plan;
+}
 std::optional<SteamInformationSkinPlan> steam_town_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
     const auto view=inspect_startup_world_information_page(state,page);
@@ -381,6 +448,20 @@ std::optional<SteamInformationSkinPlan> steam_income_information_skin(
 std::optional<std::vector<StartupSkinDraw>> steam_information_number_draws(
     const SteamInformationNumber &number) {
     using Kind=SteamInformationNumberKind;
+    if(number.kind==Kind::person_count||number.kind==Kind::monster_count) {
+        if(number.value<0)return {};
+        const auto x=std::int64_t(number.position[0])-(number.japanese?10:0);
+        if(x<std::numeric_limits<int>::min()||x>std::numeric_limits<int>::max())return {};
+        const auto digits=steam_facility_number_draws({SteamFacilityNumberKind::comma_number,
+            SteamFacilityAsset::number05,number.value,{static_cast<int>(x),number.position[1]},0,4,-1},8);
+        if(!digits)return {};
+        std::vector<StartupSkinDraw> result;
+        for(const auto &digit:*digits)
+            result.push_back({StartupSkinPackage::common,103,12,digit.frame,0,{},digit.position});
+        if(number.japanese)result.push_back({StartupSkinPackage::common,85,76,
+            number.kind==Kind::person_count?4:1,0,{},{static_cast<int>(x),number.position[1]}});
+        return result;
+    }
     if(number.value<=0 || (number.kind!=Kind::inventory_count&&number.kind!=Kind::positive_attribute))return {};
     const bool inventory=number.kind==Kind::inventory_count;
     if(inventory&&number.value>999)return {};
@@ -491,7 +572,9 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 50:return "original/common/wnd_exp.png";
     case 70:return "original/common/finger_r.png";
     case 74:return "original/common/arrow02.png";
+    case 84:return "steam-common/menuRT00.png";
     case 85:return "steam-common/menuRT01.png";
+    case 86:return "original/common/menuRT02.png";
     case 87:return "original/common/wnd_expBar.png";
     case 91:return "original/common/icon_tenantInfo.png";
     case 102:return "original/common/number03.png";
@@ -504,6 +587,8 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 129:return "original/common/wnd_max.png";
     case 147:return "original/common/wnd_new.png";
     case 148:return "original/common/wnd_get.png";
+    case 151:return "steam-common/menuRT04.png";
+    case 152:return "original/common/icon_quest.png";
     default:return {};
     }
 }

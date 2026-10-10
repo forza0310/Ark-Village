@@ -78,4 +78,18 @@ struct StartupFacilityInformation {
 // 空目录合法；不写Q/B缓存，不创建页、不发事件17或移动镜头。
 std::optional<std::vector<StartupFacilityInformation>>
 startup_facility_information(const StartupWorldRuntimeState &state);
+
+// 菜单四摘要读取全活动名单；portrait取首W当前职业/性别，空名单只用定义0，不造W。
+struct StartupMenuTaskInformation {
+    int type{}, humans{}, monsters{}, residences{}, remaining_subperiods{};
+    int portrait_definition{}, portrait_profession{}, portrait_sex{}, portrait_body{};
+};
+struct StartupMenuInformation {
+    int village_points{};
+    std::optional<int> monster_remaining; // 仅选中任务没有设施引用时；使用既有遭遇缓存。
+    std::optional<StartupMenuTaskInformation> task;
+};
+// 不新增统计缓存、页面或稳定引用；只校验本查询实际读取的映射。
+// 无选中任务只读村点；非法/已退休引用、重复名单与数值溢出显式拒绝。
+std::optional<StartupMenuInformation> startup_menu_information(const StartupWorldRuntimeState &state);
 } // namespace dungeon_village_prototype

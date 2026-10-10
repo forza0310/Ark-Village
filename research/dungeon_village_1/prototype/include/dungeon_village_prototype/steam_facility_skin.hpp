@@ -12,7 +12,7 @@ namespace dungeon_village_prototype {
 // Steam资源身份独立于APK同号槽。路径相对已出版assets目录，不读取work或Unity容器。
 enum class SteamFacilityAsset {
     wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
-    upgrade_background, mini_background, number03, number11, number12
+    upgrade_background, mini_background, number03, number11, number12, number03_hud
 };
 struct SteamFacilityResource {
     const char *group;
@@ -57,20 +57,23 @@ struct SteamFacilityMapchipDraw {
 // 固定已核mapchip目录；不借地图可建/旋转资格限制只读helper，也不改道路请求帧。
 std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(
     const SteamFacilityMapchip2 &request);
-enum class SteamFacilityNumberKind { number, money, plus_value };
+enum class SteamFacilityNumberKind { number, money, plus_value, comma_number };
 struct SteamFacilityNumber {
     SteamFacilityNumberKind kind;
     SteamFacilityAsset asset;
     int value{};
     std::array<int,2> position{};
-    // 仅number使用padding/anchor；money/plus保留原具名helper，position为调用实参。
+    // number使用原padding/位锚；comma_number只支持已核padding0与精确anchor2/4。
+    // money/plus保留原具名helper，position为调用实参。
     // money内的dx−9与plus内的加号定位留给helper消费者，不能在接线时重复偏移。
     int padding{}, anchor{};
     int parameter{-1}; // -1当前等级；0/1/2对应冻结属性行，不重算业务值。
 };
 // 展开实际SEB请求；普通数字的步宽来自所选SEB frame0/line0的SP_W，不能用Font字宽。
 // money/plus沿源固定8步宽及逗号原序，digit_width不参与这两类计算。
-// 35的number03/number11分别绑定SEB11/20，仅普通数字，实际字格步宽为8/7。
+// number03_hud独立绑定SEB10/sourceY0；35的number03绑定SEB11/sourceY12，二者普通步宽8。
+// number11绑定SEB20，普通字格步宽7；与number05均支持独立comma_number固定8步宽。
+// comma_number保留frame10请求；SEB20缺该帧的空绘制由已核后端消费，不借别图补逗号。
 // 39负利润number12绑定Steam image109/SEB19，支持普通数/money，不扩为plus消费者。
 // 源负数可能请求负frame；保留请求事实，不能当作已认证的负帧像素/减号映射。
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(

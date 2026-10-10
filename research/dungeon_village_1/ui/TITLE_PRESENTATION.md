@@ -57,7 +57,7 @@ q字段完整映射为`[active, definition, x, y, direction, age]`。每个活�
 
 维护`StartupApplication`已持有背景状态`l/f132f/s/t/q`。`advance_title_background`只在`title_presentation`模式的活动标题页接受具名合格更新；背景与随机候选一次提交，失败保持二者及输入消费结果。开纪录仍由独立`open_records`抽名单；`record_view`不抽；`start_game`将当前random交给新世界候选并记录handoff，系统写失败不提交。world→title从当前世界复制随机，保留旧world但它不再推进，同时重置背景q/l/s/t并保留f132f；配置／纪录返回保留完整背景。logic模式不推进背景，保持既有世界黄金轨迹。
 
-`StartupTitleReplay("startup-title-v2")`在旧草稿／页面／名单／随机／requests之外保存背景，仍拒绝含world的应用。requests只计开纪录，不代表背景更新轮数。完整应用文件现使用AVRAPP01应用语义3，包含保留world时的背景和独立当前标题随机；历史handoff不能强制等于当前流。独立内存标题控制器v2与完整应用文件语义3不是同一版本号。
+当前`StartupTitleReplay("startup-title-v3")`保存背景、草稿／页面／名单／随机／requests以及标题目录观察，仍拒绝含world的应用。requests只计开纪录，不代表背景更新轮数。完整应用文件使用AVRAPP01应用语义7，包含保留world时的背景和独立当前标题随机；历史handoff不能强制等于当前流。内存控制器、文件语义和系统目录版本分别维护，旧v2／应用3不能作为当前恢复入口；具体边界以[应用模块](../prototype/STARTUP_APPLICATION.md#输出随机与恢复)为准。
 
 ## 已接线接口与完整输入缺口
 

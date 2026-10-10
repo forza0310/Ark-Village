@@ -106,3 +106,21 @@ human图片索引没有32，现有37图均核实际像素／尺寸及所需身�
 身体绘制仍包含相机选中、体力条、携物、倒地、调试、伤害和效果分支；`haveObj_`残留还会把行走SEB改用`HUMAN_ANIME_SEB[8]`。已读完整`Draw_human`不直接调SetRenderMode或Random，但它继续调用`DrawEffDamage/DrawEffect`等，本批未闭合其所有子树与共享状态初始化。所以不能宣称整个标题绘制无随机、任何历史进入标题都只有三层，或淡出必然不被深层效果覆盖。
 
 本次交付可用于Steam模式的后续设计与差分断言，尚未增加C++切源策略、Owner字段或快照schema，也未修改已认证APK标题模式。正常人物数组和所需SEB／PNG身份现已独立核实；后续追共同显示人物初始化／残留资格、框架更新准入及JRandom交接，再在独立Steam表现模式验边缘与随机差异。窗口观测可交叉人物淡入／淡出与遮挡，但截图不能单独证明内部槽、抽数或逻辑tick。
+
+## 共同随机来源
+
+固定Steam的`GameUtil.Random(int)`（RVA `0x2A44E0`）在`0x102A4526`调用共同对象的无参`JRandom.NextInt()`，随后有符号`% n`再取`JMath.Abs`（RVA `0x7F7B50`）。这不是调用有界NextInt(n)，没有因余数偏差重新抽签。标题与已核世界任务消费者经此入口共享`GameUtil.random +0x40`；不据此推断所有引擎／界面随机都使用它。
+
+`GameUtil.cctor`在`0x102A6796`调用无参JRandom构造，`0x102A67A5`保存共同对象。`JRandom.ctor`（RVA `0x7F8050`）先取`JSystem.CurrentTimeMillis`，把结果低32位作为种子，同时构造下面三个后端；`fix_`为true时改为种子0。CurrentTimeMillis（RVA `0x849830`）读取UtcNow、减静态时间原点、取TotalMilliseconds再转整数；本批未展开该原点初始化，不把它擅自写成具体纪元。
+
+`JRandom.NextInt`（RVA `0x7F7E60`）每次按静态`Logic`选择对象，再虚调用Next。枚举与实际分支均已核：
+
+| Logic | 后端及已核内部行为 |
+| --- | --- |
+| 0 Default（分支中其它值也走此路） | `System.Random`。Next（RVA `0xA17780`）转InternalSample（`0xA174F0`）：56元素数组使用1..55槽，双游标递增回卷、两槽相减；恰INT_MAX改为INT_MAX−1，负值补INT_MAX，再写回。构造成功路径`0x10A17890–0x10A17A2C`将游标设0／21；不是Java48位LCG |
+| 1 Unity2018 | `JRandom.Random2018`继承上述Random且没有重写Next；Init（RVA `0x808E70`）按原metadata字符串`_inextp`反射查字段，找到后在`0x10808F29`设置31，未找到则跳过。名称不代表调用UnityEngine.Random |
+| 2 Xorshift128 | 独立四uint状态；Next（RVA `0x80B090`）以左移11和无符号右移异或推进并返回32位结果。SetSeed（`0x80B140`）令x=seed&0x7fffffff，y/z/w为原固定常量，不能混用前两支状态 |
+
+`JRandom.SetSeed(long)`（RVA `0x7F7F20`）也取低32位、遵守fix_并重建三个后端；它不是只改当前选择后端的一个整数。`IApplication.Awake`在`0x10782182–0x1078218A`存在条件写fix_=true的路径，前置涉及回放检查／PlayerPrefs。未读取用户设置或原进程，本批不认证该条件当前成立；更不能把修改fix_等同于立即重置既有对象，种子替换发生在构造／SetSeed。
+
+未见JRandom静态构造器，Logic静态零默认与Default分支一致；具名直接调用扫描未发现set_Logic调用，但这不是所有间接／反射设置者的完整闭包，**静态默认0不等于实际运行模式已经观察**。原流的初始化时点、模式变更、存读档交接及标题深层绘制的全部随机消费仍须分别闭合。此处已有字节依据否定“名字叫java.util就必是APK Java随机序列”的推论；不修改APK共同随机实现、黄金轨迹或现有快照身份，也不以相同bound或seed宣称两版逐抽等价。

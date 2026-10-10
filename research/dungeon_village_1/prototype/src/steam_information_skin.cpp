@@ -99,6 +99,88 @@ void number(SteamInformationSkinPlan &plan,SteamFacilityAsset asset,int value,in
     plan.draws.emplace_back(SteamFacilityNumber{kind,asset,value,{x,y},0,4,-1});
 }
 }
+std::optional<SteamInformationSkinPlan> steam_town_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=34||!view->town||!options.bottom_width||*options.bottom_width<0)return {};
+    SteamInformationSkinPlan plan;
+    if(!directory_frame(plan,options,34,0))return {};
+    const auto &town=*view->town;
+    text(plan,Role::village_name,0,-1,30,69,{},brown,0,view->village_name);
+    // Draw_star(207,69,rank,5)首锚固定dx-60，不把末星位置当首星位置。
+    for(int slot=0;slot<5;++slot)sprite(plan,13,33,slot<town.rank?0:1,147+12*slot,69);
+    const std::array<int,5> statistics{{town.adventurers,town.residents,town.facilities,
+                                      town.completed_tasks,town.activities_held}};
+    for(int slot=0;slot<5;++slot) {
+        const int y=95+20*slot,value=statistics[static_cast<std::size_t>(slot)];
+        if(options.japanese)text(plan,Role::town_stat_label,0,slot,27,y,{},blue);
+        else {
+            text(plan,Role::town_stat_label,0,slot,22,y-2,0x20,blue,slot==0?9:slot==3?8:10);
+            auto &label=std::get<SteamInformationText>(plan.draws.back());
+            label.mode=SteamInformationTextMode::layout;label.extent={68,15};label.line_space=0;
+        }
+        if(options.japanese&&slot==0) {
+            text(plan,Role::town_adventurer_count,0,slot,109,y,4,brown);
+            std::get<SteamInformationText>(plan.draws.back()).argument=value;
+        } else number(plan,SteamFacilityAsset::number05,value,109,y+1);
+    }
+    for(int slot=0;slot<4;++slot) {
+        sprite(plan,128,88,slot+1,options.japanese?122:121,91+20*slot);
+        const int count=town.known_equipment[static_cast<std::size_t>(slot)];
+        text(plan,options.japanese?Role::town_equipment_kinds:Role::town_equipment_count,
+             0,slot,options.japanese?211:213,(options.japanese?93:94)+20*slot,4,brown,
+             options.japanese?0:11,options.japanese?std::string{}:std::to_string(count));
+        std::get<SteamInformationText>(plan.draws.back()).argument=count;
+    }
+    // Draw_btmMsg以原字符串测宽为输入，橙底、扩展触摸、TextLayout、手形依次输出。
+    const int width=std::min(*options.bottom_width,200)+16,left=120-width/2;
+    plan.draws.emplace_back(StartupSkinRect{{left,197,width,16},{255,153,55},false});
+    plan.touches.push_back({{4,20,std::array<int,4>{left-20,177,width+40,56},{},0},{},{}});
+    text(plan,Role::facility_income_list,0,-1,left,197,0x22,brown);
+    auto &footer=std::get<SteamInformationText>(plan.draws.back());
+    footer.mode=SteamInformationTextMode::layout;footer.extent={width,16};footer.line_space=0;
+    sprite(plan,70,21,-1,left-4,206);
+    return plan;
+}
+
+std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
+    const auto view=inspect_startup_world_information_page(state,page);
+    if(!view||view->raw!=39||!view->facilities||view->facilities->empty()||
+       view->facilities->size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return {};
+    SteamInformationSkinPlan plan;
+    if(!directory_frame(plan,options,39,0))return {};
+    text(plan,Role::name_header,0,-1,options.japanese?26:28,69,{},brown);
+    text(plan,Role::facility_profit_header,0,-1,options.japanese?185:179,69,{},brown);
+    const int count=static_cast<int>(view->facilities->size());
+    for(int row=view->first_visible;row<count&&row-view->first_visible<5;++row) {
+        const auto &facility=(*view->facilities)[static_cast<std::size_t>(row)];
+        if(facility.icon<0||facility.icon>=7||facility.ordinal<0||
+           facility.ordinal==std::numeric_limits<int>::max())return {};
+        const int y=97+19*(row-view->first_visible);
+        if(row==view->selection)
+            plan.draws.emplace_back(StartupSkinRect{{23,y-2,191,16},{255,153,55},false});
+        row_touch(plan,row,y);
+        if(row==view->selection)sprite(plan,70,21,-1,21,y+8);
+        plan.draws.emplace_back(StartupSkinDraw{StartupSkinPackage::common,91,-1,0,0,
+                                               {16*facility.icon,0,16,16},{30,y-2}});
+        text(plan,Role::facility_name,0,row,48,y,0x20,brown,0,facility.name);
+        auto &name=std::get<SteamInformationText>(plan.draws.back());
+        name.mode=SteamInformationTextMode::layout;name.extent={110,11};name.line_space=0;
+        name.argument=facility.ordinal+1;
+        // Steam先neg int32再扩long：INT_MIN仍负；不使用溢出的C++取负或64位abs。
+        const bool negative=facility.profit<0;
+        const int amount=negative&&facility.profit!=std::numeric_limits<std::int32_t>::min()
+            ?-facility.profit:facility.profit;
+        number(plan,negative?SteamFacilityAsset::number12:SteamFacilityAsset::number05,
+               amount,210,y+1,SteamFacilityNumberKind::money);
+    }
+    scroll(plan,count,view->first_visible,5,options.scroll_first_touch);
+    // 原普通DrawString含<btn>标记；不额外生成底部按钮热区、选中底或第二个手形。
+    text(plan,Role::facility_tracking_hint,0,-1,120,198,2,blue);
+    return plan;
+}
+
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamInformationSkinOptions &options) {
     const auto view=inspect_startup_world_information_page(state,page);
@@ -338,6 +420,7 @@ std::optional<std::string_view> steam_information_image(int image) {
     switch(image) {
     case 9:return "original/common/tresureIcon00.png";
     case 12:return "original/common/icon_weapon00.png";
+    case 13:return "original/common/icon_star00.png";
     case 20:return "original/common/icon_armour00.png";
     case 21:return "original/common/icon_accessry00.png";
     case 24:return "original/common/icon_back00.png";
@@ -353,11 +436,13 @@ std::optional<std::string_view> steam_information_image(int image) {
     case 74:return "original/common/arrow02.png";
     case 85:return "steam-common/menuRT01.png";
     case 87:return "original/common/wnd_expBar.png";
+    case 91:return "original/common/icon_tenantInfo.png";
     case 102:return "original/common/number03.png";
     case 103:return "steam-build-common/original/common/number05.png";
     case 104:return "original/common/number06.png";
     case 105:return "steam-facility-common/original/common/number08.png";
     case 108:return "original/common/number11.png";
+    case 109:return "steam-common/number12.png";
     case 128:return "steam-common/icon_objRoots.png";
     case 129:return "original/common/wnd_max.png";
     case 147:return "original/common/wnd_new.png";

@@ -92,13 +92,16 @@ std::optional<SteamFacilityResource> steam_facility_resource(Asset asset) {
     case Asset::mini_background:return SteamFacilityResource{"event",16,-1,"original/event/event_BackMini02.png",nullptr};
     case Asset::number03:return SteamFacilityResource{"common",102,11,"original/common/number03.png","original/common/number04.seb"};
     case Asset::number11:return SteamFacilityResource{"common",108,20,"original/common/number11.png","original/common/number13.seb"};
+    case Asset::number12:return SteamFacilityResource{"common",109,19,"steam-common/number12.png","original/common/number12.seb"};
     }
     return {};
 }
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &n,int digit_width) {
     const bool roster_number=n.asset==Asset::number03||n.asset==Asset::number11;
-    if(!roster_number&&n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09)return {};
+    if(!roster_number&&n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09&&
+       n.asset!=Asset::number12)return {};
+    if(n.asset==Asset::number12&&(n.kind==SteamFacilityNumberKind::plus_value||digit_width!=8))return {};
     // 两套35专用SEB只有数字0..9；不借它们输出money/plus所需的单位、逗号帧。
     if(roster_number&&(n.kind!=SteamFacilityNumberKind::number||
         digit_width!=(n.asset==Asset::number03?8:7)))return {};

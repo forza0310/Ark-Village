@@ -15,7 +15,10 @@ enum class SteamInformationTextRole {
     profit_label, profit_value, description, name_header, inventory_header,
     row_name, unknown_row, item_description, empty_directory, known_count, attribute_placeholder,
     satisfaction_header, effort_header, equipment_header, contribution_header,
-    town_points_header, spending_header, adventurer_count
+    town_points_header, spending_header, adventurer_count,
+    village_name, town_stat_label, town_adventurer_count, town_equipment_count,
+    town_equipment_kinds, facility_income_list, facility_profit_header,
+    facility_name, facility_tracking_hint
 };
 enum class SteamInformationTextMode { plain, layout, rich_text };
 struct SteamInformationText {
@@ -30,7 +33,7 @@ struct SteamInformationText {
     SteamInformationTextMode mode{SteamInformationTextMode::plain};
     std::array<int,2> extent{}; // 仅layout使用；原TextLayout宽/高，不按字符数测量。
     std::optional<int> line_space{}; // layout显式0；rich_text空值沿原TextLayout全局行距。
-    int argument{}; // known_count为当前整个目录p1定义数。
+    int argument{}; // 数量角色传计数；facility_name传ordinal+1，value仍为未拼接原定义名。
 };
 // 保留Steam DrawLine原端点及lineWidth；后端不可把端点差擅自当FillRect尺寸。
 struct SteamInformationLine {
@@ -74,7 +77,15 @@ struct SteamInformationSkinOptions {
     std::optional<std::array<int,2>> title_widths;
     bool scroll_first_touch{}; // 平台实际CheckFirstTouch(12,0x40000)，非“鼠标悬停”。
     bool english{}; // Steam35属性标题独立En分支，不能由!japanese推导。
+    std::optional<int> bottom_width{}; // 仅34必需：当前Font对底部原字符串的真实StringWidth。
 };
+// Steam34统计/星级/真实测宽底栏及39设施目录/利润；只读现有页面，不执行入页副作用。
+std::optional<SteamInformationSkinPlan> steam_town_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
+std::optional<SteamInformationSkinPlan> steam_facility_information_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamInformationSkinOptions &options);
 // Steam35四页完整局部计划；按有序draws执行clip/身体/文字/数字，不推进Owner。
 std::optional<SteamInformationSkinPlan> steam_adventurer_information_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,

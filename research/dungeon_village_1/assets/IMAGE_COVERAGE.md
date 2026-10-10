@@ -31,6 +31,8 @@ EXE PNG 先按资源组和条目名匹配 APK，语言 `.lproj` 前缀单独记�
 
 35人物目录后继消费已核：Steam common31的`icon_result00.png`以原条目出版到[共用差异包](steam-common/icon_result00.png)，63×48、1000字节；SEB44沿既有同字节副本，实际frame4也有透明像素RGBA差异，不将两版整图混为同一身份。该页其它已出版图片及human包67项已逐字节交叉，数字SEB11／20分别实际引用image102／108，详见[35资源对应](../ui/INFORMATION_MENU.md#steam35完整局部绘制合同)。此增量不改变上表原容器分母，也不认证索引语言后缀或字体后端。
 
+34／39后继已消费image13／SEB33星级、image91设施图标与image128装备类别。新增[Steam负利润图](steam-common/number12.png)为common109原条目（100×21、636字节），APK同名607字节且RGBA不同；SEB19逐字节相同复用，原0…9、逗号10及单位20帧边界已核。消费者保持原32位取负的INT_MIN行为，未改世界统计或原表；来源仍使用现全量索引，不新增交付指纹文件。
+
 `kairolib` 在 Unity TextAsset 与 IL2CPP managed 两种容器中都存在，分别有 20 和 38 张 PNG。清单保留不同容器 ID 和 `archive_origin`，不能只凭逻辑组名合并。此前仅数 TextAsset 会漏掉托管归档，此次已补齐。
 
 ## 已验证与未验证

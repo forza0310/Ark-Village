@@ -226,9 +226,11 @@ Owner真实初始化34统计及39冻结实例目录；空39执行原事件17后�
 
 Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.gif,e63x48`后缀，实际PNG分别17×10、124×22、63×48；索引后缀消费者未展开，不能据后缀拉伸图片。facility数字helper沿用SEB12／15及money，另新增`number03`／`number11`资产对应SEB11／20，普通数步宽分别8／7，保留零值和原负帧请求，错误步宽及无对应帧的money／plus模式拒绝。information数字helper仍只处理正库存／正属性，本页通过有序`SteamFacilityNumber`请求使用通用展开器。空装备mode5在VA `1030CDB8–1030CE16`直接传dx／dy，无其它图标的−1偏移；经验条在VA `10334461–1033446F`调用整数RateConvert（RVA `2A4780`），按范围截限、整数乘除向零截断，不是浮点百分比。
 
-### Steam34／39完整局部绘制合同（待维护皮肤）
+<a id="steam3439完整局部绘制合同待维护皮肤"></a>
 
-2026-10-10续核固定Steam2.56 DLL，34使用`SubForm._draw1_2`的VA `10335781–10336226`，39使用`_draw1_3`的VA `10339D48–1033A23B`。以下是具名方法体、逻辑资源索引与字串metadata的静态合同，**当前尚无34／39正式绘制计划**；不代表原窗口、完整字体／输入后端或产品皮肤已认证。业务统计及页栈维护与这里的绘制请求分别验收。
+### Steam34／39完整局部绘制合同
+
+2026-10-10续核固定Steam2.56 DLL，34使用`SubForm._draw1_2`的VA `10335781–10336226`，39使用`_draw1_3`的VA `10339D48–1033A23B`。以下是具名方法体、逻辑资源索引与字串metadata的静态合同，后继正式只读计划为`steam_town_information_skin`及`steam_facility_information_skin`；不代表原窗口、完整字体／输入后端或产品皮肤已认证。业务统计及页栈维护与这里的绘制请求分别验收。
 
 两页均先`DrawWindow(220,168,0,title)`，再`DrawBox(17,74,219,184)`，复用[Steam完整窗框](STEAM_WINDOW_FRAME.md)，没有标题翻页箭头。VIEW_Y只交窗框／Box及父级变换，不能给每项图元重复加一次。原文字棕色为SC_WINDOW_BLACK=(92,51,31)，蓝色为SC_WINDOW_BLUE=(0,100,255)，选中橙色为SC_WINDOW_SELECT=(255,153,55)。普通字号继承原Font，临时字号画后恢复；TextLayout仍须真实测宽／裁剪，不按字符数省略。
 
@@ -265,9 +267,9 @@ Steam索引另有`wnd_lv.gif,e20x10`、`number06.gif,e128x22`、`icon_result00.g
 | 34种类 | image128／SEB88，复用已出版Steam `icon_objRoots.png`差异图与原SEB；同35／38明确来源。 |
 | 39设施图标 | image91 `icon_tenantInfo.png`，112×16／1009字节，与已出版副本逐字节相同。 |
 | 正数／零值 | image103／SEB12 `number05`，复用Steam建设差异包及已核普通数／money helper。 |
-| 39负利润 | image109／SEB19＝`number12.png`／`number12.seb`；Steam PNG100×21、636字节，与APK607字节不同，需新增Steam出版入口；SEB428字节同原副本，可复用。不要用APK同名图替代，RGBA差异是否全为可见像素需另外判断。 |
+| 39负利润 | image109／SEB19＝`number12.png`／`number12.seb`；Steam PNG100×21、636字节，与APK607字节不同，已出版到`assets/steam-common/number12.png`且RGBA确有差异；SEB428字节同原副本复用。不要用APK同名图替代。 |
 
-后继最小维护缺口：34需要独立底部真实测宽输入及有序底栏图元／触摸计划；34星级可直接展开5个已核SEB请求；39可复用现信息页有序行／110高滚动计划，但需增加number12资产与money模式、按原int取负处理INT_MIN，以及名称双参数翻译载荷。输出为纯查询，不执行成就、统计重算、目录初始化、NEW清理、页栈变化或随机。正式实现与针对性边界测试完成前，不把本节静态合同登记成已消费皮肤。
+正式34计划要求独立`bottom_width`真实测宽，输出原序五星、统计、装备种类、底栏图元／触摸；39复用有序行／110高滚动，名称以`facility_name`角色、原名value与ordinal+1参数交翻译后端。负利润使用新增number12资产及现money展开，保留INT_MIN与原负帧请求，不替换为猜测的减号。输出纯查询，不执行成就、统计重算、目录初始化、NEW清理、页栈变化或随机。现有visuals覆盖语言、测宽边界、原序、实际图片／SEB、只读性和坏载荷拒绝；[双窗UI示例](examples/steam-town-facilities.png)直接消费正式计划，字体／中文／条件限制见[说明](examples/README.md)。
 
 ## Steam9／36的有限交互交叉
 

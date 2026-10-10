@@ -1358,6 +1358,200 @@ void adventurer_information_skin(Checks &check,const std::filesystem::path &root
           contribution->source_y+contribution->height<=result_png.image.height,
           "35贡献SEB44 frame4真实裁片落在Steam图内，不以PNG列数猜帧");
 }
+void town_facility_information_skin(Checks &check,const std::filesystem::path &root) {
+    using Role=SteamInformationTextRole;using Mode=SteamInformationTextMode;
+    using Asset=SteamFacilityAsset;using Number=SteamFacilityNumberKind;
+    const auto label=[&](const auto &plan,Role role,int slot=-1) -> const SteamInformationText & {
+        const auto it=std::find_if(plan.draws.begin(),plan.draws.end(),[=](const auto &draw) {
+            const auto *text=std::get_if<SteamInformationText>(&draw);
+            return text&&text->role==role&&(slot<0||text->slot==slot);
+        });
+        check(it!=plan.draws.end(),"34/39所需文字角色与绝对行存在");return std::get<SteamInformationText>(*it);
+    };
+    const auto images=[](const auto &plan,int image) {
+        std::vector<StartupSkinDraw> result;
+        for(const auto &draw:plan.draws)if(const auto *part=std::get_if<StartupSkinDraw>(&draw))
+            if(part->image==image)result.push_back(*part);
+        return result;
+    };
+    const auto numbers=[](const auto &plan) {
+        std::vector<SteamFacilityNumber> result;
+        for(const auto &draw:plan.draws)if(const auto *n=std::get_if<SteamFacilityNumber>(&draw))result.push_back(*n);
+        return result;
+    };
+    // 统计/语言/测宽是显示条件；不跑经营前缀、不制造自然星级证明。
+    auto town=test_support::page_fixture(34);const auto town_id=town.scripts.pages.back().id;
+    town.scripts.pages.back().lifecycle=0;town.rank=3;town.task_progress.successes=7;town.events_held=9;
+    for(auto &h:town.human_presence)h.second=0;
+    town.human_presence.at(1)=1;
+    SteamInformationSkinOptions options;options.title_widths=std::array<int,2>{80,82};options.bottom_width=80;
+    check(!steam_town_information_skin(town,town_id,options),"34皮肤不代替真实Init");
+    check(initialize_startup_world_information_pages(town),"34真实Init安装已核统计页面载荷");
+    const auto before=startup_world_state_digest(town);
+    const auto plan=steam_town_information_skin(town,town_id,options);
+    check(plan && plan->raw==34 && plan->touches.size()==1 && images(*plan,74).empty() &&
+          label(*plan,Role::village_name).value==town.scripts.village_name &&
+          label(*plan,Role::village_name).position==std::array<int,2>{30,69},"34实际村名、单底栏触摸，无标题箭头");
+    const auto stars=images(*plan,13);
+    check(stars.size()==5,"34总共五个星级SEB请求");
+    for(int slot=0;slot<5;++slot) {
+        check(stars[slot].sprite==33 && stars[slot].frame==(slot<3?0:1) &&
+              stars[slot].offset==std::array<int,2>{147+12*slot,69},"34首星是147，已获/空星沿原五槽");
+        const auto &text=label(*plan,Role::town_stat_label,slot);
+        check(text.position==std::array<int,2>{22,93+20*slot} && text.extent==std::array<int,2>{68,15} &&
+              text.mode==Mode::layout && text.line_space==0 && text.anchor==0x20 &&
+              text.rgb==std::array<int,3>{0,100,255} && text.font_size==(slot==0?9:slot==3?8:10),
+              "34非日文五行TextLayout的独立字号/坐标/蓝色");
+    }
+    const auto stats=numbers(*plan);
+    check(stats.size()==5 && stats[0].value==1 && stats[3].value==7 && stats[4].value==9,
+          "34绘制读取Owner统计而不追加住宅/分母行");
+    for(int slot=0;slot<5;++slot)check(stats[slot].asset==Asset::number05 && stats[slot].kind==Number::number &&
+          stats[slot].position==std::array<int,2>{109,96+20*slot} && stats[slot].anchor==4,
+          "34五行数值SEB12右锚保持原行序");
+    const auto equipment=images(*plan,128);
+    check(equipment.size()==4,"34四种类保留四个SEB图标");
+    for(int slot=0;slot<4;++slot)check(equipment[slot].sprite==88 && equipment[slot].frame==slot+1 &&
+          equipment[slot].offset==std::array<int,2>{121,91+20*slot} &&
+          label(*plan,Role::town_equipment_count,slot).position==std::array<int,2>{213,94+20*slot} &&
+          label(*plan,Role::town_equipment_count,slot).font_size==11,
+          "34非日文装备数量与各自原图标帧、临时11字号");
+    for(const auto sample:std::array<std::array<int,3>,3>{{{0,112,16},{81,72,97},{201,12,216}}}) {
+        auto widths=options;widths.bottom_width=sample[0];const auto button=*steam_town_information_skin(town,town_id,widths);
+        const auto &fill=std::get<StartupSkinRect>(button.draws.at(button.draws.size()-3));
+        const auto &text=std::get<SteamInformationText>(button.draws.at(button.draws.size()-2));
+        const auto &hand=std::get<StartupSkinDraw>(button.draws.back());
+        check(fill.rect==std::array<int,4>{sample[1],197,sample[2],16} && fill.rgb==std::array<int,3>{255,153,55} &&
+              text.role==Role::facility_income_list && text.mode==Mode::layout && text.anchor==0x22 && text.line_space==0 &&
+              text.position==std::array<int,2>{sample[1],197} && text.extent==std::array<int,2>{sample[2],16} &&
+              hand.sprite==21 && hand.frame==-1 && hand.offset==std::array<int,2>{sample[1]-4,206} &&
+              button.touches[0].component==4 && button.touches[0].value==20 &&
+              button.touches[0].rectangle==std::array<int,4>{sample[1]-20,177,sample[2]+40,56},
+              "34底部真实测宽先截200再加16，保留奇数整除、绘序与扩展触摸");
+    }
+    options.japanese=true;const auto japanese=*steam_town_information_skin(town,town_id,options);
+    check(numbers(japanese).size()==4 && label(japanese,Role::town_adventurer_count).argument==1 &&
+          label(japanese,Role::town_adventurer_count).position==std::array<int,2>{109,95} &&
+          label(japanese,Role::town_adventurer_count).anchor==4 &&
+          label(japanese,Role::town_stat_label,0).position==std::array<int,2>{27,95} &&
+          label(japanese,Role::town_stat_label,0).mode==Mode::plain &&
+          label(japanese,Role::town_stat_label,0).font_size==0 &&
+          images(japanese,128).front().offset==std::array<int,2>{122,91} &&
+          label(japanese,Role::town_equipment_kinds,0).position==std::array<int,2>{211,93} &&
+          label(japanese,Role::town_equipment_kinds,0).font_size==0,"34日文人数改文本带后缀，装备改种类翻译，不套非日文数字");
+    options.japanese=false;
+    for(const int rank:{0,5}) {
+        auto ranked=town;ranked.rank=rank;const auto ranked_plan=*steam_town_information_skin(ranked,town_id,options);
+        const auto rank_stars=images(ranked_plan,13);
+        check(rank_stars.size()==5 && std::all_of(rank_stars.begin(),rank_stars.end(),[=](const auto &s){return s.frame==(rank?0:1);}),
+              "34零星/五星仍请求恰五槽，不越界或多画一颗");
+    }
+    for(int fault=0;fault<4;++fault) {
+        auto bad=town;auto input=options;
+        if(fault==0)input.bottom_width.reset();if(fault==1)input.bottom_width=-1;
+        if(fault==2)bad.page_counters.erase(town_id);if(fault==3)input.title_widths.reset();
+        check(!steam_town_information_skin(bad,town_id,input),"34缺真实测宽/已Init载荷显式拒绝");
+    }
+    check(startup_world_state_digest(town)==before,"34所有语言/测宽查询不改Owner或输出");
+    // 39采用真实34确认及真实Init；额外同定义实例仅供六行显示条件，不从副本运行经营。
+    auto tick=prepare_startup_world_runtime(town);check(tick.candidate.has_value(),"34实际框架进入可输入阶段");
+    town=std::move(*tick.candidate);
+    StartupInformationInput confirm;confirm.confirm=true;
+    check(input_startup_world_information_page(town,town_id,confirm)==StartupWorldRuntimeError::none,"真实34确认创建39");
+    const auto page=town.scripts.pages.back().id;
+    const auto original=startup_facility_information(town);check(original && !original->empty(),"39原世界已有营业设施");
+    const auto first=original->front().instance;
+    for(int count=static_cast<int>(original->size()),ordinal=20;count<6;++count,++ordinal) {
+        const auto extra=town.next_facility_identity++;
+        auto instance=town.scene.world.world.facilities.at(first);instance.placement.instance_id={extra};
+        town.scene.world.world.facilities.emplace(extra,instance);town.scene.world.facility_order.push_back(extra);
+        town.facility_ordinals.emplace(extra,ordinal);town.facility_monthly_cash[extra]={};
+    }
+    check(!steam_facility_information_skin(town,page,options),"39未Init不由皮肤创建目录");
+    check(initialize_startup_world_information_pages(town),"39真实Init冻结稳定实例目录");
+    const auto ids=town.information_page_data.at(page).facilities;
+    check(ids.size()==6,"39六行最小滚动条件");
+    const std::array<int,6> profits{0,123,-12,std::numeric_limits<int>::min(),5,9};
+    for(std::size_t row=0;row<ids.size();++row) {
+        town.facility_monthly_cash.at(ids[row])={};town.facility_monthly_cash.at(ids[row])[0][0]=profits[row];
+    }
+    town.facility_ordinals.at(first)=7;
+    const auto frozen=startup_world_state_digest(town);
+    const auto facilities=steam_facility_information_skin(town,page,options);
+    check(facilities && facilities->raw==39 && facilities->touches.size()==7 && images(*facilities,74).empty(),
+          "39五行两滚动，无标题箭头或底栏按钮");
+    const auto selected=std::find_if(facilities->draws.begin(),facilities->draws.end(),[](const auto &draw) {
+        const auto *rect=std::get_if<StartupSkinRect>(&draw);return rect&&rect->rgb==std::array<int,3>{255,153,55};
+    });
+    check(selected!=facilities->draws.end(),"39选中行有真实橙底");
+    const auto start=static_cast<std::size_t>(selected-facilities->draws.begin());
+    const auto &fill=std::get<StartupSkinRect>(facilities->draws[start]);
+    const auto &hand=std::get<StartupSkinDraw>(facilities->draws[start+1]);
+    const auto &icon=std::get<StartupSkinDraw>(facilities->draws[start+2]);
+    const auto &name=std::get<SteamInformationText>(facilities->draws[start+3]);
+    const auto &money=std::get<SteamFacilityNumber>(facilities->draws[start+4]);
+    check(fill.rect==std::array<int,4>{23,95,191,16} && hand.sprite==21 && hand.frame==-1 &&
+          hand.offset==std::array<int,2>{21,105} && icon.image==91 &&
+          icon.crop==std::array<int,4>{16*original->front().icon,0,16,16} && icon.offset==std::array<int,2>{30,95} &&
+          name.role==Role::facility_name && name.value==original->front().name && name.argument==8 &&
+          name.mode==Mode::layout && name.extent==std::array<int,2>{110,11} && name.line_space==0 &&
+          name.position==std::array<int,2>{48,97} && name.anchor==0x20 && name.font_size==0 &&
+          money.kind==Number::money && money.value==0 && money.asset==Asset::number05,
+          "39橙底→手形→无底板定义icon→双参数名称→金额原序，编号取ordinal+1");
+    const auto amounts=numbers(*facilities);
+    check(amounts.size()==5 && amounts[1].asset==Asset::number05 && amounts[1].value==123 &&
+          amounts[2].asset==Asset::number12 && amounts[2].value==12 &&
+          amounts[3].asset==Asset::number12 && amounts[3].value==std::numeric_limits<int>::min(),
+          "39零/正利润用SEB12，负利润用SEB19；INT_MIN保持32位neg结果");
+    for(int row=0;row<5;++row)check(amounts[row].position==std::array<int,2>{210,98+19*row} &&
+          facilities->touches[row].rectangle==std::array<int,4>{3,95+19*row,231,16} &&
+          facilities->touches[row].value==(0x20000|row),"39行锚19递增，触摸使用16高与绝对索引");
+    check(label(*facilities,Role::name_header).position==std::array<int,2>{28,69} &&
+          label(*facilities,Role::facility_profit_header).position==std::array<int,2>{179,69} &&
+          label(*facilities,Role::facility_tracking_hint).position==std::array<int,2>{120,198} &&
+          label(*facilities,Role::facility_tracking_hint).mode==Mode::plain &&
+          label(*facilities,Role::facility_tracking_hint).rgb==std::array<int,3>{0,100,255} &&
+          label(*facilities,Role::facility_tracking_hint).anchor==2 && images(*facilities,70).size()==1,
+          "39末尾仅蓝色输入提示，不添加底部按钮或第二手形");
+    auto scrolled=town;scrolled.information_page_data.at(page).selection=5;scrolled.information_page_data.at(page).first_visible=1;
+    options.scroll_first_touch=true;const auto scrolling=*steam_facility_information_skin(scrolled,page,options);
+    check(scrolling.touches.front().value==0x20001 && scrolling.touches[5].rectangle==std::array<int,4>{221,85,3,110} &&
+          std::get<StartupSkinRect>(scrolling.draws[scrolling.draws.size()-3]).rect==std::array<int,4>{220,85,5,110} &&
+          std::get<StartupSkinRect>(scrolling.draws[scrolling.draws.size()-2]).rect==std::array<int,4>{220,103,5,92},
+          "39滚动复用110高与绝对行，不能套35的111");
+    options.scroll_first_touch=false;options.japanese=true;options.view_y=20;
+    const auto shifted=*steam_facility_information_skin(town,page,options);
+    check(label(shifted,Role::name_header).position==std::array<int,2>{26,69} &&
+          label(shifted,Role::facility_profit_header).position==std::array<int,2>{185,69} &&
+          label(shifted,Role::facility_name,0).position==name.position &&
+          label(shifted,Role::title).position[1]==label(*facilities,Role::title).position[1]+10 &&
+          shifted.touches.front().rectangle==facilities->touches.front().rectangle,
+          "39日文仅表头改锚，VIEW_Y仅交框/box，不重复移动行或热区");
+    options.japanese=false;options.view_y=0;
+    for(int n=0;n<8;++n) {
+        const auto repeated=steam_facility_information_skin(town,page,options);
+        check(repeated && repeated->draws.size()==facilities->draws.size() && repeated->touches.size()==7 &&
+              startup_world_state_digest(town)==frozen,"39重复只读计划不增长图元/页载荷、不改资金、随机或输出");
+    }
+    for(int fault=0;fault<5;++fault) {
+        auto bad=town;
+        if(fault==0)bad.information_page_data.erase(page);if(fault==1)bad.information_page_data.at(page).selection=6;
+        if(fault==2)bad.facility_monthly_cash.erase(first);if(fault==3)bad.facility_ordinals.at(first)=std::numeric_limits<int>::max();
+        if(fault==4)for(auto &p:bad.scripts.pages)if(p.id==town_id)p.legacy_page=36;
+        const auto digest=startup_world_state_digest(bad);
+        check(!steam_facility_information_skin(bad,page,options) && startup_world_state_digest(bad)==digest,
+              "39缺目录/账目/错父/越界编号及选择拒绝整份皮肤");
+    }
+    const auto assets=root.parent_path();
+    for(const auto record:std::array<std::array<int,3>,3>{{{13,25,14},{91,112,16},{109,100,21}}}) {
+        const auto path=steam_information_image(record[0]);check(path.has_value(),"34/39所用图有显式版本路径");
+        CpuImage png(LoadImage((assets/std::string(*path)).string().c_str()));
+        check(png.image.width==record[1] && png.image.height==record[2],"34/39正式PNG实际解码尺寸");
+    }
+    check(steam_information_image(109)=="steam-common/number12.png" &&
+          read_bytes(assets/"steam-common/number12.png")!=read_bytes(root/"common/number12.png"),
+          "39负利润明确Steam差异PNG而非APK同名资源");
+}
 } // namespace
 
 // 同一visuals套件集中调用；返回检查数，失败抛具名诊断，由主入口统一收口。
@@ -1374,6 +1568,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     equipment_information_icons(check,source_root);
     information_directory_skin(check,source_root);
     adventurer_information_skin(check,source_root);
+    town_facility_information_skin(check,source_root);
     if(optional_output_png.empty()) {
         static_images(assets,check,nullptr);
         sprite_pixels(assets,check,nullptr);

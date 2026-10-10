@@ -305,6 +305,34 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     check(!steam_facility_number_draws(numeric,0),"金额dx-9溢出拒绝且无部分图元结果");
     numeric.position[0]=100;numeric.asset=A::mini;
     check(!steam_facility_number_draws(numeric,8),"不能用人物图集替代数字资源身份");
+    // 39新SEB19只补资产准入与自身边界，不重复旧money完整逗号矩阵。
+    const auto loss=steam_facility_resource(A::number12);
+    check(loss && loss->image==109 && loss->sprite==19 &&
+          std::string(loss->published_image)=="steam-common/number12.png" &&
+          std::string(loss->published_sprite)=="original/common/number12.seb",
+          "39负利润SEB19绑定Steam差异image109并复用同字节SEB");
+    numeric={N::number,A::number12,12,{100,20},0,4,-1};
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws && number_draws->size()==2 && number_draws->at(0).frame==1 &&
+          number_draws->at(1).frame==2 && number_draws->at(0).position==std::array<int,2>{84,20} &&
+          number_draws->at(1).position==std::array<int,2>{92,20},"SEB19普通数右锚实际8步宽");
+    check(!steam_facility_number_draws(numeric,7),"SEB19拒绝错误步宽，不推测另一数字图集宽度");
+    numeric.kind=N::money;numeric.value=std::numeric_limits<int>::min();
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws && number_draws->size()==15 && number_draws->front().frame==-3 &&
+          number_draws->front().position==std::array<int,2>{3,20} && number_draws->back().frame==20 &&
+          number_draws->back().position==std::array<int,2>{91,20},
+          "SEB19金额INT_MIN保留signed串负帧和逗号/单位，不声称负帧已知像素");
+    numeric.kind=N::plus_value;
+    check(!steam_facility_number_draws(numeric,8),"SEB19没有加号调用资格，不能借旧资产允许plus");
+    const auto loss_seb=dungeon_village_tools::parse_legacy_seb(bytes(assets/loss->published_sprite));
+    for(const int frame:{0,9,10,20}) {
+        const auto &parts=loss_seb.layers.at(0).parts;
+        const auto part=std::find_if(parts.begin(),parts.end(),[=](const auto &p){return p.frame==frame;});
+        check(part!=parts.end() && part->image_index==109 && part->source_x>=0 && part->source_y>=0 &&
+              part->source_x+part->width<=100 && part->source_y+part->height<=21,
+              "SEB19普通数字/逗号/单位实际帧裁片均落在Steam100×21图内");
+    }
     const auto blue=steam_facility_resource(A::number08),orange=steam_facility_resource(A::number05);
     check(blue->image==105&&blue->sprite==15&&orange->image==103&&orange->sprite==12&&
           bytes(assets/blue->published_image)!=bytes(source_root/"common/number08.png")&&

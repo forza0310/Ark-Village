@@ -23,7 +23,15 @@ enum class CampaignReceiptKind {
     facility_blueprint_paid,
     facility_blueprint_claimed,
     facility_construction_paid,
-    activity_pot_opened
+    activity_pot_opened,
+    weapon_reward_equipped,
+    armour_reward_equipped,
+    accessory_reward_equipped,
+    weapon_combat_applied,
+    armour_combat_applied,
+    accessory_combat_applied,
+    human_medal_awarded,
+    human_home_admitted
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -40,6 +48,10 @@ CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int defin
                                              const app::WorldState &before,
                                              const app::WorldState &after, std::uint64_t page,
                                              std::uint64_t instance = 0);
+// Field mapping only; the caller verifies admission, its fee and the actual residence instance.
+CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &before,
+                                              const app::WorldState &after, std::uint64_t page,
+                                              std::uint64_t facility);
 
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.

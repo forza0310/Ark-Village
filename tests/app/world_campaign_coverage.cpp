@@ -21,6 +21,8 @@ struct ReceiptIdentity {
     const char *category, *stage;
     int definitions;
     bool bound_human;
+    bool bound_instance{};
+    int recipient_limit{};
 };
 ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
     using Kind = CampaignReceiptKind;
@@ -40,15 +42,31 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
     case Kind::recipe_crafted:
         return {"recipe", "elements_paid_and_crafted", 40, false};
     case Kind::item_hp_restored:
-        return {"item", "hp_restored", 36, true};
+        return {"item", "hp_restored", 36, true, true};
     case Kind::facility_blueprint_paid:
         return {"facility", "blueprint_points_paid", 85, false};
     case Kind::facility_blueprint_claimed:
         return {"facility", "blueprint_claimed", 85, false};
     case Kind::facility_construction_paid:
-        return {"facility", "construction_paid", 85, false};
+        return {"facility", "construction_paid", 85, false, true};
     case Kind::activity_pot_opened:
         return {"activity", "pot_opened", 31, false};
+    case Kind::weapon_reward_equipped:
+        return {"weapon", "reward_equipped", 33, true, true, 25};
+    case Kind::armour_reward_equipped:
+        return {"armour", "reward_equipped", 50, true, true, 25};
+    case Kind::accessory_reward_equipped:
+        return {"accessory", "reward_equipped", 30, true, true, 25};
+    case Kind::weapon_combat_applied:
+        return {"weapon", "combat_attributes_applied", 33, true, true, 25};
+    case Kind::armour_combat_applied:
+        return {"armour", "combat_attributes_applied", 50, true, true, 25};
+    case Kind::accessory_combat_applied:
+        return {"accessory", "combat_attributes_applied", 30, true, true, 25};
+    case Kind::human_medal_awarded:
+        return {"human", "medal_awarded", 25, true, false, 25};
+    case Kind::human_home_admitted:
+        return {"human", "home_admitted", 25, true, true, 25};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -71,16 +89,34 @@ CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int defin
              after.scene.world.world.ai.accounting.funds()}};
 }
 
+CampaignReceipt residence_transaction_receipt(int human, const State &before, const State &after,
+                                              std::uint64_t page, std::uint64_t facility) {
+    const auto fee = before.rules->humans.at(human).residence_fee;
+    return {CampaignReceiptKind::human_home_admitted,
+            human,
+            after.simulation_steps,
+            page,
+            facility,
+            human,
+            {before.scene.world.world.ai.accounting.funds(), before.human_homes.at(human)[2],
+             before.shop_humans.at(human).satisfaction, fee},
+            {after.scene.world.world.ai.accounting.funds(), after.human_homes.at(human)[2],
+             after.shop_humans.at(human).satisfaction, fee}};
+}
+
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
     observations_[{kind, id}].insert(event);
 }
 void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log) {
     const auto identity = receipt_identity(receipt.kind);
     if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
-        (identity.bound_human && receipt.recipient < 0) ||
-        ((receipt.kind == CampaignReceiptKind::item_hp_restored ||
-          receipt.kind == CampaignReceiptKind::facility_construction_paid) &&
-         !receipt.subject))
+        (identity.bound_human &&
+         (receipt.recipient < 0 ||
+          (identity.recipient_limit && receipt.recipient >= identity.recipient_limit))) ||
+        (identity.bound_instance && !receipt.subject) ||
+        ((receipt.kind == CampaignReceiptKind::human_medal_awarded ||
+          receipt.kind == CampaignReceiptKind::human_home_admitted) &&
+         receipt.definition != receipt.recipient))
         throw std::runtime_error("Campaign receipt lacks its source definition/page/human binding");
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
@@ -329,25 +365,37 @@ void campaign_coverage_contract() {
         const char *category, *stage;
         int definitions;
         std::uint64_t subject;
+        int recipient{-1};
     };
     const Case cases[] = {
         {CampaignReceiptKind::facility_blueprint_paid, "facility", "blueprint_points_paid", 85, 0},
         {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
-        {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0}};
+        {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0},
+        {CampaignReceiptKind::weapon_reward_equipped, "weapon", "reward_equipped", 33, 1, 24},
+        {CampaignReceiptKind::armour_reward_equipped, "armour", "reward_equipped", 50, 1, 24},
+        {CampaignReceiptKind::accessory_reward_equipped, "accessory", "reward_equipped", 30, 1, 24},
+        {CampaignReceiptKind::weapon_combat_applied, "weapon", "combat_attributes_applied", 33, 1,
+         24},
+        {CampaignReceiptKind::armour_combat_applied, "armour", "combat_attributes_applied", 50, 1,
+         24},
+        {CampaignReceiptKind::accessory_combat_applied, "accessory", "combat_attributes_applied",
+         30, 1, 24},
+        {CampaignReceiptKind::human_medal_awarded, "human", "medal_awarded", 25, 0, 24},
+        {CampaignReceiptKind::human_home_admitted, "human", "home_admitted", 25, 1, 24}};
     for (const auto &entry : cases) {
         const CampaignReceipt receipt{
-            entry.kind, entry.definitions - 1, 2,           1, entry.subject,
-            -1,         {120, 0, 2, 0},        {0, 1, 2, 0}};
+            entry.kind,      entry.definitions - 1, 2,           1, entry.subject,
+            entry.recipient, {120, 0, 2, 0},        {0, 1, 2, 0}};
         const auto start = log.str().size();
         coverage.record(receipt, log);
         const auto expected = std::string("COVERAGE_RECEIPT\t") + entry.category + '\t' +
-                              std::to_string(receipt.definition) + '\t' + entry.stage +
-                              "\t2\t1\t-1\t" + std::to_string(entry.subject) +
-                              "\t120\t0\t2\t0\t0\t1\t2\t0\n";
+                              std::to_string(receipt.definition) + '\t' + entry.stage + "\t2\t1\t" +
+                              std::to_string(entry.recipient) + '\t' +
+                              std::to_string(entry.subject) + "\t120\t0\t2\t0\t0\t1\t2\t0\n";
         if (log.str().substr(start) != expected)
             throw std::runtime_error(
-                "Facility/pot receipt lost its namespace, stage or numeric evidence");
+                "Campaign receipt lost its namespace, stage or numeric evidence");
         auto invalid = receipt;
         invalid.definition = -1;
         expect_rejected(invalid);
@@ -356,10 +404,28 @@ void campaign_coverage_contract() {
         invalid = receipt;
         invalid.page = 0;
         expect_rejected(invalid);
-        if (entry.kind == CampaignReceiptKind::facility_construction_paid) {
+        if (entry.subject) {
             invalid = receipt;
             invalid.subject = 0;
             expect_rejected(invalid);
+        }
+        if (entry.recipient >= 0) {
+            invalid = receipt;
+            invalid.recipient = -1;
+            expect_rejected(invalid);
+            invalid.recipient = 25;
+            expect_rejected(invalid);
+            const bool human_definition = entry.kind == CampaignReceiptKind::human_medal_awarded ||
+                                          entry.kind == CampaignReceiptKind::human_home_admitted;
+            invalid = receipt;
+            invalid.recipient = 0;
+            if (human_definition) {
+                expect_rejected(
+                    invalid); // An otherwise valid person cannot claim another definition.
+                invalid.definition = 0;
+            }
+            coverage.record(invalid,
+                            log); // Both endpoints of the source person directory are valid.
         }
     }
     const CampaignReceipt hp{

@@ -563,7 +563,8 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
     // passes. A cold load or a queued page answer does not certify a past effect.
     std::vector<CampaignReceipt> pending;
     ++stats_.commands;
-    people_.observe(before, c, r, after);
+    people_.observe(before, c, r, after,
+                    [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     income_.observe(before, c, after);
     if (c.kind == Kind::confirm_build) {
         const auto quote = sim::startup_world_build_quote(before, target_.definition);
@@ -616,9 +617,14 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         operation_committed_ = true;
     }
     if (c.kind == Kind::residence_action && !c.cancel) {
-        require(resident_ >= 0 && after.human_homes.at(resident_)[2] != 0 &&
+        require(r.created && resident_ >= 0 && before.human_homes.at(resident_)[2] == 0 &&
+                    after.human_homes.at(resident_)[2] == 1 &&
+                    after.scene.world.world.facilities.at(*r.created).kind == 12 &&
+                    after.facility_residents.at(*r.created) == resident_ &&
                     cash(before) - cash(after) == before.rules->humans.at(resident_).residence_fee,
                 "residence transaction mismatch");
+        pending.push_back(
+            residence_transaction_receipt(resident_, before, after, c.page, *r.created));
         ++stats_.admissions;
         recruitment_ = 0;
         resident_ = -1;
@@ -690,11 +696,17 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
         for (const auto &receipt : pending)
             receipts(receipt);
 }
-void SteamVillageStrategy::observe_tick(const State &before, const State &after) {
-    people_.observe_tick(before, after);
+void SteamVillageStrategy::observe_tick(const State &before, const State &after,
+                                        const CampaignReceiptSink &receipts) {
+    std::vector<CampaignReceipt> pending;
+    people_.observe_tick(before, after,
+                         [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     income_.observe_tick(before, after);
     ++stats_.ticks;
     observe_world(before, after);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
 bool SteamVillageStrategy::checkpoint(const State &s) const {
     return stats_.initial_month >= 0 && month(s) > stats_.initial_month &&

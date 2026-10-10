@@ -4,6 +4,7 @@
 #include "../support/world_fixture.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/assets/sha256.hpp"
+#include "ark/simulation/map/startup_world_expansion.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
@@ -218,7 +219,8 @@ template <class PlayerStrategy> struct CampaignRun {
         auto next = system;
         good(app::commit_world_system(directory, state, *update.candidate, next));
         update.candidate->sound_requests.clear();
-        if constexpr (std::is_same_v<PlayerStrategy, PotStrategy>)
+        if constexpr (std::is_same_v<PlayerStrategy, PotStrategy> ||
+                      std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
             strategy.observe_tick(state, *update.candidate,
                                   [&](const ark::test::CampaignReceipt &receipt) {
                                       coverage.record(receipt, std::cout);
@@ -540,6 +542,213 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
 
 // Source-page transactions use isolated eligibility fixtures; they certify receipts,
 // not natural star progression. Keep them separate from driver/sidecar contracts.
+// A short source-consumer fixture, distinct from the saved natural business route.
+// Reuse its candidate/update lifecycle for transaction and people receipt checks.
+template <class Complete>
+void run_steam_receipt_fixture(State &state, ark::test::SteamVillageStrategy &strategy,
+                               Complete complete, const ark::test::CampaignReceiptSink &receive) {
+    for (int step = 0; step < 600 && !complete(); ++step) {
+        if (const auto action = strategy.next(state)) {
+            auto candidate = state;
+            const auto result = apply(candidate, *action);
+            strategy.observe(state, *action, result, candidate, receive);
+            state = std::move(candidate);
+        }
+        if (complete())
+            break;
+        auto update = sim::prepare_startup_world_runtime(state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Steam receipt fixture update failed; " + strategy.diagnose(state));
+        strategy.observe_tick(state, *update.candidate, receive);
+        state = std::move(*update.candidate);
+    }
+    if (!complete()) {
+        std::ostringstream detail;
+        detail << strategy.diagnose(state) << " world_steps=" << state.simulation_steps;
+        for (const auto &[id, facility] : state.scene.world.world.facilities)
+            detail << " facility=" << id << ':' << facility.placement.definition_id << ':'
+                   << facility.status << ':' << state.facility_flags.at(id);
+        detail << " satisfaction1=" << state.shop_humans.at(1).satisfaction;
+        throw std::runtime_error("Steam receipt fixture did not reach its bound effect; " +
+                                 detail.str());
+    }
+}
+
+// Prepare arrival eligibility only; the real arrival consumer allocates the actor,
+// definition bindings and introductory pages. It is not a natural unlock claim.
+State steam_people_fixture() {
+    auto state = ark::test::initial_world();
+    state.rank = 1;
+    state.arrival_counter = 1;
+    state.human_presence.at(1) = 1;
+    state.human_calendar.at(1).absent_months = 100;
+    const auto arrived = sim::startup_world_runtime_adapter().arrival(state);
+    const auto visitor = arrived ? sim::startup_world_human_details(*arrived, 1) : std::nullopt;
+    require(visitor && visitor->live_actor,
+            "People receipt fixture lacks its source-created first visitor");
+    state = *arrived;
+    // Finish the real introductory pages before installing isolated qualifications;
+    // their normal script writeback must not be confused with gift consumption.
+    for (int step = 0; step < 40; ++step) {
+        const auto *page = top(state);
+        if (page && page->kind == ref::WorldScriptPageKind::scene && page->lifecycle == 2 &&
+            state.scene.scene_state == 0)
+            return state;
+        if (page && page->kind == ref::WorldScriptPageKind::dialogue && page->lifecycle == 2)
+            require(sim::acknowledge_startup_world_runtime_page(state, page->id) ==
+                        sim::StartupWorldRuntimeError::none,
+                    "People fixture introduction did not close through its source consumer");
+        auto update = sim::prepare_startup_world_runtime(state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "People fixture introduction initialization failed");
+        state = std::move(*update.candidate);
+    }
+    throw std::runtime_error("People fixture has not reached its initialized main scene");
+}
+
+void steam_people_receipt_contract() {
+    using Receipt = ark::test::CampaignReceiptKind;
+    // Explicit reward qualifications test consumption; they do not prove a natural
+    // dungeon acquisition. Each namespace starts from an independent arrival Owner.
+    for (int source_kind : {1, 2, 3}) {
+        auto state = steam_people_fixture();
+        for (auto &[key, stock] : state.catalog)
+            if (key.first >= 1 && key.first <= 3)
+                stock.free_purchases = 0; // Each case isolates one source namespace.
+        for (const auto &definition : state.rules->equipment)
+            if (definition.shop.kind == source_kind &&
+                std::any_of(definition.shop.combat.begin(), definition.shop.combat.end(),
+                            [](int value) { return value > 0; })) {
+                auto &stock = state.catalog.at({source_kind, definition.shop.id});
+                stock.status = stock.free_purchases = 1;
+            }
+        ark::test::SteamVillageStrategy strategy;
+        std::vector<ark::test::CampaignReceipt> receipts;
+        const auto initial = sim::startup_world_human_details(state, 1);
+        std::cout << "PEOPLE_FIXTURE kind=" << source_kind << " equipment=";
+        for (const auto &entry : initial->equipment)
+            std::cout << entry.value_or(-1) << ',';
+        std::cout << std::endl;
+        const Receipt equipped = source_kind == 1   ? Receipt::weapon_reward_equipped
+                                 : source_kind == 2 ? Receipt::armour_reward_equipped
+                                                    : Receipt::accessory_reward_equipped;
+        const Receipt combat = source_kind == 1   ? Receipt::weapon_combat_applied
+                               : source_kind == 2 ? Receipt::armour_combat_applied
+                                                  : Receipt::accessory_combat_applied;
+        run_steam_receipt_fixture(
+            state, strategy, [&] { return receipts.size() == 2; },
+            [&](const auto &receipt) {
+                if (receipt.kind == equipped || receipt.kind == combat)
+                    receipts.push_back(receipt);
+            });
+        const auto &paid = receipts[0], &effect = receipts[1];
+        const auto profile = sim::startup_world_human_details(state, 1);
+        require(paid.kind == equipped && effect.kind == combat &&
+                    paid.definition == effect.definition && paid.recipient == 1 &&
+                    effect.recipient == 1 && paid.page == effect.page &&
+                    paid.subject == effect.subject && profile && profile->live_actor &&
+                    paid.subject == profile->live_actor->value &&
+                    paid.before[0] == paid.after[0] + 1 && paid.before[1] == paid.after[1] &&
+                    paid.after[3] == paid.definition &&
+                    profile->equipment.at(paid.after[2]) == paid.definition &&
+                    std::equal(effect.after.begin(), effect.after.end(), profile->combat.begin()),
+                "Source equipment consumption, actor binding and attributes were not independently "
+                "recorded");
+    }
+    auto awarded = steam_people_fixture();
+    ref::WorldScriptPage annual;
+    annual.kind = ref::WorldScriptPageKind::raw_page;
+    annual.legacy_page = 87; // Explicit annual-entry fixture, initialized by the real runtime.
+    const auto page =
+        ref::prepare_world_script_page(sim::startup_world_runtime_scripts(awarded), annual);
+    require(page.candidate &&
+                sim::write_startup_world_runtime_scripts(awarded, page.candidate->state),
+            "Annual receipt fixture did not install its source page");
+    ark::test::SteamVillageStrategy awards;
+    std::optional<ark::test::CampaignReceipt> medal;
+    run_steam_receipt_fixture(
+        awarded, awards, [&] { return medal.has_value(); },
+        [&](const auto &receipt) {
+            if (receipt.kind == Receipt::human_medal_awarded)
+                medal = receipt;
+        });
+    require(medal->definition == 1 && medal->recipient == 1 && medal->page &&
+                medal->before[0] == medal->after[0] + 1 &&
+                medal->after[1] == medal->before[1] + 1 &&
+                awarded.human_calendar.at(1).celebrations == medal->after[1],
+            "Source medal receipt lacks its actual recipient and one-use qualification");
+
+    auto housed = steam_people_fixture();
+    // Existing expanded geometry is an explicit admission prerequisite, not a paid
+    // activity certificate. Use the source map consumer to keep its caches consistent.
+    const auto plot = std::find_if(
+        ark::test::steam_village_layout().begin(), ark::test::steam_village_layout().end(),
+        [](const auto &target) { return target.role == ark::test::SteamLayoutRole::recruitment; });
+    require(plot != ark::test::steam_village_layout().end(),
+            "Source layout lacks its recruitment goal");
+    while (!ark::test::steam_layout_inside_fence(housed, *plot)) {
+        require(housed.fence_level + 1 < int(housed.rules->fences.size()) &&
+                    sim::expand_startup_world_map(housed),
+                "Residence fixture cannot prepare its source-expanded geometry");
+    }
+    // Provide a legally paid recruitment plot before the autonomous layout policy
+    // spends the small fixture budget on a new inn. The real admission remains its decision.
+    const auto selection = sim::begin_startup_world_build(housed, 24);
+    require(selection.error == sim::StartupWorldRuntimeError::none &&
+                selection.denial == sim::StartupBuildDenial::none,
+            "Residence fixture cannot select its recruitment plot; denial=" +
+                std::to_string(int(selection.denial)) +
+                " presence=" + std::to_string(housed.facility_presence.at(24)));
+    app::WorldCommand build;
+    build.kind = Kind::confirm_build;
+    build.definition = 24;
+    build.anchor = plot->anchor;
+    const auto quote = sim::startup_world_build_quote(housed, 24);
+    const auto money = housed.scene.world.world.ai.accounting.funds();
+    const auto constructed = apply(housed, build);
+    require(constructed.outcome == app::WorldCommandOutcome::applied && constructed.created &&
+                quote &&
+                money - housed.scene.world.world.ai.accounting.funds() == quote->construction_cost,
+            "Residence fixture must install and pay for its actual recruitment plot; denial=" +
+                std::to_string(int(constructed.build_denial)) +
+                " error=" + std::to_string(int(constructed.runtime_error)));
+    build.kind = Kind::cancel_build;
+    require(apply(housed, build).outcome == app::WorldCommandOutcome::applied,
+            "Residence fixture construction mode did not return to the main scene");
+    for (int step = 0;
+         step < 600 && housed.scene.world.world.facilities.at(*constructed.created).status != 1;
+         ++step) {
+        const auto *page = top(housed);
+        if (page && page->kind == ref::WorldScriptPageKind::dialogue && page->lifecycle == 2)
+            require(sim::acknowledge_startup_world_runtime_page(housed, page->id) ==
+                        sim::StartupWorldRuntimeError::none,
+                    "Residence fixture construction dialogue did not close");
+        auto update = sim::prepare_startup_world_runtime(housed);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Residence fixture construction did not advance normally");
+        housed = std::move(*update.candidate);
+    }
+    require(housed.scene.world.world.facilities.at(*constructed.created).status == 1,
+            "Source recruitment plot must be ready before testing admission");
+    housed.shop_humans.at(1).satisfaction = housed.rules->humans.at(1).residence_threshold;
+    ark::test::SteamVillageStrategy homes;
+    std::optional<ark::test::CampaignReceipt> admission;
+    run_steam_receipt_fixture(
+        housed, homes, [&] { return admission.has_value(); },
+        [&](const auto &receipt) {
+            if (receipt.kind == Receipt::human_home_admitted)
+                admission = receipt;
+        });
+    require(admission->definition == 1 && admission->recipient == 1 && admission->subject &&
+                admission->before[0] - admission->after[0] ==
+                    housed.rules->humans.at(1).residence_fee &&
+                admission->before[1] == 0 && admission->after[1] == 1 &&
+                housed.human_homes.at(1)[2] == 1 &&
+                housed.scene.world.world.facilities.at(admission->subject).kind == 12 &&
+                housed.facility_residents.at(admission->subject) == 1,
+            "Actual admission lacks its one-time source fee and bound residential instance");
+}
+
 void steam_transaction_receipt_contract() {
     auto state = ark::test::initial_world();
     // Source-menu eligibility only. This bounded fixture must still pay/build/claim
@@ -573,23 +782,7 @@ void steam_transaction_receipt_contract() {
                stages.count(Receipt::facility_blueprint_claimed) &&
                stages.count(Receipt::facility_construction_paid);
     };
-    for (int step = 0; step < 600 && !achieved(); ++step) {
-        if (const auto action = strategy.next(state)) {
-            auto candidate = state;
-            const auto result = apply(candidate, *action);
-            strategy.observe(state, *action, result, candidate, receive);
-            state = std::move(candidate);
-        }
-        if (achieved())
-            break;
-        auto update = sim::prepare_startup_world_runtime(state);
-        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
-                "Steam source-transaction fixture update failed");
-        strategy.observe_tick(state, *update.candidate);
-        state = std::move(*update.candidate);
-    }
-    require(achieved(), "Steam route lacks actual construction and blueprint receipts; " +
-                            strategy.diagnose(state));
+    run_steam_receipt_fixture(state, strategy, achieved, receive);
     const auto count = receipt_count;
     app::WorldCommandResult rejected;
     rejected.outcome = app::WorldCommandOutcome::rejected;
@@ -905,6 +1098,7 @@ void contract() {
     require(refused, "Third-star route must refuse an unranked world");
     source_transaction_receipt_contract();
     steam_transaction_receipt_contract();
+    steam_people_receipt_contract();
     const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
     require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
     std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));

@@ -19,6 +19,8 @@
 
 当前Release经营程序也通过完整快速合同，独立只读`verify-late`成功冷载6d二星两栏并核10店/4屋、14胜、活动30和持续营业终态。这只证明当前decoder可读该业务节点，不将其原始经营轨迹认证成新二进制执行；原RESULT、策略和两栏不写。回执批次已独立保存287ecae；6332ce6将资格交易夹具与驱动/sidecar合同分为具名函数，保留完整原断言、套件与target，desktop-debug标准139/139（26.83秒、仅排三个月）。续批Steam布局接同一回执接口，设施仅共享字段映射；短夹具用真实策略完成建设/蓝图支付与领取，同一魔法壶交易另核Steam支付/开放回执，拒绝不发布。desktop-debug标准139/139（26.64秒、仅排三个月）、headless经营合同通过，证据`ctest-desktop-steam-receipts.log`与`ctest-headless-steam-receipts.log`。旧长跑和便携包不重签，未认证四星。dd7c6f2误夹带研究暂存内容的历史拆分仍待明确授权，后继提交保留，不能套用旧HEAD回退。
 
+人物回执续批保留统一16列，补真实装备资格消费/装配及战斗属性写回、授勋和住宅付款/人物实例绑定；Steam组合策略全部oracle成功后才发布。复用经营合同的三装备命名空间、年度和入住短夹具，明确准备资格后运行原消费者，不认证自然取得、战斗使用或住宅税收。desktop-debug标准139/139（25.90秒、仅排三个月）、headless-debug经营合同通过，最终日志为`build/validation/research-e700aac/ctest-desktop-people-receipts-final.log`与`ctest-headless-people-receipts-final.log`。未重签旧经营证书或便携包，CI仍待对应main。263e426十二份正式文档的具名合同已审阅，无运行增量，后继验收边界集中在[经营计划](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

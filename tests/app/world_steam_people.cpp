@@ -197,7 +197,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
     return {true, human_command(p->id, Human::confirm)};
 }
 
-void SteamPeopleStrategy::observe_world(const State &before, const State &after) {
+void SteamPeopleStrategy::observe_world(const State &before, const State &after,
+                                        std::vector<CampaignReceipt> &pending) {
     if (!gift_ || consumed_)
         return;
     const auto &g = *gift_;
@@ -210,10 +211,48 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after)
             "reward must consume one qualification and equip without charge");
     const auto old = sim::startup_world_human_details(before, g.human);
     const auto now = sim::startup_world_human_details(after, g.human);
-    require(old && now &&
+    const auto target = equipment(before, g.slot, g.definition);
+    require(old && now && target && old->live_actor && old->live_actor == now->live_actor &&
                 std::equal(old->combat.begin(), old->combat.end(), now->combat.begin(),
                            [](int a, int b) { return a <= b; }),
             "gift reduced recipient combat attributes");
+    require(after.scene.world.world.ai.growth.at(g.human).definition.equipment[g.slot] ==
+                    target->combat &&
+                after.scene.world.world.ai.battle.actors.at(*now->live_actor).capacity ==
+                    now->combat[0],
+            "equipped source attributes or live capacity were not synchronized");
+    std::uint64_t page{};
+    for (const auto &p : before.scripts.pages)
+        if (p.legacy_page == 64 && p.lifecycle != 4 && before.human_page_answers.count(p.id) &&
+            before.page_human_bindings.at(p.id) == g.human) {
+            require(!page, "reward observation has multiple queued gift pages");
+            page = p.id;
+        }
+    require(page != 0, "equipped reward lacks its real queued source page");
+    using Receipt = CampaignReceiptKind;
+    const auto equipped = kind(g.slot) == 1   ? Receipt::weapon_reward_equipped
+                          : kind(g.slot) == 2 ? Receipt::armour_reward_equipped
+                                              : Receipt::accessory_reward_equipped;
+    const auto applied = kind(g.slot) == 1   ? Receipt::weapon_combat_applied
+                         : kind(g.slot) == 2 ? Receipt::armour_combat_applied
+                                             : Receipt::accessory_combat_applied;
+    pending.push_back({equipped,
+                       g.definition,
+                       after.simulation_steps,
+                       page,
+                       now->live_actor->value,
+                       g.human,
+                       {before.catalog.at(key).free_purchases, cash(before), g.slot,
+                        old->equipment[g.slot].value_or(-1)},
+                       {after.catalog.at(key).free_purchases, cash(after), g.slot, g.definition}});
+    pending.push_back({applied,
+                       g.definition,
+                       after.simulation_steps,
+                       page,
+                       now->live_actor->value,
+                       g.human,
+                       {old->combat[0], old->combat[1], old->combat[2], old->combat[3]},
+                       {now->combat[0], now->combat[1], now->combat[2], now->combat[3]}});
     consumed_ = true;
     ++equipment_gifts_[g.human];
     std::cout << "PEOPLE gift human=" << g.human << " slot=" << g.slot
@@ -221,9 +260,11 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after)
               << std::endl;
 }
 void SteamPeopleStrategy::observe(const State &before, const Command &c,
-                                  const app::WorldCommandResult &result, const State &after) {
+                                  const app::WorldCommandResult &result, const State &after,
+                                  const CampaignReceiptSink &receipts) {
     if (result.outcome != app::WorldCommandOutcome::applied)
         return;
+    std::vector<CampaignReceipt> pending;
     if (c.kind == Kind::award_action && c.award_action == ref::WorldAwardAction::confirm_award &&
         before.medal_count != after.medal_count) {
         const int person = before.award_pending_humans.at(c.page);
@@ -232,14 +273,32 @@ void SteamPeopleStrategy::observe(const State &before, const Command &c,
                         after.human_calendar.at(person).celebrations,
                 "award must consume one real medal and reward the bound person once");
         ++awarded_;
+        pending.push_back({CampaignReceiptKind::human_medal_awarded,
+                           person,
+                           after.simulation_steps,
+                           c.page,
+                           0,
+                           person,
+                           {before.medal_count, before.human_calendar.at(person).celebrations,
+                            cash(before), spending(before, person)},
+                           {after.medal_count, after.human_calendar.at(person).celebrations,
+                            cash(after), spending(after, person)}});
         std::cout << "PEOPLE medal human=" << person
                   << " medals=" << after.human_calendar.at(person).celebrations
                   << " spending=" << spending(before, person) << std::endl;
     }
-    observe_world(before, after);
+    observe_world(before, after, pending);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
-void SteamPeopleStrategy::observe_tick(const State &before, const State &after) {
-    observe_world(before, after);
+void SteamPeopleStrategy::observe_tick(const State &before, const State &after,
+                                       const CampaignReceiptSink &receipts) {
+    std::vector<CampaignReceipt> pending;
+    observe_world(before, after, pending);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
 
 std::optional<int> SteamPeopleStrategy::eligible_homeless(const State &s, std::int64_t reserve) {

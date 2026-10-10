@@ -970,9 +970,13 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
                     cash(before) - cash(after) ==
                         before.rules->humans.at(recipient_).residence_fee &&
                     after.human_homes.at(recipient_)[2] == 1 &&
+                    after.scene.world.world.facilities.at(*result.created).kind == 12 &&
+                    after.facility_residents.at(*result.created) == recipient_ &&
                     !after.scene.world.world.facilities.count(recruitment_),
                 "invalid real residence replacement");
         require(stats_.residents.insert(recipient_).second, "same resident admitted twice");
+        pending.push_back(
+            residence_transaction_receipt(recipient_, before, after, c.page, *result.created));
         ++stats_.admissions;
         recruitment_ = 0;
         recipient_ = -1;

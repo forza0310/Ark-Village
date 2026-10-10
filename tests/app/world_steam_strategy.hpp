@@ -21,7 +21,8 @@ class SteamVillageStrategy {
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after,
                  const CampaignReceiptSink &receipts = {});
-    void observe_tick(const app::WorldState &before, const app::WorldState &after);
+    void observe_tick(const app::WorldState &before, const app::WorldState &after,
+                      const CampaignReceiptSink &receipts = {});
     const SteamVillageStats &stats() const { return stats_; }
     bool checkpoint(const app::WorldState &state) const;
     bool complete(const app::WorldState &state) const;

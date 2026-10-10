@@ -14,6 +14,8 @@
 
 文字仍需真实翻译／字形／测宽后端，SEB请求仍需最终原图绑定、裁剪和绘制。此模块不是完整像素渲染器，没有接入研究窗口或认证OS热区，不宣称完整原皮肤已完成。
 
+后继[升级81 CPU示例](../ui/examples/STEAM_FACILITY_UPGRADE.md)已在现visuals可选输出中执行PNG／SEB、数字、Mapchip2及裁剪并查看六阶段原尺寸图，导出请求JSON供产品审阅。文字仅锚点标记，数值和测宽是明确夹具；这不替代真实字体后端、研究窗口接线或原游戏动态。
+
 绘制不会重新执行升级、扣费、递增计数、抽随机、发声或退休页面；这些继续由唯一Owner负责。返回向量是本次短寿命值，不进入存档或第二输出队列。现有visuals套件扩`steam_facility_skin_checks.cpp`，覆盖帧边界、取整、层序、裁剪平衡、输入拒绝、Steam资源和重复查询规模；升级业务仍由原building/pages套件主责，不重复其整组断言。
 
 2026-10-10：初批单Release目标构建及visuals通过0.60秒；[数字后继](../work/steam-facility-number-delivery/README.md)构建和visuals通过0.58秒。原窗口逐像素、完整中文字体、74全部布局及Owner到该计划的页面桥待后续分别验收。初批清单见[交付](../work/steam-facility-skin-delivery/README.md)，保持其原冻结身份。

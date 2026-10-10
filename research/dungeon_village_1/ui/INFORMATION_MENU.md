@@ -365,3 +365,34 @@ Steam `SubForm.cctor`（RVA `0x3285E0`）独立核出softLabels37／38均为`[0,
 两页`DrawVerticalScroll2(221,85,4,110,first_visible,count−1,可见行数)`先登记组件12，再组件25：原矩形均(221,85,3,110)；12的value0x40000、参数[count,5或4,0x20000]、Margin(3,20,0,0)，25的value0、flag4。helper虽只注册，但组件12在`_addTouch`中同步调用`GameView.DrawVerticalScroll`（RVA0x23A720），从表单GetTouchValue取得真实滚动值。type0先画RGB(7,5,78)轨道(220,85,5,110)，令D=max(count,可见行数)、Y=85+trunc(110×first_visible/D)、H=trunc(110×可见行数/D)，再画(220,Y,5,H+1)滑块。默认蓝(48,160,255)，仅实际first-touch且count大于可见行数时橙(246,129,0)；少量／空目录仍有111高滑块，不自行隐藏或截成110。合法Owner滚动边界以外的原异常裁高不作为维护输入契约。
 
 上述窗框／box各自消费VIEW_Y，其余内容／箭头／滚动不额外叠加；父页面origin仍由外层统一安装。新增[Steam数量单位](../assets/steam-common/menuRT01.png)及[装备分类图](../assets/steam-common/icon_objRoots.png)共1901字节，SEB76／88同字节复用既有原包；image9的真实条目是`tresureIcon00.png`，与APK同字节，不能误写不存在的`icon_item00.png`。属性头image37与数字image103沿既有Steam差异包。统一图片路径由`steam_information_image`明确提供，不按同名图擅自跨版本复用；来源索引见[素材入口](../assets/README.md)。
+
+## Steam9菜单局部与父级原点（静态已核，待维护皮肤）
+
+2026-10-10续核固定Steam2.56的`SubForm.Draw`（RVA `30CE30`）、`_draw`（`352E20`）及`DrawMenu2`（`308540`）。本节补五行菜单的几何、资源、注册与明确下游边界，不重复已交五标签／Owner输入规则；尚无raw9正式皮肤计划，不据静态合同认证产品字体、物理点击或原窗口动态。
+
+**真实父位置不能由画布居中猜。** raw3确认标签5在VA `1032802C–1032807C`构造raw9，`x9=x3+68+(English?28:0)`、`y9=y3+28×父选中行`；英语判断是独立`SubForm.En()`，`MAINMENUBAR_ADD=28`由cctor VA `1032DAC2`写入。`Draw`以自身x_/y_为原点：任一画布维度大于240时，一般同时加两轴`trunc((size−240)/2)`；但**根Form ID为9且当前页属于菜单集合时跳过居中**，raw9在该集合内。不能套标题raw20的根页位置，也不能为维护的场景直达入口伪造一个raw3父页。
+
+`_draw`在VA `103530DD–10353180`允许菜单被另一菜单覆盖时继续绘制；若被非菜单SubForm覆盖，则不画该菜单。raw9在`10356CB6`调用`DrawMenu2(type=1)`，没有木纹DrawWindow、标题栏或五项分类图标。设进入helper的实际Graphics原点为Ox/Oy、逻辑画布W/H，宽参数m日文84、其它90，边界高145（5×28+5）：dx初始取`GetBezellessSafeArea().Left`，dy初始0，**不取Top padding**；若Ox+m>W则覆盖dx=W−m−Ox，若Oy+145>H则dy=H−145−Oy。原判断不把safe-left再加进Ox，也没有额外左边界夹限。
+
+令第r行Y=dy+28×r，原局部顺序如下；菜单文字读取`MENU_STR[tag]`，不是详情页标题。
+
+| 原序 | 已核请求 |
+| --- | --- |
+| 行底图 | common image25／SEB0 `menu.png/menu.seb`，选中frame2、其它frame3，锚(dx+1,Y+1)。原裁片分别(68,0,89,29)、(68,29,89,29)，offset0；m84／90是布局参数，不能改89宽资源凑齐。 |
+| 行触摸 | 组件9，矩形(dx+40,Y,m−40,28)，value=`0x20000|r`，普通无option重载。入页展开期间仍登记全尺寸基矩形；实际命中仍经过框架。 |
+| 行文字 | frame≥3才画，锚(dx+7,Y+9)，选中RGB(76,58,50)、其它(255,242,220)。当前Font实测宽度>m−10才临时字号11，绘后恢复；不是无条件缩放或按字符数省略。 |
+| NEW | 仅标签15冒险者可能显示image147，锚(dx+68+L,Y+16)。L日文10、英语6、其它0，日文判断在英语结果后覆盖；不能用“非日文”代替英语分支。 |
+| 选中手形 | frame≥3且本页栈顶才画。按**局部dx<120**选SEB22当前帧，锚(dx+m+6,Y+13)；否则SEB21当前帧，锚(dx−2,Y+13)。不是按屏幕Ox+dx选朝向。 |
+
+NEW条件来自`IsExistCharaNew`（RVA `2DFB50`）：逐人物定义检查`state_!=0 && new_`，不要求实际W，也不限p1；raw9分支VA `10308E9F–10308F96`没有为其余四项调用道具／装备NEW查询。这些图像／SEB均已有明确出版入口，不需新增同名副本。
+
+**入页展开是源裁片缩短。** DrawMenu2传`trunc(int32(frame×1000)/3)`给DrawSeb（RVA `251590→251380`）；后者先将两轴比例夹0…1000，再将SEB源宽／高乘比例取整，调用普通DrawImage，并未请求纹理拉伸。对本菜单89×29裁片，frame0不绘图，frame1为29×9，frame2为59×19，正常稳定frame3为完整89×29，源起点不变。文字、NEW、手形待frame≥3；触摸基矩形不跟着缩小。已有公共Update加1、FrameMenu再加1并封顶3的合同仍保留，不据此宣称每次原窗口必然可见四个阶段，也不换成秒。本节只约束这条原helper调用，未修改或重新验收raw20维护实现。
+
+五行之后还存在以下调用，必须分别交付，不能用局部菜单图元宣称完整原版界面：
+
+- `_draw`共用尾VA `10356D9C–10356DDF`注册组件4/value22、TouchOption flag2，无矩形重载；不可擅自解释为全屏点击关闭。
+- raw9不是raw20，DrawMenu2在VA `10309A1B–10309A9A`调用`GameForm.Draw_rightTopInfo(g,VIEW_W−Ox,VIEW_Y−Oy)`，之后还有选中任务的四条摘要。世界HUD、任务摘要及其内部原点／文字消费者尚待本方向正式交付。
+- VA `10309953–103099F5`在静态`jumpScreenCursorNeed_`为真时清标志并调用`Canvas.JumpScreenCursor`，使用实际原点与surface缩放百分比。这是一次性表现副作用；触发上游尚未闭合，后继沿已授权的Owner显式表现请求处理，纯查询不能消费标志或移动系统光标。
+- `SubForm.Draw`的finally helper（RVA `305C80`）先`SetOrigin(0,0)`，不是恢复某个猜测的旧原点；`touchInvalidTime_!=0`且距`CurrentTimeMillis`不足500ms时，还调用`ClearTouchComponent`。故登记热区不等于本轮可点击，该真实墙钟门槛不能换成逻辑tick；时间戳上游及完整平台输入仍另核。
+
+最小后继是有明确实际原点、语言、safe-left及五项真实测宽输入的raw9局部计划，读取现有Owner选择／计数／人物NEW；源裁片展开、HUD任务和一次性光标分别保留显式消费者及未闭合范围。当前场景直达适配不自动拥有原raw3的x/y和父选中行证据。

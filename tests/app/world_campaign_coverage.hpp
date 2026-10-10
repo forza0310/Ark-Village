@@ -41,7 +41,8 @@ enum class CampaignReceiptKind {
     item_task_loot_claimed,
     weapon_task_loot_claimed,
     armour_task_loot_claimed,
-    accessory_task_loot_claimed
+    accessory_task_loot_claimed,
+    human_home_tax_collected
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -62,6 +63,10 @@ CampaignReceipt facility_transaction_receipt(CampaignReceiptKind kind, int defin
 CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &before,
                                               const app::WorldState &after, std::uint64_t page,
                                               std::uint64_t facility);
+// raw98 retirement plus actual other-income/cash commit; raw90 only displays taxes.
+// Per-person amounts use source G, never inferred facility spending or a new tax formula.
+std::vector<CampaignReceipt> residence_tax_receipts(const app::WorldState &before,
+                                                   const app::WorldState &after);
 // Bind an already-observed victory to the submitted task and its new raw30 page.
 // This checks the receipt's source identity, not loot, combat rewards or successor generation.
 std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &before,

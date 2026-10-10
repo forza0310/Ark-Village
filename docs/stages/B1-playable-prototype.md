@@ -31,6 +31,10 @@
 
 两Debug标准139/139（34.38秒）及119/119（29.80秒）仅排三个月；收口的异定义地面拾取修正/回归在两Debug与Release经营合同通过，最终日志为`ctest-*-loot-ground-final.log`。自然月48→51和独立冷载通过，6次直接领取及两件装备后续装配/属性写回，另有建设、强化和3次胜利；未出现战利品来源缺口。证据为`build/validation/research-e700aac/steam-task-loot-915efdbd8dbd42d891be3db9f6d51e7f/RESULT.json`，实际数值与限制见[经营记录](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)。仍为二星，不认证全部定义、BOSS或通关；短夹具后续重建与该次执行身份分别记录，未重签旧证书/玩家包，CI待对应main。
 
+住宅税收续批沿同一经营合同与16列绑定raw98自动退休、各人物准备税额G、实际现金/其它类收入及全人物F/G清零；raw90确认不算入账，重复/暂停观察不重发。只读取原消费者提交，不重算职业税率或创建第二账本。零额/有符号资格夹具及错误月度收入、漏清非居民、错误通知、随机变化拒绝通过；`steam-inspect`补当前入住/满足度事实，计数中的本段新增入住与已有居民分开。
+
+desktop-debug标准139/139（37.79秒，仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-tax-final.log`、`ctest-headless-tax-final.log`和`ctest-release-tax-final.log`。同一只读月48前缀另建隔离分支，实际经营至月51并冷载通过：4名居民税额560/390/550/110G，合计1610G只入账一次，接续建设/强化/战利品/胜利也通过。证据`build/validation/research-e700aac/steam-tax-quarter-d395eaf2a5af4c2b96e61e3484144a5d/RESULT.json`；二星/收入缺口及来源身份保持，未认证新入住、全部人物税收、三星或自然通关，未重签旧报告或玩家包，CI待对应main。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

@@ -4,6 +4,7 @@
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/village/startup_world_tax.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_steam_strategy.hpp"
 #include <algorithm>
@@ -196,6 +197,84 @@ void task_loot_receipt_contract() {
                         isolated.receipts.front().definition == entry.definition,
                     "Independent ground pickup confused the shared counter or earned task credit");
         }
+    }
+}
+
+// Qualification inputs are explicit. The real page scheduler pays/reset once;
+// this verifies evidence wiring, not a naturally earned house or annual tax route.
+void residence_tax_receipt_contract() {
+    for (const int amount : {140, 0, -10}) {
+        auto before = steam_people_fixture();
+        before.human_presence.at(0) = 1;
+        before.human_homes.at(0)[2] = 1;
+        before.human_homes.at(1)[2] = 1;
+        const int first_amount = amount == 0 ? 0 : 20;
+        before.human_calendar.at(0).legacy_G = first_amount;
+        before.human_calendar.at(1).legacy_G = amount;
+        before.human_presence.at(2) = 1; // Open nonresident: reset but no contribution.
+        before.human_homes.at(2)[2] = 0;
+        before.human_calendar.at(2).legacy_G = 90;
+        before.scene.world.world.ai.battle.humans.at(2).battle_reward_stat = 700;
+        before.human_presence.at(3) = 0; // Absent resident: excluded by p, still reset.
+        before.human_homes.at(3)[2] = 1;
+        before.human_calendar.at(3).legacy_G = 50;
+        const auto install = [](State &state, int raw) {
+            ref::WorldScriptPage page;
+            page.kind = ref::WorldScriptPageKind::raw_page;
+            page.legacy_page = raw;
+            const auto created =
+                ref::prepare_world_script_page(sim::startup_world_runtime_scripts(state), page);
+            require(created.candidate &&
+                        sim::write_startup_world_runtime_scripts(state, created.candidate->state),
+                    "Tax receipt fixture did not install its source page");
+            return state.scripts.pages.back().id;
+        };
+        auto displayed = before;
+        const auto list = install(displayed, 90);
+        const auto old_list = displayed;
+        require(sim::act_startup_world_tax_page(displayed, list, sim::StartupWorldTaxAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                    residence_tax_receipts(old_list, displayed).empty(),
+                "Tax list confirmation was certified as income");
+        const auto page = install(before, 98);
+        const auto paused = before;
+        require(residence_tax_receipts(paused, paused).empty(),
+                "Unconsumed automatic tax page earned a receipt");
+        auto update = sim::prepare_startup_world_runtime(before);
+        require(update.candidate.has_value(), "Tax receipt source scheduler rejected its page");
+        auto receipts = residence_tax_receipts(before, *update.candidate);
+        if (receipts.empty()) {
+            before = std::move(*update.candidate); // Source initialization may precede its Update.
+            update = sim::prepare_startup_world_runtime(before);
+            require(update.candidate.has_value(), "Tax receipt source Update was rejected");
+            receipts = residence_tax_receipts(before, *update.candidate);
+        }
+        const auto &after = *update.candidate;
+        require(receipts.size() == 2 && receipts[0].definition == 0 && receipts[1].definition == 1 &&
+                    receipts[1].recipient == 1 && receipts[1].page == page &&
+                    receipts[1].before[1] == amount && receipts[1].after[1] == 0 &&
+                    receipts[1].after[0] - receipts[1].before[0] == first_amount + amount &&
+                    receipts[1].after[2] - receipts[1].before[2] == first_amount + amount &&
+                    residence_tax_receipts(after, after).empty(),
+                "Source tax receipt confused eligible contribution, total income or replay");
+        const auto rejected = [&](State bad) {
+            try {
+                residence_tax_receipts(before, bad);
+            } catch (const std::runtime_error &) { return; }
+            throw std::runtime_error("Unaccounted tax candidate earned a receipt");
+        };
+        auto bad = after;
+        ++bad.monthly_cash.at(before.scene.calendar.month)[4][0];
+        rejected(bad);
+        bad = after;
+        bad.human_calendar.at(2).legacy_G = 90;
+        rejected(bad);
+        bad = after;
+        bad.scripts.notices.back().message = 2;
+        rejected(bad);
+        bad = after;
+        bad.scene.random.draw(7);
+        rejected(bad);
     }
 }
 
@@ -681,6 +760,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
         throw std::invalid_argument("Receipt fixtures require the campaign command consumer");
     source_transaction_receipt_contract(apply);
     task_loot_receipt_contract();
+    residence_tax_receipt_contract();
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);
     steam_investment_receipt_contract(apply);

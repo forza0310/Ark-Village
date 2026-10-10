@@ -219,6 +219,7 @@ const receiptStages = {
   blueprint_claimed: 'facility', construction_paid: 'facility',
   reward_equipped: ['weapon', 'armour', 'accessory'],
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
+  home_tax_collected: 'human',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
   item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory']
 };
@@ -233,11 +234,13 @@ function* receipts(text, phase) {
     need(numbers.every(Number.isSafeInteger) && numbers[0] >= 0 && numbers[1] > 0 && numbers[3] >= 0 &&
       [].concat(receiptStages[stage] ?? []).includes(category) && catalogue.has(`${category}:${id}`), 'receipt identity/binding');
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
-    if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted'].includes(stage))
+    if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
     if (['hp_restored', 'construction_paid', 'reward_equipped', 'combat_attributes_applied', 'home_admitted', 'victory_committed', 'facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage))
       need(numbers[3] > 0, 'receipt actual subject binding');
-    if (['medal_awarded', 'home_admitted'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
+    if (['medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage)) need(id === numbers[2], 'receipt human definition binding');
+    if (stage === 'home_tax_collected')
+      need(numbers[7] >= 0 && numbers[7] < 12 && numbers[7] === numbers[11] && numbers[9] === 0, 'receipt tax month/reset binding');
     if (['facility_bound_use', 'item_improvement_applied', 'task_loot_claimed'].includes(stage))
       need(numbers[2] === -1 && numbers[7] === numbers[11] &&
         catalogue.has(`${stage === 'task_loot_claimed' ? 'quest' : stage === 'facility_bound_use' ? 'facility' : 'item'}:${numbers[7]}`),
@@ -359,6 +362,7 @@ function coverageContract(rows) {
     ['accessory', 'reward_equipped', 29, 30, 1, 24], ['weapon', 'combat_attributes_applied', 32, 33, 1, 24],
     ['armour', 'combat_attributes_applied', 49, 50, 1, 24], ['accessory', 'combat_attributes_applied', 29, 30, 1, 24],
     ['human', 'medal_awarded', 24, 25, 0, 24], ['human', 'home_admitted', 24, 25, 1, 24],
+    ['human', 'home_tax_collected', 24, 25, 0, 24],
     ['task', 'victory_committed', 80, 81, 1, -1], ['item', 'commerce_bought', 35, 36, 0, -1],
     ['item', 'facility_bound_use', 35, 36, 1, -1],
     ['facility', 'item_improvement_applied', 84, 85, 1, -1],
@@ -366,10 +370,11 @@ function coverageContract(rows) {
     ['armour', 'task_loot_claimed', 49, 50, 1, -1], ['accessory', 'task_loot_claimed', 29, 30, 1, -1]]) {
     const fields = ['COVERAGE_RECEIPT', category, String(id), stage, '2', '1', String(recipient), String(subject),
       '120', '0', '2', '0', '0', '1', '2', '0'];
+    if (stage === 'home_tax_collected') fields[13] = '0';
     const parsed = [...receipts(fields.join('\t'), 'contract')];
     need(parsed.length === 1 && parsed[0].key === sourceKey(category, id) && parsed[0].stage === stage &&
       parsed[0].subject === subject && parsed[0].recipient === recipient && parsed[0].before.join(',') === '120,0,2,0' &&
-      parsed[0].after.join(',') === '0,1,2,0', 'campaign numeric receipt mapping');
+      parsed[0].after.join(',') === (stage === 'home_tax_collected' ? '0,0,2,0' : '0,1,2,0'), 'campaign numeric receipt mapping');
     const last = [...fields]; last[2] = String(limit - 1);
     need([...receipts(last.join('\t'), 'contract')].length === 1, 'last source definition receipt rejected');
     for (const [field, value] of [[2, '-1'], [2, String(limit)], [5, '0'],
@@ -401,6 +406,16 @@ function coverageContract(rows) {
         const invalid = [...fields]; invalid[field] = value;
         expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
       }
+    if (stage === 'home_tax_collected') {
+      for (const month of [-1, 12]) {
+        const invalid = [...fields]; invalid[11] = invalid[15] = String(month);
+        expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+      }
+      for (const [field, value] of [[15, '1'], [13, '1']]) {
+        const invalid = [...fields]; invalid[field] = value;
+        expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+      }
+    }
   }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
   const validReceipt = 'COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t1\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0';

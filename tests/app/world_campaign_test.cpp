@@ -231,6 +231,8 @@ template <class PlayerStrategy> struct CampaignRun {
                           << state.simulation_steps << '\t' << loot.gap << '\n';
             pending_receipts.insert(pending_receipts.end(), loot.receipts.begin(),
                                     loot.receipts.end());
+            const auto tax = ark::test::residence_tax_receipts(state, *update.candidate);
+            pending_receipts.insert(pending_receipts.end(), tax.begin(), tax.end());
         } catch (...) {
             // Keep the same pre-update Owner used for a failed observation. A strategy
             // refusal is not a runtime error, and must not be reported as one.
@@ -764,6 +766,14 @@ int main(int argc, char **argv) {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
                 std::cout << "PASS Steam player prefix cold-load; "
                           << steam_campaign->strategy.diagnose(steam_campaign->state) << std::endl;
+                const auto &state = steam_campaign->state;
+                for (const auto &human : state.rules->humans)
+                    if (state.human_presence.at(human.identity))
+                        std::cout << "HOME_STATUS human=" << human.identity
+                                  << " resident=" << state.human_homes.at(human.identity)[2]
+                                  << " satisfaction=" << state.shop_humans.at(human.identity).satisfaction
+                                  << " threshold=" << human.residence_threshold
+                                  << " fee=" << human.residence_fee << '\n';
             } else {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
                 require(steam_campaign->strategy.complete(steam_campaign->state),

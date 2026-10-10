@@ -1,5 +1,11 @@
 # 当前研究验证与历史索引
 
+## Steam人物表现与设施升级例图2026-10-10
+
+[人物合同](ui/STEAM_HUMAN_PRESENTATION.md)及[研究包](work/steam-human-presentation/README.md)复核四方法22,736字节、36锚、六MOVE_DATA数组、7资源。主会话重跑audit，EVIDENCE身份保持`10fc0b79…98fe`；不由静态调度表推定秒数或完整原窗口行为。
+
+[升级81示例](ui/examples/STEAM_FACILITY_UPGRADE.md)实际消费正式只读C++计划、20个源文件并生成6图／6请求JSON／拼图／manifest共302,149字节；Release构建、visuals0.61秒、CPU导出、源和输出hash及只读check通过。主会话实际查看744×504拼图。文字仅洋红锚点、字宽和数值为夹具；原字体、OS输入和自然升级窗口仍未认证。资源由RAII释放，无新增target、Owner或后台进程；未重跑无关世界长测。
+
 ## 自然四住宅、十经营设施及付款回放2026-10-10
 
 [交付与证书](work/application-residence-delivery/README.md)新增独立住宅Driver，有限接续任务7并自然成功，完成四宅／十个已完工可达经营设施。终点21145G、人气516、7次任务成功，仍1星；未宣称二星或自然通关。真实付款边界34786后60轮和稳定终点38820后20轮三路一致，首住宅35202完整完工。

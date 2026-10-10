@@ -1,5 +1,7 @@
 # 原版页面、地图与视觉交互基线
 
+2026-10-10[Steam人物表现](STEAM_HUMAN_PRESENTATION.md)补100槽肖像原表、空实例分支、PB_NOW血条／PB_AFTER危险提示、奖章及气泡；四方法36锚／7资源静态审计通过。危险偏移表、完整人物武器树和原窗口像素仍待后继。[升级81例图](examples/STEAM_FACILITY_UPGRADE.md)已由正式C++计划和原资源生成六阶段图并实际查看，文字仅锚点适配，未声称完整字体。
+
 2026-10-10[Steam人物60四页](STEAM_HUMAN_DETAIL.md)补概览／六属性／四装备／魔法的局部绘制、装备槽内导航、确认子页、初始软标签和共享表现副作用；[image88素材](../assets/steam-human-common/README.md)独立发布。[更新与触摸补证](STEAM_HUMAN_INPUT.md)核普通翻页链不按页重配label11，列表先选择再按UP／marker确认；完整人物调度、字体和平台热区仍待核。
 
 2026-10-10[设施数字请求](../work/steam-facility-number-delivery/README.md)已沿Steam原helper展开普通数字／金额／加号，visuals通过0.58秒；负帧仅保留请求，不推断最终像素。Mapchip2、字体与实际窗口接线继续独立补齐。

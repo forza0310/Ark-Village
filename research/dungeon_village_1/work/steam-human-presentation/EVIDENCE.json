@@ -1,0 +1,788 @@
+{
+  "scope": "Steam raw60 portrait schedule, medal, speech bubble and active power bar branches; not full renderer",
+  "sources": {
+    "dll": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+  },
+  "methods": [
+    {
+      "key": "medal",
+      "rva": 2445168,
+      "bytes": 448,
+      "sha256": "083acdacee29a33a24addc029b87ba3cfaaf921278c5151fb02bf1f45f6a9a3c"
+    },
+    {
+      "key": "bubble",
+      "rva": 2437680,
+      "bytes": 768,
+      "sha256": "21b1c0567e907b7ebaeefc45923e586f93d390520e9cfcf8aead88ea07b4dd42"
+    },
+    {
+      "key": "power",
+      "rva": 2951808,
+      "bytes": 1152,
+      "sha256": "a6d3ff21d916a9e8d06a7e394ec733a64072c46c8c0137b97129b8282be7d518"
+    },
+    {
+      "key": "cctor",
+      "rva": 3080256,
+      "bytes": 20368,
+      "sha256": "aa4f5a4b3223fa2062fc98eb64bf9e946fb92db527612a79fd82c1cc489c750f"
+    }
+  ],
+  "reused_portrait": {
+    "key": "portrait",
+    "rva": 2948864,
+    "bytes": 1312,
+    "sha256": "38f0ee534315251f196bda9f69c269ab2fe2c023f9f81e69a7593c5fad90871a",
+    "reused": false
+  },
+  "anchors": [
+    {
+      "va": 270880793,
+      "target": 271631184,
+      "label": "many medal icon",
+      "bytes": 5,
+      "sha256": "c1d1d76595c14146047df8c6b4c843a66ae2d878d081817983f21250e207dae5"
+    },
+    {
+      "va": 270880884,
+      "target": 270866160,
+      "label": "medal multiply number05 frame16",
+      "bytes": 5,
+      "sha256": "d613aaf7f1b09bd6bfc2863b4721e9c0bbf8d86decd48e023c9031109c47ac15"
+    },
+    {
+      "va": 270880954,
+      "target": 270859520,
+      "label": "many medal count",
+      "bytes": 5,
+      "sha256": "a93514c81513da77900f5679d7077330d13a5c07f0b8fc05d1ac5928ab0be9c6"
+    },
+    {
+      "va": 270881023,
+      "target": 271631184,
+      "label": "one to four repeated medals",
+      "bytes": 5,
+      "sha256": "ed3b82161e1116f8d09e559fa29f762cfade10e63d887ae11884a32ed79ec386"
+    },
+    {
+      "va": 270873232,
+      "target": 276293936,
+      "label": "bubble raw text width",
+      "bytes": 5,
+      "sha256": "2dbd38e0369b7689220be9d4bfbf73695acc53454e4dc7e95c6f7ef08235cb85"
+    },
+    {
+      "va": 270873393,
+      "target": 276171856,
+      "label": "bubble width above60 tiled center",
+      "bytes": 5,
+      "sha256": "3c8d32be651ae4fe331ce437b9a63e5a7d943e8e932e91c182b25b89cb10aad7"
+    },
+    {
+      "va": 270873593,
+      "target": 276171856,
+      "label": "bubble narrow strip or center tail",
+      "bytes": 5,
+      "sha256": "7e597f6ecf939a85d830bc092f1158b02fb4f94cf05999c461eefec2aaf18457"
+    },
+    {
+      "va": 270873679,
+      "target": 270866160,
+      "label": "bubble left frame0",
+      "bytes": 5,
+      "sha256": "7b9ba71055c28ac310f95b6bdec73115c5c97e681396162c5177d5b67ba28582"
+    },
+    {
+      "va": 270873767,
+      "target": 270866160,
+      "label": "bubble right frame1",
+      "bytes": 5,
+      "sha256": "2d701f441128a2d2afa8651e2f97150d9093a93ad081f68739c79a5404293340"
+    },
+    {
+      "va": 270873871,
+      "target": 276199616,
+      "label": "bubble text centered yplus3",
+      "bytes": 5,
+      "sha256": "082856d2defc4a4893a3ebba25f84038cd0c82c3dbe348313acd972e3ea17838"
+    },
+    {
+      "va": 271387562,
+      "target": 276182416,
+      "label": "power outer frame",
+      "bytes": 5,
+      "sha256": "f875b60fff3dd7a408dfc82df258e35a7903af93620a350f327642fdf12d9323"
+    },
+    {
+      "va": 271387639,
+      "target": 276182416,
+      "label": "power inner frame",
+      "bytes": 5,
+      "sha256": "3dc7aa1f198970c4b8eed67520cfa3ee2e1badf66b5064441c01c1ebc20d8c0f"
+    },
+    {
+      "va": 271387714,
+      "target": 271055152,
+      "label": "power uses live max HP",
+      "bytes": 5,
+      "sha256": "2ea2eb913d90b261a45b36af6cd5a7e7a56e9da2d1d5850987574b47a9e88f23"
+    },
+    {
+      "va": 271387761,
+      "target": 271206272,
+      "label": "PB_NOW fill ratio",
+      "bytes": 5,
+      "sha256": "0003e772ee9c93d0cf34cef851001d464dd36b5d9798dac05ea74e6ebcb85e49"
+    },
+    {
+      "va": 271387830,
+      "target": 276212112,
+      "label": "power green fill",
+      "bytes": 5,
+      "sha256": "425bbcd19a9517fc615e782aea0fb40f66e8884fd5d2b509e0aaa7ba7d833d23"
+    },
+    {
+      "va": 271387950,
+      "target": 276212112,
+      "label": "power remainder fill",
+      "bytes": 5,
+      "sha256": "a4da5defcc1c48274c2a66b727f639f540e9b9c94f08232fb31e27a3cbfde32d"
+    },
+    {
+      "va": 271388378,
+      "target": 270866160,
+      "label": "optional effect not used by raw60",
+      "bytes": 5,
+      "sha256": "cbfd4ef205d4ee77472519dfad045888fdd049e042778a53ec6d0c5f5bcb10db"
+    },
+    {
+      "va": 271384940,
+      "target": 271206272,
+      "label": "portrait segment position",
+      "bytes": 5,
+      "sha256": "6df80669bd2181c851c553b870512bb64744517afccc29f92d468e22d2fac926"
+    },
+    {
+      "va": 271385038,
+      "target": 271050176,
+      "label": "portrait anime0 uses full frame",
+      "bytes": 5,
+      "sha256": "6f49c06058d0607c4a0a115467a9178380ac48a61751d5d916fdfc14babbf1e5"
+    },
+    {
+      "va": 271385163,
+      "target": 271477648,
+      "label": "portrait shared display write",
+      "bytes": 5,
+      "sha256": "d99bcbf1d4bad69ba4d064db92214e0c15480098a890a10d398679d3d4ef6f28"
+    },
+    {
+      "va": 271385204,
+      "target": 271371936,
+      "label": "portrait definition weapon",
+      "bytes": 5,
+      "sha256": "b24fa73d9ab091868526ce80cdbc0acd2303ef7b5367dc795fb36e36e3e00823"
+    },
+    {
+      "va": 271385241,
+      "target": 271387264,
+      "label": "raw60 item=null effect=false",
+      "bytes": 5,
+      "sha256": "6b196b50bd9efd5f5c6e947be8274a324ad475fb226356f8cd8dce357a994657"
+    },
+    {
+      "va": 271385593,
+      "target": 270866160,
+      "label": "portrait pinch icon",
+      "bytes": 5,
+      "sha256": "f7bd12ea4c561247037dd48540853b7230afa0fa192eb1438fdb3308b15905f2"
+    },
+    {
+      "va": 271530411,
+      "target": 278310416,
+      "label": "MOVE row0 blob",
+      "bytes": 5,
+      "sha256": "52e033b13b548dd1f25df13e99651398dfdf43bbadf01dc915ce6df6121901e9"
+    },
+    {
+      "va": 271530499,
+      "target": 278310416,
+      "label": "MOVE row1 blob",
+      "bytes": 5,
+      "sha256": "d30eabe87f2ae16a698830d5d9f2b7e37c8bd470f81f8fc779d5be32dd4569e6"
+    },
+    {
+      "va": 271530579,
+      "target": 278310416,
+      "label": "MOVE row2 blob",
+      "bytes": 5,
+      "sha256": "ee145ff22ebc30b05a7016b896262a6b70c94c174e26a75251e0902a8e6c955b"
+    },
+    {
+      "va": 271530659,
+      "target": 278310416,
+      "label": "MOVE row3 blob",
+      "bytes": 5,
+      "sha256": "ff025e3f7a98bdec3c950cb04ee8f64287f943443c411c68bc3b63daff7a743d"
+    },
+    {
+      "va": 271530739,
+      "target": 278310416,
+      "label": "MOVE row4 blob",
+      "bytes": 5,
+      "sha256": "ebafe78475bbd5fee131006f454b982efd7f7585095d0aef3666cfd5c2cf4a47"
+    },
+    {
+      "va": 271530819,
+      "target": 278310416,
+      "label": "MOVE row5 blob",
+      "bytes": 5,
+      "sha256": "9c44eba09e269d702b73e34a689b4531ffafd78b98bde797697eb9a4305e50c3"
+    },
+    {
+      "va": 271530884,
+      "label": "MOVE_DATA static field128",
+      "bytes": 6,
+      "sha256": "8984cb3fb4a8e06940db4717ebd1c8591ab786a51cb66e570e8712fd93dffbf9"
+    },
+    {
+      "va": 270880683,
+      "label": "medal five threshold",
+      "bytes": 3,
+      "sha256": "ccd7a4d84a4bbbd41dd9ef0a44e6e40594f45a02070fba94bbb4899ec9c539e1"
+    },
+    {
+      "va": 270873248,
+      "label": "bubble width60 threshold",
+      "bytes": 3,
+      "sha256": "0b6733c3631e7b260431ca171b8339b491bc970fc288dcf12deefb2188397da9"
+    },
+    {
+      "va": 271387708,
+      "label": "powerBar PB_NOW1",
+      "bytes": 3,
+      "sha256": "2c4c1994b68be3021e98244ee72b6851a4a76b6d44d1c1c2934d6f7a4dfe1e2d"
+    },
+    {
+      "va": 271385320,
+      "label": "pinch powerBar PB_AFTER3",
+      "bytes": 3,
+      "sha256": "81acabc4d330cb6f99de5ddf58be216c078a2a157094730a15cd989ae4740b7b"
+    },
+    {
+      "va": 271387958,
+      "label": "effect flag separate",
+      "bytes": 4,
+      "sha256": "abc16ef35a56289b4eb98399b5ac040d15ce3c3cf9e79ecb49bbec963593a23e"
+    },
+    {
+      "va": 271385341,
+      "label": "pinch percentage30 inclusive",
+      "bytes": 3,
+      "sha256": "bedfee0f94341b6606ec80beace91a9973b209f5b844add07c92c946cf0d795b"
+    }
+  ],
+  "schedule": [
+    {
+      "slot": 286201648,
+      "field": 25229,
+      "data_offset": 3123370,
+      "sha256": "3d1a2e4d2f250ce89e2453389b6b2aba2e915168a7313c0e87442f8dd928817e",
+      "values": [
+        1,
+        75,
+        75,
+        10
+      ]
+    },
+    {
+      "slot": 286194512,
+      "field": 25144,
+      "data_offset": 3121238,
+      "sha256": "05720f0333d731dd1e5f019d74f7d2ba48746a36e97146ccd5bf36ceb1d7e34b",
+      "values": [
+        1,
+        75,
+        98,
+        30
+      ]
+    },
+    {
+      "slot": 286214488,
+      "field": 25382,
+      "data_offset": 3127401,
+      "sha256": "bd981b544a157a903e1403b959a3b090a2bf6ecf75341a91d4103ead12dd1374",
+      "values": [
+        1,
+        98,
+        98,
+        10
+      ]
+    },
+    {
+      "slot": 286205752,
+      "field": 25278,
+      "data_offset": 3124418,
+      "sha256": "651cb460879caa934ee6343812be164644f9317d2c45eb0865aa23dfaa4dd28b",
+      "values": [
+        2,
+        98,
+        98,
+        10
+      ]
+    },
+    {
+      "slot": 286194932,
+      "field": 25149,
+      "data_offset": 3121390,
+      "sha256": "088a074bbeec94dde6b6d3cb6bbca774625d91ea268f6b590e4494c1cdacf5ca",
+      "values": [
+        2,
+        98,
+        75,
+        30
+      ]
+    },
+    {
+      "slot": 286203236,
+      "field": 25248,
+      "data_offset": 3123742,
+      "sha256": "4a5d09deeb4fe951b6a706dcb81a55c9e6dbc6e17656af13828695ff330c08b9",
+      "values": [
+        2,
+        75,
+        75,
+        10
+      ]
+    }
+  ],
+  "resources": [
+    {
+      "kind": "image",
+      "index": 7,
+      "path": "assets/original/common/fukidashi_back.png",
+      "source": "EXE:resources.assets:1148:common:fukidashi_back.png",
+      "bytes": 424,
+      "sha256": "b08eb38a0a89b2fb190067e9813b0de781ebad9d6fac31a2eea50017150d895d",
+      "width": 72,
+      "height": 21
+    },
+    {
+      "kind": "image",
+      "index": 35,
+      "path": "assets/original/common/icon_medal00.png",
+      "source": "EXE:resources.assets:1148:common:icon_medal00.png",
+      "bytes": 442,
+      "sha256": "507d6d1087bf1a0a6816d0227f729bcd0a26d81b32c207cc40f00107b6698630",
+      "width": 56,
+      "height": 14
+    },
+    {
+      "kind": "image",
+      "index": 22,
+      "path": "assets/original/common/ef_pinch.png",
+      "source": "EXE:resources.assets:1148:common:ef_pinch.png",
+      "bytes": 240,
+      "sha256": "4fc83dfdcf9d81a7b8a9dba32f3a9f18651083866f23be0702ab705c68639fde",
+      "width": 22,
+      "height": 13
+    },
+    {
+      "kind": "image",
+      "index": 103,
+      "path": "assets/steam-build-common/original/common/number05.png",
+      "source": "EXE:resources.assets:1148:common:number05.png",
+      "bytes": 701,
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "kind": "sprite",
+      "index": 12,
+      "path": "assets/original/common/number05.seb",
+      "source": "EXE:resources.assets:1148:common:number05.seb",
+      "bytes": 428,
+      "sha256": "527d306b3bc5cf2ceb74570bc7655a5af030cc1a454941f6a9a170e5f4f559a7",
+      "frames": 21,
+      "parts": [
+        [
+          0,
+          103,
+          9,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          103,
+          17,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          2,
+          103,
+          25,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          3,
+          103,
+          33,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          4,
+          103,
+          41,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          5,
+          103,
+          49,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          6,
+          103,
+          57,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          7,
+          103,
+          65,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          8,
+          103,
+          73,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          9,
+          103,
+          81,
+          0,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          10,
+          103,
+          89,
+          0,
+          3,
+          11,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          11,
+          103,
+          0,
+          0,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          12,
+          103,
+          35,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          13,
+          103,
+          27,
+          10,
+          16,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          14,
+          103,
+          44,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          15,
+          103,
+          53,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          16,
+          103,
+          61,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          17,
+          103,
+          27,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          18,
+          103,
+          70,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          19,
+          103,
+          80,
+          10,
+          9,
+          10,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          20,
+          103,
+          92,
+          10,
+          8,
+          10,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 28,
+      "path": "assets/original/common/fukidashi_back.seb",
+      "source": "EXE:resources.assets:1148:common:fukidashi_back.seb",
+      "bytes": 48,
+      "sha256": "a469d867d1ed3befd00c30ea2b2493bf0c00e472c1ac5200cb678221aab94a3c",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          7,
+          0,
+          0,
+          6,
+          18,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          7,
+          65,
+          0,
+          7,
+          18,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    },
+    {
+      "kind": "sprite",
+      "index": 39,
+      "path": "assets/original/common/ef_pinch.seb",
+      "source": "EXE:resources.assets:1148:common:ef_pinch.seb",
+      "bytes": 48,
+      "sha256": "fbed488431b4e381849e3e9c758bb9bd0cc76bdb067d172562afebd931d8ca6d",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          22,
+          0,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          22,
+          11,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "reused": [
+    {
+      "path": "work/steam-human-detail/EVIDENCE.json",
+      "bytes": 38615,
+      "sha256": "c095cc400e74d38c2c3ad7da71555ba8163b58bf2d336c331a074889542bebc2"
+    },
+    {
+      "path": "work/steam-facility-detail/EVIDENCE.json",
+      "bytes": 36949,
+      "sha256": "fd7e3f377ca1e93a5977042635b11f824deef02ffa2042dbd12055277ca0a425"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  ],
+  "contracts": {
+    "schedule_period": 100,
+    "no_house_x_offset": -12,
+    "live_missing_skips_powerbar_and_pinch": true,
+    "raw60_power_arguments": {
+      "item": null,
+      "eff": false,
+      "frame": 0
+    },
+    "power_fill_field": "powerBar_[1] PB_NOW",
+    "pinch_field": "powerBar_[3] PB_AFTER",
+    "pinch_blink": "trunc((frame%12)/6)==0",
+    "pinch_percentage_max": 30,
+    "medal_numeric_from": 5,
+    "bubble_tile_from_width": 61
+  },
+  "limitations": [
+    "No original window pixel or click acceptance",
+    "Human/weapon sprite tree and GetAnimeIndex are delegated to existing sources",
+    "Pinch relative-offset table not decoded in this batch",
+    "Optional power item/eff branches not raw60 consumers",
+    "No clip push/pop inside these local helpers; ancestor clip remains separate"
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 2182,
+      "sha256": "ebf519d2647ee7155dc479f7cf14ba4ec0e2b68f24b3c4041c7a13080193c3ff"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 7649,
+      "sha256": "1bf817e7cbde4bb6258a3d86fa0cbacd406fdd79225ea9cd615b46cb37ba1244"
+    }
+  ]
+}

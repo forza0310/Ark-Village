@@ -3,6 +3,7 @@
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
 #include "support/world_fixture.hpp"
+#include "steam_facility_skin_example.hpp"
 
 #include <raylib.h>
 
@@ -914,10 +915,10 @@ void facility_detail_icons(const std::filesystem::path &root) {
 } // namespace
 int main(int argc, char **argv) {
     try {
-        if (argc != 2 && argc != 3)
+        if (argc != 2 && argc != 3 && argc != 4)
             throw std::runtime_error("需要原素材根目录，可另给研究皮肤CPU拼图输出路径");
         SetTraceLogLevel(LOG_WARNING);
-        checks += check_startup_skin(argv[1], argc == 3 ? std::filesystem::path(argv[2])
+        checks += check_startup_skin(argv[1], argc >= 3 ? std::filesystem::path(argv[2])
                                                       : std::filesystem::path{});
         owner_mapping();
         coin_effect_queries(argv[1]);
@@ -931,6 +932,7 @@ int main(int argc, char **argv) {
         cpu_building_thumbnails(argv[1]);
         ordinary_item_icons(argv[1]);
         facility_detail_icons(argv[1]);
+        if(argc==4)steam_facility_example::export_sheet(argv[1],argv[3]);
         std::cout << "startup world visuals: " << checks << " checks\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

@@ -150,7 +150,8 @@ WorldActorPose world_actor_pose(const State &s, rules::CharacterId id) {
     return pose;
 }
 void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float zoom,
-                      const State *previous, float alpha, const WorldCameraView *override_view) {
+                      const State *previous, float alpha, const WorldCameraView *override_view,
+                      SpritePickMap *picks) {
     const auto &world = s.scene.world.world;
     const auto view =
         override_view ? *override_view : WorldCameraView{s.camera, s.reference_viewport};
@@ -160,6 +161,7 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
     struct Draw {
         float depth{};
         std::function<void()> paint;
+        std::optional<SpritePickTarget> pick{};
     };
     std::vector<Draw> queue, patches;
     constexpr std::array<rules::Position, 6> fence{
@@ -174,37 +176,50 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
             const auto &record = display(cell.display_definition);
             const auto p = raw_anchor(view, 30.F * (x + y), 15.F * (y - x) + 15, zoom);
             const float depth = p.y + zoom * (((record.flags & 1U) ? -50 : 15) + record.offset_y);
-            queue.push_back({depth, [&, p, sprite = record.sprite, frame = cell.variant] {
+            SpritePickTarget target;
+            const auto &binding = world.map.cells.at(index).facility;
+            if (binding && world.facilities.count(binding->instance_id.value) &&
+                world.facilities.at(binding->instance_id.value).status != 0)
+                target = {SpritePickTarget::Kind::facility, binding->instance_id.value};
+            queue.push_back({depth,
+                             [&, p, sprite = record.sprite, frame = cell.variant] {
                                  sprites.draw(sprite, frame, p, WHITE, Sprites::Binding::map, zoom);
-                             }});
+                             },
+                             target});
             if (cell.fragment >= 0 && cell.fragment < 6 &&
                 world.map.cells.at(index).category == rules::RouteCategory::blocked) {
                 const auto offset = fence.at(cell.fragment);
-                queue.push_back({depth + 60 * zoom, [&, p, offset, frame = cell.fragment] {
+                queue.push_back({depth + 60 * zoom,
+                                 [&, p, offset, frame = cell.fragment] {
                                      sprites.draw(
                                          "fence01" + std::to_string(s.fence_level) + ".seb", frame,
                                          {p.x + offset.x * zoom, p.y + offset.y * zoom}, WHITE,
                                          Sprites::Binding::common, zoom);
-                                 }});
+                                 },
+                                 SpritePickTarget{}});
             }
             if (cell.instance >= 0) {
                 const auto offset = doors.at(static_cast<std::size_t>(cell.instance));
-                queue.push_back({p.y + offset.y * zoom, [&, p, offset, frame = cell.instance / 2] {
+                queue.push_back({p.y + offset.y * zoom,
+                                 [&, p, offset, frame = cell.instance / 2] {
                                      sprites.draw("door00.seb", frame,
                                                   {p.x + offset.x * zoom, p.y + offset.y * zoom},
                                                   WHITE, Sprites::Binding::common, zoom);
-                                 }});
+                                 },
+                                 SpritePickTarget{}});
             }
             if (s.road_patches.at(index)[0] || s.road_patches.at(index)[1]) {
                 const bool quad = s.road_patches.at(index)[0];
                 const float w = quad ? 30 : 27, h = quad ? 20 : 15;
                 const float dx = quad ? 14 : 20, dy = quad ? 21 : 19;
                 patches.push_back(
-                    {p.y - 10 * zoom, [&, p, quad, w, h, dx, dy] {
+                    {p.y - 10 * zoom,
+                     [&, p, quad, w, h, dx, dy] {
                          sprites.image(quad ? "road4block00.png" : "road4block01.png", {0, 0, w, h},
                                        {p.x + dx * zoom, p.y + dy * zoom, w * zoom, h * zoom},
                                        Sprites::Binding::common);
-                     }});
+                     },
+                     SpritePickTarget{}});
             }
         }
     queue.insert(queue.end(), patches.begin(), patches.end());
@@ -217,12 +232,15 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
             ground_position.height = 0;
             const auto depth = project(ground_position).y;
             queue.push_back(
-                {depth, [&, id] {
+                {depth,
+                 [&, id] {
                      const auto &a = world.ai.battle.actors.at(id);
                      const auto point =
                          project(world_actor_render_position(s, id, previous, alpha));
                      const auto pose = world_actor_pose(s, id);
                      sprites.actor(pose.monster, pose.sprite, pose.image, pose.frame, point, zoom);
+                     // Floating status/artwork does not grow the physical actor's hit surface.
+                     Sprites::PickScope no_labels(sprites, nullptr, {});
                      if (!pose.monster)
                          draw_world_actor_effects(s, id, sprites, text, point, zoom);
                      const auto &hp = a.hp;
@@ -238,7 +256,11 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
                                            bar.width * zoom, bar.height * zoom},
                                           {bar.rgb[0], bar.rgb[1], bar.rgb[2], 255});
                      draw_world_overlay(world_actor_combat_visuals(s, id), sprites, point, zoom);
-                 }});
+                 },
+                 SpritePickTarget{actor.kind == rules::ActorKind::human && actor.control.state != 4
+                                      ? SpritePickTarget::Kind::human
+                                      : SpritePickTarget::Kind::blocker,
+                                  id.value}});
         }
     // Neighbourhood notices already belong to the instance. Its f() projection is the
     // source anchor; neither tile centre nor texture height determines this position.
@@ -276,8 +298,11 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
     }
     std::stable_sort(queue.begin(), queue.end(),
                      [](const auto &a, const auto &b) { return a.depth < b.depth; });
-    for (const auto &draw : queue)
+    for (const auto &draw : queue) {
+        Sprites::PickScope capture(sprites, draw.pick ? picks : nullptr,
+                                   draw.pick.value_or(SpritePickTarget{}));
         draw.paint();
+    }
     // Inn occupants can hide their body (bit1); their facility-owned rest rows remain visible.
     // This screen position is a desktop adaptation until the original L/portrait mapping is
     // published.
@@ -304,7 +329,20 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
         for (const auto &row : rows)
             draw_world_overlay(row.plan, sprites, point, zoom);
     }
-    for (const auto &effect : s.visual_effects) {
+    const auto coins = simulation::startup_world_coin_effect_draws(s);
+    if (!coins)
+        throw std::invalid_argument("World coin effects have invalid source payload");
+    auto coin = coins->begin();
+    for (std::size_t index = 0; index < s.visual_effects.size(); ++index) {
+        const auto &effect = s.visual_effects[index];
+        // X2/X3 and X4 retain the Owner's order. The death anchor is already projected;
+        // apply only the camera transform, then the source dy and SEB offset once.
+        while (coin != coins->end() && coin->image.record_index == index) {
+            const auto point = raw_anchor(view, static_cast<float>(coin->raw_anchor[0]),
+                                          static_cast<float>(coin->raw_anchor[1]), zoom);
+            draw_world_visuals({coin->image}, sprites, point, zoom);
+            ++coin;
+        }
         const auto plan = world_cash_visuals(effect);
         if (plan.empty())
             continue;

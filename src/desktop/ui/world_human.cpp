@@ -4,6 +4,7 @@
 #include "ark/simulation/startup_world_profile.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
 #include "skin.hpp"
+#include "world_human_detail.hpp"
 #include <algorithm>
 #include <stdexcept>
 
@@ -123,10 +124,22 @@ WorldHumanView world_human_view(const State &state, const Page &page) {
         view.can_confirm = view.counter < 39 || view.counter >= 45;
     if ((view.raw == 61 || view.raw == 64) && state.human_page_answers.count(page.id))
         return view; // The resumed parent must consume its answer on the simulation thread first.
-    for (int slot = 0; slot < 4; ++slot)
+    for (int slot = 0; slot < 4; ++slot) {
         view.equipment_names[slot] = details->equipment[slot]
                                          ? equipment(state, slot, *details->equipment[slot]).name
                                          : "无";
+        if (details->equipment[slot]) {
+            const int kind = slot == 0 ? 1 : slot == 3 ? 3 : 2;
+            const int id = *details->equipment[slot];
+            const auto found =
+                std::find_if(state.rules->equipment.begin(), state.rules->equipment.end(),
+                             [&](const auto &e) { return e.shop.kind == kind && e.shop.id == id; });
+            if (found == state.rules->equipment.end())
+                throw std::invalid_argument("Missing human equipment icon");
+            view.equipment_icons[slot] = kind == 1 ? found->shop.type : found->render_image;
+            view.equipment_values[slot] = found->shop.combat;
+        }
+    }
     if (view.raw == 61 || view.raw == 62) {
         for (const int id : state.human_page_catalogs.at(page.id)) {
             const auto &job = state.rules->jobs.at(id);
@@ -209,8 +222,9 @@ WorldHumanLayout world_human_layout(Extent extent) {
 }
 int world_human_first_row(const WorldHumanView &view) { return std::max(0, view.selection - 4); }
 std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
-                                                  const WorldHumanLayout &layout,
+                                                  const WorldHumanLayout &base_layout,
                                                   const WorldHumanInput &input, bool blocked) {
+    const auto layout = view.raw == 60 ? world_human_detail_layout(base_layout) : base_layout;
     if (blocked || !view.initialized)
         return {};
     const auto intent = [&](Action action, int selection = 0) {
@@ -278,6 +292,10 @@ std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
 
 void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout, const Skin &skin,
                       bool enabled, const std::string &feedback) {
+    if (view.raw == 60) {
+        draw_world_human_detail(view, world_human_detail_layout(layout), skin, enabled, feedback);
+        return;
+    }
     skin.window(layout.panel, view.title);
     skin.content(
         {layout.body.x - 2, layout.body.y - 2, layout.body.width + 4, layout.body.height + 4});

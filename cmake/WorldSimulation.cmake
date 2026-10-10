@@ -157,6 +157,7 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
             --application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --title-exe "$<TARGET_FILE:ark_simulation_startup_application_test>"
             --natural-application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
+            --active-application-exe "$<TARGET_FILE:ark_simulation_startup_world_persistence_test>"
             --work-dir "${CMAKE_CURRENT_BINARY_DIR}/replay-process-tests")
     set_tests_properties(simulation.startup_world_replay_driver PROPERTIES
         TIMEOUT 120 LABELS "runtime;replay;frozen")

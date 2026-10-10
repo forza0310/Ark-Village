@@ -124,13 +124,13 @@ bool consume_rank_celebration(State &s, std::uint64_t id, bool confirm) {
     if (phase < 0 || phase > 2)
         return false;
     if (phase == 0 && counter == 1 && !confirm)
-        s.sound_requests.push_back(3);
+        s.sound_requests.push_back({StartupAudioOperation::replace_bgm, 3});
     if (phase < 2 && counter >= (phase == 0 ? 135 : 20)) {
         ++phase;
         counter = 0;
     }
     if (confirm && phase == 2 && counter >= 140) {
-        s.sound_requests.push_back(s.active_task && s.task.encounter ? 2 : 1);
+        s.sound_requests.push_back({StartupAudioOperation::replace_bgm, s.active_task && s.task.encounter ? 2 : 1});
         const auto closed =
             ref::prepare_world_script_close_page(startup_world_runtime_scripts(s), id);
         return closed.candidate && write_startup_world_runtime_scripts(s, closed.candidate->state);
@@ -232,9 +232,9 @@ bool consume_award(State &s, std::uint64_t id, ref::WorldAwardAction action, int
     for (const auto &effect : result.candidate->effects) {
         using Kind = ref::WorldAwardEffectKind;
         if (effect.kind == Kind::sound)
-            s.sound_requests.push_back(effect.value);
+            s.sound_requests.push_back({StartupAudioOperation::replace_bgm, effect.value});
         else if (effect.kind == Kind::refresh)
-            s.sound_requests.push_back(s.active_task && s.task.encounter ? 2 : 1);
+            s.sound_requests.push_back({StartupAudioOperation::replace_bgm, s.active_task && s.task.encounter ? 2 : 1});
         else if (effect.kind == Kind::event) {
             const auto script = ref::prepare_world_script(
                 startup_world_runtime_catalog(), startup_world_runtime_scripts(s),
@@ -680,7 +680,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         if (!unlock_human_valid(next, *top))
             return {};
         if (counter == 1)
-            next.sound_requests.push_back(5);
+            next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 96) {
         if (!next.page_human_bindings.count(top->id) ||
@@ -688,7 +688,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
             next.page_phases[top->id] < 0 || next.page_phases[top->id] > 1)
             return {};
         if (counter == 1 && next.page_phases[top->id] == 0)
-            next.sound_requests.push_back(5);
+            next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 11) {
         const auto command = event_message_command(next, *top);
@@ -696,7 +696,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
             return {};
         // b/g:11368：首轮0播放4、1播放6，其余代码没有此音效。
         if (counter == 1 && (*command == 0 || *command == 1))
-            next.sound_requests.push_back(*command == 0 ? 4 : 6);
+            next.sound_requests.push_back({StartupAudioOperation::jingle, *command == 0 ? 4 : 6});
     }
     if (top->kind == ref::WorldScriptPageKind::raw_page &&
         (top->legacy_page == 99 || top->legacy_page == 100) &&
@@ -711,7 +711,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 30 && counter == 1 &&
         next.page_phases[top->id] == 0)
-        next.sound_requests.push_back(4);
+        next.sound_requests.push_back({StartupAudioOperation::jingle, 4});
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 16) {
         // d/a opcode7→g.a(L)，b/g.b先--L再走f--；至少一次更新，不接受确认跳过。
         if (counter >= std::max(1, top->legacy_l)) {
@@ -762,7 +762,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
         if (!result.candidate || !write_gift(next, result.candidate->state, adapter))
             return {};
         if (result.candidate->sound)
-            next.sound_requests.push_back(*result.candidate->sound);
+            next.sound_requests.push_back({StartupAudioOperation::jingle, *result.candidate->sound});
     }
     return next;
 }

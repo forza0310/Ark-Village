@@ -1,5 +1,7 @@
 # ui
 
+1f19c88 Steam表现接续：`skin`消费有序公共窗框／内容框计划；大于240的桌面窗口仍走显式铺图适配。`world_facility_upgrade`将真实raw81实例、共享等级、冻结三属性和页计数绑定到维护计划，使用独立Steam数字、原尺度Mapchip2和逻辑裁剪；Owner尚未交付81的独立frame2，因此过滤两侧跳跃人物，不拿主计数代替。`world_human_detail`消费60四页静态字段、真实装备图标及经验；顶部PC页签／底部按钮是桌面适配，人物仅静态预览，完整循环、HP条及奖章helper仍未认证。74保留用户批准的224×172／五行适配并使用Steam数字、属性图和Mapchip2；建设金额使用独立Steam number05。
+
 `world_panels`同时承接只读HUD和通用页面文本；窗口输入分页与绘制复用同一文本投影，UI不初始化源页面。`world_award`按S067/S068补五行当前职业头像/贡献/勤奋度与独立中止问题，仍使用已确认的选择后授予/FIFO；原三页切换/信息软键不冒充已接。当前验证和原版差异见[B1](../../../docs/stages/B1-playable-prototype.md#research-save-organization)。
 
 二维页面表现与输入适配，依据research/ui/PAGES.md及S001/S002/S003/S005；不复制反编译实现。

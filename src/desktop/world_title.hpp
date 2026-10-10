@@ -7,6 +7,7 @@
 #include "ui/layout.hpp"
 
 namespace ark::desktop {
+class WorldAudio;
 enum class WorldTitlePage { title, slots, actions, records, configure, overwrite, text_edit };
 enum class WorldTitleAction { new_game, load };
 struct WorldTitleSelection {
@@ -45,5 +46,5 @@ bool load_world_title_slot(const std::filesystem::path &directory, int slot,
                            simulation::StartupWorldRuntimeState &initial, std::string &reason);
 // False means the user closed the window or a bounded title inspection completed.
 bool run_world_title(const app::LaunchOptions &options, const std::filesystem::path &assets,
-                     simulation::StartupWorldRuntimeState &initial);
+                     simulation::StartupWorldRuntimeState &initial, WorldAudio &audio);
 } // namespace ark::desktop

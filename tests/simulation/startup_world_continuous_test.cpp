@@ -908,7 +908,7 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
     StartupWorldRuntimeSession session(initial.state(),
                                        ref::WorldRandomStream::from_java_seed(seed));
     session.set_speed(speed);
-    constexpr const char *controller_id = "natural-progression-expansion-v1";
+    constexpr const char *controller_id = "natural-progression-expansion-v2";
     test::StartupWorldReplayDriver driver;
     driver.seed = seed;
     driver.speed = speed;
@@ -940,6 +940,7 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
     if (driver.terminal)
         throw std::invalid_argument("natural replay snapshot already completed its scenario");
     std::ofstream trace;
+    std::vector<StartupAudioRequest> round_audio; // 仅本轮已消费输出；捕获后不跨轮持有。
     if (!options.trace_file.empty()) {
         trace.open(options.trace_file, std::ios::binary | std::ios::trunc);
         if (!trace) throw std::runtime_error("cannot open natural replay trace");
@@ -969,8 +970,20 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
                 controller_bytes.push_back(hex[byte >> 4]);
                 controller_bytes.push_back(hex[byte & 15]);
             }
+            std::string audio_bytes;
+            const auto audio_integer = [&](std::uint64_t value) {
+                for (int n = 0; n < 8; ++n) {
+                    const auto byte = static_cast<std::uint8_t>(value >> (n * 8));
+                    audio_bytes.push_back(hex[byte >> 4]); audio_bytes.push_back(hex[byte & 15]);
+                }
+            };
+            audio_integer(round_audio.size());
+            for (const auto &request : round_audio) {
+                audio_integer(static_cast<std::uint64_t>(request.operation));
+                audio_integer(static_cast<std::uint64_t>(request.id));
+            }
             trace << frame << ' ' << startup_world_session_digest(session) << ' '
-                  << controller_bytes << '\n';
+                  << controller_bytes << ' ' << audio_bytes << '\n';
             if (!trace) throw std::runtime_error("cannot write natural replay trace");
         }
         if (options.save_at && frame == *options.save_at) {
@@ -1022,6 +1035,11 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
     auto &expanded_road = driver.expanded_road;
     auto &expanded_road_definition = driver.expanded_road_definition;
     auto &sounds = driver.sounds;
+    const auto consume_audio = [&] {
+        const auto requests = session.take_audio_requests();
+        sounds += requests.size();
+        if (trace.is_open()) round_audio.insert(round_audio.end(), requests.begin(), requests.end());
+    };
     auto &peak_sounds = driver.peak_sounds;
     auto &peak_payloads = driver.peak_payloads;
     auto &peak_pages = driver.peak_pages;
@@ -1065,6 +1083,7 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
     // 扩张在原晋级/编辑完整前缀之后继续真实经营；只延长该可选模式的有限保护。
     const int limit = expansion ? 240000 : 180000;
     for (int frame = driver.next_frame; frame < limit; ++frame) {
+        round_audio.clear();
         observed_frame = frame;
         const auto step = session.update();
         if (!step.candidate)
@@ -1391,7 +1410,7 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
                  page.legacy_page != 24 && page.legacy_page != 56 && page.legacy_page != 57 &&
                  page.legacy_page != 97 && page.legacy_page != 98)
             require(session.acknowledge_page(page.id), "confirm actual world event");
-        sounds += session.take_sound_requests().size();
+        consume_audio();
         check(session.state().sound_requests.empty(),
               "progression sink consumes sound outputs once per frame");
         if (edited_month < 0 && unlocked_month >= 0 && month > unlocked_month &&
@@ -1408,7 +1427,7 @@ void natural_progression(std::uint64_t seed, int speed, bool expansion = false,
             edited_month = month;
             edited_income = income(session.state());
             peak_sounds = std::max(peak_sounds, session.state().sound_requests.size());
-            sounds += session.take_sound_requests().size();
+            consume_audio();
             check(session.state().sound_requests.empty(),
                   "editing command sound outputs consumed once");
             std::cout << "progression edited old=" << edited_retired[0]

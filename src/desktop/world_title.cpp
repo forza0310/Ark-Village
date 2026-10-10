@@ -5,6 +5,7 @@
 #include "resources.hpp"
 #include "ui/skin.hpp"
 #include "ui/world_startup.hpp"
+#include "world_audio.hpp"
 #include "world_canvas.hpp"
 #include "world_pointer.hpp"
 #include <algorithm>
@@ -324,7 +325,8 @@ bool load_world_title_slot(const std::filesystem::path &directory, int slot,
     return true;
 }
 bool run_world_title(const app::LaunchOptions &options, const std::filesystem::path &assets,
-                     simulation::StartupWorldRuntimeState &initial) {
+                     simulation::StartupWorldRuntimeState &initial, WorldAudio &audio) {
+    audio.consume({{simulation::StartupAudioOperation::replace_bgm, 0}});
     const auto directory = options.save_directory.empty()
                                ? app::default_world_save_directory()
                                : std::filesystem::path(options.save_directory);
@@ -391,6 +393,7 @@ bool run_world_title(const app::LaunchOptions &options, const std::filesystem::p
     WorldPointerGesture pointer;
     std::optional<std::tuple<WorldTitlePage, int, int>> pointer_context;
     while (!WindowShouldClose() && (!options.frames || frames < options.frames)) {
+        audio.update(GetTime());
         const auto extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
         const auto layout = world_title_layout(extent);
         const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);

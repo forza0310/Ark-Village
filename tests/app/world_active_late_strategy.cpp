@@ -64,7 +64,15 @@ int count(const State &s, bool houses, bool finished = false) {
     }
     return n;
 }
-bool ready(const State &s) {
+bool has_definition(const State &s, int definition) {
+    return std::any_of(
+        s.scene.world.world.facilities.begin(), s.scene.world.world.facilities.end(),
+        [&](const auto &entry) { return entry.second.placement.definition_id == definition; });
+}
+bool ready(const State &s, int target) {
+    if (target == 3)
+        return s.rank == 2 && s.popularity >= 1500 && s.maximum_income >= 35000 &&
+               s.events_held >= 15 && has_definition(s, 40);
     return s.rank == 1 && s.popularity >= 800 && s.task_progress.successes >= 12 &&
            count(s, false, true) >= 10 && count(s, true, true) >= 4;
 }
@@ -91,15 +99,41 @@ std::int64_t reserve(const State &s) {
     }
     return fee * 2;
 }
-std::optional<ref::Position> free_roadside(const State &s) {
+std::optional<ref::Position> free_roadside(const State &s, int definition = 35,
+                                           bool reserve_school = false) {
     const auto &m = s.scene.world.world.map;
     const auto bounds = s.rules->fences.at(s.fence_level);
+    std::vector<ref::FootprintCell> reserved;
+    if (reserve_school && !has_definition(s, 63)) {
+        const auto place = free_roadside(s, 63);
+        if (!place)
+            return {};
+        reserved = ref::facility_footprint(
+                       static_cast<ref::FacilityShape>(s.rules->facilities.at(63).shape),
+                       ref::FacilityOrientation::first, *place, m.width, m.height)
+                       .cells;
+    }
     const auto paths = ref::search_legacy_map(m, sim::startup_evidence().spawn_points.at(0));
     require(paths.field.has_value(), "roadside plan has no current distance field");
     for (int y = bounds[1].y + 1; y < bounds[0].y; ++y)
         for (int x = bounds[0].x + 1; x < bounds[1].x; ++x) {
             const auto &cell = m.cells.at(y * m.width + x);
             if (cell.facility || cell.legacy_state != 4)
+                continue;
+            const auto footprint = ref::facility_footprint(
+                static_cast<ref::FacilityShape>(s.rules->facilities.at(definition).shape),
+                ref::FacilityOrientation::first, {x, y}, m.width, m.height);
+            if (footprint.error != ref::GeometryError::none ||
+                std::any_of(footprint.cells.begin(), footprint.cells.end(), [&](const auto &part) {
+                    const auto pos = part.position;
+                    if (pos.x <= bounds[0].x || pos.x >= bounds[1].x || pos.y >= bounds[0].y ||
+                        pos.y <= bounds[1].y)
+                        return true;
+                    const auto &tile = m.cells.at(pos.y * m.width + pos.x);
+                    return tile.facility || tile.legacy_state != 4 ||
+                           std::any_of(reserved.begin(), reserved.end(),
+                                       [&](const auto &slot) { return slot.position == pos; });
+                }))
                 continue;
             for (const auto d : {ref::Position{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
                 const int nx = x + d.x, ny = y + d.y;
@@ -183,17 +217,29 @@ bool affordable_task(const State &s, std::uint64_t id) {
 }
 } // namespace
 
+ActiveLateVillageStrategy::ActiveLateVillageStrategy(int target_rank) {
+    require(target_rank == 2 || target_rank == 3, "unsupported target rank");
+    stats_.target_rank = target_rank;
+}
+
 void ActiveLateVillageStrategy::reconcile(const State &s) {
     require(s.rules && s.rank >= 1, "late route requires a real first-star player save");
     if (!initialized_) {
         stats_.minimum_cash = cash(s);
         stats_.initial_successes = s.task_progress.successes;
-        require(s.rank == 1 && !s.active_task, "new late route must start at stable first star");
+        require(s.rank == stats_.target_rank - 1 && !s.active_task,
+                "new late route must start at the preceding stable star");
+        for (const auto &[id, f] : s.scene.world.world.facilities)
+            if (f.placement.definition_id == 40) {
+                stats_.western = id;
+                stats_.western_initial_sales = f.sales;
+            }
         initialized_ = true;
     }
     require(s.task_progress.successes >= stats_.initial_successes + stats_.task_successes,
             "task successes lost across player reload");
-    require(stats_.promoted_month < 0 || s.rank >= 2, "second star lost across reload");
+    require(stats_.promoted_month < 0 || s.rank >= stats_.target_rank,
+            "promoted star lost across reload");
     require(stats_.pot_month < 0 || activity_count(s, 30) > 0, "pot import lost across reload");
     for (const auto id : stats_.residents)
         require(s.human_homes.at(id)[2] != 0, "admitted resident lost across reload");
@@ -230,14 +276,54 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                 c.facility = id;
                 return c;
             }
-        if (stats_.pot_month >= 0)
+        const bool third = stats_.target_rank == 3;
+        if ((!third && stats_.pot_month >= 0) || (third && stats_.school_activity_month >= 0))
             return {}; // After import, let the town actually trade for a whole month.
         if (s.quarter_counter > 0 && stats_.ticks >= next_activity_tick_ &&
-            s.village_points >= (s.rank >= 2 ? s.rules->activities.at(30).parameters[4] : 20)) {
+            s.village_points >= (third
+                                     ? (s.rank == 3 ? s.rules->activities.at(7).parameters[4] : 20)
+                                 : s.rank >= 2 ? s.rules->activities.at(30).parameters[4]
+                                               : 20)) {
             next_activity_tick_ = stats_.ticks + 300;
             return command(Kind::open_village_activities);
         }
-        if (stats_.ticks >= next_management_tick_ && s.rank == 1) {
+        if (third && stats_.ticks >= next_management_tick_) {
+            next_management_tick_ = stats_.ticks + 300;
+            const int mandatory = s.rank == 3 ? 63 : 40;
+            const auto catalog = sim::startup_world_build_catalog(s);
+            int selected = -1;
+            std::optional<ref::Position> anchor;
+            std::int64_t best = std::numeric_limits<std::int64_t>::max();
+            if (catalog)
+                for (const auto &group : *catalog)
+                    for (const int id : group) {
+                        const auto &d = s.rules->facilities.at(id);
+                        const bool required = !has_definition(s, mandatory);
+                        // Bound expansion by the real income deficit and keep one of each
+                        // available shop. This is a budgeted player heuristic, not an optimum.
+                        if (required ? id != mandatory
+                                     : (s.rank != 2 || s.maximum_income >= 35000 ||
+                                        count(s, false) >= 16 || has_definition(s, id) ||
+                                        (d.kind != 3 && d.kind != 9) || d.shape != 0))
+                            continue;
+                        const auto q = sim::startup_world_build_quote(s, id);
+                        const auto place = free_roadside(s, id, id != 63);
+                        require(q.has_value(), "third-star catalog building lacks quote");
+                        const auto capital = q->construction_cost + 2 * q->definition_attributes[3];
+                        if (!place || cash(s) < reserve(s) + capital || capital >= best)
+                            continue;
+                        best = capital;
+                        selected = id;
+                        anchor = place;
+                    }
+            if (selected >= 0) {
+                build_definition_ = selected;
+                build_anchor_ = *anchor;
+                build_committed_ = false;
+                return command(Kind::open_build_menu);
+            }
+        }
+        if (!third && stats_.ticks >= next_management_tick_ && s.rank == 1) {
             next_management_tick_ = stats_.ticks + 100;
             recruitment_ = 0;
             for (const auto &[id, f] : s.scene.world.world.facilities)
@@ -319,8 +405,10 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
                 }
             }
         }
-        if (s.rank == 1 && !s.active_task && month(s) >= next_task_month_ &&
-            (s.task_progress.successes < 12 || s.popularity < 800) &&
+        if ((s.rank == stats_.target_rank - 1 || (third && s.rank == 3)) && !s.active_task &&
+            month(s) >= next_task_month_ &&
+            (third ? (!stats_.task_successes || s.popularity < 1500 || s.village_points < 200)
+                   : (s.task_progress.successes < 12 || s.popularity < 800)) &&
             std::any_of(s.task_order.begin(), s.task_order.end(),
                         [&](auto id) { return affordable_task(s, id); }))
             return command(Kind::open_task_menu);
@@ -340,7 +428,10 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
             int chosen = -1;
             for (int n = 0; n < static_cast<int>(view->entries.size()); ++n) {
                 const auto &a = s.rules->activities.at(view->entries[n]);
-                if ((s.rank >= 2 ? a.identity == 30 : a.parameters[2] <= 2) &&
+                if ((stats_.target_rank == 3
+                         ? (s.rank == 3 ? a.identity == 7 : a.parameters[2] <= 2)
+                     : s.rank >= 2 ? a.identity == 30
+                                   : a.parameters[2] <= 2) &&
                     a.parameters[4] <= s.village_points && s.quarter_counter > 0) {
                     if (chosen < 0 || a.parameters[2] == 2)
                         chosen = n;
@@ -402,7 +493,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
         return task(p.id, Task::confirm, cash(s) - reserve(s) >= p.legacy_f ? 0 : 1);
     if (raw == 48) {
         auto c = command(Kind::rank_action, p.id);
-        c.cancel = !ready(s);
+        c.cancel = !ready(s, stats_.target_rank);
         return c;
     }
     if (raw == 74) {
@@ -449,9 +540,17 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
 }
 
 void ActiveLateVillageStrategy::observe_world(const State &before, const State &after) {
+    stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
     require(cash(after) >= 0, "cash became negative; " + diagnose(after));
     for (const auto &[id, f] : after.scene.world.world.facilities) {
+        if (stats_.target_rank == 3 && f.placement.definition_id == 40 && !stats_.western)
+            stats_.western = id;
+        if (stats_.target_rank == 3 && stats_.buildings.count(id) &&
+            f.placement.definition_id == 63) {
+            stats_.school = id;
+            stats_.school_sales = f.sales;
+        }
         const auto old = before.scene.world.world.facilities.find(id);
         if (old != before.scene.world.world.facilities.end() && f.sales > old->second.sales) {
             stats_.facility_income += f.sales - old->second.sales;
@@ -476,9 +575,11 @@ void ActiveLateVillageStrategy::observe_world(const State &before, const State &
     if (before.active_task && !after.active_task)
         next_task_month_ = month(after) + 1;
     if (after.rank > before.rank) {
-        require(before.rank == 1 && after.rank == 2 && ready(before) &&
-                    stats_.second_star_conditions,
-                "second star bypassed genuine conditions/application");
+        require(before.rank == stats_.target_rank - 1 && after.rank == stats_.target_rank &&
+                    ready(before, stats_.target_rank) &&
+                    (stats_.target_rank == 3 ? stats_.third_star_conditions
+                                             : stats_.second_star_conditions),
+                "promotion bypassed genuine conditions/application");
         stats_.promoted_month = month(after);
     }
     // Equipment is consumed by the parent update after65 returns. Validate at that commit,
@@ -547,8 +648,11 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
         requested_task_ = *top(before).task_identity;
     }
     if (c.kind == Kind::rank_action && !c.cancel) {
-        require(ready(before), "premature second-star application");
-        stats_.second_star_conditions = true;
+        require(ready(before, stats_.target_rank), "premature rank application");
+        if (stats_.target_rank == 3)
+            stats_.third_star_conditions = true;
+        else
+            stats_.second_star_conditions = true;
     }
     if (c.kind == Kind::village_activity_action && c.village_activity_action == Activity::confirm) {
         const auto v = sim::inspect_startup_world_village_activity_page(before, c.page);
@@ -561,12 +665,26 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
                     "pot import must be genuinely unlocked and paid");
             stats_.pot_paid = true;
         }
+        if (stats_.target_rank == 3 && v->raw == 52 && v->activity && *v->activity == 7) {
+            require(before.rank == 3 && stats_.school &&
+                        before.scene.world.world.facilities.at(stats_.school).status == 1 &&
+                        before.scripts.activities.at(7).status != 0 &&
+                        before.village_points - after.village_points ==
+                            before.rules->activities.at(7).parameters[4] &&
+                        activity_count(after, 7) == activity_count(before, 7) + 1,
+                    "school activity must follow real completed construction and payment");
+            stats_.school_activity_paid = true;
+        }
         if (v->raw == 53 && v->counter >= 120 && top(after).id != c.page) {
             ++stats_.activities;
             if (v->activity && *v->activity == 30) {
                 require(stats_.pot_paid, "pot import completed without payment");
                 stats_.pot_month = month(after);
                 stats_.pot_income = stats_.facility_income;
+            }
+            if (stats_.target_rank == 3 && v->activity && *v->activity == 7) {
+                require(stats_.school_activity_paid, "school activity completed without payment");
+                stats_.school_activity_month = month(after);
             }
         }
     }
@@ -582,8 +700,14 @@ void ActiveLateVillageStrategy::observe_tick(const State &before, const State &a
     observe_world(before, after);
 }
 bool ActiveLateVillageStrategy::checkpoint(const State &s) const {
-    return stats_.admissions > 0 && stats_.new_shop_income > 0 && stats_.task_successes > 0 &&
-           top(s).kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
+    const bool business =
+        stats_.target_rank == 3
+            ? stats_.western &&
+                  s.scene.world.world.facilities.at(stats_.western).sales >
+                      stats_.western_initial_sales &&
+                  stats_.task_successes > 0
+            : stats_.admissions > 0 && stats_.new_shop_income > 0 && stats_.task_successes > 0;
+    return business && top(s).kind == ref::WorldScriptPageKind::scene && s.scene.scene_state == 0 &&
            !s.build_definition && !s.active_task && s.activity_pages_initialized.empty() &&
            std::all_of(s.scene.world.world.facilities.begin(), s.scene.world.world.facilities.end(),
                        [](const auto &f) {
@@ -593,11 +717,19 @@ bool ActiveLateVillageStrategy::checkpoint(const State &s) const {
                        });
 }
 bool ActiveLateVillageStrategy::complete(const State &s) const {
+    if (stats_.target_rank == 3)
+        return stats_.third_star_conditions && stats_.promoted_month >= 0 && s.rank == 3 &&
+               stats_.school && stats_.school_sales > 0 && stats_.school_activity_paid &&
+               stats_.school_activity_month >= 0 && activity_count(s, 7) > 0 &&
+               s.scene.world.world.facilities.at(stats_.school).status == 1 &&
+               stats_.trade.full_month_after(stats_.school_activity_month, month(s)) &&
+               checkpoint(s);
     return stats_.second_star_conditions && stats_.promoted_month >= 0 && stats_.pot_paid &&
            stats_.pot_month >= 0 && s.rank == 2 && count(s, true, true) >= 4 &&
            count(s, false, true) >= 10 && s.task_progress.successes >= 12 &&
-           month(s) >= stats_.pot_month + 2 && stats_.facility_income > stats_.pot_income &&
-           checkpoint(s);
+           month(s) >= stats_.pot_month + 2 &&
+           stats_.trade.full_month_after(stats_.pot_month, month(s)) &&
+           stats_.facility_income > stats_.pot_income && checkpoint(s);
 }
 std::string ActiveLateVillageStrategy::diagnose(const State &s) const {
     std::ostringstream out;
@@ -608,12 +740,16 @@ std::string ActiveLateVillageStrategy::diagnose(const State &s) const {
         << "/12 gifts=" << stats_.gifts << " admissions=" << stats_.admissions
         << " active_task=" << s.active_task.value_or(0) << " points=" << s.village_points
         << " quarter_slots=" << s.quarter_counter << " promoted_month=" << stats_.promoted_month
-        << " pot_month=" << stats_.pot_month;
+        << " pot_month=" << stats_.pot_month << " target_rank=" << stats_.target_rank
+        << " income_record=" << s.maximum_income << " events_held=" << s.events_held
+        << " western=" << stats_.western << " school=" << stats_.school
+        << " school_sales=" << stats_.school_sales
+        << " school_activity_month=" << stats_.school_activity_month;
     return out.str();
 }
 void ActiveLateVillageStrategy::encode(std::ostream &out) const {
     const auto &v = stats_;
-    out << "ARK_ACTIVE_LATE_1\n"
+    out << "ARK_ACTIVE_LATE_2\n"
         << v.commands << ' ' << v.ticks << ' ' << v.departed_task << ' ' << v.minimum_cash << ' '
         << v.facility_income << ' ' << v.new_shop_income << ' ' << v.construction_cost << ' '
         << v.gift_cost << ' ' << v.initial_successes << ' ' << v.task_successes << ' '
@@ -621,7 +757,10 @@ void ActiveLateVillageStrategy::encode(std::ostream &out) const {
         << v.promoted_month << ' ' << v.pot_month << ' ' << v.pot_income << ' '
         << v.second_star_conditions << ' ' << v.pot_paid << ' ' << requested_task_ << ' '
         << next_management_tick_ << ' ' << next_activity_tick_ << ' ' << next_task_month_ << ' '
-        << initialized_ << '\n';
+        << initialized_ << '\n'
+        << v.target_rank << ' ' << v.school_activity_month << ' ' << v.western << ' ' << v.school
+        << ' ' << v.western_initial_sales << ' ' << v.school_sales << ' ' << v.third_star_conditions
+        << ' ' << v.school_activity_paid << '\n';
     const auto write = [&](const auto &values) {
         out << values.size();
         for (const auto id : values)
@@ -631,6 +770,7 @@ void ActiveLateVillageStrategy::encode(std::ostream &out) const {
     write(v.buildings);
     write(v.successful_tasks);
     write(v.residents);
+    v.trade.encode(out);
     require(bool(out), "cannot encode strategy evidence");
 }
 ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
@@ -638,13 +778,16 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
     auto &v = result.stats_;
     std::string magic;
     in >> magic;
-    require(magic == "ARK_ACTIVE_LATE_1", "unknown late strategy evidence");
+    require(magic == "ARK_ACTIVE_LATE_2", "unknown late strategy evidence");
     in >> v.commands >> v.ticks >> v.departed_task >> v.minimum_cash >> v.facility_income >>
         v.new_shop_income >> v.construction_cost >> v.gift_cost >> v.initial_successes >>
         v.task_successes >> v.task_departures >> v.activities >> v.gifts >> v.admissions >>
         v.promoted_month >> v.pot_month >> v.pot_income >> v.second_star_conditions >> v.pot_paid >>
         result.requested_task_ >> result.next_management_tick_ >> result.next_activity_tick_ >>
         result.next_task_month_ >> result.initialized_;
+    in >> v.target_rank >> v.school_activity_month >> v.western >> v.school >>
+        v.western_initial_sales >> v.school_sales >> v.third_star_conditions >>
+        v.school_activity_paid;
     const auto read = [&](auto &values) {
         std::size_t size{};
         in >> size;
@@ -658,7 +801,9 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
     read(v.buildings);
     read(v.successful_tasks);
     read(v.residents);
-    require(bool(in) && v.minimum_cash >= 0 && v.gifts >= 0 && v.admissions >= 0 &&
+    v.trade.decode(in);
+    require(bool(in) && (v.target_rank == 2 || v.target_rank == 3) && v.minimum_cash >= 0 &&
+                v.gifts >= 0 && v.admissions >= 0 &&
                 v.task_successes == static_cast<int>(v.successful_tasks.size()) &&
                 v.admissions == static_cast<int>(v.residents.size()),
             "invalid late evidence totals");

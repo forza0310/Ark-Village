@@ -380,7 +380,7 @@
             ["visual_effects", "std::vector<ref::ActorEffectRecord>"],
             ["delayed_effects", "std::vector<std::array<int, 4>>"],
             ["global_effects", "std::vector<std::array<int, 2>>"],
-            ["sound_requests", "std::vector<int>"],
+            ["sound_requests", "std::vector<StartupAudioRequest>"],
             ["page_counters", "std::map<std::uint64_t, int>"],
             ["page_phases", "std::map<std::uint64_t, int>"],
             ["task_page_lists", "std::map<std::uint64_t, std::vector<std::uint64_t>>"],
@@ -2833,6 +2833,21 @@
           "fields": [
             ["entries_", "std::map<std::uint64_t, CashEntry>"],
             ["reports_", "std::map<std::uint64_t, AccountingReport>"]
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ark::simulation::StartupAudioRequest",
+      "reason": "Typed playback requests are transient presentation output; no request or device state enters player saves.",
+      "wire_fields": [],
+      "groups": [
+        {
+          "action": "discard",
+          "reason": "The enclosing sound_requests queue is cleared on player restore; operation and ID are consumed only after a successful live commit.",
+          "fields": [
+            ["operation", "StartupAudioOperation"],
+            ["id", "int"]
           ]
         }
       ]

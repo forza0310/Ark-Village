@@ -1,5 +1,6 @@
 // 由 scripts/generate_owner_codec.mjs 生成；不要手改。
-constexpr const char schema_identity[] = "a1ca189f3b9290b18390812af91f601eaac9f295154ab1de3601590d0fbda2d7";
+constexpr const char schema_identity[] = "7f33851d8b0430afbb6234595ab01d2190f29959515d216e6da64b1919dbf440";
+template<> bool valid_enum< ::ark::simulation::StartupAudioOperation>(::ark::simulation::StartupAudioOperation value) { return value == ::ark::simulation::StartupAudioOperation::ordinary_play || value == ::ark::simulation::StartupAudioOperation::replace_bgm || value == ::ark::simulation::StartupAudioOperation::jingle; }
 template<> bool valid_enum< ::ark::simulation::rules::ActorKind>(::ark::simulation::rules::ActorKind value) { return value == ::ark::simulation::rules::ActorKind::human || value == ::ark::simulation::rules::ActorKind::monster; }
 template<> bool valid_enum< ::ark::simulation::rules::CandidateOrigin>(::ark::simulation::rules::CandidateOrigin value) { return value == ::ark::simulation::rules::CandidateOrigin::map_scan || value == ::ark::simulation::rules::CandidateOrigin::event; }
 template<> bool valid_enum< ::ark::simulation::rules::CashCategory>(::ark::simulation::rules::CashCategory value) { return value == ::ark::simulation::rules::CashCategory::facilities || value == ::ark::simulation::rules::CashCategory::monsters || value == ::ark::simulation::rules::CashCategory::adventurers || value == ::ark::simulation::rules::CashCategory::shop || value == ::ark::simulation::rules::CashCategory::other; }
@@ -11,6 +12,13 @@ template<> bool valid_enum< ::ark::simulation::rules::MapAccessError>(::ark::sim
 template<> bool valid_enum< ::ark::simulation::rules::ProjectileKind>(::ark::simulation::rules::ProjectileKind value) { return value == ::ark::simulation::rules::ProjectileKind::arrow || value == ::ark::simulation::rules::ProjectileKind::spell || value == ::ark::simulation::rules::ProjectileKind::delayed_damage; }
 template<> bool valid_enum< ::ark::simulation::rules::RouteCategory>(::ark::simulation::rules::RouteCategory value) { return value == ::ark::simulation::rules::RouteCategory::terminal || value == ::ark::simulation::rules::RouteCategory::road || value == ::ark::simulation::rules::RouteCategory::ground || value == ::ark::simulation::rules::RouteCategory::blocked || value == ::ark::simulation::rules::RouteCategory::access; }
 template<> bool valid_enum< ::ark::simulation::rules::WorldScriptPageKind>(::ark::simulation::rules::WorldScriptPageKind value) { return value == ::ark::simulation::rules::WorldScriptPageKind::scene || value == ::ark::simulation::rules::WorldScriptPageKind::dialogue || value == ::ark::simulation::rules::WorldScriptPageKind::simple_message || value == ::ark::simulation::rules::WorldScriptPageKind::newspaper || value == ::ark::simulation::rules::WorldScriptPageKind::raw_page; }
+template<> struct CodecFields< ::ark::simulation::StartupAudioRequest> {
+ template<class Archive, class Value> static void visit(Archive& a, Value& v) {
+  a.field("ark::simulation::StartupAudioRequest.operation", v.operation);
+  a.field("ark::simulation::StartupAudioRequest.id", v.id);
+ }
+ static std::size_t minimum() { return 0 + Codec<decltype(std::declval< ::ark::simulation::StartupAudioRequest>().operation)>::minimum() + Codec<decltype(std::declval< ::ark::simulation::StartupAudioRequest>().id)>::minimum(); }
+};
 template<> struct CodecFields< ::ark::simulation::StartupWorldActorMetadata> {
  template<class Archive, class Value> static void visit(Archive& a, Value& v) {
   a.field("ark::simulation::StartupWorldActorMetadata.sex", v.sex);

@@ -104,8 +104,7 @@ struct WorldFrame {
     std::string error;
     std::uint64_t outer_updates{};
     double max_update_ms{};
-    // Silent presentation sink: source outputs are taken once by the worker, not replayed
-    // from immutable snapshots. Actual audio playback remains a separate adapter.
+    // Count of committed outputs handed to the independent once-only audio FIFO.
     std::uint64_t consumed_sound_requests{};
     // Last 64 explicit decision results, retained across ticks and camera publications.
     // This bounded FIFO acknowledgement history is not a gameplay event log.
@@ -159,6 +158,8 @@ class WorldSession {
     WorldSession &operator=(const WorldSession &) = delete;
 
     std::shared_ptr<const WorldFrame> frame() const;
+    // Main-thread presentation drain. Skipped/re-read snapshots cannot lose/replay requests.
+    std::vector<simulation::StartupAudioRequest> take_audio_requests();
     // Zero means the session has stopped/failed and did not accept the command. Accepted
     // serials are strictly increasing; a failed command is acknowledged by the failure frame.
     std::uint64_t submit(WorldCommand command);

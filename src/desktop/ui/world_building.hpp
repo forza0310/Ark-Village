@@ -6,6 +6,7 @@
 #include "ark/app/world_facility_queries.hpp"
 #include "ark/simulation/startup_world_building.hpp"
 #include "ark/simulation/startup_world_visuals.hpp"
+#include "ark/simulation/steam_facility_skin.hpp"
 #include "layout.hpp"
 #include <optional>
 #include <string>
@@ -34,6 +35,7 @@ struct WorldBuildingView {
     std::string title;
     std::optional<std::uint64_t> facility;
     WorldBuildGraphic graphic;
+    int mapchip{-1};
     app::WorldFacilityTemplate detail_type{app::WorldFacilityTemplate::ordinary};
     int level{};
     std::optional<std::int64_t> remaining_uses;    // Source d()-K; absent at shared MAX.
@@ -46,9 +48,13 @@ struct WorldBuildingView {
     std::vector<WorldBuildingRow> residents;
     int phase{}, page_count{};
     std::array<std::int64_t, 4> attributes{};
+    std::array<std::int64_t, 3> attribute_limits{};
     std::int64_t income{};
     std::size_t neighbours{};
     std::array<std::array<std::int64_t, 3>, 3> upgrade{};
+    std::optional<simulation::SteamFacilityUpgradeSkinInput> upgrade_skin;
+    std::string facility_name;
+    bool upgrade_secondary_available{};
 };
 struct WorldBuildingLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next;
@@ -67,6 +73,8 @@ WorldBuildingDetailLayout world_building_detail_layout(const WorldBuildingLayout
                                                        app::WorldFacilityTemplate type);
 struct WorldBuildingSelection {
     int tab{}, selected{}, first_row{};
+    std::optional<int> marked_definition{};
+    std::uint64_t marker_page{};
 };
 struct WorldBuildingIcon {
     Rectangle clip;

@@ -332,6 +332,7 @@ std::optional<Command> ActivePotVillageStrategy::next(const State &s) {
 }
 
 void ActivePotVillageStrategy::observe_world(const State &before, const State &after) {
+    stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
     require(cash(after) >= 0, "cash became negative; " + diagnose(after));
     for (const auto &[id, f] : after.scene.world.world.facilities) {
@@ -440,6 +441,7 @@ bool ActivePotVillageStrategy::checkpoint(const State &s) const {
 bool ActivePotVillageStrategy::complete(const State &s) const {
     return checkpoint(s) && stats_.crafted == 1 && stats_.used == 1 && stats_.healed == 1 &&
            stats_.hp_after > stats_.hp_before && month(s) >= stats_.use_month + 2 &&
+           stats_.trade.full_month_after(stats_.use_month, month(s)) &&
            stats_.facility_income > stats_.use_income;
 }
 std::string ActivePotVillageStrategy::diagnose(const State &s) const {
@@ -456,13 +458,14 @@ std::string ActivePotVillageStrategy::diagnose(const State &s) const {
 }
 void ActivePotVillageStrategy::encode(std::ostream &out) const {
     const auto &v = stats_;
-    out << "ARK_ACTIVE_POT_1\n"
+    out << "ARK_ACTIVE_POT_2\n"
         << v.commands << ' ' << v.ticks << ' ' << v.healed_actor << ' ' << v.minimum_cash << ' '
         << v.facility_income << ' ' << v.purchase_cost << ' ' << v.use_income << ' ' << v.purchases
         << ' ' << v.deposits << ' ' << v.processed << ' ' << v.discoveries << ' ' << v.crafted
         << ' ' << v.used << ' ' << v.healed << ' ' << v.recipe << ' ' << v.item << ' '
         << v.recipient << ' ' << v.hp_before << ' ' << v.hp_after << ' ' << v.craft_month << ' '
         << v.use_month << ' ' << next_market_tick_ << ' ' << initialized_ << '\n';
+    v.trade.encode(out);
     require(bool(out), "cannot encode pot evidence");
 }
 ActivePotVillageStrategy ActivePotVillageStrategy::decode(std::istream &in) {
@@ -470,12 +473,13 @@ ActivePotVillageStrategy ActivePotVillageStrategy::decode(std::istream &in) {
     auto &v = result.stats_;
     std::string magic;
     in >> magic;
-    require(magic == "ARK_ACTIVE_POT_1", "unknown pot strategy evidence");
+    require(magic == "ARK_ACTIVE_POT_2", "unknown pot strategy evidence");
     in >> v.commands >> v.ticks >> v.healed_actor >> v.minimum_cash >> v.facility_income >>
         v.purchase_cost >> v.use_income >> v.purchases >> v.deposits >> v.processed >>
         v.discoveries >> v.crafted >> v.used >> v.healed >> v.recipe >> v.item >> v.recipient >>
         v.hp_before >> v.hp_after >> v.craft_month >> v.use_month >> result.next_market_tick_ >>
         result.initialized_;
+    v.trade.decode(in);
     require(bool(in) && v.minimum_cash >= 0 && v.facility_income >= 0 && v.purchase_cost >= 0 &&
                 v.purchases >= 0 && v.deposits >= 0 && v.processed >= 0 &&
                 v.processed <= v.deposits && v.discoveries >= 0 && v.discoveries <= 1 &&

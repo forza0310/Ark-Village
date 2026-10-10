@@ -18,8 +18,8 @@ class Skin {
                   float size = 12) const;
     void right(const std::string &value, float x, float y, Color color = ink,
                float size = 12) const;
-    void number(std::int64_t value, Vector2 right,
-                const std::string &sprite = "number08.seb") const;
+    void number(std::int64_t value, Vector2 right, const std::string &sprite = "number08.seb",
+                Sprites::Binding binding = Sprites::Binding::common) const;
     Sprites &sprites;
     const Text &text;
 };

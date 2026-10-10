@@ -31,6 +31,70 @@ std::vector<std::uint8_t> bytes(const std::filesystem::path &path) {
         throw std::runtime_error("素材读取失败");
     return {std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
 }
+void coin_effect_queries(const std::filesystem::path &root) {
+    auto s=test_support::world_fixture();
+    // 绘制条件夹具沿真实死亡的六字段，不再复写已由nonactors套件负责的发奖/声音算法。
+    // 23仅核查询不僭越Owner退休职责；正常Owner已在达到23的更新中删除，不认证自然绘出23。
+    const std::array<std::array<int,3>,11> samples{{
+        {-2,-1,0},{-1,-1,0},{0,0,0},{2,1,-5},{10,5,-16},{11,5,-16},
+        {12,6,-16},{13,6,-16},{14,0,-16},{22,4,-16},{23,4,-16}}};
+    for (const auto sample:samples) {
+        s.visual_effects={{4,sample[0],60,70,-320,29}};
+        const auto before=startup_world_state_digest(s);
+        const auto draws=startup_world_coin_effect_draws(s);
+        check(draws.has_value(),"source X4 count fixture has a readonly image plan");
+        if (sample[1]<0)
+            check(draws->empty(),"negative X4 delay has no image or invented animation phase");
+        else {
+            check(draws->size()==1 && draws->front().raw_anchor==std::array<int,2>{60,70} &&
+                      draws->front().image.record_index==0 && draws->front().image.sprite==94 &&
+                      draws->front().image.image==144 && draws->front().image.layer==0 &&
+                      draws->front().image.resource==StartupVisualResource::common &&
+                      draws->front().image.frame==sample[1] &&
+                      draws->front().image.offset==std::array<int,2>{0,sample[2]},
+                  "X4 has fixed raw anchor, two-count cyclic frame and source truncated motion");
+        }
+        check(startup_world_coin_effect_draws(s).has_value() && startup_world_state_digest(s)==before,
+              "repainting never changes full Owner including count23 retirement, cash random or pending audio");
+    }
+    s.visual_effects={{20,0,60,70},{3,0,60,70,100,0,0},{4,2,60,70,-320,29},
+                      {2,0,80,90,300,-4000,666},{4,14,-80,120,-320,29}};
+    const auto before=startup_world_state_digest(s);
+    const auto draws=startup_world_coin_effect_draws(s);
+    check(draws && draws->size()==2 && draws->at(0).image.record_index==2 &&
+              draws->at(1).image.record_index==4 && draws->at(1).raw_anchor==std::array<int,2>{-80,120},
+          "X4 retains original mixed-X indices and distinct fixed anchors instead of regrouping depth");
+    check(startup_world_state_digest(s)==before,"mixed-X query preserves other effects and source queue size");
+    for (const auto &bad:std::vector<ref::ActorEffectRecord>{{4,0,60,70,-320},
+             {4,-2,60,70,-320,29,0},{4,2,60,70,std::numeric_limits<int>::max(),0},
+             {4,12,60,70,0,std::numeric_limits<int>::max()},
+             {4,std::numeric_limits<int>::max(),60,70,0,1}}) {
+        s.visual_effects={bad};
+        const auto digest=startup_world_state_digest(s);
+        check(!startup_world_coin_effect_draws(s) && startup_world_state_digest(s)==digest,
+              "bad X4 arity or intermediate int32 overflow rejects without using fixed-tail override to hide it");
+    }
+    s.visual_effects={{4,2,60,70,100,0}};
+    check(startup_world_coin_effect_draws(s)->front().image.offset==std::array<int,2>{0,0},
+          "positive source motion is capped at original anchor without inventing a lower clamp");
+
+    const auto seb=ark::assets::parse_legacy_seb(bytes(root/"common/eff_coin.seb"));
+    check(seb.frame_count==7 && seb.layers.size()==1 && seb.layers.front().parts.size()==7,
+          "published X4 sprite has exactly seven single-layer frame records");
+    Image atlas=LoadImage((root/"common/eff_coin.png").string().c_str());
+    check(atlas.data && atlas.width==70 && atlas.height==10,"source coin atlas is70x10, not a money numeral");
+    for (int n=0;n<7;++n) {
+        const auto &part=seb.layers.front().parts.at(n);
+        check(part.frame==n && part.image_index==144 && part.source_x==10*n && part.source_y==0 &&
+                  part.width==10 && part.height==10 && part.offset_x==-5 && part.offset_y==-10 &&
+                  part.flip_x==0 && part.flip_y==0,
+              "original SEB oracle resolves crop and offset once for every cyclic coin frame");
+        Image crop=ImageFromImage(atlas,{static_cast<float>(part.source_x),0,10,10});
+        check(crop.data && crop.width==10 && crop.height==10,"CPU materializes actual X4 PNG crop without a window");
+        UnloadImage(crop);
+    }
+    UnloadImage(atlas);
+}
 void owner_mapping() {
     auto s = test_support::world_fixture();
     const auto first = startup_world_portrait(s, 1);
@@ -856,6 +920,7 @@ int main(int argc, char **argv) {
         checks += check_startup_skin(argv[1], argc == 3 ? std::filesystem::path(argv[2])
                                                       : std::filesystem::path{});
         owner_mapping();
+        coin_effect_queries(argv[1]);
         cpu_portraits(argv[1]);
         equipment_lift_queries();
         facility_growth_queries();

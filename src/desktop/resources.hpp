@@ -2,6 +2,7 @@
 
 // GPU ownership and text measurements. This module never owns village rules or mutable state.
 #include "ark/assets/sprite.hpp"
+#include "sprite_picking.hpp"
 #include <filesystem>
 #include <map>
 #include <optional>
@@ -34,6 +35,8 @@ class Sprites {
         title,
         // Explicit Steam background PNGs; APK indexed title skins keep their own binding.
         steam_title,
+        // Steam-only common PNG replacements; SEB layout remains the published common data.
+        steam_common,
         event,
         weapon
     };
@@ -70,6 +73,27 @@ class Sprites {
     int map_image_height(const std::string &sprite, int frame);
     // Preserve a nonnegative logical map request; a missing frame draws nothing, never frame0.
     int map_frame(const std::string &sprite, int variant);
+    int common_digit_width(const std::string &sprite);
+    // Scope this to the scene's physical surfaces/bodies, never menus or floating labels.
+    class PickScope {
+      public:
+        PickScope(Sprites &sprites, SpritePickMap *map, SpritePickTarget target)
+            : sprites_(sprites), old_map_(sprites.pick_map_), old_target_(sprites.pick_target_) {
+            sprites_.pick_map_ = map;
+            sprites_.pick_target_ = target;
+        }
+        ~PickScope() {
+            sprites_.pick_map_ = old_map_;
+            sprites_.pick_target_ = old_target_;
+        }
+        PickScope(const PickScope &) = delete;
+        PickScope &operator=(const PickScope &) = delete;
+
+      private:
+        Sprites &sprites_;
+        SpritePickMap *old_map_;
+        SpritePickTarget old_target_;
+    };
 
   private:
     std::filesystem::path root_;
@@ -79,6 +103,9 @@ class Sprites {
     std::map<std::string, std::vector<std::string>> actor_sprites_;
     std::map<std::string, assets::SpriteDefinition> sprites_;
     std::map<std::string, Texture2D> textures_;
+    SpritePickMap *pick_map_{};
+    SpritePickTarget pick_target_{};
+    void record_pick(Texture2D texture, SpriteBlit blit, Color tint);
     Texture2D &texture(const std::filesystem::path &path);
     const assets::SpriteDefinition &definition(const std::filesystem::path &relative);
 };

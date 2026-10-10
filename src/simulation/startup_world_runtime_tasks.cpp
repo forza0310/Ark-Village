@@ -443,6 +443,27 @@ std::optional<ref::WorldEventEntryInput> startup_world_runtime_task_entry(const 
                                      progress->second.flags,
                                      {}};
 }
+bool consume_startup_world_runtime_task_start(State &s, ref::CharacterId actor,
+                                              std::uint64_t encounter) {
+    if (!s.rules || !encounter || s.task.encounter != encounter || s.task.kind != 1 ||
+        !s.scene.world.world.ai.task_active)
+        return false;
+    const auto created = s.scene.world.world.ai.encounters.find(encounter);
+    const auto input = startup_world_runtime_task_entry(s, actor);
+    if (created == s.scene.world.world.ai.encounters.end() || !input ||
+        !input->task.definition_task_flag ||
+        created->second.runtime.id != encounter || created->second.runtime.state != 3 ||
+        !(created->second.runtime.center == s.task.center))
+        return false;
+    const auto quota = ref::prepare_task_encounter_quota(
+        input->base_quota, input->task_completions, input->task_flags);
+    if (!quota || created->second.runtime.quota != *quota)
+        return false;
+    // 原c/b.F先完成配额与g安装，再B(2)，最后a.b(24,null)。通知自己在q计数1才C11。
+    s.sound_requests.push_back({StartupAudioOperation::replace_bgm, 2});
+    s.scripts.notices.push_back({24, -1, 80, {}, "战斗任务开始"});
+    return true;
+}
 std::optional<ref::EncounterCommitInput>
 startup_world_runtime_encounter_input(const State &s, std::uint64_t encounter) {
     const auto found = s.scene.world.world.ai.encounters.find(encounter);
@@ -603,7 +624,7 @@ bool consume_startup_world_runtime_task_encounter_request(State &s,
         next.task = {};
     } else if (r.kind == Kind::refresh_global) {
         // d/a.g实际选背景音乐，不是地图重建；clear_task之后c/n.h()已为false。
-        next.sound_requests.push_back(next.active_task && next.task.encounter ? 2 : 1);
+        next.sound_requests.push_back({StartupAudioOperation::replace_bgm, next.active_task && next.task.encounter ? 2 : 1});
     } else if (r.kind == Kind::refresh_task_catalog) {
         // c/n.H即时by道具补货；不应用跨月日期/feature16守卫。
         bool opened{}, changed{};

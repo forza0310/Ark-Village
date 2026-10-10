@@ -172,7 +172,7 @@ bool road(State &s, const std::vector<ref::Position> &cells, bool remove, int d,
     s.build_anchor.reset();
     s.build_feedback_message = remove ? "撤除完毕" : "路铺好了";
     s.build_feedback_counter = 20;
-    s.sound_requests.push_back(remove ? 21 : 11);
+    s.sound_requests.push_back({StartupAudioOperation::ordinary_play, remove ? 21 : 11});
     return true;
 }
 StartupBuildResult move_facility(State &s, ref::Position target,
@@ -244,7 +244,7 @@ StartupBuildResult move_facility(State &s, ref::Position target,
     mode(s, 6);
     s.build_anchor.reset();
     s.build_moving_facility.reset();
-    s.sound_requests.push_back(11);
+    s.sound_requests.push_back({StartupAudioOperation::ordinary_play, 11});
     return {Error::none, Denial::none, id};
 }
 } // namespace
@@ -370,7 +370,7 @@ StartupBuildResult confirm_startup_world_edit(State &s, ref::Position p,
         next.scripts.selected_facility.reset();
         next.build_feedback_message = "撤除完毕";
         next.build_feedback_counter = 20;
-        next.sound_requests.push_back(21);
+        next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 21});
     }
     s = std::move(next);
     return {};

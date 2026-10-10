@@ -5,6 +5,7 @@
 #include "world_session_test_support.hpp"
 
 #include <algorithm>
+#include <filesystem>
 #include <limits>
 #include <stdexcept>
 
@@ -667,6 +668,57 @@ void village_command_transactions() {
 }
 void commerce_command_transactions() {
     using A = sim::StartupCommerceAction;
+    {
+        // A real sale generates both C25 and a new durable cash peak in one candidate.
+        // This fixture tests transport atomicity, not natural unlock/income evidence.
+        const auto directory = std::filesystem::current_path() / "world-audio-transaction-test";
+        std::filesystem::remove_all(directory);
+        check(app::write_world_system(directory, {}).empty(), "Prepare isolated system record");
+        auto state = commerce_fixture(1);
+        state.scene.framework_paused = true;
+        state.sound_requests = {{sim::StartupAudioOperation::ordinary_play, 11}};
+        const auto page = task_top(state).id;
+        const auto item = state.commerce_page_lists.at(page).front();
+        const auto inventory = state.items.at(item).inventory;
+        const auto cash = state.scene.world.world.ai.accounting.funds();
+        app::WorldSession session(state, directory);
+        const auto target = app::world_system_path(directory);
+        std::filesystem::remove(target);
+        std::filesystem::create_directory(target);
+        session.set_paused(false);
+        session.act_commerce(page, A::confirm);
+        auto blocked =
+            await(session, [](const auto &f) { return f.failed || !f.system_error.empty(); });
+        check(!blocked->failed && blocked->state->items.at(item).inventory == inventory &&
+                  blocked->state->scene.world.world.ai.accounting.funds() == cash,
+              "Failed sale system write preserves inventory and cash");
+        check(session.take_audio_requests() ==
+                  std::vector<sim::StartupAudioRequest>{
+                      {sim::StartupAudioOperation::ordinary_play, 11}},
+              "Failed durable sale retains earlier committed audio and withholds new C25");
+        app::WorldCommand retry;
+        retry.kind = app::WorldCommandKind::retry_system_write;
+        const auto revision = blocked->revision;
+        session.submit(retry);
+        blocked = await(session, [revision](const auto &f) { return f.revision > revision; });
+        check(!blocked->system_error.empty() && session.take_audio_requests().empty(),
+              "Repeated failed retry cannot publish its pending playback");
+        std::filesystem::remove(target);
+        session.submit(retry);
+        const auto committed = input_frame(session, session.set_paused(true));
+        check(committed->system_error.empty() &&
+                  committed->state->items.at(item).inventory == inventory - 1 &&
+                  committed->state->scene.world.world.ai.accounting.funds() ==
+                      cash + state.rules->items.at(item).commerce_price / 2,
+              "Successful retry commits the prepared sale once");
+        check(session.take_audio_requests() ==
+                      std::vector<sim::StartupAudioRequest>{
+                          {sim::StartupAudioOperation::ordinary_play, 25}} &&
+                  session.take_audio_requests().empty(),
+              "Successful durable retry releases C25 exactly once");
+        session.stop();
+        std::filesystem::remove_all(directory);
+    }
     // Both independent menu gates retain the overlay and never create a source page.
     for (const bool paused : {false, true}) {
         auto state = initial(paused);

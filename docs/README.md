@@ -5,7 +5,7 @@
 | 分类 | 入口 | 内容与维护责任 |
 | --- | --- | --- |
 | 上手与当前动作 | [根 README](../README.md)、[TODO](../TODO.md) | 构建、运行、操作；TODO只列当前待办，不堆叠历史测试数字 |
-| 工程约定 | [AGENTS](../AGENTS.md)、[开发流程](CONTRIBUTING.md) | 来源边界、阶段验收、本地/CI分工、提交与文档约定 |
+| 工程约定 | [AGENTS](../AGENTS.md)、[开发流程](CONTRIBUTING.md)、[研究/产品验证分工](CONTRIBUTING.md#研究与产品的验证分工) | 来源边界、研究短测/产品长跑、本地/CI分工、提交与文档约定 |
 | 现行架构 | [架构](ARCHITECTURE.md)、[可维护性进度](PRODUCT_REVIEW.md) | 唯一Owner、依赖方向、模块职责及剩余工程风险 |
 | 已确认决策 | [计划与ADR](MILESTONES.md) | 决策理由与替代关系；历史Accepted不代表仍未实施 |
 | 当前研究对照 | [对照清单](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)、[研究需求](reference/RESEARCH_REQUESTS.md) | 正式研究身份、已接子集、缺口和原版一致性边界 |

@@ -492,7 +492,8 @@ void report_below_timed_page() {
 }
 void sound_output_sink() {
     auto state = initial(true);
-    state.sound_requests = {4, 11}; // Outputs left by bounded diagnostic prewarming.
+    using Operation = sim::StartupAudioOperation;
+    state.sound_requests = {{Operation::jingle, 4}, {Operation::ordinary_play, 11}};
     state.scripts.pages.front().lifecycle = 3;
     rules::WorldScriptPage page;
     page.id = state.scripts.next_page_id++;
@@ -516,6 +517,11 @@ void sound_output_sink() {
               ticked->state->sound_requests.empty() && ticked->previous->sound_requests.empty() &&
               first->consumed_sound_requests == 2,
           "Successful source counter1 sound is consumed once without mutating retained snapshots");
+    check(session.take_audio_requests() ==
+              std::vector<sim::StartupAudioRequest>{
+                  {Operation::jingle, 4}, {Operation::ordinary_play, 11}, {Operation::jingle, 4}},
+          "Skipped frames retain operation, duplicate ID and original output order");
+    check(session.take_audio_requests().empty(), "Second audio drain is empty");
     const auto rejected =
         input_frame(session, session.act_tax(page.id, sim::StartupWorldTaxAction::confirm));
     check(!rejected->failed && rejected->consumed_sound_requests == 3,
@@ -524,6 +530,7 @@ void sound_output_sink() {
     check(failed->failed && failed->consumed_sound_requests == 3 &&
               failed->state->sound_requests.empty(),
           "Failure publication preserves the last successful output-consumption count");
+    check(session.take_audio_requests().empty(), "Rejected and failed commands emit no audio");
     session.stop();
 }
 

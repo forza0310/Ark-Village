@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 const [executable, supplied] = process.argv.slice(2);
 if (!executable || !supplied || process.argv.length !== 4)
   throw Error('Expected executable and evidence parent below product build');
@@ -23,7 +24,8 @@ for (;;) {
 if (ancestor !== build && !inside(ancestor)) throw Error('Evidence ancestor escapes build');
 await fs.mkdir(parent, { recursive: true });
 if (!inside(await fs.realpath(parent))) throw Error('Evidence path escapes build');
-const directory = await fs.mkdtemp(path.join(parent, 'compare-'));
+const directory = path.join(parent, `compare-${randomUUID()}`);
+await fs.mkdir(directory); // Exclusive creation with inherited workspace ACLs.
 console.log(`Evidence directory: ${directory}`);
 const live = new Set();
 let cancelled = false, next = 0;

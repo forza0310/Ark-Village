@@ -1,6 +1,6 @@
 // Window stripe and title bar follow ui/PAGES: p images28/29; content corners use SEB6.
 #include "skin.hpp"
-#include "ark/simulation/startup_skin.hpp"
+#include "ark/simulation/steam_startup_skin.hpp"
 #include <algorithm>
 #include <cmath>
 namespace ark::desktop::ui {
@@ -19,32 +19,37 @@ void Skin::window(Rectangle box, const std::string &title) const {
     const int width = static_cast<int>(std::lround(box.width)),
               height = static_cast<int>(std::lround(box.height));
     const float size = std::min(12.F, 12.F * (box.width - 4) / std::max(1.F, text.width(title)));
-    const auto plan = simulation::startup_window_skin(
-        width, height, 0, 0, 0, static_cast<int>(text.width(title, size) + .01F));
+    const auto plan = simulation::steam_startup_window_skin(
+        {width, height, 0, 0, simulation::SteamStartupTextRole::message_title, 0}, 0,
+        std::array<int, 2>{static_cast<int>(text.width(title, size)),
+                           static_cast<int>(text.width(title, size))});
     if (plan) {
-        const auto &first = plan->images.front();
-        const Vector2 origin{box.x - first.offset[0], box.y - first.offset[1]};
-        for (const auto &line : plan->borders) {
-            const auto &r = line.rect;
-            const auto &c = line.rgb;
-            DrawRectangleLinesEx({origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])}, 1,
-                                 {static_cast<unsigned char>(c[0]),
-                                  static_cast<unsigned char>(c[1]),
-                                  static_cast<unsigned char>(c[2]), 255});
-        }
-        for (const auto &part : plan->images) {
-            const auto &c = part.crop;
-            sprites.indexed_image(
-                Sprites::Binding::common, part.image,
-                {float(c[0]), float(c[1]), float(c[2]), float(c[3])},
-                {origin.x + part.offset[0], origin.y + part.offset[1], float(c[2]), float(c[3])});
-        }
-        for (const auto &anchor : *plan->title) {
-            const auto &c = anchor.rgb;
-            text.draw(title, origin.x + anchor.offset[0], origin.y + anchor.offset[1],
-                      {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
-                       static_cast<unsigned char>(c[2]), 255},
-                      size);
+        const auto &border = std::get<simulation::StartupSkinRect>(plan->draws.front());
+        const Vector2 origin{box.x - border.rect[0] - 1, box.y - border.rect[1] - 2};
+        for (const auto &request : plan->draws) {
+            if (const auto *part = std::get_if<simulation::StartupSkinRect>(&request)) {
+                const auto &r = part->rect;
+                const auto &c = part->rgb;
+                DrawRectangleLinesEx(
+                    {origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])}, 1,
+                    {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
+                     static_cast<unsigned char>(c[2]), 255});
+            } else if (const auto *part = std::get_if<simulation::StartupSkinDraw>(&request)) {
+                const auto &c = part->crop;
+                // Steam preserves a zero-width wood tail request; it is a graphics no-op.
+                if (c[2] > 0 && c[3] > 0)
+                    sprites.indexed_image(Sprites::Binding::common, part->image,
+                                          {float(c[0]), float(c[1]), float(c[2]), float(c[3])},
+                                          {origin.x + part->offset[0], origin.y + part->offset[1],
+                                           float(c[2]), float(c[3])});
+            } else if (const auto *part = std::get_if<simulation::SteamStartupText>(&request)) {
+                const auto &c = *part->rgb;
+                text.draw(title, origin.x + static_cast<float>(part->rectangle[0]),
+                          origin.y + static_cast<float>(part->rectangle[1]),
+                          {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
+                           static_cast<unsigned char>(c[2]), 255},
+                          size);
+            }
         }
         return;
     }
@@ -57,28 +62,29 @@ void Skin::window(Rectangle box, const std::string &title) const {
     centered(title, {box.x + 2, box.y + 2, box.width - 4, 17}, WHITE);
 }
 void Skin::content(Rectangle box, Color fill) const {
-    const auto plan =
-        simulation::startup_content_skin(0, 0, static_cast<int>(std::lround(box.width)),
-                                         static_cast<int>(std::lround(box.height)), 0);
+    const auto plan = simulation::steam_startup_box_skin(
+        {0, 0, static_cast<int>(std::lround(box.width)), static_cast<int>(std::lround(box.height))},
+        0);
     if (!plan)
         return;
-    for (std::size_t i = 0; i < plan->rectangles.size(); ++i) {
-        const auto &part = plan->rectangles[i];
-        const auto &r = part.rect;
-        const auto &c = part.rgb;
-        const Rectangle destination{box.x + r[0], box.y + r[1], float(r[2]), float(r[3])};
-        const Color color{static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
-                          static_cast<unsigned char>(c[2]), 255};
-        if (part.outline)
-            DrawRectangleLinesEx(destination, 1, color);
-        else
-            DrawRectangleRec(destination,
-                             fill); // Explicit coloured selection rows remain desktop variants.
+    for (const auto &request : plan->draws) {
+        if (const auto *part = std::get_if<simulation::StartupSkinRect>(&request)) {
+            const auto &r = part->rect;
+            const auto &c = part->rgb;
+            const Rectangle destination{box.x + r[0], box.y + r[1], float(r[2]), float(r[3])};
+            if (part->outline)
+                DrawRectangleLinesEx(destination, 1,
+                                     {static_cast<unsigned char>(c[0]),
+                                      static_cast<unsigned char>(c[1]),
+                                      static_cast<unsigned char>(c[2]), 255});
+            else
+                DrawRectangleRec(destination, fill);
+        } else if (const auto *part = std::get_if<simulation::StartupSkinDraw>(&request))
+            sprites.indexed_sprite(Sprites::Binding::common, part->sprite, part->frame, part->layer,
+                                   part->image, {box.x + part->offset[0], box.y + part->offset[1]});
     }
-    for (const auto &part : plan->corners)
-        sprites.indexed_sprite(Sprites::Binding::common, part.sprite, part.frame, part.layer,
-                               part.image, {box.x + part.offset[0], box.y + part.offset[1]});
 }
+
 void Skin::centered(const std::string &value, Rectangle box, Color color, float size) const {
     const float actual =
         std::min(size, size * (box.width - 4) / std::max(1.0F, text.width(value, size)));
@@ -109,12 +115,13 @@ void Skin::choice(Rectangle box, const std::string &label, bool enabled) const {
         sprites.draw("finger_r.seb", 0, {highlight.x - 7, highlight.y + highlight.height / 2},
                      WHITE, Sprites::Binding::common);
 }
-void Skin::number(std::int64_t value, Vector2 edge, const std::string &sprite) const {
+void Skin::number(std::int64_t value, Vector2 edge, const std::string &sprite,
+                  Sprites::Binding binding) const {
     const auto digits = std::to_string(value);
     float x = edge.x - digits.size() * 8;
     for (char c : digits) {
         if (c >= '0' && c <= '9')
-            sprites.draw(sprite, c - '0', {x, edge.y}, WHITE, Sprites::Binding::common);
+            sprites.draw(sprite, c - '0', {x, edge.y}, WHITE, binding);
         else
             text.draw("-", x, edge.y, sprite == "number12.seb" ? MAROON : blue, 10);
         x += 8;

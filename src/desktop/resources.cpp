@@ -105,6 +105,17 @@ int Sprites::map_frame(const std::string &sprite, int variant) {
     const auto &data = definition(std::filesystem::path("image") / sprite);
     return map_frame_index(sprite, data, variant);
 }
+int Sprites::common_digit_width(const std::string &sprite) {
+    if (std::filesystem::path(sprite).has_parent_path())
+        throw std::invalid_argument("Unsafe common sprite path");
+    const auto &data = definition(std::filesystem::path("common") / sprite);
+    if (data.layers.empty())
+        throw std::invalid_argument("Number sprite has no source line");
+    for (const auto &part : data.layers.front().parts)
+        if (part.frame == 0 && part.width > 0)
+            return part.width;
+    throw std::invalid_argument("Number sprite has no first digit width");
+}
 int Sprites::map_image_height(const std::string &sprite, int frame) {
     frame = map_frame(sprite, frame);
     const auto &data = definition(std::filesystem::path("image") / sprite);
@@ -127,12 +138,14 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                    std::optional<int> selected_layer) {
     if (std::filesystem::path(sprite).has_parent_path())
         throw std::runtime_error("Unsafe sprite path");
-    const char *group = binding == Binding::farmer || binding == Binding::human       ? "human"
-                        : binding == Binding::monster                                 ? "monster"
-                        : binding == Binding::weapon                                  ? "weapon"
-                        : binding == Binding::common2                                 ? "common2"
-                        : binding == Binding::secretary || binding == Binding::common ? "common"
-                                                                                      : "image";
+    const char *group = binding == Binding::farmer || binding == Binding::human ? "human"
+                        : binding == Binding::monster                           ? "monster"
+                        : binding == Binding::weapon                            ? "weapon"
+                        : binding == Binding::common2                           ? "common2"
+                        : binding == Binding::secretary || binding == Binding::common ||
+                                binding == Binding::steam_common
+                            ? "common"
+                            : "image";
     const auto relative = std::filesystem::path(group) / sprite;
     const auto &sprite_data = definition(relative);
     if (binding == Binding::map) {
@@ -160,9 +173,14 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                 image_override >= 0 ? root_ / group / actor_images_.at(group).at(image_override)
                 : binding == Binding::farmer    ? root_ / "human/chara_flower00.png"
                 : binding == Binding::secretary ? root_ / "common/chara_hishoko01.png"
-                : binding == Binding::common    ? root_ / group / common_images_.at(p.image_index)
-                : binding == Binding::common2   ? root_ / group / common2_images_.at(p.image_index)
-                                                : root_ / "image" / images_.at(p.image_index);
+                : binding == Binding::steam_common &&
+                        (p.image_index == 103 || p.image_index == 105 || p.image_index == 37 ||
+                         p.image_index == 88)
+                    ? root_ / "steam_common" / common_images_.at(p.image_index)
+                : binding == Binding::common || binding == Binding::steam_common
+                    ? root_ / group / common_images_.at(p.image_index)
+                : binding == Binding::common2 ? root_ / group / common2_images_.at(p.image_index)
+                                              : root_ / "image" / images_.at(p.image_index);
             const auto &image = texture(path);
             validate(p, image.width, image.height);
             SpriteBlit blit{{static_cast<float>(p.source_x), static_cast<float>(p.source_y),
@@ -176,6 +194,7 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                     continue;
                 blit = *cropped;
             }
+            record_pick(image, blit, tint);
             DrawTexturePro(image, blit.source, blit.destination, {0, 0}, 0, tint);
         }
     }
@@ -339,22 +358,29 @@ Texture2D &Sprites::texture(const std::filesystem::path &path) {
     }
     return found->second;
 }
+void Sprites::record_pick(Texture2D texture, SpriteBlit blit, Color tint) {
+    if (pick_map_ && tint.a)
+        pick_map_->add(texture, blit.source, blit.destination, pick_target_);
+}
 void Sprites::image(const std::string &name, Rectangle source, Rectangle destination,
                     Binding binding, Color tint) {
     if (std::filesystem::path(name).has_parent_path())
         throw std::runtime_error("Unsafe image path");
-    const char *group = binding == Binding::common2       ? "common2"
-                        : binding == Binding::window      ? "ui"
-                        : binding == Binding::title       ? "title"
-                        : binding == Binding::steam_title ? "steam_title"
-                        : binding == Binding::event       ? "event"
-                        : binding == Binding::map         ? "image"
-                        : binding == Binding::weapon      ? "weapon"
-                                                          : "common";
-    const auto &value = texture(root_ / group / name);
+    const char *group = binding == Binding::common2        ? "common2"
+                        : binding == Binding::window       ? "ui"
+                        : binding == Binding::title        ? "title"
+                        : binding == Binding::steam_title  ? "steam_title"
+                        : binding == Binding::steam_common ? "steam_common"
+                        : binding == Binding::event        ? "event"
+                        : binding == Binding::map          ? "image"
+                        : binding == Binding::weapon       ? "weapon"
+                                                           : "common";
+    const auto path = root_ / group / name;
+    const auto &value = texture(path);
     if (source.x < 0 || source.y < 0 || source.width <= 0 || source.height <= 0 ||
         source.x + source.width > value.width || source.y + source.height > value.height)
         throw std::runtime_error("UI image rectangle outside atlas");
+    record_pick(value, {source, destination}, tint);
     DrawTexturePro(value, source, destination, {0, 0}, 0, tint);
 }
 Text::Text(const std::filesystem::path &font_path, const std::string &extra_glyphs)
@@ -476,6 +502,16 @@ void Text::paragraph(const std::string &value, float x, float y, float width) co
 }
 void check_assets(const std::filesystem::path &root) {
     for (const auto &[name, width, height] :
+         {std::tuple{"number05.png", 100, 21}, std::tuple{"number08.png", 100, 21},
+          std::tuple{"icon_param00.png", 112, 32}, std::tuple{"wnd_ato.png", 10, 7}}) {
+        auto image = LoadImage((root / "steam_common" / name).string().c_str());
+        const bool valid = image.data && image.width == width && image.height == height;
+        if (image.data)
+            UnloadImage(image);
+        if (!valid)
+            throw std::runtime_error("Missing or invalid Steam common image: " + std::string(name));
+    }
+    for (const auto &[name, width, height] :
          {std::tuple{"title00.png", 600, 380}, std::tuple{"upper.png", 240, 9},
           std::tuple{"title_grass.png", 240, 18}}) {
         auto image = LoadImage((root / "steam_title" / name).string().c_str());
@@ -538,6 +574,8 @@ void check_assets(const std::filesystem::path &root) {
                 const auto path =
                     binding == Sprites::Binding::farmer      ? root / "human/chara_flower00.png"
                     : binding == Sprites::Binding::secretary ? root / "common/chara_hishoko01.png"
+                    : binding == Sprites::Binding::steam_common
+                        ? root / "steam_common" / common_images.at(part.image_index)
                     : binding == Sprites::Binding::common
                         ? root / "common" / common_images.at(part.image_index)
                     : binding == Sprites::Binding::common2
@@ -633,6 +671,12 @@ void check_assets(const std::filesystem::path &root) {
         const auto definition = assets::parse_legacy_seb(read_bytes(path));
         for (int frame = 0; frame < definition.frame_count; ++frame)
             validate_frame(path, frame, Sprites::Binding::common2);
+    }
+    for (const auto &name : {"number05.seb", "number08.seb"}) {
+        const auto path = root / "common" / name;
+        const auto definition = assets::parse_legacy_seb(read_bytes(path));
+        for (int frame = 0; frame < definition.frame_count; ++frame)
+            validate_frame(path, frame, Sprites::Binding::steam_common);
     }
 }
 } // namespace ark::desktop

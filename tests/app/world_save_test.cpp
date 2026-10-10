@@ -84,7 +84,8 @@ void codec_and_policy() {
               old_fast_candidate.state->scene.world.world.ai.accounting.funds() ==
                   state.scene.world.world.ai.accounting.funds(),
           "Loading old speed2 file uses normal current pacing without changing cash or random");
-    state.sound_requests = {1, 2};
+    state.sound_requests = {{ark::simulation::StartupAudioOperation::replace_bgm, 1},
+                            {ark::simulation::StartupAudioOperation::replace_bgm, 2}};
     state.visual_effects.push_back({});
     state.scripts.notices.push_back({});
     auto transient = app::capture_world_save(state);

@@ -15,8 +15,8 @@ struct ApplicationReplayPaths {
 ApplicationReplayPaths prepare_replay_capture_paths(const std::filesystem::path &research_directory,
     const std::filesystem::path &output, const StartupApplicationPaths &current_application_paths,
     const std::vector<std::filesystem::path> &protected_paths = {});
-// source须是research/work内的普通文件；隔离root须现有，允许保留无关文件。
-// 返回的system.avr/world0.avr/world1.avr都尚不存在，不写两栏或当前应用文件。
+// source须是research/work内无硬链接的普通文件；隔离root须不存在而父目录已存在。
+// 保护当前应用整根、源文件和额外输出；只返回安全新根，不创建文件。
 ApplicationReplayPaths prepare_replay_restore_paths(const std::filesystem::path &research_directory,
     const std::filesystem::path &source, const StartupApplicationPaths &current_application_paths,
     const std::vector<std::filesystem::path> &protected_paths = {});

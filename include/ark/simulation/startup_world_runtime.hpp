@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ark/simulation/startup_world_projection.hpp"
+#include "ark/simulation/startup_audio.hpp"
 #include "ark/simulation/startup_world_profile.hpp"
 #include "ark/simulation/rules/world_award_page.hpp"
 #include "ark/simulation/rules/world_exploration.hpp"
@@ -183,7 +184,7 @@ struct StartupWorldRuntimeState {
     std::vector<ref::ActorEffectRecord> visual_effects; // d.a.X变长载荷，现金浮标7项不得截成5项。
     std::vector<std::array<int, 4>> delayed_effects;    // d.a.Y。
     std::vector<std::array<int, 2>> global_effects;     // n.bu。
-    std::vector<int> sound_requests;                    // 原c(sound)输出，不把声音变成领域状态。
+    std::vector<StartupAudioRequest> sound_requests; // 唯一待消费输出，显式保留原b/c/d资格；无播放器或第二队列。
     std::array<int, 4> reference_viewport{{0, 23, 240, 297}}; // 明确240×320研究画布的b.c.m/n/o/p。
     std::map<std::uint64_t, int> page_counters; // b.g.f124d；主场景冻结时独立推进栈顶页。
     std::map<std::uint64_t, int> page_phases;   // b.g.i，成果页30两段展示不重复奖励。
@@ -406,6 +407,8 @@ class StartupWorldRuntimeSession {
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action,
                                           int selection = 0);
     // 表现输出一次领取；无音频适配的验收明确丢弃，不作为世界耐久历史。
+    std::vector<StartupAudioRequest> take_audio_requests();
+    // 旧调用者显式丢弃操作类别，仅投影ID；与typed接口消费同一队列，不能重复领取。
     std::vector<int> take_sound_requests();
     StartupBuildResult begin_build(int definition);
     StartupBuildResult begin_road(int definition);

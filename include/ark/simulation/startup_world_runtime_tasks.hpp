@@ -51,6 +51,9 @@ consume_startup_world_runtime_encounter_request(const StartupWorldRuntimeState &
                                                 const ref::EncounterCreationRequest &request);
 std::optional<ref::WorldEventEntryInput>
 startup_world_runtime_task_entry(const StartupWorldRuntimeState &state, ref::CharacterId actor);
+// 只接真正created的瞬态请求；当前候选Owner必须已安装任务引用与原配额。
+bool consume_startup_world_runtime_task_start(StartupWorldRuntimeState &state,
+                                             ref::CharacterId actor, std::uint64_t encounter);
 std::optional<ref::EncounterCommitInput>
 startup_world_runtime_encounter_input(const StartupWorldRuntimeState &state,
                                       std::uint64_t encounter);

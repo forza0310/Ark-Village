@@ -259,6 +259,25 @@ void world_building() {
         check(intent && intent->action == Action::select_build && intent->page == 903 &&
                   intent->selection == definition,
               "Keyboard selection submits stable definition and source page IDs");
+        input = {};
+        input.click = middle({layout.rows.x, layout.rows.y, layout.rows.width, layout.row_height});
+        check(!ui::world_building_input(view, layout, selection, input, false) &&
+                  selection.selected == 0,
+              "Steam first construction click selects and marks without entering build mode");
+        const auto marked = selection.marked_definition;
+        check(!ui::world_building_input(view, layout, selection, input, true) &&
+                  selection.marked_definition == marked,
+              "Pending construction input cannot change or consume the row marker");
+        const auto second = ui::world_building_input(view, layout, selection, input, false);
+        check(second && second->action == Action::select_build &&
+                  second->selection == view.catalogs[0][0].identity,
+              "Second click on the same marked definition enters construction without a time "
+              "threshold");
+        input = {};
+        input.up = true;
+        (void)ui::world_building_input(view, layout, selection, input, false);
+        check(!selection.marked_definition, "Keyboard navigation clears construction touch marker");
+        input = {};
         input.click = middle(layout.tabs[2]);
         input.enter = false;
         (void)ui::world_building_input(view, layout, selection, input, false);
@@ -508,6 +527,11 @@ void world_building() {
     view = ui::world_building_view(state, page);
     check(view.initialized && view.upgrade[0][2] == 13 && view.upgrade[1][0] == 14,
           "Upgrade display preserves the source old/new/delta matrix without recalculation");
+    check(view.upgrade_skin && view.upgrade_skin->attributes[0] == std::array<int, 3>{11, 14, 3} &&
+              view.upgrade_skin->attributes[2] == std::array<int, 3>{13, 16, 3} &&
+              view.upgrade_skin->frame == state.page_counters.at(page.id) &&
+              !view.upgrade_secondary_available,
+          "Steam upgrade binds each attribute's frozen old/new/delta and never invents frame2");
     check(!ui::world_building_input(view, layout, selection, input, false),
           "Escape does not skip the upgrade consumer's required confirmation phases");
     input = {};

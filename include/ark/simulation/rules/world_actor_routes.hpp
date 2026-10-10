@@ -51,6 +51,8 @@ struct WorldActorPresentationRequest {
     std::optional<LifecycleRequest> lifecycle{};
     std::optional<int> definition{};   // 删除后的怪物仍需原定义载荷，不依赖已回收实例。
     std::optional<int> cached_sound{}; // n.a(sound,旧bm)，不回写或重投影bm。
+    // F/P真正新建任务遭遇的瞬态产物；配额已写入，外层Owner按B2→notice24消费。
+    std::optional<std::uint64_t> task_encounter_start{};
 };
 using WorldActorPresentationConsumer = std::function<std::optional<WorldActorRoutesState>(
     const WorldActorRoutesState &, const WorldActorPresentationRequest &)>;

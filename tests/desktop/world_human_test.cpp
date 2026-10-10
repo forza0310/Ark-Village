@@ -67,7 +67,7 @@ void world_human() {
           "Human detail Back is routed to source cancel");
     for (int tab = 0; tab < 4; ++tab) {
         input = {};
-        input.click = middle(layout.tabs[tab]);
+        input.click = middle(ui::world_human_detail_layout(layout).tabs[tab]);
         const auto intent = ui::world_human_input(view, layout, input, false);
         check(intent && intent->action == Action::view_tab && intent->selection == tab,
               "Each human detail tab targets its exact source phase");
@@ -302,6 +302,14 @@ void world_human() {
             check(inside(frame.panel, box), "Human controls fit minimum and large viewports");
         for (const auto box : frame.gift_tabs)
             check(inside(frame.panel, box), "All five gift tabs fit minimum and large viewports");
+        const auto detail = ui::world_human_detail_layout(frame);
+        check(
+            inside({0, 0, float(extent.width), float(extent.height)}, detail.panel) &&
+                inside(detail.panel, detail.body),
+            "Steam static human details preserve the source body inside every supported viewport");
+        for (const auto box : detail.tabs)
+            check(inside({0, 0, float(extent.width), float(extent.height)}, box),
+                  "PC human page tabs stay inside the minimum viewport");
     }
 }
 

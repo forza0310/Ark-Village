@@ -1,10 +1,12 @@
 #pragma once
 
 #include "ark/app/world_session.hpp"
+#include "world_active_trade_evidence.hpp"
 #include <iosfwd>
 
 namespace ark::test {
 struct ActivePotVillageStats {
+    ActiveTradeEvidence trade;
     std::uint64_t commands{}, ticks{}, healed_actor{};
     std::int64_t minimum_cash{}, facility_income{}, purchase_cost{}, use_income{};
     int purchases{}, deposits{}, processed{}, discoveries{}, crafted{}, used{}, healed{};

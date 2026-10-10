@@ -1,11 +1,13 @@
 #pragma once
 
 #include "ark/app/world_session.hpp"
+#include "world_active_trade_evidence.hpp"
 #include <iosfwd>
 #include <set>
 
 namespace ark::test {
 struct ActiveLateVillageStats {
+    ActiveTradeEvidence trade;
     std::uint64_t commands{}, ticks{}, departed_task{};
     std::int64_t minimum_cash{}, facility_income{}, new_shop_income{}, construction_cost{},
         gift_cost{};
@@ -14,6 +16,10 @@ struct ActiveLateVillageStats {
     int promoted_month{-1}, pot_month{-1};
     std::int64_t pot_income{};
     bool second_star_conditions{}, pot_paid{};
+    int target_rank{2}, school_activity_month{-1};
+    std::uint64_t western{}, school{};
+    std::int64_t western_initial_sales{}, school_sales{};
+    bool third_star_conditions{}, school_activity_paid{};
     std::set<std::uint64_t> buildings, successful_tasks;
     std::set<int> residents;
 };
@@ -23,6 +29,8 @@ struct ActiveLateVillageStats {
 // WorldCommand. The runner supplies the real update and bounded wall/step budgets.
 class ActiveLateVillageStrategy {
   public:
+    ActiveLateVillageStrategy() = default;
+    explicit ActiveLateVillageStrategy(int target_rank);
     std::optional<app::WorldCommand> next(const app::WorldState &state);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
                  const app::WorldCommandResult &result, const app::WorldState &after);

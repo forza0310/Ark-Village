@@ -4,6 +4,10 @@
 
 ## 本批收口
 
+- [ ] 1f19c88维护/UI/音频统一验收：430项冻结来源、711项素材已迁入；收费缓存、类型化声音及遭遇通知已实现，Steam公共框/建设目录/设施81与74/人物60静态四页/X4金币已接线，等待本批统一构建、标准回归和Release窗口/音频检查。玩家schema4两栏及随机政策保持，维护世界4/应用7/系统2不替换玩家存档。
+- [ ] 修后收益与主动三星：重跑P0–P4三个月真实建设收益对照；按修后新局建立首星→二星→三星业务前缀，校验保存/冷载、新解锁学校建设/活动7和后续完整月实际营业。旧e73业务档保留历史，不复用为修后资格；本批尚未运行通过。
+- [ ] 本批Release便携包、解压启动与隔离存读验收；不沿用下方e73包认证新代码，CI结果单独记录。
+
 - [x] e73bb31新版经营→魔法壶→便携包：[本批结果](docs/stages/B1-playable-prototype.md#product-business-e73bb31)。新版首/二星跨进程链、魔法壶投入/发现/冷载/炼制/真实用药、两Debug标准177/153项通过；PC标题拖动误激活已修复。13.45MiB Release ZIP已独立解压、启动和隔离存读验证；OS输入通道不可用，CI待验证，未推送/发布。
 
 - [x] S019及设施加成2/2面板部分补正：紧凑布局、原数字/箭头、分区和按钮位置，通过本地测试/窗口；当时图标及逐来源加成未完成，后续72a5bf4接线见[B1](docs/stages/B1-playable-prototype.md#facility-detail-visual-correction)。
@@ -29,14 +33,15 @@ a57958c魔法壶/村办5–6、schema3和0a5b5e2购买后举物/邻接提示/商
 - [x] 3780a3b本地验收：两Debug标准177/153项通过；主动二星真实建设/入住/16次任务胜利、晋级、付费活动30和后续营业、玩家跨进程恢复及终态复核通过，首次超时现场保留；CI待验证，见[B1](docs/stages/B1-playable-prototype.md#research-3780a3b-integration)。
 - [x] e73bb31正式闭包404项/7适配已迁入：新局任务目录与设施人气初值修正、收支只读查询、维护AVRSAVE语义2/AVRAPP语义4；Steam三张静态启动图已接。玩家schema4布局保持，更新数据身份拒绝旧档、不迁移。
 - [x] e73bb31本地验收：desktop-debug177项/headless-debug153项、当前语义自然首月三进程回放和4个Release窗口通过；CI待验证，见[B1](docs/stages/B1-playable-prototype.md#research-e73bb31-integration)。此前首星/二星/五方案结果仅属旧初始化语义，后续主动经营须重新取得本版真实新局前缀。
-- [ ] 建设/邻接变化后到达收费缓存与查询价不一致，已登记[最小维护请求](docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)；等待正式修正后复验受影响收益方案，不宣称当前装饰布局最优。
-- [ ] 主动经营后继：继续三至五星所需住宅/商店数量与任务成功、明确身份的BOSS、计分/继续/继承；本版首星/二星及魔法壶实际炼制/用药已通过，不替代这些目标。
+- [ ] 建设/邻接到达收费修复aa87318已正式交付并随1f19c88迁入；[原请求](docs/reference/RESEARCH_REQUESTS.md#facility-arrival-price-cache)转产品验收，核实际收费/账本/回滚并复验五方案，不宣称布局最优。
+- [ ] 主动经营后继：本批先修后三星；四至五星、明确身份的BOSS、计分/继续/继承仍独立待验。e73首/二星及魔法壶实际炼制/用药通过仅属该历史语义，不能替代修后业务前缀。
 
 - [x] 1e6b291建设查询与Owner显式表现请求/独立回放迁入并本地验收，来源核至88eb658，363项冻结来源；结果见[B1](docs/stages/B1-playable-prototype.md#research-88eb658-integration)。
 - [ ] 桌面自动表现请求及探索底栏：补原准入/包装资格、滑入/背景/资源桥后接线，见[最小缺口](docs/reference/RESEARCH_REQUESTS.md#dungeon-strip-consumer-gap)；不按60FPS推导随机抽取次数。
 - [ ] 完整施工阶段、正门/进出、手持武器/物体/投射物、连击/升级/浮标与76/77演出：逐项等精确帧/锚点/时钟合同。
 - [ ] 人物/怪物受击表现：879cb17已补Owner命中短轨迹及拒绝测试，本批随完整闭包迁入；仍不依据观感增设减速/硬直/击退，动态表现按[受击缺口](docs/reference/RESEARCH_REQUESTS.md#hit-reaction-gap)。
-- [ ] 情报/设置/标题余项/音频：收支只读查询已迁入，raw9/36静态入口、返回、分页和模态合同已交付，维护页面消费者及桌面入口未接；37/38等仍缺部分定义投影/消费者。26个Ogg已有正式交付，typed音频输出仍在途；标题20槽宿主调度与完整动画未接。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
+- [ ] 情报/设置/标题余项：收支只读查询已迁入，raw9/36静态入口、返回、分页和模态合同已交付，维护页面消费者及桌面入口未接；37/38等仍缺部分定义投影/消费者。类型化声音生产者、26个Ogg与桌面一次领取/播放已接待验，不再列在途；标题20槽宿主调度与完整动画仍未接。按[候选门槛](docs/reference/REFERENCE_CHECKLIST.md#候选接续状态与接入门槛)分批接线，精确缺口见[交接状态](docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。
+- [ ] 设施81独立frame2、人物60循环/HP条/奖章等委托补齐后再接精确动态；本批只消费已有Owner字段和静态计划，不猜跳跃周期，见[最小剩余请求](docs/reference/RESEARCH_REQUESTS.md#steam-ui-delegates-1f19c88)。
 - [ ] 跨周自动中断档：正式轮内恢复消费者交付后单独设计；保持当前玩家随机/暂停/格式政策，见[RQ12](docs/reference/RESEARCH_REQUESTS.md#persistence-integration-gap)。
 
 ## 产品工程

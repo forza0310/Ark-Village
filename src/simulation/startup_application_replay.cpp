@@ -1,11 +1,13 @@
 #include "ark/simulation/startup_application_replay.hpp"
 #include "ark/assets/sha256.hpp"
 #include "startup_application_replay_paths.hpp"
+#include "startup_application_storage_replay.hpp"
 #include "startup_persistence_bytes.hpp"
 #include "startup_world_codec.hpp"
 #include "startup_world_file_io.hpp"
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <type_traits>
@@ -108,6 +110,83 @@ ref::WorldRandomSnapshot read_random(Reader &in) {
     need(ref::WorldRandomStream::from_snapshot(s).has_value(),"随机快照非法");
     return s;
 }
+void write_menu(Writer &out, const StartupTitleMenuState &m) {
+    out.u32(static_cast<std::uint32_t>(m.mode));out.i32(m.selection);out.i32(m.row);
+    out.u64(m.root_id);out.u64(m.next_id);
+    out.boolean(m.save_menu.has_value());
+    if(m.save_menu) {
+        const auto &p=*m.save_menu;
+        out.u64(p.id);out.u64(p.parent);out.i32(p.slot);out.i32(p.selection);
+        out.i32(p.frame);out.i32(p.result);out.boolean(p.returned);
+        out.boolean(p.catalog.has_value());
+        if(p.catalog){out.u64(p.catalog->revision);out.raw(p.catalog->digest.data(),32);}
+    }
+    out.boolean(m.confirmation.has_value());
+    if(m.confirmation) {
+        const auto &p=*m.confirmation;
+        out.u64(p.id);out.u64(p.parent);out.u32(static_cast<std::uint32_t>(p.reason));
+        out.i32(p.selection);out.i32(p.result);out.boolean(p.returned);
+    }
+    out.boolean(m.external.has_value());
+    if(m.external) {
+        const auto &p=*m.external;
+        out.u64(p.id);out.u64(p.parent);out.u32(static_cast<std::uint32_t>(p.kind));
+        out.boolean(p.returned);out.boolean(p.completed);
+    }
+}
+StartupTitleMenuState read_menu(Reader &in) {
+    StartupTitleMenuState m;
+    const auto mode=in.u32();need(mode<=1,"标题根模式未知");
+    m.mode=static_cast<StartupTitleRootMode>(mode);m.selection=in.i32();m.row=in.i32();
+    m.root_id=in.u64();m.next_id=in.u64();
+    if(in.boolean()) {
+        m.save_menu.emplace();auto &p=*m.save_menu;
+        p.id=in.u64();p.parent=in.u64();p.slot=in.i32();p.selection=in.i32();
+        p.frame=in.i32();p.result=in.i32();p.returned=in.boolean();
+        if(in.boolean()) {
+            p.catalog.emplace();p.catalog->revision=in.u64();
+            const auto hash=in.raw(32);std::copy(hash.begin(),hash.end(),p.catalog->digest.begin());
+        }
+    }
+    if(in.boolean()) {
+        m.confirmation.emplace();auto &p=*m.confirmation;
+        p.id=in.u64();p.parent=in.u64();const auto reason=in.u32();
+        need(reason<=1,"标题询问原因未知");p.reason=static_cast<StartupTitleConfirmationReason>(reason);
+        p.selection=in.i32();p.result=in.i32();p.returned=in.boolean();
+    }
+    if(in.boolean()) {
+        m.external.emplace();auto &p=*m.external;
+        p.id=in.u64();p.parent=in.u64();const auto kind=in.u32();
+        need(kind<=1,"标题外部页面未知");p.kind=static_cast<StartupTitleExternalPage>(kind);
+        p.returned=in.boolean();p.completed=in.boolean();
+    }
+    return m;
+}
+Bytes storage_section(const StartupApplicationStorageView &view) {
+    Writer out(file_budget);out.u32(static_cast<std::uint32_t>(view.blobs.size()));
+    for(const auto &blob:view.blobs) {
+        out.raw(blob.reference.sha256.data(),32);out.u64(blob.reference.bytes);
+        out.u32(static_cast<std::uint32_t>(blob.reference.purpose));
+        out.raw(blob.bytes.data(),blob.bytes.size());
+    }
+    return std::move(out.bytes);
+}
+StartupApplicationStorageView read_storage(Bytes system, const Bytes &bytes) {
+    StartupApplicationStorageView view;
+    view.snapshot.records=detail::decode_system_records_bytes(system);
+    view.snapshot.digest=ark::assets::sha256_hex(system);
+    view.system_bytes=std::move(system);
+    Reader in{bytes};const auto count=in.u32();need(count<=4,"槽位文件视图声明过多");
+    for(std::uint32_t i=0;i<count;++i) {
+        StartupApplicationStorageBlob blob;
+        const auto hash=in.raw(32);std::copy(hash.begin(),hash.end(),blob.reference.sha256.begin());
+        blob.reference.bytes=in.u64();const auto purpose=in.u32();
+        need(purpose==static_cast<std::uint32_t>(StartupWorldSavePurpose::normal),"槽位用途必须normal");
+        blob.reference.purpose=StartupWorldSavePurpose::normal;blob.bytes=in.raw(blob.reference.bytes);
+        view.blobs.push_back(std::move(blob));
+    }
+    in.end();return view;
+}
 void valid_metadata(const Metadata &m, const Validator &validator) {
     need(static_cast<bool>(validator),"缺少实际Driver校验器");
     need(!m.controller_id.empty() && m.controller_id.size()<=256 && m.producer_revision.size()<=256,
@@ -139,6 +218,11 @@ bool is_clear(const ref::WorldScriptPage *p) {
 // 不借普通构造读隔离默认系统，也不调用install_loaded覆盖捕获镜像。
 struct StartupApplicationReplayAccess {
     static const StartupApplicationPaths &paths(const StartupApplication &a) { return a.paths_; }
+    static const StartupApplicationStorageSnapshot &storage(const StartupApplication &a) { return a.storage_; }
+    static void install_storage(StartupApplication &a, StartupApplicationStorageSnapshot &&s) noexcept {
+        static_assert(std::is_nothrow_move_assignable_v<StartupApplicationStorageSnapshot>);
+        a.storage_=std::move(s);
+    }
     static Mode mode(const StartupApplication &a) { return a.mode_; }
     static void validate(const StartupApplication &a) {
         need(a.error_.empty(),"不健康应用不可捕获");
@@ -151,7 +235,24 @@ struct StartupApplicationReplayAccess {
              "草稿栏位或纪录页非法");
         need(valid_startup_world_human_profile({a.draft_.village,0,false}) &&
              valid_startup_world_human_profile(a.draft_.main_character),"草稿文字或人物非法");
-        need(validate_startup_system_records(a.records_).empty(),"系统记录非法");
+        need(validate_startup_system_records(a.storage_.records).empty(),"系统记录非法");
+        need(a.audio_requests_.empty(),"应用音频输出尚未消费");
+        need(validate_startup_title_menu(a.title_menu_).empty(),"标题菜单关系非法");
+        const auto &menu=a.title_menu_;
+        if(a.page_!=Page::world) {
+            Page projected=Page::title;
+            if(menu.external && !menu.external->returned)
+                projected=menu.external->kind==StartupTitleExternalPage::records?Page::records:Page::configure;
+            else if(menu.confirmation && !menu.confirmation->returned)projected=Page::overwrite;
+            need(projected==a.page_,"应用页面与标题菜单栈不同");
+        } else need(!menu.save_menu && !menu.confirmation && !menu.external,"世界页保留未退休标题子页");
+        if(menu.save_menu) {
+            const auto catalog=a.title_menu_context().catalog;
+            need(menu.save_menu->slot==a.draft_.slot && menu.save_menu->catalog && catalog &&
+                 a.storage_.records.save_directory[static_cast<std::size_t>(a.draft_.slot)][1].packed_date!=-1 &&
+                 menu.save_menu->catalog->revision==catalog->revision &&
+                 menu.save_menu->catalog->digest==catalog->digest,"raw20目录版本或栏位不符");
+        }
         need(ref::WorldRandomStream::from_snapshot(a.random_.snapshot()).has_value(),"标题随机非法");
         if(a.handoff_)need(ref::WorldRandomStream::from_snapshot(*a.handoff_).has_value(),"交接随机非法");
         need(a.page_!=Page::world || a.world_.has_value(),"世界页缺世界");
@@ -187,7 +288,7 @@ struct StartupApplicationReplayAccess {
         if(a.world_) {
             const auto &s=a.world_->state();
             need(!s.scripts.executing_page && s.sound_requests.empty(),"世界未到已消费输出的完整轮末");
-            need(s.cash_peak==a.records_.cash_peak && s.cash_peak_village==a.records_.cash_village,
+            need(s.cash_peak==a.storage_.records.cash_peak && s.cash_peak_village==a.storage_.records.cash_village,
                  "系统资金纪录与世界运行镜像不同");
             const auto *p=top(s);
             if(has_clear) {
@@ -199,7 +300,7 @@ struct StartupApplicationReplayAccess {
                      "世界计分页与应用计数阶段不同");
                 need(validate_startup_clear_score_page(*a.clear_rows_,*a.clear_)==StartupClearScoreError::none,
                      "计分阶段累计关系非法");
-                need(a.clear_->captured_high_score==a.records_.high_score,"捕获最高分与系统纪录不同");
+                need(a.clear_->captured_high_score==a.storage_.records.high_score,"捕获最高分与系统纪录不同");
                 const auto rows=startup_world_clear_score(s);
                 need(rows.candidate.has_value(),"世界六类计分投影拒绝");
                 for(std::size_t i=0;i<6;++i)
@@ -237,10 +338,12 @@ struct StartupApplicationReplayAccess {
             out.i32(slot.active);out.i32(slot.definition);out.i32(slot.x);out.i32(slot.y);
             out.i32(slot.direction);out.i32(slot.age);
         }
+        write_menu(out,a.title_menu_);
+        out.u32(0); // 已消费的一次性音频输出；非空捕获在validate明确拒绝。
         return std::move(out.bytes);
     }
     static StartupApplication restore(const Bytes &bytes, StartupApplicationPaths paths,
-                                       StartupSystemRecords records,
+                                       StartupApplicationStorageSnapshot storage,
                                        std::optional<StartupWorldRuntimeSession> world, Mode expected) {
         Reader in{bytes};
         const auto mode_value=in.u32(),page_value=in.u32();
@@ -253,7 +356,7 @@ struct StartupApplicationReplayAccess {
         const auto random=ref::WorldRandomStream::from_snapshot(read_random(in));
         need(random.has_value(),"标题随机无法恢复");
         StartupApplication a(StartupApplication::RestoreTag{},std::move(paths),*random,expected);
-        a.records_=std::move(records);a.draft_=std::move(draft);a.world_=std::move(world);
+        a.storage_=std::move(storage);a.draft_=std::move(draft);a.world_=std::move(world);
         a.page_=static_cast<Page>(page_value);a.record_page_=record_page;a.requests_=in.u64();
         const auto count=in.u32();need(count<=startup_world_rules().humans.size(),"装饰名单声明超定义规模");
         in.room(static_cast<std::size_t>(count)*4);
@@ -275,19 +378,23 @@ struct StartupApplicationReplayAccess {
             slot.active=in.i32();slot.definition=in.i32();slot.x=in.i32();slot.y=in.i32();
             slot.direction=in.i32();slot.age=in.i32();
         }
+        a.title_menu_=read_menu(in);
+        need(in.u32()==0,"应用捕获边界含未消费音频");
+        a.cleanup_pending_=false;
         in.end(); validate(a); return a;
     }
 };
 
 namespace {
 struct Section { std::uint32_t id,version,required;Bytes bytes; };
-Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &validator) {
+Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &validator,
+             const StartupApplicationStorageView &view) {
     valid_metadata(m,validator);StartupApplicationReplayAccess::validate(a);validate_driver(a,m,validator);
     Writer meta(small_budget);meta.text(m.controller_id);meta.text(m.producer_revision);
     meta.u64(m.next_frame);meta.u64(m.next_command);
     std::vector<Section> sections;
     sections.push_back({1,1,1,std::move(meta.bytes)});
-    sections.push_back({2,1,1,detail::encode_system_records_bytes(a.records())});
+    sections.push_back({2,1,1,view.system_bytes});
     sections.push_back({3,1,1,StartupApplicationReplayAccess::control(a)});
     if(a.world()) {
         StartupWorldSaveMetadata nested;
@@ -296,8 +403,9 @@ Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &vali
         sections.push_back({4,1,1,detail::encode_world_session_bytes(*a.world(),nested)});
     }
     sections.push_back({5,1,1,m.controller_state});
+    sections.push_back({6,1,1,storage_section(view)});
     for(const auto &e:m.extensions)sections.push_back({e.id,e.version,0,e.bytes});
-    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(4);file.u32(1);
+    Writer file(file_budget);file.raw("AVRAPP01",8);file.u32(1);file.u32(7);file.u32(1);
     file.text(startup_world_persistence_dataset());file.text(detail::codec_schema_identity());
     file.text(application_schema);file.u32(static_cast<std::uint32_t>(sections.size()));
     for(const auto &section:sections) {
@@ -308,7 +416,7 @@ Bytes encode(const StartupApplication &a,const Metadata &m,const Validator &vali
     const auto digest=ark::assets::sha256_hex(file.bytes);file.raw(digest.data(),digest.size());
     return std::move(file.bytes);
 }
-struct Candidate { StartupApplication app; Metadata metadata; Bytes system_bytes; };
+struct Candidate { StartupApplication app; Metadata metadata; StartupApplicationStorageView storage; };
 Candidate decode(Bytes file,StartupApplicationPaths paths,Mode expected,const std::string &controller,
                  const Validator &validator) {
     need(file.size()>=64 && file.size()<=file_budget,"容器整体长度非法");
@@ -316,18 +424,18 @@ Candidate decode(Bytes file,StartupApplicationPaths paths,Mode expected,const st
     need(digest==ark::assets::sha256_hex(file),"容器整体摘要不符");
     Reader in{file};const auto signature=in.raw(8);
     need(std::string(signature.begin(),signature.end())=="AVRAPP01","容器标识不符");
-    need(in.u32()==1 && in.u32()==4 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
+    need(in.u32()==1 && in.u32()==7 && in.u32()==1,"格式、应用语义或捕获边界版本未知");
     need(in.text()==startup_world_persistence_dataset(),"数据来源不匹配");
     need(in.text()==detail::codec_schema_identity(),"世界字段身份不匹配");
     need(in.text()==application_schema,"应用字段身份不匹配");
-    const auto count=in.u32();need(count>=4 && count<=65,"分区数非法");
+    const auto count=in.u32();need(count>=5 && count<=66,"分区数非法");
     std::vector<Section> sections;std::set<std::uint32_t> ids;
     for(std::uint32_t i=0;i<count;++i) {
         const auto id=in.u32(),version=in.u32(),required=in.u32();const auto length=in.u64();
         need(version>0 && required<=1 && ids.insert(id).second,"分区身份、版本、必需位重复或非法");
-        need(id>=1 && ((id<=5 && version==1 && required==1) || (id>=1024 && required==0)),
+        need(id>=1 && ((id<=6 && version==1 && required==1) || (id>=1024 && required==0)),
              "未知必需段或保留分区");
-        const auto limit=id==4?file_budget:id==2?system_budget:small_budget;
+        const auto limit=(id==4 || id==6)?file_budget:id==2?system_budget:small_budget;
         need(length<=limit,"分区载荷超预算");
         const auto hash=in.raw(64);auto bytes=in.raw(length);
         need(std::string(hash.begin(),hash.end())==ark::assets::sha256_hex(bytes),"分区摘要不符");
@@ -344,21 +452,22 @@ Candidate decode(Bytes file,StartupApplicationPaths paths,Mode expected,const st
     metadata.controller_state=std::move(section(5).bytes);
     for(auto &s:sections)if(s.id>=1024)metadata.extensions.push_back({s.id,s.version,std::move(s.bytes)});
     valid_metadata(metadata,validator);
-    auto system_bytes=std::move(section(2).bytes);
-    auto records=detail::decode_system_records_bytes(system_bytes);
+    auto storage=read_storage(std::move(section(2).bytes),section(6).bytes);
+    detail::CodecDecodeBudget budget; // 活动Session、审计历史及四槽唯一blob共享累计预算。
     std::optional<StartupWorldRuntimeSession> world;
     if(ids.count(4)) {
         auto nested=detail::decode_world_session_bytes(std::move(section(4).bytes),startup_world_rules(),
-                                                       StartupWorldSavePurpose::replay,nested_controller);
+                                                       StartupWorldSavePurpose::replay,nested_controller,budget);
         need(nested.metadata.next_frame==metadata.next_frame && nested.metadata.controller_state==nested_state &&
              nested.metadata.extensions.empty() && nested.metadata.producer_revision==metadata.producer_revision,
              "嵌套世界与容器边界不同");
         world=std::move(nested.session);
     }
-    auto app=StartupApplicationReplayAccess::restore(section(3).bytes,std::move(paths),std::move(records),
+    detail::validate_application_replay_storage_view(storage,budget);
+    auto app=StartupApplicationReplayAccess::restore(section(3).bytes,std::move(paths),storage.snapshot,
                                                     std::move(world),expected);
     validate_driver(app,metadata,validator);
-    return {std::move(app),std::move(metadata),std::move(system_bytes)};
+    return {std::move(app),std::move(metadata),std::move(storage)};
 }
 } // namespace
 
@@ -371,10 +480,23 @@ std::string startup_application_replay_digest(const StartupApplication &app,cons
     StartupApplicationReplayAccess::validate(app);
     validate_driver(app,metadata,validator);
     Writer summary(file_budget);
-    summary.text("application-state-digest-v1");
+    summary.text("application-state-digest-v2");
     summary.text(startup_world_persistence_dataset());
     summary.text(detail::codec_schema_identity());summary.text(application_schema);
     const auto system=detail::encode_system_records_bytes(app.records());
+    // 摘要必须可用于尚未发布的私有恢复候选，不能读取路径、取得租约或创建锁文件。
+    // 这里只登记包括隐藏项的完整内容身份；真实save/restore另核实际字节和世界语义。
+    std::map<std::array<std::uint8_t,32>,StartupSaveReference> references;
+    for(const auto &slot:app.records().save_directory)for(const auto &entry:slot)if(entry.reference) {
+        const auto inserted=references.emplace(entry.reference->sha256,*entry.reference);
+        need(inserted.second || inserted.first->second==*entry.reference,"同摘要的槽位引用元数据冲突");
+    }
+    summary.u32(static_cast<std::uint32_t>(references.size()));
+    for(const auto &entry:references) {
+        const auto &reference=entry.second;
+        summary.raw(reference.sha256.data(),32);summary.u64(reference.bytes);
+        summary.u32(static_cast<std::uint32_t>(reference.purpose));
+    }
     const auto control=StartupApplicationReplayAccess::control(app);
     summary.u64(system.size());summary.raw(system.data(),system.size());
     summary.u64(control.size());summary.raw(control.data(),control.size());
@@ -398,7 +520,10 @@ std::string save_startup_application_replay(const std::filesystem::path &directo
                                            const std::vector<std::filesystem::path> &protected_paths) {
     try {
         const auto paths=detail::prepare_replay_capture_paths(directory,output,StartupApplicationReplayAccess::paths(app),protected_paths);
-        auto bytes=encode(app,metadata,validator);
+        auto capture=capture_startup_application_storage(StartupApplicationReplayAccess::paths(app).root,
+                                                        StartupApplicationReplayAccess::storage(app));
+        if(!capture.view)throw std::runtime_error(capture.error);
+        auto bytes=encode(app,metadata,validator,*capture.view);
         (void)decode(bytes,StartupApplicationReplayAccess::paths(app),StartupApplicationReplayAccess::mode(app),
                      metadata.controller_id,validator);
         // 重新核预检后的路径状态；最终create-only仍保证同名目标竞态不覆盖。
@@ -421,8 +546,11 @@ std::string restore_startup_application_replay(const std::filesystem::path &sour
         auto candidate=decode(detail::read_save_file(paths.container,file_budget),paths.application,
                               StartupApplicationReplayAccess::mode(app),controller,validator);
         (void)detail::prepare_replay_restore_paths(isolated,source,StartupApplicationReplayAccess::paths(app),protected_paths);
-        // 最后一次可失败动作只发布一份新系统文件；此后应用与Driver规范字节共同noexcept安装。
-        detail::create_save_file(paths.application.system,candidate.system_bytes);
+        // 暂存完整引用闭包后以目录句柄无覆盖发布，随后仅noexcept联合安装。
+        auto installed=detail::publish_application_replay_storage(paths.application.root,candidate.storage,[&] {
+            (void)detail::prepare_replay_restore_paths(isolated,source,StartupApplicationReplayAccess::paths(app),protected_paths);
+        });
+        StartupApplicationReplayAccess::install_storage(candidate.app,std::move(installed));
         app=std::move(candidate.app);metadata=std::move(candidate.metadata);
         return {};
     } catch(const std::exception &e) { return e.what(); }

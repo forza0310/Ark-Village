@@ -94,7 +94,7 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     ark_copy_raylib_runtime()
     add_library(ark_world_ui_test_support SHARED src/desktop/ui/layout.cpp
-        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/projection.cpp)
+        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/sprite_picking.cpp src/desktop/projection.cpp)
     target_include_directories(ark_world_ui_test_support PUBLIC src/desktop
         PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")
     add_dependencies(ark_world_ui_test_support ark_desktop_glyphs)

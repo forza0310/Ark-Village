@@ -7,6 +7,7 @@
 #include <cmath>
 #include <condition_variable>
 #include <deque>
+#include <list>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -46,6 +47,7 @@ class WorldSession::Impl {
             initial.cash_peak_village = system.records->cash_village;
         }
         take_sound_outputs(initial, *initial_frame);
+        audio_outputs.splice(audio_outputs.end(), prepared_audio);
         initial_frame->state = std::make_shared<const WorldState>(std::move(initial));
         initial_frame->previous = initial_frame->state;
         initial_frame->published = Clock::now();
@@ -58,6 +60,14 @@ class WorldSession::Impl {
     std::shared_ptr<const WorldFrame> frame() const {
         std::lock_guard<std::mutex> lock(mutex);
         return published;
+    }
+    std::vector<simulation::StartupAudioRequest> take_audio_requests() {
+        std::lock_guard<std::mutex> lock(mutex);
+        std::vector<simulation::StartupAudioRequest> out;
+        for (const auto &batch : audio_outputs)
+            out.insert(out.end(), batch.begin(), batch.end());
+        audio_outputs.clear(); // Allocation failure leaves the complete FIFO available.
+        return out;
     }
     std::uint64_t submit(WorldCommand command) {
         std::lock_guard<std::mutex> lock(mutex);
@@ -115,11 +125,16 @@ class WorldSession::Impl {
     std::filesystem::path save_directory;
     // Fully prepared but unpublished transaction; retry never recomputes awards or randomness.
     std::shared_ptr<WorldFrame> pending_system;
+    using AudioBatches = std::list<std::vector<simulation::StartupAudioRequest>>;
+    AudioBatches audio_outputs;                 // Mutex-protected, independent of immutable frames.
+    AudioBatches prepared_audio, pending_audio; // Worker-only transaction staging.
     std::optional<std::uint64_t> held_page; // Worker-only physical input binding, not source state.
 
-    static void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
-        // Same once-only take semantics as the maintained runtime session. This desktop
-        // currently has no audio adapter, so consume transient outputs in a silent sink.
+    void take_sound_outputs(WorldState &candidate, WorldFrame &frame) {
+        if (candidate.sound_requests.empty())
+            return;
+        // Allocate before any durable write; final publication only splices list nodes.
+        prepared_audio.emplace_back(candidate.sound_requests);
         frame.consumed_sound_requests += candidate.sound_requests.size();
         candidate.sound_requests.clear();
     }
@@ -240,6 +255,7 @@ class WorldSession::Impl {
                 force_system || (before->system.clear && !result->system.clear));
             if (!error.empty()) {
                 pending_system = std::move(result);
+                pending_audio.splice(pending_audio.end(), prepared_audio);
                 result = std::make_shared<WorldFrame>(*before);
                 result->previous = result->state;
                 result->system_error = error;
@@ -250,6 +266,7 @@ class WorldSession::Impl {
         }
         {
             std::lock_guard<std::mutex> lock(mutex);
+            audio_outputs.splice(audio_outputs.end(), prepared_audio);
             published = result;
         }
         publications.notify_all();
@@ -257,6 +274,7 @@ class WorldSession::Impl {
     }
     std::shared_ptr<const WorldFrame> fail(const WorldFrame &current, const std::string &error,
                                            std::uint64_t serial = 0) {
+        prepared_audio.clear();
         auto next = current;
         next.previous = next.state;
         next.failed = true;
@@ -289,6 +307,7 @@ class WorldSession::Impl {
             if (kind != WorldCommandKind::retry_system_write || !pending_system)
                 return frame();
             auto retry = *pending_system;
+            prepared_audio.splice(prepared_audio.end(), pending_audio);
             retry.system_error.clear();
             retry.last_command_serial = input.serial;
             retry.revision = current.revision + 1;
@@ -486,6 +505,10 @@ class WorldSession::Impl {
                     loaded.state->cash_peak_village = next.system.records.cash_village;
                     // Loading an older world is not a new cross-game record or inheritance event.
                     next.system.clear.reset();
+                    loaded.state->sound_requests.push_back(
+                        {simulation::StartupAudioOperation::replace_bgm,
+                         loaded.state->active_task && loaded.state->task.encounter ? 2 : 1});
+                    take_sound_outputs(*loaded.state, next);
                     auto replacement = std::make_shared<const WorldState>(std::move(*loaded.state));
                     std::string success = "读取完毕";
                     next.save_message = std::move(success);
@@ -504,6 +527,8 @@ class WorldSession::Impl {
             if (applied && kind == WorldCommandKind::save_slot)
                 next.save_message = "保存完毕，目录暂无法刷新";
             else {
+                prepared_audio.clear();
+                next.consumed_sound_requests = current.consumed_sound_requests;
                 next.state = current.state;
                 next.previous = current.state;
                 next.generation = current.generation;
@@ -734,4 +759,7 @@ WorldSession::wait_for_frame_after(std::uint64_t revision,
     return impl_->wait_after(revision, timeout);
 }
 void WorldSession::stop() { impl_->stop(); }
+std::vector<simulation::StartupAudioRequest> WorldSession::take_audio_requests() {
+    return impl_->take_audio_requests();
+}
 } // namespace ark::app

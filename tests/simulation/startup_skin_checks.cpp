@@ -17,6 +17,9 @@
 #include <string>
 #include <vector>
 
+int check_steam_startup_skin(const std::filesystem::path &source_root);
+int check_steam_facility_skin(const std::filesystem::path &source_root);
+
 namespace {
 using namespace ark::simulation;
 namespace tools = ark::assets;
@@ -637,5 +640,5 @@ int check_startup_skin(const std::filesystem::path &source_root,
             std::filesystem::create_directories(optional_output_png.parent_path());
         check(ExportImage(sheet.image,optional_output_png.string().c_str()),"导出CPU静态参考素材拼图");
     }
-    return check.count;
+    return check.count + check_steam_startup_skin(source_root) + check_steam_facility_skin(source_root);
 }

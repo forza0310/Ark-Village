@@ -75,6 +75,25 @@ std::optional<int> lift_height(int age, int velocity, int acceleration, int init
     return fits(height) ? std::optional<int>(static_cast<int>(height)) : std::nullopt;
 }
 }
+std::optional<std::vector<StartupCoinEffectDraw>> startup_world_coin_effect_draws(
+    const StartupWorldRuntimeState &s) {
+    std::vector<StartupCoinEffectDraw> result;
+    for (std::size_t index=0; index<s.visual_effects.size(); ++index) {
+        const auto &record=s.visual_effects[index];
+        if (record.size()<2) return {};
+        if (record[0]!=4) continue;
+        if (record.size()!=6) return {};
+        if (record[1]<0) continue;
+        // 原分支先计算二次项再检查11门槛，坏载荷不能因末段覆盖而绕过范围核验。
+        const auto movement=lift_height(record[1],record[4],record[5],0);
+        if (!movement) return {};
+        const int dy=record[1]>=11 ? -16 : std::min(0,*movement);
+        StartupVisualDraw image{StartupVisualResource::common,94,144,(record[1]%14)/2,0,
+                                {},{0,dy},index};
+        result.push_back({{record[2],record[3]},image});
+    }
+    return result;
+}
 std::optional<std::vector<StartupVisualDraw>> startup_world_equipment_lift_draws(
     const StartupWorldRuntimeState &s, ref::CharacterId id) {
     const auto &ai = s.scene.world.world.ai;

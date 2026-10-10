@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <set>
 
 namespace ark::simulation {
@@ -43,6 +44,72 @@ ref::FacilityEconomyInput input(const State &s, int id) {
             ++in.legacy_job_counts.at(s.rules->jobs.at(job).type);
         }
     return in;
+}
+// 原o.a(0,m)即时读I[0]+s[0]；维护到达消费者的price投影须与新邻接同次安装。
+// 只准备值，不更新共享I/job_counts，也不借通知资格决定经济事实是否生效。
+std::optional<std::map<std::uint64_t, int>>
+prepare_neighbour_prices(const State &s, const ref::WorldMapRefreshState &map) {
+    const auto &world = s.scene.world.world;
+    if (!s.rules || map.neighbours.size() != world.facilities.size())
+        return {};
+    ref::FacilityEconomyInput input;
+    for (const auto &human : s.rules->humans) {
+        const auto presence = s.human_presence.find(human.identity);
+        if (presence == s.human_presence.end())
+            return {};
+        if (presence->second == 0)
+            continue;
+        const auto growth = world.ai.growth.find(human.identity);
+        if (growth == world.ai.growth.end())
+            return {};
+        const int job = growth->second.definition.current_profession;
+        if (job < 0 || static_cast<std::size_t>(job) >= s.rules->jobs.size())
+            return {};
+        const int type = s.rules->jobs[static_cast<std::size_t>(job)].type;
+        if (type < 0 || static_cast<std::size_t>(type) >= input.legacy_job_counts.size() ||
+            input.legacy_job_counts[static_cast<std::size_t>(type)] ==
+                std::numeric_limits<int>::max())
+            return {};
+        ++input.legacy_job_counts[static_cast<std::size_t>(type)];
+    }
+    std::map<int, const StartupDefinition *> definitions;
+    for (const auto &d : s.rules->facilities)
+        if (!definitions.emplace(d.id, &d).second)
+            return {};
+    // 同定义只派生一次共享价格及上限，各实例仍分别加邻接并再次封顶。
+    std::map<int, std::pair<std::int64_t, std::int64_t>> shared_prices;
+    std::map<std::uint64_t, int> prices;
+    for (const auto &[id, instance] : world.facilities) {
+        const auto neighbour = map.neighbours.find(id);
+        const auto d = definitions.find(instance.placement.definition_id);
+        if (neighbour == map.neighbours.end() || d == definitions.end())
+            return {};
+        auto shared = shared_prices.find(d->first);
+        if (shared == shared_prices.end()) {
+            const auto use = world.facility_uses.find(d->first);
+            const auto progress = s.scripts.facilities.find(d->first);
+            if (use == world.facility_uses.end() || progress == s.scripts.facilities.end() ||
+                use->second.completed_uses < 0)
+                return {};
+            input.level = use->second.level;
+            input.completed_definition_uses =
+                static_cast<std::uint64_t>(use->second.completed_uses);
+            input.definition_improvements = progress->second.improvements;
+            const auto values = ref::derive_facility_economy(d->second->economy, input);
+            if (!values.values)
+                return {};
+            shared = shared_prices.emplace(
+                d->first, std::make_pair(values.values->definition_attributes[0],
+                                         2LL * d->second->economy.attributes[0].fifth)).first;
+        }
+        const auto price = std::min(shared->second.first + neighbour->second.current[0],
+                                    shared->second.second);
+        if (price < std::numeric_limits<int>::min() ||
+            price > std::numeric_limits<int>::max())
+            return {};
+        prices.emplace(id, static_cast<int>(price));
+    }
+    return prices;
 }
 bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true,
                  bool include_neighbours = true) {
@@ -93,11 +160,15 @@ bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true,
             return false;
         m = roads.candidate->state;
     }
+    std::optional<std::map<std::uint64_t, int>> prices;
     if (include_neighbours) {
         auto neighbours = ref::prepare_world_map_neighbours(m, !initial_neighbours && notices);
         if (!neighbours.candidate)
             return false;
         m = std::move(neighbours.candidate->state);
+        prices = prepare_neighbour_prices(s, m);
+        if (!prices)
+            return false;
     }
     const auto &r = m;
     world.map = r.map;
@@ -116,6 +187,9 @@ bool refresh_map(State &s, bool initial_neighbours = false, bool notices = true,
         s.neighbourhood[entry.first] = entry.second.current;
         s.facility_details.at(entry.first).notices = entry.second.notices;
     }
+    if (prices)
+        for (auto &[id, instance] : world.facilities)
+            instance.price = prices->find(id)->second; // 候选已验证完整一一对应。
     return true;
 }
 int free_number(const std::set<int> &used) {
@@ -450,7 +524,7 @@ static StartupBuildResult install_facility(State &s, ref::Position anchor,
                                      price}) != ref::AccountingError::none)
             return {Error::missing_source};
         month += price;
-        next.sound_requests.push_back(11);
+        next.sound_requests.push_back({StartupAudioOperation::ordinary_play, 11});
         next.build_feedback_message = "建设完毕";
         next.build_feedback_counter = 20;
     }
@@ -1052,7 +1126,7 @@ bool consume_startup_world_facility_upgrade(State &s, std::uint64_t page, bool c
         return false;
     if (!confirm) {
         if (phase == 0 && counter == 1)
-            s.sound_requests.push_back(20);
+            s.sound_requests.push_back({StartupAudioOperation::jingle, 20});
         return true;
     }
     if (phase == 0) {

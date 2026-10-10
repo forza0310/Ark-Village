@@ -1,12 +1,14 @@
 #pragma once
 
 #include "ark/app/world_session.hpp"
+#include "world_active_trade_evidence.hpp"
 #include <iosfwd>
 #include <set>
 
 namespace ark::test {
 // Evidence retained across player-save restarts. These are observations, never world inputs.
 struct ActiveVillageStats {
+    ActiveTradeEvidence trade;
     std::uint64_t commands{}, ticks{}, bakery{}, departed_task{};
     std::int64_t construction_cost{}, minimum_cash{}, facility_income{}, bakery_income{};
     int activities{}, gifts{}, task_departures{}, task_successes{}, task_failures{};

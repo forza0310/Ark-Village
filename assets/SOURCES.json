@@ -4803,6 +4803,274 @@
       "bytes": 1623,
       "width": 105,
       "height": 100
+    },
+    {
+      "file": "audio/kairoquest_title.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_title.ogg",
+      "sha256": "87a3da3b2a48259e7e84de8b098461e24d868887b7eb873645616bf63ffa13f2",
+      "bytes": 340320,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_main.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_main.ogg",
+      "sha256": "cc127b1c653f2ace9d34dbd921936217631669e9567bd65faeeeaf0236c52e77",
+      "bytes": 727419,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_battle.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_battle.ogg",
+      "sha256": "3b81e5d9060fd61dfd80f3b7a65f4aa7c69161492c4b738219a2b42af6ace9b4",
+      "bytes": 426088,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_happy.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_happy.ogg",
+      "sha256": "2def2e235d01c9bfa6b478780c28b8d9d5d7d1af55193efc582e1d0d73403f6d",
+      "bytes": 651232,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_yorokobi.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_yorokobi.ogg",
+      "sha256": "870f532d7434cfd1e549218946206dabfb3655b9d0e51759875271ebdea3b113",
+      "bytes": 119223,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_yorokobishort.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_yorokobishort.ogg",
+      "sha256": "d730f4b502a113f2f4b5eaab57362a6ec7d76e4c222d0234c98bf43d82c999b6",
+      "bytes": 32489,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_kanashimi.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_kanashimi.ogg",
+      "sha256": "5e3ad5a35990ba6c0c3c4d7e18e56f1a056a2c635ba12b31c3677a8d0fd1284c",
+      "bytes": 73634,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_06.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_06.ogg",
+      "sha256": "d01bf477ed6a49e64ac4535aac14509084130563180f2b22153c5a98c60d1d95",
+      "bytes": 14085,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_00.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_00.ogg",
+      "sha256": "4eb633e102fb18a7724d7cebd7eed82f4693ba63b3a00cdc556349d3dbf7149b",
+      "bytes": 20523,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_03.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_03.ogg",
+      "sha256": "1a6d515687b284d8c426aeb43adbe3d221aecac923c3ec84324cea24e34ea207",
+      "bytes": 11532,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_07.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_07.ogg",
+      "sha256": "3e9a9fa68461a4fb69e0b268c0fd23c4dcfb260fbb2e5a7b36d85e3ff3a91f30",
+      "bytes": 25771,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_09.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_09.ogg",
+      "sha256": "7d4e8275a9a4d861e8a7aa2680705b0d55ba984dda565e17fd1e4c4547610656",
+      "bytes": 9421,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_seattackmnst1.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_seattackmnst1.ogg",
+      "sha256": "474e0bcaecadbd1cffe2f6fbc3c97ac9eeadd9757848ec29c59d36ad1d061334",
+      "bytes": 12701,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_seattackmnst2.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_seattackmnst2.ogg",
+      "sha256": "fd9db8059dab35ebb6536737b9918b223eaae8c748efca6cd2b55ddcd7ae8536",
+      "bytes": 9531,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_seattacksword.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_seattacksword.ogg",
+      "sha256": "06f4b937fa5744591aab15204a66986c703a162244c3bbdc4c24b2d6d80fda8b",
+      "bytes": 9087,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_seattacklance.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_seattacklance.ogg",
+      "sha256": "cbd092f716e43868999096aacbd50b413f75958458663b2285bc4d1ecbb7db53",
+      "bytes": 10818,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_semagicheal.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_semagicheal.ogg",
+      "sha256": "dff92a4c69befa18905cd50a62190382012f7426dbb9cc22b694cbb918ac75c1",
+      "bytes": 13914,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_semagicfire.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_semagicfire.ogg",
+      "sha256": "0891537706d2a662741b63b9300e07ed543107e30d81b324ad7a6890e5150c3f",
+      "bytes": 9954,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_semagicblizzard.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_semagicblizzard.ogg",
+      "sha256": "ddc12a7c5974780b51e37aed1781a2c8f7e75901f5f989c6942086000f840bc3",
+      "bytes": 23680,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/kairoquest_semagicthunder.ogg",
+      "source": "research/dungeon_village_1/assets/audio/kairoquest_semagicthunder.ogg",
+      "sha256": "68d44e864fbfab58ac93d9e5f59ef8344d97470cf4921c68f64403267fcf312f",
+      "bytes": 11023,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/department_levelup.ogg",
+      "source": "research/dungeon_village_1/assets/audio/department_levelup.ogg",
+      "sha256": "b02f32a7d8d59cb05fda4615a9df299af6a40fb4e1a0a912b2f42b2d30e94e30",
+      "bytes": 25104,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/z_se07.ogg",
+      "source": "research/dungeon_village_1/assets/audio/z_se07.ogg",
+      "sha256": "bbb6ac89c3b48bd1419d84f9a955b12475f73898cb78154527b9ea4a6290bc08",
+      "bytes": 16178,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/z_se08.ogg",
+      "source": "research/dungeon_village_1/assets/audio/z_se08.ogg",
+      "sha256": "727b08f8d704ca8979c663926e04242a5338da71f66758d1eba38a546c8e2780",
+      "bytes": 11216,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_04.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_04.ogg",
+      "sha256": "3af6b950429523bf60911256e9cd2b6772582a73df7e0ed89d9ed531f753b538",
+      "bytes": 16395,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_05.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_05.ogg",
+      "sha256": "42122d548805d210ac24c8d34d8680e0172de519641d907e2d81dde6e5dbf7e3",
+      "bytes": 16110,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "audio/se_01.ogg",
+      "source": "research/dungeon_village_1/assets/audio/se_01.ogg",
+      "sha256": "e23f7f8f72aa2b605e6b17dd16c5a89d1a155cd17df81b1c0427f18ddceaa53a",
+      "bytes": 22485,
+      "source_revision": "1f19c88",
+      "purpose": "Typed desktop audio request; fixed APK resource identity"
+    },
+    {
+      "file": "steam_common/number05.png",
+      "source": "research/dungeon_village_1/assets/steam-build-common/original/common/number05.png",
+      "sha256": "9d94dd8c289f00459f4d9e7586942b5d60c130c5da381fa08b087e5194512b6d",
+      "bytes": 701,
+      "source_revision": "1f19c88",
+      "purpose": "Steam UI original image; independent from APK same-name pixels",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "file": "steam_common/number08.png",
+      "source": "research/dungeon_village_1/assets/steam-facility-common/original/common/number08.png",
+      "sha256": "8914321921983ba8508b86db5c499cb580df1a5468860d354a09cede9d9f8361",
+      "bytes": 648,
+      "source_revision": "1f19c88",
+      "purpose": "Steam UI original image; independent from APK same-name pixels",
+      "width": 100,
+      "height": 21
+    },
+    {
+      "file": "steam_common/icon_param00.png",
+      "source": "research/dungeon_village_1/assets/steam-facility-common/original/common/icon_param00.png",
+      "sha256": "2b99ce3fa12e25e4d1fab78e06b6cd0ada87f8e3f4bf68c94c8421d7172c22e0",
+      "bytes": 1790,
+      "source_revision": "1f19c88",
+      "purpose": "Steam UI original image; independent from APK same-name pixels",
+      "width": 112,
+      "height": 32
+    },
+    {
+      "file": "steam_common/wnd_ato.png",
+      "source": "research/dungeon_village_1/assets/steam-human-common/original/common/wnd_ato.png",
+      "sha256": "ffbf2c65ae896f069228161125df46291121c68555b184603346e745de81c056",
+      "bytes": 187,
+      "source_revision": "1f19c88",
+      "purpose": "Steam UI original image; independent from APK same-name pixels",
+      "width": 10,
+      "height": 7
+    },
+    {
+      "file": "event/event_getItem_back.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_getItem_back.png",
+      "sha256": "69df8790eba86572be2862457ef1f8dc85ddbf703e9f23e822ba0bacdb81aec4",
+      "bytes": 18728,
+      "source_revision": "1f19c88",
+      "purpose": "Steam facility upgrade81 maintained background request; original published event image",
+      "width": 180,
+      "height": 80
+    },
+    {
+      "file": "event/event_BackMini02.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_BackMini02.png",
+      "sha256": "238f9b2d934033b4571e32307fb8b7d7c2162a3121e3a44c645409fe850c45a8",
+      "bytes": 378,
+      "source_revision": "1f19c88",
+      "purpose": "Steam facility upgrade81 maintained background request; original published event image",
+      "width": 86,
+      "height": 70
     }
   ]
 }

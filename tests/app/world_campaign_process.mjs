@@ -4,12 +4,12 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { verify as verifyLibraries } from '../../scripts/shared_library_contract.mjs';
 const [exe, supplied, option, prefixArgument] = process.argv.slice(2);
 if (!exe || !supplied || !(process.argv.length === 4 ||
-    (process.argv.length === 6 && ['--resume-prefix', '--first-star-prefix', '--late-resume-prefix', '--second-star-prefix'].includes(option) && prefixArgument)))
-  throw Error('Expected executable and build work parent [--resume-prefix completed-new-directory | --first-star-prefix passed-first-star-directory | --late-resume-prefix completed-late-new-directory | --second-star-prefix passed-second-star-directory]');
+    (process.argv.length === 6 && ['--resume-prefix', '--first-star-prefix', '--late-resume-prefix', '--second-star-prefix', '--third-star-prefix'].includes(option) && prefixArgument)))
+  throw Error('Expected executable and build work parent [--resume-prefix completed-new-directory | --first-star-prefix passed-first-star-directory | --late-resume-prefix completed-late-new-directory | --second-star-prefix passed-second-star-directory | --third-star-prefix passed-second-star-directory]');
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const build = await fs.realpath(path.join(root, 'build'));
 const inside = candidate => {
@@ -48,19 +48,20 @@ async function verifyExecution() {
     if (!(await fs.readFile(file)).equals(expected)) throw Error(`Execution identity changed: ${file}`);
   verifyLibraries(root, libraryInputs, libraryContract);
 }
+const third = option === '--third-star-prefix';
 const lateResume = option === '--late-resume-prefix';
 const late = option === '--first-star-prefix' || lateResume;
 const pot = option === '--second-star-prefix';
 const firstStarPrefix = late && !lateResume;
-const endpointPrefix = firstStarPrefix || pot;
+const endpointPrefix = firstStarPrefix || pot || third;
 const firstQualification = 'active_player_first_star_business_checkpoint_restart';
 const secondQualification = 'active_player_second_star_from_verified_first_star_restart';
-const qualification = pot ? 'active_player_magic_pot_from_verified_second_star_restart'
+const qualification = third ? 'active_player_third_star_from_verified_second_star_restart' : pot ? 'active_player_magic_pot_from_verified_second_star_restart'
   : late ? secondQualification : firstQualification;
 const firstMarker = 'ark-active-first-star-v1\n';
 const secondMarker = 'ark-active-second-star-v1\n';
-const marker = pot ? 'ark-active-magic-pot-v1\n' : late ? secondMarker : firstMarker;
-const sourceMarker = pot || lateResume ? secondMarker : firstMarker;
+const marker = third ? 'ark-active-third-star-v1\n' : pot ? 'ark-active-magic-pot-v1\n' : late ? secondMarker : firstMarker;
+const sourceMarker = pot || third || lateResume ? secondMarker : firstMarker;
 let prefix;
 let prefixFiles;
 // Validate the finished first process before creating the new run. Never mutate or resume
@@ -78,12 +79,16 @@ if (prefixArgument) {
     throw Error('Wrong prefix marker');
   const resultBytes = await read('RESULT.json');
   const result = JSON.parse(resultBytes.toString());
-  if (result.qualification !== (pot || lateResume ? secondQualification : firstQualification) ||
+  if (result.qualification !== (pot || third || lateResume ? secondQualification : firstQualification) ||
       !(endpointPrefix ? result.status === 'passed' : ['passed', 'failed'].includes(result.status)))
     throw Error('Prefix is not a completed active-business run');
+  if (!result.execution || result.execution.source_snapshot !== execution.source_snapshot ||
+      result.execution.source_revision !== execution.source_revision ||
+      result.execution.library_identity !== execution.library_identity)
+    throw Error('Prefix execution source/library identity differs from current certified runtime');
   // Pot acceptance requires the full successful second-star chain, including a separate
   // cold-file verifier. A passed label or a saved date alone cannot qualify an input.
-  if (pot) {
+  if (pot || third) {
     for (const name of ['late-new', 'late-resume', 'verify-late']) {
       const matches = result.phases?.filter(phase => phase.phase === name) ?? [];
       if (matches.length !== 1 || matches[0].code !== 0 || matches[0].timedOut || matches[0].reused)
@@ -91,17 +96,17 @@ if (prefixArgument) {
     }
   }
   const newPhases = result.phases?.filter(phase => phase.phase ===
-    (pot ? 'late-resume' : lateResume ? 'late-new' : firstStarPrefix ? 'resume' : 'new')) ?? [];
+    (pot || third ? 'late-resume' : lateResume ? 'late-new' : firstStarPrefix ? 'resume' : 'new')) ?? [];
   if (newPhases.length !== 1 || newPhases[0].code !== 0 || newPhases[0].timedOut || newPhases[0].reused)
     throw Error('Prefix requires its original successful new process, not a reused or failed phase');
   prefixFiles = new Map();
   const inputs = [];
   const slotName = endpointPrefix ? 'manual-2.ark' : 'manual-1.ark';
   const strategyName = endpointPrefix ? 'strategy1.txt' : 'strategy0.txt';
-  const logName = pot ? 'late-resume.log' : lateResume ? 'late-new.log' : firstStarPrefix ? 'resume.log' : 'new.log';
+  const logName = pot || third ? 'late-resume.log' : lateResume ? 'late-new.log' : firstStarPrefix ? 'resume.log' : 'new.log';
   for (const name of [slotName, strategyName, 'system.arksys', logName,
     ...(endpointPrefix ? ['manual-1.ark', 'strategy0.txt'] : []),
-    ...(pot ? ['late-new.log', 'verify-late.log'] : [])]) {
+    ...(pot || third ? ['late-new.log', 'verify-late.log'] : [])]) {
     const expected = result.files?.filter(file => file.name === name) ?? [];
     const content = await read(name);
     const digest = sha256(content);
@@ -113,13 +118,13 @@ if (prefixArgument) {
       throw Error('Successful new phase has no recorded business checkpoint save');
   }
   const [sidecarMagic, boundDigest] = prefixFiles.get(strategyName).toString().split(/\r?\n/);
-  if (sidecarMagic !== (pot || lateResume ? 'ARK_ACTIVE_LATE_CHECKPOINT_1' : 'ARK_ACTIVE_CHECKPOINT_1') ||
+  if (sidecarMagic !== (pot || third || lateResume ? 'ARK_ACTIVE_LATE_CHECKPOINT_1' : 'ARK_ACTIVE_CHECKPOINT_1') ||
       boundDigest !== sha256(prefixFiles.get(slotName)))
     throw Error('Prefix strategy evidence is not bound to the exact player checkpoint');
   prefix = {
     directory: source, resultSha256: sha256(resultBytes), sourceStatus: result.status,
     qualification: result.qualification, newPhase: newPhases[0], inputs,
-    scope: pot ? 'Completed second-star endpoint with three successful original processes; the new process revalidates both cold player slots before moving the sole Owner into the pot route'
+    scope: third ? 'Completed current-identity second-star endpoint revalidated by cold-loading both player slots before the real restaurant, third-star and school route' : pot ? 'Completed second-star endpoint with three successful original processes; the new process revalidates both cold player slots before moving the sole Owner into the pot route'
       : lateResume ? 'Reuse only the original successful late-new player checkpoint; no failed late-resume world progress is inherited or certified. The source RESULT links its verified historical first-star input.'
       : firstStarPrefix ? 'Historical first-star endpoint only; this does not certify the prefix as a new-game rerun under the current source revision'
       : 'Reuse only the successful new-process player checkpoint; failed resume progress is not inherited or certified',
@@ -137,7 +142,8 @@ for (;;) {
 if (!inside(ancestor)) throw Error('Campaign ancestor escapes build');
 await fs.mkdir(parent, { recursive: true });
 if (!inside(await fs.realpath(parent))) throw Error('Campaign parent escapes build');
-const directory = await fs.mkdtemp(path.join(parent, pot ? 'magic-pot-player-' : late ? 'second-star-player-' : 'active-player-'));
+const directory = path.join(parent, `${third ? 'third-star-player-' : pot ? 'magic-pot-player-' : late ? 'second-star-player-' : 'active-player-'}${randomUUID()}`);
+await fs.mkdir(directory); // Exclusive creation with inherited workspace ACLs.
 await fs.writeFile(path.join(directory, 'ACTIVE_CAMPAIGN'), marker, { flag: 'wx' });
 if (endpointPrefix) await fs.mkdir(path.join(directory, 'input'));
 if (prefixFiles)
@@ -153,7 +159,7 @@ process.on('SIGINT', cancel); process.on('SIGTERM', cancel);
 const phases = prefix && !endpointPrefix ? [{ ...prefix.newPhase, reused: true, source: prefix.directory }] : [];
 let failure;
 try {
-  for (const phase of pot ? ['pot-new', 'pot-resume', 'verify-pot'] : lateResume ? ['late-resume', 'verify-late'] : late ? ['late-new', 'late-resume', 'verify-late'] : prefix ? ['resume'] : ['new', 'resume']) {
+  for (const phase of third ? ['third-new', 'third-resume', 'verify-third'] : pot ? ['pot-new', 'pot-resume', 'verify-pot'] : lateResume ? ['late-resume', 'verify-late'] : late ? ['late-new', 'late-resume', 'verify-late'] : prefix ? ['resume'] : ['new', 'resume']) {
     if (cancelled) throw Error('Campaign cancelled');
     await verifyExecution();
     const started = Date.now();
@@ -180,7 +186,7 @@ try {
 } finally {
   process.off('SIGINT', cancel); process.off('SIGTERM', cancel);
   try { await verifyExecution(); } catch (error) { failure ??= error; }
-  if (late || pot) {
+  if (late || pot || third) {
     for (const [name, expected] of prefixFiles) {
       try {
         // A resumed run legitimately updates its own system cash record. Its player
@@ -216,7 +222,7 @@ try {
   await fs.writeFile(path.join(directory, 'RESULT.json'), JSON.stringify({
     status: failure ? 'failed' : 'passed',
     qualification,
-    policy: pot ? 'Verified second-star prefix; real item deposit, stable player save/restart, natural date processing, discovery, paid production, resulting item consumption and continued trade; normal speed; cold-load fresh random'
+    policy: third ? 'Current-identity second-star prefix; real restaurant trade, task victory, stable save/restart, genuine third-star conditions, paid school construction and school activity 7, full subsequent calendar month trade; normal speed; cold-load fresh random' : pot ? 'Verified second-star prefix; real item deposit, stable player save/restart, natural date processing, discovery, paid production, resulting item consumption and continued trade; normal speed; cold-load fresh random'
       : late ? 'Verified historical first-star prefix; real construction, residence admission, new task victory, stable save/restart, four second-star conditions, paid activity 30 and continued trade; normal speed; cold-load fresh random'
       : 'P1 real construction, cultivation, activities, task victory, promotion, exhibition, continued trade; normal speed; cold-load fresh random',
     phases, files, prefix, execution, error: failure?.message,
@@ -225,4 +231,4 @@ try {
   console.log(`Campaign evidence: ${directory}`);
 }
 if (failure) throw failure;
-console.log(`PASS active ${pot ? 'magic-pot' : late ? 'second-star' : 'first-star'} player campaign ${directory}`);
+console.log(`PASS active ${third ? 'third-star' : pot ? 'magic-pot' : late ? 'second-star' : 'first-star'} player campaign ${directory}`);

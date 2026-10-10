@@ -54,6 +54,10 @@ try {
     assert.equal(certificate.tail_frames, 20);
     assert.equal(certificate.certification_level, 'new_game_reference_tail');
     const original = await fs.readFile(snapshot);
+    assert.equal(original.subarray(0, 8).toString('ascii'), 'AVRSAVE1');
+    assert.equal(original.readUInt32LE(8), 1, 'Published world container format');
+    assert.equal(original.readUInt32LE(12), 4, 'Published world semantics retires old income histories');
+    assert.equal(original.readUInt32LE(16), 2, 'Runner consumes replay purpose, not normal saves');
     const originalCertificate = await fs.readFile(snapshot + '.json');
     const candidate = path.join(periodic, 'prefix-420.awr');
     const originalCandidate = await fs.readFile(candidate);
@@ -92,6 +96,18 @@ try {
     corrupted[corrupted.length - 1] ^= 1;
     await fs.writeFile(invalid, corrupted);
     await run(['--scenario', 'natural_expansion', '--load-prefix', invalid, '--save-at', '440'], /整体摘要不符/);
+    // Rehash deliberately altered headers so rejection checks semantic identity, not checksum.
+    for (const retired of [1, 2, 3, 5]) {
+        const body = Buffer.from(original.subarray(0, -64));
+        body.writeUInt32LE(retired, 12);
+        await fs.writeFile(invalid, Buffer.concat([body, Buffer.from(hash(body), 'ascii')]));
+        await run(['--scenario', 'natural_expansion', '--load-prefix', invalid, '--save-at', '440'],
+            /源不是本版replay文件/);
+    }
+    const truncated = original.subarray(0, 20);
+    await fs.writeFile(invalid, Buffer.concat([truncated, Buffer.from(hash(truncated), 'ascii')]));
+    await run(['--scenario', 'natural_expansion', '--load-prefix', invalid, '--save-at', '440'],
+        /源前缀分区边界不符/);
 
     // Preflight must reject product-root/research paths before writing or launching the game.
     await run(['--snapshot-file', path.join(root, 'forbidden-prefix.awr')], /必须位于产品build/);

@@ -121,6 +121,8 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_tax.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_village_activity.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_world_visuals.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/steam_facility_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/steam_startup_skin.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/rules/accounting_test.cpp"
@@ -235,19 +237,27 @@ set(ARK_WORLD_SYSTEM_SOURCES
 set(ARK_STARTUP_APPLICATION_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/startup_application.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_actions.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_application_menu.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_replay.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_replay_paths.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_application_storage.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_application_storage_replay.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/startup_application_title.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/startup_title_menu.cpp"
 )
 set(ARK_STARTUP_APPLICATION_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_paths_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_state_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_system_records_test.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_title_menu_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_title_menu_replay_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_title_presentation_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_clear_score_test.cpp"
 )
 set(ARK_STARTUP_SKIN_TEST_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_skin_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/steam_facility_skin_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/steam_startup_skin_checks.cpp"
 )
 set(ARK_WORLD_HASH_SOURCES
     "${ARK_WORLD_ROOT}/src/assets/sha256.cpp"
@@ -257,8 +267,10 @@ set(ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES
 )
 set(ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_actions_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_application_active_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_natural_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_application_replay_checks.cpp"
+    "${ARK_WORLD_ROOT}/tests/simulation/startup_application_second_star_replay.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_codec_checks.cpp"
     "${ARK_WORLD_ROOT}/tests/simulation/startup_world_restore_checks.cpp"
 )

@@ -47,6 +47,8 @@ void system_command_transactions() {
     auto failed = await(session, [](const auto &f) { return f.failed || !f.system_error.empty(); });
     check(!failed->failed && failed->state == old->state && failed->system.records.cash_peak == 0,
           "System write failure preserves entire published world, random, reward and records");
+    check(session.take_audio_requests().empty(),
+          "Uncommitted system candidate cannot leak a playback request");
     std::filesystem::remove(target);
     app::WorldCommand retry;
     retry.kind = app::WorldCommandKind::retry_system_write;
@@ -131,6 +133,11 @@ void save_command_transactions() {
     check(load < old_input &&
               input_result(*frame, old_input).outcome == app::WorldCommandOutcome::rejected,
           "Queued old-world input is rejected by generation after successful load");
+    check(session.take_audio_requests() ==
+                  std::vector<sim::StartupAudioRequest>{
+                      {sim::StartupAudioOperation::replace_bgm, 1}} &&
+              session.take_audio_requests().empty(),
+          "Committed player load activates its BGM once outside immutable snapshots");
     const auto reloaded = app::capture_world_save(*frame->state);
     check(saved.image && reloaded.image && saved.image->bytes == reloaded.image->bytes,
           "Worker load restores durable snapshot without advancing source update");
@@ -142,6 +149,7 @@ void save_command_transactions() {
     check(!frame->failed && frame->state == before_failure && frame->save_menu_open &&
               frame->generation == generation + 1 && !frame->save_message.empty(),
           "Corrupt load keeps current Owner, generation and modal usable");
+    check(session.take_audio_requests().empty(), "Rejected load cannot restart BGM");
     frame = input_frame(session, session.close_save_menu());
     check(!frame->save_menu_open && frame->state->scene.framework_paused,
           "Closing file overlay never resumes a manually paused world");

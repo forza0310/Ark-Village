@@ -33,7 +33,7 @@ class WorldManagement {
     // separate input, preventing one physical click from both choosing and buying a building.
     bool input_scene(const app::WorldState &state, const WorldCameraView &view, Extent extent,
                      std::optional<Vector2> mouse, bool click, float zoom, bool back, bool blocked,
-                     app::WorldSession &session);
+                     app::WorldSession &session, const SpritePickMap &picks);
     // Only visible placement controls capture a pointer press; hidden controls stay map space.
     bool pointer_on_control(const app::WorldState &state, Extent extent, Vector2 mouse) const;
     void draw_placement(const app::WorldState &state, const WorldCameraView &view, Extent extent,

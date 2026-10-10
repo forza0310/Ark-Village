@@ -88,7 +88,8 @@ std::string advance_world_clear(State &candidate, WorldSystemState &system, bool
     if (!closed.candidate ||
         !simulation::write_startup_world_runtime_scripts(candidate, closed.candidate->state))
         return "计分页关闭失败";
-    candidate.sound_requests.push_back(candidate.active_task && candidate.task.encounter ? 2 : 1);
+    candidate.sound_requests.push_back({simulation::StartupAudioOperation::replace_bgm,
+                                        candidate.active_task && candidate.task.encounter ? 2 : 1});
     for (const int event : {6, clear.score.new_record ? 4 : 5}) {
         const auto next = ref::prepare_world_script(
             simulation::startup_world_runtime_catalog(),

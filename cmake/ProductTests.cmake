@@ -90,6 +90,11 @@ ark_test_executable(ark_original_loop_tests SOURCES tests/app/original_loop_test
 ark_test_case(original_loop_pacing ark_original_loop_tests LABELS rules)
 
 # Read-only presentation plans have no raylib dependency and run in all four configurations.
+# Audio device policy owns a separate fake-device lifetime, without raylib or a window.
+ark_test_executable(ark_world_audio_tests SOURCES tests/desktop/world_audio_test.cpp)
+target_include_directories(ark_world_audio_tests PRIVATE include src/desktop)
+ark_test_case(world_audio ark_world_audio_tests LABELS presentation)
+
 foreach(module IN ITEMS world_combat_visuals world_rest_visuals world_dungeon_visuals script_text)
     ark_test_executable(ark_${module}_tests
         SOURCES tests/desktop/${module}_test.cpp LIBRARIES ark_world_visuals)
@@ -181,17 +186,17 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
             src/desktop/ui/world_facility_catalog.cpp
             src/desktop/ui/world_magic_pot.cpp
-            src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
+            src/desktop/ui/world_human.cpp src/desktop/ui/world_human_detail.cpp src/desktop/ui/world_tax.cpp
             src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
             src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
-            src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
+            src/desktop/ui/world_building.cpp src/desktop/ui/world_facility_upgrade.cpp src/desktop/ui/world_progression.cpp
             src/desktop/world_build_placement.cpp src/desktop/world_human_inspection.cpp
             src/desktop/world_editing.cpp
             src/desktop/world_scene.cpp src/desktop/world_overlay_render.cpp
             src/desktop/world_rank.cpp src/desktop/character_status.cpp
             src/desktop/character_visibility.cpp
             src/desktop/world_task_inspection.cpp
-            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/ui/world_startup.cpp
+            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_audio.cpp src/desktop/ui/world_startup.cpp
         LIBRARIES ark_world_ui_test_support ark_world_queries ark_world_session)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"

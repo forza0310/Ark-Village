@@ -13,6 +13,7 @@
 #include "ui/world_reports.hpp"
 #include "ui/world_startup.hpp"
 #include "ui/world_tasks.hpp"
+#include "world_audio.hpp"
 #include "world_canvas.hpp"
 #include "world_inspection.hpp"
 #include "world_management.hpp"
@@ -63,6 +64,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                    std::optional<State> *checkpoint = nullptr,
                                    WorldManagementInspection *inspection_checkpoint = nullptr) {
     WorldWindow window(options);
+    WorldAudio audio(assets);
     float zoom = options.zoom_percent / 100.F;
     Extent extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
     // Initialization is temporary; this value is the sole persistent canonical world.
@@ -93,7 +95,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     if (title_inspection || (options.inspect_page.empty() && options.frames == 0)) {
         state.scene.framework_paused = options.paused;
         state.scene.speed_setting = 0;
-        if (!run_world_title(options, assets, state))
+        if (!run_world_title(options, assets, state, audio))
             return;
         extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
         state.reference_viewport = world_viewport(extent, zoom);
@@ -129,6 +131,9 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             : save_inspection_driver.directory();
     app::WorldSession session(std::move(state), session_directory);
     auto publication = session.frame();
+    audio.consume(
+        {{simulation::StartupAudioOperation::replace_bgm,
+          publication->state->active_task && publication->state->task.encounter ? 2 : 1}});
     int frames{}, paragraph{}, scroll{};
     std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
     std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
@@ -144,6 +149,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
     if (menu_inspection || save_inspection)
         pending_menu = session.open_main_menu();
     WorldManagement management;
+    SpritePickMap scene_picks;
+    std::uint64_t pick_generation = publication->generation;
     WorldSaveMenu save_menu;
     auto generation = publication->generation;
     std::uint64_t discard_interpolation_revision{};
@@ -178,6 +185,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         render_statistics.interval(frames, (now - last_render) * 1000);
         last_render = now;
         publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
+        audio.consume(session.take_audio_requests());
+        audio.update(now);
         const auto &current = *publication->state;
         const bool failed = publication->failed || !publication->system_error.empty();
         if (publication->generation != generation) {
@@ -529,9 +538,16 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             held_task_page = next_held_page;
         }
         const bool main_scene = !menu_blocked && !active_page(current);
+        // Click the last presented artwork, including its actual interpolated actor positions.
+        // Loading replaces all identities; never reuse a hit list across world generations.
+        if (pick_generation != publication->generation) {
+            scene_picks.reset({});
+            pick_generation = publication->generation;
+        }
         const bool scene_handled =
-            main_scene && management.input_scene(current, view, extent, mouse, click, zoom, back,
-                                                 desired_pause || failed || pending_task, session);
+            main_scene &&
+            management.input_scene(current, view, extent, mouse, click, zoom, back,
+                                   desired_pause || failed || pending_task, session, scene_picks);
         if (main_scene && !scene_handled && current.scene.scene_state == 0 && !desired_pause &&
             !failed && !pending_task && IsKeyPressed(KEY_T)) {
             task_feedback.clear();
@@ -553,11 +569,12 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 .count();
         const float alpha = static_cast<float>(
             std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
+        scene_picks.reset(clip, raster, canvas.size.width, canvas.size.height);
         draw_world_scene(current, sprites, text, zoom,
                          publication->revision <= discard_interpolation_revision
                              ? nullptr
                              : publication->previous.get(),
-                         alpha, &view);
+                         alpha, &view, &scene_picks);
         if (!active_page(current) && !publication->main_menu_open && !publication->save_menu_open)
             management.draw_footprint(current, view, extent, mouse, zoom, sprites);
         EndScissorMode();

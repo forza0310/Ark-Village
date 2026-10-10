@@ -4,6 +4,7 @@
 #include "startup_persistence_bytes.hpp"
 #include <algorithm>
 #include <limits>
+#include <map>
 #include <set>
 #include <stdexcept>
 #include <utility>
@@ -33,10 +34,33 @@ void valid(const StartupSystemRecords &r) {
             "系统记录继承short字节串长度为奇数");
     require(r.opaque_sections.size() <= 60, "系统记录可选分区过多");
     std::set<std::uint32_t> ids;
-    // 固定头／两必需段／字段长度／整体摘要的实际编码开销，不将payload预算冒充文件预算。
-    std::size_t total = 292 + std::string(startup_world_persistence_dataset()).size() +
+    // 固定头／三必需段／四目录及整体摘要的实际开销，不把payload预算冒充文件预算。
+    std::size_t total = 464 + std::string(startup_world_persistence_dataset()).size() +
                         r.score_village.size() + r.cash_village.size() +
                         r.facility_levels.size() + r.profession_status.size();
+    std::map<std::array<std::uint8_t,32>,StartupSaveReference> references;
+    for (const auto &slot : r.save_directory)
+        for (const auto &entry : slot) {
+            require(entry.packed_date == -1 ||
+                        (entry.packed_date >= 0 && (entry.packed_date % 10000) / 100 < 12 &&
+                         entry.packed_date % 100 < 4), "存档目录日期非法");
+            require(entry.village.size() <= text_budget, "存档目录村名超预算");
+            if (entry.reference) {
+                require(entry.reference->bytes > 0 && entry.reference->bytes <= 128U*1024U*1024U &&
+                            entry.reference->purpose == StartupWorldSavePurpose::normal,
+                        "存档目录引用长度或用途非法");
+                require(valid_startup_world_human_profile({entry.village,0,false}),
+                        "存档目录村名编码或控制字符非法");
+                const auto inserted=references.emplace(entry.reference->sha256,*entry.reference);
+                require(inserted.second || inserted.first->second==*entry.reference,
+                        "同摘要的存档目录引用声明不一致");
+                total += 44;
+            } else
+                require(entry.packed_date == -1 && entry.village.empty() && entry.cash == 0,
+                        "无载荷引用的空目录含可见日期或残留元数据");
+            total += entry.village.size();
+        }
+    require(total <= file_budget, "系统记录总预算超限");
     for (const auto &s : r.opaque_sections) {
         require(s.id >= 1024 && s.version > 0 && ids.insert(s.id).second,
                 "系统记录可选分区身份非法或重复");
@@ -131,7 +155,7 @@ int signed32(Reader &r) {
 }
 Bytes encode(const StartupSystemRecords &r) {
     valid(r);
-    Writer record, inheritance;
+    Writer record, inheritance, directory;
     record.u32(static_cast<std::uint32_t>(r.last_slot));
     record.u64(static_cast<std::uint64_t>(r.high_score));
     record.u64(static_cast<std::uint64_t>(r.cash_peak));
@@ -140,11 +164,24 @@ Bytes encode(const StartupSystemRecords &r) {
     record.u32(static_cast<std::uint32_t>(r.trophy));
     inheritance.blob(r.facility_levels);
     inheritance.blob(r.profession_status);
+    directory.u64(r.revision);
+    for (const auto &slot : r.save_directory)
+        for (const auto &entry : slot) {
+            directory.u32(static_cast<std::uint32_t>(entry.packed_date));
+            directory.text(entry.village);
+            directory.u64(static_cast<std::uint64_t>(entry.cash));
+            directory.u32(entry.reference ? 1 : 0);
+            if (entry.reference) {
+                directory.raw(entry.reference->sha256.data(), entry.reference->sha256.size());
+                directory.u64(entry.reference->bytes);
+                directory.u32(static_cast<std::uint32_t>(entry.reference->purpose));
+            }
+        }
     Writer file;
     file.raw(magic, 8);
-    file.u32(1);
+    file.u32(2);
     file.text(startup_world_persistence_dataset());
-    file.u32(static_cast<std::uint32_t>(2 + r.opaque_sections.size()));
+    file.u32(static_cast<std::uint32_t>(3 + r.opaque_sections.size()));
     const auto section = [&](std::uint32_t id, std::uint32_t version, bool required,
                              const Bytes &payload) {
         file.u32(id);
@@ -157,6 +194,7 @@ Bytes encode(const StartupSystemRecords &r) {
     };
     section(1, 1, true, record.bytes);
     section(2, 1, true, inheritance.bytes);
+    section(3, 1, true, directory.bytes);
     for (const auto &s : r.opaque_sections)
         section(s.id, s.version, false, s.bytes);
     const auto digest = ark::assets::sha256_hex(file.bytes);
@@ -171,17 +209,17 @@ StartupSystemRecords decode(Bytes file) {
     Reader reader{file};
     const auto signature = reader.raw(8);
     require(std::equal(signature.begin(), signature.end(), magic), "系统文件标识不符");
-    require(reader.u32() == 1, "不支持的系统文件版本");
+    require(reader.u32() == 2, "不支持的系统文件版本（旧版本不迁移）");
     require(reader.text() == startup_world_persistence_dataset(), "系统记录固定数据来源不匹配");
     const auto count = reader.u32();
-    require(count >= 2 && count <= 62, "系统文件分区数非法");
+    require(count >= 3 && count <= 63, "系统文件分区数非法");
     StartupSystemRecords r;
-    bool record_seen = false, inheritance_seen = false;
+    bool record_seen = false, inheritance_seen = false, directory_seen = false;
     std::set<std::uint32_t> ids;
     for (std::uint32_t i = 0; i < count; ++i) {
         const auto id = reader.u32(), version = reader.u32(), required = reader.u32();
         require(ids.insert(id).second && version > 0 && required <= 1, "系统分区身份非法或重复");
-        require((id == 1 || id == 2) ? version == 1 && required == 1 : id >= 1024 && required == 0,
+        require((id == 1 || id == 2 || id == 3) ? version == 1 && required == 1 : id >= 1024 && required == 0,
                 "系统必需分区版本不符或未知必需／保留分区");
         const auto n = reader.u64();
         require(n <= (id >= 1024 ? opaque_budget : file_budget), "系统分区载荷超预算");
@@ -203,15 +241,50 @@ StartupSystemRecords decode(Bytes file) {
             r.profession_status = section.blob();
             section.end();
             inheritance_seen = true;
+        } else if (id == 3) {
+            r.revision = section.u64();
+            for (auto &slot : r.save_directory)
+                for (auto &entry : slot) {
+                    const auto date = section.u32();
+                    require(date == UINT32_MAX || date <= static_cast<std::uint32_t>(INT32_MAX),
+                            "存档目录日期整数越界");
+                    entry.packed_date = date == UINT32_MAX ? -1 : static_cast<int>(date);
+                    entry.village = section.text();
+                    const auto cash = section.u64();
+                    entry.cash = cash <= INT64_MAX ? static_cast<std::int64_t>(cash) :
+                        -1 - static_cast<std::int64_t>(UINT64_MAX - cash);
+                    const auto present = section.u32();
+                    require(present <= 1, "存档目录引用标记非法");
+                    if (present) {
+                        StartupSaveReference ref;
+                        const auto hash = section.raw(ref.sha256.size());
+                        std::copy(hash.begin(), hash.end(), ref.sha256.begin());
+                        ref.bytes = section.u64();
+                        const auto purpose = section.u32();
+                        require(purpose == static_cast<std::uint32_t>(StartupWorldSavePurpose::normal),
+                                "存档目录未知载荷用途");
+                        ref.purpose = StartupWorldSavePurpose::normal;
+                        entry.reference = ref;
+                    }
+                }
+            section.end();
+            directory_seen = true;
         } else
             r.opaque_sections.push_back({id, version, payload});
     }
     reader.end();
-    require(record_seen && inheritance_seen, "系统必需分区缺失");
+    require(record_seen && inheritance_seen && directory_seen, "系统必需分区缺失");
     valid(r);
     return r;
 }
 } // namespace
+bool operator==(const StartupSaveReference &a, const StartupSaveReference &b) {
+    return a.sha256 == b.sha256 && a.bytes == b.bytes && a.purpose == b.purpose;
+}
+bool operator==(const StartupSaveDirectoryEntry &a, const StartupSaveDirectoryEntry &b) {
+    return a.packed_date == b.packed_date && a.village == b.village && a.cash == b.cash &&
+        a.reference == b.reference;
+}
 namespace persistence_detail {
 Bytes encode_system_records_bytes(const StartupSystemRecords &records) {
     auto bytes = encode(records);

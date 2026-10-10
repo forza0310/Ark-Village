@@ -43,17 +43,20 @@ void publish_save_file(const std::filesystem::path &path, const std::vector<std:
 #endif
     // 独占创建防并行写者覆盖临时文件；不删除或先改名旧有效目标。
     for (int attempt = 0; attempt < 32; ++attempt) {
-        temporary = path;
-        temporary += ".tmp." +
+        // 内容寻址blob名已有64字节摘要；临时名不再复制整个目标名，避免新根暂存路径
+        // 叠加后越过Windows路径长度。仍同目录、CREATE_NEW独占，重试不覆盖任何既有文件。
+        temporary = path.parent_path() / (".avr.tmp." +
                      std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) +
-                     "." + std::to_string(sequence++);
+                     "." + std::to_string(sequence++));
 #ifdef _WIN32
         handle = CreateFileW(temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
                              FILE_ATTRIBUTE_NORMAL, nullptr);
         if (handle != INVALID_HANDLE_VALUE)
             break;
-        if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_ALREADY_EXISTS)
-            throw std::runtime_error("无法创建临时存档");
+        const auto error = GetLastError();
+        if (error != ERROR_FILE_EXISTS && error != ERROR_ALREADY_EXISTS)
+            throw std::runtime_error("无法创建临时存档：" + temporary.u8string() +
+                                     " (Windows " + std::to_string(error) + ")");
 #else
         handle = ::open(temporary.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0600);
         if (handle >= 0)
@@ -70,7 +73,8 @@ void publish_save_file(const std::filesystem::path &path, const std::vector<std:
         throw std::runtime_error("临时存档名称冲突");
 #endif
     struct Cleanup {
-        std::filesystem::path path;
+        // temporary活到函数尾；持引用不分配，避免已打开句柄后路径复制抛出时无人回收。
+        const std::filesystem::path &path;
         ~Cleanup() {
             std::error_code ignored;
             std::filesystem::remove(path, ignored);

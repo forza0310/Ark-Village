@@ -124,7 +124,7 @@ bool emit_startup_world_actor_sound(State &s, ref::CharacterId id, int sound) {
     if (metadata == s.actor_metadata.end() || sound < 0)
         return false;
     if (sound_visible(s, metadata->second.cached_screen_position))
-        s.sound_requests.push_back(sound);
+        s.sound_requests.push_back({StartupAudioOperation::ordinary_play, sound});
     return true;
 }
 std::optional<int> startup_world_actor_direction(const State &s, ref::CharacterId actor_id,
@@ -293,6 +293,13 @@ void configure_startup_world_runtime_nonactor_adapter(ref::WorldRuntimeAdapter<S
     adapter.actors.presentation = [nonactor](const State &current,
         const ref::WorldActorPresentationRequest &r) -> std::optional<State> {
         auto s = current;
+        if (r.task_encounter_start) {
+            if (r.cached_sound || r.lifecycle || r.sound || r.hit || r.attack || r.shop ||
+                r.definition || r.target ||
+                !consume_startup_world_runtime_task_start(s, r.actor, *r.task_encounter_start))
+                return {};
+            return s;
+        }
         if (r.cached_sound)
             return emit_startup_world_actor_sound(s, r.actor, *r.cached_sound)
                 ? std::optional<State>(std::move(s)) : std::nullopt;

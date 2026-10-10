@@ -1,8 +1,11 @@
 #include "ark/simulation/startup_system_records.hpp"
+#include "ark/simulation/startup_application_storage.hpp"
 #include "ark/assets/sha256.hpp"
 #include "../../src/simulation/startup_persistence_bytes.hpp"
 #include "../../src/simulation/startup_world_file_io.hpp"
+#include "../../src/simulation/startup_application_storage_paths.hpp"
 #include <chrono>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -166,6 +169,155 @@ void create_only_files(const std::filesystem::path &directory, const Bytes &orig
     expected_files.insert(raced.filename());
     check(file_names(directory) == expected_files, "两写者退出后只留下完整目标且无临时文件");
 }
+// 四条目录是逻辑记录；本夹具的interrupt载荷为合法normal条件档，不冒充原日历轮内自动档。
+void application_storage(const std::filesystem::path &parent) {
+#ifdef _WIN32
+    const auto root=parent/"application-storage";
+    check(std::filesystem::create_directory(root),"创建独立应用存储夹具根");
+    auto loaded=load_startup_application_storage(root);
+    check(loaded.snapshot && loaded.snapshot->missing && loaded.snapshot->digest==
+              ark::assets::sha256_hex(persistence_detail::encode_system_records_bytes(StartupSystemRecords{})) &&
+              file_names(root).empty(),"读取缺失系统只返回默认观察值，不写文件");
+    const auto empty=*loaded.snapshot;
+    auto records=empty.records;
+    records.high_score=77;
+    records.opaque_sections={{1042,3,Bytes{7,0,255}}};
+    auto committed=commit_startup_application_records(root,empty,records);
+    check(committed.snapshot && !committed.snapshot->missing && !committed.cleanup_pending &&
+              committed.error.empty() && committed.snapshot->records.revision==1 &&
+              committed.snapshot->records.high_score==77,"单系统提交同步纪录与修订");
+    auto current=*committed.snapshot;
+    const auto system=root/"system.avr";
+    auto before=read(system);
+    check(!commit_startup_application_records(root,empty,records).snapshot && read(system)==before,
+          "旧缺失观察值不能覆盖已发布系统");
+    StartupSession initial;
+    StartupWorldRuntimeSession world(initial.state(),ref::WorldRandomStream::from_java_seed(1));
+    const auto world_digest=startup_world_session_digest(world);
+    for(const bool existing_directory:{false,true}) {
+        if(existing_directory)check(std::filesystem::create_directory(root/"worlds"),"准备预存空worlds目录");
+        const auto held=CreateFileW(system.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+        check(held!=INVALID_HANDLE_VALUE,"锁住首个blob保存的系统提交点");
+        const auto rejected=save_startup_application_slot(root,current,current.records,0,StartupSaveKind::manual,world);
+        CloseHandle(held);
+        check(!rejected.snapshot && !rejected.cleanup_pending &&
+                  rejected.error.find("替换存档失败")!=std::string::npos && read(system)==before &&
+                  std::filesystem::exists(root/"worlds")==existing_directory,
+              "首次blob在真实系统替换失败后只回收本次新目录，预存空目录不误删");
+        if(existing_directory)check(file_names(root/"worlds").empty(),"失败后预存目录保留且无新blob");
+    }
+    auto candidate=current.records;
+    candidate.last_slot=0;
+    committed=save_startup_application_slot(root,current,candidate,0,StartupSaveKind::manual,world);
+    check(committed.snapshot.has_value(),"真实新局稳定normal载荷保存："+committed.error);
+    current=*committed.snapshot;
+    const auto &manual=current.records.save_directory[0][1];
+    check(manual.packed_date==300 && manual.village==world.state().scripts.village_name &&
+              manual.cash==world.state().scene.world.world.ai.accounting.funds() && manual.reference &&
+              current.records.opaque_sections.front().bytes==Bytes({7,0,255}),
+          "保存目录取同一世界日期/村名/现金，未知系统段保留");
+    const auto old_blob=root/"worlds"/("world-"+persistence_detail::storage_hash_hex(manual.reference->sha256)+".avrs");
+    const auto old_bytes=read(old_blob);
+    before=read(system);
+    const auto reuse_lock=CreateFileW(system.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    check(reuse_lock!=INVALID_HANDLE_VALUE,"锁住复用既有blob的系统提交点");
+    const auto reuse_failed=save_startup_application_slot(root,current,current.records,1,StartupSaveKind::manual,world);
+    CloseHandle(reuse_lock);
+    check(!reuse_failed.snapshot && !reuse_failed.cleanup_pending &&
+              reuse_failed.error.find("替换存档失败")!=std::string::npos && read(system)==before &&
+              read(old_blob)==old_bytes && file_names(root/"worlds").size()==1,
+          "同hash复用但系统失败时不误删预存blob");
+    auto restored=load_startup_application_slot(root,current,0,StartupSaveKind::manual);
+    check(restored.snapshot && startup_world_state_digest(restored.snapshot->session.state())==
+              startup_world_state_digest(world.state()),"目录加载完整校验正常世界，不推进世界");
+    const auto prior=current;
+    committed=save_startup_application_slot(root,current,current.records,0,StartupSaveKind::interrupt,world);
+    check(committed.snapshot && file_names(root/"worlds").size()==1,
+          "中断条件目录可复用相同字节blob，不复制第二份或改用途");
+    current=*committed.snapshot;
+    check(current.records.save_directory[0][0].reference==current.records.save_directory[0][1].reference,
+          "同一字节摘要的两目录引用一致");
+    auto view=capture_startup_application_storage(root,current);
+    check(view.view && view.view->blobs.size()==1 && view.view->blobs.front().bytes==old_bytes &&
+              view.view->system_bytes==read(system),"租约内捕获完整系统与去重四目录文件视图");
+    before=read(system);
+    check(!commit_startup_application_records(root,prior,prior.records).snapshot && read(system)==before,
+          "旧修订/摘要观察值明确拒绝，不覆盖较新目录");
+    auto tampered=current.records;
+    tampered.save_directory[0][1].packed_date=-1;
+    check(!commit_startup_application_records(root,current,tampered).snapshot && read(system)==before,
+          "普通纪录出口禁止绕过目录隐藏事务");
+    for(const auto slot:{-1,2})
+        check(!hide_startup_application_slot(root,current,current.records,slot,StartupSaveKind::manual).snapshot,
+              "越界槽号显式拒绝");
+    check(!hide_startup_application_slot(root,current,current.records,0,static_cast<StartupSaveKind>(7)).snapshot,
+          "未知目录种类显式拒绝");
+    committed=hide_startup_application_slot(root,current,current.records,0,StartupSaveKind::manual);
+    check(committed.snapshot && committed.error.empty(),"隐藏目录成功");
+    current=*committed.snapshot;
+    check(current.records.save_directory[0][1].packed_date==-1 &&
+              current.records.save_directory[0][1].reference==prior.records.save_directory[0][1].reference &&
+              current.records.save_directory[0][0].packed_date==300 && read(old_blob)==old_bytes &&
+              !load_startup_application_slot(root,current,0,StartupSaveKind::manual).snapshot,
+          "隐藏只清选中日期，其他行与原字节仍在且隐藏行不能加载");
+    view=capture_startup_application_storage(root,current);
+    check(view.view && view.view->blobs.size()==1,"隐藏目录引用仍进入文件视图，不被当垃圾删除");
+    before=read(system);
+    check(!hide_startup_application_slot(root,current,current.records,0,StartupSaveKind::manual).snapshot &&
+              read(system)==before,"重复隐藏明确拒绝且系统不重写");
+    auto changed_world=world;
+    changed_world.set_speed(1); // 明确维护条件差异，确保保存为不同字节，不注入业务奖励。
+    const auto files_before=file_names(root/"worlds");
+    const auto locked=CreateFileW(system.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    check(locked!=INVALID_HANDLE_VALUE,"锁住系统替换点制造真实晚期写失败");
+    const auto failed=save_startup_application_slot(root,current,current.records,1,StartupSaveKind::manual,changed_world);
+    CloseHandle(locked);
+    check(!failed.snapshot && !failed.error.empty() && !failed.cleanup_pending && read(system)==before &&
+              file_names(root/"worlds")==files_before && read(old_blob)==old_bytes,
+          "新blob已准备但系统发布失败时持租约回收新文件，保留旧目录与全部旧档");
+    const auto lease=CreateFileW((root/"write.lock").c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    check(lease!=INVALID_HANDLE_VALUE,"持有真实写租约夹具");
+    const auto busy=commit_startup_application_records(root,current,current.records);
+    CloseHandle(lease);
+    check(!busy.snapshot && read(system)==before,"另一个存储写者持租约时拒绝，不偷偷无锁提交");
+    committed=save_startup_application_slot(root,current,current.records,0,StartupSaveKind::interrupt,changed_world);
+    check(committed.snapshot && file_names(root/"worlds").size()==2,"另一行换新blob仍保留隐藏行旧引用");
+    current=*committed.snapshot;
+    const auto held_blob=CreateFileW(old_blob.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
+    check(held_blob!=INVALID_HANDLE_VALUE,"阻止已退休blob清理夹具");
+    committed=save_startup_application_slot(root,current,current.records,0,StartupSaveKind::manual,changed_world);
+    CloseHandle(held_blob);
+    check(committed.snapshot && committed.cleanup_pending && committed.error.empty() && read(old_blob)==old_bytes,
+          "提交后清理失败仍明确成功并报告清理债务，不诱使重复业务提交");
+    current=*committed.snapshot;
+    check(load_startup_application_slot(root,current,0,StartupSaveKind::manual).snapshot.has_value(),
+          "清理债务不影响新目录世界读取");
+    const auto fresh_blob=root/"worlds"/("world-"+persistence_detail::storage_hash_hex(current.records.save_directory[0][1].reference->sha256)+".avrs");
+    const auto alias=root/"alias.avrs";
+    std::filesystem::create_hard_link(fresh_blob,alias);
+    check(!load_startup_application_slot(root,current,0,StartupSaveKind::manual).snapshot,
+          "载荷硬链接别名拒绝，不能借存储根改外部同实体文件");
+    std::filesystem::remove(alias);
+    const auto fresh_bytes=read(fresh_blob);
+    write(fresh_blob,Bytes{1,2,3});
+    check(!load_startup_application_slot(root,current,0,StartupSaveKind::manual).snapshot &&
+              !capture_startup_application_storage(root,current).view,
+          "可见目录不掩盖损坏载荷，加载/文件视图都拒绝");
+    write(fresh_blob,fresh_bytes);
+    check(startup_world_session_digest(world)==world_digest,"存储/读取/失败均不修改源Session与随机历史");
+    check(!load_startup_application_storage(root/".."/"application-storage").snapshot,
+          "上溯路径不能在规范化后蒙混过关");
+    auto exhausted=current.records;
+    exhausted.revision=UINT64_MAX;
+    check(save_startup_system_file(system,exhausted).empty(),"构造修订耗尽的系统条件档");
+    loaded=load_startup_application_storage(root);
+    before=read(system);
+    check(loaded.snapshot && !commit_startup_application_records(root,*loaded.snapshot,loaded.snapshot->records).snapshot &&
+              read(system)==before,"修订耗尽拒绝，不回卷旧身份");
+#else
+    check(!load_startup_application_storage(parent).snapshot,"未实现平台明确拒绝目录存储");
+#endif
+}
 void run(const std::filesystem::path &directory) {
     check(!directory.empty(), "测试目录参数为空");
     std::filesystem::create_directories(directory);
@@ -191,6 +343,12 @@ void run(const std::filesystem::path &directory) {
     r.facility_levels = {0, 1, 0, 5};
     r.profession_status = {0, 0, 0, 2};
     r.opaque_sections = {{1024, 9, {0, 255, 7}}, {2048, 1, {}}};
+    r.revision=17;
+    StartupSaveReference directory_ref;
+    directory_ref.sha256.fill(0x42);
+    directory_ref.bytes=1234;
+    r.save_directory[0][1]={20303,"目录村",-678,directory_ref};
+    r.save_directory[1][0]={-1,"隐藏村",INT64_MIN,directory_ref};
     check(validate_startup_system_records(r).empty(), "有效系统记录校验");
     check(save_startup_system_file(file, r).empty(), "系统文件正常保存");
     const auto original = read(file);
@@ -208,7 +366,8 @@ void run(const std::filesystem::path &directory) {
     const auto &copy = *loaded.records;
     check(copy.last_slot == 1 && copy.high_score == 9876543210LL && copy.cash_peak == 12345678901LL &&
               copy.score_village == "分数村" && copy.cash_village == "资金村" && copy.trophy == 4 &&
-              copy.facility_levels == r.facility_levels && copy.profession_status == r.profession_status,
+              copy.facility_levels == r.facility_levels && copy.profession_status == r.profession_status &&
+              copy.revision==17 && copy.save_directory==r.save_directory,
           "全部已知字段往返");
     check(copy.opaque_sections.size() == 2 && copy.opaque_sections[0].id == 1024 &&
               copy.opaque_sections[0].version == 9 && copy.opaque_sections[0].bytes == Bytes({0, 255, 7}) &&
@@ -224,20 +383,21 @@ void run(const std::filesystem::path &directory) {
     reject(broken, changed, "整体摘要损坏拒绝");
     resign(changed);
     reject(broken, changed, "整体摘要有效仍拒绝坏分区摘要");
-    for (const auto mutation : {0, 1, 2, 3, 4, 5}) {
+    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6}) {
         changed = original;
         switch (mutation) {
-        case 0: u32(changed, 8, 2); break;
+        case 0: u32(changed, 8, 3); break;
         case 1: changed.at(16) ^= 1; break; // 数据身份字符串，不改变长度。
-        case 2: u32(changed, offsets[2].header + 8, 1); break;
-        case 3: u32(changed, offsets[2].header, 9); break;
-        case 4: u32(changed, offsets[2].header, 1); break;
+        case 2: u32(changed, offsets[3].header + 8, 1); break;
+        case 3: u32(changed, offsets[3].header, 9); break;
+        case 4: u32(changed, offsets[3].header, 1); break;
         case 5: u32(changed, offsets[0].header + 4, 2); break;
+        case 6: u32(changed, 8, 1); break;
         }
         resign(changed);
         reject(broken, changed, "版本／来源／未知必需／保留／重复段拒绝");
     }
-    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6, 7}) {
+    for (const auto mutation : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}) {
         auto bad = r;
         switch (mutation) {
         case 0: bad.last_slot = 2; break;
@@ -252,11 +412,27 @@ void run(const std::filesystem::path &directory) {
             for (std::uint32_t i = 0; i < 4; ++i)
                 bad.opaque_sections.push_back({1024 + i, 1, Bytes(1024U * 1024U, 0)});
             break;
+        case 8: bad.save_directory[0][1].packed_date=20304; break;
+        case 9: bad.save_directory[0][1].packed_date=21200; break;
+        case 10: bad.save_directory[0][1].reference.reset(); break;
+        case 11: bad.save_directory[0][1].reference->purpose=StartupWorldSavePurpose::replay; break;
+        case 12: bad.save_directory[0][1].reference->bytes=128U*1024U*1024U+1; break;
+        case 13: bad.save_directory[0][1].village="坏\n名"; break;
+        case 14: ++bad.save_directory[1][0].reference->bytes; break;
         }
         check(!validate_startup_system_records(bad).empty(), "非法业务或预算数据显式拒绝");
         check(!save_startup_system_file(file, bad).empty() && read(file) == original,
               "编码拒绝不覆盖旧有效文件");
     }
+    changed=original;
+    // 分区3的revision8 + 首条空目录(date4/textlen4/cash8)后为严格u32引用标记。
+    u32(changed,offsets[2].payload+24,2);
+    const Bytes directory_payload(changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].payload),
+        changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].payload+offsets[2].length));
+    const auto directory_hash=ark::assets::sha256_hex(directory_payload);
+    std::copy(directory_hash.begin(),directory_hash.end(),changed.begin()+static_cast<std::ptrdiff_t>(offsets[2].digest));
+    resign(changed);
+    reject(broken,changed,"分区和整体摘要重签后仍拒绝非法目录引用布尔");
     reject(broken, Bytes(4U * 1024U * 1024U + 1, 0), "读取总预算拒绝");
     const auto directory_result = load_startup_system_file(work.path);
     check(!directory_result.records && !directory_result.missing && !directory_result.error.empty(), "目录不得当缺失");
@@ -275,6 +451,7 @@ void run(const std::filesystem::path &directory) {
     for (const auto &entry : std::filesystem::directory_iterator(work.path))
         check(entry.path().filename().string().find(".tmp.") == std::string::npos,
               "失败路径不遗留临时系统文件");
+    application_storage(work.path);
 }
 } // namespace
 int run_startup_system_records_tests(const std::filesystem::path &directory) {

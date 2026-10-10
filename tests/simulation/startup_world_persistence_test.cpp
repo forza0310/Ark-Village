@@ -11,6 +11,8 @@
 #include "startup_world_codec_checks.hpp"
 #include "startup_world_restore_checks.hpp"
 #include "startup_world_restore_validation.hpp"
+#include "startup_application_active_replay.hpp"
+#include "startup_application_second_star_replay.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -108,7 +110,7 @@ Bytes replace_state(const Bytes &original, const StartupWorldRuntimeState &state
     result.insert(result.end(), hash.begin(), hash.end());
     return result;
 }
-std::vector<int> advance(StartupWorldRuntimeSession &s) {
+std::vector<StartupAudioRequest> advance(StartupWorldRuntimeSession &s) {
     const auto step = s.update();
     check(step.candidate.has_value(), "natural update rejected");
     const auto p = s.state().scripts.pages.back();
@@ -116,7 +118,7 @@ std::vector<int> advance(StartupWorldRuntimeSession &s) {
         p.legacy_page != 56 && p.legacy_page != 57 && p.legacy_page != 97 && p.legacy_page != 98)
         check(s.acknowledge_page(p.id) == StartupWorldRuntimeError::none,
               "natural confirm rejected");
-    return s.take_sound_requests();
+    return s.take_audio_requests();
 }
 // 共用严格文件夹具路径；结构输入经真实loader验证后才做保存往返。
 StartupWorldRuntimeState capture_persistence_fixture(
@@ -553,10 +555,20 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     const auto entry = dir / "clear-entry.avrs", encoded = dir / "clear-encoded.avrs", bad = dir / "clear-bad.avrs";
     capture_persistence_fixture(baseline, state, metadata, entry, encoded, bad,
                                 "explicit raw17 entry fixture, not natural sixteen years");
-    StartupApplicationPaths paths{dir / "clear-system.avrs", {dir / "clear-world0.avrs", dir / "clear-world1.avrs"}};
-    check(save_startup_system_file(paths.system, {}).empty(), "fresh independent system fixture");
+    StartupApplicationPaths paths{dir / "clear-application"};
+    check(std::filesystem::create_directory(paths.root), "exclusive application root for clear conditions");
+    struct ClearRootGuard {
+        std::filesystem::path root;
+        ~ClearRootGuard() { std::error_code error; std::filesystem::remove_all(root, error); }
+    } root_guard{paths.root};
+    const auto system = paths.root / "system.avr";
+    check(save_startup_system_file(system, {}).empty(), "fresh independent system fixture");
     StartupApplication app(paths, ref::WorldRandomStream::from_java_seed(1));
     check(app.load_world_replay(entry, metadata.controller_id).empty(), "load validated raw17 entry");
+    check(app.take_audio_requests() == std::vector<StartupAudioRequest>{
+              {StartupAudioOperation::replace_bgm,0},{StartupAudioOperation::replace_bgm,1}} &&
+              app.world()->state().sound_requests.empty(),
+          "conditional entry activates a world and consumes B0/G before clear-page sound oracle");
     check(app.world()->state().cash_peak == 0 && app.records().cash_peak == 0,
           "loaded old world cash mirror does not reconstruct system record");
     for (int i = 0; i < 4000; ++i) {
@@ -568,31 +580,42 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     const auto total = app.clear_page()->sum;
     check(total > 0 && app.records().high_score == 0, "score remains private until actual exit");
     const auto before = startup_world_session_digest(*app.world());
-    const auto original = read(paths.system);
+    const auto original = read(system);
+    const auto original_directory = app.records().save_directory;
 #ifdef _WIN32
-    const auto handle = CreateFileW(paths.system.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+    const auto handle = CreateFileW(system.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     check(handle != INVALID_HANDLE_VALUE, "lock clear system fixture");
     const auto error = app.update();
     check(CloseHandle(handle) != 0, "close clear lock");
     check(!error.empty() && app.clear_page() && app.clear_page()->counter == 64 &&
-          startup_world_session_digest(*app.world()) == before && read(paths.system) == original &&
-          app.records().high_score == 0, "failed clear commit preserves page, events, random and record");
+          startup_world_session_digest(*app.world()) == before && read(system) == original &&
+          app.records().high_score == 0 && app.records().save_directory == original_directory &&
+          app.take_audio_requests().empty(),
+          "failed clear commit preserves page, events, random, directories and pending outputs");
 #else
     (void)before; (void)original;
 #endif
     check(app.update().empty(), "clear final transaction retry");
     check(!app.clear_page() && !app.clear_rows() && app.records().high_score == total &&
-          load_startup_system_file(paths.system).records->high_score == total,
+          load_startup_system_file(system).records->high_score == total,
           "clear completes once, persists system and retires controller references");
     check(app.take_sound_requests() == std::vector<int>{1}, "clear resumes main BGM once");
     check(!app.acknowledge_page(id).empty(), "retired clear cannot award again");
-    check(!std::filesystem::exists(paths.worlds[0]), "clear system save does not save world");
+    const auto storage = load_startup_application_storage(paths.root);
+    check(storage.snapshot.has_value(), "clear system remains a valid application storage snapshot");
+    const auto view = capture_startup_application_storage(paths.root, *storage.snapshot);
+    check(app.records().save_directory == original_directory &&
+          original_directory == StartupSystemRecords{}.save_directory && view.view && view.view->blobs.empty() &&
+          (!std::filesystem::exists(paths.root / "worlds") || std::filesystem::is_empty(paths.root / "worlds")),
+          "clear record save preserves all four empty directories and publishes no world blob");
     const auto scripts = startup_world_runtime_scripts(app.world()->state());
     check(scripts.pages.size() >= 3, "event6 then new-record event publish real message pages");
     // 同一合法入口再次回放：分数相等不能改名或奖杯，不当自然第二次结局。
     check(app.return_to_title().empty() && app.load_world_replay(entry, metadata.controller_id).empty(),
           "replay same clear against existing system record");
+    check(app.take_sound_requests() == std::vector<int>({0,1}),
+          "second conditional activation consumes its own title B0/G before equal-score run");
     for (int i = 0; i < 4000; ++i) {
         check(app.update(true).empty(), "equal-score clear update");
         if (!app.clear_page()) break;
@@ -601,7 +624,7 @@ void application_clear_roundtrip(const StartupWorldRuntimeSession &baseline, con
     check(app.records().high_score == total && app.records().trophy == 1 &&
           app.records().score_village == state.scripts.village_name, "equal score preserves existing record owner");
     app.take_sound_requests();
-    for (const auto &p : {entry, encoded, bad, paths.system}) std::filesystem::remove(p);
+    for (const auto &p : {entry, encoded, bad}) std::filesystem::remove(p);
 }
 void run(const std::filesystem::path &dir) {
     std::filesystem::create_directories(dir);
@@ -634,7 +657,7 @@ void run(const std::filesystem::path &dir) {
     check(saved.ok, "replay save: " + saved.error);
     const auto bytes = read(replay);
     check(std::string(bytes.begin(), bytes.begin() + 8) == "AVRSAVE1" && bytes[8] == 1 &&
-              bytes[9] == 0 && bytes[12] == 2 && bytes[13] == 0 && bytes[16] == 2,
+              bytes[9] == 0 && bytes[12] == 4 && bytes[13] == 0 && bytes[16] == 2,
           "format magic/schema/purpose oracle");
     check(startup_world_session_digest(session) == before,
           "capture consumes no state/random/history");
@@ -701,13 +724,15 @@ void run(const std::filesystem::path &dir) {
                    .snapshot,
               "incompatible header rejected after valid checksum");
     }
-    auto old_semantics = bytes;
-    old_semantics[12] = 1; // 已知旧空任务池语义；有效重签仍须拒绝，而非补池迁移。
-    resign(old_semantics);
-    write(bad, old_semantics);
-    check(!load_startup_world_file(bad, startup_world_rules(), metadata.purpose,
-                                   metadata.controller_id).snapshot,
-          "prior empty task pools semantics explicitly rejects without migration");
+    for (const auto old_version : {1, 2, 3}) {
+        auto old_semantics = bytes;
+        old_semantics[12] = static_cast<std::uint8_t>(old_version);
+        resign(old_semantics);
+        write(bad, old_semantics);
+        check(!load_startup_world_file(bad, startup_world_rules(), metadata.purpose,
+                                       metadata.controller_id).snapshot,
+              "prior initialization, audio or stale arrival price semantics rejects without migration");
+    }
     auto truncated = bytes;
     truncated.pop_back();
     write(bad, truncated);
@@ -778,6 +803,8 @@ void run(const std::filesystem::path &dir) {
     checks += run_startup_application_replay_checks(dir);
     checks += run_startup_application_actions_checks(dir);
     checks += run_startup_application_natural_driver_checks(dir);
+    checks += run_startup_application_active_driver_checks(dir);
+    checks += run_startup_application_second_star_driver_checks(dir);
     std::cout << "persistence checks=" << checks << " prefix_frames=" << frames
               << " suffix_frames=90 replay_bytes=" << bytes.size() << '\n';
 }
@@ -786,7 +813,7 @@ struct PresentationController {
     std::uint64_t next_round{}, next_ordinal{1}, checked{};
     bool consumed{true};
 };
-constexpr const char *presentation_controller_id = "presentation-request-v1";
+constexpr const char *presentation_controller_id = "presentation-request-v2";
 constexpr std::array<int,5> presentation_calls{0,1,2,1,0};
 Bytes encode_presentation_controller(const PresentationController &driver) {
     Bytes bytes{'A','V','P','R','Q','0','0','1'};
@@ -954,14 +981,22 @@ void presentation_replay(int argc,const char **argv) {
             append64(outputs,encoded.size()); outputs.insert(outputs.end(),encoded.begin(),encoded.end());
             driver.consumed=true;
         }
-        const auto sounds=session.take_sound_requests();
-        check(sounds==std::vector<int>(presentation_calls[round],8),"presentation round consumes exact ordered request sound output");
+        const auto sounds=session.take_audio_requests();
+        std::vector<int> sound_ids;
+        for (const auto &sound : sounds) sound_ids.push_back(sound.id);
+        check(sound_ids==std::vector<int>(presentation_calls[round],8),"presentation round consumes exact ordered request sound output");
+        check(sounds==std::vector<StartupAudioRequest>(presentation_calls[round],
+                  {StartupAudioOperation::ordinary_play,8}) && session.take_sound_requests().empty(),
+              "presentation retains original ordinary-play operations and cannot consume twice");
         check(session.state().scene.random.draws()==draws_before+2*presentation_calls[round] &&
                   session.state().page_counters.at(session.state().scripts.pages.back().id)==45 &&
                   (presentation_calls[round]!=0 || startup_world_session_digest(session)==at_round),
               "presentation same-state0/1/2 calls do not simulate tick or advance gift counter");
         Bytes encoded_sounds; append64(encoded_sounds,sounds.size());
-        for (int sound:sounds) append64(encoded_sounds,static_cast<std::uint64_t>(sound));
+        for (const auto &sound:sounds) {
+            append64(encoded_sounds,static_cast<std::uint64_t>(sound.operation));
+            append64(encoded_sounds,static_cast<std::uint64_t>(sound.id));
+        }
         driver.next_round=round+1; driver.checked=checks;
         if (round>=start)
             trace<<round<<' '<<startup_world_session_digest(session)<<' '
@@ -976,7 +1011,7 @@ void presentation_replay(int argc,const char **argv) {
             if (!saved.ok) throw std::runtime_error("presentation capture: "+saved.error);
             const auto before=startup_world_session_digest(session);
             if (load_startup_world_file(file,startup_world_rules(),metadata.purpose,
-                                       "natural-progression-expansion-v1").snapshot ||
+                                       "natural-progression-expansion-v2").snapshot ||
                 load_startup_world_file(file,startup_world_rules(),StartupWorldSavePurpose::normal).snapshot ||
                 startup_world_session_digest(session)!=before)
                 throw std::runtime_error("presentation controller/purpose isolation failed");
@@ -1054,9 +1089,13 @@ std::array<std::filesystem::path, 4> create_application_action_entry_fixtures(
 }
 int main(int argc, const char **argv) {
     try {
-        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v1")
+        if (argc >= 2 && std::string(argv[1]) == "application-natural-clear-v3")
             return run_startup_application_natural_replay_cli(argc, argv);
-        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v1")
+        if (argc >= 2 && std::string(argv[1]) == "application-active-progression-v1")
+            return run_startup_application_active_replay_cli(argc, argv);
+        if (argc >= 2 && std::string(argv[1]) == "application-active-progression-v2")
+            return run_startup_application_second_star_replay_cli(argc, argv);
+        if (argc >= 2 && std::string(argv[1]) == "application-clear-conditions-v3")
             return run_startup_application_replay_cli(argc, argv);
         if (argc>=2 && std::string(argv[1])==presentation_controller_id) {
             presentation_replay(argc,argv); return 0;

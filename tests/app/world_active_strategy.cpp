@@ -283,6 +283,7 @@ std::optional<Command> ActiveVillageStrategy::next(const State &s) {
 }
 
 void ActiveVillageStrategy::observe_world(const State &before, const State &after) {
+    stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
     require(cash(after) >= 0, "cash became negative; " + diagnose(after));
     for (const auto &[id, f] : after.scene.world.world.facilities) {
@@ -413,6 +414,7 @@ bool ActiveVillageStrategy::complete(const State &s) const {
            stats_.first_star_conditions && stats_.promoted_month >= 0 && stats_.activities >= 3 &&
            stats_.exhibition_paid && stats_.exhibition_month >= 0 &&
            month(s) >= stats_.exhibition_month + 2 &&
+           stats_.trade.full_month_after(stats_.exhibition_month, month(s)) &&
            stats_.facility_income > stats_.exhibition_income &&
            !stats_.upgraded_definitions.empty() && !s.active_task &&
            s.activity_pages_initialized.empty();
@@ -438,7 +440,7 @@ std::string ActiveVillageStrategy::diagnose(const State &s) const {
 
 void ActiveVillageStrategy::encode(std::ostream &out) const {
     const auto &v = stats_;
-    out << "ARK_ACTIVE_VILLAGE_1\n"
+    out << "ARK_ACTIVE_VILLAGE_2\n"
         << v.commands << ' ' << v.ticks << ' ' << v.bakery << ' ' << v.departed_task << ' '
         << v.construction_cost << ' ' << v.minimum_cash << ' ' << v.facility_income << ' '
         << v.bakery_income << ' ' << v.activities << ' ' << v.gifts << ' ' << v.task_departures
@@ -454,6 +456,7 @@ void ActiveVillageStrategy::encode(std::ostream &out) const {
     for (const auto id : v.upgraded_definitions)
         out << ' ' << id;
     out << '\n';
+    v.trade.encode(out);
     require(bool(out), "cannot write strategy evidence");
 }
 
@@ -462,7 +465,7 @@ ActiveVillageStrategy ActiveVillageStrategy::decode(std::istream &in) {
     auto &v = result.stats_;
     std::string magic;
     in >> magic;
-    require(magic == "ARK_ACTIVE_VILLAGE_1", "unknown strategy evidence format");
+    require(magic == "ARK_ACTIVE_VILLAGE_2", "unknown strategy evidence format");
     in >> v.commands >> v.ticks >> v.bakery >> v.departed_task >> v.construction_cost >>
         v.minimum_cash >> v.facility_income >> v.bakery_income >> v.activities >> v.gifts >>
         v.task_departures >> v.task_successes >> v.task_failures >> v.promoted_month >>
@@ -485,6 +488,7 @@ ActiveVillageStrategy ActiveVillageStrategy::decode(std::istream &in) {
         in >> id;
         require(id >= 0 && v.upgraded_definitions.insert(id).second, "duplicate upgrade evidence");
     }
+    v.trade.decode(in);
     require(bool(in) && v.gifts >= 0 && v.gifts <= 1 && v.activities >= 0 &&
                 v.task_successes == static_cast<int>(v.successful_tasks.size()) &&
                 v.task_departures >= v.task_successes && v.task_failures >= 0 &&

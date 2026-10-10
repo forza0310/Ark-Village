@@ -5,6 +5,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
 
 const productRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const buildRoot = path.join(productRoot, 'build');
@@ -37,7 +38,7 @@ for (let i = 0; i < args.length; i += 2) {
     if (i + 1 === args.length || options.has(args[i]) ||
         !['--exe', '--work-dir', '--save-at', '--stop-at', '--producer-revision',
             '--snapshot-file', '--save-every', '--save-directory', '--scenario', '--load-prefix',
-            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe', '--title-exe', '--natural-application-exe',
+            '--prefix-status', '--prefix-next-frame', '--presentation-exe', '--application-exe', '--title-exe', '--natural-application-exe', '--active-application-exe',
             '--application-snapshot-directory', '--natural-application-snapshot-file'].includes(args[i]))
         throw new Error('需要 --exe <程序> --work-dir <产品build工作目录> [--save-at 420 --stop-at 840]');
     options.set(args[i], args[i + 1]);
@@ -49,6 +50,7 @@ const presentationExecutable = options.has('--presentation-exe') ? path.resolve(
 const applicationExecutable = options.has('--application-exe') ? path.resolve(options.get('--application-exe')) : undefined;
 const titleExecutable = options.has('--title-exe') ? path.resolve(options.get('--title-exe')) : undefined;
 const naturalApplicationExecutable = options.has('--natural-application-exe') ? path.resolve(options.get('--natural-application-exe')) : undefined;
+const activeApplicationExecutable = options.has('--active-application-exe') ? path.resolve(options.get('--active-application-exe')) : undefined;
 if (options.has('--natural-application-snapshot-file') && !naturalApplicationExecutable)
     throw new Error('自然应用认证输出需要--natural-application-exe');
 if (options.has('--application-snapshot-directory') && !applicationExecutable)
@@ -103,7 +105,7 @@ function replayIdentity(bytes) {
     });
     const input = reader(bytes.subarray(0, -64));
     if (input.raw(8).toString('ascii') !== 'AVRSAVE1' || input.u32() !== 1 ||
-        input.u32() !== 2 || input.u32() !== 2) throw new Error('源不是本版replay文件');
+        input.u32() !== 4 || input.u32() !== 2) throw new Error('源不是本版replay文件');
     const dataset = input.text(), schema = input.text(), count = input.u32(), sections = new Map();
     if (count < 2 || count > 64) throw new Error('源分区数非法');
     for (let n = 0; n < count; ++n) {
@@ -118,7 +120,7 @@ function replayIdentity(bytes) {
         if (sections.get(id)?.version !== 1 || sections.get(id)?.required !== 1)
             throw new Error('源缺少必需metadata或controller');
     const meta = reader(sections.get(1).body), revision = meta.text(), controller = meta.text(), nextFrame = meta.u64();
-    if (meta.at !== meta.buffer.length || controller !== 'natural-progression-expansion-v1')
+    if (meta.at !== meta.buffer.length || controller !== 'natural-progression-expansion-v2')
         throw new Error('源controller身份不符');
     const driver = reader(sections.get(4).body);
     if (driver.buffer.length > 1024 * 1024 || driver.u64() !== 0x315652445741)
@@ -307,12 +309,12 @@ try {
         // 独立条件组合：原自然driver/字节/黄金终点已在上方完成，显式表现请求另用控制器。
         const presentationSnapshot = path.join(owned, 'presentation-prefix.awr');
         const presentationTraces = [0, 1, 2].map(n => path.join(owned, `presentation-tail-${n}.trace`));
-        const presentationOutputs = [await run(['presentation-request-v1', '--save-file', presentationSnapshot,
+        const presentationOutputs = [await run(['presentation-request-v2', '--save-file', presentationSnapshot,
             '--trace-file', presentationTraces[0], '--trace-from', '2'], presentationExecutable)];
         const prefix = await fs.readFile(presentationSnapshot);
         if (!prefix.length || prefix.length > 128 * 1024 * 1024) throw new Error('表现快照尺寸非法');
         for (let n = 1; n < 3; ++n)
-            presentationOutputs.push(await run(['presentation-request-v1', '--load-file', presentationSnapshot,
+            presentationOutputs.push(await run(['presentation-request-v2', '--load-file', presentationSnapshot,
                 '--trace-file', presentationTraces[n]], presentationExecutable));
         const traces = await Promise.all(presentationTraces.map(p => fs.readFile(p)));
         const rows = traces[0].toString('utf8').trimEnd().split('\n');
@@ -333,7 +335,7 @@ try {
         const before = sha256(prefix);
         let rejected = false;
         try {
-            await run(['presentation-request-v1', '--unknown', '1'], presentationExecutable);
+            await run(['presentation-request-v2', '--unknown', '1'], presentationExecutable);
         } catch (error) {
             if (cancelled || !String(error.message).includes('presentation unknown option')) throw error;
             rejected = true;
@@ -341,7 +343,7 @@ try {
         if (!rejected || sha256(await fs.readFile(presentationSnapshot)) !== before)
             throw new Error('表现非法CLI未拒绝或破坏既有快照');
         presentationCertificate = {
-            controller: 'presentation-request-v1', qualification: 'conditional_presentation_request_replay',
+            controller: 'presentation-request-v2', qualification: 'conditional_presentation_request_replay',
             capture_next_round: 2, tail_rounds: [2, 3, 4], request_counts: [0, 1, 2, 1, 0], process_count: 3,
             snapshot_bytes: prefix.length, snapshot_sha256: before, trace_bytes: traces[0].length,
             trace_sha256: sha256(traces[0]), comparison: '完整Session、controller及全plan/request上下文/sound字节三路相同',
@@ -357,7 +359,7 @@ try {
         const referenceTrace = path.join(appRoot, 'reference.trace');
         const referenceWork = path.join(appRoot, 'reference');
         await fs.mkdir(referenceWork);
-        const referenceOutput = await run(['application-clear-conditions-v1', '--work-dir', referenceWork,
+        const referenceOutput = await run(['application-clear-conditions-v3', '--work-dir', referenceWork,
             '--save-directory', captures, '--trace-file', referenceTrace], applicationExecutable, 120000);
         const reference = await fs.readFile(referenceTrace);
         const traceRows = reference.toString('utf8').trimEnd().split('\n');
@@ -371,7 +373,7 @@ try {
             throw new Error('应用条件reference必须含连续完整应用/Session/Driver/声音/事件/系统七字段');
         const summary = output => output.split(/\r?\n/).filter(s => s.startsWith('application replay summary ')).join('\n');
         const terminal = summary(referenceOutput);
-        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 checks=\d+$/.test(terminal))
+        if (!/^application replay summary frame=\d+ score=\d+ failures=[01] sounds=1 activation_sounds=2 checks=\d+$/.test(terminal))
             throw new Error('应用计分缺少真实完成/输出消费终点');
         const found = new Map();
         for (const line of referenceOutput.split(/\r?\n/)) {
@@ -397,7 +399,7 @@ try {
                 const actualTrace = path.join(appRoot, `${name}-${n}.trace`);
                 const actualWork = path.join(appRoot, `${name}-${n}`);
                 await fs.mkdir(actualWork);
-                const output = await run(['application-clear-conditions-v1', '--work-dir', actualWork,
+                const output = await run(['application-clear-conditions-v3', '--work-dir', actualWork,
                     '--load-file', file, '--trace-file', actualTrace], applicationExecutable, 120000);
                 if (!expected.equals(await fs.readFile(actualTrace)) || summary(output) !== terminal)
                     throw new Error(`应用${name}第${n}次全状态/输出/系统尾段不一致`);
@@ -408,13 +410,13 @@ try {
                 trace_bytes: expected.length, trace_sha256: sha256(expected) });
         }
         let refused = false;
-        try { await run(['application-clear-conditions-v1', '--unknown', '1'], applicationExecutable, 120000); }
+        try { await run(['application-clear-conditions-v3', '--unknown', '1'], applicationExecutable, 120000); }
         catch (error) {
             if (cancelled || !String(error.message).includes('application unknown option')) throw error;
             refused = true;
         }
         if (!refused) throw new Error('应用非法CLI没有显式拒绝');
-        applicationCertificate = { controller: 'application-clear-conditions-v1', qualification: 'conditional_raw17_application_replay',
+        applicationCertificate = { controller: 'application-clear-conditions-v3', qualification: 'conditional_raw17_application_replay',
             captures: certificates, terminal_output: terminal, process_timeout_seconds: 120,
             comparison: '完整应用/Session历史/规范Driver/实际有序声音/事件4、5、6/隔离系统字节摘要三路相同',
             boundary: '合法raw17条件入口；不认证自然十六年、原标题人物或原版存档兼容' };
@@ -497,6 +499,11 @@ try {
             boundary: '首请求confirm、后续false的原标题表现策略；不认证自然世界通关或Steam输入/绘制频率',
         };
     }
+    let titleMenuCertificate;
+    if (titleExecutable) {
+        const {verifyTitleMenuReplay} = await import('./title_menu_process.mjs');
+        titleMenuCertificate = await verifyTitleMenuReplay({exe:titleExecutable,workDir:owned});
+    }
     let naturalApplicationCertificate;
     if (naturalApplicationExecutable) {
         const {verifyNaturalApplication} = await import('./application_natural_process.mjs');
@@ -505,6 +512,53 @@ try {
             saveAt: 420, tailFrames: 20, frameLimit: 2000, timeoutSeconds: 120,
             snapshotFile: options.get('--natural-application-snapshot-file'),
         });
+    }
+    let activeApplicationCertificate,activeCandidateCertificate,activeCandidateContinuationCertificate;
+    if (activeApplicationExecutable) {
+        const {verifyActiveApplication,readActiveApplicationSource} = await import('./application_active_process.mjs');
+        const activeSnapshot=path.join(owned,'active-certified420.avra');
+        activeApplicationCertificate = await verifyActiveApplication({
+            exe: activeApplicationExecutable, workDir: owned, producerRevision: producer,
+            saveAt: 420, tailFrames: 20, frameLimit: 2000, timeoutSeconds: 120,
+            snapshotFile:activeSnapshot,
+        });
+        // 复用刚完成认证的真实应用字节，独占复制为无证书候选；不伪造业务字段或重跑前缀。
+        const candidate=path.join(owned,'active-uncertified420.avra');
+        const originalBytes=await fs.readFile(activeSnapshot);
+        const originalCertificate=await fs.readFile(activeSnapshot+'.json');
+        await fs.writeFile(candidate,originalBytes,{flag:'wx'});
+        const trusted=await fs.realpath(buildRoot);
+        await assert.rejects(readActiveApplicationSource({loadPrefix:activeSnapshot,loadCandidate:candidate},trusted,421),
+            /load-prefix与load-candidate互斥/,'候选和证书入口不能混用');
+        await assert.rejects(readActiveApplicationSource({loadPrefix:candidate},trusted,421),
+            error=>error.code==='ENOENT','无证书不得由prefix入口降级成候选');
+        const candidateSnapshot=path.join(owned,'active-candidate421.avra');
+        activeCandidateCertificate=await verifyActiveApplication({
+            exe:activeApplicationExecutable,workDir:owned,producerRevision:producer,
+            loadCandidate:candidate,saveAt:421,tailFrames:1,frameLimit:422,timeoutSeconds:120,
+            snapshotFile:candidateSnapshot,
+        });
+        const history=activeCandidateCertificate.uncertified_history;
+        assert.equal(activeCandidateCertificate.source_prefix.source_status,'candidate');
+        assert.equal(history.snapshot_sha256,sha256(originalBytes));
+        assert.equal(history.snapshot_bytes,originalBytes.length);
+        assert.equal(history.next_frame,421);
+        assert.match(activeCandidateCertificate.certification_boundary,/先前历史未认证/);
+        const candidatePrefixBytes=await fs.readFile(candidateSnapshot);
+        const candidatePrefixCertificate=await fs.readFile(candidateSnapshot+'.json');
+        activeCandidateContinuationCertificate=await verifyActiveApplication({
+            exe:activeApplicationExecutable,workDir:owned,producerRevision:producer,
+            loadPrefix:candidateSnapshot,saveAt:422,tailFrames:1,frameLimit:423,timeoutSeconds:120,
+        });
+        assert.equal(activeCandidateContinuationCertificate.source_prefix.source_status,'certified');
+        assert.deepEqual(activeCandidateContinuationCertificate.uncertified_history,history,
+            '后继已认证尾段不能洗掉原候选未认证历史');
+        assert.match(activeCandidateContinuationCertificate.certification_boundary,/先前历史未认证/);
+        assert.deepEqual(await fs.readFile(candidate),originalBytes,'候选恢复不得改写源');
+        assert.deepEqual(await fs.readFile(activeSnapshot),originalBytes,'原420认证快照保留');
+        assert.deepEqual(await fs.readFile(activeSnapshot+'.json'),originalCertificate,'原420证书保留');
+        assert.deepEqual(await fs.readFile(candidateSnapshot),candidatePrefixBytes,'后继prefix恢复不改写421源');
+        assert.deepEqual(await fs.readFile(candidateSnapshot+'.json'),candidatePrefixCertificate,'后继prefix恢复不重签421证书');
     }
     if (options.has('--snapshot-file')) {
         const destination = path.resolve(options.get('--snapshot-file'));
@@ -517,7 +571,11 @@ try {
         ...(presentationCertificate ? { presentation_replay: presentationCertificate } : {}),
         ...(applicationCertificate ? { application_replay: applicationCertificate } : {}),
         ...(titleCertificate ? { title_presentation_replay: titleCertificate } : {}),
+        ...(titleMenuCertificate ? { title_menu_file_replay: titleMenuCertificate } : {}),
         ...(naturalApplicationCertificate ? { natural_application_replay: naturalApplicationCertificate } : {}),
+        ...(activeApplicationCertificate ? { active_application_replay: activeApplicationCertificate } : {}),
+        ...(activeCandidateCertificate ? { active_candidate_replay: activeCandidateCertificate,
+            active_candidate_continuation: activeCandidateContinuationCertificate } : {}),
         reference_origin: sourcePrefix ? '恢复既有前缀后继续' : '真实新局不中断继续',
         certification_level: sourcePrefix?.source_status === 'candidate' ? 'candidate_reference_tail'
             : sourcePrefix ? 'resumed_reference_tail' : 'new_game_reference_tail',

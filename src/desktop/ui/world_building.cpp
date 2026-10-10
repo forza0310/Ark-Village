@@ -4,7 +4,9 @@
 #include "../world_overlay_render.hpp"
 #include "skin.hpp"
 #include "world_building.hpp"
+#include "world_facility_upgrade.hpp"
 #include <algorithm>
+#include <limits>
 #include <stdexcept>
 
 namespace ark::desktop::ui {
@@ -52,9 +54,10 @@ void fitted(const Skin &skin, const std::string &text, Rectangle box, Color colo
     skin.text.draw(text, box.x, box.y, color, size);
 }
 void detail_money(const Skin &skin, std::int64_t value, Rectangle box) {
-    skin.number(value, {box.x + box.width - 10, box.y + 2});
+    skin.number(value, {box.x + box.width - 10, box.y + 2}, "number08.seb",
+                Sprites::Binding::steam_common);
     skin.sprites.draw("number08.seb", 20, {box.x + box.width - 9, box.y + 2}, WHITE,
-                      Sprites::Binding::common);
+                      Sprites::Binding::steam_common);
 }
 void detail_field(Rectangle box, Color fill, Color border) {
     DrawRectangleRec(box, fill);
@@ -155,37 +158,61 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
     if (view.detail_type == Type::ordinary) {
         fitted(skin, "价格", {boxes.price.x, boxes.price.y, 32, 14}, blue);
         detail_money(skin, view.attributes[0], boxes.price);
+        if (!view.definition_preview && view.attributes[0] >= view.attribute_limits[0])
+            skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
+                               {boxes.price.x + 27, boxes.price.y + 3, 20, 6});
     }
     detail_field(boxes.picture, {226, 247, 212, 255}, {184, 211, 168, 255});
-    skin.sprites.thumbnail(view.graphic.sprite, view.graphic.frames,
-                           {boxes.picture.x + 2, boxes.picture.y + 2, boxes.picture.width - 4,
-                            boxes.picture.height - (view.detail_type == Type::ordinary ? 14 : 4)});
+    // Steam details always use orientation0 and Mapchip2's source center, with clipping;
+    // fitting the image to its frame changed building scale and concealed tall buildings.
+    const auto pieces = simulation::steam_facility_mapchip2_draws({view.mapchip, {49, 37}, 0});
+    if (!pieces)
+        throw std::invalid_argument("Facility detail has invalid mapchip");
+    for (const auto &piece : *pieces)
+        skin.sprites.draw(
+            piece.sprite, piece.frame,
+            {boxes.picture.x + piece.position[0], boxes.picture.y + piece.position[1]}, WHITE,
+            Sprites::Binding::map, 1, -1, boxes.picture);
     if (view.detail_type == Type::ordinary) {
         detail_field(boxes.values, {255, 248, 214, 255}, {239, 208, 119, 255});
         // Effects carry absolute source coordinates; translate once from panel (8,44).
         detail_field(boxes.effects, {255, 248, 214, 255}, {239, 208, 119, 255});
         for (const auto &effect : view.exit_effects) {
             const Vector2 origin{layout.panel.x - 8, layout.panel.y - 44};
-            draw_world_visuals({effect.icon}, skin.sprites, origin, 1);
-            draw_world_visuals(effect.pluses, skin.sprites, origin, 1);
+            const auto &icon = effect.icon;
+            const auto &r = icon.crop;
+            skin.sprites.image(
+                "icon_param00.png", {float(r[0]), float(r[1]), float(r[2]), float(r[3])},
+                {origin.x + icon.offset[0], origin.y + icon.offset[1], float(r[2]), float(r[3])},
+                Sprites::Binding::steam_common);
+            for (const auto &plus : effect.pluses)
+                skin.sprites.draw("number08.seb", plus.frame,
+                                  {origin.x + plus.offset[0], origin.y + plus.offset[1]}, WHITE,
+                                  Sprites::Binding::steam_common);
         }
         constexpr const char *labels[]{"品质", "魅力"};
         for (int row = 0; row < 2; ++row) {
             const float y = boxes.values.y + 4 + row * 15;
             fitted(skin, labels[row], {boxes.values.x + 6, y, 40, 14}, blue);
-            skin.number(view.attributes[row + 1], {boxes.values.x + boxes.values.width - 6, y + 1});
+            skin.number(view.attributes[row + 1], {boxes.values.x + boxes.values.width - 6, y + 1},
+                        "number08.seb", Sprites::Binding::steam_common);
+            if (!view.definition_preview &&
+                view.attributes[row + 1] >= view.attribute_limits[row + 1])
+                skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
+                                   {boxes.values.x + 39, y + 3, 20, 6});
         }
         skin.sprites.image("wnd_lv.png", {0, 0, 17, 10}, {boxes.level.x, boxes.level.y, 17, 10});
         if (view.level == 5)
             skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
                                {boxes.level.x + 22, boxes.level.y + 2, 20, 6});
         else {
-            skin.number(view.level, {boxes.level.x + 31, boxes.level.y}, "number05.seb");
+            skin.number(view.level, {boxes.level.x + 31, boxes.level.y}, "number05.seb",
+                        Sprites::Binding::steam_common);
             if (view.remaining_uses) {
                 fitted(skin, "距离下个等级还有", {boxes.remaining.x, boxes.remaining.y, 126, 14});
                 skin.number(*view.remaining_uses,
                             {boxes.remaining.x + boxes.remaining.width - 16, boxes.remaining.y + 2},
-                            "number05.seb");
+                            "number09.seb");
                 skin.text.draw("人", boxes.remaining.x + boxes.remaining.width - 13,
                                boxes.remaining.y, ink);
             }
@@ -279,6 +306,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             throw std::invalid_argument("Facility definition preview has invalid source payload");
         const int id = state.facility_definition_page_bindings.at(page.id);
         const auto &item = definition(state, id);
+        view.mapchip = item.display_id;
         view.definition_preview = true;
         view.title = item.name;
         view.page_count = 1;
@@ -306,6 +334,7 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
         view.facility = binding->second;
         const auto &facility = state.scene.world.world.facilities.at(*view.facility);
         const auto &item = definition(state, facility.placement.definition_id);
+        view.mapchip = item.display_id;
         view.title = item.name;
         const auto phase = state.page_phases.find(page.id);
         if (phase == state.page_phases.end())
@@ -316,6 +345,28 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                 return view;
             view.title = "设施升级";
             view.upgrade = state.facility_upgrade_display;
+            view.facility_name = item.name;
+            simulation::SteamFacilityUpgradeSkinInput input;
+            input.definition = item.id;
+            input.mapchip = item.display_id;
+            input.level = state.scene.world.world.facility_uses.at(item.id).level;
+            input.phase = view.phase;
+            input.frame = state.page_counters.at(page.id);
+            const auto secondary = state.page_secondary_counters.find(page.id);
+            view.upgrade_secondary_available = secondary != state.page_secondary_counters.end();
+            if (view.upgrade_secondary_available)
+                input.frame2 = secondary->second;
+            const auto checked = [](std::int64_t n) {
+                if (n < std::numeric_limits<int>::min() || n > std::numeric_limits<int>::max())
+                    throw std::invalid_argument("Upgrade display outside source integer range");
+                return static_cast<int>(n);
+            };
+            for (int slot = 0; slot < 3; ++slot) {
+                for (int phase = 0; phase < 3; ++phase)
+                    input.attributes[slot][phase] = checked(view.upgrade[phase][slot]);
+                input.limits[slot] = checked(std::int64_t(item.economy.attributes[slot].fifth) * 2);
+            }
+            view.upgrade_skin = input;
             view.can_confirm = true;
         } else {
             const auto values = simulation::startup_world_facility_values(state, *view.facility);
@@ -360,6 +411,9 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
             view.definition_preview
                 ? state.facility_definition_page_bindings.at(page.id)
                 : state.scene.world.world.facilities.at(*view.facility).placement.definition_id;
+        for (int n = 0; n < 3; ++n)
+            view.attribute_limits[n] =
+                std::int64_t(definition(state, id).economy.attributes[n].fifth) * 2;
         view.category_icon = simulation::startup_world_facility_icon_draw(state, id);
         if (!view.category_icon)
             throw std::invalid_argument("Facility detail has invalid category icon");
@@ -382,6 +436,13 @@ WorldBuildingLayout world_building_layout(Extent extent, int raw) {
     const float height =
         raw == 21 ? std::min(300.F, extent.height - 58.F) : std::min(250.F, extent.height - 68.F);
     WorldBuildingLayout layout;
+    if (raw == 81) {
+        layout.panel = {(extent.width - 222.F) / 2, (extent.height - 170.F) / 2, 222, 170};
+        layout.body = {layout.panel.x + 6, layout.panel.y + 104, 209, 63};
+        // Existing PC confirmation area is an explicit adaptation; no invented source rectangle.
+        layout.confirm = {layout.panel.x + 174, layout.panel.y + 151, 42, 18};
+        return layout;
+    }
     if (raw == 74) {
         // S019 and the supplied page2 share a compact ~224x172 window. PAGES gives
         // the 97x74 picture and two right-hand fields; desktop centering is an adaptation.
@@ -473,6 +534,12 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
                                                         bool blocked) {
     if (blocked || !view.initialized)
         return {};
+    if (view.raw == 21 &&
+        (selection.marker_page != view.page || input.enter || input.escape || input.up ||
+         input.down || input.left || input.right || input.wheel_rows)) {
+        selection.marked_definition.reset();
+        selection.marker_page = view.page;
+    }
     const auto intent = [&](Action action, int identity = 0) {
         return WorldBuildingIntent{action, view.page, identity};
     };
@@ -513,8 +580,10 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
         for (int tab = 0; tab < 3; ++tab)
             if (hit(input.click, layout.tabs[tab]))
                 selection.tab = tab;
-        if (old != selection.tab)
+        if (old != selection.tab) {
             selection.selected = selection.first_row = 0;
+            selection.marked_definition.reset();
+        }
     }
     const auto &list = rows(view, selection.tab);
     if (list.empty()) {
@@ -536,8 +605,13 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
     for (int row = 0; row < visible && row + selection.first_row < count; ++row)
         if (hit(input.click, {layout.rows.x, layout.rows.y + row * layout.row_height,
                               layout.rows.width, layout.row_height})) {
+            const int index = row + selection.first_row;
+            const bool marked =
+                selection.selected == index && selection.marked_definition == list[index].identity;
             selection.selected = row + selection.first_row;
-            confirm = true;
+            confirm = view.raw != 21 || marked;
+            if (view.raw == 21)
+                selection.marked_definition = list[index].identity;
         }
     if (confirm && view.can_confirm)
         return intent(view.raw == 21 ? Action::select_build : Action::residence_select,
@@ -547,6 +621,10 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback) {
+    if (view.raw == 81 && view.initialized) {
+        draw_world_facility_upgrade(view, layout, skin);
+        return;
+    }
     // S043/S047 label the page, while the real facility name remains in its body.
     const auto title =
         view.raw == 74 && !view.definition_preview
@@ -629,8 +707,14 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                 if (item.residence_qualifications)
                     skin.text.draw("H " + std::to_string(*item.residence_qualifications), label_x,
                                    box.y + 22, blue, 10);
-                skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22, ink,
-                           10);
+                if (view.raw == 21) {
+                    skin.number(item.cost, {box.x + box.width - 13, box.y + 23}, "number05.seb",
+                                Sprites::Binding::steam_common);
+                    skin.sprites.draw("number05.seb", 20, {box.x + box.width - 12, box.y + 23},
+                                      WHITE, Sprites::Binding::steam_common);
+                } else
+                    skin.right(std::to_string(item.cost) + "G", box.x + box.width - 4, box.y + 22,
+                               ink, 10);
             }
             if (view.raw == 21) {
                 const Rectangle track{layout.panel.x + layout.panel.width - 7, layout.rows.y, 5,

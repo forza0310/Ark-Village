@@ -36,6 +36,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         generation_ = frame.generation;
         receipt_page_ = 0;
         commerce_amount_.reset();
+        building_ = {};
     }
     if (!pending_)
         return;
@@ -68,6 +69,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         feedback_.clear();
     }
     blocked = blocked || pending();
+    if (keyboard_event)
+        building_.marked_definition.reset();
     const auto point = click ? mouse : std::nullopt;
     const bool enter = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
@@ -317,7 +320,8 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
 }
 bool WorldManagement::input_scene(const State &state, const WorldCameraView &view, Extent extent,
                                   std::optional<Vector2> mouse, bool click, float zoom, bool back,
-                                  bool blocked, app::WorldSession &session) {
+                                  bool blocked, app::WorldSession &session,
+                                  const SpritePickMap &picks) {
     const bool editing = world_edit_view(state, {}).active;
     const bool placing =
         state.scene.scene_state == 1 && state.build_mode == 0 && state.build_definition.has_value();
@@ -417,19 +421,19 @@ bool WorldManagement::input_scene(const State &state, const WorldCameraView &vie
         return true;
     }
     if (click && hit(mouse, ui::Layout(extent).scene)) {
-        if (const auto actor = world_pick_human(state, view, *mouse, zoom)) {
-            queued(session.open_human(
-                *actor, state.scene.world.world.ai.battle.actors.at(*actor).definition));
-            return true;
+        const auto target = picks.pick(*mouse);
+        if (target && target->kind == SpritePickTarget::Kind::human) {
+            const simulation::rules::CharacterId id{target->id};
+            const auto &actors = state.scene.world.world.ai.battle.actors;
+            if (actors.count(id)) {
+                queued(session.open_human(id, actors.at(id).definition));
+                return true;
+            }
         }
-        if (const auto cell = world_pick_cell(state, view, *mouse, zoom)) {
-            const auto &map = state.scene.world.world.map;
-            const auto facility =
-                map.cells.at(static_cast<std::size_t>(cell->y * map.width + cell->x)).facility;
-            const auto id = facility ? std::optional{facility->instance_id.value} : std::nullopt;
+        if (target && target->kind == SpritePickTarget::Kind::facility) {
             const auto &facilities = state.scene.world.world.facilities;
-            if (id && facilities.count(*id) && facilities.at(*id).status != 0) {
-                queued(session.open_facility(*id));
+            if (facilities.count(target->id) && facilities.at(target->id).status != 0) {
+                queued(session.open_facility(target->id));
                 return true;
             }
         }

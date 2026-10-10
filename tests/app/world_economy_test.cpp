@@ -159,6 +159,10 @@ struct Comparison {
             const auto &f = state.scene.world.world.facilities.at(id);
             const auto values = sim::startup_world_facility_values(state, id);
             require(values.has_value(), "Facility values unavailable");
+            if (f.kind == 3 || f.kind == 9)
+                require(f.price == values->instance_attributes[0],
+                        "Arrival price cache differs from current neighbour/profession quote: " +
+                            std::to_string(id));
             std::int64_t sales{}, costs{};
             for (const auto &m : state.facility_monthly_cash.at(id)) {
                 sales += m[0];

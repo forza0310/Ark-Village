@@ -1,7 +1,9 @@
 #include "ark/simulation/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/startup_world_presentation.hpp"
 #include "ark/simulation/startup_world_human.hpp"
+#include "ark/simulation/rules/world_notices.hpp"
 #include "support/world_fixture.hpp"
+#include "support/audio_requests.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -267,6 +269,141 @@ void encounter() {
                             static_cast<int>(n.x * -15.0F / 100.0F + n.z * 15.0F / 100.0F)},
           "local initial cached-u preserves actual floating spawn jitter");
 }
+StartupWorldRuntimeState task_start_fixture(int first_state) {
+    StartupSession startup;
+    for (int n = 0; n < 420; ++n)
+        check(startup.update() == StartupError::none, "task audio fixture retains actual first visitor initialization");
+    StartupWorldRuntimeSession session(startup.state(), ref::WorldRandomStream::from_java_seed(3));
+    auto s = session.state();
+    const auto task = ref::prepare_world_task_creation(startup_world_runtime_factory(s), 1);
+    check(task.candidate && task.candidate->created_task &&
+              write_startup_world_runtime_factory(s, task.candidate->state),
+          "task audio fixture uses real combat task factory and current source quota");
+    s.active_task = task.candidate->created_task;
+    s.task = {true, 1, *s.tasks.at(*s.active_task).site, {}};
+    auto &world = s.scene.world.world;
+    auto &ai = world.ai;
+    ai.task_active = true;
+    const auto first = ai.human_order.front();
+    // 第二个到场人物是明确调用点夹具；任务/遭遇仍由真实工厂建立，不冒充自然招募。
+    const ref::CharacterId second{ai.next_actor_id++};
+    auto other = ai.battle.actors.at(first);
+    other.id = second;
+    other.definition = 0;
+    other.legacy_id = 1;
+    ai.battle.actors.emplace(second, other);
+    ai.human_order.push_back(second);
+    ai.contexts.emplace(second, ai.contexts.at(first));
+    world.actors.emplace(second, world.actors.at(first));
+    s.actor_metadata.emplace(second, s.actor_metadata.at(first));
+    s.shop_actors.emplace(second, s.shop_actors.at(first));
+    s.dungeon_actors.emplace(second, s.dungeon_actors.at(first));
+    s.human_presence.at(0) = 1;
+    s.participants = {1, 0};
+    for (const auto id : ai.human_order) {
+        auto &actor = ai.battle.actors.at(id);
+        // 原人物c按名单逆序；新追加实例先走本例F/P，原首访同轮随后只绑定。
+        actor.control.state = id == second ? first_state : 11;
+        actor.control.flags = 2;
+        actor.control.queue.clear();
+        actor.state_counter = 5;
+        actor.position = {s.task.center.x * 100.0f + 50, 0, s.task.center.y * 100.0f + 50};
+        actor.encounter.reset();
+        auto &ctx = ai.contexts.at(id);
+        ctx.cell = s.task.center;
+        ctx.half_cell = {s.task.center.x * 2 + 1, s.task.center.y * 2 + 1};
+        ctx.inside_town = false;
+        ctx.move_area = true;
+        ctx.effects.display.clear();
+        world.actors.at(id).definition_task_flag = true;
+        s.human_flags.at(actor.definition) |= 2U;
+    }
+    s.sound_requests = {{StartupAudioOperation::ordinary_play, 7}};
+    s.scripts.notices.clear();
+    return s;
+}
+void task_start_audio() {
+    for (const int first_state : {11, 0}) {
+        const auto s = task_start_fixture(first_state);
+        const auto adapter = startup_world_runtime_adapter();
+        auto actors = adapter.actors;
+        actors.other = [&](const auto &owner, const auto &call, const auto &field) {
+            return ref::prepare_owned_world_runtime_domain(owner, call, field, adapter);
+        };
+        const auto first = s.scene.world.world.ai.human_order.back();
+        const auto second = s.scene.world.world.ai.human_order.front();
+        // arrival_front可在人物c前追加访客；按真实调用的稳定ID定位审计，不假设front就是夹具人物。
+        std::vector<ref::CharacterId> decision_actors;
+        const auto decision = actors.decision;
+        actors.decision = [&](const auto &owner, ref::CharacterId actor) {
+            decision_actors.push_back(actor);
+            return decision(owner, actor);
+        };
+        int starts{};
+        const auto presentation = actors.presentation;
+        actors.presentation = [&](const auto &owner, const auto &request)
+            -> std::optional<StartupWorldRuntimeState> {
+            if (request.task_encounter_start) {
+                ++starts;
+                const auto id = *request.task_encounter_start;
+                check(request.actor == first && owner.task.encounter == id &&
+                          owner.scene.world.world.ai.encounters.at(id).runtime.quota > 0 &&
+                          owner.sound_requests == s.sound_requests && owner.scripts.notices.empty(),
+                      "presentation bridge publishes real created quota/task before BGM2 and notice24");
+            }
+            return presentation(owner, request);
+        };
+        const auto run = ref::prepare_world_actor_schedule(s, {true}, actors);
+        check(run.state && starts == 1 && run.decisions.size() >= 2,
+              "direct F or path P new task creates one presentation request before later same-round actor");
+        const auto &out = *run.state;
+        const auto created_at = std::find(decision_actors.begin(), decision_actors.end(), first);
+        const auto bound_at = std::find(decision_actors.begin(), decision_actors.end(), second);
+        check(decision_actors.size() == run.decisions.size() &&
+                  created_at != decision_actors.end() && bound_at != decision_actors.end() &&
+                  created_at < bound_at,
+              "original reverse human decision order creates encounter before later task participant");
+        const auto &daily = run.decisions.at(created_at - decision_actors.begin()).daily;
+        const auto &later = run.decisions.at(bound_at - decision_actors.begin()).daily;
+        check(daily && ((first_state == 11 && daily->task_entry &&
+                        daily->task_entry->created == out.task.encounter) ||
+                       (first_state == 0 && daily->path &&
+                        daily->path->created_task_encounter == out.task.encounter)) &&
+                  out.task.encounter &&
+                  out.scene.world.world.ai.battle.actors.at(second).encounter == out.task.encounter,
+              "both actual daily carriers retain created identity and later actor binds existing encounter without second start");
+        check(later && !later->task_entry && !later->path &&
+                  later->state.world.ai.battle.actors.at(second).encounter == out.task.encounter,
+              "later actor direct F audit binds the committed encounter without another creation carrier");
+        check(out.sound_requests == std::vector<StartupAudioRequest>{
+                  {StartupAudioOperation::ordinary_play, 7}, {StartupAudioOperation::replace_bgm, 2}} &&
+                  out.scripts.notices.size() == 1 && out.scripts.notices.front().message == 24 &&
+                  out.scripts.notices.front().counter == -1 &&
+                  out.scripts.notices.front().duration == 80 &&
+                  out.scripts.notices.front().text == "战斗任务开始",
+              "new encounter appends ordered BGM2 and exact queued notice24 without eager confirmation11");
+        const auto zero = ref::prepare_world_notices(out.scripts.notices);
+        const auto one = zero ? ref::prepare_world_notices(zero->notices) : std::nullopt;
+        check(zero && zero->sounds.empty() && zero->notices.front().counter == 0 &&
+                  one && one->sounds == std::vector<int>{11} && one->notices.front().counter == 1,
+              "newly connected notice uses original common q counter1 sound rather than creation-time sound");
+        ref::WorldActorPresentationRequest invalid;
+        invalid.actor = first;
+        invalid.task_encounter_start = *out.task.encounter + 1;
+        check(!presentation(out, invalid) && out.sound_requests.size() == 2 && out.scripts.notices.size() == 1,
+              "stale task start identity explicitly rejects without residual sound or notice");
+        // 整轮晚期拒绝：证明已经产生的声音/通知与新遭遇一并留在私有候选。
+        starts = 0;
+        actors.tail_cache = [](const auto &, auto, const auto &)
+            -> std::optional<StartupWorldRuntimeState> { return {}; };
+        const auto failed = ref::prepare_world_actor_schedule(s, {true}, actors);
+        check(!failed.state && starts == 1 && !s.task.encounter &&
+                  s.scene.world.world.ai.encounters.empty() &&
+                  s.sound_requests == std::vector<StartupAudioRequest>{{StartupAudioOperation::ordinary_play, 7}} &&
+                  s.scripts.notices.empty(),
+              "late round failure exposes no partial task encounter, random-owner outputs, BGM2 or notice24");
+    }
+}
 void task_victory_requests() {
     StartupSession initial;
     StartupWorldRuntimeSession session(initial.state(), ref::WorldRandomStream{});
@@ -350,7 +487,8 @@ void task_victory_requests() {
           "clear applies original bit2 cleanup to every human definition");
     check(consume_startup_world_runtime_task_encounter_request(
               state, {ref::EncounterRequestKind::refresh_global, {}, 0, 0, 0}) &&
-              state.sound_requests.back() == 1 &&
+              state.sound_requests.back().id == 1 &&
+              state.sound_requests.back().operation == StartupAudioOperation::replace_bgm &&
               state.scene.world.world.ai.accounting.funds() == original_cash,
           "post-clear original refresh restores music1 and never repays encounter reward");
     const auto pending = state.scene.world.world.ai.pending_completion;
@@ -665,23 +803,34 @@ void presentation_gift_sound_and_rollback() {
             auto s = test_support::world_fixture();
             s.scripts.pages.front().lifecycle = 3;
             const auto page = presentation_gift(s,counter);
-            s.sound_requests = {5};
+            s.sound_requests = {{StartupAudioOperation::jingle, 5}}; // 既有jingle输出条件夹具。
             auto request = presentation_request(s,Mode::top_only,true);
             request.application_preview = guard == 1;
             request.sound_paused = guard == 2;
             const auto first = prepare_startup_world_presentation(s,request);
             const std::size_t count = counter == 45 && guard == 0 ? 1 : 0;
             check(first.candidate && first.plan && first.plan->sound_requests == count &&
-                      first.candidate->sound_requests ==
+                      test_support::audio_ids(first.candidate->sound_requests) ==
                           (count ? std::vector<int>({5,8}) : std::vector<int>({5})) &&
                       first.candidate->page_counters.at(page) == counter &&
                       first.plan->random_before == first.plan->random_after,
                   "66 literal44/45/46 and app-preview/sound-paused guards emit only counter45 sound8");
+            check(first.candidate->sound_requests == (count
+                      ? std::vector<StartupAudioRequest>{{StartupAudioOperation::jingle,5},
+                                                        {StartupAudioOperation::ordinary_play,8}}
+                      : std::vector<StartupAudioRequest>{{StartupAudioOperation::jingle,5}}),
+                  "原D5保留在前，66实际C8不能由SE资源通道统一成jingle");
             const auto repeated = prepare_startup_world_presentation(*first.candidate,request);
             check(repeated.candidate && repeated.plan->sound_requests == count &&
                       repeated.candidate->sound_requests.size() == 1 + count * 2 &&
                       repeated.candidate->page_counters.at(page) == counter,
                   "new same-state66 invocation repeats its original outlet, preserving counter and old outputs");
+            check(repeated.candidate->sound_requests == (count
+                      ? std::vector<StartupAudioRequest>{{StartupAudioOperation::jingle,5},
+                                                        {StartupAudioOperation::ordinary_play,8},
+                                                        {StartupAudioOperation::ordinary_play,8}}
+                      : std::vector<StartupAudioRequest>{{StartupAudioOperation::jingle,5}}),
+                  "重复准入C8必须保原序和次数，不能按ID或操作去重");
         }
     }
     auto s = presentation_task();
@@ -689,7 +838,8 @@ void presentation_gift_sound_and_rollback() {
     auto request = presentation_request(s,Mode::full_redraw,true);
     const auto valid = prepare_startup_world_presentation(s,request);
     check(valid.candidate && valid.plan && valid.plan->random_after == 2 &&
-              valid.plan->sound_requests == 1 && valid.candidate->sound_requests.back() == 8,
+              valid.plan->sound_requests == 1 && valid.candidate->sound_requests.back().id == 8 &&
+              valid.candidate->sound_requests.back().operation == StartupAudioOperation::ordinary_play,
           "one actual full repaint commits lower scene random followed by top66 sound8");
     s.human_gift_messages.erase(page);
     const auto random = s.scene.random;
@@ -790,6 +940,7 @@ int main() {
         selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();
+        task_start_audio();
         task_victory_requests();
         active_management();
         presentation_admission_and_random();

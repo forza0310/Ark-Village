@@ -25,6 +25,8 @@ struct WorldHumanView {
     std::string title, name, profession, target_profession, message;
     simulation::StartupHumanDetails details;
     std::array<std::string, 4> equipment_names;
+    std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};
+    std::array<std::array<int, 4>, 4> equipment_values{};
     std::vector<WorldHumanRow> rows;
     std::optional<WorldHumanRow> choice;
     std::array<std::array<int, 6>, 3> attributes{};
@@ -52,6 +54,7 @@ bool world_human_page(const simulation::rules::WorldScriptPage &page);
 WorldHumanView world_human_view(const simulation::StartupWorldRuntimeState &state,
                                 const simulation::rules::WorldScriptPage &page);
 WorldHumanLayout world_human_layout(Extent extent);
+WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
 int world_human_first_row(const WorldHumanView &view);
 std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
                                                   const WorldHumanLayout &layout,

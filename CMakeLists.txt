@@ -53,9 +53,9 @@ ark_target(ark_world_simulation)
 
 if(ARK_BUILD_DESKTOP)
     add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
-        src/desktop/resources.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
+        src/desktop/resources.cpp src/desktop/sprite_picking.cpp src/desktop/projection.cpp src/desktop/game_view.cpp
         src/desktop/playability_probe.cpp src/desktop/world_view.cpp src/desktop/world_inspection.cpp
-        src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/ui/world_startup.cpp src/desktop/world_scene.cpp
+        src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_audio.cpp src/desktop/ui/world_startup.cpp src/desktop/world_scene.cpp
         src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
         src/desktop/world_management.cpp src/desktop/world_management_inspection.cpp
         src/desktop/world_human_inspection.cpp
@@ -64,8 +64,8 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/scene.cpp src/desktop/road_render.cpp src/desktop/boundary_render.cpp src/desktop/character_animation.cpp
         src/desktop/character_status.cpp src/desktop/character_visibility.cpp src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp
         src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_reports.cpp src/desktop/ui/world_award.cpp
-        src/desktop/ui/world_building.cpp src/desktop/ui/world_progression.cpp
-        src/desktop/ui/world_human.cpp src/desktop/ui/world_tax.cpp
+        src/desktop/ui/world_building.cpp src/desktop/ui/world_facility_upgrade.cpp src/desktop/ui/world_progression.cpp
+        src/desktop/ui/world_human.cpp src/desktop/ui/world_human_detail.cpp src/desktop/ui/world_tax.cpp
         src/desktop/ui/world_village_activity.cpp
         src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
         src/desktop/ui/world_facility_catalog.cpp

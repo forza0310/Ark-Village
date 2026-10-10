@@ -22,7 +22,8 @@ const prototypeModules = ['startup', 'startup_map', 'startup_ai', 'facility_proj
   'startup_world_runtime_nonactors', 'startup_world_building', 'startup_world_visuals',
   'startup_world_persistence', 'startup_application', 'startup_system_records', 'startup_skin',
   'startup_application_actions', 'startup_application_title', 'startup_title_actor_skin',
-  'startup_information'];
+  'startup_information', 'startup_application_menu', 'startup_title_menu',
+  'steam_startup_skin', 'steam_facility_skin'];
 const prototypeTests = ['startup_world_projection', 'startup_world_routes', 'startup_world_scene',
   'startup_world_arrival', 'startup_world_runtime_tasks', 'startup_world_runtime',
   'startup_world_continuous', 'startup_world_pages', 'startup_world_runtime_nonactors',
@@ -62,6 +63,8 @@ if (mode === '--record-patch') {
   const files = new Set(), pending = prototypeModules.map(name => `prototype/src/${name}.cpp`);
   for (const name of prototypeTests) pending.push(`prototype/tests/${name}_test.cpp`);
   pending.push('prototype/tests/startup_skin_checks.cpp',
+    'prototype/tests/steam_startup_skin_checks.cpp', 'prototype/tests/steam_facility_skin_checks.cpp',
+    'prototype/tests/startup_title_menu_checks.cpp', 'prototype/tests/startup_title_menu_replay_checks.cpp',
     'prototype/tests/startup_application_replay_checks.cpp',
     'prototype/tests/startup_application_replay_paths_checks.cpp',
     'prototype/tests/startup_application_replay_state_checks.cpp',
@@ -89,7 +92,8 @@ if (mode === '--record-patch') {
       if (!reference && !prototype) {
         // CPU portrait regression reuses the product's existing identical SEB/TSV API.
         // Keep the full test body; only its header/namespace and target dependency change.
-        if (['prototype/tests/startup_world_visuals_test.cpp', 'prototype/tests/startup_skin_checks.cpp'].includes(relative) &&
+        if (['prototype/tests/startup_world_visuals_test.cpp', 'prototype/tests/startup_skin_checks.cpp',
+            'prototype/tests/steam_startup_skin_checks.cpp', 'prototype/tests/steam_facility_skin_checks.cpp'].includes(relative) &&
             ['dungeon_village_tools/sprite.hpp', 'dungeon_village_tools/table.hpp'].includes(match[1]))
           continue;
         // Maintained prototype regressions share a local fixture. Keep its relative path
@@ -147,6 +151,9 @@ if (mode === '--record-patch') {
   files.add('prototype/tests/startup_world_data_test.mjs');
   files.add('prototype/tests/replay_file_test.mjs');
   files.add('prototype/tests/application_natural_process.mjs');
+  for (const file of ['application_process_support.mjs', 'application_active_process.mjs',
+      'application_second_star_process.mjs', 'title_menu_process.mjs'])
+    if (existsSync(join(source, 'prototype/tests', file))) files.add('prototype/tests/' + file);
   files.add('prototype/tests/support/README.md');
   const records = [...files].sort().map(file => {
     const bytes = readFileSync(join(source, file));
@@ -240,17 +247,19 @@ if (mode === '--record-patch') {
     !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
   const separateModules = new Set(['startup_world_file_io.cpp', 'startup_system_records.cpp',
     'startup_application.cpp', 'startup_application_replay.cpp', 'startup_application_replay_paths.cpp',
-    'startup_application_actions.cpp', 'startup_application_title.cpp']);
+    'startup_application_actions.cpp', 'startup_application_title.cpp', 'startup_application_menu.cpp',
+    'startup_application_storage.cpp', 'startup_application_storage_replay.cpp', 'startup_title_menu.cpp']);
   const runtime = worldSources.filter(v => !persistenceModules.has(basename(v.file)) && !separateModules.has(basename(v.file)));
   const persistence = worldSources.filter(v => persistenceModules.has(basename(v.file)));
   const applicationSupport = records.filter(v => /^tests\/simulation\/startup_(?:system_records|world_clear_score)_test\.cpp$/.test(v.file) ||
     /^tests\/simulation\/startup_application_replay_(?:paths|state)_checks\.cpp$/.test(v.file) ||
+    /^tests\/simulation\/startup_title_menu(?:_replay)?_checks\.cpp$/.test(v.file) ||
     v.file === 'tests/simulation/startup_title_presentation_checks.cpp');
   const tests = records.filter(v => v.file.startsWith('tests/simulation/') && v.file.endsWith('_test.cpp') && !applicationSupport.includes(v));
   const hashes = records.filter(v => v.file === 'src/assets/sha256.cpp');
   const continuousSupport = records.filter(v => v.file === 'tests/simulation/startup_world_replay_driver.cpp');
   const persistenceSupport = records.filter(v => /^tests\/simulation\/startup_world_(?:codec|restore)_checks\.cpp$/.test(v.file) ||
-    /^tests\/simulation\/startup_application_(?:replay_checks|actions_checks|natural_replay)\.cpp$/.test(v.file));
+    /^tests\/simulation\/startup_application_(?:replay_checks|actions_checks|natural_replay|active_replay|second_star_replay)\.cpp$/.test(v.file));
   let cmake = '# Explicit frozen-source inventory, generated by scripts/import_world_research.mjs.\n';
   cmake += 'set(ARK_WORLD_RULE_SOURCES\n' + rules.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
   cmake += 'set(ARK_WORLD_RUNTIME_SOURCES\n' + runtime.map(v => '    "${ARK_WORLD_ROOT}/' + v.file + '"').join('\n') + '\n)\n';
@@ -258,9 +267,9 @@ if (mode === '--record-patch') {
   for (const [name, entries] of [['ARK_WORLD_PERSISTENCE_SOURCES', persistence],
       ['ARK_WORLD_FILE_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_world_file_io.cpp')],
       ['ARK_WORLD_SYSTEM_SOURCES', worldSources.filter(v => basename(v.file) === 'startup_system_records.cpp')],
-      ['ARK_STARTUP_APPLICATION_SOURCES', worldSources.filter(v => /^startup_application(?:_replay(?:_paths)?|_actions|_title)?\.cpp$/.test(basename(v.file)))],
+      ['ARK_STARTUP_APPLICATION_SOURCES', worldSources.filter(v => /^startup_application(?:_replay(?:_paths)?|_actions|_title|_menu|_storage(?:_replay)?)?\.cpp$/.test(basename(v.file)) || basename(v.file) === 'startup_title_menu.cpp')],
       ['ARK_STARTUP_APPLICATION_TEST_SOURCES', applicationSupport],
-      ['ARK_STARTUP_SKIN_TEST_SOURCES', records.filter(v => v.file === 'tests/simulation/startup_skin_checks.cpp')],
+      ['ARK_STARTUP_SKIN_TEST_SOURCES', records.filter(v => ['tests/simulation/startup_skin_checks.cpp', 'tests/simulation/steam_startup_skin_checks.cpp', 'tests/simulation/steam_facility_skin_checks.cpp'].includes(v.file))],
       ['ARK_WORLD_HASH_SOURCES', hashes],
       ['ARK_WORLD_CONTINUOUS_SUPPORT_SOURCES', continuousSupport],
       ['ARK_WORLD_PERSISTENCE_SUPPORT_SOURCES', persistenceSupport]])

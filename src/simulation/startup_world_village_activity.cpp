@@ -461,7 +461,7 @@ std::optional<State> update_startup_world_village_activity_page(const State &s, 
         return {};
     ++counter;
     if (p->legacy_page == 53 && counter == 70)
-        next.sound_requests.push_back(5);
+        next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
     next.scripts.executing_page.reset();
     return next;
 }

@@ -388,7 +388,7 @@ std::optional<State> update_startup_world_facility_catalog_page(const State &s, 
         return {};
     ++counter;
     if (original.legacy_page == 82 && next.page_phases.find(id)->second == 0 && counter == 1)
-        next.sound_requests.push_back(4);
+        next.sound_requests.push_back({StartupAudioOperation::jingle, 4});
     return next;
 }
 } // namespace ark::simulation

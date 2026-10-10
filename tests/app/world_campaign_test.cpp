@@ -408,6 +408,32 @@ void verify_pot_endpoint(const PotCampaign &campaign, const BusinessCheckpoint &
               << "->" << stats.hp_after << std::endl;
 }
 
+void verify_third_endpoint(const LateCampaign &campaign, const BusinessCheckpoint &before) {
+    const auto &s = campaign.state;
+    const auto &v = campaign.strategy.stats();
+    require(v.target_rank == 3 && campaign.strategy.complete(s) && app::world_save_eligible(s),
+            "Third-star endpoint lacks completed conditions, school business or full-month trade");
+    const auto &western = s.scene.world.world.facilities.at(v.western);
+    const auto &school = s.scene.world.world.facilities.at(v.school);
+    require(western.placement.definition_id == 40 && western.status == 1 &&
+                western.sales > v.western_initial_sales && school.placement.definition_id == 63 &&
+                school.status == 1 && school.sales == v.school_sales && school.sales > 0 &&
+                s.maximum_income >= 35000 && s.events_held >= 15 && s.activity_counts.at(7) > 0 &&
+                v.school_activity_paid &&
+                s.task_progress.successes >= v.initial_successes + v.task_successes &&
+                v.task_successes > 0,
+            "Cold third-star Owner lost real restaurant, school, activity or task outcomes");
+    require(s.simulation_steps > before.world_steps && v.ticks > before.observed_ticks &&
+                v.commands > before.commands && facility_sales(s) > before.sales,
+            "Third-star restart did not perform real commands, updates and trade");
+    std::cout << "THIRD_ENDPOINT world_rounds=" << before.world_steps << "->" << s.simulation_steps
+              << " cumulative_facility_sales=" << before.sales << "->" << facility_sales(s)
+              << " rank=" << s.rank << " income_record=" << s.maximum_income
+              << " events=" << s.events_held << " school=" << v.school
+              << " school_sales=" << school.sales << " activity7=" << s.activity_counts.at(7)
+              << " post_activity_full_month=1" << std::endl;
+}
+
 std::filesystem::path isolated_directory(const char *executable, const char *supplied,
                                          const char *marker = "ark-active-first-star-v1\n") {
     const auto build = std::filesystem::canonical(executable).parent_path().parent_path();
@@ -513,6 +539,27 @@ void contract() {
         refused = true;
     }
     require(refused, "Pot strategy must refuse second-star strategy evidence");
+    LateStrategy third(3);
+    std::ostringstream third_encoded;
+    third.encode(third_encoded);
+    std::istringstream third_input(third_encoded.str());
+    const auto third_restored = LateStrategy::decode(third_input);
+    require(third_restored.stats().target_rank == 3 && !third_restored.complete(state) &&
+                !third_restored.checkpoint(state),
+            "Third-star evidence lost target or invented progress");
+    refused = false;
+    try {
+        third.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Third-star route must refuse an unranked world");
+    ark::test::ActiveTradeEvidence trade;
+    trade.revenue.emplace(9, 100);
+    require(!trade.full_month_after(9, 11), "Milestone-month sales cannot certify the next month");
+    trade.revenue.emplace(10, 100);
+    require(!trade.full_month_after(9, 10) && trade.full_month_after(9, 11),
+            "Only a completed following month can certify continued trade");
     std::cout << "PASS active campaign driver contract" << std::endl;
 }
 } // namespace
@@ -583,11 +630,14 @@ int main(int argc, char **argv) {
             }
             return 0;
         }
-        const bool late = mode == "late-new" || mode == "late-resume" || mode == "verify-late";
+        const bool third = mode == "third-new" || mode == "third-resume" || mode == "verify-third";
+        const bool late =
+            third || mode == "late-new" || mode == "late-resume" || mode == "verify-late";
         if (late) {
-            const auto directory =
-                isolated_directory(argv[0], argv[2], "ark-active-second-star-v1\n");
-            if (mode == "late-new") {
+            const auto directory = isolated_directory(argv[0], argv[2],
+                                                      third ? "ark-active-third-star-v1\n"
+                                                            : "ark-active-second-star-v1\n");
+            if (mode == "late-new" || mode == "third-new") {
                 require(!std::filesystem::exists(app::world_save_slot_path(directory, 0)) &&
                             !std::filesystem::exists(app::world_save_slot_path(directory, 1)),
                         "New late route cannot overwrite previous player slots");
@@ -596,38 +646,61 @@ int main(int argc, char **argv) {
                         "First-star input directory must be an isolated local copy");
                 // The first Owner is discarded after scalar observations. Cold-load the exact
                 // verified endpoint, then move its sole Owner into a fresh late strategy.
-                const auto before = checkpoint(load(input, 0));
-                auto prefix = load(input, 1);
-                verify_endpoint(prefix, before);
                 require(bytes(app::world_system_path(directory)) ==
                             bytes(app::world_system_path(input)),
                         "Late route system record differs from the verified prefix");
-                late_campaign.emplace(
-                    LateCampaign{std::move(prefix.state), std::move(prefix.system), directory, {}});
+                if (third) {
+                    const auto before = checkpoint(load<LateStrategy>(input, 0));
+                    auto prefix = load<LateStrategy>(input, 1);
+                    require(prefix.strategy.stats().target_rank == 2,
+                            "Third-star prefix is not the second-star route");
+                    verify_late_endpoint(prefix, before);
+                    late_campaign.emplace(LateCampaign{std::move(prefix.state),
+                                                       std::move(prefix.system), directory,
+                                                       LateStrategy{3}});
+                } else {
+                    const auto before = checkpoint(load(input, 0));
+                    auto prefix = load(input, 1);
+                    verify_endpoint(prefix, before);
+                    late_campaign.emplace(LateCampaign{std::move(prefix.state),
+                                                       std::move(prefix.system), directory,
+                                                       LateStrategy{}});
+                }
                 late_campaign->strategy.reconcile(late_campaign->state);
                 late_campaign->run(false);
                 late_campaign->save(0);
             } else {
                 const auto before = checkpoint(load<LateStrategy>(directory, 0));
-                if (mode == "verify-late") {
+                if (mode == "verify-late" || mode == "verify-third") {
                     late_campaign.emplace(load<LateStrategy>(directory, 1));
-                    verify_late_endpoint(*late_campaign, before);
-                    std::cout << "PASS read-only second-star cold-file endpoint verification"
+                    if (third)
+                        verify_third_endpoint(*late_campaign, before);
+                    else
+                        verify_late_endpoint(*late_campaign, before);
+                    std::cout << "PASS read-only rank-route cold-file endpoint verification"
                               << std::endl;
                 } else {
                     late_campaign.emplace(load<LateStrategy>(directory, 0));
+                    require(late_campaign->strategy.stats().target_rank == (third ? 3 : 2),
+                            "Saved route target differs from requested phase");
                     const auto first_slot = bytes(app::world_save_slot_path(directory, 0));
                     const auto first_strategy = bytes(directory / "strategy0.txt");
                     late_campaign->run(true);
-                    verify_late_endpoint(*late_campaign, before);
+                    if (third)
+                        verify_third_endpoint(*late_campaign, before);
+                    else
+                        verify_late_endpoint(*late_campaign, before);
                     late_campaign->save(1);
                     require(bytes(app::world_save_slot_path(directory, 0)) == first_slot &&
                                 bytes(directory / "strategy0.txt") == first_strategy,
                             "Late restart must preserve its first player checkpoint and evidence");
-                    std::cout
-                        << "PASS active second-star campaign: new shops, residence, "
-                           "victories, cold restart, promotion, paid activity 30, continued trade"
-                        << std::endl;
+                    std::cout << (third ? "PASS active third-star campaign: restaurant, victories, "
+                                          "cold restart, promotion, school construction, paid "
+                                          "activity 7, full-month trade"
+                                        : "PASS active second-star campaign: new shops, residence, "
+                                          "victories, cold restart, promotion, paid activity 30, "
+                                          "continued trade")
+                              << std::endl;
                 }
             }
             return 0;

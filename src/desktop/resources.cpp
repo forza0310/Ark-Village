@@ -1,7 +1,6 @@
 // SourceSprites/ChineseFont adapted from research/prototype/src/startup_view.cpp.
 // PNG index, SEB index and map display ID are different namespaces; farmer uses job image override.
 #include "resources.hpp"
-#include "ark/app/startup_data.hpp"
 #include "ark/assets/table.hpp"
 #include "ark/simulation/startup.hpp"
 #include "desktop_glyphs.hpp"
@@ -597,27 +596,15 @@ void check_assets(const std::filesystem::path &root) {
     // Construction can remove an existing road: every adjacency frame can become reachable.
     for (int frame = 0; frame < 16; ++frame)
         requested["road00.seb"].insert(frame);
-    for (const auto &cell : app::startup_data().map.cells) {
-        const auto &displays = app::startup_data().displays;
-        const auto it = std::find_if(displays.begin(), displays.end(),
-                                     [&](const auto &v) { return v.id == cell.display_id; });
+    const auto &evidence = simulation::startup_evidence();
+    for (const auto &cell : evidence.cells) {
+        const auto it = std::find_if(evidence.displays.begin(), evidence.displays.end(),
+                                     [&](const auto &d) { return d.id == cell.display_id; });
+        if (it == evidence.displays.end())
+            throw std::runtime_error("Map references an unknown display");
         requested[it->sprite].insert(cell.variant);
     }
-    for (const auto &item : app::startup_data().definitions) {
-        if (item.tab < 0)
-            continue;
-        const auto &displays = app::startup_data().displays;
-        const auto it = std::find_if(displays.begin(), displays.end(),
-                                     [&](const auto &v) { return v.id == item.display_id; });
-        // Disabled catalog entries need only their thumbnail, not unsupported rotations.
-        const int orientations = (item.kind == 6 || item.kind == 13) ? 1 : 2;
-        for (int orientation = 0; orientation < orientations; ++orientation)
-            for (const auto &part : facilities::footprint(item.shape, orientation, {0, 0}))
-                requested[it->sprite].insert(part.fragment);
-    }
-    // The complete world's catalogue includes recruitment and later private housing that
-    // the legacy slice disabled. Validate every authored fragment in both orientations.
-    const auto &evidence = simulation::startup_evidence();
+    // Validate the maintained complete-world catalogue in both authored orientations.
     for (const auto &item : evidence.definitions) {
         if ((!(item.flags & 4) && item.kind != 12) || item.kind == 6)
             continue;

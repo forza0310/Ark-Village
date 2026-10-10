@@ -1780,42 +1780,6 @@
       "bytes": 88
     },
     {
-      "file": "data/LOADED_INSTANCES.tsv",
-      "source": "research/dungeon_village_1/data/startup/LOADED_INSTANCES.tsv",
-      "sha256": "835062acdce1f3c8befd641b65fc71e69f0aa7f08cf395a3ca1ee612445a3c8d",
-      "bytes": 187
-    },
-    {
-      "file": "data/LOADED_MAP.tsv",
-      "source": "research/dungeon_village_1/data/startup/LOADED_MAP.tsv",
-      "sha256": "1a3955e1a139931c2731c5598806f920d836b353fa5ba98914b89f2269eefea1",
-      "bytes": 20093
-    },
-    {
-      "file": "data/MAP.json",
-      "source": "research/dungeon_village_1/data/startup/MAP.json",
-      "sha256": "ba69797e2efa34e999f19f104ac2ee7f8d3b6b9d4d2268368ad68904fac9f2ef",
-      "bytes": 5581
-    },
-    {
-      "file": "data/STATE.json",
-      "source": "research/dungeon_village_1/data/startup/STATE.json",
-      "sha256": "e4152b144ecc65976665df86590a23f5a236f3a32bfabeae31d500f5a75ec359",
-      "bytes": 7724
-    },
-    {
-      "file": "data/TABLES.json",
-      "source": "research/dungeon_village_1/data/startup/TABLES.json",
-      "sha256": "b00ffa3b69663abb7b2e45873f38a845184efb6895d2b036267196472c36db68",
-      "bytes": 27870
-    },
-    {
-      "file": "data/tenantData.txt",
-      "source": "research/dungeon_village_1/data/original/tenantData.txt",
-      "sha256": "5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a",
-      "bytes": 11629
-    },
-    {
       "file": "event/event_backGlad.png",
       "source": "research/dungeon_village_1/assets/original/event/event_backGlad.png",
       "sha256": "5f95316883cbc9a3aebcd990f48645edd73dbd156a668be0a2dafb9fe898f370",

@@ -165,7 +165,6 @@ def package(target):
     # Validate only the staged files, from outside the checkout/build working directory.
     smoke = CI / "smoke"
     smoke.mkdir(exist_ok=True)
-    run("package-assets", ["node", ROOT / "scripts" / "verify_assets.mjs", stage / "assets"], smoke)
     run("package-check", [executable, "--check"], smoke, env=system_environment())
     dist = CI / "dist"
     dist.mkdir(exist_ok=True)

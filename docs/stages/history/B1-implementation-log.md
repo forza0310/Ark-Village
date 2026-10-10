@@ -14,7 +14,7 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 本地公共Release库→desktop-debug构建通过；标准172项全通过，76.13秒，精确排除simulation.startup_world_continuous_test。最后募集显示文案修正后重编，4项受影响Debug检查全通过（0.23秒），Release建设输入套件退出0。实际默认目录/240×256目录/设施按钮页3张窗口退出0、failed0并核对；共享设施窗口批10张另覆盖普通/特殊/MAX、75/77、明确flag32的S057五行与最小目录，目视检查普通/最小目录及操作皮肤。五行夹具由真实open_startup_world_build_menu创建，不是自然解锁；真实新局只有四个开放条目，交换位置保持flag32资格。截图不是OS鼠标或原程序逐帧认证。核心/CMake未变，不重复headless/三个月/年度；CI Release完整标准仍待验证，未推送。
 
-实际证据在build/validation/s057-catalogue-20261007。字体复用固定本地源，468输入/1731码点、387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9；无新依赖下载/ZIP。上一批“11张窗口通过”只证明当批局部接入，不作为S057整体版式已对齐的证据。
+实际证据在build/validation/s057-catalogue-20261007。字体复用固定本地源，468输入/1731码点、387536字节；无新依赖下载/ZIP。上一批“11张窗口通过”只证明当批局部接入，不作为S057整体版式已对齐的证据。
 
 <a id="latest-ui-evidence"></a>
 
@@ -30,7 +30,7 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 公共库→desktop-debug与Release玩家/UI runner编译通过；desktop-debug标准172项全通过，74.46秒，精确排除simulation.startup_world_continuous_test。窗口对照补价格标签后，最终重编、4项受影响Debug检查全通过（0.26秒），Release两套UI回归通过。实际默认游戏菜单/建设目录/详情3张，以及普通74/第二页/MAX/定义预览/75普通与最小/77普通与最小8张，共11张PNG退出0且目视核对。原页计数/Owner回归进入标准测试，纯桌面变更不重复headless、Debug三个月、年度或长认证前缀；main CI Release完整标准待验证，未推送。
 
-本地字体刷新468项输入/1731码点，387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9，无新下载或ZIP。证据在build/validation/ui-evidence-20261007；原图只读参考、不作游戏贴图。研究33c09c3的道具业务重载已增加原程序证据；收口补审4b47d0f已取得非空p前档与实际布局，具体原程序重载仍待验，没有新UI/维护实现。它们不替换玩家ARKSAVE1/schema2、随机不落盘和候选文件保护政策。标题/自动栏/系统完整流程与SDK无关，仍按各自来源/玩家政策单独设计。
+本地字体刷新468项输入/1731码点，387536字节，无新下载或ZIP。证据在build/validation/ui-evidence-20261007；原图只读参考、不作游戏贴图。研究33c09c3的道具业务重载已增加原程序证据；收口补审4b47d0f已取得非空p前档与实际布局，具体原程序重载仍待验，没有新UI/维护实现。它们不替换玩家ARKSAVE1/schema2、随机不落盘和候选文件保护政策。标题/自动栏/系统完整流程与SDK无关，仍按各自来源/玩家政策单独设计。
 
 <a id="pc-pointer-input"></a>
 
@@ -44,7 +44,7 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 本地公共库→desktop-debug及Release玩家/投影用例定向构建通过。desktop-debug标准172项全部通过，73.64秒，精确排除simulation.startup_world_continuous_test；包括新增手势、既有管理/菜单/存档/任务/FIFO和354源/616素材检查。Release projection_input实际执行退出0；菜单、建设目录、设施详情三个真实窗口均8帧/退出0/failed0、已核对截图。窗口使用真实预运行/消费者，不是OS鼠标操作或Steam原程序键鼠矩阵认证。核心/CMake/运行时未变，本批不重复headless、三个月或认证长前缀；main CI Release完整标准待验证，未推送。
 
-本地复用字体源刷新468项输入/1731码点，字体仍387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9；没有下载依赖或新ZIP。日志与三个PNG位于build/validation/pc-mouse-20261007。Steam文件失败的直接写原路径风险、空退出委托等是新研究事实；玩家/维护候选校验和临时替换不降低，标题/自动栏/完整系统皮肤及marker注册尚未接入。
+本地复用字体源刷新468项输入/1731码点，字体仍387536字节；没有下载依赖或新ZIP。日志与三个PNG位于build/validation/pc-mouse-20261007。Steam文件失败的直接写原路径风险、空退出委托等是新研究事实；玩家/维护候选校验和临时替换不降低，标题/自动栏/完整系统皮肤及marker注册尚未接入。
 
 <a id="desktop-glyph-inventory"></a>
 
@@ -66,7 +66,7 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 两套CTest与Release编译存在并发，耗时不是性能对照。静态页夹具明确供应MAX、rank5/flag16/seen97及库存资格，运行真实页面消费者，不是自然解锁、OS鼠标或原游戏动态验收。规则/Owner/FIFO/随机/存档/47ms/一倍速不变，因此不重复认证长前缀、尾段或年度长跑；三个月注册/参数/断言仍保留，本地未跑Debug三个月，main CI Release完整标准待验证，未推送。
 
-本地复用Noto固定源和fonttools4.59.0，无新下载：467项输入、1731码点，字体387536字节，SHA256 eba87eea951a0e452e49ac812dbae06bf5e7e5089faf9aaee0a5cb22ab6f8bc9；字体manifest记录inventory/generator哈希，实际build/bin字体字节一致。相比前批只删除旧手工列表独有的“碌”，实际文案需求未丢；独立旧扫描语义逐码点对照保留在build/validation/desktop-glyphs-audit。当前日志/结果和六张PNG位于build/validation/desktop-glyphs-20261007；本批未生成新ZIP或发布。
+本地复用Noto固定源和fonttools4.59.0，无新下载：467项输入、1731码点，字体387536字节；字体manifest记录inventory/generator哈希，实际build/bin字体字节一致。相比前批只删除旧手工列表独有的“碌”，实际文案需求未丢；独立旧扫描语义逐码点对照保留在build/validation/desktop-glyphs-audit。当前日志/结果和六张PNG位于build/validation/desktop-glyphs-20261007；本批未生成新ZIP或发布。
 
 <a id="research-524415a-design"></a>
 
@@ -98,11 +98,11 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 | Release实际窗口 | 真实旅馆74一张；源调用点夹具批普通74/第二页/MAX/装备定义预览/最小75五张；实际FIFO保存/独立进程读取/空栏读取失败三张，全部退出0且截图核对 |
 | 来源/格式/脚本 | 354源与616素材标准检查通过，4个Node脚本语法、14项产品C++ clang-format、15份文档239链接及diff空白检查通过；新增玩家policy及原codec覆盖进入两套标准 |
 
-两套Debug三个月未运行，其注册/原参数/断言保持；main CI的Release完整标准测试待验证，未推送。认证输入是既有已认证38000前缀，未重新从新局跑长前缀；两个尾段各232368字节、SHA e025e55a28213f20074470811709e4e0f9e95594878c13100b4e705d0d64c893，末Session摘要7dc62e131517f2c08d04f517251493742097002655161e9877cd5e722d16b5a6。没有改研究或减少有效断言。
+两套Debug三个月未运行，其注册/原参数/断言保持；main CI的Release完整标准测试待验证，未推送。认证输入是既有已认证38000前缀，未重新从新局跑长前缀；两个尾段各232368字节，末Session摘要一致。没有改研究或减少有效断言。
 
 静态窗口夹具明确供应MAX、rank5/flag16/seen97和库存资格，真实消费者初始化页面，不冒称自然解锁/完整交易链。首次装备预览夹具遗漏介绍97资格被来源拒绝，已仅修夹具、细化阶段诊断并重编/窗口复验；编译中的缺声明/新query链接和旧RC缓存路径也已修正，失败日志保留，最终记录以修后检查为准。正常窗口60帧统计39个热身后样本；截图不代表OS鼠标或原APK动态等价。保存/读取保持日期资金、失败Owner不变，加载generation2与当前暂停/随机未来8次由实际检查器核对。
 
-本地复用固定Noto源更新1732字形子集，387848字节、SHA256 52c23c91c4b57736576ba9b0b2a0e4db5cc331166e994152ece81662d65a9a4d；运行图集显式补新标签，无新依赖下载。未生成本批新ZIP或发布。日志、PE闭包、认证档/trace与九张PNG在build/validation/maintainability-ui-20261007。
+本地复用固定Noto源更新1732字形子集，387848字节；运行图集显式补新标签，无新依赖下载。未生成本批新ZIP或发布。日志、PE闭包、认证档/trace与九张PNG在build/validation/maintainability-ui-20261007。
 
 ## 524415a存取与精确回放接入设计（2026-10-07，玩家政策已确认）
 
@@ -124,9 +124,9 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 ### 来源身份与验收
 
-字段JSON按协议规范保留源字节，布局真实SHA256为0500cff0cd937c6967836c6bf7c594ff43dd64c23f408e7ea9188e4fc3423403；C++inc仅机械改namespace。产品AST反向规范化到研究逻辑类型名后再生成规范JSON并真计算摘要，正向翻译访问代码做覆盖比对，不改hash凑通过。15项数据manifest保留源逻辑路径，仅映射读取产品assets，真实数据身份53d841ecad18982ffc230716c3ad6fa255643156f8a178327049e2fce34702eb。
+字段JSON按协议规范保留源字节；C++inc仅机械改namespace。产品AST反向规范化到研究逻辑类型名后再生成规范JSON并真计算摘要，正向翻译访问代码做覆盖比对，不改hash凑通过。15项数据manifest保留源逻辑路径，仅映射读取产品assets。
 
-研究38000认证档35087165字节，SHA256为6a4ce49a5923c9a6e3d48b76e4644b44c0f6082f4aa5b3e939ea29310e4e8132，已只读核对；作为产品待验证复用候选，复制至忽略验证目录，不修改原档。产品x64须实际双进程加载并跑38001–38282的282帧，逐帧全Session/Driver及尾段stdout与证书比较。通过只认证尾段与前缀资格，不宣称产品本批从新局重跑38000前缀；若布局/数据/前缀规则不兼容，明确失效后重新生成合法前缀。
+研究38000认证档35087165字节，已只读核对；作为产品待验证复用候选，复制至忽略验证目录，不修改原档。产品x64须实际双进程加载并跑38001–38282的282帧，逐帧全Session/Driver及尾段stdout与证书比较。通过只认证尾段与前缀资格，不宣称产品本批从新局重跑38000前缀；若布局/数据/前缀规则不兼容，明确失效后重新生成合法前缀。
 
 本批默认验收公共Release库、desktop-debug/headless-debug标准CTest（排除三个月）、集中codec/拒绝/恢复事务、短三进程回放与Clang字段覆盖；按风险追加Release认证尾段。玩家档不换新normal，既有两栏/随机/暂停/generation回归继续进入标准验收，不新增未授权的玩家政策与退出自动存档。持续三个月基线保留注册和断言，是否追加由实际规则/运行时差异决定；不机械重跑全部数小时长链。CI待本批提交后验证，不推送。
 
@@ -142,7 +142,7 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 新增维护套件993检查、driver417检查在两套标准中通过；短三进程420保存/421–840尾段同一轨迹，Clang92结构/11枚举字段覆盖及源规范JSON/inc严格一致。354项冻结来源（350项无补丁机械翻译、3项维护脚本路径/AST适配、1项原独立candidate夹具适配）、616项素材、Node语法及差异检查通过。四项新增覆盖对应研究123→127，未宣称迁入研究全部测试。玩家world_save/world_session现有随机/暂停/generation/失败保留回归同批通过；玩家编码字段、schema2和f34787数据身份未改。
 
-认证复制档大小35087165及源SHA保持不变，双尾段232368字节/trace SHA为e025e55a28213f20074470811709e4e0f9e95594878c13100b4e705d0d64c893；最终38282帧/23388G/322697抽/154284检查，与原自然终点一致。实际末帧全Session摘要7dc62e131517f2c08d04f517251493742097002655161e9877cd5e722d16b5a6。认证的是已发布前缀资格下的产品x64读取/尾段，本批没有从新局重跑38000前缀；并发构建/测试环境下的耗时不是新性能收益测量。新hash DLL实际AMD64依赖和共享export已核对，发布脚本递归imports可自动收包；本批未生成新ZIP、未执行UI/OS输入或原版窗口对照。
+认证复制档大小35087165及源SHA保持不变，双尾段232368字节，轨迹一致；最终38282帧/23388G/322697抽/154284检查，与原自然终点一致。实际末帧全Session摘要一致。认证的是已发布前缀资格下的产品x64读取/尾段，本批没有从新局重跑38000前缀；并发构建/测试环境下的耗时不是新性能收益测量。新hash DLL实际AMD64依赖和共享export已核对，发布脚本递归imports可自动收包；本批未生成新ZIP、未执行UI/OS输入或原版窗口对照。
 
 证据位于build/validation/research-524415a（配置/构建/标准日志、source/frozen、认证档副本/双trace及product-certificate），工具证据位于build/validation/persistence524-tools。标准三个月注册/参数/断言保留，本批未重复本地Debug/Release三个月、年度/自然扩张完整长链；CI完整desktop-release待验证，未推送/发布。验收期间research原档工具及证据由另一会话维护；产品未消费其在途内容、清理或夹带。产品checkpoint为a391d05，全部44项为产品文件。
 
@@ -260,7 +260,7 @@ Release九张产品窗口截图全部退出0且已核对：建设目录、道路
 
 ## 最新经营与编辑研究接续（2026-10-06）
 
-用户已确认顺序：规则/运行时与库存修正 → 村办/raw95 → 普通道具/商会 → 地图编辑；建设视觉为独立小批。首批从Git提交`2b479f6`导出研究（包含`9897d64`），冻结330项，snapshot SHA-256 `92dfab7c3c640a939ce68bd5741d1e92fd0630c59bfaf5d099e8e0e17ac6301c`。研究工作区再次出现修改，不读取其未提交内容、不改研究构建。
+用户已确认顺序：规则/运行时与库存修正 → 村办/raw95 → 普通道具/商会 → 地图编辑；建设视觉为独立小批。首批从Git提交`2b479f6`导出研究（包含`9897d64`），冻结330项。研究工作区再次出现修改，不读取其未提交内容、不改研究构建。
 
 | 本批契约与来源 | 风险与主责验证 |
 | --- | --- |
@@ -301,7 +301,7 @@ Release九张产品窗口截图全部退出0且已核对：建设目录、道路
 
 实际窗口已核对自有两件北国马铃薯/三件伤药、包子铺品质5→7/差额+2、真实人物体力22→24，以及村办子菜单和自然商会入口（14358轮，cash2670，原日期0/11/3/8883）。人物面板曾覆盖底栏，已修正共享几何并重拍默认1080×720和最小240×256；设施结果与子菜单也各补最小窗口。商会六个窗口全部8帧/退出0、截图已核对：83入口、84买入目录、86真实伤药300G交易（2670→2370）、85设施目录、74包子铺定义预览、93已付20点后的36点领取页。各窗口独立预运行，同一日期/轮数/随机不是连续交易轨迹；93尚未领取，不扩张为完整兑换动画验收。
 
-证据在`build/validation/items-commerce/`；所有预运行使用真实新局和已证消费者输入，不注入人物/资金/库存/解锁，窗口截图不等于OS鼠标操作或原APK动态认证。字体复用本地Noto/fonttools，1716字、383792字节，SHA256 `57d95d3f28b09e59593737e5207ed28005495fb86b93db81a0e50d84ce61adc0`；无新下载。
+证据在`build/validation/items-commerce/`；所有预运行使用真实新局和已证消费者输入，不注入人物/资金/库存/解锁，窗口截图不等于OS鼠标操作或原APK动态认证。字体复用本地Noto/fonttools，1716字、383792字节；无新下载。
 
 测试策略更新（2026-10-06）：后续批次按[构建检查](../../CONTRIBUTING.md#构建检查)和[ADR-0045](../../MILESTONES.md#adr-0045)执行。默认本地desktop-debug构建/标准测试，排除三个月连续模拟；main CI执行desktop-release完整标准测试并发布。核心边界调整补headless-debug，长模拟/性能/持续世界回归按风险用headless-release；不再每批强制四套。仅必要诊断或用户明确要求时补跑Debug长测。本文已完成批次的四套全测/长测结果为历史证据，不构成今后重复执行的要求。
 
@@ -843,7 +843,7 @@ Game唯一拥有人物运行状态、实例销售/占用、定义共享使用及
 
 ## 栅栏与外部入口绘制（2026-10-04）
 
-用户明确指定已交付的[BOUNDARY规格](../../../research/dungeon_village_1/ui/BOUNDARY.md)并要求落实。该规格尚在研究工作区，按本轮授权冻结其SHA256 `bf573e748d71e2c0251d98b27f821535f5973672d167d7e9a7a1009cadb02f52`，读取其静态契约；不消费同时在途的AI/世界规则，不修改或提交research。基础格/实例仍用原已校验产品快照，新增common素材按源字节/哈希导入。
+用户明确指定已交付的[BOUNDARY规格](../../../research/dungeon_village_1/ui/BOUNDARY.md)并要求落实。该规格尚在研究工作区，按本轮授权冻结其文件副本，读取其静态契约；不消费同时在途的AI/世界规则，不修改或提交research。基础格/实例仍用原已校验产品快照，新增common素材按源字节/哈希导入。
 当前加载后格已保存boundary_fragment/external_direction及阻挡状态，本次仅补表现：boundary_render纯参数映射给六拼片/三皮肤及四方向外部门柱；scene在第一遍Y降/X升的当前有效地表循环中提交common图元，与地表/补块/建筑/人物共享稳定深度队列。双层偏移分别由映射与SEB绘制各应用一次。
 区域/皮肤读取STATE的reset.active_boundary_index=0，编译期拒绝与当前初局快照不一致的区域；完整扩张未实现，不以切皮肤冒充扩张。普通栅栏用地表baseDepth+60，门柱用独立D.y+offset_y；入口格无栅栏覆盖，种类4城镇入口仍由既有实例绘制。
 提交门槛采用缩放后的D+(0,-31)/60×60与共享scene视口相交，图元最终按Retina物理画布裁剪；无效地表不追加覆盖。现有稳定排序未复刻满桶溢出，保留该独立原版差异，不将静态栅栏接入声称全场景队列等价。
@@ -869,20 +869,9 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
 风险与边界：维护初局尚缺共享住宅D投影；外场遭遇创建/完整任务恢复脚本不由纯消费者自动补齐。
 本轮验收包含正常类别4出发、旧格到达、FIFO顺序/退出请求、失败回滚、四套构建和真实窗口。
 
-本批读取的维护交付指纹（SHA256；research不进入产品提交）：
+本批读取的维护交付（research不进入产品提交）：
 
-| research/dungeon_village_1/ 相对路径 | SHA256 |
-| --- | --- |
-| `rules/ai/WORLD_SCHEDULE.md` | `3b88808be5bef1adf7e1ef8327511e5e275ee289aa6ebbb067e70ed17403c2b6` |
-| `rules/ai/WORLD_DEPARTURE.md` | `ef599b6c66bbf5c76e45fed523319e67d2fa1b0c902e28e9d07822e97232cac7` |
-| `rules/ai/CONTROL_COMPOSITION.md` | `eed912a97dbb6519c8c17cd84e7b3c600474cfb854ec5a0110bd69e292c1d2c5` |
-| `rules/ai/DUNGEONS.md` | `75461b992d507890794c0b8fe926dc6b7849c45b4e7c7e8d5d49507052b5c262` |
-| `ui/COMBAT_RENDER.md` | `361b004401f5e5704b71fed3ad7eb109dbcabce3b5dd98d0a7af793669ad7af8` |
-| `example/src/world_schedule.cpp` | `4aa61df4a3f201f7e749e71de4c7231af329d0833fc86f1cda00f3511815b0f1` |
-| `example/src/world_departure.cpp` | `e0834779fd9879b5d4bb73f5133ee85ee94223069e206dffd6a61540dbe7ac1f` |
-| `example/src/world_wander.cpp` | `35f429110000d7c9bfd19912881dfaec0d3a367a1f3dba6e7ce68bc6fd3f7552` |
-| `example/src/world_dungeon.cpp` | `34767d8449212bd44bd037ea4d242deec872f737751a4c3221b0bb46b3a48805` |
-| `example/src/map_access.cpp` | `3f6015c07eeba42e1a107cf167f0a4bf578e32ec8a4763d2076bd9cff63f6014` |
+来源文件：`rules/ai/WORLD_SCHEDULE.md`、`rules/ai/WORLD_DEPARTURE.md`、`rules/ai/CONTROL_COMPOSITION.md`、`rules/ai/DUNGEONS.md`、`ui/COMBAT_RENDER.md`、`example/src/world_schedule.cpp`、`example/src/world_departure.cpp`、`example/src/world_wander.cpp`、`example/src/world_dungeon.cpp`、`example/src/map_access.cpp`。
 
 接入边界修订：共同协议已驱动正常Game，人物c/d、施工次序及一次性执行前段已接；
 单人物无最终重叠对。战斗影响场尚不物化，生活人气请求仍待完整消费者。
@@ -916,9 +905,7 @@ WORLD_SCHEDULE、WORLD_DEPARTURE、CONTROL_COMPOSITION、DUNGEONS、COMBAT_RENDE
 kind4城镇入口及普通建筑照常绘制，逻辑实例/绑定/寻路/AI均不变。
 不新增素材、不改源表或research；同窗口/镜头/缩放/暂停画面逐像素对照，另执行四套配置/构建/CTest。
 
-来源SHA256：STARTUP `6d56f8c181e01d71ff55debe29cb200c0b1acb029fec62cfdb9695103e85b2ae`；
-BOUNDARY `bf573e748d71e2c0251d98b27f821535f5973672d167d7e9a7a1009cadb02f52`；
-LOADED_MAP.tsv `1a3955e1a139931c2731c5598806f920d836b353fa5ba98914b89f2269eefea1`。
+来源：STARTUP、BOUNDARY和LOADED_MAP.tsv。
 
 验收完成：四套预设在`/tmp/ark-exit-validation`配置/构建通过，headless Debug/Release各38项、
 desktop Debug/Release各47项CTest全通过，共170次。1280×720窗口、2560×1440物理画布、
@@ -943,14 +930,9 @@ desktop Debug/Release各47项CTest全通过，共170次。1280×720窗口、2560
 验收：四方向/转弯/静止/单轴整数不变/特殊状态/暂停/重开与正常首访AI；四套SEB所有16帧
 按原图边界/脚底锚点验证，畸形帧拒绝；四套配置/构建/CTest和有界窗口检查分别记录。
 
-本轮只读来源SHA256：
+本轮只读来源：
 
-| research/dungeon_village_1/相对路径 | SHA256 |
-| --- | --- |
-| rules/CHARACTERS.md | b4e3d549f23ba9efc80a283a920f93d3f7d692c5922f6ad1a9366268aff35015 |
-| prototype/src/startup_view.cpp | 3cca167ae18aa84e2933a11fa9dad6eb5f1bb847972fee7161ae20fc6f4f008a |
-| prototype/src/startup_world_runtime_nonactors.cpp | 1631dbffb83229e3c67bb9f8526ab026129b574f835b41068f80dce97ec1262d |
-| assets/original/human/seb.inf | 22025324fa4f2bafc736aaa9ae3d10d7072633df0e782a4907a7ffa56950ee67 |
+来源文件：rules/CHARACTERS.md、prototype/src/startup_view.cpp、prototype/src/startup_world_runtime_nonactors.cpp、assets/original/human/seb.inf。
 
 三个新增SEB原字节/哈希见assets/SOURCES.json，共108份资源校验通过；不消费同批在途完整世界代码。
 四套预设在`/tmp/ark-facing-validation`独立配置/构建，headless Debug/Release各38项、desktop
@@ -1013,16 +995,9 @@ Debug/Release各47项CTest全部通过，共170次。正常固定seed20261004的
 不能继续沿用“所有可见性消费者均未提供”的早期结论，需待同一稳定快照编译后重新验证其组合。
 场景适配仍明确拒绝菜单、非空建设/观察输入及有目标设施镜头，产品建设桥属于本阶段实现工作。
 
-本次阅读指纹（SHA256，仅审计，不是已迁入产品的来源锁）：
+本次阅读来源（仅审计，不是已迁入产品的交付）：
 
-| research/dungeon_village_1/相对路径 | SHA256 |
-| --- | --- |
-| prototype/scripts/compile_startup_world.mjs | 1b8271ff0303b06820c3ba8af4c61be89c5e33896e958b6c1de06e92119b8dcb |
-| prototype/src/startup_world_runtime_tasks.cpp | 02b40c698b4c50156a134985f352d7416ac7c8e5d8bda2b3e4dbe05f27de74c0 |
-| prototype/src/startup_world_runtime.cpp | 7091fa04561559fe2cc6c86236f8fa668dda25ba52c2dd7f1ec13b423e1f906d |
-| prototype/src/startup_world_runtime_nonactors.cpp | b4e942b12b0e6b01a85cc5bbd005df7463efed923491c4e5994d977830455744 |
-| prototype/tests/startup_world_runtime_tasks_test.cpp | 44334b2b538995ba0f66c50a5328d3b274657481a05d8acd90e68e2208eaf6dd |
-| prototype/tests/startup_world_continuous_test.cpp | 1c3b6880988b78ee608d0435e8bc7134b766108c3a718093a2f921f525ca45da |
+来源文件：prototype/scripts/compile_startup_world.mjs、prototype/src/startup_world_runtime_tasks.cpp、prototype/src/startup_world_runtime.cpp、prototype/src/startup_world_runtime_nonactors.cpp、prototype/tests/startup_world_runtime_tasks_test.cpp、prototype/tests/startup_world_continuous_test.cpp。
 
 ### 接入验收
 
@@ -1074,11 +1049,7 @@ Debug/Release各47项CTest全部通过，共170次。正常固定seed20261004的
 观察镜头尾部复用既有方向回调和上游任务夹具修正。没有修改research或添加产品规则补丁。
 源码与数据共282项的源/产品SHA256保存在`assets/simulation/SOURCES.json`。
 
-| 固定输入 | SHA256 |
-| --- | --- |
-| v2 SNAPSHOT.json | 8d5a62f6ebe352dee478f734decb6ff7a1cac4b875fde0504d46a11a6bc8cc2b |
-| 产品assets/simulation/SOURCES.json | 3c3d59e73e5e1981dfad4ff3f0a1fb0177411ba570c245fb2029d83420d9789b |
-| 参考prototype/src/startup_view.cpp | 182bfc15d5460655dc827f725325400011db4922ac514dcf82c43441388c0ae4 |
+来源文件：v2 SNAPSHOT.json、产品assets/simulation/SOURCES.json、参考prototype/src/startup_view.cpp。
 
 四套配置和编译通过，最终headless Debug/Release各126项、desktop Debug/Release各137项，合计526项通过。
 桌面新增测试初轮未确认真实事件7/talk4，因此一直停在介绍页；修正为显式确认实际页栈，并保留
@@ -1128,13 +1099,6 @@ Debug/Release各47项CTest全部通过，共170次。正常固定seed20261004的
 相对上一批接入6生产文件、pages/continuous两份测试及上述场景优化。冻结后研究测试继续增加诊断，
 本批按已验证快照接收，不把后续尚未验证的工作区自动覆盖进来。未编辑或提交任何research文件。
 
-| 指纹 | SHA256 |
-| --- | --- |
-| 完整研究快照 | `29da5a7239afa0c3e4b7ca2a44c4be926308b04550b4624a0b908f891d3cc713` |
-| 282项导入快照 | `8a83e3bdf7e27f25a1faf734c467f4d2d74149aeeb534af4136129ca1c7846f0` |
-| 产品来源清单 | `3714a619379ef2f4c68cc39846bb63998332c0ad8b15a90005592db146406e80` |
-| 源scene | `fa53d9234d236b546aa4995c3709d4b39c05d186851dc0741c5148e598642dbe` |
-| 产品scene | `d333da28994969a0ebc01b5adf787f903e959fa5dff22abb269cf9a62c9ee795` |
 
 研究冻结版独立Release：pages58、calendar319、三个月连续14530项检查通过。
 固定seed1/speed0在frame3336对话37→3337页49→3338对话38，4839跨第3月；
@@ -1179,23 +1143,8 @@ Debug/Release各47项CTest全部通过，共170次。正常固定seed20261004的
 - 当前Mode::camera为首访后的scene6跟随镜头，应冻结人物/施工/日期；修正上一轮误把它当作UserData内部镜头延迟的放行。
 - 47ms来自原render/input后段限速，产品独立更新截止是桌面政策；保留更新/绘制分离与卡顿不补算，但撤回原框架循环等价声明。完整continue/skip/end及scene2/7/脚本轮次留待真正Scene Owner。
 
-冻结维护交付SHA256（只读research工作区，不提交研究文件）：
-| 源 | SHA256 |
-| --- | --- |
-| data/startup/STATE.json | e4152b144ecc65976665df86590a23f5a236f3a32bfabeae31d500f5a75ec359 |
-| rules/STARTUP.md | 6d56f8c181e01d71ff55debe29cb200c0b1acb029fec62cfdb9695103e85b2ae |
-| data/startup/README.md | 8db959b0998d98ced404b6bcb8a5acef5e91fdac405c1220d398cb3f2c5ad8bc |
-| example/include/dungeon_village_reference/world_random.hpp | 33de8b76d06b3680c0184f7daed7bb66a41dbb76ea8fad3d7386d59b1b93de55 |
-| example/src/world_random.cpp | ee88918a04b8014c1ff355211aeb75595e2c2405de2f7d246ed6649cd627386d |
-| example/tests/world_random_test.cpp | 977f9d5a238774fe62d7f728b5725381d782863d533c8ebf4d40ca5142874a4f |
-| example/src/world_daily.cpp | 8ef3c59afef2260f317711ec93d130b758f761372ae8fe9d70e18578601b2f7d |
-| example/src/world_random_consumers.cpp | 51c6f454313cb68ccbd6b4221697deeb41c6e52267949a949f0042b3a2e2ecd7 |
-| example/include/dungeon_village_reference/ai_rewards.hpp | 37c24a2b742cdbb6429bc581cefa7675a72dd66af2ec907a05265c2c710836d3 |
-| example/src/world_shop.cpp | 93e2035febd3edd53cd9c55bcb84ab3ede9a8101d5284b371d72c0c823707c63 |
-| example/src/world_scene.cpp | a808cf60ca9f17c018c458752f363a25fd7e0e7ad4726e340af3cb3e75cda8a1 |
-| rules/ai/WORLD_SCHEDULE.md | 865cd635ef0b25140d054432bcb9c9f588975e021789f335f25ec2ad5fca4785 |
-| rules/ai/LIFECYCLE.md | ae6968847b435eb270947518eb8aeea3d0d39bcacc64a91e1a04e979d479040f |
-| prototype/include/dungeon_village_prototype/loop_pacing.hpp | 57a8b82717f296274a0eaac00f047f8598d5ad4f31218d17c4d933fc364d1d56 |
+冻结维护交付（只读research工作区，不提交研究文件）：
+来源文件：data/startup/STATE.json、rules/STARTUP.md、data/startup/README.md、example/include/dungeon_village_reference/world_random.hpp、example/src/world_random.cpp、example/tests/world_random_test.cpp、example/src/world_daily.cpp、example/src/world_random_consumers.cpp、example/include/dungeon_village_reference/ai_rewards.hpp、example/src/world_shop.cpp、example/src/world_scene.cpp、rules/ai/WORLD_SCHEDULE.md、rules/ai/LIFECYCLE.md、prototype/include/dungeon_village_prototype/loop_pacing.hpp。
 
 验收：原随机黄金/负数/零上限/耗尽/复制回滚；正常Game首访与D/m；raw tape证实L与表情的懒消费/无生成继续/真正请求交接/c0重选；保留真实离村及晚期回滚；镜头/暂停/施工/日期协同。四套配置/构建/CTest与有界正常窗口controller分别记录，OS输入和APK等价不由此推导。
 
@@ -1466,7 +1415,7 @@ Windows字体使用官方Noto Sans CJK SC2.004及固定hash/OFL、fonttools4.59.
 
 CI已改Windows-only/x64，打包代码保留静态运行库、字体及许可，排除CLI/构建期副本并压缩、Actions保存7天。Python语法、发布Bash语法及本地PE架构/仅系统DLL检查通过。远程CI/GHCR首次新版运行仍待main触发。本地打包此前被自动审批拦截，2026-10-06用户明确允许ZIP生成、解压和启动验收后已完成以下检查。
 
-分发包使用产品提交`3d94c3c1bc40ac4e264a0b7ab979c03c442a68d3`已验收的Release二进制，直接调用`.github/ci/build.py`的同一package函数；只剥离分发副本，不重编译或改变产品。复用CLion内置Python3.10.18/zlib完成压缩，未下载新依赖。`build/validation/windows-x64-package-20261006/dist/ark-village-windows10-x64.zip`为3,186,080字节（约3.04MiB），625文件解压共7,093,399字节（约6.76MiB）；同目录保留SHA256文件。ZIP SHA256为`cd9dccd72586737f072221c494b8a81b2357d1fe08f16c7a403494f1176d934e`。
+分发包使用产品提交`3d94c3c1bc40ac4e264a0b7ab979c03c442a68d3`已验收的Release二进制，直接调用`.github/ci/build.py`的同一package函数；只剥离分发副本，不重编译或改变产品。复用CLion内置Python3.10.18/zlib完成压缩，未下载新依赖。`build/validation/windows-x64-package-20261006/dist/ark-village-windows10-x64.zip`为3,186,080字节（约3.04MiB），625文件解压共7,093,399字节（约6.76MiB）；同目录保留SHA256文件。
 
 PE32+/AMD64与系统DLL导入白名单、616项素材哈希、随包字体/许可与已验证源的一致性均通过；ZIP CRC、SHA256、包内/解压625文件逐字节一致性及解压后`--check`通过。从独立smoke目录、仅保留Windows系统目录的PATH，分别运行解压exe默认入口和随包Run-Ark-Village.cmd建设目录，各8帧、均未指定--font/--assets，实际窗口退出码0，中文/建筑图标正常。运行不需要开发工具、raylib DLL或另装C++运行库。截图、完整日志和validation.json保存在该专属目录；这是本地解压启动验收，不冒充OS鼠标操作或另一台Windows机器的兼容性认证。本次仅补打包与文档证据，不重复未变化的四套游戏回归，不上传/发布远程。
 
@@ -1484,7 +1433,7 @@ Release真实窗口三项通过：24的朝向0/1预览均显示图像，cash5000
 
 Windows x64四套重新配置/编译/标准CTest全部通过：headless-debug141项/378.91秒，headless-release141项/92.06秒，desktop-debug160项/376.98秒，desktop-release160项/97.58秒，共602项，每套保留三个月连续世界基线。309项冻结来源与616项素材哈希、C++格式、diff检查通过；额外长跑仍OFF。未新增UI文本字形或下载依赖，不重复生成字体；研究工作区改动完整保留。旧`windows-x64-package-20261006`仍为含此问题的历史包，不作为本次修复制品。
 
-修复checkpoint为`8013131`。复用已授权的本地CI打包/解压流程，生成`build/validation/windows-x64-rotation-fix-20261006/dist/ark-village-windows10-x64.zip`，3,187,744字节（约3.04MiB），625文件解压7,098,007字节。SHA256为`f04fb9106c5db93a8d770197226bbca41f902ace6491acd00d928bbb780d3828`。AMD64/系统DLL白名单、素材与字体/许可、ZIP CRC/SHA及625文件解压逐字节一致性、解压后`--check`全部通过。
+修复checkpoint为`8013131`。复用已授权的本地CI打包/解压流程，生成`build/validation/windows-x64-rotation-fix-20261006/dist/ark-village-windows10-x64.zip`，3,187,744字节（约3.04MiB），625文件解压7,098,007字节。AMD64/系统DLL白名单、素材与字体/许可、ZIP CRC/SHA及625文件解压逐字节一致性、解压后`--check`全部通过。
 
 解压目录仅Windows系统PATH、无font/assets参数的三个实际窗口通过：独立smoke工作目录默认exe启动、CMD启动器募集旋转预览、独立smoke目录exe旋转建造，均8帧/退出0；后者仍是definition24/实例9/cash4900/random0。日志和PNG位于该新包目录。这是修复后本地包的启动/渲染验收，未发布远程，不替代OS鼠标操作或原APK单帧旋转合同。
 
@@ -1521,13 +1470,13 @@ Windows x64四套配置/编译/标准CTest通过：headless-debug141项/622.35�
 
 Release自然住宅长测通过129555项检查：真实募集、十次短剑赠礼、入住完工、年度一次授勋和100G税收后继续经营一月，最终frame21587/cash29705/random131005，与冻结研究相同。Release自然任务默认seed1/speed1完成3次成功，frame9022/cash4480/random130454，9097项检查；第二seed20261005/speed0完成2次成功，frame15608/cash3430/random136355，15658项检查。Debug默认链及其余窗口/打包结果在完成后追加。所有日志、截图与本批导出快照保存在忽略目录build/validation/human-management；研究工作区在途修改未导入。
 
-补字后desktop-debug和desktop-release各8项UI/打包资源定向检查通过（4.53/2.41秒）；raw70 synthetic三阶段窗口在两套桌面构建均通过。1705字子集380996字节，SHA256为d300af446f6c67967755d672e23b7d8d26358e493994330435491ff4b134b651，重新生成一致，未下载依赖。
+补字后desktop-debug和desktop-release各8项UI/打包资源定向检查通过（4.53/2.41秒）；raw70 synthetic三阶段窗口在两套桌面构建均通过。1705字子集380996字节，重新生成一致，未下载依赖。
 
 自然窗口已验证人物四页、职业目录/预览/取消、实际转职/确认返回、四槽赠礼目录、赠礼确认/取消/结果/属性比较和只读装备信息，以及月报两个状态。转职取消与赠礼取消检查资金/点数/属性/装备/库存及随机不变。月报8帧窗口phase1/9、世界round1480；600和1200帧连续窗口均自然推进至round1570、现金5320、phase2/28、日期units9612，随后被真实“最初的战斗结束”教程暂停资格阻挡，未替用户确认教程。该窗口结果证明报告期间世界与日期继续，不冒充完整退场；70/70完整退出与一次奖励由规则/Owner/会话测试覆盖。新月报截图已复验维护费“支付/Ｇ”字形。实际渲染窗口不是OS鼠标操作或原APK动态认证；raw70三阶段为明确标注的合成展示夹具，不是自然大师整线。
 
 后台执行环境中断了首次Debug自然链（已到frame8472、第三次自然任务成功但无最终摘要）、税收窗口及一次增量构建；中断不计通过。增量构建已恢复并通过上述检查，未完成的长链/税收窗口改为日志与结束状态落盘的独立本地进程补跑，标准606项与已完成Release长测不重复。
 
-实现checkpoint为c3ec609。使用同一CI package函数生成build/validation/windows-x64-human-management-20261006/dist/ark-village-windows10-x64.zip：3251113字节（约3.10MiB），625文件解压7256415字节；SHA256为d097c727fbaecb2e04ef9a6da23810c3feedd74ee7e148ab729c8cf36284186c。PE AMD64/仅系统DLL、616项素材、字体/许可、ZIP CRC/SHA及625文件逐字节解压一致性、解压后--check通过。仅Windows系统PATH、独立smoke工作目录、无--font/--assets的默认exe、CMD启动器人物页、exe旋转预览三项真实窗口均8帧/退出0，已检查截图。包内静态raylib与运行库，未包含旧的运行中exe或测试二进制，也未上传/远程发布。
+实现checkpoint为c3ec609。使用同一CI package函数生成build/validation/windows-x64-human-management-20261006/dist/ark-village-windows10-x64.zip：3251113字节（约3.10MiB），625文件解压7256415字节。PE AMD64/仅系统DLL、616项素材、字体/许可、ZIP CRC/SHA及625文件逐字节解压一致性、解压后--check通过。仅Windows系统PATH、独立smoke工作目录、无--font/--assets的默认exe、CMD启动器人物页、exe旋转预览三项真实窗口均8帧/退出0，已检查截图。包内静态raylib与运行库，未包含旧的运行中exe或测试二进制，也未上传/远程发布。
 
 独立进程补跑的Debug默认自然任务链已完整通过9097项检查；其最终摘要与Release逐字一致，frame9022/cash4480/random130454、3次成功。连同Release两种子任务链和自然住宅，本批4条额外规则长测全部通过，未因后续纯桌面诊断修正重跑。真实税单窗口也已通过：自然住宅实例10、人物丰田龟次郎100G税额，date1/3、cash27735/random118542，round19237；屏幕日期一基显示2年4月1周。
 
@@ -1537,7 +1486,7 @@ Release自然住宅长测通过129555项检查：真实募集、十次短剑赠�
 
 本批完成时研究侧另提交9897d64（村办、奖励页95及自然晋级）。本批仍明确冻结8f12654，未为追随新提交扩入村办；用户已指定随后接研究存档合同，先核对正式来源并确认独立文件方案。
 
-最终程序checkpoint为c8d1855，替代c3ec609中未闭合的税收诊断。最终包位于build/validation/windows-x64-human-management-final-20261006/dist/ark-village-windows10-x64.zip，3251979字节，625文件解压7258463字节，SHA256为832b0e21b39b6b6c8537f749ab5a824702665755eb4e7fd19993610fa6f4081c。与前包同一套PE/系统DLL、来源/许可、CRC/SHA、解压逐字节和--check全部通过；仅系统PATH的独立目录默认启动、CMD人物页和exe旋转预览再次各8帧/退出0，已检查三张最终截图。旧包仅为历史证据，正式本地试玩使用final目录；没有远程推送或发布。
+最终程序checkpoint为c8d1855，替代c3ec609中未闭合的税收诊断。最终包位于build/validation/windows-x64-human-management-final-20261006/dist/ark-village-windows10-x64.zip，3251979字节，625文件解压7258463字节。与前包同一套PE/系统DLL、来源/许可、CRC/SHA、解压逐字节和--check全部通过；仅系统PATH的独立目录默认启动、CMD人物页和exe旋转预览再次各8帧/退出0，已检查三张最终截图。旧包仅为历史证据，正式本地试玩使用final目录；没有远程推送或发布。
 
 <a id="file-persistence-design"></a>
 
@@ -1582,11 +1531,11 @@ Worker在完整更新之间捕获和提交；同目录独占临时写入、flush
 
 恢复主责覆盖真实1200轮新局的普通行走、实际建设及已收费旅馆服务，HP六字段与完整耐久字节一致；真实出现的延迟续体保存后正常到期、不重新增加调用数。活动任务通过真实工厂、菜单确认、征集和出发动画，保存后继续20次更新；跨月仅调整时钟的夹具核对维护费/点数/世界前缀不重复。战斗/箭矢明确为实际encounter/group/projectile消费者的调用点夹具，不是自然任务长跑；完成正常显示尾后比对即时字节与下一步资金/随机/时钟。参考轨迹仅手工去除已约定瞬态，不调用被测恢复算法重建其耐久状态。
 
-Release真实窗口保存、隔离空栏读取失败、独立进程冷载入及240×256最小布局全部退出0；最终冷载入检查generation2、Owner替换、日期/资金摘要、暂停和当前随机未来8次抽取一致。截图确认中文字齐全、两栏与确认按钮无裁切；最终成功蓝/失败红、旧菜单重复反馈已修复并重拍。字体子集1707字/381564字节，SHA256为faab2fcecee147d4ff89ee7a194f722d56d909a07a830dca2f4e0412505e1265，全部复用本地依赖，无新下载。初局手动档84530字节。证据在`build/validation/manual-save-20261006/`；窗口诊断走实际FIFO，不等于OS鼠标或原APK动态/字节兼容认证。
+Release真实窗口保存、隔离空栏读取失败、独立进程冷载入及240×256最小布局全部退出0；最终冷载入检查generation2、Owner替换、日期/资金摘要、暂停和当前随机未来8次抽取一致。截图确认中文字齐全、两栏与确认按钮无裁切；最终成功蓝/失败红、旧菜单重复反馈已修复并重拍。字体子集1707字/381564字节，全部复用本地依赖，无新下载。初局手动档84530字节。证据在`build/validation/manual-save-20261006/`；窗口诊断走实际FIFO，不等于OS鼠标或原APK动态/字节兼容认证。
 
 自动跨周档仍等待轮内恢复入口，当前手动档不能接到更新中途检查点而重复运行AI前半段。用户随后追加开发/测试动态链接以减少构建缓存，另会话已在独立`build/dynamic-linking`工作；本批不清理其在途构建或旧验证树，共享链接后的构建/制品结论单独记录。
 
-手动存档程序checkpoint为`81f3ae5`。复用CI的Release打包函数，在本批独立目录生成`dist/ark-village-windows10-x64.zip`：3349782字节（约3.19MiB），625文件解压7551278字节，SHA256为e750642ba34860abbffba82e29e78e42a1994f9c41d61a0958f28f367b63bd85。PE AMD64/仅系统DLL、616项素材、字体与许可、625文件逐字节解压一致性及制品`--check`通过。仅Windows系统PATH、独立工作目录、无`--font`的解压exe保存及独立进程读取各8帧/退出0，截图已核对。首次启动包装器未保留进程Handle导致ExitCode空值，未记作通过；保留Handle后两项复验结束码均0。最终同步格式化源码的字体来源清单后重新打包/解压比对，可执行文件和字体字节与已验窗口版本完全相同。此为已验收存档版本的静态玩家包，不代表开发共享链接改造已完成；没有推送或远程发布。
+手动存档程序checkpoint为`81f3ae5`。复用CI的Release打包函数，在本批独立目录生成`dist/ark-village-windows10-x64.zip`：3349782字节（约3.19MiB），625文件解压7551278字节。PE AMD64/仅系统DLL、616项素材、字体与许可、625文件逐字节解压一致性及制品`--check`通过。仅Windows系统PATH、独立工作目录、无`--font`的解压exe保存及独立进程读取各8帧/退出0，截图已核对。首次启动包装器未保留进程Handle导致ExitCode空值，未记作通过；保留Handle后两项复验结束码均0。最终同步格式化源码的字体来源清单后重新打包/解压比对，可执行文件和字体字节与已验窗口版本完全相同。此为已验收存档版本的静态玩家包，不代表开发共享链接改造已完成；没有推送或远程发布。
 
 按用户确认分工，另一会话实施全工程共享链接，本会话只审阅和适配存档模块。`ark_world_save`现在按`ark_world_runtime`目标类型选择SHARED/STATIC，避免共享核心与存档的第二份静态规则单例混用。未重配/清理另一会话的`build/dynamic-linking`。尝试在独立忽略目录用已完成核心DLL验证新增save/session DLL时，自动审批拒绝临时自定义CMake工程，并将第二次固定源列表尝试判为重复创建/绕过；该路径停止，不改工具重试。实际共享分支待正式共享配置合入后验证，不能把静态回退检查记作共享验收。
 
@@ -1611,7 +1560,7 @@ Release真实窗口保存、隔离空栏读取失败、独立进程冷载入及2
 
 合计470项通过；Debug三个月未执行，额外自然/年度长测未重复。中间版本headless线程用例曾在并发编译负载下等待发布超时，原日志保留；单独复验通过，最终两套Debug均通过，未放宽5秒断言或30秒CTest超时。最终库导入缺失拒绝、公共构建恢复缺失libunwind DLL及哈希一致性通过。CI脚本的3项标准库测试覆盖递归依赖/循环去重/无关库不打包、缺失与未知系统依赖拒绝、非x64拒绝；actionlint、Node/Python语法及差异检查通过。main CI仍只构建公共库和desktop-release消费者、完整标准CTest后打包；远程流水线待推送，不以本地结果声称已发布。
 
-最终本地ZIP为`build/validation/dynamic-linking-20261006/dist/ark-village-windows10-x64.zip`，4457579字节（约4.25MiB），637文件解压11136856字节；SHA256为af5542eb6df54429c1e060c425ed3ff1689916eef4cc41b03f773e985a6a95cf。这是当前本地工作树快照，包内标明其父checkpoint与local shared-link working tree，正式CI将写实际提交身份。打包递归检查PE导入，仅复制所需12个DLL，剥离分发副本；查询库、UI测试支持、未使用的pthread DLL、导入库、源码和测试不进入包。616项素材、字体/许可、PE AMD64、ZIP CRC与637文件逐字节解压一致性通过。只含Windows系统PATH、独立工作目录、无font参数的--check及启动/旋转/保存/独立进程载入全部退出0；4个真实窗口各8帧，截图核对中文、素材、预览和保存摘要。诊断经实际FIFO，不等于OS鼠标或原APK动态验收。复用本地依赖，无新下载。
+最终本地ZIP为`build/validation/dynamic-linking-20261006/dist/ark-village-windows10-x64.zip`，4457579字节（约4.25MiB），637文件解压11136856字节。这是当前本地工作树快照，包内标明其父checkpoint与local shared-link working tree，正式CI将写实际提交身份。打包递归检查PE导入，仅复制所需12个DLL，剥离分发副本；查询库、UI测试支持、未使用的pthread DLL、导入库、源码和测试不进入包。616项素材、字体/许可、PE AMD64、ZIP CRC与637文件逐字节解压一致性通过。只含Windows系统PATH、独立工作目录、无font参数的--check及启动/旋转/保存/独立进程载入全部退出0；4个真实窗口各8帧，截图核对中文、素材、预览和保存摘要。诊断经实际FIFO，不等于OS鼠标或原APK动态验收。复用本地依赖，无新下载。
 
 清理前逐个检查绝对路径、重解析点和进程，不结束任何用户/研究进程。删除旧desktop-debug/headless-debug/headless-release、停止的dynamic-linking源/构建临时树，并清除旧desktop-release全部文件；该目录的空bin仍由目录句柄持有，剩余0文件/0字节。本轮按配置重复库的三个中间树也已清理。保留local-tools、历史验证证据与research全部文件/构建。旧scratch构建日志与基准身份移入本批证据目录。
 

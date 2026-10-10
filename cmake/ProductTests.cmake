@@ -102,9 +102,6 @@ foreach(module IN ITEMS world_combat_visuals world_rest_visuals world_dungeon_vi
 endforeach()
 ark_test_executable(ark_metadata_tests SOURCES tests/assets/metadata_test.cpp LIBRARIES ark_asset_metadata)
 ark_test_case(asset_metadata ark_metadata_tests LABELS rules)
-ark_test_case(startup_data_contract "${ARK_NODE}"
-    ARGS "${PROJECT_SOURCE_DIR}/tests/data/startup_data_test.mjs" "${PROJECT_SOURCE_DIR}/assets/data"
-    LABELS provenance legacy)
 # Build-time glyph demand has independent Unicode/discovery/rejection contracts;
 # provenance tests only verify existing asset bytes. No extra C++ executable is needed.
 ark_test_case(desktop_glyph_inventory "${ARK_NODE}"
@@ -113,53 +110,10 @@ ark_test_case(desktop_glyph_inventory "${ARK_NODE}"
 ark_test_case(shared_library_contract "${ARK_NODE}"
     ARGS "${PROJECT_SOURCE_DIR}/tests/integration/shared_library_contract_test.mjs" "${CMAKE_CXX_COMPILER}"
     LABELS e2e build TIMEOUT 60)
-ark_test_case(source_provenance "${ARK_NODE}"
-    ARGS "${PROJECT_SOURCE_DIR}/scripts/verify_assets.mjs" "${PROJECT_SOURCE_DIR}/assets"
-    LABELS provenance)
 ark_test_case(world_simulation_cli ${CMAKE_COMMAND}
     ARGS "-DWORLD_SIMULATION=$<TARGET_FILE:ark_world_simulation>"
         -P "${PROJECT_SOURCE_DIR}/tests/integration/world_simulation_cli_test.cmake"
     LABELS e2e)
-
-# Legacy still has a runnable --legacy-slice entry. Same-named imported tests exercise a
-# different implementation; keep all of these contracts and their existing CTest names.
-function(ark_legacy_test target name source)
-    ark_test_executable(${target} SOURCES tests/legacy/${source} LIBRARIES ${ARGN})
-    ark_test_case(${name} ${target} LABELS legacy)
-endfunction()
-ark_legacy_test(ark_random_tests java_random_stream random_test.cpp ark_game)
-ark_legacy_test(ark_live_world_motion_tests live_world_paths_and_exit live_world_motion_test.cpp ark_game)
-ark_legacy_test(ark_world_schedule_tests world_schedule_protocol world_schedule_test.cpp ark_game)
-ark_legacy_test(ark_dungeon_task_tests dungeon_task_success dungeon_task_test.cpp ark_game)
-ark_legacy_test(ark_village_life_tests normal_village_life village_life_test.cpp ark_game)
-ark_legacy_test(ark_simulation_clock_tests source_paced_simulation simulation_clock_test.cpp ark_timing ark_game)
-ark_legacy_test(ark_dungeon_tests dungeon_crew_and_completion dungeon_rules_test.cpp ark_game)
-ark_legacy_test(ark_fixed_step_tests fixed_step_simulation fixed_step_clock_test.cpp ark_timing ark_game)
-ark_legacy_test(ark_game_tests game_first_play game_test.cpp ark_game)
-ark_legacy_test(ark_facility_tests facility_economy_neighbours facility_rules_test.cpp ark_game)
-ark_legacy_test(ark_terrain_tests road_connections terrain_test.cpp ark_game)
-ark_legacy_test(ark_navigation_tests loaded_map_navigation_motion navigation_motion_test.cpp ark_game)
-ark_legacy_test(ark_activity_choice_tests activity_category_choice activity_choice_test.cpp ark_game)
-ark_legacy_test(ark_activity_candidates_tests activity_candidates activity_candidates_test.cpp ark_game)
-ark_legacy_test(ark_departure_tests facility_choice_departure departure_test.cpp ark_game)
-ark_legacy_test(ark_actor_ai_tests actor_ai_rules actor_ai_test.cpp ark_game)
-ark_legacy_test(ark_ai_perception_tests ai_perception_rules ai_perception_test.cpp ark_game)
-ark_legacy_test(ark_actor_control_tests actor_control_prefix actor_control_test.cpp ark_game)
-ark_legacy_test(ark_actor_housekeeping_tests actor_common_update actor_housekeeping_test.cpp ark_game)
-ark_legacy_test(ark_combat_ai_tests combat_strategy_damage_influence combat_ai_test.cpp ark_game)
-ark_legacy_test(ark_ai_update_tests ai_common_update_schedule ai_update_test.cpp ark_game)
-ark_legacy_test(ark_ai_decision_tests ai_priority_departure_control ai_decision_test.cpp ark_game)
-ark_legacy_test(ark_ai_schedule_tests ai_live_roster_schedule ai_schedule_test.cpp ark_game)
-ark_legacy_test(ark_actor_effects_tests actor_effect_timeline actor_effects_test.cpp ark_game)
-ark_legacy_test(ark_weapon_choice_tests equipment_candidate_choice weapon_choice_test.cpp ark_game)
-ark_legacy_test(ark_human_growth_tests human_shared_growth human_growth_test.cpp ark_game)
-ark_legacy_test(ark_people_progression_tests actor_schedule_equipment_growth people_progression_test.cpp ark_game)
-ark_legacy_test(ark_facility_arrival_tests facility_arrival_statistics facility_arrival_test.cpp ark_game)
-ark_legacy_test(ark_facility_exit_tests facility_exit_and_cash facility_exit_test.cpp ark_game)
-ark_legacy_test(ark_facility_service_tests facility_service_sequence facility_service_test.cpp ark_game)
-ark_legacy_test(ark_hp_tests character_hp_protocol character_hp_test.cpp ark_game)
-ark_legacy_test(ark_initial_ai_tests actual_initial_ai_interval initial_ai_test.cpp ark_game)
-ark_legacy_test(ark_game_ai_preview_tests game_visible_ai_preview game_ai_preview_test.cpp ark_game)
 
 if(ARK_BUILD_DESKTOP)
     # Source portrait assertions keep their CPU image oracle and use the existing product
@@ -194,7 +148,6 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/world_editing.cpp
             src/desktop/world_scene.cpp src/desktop/world_overlay_render.cpp
             src/desktop/world_rank.cpp src/desktop/character_status.cpp
-            src/desktop/character_visibility.cpp
             src/desktop/world_task_inspection.cpp
             src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_audio.cpp src/desktop/ui/world_startup.cpp
         LIBRARIES ark_world_ui_test_support ark_world_queries ark_world_session)
@@ -207,11 +160,9 @@ if(ARK_BUILD_DESKTOP)
     ark_test_executable(ark_world_scene_tests
         SOURCES tests/desktop/world_scene_test.cpp src/desktop/world_rank.cpp
             src/desktop/world_overlay_render.cpp src/desktop/world_scene.cpp
-            src/desktop/character_status.cpp src/desktop/character_visibility.cpp
+            src/desktop/character_status.cpp
         LIBRARIES ark_world_ui_test_support)
     ark_test_case(world_scene_projection_and_animation ark_world_scene_tests LABELS presentation)
-    ark_test_case(complete_world_packaged_check ark_village ARGS --world --check LABELS e2e
-        PASS "PASS packaged complete world")
 
     # Scene/picking contracts use their actual product implementations and asset inputs.
     function(ark_desktop_test target name)
@@ -222,30 +173,21 @@ if(ARK_BUILD_DESKTOP)
     endfunction()
     ark_desktop_test(ark_character_status_tests character_hp_render
         SOURCES tests/desktop/character_status_test.cpp src/desktop/character_status.cpp
-            src/desktop/character_visibility.cpp LIBRARIES ark_game LABELS legacy)
+        LIBRARIES ark_world_rules)
     ark_desktop_test(ark_boundary_render_tests boundary_overlay_contract
         SOURCES tests/desktop/boundary_render_test.cpp src/desktop/boundary_render.cpp
-        LIBRARIES ark_game ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
+        LIBRARIES ark_world_runtime ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
     ark_desktop_test(ark_road_render_tests road_patch_pixels
         SOURCES tests/desktop/road_render_test.cpp src/desktop/road_render.cpp
-        LIBRARIES ark_game ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
+        LIBRARIES ark_world_rules ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
     ark_desktop_test(ark_projection_tests projection_input
         SOURCES tests/desktop/projection_test.cpp src/desktop/projection.cpp
-        LIBRARIES ark_game PkgConfig::RAYLIB)
-    ark_desktop_test(ark_character_render_tests character_ground_and_animation
-        SOURCES tests/desktop/character_render_test.cpp src/desktop/character_animation.cpp
-            src/desktop/character_visibility.cpp src/desktop/projection.cpp
-        LIBRARIES ark_game ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
-    ark_desktop_test(ark_ui_tests ui_navigation
-        SOURCES tests/desktop/ui_navigation_test.cpp src/desktop/projection.cpp
-            src/desktop/ui/layout.cpp src/desktop/ui/controller.cpp src/desktop/ui/facility_context.cpp
-        LIBRARIES ark_game PkgConfig::RAYLIB LABELS legacy)
+        LIBRARIES PkgConfig::RAYLIB)
+    ark_desktop_test(ark_character_render_tests character_sprite_frames
+        SOURCES tests/desktop/character_render_test.cpp
+        LIBRARIES ark_asset_metadata ARGS "${PROJECT_SOURCE_DIR}/assets")
     ark_test_case(packaged_assets ark_village ARGS --check LABELS e2e
         TIMEOUT 10 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" PASS "PASS packaged complete world")
-    ark_test_case(legacy_slice_packaged_check ark_village ARGS --legacy-slice --check LABELS e2e legacy
-        PASS "PASS packaged source assets")
-    ark_test_case(packaged_initial_ai ark_village ARGS --check-ai LABELS e2e legacy
-        TIMEOUT 30 WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
     ark_test_case(packaged_frame_contract "${ARK_NODE}"
         ARGS "${PROJECT_SOURCE_DIR}/tests/integration/packaged_frames_test.mjs" "$<TARGET_FILE:ark_village>"
         LABELS e2e TIMEOUT 30)

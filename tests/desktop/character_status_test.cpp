@@ -1,5 +1,4 @@
 // Published HP display contract, real HP animation, and immutable normal/preview read models.
-#include "ark/app/game.hpp"
 #include "character_status.hpp"
 #include <algorithm>
 #include <iostream>
@@ -85,7 +84,7 @@ void contract() {
           "over-capacity display saturates without changing logical HP");
 }
 void logical_animation() {
-    using namespace ark::people;
+    using namespace ark::simulation::rules;
     CharacterStatusInput input;
     input.capacity = 100;
     const auto hit = prepare_hp_change({0, 100, 100, 100, false, 0}, -50, 100);
@@ -113,49 +112,11 @@ void logical_animation() {
               pixels(character_hp_bar(input), {68, 100, 104}) == 1,
           "recovery display retains source interpolation result rather than snapping to full");
 }
-void game_read_models() {
-    using namespace ark;
-    for (const auto mode : {app::PlayMode::startup, app::PlayMode::ai_preview}) {
-        app::Game game(20261003U, mode);
-        check(!desktop::character_status_input(game), "no status before an actor exists");
-        for (int i = 0; i < 420; ++i)
-            check(game.update() == app::Error::none, "natural first visitor countdown");
-        const app::LifeActorState *actor = game.life_state();
-        if (!actor)
-            actor = game.ai_state();
-        check(actor != nullptr, "normal or preview actor installed");
-        auto input = desktop::character_status_input(game, true);
-        check(input && input->hp.target == actor->hp.target &&
-                  input->hp.displayed == actor->hp.displayed &&
-                  input->capacity == actor->stats.combat[0] &&
-                  input->action == actor->control.action,
-              "desktop consumes actual current HP, capacity and action from the correct owner");
-        const auto old_tick = actor->hp.legacy_tick;
-        for (int n = 0; n < 60; ++n)
-            character_hp_bar(*input);
-        check(actor->hp.legacy_tick == old_tick, "drawing does not advance logical HP counters");
-        while (game.state().mode == app::Mode::tutorial)
-            check(game.acknowledge_talk() == app::Error::none, "close real tutorial");
-        check(game.finish_camera() == app::Error::none, "finish real introductory camera");
-        bool occupied{};
-        for (int i = 0; i < 700 && !occupied; ++i) {
-            check(game.update() == app::Error::none, "advance actual first facility visit");
-            input = desktop::character_status_input(game, true);
-            if (input && !input->visible) {
-                occupied = true;
-                check(character_hp_bar(*input).empty(),
-                      "actual occupied facility hides HP even with explicit selection");
-            }
-        }
-        check(occupied, "real service occupation observed in both entry modes");
-    }
-}
 } // namespace
 int main() {
     try {
         contract();
         logical_animation();
-        game_read_models();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

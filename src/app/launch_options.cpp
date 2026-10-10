@@ -13,7 +13,6 @@ bool positive(const std::string &text, int maximum, int &value) {
 
 LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     LaunchOptions options;
-    bool explicit_world{}, explicit_legacy{};
     for (std::size_t i = 0; i < arguments.size(); ++i) {
         const auto &argument = arguments[i];
         if (argument == "--help") {
@@ -22,26 +21,15 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
         }
         if (argument == "--check") {
             options.mode = LaunchMode::check;
-        } else if (argument == "--check-ai") {
-            options.mode = LaunchMode::check_ai;
         } else if (argument == "--paused") {
             options.paused = true;
-        } else if (argument == "--ai-preview") {
-            options.ai_preview = true;
         } else if (argument == "--world") {
-            explicit_world = true;
-        } else if (argument == "--legacy-slice") {
-            explicit_legacy = true;
-        } else if (argument == "--verify-play") {
-            options.verify_play = true;
+            // Kept as an explicit alias; there is only one world implementation.
         } else if (argument == "--inspect-page") {
             if (++i >= arguments.size())
                 return {std::nullopt, "--inspect-page requires a page"};
             const auto &page = arguments[i];
-            if (page != "shops" && page != "plants" && page != "food" && page != "arrival" &&
-                page != "visitor" && page != "menu" && page != "placement" && page != "detail" &&
-                page != "bonuses" && page != "equipment" && page != "booster" && page != "motion" &&
-                page != "ai" && page != "world-title" && page != "world-title-slots" &&
+            if (page != "world-title" && page != "world-title-slots" &&
                 page != "world-title-actions" && page != "world-title-records" &&
                 page != "world-title-cash" && page != "world-title-configure" &&
                 page != "world-title-configure-female" &&
@@ -103,9 +91,6 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
             if (++i >= arguments.size() || !positive(arguments[i], 200, options.zoom_percent) ||
                 options.zoom_percent < 25)
                 return {std::nullopt, "--zoom-percent requires an integer 25..200"};
-        } else if (argument == "--tick-rate") {
-            if (++i >= arguments.size() || !positive(arguments[i], 240, options.tick_rate))
-                return {std::nullopt, "--tick-rate requires an integer 1..240"};
         } else if (argument == "--frames") {
             if (++i >= arguments.size() || !positive(arguments[i], 100000, options.frames)) {
                 return {std::nullopt, "--frames requires an integer 1..100000"};
@@ -126,42 +111,12 @@ LaunchResult parse_arguments(const std::vector<std::string> &arguments) {
     if (!options.inspect_page.empty() &&
         (options.frames == 0 || options.mode != LaunchMode::window))
         return {std::nullopt, "--inspect-page requires a bounded window run"};
-    if (options.ai_preview && options.mode != LaunchMode::window)
-        return {std::nullopt, "--ai-preview requires a window run"};
-    if (options.inspect_page == "ai")
-        options.ai_preview = true;
-    const bool world_inspection = options.inspect_page.rfind("world-", 0) == 0;
-    // Select a single owner after parsing, so argument order cannot silently change the world.
-    // Named legacy diagnostics remain explicit opt-ins; generic size/pause/check options do not.
-    const bool legacy_diagnostic = options.ai_preview || options.verify_play ||
-                                   options.mode == LaunchMode::check_ai ||
-                                   (!options.inspect_page.empty() && !world_inspection);
-    if (explicit_world && explicit_legacy)
-        return {std::nullopt, "--world and --legacy-slice are mutually exclusive"};
-    if (explicit_world && legacy_diagnostic)
-        return {std::nullopt, "--world cannot be combined with legacy slice diagnostics"};
-    if (world_inspection && (explicit_legacy || legacy_diagnostic))
-        return {std::nullopt, "World inspection cannot be combined with legacy slice diagnostics"};
-    options.world = !explicit_legacy && !legacy_diagnostic;
-    // The legacy diagnostic projection retains its independent 50% wheel clamp.
-    if (!options.world && options.zoom_percent < 50)
-        return {std::nullopt, "Legacy slice --zoom-percent requires an integer 50..200"};
     if ((options.inspect_page == "world-commerce-suite" ||
          options.inspect_page == "world-home-suite") &&
         options.screenshot.empty())
         return {std::nullopt, "Inspection suite requires --screenshot filename prefix"};
-    if (!options.world && !options.save_directory.empty())
-        return {std::nullopt, "--save-dir requires the continuous world"};
     if (options.inspect_page == "world-load" && options.save_directory.empty())
         return {std::nullopt, "world-load inspection requires --save-dir"};
-    if (options.world && options.tick_rate != 0)
-        return {std::nullopt, "--tick-rate requires --legacy-slice or a legacy diagnostic"};
-    if (options.ai_preview && !options.inspect_page.empty() && options.inspect_page != "ai")
-        return {std::nullopt, "--ai-preview cannot be combined with a different inspection page"};
-    if (options.verify_play &&
-        (options.frames == 0 || options.mode != LaunchMode::window || options.paused ||
-         options.ai_preview || !options.inspect_page.empty() || options.tick_rate != 0))
-        return {std::nullopt, "--verify-play requires --frames and normal original-paced startup"};
     return {options, {}};
 }
 

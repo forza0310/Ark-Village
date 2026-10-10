@@ -1,6 +1,6 @@
 // Static BOUNDARY contract against published reset cells and real PNG/SEB assets. No window.
-#include "ark/app/game.hpp"
 #include "ark/assets/sprite.hpp"
+#include "ark/simulation/startup_world_runtime.hpp"
 #include "boundary_render.hpp"
 #include <raylib.h>
 
@@ -46,7 +46,7 @@ struct CpuImage {
 };
 void mappings() {
     using ark::desktop::boundary_overlays;
-    ark::world::LoadedCell cell;
+    ark::desktop::BoundaryCell cell;
     check(boundary_overlays(cell, 0, 0, 0, true).empty(), "unmarked cell draws no boundary");
     const int xy[6][2]{{13, 22}, {16, 22}, {13, 21}, {42, 22}, {15, 23}, {16, 9}};
     for (int index = 0; index < 3; ++index)
@@ -104,42 +104,48 @@ void mappings() {
 // logical boundary or replace real entrance gaps with a uniform decorative ring.
 void reset_cells() {
     using namespace ark;
-    const auto &startup = app::startup_data();
-    check(startup.boundary_index == 0, "reset region index selects original low wood fence skin");
-    app::Game game;
-    const auto routes = game.route_map();
+    namespace rules = simulation::rules;
+    const auto session = [] {
+        simulation::StartupSession bootstrap;
+        return simulation::StartupWorldRuntimeSession(bootstrap.state(),
+                                                      rules::WorldRandomStream::from_java_seed(1));
+    }();
+    const auto &state = session.state();
+    const auto &routes = state.scene.world.world.map;
+    check(state.fence_level == 0, "reset region index selects original low wood fence skin");
     std::array<int, 6> counts{};
     int pillars{};
-    for (std::size_t i = 0; i < startup.loaded_cells.size(); ++i) {
-        const auto &cell = startup.loaded_cells[i];
-        if (cell.boundary_fragment >= 0) {
-            ++counts.at(cell.boundary_fragment);
-            check(cell.legacy_state == 5 && cell.category == world::RouteCategory::blocked &&
-                      routes.cells[i].legacy_state == 5 &&
-                      routes.cells[i].category == world::RouteCategory::blocked,
+    for (std::size_t i = 0; i < state.surface.size(); ++i) {
+        const auto &cell = state.surface[i];
+        const auto &route = routes.cells[i];
+        if (cell.fragment >= 0) {
+            ++counts.at(cell.fragment);
+            check(route.legacy_state == 5 && route.category == rules::RouteCategory::blocked,
                   "every visible reset fence keeps blocked logical state in current routing");
-            check(!world::route_transition({4, world::RouteCategory::ground, 17, -1, {}},
-                                           routes.cells[i], true),
-                  "even first-step escape cannot enter a fence tile");
+            check(
+                !rules::legacy_route_transition({4, rules::RouteCategory::ground, {}}, route, true),
+                "even first-step escape cannot enter a fence tile");
         }
-        if (cell.external_direction >= 0) {
+        if (cell.instance >= 0) {
             ++pillars;
-            check(cell.boundary_fragment == -1 && cell.legacy_state == 7 &&
-                      cell.category == world::RouteCategory::access,
+            check(cell.fragment == -1 && route.legacy_state == 7 &&
+                      route.category == rules::RouteCategory::access,
                   "external pillars retain an access gap instead of fence blocking");
         }
     }
     check(counts == std::array<int, 6>{14, 16, 1, 1, 1, 1} && pillars == 2,
           "published first village has 34 fences and two external pillars");
-    const world::Cell corners[4]{{17, 10}, {6, 2}, {6, 10}, {17, 2}};
+    const auto cell = [&](int x, int y) -> const auto & {
+        return state.surface.at(y * routes.width + x);
+    };
+    const rules::Position corners[4]{{17, 10}, {6, 2}, {6, 10}, {17, 2}};
     for (int n = 0; n < 4; ++n)
-        check(startup.loaded_cells[startup.map.index(corners[n])].boundary_fragment == n + 2,
+        check(cell(corners[n].x, corners[n].y).fragment == n + 2,
               "map corners retain their original nonsymmetric fragment numbering");
-    for (world::Cell entrance : {world::Cell{11, 2}, {12, 2}, {11, 10}, {12, 10}})
-        check(startup.loaded_cells[startup.map.index(entrance)].boundary_fragment == -1,
+    for (const auto entrance : {rules::Position{11, 2}, {12, 2}, {11, 10}, {12, 10}})
+        check(cell(entrance.x, entrance.y).fragment == -1,
               "four real entrance cells have no fence overlay");
-    check(startup.loaded_cells[startup.map.index({11, 10})].external_direction == 2 &&
-              startup.loaded_cells[startup.map.index({12, 10})].external_direction == 3,
+    check(cell(11, 10).instance == 2 && cell(12, 10).instance == 3,
           "reset consumes external directions two and three");
 }
 

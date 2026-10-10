@@ -3,8 +3,7 @@ add_library(ark_launch SHARED src/app/launch_options.cpp)
 target_include_directories(ark_launch PUBLIC include)
 ark_target(ark_launch)
 
-add_library(ark_timing SHARED src/app/fixed_step_clock.cpp src/app/original_loop.cpp
-    src/app/simulation_clock.cpp)
+add_library(ark_timing SHARED src/app/original_loop.cpp)
 target_include_directories(ark_timing PUBLIC include)
 ark_target(ark_timing)
 
@@ -39,41 +38,13 @@ add_library(ark_world_session SHARED src/app/world_session.cpp src/app/world_com
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_world_system ark_timing ark_world_save Threads::Threads)
 ark_target(ark_world_session)
 
-set(ARK_STARTUP_CPP "${CMAKE_CURRENT_BINARY_DIR}/generated/startup_data.cpp")
-add_custom_command(OUTPUT "${ARK_STARTUP_CPP}"
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
-    COMMAND "${ARK_NODE}" "${PROJECT_SOURCE_DIR}/scripts/compile_startup.mjs"
-        "${PROJECT_SOURCE_DIR}/assets/data" "${ARK_STARTUP_CPP}"
-    DEPENDS scripts/compile_startup.mjs scripts/compile_loaded_map.mjs scripts/compile_initial_ai.mjs assets/data/MAP.json assets/data/STATE.json
-        assets/data/TABLES.json assets/data/tenantData.txt assets/data/LOADED_MAP.tsv
-        assets/data/LOADED_INSTANCES.tsv VERBATIM)
-add_library(ark_game SHARED src/world/grid.cpp src/world/terrain.cpp src/world/navigation.cpp src/facilities/facility.cpp
-    src/facilities/map_binding.cpp src/app/map_queries.cpp src/people/motion.cpp
-    src/people/activity_choice.cpp src/people/activity_candidates.cpp
-    src/people/facility_choice.cpp src/people/departure.cpp
-    src/people/actor_ai.cpp src/people/ai_perception.cpp src/people/actor_control.cpp
-    src/people/actor_housekeeping.cpp src/people/combat_strategy.cpp
-    src/people/combat_damage.cpp src/people/combat_influence.cpp
-    src/facilities/dungeon_task.cpp src/facilities/dungeon_crew.cpp src/facilities/dungeon_completion.cpp
-    src/people/decision.cpp
-    src/app/world_schedule.cpp src/app/game_world.cpp src/app/ai_schedule.cpp src/people/actor_effects.cpp src/people/weapon_choice.cpp
-    src/people/delayed_reward.cpp src/people/human_growth.cpp
-    src/people/hp.cpp src/facilities/arrival.cpp src/facilities/exit.cpp src/facilities/service.cpp
-    src/economy/cash.cpp src/app/initial_ai.cpp src/app/initial_ai_motion.cpp src/app/initial_ai_service.cpp
-    src/app/initial_ai_check.cpp src/app/game_ai_preview.cpp
-    src/app/live_life_context.cpp src/app/game_life.cpp src/app/live_departure.cpp src/app/live_motion.cpp
-    src/app/random.cpp src/app/live_daily.cpp
-    src/facilities/economy.cpp src/facilities/neighbourhood.cpp src/app/facility_queries.cpp
-    src/people/adventurer.cpp src/app/game.cpp "${ARK_STARTUP_CPP}")
-target_include_directories(ark_game PUBLIC include)
-ark_target(ark_game)
 add_library(ark_asset_metadata SHARED src/assets/sprite.cpp src/assets/table.cpp)
 target_include_directories(ark_asset_metadata PUBLIC include)
 ark_target(ark_asset_metadata)
 
 set(ARK_PRODUCT_LIBRARIES ark_launch ark_timing ark_world_hash ark_world_rules ark_world_runtime
     ark_world_file_io ark_world_system ark_world_persistence ark_startup_application
-    ark_world_visuals ark_world_queries ark_world_save ark_world_session ark_game ark_asset_metadata)
+    ark_world_visuals ark_world_queries ark_world_save ark_world_session ark_asset_metadata)
 
 if(ARK_BUILD_DESKTOP)
     # One shared desktop-only Unicode inventory feeds runtime atlases and the font subset.
@@ -94,11 +65,12 @@ if(ARK_BUILD_DESKTOP)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     ark_copy_raylib_runtime()
     add_library(ark_world_ui_test_support SHARED src/desktop/ui/layout.cpp
-        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/sprite_picking.cpp src/desktop/projection.cpp)
+        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/sprite_picking.cpp
+        src/desktop/projection.cpp src/desktop/boundary_render.cpp src/desktop/road_render.cpp)
     target_include_directories(ark_world_ui_test_support PUBLIC src/desktop
         PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")
     add_dependencies(ark_world_ui_test_support ark_desktop_glyphs)
-    target_link_libraries(ark_world_ui_test_support PUBLIC ark_world_visuals ark_game
+    target_link_libraries(ark_world_ui_test_support PUBLIC ark_world_visuals
         ark_asset_metadata PkgConfig::RAYLIB)
     ark_target(ark_world_ui_test_support)
     list(APPEND ARK_PRODUCT_LIBRARIES ark_world_ui_test_support)

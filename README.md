@@ -4,7 +4,7 @@
 
 默认先显示标题，可新建或继续已有手动档；进入后运行持续世界：地图、设施、人物/怪物、资金、任务、日期和页面由同一Owner持有。已接建设/道路/移动/撤除、人物经营、任务与授勋、晋级/扩张、村办0–3及5/6、商会/魔法壶/普通道具，以及两栏手动存读档。情报菜单、部分经营入口和完整动画仍待接。
 
-规则/运行时冻结至 **1f19c88维护闭包，共430项来源记录**。已接邻接实际收费修复、类型化声音与遭遇通知、Steam公共窗框/建设目录/设施升级和人物四页静态布局；711项素材包含26个音频资源。信息菜单入口与完整标题宿主动效仍未开放。玩家ARKSAVE1/schema4布局、两栏、随机和页面政策保持，旧数据身份档明确拒绝、不迁移；维护世界语义4/应用语义7/系统2不替换玩家存档流程。当前验收和表现边界见[B1](docs/stages/B1-playable-prototype.md#research-1f19c88-integration)。
+规则/运行时冻结至 **1f19c88维护闭包，共430项来源记录**。已接邻接实际收费修复、类型化声音与遭遇通知、Steam公共窗框/建设目录/设施升级和人物四页静态布局；705项素材包含26个音频资源。信息菜单入口与完整标题宿主动效仍未开放。玩家ARKSAVE1/schema4布局、两栏、随机和页面政策保持，旧数据身份档明确拒绝、不迁移；维护世界语义4/应用语义7/系统2不替换玩家存档流程。当前验收和表现边界见[B1](docs/stages/B1-playable-prototype.md#research-1f19c88-integration)。
 
 此前e73bb31通过首/二星经营、跨进程玩家存读档及魔法壶投入→发现→冷载→炼制→实际用药，旧Release包也有独立解压/存读证据；这些只保留为[历史验收](docs/stages/B1-playable-prototype.md#product-business-e73bb31)，不能复用旧档认证修后经营路线。本批正从新局建立有效业务前缀并推进三星，不宣称五星/BOSS/计分继承或OS鼠标已通过。
 
@@ -82,12 +82,10 @@ cmake --build --preset headless-release --parallel 4
 | `ark_village --inspect-page world-news --frames 8`                            | 真实冒险通信；world-break检查带换行标记的通知                         |
 | `ark_village --inspect-page world-active --frames 600`                        | 三人正常场景后以一倍速持续运行，输出绘制/模拟耗时                     |
 | `ark_village --inspect-page world-commerce-suite --frames 8 --screenshot suite.png` | 一次自然预运行，独立分支验收六个商会页面，输出六张带页面名后缀的PNG |
-| `ark_village --legacy-slice`                                                  | 旧有限建设/首访生活切片                                               |
-| `--ai-preview`、`--check-ai`、`--verify-play`、旧 `--inspect-page` 名称 | 自动选择旧切片的显式诊断，不作为默认世界验收                          |
 
 `world-building/details/built/award-granted`的诊断预运行直接调用源消费者，不经过窗口worker FIFO或OS鼠标；它们检验实际源状态的窗口呈现。正常UI命令的FIFO、回执与事务契约由产品会话测试覆盖，不能把这些截图称为窗口自动点击验收。
 
-`world-active/world-month/world-rank` 不需要额外写 `--world`；它们按实际窗口视口预运行并自动确认前序真实页面，仅作为渲染检查。`--verify-play` 使用共享controller的引擎内坐标，不能替代OS鼠标测试。`--tick-rate 1..240` 可用于 `--legacy-slice` 或允许覆盖时钟的命名旧诊断（如 `--ai-preview`）；默认世界及 `--world` 不接受覆盖，`--verify-play` 仍须原节拍。
+`world-active/world-month/world-rank` 不需要额外写 `--world`；它们按实际窗口视口预运行并自动确认前序真实页面，仅作为渲染检查。程序只保留持续世界这一套Owner；旧`ark_game`切片已退役，`--legacy-slice`、`--ai-preview`、`--check-ai`、`--verify-play`、`--tick-rate`及旧页面名均作为无效参数拒绝，不自动转入其他诊断。
 
 年度/多种子/倍速长回归默认不纳入日常CTest，可在Release中显式开启：
 
@@ -99,7 +97,6 @@ ctest --preset headless-release -L long_world --parallel 1
 
 长回归保持研究原断言：`annual_world` 核对12/6/24个月和自然任务数，`natural_tasks` 覆盖seed1双轮及seed20261005单轮的真实接受至自然成功/后续任务链。两类均由 `ARK_LONG_WORLD_TESTS` 显式开启；自然任务测试保留四套构建支持，按风险选择所需配置，优先headless-release，避免重复相同纯核心长跑。标准三个月基线保留注册，本地Debug默认跳过，三个月行为覆盖依赖main CI的desktop-release完整测试；当前CI不跑Debug或额外长测。仅必要诊断或用户明确要求时补跑Debug长测，命令与记录要求见[构建检查](docs/CONTRIBUTING.md#构建检查)。建议与正常试玩错开；60FPS绘制不代表世界每47ms都能完成计算。
 
-旧切片七种单格建设、局部人物交接及1456步月前保护的设计与历史验收集中保留在 [B1记录](docs/stages/B1-playable-prototype.md)，这些限制不适用于默认持续世界。
 
 ## 目录与阅读入口
 
@@ -108,11 +105,10 @@ ctest --preset headless-release -L long_world --parallel 1
 | `research/`                                                          | 研究侧维护的规则、原型、素材与截图，产品侧只读                                  |
 | `include/ark/simulation/rules/`、`src/simulation/rules/`           | 标准C++领域规则，`ark_world_rules`                                            |
 | `include/ark/simulation/`、`src/simulation/`                       | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime`                        |
-| `src/app/`                                                           | 启动参数、时钟、世界模拟线程/报告诊断、只读设施查询、无窗口入口及旧切片协调     |
+| `src/app/`                                                           | 启动参数、时钟、世界模拟线程/报告诊断、只读设施查询、玩家存档及无窗口入口     |
 | `src/desktop/`                                                       | raylib窗口、资源、输入、投影及UI                                                |
-| `src/world/`、`src/facilities/`、`src/people/`、`src/economy/` | 旧建设切片保留的标准C++模块                                                     |
 | `src/assets/`、`assets/`                                           | 素材解析、运行副本及来源清单                                                    |
-| `scripts/`、`tests/`                                               | 数据编译/显式素材导入、按职责组织的测试与来源校验，见[测试说明](tests/README.md) |
+| `scripts/`、`tests/`                                               | 数据编译/显式素材导入、按职责组织的规则和产品回归，见[测试说明](tests/README.md) |
 | `docs/`                                                              | 架构、流程、计划；长期对照在`reference/`，历史阶段在 `stages/`              |
 
 从 [架构](docs/ARCHITECTURE.md)、[开发流程](docs/CONTRIBUTING.md)、[计划与决策](docs/MILESTONES.md)开始阅读。近期任务见 [TODO](TODO.md)，研究覆盖与产品缺口见 [原版对照](docs/reference/REFERENCE_CHECKLIST.md)及 [研究需求](docs/reference/RESEARCH_REQUESTS.md)。

@@ -1,8 +1,8 @@
 # 产品可维护性进度
 
-[文档索引](README.md) · [完整审阅基线](stages/history/PRODUCT_REVIEW-20261007.md) · [当前架构](ARCHITECTURE.md)
+[文档索引](README.md) · [当前架构](ARCHITECTURE.md)
 
-原审阅基于e7f441f，发现与当时复现证据完整保留在归档；本页跟踪实施状态，避免把历史问题当成当前实现。
+原审阅基于e7f441f。本页集中保留发现、实施状态和仍有效的维护要求；已完成批次的验收见[B1](stages/B1-playable-prototype.md)，原始审阅和旧任务台账可从Git历史查阅。
 
 | 发现 | 当前状态 | 入口 |
 | --- | --- | --- |
@@ -17,8 +17,20 @@
 | P3-03 两份字体需求 | 已统一扫描器/清单/运行图集 | compile_desktop_glyphs.mjs |
 | P3-04 共享DLL旧库防错 | 内容/产物指纹、消费者构建检查与启动早期C守卫已接；本批本地验收通过，四消费者已首次重建；旧守卫前EXE无法追溯保护 | [本批范围](stages/B1-playable-prototype.md#business-validation-dll-docs) |
 
-当前依赖方向是desktop→session/queries/visuals→runtime→rules；玩家save→runtime，维护persistence→runtime/hash。旧Game仍是显式诊断，冻结源不为目录美观重排。私有desktop头不扩为核心公开接口；不按单页新增DLL。
+当前依赖方向是desktop→session/queries/visuals→runtime→rules；玩家save→runtime，维护persistence→runtime/hash。旧ark_game及其专属领域、桌面入口和测试已经退役，产品只维护持续世界。冻结源不为目录美观重排，私有desktop头不扩为核心公开接口，不按单页新增DLL。
 
 <a id="independent-simulation-entry"></a>
 
-旧独立入口问题与复现日志见[原审阅P2-01](stages/history/PRODUCT_REVIEW-20261007.md#independent-simulation-entry)。本批验证统一记在[B1](stages/B1-playable-prototype.md#research-save-organization)。
+旧独立入口只包含simulation模块，缺少根工程的公共库与Windows初始化，曾因未知CMake命令配置失败；现已明确转向根headless预设，不恢复第二套初始化。相关验收记在[B1](stages/B1-playable-prototype.md#research-save-organization)。
+
+## 剩余维护风险
+
+- **桌面协调器职责集中（P2-04）**：自然预运行、截图与绘制统计已经拆出；窗口生命周期、平台输入、FIFO回执和页面调度仍需随实际功能渐进分责。重点保持generation清理、pending打开屏障、held释放、只读绘制及普通行走插值资格，不为缩短文件预建事件总线。验收归既有会话、菜单、任务和建设套件，补输入竞争与焦点丢失场景及相关窗口即可，不复制领域组合或重跑无关长链。
+- **命令与页族身份分散（P3-02）**：通用命令仍共享selection、definition、actor、facility和page等字段。新增命令须明确selection究竟是列表索引、定义ID还是实例ID，并保留观察页与目标身份绑定；有真实调用需求时再引入小范围类型化构造。UI可见性、回执资格和模态更新是不同策略，不能因都使用raw页号就强行合并。回归关注输入路由、绘制接线及迟到命令拒绝。
+
+## 持续维护边界
+
+- 玩家存档字段分类独立于维护完整codec；新Owner字段必须说明保存、沿用、重建或丢弃及其原因，维护格式覆盖不能替代玩家政策检查。
+- 线程、事务、随机和父页恢复注释解释约束原因；公共参数标明身份，模块说明保留诊断与正常运行边界。不为简单函数机械补注释。
+- 冻结规则/codec按正式研究交付演进，不因文件大小或目录美观重排；保留当前runtime的有效断言和独立oracle。旧Game专属回归随其实现退役，不恢复第二套规则。DLL按依赖职责划分，不给单页新增库。
+- 当前状态归架构、reference和TODO，带版本的验收归B1；模块README只保留职责与入口。历史失败不写成当前缺陷，旧验证结果不替代本批检查。

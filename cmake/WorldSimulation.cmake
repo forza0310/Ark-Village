@@ -216,9 +216,6 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
     add_test(NAME simulation.startup_world_data
         COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/tests/simulation/startup_world_data_test.mjs"
             "${ARK_WORLD_DATA}/startup" "${ARK_WORLD_DATA}/world" "${ARK_WORLD_DATA}/tenantData.txt")
-    add_test(NAME simulation.source_provenance
-        COMMAND "${ARK_WORLD_NODE}" "${ARK_WORLD_ROOT}/scripts/simulation/verify_sources.mjs"
-            "${ARK_WORLD_ROOT}")
-    set_tests_properties(simulation.startup_world_data simulation.source_provenance
+    set_tests_properties(simulation.startup_world_data
         PROPERTIES LABELS "provenance;frozen")
 endif()

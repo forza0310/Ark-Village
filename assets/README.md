@@ -1,24 +1,12 @@
 # 运行资源
 
-新增新局静态数据、源地图PNG/SEB、初期建筑、农家人物、秘书与窗底。
-670份素材/旧切片数据的来源、哈希、字节数和PNG尺寸见[SOURCES.json](SOURCES.json)。
-标题入口新增`title/`背景、236×115 Logo和98×68书本按钮三份原PNG；S038–S040仅参考布局，不把截图或Steam标志/版本信息当作运行资源。
-完整世界新增human/monster/image/common/weapon的维护目录副本，由scripts/import_world_assets.mjs原样复制；包含职业/性别图集、全部动作SEB、怪物体型与地图设施，不用农家图片代替所有人物。
-weapon新增51份原PNG/SEB/INF，冻结0a5b5e2。用途为cd15举物的四种风格/四方向及稀疏PNG override；cd21/22和商品79/72使用common既有18×18图标及背景。建筑价格/品质/魅力提示按common原SEB指定层绘制，不把空层或同名PNG当作有效裁片。
-simulation保存完整世界独立发布数据及源码来源清单，构建期生成目录/脚本；与现有data切片版本分别校验，不在运行时互相覆盖。
-人物行走使用human/walk00..03四套原始SEB与同一农家图集；每方向四帧、独立24像素行、统一脚底锚点，启动时校验全部16帧，无运行时research依赖。
-新增common/common2上下栏、菜单/图标/手形、日期/属性数字、人气/点数、内容角/分类/方向箭头等UI资源。
-设施详情新增arrow01/arrow02及icon_param00；road00的全部16个邻接帧在启动时检查实际PNG边界。
-原始数据与INF通过.gitattributes禁用换行规范化，避免新检出改变哈希；SOURCES.json使用产品标准LF。
-data在构建期编译为只读C++，程序旁素材独立运行，不读取APK、research或Node。
-首屏消费LOADED_MAP.tsv/LOADED_INSTANCES.tsv加载后静态快照，保留源MAP作证据，不复用7×7夹具或夜骑士人物。
-STATE.json与本批维护数据同步；快照包括576格/8实例，逻辑、显示和身份分开。道路2×2/上下边缘整图road4block00/01已消费；栅栏fence01 PNG和三套fence010/011/012 SEB、外部门柱door00 PNG/SEB新增原样副本，全部18+2帧在启动校验。此轮仅UI导入，data快照未改变。
+当前705项素材的来源路径、尺寸、用途和导入记录见[SOURCES.json](SOURCES.json)。程序读取EXE旁的assets副本，不依赖research、APK或当前工作目录；截图只用于对照，不作运行纹理。
 
-| 产品文件 | research源 | 尺寸 | SHA-256 | 用途 |
-| --- | --- | --- | --- | --- |
-| title-background.png | dungeon_village_1/assets/original/title/title00.png | 240×330 | bfd506538ad546e671e33519a51b23941a09d6cb98c4398b688df5afab85f3a5 | 原样复制，启动背景；point采样，等比例显示 |
+- `common/`、`common2/`、`ui/`、`event/`、`title/`、`steam_common/`与`steam_title/`：窗框、菜单、数字、通知及已接静态皮肤。
+- `human/`、`monster/`、`image/`、`weapon/`：人物/怪物图集、地图设施、装备举物及原SEB记录。素材存在不代表全部演出已经接线，剩余合同见[当前对照](../docs/reference/REFERENCE_CHECKLIST.md)。
+- `audio/`：26份正式Ogg，由桌面音频后端按成功提交的一次性请求播放。
+- `simulation/`：维护规则和新局数据，构建期生成标准C++只读目录；来源/产品适配清单独立保存。旧切片的data副本和生成器已退役。
 
-源归档/版本证据见research的EVIDENCE与ASSETS。仅用于用户授权的本地学习。
-运行读取程序旁assets副本，不读取research或APK；用户视频截图不是产品纹理。
+PNG、SEB、INF及源数据按维护发布原样导入，不裁图或修改原值来满足测试。SEB结构校验与实际使用帧的PNG边界校验分别保留；不因未使用记录扩大或放宽图集边界。正常构建不自动导入研究工作区。
 
-Windows玩家包附带Noto中文子集与许可；构建清单和运行图集共用生成字形需求，显式`--font`可覆盖。历史macOS字体发现只属于保留的平台适配。
+Windows玩家包另附Noto中文子集与许可；构建清单和运行图集共用字形需求，`--font`可覆盖。源版本证据见research的EVIDENCE与ASSETS，资源仅用于用户授权的本地学习。

@@ -1,6 +1,8 @@
 // Adapted from the frozen maintained prototype --world renderer, using native product resources.
 #include "world_scene.hpp"
+#include "boundary_render.hpp"
 #include "character_status.hpp"
+#include "road_render.hpp"
 #include "ui/layout.hpp"
 #include "world_combat_visuals.hpp"
 #include "world_dungeon_visuals.hpp"
@@ -47,23 +49,6 @@ std::array<int, 4> world_viewport(Extent extent, float zoom) {
 }
 Vector2 world_anchor(const State &s, rules::CombatPoint p, float zoom) {
     return raw_anchor(s, (p.x + p.z) * .3F, (p.z - p.x) * .15F + p.height, zoom);
-}
-std::optional<rules::CharacterId> world_pick_human(const State &s, const WorldCameraView &view,
-                                                   Vector2 pointer, float zoom) {
-    if (!std::isfinite(zoom) || zoom <= 0 || !std::isfinite(pointer.x) || !std::isfinite(pointer.y))
-        return {};
-    const auto &ai = s.scene.world.world.ai;
-    for (const auto id : ai.human_order) {
-        const auto found = ai.battle.actors.find(id);
-        if (found == ai.battle.actors.end() || found->second.control.state == 4)
-            continue;
-        const auto p = simulation::startup_world_raw_projection(found->second.position);
-        const auto point = raw_anchor(view, static_cast<float>(p.x), static_cast<float>(p.y), zoom);
-        if (CheckCollisionPointRec(
-                pointer, {point.x - 10 * zoom, point.y - 24 * zoom, 20 * zoom, 26 * zoom}))
-            return id;
-    }
-    return {};
 }
 void world_zoom_camera(WorldCameraView &view, Extent extent, Vector2 pointer, float wheel,
                        float &zoom) {
@@ -164,9 +149,6 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
         std::optional<SpritePickTarget> pick{};
     };
     std::vector<Draw> queue, patches;
-    constexpr std::array<rules::Position, 6> fence{
-        {{13, 22}, {16, 22}, {13, 21}, {42, 22}, {15, 23}, {16, 9}}};
-    constexpr std::array<rules::Position, 4> doors{{{15, 24}, {26, 19}, {15, 18}, {28, 24}}};
     for (int y = world.map.height - 1; y >= 0; --y)
         for (int x = 0; x < world.map.width; ++x) {
             const auto index = static_cast<std::size_t>(y * world.map.width + x);
@@ -186,41 +168,31 @@ void draw_world_scene(const State &s, Sprites &sprites, const Text &text, float 
                                  sprites.draw(sprite, frame, p, WHITE, Sprites::Binding::map, zoom);
                              },
                              target});
-            if (cell.fragment >= 0 && cell.fragment < 6 &&
-                world.map.cells.at(index).category == rules::RouteCategory::blocked) {
-                const auto offset = fence.at(cell.fragment);
-                queue.push_back({depth + 60 * zoom,
-                                 [&, p, offset, frame = cell.fragment] {
-                                     sprites.draw(
-                                         "fence01" + std::to_string(s.fence_level) + ".seb", frame,
-                                         {p.x + offset.x * zoom, p.y + offset.y * zoom}, WHITE,
-                                         Sprites::Binding::common, zoom);
-                                 },
-                                 SpritePickTarget{}});
-            }
-            if (cell.instance >= 0) {
-                const auto offset = doors.at(static_cast<std::size_t>(cell.instance));
-                queue.push_back({p.y + offset.y * zoom,
-                                 [&, p, offset, frame = cell.instance / 2] {
-                                     sprites.draw("door00.seb", frame,
-                                                  {p.x + offset.x * zoom, p.y + offset.y * zoom},
+            const BoundaryCell boundary{
+                world.map.cells.at(index).category == rules::RouteCategory::blocked ? cell.fragment
+                                                                                    : -1,
+                cell.instance};
+            for (const auto &overlay :
+                 boundary_overlays(boundary, s.fence_level, record.flags, record.offset_y, true))
+                queue.push_back({p.y + overlay.depth_offset * zoom,
+                                 [&, p, overlay] {
+                                     sprites.draw(overlay.sprite, overlay.frame,
+                                                  {p.x + overlay.offset_x * zoom,
+                                                   p.y + overlay.offset_y * zoom},
                                                   WHITE, Sprites::Binding::common, zoom);
                                  },
                                  SpritePickTarget{}});
-            }
-            if (s.road_patches.at(index)[0] || s.road_patches.at(index)[1]) {
-                const bool quad = s.road_patches.at(index)[0];
-                const float w = quad ? 30 : 27, h = quad ? 20 : 15;
-                const float dx = quad ? 14 : 20, dy = quad ? 21 : 19;
+            if (const auto patch = road_patch({x, y}, true, s.road_patches.at(index)[0],
+                                              s.road_patches.at(index)[1]))
                 patches.push_back(
-                    {p.y - 10 * zoom,
-                     [&, p, quad, w, h, dx, dy] {
-                         sprites.image(quad ? "road4block00.png" : "road4block01.png", {0, 0, w, h},
-                                       {p.x + dx * zoom, p.y + dy * zoom, w * zoom, h * zoom},
+                    {p.y + patch->depth_offset * zoom,
+                     [&, p, patch = *patch] {
+                         sprites.image(patch.image, {0, 0, float(patch.width), float(patch.height)},
+                                       {p.x + patch.offset_x * zoom, p.y + patch.offset_y * zoom,
+                                        patch.width * zoom, patch.height * zoom},
                                        Sprites::Binding::common);
                      },
                      SpritePickTarget{}});
-            }
         }
     queue.insert(queue.end(), patches.begin(), patches.end());
     for (const auto *roster : {&world.ai.human_order, &world.ai.monster_order})

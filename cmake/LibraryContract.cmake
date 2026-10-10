@@ -6,7 +6,6 @@ function(ark_publish_library_contract)
     foreach(file IN ITEMS cmake/LibraryContract.cmake cmake/ProductLibraries.cmake
             cmake/WorldSimulation.cmake cmake/WorldSimulationSources.cmake
             cmake/SharedRuntime.cmake scripts/shared_library_contract.mjs
-            scripts/compile_startup.mjs scripts/compile_loaded_map.mjs scripts/compile_initial_ai.mjs
             scripts/compile_desktop_glyphs.mjs scripts/simulation/compile_startup.mjs
             scripts/simulation/compile_startup_world.mjs scripts/simulation/compile_persistence_identity.mjs
             src/app/shared_library_identity.cpp)

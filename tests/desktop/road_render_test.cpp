@@ -1,6 +1,5 @@
 // Product adaptation of maintained original-PNG composition, plus current terrain checks.
 // CPU-only composition of the actual PNGs; no window or renderer-equivalence claim.
-#include "ark/app/game.hpp"
 #include "ark/assets/sprite.hpp"
 #include "road_render.hpp"
 
@@ -185,44 +184,5 @@ int main(int argc, char **argv) {
     if (argc != 2)
         throw std::invalid_argument("asset root required");
     compose(argv[1]);
-    ark::app::Game game;
-    auto map = ark::app::startup_data().map;
-    for (const auto &[id, instance] : game.state().facilities) {
-        (void)id;
-        map.cells[map.index(instance.anchor)] = {27, 0};
-    }
-    const auto patches = road_patches(map, 37);
-    for (std::size_t index = 0; index < map.cells.size(); ++index) {
-        const auto &cell = ark::app::startup_data().loaded_cells[index];
-        auto found = std::find_if(patches.begin(), patches.end(),
-                                  [&](const auto &p) { return map.index(p.cell) == index; });
-        check((found != patches.end()) == (cell.road_quad || cell.edge_road_pair),
-              "dynamic marks equal full published startup marks");
-        if (found != patches.end())
-            check(std::string(found->image) ==
-                      (cell.road_quad ? "road4block00.png" : "road4block01.png"),
-                  "published patch kind preserved");
-    }
-    check(game.display(37).flags == 1 && game.display(37).depth_offset == 0,
-          "raw mapchip road depth metadata");
-    ark::world::SourceMap square{4, 4, std::vector<ark::world::SourceCell>(16, {27, 0})};
-    for (auto cell : {ark::world::Cell{1, 1}, {2, 1}, {1, 2}, {2, 2}})
-        square.cells[square.index(cell)] = {37, 0};
-    const auto square_patch = road_patches(square, 37);
-    check(square_patch.size() == 1 && square_patch[0].cell == ark::world::Cell{1, 2},
-          "quad anchor is lower source-y row, not opposite corner");
-    for (auto cell : {ark::world::Cell{1, 1}, {2, 1}, {1, 2}, {2, 2}}) {
-        auto occupied = square;
-        occupied.cells[occupied.index(cell)] = {27, 0};
-        check(road_patches(occupied, 37).empty(), "covering any corner removes central patch");
-    }
-    ark::world::SourceMap edges{2, 2, std::vector<ark::world::SourceCell>(4, {37, 0})};
-    auto pair = road_patches(edges, 37);
-    check(pair.size() == 2 && pair[0].cell == ark::world::Cell{0, 1} && pair[0].width == 30 &&
-              pair[1].cell == ark::world::Cell{0, 0} && pair[1].width == 27,
-          "y-descending order and quad precedence over lower-edge pair");
-    edges.cells[1] = {27, 0};
-    pair = road_patches(edges, 37);
-    check(pair.size() == 1 && pair[0].width == 27, "broken quad falls back to remaining edge pair");
     std::cout << checks << " checks passed\n";
 }

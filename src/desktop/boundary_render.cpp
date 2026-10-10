@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 namespace ark::desktop {
-std::vector<BoundaryOverlay> boundary_overlays(const world::LoadedCell &cell, int boundary_index,
+std::vector<BoundaryOverlay> boundary_overlays(const BoundaryCell &cell, int boundary_index,
                                                int display_flags, int display_depth_offset,
                                                bool eligible) {
     if (!eligible)

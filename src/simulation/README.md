@@ -64,9 +64,9 @@ at a completed outer-round boundary. Restore validates both private candidates b
 installation. The player two-slot ARKSAVE1 flow remains separate. Maintenance codec, file I/O and generated
 identity belong to `ark_world_persistence`, which depends on the one `ark_world_runtime` and
 portable `ark_world_hash`; normal world updates and the player executable do not depend on
-these maintenance modules. The digest module has no raylib/image dependency. `simulation.source_provenance` checks every imported product file, including the updated
-hash of recorded product patches. Newly authored launch/UI files are covered by their normal
-source review and integration tests rather than pretending they came from research.
+these maintenance modules. The digest module has no raylib/image dependency. Imported paths and product adaptations
+remain recorded in the source manifest. Product behavior is covered by source review and
+functional tests; standalone delivery-file fingerprint checks have been removed.
 
 The continuous regression now runs three months with seed 1 and speed 0, crossing the naturally
 reached raw49 rank-conditions page beyond the former two-month boundary. Its input only sets u8

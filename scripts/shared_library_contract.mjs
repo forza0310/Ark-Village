@@ -27,7 +27,7 @@ export function fingerprint(root, spec) {
     // never supplies CMake's source list; targets retain explicit registration.
     for (const directory of ['include', 'src'])
         for (const file of scan(path.join(root, directory), file => /\.(h|hpp|hxx|inl|inc|ipp)$/.test(file))) inputs.add(file);
-    for (const directory of ['assets/data', 'assets/simulation'])
+    for (const directory of ['assets/simulation'])
         for (const file of scan(path.join(root, directory), file => /\.(json|txt|tsv)$/.test(file) && path.basename(file) !== 'SOURCES.json')) inputs.add(file);
     const hash = createHash('sha256');
     hash.update('Ark shared library contract v1\0' + JSON.stringify(spec.settings) + '\0');

@@ -1,14 +1,45 @@
 // Process entry: arguments, CPU asset/model validation, then the raylib adapter.
-#include "ark/app/game.hpp"
-#include "ark/app/initial_ai_check.hpp"
 #include "ark/app/launch_options.hpp"
 #include "ark/simulation/startup_world_runtime.hpp"
-#include "game_view.hpp"
 #include "resources.hpp"
 #include "world_view.hpp"
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
+#include <string>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOGDI
+#define NOUSER
+#include <windows.h>
+#endif
+
+namespace {
+void report_error(const std::string &message) {
+    const auto line = "Ark-Village: " + message + '\n';
+#ifdef _WIN32
+    // A Windows console may still use CP936. Write Unicode directly without
+    // changing the caller's code page; redirected diagnostics remain UTF-8.
+    const auto handle = GetStdHandle(STD_ERROR_HANDLE);
+    DWORD mode{};
+    if (GetConsoleMode(handle, &mode)) {
+        const int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, line.data(),
+                                               static_cast<int>(line.size()), nullptr, 0);
+        if (length > 0) {
+            std::wstring wide(static_cast<std::size_t>(length), L'\0');
+            MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, line.data(),
+                                static_cast<int>(line.size()), wide.data(), length);
+            DWORD written{};
+            if (WriteConsoleW(handle, wide.data(), static_cast<DWORD>(wide.size()), &written,
+                              nullptr))
+                return;
+        }
+    }
+#endif
+    std::cerr << line;
+}
+} // namespace
 
 int main(int argc, char **argv) {
     try {
@@ -17,24 +48,14 @@ int main(int argc, char **argv) {
             throw std::runtime_error(parsed.error);
         const auto &options = *parsed.options;
         if (options.mode == ark::app::LaunchMode::help) {
-            std::cout << "ark_village [--check|--check-ai] [--world|--legacy-slice|--ai-preview] "
-                         "[--paused] "
-                         "[--font TTF] "
-                         "[--save-dir PATH] "
-                         "[--size W H] "
-                         "[--frames N] [--verify-play] [--tick-rate 1..240] "
-                         "[--zoom-percent 25..200] [--screenshot PNG] [--inspect-page "
-                         "menu|shops|plants|food|placement|detail|bonuses|equipment|booster|"
-                         "arrival|visitor|motion|ai|world-active|world-month|world-rank|world-"
-                         "combat|world-reward|world-exp|world-rest|world-rest-hp|world-news|world-"
-                         "break|world-award|world-task-team|world-task-result|world-"
-                         "task-recruitment|world-menu|world-save|world-load|world-load-error]\n"
+            std::cout << "ark_village [--check|--help] [--world] [--paused] [--font TTF] "
+                         "[--save-dir PATH] [--size W H] [--frames N] "
+                         "[--zoom-percent 25..200] [--screenshot PNG] "
+                         "[--inspect-page world-PAGE]\n"
                          "Default: title -> new or saved continuous world. --world is an alias.\n"
+                         "--check validates packaged resources and the complete world startup.\n"
                          "--inspect-page world-title|world-title-slots|world-title-actions "
                          "captures the title flow without updating the world.\n"
-                         "--legacy-slice opens the former construction slice. --check-ai, "
-                         "--ai-preview, --verify-play and legacy inspection pages select their "
-                         "diagnostic slice explicitly. --tick-rate is a legacy-only experiment.\n"
                          "--inspect-page world-commerce-suite --frames N --screenshot prefix.png "
                          "captures six commerce pages after one natural preparation.\n";
             return 0;
@@ -42,47 +63,25 @@ int main(int argc, char **argv) {
         SetTraceLogLevel(LOG_WARNING);
         const auto assets = std::filesystem::path(GetApplicationDirectory()) / "assets";
         ark::desktop::check_assets(assets);
-        if (options.world) {
-            if (options.mode == ark::app::LaunchMode::check) {
-                using namespace ark::simulation;
-                // The bootstrap is discarded on return; the runtime is the only live owner.
-                auto session = [] {
-                    StartupSession bootstrap;
-                    return StartupWorldRuntimeSession(bootstrap.state(),
-                                                      rules::WorldRandomStream::from_java_seed(1));
-                }();
-                const auto result = session.update();
-                if (result.error != StartupWorldRuntimeError::none)
-                    throw std::runtime_error("Complete world startup check failed");
-                std::cout << "PASS packaged complete world, funds="
-                          << session.state().scene.world.world.ai.accounting.funds() << '\n';
-            } else {
-                ark::desktop::run_world_game(options, assets);
-            }
-            return 0;
-        }
-        if (options.mode == ark::app::LaunchMode::check_ai) {
-            for (const auto &c : ark::app::check_initial_ai())
-                std::cout << "PASS initial AI birth=" << c.birth.x << ',' << c.birth.y
-                          << " first_facility=" << c.first_facility << " rounds=" << c.rounds
-                          << " funds=" << c.funds << '\n';
-            return 0;
-        }
         if (options.mode == ark::app::LaunchMode::check) {
-            ark::app::Game game;
-            for (int i = 0; i < 420; ++i)
-                game.update();
-            if (!game.state().adventurer || game.state().adventurer->definition_id != 1 ||
-                game.state().event89_count != 1 || game.state().money != 5000)
-                throw std::runtime_error("First-arrival model check failed");
-            std::cout << "PASS packaged source assets, 24x24 map, money=5000, free first arrival "
-                         "definition=1\n";
-            return 0;
+            using namespace ark::simulation;
+            // The bootstrap is discarded on return; the runtime is the only live owner.
+            auto session = [] {
+                StartupSession bootstrap;
+                return StartupWorldRuntimeSession(bootstrap.state(),
+                                                  rules::WorldRandomStream::from_java_seed(1));
+            }();
+            const auto result = session.update();
+            if (result.error != StartupWorldRuntimeError::none)
+                throw std::runtime_error("Complete world startup check failed");
+            std::cout << "PASS packaged complete world, funds="
+                      << session.state().scene.world.world.ai.accounting.funds() << '\n';
+        } else {
+            ark::desktop::run_world_game(options, assets);
         }
-        ark::desktop::run_game(options, assets);
         return 0;
     } catch (const std::exception &error) {
-        std::cerr << "Ark-Village: " << error.what() << '\n';
+        report_error(error.what());
         return 1;
     }
 }

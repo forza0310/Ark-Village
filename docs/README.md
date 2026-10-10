@@ -12,14 +12,14 @@
 | 存档合同 | [玩家档模块](../src/app/world_save.md)、[本次审计](stages/B1-playable-prototype.md#research-save-organization) | 玩家ARKSAVE1、维护AVRSAVE1、原游戏档分别说明，不能互换认证 |
 | 阶段验收 | [B1当前批次](stages/B1-playable-prototype.md) | 本批范围、检查、未完成项；旧锚点保留转向历史 |
 | 主动经营与收益 | [长测审计与建设方案](stages/ACTIVE_VILLAGE_PLAN.md) | 现有长跑覆盖、五星原条件、初局报价/布局候选、现金安全与主动玩家验收 |
-| 历史归档 | [B1实现记录](stages/history/B1-implementation-log.md)、[任务台账](stages/history/PRODUCT_TASK_LOG.md)、[审阅基线](stages/history/PRODUCT_REVIEW-20261007.md) | 不改写旧验收结果；旧机器/版本的结果不能替代新检查 |
+| 历史验收 | [B1实现记录](stages/history/B1-implementation-log.md) | 保留独有设计和验收结果；重复任务台账与原始审阅从Git历史查阅，仍有效的工程风险集中在可维护性进度 |
 
 ## 代码与工具导航
 
 | 职责 | 实现入口 | 说明 |
 | --- | --- | --- |
 | 原规则与世界运行时 | [simulation](../src/simulation/README.md) | 标准C++，冻结来源；不依赖app/desktop/raylib |
-| 会话、命令、玩家存档 | [app](../src/app/README.md) | FIFO、generation、只读快照、文件候选替换；旧Game标明诊断边界 |
+| 会话、命令、玩家存档 | [app](../src/app/README.md) | 单一持续世界的FIFO、generation、只读快照与文件候选替换 |
 | 窗口与输入 | [desktop](../src/desktop/README.md) | world_view协调窗口；world_management负责页面命令；inspection仅显式诊断 |
 | 只读UI | [ui](../src/desktop/ui/README.md) | 页面数据映射、布局、绘制；不推进时钟/随机/奖励 |
 | 测试 | [tests](../tests/README.md) | 按行为职责注册；维护冻结测试与产品适配测试分开 |

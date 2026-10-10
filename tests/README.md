@@ -14,12 +14,11 @@
 | `simulation/` | 冻结研究共同Owner、页面、路由和自然世界组合 | `runtime;frozen`，连续轨迹为`e2e` |
 | `app/` | 产品启动/原时钟、世界会话FIFO、建设/设施/人物/税收事务接线、自动月报、勋章桥、当前设施查询 | `runtime`或`rules` |
 | `desktop/` | 显示计划、布局/输入、地图拼块/动画；纯计划也在headless运行 | `presentation` |
-| `legacy/` | `ark_game`旧切片的规则、组合与诊断，仍由`--legacy-slice`使用 | `legacy` |
-| `assets/`、`data/` | 素材解析和固定新局数据编译契约 | `rules`或`provenance` |
+| `assets/`、`data/` | 素材解析和桌面字形需求编译契约 | `rules`或`presentation` |
 | `integration/` | 真实CLI、打包资源变异和长期世界包装器 | `e2e` |
-| `support/` | 断言/进程入口与当前世界夹具；旧切片夹具放`legacy/support/` | 不注册业务用例 |
+| `support/` | 断言/进程入口与当前世界夹具 | 不注册业务用例 |
 
-产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件；不使用GLOB。所有标准测试名称、参数和超时沿原合同保留。文件移动保留原文件名，原`tests/<name>`按上表迁入；测试整理本身不改研究`tests/simulation/**`内容或重算哈希；按新发布版本迁入时，以SOURCES.json记录的明确源差异更新。当前e73bb31冻结404项源/测试/数据；research在途成果不纳入本批。
+产品注册集中在`cmake/ProductTests.cmake`，冻结研究注册在`cmake/WorldSimulation.cmake`。两者都显式列出源文件，不使用GLOB。旧ark_game及其35项专属测试随切片退役；当前世界的规则、事务、随机、回滚、存档与三个月基线继续保留。纯交付文件指纹检查已移除，DLL防错、存档身份和字段覆盖检查仍负责真实契约。冻结simulation测试按正式研究交付演进，来源与适配记录保留在SOURCES.json；不改有效断言，也不纳入research在途成果。
 
 ## 套件与独立进程
 
@@ -82,4 +81,4 @@ e8历史批次四套602项标准CTest和6次自然/年度长测、8f12654批次�
 
 四套标准均保留seed1三个月基线注册，但不要求每批全部构建/执行。按2026-10-06策略，本地默认desktop-debug使用上述精确排除条件，main CI的desktop-release完整执行。核心接口/依赖或CMake变更补headless-debug；长期模拟、性能及持续世界回归按风险使用headless-release，`ARK_LONG_WORLD_TESTS=ON`额外注册自然/年度长期回归，CI默认不执行这些额外长测。仅必要诊断或用户明确要求时补跑Debug三个月，不能将CI Release结果记作Debug通过。只改产品表现/接线而冻结规则及既有长跑未变时，不重复已通过的同一核心长链。保留路径、命令、月份/种子、断言参数与注册，改变执行分工不缩减断言。
 
-新增回归先找行为所属套件，明确“旧契约→保留场景”和独立期望值。保留有效错误拒绝、回滚、随机与调用顺序保障；不能因文件同名删除旧切片或冻结研究测试。详细要求见[开发流程](../docs/CONTRIBUTING.md#测试设计与组织)。
+新增回归先找行为所属套件，明确“既有契约→保留场景”和独立期望值。保留当前世界有效错误拒绝、回滚、随机与调用顺序保障，不因文件同名删除冻结研究测试。退役的旧切片及专属测试不再维护；旧参数拒绝归启动参数套件。详细要求见[开发流程](../docs/CONTRIBUTING.md#测试设计与组织)。

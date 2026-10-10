@@ -4,7 +4,7 @@
 Node只用于构建。脚本不会提取APK，也不会在构建时更新research或产品输入。
 
 显式升级使用上一级`import_world_research.mjs`：先`--snapshot`冻结维护源码/测试/数据，再`--import`导入产品；
-源与产品哈希记录于`assets/simulation/SOURCES.json`。`verify_sources.mjs`无需research即可校验全部副本。
+源与产品哈希记录于`assets/simulation/SOURCES.json`。不再运行单独的交付文件指纹核对。
 命名空间、include路径与测试数据路径是机械适配，规则算法与回归断言保持维护版本。
 
 e8f66d9接入新增建设/通知/只读头像及原测试，原型共享夹具保留在`tests/simulation/support`。

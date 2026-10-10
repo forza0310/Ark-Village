@@ -1,20 +1,8 @@
 #include "character_status.hpp"
-#include "ark/app/game.hpp"
-#include "character_visibility.hpp"
 #include <algorithm>
 #include <stdexcept>
 
 namespace ark::desktop {
-std::optional<CharacterStatusInput> character_status_input(const app::Game &game, bool selected) {
-    const app::LifeActorState *actor = game.life_state();
-    if (!actor)
-        actor = game.ai_state();
-    if (!actor || !game.state().adventurer)
-        return std::nullopt;
-    return CharacterStatusInput{actor->hp, actor->stats.combat[0], actor->control.action, true,
-                                selected,  character_visible(game)};
-}
-
 std::vector<CharacterStatusRectangle> character_hp_bar(const CharacterStatusInput &input) {
     if (!input.visible || input.action == 7 || (!input.hp.animating && !input.selected))
         return {};

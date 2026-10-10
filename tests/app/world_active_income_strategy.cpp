@@ -7,6 +7,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
+#include <vector>
 
 namespace ark::test {
 namespace {
@@ -338,10 +339,12 @@ IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, 
     return {}; // Source scripts/upgrade pages keep their existing player handlers.
 }
 
-void ActiveIncomeStrategy::observe(const State &before, const Command &c, const State &after) {
+void ActiveIncomeStrategy::observe(const State &before, const Command &c, const State &after,
+                                   const CampaignReceiptSink &receipts) {
     if (!choice_)
         return;
     const auto &v = *choice_;
+    std::vector<CampaignReceipt> pending;
     if (c.kind == Kind::commerce_action && c.commerce_action == Commerce::confirm &&
         after.items.at(v.item).inventory > before.items.at(v.item).inventory) {
         require(!purchased_ && cash(before) - cash(after) == v.cost &&
@@ -350,8 +353,22 @@ void ActiveIncomeStrategy::observe(const State &before, const Command &c, const 
                             after.shop_item_stock.at(v.item).quantity ==
                         1,
                 "purchase must pay once and transfer one stock unit");
+        const auto page = sim::inspect_startup_world_commerce_page(before, c.page);
+        require(page && page->raw == 84 && page->mode == 0 &&
+                    page->entries.at(page->selection) == v.item,
+                "purchase receipt lacks its selected source item page");
         purchased_ = true;
         spent_ += v.cost;
+        pending.push_back({CampaignReceiptKind::item_commerce_bought,
+                           v.item,
+                           after.simulation_steps,
+                           c.page,
+                           0,
+                           -1,
+                           {before.items.at(v.item).inventory,
+                            before.shop_item_stock.at(v.item).quantity, cash(before)},
+                           {after.items.at(v.item).inventory,
+                            after.shop_item_stock.at(v.item).quantity, cash(after)}});
         std::cout << "INVEST paid=" << v.cost << " total=" << spent_ << std::endl;
     }
     if (c.kind == Kind::facility_item_action && c.facility_item_action == Item::confirm &&
@@ -360,11 +377,36 @@ void ActiveIncomeStrategy::observe(const State &before, const Command &c, const 
                     before.items.at(v.item).inventory - after.items.at(v.item).inventory == 1 &&
                     cash(before) == cash(after),
                 "facility use consumes one item without a second charge");
+        const auto page = std::find_if(before.scripts.pages.begin(), before.scripts.pages.end(),
+                                       [&](const auto &p) { return p.id == c.page; });
+        require(page != before.scripts.pages.end() && page->legacy_page == 75 &&
+                    page->lifecycle != 4 && page->legacy_f == v.definition &&
+                    before.facility_page_bindings.at(c.page) == v.facility &&
+                    before.facility_item_page_lists.at(c.page).at(
+                        c.selection < 0 ? before.facility_item_page_selections.at(c.page)
+                                        : c.selection) == v.item &&
+                    before.scripts.facilities.at(v.definition).improvements ==
+                        after.scripts.facilities.at(v.definition).improvements,
+                "item consumption must bind75 without applying76 early");
         consumed_ = true;
         ++uses_;
+        pending.push_back({CampaignReceiptKind::item_facility_consumed,
+                           v.item,
+                           after.simulation_steps,
+                           c.page,
+                           v.facility,
+                           -1,
+                           {before.items.at(v.item).inventory, cash(before),
+                            before.facility_item_confirmations.at(v.facility), v.definition},
+                           {after.items.at(v.item).inventory, cash(after),
+                            after.facility_item_confirmations.at(v.facility), v.definition}});
     }
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
-void ActiveIncomeStrategy::observe_tick(const State &before, const State &after) {
+void ActiveIncomeStrategy::observe_tick(const State &before, const State &after,
+                                        const CampaignReceiptSink &receipts) {
     if (!choice_ || !consumed_ || improved_)
         return;
     const auto &v = *choice_;
@@ -386,10 +428,37 @@ void ActiveIncomeStrategy::observe_tick(const State &before, const State &after)
         require(reward_only_ && !v.purchase && v.cost == 0 && v.monthly_gain == 0 &&
                     (v.visible_deltas[1] > 0 || v.visible_deltas[2] > 0),
                 "quality/charm fallback must be a free effective improvement, not cash income");
+    std::uint64_t page{};
+    for (const auto &p : before.scripts.pages) {
+        const auto binding = before.facility_page_bindings.find(p.id);
+        const auto item = before.facility_item_page_items.find(p.id);
+        if (p.legacy_page != 76 || p.lifecycle == 4 ||
+            binding == before.facility_page_bindings.end() || binding->second != v.facility ||
+            item == before.facility_item_page_items.end() || item->second != v.item)
+            continue;
+        require(!page && p.legacy_f == v.definition &&
+                    !before.facility_item_pages_initialized.count(p.id) &&
+                    after.facility_item_pages_initialized.count(p.id),
+                "improvement receipt requires one actual first initialization of76");
+        page = p.id;
+    }
+    require(page && before.items.at(v.item).inventory == after.items.at(v.item).inventory,
+            "improvement must bind76 without consuming its item twice");
     improved_ = true;
     std::cout << "INVEST improved facility=" << v.facility << " item=" << v.item
               << " actual_price_delta=" << delta << " actual_quality_delta=" << v.visible_deltas[1]
               << " actual_charm_delta=" << v.visible_deltas[2] << " uses=" << uses_ << std::endl;
+    if (receipts)
+        receipts({CampaignReceiptKind::facility_item_improved,
+                  v.definition,
+                  after.simulation_steps,
+                  page,
+                  v.facility,
+                  -1,
+                  {old_values->instance_attributes[0], old_values->instance_attributes[1],
+                   old_values->instance_attributes[2], v.item},
+                  {new_values->instance_attributes[0], new_values->instance_attributes[1],
+                   new_values->instance_attributes[2], v.item}});
 }
 
 void ActiveIncomeStrategy::encode(std::ostream &out) const {

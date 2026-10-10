@@ -33,7 +33,10 @@ enum class CampaignReceiptKind {
     accessory_combat_applied,
     human_medal_awarded,
     human_home_admitted,
-    task_victory_committed
+    task_victory_committed,
+    item_commerce_bought,
+    item_facility_consumed,
+    facility_item_improved
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};

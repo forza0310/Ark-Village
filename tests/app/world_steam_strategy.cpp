@@ -565,7 +565,8 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
     ++stats_.commands;
     people_.observe(before, c, r, after,
                     [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
-    income_.observe(before, c, after);
+    income_.observe(before, c, after,
+                    [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     if (c.kind == Kind::confirm_build) {
         const auto quote = sim::startup_world_build_quote(before, target_.definition);
         require(r.created && quote && cash(before) - cash(after) == quote->construction_cost,
@@ -703,7 +704,8 @@ void SteamVillageStrategy::observe_tick(const State &before, const State &after,
     std::vector<CampaignReceipt> pending;
     people_.observe_tick(before, after,
                          [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
-    income_.observe_tick(before, after);
+    income_.observe_tick(before, after,
+                         [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     ++stats_.ticks;
     observe_world(before, after);
     if (const auto victory = task_victory_receipt(before, after, departed_task_))

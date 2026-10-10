@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ark/app/session/world_session.hpp"
+#include "world_campaign_coverage.hpp"
 #include <ostream>
 #include <set>
 
@@ -31,8 +32,9 @@ class ActiveIncomeStrategy {
         : stop_month_(stop_month), reward_only_(reward_only) {}
     IncomeDecision next(const app::WorldState &state, std::int64_t reserve, bool start);
     void observe(const app::WorldState &before, const app::WorldCommand &command,
-                 const app::WorldState &after);
-    void observe_tick(const app::WorldState &before, const app::WorldState &after);
+                 const app::WorldState &after, const CampaignReceiptSink &receipts = {});
+    void observe_tick(const app::WorldState &before, const app::WorldState &after,
+                      const CampaignReceiptSink &receipts = {});
     bool active() const { return choice_.has_value(); }
     int uses() const { return uses_; }
     std::int64_t spent() const { return spent_; }

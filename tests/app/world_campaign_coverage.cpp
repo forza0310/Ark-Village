@@ -71,6 +71,12 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"human", "home_admitted", 25, true, true, 25};
     case Kind::task_victory_committed:
         return {"task", "victory_committed", 81, false, true};
+    case Kind::item_commerce_bought:
+        return {"item", "commerce_bought", 36, false};
+    case Kind::item_facility_consumed:
+        return {"item", "facility_bound_use", 36, false, true};
+    case Kind::facility_item_improved:
+        return {"facility", "item_improvement_applied", 85, false, true};
     }
     throw std::runtime_error("Unknown campaign receipt kind");
 }
@@ -178,6 +184,11 @@ void CampaignCoverage::mark(const char *kind, int id, const char *event) {
 }
 void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log) {
     const auto identity = receipt_identity(receipt.kind);
+    // The fourth value links the item-use row to a facility definition, and the
+    // improvement row to an item. Both namespaces remain independently validated.
+    const int related_limit = receipt.kind == CampaignReceiptKind::item_facility_consumed   ? 85
+                              : receipt.kind == CampaignReceiptKind::facility_item_improved ? 36
+                                                                                            : 0;
     if (receipt.definition < 0 || receipt.definition >= identity.definitions || !receipt.page ||
         (identity.bound_human &&
          (receipt.recipient < 0 ||
@@ -187,6 +198,10 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
           receipt.kind == CampaignReceiptKind::human_home_admitted) &&
          receipt.definition != receipt.recipient))
         throw std::runtime_error("Campaign receipt lacks its source definition/page/human binding");
+    if (related_limit &&
+        (receipt.recipient != -1 || receipt.before[3] < 0 || receipt.before[3] >= related_limit ||
+         receipt.after[3] != receipt.before[3]))
+        throw std::runtime_error("Facility item receipt lost its related source definition");
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
         << identity.stage << '\t' << receipt.step << '\t' << receipt.page << '\t'
@@ -574,7 +589,11 @@ void campaign_coverage_contract() {
          30, 1, 24},
         {CampaignReceiptKind::human_medal_awarded, "human", "medal_awarded", 25, 0, 24},
         {CampaignReceiptKind::human_home_admitted, "human", "home_admitted", 25, 1, 24},
-        {CampaignReceiptKind::task_victory_committed, "task", "victory_committed", 81, 1}};
+        {CampaignReceiptKind::task_victory_committed, "task", "victory_committed", 81, 1},
+        {CampaignReceiptKind::item_commerce_bought, "item", "commerce_bought", 36, 0},
+        {CampaignReceiptKind::item_facility_consumed, "item", "facility_bound_use", 36, 1},
+        {CampaignReceiptKind::facility_item_improved, "facility", "item_improvement_applied", 85,
+         1}};
     for (const auto &entry : cases) {
         const CampaignReceipt receipt{
             entry.kind,      entry.definitions - 1, 2,           1, entry.subject,
@@ -618,6 +637,25 @@ void campaign_coverage_contract() {
             }
             coverage.record(invalid,
                             log); // Both endpoints of the source person directory are valid.
+        }
+        const int related_limit = entry.kind == CampaignReceiptKind::item_facility_consumed   ? 85
+                                  : entry.kind == CampaignReceiptKind::facility_item_improved ? 36
+                                                                                              : 0;
+        if (related_limit) {
+            for (const auto related : {-1, related_limit}) {
+                invalid = receipt;
+                invalid.before[3] = invalid.after[3] = related;
+                expect_rejected(invalid);
+            }
+            invalid = receipt;
+            invalid.before[3] = invalid.after[3] = related_limit - 1;
+            coverage.record(invalid, log);
+            invalid = receipt;
+            invalid.after[3] = 1;
+            expect_rejected(invalid);
+            invalid = receipt;
+            invalid.recipient = 0;
+            expect_rejected(invalid);
         }
     }
     const CampaignReceipt hp{

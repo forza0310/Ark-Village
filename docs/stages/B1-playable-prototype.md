@@ -23,6 +23,8 @@
 
 任务回执续批统一策略tick观察接口，复用原经营套件；真实出发/完成/清除/新30摘要绑定分别核验。定向经营揭示探索摘要不复制战斗页任务字段，已按冻结源修正取证断言，保留19项错绑定拒绝；不改奖励或世界规则。修后desktop-debug标准139/139（26.47秒、仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-task-exploration-fixed.log`、`ctest-headless-task-exploration-fixed.log`、`ctest-release-task-exploration-fixed.log`。6d二星档隔离接续至月42，再新进程至45并冷载通过，真实建设/强化、装备与4次探索/战斗胜利形成新回执；失败和修后RESULT分别留`steam-task-quarter-d2476ad974fb41339a506a08640c6d7f/`与`steam-task-quarter-fixed-c6d62e8698704c7fa00246a76741d55b/`。仍未达三星、全定义消费或自然通关，具体数字及可恢复前缀集中经营计划；CI待对应main，未重签玩家包或旧证书。
 
+设施强化回执续批区分商会实际购入、75库存消耗与76首次价格/品质/魅力改良，绑定设施实例及相关道具/设施定义；复用原16列、套件及子策略暂存，不改世界、玩家档或sidecar格式。真实500G交易及两种强化短夹具通过；准备商店存货/星级的初次夹具失败已按实际前提补齐，未改消费者或断言阈值。desktop-debug标准139/139（34.36秒、仅排三个月）、headless-debug与Release经营合同通过，日志为`ctest-desktop-investment-final.log`、`ctest-headless-investment-final.log`、`ctest-release-investment-final.log`。自然月45→48接续和独立冷载通过，两次强化、8次授勋及其他真实输入见[经营记录](ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)，证据在`steam-facility-receipts-b439db3d0a8640e0a068201e6cafd746/RESULT.json`。仍未达三星或全内容，当前程序/数据资格与旧证书分别保留；CI待对应main，未重签玩家包。
+
 <a id="research-6d35391-integration"></a>
 ## 2026-10-11：说明页与逐定义效果/持久来源接续
 

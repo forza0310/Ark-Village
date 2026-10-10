@@ -822,7 +822,8 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
     };
     ++stats_.commands;
     if (income_)
-        income_->observe(before, c, after);
+        income_->observe(before, c, after,
+                         [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     if (stats_.target_rank == 3 && c.kind == Kind::confirm_edit && before.build_mode == 7) {
         const auto old_id = stats_.layout_old_shop;
         require(result.created && old_id && !stats_.layout_moved_shop,
@@ -1062,17 +1063,21 @@ void ActiveLateVillageStrategy::observe(const State &before, const Command &c,
 
 void ActiveLateVillageStrategy::observe_tick(const State &before, const State &after,
                                              const CampaignReceiptSink &receipts) {
+    std::vector<CampaignReceipt> pending;
     ++stats_.ticks;
     if (income_)
-        income_->observe_tick(before, after);
+        income_->observe_tick(before, after,
+                              [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     require(month(after) >= month(before) && month(after) <= month(before) + 1 &&
                 ref::valid_world_calendar_state(after.scene.calendar) &&
                 after.scene.random.draws() >= before.scene.random.draws(),
             "calendar/random discontinuity");
     observe_world(before, after);
-    const auto victory = task_victory_receipt(before, after, stats_.departed_task);
-    if (receipts && victory)
-        receipts(*victory);
+    if (const auto victory = task_victory_receipt(before, after, stats_.departed_task))
+        pending.push_back(*victory);
+    if (receipts)
+        for (const auto &receipt : pending)
+            receipts(receipt);
 }
 bool ActiveLateVillageStrategy::checkpoint(const State &s) const {
     const bool business =

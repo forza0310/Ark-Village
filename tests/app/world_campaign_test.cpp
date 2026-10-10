@@ -756,6 +756,117 @@ void steam_people_receipt_contract() {
             "Actual admission lacks its one-time source fee and bound residential instance");
 }
 
+// Inventory eligibility is explicit; selection,75 consumption and76 shared improvement
+// still run through the real strategy and Owner. This does not prove natural acquisition.
+void steam_investment_receipt_contract() {
+    using Receipt = ark::test::CampaignReceiptKind;
+    for (int item : {0, 18}) {
+        auto state = steam_people_fixture();
+        for (auto &[key, stock] : state.catalog)
+            if (key.first >= 1 && key.first <= 3)
+                stock.free_purchases = 0;
+        for (auto &[id, stock] : state.items) {
+            stock.inventory = id == item ? 1 : 0;
+            state.catalog.at({0, id}).inventory = stock.inventory;
+        }
+        ark::test::SteamVillageStrategy strategy;
+        std::optional<ark::test::CampaignReceipt> consumed, improved;
+        run_steam_receipt_fixture(
+            state, strategy, [&] { return improved.has_value(); },
+            [&](const auto &receipt) {
+                if (receipt.kind == Receipt::item_facility_consumed) {
+                    require(!consumed && !improved && receipt.definition == item &&
+                                receipt.before[0] == 1 && receipt.after[0] == 0 &&
+                                receipt.before[1] == receipt.after[1] && receipt.subject,
+                            "Facility inventory receipt lacks its one-use binding or actual cash");
+                    consumed = receipt;
+                } else if (receipt.kind == Receipt::facility_item_improved) {
+                    require(consumed && !improved && receipt.page != consumed->page &&
+                                receipt.subject == consumed->subject &&
+                                receipt.definition == consumed->after[3] &&
+                                receipt.before[3] == item && receipt.after[3] == item,
+                            "Facility improvement must follow its separate item consumption");
+                    improved = receipt;
+                }
+            });
+        const auto values = sim::startup_world_facility_values(state, improved->subject);
+        require(values && state.items.at(item).inventory == 0 &&
+                    std::equal(values->instance_attributes.begin(),
+                               values->instance_attributes.begin() + 3, improved->after.begin()) &&
+                    (item == 0 ? improved->after[0] == improved->before[0] &&
+                                     improved->after[1] > improved->before[1]
+                               : improved->after[0] > improved->before[0] &&
+                                     improved->after[2] > improved->before[2]),
+                "Source quality-only or price/charm improvement was not applied to its instance");
+        std::vector<ark::test::CampaignReceipt> duplicate;
+        strategy.observe_tick(state, state,
+                              [&](const auto &receipt) { duplicate.push_back(receipt); });
+        require(duplicate.empty(), "Unchanged investment observation republished its receipt");
+    }
+    // New-shop introduction eligibility belongs to the controller fixture. The real
+    // chamber must still supply the selected stock and execute its cash transaction.
+    auto paid_state = steam_people_fixture();
+    paid_state.rank = 2; // Explicit eligibility for the existing two-star paid experiment.
+    paid_state.scripts.user_flags |= 16U;
+    for (auto &[id, stock] : paid_state.items) {
+        stock.inventory = 0;
+        paid_state.catalog.at({0, id}).inventory = 0;
+    }
+    // Source item18 is a500G introduction with a six-unit shop cap. One available
+    // vendor unit is explicit eligibility, not a natural restock/acquisition claim.
+    require(paid_state.rules->items.at(18).commerce_price == 500 &&
+                paid_state.shop_item_stock.at(18).maximum_quantity == 6,
+            "Paid introduction fixture differs from the fixed item18 source row");
+    paid_state.shop_item_stock.at(18).quantity = 1;
+    ark::test::ActiveIncomeStrategy paid(3600);
+    for (const auto &[id, facility] : paid_state.scene.world.world.facilities)
+        if (facility.status == 1)
+            paid.register_new_shop(id);
+    std::optional<ark::test::CampaignReceipt> bought;
+    for (int step = 0; step < 80 && !bought; ++step) {
+        const auto decision = paid.next(paid_state, 0, true);
+        auto input = decision.command;
+        if (!decision.handled) {
+            const auto *page = top(paid_state);
+            require(page && (page->kind == ref::WorldScriptPageKind::dialogue ||
+                             page->legacy_page == 15),
+                    "Paid fixture has an uncovered parent page: " +
+                        std::to_string(page ? page->legacy_page : -1));
+            if (page->lifecycle == 2) {
+                app::WorldCommand acknowledge;
+                acknowledge.kind = Kind::acknowledge_page;
+                acknowledge.page = page->id;
+                input = acknowledge;
+            }
+        }
+        if (input) {
+            auto candidate = paid_state;
+            const auto result = apply(candidate, *input);
+            require(result.outcome == app::WorldCommandOutcome::applied,
+                    "Paid investment fixture command rejected");
+            paid.observe(paid_state, *input, candidate, [&](const auto &receipt) {
+                require(receipt.kind == Receipt::item_commerce_bought && !bought,
+                        "Paid introduction emitted an unrelated or duplicate transaction");
+                bought = receipt;
+            });
+            paid_state = std::move(candidate);
+        }
+        if (bought)
+            break;
+        auto update = sim::prepare_startup_world_runtime(paid_state);
+        require(update.candidate && sim::update_startup_world_render_cache(*update.candidate),
+                "Paid investment fixture failed its source update");
+        paid.observe_tick(paid_state, *update.candidate);
+        paid_state = std::move(*update.candidate);
+    }
+    require(bought && bought->before[0] + 1 == bought->after[0] &&
+                bought->before[1] == bought->after[1] + 1 &&
+                bought->before[2] - bought->after[2] ==
+                    paid_state.rules->items.at(bought->definition).commerce_price &&
+                paid_state.items.at(bought->definition).inventory == 1,
+            "Real item purchase did not retain its source price, stock and inventory receipt");
+}
+
 void steam_transaction_receipt_contract() {
     auto state = ark::test::initial_world();
     // Source-menu eligibility only. This bounded fixture must still pay/build/claim
@@ -1106,6 +1217,7 @@ void contract() {
     source_transaction_receipt_contract();
     steam_transaction_receipt_contract();
     steam_people_receipt_contract();
+    steam_investment_receipt_contract();
     const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
     require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
     std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));

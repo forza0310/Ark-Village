@@ -1,6 +1,6 @@
 # Steam设施图块、朝向和真实资源
 
-2026-10-09。接续[建设列表绘制](STEAM_BUILD_LIST.md#建筑字段到mapchip图层)，本页闭合固定Steam2.56的两个pattern数组、85设施定义到85 mapchip／SEB的静态对应，以及common图片98、103的实际Steam资源。证据与复算在[工作包](../work/steam-mapchip-patterns/README.md)。这是源端静态交付，未修改C++／产品，也没有原窗口验收。
+2026-10-09。接续[建设列表绘制](STEAM_BUILD_LIST.md#建筑字段到mapchip图层)，本页闭合固定Steam2.56的两个pattern数组、85设施定义到85 mapchip／SEB的静态对应，以及common图片98、103的实际Steam资源。证据与复算在[工作包](../verification/steam-mapchip-patterns/README.md)。这是源端静态交付，未修改C++／产品，也没有原窗口验收。
 
 ## 数组来自Steam初始化
 
@@ -30,7 +30,7 @@ pattern2的朝向转换包含中间两片绘制顺序交换，不能只把整栋
 | mapchip_main列3 | seb_ +0x24 | resMapChip_内SEB槽 |
 | mapchip_main列5 | tenantDataId_ +0x2C | DrawMapchip反查设施、取pattern与type |
 
-Steam `resources.assets`的TextAsset1144（xls）内Japanese.lproj两表各85行，逐字节核到已有Steam解出副本；设施表36列、mapchip表7列。85次“设施→mapchip→反向设施”身份全部回到自身，pattern分布为0类75项、1类7项、2类3项。逐定义、逐朝向、逐片、逐SEB层的图片槽／路径／crop／offset／flip及资源哈希集中在[RESOURCES.json](../work/steam-mapchip-patterns/RESOURCES.json)，不手抄85行形成第二份易漂移目录。
+Steam `resources.assets`的TextAsset1144（xls）内Japanese.lproj两表各85行，逐字节核到已有Steam解出副本；设施表36列、mapchip表7列。85次“设施→mapchip→反向设施”身份全部回到自身，pattern分布为0类75项、1类7项、2类3项。逐定义、逐朝向、逐片、逐SEB层的图片槽／路径／crop／offset／flip及资源哈希集中在[RESOURCES.json](../verification/steam-mapchip-patterns/RESOURCES.json)，不手抄85行形成第二份易漂移目录。
 
 图块归档是`KairoGames_Data/resources.assets`的TextAsset1143 `image`，对象偏移7653624、大小232512字节；载荷SHA-256 `cd0f5b294557c663c01ec7cc9c63d3ccb79028ec94e2a6f1b1fb7ae7c0c9bfd2`。本批直接解读其img.inf／seb.inf，85个图块SEB及其图片与现有APK出版副本字节一致；这个一致性是逐资源核验结果，不能推广到common或所有语言覆盖。`resMapChip_`的动态安装过程、语言替换及运行时自定义图片字典仍需独立合同，当前表对应不代替这些加载消费者。
 

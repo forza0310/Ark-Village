@@ -1,6 +1,6 @@
 # 标题菜单文件视图跨进程尾段
 
-[startup_title_menu_replay_checks.cpp](startup_title_menu_replay_checks.cpp)提供`run_startup_title_menu_file_replay_cli`，由既有应用回放可执行接入，不新增target或CTest。controller为`title-menu-files-v1`，是固定的17条命令策略，不是通用UI脚本框架。[三进程runner](title_menu_process.mjs)已挂既有进程套件，完整18行逐字节一致；实际证书见[MENU_REPLAY](../../work/title-menu-application-delivery/MENU_REPLAY.json)。
+[startup_title_menu_replay_checks.cpp](startup_title_menu_replay_checks.cpp)提供`run_startup_title_menu_file_replay_cli`，由既有应用回放可执行接入，不新增target或CTest。controller为`title-menu-files-v1`，是固定的17条命令策略，不是通用UI脚本框架。[三进程runner](title_menu_process.mjs)已挂既有进程套件，完整18行逐字节一致；实际证书见[MENU_REPLAY](../../verification/title-menu-application-delivery/MENU_REPLAY.json)。
 
 ```powershell
 <现有应用套件exe> title-menu-files-v1 --work-dir <已存在的独立目录> --save-file <新快照.avra> --trace-file <新trace.jsonl>

@@ -2,7 +2,7 @@
 
 同日后继[危险图标偏移](STEAM_HUMAN_PINCH.md)已独立核出`OFF_EFPINCE={{−14,−28},{5,−28}}`及实际消费者；下文“本批未解”保留当批边界，当前可沿后继合同取得精确锚点。原窗口像素与完整人物树仍未认证。
 
-2026-10-10。本页补齐[人物详情60](STEAM_HUMAN_DETAIL.md)委托的局部表现helper。来源是固定Steam GameAssembly与metadata的具名方法和初始化blob，不是原窗口观测；APK1.0.8及维护原型保持独立证据等级。复现工具、方法／调用锚及资源哈希见[研究包](../work/steam-human-presentation/README.md)与[EVIDENCE.json](../work/steam-human-presentation/EVIDENCE.json)。
+2026-10-10。本页补齐[人物详情60](STEAM_HUMAN_DETAIL.md)委托的局部表现helper。来源是固定Steam GameAssembly与metadata的具名方法和初始化blob，不是原窗口观测；APK1.0.8及维护原型保持独立证据等级。复现工具、方法／调用锚及资源哈希见[研究包](../verification/steam-human-presentation/README.md)与[EVIDENCE.json](../verification/steam-human-presentation/EVIDENCE.json)。
 
 ## 普通肖像的100槽调度
 

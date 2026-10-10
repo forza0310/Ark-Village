@@ -11,7 +11,7 @@
 后继具体消费者见[属性头标](ATTRIBUTE_GAIN_RENDER.md)与[普通道具图标](ITEM_ICON_RENDER.md)：cd13绘制链及type1分类／裁图已局部核对，数字加号定位与APK不同。页面64／75／84直接调用和原窗口仍未认证，以下页面分母不因此整体升级。
 [建设目录21专题](STEAM_BUILD_LIST.md)已闭合具名入口的局部绘制、行marker16和滚动注册；后继[图块pattern全集](STEAM_MAPCHIP_PATTERNS.md)已核85定义及两数组全值，Init／Update与最终OS输入仍缺。[公共窗框](STEAM_WINDOW_FRAME.md)补Steam自己的helper、文字样式和裁剪消费，不以APK同图替代。
 
-2026-10-09外部原窗口反馈已补[启动局部动态](../work/startup-ui-analysis/ANALYSIS.md)：标题纪录单击进入、两页右向循环／返回保留选择、2/2空栏进入新局配置、默认性别联动及输入面板。内部页号未由窗口读取；自动输入未实际改名、配置取消未完成、计分页未取得，不能将关联TYPE声明整体升级为完整认证。
+2026-10-09外部原窗口反馈已补[启动局部动态](../verification/startup-ui-analysis/ANALYSIS.md)：标题纪录单击进入、两页右向循环／返回保留选择、2/2空栏进入新局配置、默认性别联动及输入面板。内部页号未由窗口读取；自动输入未实际改名、配置取消未完成、计分页未取得，不能将关联TYPE声明整体升级为完整认证。
 
 ## 分母与证据分层
 

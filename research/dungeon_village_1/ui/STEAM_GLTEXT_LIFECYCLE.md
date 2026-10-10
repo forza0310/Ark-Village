@@ -1,6 +1,6 @@
 # Steam GLText队列的绘制与退休
 
-2026-10-09。接续[文字后端](STEAM_FONT_BACKEND.md)，本批选择GLText这一条较短消费者链，核到最终托管绘制调用与消费后保留对象；不扩大为Image.TextRenderTask、完整GL栅格化或所有字体缓存审计。来源是固定Steam2.56 DLL／metadata，新增7个具名方法4368字节，复用已核DrawString生产者4096字节窗口。证据见[专题包](../work/steam-gltext-lifecycle/README.md)。没有运行原程序、访问系统字体／用户设置或修改产品。
+2026-10-09。接续[文字后端](STEAM_FONT_BACKEND.md)，本批选择GLText这一条较短消费者链，核到最终托管绘制调用与消费后保留对象；不扩大为Image.TextRenderTask、完整GL栅格化或所有字体缓存审计。来源是固定Steam2.56 DLL／metadata，新增7个具名方法4368字节，复用已核DrawString生产者4096字节窗口。证据见[专题包](../verification/steam-gltext-lifecycle/README.md)。没有运行原程序、访问系统字体／用户设置或修改产品。
 
 关键结论：**这里的GLText不是逐字生成GL网格。它先保存文字命令，FlushGLRender提交网格后，仍逐条调用Unity GUI.Label。文字消费以active count归零表示，池和文字／Font引用没有同时清空。**
 

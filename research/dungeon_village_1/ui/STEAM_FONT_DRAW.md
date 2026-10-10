@@ -1,8 +1,8 @@
 # Steam文字绘制：锚点、阴影与GUI坐标
 
-2026-10-10。本页接[字体选择与测宽合同](STEAM_FONT_CONSUMER.md)，闭合Graphics普通文字请求的局部落点及阴影调用顺序。固定DLL／metadata、9个具名方法共8,064字节、68个指令／调用锚见[研究包](../work/steam-font-draw-contract/README.md)和[EVIDENCE](../work/steam-font-draw-contract/EVIDENCE.json)。没有指定当前中文字体名称，也没有把GUI矩形y当作字体的实际字形基线。
+2026-10-10。本页接[字体选择与测宽合同](STEAM_FONT_CONSUMER.md)，闭合Graphics普通文字请求的局部落点及阴影调用顺序。固定DLL／metadata、9个具名方法共8,064字节、68个指令／调用锚见[研究包](../verification/steam-font-draw-contract/README.md)和[EVIDENCE](../verification/steam-font-draw-contract/EVIDENCE.json)。没有指定当前中文字体名称，也没有把GUI矩形y当作字体的实际字形基线。
 
-[本次原窗口反馈](../work/skin-observation-analysis/ANALYSIS.md)观察到白色阴影标题等外观，但JPEG、1067×910外框及未知DPI不能反推原Font测宽、RGB或比例。本页公式来自原代码，与该窗口观察分开认证。
+[本次原窗口反馈](../verification/skin-observation-analysis/ANALYSIS.md)观察到白色阴影标题等外观，但JPEG、1067×910外框及未知DPI不能反推原Font测宽、RGB或比例。本页公式来自原代码，与该窗口观察分开认证。
 
 ## 入口及普通文字边界
 

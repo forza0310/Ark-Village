@@ -1,6 +1,6 @@
 # Steam地图资源安装与旋转准入
 
-2026-10-10。接续[图块完整对应](STEAM_MAPCHIP_PATTERNS.md)，本批追到Steam实际地图资源组的安装／退休、旋转软标签的生成与输入消费，并[独立发布两张差异图](../assets/steam-build-common/README.md)。证据在[工作包](../work/steam-build-resource-install/README.md)。未改维护C++或产品，未运行原程序／原档；具名方法静态合同不等于窗口动态验收。
+2026-10-10。接续[图块完整对应](STEAM_MAPCHIP_PATTERNS.md)，本批追到Steam实际地图资源组的安装／退休、旋转软标签的生成与输入消费，并[独立发布两张差异图](../assets/steam-build-common/README.md)。证据在[工作包](../verification/steam-build-resource-install/README.md)。未改维护C++或产品，未运行原程序／原档；具名方法静态合同不等于窗口动态验收。
 
 ## 地图图块资源来自哪个组
 

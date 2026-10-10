@@ -1,0 +1,134 @@
+{
+  "date": "2026-10-09",
+  "scope": "??APK??????????????????",
+  "windows": [
+    {
+      "file": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603",
+      "first_line": 399,
+      "last_line": 489,
+      "excerpt_utf8_lf_sha256": "2401e57534112b87bfc3f0c5afe0b0058c601a2a390826e21d4f40f7c18f7248"
+    },
+    {
+      "file": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603",
+      "first_line": 660,
+      "last_line": 686,
+      "excerpt_utf8_lf_sha256": "71eb9f99e7bf3451b807f533a6a3b17937167cf8d9dc5aeb2bfc0c577746f92b"
+    },
+    {
+      "file": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603",
+      "first_line": 757,
+      "last_line": 759,
+      "excerpt_utf8_lf_sha256": "9261524dd5087346dc5e6e4a4516361c65fea9f0b710727a35eeab830d6b9a81"
+    },
+    {
+      "file": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603",
+      "first_line": 841,
+      "last_line": 843,
+      "excerpt_utf8_lf_sha256": "2d0e38c66906dd6285c8513bf1307fc633d0682aafdc5d3591cc9fe8c96966e0"
+    },
+    {
+      "file": "work/decompiled/sources/d/a.java",
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b",
+      "first_line": 505,
+      "last_line": 507,
+      "excerpt_utf8_lf_sha256": "b7ae7dc57c2008fd3c77d892ef0980ee69d32c05ffc0a356abbbc453430c695e"
+    },
+    {
+      "file": "work/decompiled/sources/c/b.java",
+      "bytes": 267571,
+      "sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "first_line": 1044,
+      "last_line": 1062,
+      "excerpt_utf8_lf_sha256": "f7bf12eea0d1aa8eb35da6444d0c6f130681c957daf92a0d49e859c213bdd733"
+    },
+    {
+      "file": "prototype/src/startup_world_building.cpp",
+      "bytes": 53827,
+      "sha256": "1d908b0892e5de2631e605433f9158210f21af2b901cf2b4bf9096b67b2cbb16",
+      "first_line": 47,
+      "last_line": 167,
+      "excerpt_utf8_lf_sha256": "73a20573ff58f94222dd80c4a7a7cc14fe8ca65018f0e09c9e265499cd2cc886"
+    },
+    {
+      "file": "prototype/src/startup_world_building.cpp",
+      "bytes": 53827,
+      "sha256": "1d908b0892e5de2631e605433f9158210f21af2b901cf2b4bf9096b67b2cbb16",
+      "first_line": 375,
+      "last_line": 460,
+      "excerpt_utf8_lf_sha256": "d8ef48c7012f33f352c6f4c29a6c7aee3cdc4d0071b55dd5cfd13a46285b0dc4"
+    },
+    {
+      "file": "prototype/src/startup_world_routes.cpp",
+      "bytes": 14692,
+      "sha256": "e7e70d3097756d01a40b05820e79573228fe7a00e172d8176b6c41a535da95d0",
+      "first_line": 17,
+      "last_line": 39,
+      "excerpt_utf8_lf_sha256": "21cafc1eabc7d5dbd8a9eaefbb1b8db00be964714e5fff750344cded3ee6be21"
+    },
+    {
+      "file": "prototype/src/startup_world_routes.cpp",
+      "bytes": 14692,
+      "sha256": "e7e70d3097756d01a40b05820e79573228fe7a00e172d8176b6c41a535da95d0",
+      "first_line": 274,
+      "last_line": 299,
+      "excerpt_utf8_lf_sha256": "26e4e16623d6021e007d540346375d9612132486ff4159bf1641dd062bffdac0"
+    },
+    {
+      "file": "prototype/src/startup_world_projection.cpp",
+      "bytes": 15792,
+      "sha256": "cc0a5196a65b5924a636876e8a497ea8ec0a3a28a3d2fd811820aacd920e2408",
+      "first_line": 140,
+      "last_line": 171,
+      "excerpt_utf8_lf_sha256": "7f77f1102f4bc7c378d33a8ff75cdd402957177a5d2b26bef58eb3aade245866"
+    },
+    {
+      "file": "prototype/src/startup_world_codec_fields.inc",
+      "bytes": 187166,
+      "sha256": "26a6d48e5ee388bc71abf4ba63d8abb9c589613c585fb03978a83f087a443f32",
+      "first_line": 902,
+      "last_line": 914,
+      "excerpt_utf8_lf_sha256": "06fbefd2905ae64190b6e3f919c45728657a3f666391206cf86e7c903cdbfc3b"
+    },
+    {
+      "file": "example/src/facility_service.cpp",
+      "bytes": 11178,
+      "sha256": "fc072523ff0662218eb354ef195544c2b02bc0bcdd9686fe70cd8c1dd839abc0",
+      "first_line": 26,
+      "last_line": 70,
+      "excerpt_utf8_lf_sha256": "3cff0a703c270fa58184a4802c354f74f9ce3320ae8482c0c2d7fb01cc744d71"
+    },
+    {
+      "file": "example/src/world_departure.cpp",
+      "bytes": 53516,
+      "sha256": "3419ed3753c2f2bd39a680cd8157a0746341fc6907e279fd6e33abe9db53794a",
+      "first_line": 952,
+      "last_line": 993,
+      "excerpt_utf8_lf_sha256": "d1bc3347de839fef2b0a4ed1f3560127d5ba38101133789256c5b35c2fba9521"
+    },
+    {
+      "file": "prototype/src/startup_world_persistence.cpp",
+      "bytes": 16534,
+      "sha256": "02c0c0101b264df121d7373cf9f4c6e5be8bd0946eb99e0f8789709556c27bba",
+      "first_line": 26,
+      "last_line": 31,
+      "excerpt_utf8_lf_sha256": "50e8b4253e29e291ad27d9c5a270799540554bb70a9d5615c91d02dca5edb1fa"
+    },
+    {
+      "file": "prototype/src/startup_application_replay.cpp",
+      "bytes": 34107,
+      "sha256": "77543a7705927c7179c0be1edde2027252dfdf4edfe9519abb7ad8b7ac38c826",
+      "first_line": 402,
+      "last_line": 429,
+      "excerpt_utf8_lf_sha256": "ca722fab1ce328a45ec9a869cf8bc8aa3b9bf2fd9944f36020c54f02cbe831f9"
+    }
+  ]
+}

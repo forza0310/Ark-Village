@@ -1,8 +1,0 @@
-[0/2] Re-checking globbed directories...
-[1/8] Building CXX object prototype/CMakeFiles/dungeon_village_startup_application.dir/src/startup_skin.cpp.obj
-[2/8] Linking CXX shared library bin\libdungeon_village_startup_application.dll
-[3/8] Linking CXX executable bin\dungeon_village_startup_application_cli.exe
-[4/8] Linking CXX executable bin\dungeon_village_startup_application_tests.exe
-[5/8] Linking CXX executable bin\dungeon_village_startup_world_persistence_tests.exe
-[6/8] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_visuals_tests.dir/tests/startup_skin_checks.cpp.obj
-[7/8] Linking CXX executable bin\dungeon_village_startup_world_visuals_tests.exe

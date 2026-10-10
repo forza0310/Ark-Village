@@ -1,0 +1,76 @@
+{
+  "date": "2026-10-10",
+  "scope": "只读第二星方案；只读取已有首月证书，不读或修改世界blob，不运行程序",
+  "sources": [
+    {
+      "file": "work/snapshots/active-application-v1/frame2000.avra.json",
+      "bytes": 3046,
+      "sha256": "3f704d7603840ae8b55ad80149430155b775bb0ce889cd52a8f3b8c5f2726772"
+    },
+    {
+      "file": "data/startup/TABLES.json",
+      "bytes": 27870,
+      "sha256": "b00ffa3b69663abb7b2e45873f38a845184efb6895d2b036267196472c36db68"
+    },
+    {
+      "file": "data/PROGRESSION_CONTENT_INDEX.json",
+      "bytes": 400946,
+      "sha256": "9df55a72b1b0eff7c123c67f32163077eb6492320e8246aa174c60a9f38eb434"
+    },
+    {
+      "file": "rules/PROGRESSION_ROUTES.md",
+      "bytes": 14490,
+      "sha256": "41910fad847ac3ad4c81bc4bb399fdbf014edb7916da0ba083a1fd40ada25a50"
+    },
+    {
+      "file": "rules/CHARACTERS.md",
+      "bytes": 34170,
+      "sha256": "a53f88fc7beb3bc8efef3457cb9286366b90a2fdf1f475daafc8e85c21190365"
+    },
+    {
+      "file": "rules/STARTUP_RECORDS.md",
+      "bytes": 15879,
+      "sha256": "465b772dea726a3e5e607b57111fa8ccbabb8de065ab63b0a8379f182c9597b2"
+    },
+    {
+      "file": "prototype/tests/startup_world_continuous_test.cpp",
+      "bytes": 127864,
+      "sha256": "51624d246f9857d5bf0fb634d08b063029d9af3cbb39abbb68852cad9b5622ec"
+    },
+    {
+      "file": "prototype/tests/startup_application_active_replay.cpp",
+      "bytes": 50465,
+      "sha256": "dfc827f00657b5ba9dbacb57314263ca9c983cdb21d959579aa0f29d1a0a4153"
+    },
+    {
+      "file": "prototype/scripts/compile_startup_world.mjs",
+      "bytes": 13976,
+      "sha256": "eedb795786aec86463eee1fd225372ac49dc0dc03256e82ab60bac4715783dd1"
+    },
+    {
+      "file": "prototype/src/startup_world_building.cpp",
+      "bytes": 57649,
+      "sha256": "fb493afabc3707ff75d3bf4d748b5ac3c6eff93bff2ff2f0b07385fab1427a9e"
+    },
+    {
+      "file": "prototype/src/startup_world_human.cpp",
+      "bytes": 47074,
+      "sha256": "1d08d35a8c9d2e24ef9487bf29b479c3518a1e11b3c2c4a3d0379efb50497235"
+    },
+    {
+      "file": "example/src/human_management.cpp",
+      "bytes": 14298,
+      "sha256": "489f355f5053b27f12c72fc9360ec10d192d5dbb921ee16888dea7964e2e800b"
+    },
+    {
+      "file": "example/src/world_calendar_tasks.cpp",
+      "bytes": 25265,
+      "sha256": "5b52afafa1fcdf837b53cca12b6fce64bc6f276ce71ba71070c7ca2e165612a7"
+    },
+    {
+      "file": "work/decompiled/sources/a/n.java",
+      "bytes": 4723,
+      "sha256": "1839210c124bff949e27583734f6f1c826c61014ea53cc231516226f150c13de"
+    }
+  ]
+}

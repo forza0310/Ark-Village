@@ -1,0 +1,11 @@
+const archivePaths = require('../work_archive_paths.cjs').forTool(__filename);
+// 人物表现依赖：固定具名小方法与UserData静态初始化，逐指令解码，仅输出指定片段。
+const fs=archivePaths.require('fs'),path=archivePaths.require('path'),crypto=archivePaths.require('crypto');
+const root=path.resolve(archivePaths.workDir,'../..'),sha=b=>crypto.createHash('sha256').update(b).digest('hex'),dll=fs.readFileSync(path.join(root,'DungeonVillageEXE/GameAssembly.dll')),ix=archivePaths.require('../persistence-replay-analysis/exe/methods.json');
+if(sha(dll)!=='9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a')throw Error('source');
+const methods={medal:[0x254f70,0x255130],bubble:[0x253230,0x253530],power:[0x2d0a80,0x2d0f00],cctor:[0x2f0040,0x2f4fd0]};
+const slices={medal:['medal',0x10254f70,0x10255130],bubble:['bubble',0x10253230,0x10253530],power:['power',0x102d0a80,0x102d0f00],schedule:['cctor',0x102f3984,0x102f3b9d]};
+const key=process.argv[2];if(process.argv.length!==3||(!Object.hasOwn(slices,key)&&!['manifest','schedule-location'].includes(key)))throw Error('fixed key');
+function method(k){const [rva,end]=methods[k],m=ix.methods.find(x=>x.rva===rva),n=end-rva;if(!m||n>24576||!ix.methods.some(x=>x.rva===end)||ix.methods.some(x=>x.rva>rva&&x.rva<end))throw Error('named boundary');const s=ix.sections.find(s=>rva>=s.rva&&end<=s.rva+s.rawSize);if(!s||s.raw+rva-s.rva!==m.offset)throw Error('PE');return {m,n};}
+if(key==='manifest'){for(const k of Object.keys(methods)){const {m,n}=method(k);console.log(JSON.stringify({key:k,rva:m.rva,bytes:n,sha256:sha(dll.subarray(m.offset,m.offset+n))}));}process.exit(0);}
+const [k,lo,hi]=key==='schedule-location'?['cctor',0,0]:slices[key],{m,n}=method(k),iced=archivePaths.require('../local-tools/iced-x86-1.21.0/package'),d=new iced.Decoder(32,dll.subarray(m.offset,m.offset+n),iced.DecoderOptions.None);d.ip=BigInt(m.va);const f=new iced.Formatter(iced.FormatterSyntax.Intel),names=new Map(ix.methods.map(x=>[x.va,x.type+'::'+x.signature]));while(d.canDecode){const i=d.decode();if(i.isInvalid){i.free();break;}const va=Number(i.ip),s=f.format(i);if(key==='schedule-location'?/\+128h\]/.test(s):va>=lo&&va<hi)console.log(va.toString(16)+' '+s+(i.isCallNear?' ; '+(names.get(Number(i.nearBranchTarget))||''):''));i.free();}f.free();d.free();

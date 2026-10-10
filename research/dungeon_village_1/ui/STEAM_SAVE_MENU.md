@@ -1,6 +1,6 @@
 # Steam手动档操作菜单与确认
 
-2026-10-09。本合同接续[标题与选档](STEAM_TITLE_MENU.md)，只核固定Steam样本raw20及其raw1确认链。不操作原存档、不执行删除／覆盖，不将确认文字当成文件已经写入。新方法与旧证据交叉见[工作入口](../work/steam-save-menu-contract/README.md)。
+2026-10-09。本合同接续[标题与选档](STEAM_TITLE_MENU.md)，只核固定Steam样本raw20及其raw1确认链。不操作原存档、不执行删除／覆盖，不将确认文字当成文件已经写入。新方法与旧证据交叉见[工作入口](../verification/steam-save-menu-contract/README.md)。
 
 ## 页面与结果生命周期
 

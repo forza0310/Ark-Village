@@ -2,7 +2,7 @@
 
 后继状态：本页最初登记的softLabels74缺口已由[独立补证](STEAM_FACILITY_LABELS.md)闭合，两张差异图已在[设施素材包](../assets/steam-facility-common/README.md)发布。下文原批次覆盖与冻结EVIDENCE保持原身份；其余字体、OS输入和表单退休限制仍有效。
 
-2026-10-10。固定Steam2.56的局部完整绘制分支、初始化及输入合同。直接来源是GameAssembly具名方法和metadata，见[复算工作包](../work/steam-facility-detail/README.md)。没有用APK补Steam字段，没有新增窗口实验；S043等只保留为独立画面观察。本文的坐标是原Graphics逻辑坐标／调用实参，不是桌面截图像素，字体翻译、原点、缩放与裁剪仍沿已有合同。
+2026-10-10。固定Steam2.56的局部完整绘制分支、初始化及输入合同。直接来源是GameAssembly具名方法和metadata，见[复算工作包](../verification/steam-facility-detail/README.md)。没有用APK补Steam字段，没有新增窗口实验；S043等只保留为独立画面观察。本文的坐标是原Graphics逻辑坐标／调用实参，不是桌面截图像素，字体翻译、原点、缩放与裁剪仍沿已有合同。
 
 ## 两个入口不能合并
 

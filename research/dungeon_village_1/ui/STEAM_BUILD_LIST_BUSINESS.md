@@ -1,6 +1,6 @@
 # Steam建设目录21的初始化、选择与确认
 
-2026-10-10。接续[raw21绘制](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)和[图块／旋转资源](STEAM_MAPCHIP_PATTERNS.md)。本页独立核固定Steam2.56的Init与Update局部分支；APK只作末尾交叉，不用APK填Steam空白。来源见[工作包](../work/steam-build-list-business/README.md)，未改维护C++／产品、未操作原窗口或存档。
+2026-10-10。接续[raw21绘制](STEAM_BUILD_LIST.md#steam后继完整raw21局部绘制分支)和[图块／旋转资源](STEAM_MAPCHIP_PATTERNS.md)。本页独立核固定Steam2.56的Init与Update局部分支；APK只作末尾交叉，不用APK填Steam空白。来源见[工作包](../verification/steam-build-list-business/README.md)，未改维护C++／产品、未操作原窗口或存档。
 
 ## 目录生成与打开时的副作用
 

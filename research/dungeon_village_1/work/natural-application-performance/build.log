@@ -1,5 +1,0 @@
-[0/2] Re-checking globbed directories...
-[1/22] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world_runtime_nonactors_tests.dir/tests/startup_world_runtime_nonactors_test.cpp.obj
-[2/22] Building CXX object prototype/CMakeFiles/dungeon_village_startup_world.dir/src/startup_world_runtime.cpp.obj
-[3/22] Linking CXX shared library bin\libdungeon_village_startup_world.dll
-[4/5] Linking CXX executable bin\dungeon_village_startup_world_runtime_nonactors_tests.exe

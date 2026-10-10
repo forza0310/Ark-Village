@@ -1,0 +1,27 @@
+# Steam标题人物静态交叉
+
+2026-10-09。正式结论：[Steam标题人物调度与基础绘制](../../ui/STEAM_TITLE_ACTORS.md)。本目录只存小型检查器和摘要，不复制原指令全文、图片、原表、存档或游戏二进制。
+
+## 方法与范围
+
+`inspect.cjs`只接受固定具名键，验证GameAssembly和metadata哈希、methods登记入口／下一入口、PE映射及≤4096字节边界。21个窗口中20个覆盖整个登记区间；`admission`仅为TitleForm.Update的2048字节入口前缀，未宣称整函数闭合。读到的输出在会话消费，不写反汇编全文。
+
+`guest-data.cjs`从已核TitleForm.cctor的固定RuntimeFieldHandle槽`0x110F2100`解析metadata v29的fieldRef→私有数据字段→默认数据，校验44字节blob的SHA-256等于字段名。TITLE_GUEST独立得出0…10，不采用APK替代。
+
+```powershell
+node research/dungeon_village_1/tools/steam-title-actors/inspect.cjs manifest
+node research/dungeon_village_1/tools/steam-title-actors/guest-data.cjs
+# 单个已登记方法可用draw、update、actor、drawParam等固定键复查；仅stdout。
+```
+
+`EVIDENCE.json`保存两来源哈希、21窗口的范围和哈希、guest metadata链及关键消费位置。共享methods／dump只作为带来源身份的既有解析索引，不是新增二进制副本。
+
+## 本轮产出与资格
+
+- Steam出生−18/254、严格越界退休及4单位边缘混合与APK不同；273次退休是静态推导，未跑原游戏长测。
+- 四抽100→11→2→100、满槽一抽、年龄保留、全20槽排序后过滤及阴影→武器→身体调用链已逐源核实。
+- 正常人物当前职业／性别／主武器消费已核；身体与武器深层静态数组的全部值、scratch历史资格、底层PRNG及框架准入仍未闭合。
+- 确认mask消费到Keypad已核；只在guard不挡、同一Keypad脉冲的前提下给98／99边界结论，未认证实际键位或触摸语义。
+- 不构建、不运行C++测试；本轮无维护C++更改、无原窗口操作、无新增后台任务。未改产品、Owner或持久格式，未退休既有自然长测前缀。
+
+资源规模限定为本目录脚本／JSON／Markdown及一份正式合同；无新增图片或DLL复制。证据输出由正式合同逐项消费，未知边界明确保留；临时图像、缓存与进程均未新增。现有合法历史与其它会话任务不在本分支清理范围。

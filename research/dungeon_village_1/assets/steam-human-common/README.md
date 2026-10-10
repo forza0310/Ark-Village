@@ -6,7 +6,7 @@
 
 APK同名图片也为10×7，但字节及RGBA均不同，不可作Steam别名；本包保留Steam原条目字节，不覆盖旧APK包。1个逻辑资源、1个新PNG、187字节，无新增SEB或额外图片依赖。这仅补齐人物详情批已识别的common差异图，不代表全部人物、字体、窗口或运行时语言变体完成。
 
-[人物详情证据](../../work/steam-human-detail/EVIDENCE.json)保留限定出版白名单内图片88未匹配的历史记录；生成器在提交前修正了动态枚举导致的漂移，修前/修后身份见其README。本包是后续发布证据，不把后来出现的副本冒充当时已有。产品侧以本清单复制并核验自身运行资源，不读取Unity容器或research/work。
+[人物详情证据](../../verification/steam-human-detail/EVIDENCE.json)保留限定出版白名单内图片88未匹配的历史记录；生成器在提交前修正了动态枚举导致的漂移，修前/修后身份见其README。本包是后续发布证据，不把后来出现的副本冒充当时已有。产品侧以本清单复制并核验自身运行资源，不读取Unity容器或research/work。
 
 ```powershell
 python -B research/dungeon_village_1/tools/scripts/publish_steam_human_common.py

@@ -25,7 +25,7 @@ Steam身份、方法登记范围及哈希继承[既有UI证据](../work/steam-ui
 对应[方法清单](../work/steam-ui-coverage/methods.json)与[检查记录](../work/steam-ui-coverage/CHECK.json)。
 先用既有`analyze.cjs --inspect`消费SetTouchValue及Update_scrollValue有限指令窗口。
 用户明确授权后，新增固定入口只读探针，消费外层draw、Update、Init2各1024字节入口，
-合计唯一3072字节，范围／哈希见[入口摘要](../work/steam-build-list-contract/EVIDENCE.json)。
+合计唯一3072字节，范围／哈希见[入口摘要](../verification/steam-build-list-contract/EVIDENCE.json)。
 外层`SubForm._draw`登记范围197,616字节，本次仅核入口前段，尚未到21分支；不能宣称全部方法或21绘制已认证。
 APK巨型Java方法的普通反编译警告仍有效，图块绘制已另以低层窗口交叉，见[图块合同](PAGES.md#固定apk候选建筑两朝向与目录裁剪)。
 
@@ -87,7 +87,7 @@ Steam建设候选闪烁、朝向传递及建设确认消费另见[覆盖清单](
 
 ## Steam后继：完整raw21局部绘制分支
 
-2026-10-09。[新证据包](../work/steam-build-list-render/README.md)沿具名入口`SubForm._draw`从`0x10352E20`顺序解码8704字节，
+2026-10-09。[新证据包](../verification/steam-build-list-render/README.md)沿具名入口`SubForm._draw`从`0x10352E20`顺序解码8704字节，
 不是从历史被拒的中间地址启动解码。`0x10353248`比较type21，跳转`0x10353799`；该分支在`0x10354F8D`返回，
 共6133字节。另两个具名完整小方法为`MapchipData.DrawMapchip`784字节和`AppData.DrawVerticalScroll2`304字节，
 总唯一前缀9792字节；仍不称197616字节登记跨度全部属于已分析函数。
@@ -140,7 +140,7 @@ Steam建设候选闪烁、朝向传递及建设确认消费另见[覆盖清单](
 
 本链没有将`MapchipData.img_`或`TenantData.icon_`直接拿来画整张建筑PNG。
 本批闭合字段／调用链，但未解Steam这两个pattern数组的全部数值，也未认证所有mapchip图集分片；不能借APK数组填成Steam已核。
-[资源摘要](../work/steam-build-list-render/EVIDENCE.json)核7个直接图／SEB槽与已发布默认文件字节一致，并追5个SEB图片依赖：
+[资源摘要](../verification/steam-build-list-render/EVIDENCE.json)核7个直接图／SEB槽与已发布默认文件字节一致，并追5个SEB图片依赖：
 arrow02／arrow01／finger_r同字节，**number05图103与tenant_resident图98的Steam字节不同于APK发布副本**。
 两个SEB相同不证明其图片也相同；这两张不能直接alias APK，后续需独立Steam解析／发布。
 common图147的INF仍有`20x9`修饰，语言覆盖和最终Image装载另有资格，不把文件hash相同当运行时语言路径已定。
@@ -166,5 +166,5 @@ common图147的INF仍有`20x9`修饰，语言覆盖和最终Image装载另有资
 每个窗口须有已核指令边界、方法登记范围、地址／哈希及预算；大型外层不得按完整方法覆盖报告。
 自然窗口仍需在原程序单独认证最终命中区、滚轮／键盘投递及空行输入，不由静态事实替代。
 
-历史非入口续窗被自动审批拒绝的现场保留于[旧专题工作包](../work/steam-build-list-contract/README.md)，没有执行该被拒方案。
+历史非入口续窗被自动审批拒绝的现场保留于[旧专题工作包](../verification/steam-build-list-contract/README.md)，没有执行该被拒方案。
 本次沿后来已核的具名入口顺序解码前缀完成安全替代，只保存固定入口脚本和有限事实摘要；不写指令全文、原游戏档或构建缓存，无后台进程。

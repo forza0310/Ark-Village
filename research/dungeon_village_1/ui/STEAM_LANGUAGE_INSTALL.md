@@ -1,6 +1,6 @@
 # Steam语言包安装、选择与资源目录
 
-2026-10-09。固定Steam2.56研究副本的只读静态增量。核8个具名方法、14个有界窗口、32个固定字符串槽及4个TextAsset，证据与复算见[专题包](../work/steam-language-install-contract/README.md)。没有运行原游戏、读取用户偏好／账号／存档、安装语言包或导出整份译文。与[字体消费者](STEAM_FONT_CONSUMER.md)、[标题资源选择](STEAM_TITLE_DRAW.md)及[手动档翻译入口](STEAM_SAVE_MENU.md)共同使用；APK汉化文字仍是独立来源。
+2026-10-09。固定Steam2.56研究副本的只读静态增量。核8个具名方法、14个有界窗口、32个固定字符串槽及4个TextAsset，证据与复算见[专题包](../verification/steam-language-install-contract/README.md)。没有运行原游戏、读取用户偏好／账号／存档、安装语言包或导出整份译文。与[字体消费者](STEAM_FONT_CONSUMER.md)、[标题资源选择](STEAM_TITLE_DRAW.md)及[手动档翻译入口](STEAM_SAVE_MENU.md)共同使用；APK汉化文字仍是独立来源。
 
 已闭合到**选定某个包后语言码与资源候选的来源**，尚未证明用户窗口当前选中包、实际中文字形对象或所有翻译回调注册者。资源存在、安装方法可达与当前运行选择是三个层级。
 

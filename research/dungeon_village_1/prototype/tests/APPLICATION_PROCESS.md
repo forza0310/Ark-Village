@@ -32,7 +32,7 @@ node research/dungeon_village_1/prototype/tests/application_active_process.mjs -
 
 ## 首星到二星策略的有限交接
 
-`application_second_star_process.mjs`对应[交接设计第1批](../../work/active-controller-handoff/README.md)。它不替换容器中的controller字符串，也不将旧世界重新激活为新应用；C++私有恢复先按v1原样完成已核的34402–34429共28轮，再在相同旧metadata下比较交接前后完整摘要及隔离文件清单，构造独立`application-active-progression-v2`／`AVACTDR2`。应用7、世界4、系统2及128MiB限制保持。v2命令及输出计数从自身起点开始，完整旧Driver和334条旧音频的身份仍在origin中。
+`application_second_star_process.mjs`对应[交接设计第1批](APPLICATION_PROCESS.md)。它不替换容器中的controller字符串，也不将旧世界重新激活为新应用；C++私有恢复先按v1原样完成已核的34402–34429共28轮，再在相同旧metadata下比较交接前后完整摘要及隔离文件清单，构造独立`application-active-progression-v2`／`AVACTDR2`。应用7、世界4、系统2及128MiB限制保持。v2命令及输出计数从自身起点开始，完整旧Driver和334条旧音频的身份仍在origin中。
 
 首次只接受明确的`--handoff-prefix`：已核`frame34401.avra`及相邻证书，producer为`11818a9-income-gate`，快照SHA-256为`16a1b8c48993a96c536e4fc5868c7408355776c3b4631145047a2b4706c8062b`，证书SHA-256为`8484c8cac5578c431dfd307903d7659b24296741eeace84cd875ab176c3332e3`。必须证明34429的当月实际设施收入400G，不能接纳原34419当月收入为0的旧terminal。脚本沿显式证书引用检查最多32层来源，核实际文件／分区摘要、世界4／系统2、捕获轮及来源producer，不扫描“最新”文件。
 
@@ -54,7 +54,7 @@ node research/dungeon_village_1/prototype/tests/application_second_star_process.
 
 ## 从任务募集接续真实住宅与经营建设
 
-`application_residence_process.mjs`沿[住宅策略设计](../../work/second-star-residence-plan/README.md)，使用独立`application-active-residence-v1`／`AVRESDR1`。首次`--handoff-prefix`只接受已核v2 `frame34469.avra`及相邻证书：快照SHA-256为`dc30d31a83c021d6af6ac66fbb31fbb40ea01e49a2679c6823f9567724a3f8f6`，证书为`4dcb2135d5ee4045b7a176df31b124af3fd04ab3121031a25469372ee27889ad`。固定producer为`2c612c9-handoff-audit`。原v2完整恢复并推进34470–34489的20轮后，才只读构造住宅策略；不取消任务7、不改变募集页、世界、随机、文件或输出。
+`application_residence_process.mjs`沿[住宅策略设计](APPLICATION_PROCESS.md)，使用独立`application-active-residence-v1`／`AVRESDR1`。首次`--handoff-prefix`只接受已核v2 `frame34469.avra`及相邻证书：快照SHA-256为`dc30d31a83c021d6af6ac66fbb31fbb40ea01e49a2679c6823f9567724a3f8f6`，证书为`4dcb2135d5ee4045b7a176df31b124af3fd04ab3121031a25469372ee27889ad`。固定producer为`2c612c9-handoff-audit`。原v2完整恢复并推进34470–34489的20轮后，才只读构造住宅策略；不取消任务7、不改变募集页、世界、随机、文件或输出。
 
 34489终点旧metadata完整摘要为`62aaa3970f616e4af63c8cf4c12685b0e510aee9c70f7b84ed9553068063ba25`；旧Driver为1572字节，SHA-256为`f293d9463eb014cb6a61f62a3f5fae2d285b50197dc7f77f138d3ea98358afc7`，next_frame34490、next_command4。后者与快照捕获34469的Driver不是同一份字节。脚本固定核这些身份及交接文件清单摘要，`handoff.prior_handoff`必须与原v2证书中的完整v1交接对象相同；两层来源不能压成controller名字或几个终点数值。
 

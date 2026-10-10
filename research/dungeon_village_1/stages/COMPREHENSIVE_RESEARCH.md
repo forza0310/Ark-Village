@@ -4,7 +4,7 @@
 
 同日用户进一步明确：**产品侧负责世界长跑，research只需简单功能／逻辑测试。** 后续研究优先闭合二星与活动30／魔法壶、三星学校、四星扩张／博物馆、五星职业及特殊BOSS／计分的来源、条件、消费者与短功能测试；实际连续经营、自然晋级和通关交产品侧，不再新增研究经营长跑Driver或把自然路线当交付门槛。UI只收当前已开展批及新内容所需消费者，避免分散主线。条件夹具、维护功能通过与产品自然长跑结果分别登记；已验快照、证书及未认证历史原样保留，按[测试分工](../../WORKFLOW.md#研究与产品的测试分工)执行。
 
-2026-10-09上一初始化批已通过12项相关CTest与420轮／首月双恢复：补齐六特殊／三十复发任务目录、实际reset后的设施共享人气20／30。当批世界语义2、应用语义4，旧应用1／2／3与世界语义1拒绝、不迁移，原表及Owner字段布局不变。此前自然24月等快照保留修前证据，36月续跑已在29月中止并收齐研究测试进程；当批最终前缀为natural-application-v4（后继声音语义已退休其资格）。详情见[初始化交付](../work/task-pool-delivery/README.md)，不将日期回放自洽代替后期规则正确。
+2026-10-09上一初始化批已通过12项相关CTest与420轮／首月双恢复：补齐六特殊／三十复发任务目录、实际reset后的设施共享人气20／30。当批世界语义2、应用语义4，旧应用1／2／3与世界语义1拒绝、不迁移，原表及Owner字段布局不变。此前自然24月等快照保留修前证据，36月续跑已在29月中止并收齐研究测试进程；当批最终前缀为natural-application-v4（后继声音语义已退休其资格）。详情见[初始化交付](../VERIFICATION.md#先前交付索引)，不将日期回放自洽代替后期规则正确。
 
 2026-10-08用户明确要求持续迭代四个目标：还原EXE版UI和操作、穷尽APK／EXE图像及背后代码、穷尽活动／任务／逐步解锁内容、为产品提供建筑／人物／菜单等小窗示例。该方向已确认；研究只写research，产品接入由产品维护者分批消费。
 
@@ -31,19 +31,19 @@
 
 ### 当前连续队列
 
-最新主动路径已认证[7300跨首次任务成果／10000](../work/active-application-route/README.md)：自然任务成功1、村办2，仍0星／升级0。下一从10000接续自然升级与首星。二星[来源方案](../work/active-second-star-plan/README.md)澄清kind3／9设施计数与kind12住宅分开、真实赠礼报价；目前只是策略设计，不伪称新Controller交接或自然二星已完成。
+最新主动路径已认证[7300跨首次任务成果／10000](../verification/active-application-route/README.md)：自然任务成功1、村办2，仍0星／升级0。下一从10000接续自然升级与首星。二星[来源方案](../prototype/tests/APPLICATION_PROCESS.md)澄清kind3／9设施计数与kind12住宅分开、真实赠礼报价；目前只是策略设计，不伪称新Controller交接或自然二星已完成。
 
-2026-10-10[主动应用首批](../work/application-active-delivery/README.md)已交付独立Driver和420／2000轮跨进程证书，具名命令0–14、真实页面生命周期、完整输出与资源检查通过。当前`active-application-v1/frame2000.avra`是下一主动路径入口，0星／未达terminal；被动`natural-application-economy-v1/month12`只用于日期成本路线。后继先管理链至首星／活动16营业，再二星，不重新跑无关早期前缀。
+2026-10-10[主动应用首批](../VERIFICATION.md#主动应用driver与2000轮前缀2026-10-10)已交付独立Driver和420／2000轮跨进程证书，具名命令0–14、真实页面生命周期、完整输出与资源检查通过。当前`active-application-v1/frame2000.avra`是下一主动路径入口，0星／未达terminal；被动`natural-application-economy-v1/month12`只用于日期成本路线。后继先管理链至首星／活动16营业，再二星，不重新跑无关早期前缀。
 
-2026-10-10[应用管理接线](../work/application-management-frame-delivery/README.md)已补17项真实Session命令，无新增持久字段；[主动路线计划](../work/active-progression-plan/README.md)明确优先首星短前缀→第二星／住宅／壶，再首BOSS与高星。主动世界420→440三路一致，应用被动12月另已认证，两个Driver不能互换。Steam四窗框helper维护桥已验，实际后端／字体仍独立待证。
+2026-10-10[应用管理接线](../VERIFICATION.md#应用管理入口steam窗框与当前两条短回放2026-10-10)已补17项真实Session命令，无新增持久字段；[主动路线计划](../prototype/tests/APPLICATION_PROCESS.md)明确优先首星短前缀→第二星／住宅／壶，再首BOSS与高星。主动世界420→440三路一致，应用被动12月另已认证，两个Driver不能互换。Steam四窗框helper维护桥已验，实际后端／字体仍独立待证。
 
-最新[邻接价格批](../work/facility-arrival-cache-delivery/README.md)已交付世界4／应用7；实际收费320→撤除300及事务／嵌套旧语义拒绝通过，当前自然前缀为`natural-application-economy-v1`首月20轮双恢复。下面应用6及更早说明保留当批历史，12月修前结果不能继续到24月。下一长段须从当前首月重新认证；不再扩展错误收费身份，也不通过补价改旧历史。
+最新[邻接价格批](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)已交付世界4／应用7；实际收费320→撤除300及事务／嵌套旧语义拒绝通过，当前自然前缀为`natural-application-economy-v1`首月20轮双恢复。下面应用6及更早说明保留当批历史，12月修前结果不能继续到24月。下一长段须从当前首月重新认证；不再扩展错误收费身份，也不通过补价改旧历史。
 
-最新[应用6批](../work/title-menu-application-delivery/README.md)已验收：系统2四目录／不可变世界文件、稳定ID菜单／分级返回、应用音频和完整文件视图恢复。五项相关检查103.30秒及真实17命令三进程通过，当前前缀为`natural-application-menu-v1`的420轮／首月，旧应用5及以前不接续。接下来从当前首月继续12月及后期规模；同时沿[自动中断最小合同](../work/interrupt-save-continuation/README.md)和Steam完整皮肤补证，绝不因目录存在就声称原轮内自动保存已完成。
+最新[应用6批](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)已验收：系统2四目录／不可变世界文件、稳定ID菜单／分级返回、应用音频和完整文件视图恢复。五项相关检查103.30秒及真实17命令三进程通过，当前前缀为`natural-application-menu-v1`的420轮／首月，旧应用5及以前不接续。接下来从当前首月继续12月及后期规模；同时沿[自动中断最小合同](../verification/interrupt-save-continuation/README.md)和Steam完整皮肤补证，绝不因目录存在就声称原轮内自动保存已完成。
 
-2026-10-09连续执行增量：[Steam菜单局部皮肤](../prototype/STEAM_STARTUP_SKIN.md)已验，字体／GLText静态链推进至引擎GUI.Label。完整标题四目录、统一声音及文件视图恢复的[具体设计](../work/title-menu-application-design/README.md)已由用户批准，按独立系统存储→标题控制器与Owner接线→完整快照统一验收推进；保持128MiB及拒绝旧格式，不用普通轮末存档假称原轮内中断。纯计划不改变现有前缀，后继应用状态真正改变时才重新认证。
+2026-10-09连续执行增量：[Steam菜单局部皮肤](../prototype/STEAM_STARTUP_SKIN.md)已验，字体／GLText静态链推进至引擎GUI.Label。完整标题四目录、统一声音及文件视图恢复的[具体设计](../verification/title-menu-application-design/README.md)已由用户批准，按独立系统存储→标题控制器与Owner接线→完整快照统一验收推进；保持128MiB及拒绝旧格式，不用普通轮末存档假称原轮内中断。纯计划不改变现有前缀，后继应用状态真正改变时才重新认证。
 
-当前已收口[声音Owner](../work/audio-owner-delivery/README.md)及[Steam手动档菜单](../ui/STEAM_SAVE_MENU.md)／[语言安装](../ui/STEAM_LANGUAGE_INSTALL.md)。世界语义3、应用语义5、自然应用Driver v2的420轮／首月短前缀已重新认证；自然任务闭环也在最终生产代码通过。后续长测从该身份出发，并继续补完整标题菜单／原始输入及未维护的标题音频；不能套用已退休的24月档。普通typed输出及新遭遇通知缺口已消除，设备层和剩余表现仍单独登记。
+当前已收口[声音Owner](../VERIFICATION.md#声音操作遭遇通知与steam菜单语言2026-10-09)及[Steam手动档菜单](../ui/STEAM_SAVE_MENU.md)／[语言安装](../ui/STEAM_LANGUAGE_INSTALL.md)。世界语义3、应用语义5、自然应用Driver v2的420轮／首月短前缀已重新认证；自然任务闭环也在最终生产代码通过。后续长测从该身份出发，并继续补完整标题菜单／原始输入及未维护的标题音频；不能套用已退休的24月档。普通typed输出及新遭遇通知缺口已消除，设备层和剩余表现仍单独登记。
 
 以`15a9a8a`为研究接续点，以下是自主工作顺序，不是逐项待批准清单：
 
@@ -62,13 +62,13 @@
 
 2026-10-09持续执行的首个独立静态增量：[Steam字体消费者](../ui/STEAM_FONT_CONSUMER.md)核12入口、资源语言回退和测宽，确认当前资源表没有中文/default字体路径；实际中文系统字形仍未知，不直接采用内嵌M+。自然应用Driver和基础人物复合图层正在独立实现／验收，不把在途工作计为已完成。
 
-2026-10-09外部[启动窗口接收](../work/startup-ui-analysis/ANALYSIS.md)已补标题纪录单击进入、两页右向循环／返回、空栏进入配置与默认性别联动的局部动态；原图校验及关键图复核通过。自定义文本未接受、配置取消受干预、计分未取得，仍不能把启动皮肤和输入全项升级完成。此前主会话native pipe失败不适用于外部本次成功观察。
+2026-10-09外部[启动窗口接收](../verification/startup-ui-analysis/ANALYSIS.md)已补标题纪录单击进入、两页右向循环／返回、空栏进入配置与默认性别联动的局部动态；原图校验及关键图复核通过。自定义文本未接受、配置取消受干预、计分未取得，仍不能把启动皮肤和输入全项升级完成。此前主会话native pipe失败不适用于外部本次成功观察。
 
 2026-10-08后续批按[产品需求回应](../verification/PRODUCT_REQUESTS.md)推进：补主角／纪录及两版受击来源，维护普通道具图标与人物cd13计划；18项受影响回归通过。上述是具体消费者增量，不将全量索引自动升级为完整认证。
 
 再后继已交叉Steam两具体绘制消费者，明确加号测量差异；Owner受击17短场景及3拒绝通过，并补自然赠礼目录窗口。`9ec4c1a`已交付主角／系统纪录应用及六类计分，旧计分取证暂停已解除；建设21固定入口成功，非入口续窗仍受自动审批阻断。
 
-本次接续完整皮肤、自然通关与应用快照：[启动皮肤合同](../ui/STARTUP_SKIN.md)及[只读图块桥](../prototype/STARTUP_SKIN.md)补标题／纪录／91／17和公共窗框；[Steam资源字体](../ui/STEAM_STARTUP_RESOURCES.md)与[原标题调度](../ui/TITLE_PRESENTATION.md)分别交叉，不将相同框图当相同布局。[自然路线审计](../work/natural-clear-route/README.md)仍区分日期通关和五星／BOSS；五份旧前缀均不能直接载入新schema。2026-10-09用户已明确批准[应用回放设计](in-progress/APPLICATION_REPLAY_DESIGN.md)，后继[独立模块](../prototype/APPLICATION_REPLAY.md)接预算内计分条件快照，原多年路线另验。外部窗口新任务见[提示词](../work/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)，没有用维护CPU拼图代替原动态。
+本次接续完整皮肤、自然通关与应用快照：[启动皮肤合同](../ui/STARTUP_SKIN.md)及[只读图块桥](../prototype/STARTUP_SKIN.md)补标题／纪录／91／17和公共窗框；[Steam资源字体](../ui/STEAM_STARTUP_RESOURCES.md)与[原标题调度](../ui/TITLE_PRESENTATION.md)分别交叉，不将相同框图当相同布局。[自然路线审计](../rules/PROGRESSION_ROUTES.md)仍区分日期通关和五星／BOSS；五份旧前缀均不能直接载入新schema。2026-10-09用户已明确批准[应用回放设计](in-progress/APPLICATION_REPLAY_DESIGN.md)，后继[独立模块](../prototype/APPLICATION_REPLAY.md)接预算内计分条件快照，原多年路线另验。外部窗口新任务见[提示词](../verification/window-restore-observation/NEXT_SKIN_OBSERVATION_PROMPT.md)，没有用维护CPU拼图代替原动态。
 
 建设／Owner显式表现请求与独立回放基线为`1e6b291`。EXE UI／操作的新目标不改写已冻结APK原表、存档身份或黄金轨迹；同名同图也不证明两版消费者一致。后续任何真实规则冲突保留双方证据，暂停依赖冲突的接入。
 

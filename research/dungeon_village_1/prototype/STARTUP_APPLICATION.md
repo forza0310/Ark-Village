@@ -1,8 +1,8 @@
 # 标题、配置、跨局纪录与应用事务
 
-2026-10-10增加17项管理转发：建设目录／放置／取消，设施／住宅，村办，任务目录／控制，人物和真正晋级／取消。全部复用Session的资格与候选，再通过`commit_world`统一提交系统纪录和声音；计分或非活动世界拒绝。新增结构化建设／任务回执不是持久状态，事务失败清除created／accepted／departed；业务denial可能提交原不足资源提示，不能据此自动重复付款。世界仍只读公开，没有任意状态注入入口。无新增持久字段，世界4／应用7和既有前缀身份保持；检查见[管理／窗框交付](../work/application-management-frame-delivery/README.md)。
+2026-10-10增加17项管理转发：建设目录／放置／取消，设施／住宅，村办，任务目录／控制，人物和真正晋级／取消。全部复用Session的资格与候选，再通过`commit_world`统一提交系统纪录和声音；计分或非活动世界拒绝。新增结构化建设／任务回执不是持久状态，事务失败清除created／accepted／departed；业务denial可能提交原不足资源提示，不能据此自动重复付款。世界仍只读公开，没有任意状态注入入口。无新增持久字段，世界4／应用7和既有前缀身份保持；检查见[管理／窗框交付](../VERIFICATION.md#应用管理入口steam窗框与当前两条短回放2026-10-10)。
 
-2026-10-09。当前世界语义4／应用语义7修正建设、移动、撤除后邻接到达价格缓存，验收进度见[当前交付](../work/facility-arrival-cache-delivery/README.md)。此前标题菜单控制器、系统2四目录、应用级声音及语义6回放的五项检查通过103.30秒，属于[标题批历史交付](../work/title-menu-application-delivery/README.md)。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../work/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
+2026-10-09。当前世界语义4／应用语义7修正建设、移动、撤除后邻接到达价格缓存，验收进度见[当前交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。此前标题菜单控制器、系统2四目录、应用级声音及语义6回放的五项检查通过103.30秒，属于[标题批历史交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)。本模块沿[启动纪录设计](../stages/in-progress/STARTUP_RECORDS_DESIGN.md)及[已确认的标题目录方案](../verification/title-menu-application-design/README.md)，原事实与Steam差异分别见[纪录来源](../rules/STARTUP_RECORDS.md)、[Steam标题](../ui/STEAM_TITLE_MENU.md)和[raw20／raw1](../ui/STEAM_SAVE_MENU.md)。
 
 `dungeon_village_startup_application`是无raylib依赖的研究维护消费者，不是产品窗口或原版档兼容器。[StartupApplication](include/dungeon_village_prototype/startup_application.hpp)协调一份系统观察、标题状态、草稿、音频队列及至多一个世界Session，只向调用方公开只读世界。正常文件协议见[应用存储](APPLICATION_STORAGE.md)，完整回放见[应用回放](APPLICATION_REPLAY.md)，避免在本页复制其线格式和预算。
 
@@ -50,4 +50,4 @@ raw17真正出现后，应用只读六类计分并逐阶段推进。新纪录严
 
 基础命令保留new／overwrite／village／name／sex／cancel／start／records／next／previous／view／step／confirm／save／load／title／quit。菜单具名命令为left／right／up／down／activate／back、consume、frame-menu，冲突接纳使用refresh。`activate`操作标题菜单，`confirm`继续世界／计分页，两者不是同一入口。step每批最多10000次，逐轮领取并打印声音操作和编号，不实际播放音频。它用于审核维护操作次序，不证明Steam键鼠坐标和像素皮肤已还原。
 
-标题批当时的17命令文件操作与420轮／首月双恢复结果保留为历史证据。[声音批](../work/audio-owner-delivery/README.md)语义5短前缀及`natural-application-menu-v1`的世界3／应用6首月、12月前缀均不得作为当前语义接续基础，不重签旧证书。当前重建目录为`natural-application-economy-v1`，首月20轮双恢复已通过；最新状态见[当前交付](../work/facility-arrival-cache-delivery/README.md)，后期仍按[研究路线](../work/natural-application-route/README.md)独立认证。仅保留一份活动世界、退休菜单或逐轮消费声音都不保证永久有界；正常账本、任务历史、审计和磁盘候选规模按批记录。
+标题批当时的17命令文件操作与420轮／首月双恢复结果保留为历史证据。[声音批](../VERIFICATION.md#声音操作遭遇通知与steam菜单语言2026-10-09)语义5短前缀及`natural-application-menu-v1`的世界3／应用6首月、12月前缀均不得作为当前语义接续基础，不重签旧证书。当前重建目录为`natural-application-economy-v1`，首月20轮双恢复已通过；最新状态见[当前交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)，后期仍按[研究路线](APPLICATION_REPLAY.md)独立认证。仅保留一份活动世界、退休菜单或逐轮消费声音都不保证永久有界；正常账本、任务历史、审计和磁盘候选规模按批记录。

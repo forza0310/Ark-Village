@@ -1,6 +1,6 @@
 # 标题与选档纯控制器
 
-[接口](include/dungeon_village_prototype/startup_title_menu.hpp)与[实现](src/startup_title_menu.cpp)维护标题两项、两槽两行、raw20、raw1及纪录／配置的父关系。来源为[Steam标题菜单](../ui/STEAM_TITLE_MENU.md)、[Steam手动菜单](../ui/STEAM_SAVE_MENU.md)和[APK标题生命周期](../work/title-owner-contract/README.md)。本模块只准备候选，不持文件、世界、随机或播放器；应用Owner在文件事务与其它消费者均成功后才联合安装。
+[接口](include/dungeon_village_prototype/startup_title_menu.hpp)与[实现](src/startup_title_menu.cpp)维护标题两项、两槽两行、raw20、raw1及纪录／配置的父关系。来源为[Steam标题菜单](../ui/STEAM_TITLE_MENU.md)、[Steam手动菜单](../ui/STEAM_SAVE_MENU.md)和[APK标题生命周期](../verification/title-owner-contract/README.md)。本模块只准备候选，不持文件、世界、随机或播放器；应用Owner在文件事务与其它消费者均成功后才联合安装。
 
 ## 状态与一次性意图
 
@@ -28,4 +28,4 @@ raw1确认／取消只标自己的`returned/result`；当前有效栈顶转为ra
 
 [测试](tests/startup_title_menu_checks.cpp)归既有application套件，使用明确的目录条件输入，不构建假原档。覆盖独立方向与优先级、ENTER／UP差异、默认否、否决后取消、分级结果消费、过期ID、缺目录身份、修订／摘要漂移、非法载荷和序号耗尽。文件失败、随机联合回滚、系统目录发布及声音保序由应用事务套件主责，本模块不能代替它们。
 
-控制器不保留退休页历史或累计事件队列；活跃载荷上限为raw20＋raw1两份。单调next_id的合法增长不是内存增长。没有新增图片或资源副本；已接现有application套件，并随[五项集中验收](../work/title-menu-application-delivery/README.md)通过。独立控制器加应用文件事务已交付，完整原窗口／框架输入和自动中断产生者仍缺，不能据此宣称整个Steam标题已还原。
+控制器不保留退休页历史或累计事件队列；活跃载荷上限为raw20＋raw1两份。单调next_id的合法增长不是内存增长。没有新增图片或资源副本；已接现有application套件，并随[五项集中验收](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)通过。独立控制器加应用文件事务已交付，完整原窗口／框架输入和自动中断产生者仍缺，不能据此宣称整个Steam标题已还原。

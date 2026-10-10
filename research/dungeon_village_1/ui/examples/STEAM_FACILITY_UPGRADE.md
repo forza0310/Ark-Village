@@ -1,6 +1,6 @@
 # Steam升级81：正式计划的CPU原素材示例
 
-2026-10-10已构建并生成六面板，主会话实际查看[原尺寸拼图](steam-facility-upgrade/contact-sheet.png)。[清单](steam-facility-upgrade/MANIFEST.json)保留实际消费的PNG／SEB及每图、有序JSON的字节身份；单面板与绘制JSON同目录。Release visuals检查0.61秒通过，归档完整性与源hash见[验证包](../../work/steam-facility-ui-example/VALIDATION.json)。
+2026-10-10已构建并生成六面板，主会话实际查看[原尺寸拼图](steam-facility-upgrade/contact-sheet.png)。[清单](steam-facility-upgrade/MANIFEST.json)保留实际消费的PNG／SEB及每图、有序JSON的字节身份；单面板与绘制JSON同目录。Release visuals检查0.61秒通过，归档完整性与源hash见[验证包](../../verification/steam-facility-ui-example/VALIDATION.json)。
 
 本示例直接消费[只读皮肤接口](../../prototype/STEAM_FACILITY_SKIN.md)的`steam_facility_upgrade_skin`、`steam_facility_number_draws`和`steam_facility_mapchip2_draws`，用于产品审阅木窗框、数字、设施大图、左右角色、遮罩和原绘制次序。布局不是另写一套HTML或手工JSON；导出的每项请求来自实际C++调用。来源见[Steam81合同](../STEAM_FACILITY_UPGRADE.md)，数值与字宽为明确测试夹具，不是自然升级结果。
 

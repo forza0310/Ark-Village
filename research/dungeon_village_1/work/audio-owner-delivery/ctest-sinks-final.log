@@ -1,9 +1,0 @@
-Test project D:/code/Ark-Village/research/dungeon_village_1/work/release
-    Start 14: dungeon_village_prototype.startup_world_persistence
-    Start  1: dungeon_village_prototype.startup_application
-1/2 Test  #1: dungeon_village_prototype.startup_application .........   Passed   24.60 sec
-2/2 Test #14: dungeon_village_prototype.startup_world_persistence ...   Passed   45.80 sec
-
-100% tests passed out of 2
-
-Total Test time (real) =  45.81 sec

@@ -1,6 +1,6 @@
 # Steam设施页共用文字、滚动注册与数字绘制
 
-2026-10-10。为[详情74](STEAM_FACILITY_DETAIL.md)和[升级81](STEAM_FACILITY_UPGRADE.md)补实际调用的共用helper；[工作包](../work/steam-facility-draw-helpers/README.md)只读固定Steam具名入口，不改旧合同／证据或维护实现。本页只描述原逻辑实参和请求顺序，不认证OS最终坐标、中文字体或整套渲染框架。
+2026-10-10。为[详情74](STEAM_FACILITY_DETAIL.md)和[升级81](STEAM_FACILITY_UPGRADE.md)补实际调用的共用helper；[工作包](../verification/steam-facility-draw-helpers/README.md)只读固定Steam具名入口，不改旧合同／证据或维护实现。本页只描述原逻辑实参和请求顺序，不认证OS最终坐标、中文字体或整套渲染框架。
 
 ## Draw_btmMsg：可选的背景、触摸与手形
 

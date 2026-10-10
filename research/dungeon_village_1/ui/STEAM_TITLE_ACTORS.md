@@ -1,6 +1,6 @@
 # Steam标题人物调度与基础绘制
 
-2026-10-09。固定Steam2.56 `GameAssembly.dll`及metadata的具名方法静态交叉，补充[标题Draw](STEAM_TITLE_DRAW.md)。[证据清单](../work/steam-title-actors/EVIDENCE.json)和[复查方式](../work/steam-title-actors/README.md)保留来源身份、入口、字节范围与摘要；未启动游戏、读写内存或原档。APK合同见[标题调度](TITLE_PRESENTATION.md)与[人物皮肤](TITLE_ACTOR_SKIN.md)，两种来源分别认证。
+2026-10-09。固定Steam2.56 `GameAssembly.dll`及metadata的具名方法静态交叉，补充[标题Draw](STEAM_TITLE_DRAW.md)。[证据清单](../verification/steam-title-actors/EVIDENCE.json)和[复查方式](../verification/steam-title-actors/README.md)保留来源身份、入口、字节范围与摘要；未启动游戏、读写内存或原档。APK合同见[标题调度](TITLE_PRESENTATION.md)与[人物皮肤](TITLE_ACTOR_SKIN.md)，两种来源分别认证。
 
 ## 已证版本差异
 
@@ -57,13 +57,13 @@ Steam边缘参数：x<-14时`srcRatio=abs(-18-x)*64`；x>250时`srcRatio=(254-x)
 
 `DrawDispPlayer`先调用`SetDrawParam`，当共享显示人物`objType_==0`且weaponId!=-1时画武器，最后画身体。因此主路径图层为**阴影→有条件武器→身体**。没有读取防具或饰品另叠衣服；这不代表其它人物效果没有额外层。
 
-`SetDrawParam`的正常人类、action0、`haveObj_==-1`分支：身体SEB取`HUMAN_ANIME_SEB[0]+direct_`，帧取`HUMAN_ANIME_SEB_F[0][step]`，图片取bodyImg；身体偏移从`body_off[0]`取得。后续[数组与资源专题](../work/steam-actor-arrays/README.md)已独立闭合此分支的Steam常量与裁片，见下节。
+`SetDrawParam`的正常人类、action0、`haveObj_==-1`分支：身体SEB取`HUMAN_ANIME_SEB[0]+direct_`，帧取`HUMAN_ANIME_SEB_F[0][step]`，图片取bodyImg；身体偏移从`body_off[0]`取得。后续[数组与资源专题](../verification/steam-actor-arrays/README.md)已独立闭合此分支的Steam常量与裁片，见下节。
 
 `Draw_weapon`沿当前武器定义的`chargeType_`选`WEAPON_ANIME_F[chargeType][0][step]`，SEB取`WeaponData.WEAPON_SEB[chargeType]+direct`，图片取`weapon.imgId_`，锚点加`GetWeponOffset(0,chargeType,direct,step)`。标题传`zsort=false`，直接DrawSeb，不走世界绘制队列。action0不会进入action1／5的斩击光分支。`GetWeaponAnimeIndex(0)`已核返回0；完整`GetWeponOffset`证明action0选择`WEAPON_WALK_POS[type][direct][step]`，没有额外插值或随机。
 
 ## Steam数组、SEB与图片交叉闭合
 
-2026-10-09续批：[独立证据](../work/steam-actor-arrays/EVIDENCE.json)。固定两具名cctor在成功分配／类型检查路径沿显式常量及真实fieldRef解读，目标字段全部发布后停止；Character2前10,513字节、WeaponData前25,697字节。未知值、指令或控制流显式失败；没有执行游戏代码，没有用APK常量补洞。三个编译器小helper由原调用点追到真实入口并分别核≤128字节的成功路径。
+2026-10-09续批：[独立证据](../verification/steam-actor-arrays/EVIDENCE.json)。固定两具名cctor在成功分配／类型检查路径沿显式常量及真实fieldRef解读，目标字段全部发布后停止；Character2前10,513字节、WeaponData前25,697字节。未知值、指令或控制流显式失败；没有执行游戏代码，没有用APK常量补洞。三个编译器小helper由原调用点追到真实入口并分别核≤128字节的成功路径。
 
 | Steam字段 | 正常action0已核值 | 静态发布VA |
 | --- | --- | --- |

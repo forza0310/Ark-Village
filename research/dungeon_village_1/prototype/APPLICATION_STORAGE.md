@@ -1,6 +1,6 @@
 # 应用目录与单一提交点
 
-2026-10-09。当前接受世界语义4／应用语义7，系统版本2、Driver v3及字段布局保持，变更与验收进度见[邻接价格交付](../work/facility-arrival-cache-delivery/README.md)。系统2四目录及应用存储的五项相关检查、真实文件动作三进程尾段一致性，是[标题批交付](../work/title-menu-application-delivery/README.md)当时的结果。方案沿[已确认设计](../work/title-menu-application-design/README.md)，原版事实另见[存档规则](../rules/PERSISTENCE.md)。以下是维护协议，不是APK／Steam原档格式。
+2026-10-09。当前接受世界语义4／应用语义7，系统版本2、Driver v3及字段布局保持，变更与验收进度见[邻接价格交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。系统2四目录及应用存储的五项相关检查、真实文件动作三进程尾段一致性，是[标题批交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)当时的结果。方案沿[已确认设计](../verification/title-menu-application-design/README.md)，原版事实另见[存档规则](../rules/PERSISTENCE.md)。以下是维护协议，不是APK／Steam原档格式。
 
 ## 实际模块与布局
 

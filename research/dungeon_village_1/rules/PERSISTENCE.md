@@ -107,7 +107,7 @@
 “删除存档”在已见输入分支只将对应目录日期置 `-1` 后写系统，并未擦除对应游戏记录。
 因此它是目录不可见化，不能作为敏感数据擦除保证。
 
-2026-10-09补核[中断／手动目录生命周期](../work/interrupt-directory-lifecycle/README.md)：
+2026-10-09补核[中断／手动目录生命周期](../verification/interrupt-directory-lifecycle/README.md)：
 固定APK与Steam具名保存尾部只更新当前一条目录；普通继续／加载入口直接写的是选择槽8，
 Steam `GameForm.Init` 的清零是 `int[16]=REVIEW`，不是中断日期11／12。
 所核直接路径不支持“读中断后删除”“手动保存清中断”或“清全部目录”；此结论不扩展为全程序间接调用、异常／迁移和单槽平台政策的否定证明。
@@ -537,7 +537,7 @@ ProgressTime明确先oldtime=time再试加add，达到10800时暂回旧time调�
 ## Steam实样与恢复验证
 
 本节统一当前已取得的事实；逐次失败、授权、哈希、耗时和原配置保留在[存取验收归档](../verification/PERSISTENCE_HISTORY.md)，
-冻结报告／前后档对应见[窗口实验索引](../work/window-restore-observation/README.md)。Steam2.56同身份，APK不替换。
+冻结报告／前后档对应见[窗口实验索引](../verification/window-restore-observation/README.md)。Steam2.56同身份，APK不替换。
 分析会话只读冻结证据；原件恢复是操作会话当次授权及最新备份范围，不借旧同意回退用户新进度。
 
 <a id="steam窗口恢复实验与密文交叉2026-10-07"></a>

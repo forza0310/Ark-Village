@@ -102,7 +102,7 @@ rawX/rawY是死亡时固定投影坐标，先调用`c/a.java:97–102`的镜头�
 
 这四个样本是原死亡载荷的静态公式结果，不是原窗口逐帧测量。X内部保留原record_index并与X20／X3等穿插，不按类型重新分组、按人物深度排序或自动将X4置顶；整场景调用相位未在本节闭合。
 
-维护纯图块入口为[startup_world_coin_effect_draws](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)，读取Owner既有X，返回固定raw锚点、record_index及common图块计划，不写Owner／随机／资金／声音／格式。实际实现与回归状态见[本批工作包](../work/ui-next-consumers/README.md)。资源沿MANIFEST复用，PNG70×10、478字节，SEB148字节，不重复发布。
+维护纯图块入口为[startup_world_coin_effect_draws](../prototype/include/dungeon_village_prototype/startup_world_visuals.hpp)，读取Owner既有X，返回固定raw锚点、record_index及common图块计划，不写Owner／随机／资金／声音／格式。实际实现与回归状态见[本批工作包](INPUT_RENDER_REQUESTS.md)。资源沿MANIFEST复用，PNG70×10、478字节，SEB148字节，不重复发布。
 
 | 已读输入 | SHA-256 |
 | --- | --- |

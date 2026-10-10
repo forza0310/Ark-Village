@@ -1,10 +1,10 @@
 # 完整应用研究回放
 
-2026-10-10新增[主动管理Driver](tests/APPLICATION_PROCESS.md)与严格独立证书，当前420／2000轮20尾段双恢复通过；被动日期Driver保持各自身份。双方只复用容器／子进程基础设施，世界4／应用7布局不变。主动新页生命周期与业务目标见[交付](../work/application-active-delivery/README.md)，短停止边界不等于首星已完成。
+2026-10-10新增[主动管理Driver](tests/APPLICATION_PROCESS.md)与严格独立证书，当前420／2000轮20尾段双恢复通过；被动日期Driver保持各自身份。双方只复用容器／子进程基础设施，世界4／应用7布局不变。主动新页生命周期与业务目标见[交付](../VERIFICATION.md#主动应用driver与2000轮前缀2026-10-10)，短停止边界不等于首星已完成。
 
-2026-10-09。当前使用`AVRAPP01`格式1／应用语义7／轮末边界1，内嵌系统版本2与世界语义4。邻接到达价格缓存修正会影响后续收入，旧应用1–6及旧世界1–3不迁移；历史文件与证书保持原字节。新验收见[收费缓存交付](../work/facility-arrival-cache-delivery/README.md)。此前[应用6集中交付](../work/title-menu-application-delivery/README.md)的103.30秒检查及12月快照仅保历史资格，不等于完整Steam窗口／调度。
+2026-10-09。当前使用`AVRAPP01`格式1／应用语义7／轮末边界1，内嵌系统版本2与世界语义4。邻接到达价格缓存修正会影响后续收入，旧应用1–6及旧世界1–3不迁移；历史文件与证书保持原字节。新验收见[收费缓存交付](../VERIFICATION.md#邻接价格与语义4应用7修正2026-10-09)。此前[应用6集中交付](../VERIFICATION.md#标题四目录统一输出与完整文件视图2026-10-09)的103.30秒检查及12月快照仅保历史资格，不等于完整Steam窗口／调度。
 
-模块沿[应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及[已确认的完整目录设计](../work/title-menu-application-design/README.md)。它是维护专用回放，不是APK／Steam原档兼容，也不扩大正常玩家存档的页面范围。存储事务另见[应用存储](APPLICATION_STORAGE.md)，应用行为见[标题与跨局纪录](STARTUP_APPLICATION.md)。
+模块沿[应用快照方案](../stages/in-progress/APPLICATION_REPLAY_DESIGN.md)及[已确认的完整目录设计](../verification/title-menu-application-design/README.md)。它是维护专用回放，不是APK／Steam原档兼容，也不扩大正常玩家存档的页面范围。存储事务另见[应用存储](APPLICATION_STORAGE.md)，应用行为见[标题与跨局纪录](STARTUP_APPLICATION.md)。
 
 ## 所有权与完整轮末
 
@@ -54,6 +54,6 @@
 
 现有应用、持久化、codec和进程隔离套件集中覆盖标题／配置／纪录／计分及保留世界、raw20／询问／返回载荷、四槽隐藏引用、重签坏容器与坏blob、联合预算、临时根失败清理、双恢复和实际音频序列。新增测试代码存在与本批测试通过分开记录；当前集中验收中，尚不能把旧证书作为语义6通过结果。
 
-历史按身份保留：[最初应用交付](../work/application-replay-delivery/README.md)、[标题背景交付](../work/title-owner-delivery/README.md)、[轮末缓存修正](../work/natural-application-delivery/README.md)、[12月性能采样](../work/natural-application-performance/README.md)、[初始化修正](../work/task-pool-delivery/README.md)、[声音Owner交付](../work/audio-owner-delivery/README.md)。旧自然12／24月与各代条件档不可换头接续；语义5的420轮／首月历史认证也不等于当前语义6认证。下一批沿当前代码重新生成最短前缀，避免重复从头长跑。
+历史按身份保留：[最初应用交付](../VERIFICATION.md#公共窗框两版素材与完整应用短回放2026-10-09)、[标题背景交付](../VERIFICATION.md#标题背景owner管理桥与语义2回放2026-10-09)、[轮末缓存修正](../VERIFICATION.md#自然应用回放缓存收尾与人物基础皮肤2026-10-09)、[12月性能采样](../verification/natural-application-performance/README.md)、[初始化修正](../VERIFICATION.md#先前交付索引)、[声音Owner交付](../VERIFICATION.md#声音操作遭遇通知与steam菜单语言2026-10-09)。旧自然12／24月与各代条件档不可换头接续；语义5的420轮／首月历史认证也不等于当前语义6认证。下一批沿当前代码重新生成最短前缀，避免重复从头长跑。
 
 自然180月、五星／全部任务／BOSS、精确Steam完整皮肤仍须独立推进；计分条件短回放不证明自然通关。正常账本、任务历史、审计和外部快照允许合法增长，每批记录规模、引用退休与输出消费，不宣称永久有界。

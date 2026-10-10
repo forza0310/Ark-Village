@@ -1,6 +1,6 @@
 # Steam普通怪物开放、介绍与任务资格
 
-2026-10-10。固定Steam2.56样本的两处怪物方法及共享状态helper静态交叉，共1,584字节；不是原窗口动态或整套Steam任务选择器认证。逐指令、字段、原文件hash和复算入口见[证据包](../work/steam-monster-progression/README.md)。固定APK的完整具名字段扫描已在[任务产生者](../work/task-selection-producers/README.md)完成，本批不重复它，也不要求研究自然经营到后期。
+2026-10-10。固定Steam2.56样本的两处怪物方法及共享状态helper静态交叉，共1,584字节；不是原窗口动态或整套Steam任务选择器认证。逐指令、字段、原文件hash和复算入口见[证据包](../verification/steam-monster-progression/README.md)。固定APK的完整具名字段扫描已在[任务产生者](../verification/task-selection-producers/README.md)完成，本批不重复它，也不要求研究自然经营到后期。
 
 ## 普通怪物按定义顺序开放
 

@@ -31,4 +31,4 @@
 
 [steam_startup_skin_checks.cpp](tests/steam_startup_skin_checks.cpp)由既有`startup_skin_checks`调用，仍属于同一个visuals target；拆文件只为将Steam坐标／菜单合同与APK原图CPU合成职责分开，不新增CTest。检查覆盖75门槛、奇数向零截断、有效／空目录行、原裁片偏移、层遮挡、窄窗口修正、真实测宽阈值、float按钮矩形、坏输入及原SEB2/3和手形引用。没有修改原自然轨迹或声音断言。
 
-单Release动态树构建通过，既有visuals与application两项CTest通过（合计22.18秒）。正式记录见[集中交付](../work/steam-skin-delivery/README.md)；静态计划与源资源检查不等于原窗口输入、Steam字体运行选择或完整可操作标题已经验收。
+单Release动态树构建通过，既有visuals与application两项CTest通过（合计22.18秒）。正式记录见[集中交付](../VERIFICATION.md#声音操作遭遇通知与steam菜单语言2026-10-09)；静态计划与源资源检查不等于原窗口输入、Steam字体运行选择或完整可操作标题已经验收。

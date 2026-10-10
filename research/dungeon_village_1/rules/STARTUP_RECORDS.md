@@ -32,7 +32,7 @@ raw91另有按键2／8／128／512的早返回，尚未把这些数字完整对�
 
 ## 标题纪录不属于某个世界栏
 
-原标题选择第1项推入独立表单3（APK`b/e`；Steam`form.RankForm`），不是继续读档。早期[S038标题](../references/screenshots/2026-10-07-steam-restore/menu/S038-title.jpg)只见“纪录”入口；2026-10-09后继[原窗口反馈](../work/startup-ui-analysis/ANALYSIS.md)已补标题入口两页及右向循环／返回，不把局部观察升级为全部输入和存档行为已验。
+原标题选择第1项推入独立表单3（APK`b/e`；Steam`form.RankForm`），不是继续读档。早期[S038标题](../references/screenshots/2026-10-07-steam-restore/menu/S038-title.jpg)只见“纪录”入口；2026-10-09后继[原窗口反馈](../verification/startup-ui-analysis/ANALYSIS.md)已补标题入口两页及右向循环／返回，不把局部观察升级为全部输入和存档行为已验。
 
 | 固定APK纪录页 | 读者与所有权 | 显示内容 |
 | --- | --- | --- |
@@ -78,7 +78,7 @@ Steam2.56本次实见第一页“没有记录／0”，没有可见P后缀；第
 
 ## 通关六类计分：固定APK及Steam有限交叉
 
-2026-10-08补充。[取证包](../work/endgame-records-contract/README.md)登记固定APK九个源码窗口177行、三个精确DEX方法指令共1508字节，以及Steam三个登记范围4256字节；保存身份、哈希、引用与中文合同摘要，不落盘原实现或反汇编全文。
+2026-10-08补充。[取证包](../verification/endgame-records-contract/README.md)登记固定APK九个源码窗口177行、三个精确DEX方法指令共1508字节，以及Steam三个登记范围4256字节；保存身份、哈希、引用与中文合同摘要，不落盘原实现或反汇编全文。
 
 原`ba[6][2]`每行分别为原始数量与得分，均为long；来源`c/n.java:2291–2335`及精确`Lc/n;::B()V`。
 

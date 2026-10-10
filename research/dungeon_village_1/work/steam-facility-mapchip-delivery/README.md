@@ -1,9 +1,0 @@
-# Steam详情Mapchip2分片展开
-
-2026-10-10，接续`2c612c9`，复核已登记Mapchip2完整有限方法。`steam_facility_mapchip2_draws`查固定mapchip反向定义，复用完整世界85定义与同字节图块目录，按原pattern／朝向分片顺序加中心偏移，返回SEB文件名、frame、逻辑锚点。返回值不含SEB内部offset，不缩放整张PNG，不借当前建筑等级改帧。
-
-Mapchip2本身不含普通DrawMapchip道路kind6的11／1覆盖；不能只在旧建设计划上平移后宣称同helper。两朝向静态请求不代表旋转准入或原异常裁片都可画；原27项超层范围、sea00越界及casino未请求帧的缺图片仍保留源合同，不修原表凑覆盖。
-
-初次visuals发现误用了早期StartupEvidence.definitions切片目录，无法反查全部85项，保留断言并改查完整startup_world_rules().facilities；没有删除特殊定义。修后单Release构建及visuals通过0.57秒。测试85项×两朝向的独立中心／序列oracle、道路frame0、未知ID／朝向和坐标溢出拒绝；没有另建target或重跑世界长测。
-
-本批不新增资源或缓存树，所有输出为按pattern最多4项的临时只读请求，无Owner、随机、声音或格式修改。原窗口、字体、真实资源装载和末端SEB像素仍分别待验，不能由纯计划覆盖宣称完整原皮肤已交付。已收齐构建与测试进程。

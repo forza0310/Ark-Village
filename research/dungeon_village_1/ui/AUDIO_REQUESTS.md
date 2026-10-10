@@ -1,8 +1,8 @@
 # 声音资源、播放语义与维护请求
 
-后继Owner交付在[声音操作模块](../prototype/AUDIO_REQUESTS.md)：原25点已显式分类为B／C／D，唯一typed队列与旧ID接口互消费；补接新遭遇BGM2和普通通知24，通知到计数1才C11。集中验收见[交付记录](../work/audio-owner-delivery/README.md)，设备播放／标题独立队列及Steam完整生命周期仍未完成。下文原“整数队列缺口”保留发现时证据，不再代表当前在途接口类型。
+后继Owner交付在[声音操作模块](../prototype/AUDIO_REQUESTS.md)：原25点已显式分类为B／C／D，唯一typed队列与旧ID接口互消费；补接新遭遇BGM2和普通通知24，通知到计数1才C11。集中验收见[交付记录](../VERIFICATION.md#声音操作遭遇通知与steam菜单语言2026-10-09)，设备播放／标题独立队列及Steam完整生命周期仍未完成。下文原“整数队列缺口”保留发现时证据，不再代表当前在途接口类型。
 
-2026-10-09。回应产品[信息／音频接入需求](../../../docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。固定APK1.0.8的资源、局部Java与Steam2.56七个具名方法交叉，证据见[工作记录](../work/audio-contract/README.md)及[逐ID哈希](../work/audio-contract/EVIDENCE.json)。后继已发布[独立音频素材](../assets/audio/README.md)及[确定性清单](../assets/audio/MANIFEST.json)；没有播放、操作原游戏、改Owner或schema。
+2026-10-09。回应产品[信息／音频接入需求](../../../docs/reference/RESEARCH_REQUESTS.md#information-audio-animation-89f157c)。固定APK1.0.8的资源、局部Java与Steam2.56七个具名方法交叉，证据见[工作记录](../verification/audio-contract/README.md)及[逐ID哈希](../verification/audio-contract/EVIDENCE.json)。后继已发布[独立音频素材](../assets/audio/README.md)及[确定性清单](../assets/audio/MANIFEST.json)；没有播放、操作原游戏、改Owner或schema。
 
 ## 已闭合的APK资源链
 
@@ -83,7 +83,7 @@ Steam的SoundPlayer.Play还消费masterVolume与mute，不应从APK只有一层�
 
 ## 后继生产者审计：操作资格与漏接来源
 
-[逐生产者合同](../work/audio-producer-audit/README.md)及[源窗口清单](../work/audio-producer-audit/EVIDENCE.json)已逐一映射现25个Owner整数队列写点：7处来自BGM包装b、9处普通c、9处jingle d；这是源码写点数，不是运行次数。人物共用C出口另细分延迟效果、法术目标／命中、救援、死亡、控制33拾物、施法等来源，并保留缓存坐标／屏内门槛。原调用者而非ID决定类别：81的20是D；53/59/93/94/95/96的5是D；事件消息4/6、成果30和设施演出82的4也是D；赠礼66显式绘制的8是C。
+[逐生产者合同](../verification/audio-producer-audit/README.md)及[源窗口清单](../verification/audio-producer-audit/EVIDENCE.json)已逐一映射现25个Owner整数队列写点：7处来自BGM包装b、9处普通c、9处jingle d；这是源码写点数，不是运行次数。人物共用C出口另细分延迟效果、法术目标／命中、救援、死亡、控制33拾物、施法等来源，并保留缓存坐标／屏内门槛。原调用者而非ID决定类别：81的20是D；53/59/93/94/95/96的5是D；事件消息4/6、成果30和设施演出82的4也是D；赠礼66显式绘制的8是C。
 
 年度87与庆典50的3均为B，重复counter1请求不能重头播放正在进行的同曲。结束顺序分别保留：50为G→关闭；87主动结束为事件22→G→关闭，勋章耗尽为G→事件22→关闭；通关计分为关闭→G→事件6→纪录事件。G在该时点按当前任务选择B1/2，不提前统一到帧末。
 

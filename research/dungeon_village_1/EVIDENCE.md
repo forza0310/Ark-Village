@@ -4,7 +4,7 @@
 2026-10-06用户确认将Windows制品作为独立交叉来源纳入流程；本页APK身份、原表及既有回归的来源不变。
 
 本页按输入／符号／批次产物保存证据身份，历史“待验”只适用于对应日期；当前能力看[阶段页](stages/README.md)。
-存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](work/window-restore-observation/README.md)。
+存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](verification/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
 ## 2026-10-08产品请求与具体绘制消费者

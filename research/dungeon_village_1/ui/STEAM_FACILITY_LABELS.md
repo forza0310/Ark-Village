@@ -1,6 +1,6 @@
 # Steam设施详情74的左右软标签
 
-2026-10-10。补齐[设施详情合同](STEAM_FACILITY_DETAIL.md)保留的softLabels74表值。固定Steam具名cctor／Init／Update2独立证据见[工作包](../work/steam-facility-labels/README.md)，无原窗口输入实验。
+2026-10-10。补齐[设施详情合同](STEAM_FACILITY_DETAIL.md)保留的softLabels74表值。固定Steam具名cctor／Init／Update2独立证据见[工作包](../verification/steam-facility-labels/README.md)，无原窗口输入实验。
 
 SubForm.cctor创建101项int[][]：raw74在0x1032A27C新建长度2的int[]，只将元素1写2，元素0保留数组初始0；在0x1032A2C7取得外数组偏移0x138=0x10+74×4并写入。最后0x1032AAE6发布到SubForm静态区偏移0。因此**softLabels[74]=[0,2]**，不随“定义预览／实例／第一页／第二页”换成另一个表项。
 

@@ -1,6 +1,6 @@
 # Steam人物危险图标：偏移表与实际锚点
 
-2026-10-10。本页补齐[人物表现合同](STEAM_HUMAN_PRESENTATION.md)此前保留的`Character2`静态`+0xA0`偏移表。来源是固定Steam DLL中的直接常量初始化及raw60普通肖像消费者，原APK仅做局部Java交叉；没有窗口像素实测。方法身份、地址、指令锚及资源摘要见[研究包](../work/steam-human-pinch-offset/README.md)和[EVIDENCE.json](../work/steam-human-pinch-offset/EVIDENCE.json)。
+2026-10-10。本页补齐[人物表现合同](STEAM_HUMAN_PRESENTATION.md)此前保留的`Character2`静态`+0xA0`偏移表。来源是固定Steam DLL中的直接常量初始化及raw60普通肖像消费者，原APK仅做局部Java交叉；没有窗口像素实测。方法身份、地址、指令锚及资源摘要见[研究包](../verification/steam-human-pinch-offset/README.md)和[EVIDENCE.json](../verification/steam-human-pinch-offset/EVIDENCE.json)。
 
 ## 原表不是运行时推算
 

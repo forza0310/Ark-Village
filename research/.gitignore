@@ -1,5 +1,6 @@
 # 原始安装包与可再生成的研究工作目录不进入版本管理。
 *.apk
+# work仅保留本地输入、缓存与候选输出；正式归档放verification，长期工具放tools，不使用force-add绕过。
 dungeon_village_1/work/
 # 用户提供的Steam安装文件仅作独立只读研究输入，不提交原程序或资源副本。
 dungeon_village_1/DungeonVillageEXE/

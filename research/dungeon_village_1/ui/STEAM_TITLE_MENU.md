@@ -4,7 +4,7 @@
 
 ## 来源与适用范围
 
-DLL SHA-256 为 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，metadata 为 `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。[EVIDENCE.json](../work/steam-title-menu-contract/EVIDENCE.json)记录 18 个唯一方法的最大读取范围，共 25,168 字节；多个 `_draw`／`Update` 前缀不重复计数。另复用此前完整 `_addTouch` 的 6,752 字节证据，不重新宣称本批发现了旧范围全部行为。
+DLL SHA-256 为 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，metadata 为 `80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369`。[EVIDENCE.json](../verification/steam-title-menu-contract/EVIDENCE.json)记录 18 个唯一方法的最大读取范围，共 25,168 字节；多个 `_draw`／`Update` 前缀不重复计数。另复用此前完整 `_addTouch` 的 6,752 字节证据，不重新宣称本批发现了旧范围全部行为。
 
 VA 均基于静态 ImageBase `0x10000000`，不是运行地址。下文 W/H 是 GameView 的游戏逻辑宽高，不是 OS 窗口外框、客户区或截图像素。手动／中断的原保存顺序沿用[正常保存合同](../rules/PERSISTENCE.md)，本批不执行原档加载或写入。
 
@@ -61,7 +61,7 @@ state1 且标题栈顶时绘制；栈顶是 id4、且 `SubForm.IsMenu()` 时保�
 | `IMG_SL[0]` | 0 / 0 | 6 / 3 | 16 / 16 | `(39,R+6)`／`(39,R+15)` |
 | `IMG_SL[1]` | -4 / -2 | 2 / 23 | 25 / 20 | 同上 |
 
-先加目标偏移，再以源裁片绘制。两个6元素初始化块均从 Steam cctor 的 RuntimeFieldHandle 独立解析，记录在[ICONS.json](../work/steam-title-menu-contract/ICONS.json)，未借 APK 填值。选中指示的common SEB22为`finger_l.seb`，其图片引用仍为70号`finger_r.png`，不能按SEB文件名虚构不存在的`finger_l.png`；[Steam启动正式素材](../assets/steam-startup/README.md)已包含此依赖及十种saveload原路径，产品可按清单复制，毋须读取work或原容器。
+先加目标偏移，再以源裁片绘制。两个6元素初始化块均从 Steam cctor 的 RuntimeFieldHandle 独立解析，记录在[ICONS.json](../verification/steam-title-menu-contract/ICONS.json)，未借 APK 填值。选中指示的common SEB22为`finger_l.seb`，其图片引用仍为70号`finger_r.png`，不能按SEB文件名虚构不存在的`finger_l.png`；[Steam启动正式素材](../assets/steam-startup/README.md)已包含此依赖及十种saveload原路径，产品可按清单复制，毋须读取work或原容器。
 
 ## 输入与后续分流
 

@@ -14,7 +14,7 @@
 
 ## 验证与边界
 
-后继新增`startup_window_skin`和`startup_content_skin`，分别返回标题窗的边线／木纹块／标题带／测宽后的文字锚点，以及标准内容框的填充／双线／四角。所有矩形采用半开像素大小；outline为内侧1像素线，源o.d的差1转换只做一次。字体测宽由真实平台适配器传入，本模块不补近似字体。详细原尺寸和使用顺序见[图元合同](../work/startup-frame-font-research/README.md)。
+后继新增`startup_window_skin`和`startup_content_skin`，分别返回标题窗的边线／木纹块／标题带／测宽后的文字锚点，以及标准内容框的填充／双线／四角。所有矩形采用半开像素大小；outline为内侧1像素线，源o.d的差1转换只做一次。字体测宽由真实平台适配器传入，本模块不补近似字体。详细原尺寸和使用顺序见[图元合同](../verification/startup-frame-font-research/README.md)。
 
 扩展既有startup_world_visuals套件，[检查文件](tests/startup_skin_checks.cpp)用独立资源身份、哈希、尺寸、SEB记录和边界输入验证，不新增target。标准运行只读CPU图像并释放；可选第二参数目前导出760×930素材／窗框拼图（前批600×660原件保留），拼图坐标是展示布局，不是游戏UI坐标：
 
@@ -22,6 +22,6 @@
 research/dungeon_village_1/work/release/bin/dungeon_village_startup_world_visuals_tests.exe research/dungeon_village_1/assets/original research/dungeon_village_1/work/startup-frame-font-delivery/frame-pieces.png
 ```
 
-后继[人物基础图层](../ui/TITLE_ACTOR_SKIN.md)新增`startup_title_actor_skin`：显式职业／性别／主武器及步帧／朝向，返回可选阴影、可选武器和身体。顺序为shadow→weapon→body，身体仍沿human SEB适配器；不创建临时世界人物或修改Owner。当前可选CPU图扩为760×1230，[实际合成](../work/title-actor-skin/actor-pieces.png)末四行展示四武器风格、两方向、四步；这不是原窗口截图。
+后继[人物基础图层](../ui/TITLE_ACTOR_SKIN.md)新增`startup_title_actor_skin`：显式职业／性别／主武器及步帧／朝向，返回可选阴影、可选武器和身体。顺序为shadow→weapon→body，身体仍沿human SEB适配器；不创建临时世界人物或修改Owner。当前可选CPU图扩为760×1230，[实际合成](../verification/title-actor-skin/actor-pieces.png)末四行展示四武器风格、两方向、四步；这不是原窗口截图。
 
-来源摘要见[静态证据](../work/startup-skin-contract/EVIDENCE.json)，本批结果见[验证入口](../VERIFICATION.md)。原PNG没有复制或修改；图片桥与CPU拼图不是完整原皮肤／窗口验收。Steam实际资源／布局与字体已有具名局部合同，完整菜单／动态仍独立研究；应用快照和标题背景Owner已交付，不能再整体标为未实施。产品迁入时应登记固定研究提交及素材来源，运行不读取research/work。
+来源摘要见[静态证据](../verification/startup-skin-contract/EVIDENCE.json)，本批结果见[验证入口](../VERIFICATION.md)。原PNG没有复制或修改；图片桥与CPU拼图不是完整原皮肤／窗口验收。Steam实际资源／布局与字体已有具名局部合同，完整菜单／动态仍独立研究；应用快照和标题背景Owner已交付，不能再整体标为未实施。产品迁入时应登记固定研究提交及素材来源，运行不读取research/work。

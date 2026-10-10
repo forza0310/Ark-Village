@@ -1,0 +1,3549 @@
+{
+  "version": 2,
+  "date": "2026-10-10",
+  "qualification": "static_entry_and_conditional_pool_audit_not_natural_reachability",
+  "route_limits": {
+    "task_or_battle_reward_pool_flag2": "仅静态bit2资格；具体准入谓词见pool_contracts，不能合并道具与装备状态过滤；difficulty10仅可能进任务稀有池，不进战斗池",
+    "first_task_final_reward": "总成功数0的最后一份奖励；不等于创建任务即领取",
+    "magic_recipe_discovery46": "处理m()筛选阈值后生成46，计数>6确认才发现",
+    "commerce85_rank": "p!=2；付村子点数后93满40确认",
+    "commerce_restock_H": "缺货量与随机使本次增加可为0；p0时只开放，尚未得到z库存",
+    "magic_manufacture47": "无flags2不在43普通目录；有目录资格仍需发现/元素足额；47计数>6重核，设施还须93领取",
+    "script_page95": "已定位程序列引用；未单凭引用认证上游事件/人物可自然到达",
+    "script_page94": "已定位程序列引用；未单凭引用认证上游事件/人物可自然到达"
+  },
+  "pool_contracts": {
+    "item": {
+      "flag": 2,
+      "status_filter": null,
+      "ordinary_task": "difficulty<=effective_difficulty",
+      "rare_task": "difficulty==effective_difficulty+1",
+      "battle": "difficulty<=rolled_difficulty",
+      "task_removal_after_selection": false
+    },
+    "equipment": {
+      "flag": 2,
+      "status_filter": "p!=1",
+      "ordinary_task": "difficulty<=effective_difficulty",
+      "rare_task": "difficulty==effective_difficulty+1",
+      "battle": "15%装备尝试成立且difficulty<=rolled_difficulty",
+      "task_removal_after_selection": true
+    },
+    "source": {
+      "task": "work/decompiled/sources/c/n.java:585-623",
+      "battle": "work/decompiled/sources/c/e.java:60-90",
+      "maintenance": "example/src/world_task_creation.cpp:280-288"
+    },
+    "difficulty_bounds": {
+      "task_effective": [
+        1,
+        9
+      ],
+      "battle_rolled": [
+        1,
+        9
+      ],
+      "rare_task_can_include": 10
+    },
+    "limits": "任务先生成候选记录，非最终目录授予；战斗生成掉落实体，非库存已领取。难度、随机、挑战替换及实际领取均须另外满足。"
+  },
+  "groups": [
+    {
+      "kind": "facility",
+      "definitions": 85,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": []
+        },
+        {
+          "id": 1,
+          "producers": []
+        },
+        {
+          "id": 2,
+          "producers": []
+        },
+        {
+          "id": 3,
+          "producers": []
+        },
+        {
+          "id": 4,
+          "producers": []
+        },
+        {
+          "id": 5,
+          "producers": []
+        },
+        {
+          "id": 6,
+          "producers": []
+        },
+        {
+          "id": 7,
+          "producers": []
+        },
+        {
+          "id": 8,
+          "producers": []
+        },
+        {
+          "id": 9,
+          "producers": []
+        },
+        {
+          "id": 10,
+          "producers": []
+        },
+        {
+          "id": 11,
+          "producers": []
+        },
+        {
+          "id": 12,
+          "producers": []
+        },
+        {
+          "id": 13,
+          "producers": []
+        },
+        {
+          "id": 14,
+          "producers": []
+        },
+        {
+          "id": 15,
+          "producers": []
+        },
+        {
+          "id": 16,
+          "producers": []
+        },
+        {
+          "id": 17,
+          "producers": []
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": []
+        },
+        {
+          "id": 20,
+          "producers": []
+        },
+        {
+          "id": 21,
+          "producers": []
+        },
+        {
+          "id": 22,
+          "producers": []
+        },
+        {
+          "id": 23,
+          "producers": []
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": []
+        },
+        {
+          "id": 26,
+          "producers": []
+        },
+        {
+          "id": 27,
+          "producers": []
+        },
+        {
+          "id": 28,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "producers": []
+        },
+        {
+          "id": 30,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 36,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 37,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 38,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 39,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 40,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 41,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 42,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 43,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 19,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 44,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 35,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 45,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 46,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 47,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 48,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 49,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 50,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 51,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 52,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 5
+            }
+          ]
+        },
+        {
+          "id": 53,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 54,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 55,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 13,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 56,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 36,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 57,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 37,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 58,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 38,
+              "level": "excluded_recipe_literal"
+            }
+          ]
+        },
+        {
+          "id": 59,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 2,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 60,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 61,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 14,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 62,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 10,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 63,
+          "producers": [
+            {
+              "route": "script_page95",
+              "level": "literal_script_reference",
+              "opcode": 34,
+              "source": {
+                "table": "event",
+                "id": 44,
+                "column": 4
+              }
+            }
+          ]
+        },
+        {
+          "id": 64,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 65,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 24,
+              "source": {
+                "table": "human",
+                "id": 24,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 66,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 67,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 68,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 69,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 70,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 71,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 72,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 73,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 74,
+          "producers": [
+            {
+              "route": "commerce85_rank",
+              "level": "conditional_catalogue",
+              "rank": 5
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 39,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 75,
+          "producers": []
+        },
+        {
+          "id": 76,
+          "producers": []
+        },
+        {
+          "id": 77,
+          "producers": []
+        },
+        {
+          "id": 78,
+          "producers": []
+        },
+        {
+          "id": 79,
+          "producers": []
+        },
+        {
+          "id": 80,
+          "producers": []
+        },
+        {
+          "id": 81,
+          "producers": []
+        },
+        {
+          "id": 82,
+          "producers": []
+        },
+        {
+          "id": 83,
+          "producers": []
+        },
+        {
+          "id": 84,
+          "producers": []
+        }
+      ],
+      "definitions_with_indexed_entry": 47,
+      "no_indexed_entry": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        19,
+        20,
+        21,
+        22,
+        23,
+        25,
+        26,
+        27,
+        29,
+        58,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84
+      ],
+      "pool_flag2_definitions": 0,
+      "pool_difficulty10_ids": []
+    },
+    {
+      "kind": "weapon",
+      "definitions": 33,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 4,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 15,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 21,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 14,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 12,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 21,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 1,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 16,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 20,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 19,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 23,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "first_task_final_reward",
+              "level": "conditional_selection"
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 17,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 18,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 25,
+              "source": {
+                "table": "human",
+                "id": 15,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        }
+      ],
+      "definitions_with_indexed_entry": 33,
+      "no_indexed_entry": [],
+      "pool_flag2_definitions": 19,
+      "pool_difficulty10_ids": [
+        5,
+        17,
+        32
+      ]
+    },
+    {
+      "kind": "armour",
+      "definitions": 50,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 22,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 23,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 24,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 25,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 26,
+              "source": {
+                "table": "human",
+                "id": 7,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 26,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 27,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 28,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 36,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 26,
+              "source": {
+                "table": "human",
+                "id": 16,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 37,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 38,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 39,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 40,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 26,
+              "source": {
+                "table": "human",
+                "id": 17,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 41,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 42,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 43,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 44,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 45,
+          "producers": []
+        },
+        {
+          "id": 46,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 29,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 47,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 48,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 49,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        }
+      ],
+      "definitions_with_indexed_entry": 49,
+      "no_indexed_entry": [
+        45
+      ],
+      "pool_flag2_definitions": 38,
+      "pool_difficulty10_ids": [
+        5,
+        49
+      ]
+    },
+    {
+      "kind": "accessory",
+      "definitions": 30,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 27,
+              "source": {
+                "table": "human",
+                "id": 0,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 34,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 27,
+              "source": {
+                "table": "human",
+                "id": 6,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 30,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 31,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 32,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 33,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": [
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 27,
+              "source": {
+                "table": "human",
+                "id": 20,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "producers": []
+        },
+        {
+          "id": 27,
+          "producers": []
+        },
+        {
+          "id": 28,
+          "producers": []
+        },
+        {
+          "id": 29,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "equipment",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        }
+      ],
+      "definitions_with_indexed_entry": 27,
+      "no_indexed_entry": [
+        26,
+        27,
+        28
+      ],
+      "pool_flag2_definitions": 19,
+      "pool_difficulty10_ids": [
+        13
+      ]
+    },
+    {
+      "kind": "item",
+      "definitions": 36,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "reset_inventory",
+              "level": "static_initial_stock",
+              "quantity": 2
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 1,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 3
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 0,
+              "level": "excluded_recipe_literal"
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 5,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 5
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 1,
+              "level": "conditional_recipe_result"
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 3,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 4
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 11,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 2,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 3,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 3,
+              "level": "conditional_recipe_result"
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 22,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 1
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 18,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 5
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 10,
+              "ordinary_task_difficulty_can_match": false,
+              "battle_difficulty_can_match": false
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 4,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 2,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 1
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 2
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 8,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 6,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 4
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 5,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 6,
+              "level": "conditional_recipe_result"
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 8,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 4,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 3
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 4
+            },
+            {
+              "route": "script_page94",
+              "level": "literal_script_reference",
+              "opcode": 28,
+              "source": {
+                "table": "human",
+                "id": 9,
+                "column": 9
+              }
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 7,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 5
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 1,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "reset_inventory",
+              "level": "static_initial_stock",
+              "quantity": 3
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 0
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 7,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 5,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 2
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 8,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "producers": [
+            {
+              "route": "task_or_battle_reward_pool_flag2",
+              "level": "conditional_pool_eligibility",
+              "contract": "item",
+              "difficulty": 9,
+              "ordinary_task_difficulty_can_match": true,
+              "battle_difficulty_can_match": true
+            },
+            {
+              "route": "commerce_restock_H",
+              "level": "conditional_supply",
+              "rank": 5
+            },
+            {
+              "route": "magic_manufacture47",
+              "recipe": 9,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 10,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 11,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 12,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "producers": [
+            {
+              "route": "magic_manufacture47",
+              "recipe": 13,
+              "level": "conditional_recipe_result"
+            }
+          ]
+        }
+      ],
+      "definitions_with_indexed_entry": 36,
+      "no_indexed_entry": [],
+      "pool_flag2_definitions": 32,
+      "pool_difficulty10_ids": [
+        11,
+        14,
+        17
+      ]
+    },
+    {
+      "kind": "magic_recipe",
+      "definitions": 40,
+      "definition_index": "data/PROGRESSION_CONTENT_INDEX.json",
+      "records": [
+        {
+          "id": 0,
+          "producers": []
+        },
+        {
+          "id": 1,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 48
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 36
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 72
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 30
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 66
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 9
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 30
+            }
+          ]
+        },
+        {
+          "id": 9,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 90
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 15
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 30
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 50
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 35
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 5
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 14
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 30
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 36
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 90
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 120
+            }
+          ]
+        },
+        {
+          "id": 21,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 150
+            }
+          ]
+        },
+        {
+          "id": 22,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 10
+            }
+          ]
+        },
+        {
+          "id": 23,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 90
+            }
+          ]
+        },
+        {
+          "id": 24,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 15
+            }
+          ]
+        },
+        {
+          "id": 25,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 21
+            }
+          ]
+        },
+        {
+          "id": 26,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 45
+            }
+          ]
+        },
+        {
+          "id": 27,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 45
+            }
+          ]
+        },
+        {
+          "id": 28,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 90
+            }
+          ]
+        },
+        {
+          "id": 29,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 90
+            }
+          ]
+        },
+        {
+          "id": 30,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 31,
+          "producers": [
+            {
+              "route": "reset_flag1",
+              "level": "static_initial_state"
+            },
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 32,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 33,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 34,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 120
+            }
+          ]
+        },
+        {
+          "id": 35,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 30
+            }
+          ]
+        },
+        {
+          "id": 36,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 42
+            }
+          ]
+        },
+        {
+          "id": 37,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 60
+            }
+          ]
+        },
+        {
+          "id": 38,
+          "producers": []
+        },
+        {
+          "id": 39,
+          "producers": [
+            {
+              "route": "magic_recipe_discovery46",
+              "level": "conditional_page",
+              "required_experience": 45
+            }
+          ]
+        }
+      ],
+      "definitions_with_indexed_entry": 38,
+      "no_indexed_entry": [
+        0,
+        38
+      ],
+      "pool_flag2_definitions": 0,
+      "pool_difficulty10_ids": []
+    }
+  ],
+  "mastery": {
+    "catalogue_equipment_producer": false,
+    "source": "a/e.java:579-603; b/g.java raw70",
+    "effect": "等级10生成70；当前职业p0则立即开放职业并生成94/r4，不发装备/设施/普通道具；70确认另给人物属性加成"
+  },
+  "exclusions": [
+    "未枚举任意存档外部状态",
+    "本索引不证明Steam消费者等价",
+    "无入口索引不证明绝对不可达",
+    "配方0为dummy，结果引用不能单独证明可制造"
+  ],
+  "sources": [
+    {
+      "path": "data/PROGRESSION_CONTENT_INDEX.json",
+      "bytes": 400946,
+      "sha256": "9df55a72b1b0eff7c123c67f32163077eb6492320e8246aa174c60a9f38eb434"
+    },
+    {
+      "path": "work/original-save-analysis/apk/xls.dat",
+      "bytes": 95472,
+      "sha256": "8baacbb181dcd4eb18435eb39938ef2ad21d7dee9db27654b07c3428f4739958"
+    },
+    {
+      "path": "work/decompiled/sources/a/o.java",
+      "bytes": 28598,
+      "sha256": "f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603"
+    },
+    {
+      "path": "work/decompiled/sources/a/p.java",
+      "bytes": 12049,
+      "sha256": "02d7a280ed7ae90f7ae6a83c61f1a861c26833c783019759dabdbb497ff1b657"
+    },
+    {
+      "path": "work/decompiled/sources/a/b.java",
+      "bytes": 1538,
+      "sha256": "056dc11fd09699c5dd15409e4c84e8f93aad73d1ffd7749556087eae23a46594"
+    },
+    {
+      "path": "work/decompiled/sources/a/a.java",
+      "bytes": 1532,
+      "sha256": "5dfba33d0f8eb6e540e44eacc7dd38b309581cfe90d2a9c1d6e91e0391e72b7c"
+    },
+    {
+      "path": "work/decompiled/sources/a/g.java",
+      "bytes": 6062,
+      "sha256": "3bb76a7dd41e63f2d7f63d4629f9ccd03a114ad33d865f980ee48ddd1bf189c0"
+    },
+    {
+      "path": "work/decompiled/sources/a/i.java",
+      "bytes": 1130,
+      "sha256": "35a901edf53c3989631996ade10f2f92e9c20b59125b1375eb27c5e36836be96"
+    },
+    {
+      "path": "work/decompiled/sources/a/e.java",
+      "bytes": 27097,
+      "sha256": "77371fabebfc96def0f951caf6f8c49055cdfe6c85f82938936fe508a3f5d551"
+    },
+    {
+      "path": "work/decompiled/sources/a/h.java",
+      "bytes": 3611,
+      "sha256": "dd554d73efcf739fbc41862520e1741632eae78f58b60d81af9731a74e654cd0"
+    },
+    {
+      "path": "work/decompiled/sources/b/g.java",
+      "bytes": 595511,
+      "sha256": "0eecb47f1996abc34e6fa1ffcbbeeb40d2a597f46168a2583833ed6fe1e33081"
+    },
+    {
+      "path": "work/decompiled/sources/c/n.java",
+      "bytes": 177095,
+      "sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7"
+    },
+    {
+      "path": "work/decompiled/sources/c/e.java",
+      "bytes": 12562,
+      "sha256": "11c7b2f8cf549b6c88aa5b526109defab91146f65df3c0dd01022966428fda18"
+    },
+    {
+      "path": "work/decompiled/sources/d/a.java",
+      "bytes": 220085,
+      "sha256": "d627b3ca5fb18e473a632c290c0cb66dea52bc2d019617b6bac721792ce2cb1b"
+    },
+    {
+      "path": "example/src/world_task_creation.cpp",
+      "bytes": 19536,
+      "sha256": "53bc773aa6922b4e02fa278a56a239537fc06c6f8b3fa9aae2965294ce06a862"
+    },
+    {
+      "path": "example/src/human_growth.cpp",
+      "bytes": 11088,
+      "sha256": "7ca52c3ff7e0156a66bf533b1b810f8ecbe2142add3660e0ce5be7147b39490a"
+    },
+    {
+      "path": "example/src/human_management.cpp",
+      "bytes": 14298,
+      "sha256": "489f355f5053b27f12c72fc9360ec10d192d5dbb921ee16888dea7964e2e800b"
+    },
+    {
+      "path": "prototype/src/startup_world_commerce.cpp",
+      "bytes": 18699,
+      "sha256": "511946550c80e8faeeee1e21e9978d05f0b3e178cdbb021cc6f667797493317c"
+    },
+    {
+      "path": "prototype/src/startup_world_magic_pot.cpp",
+      "bytes": 27648,
+      "sha256": "dd9e10deaab7aec6ebdde37650a8ca9f1b7972b72547659d6415836bc4a4f9ab"
+    },
+    {
+      "path": "tools/scripts/catalogue_unlocks.mjs",
+      "bytes": 10474,
+      "sha256": "3eaae7082f26d0fc4f5c89c8d4f2c951515981c20ec29fc9269fb0cda0576674"
+    }
+  ]
+}

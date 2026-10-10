@@ -1,0 +1,1601 @@
+{
+  "scope": "固定 Steam GetStartQuest 选择器及 GenerateQuest 单参 wrapper；APK 对照不充当 Steam 数据数组证明",
+  "sources": [
+    {
+      "path": "DungeonVillageEXE/GameAssembly.dll",
+      "bytes": 19217920,
+      "sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a"
+    },
+    {
+      "path": "DungeonVillageEXE/KairoGames_Data/il2cpp_data/Metadata/global-metadata.dat",
+      "bytes": 5467040,
+      "sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/methods.json",
+      "bytes": 8125428,
+      "sha256": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42"
+    },
+    {
+      "path": "work/persistence-replay-analysis/exe/dumper/dump.cs",
+      "bytes": 10187461,
+      "sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+    }
+  ],
+  "methods": {
+    "wrapper": {
+      "rva": 2995520,
+      "bytes": 48,
+      "signature": "public Quest GenerateQuest(int quest_type) { }",
+      "sha256": "b6a894e1f6a5732fc8558838248bcf03ed917cca2370817fa1d35a2821142cd5",
+      "offset": 2990912,
+      "va": 271430976,
+      "instructions": 27,
+      "direct_branches": 0
+    },
+    "select": {
+      "rva": 3005824,
+      "bytes": 3616,
+      "signature": "public QuestData GetStartQuest(int quest_type) { }",
+      "sha256": "0909dbc920a01d83363fe341d4b2a90fc8af762c63e7ecb8d5aab66334be6e67",
+      "offset": 3001216,
+      "va": 271441280,
+      "instructions": 1029,
+      "direct_branches": 181
+    }
+  },
+  "calls": [
+    {
+      "rva": 2995568,
+      "type": "game.UserData",
+      "signature": "public Quest GenerateQuest(int quest_type, QuestData questData) { }"
+    },
+    {
+      "rva": 2770144,
+      "type": "game.GameUtil",
+      "signature": "public static int Random(int n) { }"
+    },
+    {
+      "rva": 2400256,
+      "type": "game.GameUtil",
+      "signature": "public static int ClampMax(int val, int max) { }"
+    },
+    {
+      "rva": 2399168,
+      "type": "main.AppData",
+      "signature": "public bool CheckAlreadyEvent(int id) { }"
+    },
+    {
+      "rva": 8617008,
+      "type": "kairo.unity.util.BitUtil",
+      "signature": "public static bool Check(int v, int bit) { }"
+    }
+  ],
+  "fields": {
+    "QuestData": [
+      "public int type_; // 0x24",
+      "public int appearRank_; // 0x2C",
+      "public int monster_bossData_; // 0x40",
+      "public static Vector BOSS_QUESTS; // 0x8",
+      "public static int CH_MODE; // 0xC",
+      "public static int CH_INDEX; // 0x10",
+      "public static Vector MANYMONSTER_QUESTS; // 0x14"
+    ],
+    "UserData": [
+      "public int questDungeonCnt_; // 0x5C",
+      "public int questRank_; // 0x60",
+      "public int questPoint_; // 0x84",
+      "private static Vector questList; // 0xC8",
+      "private static Vector manyMonsterQuestList; // 0xCC",
+      "private static readonly int[] QUESTDUNGEON_RARE_RATE; // 0xD0"
+    ],
+    "MonsterData": [
+      "public int dieCnt_total_; // 0x5C",
+      "public bool isAppearWindow_; // 0x68"
+    ],
+    "AppData": [
+      "public MonsterData[] monsterData_; // 0x11C",
+      "public QuestData[] questData_; // 0x138"
+    ]
+  },
+  "anchors": [
+    {
+      "method": "wrapper",
+      "va": "0x102db54b",
+      "instruction": "call 102DDD80h"
+    },
+    {
+      "method": "wrapper",
+      "va": "0x102db552",
+      "instruction": "push eax"
+    },
+    {
+      "method": "wrapper",
+      "va": "0x102db559",
+      "instruction": "call 102DB570h"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde9d",
+      "instruction": "cmp dword ptr [eax+0Ch],1"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddea1",
+      "instruction": "jne short 102DDF1Eh"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddea3",
+      "instruction": "cmp dword ptr [ebp+0Ch],1"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddea7",
+      "instruction": "jne short 102DDF1Eh"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddec1",
+      "instruction": "mov ecx,[eax+8]"
+    },
+    {
+      "method": "select",
+      "va": "0x102dded2",
+      "instruction": "push dword ptr [eax+10h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102dded6",
+      "instruction": "call 10650690h"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf17",
+      "instruction": "mov eax,edx"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf1d",
+      "instruction": "ret"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfb3",
+      "instruction": "mov eax,[esi+2Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfb6",
+      "instruction": "cmp eax,[edx+60h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfb9",
+      "instruction": "jne short 102DDFEFh"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfd7",
+      "instruction": "push 2"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfdc",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfec",
+      "instruction": "cmovne ebx,esi"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfef",
+      "instruction": "inc edi"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfff",
+      "instruction": "cmp dword ptr [edi+84h],1F4h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de009",
+      "instruction": "jl 102DE3E8h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de00f",
+      "instruction": "cmp esi,1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de012",
+      "instruction": "jne 102DE3E8h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de050",
+      "instruction": "mov ecx,[ebx+40h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de068",
+      "instruction": "cmp dword ptr [eax+5Ch],0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de06c",
+      "instruction": "jle 102DE3DFh"
+    },
+    {
+      "method": "select",
+      "va": "0x102de13f",
+      "instruction": "push 2"
+    },
+    {
+      "method": "select",
+      "va": "0x102de144",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de14e",
+      "instruction": "je short 102DE162h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de15a",
+      "instruction": "call 10650450h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de175",
+      "instruction": "call 10653220h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de209",
+      "instruction": "mov eax,[eax+5Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de20e",
+      "instruction": "mov [ebp-8],eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2c9",
+      "instruction": "cmp [eax+5Ch],ecx"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2cc",
+      "instruction": "jle short 102DE2D1h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2ce",
+      "instruction": "mov [eax+5Ch],ecx"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2db",
+      "instruction": "mov dword ptr [ebp-4],7FFFFFFFh"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3a3",
+      "instruction": "mov eax,[eax+5Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3a6",
+      "instruction": "cmp eax,[ebp-4]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3a9",
+      "instruction": "jge short 102DE3B1h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3ab",
+      "instruction": "mov [ebp-4],eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3ae",
+      "instruction": "mov [ebp-8],edi"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3be",
+      "instruction": "call 10650690h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3e1",
+      "instruction": "mov eax,ebx"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3e7",
+      "instruction": "ret"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3e8",
+      "instruction": "test esi,esi"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3ea",
+      "instruction": "je 102DE869h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de406",
+      "instruction": "push 64h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de408",
+      "instruction": "call 102A44E0h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de410",
+      "instruction": "cmp eax,28h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de413",
+      "instruction": "jge 102DE6AEh"
+    },
+    {
+      "method": "select",
+      "va": "0x102de441",
+      "instruction": "push 3Ch"
+    },
+    {
+      "method": "select",
+      "va": "0x102de444",
+      "instruction": "call 10249BC0h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de44e",
+      "instruction": "je 102DE6AEh"
+    },
+    {
+      "method": "select",
+      "va": "0x102de4e6",
+      "instruction": "mov eax,[eax+14h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de502",
+      "instruction": "sub edi,1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de505",
+      "instruction": "js 102DE64Ah"
+    },
+    {
+      "method": "select",
+      "va": "0x102de583",
+      "instruction": "mov eax,[esi+2Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de586",
+      "instruction": "cmp eax,[ecx+60h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de589",
+      "instruction": "jg 102DE641h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5dc",
+      "instruction": "cmp byte ptr [eax+68h],0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5e0",
+      "instruction": "je short 102DE641h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de60f",
+      "instruction": "call 10650450h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de63c",
+      "instruction": "cmp eax,6"
+    },
+    {
+      "method": "select",
+      "va": "0x102de63f",
+      "instruction": "jge short 102DE64Ah"
+    },
+    {
+      "method": "select",
+      "va": "0x102de641",
+      "instruction": "sub edi,1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de644",
+      "instruction": "jns 102DE510h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de683",
+      "instruction": "test eax,eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102de685",
+      "instruction": "jle short 102DE6AEh"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6a9",
+      "instruction": "jmp 102DEB13h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7b4",
+      "instruction": "mov eax,[esi+2Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7b7",
+      "instruction": "cmp eax,[edx+60h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7ba",
+      "instruction": "jne 102DE85Ch"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7c3",
+      "instruction": "cmp [esi+24h],eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7c6",
+      "instruction": "jne 102DE85Ch"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7e5",
+      "instruction": "push 2"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7e8",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7f2",
+      "instruction": "jne short 102DE856h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de80d",
+      "instruction": "push 4"
+    },
+    {
+      "method": "select",
+      "va": "0x102de810",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de81a",
+      "instruction": "jne short 102DE856h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de84e",
+      "instruction": "call 10650450h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de85c",
+      "instruction": "inc edi"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8e2",
+      "instruction": "mov edi,[edi+5Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8fc",
+      "instruction": "mov esi,[eax+0D0h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de91e",
+      "instruction": "mov eax,[esi+0Ch]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de921",
+      "instruction": "dec eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102de926",
+      "instruction": "call 1024A000h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de94e",
+      "instruction": "mov esi,[ecx+eax*4+10h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102de968",
+      "instruction": "push 64h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de96a",
+      "instruction": "call 102A44E0h"
+    },
+    {
+      "method": "select",
+      "va": "0x102de975",
+      "instruction": "cmp eax,esi"
+    },
+    {
+      "method": "select",
+      "va": "0x102de97c",
+      "instruction": "cmovl ecx,edx"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea15",
+      "instruction": "cmp eax,[edx+60h]"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea18",
+      "instruction": "jne 102DEAD5h"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea1e",
+      "instruction": "cmp dword ptr [esi+24h],0"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea22",
+      "instruction": "jne 102DEAD5h"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea41",
+      "instruction": "push 2"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea44",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea4e",
+      "instruction": "jne 102DEACFh"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea6d",
+      "instruction": "push 8"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea70",
+      "instruction": "call 10837C30h"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea7a",
+      "instruction": "jne short 102DEAC9h"
+    },
+    {
+      "method": "select",
+      "va": "0x102deaae",
+      "instruction": "call 10650450h"
+    },
+    {
+      "method": "select",
+      "va": "0x102deac9",
+      "instruction": "cmp byte ptr [ebp-8],0"
+    },
+    {
+      "method": "select",
+      "va": "0x102deacd",
+      "instruction": "jne short 102DEAE2h"
+    },
+    {
+      "method": "select",
+      "va": "0x102deae6",
+      "instruction": "mov dword ptr [eax+5Ch],0"
+    },
+    {
+      "method": "select",
+      "va": "0x102deaed",
+      "instruction": "mov eax,esi"
+    },
+    {
+      "method": "select",
+      "va": "0x102deaf4",
+      "instruction": "ret"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb1e",
+      "instruction": "call 106573A0h"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb23",
+      "instruction": "mov esi,eax"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb3e",
+      "instruction": "push esi"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb3f",
+      "instruction": "call 102A44E0h"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb4c",
+      "instruction": "call 10650690h"
+    }
+  ],
+  "branches": [
+    {
+      "method": "select",
+      "va": "0x102ddd8d",
+      "target": "0x102dde07"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde10",
+      "target": "0x102dde20"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde2d",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde44",
+      "target": "0x102dde7f"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde4f",
+      "target": "0x102dde5f"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde6a",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102dde89",
+      "target": "0x102dde9a"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddea1",
+      "target": "0x102ddf1e"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddea7",
+      "target": "0x102ddf1e"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddead",
+      "target": "0x102ddebe"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddec6",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddee8",
+      "target": "0x102ddef0"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddefe",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf0e",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf34",
+      "target": "0x102ddf45"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf4c",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf5a",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf63",
+      "target": "0x102ddff9"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf6d",
+      "target": "0x102ddf7e"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf85",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf93",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddf9c",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfaa",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfb9",
+      "target": "0x102ddfef"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddfca",
+      "target": "0x102ddfd5"
+    },
+    {
+      "method": "select",
+      "va": "0x102ddff4",
+      "target": "0x102ddf30"
+    },
+    {
+      "method": "select",
+      "va": "0x102de009",
+      "target": "0x102de3e8"
+    },
+    {
+      "method": "select",
+      "va": "0x102de012",
+      "target": "0x102de3e8"
+    },
+    {
+      "method": "select",
+      "va": "0x102de01c",
+      "target": "0x102de02d"
+    },
+    {
+      "method": "select",
+      "va": "0x102de034",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de03c",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de04a",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de056",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de062",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de06c",
+      "target": "0x102de3df"
+    },
+    {
+      "method": "select",
+      "va": "0x102de085",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0aa",
+      "target": "0x102de0bb"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0c2",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0d0",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0d9",
+      "target": "0x102de16b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0e3",
+      "target": "0x102de0f4"
+    },
+    {
+      "method": "select",
+      "va": "0x102de0fb",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de109",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de112",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de11d",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de132",
+      "target": "0x102de13d"
+    },
+    {
+      "method": "select",
+      "va": "0x102de14e",
+      "target": "0x102de162"
+    },
+    {
+      "method": "select",
+      "va": "0x102de166",
+      "target": "0x102de0a0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de187",
+      "target": "0x102de18d"
+    },
+    {
+      "method": "select",
+      "va": "0x102de18b",
+      "target": "0x102de1b5"
+    },
+    {
+      "method": "select",
+      "va": "0x102de19b",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1ab",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1be",
+      "target": "0x102de1ce"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1d5",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1dd",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1eb",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de1f7",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de203",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de224",
+      "target": "0x102de2d9"
+    },
+    {
+      "method": "select",
+      "va": "0x102de244",
+      "target": "0x102de24a"
+    },
+    {
+      "method": "select",
+      "va": "0x102de248",
+      "target": "0x102de272"
+    },
+    {
+      "method": "select",
+      "va": "0x102de258",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de268",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de27b",
+      "target": "0x102de28b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de292",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de29a",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2a8",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2b4",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2c0",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2cc",
+      "target": "0x102de2d1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de2d4",
+      "target": "0x102de213"
+    },
+    {
+      "method": "select",
+      "va": "0x102de307",
+      "target": "0x102de3b9"
+    },
+    {
+      "method": "select",
+      "va": "0x102de321",
+      "target": "0x102de327"
+    },
+    {
+      "method": "select",
+      "va": "0x102de325",
+      "target": "0x102de34f"
+    },
+    {
+      "method": "select",
+      "va": "0x102de335",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de345",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de358",
+      "target": "0x102de368"
+    },
+    {
+      "method": "select",
+      "va": "0x102de36f",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de377",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de385",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de391",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de39d",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3a9",
+      "target": "0x102de3b1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3b4",
+      "target": "0x102de2f0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3d0",
+      "target": "0x102deb64"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3ea",
+      "target": "0x102de869"
+    },
+    {
+      "method": "select",
+      "va": "0x102de3f9",
+      "target": "0x102de404"
+    },
+    {
+      "method": "select",
+      "va": "0x102de413",
+      "target": "0x102de6ae"
+    },
+    {
+      "method": "select",
+      "va": "0x102de422",
+      "target": "0x102de432"
+    },
+    {
+      "method": "select",
+      "va": "0x102de439",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de44e",
+      "target": "0x102de6ae"
+    },
+    {
+      "method": "select",
+      "va": "0x102de45d",
+      "target": "0x102de46d"
+    },
+    {
+      "method": "select",
+      "va": "0x102de478",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de48f",
+      "target": "0x102de4ca"
+    },
+    {
+      "method": "select",
+      "va": "0x102de49a",
+      "target": "0x102de4aa"
+    },
+    {
+      "method": "select",
+      "va": "0x102de4b5",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de4d3",
+      "target": "0x102de4e3"
+    },
+    {
+      "method": "select",
+      "va": "0x102de4eb",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de505",
+      "target": "0x102de64a"
+    },
+    {
+      "method": "select",
+      "va": "0x102de51a",
+      "target": "0x102de525"
+    },
+    {
+      "method": "select",
+      "va": "0x102de532",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de552",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de566",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de576",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102de589",
+      "target": "0x102de641"
+    },
+    {
+      "method": "select",
+      "va": "0x102de598",
+      "target": "0x102de5a3"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5b0",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5be",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5ca",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5d6",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5e0",
+      "target": "0x102de641"
+    },
+    {
+      "method": "select",
+      "va": "0x102de5e6",
+      "target": "0x102de5f1"
+    },
+    {
+      "method": "select",
+      "va": "0x102de601",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de627",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de63f",
+      "target": "0x102de64a"
+    },
+    {
+      "method": "select",
+      "va": "0x102de644",
+      "target": "0x102de510"
+    },
+    {
+      "method": "select",
+      "va": "0x102de653",
+      "target": "0x102de65e"
+    },
+    {
+      "method": "select",
+      "va": "0x102de66e",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de685",
+      "target": "0x102de6ae"
+    },
+    {
+      "method": "select",
+      "va": "0x102de690",
+      "target": "0x102de6a0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6a9",
+      "target": "0x102deb13"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6b7",
+      "target": "0x102de6c7"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6d2",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6e9",
+      "target": "0x102de724"
+    },
+    {
+      "method": "select",
+      "va": "0x102de6f4",
+      "target": "0x102de704"
+    },
+    {
+      "method": "select",
+      "va": "0x102de70f",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de738",
+      "target": "0x102de749"
+    },
+    {
+      "method": "select",
+      "va": "0x102de750",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de75e",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de767",
+      "target": "0x102deaf5"
+    },
+    {
+      "method": "select",
+      "va": "0x102de771",
+      "target": "0x102de782"
+    },
+    {
+      "method": "select",
+      "va": "0x102de789",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de797",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7a0",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7ab",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7ba",
+      "target": "0x102de85c"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7c6",
+      "target": "0x102de85c"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7d8",
+      "target": "0x102de7e3"
+    },
+    {
+      "method": "select",
+      "va": "0x102de7f2",
+      "target": "0x102de856"
+    },
+    {
+      "method": "select",
+      "va": "0x102de800",
+      "target": "0x102de80b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de81a",
+      "target": "0x102de856"
+    },
+    {
+      "method": "select",
+      "va": "0x102de825",
+      "target": "0x102de835"
+    },
+    {
+      "method": "select",
+      "va": "0x102de840",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de864",
+      "target": "0x102de734"
+    },
+    {
+      "method": "select",
+      "va": "0x102de86d",
+      "target": "0x102de87e"
+    },
+    {
+      "method": "select",
+      "va": "0x102de889",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8a0",
+      "target": "0x102de8db"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8ab",
+      "target": "0x102de8bb"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8c6",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de8e9",
+      "target": "0x102de8f9"
+    },
+    {
+      "method": "select",
+      "va": "0x102de904",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de913",
+      "target": "0x102de91e"
+    },
+    {
+      "method": "select",
+      "va": "0x102de93f",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de948",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102de95b",
+      "target": "0x102de966"
+    },
+    {
+      "method": "select",
+      "va": "0x102de996",
+      "target": "0x102de9a7"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9ae",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9bc",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9c5",
+      "target": "0x102deaf5"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9cf",
+      "target": "0x102de9e0"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9e7",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9f5",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102de9fe",
+      "target": "0x102deb97"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea09",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea18",
+      "target": "0x102dead5"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea22",
+      "target": "0x102dead5"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea34",
+      "target": "0x102dea3f"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea4e",
+      "target": "0x102deacf"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea60",
+      "target": "0x102dea6b"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea7a",
+      "target": "0x102deac9"
+    },
+    {
+      "method": "select",
+      "va": "0x102dea85",
+      "target": "0x102dea95"
+    },
+    {
+      "method": "select",
+      "va": "0x102deaa0",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102deac4",
+      "target": "0x102de992"
+    },
+    {
+      "method": "select",
+      "va": "0x102deacd",
+      "target": "0x102deae2"
+    },
+    {
+      "method": "select",
+      "va": "0x102deadd",
+      "target": "0x102de992"
+    },
+    {
+      "method": "select",
+      "va": "0x102deaf9",
+      "target": "0x102deb0a"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb15",
+      "target": "0x102deb8b"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb31",
+      "target": "0x102deb3c"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb5e",
+      "target": "0x102de3d6"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb72",
+      "target": "0x102deb90"
+    },
+    {
+      "method": "select",
+      "va": "0x102deb7e",
+      "target": "0x102deb90"
+    }
+  ],
+  "contracts": {
+    "selector_then_creator": true,
+    "explicit_mode": "CH_MODE==1 && kind==1 -> BOSS_QUESTS[CH_INDEX]",
+    "default_boss": "questPoint>=500 && kind==1；当前chapter原序最后flags2；未胜直接返回",
+    "repeat_boss": "全定义flags2原序；首项dieCnt_total作cap并真实写回其他超限怪物；严格最小，平局保原序",
+    "exploration": "QUESTDUNGEON_RARE_RATE[ClampMax(questDungeonCnt,length-1)]；Random(100)；同chapter/type0排除flags2，flags8命中清questDungeonCnt后直接返回",
+    "recurrence": "非kind0回退分支先Random(100)<40，再event60；逆序MANYMONSTER，chapter<=当前且isAppearWindow，最多6；空池回普通",
+    "ordinary": "同chapter、同type、排除flags2/4；按池size随机选取",
+    "side_effects": [
+      "临时选择池清空/追加",
+      "重复BOSS分支降低超cap怪物dieCnt_total",
+      "稀有探索命中清questDungeonCnt"
+    ]
+  },
+  "limitations": [
+    "未认证 Steam 稀有概率数组实际元素、特殊/复发目录初始化全值，不能把 APK 数组直接标成 Steam 事实",
+    "非kind0分支本身不验证kind==1；公开合法kind范围及非法输入保护不由这段原函数证明",
+    "仅核选择器及 wrapper；双参 GenerateQuest 难度/地点/创建、Random 算法及 ClampMax 内部本批未审计",
+    "具名索引与字段来自本地 IL2CPP 派生输出，记录其hash；原 DLL/metadata 和方法字节身份单独固定",
+    "静态分支对照不代表原窗口、自然通关或所有外部调用路径已执行；原方法副作用不具维护Owner事务承诺"
+  ]
+}

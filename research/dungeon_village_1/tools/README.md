@@ -19,6 +19,8 @@
 | original_save_audit | 显式profile的25分区边界、计数、引用与日期条件审计 | 缺目标只诊断；不修复、推进世界或认证原加载成功；复用archive测试套件 |
 | scripts/resource_code_index.mjs | 既有761视觉文件的INF／SEB关系及Java字面量／固定槽反查 | [反查合同](../assets/RESOURCE_CODE_INDEX.md)；`--check`只读复算，词法命中不证明完整消费者 |
 | scripts/image_coverage.py | 固定APK／EXE所有已识别图像容器、PNG像素／SEB结构、Unity／managed／PE目录与跨版差分 | [图像覆盖](../assets/IMAGE_COVERAGE.md)；标准库只读原输入，纹理像素、运行时素材与消费者保持未验 |
+| scripts/character_job_unlocks.cjs、catalogue_unlocks.mjs | 人物／职业与设施／装备／道具／配方的逐定义来源 | [内容合同](../rules/PROGRESSION_CONTENT.md)；原表／DEX及消费者定位，候选输出仅在work，不自动发布正式索引 |
+| scripts/steam_task_selection.cjs | 固定Steam任务选择器、wrapper及关键字段／分支 | [任务路线](../rules/PROGRESSION_ROUTES.md#steam任务选择器交叉)；不执行游戏，不将数组引用当实际数组全值已证 |
 
 解析失败通过异常报告，不返回部分解析成功结果；文件写入拒绝覆盖不同内容。
 APK、源素材和生成 Java 保持只读，工具输出到独立工作目录。地图文件内部格式尚未作为本包交付。

@@ -45,3 +45,5 @@
 APK的a/k.y所有具名直接写点已核为新局、介绍及读档恢复；复发任务选择在event60、40票号、任务章节及逆序目录筛选之外还使用该y。维护`monster_growth.introduced`由介绍消费者写回，Owner再投影到`TaskCreationMonster.replay_available`。这条APK及维护消费链已有证据；本批Steam只交叉到介绍资格产生，不将其扩大为Steam完整复发选择算法已相同。
 
 现功能测试主责为`encounter_creation_test::creation/synchronous_intro`及任务选择套件：覆盖开放参与本次选择、介绍在spawn之前、活动任务抑制介绍、相同定义只介绍一次、晚失败回滚和复发空池回退。本批没有改业务或新增重复测试；这些是维护契约覆盖，不是Steam动态证据。真实经营到各怪物、BOSS胜利与完整任务复发交产品长跑验证。
+
+后继[Steam任务选择器交叉](PROGRESSION_ROUTES.md#steam任务选择器交叉)已确认该isAppearWindow字段实际参与逆序复发候选；这是对上述局部边界的补充，目录初始化全值与原窗口自然路线仍未由此认证。

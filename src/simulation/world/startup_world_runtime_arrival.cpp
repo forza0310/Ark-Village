@@ -1,5 +1,5 @@
-#include "ark/simulation/world/startup_world_runtime.hpp"
 #include "ark/simulation/actors/rules/world_arrivals.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <algorithm>
 #include <limits>
@@ -124,10 +124,9 @@ std::optional<ref::CharacterId> create(State &s, const ref::WorldArrivalCreation
 } // namespace
 void configure_startup_world_runtime_arrival_adapter(ref::WorldRuntimeAdapter<State> &a) {
     const auto catalog = a.catalog;
-    a.arrival = [catalog](const State &s) -> std::optional<State> {
-        State next = s;
-        const auto result = ref::prepare_world_arrivals(
-            arrivals(s), catalog,
+    const auto arrival = [catalog](State &next) -> bool {
+        const auto result = ref::prepare_world_arrivals_consuming(
+            arrivals(next), catalog,
             [&](const ref::WorldArrivalsState &current, const ref::WorldArrivalCreationInput &input)
                 -> std::optional<ref::WorldArrivalCreation> {
                 if (!write_arrivals(next, current))
@@ -138,6 +137,15 @@ void configure_startup_world_runtime_arrival_adapter(ref::WorldRuntimeAdapter<St
                            : std::nullopt;
             });
         if (!result.candidate || !write_arrivals(next, result.candidate->state))
+            return false;
+        return true;
+    };
+    a.arrival_private = arrival;
+    // The value entry keeps its complete independent Owner contract. The private
+    // entry executes the same writes/callbacks on the outer frame's disposable copy.
+    a.arrival = [arrival](const State &s) -> std::optional<State> {
+        State next = s;
+        if (!arrival(next))
             return {};
         return next;
     };

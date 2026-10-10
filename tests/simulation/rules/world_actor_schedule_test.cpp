@@ -1,10 +1,10 @@
-﻿#include "ark/simulation/ai/rules/world_actor_schedule.hpp"
+#include "ark/simulation/ai/rules/world_actor_schedule.hpp"
 #include "ark/simulation/ai/rules/world_nonactor_schedule.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
-#include <limits>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 
@@ -66,7 +66,7 @@ Owner fixture() {
     o.definition_state.emplace(0, 0);
     return o;
 }
-WorldActorScheduleAdapter<Owner> adapter() {
+WorldActorScheduleAdapter<Owner> adapter(bool private_owner = false) {
     WorldActorScheduleAdapter<Owner> a;
     a.read_common = [](const Owner &s) -> const WorldScheduleState & { return s.common; };
     a.write_common = [](Owner &s) -> WorldScheduleState & { return s.common; };
@@ -76,6 +76,7 @@ WorldActorScheduleAdapter<Owner> adapter() {
         r.facts = world_schedule_facts(s.common);
         r.random = s.random;
         r.human_definition_state = s.definition_state;
+        r.popularity_queue = s.common.popularity_queue;
         return r;
     };
     a.write_routes = [](Owner &s, const WorldActorRoutesState &r) {
@@ -109,6 +110,44 @@ WorldActorScheduleAdapter<Owner> adapter() {
         }
         return OwnedWorldScheduleStep<Owner>{std::move(next)};
     };
+    if (private_owner) {
+        a.read_current_routes = a.read_routes;
+        const auto extension_writer = a.write_routes;
+        a.write_current_routes = [extension_writer](Owner &o, const WorldActorRoutesState &r) {
+            if (!extension_writer(o, r))
+                return false;
+            o.common.world = r.world;
+            o.common.surface = r.facts.surface;
+            o.common.map_flags = r.facts.flags;
+            o.common.town = r.facts.town;
+            o.common.popularity_queue = r.popularity_queue;
+            return true;
+        };
+        const auto decision = a.decision;
+        a.decision_from_routes = [decision](const Owner &o, const WorldActorRoutesState &r,
+                                            CharacterId id) {
+            check(r.world.ai.battle.actors.at(id).state_counter ==
+                          o.common.world.ai.battle.actors.at(id).state_counter &&
+                      r.world.ai.battle.actors.at(id).control.queue ==
+                          o.common.world.ai.battle.actors.at(id).control.queue &&
+                      r.random.draws() == o.random.draws() &&
+                      r.human_definition_state == o.definition_state &&
+                      r.popularity_queue == o.common.popularity_queue,
+                  "decision consumes current common prefix and complete extensions at its actual "
+                  "call point");
+            return decision(o, id);
+        };
+        const auto functional = a.other;
+        a.other_private =
+            [functional](Owner &o, const auto &call,
+                         const auto &field) -> std::optional<WorldScheduleDisposition> {
+            auto step = functional(o, call, field);
+            if (!step)
+                return {};
+            o = std::move(step->state);
+            return step->disposition;
+        };
+    }
     return a;
 }
 void drop_created_by_control_runs_same_round() {
@@ -342,8 +381,9 @@ WorldActorScheduleAdapter<Owner> hit_adapter(HitTrace &trace, const std::string 
     auto a = adapter();
     // prefix_effects仅在有实际成长/声音输出时派发；不能拿它冒充每次d观测点。
     // 复用真实尾部发布接口，分别记逻辑n与供表现缓存读取的投影；回调不改Owner。
-    a.tail_cache = [&trace, &round, name, target](const Owner &o, CharacterId id,
-                        const BattleActorRecord &projected) -> std::optional<Owner> {
+    a.tail_cache = [&trace, &round, name,
+                    target](const Owner &o, CharacterId id,
+                            const BattleActorRecord &projected) -> std::optional<Owner> {
         if (id == target) {
             hit_row(trace, name, round, "after-target-d-tail", o, target);
             hit_row(trace, name, round, "target-render-projection", o, target);
@@ -363,7 +403,8 @@ WorldActorScheduleAdapter<Owner> hit_adapter(HitTrace &trace, const std::string 
         i.combat = combat;
         return i;
     };
-    a.owned_command = [&trace, &round, name, target](const Owner &o, const WorldActorRoutesState &, CharacterId id,
+    a.owned_command = [&trace, &round, name, target](
+                          const Owner &o, const WorldActorRoutesState &, CharacterId id,
                           const LegacyActorControl &op) -> std::optional<WorldActorCommandInput> {
         if (op[0] == 0)
             return WorldActorCommandInput{}; // 真正opcode0消费者由既有world_facilities执行。
@@ -380,8 +421,9 @@ WorldActorScheduleAdapter<Owner> hit_adapter(HitTrace &trace, const std::string 
         i.attack = attack;
         return i;
     };
-    a.presentation = [&trace, &round, name, target](const Owner &o,
-                         const WorldActorPresentationRequest &r) -> std::optional<Owner> {
+    a.presentation = [&trace, &round, name,
+                      target](const Owner &o,
+                              const WorldActorPresentationRequest &r) -> std::optional<Owner> {
         auto next = o;
         if (r.hit && r.hit->kind == HitRequestKind::face_attacker) {
             if (!r.target)
@@ -454,7 +496,8 @@ WorldActorScheduleAdapter<Owner> hit_adapter(HitTrace &trace, const std::string 
         return fields;
     };
     a.other =
-        [&trace, &round, name, target, n](const Owner &o, const WorldScheduleCall &call,
+        [&trace, &round, name, target,
+         n](const Owner &o, const WorldScheduleCall &call,
             const CombatInfluenceCandidate &field) -> std::optional<OwnedWorldScheduleStep<Owner>> {
         if (call.stage == WorldScheduleStage::arrival_front)
             return OwnedWorldScheduleStep<Owner>{o}; // 本批不测试到访，显式隔离原前段。
@@ -591,15 +634,18 @@ void hit_reaction_owner_trace(HitTrace &trace) {
                               "published hit changes no horizontal velocity");
                         // 同轮bo逆序会先更新尚在等待的第二颗投射；只有这次真正提交命中
                         // 才要求新aw/aq，不能用整轮存在另一次命中替代本调用资格。
-                        const bool submitted_hit = row.phase != "after-projectile" ||
+                        const bool submitted_hit =
+                            row.phase != "after-projectile" ||
                             (n > first_row && trace[n - 1].phase == "before-projectile" &&
                              row.value.hit_count > trace[n - 1].value.hit_count);
-                        if (submitted_hit && (round == hit_round ||
-                            (s.second_delay >= 0 && round == s.second_delay + 1))) {
+                        if (submitted_hit &&
+                            (round == hit_round ||
+                             (s.second_delay >= 0 && round == s.second_delay + 1))) {
                             if (row.value.hit_flash != 7 || row.value.label_timer != 16 ||
                                 row.value.miss_label != s.miss)
-                                throw std::runtime_error(std::string(s.name) + " round " +
-                                    std::to_string(round) + " phase=" + row.phase +
+                                throw std::runtime_error(
+                                    std::string(s.name) + " round " + std::to_string(round) +
+                                    " phase=" + row.phase +
                                     " expected aw7/aq16/miss=" + std::to_string(s.miss) +
                                     " actual=" + std::to_string(row.value.hit_flash) + "/" +
                                     std::to_string(row.value.label_timer) + "/" +
@@ -621,30 +667,34 @@ void hit_reaction_owner_trace(HitTrace &trace) {
                   "short trace has bounded actors/retired/projectile resources");
             o.script_entries.clear(); // 本轮typed诊断输出已记录消费，不积累未消费通知。
         }
-        check((s.kind != 2 && s.kind != 3) ||
-                  (o.common.world.ai.projectiles.empty() && o.common.world.ai.projectile_order.empty()),
+        check((s.kind != 2 && s.kind != 3) || (o.common.world.ai.projectiles.empty() &&
+                                               o.common.world.ai.projectile_order.empty()),
               "consumed projectile references/order retire by trace end");
     }
 }
 void hit_invalid_human_projectile_rejected() {
     for (const int damage : {0, 3, 100}) {
         auto o = hit_owner({1});
-        auto p = prepare_projectile(ProjectileKind::delayed_damage, {2}, {1}, {}, {}, 0, 0, damage, 0);
+        auto p =
+            prepare_projectile(ProjectileKind::delayed_damage, {2}, {1}, {}, {}, 0, 0, damage, 0);
         check(p.candidate.has_value(), "invalid caster fixture has structurally valid projectile");
         o.common.world.ai.projectiles.emplace(9, *p.candidate);
         o.common.world.ai.projectile_order = {9};
         HitTrace rejected;
         int round = 1;
         auto a = hit_adapter(rejected, "rejected-monster-spell-human", round, {1});
-        check(valid_world_schedule_owner(o.common), "invalid caster fixture starts from valid Owner");
+        check(valid_world_schedule_owner(o.common),
+              "invalid caster fixture starts from valid Owner");
         const auto r = prepare_world_actor_schedule(o, {}, a);
         check(!r.state && r.error != WorldScheduleError::none && o.random.draws() == 0 &&
-                  o.common.updates == 0 && o.common.world.ai.projectile_order == std::vector<std::uint64_t>{9} &&
+                  o.common.updates == 0 &&
+                  o.common.world.ai.projectile_order == std::vector<std::uint64_t>{9} &&
                   o.common.world.ai.projectiles.at(9).counter == 0 &&
                   o.common.world.ai.battle.actors.at({1}).hp.target == 100 &&
                   o.common.world.ai.battle.actors.at({1}).hit_flash == 0 &&
                   o.common.world.ai.battle.actors.at({1}).control.queue ==
-                      std::vector<LegacyActorControl>{{1, 1000, 0}} && o.script_entries.empty(),
+                      std::vector<LegacyActorControl>{{1, 1000, 0}} &&
+                  o.script_entries.empty(),
               "unsupported monster spell to human rejects complete Owner without partial mutation");
     }
 }
@@ -664,14 +714,16 @@ void hit_moving_twins(HitTrace &trace) {
             attacker.control.queue = {{17}, {1, 1000, 0}};
             attacker.attack_destination = actor.position;
         } else {
-            auto p = prepare_projectile(ProjectileKind::delayed_damage, caster, target,
-                                        {}, {}, 0, 0, 3, 0);
+            auto p = prepare_projectile(ProjectileKind::delayed_damage, caster, target, {}, {}, 0,
+                                        0, 3, 0);
             check(p.candidate.has_value(), "moving twin valid delayed-hit condition fixture");
             hit.common.world.ai.projectiles.emplace(9, *p.candidate);
             hit.common.world.ai.projectile_order = {9};
         }
-        const std::string hit_name = target.value == 1 ? "melee-moving-human" : "spell-moving-monster";
-        const std::string control_name = target.value == 1 ? "control-moving-human" : "control-moving-monster";
+        const std::string hit_name =
+            target.value == 1 ? "melee-moving-human" : "spell-moving-monster";
+        const std::string control_name =
+            target.value == 1 ? "control-moving-human" : "control-moving-monster";
         int round{};
         auto hit_route = hit_adapter(trace, hit_name, round, target);
         auto control_route = hit_adapter(trace, control_name, round, target);
@@ -683,8 +735,9 @@ void hit_moving_twins(HitTrace &trace) {
             auto c = prepare_world_actor_schedule(control, {}, control_route);
             if (!h.state || !c.state)
                 throw std::runtime_error(hit_name + " moving twin Owner failed at " +
-                    std::to_string(round) + " hit=" + std::to_string(static_cast<int>(h.error)) +
-                    " control=" + std::to_string(static_cast<int>(c.error)));
+                                         std::to_string(round) +
+                                         " hit=" + std::to_string(static_cast<int>(h.error)) +
+                                         " control=" + std::to_string(static_cast<int>(c.error)));
             hit = std::move(*h.state);
             control = std::move(*c.state);
             const auto &hv = hit.common.world.ai.battle.actors.at(target);
@@ -698,9 +751,9 @@ void hit_moving_twins(HitTrace &trace) {
                       hv.control.flags == cv.control.flags && !(hv.control.flags & 64U) &&
                       hv.physics_pause == 0 && cv.physics_pause == 0,
                   "Owner ordinary movement and FIFO remain identical while hit aw is positive");
-            check(hv.hit_flash == 8 - round && cv.hit_flash == 0 &&
-                      hv.hit_count == 1 && cv.hit_count == 0 && hv.hp.target < 100 &&
-                      cv.hp.target == 100 && hv.damage_total == 100 - hv.hp.target,
+            check(hv.hit_flash == 8 - round && cv.hit_flash == 0 && hv.hit_count == 1 &&
+                      cv.hit_count == 0 && hv.hp.target < 100 && cv.hp.target == 100 &&
+                      hv.damage_total == 100 - hv.hp.target,
                   "moving twin has real nonzero hit and distinct aw/HP without frozen movement");
             hit_row(trace, hit_name, round, "committed-round-end", hit, target);
             hit_row(trace, control_name, round, "committed-round-end", control, target);
@@ -742,96 +795,247 @@ void write_hit_trace(const HitTrace &rows, const char *file) {
 } // namespace
 int main(int argc, char **argv) {
     try {
-        auto s = fixture();
-        const auto a = adapter();
-        std::optional<WorldActorScheduleResult<Owner>> first_round;
-        for (int n = 0; n < 1000; ++n) {
-            auto r = prepare_world_actor_schedule(s, {}, a);
-            if (!r.state)
-                throw std::runtime_error("round " + std::to_string(n) + " error " +
-                                         std::to_string(static_cast<int>(r.error)));
-            const auto &actor = r.state->common.world.ai.battle.actors.at({1});
-            check(actor.state_counter == n + 1 && actor.control.queue.front()[1] == 1199 - n &&
-                      r.state->common.updates == n + 1,
-                  "actual common c/d and full routing advance each counter and wait exactly once");
-            check(actor.hp.target == (n >= 170 ? 100 : 50) && s.random.draws() == 0 &&
-                      r.decisions.size() == 1 && r.controls.size() == 1,
-                  "oldB170 inn recovery, zero unused random and one decision/control segment");
-            s = *r.state;
-            if (n == 0)
-                first_round = std::move(r);
+        std::optional<Owner> legacy_final;
+        for (const bool private_owner : {false, true}) {
+            auto s = fixture();
+            auto a = adapter(private_owner);
+            a.tail_cache = [](const Owner &o, CharacterId,
+                              const BattleActorRecord &projected) -> std::optional<Owner> {
+                auto next = o;
+                next.script_entries.push_back(projected.state_counter);
+                return next;
+            };
+            if (private_owner)
+                a.tail_cache_private = [](Owner &o, CharacterId,
+                                          const BattleActorRecord &projected) {
+                    o.script_entries.push_back(projected.state_counter);
+                    return true;
+                };
+            std::optional<WorldActorScheduleResult<Owner>> first_round;
+            for (int n = 0; n < 1000; ++n) {
+                auto r = prepare_world_actor_schedule(s, {}, a);
+                if (!r.state)
+                    throw std::runtime_error("round " + std::to_string(n) + " error " +
+                                             std::to_string(static_cast<int>(r.error)));
+                const auto &actor = r.state->common.world.ai.battle.actors.at({1});
+                check(actor.state_counter == n + 1 && actor.control.queue.front()[1] == 1199 - n &&
+                          r.state->common.updates == n + 1,
+                      "actual common c/d and full routing advance each counter and wait exactly "
+                      "once");
+                check(actor.hp.target == (n >= 170 ? 100 : 50) && s.random.draws() == 0 &&
+                          r.decisions.size() == 1 && r.controls.size() == 1,
+                      "oldB170 inn recovery, zero unused random and one decision/control segment");
+                s = *r.state;
+                if (n == 0)
+                    first_round = std::move(r);
+            }
+            // 保留首轮公开审计到千轮之后：c、v和最终共同世界必须仍各自保持原时点。
+            const auto &decision = first_round->decisions.front().state;
+            const auto &control = first_round->controls.front().state;
+            check(decision.world.ai.battle.actors.at({1}).state_counter == 0 &&
+                      decision.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1200 &&
+                      decision.world.map.cells.size() == 36 && decision.world.facilities.count(3) &&
+                      decision.human_definition_state.at(0) == 0 && decision.random.draws() == 0,
+                  "retained decision audit contains full world and definition state before d/v");
+            check(
+                control.world.ai.battle.actors.at({1}).state_counter == 1 &&
+                    control.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1199 &&
+                    control.world.map.cells.size() == 36 && control.world.facilities.count(3) &&
+                    control.human_definition_state.at(0) == 0 && control.random.draws() == 0,
+                "retained control audit contains full world after d/v independent of later rounds");
+            check(first_round->audit && first_round->audit->state.updates == 1 &&
+                      first_round->audit->state.world.ai.battle.actors.at({1}).state_counter == 1 &&
+                      first_round->audit->state.facility_order == std::vector<std::uint64_t>{3} &&
+                      first_round->state->common.updates == 1 && s.common.updates == 1000,
+                  "first returned owner and final schedule audit remain complete after owner "
+                  "advances");
+            check(first_round->state->script_entries == std::vector<int>{1} &&
+                      s.script_entries.size() == 1000 && s.script_entries.back() == 1000 &&
+                      first_round->audit->calls.size() == 6,
+                  "both tail consumers publish once at original tail point and retain independent "
+                  "owner");
+            if (legacy_final) {
+                auto legacy_random = legacy_final->random;
+                auto private_random = s.random;
+                check(s.script_entries == legacy_final->script_entries &&
+                          s.definition_state == legacy_final->definition_state &&
+                          s.common.world.ai.battle.actors.at({1}).control.queue ==
+                              legacy_final->common.world.ai.battle.actors.at({1}).control.queue &&
+                          s.common.world.ai.battle.actors.at({1}).hp.target ==
+                              legacy_final->common.world.ai.battle.actors.at({1}).hp.target &&
+                          s.common.updates == legacy_final->common.updates &&
+                          private_random.draw(1000).raw == legacy_random.draw(1000).raw,
+                      "private full-route and tail owner outcomes agree with legacy including "
+                      "future random");
+            } else
+                legacy_final = s;
+            auto missing = a;
+            missing.other = {};
+            missing.other_private = {};
+            check(!prepare_world_actor_schedule(s, {}, missing).state,
+                  "non-actor consumers mandatory, cannot turn full actor route into fake complete "
+                  "world");
+            auto failed = a;
+            failed.other = [](const Owner &o, const WorldScheduleCall &call,
+                              const CombatInfluenceCandidate &)
+                -> std::optional<OwnedWorldScheduleStep<Owner>> {
+                if (call.stage == WorldScheduleStage::finalize)
+                    return {};
+                return OwnedWorldScheduleStep<Owner>{o};
+            };
+            if (private_owner)
+                failed.other_private = [](Owner &o, const WorldScheduleCall &call,
+                                          const CombatInfluenceCandidate &)
+                    -> std::optional<WorldScheduleDisposition> {
+                    if (call.stage == WorldScheduleStage::finalize) {
+                        o.script_entries.push_back(99);
+                        o.random.draw(100);
+                        return {};
+                    }
+                    return WorldScheduleDisposition::keep;
+                };
+            const auto late_failure = prepare_world_actor_schedule(s, {}, failed);
+            check(
+                !late_failure.state && !late_failure.audit && late_failure.decisions.empty() &&
+                    late_failure.controls.empty() && s.random.draws() == 0 &&
+                    s.script_entries.size() == 1000 &&
+                    s.common.world.ai.battle.actors.at({1}).state_counter == 1000,
+                "late finalize error rolls back common counters, domains and outer extra together");
+            missing = a;
+            missing.decision = {};
+            missing.decision_from_routes = {};
+            missing.other = {};
+            missing.other_private = {};
+            check(prepare_world_actor_schedule(s, {false}, missing).state.has_value(),
+                  "not-admitted round does not require domain consumers or advance anything");
+            auto appearance = fixture();
+            auto &world = appearance.common.world;
+            auto &monster = world.ai.battle.actors.at({1});
+            monster.kind = ActorKind::monster;
+            monster.control.state = 8;
+            monster.state_counter = 73;
+            monster.baseline = 17;
+            world.ai.human_order.clear();
+            world.ai.monster_order = {{1}};
+            world.ai.battle.monsters.emplace(0, MonsterBattleRecord{});
+            RewardMonsterDefinition definition;
+            definition.base_hp = 100;
+            world.ai.monster_growth.emplace(0, definition);
+            world.actors.at({1}).monster_mode = 2; // 明确存取状态夹具，不造原实时T2生成入口。
+            auto event_adapter = adapter(private_owner);
+            event_adapter.event = [](const Owner &current, int code) -> std::optional<Owner> {
+                auto next = current;
+                next.script_entries.push_back(code);
+                next.common.world.ai.battle.events.insert(code);
+                next.definition_state.at(0) = code;
+                check(next.random.draw(100).error == WorldRandomError::none,
+                      "event fixture consumes shared random at its actual route publication point");
+                return next;
+            };
+            const auto appeared = prepare_world_actor_schedule(appearance, {}, event_adapter);
+            check(appeared.state && appeared.state->script_entries == std::vector<int>{90} &&
+                      appeared.state->common.world.ai.retired_actors.at({1}).control.state == 17 &&
+                      appeared.state->common.world.ai.monster_order.empty() &&
+                      appeared.state->common.world.ai.battle.events.count(90) &&
+                      appeared.state->definition_state.at(0) == 90 &&
+                      appeared.decisions.front().state.human_definition_state.at(0) == 90 &&
+                      appeared.state->random.draws() == 1 &&
+                      appeared.decisions.front().state.random.draws() == 1,
+                  "source90 retains outer script with c17; unbound monster removed at real d tail");
+            event_adapter.other = failed.other;
+            event_adapter.other_private = failed.other_private;
+            check(!prepare_world_actor_schedule(appearance, {}, event_adapter).state &&
+                      appearance.script_entries.empty() &&
+                      appearance.common.world.ai.battle.actors.at({1}).control.state == 8,
+                  "lateL failure discards outer event side effects as well as current actors");
         }
-        // 保留首轮公开审计到千轮之后：c、v和最终共同世界必须仍各自保持原时点。
-        const auto &decision = first_round->decisions.front().state;
-        const auto &control = first_round->controls.front().state;
-        check(decision.world.ai.battle.actors.at({1}).state_counter == 0 &&
-                  decision.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1200 &&
-                  decision.world.map.cells.size() == 36 && decision.world.facilities.count(3) &&
-                  decision.human_definition_state.at(0) == 0 && decision.random.draws() == 0,
-              "retained decision audit contains full world and definition state before d/v");
-        check(control.world.ai.battle.actors.at({1}).state_counter == 1 &&
-                  control.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1199 &&
-                  control.world.map.cells.size() == 36 && control.world.facilities.count(3) &&
-                  control.human_definition_state.at(0) == 0 && control.random.draws() == 0,
-              "retained control audit contains full world after d/v independent of later rounds");
-        check(first_round->audit && first_round->audit->state.updates == 1 &&
-                  first_round->audit->state.world.ai.battle.actors.at({1}).state_counter == 1 &&
-                  first_round->audit->state.facility_order == std::vector<std::uint64_t>{3} &&
-                  first_round->state->common.updates == 1 && s.common.updates == 1000,
-              "first returned owner and final schedule audit remain complete after owner advances");
-        auto missing = a;
-        missing.other = {};
+        auto tail_source = fixture();
+        auto current_only = adapter(true);
+        current_only.read_routes = {};
+        current_only.write_routes = {};
+        current_only.decision = {};
+        int current_reads{};
+        int current_writes{};
+        const auto fresh_reader = current_only.read_current_routes;
+        const auto complete_writer = current_only.write_current_routes;
+        current_only.read_current_routes = [&](const Owner &o) {
+            ++current_reads;
+            return fresh_reader(o);
+        };
+        current_only.write_current_routes = [&](Owner &o, const WorldActorRoutesState &r) {
+            ++current_writes;
+            return complete_writer(o, r);
+        };
+        const auto current_round = prepare_world_actor_schedule(tail_source, {}, current_only);
         check(
-            !prepare_world_actor_schedule(s, {}, missing).state,
-            "non-actor consumers mandatory, cannot turn full actor route into fake complete world");
-        auto failed = a;
-        failed.other =
-            [](const Owner &o, const WorldScheduleCall &call,
-               const CombatInfluenceCandidate &) -> std::optional<OwnedWorldScheduleStep<Owner>> {
-            if (call.stage == WorldScheduleStage::finalize)
-                return {};
-            return OwnedWorldScheduleStep<Owner>{o};
+            current_round.state && current_round.audit && current_reads == 2 &&
+                current_writes == 2 && current_round.decisions.size() == 1 &&
+                current_round.controls.size() == 1 &&
+                current_round.decisions.front()
+                        .state.world.ai.battle.actors.at({1})
+                        .state_counter == 0 &&
+                current_round.controls.front().state.world.ai.battle.actors.at({1}).state_counter ==
+                    1,
+            "current-only hooks prepare once per c/v and publish complete independent audits at "
+            "each original point");
+        auto tail_refusal = adapter(true);
+        tail_refusal.tail_cache_private = [](Owner &o, CharacterId, const BattleActorRecord &) {
+            o.script_entries.push_back(74);
+            o.random.draw(100);
+            return false;
         };
-        check(!prepare_world_actor_schedule(s, {}, failed).state &&
-                  s.common.world.ai.battle.actors.at({1}).state_counter == 1000,
-              "late finalize error rolls back common counters, domains and outer extra together");
-        missing = a;
-        missing.decision = {};
-        missing.other = {};
-        check(prepare_world_actor_schedule(s, {false}, missing).state.has_value(),
-              "not-admitted round does not require domain consumers or advance anything");
-        auto appearance = fixture();
-        auto &world = appearance.common.world;
-        auto &monster = world.ai.battle.actors.at({1});
-        monster.kind = ActorKind::monster;
-        monster.control.state = 8;
-        monster.state_counter = 73;
-        monster.baseline = 17;
-        world.ai.human_order.clear();
-        world.ai.monster_order = {{1}};
-        world.ai.battle.monsters.emplace(0, MonsterBattleRecord{});
-        RewardMonsterDefinition definition;
-        definition.base_hp = 100;
-        world.ai.monster_growth.emplace(0, definition);
-        world.actors.at({1}).monster_mode = 2; // 明确存取状态夹具，不造原实时T2生成入口。
-        auto event_adapter = adapter();
-        event_adapter.event = [](const Owner &current, int code) -> std::optional<Owner> {
-            auto next = current;
-            next.script_entries.push_back(code);
-            next.common.world.ai.battle.events.insert(code);
-            return next;
+        const auto refused_tail = prepare_world_actor_schedule(tail_source, {}, tail_refusal);
+        check(refused_tail.error == WorldScheduleError::consumer_failed && !refused_tail.state &&
+                  !refused_tail.audit && refused_tail.decisions.empty() &&
+                  refused_tail.controls.empty() && refused_tail.failure &&
+                  refused_tail.failure->stage == WorldScheduleStage::actor_tail_cache &&
+                  tail_source.script_entries.empty() && tail_source.random.draws() == 0 &&
+                  tail_source.common.updates == 0 &&
+                  tail_source.common.world.ai.battle.actors.at({1}).state_counter == 0 &&
+                  tail_source.common.world.ai.battle.actors.at({1}).control.queue.front()[1] ==
+                      1200,
+              "private tail mutation and random consumption are discarded with all c/v audits on "
+              "refusal");
+        for (const bool fail_input : {false, true}) {
+            auto latest = adapter(true);
+            latest.read_routes = {};
+            latest.write_routes = {};
+            latest.decision = {}; // 完整新hook可独立提供资格；不能静默回退失败hook。
+            if (fail_input)
+                latest.decision_from_routes =
+                    [](const Owner &, const WorldActorRoutesState &,
+                       CharacterId) -> std::optional<WorldActorDecisionInput> { return {}; };
+            else
+                latest.write_current_routes = [](Owner &o, const WorldActorRoutesState &) {
+                    o.definition_state.at(0) = 74;
+                    o.random.draw(100);
+                    return false;
+                };
+            const auto rejected = prepare_world_actor_schedule(tail_source, {}, latest);
+            check(
+                rejected.error == WorldScheduleError::consumer_failed && !rejected.state &&
+                    !rejected.audit && rejected.decisions.empty() && rejected.controls.empty() &&
+                    tail_source.definition_state.at(0) == 0 && tail_source.random.draws() == 0 &&
+                    tail_source.common.updates == 0,
+                "reused decision input or complete writer refusal preserves whole-owner rollback");
+        }
+        auto exhausted_source = tail_source;
+        exhausted_source.random = WorldRandomStream::from_raw({});
+        auto exhausted_writer = adapter(true);
+        exhausted_writer.write_current_routes = [](Owner &o, const WorldActorRoutesState &) {
+            o.definition_state.at(0) = 74;
+            check(o.random.draw(100).error == WorldRandomError::exhausted,
+                  "complete writer observes exhausted shared random without inventing a ticket");
+            return false;
         };
-        const auto appeared = prepare_world_actor_schedule(appearance, {}, event_adapter);
-        check(appeared.state && appeared.state->script_entries == std::vector<int>{90} &&
-                  appeared.state->common.world.ai.retired_actors.at({1}).control.state == 17 &&
-                  appeared.state->common.world.ai.monster_order.empty() &&
-                  appeared.state->common.world.ai.battle.events.count(90),
-              "source90 retains outer script with c17; unbound monster removed at real d tail");
-        event_adapter.other = failed.other;
-        check(!prepare_world_actor_schedule(appearance, {}, event_adapter).state &&
-                  appearance.script_entries.empty() &&
-                  appearance.common.world.ai.battle.actors.at({1}).control.state == 8,
-              "lateL failure discards outer event side effects as well as current actors");
+        const auto exhausted = prepare_world_actor_schedule(exhausted_source, {}, exhausted_writer);
+        check(!exhausted.state && !exhausted.audit && exhausted.decisions.empty() &&
+                  exhausted.controls.empty() && exhausted_source.random.draws() == 0 &&
+                  exhausted_source.random.snapshot().tape_mode &&
+                  exhausted_source.definition_state.at(0) == 0 &&
+                  exhausted_source.common.updates == 0,
+              "full current-route writeback refusal preserves exhausted tape and independent "
+              "original owner");
         drop_created_by_control_runs_same_round();
         HitTrace hit_trace;
         hit_reaction_owner_trace(hit_trace);

@@ -1,9 +1,9 @@
 #pragma once
 
+#include "ark/simulation/ai/rules/world_schedule.hpp"
 #include "ark/simulation/combat/rules/object_commit.hpp"
 #include "ark/simulation/combat/rules/world_encounters.hpp"
 #include "ark/simulation/world/rules/world_random_consumers.hpp"
-#include "ark/simulation/ai/rules/world_schedule.hpp"
 
 namespace ark::simulation::rules {
 // 共同Owner调用点临时投影。objects.objects/events从common重建，不可作为第二个持久所有者。
@@ -69,6 +69,10 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
                                                  const WorldNonactorStageInput &input,
                                                  const CombatInfluenceCandidate &start_field,
                                                  const WorldNonactorConsumer &consumer);
+// Transfer a complete disposable projection only after the original owner validation.
+WorldNonactorResult prepare_world_nonactor_stage_consuming(
+    WorldNonactorScheduleState &&state, const WorldNonactorStageInput &input,
+    const CombatInfluenceCandidate &start_field, const WorldNonactorConsumer &consumer);
 template <class Owner> struct WorldNonactorScheduleAdapter {
     std::function<const WorldScheduleState &(const Owner &)> read_common;
     std::function<WorldScheduleState &(Owner &)> write_common;
@@ -85,23 +89,21 @@ template <class Owner> struct WorldNonactorScheduleAdapter {
     std::function<std::optional<OwnedWorldScheduleStep<Owner>>(
         const Owner &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>
         other;
+    // Optional explicit contract for the private path: common is already the
+    // current authoritative owner projection. The default path still overwrites
+    // potentially stale read_routes.common from read_common at the original point.
+    std::function<WorldNonactorScheduleState(const Owner &)> read_current_routes{};
 };
-// 直接用作WorldActorScheduleAdapter.other，或供prepare_owned_world_schedule消费非人物阶段。
+namespace world_nonactor_detail {
 template <class Owner>
-std::optional<OwnedWorldScheduleStep<Owner>>
-prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &call,
-                                   const CombatInfluenceCandidate &field,
-                                   const WorldNonactorScheduleAdapter<Owner> &adapter,
-                                   std::optional<WorldScheduleFailure> *failure = nullptr) {
-    if (call.stage == WorldScheduleStage::arrival_front ||
-        call.stage == WorldScheduleStage::popularity || call.stage == WorldScheduleStage::facility)
-        return adapter.other ? adapter.other(state, call, field) : std::nullopt;
-    if (!adapter.read_common || !adapter.write_common || !adapter.read_routes ||
-        !adapter.write_routes)
-        return {};
-    Owner next = state;
-    auto routes = adapter.read_routes(state);
-    routes.common = adapter.read_common(state);
+std::optional<WorldScheduleDisposition>
+consume(const Owner &state, Owner &next, const WorldScheduleCall &call,
+        const CombatInfluenceCandidate &field, const WorldNonactorScheduleAdapter<Owner> &adapter,
+        std::optional<WorldScheduleFailure> *failure, bool consuming) {
+    const bool current = consuming && static_cast<bool>(adapter.read_current_routes);
+    auto routes = current ? adapter.read_current_routes(state) : adapter.read_routes(state);
+    if (!current)
+        routes.common = adapter.read_common(state);
     WorldNonactorStageInput input{call, {}, {}, adapter.primary_expression_table};
     if (call.stage == WorldScheduleStage::projectile && call.id && adapter.projectile)
         input.projectile = adapter.projectile(state, *call.id);
@@ -122,15 +124,63 @@ prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &
                 return {};
             return fields;
         };
-    const auto result = prepare_world_nonactor_stage(routes, input, field, consume);
+    auto result =
+        consuming ? prepare_world_nonactor_stage_consuming(std::move(routes), input, field, consume)
+                  : prepare_world_nonactor_stage(routes, input, field, consume);
     if (!result.candidate || !adapter.write_routes(next, result.candidate->state)) {
         if (failure)
             *failure = WorldScheduleFailure{call.stage, call.id,
-                                             result.candidate ? "nonactor.write" : "nonactor.stage",
-                                             static_cast<int>(result.error)};
+                                            result.candidate ? "nonactor.write" : "nonactor.stage",
+                                            static_cast<int>(result.error)};
         return {};
     }
-    adapter.write_common(next) = result.candidate->state.common;
-    return OwnedWorldScheduleStep<Owner>{std::move(next), result.candidate->disposition};
+    // The complete private result has been published; no audit aliases common.
+    adapter.write_common(next) = std::move(result.candidate->state.common);
+    return result.candidate->disposition;
+}
+} // namespace world_nonactor_detail
+
+// 直接用作WorldActorScheduleAdapter.other，或供prepare_owned_world_schedule消费非人物阶段。
+template <class Owner>
+std::optional<OwnedWorldScheduleStep<Owner>>
+prepare_owned_world_nonactor_stage(const Owner &state, const WorldScheduleCall &call,
+                                   const CombatInfluenceCandidate &field,
+                                   const WorldNonactorScheduleAdapter<Owner> &adapter,
+                                   std::optional<WorldScheduleFailure> *failure = nullptr) {
+    if (call.stage == WorldScheduleStage::arrival_front ||
+        call.stage == WorldScheduleStage::popularity || call.stage == WorldScheduleStage::facility)
+        return adapter.other ? adapter.other(state, call, field) : std::nullopt;
+    if (!adapter.read_common || !adapter.write_common || !adapter.read_routes ||
+        !adapter.write_routes)
+        return {};
+    Owner next = state;
+    const auto disposition =
+        world_nonactor_detail::consume(state, next, call, field, adapter, failure, false);
+    if (!disposition)
+        return {};
+    return OwnedWorldScheduleStep<Owner>{std::move(next), *disposition};
+}
+
+// Only a disposable independent frame owner may be borrowed. A late failure
+// can leave changes in this private value; the caller must discard its frame.
+template <class Owner>
+std::optional<WorldScheduleDisposition>
+prepare_private_world_nonactor_stage(Owner &state, const WorldScheduleCall &call,
+                                     const CombatInfluenceCandidate &field,
+                                     const WorldNonactorScheduleAdapter<Owner> &adapter,
+                                     std::optional<WorldScheduleFailure> *failure = nullptr) {
+    if (call.stage == WorldScheduleStage::arrival_front ||
+        call.stage == WorldScheduleStage::popularity ||
+        call.stage == WorldScheduleStage::facility) {
+        auto result = adapter.other ? adapter.other(state, call, field) : std::nullopt;
+        if (!result)
+            return {};
+        state = std::move(result->state);
+        return result->disposition;
+    }
+    if (!adapter.read_common || !adapter.write_common ||
+        (!adapter.read_routes && !adapter.read_current_routes) || !adapter.write_routes)
+        return {};
+    return world_nonactor_detail::consume(state, state, call, field, adapter, failure, true);
 }
 } // namespace ark::simulation::rules

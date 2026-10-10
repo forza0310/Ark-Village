@@ -142,15 +142,27 @@ WorldNonactorScheduleAdapter<Owner> adapter() {
     };
     return result;
 }
-void projectile_and_objects() {
+std::optional<OwnedWorldScheduleStep<Owner>>
+run_stage(bool consuming, const Owner &owner, const WorldScheduleCall &call,
+          const CombatInfluenceCandidate &field,
+          const WorldNonactorScheduleAdapter<Owner> &adapter) {
+    if (!consuming)
+        return prepare_owned_world_nonactor_stage(owner, call, field, adapter);
+    auto next = owner; // Model the outer frame's independent candidate boundary.
+    const auto disposition = prepare_private_world_nonactor_stage(next, call, field, adapter);
+    if (!disposition)
+        return {};
+    return OwnedWorldScheduleStep<Owner>{std::move(next), *disposition};
+}
+void projectile_and_objects(bool consuming) {
     auto owner = fixture({0});
     actor(owner, 1, ActorKind::human, {});
     actor(owner, 2, ActorKind::monster, {20, 0, 0});
     owner.common.world.ai.projectiles.emplace(
         9, *prepare_projectile(ProjectileKind::arrow, {1}, {2}, {}, {1000, 0, 0}, 0).candidate);
     owner.common.world.ai.projectile_order = {9};
-    const auto result = prepare_owned_world_nonactor_stage(
-        owner, {WorldScheduleStage::projectile, 9, {}}, field(), adapter());
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::projectile, 9, {}}, field(), adapter());
     check(result && result->disposition == WorldScheduleDisposition::already_removed &&
               result->state.common.world.ai.projectiles.empty() &&
               result->state.random.draws() == 1 &&
@@ -161,8 +173,7 @@ void projectile_and_objects() {
           "nonactor template leaves original HP and random private until whole owner success");
     auto missing = adapter();
     missing.request = {};
-    check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}},
-                                              field(), missing),
+    check(!run_stage(consuming, owner, {WorldScheduleStage::projectile, 9, {}}, field(), missing),
           "hit presentation cannot become unconsumed typed notification");
     auto lethal = owner;
     lethal.random = WorldRandomStream::from_raw({0, 99});
@@ -195,8 +206,8 @@ void projectile_and_objects() {
         globals.pending_completion = current.scripts.pending_completion;
         return WorldNonactorWriteback{globals, {}, current.scripts.popularity_queue};
     };
-    const auto boss = prepare_owned_world_nonactor_stage(
-        lethal, {WorldScheduleStage::projectile, 9, {}}, field(), event_adapter);
+    const auto boss = run_stage(consuming, lethal, {WorldScheduleStage::projectile, 9, {}}, field(),
+                                event_adapter);
     check(boss && scripts == 1 && boss->state.common.world.ai.pending_completion == 0 &&
               boss->state.common.popularity_queue == std::vector<std::array<int, 3>>{{10, 37, 1}} &&
               boss->state.common.world.ai.battle.defeated_definitions == std::vector<int>{7},
@@ -213,8 +224,8 @@ void projectile_and_objects() {
     object_owner.common.world.ai.battle.objects.emplace(8, object);
     object_owner.common.world.object_order = {8};
     object_owner.catalog.emplace(std::pair<int, int>{0, 4}, ObjectCatalogRecord{});
-    const auto updated = prepare_owned_world_nonactor_stage(
-        object_owner, {WorldScheduleStage::object, 8, {}}, field(), adapter());
+    const auto updated =
+        run_stage(consuming, object_owner, {WorldScheduleStage::object, 8, {}}, field(), adapter());
     check(updated && updated->state.item_rewards == 1 &&
               updated->state.catalog.at({0, 4}).inventory == 1 &&
               updated->state.common.world.ai.battle.objects.at(8).counter == 20 &&
@@ -224,14 +235,14 @@ void projectile_and_objects() {
           "ownership");
     object_owner = updated->state;
     object_owner.common.world.ai.battle.objects.at(8).counter = 59;
-    const auto removed = prepare_owned_world_nonactor_stage(
-        object_owner, {WorldScheduleStage::object, 8, {}}, field(), adapter());
+    const auto removed =
+        run_stage(consuming, object_owner, {WorldScheduleStage::object, 8, {}}, field(), adapter());
     check(removed && removed->disposition == WorldScheduleDisposition::already_removed &&
               removed->state.common.world.object_order.empty() &&
               removed->state.catalog.at({0, 4}).inventory == 1,
           "j60 removes exact bp identity once without re-grant");
 }
-void spell_contact_target() {
+void spell_contact_target(bool consuming) {
     auto owner = fixture();
     actor(owner, 1, ActorKind::human, {});
     actor(owner, 2, ActorKind::monster, {20, 0, 0});
@@ -249,30 +260,37 @@ void spell_contact_target() {
     owner.common.world.ai.next_projectile_id = 10;
     auto a = adapter();
     int requests{};
-    a.request = [&](Owner &current, const WorldNonactorRequest &r)
-        -> std::optional<WorldNonactorWriteback> {
+    a.request = [&](Owner &current,
+                    const WorldNonactorRequest &r) -> std::optional<WorldNonactorWriteback> {
         check(r.kind == WorldNonactorRequestKind::projectile_visual && r.visual == 4 &&
                   r.target == std::optional<CharacterId>{{2}} && r.source_position.has_value(),
               "spell visual binds actual collision target, not absent damage target or aim target");
         ++requests;
         auto effects = current.common.world.ai.contexts.at({2}).effects;
-        effects.display.push_back({16, 0, 4, 0, 0}); // Typed callback fixture, not a projection oracle.
-        return WorldNonactorWriteback{encounter_external_writeback(current.common.world.ai), {}, {}, effects};
+        effects.display.push_back(
+            {16, 0, 4, 0, 0}); // Typed callback fixture, not a projection oracle.
+        return WorldNonactorWriteback{
+            encounter_external_writeback(current.common.world.ai), {}, {}, effects};
     };
-    const auto result = prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}}, field(), a);
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::projectile, 9, {}}, field(), a);
     check(result && requests == 1 && result->state.common.world.ai.projectiles.size() == 1 &&
-              result->state.common.world.ai.projectiles.at(10).kind == ProjectileKind::delayed_damage &&
+              result->state.common.world.ai.projectiles.at(10).kind ==
+                  ProjectileKind::delayed_damage &&
               result->state.common.world.ai.projectiles.at(10).original_target == CharacterId{2} &&
               result->state.common.world.ai.battle.actors.at({2}).hp.target == 500 &&
               result->state.random.draws() == 0,
           "contact schedules delayed damage without early HP mutation or random draw");
-    a.request = [](Owner &, const WorldNonactorRequest &) -> std::optional<WorldNonactorWriteback> { return {}; };
-    check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::projectile, 9, {}}, field(), a) &&
-              owner.common.world.ai.projectiles.count(9) && owner.common.world.ai.projectiles.size() == 1 &&
+    a.request = [](Owner &, const WorldNonactorRequest &) -> std::optional<WorldNonactorWriteback> {
+        return {};
+    };
+    check(!run_stage(consuming, owner, {WorldScheduleStage::projectile, 9, {}}, field(), a) &&
+              owner.common.world.ai.projectiles.count(9) &&
+              owner.common.world.ai.projectiles.size() == 1 &&
               owner.common.world.ai.next_projectile_id == 10 && owner.random.draws() == 0,
           "rejected spell presentation rolls back removal and delayed spawn");
 }
-void synchronous_event() {
+void synchronous_event(bool consuming) {
     auto owner = fixture({999, 0, 0, 0});
     actor(owner, 1, ActorKind::human, {350, 0, 350});
     owner.common.world.ai.battle.actors.at({1}).attack_count = 2;
@@ -305,8 +323,8 @@ void synchronous_event() {
                   "expression cursor");
         return actual(current, request);
     };
-    const auto result = prepare_owned_world_nonactor_stage(
-        owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
     check(result && result->state.random.draws() == 4 && result->state.scripts.pages.size() == 2 &&
               result->state.scripts.event_calls.at(91) == 1 &&
               result->state.scripts.continuations.size() == 1 &&
@@ -331,17 +349,17 @@ void synchronous_event() {
                 [](Owner &, const WorldNonactorRequest &) -> std::optional<WorldNonactorWriteback> {
                 return {};
             };
-        check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::encounter, 7, {}},
-                                                  field(), failed) &&
-                  owner.random.draws() == 0 && owner.scripts.pages.size() == 1 &&
-                  owner.common.world.ai.battle.actors.at({1}).control.state == 1,
-              "late event consumer rejection discards state10/reward/field/script and raw cursor "
-              "together");
+        check(
+            !run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), failed) &&
+                owner.random.draws() == 0 && owner.scripts.pages.size() == 1 &&
+                owner.common.world.ai.battle.actors.at({1}).control.state == 1,
+            "late event consumer rejection discards state10/reward/field/script and raw cursor "
+            "together");
     }
     auto immediate = owner;
     immediate.programs.events.at(91).commands = {{22}, {6, 2}};
-    const auto committed = prepare_owned_world_nonactor_stage(
-        immediate, {WorldScheduleStage::encounter, 7, {}}, field(), adapter());
+    const auto committed =
+        run_stage(consuming, immediate, {WorldScheduleStage::encounter, 7, {}}, field(), adapter());
     check(committed && committed->state.common.world.ai.pending_completion == 0 &&
               committed->state.common.popularity_queue ==
                   std::vector<std::array<int, 3>>{{10, 37, 1}},
@@ -358,34 +376,34 @@ void synchronous_event() {
         fields->popularity_queue.reset();
         return fields;
     };
-    check(!prepare_owned_world_nonactor_stage(immediate, {WorldScheduleStage::encounter, 7, {}},
-                                              field(), undeclared),
+    check(!run_stage(consuming, immediate, {WorldScheduleStage::encounter, 7, {}}, field(),
+                     undeclared),
           "undeclared external common I mutation refuses rather than silently discard actual "
           "script effects");
 }
-void final_and_missing_domains() {
+void final_and_missing_domains(bool consuming) {
     auto owner = fixture({0});
     actor(owner, 1, ActorKind::human, {350, 0, 350});
     actor(owner, 2, ActorKind::monster, {355, 0, 355});
-    const auto result = prepare_owned_world_nonactor_stage(
-        owner, {WorldScheduleStage::finalize, {}, {}}, field(), adapter());
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::finalize, {}, {}}, field(), adapter());
     check(result && result->state.random.draws() == 1 &&
               result->state.common.world.ai.contexts.at({1}).cell == Position{3, 3} &&
               result->state.common.world.ai.battle.actors.at({1}).position.x != 350,
           "actual finalL shares draw2 and changes n only, never cached s/t/ax");
     auto exhausted = owner;
     exhausted.random = WorldRandomStream::from_raw({});
-    check(!prepare_owned_world_nonactor_stage(exhausted, {WorldScheduleStage::finalize, {}, {}},
-                                              field(), adapter()) &&
+    check(!run_stage(consuming, exhausted, {WorldScheduleStage::finalize, {}, {}}, field(),
+                     adapter()) &&
               exhausted.common.world.ai.battle.actors.at({1}).position.x == 350,
           "late final shared random failure leaves source world untouched");
     for (const auto stage :
          {WorldScheduleStage::arrival_front, WorldScheduleStage::popularity,
           WorldScheduleStage::facility, WorldScheduleStage::decision, WorldScheduleStage::control})
-        check(!prepare_owned_world_nonactor_stage(owner, {stage, {}, {}}, field(), adapter()),
+        check(!run_stage(consuming, owner, {stage, {}, {}}, field(), adapter()),
               "missing arrival/popularity/facility/person consumers never return default success");
 }
-void spawned_context_and_stale_projection() {
+void spawned_context_and_stale_projection(bool consuming) {
     auto owner = fixture({0, 0, 0, 0});
     actor(owner, 1, ActorKind::human, {350, 0, 350});
     // 怪物定义是源接口夹具，当前名单仍为空。
@@ -415,8 +433,8 @@ void spawned_context_and_stale_projection() {
         return stale;
     };
     owner.common.world.ai.external_actor_roots.insert({1});
-    const auto result = prepare_owned_world_nonactor_stage(
-        owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
     check(result && result->state.random.draws() == 4 &&
               result->state.common.world.ai.monster_order == std::vector<CharacterId>{{3}} &&
               result->state.common.world.actors.at({3}).destination == Position{} &&
@@ -427,14 +445,13 @@ void spawned_context_and_stale_projection() {
           "real task spawn shares cell/definition/offset draws, installs one empty constructor "
           "context and preserves current roots");
     owner.random = WorldRandomStream::from_raw({0, 0});
-    check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::encounter, 7, {}},
-                                              field(), routes) &&
+    check(!run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes) &&
               owner.random.draws() == 0 && owner.common.world.ai.monster_order.empty() &&
               owner.common.world.actors.size() == 1 && owner.common.world.ai.next_actor_id == 3,
           "late actual spawn offset exhaustion rolls back whole outer "
           "common/catalog/random/context allocation");
 }
-void typed_task_monster_unlock() {
+void typed_task_monster_unlock(bool consuming) {
     auto owner = fixture({999, 0, 999, 0, 0, 0, 0, 0});
     actor(owner, 1, ActorKind::human, {350, 0, 350});
     owner.common.world.ai.task_active = true;
@@ -458,8 +475,9 @@ void typed_task_monster_unlock() {
         return input;
     };
     bool observed_success{};
-    routes.request = [&](Owner &current, const WorldNonactorRequest &request)
-        -> std::optional<WorldNonactorWriteback> {
+    routes.request =
+        [&](Owner &current,
+            const WorldNonactorRequest &request) -> std::optional<WorldNonactorWriteback> {
         if (!request.encounter)
             return {};
         auto globals = encounter_external_writeback(current.common.world.ai);
@@ -471,36 +489,103 @@ void typed_task_monster_unlock() {
         }
         return WorldNonactorWriteback{globals, {}}; // 明确夹具：只验证typed source时序和边界。
     };
-    const auto result = prepare_owned_world_nonactor_stage(
-        owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
-    check(result && observed_success && result->state.common.world.ai.monster_growth.at(7).status == 1 &&
-        result->state.common.world.ai.monster_growth.at(7).newly_unlocked &&
-        result->state.common.world.ai.monster_growth.at(7).growth == 9,
-        "typed task p/r survives nested core commit and is visible to next source clear request");
+    const auto result =
+        run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), routes);
+    check(result && observed_success &&
+              result->state.common.world.ai.monster_growth.at(7).status == 1 &&
+              result->state.common.world.ai.monster_growth.at(7).newly_unlocked &&
+              result->state.common.world.ai.monster_growth.at(7).growth == 9,
+          "typed task p/r survives nested core commit and is visible to next source clear request");
     check(owner.common.world.ai.monster_growth.at(7).status == 0 && owner.random.draws() == 0,
-        "successful private task candidate does not mutate original catalogue/random");
+          "successful private task candidate does not mutate original catalogue/random");
     auto invalid = routes;
-    invalid.request = [](Owner &current, const WorldNonactorRequest &request)
-        -> std::optional<WorldNonactorWriteback> {
+    invalid.request =
+        [](Owner &current,
+           const WorldNonactorRequest &request) -> std::optional<WorldNonactorWriteback> {
         auto globals = encounter_external_writeback(current.common.world.ai);
         if (request.encounter && request.encounter->kind == EncounterRequestKind::event)
             globals.monster_availability = std::map<int, std::array<int, 2>>{{7, {1, 1}}};
         return WorldNonactorWriteback{globals, {}};
     };
-    check(!prepare_owned_world_nonactor_stage(owner, {WorldScheduleStage::encounter, 7, {}},
-                                              field(), invalid) &&
-        owner.common.world.ai.monster_growth.at(7).status == 0 && owner.random.draws() == 0,
-        "event cannot forge task catalogue writeback; whole nested random/reward candidate rolls back");
+    check(!run_stage(consuming, owner, {WorldScheduleStage::encounter, 7, {}}, field(), invalid) &&
+              owner.common.world.ai.monster_growth.at(7).status == 0 && owner.random.draws() == 0,
+          "event cannot forge task catalogue writeback; whole nested random/reward candidate rolls "
+          "back");
+}
+void current_projection_and_diagnostics() {
+    auto owner = fixture();
+    auto routes = adapter();
+    const auto original_read = routes.read_routes;
+    int current_reads{}, stale_reads{};
+    routes.read_current_routes = [&](const Owner &source) {
+        ++current_reads;
+        return original_read(source);
+    };
+    routes.read_routes = [&](const Owner &source) {
+        ++stale_reads;
+        auto result = original_read(source);
+        result.common.world.map.cells.clear();
+        return result;
+    };
+    auto candidate = owner;
+    const auto disposition = prepare_private_world_nonactor_stage(
+        candidate, {WorldScheduleStage::finalize, {}, {}}, field(), routes);
+    check(disposition && current_reads == 1 && stale_reads == 0 &&
+              candidate.common.world.map.cells.size() == 36 &&
+              owner.common.world.map.cells.size() == 36,
+          "explicit current-route projection transfers complete world without using stale reader");
+    const auto copied = prepare_owned_world_nonactor_stage(
+        owner, {WorldScheduleStage::finalize, {}, {}}, field(), routes);
+    check(copied && current_reads == 1 && stale_reads == 1 &&
+              copied->state.common.world.map.cells.size() == 36,
+          "legacy owner path still replaces stale route common even with current hook installed");
+
+    for (const bool write_failure : {false, true}) {
+        auto failing = adapter();
+        WorldScheduleCall call{WorldScheduleStage::finalize, {}, {}};
+        if (write_failure)
+            failing.write_routes = [](Owner &, const WorldNonactorScheduleState &) {
+                return false;
+            };
+        else
+            call.id = 99;
+        std::optional<WorldScheduleFailure> old_failure, new_failure;
+        const auto old =
+            prepare_owned_world_nonactor_stage(owner, call, field(), failing, &old_failure);
+        auto scratch = owner;
+        const auto next =
+            prepare_private_world_nonactor_stage(scratch, call, field(), failing, &new_failure);
+        check(!old && !next && old_failure && new_failure &&
+                  old_failure->stage == new_failure->stage && old_failure->id == new_failure->id &&
+                  old_failure->layer == new_failure->layer &&
+                  old_failure->error == new_failure->error,
+              "private nonactor keeps original stage/write failure diagnostic and refusal");
+    }
+    auto invalid = original_read(owner);
+    invalid.common.world.map.cells.clear();
+    const auto refused = prepare_world_nonactor_stage_consuming(
+        std::move(invalid), {{WorldScheduleStage::finalize, {}, {}}, {}, {}, {}}, field(), {});
+    check(!refused.candidate && refused.error == WorldNonactorError::invalid_owner &&
+              invalid.common.surface.size() == 36,
+          "invalid schedule owner rejects before transferring remaining projection storage");
 }
 } // namespace
 int main() {
     try {
-        projectile_and_objects();
-        spell_contact_target();
-        synchronous_event();
-        final_and_missing_domains();
-        spawned_context_and_stale_projection();
-        typed_task_monster_unlock();
+        current_projection_and_diagnostics();
+        for (const bool consuming : {false, true}) {
+            try {
+                projectile_and_objects(consuming);
+                spell_contact_target(consuming);
+                synchronous_event(consuming);
+                final_and_missing_domains(consuming);
+                spawned_context_and_stale_projection(consuming);
+                typed_task_monster_unlock(consuming);
+            } catch (const std::exception &e) {
+                throw std::runtime_error(
+                    std::string(consuming ? "private nonactor: " : "owned nonactor: ") + e.what());
+            }
+        }
         std::cout << "world_nonactor_schedule: " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception &error) {

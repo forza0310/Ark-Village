@@ -14,6 +14,14 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
+WorldArrivalsResult run_arrivals(bool consuming, const WorldArrivalsState &source,
+                                 const WorldScriptCatalog &catalog,
+                                 const WorldArrivalCreationConsumer &consumer = {}) {
+    if (!consuming)
+        return prepare_world_arrivals(source, catalog, consumer);
+    auto disposable = source;
+    return prepare_world_arrivals_consuming(std::move(disposable), catalog, consumer);
+}
 std::string read(const std::filesystem::path &path) {
     std::ifstream stream(path, std::ios::binary);
     if (!stream)
@@ -67,7 +75,7 @@ WorldArrivalCreationConsumer create_fixture() {
         return WorldArrivalCreation{std::move(n), id};
     };
 }
-void gates(const WorldScriptCatalog &catalog) {
+void gates(bool consuming, const WorldScriptCatalog &catalog) {
     for (int delay : {-1, 0, 1, 2})
         for (int follow : {0, 1, 2})
             for (int counter : {-1, 0, 1, 2}) {
@@ -76,7 +84,7 @@ void gates(const WorldScriptCatalog &catalog) {
                 s.camera_delay = delay;
                 s.camera_follow = follow;
                 s.arrival_counter = counter;
-                const auto r = prepare_world_arrivals(s, catalog, create_fixture());
+                const auto r = run_arrivals(consuming, s, catalog, create_fixture());
                 const bool due = counter <= 1;
                 const bool fast = delay > 1 || follow == 1;
                 check(r.candidate && r.candidate->due == due &&
@@ -97,12 +105,12 @@ void gates(const WorldScriptCatalog &catalog) {
         s.hard_limit = 2;
         s.camera_delay = delay;
         s.arrival_counter = 1;
-        const auto r = prepare_world_arrivals(s, catalog, create_fixture());
+        const auto r = run_arrivals(consuming, s, catalog, create_fixture());
         check(r.candidate && r.candidate->due == (delay > 0) &&
                   r.candidate->state.random.draws() == (delay > 0 ? 3u : 0u),
               "old positive camera bypasses Y even if new delay0, but still checks aa");
         s.hard_limit = 1;
-        const auto blocked = prepare_world_arrivals(s, catalog);
+        const auto blocked = run_arrivals(consuming, s, catalog);
         check(blocked.candidate && !blocked.candidate->due &&
                   blocked.candidate->state.arrival_counter == 1 &&
                   blocked.candidate->state.camera_delay == (delay > 0 ? delay - 1 : delay),
@@ -111,28 +119,39 @@ void gates(const WorldScriptCatalog &catalog) {
     auto s = fixture({});
     s.arrival_counter = 420;
     for (int i = 0; i < 419; ++i) {
-        auto r = prepare_world_arrivals(s, catalog);
+        auto r = run_arrivals(consuming, s, catalog);
         check(r.candidate && !r.candidate->due && r.candidate->state.random.draws() == 0,
               "real new-game420 gate does not consume before last update");
         s = r.candidate->state;
     }
     check(s.arrival_counter == 1, "420th admitted arrival update becomes due");
 }
-void candidates(const WorldScriptCatalog &catalog) {
+void candidates(bool consuming, const WorldScriptCatalog &catalog) {
     auto s = fixture({0, 0, 1});
     mark_seen(s, 89);
-    auto r = prepare_world_arrivals(s, catalog, create_fixture());
+    auto r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->sorted_candidates == std::vector<int>({3, 1, 2, 0}) &&
               r.candidate->top_candidates == std::vector<int>({3, 1}) &&
               r.candidate->selected_definition == 3 &&
               r.candidate->random_bounds == std::vector<int>({150, 2, 2}),
           "reverse inner swap preserves source nonstable top order, consumes bound1 too");
+    check(r.candidate->state.definitions.size() == 4 &&
+              r.candidate->state.spawn_cells == s.spawn_cells &&
+              r.candidate->state.finish.dungeon.world.ai.battle.actors.size() == 1 &&
+              r.candidate->state.finish.dungeon.world.actors.size() == 1 &&
+              r.candidate->state.finish.dungeon.world.ai.contexts.size() == 1,
+          "arrival candidate retains complete definitions, spawn order and created actor domains");
+    r.candidate->state.definitions.front().priority = 99;
+    r.candidate->state.scripts.village_name = "candidate";
+    check(s.definitions.front().priority == 1 && s.scripts.village_name == "FIXTURE" &&
+              s.finish.dungeon.world.ai.battle.actors.empty(),
+          "arrival candidate storage remains independent of source catalog/scripts/actors");
     s.random = WorldRandomStream::from_raw({0, 1, 0});
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 1, "tie ticket1 reads swapped order");
     s.definitions[3].presence = 0;
     add_actor(s, 1, 9, {1}, {0, 0});
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->sorted_candidates == std::vector<int>({0, 2}) &&
               r.candidate->selected_definition == 2 &&
               r.candidate->state.finish.dungeon.world.ai.battle.actors.at(*r.candidate->created)
@@ -140,18 +159,18 @@ void candidates(const WorldScriptCatalog &catalog) {
           "presence0 excluded, existing definition excluded, UID first hole independently0");
     s.definitions[0].presence = -3;
     s.definitions[2].presence = 0;
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 0 &&
               r.candidate->random_bounds == std::vector<int>({150, 1, 2}),
           "negative nonzero presence admitted; single top candidate still draws bound1");
     s.definitions[0].presence = 0;
     s.random = WorldRandomStream::from_raw({149});
-    r = prepare_world_arrivals(s, catalog);
+    r = run_arrivals(consuming, s, catalog);
     check(r.candidate && r.candidate->due && !r.candidate->created &&
               r.candidate->state.arrival_counter == 249 && r.candidate->state.random.draws() == 1,
           "empty pool resets B/consumes reset, no creation callback needed");
 }
-void first_and_debug(const WorldScriptCatalog &catalog) {
+void first_and_debug(bool consuming, const WorldScriptCatalog &catalog) {
     for (int mode : {0, 1, 2, 3}) {
         auto s = fixture({0, 1, 0, 1});
         s.definitions[0].presence = 0;
@@ -159,7 +178,7 @@ void first_and_debug(const WorldScriptCatalog &catalog) {
         s.definitions[2].flags = 8;
         s.debug_mode = mode;
         s.debug_definitions = {{{2}, {3}}};
-        const auto r = prepare_world_arrivals(s, catalog, create_fixture());
+        const auto r = run_arrivals(consuming, s, catalog, create_fixture());
         check(r.candidate && r.candidate->created && r.candidate->selected_definition == 0 &&
                   r.candidate->executed_events == std::vector<int>({89}) &&
                   r.candidate->state.random.draws() == (mode == 1 || mode == 2 ? 4u : 3u),
@@ -177,7 +196,7 @@ void first_and_debug(const WorldScriptCatalog &catalog) {
     add_actor(s, 0, 0, {1}, {0, 0});
     s.definitions[0].flags = 8;
     s.definitions[0].job_history = {false, true};
-    auto r = prepare_world_arrivals(s, catalog, create_fixture());
+    auto r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 0 &&
               r.candidate->state.finish.dungeon.world.ai.human_order.size() == 2 &&
               r.candidate->state.scripts.selected_actor == 1 &&
@@ -196,12 +215,12 @@ void first_and_debug(const WorldScriptCatalog &catalog) {
     s.debug_mode = 1;
     s.debug_definitions[0] = {0};
     s.random = WorldRandomStream::from_raw({0, 0, 0, 0});
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 0 &&
               r.candidate->executed_events.empty(),
           "debug may create duplicate definition, seen218 prevents repeat");
     s = fixture({0, 1, 1}); // first but no flag8: retain ordinary chosen1。
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 1 && r.candidate->first,
           "first scan exhausted keeps previously selected instead of -1");
     s = fixture({0, 0, 0});
@@ -209,7 +228,7 @@ void first_and_debug(const WorldScriptCatalog &catalog) {
     s.debug_mode = 2;
     s.debug_definitions[1] = {2};
     s.random = WorldRandomStream::from_raw({0, 0, 0, 0});
-    r = prepare_world_arrivals(s, catalog, create_fixture());
+    r = run_arrivals(consuming, s, catalog, create_fixture());
     check(r.candidate && r.candidate->selected_definition == 2, "debug2 uses ai not ah");
     s = fixture({0, 0, 0});
     const auto refreshed = [](const auto &owner,
@@ -220,17 +239,17 @@ void first_and_debug(const WorldScriptCatalog &catalog) {
                 d.job_history = {true};
         return made;
     };
-    r = prepare_world_arrivals(s, catalog, refreshed);
+    r = run_arrivals(consuming, s, catalog, refreshed);
     check(r.candidate && r.candidate->executed_events == std::vector<int>({89, 218}),
           "218 reads job history after actual equipment-derived refresh, not before creation");
 }
-void failures(const WorldScriptCatalog &catalog) {
+void failures(bool consuming, const WorldScriptCatalog &catalog) {
     auto s = fixture({0, 0, 0});
-    check(prepare_world_arrivals(s, catalog).error == WorldArrivalsError::missing_consumer,
+    check(run_arrivals(consuming, s, catalog).error == WorldArrivalsError::missing_consumer,
           "no real creation consumer rejects success");
     for (std::vector<int> tape : {std::vector<int>{}, {0}, {0, 0}}) {
         s.random = WorldRandomStream::from_raw(tape);
-        check(prepare_world_arrivals(s, catalog, create_fixture()).error ==
+        check(run_arrivals(consuming, s, catalog, create_fixture()).error ==
                       WorldArrivalsError::random_failed &&
                   s.random.draws() == 0,
               "each missing actual random boundary fails without committing partial B");
@@ -238,30 +257,30 @@ void failures(const WorldScriptCatalog &catalog) {
     s = fixture({0, 0, 0});
     const auto failed_consumer =
         [](const auto &, const auto &) -> std::optional<WorldArrivalCreation> { return {}; };
-    check(prepare_world_arrivals(s, catalog, failed_consumer).error ==
+    check(run_arrivals(consuming, s, catalog, failed_consumer).error ==
                   WorldArrivalsError::consumer_failed &&
               s.arrival_counter == 0 && s.random.draws() == 0,
           "late creation failure rolls back all candidate counters/random");
     auto missing = catalog;
     missing.events.erase(89);
-    check(prepare_world_arrivals(s, missing, create_fixture()).error ==
+    check(run_arrivals(consuming, s, missing, create_fixture()).error ==
                   WorldArrivalsError::script_failed &&
               s.scripts.pages.empty() && s.finish.dungeon.world.ai.human_order.empty(),
           "actual89 missing after creating actor rolls back actor/page/counters");
     s.definitions[3].job_history = {true};
     missing = catalog;
     missing.events.erase(218);
-    check(prepare_world_arrivals(s, missing, create_fixture()).error ==
+    check(run_arrivals(consuming, s, missing, create_fixture()).error ==
                   WorldArrivalsError::script_failed &&
               s.scripts.pages.empty(),
           "actual218 failure after actual89 is atomic");
     s.spawn_cells.clear();
-    check(prepare_world_arrivals(s, catalog, create_fixture()).error ==
+    check(run_arrivals(consuming, s, catalog, create_fixture()).error ==
               WorldArrivalsError::random_failed,
           "empty spawn bound0 explicit error, no invented origin");
     s = fixture({0, 0, 0});
     s.debug_mode = 1;
-    check(prepare_world_arrivals(s, catalog, create_fixture()).error ==
+    check(run_arrivals(consuming, s, catalog, create_fixture()).error ==
               WorldArrivalsError::random_failed,
           "empty debug pool bound0 consumes only candidate random then fails");
     auto forged = [](const auto &s, const auto &input) -> std::optional<WorldArrivalCreation> {
@@ -271,25 +290,34 @@ void failures(const WorldScriptCatalog &catalog) {
         return r;
     };
     s = fixture({0, 0, 0});
-    check(prepare_world_arrivals(s, catalog, forged).error == WorldArrivalsError::consumer_failed,
+    check(run_arrivals(consuming, s, catalog, forged).error == WorldArrivalsError::consumer_failed,
           "consumer must use real first freeUID");
     auto bad = s;
     bad.definitions[1].identity = 0;
-    check(prepare_world_arrivals(bad, catalog).error == WorldArrivalsError::invalid_owner,
+    check(run_arrivals(consuming, bad, catalog).error == WorldArrivalsError::invalid_owner,
           "duplicate source identities rejected");
     bad = s;
     bad.finish.event_calls[89] = 1;
-    check(prepare_world_arrivals(bad, catalog).error == WorldArrivalsError::invalid_owner,
+    check(run_arrivals(consuming, bad, catalog).error == WorldArrivalsError::invalid_owner,
           "split script seen ownership rejected");
+    if (consuming) {
+        const auto invalid = prepare_world_arrivals_consuming(std::move(bad), catalog);
+        check(!invalid.candidate && invalid.error == WorldArrivalsError::invalid_owner &&
+                  bad.definitions.size() == 4 && bad.finish.event_calls.count(89) &&
+                  bad.spawn_cells.size() == 2 && bad.random.draws() == 0,
+              "invalid split script owner rejects before consuming projection storage or random");
+    }
 }
 } // namespace
 int main() {
     try {
         const auto scripts = catalog();
-        gates(scripts);
-        candidates(scripts);
-        first_and_debug(scripts);
-        failures(scripts);
+        for (const bool consuming : {false, true}) {
+            gates(consuming, scripts);
+            candidates(consuming, scripts);
+            first_and_debug(consuming, scripts);
+            failures(consuming, scripts);
+        }
         std::cout << "world_arrivals: " << checks << " checks passed\n";
         return 0;
     } catch (const std::exception &e) {

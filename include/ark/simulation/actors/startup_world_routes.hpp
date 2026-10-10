@@ -29,8 +29,21 @@ struct StartupWorldRouteFacts {
 std::optional<ref::WorldActorDecisionInput>
 prepare_startup_world_decision_input(const ref::WorldActorRoutesState &routes,
                                      ref::CharacterId actor, const StartupWorldRouteFacts &facts);
+// Runtime-only shape: retains the full builder's validation/order but stores
+// only inputs read by the current c branch. The public full builder stays an oracle.
+std::optional<ref::WorldActorDecisionInput>
+prepare_startup_world_decision_input_for_state(const ref::WorldActorRoutesState &routes,
+                                               ref::CharacterId actor,
+                                               const StartupWorldRouteFacts &facts);
 std::optional<ref::WorldActorCommandInput>
 prepare_startup_world_command_input(const ref::WorldActorRoutesState &routes,
                                     ref::CharacterId actor, const ref::LegacyActorControl &command,
                                     const StartupWorldRouteFacts &facts);
+// Runtime-only command shape: validates all equipment keys in the original order,
+// retaining equipment only for the actual shop command/exit consumer.
+std::optional<ref::WorldActorCommandInput>
+prepare_startup_world_command_input_for_command(const ref::WorldActorRoutesState &routes,
+                                                ref::CharacterId actor,
+                                                const ref::LegacyActorControl &command,
+                                                const StartupWorldRouteFacts &facts);
 } // namespace ark::simulation

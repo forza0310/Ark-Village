@@ -1,14 +1,14 @@
 #pragma once
 
 #include "ark/simulation/ai/rules/world_actor_schedule.hpp"
+#include "ark/simulation/ai/rules/world_nonactor_schedule.hpp"
+#include "ark/simulation/facilities/rules/world_facility_update.hpp"
+#include "ark/simulation/tasks/rules/world_task_creation.hpp"
 #include "ark/simulation/village/rules/world_calendar_maintenance.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
-#include "ark/simulation/facilities/rules/world_facility_update.hpp"
 #include "ark/simulation/village/rules/world_month_report.hpp"
-#include "ark/simulation/ai/rules/world_nonactor_schedule.hpp"
 #include "ark/simulation/village/rules/world_popularity.hpp"
 #include "ark/simulation/world/rules/world_scene.hpp"
-#include "ark/simulation/tasks/rules/world_task_creation.hpp"
 #include "ark/simulation/world/rules/world_world_entry.hpp"
 
 #include <stdexcept>
@@ -20,6 +20,13 @@ template <class Owner, class Projection> struct WorldRuntimeProjection {
     std::function<Projection(const Owner &)> read;
     std::function<bool(Owner &, const Projection &)> write;
     explicit operator bool() const { return read && write; }
+};
+
+// A specialized ordinary facility step may borrow only the frame-private Owner.
+// nullopt requests the full consumer; written=false preserves its failure diagnostic.
+struct WorldRuntimeFacilityStep {
+    WorldFacilityUpdateError error{WorldFacilityUpdateError::none};
+    bool written{};
 };
 
 template <class Owner> struct OwnedWorldRuntimeCreation {
@@ -57,6 +64,7 @@ template <class Owner> struct WorldRuntimeAdapter {
     std::function<std::optional<Owner>(const Owner &, const WorldScheduleEffects &)> prefix_effects;
     // 住宅、探索crew/phase2必须在当前私有Owner同步消费，不仅保存ID。
     std::function<std::optional<Owner>(const Owner &, const WorldFacilityUpdateRequest &)> facility;
+    std::function<std::optional<WorldRuntimeFacilityStep>(Owner &, std::uint64_t)> facility_private;
     std::function<std::optional<Owner>(const Owner &, const CalendarMaintenanceRequest &)>
         calendar_request;
     std::function<std::optional<Owner>(const Owner &)> endgame_checkpoint;
@@ -67,6 +75,15 @@ template <class Owner> struct WorldRuntimeAdapter {
     WorldRuntimeCalendarConsumer<Owner> calendar_other;
     std::function<std::optional<OwnedWorldSceneStep<Owner>>(const Owner &, const WorldSceneCall &)>
         scene_other;
+    // Paired internal access to the scene embedded in a disposable Owner.
+    std::function<const WorldSceneState &(const Owner &)> scene_borrow_read{};
+    std::function<WorldSceneState &(Owner &)> scene_borrow_write{};
+    std::function<bool(Owner &)> before_common_private{};
+    std::function<std::optional<WorldSceneDisposition>(Owner &)> normal_conditions_private{};
+    std::function<std::optional<WorldSceneDisposition>(Owner &, const WorldSceneCall &)>
+        scene_other_private{};
+    // Synchronous arrival consumer for a disposable frame Owner only.
+    std::function<bool(Owner &)> arrival_private{};
 };
 
 namespace world_runtime_detail {
@@ -227,9 +244,9 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
             });
         if (!result.candidate || !adapter.facilities.write(next, result.candidate->state)) {
             if (failure)
-                *failure = WorldScheduleFailure{call.stage, call.id,
-                                                 result.candidate ? "facility.write" : "facility.update",
-                                                 static_cast<int>(result.error)};
+                *failure = WorldScheduleFailure{
+                    call.stage, call.id, result.candidate ? "facility.write" : "facility.update",
+                    static_cast<int>(result.error)};
             return {};
         }
         adapter.write_random(next) = result.candidate->state.random;
@@ -261,6 +278,76 @@ prepare_owned_world_runtime_domain(const Owner &state, const WorldScheduleCall &
     return prepare_owned_world_nonactor_stage(state, call, field, nonactors, failure);
 }
 
+// The scheduler owns next independently of the input and drops it on any failure.
+// Specialized stages avoid whole-Owner copies; cross-domain stages retain the value consumer.
+template <class Owner>
+std::optional<WorldScheduleDisposition>
+prepare_private_world_runtime_domain(Owner &next, const WorldScheduleCall &call,
+                                     const CombatInfluenceCandidate &field,
+                                     const WorldRuntimeAdapter<Owner> &adapter,
+                                     std::optional<WorldScheduleFailure> *failure = nullptr) {
+    if (call.stage == WorldScheduleStage::arrival_front && adapter.arrival_private) {
+        if (!adapter.arrival_private(next))
+            return {};
+        return WorldScheduleDisposition::keep;
+    }
+    if (call.stage == WorldScheduleStage::facility && adapter.facility_private) {
+        if (!call.id || !adapter.facilities || !adapter.read_random || !adapter.write_random)
+            return {};
+        const auto step = adapter.facility_private(next, *call.id);
+        if (step) {
+            if (!step->written) {
+                if (failure)
+                    *failure = WorldScheduleFailure{call.stage, call.id,
+                                                    step->error == WorldFacilityUpdateError::none
+                                                        ? "facility.write"
+                                                        : "facility.update",
+                                                    static_cast<int>(step->error)};
+                return {};
+            }
+            return WorldScheduleDisposition::keep;
+        }
+    }
+    if (call.stage != WorldScheduleStage::arrival_front &&
+        call.stage != WorldScheduleStage::popularity &&
+        call.stage != WorldScheduleStage::prefix_effects &&
+        call.stage != WorldScheduleStage::facility) {
+        auto nonactors = adapter.nonactors;
+        nonactors.other = {};
+        if (!adapter.read_random || !adapter.write_random ||
+            (!nonactors.read_routes && !nonactors.read_current_routes) || !nonactors.write_routes)
+            return {};
+        const auto read_routes = nonactors.read_routes;
+        const auto read_current_routes = nonactors.read_current_routes;
+        const auto write_routes = nonactors.write_routes;
+        if (read_routes)
+            nonactors.read_routes = [&](const Owner &owner) {
+                auto routes = read_routes(owner);
+                routes.random = adapter.read_random(owner);
+                return routes;
+            };
+        if (read_current_routes)
+            nonactors.read_current_routes = [&](const Owner &owner) {
+                auto routes = read_current_routes(owner);
+                routes.random = adapter.read_random(owner);
+                return routes;
+            };
+        nonactors.write_routes = [&](Owner &owner, const WorldNonactorScheduleState &routes) {
+            if (!write_routes(owner, routes))
+                return false;
+            adapter.write_random(owner) = routes.random;
+            return true;
+        };
+        return prepare_private_world_nonactor_stage(next, call, field, nonactors, failure);
+    }
+    auto step = prepare_owned_world_runtime_domain(next, call, field, adapter, failure);
+    if (!step)
+        return {};
+    const auto disposition = step->disposition;
+    next = std::move(step->state);
+    return disposition;
+}
+
 template <class Owner> struct WorldRuntimeResult {
     WorldSceneError error{WorldSceneError::none};
     WorldScheduleError world_error{WorldScheduleError::none};
@@ -279,7 +366,9 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
     const Owner &state, const WorldSceneInput &input, const WorldRuntimeAdapter<Owner> &adapter,
     const WorldRuntimeCalendarConsumer<Owner> &calendar_other) {
     WorldRuntimeResult<Owner> output;
-    if (!adapter.scene || !adapter.scripts) {
+    if (!adapter.scene || !adapter.scripts ||
+        static_cast<bool>(adapter.scene_borrow_read) !=
+            static_cast<bool>(adapter.scene_borrow_write)) {
         output.error = WorldSceneError::missing_consumer;
         return output;
     }
@@ -289,40 +378,62 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
         if (!adapter.scene.write(owner, value))
             throw std::runtime_error("共同场景投影写回失败");
     };
-    scene.consume = [&](const Owner &current,
-                        const WorldSceneCall &call) -> std::optional<OwnedWorldSceneStep<Owner>> {
+    const auto calendar_at = [&](const Owner &owner) {
+        return adapter.scene_borrow_read ? adapter.scene_borrow_read(owner).calendar
+                                         : adapter.scene.read(owner).calendar;
+    };
+    const auto consume_scene =
+        [&](const Owner &current, Owner &next,
+            const WorldSceneCall &call) -> std::optional<WorldSceneDisposition> {
         // 只读委托自身返回私有Owner；未参与写回的分支不先复制再丢弃整个世界。
         if (call.stage == WorldSceneStage::calendar_call) {
             if (!call.calendar_stage)
                 return {};
-            const auto date = adapter.scene.read(current).calendar;
+            const auto date = calendar_at(current);
             auto calendar = prepare_owned_world_runtime_calendar_with_consumer(
                 current, date, *call.calendar_stage, adapter, calendar_other);
-            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{std::move(*calendar)}}
-                            : std::nullopt;
+            if (!calendar)
+                return {};
+            next = std::move(*calendar);
+            return WorldSceneDisposition::continue_round;
         }
         if (call.stage != WorldSceneStage::normal_condition_scripts &&
             call.stage != WorldSceneStage::normal_delayed_scripts &&
             call.stage != WorldSceneStage::normal_world &&
-            call.stage != WorldSceneStage::focus_world)
-            return adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
-        Owner next = current;
+            call.stage != WorldSceneStage::focus_world) {
+            if (adapter.scene_borrow_read && adapter.scene_other_private) {
+                return adapter.scene_other_private(next, call);
+            }
+            auto step = adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
+            if (!step)
+                return {};
+            const auto disposition = step->disposition;
+            next = std::move(step->state);
+            return disposition;
+        }
         if (call.stage == WorldSceneStage::normal_condition_scripts ||
             call.stage == WorldSceneStage::normal_delayed_scripts) {
             if (call.stage == WorldSceneStage::normal_condition_scripts) {
                 if (!adapter.normal_conditions)
                     return {};
-                auto conditions = adapter.normal_conditions(next);
-                if (!conditions)
-                    return {};
-                if (conditions->disposition != WorldSceneDisposition::continue_round)
-                    return conditions;
-                next = std::move(conditions->state);
+                if (adapter.scene_borrow_read && adapter.normal_conditions_private) {
+                    const auto disposition = adapter.normal_conditions_private(next);
+                    if (!disposition || *disposition != WorldSceneDisposition::continue_round)
+                        return disposition;
+                } else {
+                    auto conditions = adapter.normal_conditions(next);
+                    if (!conditions)
+                        return {};
+                    const auto disposition = conditions->disposition;
+                    next = std::move(conditions->state);
+                    if (disposition != WorldSceneDisposition::continue_round)
+                        return disposition;
+                }
             }
             auto scripts = adapter.scripts.read(next);
             WorldScriptResult result;
             if (call.stage == WorldSceneStage::normal_condition_scripts) {
-                const auto date = adapter.scene.read(next).calendar;
+                const auto date = calendar_at(next);
                 result = prepare_world_script_automatic(
                     adapter.catalog, scripts, {date.year, date.month, date.subperiod, true});
             } else
@@ -332,7 +443,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
             const auto disposition = result.candidate->entered_program
                                          ? WorldSceneDisposition::skip_round
                                          : WorldSceneDisposition::continue_round;
-            return OwnedWorldSceneStep<Owner>{std::move(next), disposition};
+            return disposition;
         }
         if (call.stage == WorldSceneStage::normal_world ||
             call.stage == WorldSceneStage::focus_world) {
@@ -342,7 +453,7 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
             auto initial_entry = adapter.entry.read(next);
             initial_entry.random = adapter.read_random(next);
             const auto entry = prepare_world_world_entry(
-                initial_entry, adapter.scene.read(next).calendar, adapter.catalog,
+                initial_entry, calendar_at(next), adapter.catalog,
                 [&](const WorldWorldEntryState &current, const EncounterCreationInput &creation)
                     -> std::optional<WorldWorldEntryCreation> {
                     if (!adapter.entry.write(next, current) || !adapter.create_encounter)
@@ -367,16 +478,23 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
                 prepare_world_month_report(adapter.report.read(next), *report_input);
             if (!report.candidate || !adapter.report.write(next, report.candidate->state))
                 return {};
-            auto prefix = adapter.before_common(next);
-            if (!prefix)
-                return {};
-            next = std::move(*prefix);
+            if (adapter.scene_borrow_read && adapter.before_common_private) {
+                if (!adapter.before_common_private(next))
+                    return {};
+            } else {
+                auto prefix = adapter.before_common(next);
+                if (!prefix)
+                    return {};
+                next = std::move(*prefix);
+            }
             auto actors = adapter.actors;
             if (!adapter.read_random || !adapter.write_random || !actors.read_routes ||
                 !actors.write_routes)
                 return {};
             const auto read_routes = actors.read_routes;
             const auto write_routes = actors.write_routes;
+            const auto read_current_routes = actors.read_current_routes;
+            const auto write_current_routes = actors.write_current_routes;
             actors.read_routes = [&](const Owner &owner) {
                 auto routes = read_routes(owner);
                 routes.random = adapter.read_random(owner);
@@ -388,6 +506,22 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
                 adapter.write_random(owner) = routes.random;
                 return true;
             };
+            // The optional current projections obey the same single-random-owner
+            // boundary as the legacy hooks, even if an adapter returns stale data.
+            if (read_current_routes)
+                actors.read_current_routes = [&](const Owner &owner) {
+                    auto routes = read_current_routes(owner);
+                    routes.random = adapter.read_random(owner);
+                    return routes;
+                };
+            if (write_current_routes)
+                actors.write_current_routes = [&](Owner &owner,
+                                                  const WorldActorRoutesState &routes) {
+                    if (!write_current_routes(owner, routes))
+                        return false;
+                    adapter.write_random(owner) = routes.random;
+                    return true;
+                };
             actors.event = [&](const Owner &owner, int code) -> std::optional<Owner> {
                 auto consumed = owner;
                 const auto script = prepare_world_script(
@@ -400,21 +534,59 @@ WorldRuntimeResult<Owner> prepare_owned_world_runtime_with_calendar(
             actors.other = [&](const Owner &owner, const WorldScheduleCall &request,
                                const CombatInfluenceCandidate &field) {
                 return prepare_owned_world_runtime_domain(owner, request, field, adapter,
-                                                           &domain_failure);
+                                                          &domain_failure);
             };
+            if (adapter.facility_private)
+                actors.other_private = [&](Owner &owner, const WorldScheduleCall &request,
+                                           const CombatInfluenceCandidate &field) {
+                    return prepare_private_world_runtime_domain(owner, request, field, adapter,
+                                                                &domain_failure);
+                };
             auto world = prepare_world_actor_schedule(next, {true}, actors);
             if (!world.state) {
                 output.world_error = world.error;
-                output.failure = domain_failure ? std::move(domain_failure) : std::move(world.failure);
+                output.failure =
+                    domain_failure ? std::move(domain_failure) : std::move(world.failure);
                 return {};
             }
             if (world.audit)
                 output.worlds.push_back(std::move(*world.audit));
             // 完整审计已移交，state为独立成员；局部结果随后销毁，不影响调用者快照。
-            return OwnedWorldSceneStep<Owner>{std::move(*world.state)};
+            next = std::move(*world.state);
+            return WorldSceneDisposition::continue_round;
         }
         return {};
     };
+    scene.consume = [&](const Owner &current,
+                        const WorldSceneCall &call) -> std::optional<OwnedWorldSceneStep<Owner>> {
+        // Preserve direct forwarding (including its rejection before Owner copies).
+        if (call.stage == WorldSceneStage::calendar_call) {
+            if (!call.calendar_stage)
+                return {};
+            const auto date = calendar_at(current);
+            auto calendar = prepare_owned_world_runtime_calendar_with_consumer(
+                current, date, *call.calendar_stage, adapter, calendar_other);
+            return calendar ? std::optional<OwnedWorldSceneStep<Owner>>{{std::move(*calendar)}}
+                            : std::nullopt;
+        }
+        if (call.stage != WorldSceneStage::normal_condition_scripts &&
+            call.stage != WorldSceneStage::normal_delayed_scripts &&
+            call.stage != WorldSceneStage::normal_world &&
+            call.stage != WorldSceneStage::focus_world)
+            return adapter.scene_other ? adapter.scene_other(current, call) : std::nullopt;
+        Owner next = current;
+        const auto disposition = consume_scene(current, next, call);
+        if (!disposition)
+            return {};
+        return OwnedWorldSceneStep<Owner>{std::move(next), *disposition};
+    };
+    if (adapter.scene_borrow_read && adapter.scene_borrow_write) {
+        scene.borrow_read = adapter.scene_borrow_read;
+        scene.borrow_write = adapter.scene_borrow_write;
+        scene.consume_private = [&](Owner &current, const WorldSceneCall &call) {
+            return consume_scene(current, current, call);
+        };
+    }
     try {
         auto result = prepare_owned_world_scene(state, input, scene);
         output.error = result.error;

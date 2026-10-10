@@ -38,8 +38,12 @@ bool permits_branch_return(WorldSceneStage stage, WorldSceneDisposition disposit
     }
 }
 } // namespace
-WorldSceneResult prepare_world_scene(const WorldSceneState &state, const WorldSceneInput &input,
-                                     const WorldSceneConsumer &consumer) {
+namespace {
+using WorldSceneKernelConsumer =
+    std::function<std::optional<WorldSceneStep>(WorldSceneState &, const WorldSceneCall &)>;
+WorldSceneResult prepare_world_scene_kernel(const WorldSceneState &state,
+                                            const WorldSceneInput &input,
+                                            const WorldSceneKernelConsumer &consumer) {
     if (!valid_scene(state) || input.calendar_advance < 0)
         return {WorldSceneError::invalid_state, {}, WorldCalendarError::none};
     WorldSceneCandidate candidate{state, 0, 0, {}};
@@ -166,6 +170,26 @@ WorldSceneResult prepare_world_scene(const WorldSceneState &state, const WorldSc
     }
     candidate.state.processing_phase = -1;
     return {WorldSceneError::none, std::move(candidate), WorldCalendarError::none};
+}
+} // namespace
+WorldSceneResult prepare_world_scene(const WorldSceneState &state, const WorldSceneInput &input,
+                                     const WorldSceneConsumer &consumer) {
+    WorldSceneKernelConsumer invoke;
+    if (consumer)
+        invoke = [&](WorldSceneState &current, const WorldSceneCall &call) {
+            return consumer(current, call);
+        };
+    return prepare_world_scene_kernel(state, input, invoke);
+}
+WorldSceneResult prepare_world_scene_private(const WorldSceneState &state,
+                                             const WorldSceneInput &input,
+                                             const WorldScenePrivateConsumer &consumer) {
+    WorldSceneKernelConsumer invoke;
+    if (consumer)
+        invoke = [&](WorldSceneState &current, const WorldSceneCall &call) {
+            return consumer(std::move(current), call);
+        };
+    return prepare_world_scene_kernel(state, input, invoke);
 }
 WorldRenderGateResult prepare_world_render_gate(const WorldRenderClock &clock,
                                                 std::int64_t observed_now_ms) {

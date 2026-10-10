@@ -15,6 +15,13 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
+WorldPathResult run_path(bool consuming, const RescueWorldState &source,
+                         const WorldPathInput &input) {
+    if (!consuming)
+        return prepare_world_path_c(source, input);
+    auto disposable = source;
+    return prepare_world_path_c_consuming(std::move(disposable), input);
+}
 RescueWorldState fixture() {
     RescueWorldState s;
     s.map = {8, 8, std::vector<LegacyMapCell>(64)};
@@ -559,7 +566,7 @@ RescueWorldState inn_journey() {
         throw std::runtime_error("real inn departure fixture failed");
     return d.candidate->state;
 }
-void retained_instance_destination() {
+void retained_instance_destination(bool consuming) {
     for (const int state : {3, 4}) {
         auto s = fixture();
         s.human_spending[1] = 0;
@@ -590,7 +597,7 @@ void retained_instance_destination() {
               "instance identity");
         auto arriving = departure.candidate->state;
         arriving.ai.contexts.at({1}).cell = {2, 2}; // 原d投影已到达的调用点。
-        const auto arrival = prepare_world_path_c(arriving, path_input(arriving));
+        const auto arrival = run_path(consuming, arriving, path_input(arriving));
         check(arrival.candidate && arrival.candidate->arrived &&
                   arrival.candidate->state.actors.at({1}).binding->instance_id == BuildingId{22} &&
                   arrival.candidate->state.facilities.at(22).sales == 17 &&
@@ -602,10 +609,10 @@ void retained_instance_destination() {
     }
 }
 
-void path_real_journey_and_entry() {
+void path_real_journey_and_entry(bool consuming) {
     auto s = inn_journey();
     const auto old = s;
-    auto r = prepare_world_path_c(s, path_input(s));
+    auto r = run_path(consuming, s, path_input(s));
     check(r.candidate && r.candidate->moved && !r.candidate->arrived &&
               std::abs(r.candidate->state.ai.battle.actors.at({1}).position.x - 156.7F) < .001F &&
               r.candidate->state.ai.contexts.at({1}).cell == Position{1, 1} &&
@@ -616,16 +623,21 @@ void path_real_journey_and_entry() {
     check(std::abs(r.candidate->state.actors.at({1}).horizontal_velocity.x - 6.7F) < .001F &&
               old.ai.battle.actors.at({1}).position.x == 150,
           "P preserves source snapshot and writes actual r.x/z rather than visual interpolation");
+    check(r.candidate->state.map.cells.size() == s.map.cells.size() &&
+              r.candidate->state.facilities.size() == s.facilities.size() &&
+              r.candidate->state.ai.battle.actors.size() == s.ai.battle.actors.size() &&
+              r.candidate->state.actors.at({1}).journey,
+          "path candidate retains complete map/facilities/actors and actual route");
     auto blocked = s;
     blocked.ai.battle.actors.at({1}).control.flags |= 64U;
-    r = prepare_world_path_c(blocked, path_input(blocked));
+    r = run_path(consuming, blocked, path_input(blocked));
     check(r.candidate && !r.candidate->moved && !r.candidate->advanced_waypoint,
           "bit64 prevents route movement without consuming a waypoint");
     // 调度的d尾部才刷新s；此夹具只组合该投影，不冒充完整d计数/物理验收。
     bool reached = false;
     for (int tick = 0; tick < 80 && !reached; ++tick) {
         const auto before = s;
-        r = prepare_world_path_c(s, path_input(s));
+        r = run_path(consuming, s, path_input(s));
         check(r.candidate.has_value(), "each original route c step prepares successfully");
         reached = r.candidate->arrived;
         s = r.candidate->state;
@@ -647,12 +659,12 @@ void path_real_journey_and_entry() {
                   std::vector<LegacyActorControl>{{6, 1}, {21}, {6, 32}, {1, 200, 0}, {24}} &&
               s.facilities.at(22).occupants.empty(),
           "P only arranges inn use; occupancy starts later at actual control21");
-    check(!prepare_world_path_c(s, path_input(s)).candidate,
+    check(!run_path(consuming, s, path_input(s)).candidate,
           "state14 cannot replay P to charge a second arrival");
     auto helper = inn_journey();
     helper.ai.contexts.at({1}).cell = {2, 2};
     helper.ai.battle.actors.at({1}).control.flags |= 256U;
-    r = prepare_world_path_c(helper, path_input(helper));
+    r = run_path(consuming, helper, path_input(helper));
     check(
         r.candidate && !(r.candidate->state.ai.battle.actors.at({1}).control.flags & 256U) &&
             r.candidate->state.facilities.at(22).sales == 0 &&
@@ -663,46 +675,46 @@ void path_real_journey_and_entry() {
     auto carrying = inn_journey();
     carrying.ai.contexts.at({1}).cell = {2, 2};
     carrying.ai.battle.actors.at({1}).object_slot = 7;
-    const auto carried_arrival = prepare_world_path_c(carrying, path_input(carrying));
+    const auto carried_arrival = run_path(consuming, carrying, path_input(carrying));
     check(carried_arrival.candidate && carried_arrival.candidate->arrived &&
               carried_arrival.candidate->state.ai.battle.actors.at({1}).object_slot == 7 &&
               carried_arrival.candidate->state.facilities.at(22).sales == 17,
           "carried item stays in N at ordinary inn arrival; only shops deliver with extra5000");
     empty.actors.at({1}).journey->route.steps.clear();
     empty.ai.contexts.at({1}).cell = {2, 2};
-    r = prepare_world_path_c(empty, path_input(empty));
+    r = run_path(consuming, empty, path_input(empty));
     check(r.candidate && !r.candidate->arrived && r.candidate->state.facilities.at(22).sales == 0,
           "G empty never enters even when old s already equals O");
 }
-void path_waypoint_identity_and_ground() {
+void path_waypoint_identity_and_ground(bool consuming) {
     auto s = inn_journey();
     auto &ctx = s.actors.at({1});
     auto &a = s.ai.battle.actors.at({1});
     const auto first = ctx.journey->route.steps.front();
     a.position = {first.x * 100.0F + 50, 0, first.y * 100.0F + 50};
     a.control.flags |= 64U;
-    auto r = prepare_world_path_c(s, path_input(s));
+    auto r = run_path(consuming, s, path_input(s));
     check(r.candidate && r.candidate->advanced_waypoint && !r.candidate->moved &&
               r.candidate->state.actors.at({1}).waypoint == 1,
           "blocked actor can consume overlap of a nonfinal G point exactly as b(world) returns");
     ctx.waypoint = ctx.journey->route.steps.size() - 1;
     a.position = {250, 0, 250};
-    r = prepare_world_path_c(s, path_input(s));
+    r = run_path(consuming, s, path_input(s));
     check(r.candidate && !r.candidate->advanced_waypoint && !r.candidate->arrived &&
               r.candidate->state.actors.at({1}).waypoint == ctx.waypoint,
           "last G point remains until old s reaches O, never increments H out of bounds");
     a.position = {250, 0, 290};
     s.map.cells[18].legacy_state = 6;
     auto i = path_input(s);
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(!r.candidate && r.error == WorldPathError::missing_fact,
           "entry6 waypoint rejects missing current definition direction rather than assume q");
     i.definition_directions[22] = 0;
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(r.candidate && !r.candidate->moved,
           "definition direction0 offsets entry6 point to z290 while bit64 retains n");
     i.definition_directions[22] = 4;
-    check(!prepare_world_path_c(s, i).candidate, "direction outside0..3 is rejected");
+    check(!run_path(consuming, s, i).candidate, "direction outside0..3 is rejected");
     for (const auto state : {6, 7})
         for (int direction = 0; direction < 4; ++direction) {
             s.map.cells[18].legacy_state = state;
@@ -717,13 +729,13 @@ void path_waypoint_identity_and_ground() {
             ctx.horizontal_velocity = {2, 3};
             i = path_input(s);
             i.definition_directions[22] = direction;
-            r = prepare_world_path_c(s, i);
+            r = run_path(consuming, s, i);
             check(r.candidate && !r.candidate->moved && !r.candidate->advanced_waypoint &&
                       r.candidate->state.actors.at({1}).horizontal_velocity.x == 2 &&
                       r.candidate->state.actors.at({1}).horizontal_velocity.z == 3,
                   "state6/7 all four definition entrances retain last H and old r under64");
             a.control.flags &= ~64U;
-            r = prepare_world_path_c(s, i);
+            r = run_path(consuming, s, i);
             check(r.candidate && !r.candidate->moved &&
                       r.candidate->state.actors.at({1}).horizontal_velocity.x == 2 &&
                       r.candidate->state.actors.at({1}).horizontal_velocity.z == 3,
@@ -732,7 +744,7 @@ void path_waypoint_identity_and_ground() {
     auto stale = inn_journey();
     stale.ai.contexts.at({1}).cell = {2, 2};
     stale.map.cells[18].facility->instance_id = {999};
-    r = prepare_world_path_c(stale, path_input(stale));
+    r = run_path(consuming, stale, path_input(stale));
     check(r.candidate && r.candidate->cleaned_up && !r.candidate->arrived &&
               r.candidate->state.ai.battle.actors.at({1}).control.state == 19 &&
               r.candidate->state.actors.at({1}).journey &&
@@ -753,12 +765,12 @@ void path_waypoint_identity_and_ground() {
     ground.map.cells[42].facility = ground.map.cells[18].facility;
     auto g = path_input(ground);
     g.exits.reset();
-    r = prepare_world_path_c(ground, g);
+    r = run_path(consuming, ground, g);
     check(!r.candidate && r.error == WorldPathError::missing_fact &&
               ground.actors.at({1}).unbound_route,
           "missing real Map.f rolls back O route clearing rather than infer a nonexit");
     g.exits = std::vector<Position>{};
-    r = prepare_world_path_c(ground, g);
+    r = run_path(consuming, ground, g);
     check(r.candidate && r.candidate->arrived && !r.candidate->scheduled_exit &&
               r.candidate->state.ai.battle.actors.at({1}).control.state == 5 &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue ==
@@ -768,11 +780,11 @@ void path_waypoint_identity_and_ground() {
           "unbound O2=-1 still enters ground c5/10,0 after a building appears at that tile");
     auto outside = inn_journey();
     outside.ai.contexts.at({1}).cell = {-1, 2};
-    r = prepare_world_path_c(outside, path_input(outside));
+    r = run_path(consuming, outside, path_input(outside));
     check(r.candidate && !r.candidate->moved && r.candidate->state.actors.at({1}).journey,
           "old s outside map returns false before route movement and preserves G");
 }
-void path_exit_and_monster() {
+void path_exit_and_monster(bool consuming) {
     auto s = fixture();
     auto d = prepare_world_departure(s, input(s, 5));
     auto departure = input(s, 5);
@@ -783,7 +795,7 @@ void path_exit_and_monster() {
     s.ai.contexts.at({1}).cell = *d.candidate->goal;
     s.ai.battle.actors.at({1}).position = {50, 0, 450};
     s.ai.battle.actors.at({1}).control.queue = {{9}};
-    auto r = prepare_world_path_c(s, path_input(s));
+    auto r = run_path(consuming, s, path_input(s));
     check(r.candidate && r.candidate->scheduled_exit && !r.candidate->delete_instance &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue ==
                   std::vector<LegacyActorControl>{{9}, {0, 50, 400}, {26}} &&
@@ -806,7 +818,7 @@ void path_exit_and_monster() {
     monster.ai.battle.actors.at({1}).kind = ActorKind::monster;
     monster.ai.human_order.clear();
     monster.ai.monster_order = {{1}};
-    r = prepare_world_path_c(monster, path_input(monster));
+    r = run_path(consuming, monster, path_input(monster));
     check(r.candidate && r.candidate->scheduled_exit && !r.candidate->delete_instance &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue.back() ==
                   LegacyActorControl{26},
@@ -818,7 +830,7 @@ void path_exit_and_monster() {
     monster.ai.contexts.at({1}).cell = {2, 2};
     monster.facilities.at(22).category = 3;
     monster.ai.battle.actors.at({1}).control.queue = {{19, 1, 2, 3}};
-    r = prepare_world_path_c(monster, path_input(monster));
+    r = run_path(consuming, monster, path_input(monster));
     check(r.candidate && r.candidate->delete_instance && r.candidate->arrived &&
               r.candidate->path_returned_true &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue.empty() &&
@@ -829,7 +841,7 @@ void path_exit_and_monster() {
     monster.ai.battle.actors.at({1}).control.state = 17;
     for (const int mode : {1, 4}) {
         monster.actors.at({1}).monster_mode = mode;
-        r = prepare_world_path_c(monster, path_input(monster));
+        r = run_path(consuming, monster, path_input(monster));
         check(r.candidate && r.candidate->path_returned_true && !r.candidate->delete_instance &&
                   r.candidate->state.ai.battle.actors.at({1}).control.state == 17 &&
                   r.candidate->state.ai.monster_order == std::vector<CharacterId>{{1}},
@@ -837,7 +849,7 @@ void path_exit_and_monster() {
         auto travelling = monster;
         travelling.ai.contexts.at({1}).cell = {1, 1};
         travelling.ai.battle.actors.at({1}).position = {150, 0, 150};
-        r = prepare_world_path_c(travelling, path_input(travelling));
+        r = run_path(consuming, travelling, path_input(travelling));
         check(r.candidate && r.candidate->moved && !r.candidate->path_returned_true &&
                   !r.candidate->delete_instance &&
                   r.candidate->state.ai.battle.actors.at({1}).control.state == 17 &&
@@ -846,7 +858,7 @@ void path_exit_and_monster() {
     }
     monster.ai.battle.actors.at({1}).control.state = 0;
     monster.facilities.at(22).category = 2;
-    r = prepare_world_path_c(monster, path_input(monster));
+    r = run_path(consuming, monster, path_input(monster));
     check(r.candidate && !r.candidate->delete_instance &&
               r.candidate->state.ai.battle.actors.at({1}).control.state == 17 &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue ==
@@ -855,18 +867,18 @@ void path_exit_and_monster() {
     monster.facilities.at(22).category = 6;
     monster.facilities.at(22).detail = 3;
     auto i = path_input(monster);
-    r = prepare_world_path_c(monster, i);
+    r = run_path(consuming, monster, i);
     check(!r.candidate && monster.actors.at({1}).journey,
           "missing special h.e target rejects all arrival/route/counter changes atomically");
     i.use_world_target = {420, 260};
-    r = prepare_world_path_c(monster, i);
+    r = run_path(consuming, monster, i);
     check(r.candidate && r.candidate->ground_effect20 &&
               r.candidate->state.ai.battle.actors.at({1}).control.queue ==
                   std::vector<LegacyActorControl>{
                       {6, 1}, {0, 420, 260}, {1, 20, 0}, {7, 1}, {23}, {2, 15}},
           "monster6/3 arranges real special entry plan with effect20 and later launch23/state15");
 }
-void path_real_f_preemption() {
+void path_real_f_preemption(bool consuming) {
     auto s = inn_journey();
     s.ai.battle.actors.at({1}).state_counter = 5;
     s.ai.battle.actors.at({1}).legacy_id = 1;
@@ -879,12 +891,12 @@ void path_real_f_preemption() {
     s.ai.encounter_order = {9};
     auto i = path_input(s);
     i.facts.flags[9] = 2;
-    auto r = prepare_world_path_c(s, i);
+    auto r = run_path(consuming, s, i);
     check(!r.candidate && r.error == WorldPathError::missing_ticket &&
               !s.ai.battle.actors.at({1}).encounter && s.ai.battle.events.empty(),
           "real F matching event needs c18 boost draw, rolls back db binding when missing");
     i.boost_ticket = 0;
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(r.candidate && r.candidate->event_preempted && r.candidate->consumed_boost_ticket &&
               r.candidate->event116 && !r.candidate->moved &&
               r.candidate->state.ai.battle.actors.at({1}).encounter == 9 &&
@@ -895,12 +907,12 @@ void path_real_f_preemption() {
               r.candidate->state.ai.battle.actors.at({1}).state_counter == 0,
           "F precedes travel and commits db,c18,12-percent boost,event116 while preserving G");
     i.boost_ticket = 12;
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(r.candidate && r.candidate->consumed_boost_ticket && !r.candidate->event116 &&
               !(r.candidate->state.ai.battle.actors.at({1}).control.flags & 2048U),
           "F c18 strict12 boundary does not reuse o task's20-percent threshold");
     i.boost_ticket = 100;
-    check(prepare_world_path_c(s, i).error == WorldPathError::invalid_ticket,
+    check(run_path(consuming, s, i).error == WorldPathError::invalid_ticket,
           "invalid boost ticket does not commit matching-event db or replace m");
     auto arriving = s;
     arriving.ai.contexts.at({1}).cell = {2, 2};
@@ -908,7 +920,7 @@ void path_real_f_preemption() {
     i = path_input(arriving);
     i.facts.flags[18] = 2;
     i.boost_ticket = 99;
-    r = prepare_world_path_c(arriving, i);
+    r = run_path(consuming, arriving, i);
     check(r.candidate && r.candidate->event_preempted && !r.candidate->arrived &&
               r.candidate->state.facilities.at(22).sales == 0 &&
               r.candidate->state.actors.at({1}).journey,
@@ -917,7 +929,7 @@ void path_real_f_preemption() {
     suppressed.ai.battle.actors.at({1}).control.flags |= 2048U;
     i = path_input(suppressed);
     i.facts.flags[9] = 2;
-    r = prepare_world_path_c(suppressed, i);
+    r = run_path(consuming, suppressed, i);
     check(r.candidate && !r.candidate->consumed_boost_ticket,
           "already2048 F c18 does not require or consume a new boost ticket");
     auto other = s.ai.battle.actors.at({1});
@@ -930,17 +942,17 @@ void path_real_f_preemption() {
     i = path_input(s);
     i.facts.flags[9] = 2;
     i.boost_ticket = 99;
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(!r.candidate && r.error == WorldPathError::missing_ticket,
           "adjacent different legacyID must consume actual expression7 before c18");
     i.nearby_expression = WorldExpressionTicket{999, 1, 0};
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(r.candidate && r.candidate->consumed_expression && r.candidate->consumed_variant &&
               r.candidate->state.ai.contexts.at({1}).effects.display.front()[3] == 7,
           "F nearby expression7 probability1000 always requires actual platform variant");
     s.ai.contexts.at({1}).effects.display = {{24, 3, 0, 1, 0, 0}};
     i.nearby_expression = WorldExpressionTicket{999, 1, {}};
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(r.candidate && r.candidate->consumed_expression && !r.candidate->consumed_variant,
           "existing display24 suppresses F nearby variant only after real probability draw");
     auto task = inn_journey();
@@ -950,7 +962,7 @@ void path_real_f_preemption() {
     i = path_input(task);
     i.task = {true, 1, {1, 1}, {}};
     i.boost_ticket = 99;
-    r = prepare_world_path_c(task, i);
+    r = run_path(consuming, task, i);
     check(!r.candidate && r.error == WorldPathError::missing_domain,
           "task F cannot silently skip its actual creation attempt");
     int attempts = 0;
@@ -962,7 +974,7 @@ void path_real_f_preemption() {
         // 实际上方带碰到城界的拒绝，仍由原事件消费者完成创建尝试。
         return prepare_world_event_entry(ai, facts, {id, view, 3, 2, 4}).candidate;
     };
-    r = prepare_world_path_c(task, i);
+    r = run_path(consuming, task, i);
     check(r.candidate && attempts == 1 && r.candidate->attempted_task_creation &&
               r.candidate->event_preempted &&
               !r.candidate->state.ai.battle.actors.at({1}).encounter &&
@@ -977,8 +989,48 @@ void path_real_f_preemption() {
             next->state.human_order.clear();
         return next;
     };
-    check(prepare_world_path_c(task, i).error == WorldPathError::invalid_callback,
+    check(run_path(consuming, task, i).error == WorldPathError::invalid_callback,
           "task callback cannot delete or reorder actors within state0 P");
+    auto changed_neighbour = task;
+    changed_neighbour.ai.battle.actors.emplace(other.id, other);
+    changed_neighbour.ai.human_order.push_back(other.id);
+    changed_neighbour.ai.contexts.emplace(other.id, RewardActorContext{{1, 1}, true, {}, {}});
+    changed_neighbour.actors.emplace(other.id, RescueActorContext{});
+    auto neighbour_input = path_input(changed_neighbour);
+    neighbour_input.task = {true, 1, {1, 1}, {}};
+    neighbour_input.boost_ticket = 99;
+    neighbour_input.nearby_expression = WorldExpressionTicket{999, 1, 0};
+    neighbour_input.task_attempt =
+        [](const AiRewardState &ai, const WorldMapFacts &facts, CharacterId id,
+           const WorldEventTask &view) -> std::optional<WorldEventEntryCandidate> {
+        auto result = prepare_world_event_entry(ai, facts, {id, view, 3, 2, 4}).candidate;
+        if (result)
+            result->state.contexts.at({2}).cell = {7, 7};
+        return result;
+    };
+    const auto observed = run_path(consuming, changed_neighbour, neighbour_input);
+    check(observed.candidate && observed.candidate->event_preempted &&
+              observed.candidate->consumed_expression &&
+              observed.candidate->state.ai.contexts.at({2}).cell == Position{7, 7} &&
+              changed_neighbour.ai.contexts.at({2}).cell == Position{1, 1},
+          "P nearby scan retains old human cached cell after task callback changes candidate "
+          "neighbour");
+    auto invalid_roster = task;
+    invalid_roster.ai.human_order.push_back({999});
+    int failed_attempts{};
+    auto failure_input = path_input(invalid_roster);
+    failure_input.task = {true, 1, {1, 1}, {}};
+    failure_input.task_attempt =
+        [&](const AiRewardState &, const WorldMapFacts &, CharacterId,
+            const WorldEventTask &) -> std::optional<WorldEventEntryCandidate> {
+        ++failed_attempts;
+        return {};
+    };
+    const auto failed_before_scan = run_path(consuming, invalid_roster, failure_input);
+    check(!failed_before_scan.candidate && failed_attempts == 1 &&
+              failed_before_scan.error == WorldPathError::preparation_failed &&
+              invalid_roster.actors.at({1}).journey,
+          "old-roster snapshot does not reject before the original task-callback failure point");
     auto outside_task = task;
     outside_task.ai.contexts.at({1}).cell = {1, 4};
     outside_task.ai.contexts.at({1}).inside_town = false;
@@ -990,7 +1042,7 @@ void path_real_f_preemption() {
                         const WorldEventTask &view) -> std::optional<WorldEventEntryCandidate> {
         return prepare_world_event_entry(ai, facts, {id, view, 3, 2, 4}).candidate;
     };
-    r = prepare_world_path_c(outside_task, i);
+    r = run_path(consuming, outside_task, i);
     check(r.candidate && r.candidate->created_task_encounter == 1 &&
               r.candidate->task.encounter == 1 && r.candidate->music2 && r.candidate->notice24 &&
               (r.candidate->facts.flags[33] & 2U) &&
@@ -1018,13 +1070,13 @@ void path_real_f_preemption() {
     monster.ai.contexts.emplace(other.id, RewardActorContext{{1, 1}, true, {}, {}});
     monster.actors.emplace(other.id, RescueActorContext{});
     i = path_input(monster);
-    r = prepare_world_path_c(monster, i);
+    r = run_path(consuming, monster, i);
     check(r.candidate && r.candidate->event_preempted &&
               r.candidate->state.ai.battle.actors.at({1}).control.state == 1 &&
               !r.candidate->consumed_boost_ticket && r.candidate->state.actors.at({1}).journey,
           "monster real F uses current opponent side then c1, never human c18 or route motion");
 }
-void path_domain_callback_and_strict_failure() {
+void path_domain_callback_and_strict_failure(bool consuming) {
     auto s = inn_journey();
     s.ai.contexts.at({1}).cell = {2, 2};
     auto carried = s.ai.battle.actors.at({1});
@@ -1041,7 +1093,7 @@ void path_domain_callback_and_strict_failure() {
     s.ai.battle.actors.at({1}).object_slot = -2;
     s.ai.battle.actors.at({1}).rescue = carried.id;
     auto i = path_input(s);
-    auto r = prepare_world_path_c(s, i);
+    auto r = run_path(consuming, s, i);
     check(!r.candidate && r.error == WorldPathError::missing_domain && s.actors.at({1}).journey &&
               s.ai.battle.actors.at({1}).rescue == carried.id,
           "recursive rescue arrival requires explicit real consumer, not ordinary no-payment stub");
@@ -1058,7 +1110,7 @@ void path_domain_callback_and_strict_failure() {
             return {};
         return WorldPathFacilityCandidate{rescue.candidate->state, false};
     };
-    r = prepare_world_path_c(s, i);
+    r = run_path(consuming, s, i);
     check(
         r.candidate && calls == 1 && r.candidate->arrived &&
             !r.candidate->state.ai.battle.actors.at({1}).rescue &&
@@ -1073,14 +1125,14 @@ void path_domain_callback_and_strict_failure() {
            const WorldPathFacilityRequest &) -> std::optional<WorldPathFacilityCandidate> {
         return WorldPathFacilityCandidate{state, false};
     };
-    check(prepare_world_path_c(s, i).error == WorldPathError::invalid_callback,
+    check(run_path(consuming, s, i).error == WorldPathError::invalid_callback,
           "noop complex callback cannot falsely report original arrival J was committed");
     i.facility_consumer =
         [](const RescueWorldState &,
            const WorldPathFacilityRequest &) -> std::optional<WorldPathFacilityCandidate> {
         throw std::runtime_error("fixture failure");
     };
-    check(prepare_world_path_c(s, i).error == WorldPathError::invalid_callback &&
+    check(run_path(consuming, s, i).error == WorldPathError::invalid_callback &&
               s.actors.at({1}).journey && s.facilities.at(22).sales == 0,
           "domain callback exception rolls back route clearing and all financial/rescue state");
     for (const int mutation : {0, 1, 2}) {
@@ -1099,29 +1151,38 @@ void path_domain_callback_and_strict_failure() {
                 next.actors.at(request.actor).destination = Position{3, 3};
             return WorldPathFacilityCandidate{std::move(next), false};
         };
-        check(prepare_world_path_c(s, i).error == WorldPathError::invalid_callback &&
+        check(run_path(consuming, s, i).error == WorldPathError::invalid_callback &&
                   s.actors.at({1}).journey && s.facilities.at(22).sales == 0,
               "even real rescue candidate cannot alter P roster,self n or O identity");
     }
     auto invalid = inn_journey();
     auto facts = path_input(invalid);
     facts.facts.map.cells[0].legacy_state = 0;
-    check(prepare_world_path_c(invalid, facts).error == WorldPathError::invalid_input,
+    check(run_path(consuming, invalid, facts).error == WorldPathError::invalid_input,
           "F facts must describe same current map as owner, not a stale snapshot");
     invalid.actors.at({1}).unbound_route = invalid.actors.at({1}).journey->route;
-    check(!prepare_world_path_c(invalid, path_input(invalid)).candidate,
+    check(!run_path(consuming, invalid, path_input(invalid)).candidate,
           "simultaneous bound and unbound G authorities rejected");
     invalid = inn_journey();
     invalid.actors.at({1}).waypoint = invalid.actors.at({1}).journey->route.steps.size();
-    check(!prepare_world_path_c(invalid, path_input(invalid)).candidate,
+    check(!run_path(consuming, invalid, path_input(invalid)).candidate,
           "invalid H rejected instead of out-of-bounds route access");
     invalid = inn_journey();
     invalid.ai.contexts.at({1}).cell = {2, 2};
     invalid.human_spending.clear();
-    check(prepare_world_path_c(invalid, path_input(invalid)).error ==
-                  WorldPathError::missing_fact &&
+    check(run_path(consuming, invalid, path_input(invalid)).error == WorldPathError::missing_fact &&
               invalid.actors.at({1}).journey && invalid.facilities.at(22).sales == 0,
           "missing shared B2 cannot be filled with zero to manufacture ordinary arrival");
+    if (consuming) {
+        auto early = inn_journey();
+        auto early_input = path_input(early);
+        early_input.facts.map.cells.front().legacy_state = 99;
+        const auto refused = prepare_world_path_c_consuming(std::move(early), early_input);
+        check(!refused.candidate && refused.error == WorldPathError::invalid_input &&
+                  !early.map.cells.empty() && early.ai.battle.actors.count({1}) &&
+                  early.actors.at({1}).journey,
+              "path entry map rejection precedes storage transfer and baseline capture");
+    }
 }
 } // namespace
 int main() {
@@ -1133,12 +1194,19 @@ int main() {
         home_exit_and_routes();
         exterior_and_monster();
         fifo_departure_control();
-        retained_instance_destination();
-        path_real_journey_and_entry();
-        path_waypoint_identity_and_ground();
-        path_exit_and_monster();
-        path_real_f_preemption();
-        path_domain_callback_and_strict_failure();
+        for (const bool consuming : {false, true}) {
+            try {
+                retained_instance_destination(consuming);
+                path_real_journey_and_entry(consuming);
+                path_waypoint_identity_and_ground(consuming);
+                path_exit_and_monster(consuming);
+                path_real_f_preemption(consuming);
+                path_domain_callback_and_strict_failure(consuming);
+            } catch (const std::exception &e) {
+                throw std::runtime_error(
+                    std::string(consuming ? "consuming path: " : "const path: ") + e.what());
+            }
+        }
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

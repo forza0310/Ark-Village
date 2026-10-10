@@ -144,9 +144,13 @@ bool valid_world_schedule_owner(const WorldScheduleState &s) {
             return false;
     return true;
 }
-WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
-                                           const WorldScheduleInput &input,
-                                           const WorldScheduleConsumer &consumer) {
+namespace {
+// 调度、验证和审计只有一个实现；两个入口只决定回调接收const借用还是草稿所有权。
+using WorldScheduleKernelConsumer = std::function<std::optional<WorldScheduleStep>(
+    WorldScheduleState &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>;
+WorldScheduleResult prepare_world_schedule_kernel(const WorldScheduleState &s,
+                                                  const WorldScheduleInput &input,
+                                                  const WorldScheduleKernelConsumer &consumer) {
     std::optional<WorldScheduleFailure> failure;
     const auto fail = [&](WorldScheduleError error) -> WorldScheduleResult {
         return {error, {}, failure};
@@ -156,7 +160,7 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
     WorldScheduleCandidate c;
     c.state = s;
     if (!input.admitted)
-        return {WorldScheduleError::none, c};
+        return {WorldScheduleError::none, std::move(c)};
     if (!consumer)
         return fail(WorldScheduleError::missing_consumer);
     const auto influence = prepare_world_influence(s.world.ai, world_schedule_facts(s));
@@ -226,8 +230,8 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
             c.state.floating_notes.erase(c.state.floating_notes.begin() +
                                          static_cast<std::ptrdiff_t>(n));
     for (std::size_t n = c.state.popularity_queue.size(); n-- > 0;) {
-        auto &p = c.state.popularity_queue[n];
-        --p[0];
+        --c.state.popularity_queue[n][0];
+        const auto p = c.state.popularity_queue[n]; // invoke可转移共同草稿，不跨调用保留引用。
         if (p[0] > 0)
             continue;
         const auto queue = c.state.popularity_queue;
@@ -272,26 +276,28 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
             bool remove{};
             if (decision) {
                 const CharacterId actor{*visit.id};
-                const auto prefix = prepare_world_perception_prefix(
-                    c.state.world.ai, actor, world_schedule_facts(c.state),
-                    c.state.world.actors.at(actor).monster_mode);
+                const auto facts = world_schedule_facts(c.state);
+                const int mode = c.state.world.actors.at(actor).monster_mode;
+                auto prefix = prepare_world_perception_prefix_consuming(std::move(c.state.world.ai),
+                                                                        actor, facts, mode);
                 if (!prefix.candidate)
                     return reject(WorldScheduleError::common_segment_failed);
-                c.state.world.ai = prefix.candidate->state;
-                const auto references = prepare_world_reference_preemption(
-                    c.state.world.ai, actor, world_schedule_facts(c.state),
-                    c.state.rescue_available, c.state.world.actors.at(actor).definition_task_flag,
+                c.state.world.ai = std::move(prefix.candidate->state);
+                auto references = prepare_world_reference_preemption_consuming(
+                    std::move(c.state.world.ai), actor, facts, c.state.rescue_available,
+                    c.state.world.actors.at(actor).definition_task_flag,
                     c.state.world.object_order);
                 if (!references.candidate)
                     return reject(WorldScheduleError::common_segment_failed);
-                c.state.world.ai = references.candidate->state;
+                c.state.world.ai = std::move(references.candidate->state);
                 disposition = invoke({WorldScheduleStage::decision, visit.id, {}});
             } else if (execution) {
                 const CharacterId actor{*visit.id};
-                const auto prefix = prepare_world_execution_prefix(c.state.world.ai, actor);
+                auto prefix =
+                    prepare_world_execution_prefix_consuming(std::move(c.state.world.ai), actor);
                 if (!prefix.candidate)
                     return reject(WorldScheduleError::common_segment_failed);
-                c.state.world.ai = prefix.candidate->state;
+                c.state.world.ai = std::move(prefix.candidate->state);
                 c.effects.push_back(
                     {actor, prefix.candidate->sounds, prefix.candidate->growth_requests});
                 if (!prefix.candidate->sounds.empty() ||
@@ -315,10 +321,11 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                         tail_input.facing_after_projection = [&](const BattleActorRecord &value) {
                             return input.projected_facing(actor, value);
                         };
-                    const auto tail = prepare_world_actor_tail(c.state.world, tail_input);
+                    auto tail =
+                        prepare_world_actor_tail_consuming(std::move(c.state.world), tail_input);
                     if (!tail.candidate)
                         return reject(WorldScheduleError::common_segment_failed);
-                    c.state.world = tail.candidate->state;
+                    c.state.world = std::move(tail.candidate->state);
                     if (input.publish_actor_tail) {
                         WorldScheduleCall cache{WorldScheduleStage::actor_tail_cache, visit.id, {}};
                         cache.projected_actor = tail.candidate->projected_actor;
@@ -350,11 +357,11 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
                                                        *visit.id) != now[list].end();
             if (remove && (decision || execution)) {
                 if (*disposition == WorldScheduleDisposition::remove_requested) {
-                    const auto removed =
+                    auto removed =
                         prepare_world_actor_remove(c.state.world, {*visit.id}, execution);
                     if (!removed.candidate)
                         return reject(WorldScheduleError::invalid_mutation);
-                    c.state.world = removed.candidate->state;
+                    c.state.world = std::move(removed.candidate->state);
                 } else if (present || (execution && list == 0))
                     return reject(WorldScheduleError::invalid_mutation);
             } else if (remove &&
@@ -377,6 +384,29 @@ WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
         return fail(WorldScheduleError::invalid_mutation);
     c.visits = scheduled.candidate->visits;
     roots();
-    return {WorldScheduleError::none, c};
+    return {WorldScheduleError::none, std::move(c)};
+}
+} // namespace
+WorldScheduleResult prepare_world_schedule(const WorldScheduleState &s,
+                                           const WorldScheduleInput &input,
+                                           const WorldScheduleConsumer &consumer) {
+    WorldScheduleKernelConsumer invoke;
+    if (consumer)
+        invoke = [&](WorldScheduleState &current, const WorldScheduleCall &call,
+                     const CombatInfluenceCandidate &field) {
+            return consumer(current, call, field);
+        };
+    return prepare_world_schedule_kernel(s, input, invoke);
+}
+WorldScheduleResult prepare_world_schedule_private(const WorldScheduleState &s,
+                                                   const WorldScheduleInput &input,
+                                                   const WorldSchedulePrivateConsumer &consumer) {
+    WorldScheduleKernelConsumer invoke;
+    if (consumer)
+        invoke = [&](WorldScheduleState &current, const WorldScheduleCall &call,
+                     const CombatInfluenceCandidate &field) {
+            return consumer(std::move(current), call, field);
+        };
+    return prepare_world_schedule_kernel(s, input, invoke);
 }
 } // namespace ark::simulation::rules

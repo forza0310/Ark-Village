@@ -1,14 +1,15 @@
 #include "ark/simulation/world/startup_world_runtime.hpp"
+#include "../facilities/startup_world_facility_update_private.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/actors/startup_world_routes.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_editing.hpp"
-#include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
+#include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/facilities/startup_world_magic_pot.hpp"
-#include "ark/simulation/actors/startup_world_human.hpp"
-#include "ark/simulation/village/startup_world_information.hpp"
-#include "ark/simulation/actors/startup_world_routes.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/village/startup_world_information.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
 
@@ -52,8 +53,8 @@ bool coherent_items(const ref::WorldActorRoutesState &r) {
 // 共用同一遍历与拒绝：窄投影仍校验原完整routes隐含的活跃人物引用，
 // 只有完整私有world投影才通过consumer写任务旗标；不复制world来做只读检查。
 template <class World, class Consumer>
-bool visit_human_task_flags(World &world,
-                           const std::map<int, std::uint32_t> &flags, Consumer consume) {
+bool visit_human_task_flags(World &world, const std::map<int, std::uint32_t> &flags,
+                            Consumer consume) {
     for (const auto &actor : world.ai.battle.actors) {
         if (actor.second.kind != ref::ActorKind::human)
             continue;
@@ -259,10 +260,18 @@ const ref::WorldScriptCatalog &startup_world_runtime_catalog() {
     return catalogue;
 }
 
-ref::WorldActorRoutesState startup_world_runtime_routes(const State &s) {
+namespace {
+// A finish write replaces these domains outright. Construct the final projection
+// once, but retain the original owner's task-flag refusal before any write.
+ref::WorldActorRoutesState project_runtime_routes(const State &s,
+                                                  const ref::DungeonWorldState *finish = nullptr) {
     ref::WorldActorRoutesState r;
-    r.world = s.scene.world.world;
-    if (!project_human_task_flags(r.world, s.human_flags))
+    r.world = finish ? finish->world : s.scene.world.world;
+    const bool flags_valid =
+        finish ? visit_human_task_flags(s.scene.world.world, s.human_flags,
+                                        [](const ref::RescueActorContext &, bool) {})
+               : project_human_task_flags(r.world, s.human_flags);
+    if (!flags_valid)
         throw std::invalid_argument("共同人物缺原任务旗标投影");
     r.facts = ref::world_schedule_facts(s.scene.world);
     r.random = s.scene.random;
@@ -271,14 +280,18 @@ ref::WorldActorRoutesState startup_world_runtime_routes(const State &s) {
     r.shop_humans = s.shop_humans;
     r.shop_actors = s.shop_actors;
     r.items = s.items;
-    r.dungeon_facilities = s.dungeon_facilities;
-    r.dungeon_actors = s.dungeon_actors;
-    r.catalog = s.catalog;
-    r.shops = project_runtime_shops(s);
-    r.shop_order = s.shop_order;
-    r.item_rewards = s.item_rewards;
+    r.dungeon_facilities = finish ? finish->facilities : s.dungeon_facilities;
+    r.dungeon_actors = finish ? finish->actors : s.dungeon_actors;
+    r.catalog = finish ? finish->catalog : s.catalog;
+    r.shops = finish ? finish->shops : project_runtime_shops(s);
+    r.shop_order = finish ? finish->shop_order : s.shop_order;
+    r.item_rewards = finish ? finish->item_rewards : s.item_rewards;
     r.human_definition_state = s.human_definition_state;
     return r;
+}
+} // namespace
+ref::WorldActorRoutesState startup_world_runtime_routes(const State &s) {
+    return project_runtime_routes(s);
 }
 bool write_startup_world_runtime_routes(State &s, const ref::WorldActorRoutesState &r) {
     // 各领域已经按本次权威来源同步；聚合写回只验一致性，不猜哪一份较新。
@@ -424,9 +437,15 @@ bool write_startup_world_runtime_scripts(State &s, const ref::WorldScriptState &
 }
 ref::DungeonFinishState startup_world_runtime_finish(const State &s) {
     ref::DungeonFinishState f;
-    const auto r = startup_world_runtime_routes(s);
-    f.dungeon = {r.world, r.dungeon_facilities, r.dungeon_actors, r.catalog,
-                 r.shops, r.shop_order,         r.item_rewards};
+    f.dungeon.world = s.scene.world.world;
+    if (!project_human_task_flags(f.dungeon.world, s.human_flags))
+        throw std::invalid_argument("共同人物缺原任务旗标投影");
+    f.dungeon.facilities = s.dungeon_facilities;
+    f.dungeon.actors = s.dungeon_actors;
+    f.dungeon.catalog = s.catalog;
+    f.dungeon.shops = project_runtime_shops(s);
+    f.dungeon.shop_order = s.shop_order;
+    f.dungeon.item_rewards = s.item_rewards;
     f.task_progress = s.task_progress;
     f.task_progress.monsters.clear();
     for (const auto &m : s.scene.world.world.ai.monster_growth)
@@ -446,16 +465,9 @@ ref::DungeonFinishState startup_world_runtime_finish(const State &s) {
     return f;
 }
 bool write_startup_world_runtime_finish(State &s, const ref::DungeonFinishState &f) {
-    auto r = startup_world_runtime_routes(s);
-    r.world = f.dungeon.world;
-    r.dungeon_facilities = f.dungeon.facilities;
-    r.dungeon_actors = f.dungeon.actors;
-    r.catalog = f.dungeon.catalog;
+    auto r = project_runtime_routes(s, &f.dungeon);
     if (!copy_catalog_items(r.items, r.catalog))
         return false;
-    r.shops = f.dungeon.shops;
-    r.shop_order = f.dungeon.shop_order;
-    r.item_rewards = f.dungeon.item_rewards;
     if (!write_startup_world_runtime_routes(s, r))
         return false;
     s.task_progress = f.task_progress;
@@ -484,6 +496,26 @@ bool write_startup_world_runtime_finish(State &s, const ref::DungeonFinishState 
     return true;
 }
 
+bool valid_startup_world_facility_projection(const State &s) {
+    return visit_human_task_flags(s.scene.world.world, s.human_flags,
+                                  [](const ref::RescueActorContext &, bool) {});
+}
+
+// Ordinary c/m changes one instance. Replay the full finish writer's normalization
+// without allocating an unchanged world/routes projection; caller owns a disposable frame.
+bool normalize_startup_world_facility_writeback(State &s) {
+    if (!valid_startup_world_facility_projection(s) || !copy_catalog_items(s.items, s.catalog))
+        return false;
+    const int month = s.scene.calendar.month;
+    for (const auto &facility : s.scene.world.world.facilities)
+        (void)s.facility_monthly_cash[facility.first].at(month);
+    for (auto &shop : s.shops)
+        shop.second.notices.clear();
+    synchronize_startup_world_runtime_monsters(s);
+    s.task_progress.monsters.clear();
+    return project_human_task_flags(s.scene.world.world, s.human_flags);
+}
+
 ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
     ref::WorldRuntimeAdapter<State> a;
     a.catalog = startup_world_runtime_catalog();
@@ -492,6 +524,8 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
                    s.scene = p;
                    return true;
                }};
+    a.scene_borrow_read = [](const State &s) -> const ref::WorldSceneState & { return s.scene; };
+    a.scene_borrow_write = [](State &s) -> ref::WorldSceneState & { return s.scene; };
     a.scripts = {startup_world_runtime_scripts, write_startup_world_runtime_scripts};
     a.read_random = [](const State &s) -> const ref::WorldRandomStream & { return s.scene.random; };
     a.write_random = [](State &s) -> ref::WorldRandomStream & { return s.scene.random; };
@@ -501,6 +535,29 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
     a.actors.write_common = [](State &s) -> ref::WorldScheduleState & { return s.scene.world; };
     a.actors.read_routes = startup_world_runtime_routes;
     a.actors.write_routes = write_startup_world_runtime_routes;
+    a.actors.read_current_routes = [](const State &s) {
+        auto routes = startup_world_runtime_routes(s);
+        // The legacy initial/event projection replaced its world with common after
+        // validating task flags. Preserve that observation by restoring only the
+        // flag values, rather than copying the whole world a second time.
+        for (auto &[id, context] : routes.world.actors)
+            context.definition_task_flag = s.scene.world.world.actors.at(id).definition_task_flag;
+        return routes;
+    };
+    a.actors.write_current_routes = [](State &s, const ref::WorldActorRoutesState &r) {
+        if (!write_startup_world_runtime_routes(s, r))
+            return false;
+        // The former publish replaced world after monster metadata synchronization.
+        // Drop only newly synthesized route contexts that replacement used to drop;
+        // retain its metadata side effects and subsequent invalid-Owner rejection.
+        auto &actors = s.scene.world.world.actors;
+        for (auto it = actors.begin(); it != actors.end();)
+            if (!r.world.actors.count(it->first))
+                it = actors.erase(it);
+            else
+                ++it;
+        return true;
+    };
     a.actors.primary_expression_table = true;
     a.actors.decision = [](const State &s, ref::CharacterId id) {
         auto current_facts = facts(s);
@@ -511,9 +568,28 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
             input->combat->facing_for = facing_provider(s);
         return input;
     };
+    a.actors.decision_from_routes = [](const State &s, const ref::WorldActorRoutesState &r,
+                                       ref::CharacterId id) {
+        auto current_facts = facts(s);
+        current_facts.task_entry = startup_world_runtime_task_entry(s, id);
+        bool matches = true;
+        if (!visit_human_task_flags(r.world, s.human_flags,
+                                    [&](const ref::RescueActorContext &context, bool flag) {
+                                        matches = matches && context.definition_task_flag == flag;
+                                    }))
+            throw std::invalid_argument("共同人物缺原任务旗标投影");
+        // A same-round event may change authoritative flags. Preserve the old
+        // decision input's fresh projection on that boundary, including refusal.
+        auto input = matches ? prepare_startup_world_decision_input_for_state(r, id, current_facts)
+                             : prepare_startup_world_decision_input_for_state(
+                                   startup_world_runtime_routes(s), id, current_facts);
+        if (input && input->combat)
+            input->combat->facing_for = facing_provider(s);
+        return input;
+    };
     a.actors.owned_command = [](const State &s, const auto &r, ref::CharacterId id,
                                 const auto &op) {
-        auto input = prepare_startup_world_command_input(r, id, op, facts(s));
+        auto input = prepare_startup_world_command_input_for_command(r, id, op, facts(s));
         if (input && input->attack) {
             input->attack->facing_for = facing_provider(s);
             if (r.world.ai.battle.actors.at(id).kind == ref::ActorKind::human)
@@ -543,6 +619,7 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         }
         return actor.control.facing;
     };
+    a.actors.projected_facing_without_common = a.actors.projected_facing;
     a.actors.tail_cache = [](const State &s, ref::CharacterId id,
                              const ref::BattleActorRecord &projected) -> std::optional<State> {
         const auto actor = s.scene.world.world.ai.battle.actors.find(id);
@@ -553,6 +630,13 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         // 原u取物理后的n，包括整数高度；r随后清高度不能覆盖本次已保存u。
         metadata.cached_view = startup_world_raw_projection(projected.position);
         return next;
+    };
+    a.actors.tail_cache_private = [](State &s, ref::CharacterId id,
+                                     const ref::BattleActorRecord &projected) {
+        if (!s.scene.world.world.ai.battle.actors.count(id))
+            return false;
+        s.actor_metadata.at(id).cached_view = startup_world_raw_projection(projected.position);
+        return true;
     };
     a.prefix_effects = [](const State &s,
                           const ref::WorldScheduleEffects &effects) -> std::optional<State> {
@@ -631,13 +715,16 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         ref::WorldNonactorScheduleState r{s.scene.world, s.scene.random, {}};
         r.objects.catalog = s.catalog;
         if (!visit_human_task_flags(s.scene.world.world, s.human_flags,
-                                   [](const ref::RescueActorContext &, bool) {}))
+                                    [](const ref::RescueActorContext &, bool) {}))
             throw std::invalid_argument("共同人物缺原任务旗标投影");
         r.objects.shops = project_runtime_shops(s);
         r.objects.shop_order = s.shop_order;
         r.objects.item_rewards = s.item_rewards;
         return r;
     };
+    // This projection already contains the current common fields; task flags
+    // are validated above without rewriting the nonactor view.
+    a.nonactors.read_current_routes = a.nonactors.read_routes;
     a.nonactors.write_routes = [](State &s, const ref::WorldNonactorScheduleState &r) {
         if (!copy_catalog_items(s.items, r.objects.catalog))
             return false;
@@ -717,6 +804,14 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         s.facility_details = p.details;
         return true;
     };
+    a.facility_private = [](State &s,
+                            std::uint64_t id) -> std::optional<ref::WorldRuntimeFacilityStep> {
+        const auto step =
+            try_consume_startup_world_facility_update(s, id, startup_world_runtime_catalog());
+        if (!step)
+            return {};
+        return ref::WorldRuntimeFacilityStep{step->error, step->written};
+    };
     a.report = {report, write_report};
     a.report_input = [](const State &s) -> std::optional<ref::WorldMonthReportInput> {
         return ref::WorldMonthReportInput{s.scene.calendar.month_ticks, s.clock_parameter,
@@ -727,6 +822,9 @@ ref::WorldRuntimeAdapter<State> startup_world_runtime_adapter() {
         if (!project_human_task_flags(next.scene.world.world, next.human_flags))
             return {};
         return next;
+    };
+    a.before_common_private = [](State &s) {
+        return project_human_task_flags(s.scene.world.world, s.human_flags);
     };
     a.normal_conditions = [](const State &s) -> std::optional<ref::OwnedWorldSceneStep<State>> {
         // MainScene前置：资金不足/物品等分支尚未拥有输入时显式拒绝，不伪装无条件成功。
@@ -786,9 +884,11 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     state_.scripts.pages.back().id = 1;
     state_.scripts.next_page_id = 2;
     for (const auto &recipe : p.rules->magic_pot_recipes)
-        state_.magic_pot_recipes.emplace(recipe.identity,
+        state_.magic_pot_recipes.emplace(
+            recipe.identity,
             ref::WorldMagicPotRecipeProgress{recipe.identity, (recipe.flags & 1U) ? 1 : 0,
-                                            (recipe.flags & 1U) != 0}); // n.c先J再清p/r，bit1调用a()；不清首次NEW。
+                                             (recipe.flags & 1U) !=
+                                                 0}); // n.c先J再清p/r，bit1调用a()；不清首次NEW。
     for (const auto &h : p.rules->humans) {
         const auto profile = startup_world_human_profile(state_, h.identity);
         if (!profile)
@@ -798,10 +898,10 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
         state_.human_profession_changes.emplace(h.identity,
                                                 std::vector<int>(p.rules->jobs.size(), 0));
         state_.human_flags.emplace(h.identity, h.flags);
-        state_.scripts.humans.emplace(
-            h.identity,
-            ref::WorldScriptUnlockDefinition{
-                h.status, false, profile->name, p.rules->jobs.at(h.definition.current_profession).type});
+        state_.scripts.humans.emplace(h.identity,
+                                      ref::WorldScriptUnlockDefinition{
+                                          h.status, false, profile->name,
+                                          p.rules->jobs.at(h.definition.current_profession).type});
     }
     for (std::size_t n = 0; n < p.rules->jobs.size(); ++n) {
         const auto &j = p.rules->jobs[n];
@@ -823,7 +923,7 @@ StartupWorldRuntimeSession::StartupWorldRuntimeSession(const StartupState &start
     for (std::size_t n = 0; n < p.rules->facilities.size(); ++n) {
         const auto &d = p.rules->facilities[n];
         ref::WorldScriptFacilityDefinition script_definition;
-        script_definition.category = d.kind; // 原o.f82e，不是活动类别f83f。
+        script_definition.category = d.kind;    // 原o.f82e，不是活动类别f83f。
         script_definition.icon = d.legacy_icon; // 原o.f81d；opcode40区分传说演出类别。
         script_definition.economy = d.economy;
         ref::FacilityEconomyInput economy_input;
@@ -958,8 +1058,9 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::open_commerce() {
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_information_menu() {
     return open_startup_world_information_menu(state_);
 }
-StartupWorldRuntimeError StartupWorldRuntimeSession::input_information_page(
-    std::uint64_t page, const StartupInformationInput &input) {
+StartupWorldRuntimeError
+StartupWorldRuntimeSession::input_information_page(std::uint64_t page,
+                                                   const StartupInformationInput &input) {
     return input_startup_world_information_page(state_, page, input);
 }
 StartupBuildResult StartupWorldRuntimeSession::begin_road(int definition) {
@@ -998,8 +1099,9 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::open_human_page(int human) 
 StartupWorldRuntimeError StartupWorldRuntimeSession::open_magic_pot(StartupMagicPotEntry entry) {
     return open_startup_world_magic_pot(state_, entry);
 }
-StartupWorldRuntimeError StartupWorldRuntimeSession::act_magic_pot_page(
-    std::uint64_t page, StartupMagicPotAction action, int selection) {
+StartupWorldRuntimeError
+StartupWorldRuntimeSession::act_magic_pot_page(std::uint64_t page, StartupMagicPotAction action,
+                                               int selection) {
     return act_startup_world_magic_pot_page(state_, page, action, selection);
 }
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_human_page(std::uint64_t page,
@@ -1029,7 +1131,8 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_rank_page(std::uint64_t
                                                                    int selection, bool cancel) {
     return act_startup_world_runtime_rank_page(state_, page, selection, cancel);
 }
-// Prepare the complete next Owner privately. Failure must not publish partial state or random draws.
+// Prepare the complete next Owner privately. Failure must not publish partial state or random
+// draws.
 StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     if (!valid_startup_world_human_profiles(s))
         return {StartupWorldRuntimeError::invalid_initial_state, {}, {}, {}, {}};
@@ -1117,14 +1220,21 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     if (admitted.scene.framework_paused && pending.kind == ref::WorldScriptPageKind::raw_page &&
         (pending.legacy_page == 60 || pending.legacy_page == 9 ||
          (pending.legacy_page >= 35 && pending.legacy_page <= 38))) {
-        if (!(pending.legacy_page == 60 ? valid_startup_world_human_detail_context(admitted, pending.id)
-                                       : valid_startup_world_information_page(admitted, pending.id)))
-            return {StartupWorldRuntimeError::missing_source, {},
-                    ref::WorldSceneError::missing_consumer, ref::WorldScheduleError::none, {}};
+        if (!(pending.legacy_page == 60
+                  ? valid_startup_world_human_detail_context(admitted, pending.id)
+                  : valid_startup_world_information_page(admitted, pending.id)))
+            return {StartupWorldRuntimeError::missing_source,
+                    {},
+                    ref::WorldSceneError::missing_consumer,
+                    ref::WorldScheduleError::none,
+                    {}};
         admitted.scripts.executing_page.reset();
         admitted.scene.top_is_main = false;
-        return {StartupWorldRuntimeError::none, std::move(admitted),
-                ref::WorldSceneError::none, ref::WorldScheduleError::none, {}};
+        return {StartupWorldRuntimeError::none,
+                std::move(admitted),
+                ref::WorldSceneError::none,
+                ref::WorldScheduleError::none,
+                {}};
     }
     // 框架j只在当前页回调期间有效；入口重建，不继承已关闭/已删除页的旧引用。
     if (!initialize_startup_world_human_pages(admitted) ||
@@ -1194,7 +1304,11 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
     auto result = ref::prepare_owned_world_runtime_with_calendar(
         admitted, {s.calendar_advance, true}, a, calendar_other);
     if (!result.state)
-        return {StartupWorldRuntimeError::runtime_failed, {}, result.error, result.world_error, {},
+        return {StartupWorldRuntimeError::runtime_failed,
+                {},
+                result.error,
+                result.world_error,
+                {},
                 std::move(result.failure)};
     // 局部运行结果的Owner最后一次移交；scene审计仍完整，继续读取其实际轮数。
     auto next = std::move(*result.state);

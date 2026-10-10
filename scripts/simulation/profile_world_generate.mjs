@@ -2,12 +2,13 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { simulationProductPath } from './module_paths.mjs';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const root = resolve(scriptDir, '../..');
 const out = resolve(root, 'build/validation/world-performance/instrumented');
 mkdirSync(out, { recursive: true });
 for (const name of ['world_runtime', 'world_scene', 'world_schedule', 'world_actor_schedule', 'world_nonactor_schedule']) {
-  const path = `ark/simulation/rules/${name}.hpp`;
+  const path = simulationProductPath(`ark/simulation/rules/${name}.hpp`);
   let count = 0;
   let source = readFileSync(resolve(root, 'include', path), 'utf8').replace(
     /Owner (next|scratch) = (state|current);/g, (_, local, original) => {
@@ -25,6 +26,17 @@ for (const name of ['world_runtime', 'world_scene', 'world_schedule', 'world_act
       const body = source.indexOf('{', start);
       if (start < 0 || body < 0) throw new Error(`Missing ${functionName}`);
       source = source.slice(0, body + 1) + `\n    ProfileScope profile_scope{${metric}};` + source.slice(body + 1);
+    }
+  }
+  if (name === 'world_actor_schedule') {
+    for (const [expression, metric] of [
+      ['prepare_world_actor_decision_consuming(std::move(routes), *i)', 18],
+      ['prepare_world_actor_control_consuming(std::move(routes), actor, command)', 19]
+    ]) {
+      const anchor = `auto r = ${expression};`;
+      if (source.split(anchor).length !== 2) throw new Error('Actor profiling anchor changed');
+      source = source.replace(anchor,
+        `auto r = [&] { ProfileScope timer{${metric}}; return ${expression}; }();`);
     }
   }
   const target = resolve(out, path);
@@ -51,10 +63,20 @@ fn = fn.replace(adapterAnchor, `${cached ? 'static const' : 'const'} auto a = []
     profile_wrap(instrumented.scripts.read, 3); profile_wrap(instrumented.scripts.write, 4);
     profile_wrap(instrumented.actors.read_routes, 5); profile_wrap(instrumented.actors.write_routes, 6);
     profile_wrap(instrumented.actors.decision, 7); profile_wrap(instrumented.scene_other, 8);
+    if (instrumented.actors.read_current_routes) profile_wrap(instrumented.actors.read_current_routes, 5);
+    if (instrumented.actors.write_current_routes) profile_wrap(instrumented.actors.write_current_routes, 6);
+    if (instrumented.actors.decision_from_routes) profile_wrap(instrumented.actors.decision_from_routes, 7);
+    if (instrumented.scene_other_private) profile_wrap(instrumented.scene_other_private, 8);
     profile_wrap(instrumented.before_common, 9); profile_wrap(instrumented.normal_conditions, 10);
+    profile_wrap(instrumented.facilities.read, 14); profile_wrap(instrumented.facilities.write, 15);
+    profile_wrap(instrumented.nonactors.read_routes, 16); profile_wrap(instrumented.nonactors.write_routes, 17);
+    if (instrumented.nonactors.read_current_routes) profile_wrap(instrumented.nonactors.read_current_routes, 16);
     return instrumented;
   }();`);
 const metrics = readFileSync(resolve(scriptDir, 'profile_world_metrics.hpp'), 'utf8');
-writeFileSync(resolve(out, 'profile_prepare.hpp'), metrics + source.slice(0, source.indexOf('namespace ark::simulation {')) +
+const entryIncludes = source.slice(0, source.indexOf('namespace ark::simulation {')).replace(
+  /(#include ")([.][.]?\/[^"\r\n]+)(")/g,
+  (_, begin, relative, end) => begin + resolve(root, 'src/simulation/world', relative).replaceAll('\\', '/') + end);
+writeFileSync(resolve(out, 'profile_prepare.hpp'), metrics + entryIncludes +
   '\nnamespace ark::simulation {\nusing State = StartupWorldRuntimeState;\n' + fn + '}\n');
 console.log(out);

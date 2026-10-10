@@ -59,7 +59,221 @@ void catalogue() {
               rules.facility_initial.at(24).construction_limit == 1 &&
               rules.facility_initial.at(28).construction_limit == 280 &&
               rules.facility_initial.at(0).construction_limit == 0,
-          "actual reset sharedN20/30 and construction guards follow source initialization, not allocation zeros");
+          "actual reset sharedN20/30 and construction guards follow source initialization, not "
+          "allocation zeros");
+}
+void state_inputs(const ref::WorldActorRoutesState &source, ref::CharacterId id,
+                  const StartupWorldRouteFacts &facts) {
+    for (int state = 0; state <= 20; ++state) {
+        auto routes = source;
+        routes.world.ai.battle.actors.at(id).control.state = state;
+        const auto full = prepare_startup_world_decision_input(routes, id, facts);
+        const auto selected = prepare_startup_world_decision_input_for_state(routes, id, facts);
+        check(full && selected, "both builders accept every state with complete original evidence");
+        const bool daily = state == 0 || state == 5 || state == 8 || state == 9 || state == 11;
+        check(
+            selected->daily.path.has_value() == daily &&
+                selected->monster_path.has_value() == (state == 17) &&
+                selected->landing_departure.has_value() == (state == 20) &&
+                selected->combat.has_value() == (state == 1) && full->daily.path &&
+                full->monster_path && full->landing_departure && full->combat,
+            "selected branch stores its real inputs while full builder preserves complete oracle");
+        if (daily)
+            check(selected->daily.path->facts.map.cells.size() == source.world.map.cells.size() &&
+                      selected->daily.path->exits == full->daily.path->exits &&
+                      selected->daily.path->definition_directions ==
+                          full->daily.path->definition_directions &&
+                      selected->daily.spawn_creation->year_index ==
+                          full->daily.spawn_creation->year_index,
+                  "daily path retains complete fresh map, source order and calendar");
+        if (state == 20)
+            check(selected->landing_departure->catalogue.definitions.size() == 85 &&
+                      selected->landing_departure->catalogue.cell_definition_ids ==
+                          full->landing_departure->catalogue.cell_definition_ids &&
+                      selected->landing_departure->exits == full->landing_departure->exits,
+                  "landing keeps complete departure rather than validation-only storage");
+        const auto expected = ref::prepare_world_actor_decision(routes, *full);
+        const auto actual = ref::prepare_world_actor_decision(routes, *selected);
+        check(expected.error == actual.error &&
+                  expected.candidate.has_value() == actual.candidate.has_value(),
+              "selected input preserves actual state-route acceptance and rejection");
+        if (actual.candidate) {
+            const auto &a = *actual.candidate;
+            const auto &e = *expected.candidate;
+            const auto &actor = a.state.world.ai.battle.actors.at(id);
+            const auto &oracle = e.state.world.ai.battle.actors.at(id);
+            check(a.removed == e.removed && a.delete_requested == e.delete_requested &&
+                      a.consumed_events == e.consumed_events &&
+                      a.lifecycle_requests.size() == e.lifecycle_requests.size() &&
+                      a.attack_requests.size() == e.attack_requests.size() &&
+                      a.shop_requests.size() == e.shop_requests.size() &&
+                      a.daily.has_value() == e.daily.has_value() &&
+                      a.monster.has_value() == e.monster.has_value() &&
+                      a.lifecycle.has_value() == e.lifecycle.has_value() &&
+                      ref::world_control_detail::same_control(actor.control, oracle.control) &&
+                      actor.position.x == oracle.position.x &&
+                      actor.position.z == oracle.position.z &&
+                      actor.position.height == oracle.position.height &&
+                      a.state.world.map.cells.size() == e.state.world.map.cells.size(),
+                  "selected builder preserves decision outputs and full audit branches");
+            auto random = a.state.random;
+            auto oracle_random = e.state.random;
+            check(random.draws() == oracle_random.draws(),
+                  "input selection preserves random cursor");
+            for (int n = 0; n < 8; ++n) {
+                const auto x = random.draw(1000), y = oracle_random.draw(1000);
+                check(x.error == y.error && x.raw == y.raw && x.ticket == y.ticket,
+                      "selected input preserves future random values");
+            }
+        }
+    }
+    // State2 does not use these payloads, but old unconditional validation is
+    // still part of the input contract. Omitting storage cannot accept them.
+    const auto rejected = [&](ref::WorldActorRoutesState routes, StartupWorldRouteFacts f) {
+        routes.world.ai.battle.actors.at(id).control.state = 2;
+        check(!prepare_startup_world_decision_input(routes, id, f) &&
+                  !prepare_startup_world_decision_input_for_state(routes, id, f),
+              "unused branch evidence retains the full builder rejection contract");
+    };
+    auto bad_facts = facts;
+    bad_facts.surface.pop_back();
+    rejected(source, bad_facts);
+    bad_facts = facts;
+    bad_facts.facility_improvements.erase(facts.rules->facilities.front().id);
+    rejected(source, bad_facts);
+    bad_facts = facts;
+    bad_facts.actor_metadata.erase(id);
+    rejected(source, bad_facts);
+    auto bad_routes = source;
+    const auto &equipment = facts.rules->equipment.front().shop;
+    bad_routes.catalog.erase({equipment.kind, equipment.id});
+    rejected(bad_routes, facts);
+    bad_routes = source;
+    bad_routes.world.facility_uses.at(facts.rules->facilities.front().id).level = 0;
+    rejected(bad_routes, facts);
+    bad_routes = source;
+    bad_routes.shop_actors.erase(id);
+    rejected(bad_routes, facts);
+    bad_routes = source;
+    bad_routes.world.ai.battle.actors.at(id).kind = ref::ActorKind::monster;
+    bad_routes.world.ai.battle.actors.at(id).body = 4;
+    rejected(bad_routes, facts);
+    bad_routes = source;
+    const auto binding = bad_routes.world.actors.at(id).binding;
+    check(binding.has_value(), "state-input validation fixture retains its real first journey");
+    bad_routes.world.ai.contexts.at(id).cell = binding->goal;
+    bad_routes.world.facilities.erase(binding->instance_id.value);
+    rejected(bad_routes, facts);
+    auto no_ground = *facts.rules;
+    for (auto &facility : no_ground.facilities)
+        if (facility.kind == 7)
+            facility.kind = 0;
+    bad_facts = facts;
+    bad_facts.rules = &no_ground;
+    rejected(source, bad_facts);
+
+    auto carrier = source;
+    carrier.world.ai.battle.actors.at(id).control.state = 0;
+    carrier.world.ai.battle.actors.at(id).object_slot = -2;
+    const auto full = prepare_startup_world_decision_input(carrier, id, facts);
+    const auto selected = prepare_startup_world_decision_input_for_state(carrier, id, facts);
+    check(full && selected && full->rescue_direction_target && selected->rescue_direction_target,
+          "daily rescue retains the direction provider used at actual recursive delivery");
+    for (int direction = 0; direction < 4; ++direction)
+        check(full->rescue_direction_target(id, direction) ==
+                  selected->rescue_direction_target(id, direction),
+              "selected rescue direction retains the same old-cell snapshot for every direction");
+    check(!selected->rescue_direction_target({999}, 0),
+          "selected rescue snapshot still rejects an absent actor identity");
+}
+void command_inputs(const ref::WorldActorRoutesState &source, ref::CharacterId id,
+                     const StartupWorldRouteFacts &facts) {
+    const auto definition_id = source.world.ai.battle.actors.at(id).definition;
+    const auto same_gear = [](const auto &a, const auto &b) {
+        if (a.size() != b.size())
+            return false;
+        for (std::size_t n = 0; n < a.size(); ++n)
+            if (a[n].kind != b[n].kind || a[n].id != b[n].id || a[n].rank != b[n].rank ||
+                a[n].type != b[n].type || a[n].unlocked != b[n].unlocked ||
+                a[n].price != b[n].price || a[n].combat != b[n].combat)
+                return false;
+        return true;
+    };
+    for (const auto &command : {ref::LegacyActorControl{19, 6, 0, 10},
+                               ref::LegacyActorControl{27, 0, 0}, ref::LegacyActorControl{28, 0},
+                               ref::LegacyActorControl{29, 21, 0}, ref::LegacyActorControl{30, 1, 0}}) {
+        auto routes = source;
+        routes.world.ai.battle.actors.at(id).control.queue = {command};
+        const auto full = prepare_startup_world_command_input(routes, id, command, facts);
+        const auto selected = prepare_startup_world_command_input_for_command(routes, id, command, facts);
+        check(full && selected && same_gear(full->equipment, selected->equipment) &&
+                  selected->equipment.size() == 113 && routes.random.draws() == source.random.draws(),
+              "all five shop growth/display/commit opcodes retain complete current equipment without drawing");
+        ref::ShopWorldState shop{routes.world, routes.shop_humans, routes.shop_actors,
+                                  routes.items, routes.popularity_queue};
+        const auto expected = ref::prepare_world_shop_command(shop, id, full->equipment);
+        const auto actual = ref::prepare_world_shop_command(shop, id, selected->equipment);
+        check(expected.candidate && actual.candidate && expected.error == actual.error &&
+                  expected.candidate->requests.size() == actual.candidate->requests.size() &&
+                  expected.candidate->state.world.ai.growth.at(definition_id).definition.extra ==
+                      actual.candidate->state.world.ai.growth.at(definition_id).definition.extra &&
+                  expected.candidate->state.world.ai.growth.at(definition_id).definition.equipment ==
+                      actual.candidate->state.world.ai.growth.at(definition_id).definition.equipment &&
+                  expected.candidate->state.world.ai.battle.actors.at(id).control.queue ==
+                      actual.candidate->state.world.ai.battle.actors.at(id).control.queue,
+              "selected equipment reaches actual shop consumer with identical growth/equipment/FIFO effects");
+    }
+    for (const auto &command : {ref::LegacyActorControl{0, 350, 350},
+                               ref::LegacyActorControl{1, 10, 0}, ref::LegacyActorControl{8, 0}}) {
+        const auto full = prepare_startup_world_command_input(source, id, command, facts);
+        const auto selected = prepare_startup_world_command_input_for_command(source, id, command, facts);
+        check(full && selected && full->equipment.size() == 113 && selected->equipment.empty() &&
+                  full->departure.has_value() == selected->departure.has_value(),
+              "movement/wait/departure omit unused gear while retaining actual departure payload");
+        auto missing = source;
+        const auto &last = facts.rules->equipment.back().shop;
+        missing.catalog.erase({last.kind, last.id});
+        check(!prepare_startup_world_command_input(missing, id, command, facts) &&
+                  !prepare_startup_world_command_input_for_command(missing, id, command, facts) &&
+                  missing.random.draws() == source.random.draws(),
+              "unused gear still validates the last equipment key before accepting a command");
+    }
+    auto exit_source = source;
+    auto ordinary = std::find_if(exit_source.world.facilities.begin(), exit_source.world.facilities.end(),
+                                 [](const auto &entry) { return entry.second.category == 1; });
+    check(ordinary != exit_source.world.facilities.end(), "actual reset contains an ordinary shop exit fixture");
+    const auto goal = ordinary->second.placement.anchor;
+    exit_source.world.actors.at(id).binding = ref::ArrivalBinding{
+        goal, ordinary->second.placement.instance_id, ordinary->second.placement.definition_id};
+    exit_source.world.ai.contexts.at(id).cell = goal;
+    const auto full_exit = prepare_startup_world_command_input(exit_source, id, {24}, facts);
+    const auto selected_exit = prepare_startup_world_command_input_for_command(exit_source, id, {24}, facts);
+    check(full_exit && selected_exit && full_exit->shop_exit && selected_exit->shop_exit &&
+              selected_exit->equipment.empty() &&
+              same_gear(full_exit->shop_exit->catalogue, selected_exit->shop_exit->catalogue) &&
+              selected_exit->shop_exit->catalogue.size() == 113 &&
+              full_exit->shop_exit->quality == selected_exit->shop_exit->quality &&
+              full_exit->shop_exit->job_thresholds == selected_exit->shop_exit->job_thresholds,
+          "real ordinary shop exit retains its full gear/quality/profession input independently of unused command gear");
+    exit_source.world.ai.battle.actors.at(id).control.state = 0;
+    const auto full_arrival = prepare_startup_world_decision_input(exit_source, id, facts);
+    const auto selected_arrival = prepare_startup_world_decision_input_for_state(exit_source, id, facts);
+    check(full_arrival && selected_arrival && full_arrival->shop_arrival && selected_arrival->shop_arrival &&
+              same_gear(full_arrival->shop_arrival->catalogue, selected_arrival->shop_arrival->catalogue),
+          "daily bound ordinary shop preserves complete gear at the actual arrival consumer");
+    auto walking = source;
+    walking.world.ai.battle.actors.at(id).control.state = 0;
+    walking.world.actors.at(id).binding.reset();
+    const auto full_walk = prepare_startup_world_decision_input(walking, id, facts);
+    const auto selected_walk = prepare_startup_world_decision_input_for_state(walking, id, facts);
+    check(full_walk && selected_walk && !full_walk->shop_arrival && !selected_walk->shop_arrival,
+          "unbound daily walk does not prepare an equipment arrival consumer");
+    const auto &last = facts.rules->equipment.back().shop;
+    walking.catalog.erase({last.kind, last.id});
+    check(!prepare_startup_world_decision_input(walking, id, facts) &&
+              !prepare_startup_world_decision_input_for_state(walking, id, facts) &&
+              walking.random.draws() == source.random.draws(),
+          "unbound daily walk still refuses a missing equipment key although gear storage is unused");
 }
 void routing() {
     auto p = installed();
@@ -95,6 +309,27 @@ void routing() {
                   duplicate_rules.facilities.front().detail &&
               p.routes.random.draws() == before,
           "duplicate ID keeps first economic definition/detail and current category without draw");
+    auto idle = p.routes;
+    idle.world.ai.battle.actors.at(id).control.state = 2;
+    duplicate_rules.facilities.back().economy.construction_cost = -1;
+    const auto full_idle = prepare_startup_world_decision_input(idle, id, duplicate_facts);
+    const auto selected_idle =
+        prepare_startup_world_decision_input_for_state(idle, id, duplicate_facts);
+    check(full_idle && selected_idle && !selected_idle->landing_departure &&
+              full_idle->landing_departure &&
+              full_idle->landing_departure->definition_details.at(duplicate.id) ==
+                  duplicate_rules.facilities.front().detail &&
+              idle.random.draws() == before,
+          "unused departure skips storage but still resolves invalid later duplicate through valid "
+          "first definition");
+    auto missing_late = duplicate_facts;
+    missing_late.facility_improvements.erase(
+        duplicate_rules.facilities[duplicate_rules.facilities.size() - 2].id);
+    check(!prepare_startup_world_decision_input(idle, id, missing_late) &&
+              !prepare_startup_world_decision_input_for_state(idle, id, missing_late) &&
+              idle.random.draws() == before,
+          "unused departure still validates late unique economic evidence without drawing or early "
+          "success");
     const auto started = ref::prepare_world_actor_control(
         p.routes, id, [&](const auto &r, auto actor, const auto &op) {
             return prepare_startup_world_command_input(r, actor, op, f);
@@ -104,6 +339,8 @@ void routing() {
               started.candidate->state.random.draws() > before,
           "actual first8 selects and routes autonomously from real initial map");
     const auto &r = started.candidate->state;
+    state_inputs(r, id, f);
+    command_inputs(r, id, f);
     const auto decision = prepare_startup_world_decision_input(r, id, f);
     check(decision && decision->daily.path && decision->daily.spawn_creation &&
               decision->daily.spawn_creation->year_index == 0 &&

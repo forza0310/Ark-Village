@@ -1,9 +1,10 @@
-#include "ark/simulation/world/startup_world_runtime.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
-#include <iostream>
 #include <algorithm>
+#include <iostream>
 #include <stdexcept>
 
 using namespace ark::simulation;
@@ -16,11 +17,13 @@ void check(bool condition, const char *message) {
 }
 void main_character_profile() {
     StartupSession startup;
-    StartupWorldRuntimeSession session(startup.state(), ref::WorldRandomStream::from_java_seed(12345));
+    StartupWorldRuntimeSession session(startup.state(),
+                                       ref::WorldRandomStream::from_java_seed(12345));
     auto s = session.state();
     const auto base0 = startup_world_human_profile(s, 0);
     const auto base1 = startup_world_human_profile(s, 1);
-    check(base0 && base1 && s.human_profiles.empty(), "default world resolves immutable profiles without override");
+    check(base0 && base1 && s.human_profiles.empty(),
+          "default world resolves immutable profiles without override");
     const auto cash = s.scene.world.world.ai.accounting.funds();
     const auto presence = s.human_presence;
     check(install_startup_world_main_character(s, {"研究姓名", 1, true}),
@@ -30,13 +33,15 @@ void main_character_profile() {
     const auto details = startup_world_human_details(s, 0);
     const auto portrait = startup_world_portrait(s, 0);
     const int job = s.scene.world.world.ai.growth.at(0).definition.current_profession;
-    check(value && value->name == "研究姓名" && value->sex == 1 && value->custom_name &&
-              details && details->name == value->name && details->sex == 1 &&
-              portrait && portrait->image == s.rules->jobs.at(job).sprites[1] &&
+    check(value && value->name == "研究姓名" && value->sex == 1 && value->custom_name && details &&
+              details->name == value->name && details->sex == 1 && portrait &&
+              portrait->image == s.rules->jobs.at(job).sprites[1] &&
               startup_world_runtime_scripts(s).humans.at(0).name == "研究姓名",
-          "definition zero name/sex agree in details portrait and dialogue projection without instance");
+          "definition zero name/sex agree in details portrait and dialogue projection without "
+          "instance");
     check(other && other->name == base1->name && other->sex == base1->sex &&
-              s.rules->humans.at(0).name == base0->name && s.rules->humans.at(0).sex == base0->sex &&
+              s.rules->humans.at(0).name == base0->name &&
+              s.rules->humans.at(0).sex == base0->sex &&
               s.scene.world.world.ai.battle.actors.empty() && s.scene.random.draws() == 0 &&
               s.scene.world.world.ai.accounting.funds() == cash && s.human_presence == presence,
           "profile preserves definition1 frozen table real arrival ordering funds and random");
@@ -45,7 +50,8 @@ void main_character_profile() {
                                    [](const auto &j) { return j.script_extra == 0; });
     const auto female = std::find_if(s.rules->jobs.begin(), s.rules->jobs.end(),
                                      [](const auto &j) { return j.script_extra == 1; });
-    check(male != s.rules->jobs.end() && female != s.rules->jobs.end(), "fixed profession catalogue has both sex restrictions");
+    check(male != s.rules->jobs.end() && female != s.rules->jobs.end(),
+          "fixed profession catalogue has both sex restrictions");
     const int male_id = static_cast<int>(male - s.rules->jobs.begin());
     const int female_id = static_cast<int>(female - s.rules->jobs.begin());
     directory.scripts.professions.at(male_id).status = 1;
@@ -57,7 +63,8 @@ void main_character_profile() {
     directory.scripts.pages.front().lifecycle = 3;
     directory.scripts.pages.push_back(page);
     directory.page_human_bindings[page.id] = 0;
-    check(initialize_startup_world_human_pages(directory), "definition0 profile catalogue real initializer");
+    check(initialize_startup_world_human_pages(directory),
+          "definition0 profile catalogue real initializer");
     const auto &list = directory.human_page_catalogs.at(page.id);
     check(std::find(list.begin(), list.end(), female_id) != list.end() &&
               std::find(list.begin(), list.end(), male_id) == list.end() &&
@@ -71,17 +78,22 @@ void main_character_profile() {
               invalid.human_profiles.empty() && invalid.scripts.humans.at(0).name == base0->name,
           "invalid sex refuses before any shared name mutation");
     invalid.simulation_steps = 1; // 运行中世界资格边界夹具，不推进/注入原游戏日期。
-    check(!install_startup_world_main_character(invalid, {"运行中", 0, true}) && invalid.human_profiles.empty(),
+    check(!install_startup_world_main_character(invalid, {"运行中", 0, true}) &&
+              invalid.human_profiles.empty(),
           "running world cannot receive title editing");
-    for (const auto &name : {std::string("\xc0\xaf", 2), std::string("a\0b", 3),
-                             std::string("\xed\xa0\x80", 3), std::string("\n"), std::string(4097, 'x')})
-        check(!valid_startup_world_human_profile({name, 0, true}), "malformed UTF8/control/budget profile rejects");
+    for (const auto &name :
+         {std::string("\xc0\xaf", 2), std::string("a\0b", 3), std::string("\xed\xa0\x80", 3),
+          std::string("\n"), std::string(4097, 'x')})
+        check(!valid_startup_world_human_profile({name, 0, true}),
+              "malformed UTF8/control/budget profile rejects");
     check(valid_startup_world_human_profile({"", 0, true}) &&
               valid_startup_world_human_profile({"A中\xf0\x9f\x8c\x9f", 1, true}),
-          "empty original-unclosed input and valid multibyte profile remain distinct from malformed text");
+          "empty original-unclosed input and valid multibyte profile remain distinct from "
+          "malformed text");
     invalid = s;
     invalid.human_profiles.emplace(1, StartupWorldHumanProfile{"越权", 0, true});
-    check(!valid_startup_world_human_profiles(invalid) && !startup_world_human_profile(invalid, 0) &&
+    check(!valid_startup_world_human_profiles(invalid) &&
+              !startup_world_human_profile(invalid, 0) &&
               !startup_world_human_details(invalid, 0) && !startup_world_portrait(invalid, 0),
           "unsupported stable definition override explicitly rejects all profile consumers");
 }
@@ -107,8 +119,8 @@ void initial_owner() {
           "full original definitions and zero-allocated calendar arrays present");
     // 独立原新局oracle：n.c/3355–3362对这五条flags1调用a.i.a，保留首次NEW。
     const std::set<int> known_recipes{14, 22, 24, 30, 31};
-    check(s.magic_pot_recipes.size() == 40 && s.legacy_n[11] == 1 &&
-              s.magic_pot_comment.empty() && s.magic_pot_output == std::array<std::int32_t, 4>{},
+    check(s.magic_pot_recipes.size() == 40 && s.legacy_n[11] == 1 && s.magic_pot_comment.empty() &&
+              s.magic_pot_output == std::array<std::int32_t, 4>{},
           "actual new game installs forty recipes and source pot level/display initial values");
     for (const auto &[id, progress] : s.magic_pot_recipes)
         check(progress.identity == id && progress.status == (known_recipes.count(id) ? 1 : 0) &&
@@ -127,7 +139,8 @@ void initial_owner() {
     const auto adapter = startup_world_runtime_adapter();
     check(adapter.scene && adapter.scripts && adapter.report && adapter.maintenance &&
               adapter.tasks && adapter.factory && adapter.entry && adapter.arrival &&
-              adapter.calendar_other && adapter.calendar_request && adapter.actors.owned_command,
+              adapter.arrival_private && adapter.calendar_other && adapter.calendar_request &&
+              adapter.actors.owned_command,
           "actual typed world, calendar, arrival and current-FIFO providers registered");
 }
 void pause_and_private_failure() {
@@ -168,6 +181,153 @@ void synchronous_event_seen() {
               s.scene.world.world.ai.battle.events.count(116) && s.scripts.event_calls.at(116) == 2,
           "finish writer regenerates seen from counts without a second persistent event owner");
 }
+// 只比较本批完整路线适配边界；源初访、模板事务与规则计算各有主责套件。
+void current_route_adapter_boundaries() {
+    StartupSession reset;
+    StartupWorldRuntimeSession runtime(reset.state(),
+                                       ref::WorldRandomStream::from_raw({149, 0, 1}));
+    const auto production = startup_world_runtime_adapter();
+    auto source = runtime.state();
+    for (int n = 0; n < 420; ++n) {
+        auto private_arrival = source;
+        auto arrived = production.arrival(source);
+        check(arrived.has_value(),
+              "current-route boundary fixture uses actual first arrival calls");
+        check(
+            production.arrival_private(private_arrival) &&
+                startup_world_state_digest(private_arrival) == startup_world_state_digest(*arrived),
+            "private arrival preserves every full Owner field and random at the real first visit");
+        source = std::move(*arrived);
+    }
+    const auto id = source.scene.world.world.ai.human_order.front();
+    const int definition = source.scene.world.world.ai.battle.actors.at(id).definition;
+    const auto &a = production.actors;
+    check(a.read_current_routes && a.write_current_routes && a.decision_from_routes,
+          "production supplies explicit complete-current route and reused-decision hooks");
+    const auto legacy_read = [&](const StartupWorldRuntimeState &s) {
+        auto routes = a.read_routes(s);
+        routes.world = s.scene.world.world;
+        routes.facts = ref::world_schedule_facts(s.scene.world);
+        routes.popularity_queue = s.scene.world.popularity_queue;
+        return routes;
+    };
+    const auto legacy_publish = [&](StartupWorldRuntimeState &s,
+                                    const ref::WorldActorRoutesState &r) {
+        if (!a.write_routes(s, r))
+            return false;
+        auto &common = a.write_common(s);
+        common.world = r.world;
+        common.surface = r.facts.surface;
+        common.map_flags = r.facts.flags;
+        common.town = r.facts.town;
+        common.popularity_queue = r.popularity_queue;
+        return true;
+    };
+    for (const bool flag : {false, true}) {
+        auto stale = source;
+        stale.human_flags.at(definition) = flag ? 2U : 0U;
+        stale.scene.world.world.actors.at(id).definition_task_flag = !flag;
+        const auto before = startup_world_state_digest(stale);
+        const auto old_routes = legacy_read(stale);
+        const auto current_routes = a.read_current_routes(stale);
+        const auto projected_routes = a.read_routes(stale);
+        check(old_routes.world.actors.at(id).definition_task_flag == !flag &&
+                  current_routes.world.actors.at(id).definition_task_flag == !flag &&
+                  projected_routes.world.actors.at(id).definition_task_flag == flag,
+              "initial/event retain raw task flag while presentation/encounter retain fresh "
+              "projected flag");
+        auto old_owner = stale;
+        auto current_owner = stale;
+        check(legacy_publish(old_owner, old_routes) &&
+                  a.write_current_routes(current_owner, current_routes) &&
+                  startup_world_state_digest(old_owner) ==
+                      startup_world_state_digest(current_owner) &&
+                  startup_world_state_digest(stale) == before,
+              "full current read/write matches old common overwrite with stale flags and "
+              "independent input");
+        const auto old_input = a.decision(stale, id);
+        const auto current_input = a.decision_from_routes(stale, current_routes, id);
+        check(old_input.has_value() == current_input.has_value() && old_input &&
+                  old_input->actor == current_input->actor &&
+                  old_input->use_shared_random == current_input->use_shared_random &&
+                  startup_world_state_digest(stale) == before,
+              "decision reuses current route or fresh task-flag fallback without changing original "
+              "owner");
+        const auto old_decision = ref::prepare_world_actor_decision(old_routes, *old_input);
+        const auto current_decision =
+            ref::prepare_world_actor_decision(current_routes, *current_input);
+        check(old_decision.error == current_decision.error &&
+                  old_decision.candidate.has_value() == current_decision.candidate.has_value(),
+              "stale task flag yields identical full decision acceptance at production boundary");
+        if (old_decision.candidate) {
+            old_owner = stale;
+            current_owner = stale;
+            check(legacy_publish(old_owner, old_decision.candidate->state) &&
+                      a.write_current_routes(current_owner, current_decision.candidate->state) &&
+                      startup_world_state_digest(old_owner) ==
+                          startup_world_state_digest(current_owner),
+                  "complete decision output preserves all owner fields and future random with "
+                  "stale flags");
+        }
+    }
+    auto missing_flag = source;
+    missing_flag.human_flags.erase(definition);
+    const auto missing_before = startup_world_state_digest(missing_flag);
+    int rejected_reads{};
+    for (const bool current : {false, true}) {
+        try {
+            (void)(current ? a.read_current_routes(missing_flag) : legacy_read(missing_flag));
+        } catch (const std::invalid_argument &) {
+            ++rejected_reads;
+        }
+    }
+    check(rejected_reads == 2 && startup_world_state_digest(missing_flag) == missing_before,
+          "old and current reads reject missing authoritative human flag key without partial owner "
+          "mutation");
+    int rejected_decisions{};
+    const auto valid_routes = legacy_read(source);
+    for (const bool current : {false, true}) {
+        try {
+            (void)(current ? a.decision_from_routes(missing_flag, valid_routes, id)
+                           : a.decision(missing_flag, id));
+        } catch (const std::invalid_argument &) {
+            ++rejected_decisions;
+        }
+    }
+    check(rejected_decisions == 2 && startup_world_state_digest(missing_flag) == missing_before,
+          "reused decision retains old missing-key rejection even with an otherwise complete "
+          "cached projection");
+    auto missing_monster = source;
+    const ref::CharacterId monster{900}; // 显式不完整引用夹具，不冒充真实生成入口。
+    auto actor = missing_monster.scene.world.world.ai.battle.actors.at(id);
+    actor.id = monster;
+    actor.kind = ref::ActorKind::monster;
+    actor.definition = 0;
+    missing_monster.scene.world.world.ai.battle.actors.emplace(monster, actor);
+    missing_monster.scene.world.world.ai.monster_order.push_back(monster);
+    missing_monster.scene.world.world.ai.contexts.emplace(
+        monster, missing_monster.scene.world.world.ai.contexts.at(id));
+    const auto broken_before = startup_world_state_digest(missing_monster);
+    const auto routes = legacy_read(missing_monster);
+    auto old_owner = missing_monster;
+    auto current_owner = missing_monster;
+    check(legacy_publish(old_owner, routes) && a.write_current_routes(current_owner, routes) &&
+              !old_owner.scene.world.world.actors.count(monster) &&
+              !current_owner.scene.world.world.actors.count(monster) &&
+              old_owner.actor_metadata.count(monster) &&
+              current_owner.actor_metadata.count(monster) &&
+              startup_world_state_digest(old_owner) == startup_world_state_digest(current_owner),
+          "current writer preserves old monster metadata synchronization while discarding "
+          "synthesized route context");
+    const auto old_rejected = ref::prepare_world_schedule(old_owner.scene.world, {}, {});
+    const auto current_rejected = ref::prepare_world_schedule(current_owner.scene.world, {}, {});
+    check(old_rejected.error == ref::WorldScheduleError::invalid_owner &&
+              current_rejected.error == old_rejected.error && !old_rejected.candidate &&
+              !current_rejected.candidate &&
+              startup_world_state_digest(missing_monster) == broken_before,
+          "missing monster context remains invalid after either writer and original input stays "
+          "independent");
+}
 void successful_result_retains_independent_owner() {
     StartupSession reset;
     StartupWorldRuntimeSession runtime(reset.state(), ref::WorldRandomStream::from_java_seed(1));
@@ -199,7 +359,8 @@ void successful_result_retains_independent_owner() {
 void delayed_rank_rewards() {
     for (const auto scenario : {std::array<int, 4>{44, 3, 3, 63}, {45, 30, 11, 26}}) {
         StartupSession startup;
-        StartupWorldRuntimeSession runtime(startup.state(), ref::WorldRandomStream::from_java_seed(1));
+        StartupWorldRuntimeSession runtime(startup.state(),
+                                           ref::WorldRandomStream::from_java_seed(1));
         auto s = runtime.state();
         const auto count = s.scene.world.facility_order.size();
         const auto funds = s.scene.world.world.ai.accounting.funds();
@@ -209,27 +370,31 @@ void delayed_rank_rewards() {
                                     : s.scripts.activities.at(scenario[3]).status == 0;
         };
         check(locked(), "real school or second expansion reward begins locked");
-        const auto started = ref::prepare_world_script(
-            catalog, startup_world_runtime_scripts(s), {scenario[0], {}, {}});
-        check(started.candidate && write_startup_world_runtime_scripts(s, started.candidate->state) &&
+        const auto started = ref::prepare_world_script(catalog, startup_world_runtime_scripts(s),
+                                                       {scenario[0], {}, {}});
+        check(started.candidate &&
+                  write_startup_world_runtime_scripts(s, started.candidate->state) &&
                   s.scripts.continuations.size() == 1 &&
                   s.scripts.continuations.front().remaining_updates == scenario[1],
               "actual rank event retains its distinct3 or30 logical-update delay");
         for (int tick = 1; tick <= scenario[1]; ++tick) {
             const auto continued = ref::prepare_world_script_continuations(
                 catalog, startup_world_runtime_scripts(s), true);
-            check(continued.candidate && write_startup_world_runtime_scripts(s, continued.candidate->state) &&
+            check(continued.candidate &&
+                      write_startup_world_runtime_scripts(s, continued.candidate->state) &&
                       locked(),
-                  "school and expansion stay locked throughout script continuation, including reward creation");
+                  "school and expansion stay locked throughout script continuation, including "
+                  "reward creation");
             if (tick < scenario[1])
-                check(std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &p) {
-                          return p.legacy_page == 95;
-                      }),
+                check(std::none_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [](const auto &p) { return p.legacy_page == 95; }),
                       "actual delayed script does not insert95 before its original threshold");
         }
-        const auto reward = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(), [&](const auto &p) {
-            return p.legacy_page == 95 && p.legacy_r == scenario[2] && p.legacy_s == scenario[3];
-        });
+        const auto reward =
+            std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(), [&](const auto &p) {
+                return p.legacy_page == 95 && p.legacy_r == scenario[2] &&
+                       p.legacy_s == scenario[3];
+            });
         check(reward != s.scripts.pages.end() && s.scripts.continuations.empty(),
               "actual44 or45 creates correct95 kind and original definition identity");
         const auto id = reward->id;
@@ -240,7 +405,8 @@ void delayed_rank_rewards() {
         check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
                   s.page_counters.at(id) == 40 && locked(),
               "real delayed reward early confirmation reaches40 while definition remains locked");
-        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none && !locked(),
+        check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+                  !locked(),
               "actual95 full40 confirmation commits original school or expansion entitlement");
         if (scenario[2] == 3)
             check(s.facility_presence.at(63) == 2 && s.facility_free_builds.at(63) == 1 &&
@@ -264,8 +430,8 @@ void final_rank_profession_unlocks() {
     const auto &catalog = startup_world_runtime_catalog();
     check(s.scripts.professions.at(21).status == 0 && s.scripts.professions.at(22).status == 0,
           "original new-world final professions start locked");
-    const auto started = ref::prepare_world_script(catalog, startup_world_runtime_scripts(s),
-                                                   {46, {}, {}});
+    const auto started =
+        ref::prepare_world_script(catalog, startup_world_runtime_scripts(s), {46, {}, {}});
     check(started.candidate && write_startup_world_runtime_scripts(s, started.candidate->state) &&
               s.scripts.continuations.size() == 1 &&
               s.scripts.continuations.front().remaining_updates == 30,
@@ -273,7 +439,8 @@ void final_rank_profession_unlocks() {
     for (int tick = 1; tick <= 30; ++tick) {
         const auto continued = ref::prepare_world_script_continuations(
             catalog, startup_world_runtime_scripts(s), true);
-        check(continued.candidate && write_startup_world_runtime_scripts(s, continued.candidate->state),
+        check(continued.candidate &&
+                  write_startup_world_runtime_scripts(s, continued.candidate->state),
               "actual event46 continuation synchronizes through script Owner writer");
         for (int job : {21, 22})
             check(s.scripts.professions.at(job).status == (tick == 30 ? 1 : 0) &&
@@ -282,14 +449,18 @@ void final_rank_profession_unlocks() {
     }
     check(s.scripts.continuations.empty() && s.scripts.professions.at(21).pending_notice &&
               s.scripts.professions.at(22).pending_notice &&
-              std::any_of(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &p) {
-                  return p.legacy_page == 95 && p.legacy_r == 4 && p.legacy_s == 22;
-              }),
-          "opcode31 already unlocks shared professions while actual95 announcement remains unconfirmed");
+              std::any_of(s.scripts.pages.begin(), s.scripts.pages.end(),
+                          [](const auto &p) {
+                              return p.legacy_page == 95 && p.legacy_r == 4 && p.legacy_s == 22;
+                          }),
+          "opcode31 already unlocks shared professions while actual95 announcement remains "
+          "unconfirmed");
     check(s.human_presence == before.human_presence &&
-              s.scene.world.world.ai.battle.actors.size() == before.scene.world.world.ai.battle.actors.size() &&
+              s.scene.world.world.ai.battle.actors.size() ==
+                  before.scene.world.world.ai.battle.actors.size() &&
               s.scene.world.world.ai.growth.size() == before.scene.world.world.ai.growth.size() &&
-              s.scene.world.world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
+              s.scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds() &&
               s.scene.random.draws() == before.scene.random.draws(),
           "profession unlock does not fabricate arrival, cash or random draws");
     for (const auto &[id, growth] : s.scene.world.world.ai.growth)
@@ -304,6 +475,7 @@ int main() {
         main_character_profile();
         pause_and_private_failure();
         synchronous_event_seen();
+        current_route_adapter_boundaries();
         successful_result_retains_independent_owner();
         delayed_rank_rewards();
         final_rank_profession_unlocks();

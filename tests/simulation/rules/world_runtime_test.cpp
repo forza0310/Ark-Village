@@ -9,10 +9,14 @@
 using namespace ark::simulation::rules;
 namespace {
 int checks{};
+bool private_scene{};
+std::string scenario;
 void check(bool value, const char *message) {
     ++checks;
     if (!value)
-        throw std::runtime_error(message);
+        throw std::runtime_error(
+            std::string(private_scene ? "borrow scene / " : "copied scene / ") + scenario + ": " +
+            message);
 }
 std::string table(const char *name) {
     const auto root = std::string(ARK_WORLD_TEST_DATA) + "/scripts/original/";
@@ -93,7 +97,8 @@ Owner fixture(const WorldScriptCatalog &catalog) {
     o.tasks.rank = 5; // 隔离本fixture等级页，不使用该数值作新局默认。
     return o;
 }
-WorldRuntimeAdapter<Owner> adapter(const WorldScriptCatalog &catalog) {
+WorldRuntimeAdapter<Owner> adapter(const WorldScriptCatalog &catalog,
+                                   bool borrow_scene = private_scene) {
     WorldRuntimeAdapter<Owner> a;
     a.catalog = catalog;
     a.scene.read = [](const Owner &o) { return o.scene; };
@@ -101,6 +106,10 @@ WorldRuntimeAdapter<Owner> adapter(const WorldScriptCatalog &catalog) {
         o.scene = s;
         return true;
     };
+    if (borrow_scene) {
+        a.scene_borrow_read = [](const Owner &o) -> const WorldSceneState & { return o.scene; };
+        a.scene_borrow_write = [](Owner &o) -> WorldSceneState & { return o.scene; };
+    }
     a.scripts = {scripts, write_scripts};
     a.read_random = [](const Owner &o) -> const WorldRandomStream & { return o.random; };
     a.write_random = [](Owner &o) -> WorldRandomStream & { return o.random; };
@@ -417,16 +426,141 @@ void actual_facility_completion(const WorldScriptCatalog &catalog) {
           "late missing L consumer rejects whole runtime after successful facility completion and "
           "skips");
 }
+void incomplete_borrow_contract(const WorldScriptCatalog &catalog) {
+    const auto source = fixture(catalog);
+    for (bool missing_read : {false, true}) {
+        auto partial = adapter(catalog, true);
+        if (missing_read)
+            partial.scene_borrow_read = {};
+        else
+            partial.scene_borrow_write = {};
+        int called{};
+        partial.scene_other =
+            [&](const Owner &owner,
+                const WorldSceneCall &) -> std::optional<OwnedWorldSceneStep<Owner>> {
+            ++called;
+            return OwnedWorldSceneStep<Owner>{owner};
+        };
+        const auto failed = prepare_owned_world_runtime(source, {27}, partial);
+        check(failed.error == WorldSceneError::missing_consumer && !failed.state && !failed.scene &&
+                  failed.worlds.empty() && called == 0 && source.scene.frame_counter == 0 &&
+                  source.scene.world.updates == 0 && source.random.draws() == 0,
+              "incomplete borrow hook pair rejects before any stage or partial audit escapes");
+    }
+}
+void private_domain_bridges(const WorldScriptCatalog &catalog) {
+    auto source = fixture(catalog);
+    auto a = adapter(catalog);
+    WorldScheduleCall prefix{};
+    prefix.stage = WorldScheduleStage::prefix_effects;
+    prefix.effects = WorldScheduleEffects{{17}, {{4}, {11}}, {}};
+    int calls{};
+    a.prefix_effects = [&](const Owner &owner,
+                           const WorldScheduleEffects &effects) -> std::optional<Owner> {
+        ++calls;
+        check(effects.actor == CharacterId{17} && effects.sounds.size() == 2 &&
+                  effects.sounds[0].sound == 4 && effects.sounds[1].sound == 11,
+              "prefix bridge retains actor identity and sound request order");
+        auto next = owner;
+        next.entries += effects.sounds[0].sound;
+        next.arrivals += effects.sounds[1].sound;
+        const auto draw = next.random.draw(19);
+        check(draw.error == WorldRandomError::none,
+              "prefix callback consumes its real random ticket");
+        return next;
+    };
+    const auto owned = prepare_owned_world_runtime_domain(source, prefix, {}, a);
+    auto scratch = source;
+    const auto moved = prepare_private_world_runtime_domain(scratch, prefix, {}, a);
+    check(owned && moved && *moved == owned->disposition && calls == 2 && scratch.entries == 4 &&
+              scratch.arrivals == 11 && scratch.entries == owned->state.entries &&
+              scratch.arrivals == owned->state.arrivals && scratch.random.draws() == 1 &&
+              source.entries == 0 && source.arrivals == 0 && source.random.draws() == 0,
+          "private prefix uses its original owner consumer, preserving effects and input "
+          "independence");
+    auto expected_random = owned->state.random;
+    auto actual_random = scratch.random;
+    check(expected_random.draw(997).ticket == actual_random.draw(997).ticket,
+          "prefix bridge keeps identical future random state");
+    a.prefix_effects = [](const Owner &owner,
+                          const WorldScheduleEffects &) -> std::optional<Owner> {
+        auto rejected = owner;
+        rejected.random.draw(19);
+        ++rejected.entries;
+        return {}; // A late callback refusal must not leak its private mutation.
+    };
+    scratch = source;
+    const auto failed_owned = prepare_owned_world_runtime_domain(source, prefix, {}, a);
+    const auto failed_private = prepare_private_world_runtime_domain(scratch, prefix, {}, a);
+    check(!failed_owned && !failed_private && scratch.entries == 0 && scratch.random.draws() == 0 &&
+              source.entries == 0 && source.random.draws() == 0,
+          "both prefix bridges reject late consumer failure without publishing partial effects");
+    a.prefix_effects = {};
+    check(!prepare_private_world_runtime_domain(scratch, prefix, {}, a),
+          "missing prefix consumer cannot fall through to a successful nonactor stage");
+
+    // A route adapter may supply an old/random placeholder, while the outer
+    // Owner owns the actual stream. Even a zero-draw finalize must not rewind it.
+    source.random.draw(97);
+    source.random.draw(31);
+    a = adapter(catalog);
+    int legacy_reads{}, current_reads{}, writes{};
+    a.nonactors.read_routes = [&](const Owner &owner) {
+        ++legacy_reads;
+        WorldNonactorScheduleState routes;
+        routes.common = owner.scene.world;
+        routes.random = WorldRandomStream::from_java_seed(999);
+        return routes;
+    };
+    a.nonactors.read_current_routes = [&](const Owner &owner) {
+        ++current_reads;
+        WorldNonactorScheduleState routes;
+        routes.common = owner.scene.world;
+        routes.random = WorldRandomStream::from_java_seed(999);
+        return routes;
+    };
+    a.nonactors.write_routes = [&](Owner &, const WorldNonactorScheduleState &routes) {
+        ++writes;
+        check(routes.random.draws() == source.random.draws(),
+              "writeback receives the actual Owner cursor rather than stale route random");
+        auto expected = source.random, actual = routes.random;
+        for (int n = 0; n < 4; ++n)
+            check(actual.draw(997).ticket == expected.draw(997).ticket,
+                  "runtime bridge restores true stream identity as well as draw count");
+        return true;
+    };
+    WorldScheduleCall finalize{};
+    finalize.stage = WorldScheduleStage::finalize;
+    const auto old_route = prepare_owned_world_runtime_domain(source, finalize, {}, a);
+    scratch = source;
+    const auto current_route = prepare_private_world_runtime_domain(scratch, finalize, {}, a);
+    check(old_route && current_route && legacy_reads == 1 && current_reads == 1 && writes == 2 &&
+              scratch.random.draws() == 2 && old_route->state.random.draws() == 2 &&
+              source.random.draws() == 2 && scratch.scene.world.world.map.cells.size() == 36,
+          "private current-routes optimization preserves authoritative random and complete common "
+          "state");
+}
 } // namespace
 int main() {
     try {
         const auto parsed = parse_world_script_catalog(table("events.txt"), table("talk.txt"),
                                                        table("news.txt"), table("evtmsgs.txt"));
         check(parsed.catalog.has_value(), "published scripts parse");
-        source_scan(*parsed.catalog);
-        loop_and_rollback(*parsed.catalog);
-        scoped_calendar_consumers(*parsed.catalog);
-        actual_facility_completion(*parsed.catalog);
+        for (bool borrow_scene : {false, true}) {
+            private_scene = borrow_scene;
+            scenario = "source scan";
+            source_scan(*parsed.catalog);
+            scenario = "loop and rollback";
+            loop_and_rollback(*parsed.catalog);
+            scenario = "scoped calendar consumers";
+            scoped_calendar_consumers(*parsed.catalog);
+            scenario = "actual facility completion";
+            actual_facility_completion(*parsed.catalog);
+        }
+        scenario = "incomplete borrow pair";
+        incomplete_borrow_contract(*parsed.catalog);
+        scenario = "private prefix and current-routes bridges";
+        private_domain_bridges(*parsed.catalog);
         std::cout << "world runtime: " << checks << " checks passed\n";
     } catch (const std::exception &error) {
         std::cerr << error.what() << '\n';

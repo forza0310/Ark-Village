@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace ark::simulation::rules {
 namespace {
@@ -44,14 +45,15 @@ float source_arc(float height, int duration, int tick) {
     return std::max(0.0F, v * t + acceleration * t * (t + 1.0F) / 2.0F);
 }
 } // namespace
-WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDailyInput &i) {
+namespace {
+template <class Source> WorldDailyResult daily(Source &&s, const WorldDailyInput &i) {
     const auto fail = [](WorldDailyError error) { return WorldDailyResult{error, {}}; };
     const auto found = s.world.ai.battle.actors.find(i.actor);
     if (!i.actor.value || found == s.world.ai.battle.actors.end() ||
         !(found->second.id == i.actor) || !s.world.ai.contexts.count(i.actor) ||
         !s.world.actors.count(i.actor))
         return fail(WorldDailyError::stale_actor);
-    const auto &old = found->second;
+    const auto old = found->second;
     if (old.kind != ActorKind::human && old.kind != ActorKind::monster)
         return fail(WorldDailyError::invalid_input);
     const auto &roster =
@@ -61,7 +63,10 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
         !valid_world_map_facts(s.facts) || !same_map(s.world.map, s.facts.map))
         return fail(WorldDailyError::invalid_input);
     WorldDailyCandidate c;
-    c.state = s;
+    // Spawn callbacks can replace the candidate. This original roster is the
+    // reference used to distinguish newly created monsters from broken bindings.
+    const auto original_monsters = s.world.ai.monster_order;
+    c.state = std::forward<Source>(s);
     WorldDailyError error{WorldDailyError::none};
     const auto expression = [&](int type) {
         auto &effects = c.state.world.ai.contexts.at(i.actor).effects;
@@ -103,12 +108,12 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
                 return false;
             }
         }
-        const auto result = prepare_world_state_transition(c.state.world, {i.actor, state, boost});
+        auto result = prepare_world_state_transition(c.state.world, {i.actor, state, boost});
         if (!result.candidate) {
             error = WorldDailyError::preparation_failed;
             return false;
         }
-        c.state.world = result.candidate->state;
+        c.state.world = std::move(result.candidate->state);
         c.consumed_boost |= result.candidate->consumed_boost_ticket;
         c.event_requests.insert(c.event_requests.end(), result.candidate->event_requests.begin(),
                                 result.candidate->event_requests.end());
@@ -127,12 +132,13 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
     const auto event_gate = [&]() -> std::optional<bool> {
         auto task = c.state.task;
         task.definition_task_flag = c.state.world.actors.at(i.actor).definition_task_flag;
-        const auto gate = prepare_world_event_gate(c.state.world.ai, i.actor, c.state.facts, task);
+        auto gate = prepare_world_event_gate_consuming(std::move(c.state.world.ai), i.actor,
+                                                       c.state.facts, task);
         if (!gate.candidate) {
             error = WorldDailyError::preparation_failed;
             return {};
         }
-        c.state.world.ai = gate.candidate->state;
+        c.state.world.ai = std::move(gate.candidate->state);
         if (gate.candidate->gate.request_task_encounter) {
             if (!i.task_creation || !(i.task_creation->actor == i.actor) ||
                 i.task_creation->task.kind != task.kind ||
@@ -145,8 +151,7 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
             auto task_creation = *i.task_creation;
             if (i.draw)
                 task_creation.draw = i.draw;
-            const auto entry =
-                prepare_world_event_entry(c.state.world.ai, c.state.facts, task_creation);
+            auto entry = prepare_world_event_entry(c.state.world.ai, c.state.facts, task_creation);
             if (!entry.candidate) {
                 error = WorldDailyError::preparation_failed;
                 return {};
@@ -155,7 +160,7 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
             c.state.facts = entry.candidate->facts;
             c.state.world.map = c.state.facts.map;
             c.state.task = entry.candidate->task;
-            c.task_entry = entry.candidate;
+            c.task_entry = std::move(entry.candidate);
         }
         return gate.candidate->gate.ready;
     };
@@ -227,13 +232,12 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
             creation.upper_band_town[static_cast<std::size_t>(n)] =
                 p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom;
         }
-        const auto result = prepare_encounter_creation(c.state.world.ai, creation, i.encounter);
+        auto result = prepare_encounter_creation(c.state.world.ai, creation, i.encounter);
         if (!result.candidate) {
             error = WorldDailyError::preparation_failed;
             return false;
         }
         c.state.world.ai = result.candidate->state;
-        c.spawn = result.candidate;
         if (result.candidate->created) {
             const auto refreshed = prepare_world_event_map(c.state.world.ai, c.state.facts);
             if (!refreshed.facts) {
@@ -244,8 +248,8 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
             // 新怪物必须同时拥有共享设施/运动context，不能只追加bm。
             for (const auto id : c.state.world.ai.monster_order)
                 if (!c.state.world.actors.count(id)) {
-                    if (std::find(s.world.ai.monster_order.begin(), s.world.ai.monster_order.end(),
-                                  id) != s.world.ai.monster_order.end()) {
+                    if (std::find(original_monsters.begin(), original_monsters.end(), id) !=
+                        original_monsters.end()) {
                         error = WorldDailyError::missing_fact;
                         return false;
                     }
@@ -254,6 +258,7 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
                     c.state.world.actors.emplace(id, context);
                 }
         }
+        c.spawn = std::move(result.candidate);
         return true;
     };
     switch (old.control.state) {
@@ -266,15 +271,17 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
         input.facts = c.state.facts;
         input.task = c.state.task;
         input.task.definition_task_flag = c.state.world.actors.at(i.actor).definition_task_flag;
-        const auto path = prepare_world_path_c(c.state.world, input);
+        auto path = prepare_world_path_c_consuming(std::move(c.state.world), input);
         if (!path.candidate)
             return fail(WorldDailyError::preparation_failed);
         c.state.world = path.candidate->state;
         c.state.facts = path.candidate->facts;
         c.state.task = path.candidate->task;
-        c.path = path.candidate;
         if (path.candidate->event116)
             c.event_requests.push_back(116);
+        // Published daily world and path audit remain independent; only transfer
+        // the complete last-use audit, never its state member alone.
+        c.path = std::move(path.candidate);
         break;
     }
     case 5: {
@@ -414,12 +421,11 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
                             c.state.world.ai.battle.objects.at(selected.selected->value).position,
                             *i.object_box);
         }
-        const auto pickup = prepare_ground_pickup_commit(
+        auto pickup = prepare_ground_pickup_commit(
             c.state.world.ai.battle, {i.actor, c.state.world.object_order, false, touching, 0, {}});
         if (!pickup.candidate)
             return fail(WorldDailyError::preparation_failed);
         c.state.world.ai.battle = pickup.candidate->state;
-        c.pickup = pickup.candidate;
         if (pickup.candidate->action == PickupAction::chase) {
             const auto target = *pickup.candidate->chase_target;
             const auto motion = advance_character_motion({old.position.x, old.position.z},
@@ -432,11 +438,19 @@ WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDail
             if (motion.step->velocity)
                 c.state.world.actors.at(i.actor).horizontal_velocity = *motion.step->velocity;
         }
+        c.pickup = std::move(pickup.candidate);
         break;
     }
     default:
         return fail(WorldDailyError::unsupported_state);
     }
     return {WorldDailyError::none, std::move(c)};
+}
+} // namespace
+WorldDailyResult prepare_world_daily_c(const WorldDailyState &s, const WorldDailyInput &i) {
+    return daily(s, i);
+}
+WorldDailyResult prepare_world_daily_c_consuming(WorldDailyState &&s, const WorldDailyInput &i) {
+    return daily(std::move(s), i);
 }
 } // namespace ark::simulation::rules

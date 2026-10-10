@@ -1,8 +1,8 @@
 #pragma once
 
+#include "ark/simulation/ai/rules/world_schedule.hpp"
 #include "ark/simulation/village/rules/world_calendar.hpp"
 #include "ark/simulation/world/rules/world_random.hpp"
-#include "ark/simulation/ai/rules/world_schedule.hpp"
 
 namespace ark::simulation::rules {
 // 这是外层唯一Owner的临时公共投影，不能再持久保存第二份world/随机/日历事实。
@@ -57,6 +57,8 @@ struct WorldSceneStep {
 };
 using WorldSceneConsumer =
     std::function<std::optional<WorldSceneStep>(const WorldSceneState &, const WorldSceneCall &)>;
+using WorldScenePrivateConsumer =
+    std::function<std::optional<WorldSceneStep>(WorldSceneState, const WorldSceneCall &)>;
 struct WorldSceneInput {
     std::int32_t calendar_advance{}; // d.a.R，调用者提供真实值，默认0不是新局27认证。
     bool framework_admitted{true};   // 已通过活动、焦点、生命周期bB2等真实框架资格。
@@ -85,6 +87,9 @@ struct WorldSceneResult {
 // 所有域、页面、脚本和随机适配必须返回同一私有Owner；缺失不得当作成功通知。
 WorldSceneResult prepare_world_scene(const WorldSceneState &state, const WorldSceneInput &input,
                                      const WorldSceneConsumer &consumer);
+WorldSceneResult prepare_world_scene_private(const WorldSceneState &state,
+                                             const WorldSceneInput &input,
+                                             const WorldScenePrivateConsumer &consumer);
 template <class Owner> struct OwnedWorldSceneStep {
     Owner state;
     WorldSceneDisposition disposition{WorldSceneDisposition::continue_round};
@@ -94,6 +99,12 @@ template <class Owner> struct OwnedWorldSceneAdapter {
     std::function<void(Owner &, const WorldSceneState &)> write;
     std::function<std::optional<OwnedWorldSceneStep<Owner>>(const Owner &, const WorldSceneCall &)>
         consume;
+    // 只借用唯一Owner中的实际scene；配对提供，不能返回临时投影或保留引用。
+    std::function<const WorldSceneState &(const Owner &)> borrow_read{};
+    std::function<WorldSceneState &(Owner &)> borrow_write{};
+    // 仅消费本函数创建的可丢弃scratch；拒绝时整个Owner与场景审计一起丢弃。
+    std::function<std::optional<WorldSceneDisposition>(Owner &, const WorldSceneCall &)>
+        consume_private{};
 };
 template <class Owner> struct OwnedWorldSceneResult {
     WorldSceneError error{WorldSceneError::none};
@@ -105,9 +116,29 @@ template <class Owner>
 OwnedWorldSceneResult<Owner>
 prepare_owned_world_scene(const Owner &state, const WorldSceneInput &input,
                           const OwnedWorldSceneAdapter<Owner> &adapter) {
-    if (!adapter.read || !adapter.write)
+    const bool private_owner = static_cast<bool>(adapter.consume_private);
+    if ((private_owner && (!adapter.borrow_read || !adapter.borrow_write)) ||
+        (!private_owner && (!adapter.read || !adapter.write)))
         return {WorldSceneError::missing_consumer, {}, {}, WorldCalendarError::none};
     Owner scratch = state;
+    if (private_owner) {
+        auto result = prepare_world_scene_private(
+            adapter.borrow_read(state), input,
+            [&](WorldSceneState common,
+                const WorldSceneCall &call) -> std::optional<WorldSceneStep> {
+                adapter.borrow_write(scratch) = std::move(common);
+                const auto disposition = adapter.consume_private(scratch, call);
+                if (!disposition)
+                    return {};
+                return WorldSceneStep{std::move(adapter.borrow_write(scratch)), *disposition};
+            });
+        if (!result.candidate)
+            return {result.error, {}, {}, result.calendar_error};
+        // 返回Owner与完整场景audit都必须独立，最终共同状态保留这一次复制。
+        adapter.borrow_write(scratch) = result.candidate->state;
+        return {WorldSceneError::none, std::move(scratch), std::move(result.candidate),
+                WorldCalendarError::none};
+    }
     WorldSceneConsumer consumer;
     if (adapter.consume) {
         consumer = [&](const WorldSceneState &common,

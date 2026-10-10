@@ -339,6 +339,14 @@ void task_start_audio() {
             decision_actors.push_back(actor);
             return decision(owner, actor);
         };
+        // The runtime prefers its same-call routes input. Observe either real
+        // entry without changing dispatch preference or the ordering assertions.
+        const auto decision_from_routes = actors.decision_from_routes;
+        actors.decision_from_routes = [&](const auto &owner, const auto &routes,
+                                          ref::CharacterId actor) {
+            decision_actors.push_back(actor);
+            return decision_from_routes(owner, routes, actor);
+        };
         int starts{};
         const auto presentation = actors.presentation;
         actors.presentation = [&](const auto &owner, const auto &request)

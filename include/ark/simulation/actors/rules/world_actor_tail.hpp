@@ -29,6 +29,12 @@ WorldActorTailResult prepare_world_detached_actor_tail(const RescueWorldState &s
                                                        const WorldActorTailInput &input);
 WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &state,
                                               const WorldActorTailInput &input);
+// Transfer only a disposable full world. Validation still precedes the transfer;
+// callbacks observe the same projected actor and retain their original timing.
+WorldActorTailResult prepare_world_actor_tail_consuming(RescueWorldState &&state,
+                                                        const WorldActorTailInput &input);
+WorldActorTailResult prepare_world_detached_actor_tail_consuming(RescueWorldState &&state,
+                                                                 const WorldActorTailInput &input);
 // Schedule's actual erase: human d true first releases current q FIRST matching occupant;
 // c true does not. Removed objects remain available to db/dc/R/S/az consumers until GC.
 WorldActorTailResult prepare_world_actor_remove(const RescueWorldState &state, CharacterId actor,

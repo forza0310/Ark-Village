@@ -110,6 +110,7 @@ if(BUILD_TESTING AND NOT ARK_LIBRARIES_ONLY)
         elseif(module STREQUAL "startup_world_building_test" OR
                module STREQUAL "startup_world_pages_test" OR
                module STREQUAL "startup_world_projection_test" OR
+               module STREQUAL "startup_world_runtime_test" OR
                module STREQUAL "startup_world_runtime_nonactors_test")
             # Bonus queries and the narrow shop projection retain full independent Owner digests.
             # This test-only maintenance dependency does not enter the player/runtime graph.

@@ -1,10 +1,11 @@
-#include "ark/simulation/facilities/startup_world_building.hpp"
-#include "ark/simulation/facilities/startup_world_editing.hpp"
-#include "ark/simulation/map/startup_world_expansion.hpp"
-#include "ark/simulation/facilities/startup_world_facility_items.hpp"
-#include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
+#include "../../src/simulation/facilities/startup_world_facility_update_private.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
 #include "ark/simulation/application/startup_world_inheritance.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
+#include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
+#include "ark/simulation/facilities/startup_world_facility_items.hpp"
+#include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "support/world_fixture.hpp"
@@ -26,7 +27,8 @@ void new_world_inheritance() {
     auto s = test_support::world_fixture();
     const auto baseline = startup_world_state_digest(s);
     std::array<std::vector<std::uint8_t>, 2> sections;
-    check(install_startup_world_inheritance(s, sections) && startup_world_state_digest(s) == baseline,
+    check(install_startup_world_inheritance(s, sections) &&
+              startup_world_state_digest(s) == baseline,
           "empty source inheritance sections preserve exact default world");
     sections[0].resize(s.rules->facilities.size() * 2);
     sections[1].resize(s.rules->jobs.size() * 2);
@@ -35,14 +37,16 @@ void new_world_inheritance() {
     for (std::size_t n = 1; n < sections[1].size(); n += 2)
         sections[1][n] = 1;
     const auto before = s;
-    check(install_startup_world_inheritance(s, sections), "full big-endian G then p inheritance installs privately");
+    check(install_startup_world_inheritance(s, sections),
+          "full big-endian G then p inheritance installs privately");
     for (const auto &d : s.rules->facilities) {
         const auto values = startup_world_build_quote(s, d.id);
         check(values && s.scene.world.world.facility_uses.at(d.id).level == 5 &&
                   s.scripts.facilities.at(d.id).level == 5,
               "inheritance writes every stable shared definition G");
         for (std::size_t slot = 0; slot < 4; ++slot)
-            check(s.scripts.facilities.at(d.id).attributes[slot] == values->definition_attributes[slot],
+            check(s.scripts.facilities.at(d.id).attributes[slot] ==
+                      values->definition_attributes[slot],
                   "inheritance actual economic setter rebuilds all shared attributes");
     }
     bool price_changed{};
@@ -50,10 +54,12 @@ void new_world_inheritance() {
         const auto actual = startup_world_facility_values(s, id);
         check(actual && f.price == actual->instance_attributes[0],
               "inheritance rebuilds each existing instance price with its own neighbours");
-        price_changed = price_changed || f.price != before.scene.world.world.facilities.at(id).price;
+        price_changed =
+            price_changed || f.price != before.scene.world.world.facilities.at(id).price;
     }
     check(price_changed && s.scene.random.draws() == before.scene.random.draws() &&
-              s.scene.world.world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
+              s.scene.world.world.ai.accounting.funds() ==
+                  before.scene.world.world.ai.accounting.funds() &&
               s.scene.world.world.ai.battle.actors.empty() && s.sound_requests.empty(),
           "real inherited economy changes price without arrival cash random or unconsumed output");
     for (std::size_t n = 0; n < s.rules->jobs.size(); ++n)
@@ -63,12 +69,18 @@ void new_world_inheritance() {
     for (int variant = 0; variant < 6; ++variant) {
         auto candidate = before;
         auto bad = sections;
-        if (variant == 0) bad[0].pop_back();
-        if (variant == 1) bad[1].push_back(0);
-        if (variant == 2) bad[0][1] = 0;
-        if (variant == 3) bad[0][0] = 0xff; // 大端负short，非误解为小端。
-        if (variant == 4) bad[1].back() = 2; // 后段坏p不能留下前段G变化。
-        if (variant == 5) candidate.neighbourhood.erase(candidate.scene.world.facility_order.front());
+        if (variant == 0)
+            bad[0].pop_back();
+        if (variant == 1)
+            bad[1].push_back(0);
+        if (variant == 2)
+            bad[0][1] = 0;
+        if (variant == 3)
+            bad[0][0] = 0xff; // 大端负short，非误解为小端。
+        if (variant == 4)
+            bad[1].back() = 2; // 后段坏p不能留下前段G变化。
+        if (variant == 5)
+            candidate.neighbourhood.erase(candidate.scene.world.facility_order.front());
         const auto digest = startup_world_state_digest(candidate);
         check(!install_startup_world_inheritance(candidate, bad) &&
                   startup_world_state_digest(candidate) == digest,
@@ -77,7 +89,8 @@ void new_world_inheritance() {
     auto running = before;
     running.simulation_steps = 1;
     const auto digest = startup_world_state_digest(running);
-    check(!install_startup_world_inheritance(running, sections) && startup_world_state_digest(running) == digest,
+    check(!install_startup_world_inheritance(running, sections) &&
+              startup_world_state_digest(running) == digest,
           "inherited system bytes cannot overwrite running world");
 }
 ref::Position empty_anchor(const StartupWorldRuntimeState &s, int definition,
@@ -180,14 +193,85 @@ void normal_construction() {
               s.facility_details.at(id).completion_popularity == 20 &&
               !s.scene.world.popularity_queue.empty() &&
               s.scene.world.popularity_queue.front() == std::array<int, 3>{25, 20, 1},
-          "first-month construction never recharges and queues real sharedN20 popularity before halving to10");
+          "first-month construction never recharges and queues real sharedN20 popularity before "
+          "halving to10");
+}
+// Compare the optimized private facility path with the complete value consumer.
+// Full Owner digests include unrelated normalizations and random, not just the target notices.
+void ordinary_facility_writeback() {
+    const auto adapter = startup_world_runtime_adapter();
+    const auto base = test_support::world_fixture();
+    const auto id = source_facility(base, 28);
+    for (int fault = 0; fault < 14; ++fault) {
+        auto source = base;
+        auto &facility = source.scene.world.world.facilities.at(id);
+        auto &progress = source.dungeon_facilities.at(id);
+        auto &detail = source.facility_details.at(id);
+        if (fault == 1) {
+            facility.status = 0;
+            progress.updates = detail.construction_limit - 2;
+        }
+        if (fault == 2) {
+            facility.status = 0;
+            progress.updates = detail.construction_limit - 1;
+        }
+        if (fault == 3)
+            detail.notices = {{0, 43}, {1, 0}};
+        if (fault == 4)
+            detail.notices = {{7, 59}, {1, 0}};
+        if (fault == 5)
+            detail.notices = {{3, 42}, {1, 0}};
+        if (fault == 6)
+            detail.notices = {{9, 0}};
+        if (fault == 7)
+            detail.notices = {{1, std::numeric_limits<int>::max()}};
+        if (fault == 8)
+            progress.updates = std::numeric_limits<int>::max();
+        if (fault == 9)
+            source.items.at(0).inventory += 3; // Full finish writes authoritative catalog back.
+        if (fault == 10)
+            source.items.erase(0);
+        if (fault == 11)
+            source.facility_monthly_cash.erase(
+                id); // Legacy zero-delta writer inserts missing record.
+        if (fault == 12)
+            source.facility_details.erase(id);
+        if (fault == 13) {
+            facility.status = 2;
+            progress.updates = 8;
+        }
+        const auto before = startup_world_state_digest(source);
+        std::optional<ref::WorldScheduleFailure> old_failure, new_failure;
+        const ref::WorldScheduleCall call{ref::WorldScheduleStage::facility, id, {}};
+        const auto legacy =
+            ref::prepare_owned_world_runtime_domain(source, call, {}, adapter, &old_failure);
+        auto candidate = source;
+        const auto fast =
+            ref::prepare_private_world_runtime_domain(candidate, call, {}, adapter, &new_failure);
+        check(legacy.has_value() == fast.has_value(),
+              "private/full facility success and refusal agree");
+        if (legacy)
+            check(legacy->disposition == *fast && startup_world_state_digest(legacy->state) ==
+                                                      startup_world_state_digest(candidate),
+                  "private facility complete Owner matches full projection across boundaries and "
+                  "normalization");
+        if (old_failure || new_failure)
+            check(old_failure && new_failure && old_failure->stage == new_failure->stage &&
+                      old_failure->id == new_failure->id &&
+                      old_failure->layer == new_failure->layer &&
+                      old_failure->error == new_failure->error,
+                  "private facility refusal retains full consumer diagnostic");
+        check(startup_world_state_digest(source) == before,
+              "facility consumers preserve original independent input");
+    }
 }
 // Ordinary blueprint ownership allows repeated gold builds, without spending H or village points.
 void repeat_blueprint_construction() {
     for (int definition : {28, 34}) {
         auto s = test_support::world_fixture();
         if (definition == 34) {
-            s.facility_presence.at(34) = 2; // Post-redemption fixture; actual payment belongs to pages.
+            s.facility_presence.at(34) =
+                2; // Post-redemption fixture; actual payment belongs to pages.
             s.facility_free_builds.at(34) = 1;
         }
         const auto funds = s.scene.world.world.ai.accounting.funds();
@@ -197,10 +281,12 @@ void repeat_blueprint_construction() {
         check(begin_startup_world_build(s, definition).denial == StartupBuildDenial::none,
               "initial and redeemed ordinary blueprints enter gold construction");
         for (int count = 1; count <= 2; ++count) {
-            const auto built = confirm_startup_world_build(
-                s, empty_anchor(s, definition), ref::FacilityOrientation::first);
-            check(built.created && s.scene.world.world.ai.accounting.funds() == funds - count * price &&
-                      s.village_points == points && s.facility_free_builds.at(definition) == entitlement,
+            const auto built = confirm_startup_world_build(s, empty_anchor(s, definition),
+                                                           ref::FacilityOrientation::first);
+            check(built.created &&
+                      s.scene.world.world.ai.accounting.funds() == funds - count * price &&
+                      s.village_points == points &&
+                      s.facility_free_builds.at(definition) == entitlement,
                   "each ordinary build pays gold, never consumes blueprint or points");
         }
     }
@@ -225,41 +311,46 @@ void progression_building_unlocks() {
               "actual museum still costs3000G after its H entitlement, independent of200 points");
         check(begin_startup_world_build(s, definition).denial == StartupBuildDenial::none,
               "real redeemed school or museum enters ordinary construction");
-        const auto built = confirm_startup_world_build(
-            s, empty_anchor(s, definition), ref::FacilityOrientation::first);
+        const auto built = confirm_startup_world_build(s, empty_anchor(s, definition),
+                                                       ref::FacilityOrientation::first);
         check(built.created && s.scene.world.facility_order.size() == count + 1 &&
                   s.scene.world.world.ai.accounting.funds() == funds - quote->construction_cost &&
                   s.scripts.activities.at(activity).status == 0,
-              "Owner pays real construction gold and creates one unfinished instance, no early activity");
+              "Owner pays real construction gold and creates one unfinished instance, no early "
+              "activity");
         const auto id = *built.created;
         check(cancel_startup_world_build(s) == StartupWorldRuntimeError::none,
               "accepted construction leaves build mode through normal cancellation");
         const auto limit = s.facility_details.at(id).construction_limit;
-        check(limit > 0 && limit <= 2000, "real source construction has a bounded functional fixture");
+        check(limit > 0 && limit <= 2000,
+              "real source construction has a bounded functional fixture");
         const auto adapter = startup_world_runtime_adapter();
         for (int tick = 0; tick < limit; ++tick) {
-            const auto prepared = ref::prepare_world_facility_update(
-                adapter.facilities.read(s), id, adapter.catalog);
+            const auto prepared =
+                ref::prepare_world_facility_update(adapter.facilities.read(s), id, adapter.catalog);
             check(prepared.candidate && adapter.facilities.write(s, prepared.candidate->state),
                   "actual school or museum facility step writes through common Owner");
             check(s.scene.world.world.facilities.at(id).status == (tick + 1 == limit ? 1 : 0) &&
                       s.scripts.activities.at(activity).status == (tick + 1 == limit ? 1 : 0),
-                  "source construction threshold alone opens matching activity, never a preceding tick");
+                  "source construction threshold alone opens matching activity, never a preceding "
+                  "tick");
         }
         check(s.scripts.event_calls.at(event) == 1 &&
                   s.scripts.activities.at(activity).pending_notice &&
                   s.activity_counts.at(activity) == 0 && s.events_held == 0 &&
                   s.scene.world.world.ai.accounting.funds() == funds - quote->construction_cost &&
                   s.scene.random.draws() == draws,
-              "first real completion opens definition only, without holding activity or extra payment/random");
+              "first real completion opens definition only, without holding activity or extra "
+              "payment/random");
         if (definition == 64)
             check(s.scripts.event_calls.at(215) == 1,
                   "real museum flags additionally execute original completion news215");
         const auto events = s.scripts.event_calls;
-        const auto repeated = ref::prepare_world_facility_update(
-            adapter.facilities.read(s), id, adapter.catalog);
+        const auto repeated =
+            ref::prepare_world_facility_update(adapter.facilities.read(s), id, adapter.catalog);
         check(repeated.candidate && adapter.facilities.write(s, repeated.candidate->state) &&
-                  s.scripts.event_calls == events && s.scene.world.facility_order.size() == count + 1,
+                  s.scripts.event_calls == events &&
+                  s.scene.world.facility_order.size() == count + 1,
               "completed instance neither repeats first scripts nor creates another entity");
     }
 }
@@ -341,11 +432,12 @@ void details() {
 void facility_bonus_rows() {
     auto s = test_support::world_fixture();
     const auto target = source_facility(s, 33), shop = source_facility(s, 30);
-    const auto tree1 = install_startup_world_facility(s, 71, empty_anchor(s, 71),
-                                                      ref::FacilityOrientation::first);
-    const auto tree2 = install_startup_world_facility(s, 71, empty_anchor(s, 71),
-                                                      ref::FacilityOrientation::first);
-    check(tree1.created && tree2.created, "bonus row fixture creates two distinct real source instances");
+    const auto tree1 =
+        install_startup_world_facility(s, 71, empty_anchor(s, 71), ref::FacilityOrientation::first);
+    const auto tree2 =
+        install_startup_world_facility(s, 71, empty_anchor(s, 71), ref::FacilityOrientation::first);
+    check(tree1.created && tree2.created,
+          "bonus row fixture creates two distinct real source instances");
     check(open_startup_world_facility_page(s, target) == StartupWorldRuntimeError::none,
           "bonus rows use an actual bound74 page");
     const auto page = s.scripts.pages.back().id;
@@ -353,13 +445,14 @@ void facility_bonus_rows() {
     s.facility_ordinals.at(*tree1.created) = 9;
     s.facility_ordinals.at(*tree2.created) = 10;
     s.facility_page_neighbours.at(page) = {
-        {{*tree1.created},71}, {{shop},30}, {{*tree2.created},71}, {{*tree1.created},71}};
+        {{*tree1.created}, 71}, {{shop}, 30}, {{*tree2.created}, 71}, {{*tree1.created}, 71}};
     const auto digest = startup_world_state_digest(s);
     const auto rows = startup_world_facility_bonus_rows(s, page);
-    check(rows && rows->size() == 4 && rows->at(0).instance == *tree1.created &&
-              rows->at(1).instance == shop && rows->at(2).instance == *tree2.created &&
-              rows->at(3).instance == *tree1.created,
-          "74 Y source order, same-definition identities and repeated page rows survive projection");
+    check(
+        rows && rows->size() == 4 && rows->at(0).instance == *tree1.created &&
+            rows->at(1).instance == shop && rows->at(2).instance == *tree2.created &&
+            rows->at(3).instance == *tree1.created,
+        "74 Y source order, same-definition identities and repeated page rows survive projection");
     check(rows->at(0).name == "槙树10" && rows->at(2).name == "槙树11" &&
               rows->at(0).ordinal == 9 && rows->at(0).icon == 6,
           "original name suffix is per-definition ordinal plus1, never global ID or shared level");
@@ -371,30 +464,33 @@ void facility_bonus_rows() {
               rows->at(1).values[0].label == "魅力" && rows->at(1).values[0].text == "+10",
           "literal tenant71 y20/25 and tenant30 y10 produce exact labels/raw signed values");
     check(startup_world_state_digest(s) == digest,
-          "bonus projection preserves complete Owner, neighbour totals, pages, ordinal, random and cash");
+          "bonus projection preserves complete Owner, neighbour totals, pages, ordinal, random and "
+          "cash");
     auto scroll = s;
     for (int n = 0; n < 3; ++n)
-        scroll.facility_page_neighbours.at(page).push_back({{shop},30});
+        scroll.facility_page_neighbours.at(page).push_back({{shop}, 30});
     const auto scroll_digest = startup_world_state_digest(scroll);
-    const auto first = startup_world_facility_bonus_window(scroll,page,0);
-    const auto last = startup_world_facility_bonus_window(scroll,page,2);
-    check(first && last && first->total == 7 && first->rows.size() == 5 &&
-              last->first == 2 && last->rows.size() == 5 && last->rows[0].name == "槙树11" &&
+    const auto first = startup_world_facility_bonus_window(scroll, page, 0);
+    const auto last = startup_world_facility_bonus_window(scroll, page, 2);
+    check(first && last && first->total == 7 && first->rows.size() == 5 && last->first == 2 &&
+              last->rows.size() == 5 && last->rows[0].name == "槙树11" &&
               last->rows[1].name == "槙树10" && last->rows[4].definition == 30 &&
-              !startup_world_facility_bonus_window(scroll,page,3) &&
+              !startup_world_facility_bonus_window(scroll, page, 3) &&
               startup_world_state_digest(scroll) == scroll_digest,
-          "five-row first/last views preserve repeated order, reject excess scroll and remain read-only");
+          "five-row first/last views preserve repeated order, reject excess scroll and remain "
+          "read-only");
     StartupWorldRules private_rules = *s.rules;
     auto conditions = s;
     conditions.rules = &private_rules;
     // 规则槽重复／顺序变化不授权重排原显示固定y位置；负数/零为条件夹具。
-    private_rules.facilities[71].neighbour_effects = {{2,-3},{2,0}};
-    conditions.neighbourhood.at(target) = {1234,5678,9012};
+    private_rules.facilities[71].neighbour_effects = {{2, -3}, {2, 0}};
+    conditions.neighbourhood.at(target) = {1234, 5678, 9012};
     const auto unusual = startup_world_facility_bonus_rows(conditions, page);
     check(unusual && unusual->at(0).values[0].attribute == 0 &&
-              unusual->at(0).values[0].text == "+-3" &&
-              unusual->at(0).values[1].attribute == 1 && unusual->at(0).values[1].text == "+0",
-          "fixed display slots preserve literal plus/signed-zero and never split aggregate modifiers");
+              unusual->at(0).values[0].text == "+-3" && unusual->at(0).values[1].attribute == 1 &&
+              unusual->at(0).values[1].text == "+0",
+          "fixed display slots preserve literal plus/signed-zero and never split aggregate "
+          "modifiers");
     conditions.facility_page_neighbours.at(page).clear();
     check(startup_world_facility_bonus_rows(conditions, page)->empty(),
           "empty Y stays empty even with nonzero aggregate road or other modifiers");
@@ -402,22 +498,31 @@ void facility_bonus_rows() {
         auto broken = s;
         auto rules = *s.rules;
         broken.rules = &rules;
-        if (fault == 0) broken.facility_ordinals.erase(*tree1.created);
-        if (fault == 1) broken.facility_ordinals.at(*tree1.created) = -1;
-        if (fault == 2) broken.facility_ordinals.at(*tree1.created) = std::numeric_limits<int>::max();
-        if (fault == 3) broken.scene.world.world.facilities.erase(*tree1.created);
-        if (fault == 4) broken.facility_page_neighbours.at(page)[0].definition_id = 30;
-        if (fault == 5) rules.facilities[71].neighbour_effects.resize(1);
-        if (fault == 6) rules.facilities[71].legacy_icon = 7;
-        if (fault == 7) broken.page_phases.erase(page);
+        if (fault == 0)
+            broken.facility_ordinals.erase(*tree1.created);
+        if (fault == 1)
+            broken.facility_ordinals.at(*tree1.created) = -1;
+        if (fault == 2)
+            broken.facility_ordinals.at(*tree1.created) = std::numeric_limits<int>::max();
+        if (fault == 3)
+            broken.scene.world.world.facilities.erase(*tree1.created);
+        if (fault == 4)
+            broken.facility_page_neighbours.at(page)[0].definition_id = 30;
+        if (fault == 5)
+            rules.facilities[71].neighbour_effects.resize(1);
+        if (fault == 6)
+            rules.facilities[71].legacy_icon = 7;
+        if (fault == 7)
+            broken.page_phases.erase(page);
         const auto before = startup_world_state_digest(broken);
         check(!startup_world_facility_bonus_rows(broken, page) &&
                   startup_world_state_digest(broken) == before,
-              "bad source identity, ordinal, payload, icon or initialized page explicitly refuses without mutation");
+              "bad source identity, ordinal, payload, icon or initialized page explicitly refuses "
+              "without mutation");
     }
     auto closed = s;
     closed.scripts.pages.back().lifecycle = 4;
-    check(!startup_world_facility_bonus_rows(closed,page) &&
+    check(!startup_world_facility_bonus_rows(closed, page) &&
               !startup_world_facility_bonus_rows(s, std::numeric_limits<std::uint64_t>::max()),
           "closed or unknown74 cannot render stale bonus rows");
 }
@@ -490,20 +595,28 @@ void shared_upgrade() {
           "raw81 actual update follows original modulo INT_MAX without overflow");
     for (int fault = 0; fault < 7; ++fault) {
         auto corrupt = s;
-        if (fault == 0) corrupt.page_counters.erase(page);
-        if (fault == 1) corrupt.page_phases.erase(page);
-        if (fault == 2) corrupt.page_secondary_counters.erase(page);
-        if (fault == 3) corrupt.page_secondary_counters.at(page) = -1;
-        if (fault == 4) corrupt.page_secondary_counters.at(page) = std::numeric_limits<int>::max();
-        if (fault == 5) corrupt.page_phases.at(page) = 2;
-        if (fault == 6) corrupt.page_counters.at(page) = -1;
+        if (fault == 0)
+            corrupt.page_counters.erase(page);
+        if (fault == 1)
+            corrupt.page_phases.erase(page);
+        if (fault == 2)
+            corrupt.page_secondary_counters.erase(page);
+        if (fault == 3)
+            corrupt.page_secondary_counters.at(page) = -1;
+        if (fault == 4)
+            corrupt.page_secondary_counters.at(page) = std::numeric_limits<int>::max();
+        if (fault == 5)
+            corrupt.page_phases.at(page) = 2;
+        if (fault == 6)
+            corrupt.page_counters.at(page) = -1;
         const auto before = startup_world_state_digest(corrupt);
         check(!inspect_startup_world_facility_upgrade(corrupt, page) &&
                   !prepare_startup_world_runtime(corrupt).candidate &&
                   acknowledge_startup_world_runtime_page(corrupt, page) ==
                       StartupWorldRuntimeError::missing_source &&
                   startup_world_state_digest(corrupt) == before,
-              "initialized upgrade rejects missing or illegal clocks without silent repair or mutation");
+              "initialized upgrade rejects missing or illegal clocks without silent repair or "
+              "mutation");
     }
     const auto usage = startup_world_resource_usage(s);
     auto without_secondary = s;
@@ -931,38 +1044,46 @@ void facility_item_empty_and_legend() {
         check(tick.candidate.has_value(), "legend integration actual framework continues");
         s = *tick.candidate;
         const auto top = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
-                                    [](const auto &p) { return p.lifecycle != 4; });
+                                      [](const auto &p) { return p.lifecycle != 4; });
         check(top != s.scripts.pages.rend(), "legend integration retains one actual top page");
         if (top->legacy_page == 82) {
             animation = top->id;
             check(top->facility_definition == 33 && top->legacy_f == 0,
                   "actual75 continuation2033 creates82 bound to original bun shop definition");
             if (inspect_startup_world_facility_catalog_page(s, animation)) {
-                const bool finishing = s.page_phases.at(animation) == 1 && s.page_counters.at(animation) >= 40;
-                check(acknowledge_startup_world_runtime_page(s, animation) == StartupWorldRuntimeError::none,
+                const bool finishing =
+                    s.page_phases.at(animation) == 1 && s.page_counters.at(animation) >= 40;
+                check(acknowledge_startup_world_runtime_page(s, animation) ==
+                          StartupWorldRuntimeError::none,
                       "actual legend82 uses the two phase confirmation consumer");
                 completed = finishing;
             } // 当轮新插页尚未初始化，玩家输入等下一个框架入口；不补载荷。
         } else if (top->legacy_page == 74) {
-            check(act_startup_world_facility_page(s, top->id, StartupFacilityPageAction::cancel) == StartupWorldRuntimeError::none,
-                  "legend player returns from parent details so its real delayed program can advance");
+            check(act_startup_world_facility_page(s, top->id, StartupFacilityPageAction::cancel) ==
+                      StartupWorldRuntimeError::none,
+                  "legend player returns from parent details so its real delayed program can "
+                  "advance");
         } else if (top->kind != ref::WorldScriptPageKind::scene && top->legacy_page != 76 &&
                    (top->legacy_page != 77 || s.facility_item_pages_initialized.count(top->id))) {
             const auto error = acknowledge_startup_world_runtime_page(s, top->id);
             check(error == StartupWorldRuntimeError::none,
                   ("legend prior confirmation raw=" + std::to_string(top->legacy_page) +
-                   " error=" + std::to_string(static_cast<int>(error))).c_str());
+                   " error=" + std::to_string(static_cast<int>(error)))
+                      .c_str());
         }
         s.sound_requests.clear(); // 显式表现消费者领取本次输出，不留下积累声音。
     }
     check(completed && s.scene.world.popularity_queue.front() == std::array<int, 3>{10, 20, 1} &&
               s.facility_item_confirmations.at(source_facility(s, 33)) == 0,
-          "condition fixture reaches actual75→100-delay→82→one deferred20 request without repeating gift");
+          "condition fixture reaches actual75→100-delay→82→one deferred20 request without "
+          "repeating gift");
     const auto retired = prepare_startup_world_runtime(s);
-    check(retired.candidate && !retired.candidate->facility_catalog_pages_initialized.count(animation) &&
-              !retired.candidate->facility_catalog_page_data.count(animation) &&
-              !retired.candidate->facility_catalog_page_lists.count(animation),
-          "actual legend page retires its initialized binding and frozen participants on next entry");
+    check(
+        retired.candidate &&
+            !retired.candidate->facility_catalog_pages_initialized.count(animation) &&
+            !retired.candidate->facility_catalog_page_data.count(animation) &&
+            !retired.candidate->facility_catalog_page_lists.count(animation),
+        "actual legend page retires its initialized binding and frozen participants on next entry");
 }
 void road_editing() {
     auto s = test_support::world_fixture();
@@ -1210,9 +1331,10 @@ void neighbour_changes_reach_actual_income() {
         check(initialize_startup_world_neighbours(initial),
               "real initial neighbour projection remains admissible after cache synchronization");
         for (const auto &[id, facility] : initial.scene.world.world.facilities)
-            check(facility.price == before.scene.world.world.facilities.at(id).price &&
-                      initial.neighbourhood.at(id) == before.neighbourhood.at(id),
-                  "initial projection already includes each instance neighbours and is not repriced");
+            check(
+                facility.price == before.scene.world.world.facilities.at(id).price &&
+                    initial.neighbourhood.at(id) == before.neighbourhood.at(id),
+                "initial projection already includes each instance neighbours and is not repriced");
         check(initial.scene.random.draws() == before.scene.random.draws(),
               "initial neighbour synchronization consumes no new random draw");
     }
@@ -1223,11 +1345,11 @@ void neighbour_changes_reach_actual_income() {
     const auto &map = built.scene.world.world.map;
     std::optional<ref::Position> flower_cell;
     for (const auto p : std::array<ref::Position, 4>{{{anchor.x + 1, anchor.y},
-                                                     {anchor.x - 1, anchor.y},
-                                                     {anchor.x, anchor.y + 1},
-                                                     {anchor.x, anchor.y - 1}}}) {
-        if (p.x > bounds[0].x && p.x < bounds[1].x && p.y > bounds[1].y &&
-            p.y < bounds[0].y && !map.cells.at(p.y * map.width + p.x).facility) {
+                                                      {anchor.x - 1, anchor.y},
+                                                      {anchor.x, anchor.y + 1},
+                                                      {anchor.x, anchor.y - 1}}}) {
+        if (p.x > bounds[0].x && p.x < bounds[1].x && p.y > bounds[1].y && p.y < bounds[0].y &&
+            !map.cells.at(p.y * map.width + p.x).facility) {
             flower_cell = p;
             break;
         }
@@ -1266,7 +1388,8 @@ void neighbour_changes_reach_actual_income() {
         const auto digest = startup_world_state_digest(broken);
         check(!refresh_startup_world_map(broken, false) &&
                   startup_world_state_digest(broken) == digest,
-              "missing or invalid economy source rejects no-notice refresh without partial Owner writes");
+              "missing or invalid economy source rejects no-notice refresh without partial Owner "
+              "writes");
     }
 
     for (const bool remove : {false, true}) {
@@ -1279,8 +1402,8 @@ void neighbour_changes_reach_actual_income() {
                       cancel_startup_world_edit(s) == StartupWorldRuntimeError::none,
                   "decoration removal uses actual Owner editor before later arrival");
             retired_facility_records(s, flower);
-            check(s.scene.world.facility_order.size() == count &&
-                      s.neighbourhood.at(inn)[0] == 0 && s.neighbourhood.at(inn)[1] == 0,
+            check(s.scene.world.facility_order.size() == count && s.neighbourhood.at(inn)[0] == 0 &&
+                      s.neighbourhood.at(inn)[1] == 0,
                   "removal retires one instance and both neighbour effects without fake history");
         }
         check(s.scene.random.draws() == draws &&
@@ -1326,12 +1449,13 @@ void neighbour_changes_reach_actual_income() {
                 break;
             }
         }
-        check(arrived && s.scene.world.world.ai.accounting.funds() == funds + expected &&
-                  s.scene.world.world.facilities.at(inn).sales == sales + expected &&
-                  s.scene.world.world.human_spending.at(definition) == spending + expected &&
-                  s.facility_monthly_cash.at(inn).at(month)[0] == monthly + expected &&
-                  s.scene.world.world.ai.next_cash_id == cash_id + 1 && s.sound_requests.empty(),
-              "actual Owner arrival posts refreshed price once to cash sales human and month bucket");
+        check(
+            arrived && s.scene.world.world.ai.accounting.funds() == funds + expected &&
+                s.scene.world.world.facilities.at(inn).sales == sales + expected &&
+                s.scene.world.world.human_spending.at(definition) == spending + expected &&
+                s.facility_monthly_cash.at(inn).at(month)[0] == monthly + expected &&
+                s.scene.world.world.ai.next_cash_id == cash_id + 1 && s.sound_requests.empty(),
+            "actual Owner arrival posts refreshed price once to cash sales human and month bucket");
     }
 }
 void expansion_map_and_world() {
@@ -1692,6 +1816,7 @@ void commerce_definition_preview() {
 int main() {
     try {
         normal_construction();
+        ordinary_facility_writeback();
         repeat_blueprint_construction();
         progression_building_unlocks();
         new_world_inheritance();

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ark/simulation/combat/rules/combat_commit.hpp"
-#include "ark/simulation/village/rules/world_daily.hpp"
-#include "ark/simulation/tasks/rules/world_dungeon.hpp"
 #include "ark/simulation/actors/rules/world_equipment_display.hpp"
 #include "ark/simulation/ai/rules/world_misc_control.hpp"
-#include "ark/simulation/world/rules/world_random_consumers.hpp"
 #include "ark/simulation/ai/rules/world_wander.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
+#include "ark/simulation/tasks/rules/world_dungeon.hpp"
+#include "ark/simulation/village/rules/world_daily.hpp"
+#include "ark/simulation/world/rules/world_random_consumers.hpp"
 
 namespace ark::simulation::rules {
 // 一个共同人物/设施所有者。商店、探索等结构只在调用时投影，不长期存第二个world。
@@ -96,6 +96,11 @@ struct WorldActorDecisionResult {
 // 全A0..20路由，只运行共同c前段之后的分支；不重复计数、感知、d或随机。
 WorldActorDecisionResult prepare_world_actor_decision(const WorldActorRoutesState &state,
                                                       const WorldActorDecisionInput &input);
+// Internal disposable projection; public const callers still retain an independent input.
+// The complete decision and nested domain audits remain intact on success.
+WorldActorDecisionResult
+prepare_world_actor_decision_consuming(WorldActorRoutesState state,
+                                       const WorldActorDecisionInput &input);
 struct WorldActorCommandInput {
     bool use_shared_random{};
     std::optional<bool> primary_expression_table;
@@ -136,4 +141,10 @@ WorldActorControlResult prepare_world_actor_control(const WorldActorRoutesState 
                                                     CharacterId actor,
                                                     const WorldActorCommandProvider &provider,
                                                     std::size_t budget = 4096);
+// Internal composition may transfer a disposable projection; returned state and
+// audits remain complete independent values, with the same rejection contract.
+WorldActorControlResult
+prepare_world_actor_control_consuming(WorldActorRoutesState state, CharacterId actor,
+                                      const WorldActorCommandProvider &provider,
+                                      std::size_t budget = 4096);
 } // namespace ark::simulation::rules

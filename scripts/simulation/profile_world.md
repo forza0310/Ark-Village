@@ -24,6 +24,8 @@ node scripts/simulation/profile_world_generate.mjs
 
 生成器只读取产品文件，将入口和5个模板头的诊断副本写入忽略的 `build/validation/world-performance/instrumented`；正常产品/CMake不使用该目录。它计量显式Owner复制构造及adapter回调，不覆盖DLL内部的所有复制；各项可能嵌套，不能直接相加解释总占比。插桩调用、额外时间查询和模板在EXE中的编译会扰动耗时。
 
+2026-10-10诊断工具修复：模板头路径复用现有模块映射，适用于facilities/ai/world等源码大模块重排；新增设施、非人物及人物私有路线入口计时，仍只包装诊断adapter。生成目录优先于产品include，引用生成入口时不要被诊断源所在目录的另一份同名`profile_prepare.hpp`遮蔽。五年玩家档专项实测、并发边界与已批准优化方案见[计划](../../docs/MILESTONES.md#loaded-world-performance)，临时存档探针和深层插桩保持在忽略build，不作为新交付脚本提交。
+
 较长轨迹可使用 `ark_profile_world.exe 12000 bakery`：同一真实新局在第2000帧起，首次稳定主场景且原资金足够时，从真实目录选择35号面包店，按冻结 `natural_progression` 中相同的原道路距离排序，经建设消费者寻找合法完整占地并退出工具；只建一次。设施/人物/任务的其它增长均由原消费者产生，不注入人物、资金、任务或地图。`passive` 为默认策略，保持历史2000帧输入。它们都不自动处理任务、年度授勋等决策页，因此月份/任务数和停点须看实测，不能把指定帧数称为无限经营或高人口压力测试。
 
 新增列记录设施数、任务Owner/顺序名单数、耐久存档FNV-1a摘要与未来8个随机原值的滚动摘要。摘要只作快速同输入核对；当前工具只在capture明确返回ineligible时记耐久摘要0，其它捕获失败抛出错误码和消息，不伪造保存资格，也不是完整瞬态状态等价证明。`probe_snapshot_ms`为每个采样点20次 `WorldFrame` 分配及 `make_shared<const WorldState>(move(candidate))` 的平均毫秒；准备完整candidate和销毁均在计时外，不含worker锁、通知、读线程或绘制，所以只能定位快照构造成本。

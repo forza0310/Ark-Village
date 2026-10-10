@@ -110,6 +110,7 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/map/startup_world_projection.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/actors/startup_world_routes.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_runtime.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_update_private.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/world/startup_world_runtime_arrival.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/village/startup_world_runtime_calendar.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/tasks/startup_world_runtime_deadline.cpp"

@@ -97,6 +97,22 @@ if(ARK_BUILD_DESKTOP)
     endif()
 endif()
 
+# Release libraries are shared by every consumer. Enable cross-file optimization
+# only when CMake verifies the selected compiler/linker; no CPU-specific flags.
+option(ARK_RELEASE_IPO "Optimize Release product libraries across source files" ON)
+if(ARK_RELEASE_IPO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT ark_release_ipo_supported OUTPUT ark_release_ipo_error
+        LANGUAGES CXX)
+    if(ark_release_ipo_supported)
+        set_property(TARGET ${ARK_PRODUCT_LIBRARIES}
+            PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
+        message(STATUS "Release product library IPO enabled")
+    else()
+        message(WARNING "Release product library IPO unavailable: ${ark_release_ipo_error}")
+    endif()
+endif()
+
 export(TARGETS ${ARK_PRODUCT_LIBRARIES} FILE "${CMAKE_BINARY_DIR}/ArkLibraries.cmake")
 file(WRITE "${CMAKE_BINARY_DIR}/ArkLibraryBuild.cmake"
     "set(ARK_LIBRARY_COMPILER [[${CMAKE_CXX_COMPILER}]])\n"

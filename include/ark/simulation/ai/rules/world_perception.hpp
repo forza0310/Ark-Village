@@ -1,8 +1,8 @@
 #pragma once
 
 // Current map facts plus cached actor facts. c perception NEVER eagerly reprojects s/t from n.
-#include "ark/simulation/ai/rules/activity_candidates.hpp"
 #include "ark/simulation/actors/rules/actor_housekeeping.hpp"
+#include "ark/simulation/ai/rules/activity_candidates.hpp"
 #include "ark/simulation/ai/rules/ai_perception.hpp"
 #include "ark/simulation/ai/rules/ai_rewards.hpp"
 
@@ -35,10 +35,19 @@ EnemySelectionResult query_current_combat_enemy(const AiRewardState &state, Char
 WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &state, CharacterId actor,
                                                       const WorldMapFacts &facts,
                                                       int monster_mode = 0);
+// Transfer an independent private AI only at the original candidate construction
+// point, after the same initial validation and old-actor calculations.
+WorldPerceptionResult prepare_world_perception_prefix_consuming(AiRewardState &&state,
+                                                                CharacterId actor,
+                                                                const WorldMapFacts &facts,
+                                                                int monster_mode = 0);
 // The next c segment: R repair then rescue-before-object idle preemption. No state16 follow here.
 // object_order is current bp order, separate from the stable-ID storage map.
 WorldPerceptionResult prepare_world_reference_preemption(
     const AiRewardState &state, CharacterId actor, const WorldMapFacts &facts, bool rescue_enabled,
+    bool definition_task_flag, const std::vector<std::uint64_t> &object_order);
+WorldPerceptionResult prepare_world_reference_preemption_consuming(
+    AiRewardState &&state, CharacterId actor, const WorldMapFacts &facts, bool rescue_enabled,
     bool definition_task_flag, const std::vector<std::uint64_t> &object_order);
 // Global h.e BEFORE any current c: preserve original order, old aB0/t and surface masking.
 CombatInfluenceResult prepare_world_influence(const AiRewardState &state,
@@ -51,6 +60,8 @@ struct WorldHealingTargetResult {
 WorldHealingTargetResult query_world_healing_target(const AiRewardState &state, CharacterId actor);
 // Original d projection point only. Retention counters must read old cached s BEFORE this call.
 WorldPerceptionResult prepare_world_actor_projection(const AiRewardState &state, CharacterId actor);
+WorldPerceptionResult prepare_world_actor_projection_consuming(AiRewardState &&state,
+                                                               CharacterId actor);
 struct WorldEventTask {
     bool definition_task_flag{};
     int kind{};
@@ -69,6 +80,9 @@ struct WorldEventGateResult {
 WorldEventGateResult prepare_world_event_gate(const AiRewardState &state, CharacterId actor,
                                               const WorldMapFacts &facts,
                                               const WorldEventTask &task = {});
+WorldEventGateResult prepare_world_event_gate_consuming(AiRewardState &&state, CharacterId actor,
+                                                        const WorldMapFacts &facts,
+                                                        const WorldEventTask &task = {});
 struct WorldPhysicsCandidate {
     AiRewardState state;
     bool queried_area{};
@@ -82,6 +96,9 @@ struct WorldPhysicsResult {
 // Height retained when only horizontal n is restored; physics never refreshes cached ax.
 WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &state, CharacterId actor,
                                                     const WorldMapFacts &facts);
+WorldPhysicsResult prepare_world_physics_projection_consuming(AiRewardState &&state,
+                                                              CharacterId actor,
+                                                              const WorldMapFacts &facts);
 struct WorldCombatMoveCandidate {
     AiRewardState state;
     CombatMoveCandidate scores;
@@ -116,6 +133,8 @@ struct WorldExecutionPrefixResult {
 // No control, old-s retention or physics here; one owner calls each segment once in source order.
 WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &state,
                                                           CharacterId actor);
+WorldExecutionPrefixResult prepare_world_execution_prefix_consuming(AiRewardState &&state,
+                                                                    CharacterId actor);
 struct WorldBattlePreparationResult {
     AiRewardError error{AiRewardError::none};
     std::optional<AiRewardState> state;

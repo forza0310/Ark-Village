@@ -33,14 +33,15 @@ bool external_hit(HitRequestKind kind) {
     return kind == HitRequestKind::face_attacker || kind == HitRequestKind::attack_sound;
 }
 } // namespace
-WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleState &state,
-                                                 const WorldNonactorStageInput &input,
-                                                 const CombatInfluenceCandidate &field,
-                                                 const WorldNonactorConsumer &consumer) {
+template <class State>
+static WorldNonactorResult nonactor_stage(State &&state, const WorldNonactorStageInput &input,
+                                          const CombatInfluenceCandidate &field,
+                                          const WorldNonactorConsumer &consumer) {
     const auto fail = [](WorldNonactorError error) { return WorldNonactorResult{error, {}}; };
     if (!valid_world_schedule_owner(state.common))
         return fail(WorldNonactorError::invalid_owner);
-    WorldNonactorCandidate candidate{state, WorldScheduleDisposition::keep, {}};
+    WorldNonactorCandidate candidate{
+        std::forward<State>(state), WorldScheduleDisposition::keep, {}};
     auto &routes = candidate.state;
     WorldNonactorError error{WorldNonactorError::none};
     const auto draw = [&](int bound) -> std::optional<int> {
@@ -90,8 +91,8 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
             return false;
         }
         const bool target_visual = request.kind == WorldNonactorRequestKind::projectile_contact ||
-            (request.kind == WorldNonactorRequestKind::projectile_visual && request.visual >= 4 &&
-             request.visual <= 9);
+                                   (request.kind == WorldNonactorRequestKind::projectile_visual &&
+                                    request.visual >= 4 && request.visual <= 9);
         if (target_visual) {
             if (!request.target || !fields->target_effects ||
                 !valid_actor_effect_state(*fields->target_effects) ||
@@ -114,10 +115,10 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
     if (call.stage == WorldScheduleStage::finalize) {
         if (call.id)
             return fail(WorldNonactorError::missing_input);
-        const auto overlap = prepare_world_schedule_overlap(routes.common, {}, draw);
+        auto overlap = prepare_world_schedule_overlap(routes.common, {}, draw);
         if (!overlap)
             return failure();
-        routes.common = *overlap;
+        routes.common = std::move(*overlap);
     } else if (call.stage == WorldScheduleStage::projectile) {
         if (!call.id || !input.projectile || input.projectile->projectile != *call.id)
             return fail(WorldNonactorError::missing_input);
@@ -160,10 +161,10 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         if (old == routes.common.world.ai.projectiles.end())
             return fail(WorldNonactorError::invalid_owner);
         const auto caster = old->second.caster;
-        const auto result = prepare_world_projectile(routes.common.world.ai, projectile);
+        auto result = prepare_world_projectile(routes.common.world.ai, projectile);
         if (!result.candidate)
             return failure();
-        routes.common.world.ai = result.candidate->state;
+        routes.common.world.ai = std::move(result.candidate->state);
         if (result.candidate->popularity_queue)
             routes.common.popularity_queue = *result.candidate->popularity_queue;
         for (const auto id : result.candidate->spawned_objects)
@@ -185,7 +186,13 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         const auto &step = result.candidate->step;
         if (step.contact_effect) {
             WorldNonactorRequest request{WorldNonactorRequestKind::projectile_contact,
-                                         *call.id, caster, target, 0, {}, {}, {}};
+                                         *call.id,
+                                         caster,
+                                         target,
+                                         0,
+                                         {},
+                                         {},
+                                         {}};
             request.source_position = step.state.position;
             if (!consume(request))
                 return failure();
@@ -194,10 +201,17 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
             if (effect) {
                 // Spell contact schedules delayed damage: its actual collision target
                 // lives on the spawned projectile, not on this tick's damage_target.
-                const auto visual_target = step.spawned
-                    ? std::optional<CharacterId>{step.spawned->original_target} : target;
+                const auto visual_target =
+                    step.spawned ? std::optional<CharacterId>{step.spawned->original_target}
+                                 : target;
                 WorldNonactorRequest request{WorldNonactorRequestKind::projectile_visual,
-                    *call.id, caster, visual_target, effect, {}, {}, {}};
+                                             *call.id,
+                                             caster,
+                                             visual_target,
+                                             effect,
+                                             {},
+                                             {},
+                                             {}};
                 request.source_position = step.state.position;
                 if (!consume(request))
                     return failure();
@@ -209,11 +223,11 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         projected.objects = routes.common.world.ai.battle.objects;
         projected.events = routes.common.world.ai.battle.events;
         const auto &object = projected.objects.at(*call.id);
-        const auto result = prepare_object_update(
-            projected, {*call.id}, inside_town(object.cached_cell, routes.common.town));
+        auto result = prepare_object_update(projected, {*call.id},
+                                            inside_town(object.cached_cell, routes.common.town));
         if (!result.candidate)
             return failure();
-        routes.objects = result.candidate->state;
+        routes.objects = std::move(result.candidate->state);
         routes.common.world.ai.battle.objects = routes.objects.objects;
         routes.common.world.ai.battle.events = routes.objects.events;
         if (result.candidate->remove) {
@@ -226,8 +240,8 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
         }
         for (const auto &request : result.candidate->requests)
             if (external_object(request.kind)) {
-                WorldNonactorRequest routed{WorldNonactorRequestKind::object, *call.id, {}, {}, 0,
-                                            {}, request, {}};
+                WorldNonactorRequest routed{
+                    WorldNonactorRequestKind::object, *call.id, {}, {}, 0, {}, request, {}};
                 routed.source_position = object.position;
                 if (!consume(routed))
                     return failure();
@@ -282,20 +296,21 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
                         return {};
                     if (old->second.status != entry.second.status ||
                         old->second.newly_unlocked != entry.second.newly_unlocked)
-                        fields.monster_availability->emplace(entry.first,
-                            std::array<int, 2>{entry.second.status, entry.second.newly_unlocked ? 1 : 0});
+                        fields.monster_availability->emplace(
+                            entry.first, std::array<int, 2>{entry.second.status,
+                                                            entry.second.newly_unlocked ? 1 : 0});
                 }
             }
             return fields;
         };
-        const auto result = prepare_world_encounter_update(
+        auto result = prepare_world_encounter_update(
             routes.common.world.ai, world_schedule_facts(routes.common), encounter, field);
         if (!result.candidate)
             return failure();
-        routes.common.world.ai = result.candidate->state;
-        routes.common.world.map = result.candidate->facts.map;
-        routes.common.surface = result.candidate->facts.surface;
-        routes.common.map_flags = result.candidate->facts.flags;
+        routes.common.world.ai = std::move(result.candidate->state);
+        routes.common.world.map = std::move(result.candidate->facts.map);
+        routes.common.surface = std::move(result.candidate->facts.surface);
+        routes.common.map_flags = std::move(result.candidate->facts.flags);
         routes.common.town = result.candidate->facts.town;
         for (const auto id : routes.common.world.ai.monster_order)
             if (!routes.common.world.actors.count(id)) {
@@ -314,5 +329,17 @@ WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleStat
     if (!valid_world_schedule_owner(routes.common))
         return fail(WorldNonactorError::invalid_owner);
     return {WorldNonactorError::none, std::move(candidate)};
+}
+WorldNonactorResult prepare_world_nonactor_stage(const WorldNonactorScheduleState &state,
+                                                 const WorldNonactorStageInput &input,
+                                                 const CombatInfluenceCandidate &field,
+                                                 const WorldNonactorConsumer &consumer) {
+    return nonactor_stage(state, input, field, consumer);
+}
+WorldNonactorResult prepare_world_nonactor_stage_consuming(WorldNonactorScheduleState &&state,
+                                                           const WorldNonactorStageInput &input,
+                                                           const CombatInfluenceCandidate &field,
+                                                           const WorldNonactorConsumer &consumer) {
+    return nonactor_stage(std::move(state), input, field, consumer);
 }
 } // namespace ark::simulation::rules

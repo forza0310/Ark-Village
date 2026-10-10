@@ -734,24 +734,45 @@ prepare_world_detached_departure_control(const RescueWorldState &s,
                                          const WorldDepartureControlInput &i) {
     return departure_control(s, i, true);
 }
-WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathInput &i) {
+template <class State> static WorldPathResult world_path_c(State &&s, const WorldPathInput &i) {
     const auto fail = [](WorldPathError e) -> WorldPathResult { return {e, {}}; };
     if (!live(s, i.actor))
         return fail(WorldPathError::stale_actor);
-    const auto &old = s.ai.battle.actors.at(i.actor);
-    if ((old.control.state != 0 && !(old.kind == ActorKind::monster && old.control.state == 17)) ||
-        !prepare_local_control_prefix(old.control).candidate || !valid_world_map_facts(i.facts) ||
-        !same_map(s.map, i.facts.map))
+    const auto &original = s.ai.battle.actors.at(i.actor);
+    if ((original.control.state != 0 &&
+         !(original.kind == ActorKind::monster && original.control.state == 17)) ||
+        !prepare_local_control_prefix(original.control).candidate ||
+        !valid_world_map_facts(i.facts) || !same_map(s.map, i.facts.map))
         return fail(WorldPathError::invalid_input);
+    // P retains these entry-time observations across F and synchronous domain
+    // callbacks. Snapshot only that read set, not a second complete AI/world.
+    const auto old = original;
+    const auto old_map = s.map;
+    const auto old_cell = s.ai.contexts.at(i.actor).cell;
+    const auto old_context = s.actors.at(i.actor);
+    const int old_month = s.month_index;
+    std::optional<bool> old_nearby{false};
+    if (old.kind == ActorKind::human) {
+        for (const auto id : s.ai.human_order) {
+            if (!live(s, id) || s.ai.battle.actors.at(id).kind != ActorKind::human) {
+                old_nearby.reset();
+                break;
+            }
+            const auto p = s.ai.contexts.at(id).cell;
+            *old_nearby |= old.legacy_id != s.ai.battle.actors.at(id).legacy_id &&
+                           std::abs(static_cast<std::int64_t>(old_cell.x) - p.x) <= 1 &&
+                           std::abs(static_cast<std::int64_t>(old_cell.y) - p.y) <= 1;
+        }
+    }
     WorldPathCandidate c;
-    c.state = s;
+    c.state = std::forward<State>(s);
     c.facts = i.facts;
     c.task = i.task;
     // F先于越界/G/O判定；已执行的共同c前段和L不得在此重放。
-    const auto gate = prepare_world_event_gate(s.ai, i.actor, i.facts, i.task);
+    auto gate = prepare_world_event_gate_consuming(std::move(c.state.ai), i.actor, i.facts, i.task);
     if (!gate.candidate)
         return fail(WorldPathError::preparation_failed);
-    c.state.ai = gate.candidate->state;
+    c.state.ai = std::move(gate.candidate->state);
     if (gate.candidate->gate.request_task_encounter) {
         if (!i.task_attempt)
             return fail(WorldPathError::missing_domain);
@@ -766,7 +787,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
         auto next = c.state;
         next.ai = attempted->state;
         if (!valid_path_callback(c.state, next, i.actor) ||
-            !valid_world_map_facts(attempted->facts) || !same_map(s.map, attempted->facts.map) ||
+            !valid_world_map_facts(attempted->facts) || !same_map(old_map, attempted->facts.map) ||
             attempted->facts.surface != i.facts.surface ||
             attempted->facts.town.left != i.facts.town.left ||
             attempted->facts.town.right != i.facts.town.right ||
@@ -804,16 +825,11 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
     if (gate.candidate->gate.ready) {
         c.event_preempted = true;
         if (old.kind == ActorKind::human) {
-            const auto cell = s.ai.contexts.at(i.actor).cell;
-            bool nearby = false;
-            for (const auto id : s.ai.human_order) {
-                if (!live(s, id) || s.ai.battle.actors.at(id).kind != ActorKind::human)
-                    return fail(WorldPathError::stale_actor);
-                const auto p = s.ai.contexts.at(id).cell;
-                nearby |= old.legacy_id != s.ai.battle.actors.at(id).legacy_id &&
-                          std::abs(static_cast<std::int64_t>(cell.x) - p.x) <= 1 &&
-                          std::abs(static_cast<std::int64_t>(cell.y) - p.y) <= 1;
-            }
+            // Validation failure is still reported here, after the actual F/
+            // task callback. Eager read-only snapshotting must not reject early.
+            if (!old_nearby)
+                return fail(WorldPathError::stale_actor);
+            const bool nearby = *old_nearby;
             if (nearby) {
                 auto supplied = i.nearby_expression;
                 if (!supplied && i.expression_draw) {
@@ -864,10 +880,10 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
             return fail(WorldPathError::invalid_input);
         return {WorldPathError::none, std::move(c)};
     }
-    const auto cell = s.ai.contexts.at(i.actor).cell;
-    if (!within(s.map, cell))
+    const auto cell = old_cell;
+    if (!within(old_map, cell))
         return {WorldPathError::none, std::move(c)}; // 原P越界false，不清路线或伪造到达。
-    const auto &ctx = s.actors.at(i.actor);
+    const auto &ctx = old_context;
     if (ctx.journey && ctx.unbound_route)
         return fail(WorldPathError::invalid_input);
     const auto *route = ctx.journey         ? &ctx.journey->route
@@ -878,10 +894,10 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
     const auto destination = ctx.destination ? ctx.destination
                              : ctx.binding   ? std::optional<Position>(ctx.binding->goal)
                                              : std::nullopt;
-    if (!ctx.path_pending || !destination || !within(s.map, *destination) ||
+    if (!ctx.path_pending || !destination || !within(old_map, *destination) ||
         route->error != MapAccessError::none || ctx.waypoint >= route->steps.size() ||
         std::any_of(route->steps.begin(), route->steps.end(),
-                    [&](Position p) { return !within(s.map, p); }) ||
+                    [&](Position p) { return !within(old_map, p); }) ||
         (ctx.journey && (!ctx.binding || !(ctx.journey->binding.goal == *destination) ||
                          !(ctx.binding->goal == *destination) ||
                          !(ctx.journey->binding.instance_id == ctx.binding->instance_id) ||
@@ -890,7 +906,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
         return fail(WorldPathError::invalid_input);
     if (cell == *destination) {
         // j的O2=-1只比较坐标；后来该格出现建筑仍然走地面分支。
-        if (ctx.binding && !arrival_binding_matches(s.map, *ctx.binding, cell)) {
+        if (ctx.binding && !arrival_binding_matches(old_map, *ctx.binding, cell)) {
             if (!path_cleanup(c.state, i.actor))
                 return fail(WorldPathError::preparation_failed);
             c.cleaned_up = true;
@@ -906,7 +922,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
             if (!i.exits)
                 return fail(WorldPathError::missing_fact);
             if (std::any_of(i.exits->begin(), i.exits->end(),
-                            [&](Position p) { return !within(s.map, p); }))
+                            [&](Position p) { return !within(old_map, p); }))
                 return fail(WorldPathError::invalid_input);
             auto &a = c.state.ai.battle.actors.at(i.actor);
             if (std::find(i.exits->begin(), i.exits->end(), cell) != i.exits->end()) {
@@ -965,7 +981,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 {{i.actor, facility.placement.instance_id, facility.placement.definition_id,
                   facility.kind, facility.category, facility.detail,
                   old.kind == ActorKind::human ? 0 : 1, old.control.flags, old.object_slot,
-                  s.month_index, facility.price},
+                  old_month, facility.price},
                  stats,
                  {},
                  {},
@@ -994,12 +1010,12 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 auto &a = c.state.ai.battle.actors.at(i.actor);
                 const int mode = (a.control.flags & 256U) ? 2 : 0;
                 a.control.flags &= ~256U;
-                const auto use = prepare_world_facility_use(
-                    c.state, {i.actor, mode, i.use_world_target, i.use_direction_ticket, i.draw,
-                              i.use_direction_target});
+                auto use = prepare_world_facility_use(c.state, {i.actor, mode, i.use_world_target,
+                                                                i.use_direction_ticket, i.draw,
+                                                                i.use_direction_target});
                 if (!use.state)
                     return fail(WorldPathError::preparation_failed);
-                c.state = *use.state;
+                c.state = std::move(*use.state);
                 c.ground_effect20 = use.ground_effect20;
             }
         }
@@ -1009,11 +1025,11 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
                 c.path_returned_true = true;
                 c.delete_instance = old.control.state == 0;
             } else if (facility.category == 6 && facility.detail == 3) {
-                const auto use =
+                auto use =
                     prepare_world_facility_use(c.state, {i.actor, 0, i.use_world_target, {}});
                 if (!use.state)
                     return fail(WorldPathError::preparation_failed);
-                c.state = *use.state;
+                c.state = std::move(*use.state);
                 c.ground_effect20 = use.ground_effect20;
             } else {
                 if (!path_transition(c.state, i.actor, 17))
@@ -1024,7 +1040,7 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
         return {WorldPathError::none, std::move(c)};
     }
     const auto waypoint_cell = route->steps[ctx.waypoint];
-    const auto &tile = s.map.cells[index(s.map, waypoint_cell)];
+    const auto &tile = old_map.cells[index(old_map, waypoint_cell)];
     int direction = 0;
     if (tile.legacy_state == 6 || tile.legacy_state == 7) {
         if (!tile.facility)
@@ -1052,5 +1068,11 @@ WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathI
         c.advanced_waypoint = true;
     }
     return {WorldPathError::none, std::move(c)};
+}
+WorldPathResult prepare_world_path_c(const RescueWorldState &s, const WorldPathInput &i) {
+    return world_path_c(s, i);
+}
+WorldPathResult prepare_world_path_c_consuming(RescueWorldState &&s, const WorldPathInput &i) {
+    return world_path_c(std::move(s), i);
 }
 } // namespace ark::simulation::rules

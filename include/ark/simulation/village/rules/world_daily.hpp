@@ -1,8 +1,8 @@
 #pragma once
 
-#include "ark/simulation/combat/rules/object_commit.hpp"
 #include "ark/simulation/actors/rules/world_departure.hpp"
 #include "ark/simulation/actors/rules/world_lifecycle.hpp"
+#include "ark/simulation/combat/rules/object_commit.hpp"
 
 namespace ark::simulation::rules {
 // 这是一次状态分支的临时投影；外层世界与任务/地图事实只有一个持久所有者。
@@ -61,4 +61,7 @@ struct WorldDailyResult {
 // 8/9:au登场→事件90→c17/队列，11:F→H/碰撞→拾取或6.7追物。
 // 无共同计数、无缓存格刷新、无默认成功外部消费者；晚期失败整段无候选。
 WorldDailyResult prepare_world_daily_c(const WorldDailyState &state, const WorldDailyInput &input);
+// Internal temporary projection; retains the complete daily and nested audit candidates.
+WorldDailyResult prepare_world_daily_c_consuming(WorldDailyState &&state,
+                                                 const WorldDailyInput &input);
 } // namespace ark::simulation::rules

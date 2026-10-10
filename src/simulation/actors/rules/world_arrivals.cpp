@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace ark::simulation::rules {
 namespace {
@@ -52,13 +53,13 @@ void execute(WorldArrivalsCandidate &c, const WorldScriptCatalog &catalog, int e
     c.executed_events.push_back(event);
 }
 } // namespace
-WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
-                                           const WorldScriptCatalog &catalog,
-                                           const WorldArrivalCreationConsumer &consumer) {
+template <class State>
+static WorldArrivalsResult world_arrivals(State &&state, const WorldScriptCatalog &catalog,
+                                          const WorldArrivalCreationConsumer &consumer) {
     try {
         validate(state, catalog);
         WorldArrivalsCandidate c;
-        c.state = state;
+        c.state = std::forward<State>(state);
         auto &s = c.state;
         const auto count = s.finish.dungeon.world.ai.human_order.size();
         if (s.camera_delay > 0)
@@ -141,7 +142,7 @@ WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
         if (spawn_ticket >= s.spawn_cells.size())
             fail(WorldArrivalsError::invalid_owner);
         const WorldArrivalCreationInput input{selected, uid, s.spawn_cells[spawn_ticket]};
-        const auto made = consumer(s, input);
+        auto made = consumer(s, input);
         if (!made)
             fail(WorldArrivalsError::consumer_failed);
         validate(made->state, catalog);
@@ -171,7 +172,7 @@ WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
             actor->second.position.z != input.spawn.y * 100.0F + 50.0F ||
             actor->second.position.height != 0)
             fail(WorldArrivalsError::consumer_failed);
-        s = made->state;
+        s = std::move(made->state);
         c.created = made->actor;
         if (c.first) {
             s.finish.dungeon.world.ai.battle.actors.at(made->actor).control.flags |= 8192U;
@@ -185,5 +186,15 @@ WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
     } catch (const Failure &failure) {
         return {failure.error, {}};
     }
+}
+WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
+                                           const WorldScriptCatalog &catalog,
+                                           const WorldArrivalCreationConsumer &consumer) {
+    return world_arrivals(state, catalog, consumer);
+}
+WorldArrivalsResult prepare_world_arrivals_consuming(WorldArrivalsState &&state,
+                                                     const WorldScriptCatalog &catalog,
+                                                     const WorldArrivalCreationConsumer &consumer) {
+    return world_arrivals(std::move(state), catalog, consumer);
 }
 } // namespace ark::simulation::rules

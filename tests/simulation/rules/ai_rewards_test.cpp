@@ -15,6 +15,12 @@ void check(bool value, const char *message) {
     if (!value)
         throw std::runtime_error(message);
 }
+AiRewardResult growth_commit(bool consuming, const AiRewardState &source, CharacterId id) {
+    if (!consuming)
+        return prepare_actor_growth_commit(source, id);
+    auto disposable = source;
+    return prepare_actor_growth_commit_consuming(std::move(disposable), id);
+}
 AiRewardState fixture() {
     AiRewardState s;
     BattleActorRecord h;
@@ -83,7 +89,7 @@ void death_boundary() {
               s.encounters.at(0).members.size() == 1 && s.encounters.at(0).runtime.reward == 0,
           "late shared count failure rolls back prior event-member removal and reward");
 }
-void shared_and_quest() {
+void shared_and_quest(bool consuming) {
     auto s = fixture();
     s.battle.actors.erase({2});
     s.contexts.erase({2});
@@ -124,11 +130,11 @@ void shared_and_quest() {
     s.human_order.push_back(duplicate.id);
     s.growth.at(1).pending = {9, 0};
     s.growth.at(1).experience = 0;
-    auto step = prepare_actor_growth_commit(s, {3});
+    auto step = growth_commit(consuming, s, {3});
     check(step.candidate && step.candidate->state.growth.at(1).experience == 1 &&
               step.candidate->state.battle.actors.at({3}).hp.target == 20,
           "definition grows per calling instance, no heal");
-    step = prepare_actor_growth_commit(step.candidate->state, {1});
+    step = growth_commit(consuming, step.candidate->state, {1});
     check(step.candidate && step.candidate->state.growth.at(1).experience == 2 &&
               step.candidate->state.growth.at(1).pending.counter == 2,
           "second instance same definition advances shared O again, not deduplicated");
@@ -136,7 +142,7 @@ void shared_and_quest() {
     s.professions[0].unlocked = false;
     s.growth.at(1).pending = {9, 0};
     s.growth.at(1).experience = *human_growth_threshold(9, 5);
-    step = prepare_actor_growth_commit(s, {3});
+    step = growth_commit(consuming, s, {3});
     check(step.candidate && step.candidate->state.professions[0].unlocked &&
               step.candidate->state.battle.events.count(109) &&
               step.candidate->state.battle.events.count(113) &&
@@ -149,8 +155,31 @@ void shared_and_quest() {
         step.candidate->state.contexts.at({3}).effects.display.back()[0] == 14 &&
             step.candidate->state.contexts.at({1}).effects.display.front()[0] == 24,
         "level display attaches only calling actor, other same-definition actor display unchanged");
+    check(step.candidate->state.battle.actors.size() == s.battle.actors.size() &&
+              step.candidate->state.contexts.size() == s.contexts.size() &&
+              step.candidate->state.encounters.size() == s.encounters.size() &&
+              !step.candidate->growth_requests.empty() &&
+              s.growth.at(1).definition.profession_levels[0] == 9 && !s.professions[0].unlocked,
+          "growth returns complete independent AI and full mastery request audit");
+    auto missing_human = s;
+    missing_human.battle.humans.erase(1);
+    const auto refused = growth_commit(consuming, missing_human, {3});
+    check(
+        !refused.candidate && refused.error == AiRewardError::invalid_input &&
+            missing_human.growth.at(1).definition.profession_levels[0] == 9 &&
+            missing_human.contexts.at({3}).effects.display.empty() &&
+            !missing_human.professions[0].unlocked,
+        "late missing human battle definition refuses mastery without partial level/effect/unlock");
+    if (consuming) {
+        auto missing_growth = s;
+        missing_growth.growth.erase(1);
+        const auto rejected = prepare_actor_growth_commit_consuming(std::move(missing_growth), {3});
+        check(!rejected.candidate && rejected.error == AiRewardError::invalid_input &&
+                  missing_growth.battle.actors.size() == s.battle.actors.size(),
+              "missing shared growth definition refuses before transferring the private AI");
+    }
 }
-void timeline() {
+void timeline(bool consuming) {
     auto world = fixture();
     bool attacked{};
     int victory_round{-1};
@@ -170,7 +199,7 @@ void timeline() {
                     return response;
                 }
                 next.contexts.at({1}).effects = effects.candidate->state;
-                const auto growth = prepare_actor_growth_commit(next, {1});
+                const auto growth = growth_commit(consuming, next, {1});
                 if (!growth.candidate) {
                     response.accepted = false;
                     return response;
@@ -612,7 +641,13 @@ void external_reference_graph() {
     check(s.encounters.count(0) && s.retired_encounters.empty(),
           "collection and late retirement candidates never mutate the input owner");
 }
-void execution_prefix() {
+void execution_prefix(bool consuming) {
+    const auto execute = [consuming](const AiRewardState &source, CharacterId id) {
+        if (!consuming)
+            return prepare_world_execution_prefix(source, id);
+        auto disposable = source;
+        return prepare_world_execution_prefix_consuming(std::move(disposable), id);
+    };
     auto s = fixture();
     auto &a = s.battle.actors.at({1});
     a.control.alternate_counter = 20;
@@ -627,7 +662,7 @@ void execution_prefix() {
     a.hp = {50, 20, 20, 70, true, 10};
     s.contexts.at({1}).effects.delayed = {{4, 0, 10, 20}};
     s.contexts.at({1}).effects.display = {{12, 0, 40, 1, 0}};
-    auto r = prepare_world_execution_prefix(s, {1});
+    auto r = execute(s, {1});
     check(r.candidate && r.candidate->state.battle.actors.at({1}).control.alternate_counter == 21 &&
               r.candidate->state.battle.actors.at({1}).control.action_counter == 5 &&
               r.candidate->state.battle.actors.at({1}).state_counter == 18 &&
@@ -645,20 +680,33 @@ void execution_prefix() {
           "label expiry then HP display then shared growth then carry expression17 request");
     check(a.state_counter == 17 && s.contexts.at({1}).effects.delayed.size() == 1,
           "all d prefix changes stay private");
+    check(r.candidate->state.battle.actors.size() == 2 &&
+              r.candidate->state.monster_growth.count(7) && r.candidate->state.growth.count(1) &&
+              r.candidate->state.encounters.count(0),
+          "execution prefix retains complete other actor, growth and encounter domains");
+    r.candidate->state.encounters.at(0).runtime.counter = 99;
+    check(s.encounters.at(0).runtime.counter == 0,
+          "execution candidate encounter storage remains independent of its input");
     s.growth.erase(1);
-    check(!prepare_world_execution_prefix(s, {1}).candidate && a.hp.legacy_tick == 10,
+    check(!execute(s, {1}).candidate && a.hp.legacy_tick == 10,
           "late missing human definition rolls back counters/display/HP together");
     s = fixture();
     s.growth.clear();
     s.contexts.at({2}).effects.delayed = {{6, 1, 0, 0}};
-    r = prepare_world_execution_prefix(s, {2});
+    r = execute(s, {2});
     check(r.candidate && r.candidate->state.contexts.at({2}).effects.delayed.front()[1] == 0 &&
               r.candidate->growth_requests.empty() && r.candidate->sounds.empty(),
           "monster d skips human growth; ce old1->0 doesn't fire until next execution");
     s.battle.actors.at({2}).control.alternate_counter = std::numeric_limits<int>::max() - 1;
-    r = prepare_world_execution_prefix(s, {2});
+    r = execute(s, {2});
     check(r.candidate && r.candidate->state.battle.actors.at({2}).control.alternate_counter == 0,
           "source positive counter modulo INTMAX boundary preserved");
+    if (consuming) {
+        const auto stale = prepare_world_execution_prefix_consuming(std::move(s), {999});
+        check(!stale.candidate && stale.error == AiRewardError::stale_actor &&
+                  s.battle.actors.size() == 2 && s.contexts.size() == 2,
+              "stale execution identity refuses before transferring candidate storage");
+    }
 }
 void retired_event_consumers() {
     auto s = fixture();
@@ -710,14 +758,17 @@ void retired_event_consumers() {
 int main() {
     try {
         death_boundary();
-        shared_and_quest();
-        timeline();
+        for (const bool consuming : {false, true}) {
+            shared_and_quest(consuming);
+            timeline(consuming);
+        }
         groups();
         spawning();
         projectile_world();
         reference_graph();
         external_reference_graph();
-        execution_prefix();
+        for (const bool consuming : {false, true})
+            execution_prefix(consuming);
         retired_event_consumers();
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {

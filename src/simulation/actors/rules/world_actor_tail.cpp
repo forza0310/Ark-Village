@@ -30,11 +30,11 @@ void release(RescueWorldState &s, CharacterId id) {
 }
 bool cleanup(RescueWorldState &s, CharacterId id, bool detached = false) {
     if (s.ai.battle.actors.at(id).kind == ActorKind::human) {
-        const auto c = detached ? prepare_world_detached_actor_cleanup(s, id)
-                                : prepare_world_rescue_cleanup(s, id);
+        auto c = detached ? prepare_world_detached_actor_cleanup(s, id)
+                          : prepare_world_rescue_cleanup(s, id);
         if (!c.candidate)
             return false;
-        s = c.candidate->state;
+        s = std::move(c.candidate->state);
         return true;
     }
     auto &a = s.ai.battle.actors.at(id);
@@ -62,8 +62,8 @@ bool cleanup(RescueWorldState &s, CharacterId id, bool detached = false) {
     return true;
 }
 } // namespace
-static WorldActorTailResult actor_tail(const RescueWorldState &s, const WorldActorTailInput &i,
-                                       bool detached) {
+template <class State>
+static WorldActorTailResult actor_tail(State &&s, const WorldActorTailInput &i, bool detached) {
     const auto failed = [](RescueWorldError e) -> WorldActorTailResult { return {e, {}}; };
     if (!(detached ? valid_detached_human(s, i.actor) : live(s, i.actor)))
         return failed(RescueWorldError::stale_actor);
@@ -74,11 +74,14 @@ static WorldActorTailResult actor_tail(const RescueWorldState &s, const WorldAct
     for (std::size_t n = 0; n < s.map.cells.size(); ++n)
         if (s.map.cells[n].legacy_state != i.facts.map.cells[n].legacy_state)
             return failed(RescueWorldError::invalid_input);
-    WorldActorTailCandidate c;
-    c.state = s;
-    const auto &original = s.ai.battle.actors.at(i.actor);
-    auto &initial = c.state.actors.at(i.actor);
+    // Only these old values are read after candidate construction. Snapshot them
+    // before transferring the private world; never alias a moved-from actor/map.
+    const int original_state = s.ai.battle.actors.at(i.actor).control.state;
+    const auto original_flags = s.ai.battle.actors.at(i.actor).control.flags;
     const auto old_cell = s.ai.contexts.at(i.actor).cell;
+    WorldActorTailCandidate c;
+    c.state = std::forward<State>(s);
+    auto &initial = c.state.actors.at(i.actor);
     const bool old_inside = old_cell.x > i.facts.town.left && old_cell.x < i.facts.town.right &&
                             old_cell.y > i.facts.town.top && old_cell.y < i.facts.town.bottom;
     if (initial.town_updates < 0 || initial.town_updates >= std::numeric_limits<int>::max() ||
@@ -87,12 +90,13 @@ static WorldActorTailResult actor_tail(const RescueWorldState &s, const WorldAct
         return failed(RescueWorldError::invalid_input);
     if (old_inside)
         initial.town_updates = (initial.town_updates + 1) % std::numeric_limits<int>::max();
-    else if (original.control.state != 0 && !(original.control.flags & 16U))
+    else if (original_state != 0 && !(original_flags & 16U))
         ++initial.outside_updates;
-    const auto physics = prepare_world_physics_projection(c.state.ai, i.actor, i.facts);
+    auto physics =
+        prepare_world_physics_projection_consuming(std::move(c.state.ai), i.actor, i.facts);
     if (!physics.candidate)
         return failed(RescueWorldError::preparation_failed);
-    c.state.ai = physics.candidate->state;
+    c.state.ai = std::move(physics.candidate->state);
     c.queried_area = physics.candidate->queried_area;
     auto &projected = c.state.ai.battle.actors.at(i.actor);
     if (projected.control.state != 4 && projected.control.state != 20 &&
@@ -177,6 +181,14 @@ WorldActorTailResult prepare_world_actor_tail(const RescueWorldState &s,
 WorldActorTailResult prepare_world_detached_actor_tail(const RescueWorldState &s,
                                                        const WorldActorTailInput &i) {
     return actor_tail(s, i, true);
+}
+WorldActorTailResult prepare_world_actor_tail_consuming(RescueWorldState &&s,
+                                                        const WorldActorTailInput &i) {
+    return actor_tail(std::move(s), i, false);
+}
+WorldActorTailResult prepare_world_detached_actor_tail_consuming(RescueWorldState &&s,
+                                                                 const WorldActorTailInput &i) {
+    return actor_tail(std::move(s), i, true);
 }
 WorldActorTailResult prepare_world_actor_remove(const RescueWorldState &s, CharacterId id,
                                                 bool from_execution) {

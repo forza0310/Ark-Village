@@ -1,7 +1,7 @@
-#include "ark/simulation/world/startup_world_runtime.hpp"
-#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/rules/world_notices.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +12,7 @@ namespace {
 using State = StartupWorldRuntimeState;
 using Stage = ref::WorldSceneStage;
 using Step = ref::OwnedWorldSceneStep<State>;
+using Disposition = ref::WorldSceneDisposition;
 constexpr std::array<int, 25> effect_limits{
     {12, 10, 20, 20, 23, 24, 16, 16, 24, 73, 10, 5, 12, 5, 0, 5, 0, 5, 0, 0, 9, 9, 11, 22, 34}};
 bool increment(int &value) {
@@ -143,10 +144,9 @@ std::optional<std::array<float, 2>> startup_world_runtime_facility_target(const 
 
 void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<State> &adapter) {
     const auto catalog = adapter.catalog;
-    adapter.normal_conditions = [catalog](const State &current) -> std::optional<Step> {
-        auto next = current;
+    const auto normal_conditions = [catalog](State &next) -> std::optional<Disposition> {
         if (next.scene.world.world.ai.accounting.funds() >= 0)
-            return Step{std::move(next)};
+            return Disposition::continue_round;
         int event{};
         if (!ref::world_script_seen(next.scripts, 161))
             event = 161;
@@ -169,7 +169,17 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 return {};
         }
         // 负余额前置脚本后仍进入L10b；L159只由实际aL/续体扫描返回。
-        return Step{std::move(next)};
+        return Disposition::continue_round;
+    };
+    adapter.normal_conditions_private = normal_conditions;
+    // The value consumer remains independently callable; only the borrowed
+    // frame-private path avoids this copy. Both run exactly the same logic.
+    adapter.normal_conditions = [normal_conditions](const State &current) -> std::optional<Step> {
+        auto next = current;
+        const auto disposition = normal_conditions(next);
+        if (!disposition)
+            return {};
+        return Step{std::move(next), *disposition};
     };
     adapter.entry.read = [](const State &s) {
         // 原c/k.c取h.m[0]，不是h.l[n.o]；扩张后围栏等级不能索引地区数组。
@@ -205,9 +215,8 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
     focus_dependencies->actors.event = adapter.actors.event;
     focus_dependencies->actors.projected_facing = adapter.actors.projected_facing;
     const std::shared_ptr<const ref::WorldRuntimeAdapter<State>> focus_adapter = focus_dependencies;
-    adapter.scene_other = [focus_adapter](const State &current,
-                                          const ref::WorldSceneCall &call) -> std::optional<Step> {
-        auto s = current;
+    const auto scene_other =
+        [focus_adapter](State &s, const ref::WorldSceneCall &call) -> std::optional<Disposition> {
         switch (call.stage) {
         case Stage::entry_task_result:
             if (s.deadline_page) {
@@ -268,7 +277,7 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             if (!s.scripts.selected_actor) {
                 s.scene.scene_state = 0;
                 s.scene.scene_counter = 0;
-                return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
+                return Disposition::skip_round;
             }
             const auto id = ref::CharacterId{*s.scripts.selected_actor};
             const auto &ai = s.scene.world.world.ai;
@@ -289,7 +298,7 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
                 s.confirm_input = false;
                 if (!append_startup_world_human_detail_page(s, definition, 1, id))
                     return {};
-                return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
+                return Disposition::skip_round;
             }
             if (!increment(s.global_updates))
                 return {};
@@ -299,7 +308,7 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             if (!s.scripts.selected_facility) {
                 s.scene.scene_state = 0;
                 s.scene.scene_counter = 0;
-                return Step{std::move(s), ref::WorldSceneDisposition::skip_round};
+                return Disposition::skip_round;
             }
             const auto target =
                 startup_world_runtime_facility_target(s, *s.scripts.selected_facility);
@@ -335,7 +344,16 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
         default:
             return {};
         }
-        return Step{std::move(s)};
+        return Disposition::continue_round;
+    };
+    adapter.scene_other_private = scene_other;
+    adapter.scene_other = [scene_other](const State &current,
+                                        const ref::WorldSceneCall &call) -> std::optional<Step> {
+        auto next = current;
+        const auto disposition = scene_other(next, call);
+        if (!disposition)
+            return {};
+        return Step{std::move(next), *disposition};
     };
 }
 } // namespace ark::simulation

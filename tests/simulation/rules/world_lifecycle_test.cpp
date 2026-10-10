@@ -1,6 +1,6 @@
-#include "ark/simulation/world/rules/world_control.hpp"
 #include "ark/simulation/actors/rules/world_lifecycle.hpp"
 #include "ark/simulation/ai/rules/world_schedule.hpp"
+#include "ark/simulation/world/rules/world_control.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,6 +11,19 @@
 using namespace ark::simulation::rules;
 namespace {
 int checks{};
+bool consuming{};
+WorldLifecycleResult prepare_lifecycle(const RescueWorldState &s, const WorldLifecycleInput &i) {
+    if (!consuming)
+        return prepare_world_lifecycle_c(s, i);
+    auto scratch = s;
+    return prepare_world_lifecycle_c_consuming(std::move(scratch), i);
+}
+WorldMonsterActResult prepare_monster(const RescueWorldState &s, const WorldMonsterActInput &i) {
+    if (!consuming)
+        return prepare_world_monster_act_c(s, i);
+    auto scratch = s;
+    return prepare_world_monster_act_c_consuming(std::move(scratch), i);
+}
 void check(bool value, const char *message) {
     ++checks;
     if (!value)
@@ -76,7 +89,7 @@ void down_recovery() {
                     old.capacity = capacity;
                     old.hp.displayed = displayed;
                     old.state_counter = counter;
-                    const auto r = prepare_world_lifecycle_c(s, input({{999, 1, {}}, {0, 1, 0}}));
+                    const auto r = prepare_lifecycle(s, input({{999, 1, {}}, {0, 1, 0}}));
                     check(r.candidate.has_value(), "down actual owner candidate prepares");
                     const auto &a = r.candidate->state.ai.battle.actors.at({1});
                     const int healed = static_cast<int>(std::min<std::int64_t>(
@@ -103,14 +116,14 @@ void down_recovery() {
                 }
     auto s = fixture(2);
     s.ai.battle.actors.at({1}).state_counter = 900;
-    const auto suppressed = prepare_world_lifecycle_c(s, input({{0, 2, 1}, {0, 1, {}}}));
+    const auto suppressed = prepare_lifecycle(s, input({{0, 2, 1}, {0, 1, {}}}));
     check(suppressed.candidate && suppressed.candidate->consumed_expressions == 2 &&
               suppressed.candidate->consumed_variants == 1 &&
               suppressed.candidate->state.ai.contexts.at({1}).effects.display ==
                   std::vector<ActorEffectRecord>{{12, 0, 30, 3, 1}} &&
               suppressed.candidate->state.ai.battle.actors.at({1}).hp.target == 100,
           "expression3 precedes4; second is suppressed but probability ticket still consumed");
-    const auto missing = prepare_world_lifecycle_c(s, input({{999, 1, {}}}));
+    const auto missing = prepare_lifecycle(s, input({{999, 1, {}}}));
     check(!missing.candidate && missing.error == WorldLifecycleError::missing_ticket &&
               s.ai.battle.actors.at({1}).hp.displayed == 25 &&
               s.ai.contexts.at({1}).effects.display.empty(),
@@ -126,7 +139,7 @@ void knockback_and_baseline() {
                     a.state_counter = counter;
                     a.object_slot = slot;
                     s.actors.at({1}).monster_mode = mode;
-                    const auto r = prepare_world_lifecycle_c(s, input());
+                    const auto r = prepare_lifecycle(s, input());
                     check(r.candidate.has_value(),
                           "knockback prepares for both kinds and rescue sentinel");
                     const auto &next = r.candidate->state.ai.battle.actors.at({1});
@@ -164,7 +177,7 @@ void knockback_and_baseline() {
                 }
     auto s = fixture(4);
     s.actors.at({1}).horizontal_velocity = {0.016F, -0.016F};
-    const auto r = prepare_world_lifecycle_c(s, input());
+    const auto r = prepare_lifecycle(s, input());
     check(r.candidate && r.candidate->state.actors.at({1}).horizontal_velocity.x == 0 &&
               r.candidate->state.actors.at({1}).horizontal_velocity.z == 0 &&
               r.candidate->state.ai.battle.actors.at({1}).position.x == 150,
@@ -175,7 +188,7 @@ void win_pickup_and_empty_branches() {
         for (int counter : {43, 44, 45}) {
             auto s = fixture(10, kind);
             s.ai.battle.actors.at({1}).state_counter = counter;
-            const auto r = prepare_world_lifecycle_c(s, input());
+            const auto r = prepare_lifecycle(s, input());
             check(r.candidate && r.candidate->restored_baseline == (counter >= 44) &&
                       r.candidate->state.ai.battle.actors.at({1}).state_counter == counter,
                   "win old44 restores b with retained counter for both kinds");
@@ -184,7 +197,7 @@ void win_pickup_and_empty_branches() {
         for (int counter : {64, 65, 66}) {
             auto s = fixture(12, kind);
             s.ai.battle.actors.at({1}).state_counter = counter;
-            const auto r = prepare_world_lifecycle_c(s, input());
+            const auto r = prepare_lifecycle(s, input());
             check(r.candidate.has_value(), "pickup completion prepares");
             const auto &a = r.candidate->state.ai.battle.actors.at({1});
             const auto &path = r.candidate->state.actors.at({1});
@@ -204,7 +217,7 @@ void win_pickup_and_empty_branches() {
         }
     for (int state : {6, 7, 19}) {
         auto s = fixture(state);
-        const auto r = prepare_world_lifecycle_c(s, input({{-1, 0, {}}}));
+        const auto r = prepare_lifecycle(s, input({{-1, 0, {}}}));
         check(r.candidate && r.candidate->consumed_expressions == 0 &&
                   r.candidate->state.ai.battle.actors.at({1}).control.queue ==
                       s.ai.battle.actors.at({1}).control.queue &&
@@ -213,7 +226,7 @@ void win_pickup_and_empty_branches() {
               "no independent c branch still retains real control/path, consumes no unused ticket");
     }
     for (int state : {0, 1, 3, 5, 8, 9, 11, 13, 15, 17, 18, 20}) {
-        const auto r = prepare_world_lifecycle_c(fixture(state), input());
+        const auto r = prepare_lifecycle(fixture(state), input());
         check(!r.candidate && r.error == WorldLifecycleError::unsupported_state,
               "not-yet-routed state is explicit handoff, never empty success");
     }
@@ -229,7 +242,7 @@ void follow_and_inn() {
     s.ai.contexts.emplace(carrier.id, RewardActorContext{{2, 3}, true, {}, {}});
     s.actors.emplace(carrier.id, RescueActorContext{});
     s.ai.battle.actors.at({1}).rescue = carrier.id;
-    const auto followed = prepare_world_lifecycle_c(s, input());
+    const auto followed = prepare_lifecycle(s, input());
     check(
         followed.candidate && !followed.candidate->cleaned_up &&
             followed.candidate->state.ai.battle.actors.at({1}).position.x == 275 &&
@@ -240,7 +253,7 @@ void follow_and_inn() {
             followed.candidate->state.ai.battle.actors.at({1}).rescue == carrier.id,
         "state16 copies current carrier n+16 without rerunning repair/sensing/HP or projecting s");
     s.ai.human_order.pop_back();
-    const auto retired = prepare_world_lifecycle_c(s, input());
+    const auto retired = prepare_lifecycle(s, input());
     check(retired.candidate && retired.candidate->cleaned_up &&
               retired.candidate->state.ai.battle.actors.at({1}).control.state == 19 &&
               !retired.candidate->state.ai.battle.actors.at({1}).rescue &&
@@ -260,7 +273,7 @@ void follow_and_inn() {
                 s.map = *bind_facility_map(s.map, {{f.placement, 3}}).map;
                 s.actors.at({1}).binding = ArrivalBinding{{1, 1}, {3}, 33};
                 s.ai.battle.actors.at({1}).state_counter = counter;
-                const auto r = prepare_world_lifecycle_c(s, input());
+                const auto r = prepare_lifecycle(s, input());
                 check(r.candidate.has_value(),
                       "state14 valid live q prepares for both actor kinds");
                 const auto &hp = r.candidate->state.ai.battle.actors.at({1}).hp;
@@ -272,7 +285,7 @@ void follow_and_inn() {
                     "state14 source has no kind/status guard; only inn exact old170 requests g(h)");
             }
     s = fixture(14, ActorKind::monster);
-    const auto cleanup = prepare_world_lifecycle_c(s, input());
+    const auto cleanup = prepare_lifecycle(s, input());
     check(cleanup.candidate && cleanup.candidate->cleaned_up &&
               cleanup.candidate->state.ai.battle.actors.at({1}).control.state == 0 &&
               cleanup.candidate->state.ai.battle.actors.at({1}).control.queue ==
@@ -297,19 +310,19 @@ void transition_reuse_and_failures() {
     check(!prepare_world_state_transition(s, {{1}, 21, {}}).candidate,
           "out-of-range direct state never silently writes A");
     s.ai.battle.actors.at({1}).id = {2};
-    check(prepare_world_lifecycle_c(s, input()).error == WorldLifecycleError::stale_actor,
+    check(prepare_lifecycle(s, input()).error == WorldLifecycleError::stale_actor,
           "mismatched runtime identity rejected");
     s = fixture(4);
     s.ai.human_order.push_back({1});
-    check(prepare_world_lifecycle_c(s, input()).error == WorldLifecycleError::stale_actor,
+    check(prepare_lifecycle(s, input()).error == WorldLifecycleError::stale_actor,
           "duplicate live roster is not processed twice");
     s = fixture(4);
     s.actors.at({1}).horizontal_velocity.x = std::numeric_limits<float>::infinity();
-    check(!prepare_world_lifecycle_c(s, input()).candidate,
+    check(!prepare_lifecycle(s, input()).candidate,
           "nonfinite physical velocity cannot create partial position");
     s = fixture(12);
     s.ai.battle.actors.at({1}).control.queue = {{25}};
-    check(!prepare_world_lifecycle_c(s, input()).candidate,
+    check(!prepare_lifecycle(s, input()).candidate,
           "malformed original queue rejected even when c0 would erase it");
 }
 void monster_modes() {
@@ -335,7 +348,7 @@ void monster_modes() {
                         s.ai.contexts.emplace(enemy.id,
                                               RewardActorContext{{5, 5}, enemy_inside, {}, {}});
                         s.actors.emplace(enemy.id, RescueActorContext{});
-                        const auto r = prepare_world_monster_act_c(s, {{1}, WorldPathInput{}});
+                        const auto r = prepare_monster(s, {{1}, WorldPathInput{}});
                         const bool battle = counter >= 5 && !flags && area && enemy_inside;
                         check(r.candidate && r.candidate->called_battle_gate &&
                                   !r.candidate->path && !r.candidate->cleaned_up &&
@@ -382,7 +395,7 @@ void monster_modes() {
                 path.actor = {1};
                 path.facts = {
                     s.map, std::vector<int>(36, 1), std::vector<std::uint32_t>(36), {0, 5, 0, 5}};
-                const auto r = prepare_world_monster_act_c(s, {{1}, path});
+                auto r = prepare_monster(s, {{1}, path});
                 const bool cleanup = mode == 1 && counter >= 500 && !category3;
                 check(
                     r.candidate && !r.candidate->called_battle_gate && r.candidate->path &&
@@ -398,11 +411,27 @@ void monster_modes() {
                                        : a.control.queue),
                       "post-P cleanup replaces queue, true category3 retains P queue clearing, "
                       "falseT4 retains original");
-                const auto missing = prepare_world_monster_act_c(s, {{1}, {}});
+                check(r.candidate->path->state.map.cells.size() == 36 &&
+                          r.candidate->path->facts.map.cells.size() == 36 &&
+                          r.candidate->path->state.ai.battle.actors.count({1}) &&
+                          r.candidate->path->state.ai.monster_order ==
+                              std::vector<CharacterId>{{1}},
+                      "monster path audit retains complete world/facts and original ordered actor "
+                      "storage");
+                r.candidate->state.map.cells.clear();
+                r.candidate->state.ai.battle.actors.clear();
+                check(r.candidate->path->state.map.cells.size() == 36 &&
+                          r.candidate->path->state.ai.battle.actors.count({1}) &&
+                          s.map.cells.size() == 36 &&
+                          s.ai.battle.actors.at({1}).control.state == 17 &&
+                          s.actors.at({1}).town_updates == counter,
+                      "final monster world, nested path audit and const source remain "
+                      "independently mutable");
+                const auto missing = prepare_monster(s, {{1}, {}});
                 check(!missing.candidate && missing.error == WorldLifecycleError::invalid_input,
                       "path modes cannot accept fabricated false/default path consumer");
                 path.facts.map.width = 7;
-                const auto failed = prepare_world_monster_act_c(s, {{1}, path});
+                const auto failed = prepare_monster(s, {{1}, path});
                 check(!failed.candidate && s.ai.battle.actors.at({1}).control.state == 17 &&
                           s.actors.at({1}).town_updates == counter,
                       "real P failure does not cleanup or expose a partial monster world");
@@ -413,7 +442,7 @@ std::optional<WorldScheduleStep> scheduled_consumer(const WorldScheduleState &s,
                                                     const CombatInfluenceCandidate &) {
     WorldScheduleStep next{s};
     if (call.stage == WorldScheduleStage::decision) {
-        const auto r = prepare_world_lifecycle_c(s.world, {{*call.id}, {{999, 1, {}}, {0, 1, 0}}});
+        const auto r = prepare_lifecycle(s.world, {{*call.id}, {{999, 1, {}}, {0, 1, 0}}});
         if (!r.candidate)
             return {};
         next.state.world = r.candidate->state;
@@ -501,13 +530,16 @@ void common_rounds() {
 } // namespace
 int main() {
     try {
-        down_recovery();
-        knockback_and_baseline();
-        win_pickup_and_empty_branches();
-        follow_and_inn();
-        transition_reuse_and_failures();
-        monster_modes();
-        common_rounds();
+        for (const bool private_value : {false, true}) {
+            consuming = private_value;
+            down_recovery();
+            knockback_and_baseline();
+            win_pickup_and_empty_branches();
+            follow_and_inn();
+            transition_reuse_and_failures();
+            monster_modes();
+            common_rounds();
+        }
         std::cout << checks << " world lifecycle checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

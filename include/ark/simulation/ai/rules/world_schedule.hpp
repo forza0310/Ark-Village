@@ -1,12 +1,12 @@
 #pragma once
 
 // 共同世界调度：这里只持有一个人物/设施所有者，控制与领域消费者不重复推进共同前段。
-#include "ark/simulation/ai/rules/ai_schedule.hpp"
 #include "ark/simulation/actors/rules/world_actor_tail.hpp"
+#include "ark/simulation/ai/rules/ai_schedule.hpp"
 #include "ark/simulation/map/rules/world_overlap.hpp"
 
-#include <utility>
 #include <string>
+#include <utility>
 
 namespace ark::simulation::rules {
 struct WorldScheduleState {
@@ -55,6 +55,9 @@ struct WorldScheduleStep {
 };
 using WorldScheduleConsumer = std::function<std::optional<WorldScheduleStep>(
     const WorldScheduleState &, const WorldScheduleCall &, const CombatInfluenceCandidate &)>;
+// 内部消费路径：只接收本轮可丢弃草稿的所有权，拒绝不得保留草稿引用。
+using WorldSchedulePrivateConsumer = std::function<std::optional<WorldScheduleStep>(
+    WorldScheduleState, const WorldScheduleCall &, const CombatInfluenceCandidate &)>;
 struct WorldScheduleInput {
     bool admitted{true};                 // 主场景/日期/菜单资格已由调用方判定；镜头延迟不是AI守卫。
     std::size_t dispatch_limit{1000000}; // 维护保护，不是原作人数/时间上限。
@@ -98,6 +101,9 @@ bool valid_world_schedule_owner(const WorldScheduleState &state);
 WorldScheduleResult prepare_world_schedule(const WorldScheduleState &state,
                                            const WorldScheduleInput &input,
                                            const WorldScheduleConsumer &consumer);
+WorldScheduleResult prepare_world_schedule_private(const WorldScheduleState &state,
+                                                   const WorldScheduleInput &input,
+                                                   const WorldSchedulePrivateConsumer &consumer);
 // 将实际L纯规则写回唯一n位置，不刷新s/t/ax；票号必须按本轮真实pair顺序供给。
 std::optional<WorldScheduleState>
 prepare_world_schedule_overlap(const WorldScheduleState &state, const std::vector<int> &tickets,
@@ -118,6 +124,16 @@ template <class Owner> struct OwnedWorldScheduleAdapter {
     // 只读旧u与投影后的n；在retention/r之前写方向，不提前发布新缓存。
     std::function<std::optional<int>(const Owner &, CharacterId, const BattleActorRecord &)>
         projected_facing{};
+    // 仅借用本函数拥有、外部不可见的scratch；不能保留引用或修改输入Owner。
+    // 拒绝后丢弃整个scratch，仍由共同调度检查所有者、名单与删除契约。
+    // 留空时沿用上方只读输入/完整返回值的消费者。
+    std::function<std::optional<WorldScheduleDisposition>(Owner &, const WorldScheduleCall &,
+                                                          const CombatInfluenceCandidate &)>
+        consume_private{};
+    // 仅读取非common扩展与当前参数actor，不读取已转交核心的共同草稿或保留引用。
+    // 留空时旧projected_facing仍可观察完整after-control Owner。
+    std::function<std::optional<int>(const Owner &, CharacterId, const BattleActorRecord &)>
+        projected_facing_without_common{};
 };
 template <class Owner> struct OwnedWorldScheduleResult {
     WorldScheduleError error{WorldScheduleError::none};
@@ -129,25 +145,47 @@ template <class Owner>
 OwnedWorldScheduleResult<Owner>
 prepare_owned_world_schedule(const Owner &state, const WorldScheduleInput &input,
                              const OwnedWorldScheduleAdapter<Owner> &adapter) {
-    if (!adapter.read || !adapter.write || (input.admitted && !adapter.consume))
+    if (!adapter.read || !adapter.write ||
+        (input.admitted && !adapter.consume && !adapter.consume_private))
         return {WorldScheduleError::missing_consumer, {}, {}};
     Owner scratch = state;
     auto admitted_input = input;
-    if (adapter.projected_facing)
+    if (adapter.projected_facing_without_common)
+        admitted_input.projected_facing = [&](CharacterId id, const BattleActorRecord &actor) {
+            return adapter.projected_facing_without_common(scratch, id, actor);
+        };
+    else if (adapter.projected_facing)
         admitted_input.projected_facing = [&](CharacterId id, const BattleActorRecord &actor) {
             return adapter.projected_facing(scratch, id, actor);
         };
-    auto result = prepare_world_schedule(
-        adapter.read(state), admitted_input,
-        [&](const WorldScheduleState &common, const WorldScheduleCall &call,
-            const CombatInfluenceCandidate &field) -> std::optional<WorldScheduleStep> {
-            adapter.write(scratch) = common;
-            auto step = adapter.consume(scratch, call, field);
-            if (!step)
-                return {};
-            scratch = std::move(step->state);
-            return WorldScheduleStep{adapter.read(scratch), step->disposition};
-        });
+    auto result =
+        adapter.consume_private
+            ? prepare_world_schedule_private(
+                  adapter.read(state), admitted_input,
+                  [&](WorldScheduleState common, const WorldScheduleCall &call,
+                      const CombatInfluenceCandidate &field) -> std::optional<WorldScheduleStep> {
+                      adapter.write(scratch) = std::move(common);
+                      const auto disposition = adapter.consume_private(scratch, call, field);
+                      if (!disposition)
+                          return {};
+                      // v之后的方向回调按旧契约读取外层Owner的这次共同状态。
+                      // 仅此处保留副本；其余调用把共同草稿交回核心，不反复复制世界。
+                      if (adapter.projected_facing && !adapter.projected_facing_without_common &&
+                          call.stage == WorldScheduleStage::control)
+                          return WorldScheduleStep{adapter.read(scratch), *disposition};
+                      return WorldScheduleStep{std::move(adapter.write(scratch)), *disposition};
+                  })
+            : prepare_world_schedule(
+                  adapter.read(state), admitted_input,
+                  [&](const WorldScheduleState &common, const WorldScheduleCall &call,
+                      const CombatInfluenceCandidate &field) -> std::optional<WorldScheduleStep> {
+                      adapter.write(scratch) = common;
+                      auto step = adapter.consume(scratch, call, field);
+                      if (!step)
+                          return {};
+                      scratch = std::move(step->state);
+                      return WorldScheduleStep{adapter.read(scratch), step->disposition};
+                  });
     if (!result.candidate)
         return {result.error, {}, {}, std::move(result.failure)};
     adapter.write(scratch) = result.candidate->state;

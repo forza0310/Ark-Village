@@ -1,5 +1,5 @@
-#include "ark/simulation/combat/rules/combat_commit.hpp"
 #include "ark/simulation/ai/rules/world_perception.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
 
 #include <iostream>
 #include <limits>
@@ -12,6 +12,42 @@ void check(bool value, const char *message) {
     ++checks;
     if (!value)
         throw std::runtime_error(message);
+}
+WorldPerceptionResult perception(bool consuming, const AiRewardState &source, CharacterId id,
+                                 const WorldMapFacts &facts, int mode = 0) {
+    if (!consuming)
+        return prepare_world_perception_prefix(source, id, facts, mode);
+    auto disposable = source;
+    return prepare_world_perception_prefix_consuming(std::move(disposable), id, facts, mode);
+}
+WorldPerceptionResult preemption(bool consuming, const AiRewardState &source, CharacterId id,
+                                 const WorldMapFacts &facts, bool rescue, bool task,
+                                 const std::vector<std::uint64_t> &objects) {
+    if (!consuming)
+        return prepare_world_reference_preemption(source, id, facts, rescue, task, objects);
+    auto disposable = source;
+    return prepare_world_reference_preemption_consuming(std::move(disposable), id, facts, rescue,
+                                                        task, objects);
+}
+WorldPerceptionResult project_actor(bool consuming, const AiRewardState &source, CharacterId id) {
+    if (!consuming)
+        return prepare_world_actor_projection(source, id);
+    auto disposable = source;
+    return prepare_world_actor_projection_consuming(std::move(disposable), id);
+}
+WorldPhysicsResult project_physics(bool consuming, const AiRewardState &source, CharacterId id,
+                                   const WorldMapFacts &facts) {
+    if (!consuming)
+        return prepare_world_physics_projection(source, id, facts);
+    auto disposable = source;
+    return prepare_world_physics_projection_consuming(std::move(disposable), id, facts);
+}
+WorldEventGateResult gate_input(bool consuming, const AiRewardState &source, CharacterId id,
+                                const WorldMapFacts &facts, const WorldEventTask &task = {}) {
+    if (!consuming)
+        return prepare_world_event_gate(source, id, facts, task);
+    auto disposable = source;
+    return prepare_world_event_gate_consuming(std::move(disposable), id, facts, task);
 }
 AiRewardState fixture() {
     AiRewardState s;
@@ -44,10 +80,10 @@ WorldMapFacts facts() {
             std::vector<std::uint32_t>(25),
             {0, 4, 0, 4}};
 }
-void prefix_and_cache() {
+void prefix_and_cache(bool consuming) {
     auto s = fixture();
     const auto f = facts();
-    auto r = prepare_world_perception_prefix(s, {1}, f);
+    auto r = perception(consuming, s, {1}, f);
     check(r.candidate && r.candidate->area.allowed && r.candidate->enemy &&
               r.candidate->enemy->id == CharacterId{2} && r.candidate->sensed_distance == 10 &&
               !r.candidate->state.contexts.at({1}).inside_town &&
@@ -55,21 +91,29 @@ void prefix_and_cache() {
               r.candidate->state.battle.actors.at({1}).attack_cooldown == 2 &&
               r.candidate->state.battle.actors.at({1}).decision_start.x == 250,
           "c uses cached s for town, actual n for K/e, strict halfHP and cooldown-before-sense");
+    check(s.battle.actors.at({1}).attack_cooldown == 3 &&
+              r.candidate->state.battle.actors.size() == 2 &&
+              r.candidate->state.contexts.size() == 2 && r.candidate->state.encounters.count(0),
+          "perception candidate retains complete other-actor/encounter domains and independent "
+          "input");
+    r.candidate->state.encounters.at(0).runtime.counter = 99;
+    check(s.encounters.at(0).runtime.counter == 0,
+          "perception candidate owns independent encounter storage");
     s.contexts.at({2}).move_area = false;
-    r = prepare_world_perception_prefix(s, {1}, f);
+    r = perception(consuming, s, {1}, f);
     check(r.candidate && !r.candidate->enemy &&
               r.candidate->sensed_distance == std::numeric_limits<float>::max(),
           "opponent old aB0 excluded even though its current position would pass K");
-    const auto monster = prepare_world_perception_prefix(s, {2}, f);
+    const auto monster = perception(consuming, s, {2}, f);
     check(monster.candidate && monster.candidate->state.contexts.at({2}).move_area,
           "opponent own c refreshes K independently later");
     s = monster.candidate->state;
-    check(prepare_world_perception_prefix(s, {1}, f).candidate->enemy.has_value(),
+    check(perception(consuming, s, {1}, f).candidate->enemy.has_value(),
           "later e observes already updated current opponent cache");
     s = fixture();
     s.battle.actors.at({1}).blocked_battle_steps = 150;
     s.battle.actors.at({1}).hp.target = 49;
-    r = prepare_world_perception_prefix(s, {1}, f);
+    r = perception(consuming, s, {1}, f);
     check(r.candidate && r.candidate->restored_baseline &&
               r.candidate->state.battle.actors.at({1}).control.state == 5 &&
               !r.candidate->state.battle.actors.at({1}).encounter && !r.candidate->enemy &&
@@ -83,13 +127,20 @@ void prefix_and_cache() {
     s.retired_actors.emplace(CharacterId{2}, s.battle.actors.at({2}));
     s.battle.actors.erase({2});
     s.monster_order.clear();
-    r = prepare_world_perception_prefix(s, {1}, f);
+    r = perception(consuming, s, {1}, f);
     check(r.candidate && !r.candidate->enemy &&
               !(r.candidate->state.battle.actors.at({1}).control.flags & 128U),
           "retired group corpse retains cached context, filtered state3 clears caller128 without "
           "errors");
+    s = fixture();
+    s.battle.actors.at({1}).control.flags |= 128U;
+    s.battle.actors.at({1}).group = 999;
+    const auto rejected = perception(consuming, s, {1}, f);
+    check(!rejected.candidate && rejected.error == AiRewardError::preparation_failed &&
+              s.battle.actors.at({1}).attack_cooldown == 3,
+          "late missing battle group rejects without publishing decremented cooldown");
 }
-void geometry() {
+void geometry(bool consuming) {
     auto s = fixture();
     auto f = facts();
     for (int state : {0, 1, 4, 5, 14, 17})
@@ -122,12 +173,12 @@ void geometry() {
     check(!query_world_move_area(s, {1}, f)->allowed, "logical0 independently blocks area");
     s = fixture();
     s.battle.actors.at({1}).position = {-99, 0, -99};
-    const auto p = prepare_world_actor_projection(s, {1});
+    const auto p = project_actor(consuming, s, {1});
     check(p.candidate && p.candidate->state.contexts.at({1}).cell == Position{0, 0} &&
               p.candidate->state.contexts.at({1}).half_cell == Position{-1, -1},
           "d whole and half projections each truncate toward zero, not floor or whole*2");
 }
-void healing_and_influence() {
+void healing_and_influence(bool consuming) {
     auto s = fixture();
     auto f = facts();
     s.battle.actors.at({1}).hp.target = 1;
@@ -136,7 +187,7 @@ void healing_and_influence() {
     s.battle.actors.at({1}).hp.target = 100;
     check(query_world_healing_target(s, {1}).target == CharacterId{1},
           "J includes self with old ak true despite now-full targetHP");
-    const auto c = prepare_world_perception_prefix(s, {1}, f);
+    const auto c = perception(consuming, s, {1}, f);
     check(c.candidate && !query_world_healing_target(c.candidate->state, {1}).target,
           "only own c refreshes ak for subsequent J");
     const auto field = prepare_world_influence(s, f);
@@ -148,7 +199,7 @@ void healing_and_influence() {
     check(before_projection.candidate &&
               before_projection.candidate->human_field == field.candidate->human_field,
           "world influence not eagerly projected from changed n");
-    const auto projected = prepare_world_actor_projection(moved, {2});
+    const auto projected = project_actor(consuming, moved, {2});
     const auto after_projection = prepare_world_influence(projected.candidate->state, f);
     check(after_projection.candidate &&
               after_projection.candidate->human_field != field.candidate->human_field,
@@ -160,39 +211,57 @@ void healing_and_influence() {
     check(query_world_healing_target(s, {1}).error == AiRewardError::invalid_input,
           "invalid current healing roster is an error, not ordinary no-target success");
 }
-void event_and_physics() {
+void event_and_physics(bool consuming) {
     auto s = fixture();
     auto f = facts();
     s.contexts.at({1}).cell = {2, 2};
     f.flags[12] = 2;
     s.battle.actors.at({1}).state_counter = 5;
     s.battle.actors.at({1}).control.flags = 1024U;
-    auto gate = prepare_world_event_gate(s, {1}, f);
+    auto gate = gate_input(consuming, s, {1}, f);
     check(gate.candidate && gate.candidate->gate.ready && gate.candidate->gate.bind_encounter == 0,
           "world F accepts1024 and binds current original-order event, unlike G");
+    check(gate.candidate->state.battle.actors.size() == 2 &&
+              gate.candidate->state.contexts.size() == 2 &&
+              gate.candidate->state.encounters.size() == 1,
+          "event gate retains full AI candidate rather than a selected actor projection");
+    gate.candidate->state.encounters.at(0).runtime.counter = 99;
+    check(s.encounters.at(0).runtime.counter == 0,
+          "event gate candidate owns independent encounter storage");
     s.encounters.at(0).runtime.center = {4, 4};
-    gate = prepare_world_event_gate(s, {1}, f);
+    gate = gate_input(consuming, s, {1}, f);
     check(gate.candidate && gate.candidate->gate.ready && !gate.candidate->gate.bind_encounter &&
               gate.candidate->state.battle.actors.at({1}).encounter == 0,
           "event flagged cell with no center match retains old db and still F true");
     s.task_active = true;
     f.flags[12] = 0;
-    gate = prepare_world_event_gate(s, {1}, f, {true, 1, {2, 2}, {}});
+    gate = gate_input(consuming, s, {1}, f, {true, 1, {2, 2}, {}});
     check(gate.candidate && gate.candidate->gate.ready &&
               gate.candidate->gate.request_task_encounter &&
               gate.candidate->state.encounters.size() == 1,
           "new task creation request returns F true without eager spawn/bind/quota");
     s.battle.actors.at({1}).object_slot = -2;
-    gate = prepare_world_event_gate(s, {1}, f, {true, 1, {2, 2}, {}});
+    gate = gate_input(consuming, s, {1}, f, {true, 1, {2, 2}, {}});
     check(gate.candidate && !gate.candidate->gate.ready,
           "rescue sentinel still blocks human F before task creation");
+    auto malformed = fixture();
+    malformed.contexts.at({1}).cell = {2, 2};
+    malformed.battle.actors.at({1}).state_counter = 5;
+    auto flagged = facts();
+    flagged.flags[12] = 2;
+    malformed.encounter_order.push_back(0);
+    const auto rejected = gate_input(consuming, malformed, {1}, flagged);
+    check(!rejected.candidate && rejected.error == AiRewardError::invalid_input &&
+              malformed.battle.actors.at({1}).encounter == 0 &&
+              malformed.encounters.at(0).runtime.counter == 0,
+          "event gate keeps actual flagged-cell roster rejection without partial binding");
     s = fixture();
     f = facts();
     auto &a = s.battle.actors.at({1});
     a.position = {450, 10, 250};
     a.decision_start = {250, 0, 250};
     a.vertical_velocity = 0;
-    const auto physics = prepare_world_physics_projection(s, {1}, f);
+    const auto physics = project_physics(consuming, s, {1}, f);
     check(physics.candidate && physics.candidate->queried_area &&
               physics.candidate->diagnostic == 7 &&
               physics.candidate->state.battle.actors.at({1}).position.x == 250 &&
@@ -204,7 +273,7 @@ void event_and_physics() {
           "refresh");
     a.physics_pause = 1;
     a.encounter = 999;
-    const auto paused = prepare_world_physics_projection(s, {1}, f);
+    const auto paused = project_physics(consuming, s, {1}, f);
     check(paused.candidate && !paused.candidate->queried_area &&
               paused.candidate->state.battle.actors.at({1}).physics_pause == 0 &&
               paused.candidate->state.battle.actors.at({1}).position.x == 450 &&
@@ -213,12 +282,27 @@ void event_and_physics() {
     s = fixture();
     s.battle.actors.at({1}).control.state = 16;
     s.battle.actors.at({1}).position.height = 16;
-    const auto carried = prepare_world_physics_projection(s, {1}, f);
+    const auto carried = project_physics(consuming, s, {1}, f);
     check(carried.candidate && !carried.candidate->queried_area &&
               carried.candidate->state.battle.actors.at({1}).position.height == 16,
           "state16 keeps follow height, no gravity/K but same d projection");
+    check(s.contexts.at({1}).cell == Position{0, 0} &&
+              carried.candidate->state.contexts.at({1}).cell == Position{2, 2} &&
+              carried.candidate->state.battle.actors.size() == 2 &&
+              carried.candidate->state.encounters.count(0),
+          "physics/projection returns complete independent AI and changes cached cell only in "
+          "candidate");
+    s = fixture();
+    s.battle.actors.at({1}).physics_pause = 1;
+    s.battle.actors.at({1}).position.x = 1.0e20F;
+    const auto failed = project_physics(consuming, s, {1}, f);
+    check(!failed.candidate && failed.error == AiRewardError::preparation_failed &&
+              s.battle.actors.at({1}).physics_pause == 1 &&
+              s.contexts.at({1}).cell == Position{0, 0},
+          "late unrepresentable cell rejects after paused physics without publishing pause "
+          "decrement");
 }
-void combat_move() {
+void combat_move(bool consuming) {
     auto s = fixture();
     auto f = facts();
     s.battle.actors.at({1}).position = {275, 0, 275};
@@ -259,7 +343,7 @@ void combat_move() {
     check(invalid.candidate && invalid.candidate->scores.selected == 0 &&
               invalid.candidate->target->x == -25,
           "invalid low-mode score0 can select out-of-grid first sample, source behavior retained");
-    const auto revert = prepare_world_physics_projection(invalid.candidate->state, {1}, f);
+    const auto revert = project_physics(consuming, invalid.candidate->state, {1}, f);
     check(revert.candidate && revert.candidate->diagnostic == 7 &&
               revert.candidate->state.battle.actors.at({1}).position.x == 25,
           "d freshK can reverse c score movement, rather than nav pre-filtering it");
@@ -269,7 +353,7 @@ void combat_move() {
     check(no_event.candidate && no_event.candidate->diagnostic == 4 && !no_event.candidate->target,
           "no db returns original no-move diagnostic, not invented approach route");
 }
-void repair_and_preemption() {
+void repair_and_preemption(bool consuming) {
     auto s = fixture();
     auto f = facts();
     auto &a = s.battle.actors.at({1});
@@ -279,7 +363,7 @@ void repair_and_preemption() {
     a.control.alternate_counter = 29;
     a.rescue = CharacterId{2};
     a.object_slot = -2;
-    const auto repair = prepare_world_reference_preemption(s, {1}, f, false, false, {});
+    const auto repair = preemption(consuming, s, {1}, f, false, false, {});
     check(repair.candidate && !repair.candidate->state.battle.actors.at({1}).rescue &&
               repair.candidate->state.battle.actors.at({1}).object_slot == -1 &&
               repair.candidate->state.battle.actors.at({1}).hp.target == 100 &&
@@ -291,7 +375,7 @@ void repair_and_preemption() {
     a.control.flags = 512U;
     a.rescue.reset();
     a.object_slot = 4;
-    const auto slot = prepare_world_reference_preemption(s, {1}, f, false, false, {});
+    const auto slot = preemption(consuming, s, {1}, f, false, false, {});
     check(slot.candidate && slot.candidate->state.battle.actors.at({1}).object_slot == -1 &&
               slot.candidate->state.battle.actors.at({1}).hp.target == 50 &&
               slot.candidate->state.battle.actors.at({1}).control.action == 7,
@@ -313,37 +397,76 @@ void repair_and_preemption() {
     object.state = 3;
     object.cached_cell = {2, 2};
     s.battle.objects.emplace(0, object);
-    auto r = prepare_world_reference_preemption(s, {1}, f, true, false, {});
+    auto r = preemption(consuming, s, {1}, f, true, false, {});
     check(
         r.candidate && r.candidate->state.battle.actors.at({1}).control.state == 13 &&
             !r.candidate->state.battle.actors.at({1}).encounter &&
             r.candidate->state.battle.actors.at({1}).state_counter == 0,
         "cached per-axis2 rescue preempts object scan; no object metadata consumed after success");
     s.contexts.at({3}).inside_town = true;
-    r = prepare_world_reference_preemption(s, {1}, f, true, false, {0});
+    r = preemption(consuming, s, {1}, f, true, false, {0});
     check(r.candidate && r.candidate->state.battle.actors.at({1}).control.state == 11,
           "different cached town side excludes rescue, object cached h still eligible");
     s.contexts.at({3}).inside_town = false;
     f.flags[24] = 2;
-    r = prepare_world_reference_preemption(s, {1}, f, true, false, {0});
+    r = preemption(consuming, s, {1}, f, true, false, {0});
     check(r.candidate && r.candidate->state.battle.actors.at({1}).control.state == 11,
           "current map bit2 on down cached cell excludes rescue");
     f.flags[24] = 0;
-    r = prepare_world_reference_preemption(s, {1}, f, true, true, {0});
+    r = preemption(consuming, s, {1}, f, true, true, {0});
     check(r.candidate && r.candidate->state.battle.actors.at({1}).control.state == 11,
           "definition task flag suppresses rescue but not object's separate scan");
     s.battle.actors.at({1}).object_slot = -2;
     s.battle.actors.at({1}).rescue = CharacterId{3};
     s.battle.actors.at({3}).rescue = CharacterId{2};
-    r = prepare_world_reference_preemption(s, {1}, f, true, false, {});
+    r = preemption(consuming, s, {1}, f, true, false, {});
     check(r.candidate && r.candidate->state.battle.actors.at({1}).object_slot == -2 &&
               r.candidate->state.battle.actors.at({1}).control.state == 5,
           "R.R only tests nonnull, not equality; valid carrying prevents both idle scans");
     s.battle.actors.at({1}).rescue = CharacterId{999};
-    check(!prepare_world_reference_preemption(s, {1}, f, true, false, {}).candidate,
+    check(!preemption(consuming, s, {1}, f, true, false, {}).candidate,
           "unresolvable R is explicit error, no invented object or partial repaired candidate");
+    s = fixture();
+    s.battle.actors.at({1}).control.state = 5;
+    s.battle.actors.at({1}).control.flags = 512U;
+    s.battle.actors.at({1}).object_slot = 4;
+    const auto bad_order = preemption(consuming, s, {1}, f, false, false, {999});
+    check(!bad_order.candidate && bad_order.error == AiRewardError::invalid_input &&
+              s.battle.actors.at({1}).object_slot == 4,
+          "late object roster refusal does not publish earlier carry-slot repair");
 }
-void enemy_event_identity() {
+void consuming_early_rejections() {
+    auto s = fixture();
+    const auto f = facts();
+    check(!prepare_world_perception_prefix_consuming(std::move(s), {99}, f).candidate &&
+              s.battle.actors.size() == 2 && s.contexts.size() == 2,
+          "stale perception actor rejects before transferring any AI storage");
+    s.battle.actors.at({1}).rescue = CharacterId{999};
+    check(!prepare_world_reference_preemption_consuming(std::move(s), {1}, f, true, false, {})
+                  .candidate &&
+              s.battle.actors.size() == 2 && s.battle.actors.at({1}).rescue == CharacterId{999},
+          "invalid carry reference rejects before transferring the complete AI");
+    s = fixture();
+    s.battle.actors.at({1}).position.x = std::numeric_limits<float>::infinity();
+    const auto projection = prepare_world_actor_projection_consuming(std::move(s), {1});
+    check(!projection.candidate && projection.error == AiRewardError::invalid_input &&
+              s.battle.actors.size() == 2 && s.contexts.at({1}).cell == Position{0, 0},
+          "projection validates world position before transferring any AI storage");
+    auto invalid_facts = f;
+    invalid_facts.surface.clear();
+    const auto physics =
+        prepare_world_physics_projection_consuming(std::move(s), {1}, invalid_facts);
+    check(!physics.candidate && physics.error == AiRewardError::invalid_input &&
+              s.battle.actors.size() == 2 && s.encounters.size() == 1,
+          "physics keeps map validation before position preparation and storage transfer");
+    s = fixture();
+    s.battle.actors.at({1}).perceived_enemy = CharacterId{999};
+    const auto gate = prepare_world_event_gate_consuming(std::move(s), {1}, f);
+    check(!gate.candidate && gate.error == AiRewardError::stale_actor &&
+              s.battle.actors.size() == 2 && s.contexts.size() == 2,
+          "event gate validates sensed target before transferring any candidate AI");
+}
+void enemy_event_identity(bool consuming) {
     auto s = fixture();
     auto other = s.encounters.at(0);
     other.runtime.id = 7;
@@ -360,7 +483,7 @@ void enemy_event_identity() {
     r = query_current_combat_enemy(s, {1});
     check(r.error == ActorAiError::none && !r.candidate,
           "128 with null dc is source ordinary empty e, not a malformed world error");
-    const auto prefix = prepare_world_perception_prefix(s, {1}, facts());
+    const auto prefix = perception(consuming, s, {1}, facts());
     check(prefix.candidate && !(prefix.candidate->state.battle.actors.at({1}).control.flags & 128U),
           "own c repairs lingering128 after empty-null-dc enemy lookup");
     s.battle.actors.at({1}).control.flags = 0;
@@ -429,13 +552,16 @@ void battle_preparation_world() {
 }
 } // namespace
 int main() {
-    prefix_and_cache();
-    geometry();
-    healing_and_influence();
-    event_and_physics();
-    combat_move();
-    repair_and_preemption();
-    enemy_event_identity();
+    consuming_early_rejections();
+    for (const bool consuming : {false, true}) {
+        geometry(consuming);
+        event_and_physics(consuming);
+        combat_move(consuming);
+        prefix_and_cache(consuming);
+        healing_and_influence(consuming);
+        repair_and_preemption(consuming);
+        enemy_event_identity(consuming);
+    }
     battle_preparation_world();
     std::cout << "world perception checks: " << checks << '\n';
 }

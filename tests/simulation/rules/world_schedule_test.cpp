@@ -1,9 +1,10 @@
-#include "ark/simulation/combat/rules/object_commit.hpp"
-#include "ark/simulation/world/rules/world_control.hpp"
 #include "ark/simulation/actors/rules/world_departure.hpp"
-#include "ark/simulation/combat/rules/world_encounters.hpp"
 #include "ark/simulation/ai/rules/world_misc_control.hpp"
 #include "ark/simulation/ai/rules/world_schedule.hpp"
+#include "ark/simulation/combat/rules/object_commit.hpp"
+#include "ark/simulation/combat/rules/world_encounters.hpp"
+#include "ark/simulation/world/rules/world_control.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -536,8 +537,9 @@ void errors_and_atomic_extension() {
     struct Owner {
         WorldScheduleState common;
         int committed{};
+        WorldRandomStream random;
     };
-    Owner outer{s, 0};
+    Owner outer{s, 0, {}};
     OwnedWorldScheduleAdapter<Owner> adapter;
     adapter.read = [](const Owner &w) -> const WorldScheduleState & { return w.common; };
     adapter.write = [](Owner &w) -> WorldScheduleState & { return w.common; };
@@ -572,6 +574,149 @@ void errors_and_atomic_extension() {
               success.state->common.world.ai.battle.actors.at({1}).state_counter == 1 &&
               success.state->common.world.facilities.at(3).occupants.size() == 1,
           "all private outer and common fields commit once after final L");
+    auto private_adapter = adapter;
+    bool private_facing_read{};
+    private_adapter.projected_facing =
+        [&](const Owner &w, CharacterId id,
+            const BattleActorRecord &projected) -> std::optional<int> {
+        private_facing_read = true;
+        check(w.committed == 3 && w.common.world.map.cells.size() == 36 &&
+                  w.common.world.ai.battle.actors.at(id).state_counter == 1 &&
+                  w.common.world.ai.battle.actors.at(id).control.queue == projected.control.queue,
+              "moved common scratch retains original after-control owner for projected facing");
+        return projected.control.facing;
+    };
+    private_adapter.consume_private =
+        [&](Owner &w, const auto &call,
+            const auto &field) -> std::optional<WorldScheduleDisposition> {
+        auto step = adapter.consume(w, call, field);
+        if (!step)
+            return {};
+        w = std::move(step->state);
+        return step->disposition;
+    };
+    for (const bool without_common : {false, true}) {
+        private_facing_read = false;
+        private_adapter.projected_facing_without_common = {};
+        if (without_common)
+            private_adapter.projected_facing_without_common =
+                [&](const Owner &w, CharacterId id,
+                    const BattleActorRecord &projected) -> std::optional<int> {
+                private_facing_read = true;
+                check(w.committed == 3 && id == CharacterId{1} && projected.state_counter == 1 &&
+                          projected.control.queue == std::vector<LegacyActorControl>{{1, 2, 0}},
+                      "narrow facing reads latest after-control extension and current projected "
+                      "actor");
+                return projected.control.facing;
+            };
+        const auto private_success = prepare_owned_world_schedule(outer, {}, private_adapter);
+        check(private_success.state && private_success.audit && private_facing_read &&
+                  success.audit && private_success.state->committed == success.state->committed &&
+                  private_success.state->random.snapshot().engine_state ==
+                      success.state->random.snapshot().engine_state &&
+                  private_success.state->common.updates == success.state->common.updates &&
+                  private_success.state->common.world.ai.battle.actors.at({1}).control.queue ==
+                      success.state->common.world.ai.battle.actors.at({1}).control.queue &&
+                  private_success.state->common.world.facilities.at(3).occupants ==
+                      success.state->common.world.facilities.at(3).occupants &&
+                  private_success.audit->calls.size() == success.audit->calls.size() &&
+                  private_success.audit->visits.size() == success.audit->visits.size() &&
+                  private_success.audit->effects.size() == success.audit->effects.size() &&
+                  private_success.audit->state.world.ai.battle.actors.at({1}).state_counter == 1,
+              "private extension candidate and complete audit retain legacy successful outcomes");
+        for (std::size_t n = 0; n < success.audit->calls.size(); ++n)
+            check(
+                private_success.audit->calls[n].stage == success.audit->calls[n].stage &&
+                    private_success.audit->calls[n].id == success.audit->calls[n].id &&
+                    private_success.audit->calls[n].popularity ==
+                        success.audit->calls[n].popularity,
+                "private calls retain legacy stage, stable identity and popularity payload order");
+        for (std::size_t n = 0; n < success.audit->visits.size(); ++n)
+            check(private_success.audit->visits[n].phase == success.audit->visits[n].phase &&
+                      private_success.audit->visits[n].id == success.audit->visits[n].id,
+                  "private visits retain legacy live-roster ordering");
+    }
+    auto facing_refusal = private_adapter;
+    facing_refusal.projected_facing_without_common =
+        [](const Owner &, CharacterId, const BattleActorRecord &) -> std::optional<int> {
+        return {};
+    };
+    const auto refused_facing = prepare_owned_world_schedule(outer, {}, facing_refusal);
+    check(refused_facing.error == WorldScheduleError::common_segment_failed &&
+              !refused_facing.state && !refused_facing.audit && outer.committed == 0 &&
+              outer.random.draws() == 0 && outer.common.updates == 0 &&
+              outer.common.world.ai.battle.actors.at({1}).state_counter == 0,
+          "narrow facing refusal discards after-control common, owner extensions and all partial "
+          "audit");
+    // 拒绝前真的修改私有扩展/随机；不能以未触及状态的空回调冒充回滚。
+    for (const int rejection : {0, 1, 2, 3}) {
+        auto rejected_adapter = private_adapter;
+        rejected_adapter.projected_facing = {}; // 同一拒绝同时覆盖无方向回调的完全转移路径。
+        rejected_adapter.projected_facing_without_common = {};
+        rejected_adapter.consume = {}; // 私有接口独立满足消费者资格，不依赖值回退。
+        rejected_adapter.consume_private =
+            [&](Owner &w, const auto &call,
+                const auto &field) -> std::optional<WorldScheduleDisposition> {
+            auto step = private_adapter.consume_private(w, call, field);
+            if (!step)
+                return {};
+            if (call.stage ==
+                (rejection == 0 ? WorldScheduleStage::finalize : WorldScheduleStage::facility)) {
+                ++w.committed;
+                w.random.draw(100);
+                if (rejection == 0)
+                    return {};
+                if (rejection == 1) {
+                    w.common.world.ai.human_order.clear();
+                    w.common.world.ai.battle.actors.clear();
+                    w.common.world.facilities.at(3).occupants.clear();
+                } else if (rejection == 2)
+                    return WorldScheduleDisposition::already_removed;
+                else
+                    w.common.updates = -1;
+            }
+            return step;
+        };
+        const auto rejected = prepare_owned_world_schedule(outer, {}, rejected_adapter);
+        auto rejected_legacy = rejected_adapter;
+        rejected_legacy.consume_private = {};
+        rejected_legacy.consume =
+            [&](const Owner &w, const auto &call,
+                const auto &field) -> std::optional<OwnedWorldScheduleStep<Owner>> {
+            auto next = w;
+            const auto disposition = rejected_adapter.consume_private(next, call, field);
+            if (!disposition)
+                return {};
+            return OwnedWorldScheduleStep<Owner>{std::move(next), *disposition};
+        };
+        const auto legacy_rejected = prepare_owned_world_schedule(outer, {}, rejected_legacy);
+        const auto expected = rejection == 0   ? WorldScheduleError::consumer_failed
+                              : rejection == 3 ? WorldScheduleError::invalid_owner
+                                               : WorldScheduleError::invalid_mutation;
+        check(
+            rejected.error == expected && rejected.error == legacy_rejected.error &&
+                !rejected.state && !rejected.audit && !legacy_rejected.state &&
+                !legacy_rejected.audit && outer.committed == 0 && outer.random.draws() == 0 &&
+                outer.random.snapshot().engine_state ==
+                    WorldRandomStream{}.snapshot().engine_state &&
+                outer.common.updates == 0 &&
+                outer.common.world.ai.human_order == std::vector<CharacterId>{{1}} &&
+                outer.common.world.ai.battle.actors.at({1}).state_counter == 0 &&
+                outer.common.world.facilities.at(3).occupants.empty(),
+            "private late refusal, silent removal, false removal and invalid owner all roll back");
+        if (rejection == 0)
+            check(rejected.failure && rejected.failure->stage == WorldScheduleStage::finalize &&
+                      rejected.failure->layer == "schedule.consumer",
+                  "private late refusal retains only legacy failure metadata");
+    }
+    check(prepare_world_schedule_private(outer.common, {}, {}).error ==
+              WorldScheduleError::missing_consumer,
+          "private kernel requires an actual admitted consumer");
+    const auto private_idle = prepare_world_schedule_private(outer.common, {false}, {});
+    check(private_idle.candidate && private_idle.candidate->calls.empty() &&
+              private_idle.candidate->state.updates == 0 &&
+              private_idle.candidate->state.world.ai.battle.actors.at({1}).state_counter == 0,
+          "private kernel preserves complete idle candidate without requiring a consumer");
     s.world.actors.clear();
     check(!valid_world_schedule_owner(s), "spawn without shared actor context rejects before c");
 }

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ark/simulation/actors/rules/world_departure.hpp"
-#include "ark/simulation/facilities/rules/world_facilities.hpp"
 #include "ark/simulation/ai/rules/world_misc_control.hpp"
+#include "ark/simulation/facilities/rules/world_facilities.hpp"
 
 namespace ark::simulation::rules {
 struct WorldLifecycleInput {
@@ -35,6 +35,8 @@ struct WorldLifecycleResult {
 // 状态16只复制真实bl成员的n/高度，不重复引用修复，也不刷新s/t/u。
 WorldLifecycleResult prepare_world_lifecycle_c(const RescueWorldState &state,
                                                const WorldLifecycleInput &input);
+WorldLifecycleResult prepare_world_lifecycle_c_consuming(RescueWorldState &&state,
+                                                         const WorldLifecycleInput &input);
 
 struct WorldMonsterActInput {
     CharacterId actor;
@@ -55,4 +57,6 @@ struct WorldMonsterActResult {
 // T0的M1500空分支保持无副作用；不创建T2/3/4入口，也不运行第二次共同c前段。
 WorldMonsterActResult prepare_world_monster_act_c(const RescueWorldState &state,
                                                   const WorldMonsterActInput &input);
+WorldMonsterActResult prepare_world_monster_act_c_consuming(RescueWorldState &&state,
+                                                            const WorldMonsterActInput &input);
 } // namespace ark::simulation::rules

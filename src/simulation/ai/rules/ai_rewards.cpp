@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <utility>
 
 namespace ark::simulation::rules {
 namespace {
@@ -500,7 +501,7 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &s,
     collect_retired(c.state);
     return {AiRewardError::none, c};
 }
-AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId id) {
+template <class State> static AiRewardResult actor_growth_commit(State &&s, CharacterId id) {
     const auto actor = s.battle.actors.find(id);
     const auto context = s.contexts.find(id);
     if (actor == s.battle.actors.end() || context == s.contexts.end() ||
@@ -522,8 +523,10 @@ AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId i
     const auto step = prepare_human_growth(input);
     if (!step.candidate)
         return fail(AiRewardError::preparation_failed);
-    AiRewardCandidate c{s, false, {}, {}, step.candidate->requests};
-    auto &g = c.state.growth.at(actor->second.definition);
+    // Snapshot the only actor field used after transferring the full AI.
+    const int definition = actor->second.definition;
+    AiRewardCandidate c{std::forward<State>(s), false, {}, {}, step.candidate->requests};
+    auto &g = c.state.growth.at(definition);
     g.definition = step.candidate->definition;
     g.experience = step.candidate->experience;
     g.pending = step.candidate->pending;
@@ -531,17 +534,17 @@ AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId i
     g.notice_attributes = step.candidate->notice_attributes;
     if (step.candidate->stats) {
         g.derived = *step.candidate->stats;
-        if (!c.state.battle.humans.count(actor->second.definition))
+        if (!c.state.battle.humans.count(definition))
             return fail(AiRewardError::invalid_input);
-        c.state.battle.humans.at(actor->second.definition).luck = g.derived.attributes[5];
+        c.state.battle.humans.at(definition).luck = g.derived.attributes[5];
         for (auto &[other_id, other] : c.state.battle.actors) {
             (void)other_id;
-            if (other.kind == ActorKind::human && other.definition == actor->second.definition)
+            if (other.kind == ActorKind::human && other.definition == definition)
                 other.capacity = g.derived.combat[0]; // h() reads shared w0; current HP unchanged.
         }
         for (auto &[other_id, other] : c.state.retired_actors) {
             (void)other_id;
-            if (other.kind == ActorKind::human && other.definition == actor->second.definition)
+            if (other.kind == ActorKind::human && other.definition == definition)
                 other.capacity = g.derived.combat[0];
         }
     }
@@ -554,7 +557,13 @@ AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId i
         else if (r.kind == HumanGrowthRequestKind::unlock_profession)
             c.state.professions.at(static_cast<std::size_t>(r.profession)).unlocked = true;
     }
-    return {AiRewardError::none, c};
+    return {AiRewardError::none, std::move(c)};
+}
+AiRewardResult prepare_actor_growth_commit(const AiRewardState &s, CharacterId id) {
+    return actor_growth_commit(s, id);
+}
+AiRewardResult prepare_actor_growth_commit_consuming(AiRewardState &&s, CharacterId id) {
+    return actor_growth_commit(std::move(s), id);
 }
 AiRewardResult prepare_battle_group_join(const AiRewardState &s, std::uint64_t encounter,
                                          CharacterId caller, CharacterId opponent) {

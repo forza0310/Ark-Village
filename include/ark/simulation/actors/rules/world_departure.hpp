@@ -164,4 +164,8 @@ struct WorldPathResult {
 // G非空且旧s到O才执行j/入场；n运动不刷新s/t/u，最后路点H保留至到达分支消费。
 // 不把G铺成m0，不跑d计数/物理。纯领域回调失败、缺事实或随机票号整批回滚。
 WorldPathResult prepare_world_path_c(const RescueWorldState &state, const WorldPathInput &input);
+// Transfer a disposable full world after the original entry validation. Narrow
+// old actor/path/map/nearby snapshots preserve P's pre-callback observations.
+WorldPathResult prepare_world_path_c_consuming(RescueWorldState &&state,
+                                               const WorldPathInput &input);
 } // namespace ark::simulation::rules

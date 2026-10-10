@@ -54,6 +54,7 @@ node scripts/build_product.mjs desktop-debug --parallel 4
 阶段收口分别记录本地配置/通过项、Debug排除项、按需追加检查及对应提交的CI链接/结果。当前CI只运行desktop-release，不得把Release结果写成Debug三个月通过；CI未运行或未结束时标待验证。完成上述本地范围可先保存checkpoint，不为等待CI而补跑四套或本地Debug三个月，也不自动推送；完整交付仍需记录流水线结果。修复后按实际影响重验本批所需配置及用例，共用源码改动不自动升级为四套全测；通过后无新修改、失败或未决风险不重复全套。
 
 四套是消费者配置，不是四份玩家制品：Debug调试消费者程序，Release优化消费者程序，headless用于无窗口验证/模拟。用户选择公共库统一用Release，不保留库内部调试符号；四套消费者导入同一份库，不分别编译核心。维护AVRSAVE的`ark_world_persistence`/`ark_world_hash`与正常runtime分开，回放测试显式链接；玩家ARKSAVE仍使用原`ark_world_save`，递归玩家收包不会带入未使用的维护库。独立`shared-libraries`预设在`build/shared-libraries`编译库，消费者对象仍位于`build/<预设名>-shared`。全部EXE/DLL同放`build/bin/`，EXE带配置名后缀避免互相覆盖，导入库只在公共库树`lib/`。每次公共库构建补齐C++运行库、raylib、资源和字体；修改库源码后先重建公共库，再构建消费者。只向用户发布desktop-release游戏包，打包才复制必要DLL并去掉游戏EXE后缀。main CI不重复Debug或headless构建，本地验证持续允许。
+公共Release库默认启用CMake验证支持的跨文件优化（`ARK_RELEASE_IPO=ON`）；当前LLVM-MinGW使用ThinLTO。工具链不支持时配置明确告警并保留普通Release编译，可用`-DARK_RELEASE_IPO=OFF`对照。IPO属性纳入DLL构建身份，不添加依赖本机CPU的指令选项或改变浮点规则；消费者Debug/Release选项保持各自配置。
 构建需要Node 18+，只在构建期JSON.parse交叉校验固定发布数据，生成只读标准C++；运行无需Node。
 资源更改须核对源/副本哈希、实际解码和任意工作目录启动；界面更改须实际画面/输入验收；存储用隔离档，不做旧档迁移。
 格式按clang-format，公开头在include/ark，实现在src；CMake显式登记文件。只建立有实际职责的模块。

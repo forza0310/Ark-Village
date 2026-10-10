@@ -8,6 +8,18 @@
 using namespace ark::simulation::rules;
 namespace {
 int checks{};
+bool private_scene{};
+WorldSceneResult prepare_scene(const WorldSceneState &state, const WorldSceneInput &input,
+                               const WorldSceneConsumer &consumer) {
+    if (!private_scene)
+        return prepare_world_scene(state, input, consumer);
+    WorldScenePrivateConsumer consuming;
+    if (consumer)
+        consuming = [&](WorldSceneState current, const WorldSceneCall &call) {
+            return consumer(current, call);
+        };
+    return prepare_world_scene_private(state, input, consuming);
+}
 void check(bool condition, const char *message) {
     ++checks;
     if (!condition)
@@ -31,7 +43,7 @@ std::size_t count(const WorldSceneCandidate &result, WorldSceneStage stage) {
                       [&](const WorldSceneCall &call) { return call.stage == stage; }));
 }
 void normal_order() {
-    const auto result = prepare_world_scene(fixture(), {27, true}, fixture_consumer);
+    const auto result = prepare_scene(fixture(), {27, true}, fixture_consumer);
     check(result.candidate && result.candidate->scheduled_rounds == 1 &&
               result.candidate->begun_rounds == 1 && result.candidate->state.frame_counter == 1 &&
               result.candidate->state.scene_counter == 1 &&
@@ -56,7 +68,7 @@ void normal_order() {
     auto max_counter = fixture();
     max_counter.frame_counter = std::numeric_limits<int>::max() - 1;
     max_counter.scene_counter = std::numeric_limits<int>::max() - 1;
-    const auto wrapped = prepare_world_scene(max_counter, {0, true}, fixture_consumer);
+    const auto wrapped = prepare_scene(max_counter, {0, true}, fixture_consumer);
     check(wrapped.candidate && wrapped.candidate->state.frame_counter == 0 &&
               wrapped.candidate->state.scene_counter == 0,
           "stable source counters wrap at Integer.MAX_VALUE without C++ overflow");
@@ -64,8 +76,7 @@ void normal_order() {
 void branch_matrix() {
     for (int state = 0; state <= 7; ++state)
         for (int speed : {0, 1, 2}) {
-            const auto result =
-                prepare_world_scene(fixture(state, speed), {27, true}, fixture_consumer);
+            const auto result = prepare_scene(fixture(state, speed), {27, true}, fixture_consumer);
             const auto rounds = state == 0 && speed == 1 ? 2 : 1;
             check(result.candidate && result.candidate->scheduled_rounds == rounds &&
                       result.candidate->begun_rounds == rounds &&
@@ -90,7 +101,7 @@ void branch_matrix() {
             state.framework_paused = true;
         if (guard == 2)
             input.framework_admitted = false;
-        const auto result = prepare_world_scene(state, input, {});
+        const auto result = prepare_scene(state, input, {});
         check(result.candidate && result.candidate->begun_rounds == 0 &&
                   result.candidate->calls.empty() && result.candidate->state.frame_counter == 0 &&
                   result.candidate->state.calendar.month_ticks == 0,
@@ -98,7 +109,7 @@ void branch_matrix() {
     }
 }
 void saved_rounds_and_stack() {
-    const auto changed = prepare_world_scene(
+    const auto changed = prepare_scene(
         fixture(0, 1), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
             auto next = state;
             if (call.stage == WorldSceneStage::normal_input && call.round == 0) {
@@ -115,7 +126,7 @@ void saved_rounds_and_stack() {
               changed.candidate->state.calendar.month_ticks == 0,
           "second saved round follows realtime new build state, not new speed nor initial normal "
           "route");
-    const auto delayed = prepare_world_scene(
+    const auto delayed = prepare_scene(
         fixture(0, 1), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
             auto next = state;
             if (call.stage == WorldSceneStage::normal_delayed_scripts && call.round == 0) {
@@ -132,25 +143,25 @@ void saved_rounds_and_stack() {
               !delayed.candidate->state.top_is_main,
           "script push skips only current round; changed top does not preempt remaining native b "
           "body");
-    const auto opened = prepare_world_scene(
-        fixture(0, 1), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
-            return std::optional<WorldSceneStep>{
-                {state, call.stage == WorldSceneStage::normal_input
-                            ? WorldSceneDisposition::end_frame
-                            : WorldSceneDisposition::continue_round}};
-        });
+    const auto opened = prepare_scene(fixture(0, 1), {27, true},
+                                      [](const WorldSceneState &state, const WorldSceneCall &call) {
+                                          return std::optional<WorldSceneStep>{
+                                              {state, call.stage == WorldSceneStage::normal_input
+                                                          ? WorldSceneDisposition::end_frame
+                                                          : WorldSceneDisposition::continue_round}};
+                                      });
     check(opened.candidate && opened.candidate->begun_rounds == 1 &&
               count(*opened.candidate, WorldSceneStage::normal_world) == 1 &&
               count(*opened.candidate, WorldSceneStage::common_display_tail) == 0 &&
               opened.candidate->state.calendar.month_ticks == 0,
           "explicit a(page)==true ends whole frame before q/date and suppresses second round");
-    const auto menu = prepare_world_scene(
-        fixture(0, 1), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
-            return std::optional<WorldSceneStep>{
-                {state, call.stage == WorldSceneStage::common_menu_gate
-                            ? WorldSceneDisposition::end_frame
-                            : WorldSceneDisposition::continue_round}};
-        });
+    const auto menu = prepare_scene(fixture(0, 1), {27, true},
+                                    [](const WorldSceneState &state, const WorldSceneCall &call) {
+                                        return std::optional<WorldSceneStep>{
+                                            {state, call.stage == WorldSceneStage::common_menu_gate
+                                                        ? WorldSceneDisposition::end_frame
+                                                        : WorldSceneDisposition::continue_round}};
+                                    });
     check(menu.candidate && menu.candidate->begun_rounds == 1 &&
               count(*menu.candidate, WorldSceneStage::common_global_flag) == 1 &&
               menu.candidate->state.calendar.month_ticks == 0,
@@ -159,24 +170,24 @@ void saved_rounds_and_stack() {
 void realtime_date() {
     for (auto initial : {1, 2, 3, 7}) {
         const auto result =
-            prepare_world_scene(fixture(initial, 1), {27, true},
-                                [](const WorldSceneState &state, const WorldSceneCall &call) {
-                                    auto next = state;
-                                    if (call.stage == WorldSceneStage::build_input ||
-                                        call.stage == WorldSceneStage::focus_input ||
-                                        call.stage == WorldSceneStage::wait_input ||
-                                        call.stage == WorldSceneStage::facility_camera_input) {
-                                        next.scene_state = 0;
-                                        next.scene_counter = 0;
-                                    }
-                                    return std::optional<WorldSceneStep>{{std::move(next)}};
-                                });
+            prepare_scene(fixture(initial, 1), {27, true},
+                          [](const WorldSceneState &state, const WorldSceneCall &call) {
+                              auto next = state;
+                              if (call.stage == WorldSceneStage::build_input ||
+                                  call.stage == WorldSceneStage::focus_input ||
+                                  call.stage == WorldSceneStage::wait_input ||
+                                  call.stage == WorldSceneStage::facility_camera_input) {
+                                  next.scene_state = 0;
+                                  next.scene_counter = 0;
+                              }
+                              return std::optional<WorldSceneStep>{{std::move(next)}};
+                          });
         check(result.candidate && result.candidate->scheduled_rounds == 1 &&
                   result.candidate->state.calendar.units == 27 &&
                   result.candidate->state.calendar.month_ticks == 1,
               "build/focus/wait/facility-camera switching to0 at input admits same-round date");
     }
-    const auto empty_camera = prepare_world_scene(
+    const auto empty_camera = prepare_scene(
         fixture(7), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
             auto next = state;
             if (call.stage == WorldSceneStage::facility_camera_input) {
@@ -194,7 +205,7 @@ void realtime_date() {
 void calendar_and_rollback() {
     auto original = fixture(0, 1);
     original.calendar = {0, 0, 3, 10773, 10746, 1599};
-    const auto result = prepare_world_scene(
+    const auto result = prepare_scene(
         original, {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
             auto next = state;
             if (call.stage == WorldSceneStage::normal_world)
@@ -215,40 +226,40 @@ void calendar_and_rollback() {
           "rounds");
     check(count(*result.candidate, WorldSceneStage::calendar_call) == 19,
           "nested rollover requires each calendar domain stage, not one completion notification");
-    const auto failed = prepare_world_scene(
-        original, {27, true},
-        [](const WorldSceneState &state,
-           const WorldSceneCall &call) -> std::optional<WorldSceneStep> {
-            auto next = state;
-            if (call.stage == WorldSceneStage::global_display)
-                next.random.draw(100);
-            if (call.stage == WorldSceneStage::normal_world)
-                ++next.world.updates;
-            if (call.stage == WorldSceneStage::calendar_call &&
-                call.calendar_stage == WorldCalendarStage::subperiod_capacity_hint)
-                return {};
-            return WorldSceneStep{std::move(next)};
-        });
+    const auto failed =
+        prepare_scene(original, {27, true},
+                      [](const WorldSceneState &state,
+                         const WorldSceneCall &call) -> std::optional<WorldSceneStep> {
+                          auto next = state;
+                          if (call.stage == WorldSceneStage::global_display)
+                              next.random.draw(100);
+                          if (call.stage == WorldSceneStage::normal_world)
+                              ++next.world.updates;
+                          if (call.stage == WorldSceneStage::calendar_call &&
+                              call.calendar_stage == WorldCalendarStage::subperiod_capacity_hint)
+                              return {};
+                          return WorldSceneStep{std::move(next)};
+                      });
     check(failed.error == WorldSceneError::consumer_failed && !failed.candidate &&
               failed.calendar_error == WorldCalendarError::consumer_failed &&
               original.calendar.month == 0 && original.random.draws() == 0 &&
               original.world.updates == 0,
           "late month consumer failure exposes none of earlier world/scene/random/date candidate");
-    const auto mutation = prepare_world_scene(
-        original, {27, true}, [](const WorldSceneState &state, const WorldSceneCall &) {
-            auto next = state;
-            ++next.calendar.month_ticks;
-            return std::optional<WorldSceneStep>{{std::move(next)}};
-        });
+    const auto mutation = prepare_scene(original, {27, true},
+                                        [](const WorldSceneState &state, const WorldSceneCall &) {
+                                            auto next = state;
+                                            ++next.calendar.month_ticks;
+                                            return std::optional<WorldSceneStep>{{std::move(next)}};
+                                        });
     check(mutation.error == WorldSceneError::invalid_calendar_mutation && !mutation.candidate,
           "scene consumer cannot eagerly advance date ahead of world");
-    check(prepare_world_scene(original, {27, true}, {}).error == WorldSceneError::missing_consumer,
+    check(prepare_scene(original, {27, true}, {}).error == WorldSceneError::missing_consumer,
           "no default success scene consumer exists");
 }
 void disposition_guards() {
     for (auto forbidden : {WorldSceneStage::entry_task_result, WorldSceneStage::global_display,
                            WorldSceneStage::normal_world, WorldSceneStage::common_display_tail}) {
-        const auto result = prepare_world_scene(
+        const auto result = prepare_scene(
             fixture(), {27, true}, [&](const WorldSceneState &state, const WorldSceneCall &call) {
                 return std::optional<WorldSceneStep>{
                     {state, call.stage == forbidden ? WorldSceneDisposition::skip_round
@@ -257,7 +268,7 @@ void disposition_guards() {
         check(result.error == WorldSceneError::invalid_disposition && !result.candidate,
               "nonbranch source call cannot invent a skip/end return");
     }
-    const auto end_condition = prepare_world_scene(
+    const auto end_condition = prepare_scene(
         fixture(), {27, true}, [](const WorldSceneState &state, const WorldSceneCall &call) {
             return std::optional<WorldSceneStep>{
                 {state, call.stage == WorldSceneStage::normal_condition_scripts
@@ -289,6 +300,27 @@ void owned_atomic() {
             return {};
         return OwnedWorldSceneStep<FixtureOwner>{std::move(next)};
     };
+    const auto select_private = [&] {
+        if (!private_scene)
+            return;
+        adapter.borrow_read = [](const FixtureOwner &owner) -> const WorldSceneState & {
+            return owner.only_common;
+        };
+        adapter.borrow_write = [](FixtureOwner &owner) -> WorldSceneState & {
+            return owner.only_common;
+        };
+        const auto functional = adapter.consume;
+        adapter.consume_private =
+            [functional](FixtureOwner &owner,
+                         const WorldSceneCall &call) -> std::optional<WorldSceneDisposition> {
+            auto step = functional(owner, call);
+            if (!step)
+                return {};
+            owner = std::move(step->state);
+            return step->disposition;
+        };
+    };
+    select_private();
     const auto failed = prepare_owned_world_scene(original, {27, true}, adapter);
     check(!failed.state && !failed.audit && original.external_effects == 0 &&
               original.only_common.random.draws() == 0,
@@ -300,11 +332,56 @@ void owned_atomic() {
             next.only_common.random.draw(100);
         return std::optional<OwnedWorldSceneStep<FixtureOwner>>{{std::move(next)}};
     };
-    const auto success = prepare_owned_world_scene(original, {27, true}, adapter);
+    select_private();
+    auto success = prepare_owned_world_scene(original, {27, true}, adapter);
     check(success.state && success.audit && success.state->external_effects == 10 &&
               success.state->only_common.random.draws() == 1 &&
               success.state->only_common.calendar.month_ticks == 1,
           "owned success atomically returns domain effects and post-calendar projection");
+    success.state->only_common.world.hints.push_back({74, 0});
+    success.state->only_common.random.draw(100);
+    check(success.audit->state.world.hints.empty() && success.audit->state.random.draws() == 1 &&
+              original.only_common.world.hints.empty() && original.only_common.random.draws() == 0,
+          "scene audit, complete returned owner and original input retain independent world and "
+          "random");
+    if (private_scene) {
+        for (int rejection = 0; rejection < 4; ++rejection) {
+            auto guarded = adapter;
+            guarded.read = {};
+            guarded.write = {};
+            guarded.consume = {}; // 完整borrow/private接口独立工作。
+            guarded.consume_private =
+                [&](FixtureOwner &owner,
+                    const WorldSceneCall &call) -> std::optional<WorldSceneDisposition> {
+                ++owner.external_effects;
+                if (call.stage == WorldSceneStage::global_display)
+                    owner.only_common.random.draw(100);
+                if (call.stage == WorldSceneStage::common_menu_gate) {
+                    owner.only_common.world.hints.push_back({74, 0});
+                    if (rejection == 0)
+                        return {};
+                    if (rejection == 1)
+                        ++owner.only_common.calendar.month_ticks;
+                    if (rejection == 2)
+                        return WorldSceneDisposition::skip_round;
+                    if (rejection == 3)
+                        owner.only_common.scene_state = 8;
+                }
+                return WorldSceneDisposition::continue_round;
+            };
+            const auto refused = prepare_owned_world_scene(original, {27, true}, guarded);
+            const auto expected = rejection == 0   ? WorldSceneError::consumer_failed
+                                  : rejection == 1 ? WorldSceneError::invalid_calendar_mutation
+                                  : rejection == 2 ? WorldSceneError::invalid_disposition
+                                                   : WorldSceneError::invalid_state;
+            check(refused.error == expected && !refused.state && !refused.audit &&
+                      original.external_effects == 0 && original.only_common.random.draws() == 0 &&
+                      original.only_common.world.hints.empty() &&
+                      original.only_common.calendar.month_ticks == 0,
+                  "private scene late mutation/refusal rejects whole owner without partial world, "
+                  "random or audit");
+        }
+    }
 }
 void render_clock() {
     WorldRenderClock clock{1000, 20, false};
@@ -345,13 +422,16 @@ void render_clock() {
 } // namespace
 int main() {
     try {
-        normal_order();
-        branch_matrix();
-        saved_rounds_and_stack();
-        realtime_date();
-        calendar_and_rollback();
-        disposition_guards();
-        owned_atomic();
+        for (const bool consuming : {false, true}) {
+            private_scene = consuming;
+            normal_order();
+            branch_matrix();
+            saved_rounds_and_stack();
+            realtime_date();
+            calendar_and_rollback();
+            disposition_guards();
+            owned_atomic();
+        }
         render_clock();
         std::cout << "world_scene: " << checks << " checks passed\n";
         return 0;

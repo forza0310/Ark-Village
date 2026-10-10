@@ -119,8 +119,9 @@ EnemySelectionResult query_current_combat_enemy(const AiRewardState &s, Characte
     }
     return select_combat_enemy(input);
 }
-WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &s, CharacterId id,
-                                                      const WorldMapFacts &f, int mode) {
+template <class State>
+static WorldPerceptionResult perception_prefix(State &&s, CharacterId id, const WorldMapFacts &f,
+                                               int mode) {
     if (!live(s, id))
         return fail(AiRewardError::stale_actor);
     if (!valid_world_map_facts(f))
@@ -133,7 +134,7 @@ WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &s, Ch
     if (!prefix || !area || mode < 0 || mode > 4)
         return fail(AiRewardError::preparation_failed);
     WorldPerceptionCandidate c;
-    c.state = s;
+    c.state = std::forward<State>(s);
     c.area = *area;
     auto &a = c.state.battle.actors.at(id);
     auto &ctx = c.state.contexts.at(id);
@@ -165,10 +166,10 @@ WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &s, Ch
         a.control.flags &= ~128U;
     return {AiRewardError::none, std::move(c)};
 }
-WorldPerceptionResult
-prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const WorldMapFacts &f,
-                                   bool rescue_enabled, bool task_flag,
-                                   const std::vector<std::uint64_t> &object_order) {
+template <class State>
+static WorldPerceptionResult reference_preemption(State &&s, CharacterId id, const WorldMapFacts &f,
+                                                  bool rescue_enabled, bool task_flag,
+                                                  const std::vector<std::uint64_t> &object_order) {
     if (!live(s, id) || !valid_world_map_facts(f))
         return fail(AiRewardError::invalid_input);
     const auto &original = s.battle.actors.at(id);
@@ -181,7 +182,7 @@ prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const
     if (!repair)
         return fail(AiRewardError::preparation_failed);
     WorldPerceptionCandidate c;
-    c.state = s;
+    c.state = std::forward<State>(s);
     auto &a = c.state.battle.actors.at(id);
     a.object_slot = repair->object_slot;
     if (repair->clear_reference)
@@ -261,6 +262,25 @@ prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const
     }
     return {AiRewardError::none, std::move(c)};
 }
+WorldPerceptionResult prepare_world_perception_prefix(const AiRewardState &s, CharacterId id,
+                                                      const WorldMapFacts &f, int mode) {
+    return perception_prefix(s, id, f, mode);
+}
+WorldPerceptionResult prepare_world_perception_prefix_consuming(AiRewardState &&s, CharacterId id,
+                                                                const WorldMapFacts &f, int mode) {
+    return perception_prefix(std::move(s), id, f, mode);
+}
+WorldPerceptionResult
+prepare_world_reference_preemption(const AiRewardState &s, CharacterId id, const WorldMapFacts &f,
+                                   bool rescue_enabled, bool task_flag,
+                                   const std::vector<std::uint64_t> &object_order) {
+    return reference_preemption(s, id, f, rescue_enabled, task_flag, object_order);
+}
+WorldPerceptionResult prepare_world_reference_preemption_consuming(
+    AiRewardState &&s, CharacterId id, const WorldMapFacts &f, bool rescue_enabled, bool task_flag,
+    const std::vector<std::uint64_t> &object_order) {
+    return reference_preemption(std::move(s), id, f, rescue_enabled, task_flag, object_order);
+}
 CombatInfluenceResult prepare_world_influence(const AiRewardState &s, const WorldMapFacts &f) {
     if (!valid_world_map_facts(f))
         return {CombatAiError::invalid_input, {}};
@@ -301,7 +321,7 @@ WorldHealingTargetResult query_world_healing_target(const AiRewardState &s, Char
     }
     return {AiRewardError::none, select_healing_target(s.contexts.at(id).half_cell, people)};
 }
-WorldPerceptionResult prepare_world_actor_projection(const AiRewardState &s, CharacterId id) {
+template <class State> static WorldPerceptionResult actor_projection(State &&s, CharacterId id) {
     if (!live(s, id))
         return fail(AiRewardError::stale_actor);
     const auto &a = s.battle.actors.at(id);
@@ -310,13 +330,20 @@ WorldPerceptionResult prepare_world_actor_projection(const AiRewardState &s, Cha
     if (!whole || !half)
         return fail(AiRewardError::invalid_input);
     WorldPerceptionCandidate c;
-    c.state = s;
+    c.state = std::forward<State>(s);
     c.state.contexts.at(id).cell = *whole;
     c.state.contexts.at(id).half_cell = *half;
     return {AiRewardError::none, std::move(c)};
 }
-WorldEventGateResult prepare_world_event_gate(const AiRewardState &s, CharacterId id,
-                                              const WorldMapFacts &f, const WorldEventTask &task) {
+WorldPerceptionResult prepare_world_actor_projection(const AiRewardState &s, CharacterId id) {
+    return actor_projection(s, id);
+}
+WorldPerceptionResult prepare_world_actor_projection_consuming(AiRewardState &&s, CharacterId id) {
+    return actor_projection(std::move(s), id);
+}
+template <class State>
+static WorldEventGateResult event_gate(State &&s, CharacterId id, const WorldMapFacts &f,
+                                       const WorldEventTask &task) {
     if (!live(s, id) || !valid_world_map_facts(f))
         return {AiRewardError::invalid_input, {}};
     const auto &a = s.battle.actors.at(id);
@@ -368,16 +395,25 @@ WorldEventGateResult prepare_world_event_gate(const AiRewardState &s, CharacterI
     const auto result = prepare_event_gate(input);
     if (!result.candidate)
         return {AiRewardError::preparation_failed, {}};
-    WorldEventGateCandidate c{s, *result.candidate};
+    WorldEventGateCandidate c{std::forward<State>(s), *result.candidate};
     if (c.gate.bind_encounter) {
-        if (!event(s, *c.gate.bind_encounter))
+        if (!event(c.state, *c.gate.bind_encounter))
             return {AiRewardError::stale_encounter, {}};
         c.state.battle.actors.at(id).encounter = c.gate.bind_encounter;
     }
     return {AiRewardError::none, std::move(c)};
 }
-WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &s, CharacterId id,
-                                                    const WorldMapFacts &f) {
+WorldEventGateResult prepare_world_event_gate(const AiRewardState &s, CharacterId id,
+                                              const WorldMapFacts &f, const WorldEventTask &task) {
+    return event_gate(s, id, f, task);
+}
+WorldEventGateResult prepare_world_event_gate_consuming(AiRewardState &&s, CharacterId id,
+                                                        const WorldMapFacts &f,
+                                                        const WorldEventTask &task) {
+    return event_gate(std::move(s), id, f, task);
+}
+template <class State>
+static WorldPhysicsResult physics_projection(State &&s, CharacterId id, const WorldMapFacts &f) {
     if (!live(s, id) || !valid_world_map_facts(f))
         return {AiRewardError::invalid_input, {}};
     const auto &a = s.battle.actors.at(id);
@@ -401,18 +437,26 @@ WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &s, Char
     const auto physics = prepare_actor_physics(input);
     if (!physics)
         return {AiRewardError::preparation_failed, {}};
-    WorldPhysicsCandidate c{s, physics->query_area_after, physics->diagnostic};
+    WorldPhysicsCandidate c{std::forward<State>(s), physics->query_area_after, physics->diagnostic};
     auto &next = c.state.battle.actors.at(id);
     next.physics_pause = physics->state.pause;
     next.vertical_velocity = physics->state.vertical_velocity;
     next.position = {physics->state.position.x, physics->state.height, physics->state.position.z};
     next.area_after = physics->state.previous_area_after;
     next.blocked_battle_steps = physics->state.blocked_battle_steps;
-    const auto projection = prepare_world_actor_projection(c.state, id);
+    auto projection = prepare_world_actor_projection_consuming(std::move(c.state), id);
     if (!projection.candidate)
         return {AiRewardError::preparation_failed, {}};
-    c.state = projection.candidate->state;
+    c.state = std::move(projection.candidate->state);
     return {AiRewardError::none, std::move(c)};
+}
+WorldPhysicsResult prepare_world_physics_projection(const AiRewardState &s, CharacterId id,
+                                                    const WorldMapFacts &f) {
+    return physics_projection(s, id, f);
+}
+WorldPhysicsResult prepare_world_physics_projection_consuming(AiRewardState &&s, CharacterId id,
+                                                              const WorldMapFacts &f) {
+    return physics_projection(std::move(s), id, f);
 }
 WorldPerceptionResult prepare_world_encounter_influence(const AiRewardState &s, std::uint64_t id,
                                                         const CombatInfluenceCandidate &global) {
@@ -501,7 +545,8 @@ WorldCombatMoveResult prepare_world_combat_move(const AiRewardState &s, Characte
     }
     return {AiRewardError::none, std::move(c)};
 }
-WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s, CharacterId id) {
+template <class State>
+static WorldExecutionPrefixResult execution_prefix(State &&s, CharacterId id) {
     const auto failed = [](AiRewardError error) -> WorldExecutionPrefixResult {
         return {error, {}};
     };
@@ -519,7 +564,9 @@ WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s
     const auto hp = advance_hp_animation(original.hp);
     if (!labels || !hp.candidate)
         return failed(AiRewardError::preparation_failed);
-    WorldExecutionPrefixCandidate c{s, effects.candidate->sounds, {}, original.object_slot == -2};
+    const bool carry_expression = original.object_slot == -2;
+    WorldExecutionPrefixCandidate c{
+        std::forward<State>(s), effects.candidate->sounds, {}, carry_expression};
     auto &a = c.state.battle.actors.at(id);
     a.control.alternate_counter = labels->alternate;
     a.control.action_counter = labels->action;
@@ -532,13 +579,20 @@ WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s
     a.hp = *hp.candidate;
     c.state.contexts.at(id).effects = effects.candidate->state;
     if (a.kind == ActorKind::human) {
-        const auto growth = prepare_actor_growth_commit(c.state, id);
+        auto growth = prepare_actor_growth_commit_consuming(std::move(c.state), id);
         if (!growth.candidate)
             return failed(growth.error);
-        c.state = growth.candidate->state;
-        c.growth_requests = growth.candidate->growth_requests;
+        c.state = std::move(growth.candidate->state);
+        c.growth_requests = std::move(growth.candidate->growth_requests);
     }
     return {AiRewardError::none, std::move(c)};
+}
+WorldExecutionPrefixResult prepare_world_execution_prefix(const AiRewardState &s, CharacterId id) {
+    return execution_prefix(s, id);
+}
+WorldExecutionPrefixResult prepare_world_execution_prefix_consuming(AiRewardState &&s,
+                                                                    CharacterId id) {
+    return execution_prefix(std::move(s), id);
 }
 WorldBattlePreparationResult prepare_world_battle_preparation(const AiRewardState &s,
                                                               CharacterId id,

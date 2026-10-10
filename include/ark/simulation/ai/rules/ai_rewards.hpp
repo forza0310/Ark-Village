@@ -2,11 +2,11 @@
 
 // Private battle/reward owner for death, encounter completion and definition-shared XP.
 // Rendering, map refresh, battle-group update and quest spawning remain explicit requests.
-#include "ark/simulation/village/rules/accounting.hpp"
 #include "ark/simulation/actors/rules/actor_lifecycle.hpp"
+#include "ark/simulation/actors/rules/human_growth.hpp"
 #include "ark/simulation/combat/rules/battle_commit.hpp"
 #include "ark/simulation/combat/rules/combat_ai.hpp"
-#include "ark/simulation/actors/rules/human_growth.hpp"
+#include "ark/simulation/village/rules/accounting.hpp"
 
 namespace ark::simulation::rules {
 struct RewardHumanDefinition {
@@ -51,7 +51,7 @@ struct RewardEncounter {
     std::optional<CombatInfluenceCandidate> influence{}; // p/r copied at event update, not own c.
     std::vector<int> human_scratch{};   // q, copied from p before each human movement evaluation.
     std::vector<int> monster_scratch{}; // s, copied from r before each monster evaluation.
-    int linked_monsters{};             // f.n，最近事件c()缓存；页面33不实时重新数bm。
+    int linked_monsters{};              // f.n，最近事件c()缓存；页面33不实时重新数bm。
 };
 struct AiRewardState {
     BattleCommitState battle; // Sole actor HP/control/J/K/statistics owner.
@@ -113,7 +113,8 @@ struct EncounterExternalWriteback {
     bool feature16{};
     std::set<CharacterId> external_actor_roots;
     std::set<std::uint64_t> external_encounter_roots;
-    std::optional<std::map<int, std::array<int, 2>>> monster_availability{}; // 仅task success的p/r。
+    std::optional<std::map<int, std::array<int, 2>>>
+        monster_availability{}; // 仅task success的p/r。
 };
 EncounterExternalWriteback encounter_external_writeback(const AiRewardState &state);
 bool encounter_request_needs_external(EncounterRequestKind kind);
@@ -154,6 +155,9 @@ AiRewardResult prepare_encounter_reward_commit(const AiRewardState &state,
                                                const EncounterCommitInput &input);
 // Runs once per calling HUMAN INSTANCE d(), not once per shared definition/world round.
 AiRewardResult prepare_actor_growth_commit(const AiRewardState &state, CharacterId actor);
+// Transfers an independent private AI at the original candidate construction
+// point, after actor/shared-definition and growth validation.
+AiRewardResult prepare_actor_growth_commit_consuming(AiRewardState &&state, CharacterId actor);
 // c.f.a: caller alone gets128/an0/dc, both references append with duplicates preserved.
 AiRewardResult prepare_battle_group_join(const AiRewardState &state, std::uint64_t encounter,
                                          CharacterId caller, CharacterId opponent);

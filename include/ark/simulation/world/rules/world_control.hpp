@@ -66,14 +66,16 @@ inline bool valid_control(const ActorControlState &s) {
 // 0/2/8/10/12..19/21..30/32/33 留给当前领域消费者；不复用旧运动/出发结果。
 // 正等待返回 held 后绝不再解释；设施退出/r 的分段返回应交 continue，而非 held。
 // budget 是维护防循环保护，不是原作控制条数限制；耗尽拒绝整段，不延迟至下帧。
+// Consumes an already independent value. The const entry below still copies its
+// caller's owner; callers with a disposable projection can transfer it instead.
 template <class Owner>
-WorldControlResult<Owner> prepare_world_control(const Owner &state, CharacterId actor,
-                                                const WorldControlAdapter<Owner> &adapter,
-                                                std::size_t budget = 4096) {
+WorldControlResult<Owner> prepare_world_control_consuming(Owner state, CharacterId actor,
+                                                          const WorldControlAdapter<Owner> &adapter,
+                                                          std::size_t budget = 4096) {
     const auto failed = [](WorldControlError e) -> WorldControlResult<Owner> { return {e, {}}; };
     if (!adapter.read || !adapter.write)
         return failed(WorldControlError::invalid_adapter);
-    WorldControlCandidate<Owner> c{state};
+    WorldControlCandidate<Owner> c{std::move(state)};
     std::size_t iterations{};
     for (;;) {
         const auto *current = adapter.read(c.state, actor);
@@ -127,5 +129,15 @@ WorldControlResult<Owner> prepare_world_control(const Owner &state, CharacterId 
             return failed(WorldControlError::no_progress);
         // 同次续行重新读取当前队列，可见 c/r/退出替换的新队列，不使用进入时快照。
     }
+}
+
+template <class Owner>
+WorldControlResult<Owner> prepare_world_control(const Owner &state, CharacterId actor,
+                                                const WorldControlAdapter<Owner> &adapter,
+                                                std::size_t budget = 4096) {
+    // Preserve rejection before a caller-defined Owner copy can throw.
+    if (!adapter.read || !adapter.write)
+        return {WorldControlError::invalid_adapter, {}};
+    return prepare_world_control_consuming(Owner(state), actor, adapter, budget);
 }
 } // namespace ark::simulation::rules

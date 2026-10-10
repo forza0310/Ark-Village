@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ark/simulation/tasks/rules/world_dungeon_finish.hpp"
-#include "ark/simulation/world/rules/world_random.hpp"
 #include "ark/simulation/village/rules/world_scripts.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
 
 namespace ark::simulation::rules {
 struct WorldArrivalDefinition {
@@ -71,4 +71,9 @@ struct WorldArrivalsResult {
 WorldArrivalsResult prepare_world_arrivals(const WorldArrivalsState &state,
                                            const WorldScriptCatalog &catalog,
                                            const WorldArrivalCreationConsumer &consumer = {});
+// Only an independent disposable projection may be transferred. All original
+// owner validation happens before the transfer; complete audit values survive.
+WorldArrivalsResult
+prepare_world_arrivals_consuming(WorldArrivalsState &&state, const WorldScriptCatalog &catalog,
+                                 const WorldArrivalCreationConsumer &consumer = {});
 } // namespace ark::simulation::rules

@@ -12,6 +12,40 @@ void check(bool yes, const char *what) {
     if (!yes)
         throw std::runtime_error(what);
 }
+enum class ControlEntry { copied, consuming };
+WorldActorDecisionResult decide(ControlEntry entry, const WorldActorRoutesState &source,
+                                const WorldActorDecisionInput &input) {
+    if (entry == ControlEntry::copied)
+        return prepare_world_actor_decision(source, input);
+    auto disposable = source;
+    return prepare_world_actor_decision_consuming(std::move(disposable), input);
+}
+WorldActorControlResult control(ControlEntry entry, const WorldActorRoutesState &source,
+                                CharacterId actor, const WorldActorCommandProvider &provider,
+                                std::size_t budget = 4096) {
+    if (entry == ControlEntry::copied)
+        return prepare_world_actor_control(source, actor, provider, budget);
+    // Match the scheduler: transfer a disposable projection, keep the original
+    // owner available to all existing rollback/source-immutability assertions.
+    auto disposable = source;
+    return prepare_world_actor_control_consuming(std::move(disposable), actor, provider, budget);
+}
+void independent_nested_world(RescueWorldState &published, const RescueWorldState &audit,
+                              const RescueWorldState &source) {
+    check(audit.map.width == 8 && audit.map.height == 8 && audit.map.cells.size() == 64 &&
+              audit.ai.battle.actors.count({1}) == 1 && audit.ai.contexts.count({1}) == 1 &&
+              audit.actors.count({1}) == 1 && audit.ai.growth.count(0) == 1,
+          "decision nested audit retains its complete map and actor domains");
+    const auto audit_counter = audit.ai.battle.actors.at({1}).state_counter;
+    const auto audit_cell = audit.map.cells.front().legacy_state;
+    published.ai.battle.actors.at({1}).state_counter = -1;
+    published.map.cells.front().legacy_state = -1;
+    check(audit.ai.battle.actors.at({1}).state_counter == audit_counter &&
+              audit.map.cells.front().legacy_state == audit_cell &&
+              source.ai.battle.actors.at({1}).state_counter == 10 &&
+              source.map.cells.front().legacy_state == 4,
+          "published decision, original input and nested audit own independent mutable storage");
+}
 WorldActorRoutesState fixture(int state = 5) {
     WorldActorRoutesState s;
     s.world.map = {8, 8, std::vector<LegacyMapCell>(64)};
@@ -60,7 +94,7 @@ WorldActorDecisionInput decision() {
     i.special_expression = WorldExpressionTicket{999, 1, {}};
     return i;
 }
-void all_state_routing() {
+void all_state_routing(ControlEntry entry) {
     for (int state = 0; state <= 20; ++state) {
         auto s = fixture(state);
         auto i = decision();
@@ -86,7 +120,7 @@ void all_state_routing() {
             s.world.ai.battle.monsters.emplace(0, MonsterBattleRecord{});
             s.world.ai.monster_growth.emplace(0, RewardMonsterDefinition{});
         }
-        const auto r = prepare_world_actor_decision(s, i);
+        auto r = decide(entry, s, i);
         if (!r.candidate)
             throw std::runtime_error("state " + std::to_string(state) + " error " +
                                      std::to_string(static_cast<int>(r.error)));
@@ -99,6 +133,19 @@ void all_state_routing() {
             check(r.candidate->state.world.ai.battle.actors.at({1}).attack_position.height > 0 &&
                       r.candidate->state.world.ai.battle.actors.at({1}).position.height == 0,
                   "monster death arc affects au, not n, before oldB12 deletion");
+        if (r.candidate->daily) {
+            independent_nested_world(r.candidate->state.world, r.candidate->daily->state.world,
+                                     s.world);
+            if (r.candidate->daily->path)
+                independent_nested_world(r.candidate->state.world, r.candidate->daily->path->state,
+                                         s.world);
+        }
+        if (r.candidate->monster)
+            independent_nested_world(r.candidate->state.world, r.candidate->monster->state,
+                                     s.world);
+        if (r.candidate->lifecycle)
+            independent_nested_world(r.candidate->state.world, r.candidate->lifecycle->state,
+                                     s.world);
     }
     auto s = fixture(8);
     s.world.ai.battle.actors.at({1}).state_counter = 73;
@@ -109,16 +156,16 @@ void all_state_routing() {
         next.item_rewards = 19; // 外部私有投影副作用夹具，不称脚本实现。
         return next;
     };
-    const auto r = prepare_world_actor_decision(s, i);
+    const auto r = decide(entry, s, i);
     check(r.candidate && r.candidate->consumed_events == std::vector<int>{90} &&
               r.candidate->state.item_rewards == 19 &&
               r.candidate->state.world.ai.battle.actors.at({1}).control.state == 17,
           "synchronous90 retains outer-domain side effects before c17 without second world");
     i.event = {};
-    check(!prepare_world_actor_decision(s, i).candidate && s.item_rewards == 0,
+    check(!decide(entry, s, i).candidate && s.item_rewards == 0,
           "missing synchronous event rolls back full outer owner");
 }
-void fifo_and_failures() {
+void fifo_and_failures(ControlEntry entry) {
     auto s = fixture();
     s.world.ai.battle.actors.at({1}).control.queue = {{21},   {22, 30, 0}, {32},
                                                       {3, 0}, {26},        {25, 10}};
@@ -129,7 +176,7 @@ void fifo_and_failures() {
         calls.push_back(c[0]);
         return WorldActorCommandInput{};
     };
-    auto r = prepare_world_actor_control(s, {1}, provider);
+    auto r = control(entry, s, {1}, provider);
     check(r.candidate && r.candidate->flow == WorldControlFlow::delete_requested &&
               calls == std::vector<int>{21, 22, 32, 26} && r.candidate->domain_segments == 4 &&
               r.candidate->local_commands == 1 &&
@@ -140,28 +187,56 @@ void fifo_and_failures() {
               s.world.ai.battle.actors.at({1}).control.queue.size() == 6,
           "domain routing never mutates source before publication");
     s.world.ai.battle.actors.at({1}).control.queue = {{32}, {25, 10}};
-    r = prepare_world_actor_control(s, {1}, provider);
+    r = control(entry, s, {1}, provider);
     check(!r.candidate && s.world.ai.battle.actors.at({1}).vertical_velocity == 0,
           "late missing old-u rolls back earlier actual jump velocity");
     s.world.ai.battle.actors.at({1}).control.queue = {{1, 2, 0}, {32}};
-    r = prepare_world_actor_control(s, {1}, {});
+    r = control(entry, s, {1}, {});
     check(r.candidate && r.candidate->flow == WorldControlFlow::held &&
               r.candidate->state.world.ai.battle.actors.at({1}).control.queue.front()[1] == 1,
           "positive wait needs no domain provider and stops entire interpreter");
     s.world.ai.battle.actors.at({1}).control.queue = {{32}};
-    check(prepare_world_actor_control(s, {1}, {}).error == WorldActorRouteError::missing_consumer,
+    check(control(entry, s, {1}, {}).error == WorldActorRouteError::missing_consumer,
           "domain front cannot succeed with absent provider");
-    check(!prepare_world_actor_control(s, {1}, provider, 0).candidate,
+    check(!control(entry, s, {1}, provider, 0).candidate,
           "zero maintenance budget refuses without deferring original command");
+    const auto stale = control(entry, s, {2}, provider);
+    check(!stale.candidate && stale.error == WorldActorRouteError::stale_actor &&
+              stale.control_error == WorldControlError::stale_actor,
+          "missing actor preserves both route and control refusal codes");
+    auto malformed = s;
+    malformed.facts.map.cells.front().legacy_state = 3;
+    const auto mismatch = control(entry, malformed, {1}, provider);
+    check(!mismatch.candidate && mismatch.error == WorldActorRouteError::invalid_input &&
+              mismatch.control_error == WorldControlError::invalid_adapter &&
+              malformed.world.ai.battle.actors.at({1}).control.queue ==
+                  std::vector<LegacyActorControl>{{32}},
+          "mismatched world/facts maps refuse without consuming the command");
+    const auto missing =
+        control(entry, s, {1},
+                [](const auto &, auto, const auto &) -> std::optional<WorldActorCommandInput> {
+                    return {};
+                });
+    check(!missing.candidate && missing.error == WorldActorRouteError::missing_fact,
+          "present provider with missing current-command input refuses both entry forms");
+    const auto throwing =
+        control(entry, s, {1},
+                [](const auto &, auto, const auto &) -> std::optional<WorldActorCommandInput> {
+                    throw std::runtime_error("fixture");
+                });
+    check(!throwing.candidate && throwing.error == WorldActorRouteError::consumer_failed &&
+              s.world.ai.battle.actors.at({1}).control.queue ==
+                  std::vector<LegacyActorControl>{{32}},
+          "provider exception preserves failure code and original control storage");
     s.world.ai.battle.actors.at({1}).control.queue = {{2, 0}, {32}, {9}};
     calls.clear();
-    r = prepare_world_actor_control(s, {1}, provider);
+    r = control(entry, s, {1}, provider);
     check(r.candidate && r.candidate->state.world.ai.battle.actors.at({1}).control.queue.empty() &&
               calls == std::vector<int>{2},
           "real c0 replaces queue; old32/9 are not replayed from snapshot");
 }
 // 显式两人救援夹具：验证完整c0→P路由消费已证递归交付，而非绕过P直接调用。
-void recursive_rescue_arrival() {
+void recursive_rescue_arrival(ControlEntry entry) {
     auto s = fixture(0);
     auto &carrier = s.world.ai.battle.actors.at({1});
     carrier.object_slot = -2;
@@ -205,7 +280,7 @@ void recursive_rescue_arrival() {
     i.daily.path = WorldPathInput{};
     i.daily.path->actor = {1};
     i.daily.path->facts = s.facts;
-    const auto result = prepare_world_actor_decision(s, i);
+    const auto result = decide(entry, s, i);
     check(result.candidate && result.candidate->daily && result.candidate->daily->path &&
               result.candidate->daily->path->arrived,
           "full actor router invokes recursive delivery after actual P arrival");
@@ -243,7 +318,7 @@ void recursive_rescue_arrival() {
         const auto cell = rest.world.ai.contexts.at(actor).cell;
         return Position{cell.x * 100 + direction, cell.y * 100};
     };
-    const auto seated = prepare_world_actor_decision(rest, i);
+    const auto seated = decide(entry, rest, i);
     check(seated.candidate && seated.candidate->state.random.draws() == 2 &&
               projected == std::vector<std::pair<CharacterId, int>>{{{2}, 2}, {{1}, 3}} &&
               seated.candidate->state.world.ai.battle.actors.at({2}).control.queue.front() ==
@@ -252,11 +327,11 @@ void recursive_rescue_arrival() {
                   LegacyActorControl{0, 503, 500},
           "full category8 router draws rescued then carrier, each target uses separate old cell");
     rest.random = WorldRandomStream::from_raw({2});
-    check(!prepare_world_actor_decision(rest, i).candidate && rest.random.draws() == 0 &&
+    check(!decide(entry, rest, i).candidate && rest.random.draws() == 0 &&
               rest.world.ai.battle.actors.at({1}).object_slot == -2,
           "second rescue direction exhaustion rolls back both people and shared stream");
 }
-void shared_random_sequence() {
+void shared_random_sequence(ControlEntry entry) {
     auto s = fixture();
     s.random = WorldRandomStream::from_raw({-1, 6, 3, 2, 11, 19, 99, 2, 5, 7});
     s.world.ai.battle.actors.at({1}).control.queue = {{18, 3, 0}, {23}, {10, 0}, {1, 2, 0}};
@@ -267,7 +342,7 @@ void shared_random_sequence() {
         i.primary_expression_table = true;
         return i;
     };
-    const auto r = prepare_world_actor_control(s, {1}, provider);
+    const auto r = control(entry, s, {1}, provider);
     check(
         r.candidate && r.candidate->state.random.draws() == 10 && s.random.draws() == 0 &&
             r.candidate->flow == WorldControlFlow::held &&
@@ -276,20 +351,19 @@ void shared_random_sequence() {
         "expression1000/variant4, launch4 and seven actual wander draws share one private cursor");
     auto failed = s;
     failed.random = WorldRandomStream::from_raw({-1, 6, 3, 2, 11, 19, 99, 2, 5});
-    check(!prepare_world_actor_control(failed, {1}, provider).candidate &&
-              failed.random.draws() == 0 &&
+    check(!control(entry, failed, {1}, provider).candidate && failed.random.draws() == 0 &&
               failed.world.ai.contexts.at({1}).effects.display.empty(),
           "late wander exhaustion rolls back expression, launch and entire shared random stream");
     s = fixture();
     s.random = WorldRandomStream::from_raw({0});
     s.world.ai.contexts.at({1}).effects.display = {{12, 0, 30, 3, 0}};
     s.world.ai.battle.actors.at({1}).control.queue = {{18, 4, 0}};
-    const auto suppressed = prepare_world_actor_control(s, {1}, provider);
+    const auto suppressed = control(entry, s, {1}, provider);
     check(suppressed.candidate && suppressed.candidate->state.random.draws() == 1 &&
               suppressed.candidate->state.world.ai.contexts.at({1}).effects.display.size() == 1,
           "suppressed guaranteed expression still draws1000, never a variant");
 }
-void decision_shared_random() {
+void decision_shared_random(ControlEntry entry) {
     auto s = fixture(5);
     s.random = WorldRandomStream::from_raw({999, -999});
     auto i = decision();
@@ -297,7 +371,7 @@ void decision_shared_random() {
     i.primary_expression_table = true;
     i.daily.expressions.clear();
     i.daily.spawn_ticket.reset();
-    const auto r = prepare_world_actor_decision(s, i);
+    const auto r = decide(entry, s, i);
     check(r.candidate && r.candidate->state.random.draws() == 2 &&
               r.candidate->daily->consumed_spawn && s.random.draws() == 0,
           "state5 expression8 actual failure then L1000 share candidate cursor");
@@ -305,18 +379,18 @@ void decision_shared_random() {
     s.world.ai.battle.actors.at({1}).state_counter = 900;
     s.random = WorldRandomStream::from_raw({0, 7, 0});
     i.lifecycle.expressions.clear();
-    const auto down = prepare_world_actor_decision(s, i);
+    const auto down = decide(entry, s, i);
     check(down.candidate && down.candidate->state.random.draws() == 3 &&
               down.candidate->lifecycle->consumed_expressions == 2 &&
               down.candidate->lifecycle->consumed_variants == 1 &&
               down.candidate->state.world.ai.battle.actors.at({1}).state_counter == 900,
           "old900 c3/variant then suppressedc4 consumes1000 and b retains B");
     s.random = WorldRandomStream::from_raw({0, 7});
-    check(!prepare_world_actor_decision(s, i).candidate && s.random.draws() == 0 &&
+    check(!decide(entry, s, i).candidate && s.random.draws() == 0 &&
               s.world.ai.contexts.at({1}).effects.display.empty(),
           "second actual recovery expression exhaustion rolls back HP/control and first variant");
 }
-void delivered_item_catalogue() {
+void delivered_item_catalogue(ControlEntry entry) {
     auto s = fixture(0);
     s.world.ai.battle.actors.at({1}).object_slot = 9;
     s.items.emplace(9, ObjectCatalogRecord{});
@@ -349,7 +423,7 @@ void delivered_item_catalogue() {
     input.daily.path->facts = s.facts;
     input.shop_arrival = ShopArrivalInput{};
     input.shop_arrival->actor = {1};
-    const auto result = prepare_world_actor_decision(s, input);
+    const auto result = decide(entry, s, input);
     check(result.candidate && result.candidate->daily && result.candidate->daily->path &&
               result.candidate->daily->path->arrived,
           "real P arrival invokes shop delivery without a direct inventory fixture increment");
@@ -360,13 +434,13 @@ void delivered_item_catalogue() {
               s.items.at(9).inventory == 0 && s.catalog.at({0, 9}).inventory == 0,
           "shop-delivered ordinary item reaches both route projections exactly once");
     s.catalog.erase({0, 9});
-    check(!prepare_world_actor_decision(s, input).candidate && s.items.at(9).inventory == 0 &&
+    check(!decide(entry, s, input).candidate && s.items.at(9).inventory == 0 &&
               s.world.ai.accounting.funds() == 0 &&
               s.world.ai.battle.actors.at({1}).object_slot == 9,
           "missing ordinary-item catalogue mirror rejects arrival without partial delivery or "
           "income");
 }
-void every_control_route() {
+void every_control_route(ControlEntry entry) {
     const std::vector<LegacyActorControl> commands{
         {0, 550, 550}, {1, 1, 0},   {2, 0},     {3, 0},  {4, 0},     {5, 16},       {6, 16},
         {7, 2},        {8, 0},      {9},        {10, 0}, {11},       {12},          {13},
@@ -414,7 +488,7 @@ void every_control_route() {
             d.catalogue.cell_definition_ids = std::vector<int>(owner.world.map.cells.size());
             return i;
         };
-        const auto r = prepare_world_actor_control(s, {1}, provider);
+        auto r = control(entry, s, {1}, provider);
         if (!r.candidate)
             throw std::runtime_error("opcode " + std::to_string(op) + " error " +
                                      std::to_string(static_cast<int>(r.error)) + " control " +
@@ -423,18 +497,38 @@ void every_control_route() {
             s.world.ai.battle.actors.at({1}).control.queue ==
                 std::vector<LegacyActorControl>{commands[op]},
             "all34 decoded opcodes route to actual local/domain consumers without source mutation");
+        check(r.candidate->state.world.map.cells.size() == 64 &&
+                  r.candidate->state.facts.map.cells.size() == 64 &&
+                  r.candidate->state.world.ai.battle.actors.count({1}) == 1 &&
+                  r.candidate->state.shop_humans.count(0) == 1 &&
+                  r.candidate->state.dungeon_actors.count({1}) == 1,
+              "all34 control results retain complete world and unrelated route domains");
+        r.candidate->state.world.map.cells.front().legacy_state = -1;
+        r.candidate->state.world.ai.battle.actors.at({1}).state_counter = -1;
+        check(s.world.map.cells.front().legacy_state == 4 &&
+                  s.world.ai.battle.actors.at({1}).state_counter == 10,
+              "control candidate map and actor storage remain independent of source owner");
     }
 }
 } // namespace
 int main() {
     try {
-        all_state_routing();
-        fifo_and_failures();
-        recursive_rescue_arrival();
-        shared_random_sequence();
-        decision_shared_random();
-        delivered_item_catalogue();
-        every_control_route();
+        for (const auto entry : {ControlEntry::copied, ControlEntry::consuming}) {
+            try {
+                all_state_routing(entry);
+                recursive_rescue_arrival(entry);
+                decision_shared_random(entry);
+                delivered_item_catalogue(entry);
+                fifo_and_failures(entry);
+                shared_random_sequence(entry);
+                every_control_route(entry);
+            } catch (const std::exception &e) {
+                throw std::runtime_error(std::string(entry == ControlEntry::copied
+                                                         ? "const control: "
+                                                         : "consuming control: ") +
+                                         e.what());
+            }
+        }
         std::cout << checks << " checks passed\n";
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

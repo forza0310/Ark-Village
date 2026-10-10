@@ -439,6 +439,10 @@ state12旧B≥65才清64/加2、清路径、人物0/活动0，与物体授予/�
 6. 同轮c接触→d等待10开始→物体j1；第20轮物体授予，第21轮d才消费控制33播放音效8，
    第60轮物体删除。音效不是授予消费者，人物状态12的旧B65退出是另外的链。
 
+Steam低层领取独立交叉：武器ChangeState RVA`229060`仅0→1依次置NEW、免费次数1、flags32且216未见才执行216、商店提示，最后写state；防具／饰品同序但无216，不清解锁计数。SetNewEquipStock RVA`222D40`遍历全部设施实例，按细类1／4／5发每设施通知7，不筛施工／营业／可达性；RegistFukidashi RVA`2C4A20`按类型去重并保留已有计数。普通道具AddItem两个重载（RVA`2199D0/219A40`）先以999封库存上限，仅旧state0才置NEW／state1／计数0，不改商会restNum；这不是双向夹到0..999。ItemData.ChangeState则不加库存，不能代替AddItem。建筑GetTenant RVA`2215E0`先H加1封99，旧state0才NEW／state2／计数0，旧非0仍加H，不自动建设。
+
+Steam高层两入口保留上述区别：静态Proc_getTreasure2 RVA`2A7660`先AddItem（`102A7817`）再notice2，实例Proc_getTreasure RVA`2A78C0`先notice2（`102A7A8F`）再AddItem；两者随后都增加`itemDiscoverNum_ +7C`并按新值≥10且151未见请求151，库存封顶亦不省略累计。110只在静态武器入口、提示之后按110未见触发（`102A77C4–77DA`），不要求本次首次开放；实例武器没有110，底层216另有自己的首次开放守卫。壶直接低层领取不补这些高层统计／事件。有效开放调用与APK相符，但Steam带state参数的任意其他转换、隐藏装备正常来源及原失败回滚不由本批证明。
+
 库存目录、地上物体与人物控制可临时投影到候选，提交后仍须只有一个事实所有者；
 不能让`BattleCommitState.objects`与`ObjectCommitState.objects`成为两个独立更新的持久副本。
 接触布尔来自原帧矩形检查，追物返回目标交给6.7单步运动，不伪造可达格路径或预留物体。

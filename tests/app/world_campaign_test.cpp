@@ -543,132 +543,9 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
     return directory;
 }
 
-void contract() {
-    auto state = ark::test::initial_world();
-    app::WorldCommand command;
-    command.kind = Kind::open_build_menu;
-    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
-            "Real construction menu should open");
-    const auto *page = top(state);
-    require(page != nullptr, "Real menu page missing");
-    command.page = page->id;
-    command.kind = Kind::acknowledge_page;
-    bool refused{};
-    try {
-        apply(state, command);
-    } catch (const std::runtime_error &) {
-        refused = true;
-    }
-    require(refused, "Driver cannot generic-ack a real decision menu");
-    command.kind = Kind::cancel_build_menu;
-    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
-            "Real construction menu return should succeed");
-    Strategy strategy;
-    int rejected_receipts{};
-    bool rejected_observation{};
-    app::WorldCommandResult rejected_result;
-    rejected_result.outcome = app::WorldCommandOutcome::rejected;
-    try {
-        strategy.observe(state, command, rejected_result, state,
-                         [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
-    } catch (const std::runtime_error &) {
-        rejected_observation = true;
-    }
-    require(rejected_observation && rejected_receipts == 0,
-            "Rejected business observation emitted a verified receipt");
-    strategy.reconcile(state);
-    std::ostringstream encoded;
-    strategy.encode(encoded);
-    std::istringstream input(encoded.str());
-    auto restored = Strategy::decode(input);
-    restored.reconcile(state);
-    std::ostringstream encoded_again;
-    restored.encode(encoded_again);
-    require(encoded.str() == encoded_again.str(), "Strategy evidence roundtrip differs");
-    require(!restored.complete(state) && !restored.construction_checkpoint(state),
-            "A fresh village cannot pass business milestones");
-    std::istringstream corrupt("not-a-strategy\n");
-    refused = false;
-    try {
-        Strategy::decode(corrupt);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Malformed strategy evidence must be rejected");
-    LateStrategy late;
-    rejected_observation = false;
-    try {
-        late.observe(state, command, rejected_result, state,
-                     [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
-    } catch (const std::runtime_error &) {
-        rejected_observation = true;
-    }
-    require(rejected_observation && rejected_receipts == 0,
-            "Rejected late-route observation emitted a verified receipt");
-    std::ostringstream late_encoded;
-    late.encode(late_encoded);
-    std::istringstream late_input(late_encoded.str());
-    const auto late_restored = LateStrategy::decode(late_input);
-    std::ostringstream late_again;
-    late_restored.encode(late_again);
-    require(late_encoded.str() == late_again.str() && !late_restored.complete(state) &&
-                !late_restored.checkpoint(state),
-            "Fresh late strategy must roundtrip without claiming business milestones");
-    refused = false;
-    try {
-        late.reconcile(state);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Late route must refuse an initial unranked village");
-    refused = false;
-    std::istringstream wrong_route(encoded.str());
-    try {
-        LateStrategy::decode(wrong_route);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Late strategy must refuse first-star strategy evidence");
-    PotStrategy pot;
-    std::ostringstream pot_encoded;
-    pot.encode(pot_encoded);
-    std::istringstream pot_input(pot_encoded.str());
-    const auto pot_restored = PotStrategy::decode(pot_input);
-    std::ostringstream pot_again;
-    pot_restored.encode(pot_again);
-    require(pot_encoded.str() == pot_again.str() && !pot_restored.complete(state) &&
-                !pot_restored.checkpoint(state),
-            "Fresh pot strategy must roundtrip without claiming business milestones");
-    refused = false;
-    try {
-        pot.reconcile(state);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Pot route must refuse an initial unranked village");
-    refused = false;
-    std::istringstream wrong_pot_route(late_encoded.str());
-    try {
-        PotStrategy::decode(wrong_pot_route);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Pot strategy must refuse second-star strategy evidence");
-    LateStrategy third(3);
-    std::ostringstream third_encoded;
-    third.encode(third_encoded);
-    std::istringstream third_input(third_encoded.str());
-    const auto third_restored = LateStrategy::decode(third_input);
-    require(third_restored.stats().target_rank == 3 && !third_restored.complete(state) &&
-                !third_restored.checkpoint(state),
-            "Third-star evidence lost target or invented progress");
-    refused = false;
-    try {
-        third.reconcile(state);
-    } catch (const std::exception &) {
-        refused = true;
-    }
-    require(refused, "Third-star route must refuse an unranked world");
+// Source-page transactions use isolated eligibility fixtures; they certify receipts,
+// not natural star progression. Keep them separate from driver/sidecar contracts.
+void source_transaction_receipt_contract() {
     // A bounded decision fixture, not a natural second-star certificate. Keep 119
     // points for the real 120-point offer, then exercise actual 83/85/93 consumers.
     auto restaurant_state = ark::test::initial_world();
@@ -824,6 +701,135 @@ void contract() {
                 " raw=" + std::to_string(top(pot_open_state)->legacy_page) +
                 " points=" + std::to_string(pot_open_state.village_points) +
                 " flags=" + std::to_string(pot_open_state.scripts.user_flags));
+}
+
+void contract() {
+    auto state = ark::test::initial_world();
+    app::WorldCommand command;
+    command.kind = Kind::open_build_menu;
+    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
+            "Real construction menu should open");
+    const auto *page = top(state);
+    require(page != nullptr, "Real menu page missing");
+    command.page = page->id;
+    command.kind = Kind::acknowledge_page;
+    bool refused{};
+    try {
+        apply(state, command);
+    } catch (const std::runtime_error &) {
+        refused = true;
+    }
+    require(refused, "Driver cannot generic-ack a real decision menu");
+    command.kind = Kind::cancel_build_menu;
+    require(apply(state, command).outcome == app::WorldCommandOutcome::applied,
+            "Real construction menu return should succeed");
+    Strategy strategy;
+    int rejected_receipts{};
+    bool rejected_observation{};
+    app::WorldCommandResult rejected_result;
+    rejected_result.outcome = app::WorldCommandOutcome::rejected;
+    try {
+        strategy.observe(state, command, rejected_result, state,
+                         [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
+    } catch (const std::runtime_error &) {
+        rejected_observation = true;
+    }
+    require(rejected_observation && rejected_receipts == 0,
+            "Rejected business observation emitted a verified receipt");
+    strategy.reconcile(state);
+    std::ostringstream encoded;
+    strategy.encode(encoded);
+    std::istringstream input(encoded.str());
+    auto restored = Strategy::decode(input);
+    restored.reconcile(state);
+    std::ostringstream encoded_again;
+    restored.encode(encoded_again);
+    require(encoded.str() == encoded_again.str(), "Strategy evidence roundtrip differs");
+    require(!restored.complete(state) && !restored.construction_checkpoint(state),
+            "A fresh village cannot pass business milestones");
+    std::istringstream corrupt("not-a-strategy\n");
+    refused = false;
+    try {
+        Strategy::decode(corrupt);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Malformed strategy evidence must be rejected");
+    LateStrategy late;
+    rejected_observation = false;
+    try {
+        late.observe(state, command, rejected_result, state,
+                     [&](const ark::test::CampaignReceipt &) { ++rejected_receipts; });
+    } catch (const std::runtime_error &) {
+        rejected_observation = true;
+    }
+    require(rejected_observation && rejected_receipts == 0,
+            "Rejected late-route observation emitted a verified receipt");
+    std::ostringstream late_encoded;
+    late.encode(late_encoded);
+    std::istringstream late_input(late_encoded.str());
+    const auto late_restored = LateStrategy::decode(late_input);
+    std::ostringstream late_again;
+    late_restored.encode(late_again);
+    require(late_encoded.str() == late_again.str() && !late_restored.complete(state) &&
+                !late_restored.checkpoint(state),
+            "Fresh late strategy must roundtrip without claiming business milestones");
+    refused = false;
+    try {
+        late.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Late route must refuse an initial unranked village");
+    refused = false;
+    std::istringstream wrong_route(encoded.str());
+    try {
+        LateStrategy::decode(wrong_route);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Late strategy must refuse first-star strategy evidence");
+    PotStrategy pot;
+    std::ostringstream pot_encoded;
+    pot.encode(pot_encoded);
+    std::istringstream pot_input(pot_encoded.str());
+    const auto pot_restored = PotStrategy::decode(pot_input);
+    std::ostringstream pot_again;
+    pot_restored.encode(pot_again);
+    require(pot_encoded.str() == pot_again.str() && !pot_restored.complete(state) &&
+                !pot_restored.checkpoint(state),
+            "Fresh pot strategy must roundtrip without claiming business milestones");
+    refused = false;
+    try {
+        pot.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Pot route must refuse an initial unranked village");
+    refused = false;
+    std::istringstream wrong_pot_route(late_encoded.str());
+    try {
+        PotStrategy::decode(wrong_pot_route);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Pot strategy must refuse second-star strategy evidence");
+    LateStrategy third(3);
+    std::ostringstream third_encoded;
+    third.encode(third_encoded);
+    std::istringstream third_input(third_encoded.str());
+    const auto third_restored = LateStrategy::decode(third_input);
+    require(third_restored.stats().target_rank == 3 && !third_restored.complete(state) &&
+                !third_restored.checkpoint(state),
+            "Third-star evidence lost target or invented progress");
+    refused = false;
+    try {
+        third.reconcile(state);
+    } catch (const std::exception &) {
+        refused = true;
+    }
+    require(refused, "Third-star route must refuse an unranked world");
+    source_transaction_receipt_contract();
     const auto old_late_end = late_encoded.str().find("WESTERN_UNLOCK_1");
     require(old_late_end != std::string::npos, "Current late evidence lacks receipt extension");
     std::istringstream verified_second_prefix(late_encoded.str().substr(0, old_late_end));

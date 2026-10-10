@@ -1,0 +1,367 @@
+{
+  "scope": "Steam raw60 OFF_EFPINCE static offsets and direction consumer; no whole-world pinch equivalence",
+  "sources": {
+    "dll_sha256": "9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a",
+    "metadata_sha256": "80e17b3c1f7b7a844d64be27918e16cacfab05d70d7f33c0a61e45d830d7a369",
+    "method_index_sha256": "399156eff1f2623623d489b3e36ab9a83b9695d311c7c91e21b013dafc665c42",
+    "dump_sha256": "1bf5680223c495b5d24aa5934831a17e9ecf03b95ba4ddb3ad4b9459c3c81912"
+  },
+  "methods": [
+    {
+      "key": "cctor",
+      "type": "game.Character2",
+      "signature": "private static void .cctor() { }",
+      "rva": 2700640,
+      "bytes": 40320,
+      "sha256": "5fecf35779bf8719bd9c987f99933696214d0cc8983960936b7b1b3e9133ce48",
+      "identity_only": true,
+      "reused": false
+    },
+    {
+      "key": "portrait",
+      "type": "game.UserData",
+      "signature": "public void Draw_charaInfoChara(Graphics g, Character2 chara, CharacterData charaData, int temp_frame) { }",
+      "rva": 2948864,
+      "bytes": 1312,
+      "sha256": "38f0ee534315251f196bda9f69c269ab2fe2c023f9f81e69a7593c5fad90871a",
+      "identity_only": false,
+      "reused": true
+    }
+  ],
+  "windows": [
+    {
+      "key": "offset_initializer",
+      "begin": 271149274,
+      "end": 271149552,
+      "bytes": 278,
+      "sha256": "782d41c4abce9834e774073dc3d120284c356b13d5fa82991ff20011907735b9"
+    },
+    {
+      "key": "portrait_pinch_consumer",
+      "begin": 271385296,
+      "end": 271385601,
+      "bytes": 305,
+      "sha256": "d13af4b741ee7c265ced244421f955b3d098d6e9314b4306947cf20422d12e2c",
+      "reused": true
+    }
+  ],
+  "anchors": [
+    {
+      "va": 271149274,
+      "length": 2,
+      "text": "push 2",
+      "target": null,
+      "sha256": "c7258cbd5890101bf934d2f9cc038cc12a4d3bd66741410d6d047d060aadece7"
+    },
+    {
+      "va": 271149300,
+      "length": 2,
+      "text": "push 2",
+      "target": null,
+      "sha256": "c7258cbd5890101bf934d2f9cc038cc12a4d3bd66741410d6d047d060aadece7"
+    },
+    {
+      "va": 271149414,
+      "length": 2,
+      "text": "push 2",
+      "target": null,
+      "sha256": "c7258cbd5890101bf934d2f9cc038cc12a4d3bd66741410d6d047d060aadece7"
+    },
+    {
+      "va": 271149338,
+      "length": 7,
+      "text": "mov dword ptr [edi+10h],0FFFFFFF2h",
+      "target": null,
+      "sha256": "eefbd613dd0102ec893180fe70db348ec9223fc4df19fcd16c8a1eb81038ce80"
+    },
+    {
+      "va": 271149355,
+      "length": 7,
+      "text": "mov dword ptr [edi+14h],0FFFFFFE4h",
+      "target": null,
+      "sha256": "b1cd602f33aa6b09fd539c184e511cf0e37a15f2105e0b889a71963ccef1b932"
+    },
+    {
+      "va": 271149450,
+      "length": 7,
+      "text": "mov dword ptr [edi+10h],5",
+      "target": null,
+      "sha256": "ff63c8722036a3a33460e14624dd9cb54a9dcb236f9eba75cb8a0d04f54fc7d6"
+    },
+    {
+      "va": 271149467,
+      "length": 7,
+      "text": "mov dword ptr [edi+14h],0FFFFFFE4h",
+      "target": null,
+      "sha256": "b1cd602f33aa6b09fd539c184e511cf0e37a15f2105e0b889a71963ccef1b932"
+    },
+    {
+      "va": 271149402,
+      "length": 3,
+      "text": "lea eax,[esi+10h]",
+      "target": null,
+      "sha256": "9c94450f116f82e19d63cf8bc8d495f1685afbf6f04e3a252ec22d82afc05537"
+    },
+    {
+      "va": 271149405,
+      "length": 2,
+      "text": "mov [eax],edi",
+      "target": null,
+      "sha256": "1aace8871496ce645e91d6faf40093becd6152a5cf5cb7c1536edce2cb65a6d4"
+    },
+    {
+      "va": 271149506,
+      "length": 3,
+      "text": "lea eax,[esi+14h]",
+      "target": null,
+      "sha256": "449e6669da593780004aaa73d8006128e4dbc059b5ac10b062af692657ccfd99"
+    },
+    {
+      "va": 271149509,
+      "length": 2,
+      "text": "mov [eax],edi",
+      "target": null,
+      "sha256": "1aace8871496ce645e91d6faf40093becd6152a5cf5cb7c1536edce2cb65a6d4"
+    },
+    {
+      "va": 271149527,
+      "length": 6,
+      "text": "mov [eax+0A0h],esi",
+      "target": null,
+      "sha256": "3c18408016270973a160eb4cdc1ce0e51cb6057d852ce5dc08cc4b86fbc0ab9b"
+    },
+    {
+      "va": 271385353,
+      "length": 2,
+      "text": "xor esi,esi",
+      "target": null,
+      "sha256": "52ee7bc49cb2b8661e54f8103f068838ea4bf5089db7626cad08a85a8a6dce66"
+    },
+    {
+      "va": 271385355,
+      "length": 3,
+      "text": "cmp eax,2",
+      "target": null,
+      "sha256": "82e926bf91c1b0bedeaedac75549be595199fc1a016ec9e5541c377a54ce8bbd"
+    },
+    {
+      "va": 271385358,
+      "length": 2,
+      "text": "je short 102D0315h",
+      "target": null,
+      "sha256": "58b821595e7051b1409a38f7c48f7b1153019dce5f9e8b78241111e6dd4a67cb"
+    },
+    {
+      "va": 271385360,
+      "length": 3,
+      "text": "cmp eax,3",
+      "target": null,
+      "sha256": "46057e4fd20256d889c1fbde865af2597c979e9472393c5475f5f41175cc2ce9"
+    },
+    {
+      "va": 271385363,
+      "length": 2,
+      "text": "jne short 102D031Ah",
+      "target": null,
+      "sha256": "bdd555450aa9fbe84cc950719dc1a4f86814cddcaa6772e868ebc728a600a5b4"
+    },
+    {
+      "va": 271385365,
+      "length": 5,
+      "text": "mov esi,1",
+      "target": null,
+      "sha256": "bce257e988d5cf159b57a7b1e2b2a4d627f25434f74ae88d7e83a2d9560a38b9"
+    },
+    {
+      "va": 271385436,
+      "length": 6,
+      "text": "mov eax,[eax+0A0h]",
+      "target": null,
+      "sha256": "4116ec916ee15584c73339d0e4a32491a6fc141af942e5f745349d7c6c82b362"
+    },
+    {
+      "va": 271385459,
+      "length": 4,
+      "text": "mov edx,[eax+esi*4+10h]",
+      "target": null,
+      "sha256": "01634082d61a38c34f96dc354279a996846943fe2fe58535b43ef16751d8e208"
+    },
+    {
+      "va": 271385481,
+      "length": 3,
+      "text": "mov edx,[edx+10h]",
+      "target": null,
+      "sha256": "5c9f1b7ce5d6578c3b1266eb576042a8f8f751fff9cdf8a5d2004af1f128ec2e"
+    },
+    {
+      "va": 271385492,
+      "length": 4,
+      "text": "mov eax,[eax+esi*4+10h]",
+      "target": null,
+      "sha256": "6a03c42b699282fe6f3b4a8527bf3099fad2d8897729270d87a93091d54b97c9"
+    },
+    {
+      "va": 271385506,
+      "length": 3,
+      "text": "mov esi,[eax+14h]",
+      "target": null,
+      "sha256": "deb1a0f9becc5326f2d2da00dbf69d5b23a8766d725121c35220bb7ed3d2c0ae"
+    },
+    {
+      "va": 271385570,
+      "length": 2,
+      "text": "push 0",
+      "target": null,
+      "sha256": "91046df2aa008410555df240b14243aa348b37cd16582c9d8a80ca305afccab2"
+    },
+    {
+      "va": 271385575,
+      "length": 3,
+      "text": "lea eax,[esi+79h]",
+      "target": null,
+      "sha256": "077bb3deab39a36a26b8b54ed343434574ec31c8e78a8a46fc98be3db8ff7f8d"
+    },
+    {
+      "va": 271385583,
+      "length": 2,
+      "text": "add eax,edi",
+      "target": null,
+      "sha256": "e2dbf5748636785d95e4dd5113125ecd5e92e0a32b2b11eb9e92fe7b337833c8"
+    },
+    {
+      "va": 271385585,
+      "length": 3,
+      "text": "add eax,[ebp-8]",
+      "target": null,
+      "sha256": "a9d390b23ffee6f014a3c7ceee5a396c56af124df0f45d9389d26421859157fc"
+    },
+    {
+      "va": 271385593,
+      "length": 5,
+      "text": "call 102516F0h",
+      "target": 270866160,
+      "sha256": "f7bd12ea4c561247037dd48540853b7230afa0fa192eb1438fdb3308b15905f2"
+    }
+  ],
+  "field": {
+    "owner": "game.Character2",
+    "name": "OFF_EFPINCE",
+    "static_offset": 160,
+    "shape": [
+      2,
+      2
+    ],
+    "initialization": "four signed int32 immediates, not RuntimeFieldHandle/InitializeArray",
+    "values": [
+      [
+        -14,
+        -28
+      ],
+      [
+        5,
+        -28
+      ]
+    ]
+  },
+  "consumer": {
+    "row1_directions": [
+      2,
+      3
+    ],
+    "other_direction_row": 0,
+    "base_y": 121,
+    "sprite": 39,
+    "image": 22,
+    "frame": 0,
+    "derived_y": 93,
+    "x_expression": "MOVE_DATA interpolated x + house offset + OFF_EFPINCE[row][0]"
+  },
+  "resources": [
+    {
+      "kind": "image",
+      "index": 22,
+      "path": "assets/original/common/ef_pinch.png",
+      "source": "EXE:resources.assets:1148:common:ef_pinch.png",
+      "bytes": 240,
+      "sha256": "4fc83dfdcf9d81a7b8a9dba32f3a9f18651083866f23be0702ab705c68639fde",
+      "width": 22,
+      "height": 13
+    },
+    {
+      "kind": "sprite",
+      "index": 39,
+      "path": "assets/original/common/ef_pinch.seb",
+      "source": "EXE:resources.assets:1148:common:ef_pinch.seb",
+      "bytes": 48,
+      "sha256": "fbed488431b4e381849e3e9c758bb9bd0cc76bdb067d172562afebd931d8ca6d",
+      "frames": 2,
+      "parts": [
+        [
+          0,
+          22,
+          0,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          22,
+          11,
+          0,
+          11,
+          13,
+          0,
+          0,
+          0,
+          0
+        ]
+      ]
+    }
+  ],
+  "reused": {
+    "path": "work/steam-human-presentation/EVIDENCE.json",
+    "sha256": "10fc0b796b5b404715b6d41491bb15651636975fed37df0fc8c5ad3480cd98fe"
+  },
+  "apk_crosscheck": [
+    {
+      "path": "work/decompiled/sources/c/b.java",
+      "first": 141,
+      "last": 141,
+      "source_sha256": "654ca985b7c294c4d54976d4f7caa98486bce1a7b40b84f81177325167e4ed38",
+      "window_sha256": "6fbb75202442fdaca564f6e05b08d9fd00311755d8aac76e01727e50440c8e45",
+      "grade": "generated Java local crosscheck; no new DEX instruction audit"
+    },
+    {
+      "path": "work/decompiled/sources/c/n.java",
+      "first": 1645,
+      "last": 1660,
+      "source_sha256": "b2f0ff2933965a6e8d97e9a79658024151c9a4a37ea9eca34807bbfa334fa8e7",
+      "window_sha256": "a866792b12a026e5ffcb04d541225ecdc23e37e6fb9016f958044ae24738bc64",
+      "grade": "generated Java local crosscheck; no new DEX instruction audit"
+    }
+  ],
+  "scripts": [
+    {
+      "path": "inspect.cjs",
+      "bytes": 2089,
+      "sha256": "f961eee366466de781e38efb18f0e5ad0c7aaf312f3f441a3ed3f53d383dbefd"
+    },
+    {
+      "path": "audit.cjs",
+      "bytes": 7139,
+      "sha256": "73546d7f67a2990de373efdbd9875a168833591ddeacfdfc36c1e2debc59462f"
+    }
+  ],
+  "limitations": [
+    "No original window pixel/click acceptance",
+    "No whole Character2 static constructor semantic coverage",
+    "APK evidence here is Java-local, not new DEX audit",
+    "This fixes raw60 portrait pinch placement, not all world Character2 effects",
+    "GetAnimeIndex and body/weapon tree remain separate"
+  ]
+}

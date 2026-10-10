@@ -3,6 +3,7 @@
 #include "startup_world_restore_validation.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
+#include "support/world_fixture.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>
@@ -105,6 +106,25 @@ void run_startup_world_codec_checks() {
     const auto restored = detail::decode_state(bytes, *session.state().rules);
     check(restored.rules == session.state().rules && detail::encode_state(restored) == bytes,
           "真实新局逐字节往返及规则重绑");
+    {
+        const auto mastery = test_support::mastery_fixture();
+        const auto wire = detail::encode_state(mastery);
+        auto copy = detail::decode_state(wire, *mastery.rules);
+        std::string reason;
+        check(detail::validate_restored_state(copy, reason),
+              "真实大师请求产生的70/94r4通过严格恢复校验");
+        const auto reward = std::find_if(copy.scripts.pages.begin(), copy.scripts.pages.end(),
+            [](const auto &p) { return p.legacy_page == 94 && p.legacy_r == 4; });
+        check(reward != copy.scripts.pages.end() && reward->legacy_s == 4 &&
+                  copy.page_human_bindings.at(reward->id) == 4 &&
+                  copy.scripts.professions.at(4).status == 1 &&
+                  copy.scene.world.world.ai.growth.at(4).definition.profession_levels.at(4) == 10 &&
+                  detail::encode_state(copy) == wire,
+              "大师公告保存原人物/职业绑定和已开放事实，不重做成长或领取");
+        reward->legacy_s = 999;
+        check(!detail::validate_restored_state(copy, reason),
+              "94r4恢复仍拒绝不存在的职业，不放宽奖励定义校验");
+    }
     {
         // 调用点夹具：由真实介绍消费者产生载荷，恢复不能重查原talk默认说话者覆盖它。
         const auto introduced = consume_startup_world_runtime_encounter_request(

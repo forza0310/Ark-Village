@@ -30,7 +30,7 @@ WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
             fail(WorldGiftPageError::invalid_owner);
         const int mode = found->legacy_r;
         const bool supported94 =
-            found->legacy_page == 94 && (mode == 3 || (mode >= 5 && mode <= 8));
+            found->legacy_page == 94 && mode >= 3 && mode <= 8;
         const bool supported95 =
             found->legacy_page == 95 && (mode == 0 || mode == 1 || mode == 3 || mode == 4 ||
                                          mode == 9 || mode == 10 || mode == 11);
@@ -110,7 +110,7 @@ WorldGiftPageResult prepare_world_gift_page(const WorldGiftPageState &state,
             const auto item = definitions.find(definition);
             if (item == definitions.end() || item->second.status < 0)
                 fail(WorldGiftPageError::invalid_owner);
-            // 原a/h.c与a/c.a：旧p0才置提示；脚本31已经开放的职业不再制造提示。
+            // 原a/h.c与a/c.a：旧p0才置提示；大师或脚本31已开放的职业不再制造提示。
             if (item->second.status == 0)
                 item->second.pending_notice = true;
             item->second.status = 1;

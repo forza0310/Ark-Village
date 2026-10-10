@@ -3,7 +3,7 @@
 跨版本分析按[研究流程](../WORKFLOW.md)执行；本页集中登记输入与工具，功能结论在对应规格中标明所属样本和证据等级。
 2026-10-06用户确认将Windows制品作为独立交叉来源纳入流程；本页APK身份、原表及既有回归的来源不变。
 
-本页按输入／符号／批次产物保存证据身份，历史“待验”只适用于对应日期；当前能力看[阶段页](stages/README.md)。
+本页保留原始输入身份、符号定位与结论入口；历史“待验”只适用于对应日期，当前能力看[阶段页](stages/README.md)。一次性核对脚本、派生产物及其指纹不作为长期交付，既有合同与原始证据限制继续有效。
 存取各批验证已集中[归档](verification/PERSISTENCE_HISTORY.md)，窗口前后输入／分析关系见[实验索引](verification/window-restore-observation/README.md)。
 不在本页用证据数量或工具哈希推算整体完成率。
 
@@ -22,7 +22,7 @@
 [cd13](ui/ATTRIBUTE_GAIN_RENDER.md)核字体宽／固定Y−40／common37属性图标、SEB15有符号数字和40逻辑退休；6个精确DEX方法确认long数值重载与空负帧，不凭JADX重载外观猜测。
 [普通道具图标](ui/ITEM_ICON_RENDER.md)核原列5／分类C89／D背景槽、36定义与common24／9原PNG、64／75／84共享帮助器及各自间距。调用方法偏移228576、994字节，hash保持`c5ddbe5c418800ac0342ab54cd1bd878d506d7a86ec768406ba690c20484c6f8`。
 两项绘制只读接口及窗口适配已接，18项受影响CTest通过；原素材、schema和原短轨迹未改，实际结果见[验证](VERIFICATION.md)。局部APK消费者不冒称Steam全等，8帧维护窗口不冒称原游戏动态。
-专题证据摘要及输出hash见[本地审计](work/item-icon-contract/VALIDATION.json)，新源码全文／原游戏和玩家原档均未写入提交。
+专题证据摘要沿上述正式绘制合同；新源码全文、原游戏和玩家原档均未写入提交。
 
 ## 2026-10-08全量覆盖与产品小窗参考
 
@@ -53,7 +53,7 @@ Session显式表现请求与独立presentation-request-v1三进程回放已接�
 并以固定DEX四个明确帮助器994／532／202／96字节交叉商品图标、武器姿态及图片覆盖；
 [设施映射](work/facility-growth-render-mapping/README.md)核9份SEB、6份PNG及有限Java窗口，1081项检查通过。
 设施绘制链仍属普通Java与原资源交叉，未新增单方法DEX或原窗口动态认证。
-[既有资源审计](work/draw-resource-integration-audit/README.md)仅证明其实际比较的十项三份副本一致；
+历史副本核对只证明实际比较的十项三份副本一致，来源范围见上述正式绘制合同；
 本批最小绘制消费者与武器运行目录复制另见[集中验收](work/equipment-facility-render-implementation/README.md)。
 没有提取新素材或混入Steam／异版本截图的帧号；原表、共同随机、装备装配和通知退休均由既有Owner维护。
 
@@ -74,7 +74,7 @@ LF为`c81b94c41a10c2144763f0f1da056d6d023e27d9a3a0e0aefc8562dff0bb4ef6`，与旧
 固定配方表40行／10列SHA-256 `7a28381b01ae861cd99ce8ccc63bef5f8ce62f12473e3047052879f8f12a5b8c`；
 Steam两种语言表仅数字列逐行交叉，不用该版名称替换APK原表。生成DEX／Java／局部证据仍放work，不提交原程序。
 
-[表现／后期有界审计](work/presentation-late-route-audit/README.md)消费已有皮肤合同和16份明确输入，
+早期表现／后期研究消费已有皮肤合同和16份明确输入，结论归入[输入与绘制](ui/INPUT_RENDER_REQUESTS.md)及[开局／纪录](rules/STARTUP_RECORDS.md)：
 定位任务底栏的绘制期共享抽取及通关raw17／系统继承候选。普通巨型Java及缺失历史低层仍保留证据等级，
 不把入口定位写成计分算法或原APK动态已验；无新DLL扫描、窗口操作或全程序反编译。
 
@@ -144,16 +144,9 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 
 | 本轮输入／产物 | SHA-256 |
 | --- | --- |
-| work/window-restore-observation/20261007-131546-nonempty-p-reload/RESULT.md | `02fefb40543f1cb02ed759b821b93f2773702d975a248f59f91a69440cdd9f97` |
-| 同目录EVIDENCE_MANIFEST.csv | `41179c0cca75b22465126c3824d28ef1eb4e1ba1ca0cb3f2b53bd6374c7e2bd5` |
-| 同目录timeline.jsonl | `530387f3a78299793a33368283c2700676b62d9e9b9f576636e7dc4af97de71d` |
 | 首次不同0003 | `7f09b86c7ceefc6c64e5177c8e69efc7650b813ec7d44d76a4d5df638a371190` |
 | 正常手动0001 | `4fd3100045ca1dee96c9ec59917cf2a40e4cd3a5d81271c10aae78200254ba2d` |
 | 稍后0003（在手动0001前写入） | `65d07470e6216373ca82c85860d5e3a2129bdd5425182df31690862831c79a47` |
-| work/nonempty-p-reload-analysis/INPUT_VALIDATION.json | `fdfcfacc49d8d39e36c19228f4e1550930ce6a79792566709083ba3a2b9bb5d6` |
-| work/nonempty-p-reload-analysis/audit/AUDIT.json | `6ac1273ce7d4704e3e57554078705d0e0737e03d671a6b82608437678a8247b1` |
-| work/nonempty-p-reload-analysis/audit/OUTPUT_HASHES.json | `1234103892339be8669cdf577de983ce036f88bce806208f00db6ea59858ab79` |
-| references/screenshots/2026-10-07-steam-nonempty-p-reload/MANIFEST.tsv | `ca1cb36dcb6969e7739240607d7aa19995c484c342156eada6bd04a115108859` |
 
 36项公开清单及五份冻结备份核验，恢复日志与最新备份一致；当前原件／云端不在本会话核验范围。
 [S062–S068](references/screenshots/2026-10-07-steam-nonempty-p-reload/README.md)7张重要图按原字节归档，
@@ -169,12 +162,6 @@ F/G差异、o活动6条件、d的8且9条件、攻击整数除法、影响场除
 | 本轮输入／产物 | SHA-256 |
 | --- | --- |
 | 非空候选中断0003（32541字节） | `3e1caa3c450ddaf8a845669ec7bdfc02c395c13c4e21240d44b1c2f43181b7bc` |
-| work/window-restore-observation/20261007-125641-nonempty-p-only/RESULT.md | `6c083ce8e0166e774f80f9d966972d0be8ce0fbfafe55b98d30b4e5cf67312e2` |
-| work/nonempty-p-candidate-analysis/AUDIT.json | `5b85d85a9f516c69c88da4293f14a1069d2c8a816b3a7a7a99f7d416603aa136` |
-| work/nonempty-p-candidate-analysis/VALIDATION.json | `ac35ae5807c5e6572ca643975b002b2ec2d2fd9ef4d124a011b8ba61cbe31ca1` |
-| work/nonempty-p-candidate-analysis/contract/README.md | `08caa2350053ac63ebf7a881b327f1211a4428b1d48d1030d74b0758f50dea07` |
-| work/nonempty-p-candidate-analysis/capture-after.cjs | `cfa7b93db53f8cb89b7d7119418fd312550cb6c2154fa4f86c5e41fec42b778c` |
-| work/nonempty-p-candidate-analysis/compare.cjs | `8f947ad8fa79a014628a2e1f8f90870fd639823b4e960d296c987de40a326253` |
 
 [候选分析](work/nonempty-p-candidate-analysis/ANALYSIS.md)两档50段／28引用逐项交叉，p定位[3,9]；
 [已有静态源复核](work/nonempty-p-candidate-analysis/contract/README.md)登记8份源哈希和准确读取／消费者坐标，未新增广泛解码。
@@ -191,15 +178,6 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 
 | 本轮证据 | SHA-256 |
 | --- | --- |
-| work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md | `7105244a60a5eb2f44c8bd78f333809610c3636defd59d2d5c400a8f687e00be` |
-| 同目录EVIDENCE_INDEX.json | `bacb6111c0e558e8233ff7717926ab125701d123d7dd1ddd84cd5dfe51f7a237` |
-| 同目录ACTIONS.json | `535b236c7353f5044c9fdafeaae42ed2ba3f4b99405692d1592686b95c7493d2` |
-| 同目录B-sampler/RESULT.json | `3d130f6fee08e8fff1a757a4c89db9a8fd885331d54c58b8bde93e6d9b6c44e6` |
-| work/business-reload-analysis/INPUT_VALIDATION.json | `1d5396556f37bd4ac0e9b64d724e29407de07a768f1fc44673e680f0a5dd2829` |
-| work/business-reload-analysis/roundtrip/RESULT.json | `1e41209ca9308061cd05f3f9f494ff1386e2815821d3b961587aaa71473a01d7` |
-| work/business-reload-analysis/removal/AUDIT.json | `a17f582725f9f6b75affd763c232b9ec2e2dcc8abadaa4e982b588076b2b3e53` |
-| work/business-reload-analysis/removal/OUTPUT_HASHES.json | `bb5fb39eaae1306a92c897849892969264ed942d3943696192f90565abf13b21` |
-| references/screenshots/2026-10-07-steam-business-reload/MANIFEST.tsv | `8a46e56c0821ac8c8cbb01df7ba85ee2e21ce0649895de4fb522dc1c4e7cbfd6` |
 | data/original/tenantData.txt（固定APK表；本轮只核ID32名称） | `5ae35310fbd178f98b273fc2bbe98b1bbf5b72950fca56dbd93c089ca345834a` |
 
 39项索引和五份授权后冻结备份严格核哈希，恢复日志与本轮备份一致；没有重新核实时原件或云端。
@@ -220,18 +198,6 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 正式语义在[Steam交互](ui/STEAM_INTERACTIONS.md)和[存档合同](rules/PERSISTENCE.md#steam退出委托与文件失败语义续批)，
 输入矩形不是截图像素，动画计数不是墙钟秒；该批SaveAll正向上游尚未闭合，本批新增条件分派见本页开头索引。
 
-| 本轮证据（均位于work） | SHA-256 |
-| --- | --- |
-| steam-input-closure/manifest.json | `dde660a0fc4aed24357578929d3b4848cf83a225920d0a253a8d6cef75d65ccf` |
-| steam-input-closure/check.json | `28010ba32ba36cd787bc7750d3ba96be045d87eb23db48e87b94d4a7def1d30b` |
-| facility-animation-closure/manifest.json | `b0c050ae624c7b137f456f94a04e534b7115e7e905b69fcea80a2fbb8ed979f1` |
-| facility-animation-closure/animation-tables.json | `ecec76d0504a95b0bd5bee5209e21e0f61f45f2956a187414569555db0e5fba5` |
-| save-dispatch-closure/manifest.json | `b0c0a5a7503840f813edbc15ebbccd239e7a37ce118d847123ca6d1bcac4e383` |
-| save-dispatch-closure/metadata.json | `1842965beeb8cb002c955faba383d0a4e4b268030778cf8b1b65023ce6df336e` |
-| save-dispatch-closure/evidence.json | `aa673d96434cf1e3f60c6b64cb6e264ddebada0d13317c7e9c16d5fcfd8a8245` |
-| save-dispatch-closure/output-hashes.json | `718cec3f4a4af066f1027a5cefe57f37c0ace9f610ed041a32b1b27ccfae121b` |
-| restore-roundtrip-check/check.cjs | `afb8de0c523951b4a64decaebf3881d0451ffacb5792be416cdf9634021253cd` |
-| restore-roundtrip-check/VALIDATION.json | `a757352726f2ad4fe6477d324945ceaa639dc718a8325215c63f23de326760f2` |
 
 方法manifest记录RVA／VA／文件偏移和机器码hash；设施表通过指定槽→FieldRef→FieldDefault原字节与消费者交叉，
 权限异常通过单槽→Il2CppType→TypeDef核对，不用同名元数据替代实现。
@@ -244,16 +210,6 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 另补退出委托、普通文件失败及非空p产生链。截图源扩展名.png实际JPEG/JFIF，归档只规范目标为.jpg、不重编码。
 用户本轮明确授权截图作UI设计参考；村名不转录到说明，完整图不作为产品直接运行美术，不混入APK基线。
 
-| 并行续批证据 | SHA-256 |
-| --- | --- |
-| references/screenshots/2026-10-07-steam-restore/MANIFEST.tsv | `a37ac8002e6a546899638ef2946bdf6cdabc92bb20ff61db1f56e5ee773014eb` |
-| work/steam-interaction-analysis/manifest.json | `421064c44371102887421bb0e8956bfe7e0afd665930328e78421fb3c9a11b86` |
-| work/steam-interaction-analysis/disassembly.json | `005abbee8899f36c84db175973a7dcfeab6cb478b197e700a9773e8cc5effbcf` |
-| work/steam-save-lifecycle-analysis/manifest.json | `10f49141a2b832a97bdc176e1b81d79c45068d553750407178e86ee8089e4695` |
-| work/steam-save-lifecycle-analysis/slot.json | `8a30efdf95529cb3807b9ba1cfe1cd2d8d81f26ad4d135902fdf976e33f70129` |
-| work/steam-save-lifecycle-analysis/disassembly.json | `339036497b364348553979075508035abf00d33e7ac2d3a0dac585b60cd9546f` |
-| work/nonempty-p-capture/trigger-static.json | `6e03fcc1843be6054b3dd5ea567ae9b924c53bd88a46727674417fdc6795e1ca` |
-| work/nonempty-p-capture/capture.cjs | `ed721039e2d13475e28f8fd1f216b719b88faeb6fe4e8c4463a20dcf703bd567` |
 
 交互19方法／89,840字节，生命周期13方法／5,808字节，p产生与消费5方法／11,552字节分别受白名单预算约束。
 所有机器码仅只读解码，不运行DLL。生命周期全区泛型虚槽扫描被自动审批拒绝，已改精确方法研究；
@@ -266,12 +222,6 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 其中游戏档14路径／9种内容、225段及126引用组一致。静态、原窗口观察、保存端点与未覆盖部分在[合同](rules/PERSISTENCE.md#steam窗口恢复实验与密文交叉2026-10-07)分别登记。
 已验证的端点包括163不在后续输出、道具库存／共享改良落盘，以及中断自然推进后的旧周自动保存；非空p及候选重载尚未完成。
 
-| 窗口实验交回证据（相对work） | SHA-256 |
-| --- | --- |
-| window-restore-observation/20261007-102645-backup-restore-trials/RESULT.md | `9fdea748a3926042ba0af02bb9ddd4ba651e1fc66aa7ea2ea9cfc443a45ce48d` |
-| window-restore-observation/20261007-102645-backup-restore-trials/EVIDENCE_INDEX.json | `62cf22c2b9b94e1c75cbb2230ab71bd03d7ef2e379eb92caa0ae0036aacc0a04` |
-| window-save-analysis/analyze.cjs | `f84748d0cadf81cae44684018aca8c718435d69e00d8bcac72bccdb99f1c42ac` |
-| window-save-analysis/AUDIT.json | `24a25eee3676359cb6c52903e30a4fee3f470829a3729f6b22fa0222aa100a61` |
 
 输入明细／密文／可能含名字的截图只留本地work，不提交原程序或用户档。实时原目录在分析期间再次变化，另见工作记录，
 不因此改变冻结实验期望或覆盖原件；最终分析仅依交回清单与完整备份。
@@ -281,14 +231,6 @@ B没有取得非空p，采样／目标保存时序错开，不将邻接变化或
 另复用既有LoadGame 20,544字节与16字节共享空入口。默认步长27有初始化指令证据；完整运行期写入及退出委托仍未闭合。
 两份既有游戏档的50段／28引用组与独立Node探针一致，年月纠正条件均为false；没有运行原游戏或生成动态新档。
 
-| 无窗口续批证据（相对work） | SHA-256 |
-| --- | --- |
-| headless-save-audit-analysis/steam-static/manifest.json | `db61bd97e7f7bad9379d427bfda7b86b6a12bf5de98b0ad4c0096dff8721d5f3` |
-| headless-save-audit-analysis/steam-static/disassembly.json | `b167cbdf31f29c6320b80e79996251fba276eb277eec7af7023fdc493d4959c4` |
-| headless-save-audit-analysis/steam-static/evidence.json | `c5913a24a44f15ab656fabd90e76085750a70393c0dd9f57f3fb3ce33cda1597` |
-| headless-save-audit-analysis/steam-static/save-xrefs.json | `6b31f98ac90c12cfaae63fa1b5a6e12aca3be735d45cb430e6f4e40f59986417` |
-| original-save-analysis/audit-cli-validation.json | `62e1e20633e82756e48fcdb598e12f5c7dfe197114d550924fc152aee852dbf8` |
-| original-save-analysis/audit-calendar-crosscheck.json | `cbcd278b6c0c9eb3abda4f3334f7f1576bc2f7a942ce3c5b57975b9f6a46a32c` |
 
 审计只输出无账号／key／名字的数值、计数、哈希和有界缺引用值；原字节未写回，原件与密文副本前后哈希一致。
 原游戏动态交给用户的另一对话，实验提示词与反馈模板留在`work/window-restore-observation/`，不将准备实验写成已验证。
@@ -299,15 +241,6 @@ APK日历仅复用既有普通／低层文件，设施局部来源为`c/m.java`�
 引用恢复13个方法范围／9216字节，另核3个泛型MethodInfo；日历／加载14个新增目标／37504字节，
 另复用先前LoadGame的20544字节；方法尾界可能含padding，不把它当作新语义或完整全路径证明。
 
-| 证据（相对work/restore-behavior-analysis） | SHA-256 |
-| --- | --- |
-| steam-references/restore-methods.json | `b1efe7656ca60d484697beefbfde337e7e39b6b14f09bbe6dbf596eeadfa2a89` |
-| steam-references/direct-callees.json | `d65a3ce4b3224518500096b2f60079e3d9bb31e8807e163bf50c25158c4727fc` |
-| steam-references/generic-bindings.json | `238ed2bd3af91306dc0352a0819b3184f6d24720885c4b8c9272f152e10f63ea` |
-| steam-calendar/manifest.json | `29c6b1857aca880190b51269a39497a67609afcb033f24ec9a49b28801e57db9` |
-| steam-calendar/calendar-disassembly.json | `8eceba2d529db9743ec25319c928049d53c7c062823dd31eeb99cfc81c8e5536` |
-| apk-calendar/README.md | `ff60a13d392e54dbb14ded4cc1cb9ea7e8d9e3aa6ceffe5a7b1660665d77bf26` |
-| effects-sample.json | `fd0b21fef5d31e380882d74ae3bccb23585737acb4f549cf10fce421509f8d83` |
 
 设施普通来源hash：`work/decompiled/sources/c/m.java`为`1002d55a70323e7d03f632bd5fff1c4d4ca8195a5c056383e2d9ab2b8716945c`，
 `a/o.java`为`f1a7f4fa36de27a685623d5a0ed6c2a284d8d1cb1efc58706ea97af20c7d9603`。
@@ -324,15 +257,6 @@ APK日历仅复用既有普通／低层文件，设施局部来源为`c/m.java`�
 [Steam记录合同](work/original-save-analysis/steam-codec/README.md)补独立key、Property／null／字符串差异。
 配置链新增5方法／2800字节，字节合同有界解码36方法／11184字节，均先验输入哈希、按已映射方法范围处理，不加载原DLL。
 
-| 新静态证据（相对work/original-save-analysis） | SHA-256 |
-| --- | --- |
-| exe/config-chain-disassembly.json | `7f6992849c046bf14c3f65ce5b30e79119bec2a1af3fe62c9c4fc207b280e7bd` |
-| exe/config-chain-strings.json | `73877c253d9727d23a9142eb0ddc1147a369f26a28d38e4d8ed5ab99c016a70b` |
-| exe/config-chain-type-references.json | `c9c0c162aa4554cb046e946f5f49bb54d3515c9b1ea288389b62cf58632a8dbe` |
-| steam-codec/manifest.json | `30d10efbc810b379f82d69e8f7612fdc35099fbadbff1e10662047cd14ddba7f` |
-| steam-codec/disassembly.json | `91e0786336dbd91427c34f092d2790058620d80c98d1dab09e3193efd688f8c8` |
-| apk/directories.json | `76f0eae05c981e1ff5453337c337823549cba7bb7118c06107c53afc8802ad4d` |
-| apk/envelope-probe.json | `b7baf897f1950635fcc444a517edce534da662e7a6dcfd2fb4c457146e399120` |
 
 真实样本身份另行登记，不由静态证据替代：
 
@@ -358,14 +282,13 @@ APK日历仅复用既有普通／低层文件，设施局部来源为`c/m.java`�
 
 APK使用既有JADX1.5.6／同一固定输入，单类参数：
 `--config none --decompilation-mode fallback --no-res --log-level warn -j 1 --single-class <类> --single-class-output <文件>`。
-Java堆上限768MB，配置／缓存／临时路径在项目内。25分区读写与九项来源身份见
-[APK索引](work/persistence-replay-analysis/apk/evidence.json)，可用同目录`evidence.cjs`复做。
+Java堆上限768MB，配置／缓存／临时路径在项目内。25分区读写及来源限制以[存档合同](rules/PERSISTENCE.md)为准；重核从固定APK与对应类／方法定位开始，不依赖早期一次性索引脚本。
 
-| 新增低层文件 | 类 | 原始SHA-256 | LF归一化SHA-256 |
-| --- | --- | --- | --- |
-| `apk/Coordinator.java` | d.a | `bda557b86211b0a594fc968663bcda3e763e266bd5478f881a75023143a2c1cb` | `ee26e35483ad14b26938fc378c6d6b41563ff12109aa4e918c9a286609bab1e8` |
-| `apk/Tenant.java` | c.m | `ccd147e5b95b6a28a341e68d5d82ed36c5ae0ad2d70393c7a28c963c15127a18` | `fa39882c6a943413f6a88141af5641b7a899b76ebbde955f969c87920a321596` |
-| `apk/Encounter.java` | c.f | `6d500b0d95fd644ece189ee293119200c2bad0ddfd258188ccd72a54286ec862` | `64db52f28ddc775da690c082db4df18ea9d3bd6db456a089c32659ed1e8c410f` |
+| 新增低层文件 | 类 |
+| --- | --- |
+| `apk/Coordinator.java` | d.a |
+| `apk/Tenant.java` | c.m |
+| `apk/Encounter.java` | c.f |
 
 Steam输入保持[既有清单](verification/STEAM_ASSESSMENT.md#输入身份与已证事实)：GameAssembly SHA-256
 `9cf4bb10d55afe6898bf9b82d9016d328cce623a7e4743623eb3df720b55ab1a`，metadata
@@ -377,37 +300,23 @@ Steam输入保持[既有清单](verification/STEAM_ASSESSMENT.md#输入身份与
 | 宿主与参数 | .NET8.0.24 x64，`--roll-forward Major`运行net7工具；GenerateDummyDll／GenerateStruct／RequireAnyKey均false；样本x86 |
 | 静态注册地址 | ImageBase `0x10000000`；CodeRegistration VA `0x10E13B44`；MetadataRegistration VA `0x10F59638`；37942条非零映射经PE节表独立核对 |
 | iced-x86 1.21.0 | npm发布包`https://registry.npmjs.org/iced-x86/-/iced-x86-1.21.0.tgz`，SHA-256 `88abc8fa5a1aeb0fc0e13b43689410e5e12474cba0392d38b1928636ba56e7e6`；解压调用WASM，无安装脚本 |
-| `exe/analyze.cjs` | SHA-256 `f85475614faf00fc874efa5de416b4f792269a88efc494ec70d35137c84507f1`；映射核对及51个代表方法解码 |
-| `exe/disassembly.json` | SHA-256 `c9a1bf2cfc3845905753b159cd1d338453b146ae6faf4cce34071732a7244b45`；真实字节／指令，非dummy方法体 |
 
 运行前审查了工具Program.cs／PELoader.cs。静态搜索失败会尝试PE加载，但本次x64宿主配x86样本在回退载入前会拒绝位数；
 本次实际静态搜索直接成功，未走加载回退、未执行原DLL。详细日志、地址／文件偏移和方法结论见
 [Steam技术报告](work/persistence-replay-analysis/exe/README.md)。解码按下个方法地址限界且上限64KiB，可能含填充，不是完整CFG／异常恢复。
 
-| 维护策略探针 | 可复查材料及SHA-256 |
-| --- | --- |
-| 容器不透明保留 | `container-probe.cjs`：`261e18ee23e8b5b24b7accc6b5ff1b342d558f31a9b3cae9765dec6a69be179b`；独立手工86字节夹具，非真实游戏档 |
-| 容器夹具输入／改写后 | `f39cbfc686c9a474e66402aa61e7f4b489dd0a3dac16ce41a2269c19c0bb3355`／`1287f320e997629a1bf0594bd76ac78769bc8c7547d78d622dde22a08acf00a2` |
-| C++ Session分叉 | `runtime/replay_probe.cpp`：`ac957e5e0a6d759e5d6d72aefca9f6e226c19b23a7186d12e7deb1ef57cc0114` |
-| 最终运行日志 | `runtime/replay_probe.log`：`f4fcf21e4fe3c3b8ffecff5010eec50d026500d9e3f3aa20c5e4019e85d9bc0f`；18.7482秒，退出0 |
 
+早期维护探针分别使用手工86字节容器夹具与C++ Session分叉；前者不是原游戏档，后者只验证同进程值复制。
 C++探针以`898b6536e71bea6240620d3407e8483030142895`为研究基线，用既有LLVM-MinGW i686，
 `-std=c++17 -O2 -DNDEBUG -Wall -Wextra -Wpedantic -Werror`，链接唯一Release导入库，未另建构建树。
-startup_world DLL SHA-256 `0087687d634615035267e5ac339de2903f75a23462ba4fccaceb2ebb51d5f388`，
-reference DLL SHA-256 `bb0da82464cf1d8cdf0f5a89c90a3b0f02b18982945738631030624a6d6640cf`。
 同进程值复制、已列观测字段及随机未来样本一致，不等于全字段codec或跨进程认证；覆盖与反例见
-[探针报告](work/persistence-replay-analysis/runtime/REPORT.md)。临时可执行文件验后清理，源／日志保留。
+[存取历史](verification/PERSISTENCE_HISTORY.md)。临时探针源、日志及可执行文件不承担当前运行依赖。
 
 后续实施期另作一次有界Steam存储补证，未覆盖上述51方法证据文件。仍用同一DLL／metadata及iced-x861.21.0，
 独立输出13＋5个局部方法和6个字符串使用槽；前组方法区间上限64KiB、后组16KiB，输入哈希重新核对一致，未执行原程序。
 结论与VA／RVA／文件偏移见[存储局部报告](work/persistence-replay-analysis/exe/STORAGE_LOCAL.md)：
 初始化setter实际写false、media4根Storage与条件路径已定位，配置加载后的实际USE_STEAM／ROOT_FOLDER仍未知。
 
-| 新增输出 | SHA-256 |
-| --- | --- |
-| `exe/storage-local-disassembly.json` | `8968b875830fa074fb09d2b57ce9a828d5785e81385a3cb8fbbba43707f4f398` |
-| `exe/storage-tail-disassembly.json` | `133d47e461e1f5338af3e86acd370ae958780362067d747c36675a578d7b7066` |
-| `exe/storage-local-strings.json` | `8c7e362b16bbf15b0b3d726853fd7e6113555e3fa5d96c5be4aa71cda89c0f57` |
 
 维护文件的字段身份由自有C++声明生成，不来自反编译实现。当前93结构／11枚举、私有包装字段及别名清单见
 [codec字段清单](prototype/src/startup_world_codec_fields.json)，当前schema SHA-256为
@@ -427,10 +336,6 @@ reference DLL SHA-256 `bb0da82464cf1d8cdf0f5a89c90a3b0f02b18982945738631030624a6
 不写入产品素材或维护实现。普通参数为`--config none --show-bad-code --comments-level warn -j 2`，
 低层仍沿本节既有fallback参数。
 
-| Windows输出 | 原始字节SHA-256 | 换行为LF后的SHA-256 |
-| --- | --- | --- |
-| `work/world-page-fallback/GamePage.java` | `15d1f2232da54406cbbbf67bc059de9dace51a388672db4bff9f2110cb986fc6` | `e4b7eea7f8b2ecb40c0a49ba21cc8175c8177f9ac92222fa1d75b45193de2e56` |
-| `work/construction-render-fallback/MainScene.java` | `a64b18b56d600bfd6dffe7907cc56b701bcc18743ffc7d51dd3b2c0ba69cba84` | `cadcb21544111c305214c67f4e25724a17ada111b3c728f7ed20b9772ddf21bb` |
 
 两份LF哈希分别与已有GamePage／MainScene证据一致，差异仅平台换行；没有修改固定APK、原表或原图。
 raw95输入及领取分支由普通`b/g.java:6116`与GamePage低层21341起`L1e92→L1f84`交叉，

@@ -45,6 +45,8 @@ WorldGiftPageState fixture(int mode, int status = 0, int raw = 94) {
     state.facility.scripts.pages = {scene, gift};
     state.facility.scripts.next_page_id = 3;
     state.facility.scripts.executing_page = 2;
+    if (mode == 4)
+        state.facility.scripts.professions[1] = {status, false, "职业夹具"};
     if (raw == 95) {
         auto &scripts = state.facility.scripts;
         scripts.finance = WorldScriptFinance{};
@@ -80,7 +82,7 @@ WorldGiftPageState fixture(int mode, int status = 0, int raw = 94) {
     return state;
 }
 void timing(const WorldScriptCatalog &scripts) {
-    const std::vector<std::pair<int, int>> routes{{94, 3}, {94, 5}, {94, 6},  {94, 7},
+    const std::vector<std::pair<int, int>> routes{{94, 3}, {94, 4}, {94, 5}, {94, 6}, {94, 7},
                                                   {94, 8}, {95, 0}, {95, 1},  {95, 3},
                                                   {95, 4}, {95, 9}, {95, 10}, {95, 11}};
     for (const auto &[raw, mode] : routes)
@@ -115,6 +117,12 @@ void timing(const WorldScriptCatalog &scripts) {
                               "95 idle and early confirmation preserve every supported effect "
                               "domain");
                     }
+                    if (raw == 94 && mode == 4)
+                        check(result.candidate->state.facility.scripts.professions.at(1).status ==
+                                  0 &&
+                                  !result.candidate->state.facility.scripts.professions.at(1)
+                                       .pending_notice,
+                              "94 profession waits for ready confirmation, not early skip");
                 } else
                     check(result.candidate->state.facility.scripts.pages.at(1).lifecycle == 4 &&
                               result.candidate->state.facility.scripts.pages.at(0).lifecycle == 1,
@@ -164,20 +172,21 @@ void script_rewards(const WorldScriptCatalog &scripts) {
         check(!prepare_world_gift_page(next, {2, 41, true}, scripts).candidate,
               "retired95 cannot repeat cash, points, stock, flags, medals or unlocks");
     }
-    for (int mode : {4, 11})
+    for (const auto &[raw, mode] :
+         std::vector<std::pair<int, int>>{{94, 4}, {95, 4}, {95, 11}})
         for (int status : {1, 2})
             for (bool pending : {false, true}) {
-                auto input = fixture(mode, status, 95);
+                auto input = fixture(mode, status, raw);
                 auto &value = mode == 4 ? input.facility.scripts.professions.at(1)
                                         : input.facility.scripts.activities.at(1);
                 value.pending_notice = pending;
                 const auto result = prepare_world_gift_page(input, {2, 40, true}, scripts);
-                check(result.candidate.has_value(), "already open95 definition is valid");
+                check(result.candidate.has_value(), "already open94/95 definition is valid");
                 const auto &out = mode == 4
                                       ? result.candidate->state.facility.scripts.professions.at(1)
                                       : result.candidate->state.facility.scripts.activities.at(1);
                 check(out.status == 1 && out.pending_notice == pending,
-                      "95 leaves existing notice unchanged; script31 unlock is not granted twice");
+                      "94/95 preserve existing notice; master/script31 unlock is not granted twice");
             }
     for (int flags : {0, 1})
         for (int amount : {0, 200, 300}) {
@@ -269,7 +278,7 @@ void script_reward_failures(const WorldScriptCatalog &scripts) {
 }
 void definitions(const WorldScriptCatalog &scripts) {
     for (int status : {0, 1, 2})
-        for (int mode : {3, 5, 6, 7, 8}) {
+        for (int mode : {3, 4, 5, 6, 7, 8}) {
             auto input = fixture(mode, status);
             const auto result = prepare_world_gift_page(input, {2, 40, true}, scripts);
             check(
@@ -286,7 +295,13 @@ void definitions(const WorldScriptCatalog &scripts) {
                           next.facility_unlocks.at(1).pending_notice == (status == 0) &&
                           next.facility_unlocks.at(1).unlock_counter == (status == 0 ? 0 : 9),
                       "buildinggift alwaysH+1cap99; oldp0only br.b setsr/p2/q0");
-            else if (mode == 8) {
+            else if (mode == 4) {
+                const auto &profession = next.facility.scripts.professions.at(1);
+                check(profession.status == 1 && profession.pending_notice == (status == 0),
+                      "94 profession claims p1; only old p0 creates NEW");
+                check(!prepare_world_gift_page(next, {2, 41, true}, scripts).candidate,
+                      "retired94 profession cannot claim twice");
+            } else if (mode == 8) {
                 const auto &item = next.facility.finish.dungeon.catalog.at({0, 1});
                 check(item.inventory == 999 && item.status == (status == 0 ? 1 : status) &&
                           item.newly_unlocked == (status == 0) &&
@@ -349,10 +364,19 @@ void failures(const WorldScriptCatalog &scripts) {
     check(claimed.candidate &&
               !prepare_world_gift_page(claimed.candidate->state, {2, 41, true}, scripts).candidate,
           "closedpage not dispatched again, no permissive double gift API");
-    input = fixture(4);
-    check(prepare_world_gift_page(input, {2, 40, true}, scripts).error ==
-              WorldGiftPageError::unsupported_page,
-          "professionpage route remains outside actual gift subset, cannot silently success");
+    for (const int status : {-1, 0}) {
+        input = fixture(4, status);
+        if (status == 0)
+            input.facility.scripts.professions.clear();
+        const auto early = prepare_world_gift_page(input, {2, 1, true}, scripts);
+        const auto ready = prepare_world_gift_page(input, {2, 40, true}, scripts);
+        check(early.candidate && early.candidate->counter == 40 && !early.candidate->claimed &&
+                  !ready.candidate && ready.error == WorldGiftPageError::invalid_owner &&
+                  input.facility.scripts.pages.back().lifecycle == 2 &&
+                  (status == 0 ? input.facility.scripts.professions.empty()
+                               : input.facility.scripts.professions.at(1).status == -1),
+              "94 profession defers payload read but rejects missing/invalid claim atomically");
+    }
 }
 } // namespace
 int main() {

@@ -1,10 +1,10 @@
-#include "ark/app/world_save.hpp"
-#include "ark/simulation/startup_world_building.hpp"
-#include "ark/simulation/startup_world_editing.hpp"
-#include "ark/simulation/startup_world_expansion.hpp"
-#include "ark/simulation/startup_world_magic_pot.hpp"
-#include "ark/simulation/startup_world_runtime_tasks.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/save/world_save.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
+#include "ark/simulation/map/startup_world_expansion.hpp"
+#include "ark/simulation/facilities/startup_world_magic_pot.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "../support/world_fixture.hpp"
 
 #include <iostream>
 #include <limits>

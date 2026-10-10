@@ -1,0 +1,758 @@
+// Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
+#include "world_view.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "ark/app/session/world_session.hpp"
+#include "../platform/desktop_session.hpp"
+#include "../ui/common/layout.hpp"
+#include "ark/presentation/script_text.hpp"
+#include "../ui/common/skin.hpp"
+#include "../ui/village/world_award.hpp"
+#include "../ui/tasks/world_crew_summary.hpp"
+#include "../ui/system/world_menu.hpp"
+#include "../ui/common/world_panels.hpp"
+#include "../ui/common/world_reports.hpp"
+#include "../ui/system/world_startup.hpp"
+#include "../ui/tasks/world_tasks.hpp"
+#include "../platform/world_audio.hpp"
+#include "../scene/world_canvas.hpp"
+#include "../inspection/world_inspection.hpp"
+#include "../input/world_management.hpp"
+#include "../inspection/world_management_inspection.hpp"
+#include "../input/world_pointer.hpp"
+#include "../inspection/world_render_statistics.hpp"
+#include "../input/world_save_menu.hpp"
+#include "../scene/world_scene.hpp"
+#include "world_title.hpp"
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <iostream>
+#include <random>
+#include <stdexcept>
+#include <tuple>
+
+namespace ark::desktop {
+namespace {
+namespace rules = simulation::rules;
+using State = simulation::StartupWorldRuntimeState;
+struct WorldWindow {
+    explicit WorldWindow(const app::LaunchOptions &options) {
+        require_display();
+        SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_WINDOW_HIGHDPI);
+        InitWindow(options.width, options.height, "Ark-Village - World");
+        if (!IsWindowReady())
+            throw std::runtime_error("Cannot initialize world window");
+        SetWindowMinSize(240, 256);
+        SetExitKey(KEY_NULL);
+        SetTargetFPS(0);
+    }
+    ~WorldWindow() { CloseWindow(); }
+};
+const rules::WorldScriptPage *active_page(const State &s) {
+    const auto found = std::find_if(s.scripts.pages.rbegin(), s.scripts.pages.rend(),
+                                    [](const auto &page) { return page.lifecycle != 4; });
+    if (found == s.scripts.pages.rend() || found->kind == rules::WorldScriptPageKind::scene)
+        return nullptr;
+    return &*found;
+}
+} // namespace
+
+// A suite retains one immutable natural checkpoint. Each capture owns an independent branch;
+// purchases and point payments cannot leak into the next capture or into normal gameplay.
+static void run_world_game_capture(const app::LaunchOptions &options,
+                                   const std::filesystem::path &assets,
+                                   std::optional<State> *checkpoint = nullptr,
+                                   WorldManagementInspection *inspection_checkpoint = nullptr) {
+    WorldWindow window(options);
+    WorldAudio audio(assets);
+    float zoom = options.zoom_percent / 100.F;
+    Extent extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+    // Initialization is temporary; this value is the sole persistent canonical world.
+    State state = [&] {
+        if (checkpoint && *checkpoint) {
+            std::cout << "World inspection checkpoint: target=" << options.inspect_page
+                      << " rounds=" << (*checkpoint)->simulation_steps
+                      << " random=" << (*checkpoint)->scene.random.draws() << '\n';
+            return **checkpoint;
+        }
+        std::uint64_t seed = 1;
+        if (options.inspect_page.empty() || options.inspect_page == "world-load") {
+            // Original files omit randomness. Every normal/cold-load process starts a new stream;
+            // bounded source inspections retain their explicit reproducible seed.
+            std::random_device entropy;
+            seed = static_cast<std::uint64_t>(
+                       std::chrono::system_clock::now().time_since_epoch().count()) ^
+                   (static_cast<std::uint64_t>(entropy()) << 32) ^ entropy();
+        }
+        simulation::StartupSession initial;
+        simulation::StartupWorldRuntimeSession session(
+            initial.state(), rules::WorldRandomStream::from_java_seed(seed));
+        return session.state();
+    }();
+    // Visibility affects source decisions, so inspection uses the actual window before any round.
+    state.reference_viewport = world_viewport(extent, zoom);
+    const bool title_inspection = options.inspect_page.rfind("world-title", 0) == 0;
+    if (title_inspection || (options.inspect_page.empty() && options.frames == 0)) {
+        state.scene.framework_paused = options.paused;
+        state.scene.speed_setting = 0;
+        if (!run_world_title(options, assets, state, audio))
+            return;
+        extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+        state.reference_viewport = world_viewport(extent, zoom);
+    }
+    const bool inspecting = options.inspect_page.rfind("world-", 0) == 0;
+    const bool menu_inspection =
+        options.inspect_page == "world-menu" || options.inspect_page == "world-village-menu";
+    const bool save_inspection = options.inspect_page == "world-save" ||
+                                 options.inspect_page == "world-load" ||
+                                 options.inspect_page == "world-load-error";
+    const bool transient =
+        inspecting && options.inspect_page != "world-active" && !menu_inspection &&
+        options.inspect_page != "world-month" && options.inspect_page != "world-month-income" &&
+        options.inspect_page != "world-rank" && options.inspect_page != "world-award" &&
+        options.inspect_page != "world-building" && options.inspect_page != "world-details" &&
+        options.inspect_page != "world-facility-bonuses" && !save_inspection;
+    WorldManagementInspection management_inspection;
+    prepare_world_inspection(state, options, transient, management_inspection, checkpoint,
+                             inspection_checkpoint);
+    WorldCanvas canvas;
+    Sprites sprites(assets);
+    // Catalogue/scripts/static UI demand is generated once with the common libraries.
+    // The current village name may be supplied dynamically, so it remains explicit.
+    Text text(desktop_font_path(assets, options.font), state.scripts.village_name);
+    ui::Skin skin(sprites, text);
+    state.scene.framework_paused = options.paused || transient;
+    state.scene.speed_setting = 0; // Player windows always use the normal source update count.
+    WorldCameraView view{state.camera, state.reference_viewport};
+    WorldSaveInspection save_inspection_driver(options);
+    const auto session_directory =
+        save_inspection_driver.directory().empty() && !inspecting && !options.frames
+            ? app::default_world_save_directory()
+            : save_inspection_driver.directory();
+    app::WorldSession session(std::move(state), session_directory);
+    auto publication = session.frame();
+    audio.consume(
+        {{simulation::StartupAudioOperation::replace_bgm,
+          publication->state->active_task && publication->state->task.encounter ? 2 : 1}});
+    int frames{}, paragraph{}, scroll{};
+    std::uint64_t viewed_page{}, pending_ack{}, pending_view{}, pending_pause{};
+    std::uint64_t pending_task{}, held_task_page{}, pending_menu{};
+    int menu_selection = 1;
+    bool village_menu = options.inspect_page == "world-village-menu";
+    int village_selection{};
+    std::string menu_feedback;
+    // Menu inspection exercises the real asynchronous desktop command after natural startup.
+    // This explicit diagnostic player pause permits checking the exact loaded date before
+    // another source round. Loading must preserve it and the current fresh-session random stream.
+    if (options.inspect_page == "world-load")
+        session.set_paused(true);
+    if (menu_inspection || save_inspection)
+        pending_menu = session.open_main_menu();
+    WorldManagement management;
+    SpritePickMap scene_picks;
+    std::uint64_t pick_generation = publication->generation;
+    WorldSaveMenu save_menu;
+    auto generation = publication->generation;
+    std::uint64_t discard_interpolation_revision{};
+    if (management_inspection.preview_anchor) {
+        if (world_edit_view(*publication->state, {}).active)
+            management.inspect_edit(*publication->state,
+                                    management_inspection.edit_endpoint.value_or(
+                                        *management_inspection.preview_anchor));
+        else
+            management.inspect_placement(*management_inspection.selection,
+                                         *management_inspection.preview_anchor,
+                                         management_inspection.preview_orientation);
+    }
+    ui::WorldTaskSelection task_selection;
+    std::string task_feedback;
+    bool desired_pause = publication->state->scene.framework_paused;
+    const auto started = GetTime();
+    auto next_render = started;
+    double last_render{};
+    WorldPointerGesture pointer;
+    std::optional<
+        std::tuple<std::uint64_t, std::uint64_t, bool, bool, bool, int, int, int, int, int>>
+        pointer_context;
+    WorldRenderStatistics render_statistics(options.frames);
+    while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
+        const auto now = GetTime();
+        if (now < next_render) {
+            WaitTime(next_render - now);
+            continue;
+        }
+        next_render = now + 1.0 / 60;
+        render_statistics.interval(frames, (now - last_render) * 1000);
+        last_render = now;
+        publication = session.frame(); // Only a shared_ptr exchange; never waits for world work.
+        audio.consume(session.take_audio_requests());
+        audio.update(now);
+        const auto &current = *publication->state;
+        const bool failed = publication->failed || !publication->system_error.empty();
+        if (publication->generation != generation) {
+            // Loaded IDs may match the discarded world. Drop every local binding before
+            // reading input; neither held buttons nor prior interpolation crosses a load.
+            generation = publication->generation;
+            discard_interpolation_revision = publication->revision;
+            viewed_page = pending_ack = pending_view = pending_pause = 0;
+            pending_task = held_task_page = pending_menu = 0;
+            paragraph = scroll = 0;
+            management = {};
+            save_menu = {};
+            task_selection = {};
+            menu_feedback.clear();
+            task_feedback.clear();
+            view = {current.camera, current.reference_viewport};
+            desired_pause = current.scene.framework_paused;
+        }
+        management.observe(*publication);
+        save_menu.observe(*publication);
+        if (publication->last_command_serial >= pending_ack)
+            pending_ack = 0;
+        if (pending_task) {
+            const auto result = std::find_if(
+                publication->command_results.begin(), publication->command_results.end(),
+                [&](const auto &r) { return r.serial == pending_task; });
+            if (result != publication->command_results.end()) {
+                task_feedback.clear();
+                if (result->outcome == app::WorldCommandOutcome::rejected) {
+                    using Denial = rules::TaskCommandDenial;
+                    switch (result->denial) {
+                    case Denial::insufficient_funds:
+                        task_feedback = "资金不足";
+                        break;
+                    case Denial::team_full:
+                        task_feedback = "队伍已满";
+                        break;
+                    case Denial::no_extra_candidates:
+                        task_feedback = "暂无可追加人员";
+                        break;
+                    default:
+                        task_feedback = "页面已变化，请重试";
+                        break;
+                    }
+                }
+                pending_task = 0;
+            }
+        }
+        if (pending_menu) {
+            const auto result = std::find_if(
+                publication->command_results.begin(), publication->command_results.end(),
+                [&](const auto &r) { return r.serial == pending_menu; });
+            if (result != publication->command_results.end()) {
+                menu_feedback = result->outcome == app::WorldCommandOutcome::rejected
+                                    ? (result->kind == app::WorldCommandKind::open_save_menu &&
+                                               !publication->save_message.empty()
+                                           ? publication->save_message
+                                           : "当前操作不可用")
+                                    : "";
+                pending_menu = 0;
+            }
+        }
+        save_inspection_driver.observe(*publication, session, pending_menu, now - started);
+        if (publication->last_command_serial >= pending_view)
+            view = {current.camera, current.reference_viewport};
+        if (publication->last_command_serial >= pending_pause)
+            desired_pause = current.scene.framework_paused;
+        extent = canvas_extent(GetScreenWidth(), GetScreenHeight());
+        bool view_changed{};
+        const auto next_viewport = world_viewport(extent, zoom);
+        if (next_viewport != view.viewport) {
+            view.viewport = next_viewport;
+            view_changed = true;
+        }
+        canvas.resize({GetRenderWidth(), GetRenderHeight()});
+        const auto destination = viewport(GetScreenWidth(), GetScreenHeight(), extent);
+        const auto raster =
+            canvas_camera(viewport(canvas.size.width, canvas.size.height, extent), extent);
+        std::string dynamic_text = current.scripts.village_name;
+        for (const auto &[id, profile] : current.human_profiles) {
+            (void)id;
+            dynamic_text += profile.name;
+        }
+        if (!text.include_text(dynamic_text))
+            throw std::runtime_error("当前字体不支持存档中的姓名");
+        text.prepare(raster.zoom);
+        const ui::Layout layout(extent);
+        const auto mouse = logical_mouse(GetMousePosition(), destination, extent);
+        const auto *input_page = active_page(current);
+        // Key and text events have separate raylib queues. Drain key events for marker resets;
+        // this leaves GetCharPressed and IsKeyPressed available to their existing consumers.
+        const bool keyboard_event = GetKeyPressed() != KEY_NULL;
+        while (GetKeyPressed() != KEY_NULL) {
+        }
+        if (keyboard_event)
+            management.clear_mouse_marker();
+        const auto next_pointer_context = std::tuple{generation,
+                                                     input_page ? input_page->id : std::uint64_t{},
+                                                     publication->main_menu_open,
+                                                     publication->save_menu_open,
+                                                     village_menu,
+                                                     current.scene.scene_state,
+                                                     current.build_mode,
+                                                     current.build_definition.value_or(-1),
+                                                     extent.width,
+                                                     extent.height};
+        if (pointer_context != next_pointer_context) {
+            pointer.cancel(); // A release never targets a newly opened page or a loaded world.
+            pointer_context = next_pointer_context;
+        }
+        const bool back = IsKeyPressed(KEY_ESCAPE) ||
+                          (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT));
+        const bool pointer_enabled = IsWindowFocused() && mouse && !failed && !pending_menu &&
+                                     !pending_task && !pending_ack && !management.pending() &&
+                                     !save_menu.pending() && !back;
+        bool can_pan = pointer_enabled && !input_page && !publication->main_menu_open &&
+                       !publication->save_menu_open &&
+                       (current.scene.scene_state == 0 || current.scene.scene_state == 1) &&
+                       CheckCollisionPointRec(*mouse, layout.scene);
+        if (can_pan && management.pointer_on_control(current, extent, *mouse))
+            can_pan = false;
+        const auto gesture =
+            pointer.sample(GetMousePosition(), IsMouseButtonPressed(MOUSE_BUTTON_LEFT),
+                           IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                           IsMouseButtonReleased(MOUSE_BUTTON_LEFT), can_pan, pointer_enabled);
+        const bool click = gesture.click;
+        const auto hit = [&](Rectangle rectangle) {
+            return mouse && click && CheckCollisionPointRec(*mouse, rectangle);
+        };
+        const Rectangle retry_box{extent.width / 2.F - 48, extent.height - 48.F, 96, 20};
+        if (!publication->system_error.empty() &&
+            (IsKeyPressed(KEY_ENTER) || (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && mouse &&
+                                         CheckCollisionPointRec(*mouse, retry_box)))) {
+            app::WorldCommand retry;
+            retry.kind = app::WorldCommandKind::retry_system_write;
+            session.submit(retry);
+        }
+        const bool hud_mouse_buttons = ui::world_hud_buttons_visible(input_page);
+        if (!failed && !publication->save_menu_open && !save_menu.pending() &&
+            ((hud_mouse_buttons && hit(layout.left_button)) ||
+             (IsKeyPressed(KEY_SPACE) &&
+              !(input_page && ui::world_facility_items_page(*input_page))))) {
+            desired_pause = !desired_pause;
+            pending_pause = session.set_paused(desired_pause);
+        }
+        ui::WorldMenuInput menu_input;
+        menu_input.click = click && hud_mouse_buttons ? mouse : std::nullopt;
+        menu_input.toggle =
+            IsKeyPressed(KEY_M) || (IsWindowFocused() && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT) &&
+                                    !publication->main_menu_open && !publication->save_menu_open &&
+                                    !input_page && current.scene.scene_state == 0);
+        menu_input.escape = back;
+        menu_input.up = IsKeyPressed(KEY_UP);
+        menu_input.down = IsKeyPressed(KEY_DOWN);
+        menu_input.enter = IsKeyPressed(KEY_ENTER);
+        if (!publication->main_menu_open && !pending_menu)
+            village_menu = false;
+        const bool menu_pending = failed || pending_menu || pending_task || management.pending() ||
+                                  publication->save_menu_open || save_menu.pending();
+        const bool was_village_menu = village_menu;
+        if (village_menu) {
+            const auto intent = ui::world_village_menu_input(
+                layout, !desired_pause, (current.scripts.user_flags & 16U) != 0, menu_pending,
+                village_selection, menu_input, (current.scripts.user_flags & 1U) != 0);
+            if (intent) {
+                menu_feedback.clear();
+                switch (*intent) {
+                case ui::WorldVillageMenuIntent::back:
+                    village_menu = false;
+                    break;
+                case ui::WorldVillageMenuIntent::close:
+                    pending_menu = session.close_main_menu();
+                    break;
+                case ui::WorldVillageMenuIntent::activities:
+                    pending_menu = session.open_menu_village_activities();
+                    break;
+                case ui::WorldVillageMenuIntent::commerce:
+                    pending_menu = session.open_menu_commerce();
+                    break;
+                case ui::WorldVillageMenuIntent::magic_pot:
+                    pending_menu = session.open_menu_magic_pot();
+                    break;
+                }
+            }
+        }
+        const auto menu_intent =
+            was_village_menu
+                ? std::nullopt
+                : ui::world_menu_input(
+                      layout, publication->main_menu_open,
+                      !active_page(current) && current.scene.scene_state == 0, !desired_pause,
+                      failed || pending_menu || pending_task || management.pending() ||
+                          publication->save_menu_open || save_menu.pending(),
+                      menu_selection, menu_input);
+        if (menu_intent) {
+            menu_feedback.clear();
+            switch (*menu_intent) {
+            case ui::WorldMenuIntent::open:
+                pending_menu = session.open_main_menu();
+                break;
+            case ui::WorldMenuIntent::close:
+                pending_menu = session.close_main_menu();
+                break;
+            case ui::WorldMenuIntent::build:
+                pending_menu = session.open_menu_build();
+                break;
+            case ui::WorldMenuIntent::tasks:
+                pending_menu = session.open_menu_tasks();
+                break;
+            case ui::WorldMenuIntent::village:
+                village_menu = true;
+                village_selection = 0;
+                break;
+            case ui::WorldMenuIntent::system:
+                pending_menu = session.open_save_menu();
+                break;
+            }
+        }
+        if (publication->save_menu_open) {
+            WorldSaveMenuInput save_input;
+            save_input.click = click ? mouse : std::nullopt;
+            save_input.up = IsKeyPressed(KEY_UP);
+            save_input.down = IsKeyPressed(KEY_DOWN);
+            save_input.left = IsKeyPressed(KEY_LEFT);
+            save_input.right = IsKeyPressed(KEY_RIGHT);
+            save_input.enter = IsKeyPressed(KEY_ENTER);
+            save_input.escape = back;
+            save_menu.input(*publication, extent, save_input, session);
+        }
+        // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
+        // old scene while the simulation worker completes its previous atomic update.
+        const bool menu_blocked = publication->main_menu_open || publication->save_menu_open ||
+                                  pending_menu || save_menu.pending() || management.pending();
+        if (!menu_blocked && !active_page(current) && (gesture.pan.x != 0 || gesture.pan.y != 0)) {
+            const float factor = destination.width / extent.width * zoom;
+            view.camera[0] -= gesture.pan.x / factor;
+            view.camera[1] += gesture.pan.y / factor;
+            view_changed = true;
+        }
+        if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
+            !active_page(current)) {
+            if (const auto wheel = GetMouseWheelMove(); wheel) {
+                world_zoom_camera(view, extent, *mouse, wheel, zoom);
+                view_changed = true;
+            }
+        }
+        if (view_changed && !failed && !publication->save_menu_open && !save_menu.pending())
+            pending_view = session.set_view(view.camera, view.viewport);
+        if (const auto *page = menu_blocked ? nullptr : active_page(current)) {
+            if (viewed_page != page->id) {
+                viewed_page = page->id;
+                paragraph = scroll = 0;
+                task_selection = {};
+                task_feedback.clear();
+            }
+            if (page->legacy_page == 17) {
+                if (!desired_pause && !failed && !pending_ack &&
+                    (IsKeyPressed(KEY_ENTER) ||
+                     (click && mouse &&
+                      CheckCollisionPointRec(*mouse, {(extent.width - 222) / 2.F,
+                                                      (extent.height - 155) / 2.F, 222, 155}))))
+                    pending_ack = session.ack_page(page->id);
+            } else if (management.input_page(
+                           current, *page, extent, mouse, click, back, keyboard_event,
+                           desired_pause || failed || pending_task || pending_ack, session)) {
+                // Management controller owns only selection and forwards explicit FIFO intents.
+            } else if (ui::world_task_page(current, *page)) {
+                const auto task = ui::world_task_view(current, *page);
+                const auto task_layout = ui::world_task_layout(extent);
+                ui::WorldTaskInput input;
+                input.click = click ? mouse : std::nullopt;
+                input.enter = IsKeyPressed(KEY_ENTER);
+                input.escape = back;
+                input.up = IsKeyPressed(KEY_UP);
+                input.down = IsKeyPressed(KEY_DOWN);
+                input.left = IsKeyPressed(KEY_LEFT);
+                input.right = IsKeyPressed(KEY_RIGHT);
+                if (mouse && CheckCollisionPointRec(*mouse, task_layout.rows))
+                    input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
+                const auto intent = ui::world_task_input(task, task_layout, task_selection, input,
+                                                         desired_pause || failed || pending_task);
+                if (intent) {
+                    task_feedback.clear();
+                    pending_task =
+                        session.act_task_page(page->id, intent->action, intent->selection);
+                }
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 83) {
+                const auto box = ui::world_page_layout(*page, extent);
+                const Rectangle cancel{box.panel.x + 10, box.confirm.y, 58, 20};
+                if (!desired_pause && !failed && !pending_task && (hit(cancel) || back))
+                    pending_task = session.cancel_page(page->id);
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 31) {
+                const auto crew = ui::world_crew_summary_view(current, page->id);
+                const auto crew_layout = ui::world_crew_summary_layout(extent);
+                if (crew.initialized && !desired_pause && !failed && !pending_ack &&
+                    (hit(crew_layout.confirm) || IsKeyPressed(KEY_ENTER)))
+                    pending_ack = session.ack_page(page->id);
+                if (mouse && CheckCollisionPointRec(*mouse, crew_layout.rows))
+                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+                const int visible = ui::world_crew_summary_visible_rows(crew_layout);
+                scroll = std::clamp(scroll, 0,
+                                    std::max(0, static_cast<int>(crew.rows.size()) - visible));
+            } else if (page->legacy_page == 30) {
+                const auto victory = ui::world_victory_view(current, *page);
+                if (victory.initialized && !desired_pause && !failed && !pending_ack &&
+                    (hit(ui::world_victory_layout(extent).confirm) || IsKeyPressed(KEY_ENTER)))
+                    pending_ack = session.ack_page(page->id);
+            } else if (ui::world_page_regular_confirmation(*page) &&
+                       ui::world_task_related_confirmation(current, *page)) {
+                const auto page_layout = ui::world_page_layout(*page, extent);
+                if (!desired_pause && !failed && !pending_ack &&
+                    (hit(page_layout.confirm) || IsKeyPressed(KEY_ENTER))) {
+                    const auto decoded =
+                        ui::decode_script_text(ui::world_page_body(current, *page, paragraph));
+                    const auto wrapped =
+                        ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                            [&](const auto &value) { return text.width(value); });
+                    const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+                    // Finishing a paragraph is separate from reaching the end of its visible slice.
+                    if (scroll + visible < static_cast<int>(wrapped.size()))
+                        scroll =
+                            std::min(scroll + visible, static_cast<int>(wrapped.size()) - visible);
+                    else if (paragraph + 1 < static_cast<int>(page->paragraphs.size())) {
+                        ++paragraph;
+                        scroll = 0;
+                    } else
+                        pending_ack = session.ack_page(page->id);
+                }
+                if (mouse && CheckCollisionPointRec(*mouse, page_layout.panel))
+                    scroll = std::max(0, scroll - static_cast<int>(GetMouseWheelMove() * 2));
+            }
+        }
+        // Held acceleration is page-bound and edge-triggered; 60 FPS cannot add source ticks.
+        const auto *held_page = active_page(current);
+        const auto held_layout = ui::world_task_layout(extent);
+        const bool held =
+            !menu_blocked && held_page && held_page->legacy_page == 24 && !desired_pause &&
+            !failed && IsWindowFocused() &&
+            (IsKeyDown(KEY_ENTER) || (IsMouseButtonDown(MOUSE_BUTTON_LEFT) && mouse &&
+                                      CheckCollisionPointRec(*mouse, held_layout.confirm)));
+        const auto next_held_page = held ? held_page->id : 0;
+        if (held_task_page != next_held_page) {
+            if (held_task_page)
+                session.set_page_confirm_held(held_task_page, false);
+            if (next_held_page)
+                session.set_page_confirm_held(next_held_page, true);
+            held_task_page = next_held_page;
+        }
+        const bool main_scene = !menu_blocked && !active_page(current);
+        // Click the last presented artwork, including its actual interpolated actor positions.
+        // Loading replaces all identities; never reuse a hit list across world generations.
+        if (pick_generation != publication->generation) {
+            scene_picks.reset({});
+            pick_generation = publication->generation;
+        }
+        const bool scene_handled =
+            main_scene &&
+            management.input_scene(current, view, extent, mouse, click, zoom, back,
+                                   desired_pause || failed || pending_task, session, scene_picks);
+        if (main_scene && !scene_handled && current.scene.scene_state == 0 && !desired_pause &&
+            !failed && !pending_task && IsKeyPressed(KEY_T)) {
+            task_feedback.clear();
+            pending_task = session.open_task_menu();
+        }
+        if (main_scene && !scene_handled && current.scene.scene_state == 0 && !desired_pause &&
+            !failed && !pending_task && !pending_menu && IsKeyPressed(KEY_V))
+            pending_menu = session.open_village_activities();
+        BeginTextureMode(canvas.texture);
+        ClearBackground(Color{145, 211, 247, 255});
+        BeginMode2D(raster);
+        const auto clip = layout.scene_clip;
+        BeginScissorMode(static_cast<int>(std::floor(raster.offset.x + clip.x * raster.zoom)),
+                         static_cast<int>(std::floor(raster.offset.y + clip.y * raster.zoom)),
+                         static_cast<int>(std::ceil(clip.width * raster.zoom)),
+                         static_cast<int>(std::ceil(clip.height * raster.zoom)));
+        const double age =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() - publication->published)
+                .count();
+        const float alpha = static_cast<float>(
+            std::clamp(age / std::max(.001, publication->interval_seconds), 0.0, 1.0));
+        scene_picks.reset(clip, raster, canvas.size.width, canvas.size.height);
+        draw_world_scene(current, sprites, text, zoom,
+                         publication->revision <= discard_interpolation_revision
+                             ? nullptr
+                             : publication->previous.get(),
+                         alpha, &view, &scene_picks);
+        if (!active_page(current) && !publication->main_menu_open && !publication->save_menu_open)
+            management.draw_footprint(current, view, extent, mouse, zoom, sprites);
+        EndScissorMode();
+        if (!active_page(current) && !publication->main_menu_open && !publication->save_menu_open)
+            management.draw_placement(current, view, extent, mouse, zoom, skin,
+                                      !desired_pause && !failed);
+        ui::draw_world_notices(ui::world_notice_view(current, extent), skin);
+        // Flush these labels before opaque modal artwork, preserving both clip and paint order.
+        EndMode2D();
+        text.flush(raster.zoom, raster.offset);
+        BeginMode2D(raster);
+        ui::draw_world_hud(current, layout, skin, failed, publication->main_menu_open,
+                           pending_menu != 0, active_page(current));
+        if (const auto *page = active_page(current)) {
+            if (page->legacy_page == 17) {
+                if (publication->system.clear)
+                    ui::draw_world_clear(*publication->system.clear, extent, skin);
+            } else if (management.draw_page(current, *page, extent, skin,
+                                            !desired_pause && !failed && !pending_ack &&
+                                                !pending_task)) {
+                // Source-bound management pages are drawn by their own small UI modules.
+            } else if (ui::world_task_page(current, *page)) {
+                ui::draw_world_task(ui::world_task_view(current, *page),
+                                    ui::world_task_layout(extent), skin, task_selection,
+                                    !desired_pause && !failed && !pending_task, task_feedback);
+            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
+                       page->legacy_page == 31) {
+                const auto crew = ui::world_crew_summary_view(current, page->id);
+                const auto crew_layout = ui::world_crew_summary_layout(extent);
+                ui::draw_world_crew_summary(crew, crew_layout, skin, scroll,
+                                            !desired_pause && !failed && !pending_ack);
+            } else if (page->legacy_page == 30) {
+                ui::draw_world_victory(ui::world_victory_view(current, *page),
+                                       ui::world_victory_layout(extent), skin,
+                                       !desired_pause && !failed && !pending_ack);
+            } else if (!ui::world_page_automatic(*page)) {
+                // Timed waits and camera pages draw the world only; they do not expose a fake modal
+                // or a confirmation capable of skipping their source-owned counter/focus consumer.
+                const auto page_layout = ui::world_page_layout(*page, extent);
+                ui::draw_world_page_chrome(*page, page_layout, skin, paragraph);
+                ui::draw_world_task_monster(current, *page, page_layout.body, skin);
+                const auto decoded =
+                    ui::decode_script_text(ui::world_page_body(current, *page, paragraph));
+                const auto wrapped =
+                    ui::wrap_plain_text(decoded.text, page_layout.body.width,
+                                        [&](const auto &value) { return text.width(value); });
+                const int visible = std::max(1, static_cast<int>(page_layout.body.height / 17));
+                scroll =
+                    std::clamp(scroll, 0, std::max(0, static_cast<int>(wrapped.size()) - visible));
+                for (int row = 0; row < visible && scroll + row < static_cast<int>(wrapped.size());
+                     ++row) {
+                    const float y = page_layout.body.y + row * 17;
+                    if (decoded.centered)
+                        skin.centered(wrapped[scroll + row],
+                                      {page_layout.body.x, y, page_layout.body.width, 17});
+                    else
+                        text.draw(wrapped[scroll + row], page_layout.body.x, y);
+                }
+                const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
+                if (page->legacy_page == 83)
+                    skin.button({page_layout.panel.x + 10, page_layout.confirm.y, 58, 20}, "取消",
+                                !desired_pause && !failed && !pending_task);
+                else if (ui::world_task_related_confirmation(current, *page))
+                    skin.button(page_layout.confirm,
+                                more_text ? "下一屏"
+                                : paragraph + 1 < static_cast<int>(page->paragraphs.size())
+                                    ? "下一页"
+                                    : "确定",
+                                !desired_pause && !failed && !pending_ack);
+            }
+        }
+        if (!publication->system_error.empty()) {
+            skin.content({8, extent.height - 92.F, extent.width - 16.F, 68});
+            skin.centered("系统纪录写入失败，进度已保留",
+                          {12, extent.height - 89.F, extent.width - 24.F, 18}, MAROON, 10);
+            skin.centered(publication->system_error,
+                          {12, extent.height - 72.F, extent.width - 24.F, 18}, MAROON, 10);
+            skin.button(retry_box, "重试");
+        }
+        if (publication->main_menu_open) {
+            if (village_menu)
+                ui::draw_world_village_menu(layout, skin, village_selection,
+                                            !desired_pause && !failed && !pending_menu,
+                                            (current.scripts.user_flags & 16U) != 0, menu_feedback,
+                                            (current.scripts.user_flags & 1U) != 0);
+            else
+                ui::draw_world_menu(layout, skin, menu_selection,
+                                    !desired_pause && !failed && !pending_menu, menu_feedback,
+                                    !failed && !pending_menu);
+        } else if (!publication->save_menu_open && !menu_feedback.empty())
+            skin.text.draw(menu_feedback, 8, extent.height - 58.F, MAROON);
+        save_menu.draw(*publication, extent, skin);
+        EndMode2D();
+        text.flush(raster.zoom, raster.offset);
+        EndTextureMode();
+        BeginDrawing();
+        ClearBackground(BLACK);
+        DrawTexturePro(
+            canvas.texture.texture,
+            {0, 0, static_cast<float>(canvas.size.width), -static_cast<float>(canvas.size.height)},
+            {0, 0, static_cast<float>(GetScreenWidth()), static_cast<float>(GetScreenHeight())},
+            {0, 0}, 0, WHITE);
+        EndDrawing();
+        render_statistics.cost(frames, (GetTime() - now) * 1000);
+        if (save_inspection_driver.ready())
+            ++frames;
+    }
+    session.stop();
+    publication = session.frame();
+    const auto &final_state = *publication->state;
+    const bool failed = publication->failed;
+    if (menu_inspection) {
+        std::cout << "World menu inspection: open=" << publication->main_menu_open
+                  << " explicit_pause=" << final_state.scene.framework_paused << '\n';
+        if (!publication->main_menu_open || failed)
+            throw std::runtime_error("World menu inspection did not receive successful FIFO open");
+    }
+    capture_world_screenshot(options, frames);
+    std::cout << "World render: window=" << GetScreenWidth() << 'x' << GetScreenHeight()
+              << " framebuffer=" << GetRenderWidth() << 'x' << GetRenderHeight()
+              << " canvas=" << canvas.size.width << 'x' << canvas.size.height << '\n';
+    std::cout << "World window: frames=" << frames << " rounds=" << final_state.simulation_steps
+              << " cash=" << final_state.scene.world.world.ai.accounting.funds()
+              << " humans=" << final_state.scene.world.world.ai.human_order.size()
+              << " monsters=" << final_state.scene.world.world.ai.monster_order.size()
+              << " report=" << final_state.report_state << '/' << final_state.report_counter
+              << " date=" << final_state.scene.calendar.year << '/'
+              << final_state.scene.calendar.month << '/' << final_state.scene.calendar.subperiod
+              << '/' << final_state.scene.calendar.units
+              << " random=" << final_state.scene.random.draws() << " failed=" << failed
+              << " elapsed=" << GetTime() - started << '\n';
+    const auto render_summary = render_statistics.finish();
+    std::cout << "World pacing: heartbeat_ms=47 speed=" << final_state.scene.speed_setting + 1
+              << " outer_updates=" << publication->outer_updates
+              << " render_interval_p50_ms=" << render_summary.interval_p50_ms
+              << " render_interval_p95_ms=" << render_summary.interval_p95_ms
+              << " render_cost_p95_ms=" << render_summary.cost_p95_ms
+              << " render_samples=" << render_summary.samples
+              << " render_sampling=" << (options.frames > 0 ? "bounded" : "off")
+              << " simulation_max_ms=" << publication->max_update_ms << '\n';
+    if (failed)
+        throw std::runtime_error(publication->error);
+}
+void run_world_game(const app::LaunchOptions &options, const std::filesystem::path &assets) {
+    const bool home = options.inspect_page == "world-home-suite";
+    if (options.inspect_page != "world-commerce-suite" && !home) {
+        run_world_game_capture(options, assets);
+        return;
+    }
+    std::optional<State> checkpoint;
+    WorldManagementInspection inspection_checkpoint;
+    const std::filesystem::path prefix(options.screenshot);
+    const auto started = std::chrono::steady_clock::now();
+    const std::vector<const char *> modes =
+        home ? std::vector<const char *>{"world-home-credit", "world-home-rebuilt"}
+             : std::vector<const char *>{"world-commerce",
+                                         "world-commerce-buy",
+                                         "world-commerce-receipt",
+                                         "world-commerce-facilities",
+                                         "world-commerce-facility-info",
+                                         "world-commerce-facility-reward"};
+    for (const auto *mode : modes) {
+        const auto capture_started = std::chrono::steady_clock::now();
+        auto capture = options;
+        capture.inspect_page = mode;
+        capture.screenshot =
+            (prefix.parent_path() / (prefix.stem().string() + "-" + mode + ".png")).string();
+        run_world_game_capture(capture, assets, &checkpoint,
+                               home ? &inspection_checkpoint : nullptr);
+        std::cout << "World suite capture: target=" << mode << " elapsed="
+                  << std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                                   capture_started)
+                         .count()
+                  << '\n';
+    }
+    std::cout << "World inspection suite: captures=" << modes.size()
+              << " natural_preparations=1 elapsed="
+              << std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count()
+              << '\n';
+}
+} // namespace ark::desktop

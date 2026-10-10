@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/character_hp.hpp"
+#include "ark/simulation/actors/rules/character_hp.hpp"
 
 #include <algorithm>
 #include <array>

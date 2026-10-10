@@ -1,8 +1,8 @@
 // Layout contracts keep active text and confirmation inside the viewport at every supported size.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_panels.hpp"
-#include "ui/world_reports.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/common/world_panels.hpp"
+#include "../../src/desktop/ui/common/world_reports.hpp"
 #include <cmath>
 #include <iostream>
 

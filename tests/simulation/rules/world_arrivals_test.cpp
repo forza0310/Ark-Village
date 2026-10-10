@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_arrivals.hpp"
+#include "ark/simulation/actors/rules/world_arrivals.hpp"
 
 #include <filesystem>
 #include <fstream>

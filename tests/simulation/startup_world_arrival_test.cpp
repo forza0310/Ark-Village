@@ -1,4 +1,4 @@
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <iostream>
 #include <stdexcept>

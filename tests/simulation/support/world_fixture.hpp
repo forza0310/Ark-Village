@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 namespace ark::simulation::test_support {
 // 每个测试可执行文件只安装一次真实空人物新局；每次返回独立副本，不共享可写Owner。

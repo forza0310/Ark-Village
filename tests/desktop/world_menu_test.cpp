@@ -1,10 +1,10 @@
 // Menu input owns desktop navigation only; freeze/atomic task opening belongs to session tests.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_menu.hpp"
-#include "ui/world_startup.hpp"
-#include "world_save_menu.hpp"
-#include "world_title.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/system/world_menu.hpp"
+#include "../../src/desktop/ui/system/world_startup.hpp"
+#include "../../src/desktop/input/world_save_menu.hpp"
+#include "../../src/desktop/application/world_title.hpp"
 #include <chrono>
 #include <cmath>
 #include <fstream>

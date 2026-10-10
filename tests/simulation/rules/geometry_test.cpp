@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/geometry.hpp"
+#include "ark/simulation/map/rules/geometry.hpp"
 
 #include <climits>
 #include <cstdlib>

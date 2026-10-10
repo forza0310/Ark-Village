@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_award_page.hpp"
+#include "ark/simulation/village/rules/world_award_page.hpp"
 
 #include <iostream>
 #include <limits>

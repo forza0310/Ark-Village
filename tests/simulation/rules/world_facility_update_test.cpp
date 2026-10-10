@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_facility_update.hpp"
+#include "ark/simulation/facilities/rules/world_facility_update.hpp"
 
 #include <algorithm>
 #include <filesystem>

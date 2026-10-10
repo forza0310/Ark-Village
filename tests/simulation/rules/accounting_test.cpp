@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/accounting.hpp"
+#include "ark/simulation/village/rules/accounting.hpp"
 
 #include <algorithm>
 #include <cstdlib>

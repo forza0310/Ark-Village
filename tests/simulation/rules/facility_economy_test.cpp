@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/facility_economy.hpp"
+#include "ark/simulation/facilities/rules/facility_economy.hpp"
 
 #include <climits>
 #include <cstdlib>

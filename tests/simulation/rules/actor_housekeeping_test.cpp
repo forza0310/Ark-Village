@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/actor_housekeeping.hpp"
+#include "ark/simulation/actors/rules/actor_housekeeping.hpp"
 
 #include <cmath>
 #include <iostream>

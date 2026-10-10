@@ -1,9 +1,9 @@
 // UI owns source identity/currency/selection projection. Frozen commerce suites own transactions.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_commerce.hpp"
-#include "ui/world_facility_catalog.hpp"
-#include "ui/world_magic_pot.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/village/world_commerce.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
+#include "../../src/desktop/ui/village/world_magic_pot.hpp"
 #include <algorithm>
 
 namespace ark::test {

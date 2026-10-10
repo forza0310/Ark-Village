@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/navigation.hpp"
+#include "ark/simulation/map/rules/navigation.hpp"
 
 #include <algorithm>
 #include <array>

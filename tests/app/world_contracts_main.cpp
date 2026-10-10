@@ -1,5 +1,5 @@
 // Related current-world contracts share compilation, while CTest selects an isolated case.
-#include "support/case_runner.hpp"
+#include "../support/case_runner.hpp"
 
 namespace ark::test {
 void world_report();

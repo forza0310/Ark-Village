@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ark/app/world_session.hpp"
+#include "ark/app/session/world_session.hpp"
 #include "world_active_trade_evidence.hpp"
 #include <iosfwd>
 #include <set>

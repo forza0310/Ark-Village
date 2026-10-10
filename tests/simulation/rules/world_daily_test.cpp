@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_daily.hpp"
+#include "ark/simulation/village/rules/world_daily.hpp"
 
 #include <cmath>
 #include <iostream>

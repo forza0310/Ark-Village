@@ -1,7 +1,7 @@
 // Product geometry must agree with source visibility; animation reads the canonical actor clock.
-#include "support/world_fixture.hpp"
-#include "world_rank.hpp"
-#include "world_scene.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/presentation/world_rank.hpp"
+#include "../../src/desktop/scene/world_scene.hpp"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>

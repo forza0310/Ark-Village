@@ -160,11 +160,11 @@ raw21现在是176×210的窄目录，顶部直接三分类、五个37间距图�
 
 | 产品补丁文件 | 对照898b653的具体结果与处理 |
 | --- | --- |
-| include/ark/simulation/rules/world_actor_schedule.hpp | 原3个回调Owner移动、最终state/audit移动均已包含；新增decision/control完整审计最后移动，工作routes仍先复制。采用研究实现，不删除原工作投影 |
-| include/ark/simulation/rules/world_runtime.hpp | 原纯委托免复制、私有Owner/审计移动均已包含；新增调用级calendar consumer兼容入口，外部calendar/scene_other提前返回后统一保留可写分支Owner。采用研究实现，旧入口仍沿各adapter回调 |
-| include/ark/simulation/rules/world_scene.hpp | 新机械翻译与当前补丁字节相同，完整scene审计移动已经进入源交付。采用新源身份，不保留同义补丁 |
-| include/ark/simulation/rules/world_schedule.hpp | 唯一差异为新增最后移动的源注释，行为与当前补丁相同。采用新源身份，完整返回审计保持 |
-| src/simulation/startup_world_runtime.cpp | 原暂停/页面/owned候选移动均已包含；新增固定只读adapter缓存，检查点collector作为同步调用参数借用，公开adapter工厂仍返回独立值；Session提交仍复制完整candidate。采用研究实现，检查点回调不写入共享adapter |
+| include/ark/simulation/ai/rules/world_actor_schedule.hpp | 原3个回调Owner移动、最终state/audit移动均已包含；新增decision/control完整审计最后移动，工作routes仍先复制。采用研究实现，不删除原工作投影 |
+| include/ark/simulation/world/rules/world_runtime.hpp | 原纯委托免复制、私有Owner/审计移动均已包含；新增调用级calendar consumer兼容入口，外部calendar/scene_other提前返回后统一保留可写分支Owner。采用研究实现，旧入口仍沿各adapter回调 |
+| include/ark/simulation/world/rules/world_scene.hpp | 新机械翻译与当前补丁字节相同，完整scene审计移动已经进入源交付。采用新源身份，不保留同义补丁 |
+| include/ark/simulation/ai/rules/world_schedule.hpp | 唯一差异为新增最后移动的源注释，行为与当前补丁相同。采用新源身份，完整返回审计保持 |
+| src/simulation/world/startup_world_runtime.cpp | 原暂停/页面/owned候选移动均已包含；新增固定只读adapter缓存，检查点collector作为同步调用参数借用，公开adapter工厂仍返回独立值；Session提交仍复制完整candidate。采用研究实现，检查点回调不写入共享adapter |
 
 扩张耐久字段已在schema2中，无需增加字段或迁移旧档；更新冻结数据集身份，旧身份明确拒绝。恢复校验用源legacy_surface_binding_matches识别合法混合格，继续严格核对占地/ID/定义/片号，新增town与fence_level对应边界一致性。研究扩张不修改spawn_cells，保留原新局spawn校验。两档扩张/混合道路往返后继续更新，验证不重复收费、随机及恢复字段；自动跨周恢复仍未交付，Steam评估不替换APK规则。
 
@@ -1523,7 +1523,7 @@ Windows实测两栏手动互不覆盖、失败替换、冷启动加载、旧命�
 
 ### 手动档实现与本地验收
 
-按用户“按照推荐计划继续”完成首批：系统菜单两栏手动档、覆盖/读取确认、槽摘要及忙/失败反馈；默认LOCALAPPDATA目录，`--save-dir`用于显式玩家目录或隔离验收。版本1显式小端协议，数据集固定为8f冻结snapshot hash，文件与动态解码各64MiB预算、动态条目累计100万。未知版本/数据集、有效校验的恶意长度/重复身份/非法布尔与枚举、悬空引用/伪目录/占地冲突均拒绝。25分区映射及已维护字段边界见[存档模块](../../../src/app/world_save.md)。没有改研究或冻结来源。
+按用户“按照推荐计划继续”完成首批：系统菜单两栏手动档、覆盖/读取确认、槽摘要及忙/失败反馈；默认LOCALAPPDATA目录，`--save-dir`用于显式玩家目录或隔离验收。版本1显式小端协议，数据集固定为8f冻结snapshot hash，文件与动态解码各64MiB预算、动态条目累计100万。未知版本/数据集、有效校验的恶意长度/重复身份/非法布尔与枚举、悬空引用/伪目录/占地冲突均拒绝。25分区映射及已维护字段边界见[存档模块](../../../src/app/save/world_save.md)。没有改研究或冻结来源。
 
 Worker在完整更新之间捕获和提交；同目录独占临时写入、flush、Windows替换，真实共享锁阻止替换时旧档逐字节不变，预存的其他临时文件不删除。载入先解码/验证私有候选，只纯重建地图/邻接/显示；保留邻接历史与实例m.p，不重放初访、收费、奖励或审计账目。已移除设施的合法历史引用保留，真正悬空引用拒绝。载入保留当前随机和玩家暂停，成功更换generation，旧输入可恢复拒绝，held/页面/插值清理。正常桌面新进程改用一次性时间/系统熵生成新流；显式可复现诊断仍固定种子，cold-load诊断使用新流。
 

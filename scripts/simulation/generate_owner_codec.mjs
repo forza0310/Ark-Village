@@ -22,7 +22,7 @@ if (args.includes('--compiler')) {
   const result = spawnSync(get('--compiler'), ['-std=c++17', '-I'+path.join(root,'include'),
     '-x','c++','-fsyntax-only','-Xclang','-ast-dump=json',
     '-Xclang','-ast-dump-filter=ark','-'], {
-      input:'#include "ark/simulation/startup_world_runtime.hpp"\n',maxBuffer:256*1024*1024});
+      input:'#include "ark/simulation/world/startup_world_runtime.hpp"\n',maxBuffer:256*1024*1024});
   if(result.status!==0) throw Error(result.stderr.toString());
   writeFileSync(astPath,result.stdout);
 }
@@ -127,7 +127,7 @@ for(const r of manifest.records){
  code+='; }\n};\n';
 }
 if (!inventoryOnly) for(const [file,text] of [['startup_world_codec_fields.inc',code],['startup_world_codec_fields.json',canonical]]) {
- const target=path.join(root,'src/simulation',file);
+ const target=path.join(root,'src/simulation/persistence',file);
  const generated = file.endsWith('.inc') ? productName(text) : text;
  if(args.includes('--check')) {if(readFileSync(target,'utf8')!==generated)throw Error('codec field coverage stale: '+target);}
  else writeFileSync(target,generated);

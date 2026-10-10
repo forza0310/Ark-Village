@@ -1,5 +1,5 @@
 // Numerical boundaries and entry ordering remain active in Release; no assert/NDEBUG dependency.
-#include "ark/simulation/rules/character_motion.hpp"
+#include "ark/simulation/actors/rules/character_motion.hpp"
 
 #include <array>
 #include <cmath>

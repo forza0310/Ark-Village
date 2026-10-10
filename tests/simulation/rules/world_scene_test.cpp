@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_scene.hpp"
+#include "ark/simulation/world/rules/world_scene.hpp"
 
 #include <algorithm>
 #include <iostream>

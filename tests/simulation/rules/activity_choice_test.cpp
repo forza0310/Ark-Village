@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/activity_choice.hpp"
+#include "ark/simulation/ai/rules/activity_choice.hpp"
 
 #include <cstdlib>
 #include <iostream>

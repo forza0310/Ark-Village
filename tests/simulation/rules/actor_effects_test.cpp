@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/actor_control.hpp"
-#include "ark/simulation/rules/actor_effects.hpp"
+#include "ark/simulation/ai/rules/actor_control.hpp"
+#include "ark/simulation/actors/rules/actor_effects.hpp"
 
 #include <array>
 #include <iostream>

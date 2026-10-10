@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/actor_lifecycle.hpp"
+#include "ark/simulation/actors/rules/actor_lifecycle.hpp"
 
 #include <algorithm>
 #include <cmath>

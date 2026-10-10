@@ -1,7 +1,7 @@
-#include "ark/simulation/rules/snapshot_facility_choice.hpp"
+#include "ark/simulation/ai/rules/snapshot_facility_choice.hpp"
 
-#include "ark/simulation/rules/activity_choice.hpp"
-#include "ark/simulation/rules/ranked_facility_choice.hpp"
+#include "ark/simulation/ai/rules/activity_choice.hpp"
+#include "ark/simulation/ai/rules/ranked_facility_choice.hpp"
 
 #include <algorithm>
 #include <cstdlib>

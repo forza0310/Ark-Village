@@ -1,6 +1,6 @@
 // Adversarial records retain a valid checksum so each protocol boundary is exercised directly.
-#include "ark/app/world_save.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/save/world_save.hpp"
+#include "../support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>

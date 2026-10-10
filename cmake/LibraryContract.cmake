@@ -8,7 +8,7 @@ function(ark_publish_library_contract)
             cmake/SharedRuntime.cmake scripts/shared_library_contract.mjs
             scripts/compile_desktop_glyphs.mjs scripts/simulation/compile_startup.mjs
             scripts/simulation/compile_startup_world.mjs scripts/simulation/compile_persistence_identity.mjs
-            src/app/shared_library_identity.cpp)
+            src/app/bootstrap/shared_library_identity.cpp)
         list(APPEND inputs "${PROJECT_SOURCE_DIR}/${file}")
     endforeach()
     set(artifacts)
@@ -40,7 +40,7 @@ function(ark_publish_library_contract)
         if(WIN32)
             list(APPEND artifacts "$<TARGET_LINKER_FILE:${target}>")
         endif()
-        target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src/app/shared_library_identity.cpp")
+        target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src/app/bootstrap/shared_library_identity.cpp")
         target_include_directories(${target} PRIVATE "${contract_dir}")
     endforeach()
     list(REMOVE_DUPLICATES inputs)

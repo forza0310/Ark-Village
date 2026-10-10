@@ -1,8 +1,8 @@
 // Read-only activity projection and input routing. Frozen source tests own cost/effect timing,
 // quarter resets, random draws, denial order and rollback; these fixtures do not recalculate them.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_village_activity.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/village/world_village_activity.hpp"
 #include <algorithm>
 #include <iostream>
 

@@ -1,6 +1,6 @@
-#include "ark/simulation/steam_facility_skin.hpp"
-#include "ark/simulation/startup.hpp"
-#include "ark/simulation/startup_world_projection.hpp"
+#include "ark/simulation/presentation/steam_facility_skin.hpp"
+#include "ark/simulation/world/startup.hpp"
+#include "ark/simulation/map/startup_world_projection.hpp"
 #include "ark/assets/sprite.hpp"
 #include <algorithm>
 #include <filesystem>

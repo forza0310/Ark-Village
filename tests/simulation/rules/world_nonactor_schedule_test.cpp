@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/world_nonactor_schedule.hpp"
-#include "ark/simulation/rules/world_scripts.hpp"
+#include "ark/simulation/ai/rules/world_nonactor_schedule.hpp"
+#include "ark/simulation/village/rules/world_scripts.hpp"
 
 #include <iostream>
 #include <stdexcept>

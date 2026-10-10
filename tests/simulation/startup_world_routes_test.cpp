@@ -1,5 +1,5 @@
-#include "ark/simulation/startup_world_routes.hpp"
-#include "ark/simulation/rules/world_popularity.hpp"
+#include "ark/simulation/actors/startup_world_routes.hpp"
+#include "ark/simulation/village/rules/world_popularity.hpp"
 
 #include <iostream>
 #include <stdexcept>

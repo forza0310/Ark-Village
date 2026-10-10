@@ -13,7 +13,7 @@ let astBytes=0;
 function readTrees(filter){
 const result=spawnSync(option('--compiler'),['-std=c++17','-I'+path.join(root,'include'),'-x','c++','-fsyntax-only','-Xclang','-ast-dump=json',
   '-Xclang','-ast-dump-filter=ark::simulation::'+filter,'-'],{
-  input:'#include "ark/simulation/startup_application.hpp"\n',maxBuffer:8*1024*1024});
+  input:'#include "ark/simulation/application/startup_application.hpp"\n',maxBuffer:8*1024*1024});
 if(result.status!==0)throw Error(result.stderr.toString());
 astBytes+=result.stdout.length;
 const source=result.stdout.toString('utf8'), trees=[];
@@ -99,7 +99,7 @@ const canonical=JSON.stringify(manifest,null,2)+'\n';
 const schema=crypto.createHash('sha256').update(canonical).digest('hex');
 const inc='// 应用字段分类生成身份；不覆盖独立world schema。\nconstexpr const char application_schema[] = "'+schema+'";\n';
 for(const [name,content] of [['startup_application_replay_fields.json',canonical],['startup_application_replay_fields.inc',inc]]){
-  const output=path.join(root,'src/simulation',name);
+  const output=path.join(root,'src/simulation/application',name);
   if(args.includes('--check')){if(fs.readFileSync(output,'utf8')!==content)throw Error('应用字段清单不匹配：'+name);}
   else fs.writeFileSync(output,content);
 }

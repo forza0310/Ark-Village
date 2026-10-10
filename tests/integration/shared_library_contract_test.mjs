@@ -85,8 +85,8 @@ try {
         // those exports even with the explicitly exported C contract beside them.
         writeFileSync(path.join(temporary, 'library.cpp'), 'extern "C" int fixture_value() { return 42; }\n');
         writeFileSync(path.join(temporary, 'main.cpp'), '#include <cstdio>\nextern "C" __declspec(dllimport) int fixture_value();\nstruct BusinessGlobal { BusinessGlobal() { std::printf("GLOBAL %d\\n", fixture_value()); } };\nBusinessGlobal world;\nint main() { std::printf("MAIN %d\\n", fixture_value()); }\n');
-        const identitySource = path.join(root, 'src/app/shared_library_identity.cpp');
-        const guardSource = path.join(root, 'src/app/shared_library_guard.cpp');
+        const identitySource = path.join(root, 'src/app/bootstrap/shared_library_identity.cpp');
+        const guardSource = path.join(root, 'src/app/bootstrap/shared_library_guard.cpp');
         function buildLibrary(withIdentity = true) {
             compile(['-shared', '-Wl,--export-all-symbols', '-I.', 'library.cpp', ...(withIdentity ? [identitySource] : []),
                 '-Wl,--out-implib,fixture.dll.a', '-o', module]);

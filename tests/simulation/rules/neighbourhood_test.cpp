@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/neighbourhood.hpp"
+#include "ark/simulation/facilities/rules/neighbourhood.hpp"
 
 #include <algorithm>
 #include <climits>

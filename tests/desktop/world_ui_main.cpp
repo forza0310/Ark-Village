@@ -1,5 +1,5 @@
 // Read-only world UI cases use common dependencies without sharing mutable fixture state.
-#include "support/case_runner.hpp"
+#include "../support/case_runner.hpp"
 
 namespace ark::test {
 void world_panels();

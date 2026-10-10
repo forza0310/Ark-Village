@@ -1,9 +1,9 @@
 // Deliberately sparse definition/instance IDs catch accidental row-index ownership. These are
 // presentation fixtures, not evidence of natural recruitment or successful task completion.
-#include "support/checks.hpp"
-#include "ui/world_award.hpp"
-#include "ui/world_reports.hpp"
-#include "ui/world_tasks.hpp"
+#include "../support/checks.hpp"
+#include "../../src/desktop/ui/village/world_award.hpp"
+#include "../../src/desktop/ui/common/world_reports.hpp"
+#include "../../src/desktop/ui/tasks/world_tasks.hpp"
 #include <iostream>
 
 namespace {

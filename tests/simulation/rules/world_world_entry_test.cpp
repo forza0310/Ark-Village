@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/world_encounters.hpp"
-#include "ark/simulation/rules/world_world_entry.hpp"
+#include "ark/simulation/combat/rules/world_encounters.hpp"
+#include "ark/simulation/world/rules/world_world_entry.hpp"
 
 #include <filesystem>
 #include <fstream>

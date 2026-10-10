@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_actor_tail.hpp"
+#include "ark/simulation/actors/rules/world_actor_tail.hpp"
 
 #include <iostream>
 #include <limits>

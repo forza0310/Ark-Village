@@ -1,8 +1,8 @@
 // Automatic display and diagnostic skips reuse the real fee/snapshot/close transaction. Defeat
 // and visitor values below are explicit contract fixtures, not a claimed natural game trajectory.
-#include "ark/app/world_report.hpp"
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>

@@ -1,8 +1,8 @@
 // Bounded source-consumer economy comparison. This is not the active-player campaign:
 // all variants use the same ordinary-page policy and differ only in legal construction.
-#include "ark/simulation/startup_world_building.hpp"
-#include "ark/simulation/startup_world_tax.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/village/startup_world_tax.hpp"
+#include "../support/world_fixture.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>

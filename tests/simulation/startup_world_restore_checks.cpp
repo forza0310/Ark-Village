@@ -1,8 +1,8 @@
 #include "startup_world_restore_checks.hpp"
 
-#include "startup_world_restore_validation.hpp"
-#include "ark/simulation/startup_world_facility_catalog.hpp"
-#include "ark/simulation/startup_world_magic_pot.hpp"
+#include "../../src/simulation/persistence/startup_world_restore_validation.hpp"
+#include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
+#include "ark/simulation/facilities/startup_world_magic_pot.hpp"
 
 #include <algorithm>
 

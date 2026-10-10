@@ -1,6 +1,6 @@
 // Input must invert the same transform at letterboxed and portrait/wide window sizes.
-#include "projection.hpp"
-#include "world_pointer.hpp"
+#include "../../src/desktop/scene/projection.hpp"
+#include "../../src/desktop/input/world_pointer.hpp"
 #include <cmath>
 #include <stdexcept>
 int main() {

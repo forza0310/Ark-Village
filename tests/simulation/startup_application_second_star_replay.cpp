@@ -1,8 +1,8 @@
 #include "startup_application_second_star_replay.hpp"
 #include "startup_application_active_replay.hpp"
 #include "ark/assets/sha256.hpp"
-#include "startup_application_replay_paths.hpp"
-#include "startup_world_file_io.hpp"
+#include "../../src/simulation/application/startup_application_replay_paths.hpp"
+#include "../../src/simulation/persistence/startup_world_file_io.hpp"
 #include <algorithm>
 #include <chrono>
 #include <fstream>

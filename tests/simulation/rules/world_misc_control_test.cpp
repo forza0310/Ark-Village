@@ -1,6 +1,6 @@
-#include "ark/simulation/rules/world_actor_tail.hpp"
-#include "ark/simulation/rules/world_facilities.hpp"
-#include "ark/simulation/rules/world_misc_control.hpp"
+#include "ark/simulation/actors/rules/world_actor_tail.hpp"
+#include "ark/simulation/facilities/rules/world_facilities.hpp"
+#include "ark/simulation/ai/rules/world_misc_control.hpp"
 
 #include <algorithm>
 #include <cmath>

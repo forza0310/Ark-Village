@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_notices.hpp"
+#include "ark/simulation/village/rules/world_notices.hpp"
 
 #include <iostream>
 #include <limits>

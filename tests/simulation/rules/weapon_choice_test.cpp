@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/actor_control.hpp"
-#include "ark/simulation/rules/weapon_choice.hpp"
+#include "ark/simulation/ai/rules/actor_control.hpp"
+#include "ark/simulation/ai/rules/weapon_choice.hpp"
 
 #include <iostream>
 #include <limits>

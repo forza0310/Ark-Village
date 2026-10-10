@@ -1,12 +1,12 @@
 // Active player-file acceptance, distinct from frozen domain trajectories and FIFO tests.
 // Serial real commands precede one real runtime update. Only wall-clock waits are removed.
-#include "ark/app/world_report.hpp"
+#include "ark/app/session/world_report.hpp"
 #include "ark/assets/sha256.hpp"
-#include "support/world_fixture.hpp"
+#include "../support/world_fixture.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
-#include "world_commands.hpp"
+#include "../../src/app/session/world_commands.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>

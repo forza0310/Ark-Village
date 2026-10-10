@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_wander.hpp"
+#include "ark/simulation/ai/rules/world_wander.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,5 +1,5 @@
 // Published HP display contract, real HP animation, and immutable normal/preview read models.
-#include "character_status.hpp"
+#include "../../src/desktop/scene/character_status.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>

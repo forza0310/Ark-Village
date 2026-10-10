@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ark/app/world_session.hpp"
+#include "ark/app/session/world_session.hpp"
 
 #include <functional>
 

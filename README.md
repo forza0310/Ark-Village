@@ -103,7 +103,7 @@ ctest --preset headless-release -L long_world --parallel 1
 | 路径                                                                   | 用途                                                                            |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `research/`                                                          | 研究侧维护的规则、原型、素材与截图，产品侧只读                                  |
-| `include/ark/simulation/rules/`、`src/simulation/rules/`           | 标准C++领域规则，`ark_world_rules`                                            |
+| `include/ark/simulation/<模块>/rules/`、`src/simulation/<模块>/rules/` | 按建筑/人物/AI/战斗等职责组织的标准C++规则，`ark_world_rules` |
 | `include/ark/simulation/`、`src/simulation/`                       | 初始化、唯一世界Owner及跨域运行时，`ark_world_runtime`                        |
 | `src/app/`                                                           | 启动参数、时钟、世界模拟线程/报告诊断、只读设施查询、玩家存档及无窗口入口     |
 | `src/desktop/`                                                       | raylib窗口、资源、输入、投影及UI                                                |

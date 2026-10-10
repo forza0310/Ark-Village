@@ -1,8 +1,10 @@
 # app
 
-`ark_world_save`实现当前版本两栏手动档：显式字段协议、有界解码、候选引用/占地验证、纯缓存恢复及同目录临时文件替换。`WorldSession`捕获/载入均经FIFO，成功载入更换generation拒绝旧世界输入。文件不存随机/页面/held/通知/声音，不重放账本历史；玩家当前暂停与随机流由提交时Owner提供。Windows默认`LOCALAPPDATA/Ark-Village/saves`，测试用显式目录。原25分区对应及首版边界见[存档说明](world_save.md)。
+按职责分为 `session/`（worker、FIFO 与事务接线）、`save/`（玩家存档）、`queries/`（只读设施查询）、`timing/`（47ms 调度）、`bootstrap/`（启动参数与 DLL 防错）。公开头在 `include/ark/app` 的同名子目录；无窗口 CLI 的 main 保留在本目录。
 
-`world_session.hpp/.cpp`是默认桌面的标准C++线程边界，链接runtime/system/save/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变`WorldFrame`。FIFO命令只在事务间执行，相邻待处理镜头可以合并，决定/暂停/诊断速度保持顺序。47ms实际开始截止、卡顿不追赶；玩家窗口固定一倍速，显式无窗口研究回归仍可查询源双轮合同。加载沿用当前会话速度。停止唤醒并join，失败保留最后成功世界。
+`ark_world_save`实现当前版本两栏手动档：显式字段协议、有界解码、候选引用/占地验证、纯缓存恢复及同目录临时文件替换。`WorldSession`捕获/载入均经FIFO，成功载入更换generation拒绝旧世界输入。文件不存随机/页面/held/通知/声音，不重放账本历史；玩家当前暂停与随机流由提交时Owner提供。Windows默认`LOCALAPPDATA/Ark-Village/saves`，测试用显式目录。原25分区对应及首版边界见[存档说明](save/world_save.md)。
+
+`session/world_session.cpp`是默认桌面的标准C++线程边界，链接runtime/system/save/timing/Threads、不依赖raylib。工作线程是唯一世界提交者；主线程持不可变`WorldFrame`。FIFO命令只在事务间执行，相邻待处理镜头可以合并，决定/暂停/诊断速度保持顺序。47ms实际开始截止、卡顿不追赶；玩家窗口固定一倍速，显式无窗口研究回归仍可查询源双轮合同。加载沿用当前会话速度。停止唤醒并join，失败保留最后成功世界。
 
 `world_commands.hpp/.cpp`按稳定职责分离显式决定的源适配，调用当前冻结4ef4a98及其前置维护消费者；线程/队列/快照提交仍归session。建设目录21、选择/连续放置/取消、设施详情74、入住80、任务管理/人物详情/中止、授勋87及晋级48共享同一候选Owner、地图、账本和随机流。目录/页面命令绑定页稳定ID，建筑点击绑定设施稳定ID；放置和取消同时携带UI观察到的预期definition，旧点击不能操作新选择。设施升级81沿原页确认消费者，不在产品重新计算等级/阈值。
 
@@ -26,4 +28,4 @@
 
 `ark_timing`仅提供`original_loop.hpp/.cpp`的纯数值查询：默认v21对应47ms最小间隔，等待后用实际观测提交，超时不补算。它不持有世界，不替代WorldSession的线程调度。
 
-`world_system.hpp/.cpp`复用正式主角/继承/计分与系统编码helper，协调产品标题和唯一worker。新局先准备资料候选，再写system.arksys；未到访定义0只增加覆盖资料，ID1仍是原首访。系统写入是世界/计分发布前最后一步，失败保留旧发布及待提交候选，retry_system_write重试原候选。raw17不走generic ack，尾段只执行一次关页、声音请求、事件6→4/5和系统更新。玩家schema4与完整维护AVRSAVE协议分开，详见[存档说明](world_save.md)。
+`world_system.hpp/.cpp`复用正式主角/继承/计分与系统编码helper，协调产品标题和唯一worker。新局先准备资料候选，再写system.arksys；未到访定义0只增加覆盖资料，ID1仍是原首访。系统写入是世界/计分发布前最后一步，失败保留旧发布及待提交候选，retry_system_write重试原候选。raw17不走generic ack，尾段只执行一次关页、声音请求、事件6→4/5和系统更新。玩家schema4与完整维护AVRSAVE协议分开，详见[存档说明](save/world_save.md)。

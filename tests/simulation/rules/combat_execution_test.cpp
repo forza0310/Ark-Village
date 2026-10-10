@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/actor_lifecycle.hpp"
-#include "ark/simulation/rules/combat_execution.hpp"
+#include "ark/simulation/actors/rules/actor_lifecycle.hpp"
+#include "ark/simulation/combat/rules/combat_execution.hpp"
 
 #include <cmath>
 #include <iostream>

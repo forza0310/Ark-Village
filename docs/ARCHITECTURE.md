@@ -20,9 +20,11 @@
 
 | 层 | 接口 / 实现 | 目标与职责 |
 | --- | --- | --- |
-| 领域规则 | `include/ark/simulation/rules/`、`src/simulation/rules/` | `ark_world_rules`：地图/路线、人物控制/AI、战斗/救援、设施/商店、任务、现金、脚本、日期/月报与共同调度的候选规则 |
-| 世界运行时 | `include/ark/simulation/`、`src/simulation/` | `ark_world_runtime`：真实新局、完整定义目录、唯一Owner，以及路由/场景/到访/日历/页面/任务/非人物消费者的投影和提交 |
-| 桌面适配 | `src/desktop/` | raylib窗口、资源、输入、相机、投影、深度绘制及UI；`world_view`协调平台循环，`world_scene`读取世界视图 |
+| 领域规则 | `include/ark/simulation/<模块>/rules/`、`src/simulation/<模块>/rules/` | `ark_world_rules`：地图/路线、人物控制/AI、战斗/救援、设施/商店、任务、现金、脚本、日期/月报与共同调度的候选规则 |
+| 世界运行时 | `include/ark/simulation/<模块>/`、`src/simulation/<模块>/` | `ark_world_runtime`：真实新局、完整定义目录、唯一Owner，以及路由/场景/到访/日历/页面/任务/非人物消费者的投影和提交 |
+| 桌面适配 | `src/desktop/` | application/input/scene/resources/platform/inspection 与按功能分组的 UI；`world_view`协调平台循环，`world_scene`读取世界视图 |
+
+2026-10-10按用户要求按游戏大模块重排，完整入口见[源码导航](../src/README.md)。facilities、actors、ai、combat、tasks、map、village、world、persistence、application、presentation对应实际职责；目录内部保留规则/运行时边界及原CMake目标，不能把目录分组理解为新的依赖隔离或额外Owner。无raylib的产品表现计划移到`src/presentation`，公开头位于`include/ark/presentation`。本批只调整组织、路径和注释，不改变玩家存档身份或运行数值。
 
 当前冻结正式研究1f19c88维护闭包，共430项源/测试/数据；素材705项（本批新增26音频、4张Steam PNG和2张升级背景）。收费缓存同步、类型化声音/遭遇通知及相关维护接口已迁入，既有产品适配和唯一Owner边界保持，本地标准检查已通过。完整邻接刷新先准备全部实例价格再原子提交，纯surface不刷新经济；到达收费与退出品质/装备替代仍按原消费者，不能为收益分析改原表。
 
@@ -42,7 +44,7 @@
 
 `prepare_startup_world_runtime` 在候选Owner内组合原资格和消费者，全部成功才替换当前世界。桌面每次获准更新还消费 `update_startup_world_render_cache`，保留原可见性及缓存时点；任一失败保留旧Owner并明确报告，不残留扣款、名册、随机游标或局部页栈提交。
 
-`ark_world_save`显式编解码版本化耐久字段、验证稳定身份/引用/占地并纯重建缓存，独立于raylib。随机、页面栈、held与一次性输出不落盘；账本余额与月度累计分别保存，不重放审计费用。文件层采用同目录临时写入、flush和替换，失败保留旧档；WorldSession在FIFO边界捕获/提交，成功读取更换会话代次并拒绝旧命令。两栏手动档位于Windows用户本地目录，自动轮内恢复另待合同，退出不自动保存。字段覆盖见[存档模块](../src/app/world_save.md)。
+`ark_world_save`显式编解码版本化耐久字段、验证稳定身份/引用/占地并纯重建缓存，独立于raylib。随机、页面栈、held与一次性输出不落盘；账本余额与月度累计分别保存，不重放审计费用。文件层采用同目录临时写入、flush和替换，失败保留旧档；WorldSession在FIFO边界捕获/提交，成功读取更换会话代次并拒绝旧命令。两栏手动档位于Windows用户本地目录，自动轮内恢复另待合同，退出不自动保存。字段覆盖见[存档模块](../src/app/save/world_save.md)。
 
 维护存取接口为`startup_world_persistence.hpp`，由独立`ark_world_persistence`目标实现，依赖唯一`ark_world_runtime`及私有`ark_world_hash`。玩家运行时不依赖此维护目标；维护测试显式链接，normal保存完整稳定主场景Owner/随机/账本，replay另存有序审计及外部控制器。它不接管玩家系统菜单。读取返回私有Session候选；控制器验证完成后才联合安装，不能将日历轮内审计当作下一帧入口。SHA256用独立纯C++ `ark_world_hash`，文件只读校验、预算及同目录替换失败不改变现Owner/旧有效档；codec字段覆盖按产品Clang AST严格比较规范清单，不编码指针或对象padding。
 

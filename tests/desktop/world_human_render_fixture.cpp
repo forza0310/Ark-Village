@@ -1,9 +1,9 @@
 // Explicit renderer fixture, never a natural-world or mastery-reward acceptance result.
 // This case is invoked manually and is deliberately absent from standard CTest registration.
-#include "resources.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/skin.hpp"
-#include "ui/world_human.hpp"
+#include "../../src/desktop/resources/resources.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/actors/world_human.hpp"
 
 #include <filesystem>
 #include <iostream>

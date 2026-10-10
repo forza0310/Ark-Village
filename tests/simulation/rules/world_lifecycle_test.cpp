@@ -1,6 +1,6 @@
-#include "ark/simulation/rules/world_control.hpp"
-#include "ark/simulation/rules/world_lifecycle.hpp"
-#include "ark/simulation/rules/world_schedule.hpp"
+#include "ark/simulation/world/rules/world_control.hpp"
+#include "ark/simulation/actors/rules/world_lifecycle.hpp"
+#include "ark/simulation/ai/rules/world_schedule.hpp"
 
 #include <algorithm>
 #include <cmath>

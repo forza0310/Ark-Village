@@ -1,5 +1,5 @@
-#include "ark/app/world_report.hpp"
-#include "ark/simulation/startup_world_runtime_tasks.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "world_session_test_support.hpp"
 
 #include <algorithm>

@@ -1,6 +1,6 @@
 // Bounded standard-C++ entry for the canonical researched world. Frames count framework calls,
 // not renders or seconds. Page confirmation is an explicit test-user strategy, never implicit AI.
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <algorithm>
 #include <charconv>

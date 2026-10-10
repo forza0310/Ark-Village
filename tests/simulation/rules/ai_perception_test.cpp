@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/ai_perception.hpp"
+#include "ark/simulation/ai/rules/ai_perception.hpp"
 
 #include <iostream>
 #include <stdexcept>

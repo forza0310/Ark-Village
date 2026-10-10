@@ -1,4 +1,26 @@
-# Complete World Runtime
+# 世界规则与运行时
+
+当前冻结 `1f19c88` 的 430 项维护来源。代码按下面的游戏大模块组织，公开头在 `include/ark/simulation` 下对应目录。每个模块内的 `rules/` 保留纯规则层；其余实现负责唯一 Owner 上的查询/消费者/事务接线。目录归类不改变命名空间、数据协议或原有 DLL 依赖。
+
+| 模块 | 职责 |
+| --- | --- |
+| [facilities](facilities/README.md) | 建设、道路编辑、邻接经营、设施使用、商品/强化、住宅及魔法壶 |
+| [actors](actors/README.md) | 人物生命周期、移动/路线、HP/成长、职业/赠礼及主角操作 |
+| [ai](ai/README.md) | 感知、行为选择、队列调度和设施/装备候选 |
+| [combat](combat/README.md) | 战斗执行、伤害提交、遭遇生命周期、物体与救援 |
+| [tasks](tasks/README.md) | 任务生成/征集/出发、期限、迷宫探索和成果 |
+| [map](map/README.md) | 格坐标、占地、通路、地图恢复/刷新和扩张 |
+| [village](village/README.md) | 账本、日期/月报、活动、人气、授勋、税收、事件和通关计分 |
+| [world](world/README.md) | 聚合状态、初始化、随机、场景/页栈和整轮事务协调 |
+| [persistence](persistence/README.md) | 维护世界编解码、恢复校验、文件原子替换 |
+| [application](application/README.md) | 维护标题/应用控制器、系统纪录、完整回放和继承 |
+| [presentation](presentation/README.md) | 已发布的只读皮肤计划、声音请求与显式表现消费者 |
+
+导入路径由 `scripts/simulation/module_paths.mjs` 显式维护，新增研究文件必须先指定职责归属。`cmake/WorldSimulationSources.cmake` 仍显式列源，不使用 GLOB。维护世界/应用/系统与玩家两栏存档分别保持各自协议；本次路径变化不使玩家档失效。收费缓存修复、类型化音频及相关维护接口已随当前冻结版本接入。
+
+## 来源与历史接入说明
+
+以下保留先前接入批次的来源说明；其中版本号、功能范围与验证结果属于对应历史批次，当前产品边界以 [架构](../../docs/ARCHITECTURE.md) 为准。
 
 This standard C++17 module imports the maintained complete-world rules and startup/runtime
 consumers from research. The source/data snapshot and each mechanical translation are pinned

@@ -1,6 +1,6 @@
-#include "ark/simulation/rules/ai_rewards.hpp"
-#include "ark/simulation/rules/ai_schedule.hpp"
-#include "ark/simulation/rules/world_perception.hpp"
+#include "ark/simulation/ai/rules/ai_rewards.hpp"
+#include "ark/simulation/ai/rules/ai_schedule.hpp"
+#include "ark/simulation/ai/rules/world_perception.hpp"
 
 #include <cmath>
 #include <iostream>

@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_random.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,11 +1,11 @@
 // UI owns current-owner projection and action routing. Frozen rule/runtime suites own
 // profession gates, gift rewards and tax posting; those transactions are not duplicated here.
-#include "ark/simulation/startup_world_commerce.hpp"
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_human.hpp"
-#include "ui/world_tax.hpp"
-#include "world_human_inspection.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/actors/world_human.hpp"
+#include "../../src/desktop/ui/village/world_tax.hpp"
+#include "../../src/desktop/inspection/world_human_inspection.hpp"
 #include <algorithm>
 
 namespace ark::test {

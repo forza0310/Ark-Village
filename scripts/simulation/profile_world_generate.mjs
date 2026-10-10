@@ -32,7 +32,7 @@ for (const name of ['world_runtime', 'world_scene', 'world_schedule', 'world_act
   writeFileSync(target, source);
   console.log(`${name}: ${count} explicit Owner copy sites instrumented`);
 }
-const source = readFileSync(resolve(root, 'src/simulation/startup_world_runtime.cpp'), 'utf8');
+const source = readFileSync(resolve(root, 'src/simulation/world/startup_world_runtime.cpp'), 'utf8');
 const start = source.indexOf('StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {');
 const end = source.indexOf('StartupWorldRuntimeResult StartupWorldRuntimeSession::update()', start);
 if (start < 0 || end < 0) throw new Error('Runtime function boundaries changed');

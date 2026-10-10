@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/combat_commit.hpp"
-#include "ark/simulation/rules/world_perception.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
+#include "ark/simulation/ai/rules/world_perception.hpp"
 
 #include <iostream>
 #include <limits>

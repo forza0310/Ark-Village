@@ -1,5 +1,5 @@
 // Explicit display fixtures exercise source g/h and draw ordering, never advance a task.
-#include "world_dungeon_visuals.hpp"
+#include "ark/presentation/world_dungeon_visuals.hpp"
 #include <iostream>
 #include <stdexcept>
 

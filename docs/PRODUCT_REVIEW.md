@@ -19,6 +19,8 @@
 
 当前依赖方向是desktop→session/queries/visuals→runtime→rules；玩家save→runtime，维护persistence→runtime/hash。旧ark_game及其专属领域、桌面入口和测试已经退役，产品只维护持续世界。冻结源不为目录美观重排，私有desktop头不扩为核心公开接口，不按单页新增DLL。
 
+2026-10-10用户明确要求建筑、AI等按大模块整理：本批沿游戏职责重排simulation与对应公开头，保留规则/运行时层和原有DLL目标；无窗口表现接口移出desktop，app与desktop分开会话、存档、资源、场景、输入和诊断。重要Owner/随机/恢复函数补维护注释，建筑UI及资源加载的大文件按数据/输入/绘制和精灵/字体/校验拆开。来源转换器同步模块映射，430项上游身份保持；具体检查见[B1](stages/B1-playable-prototype.md#source-domain-modules)。这不是通过目录移动宣称已经消除全部模块耦合，P2-04窗口输入协调风险继续保留。
+
 <a id="independent-simulation-entry"></a>
 
 旧独立入口只包含simulation模块，缺少根工程的公共库与Windows初始化，曾因未知CMake命令配置失败；现已明确转向根headless预设，不恢复第二套初始化。相关验收记在[B1](stages/B1-playable-prototype.md#research-save-organization)。

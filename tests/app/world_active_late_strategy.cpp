@@ -1,6 +1,6 @@
 #include "world_active_late_strategy.hpp"
 
-#include "ark/simulation/rules/human_management.hpp"
+#include "ark/simulation/actors/rules/human_management.hpp"
 #include <algorithm>
 #include <istream>
 #include <limits>

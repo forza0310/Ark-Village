@@ -1,6 +1,6 @@
 // Byte/file isolation is a separate responsibility from rule and worker transport tests.
-#include "ark/app/world_save_files.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/save/world_save_files.hpp"
+#include "../support/world_fixture.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>

@@ -1,24 +1,24 @@
 # One independent product-library build; consumers import these targets without recompiling them.
-add_library(ark_launch SHARED src/app/launch_options.cpp)
+add_library(ark_launch SHARED src/app/bootstrap/launch_options.cpp)
 target_include_directories(ark_launch PUBLIC include)
 ark_target(ark_launch)
 
-add_library(ark_timing SHARED src/app/original_loop.cpp)
+add_library(ark_timing SHARED src/app/timing/original_loop.cpp)
 target_include_directories(ark_timing PUBLIC include)
 ark_target(ark_timing)
 
 include("${CMAKE_CURRENT_LIST_DIR}/WorldSimulation.cmake")
 # Immutable UI plans also run in headless tests; only the final draw adapter depends on raylib.
-add_library(ark_world_visuals SHARED src/desktop/world_combat_visuals.cpp
-    src/desktop/world_rest_visuals.cpp src/desktop/world_dungeon_visuals.cpp
-    src/desktop/ui/script_text.cpp)
-target_include_directories(ark_world_visuals PUBLIC src/desktop)
+add_library(ark_world_visuals SHARED src/presentation/world_combat_visuals.cpp
+    src/presentation/world_rest_visuals.cpp src/presentation/world_dungeon_visuals.cpp
+    src/presentation/script_text.cpp)
+target_include_directories(ark_world_visuals PUBLIC include)
 target_link_libraries(ark_world_visuals PUBLIC ark_world_runtime)
 ark_target(ark_world_visuals)
 
 find_package(Threads REQUIRED)
 # Canonical-world read queries do not own another world or expose UI/clock dependencies.
-add_library(ark_world_queries SHARED src/app/world_facility_queries.cpp)
+add_library(ark_world_queries SHARED src/app/queries/world_facility_queries.cpp)
 target_link_libraries(ark_world_queries PUBLIC ark_world_runtime)
 ark_target(ark_world_queries)
 # Keep persistence in the same linkage mode as its canonical runtime, so development
@@ -29,12 +29,12 @@ if(ark_runtime_library_type STREQUAL "SHARED_LIBRARY")
 else()
     set(ark_save_library_type STATIC)
 endif()
-add_library(ark_world_save ${ark_save_library_type} src/app/world_save_codec.cpp src/app/world_save_restore.cpp
-    src/app/world_save_files.cpp)
+add_library(ark_world_save ${ark_save_library_type} src/app/save/world_save_codec.cpp src/app/save/world_save_restore.cpp
+    src/app/save/world_save_files.cpp)
 target_link_libraries(ark_world_save PUBLIC ark_world_runtime)
 ark_target(ark_world_save)
-add_library(ark_world_session SHARED src/app/world_session.cpp src/app/world_commands.cpp src/app/world_report.cpp
-    src/app/world_system.cpp)
+add_library(ark_world_session SHARED src/app/session/world_session.cpp src/app/session/world_commands.cpp src/app/session/world_report.cpp
+    src/app/session/world_system.cpp)
 target_link_libraries(ark_world_session PUBLIC ark_world_runtime ark_world_system ark_timing ark_world_save Threads::Threads)
 ark_target(ark_world_session)
 
@@ -64,9 +64,10 @@ if(ARK_BUILD_DESKTOP)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(RAYLIB REQUIRED IMPORTED_TARGET raylib>=6.0)
     ark_copy_raylib_runtime()
-    add_library(ark_world_ui_test_support SHARED src/desktop/ui/layout.cpp
-        src/desktop/ui/skin.cpp src/desktop/resources.cpp src/desktop/sprite_picking.cpp
-        src/desktop/projection.cpp src/desktop/boundary_render.cpp src/desktop/road_render.cpp)
+    add_library(ark_world_ui_test_support SHARED src/desktop/ui/common/layout.cpp
+        src/desktop/ui/common/skin.cpp src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
+        src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp
+        src/desktop/scene/projection.cpp src/desktop/scene/boundary_render.cpp src/desktop/scene/road_render.cpp)
     target_include_directories(ark_world_ui_test_support PUBLIC src/desktop
         PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")
     add_dependencies(ark_world_ui_test_support ark_desktop_glyphs)

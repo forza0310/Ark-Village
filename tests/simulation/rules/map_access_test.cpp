@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/map_access.hpp"
+#include "ark/simulation/map/rules/map_access.hpp"
 
 #include <array>
 #include <climits>

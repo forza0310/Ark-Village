@@ -1,18 +1,18 @@
 // Rendering acceptance at the published editing callsite, not natural flag32 unlock or OS input.
 // Only the gate flag is fixture input. Original map, buildings, prices and source transactions
 // remain real; no world updates are manufactured to obtain the two requested frames.
-#include "ark/simulation/startup_world_commerce.hpp"
-#include "ark/simulation/startup_world_editing.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/skin.hpp"
-#include "ui/world_building.hpp"
-#include "ui/world_commerce.hpp"
-#include "ui/world_facility_catalog.hpp"
-#include "ui/world_facility_items.hpp"
-#include "ui/world_magic_pot.hpp"
-#include "world_canvas.hpp"
-#include "world_editing.hpp"
-#include "world_overlay_render.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../../src/desktop/ui/village/world_commerce.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_items.hpp"
+#include "../../src/desktop/ui/village/world_magic_pot.hpp"
+#include "../../src/desktop/scene/world_canvas.hpp"
+#include "../../src/desktop/scene/world_editing.hpp"
+#include "../../src/desktop/scene/world_overlay_render.hpp"
 
 #include <algorithm>
 #include <cmath>

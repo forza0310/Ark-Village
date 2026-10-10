@@ -52,25 +52,27 @@ target_link_libraries(ark_world_simulation PRIVATE ark_world_runtime)
 ark_target(ark_world_simulation)
 
 if(ARK_BUILD_DESKTOP)
-    add_executable(ark_village src/desktop/main.cpp src/desktop/desktop_session.cpp
-        src/desktop/resources.cpp src/desktop/sprite_picking.cpp src/desktop/projection.cpp
-        src/desktop/world_view.cpp src/desktop/world_inspection.cpp
-        src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_audio.cpp src/desktop/ui/world_startup.cpp src/desktop/world_scene.cpp
-        src/desktop/world_rank.cpp src/desktop/world_overlay_render.cpp src/desktop/world_task_inspection.cpp
-        src/desktop/world_management.cpp src/desktop/world_management_inspection.cpp
-        src/desktop/world_human_inspection.cpp
-        src/desktop/world_build_placement.cpp
-        src/desktop/world_editing.cpp
-        src/desktop/road_render.cpp src/desktop/boundary_render.cpp
-        src/desktop/character_status.cpp src/desktop/ui/layout.cpp
-        src/desktop/ui/skin.cpp src/desktop/ui/world_panels.cpp src/desktop/ui/world_reports.cpp src/desktop/ui/world_award.cpp
-        src/desktop/ui/world_building.cpp src/desktop/ui/world_facility_upgrade.cpp src/desktop/ui/world_progression.cpp
-        src/desktop/ui/world_human.cpp src/desktop/ui/world_human_detail.cpp src/desktop/ui/world_tax.cpp
-        src/desktop/ui/world_village_activity.cpp
-        src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
-        src/desktop/ui/world_facility_catalog.cpp
-        src/desktop/ui/world_magic_pot.cpp
-        src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp)
+    add_executable(ark_village src/desktop/main.cpp src/desktop/platform/desktop_session.cpp
+        src/desktop/resources/sprites.cpp src/desktop/resources/text.cpp
+        src/desktop/resources/asset_check.cpp src/desktop/resources/resource_metadata.cpp src/desktop/scene/sprite_picking.cpp src/desktop/scene/projection.cpp
+        src/desktop/application/world_view.cpp src/desktop/inspection/world_inspection.cpp
+        src/desktop/input/world_save_menu.cpp src/desktop/application/world_title.cpp src/desktop/platform/world_audio.cpp src/desktop/ui/system/world_startup.cpp src/desktop/scene/world_scene.cpp
+        src/presentation/world_rank.cpp src/desktop/scene/world_overlay_render.cpp src/desktop/inspection/world_task_inspection.cpp
+        src/desktop/input/world_management.cpp src/desktop/inspection/world_management_inspection.cpp
+        src/desktop/inspection/world_human_inspection.cpp
+        src/desktop/scene/world_build_placement.cpp
+        src/desktop/scene/world_editing.cpp
+        src/desktop/scene/road_render.cpp src/desktop/scene/boundary_render.cpp
+        src/desktop/scene/character_status.cpp src/desktop/ui/common/layout.cpp
+        src/desktop/ui/common/skin.cpp src/desktop/ui/common/world_panels.cpp src/desktop/ui/common/world_reports.cpp src/desktop/ui/village/world_award.cpp
+        src/desktop/ui/facilities/world_building_view.cpp
+        src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/village/world_progression.cpp
+        src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp src/desktop/ui/village/world_tax.cpp
+        src/desktop/ui/village/world_village_activity.cpp
+        src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
+        src/desktop/ui/facilities/world_facility_catalog.cpp
+        src/desktop/ui/village/world_magic_pot.cpp
+        src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp)
     target_include_directories(ark_village PRIVATE "${ARK_DESKTOP_GENERATED_DIR}")
     target_link_libraries(ark_village PRIVATE ark_launch ark_world_visuals ark_world_queries ark_world_session ark_asset_metadata PkgConfig::RAYLIB)
     if(APPLE)

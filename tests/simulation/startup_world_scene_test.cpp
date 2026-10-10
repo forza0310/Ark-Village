@@ -1,6 +1,6 @@
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 #include "support/audio_requests.hpp"
-#include "ark/simulation/rules/world_detached_actor.hpp"
+#include "ark/simulation/actors/rules/world_detached_actor.hpp"
 
 #include <algorithm>
 #include <cmath>

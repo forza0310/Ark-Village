@@ -1,6 +1,6 @@
-#include "ark/simulation/startup_world_runtime.hpp"
-#include "ark/simulation/startup_world_human.hpp"
-#include "ark/simulation/startup_world_visuals.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
 
 #include <iostream>
 #include <algorithm>

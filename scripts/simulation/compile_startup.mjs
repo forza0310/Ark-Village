@@ -181,7 +181,7 @@ export function compileStartup(map, state, tables, tenantText) {
     `{${weapons.map(row=>`{{${decimal(row[0])},${decimal(row[5])},${(decimal(row[18]) & 1) !== 0}},` +
       `${decimal(row[11])},${list(row.slice(12,16).map(decimal))}}`).join(',')}}};\nreturn value;\n}\n`;
   const output = `// 自动生成；来源为 data/startup 三份发布文件。不要手工编辑。\n` +
-    `#include "ark/simulation/startup_ai.hpp"\nnamespace ark::simulation {\n` +
+    `#include "ark/simulation/ai/startup_ai.hpp"\nnamespace ark::simulation {\n` +
     `const StartupEvidence &startup_evidence() {\nstatic const StartupEvidence value{\n` +
     `24,24,{${cells.map(v => list(v)).join(',')}},\n` +
     `{${[...displays.values()].map(row => `{${decimal(row[0])},${decimal(row[5])},${text(row[1])},${decimal(row[4])},${decimal(row[6])}}`).join(',')}},\n` +

@@ -9,7 +9,7 @@
 | 现行架构 | [架构](ARCHITECTURE.md)、[可维护性进度](PRODUCT_REVIEW.md) | 唯一Owner、依赖方向、模块职责及剩余工程风险 |
 | 已确认决策 | [计划与ADR](MILESTONES.md) | 决策理由与替代关系；历史Accepted不代表仍未实施 |
 | 当前研究对照 | [对照清单](reference/REFERENCE_CHECKLIST.md#research-history-current-audit)、[研究需求](reference/RESEARCH_REQUESTS.md) | 正式研究身份、已接子集、缺口和原版一致性边界 |
-| 存档合同 | [玩家档模块](../src/app/world_save.md)、[本次审计](stages/B1-playable-prototype.md#research-save-organization) | 玩家ARKSAVE1、维护AVRSAVE1、原游戏档分别说明，不能互换认证 |
+| 存档合同 | [玩家档模块](../src/app/save/world_save.md)、[本次审计](stages/B1-playable-prototype.md#research-save-organization) | 玩家ARKSAVE1、维护AVRSAVE1、原游戏档分别说明，不能互换认证 |
 | 阶段验收 | [B1当前批次](stages/B1-playable-prototype.md) | 本批范围、检查、未完成项；旧锚点保留转向历史 |
 | 主动经营与收益 | [长测审计与建设方案](stages/ACTIVE_VILLAGE_PLAN.md) | 现有长跑覆盖、五星原条件、初局报价/布局候选、现金安全与主动玩家验收 |
 | 历史验收 | [B1实现记录](stages/history/B1-implementation-log.md) | 保留独有设计和验收结果；重复任务台账与原始审阅从Git历史查阅，仍有效的工程风险集中在可维护性进度 |
@@ -18,8 +18,10 @@
 
 | 职责 | 实现入口 | 说明 |
 | --- | --- | --- |
+| 源码大模块 | [源码导航](../src/README.md) | 建筑、人物、AI、战斗、任务等模块及对应公开头；目录与DLL职责分别说明 |
 | 原规则与世界运行时 | [simulation](../src/simulation/README.md) | 标准C++，冻结来源；不依赖app/desktop/raylib |
 | 会话、命令、玩家存档 | [app](../src/app/README.md) | 单一持续世界的FIFO、generation、只读快照与文件候选替换 |
+| 无窗口表现计划 | [presentation](../src/presentation/README.md) | 只读战斗/休息/任务计划、脚本文字与升星条件；不加载raylib |
 | 窗口与输入 | [desktop](../src/desktop/README.md) | world_view协调窗口；world_management负责页面命令；inspection仅显式诊断 |
 | 只读UI | [ui](../src/desktop/ui/README.md) | 页面数据映射、布局、绘制；不推进时钟/随机/奖励 |
 | 测试 | [tests](../tests/README.md) | 按行为职责注册；维护冻结测试与产品适配测试分开 |

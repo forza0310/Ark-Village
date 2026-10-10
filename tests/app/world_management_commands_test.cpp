@@ -1,7 +1,7 @@
 // Management transport shares the real page stack, worker gates and private Owner commits.
 // Frozen suites own activity/trade arithmetic; these cases cover UI identities and FIFO wiring.
-#include "ark/app/world_save.hpp"
-#include "ark/simulation/startup_world_editing.hpp"
+#include "ark/app/save/world_save.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
 #include "world_session_test_support.hpp"
 
 #include <algorithm>

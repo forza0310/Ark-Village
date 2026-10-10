@@ -1,12 +1,12 @@
 // Manual window acceptance from a real seed1 game. The driver supplies only lawful player
 // construction/confirmation inputs; it never inserts actors, cash, unlocks or effect records.
-#include "ark/app/world_save_files.hpp"
-#include "ark/simulation/startup_world_building.hpp"
-#include "ark/simulation/startup_world_visuals.hpp"
-#include "resources.hpp"
-#include "support/world_fixture.hpp"
-#include "world_canvas.hpp"
-#include "world_scene.hpp"
+#include "ark/app/save/world_save_files.hpp"
+#include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "../../src/desktop/resources/resources.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/scene/world_canvas.hpp"
+#include "../../src/desktop/scene/world_scene.hpp"
 
 #include <algorithm>
 #include <filesystem>

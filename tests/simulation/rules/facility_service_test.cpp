@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/facility_service.hpp"
+#include "ark/simulation/facilities/rules/facility_service.hpp"
 
 #include <iostream>
 #include <limits>

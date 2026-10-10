@@ -1,7 +1,7 @@
-#include "ark/simulation/rules/combat_commit.hpp"
-#include "ark/simulation/rules/world_control.hpp"
-#include "ark/simulation/rules/world_facilities.hpp"
-#include "ark/simulation/rules/world_shop.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
+#include "ark/simulation/world/rules/world_control.hpp"
+#include "ark/simulation/facilities/rules/world_facilities.hpp"
+#include "ark/simulation/facilities/rules/world_shop.hpp"
 
 #include <iostream>
 #include <stdexcept>

@@ -1,8 +1,8 @@
 // Presentation owns page bindings and source display bins; source suites own shared improvement
 // math.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_facility_items.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/facilities/world_facility_items.hpp"
 #include <algorithm>
 
 namespace ark::test {

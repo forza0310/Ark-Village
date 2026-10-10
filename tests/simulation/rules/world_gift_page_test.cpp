@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_gift_page.hpp"
+#include "ark/simulation/actors/rules/world_gift_page.hpp"
 
 #include <filesystem>
 #include <fstream>

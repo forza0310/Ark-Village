@@ -137,8 +137,8 @@ function main() {
     const result = spawnSync(process.execPath, parameters, {encoding: 'utf8', maxBuffer: 512 * 1024});
     if (result.error || result.status !== 0) throw Error(result.error?.message ?? result.stderr);
     const inventory = JSON.parse(readFileSync(inventoryFile, 'utf8'));
-    const policy = JSON.parse(readFileSync(path.join(root, 'src/app/world_save_policy.json'), 'utf8'));
-    const codec = codecFields(readFileSync(path.join(root, 'src/app/world_save_fields.hpp'), 'utf8'));
+    const policy = JSON.parse(readFileSync(path.join(root, 'src/app/save/world_save_policy.json'), 'utf8'));
+    const codec = codecFields(readFileSync(path.join(root, 'src/app/save/world_save_fields.hpp'), 'utf8'));
     const checked = checkPolicy(inventory, policy, codec);
     const refusals = args.includes('--self-test') ? refusalChecks(inventory, policy, codec) : 0;
     console.log('Player save policy: ' + JSON.stringify({...checked, refusal_checks: refusals}));

@@ -1,5 +1,5 @@
-#include "ark/simulation/startup_world_clear_score.hpp"
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/village/startup_world_clear_score.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 #include <iostream>
 #include <limits>

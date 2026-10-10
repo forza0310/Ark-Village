@@ -1,4 +1,4 @@
-#include "ark/simulation/steam_startup_skin.hpp"
+#include "ark/simulation/presentation/steam_startup_skin.hpp"
 #include "ark/assets/sprite.hpp"
 #include <algorithm>
 #include <filesystem>

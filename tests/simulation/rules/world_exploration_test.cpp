@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_exploration.hpp"
+#include "ark/simulation/tasks/rules/world_exploration.hpp"
 
 #include <filesystem>
 #include <fstream>

@@ -1,7 +1,7 @@
 // Real empty startup for integration; explicit geometry/economy fixtures test source
 // boundaries without simulating visits or claiming natural construction acceptance.
-#include "ark/app/world_facility_queries.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/queries/world_facility_queries.hpp"
+#include "../support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>

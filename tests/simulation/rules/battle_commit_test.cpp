@@ -1,6 +1,6 @@
-#include "ark/simulation/rules/actor_housekeeping.hpp"
-#include "ark/simulation/rules/ai_schedule.hpp"
-#include "ark/simulation/rules/battle_commit.hpp"
+#include "ark/simulation/actors/rules/actor_housekeeping.hpp"
+#include "ark/simulation/ai/rules/ai_schedule.hpp"
+#include "ark/simulation/combat/rules/battle_commit.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,9 +1,9 @@
-#include "ark/simulation/startup_system_records.hpp"
-#include "ark/simulation/startup_application_storage.hpp"
+#include "ark/simulation/application/startup_system_records.hpp"
+#include "ark/simulation/application/startup_application_storage.hpp"
 #include "ark/assets/sha256.hpp"
-#include "../../src/simulation/startup_persistence_bytes.hpp"
-#include "../../src/simulation/startup_world_file_io.hpp"
-#include "../../src/simulation/startup_application_storage_paths.hpp"
+#include "../../src/simulation/persistence/startup_persistence_bytes.hpp"
+#include "../../src/simulation/persistence/startup_world_file_io.hpp"
+#include "../../src/simulation/application/startup_application_storage_paths.hpp"
 #include <chrono>
 #include <algorithm>
 #include <fstream>

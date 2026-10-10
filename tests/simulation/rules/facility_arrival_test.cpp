@@ -1,7 +1,7 @@
-#include "ark/simulation/rules/facility_arrival.hpp"
+#include "ark/simulation/facilities/rules/facility_arrival.hpp"
 
-#include "ark/simulation/rules/accounting.hpp"
-#include "ark/simulation/rules/facility_economy.hpp"
+#include "ark/simulation/village/rules/accounting.hpp"
+#include "ark/simulation/facilities/rules/facility_economy.hpp"
 
 #include <algorithm>
 #include <cstdlib>

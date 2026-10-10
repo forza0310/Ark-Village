@@ -1,6 +1,6 @@
 // Presentation fixtures exercise real owner fields without spawning actors or paying rewards.
-#include "support/world_fixture.hpp"
-#include "world_combat_visuals.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/presentation/world_combat_visuals.hpp"
 
 #include <algorithm>
 #include <iostream>

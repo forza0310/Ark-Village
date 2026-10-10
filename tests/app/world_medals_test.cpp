@@ -1,8 +1,8 @@
 // Product regression for the canonical UserData.j bridge. Published scripts and annual-page
 // consumers are real; eligible presence and the annual page are explicit integration fixtures.
-#include "ark/simulation/startup_world_runtime.hpp"
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 
 #include <algorithm>
 #include <iostream>

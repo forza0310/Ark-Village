@@ -1,9 +1,9 @@
 // Tests source identity/order and the actual click-to-action path without a window or fake award.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/skin.hpp"
-#include "ui/world_award.hpp"
-#include "ui/world_progression.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/common/skin.hpp"
+#include "../../src/desktop/ui/village/world_award.hpp"
+#include "../../src/desktop/ui/village/world_progression.hpp"
 #include <filesystem>
 #include <iostream>
 

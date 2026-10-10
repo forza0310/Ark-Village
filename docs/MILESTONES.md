@@ -1,5 +1,11 @@
 # 计划与决策
 
+## 2026-10-10：按游戏大模块整理源码
+
+用户要求清理build缓存，并明确建筑、AI等按大模块分开。按facilities/actors/ai/combat/tasks/map/village/world/persistence/application/presentation组织simulation及对应公开头；模块内保留规则层，现有DLL目标、唯一Owner与玩家存档政策保持。app/desktop按会话、存档、输入、场景、资源、UI和显式诊断分责；建筑页面与资源大文件拆分，重要事务/随机/恢复函数补简要注释。
+
+导入器显式维护模块路径，冻结来源不升级、不改研究工作区；命名空间/字段协议/有效断言不变。按模块核对路径变更后集中验收：公共库、desktop-debug/headless-debug标准CTest（仅排三个月），Release构建、资源/标题/设施/拾取窗口。缓存仅清可重建对象/临时AST，保留运行制品、工具链和业务证据；结果见[B1](stages/B1-playable-prototype.md#source-domain-modules)。
+
 文档分类见[总索引](README.md)，当前动作见[TODO](../TODO.md)，实施/验证见[B1](stages/B1-playable-prototype.md)。本文件保留决策演进，不将早期Accepted描述当作当前未实施工作。
 
 | 主题 | 决策入口 |

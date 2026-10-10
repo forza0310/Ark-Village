@@ -1,5 +1,5 @@
-#include "ark/simulation/startup_world_runtime.hpp"
-#include "ark/simulation/startup_world_persistence.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "support/world_fixture.hpp"
 #include "support/audio_requests.hpp"
 

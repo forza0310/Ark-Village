@@ -1,5 +1,5 @@
 // Independent fake-device lifetime: no graphics context or sound hardware is required.
-#include "world_audio_policy.hpp"
+#include "../../src/desktop/platform/world_audio_policy.hpp"
 #include <array>
 #include <stdexcept>
 #include <string>

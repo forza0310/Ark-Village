@@ -1,5 +1,5 @@
-﻿#include "ark/simulation/rules/world_actor_schedule.hpp"
-#include "ark/simulation/rules/world_nonactor_schedule.hpp"
+﻿#include "ark/simulation/ai/rules/world_actor_schedule.hpp"
+#include "ark/simulation/ai/rules/world_nonactor_schedule.hpp"
 #include <algorithm>
 #include <fstream>
 #include <iomanip>

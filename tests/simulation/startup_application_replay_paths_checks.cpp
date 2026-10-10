@@ -1,4 +1,4 @@
-#include "../../src/simulation/startup_application_replay_paths.hpp"
+#include "../../src/simulation/application/startup_application_replay_paths.hpp"
 #include <fstream>
 #include <iostream>
 #include <iterator>

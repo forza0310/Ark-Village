@@ -1,6 +1,6 @@
 // Page31 must preserve initialized X and read actual H/I without replaying its initializer.
-#include "support/checks.hpp"
-#include "ui/world_crew_summary.hpp"
+#include "../support/checks.hpp"
+#include "../../src/desktop/ui/tasks/world_crew_summary.hpp"
 #include <iostream>
 #include <stdexcept>
 

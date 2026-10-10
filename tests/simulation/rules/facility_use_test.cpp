@@ -1,6 +1,6 @@
 // Boundary checks are active in Release; input rejection never exposes a partial candidate.
-#include "ark/simulation/rules/character_hp.hpp"
-#include "ark/simulation/rules/facility_use.hpp"
+#include "ark/simulation/actors/rules/character_hp.hpp"
+#include "ark/simulation/facilities/rules/facility_use.hpp"
 
 #include <iostream>
 #include <limits>

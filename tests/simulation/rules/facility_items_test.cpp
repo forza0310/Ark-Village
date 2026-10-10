@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/facility_items.hpp"
-#include "ark/simulation/rules/world_magic_pot.hpp"
+#include "ark/simulation/facilities/rules/facility_items.hpp"
+#include "ark/simulation/facilities/rules/world_magic_pot.hpp"
 
 #include <cstdlib>
 #include <iostream>

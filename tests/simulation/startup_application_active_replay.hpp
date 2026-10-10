@@ -1,6 +1,6 @@
 #pragma once
 #include <filesystem>
-#include "ark/simulation/startup_application_replay.hpp"
+#include "ark/simulation/application/startup_application_replay.hpp"
 #include <array>
 #include <memory>
 

@@ -132,24 +132,25 @@ if(ARK_BUILD_DESKTOP)
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
             tests/desktop/world_building_test.cpp tests/desktop/world_building_render_fixture.cpp
             tests/desktop/world_business_render_fixture.cpp
-            src/desktop/ui/world_panels.cpp
+            src/desktop/ui/common/world_panels.cpp
             tests/desktop/world_human_test.cpp tests/desktop/world_human_render_fixture.cpp
             tests/desktop/world_combat_render_fixture.cpp
-            tests/desktop/world_village_activity_test.cpp src/desktop/ui/world_village_activity.cpp
+            tests/desktop/world_village_activity_test.cpp src/desktop/ui/village/world_village_activity.cpp
             tests/desktop/world_commerce_test.cpp tests/desktop/world_facility_items_test.cpp
-            src/desktop/ui/world_commerce.cpp src/desktop/ui/world_facility_items.cpp
-            src/desktop/ui/world_facility_catalog.cpp
-            src/desktop/ui/world_magic_pot.cpp
-            src/desktop/ui/world_human.cpp src/desktop/ui/world_human_detail.cpp src/desktop/ui/world_tax.cpp
-            src/desktop/ui/world_award.cpp src/desktop/ui/world_crew_summary.cpp src/desktop/ui/world_reports.cpp
-            src/desktop/ui/world_tasks.cpp src/desktop/ui/world_menu.cpp
-            src/desktop/ui/world_building.cpp src/desktop/ui/world_facility_upgrade.cpp src/desktop/ui/world_progression.cpp
-            src/desktop/world_build_placement.cpp src/desktop/world_human_inspection.cpp
-            src/desktop/world_editing.cpp
-            src/desktop/world_scene.cpp src/desktop/world_overlay_render.cpp
-            src/desktop/world_rank.cpp src/desktop/character_status.cpp
-            src/desktop/world_task_inspection.cpp
-            src/desktop/world_save_menu.cpp src/desktop/world_title.cpp src/desktop/world_audio.cpp src/desktop/ui/world_startup.cpp
+            src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
+            src/desktop/ui/facilities/world_facility_catalog.cpp
+            src/desktop/ui/village/world_magic_pot.cpp
+            src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp src/desktop/ui/village/world_tax.cpp
+            src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
+            src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp
+            src/desktop/ui/facilities/world_building_view.cpp
+        src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp src/desktop/ui/facilities/world_facility_upgrade.cpp src/desktop/ui/village/world_progression.cpp
+            src/desktop/scene/world_build_placement.cpp src/desktop/inspection/world_human_inspection.cpp
+            src/desktop/scene/world_editing.cpp
+            src/desktop/scene/world_scene.cpp src/desktop/scene/world_overlay_render.cpp
+            src/presentation/world_rank.cpp src/desktop/scene/character_status.cpp
+            src/desktop/inspection/world_task_inspection.cpp
+            src/desktop/input/world_save_menu.cpp src/desktop/application/world_title.cpp src/desktop/platform/world_audio.cpp src/desktop/ui/system/world_startup.cpp
         LIBRARIES ark_world_ui_test_support ark_world_queries ark_world_session)
     target_compile_definitions(ark_world_ui_tests PRIVATE ARK_TEST_ASSETS="${PROJECT_SOURCE_DIR}/assets"
         ARK_TEST_FONT="${ARK_DESKTOP_FONT}"
@@ -158,9 +159,9 @@ if(ARK_BUILD_DESKTOP)
         ark_test_case(${case} ark_world_ui_tests ARGS ${case} LABELS presentation)
     endforeach()
     ark_test_executable(ark_world_scene_tests
-        SOURCES tests/desktop/world_scene_test.cpp src/desktop/world_rank.cpp
-            src/desktop/world_overlay_render.cpp src/desktop/world_scene.cpp
-            src/desktop/character_status.cpp
+        SOURCES tests/desktop/world_scene_test.cpp src/presentation/world_rank.cpp
+            src/desktop/scene/world_overlay_render.cpp src/desktop/scene/world_scene.cpp
+            src/desktop/scene/character_status.cpp
         LIBRARIES ark_world_ui_test_support)
     ark_test_case(world_scene_projection_and_animation ark_world_scene_tests LABELS presentation)
 
@@ -172,16 +173,16 @@ if(ARK_BUILD_DESKTOP)
         ark_test_case(${name} ${target} ARGS ${ARG_ARGS} LABELS presentation ${ARG_LABELS})
     endfunction()
     ark_desktop_test(ark_character_status_tests character_hp_render
-        SOURCES tests/desktop/character_status_test.cpp src/desktop/character_status.cpp
+        SOURCES tests/desktop/character_status_test.cpp src/desktop/scene/character_status.cpp
         LIBRARIES ark_world_rules)
     ark_desktop_test(ark_boundary_render_tests boundary_overlay_contract
-        SOURCES tests/desktop/boundary_render_test.cpp src/desktop/boundary_render.cpp
+        SOURCES tests/desktop/boundary_render_test.cpp src/desktop/scene/boundary_render.cpp
         LIBRARIES ark_world_runtime ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
     ark_desktop_test(ark_road_render_tests road_patch_pixels
-        SOURCES tests/desktop/road_render_test.cpp src/desktop/road_render.cpp
+        SOURCES tests/desktop/road_render_test.cpp src/desktop/scene/road_render.cpp
         LIBRARIES ark_world_rules ark_asset_metadata PkgConfig::RAYLIB ARGS "${PROJECT_SOURCE_DIR}/assets")
     ark_desktop_test(ark_projection_tests projection_input
-        SOURCES tests/desktop/projection_test.cpp src/desktop/projection.cpp
+        SOURCES tests/desktop/projection_test.cpp src/desktop/scene/projection.cpp
         LIBRARIES PkgConfig::RAYLIB)
     ark_desktop_test(ark_character_render_tests character_sprite_frames
         SOURCES tests/desktop/character_render_test.cpp

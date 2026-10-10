@@ -1,6 +1,6 @@
 // Explicit display fixtures verify the maintained inn contract, not a natural startup trace.
-#include "support/world_fixture.hpp"
-#include "world_rest_visuals.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/presentation/world_rest_visuals.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,5 +1,20 @@
 # B1：持续世界产品接入
 
+<a id="source-domain-modules"></a>
+## 2026-10-10：源码大模块与缓存清理
+
+用户明确要求按建筑、AI等游戏大模块组织源码，并为重要文件/函数补简要注释。本批重排389个既有文件（其中资源/建筑页面随后按职责拆文件）；simulation分11模块，公开头与实现对应，模块内rules仍属于原规则层。app分session/save/queries/timing/bootstrap，desktop分application/input/scene/resources/platform/inspection及六类UI；无窗口表现计划移到src/presentation。入口为[源码导航](../../src/README.md)。
+
+资源拆为sprites/text/asset_check与共用metadata；建筑页拆为view/input/render。重要注释解释整轮私有候选、地表与经济刷新、焦点人物临时名册、恢复校验和AI访问顺序。没有引入额外DLL或Owner，没有改规则数值、字段顺序、玩家存档身份、游戏速度或断言。
+
+430项冻结来源仍为1f19c88。导入器新增显式模块路径和注释适配；从同一冻结快照重新生成后418项与路径/注释转换结果逐字节一致，另12项既有产品/测试适配及其上游身份保留。没有消费研究在途代码。一次性规划/回溯文件只在忽略build，检查证据根为`build/validation/source-modules-20261010/`。
+
+初次缓存清理删除两套Debug的763个对象和4份AST文件，共2,542,315,004字节；build约6.28GiB→3.91GiB。运行中的Release与隔离三星进程不受影响，EXE/DLL、工具链、配置、玩家档和业务证据保留。本批验收会重新生成Debug对象，结束后再清理并记录最终占用。
+
+最终公共库、desktop-debug/headless-debug与Release游戏/UI测试程序构建通过。desktop-debug标准138/138（48.61秒）、headless-debug标准118/118（48.21秒），均仅排除三个月用例，注册/参数/有效断言保留。Release资源检查、隔离标题、设施静态绘制和像素拾取窗口通过；标题/设施截图已查看，音频资源26/26。用现有12项适配再导入同一冻结快照到隔离目录，430/430文件与当前产品一致。455条文档本地路径检查通过。
+
+验收结束再次清理已生成的Debug对象和AST，build最终4,295,181,991字节（约4.00GiB），相对开始6,744,347,301字节净减2,449,165,310字节（约2.28GiB，36.31%）；两次清理量不能相加，第二次删除的是本批重建产物。最终进程检查为空，公共DLL契约复核通过。仍保留EXE/DLL、工具链、配置与有效证据，下次Debug编译会重新生成对象。清理明细见`build/validation/build-cache-cleanup-20261010/FINAL.json`。本批不以窗口夹具声称OS鼠标或原版动态一致性；CI未运行、未推送。
+
 [文档索引](../README.md) · [当前对照](../reference/REFERENCE_CHECKLIST.md#research-history-current-audit) · [完整历史](history/B1-implementation-log.md)
 
 本文件只记录当前收口批次和历史导航。旧切片、Mac四配置验收、手动月报、二倍速等旧决定保留在历史中；当前政策以架构与后继ADR为准。

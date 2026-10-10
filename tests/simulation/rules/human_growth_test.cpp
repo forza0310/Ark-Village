@@ -1,7 +1,7 @@
 // Definition growth is separate from actor HP, delayed display and world-page ownership.
-#include "ark/simulation/rules/human_growth.hpp"
-#include "ark/simulation/rules/human_management.hpp"
-#include "ark/simulation/rules/world_village_activity.hpp"
+#include "ark/simulation/actors/rules/human_growth.hpp"
+#include "ark/simulation/actors/rules/human_management.hpp"
+#include "ark/simulation/village/rules/world_village_activity.hpp"
 
 #include <iostream>
 #include <limits>

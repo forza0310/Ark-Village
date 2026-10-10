@@ -1,4 +1,4 @@
-#include "ark/simulation/startup_world_projection.hpp"
+#include "ark/simulation/map/startup_world_projection.hpp"
 
 #include <iostream>
 #include <stdexcept>

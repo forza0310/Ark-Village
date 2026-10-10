@@ -1,9 +1,9 @@
 // Explicit presentation inputs; this manual window is not a natural level-up or reward test.
-#include "resources.hpp"
-#include "support/world_fixture.hpp"
-#include "world_combat_visuals.hpp"
-#include "world_overlay_render.hpp"
-#include "world_scene.hpp"
+#include "../../src/desktop/resources/resources.hpp"
+#include "../support/world_fixture.hpp"
+#include "ark/presentation/world_combat_visuals.hpp"
+#include "../../src/desktop/scene/world_overlay_render.hpp"
+#include "../../src/desktop/scene/world_scene.hpp"
 
 #include <filesystem>
 #include <iostream>

@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/encounter_ai.hpp"
+#include "ark/simulation/ai/rules/encounter_ai.hpp"
 
 #include <iostream>
 #include <stdexcept>

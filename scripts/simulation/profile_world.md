@@ -51,11 +51,11 @@ node scripts/simulation/profile_world_generate.mjs
 
 | 产品文件 | 登记理由 |
 | --- | --- |
-| `include/ark/simulation/rules/world_runtime.hpp` | 只在需要可变候选的分支复制Owner；纯转发仍传const输入，最后使用的局部Owner/审计改移动，原消费者与拒绝顺序不变 |
-| `include/ark/simulation/rules/world_actor_schedule.hpp` | 回调消费后的私有Owner及最后的schedule结果移动，事件/表现/遭遇重投影顺序和返回审计不变 |
-| `include/ark/simulation/rules/world_scene.hpp` | 完成scratch写回后移动即将销毁的场景audit，保留全部返回字段 |
-| `include/ark/simulation/rules/world_schedule.hpp` | 完成scratch写回后移动即将销毁的schedule audit，保留全部返回字段 |
-| `src/simulation/startup_world_runtime.cpp` | 暂停页、页面候选与最终owned结果在最后使用时移动；公开Session返回候选仍保留独立副本 |
+| `include/ark/simulation/world/rules/world_runtime.hpp` | 只在需要可变候选的分支复制Owner；纯转发仍传const输入，最后使用的局部Owner/审计改移动，原消费者与拒绝顺序不变 |
+| `include/ark/simulation/ai/rules/world_actor_schedule.hpp` | 回调消费后的私有Owner及最后的schedule结果移动，事件/表现/遭遇重投影顺序和返回审计不变 |
+| `include/ark/simulation/world/rules/world_scene.hpp` | 完成scratch写回后移动即将销毁的场景audit，保留全部返回字段 |
+| `include/ark/simulation/ai/rules/world_schedule.hpp` | 完成scratch写回后移动即将销毁的schedule audit，保留全部返回字段 |
+| `src/simulation/world/startup_world_runtime.cpp` | 暂停页、页面候选与最终owned结果在最后使用时移动；公开Session返回候选仍保留独立副本 |
 | `tests/simulation/startup_world_runtime_test.cpp` | 新增成功Session返回完整candidate、相同未来随机与独立可变性检查；原失败回滚等断言不删改 |
 
 原始日志位于 `build/validation/world-performance/`。阶段最终性能、等价性和标准验收结果需分别登记；未运行的CI不视为通过。

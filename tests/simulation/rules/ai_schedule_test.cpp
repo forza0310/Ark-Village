@@ -1,7 +1,7 @@
-#include "ark/simulation/rules/actor_lifecycle.hpp"
-#include "ark/simulation/rules/ai_schedule.hpp"
-#include "ark/simulation/rules/encounter_lifecycle.hpp"
-#include "ark/simulation/rules/object_ai.hpp"
+#include "ark/simulation/actors/rules/actor_lifecycle.hpp"
+#include "ark/simulation/ai/rules/ai_schedule.hpp"
+#include "ark/simulation/combat/rules/encounter_lifecycle.hpp"
+#include "ark/simulation/ai/rules/object_ai.hpp"
 
 #include <iostream>
 #include <stdexcept>

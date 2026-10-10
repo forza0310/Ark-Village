@@ -1,5 +1,9 @@
 # desktop
 
+当前目录按职责分为 `application/`（标题和窗口协调）、`input/`（经营/存档控制与指针手势）、`scene/`（投影、深度绘制、拾取与放置预览）、`resources/`（精灵/字体/校验）、`platform/`（窗口平台与音频设备）、`inspection/`（显式窗口验收）。`ui/` 再按 facilities、actors、tasks、village、system、common 分组。
+
+无 raylib 的战斗/休息/任务表现计划与脚本文字已移到 [presentation](../presentation/README.md)。建筑页面拆为 `world_building_view.cpp`、`world_building_input.cpp`、`world_building_render.cpp`；资源职责见 [resources](resources/README.md)。`world_view` 是窗口协调器，经营规则、AI、战斗和世界提交均由 simulation/app 承担。
+
 普通无界启动先由`world_title`显示S038–S040标题/两栏手动目录/继续与新游戏；它在worker创建前运行，没有世界更新。继续重新读取玩家档、候选校验后交给唯一WorldSession，失败保留初始Owner和标题。新游戏先配置定义0主角，取消保留草稿，开始只写系统栏位纪录而不写/删除世界旧档；标题和系统菜单开放两页纪录，删除禁用。标题图片从产品assets/title读取，尺寸/PC布局不冒充Steam动画或原触控坐标。
 
 e73bb31静态背景、顶部与草边改用已发布Steam三PNG，共215618字节；原Logo、两栏手动档及静态主角草稿预览保持。完整标题20槽已在维护层，但正常桌面宿主准入/随机交接未闭合，不以60FPS驱动。玩家schema4本批数据身份更新，旧身份档显示明确拒绝，不静默补任务池或迁移。收支只读查询已在runtime，信息页面入口仍禁用。

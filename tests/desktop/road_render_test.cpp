@@ -1,7 +1,7 @@
 // Product adaptation of maintained original-PNG composition, plus current terrain checks.
 // CPU-only composition of the actual PNGs; no window or renderer-equivalence claim.
 #include "ark/assets/sprite.hpp"
-#include "road_render.hpp"
+#include "../../src/desktop/scene/road_render.hpp"
 
 #include <raylib.h>
 

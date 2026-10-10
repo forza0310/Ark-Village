@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/rescue_commit.hpp"
+#include "ark/simulation/combat/rules/rescue_commit.hpp"
 
 #include <cmath>
 #include <iostream>

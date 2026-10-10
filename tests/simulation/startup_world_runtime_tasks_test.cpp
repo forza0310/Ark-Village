@@ -1,7 +1,7 @@
-#include "ark/simulation/startup_world_runtime_tasks.hpp"
-#include "ark/simulation/startup_world_presentation.hpp"
-#include "ark/simulation/startup_world_human.hpp"
-#include "ark/simulation/rules/world_notices.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "ark/simulation/presentation/startup_world_presentation.hpp"
+#include "ark/simulation/actors/startup_world_human.hpp"
+#include "ark/simulation/village/rules/world_notices.hpp"
 #include "support/world_fixture.hpp"
 #include "support/audio_requests.hpp"
 

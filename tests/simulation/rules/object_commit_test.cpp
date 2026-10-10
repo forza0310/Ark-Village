@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/object_commit.hpp"
+#include "ark/simulation/combat/rules/object_commit.hpp"
 
 #include <iostream>
 #include <limits>

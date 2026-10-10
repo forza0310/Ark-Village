@@ -1,8 +1,8 @@
 // Transport tests use the real maintained runtime; no alternative AI/tick consumer is injected.
-#include "ark/app/world_report.hpp"
-#include "ark/app/world_session.hpp"
-#include "ark/simulation/startup_world_runtime_tasks.hpp"
-#include "support/world_fixture.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "ark/app/session/world_session.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
+#include "../support/world_fixture.hpp"
 #include "world_session_test_support.hpp"
 
 #include <algorithm>

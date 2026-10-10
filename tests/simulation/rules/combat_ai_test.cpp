@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/combat_ai.hpp"
+#include "ark/simulation/combat/rules/combat_ai.hpp"
 
 #include <iostream>
 #include <limits>

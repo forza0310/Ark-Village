@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/world_overlap.hpp"
-#include "ark/simulation/rules/world_random_consumers.hpp"
+#include "ark/simulation/map/rules/world_overlap.hpp"
+#include "ark/simulation/world/rules/world_random_consumers.hpp"
 #include <iostream>
 #include <stdexcept>
 using namespace ark::simulation::rules;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ark/simulation/startup_world_runtime.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
 
 // 现有持久化套件共享的纯恢复拒绝场景；输入为自然稳定前缀。
 int check_startup_world_restore_contracts(

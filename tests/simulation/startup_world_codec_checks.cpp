@@ -1,5 +1,5 @@
 #include "startup_world_codec_checks.hpp"
-#include "startup_world_codec.hpp"
+#include "../../src/simulation/persistence/startup_world_codec.hpp"
 #include <algorithm>
 #include <iostream>
 #include <limits>

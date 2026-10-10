@@ -1,6 +1,6 @@
-#include "ark/simulation/rules/encounter_creation.hpp"
-#include "ark/simulation/rules/world_dungeon_finish.hpp"
-#include "ark/simulation/rules/world_random.hpp"
+#include "ark/simulation/combat/rules/encounter_creation.hpp"
+#include "ark/simulation/tasks/rules/world_dungeon_finish.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
 
 #include <iostream>
 #include <stdexcept>

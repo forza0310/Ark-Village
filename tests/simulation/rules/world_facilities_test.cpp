@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_facilities.hpp"
+#include "ark/simulation/facilities/rules/world_facilities.hpp"
 
 #include <cmath>
 #include <iostream>

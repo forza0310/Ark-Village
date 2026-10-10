@@ -1,7 +1,7 @@
 // Static BOUNDARY contract against published reset cells and real PNG/SEB assets. No window.
 #include "ark/assets/sprite.hpp"
-#include "ark/simulation/startup_world_runtime.hpp"
-#include "boundary_render.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "../../src/desktop/scene/boundary_render.hpp"
 #include <raylib.h>
 
 #include <array>

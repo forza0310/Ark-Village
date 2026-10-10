@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/domain.hpp"
+#include "ark/simulation/world/rules/domain.hpp"
 
 #include <cstdlib>
 #include <iostream>

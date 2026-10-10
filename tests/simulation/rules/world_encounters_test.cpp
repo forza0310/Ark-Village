@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_encounters.hpp"
+#include "ark/simulation/combat/rules/world_encounters.hpp"
 
 #include <algorithm>
 #include <iostream>

@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_dungeon_finish.hpp"
+#include "ark/simulation/tasks/rules/world_dungeon_finish.hpp"
 
 #include <algorithm>
 #include <iostream>

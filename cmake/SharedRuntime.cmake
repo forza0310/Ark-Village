@@ -22,7 +22,7 @@ function(ark_use_shared_runtime target)
         get_target_property(kind ${target} TYPE)
         if(kind STREQUAL "EXECUTABLE")
             set_target_properties(${target} PROPERTIES OUTPUT_NAME "${target}-${ARK_BUILD_PROFILE}")
-            target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src/app/shared_library_guard.cpp")
+            target_sources(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src/app/bootstrap/shared_library_guard.cpp")
             target_include_directories(${target} PRIVATE "${ARK_CONSUMER_CONTRACT_DIR}")
             add_dependencies(${target} ark_library_contract_check)
             add_custom_command(TARGET ${target} POST_BUILD

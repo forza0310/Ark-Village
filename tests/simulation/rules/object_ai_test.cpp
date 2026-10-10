@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/object_ai.hpp"
+#include "ark/simulation/ai/rules/object_ai.hpp"
 
 #include <iostream>
 #include <limits>

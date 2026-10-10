@@ -1,5 +1,5 @@
-#include "ark/simulation/rules/world_random.hpp"
-#include "ark/simulation/rules/world_shop.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
+#include "ark/simulation/facilities/rules/world_shop.hpp"
 
 #include <algorithm>
 #include <iostream>

@@ -2,6 +2,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve, basename } from 'node:path';
+import { simulationProductPath, translateModulePaths } from './simulation/module_paths.mjs';
 
 const [mode, sourceRoot, destinationRoot] = process.argv.slice(2);
 if (!['--snapshot', '--import', '--record-patch'].includes(mode) || !sourceRoot || !destinationRoot)
@@ -196,6 +197,7 @@ if (mode === '--record-patch') {
     else if (entry.file === 'data/original/tenantData.txt') target = 'assets/simulation/tenantData.txt';
     else if (entry.file.startsWith('data/')) target = 'assets/simulation/' + entry.file.slice(5);
     else throw new Error(`Unsupported snapshot path: ${entry.file}`);
+    target = simulationProductPath(target);
     // The canonical protocol manifest retains source logical names and exact bytes.
     // Namespace renaming changes C++ access spelling, not the persisted wire schema.
     if (!entry.file.startsWith('data/') && !entry.file.endsWith('startup_world_codec_fields.json') &&
@@ -218,7 +220,7 @@ if (mode === '--record-patch') {
             'std::istringstream table(read(std::filesystem::path(ARK_WORLD_TEST_DATA) / "tenantData.txt"));')
           .replace(/const std::string source = __FILE__;\s*const auto root =\s*source\.substr\([^;\n]+?\)\s*\+\s*"\/\.\.\/\.\.\/data\/scripts\/original\/";/g,
             'const auto root = std::string(ARK_WORLD_TEST_DATA) + "/scripts/original/";');
-      content = Buffer.from(text);
+      content = Buffer.from(translateModulePaths(text, target));
     }
     const patched = previous.files.find(record => record.file === target && (record.product_patch || record.test_fixture_patch));
     if (patched && !(supersedeFixtures && patched.test_fixture_patch && patched.source_sha256 !== entry.sha256)) {
@@ -238,13 +240,14 @@ if (mode === '--record-patch') {
   }
   put(join(destination, 'assets/simulation/SOURCES.json'), JSON.stringify({
     scope: 'maintained_complete_world_rules_and_single_runtime_owner',
+    layout_adaptation: 'Domain module paths maintained by scripts/simulation/module_paths.mjs; upstream identity, namespaces, wire fields and assertions preserved.',
     snapshot_sha256: digest(snapshotBytes), files: records
   }, null, 2) + '\n');
-  const rules = records.filter(v => v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
+  const rules = records.filter(v => v.file.startsWith('src/simulation/') && v.file.includes('/rules/') && v.file.endsWith('.cpp'));
   const persistenceModules = new Set(['startup_world_codec.cpp',
     'startup_world_persistence.cpp', 'startup_world_restore_validation.cpp']);
   const worldSources = records.filter(v => v.file.startsWith('src/simulation/') &&
-    !v.file.startsWith('src/simulation/rules/') && v.file.endsWith('.cpp'));
+    !v.file.includes('/rules/') && v.file.endsWith('.cpp'));
   const separateModules = new Set(['startup_world_file_io.cpp', 'startup_system_records.cpp',
     'startup_application.cpp', 'startup_application_replay.cpp', 'startup_application_replay_paths.cpp',
     'startup_application_actions.cpp', 'startup_application_title.cpp', 'startup_application_menu.cpp',

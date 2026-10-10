@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/facility_exit.hpp"
+#include "ark/simulation/facilities/rules/facility_exit.hpp"
 
 #include <cstdlib>
 #include <iostream>

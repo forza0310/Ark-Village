@@ -1,6 +1,6 @@
-#include "ark/simulation/startup_application.hpp"
-#include "ark/simulation/startup_application_replay.hpp"
-#include "ark/simulation/startup_world_village_activity.hpp"
+#include "ark/simulation/application/startup_application.hpp"
+#include "ark/simulation/application/startup_application_replay.hpp"
+#include "ark/simulation/village/startup_world_village_activity.hpp"
 #include "startup_application_natural_replay.hpp"
 #include "support/audio_requests.hpp"
 #include <fstream>

@@ -1,4 +1,4 @@
-#include "ark/simulation/startup_application.hpp"
+#include "ark/simulation/application/startup_application.hpp"
 #include <algorithm>
 #include <chrono>
 #include <fstream>

@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/encounter_creation.hpp"
+#include "ark/simulation/combat/rules/encounter_creation.hpp"
 
 #include <iostream>
 #include <limits>

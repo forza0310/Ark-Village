@@ -1,10 +1,10 @@
 // Presentation contracts use sparse page/definition identities and explicit minimal page caches.
 // Rule arithmetic/transactions stay in frozen building tests; this suite owns mapping and input.
-#include "support/checks.hpp"
-#include "support/world_fixture.hpp"
-#include "ui/world_building.hpp"
-#include "world_build_placement.hpp"
-#include "world_editing.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
+#include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../../src/desktop/scene/world_build_placement.hpp"
+#include "../../src/desktop/scene/world_editing.hpp"
 #include <algorithm>
 #include <utility>
 

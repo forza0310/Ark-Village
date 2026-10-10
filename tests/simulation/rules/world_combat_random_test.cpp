@@ -1,7 +1,7 @@
-#include "ark/simulation/rules/combat_commit.hpp"
-#include "ark/simulation/rules/world_random.hpp"
-#include "ark/simulation/rules/world_random_consumers.hpp"
-#include "ark/simulation/rules/world_scripts.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
+#include "ark/simulation/world/rules/world_random.hpp"
+#include "ark/simulation/world/rules/world_random_consumers.hpp"
+#include "ark/simulation/village/rules/world_scripts.hpp"
 
 #include <iostream>
 #include <stdexcept>

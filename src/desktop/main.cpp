@@ -1,8 +1,8 @@
 // Process entry: arguments, CPU asset/model validation, then the raylib adapter.
-#include "ark/app/launch_options.hpp"
-#include "ark/simulation/startup_world_runtime.hpp"
-#include "resources.hpp"
-#include "world_view.hpp"
+#include "ark/app/bootstrap/launch_options.hpp"
+#include "ark/simulation/world/startup_world_runtime.hpp"
+#include "resources/resources.hpp"
+#include "application/world_view.hpp"
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>

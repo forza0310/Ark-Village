@@ -1,5 +1,5 @@
 // Synthetic maps exercise composition, not a claimed post-initialization APK world snapshot.
-#include "ark/simulation/rules/facility_departure.hpp"
+#include "ark/simulation/facilities/rules/facility_departure.hpp"
 
 #include <iostream>
 #include <limits>

@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/combat_commit.hpp"
+#include "ark/simulation/combat/rules/combat_commit.hpp"
 
 #include <cmath>
 #include <iostream>

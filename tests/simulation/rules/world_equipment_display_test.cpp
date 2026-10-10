@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_equipment_display.hpp"
+#include "ark/simulation/actors/rules/world_equipment_display.hpp"
 
 #include <iostream>
 #include <limits>

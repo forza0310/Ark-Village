@@ -1,5 +1,5 @@
-#include "ark/simulation/startup_world_visuals.hpp"
-#include "ark/simulation/startup_world_persistence.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark/assets/sprite.hpp"
 #include "ark/assets/table.hpp"
 #include "support/world_fixture.hpp"

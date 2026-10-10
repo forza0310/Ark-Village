@@ -1,4 +1,4 @@
-#include "ark/simulation/rules/world_map_refresh.hpp"
+#include "ark/simulation/map/rules/world_map_refresh.hpp"
 
 #include <iostream>
 #include <limits>

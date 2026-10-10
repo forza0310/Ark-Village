@@ -1,5 +1,7 @@
 # Steam人物详情：肖像调度、血条、奖章与气泡
 
+维护后继已将本页已核基础委托接为[标准C++只读计划](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)，与原窗口、共享scratch附加效果和完整皮肤验收分开；实际检查结果以[当前验证](../VERIFICATION.md)为准。
+
 同日后继[危险图标偏移](STEAM_HUMAN_PINCH.md)已独立核出`OFF_EFPINCE={{−14,−28},{5,−28}}`及实际消费者；下文“本批未解”保留当批边界，当前可沿后继合同取得精确锚点。原窗口像素与完整人物树仍未认证。
 
 2026-10-10。本页补齐[人物详情60](STEAM_HUMAN_DETAIL.md)委托的局部表现helper。来源是固定Steam GameAssembly与metadata的具名方法和初始化blob，不是原窗口观测；APK1.0.8及维护原型保持独立证据等级。复现工具、方法／调用锚及资源哈希见[研究包](../verification/steam-human-presentation/README.md)与EVIDENCE.json（本地核对材料，不随仓库交付）。
@@ -19,9 +21,9 @@
 
 方法先求六段duration总和100，再用输入frame取余；累计时长首次严格大于余数的行是当前段，段内时间为`余数−此前累计时长`。x使用原`RateConvert(segmentTime,0,duration,xStart,xEnd,true)`，不是浮点正弦运动，也不是实际人物的世界位置。区间来自原表及循环条件的直接推导，不代表100秒或100个桌面渲染帧；调用方的更新／绘制频率需要另外认证。
 
-动画索引由`Character2.GetAnimeIndex(0,完整输入frame)`求得，传入的不是段内时间或frame%100。因此换段／循环不自行重置步行动画。绘制顺序为：当前职业的`GetImgId(definition)`→`SetDispPlayerData(0,body,animeIndex,direction,完整frame)`→读取当前武器定义ID→`DrawDispPlayer(x+offset,121,weaponId,animeIndex)`。
+动画索引由`Character2.GetAnimeIndex(0,完整输入frame)`求得，传入的不是段内时间或frame%100。同日后继有限字节核查：该方法RVA `0x27E5C0`先以所选HUMAN_ANIME行的末项对frame取余，再取首个严格大于余数的阈值索引；cctor在VA `0x10294567`置步速4，`0x10294676／690／6AB／6C6`构造第0行`[4,8,12,16]`。正常非负frame的步帧因此为`(frame%16)/4`，独立于100槽位移周期，不沿用标题的20槽，也不在换段时重置。绘制顺序为：当前职业的`GetImgId(definition)`→`SetDispPlayerData(0,body,animeIndex,direction,完整frame)`→读取当前武器定义ID→`DrawDispPlayer(x+offset,121,weaponId,animeIndex)`。
 
-`myHouse_[2]==1`时offset为0，其余为−12。因此无住宅的基础水平范围是63至86；有住宅时75至98。保留direction原值1／2，不在未读对应绘制方向表时擅自称左／右。`DrawDispPlayer`的人物／武器树和`GetAnimeIndex`内部索引仍是各自已有或后继专题，本页不由PNG列数猜具体身体帧。
+`myHouse_[2]==1`时offset为0，其余为−12。因此无住宅的基础水平范围是63至86；有住宅时75至98。保留direction原值1／2，不擅自改称世界方向。[Steam标题人物](STEAM_TITLE_ACTORS.md)已独立闭合正常action0的身体／武器常量、资源及先武器后身体顺序，可复用该基础计划，但raw60本调用链没有标题外层的显式阴影请求，不能自动加shadow。完整共享scratch的附加效果仍不由这项基础复用覆盖。
 
 `SetDispPlayerData`是共享表现对象写入。维护只读皮肤应产出人物身份／动画／方向／武器的显式请求，由已授权Owner表现请求／独立回放机制处理；不得在绘制回调中重新计算人物业务属性、消费世界随机或移动冒险者。
 
@@ -37,6 +39,12 @@
 
 “没有活动实例”不等于人物定义不存在，不意味着隐藏职业、当前装备、六属性或四战斗缓存；也不应填一条100%血条假装当前HP已知。通用power-bar helper内部虽有`chara==null`时填宽18的分支，raw60普通肖像调用点已先挡住空实例，所以该fallback不是raw60的空实例行为。
 
+倒下基础身体已作有限静态闭合：`SetDrawParam` RVA `0x28AE00`按action7读取`HUMAN_ANIME_SEB[7]=12`、`HUMAN_ANIME_SEB_F[7]=[0]`和`body_off[7]=[0,0]`，再加direction1，得到human **SEB13、frame0**。前者来自cctor实际fieldRef指向的48字节metadata数组；后两者分别由VA `0x10294E17–0x10294E54`和`0x10295B8F–0x10295BCC`的新建数组／写入路径确认。图片仍由当前职业／性别选择，不取世界实例创建时的旧职业缓存。
+
+简版`DrawDispPlayer` RVA `0x2CD000`转全版RVA `0x2CCEA0`时明确传`weaponId=-1、animeIndex=0`，全版据此跳过武器；两层wrapper没有独立阴影绘制。正常scratch的倒下基础请求因此仅身体，不擅自补装备或标题阴影；`Draw_human`中的选中、携物、伤害及其它残留效果尚未穷尽，不能把这个基础请求称为任意历史下的完整人物树。
+
+已直接核Steam `resources.assets`及human TextAsset身份后，在内存中解码归档：`seb.inf[13]=down01.seb`，该48字节文件SHA-256为`2ae965d67a8d912fb2311c9c7420dfd645328b3e82c7bbffff2e18efa4583ae8`，与已出版`assets/original/human/down01.seb`相同。本调用的frame0裁片为`(108,24,18,24)`、offset`(-9,-23)`、无翻转；人物锚`(75,121)`叠偏移后左上为`(66,98)`。原SEB头frame_count为1但包含frame0／1两条记录，本调用只消费frame0，不重写原表或据第二条猜动画。此为源资源与调用合同，不是原窗口逐像素验收。
+
 ## 血条使用PB_NOW，危险图标使用PB_AFTER
 
 `Character2`映射直接登记`PB_NOW=1`、`PB_AFTER=3`；`powerBar_`字段偏移`0x104`。数组元素1与3不能按名字相近合并成一个“当前HP”。
@@ -50,7 +58,7 @@ raw60实际调用`Draw_charaPowerBarToSubForm(g,x,121,item=null,chara=live,eff=f
 | 绿色部分 | FillRect(dx−9,dy−24,width,2) | (83,255,0) |
 | 剩余部分 | FillRect(dx−9+width,dy−24,18−width,2) | (68,100,104) |
 
-`width=RateConvert(powerBar_[PB_NOW],0,live.GetHpMax(),0,18,true)`。最大值由当前实例方法取得；不拿raw60概览的`equipParam_[0]`替代绘制期实例输入，也不以道具恢复量直接生成长度。对raw60的dy121，这些y分别为95、96、97；外框宽21、内框宽19、填充总宽18应分别保留，不能“对齐”成统一宽度。
+`width=RateConvert(powerBar_[PB_NOW],0,live.GetHpMax(),0,18,true)`。续核`Character2.GetHpMax`（RVA `0x27F930`）的人类分支经该实例定义调用`CharacterData.GetMaxHp`（RVA `0x213590`），实际读取当前`equipParam_ +0x5C`的元素0；维护对应当前共享`derived.combat[0]`，不取创建时上限或旧页缓存，也不以道具恢复量生成长度。对raw60的dy121，这些y分别为95、96、97；原DrawRect参数外21×5／内19×3，经[Steam矩形后端](STEAM_WINDOW_FRAME.md#drawrect不是默认线宽的stroke)转换为半开22×6／20×4，FillRect的18总宽不加1。不能“对齐”成统一宽度。
 
 危险图标在普通肖像之后独立判断：对正常非负输入frame，`trunc((frame%12)/6)==0`，即每12槽的前6槽才继续；然后计算原整数`100*powerBar_[PB_AFTER]/GetHpMax()`，结果**≤30**时绘制SEB39/image22的frame0。阈值是整数除法后的结果，不能改成严格HP比例<30%；也不能拿绿色宽度或PB_NOW判定。
 
@@ -61,6 +69,8 @@ raw60实际调用`Draw_charaPowerBarToSubForm(g,x,121,item=null,chara=live,eff=f
 ## 奖章：1至4个图标，5起显示乘号与数字
 
 `AppData.Draw_medal(g,dx,dy,num)`在`0x10254F70`，raw60调用锚为(83,70)。num为0时不画；1至4按`Draw_icon(mode6,index1)`重复，依次锚在`dx+20−10*i,dy`，i从0到num−1。它不是从dx向右逐枚排列。
+
+`UserData.Draw_icon`（RVA `0x30C350`）的mode6分支`0x1030C7FB–0x1030C88F`实际取image35，源x为`14*(index%10)`、y0、宽高14，目标锚没有额外偏移。因此此处index1取`(14,0,14,14)`，不是按PNG尺寸猜测列号。
 
 num≥5时令`R=dx+30`、`W=8*GetFig(num)`：奖章图标锚`(R−W−22,dy)`；乘号用SEB12/image103 **frame16**，锚`(R−W−10,dy+4)`；数字用`DrawNumImage`的SEB12、空前后缀、padding0、anchor4，锚`(R,dy+4)`。这里的8用于数字宽度，不得用徽章图的14像素宽代替。
 
@@ -81,4 +91,4 @@ SEB12是`number05.seb`，资源页为Steam匹配的image103 `number05.png`。fra
 
 本包7个明确common依赖是4图＋3SEB，不包含完整动态人物／武器树：image7 `fukidashi_back`、35 `icon_medal00`、22 `ef_pinch`、103 `number05`；SEB28、39、12。审计沿EXE `img.inf/seb.inf`逻辑索引定位原资源记录，再核本地发布路径的字节一致性；即使路径在`assets/original/common`，也是本批逐文件证明与EXE一致后才复用，不是按同名推断两版相同。
 
-窗口、字体、四页其它图元及输入分别沿[人物详情](STEAM_HUMAN_DETAIL.md)、[人物输入](STEAM_HUMAN_INPUT.md)、[窗口字体](STEAM_WINDOW_FRAME.md)。本批不生成新图片、不注册CMake、不改产品侧、不接C++渲染；原窗口像素、实际输入、完整皮肤、危险图标偏移表及所有人物／武器帧仍分开验收。
+窗口、字体、四页其它图元及输入分别沿[人物详情](STEAM_HUMAN_DETAIL.md)、[人物输入](STEAM_HUMAN_INPUT.md)、[窗口字体](STEAM_WINDOW_FRAME.md)。本页静态研究不生成新图片、不注册CMake、不改产品侧；普通action0和倒下action7的基础参数已闭合，危险图标偏移沿[后继合同](STEAM_HUMAN_PINCH.md)。维护接线、原窗口像素、实际输入、完整皮肤和其余人物／武器动作仍分开验收。

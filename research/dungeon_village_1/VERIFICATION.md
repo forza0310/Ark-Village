@@ -34,6 +34,8 @@
 
 ## Steam人物表现与设施升级例图2026-10-10
 
+后继正式`steam_human_skin`模块将人物60基础循环／HP／危险图标／奖章／倒下气泡接为只读计划；Owner视图显式拒绝坏页、缺字段或坏绑定，挂起父页仍可投影。补核GetAnimeIndex的16槽步帧、action7身体13/0、当前共享最大HP及奖章mode6裁片，复用现有Steam差异数字PNG。现有visuals负责图元、素材、HP端点／闪烁、名单原序及Owner不变性；application补相关集成检查。单Release定向构建通过，两项CTest分别12.20／0.61秒，总12.82秒；无新Owner持久字段、测试target或图片，未执行世界长跑。图元按调用短期持有，无新增跨页引用或一次性声音输出；所有本轮构建／测试进程已退出。条件夹具不代表自然人物路径，完整scratch附加效果、字体与原窗口像素仍未认证。
+
 [人物合同](ui/STEAM_HUMAN_PRESENTATION.md)及[研究包](verification/steam-human-presentation/README.md)复核四方法22,736字节、36锚、六MOVE_DATA数组、7资源。主会话重跑audit，EVIDENCE身份保持`10fc0b79…98fe`；不由静态调度表推定秒数或完整原窗口行为。
 
 [升级81示例](ui/examples/STEAM_FACILITY_UPGRADE.md)实际消费正式只读C++计划、20个源文件并生成6图／6请求JSON／拼图／manifest共302,149字节；Release构建、visuals0.61秒、CPU导出、源和输出hash及只读check通过。主会话实际查看744×504拼图。文字仅洋红锚点、字宽和数值为夹具；原字体、OS输入和自然升级窗口仍未认证。资源由RAII释放，无新增target、Owner或后台进程；未重跑无关世界长测。

@@ -624,6 +624,52 @@ std::optional<StartupHumanDetails> startup_world_human_details(const State &s, i
     }
     return result;
 }
+std::optional<StartupHumanPresentationView>
+inspect_startup_world_human_presentation(const State &s, std::uint64_t id) {
+    const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                   [id](const auto &p) { return p.id == id; });
+    if (!s.rules || page == s.scripts.pages.end() ||
+        page->kind != ref::WorldScriptPageKind::raw_page || page->legacy_page != 60 ||
+        page->lifecycle < 1 || page->lifecycle > 3 ||
+        !s.human_pages_initialized.count(id))
+        return {};
+    const auto binding = s.page_human_bindings.find(id);
+    const auto tab = s.page_phases.find(id);
+    const auto frame = s.page_counters.find(id);
+    const auto selection = s.human_page_selections.find(id);
+    if (binding == s.page_human_bindings.end() || tab == s.page_phases.end() ||
+        frame == s.page_counters.end() || selection == s.human_page_selections.end() ||
+        tab->second < 0 || tab->second > 3 || frame->second < 0 || selection->second != 0)
+        return {};
+    const auto details = startup_world_human_details(s, binding->second);
+    if (!details)
+        return {};
+    StartupHumanPresentationView view{id, tab->second, frame->second, *details, {}};
+    const auto &ai = s.scene.world.world.ai;
+    // 原详情查询按活跃人物名单取首个同定义实例；不回退到退休实例或独立W。
+    for (const auto actor_id : ai.human_order) {
+        const auto actor = ai.battle.actors.find(actor_id);
+        if (actor == ai.battle.actors.end() || !(actor->second.id == actor_id) ||
+            actor->second.kind != ref::ActorKind::human)
+            return {};
+        const auto &live = actor->second;
+        if (live.definition != binding->second)
+            continue;
+        const auto growth = ai.growth.find(binding->second);
+        if (growth == ai.growth.end() || growth->second.derived.combat[0] <= 0 ||
+            live.control.state < 0 || !details->live_actor ||
+            !(*details->live_actor == actor_id))
+            return {};
+        view.live = StartupHumanPresentationLive{actor_id, live.control.state,
+                                                live.hp.displayed, live.hp.target,
+                                                growth->second.derived.combat[0]};
+        break;
+    }
+    if (details->live_actor && !view.live)
+        return {};
+    // 无实际实例仍返回定义肖像；不得补一条满HP血条。原HP可以超过新上限。
+    return view;
+}
 Error open_startup_world_human_page(State &s, int human) {
     const auto *p = top(s);
     const auto presence = s.human_presence.find(human);

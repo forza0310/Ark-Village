@@ -30,7 +30,7 @@ function building(){
  const title=`设施信息 ${buildingPage+1}/2`;
  let body,action;
  if(buildingPage===0){
-  body=`<div class="name-row"><span class="sprite facility-icon" aria-hidden="true"></span>咖啡店<span class="price">价格 <b>490G</b></span></div><div class="white-panel"><div class="building-grid"><div class="building-art">${sprite()}<span class="level">等级 1</span></div><div><div class="stats"><div class="stat">品质<b>21</b></div><div class="stat">魅力<b>25</b></div></div><div class="heart"><span>♥</span>4</div></div></div><p class="remaining">距离下个等级还有<strong>18 人</strong></p></div>`;
+  body=`<div class="name-row"><span class="sprite facility-icon" aria-hidden="true"></span>咖啡店<span class="price">价格 <b>490G</b></span></div><div class="white-panel"><div class="building-grid"><div class="building-art">${sprite()}<span class="level">等级 1</span></div><div><div class="stats"><div class="stat">品质<b>21</b></div><div class="stat">魅力<b>25</b></div></div><div class="heart" role="img" aria-label="爱心效果，一枚蓝色加号"><span class="effect-heart" aria-hidden="true"></span><span class="effect-plus" aria-hidden="true"></span></div></div></div><p class="remaining">距离下个等级还有<strong>18 人</strong></p></div>`;
   action='<button class="game-action" data-action="items">使用道具</button>';
  }else{
   const rows=bonusFixtures[bonusFixture];

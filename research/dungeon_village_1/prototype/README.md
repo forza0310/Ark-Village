@@ -51,7 +51,7 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 最新[声音操作输出](AUDIO_REQUESTS.md)提供同一Owner队列的typed／旧ID两种一次领取接口；完整播放使用操作＋ID，旧接口不代表完整音频语义。新遭遇BGM2及通知24已接，真实设备与标题剩余声音另验。
 
 设施74第二页现提供[逐来源只读行及五行视窗](../ui/FACILITY_BONUS_ROWS.md)，配套[类别9／属性7图块与效果加号](../ui/FACILITY_BONUS_ICONS.md)。按原序显示实例后缀与固定y值，不从累计分摊；不会因读页再次计算或提交加成。
-有界`--world --inspect-page world-facility-bonuses --frames 8`仅打开真实新局已有来源详情，不构造示例数值；窗口来源行／标题已接，第一页面完整效果皮肤及原EXE动态另验。
+有界`--world --inspect-page world-facility-details --frames 8`和`world-facility-bonuses`分别打开真实新局同一已营业、有来源设施的第一/第二页，不构造示例数值；普通74现消费[正式两页皮肤计划](STEAM_FACILITY_SKIN.md)，[参考图](../ui/examples/steam-facility-detail.png)供产品看框/图/数字/效果与来源。原字体/全局手形动画、最终OS输入及原EXE动态另验；特殊74模板另批。
 
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。

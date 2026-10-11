@@ -193,7 +193,8 @@ class SourceSprites {
         EndScissorMode();
     }
     void crop(const std::filesystem::path &relative, Rectangle source, Vector2 position,
-              bool published = false, std::optional<Vector2> extent = {}) {
+              bool published = false, std::optional<Vector2> extent = {},
+              std::array<bool,2> flip = {}) {
         if (relative.is_absolute() || relative.string().find("..") != std::string::npos)
             throw std::runtime_error("裁剪资源路径无效");
         const auto path = (published ? root_.parent_path() : root_) / relative;
@@ -209,11 +210,13 @@ class SourceSprites {
             source.x + source.width > found->second.width ||
             source.y + source.height > found->second.height)
             throw std::runtime_error("裁剪资源矩形越界");
+        const Rectangle painted{source.x,source.y,flip[0]?-source.width:source.width,
+                                flip[1]?-source.height:source.height};
         if(extent) {
             if(!std::isfinite(extent->x) || !std::isfinite(extent->y) || extent->x<=0 || extent->y<=0)
                 throw std::runtime_error("原图缩放尺寸拒绝");
-            DrawTexturePro(found->second,source,{position.x,position.y,extent->x,extent->y},{0,0},0,WHITE);
-        } else DrawTextureRec(found->second, source, position, WHITE);
+            DrawTexturePro(found->second,painted,{position.x,position.y,extent->x,extent->y},{0,0},0,WHITE);
+        } else DrawTexturePro(found->second,painted,{position.x,position.y,source.width,source.height},{0,0},0,WHITE);
     }
     // raw13只用arrow02的单层单部件帧作Touch边界，不把这些帧当作可见箭头。
     std::array<int,4> manual_arrow_bounds(int frame) {
@@ -259,16 +262,33 @@ class SourceSprites {
             throw std::runtime_error("菜单数字缺字宽来源");
         const auto digits = steam_facility_number_draws(number, definition.layers[0].parts[0].width);
         if (!digits) throw std::runtime_error("菜单数字计划无效");
-        for (const auto &digit : *digits)
-            for (const auto &layer : definition.layers)
-                for (const auto &part : layer.parts) {
-                    if (part.frame != digit.frame) continue;
-                    if (part.flip_x || part.flip_y) throw std::runtime_error("菜单数字翻转尚未接入");
-                    crop(resource->published_image,
-                         {float(part.source_x), float(part.source_y), float(part.width), float(part.height)},
-                         {origin.x + digit.position[0] + part.offset_x,
-                          origin.y + digit.position[1] + part.offset_y}, true);
-                }
+        for (const auto &digit : *digits) facility_image(digit,origin);
+    }
+    // 正式Steam资源绑定；SEB偏移恰一次，不能借common槽回落到APK差异PNG。
+    void facility_image(const SteamFacilityImage &request,Vector2 origin) {
+        const auto resource=steam_facility_resource(request.asset);
+        if(!resource)throw std::runtime_error("设施Steam资源映射缺失");
+        const Vector2 position{origin.x+request.position[0],origin.y+request.position[1]};
+        if(request.crop) {
+            const auto &c=*request.crop;
+            if(!c[2]||!c[3])return; // DrawWindow整40宽尾项保留空请求，无像素。
+            crop(resource->published_image,{float(c[0]),float(c[1]),float(c[2]),float(c[3])},position,true);
+            return;
+        }
+        if(!resource->published_sprite)throw std::runtime_error("设施SEB资源缺失");
+        const auto key=std::string(resource->published_sprite);
+        auto found=sprites_.find(key);
+        if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
+            read_bytes(root_.parent_path()/key))).first;
+        // 原SEB缺帧不绘；保留请求，不补猜测减号或逗号。
+        for(const auto &layer:found->second.layers)for(const auto &part:layer.parts) {
+            if(part.frame!=request.frame||part.image_index<0||part.width<=0||part.height<=0)continue;
+            if(part.image_index!=resource->image||part.flip_x<0||part.flip_x>1||part.flip_y<0||part.flip_y>1)
+                throw std::runtime_error("设施SEB图片身份/翻转无效");
+            crop(resource->published_image,{float(part.source_x),float(part.source_y),float(part.width),float(part.height)},
+                 {position.x+part.offset_x,position.y+part.offset_y},true,{},
+                 {part.flip_x!=0,part.flip_y!=0});
+        }
     }
 
   private:
@@ -304,7 +324,8 @@ class ChineseFont {
         std::string glyphs = "本月结算打倒怪物获得村子收入支出收支成果姓名数下降完成"
                              "建设返回确定撤除道路植物商店饮食金币点数人气年月份倍暂停继续月末"
                              "请选择街道内地域有建筑物金钱不足没有设施不可撤除状态异常施工"
-                             "设施情报品质魅力维护费收入建设完毕加成返回图范围";
+                             "设施情报品质魅力维护费收入建设完毕加成返回图范围"
+                             "信息距下一等级还有达到最高级周围设施的奖励没有使用道具";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
         for (const auto &v : startup_evidence().definitions)
@@ -669,6 +690,109 @@ void draw_manual_plan(const SteamManualSkinPlan &plan,const StartupWorldRuntimeS
         else if(!std::holds_alternative<SteamStartupTouch>(draw))throw std::runtime_error("说明未接绘制命令");
     }
     if(clipped){EndScissorMode();throw std::runtime_error("说明裁剪未闭合");}
+}
+// raw74标签属于研究中文适配，字体仍非Unity后端；数值/名称由正式计划提供。
+std::string facility_detail_text(const SteamFacilityDetailText &t) {
+    using R=SteamFacilityDetailTextRole;
+    switch(t.role) {
+    case R::title:return "设施信息 "+std::to_string(t.argument)+"/2";
+    case R::name:case R::bonus_name:return t.value;
+    case R::price:return "价格";
+    case R::parameter:return t.argument==1?"品质":"魅力";
+    case R::remaining:return "距下一等级还有";
+    case R::maximum_level:return "达到最高级";
+    case R::no_effects:return "---";
+    case R::bonus_title:return "设施奖励";
+    case R::maintenance:return "维护费";
+    case R::no_bonus:return "没有奖励";
+    case R::bonus_value:return std::string(t.argument==0?"价格":t.argument==1?"品质":"魅力")+t.value;
+    case R::bottom:return t.argument==0?"使用道具":"周围设施的奖励";
+    }
+    throw std::runtime_error("设施详情文字角色未消费");
+}
+constexpr Vector2 facility_detail_origin{0,(height-240)/2.F};
+std::optional<SteamFacilityDetailSkinPlan> window_facility_detail_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t page,SteamFacilityBonusCursor cursor,const ChineseFont &font) {
+    const auto phase=s.page_phases.find(page);
+    if(phase==s.page_phases.end())return {};
+    SteamFacilityDetailSkinOptions options;
+    options.view_y=23; // 固定样本GameForm静态初值，不把历史VIEW_Y0条件图当默认。
+    options.cursor=cursor;
+    // 静态研究窗口手形使用SEB21帧0；不从页面frame猜全局SEB调度。
+    options.finger_frame=0;
+    const auto title="设施信息 "+std::to_string(phase->second+1)+"/2";
+    options.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    options.bottom_width=int(font.measure(phase->second==0?"使用道具":"周围设施的奖励"));
+    return steam_facility_detail_skin(s,page,options);
+}
+SteamManualArrowPlan facility_detail_arrow(
+    const SteamFacilityArrowTouch &request,SourceSprites &sprites,bool selected=false) {
+    const auto out=steam_manual_arrow_skin({request.position,request.frame,selected},
+                                         sprites.manual_arrow_bounds(request.frame),128);
+    if(!out)throw std::runtime_error("设施标题箭头helper拒绝");
+    return *out;
+}
+void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites &sprites,
+                          const ChineseFont &font,std::optional<int> pressed_arrow={}) {
+    const auto color=[](std::array<int,3> c){return Color{static_cast<unsigned char>(c[0]),
+        static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};};
+    std::vector<std::array<int,4>> clips;
+    const auto set_clip=[&](std::array<int,4> r) {
+        BeginScissorMode(int(facility_detail_origin.x)+r[0],int(facility_detail_origin.y)+r[1],r[2],r[3]);
+    };
+    const auto intersect=[](std::array<int,4> a,std::array<int,4> b) {
+        const int x=std::max(a[0],b[0]),y=std::max(a[1],b[1]);
+        return std::array<int,4>{x,y,std::max(0,std::min(a[0]+a[2],b[0]+b[2])-x),
+                               std::max(0,std::min(a[1]+a[3],b[1]+b[3])-y)};
+    };
+    for(const auto &op:plan.operations) {
+        if(const auto *draw=std::get_if<SteamFacilityDraw>(&op)) {
+            if(const auto *r=std::get_if<StartupSkinRect>(draw)) {
+                const Rectangle box{facility_detail_origin.x+r->rect[0],facility_detail_origin.y+r->rect[1],float(r->rect[2]),float(r->rect[3])};
+                if(r->outline)DrawRectangleLinesEx(box,1,color(r->rgb));else DrawRectangleRec(box,color(r->rgb));
+            } else if(const auto *i=std::get_if<SteamFacilityImage>(draw))sprites.facility_image(*i,facility_detail_origin);
+            else if(const auto *n=std::get_if<SteamFacilityNumber>(draw))sprites.menu_number(*n,facility_detail_origin);
+            else if(const auto *m=std::get_if<SteamFacilityMapchip2>(draw)) {
+                const auto pieces=steam_facility_mapchip2_draws(*m);
+                if(!pieces)throw std::runtime_error("设施大图pattern拒绝");
+                for(const auto &part:*pieces)sprites.draw(part.sprite,part.frame,
+                    {facility_detail_origin.x+part.position[0],facility_detail_origin.y+part.position[1]});
+            } else if(const auto *c=std::get_if<SteamFacilityClip>(draw)) {
+                if(c->kind==SteamFacilityClipKind::push_intersect) {
+                    clips.push_back(clips.empty()?c->rectangle:intersect(clips.back(),c->rectangle));set_clip(clips.back());
+                } else {
+                    if(clips.empty())throw std::runtime_error("设施裁剪下溢");
+                    clips.pop_back();EndScissorMode();if(!clips.empty())set_clip(clips.back());
+                }
+            } else throw std::runtime_error("设施详情未接通用图元");
+        } else if(const auto *t=std::get_if<SteamFacilityDetailText>(&op)) {
+            const auto visible=facility_detail_text(*t);
+            const float size=t->font_size?float(t->font_size):12.F;
+            float x=facility_detail_origin.x+t->rectangle[0],y=facility_detail_origin.y+t->rectangle[1];
+            const bool layout=t->method==SteamFacilityTextMethod::text_layout;
+            if(t->anchor.value_or(0)&2)x+=(layout?float(t->rectangle[2]):0.F)/2-font.measure(visible,size)/2;
+            else if(t->anchor.value_or(0)&4)x+=(layout?float(t->rectangle[2]):0.F)-font.measure(visible,size);
+            if(layout) {
+                y+=std::max(0.F,(float(t->rectangle[3])-size)/2);
+                set_clip(clips.empty()?t->rectangle:intersect(clips.back(),t->rectangle));
+            }
+            if(t->role==SteamFacilityDetailTextRole::bonus_value) {
+                const auto split=visible.size()-t->value.size();
+                const auto rich="<co=0065FF>"+visible.substr(0,split)+"</co>"+t->value;
+                font.manual_text(rich,x,y,layout?float(t->rectangle[2]):1000.F,size,0,color(t->rgb));
+            } else font.text(visible,x,y,color(t->rgb),size);
+            if(layout){EndScissorMode();if(!clips.empty())set_clip(clips.back());}
+        } else if(const auto *a=std::get_if<SteamFacilityArrowTouch>(&op)) {
+            // 使用已核GameView纹理消费者，common74 SEB只给bounds；无悬停假选中。
+            const auto arrow=facility_detail_arrow(*a,sprites,pressed_arrow==a->value);
+            const auto &c=arrow.crop;const auto &d=arrow.destination;
+            sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
+                {facility_detail_origin.x+d[0],facility_detail_origin.y+d[1]},true,Vector2{d[2],d[3]});
+        } else if(!std::holds_alternative<SteamStartupTouch>(op)&&!std::holds_alternative<SteamFacilityScrollRequest>(op))
+            throw std::runtime_error("设施详情未消费请求");
+    }
+    if(!clips.empty()){EndScissorMode();throw std::runtime_error("设施详情裁剪未退休");}
+    font.text("返回",188,272); // 框架右软标签研究适配；左侧不再伪造确定/返回。
 }
 struct Window {
     Window() {
@@ -1404,7 +1528,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         }
         if (!ready)
             throw std::runtime_error("村办检查未返回真实目录");
-    } else if (inspect_page == "world-facility-bonuses") {
+    } else if (inspect_page == "world-facility-bonuses"||inspect_page=="world-facility-details") {
         // 仅使用真实新局已装入实例及实际邻接来源，不注入来源名单或示例加成。
         std::optional<std::uint64_t> target;
         for (const auto id : session.state().scene.world.facility_order) {
@@ -1418,10 +1542,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
         if (!target || session.open_facility_page(*target) != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局无可核设施奖励详情");
         const auto page = session.state().scripts.pages.back().id;
-        if (session.act_facility_page(page, StartupFacilityPageAction::next) !=
-                StartupWorldRuntimeError::none ||
+        if ((inspect_page=="world-facility-bonuses"&&session.act_facility_page(page, StartupFacilityPageAction::next) !=
+                StartupWorldRuntimeError::none) ||
             !startup_world_facility_bonus_rows(session.state(), page))
-            throw std::runtime_error("真实设施第二页载荷拒绝");
+            throw std::runtime_error("真实设施详情载荷拒绝");
     } else if (inspect_page == "world-building") {
         if (session.open_build_menu() != StartupWorldRuntimeError::none)
             throw std::runtime_error("真实新局建设目录检查入口失败");
@@ -1576,12 +1700,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
     int award_selection{}, prompt_selection{}, rank_selection{};
     int build_tab{}, build_selection{};
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
+    std::map<std::uint64_t,SteamFacilityBonusCursor> bonus_views; // 父74覆盖后恢复，退休页及时回收。
+    std::optional<std::pair<std::uint64_t,int>> facility_arrow_press; // 原CheckTouch的研究按下适配，非悬停。
     auto build_orientation = ref::FacilityOrientation::first;
     std::string command_feedback;
     std::optional<std::uint64_t> clear_confirm_pending; // 绑定计分页，按逻辑门槛只消费一次。
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))facility_arrow_press.reset();
         const auto current_top=std::find_if(session.state().scripts.pages.rbegin(),session.state().scripts.pages.rend(),
                                             [](const auto &page){return page.lifecycle!=4;});
         const bool application_clear=session.application_mode() && current_top!=session.state().scripts.pages.rend() &&
@@ -1619,7 +1746,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 body_scroll = body_extent = 0;
                 task_selection = task_scroll = 0;
                 build_tab = build_selection = 0;
-                bonus_selection = bonus_scroll = 0;
+                const auto old_bonus=bonus_views.find(page->id);
+                bonus_selection=old_bonus==bonus_views.end()?0:old_bonus->second.selection;
+                bonus_scroll=old_bonus==bonus_views.end()?0:old_bonus->second.first;
                 award_selection = prompt_selection = 0;
                 if (page->legacy_page == 1 && session.state().task_abort_questions.count(page->id))
                     prompt_selection = 1; // 原主动中止询问默认“否”，不因新页重置变成“是”。
@@ -2037,6 +2166,32 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
             } else if (raw == 74) {
                 const auto pid = page->id;
+                const bool ordinary=startup_world_facility_page_count(session.state(),*page)==2;
+                const bool pointer_return=ordinary&&hit({176,265,58,24});
+                bool row_confirm{},button_confirm{},left_click{},right_click{};
+                if(ordinary) {
+                    const auto plan=window_facility_detail_plan(session.state(),pid,{bonus_selection,bonus_scroll},font);
+                    if(!plan)throw std::runtime_error("设施详情输入计划拒绝");
+                    const auto point=[&](std::array<int,4> r) {
+                        return Rectangle{facility_detail_origin.x+r[0],facility_detail_origin.y+r[1],float(r[2]),float(r[3])};
+                    };
+                    for(const auto &op:plan->operations) {
+                        if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                            if(!touch->rectangle)continue;
+                            if(touch->component==11&&!pointer_consumed&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT)&&
+                               CheckCollisionPointRec(mouse,point(*touch->rectangle))) {
+                                bonus_selection=touch->value&0xffff;row_confirm=true;
+                            // 源按钮扩展基矩形可能重叠框架适配返回，不把返回误投给道具。
+                            } else if(touch->component==4&&!pointer_return&&hit(point(*touch->rectangle)))button_confirm=true;
+                        } else if(const auto *arrow=std::get_if<SteamFacilityArrowTouch>(&op)) {
+                            const auto expanded=facility_detail_arrow(*arrow,sprites);
+                            if(hit(point(expanded.touch_rectangle))) {
+                                if(arrow->value==16)left_click=true;else right_click=true;
+                                facility_arrow_press=std::make_pair(pid,arrow->value);
+                            }
+                        }
+                    }
+                }
                 if (!session.state().facility_definition_page_bindings.count(pid) &&
                     session.state().page_phases.at(pid) == 1) {
                     const auto rows = startup_world_facility_bonus_rows(session.state(), pid);
@@ -2047,9 +2202,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             IsKeyPressed(KEY_UP),IsKeyPressed(KEY_DOWN));
                         if(!cursor)throw std::runtime_error("设施奖励选择/视窗非法");
                         bonus_selection=cursor->selection;bonus_scroll=cursor->first;
-                        for (int n = 0; n < 5 && n + bonus_scroll < count; ++n)
-                            if (hit({17,static_cast<float>(95+n*19),214,18}))
-                                bonus_selection = n + bonus_scroll;
                         const auto wheel = GetMouseWheelMove();
                         if (wheel != 0)
                             bonus_selection = std::clamp(bonus_selection + (wheel > 0 ? -1 : 1),0,count-1);
@@ -2059,20 +2211,22 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 // Steam两个repeat独立处理；同轮左右会切两次，不合并为一次OR。
                 if (!session.state().facility_definition_page_bindings.count(pid))
-                    for(const bool pulse:{IsKeyPressed(KEY_LEFT),IsKeyPressed(KEY_RIGHT)})
+                    for(const bool pulse:{IsKeyPressed(KEY_LEFT)||left_click,IsKeyPressed(KEY_RIGHT)||right_click})
                         if(pulse&&session.act_facility_page(pid,StartupFacilityPageAction::next)!=StartupWorldRuntimeError::none)
                             throw std::runtime_error("设施情报翻页失败");
-                if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) {
+                // raw74无marker16；列表release选择并发确认，第二页由Owner消费为no-op。
+                if (IsKeyPressed(KEY_ENTER)||row_confirm||button_confirm||(!ordinary&&hit({176,265,58,24}))) {
                     const auto error =
                         session.act_facility_page(pid, StartupFacilityPageAction::confirm);
                     if (error != StartupWorldRuntimeError::none)
                         command_feedback = session.last_error().empty()?"暂不可用":session.last_error();
-                } else if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
+                } else if (IsKeyPressed(KEY_ESCAPE)||pointer_return||(!ordinary&&hit({8,265,58,24}))) {
                     // 原确认优先，第二页确认no-op时不能再消费同轮返回。
                     if (session.act_facility_page(pid, StartupFacilityPageAction::cancel) !=
                         StartupWorldRuntimeError::none)
                         throw std::runtime_error("设施情报返回失败");
                 }
+                if(ordinary)bonus_views[pid]={bonus_selection,bonus_scroll};
             } else if (raw == 33) {
                 const auto phase = session.state().page_phases.find(page->id);
                 const bool animating =
@@ -2332,6 +2486,12 @@ int run_startup_world_window(const std::filesystem::path &assets,
         // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
         (void)session.take_sound_requests();
         const auto &state = session.state();
+        for(auto it=bonus_views.begin();it!=bonus_views.end();) {
+            const auto page=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),
+                [&](const auto &p){return p.id==it->first&&p.legacy_page==74&&p.lifecycle!=4;});
+            if(page==state.scripts.pages.end()||!state.facility_page_neighbours.count(it->first))it=bonus_views.erase(it);
+            else ++it;
+        }
         camera = {state.camera[0] + view_offset.x, state.camera[1] + view_offset.y};
         const auto &world = state.scene.world.world;
         bool moved{};
@@ -2713,7 +2873,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             font.text("返回 Esc",12,263,ink,10);font.text("确定 Enter",170,263,ink,10);
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
         } else if (const auto page = top_page()) {
-            if (page->legacy_page != 21) DrawRectangle(5, 170, 230, 119, paper);
+            const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
+            if (page->legacy_page != 21&&!steam_facility) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -2734,7 +2895,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21)
+            if (page->legacy_page != 21&&!steam_facility)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3042,54 +3203,38 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("返回", 18, 272);
                 font.text("确定", 190, 272);
             } else if (page->legacy_page == 74) {
-                const auto id = state.facility_page_bindings.at(page->id);
-                const auto &facility = world.facilities.at(id);
-                const auto &d = rules.facilities.at(facility.placement.definition_id);
-                const auto values = startup_world_facility_values(state, id);
-                if (!values)
-                    throw std::runtime_error("设施情报经营投影失败");
-                DrawRectangle(5, 42, 230, 216, paper);
-                const auto title_icon = startup_world_facility_icon_draw(state,d.id);
-                if (!title_icon) throw std::runtime_error("设施类别图标载荷非法");
-                sprites.visual(*title_icon,{12,48});
-                font.text(d.name, 32, 48);
-                const auto &growth = world.facility_uses.at(d.id);
-                font.text("Lv." + std::to_string(growth.level), 144, 48, ink, 10);
-                const auto phase = state.page_phases.at(page->id);
-                font.text(std::to_string(phase + 1) + "/" +
-                              std::to_string(startup_world_facility_page_count(state, *page)),
-                          192, 48, ink, 10);
-                constexpr std::array<const char *, 4> labels{{"价格", "品质", "魅力", "维护费"}};
-                const int start = 0;
-                const int end = phase == 0 ? 3 : 0;
-                for (int n = start; n < end; ++n) {
-                    const float y = 74 + (n - start) * 23;
-                    font.text(labels[n], 16, y);
-                    font.text(std::to_string(values->instance_attributes[n]), 170, y);
-                }
-                if (phase == 1) {
-                    const auto view = startup_world_facility_bonus_window(state,page->id,bonus_scroll);
-                    if (!view) throw std::runtime_error("设施奖励来源投影失败");
-                    font.text("周围设施的奖励", 62, 74, ink, 11);
-                    if (view->rows.empty()) font.text("没有奖励",92,97,ink,11);
-                    for (int n = 0; n < static_cast<int>(view->rows.size()); ++n) {
-                        const auto &row = view->rows[n];
-                        const float y = 97 + n * 19;
-                        if (n + bonus_scroll == bonus_selection)
-                            DrawRectangle(17,static_cast<int>(y)-2,204,18,{219,232,204,255});
-                        const auto icon = startup_world_facility_icon_draw(state,row.definition);
-                        if (!icon) throw std::runtime_error("设施奖励行图标非法");
-                        sprites.visual(*icon,{26,y-2});
-                        font.text(row.name,44,y,ink,10);
-                        for (const auto &value : row.values) {
-                            const float x = value.attribute == 0 ? 121 : value.attribute == 1 ? 171 : 147;
-                            font.text(value.label,x,y,{0,101,255,255},9);
-                            font.text(value.text,x+font.measure(value.label,9),y,ink,9);
-                        }
-                    }
-                    if (view->total > 5)
-                        font.text(std::to_string(bonus_selection+1)+"/"+std::to_string(view->total),190,202,ink,9);
+                if(startup_world_facility_page_count(state,*page)==2) {
+                    const auto plan=window_facility_detail_plan(state,page->id,{bonus_selection,bonus_scroll},font);
+                    if(!plan)throw std::runtime_error("Steam普通设施详情载荷拒绝");
+                    draw_facility_detail(*plan,sprites,font,
+                        facility_arrow_press&&facility_arrow_press->first==page->id
+                            ?std::optional<int>(facility_arrow_press->second):std::nullopt);
                 } else {
+                    const auto id = state.facility_page_bindings.at(page->id);
+                    const auto &facility = world.facilities.at(id);
+                    const auto &d = rules.facilities.at(facility.placement.definition_id);
+                    const auto values = startup_world_facility_values(state, id);
+                    if (!values)
+                        throw std::runtime_error("设施情报经营投影失败");
+                    DrawRectangle(5, 42, 230, 216, paper);
+                    const auto title_icon = startup_world_facility_icon_draw(state,d.id);
+                    if (!title_icon) throw std::runtime_error("设施类别图标载荷非法");
+                    sprites.visual(*title_icon,{12,48});
+                    font.text(d.name, 32, 48);
+                    const auto &growth = world.facility_uses.at(d.id);
+                    font.text("Lv." + std::to_string(growth.level), 144, 48, ink, 10);
+                    const auto phase = state.page_phases.at(page->id);
+                    font.text(std::to_string(phase + 1) + "/" +
+                                  std::to_string(startup_world_facility_page_count(state, *page)),
+                              192, 48, ink, 10);
+                    constexpr std::array<const char *, 4> labels{{"价格", "品质", "魅力", "维护费"}};
+                    const int start = 0;
+                    const int end = 3;
+                    for (int n = start; n < end; ++n) {
+                        const float y = 74 + (n - start) * 23;
+                        font.text(labels[n], 16, y);
+                        font.text(std::to_string(values->instance_attributes[n]), 170, y);
+                    }
                     font.text("使用 " + std::to_string(growth.completed_uses) + "/" +
                                   std::to_string(values->upgrade_uses),
                               16, 150, ink, 10);
@@ -3099,11 +3244,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (d.kind == 12 && state.facility_residents.at(id) >= 0)
                         font.text(human_name(state.facility_residents.at(id)), 16, 197,
                                   ink, 10);
+                    font.text("返回", 18, 272);
+                    if (d.detail == 6)
+                        font.text("入住", 190, 272);
+                    font.text(command_feedback, 12, 199, ink, 10);
                 }
-                font.text("返回", 18, 272);
-                if (d.detail == 6)
-                    font.text("入住", 190, 272);
-                font.text(command_feedback, 12, 199, ink, 10);
             }
             if (page->kind == ref::WorldScriptPageKind::raw_page && page->legacy_page == 59) {
                 // 定义已解锁但实例尚未到访；这里只读当前职业/性别和页面计数绘制。
@@ -3670,7 +3815,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                           190, 270);
             } else if (page->legacy_page == 83)
                 font.text("取消", 18, 270);
-            else if (page->legacy_page != 97 && page->legacy_page != 72 &&
+            else if (!steam_facility&&page->legacy_page != 97 && page->legacy_page != 72 &&
                      page->legacy_page != 79 && page->legacy_page != 82 &&
                      (page->legacy_page < 41 || page->legacy_page > 47) &&
                      (page->legacy_page != 59 || (state.page_counters.count(page->id) &&

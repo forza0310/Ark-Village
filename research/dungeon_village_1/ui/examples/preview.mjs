@@ -1,4 +1,4 @@
-// 只读本机预览：仅允许本例三个页面文件、五张用到的原素材及五张明确截图。
+// 只读本机预览：白名单内页面/素材、五张原图与一张维护计划参考图。
 // 不提供目录枚举，不暴露APK、生成代码、存档或任意路径。
 import http from 'node:http';
 import fs from 'node:fs';
@@ -7,9 +7,12 @@ import {fileURLToPath} from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const files=[
  'ui/examples/index.html','ui/examples/examples.css','ui/examples/examples.js',
+ 'ui/examples/steam-facility-detail.png',
  'assets/original/common/wnd_back.png','assets/original/common/wnd_bar.png',
  'assets/original/common/icon_tenantInfo.png','assets/original/common/finger_r.png',
  'assets/original/image/t_cafe.png',
+ 'assets/steam-facility-common/original/common/icon_param00.png',
+ 'assets/steam-facility-common/original/common/number08.png',
  ...['facilities/S043-details-before.jpg','facilities/S045-reinforcement-result.jpg',
  'menu/S049-system-menu.jpg','menu/S041-save-complete.jpg','items/S044-facility-item-list-before.jpg']
  .map(p=>'references/screenshots/2026-10-07-steam-restore/'+p)

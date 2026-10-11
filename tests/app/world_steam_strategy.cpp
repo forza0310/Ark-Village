@@ -286,6 +286,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
     if (p.kind == ref::WorldScriptPageKind::scene) {
         if (s.scene.scene_state != 0)
             return {};
+        party_budget_exhausted_ = false;
         if ((checkpoint_phase_ && checkpoint(s)) || complete(s))
             return {};
         for (const auto id : s.scene.world.facility_order)
@@ -464,8 +465,27 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
     if (raw == 23)
         return task(p.id, p.task_identity && affordable_task(s, *p.task_identity) ? Task::confirm
                                                                                   : Task::cancel);
-    if (raw == 25)
-        return task(p.id, Task::depart);
+    if (raw == 25) {
+        // The source allows nine members. Default recruits can be insufficient for
+        // later encounters; buy actual extra places while retaining the cash buffer.
+        const bool candidate = std::any_of(s.human_presence.begin(), s.human_presence.end(),
+                                          [&](const auto &human) {
+            return human.second != 0 &&
+                   std::find(s.participants.begin(), s.participants.end(), human.first) ==
+                       s.participants.end();
+        });
+        return task(p.id, !party_budget_exhausted_ && s.participants.size() < 9 && candidate
+                              ? Task::add_member
+                              : Task::depart);
+    }
+    if (raw == 27) {
+        if (!s.task_extra_pages.count(p.id))
+            return {};
+        if (const auto human = steam_task_extra_human(s, p.id))
+            return task(p.id, Task::hire, *human);
+        party_budget_exhausted_ = true;
+        return task(p.id, Task::cancel);
+    }
     if (raw == 28)
         return s.page_phases.at(p.id) == 0 ? std::optional<Command>{task(p.id, Task::confirm)}
                                            : std::nullopt;
@@ -566,6 +586,22 @@ void SteamVillageStrategy::observe(const State &before, const Command &c,
     // passes. A cold load or a queued page answer does not certify a past effect.
     std::vector<CampaignReceipt> pending;
     ++stats_.commands;
+    if (c.kind == Kind::task_action && c.task_action == Task::hire) {
+        const int human = c.selection;
+        const auto offered = before.task_extra_pages.find(c.page);
+        require(offered != before.task_extra_pages.end() &&
+                    std::find(offered->second.begin(), offered->second.end(), human) !=
+                        offered->second.end() &&
+                    before.participants.size() < 9 &&
+                    std::find(before.participants.begin(), before.participants.end(), human) ==
+                        before.participants.end(),
+                "paid hiring lost its initialized offer or member identity");
+        auto expected = before.participants;
+        expected.push_back(human);
+        require(after.participants == expected &&
+                    cash(before) - cash(after) == before.human_calendar.at(human).continuation_cost,
+                "paid hiring did not append once and charge its cached source quote");
+    }
     people_.observe(before, c, r, after,
                     [&](const CampaignReceipt &receipt) { pending.push_back(receipt); });
     income_.observe(before, c, after,
@@ -891,6 +927,39 @@ void steam_strategy_contract() {
                 choice->page == page && choice->village_activity_action == Activity::cancel &&
                 sim::startup_world_state_digest(budget) == exhausted,
             "exhausted quarterly slots must close the catalogue without retrying denial50");
+
+    // Explicit page/quote qualifications test the player policy. The actual hire
+    // transaction and nine-person source limit belong to the frozen task suite.
+    auto crew = initial_world();
+    crew.rank = 2;
+    auto &team_page = crew.scripts.pages.back();
+    team_page.kind = ref::WorldScriptPageKind::raw_page;
+    team_page.legacy_page = 25;
+    team_page.lifecycle = 2;
+    for (auto &[human, presence] : crew.human_presence)
+        presence = human < 3 ? 1 : 0;
+    crew.participants = {0};
+    SteamVillageStrategy crew_player;
+    auto hire = crew_player.next(crew);
+    require(hire && hire->kind == Kind::task_action && hire->task_action == Task::add_member,
+            "a small late-game party must ask the source for actual extra candidates");
+    team_page.legacy_page = 27;
+    crew.task_extra_pages[team_page.id] = {2, 1};
+    crew.human_calendar.at(1).continuation_cost = 200;
+    crew.human_calendar.at(2).continuation_cost = 200;
+    crew.scene.world.world.ai.accounting = ref::PeriodAccounting(reserve(crew) + 199);
+    hire = crew_player.next(crew);
+    require(hire && hire->task_action == Task::cancel,
+            "unaffordable extra-member page must be cancelled");
+    team_page.legacy_page = 25;
+    hire = crew_player.next(crew);
+    require(hire && hire->task_action == Task::depart,
+            "cancelled recruitment must not reopen raw27 forever");
+    crew.participants = {0, 1, 2, 3, 4, 5, 6, 7, 8};
+    SteamVillageStrategy full_player;
+    hire = full_player.next(crew);
+    require(hire && hire->task_action == Task::depart,
+            "nine-person source cap must never request a tenth member");
 
     // Explicit task-end observation: the existing sidecar retains the recovery
     // month across cold loading, including a calendar year boundary.

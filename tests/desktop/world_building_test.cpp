@@ -495,13 +495,30 @@ void world_building() {
             ui::WorldBuildingInput navigation;
             navigation.wheel_rows = 99;
             check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
-                      cursor.first_row == 3,
+                      cursor.first_row == 3 && cursor.selected == 3,
                   "Long source names can scroll locally without sending a facility transaction");
             const int first = cursor.first_row;
             navigation.up = true;
             check(!ui::world_building_input(scrolling, frame, cursor, navigation, true) &&
-                      cursor.first_row == first,
+                      cursor.first_row == first && cursor.selected == 3,
                   "Pending/paused input blocks local source scrolling as well as source actions");
+            navigation = {};
+            navigation.up = true;
+            (void)ui::world_building_input(scrolling, frame, cursor, navigation, false);
+            check(cursor.selected == 2 && cursor.first_row == 2,
+                  "Keyboard selection follows the maintained cursor after a wheel event");
+            navigation = {};
+            navigation.click = Vector2{frame.body.x + 40, frame.panel.y + 51 + 19 * 2 + 5};
+            check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
+                      cursor.selected == 4 && cursor.first_row == 2,
+                  "PC bonus row selects its source identity without triggering a facility action");
+            cursor.selected = 7;
+            cursor.first_row = 3;
+            scrolling.phase = 0;
+            navigation = {};
+            check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
+                      cursor.selected == 7 && cursor.first_row == 3,
+                  "Returning to page1 keeps a valid page2 cursor instead of resetting only its scroll");
         }
     }
     // Action gating must use current view phase/count, not assume every facility has two pages.

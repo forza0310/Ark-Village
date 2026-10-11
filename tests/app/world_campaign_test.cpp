@@ -4,6 +4,7 @@
 #include "../support/world_fixture.hpp"
 #include "ark/app/session/world_report.hpp"
 #include "ark/assets/sha256.hpp"
+#include "ark/simulation/world/startup_world_menu.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_active_pot_strategy.hpp"
 #include "world_active_strategy.hpp"
@@ -42,6 +43,34 @@ const ref::WorldScriptPage *top(const State &state) {
 }
 int month(const State &state) {
     return state.scene.calendar.year * 12 + state.scene.calendar.month;
+}
+// A bounded manual player sequence uses the same command/update transaction as strategies.
+// The source question only queues yes; its parent must run before the task is cleared.
+std::optional<app::WorldCommand> withdrawal_command(const State &state) {
+    const auto *page = top(state);
+    if (!page || page->lifecycle != 2)
+        return {};
+    app::WorldCommand command;
+    command.page = page->id;
+    if (page->kind == ref::WorldScriptPageKind::scene) {
+        if (!state.active_task || state.scene.scene_state != 0)
+            return {};
+        command.kind = Kind::open_task_control_menu;
+    } else if (page->legacy_page == 4) {
+        if (!sim::inspect_startup_world_menu_page(state, page->id) ||
+            state.task_abort_answers.count(page->id))
+            return {};
+        command.kind = Kind::task_action;
+        command.task_action = sim::StartupWorldTaskAction::request_abort;
+    } else if (state.task_abort_questions.count(page->id)) {
+        command.kind = Kind::task_action;
+        command.task_action = sim::StartupWorldTaskAction::confirm;
+        command.selection = 0;
+    } else if (!app::detail::is_decision_page(page)) {
+        command.kind = Kind::acknowledge_page;
+    } else
+        return {};
+    return command;
 }
 std::string bytes(const std::filesystem::path &file) {
     std::ifstream input(file, std::ios::binary);
@@ -240,12 +269,14 @@ template <class PlayerStrategy> struct CampaignRun {
             strategy.observe(state, input, result, state); // Rejected candidate is not installed.
         }
     }
-    void step() {
+    void step(std::optional<app::WorldCommand> manual = {}, bool automatic = true) {
         const int before_month = month(state);
         const auto before_random = state.scene.random.draws();
         require(!app::world_clear_page(state),
                 "Active acceptance cannot substitute date-clear for business goals");
-        if (const auto input = strategy.next(state))
+        // Manual input replaces only the test player's decision. Source admission,
+        // candidate rollback, observations and normal world updates remain shared.
+        if (const auto input = automatic ? strategy.next(state) : manual)
             command(*input);
         auto update = sim::prepare_startup_world_runtime(state);
         if (!update.candidate) {
@@ -337,7 +368,7 @@ template <class PlayerStrategy> struct CampaignRun {
     void run(bool resume, bool quarter_only = false) {
         const auto start = std::chrono::steady_clock::now();
         auto report = start;
-        const std::uint64_t budget = Route<PlayerStrategy>::budget(resume);
+        const std::uint64_t budget = quarter_only ? 10000 : Route<PlayerStrategy>::budget(resume);
         for (;;) {
             if (quarter_only && saved_steam_month >= 0)
                 break;
@@ -348,7 +379,7 @@ template <class PlayerStrategy> struct CampaignRun {
             require(rounds < budget, "Active business step budget exhausted");
             step();
             const auto now = std::chrono::steady_clock::now();
-            require(now - start < std::chrono::minutes(Route<PlayerStrategy>::minutes),
+            require(now - start < std::chrono::minutes(quarter_only ? 6 : Route<PlayerStrategy>::minutes),
                     "Active business time budget exhausted");
             if (now - report >= std::chrono::seconds(30)) {
                 std::cout << "PROGRESS " << strategy.diagnose(state) << std::endl;
@@ -829,7 +860,8 @@ int main(int argc, char **argv) {
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
         if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
-            mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-observe") {
+            mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-observe" ||
+            mode == "steam-withdraw") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
             if (mode == "steam-new") {
                 auto prefix = load<LateStrategy>(directory, 0);
@@ -857,19 +889,46 @@ int main(int argc, char **argv) {
                            "not all-content clear"
                         << std::endl;
                 }
-            } else if (mode == "steam-observe") {
+            } else if (mode == "steam-observe" || mode == "steam-withdraw") {
                 // Probe an isolated legal prefix through the ordinary command/update driver.
                 // Keep the player/strategy files as input; this is not a milestone certificate.
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
                 auto &run = *steam_campaign;
                 run.strategy.continue_campaign();
-                const auto deadline = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+                const bool withdraw = mode == "steam-withdraw";
+                const auto deadline = std::chrono::steady_clock::now() +
+                                      std::chrono::minutes(withdraw ? 6 : 2);
                 ark::test::inspect_campaign_progress(run.state, std::cout);
-                for (int step = 0; step < 600; ++step) {
+                if (withdraw) {
+                    const auto original_task = run.state.active_task;
+                    const auto original_successes = run.state.task_progress.successes;
+                    const int original_calls = run.state.scripts.event_calls.count(80)
+                                                   ? run.state.scripts.event_calls.at(80)
+                                                   : 0;
+                    require(original_task.has_value(), "Withdrawal needs an actual active task");
+                    for (int step = 0; step < 300; ++step) {
+                        const auto *page = top(run.state);
+                        if (!run.state.active_task && page &&
+                            page->kind == ref::WorldScriptPageKind::scene &&
+                            app::world_save_eligible(run.state))
+                            break;
+                        run.step(withdrawal_command(run.state), false);
+                    }
+                    require(!run.state.active_task &&
+                                run.state.task_progress.successes == original_successes &&
+                                run.state.scripts.event_calls.at(80) == original_calls + 1,
+                            "Withdrawal did not consume its source parent once without a victory");
+                    std::cout << "WITHDRAWN task=" << *original_task
+                              << " successes=" << original_successes
+                              << " popularity=" << run.state.popularity << '\n';
+                    ark::test::inspect_campaign_progress(run.state, std::cout);
+                }
+                const int rounds = withdraw ? 2400 : 1500;
+                for (int step = 0; step < rounds; ++step) {
                     require(std::chrono::steady_clock::now() < deadline,
-                            "Bounded campaign observation exceeded two minutes");
+                            "Bounded campaign observation exceeded its wall-clock budget");
                     run.step();
-                    if ((step + 1) % 200 == 0) {
+                    if ((step + 1) % (withdraw ? 800 : 500) == 0) {
                         std::cout << "OBSERVATION rounds=" << step + 1 << '\n';
                         ark::test::inspect_campaign_progress(run.state, std::cout);
                     }
@@ -877,8 +936,19 @@ int main(int argc, char **argv) {
                 run.coverage.save(directory, run.state);
                 ark::test::capture_campaign_observation(directory, run.state);
                 ark::test::inspect_income(run.state, std::cout);
+                if (withdraw) {
+                    for (int step = 0; step < 300 &&
+                                       !(app::world_save_eligible(run.state) &&
+                                         run.strategy.checkpoint(run.state)); ++step)
+                        run.step();
+                    require(app::world_save_eligible(run.state) && run.strategy.checkpoint(run.state),
+                            "Withdrawal recovery did not reach a stable player save boundary");
+                    run.save(1);
+                }
                 std::cout << "PASS bounded business observation; "
-                          << run.strategy.diagnose(run.state) << "; not a saved player milestone"
+                          << run.strategy.diagnose(run.state)
+                          << (withdraw ? "; controlled withdrawal prefix, not full campaign"
+                                       : "; not a saved player milestone")
                           << std::endl;
             } else if (mode == "steam-inspect") {
                 // Cold-load all durable fields and the matching controller without advancing

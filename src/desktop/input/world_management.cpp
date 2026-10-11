@@ -377,7 +377,9 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::draw_world_tax(ui::world_tax_view(state, page), ui::world_tax_layout(extent), skin,
                            enabled);
     } else if (ui::world_building_page(page)) {
-        ui::draw_world_building(ui::world_building_view(state, page),
+        auto view = ui::world_building_view(state, page);
+        ui::prepare_world_building_detail(view, state, building_, skin);
+        ui::draw_world_building(view,
                                 ui::world_building_layout(extent, page.legacy_page), skin,
                                 building_, enabled, feedback_);
     } else if (page.kind == simulation::rules::WorldScriptPageKind::raw_page &&

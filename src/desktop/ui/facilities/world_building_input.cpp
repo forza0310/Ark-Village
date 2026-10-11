@@ -134,15 +134,29 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
     bool confirm = input.enter || hit(input.click, layout.confirm);
     if (view.raw == 74) {
         if (view.phase == 1 && !view.definition_preview) {
-            const auto details = world_building_detail_layout(layout, view.detail_type);
-            const int visible =
-                std::min(5, static_cast<int>(details.sources.height / details.source_row_height));
-            const int scroll = input.wheel_rows + (input.down ? 1 : 0) - (input.up ? 1 : 0);
-            selection.first_row =
-                std::clamp(selection.first_row + scroll, 0,
-                           std::max(0, static_cast<int>(view.bonus_rows.size()) - visible));
-        } else
-            selection.first_row = 0;
+            const int count = static_cast<int>(view.bonus_rows.size());
+            const auto chosen = simulation::steam_facility_bonus_cursor(
+                count, {selection.selected, selection.first_row}, input.up, input.down);
+            if (!chosen)
+                throw std::invalid_argument("Facility bonus selection is outside its source list");
+            auto cursor = *chosen;
+            if (input.wheel_rows) {
+                const auto scrolled = simulation::steam_facility_bonus_scroll(
+                    count, cursor, simulation::SteamFacilityScrollEvent::relative, input.wheel_rows);
+                if (!scrolled)
+                    throw std::invalid_argument("Invalid facility bonus wheel event");
+                cursor = *scrolled;
+            }
+            // PC row clicks select only. Physical scrollbar dragging remains separate
+            // from the source's logical relative/absolute events.
+            for (int row = 0; row < 5 && cursor.first + row < count; ++row)
+                if (hit(input.click, {layout.body.x, layout.panel.y + 50 + row * 19.F,
+                                      layout.body.width, 18}))
+                    cursor.selection = cursor.first + row;
+            selection.selected = cursor.selection;
+            selection.first_row = cursor.first;
+        } else if (view.definition_preview)
+            selection.selected = selection.first_row = 0;
         if (view.page_count > 1 && (input.left || hit(input.click, layout.previous)))
             return intent(Action::facility_previous);
         if (view.page_count > 1 && (input.right || hit(input.click, layout.next)))

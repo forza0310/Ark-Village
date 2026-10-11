@@ -38,6 +38,7 @@ class SteamVillageStrategy {
     std::uint64_t moving_{}, recruitment_{}, departed_task_{};
     int unlock_{-1}, resident_{-1}, next_task_month_{};
     bool operation_committed_{}, checkpoint_phase_{true};
+    bool party_budget_exhausted_{}; // Only this raw25/27 flow; no mid-page player saves.
     std::uint64_t next_management_{}, next_activity_{}, next_layout_{};
     SteamVillageStats stats_;
     SteamPeopleStrategy people_;

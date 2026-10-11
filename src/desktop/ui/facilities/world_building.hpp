@@ -53,6 +53,8 @@ struct WorldBuildingView {
     std::size_t neighbours{};
     std::array<std::array<std::int64_t, 3>, 3> upgrade{};
     std::optional<simulation::SteamFacilityUpgradeSkinInput> upgrade_skin;
+    // Prepared once from the immutable Owner with actual desktop font measurements.
+    std::optional<simulation::SteamFacilityDetailSkinPlan> detail_skin;
     std::string facility_name;
 };
 struct WorldBuildingLayout {
@@ -117,4 +119,9 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback = {});
+// Only ordinary bound raw74 instances use this plan; special templates/preview retain
+// their existing contracts. This bridge never initializes pages or advances a clock.
+void prepare_world_building_detail(WorldBuildingView &view,
+                                    const simulation::StartupWorldRuntimeState &state,
+                                    const WorldBuildingSelection &selection, const Skin &skin);
 } // namespace ark::desktop::ui

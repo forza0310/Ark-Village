@@ -6,6 +6,7 @@
 #include "../common/skin.hpp"
 #include "world_building.hpp"
 #include "world_facility_upgrade.hpp"
+#include "world_facility_detail.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -193,6 +194,14 @@ void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layou
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback) {
+    if (view.detail_skin) {
+        draw_world_facility_detail(view, layout, skin, selection);
+        draw_facility_footer(view, layout, skin);
+        skin.button(layout.cancel, "返回", enabled);
+        if (!feedback.empty())
+            fitted(skin, feedback, {layout.body.x, layout.panel.y + 132, layout.body.width, 14}, MAROON);
+        return;
+    }
     if (view.raw == 81 && view.initialized) {
         draw_world_facility_upgrade(view, layout, skin);
         return;

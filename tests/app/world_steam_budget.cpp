@@ -59,6 +59,33 @@ bool steam_task_renewable(const State &s, int displayed_fee) {
            std::max<std::int64_t>(displayed_fee, current_fee);
 }
 
+std::optional<int> steam_task_extra_human(const State &s, std::uint64_t page) {
+    const auto list = s.task_extra_pages.find(page);
+    const auto reserve = steam_operating_reserve(s);
+    if (list == s.task_extra_pages.end() || cash(s) < reserve)
+        return {};
+    const auto budget = cash(s) - reserve;
+    std::optional<int> best;
+    std::int64_t score{};
+    for (const int human : list->second) {
+        if (!s.human_presence.at(human) ||
+            std::find(s.participants.begin(), s.participants.end(), human) != s.participants.end())
+            continue;
+        const auto fee = s.human_calendar.at(human).continuation_cost;
+        require(fee >= 0, "initialized extra-member quote cannot be negative");
+        if (fee > budget)
+            continue;
+        std::int64_t strength{};
+        for (const int value : s.scene.world.world.ai.growth.at(human).derived.combat)
+            strength += value;
+        if (!best || strength > score || (strength == score && human < *best)) {
+            best = human;
+            score = strength;
+        }
+    }
+    return best;
+}
+
 bool steam_optional_activity_affordable(const State &s) {
     return cash(s) >= steam_operating_reserve(s);
 }
@@ -87,6 +114,30 @@ void steam_budget_contract() {
     const auto buffer = steam_operating_reserve(s);
     require(buffer > 0 && steam_residence_reserve(s) >= buffer,
             "real new town must reserve its recurring costs");
+    // Cached raw27 quotes and strength are explicit player-choice qualifications.
+    // Frozen task rules own the fee formula, reset effects and full-party rejection.
+    auto extras = s;
+    extras.task_extra_pages[91] = {2, 1, 0};
+    for (int human = 0; human < 3; ++human) {
+        extras.human_presence.at(human) = 1;
+        extras.human_calendar.at(human).continuation_cost = human == 2 ? 201 : 200;
+        extras.scene.world.world.ai.growth.at(human).derived.combat =
+            human == 2 ? std::array<int, 4>{500, 100, 100, 100}
+                       : std::array<int, 4>{100, 30, 30, 10};
+    }
+    const auto crew_buffer = steam_operating_reserve(extras);
+    extras.scene.world.world.ai.accounting = ref::PeriodAccounting(crew_buffer + 200);
+    require(steam_task_extra_human(extras, 91) == 0,
+            "paid crew must respect source quote and stable strength tie order");
+    extras.participants = {0};
+    require(steam_task_extra_human(extras, 91) == 1,
+            "an existing participant cannot be hired twice");
+    extras.scene.world.world.ai.accounting = ref::PeriodAccounting(crew_buffer + 201);
+    require(steam_task_extra_human(extras, 91) == 2,
+            "strongest affordable candidate must be selected by definition identity");
+    extras.scene.world.world.ai.accounting = ref::PeriodAccounting(crew_buffer + 199);
+    require(!steam_task_extra_human(extras, 91) && !steam_task_extra_human(extras, 92),
+            "unaffordable or uninitialized recruitment must wait");
     const std::uint64_t task = 1;
     ref::DungeonFinishTask offered;
     offered.identity = task;

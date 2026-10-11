@@ -581,11 +581,28 @@ void world_facility_static_render_fixture() {
             else if (page.legacy_page >= 75 && page.legacy_page <= 77)
                 ui::draw_world_facility_items(ui::world_facility_items_view(state, page),
                                               ui::world_facility_items_layout(extent), skin, true);
-            else
-                ui::draw_world_building(display_override ? *display_override
-                                                         : ui::world_building_view(state, page),
+            else {
+                auto view = display_override ? *display_override : ui::world_building_view(state, page);
+                const ui::WorldBuildingSelection selection{0, first_row, first_row};
+                ui::prepare_world_building_detail(view, state, selection, skin);
+                if (display_override && view.detail_skin) {
+                    // Stress only the copied display plan, with a valid real Owner binding.
+                    // This cannot grant an effect, change rules or alter saved source values.
+                    int bonus = -1, value = 0;
+                    for (auto &operation : view.detail_skin->operations)
+                        if (auto *part = std::get_if<sim::SteamFacilityDetailText>(&operation)) {
+                            if (part->role == sim::SteamFacilityDetailTextRole::bonus_name) {
+                                ++bonus;
+                                if (bonus == 0)
+                                    part->value = view.bonus_rows.at(0).source.name;
+                            } else if (bonus == 0 && part->role == sim::SteamFacilityDetailTextRole::bonus_value)
+                                part->value = view.bonus_rows.at(0).source.values.at(value++).text;
+                        }
+                }
+                ui::draw_world_building(view,
                                         ui::world_building_layout(extent, page.legacy_page), skin,
-                                        {0, 0, first_row}, true);
+                                        selection, true);
+            }
             EndMode2D();
             text.flush(raster.zoom, raster.offset);
             EndTextureMode();

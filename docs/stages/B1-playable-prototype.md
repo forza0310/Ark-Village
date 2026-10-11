@@ -7,6 +7,8 @@
 
 desktop-debug标准139/139（98.08秒），仅排`simulation.startup_world_continuous_test`；Release经营/收益合同2/2（0.86秒）。公共接口/源码和CMake未变，不重复headless矩阵。日志在`build/validation/campaign-negative-balance/`；Release追加构建初次缺辅助工具搜索路径，使用同一缓存工具链恢复后构建与检查通过。CI待对应main，未推送或发布。
 
+随后从原月78业务档隔离经营至81、保存/独立冷载通过，新增2次库存强化与24条退休现金回执，原四输入文件保留；世界运行仍d9955d0。终现金108025G但最近两月净额为负，烤肉/炖肉仍未营业、任务39尚未胜利；仅是有效恢复前缀，不认证健康推进。证据和具体后继见[经营计划](ACTIVE_VILLAGE_PLAN.md#third-star-diagnostics-income)。正式bb61d5f普通设施皮肤的三源增量已完整只读核对，自动审批拒绝导入/准备脚本，明确四目标落盘确认待回复；该分支尚未写入源码/清单，不冒充已接线。
+
 <a id="campaign-third-star"></a>
 ## 2026-10-11：三星申请、学校营业与晋级回执
 

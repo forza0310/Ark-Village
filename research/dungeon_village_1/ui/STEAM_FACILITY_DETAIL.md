@@ -4,6 +4,10 @@
 
 2026-10-11维护后继：[皮肤模块](../prototype/STEAM_FACILITY_SKIN.md)提供普通实例两页的有序只读计划与真实Owner桥，[既有HTML示例](examples/index.html)补空/有邻接/七行滚动三条件。Steam静态绘制、维护功能短测、浏览器示例与原窗口动态分开；住宅/商品/预览皮肤与全局字体不纳入本批。
 
+2026-10-11原窗口补证：用户转交本机`work/window-restore-observation/20261011-094852-facility-detail/RESULT.md`及动作记录，12张1067×905 JPEG已检查格式／尺寸，关键三图[归档](../references/README.md#steam普通设施两页2026-10-11)。同一已选原程序窗口标题可见ver2.56；用户负责读档、处理事件并打开咖啡店，入口选择不算本次自动化认证。第一页显示542G／品质49／魅力46／等级2／距下级71人／一枚爱心加号，名称无编号。第二页维护费240G，来源原序为马戏团广场1（魅力+20）、罗汉松9（价格+20、品质+25）；标签蓝、加号／值棕，两条来源不能代替五行滚动验证。
+
+本次实际输入为右1→2、左2→1、左1→2，单击第二行只移动手形，右下返回回地图。一次Down无可见变化；Return成功注入后也无变化，但是否由游戏消费未知，不提升为原键位／确认认证。原第二页右侧可见蓝色竖条；后继[滚动消费者](STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)已追到GameView注册下层立即绘图，维护展开补上原短表蓝条与长表整数比例，源helper本身不直接绘图的结论保持。空／超过五来源、拖动、切页保留选择、右2→1、HTML标准／窄窗口仍未实测。原动态局部与完整UI验收分开。
+
 2026-10-10。固定Steam2.56的局部完整绘制分支、初始化及输入合同。直接来源是GameAssembly具名方法和metadata，见[复算工作包](../verification/steam-facility-detail/README.md)。没有用APK补Steam字段，没有新增窗口实验；S043等只保留为独立画面观察。本文的坐标是原Graphics逻辑坐标／调用实参，不是桌面截图像素，字体翻译、原点、缩放与裁剪仍沿已有合同。
 
 ## 两个入口不能合并
@@ -33,7 +37,7 @@ tenant非null时另外新建ary2，逐项加入tenant.tenantBonusList中的int[]
 
 普通布局3且value1=0时标题为`LT("施設情報 <0>/2",page+1)`，其他为`施設情報`。均调用DrawWindow(220,168,0)与DrawBox(17,74,219,184)。木纹、标题带、边框、文字色和角图按[窗框合同](STEAM_WINDOW_FRAME.md)，不能靠把截图背景缩放成整张弹窗替代。
 
-只有普通实例调用Draw_titleBarArrow(220,168)：common SEB3 arrow02，左frame3、右frame0；Touch组件1的值分别16、18。令k=trunc((frame%16)/8)，逻辑点为左(26−3k,55)、右(214+3k,55)。这些是原帧字段，不换算秒。两边都持续注册；按当前逻辑两页循环，非第一页禁左／末页禁右。
+只有普通实例调用Draw_titleBarArrow(220,168)：common SEB3 arrow02，左frame3、右frame0；Touch组件1的值分别16、18。令k=trunc((frame%16)/8)，逻辑点为左(26−3k,55)、右(214+3k,55)。这些是原帧字段，不换算秒。两边都持续注册；按当前逻辑两页循环，不因第一页禁左或末页禁右，左1→2已有本次原窗口证据。
 
 页0标题下：设施小图标在(21,66)，Draw_icon(mode9,index=定义iconIndex)。它读common图片91 icon_tenantInfo，裁片(16×(index%10),0,16,16)。名称日文在(41,69)anchor1；非日文临时字号11，TextLayout(41,69,85,11)，anchor0x20、lineSpace0，随后ResetFontSize。名称色SC_WINDOW_BLACK；右侧标签为SC_WINDOW_BLUE。
 

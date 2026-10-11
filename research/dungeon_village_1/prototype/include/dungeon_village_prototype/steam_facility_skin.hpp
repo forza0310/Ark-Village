@@ -133,12 +133,20 @@ struct SteamFacilityDetailText {
 };
 // 此helper一并绘箭头与注册组件1；不得重复普通图片绘制或猜其OS热区。
 struct SteamFacilityArrowTouch { std::array<int,2> position{}; int frame{}, value{}; };
-// 原helper只注册12后25；count含隐藏行，空表仍调用。无自算轨道/滑块。
+// 原helper调用12后25；12在GameView注册下层立即绘轨道/滑块。count含隐藏行，空表仍调用。
 struct SteamFacilityScrollRequest {
     std::array<int,4> rectangle{221,85,3,110};
     int count{}, visible{5}, prefix{0x20000};
     std::array<int,4> margin{3,20,0,0};
 };
+struct SteamFacilityScrollSkinPlan {
+    std::array<StartupSkinRect,2> rectangles; // 原顺序：暗轨道，再蓝／触摸橙滑块。
+    std::array<int,4> thumb_touch; // 组件12注册基矩形，与绘图区宽／高并不相同。
+};
+// 只展开raw74的组件12/type0；当前scroll来自调用者的本页光标，不写Owner或注册输入。
+// 首次触摸只在超过五行时变橙；空／短表也绘整根蓝条。未知请求／越界scroll显式拒绝。
+std::optional<SteamFacilityScrollSkinPlan> steam_facility_scroll_skin(
+    const SteamFacilityScrollRequest &request,int first,bool first_touch=false);
 using SteamFacilityDetailOperation=std::variant<SteamFacilityDraw,SteamFacilityDetailText,
     SteamStartupTouch,SteamFacilityArrowTouch,SteamFacilityScrollRequest>;
 struct SteamFacilityDetailSkinPlan {

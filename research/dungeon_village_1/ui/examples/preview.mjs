@@ -1,4 +1,4 @@
-// 只读本机预览：白名单内页面/素材、五张原图与一张维护计划参考图。
+// 只读本机预览：白名单内页面/素材、六张原图与一张维护计划参考图。
 // 不提供目录枚举，不暴露APK、生成代码、存档或任意路径。
 import http from 'node:http';
 import fs from 'node:fs';
@@ -8,6 +8,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..');
 const files=[
  'ui/examples/index.html','ui/examples/examples.css','ui/examples/examples.js',
  'ui/examples/steam-facility-detail.png',
+ 'references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg',
  'assets/original/common/wnd_back.png','assets/original/common/wnd_bar.png',
  'assets/original/common/icon_tenantInfo.png','assets/original/common/finger_r.png',
  'assets/original/image/t_cafe.png',

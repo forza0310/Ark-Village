@@ -32,7 +32,13 @@ RVA0x2517B0的全部304字节范围已核。它没有DrawRect、FillRect、SEB�
 
 74传maximum=count−1、largeChange=5，因此附加参数还原为[count,5,0x20000]；几何实参(221,85,4,110)变成两个注册的(221,85,3,110)。空表count=0仍注册，helper没有“无需滚动则不绘／不注册”门槛；它也不自己夹scroll、最大项或可见数。21目录复用同一合同。
 
-最终轨道显示、margin如何扩展命中、组件12/25的优先级及拖动路径继续在GameView/Surface消费者，当前仅复用既有输入研究，不为闭合这个局部扩扫框架。不把新增的int[3]与TouchOption生命周期叫作世界泄漏，也不宣称原框架注册池永久有界。
+2026-10-11[原窗口第二页](../references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg)两条来源时右侧仍可见蓝色竖条，沿该缺口补核注册下层：`GameView._addTouch` RVA23E010、VA1023E12E–1023E227处理组件12／14时，先读`option.args[count,5,...]`，VA1023E1E5用`Get(0x40000)`从顶页读取scroll，VA1023E222立即调用`DrawVerticalScroll` RVA23A720，组件12传type0。因此绘图发生在实际`SurfaceBase.AddTouchComponent(12)`（VA1023F5CC）之前，上层AddTouch12返回后才轮到25；并非延迟绘制或25单独负责蓝条。
+
+raw74合法scroll为0…max(count−5,0)。令D=max(count,5)、top=85+trunc(110×scroll/D)、len=trunc(550/D)：先FillRect(220,85,5,110)、RGB(7,5,78)，再FillRect(220,top,5,len+1)、RGB(48,160,255)。有效`CheckFirstTouch(12,0x40000)`且count>5时，后者改RGB(246,129,0)；空／短表强制非触摸色。空至五行均画111高蓝条，不因无需滚动隐藏；七行scroll0／2分别top85／116、滑块高79。这些来自具名完整绘制消费者，不由截图估比例。
+
+VA1023E590–E5B4将12最终基矩形改为(221,top,5,len)，与绘图区x220／高len+1不同，仍有原Margin。长表有效触摸分支VA1023E252追加flags0x24，登记区域扩为(x−30,−1000,125,2000)，VA1023E2A4–E2E4设置gridY=max((110−len)/(count−5),1.0f)。`OnTouchVScrollBar` RVA23D810按事件8相对旧scroll加value、9绝对value，拒绝INT_MAX后夹到上述范围；真实变化才写scroll并按delta同步selection、组件12夹到0…count−1。Surface如何将屏幕拖动合成这些逻辑事件、组件12／25最终命中优先级仍未认证；不凭基矩形造原OS热区。
+
+[维护皮肤](../prototype/STEAM_FACILITY_SKIN.md)复用既有矩形类型展开此type0，不新增Owner／存档字段或第二输出队列。TouchOption与注册池生命周期仍在框架，不把新增int[3]叫作世界泄漏，也不宣称原框架永久有界。
 
 ## 普通DrawNumImage与带逗号版本是不同算法
 

@@ -8,13 +8,15 @@
 
 `SteamFacilityDetailSkinPlan.operations`按原序保留嵌套通用图元、具名文字、SLIST触摸、标题箭头helper与滚动注册helper。第一页包含框、大图clip/Mapchip2、经营/效果/等级数字、MAX与橙底按钮；第二页包含维护费、五条来源或空提示。名称TextLayout、来源DrawString、富文本DrawString2与植物限框不能混成同一后端。`bonus_value`的argument指定标签属性，value保留字面signed串，消费者组成`<co=0065FF>译文</co>`再接value；不把值染蓝或擅自省略零。
 
-标题箭头请求一并交给SEB型AddTouch消费者，不独立画图再重复注册。第二页原序是选中手形→行注册→图标→名称→值；滚动请求只注册12后25，携带[count,5,0x20000]、Margin(3,20,0,0)及组件25的option4，不自造轨道。底部第一页为橙底→组件4→文字→手形，第二页只有说明。软标签固定[0,2]。
+标题箭头请求一并交给SEB型AddTouch消费者，不独立画图再重复注册。第二页原序是选中手形→行注册→图标→名称→值；滚动请求调用12后25，携带[count,5,0x20000]、Margin(3,20,0,0)及组件25的option4。后继已核12注册下层先绘轨道／滑块再登记组件，不能遗漏这个即时消费者。底部第一页为橙底→组件4→文字→手形，第二页只有说明。软标签固定[0,2]。
 
 `steam_facility_bonus_cursor`保持上、下独立循环及五行追踪；窗口维护输入修正左右分别处理、确认优先于返回。键盘repeat、OS最终热区、完整TextLayout与全局输入声音仍不由raylib按键适配认证。详情Owner的翻页、75/79/80交接、第二页确认无效果和退休继续由building/pages套件主责；本批不重复其业务组合，也不把局部选择加入应用快照。
 
 数值入口允许条件夹具；4096图元效果预算、65536来源/绝对索引预算和字符串4096字节是维护坏输入防护，不是原游戏内容上限。输出是短寿命值，不创建永久历史或一次性输出队列。[离线两页示例](../ui/examples/index.html)提供空、邻接和七行状态；CSS字体/尺寸是适配，第二页载荷明确为夹具，不能当原窗口或自然经营结果。
 
 研究窗口的普通74现消费正式计划，使用已核初值VIEW_Y23和240×320画布的居中适配。PNG/SEB偏移、差异图片、数字、Mapchip2/clip、标签颜色/限框按请求执行；标题箭头复用已核GameView `buttoneffect` helper而非直画common74。选择/滚动按存活页ID保留，覆盖页返回恢复，退休页清理；行release选择后确认、翻页和底部点击仍是raylib输入适配，不宣称原Surface投递/按住repeat已验。手形明确静态SEB21帧0，不按页面frame猜原全局SEB动画。Noto正文/有限co标签及右返回框架适配仍非原字体后端；8字号中文可读性与字形警告保留，不为改善样图改变原字号。
+
+2026-10-11[原两条来源窗口](../references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg)右侧蓝竖条触发补核，[GameView实际消费者](../ui/STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)及`steam_facility_scroll_skin(request,first,first_touch)`已闭合：同一请求位置展开暗轨道→蓝／触摸橙滑块，另返回原组件12基矩形。空至五行不隐藏，七行顶／底按原整数比例。窗口按本页真实first执行蓝条；首次触摸橙色只在纯计划覆盖，OS拖动仍待认证。无新Owner／格式，拒绝未知请求／越界first，输出短寿命；更新后的参考图保持实际研究输出。
 
 `--world --inspect-page world-facility-details`与`world-facility-bonuses`取真实新局同一已营业且有邻接的设施，分别展示第一/第二页，不注入来源、资金或数值。[两页参考图](../ui/examples/steam-facility-detail.png)来自这两个有界窗口；其他特殊74模板仍用旧研究展示。普通分支不再覆盖旧通用白面板或叠画“确定”。窗口消费一次性声音请求但未播放，不据此认证原输入声音。
 

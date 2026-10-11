@@ -467,6 +467,30 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     check(rows_seen==5&&ordered&&scroll_at+1<details->operations.size()&&
           std::get<D>(details->operations[scroll_at+1]).role==DR::bottom,
           "选中手形先于行touch，滚动请求后才底部说明");
+    // 独立GameView入口oracle，不从页面布局函数反算期望；原短表也显示整根蓝条。
+    SteamFacilityScrollRequest scroll_request;
+    for(const int count:{0,1,2,5}) {
+        scroll_request.count=count;
+        const auto bar=steam_facility_scroll_skin(scroll_request,0,true);
+        check(bar&&bar->rectangles[0].rect==std::array<int,4>{220,85,5,110}&&
+            bar->rectangles[0].rgb==std::array<int,3>{7,5,78}&&
+            bar->rectangles[1].rect==std::array<int,4>{220,85,5,111}&&
+            bar->rectangles[1].rgb==std::array<int,3>{48,160,255}&&
+            bar->thumb_touch==std::array<int,4>{221,85,5,110},
+            "空至五行仍绘蓝滑块，短表忽略触摸，基命中区不混用绘图区");
+    }
+    scroll_request.count=7;
+    const auto top_bar=steam_facility_scroll_skin(scroll_request,0);
+    const auto bottom_bar=steam_facility_scroll_skin(scroll_request,2,true);
+    check(top_bar&&bottom_bar&&top_bar->rectangles[1].rect==std::array<int,4>{220,85,5,79}&&
+        bottom_bar->rectangles[1].rect==std::array<int,4>{220,116,5,79}&&
+        bottom_bar->rectangles[1].rgb==std::array<int,3>{246,129,0}&&
+        bottom_bar->thumb_touch==std::array<int,4>{221,116,5,78},
+        "七行顶底原整数比例，首次触摸橙色及注册高度独立");
+    check(!steam_facility_scroll_skin(scroll_request,-1)&&!steam_facility_scroll_skin(scroll_request,3),
+        "越界滚动显式拒绝，不夹到可用图来掩盖坏输入");
+    scroll_request.prefix=0;
+    check(!steam_facility_scroll_skin(scroll_request,0),"未知组件请求不冒用raw74滚动皮肤");
     for(int fault=0;fault<7;++fault) {
         auto bad=detail;
         if(fault==0)bad.bonuses[0].values.clear(); // 隐藏行也必须核验。

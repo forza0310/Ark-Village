@@ -733,7 +733,7 @@ SteamManualArrowPlan facility_detail_arrow(
     return *out;
 }
 void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites &sprites,
-                          const ChineseFont &font,std::optional<int> pressed_arrow={}) {
+                          const ChineseFont &font,std::optional<int> pressed_arrow={},int first=0) {
     const auto color=[](std::array<int,3> c){return Color{static_cast<unsigned char>(c[0]),
         static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};};
     std::vector<std::array<int,4>> clips;
@@ -788,7 +788,13 @@ void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites 
             const auto &c=arrow.crop;const auto &d=arrow.destination;
             sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
                 {facility_detail_origin.x+d[0],facility_detail_origin.y+d[1]},true,Vector2{d[2],d[3]});
-        } else if(!std::holds_alternative<SteamStartupTouch>(op)&&!std::holds_alternative<SteamFacilityScrollRequest>(op))
+        } else if(const auto *s=std::get_if<SteamFacilityScrollRequest>(&op)) {
+            const auto scroll=steam_facility_scroll_skin(*s,first);
+            if(!scroll)throw std::runtime_error("设施滚动条载荷拒绝");
+            for(const auto &r:scroll->rectangles)
+                DrawRectangleRec({facility_detail_origin.x+r.rect[0],facility_detail_origin.y+r.rect[1],
+                    float(r.rect[2]),float(r.rect[3])},color(r.rgb));
+        } else if(!std::holds_alternative<SteamStartupTouch>(op))
             throw std::runtime_error("设施详情未消费请求");
     }
     if(!clips.empty()){EndScissorMode();throw std::runtime_error("设施详情裁剪未退休");}
@@ -3208,7 +3214,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(!plan)throw std::runtime_error("Steam普通设施详情载荷拒绝");
                     draw_facility_detail(*plan,sprites,font,
                         facility_arrow_press&&facility_arrow_press->first==page->id
-                            ?std::optional<int>(facility_arrow_press->second):std::nullopt);
+                            ?std::optional<int>(facility_arrow_press->second):std::nullopt,bonus_scroll);
                 } else {
                     const auto id = state.facility_page_bindings.at(page->id);
                     const auto &facility = world.facilities.at(id);

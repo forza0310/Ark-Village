@@ -65,8 +65,10 @@ function render(){const current=currentPage();const s=samples[current==='system'
   $('qualification').textContent='Steam静态合同 · 条件夹具／CSS适配';
   $('source-note').textContent='第二页布局与原序五行来自Steam已核raw74合同；夹具身份、图标及raw y来自固定APK原表，未证明是S043咖啡店的实际邻接。维护费未提供，留空。';
   $('contract').innerHTML='<p>原序：槙树10、槙树11、武器店1；长列表再加入枞树1、枫树1、可可树1、木灵大树1。显示编号为原ordinal+1，与等级无关。植物显示原y[0]价格／y[1]品质，商店显示原y[0]魅力；没有汇总、乘等级或补道路来源。</p><p>左右切页循环，保留邻接选择与滚动；上下选择循环，并保持五行可见。第二页确认无操作，不使用道具、不打开来源建筑。返回属于父层恢复示意，未认证FormManager或OS输入。</p><p>图标按原类别9的16×16裁片绘制，CSS等比放大两倍。原Steam滚动helper只注册组件；本例右侧上下按钮／区间文字是浏览器适配，不冒充原滚动条。字体、缩放及物理热区另验。</p>';
-  $('reference').hidden=true;$('no-reference').hidden=false;$('reference-link').removeAttribute('href');
-  $('no-reference').textContent='尚无本页原Steam窗口截图。此处是已证绘制合同的条件夹具，不是原窗口截图或真实世界状态。';
+  $('reference').hidden=false;$('no-reference').hidden=true;
+  $('reference').src='../../references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg';
+  $('reference-link').href=$('reference').src;
+  $('source-note').textContent+=' 右栏S070是Steam2.56咖啡店的两条真实来源（马戏团广场1、罗汉松9），与左侧夹具分开；原图右蓝竖条不等于本例辅助按钮。';
  }
  $('stage').innerHTML=current==='building'?building():current==='human'?human():current==='menu'?menu():current==='system'?menu(true):current==='items'?items():current==='result'?frame('设施强化 · 结果参考','<div class="white-panel"><p class="message">成功!!</p><p class="muted">S045：价格510G（+20G）、品质21、魅力27（+2）。<br>这是原截图示例，本窗口未执行改良。</p></div>','<button class="game-action" data-action="back">好的</button>'):frame('信息','<div class="white-panel message">保存完毕</div>','<button class="game-action" data-action="back">好的</button>');
  if(current==='items'){$('reference').src=base+'items/S044-facility-item-list-before.jpg';$('reference-link').href=$('reference').src;}

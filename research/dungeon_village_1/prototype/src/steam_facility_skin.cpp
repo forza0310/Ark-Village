@@ -291,6 +291,22 @@ std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(const SteamFaci
     plan.touches.push_back({2,0,{},{},2});
     return plan;
 }
+std::optional<SteamFacilityScrollSkinPlan> steam_facility_scroll_skin(
+    const SteamFacilityScrollRequest &r,int first,bool first_touch) {
+    if(r.rectangle!=std::array<int,4>{221,85,3,110}||r.count<0||r.count>65536||
+       r.visible!=5||r.prefix!=0x20000||r.margin!=std::array<int,4>{3,20,0,0}||
+       first<0||first>std::max(r.count-r.visible,0))return {};
+    // GameView._addTouch(12)→DrawVerticalScroll(type0)：先保留短表分母，再截断。
+    const int denominator=std::max(r.count,r.visible);
+    const int top=85+static_cast<int>(110LL*first/denominator);
+    const int length=static_cast<int>(550LL/denominator);
+    SteamFacilityScrollSkinPlan out;
+    out.rectangles={StartupSkinRect{{220,85,5,110},{7,5,78},false},
+        StartupSkinRect{{220,top,5,length+1},first_touch&&r.count>5
+            ?std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false}};
+    out.thumb_touch={221,top,5,length};
+    return out;
+}
 std::optional<SteamFacilityBonusCursor> steam_facility_bonus_cursor(
     int count,SteamFacilityBonusCursor c,bool up,bool down) {
     if(count<0||count>65536||c.selection<0||c.first<0)return {};

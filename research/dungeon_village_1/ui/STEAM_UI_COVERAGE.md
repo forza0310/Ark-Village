@@ -111,7 +111,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 71 | EQUIP_INFO | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
 | 72 | EQUIP_INFO_FROM_TENANT | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
 | 73 | EQUIP_INFO_FROM_PRESENT | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
-| 74 | TENANT_INFO | 设施 | 设施详情第1页局部静态＋S043/S047/S054 |
+| 74 | TENANT_INFO | 设施 | 静态：[普通两页与交接](STEAM_FACILITY_DETAIL.md)及GameView即时滚动条已核，维护有序计划／窗口已接。动态：S043/S047/S054及[S069–S071](../references/README.md#steam普通设施两页2026-10-11)补两行来源、鼠标翻页／选择／返回；空／长列表、OS拖动及键输入消费仍未闭合，HTML视觉未验 |
 | 75 | TENANT_ITEMSELECT | 设施 | 道具列表局部静态＋S044/S046/S055 |
 | 76 | TENANT_ANIME1 | 设施 | 初始化／49自动转页静态，未认证连续演出 |
 | 77 | TENANT_ANIME2 | 设施 | 49快进／55关闭静态＋S045结果角色 |

@@ -603,7 +603,52 @@ std::filesystem::path isolated_directory(const char *executable, const char *sup
     return directory;
 }
 
+// The monthly consumer owns fee arithmetic; this checks its product connection and
+// that test-player observation/sidecars do not turn legitimate debt into a failure.
+void negative_balance_contract() {
+    auto before = ark::test::initial_world();
+    before.scene.world.world.ai.accounting = ref::PeriodAccounting(1);
+    before.scene.calendar.month_ticks = before.clock_parameter * 20 - 143;
+    auto charged = before;
+    const auto adapter = sim::startup_world_runtime_adapter();
+    const auto input = adapter.report_input(charged);
+    require(input.has_value(), "Debt fixture lacks actual monthly input");
+    const auto report = ref::prepare_world_month_report(adapter.report.read(charged), *input);
+    require(report.candidate && adapter.report.write(charged, report.candidate->state),
+            "Actual monthly fees must commit despite insufficient cash");
+    const auto debt = charged.scene.world.world.ai.accounting.funds();
+    require(debt < 0 && charged.report_state == 1 &&
+                charged.scene.random.draws() == before.scene.random.draws(),
+            "Monthly fee fixture did not cross zero without spending random input");
+    const auto refused = sim::begin_startup_world_build(charged, 28);
+    require(refused.error == sim::StartupWorldRuntimeError::none &&
+                refused.denial == sim::StartupBuildDenial::insufficient_funds && !refused.created &&
+                !charged.build_definition &&
+                charged.scene.world.world.ai.accounting.funds() == debt &&
+                charged.scene.random.draws() == before.scene.random.draws(),
+            "Debt must not bypass an active construction payment gate");
+    const auto check_player = [&](auto player) {
+        using Player = decltype(player);
+        player.observe_tick(before, charged);
+        require(player.stats().minimum_cash == debt,
+                "Test player rejected or discarded actual negative balance");
+        std::ostringstream encoded;
+        player.encode(encoded);
+        std::istringstream input(encoded.str());
+        const auto restored = Player::decode(input);
+        std::ostringstream again;
+        restored.encode(again);
+        require(restored.stats().minimum_cash == debt && encoded.str() == again.str(),
+                "Strategy restart lost negative minimum or changed other evidence");
+    };
+    check_player(Strategy{});
+    check_player(LateStrategy{});
+    check_player(LateStrategy{3});
+    check_player(PotStrategy{});
+    check_player(ark::test::SteamVillageStrategy{});
+}
 void contract() {
+    negative_balance_contract();
     auto state = ark::test::initial_world();
     app::WorldCommand command;
     command.kind = Kind::open_build_menu;

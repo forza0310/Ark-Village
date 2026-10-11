@@ -334,7 +334,7 @@ std::optional<Command> ActivePotVillageStrategy::next(const State &s) {
 void ActivePotVillageStrategy::observe_world(const State &before, const State &after) {
     stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
-    require(cash(after) >= 0, "cash became negative; " + diagnose(after));
+    // Monthly fees can cross zero; debt is evidence, not a runtime failure.
     for (const auto &[id, f] : after.scene.world.world.facilities) {
         const auto old = before.scene.world.world.facilities.find(id);
         if (old != before.scene.world.world.facilities.end() && f.sales > old->second.sales)
@@ -510,12 +510,11 @@ ActivePotVillageStrategy ActivePotVillageStrategy::decode(std::istream &in) {
         v.hp_before >> v.hp_after >> v.craft_month >> v.use_month >> result.next_market_tick_ >>
         result.initialized_;
     v.trade.decode(in);
-    require(bool(in) && v.minimum_cash >= 0 && v.facility_income >= 0 && v.purchase_cost >= 0 &&
-                v.purchases >= 0 && v.deposits >= 0 && v.processed >= 0 &&
-                v.processed <= v.deposits && v.discoveries >= 0 && v.discoveries <= 1 &&
-                v.crafted >= 0 && v.crafted <= v.discoveries && v.used >= 0 &&
-                v.used <= v.crafted && v.healed >= 0 && v.healed <= v.used && v.recipe == 7 &&
-                v.item == 29 &&
+    require(bool(in) && v.facility_income >= 0 && v.purchase_cost >= 0 && v.purchases >= 0 &&
+                v.deposits >= 0 && v.processed >= 0 && v.processed <= v.deposits &&
+                v.discoveries >= 0 && v.discoveries <= 1 && v.crafted >= 0 &&
+                v.crafted <= v.discoveries && v.used >= 0 && v.used <= v.crafted && v.healed >= 0 &&
+                v.healed <= v.used && v.recipe == 7 && v.item == 29 &&
                 (!v.healed || (v.hp_before > 0 && v.hp_after > v.hp_before && v.healed_actor)),
             "invalid pot evidence totals");
     result.decoded_evidence_ = true;

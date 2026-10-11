@@ -1,5 +1,12 @@
 # B1：持续世界产品接入
 
+<a id="campaign-negative-balance"></a>
+## 2026-10-11：周期扣费允许负余额
+
+按用户确认及现账务合同修正产品经营验收：周期费用可使金币负数，主动支付仍受源资格检查。生产账本/月报已支持，不改费用、资金、负资金提示、随机或存档政策。四套策略不再因负余额立即失败，历史最低值按有符号金额往返；收益对照继续记录最低现金和后续账目。新增原campaign合同夹具使用真实月报扣费跨零，核负余额建设拒绝，并验证首星、二星、三星、壶及Steam策略的观察/外部记录往返，不认证自然负债恢复或全内容经营。
+
+desktop-debug标准139/139（98.08秒），仅排`simulation.startup_world_continuous_test`；Release经营/收益合同2/2（0.86秒）。公共接口/源码和CMake未变，不重复headless矩阵。日志在`build/validation/campaign-negative-balance/`；Release追加构建初次缺辅助工具搜索路径，使用同一缓存工具链恢复后构建与检查通过。CI待对应main，未推送或发布。
+
 <a id="campaign-third-star"></a>
 ## 2026-10-11：三星申请、学校营业与晋级回执
 

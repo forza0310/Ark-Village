@@ -739,7 +739,7 @@ std::optional<Command> ActiveLateVillageStrategy::next(const State &s) {
 void ActiveLateVillageStrategy::observe_world(const State &before, const State &after) {
     stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
-    require(cash(after) >= 0, "cash became negative; " + diagnose(after));
+    // Monthly fees can cross zero; debt is evidence, not a runtime failure.
     for (const auto &[id, f] : after.scene.world.world.facilities) {
         if (stats_.target_rank == 3 && f.placement.definition_id == 40 && !stats_.western)
             stats_.western = id;
@@ -1288,8 +1288,8 @@ ActiveLateVillageStrategy ActiveLateVillageStrategy::decode(std::istream &in) {
         require(v.target_rank == 2, "third-star evidence lacks restaurant receipt extension");
         in.clear();
     }
-    require(bool(in) && (v.target_rank == 2 || v.target_rank == 3) && v.minimum_cash >= 0 &&
-                v.gifts >= 0 && v.admissions >= 0 && v.western_unlock_points >= 0 &&
+    require(bool(in) && (v.target_rank == 2 || v.target_rank == 3) && v.gifts >= 0 &&
+                v.admissions >= 0 && v.western_unlock_points >= 0 &&
                 (!v.western_unlock_claimed || v.western_unlock_paid) &&
                 (v.western_unlock_paid == (v.western_unlock_points > 0)) &&
                 v.layout_road_cells >= 0 && v.layout_road_cells <= 6 && v.layout_cost >= 0 &&

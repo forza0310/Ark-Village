@@ -1,8 +1,8 @@
 // Bounded source-consumer economy comparison. This is not the active-player campaign:
 // all variants use the same ordinary-page policy and differ only in legal construction.
+#include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
-#include "../support/world_fixture.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -136,7 +136,7 @@ struct Comparison {
         input();
         ++steps;
         minimum = std::min(minimum, cash(state));
-        require(cash(state) >= 0, "Plan became insolvent");
+        // A fee-induced negative balance remains a valid comparison result.
         require(state.scene.random.draws() >= random, "Random stream rewound");
         require(month(state) >= before_month && month(state) <= before_month + 1 &&
                     ref::valid_world_calendar_state(state.scene.calendar),

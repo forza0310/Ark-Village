@@ -285,7 +285,7 @@ std::optional<Command> ActiveVillageStrategy::next(const State &s) {
 void ActiveVillageStrategy::observe_world(const State &before, const State &after) {
     stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
-    require(cash(after) >= 0, "cash became negative; " + diagnose(after));
+    // Monthly fees can cross zero; debt is evidence, not a runtime failure.
     for (const auto &[id, f] : after.scene.world.world.facilities) {
         const auto old = before.scene.world.world.facilities.find(id);
         if (old != before.scene.world.world.facilities.end() && f.sales > old->second.sales)
@@ -553,7 +553,7 @@ ActiveVillageStrategy ActiveVillageStrategy::decode(std::istream &in) {
     require(bool(in) && v.gifts >= 0 && v.gifts <= 1 && v.activities >= 0 &&
                 v.task_successes == static_cast<int>(v.successful_tasks.size()) &&
                 v.task_departures >= v.task_successes && v.task_failures >= 0 &&
-                v.minimum_cash >= 0 && v.bakery_income >= 0 && v.facility_income >= 0,
+                v.bakery_income >= 0 && v.facility_income >= 0,
             "invalid strategy evidence totals");
     return result;
 }

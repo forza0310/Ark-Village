@@ -522,7 +522,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
 void SteamVillageStrategy::observe_world(const State &before, const State &after) {
     stats_.trade.observe(before, after);
     stats_.minimum_cash = std::min(stats_.minimum_cash, cash(after));
-    require(cash(after) >= 0, "town ran out of money");
+    // Recurring fees may create debt. Record it; source payment gates still apply.
     for (std::size_t slot = 0; slot < steam_village_layout().size(); ++slot) {
         const auto &goal = steam_village_layout()[slot];
         if (goal.role != SteamLayoutRole::shop)
@@ -781,8 +781,8 @@ SteamVillageStrategy SteamVillageStrategy::decode(std::istream &in) {
         in >> id;
         require(id && value.won_tasks_.insert(id).second, "duplicate victory");
     }
-    require(in && v.victories == static_cast<int>(count) && v.minimum_cash >= 0 &&
-                v.construction_cost >= 0 && v.village_points_spent >= 0,
+    require(in && v.victories == static_cast<int>(count) && v.construction_cost >= 0 &&
+                v.village_points_spent >= 0,
             "invalid Steam business evidence");
     in >> count;
     require(in && count <= 25, "invalid target shop trade history");

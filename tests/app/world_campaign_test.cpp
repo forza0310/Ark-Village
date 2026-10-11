@@ -180,11 +180,27 @@ template <class PlayerStrategy> struct CampaignRun {
             auto next = system;
             good(app::commit_world_system(directory, state, candidate, next));
             candidate.sound_requests.clear();
+            std::vector<ark::test::CampaignReceipt> pending_receipts;
+            std::optional<ark::test::CampaignReceipt> promotion;
+            std::array<int, 4> current_values{};
+            std::array<bool, 4> current_met{};
             try {
                 strategy.observe(state, input, result, candidate,
                                  [&](const ark::test::CampaignReceipt &receipt) {
-                                     coverage.record(receipt, std::cout);
+                                     pending_receipts.push_back(receipt);
                                  });
+                promotion = ark::test::rank_promotion_receipt(state, candidate);
+                if (promotion) {
+                    require(input.kind == Kind::rank_action && !input.cancel &&
+                                input.selection == 0,
+                            "Promotion must consume the actual rank confirmation command");
+                    auto queried = state;
+                    require(sim::refresh_startup_world_runtime_rank(queried),
+                            "Promotion current-condition diagnostic rejected its Owner");
+                    current_values = queried.rank_values;
+                    current_met = queried.rank_met;
+                    pending_receipts.push_back(*promotion);
+                }
             } catch (...) {
                 // Strategy assertions are not runtime refusals. Preserve the exact pre-command
                 // Owner without forging a runtime error or overwriting a previous capture.
@@ -195,6 +211,19 @@ template <class PlayerStrategy> struct CampaignRun {
                 }
                 throw;
             }
+            if (promotion) {
+                const auto terms = ref::fixed_calendar_task_rank_terms().at(state.rank);
+                for (std::size_t n = 0; n < terms.size(); ++n)
+                    std::cout << "RANK_CONDITION page=" << input.page << " rank=" << state.rank
+                              << " index=" << n << " type=" << terms[n].type
+                              << " threshold=" << terms[n].threshold
+                              << " cached_value=" << state.rank_values[n]
+                              << " cached_met=" << state.rank_met[n]
+                              << " current_value=" << current_values[n]
+                              << " current_met=" << current_met[n] << '\n';
+            }
+            for (const auto &receipt : pending_receipts)
+                coverage.record(receipt, std::cout);
             coverage.observe(state, candidate);
             if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
                 ark::test::inspect_steam_expenses(state, candidate, "command", std::cout);

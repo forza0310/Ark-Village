@@ -44,7 +44,8 @@ enum class CampaignReceiptKind {
     accessory_task_loot_claimed,
     human_home_tax_collected,
     monster_retirement_cash,
-    monster_retirement_cash_month_reset
+    monster_retirement_cash_month_reset,
+    rank_conditions_promoted
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -68,7 +69,11 @@ CampaignReceipt residence_transaction_receipt(int human, const app::WorldState &
 // raw98 retirement plus actual other-income/cash commit; raw90 only displays taxes.
 // Per-person amounts use source G, never inferred facility spending or a new tax formula.
 std::vector<CampaignReceipt> residence_tax_receipts(const app::WorldState &before,
-                                                   const app::WorldState &after);
+                                                    const app::WorldState &after);
+// raw48 uses its initialized condition cache. Current recomputed values are diagnostic,
+// not a replacement eligibility rule. Cold/unmodified ranks produce no receipt.
+std::optional<CampaignReceipt> rank_promotion_receipt(const app::WorldState &before,
+                                                      const app::WorldState &after);
 // Bind an already-observed victory to the submitted task and its new raw30 page.
 // This checks the receipt's source identity, not loot, combat rewards or successor generation.
 std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &before,
@@ -81,11 +86,11 @@ struct CampaignRewardObservation {
     const char *gap{};
 };
 CampaignRewardObservation task_loot_receipts(const app::WorldState &before,
-                                           const app::WorldState &after);
+                                             const app::WorldState &after);
 // Definition-level corpse batches plus actual new monster-income entries, not lethal hits.
 // subject is the first bound corpse; before/after[3] preserves the batch size.
 CampaignRewardObservation monster_retirement_receipts(const app::WorldState &before,
-                                                       const app::WorldState &after);
+                                                      const app::WorldState &after);
 
 // Per-process evidence inventory. It deliberately does not reconstruct a command history
 // from a loaded save, or turn an inventory decrease into a verified item effect.

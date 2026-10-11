@@ -221,7 +221,8 @@ const receiptStages = {
   combat_attributes_applied: ['weapon', 'armour', 'accessory'], medal_awarded: 'human', home_admitted: 'human',
   home_tax_collected: 'human', retirement_cash_committed: 'monster', retirement_cash_month_reset: 'monster',
   victory_committed: 'quest', commerce_bought: 'item', facility_bound_use: 'item',
-  item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory']
+  item_improvement_applied: 'facility', task_loot_claimed: ['item', 'weapon', 'armour', 'accessory'],
+  conditions_promoted: 'rank'
 };
 function* receipts(text, phase) {
   for (const [line, content] of text.split(/\r?\n/).entries()) {
@@ -230,9 +231,10 @@ function* receipts(text, phase) {
     need(fields.length === 16 && fields.slice(4).every(value => /^-?\d+$/.test(value)) && /^\d+$/.test(fields[2]),
       'receipt boundary/integers');
     const [category, id, stage] = [aliases[fields[1]] ?? fields[1], Number(fields[2]), fields[3]];
+    const key = sourceKey(fields[1], id); // Display ranks1..5 map to source terms0..4.
     const numbers = fields.slice(4).map(Number);
     need(numbers.every(Number.isSafeInteger) && numbers[0] >= 0 && numbers[1] > 0 && numbers[3] >= 0 &&
-      [].concat(receiptStages[stage] ?? []).includes(category) && catalogue.has(`${category}:${id}`), 'receipt identity/binding');
+      [].concat(receiptStages[stage] ?? []).includes(category) && catalogue.has(key), 'receipt identity/binding');
     if (['bound_use', 'attribute_applied', 'hp_restored'].includes(stage)) need(numbers[2] >= 0, 'receipt human binding');
     if (['reward_equipped', 'combat_attributes_applied', 'medal_awarded', 'home_admitted', 'home_tax_collected'].includes(stage))
       need(numbers[2] >= 0 && numbers[2] < 25, 'receipt source human binding');
@@ -252,7 +254,12 @@ function* receipts(text, phase) {
         numbers[8] === (stage === 'retirement_cash_month_reset' ? 0 : numbers[4] + numbers[7]) &&
         numbers[9] === numbers[5] + numbers[7],
       'receipt retirement cash/counters/batch');
-    yield {key: `${category}:${id}`, stage, phase, line: line + 1,
+    if (stage === 'conditions_promoted')
+      need(id >= 1 && id <= 5 && numbers[2] === -1 && numbers[3] === 0 &&
+        numbers[4] === id - 1 && numbers[8] === id && numbers[5] === 15 && numbers[9] === 15 &&
+        [numbers[6], numbers[7], numbers[10], numbers[11]].every(value => value >= 0),
+        'receipt rank transition/four cached conditions');
+    yield {key, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
   }
@@ -425,6 +432,18 @@ function coverageContract(rows) {
   }
   expectReject(() => [...receipts('COVERAGE_RECEIPT\titem\t29\thp_restored\t0\t0\t1\t1\t1\t0\t0\t0\t51\t0\t0\t0', 'contract')]);
   const retired = 'COVERAGE_RECEIPT\tmonster\t35\tretirement_cash_committed\t2\t1\t-1\t7\t0\t99\t0\t1\t1\t100\t120\t1';
+  for (const rank of [1, 3, 5]) {
+    const fields = ['COVERAGE_RECEIPT', 'rank', String(rank), 'conditions_promoted', '2', '1', '-1', '0',
+      String(rank - 1), '15', '35000', '1500', String(rank), '15', '35000', '1490'];
+    const parsed = [...receipts(fields.join('\t'), 'contract')];
+    need(parsed.length === 1 && parsed[0].key === `rank:${rank - 1}`,
+      'promoted display rank must map to the correct source term');
+    for (const [field, value] of [[2, '0'], [2, '6'], [5, '0'], [6, '0'], [7, '1'],
+      [8, '9'], [9, '7'], [10, '-1'], [11, '-1'], [12, '9'], [13, '7'], [14, '-1'], [15, '-1']]) {
+      const invalid = [...fields]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
+  }
   need([...receipts(retired, 'contract')].length === 1, 'bound retirement receipt rejected');
   const reset = retired.split('\t'); reset[3] = 'retirement_cash_month_reset'; reset[12] = '0';
   need([...receipts(reset.join('\t'), 'contract')].length === 1, 'monthly reset lost actual cash/growth');

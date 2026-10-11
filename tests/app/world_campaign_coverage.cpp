@@ -77,6 +77,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"monster", "retirement_cash_committed", 36, false, true};
     case Kind::monster_retirement_cash_month_reset:
         return {"monster", "retirement_cash_month_reset", 36, false, true};
+    case Kind::rank_conditions_promoted:
+        return {"rank", "conditions_promoted", 6, false};
     case Kind::task_victory_committed:
         return {"task", "victory_committed", 81, false, true};
     case Kind::item_commerce_bought:
@@ -130,71 +132,6 @@ CampaignReceipt residence_transaction_receipt(int human, const State &before, co
              after.shop_humans.at(human).satisfaction, fee}};
 }
 
-std::vector<CampaignReceipt> residence_tax_receipts(const State &before, const State &after) {
-    const auto page = std::find_if(before.scripts.pages.rbegin(), before.scripts.pages.rend(),
-                                  [](const auto &p) { return p.lifecycle != 4; });
-    if (page == before.scripts.pages.rend() || page->kind != ref::WorldScriptPageKind::raw_page ||
-        page->legacy_page != 98)
-        return {};
-    const auto closed = std::find_if(after.scripts.pages.begin(), after.scripts.pages.end(),
-                                    [&](const auto &p) { return p.id == page->id; });
-    if (closed != after.scripts.pages.end() && closed->lifecycle != 4)
-        return {}; // Paused, not initialized, or not yet consumed: no money receipt.
-    const auto need = [](bool value) {
-        if (!value)
-            throw std::runtime_error("Residence tax lost its raw98 income/reset binding");
-    };
-    const auto &old_date = before.scene.calendar, &new_date = after.scene.calendar;
-    need(before.rules && after.rules && old_date.month >= 0 && old_date.month < 12 &&
-         std::tie(old_date.year, old_date.month, old_date.subperiod, old_date.units,
-                  old_date.previous_units, old_date.month_ticks) ==
-             std::tie(new_date.year, new_date.month, new_date.subperiod, new_date.units,
-                      new_date.previous_units, new_date.month_ticks));
-    const int month = old_date.month;
-    const auto old_cash = before.scene.world.world.ai.accounting.funds();
-    const auto new_cash = after.scene.world.world.ai.accounting.funds();
-    std::int64_t total{};
-    std::vector<int> residents;
-    for (const auto &human : before.rules->humans) {
-        const int id = human.identity;
-        need(after.human_presence.at(id) == before.human_presence.at(id) &&
-             after.human_homes.at(id) == before.human_homes.at(id));
-        if (before.human_presence.at(id) != 0 && before.human_homes.at(id)[2] == 1) {
-            total += before.human_calendar.at(id).legacy_G;
-            residents.push_back(id);
-        }
-        // The source resets all definitions, including absent/nonresident humans.
-        need(after.human_calendar.at(id).legacy_F == 0 &&
-             after.human_calendar.at(id).legacy_G == 0 &&
-             after.scene.world.world.ai.battle.humans.at(id).battle_reward_stat == 0);
-    }
-    const auto old_random = before.scene.random.snapshot(), new_random = after.scene.random.snapshot();
-    need(!residents.empty() &&
-         !(total > 0 && old_cash > std::numeric_limits<std::int64_t>::max() - total) &&
-         !(total < 0 && old_cash < std::numeric_limits<std::int64_t>::min() - total) &&
-         new_cash == old_cash + total &&
-         std::int64_t(after.monthly_cash[month][4][0]) - before.monthly_cash[month][4][0] == total &&
-         std::tie(old_random.engine_state, old_random.tape, old_random.cursor, old_random.tape_mode) ==
-             std::tie(new_random.engine_state, new_random.tape, new_random.cursor, new_random.tape_mode) &&
-         before.sound_requests == after.sound_requests &&
-         before.village_points == after.village_points && before.popularity == after.popularity);
-    for (int m = 0; m < 12; ++m)
-        for (int category = 0; category < 5; ++category)
-            for (int side = 0; side < 2; ++side)
-                if (m != month || category != 4 || side != 0)
-                    need(before.monthly_cash[m][category][side] == after.monthly_cash[m][category][side]);
-    need(after.scripts.notices.size() == before.scripts.notices.size() + 1 &&
-         after.scripts.notices.back().message == 28);
-    std::vector<CampaignReceipt> receipts;
-    for (const int id : residents)
-        receipts.push_back({CampaignReceiptKind::human_home_tax_collected,
-                            id, after.simulation_steps, page->id, 0, id,
-                            {old_cash, before.human_calendar.at(id).legacy_G,
-                             before.monthly_cash[month][4][0], month},
-                            {new_cash, 0, after.monthly_cash[month][4][0], month}});
-    return receipts;
-}
-
 void CampaignCoverage::mark(const char *kind, int id, const char *event) {
     observations_[{kind, id}].insert(event);
 }
@@ -234,13 +171,22 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
         receipt.kind == CampaignReceiptKind::monster_retirement_cash_month_reset) {
         const auto &old = receipt.before, &now = receipt.after;
         if (receipt.recipient != -1 || old[0] < 0 || old[1] < 0 || old[2] != 0 || old[3] <= 0 ||
-            old[0] > std::numeric_limits<int>::max() ||
-            old[1] > std::numeric_limits<int>::max() ||
+            old[0] > std::numeric_limits<int>::max() || old[1] > std::numeric_limits<int>::max() ||
             old[3] > std::numeric_limits<int>::max() || now[0] > std::numeric_limits<int>::max() ||
             now[1] > std::numeric_limits<int>::max() || now[2] < 0 || now[3] != old[3] ||
             now[0] != (receipt.kind == CampaignReceiptKind::monster_retirement_cash_month_reset
-                           ? 0 : old[0] + old[3]) || now[1] != old[1] + old[3])
+                           ? 0
+                           : old[0] + old[3]) ||
+            now[1] != old[1] + old[3])
             throw std::runtime_error("Monster retirement receipt lost its counters/cash/batch");
+    }
+    if (receipt.kind == CampaignReceiptKind::rank_conditions_promoted) {
+        const auto &old = receipt.before, &now = receipt.after;
+        if (receipt.definition < 1 || receipt.definition > 5 || receipt.recipient != -1 ||
+            receipt.subject != 0 || old[0] != receipt.definition - 1 ||
+            now[0] != receipt.definition || old[1] != 15 || now[1] != 15 || old[2] < 0 ||
+            now[2] < 0 || old[3] < 0 || now[3] < 0)
+            throw std::runtime_error("Rank receipt lost its transition or four-condition mask");
     }
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
@@ -637,8 +583,7 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::item_task_loot_claimed, "item", "task_loot_claimed", 36, 1},
         {CampaignReceiptKind::weapon_task_loot_claimed, "weapon", "task_loot_claimed", 33, 1},
         {CampaignReceiptKind::armour_task_loot_claimed, "armour", "task_loot_claimed", 50, 1},
-        {CampaignReceiptKind::accessory_task_loot_claimed, "accessory", "task_loot_claimed", 30,
-         1},
+        {CampaignReceiptKind::accessory_task_loot_claimed, "accessory", "task_loot_claimed", 30, 1},
         {CampaignReceiptKind::human_home_tax_collected, "human", "home_tax_collected", 25, 0, 24}};
     for (const auto &entry : cases) {
         CampaignReceipt receipt{
@@ -677,9 +622,10 @@ void campaign_coverage_contract() {
             expect_rejected(invalid);
             invalid.recipient = 25;
             expect_rejected(invalid);
-            const bool human_definition = entry.kind == CampaignReceiptKind::human_medal_awarded ||
-                                          entry.kind == CampaignReceiptKind::human_home_admitted ||
-                                          entry.kind == CampaignReceiptKind::human_home_tax_collected;
+            const bool human_definition =
+                entry.kind == CampaignReceiptKind::human_medal_awarded ||
+                entry.kind == CampaignReceiptKind::human_home_admitted ||
+                entry.kind == CampaignReceiptKind::human_home_tax_collected;
             invalid = receipt;
             invalid.recipient = 0;
             if (human_definition) {

@@ -201,6 +201,128 @@ void task_loot_receipt_contract() {
     }
 }
 
+// Explicit first-star qualifications still consume the actual paid building,
+// source Init and confirmation. Current values cannot replace the original cache.
+void rank_promotion_receipt_contract(const CampaignCommandConsumer &apply) {
+    auto qualified = initial_world();
+    const int definition = 35; // First-star condition3; pay/build through the real consumer.
+    qualified.facility_presence.at(definition) = 2;
+    const auto selected = sim::begin_startup_world_build(qualified, definition);
+    require(selected.error == sim::StartupWorldRuntimeError::none &&
+                selected.denial == sim::StartupBuildDenial::none,
+            "Rank fixture cannot select its prerequisite building");
+    std::optional<State> built;
+    const auto &map = qualified.scene.world.world.map;
+    for (int y = 0; y < map.height && !built; ++y)
+        for (int x = 0; x < map.width && !built; ++x) {
+            auto candidate = qualified;
+            const auto result = sim::confirm_startup_world_build(candidate, {x, y},
+                                                                 ref::FacilityOrientation::first);
+            if (result.error == sim::StartupWorldRuntimeError::none && result.created)
+                built = std::move(candidate);
+        }
+    require(built && sim::cancel_startup_world_build(*built) == sim::StartupWorldRuntimeError::none,
+            "Rank fixture must legally place and leave its paid construction");
+    qualified = std::move(*built);
+    // Numerical qualification only. This is not a natural first-star certificate.
+    qualified.popularity = 300;
+    qualified.maximum_income = 5000;
+    qualified.events_held = 2;
+    ref::WorldScriptPage page;
+    page.kind = ref::WorldScriptPageKind::raw_page;
+    page.legacy_page = 48;
+    const auto created =
+        ref::prepare_world_script_page(sim::startup_world_runtime_scripts(qualified), page);
+    require(created.candidate &&
+                sim::write_startup_world_runtime_scripts(qualified, created.candidate->state),
+            "Rank fixture cannot install its actual confirmation page");
+    const auto initialized = sim::update_startup_world_runtime_page(qualified);
+    require(initialized.has_value(), "Source rank Init failed");
+    qualified = *initialized;
+    require(std::all_of(qualified.rank_met.begin(), qualified.rank_met.end(),
+                        [](bool value) { return value; }),
+            "Source rank Init did not find the four qualified first-star conditions");
+    for (const bool current_changed : {false, true}) {
+        auto before = qualified;
+        if (current_changed)
+            before.popularity = 299; // Source confirmation still consumes the initialized cache.
+        auto after = before;
+        app::WorldCommand confirm;
+        confirm.kind = Kind::rank_action;
+        confirm.page = top(before)->id;
+        const auto result = apply(after, confirm);
+        require(result.outcome == app::WorldCommandOutcome::applied && after.rank == 1,
+                "Actual rank confirmation failed or rejudged its initialized conditions");
+        const auto receipt = rank_promotion_receipt(before, after);
+        require(receipt && receipt->definition == 1 && receipt->page == confirm.page &&
+                    receipt->before[0] == 0 && receipt->after[0] == 1 && receipt->before[1] == 15 &&
+                    receipt->after[1] == 15 && !rank_promotion_receipt(after, after),
+                "Rank receipt lost its actual transition or reconstructed cold history");
+        CampaignCoverage coverage;
+        std::ostringstream log;
+        coverage.record(*receipt, log);
+        require(log.str().find("\trank\t1\tconditions_promoted\t") != std::string::npos,
+                "First display star must keep its own source identity");
+        for (int fault = 0; fault < 8; ++fault) {
+            auto old = before, bad = after;
+            switch (fault) {
+            case 0:
+                old.rank_met[0] = false;
+                break;
+            case 1:
+                --old.rank_values[1];
+                break;
+            case 2:
+                old.scripts.pages.back().legacy_page = 74;
+                break;
+            case 3:
+                bad.rank = 2;
+                break;
+            case 4:
+                ++bad.rank_history.at(0)[1];
+                break;
+            case 5:
+                bad.scripts.user_flags &= ~8U;
+                break;
+            case 6:
+                for (auto &p : bad.scripts.pages)
+                    if (p.legacy_page == 50)
+                        p.lifecycle = 4;
+                break;
+            case 7:
+                for (const auto &activity : before.rules->activities)
+                    if (activity.parameters[6] == 1)
+                        bad.scripts.activities.at(activity.identity).status = 0;
+                break;
+            }
+            bool rejected{};
+            try {
+                (void)rank_promotion_receipt(old, bad);
+            } catch (const std::runtime_error &) {
+                rejected = true;
+            }
+            require(rejected, "Contradictory rank commit produced a success receipt");
+        }
+        auto invalid = *receipt;
+        invalid.before[1] = 7;
+        bool rejected{};
+        try {
+            coverage.record(invalid, log);
+        } catch (const std::runtime_error &) {
+            rejected = true;
+        }
+        require(rejected, "Wire formatter accepted an incomplete rank-condition mask");
+    }
+    auto cancelled = qualified;
+    app::WorldCommand cancel;
+    cancel.kind = Kind::rank_action;
+    cancel.page = top(cancelled)->id;
+    cancel.cancel = true;
+    require(apply(cancelled, cancel).outcome == app::WorldCommandOutcome::applied &&
+                !rank_promotion_receipt(qualified, cancelled),
+            "Cancellation must not earn a promotion receipt");
+}
+
 // Qualification inputs are explicit. The real page scheduler pays/reset once;
 // this verifies evidence wiring, not a naturally earned house or annual tax route.
 void residence_tax_receipt_contract() {
@@ -912,6 +1034,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
     source_transaction_receipt_contract(apply);
     task_loot_receipt_contract();
     monster_retirement_receipt_contract();
+    rank_promotion_receipt_contract(apply);
     residence_tax_receipt_contract();
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);

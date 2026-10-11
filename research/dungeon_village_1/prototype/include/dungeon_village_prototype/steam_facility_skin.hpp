@@ -162,6 +162,11 @@ struct SteamFacilityBonusCursor { int selection{}, first{}; };
 // 同轮先up再down，各自循环，scroll只跟随选择；纯状态值，不加入世界/存档。
 std::optional<SteamFacilityBonusCursor> steam_facility_bonus_cursor(
     int count, SteamFacilityBonusCursor cursor, bool up, bool down);
+enum class SteamFacilityScrollEvent { relative, absolute };
+// OnTouchVScrollBar组件12的逻辑事件8/9：scroll变化后按实际delta同步选择。
+// value的INT_MAX哨兵及坏当前光标显式拒绝；不推导Surface的物理拖动映射。
+std::optional<SteamFacilityBonusCursor> steam_facility_bonus_scroll(
+    int count,SteamFacilityBonusCursor cursor,SteamFacilityScrollEvent event,int value);
 struct SteamFacilityDetailSkinInput {
     int definition{}, mapchip{}, icon{}, level{1}, page{}, frame{}, view_y{};
     std::string name;

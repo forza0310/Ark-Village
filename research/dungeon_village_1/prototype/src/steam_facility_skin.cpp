@@ -323,6 +323,20 @@ std::optional<SteamFacilityBonusCursor> steam_facility_bonus_cursor(
     follow();
     return c;
 }
+std::optional<SteamFacilityBonusCursor> steam_facility_bonus_scroll(
+    int count,SteamFacilityBonusCursor c,SteamFacilityScrollEvent event,int value) {
+    if(!steam_facility_bonus_cursor(count,c,false,false)||value==std::numeric_limits<int>::max()||
+       (event!=SteamFacilityScrollEvent::relative&&event!=SteamFacilityScrollEvent::absolute))return {};
+    const auto wanted=event==SteamFacilityScrollEvent::relative
+        ?static_cast<long long>(c.first)+value:static_cast<long long>(value);
+    const int first=static_cast<int>(std::clamp(wanted,0LL,static_cast<long long>(std::max(count-5,0))));
+    const int delta=first-c.first;
+    if(delta) {
+        c.first=first;
+        c.selection=std::clamp(c.selection+delta,0,count-1);
+    }
+    return c;
+}
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     const SteamFacilityDetailSkinInput &in) {
     using DR=SteamFacilityDetailTextRole;

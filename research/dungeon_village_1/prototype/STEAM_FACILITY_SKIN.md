@@ -16,7 +16,9 @@
 
 研究窗口的普通74现消费正式计划，使用已核初值VIEW_Y23和240×320画布的居中适配。PNG/SEB偏移、差异图片、数字、Mapchip2/clip、标签颜色/限框按请求执行；标题箭头复用已核GameView `buttoneffect` helper而非直画common74。选择/滚动按存活页ID保留，覆盖页返回恢复，退休页清理；行release选择后确认、翻页和底部点击仍是raylib输入适配，不宣称原Surface投递/按住repeat已验。手形明确静态SEB21帧0，不按页面frame猜原全局SEB动画。Noto正文/有限co标签及右返回框架适配仍非原字体后端；8字号中文可读性与字形警告保留，不为改善样图改变原字号。
 
-2026-10-11[原两条来源窗口](../references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg)右侧蓝竖条触发补核，[GameView实际消费者](../ui/STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)及`steam_facility_scroll_skin(request,first,first_touch)`已闭合：同一请求位置展开暗轨道→蓝／触摸橙滑块，另返回原组件12基矩形。空至五行不隐藏，七行顶／底按原整数比例。窗口按本页真实first执行蓝条；首次触摸橙色只在纯计划覆盖，OS拖动仍待认证。无新Owner／格式，拒绝未知请求／越界first，输出短寿命；更新后的参考图保持实际研究输出。
+2026-10-11[原两条来源窗口](../references/screenshots/2026-10-11-steam-facility/S070-bonus-page2.jpg)右侧蓝竖条触发补核，[GameView实际消费者](../ui/STEAM_FACILITY_DRAW_HELPERS.md#drawverticalscroll2实际是两项组件注册)及`steam_facility_scroll_skin(request,first,first_touch)`已闭合：同一请求位置展开暗轨道→蓝／触摸橙滑块，另返回原组件12基矩形。空至五行不隐藏，七行顶／底按原整数比例。窗口按本页first绘图，拖动捕获时画橙条；原OS拖动仍待认证。无新Owner／格式，拒绝未知请求／越界first，输出短寿命；更新后的参考图保持实际研究输出。
+
+`steam_facility_bonus_scroll`消费组件12的相对／绝对逻辑事件，先夹scroll，再以真实变化delta同步选择；无变化不移动选择，INT_MAX哨兵、坏当前光标、未知事件显式拒绝。窗口从滑块按下取得页ID捕获，位移按已核gridY转换为绝对事件，是明确raylib适配，不冒认Surface。释放、切页、父栈覆盖／退休和暂停清拖动引用；已消费手势保留到release，避免“拖动→左右切页→行上释放”被误投为新的确认。状态只在窗口局部，不进入世界／存档；逻辑短测与代码复审已验，实际鼠标捕获动态未取得。
 
 `--world --inspect-page world-facility-details`与`world-facility-bonuses`取真实新局同一已营业且有邻接的设施，分别展示第一/第二页，不注入来源、资金或数值。[两页参考图](../ui/examples/steam-facility-detail.png)来自这两个有界窗口；其他特殊74模板仍用旧研究展示。普通分支不再覆盖旧通用白面板或叠画“确定”。窗口消费一次性声音请求但未播放，不据此认证原输入声音。
 

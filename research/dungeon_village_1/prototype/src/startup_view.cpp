@@ -733,7 +733,8 @@ SteamManualArrowPlan facility_detail_arrow(
     return *out;
 }
 void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites &sprites,
-                          const ChineseFont &font,std::optional<int> pressed_arrow={},int first=0) {
+                          const ChineseFont &font,std::optional<int> pressed_arrow={},int first=0,
+                          bool scroll_touch=false) {
     const auto color=[](std::array<int,3> c){return Color{static_cast<unsigned char>(c[0]),
         static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};};
     std::vector<std::array<int,4>> clips;
@@ -789,7 +790,7 @@ void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites 
             sprites.crop("steam-common/buttoneffect.png",{float(c[0]),float(c[1]),float(c[2]),float(c[3])},
                 {facility_detail_origin.x+d[0],facility_detail_origin.y+d[1]},true,Vector2{d[2],d[3]});
         } else if(const auto *s=std::get_if<SteamFacilityScrollRequest>(&op)) {
-            const auto scroll=steam_facility_scroll_skin(*s,first);
+            const auto scroll=steam_facility_scroll_skin(*s,first,scroll_touch);
             if(!scroll)throw std::runtime_error("设施滚动条载荷拒绝");
             for(const auto &r:scroll->rectangles)
                 DrawRectangleRec({facility_detail_origin.x+r.rect[0],facility_detail_origin.y+r.rect[1],
@@ -1708,18 +1709,22 @@ int run_startup_world_window(const std::filesystem::path &assets,
     int bonus_selection{}, bonus_scroll{}; // 原5行视窗的研究输入适配，不进入Owner或存档。
     std::map<std::uint64_t,SteamFacilityBonusCursor> bonus_views; // 父74覆盖后恢复，退休页及时回收。
     std::optional<std::pair<std::uint64_t,int>> facility_arrow_press; // 原CheckTouch的研究按下适配，非悬停。
+    struct FacilityScrollDrag {std::uint64_t page;float start_y;int first;float grid;};
+    std::optional<FacilityScrollDrag> facility_scroll_drag; // 只绑定当前页，释放/切页/退休清理。
+    bool facility_scroll_gesture{}; // 即使切页清引用，仍吞掉本次拖动的最终release。
     auto build_orientation = ref::FacilityOrientation::first;
     std::string command_feedback;
     std::optional<std::uint64_t> clear_confirm_pending; // 绑定计分页，按逻辑门槛只消费一次。
     while (!WindowShouldClose()) {
         const Vector2 mouse{GetMousePosition().x / scale, GetMousePosition().y / scale};
         const bool pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        if(pressed){facility_scroll_gesture=false;facility_scroll_drag.reset();}
         if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))facility_arrow_press.reset();
         const auto current_top=std::find_if(session.state().scripts.pages.rbegin(),session.state().scripts.pages.rend(),
                                             [](const auto &page){return page.lifecycle!=4;});
         const bool application_clear=session.application_mode() && current_top!=session.state().scripts.pages.rend() &&
             current_top->kind==ref::WorldScriptPageKind::raw_page && current_top->legacy_page==17;
-        bool pointer_consumed{};
+        bool pointer_consumed=facility_scroll_gesture;
         const auto hit = [&](Rectangle r) { return pressed && !pointer_consumed && CheckCollisionPointRec(mouse, r); };
         if (!application_clear && hit({4, 295, 44, 22})) {
             pointer_consumed=true;
@@ -2173,6 +2178,13 @@ int run_startup_world_window(const std::filesystem::path &assets,
             } else if (raw == 74) {
                 const auto pid = page->id;
                 const bool ordinary=startup_world_facility_page_count(session.state(),*page)==2;
+                const auto detail_phase=session.state().page_phases.find(pid);
+                if(ordinary&&detail_phase==session.state().page_phases.end())
+                    throw std::runtime_error("设施详情缺已初始化页码");
+                if(facility_scroll_drag&&(facility_scroll_drag->page!=pid||!ordinary||
+                    detail_phase->second!=1))facility_scroll_drag.reset();
+                const bool scroll_release=facility_scroll_drag&&IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+                if(facility_scroll_drag)pointer_consumed=true;
                 const bool pointer_return=ordinary&&hit({176,265,58,24});
                 bool row_confirm{},button_confirm{},left_click{},right_click{};
                 if(ordinary) {
@@ -2195,6 +2207,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                 if(arrow->value==16)left_click=true;else right_click=true;
                                 facility_arrow_press=std::make_pair(pid,arrow->value);
                             }
+                        } else if(const auto *s=std::get_if<SteamFacilityScrollRequest>(&op)) {
+                            const auto bar=steam_facility_scroll_skin(*s,bonus_scroll);
+                            if(!bar)throw std::runtime_error("设施滚动条输入载荷拒绝");
+                            if(s->count>5&&hit(point(bar->thumb_touch))) {
+                                const float grid=std::max(float(s->rectangle[3]-bar->thumb_touch[3])/(s->count-5),1.F);
+                                facility_scroll_drag=FacilityScrollDrag{pid,mouse.y,bonus_scroll,grid};
+                                facility_scroll_gesture=true;
+                                pointer_consumed=true;
+                            }
                         }
                     }
                 }
@@ -2213,6 +2234,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             bonus_selection = std::clamp(bonus_selection + (wheel > 0 ? -1 : 1),0,count-1);
                         bonus_scroll = std::clamp(bonus_scroll,bonus_selection-4,bonus_selection);
                         bonus_scroll = std::clamp(bonus_scroll,0,std::max(count-5,0));
+                        if(facility_scroll_drag&&facility_scroll_drag->page==pid) {
+                            // 此屏幕位移→绝对逻辑事件是研究适配；原Surface事件合成另验。
+                            const double wanted=facility_scroll_drag->first+
+                                std::trunc(double(mouse.y-facility_scroll_drag->start_y)/facility_scroll_drag->grid);
+                            const auto next=steam_facility_bonus_scroll(count,{bonus_selection,bonus_scroll},
+                                SteamFacilityScrollEvent::absolute,int(std::clamp(wanted,0.,double(count-5))));
+                            if(!next)throw std::runtime_error("设施拖动光标载荷拒绝");
+                            bonus_selection=next->selection;bonus_scroll=next->first;
+                        }
                     }
                 }
                 // Steam两个repeat独立处理；同轮左右会切两次，不合并为一次OR。
@@ -2233,6 +2263,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         throw std::runtime_error("设施情报返回失败");
                 }
                 if(ordinary)bonus_views[pid]={bonus_selection,bonus_scroll};
+                if(scroll_release||!IsMouseButtonDown(MOUSE_BUTTON_LEFT)||
+                   !session.state().page_phases.count(pid)||session.state().page_phases.at(pid)!=1)
+                    facility_scroll_drag.reset();
             } else if (raw == 33) {
                 const auto phase = session.state().page_phases.find(page->id);
                 const bool animating =
@@ -2492,6 +2525,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
         // 本研究窗口暂未实现音频；明确消费一次性请求，不保存无限声音历史。
         (void)session.take_sound_requests();
         const auto &state = session.state();
+        if(facility_scroll_drag) {
+            const auto active=std::find_if(state.scripts.pages.rbegin(),state.scripts.pages.rend(),
+                [](const auto &p){return p.lifecycle!=4;});
+            if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)||state.scene.framework_paused||
+                active==state.scripts.pages.rend()||active->id!=facility_scroll_drag->page||
+                !state.page_phases.count(active->id)||state.page_phases.at(active->id)!=1)
+                facility_scroll_drag.reset();
+        }
+        if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))facility_scroll_gesture=false;
         for(auto it=bonus_views.begin();it!=bonus_views.end();) {
             const auto page=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),
                 [&](const auto &p){return p.id==it->first&&p.legacy_page==74&&p.lifecycle!=4;});
@@ -3214,7 +3256,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(!plan)throw std::runtime_error("Steam普通设施详情载荷拒绝");
                     draw_facility_detail(*plan,sprites,font,
                         facility_arrow_press&&facility_arrow_press->first==page->id
-                            ?std::optional<int>(facility_arrow_press->second):std::nullopt,bonus_scroll);
+                            ?std::optional<int>(facility_arrow_press->second):std::nullopt,bonus_scroll,
+                        facility_scroll_drag&&facility_scroll_drag->page==page->id);
                 } else {
                     const auto id = state.facility_page_bindings.at(page->id);
                     const auto &facility = world.facilities.at(id);

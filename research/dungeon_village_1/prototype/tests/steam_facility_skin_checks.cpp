@@ -491,6 +491,23 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         "越界滚动显式拒绝，不夹到可用图来掩盖坏输入");
     scroll_request.prefix=0;
     check(!steam_facility_scroll_skin(scroll_request,0),"未知组件请求不冒用raw74滚动皮肤");
+    const auto absolute_scroll=steam_facility_bonus_scroll(7,{4,0},SteamFacilityScrollEvent::absolute,2);
+    const auto relative_scroll=steam_facility_bonus_scroll(7,{6,2},SteamFacilityScrollEvent::relative,-3);
+    const auto unchanged_scroll=steam_facility_bonus_scroll(7,{4,0},SteamFacilityScrollEvent::relative,0);
+    const auto short_scroll=steam_facility_bonus_scroll(2,{1,0},SteamFacilityScrollEvent::absolute,10);
+    check(absolute_scroll&&absolute_scroll->first==2&&absolute_scroll->selection==6&&
+        relative_scroll&&relative_scroll->first==0&&relative_scroll->selection==4&&
+        unchanged_scroll&&unchanged_scroll->first==0&&unchanged_scroll->selection==4&&
+        short_scroll&&short_scroll->first==0&&short_scroll->selection==1,
+        "组件12绝对/相对事件按实际夹后delta同步选择，无变化及短表不移选择");
+    check(!steam_facility_bonus_scroll(7,{6,0},SteamFacilityScrollEvent::absolute,1)&&
+        !steam_facility_bonus_scroll(7,{4,0},SteamFacilityScrollEvent::relative,std::numeric_limits<int>::max())&&
+        !steam_facility_bonus_scroll(7,{4,0},static_cast<SteamFacilityScrollEvent>(9),1),
+        "坏当前光标、INT_MAX事件哨兵及未知事件显式拒绝");
+    const auto extreme_scroll=steam_facility_bonus_scroll(7,{6,2},SteamFacilityScrollEvent::relative,
+        std::numeric_limits<int>::min());
+    check(extreme_scroll&&extreme_scroll->first==0&&extreme_scroll->selection==4,
+        "极端相对负量不溢出，先夹scroll再使用实际delta");
     for(int fault=0;fault<7;++fault) {
         auto bad=detail;
         if(fault==0)bad.bonuses[0].values.clear(); // 隐藏行也必须核验。

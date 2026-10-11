@@ -1,7 +1,7 @@
 {
   "scope": "maintained_complete_world_rules_and_single_runtime_owner",
   "layout_adaptation": "Domain module paths maintained by scripts/simulation/module_paths.mjs; upstream identity, namespaces, wire fields and assertions preserved.",
-  "snapshot_sha256": "79eb2dfdbdb11ffa3af2bba0c87dd10e02217fdf64faefdf0f9d7461c2a436b1",
+  "snapshot_sha256": "cec9ba35f7cc76e7f4e2c52d2eb6b162b2c4a4f0a911671e9e1d030f9f7a8b16",
   "files": [
     {
       "file": "assets/simulation/tenantData.txt",
@@ -2674,10 +2674,10 @@
     {
       "file": "include/ark/simulation/presentation/steam_facility_skin.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/steam_facility_skin.hpp",
-      "source_sha256": "1651a6ff91d83e55f9d7348f3e17be572615b793207b5deabd6d16679a161215",
-      "source_bytes": 6075,
-      "sha256": "81472b0b667de0db5f53cb6e0f8b0da57d7912bee8600f7ffb92d7b7201fc5a5",
-      "bytes": 6057
+      "source_sha256": "7ebce0a084f838cb49ef0028f46cefce998f4e6034a173ac7fc3da607e9f8ae7",
+      "source_bytes": 9678,
+      "sha256": "15c53085f2c7fd4befa49184b5b710db554be9173797cc94348ad0e7ae2ef8cf",
+      "bytes": 9660
     },
     {
       "file": "include/ark/simulation/presentation/steam_human_skin.hpp",
@@ -3335,10 +3335,10 @@
     {
       "file": "src/simulation/presentation/steam_facility_skin.cpp",
       "source": "research/dungeon_village_1/prototype/src/steam_facility_skin.cpp",
-      "source_sha256": "cfd6ca558201878d080add8e0d36f17bfdb8ac686c6dc8f31aa0885532d8dfdc",
-      "source_bytes": 16944,
-      "sha256": "7fbe845f9a3d8c446815f2d48c0754e1cd69369463c27da389a140f03ed0284a",
-      "bytes": 16901
+      "source_sha256": "858c7b3c7ee41426e08bfc4848ed216bacb3ad7f7bb464592a9d9c28402b7e8c",
+      "source_bytes": 30590,
+      "sha256": "449c10cd2c66b4b04c447254710762a0f27a36f0e415190e766af3317df7d647",
+      "bytes": 30547
     },
     {
       "file": "src/simulation/presentation/steam_human_skin.cpp",
@@ -3845,17 +3845,17 @@
     {
       "file": "tests/simulation/steam_facility_skin_checks.cpp",
       "source": "research/dungeon_village_1/prototype/tests/steam_facility_skin_checks.cpp",
-      "source_sha256": "34670c2907bec45c42e9cf31badc2c5e17f534715a8d15f86b4ca402c1e08b7c",
-      "source_bytes": 27671,
-      "sha256": "be040362c7af5358062a48ea8bac17eb6f9bd9f6928d254e0138c8db48b3a7f4",
-      "bytes": 28464,
+      "source_sha256": "db25fba5934dfd7b4b86cadbf048401d6c2426444989d587e09ab44081cc7f7a",
+      "source_bytes": 35019,
+      "sha256": "41668c046c72c6440511c0dff8fe4baae4ec7f0eb64effb014a040324a760a57",
+      "bytes": 35907,
       "product_patch": {
-        "imported_sha256": "62890bdf66e70632b0e309b5492e57cef8460e76fc3d3116d31a85d3229c06c9",
+        "imported_sha256": "caf8a4430c806db8fdcba59428dfb2416b999bb0fb2f1f59491e7c288f96b4d5",
         "reason": "Use packaged assets fixture paths for newly delivered loss/HUD/comma SEB checks; preserve numeric/resource and independent crop assertions."
       },
       "test_fixture_patch": {
-        "imported_sha256": "62890bdf66e70632b0e309b5492e57cef8460e76fc3d3116d31a85d3229c06c9",
-        "reason": "Map published original/ resources to packaged assets and the two distinct Steam number PNGs to steam_common; preserve all assertions, SEB geometry oracle and Steam/APK byte-inequality checks."
+        "imported_sha256": "caf8a4430c806db8fdcba59428dfb2416b999bb0fb2f1f59491e7c288f96b4d5",
+        "reason": "Map published original resources and Steam numeric/effect PNGs to existing packaged assets; preserve all maintained assertions and independent resource oracles."
       }
     },
     {
@@ -3953,5 +3953,5 @@
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     }
   ],
-  "research_commit": "d9955d0"
+  "research_commit": "bb61d5f"
 }

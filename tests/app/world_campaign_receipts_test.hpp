@@ -9,4 +9,6 @@ namespace ark::test {
 using CampaignCommandConsumer =
     std::function<app::WorldCommandResult(app::WorldState &, const app::WorldCommand &)>;
 void campaign_receipt_contract(const CampaignCommandConsumer &apply);
+// Village effect fixtures use the same command consumer and campaign suite.
+void campaign_village_effect_contract(const CampaignCommandConsumer &apply);
 } // namespace ark::test

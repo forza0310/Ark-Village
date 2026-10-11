@@ -1,4 +1,5 @@
 // Real village transaction observations; catalogue registration belongs to coverage.
+#include "ark/simulation/village/rules/world_village_activity.hpp"
 #include "world_campaign_coverage.hpp"
 #include <algorithm>
 #include <limits>
@@ -10,6 +11,136 @@ namespace {
 using State = app::WorldState;
 namespace ref = simulation::rules;
 } // namespace
+
+std::vector<CampaignReceipt> activity_human_effect_receipts(const State &before,
+                                                            const State &after) {
+    const auto page = std::find_if(before.scripts.pages.rbegin(), before.scripts.pages.rend(),
+                                   [](const auto &p) { return p.lifecycle != 4; });
+    if (page == before.scripts.pages.rend() || page->kind != ref::WorldScriptPageKind::raw_page ||
+        page->legacy_page != 53)
+        return {};
+    const auto retired = std::find_if(after.scripts.pages.begin(), after.scripts.pages.end(),
+                                      [&](const auto &p) { return p.id == page->id; });
+    if (retired != after.scripts.pages.end() && retired->lifecycle != 4)
+        return {}; // An early confirmation or unchanged observation applies no effect.
+    const auto need = [](bool condition) {
+        if (!condition)
+            throw std::runtime_error("Activity effect lost its completion/human binding");
+    };
+    need(before.rules && before.rules == after.rules &&
+         before.activity_pages_initialized.count(page->id) &&
+         before.page_counters.at(page->id) >= 120);
+    const int id = before.activity_page_bindings.at(page->id);
+    const auto &source = before.rules->activities.at(id);
+    const int kind = source.parameters[2];
+    if (kind != 0 && kind != 1)
+        return {}; // Other effects have their own receipt consumers.
+    const ref::WorldVillageActivityDefinition activity{id,
+                                                       before.scripts.activities.at(id).status,
+                                                       before.activity_flags.at(id),
+                                                       before.activity_counts.at(id),
+                                                       kind,
+                                                       source.parameters[3],
+                                                       source.parameters[4],
+                                                       source.parameters[5]};
+    std::vector<const ref::WorldScriptPage *> displays;
+    for (const auto &p : after.scripts.pages)
+        if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == 54 &&
+            p.lifecycle != 4 &&
+            std::none_of(before.scripts.pages.begin(), before.scripts.pages.end(),
+                         [&](const auto &old) { return old.id == p.id; }))
+            displays.push_back(&p);
+    need(displays.size() == 1 && before.quarter_counter != std::numeric_limits<int>::min() &&
+         after.activity_page_bindings.at(displays.front()->id) == id &&
+         after.quarter_counter == before.quarter_counter - 1 &&
+         before.village_points == after.village_points && before.events_held == after.events_held &&
+         before.activity_counts == after.activity_counts &&
+         before.activity_flags == after.activity_flags &&
+         before.human_presence == after.human_presence &&
+         before.scene.world.world.ai.accounting.funds() ==
+             after.scene.world.world.ai.accounting.funds() &&
+         after.scene.random.draws() == before.scene.random.draws() + 2);
+    const auto same_hp = [](const auto &a, const auto &b) {
+        return std::tie(a.requested_delta, a.displayed, a.origin, a.target, a.animating,
+                        a.legacy_tick) == std::tie(b.requested_delta, b.displayed, b.origin,
+                                                   b.target, b.animating, b.legacy_tick);
+    };
+    const auto &old_ai = before.scene.world.world.ai, &new_ai = after.scene.world.world.ai;
+    std::vector<CampaignReceipt> result;
+    for (const auto &human : before.rules->humans) {
+        if (!before.human_presence.at(human.identity))
+            continue;
+        const int h = human.identity;
+        const auto &old = old_ai.growth.at(h), &now = new_ai.growth.at(h);
+        const int old_satisfaction = before.shop_humans.at(h).satisfaction;
+        // The frozen rule suite owns the float/integer arithmetic. Here its tested
+        // value oracle checks the Owner connection, roster and actual commit timing.
+        const auto expected = ref::prepare_world_village_human_effect(
+            activity, old.definition, old_ai.professions, old.derived, old_satisfaction);
+        need(expected.candidate.has_value());
+        const auto &effect = *expected.candidate;
+        const auto &stats = effect.stats ? *effect.stats : old.derived;
+        need(now.definition.extra == effect.definition.extra &&
+             now.definition.current_profession == old.definition.current_profession &&
+             now.definition.base == old.definition.base &&
+             now.definition.legacy_u == old.definition.legacy_u &&
+             now.definition.equipment == old.definition.equipment &&
+             now.definition.learned_spells == old.definition.learned_spells &&
+             now.definition.spell_professions == old.definition.spell_professions &&
+             now.definition.profession_levels == old.definition.profession_levels &&
+             after.shop_humans.at(h).satisfaction == effect.satisfaction &&
+             after.human_activity_previous.at(h) == effect.previous_value &&
+             now.derived.attributes == stats.attributes && now.derived.combat == stats.combat &&
+             now.derived.growth == stats.growth &&
+             now.derived.available_spells == stats.available_spells);
+        const auto check_actors = [&](const auto &a, const auto &b) {
+            need(a.size() == b.size());
+            for (const auto &[actor_id, actor] : a)
+                if (actor.kind == ref::ActorKind::human && actor.definition == h) {
+                    const auto &changed = b.at(actor_id);
+                    need(actor.kind == changed.kind && actor.definition == changed.definition &&
+                         same_hp(actor.hp, changed.hp) &&
+                         changed.capacity == (effect.stats ? stats.combat[0] : actor.capacity));
+                }
+        };
+        check_actors(old_ai.battle.actors, new_ai.battle.actors);
+        check_actors(old_ai.retired_actors, new_ai.retired_actors);
+        const auto &focus = before.focus_actor.actor;
+        if (focus.kind == ref::ActorKind::human && focus.definition == h)
+            need(same_hp(focus.hp, after.focus_actor.actor.hp) &&
+                 after.focus_actor.actor.capacity ==
+                     (effect.stats ? stats.combat[0] : focus.capacity));
+        const int attribute = kind == 0 ? -1 : activity.attribute;
+        result.push_back({kind == 0 ? CampaignReceiptKind::activity_satisfaction_applied
+                                    : CampaignReceiptKind::activity_attribute_applied,
+                          id,
+                          after.simulation_steps,
+                          page->id,
+                          0,
+                          h,
+                          {kind == 0 ? old_satisfaction : old.definition.extra.at(attribute),
+                           kind == 0 ? old_satisfaction : old.derived.attributes.at(attribute),
+                           attribute, old.definition.current_profession},
+                          {kind == 0 ? effect.satisfaction : now.definition.extra.at(attribute),
+                           kind == 0 ? effect.satisfaction : now.derived.attributes.at(attribute),
+                           attribute, now.definition.current_profession}});
+    }
+    need(!result.empty());
+    const auto &portraits = after.activity_page_display_humans.at(displays.front()->id);
+    for (const int h : portraits)
+        need(before.human_presence.at(h) != 0);
+    if (kind == 0) {
+        need(after.scene.world.popularity_queue.size() ==
+                 before.scene.world.popularity_queue.size() + 1 &&
+             after.scene.world.popularity_queue.front() ==
+                 std::array<int, 3>{10, activity.magnitude, 1} &&
+             std::equal(before.scene.world.popularity_queue.begin(),
+                        before.scene.world.popularity_queue.end(),
+                        after.scene.world.popularity_queue.begin() + 1));
+    } else
+        need(before.scene.world.popularity_queue == after.scene.world.popularity_queue);
+    return result; // Publish only after every open definition and post-effect display validates.
+}
 
 std::optional<CampaignReceipt> rank_promotion_receipt(const State &before, const State &after) {
     if (before.rank == after.rank)

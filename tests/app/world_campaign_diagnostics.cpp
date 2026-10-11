@@ -4,6 +4,7 @@
 #include "ark/assets/sha256.hpp"
 #include "ark/simulation/persistence/startup_world_persistence.hpp"
 #include "ark_library_contract.hpp"
+#include <algorithm>
 #include <chrono>
 #include <fstream>
 #include <iostream>
@@ -62,6 +63,74 @@ const char *stage_name(sim::rules::WorldScheduleStage stage) {
     return "unknown";
 }
 } // namespace
+
+void inspect_campaign_progress(const app::WorldState &s, std::ostream &out) {
+    require(s.rules != nullptr, "progress inspection needs source definitions");
+    auto rank = s;
+    require(sim::refresh_startup_world_runtime_rank(rank), "rank query rejected prefix");
+    const auto table = sim::rules::fixed_calendar_task_rank_terms();
+    const auto found = table.find(s.rank);
+    if (found != table.end())
+        for (std::size_t n = 0; n < found->second.size(); ++n)
+            out << "RANK_REQUIREMENT target=" << s.rank + 1 << " index=" << n
+                << " type=" << found->second[n].type << " value=" << rank.rank_values.at(n)
+                << " threshold=" << found->second[n].threshold << " met=" << rank.rank_met.at(n)
+                << '\n';
+    if (s.active_task) {
+        const auto &task = s.tasks.at(*s.active_task);
+        out << "ACTIVE_ADVENTURE instance=" << *s.active_task << " definition=" << task.definition
+            << " kind=" << s.rules->tasks.at(task.definition).factory.kind
+            << " difficulty=" << task.difficulty << " participants=" << s.participants.size()
+            << " facility=" << task.facility.value_or(0) << '\n';
+        if (task.facility && s.dungeon_facilities.count(*task.facility)) {
+            const auto &progress = s.dungeon_facilities.at(*task.facility);
+            out << "ADVENTURE_PROGRESS facility=" << *task.facility
+                << " updates=" << progress.updates << " progress=" << progress.progress
+                << " extent=" << progress.extent << " percent=" << progress.percent
+                << " challenges=" << progress.challenges.size() << '\n';
+        }
+    }
+    const auto &ai = s.scene.world.world.ai;
+    for (const auto &[id, actor] : ai.battle.actors) {
+        const bool human = actor.kind == sim::rules::ActorKind::human;
+        out << "ACTOR_PROGRESS id=" << id.value << " human=" << human
+            << " definition=" << actor.definition << " state=" << actor.control.state
+            << " baseline=" << actor.baseline << " flags=" << actor.control.flags
+            << " action=" << actor.control.action << " state_counter=" << actor.state_counter
+            << " hp=" << actor.hp.target << " displayed_hp=" << actor.hp.displayed
+            << " capacity=" << actor.capacity << " position=" << actor.position.x << ','
+            << actor.position.z << " down_timer=" << actor.down_timer
+            << " rescue=" << actor.rescue.value_or(sim::rules::CharacterId{}).value
+            << " encounter=" << actor.encounter.value_or(0)
+            << " attack_count=" << actor.attack_count << " hits=" << actor.hit_count
+            << " queue=" << actor.control.queue.size();
+        if (!actor.control.queue.empty()) {
+            out << " head=";
+            for (const int value : actor.control.queue.front())
+                out << value << ',';
+        }
+        if (human) {
+            const auto &growth = ai.growth.at(actor.definition);
+            const int job = growth.definition.current_profession;
+            out << " job=" << job << " level=" << growth.definition.profession_levels.at(job)
+                << " combat=";
+            for (const int value : growth.derived.combat)
+                out << value << ',';
+            out << " task_member="
+                << (std::find(s.participants.begin(), s.participants.end(), actor.definition) !=
+                    s.participants.end());
+        }
+        if (const auto context = s.scene.world.world.actors.find(id);
+            context != s.scene.world.world.actors.end()) {
+            const auto &route = context->second;
+            out << " path_pending=" << route.path_pending << " journey=" << bool(route.journey)
+                << " waypoint=" << route.waypoint << " no_path=" << route.no_path_updates;
+            if (route.destination)
+                out << " destination=" << route.destination->x << ',' << route.destination->y;
+        }
+        out << '\n';
+    }
+}
 
 std::string describe_campaign_failure(const sim::StartupWorldRuntimeResult &result) {
     std::ostringstream out;
@@ -195,6 +264,12 @@ void campaign_diagnostic_contract(const std::filesystem::path &build) {
     std::filesystem::create_directories(directory.parent_path());
     require(std::filesystem::create_directory(directory), "fresh contract directory required");
     auto state = initial_world();
+    const auto progress_digest = sim::startup_world_state_digest(state);
+    std::ostringstream progress;
+    inspect_campaign_progress(state, progress);
+    require(progress.str().find("RANK_REQUIREMENT target=1 index=0") != std::string::npos &&
+                sim::startup_world_state_digest(state) == progress_digest,
+            "progress inspection must query real rank terms without mutating Owner/random");
     capture_campaign_observation(directory, state);
     require(sim::startup_world_state_digest(read_campaign_observation(directory)) ==
                 sim::startup_world_state_digest(state),

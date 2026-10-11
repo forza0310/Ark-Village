@@ -213,7 +213,8 @@ function report(rows) {
 }
 // Receipt values describe the already-asserted observation; no business algorithm is run here.
 const receiptStages = {
-  points_paid: 'village_activity', effect_queued: 'village_activity', pot_opened: 'village_activity', bound_use: 'item',
+  points_paid: 'village_activity', effect_queued: 'village_activity', pot_opened: 'village_activity',
+  satisfaction_applied: 'village_activity', attribute_applied_to_human: 'village_activity', bound_use: 'item',
   attribute_applied: 'item', obtained: 'item', hp_restored: 'item', discovered: 'magic_recipe',
   elements_paid_and_crafted: 'magic_recipe', blueprint_points_paid: 'facility',
   blueprint_claimed: 'facility', construction_paid: 'facility',
@@ -259,6 +260,13 @@ function* receipts(text, phase) {
         numbers[4] === id - 1 && numbers[8] === id && numbers[5] === 15 && numbers[9] === 15 &&
         [numbers[6], numbers[7], numbers[10], numbers[11]].every(value => value >= 0),
         'receipt rank transition/four cached conditions');
+    if (stage === 'satisfaction_applied' || stage === 'attribute_applied_to_human') {
+      need(numbers[2] >= 0 && numbers[2] < 25 && numbers[3] === 0 && numbers[6] === numbers[10] &&
+        numbers[7] === numbers[11] && numbers[7] >= 0 && numbers[7] < 23, 'receipt activity human/profession binding');
+      need(stage === 'satisfaction_applied' ? numbers[6] === -1 && numbers[4] === numbers[5] &&
+        numbers[8] === numbers[9] && [numbers[4], numbers[8]].every(value => value >= 0 && value <= 100)
+        : numbers[6] >= 0 && numbers[6] <= 5, 'receipt activity applied-value binding');
+    }
     yield {key, stage, phase, line: line + 1,
       step: numbers[0], page: numbers[1], recipient: numbers[2], subject: numbers[3],
       before: numbers.slice(4, 8), after: numbers.slice(8, 12)};
@@ -371,6 +379,7 @@ function coverageContract(rows) {
   for (const [category, stage, id, limit, subject, recipient] of [
     ['facility', 'blueprint_points_paid', 40, 85, 0, -1], ['facility', 'blueprint_claimed', 40, 85, 0, -1],
     ['facility', 'construction_paid', 40, 85, 1, -1], ['activity', 'pot_opened', 30, 31, 0, -1],
+    ['activity', 'satisfaction_applied', 0, 31, 0, 24], ['activity', 'attribute_applied_to_human', 7, 31, 0, 24],
     ['weapon', 'reward_equipped', 32, 33, 1, 24], ['armour', 'reward_equipped', 49, 50, 1, 24],
     ['accessory', 'reward_equipped', 29, 30, 1, 24], ['weapon', 'combat_attributes_applied', 32, 33, 1, 24],
     ['armour', 'combat_attributes_applied', 49, 50, 1, 24], ['accessory', 'combat_attributes_applied', 29, 30, 1, 24],
@@ -384,10 +393,18 @@ function coverageContract(rows) {
     const fields = ['COVERAGE_RECEIPT', category, String(id), stage, '2', '1', String(recipient), String(subject),
       '120', '0', '2', '0', '0', '1', '2', '0'];
     if (stage === 'home_tax_collected') fields[13] = '0';
+    const appliedValues = stage === 'satisfaction_applied' ? [20,20,-1,22,22,22,-1,22]
+      : stage === 'attribute_applied_to_human' ? [0,108,0,22,5,113,0,22] : null;
+    if (appliedValues) fields.splice(8, 8, ...appliedValues.map(String));
     const parsed = [...receipts(fields.join('\t'), 'contract')];
     need(parsed.length === 1 && parsed[0].key === sourceKey(category, id) && parsed[0].stage === stage &&
-      parsed[0].subject === subject && parsed[0].recipient === recipient && parsed[0].before.join(',') === '120,0,2,0' &&
-      parsed[0].after.join(',') === (stage === 'home_tax_collected' ? '0,0,2,0' : '0,1,2,0'), 'campaign numeric receipt mapping');
+      parsed[0].subject === subject && parsed[0].recipient === recipient &&
+      parsed[0].before.join(',') === (appliedValues ? appliedValues.slice(0,4).join(',') : '120,0,2,0') &&
+      parsed[0].after.join(',') === (appliedValues ? appliedValues.slice(4).join(',') : stage === 'home_tax_collected' ? '0,0,2,0' : '0,1,2,0'), 'campaign numeric receipt mapping');
+    if (appliedValues) for (const [field,value] of [[7,'1'],[14,'6'],[15,'23']]) {
+      const invalid = [...fields]; invalid[field] = value;
+      expectReject(() => [...receipts(invalid.join('\t'), 'contract')]);
+    }
     const last = [...fields]; last[2] = String(limit - 1);
     need([...receipts(last.join('\t'), 'contract')].length === 1, 'last source definition receipt rejected');
     for (const [field, value] of [[2, '-1'], [2, String(limit)], [5, '0'],

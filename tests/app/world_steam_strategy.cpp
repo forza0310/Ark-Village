@@ -383,6 +383,10 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
         if (!v || s.activity_page_answers.count(p.id))
             return {};
         if (raw == 51) {
+            // A completed event returns to this still-open catalogue. Once the last
+            // quarterly slot is spent, close it instead of looping source denial50.
+            if (s.quarter_counter <= 0)
+                return activity(p.id, Activity::cancel);
             int selected = -1, best = std::numeric_limits<int>::min();
             int points_reserve{};
             for (const auto &t : steam_village_layout())
@@ -879,6 +883,14 @@ void steam_strategy_contract() {
     require(choice && choice->village_activity_action == Activity::select &&
                 view->entries.at(choice->selection) == 25,
             "necessary point-only expansion must remain available below the cash buffer");
+
+    budget.quarter_counter = 0; // Post-event menu qualification, not an effect grant.
+    const auto exhausted = sim::startup_world_state_digest(budget);
+    choice = player.next(budget);
+    require(choice && choice->kind == Kind::village_activity_action &&
+                choice->page == page && choice->village_activity_action == Activity::cancel &&
+                sim::startup_world_state_digest(budget) == exhausted,
+            "exhausted quarterly slots must close the catalogue without retrying denial50");
 
     // Explicit task-end observation: the existing sidecar retains the recovery
     // month across cold loading, including a calendar year boundary.

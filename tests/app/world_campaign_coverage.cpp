@@ -35,6 +35,10 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"activity", "points_paid", 31, false};
     case Kind::activity_effect_queued:
         return {"activity", "effect_queued", 31, false};
+    case Kind::activity_satisfaction_applied:
+        return {"activity", "satisfaction_applied", 31, true, false, 25};
+    case Kind::activity_attribute_applied:
+        return {"activity", "attribute_applied_to_human", 31, true, false, 25};
     case Kind::item_consumed:
         return {"item", "bound_use", 36, true};
     case Kind::item_attribute_applied:
@@ -187,6 +191,19 @@ void CampaignCoverage::record(const CampaignReceipt &receipt, std::ostream &log)
             now[0] != receipt.definition || old[1] != 15 || now[1] != 15 || old[2] < 0 ||
             now[2] < 0 || old[3] < 0 || now[3] < 0)
             throw std::runtime_error("Rank receipt lost its transition or four-condition mask");
+    }
+    if (receipt.kind == CampaignReceiptKind::activity_satisfaction_applied ||
+        receipt.kind == CampaignReceiptKind::activity_attribute_applied) {
+        const auto &old = receipt.before, &now = receipt.after;
+        const bool satisfaction =
+            receipt.kind == CampaignReceiptKind::activity_satisfaction_applied;
+        if (receipt.subject != 0 || old[2] != now[2] || old[3] != now[3] || old[3] < 0 ||
+            old[3] >= 23 ||
+            (satisfaction ? old[2] != -1 || old[0] != old[1] || now[0] != now[1] || old[0] < 0 ||
+                                old[0] > 100 || now[0] < 0 || now[0] > 100
+                          : old[2] < 0 || old[2] > 5))
+            throw std::runtime_error(
+                "Activity receipt lost its human/attribute/profession binding");
     }
     // Numeric evidence remains in the existing phase log. Only a fixed stage set is retained.
     log << "COVERAGE_RECEIPT\t" << identity.category << '\t' << receipt.definition << '\t'
@@ -564,6 +581,10 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
         {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0},
+        {CampaignReceiptKind::activity_satisfaction_applied, "activity", "satisfaction_applied", 31,
+         0, 24},
+        {CampaignReceiptKind::activity_attribute_applied, "activity", "attribute_applied_to_human",
+         31, 0, 24},
         {CampaignReceiptKind::weapon_reward_equipped, "weapon", "reward_equipped", 33, 1, 24},
         {CampaignReceiptKind::armour_reward_equipped, "armour", "reward_equipped", 50, 1, 24},
         {CampaignReceiptKind::accessory_reward_equipped, "accessory", "reward_equipped", 30, 1, 24},
@@ -591,18 +612,41 @@ void campaign_coverage_contract() {
             entry.recipient, {120, 0, 2, 0},        {0, 1, 2, 0}};
         if (entry.kind == CampaignReceiptKind::human_home_tax_collected)
             receipt.after[1] = 0;
+        std::string activity_values;
+        if (entry.kind == CampaignReceiptKind::activity_satisfaction_applied) {
+            receipt.before = {20, 20, -1, 22};
+            receipt.after = {22, 22, -1, 22};
+            activity_values = "\t20\t20\t-1\t22\t22\t22\t-1\t22\n";
+        }
+        if (entry.kind == CampaignReceiptKind::activity_attribute_applied) {
+            receipt.before = {0, 108, 0, 22};
+            receipt.after = {5, 113, 0, 22};
+            activity_values = "\t0\t108\t0\t22\t5\t113\t0\t22\n";
+        }
         const auto start = log.str().size();
         coverage.record(receipt, log);
         const auto expected = std::string("COVERAGE_RECEIPT\t") + entry.category + '\t' +
                               std::to_string(receipt.definition) + '\t' + entry.stage + "\t2\t1\t" +
                               std::to_string(entry.recipient) + '\t' +
                               std::to_string(entry.subject) +
-                              (entry.kind == CampaignReceiptKind::human_home_tax_collected
+                              (!activity_values.empty() ? activity_values
+                               : entry.kind == CampaignReceiptKind::human_home_tax_collected
                                    ? "\t120\t0\t2\t0\t0\t0\t2\t0\n"
                                    : "\t120\t0\t2\t0\t0\t1\t2\t0\n");
         if (log.str().substr(start) != expected)
             throw std::runtime_error(
                 "Campaign receipt lost its namespace, stage or numeric evidence");
+        if (!activity_values.empty()) {
+            auto wrong_attribute = receipt;
+            ++wrong_attribute.after[2];
+            expect_rejected(wrong_attribute);
+            auto wrong_job = receipt;
+            ++wrong_job.after[3];
+            expect_rejected(wrong_job);
+            auto wrong_subject = receipt;
+            wrong_subject.subject = 1;
+            expect_rejected(wrong_subject);
+        }
         auto invalid = receipt;
         invalid.definition = -1;
         expect_rejected(invalid);

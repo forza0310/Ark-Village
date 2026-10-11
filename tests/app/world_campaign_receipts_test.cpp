@@ -1036,6 +1036,7 @@ void campaign_receipt_contract(const CampaignCommandConsumer &apply) {
     monster_retirement_receipt_contract();
     rank_promotion_receipt_contract(apply);
     residence_tax_receipt_contract();
+    campaign_village_effect_contract(apply);
     steam_transaction_receipt_contract(apply);
     steam_people_receipt_contract(apply);
     steam_investment_receipt_contract(apply);

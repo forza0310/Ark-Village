@@ -189,6 +189,13 @@ template <class PlayerStrategy> struct CampaignRun {
                                  [&](const ark::test::CampaignReceipt &receipt) {
                                      pending_receipts.push_back(receipt);
                                  });
+                if (input.kind == Kind::village_activity_action &&
+                    input.village_activity_action == sim::StartupVillageActivityAction::confirm &&
+                    result.outcome == app::WorldCommandOutcome::applied) {
+                    const auto effects =
+                        ark::test::activity_human_effect_receipts(state, candidate);
+                    pending_receipts.insert(pending_receipts.end(), effects.begin(), effects.end());
+                }
                 promotion = ark::test::rank_promotion_receipt(state, candidate);
                 if (promotion) {
                     require(input.kind == Kind::rank_action && !input.cancel &&
@@ -822,7 +829,7 @@ int main(int argc, char **argv) {
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
         if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
-            mode == "steam-inspect" || mode == "steam-quarter") {
+            mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-observe") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
             if (mode == "steam-new") {
                 auto prefix = load<LateStrategy>(directory, 0);
@@ -850,6 +857,29 @@ int main(int argc, char **argv) {
                            "not all-content clear"
                         << std::endl;
                 }
+            } else if (mode == "steam-observe") {
+                // Probe an isolated legal prefix through the ordinary command/update driver.
+                // Keep the player/strategy files as input; this is not a milestone certificate.
+                steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
+                auto &run = *steam_campaign;
+                run.strategy.continue_campaign();
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::minutes(2);
+                ark::test::inspect_campaign_progress(run.state, std::cout);
+                for (int step = 0; step < 600; ++step) {
+                    require(std::chrono::steady_clock::now() < deadline,
+                            "Bounded campaign observation exceeded two minutes");
+                    run.step();
+                    if ((step + 1) % 200 == 0) {
+                        std::cout << "OBSERVATION rounds=" << step + 1 << '\n';
+                        ark::test::inspect_campaign_progress(run.state, std::cout);
+                    }
+                }
+                run.coverage.save(directory, run.state);
+                ark::test::capture_campaign_observation(directory, run.state);
+                ark::test::inspect_income(run.state, std::cout);
+                std::cout << "PASS bounded business observation; "
+                          << run.strategy.diagnose(run.state) << "; not a saved player milestone"
+                          << std::endl;
             } else if (mode == "steam-inspect") {
                 // Cold-load all durable fields and the matching controller without advancing
                 // the world. Useful for verifying periodic prefixes before a costly resume.
@@ -866,6 +896,7 @@ int main(int argc, char **argv) {
                                   << " threshold=" << human.residence_threshold
                                   << " fee=" << human.residence_fee << '\n';
                 ark::test::inspect_income(state, std::cout);
+                ark::test::inspect_campaign_progress(state, std::cout);
             } else {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 1));
                 require(steam_campaign->strategy.complete(steam_campaign->state),

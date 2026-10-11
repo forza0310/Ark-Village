@@ -50,15 +50,16 @@ std::vector<std::uint8_t> bytes(const std::filesystem::path &p) {
     if(!in)throw std::runtime_error("Steam81源资源缺失："+p.string());
     return {std::istreambuf_iterator<char>(in),{}};
 }
-// Product packages flatten published original/ into assets/ and keep Steam's two
-// differing numeric PNGs in steam_common/. Only fixture paths change; the maintained
+// Product packages flatten published original/ into assets/ and keep Steam's
+// differing numeric/effect PNGs in steam_common/. Only fixture paths change; the maintained
 // resource identities, independent SEB oracle and APK/Steam inequality stay intact.
 std::filesystem::path packaged(const std::filesystem::path &root,const char *published) {
     const std::filesystem::path path(published);
     const auto relative=path.generic_string();
     if(relative.rfind("original/",0)==0)return root/path.lexically_relative("original");
     if(relative=="steam-build-common/original/common/number05.png"||
-       relative=="steam-facility-common/original/common/number08.png")
+       relative=="steam-facility-common/original/common/number08.png"||
+       relative=="steam-facility-common/original/common/icon_param00.png")
         return root/"steam_common"/path.filename();
     throw std::runtime_error("Unsupported published Steam fixture path: "+relative);
 }
@@ -414,6 +415,105 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         const auto &p=mini.layers.at(0).parts.at(frame);
         check(p.image_index==93&&std::array<int,6>{p.source_x,p.source_y,p.width,p.height,p.offset_x,p.offset_y}==oracle[frame],
               "mini六个实际使用帧裁片/偏移独立源oracle");
+    }
+    // raw74沿现visuals套件：重点验证语言重载、触摸交错、五行与Owner绑定。
+    SteamFacilityDetailSkinInput detail;
+    detail.definition=36;detail.mapchip=65;detail.icon=2;detail.name="咖啡厅";
+    detail.values={490,21,25,30};detail.limits={1000,50,50};detail.remaining=18;
+    detail.effects={{{0,4}}};detail.title_widths=std::array<int,2>{80,80};detail.bottom_width=48;
+    using D=SteamFacilityDetailText;using DR=SteamFacilityDetailTextRole;
+    const auto detail_labels=[](const SteamFacilityDetailSkinPlan &p,DR role) {
+        std::vector<D> result;
+        for(const auto &op:p.operations)if(const auto *t=std::get_if<D>(&op))if(t->role==role)result.push_back(*t);
+        return result;
+    };
+    auto details=steam_facility_detail_skin(detail);
+    check(details&&details->soft_labels==std::array<int,2>{0,2},"74左空右返回，不增确定软键");
+    auto names=detail_labels(*details,DR::name);
+    check(names.size()==1&&names[0].value=="咖啡厅"&&names[0].rectangle==std::array<int,4>{41,69,85,11}&&
+          names[0].anchor==32&&names[0].font_size==11&&names[0].method==SteamFacilityTextMethod::text_layout,
+          "Steam非日文名称限框，第一页不拼来源实例编号");
+    const auto buttons=std::count_if(details->operations.begin(),details->operations.end(),[](const auto &v){
+        const auto *t=std::get_if<SteamStartupTouch>(&v);return t&&t->component==4;
+    });
+    check(buttons==1&&detail_labels(*details,DR::bottom)[0].rectangle==std::array<int,4>{88,197,64,16},
+          "底部使用道具按实测宽+16，不把200当最终宽");
+    detail.page=1;details=steam_facility_detail_skin(detail);
+    check(details&&detail_labels(*details,DR::no_bonus).size()==1&&detail_labels(*details,DR::name).empty()&&
+          std::count_if(details->operations.begin(),details->operations.end(),[](const auto &v){return std::holds_alternative<SteamFacilityScrollRequest>(v);})==1,
+          "空Y有无奖励文字且仍注册滚动；第二页不复用第一名称及道具按钮");
+    for(int i=0;i<7;++i)detail.bonuses.push_back({71,i,6,2,"槙树",{20,i==6?-3:25}});
+    const auto wrap=steam_facility_bonus_cursor(7,{0,0},true,false);
+    check(wrap&&wrap->selection==6&&wrap->first==2,"七行上循环到末行、追踪末五行");
+    const auto double_direction=steam_facility_bonus_cursor(7,{0,0},true,true);
+    check(double_direction&&double_direction->selection==0&&double_direction->first==0,"同时上下各执行一次");
+    detail.cursor=*wrap;detail.frame=8;details=steam_facility_detail_skin(detail);
+    names=detail_labels(*details,DR::bonus_name);
+    const auto bonus_values=detail_labels(*details,DR::bonus_value);
+    check(names.size()==5&&names.front().value=="槙树3"&&names.back().value=="槙树7"&&
+          bonus_values.size()==10&&bonus_values.back().value=="+-3"&&
+          bonus_values.front().rectangle==std::array<int,4>{130,99,35,9}&&bonus_values.front().anchor==32&&
+          bonus_values.front().method==SteamFacilityTextMethod::text_layout,
+          "末五行原序、ordinal+1及signed字面串；植物值是独立TextLayout");
+    bool ordered=false;int rows_seen=0;std::size_t scroll_at=details->operations.size();
+    for(std::size_t i=0;i<details->operations.size();++i) {
+        if(const auto *touch=std::get_if<SteamStartupTouch>(&details->operations[i])) {
+            if(touch->component==11) {
+                ++rows_seen;
+                check(touch->value==(0x20000|(2+rows_seen-1))&&touch->option==0&&
+                      touch->rectangle==std::array<int,4>{-1,95+19*(rows_seen-1),231,18},"SLIST保持绝对索引与无marker16注册");
+                if(rows_seen==5&&i>0) {
+                    const auto *draw=std::get_if<SteamFacilityDraw>(&details->operations[i-1]);
+                    ordered=draw&&std::holds_alternative<SteamFacilityImage>(*draw)&&
+                        std::get<SteamFacilityImage>(*draw).asset==A::finger;
+                }
+            }
+            check(touch->component!=4,"第二页不注册使用道具按钮");
+        }
+        if(const auto *scroll=std::get_if<SteamFacilityScrollRequest>(&details->operations[i])) {
+            scroll_at=i;
+            check(scroll->count==7&&scroll->visible==5&&scroll->rectangle==std::array<int,4>{221,85,3,110},
+                  "滚动只读全部七行计数、原组件基矩形，不生成自拟滑块");
+        }
+    }
+    check(rows_seen==5&&ordered&&scroll_at+1<details->operations.size()&&
+          std::get<D>(details->operations[scroll_at+1]).role==DR::bottom,
+          "选中手形先于行touch，滚动请求后才底部说明");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=detail;
+        if(fault==0)bad.bonuses[0].values.clear(); // 隐藏行也必须核验。
+        if(fault==1)bad.title_widths.reset();
+        if(fault==2)bad.bottom_width.reset();
+        if(fault==3)bad.cursor.selection=7;
+        if(fault==4)bad.finger_frame=6;
+        if(fault==5)bad.effects={{{0,std::numeric_limits<int>::max()}}};
+        if(fault==6)bad.view_y=std::numeric_limits<int>::max();
+        const auto diagnostic="74拒绝场景"+std::to_string(fault)+"：隐藏坏载荷/缺测宽/越界选择/输出或坐标超限";
+        check(!steam_facility_detail_skin(bad),diagnostic.c_str());
+    }
+    auto detail_owner=test_support::world_fixture();
+    check(open_startup_world_facility_page(detail_owner,4)==StartupWorldRuntimeError::none,"74真实实例入口");
+    const auto detail_page=detail_owner.scripts.pages.back().id;
+    SteamFacilityDetailSkinOptions detail_options;detail_options.title_widths=detail.title_widths;detail_options.bottom_width=48;
+    const auto before_detail=startup_world_state_digest(detail_owner);
+    const auto live_plan=steam_facility_detail_skin(detail_owner,detail_page,detail_options);
+    check(live_plan.has_value(),"已初始化普通实例由Owner产生第一页");
+    for(int repeat=0;repeat<24;++repeat) {
+        const auto same=steam_facility_detail_skin(detail_owner,detail_page,detail_options);
+        check(same&&same->operations.size()==live_plan->operations.size(),"重复计划规模不累计");
+    }
+    check(startup_world_state_digest(detail_owner)==before_detail,"绘制不抽随机、不写声音/计数/选择/经济");
+    auto incomplete=detail_owner;incomplete.facility_page_neighbours.erase(detail_page);
+    check(!steam_facility_detail_skin(incomplete,detail_page,detail_options),"缺初始化Y显式拒绝");
+    for(const int value:{-1,2}) {
+        auto unsupported=detail_owner;unsupported.scripts.pages.back().legacy_g=value;
+        check(!steam_facility_detail_skin(unsupported,detail_page,detail_options),"普通实例只接受源value1=0，不把坏模板当实例皮肤");
+    }
+    check(act_startup_world_facility_page(detail_owner,detail_page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
+          !steam_facility_detail_skin(detail_owner,detail_page,detail_options),"关闭后皮肤引用退休");
+    for(int id=static_cast<int>(A::facility_icon);id<=static_cast<int>(A::people);++id) {
+        const auto resource=steam_facility_resource(static_cast<A>(id));
+        check(resource&&std::filesystem::is_regular_file(packaged(source_root, resource->published_image)),"74复用已出版Steam资源，不读Unity/work");
     }
     return check.count;
 }

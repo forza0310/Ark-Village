@@ -2,6 +2,7 @@
 
 #include "ark/app/session/world_session.hpp"
 #include <filesystem>
+#include <iosfwd>
 #include <string>
 
 namespace ark::test {
@@ -16,4 +17,6 @@ void capture_campaign_observation(const std::filesystem::path &directory,
                                   const app::WorldState &state);
 app::WorldState read_campaign_observation(const std::filesystem::path &directory);
 void campaign_diagnostic_contract(const std::filesystem::path &build);
+// A cold prefix can reveal missing progress without advancing actors, pages or random input.
+void inspect_campaign_progress(const app::WorldState &state, std::ostream &out);
 } // namespace ark::test

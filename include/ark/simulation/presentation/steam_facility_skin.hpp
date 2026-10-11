@@ -12,7 +12,8 @@ namespace ark::simulation {
 // Steam资源身份独立于APK同号槽。路径相对已出版assets目录，不读取work或Unity容器。
 enum class SteamFacilityAsset {
     wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
-    upgrade_background, mini_background, number03, number11, number12, number03_hud
+    upgrade_background, mini_background, number03, number11, number12, number03_hud,
+    facility_icon, effect_icon, level_label, finger, title_arrows, people
 };
 struct SteamFacilityResource {
     const char *group;
@@ -111,4 +112,72 @@ struct SteamFacilityUpgradeSkinOptions {
 std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     const SteamFacilityUpgradeSkinOptions &options);
+
+// raw74普通实例两页。保留文字重载与绘制/触摸交错；不含住宅、预览和商品页。
+enum class SteamFacilityDetailTextRole {
+    title, name, price, parameter, remaining, maximum_level, no_effects,
+    bonus_title, maintenance, no_bonus, bonus_name, bonus_value, bottom
+};
+enum class SteamFacilityTextMethod { draw_string, draw_string2, text_layout };
+struct SteamFacilityDetailText {
+    SteamFacilityDetailTextRole role;
+    int argument{};
+    // bonus_value由argument指定标签，消费者拼<co=0065FF>译文</co>后接signed串；
+    // 标签蓝为(0,101,255)，不是SC_WINDOW_BLUE；数值仍为棕色。不执行业务。
+    std::string value;
+    std::array<int,4> rectangle{};
+    std::optional<int> anchor;
+    int font_size{};
+    SteamFacilityTextMethod method{};
+    std::array<int,3> rgb{};
+};
+// 此helper一并绘箭头与注册组件1；不得重复普通图片绘制或猜其OS热区。
+struct SteamFacilityArrowTouch { std::array<int,2> position{}; int frame{}, value{}; };
+// 原helper只注册12后25；count含隐藏行，空表仍调用。无自算轨道/滑块。
+struct SteamFacilityScrollRequest {
+    std::array<int,4> rectangle{221,85,3,110};
+    int count{}, visible{5}, prefix{0x20000};
+    std::array<int,4> margin{3,20,0,0};
+};
+using SteamFacilityDetailOperation=std::variant<SteamFacilityDraw,SteamFacilityDetailText,
+    SteamStartupTouch,SteamFacilityArrowTouch,SteamFacilityScrollRequest>;
+struct SteamFacilityDetailSkinPlan {
+    std::vector<SteamFacilityDetailOperation> operations;
+    std::array<int,2> soft_labels{0,2};
+};
+struct SteamFacilityDetailBonus {
+    int definition{}, ordinal{}, icon{}, kind{};
+    std::string name;
+    std::vector<int> values; // 原y序，kind2两项、其余一项；不分摊累计邻接。
+};
+struct SteamFacilityBonusCursor { int selection{}, first{}; };
+// 同轮先up再down，各自循环，scroll只跟随选择；纯状态值，不加入世界/存档。
+std::optional<SteamFacilityBonusCursor> steam_facility_bonus_cursor(
+    int count, SteamFacilityBonusCursor cursor, bool up, bool down);
+struct SteamFacilityDetailSkinInput {
+    int definition{}, mapchip{}, icon{}, level{1}, page{}, frame{}, view_y{};
+    std::string name;
+    bool japanese{}, english{};
+    std::array<int,4> values{}; // 实例价格/品质/魅力/维护费，只读Owner计算结果。
+    std::array<int,3> limits{};
+    int remaining{}, finger_frame{}; // SEB当前帧由表现消费者提供，不按页面frame猜帧。
+    std::vector<std::array<int,2>> effects; // 原z/A的[属性,加号数]原序。
+    std::vector<SteamFacilityDetailBonus> bonuses; // 初始化Y原序，包括隐藏行。
+    SteamFacilityBonusCursor cursor;
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> bottom_width; // 原Font.StringWidth的结果；不按汉字数估宽。
+};
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
+    const SteamFacilityDetailSkinInput &input);
+struct SteamFacilityDetailSkinOptions {
+    int view_y{}, finger_frame{};
+    bool japanese{}, english{};
+    SteamFacilityBonusCursor cursor;
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> bottom_width;
+};
+// 原页面/实例/定义/完整Y核验后才出图。不初始化、不写页面选择、不消费输出。
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
+    const StartupWorldRuntimeState &state, std::uint64_t page,
+    const SteamFacilityDetailSkinOptions &options);
 } // namespace ark::simulation

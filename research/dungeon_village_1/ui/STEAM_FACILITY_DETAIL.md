@@ -2,6 +2,8 @@
 
 后继状态：本页最初登记的softLabels74缺口已由[独立补证](STEAM_FACILITY_LABELS.md)闭合，两张差异图已在[设施素材包](../assets/steam-facility-common/README.md)发布。下文原批次覆盖与冻结EVIDENCE保持原身份；其余字体、OS输入和表单退休限制仍有效。
 
+2026-10-11维护后继：[皮肤模块](../prototype/STEAM_FACILITY_SKIN.md)提供普通实例两页的有序只读计划与真实Owner桥，[既有HTML示例](examples/index.html)补空/有邻接/七行滚动三条件。Steam静态绘制、维护功能短测、浏览器示例与原窗口动态分开；住宅/商品/预览皮肤与全局字体不纳入本批。
+
 2026-10-10。固定Steam2.56的局部完整绘制分支、初始化及输入合同。直接来源是GameAssembly具名方法和metadata，见[复算工作包](../verification/steam-facility-detail/README.md)。没有用APK补Steam字段，没有新增窗口实验；S043等只保留为独立画面观察。本文的坐标是原Graphics逻辑坐标／调用实参，不是桌面截图像素，字体翻译、原点、缩放与裁剪仍沿已有合同。
 
 ## 两个入口不能合并
@@ -77,7 +79,7 @@ ary2最多5可见行，y=97+19×(绝对index−scroll)。选中行画SEB21 finge
 
 ## 确认、取消与行为交接
 
-确认脉冲0x100000优先；另有配置布尔门控的keyState0x40替代确认路径，其配置的用户可见含义未在本批认证。未确认再检查softlabel2，命中Pop。确认时顺序为：
+确认脉冲0x100000优先；后继metadata复核将额外keyState0x40门控明确为`Config.DEBUG_CMD`（VA1031B5A3，静态字段+83），正常UI不复制该调试快捷键。未确认再检查softlabel2，命中Pop。确认时顺序为：
 
 1. value1恰1：直接Pop，回建设父页；不扣款、不转道具页。
 2. page恰1：返回false，不执行后续业务。
@@ -87,6 +89,10 @@ ary2最多5可见行，y=97+19×(绝对index−scroll)。选中行画SEB21 finge
 6. type2植物：无确认业务，返回共享true。
 
 Pop与Push的本地调用已证，不代表完整FormManager退休、所有父级选中保留和最终OS投递均已认证。页面私有坏值不能靠原代码的非null崩溃分支作维护错误协议；原实例、共享定义、邻接引用与历史对象仍要分别校验。
+
+同轮顺序是第二页上repeat→下repeat→五行scroll追踪→左repeat→右repeat→确认→未确认才返回。左右同时命中会切两次，第二页确认与返回同时命中则确认no-op且不再取消。Update的共同frame/frame2递增、wait门槛、loop/jingle、SEB21/22/23 Frame在Update2之前；当前SEB手形帧不能由页面计数猜定。74、已追键脉冲与局部触摸helper未直接发SE，不据此断言整个平台输入无声。
+
+字段交叉：SubForm.select/scroll/page分别+90/+88/+D8，ary2为+170；GetTouchValue RVA30E500、SetTouchValue RVA317600按高位0x20000/0x40000/0x50000访问这三项。GameView.OnTouchDlgSel RVA23C730先写选择，是否首次只标记由option16控制；74行没有75的该选项。OnTouchDlgPage RVA23C620走键Down/Up，不套列表二次确认。原OS最终输入与声音仍需独立观察。
 
 ## 资源与交付资格
 

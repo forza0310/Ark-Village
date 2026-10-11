@@ -1,6 +1,18 @@
 # Steam设施页只读皮肤计划
 
-`steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。当前入口仅覆盖已核raw81升级页；74接线方案见[后继边界](../verification/facility-skin-integration/README.md)。来源是[Steam81合同](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
+`steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。入口覆盖raw81升级页和raw74普通实例两页；住宅、定义预览与装备店特殊皮肤另批。来源是[Steam74](../ui/STEAM_FACILITY_DETAIL.md)、[Steam81](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
+
+## 普通设施详情74
+
+`steam_facility_detail_skin(state,page,options)`验证当前存活raw74、两页资格、实例/定义绑定、全部初始化Y及经济依赖后出图，缺字段显式返回空。第一页名称只读定义名；编号只拼到第二页来源名。实例四经营值、共享等级与到下级剩余人数读现有Owner，来源值读原y序，含隐藏行，不重算加成或使用道具。调用者提供语言、VIEW_Y、真实标题两次测宽、底部一次测宽、共享手形当前帧及局部选择/滚动；它们不新增Owner字段或wire格式。
+
+`SteamFacilityDetailSkinPlan.operations`按原序保留嵌套通用图元、具名文字、SLIST触摸、标题箭头helper与滚动注册helper。第一页包含框、大图clip/Mapchip2、经营/效果/等级数字、MAX与橙底按钮；第二页包含维护费、五条来源或空提示。名称TextLayout、来源DrawString、富文本DrawString2与植物限框不能混成同一后端。`bonus_value`的argument指定标签属性，value保留字面signed串，消费者组成`<co=0065FF>译文</co>`再接value；不把值染蓝或擅自省略零。
+
+标题箭头请求一并交给SEB型AddTouch消费者，不独立画图再重复注册。第二页原序是选中手形→行注册→图标→名称→值；滚动请求只注册12后25，携带[count,5,0x20000]、Margin(3,20,0,0)及组件25的option4，不自造轨道。底部第一页为橙底→组件4→文字→手形，第二页只有说明。软标签固定[0,2]。
+
+`steam_facility_bonus_cursor`保持上、下独立循环及五行追踪；窗口维护输入修正左右分别处理、确认优先于返回。键盘repeat、OS最终热区、完整TextLayout与全局输入声音仍不由raylib按键适配认证。详情Owner的翻页、75/79/80交接、第二页确认无效果和退休继续由building/pages套件主责；本批不重复其业务组合，也不把局部选择加入应用快照。
+
+数值入口允许条件夹具；4096图元效果预算、65536来源/绝对索引预算和字符串4096字节是维护坏输入防护，不是原游戏内容上限。输出是短寿命值，不创建永久历史或一次性输出队列。[离线两页示例](../ui/examples/index.html)提供空、邻接和七行状态；CSS字体/尺寸是适配，第二页载荷明确为夹具，不能当原窗口或自然经营结果。研究窗口的74旧字段绘制仍为适配，本计划尚未安装为完整Steam末端执行器。
 
 底层数值接口接收已初始化页面的定义／mapchip／共享等级、冻结三属性前后差与上限、phase／frame／独立frame2、语言分支、VIEW_Y及原调用对应的真实测宽。两个标题宽必填；非日文第一阶段另填四次测宽，不能用字符串长度估算。接口检查缺测量、阶段／等级／计数、差额关系和整数范围，非法输入返回空；单凭手填数值不证明真实Owner绑定。
 

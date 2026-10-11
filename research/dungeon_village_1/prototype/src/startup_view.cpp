@@ -23,6 +23,7 @@
 #include "dungeon_village_prototype/startup_world_tax.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
+#include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
@@ -2042,8 +2043,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (!rows) throw std::runtime_error("设施奖励来源载荷非法");
                     const int count = static_cast<int>(rows->size());
                     if (count > 0) {
-                        if (IsKeyPressed(KEY_DOWN)) bonus_selection = (bonus_selection + 1) % count;
-                        if (IsKeyPressed(KEY_UP)) bonus_selection = (bonus_selection + count - 1) % count;
+                        const auto cursor=steam_facility_bonus_cursor(count,{bonus_selection,bonus_scroll},
+                            IsKeyPressed(KEY_UP),IsKeyPressed(KEY_DOWN));
+                        if(!cursor)throw std::runtime_error("设施奖励选择/视窗非法");
+                        bonus_selection=cursor->selection;bonus_scroll=cursor->first;
                         for (int n = 0; n < 5 && n + bonus_scroll < count; ++n)
                             if (hit({17,static_cast<float>(95+n*19),214,18}))
                                 bonus_selection = n + bonus_scroll;
@@ -2054,22 +2057,21 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         bonus_scroll = std::clamp(bonus_scroll,0,std::max(count-5,0));
                     }
                 }
-                if (!session.state().facility_definition_page_bindings.count(pid) &&
-                    (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT))) {
-                    if (session.act_facility_page(pid, StartupFacilityPageAction::next) !=
-                        StartupWorldRuntimeError::none)
-                        throw std::runtime_error("设施情报翻页失败");
-                }
-                if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
-                    if (session.act_facility_page(pid, StartupFacilityPageAction::cancel) !=
-                        StartupWorldRuntimeError::none)
-                        throw std::runtime_error("设施情报返回失败");
-                }
+                // Steam两个repeat独立处理；同轮左右会切两次，不合并为一次OR。
+                if (!session.state().facility_definition_page_bindings.count(pid))
+                    for(const bool pulse:{IsKeyPressed(KEY_LEFT),IsKeyPressed(KEY_RIGHT)})
+                        if(pulse&&session.act_facility_page(pid,StartupFacilityPageAction::next)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("设施情报翻页失败");
                 if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24})) {
                     const auto error =
                         session.act_facility_page(pid, StartupFacilityPageAction::confirm);
                     if (error != StartupWorldRuntimeError::none)
                         command_feedback = session.last_error().empty()?"暂不可用":session.last_error();
+                } else if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})) {
+                    // 原确认优先，第二页确认no-op时不能再消费同轮返回。
+                    if (session.act_facility_page(pid, StartupFacilityPageAction::cancel) !=
+                        StartupWorldRuntimeError::none)
+                        throw std::runtime_error("设施情报返回失败");
                 }
             } else if (raw == 33) {
                 const auto phase = session.state().page_phases.find(page->id);

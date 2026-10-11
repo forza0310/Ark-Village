@@ -2,7 +2,7 @@
 
 2026-10-08。来源合同、只读维护接口与真实新局有界窗口已交付；研究适配与原EXE动态分开验收。
 针对[产品高优先级请求](../../../docs/reference/RESEARCH_REQUESTS.md#facility-details-display-gap)，
-交付固定汉化重签APK1.0.8的74第二页规则及资源桥。Steam原页面机器码／动态尚未独立认证，
+交付固定汉化重签APK1.0.8的74第二页规则及资源桥。后继[Steam74合同](STEAM_FACILITY_DETAIL.md)已独立认证有限机器码/资源与输入，[只读皮肤](../prototype/STEAM_FACILITY_SKIN.md)已提供两页计划；原Steam第二页窗口动态仍待观察，
 异版本截图“罗汉松10/11”不能改写固定APK定义名或数值。
 
 ## 来源与证据

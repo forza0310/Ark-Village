@@ -2,6 +2,14 @@
 
 旧快照清理状态（2026-10-10）：用户授权清理后，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`及`progression38000.awr`与侧车已删除。本次逐ID goal又核验并清理`active-application-v1`、其draft、`active-application-v2`、`active-residence-v1`及`natural-application-economy-v1`：27份应用载荷全为当前读器显式拒绝的语义7，连侧车54文件679438776字节。下文保留历史结论、规模和当批目录名，不再提供这些载荷恢复入口；未修改原档或必要反向输入。
 
+## 普通设施74两页维护交付2026-10-11
+
+[Steam74合同](ui/STEAM_FACILITY_DETAIL.md)复核有序绘制/触摸、原序五行及同轮输入，补DEBUG_CMD门控身份。[既有皮肤模块](prototype/STEAM_FACILITY_SKIN.md)新增普通实例两页计划/Owner桥，显式拒绝非0实例模板、缺Y/测宽/经济依赖/坏隐藏行/越界选择；复用Steam差异图片，不增资源或持久字段。研究窗口修正上下顺序、左右独立、确认优先；完整Steam末端皮肤仍未替换旧74适配绘制。[HTML示例](ui/examples/README.md)增加空、邻接、七行条件，第二页维护费留空，不冒充S043实际邻接或自然取得。
+
+单Release动态树受影响四target构建通过，pages/building/visuals三项CTest修后全部通过5.61秒（2.76/2.07/0.78）；新增检查并入visuals，不新增target/格式或长测。测试保留原断言，先修缺标题测宽拒绝及条件夹具mapchip65/定义36对应关系，再统一复验；没有改表或放宽载荷校验。24次重复查询规模一致且完整Owner摘要不变，关闭后皮肤引用失效，全部隐藏来源仍核验。JavaScript语法、内存DOM三状态/翻页/父层返回短测、差异和受影响文档链接检查通过。
+
+浏览器iab不可用、可用浏览器清单为空，原Steam第二页及HTML实际视觉未运行；外部有界提示词留本机忽略的`work/window-restore-observation/NEXT_FACILITY_DETAIL_PROMPT.md`，不据静态/DOM结果宣称原动态通过或goal全部完成。当前Release树1350文件126857595字节，无.pending；无新图片/指纹/核对脚本，临时HTTP服务已停止，本轮构建/短测/三子任务已退出。其余研究/产品在途修改保留，不推送。
+
 ## 逐ID解锁链与研究收敛
 
 当前[内容索引](rules/PROGRESSION_CONTENT.md)为版本9、14表775定义、212632字节，全部原ID、原值、行号、来源参数与原表保持。人物／职业／活动／配方119、设施／装备／道具234、任务／怪物117、晋级／人气105项的正常局部合同已复核，可从逐ID参数及共享消费者查到条件、真实兑现、效果、后继和保存继承；不逐ID复制规则。200事件为165已定位入口、77仅未消费任务表引用、34无已核上游；全部32种调用方法补[条件导航](rules/PROGRESSION_ROUTES.md#全部200定义的调用与表内引用归组)。固定APK已核正常入口域排除后两类产生路径，不外推全程序别名、外部档或Steam。条件夹具、维护消费者与产品自然可达分开，研究不再新建多年经营Driver。

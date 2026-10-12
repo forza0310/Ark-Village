@@ -267,10 +267,13 @@ std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
             return intent(Action::professions);
         if (input.gifts || hit(input.click, layout.gifts))
             return intent(Action::gifts);
+        if (view.phase <= 1 && (input.enter || hit(input.click, layout.primary)))
+            return intent(view.phase == 0 ? Action::gifts : Action::professions);
         if (input.inspect && view.phase == 2)
             return intent(Action::inspect_equipment, 0);
-        if (input.left || input.right)
-            return intent(input.left ? Action::previous : Action::next);
+        if (input.left || input.right || input.up || input.down || input.wheel_rows)
+            return intent(input.left || input.up || input.wheel_rows < 0 ? Action::previous
+                                                                         : Action::next);
         if (view.phase == 2)
             for (int slot = 0; slot < 4; ++slot)
                 if (hit(input.click, {layout.body.x, layout.body.y + slot * layout.body.height / 4,

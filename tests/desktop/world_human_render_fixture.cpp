@@ -96,12 +96,15 @@ void world_human_render_fixture() {
         std::cout << "UI fixture / synthetic raw70 phase=" << phase
                   << " frames=8 screenshot=" << file.string() << '\n';
     }
-    // Four display snapshots cover plain/resident, nonresident cycle100, target-HP danger
-    // and down body/bubble. They deliberately do not claim natural combat or job progression.
+    // Display snapshots cover all four pages, page0 recovery/down and long page1 text/numbers.
+    // They deliberately do not claim natural combat, acquisitions or job progression.
     for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
         SetWindowSize(extent.width, extent.height);
-        for (int phase = 0; phase < 4; ++phase) {
+        for (int sample = 0; sample < 7; ++sample) {
+            const int phase = sample < 4 ? sample : sample == 5 ? 1 : 0;
             auto owner = initial_world();
+            auto catalogue = *owner.rules;
+            owner.rules = &catalogue;
             auto detail = page;
             detail.legacy_page = 60;
             owner.scripts.pages.push_back(detail);
@@ -116,25 +119,48 @@ void world_human_render_fixture() {
             auto &ai = owner.scene.world.world.ai;
             ai.growth.at(human).definition.current_profession = 2;
             owner.shop_humans.at(human).equipment[0] = 0;
-            if (phase >= 2) {
+            if (sample == 5) {
+                catalogue.humans.at(human).name = "名称较长的冒险人物";
+                catalogue.jobs.at(2).name = "LongProfessionName";
+                ai.growth.at(human).derived.attributes = {12345, 23456, 34567, 45678, 56789, 67890};
+                if (!text.include_text(catalogue.humans.at(human).name))
+                    throw std::runtime_error("Synthetic long name could not add font glyphs");
+            }
+            if (phase >= 2 || sample == 4 || sample == 6) {
                 rules::BattleActorRecord actor;
                 actor.id = {900};
                 actor.kind = rules::ActorKind::human;
                 actor.definition = human;
                 actor.hp.displayed = 80;
                 actor.hp.target = 0;
-                actor.control.state = phase == 3 ? 7 : 0;
+                actor.control.state = phase == 3 || sample == 6 ? 7 : 0;
                 ai.battle.actors.emplace(actor.id, actor);
                 ai.human_order = {actor.id};
                 ai.growth.at(human).derived.combat[0] = 100;
+                if (sample >= 4) {
+                    const auto recovery =
+                        std::find_if(catalogue.items.begin(), catalogue.items.end(),
+                                     [](const auto &item) { return item.recovery > 0; });
+                    if (recovery == catalogue.items.end())
+                        throw std::runtime_error(
+                            "Synthetic recovery needs a published recovery item");
+                    owner.items.at(recovery->identity).inventory = 1;
+                    owner.catalog.at({0, recovery->identity}).inventory = 1;
+                }
             }
             const auto before = owner;
             const auto frame = ui::world_human_layout(extent);
             const int down_width =
                 static_cast<int>(std::ceil(text.width(ui::world_human_down_text)));
-            const auto view = ui::world_human_view(owner, detail, down_width);
+            auto view = ui::world_human_view(owner, detail, down_width);
+            ui::prepare_world_human_detail(view, owner, skin);
             if (!view.initialized || !view.detail_skin)
                 throw std::runtime_error("Synthetic raw60 fixture has no complete portrait plan");
+            if (phase <= 1 && !view.detail_page_skin)
+                throw std::runtime_error(
+                    "Synthetic raw60 page0/1 did not bind the formal measured plan");
+            if ((sample == 4 || sample == 6) && !view.detail_page_skin->recovery_gift)
+                throw std::runtime_error("Target HP/down fixture lost the actual recovery hint");
             for (int draw = 0; draw < 8; ++draw) {
                 if (WindowShouldClose())
                     throw std::runtime_error("Synthetic raw60 fixture was closed before capture");
@@ -145,8 +171,12 @@ void world_human_render_fixture() {
                 text.flush(1, {});
                 EndDrawing();
             }
-            const auto file = output / ("synthetic-raw60-" + std::to_string(extent.width) +
-                                        "-phase" + std::to_string(phase) + ".png");
+            const std::string suffix = sample < 4    ? "phase" + std::to_string(phase)
+                                       : sample == 4 ? "recovery"
+                                       : sample == 5 ? "long-attributes"
+                                                     : "down-overview";
+            const auto file = output / ("synthetic-raw60-" + std::to_string(extent.width) + "-" +
+                                        suffix + ".png");
             auto capture = LoadImageFromScreen();
             const bool saved = capture.data && ExportImage(capture, file.string().c_str());
             UnloadImage(capture);

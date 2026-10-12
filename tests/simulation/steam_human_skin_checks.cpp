@@ -298,9 +298,66 @@ void owner_checks(Checks &check) {
         check(!steam_human_detail_skin(bad,id,60),"已初始化但缺必需键显式拒绝，不抛map.at");
     }
 }
+void attributes_checks(Checks &check) {
+    // 缓存字段／无W为表现条件，不认证自然培养到这些属性。
+    auto owner=test_support::page_fixture(60);const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=1;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[id]=1;owner.page_phases[id]=1;owner.page_counters[id]=0;
+    owner.human_page_selections[id]=0;owner.human_pages_initialized.insert(id);
+    auto &growth=owner.scene.world.world.ai.growth.at(1);
+    growth.derived.attributes={11,22,33,44,55,66};growth.derived.combat={101,202,303,404};
+    growth.definition.extra={7,7,7,7,7,7}; // 与缓存故意不同，绘制不能重算或再加一遍。
+    SteamHumanOverviewOptions options;options.title_widths=std::array<int,2>{80,80};
+    options.profession_width=52;options.profession_change_width=24;
+    const auto plan=steam_human_attributes_skin(owner,id,options);
+    check(plan&&plan->soft_labels==std::array<int,2>{0,2}&&!plan->recovery_gift,"六属性保留source0空左软标签，不改成转职");
+    constexpr std::array<std::array<int,3>,6> expected{{{29,134,0},{29,153,16},{29,172,32},
+        {121,134,48},{121,153,64},{121,172,96}}};
+    int row{};
+    for(std::size_t n=0;n<plan->operations.size();++n) {
+        const auto *t=std::get_if<SteamHumanOverviewText>(&plan->operations[n]);
+        if(!t||t->role!=SteamHumanOverviewTextRole::attribute)continue;
+        check(row<6&&n>=3&&n+1<plan->operations.size(),"每属性均有完整五图元层序");
+        const auto &e=expected[row];
+        const auto *fill=std::get_if<SteamStartupFrameDraw>(&plan->operations[n-3]);
+        const auto *line=std::get_if<SteamStartupFrameDraw>(&plan->operations[n-2]);
+        const auto *image=std::get_if<SteamHumanImage>(&plan->operations[n-1]);
+        const auto *value=std::get_if<SteamFacilityNumber>(&plan->operations[n+1]);
+        check(fill&&line&&std::get<StartupSkinRect>(*fill).rect==std::array<int,4>{e[0]-4,e[1]-2,93,20}&&
+            !std::get<StartupSkinRect>(*fill).outline&&std::get<StartupSkinRect>(*fill).rgb==std::array<int,3>{208,242,249}&&
+            std::get<StartupSkinRect>(*line).rect==std::get<StartupSkinRect>(*fill).rect&&
+            std::get<StartupSkinRect>(*line).outline&&std::get<StartupSkinRect>(*line).rgb==std::array<int,3>{149,206,217},
+            "先原FillRect再DrawRect半开93×20，不双加1");
+        check(image&&image->asset==SteamHumanAsset::combat_icon&&image->position==std::array<int,2>{e[0],e[1]}&&
+            image->crop==std::optional<std::array<int,4>>({e[2],16,16,16}),"mode7直接裁图，运气原x96，不套SEB98");
+        check(t->argument==row&&t->rectangle==std::array<int,4>{e[0]+18,e[1]+2,0,0}&&t->font_size==0&&t->rgb==std::array<int,3>{0,100,255}&&
+            value&&value->value==11*(row+1)&&value->position==std::array<int,2>{e[0]+83,e[1]+3}&&
+            value->asset==SteamFacilityAsset::number08,"六字段原序读共享缓存，默认字号和SEB15右锚");
+        ++row;
+    }
+    check(row==6,"两列各三属性，不遗漏或追加战斗值");
+    const auto bars=parts<SteamHumanOverviewScroll>(*plan);
+    check(bars.size()==1&&bars[0].rectangles[1].rect==std::array<int,4>{220,100,5,32}&&
+        bars[0].thumb_touch==std::array<int,4>{221,100,5,31},"页1保持四页蓝条比例与原有符号截断位置");
+    const auto texts=parts<SteamHumanOverviewText>(*plan);
+    check(std::count_if(texts.begin(),texts.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::profession_change;})==1&&
+        std::none_of(texts.begin(),texts.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::gift;}),"页1唯一底部转职，不绘概览赠礼");
+    const auto before=startup_world_state_digest(owner);
+    for(int repeat=0;repeat<24;++repeat)
+        check(steam_human_attributes_skin(owner,id,options)->operations.size()==plan->operations.size()&&
+            startup_world_state_digest(owner)==before,"重复六属性输出规模稳定，不重算缓存/随机/输出");
+    auto missing=options;missing.profession_change_width.reset();
+    check(!steam_human_attributes_skin(owner,id,missing),"缺底部测宽显式拒绝");
+    auto local=owner;local.items.clear();
+    check(steam_human_attributes_skin(local,id,options).has_value(),"页1不查不消费页0回复库存");
+    local=owner;local.page_phases[id]=2;
+    check(!steam_human_attributes_skin(local,id,options),"页2仍显式拒绝，不冒认完整四页");
+    local=owner;local.scripts.pages.back().lifecycle=4;
+    check(!steam_human_attributes_skin(local,id,options),"退休六属性页不继续出图");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);
     return check.count;
 }

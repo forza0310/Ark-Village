@@ -1,7 +1,7 @@
 {
   "scope": "maintained_complete_world_rules_and_single_runtime_owner",
   "layout_adaptation": "Domain module paths maintained by scripts/simulation/module_paths.mjs; upstream identity, namespaces, wire fields and assertions preserved.",
-  "snapshot_sha256": "f76146f94411724edc2d7ed15eae7b32130e93c9d8109ed3e8f59d45d0d92cf2",
+  "snapshot_sha256": "5d3bb7c06d867e1866dfeb9a655dc509a70b7f1bd2c524c471462a9138ddb7e1",
   "files": [
     {
       "file": "assets/simulation/tenantData.txt",
@@ -2682,10 +2682,10 @@
     {
       "file": "include/ark/simulation/presentation/steam_human_skin.hpp",
       "source": "research/dungeon_village_1/prototype/include/dungeon_village_prototype/steam_human_skin.hpp",
-      "source_sha256": "d36064d95dbfccbc2bab1b63e2a050b4da195e701f236410505563dec5681d92",
-      "source_bytes": 5088,
-      "sha256": "8084adcdf0518fe986581fe34e6a158f9b6fda9eb46c1aca557bfa25369d5c50",
-      "bytes": 5074
+      "source_sha256": "1b21fd90963cb449145b7c8c6e69f97016960603c955735b927a35b66d39bcab",
+      "source_bytes": 5713,
+      "sha256": "5a4d93bcc9db621ca7fbf128d498b7006add608a832e5eef21a19998d5bb5904",
+      "bytes": 5699
     },
     {
       "file": "include/ark/simulation/presentation/steam_information_skin.hpp",
@@ -3343,10 +3343,10 @@
     {
       "file": "src/simulation/presentation/steam_human_skin.cpp",
       "source": "research/dungeon_village_1/prototype/src/steam_human_skin.cpp",
-      "source_sha256": "2a074bb322f6d3ebce5ce9e83888f6ce3c4395b568311261febf9732638b50bb",
-      "source_bytes": 15578,
-      "sha256": "e25ced94af840a2ff55ae27227054d242008a88ac72ea858c75d1db5a5026263",
-      "bytes": 15558
+      "source_sha256": "570a4af18e93837fb79c04652536eaab10734b82269f3fa7f6c8898ec9494661",
+      "source_bytes": 17026,
+      "sha256": "39954d075b571d9d0a796ad0b22fc20a4a605759d3e85a38b03a95771206b0f3",
+      "bytes": 17006
     },
     {
       "file": "src/simulation/presentation/steam_information_skin.cpp",
@@ -3708,12 +3708,12 @@
     {
       "file": "tests/simulation/startup_world_pages_test.cpp",
       "source": "research/dungeon_village_1/prototype/tests/startup_world_pages_test.cpp",
-      "source_sha256": "7d5c318be42a80385f3e455f032b2ccddd2655d01dd0b29fabe603845b581a54",
-      "source_bytes": 285010,
-      "sha256": "1e54ca761c1aceca6ee639c039ae6b2081c2f8310e295e9a62fb63cc64604bf0",
-      "bytes": 285587,
+      "source_sha256": "d24de3d32ae5cb841ef0495fe1a8fcbbbb0d276149a89d363e2d2295818a26ea",
+      "source_bytes": 288145,
+      "sha256": "b3b629d470cb1255cc31dce5cc1cc4d6edd4fbd651765421abdb5fe7e4b6ea5c",
+      "bytes": 288722,
       "product_patch": {
-        "imported_sha256": "fbae6d49320e77e197e6df962d9cce40d4bcfd59c889a449d4191ddf7c670cf7",
+        "imported_sha256": "bc016146f85bb6e92544d5d1f6061cbb3a2b829eb13d9a093d4e418aa8c8829e",
         "reason": "Preserve prior adaptations; user-confirmed 2026-10-10 one-time facility blueprints: exclude p1/p2 from commerce, payment, preview and restore; cover initial exclusion, stale rollback and repeated gold construction. See docs/reference/RESEARCH_REQUESTS.md#commerce-building-blueprint."
       }
     },
@@ -3874,12 +3874,12 @@
     {
       "file": "tests/simulation/steam_human_skin_checks.cpp",
       "source": "research/dungeon_village_1/prototype/tests/steam_human_skin_checks.cpp",
-      "source_sha256": "f6f25e4cf91adf441ed10dfddd8ed2a2bddd6333c716de58a5cb405049846fdd",
-      "source_bytes": 20889,
-      "sha256": "bdba90467c0e539e8c7fcd629b6bb0d1b156fc96ab74e395d0877635f25f231f",
-      "bytes": 21569,
+      "source_sha256": "bf3901bb7ef91a7b6def8e4bf206d5bb2512ae4885b784217203a22847099b43",
+      "source_bytes": 25590,
+      "sha256": "d0e4bfaead62add5733ebc36bc53678204ecdcf60e73219b44afe24c6d4b7374",
+      "bytes": 26270,
       "test_fixture_patch": {
-        "imported_sha256": "23fc67e2ad0ff731969f6b3a41664b88c57deb72a91de982175b76c3baa8deba",
+        "imported_sha256": "0dd3426c7213da889947e06bbbae8979c44c3127e77b3405ed5519e051f55743",
         "reason": "Map published assets to packaged original/Steam paths and isolated replay writes to product build; retain source assertions and source resource identity. Overview resources use existing Steam experience-label and attribute-icon PNGs; all previous source assertions retained."
       }
     },
@@ -3953,5 +3953,5 @@
       "include_adaptation": "Use the implemented-only ark/assets/sha256.hpp interface; the complete source archive header remains frozen privately at src/assets/archive_source.hpp."
     }
   ],
-  "research_commit": "e81d1ce"
+  "research_commit": "b2ae248"
 }

@@ -133,9 +133,33 @@ void world_human() {
                   !ui::world_human_input(tracking, layout, chase, true),
               "Source1 tracking emits one FIFO intent and blocks duplicates while pending");
     }
-    check(ui::world_human_input(view, layout, input, false)->action == Action::confirm &&
+    check(ui::world_human_input(view, layout, input, false)->action == Action::gifts &&
               !ui::world_human_input(view, layout, input, true),
-          "Human confirmation is explicit and blocked while an earlier command is pending");
+          "Overview Enter opens actual gifts and blocks input while an earlier command is pending");
+    // Formal Steam page0/1 Enter routes to the inline command, not source confirm/close.
+    for (int phase = 0; phase < 2; ++phase) {
+        auto detail = view;
+        detail.phase = phase;
+        const auto expected = phase == 0 ? Action::gifts : Action::professions;
+        for (bool pointer : {false, true}) {
+            ui::WorldHumanInput command;
+            command.enter = !pointer;
+            if (pointer)
+                command.click = middle(ui::world_human_detail_layout(layout).primary);
+            const auto intent = ui::world_human_input(detail, layout, command, false);
+            check(intent && intent->action == expected && intent->page == view.page &&
+                      !ui::world_human_input(detail, layout, command, true),
+                  "Inline/Enter command binds its current phase and rejects pending duplicate");
+        }
+        for (bool previous : {false, true}) {
+            ui::WorldHumanInput navigation;
+            navigation.up = previous;
+            navigation.down = !previous;
+            const auto intent = ui::world_human_input(detail, layout, navigation, false);
+            check(intent && intent->action == (previous ? Action::previous : Action::next),
+                  "Human vertical navigation uses source page actions without mutating the Owner");
+        }
+    }
     input = {};
     input.escape = true;
     check(ui::world_human_input(view, layout, input, false)->action == Action::cancel,

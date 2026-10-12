@@ -77,7 +77,7 @@ runner记录实际EXE、冻结来源、公共库输入/产物身份，在阶段�
 
 `world_panels`覆盖notice前两条布局/标签解码及日期只读映射；周内比例只验已证`units/10800`，不认证原皮肤几何。`world_session`覆盖报告可见时菜单/人物/任务可操作、自动phase推进时真实世界继续、显式暂停不自恢复、与逐步源运行时等价，以及人物父子页恢复事务和声音一次领取。原规则计数、随机及奖励组合仍由冻结研究套件主责，上层只补接线风险。
 
-`ark_world_ui_tests world_human_render_fixture`为显式窗口诊断，复用同一runner而不加入标准CTest。它用标注为synthetic的raw70三阶段输入检查实际皮肤/文字/布局，并验证绘制不改变日期、现金、随机或奖励属性；不运行奖励消费者，不替代自然大师整线或原版动画验收。
+`ark_world_ui_tests world_human_render_fixture`为显式窗口诊断，复用同一runner而不加入标准CTest。它用标注为synthetic的raw70三阶段、raw60四页及概览恢复/倒下、长姓名/职业/五位六属性检查实际皮肤/文字/布局；240×256和720×600执行新页0/1实际测宽计划，绘制不改变日期、现金、随机或页计数/奖励属性。只验证渲染及接线，不运行自然取得/奖励消费者，不替代自然经营、原游戏字体、OS输入或动画验收。
 
 `ark_world_ui_tests world_edit_render_fixture`同样仅为手动窗口诊断。它显式提供flag32门控，使用初局真实包子铺、完整mode7预览和实际300G移动事务，保存预览/移动后两图并检查绘制不推进世界；不替代自然首星解锁、OS输入或原APK光标验收。实际Windows命令使用`build/bin/ark_world_ui_tests-desktop-release.exe world_edit_render_fixture`。
 

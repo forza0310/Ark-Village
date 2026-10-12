@@ -371,16 +371,16 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
     } else if (ui::world_human_page(page)) {
         const auto down_width =
             static_cast<int>(std::ceil(skin.text.width(ui::world_human_down_text)));
-        ui::draw_world_human(ui::world_human_view(state, page, down_width),
-                             ui::world_human_layout(extent), skin, enabled, feedback_);
+        auto view = ui::world_human_view(state, page, down_width);
+        ui::prepare_world_human_detail(view, state, skin);
+        ui::draw_world_human(view, ui::world_human_layout(extent), skin, enabled, feedback_);
     } else if (ui::world_tax_page(page)) {
         ui::draw_world_tax(ui::world_tax_view(state, page), ui::world_tax_layout(extent), skin,
                            enabled);
     } else if (ui::world_building_page(page)) {
         auto view = ui::world_building_view(state, page);
         ui::prepare_world_building_detail(view, state, building_, skin);
-        ui::draw_world_building(view,
-                                ui::world_building_layout(extent, page.legacy_page), skin,
+        ui::draw_world_building(view, ui::world_building_layout(extent, page.legacy_page), skin,
                                 building_, enabled, feedback_);
     } else if (page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
                page.legacy_page == 87) {

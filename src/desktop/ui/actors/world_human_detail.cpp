@@ -14,6 +14,8 @@ WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base) {
     out.panel = {center.x - 110, center.y - 87.5F, 220, 175};
     const auto p = out.panel;
     out.body = {p.x + 15, p.y + 95, 185, 68};
+    // PC inline action row; source touch margins remain metadata in the formal plan.
+    out.primary = {p.x + 15, p.y + 158, 185, 16};
     for (int n = 0; n < 4; ++n)
         out.tabs[n] = {p.x + n * 55, p.y - 19, 55, 17};
     out.cancel = {p.x + 170, p.y + 179, 50, 18};
@@ -56,15 +58,22 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
                                     {18.F * (id % 10), 18.F * (id / 10), 18, 18},
                                     box(x, y, 18, 18));
     };
-    s.window(l.panel, "冒险者信息");
-    s.content(box(17, 52, 202, 138));
+    if (!v.initialized || v.phase > 1) {
+        s.window(l.panel, "冒险者信息");
+        s.content(box(17, 52, 202, 138));
+    }
     constexpr const char *tabs[]{"概况", "属性", "装备", "魔法"};
     for (int n = 0; n < 4; ++n) {
         if (n == v.phase)
             DrawRectangleRec(l.tabs[n], {255, 185, 87, 255});
         s.centered(tabs[n], l.tabs[n], ink, 10);
     }
-    if (v.initialized) {
+    if (v.initialized && v.phase <= 1) {
+        if (!v.detail_page_skin)
+            throw std::runtime_error("Human page0/1 rendering requires an actual measured plan");
+        // VIEW_Y23 makes the source window top44. Align that window once to the PC panel.
+        draw_world_human_skin(*v.detail_page_skin, {l.panel.x - 10, l.panel.y - 44}, s);
+    } else if (v.initialized) {
         label(v.name, 124, 71, 86);
         DrawRectangleRec(box(119, 84, 91, 25), {215, 249, 214, 255});
         DrawRectangleRec(box(119, 109, 91, 13), {172, 235, 169, 255});
@@ -94,94 +103,8 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
             image("myHomeBack.png", {0, 0, 47, 32}, 27, 82);
         if (!v.detail_skin)
             throw std::runtime_error("Human detail rendering requires a measured portrait plan");
-        const auto draw_plan = [&](const simulation::SteamHumanSkinPlan &plan) {
-            for (const auto &request : plan.draws) {
-                if (const auto *part = std::get_if<simulation::StartupSkinRect>(&request)) {
-                    const auto &r = part->rect;
-                    const auto &c = part->rgb;
-                    const Color tint{static_cast<unsigned char>(c[0]),
-                                     static_cast<unsigned char>(c[1]),
-                                     static_cast<unsigned char>(c[2]), 255};
-                    if (part->outline)
-                        DrawRectangleLinesEx(
-                            box(float(r[0]), float(r[1]), float(r[2]), float(r[3])), 1, tint);
-                    else
-                        DrawRectangleRec(box(float(r[0]), float(r[1]), float(r[2]), float(r[3])),
-                                         tint);
-                } else if (const auto *part = std::get_if<simulation::SteamHumanImage>(&request)) {
-                    const auto resource = simulation::steam_human_resource(part->asset);
-                    if (!resource)
-                        throw std::runtime_error("Missing human detail image");
-                    const auto binding = part->asset == simulation::SteamHumanAsset::number05
-                                             ? Sprites::Binding::steam_common
-                                             : Sprites::Binding::common;
-                    if (part->crop) {
-                        const auto &r = *part->crop;
-                        image(std::filesystem::path(resource->published_image)
-                                  .filename()
-                                  .string()
-                                  .c_str(),
-                              {float(r[0]), float(r[1]), float(r[2]), float(r[3])},
-                              float(part->position[0]), float(part->position[1]), binding);
-                    } else
-                        s.sprites.draw(
-                            std::filesystem::path(resource->published_sprite).filename().string(),
-                            part->frame, point(float(part->position[0]), float(part->position[1])),
-                            WHITE, binding);
-                } else if (const auto *part = std::get_if<simulation::SteamHumanText>(&request)) {
-                    if (part->role != simulation::SteamHumanTextRole::down || part->anchor != 2)
-                        throw std::runtime_error("Unsupported human detail text request");
-                    const auto &c = part->rgb;
-                    s.text.draw(world_human_down_text,
-                                o.x + part->position[0] - s.text.width(world_human_down_text) / 2,
-                                o.y + part->position[1],
-                                {static_cast<unsigned char>(c[0]), static_cast<unsigned char>(c[1]),
-                                 static_cast<unsigned char>(c[2]), 255});
-                }
-            }
-        };
-        // These requests already contain the two independent source cycles and residence
-        // offset. Apply SEB part offsets once, in medal -> weapon -> body -> HP/bubble order.
-        const auto &plan = *v.detail_skin;
-        draw_plan(plan.medals);
-        const auto anchor =
-            point(float(plan.portrait_position[0]), float(plan.portrait_position[1]));
-        if (plan.portrait.weapon) {
-            const auto &weapon = *plan.portrait.weapon;
-            s.sprites.indexed_sprite(Sprites::Binding::weapon, weapon.sprite, weapon.frame,
-                                     weapon.layer, weapon.image,
-                                     {anchor.x + weapon.offset[0], anchor.y + weapon.offset[1]});
-        }
-        const auto &body = plan.portrait.body;
-        s.sprites.actor(false, body.sprite, body.image, body.frame, anchor);
-        draw_plan(plan.after_portrait);
-        if (v.phase == 0) {
-            DrawRectangleRec(box(25, 153, 89, 36), {193, 238, 247, 255});
-            label("满意", 30, 157, 40, 10);
-            number(v.details.satisfaction, 108, 158, "number05.seb");
-            label("努力", 30, 175, 40, 10);
-            number(v.details.effort, 108, 176, "number05.seb");
-            for (int i = 0; i < 4; ++i)
-                icon(i, 32 + 18 * i, 129);
-            constexpr const char *labels[]{"HP", "攻击", "防御", "魔法"};
-            for (int i = 0; i < 4; ++i) {
-                const int y = 123 + 18 * i;
-                DrawRectangleRec(box(119, y, 87, 18), {173, 209, 221, 255});
-                label(labels[i], 122, y + 4, 41, 10);
-                number(v.details.combat[i], 203, y + 5);
-            }
-        } else if (v.phase == 1) {
-            constexpr const char *names[]{"体力", "力量", "灵巧", "结实", "魔力", "运气"};
-            for (int i = 0; i < 6; ++i) {
-                const int x = 29 + 92 * (i / 3), y = 134 + 19 * (i % 3);
-                DrawRectangleRec(box(x - 4, y - 2, 93, 20), {208, 242, 249, 255});
-                DrawRectangleLinesEx(box(x - 4, y - 2, 92, 19), 1, {149, 206, 217, 255});
-                image("icon_param00.png", {float(i == 5 ? 96 : 16 * i), 16, 16, 16}, float(x),
-                      float(y), Sprites::Binding::steam_common);
-                label(names[i], float(x + 18), float(y + 2), 38, 10);
-                number(v.details.attributes[i], float(x + 83), float(y + 3));
-            }
-        } else if (v.phase == 2) {
+        draw_world_human_portrait(*v.detail_skin, o, s);
+        if (v.phase == 2) {
             constexpr const char *names[]{"武器", "防具1", "防具2", "饰品"};
             for (int i = 0; i < 4; ++i) {
                 const int y = 128 + 17 * i;

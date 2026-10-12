@@ -1002,6 +1002,45 @@ void human_details_and_gifts() {
               s.scene.random.draws() == draws && s.scene.calendar.units == date &&
               s.scene.world.world.ai.accounting.funds() == cash,
           "detail tabs and rejected tab do not advance world/date/random/cash");
+    {
+        // 在既有管理套件补首次教程/取消接线，不重测职业购买、预览和成长组合。
+        auto training=s;training.scripts.event_calls.erase(112);
+        check(act_startup_world_human_page(training,id,A::view_tab,1)==E::none&&
+              act_startup_world_human_page(training,id,A::professions)==E::none&&
+              training.scripts.event_calls.at(112)==1,"attribute page opens actual first112 tutorial and61");
+        const auto covered=startup_world_state_digest(training);
+        check(act_startup_world_human_page(training,id,A::professions)==E::invalid_page&&
+              startup_world_state_digest(training)==covered,"covered attribute parent cannot enqueue another tutorial/catalogue");
+        bool ready{};
+        for(int step=0;step<16;++step) {
+            page_tick(training);
+            const auto current=training.scripts.pages.back();
+            if(current.legacy_page==61&&startup_world_human_page_ready(training,current.id)) {ready=true;break;}
+            if(current.kind==ref::WorldScriptPageKind::dialogue)
+                check(acknowledge_startup_world_runtime_page(training,current.id)==E::none,"first112 uses actual framework acknowledgement");
+        }
+        check(ready,"first112 returns to initialized61 within bounded updates");
+        const auto child=training.scripts.pages.back().id;
+        check(training.page_human_bindings.at(child)==1&&act_startup_world_human_page(training,child,A::cancel)==E::none,
+              "profession catalogue binds same definition and cancels without changing job");
+        page_tick(training);
+        const auto view=inspect_startup_world_human_presentation(training,id);
+        check(view&&view->tab==1&&training.scripts.pages.back().id==id&&!training.page_human_bindings.count(child)&&
+              !training.human_page_catalogs.count(child)&&!training.human_pages_initialized.count(child),
+              "61 retirement restores attribute parent phase1 and releases child references");
+        check(training.scene.world.world.ai.accounting.funds()==cash&&training.scene.random.draws()==draws&&
+              training.scene.calendar.units==date&&view->human.profession==old->profession&&
+              view->human.attributes==startup_world_human_details(s,1)->attributes,
+              "first112/navigation/cancel preserves cash/date/random/current profession and attribute cache");
+        check(act_startup_world_human_page(training,id,A::professions)==E::none&&training.scripts.event_calls.at(112)==1,
+              "reenter61 does not replay already-seen112");
+        page_tick(training);const auto second=training.scripts.pages.back().id;
+        check(startup_world_human_page_ready(training,second)&&act_startup_world_human_page(training,second,A::cancel)==E::none,
+              "second61 initializes and cancels through same Owner");
+        page_tick(training);
+        check(training.scripts.pages.back().id==id&&training.page_phases.at(id)==1&&!training.human_page_catalogs.count(second),
+              "repeated attribute entry keeps parent and no retained profession directory payload");
+    }
     check(act_startup_world_human_page(s, id, A::gifts) == E::none,
           "actual human detail opens equipment gift catalogue");
     const auto gift = s.scripts.pages.back().id;

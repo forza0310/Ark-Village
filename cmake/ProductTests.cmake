@@ -162,7 +162,8 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/village/world_commerce.cpp src/desktop/ui/facilities/world_facility_items.cpp
             src/desktop/ui/facilities/world_facility_catalog.cpp
             src/desktop/ui/village/world_magic_pot.cpp
-            src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp src/desktop/ui/village/world_tax.cpp
+            src/desktop/ui/actors/world_human.cpp src/desktop/ui/actors/world_human_detail.cpp
+            src/desktop/ui/actors/world_human_skin.cpp src/desktop/ui/village/world_tax.cpp
             src/desktop/ui/information/world_information.cpp
             src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
             src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp

@@ -29,6 +29,8 @@ struct WorldHumanView {
     std::optional<simulation::StartupHumanPresentationLive> live;
     // Input-only projections may omit the measured down text width; rendering must supply it.
     std::optional<simulation::SteamHumanDetailSkin> detail_skin;
+    // Present only after the renderer supplies actual font widths for raw60 page0/1.
+    std::optional<simulation::SteamHumanOverviewPlan> detail_page_skin;
     std::array<std::string, 4> equipment_names;
     std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};
     std::array<std::array<int, 4>, 4> equipment_values{};
@@ -40,7 +42,7 @@ struct WorldHumanView {
 };
 struct WorldHumanLayout {
     Rectangle panel, body, rows, cancel, confirm, previous, next, professions, gifts, inspect,
-        track;
+        track, primary;
     std::array<Rectangle, 4> tabs;
     std::array<Rectangle, 5> gift_tabs;
     float row_height{};
@@ -60,6 +62,9 @@ bool world_human_page(const simulation::rules::WorldScriptPage &page);
 WorldHumanView world_human_view(const simulation::StartupWorldRuntimeState &state,
                                 const simulation::rules::WorldScriptPage &page,
                                 std::optional<int> down_text_width = {});
+void prepare_world_human_detail(WorldHumanView &view,
+                                const simulation::StartupWorldRuntimeState &state,
+                                const Skin &skin);
 WorldHumanLayout world_human_layout(Extent extent);
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
 Rectangle world_tracking_confirm(Extent extent);

@@ -91,6 +91,31 @@ void applied_effect(const CampaignCommandConsumer &apply, int activity) {
     const auto before_digest = sim::startup_world_state_digest(*ready),
                after_digest = sim::startup_world_state_digest(*completed);
     const auto receipts = activity_human_effect_receipts(*ready, *completed);
+    if (state.rules->activities.at(activity).parameters[2] == 2) {
+        const auto queued = activity_popularity_queue_receipt(*ready, *completed);
+        need(receipts.empty() && queued && queued->definition == activity &&
+                 queued->before[0] == 1 && queued->after[0] == 0 &&
+                 queued->before[1] == queued->after[1] && queued->after[3] == 40 &&
+                 !activity_popularity_queue_receipt(*completed, *completed),
+             "type2 completion must queue40 popularity, not claim human/applied effects");
+        CampaignCoverage coverage;
+        std::ostringstream log;
+        coverage.record(*queued, log);
+        need(log.str().find("\tpopularity_queued\t") != std::string::npos,
+             "delayed popularity request lost its separate queue-only stage");
+        for (int fault = 0; fault < 4; ++fault) {
+            auto old = *ready, bad = *completed;
+            if (fault == 0) ++bad.scene.world.popularity_queue.front()[1];
+            if (fault == 1) ++bad.quarter_counter;
+            if (fault == 2) ++bad.popularity;
+            if (fault == 3) old.page_counters.at(top(old).id) = 119;
+            bool refused{};
+            try { (void)activity_popularity_queue_receipt(old, bad); }
+            catch (const std::exception &) { refused = true; }
+            need(refused, "corrupt/early delayed activity completion was certified");
+        }
+        return;
+    }
     need(receipts.size() == 2 && receipts[0].recipient == 0 && receipts[1].recipient == 1,
          "effect did not bind all open definitions in source order");
     need(before_digest == sim::startup_world_state_digest(*ready) &&
@@ -164,7 +189,7 @@ void applied_effect(const CampaignCommandConsumer &apply, int activity) {
 }
 } // namespace
 void campaign_village_effect_contract(const CampaignCommandConsumer &apply) {
-    for (const int activity : {0, 4, 7})
+    for (const int activity : {0, 4, 7, 19})
         applied_effect(apply, activity);
 }
 } // namespace ark::test

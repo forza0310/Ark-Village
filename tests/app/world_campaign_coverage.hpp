@@ -47,7 +47,11 @@ enum class CampaignReceiptKind {
     monster_retirement_cash_month_reset,
     rank_conditions_promoted,
     activity_satisfaction_applied,
-    activity_attribute_applied
+    activity_attribute_applied,
+    weapon_paid_equipped,
+    armour_paid_equipped,
+    accessory_paid_equipped,
+    activity_popularity_queued
 };
 struct CampaignReceipt {
     CampaignReceiptKind kind{};
@@ -80,6 +84,10 @@ std::optional<CampaignReceipt> rank_promotion_receipt(const app::WorldState &bef
 // Payment/queued effects and later raw54 confirmation cannot stand in for this commit.
 std::vector<CampaignReceipt> activity_human_effect_receipts(const app::WorldState &before,
                                                             const app::WorldState &after);
+// raw53 type2 completion: verify the delayed request and quarter consumption.
+// This queue receipt does not certify its later actual popularity/reward consumer.
+std::optional<CampaignReceipt> activity_popularity_queue_receipt(const app::WorldState &before,
+                                                                 const app::WorldState &after);
 // Bind an already-observed victory to the submitted task and its new raw30 page.
 // This checks the receipt's source identity, not loot, combat rewards or successor generation.
 std::optional<CampaignReceipt> task_victory_receipt(const app::WorldState &before,

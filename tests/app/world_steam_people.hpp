@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace ark::test {
-// Player policy only. Commands consume real award pages and reward qualifications;
+// Player policy only. Commands consume real award pages, reward qualifications and quotes;
 // this controller never changes character, inventory or random state itself.
 class SteamPeopleStrategy {
   public:
@@ -42,6 +42,7 @@ class SteamPeopleStrategy {
   private:
     struct Gift {
         int human{}, slot{}, definition{};
+        int charge{}, stock{}; // Source quote/qualification captured before the actual gift flow.
     };
     std::optional<Gift> gift_;
     bool consumed_{};

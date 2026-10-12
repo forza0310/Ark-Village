@@ -39,6 +39,8 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"activity", "satisfaction_applied", 31, true, false, 25};
     case Kind::activity_attribute_applied:
         return {"activity", "attribute_applied_to_human", 31, true, false, 25};
+    case Kind::activity_popularity_queued:
+        return {"activity", "popularity_queued", 31, false};
     case Kind::item_consumed:
         return {"item", "bound_use", 36, true};
     case Kind::item_attribute_applied:
@@ -65,6 +67,12 @@ ReceiptIdentity receipt_identity(CampaignReceiptKind kind) {
         return {"armour", "reward_equipped", 50, true, true, 25};
     case Kind::accessory_reward_equipped:
         return {"accessory", "reward_equipped", 30, true, true, 25};
+    case Kind::weapon_paid_equipped:
+        return {"weapon", "paid_equipped", 33, true, true, 25};
+    case Kind::armour_paid_equipped:
+        return {"armour", "paid_equipped", 50, true, true, 25};
+    case Kind::accessory_paid_equipped:
+        return {"accessory", "paid_equipped", 30, true, true, 25};
     case Kind::weapon_combat_applied:
         return {"weapon", "combat_attributes_applied", 33, true, true, 25};
     case Kind::armour_combat_applied:
@@ -581,6 +589,7 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::facility_blueprint_claimed, "facility", "blueprint_claimed", 85, 0},
         {CampaignReceiptKind::facility_construction_paid, "facility", "construction_paid", 85, 1},
         {CampaignReceiptKind::activity_pot_opened, "activity", "pot_opened", 31, 0},
+        {CampaignReceiptKind::activity_popularity_queued, "activity", "popularity_queued", 31, 0},
         {CampaignReceiptKind::activity_satisfaction_applied, "activity", "satisfaction_applied", 31,
          0, 24},
         {CampaignReceiptKind::activity_attribute_applied, "activity", "attribute_applied_to_human",
@@ -588,6 +597,9 @@ void campaign_coverage_contract() {
         {CampaignReceiptKind::weapon_reward_equipped, "weapon", "reward_equipped", 33, 1, 24},
         {CampaignReceiptKind::armour_reward_equipped, "armour", "reward_equipped", 50, 1, 24},
         {CampaignReceiptKind::accessory_reward_equipped, "accessory", "reward_equipped", 30, 1, 24},
+        {CampaignReceiptKind::weapon_paid_equipped, "weapon", "paid_equipped", 33, 1, 24},
+        {CampaignReceiptKind::armour_paid_equipped, "armour", "paid_equipped", 50, 1, 24},
+        {CampaignReceiptKind::accessory_paid_equipped, "accessory", "paid_equipped", 30, 1, 24},
         {CampaignReceiptKind::weapon_combat_applied, "weapon", "combat_attributes_applied", 33, 1,
          24},
         {CampaignReceiptKind::armour_combat_applied, "armour", "combat_attributes_applied", 50, 1,

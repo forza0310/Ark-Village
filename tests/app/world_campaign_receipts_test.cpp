@@ -5,6 +5,7 @@
 #include "ark/simulation/map/startup_world_expansion.hpp"
 #include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 #include "ark/simulation/village/startup_world_tax.hpp"
+#include "ark/simulation/actors/rules/human_management.hpp"
 #include "world_active_late_strategy.hpp"
 #include "world_steam_budget.hpp"
 #include "world_steam_strategy.hpp"
@@ -546,20 +547,27 @@ void monster_retirement_receipt_contract() {
 
 void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
     using Receipt = ark::test::CampaignReceiptKind;
-    // Explicit reward qualifications test consumption; they do not prove a natural
-    // dungeon acquisition. Each namespace starts from an independent arrival Owner.
-    for (int source_kind : {1, 2, 3}) {
+    // Explicit reward/paid qualifications test consumption; not natural acquisition.
+    // Reuse each namespace's independent arrival Owner and actual source gift flow.
+    for (const bool purchase : {false, true})
+      for (int source_kind : {1, 2, 3}) {
         auto state = steam_people_fixture();
         for (auto &[key, stock] : state.catalog)
-            if (key.first >= 1 && key.first <= 3)
+            if (key.first >= 1 && key.first <= 3) {
                 stock.free_purchases = 0; // Each case isolates one source namespace.
+                if (purchase) stock.status = 0;
+            }
         for (const auto &definition : state.rules->equipment)
             if (definition.shop.kind == source_kind &&
                 std::any_of(definition.shop.combat.begin(), definition.shop.combat.end(),
                             [](int value) { return value > 0; })) {
                 auto &stock = state.catalog.at({source_kind, definition.shop.id});
-                stock.status = stock.free_purchases = 1;
+                stock.status = 1;
+                stock.free_purchases = purchase ? 0 : 1;
             }
+        if (purchase)
+            state.scene.world.world.ai.accounting = ref::PeriodAccounting(
+                steam_operating_reserve(state) + 10000);
         ark::test::SteamVillageStrategy strategy;
         std::vector<ark::test::CampaignReceipt> receipts;
         const auto initial = sim::startup_world_human_details(state, 1);
@@ -567,9 +575,13 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
         for (const auto &entry : initial->equipment)
             std::cout << entry.value_or(-1) << ',';
         std::cout << std::endl;
-        const Receipt equipped = source_kind == 1   ? Receipt::weapon_reward_equipped
-                                 : source_kind == 2 ? Receipt::armour_reward_equipped
-                                                    : Receipt::accessory_reward_equipped;
+        const Receipt equipped = purchase
+                                     ? (source_kind == 1 ? Receipt::weapon_paid_equipped
+                                        : source_kind == 2 ? Receipt::armour_paid_equipped
+                                                           : Receipt::accessory_paid_equipped)
+                                     : (source_kind == 1 ? Receipt::weapon_reward_equipped
+                                        : source_kind == 2 ? Receipt::armour_reward_equipped
+                                                           : Receipt::accessory_reward_equipped);
         const Receipt combat = source_kind == 1   ? Receipt::weapon_combat_applied
                                : source_kind == 2 ? Receipt::armour_combat_applied
                                                   : Receipt::accessory_combat_applied;
@@ -586,12 +598,24 @@ void steam_people_receipt_contract(const CampaignCommandConsumer &apply) {
                     effect.recipient == 1 && paid.page == effect.page &&
                     paid.subject == effect.subject && profile && profile->live_actor &&
                     paid.subject == profile->live_actor->value &&
-                    paid.before[0] == paid.after[0] + 1 && paid.before[1] == paid.after[1] &&
+                    (purchase ? paid.before[0] == 0 && paid.after[0] == 0 &&
+                                    paid.before[1] > paid.after[1]
+                              : paid.before[0] == paid.after[0] + 1 && paid.before[1] == paid.after[1]) &&
                     paid.after[3] == paid.definition &&
                     profile->equipment.at(paid.after[2]) == paid.definition &&
                     std::equal(effect.after.begin(), effect.after.end(), profile->combat.begin()),
                 "Source equipment consumption, actor binding and attributes were not independently "
                 "recorded");
+        if (purchase) {
+            const auto item = std::find_if(state.rules->equipment.begin(), state.rules->equipment.end(),
+                                           [&](const auto &e) { return e.shop.kind == source_kind && e.shop.id == paid.definition; });
+            require(item != state.rules->equipment.end(), "paid gift lost its original definition");
+            const auto quote = ref::human_equipment_gift_cost(
+                {item->shop.id, int(paid.after[2]), 1, item->gift_order, item->reward_difficulty,
+                 item->shop.price, item->gift_rating, 0, item->shop.combat});
+            require(quote && *quote > 0 && paid.before[1] - paid.after[1] == *quote,
+                    "paid equipment did not charge the independently queried source gift price");
+        }
     }
     auto awarded = steam_people_fixture();
     ref::WorldScriptPage annual;

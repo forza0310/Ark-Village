@@ -26,6 +26,11 @@ template<class T> std::vector<T> parts(const SteamHumanSkinPlan &plan) {
     for(const auto &draw:plan.draws)if(const auto *value=std::get_if<T>(&draw))result.push_back(*value);
     return result;
 }
+template<class T> std::vector<T> parts(const SteamHumanOverviewPlan &plan) {
+    std::vector<T> result;
+    for(const auto &op:plan.operations)if(const auto *value=std::get_if<T>(&op))result.push_back(*value);
+    return result;
+}
 std::vector<std::uint8_t> bytes(const std::filesystem::path &path) {
     std::ifstream in(path,std::ios::binary);
     if(!in)throw std::runtime_error("人物素材缺失："+path.string());
@@ -105,13 +110,19 @@ std::filesystem::path packaged(const std::filesystem::path &root,const char *pub
     const auto relative=file.generic_string();
     if(relative.rfind("original/",0)==0)return root/file.lexically_relative("original");
     if(relative=="steam-build-common/original/common/number05.png" ||
-       relative=="steam-facility-common/original/common/number08.png")
+       relative=="steam-facility-common/original/common/number08.png" ||
+       relative=="steam-facility-common/original/common/icon_param00.png" ||
+       relative=="steam-human-common/original/common/wnd_ato.png")
         return root/"steam_common"/file.filename();
     throw std::runtime_error("Unsupported published Steam fixture path: "+relative);
 }
 void resources(Checks &check,const std::filesystem::path &source_root) {
     const auto assets=source_root;
-    for(const auto asset:{SteamHumanAsset::medal,SteamHumanAsset::pinch,SteamHumanAsset::bubble,SteamHumanAsset::number05}) {
+    for(const auto asset:{SteamHumanAsset::medal,SteamHumanAsset::pinch,SteamHumanAsset::bubble,SteamHumanAsset::number05,
+        SteamHumanAsset::portrait_background,SteamHumanAsset::home_background,SteamHumanAsset::experience_bar,
+        SteamHumanAsset::experience_label,SteamHumanAsset::experience_remaining,SteamHumanAsset::smile,
+        SteamHumanAsset::combat_icon,SteamHumanAsset::equipment_background,SteamHumanAsset::weapon_icon,
+        SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon}) {
         const auto resource=steam_human_resource(asset);
         check(resource.has_value(),"具名资源身份存在");
         Image image=LoadImage((packaged(assets,resource->published_image)).string().c_str());
@@ -127,13 +138,94 @@ void resources(Checks &check,const std::filesystem::path &source_root) {
                     check(p.source_x==61 && p.source_y==10 && p.width==9 && p.height==10,
                           "乘号原裁片61/10/9/10");
             }
-        } else check(image.width>=28 && image.height>=14,"奖章index1裁片实际存在");
+        } else if(asset==SteamHumanAsset::medal)check(image.width>=28 && image.height>=14,"奖章index1裁片实际存在");
         UnloadImage(image);
     }
     const auto number=steam_human_resource(SteamHumanAsset::number05);
     check(bytes(packaged(assets,number->published_image))!=bytes(source_root/"common/number05.png"),
           "Steam数字PNG不静默替换为APK同名图");
     check(!steam_human_resource(static_cast<SteamHumanAsset>(99)),"未知资源枚举拒绝");
+}
+void overview_checks(Checks &check) {
+    // 概览边界夹具；不认证自然等级10、住宅或恢复道具取得。
+    auto owner=test_support::page_fixture(60);
+    const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=1;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[id]=1;owner.page_phases[id]=0;owner.page_counters[id]=0;
+    owner.human_page_selections[id]=0;owner.human_pages_initialized.insert(id);
+    owner.shop_humans.at(1).equipment={0,{},{},{}};
+    for(auto &stock:owner.items)stock.second.inventory=0;
+    SteamHumanOverviewOptions options;
+    options.title_widths=std::array<int,2>{80,80};options.profession_width=52;
+    options.bottom_widths={48,96};options.down_text_width=36;
+    auto plan=steam_human_overview_skin(owner,id,options);
+    check(plan&&plan->soft_labels==std::array<int,2>{0,2}&&!plan->recovery_gift,"概览source0左空右返回且无W不补回复资格");
+    const auto texts=parts<SteamHumanOverviewText>(*plan);
+    const auto job=std::find_if(texts.begin(),texts.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::profession;});
+    check(job!=texts.end()&&job->font_size==9&&job->rectangle[1]==88,"职业首次测宽52选择原9号字体");
+    options.profession_width=53;
+    check(!steam_human_overview_skin(owner,id,options),"首次53时必须提供原改字号前第二次测宽");
+    options.profession_repeat_width=52;plan=steam_human_overview_skin(owner,id,options);
+    auto labels=parts<SteamHumanOverviewText>(*plan);
+    check(std::find_if(labels.begin(),labels.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::profession;})->font_size==8,
+          "第二次52用8号，不自行按缩小字体重新试排");
+    options.profession_repeat_width=53;plan=steam_human_overview_skin(owner,id,options);
+    labels=parts<SteamHumanOverviewText>(*plan);
+    check(std::find_if(labels.begin(),labels.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::profession;})->font_size==7,
+          "两次53进入7号分支");
+    const auto bars=parts<SteamHumanOverviewScroll>(*plan);
+    check(bars.size()==1&&bars[0].rectangles[1].rect==std::array<int,4>{220,69,5,32}&&
+        bars[0].thumb_touch==std::array<int,4>{221,69,5,31},"概览仍保留四页比例与独立注册矩形");
+    auto &growth=owner.scene.world.world.ai.growth.at(1);
+    const int profession=growth.definition.current_profession;
+    check(startup_world_human_details(owner,1)->threshold==12,"夹具原初级经验门槛12");
+    growth.experience=1;plan=steam_human_overview_skin(owner,id,options);
+    const auto partial=parts<SteamHumanImage>(*plan);
+    check(std::any_of(partial.begin(),partial.end(),[](const auto &i){return i.asset==SteamHumanAsset::experience_bar&&
+        i.crop==std::optional<std::array<int,4>>({2,5,6,3});}),"经验1/12截断为6而非舍入7");
+    const auto remaining=parts<SteamFacilityNumber>(*plan);
+    check(std::any_of(remaining.begin(),remaining.end(),[](const auto &n){return n.position==std::array<int,2>{201,110}&&n.value==11;}),
+          "尚需经验读取12减1，不显示当前经验或总经验");
+    growth.definition.profession_levels[profession]=10;
+    growth.experience=0;plan=steam_human_overview_skin(owner,id,options);
+    const auto images=parts<SteamHumanImage>(*plan);
+    check(std::any_of(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::experience_bar&&
+        i.crop==std::optional<std::array<int,4>>({2,5,79,3});}),"等级恰10经验条强制79");
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    check(numbers.size()==6&&std::none_of(numbers.begin(),numbers.end(),[](const auto &n){return n.position==std::array<int,2>{201,110};}),
+          "大师仅满意/努力和四战斗缓存六数，不绘等级/剩余经验数");
+    const auto recovery=std::find_if(owner.rules->items.begin(),owner.rules->items.end(),[](const auto &i){return i.recovery>0;});
+    check(recovery!=owner.rules->items.end(),"源定义确有回复道具");
+    owner.items.at(recovery->identity).inventory=1;
+    ref::BattleActorRecord actor;actor.id={900};actor.kind=ref::ActorKind::human;actor.definition=1;
+    actor.control.state=0;actor.hp.displayed=80;actor.hp.target=50;actor.capacity=999;
+    owner.scene.world.world.ai.battle.actors.emplace(actor.id,actor);
+    owner.scene.world.world.ai.human_order={actor.id};growth.derived.combat[0]=100;
+    const auto combat=parts<SteamFacilityNumber>(*steam_human_overview_skin(owner,id,options));
+    check(std::any_of(combat.begin(),combat.end(),[](const auto &n){return n.position==std::array<int,2>{203,128}&&n.value==100;}),
+          "概览HP读取共享最大缓存100，不用实例显示80/目标50/旧capacity999");
+    check(!steam_human_overview_skin(owner,id,options)->recovery_gift,"恰一半目标HP不切回复，不用显示HP或旧capacity");
+    owner.scene.world.world.ai.battle.actors.at(actor.id).hp.target=49;
+    check(steam_human_overview_skin(owner,id,options)->recovery_gift,"有库存且目标HP低于一半才切回复");
+    owner.items.at(recovery->identity).inventory=0;
+    owner.scene.world.world.ai.battle.actors.at(actor.id).control.state=7;
+    check(!steam_human_overview_skin(owner,id,options)->recovery_gift,"倒下仍要求持有回复道具");
+    owner.items.at(recovery->identity).inventory=1;
+    check(steam_human_overview_skin(owner,id,options)->recovery_gift,"倒下且有道具进入回复提示");
+    const auto before=startup_world_state_digest(owner);
+    const auto size=steam_human_overview_skin(owner,id,options)->operations.size();
+    for(int repeat=0;repeat<24;++repeat) {
+        const auto same=steam_human_overview_skin(owner,id,options);
+        check(same&&same->operations.size()==size&&startup_world_state_digest(owner)==before,"重复只读概览输出规模稳定，不改Owner/HP/随机/声音");
+    }
+    auto bad=owner;bad.items.erase(recovery->identity);
+    check(!steam_human_overview_skin(bad,id,options),"缺必需库存依赖显式拒绝");
+    bad=owner;bad.shop_humans.at(1).equipment[1]=std::numeric_limits<int>::max();
+    check(!steam_human_overview_skin(bad,id,options),"错误当前防具引用不作为空槽容错");
+    bad=owner;bad.page_phases[id]=1;
+    check(!steam_human_overview_skin(bad,id,options),"页1不冒认本批概览皮肤");
+    bad=owner;bad.scripts.pages.back().lifecycle=4;
+    check(!steam_human_overview_skin(bad,id,options),"退休概览不能继续出图");
 }
 void owner_checks(Checks &check) {
     // 页面/HP/实例均为表现条件夹具，不宣称新局自然出现两名同定义冒险者。
@@ -209,6 +301,6 @@ void owner_checks(Checks &check) {
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);
     return check.count;
 }

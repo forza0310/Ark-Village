@@ -201,6 +201,7 @@ template <class PlayerStrategy> struct CampaignRun {
                   << input.anchor.y << " orientation=" << int(input.orientation)
                   << " commerce=" << int(input.commerce_action)
                   << " task_action=" << int(input.task_action)
+                  << " human_action=" << int(input.human_action)
                   << " facility_item=" << int(input.facility_item_action)
                   << " outcome=" << int(result.outcome) << " error=" << int(result.runtime_error)
                   << " task_denial=" << int(result.denial)
@@ -224,6 +225,8 @@ template <class PlayerStrategy> struct CampaignRun {
                     const auto effects =
                         ark::test::activity_human_effect_receipts(state, candidate);
                     pending_receipts.insert(pending_receipts.end(), effects.begin(), effects.end());
+                    if (const auto queued = ark::test::activity_popularity_queue_receipt(state, candidate))
+                        pending_receipts.push_back(*queued);
                 }
                 promotion = ark::test::rank_promotion_receipt(state, candidate);
                 if (promotion) {
@@ -374,13 +377,18 @@ template <class PlayerStrategy> struct CampaignRun {
                 break;
             const bool achieved = resume ? strategy.complete(state)
                                          : Route<PlayerStrategy>::checkpoint(strategy, state);
-            if (achieved && app::world_save_eligible(state))
+            if (!quarter_only && achieved && app::world_save_eligible(state))
                 break;
-            require(rounds < budget, "Active business step budget exhausted");
+            if (rounds >= budget) {
+                ark::test::capture_campaign_observation(directory, state);
+                throw std::runtime_error("Active business step budget exhausted at round=" + std::to_string(rounds));
+            }
             step();
             const auto now = std::chrono::steady_clock::now();
-            require(now - start < std::chrono::minutes(quarter_only ? 6 : Route<PlayerStrategy>::minutes),
-                    "Active business time budget exhausted");
+            if (now - start >= std::chrono::minutes(quarter_only ? 6 : Route<PlayerStrategy>::minutes)) {
+                ark::test::capture_campaign_observation(directory, state);
+                throw std::runtime_error("Active business time budget exhausted at round=" + std::to_string(rounds));
+            }
             if (now - report >= std::chrono::seconds(30)) {
                 std::cout << "PROGRESS " << strategy.diagnose(state) << std::endl;
                 report = now;

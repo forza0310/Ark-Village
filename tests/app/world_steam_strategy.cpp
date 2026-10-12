@@ -119,6 +119,45 @@ void SteamVillageStrategy::reconcile(const State &s) {
 
 std::optional<Command> SteamVillageStrategy::layout(const State &s) {
     const auto funds = cash(s) - reserve(s);
+    // Preserve the copied Steam layout. A later-star required building extends it
+    // only into unoccupied, legal cells, with the real quote and construction command.
+    if (const auto required = steam_required_facility(s)) {
+        if (buildable(s, *required)) {
+            const auto quote = sim::startup_world_build_quote(s, *required);
+            if (quote && funds >= quote->construction_cost + 2 * quote->definition_attributes[3]) {
+                for (int y = 4; y < s.scene.world.world.map.height; ++y)
+                    for (int x = 1; x < s.scene.world.world.map.width; ++x)
+                        for (const auto orientation : {ref::FacilityOrientation::first,
+                                                       ref::FacilityOrientation::second}) {
+                            const SteamLayoutTarget t{*required, {x, y}, orientation, SteamLayoutRole::shop};
+                            const auto footprint = steam_layout_footprint(s, t);
+                            if (!steam_layout_inside_fence(s, t) ||
+                                !steam_layout_blockers(s, t).empty() ||
+                                std::any_of(footprint.cells.begin(), footprint.cells.end(),
+                                            [&](const auto &cell) {
+                                                const auto terrain = s.scene.world.world.map.cells.at(
+                                                    cell.position.y * s.scene.world.world.map.width + cell.position.x).legacy_state;
+                                                return reserved_cell(s, cell.position) || terrain == 1 ||
+                                                       terrain == 2 || terrain == 10;
+                                            }))
+                                continue;
+                            operation_ = Operation::build;
+                            target_ = t;
+                            operation_committed_ = false;
+                            return cmd(Kind::open_build_menu);
+                        }
+            }
+        } else if (const auto goal = steam_progress_point_goal(s);
+                   goal && goal->kind == SteamProgressPurchase::blueprint &&
+                   goal->definition == *required && s.village_points >= goal->points &&
+                   (s.scripts.user_flags & 16U)) {
+            const auto quote = sim::startup_world_build_quote(s, *required);
+            if (quote && funds >= quote->construction_cost + 2 * quote->definition_attributes[3]) {
+                unlock_ = *required;
+                return cmd(Kind::open_commerce);
+            }
+        }
+    }
     // First relocate an unmatched existing building to its exact source goal. Existing
     // residents are preserved by the production move transaction, never evicted to make room.
     for (const auto &t : steam_village_layout()) {
@@ -287,7 +326,7 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
         if (s.scene.scene_state != 0)
             return {};
         party_budget_exhausted_ = false;
-        if ((checkpoint_phase_ && checkpoint(s)) || complete(s))
+        if (checkpoint_phase_ && checkpoint(s))
             return {};
         for (const auto id : s.scene.world.facility_order)
             if (s.scene.world.world.facility_uses
@@ -410,6 +449,20 @@ std::optional<Command> SteamVillageStrategy::next(const State &s) {
                 }
                 if (expansion_cost)
                     points_reserve = std::max(points_reserve, *expansion_cost);
+            }
+            const auto progress = steam_progress_point_goal(s);
+            if (progress) {
+                // Optional inexpensive events must not drain a pending unlock budget.
+                // Missing this quarter's target means waiting for its real source offer.
+                if (progress->kind == SteamProgressPurchase::activity) {
+                    const auto target = std::find(v->entries.begin(), v->entries.end(), progress->definition);
+                    if (target == v->entries.end() || s.village_points < progress->points ||
+                        !steam_optional_activity_affordable(s))
+                        return activity(p.id, Activity::cancel);
+                    const int index = static_cast<int>(target - v->entries.begin());
+                    return activity(p.id, v->selection == index ? Activity::confirm : Activity::select, index);
+                }
+                points_reserve = std::max(points_reserve, progress->points);
             }
             for (int n = 0; n < static_cast<int>(v->entries.size()); ++n) {
                 const auto &a = s.rules->activities.at(v->entries[n]);
@@ -779,6 +832,11 @@ std::string SteamVillageStrategy::diagnose(const State &s) const {
         << " items=" << income_.uses() << " victories=" << stats_.victories
         << " activities=" << stats_.activities << " residents=" << stats_.admissions
         << " medals=" << people_.medals() << " equipment=" << people_.gifts();
+    const auto points = steam_progress_point_goal(s);
+    out << " point_goal=" << (points ? points->points : 0)
+        << " point_goal_definition=" << (points ? points->definition : -1)
+        << " fireworks_count=" << held(s, 19)
+        << " required_facility=" << steam_required_facility(s).value_or(-1);
     return out.str();
 }
 void SteamVillageStrategy::encode(std::ostream &out) const {
@@ -927,6 +985,28 @@ void steam_strategy_contract() {
                 choice->page == page && choice->village_activity_action == Activity::cancel &&
                 sim::startup_world_state_digest(budget) == exhausted,
             "exhausted quarterly slots must close the catalogue without retrying denial50");
+
+    budget.quarter_counter = 1;
+    budget.rank = 4;
+    budget.scripts.activities.at(19).status = 1;
+    budget.scene.world.world.ai.accounting = ref::PeriodAccounting(reserve(budget) + 10000);
+    budget.village_points = 149;
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::cancel,
+            "rank4 must wait at149 points instead of spending them on an unrelated cheap activity");
+    budget.village_points = 150;
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::cancel,
+            "a held/catalogue-excluded target must not be confirmed through a fictitious row");
+    budget.activity_page_lists.at(page).push_back(19); // Explicit initialized offer qualification.
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::select && choice->selection == 2,
+            "the source-cached fireworks row must be selected once the actual150-point budget exists");
+    budget.activity_counts.at(19) = 1;
+    budget.fence_level = 2; // Museum-budget fixture: the copied layout already fits.
+    choice = player.next(budget);
+    require(choice && choice->village_activity_action == Activity::cancel,
+            "after the first fireworks the museum blueprint budget must survive cheaper activities");
 
     // Explicit page/quote qualifications test the player policy. The actual hire
     // transaction and nine-person source limit belong to the frozen task suite.

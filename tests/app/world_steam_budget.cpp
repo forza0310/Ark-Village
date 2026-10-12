@@ -1,5 +1,6 @@
 #include "world_steam_budget.hpp"
 #include "../support/world_fixture.hpp"
+#include "ark/simulation/village/rules/world_calendar_tasks.hpp"
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
@@ -89,6 +90,33 @@ std::optional<int> steam_task_extra_human(const State &s, std::uint64_t page) {
 bool steam_optional_activity_affordable(const State &s) {
     return cash(s) >= steam_operating_reserve(s);
 }
+std::optional<int> steam_required_facility(const State &s) {
+    const auto table = ref::fixed_calendar_task_rank_terms();
+    const auto terms = table.find(s.rank);
+    if (terms == table.end())
+        return {};
+    for (const auto &term : terms->second)
+        if (term.type == 3 && std::none_of(s.scene.world.world.facilities.begin(),
+                                          s.scene.world.world.facilities.end(), [&](const auto &f) {
+                                              return f.second.placement.definition_id == term.threshold;
+                                          }))
+            return term.threshold;
+    return {};
+}
+std::optional<SteamProgressPointGoal> steam_progress_point_goal(const State &s) {
+    if (s.rank < 4)
+        return {};
+    // Formal PROGRESSION_ROUTES: actual promotion to rank4 directly opens activity19.
+    // A real source catalogue still decides whether it is offered this quarter.
+    if (s.scripts.activities.at(19).status != 0 && s.activity_counts.at(19) == 0)
+        return SteamProgressPointGoal{SteamProgressPurchase::activity, 19,
+                                      s.rules->activities.at(19).parameters[4]};
+    if (const auto facility = steam_required_facility(s);
+        facility && s.facility_presence.at(*facility) == 0)
+        return SteamProgressPointGoal{SteamProgressPurchase::blueprint, *facility,
+                                      s.rules->facility_initial.at(*facility).capacity};
+    return {};
+}
 int steam_task_recovery_month(const State &s) { return month(s) + 2; }
 
 void inspect_steam_expenses(const State &before, const State &after, std::string_view phase,
@@ -114,6 +142,24 @@ void steam_budget_contract() {
     const auto buffer = steam_operating_reserve(s);
     require(buffer > 0 && steam_residence_reserve(s) >= buffer,
             "real new town must reserve its recurring costs");
+    auto progression = s;
+    progression.rank = 4;
+    progression.scripts.activities.at(19).status = 1;
+    const auto fireworks = steam_progress_point_goal(progression);
+    require(fireworks && fireworks->kind == SteamProgressPurchase::activity &&
+                fireworks->definition == 19 && fireworks->points == 150,
+            "rank4 must reserve the real150-point fireworks offer before cheap optional events");
+    progression.activity_counts.at(19) = 1;
+    const auto museum = steam_progress_point_goal(progression);
+    require(steam_required_facility(progression) == 64 && museum &&
+                museum->kind == SteamProgressPurchase::blueprint && museum->definition == 64 &&
+                museum->points == 200,
+            "after fireworks the next rank's actual museum blueprint requires200 points");
+    progression.facility_presence.at(64) = 2;
+    require(!steam_progress_point_goal(progression) && steam_required_facility(progression) == 64,
+            "an acquired blueprint reserves no second purchase but still needs actual construction");
+    progression.rank = 3;
+    require(!steam_progress_point_goal(progression), "rank4 input goals must not be injected into a rank3 town");
     // Cached raw27 quotes and strength are explicit player-choice qualifications.
     // Frozen task rules own the fee formula, reset effects and full-party rejection.
     auto extras = s;

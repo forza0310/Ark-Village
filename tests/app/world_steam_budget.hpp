@@ -15,6 +15,15 @@ bool steam_task_renewable(const app::WorldState &state, int displayed_fee);
 // by their current four combat values without recreating the hiring fee formula.
 std::optional<int> steam_task_extra_human(const app::WorldState &state, std::uint64_t page);
 bool steam_optional_activity_affordable(const app::WorldState &state);
+enum class SteamProgressPurchase { activity, blueprint };
+struct SteamProgressPointGoal {
+    SteamProgressPurchase kind;
+    int definition{}, points{};
+};
+// A player target from actual rank/availability/counts: save for the unconsumed
+// rank4 event, then the next rank's required facility. This is no unlock rule.
+std::optional<SteamProgressPointGoal> steam_progress_point_goal(const app::WorldState &state);
+std::optional<int> steam_required_facility(const app::WorldState &state);
 // A completed task leaves the intervening calendar month available for normal business.
 int steam_task_recovery_month(const app::WorldState &state);
 void inspect_steam_expenses(const app::WorldState &before, const app::WorldState &after,

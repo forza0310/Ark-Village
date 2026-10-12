@@ -12,6 +12,42 @@ using State = app::WorldState;
 namespace ref = simulation::rules;
 } // namespace
 
+std::optional<CampaignReceipt> activity_popularity_queue_receipt(const State &before,
+                                                                 const State &after) {
+    const auto page = std::find_if(before.scripts.pages.rbegin(), before.scripts.pages.rend(),
+                                   [](const auto &p) { return p.lifecycle != 4; });
+    if (page == before.scripts.pages.rend() || page->kind != ref::WorldScriptPageKind::raw_page ||
+        page->legacy_page != 53)
+        return {};
+    const auto retired = std::find_if(after.scripts.pages.begin(), after.scripts.pages.end(),
+                                      [&](const auto &p) { return p.id == page->id; });
+    if (retired != after.scripts.pages.end() && retired->lifecycle != 4)
+        return {};
+    const auto need = [](bool value) {
+        if (!value) throw std::runtime_error("Activity popularity lost its source queue/quarter binding");
+    };
+    need(before.rules && before.rules == after.rules &&
+         before.activity_pages_initialized.count(page->id) && before.page_counters.at(page->id) >= 120);
+    const int definition = before.activity_page_bindings.at(page->id);
+    const auto &activity = before.rules->activities.at(definition);
+    if (activity.parameters[2] != 2)
+        return {};
+    const auto &old = before.scene.world.popularity_queue, &now = after.scene.world.popularity_queue;
+    need(now.size() == old.size() + 1 &&
+         now.front() == std::array<int, 3>{10, activity.parameters[5], 1} &&
+         std::equal(old.begin(), old.end(), now.begin() + 1) &&
+         after.quarter_counter == before.quarter_counter - 1 &&
+         after.activity_counts.at(definition) == before.activity_counts.at(definition) &&
+         after.village_points == before.village_points && after.popularity == before.popularity &&
+         after.maximum_popularity == before.maximum_popularity &&
+         after.scene.world.world.ai.accounting.funds() == before.scene.world.world.ai.accounting.funds() &&
+         after.scene.random.draws() == before.scene.random.draws());
+    return CampaignReceipt{CampaignReceiptKind::activity_popularity_queued, definition,
+                            after.simulation_steps, page->id, 0, -1,
+                            {before.quarter_counter, before.popularity, static_cast<std::int64_t>(old.size()), activity.parameters[5]},
+                            {after.quarter_counter, after.popularity, static_cast<std::int64_t>(now.size()), activity.parameters[5]}};
+}
+
 std::vector<CampaignReceipt> activity_human_effect_receipts(const State &before,
                                                             const State &after) {
     const auto page = std::find_if(before.scripts.pages.rbegin(), before.scripts.pages.rend(),

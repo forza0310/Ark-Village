@@ -27,6 +27,15 @@ const ref::WorldScriptPage *top(const State &s) {
     return nullptr;
 }
 std::int64_t cash(const State &s) { return s.scene.world.world.ai.accounting.funds(); }
+std::int64_t paid_budget(const State &s, std::int64_t reserve) {
+    // Actual source category2 includes gifts, profession fees and admissions. Cap
+    // their combined monthly spend for this player; do not add save-side counters
+    // or subtract reconstructed fees from the authoritative ledger.
+    const int spent = s.monthly_cash.at(s.scene.calendar.month)[2][1];
+    if (cash(s) < reserve || spent < 0 || spent >= 10000)
+        return 0;
+    return std::min<std::int64_t>(10000 - spent, cash(s) - reserve);
+}
 int spending(const State &s, int human) {
     const auto i = s.scene.world.world.human_spending.find(human);
     return i == s.scene.world.world.human_spending.end() ? 0 : i->second;
@@ -58,8 +67,9 @@ std::optional<ref::HumanManagementEquipment> equipment(const State &s, int slot,
                                          current->second.free_purchases,
                                          f->shop.combat};
 }
-bool useful(const State &s, int person, const ref::HumanManagementEquipment &target) {
-    if (!target.availability || target.stock <= 0)
+bool useful(const State &s, int person, const ref::HumanManagementEquipment &target,
+             bool paid = false) {
+    if (!target.availability || target.stock < 0 || (!paid && target.stock == 0))
         return false;
     const auto old_id = s.shop_humans.at(person).equipment[target.slot];
     if (old_id == target.definition)
@@ -68,7 +78,8 @@ bool useful(const State &s, int person, const ref::HumanManagementEquipment &tar
     if (old_id && !old)
         return false;
     const std::array<int, 4> prior = old ? old->combat : std::array<int, 4>{};
-    return (!old || target.grade >= old->grade) &&
+    return (!paid || !old || target.combat != prior) &&
+           (!old || target.grade >= old->grade) &&
            std::equal(prior.begin(), prior.end(), target.combat.begin(),
                       [](int a, int b) { return a <= b; });
 }
@@ -93,8 +104,7 @@ std::optional<int> award_index(const State &s, const std::vector<int> &ranked) {
 
 IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
                                          std::int64_t cash_reserve, bool start) {
-    (void)reserved_points; // No paid cultivation or speculative profession change in this policy.
-    (void)cash_reserve; // Reward equipment has a verified zero charge; housing reserves separately.
+    (void)reserved_points; // No point-funded cultivation or speculative profession change here.
     const auto *p = top(s);
     if (!p || s.scene.framework_paused)
         return {};
@@ -125,7 +135,8 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
         }
         if (!start || s.scene.scene_state != 0 || s.build_definition || s.build_mode)
             return {};
-        std::optional<std::tuple<int, std::int64_t, int, int, int>> priority;
+        const auto cultivation_budget = paid_budget(s, cash_reserve);
+        std::optional<std::tuple<bool, int, std::int64_t, int, int, int>> priority;
         for (const auto &[person, presence] : s.human_presence) {
             if (!presence)
                 continue;
@@ -137,19 +148,21 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
             const int received = count == equipment_gifts_.end() ? 0 : count->second;
             for (int slot = 0; slot < 4; ++slot)
                 for (const auto &[key, entry] : s.catalog) {
-                    if (key.first != kind(slot) || entry.free_purchases <= 0)
+                    if (key.first != kind(slot))
                         continue;
                     const auto target = equipment(s, slot, key.second);
-                    if (!target || !useful(s, person, *target))
+                    const bool paid = entry.free_purchases == 0;
+                    if (!target || !useful(s, person, *target, paid))
                         continue;
                     const auto quote = ref::human_equipment_gift_cost(*target);
-                    if (!quote || *quote != -1)
+                    if (!quote || (paid ? *quote <= 0 || *quote > cultivation_budget
+                                           : *quote != -1))
                         continue;
-                    const auto value = std::make_tuple(received, -std::int64_t(spending(s, person)),
+                    const auto value = std::make_tuple(paid, received, -std::int64_t(spending(s, person)),
                                                        person, slot, key.second);
                     if (!priority || value < *priority) {
                         priority = value;
-                        gift_ = Gift{person, slot, key.second};
+                        gift_ = Gift{person, slot, key.second, paid ? *quote : 0, target->stock};
                     }
                 }
         }
@@ -179,8 +192,9 @@ IncomeDecision SteamPeopleStrategy::next(const State &s, int reserved_points,
         if (consumed_)
             return {true, human_command(p->id, Human::cancel)};
         const auto target = equipment(s, gift_->slot, gift_->definition);
-        require(target && useful(s, gift_->human, *target),
-                "selected reward is no longer available");
+        require(target && useful(s, gift_->human, *target, gift_->charge > 0) &&
+                    target->stock == gift_->stock,
+                "selected equipment is no longer available");
         const auto &list = s.equipment_page_catalogs.at(p->id)[gift_->slot];
         const auto i = std::find(list.begin(), list.end(), gift_->definition);
         require(i != list.end(), "reward equipment missing from actual gift catalogue");
@@ -203,12 +217,14 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
         return;
     const auto &g = *gift_;
     const auto key = std::make_pair(kind(g.slot), g.definition);
-    if (before.catalog.at(key).free_purchases == after.catalog.at(key).free_purchases)
+    if (before.shop_humans.at(g.human).equipment[g.slot] ==
+        after.shop_humans.at(g.human).equipment[g.slot])
         return;
-    require(before.catalog.at(key).free_purchases == after.catalog.at(key).free_purchases + 1 &&
+    require(before.catalog.at(key).free_purchases == g.stock &&
+                after.catalog.at(key).free_purchases == (g.charge > 0 ? g.stock : g.stock - 1) &&
                 after.shop_humans.at(g.human).equipment[g.slot] == g.definition &&
-                cash(before) == cash(after),
-            "reward must consume one qualification and equip without charge");
+                cash(before) - cash(after) == g.charge,
+            "gift must consume its source qualification or pay its actual quote exactly once");
     const auto old = sim::startup_world_human_details(before, g.human);
     const auto now = sim::startup_world_human_details(after, g.human);
     const auto target = equipment(before, g.slot, g.definition);
@@ -216,6 +232,9 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
                 std::equal(old->combat.begin(), old->combat.end(), now->combat.begin(),
                            [](int a, int b) { return a <= b; }),
             "gift reduced recipient combat attributes");
+    const auto quote = ref::human_equipment_gift_cost(*target);
+    require(quote && (*quote == -1 ? 0 : *quote) == g.charge,
+            "equipment charge differs from the real source gift quote");
     require(after.scene.world.world.ai.growth.at(g.human).definition.equipment[g.slot] ==
                     target->combat &&
                 after.scene.world.world.ai.battle.actors.at(*now->live_actor).capacity ==
@@ -230,9 +249,13 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
         }
     require(page != 0, "equipped reward lacks its real queued source page");
     using Receipt = CampaignReceiptKind;
-    const auto equipped = kind(g.slot) == 1   ? Receipt::weapon_reward_equipped
-                          : kind(g.slot) == 2 ? Receipt::armour_reward_equipped
-                                              : Receipt::accessory_reward_equipped;
+    const auto equipped = g.charge > 0
+                              ? (kind(g.slot) == 1 ? Receipt::weapon_paid_equipped
+                                 : kind(g.slot) == 2 ? Receipt::armour_paid_equipped
+                                                    : Receipt::accessory_paid_equipped)
+                              : (kind(g.slot) == 1 ? Receipt::weapon_reward_equipped
+                                 : kind(g.slot) == 2 ? Receipt::armour_reward_equipped
+                                                    : Receipt::accessory_reward_equipped);
     const auto applied = kind(g.slot) == 1   ? Receipt::weapon_combat_applied
                          : kind(g.slot) == 2 ? Receipt::armour_combat_applied
                                              : Receipt::accessory_combat_applied;
@@ -256,7 +279,8 @@ void SteamPeopleStrategy::observe_world(const State &before, const State &after,
     consumed_ = true;
     ++equipment_gifts_[g.human];
     std::cout << "PEOPLE gift human=" << g.human << " slot=" << g.slot
-              << " equipment=" << g.definition << " received=" << equipment_gifts_.at(g.human)
+              << " equipment=" << g.definition << " charge=" << g.charge
+              << " received=" << equipment_gifts_.at(g.human)
               << std::endl;
 }
 void SteamPeopleStrategy::observe(const State &before, const Command &c,
@@ -354,6 +378,14 @@ void steam_people_contract() {
     require(award_index(s, list) == 1, "absent definition cannot receive award");
     require(!SteamPeopleStrategy::eligible_homeless(s, cash(s) + 1),
             "housing must preserve reserved cash");
+    auto budget = s;
+    budget.scene.world.world.ai.accounting = ref::PeriodAccounting(12000);
+    budget.monthly_cash.at(budget.scene.calendar.month)[2][1] = 9700;
+    require(paid_budget(budget, 11000) == 300 && paid_budget(budget, 11701) == 299,
+            "gift decisions must retain both the monthly300 allowance and cash reserve differing by1G");
+    budget.monthly_cash.at(budget.scene.calendar.month)[2][1] = 10000;
+    require(paid_budget(budget, 11000) == 0,
+            "paid cultivation must stop at the actual monthly staff/gift expense limit");
     // Selection tests use isolated input projections, not injected campaign rewards.
     auto target = ref::HumanManagementEquipment{};
     target.definition = 0;
@@ -363,12 +395,19 @@ void steam_people_contract() {
     require(useful(s, 0, target), "real qualification can fill an empty slot");
     target.stock = 0;
     require(!useful(s, 0, target), "unlocked equipment without reward qualification is not free");
+    target.price = 200;
+    require(useful(s, 0, target, true) && ref::human_equipment_gift_cost(target) == 300,
+            "a paid weapon uses the source gift quote, not its shop price or a free qualification");
+    target.availability = 0;
+    require(!useful(s, 0, target, true), "paid gifts cannot bypass an unopened equipment definition");
+    target.availability = 1;
     target.stock = 1;
     target.combat[0] = -1;
     require(!useful(s, 0, target), "free equipment must not lower a combat attribute");
     target.combat[0] = 1;
     s.shop_humans.at(0).equipment[0] = target.definition;
     require(!useful(s, 0, target), "do not waste a reward on an already equipped item");
+    require(!useful(s, 0, target, true), "paid gifts cannot rebuy the same equipped item as an improvement");
     std::istringstream input("STEAM_PEOPLE_1 3 2\n0 2\n1 1\n");
     const auto restored = SteamPeopleStrategy::decode(input);
     std::ostringstream output;

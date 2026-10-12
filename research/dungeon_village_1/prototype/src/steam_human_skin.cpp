@@ -1,4 +1,5 @@
 // Steam人物局部纯图元：ui/STEAM_HUMAN_PRESENTATION.md、STEAM_HUMAN_PINCH.md。
+// raw60概览／六属性的有序绘制及输入边界见ui/STEAM_HUMAN_DETAIL.md。
 #include "dungeon_village_prototype/steam_human_skin.hpp"
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
@@ -162,10 +163,11 @@ std::optional<SteamHumanDetailSkin> steam_human_detail_skin(
     result.portrait=*actor;result.after_portrait=*power;
     return result;
 }
-std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
-    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamHumanOverviewOptions &o) {
+namespace {
+std::optional<SteamHumanOverviewPlan> human_page_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamHumanOverviewOptions &o,int tab) {
     const auto view=inspect_startup_world_human_presentation(s,page);
-    if(!view||view->tab!=0||!o.title_widths||o.finger_frame<0||o.finger_frame>5)return {};
+    if(!view||view->tab!=tab||!o.title_widths||o.finger_frame<0||o.finger_frame>5)return {};
     const auto &h=view->human;
     if(h.level<1||h.level>10||h.name.empty()||h.name.size()>4096||h.experience<0||h.threshold<0||
        h.profession<0||h.profession>=static_cast<int>(s.rules->jobs.size()))return {};
@@ -179,13 +181,13 @@ std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
         }
     }
     bool recovery{};
-    for(const auto &item:s.rules->items) {
+    if(tab==0)for(const auto &item:s.rules->items) {
         const auto stock=s.items.find(item.identity);
         if(stock==s.items.end()||stock->second.inventory<0)return {};
         if(stock->second.inventory>0&&item.recovery>0)recovery=true;
     }
     recovery=view->live&&recovery&&(view->live->state==7||view->live->hp_after<view->live->hp_max/2);
-    const auto &bottom=o.bottom_widths[recovery?1:0];
+    const auto &bottom=tab==1?o.profession_change_width:o.bottom_widths[recovery?1:0];
     if(!bottom||*bottom<0)return {};
     const auto window=steam_startup_window_skin({220,175,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
     const auto box=steam_startup_box_skin({17,52,219,190},o.view_y);
@@ -198,8 +200,8 @@ std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
         out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{r,c,line}});
     };
     const auto label=[&](SteamHumanOverviewTextRole role,std::string value,int x,int y,int w=0,int height=0,
-                         int anchor=1,int size=0,bool layout=false) {
-        out.operations.emplace_back(SteamHumanOverviewText{role,std::move(value),{x,y,w,height},anchor,size,layout});
+                         int anchor=1,int size=0,bool layout=false,int argument=0,std::array<int,3> rgb={63,44,4}) {
+        out.operations.emplace_back(SteamHumanOverviewText{role,std::move(value),{x,y,w,height},anchor,size,layout,rgb,argument});
     };
     const auto picture=[&](Asset asset,int x,int y,int frame=0,std::optional<std::array<int,4>> crop={}) {
         out.operations.emplace_back(SteamHumanImage{asset,{x,y},frame,crop});
@@ -224,48 +226,70 @@ std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
     rectangle({25,69,90,57},{148,148,148},true);
     if(h.resident)picture(Asset::home_background,27,82,0,std::array<int,4>{0,0,47,32});
     out.operations.emplace_back(*portrait);
-    rectangle({25,153,89,36},{193,238,247});
-    label(SteamHumanOverviewTextRole::satisfaction,{},30,157);
-    picture(Asset::smile,68,169);
-    number(SteamFacilityAsset::number05,h.satisfaction,108,158);
-    label(SteamHumanOverviewTextRole::effort,{},30,175,60,11,32,0,true);
-    number(SteamFacilityAsset::number05,h.effort,108,176);
-    for(int slot=0;slot<4;++slot) {
-        const int x=32+18*slot;
-        if(!h.equipment[slot]) {
-            if(slot==0)return {};
-            picture(Asset::equipment_background,x,129,0,std::array<int,4>{126,0,18,18});
-        } else {
-            const auto icons=startup_world_equipment_icon_draws(s,slot==0?1:slot==3?3:2,*h.equipment[slot]);
-            if(!icons)return {};
-            for(const auto &part:*icons) {
-                Asset asset;
-                switch(part.image) {
-                case 24:asset=Asset::equipment_background;break;
-                case 12:asset=Asset::weapon_icon;break;
-                case 20:asset=Asset::armour_icon;break;
-                case 21:asset=Asset::accessory_icon;break;
-                default:return {};
+    if(tab==0) {
+        rectangle({25,153,89,36},{193,238,247});
+        label(SteamHumanOverviewTextRole::satisfaction,{},30,157);
+        picture(Asset::smile,68,169);
+        number(SteamFacilityAsset::number05,h.satisfaction,108,158);
+        label(SteamHumanOverviewTextRole::effort,{},30,175,60,11,32,0,true);
+        number(SteamFacilityAsset::number05,h.effort,108,176);
+        for(int slot=0;slot<4;++slot) {
+            const int x=32+18*slot;
+            if(!h.equipment[slot]) {
+                if(slot==0)return {};
+                picture(Asset::equipment_background,x,129,0,std::array<int,4>{126,0,18,18});
+            } else {
+                const auto icons=startup_world_equipment_icon_draws(s,slot==0?1:slot==3?3:2,*h.equipment[slot]);
+                if(!icons)return {};
+                for(const auto &part:*icons) {
+                    Asset asset;
+                    switch(part.image) {
+                    case 24:asset=Asset::equipment_background;break;
+                    case 12:asset=Asset::weapon_icon;break;
+                    case 20:asset=Asset::armour_icon;break;
+                    case 21:asset=Asset::accessory_icon;break;
+                    default:return {};
+                    }
+                    if(part.sprite>=0||part.resource!=StartupVisualResource::common)return {};
+                    picture(asset,x+part.offset[0],129+part.offset[1],0,part.crop);
                 }
-                if(part.sprite>=0||part.resource!=StartupVisualResource::common)return {};
-                picture(asset,x+part.offset[0],129+part.offset[1],0,part.crop);
             }
         }
-    }
-    for(int i=0;i<4;++i) {
-        const int y=123+18*i;
-        rectangle({119,y,48,19},{173,209,221},true);rectangle({166,y,41,19},{173,209,221},true);
-        picture(Asset::combat_icon,128,y+2,i);
-        number(SteamFacilityAsset::number08,h.combat[i],203,y+5);
+        for(int i=0;i<4;++i) {
+            const int y=123+18*i;
+            rectangle({119,y,48,19},{173,209,221},true);rectangle({166,y,41,19},{173,209,221},true);
+            picture(Asset::combat_icon,128,y+2,i);
+            number(SteamFacilityAsset::number08,h.combat[i],203,y+5);
+        }
+    } else {
+        for(int i=0;i<6;++i) {
+            const int x=29+92*(i/3),y=134+19*(i%3);
+            rectangle({x-4,y-2,93,20},{208,242,249});
+            rectangle({x-4,y-2,93,20},{149,206,217},true); // 原DrawRect92×19转半开。
+            // mode7裁图不是mode8/SEB98；運(index5)跳过第5列，实际取x96。
+            picture(Asset::combat_icon,x,y,0,std::array<int,4>{16*(i==5?6:i),16,16,16});
+            label(SteamHumanOverviewTextRole::attribute,{},x+18,y+2,0,0,1,0,false,i,{0,100,255});
+            number(SteamFacilityAsset::number08,h.attributes[i],x+83,y+3);
+        }
     }
     const int w=std::min(*bottom,200)+16,x=120-w/2;
     rectangle({x,202,w,16},{255,153,55});
     out.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{x-20,182,w+40,56},{},0});
-    label(SteamHumanOverviewTextRole::gift,{},x,202,w,16,34,0,true);
+    label(tab==1?SteamHumanOverviewTextRole::profession_change:SteamHumanOverviewTextRole::gift,{},x,202,w,16,34,0,true);
     out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{x-4,211},o.finger_frame,{}});
-    // count4、visible1不能因本批只交页0而减为1。12即时画图，再登记12、25。
+    // count4、visible1，蓝块高32；页1的start=trunc(127/4)=31。
+    const int top=69+(127*tab)/4;
     out.operations.emplace_back(SteamHumanOverviewScroll{{StartupSkinRect{{220,69,5,127},{7,5,78},false},
-        StartupSkinRect{{220,69,5,32},{48,160,255},false}},{221,69,5,31}});
+        StartupSkinRect{{220,top,5,32},{48,160,255},false}},{221,top,5,31}});
     return out;
+}
+} // namespace
+std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamHumanOverviewOptions &o) {
+    return human_page_skin(s,page,o,0);
+}
+std::optional<SteamHumanOverviewPlan> steam_human_attributes_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t page,const SteamHumanOverviewOptions &o) {
+    return human_page_skin(s,page,o,1);
 }
 } // namespace dungeon_village_prototype

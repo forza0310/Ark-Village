@@ -5,6 +5,7 @@
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include <array>
 #include <optional>
+#include <string>
 #include <variant>
 #include <vector>
 
@@ -66,8 +67,8 @@ struct SteamHumanDetailSkin {
 std::optional<SteamHumanDetailSkin> steam_human_detail_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     std::optional<int> down_text_width = {});
-// raw60概览：共用区与页0有序输出；其它页独立后继，不伪造完整四页皮肤。
-enum class SteamHumanOverviewTextRole { name, profession, satisfaction, effort, gift };
+// raw60概览／六属性复用共用区及有序图元；接口分别严格匹配页0／1。
+enum class SteamHumanOverviewTextRole { name, profession, satisfaction, effort, gift, attribute, profession_change };
 struct SteamHumanOverviewText {
     SteamHumanOverviewTextRole role;
     std::string value;
@@ -75,6 +76,7 @@ struct SteamHumanOverviewText {
     int anchor{}, font_size{};
     bool layout{};
     std::array<int,3> rgb{63,44,4};
+    int argument{}; // attribute仅0..5，原体力／力／器用／丈夫／魔力／運顺序。
 };
 struct SteamHumanOverviewScroll {
     std::array<StartupSkinRect,2> rectangles;
@@ -95,9 +97,14 @@ struct SteamHumanOverviewOptions {
     std::optional<int> profession_width, profession_repeat_width; // 两次均在原改字号之前。
     std::array<std::optional<int>,2> bottom_widths; // 普通礼物／恢复提示的实际StringWidth。
     std::optional<int> down_text_width;
+    std::optional<int> profession_change_width; // 页1底部TextLayout的实际StringWidth。
 };
 // 只读已初始化raw60页0；无W仍绘定义，坏装备/库存依赖显式拒绝。
 // 不重算成长/HP、初始化、推进计数、抽随机、发声或提交追踪。
 std::optional<SteamHumanOverviewPlan> steam_human_overview_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// 六属性读取当前共享baseParam对应缓存，不叠加装备，不查页0专有回复库存。
+// 与概览使用同一计划类型／共用区执行器；仅接受已初始化页1，输入仍由Owner提交。
+std::optional<SteamHumanOverviewPlan> steam_human_attributes_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 } // namespace dungeon_village_prototype

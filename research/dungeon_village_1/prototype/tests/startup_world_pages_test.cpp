@@ -1041,6 +1041,39 @@ void human_details_and_gifts() {
         check(training.scripts.pages.back().id==id&&training.page_phases.at(id)==1&&!training.human_page_catalogs.count(second),
               "repeated attribute entry keeps parent and no retained profession directory payload");
     }
+    {
+        auto slots=s;
+        check(act_startup_world_human_page(slots,id,A::view_tab,1)==E::none&&
+              act_startup_world_human_page(slots,id,A::next)==E::none&&slots.page_phases.at(id)==2&&
+              slots.human_page_selections.at(id)==0,"enter equipment from attributes selects weapon0");
+        for(int slot=1;slot<4;++slot)
+            check(act_startup_world_human_page(slots,id,A::next)==E::none&&slots.page_phases.at(id)==2&&
+                  slots.human_page_selections.at(id)==slot,"equipment down traverses four slots before page flip");
+        check(act_startup_world_human_page(slots,id,A::next)==E::none&&slots.page_phases.at(id)==3&&
+              act_startup_world_human_page(slots,id,A::previous)==E::none&&slots.page_phases.at(id)==2&&
+              slots.human_page_selections.at(id)==3,"magic up returns to accessory3");
+        for(int slot=2;slot>=0;--slot)
+            check(act_startup_world_human_page(slots,id,A::previous)==E::none&&slots.page_phases.at(id)==2&&
+                  slots.human_page_selections.at(id)==slot,"equipment up traverses slots in original order");
+        check(act_startup_world_human_page(slots,id,A::previous)==E::none&&slots.page_phases.at(id)==1,
+              "equipment top enters attributes instead of wrapping accessory");
+        check(act_startup_world_human_page(slots,id,A::view_tab,3)==E::none&&
+              act_startup_world_human_page(slots,id,A::view_tab,2)==E::none&&slots.human_page_selections.at(id)==3,
+              "direct scroll from magic also selects accessory3");
+        const auto before=startup_world_state_digest(slots);
+        check(act_startup_world_human_page(slots,id,A::select,4)==E::invalid_page&&startup_world_state_digest(slots)==before,
+              "invalid equipment row rejects atomically");
+        check(act_startup_world_human_page(slots,id,A::select,2)==E::none&&
+              inspect_startup_world_human_presentation(slots,id)->equipment_selection==2&&
+              act_startup_world_human_page(slots,id,A::gifts)==E::none,"Touch10 row2 opens matching gift slot");
+        const auto child=slots.scripts.pages.back().id;
+        check(slots.page_phases.at(child)==2,"selected equipment propagates second armour slot to64");
+        page_tick(slots);check(act_startup_world_human_page(slots,child,A::cancel)==E::none,"gift catalogue cancels");
+        page_tick(slots);
+        check(slots.scripts.pages.back().id==id&&slots.page_phases.at(id)==2&&slots.human_page_selections.at(id)==2&&
+              !slots.equipment_page_catalogs.count(child)&&slots.scene.random.draws()==draws&&
+              slots.scene.world.world.ai.accounting.funds()==cash,"gift cancel keeps equipment selection and retires references");
+    }
     check(act_startup_world_human_page(s, id, A::gifts) == E::none,
           "actual human detail opens equipment gift catalogue");
     const auto gift = s.scripts.pages.back().id;

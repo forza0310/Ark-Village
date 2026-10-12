@@ -543,6 +543,24 @@ int check_startup_world_restore_contracts(
         }
         require(state.scripts.pages.back().id==detail && state.scripts.pages.back().lifecycle==2,
                 "first60 tutorial restores active detail within bounded updates");
+        {
+            auto slots=state;
+            require(p::act_startup_world_human_page(slots,detail,p::StartupHumanPageAction::view_tab,2)==p::StartupWorldRuntimeError::none&&
+                    p::act_startup_world_human_page(slots,detail,p::StartupHumanPageAction::select,2)==p::StartupWorldRuntimeError::none,
+                    "actual equipment page selects slot2 before snapshot");
+            const auto wire=p::persistence_detail::encode_state(slots);
+            auto recovered=p::persistence_detail::decode_state(wire,*slots.rules);
+            expect(recovered,true,"nonzero raw60 equipment selection restores using existing field");
+            require(p::persistence_detail::encode_state(recovered)==wire&&
+                    p::inspect_startup_world_human_presentation(recovered,detail)->equipment_selection==2,
+                    "slot2 exact bytes and view survive without Init or reselect");
+            auto invalid=recovered;invalid.human_page_selections.at(detail)=4;
+            expect(invalid,false,"equipment snapshot rejects slot4");
+            require(p::act_startup_world_human_page(slots,detail,p::StartupHumanPageAction::next)==p::StartupWorldRuntimeError::none&&
+                    p::act_startup_world_human_page(recovered,detail,p::StartupHumanPageAction::next)==p::StartupWorldRuntimeError::none&&
+                    p::persistence_detail::encode_state(slots)==p::persistence_detail::encode_state(recovered),
+                    "same input from slot2 restores accessory3 with identical Owner");
+        }
         const auto actor_before=state.scene.world.world.ai.battle.actors.at(actor).position;
         for(auto *owner:{&state,&restored})
             require(p::act_startup_world_human_page(*owner,detail,p::StartupHumanPageAction::track)==

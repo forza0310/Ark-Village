@@ -57,6 +57,8 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 
 后继六属性页复用同模块／计划类型及上半区，`steam_human_attributes_skin`严格读页1缓存；原两列、mode7运气跳列、蓝标签、数字和页1蓝条已接，页2／3仍旧研究展示。`--world --inspect-page world-human-attributes --frames 8`自然首访后用真实输入0→1→首次教程112／61→取消→1，检查职业目录引用退休，未改变人物职业／属性。窗口Enter／橙条调用`professions`，左软标签保持来源资格；[参考图](../ui/examples/steam-human-attributes.png)和[验收](../VERIFICATION.md#人物60六属性维护交付2026-10-12)分开原版事实、条件缓存和窗口适配。复用现有pages／visuals套件，不增target、长期Driver或持久化字段。
 
+四页后继已统一`steam_human_information_skin`：页2／3正式有序计划替换旧白底代码，上下按原页2四槽及边界翻页，Touch10保留原margin／无marker，赠礼64接实际槽，页3确认无子页。`world-human-equipment`自然首访后经0→1→2选防具2→真实首次赠礼说明／64→取消，返回槽2；`world-human-magic`逐次上下穿过四装备槽到页3。各名称与`--world --inspect-page … --frames 8`合用，诊断不注入人物／资金／魔法。原可用魔法位含当前职业能力，装备底文用所选装备定义加值；空装备／零魔法提示没有橙色热区。原平台按钮富文本用研究文字适配，完整字体及物理输入未验；[双页参考图](../ui/examples/steam-human-equipment-magic.png)及[合同](../ui/STEAM_HUMAN_DETAIL.md)说明剩余边界。
+
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。
 18项受影响Release测试和8帧共同世界窗口通过；窗口未捕获cd13或道具目录，原身体bl偏移／精确原布局／Steam消费者仍未认证，详见[需求回应](../verification/PRODUCT_REQUESTS.md)。

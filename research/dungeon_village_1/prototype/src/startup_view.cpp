@@ -337,7 +337,8 @@ class ChineseFont {
                              "建设返回确定撤除道路植物商店饮食金币点数人气年月份倍暂停继续月末"
                              "请选择街道内地域有建筑物金钱不足没有设施不可撤除状态异常施工"
                              "设施情报品质魅力维护费收入建设完毕加成返回图范围"
-                             "信息距下一等级还有达到最高级周围设施的奖励没有使用道具";
+                             "信息距下一等级还有达到最高级周围设施的奖励没有使用道具"
+                             "按确认键赠送礼物习得魔法精通特定职业可以一种两种三种全部";
         for (int i = 32; i < 127; ++i)
             glyphs += static_cast<char>(i);
         for (const auto &v : startup_evidence().definitions)
@@ -825,13 +826,28 @@ const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery,i
         if(argument<0||argument>=6)throw std::runtime_error("人物属性标签拒绝");
         return labels[argument];
     }
+    case SteamHumanOverviewTextRole::equipment_slot: {
+        constexpr std::array<const char *,4> labels{"武器","防具1","防具2","饰品"};
+        if(argument<0||argument>=4)throw std::runtime_error("人物装备槽标签拒绝");return labels[argument];
+    }
+    case SteamHumanOverviewTextRole::equipment_empty:return "未装备";
+    case SteamHumanOverviewTextRole::equipment_hint:return "按确认键赠送礼物"; // btn=0,0的研究文字适配，非原控制图标。
+    case SteamHumanOverviewTextRole::magic_title:return "习得魔法";
+    case SteamHumanOverviewTextRole::spell: {
+        constexpr std::array<const char *,4> labels{"火魔法","冰魔法","雷魔法","回复魔法"};
+        if(argument<0||argument>=4)throw std::runtime_error("人物魔法标签拒绝");return labels[argument];
+    }
+    case SteamHumanOverviewTextRole::magic_status: {
+        constexpr std::array<const char *,5> labels{"精通特定职业可以习得","可以使用一种魔法","可以使用两种魔法","可以使用三种魔法","可以使用全部魔法"};
+        if(argument<0||argument>=5)throw std::runtime_error("人物魔法状态拒绝");return labels[argument];
+    }
     default:return "";
     }
 }
 std::optional<SteamHumanOverviewPlan> window_human_overview_plan(
     const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
     const auto view=inspect_startup_world_human_presentation(s,id);
-    if(!view||view->tab>1)return {};
+    if(!view)return {};
     SteamHumanOverviewOptions options;options.view_y=23;options.finger_frame=0;
     const auto title="冒险者信息";
     options.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
@@ -840,8 +856,10 @@ std::optional<SteamHumanOverviewPlan> window_human_overview_plan(
     if(*options.profession_width>=53)options.profession_repeat_width=int(font.measure(job));
     options.bottom_widths={int(font.measure("赠送礼物")),int(font.measure("赠送回复道具"))};
     options.profession_change_width=int(font.measure("转职"));
+    options.equipment_hint_width=int(font.measure("按确认键赠送礼物"));
+    options.magic_hint_width=int(font.measure("精通特定职业可以习得"));
     if(view->live&&view->live->state==7)options.down_text_width=int(font.measure("倒下中"));
-    return view->tab==0?steam_human_overview_skin(s,id,options):steam_human_attributes_skin(s,id,options);
+    return steam_human_information_skin(s,id,options);
 }
 void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprites,const ChineseFont &font) {
     const auto color=[](std::array<int,3> c) {return Color{static_cast<unsigned char>(c[0]),
@@ -856,6 +874,7 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
         float x=human_overview_origin.x+r[0],y=human_overview_origin.y+r[1];
         if(anchor&2)x+=(layout?float(r[2]):0.F)/2-font.measure(value,fs)/2;
         else if(anchor&4)x+=(layout?float(r[2]):0.F)-font.measure(value,fs);
+        if(!layout&&(anchor&32))y-=fs/2; // 原---使用anchor0x22，研究字形以实字号中心适配。
         if(layout) {
             y+=std::max(0.F,(float(r[3])-fs)/2);
             BeginScissorMode(int(human_overview_origin.x)+r[0],int(human_overview_origin.y)+r[1],r[2],r[3]);
@@ -900,7 +919,8 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
             human_parts(p->after_portrait);
         } else if(const auto *scroll=std::get_if<SteamHumanOverviewScroll>(&op)) {
             for(const auto &r:scroll->rectangles)rectangle(r);
-        } else if(!std::holds_alternative<SteamStartupTouch>(op))throw std::runtime_error("人物概览未消费图元");
+        } else if(!std::holds_alternative<SteamStartupTouch>(op)&&!std::holds_alternative<SteamHumanEquipmentRow>(op))
+            throw std::runtime_error("人物详情未消费图元");
     }
     if(plan.soft_labels[0]==8)font.text("追踪",18,272);
     font.text("返回",188,272);
@@ -1708,7 +1728,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("真实初局旅店详情检查入口失败");
     } else if (inspect_page == "world-month" || inspect_page == "world-active" ||
                inspect_page == "task-team" || inspect_page == "world-award" ||
-               inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes") {
+               inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
+               inspect_page == "world-human-equipment" || inspect_page == "world-human-magic") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
@@ -1739,7 +1760,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 session.open_task_menu() != StartupWorldRuntimeError::none)
                 throw std::runtime_error("任务检查预运行菜单入口失败");
             const auto &current = session.state();
-            if ((inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes") && top.kind == ref::WorldScriptPageKind::scene &&
+            if ((inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
+                 inspect_page == "world-human-equipment" || inspect_page == "world-human-magic") && top.kind == ref::WorldScriptPageKind::scene &&
                 top.lifecycle != 4 && current.scene.scene_state == 0 &&
                 !current.scene.world.world.ai.human_order.empty()) {
                 const int human = current.scene.world.world.ai.battle.actors
@@ -1819,6 +1841,36 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             throw std::runtime_error("人物首次转职说明确认失败");
                     }
                     if(!catalogue_ready)throw std::runtime_error("人物六属性有界诊断未返回父页");
+                }
+                if(inspect_page=="world-human-equipment"||inspect_page=="world-human-magic") {
+                    const auto detail=session.state().scripts.pages.back().id;
+                    for(int n=0;n<2;++n)if(session.act_human_page(detail,StartupHumanPageAction::next)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("装备页真实导航拒绝");
+                    if(inspect_page=="world-human-equipment") {
+                        if(session.act_human_page(detail,StartupHumanPageAction::select,2)!=StartupWorldRuntimeError::none||
+                           session.act_human_page(detail,StartupHumanPageAction::gifts)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("装备槽2赠礼入口拒绝");
+                        const auto child=session.state().scripts.pages.back().id;
+                        bool ready{};
+                        for(int n=0;n<100;++n) {
+                            if(!session.update().committed)throw std::runtime_error("槽2赠礼初始化失败");
+                            if(startup_world_human_page_ready(session.state(),child)){ready=true;break;}
+                            const auto top=session.state().scripts.pages.back();
+                            if(top.kind==ref::WorldScriptPageKind::dialogue&&
+                               session.acknowledge_page(top.id)!=StartupWorldRuntimeError::none)
+                                throw std::runtime_error("首次赠礼说明确认失败");
+                        }
+                        if(!ready)throw std::runtime_error("槽2赠礼初始化未有界完成");
+                        if(session.act_human_page(child,StartupHumanPageAction::cancel)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("槽2赠礼取消失败");
+                        for(int n=0;n<3;++n)if(!session.update().committed)
+                            throw std::runtime_error("槽2赠礼返回失败");
+                        const auto view=inspect_startup_world_human_presentation(session.state(),detail);
+                        if(!view||view->tab!=2||view->equipment_selection!=2||session.state().equipment_page_catalogs.count(child))
+                            throw std::runtime_error("装备页父选择或子引用退休失败");
+                    } else for(int slot=0;slot<4;++slot)
+                        if(session.act_human_page(detail,StartupHumanPageAction::next)!=StartupWorldRuntimeError::none)
+                            throw std::runtime_error("装备四槽到魔法页失败");
                 }
                 reached = true;
                 break;
@@ -2228,40 +2280,34 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if (raw == 60) {
                         const auto view=inspect_startup_world_human_presentation(session.state(),pid);
                         if(!view)throw std::runtime_error("人物详情显示载荷拒绝");
-                        if(view->tab<=1) {
+                        {
                             const auto overview=window_human_overview_plan(session.state(),pid,font);
                             if(!overview)throw std::runtime_error("人物概览输入计划拒绝");
                             const bool cancel_pointer=hit({176,265,58,24});
                             bool gift_pointer{};
+                            std::optional<int> equipment_row;
                             for(const auto &op:overview->operations)if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
                                 if(touch->component==4&&touch->rectangle&&!cancel_pointer) {
                                     const auto &r=*touch->rectangle;
                                     gift_pointer=hit({human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])});
                                 }
+                            } else if(const auto *row=std::get_if<SteamHumanEquipmentRow>(&op)) {
+                                if(!row->touch.rectangle)throw std::runtime_error("人物装备行缺热区");
+                                const auto &r=*row->touch.rectangle;
+                                if(hit({human_overview_origin.x+r[0]+row->margin[0],human_overview_origin.y+r[1]+row->margin[2],
+                                        float(r[2]+row->margin[1]-row->margin[0]),float(r[3]+row->margin[3]-row->margin[2])}))
+                                    equipment_row=row->touch.value&0xFFFF;
                             }
-                            // 原raw60概览／六属性使用上下；页2/3继续保留旧研究展示。
+                            // 原上下先在页2四槽移动，边界才切页；无左右翻页替代。
+                            if(equipment_row)act(A::select,*equipment_row);
                             if(IsKeyPressed(KEY_UP))act(A::previous);
                             if(IsKeyPressed(KEY_DOWN))act(A::next);
                             const auto current=inspect_startup_world_human_presentation(session.state(),pid);
                             if(!current)throw std::runtime_error("人物详情导航载荷拒绝");
-                            if((IsKeyPressed(KEY_ENTER)||gift_pointer)&&current->tab<=1)
-                                act(current->tab==0?A::gifts:A::professions);
+                            if((IsKeyPressed(KEY_ENTER)||gift_pointer||equipment_row)&&current->tab<=2)
+                                act(current->tab==1?A::professions:A::gifts);
                             else if(IsKeyPressed(KEY_ESCAPE)||cancel_pointer)act(A::cancel);
                             else if(current->tracking_available&&(IsKeyPressed(KEY_T)||hit({8,265,58,24})))act(A::track);
-                        } else {
-                        for (int tab = 0; tab < 4; ++tab)
-                            if (hit({8.F + tab * 56, 45, 56, 18}))
-                                act(A::view_tab, tab);
-                        if (IsKeyPressed(KEY_LEFT))
-                            act(A::previous);
-                        if (IsKeyPressed(KEY_RIGHT))
-                            act(A::next);
-                        if (hit({14, 232, 96, 24}))
-                            act(A::gifts);
-                        else if (hit({128, 232, 96, 24}))
-                            act(A::professions);
-                        else if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
-                            act(A::cancel);
                         }
                     } else if (raw == 61 || raw == 62 || raw == 64 || raw == 73) {
                         const int chosen = session.state().human_page_selections.at(pid);
@@ -3111,7 +3157,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
         } else if (const auto page = top_page()) {
             const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
             const auto human_view=page->legacy_page==60?inspect_startup_world_human_presentation(state,page->id):std::nullopt;
-            const bool steam_human=human_view&&human_view->tab<=1;
+            const bool steam_human=human_view.has_value();
             if (page->legacy_page != 21&&!steam_facility&&!steam_human) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
@@ -3673,82 +3719,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (!command_feedback.empty())
                     font.text(command_feedback, 92, 272, RED, 10);
             } else if (page->legacy_page == 60 && startup_world_human_page_ready(state, page->id)) {
-                if(steam_human) {
-                    const auto plan=window_human_overview_plan(state,page->id,font);
-                    if(!plan)throw std::runtime_error("Steam人物概览显示载荷拒绝");
-                    draw_human_overview(*plan,sprites,font);
-                } else {
-                const int human = state.page_human_bindings.at(page->id);
-                const auto details = startup_world_human_details(state, human);
-                if (!details)
-                    throw std::runtime_error("人物详情缺少共享定义");
-                const int tab = state.page_phases.at(page->id);
-                constexpr const char *tabs[]{"概况", "属性", "装备", "魔法"};
-                DrawRectangle(8, 42, 224, 214, paper);
-                for (int n = 0; n < 4; ++n) {
-                    if (tab == n)
-                        DrawRectangle(8 + n * 56, 45, 56, 18, {219, 232, 204, 255});
-                    font.text(tabs[n], 16 + n * 56, 48, ink, 10);
-                }
-                if (const auto portrait = startup_world_portrait(state, human))
-                    sprites.portrait(*portrait, {16, 74});
-                font.text(human_name(human), 40, 74);
-                font.text(rules.jobs.at(details->profession).name + " Lv." +
-                              std::to_string(details->level),
-                          16, 98, ink, 11);
-                if (tab == 0) {
-                    const int hp = details->live_actor
-                                       ? world.ai.battle.actors.at(*details->live_actor).hp.target
-                                       : details->combat[0];
-                    font.text("HP " + std::to_string(hp) + "/" + std::to_string(details->combat[0]),
-                              16, 121, ink, 11);
-                    font.text("满足 " + std::to_string(details->satisfaction) + "  努力 " +
-                                  std::to_string(details->effort),
-                              16, 143, ink, 11);
-                    font.text("勋章 " + std::to_string(details->medals) +
-                                  (details->resident ? "  居民" : "  冒险者"),
-                              16, 165, ink, 11);
-                    font.text(details->level >= 10 ? "职业大师"
-                                                   : "经验 " + std::to_string(details->experience) +
-                                                         "/" + std::to_string(details->threshold),
-                              16, 187, ink, 11);
-                } else if (tab == 1) {
-                    constexpr const char *labels[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
-                    for (int n = 0; n < 6; ++n) {
-                        const int x = 16 + (n % 2) * 111, y = 122 + (n / 2) * 24;
-                        font.text(labels[n], x, y, ink, 10);
-                        font.text(std::to_string(details->attributes[n]), x + 50, y, ink, 10);
-                    }
-                    font.text("攻击 " + std::to_string(details->combat[1]) + " 防御 " +
-                                  std::to_string(details->combat[2]) + " 魔法 " +
-                                  std::to_string(details->combat[3]),
-                              16, 200, ink, 10);
-                } else if (tab == 2) {
-                    constexpr const char *labels[]{"武器", "防具1", "防具2", "饰品"};
-                    for (int n = 0; n < 4; ++n) {
-                        std::string name = "无";
-                        if (details->equipment[n]) {
-                            const int kind = n == 0 ? 1 : n == 3 ? 3 : 2;
-                            for (const auto &e : rules.equipment)
-                                if (e.shop.kind == kind && e.shop.id == *details->equipment[n])
-                                    name = e.name;
-                        }
-                        font.text(labels[n], 16, 121 + n * 22, ink, 10);
-                        font.text(name, 75, 121 + n * 22, ink, 10);
-                    }
-                } else {
-                    constexpr const char *names[]{"火魔法", "冰魔法", "雷魔法", "回复魔法"};
-                    for (int n = 0; n < 4; ++n)
-                        font.text(std::string(names[n]) +
-                                      (details->spells[n] ? "  可用" : "  未学会"),
-                                  16, 121 + n * 22, ink, 10);
-                }
-                DrawRectangle(14, 232, 96, 24, {219, 232, 204, 255});
-                DrawRectangle(128, 232, 96, 24, {219, 232, 204, 255});
-                font.text("装备礼物", 23, 238, ink, 11);
-                font.text("转职", 164, 238, ink, 11);
-                font.text("返回", 18, 272);
-                }
+                const auto plan=window_human_overview_plan(state,page->id,font);
+                if(!plan)throw std::runtime_error("Steam人物详情显示载荷拒绝");
+                draw_human_overview(*plan,sprites,font);
             } else if ((page->legacy_page == 61 || page->legacy_page == 62) &&
                        startup_world_human_page_ready(state, page->id)) {
                 const auto &list = state.human_page_catalogs.at(page->id);

@@ -111,7 +111,7 @@ void resources(Checks &check,const std::filesystem::path &source_root) {
         SteamHumanAsset::portrait_background,SteamHumanAsset::home_background,SteamHumanAsset::experience_bar,
         SteamHumanAsset::experience_label,SteamHumanAsset::experience_remaining,SteamHumanAsset::smile,
         SteamHumanAsset::combat_icon,SteamHumanAsset::equipment_background,SteamHumanAsset::weapon_icon,
-        SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon}) {
+        SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon,SteamHumanAsset::magic_icon}) {
         const auto resource=steam_human_resource(asset);
         check(resource.has_value(),"具名资源身份存在");
         Image image=LoadImage((assets/resource->published_image).string().c_str());
@@ -344,9 +344,63 @@ void attributes_checks(Checks &check) {
     local=owner;local.scripts.pages.back().lifecycle=4;
     check(!steam_human_attributes_skin(local,id,options),"退休六属性页不继续出图");
 }
+void equipment_magic_checks(Checks &check) {
+    auto owner=test_support::page_fixture(60);const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=1;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[id]=1;owner.page_phases[id]=2;owner.page_counters[id]=0;
+    owner.human_page_selections[id]=2;owner.human_pages_initialized.insert(id);
+    owner.shop_humans.at(1).equipment={0,{},{},{}};
+    SteamHumanOverviewOptions options;options.title_widths=std::array<int,2>{80,80};options.profession_width=52;
+    options.equipment_hint_width=96;options.magic_hint_width=120;
+    auto plan=steam_human_information_skin(owner,id,options);
+    check(plan.has_value(),"四装备读取已有选择2，不退回默认武器");
+    const auto rows=parts<SteamHumanEquipmentRow>(*plan);
+    check(rows.size()==4,"四行均保留Touch10原请求");
+    for(int row=0;row<4;++row)
+        check(rows[row].touch.component==10&&rows[row].touch.value==(0x20000|row)&&
+              rows[row].touch.rectangle==std::optional<std::array<int,4>>({5,128+17*row,225,18})&&
+              rows[row].touch.option==0&&rows[row].margin==std::array<int,4>{0,-20,0,0},"普通装备行无marker且保持负margin");
+    auto labels=parts<SteamHumanOverviewText>(*plan);
+    check(std::count_if(labels.begin(),labels.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::equipment_empty&&!t.layout;})==3,
+          "三空槽普通DrawString，不套有装备名的TextLayout");
+    check(parts<SteamStartupTouch>(*plan).empty(),"空装备底文false/false不注册确认条");
+    const auto blue=parts<SteamHumanOverviewScroll>(*plan);
+    check(blue[0].rectangles[1].rect==std::array<int,4>{220,132,5,32},"装备页四页比例蓝块top132");
+    owner.human_page_selections[id]=0;plan=steam_human_information_skin(owner,id,options);
+    const auto defs=std::find_if(owner.rules->equipment.begin(),owner.rules->equipment.end(),[](const auto &d){return d.shop.kind==1&&d.shop.id==0;});
+    check(defs!=owner.rules->equipment.end()&&defs->shop.combat[1]>0,"原短剑确有攻击加值");
+    const auto values=parts<SteamFacilityNumber>(*plan);
+    check(std::any_of(values.begin(),values.end(),[&](const auto &n){return n.kind==SteamFacilityNumberKind::plus_value&&
+          n.asset==SteamFacilityAsset::number05&&n.value==defs->shop.combat[1]&&n.position==std::array<int,2>{108,205};}),
+          "所选武器底文用装备定义加值/SEB12，不用人物战斗缓存");
+    owner.page_phases[id]=3;owner.scene.world.world.ai.growth.at(1).derived.available_spells={false,false,false,false};
+    plan=steam_human_information_skin(owner,id,options);
+    labels=parts<SteamHumanOverviewText>(*plan);
+    check(std::count_if(labels.begin(),labels.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::magic_empty&&t.anchor==34&&t.rgb==std::array<int,3>{0,100,255};})==4&&
+          parts<SteamStartupTouch>(*plan).empty(),"未学四格蓝色---且不创建赠礼/转职触摸");
+    check(parts<SteamHumanOverviewScroll>(*plan)[0].rectangles[1].rect==std::array<int,4>{220,164,5,32},"魔法页蓝块top164");
+    for(int mask=1;mask<16;++mask) {
+        auto &spells=owner.scene.world.world.ai.growth.at(1).derived.available_spells;
+        int count{};for(int i=0;i<4;++i){spells[i]=(mask&(1<<i))!=0;if(spells[i])++count;}
+        plan=steam_human_information_skin(owner,id,options);const auto images=parts<SteamHumanImage>(*plan);
+        int found{};for(const auto &img:images)if(img.asset==SteamHumanAsset::magic_icon) {
+            check(img.crop&&(*img.crop)[1]==0&&(*img.crop)[2]==16&&(*img.crop)[3]==16&&(*img.crop)[0]!=48,
+                  "回复魔法使用index4而非第四列index3");++found;
+        }
+        labels=parts<SteamHumanOverviewText>(*plan);
+        check(found==count&&std::any_of(labels.begin(),labels.end(),[=](const auto &t){return t.role==SteamHumanOverviewTextRole::magic_status&&
+              t.argument==count&&t.rectangle==std::array<int,4>{120,204,0,0};}),"魔法所有组合按四可用位及计数正文，不消费永久学习位代替");
+    }
+    const auto before=startup_world_state_digest(owner);
+    const auto size=plan->operations.size();
+    for(int i=0;i<24;++i)check(steam_human_information_skin(owner,id,options)->operations.size()==size&&
+        startup_world_state_digest(owner)==before,"完整四页计划无Owner/随机/声音写入且输出稳定");
+    owner.human_page_selections[id]=4;
+    check(!steam_human_information_skin(owner,id,options),"选择4严格拒绝，不映射到某个合法槽");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);
     return check.count;
 }

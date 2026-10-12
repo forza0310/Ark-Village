@@ -2,7 +2,7 @@
 
 2026-10-10的逐ID解锁链goal已收口，范围为任务、人物、道具及装备、建筑、副本、活动、怪物／BOSS、魔法壶和职业。每项须能回答**条件→触发／领取时点→实际效果→后继**，并登记持久／继承及APK／Steam差异；无正常来源、目录排除或仅有通用消费者的定义单列，不能以定义枚举或“至少一个入口”宣称全链完成。
 
-当前小goal为**Steam普通设施详情raw74两页UI/操作与产品参考示例**。已交付[两页只读计划与研究绘制](../prototype/STEAM_FACILITY_SKIN.md)、真实新局包子铺[参考图](../ui/examples/steam-facility-detail.png)及[空／邻接／七行HTML](../ui/examples/README.md)，最终三项短测通过。2026-10-11接收[原窗口S069–S071](../references/README.md#steam普通设施两页2026-10-11)，咖啡店两条来源、鼠标翻页／左向循环／行选择／返回已局部交叉，S043加号误读已纠正。原右蓝竖条已追到GameView即时消费者并补纯计划／窗口绘制，短表不隐藏、长表保持原整数比例；空／长列表动态、拖动、物理键消费及HTML实际浏览器视觉仍未证，因此goal未收口。住宅／商品／预览皮肤、全局字体与手形动画另批；窗口提示词位于忽略的`work/window-restore-observation/NEXT_FACILITY_DETAIL_PROMPT.md`，已取两页不重采。
+当前小goal为**Steam普通设施详情raw74两页UI/操作与产品参考示例**。已交付[两页只读计划与研究绘制](../prototype/STEAM_FACILITY_SKIN.md)、真实新局包子铺[参考图](../ui/examples/steam-facility-detail.png)及[空／邻接／七行HTML](../ui/examples/README.md)，最终三项短测通过。2026-10-11接收[原窗口S069–S071](../references/README.md#steam普通设施两页2026-10-11)，咖啡店两条来源、鼠标翻页／左向循环／行选择／返回已局部交叉，S043加号误读已纠正。原右蓝竖条已追到GameView即时消费者并补纯计划／窗口绘制，短表不隐藏、长表保持原整数比例；空／长列表动态、拖动及物理键消费仍未证。2026-10-12按用户跳过请求，取消HTML实际浏览器视觉作为必需验收门槛，状态保持“未验”，后续产品接入时按需检查，不继续为此重试或等待窗口通道；这不自动认证原长列表／OS输入。住宅／商品／预览皮肤、全局字体与手形动画另批；窗口提示词位于忽略的`work/window-restore-observation/NEXT_FACILITY_DETAIL_PROMPT.md`，已取两页不重采。
 
 结果合入[既有验证入口](../VERIFICATION.md#普通设施74两页维护交付2026-10-11)，不新增过程报告。随后小goal选人物60概览页，仅共用上半区、页0字段及目录进入／追踪／返回，不扩另外三页和成长子窗口。
 

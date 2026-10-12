@@ -2,6 +2,8 @@
 
 `steam_facility_skin.hpp/.cpp`属于现有应用库，使用标准C++17，不依赖raylib、字体对象或可写世界。入口覆盖raw81升级页和raw74普通实例两页；住宅、定义预览与装备店特殊皮肤另批。来源是[Steam74](../ui/STEAM_FACILITY_DETAIL.md)、[Steam81](../ui/STEAM_FACILITY_UPGRADE.md)及[共用helper](../ui/STEAM_FACILITY_DRAW_HELPERS.md)，不把APK同号图片当作Steam资源。
 
+2026-10-12普通74批按用户确认的现有研究证据收口。HTML实际浏览器视觉、原长列表拖动及物理输入动态列为后续补证，保留未验；已交付静态合同／纯计划／Owner桥、研究窗口与短功能检查，不宣称原OS、完整字体或产品已接入。
+
 ## 普通设施详情74
 
 `steam_facility_detail_skin(state,page,options)`验证当前存活raw74、两页资格、实例/定义绑定、全部初始化Y及经济依赖后出图，缺字段显式返回空。第一页名称只读定义名；编号只拼到第二页来源名。实例四经营值、共享等级与到下级剩余人数读现有Owner，来源值读原y序，含隐藏行，不重算加成或使用道具。调用者提供语言、VIEW_Y、真实标题两次测宽、底部一次测宽、共享手形当前帧及局部选择/滚动；它们不新增Owner字段或wire格式。

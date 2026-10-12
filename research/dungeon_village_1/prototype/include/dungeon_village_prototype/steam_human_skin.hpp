@@ -69,14 +69,15 @@ std::optional<SteamHumanDetailSkin> steam_human_detail_skin(
     std::optional<int> down_text_width = {});
 // raw60概览／六属性复用共用区及有序图元；接口分别严格匹配页0／1。
 enum class SteamHumanOverviewTextRole { name, profession, satisfaction, effort, gift, attribute, profession_change,
-    equipment_slot, equipment_name, equipment_empty, equipment_hint, magic_title, spell, magic_empty, magic_status };
+    equipment_slot, equipment_name, equipment_empty, equipment_hint, magic_title, spell, magic_empty, magic_status,
+    gift_change_prompt, gift_accept };
 struct SteamHumanOverviewText {
     SteamHumanOverviewTextRole role;
     std::string value;
     std::array<int,4> rectangle{};
     int anchor{}, font_size{};
     bool layout{};
-    std::array<int,3> rgb{63,44,4};
+    std::array<int,3> rgb{92,51,31}; // 固定Steam SC_WINDOW_BLACK；名称虽BLACK，实际为棕色。
     int argument{}; // attribute仅0..5，原体力／力／器用／丈夫／魔力／運顺序。
 };
 struct SteamHumanOverviewScroll {
@@ -89,11 +90,12 @@ struct SteamHumanEquipmentRow {
 };
 using SteamHumanOverviewOperation=std::variant<SteamStartupFrameDraw,SteamHumanImage,
     SteamFacilityImage,SteamFacilityNumber,SteamHumanOverviewText,SteamHumanDetailSkin,
-    SteamStartupTouch,SteamHumanOverviewScroll,SteamHumanEquipmentRow>;
+    SteamStartupTouch,SteamHumanOverviewScroll,SteamHumanEquipmentRow,SteamFacilityArrowTouch>;
 struct SteamHumanOverviewPlan {
     std::vector<SteamHumanOverviewOperation> operations;
     std::array<int,2> soft_labels{0,2};
     bool recovery_gift{};
+    std::string title; // 空沿raw60标题；管理子窗提供原角色的中文适配标题。
 };
 struct SteamHumanOverviewOptions {
     int view_y{}, finger_frame{};
@@ -105,6 +107,8 @@ struct SteamHumanOverviewOptions {
     std::optional<int> profession_change_width; // 页1底部TextLayout的实际StringWidth。
     bool english{};
     std::optional<int> equipment_hint_width, magic_hint_width;
+    std::array<std::optional<int>,2> comparison_name_widths; // raw65字号10后实际测宽，现装／候选。
+    std::optional<int> gift_accept_width;
 };
 // 只读已初始化raw60页0；无W仍绘定义，坏装备/库存依赖显式拒绝。
 // 不重算成长/HP、初始化、推进计数、抽随机、发声或提交追踪。
@@ -116,5 +120,11 @@ std::optional<SteamHumanOverviewPlan> steam_human_attributes_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 // 四页统一入口；页2选中槽来自Owner。具体提示的文本/控制图标由平台后端消费。
 std::optional<SteamHumanOverviewPlan> steam_human_information_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// raw73只读实际目录选择，价格为装备基础价；与赠礼收费/当前人物缓存分开。
+std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// raw65只读当前装备／父目录候选的定义param；不报价/收费/装配或消费父答案。
+std::optional<SteamHumanOverviewPlan> steam_human_gift_confirmation_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 } // namespace dungeon_village_prototype

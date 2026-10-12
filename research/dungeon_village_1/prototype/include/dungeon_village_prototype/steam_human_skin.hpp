@@ -15,7 +15,8 @@ enum class SteamHumanAsset {
     medal, pinch, bubble, number05, portrait_background, home_background,
     experience_bar, experience_label, experience_remaining, smile, combat_icon,
     equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon,
-    ceremony_background, curtain, continue_cursor, result_icon
+    ceremony_background, curtain, continue_cursor, result_icon,
+    president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -72,7 +73,7 @@ std::optional<SteamHumanDetailSkin> steam_human_detail_skin(
 enum class SteamHumanOverviewTextRole { name, profession, satisfaction, effort, gift, attribute, profession_change,
     equipment_slot, equipment_name, equipment_empty, equipment_hint, magic_title, spell, magic_empty, magic_status,
     gift_change_prompt, gift_accept, profession_current, profession_insufficient,
-    profession_transition, result_message };
+    profession_transition, result_message, gift_result_name, gift_result_suffix };
 struct SteamHumanOverviewText {
     SteamHumanOverviewTextRole role;
     std::string value;
@@ -147,5 +148,8 @@ std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
     const StartupWorldRuntimeState &state,int human,int page,int frame,const SteamHumanOverviewOptions &options);
 // raw63纯表现；恰55的职业提交及满197确认的最终重算仍由Owner执行。
 std::optional<SteamHumanOverviewPlan> steam_human_profession_result_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// raw66只读父目录兑现后冻结载荷；礼盒/评价/回复展示均不再次付费或改变HP。
+std::optional<SteamHumanOverviewPlan> steam_human_gift_result_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 } // namespace dungeon_village_prototype

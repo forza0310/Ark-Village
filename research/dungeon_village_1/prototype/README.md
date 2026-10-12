@@ -53,15 +53,17 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 设施74第二页现提供[逐来源只读行及五行视窗](../ui/FACILITY_BONUS_ROWS.md)，配套[类别9／属性7图块与效果加号](../ui/FACILITY_BONUS_ICONS.md)。按原序显示实例后缀与固定y值，不从累计分摊；不会因读页再次计算或提交加成。
 有界`--world --inspect-page world-facility-details --frames 8`和`world-facility-bonuses`分别打开真实新局同一已营业、有来源设施的第一/第二页，不构造示例数值；普通74现消费[正式两页皮肤计划](STEAM_FACILITY_SKIN.md)，[参考图](../ui/examples/steam-facility-detail.png)供产品看框/图/数字/效果与来源。原字体/全局手形动画、最终OS输入及原EXE动态另验；特殊74模板另批。
 
-人物60概览由[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)只读查询当前定义／实例，生成共用区及页0的有序图元；复用已核窗框、肖像／奖章／HP、当前装备图标和Steam差异资源，不新增Owner字段、target或存档布局。`--world --inspect-page world-human --frames 8`自然首访后打开source0详情；`world-human-directory`经9→35→60，实际返回、检查父选择／滚动和引用退休，再重进source1详情。概览上下导航、Enter／橙条赠礼、Esc／右返回、T／左追踪均经Owner；无W不补HP，回复提示要求实际W及回复道具库存。另三页仍为旧研究展示，字体／手形及底部软控件为适配；人物蓝条鼠标操作和原OS动态未验。产品参考见[双入口原图](../ui/examples/steam-human-overview.png)，边界及短测见[合同](../ui/STEAM_HUMAN_DETAIL.md)。
+人物60概览由[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)只读查询当前定义／实例，生成共用区及页0的有序图元；复用已核窗框、肖像／奖章／HP、当前装备图标和Steam差异资源，不新增Owner字段、target或存档布局。`--world --inspect-page world-human --frames 8`自然首访后打开source0详情；`world-human-directory`经9→35→60，实际返回、检查父选择／滚动和引用退休，再重进source1详情。概览上下导航、Enter／橙条赠礼、Esc／右返回、T／左追踪均经Owner；无W不补HP，回复提示要求实际W及回复道具库存。四页后继已统一正式计划，字体／手形及底部软控件为适配；人物蓝条鼠标操作和原OS动态未验。产品参考见[双入口原图](../ui/examples/steam-human-overview.png)，边界及短测见[合同](../ui/STEAM_HUMAN_DETAIL.md)。
 
-后继六属性页复用同模块／计划类型及上半区，`steam_human_attributes_skin`严格读页1缓存；原两列、mode7运气跳列、蓝标签、数字和页1蓝条已接，页2／3仍旧研究展示。`--world --inspect-page world-human-attributes --frames 8`自然首访后用真实输入0→1→首次教程112／61→取消→1，检查职业目录引用退休，未改变人物职业／属性。窗口Enter／橙条调用`professions`，左软标签保持来源资格；[参考图](../ui/examples/steam-human-attributes.png)和[验收](../VERIFICATION.md#人物60六属性维护交付2026-10-12)分开原版事实、条件缓存和窗口适配。复用现有pages／visuals套件，不增target、长期Driver或持久化字段。
+后继六属性页复用同模块／计划类型及上半区，`steam_human_attributes_skin`严格读页1缓存；原两列、mode7运气跳列、蓝标签、数字和页1蓝条已接，页2／3见下述四页后继。`--world --inspect-page world-human-attributes --frames 8`自然首访后用真实输入0→1→首次教程112／61→取消→1，检查职业目录引用退休，未改变人物职业／属性。窗口Enter／橙条调用`professions`，左软标签保持来源资格；[参考图](../ui/examples/steam-human-attributes.png)和[验收](../VERIFICATION.md#人物60六属性维护交付2026-10-12)分开原版事实、条件缓存和窗口适配。复用现有pages／visuals套件，不增target、长期Driver或持久化字段。
 
 四页后继已统一`steam_human_information_skin`：页2／3正式有序计划替换旧白底代码，上下按原页2四槽及边界翻页，Touch10保留原margin／无marker，赠礼64接实际槽，页3确认无子页。`world-human-equipment`自然首访后经0→1→2选防具2→真实首次赠礼说明／64→取消，返回槽2；`world-human-magic`逐次上下穿过四装备槽到页3。各名称与`--world --inspect-page … --frames 8`合用，诊断不注入人物／资金／魔法。原可用魔法位含当前职业能力，装备底文用所选装备定义加值；空装备／零魔法提示没有橙色热区。原平台按钮富文本用研究文字适配，完整字体及物理输入未验；[双页参考图](../ui/examples/steam-human-equipment-magic.png)及[合同](../ui/STEAM_HUMAN_DETAIL.md)说明剩余边界。
 
 装备信息73／赠礼确认65后继也复用`steam_human_skin`有序计划及执行器；基础价与赠礼价分开，65只读装备定义比较且不报价／装配。两个有界入口`world-human-equipment-info`／`world-human-gift-confirm`经真实自然首访和父目录打开，不注入世界。来源、严格父目录验证及颜色修正在[人物合同](../ui/STEAM_HUMAN_DETAIL.md#装备信息73与赠礼确认65)；两页不新增持久字段，61／64滚动设计仍待确认。
 
 职业预览62／转职演出63已接同模块：62使用冻结六属性差额、实际职业等级、勋章及点数显示资格；63显示event13背景、局部幕布、human22身体、冻结气泡和共用奖励动画。左右／橙条／右返回按计划投递，63无软返回，满197才确认收尾；共享奖励身体步帧由调用方显式提供，研究窗口表现帧是适配，不冒认UserData原时钟。`world-human-profession-preview`／`world-human-profession-result`两个有界入口经真实首访、选择可支付职业、确认及至197演出，不注入点数／勋章／职业。后者停在最终确认前，未完成经验重算收尾；Owner业务由现pages主责测试覆盖。[合同](../ui/STEAM_HUMAN_DETAIL.md#职业预览62与转职演出63)与[验收](../VERIFICATION.md)分开记录原事实、研究窗口和平台缺口，61／64滚动设计仍待确认。
+
+赠礼66结果也接同一有序计划：总统／buy01动作、礼盒抛物线／开盒、商品／闪光、三档评价、冻结气泡、学习／回复分支及共用奖励动画；不重复兑现或回复HP。`world-human-gift-opening`／`world-human-gift-result`分别真实回答65、父64兑现并到45／162，最终确认前停；两入口需搭配有界窗口参数。原副作用由Owner显式输出消费，皮肤不发声／抽随机；[合同](../ui/STEAM_HUMAN_DETAIL.md#赠礼结果66)列明总统未消费帧裁片限制、66无实例满恢复条与60的差异、字体及共享表现帧适配。普通道具目录说明与61／64实际滚动仍待接。
 
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。

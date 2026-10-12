@@ -112,7 +112,9 @@ void resources(Checks &check,const std::filesystem::path &source_root) {
         SteamHumanAsset::experience_label,SteamHumanAsset::experience_remaining,SteamHumanAsset::smile,
         SteamHumanAsset::combat_icon,SteamHumanAsset::equipment_background,SteamHumanAsset::weapon_icon,
         SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon,SteamHumanAsset::magic_icon,
-        SteamHumanAsset::ceremony_background,SteamHumanAsset::curtain,SteamHumanAsset::continue_cursor,SteamHumanAsset::result_icon}) {
+        SteamHumanAsset::ceremony_background,SteamHumanAsset::curtain,SteamHumanAsset::continue_cursor,SteamHumanAsset::result_icon,
+        SteamHumanAsset::president,SteamHumanAsset::gift_box,SteamHumanAsset::gift_face,SteamHumanAsset::item_icon,
+        SteamHumanAsset::gift_flash,SteamHumanAsset::recovery_effect,SteamHumanAsset::recovery_number}) {
         const auto resource=steam_human_resource(asset);
         check(resource.has_value(),"具名资源身份存在");
         Image image=LoadImage((assets/resource->published_image).string().c_str());
@@ -121,6 +123,12 @@ void resources(Checks &check,const std::filesystem::path &source_root) {
             const auto seb=dungeon_village_tools::parse_legacy_seb(bytes(assets/resource->published_sprite));
             for(const auto &layer:seb.layers)for(const auto &p:layer.parts) {
                 if(p.width<=0 || p.height<=0)continue;
+                if(asset==SteamHumanAsset::president&&(p.frame==10||p.frame==11)) {
+                    // 原PNG宽75，未消费帧10/11指向x76；不改原资源或认证未消费帧。
+                    check(p.image_index==resource->image&&p.source_x==76&&p.width==13&&image.width==75&&
+                          p.source_x+p.width>image.width,"原总统SEB10/11越界事实保留，66只消费1/9，不将异常改成通过");
+                    continue;
+                }
                 check(p.image_index==resource->image && p.source_x>=0 && p.source_y>=0 &&
                       p.source_x+p.width<=image.width && p.source_y+p.height<=image.height,
                       "实际SEB图片身份与裁片在正式PNG内");
@@ -581,9 +589,101 @@ void profession_skin_checks(Checks &check) {
     owner.human_gift_messages.erase(id);
     check(!steam_human_profession_result_skin(owner,id,o),"63缺冻结文案拒绝，不由绘制随机生成");
 }
+void gift_result_skin_checks(Checks &check) {
+    auto owner=profession_fixture(66);const auto id=owner.scripts.pages.back().id;
+    owner.human_page_selections[id]=0;owner.human_equipment_choices[id]={0,1};owner.human_gift_scores[id]=24;
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{48,48};o.message_width=24;o.character_frame=0;
+    for(int frame:{0,9,10,13,16,23,25,34,35,44,45,47,48,53,54,60,74,75,84,85,161,162}) {
+        owner.page_counters[id]=frame;owner.page_phases[id]=frame>=135?1:0;
+        const auto plan=steam_human_gift_result_skin(owner,id,o);
+        check(plan&&plan->soft_labels==std::array<int,2>{0,0},"66礼物只读结果、无返回软标签");
+        const auto images=parts<SteamHumanImage>(*plan);
+        const auto people=parts<SteamHumanPortrait>(*plan);
+        const auto president=std::find_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::president;});
+        check(president!=images.end()&&president->frame==(frame>=10&&frame<20?9:1),"spChara2是总统，10..19行动3/direction1=frame9");
+        check(people.front().actor.body.sprite==(frame>=25&&frame<35?25:1)&&people.front().actor.body.frame==0&&
+              !people.front().actor.weapon,"上部25..34为buy01 SEB25/frame0，35无基础动作残留且无武器");
+        const auto box=std::find_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::gift_box;});
+        check(box!=images.end()&&box->frame==(frame<45?0:1),"45才开礼盒，不靠PNG数猜时序");
+        if(frame==0)check(box->position==std::array<int,2>{126,137},"礼盒13前初始126/137");
+        if(frame==13)check(box->position==std::array<int,2>{126,137},"13起抛物线局部0");
+        if(frame==16)check(box->position==std::array<int,2>{125,134},"礼盒局部3：单精度抛物线向零截断3，横整数125");
+        if(frame==23)check(box->position==std::array<int,2>{120,131},"礼盒局部10顶点6，横120");
+        if(frame>=35)check(box->position==std::array<int,2>{114,137},"20槽抛物线结束114/137");
+        const auto icon=std::find_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::weapon_icon;});
+        check((icon!=images.end())==(frame>=45&&frame<75),"商品只45..74出现");
+        if(frame==45)check(icon->position==std::array<int,2>{105,117},"商品45起105/117");
+        if(frame==60)check(icon->position==std::array<int,2>{105,92},"60夹到92而非继续飞出");
+        check(std::any_of(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::gift_flash;})==(frame>=45&&frame<54),
+              "dropItem00仅三个3槽帧，54消失，无绘制发声");
+        if(frame>=75)check(std::any_of(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::gift_face&&i.frame==1&&i.position==std::array<int,2>{63,157};}),
+              "低评价使用icon_nico00 frame1固定y157，不使用满意smile00");
+        check(std::any_of(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::continue_cursor;})==(frame==162),
+              "66奖励page1局部77（总162）才有继续箭头，不混Owner提前确认门槛");
+    }
+    const auto before=startup_world_state_digest(owner);
+    const auto size=steam_human_gift_result_skin(owner,id,o)->operations.size();
+    for(int i=0;i<12;++i)check(steam_human_gift_result_skin(owner,id,o)->operations.size()==size&&startup_world_state_digest(owner)==before,
+        "66重复绘制不扣款/发声/随机/奖励/装配/HP更新");
+    owner.page_counters[id]=79;owner.page_phases[id]=0;
+    for(int score:{24,25,69,70}) {
+        owner.human_gift_scores[id]=score;
+        const auto images=parts<SteamHumanImage>(*steam_human_gift_result_skin(owner,id,o));
+        check(std::any_of(images.begin(),images.end(),[=](const auto &i){return i.asset==SteamHumanAsset::gift_face&&
+            i.frame==(score<25?1:score<70?0:2)&&i.position==std::array<int,2>{63,score<25?157:156};}),
+            "评价24/25/69/70三档真实帧及中高档8槽跳动");
+    }
+    const auto ordinary=std::find_if(owner.rules->items.begin(),owner.rules->items.end(),[](const auto &i){return i.recovery==0&&i.effect>=0&&i.effect<6;});
+    check(ordinary!=owner.rules->items.end(),"固定表有普通属性道具");
+    owner.human_equipment_choices[id]={4,ordinary->identity};owner.page_counters[id]=45;
+    auto ordinary_plan=steam_human_gift_result_skin(owner,id,o);
+    const auto ordinary_images=parts<SteamHumanImage>(*ordinary_plan);
+    check(std::any_of(ordinary_images.begin(),ordinary_images.end(),[](const auto &i){return i.asset==SteamHumanAsset::item_icon&&i.position==std::array<int,2>{106,117};}),
+          "普通道具沿真实图标裁片，商品锚106/117不同装备105/117");
+    const auto learning=std::find_if(owner.rules->items.begin(),owner.rules->items.end(),[](const auto &i){return i.effect==9;});
+    check(learning!=owner.rules->items.end(),"固定表有魔法学习道具");
+    owner.human_equipment_choices[id]={4,learning->identity};owner.page_counters[id]=75;
+    const auto learned=parts<SteamHumanOverviewText>(*steam_human_gift_result_skin(owner,id,o));
+    check(std::any_of(learned.begin(),learned.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::result_message&&t.value.find("习得")!=std::string::npos;}),
+          "学习道具气泡取魔法学习文案，不直接用冻结普通评价");
+    const auto recovery=std::find_if(owner.rules->items.begin(),owner.rules->items.end(),[](const auto &i){return i.recovery>0;});
+    check(recovery!=owner.rules->items.end(),"固定表有真实回复道具");
+    owner.human_equipment_choices[id]={4,recovery->identity};owner.page_counters[id]=75;owner.page_phases[id]=0;
+    owner.scene.world.world.ai.human_order.clear();
+    auto plan=steam_human_gift_result_skin(owner,id,o);
+    const auto rectangles=[&](const SteamHumanOverviewPlan &p) {
+        std::vector<StartupSkinRect> result;
+        for(const auto &op:p.operations)if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))
+            if(const auto *r=std::get_if<StartupSkinRect>(f))result.push_back(*r);
+        return result;
+    };
+    auto rects=rectangles(*plan);
+    check(std::any_of(rects.begin(),rects.end(),[](const auto &r){return r.rect==std::array<int,4>{97,115,18,2}&&r.rgb==std::array<int,3>{83,255,0};}),
+          "66无W原特殊恢复展示满18，不修改60无W不画条");
+    for(int frame:{75,78,79,82,83,86,87,90,91,114,115}) {
+        owner.page_counters[id]=frame;plan=steam_human_gift_result_skin(owner,id,o);
+        const auto images=parts<SteamHumanImage>(*plan);
+        const auto effect=std::find_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::recovery_effect;});
+        check((effect!=images.end())==(frame<91),"回复effect按4/8/12/16四门槛结束，不循环");
+        if(effect!=images.end())check(effect->frame==(frame-75)/4,"回复四帧门槛向右独立");
+        check(std::any_of(images.begin(),images.end(),[](const auto &i){return i.asset==SteamHumanAsset::recovery_number;})==(frame<115),
+              "回复数字SEB18仅75..114，115改HP回复气泡");
+    }
+    owner.page_counters[id]=75;
+    ref::BattleActorRecord actor;actor.id={510};actor.definition=1;actor.kind=ref::ActorKind::human;
+    actor.hp.displayed=actor.hp.target=0;owner.scene.world.world.ai.battle.actors[actor.id]=actor;
+    owner.scene.world.world.ai.human_order.push_back(actor.id);
+    rects=rectangles(*steam_human_gift_result_skin(owner,id,o));
+    check(std::any_of(rects.begin(),rects.end(),[](const auto &r){return r.rect==std::array<int,4>{97,115,0,2}&&r.rgb==std::array<int,3>{83,255,0};}),
+          "真实实例HP0取NOW空条，不用缺W的满条fallback");
+    owner.human_gift_scores.erase(id);
+    check(!steam_human_gift_result_skin(owner,id,o),"66缺评价冻结载荷拒绝，不在绘制重评礼物");
+    owner.human_gift_scores[id]=30;owner.scripts.pages.back().lifecycle=4;
+    check(!steam_human_gift_result_skin(owner,id,o),"66退休页面不再输出人物/礼盒/HP表现引用");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);gift_result_skin_checks(check);
     return check.count;
 }

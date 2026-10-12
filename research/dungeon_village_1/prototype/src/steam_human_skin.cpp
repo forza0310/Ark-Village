@@ -49,6 +49,13 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::curtain:return SteamHumanResource{89,77,"original/common/eff_curtainBack.png","original/common/eff_curtainBack.seb"};
     case Asset::continue_cursor:return SteamHumanResource{72,2,"original/common/arrow01.png","original/common/arrow01.seb"};
     case Asset::result_icon:return SteamHumanResource{31,44,"original/common/icon_result00.png","original/common/icon_result00.seb"};
+    case Asset::president:return SteamHumanResource{171,46,"original/common/chara_president.png","original/common/chara_president.seb"};
+    case Asset::gift_box:return SteamHumanResource{82,73,"original/common/present00.png","original/common/present00.seb"};
+    case Asset::gift_face:return SteamHumanResource{11,29,"original/common/icon_nico00.png","original/common/icon_nico00.seb"};
+    case Asset::item_icon:return SteamHumanResource{9,-1,"original/common/tresureIcon00.png",nullptr};
+    case Asset::gift_flash:return SteamHumanResource{6,6,"original/effect/dropItem00.png","original/effect/dropItem00.seb"};
+    case Asset::recovery_effect:return SteamHumanResource{2,2,"original/effect/eff02.png","original/effect/eff02.seb"};
+    case Asset::recovery_number:return SteamHumanResource{108,18,"original/common/number11.png","original/common/number11.seb"};
     }
     return {};
 }
@@ -501,7 +508,7 @@ std::optional<StartupHumanDetails> management_human(const StartupWorldRuntimeSta
     const auto h=s.page_human_bindings.find(id),c=s.page_counters.find(id),phase=s.page_phases.find(id),selection=s.human_page_selections.find(id);
     if(!s.rules||p==s.scripts.pages.end()||p->kind!=ref::WorldScriptPageKind::raw_page||p->legacy_page!=raw||
        p->lifecycle<1||p->lifecycle>3||!s.human_pages_initialized.count(id)||h==s.page_human_bindings.end()||
-       c==s.page_counters.end()||c->second<0||phase==s.page_phases.end()||phase->second!=0||
+       c==s.page_counters.end()||c->second<0||phase==s.page_phases.end()||phase->second<0||phase->second>(raw==66?1:0)||
        selection==s.human_page_selections.end()||selection->second<0)return {};
     return startup_world_human_details(s,h->second);
 }
@@ -534,6 +541,17 @@ bool append_bottom(SteamHumanOverviewPlan &p,SteamHumanOverviewTextRole role,int
     }
     append_text(p,role,{}, {x,y,w,16},34,0,true);
     if(selected)p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{x-4,y+9},o.finger_frame,{}});
+    return true;
+}
+bool append_message(SteamHumanOverviewPlan &out,const std::string &message,std::array<int,2> position,
+                    const SteamHumanOverviewOptions &o) {
+    if(!o.message_width)return false;
+    const auto bubble=steam_human_down_bubble_skin(*o.message_width,position);if(!bubble)return false;
+    for(const auto &draw:bubble->draws) {
+        if(const auto *image=std::get_if<SteamHumanImage>(&draw))out.operations.emplace_back(*image);
+        else if(const auto *rect=std::get_if<StartupSkinRect>(&draw))out.operations.emplace_back(SteamStartupFrameDraw{*rect});
+    }
+    append_text(out,SteamHumanOverviewTextRole::result_message,message,{position[0],position[1]+3,0,0},2,0,false,0,{0,0,0});
     return true;
 }
 } // namespace
@@ -665,15 +683,98 @@ std::optional<SteamHumanOverviewPlan> steam_human_profession_result_skin(
     if(curtain>=0)out.operations.emplace_back(SteamHumanImage{Asset::curtain,{120,139},curtain,{}});
     if(frame<110)append_text(out,SteamHumanOverviewTextRole::profession_transition,s.rules->jobs[target->second].name,{120,171,0,0},2);
     else {
-        if(!o.message_width)return {};
-        const auto bubble=steam_human_down_bubble_skin(*o.message_width,{120,92});if(!bubble)return {};
-        for(const auto &draw:bubble->draws) {
-            if(const auto *image=std::get_if<SteamHumanImage>(&draw))out.operations.emplace_back(*image);
-            else if(const auto *rect=std::get_if<StartupSkinRect>(&draw))out.operations.emplace_back(SteamStartupFrameDraw{*rect});
-        }
-        append_text(out,SteamHumanOverviewTextRole::result_message,message->second,{120,95,0,0},2,0,false,0,{0,0,0});
+        if(!append_message(out,message->second,{120,92},o))return {};
         const auto reward=steam_human_reward_skin(s,h->definition,frame<120?0:1,frame-(frame<120?110:120),o);
         if(!reward)return {};
+        out.operations.insert(out.operations.end(),reward->operations.begin(),reward->operations.end());
+    }
+    out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_gift_result_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto h=management_human(s,id,66);
+    const auto choice=s.human_equipment_choices.find(id);
+    const auto score=s.human_gift_scores.find(id);
+    const auto message=s.human_gift_messages.find(id);
+    if(!h||choice==s.human_equipment_choices.end()||choice->second[0]<0||choice->second[0]>4||
+       score==s.human_gift_scores.end()||message==s.human_gift_messages.end()||message->second.empty()||
+       s.human_page_selections.find(id)->second!=0||!o.title_widths)return {};
+    const int slot=choice->second[0],definition=choice->second[1],frame=s.page_counters.find(id)->second,phase=s.page_phases.find(id)->second;
+    const StartupWorldItem *item=nullptr;const StartupWorldEquipment *equipment=nullptr;
+    if(slot==4) {
+        const auto found=std::find_if(s.rules->items.begin(),s.rules->items.end(),[=](const auto &d){return d.identity==definition;});
+        if(found==s.rules->items.end()||found->recovery<0||(found->effect==9&&(found->spell<0||found->spell>3)))return {};
+        item=&*found;
+    } else {
+        const int kind=slot==0?1:slot==3?3:2;
+        const auto found=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[=](const auto &d){return d.shop.kind==kind&&d.shop.id==definition;});
+        if(found==s.rules->equipment.end())return {};
+        equipment=&*found;
+    }
+    const auto &name=item?item->name:equipment->name;if(name.empty())return {};
+    SteamHumanOverviewPlan out;out.title="赠送礼物";out.soft_labels={0,0};
+    if(!append_window(out,222,170,{15,139,224,202},o))return {};
+    out.operations.emplace_back(SteamHumanImage{Asset::ceremony_background,{30,67},0,std::array<int,4>{0,0,180,80}});
+    out.operations.emplace_back(SteamHumanImage{Asset::president,{134,139},phase==0&&frame>=10&&frame<20?9:1,{}});
+    auto person=startup_title_actor_skin(h->profession,h->sex,-1,0,1,false);if(!person)return {};
+    // HUMAN_ANIME_SEB[10]=24，加direction1；F[10][0]=0、body_off[10]=0。
+    if(phase==0&&frame>=25&&frame<35)person->body.sprite=25;
+    out.operations.emplace_back(SteamHumanPortrait{*person,{106,139},{},false});
+    const int age=frame-13;
+    int box_x=age<0?126:age>=20?114:126-12*age/20,box_y=137;
+    if(age>=0&&age<20) {
+        volatile float velocity=12.F/9.F,acceleration=-12.F/90.F;
+        volatile float linear=float(age)*velocity,curve=float(age)*acceleration;
+        curve=curve*float(age+1);curve=curve*.5F;
+        box_y-=static_cast<int>(float(linear)+float(curve));
+    }
+    out.operations.emplace_back(SteamHumanImage{Asset::gift_box,{box_x,box_y},frame<45?0:1,{}});
+    if(frame>=45&&frame<75) {
+        const int y=frame>=60?92:117-25*(frame-45)/15;
+        const auto icons=item?startup_world_item_icon_draws(s,definition):startup_world_equipment_icon_draws(s,slot==0?1:slot==3?3:2,definition);
+        if(!icons)return {};
+        for(const auto &draw:*icons) {
+            const auto asset=draw.image==24?Asset::equipment_background:item?Asset::item_icon:slot==0?Asset::weapon_icon:slot==3?Asset::accessory_icon:Asset::armour_icon;
+            out.operations.emplace_back(SteamHumanImage{asset,{(item?106:105)+draw.offset[0],y+draw.offset[1]},0,draw.crop});
+        }
+        const int flash=(frame-45)/3;
+        if(flash<=2)out.operations.emplace_back(SteamHumanImage{Asset::gift_flash,{114,y},flash,{}});
+    }
+    if(frame>=75) {
+        const bool recovery=item&&item->recovery>0;
+        if(recovery&&frame<115) {
+            int width=18;
+            for(const auto actor:s.scene.world.world.ai.human_order) {
+                const auto live=s.scene.world.world.ai.battle.actors.find(actor);
+                if(live==s.scene.world.world.ai.battle.actors.end())return {};
+                if(live->second.definition!=h->definition)continue;
+                const int hp=live->second.hp.displayed,maximum=h->combat[0];
+                if(maximum<=0)return {};
+                if(hp<=0)width=0;else if(hp>=maximum)width=18;
+                else {const auto product=std::int64_t(hp)*18;if(!fits(product))return {};width=static_cast<int>(product/maximum);}
+                break;
+            }
+            const auto digits=std::to_string(item->recovery);int x=106-static_cast<int>(digits.size())*7/2;
+            for(const char c:digits){out.operations.emplace_back(SteamHumanImage{Asset::recovery_number,{x,104},c-'0',{}});x+=7;}
+            out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{95,113,22,6},{246,246,246},true}});
+            out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{96,114,20,4},{39,53,74},true}});
+            out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{97,115,width,2},{83,255,0},false}});
+            out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{97+width,115,18-width,2},{68,100,104},false}});
+            if(frame<91)out.operations.emplace_back(SteamHumanImage{Asset::recovery_effect,{106,143},(frame-75)/4,{}});
+        } else {
+            constexpr const char *magic[]{"火魔法","冰魔法","雷魔法","回复魔法"};
+            const std::string text=recovery?"HP回复!":item&&item->effect==9?std::string(magic[item->spell])+"习得":message->second;
+            if(!append_message(out,text,{108,90},o))return {};
+        }
+        const int evaluation=score->second<25?0:score->second<70?1:2;
+        out.operations.emplace_back(SteamHumanImage{Asset::gift_face,{63,157-(evaluation?(frame%8)/4:0)},evaluation==0?1:evaluation==1?0:2,{}});
+    }
+    if(frame<75) {
+        append_text(out,SteamHumanOverviewTextRole::gift_result_name,name,{120,166,0,0},2);
+        append_text(out,SteamHumanOverviewTextRole::gift_result_suffix,{}, {120,186,0,0},2);
+    } else {
+        const auto reward=steam_human_reward_skin(s,h->definition,frame<85?0:1,frame-(frame<85?75:85),o);if(!reward)return {};
         out.operations.insert(out.operations.end(),reward->operations.begin(),reward->operations.end());
     }
     out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});

@@ -833,6 +833,7 @@ const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery,i
     case SteamHumanOverviewTextRole::equipment_empty:return "未装备";
     case SteamHumanOverviewTextRole::gift_change_prompt:return "赠礼更换装备";
     case SteamHumanOverviewTextRole::gift_accept:return "赠送礼物";
+    case SteamHumanOverviewTextRole::gift_result_suffix:return "作为礼物赠送";
     case SteamHumanOverviewTextRole::profession_current:return "当前职业";
     case SteamHumanOverviewTextRole::profession_insufficient:return "村子点数不足";
     case SteamHumanOverviewTextRole::equipment_hint:return "按确认键赠送礼物"; // btn=0,0的研究文字适配，非原控制图标。
@@ -994,6 +995,27 @@ std::optional<SteamHumanOverviewPlan> window_human_profession_plan(
     // 原UserData帧尚未在研究Owner建模；窗口表现帧为显式适配，不拿结果counter替代。
     o.character_frame=display_frame;
     return steam_human_profession_result_skin(s,id,o);
+}
+std::optional<SteamHumanOverviewPlan> window_human_gift_result_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,int display_frame) {
+    const auto message=s.human_gift_messages.find(id);
+    const auto counter=s.page_counters.find(id);
+    const auto choice=s.human_equipment_choices.find(id);
+    if(!s.rules||message==s.human_gift_messages.end()||counter==s.page_counters.end()||choice==s.human_equipment_choices.end())return {};
+    std::string text=message->second;
+    if(choice->second[0]==4) {
+        const auto item=std::find_if(s.rules->items.begin(),s.rules->items.end(),[&](const auto &d){return d.identity==choice->second[1];});
+        if(item==s.rules->items.end())return {};
+        if(item->recovery>0&&counter->second>=115)text="HP回复!";
+        else if(item->effect==9) {
+            constexpr const char *magic[]{"火魔法","冰魔法","雷魔法","回复魔法"};
+            if(item->spell<0||item->spell>3)return {};
+            text=std::string(magic[item->spell])+"习得";
+        }
+    }
+    SteamHumanOverviewOptions o;o.view_y=23;o.character_frame=display_frame;o.message_width=int(font.measure(text));
+    o.title_widths=std::array<int,2>{int(font.measure("赠送礼物")),int(font.measure("赠送礼物"))};
+    return steam_human_gift_result_skin(s,id,o);
 }
 struct Window {
     Window() {
@@ -1800,7 +1822,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
                inspect_page == "task-team" || inspect_page == "world-award" ||
                inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
                inspect_page == "world-human-equipment" || inspect_page == "world-human-magic" || inspect_page == "world-human-equipment-info" ||
-               inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") {
+               inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-gift-opening"||inspect_page=="world-human-gift-result"||
+               inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
@@ -1833,7 +1856,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto &current = session.state();
             if ((inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
                  inspect_page == "world-human-equipment" || inspect_page == "world-human-magic" || inspect_page == "world-human-equipment-info" ||
-                 inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") && top.kind == ref::WorldScriptPageKind::scene &&
+                 inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-gift-opening"||inspect_page=="world-human-gift-result"||
+                 inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") && top.kind == ref::WorldScriptPageKind::scene &&
                 top.lifecycle != 4 && current.scene.scene_state == 0 &&
                 !current.scene.world.world.ai.human_order.empty()) {
                 const int human = current.scene.world.world.ai.battle.actors
@@ -1948,7 +1972,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(!catalogue_ready)throw std::runtime_error("人物六属性有界诊断未返回父页");
                 }
                 if(inspect_page=="world-human-equipment"||inspect_page=="world-human-magic"||inspect_page=="world-human-equipment-info"||
-                   inspect_page=="world-human-gift-confirm") {
+                   inspect_page=="world-human-gift-confirm"||inspect_page=="world-human-gift-opening"||inspect_page=="world-human-gift-result") {
                     const auto detail=session.state().scripts.pages.back().id;
                     for(int n=0;n<2;++n)if(session.act_human_page(detail,StartupHumanPageAction::next)!=StartupWorldRuntimeError::none)
                         throw std::runtime_error("装备页真实导航拒绝");
@@ -1967,12 +1991,30 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                 throw std::runtime_error("首次赠礼说明确认失败");
                         }
                         if(!ready)throw std::runtime_error("槽2赠礼初始化未有界完成");
-                        if(inspect_page=="world-human-equipment-info"||inspect_page=="world-human-gift-confirm") {
-                            if(session.act_human_page(child,inspect_page=="world-human-gift-confirm"?StartupHumanPageAction::confirm:
+                        if(inspect_page=="world-human-equipment-info"||inspect_page=="world-human-gift-confirm"||
+                           inspect_page=="world-human-gift-opening"||inspect_page=="world-human-gift-result") {
+                            if(session.act_human_page(child,inspect_page!="world-human-equipment-info"?StartupHumanPageAction::confirm:
                                 StartupHumanPageAction::inspect_equipment)!=StartupWorldRuntimeError::none)
                                 throw std::runtime_error("赠礼目录打开装备信息失败");
                             for(int n=0;n<3;++n)if(!session.update().committed)
                                 throw std::runtime_error("装备信息初始化失败");
+                            if(inspect_page=="world-human-gift-opening"||inspect_page=="world-human-gift-result") {
+                                const auto question=session.state().scripts.pages.back().id;
+                                if(session.act_human_page(question,StartupHumanPageAction::confirm)!=StartupWorldRuntimeError::none)
+                                    throw std::runtime_error("真实赠礼65回答失败");
+                                bool result_ready{};
+                                const int required=inspect_page=="world-human-gift-opening"?45:162;
+                                for(int n=0;n<300;++n) {
+                                    if(!session.update().committed)throw std::runtime_error("真实赠礼结果推进失败");
+                                    const auto active=session.state().scripts.pages.back();
+                                    if(active.legacy_page==66&&startup_world_human_page_ready(session.state(),active.id)&&
+                                       session.state().page_counters.at(active.id)>=required){result_ready=true;break;}
+                                    if(active.legacy_page!=64&&active.legacy_page!=66&&active.kind!=ref::WorldScriptPageKind::scene&&
+                                       session.acknowledge_page(active.id)!=StartupWorldRuntimeError::none)
+                                        throw std::runtime_error("赠礼奖励覆盖页确认失败");
+                                }
+                                if(!result_ready)throw std::runtime_error("赠礼结果未有界到达目标计数");
+                            }
                             reached=true;break;
                         }
                         if(session.act_human_page(child,StartupHumanPageAction::cancel)!=StartupWorldRuntimeError::none)
@@ -2501,7 +2543,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             if (hit({128, 225, 98, 24}))
                                 act(A::select, 1);
                         }
-                        if (IsKeyPressed(KEY_ENTER) || (raw!=63&&hit({176, 265, 58, 24})))
+                        if (IsKeyPressed(KEY_ENTER) || (raw!=63&&raw!=66&&hit({176, 265, 58, 24})))
                             act(A::confirm);
                     }
                 }
@@ -3302,8 +3344,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_human=human_view.has_value();
             const bool steam_equipment=page->legacy_page==73&&startup_world_human_page_ready(state,page->id);
             const bool steam_gift=page->legacy_page==65&&startup_world_human_page_ready(state,page->id);
+            const bool steam_gift_result=page->legacy_page==66&&startup_world_human_page_ready(state,page->id);
             const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession) DrawRectangle(5, 170, 230, 119, paper);
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -3324,7 +3367,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession)
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession&&!steam_gift_result)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3907,6 +3950,10 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_human_gift_confirmation_plan(state,page->id,font);
                 if(!plan)throw std::runtime_error("Steam赠礼确认绘制载荷拒绝");
                 draw_human_overview(*plan,sprites,font);
+            } else if(steam_gift_result) {
+                const auto plan=window_human_gift_result_plan(state,page->id,font,frame_count);
+                if(!plan)throw std::runtime_error("Steam赠礼结果载荷拒绝");
+                draw_human_overview(*plan,sprites,font);
             } else if (page->legacy_page == 64 &&
                        startup_world_human_page_ready(state, page->id)) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3974,8 +4021,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 font.text("返回", 18, 272);
                 font.text("确定", 190, 272);
-            } else if ((page->legacy_page == 66 ||
-                        page->legacy_page == 68 || page->legacy_page == 69 ||
+            } else if ((page->legacy_page == 68 || page->legacy_page == 69 ||
                         page->legacy_page == 70) &&
                        startup_world_human_page_ready(state, page->id)) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3984,8 +4030,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (const auto portrait = startup_world_portrait(state, human))
                     sprites.portrait(*portrait, {190, 68});
                 const int raw = page->legacy_page;
-                font.text(raw == 66 ? "礼物"
-                          : raw == 68 ? "装备能力"
+                font.text(raw == 68 ? "装备能力"
                           : raw == 69 ? "道具效果"
                                       : "职业大师",
                           16, 95);

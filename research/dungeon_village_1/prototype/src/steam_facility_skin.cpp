@@ -112,6 +112,8 @@ std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     if(comma&&((n.asset!=Asset::number05&&n.asset!=Asset::number11)||digit_width!=8||
                n.padding!=0||(n.anchor!=2&&n.anchor!=4)))return {};
     if(n.asset==Asset::number12&&(n.kind==SteamFacilityNumberKind::plus_value||digit_width!=8))return {};
+    if(n.kind==SteamFacilityNumberKind::minus_value&&
+       ((n.asset!=Asset::number05&&n.asset!=Asset::number12)||n.value<0||digit_width!=8))return {};
     // 普通SEB10/11/20不输出money/plus单位；SEB20的Comma缺帧仍保留原请求。
     if(n.asset==Asset::number03_hud&&(n.kind!=SteamFacilityNumberKind::number||digit_width!=8))return {};
     if(roster_number&&!comma&&(n.kind!=SteamFacilityNumberKind::number||
@@ -145,7 +147,8 @@ std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
         }
         return result;
     }
-    if((!comma&&n.kind!=SteamFacilityNumberKind::money&&n.kind!=SteamFacilityNumberKind::plus_value)||
+    if((!comma&&n.kind!=SteamFacilityNumberKind::money&&n.kind!=SteamFacilityNumberKind::plus_value&&
+        n.kind!=SteamFacilityNumberKind::minus_value)||
        n.padding!=0)return {};
     // money/plus固定右锚；独立Comma另接受居中锚。signed串长度均包含负号，逗号占宽0。
     if(n.kind==SteamFacilityNumberKind::money)x-=9;
@@ -167,7 +170,8 @@ std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
         if(!emit(right,20))return {};
     } else {
         const auto absolute_digits=decimal.size()-first_digit;
-        if(!emit(right-static_cast<std::int64_t>(absolute_digits+1)*8,14))return {};
+        if(!emit(right-static_cast<std::int64_t>(absolute_digits+1)*8,
+                 n.kind==SteamFacilityNumberKind::minus_value?15:14))return {};
     }
     return result;
 }

@@ -45,6 +45,10 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::armour_icon:return SteamHumanResource{20,-1,"original/common/icon_armour00.png",nullptr};
     case Asset::accessory_icon:return SteamHumanResource{21,-1,"original/common/icon_accessry00.png",nullptr};
     case Asset::magic_icon:return SteamHumanResource{118,-1,"original/common/icon_magicpot.png",nullptr};
+    case Asset::ceremony_background:return SteamHumanResource{13,-1,"original/event/event_medelCelemony_back2.png",nullptr};
+    case Asset::curtain:return SteamHumanResource{89,77,"original/common/eff_curtainBack.png","original/common/eff_curtainBack.seb"};
+    case Asset::continue_cursor:return SteamHumanResource{72,2,"original/common/arrow01.png","original/common/arrow01.seb"};
+    case Asset::result_icon:return SteamHumanResource{31,44,"original/common/icon_result00.png","original/common/icon_result00.seb"};
     }
     return {};
 }
@@ -482,6 +486,197 @@ std::optional<SteamHumanOverviewPlan> steam_human_gift_confirmation_skin(
     out.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{x-20,161,w+40,56},{},0});
     out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::gift_accept,{}, {x,181,w,16},34,0,true});
     out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{x-4,190},o.finger_frame,{}});
+    return out;
+}
+namespace {
+// GetParabolaValue同已核设施helper，保留float32各步舍入和非负夹限。
+int reward_jump(int tick) {
+    volatile float velocity=16.F/5.F,acceleration=-16.F/30.F;
+    volatile float linear=float(tick)*velocity,curve=float(tick)*acceleration;
+    curve=curve*float(tick+1);curve=curve*.5F;
+    return static_cast<int>(std::max(0.F,float(curve)+float(linear)));
+}
+std::optional<StartupHumanDetails> management_human(const StartupWorldRuntimeState &s,std::uint64_t id,int raw) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    const auto h=s.page_human_bindings.find(id),c=s.page_counters.find(id),phase=s.page_phases.find(id),selection=s.human_page_selections.find(id);
+    if(!s.rules||p==s.scripts.pages.end()||p->kind!=ref::WorldScriptPageKind::raw_page||p->legacy_page!=raw||
+       p->lifecycle<1||p->lifecycle>3||!s.human_pages_initialized.count(id)||h==s.page_human_bindings.end()||
+       c==s.page_counters.end()||c->second<0||phase==s.page_phases.end()||phase->second!=0||
+       selection==s.human_page_selections.end()||selection->second<0)return {};
+    return startup_world_human_details(s,h->second);
+}
+void append_text(SteamHumanOverviewPlan &p,SteamHumanOverviewTextRole role,std::string value,
+                 std::array<int,4> r,int anchor,int size=0,bool layout=false,int argument=0,
+                 std::array<int,3> color={92,51,31}) {
+    p.operations.emplace_back(SteamHumanOverviewText{role,std::move(value),r,anchor,size,layout,color,argument});
+}
+bool append_portrait(SteamHumanOverviewPlan &p,int job,int sex,int weapon,int step,int direction,
+                     std::array<int,2> position,std::optional<std::array<int,4>> clip={},bool image_clip=false) {
+    const auto actor=startup_title_actor_skin(job,sex,weapon,step,direction,false);
+    if(!actor)return false;
+    p.operations.emplace_back(SteamHumanPortrait{*actor,position,clip,image_clip});return true;
+}
+bool append_window(SteamHumanOverviewPlan &p,int w,int h,std::array<int,4> box,const SteamHumanOverviewOptions &o) {
+    const auto window=steam_startup_window_skin({w,h,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto content=steam_startup_box_skin({box[0],box[1],box[2],box[3]},o.view_y);
+    if(!window||!content)return false;
+    for(const auto &part:window->draws)p.operations.emplace_back(part);
+    for(const auto &part:content->draws)p.operations.emplace_back(part);
+    return true;
+}
+bool append_bottom(SteamHumanOverviewPlan &p,SteamHumanOverviewTextRole role,int y,int width,bool selected,
+                   const SteamHumanOverviewOptions &o) {
+    if(width<0||o.finger_frame<0||o.finger_frame>5)return false;
+    const int w=std::min(width,200)+16,x=120-w/2;
+    if(selected) {
+        p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x,y,w,16},{255,153,55},false}});
+        p.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{x-20,y-20,w+40,56},{},0});
+    }
+    append_text(p,role,{}, {x,y,w,16},34,0,true);
+    if(selected)p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{x-4,y+9},o.finger_frame,{}});
+    return true;
+}
+} // namespace
+std::optional<SteamHumanOverviewPlan> steam_human_profession_preview_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto human=management_human(s,id,62);
+    const auto list=s.human_page_catalogs.find(id);
+    const auto job=s.page_job_bindings.find(id);
+    const auto parent=s.human_page_parents.find(id);
+    if(!human||list==s.human_page_catalogs.end()||list->second.empty()||job==s.page_job_bindings.end()||
+       parent==s.human_page_parents.end()||!o.title_widths)return {};
+    const auto owner=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[&](const auto &p){return p.id==parent->second;});
+    const auto child=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto owner_human=s.page_human_bindings.find(parent->second);
+    const auto owner_selection=s.human_page_selections.find(parent->second),owner_counter=s.page_counters.find(parent->second),owner_phase=s.page_phases.find(parent->second);
+    const auto owner_list=s.human_page_catalogs.find(parent->second);
+    if(owner==s.scripts.pages.end()||owner>=child||owner->kind!=ref::WorldScriptPageKind::raw_page||owner->legacy_page!=61||
+       owner->lifecycle<1||owner->lifecycle>3||!s.human_pages_initialized.count(parent->second)||
+       owner_human==s.page_human_bindings.end()||owner_human->second!=human->definition||owner_list==s.human_page_catalogs.end()||
+       owner_selection==s.human_page_selections.end()||owner_counter==s.page_counters.end()||owner_counter->second<0||
+       owner_phase==s.page_phases.end()||owner_phase->second<0||owner_phase->second>1||owner_selection->second<0||
+       owner_selection->second>=static_cast<int>(owner_list->second.size())||owner_list->second!=list->second)return {};
+    const int selected=s.human_page_selections.find(id)->second,target=job->second;
+    if(selected>=static_cast<int>(list->second.size())||list->second[selected]!=target||target<0||
+       target>=static_cast<int>(s.rules->jobs.size())||s.rules->jobs[target].name.empty()||s.rules->jobs[human->profession].name.empty())return {};
+    const auto growth=s.scene.world.world.ai.growth.find(human->definition);
+    if(growth==s.scene.world.world.ai.growth.end()||target>=static_cast<int>(growth->second.definition.profession_levels.size()))return {};
+    const int target_level=growth->second.definition.profession_levels[target];
+    const auto &definition=s.rules->jobs[target];
+    if(target_level<1||target_level>10||human->level<1||human->level>10||definition.required_medals<0||definition.change_points<0)return {};
+    SteamHumanOverviewPlan out;out.title="职业一览 "+std::to_string(selected+1)+"/"+std::to_string(list->second.size());
+    if(!append_window(out,220,168,{17,74,219,184},o))return {};
+    const int q=3*((s.page_counters.find(id)->second%16)/8);
+    out.operations.emplace_back(SteamFacilityArrowTouch{{26-q,55},3,16});
+    out.operations.emplace_back(SteamFacilityArrowTouch{{214+q,55},0,18});
+    for(int side=0;side<2;++side) {
+        const int j=side?target:human->profession,x=side?139:38,level=side?target_level:human->level;
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x,67,16,16},{196,236,169},false}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x,67,16,16},{204,204,204},true}});
+        if(!append_portrait(out,j,human->sex,-1,0,1,{x+8,89},std::array<int,4>{x,68,15,14},true))return {};
+        append_text(out,SteamHumanOverviewTextRole::profession,s.rules->jobs[j].name,{side?160:59,71,0,0},2,o.japanese?0:9);
+        if(!append_portrait(out,j,human->sex,-1,0,1,{side?168:67,115}))return {};
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::level_label,{side?152:51,116},0,std::array<int,4>{0,0,17,10}});
+        if(level==10)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::maximum,{side?171:70,118},0,std::array<int,4>{0,0,20,6}});
+        else out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number05,level,{side?186:85,116},0,4,-1});
+    }
+    const int counter=s.page_counters.find(id)->second;
+    for(int i=0;i<3;++i)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::title_arrows,{109+7*i,109},(counter%48)/16==i?3:1,{}});
+    for(int i=0;i<6;++i) {
+        const int x=29+92*(i/3),y=134+19*(i%3),diff=s.human_attribute_display[2][i];
+        if(std::int64_t(s.human_attribute_display[1][i])-s.human_attribute_display[0][i]!=diff||diff==std::numeric_limits<int>::min())return {};
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x-4,y-2,93,20},{208,242,249},false}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x-4,y-2,93,20},{149,206,217},true}});
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::effect_icon,{x,y},0,std::array<int,4>{i==5?96:16*i,16,16,16}});
+        append_text(out,SteamHumanOverviewTextRole::attribute,{}, {x+18,y+2,0,0},0,0,false,i,{0,100,255});
+        out.operations.emplace_back(SteamFacilityNumber{diff<0?SteamFacilityNumberKind::minus_value:SteamFacilityNumberKind::plus_value,
+            diff<0?SteamFacilityAsset::number12:SteamFacilityAsset::number05,diff<0?-diff:diff,{x+83,y+3},0,4,i});
+    }
+    if(definition.required_medals) {
+        out.operations.emplace_back(SteamHumanImage{Asset::medal,{181,96},0,std::array<int,4>{14,0,14,14}});
+        const auto number=human->medals>=definition.required_medals?SteamFacilityAsset::number05:SteamFacilityAsset::number12;
+        out.operations.emplace_back(SteamFacilityImage{number,{193,100},16,{}});
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,number,definition.required_medals,{203,100},0,1,-1});
+    }
+    if(target==human->profession) {
+        if(!o.profession_change_width||!append_bottom(out,SteamHumanOverviewTextRole::profession_current,197,*o.profession_change_width,false,o))return {};
+    } else if(s.village_points>=definition.change_points) {
+        if(!o.profession_change_width||!append_bottom(out,SteamHumanOverviewTextRole::profession_change,197,*o.profession_change_width,true,o))return {};
+    } else {
+        if(!o.insufficient_points_width||*o.insufficient_points_width<0||*o.insufficient_points_width>4096)return {};
+        const int half=(*o.insufficient_points_width+18)/2,shift=o.english?2:0;
+        out.operations.emplace_back(SteamHumanImage{Asset::result_icon,{120-half,195+shift},4,{}});
+        append_text(out,SteamHumanOverviewTextRole::profession_insufficient,{}, {120+half,197+shift,0,0},4);
+    }
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+    const StartupWorldRuntimeState &s,int human,int page,int frame,const SteamHumanOverviewOptions &o) {
+    const auto h=startup_world_human_details(s,human);
+    if(!h||(page!=0&&page!=1)||frame<0||!o.character_frame||*o.character_frame<0)return {};
+    SteamHumanOverviewPlan out;out.soft_labels={0,0};
+    out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{23,156,78,51},{223,239,255},false}});
+    if(!append_portrait(out,h->profession,h->sex,h->equipment[0].value_or(-1),(*o.character_frame%16)/4,1,{62,181}))return {};
+    append_text(out,SteamHumanOverviewTextRole::name,h->name,{62,189,0,0},2,o.japanese?0:11);
+    out.operations.emplace_back(SteamHumanImage{Asset::smile,{o.japanese?145:137,178},0,{}});
+    for(int i=0;i<2;++i) {
+        const auto role=i?SteamHumanOverviewTextRole::effort:SteamHumanOverviewTextRole::satisfaction;
+        append_text(out,role,{},o.japanese?std::array<int,4>{106,165+21*i,0,0}:
+            std::array<int,4>{107,165+21*i,i?50:22,12},o.japanese?0:32,0,!o.japanese);
+        const int before=s.reward_display[0][i],after=s.reward_display[1][i],request=s.reward_display[2][i],y=166+21*i;
+        if(before<0||after<0||request<0)return {};
+        int shown=before;
+        if(page==1&&frame>=67)shown=after;
+        else if(page==1&&frame>=47) {
+            const auto scaled=(std::int64_t(after)-before)*(frame-47);
+            if(!fits(scaled)||!fits(std::int64_t(before)+scaled/20))return {};
+            shown=before+static_cast<int>(scaled/20);
+        }
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number05,shown,{o.japanese?183:181,y},0,4,i});
+        const int local=frame-10-6*i;
+        if(page==1&&frame>=10&&request&&(frame>=37||local>=0))
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::plus_value,SteamFacilityAsset::number05,request,
+                {o.japanese?215:213,y-(frame<37?reward_jump(local):0)},0,4,i});
+    }
+    if(page==1&&frame>=77&&(frame-77)%25<15)
+        out.operations.emplace_back(SteamHumanImage{Asset::continue_cursor,{212,204},0,{}});
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_profession_result_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto h=management_human(s,id,63);
+    const auto target=s.page_job_bindings.find(id);
+    const auto message=s.human_gift_messages.find(id);
+    if(!h||target==s.page_job_bindings.end()||target->second<0||target->second>=static_cast<int>(s.rules->jobs.size())||
+       s.rules->jobs[target->second].name.empty()||message==s.human_gift_messages.end()||message->second.empty()||!o.title_widths)return {};
+    const int frame=s.page_counters.find(id)->second;
+    if(s.human_page_selections.find(id)->second!=0)return {};
+    SteamHumanOverviewPlan out;out.soft_labels={0,0};out.title="转职";
+    if(!append_window(out,222,170,{15,139,224,202},o))return {};
+    out.operations.emplace_back(SteamHumanImage{Asset::ceremony_background,{30,67},0,std::array<int,4>{0,0,180,80}});
+    out.operations.emplace_back(SteamHumanImage{Asset::curtain,{120,139},0,{}});
+    const int job=frame<55?h->profession:target->second;
+    auto actor=startup_title_actor_skin(job,h->sex,-1,0,2,false);if(!actor)return {};
+    // HUMAN_ANIME_SEB[action4]=20，加direction2；frame固定0，无武器。
+    actor->body.sprite=22;actor->body.frame=0;
+    out.operations.emplace_back(SteamHumanPortrait{*actor,{120,139},{},false});
+    const int curtain=frame>=26&&frame<30?1:frame>=30&&frame<40?2:frame>=40&&frame<70?3+(frame-40)/6%2:
+        frame>=70&&frame<80?2:frame>=80&&frame<84?1:-1;
+    if(curtain>=0)out.operations.emplace_back(SteamHumanImage{Asset::curtain,{120,139},curtain,{}});
+    if(frame<110)append_text(out,SteamHumanOverviewTextRole::profession_transition,s.rules->jobs[target->second].name,{120,171,0,0},2);
+    else {
+        if(!o.message_width)return {};
+        const auto bubble=steam_human_down_bubble_skin(*o.message_width,{120,92});if(!bubble)return {};
+        for(const auto &draw:bubble->draws) {
+            if(const auto *image=std::get_if<SteamHumanImage>(&draw))out.operations.emplace_back(*image);
+            else if(const auto *rect=std::get_if<StartupSkinRect>(&draw))out.operations.emplace_back(SteamStartupFrameDraw{*rect});
+        }
+        append_text(out,SteamHumanOverviewTextRole::result_message,message->second,{120,95,0,0},2,0,false,0,{0,0,0});
+        const auto reward=steam_human_reward_skin(s,h->definition,frame<120?0:1,frame-(frame<120?110:120),o);
+        if(!reward)return {};
+        out.operations.insert(out.operations.end(),reward->operations.begin(),reward->operations.end());
+    }
+    out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
     return out;
 }
 } // namespace dungeon_village_prototype

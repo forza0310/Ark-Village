@@ -111,7 +111,8 @@ void resources(Checks &check,const std::filesystem::path &source_root) {
         SteamHumanAsset::portrait_background,SteamHumanAsset::home_background,SteamHumanAsset::experience_bar,
         SteamHumanAsset::experience_label,SteamHumanAsset::experience_remaining,SteamHumanAsset::smile,
         SteamHumanAsset::combat_icon,SteamHumanAsset::equipment_background,SteamHumanAsset::weapon_icon,
-        SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon,SteamHumanAsset::magic_icon}) {
+        SteamHumanAsset::armour_icon,SteamHumanAsset::accessory_icon,SteamHumanAsset::magic_icon,
+        SteamHumanAsset::ceremony_background,SteamHumanAsset::curtain,SteamHumanAsset::continue_cursor,SteamHumanAsset::result_icon}) {
         const auto resource=steam_human_resource(asset);
         check(resource.has_value(),"具名资源身份存在");
         Image image=LoadImage((assets/resource->published_image).string().c_str());
@@ -486,9 +487,103 @@ void gift_confirmation_checks(Checks &check) {
     auto missing=options;missing.comparison_name_widths[0].reset();
     check(!steam_human_gift_confirmation_skin(owner,id,missing),"缺实际字号10测宽拒绝");
 }
+StartupWorldRuntimeState profession_fixture(int raw) {
+    auto owner=test_support::page_fixture(61);const auto parent=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=2;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[parent]=1;owner.page_phases[parent]=0;owner.page_counters[parent]=0;
+    owner.human_page_selections[parent]=0;owner.human_pages_initialized.insert(parent);owner.human_page_catalogs[parent]={0,1};
+    ref::WorldScriptPage page;page.id=owner.scripts.next_page_id++;page.kind=ref::WorldScriptPageKind::raw_page;
+    page.legacy_page=raw;page.lifecycle=1;owner.scripts.pages.push_back(page);
+    owner.page_human_bindings[page.id]=1;owner.page_phases[page.id]=0;owner.page_counters[page.id]=0;
+    owner.human_page_selections[page.id]=1;owner.human_pages_initialized.insert(page.id);
+    owner.human_page_catalogs[page.id]={0,1};owner.page_job_bindings[page.id]=1;owner.human_page_parents[page.id]=parent;
+    owner.human_gift_messages[page.id]="谢谢";
+    // 仅表现条件，不声称真实人物已转职、升级或领取奖励。
+    owner.scene.world.world.ai.growth.at(1).definition.current_profession=0;
+    owner.scene.world.world.ai.growth.at(1).definition.profession_levels[1]=10;
+    owner.human_attribute_display={std::array<int,6>{100,100,100,100,100,100},
+        std::array<int,6>{99,100,101,100,100,100},std::array<int,6>{-1,0,1,0,0,0}};
+    owner.reward_display={std::array<int,2>{999,9},std::array<int,2>{999,10},std::array<int,2>{5,1}};
+    owner.village_points=1000;
+    return owner;
+}
+void profession_skin_checks(Checks &check) {
+    auto owner=profession_fixture(62);const auto id=owner.scripts.pages.back().id;
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{80,80};o.profession_change_width=48;
+    o.insufficient_points_width=72;o.message_width=24;o.character_frame=4;
+    const auto preview=steam_human_profession_preview_skin(owner,id,o);
+    check(preview&&preview->soft_labels==std::array<int,2>{0,2},"62右返回，读取真实父61与目录");
+    const auto values=parts<SteamFacilityNumber>(*preview);
+    const auto negative=std::find_if(values.begin(),values.end(),[](const auto &v){return v.parameter==0;});
+    check(negative!=values.end()&&negative->kind==SteamFacilityNumberKind::minus_value&&negative->asset==SteamFacilityAsset::number12&&
+          negative->value==1&&negative->position==std::array<int,2>{112,137},"62只有at[2]差额，负差SEB19正幅值右112/137");
+    check(std::count_if(values.begin(),values.end(),[](const auto &v){return v.kind==SteamFacilityNumberKind::plus_value&&v.value==0;})==4,
+          "62零差也画+0，不额外画before/after数值");
+    const auto minus=steam_facility_number_draws(*negative,8);
+    check(minus&&minus->back().frame==15&&minus->back().position==std::array<int,2>{96,137},"原minus先数字再减号，符号右锚减8*(位数+1)");
+    auto bad_number=*negative;bad_number.value=-1;
+    check(!steam_facility_number_draws(bad_number,8),"minus不自动abs负输入");
+    bad_number=*negative;bad_number.kind=SteamFacilityNumberKind::plus_value;
+    check(!steam_facility_number_draws(bad_number,8),"SEB19仍拒绝未证plus消费者");
+    const auto portraits=parts<SteamHumanPortrait>(*preview);
+    check(portraits.size()==4&&portraits[0].clip==std::optional<std::array<int,4>>({38,68,15,14})&&portraits[0].image_clip&&
+          portraits[0].position==std::array<int,2>{46,89}&&std::none_of(portraits.begin(),portraits.end(),[](const auto &p){return p.actor.weapon.has_value();}),
+          "62 clip/ImageClip并存且四身体不带武器");
+    const auto images=parts<SteamFacilityImage>(*preview);
+    check(std::any_of(images.begin(),images.end(),[](const auto &p){return p.asset==SteamFacilityAsset::maximum&&p.position==std::array<int,2>{171,118};}),
+          "目标职业读取已有等级10并绘MAX，不固定预览等级1");
+    auto no_points=owner;no_points.village_points=-1;
+    const auto denied=steam_human_profession_preview_skin(no_points,id,o);
+    const auto denied_images=parts<SteamHumanImage>(*denied);
+    const auto denied_touches=parts<SteamStartupTouch>(*denied);
+    check(std::none_of(denied_touches.begin(),denied_touches.end(),[](const auto &t){return t.component==4;})&&
+          std::any_of(denied_images.begin(),denied_images.end(),[](const auto &i){return i.asset==SteamHumanAsset::result_icon;}),
+          "不足点显示原result icon，不伪造支付热区");
+    auto bad=owner;bad.human_page_parents.erase(id);
+    check(!steam_human_profession_preview_skin(bad,id,o),"62缺父来源拒绝");
+    bad=owner;bad.human_attribute_display[2][0]=2;
+    check(!steam_human_profession_preview_skin(bad,id,o),"冻结差额失配拒绝，不绘制重算");
+    const auto before=startup_world_state_digest(owner);
+    for(int i=0;i<12;++i)check(steam_human_profession_preview_skin(owner,id,o)->operations.size()==preview->operations.size()&&
+        startup_world_state_digest(owner)==before,"62只读稳定，不扣点/勋章/NEW/随机");
+    for(const auto sample:std::vector<std::array<int,3>>{{0,0,999},{1,9,999},{1,10,999},{1,47,999},{1,57,999},{1,67,999},{1,77,999}}) {
+        const auto plan=steam_human_reward_skin(owner,1,sample[0],sample[1],o);
+        const auto nums=parts<SteamFacilityNumber>(*plan);
+        check(nums[0].value==sample[2],"满意封顶主值不由请求量5增加到1004");
+        if(sample[0]&&sample[1]>=10)check(std::any_of(nums.begin(),nums.end(),[](const auto &n){return n.kind==SteamFacilityNumberKind::plus_value&&n.value==5;}),
+            "封顶仍显示原请求+5而不是实际差0");
+        const auto imgs=parts<SteamHumanImage>(*plan);
+        check(std::any_of(imgs.begin(),imgs.end(),[](const auto &i){return i.asset==SteamHumanAsset::continue_cursor;})==(sample[0]==1&&sample[1]>=77),
+            "共用奖励箭头只page1满77");
+    }
+    auto missing=o;missing.character_frame.reset();
+    check(!steam_human_reward_skin(owner,1,1,77,missing),"共享人物表现帧缺失拒绝，不用结果counter补默认");
+    owner=profession_fixture(63);owner.human_page_selections[id]=0;
+    for(const auto sample:std::vector<std::array<int,2>>{{25,-1},{26,1},{30,2},{40,3},{46,4},{52,3},{54,3},{55,3},{70,2},{80,1},{84,-1},{109,-1},{110,-1},{196,-1},{197,-1}}) {
+        owner.page_counters[id]=sample[0];
+        const auto plan=steam_human_profession_result_skin(owner,id,o);
+        check(plan&&plan->soft_labels==std::array<int,2>{0,0},"63只读演出无软返回");
+        const auto imgs=parts<SteamHumanImage>(*plan);
+        check(std::count_if(imgs.begin(),imgs.end(),[&](const auto &i){return i.asset==SteamHumanAsset::curtain&&i.frame>0;})==(sample[1]>=0?1:0),
+            "63幕布边界及退休，无额外帧");
+        if(sample[1]>=0)check(std::any_of(imgs.begin(),imgs.end(),[&](const auto &i){return i.asset==SteamHumanAsset::curtain&&i.frame==sample[1];}),
+            "63幕布40起局部12槽交替3/4");
+        check(std::any_of(imgs.begin(),imgs.end(),[](const auto &i){return i.asset==SteamHumanAsset::continue_cursor;})==(sample[0]==197),
+            "63满197才有继续箭头，196无箭头");
+        const auto actor=parts<SteamHumanPortrait>(*plan).front();
+        check(actor.actor.body.sprite==22&&actor.actor.body.frame==0&&!actor.actor.weapon,"63action4/dir2固定human22/frame0无武器");
+        check(actor.actor.body.image==owner.rules->jobs[sample[0]<55?0:1].sprites[0],"63前55当前职业，55起绑定目标，无持久旧职业字段");
+    }
+    const auto result_before=startup_world_state_digest(owner);
+    const auto result_size=steam_human_profession_result_skin(owner,id,o)->operations.size();
+    for(int i=0;i<12;++i)check(steam_human_profession_result_skin(owner,id,o)->operations.size()==result_size&&
+        startup_world_state_digest(owner)==result_before,"63纯绘制不改职业/重算/发声/重抽冻结文案");
+    owner.human_gift_messages.erase(id);
+    check(!steam_human_profession_result_skin(owner,id,o),"63缺冻结文案拒绝，不由绘制随机生成");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);profession_skin_checks(check);
     return check.count;
 }

@@ -14,7 +14,8 @@ namespace dungeon_village_prototype {
 enum class SteamHumanAsset {
     medal, pinch, bubble, number05, portrait_background, home_background,
     experience_bar, experience_label, experience_remaining, smile, combat_icon,
-    equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon
+    equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon,
+    ceremony_background, curtain, continue_cursor, result_icon
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -70,7 +71,8 @@ std::optional<SteamHumanDetailSkin> steam_human_detail_skin(
 // raw60概览／六属性复用共用区及有序图元；接口分别严格匹配页0／1。
 enum class SteamHumanOverviewTextRole { name, profession, satisfaction, effort, gift, attribute, profession_change,
     equipment_slot, equipment_name, equipment_empty, equipment_hint, magic_title, spell, magic_empty, magic_status,
-    gift_change_prompt, gift_accept };
+    gift_change_prompt, gift_accept, profession_current, profession_insufficient,
+    profession_transition, result_message };
 struct SteamHumanOverviewText {
     SteamHumanOverviewTextRole role;
     std::string value;
@@ -88,9 +90,16 @@ struct SteamHumanEquipmentRow {
     SteamStartupTouch touch; // 原Touch10，value=0x20000|slot。
     std::array<int,4> margin{0,-20,0,0}; // left/right/top/bottom，不抄赠礼目录的margin。
 };
+// 小肖像保留普通clip／ImageClip的源请求；完整身体不裁剪，不写共享scratch。
+struct SteamHumanPortrait {
+    StartupTitleActorSkin actor;
+    std::array<int,2> position{};
+    std::optional<std::array<int,4>> clip;
+    bool image_clip{};
+};
 using SteamHumanOverviewOperation=std::variant<SteamStartupFrameDraw,SteamHumanImage,
     SteamFacilityImage,SteamFacilityNumber,SteamHumanOverviewText,SteamHumanDetailSkin,
-    SteamStartupTouch,SteamHumanOverviewScroll,SteamHumanEquipmentRow,SteamFacilityArrowTouch>;
+    SteamStartupTouch,SteamHumanOverviewScroll,SteamHumanEquipmentRow,SteamFacilityArrowTouch,SteamHumanPortrait>;
 struct SteamHumanOverviewPlan {
     std::vector<SteamHumanOverviewOperation> operations;
     std::array<int,2> soft_labels{0,2};
@@ -109,6 +118,9 @@ struct SteamHumanOverviewOptions {
     std::optional<int> equipment_hint_width, magic_hint_width;
     std::array<std::optional<int>,2> comparison_name_widths; // raw65字号10后实际测宽，现装／候选。
     std::optional<int> gift_accept_width;
+    std::optional<int> insufficient_points_width, message_width;
+    // 原mentalUp使用UserData共享表现计数，不拿结果页counter替代；平台需显式提供。
+    std::optional<int> character_frame;
 };
 // 只读已初始化raw60页0；无W仍绘定义，坏装备/库存依赖显式拒绝。
 // 不重算成长/HP、初始化、推进计数、抽随机、发声或提交追踪。
@@ -126,5 +138,14 @@ std::optional<SteamHumanOverviewPlan> steam_human_equipment_detail_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 // raw65只读当前装备／父目录候选的定义param；不报价/收费/装配或消费父答案。
 std::optional<SteamHumanOverviewPlan> steam_human_gift_confirmation_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// raw62只读冻结属性预览、真实旧／目标等级及勋章／点数，不重新预览或扣点。
+std::optional<SteamHumanOverviewPlan> steam_human_profession_preview_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
+// 共用mentalUp：page仅0/1，frame为其局部计数；读reward_display的请求量而非封顶差。
+std::optional<SteamHumanOverviewPlan> steam_human_reward_skin(
+    const StartupWorldRuntimeState &state,int human,int page,int frame,const SteamHumanOverviewOptions &options);
+// raw63纯表现；恰55的职业提交及满197确认的最终重算仍由Owner执行。
+std::optional<SteamHumanOverviewPlan> steam_human_profession_result_skin(
     const StartupWorldRuntimeState &state,std::uint64_t page,const SteamHumanOverviewOptions &options);
 } // namespace dungeon_village_prototype

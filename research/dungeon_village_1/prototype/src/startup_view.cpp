@@ -833,6 +833,8 @@ const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery,i
     case SteamHumanOverviewTextRole::equipment_empty:return "未装备";
     case SteamHumanOverviewTextRole::gift_change_prompt:return "赠礼更换装备";
     case SteamHumanOverviewTextRole::gift_accept:return "赠送礼物";
+    case SteamHumanOverviewTextRole::profession_current:return "当前职业";
+    case SteamHumanOverviewTextRole::profession_insufficient:return "村子点数不足";
     case SteamHumanOverviewTextRole::equipment_hint:return "按确认键赠送礼物"; // btn=0,0的研究文字适配，非原控制图标。
     case SteamHumanOverviewTextRole::magic_title:return "习得魔法";
     case SteamHumanOverviewTextRole::spell: {
@@ -933,8 +935,19 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
         else if(const auto *image=std::get_if<SteamFacilityImage>(&op))sprites.facility_image(*image,human_overview_origin);
         else if(const auto *number=std::get_if<SteamFacilityNumber>(&op))sprites.menu_number(*number,human_overview_origin);
         else if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
-            text(t->value.empty()?human_overview_label(t->role,plan.recovery_gift,t->argument):t->value,
+            text(t->role==SteamHumanOverviewTextRole::profession_transition?"转职为"+t->value:
+                 t->value.empty()?human_overview_label(t->role,plan.recovery_gift,t->argument):t->value,
                  t->rectangle,t->anchor,t->font_size,t->layout,t->rgb);
+        else if(const auto *p=std::get_if<SteamHumanPortrait>(&op)) {
+            if(p->clip) {
+                const auto &r=*p->clip;
+                BeginScissorMode(int(human_overview_origin.x)+r[0],int(human_overview_origin.y)+r[1],r[2],r[3]);
+            }
+            const Vector2 anchor{human_overview_origin.x+p->position[0],human_overview_origin.y+p->position[1]};
+            if(p->actor.weapon)sprites.visual(*p->actor.weapon,anchor);
+            sprites.actor(false,p->actor.body.sprite,p->actor.body.image,p->actor.body.frame,anchor);
+            if(p->clip)EndScissorMode();
+        }
         else if(const auto *p=std::get_if<SteamHumanDetailSkin>(&op)) {
             human_parts(p->medals);
             const Vector2 anchor{human_overview_origin.x+p->portrait_position[0],human_overview_origin.y+p->portrait_position[1]};
@@ -954,7 +967,33 @@ void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprit
     }
     if(plan.soft_labels[0]==8)font.text("追踪",18,272);
     else if(plan.soft_labels[0]==2)font.text("返回",18,272);
-    font.text("返回",188,272);
+    if(plan.soft_labels[1]==2)font.text("返回",188,272);
+}
+std::optional<SteamHumanOverviewPlan> window_human_profession_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font,int display_frame) {
+    const auto p=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &v){return v.id==id;});
+    const auto binding=s.page_human_bindings.find(id),job=s.page_job_bindings.find(id);
+    if(!s.rules||p==s.scripts.pages.end()||binding==s.page_human_bindings.end()||job==s.page_job_bindings.end()||
+       job->second<0||job->second>=static_cast<int>(s.rules->jobs.size()))return {};
+    SteamHumanOverviewOptions o;o.view_y=23;o.finger_frame=0;
+    if(p->legacy_page==62) {
+        const auto h=startup_world_human_details(s,binding->second);
+        const auto list=s.human_page_catalogs.find(id);
+        const auto selected=s.human_page_selections.find(id);
+        if(!h||list==s.human_page_catalogs.end()||selected==s.human_page_selections.end())return {};
+        const auto title="职业一览 "+std::to_string(selected->second+1)+"/"+std::to_string(list->second.size());
+        o.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+        o.profession_change_width=int(font.measure(h->profession==job->second?"当前职业":"转职"));
+        o.insufficient_points_width=int(font.measure("村子点数不足"));
+        return steam_human_profession_preview_skin(s,id,o);
+    }
+    if(p->legacy_page!=63)return {};
+    o.title_widths=std::array<int,2>{int(font.measure("转职")),int(font.measure("转职"))};
+    const auto message=s.human_gift_messages.find(id);if(message==s.human_gift_messages.end())return {};
+    o.message_width=int(font.measure(message->second));
+    // 原UserData帧尚未在研究Owner建模；窗口表现帧为显式适配，不拿结果counter替代。
+    o.character_frame=display_frame;
+    return steam_human_profession_result_skin(s,id,o);
 }
 struct Window {
     Window() {
@@ -1761,7 +1800,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                inspect_page == "task-team" || inspect_page == "world-award" ||
                inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
                inspect_page == "world-human-equipment" || inspect_page == "world-human-magic" || inspect_page == "world-human-equipment-info" ||
-               inspect_page == "world-human-gift-confirm") {
+               inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
@@ -1794,7 +1833,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const auto &current = session.state();
             if ((inspect_page == "world-human" || inspect_page == "world-human-directory" || inspect_page == "world-human-attributes" ||
                  inspect_page == "world-human-equipment" || inspect_page == "world-human-magic" || inspect_page == "world-human-equipment-info" ||
-                 inspect_page == "world-human-gift-confirm") && top.kind == ref::WorldScriptPageKind::scene &&
+                 inspect_page == "world-human-gift-confirm"||inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") && top.kind == ref::WorldScriptPageKind::scene &&
                 top.lifecycle != 4 && current.scene.scene_state == 0 &&
                 !current.scene.world.world.ai.human_order.empty()) {
                 const int human = current.scene.world.world.ai.battle.actors
@@ -1848,7 +1887,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                     if(!startup_world_human_page_ready(session.state(),session.state().scripts.pages.back().id))
                         throw std::runtime_error("人物目录重进未就绪");
                 }
-                if(inspect_page=="world-human-attributes") {
+                if(inspect_page=="world-human-attributes"||inspect_page=="world-human-profession-preview"||inspect_page=="world-human-profession-result") {
                     const auto parent=session.state().scripts.pages.back().id;
                     if(session.act_human_page(parent,StartupHumanPageAction::next)!=StartupWorldRuntimeError::none||
                        session.act_human_page(parent,StartupHumanPageAction::professions)!=StartupWorldRuntimeError::none)
@@ -1859,6 +1898,39 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         const auto current_page=session.state().scripts.pages.back();
                         if(current_page.legacy_page==61&&startup_world_human_page_ready(session.state(),current_page.id)) {
                             const auto child=current_page.id;
+                            if(inspect_page!="world-human-attributes") {
+                                const auto h=startup_world_human_details(session.state(),human);
+                                if(!h)throw std::runtime_error("职业诊断人物载荷拒绝");
+                                const auto &list=session.state().human_page_catalogs.at(child);
+                                const auto target=std::find_if(list.begin(),list.end(),[&](int j){
+                                    const auto &job=session.state().rules->jobs.at(j);
+                                    return j!=h->profession&&job.change_points<=session.state().village_points&&
+                                        (inspect_page=="world-human-profession-preview"||job.required_medals<=h->medals);
+                                });
+                                if(target==list.end())throw std::runtime_error("真实首访尚无符合资格的其他职业，不注入点数/勋章");
+                                const int selection=static_cast<int>(target-list.begin());
+                                if(session.act_human_page(child,StartupHumanPageAction::select,selection)!=StartupWorldRuntimeError::none||
+                                   session.act_human_page(child,StartupHumanPageAction::confirm)!=StartupWorldRuntimeError::none)
+                                    throw std::runtime_error("真实职业预览打开失败");
+                                for(int k=0;k<3;++k)if(!session.update().committed)throw std::runtime_error("职业预览初始化失败");
+                                if(inspect_page=="world-human-profession-result") {
+                                    const auto preview=session.state().scripts.pages.back().id;
+                                    if(session.act_human_page(preview,StartupHumanPageAction::confirm)!=StartupWorldRuntimeError::none)
+                                        throw std::runtime_error("真实职业确认失败");
+                                    bool animation_ready{};
+                                    for(int k=0;k<300;++k) {
+                                        if(!session.update().committed)throw std::runtime_error("职业演出推进失败");
+                                        const auto active=session.state().scripts.pages.back();
+                                        if(active.legacy_page==63&&startup_world_human_page_ready(session.state(),active.id)&&
+                                           session.state().page_counters.at(active.id)>=197){animation_ready=true;break;}
+                                        if(active.legacy_page!=63&&active.kind!=ref::WorldScriptPageKind::scene&&
+                                           session.acknowledge_page(active.id)!=StartupWorldRuntimeError::none)
+                                            throw std::runtime_error("职业奖励覆盖页确认失败");
+                                    }
+                                    if(!animation_ready)throw std::runtime_error("职业演出未有界到达197");
+                                }
+                                catalogue_ready=true;break;
+                            }
                             if(session.act_human_page(child,StartupHumanPageAction::cancel)!=StartupWorldRuntimeError::none)
                                 throw std::runtime_error("人物职业目录取消拒绝");
                             for(int k=0;k<3;++k)if(!session.update().committed)
@@ -2376,26 +2448,33 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                     break;
                                 }
                         }
+                        bool confirm_pointer{};
                         if (raw == 62 || raw == 73) {
                             std::optional<int> pointer;
-                            if(raw==73) {
+                            if(raw==73||raw==62) {
                                 SteamHumanOverviewOptions options;options.view_y=23;options.title_widths=std::array<int,2>{0,0};
-                                const auto plan=steam_human_equipment_detail_skin(session.state(),pid,options);
+                                const auto plan=raw==73?steam_human_equipment_detail_skin(session.state(),pid,options):
+                                    window_human_profession_plan(session.state(),pid,font,frame_count);
                                 if(!plan)throw std::runtime_error("装备信息输入载荷拒绝");
                                 for(const auto &op:plan->operations)if(const auto *arrow=std::get_if<SteamFacilityArrowTouch>(&op)) {
                                     const auto expanded=facility_detail_arrow(*arrow,sprites);
                                     const auto &r=expanded.touch_rectangle;
                                     if(hit({human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])}))pointer=arrow->value;
                                 }
+                                if(raw==62)for(const auto &op:plan->operations)if(const auto *touch=std::get_if<SteamStartupTouch>(&op))
+                                    if(touch->component==4&&touch->rectangle) {
+                                        const auto &r=*touch->rectangle;
+                                        confirm_pointer=hit({human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])});
+                                    }
                             }
                             if (IsKeyPressed(KEY_LEFT)||pointer==16)
                                 act(A::previous);
                             if (IsKeyPressed(KEY_RIGHT)||pointer==18)
                                 act(A::next);
                         }
-                        if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24})||(raw==73&&hit({176,265,58,24})))
+                        if (IsKeyPressed(KEY_ESCAPE) || (raw!=62&&hit({8, 265, 58, 24}))||((raw==73||raw==62)&&hit({176,265,58,24})))
                             act(A::cancel);
-                        else if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                        else if (IsKeyPressed(KEY_ENTER) || confirm_pointer||((raw!=62&&raw!=73)&&hit({176, 265, 58, 24})))
                             act(A::confirm);
                         else if (raw == 64 && session.state().page_phases.at(pid) < 4 &&
                                  hit({96, 265, 52, 24}))
@@ -2422,7 +2501,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             if (hit({128, 225, 98, 24}))
                                 act(A::select, 1);
                         }
-                        if (IsKeyPressed(KEY_ENTER) || hit({176, 265, 58, 24}))
+                        if (IsKeyPressed(KEY_ENTER) || (raw!=63&&hit({176, 265, 58, 24})))
                             act(A::confirm);
                     }
                 }
@@ -3223,7 +3302,8 @@ int run_startup_world_window(const std::filesystem::path &assets,
             const bool steam_human=human_view.has_value();
             const bool steam_equipment=page->legacy_page==73&&startup_world_human_page_ready(state,page->id);
             const bool steam_gift=page->legacy_page==65&&startup_world_human_page_ready(state,page->id);
-            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift) DrawRectangle(5, 170, 230, 119, paper);
+            const bool steam_profession=(page->legacy_page==62||page->legacy_page==63)&&startup_world_human_page_ready(state,page->id);
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -3244,7 +3324,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift)
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human&&!steam_equipment&&!steam_gift&&!steam_profession)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3787,12 +3867,15 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 const auto plan=window_human_overview_plan(state,page->id,font);
                 if(!plan)throw std::runtime_error("Steam人物详情显示载荷拒绝");
                 draw_human_overview(*plan,sprites,font);
-            } else if ((page->legacy_page == 61 || page->legacy_page == 62) &&
+            } else if(steam_profession) {
+                const auto plan=window_human_profession_plan(state,page->id,font,frame_count);
+                if(!plan)throw std::runtime_error("Steam职业页面载荷拒绝");
+                draw_human_overview(*plan,sprites,font);
+            } else if (page->legacy_page == 61 &&
                        startup_world_human_page_ready(state, page->id)) {
                 const auto &list = state.human_page_catalogs.at(page->id);
                 const int chosen = state.human_page_selections.at(page->id);
-                font.text(page->legacy_page == 61 ? "职业一览" : "转职确认", 16, 48);
-                if (page->legacy_page == 61) {
+                font.text("职业一览", 16, 48);
                     const int first = std::max(0, chosen - 4);
                     for (int n = first; n < std::min(static_cast<int>(list.size()), first + 5);
                          ++n) {
@@ -3806,19 +3889,6 @@ int run_startup_world_window(const std::filesystem::path &assets,
                                   137, y + 4, ink, 9);
                     }
                     font.text("村子点 " + std::to_string(state.village_points), 16, 222, ink, 10);
-                } else {
-                    const auto &job = rules.jobs.at(list.at(chosen));
-                    font.text(job.name, 16, 76);
-                    constexpr const char *labels[]{"体力", "力量", "灵活", "结实", "魔力", "运气"};
-                    for (int n = 0; n < 6; ++n)
-                        font.text(std::string(labels[n]) + " " +
-                                      std::to_string(state.human_attribute_display[0][n]) + " > " +
-                                      std::to_string(state.human_attribute_display[1][n]),
-                                  16, 100 + n * 18, ink, 10);
-                    font.text(std::to_string(job.change_points) + "点 / " +
-                                  std::to_string(job.required_medals) + "勋章",
-                              16, 222, ink, 10);
-                }
                 font.text("返回", 18, 272);
                 font.text("确定", 190, 272);
             } else if(steam_equipment) {
@@ -3904,7 +3974,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 }
                 font.text("返回", 18, 272);
                 font.text("确定", 190, 272);
-            } else if ((page->legacy_page == 63 || page->legacy_page == 66 ||
+            } else if ((page->legacy_page == 66 ||
                         page->legacy_page == 68 || page->legacy_page == 69 ||
                         page->legacy_page == 70) &&
                        startup_world_human_page_ready(state, page->id)) {
@@ -3914,8 +3984,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (const auto portrait = startup_world_portrait(state, human))
                     sprites.portrait(*portrait, {190, 68});
                 const int raw = page->legacy_page;
-                font.text(raw == 63   ? "转职"
-                          : raw == 66 ? "礼物"
+                font.text(raw == 66 ? "礼物"
                           : raw == 68 ? "装备能力"
                           : raw == 69 ? "道具效果"
                                       : "职业大师",

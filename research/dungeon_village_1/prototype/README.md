@@ -61,6 +61,8 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 
 装备信息73／赠礼确认65后继也复用`steam_human_skin`有序计划及执行器；基础价与赠礼价分开，65只读装备定义比较且不报价／装配。两个有界入口`world-human-equipment-info`／`world-human-gift-confirm`经真实自然首访和父目录打开，不注入世界。来源、严格父目录验证及颜色修正在[人物合同](../ui/STEAM_HUMAN_DETAIL.md#装备信息73与赠礼确认65)；两页不新增持久字段，61／64滚动设计仍待确认。
 
+职业预览62／转职演出63已接同模块：62使用冻结六属性差额、实际职业等级、勋章及点数显示资格；63显示event13背景、局部幕布、human22身体、冻结气泡和共用奖励动画。左右／橙条／右返回按计划投递，63无软返回，满197才确认收尾；共享奖励身体步帧由调用方显式提供，研究窗口表现帧是适配，不冒认UserData原时钟。`world-human-profession-preview`／`world-human-profession-result`两个有界入口经真实首访、选择可支付职业、确认及至197演出，不注入点数／勋章／职业。后者停在最终确认前，未完成经验重算收尾；Owner业务由现pages主责测试覆盖。[合同](../ui/STEAM_HUMAN_DETAIL.md#职业预览62与转职演出63)与[验收](../VERIFICATION.md)分开记录原事实、研究窗口和平台缺口，61／64滚动设计仍待确认。
+
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。
 18项受影响Release测试和8帧共同世界窗口通过；窗口未捕获cd13或道具目录，原身体bl偏移／精确原布局／Steam消费者仍未认证，详见[需求回应](../verification/PRODUCT_REQUESTS.md)。

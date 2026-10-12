@@ -465,6 +465,12 @@ std::string StartupApplication::act_human_page(std::uint64_t page, StartupHumanP
                                                int selection) {
     return apply_world_action([&](auto &world) { return world.act_human_page(page, action, selection); });
 }
+std::string StartupApplication::input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_human_catalogue_page(page,input); });
+}
+std::string StartupApplication::input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return apply_world_action([&](auto &world) { return world.input_human_detail_page(page,input); });
+}
 std::string StartupApplication::act_rank_page(std::uint64_t page, int selection, bool cancel) {
     return apply_world_action([&](auto &world) { return world.act_rank_page(page, selection, cancel); });
 }

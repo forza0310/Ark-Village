@@ -150,6 +150,8 @@ class StartupApplication {
     std::string input_manual_page(std::uint64_t page, const StartupManualInput &input);
     std::string input_information_page(std::uint64_t page, const StartupInformationInput &input);
     std::string act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0);
+    std::string input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
+    std::string input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
     std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);
     std::string cancel_page(std::uint64_t page);
     std::vector<StartupAudioRequest> take_audio_requests();

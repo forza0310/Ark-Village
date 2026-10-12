@@ -24,6 +24,8 @@ struct StartupHumanDetails {
 // raw60只读当前共享定义/装备；不使用创建时的metadata替代玩家变更。
 std::optional<StartupHumanDetails>
 startup_world_human_details(const StartupWorldRuntimeState &state, int human);
+// 原页0回复入口资格：每次实时按人物原序取首个同定义W，缺来源返回空。
+std::optional<bool> startup_world_human_recovery_gift(const StartupWorldRuntimeState &state,int human);
 struct StartupHumanPresentationLive {
     ref::CharacterId id;
     int state{};
@@ -58,8 +60,27 @@ enum class StartupHumanPageAction {
     inspect_equipment,
     view_tab,
     equipment_slot,
-    track
+    track,
+    scroll_relative,
+    scroll_absolute
 };
+struct StartupHumanCatalogueInput {
+    bool up{},down{},left{},right{},confirm{},cancel{},inspect_equipment{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{};int value{}; };
+    std::optional<Scroll> scroll; // 已核组件12事件8/9；物理坐标由平台转换，不存设备状态。
+};
+struct StartupHumanCatalogueCursor { int selection{},first{},count{},visible{}; };
+// 只读真实已初始化61/64；不能从选择派生或补建缺失scroll，不投影退休页。
+std::optional<StartupHumanCatalogueCursor> inspect_startup_world_human_catalogue_cursor(
+    const StartupWorldRuntimeState &state,std::uint64_t page);
+// 按原同轮次序合成上下/左右，最后确认优先；失败保留整个旧Owner及随机/输出。
+StartupWorldRuntimeError input_startup_world_human_catalogue_page(StartupWorldRuntimeState &state,
+    std::uint64_t page,const StartupHumanCatalogueInput &input);
+// raw60组件滚动先同步page，再按进入本轮的页分支合成上下；最终页决定确认路由。
+// 复用非持久DTO；不监听左右/装备信息，追踪仍由既有独立动作处理。
+StartupWorldRuntimeError input_startup_world_human_detail_page(StartupWorldRuntimeState &state,
+    std::uint64_t page,const StartupHumanCatalogueInput &input);
 // 仅对事务候选调用：合法场景/35入口创建raw60并绑定追踪来源，不复制Owner。
 std::optional<std::uint64_t> append_startup_world_human_detail_page(
     StartupWorldRuntimeState &candidate, int human, int chase_mode,

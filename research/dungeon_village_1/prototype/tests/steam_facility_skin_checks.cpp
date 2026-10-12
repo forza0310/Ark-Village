@@ -334,6 +334,28 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
               "SEB19普通数字/逗号/单位实际帧裁片均落在Steam100×21图内");
     }
     // HUD普通SEB10与既有等级SEB11共享PNG但不是同一源行/资源身份。
+    numeric={N::count,A::number05,1234,{210,20},0,4,-1};
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws&&number_draws->size()==6&&number_draws->front().position[0]==168&&
+          number_draws->at(2).frame==10&&number_draws->at(2).position[0]==174&&
+          number_draws->back().asset==A::inventory_unit&&number_draws->back().frame==2&&
+          number_draws->back().position[0]==200,
+          "Draw_count retains comma order then independent SEB76 unit at dx-10");
+    numeric.kind=N::person_count;numeric.value=0;
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws&&number_draws->size()==2&&number_draws->front().frame==0&&
+          number_draws->front().position[0]==192&&number_draws->back().frame==4,
+          "Japanese Draw_count4 zero uses separate person unit, not multiplied stock");
+    numeric.kind=N::multi_value;numeric.value=1234;
+    number_draws=steam_facility_number_draws(numeric,8);
+    check(number_draws&&number_draws->size()==6&&number_draws->front().position[0]==178&&
+          number_draws->back().asset==A::number05&&number_draws->back().frame==16&&
+          number_draws->back().position[0]==169,
+          "Draw_multiValue emits comma digits before multiplication marker at dx-8*digits-9");
+    numeric.value=-1;
+    check(!steam_facility_number_draws(numeric,8),"catalogue count domain rejects negative inventory");
+    numeric.value=0;numeric.position[0]=std::numeric_limits<int>::min();
+    check(!steam_facility_number_draws(numeric,8),"multiplication marker overflow rejects whole plan");
     const auto hud=steam_facility_resource(A::number03_hud),level=steam_facility_resource(A::number03);
     check(hud && level && hud->image==102 && hud->sprite==10 && level->sprite==11 &&
           std::string(hud->published_image)=="original/common/number03.png" &&

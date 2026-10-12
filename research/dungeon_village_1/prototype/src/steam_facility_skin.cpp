@@ -100,11 +100,31 @@ std::optional<SteamFacilityResource> steam_facility_resource(Asset asset) {
     case Asset::finger:return SteamFacilityResource{"common",70,21,"original/common/finger_r.png","original/common/finger_r.seb"};
     case Asset::title_arrows:return SteamFacilityResource{"common",74,3,"original/common/arrow02.png","original/common/arrow02.seb"};
     case Asset::people:return SteamFacilityResource{"common",178,-1,"original/common/ppl.png",nullptr};
+    case Asset::inventory_unit:return SteamFacilityResource{"common",85,76,"steam-common/menuRT01.png","original/common/menuRT01.seb"};
     }
     return {};
 }
 std::optional<std::vector<SteamFacilityImage>> steam_facility_number_draws(
     const SteamFacilityNumber &n,int digit_width) {
+    if(n.kind==SteamFacilityNumberKind::count||n.kind==SteamFacilityNumberKind::multi_value||
+       n.kind==SteamFacilityNumberKind::person_count) {
+        if(n.asset!=Asset::number05||n.value<0||n.padding!=0||digit_width!=8)return {};
+        const bool unit=n.kind!=SteamFacilityNumberKind::multi_value;
+        const auto right=std::int64_t(n.position[0])-(unit?10:0);
+        if(!fits(right))return {};
+        auto result=steam_facility_number_draws({SteamFacilityNumberKind::comma_number,n.asset,n.value,
+            {static_cast<int>(right),n.position[1]},0,4,n.parameter},8);
+        if(!result)return {};
+        if(unit)result->push_back({Asset::inventory_unit,{static_cast<int>(right),n.position[1]},
+            n.kind==SteamFacilityNumberKind::count?2:4,{}});
+        else {
+            // 原Draw_multiValue先Comma再画乘号；GetFig不含符号，数量域明确拒绝负值。
+            const auto marker=right-std::int64_t(std::to_string(n.value).size())*8-9;
+            if(!fits(marker))return {};
+            result->push_back({n.asset,{static_cast<int>(marker),n.position[1]},16,{}});
+        }
+        return result;
+    }
     const bool roster_number=n.asset==Asset::number03||n.asset==Asset::number11;
     const bool comma=n.kind==SteamFacilityNumberKind::comma_number;
     if(!roster_number&&n.asset!=Asset::number05&&n.asset!=Asset::number08&&n.asset!=Asset::number09&&

@@ -1,6 +1,7 @@
 // Steam人物局部纯图元：ui/STEAM_HUMAN_PRESENTATION.md、STEAM_HUMAN_PINCH.md。
 // raw60概览／六属性的有序绘制及输入边界见ui/STEAM_HUMAN_DETAIL.md。
 #include "dungeon_village_prototype/steam_human_skin.hpp"
+#include "dungeon_village_reference/human_management.hpp"
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include <algorithm>
@@ -45,6 +46,9 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::armour_icon:return SteamHumanResource{20,-1,"original/common/icon_armour00.png",nullptr};
     case Asset::accessory_icon:return SteamHumanResource{21,-1,"original/common/icon_accessry00.png",nullptr};
     case Asset::magic_icon:return SteamHumanResource{118,-1,"original/common/icon_magicpot.png",nullptr};
+    case Asset::catalogue_new:return SteamHumanResource{147,-1,"original/common/wnd_new.png",nullptr};
+    case Asset::catalogue_get:return SteamHumanResource{148,-1,"original/common/wnd_get.png",nullptr};
+    case Asset::gift_tab:return SteamHumanResource{128,88,"steam-common/icon_objRoots.png","original/common/icon_objRoots.seb"};
     case Asset::ceremony_background:return SteamHumanResource{13,-1,"original/event/event_medelCelemony_back2.png",nullptr};
     case Asset::curtain:return SteamHumanResource{89,77,"original/common/eff_curtainBack.png","original/common/eff_curtainBack.seb"};
     case Asset::continue_cursor:return SteamHumanResource{72,2,"original/common/arrow01.png","original/common/arrow01.seb"};
@@ -193,12 +197,11 @@ std::optional<SteamHumanOverviewPlan> human_page_skin(
         }
     }
     bool recovery{};
-    if(tab==0)for(const auto &item:s.rules->items) {
-        const auto stock=s.items.find(item.identity);
-        if(stock==s.items.end()||stock->second.inventory<0)return {};
-        if(stock->second.inventory>0&&item.recovery>0)recovery=true;
+    if(tab==0) {
+        const auto eligible=startup_world_human_recovery_gift(s,h.definition);
+        if(!eligible)return {};
+        recovery=*eligible;
     }
-    recovery=view->live&&recovery&&(view->live->state==7||view->live->hp_after<view->live->hp_max/2);
     const auto bottom=tab==0?o.bottom_widths[recovery?1:0]:tab==1?o.profession_change_width:
         tab==2?o.equipment_hint_width:o.magic_hint_width;
     if((tab<=1)&&(!bottom||*bottom<0))return {};
@@ -778,6 +781,363 @@ std::optional<SteamHumanOverviewPlan> steam_human_gift_result_skin(
         out.operations.insert(out.operations.end(),reward->operations.begin(),reward->operations.end());
     }
     out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_attribute_result_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    if(page==s.scripts.pages.end()||(page->legacy_page!=68&&page->legacy_page!=69))return {};
+    const bool equipment_result=page->legacy_page==68;
+    const auto human=management_human(s,id,page->legacy_page);
+    const auto choice=s.human_equipment_choices.find(id);
+    if(!human||choice==s.human_equipment_choices.end()||s.human_page_selections.at(id)!=0||
+       !o.title_widths||!o.result_name_width||*o.result_name_width<0||*o.result_name_width>4096||
+       ((!equipment_result||!o.japanese)&&(!o.result_suffix_width||*o.result_suffix_width<0||*o.result_suffix_width>4096)))return {};
+    const int slot=choice->second[0],definition=choice->second[1],frame=s.page_counters.at(id);
+    const StartupWorldEquipment *equipment=nullptr;const StartupWorldItem *item=nullptr;
+    if(equipment_result) {
+        if(slot<0||slot>3)return {};
+        const int kind=slot==0?1:slot==3?3:2;
+        const auto found=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[=](const auto &d){return d.shop.kind==kind&&d.shop.id==definition;});
+        if(found==s.rules->equipment.end()||(kind==2&&(found->shop.type==2?1:2)!=slot))return {};
+        equipment=&*found;
+    } else {
+        if(slot!=4)return {};
+        const auto found=std::find_if(s.rules->items.begin(),s.rules->items.end(),[=](const auto &d){return d.identity==definition;});
+        if(found==s.rules->items.end()||found->effect<0||found->effect>5)return {};
+        item=&*found;
+    }
+    const auto &name=equipment_result?equipment->name:item->name;if(name.empty())return {};
+    // 头部身份只读兑现时冻结的slot/newID，不从人物现装反推礼物来源。
+    const auto icons=equipment_result?startup_world_equipment_icon_draws(s,slot==0?1:slot==3?3:2,definition):
+        startup_world_item_icon_draws(s,definition);
+    if(!icons)return {};
+    const int width=*o.result_name_width+(equipment_result?(o.japanese?62:26+*o.result_suffix_width):24+*o.result_suffix_width);
+    SteamHumanOverviewPlan out;out.soft_labels={0,0};out.title=equipment_result?"装备变更":"能力上升";
+    if(!append_window(out,220,168,{17,74,219,184},o))return {};
+    for(const auto &draw:*icons) {
+        const auto asset=draw.image==24?Asset::equipment_background:equipment_result?
+            (slot==0?Asset::weapon_icon:slot==3?Asset::accessory_icon:Asset::armour_icon):Asset::item_icon;
+        out.operations.emplace_back(SteamHumanImage{asset,{120-width/2+draw.offset[0],67+draw.offset[1]},0,draw.crop});
+    }
+    const int font=equipment_result&&!o.japanese?11:0;
+    append_text(out,SteamHumanOverviewTextRole::gift_result_name,name,{140-width/2,70,0,0},0,font);
+    append_text(out,SteamHumanOverviewTextRole::gift_result_suffix,equipment_result?"装备":"赠送",
+        {120+width/2-(equipment_result&&o.japanese?36:0),70,0,0},equipment_result&&o.japanese?0:4,font);
+    append_text(out,SteamHumanOverviewTextRole::result_message,equipment_result?"装备变更使能力上升":"使用道具使能力上升",
+        {120,198,0,0},2);
+    const int count=equipment_result?4:6,move_start=equipment_result?52:24,move_end=equipment_result?67:39;
+    const int jump_end=equipment_result?42:14,cursor_start=equipment_result?73:45;
+    for(int i=0;i<count;++i) {
+        const int before=equipment_result?s.equipment_attribute_display[0][i]:s.human_attribute_display[0][i];
+        const int after=equipment_result?s.equipment_attribute_display[1][i]:s.human_attribute_display[1][i];
+        const int delta=equipment_result?s.equipment_attribute_display[2][i]:s.human_attribute_display[2][i];
+        if(std::int64_t(after)-before!=delta||delta==std::numeric_limits<int>::min())return {};
+        const int y=equipment_result?101+23*i:93+17*i;
+        if(equipment_result)out.operations.emplace_back(SteamHumanImage{Asset::combat_icon,{31,y-4},i,{}});
+        else {
+            out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::effect_icon,{31,y-4},0,std::array<int,4>{i==5?96:16*i,16,16,16}});
+            append_text(out,SteamHumanOverviewTextRole::attribute,{}, {49,y-2,0,0},0,0,false,i,{0,100,255});
+        }
+        int value=before;
+        if(frame>=move_end)value=after;
+        else if(frame>=move_start&&delta) {
+            // RateConvert_countAnime先迈一步，signed余差决定终点；下降终点夹到起点，保留源特殊行为。
+            const auto first=std::int64_t(before)+(delta>0?1:-1),remaining=std::int64_t(after)-first;
+            const auto proposed=move_start+3*remaining;
+            if(!fits(first)||!fits(proposed))return {};
+            const auto end=std::clamp(proposed,std::int64_t(move_start),std::int64_t(move_end));
+            if(!remaining||end==move_start)value=static_cast<int>(first);
+            else if(frame>=end)value=after;
+            else {
+                const auto scaled=remaining*(frame-move_start);
+                if(!fits(scaled)||!fits(first+scaled/(end-move_start)))return {};
+                value=static_cast<int>(first+scaled/(end-move_start));
+            }
+        }
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number08,value,{138,y},0,4,i});
+        const int local=frame-2-(equipment_result?6*i:0);
+        if(delta&&(equipment_result||i==item->effect)&&frame>=2&&(frame>=jump_end||local>=0)) {
+            // 两窗都沿原8/12抛物线；68四行错开6槽，69仅实际效果行同步起跳。
+            const int delta_y=y-(frame<jump_end?reward_jump(local):0);
+            out.operations.emplace_back(SteamFacilityNumber{delta<0?SteamFacilityNumberKind::minus_value:SteamFacilityNumberKind::plus_value,
+                delta<0?SteamFacilityAsset::number12:SteamFacilityAsset::number05,delta<0?-delta:delta,{202,delta_y},0,4,i});
+        }
+    }
+    if(frame>=cursor_start&&(frame-cursor_start)%25<15)
+        out.operations.emplace_back(SteamHumanImage{Asset::continue_cursor,{208,187},0,{}});
+    out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_item_explain_skin(
+    const StartupWorldItem &item,const SteamHumanOverviewOptions &o) {
+    if(item.effect<0||item.effect>9)return {};
+    SteamHumanOverviewPlan out;
+    constexpr std::array<const char *,6> attributes{"体力","力量","灵巧","耐久","魔力","运气"};
+    if(item.effect<6) {
+        const auto name=o.item_explain_widths[0],suffix=o.item_explain_widths[1];
+        if(!name||!suffix||*name<0||*suffix<0)return {};
+        const auto w=std::int64_t(*name)+*suffix+18+(o.english?2:0);
+        if(!fits(w))return {};
+        const int left=120-static_cast<int>(w)/2;
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::effect_icon,{left,197},0,
+            std::array<int,4>{16*(item.effect==5?6:item.effect),16,16,16}});
+        append_text(out,SteamHumanOverviewTextRole::attribute,attributes[item.effect],
+            {left+18,199,0,0},0,0,false,item.effect,{0,100,255});
+        append_text(out,SteamHumanOverviewTextRole::item_explain,item.effect==0?"最大值上升":"上升",
+            {120+static_cast<int>(w)/2,199,0,0},4);
+    } else if(item.effect==9) {
+        if(item.spell<0||item.spell>3||!o.item_explain_widths[2]||*o.item_explain_widths[2]<0)return {};
+        const auto w=std::int64_t(*o.item_explain_widths[2])+18;
+        if(!fits(w))return {};
+        out.operations.emplace_back(SteamHumanImage{Asset::magic_icon,{120-static_cast<int>(w)/2,197},0,
+            std::array<int,4>{16*(item.spell==3?4:item.spell),0,16,16}});
+        out.operations.emplace_back(SteamHumanLearningText{item.spell,{120+static_cast<int>(w)/2,199},4});
+    } else if(item.effect==6&&item.category==11)
+        append_text(out,SteamHumanOverviewTextRole::item_explain,"满意与努力上升",{20,199,200,11},34,0,true);
+    else if(item.effect==7)
+        append_text(out,SteamHumanOverviewTextRole::item_explain,"可以用作魔法素材",{20,199,200,11},34,0,true);
+    else append_text(out,SteamHumanOverviewTextRole::item_explain,
+        item.effect==8?"回复HP":"在商店高价交易",{120,199,0,0},2);
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_gift_catalogue_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto cursor=inspect_startup_world_human_catalogue_cursor(s,id);
+    if(!cursor||page==s.scripts.pages.end()||page->legacy_page!=64||page->lifecycle<1||
+       !o.title_widths||o.finger_frame<0||o.finger_frame>5||o.catalogue_arrow_count<0)return {};
+    const auto human=startup_world_human_details(s,s.page_human_bindings.find(id)->second);
+    const auto catalogues=s.equipment_page_catalogs.find(id);
+    if(!human||catalogues==s.equipment_page_catalogs.end()||cursor->visible!=4)return {};
+    const int tab=s.page_phases.find(id)->second,counter=s.page_counters.find(id)->second;
+    const auto &list=catalogues->second[tab];
+    if(cursor->count!=static_cast<int>(list.size()))return {};
+    const int kind=tab==0?1:tab==3?3:2;
+    const auto equipment=[&](int definition)->const StartupWorldEquipment * {
+        const auto found=std::find_if(s.rules->equipment.begin(),s.rules->equipment.end(),[=](const auto &d) {
+            return d.shop.kind==kind&&d.shop.id==definition;
+        });
+        return found==s.rules->equipment.end()?nullptr:&*found;
+    };
+    const auto ordinary=[&](int definition)->const StartupWorldItem * {
+        const auto found=std::find_if(s.rules->items.begin(),s.rules->items.end(),[=](const auto &d){return d.identity==definition;});
+        return found==s.rules->items.end()?nullptr:&*found;
+    };
+    // 全部冻结引用先校验；不能让屏外坏名称/共享库存到滚动时才变成抛异常。
+    bool head_get{};
+    std::vector<int> seen;
+    for(const int definition:list) {
+        if(std::find(seen.begin(),seen.end(),definition)!=seen.end())return {};
+        seen.push_back(definition);
+        if(tab==4) {
+            const auto d=ordinary(definition);const auto stock=s.items.find(definition);
+            if(!d||d->name.empty()||stock==s.items.end()||stock->second.inventory<=0||stock->second.inventory>999)return {};
+        } else {
+            const auto d=equipment(definition);const auto stock=s.catalog.find({kind,definition});
+            if(!d||d->name.empty()||stock==s.catalog.end()||stock->second.status==0||stock->second.free_purchases<0)return {};
+            head_get=head_get||stock->second.newly_unlocked;
+        }
+    }
+    SteamHumanOverviewPlan out;out.title="赠送礼物 "+std::to_string(tab+1)+"/5";out.soft_labels=tab==4?
+        std::array<int,2>{0,2}:std::array<int,2>{7,2};
+    if(!append_window(out,220,169,{17,74,219,184},o))return {};
+    const int shift=3*((counter%16)/8);
+    out.operations.emplace_back(SteamFacilityArrowTouch{{26-shift,55},3,16});
+    out.operations.emplace_back(SteamFacilityArrowTouch{{214+shift,55},0,18});
+    constexpr int present_icon[]{1,2,3,4,0};
+    out.operations.emplace_back(SteamHumanImage{Asset::gift_tab,{25,66},present_icon[tab],{}});
+    if(head_get) {
+        // Steam CharacterData.cctor两组5-int源blob，非日文不能用APK字体测宽代替。
+        constexpr int japanese_width[]{46,52,53,63,50},other_width[]{57,55,57,76,50};
+        out.operations.emplace_back(SteamHumanImage{Asset::catalogue_get,
+            {27+(o.japanese?japanese_width[tab]:other_width[tab]),70},0,std::array<int,4>{0,0,23,9}});
+    }
+    append_text(out,SteamHumanOverviewTextRole::gift_catalogue_header,tab==4?"剩余":"价值",{185,69,0,0},0);
+    if(list.empty())append_text(out,SteamHumanOverviewTextRole::gift_catalogue_empty,"没有物品",{120,97,0,0},2);
+    const auto icons=[&](const std::optional<std::vector<StartupVisualDraw>> &parts,int x,int y) {
+        if(!parts)return false;
+        for(const auto &part:*parts) {
+            if(part.resource!=StartupVisualResource::common||part.sprite!=-1)return false;
+            const auto asset=part.image==24?Asset::equipment_background:part.image==12?Asset::weapon_icon:
+                part.image==20?Asset::armour_icon:part.image==21?Asset::accessory_icon:part.image==9?Asset::item_icon:Asset::medal;
+            if(asset==Asset::medal)return false;
+            out.operations.emplace_back(SteamHumanImage{asset,{x+part.offset[0],y+part.offset[1]},0,part.crop});
+        }
+        return true;
+    };
+    for(int row=cursor->first;row<cursor->count&&row-cursor->first<4;++row) {
+        const int definition=list[row],y=97+24*(row-cursor->first);
+        if(row==cursor->selection)out.operations.emplace_back(SteamStartupFrameDraw{
+            StartupSkinRect{{23,y-2,191,16},{255,153,55},false}});
+        out.operations.emplace_back(SteamHumanEquipmentRow{SteamStartupTouch{11,0x20000|row,
+            std::array<int,4>{tab==4?23:3,y-2,tab==4?191:231,16},{},tab==4?16:0},
+            std::array<int,4>{20,tab==4?0:-20,0,0}});
+        if(tab==4) {
+            const auto d=ordinary(definition);const auto &stock=s.items.find(definition)->second;
+            if(stock.newly_unlocked)out.operations.emplace_back(SteamHumanImage{Asset::catalogue_new,{10,y+2},0,std::array<int,4>{0,0,20,9}});
+            if(!icons(startup_world_item_icon_draws(s,definition),31,y-2))return {};
+            append_text(out,SteamHumanOverviewTextRole::equipment_name,d->name,{50,y,110,12},32,0,true);
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::multi_value,SteamFacilityAsset::number05,
+                stock.inventory,{210,y+1},0,4,-1});
+        } else {
+            const auto d=equipment(definition);const auto &stock=s.catalog.find({kind,definition})->second;
+            if(stock.newly_unlocked)out.operations.emplace_back(SteamHumanImage{Asset::catalogue_get,{10,y+2},0,std::array<int,4>{0,0,23,9}});
+            if(!icons(startup_world_equipment_icon_draws(s,kind,definition),30,y-3))return {};
+            append_text(out,SteamHumanOverviewTextRole::equipment_name,d->name,{50,y,110,(tab==1||tab==2)?11:12},32,0,true);
+            const ref::HumanManagementEquipment input{definition,tab,stock.status,d->gift_order,d->reward_difficulty,
+                d->shop.price,d->gift_rating,stock.free_purchases,d->shop.combat};
+            const auto quote=ref::human_equipment_gift_cost(input);if(!quote)return {};
+            if(*quote==-1)out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::count,
+                SteamFacilityAsset::number05,stock.free_purchases,{210,y+1},0,4,-1});
+            else out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::money,
+                s.scene.world.world.ai.accounting.funds()>=*quote?SteamFacilityAsset::number08:SteamFacilityAsset::number12,*quote,{210,y+1},0,4,-1});
+        }
+        if(row==cursor->selection)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{21,y+8},o.finger_frame,{}});
+    }
+    const int denominator=std::max(cursor->count,4);
+    const int top=85+static_cast<int>(std::int64_t(110)*cursor->first/denominator),height=110*4/denominator;
+    out.operations.emplace_back(SteamHumanCatalogueScroll{{StartupSkinRect{{220,85,5,110},{7,5,78},false},
+        StartupSkinRect{{220,top,5,height+1},o.catalogue_scroll_first_touch&&cursor->count>4?
+            std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false}},
+        SteamStartupTouch{12,0x40000,std::array<int,4>{221,85,3,110},{},0},{3,20,0,0},
+        {cursor->count,4,0x20000},SteamStartupTouch{25,0,std::array<int,4>{221,85,3,110},{},4}});
+    // 原全部耗尽可保留旧游标；已确认维护策略归零，绘制不索引空目录或修Owner。
+    if(!list.empty()) {
+        if(tab==4) {
+            const auto explanation=steam_human_item_explain_skin(*ordinary(list[cursor->selection]),o);
+            if(!explanation)return {};
+            out.operations.insert(out.operations.end(),explanation->operations.begin(),explanation->operations.end());
+        } else {
+            const auto target=equipment(list[cursor->selection]);
+            const auto current=human->equipment[tab]?equipment(*human->equipment[tab]):nullptr;
+            if(human->equipment[tab]&&!current)return {};
+            if(human->equipment[tab]&&*human->equipment[tab]==list[cursor->selection])
+                append_text(out,SteamHumanOverviewTextRole::gift_current_equipment,"当前装备中",{120,199,0,0},2);
+            else for(int column=0;column<2;++column) {
+                const int attribute=tab==0?(column==0?1:3):(column==0?0:2);
+                out.operations.emplace_back(SteamHumanImage{Asset::combat_icon,{column==0?43:134,197},attribute,{}});
+                const auto delta=std::int64_t(target->shop.combat[attribute])-(current?current->shop.combat[attribute]:0);
+                if(delta<std::numeric_limits<int>::min()+1LL||delta>std::numeric_limits<int>::max())return {};
+                out.operations.emplace_back(SteamFacilityNumber{delta<0?SteamFacilityNumberKind::minus_value:SteamFacilityNumberKind::plus_value,
+                    delta<0?SteamFacilityAsset::number12:delta>0?SteamFacilityAsset::number05:SteamFacilityAsset::number08,
+                    static_cast<int>(delta<0?-delta:delta),{column==0?106:197,200},0,4,-1});
+            }
+        }
+    }
+    if(o.catalogue_arrow_count==0) {
+        out.operations.emplace_back(SteamStartupTouch{2,0xC00C8,std::array<int,4>{90,48,70,30},{},0});
+        out.operations.emplace_back(SteamStartupTouch{2,0xC00C8,std::array<int,4>{90,223,70,30},{},0});
+    } else for(int i=0;i<2;++i) {
+        const auto index=out.operations.size();
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinDraw{StartupSkinPackage::common,74,3,i,0,{}, {120,i==0?85:200}}});
+        out.operations.emplace_back(SteamHumanEquipmentRow{SteamStartupTouch{23,i==0?17:19,{},index,0},
+            {40,40,i==0?45:-15,i==0?0:60}});
+    }
+    return out;
+}
+std::optional<SteamHumanOverviewPlan> steam_human_profession_catalogue_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamHumanOverviewOptions &o) {
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+    const auto cursor=inspect_startup_world_human_catalogue_cursor(s,id);
+    if(!cursor||page==s.scripts.pages.end()||page->legacy_page!=61||page->lifecycle<1||!o.title_widths||o.finger_frame<0||o.finger_frame>5)return {};
+    const auto human=startup_world_human_details(s,s.page_human_bindings.find(id)->second);
+    const auto list=s.human_page_catalogs.find(id);
+    if(!human||list==s.human_page_catalogs.end()||cursor->count!=static_cast<int>(list->second.size())||cursor->visible!=5)return {};
+    const auto growth=s.scene.world.world.ai.growth.find(human->definition);
+    if(growth==s.scene.world.world.ai.growth.end()||human->profession<0||
+       human->profession>=static_cast<int>(s.rules->jobs.size())||s.rules->jobs[human->profession].name.empty())return {};
+    // 整份冻结目录先校验，屏外坏引用也不能等滚动后再失败；不重新排序或初始化来源。
+    std::vector<bool> seen(s.rules->jobs.size());
+    for(const int job:list->second) {
+        if(job<0||job>=static_cast<int>(s.rules->jobs.size())||seen[job]||
+           job>=static_cast<int>(growth->second.definition.profession_levels.size()))return {};
+        seen[job]=true;
+        const auto state=s.scripts.professions.find(job);const auto &definition=s.rules->jobs[job];
+        const int level=growth->second.definition.profession_levels[job];
+        if(state==s.scripts.professions.end()||state->second.status==0||definition.name.empty()||level<1||level>10||
+           (definition.script_extra!=-1&&definition.script_extra!=human->sex)||definition.change_points<0||
+           definition.fee[0]<0||definition.fee[1]<0)return {};
+    }
+    const int phase=s.page_phases.find(id)->second,counter=s.page_counters.find(id)->second;
+    SteamHumanOverviewPlan out;out.title="职业一览 "+std::to_string(phase+1)+"/2";
+    if(!append_window(out,220,168,{17,74,219,184},o))return {};
+    out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,67,16,16},{196,236,169},false}});
+    out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,67,16,16},{204,204,204},true}});
+    if(!append_portrait(out,human->profession,human->sex,-1,0,1,{37,90},std::array<int,4>{29,68,15,14},false))return {};
+    append_text(out,SteamHumanOverviewTextRole::profession,s.rules->jobs[human->profession].name,{50,69,0,0},0);
+    if(phase==0) {
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::level_label,{137,70},0,std::array<int,4>{0,0,17,10}});
+        append_text(out,SteamHumanOverviewTextRole::profession_cost_label,"费用",{167,69,26,12},o.japanese?0:32,0,!o.japanese);
+        out.operations.emplace_back(SteamHumanImage{Asset::result_icon,{195,67},4,{}});
+    } else {
+        append_text(out,SteamHumanOverviewTextRole::profession_population_label,"人数",{153,o.japanese?69:70,0,0},4,o.japanese?0:10);
+        append_text(out,SteamHumanOverviewTextRole::profession_salary_label,"工资/月",{o.japanese?213:217,o.japanese?69:71,0,0},4,o.japanese?0:9);
+    }
+    const int shift=3*((counter%16)/8);
+    out.operations.emplace_back(SteamFacilityArrowTouch{{26-shift,55},3,16});
+    out.operations.emplace_back(SteamFacilityArrowTouch{{214+shift,55},0,18});
+    for(int i=cursor->first;i<cursor->count&&i-cursor->first<5;++i) {
+        const int job=list->second[i],y=97+19*(i-cursor->first),level=growth->second.definition.profession_levels[job];
+        const auto &definition=s.rules->jobs[job];
+        if(i==cursor->selection)out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{23,y-2,191,16},{255,153,55},false}});
+        out.operations.emplace_back(SteamHumanEquipmentRow{SteamStartupTouch{11,0x20000|i,std::array<int,4>{3,y-2,231,18},{},0},{0,-20,0,0}});
+        if(s.scripts.professions.find(job)->second.pending_notice)
+            out.operations.emplace_back(SteamHumanImage{Asset::catalogue_new,{10,y+2},0,std::array<int,4>{0,0,20,9}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,y-2,16,16},{196,236,169},false}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,y-2,16,16},{204,204,204},true}});
+        if(!append_portrait(out,job,human->sex,-1,0,1,{37,y+21},std::array<int,4>{29,y-1,15,14},false))return {};
+        append_text(out,SteamHumanOverviewTextRole::profession,definition.name,{48,y,0,0},0,o.japanese?0:11);
+        // Steam原手指在名称之后、等级/费用或人数/工资之前消费当前SEB帧。
+        if(i==cursor->selection)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{21,y+8},o.finger_frame,{}});
+        if(phase==0) {
+            if(level==10)out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::maximum,{138,y+2},0,std::array<int,4>{0,0,20,6}});
+            else out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number03,level,{153,y},0,4,-1});
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,
+                s.village_points>=definition.change_points?SteamFacilityAsset::number11:SteamFacilityAsset::number12,
+                definition.change_points,{212,y+1},0,4,-1});
+        } else {
+            int count=0;
+            for(const auto &actor:s.rules->humans) {
+                const auto status=s.scripts.humans.find(actor.identity);
+                if(status==s.scripts.humans.end())return {};
+                if(status->second.status==0)continue;
+                const auto actual=s.scene.world.world.ai.growth.find(actor.identity);
+                if(actual==s.scene.world.world.ai.growth.end())return {};
+                if(actual->second.definition.current_profession==job)++count;
+            }
+            out.operations.emplace_back(SteamFacilityNumber{o.japanese?SteamFacilityNumberKind::person_count:SteamFacilityNumberKind::comma_number,
+                SteamFacilityAsset::number05,count,{153,y+1},0,4,-1});
+            const auto salary=std::int64_t(definition.fee[0])+
+                (std::int64_t(definition.fee[1])-definition.fee[0])*(level-1)/9;
+            if(!fits(salary))return {};
+            out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::money,SteamFacilityAsset::number08,
+                static_cast<int>(salary),{212,y+1},0,4,-1});
+        }
+    }
+    // 原helper传maximum=count-1，再+1组成组件12的args[0]=count；这里保存组件参数。
+    // 与64复用目录滚动请求；真实first来自Owner，不从选中项派生。
+    const int denominator=std::max(cursor->count,5),top=85+110*cursor->first/denominator,height=110*5/denominator;
+    const std::array<int,4> scroll_rectangle{221,85,3,110};
+    out.operations.emplace_back(SteamHumanCatalogueScroll{
+        std::array<StartupSkinRect,2>{{{{220,85,5,110},{7,5,78},false},
+            {{220,top,5,height+1},o.catalogue_scroll_first_touch&&cursor->count>5?
+                std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false}}},
+        SteamStartupTouch{12,0x40000,scroll_rectangle,{},0},{3,20,0,0},{cursor->count,5,0x20000},
+        SteamStartupTouch{25,0,scroll_rectangle,{},4}});
+    const int selected=list->second[cursor->selection];const auto &bonus=s.rules->jobs[selected];
+    append_text(out,SteamHumanOverviewTextRole::profession_bonus_label,"职业奖励",
+        {24,o.japanese?199:200,o.japanese?0:58,o.japanese?0:11},o.japanese?0:32,o.japanese?0:10,!o.japanese,0,{0,100,255});
+    if(bonus.type==0||bonus.type==1) {
+        out.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::facility_icon,{o.japanese?87:84,197},0,
+            std::array<int,4>{bonus.type==0?48:32,0,16,16}});
+        append_text(out,SteamHumanOverviewTextRole::profession_bonus_description,bonus.type==0?"商店价格UP":"饭店价格UP",
+            {o.japanese?105:102,o.japanese?199:200,0,0},1,o.japanese?0:10);
+    } else {
+        if(bonus.bonus_description.empty())return {};
+        append_text(out,SteamHumanOverviewTextRole::profession_bonus_description,bonus.bonus_description,
+            {o.japanese?87:84,o.japanese?199:200,0,0},1,o.japanese?0:10);
+    }
     return out;
 }
 } // namespace dungeon_village_prototype

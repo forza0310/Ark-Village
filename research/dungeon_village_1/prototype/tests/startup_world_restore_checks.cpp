@@ -2,6 +2,7 @@
 
 #include "startup_world_restore_validation.hpp"
 #include "startup_world_codec.hpp"
+#include "dungeon_village_prototype/startup_world_persistence.hpp"
 #include "dungeon_village_prototype/startup_world_building.hpp"
 #include "dungeon_village_prototype/startup_world_facility_catalog.hpp"
 #include "dungeon_village_prototype/startup_world_magic_pot.hpp"
@@ -251,6 +252,207 @@ int check_startup_world_restore_contracts(
             expect(bad, false, "64 cannot change to another existing person behind frozen40 selection");
             if (initialized == 0) tick(gifts);
         }
+    }
+    {
+        const auto require=[&](bool valid,const char *scenario) {
+            ++checks;if(!valid)throw std::runtime_error(std::string("restore human catalogue: ")+scenario);
+        };
+        const auto tick=[&](auto &state) {
+            auto result=p::prepare_startup_world_runtime(state);
+            require(result.candidate.has_value(),"actual framework admission");state=std::move(*result.candidate);
+        };
+        using A=p::StartupHumanPageAction;using E=p::StartupWorldRuntimeError;
+        for(const int raw:{61,64}) {
+            // 全解锁是目录/恢复条件夹具，不是自然经营进度；保留固定规则定义和自然人物。
+            auto source=baseline;source.village_points=999;
+            for(auto &entry:source.scripts.professions)entry.second.status=1;
+            for(auto &entry:source.catalog)if(entry.first.first!=0) {entry.second.status=1;entry.second.free_purchases=1;}
+            for(const int event:{99,111,112})source.scripts.event_calls[event]=1;
+            const int human=source.scene.world.world.ai.battle.actors.at(source.scene.world.world.ai.human_order.front()).definition;
+            source.human_calendar.at(human).celebrations=99;
+            require(p::open_startup_world_human_page(source,human)==E::none,"open actual human60");tick(source);
+            const auto detail=source.scripts.pages.back().id;
+            require(p::act_startup_world_human_page(source,detail,raw==61?A::professions:A::gifts)==E::none,
+                    "actual detail opens61/64");
+            const auto id=source.scripts.pages.back().id;
+            auto premature=source;premature.human_page_scroll.emplace(id,0);
+            expect(premature,false,"pending Init catalogue cannot contain installed scroll payload");
+            tick(source);
+            const auto cursor=p::inspect_startup_world_human_catalogue_cursor(source,id);
+            require(cursor&&cursor->count>cursor->visible,"real directory extends beyond visible rows");
+            p::StartupHumanCatalogueInput input;input.selection=cursor->visible;
+            require(p::input_startup_world_human_catalogue_page(source,id,input)==E::none&&source.human_page_scroll.at(id)==1,
+                    "actual selection produces nonzero stored scroll");
+            const auto wire=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(wire,*source.rules);
+            expect(restored,true,"61/64 nonzero-scroll full Owner codec roundtrip");
+            require(p::persistence_detail::encode_state(restored)==wire,"cursor is persisted exactly rather than re-derived");
+            for(int fault=0;fault<7;++fault) {
+                auto bad=restored;
+                if(fault==0)bad.human_page_scroll.erase(id);
+                if(fault==1)bad.human_page_scroll.at(id)=-1;
+                if(fault==2)bad.human_page_scroll.at(id)=cursor->count;
+                if(fault==3)bad.human_page_selections.at(id)=0; // 不在first=1显示窗内。
+                if(fault==4)bad.scripts.pages.back().legacy_page=60;
+                if(fault==5)bad.human_page_scroll.emplace(bad.scripts.next_page_id,0);
+                if(fault==6) {
+                    const int selected=bad.human_page_selections.at(id);
+                    if(raw==61)bad.human_page_catalogs.at(id).at(selected)=std::numeric_limits<int>::max();
+                    else bad.equipment_page_catalogs.at(id)[bad.page_phases.at(id)].at(selected)=std::numeric_limits<int>::max();
+                }
+                expect(bad,false,"missing/range/off-window/wrong-page/orphan/bad-definition catalogue scroll rejects");
+            }
+            input={};input.up=input.down=true;
+            require(p::input_startup_world_human_catalogue_page(source,id,input)==E::none&&
+                    p::input_startup_world_human_catalogue_page(restored,id,input)==E::none&&
+                    p::startup_world_state_digest(source)==p::startup_world_state_digest(restored),
+                    "restored same-round opposing input preserves identical nonzero cursor");
+            input={};input.down=true;
+            require(p::input_startup_world_human_catalogue_page(source,id,input)==E::none&&
+                    p::input_startup_world_human_catalogue_page(restored,id,input)==E::none&&
+                    p::startup_world_state_digest(source)==p::startup_world_state_digest(restored),
+                    "restored successor input follows identical directory/window/output state");
+            if(raw==61) {
+                const auto &jobs=source.human_page_catalogs.at(id);
+                const auto other=std::find_if(jobs.begin()+cursor->visible,jobs.end(),[&](int job){
+                    return job!=source.scene.world.world.ai.growth.at(human).definition.current_profession;});
+                require(other!=jobs.end(),"alternative profession beyond first window");
+                input={};input.selection=static_cast<int>(other-jobs.begin());
+                require(p::input_startup_world_human_catalogue_page(source,id,input)==E::none,"select alternative profession");
+                input={};input.confirm=true;
+            } else {input={};input.confirm=true;}
+            require(p::input_startup_world_human_catalogue_page(source,id,input)==E::none,"open actual62/65 confirmation child");
+            const auto child=source.scripts.pages.back().id;
+            auto child_restored=p::persistence_detail::decode_state(p::persistence_detail::encode_state(source),*source.rules);
+            expect(child_restored,true,"nonzero-scroll parent with pending62/65 child roundtrip");
+            for(int fault=0;fault<3;++fault) {
+                auto bad=child_restored;
+                if(fault==0)bad.human_page_parents.erase(child);
+                if(fault==1)bad.human_page_parents.at(child)=detail;
+                if(fault==2)bad.human_page_parents.at(child)=bad.scripts.next_page_id;
+                expect(bad,false,"catalogue child missing/wrong-kind/orphan parent rejects");
+            }
+            if(raw==64) {
+                // 在真实60→64→65链分支验证结果恢复；原目录取消检查仍用未消费的Owner。
+                auto gift=source;
+                const auto choice=gift.human_equipment_choices.at(child);
+                require(choice[0]==0&&gift.shop_humans.at(human).equipment[0]!=std::optional<int>{choice[1]},
+                        "actual nonzero-scroll weapon selection changes equipment identity");
+                const auto cash=gift.scene.world.world.ai.accounting.funds();
+                const auto draws=gift.scene.random.draws();
+                const auto stock=gift.catalog.at({1,choice[1]}).free_purchases;
+                const auto inventory=gift.catalog.at({1,choice[1]}).inventory;
+                require(stock==1&&p::act_startup_world_human_page(gift,child,A::confirm)==E::none&&
+                        gift.human_page_answers.at(id)==0&&
+                        gift.scene.world.world.ai.accounting.funds()==cash&&gift.scene.random.draws()==draws&&
+                        gift.catalog.at({1,choice[1]}).free_purchases==stock,
+                        "actual65 only returns answer before parent64 commits gift");
+                const auto answer_wire=p::persistence_detail::encode_state(gift);
+                auto replay=p::persistence_detail::decode_state(answer_wire,*gift.rules);
+                expect(replay,true,"actual65 answer awaiting parent64 recovery");
+                require(p::persistence_detail::encode_state(replay)==answer_wire,
+                        "restore retains actual parent answer and frozen selected equipment");
+                tick(gift);tick(replay);
+                const auto display=std::find_if(gift.scripts.pages.begin(),gift.scripts.pages.end(),
+                    [](const auto &page){return page.kind==r::WorldScriptPageKind::raw_page&&page.legacy_page==68;});
+                require(display!=gift.scripts.pages.end(),"resumed64 creates actual equipment display68");
+                const auto result=display->id;
+                require(gift.page_human_bindings.at(result)==human&&gift.human_equipment_choices.at(result)==choice&&
+                        gift.shop_humans.at(human).equipment[choice[0]]==choice[1]&&
+                        gift.scene.world.world.ai.accounting.funds()==cash&&gift.scene.random.draws()==draws+1&&
+                        gift.catalog.at({1,choice[1]}).free_purchases==stock-1&&
+                        gift.catalog.at({1,choice[1]}).inventory==inventory&&
+                        p::persistence_detail::encode_state(gift)==p::persistence_detail::encode_state(replay),
+                        "restored parent commits same head identity, one text draw and one free share without cash/inventory charge");
+                const auto reject_head=[&](const auto &owner) {
+                    for(int fault=0;fault<3;++fault) {
+                        auto bad=owner;
+                        if(fault==0)bad.human_equipment_choices.erase(result);
+                        if(fault==1)bad.human_equipment_choices.at(result)[0]=4;
+                        if(fault==2)bad.human_equipment_choices.at(result)[1]=std::numeric_limits<int>::max();
+                        expect(bad,false,"68 missing head, item slot4 or invalid equipment ID rejects without default");
+                    }
+                };
+                expect(gift,true,"actual68 pending Init retains source equipment head");
+                reject_head(gift);
+                // 同一64回调锚点后插页位于先插66下方：先真实消费66，再消费可能出现的67。
+                for(int step=0;step<192;++step) {
+                    const auto active=std::find_if(gift.scripts.pages.rbegin(),gift.scripts.pages.rend(),
+                        [](const auto &page){return page.lifecycle!=4;});
+                    require(active!=gift.scripts.pages.rend(),"equipment result retains active page");
+                    if(active->id==result&&p::startup_world_human_page_ready(gift,result))break;
+                    if(active->id!=result) {
+                        const bool effort=active->kind==r::WorldScriptPageKind::raw_page&&active->legacy_page==67;
+                        const bool present=active->kind==r::WorldScriptPageKind::raw_page&&active->legacy_page==66&&
+                            gift.page_human_bindings.at(active->id)==human&&
+                            gift.human_equipment_choices.at(active->id)==choice&&
+                            gift.human_gift_scores.count(active->id)&&gift.human_gift_messages.count(active->id);
+                        if(!effort&&!present) {
+                            std::string stack;
+                            for(const auto &page:gift.scripts.pages)
+                                stack+=" id="+std::to_string(page.id)+" kind="+std::to_string(static_cast<int>(page.kind))+
+                                    " raw="+std::to_string(page.legacy_page)+" source="+std::to_string(page.source_record)+
+                                    " life="+std::to_string(page.lifecycle);
+                            require(false,("unexpected page covering actual68:"+stack).c_str());
+                        }
+                        const auto covering=active->id;
+                        for(auto *owner:{&gift,&replay})
+                            require(p::acknowledge_startup_world_runtime_page(*owner,covering)==E::none,
+                                    "actual covering66/67 result receives same confirmation");
+                    }
+                    tick(gift);tick(replay);
+                    require(p::persistence_detail::encode_state(gift)==p::persistence_detail::encode_state(replay),
+                            "restored result stack reaches initialized68 with identical inputs");
+                }
+                require(p::startup_world_human_page_ready(gift,result)&&gift.page_counters.at(result)>0&&
+                        gift.page_counters.at(result)<67&&
+                        std::any_of(gift.equipment_attribute_display[2].begin(),gift.equipment_attribute_display[2].end(),
+                                    [](int delta){return delta!=0;}),
+                        "actual gift supplies nonzero equipment comparison and initialized animation frame");
+                const auto result_wire=p::persistence_detail::encode_state(gift);
+                replay=p::persistence_detail::decode_state(result_wire,*gift.rules);
+                expect(replay,true,"initialized68 nonzero display exact restore");
+                require(p::persistence_detail::encode_state(replay)==result_wire&&
+                        replay.human_equipment_choices.at(result)==choice&&
+                        replay.equipment_attribute_display==gift.equipment_attribute_display,
+                        "68 frozen source head and before/after/difference restore without reconstruction");
+                reject_head(replay);
+                for(auto *owner:{&gift,&replay})
+                    require(p::act_startup_world_human_page(*owner,result,A::confirm)==E::none&&
+                            owner->page_counters.at(result)==67,"same restored68 confirmation reaches source67");
+                for(int step=0;step<6;++step) {tick(gift);tick(replay);}
+                require(gift.page_counters.at(result)==73&&
+                        p::persistence_detail::encode_state(gift)==p::persistence_detail::encode_state(replay),
+                        "restored68 continues actual six updates to source73");
+                for(auto *owner:{&gift,&replay})
+                    require(p::act_startup_world_human_page(*owner,result,A::confirm)==E::none,
+                            "actual68 final confirmation closes restored result");
+                expect(replay,true,"closed68 retains complete head before Finish");
+                tick(gift);tick(replay);
+                require(!replay.human_equipment_choices.count(result)&&!replay.page_human_bindings.count(result)&&
+                        !replay.human_pages_initialized.count(result)&&!replay.page_counters.count(result)&&
+                        replay.scene.world.world.ai.accounting.funds()==cash&&replay.scene.random.draws()==draws+1&&
+                        replay.catalog.at({1,choice[1]}).free_purchases==stock-1&&
+                        replay.catalog.at({1,choice[1]}).inventory==inventory&&
+                        p::persistence_detail::encode_state(gift)==p::persistence_detail::encode_state(replay),
+                        "68 Finish releases frozen choices and restored continuation never repeats gift charge/stock/random");
+            }
+            require(p::act_startup_world_human_page(source,child,A::cancel)==E::none&&
+                    p::act_startup_world_human_page(child_restored,child,A::cancel)==E::none,"child cancel returns answer identically");
+            tick(source);tick(child_restored);
+            require(p::startup_world_state_digest(source)==p::startup_world_state_digest(child_restored)&&
+                    !source.page_human_bindings.count(child)&&source.human_page_scroll.at(id)>0,
+                    "restored child retirement preserves actual parent scroll and all successor state");
+            require(p::act_startup_world_human_page(source,id,A::cancel)==E::none,"close source catalogue");
+            expect(source,true,"life4 catalogue still has complete retained cursor before retirement");
+            auto invalid=source;invalid.human_page_scroll.at(id)=cursor->count;
+            expect(invalid,false,"retained life4 catalogue cannot bypass scroll range validation");
+            tick(source);
+            require(!source.human_page_scroll.count(id)&&!source.human_pages_initialized.count(id),"framework releases retired scroll payload");
+        }
+        require(std::string(p::persistence_detail::codec_schema_identity())!=
+                "45d69d967b55ef50a4dceb077b780f2058e63fbb43edcb6e1b59de4ee2f58d74",
+                "new stored scroll changes codec layout identity; old-header rejection belongs to file-reader suite");
     }
     {
         auto stale=baseline;

@@ -1040,6 +1040,14 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_human_page(std::uint64_
                                                                     int selection) {
     return act_startup_world_human_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_human_catalogue_page(
+    std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return input_startup_world_human_catalogue_page(state_,page,input);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_human_detail_page(
+    std::uint64_t page,const StartupHumanCatalogueInput &input) {
+    return input_startup_world_human_detail_page(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_tax_page(std::uint64_t page,
                                                                   StartupWorldTaxAction action,
                                                                   int selection) {
@@ -1111,6 +1119,7 @@ StartupWorldRuntimeResult prepare_startup_world_runtime(const State &s) {
             admitted.human_page_catalogs.erase(page.id);
             admitted.equipment_page_catalogs.erase(page.id);
             admitted.human_page_selections.erase(page.id);
+            admitted.human_page_scroll.erase(page.id);
             admitted.page_job_bindings.erase(page.id);
             admitted.human_page_parents.erase(page.id);
             admitted.human_page_answers.erase(page.id);

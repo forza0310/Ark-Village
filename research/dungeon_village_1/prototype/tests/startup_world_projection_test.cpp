@@ -245,6 +245,11 @@ void catalogue() {
               rules.monsters.size() == 36 && rules.items.size() == 36 && rules.tasks.size() == 81 &&
               rules.facilities.size() == 85,
           "full original catalogue counts compiled, not initial subset");
+    check(rules.jobs[0].bonus_description == "税金收入较高" &&
+              rules.jobs[2].bonus_description == "建设速度提高" &&
+              rules.jobs[3].type == 0 && rules.jobs[3].bonus_description.empty() &&
+              rules.jobs[9].type == 1 && rules.jobs[9].bonus_description.empty(),
+          "job column22 economic explanation projected independently of mastery rewards");
     check(rules.equipment[0].battle.kind == 0 && rules.equipment[0].battle.range == 130 &&
               rules.equipment[0].battle.combo == 5 && rules.equipment[0].battle.miss_low == 3 &&
               rules.equipment[0].battle.miss_high == 15,

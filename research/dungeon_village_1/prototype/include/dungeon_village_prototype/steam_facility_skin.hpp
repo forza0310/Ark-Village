@@ -13,7 +13,7 @@ namespace dungeon_village_prototype {
 enum class SteamFacilityAsset {
     wood, title_bar, corner, arrow, mini, number05, number08, number09, maximum,
     upgrade_background, mini_background, number03, number11, number12, number03_hud,
-    facility_icon, effect_icon, level_label, finger, title_arrows, people
+    facility_icon, effect_icon, level_label, finger, title_arrows, people, inventory_unit
 };
 struct SteamFacilityResource {
     const char *group;
@@ -58,7 +58,8 @@ struct SteamFacilityMapchipDraw {
 // 固定已核mapchip目录；不借地图可建/旋转资格限制只读helper，也不改道路请求帧。
 std::optional<std::vector<SteamFacilityMapchipDraw>> steam_facility_mapchip2_draws(
     const SteamFacilityMapchip2 &request);
-enum class SteamFacilityNumberKind { number, money, plus_value, comma_number, minus_value };
+enum class SteamFacilityNumberKind { number, money, plus_value, comma_number, minus_value,
+                                    count, multi_value, person_count };
 struct SteamFacilityNumber {
     SteamFacilityNumberKind kind;
     SteamFacilityAsset asset;

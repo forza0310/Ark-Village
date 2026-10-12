@@ -178,6 +178,12 @@ class StartupWindowHost {
     StartupWorldRuntimeError act_human_page(std::uint64_t page, StartupHumanPageAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_human_page(page, action, selection); });
     }
+    StartupWorldRuntimeError input_human_catalogue_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
+        return command([&](auto &owner) { return owner.input_human_catalogue_page(page,input); });
+    }
+    StartupWorldRuntimeError input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input) {
+        return command([&](auto &owner) { return owner.input_human_detail_page(page,input); });
+    }
     StartupWorldRuntimeError act_tax_page(std::uint64_t page, StartupWorldTaxAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_tax_page(page, action, selection); });
     }

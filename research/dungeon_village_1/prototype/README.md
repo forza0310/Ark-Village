@@ -59,11 +59,13 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 
 四页后继已统一`steam_human_information_skin`：页2／3正式有序计划替换旧白底代码，上下按原页2四槽及边界翻页，Touch10保留原margin／无marker，赠礼64接实际槽，页3确认无子页。`world-human-equipment`自然首访后经0→1→2选防具2→真实首次赠礼说明／64→取消，返回槽2；`world-human-magic`逐次上下穿过四装备槽到页3。各名称与`--world --inspect-page … --frames 8`合用，诊断不注入人物／资金／魔法。原可用魔法位含当前职业能力，装备底文用所选装备定义加值；空装备／零魔法提示没有橙色热区。原平台按钮富文本用研究文字适配，完整字体及物理输入未验；[双页参考图](../ui/examples/steam-human-equipment-magic.png)及[合同](../ui/STEAM_HUMAN_DETAIL.md)说明剩余边界。
 
-装备信息73／赠礼确认65后继也复用`steam_human_skin`有序计划及执行器；基础价与赠礼价分开，65只读装备定义比较且不报价／装配。两个有界入口`world-human-equipment-info`／`world-human-gift-confirm`经真实自然首访和父目录打开，不注入世界。来源、严格父目录验证及颜色修正在[人物合同](../ui/STEAM_HUMAN_DETAIL.md#装备信息73与赠礼确认65)；两页不新增持久字段，61／64滚动设计仍待确认。
+装备信息73／赠礼确认65后继也复用`steam_human_skin`有序计划及执行器；基础价与赠礼价分开，65只读装备定义比较且不报价／装配。两个有界入口`world-human-equipment-info`／`world-human-gift-confirm`经真实自然首访和父目录打开，不注入世界。来源、严格父目录验证及颜色修正在[人物合同](../ui/STEAM_HUMAN_DETAIL.md#装备信息73与赠礼确认65)；两页不新增持久字段，61／64滚动已按用户批准设计实现。
 
-职业预览62／转职演出63已接同模块：62使用冻结六属性差额、实际职业等级、勋章及点数显示资格；63显示event13背景、局部幕布、human22身体、冻结气泡和共用奖励动画。左右／橙条／右返回按计划投递，63无软返回，满197才确认收尾；共享奖励身体步帧由调用方显式提供，研究窗口表现帧是适配，不冒认UserData原时钟。`world-human-profession-preview`／`world-human-profession-result`两个有界入口经真实首访、选择可支付职业、确认及至197演出，不注入点数／勋章／职业。后者停在最终确认前，未完成经验重算收尾；Owner业务由现pages主责测试覆盖。[合同](../ui/STEAM_HUMAN_DETAIL.md#职业预览62与转职演出63)与[验收](../VERIFICATION.md)分开记录原事实、研究窗口和平台缺口，61／64滚动设计仍待确认。
+职业预览62／转职演出63已接同模块：62使用冻结六属性差额、实际职业等级、勋章及点数显示资格；63显示event13背景、局部幕布、human22身体、冻结气泡和共用奖励动画。左右／橙条／右返回按计划投递，63无软返回，满197才确认收尾；共享奖励身体步帧由调用方显式提供，研究窗口表现帧是适配，不冒认UserData原时钟。`world-human-profession-preview`／`world-human-profession-result`两个有界入口经真实首访、选择可支付职业、确认及至197演出，不注入点数／勋章／职业。后者停在最终确认前，未完成经验重算收尾；Owner业务由现pages主责测试覆盖。[合同](../ui/STEAM_HUMAN_DETAIL.md#职业预览62与转职演出63)与[验收](../VERIFICATION.md)分开记录原事实、研究窗口和平台缺口，61／64真实滚动已按批准设计接入。
 
-赠礼66结果也接同一有序计划：总统／buy01动作、礼盒抛物线／开盒、商品／闪光、三档评价、冻结气泡、学习／回复分支及共用奖励动画；不重复兑现或回复HP。`world-human-gift-opening`／`world-human-gift-result`分别真实回答65、父64兑现并到45／162，最终确认前停；两入口需搭配有界窗口参数。原副作用由Owner显式输出消费，皮肤不发声／抽随机；[合同](../ui/STEAM_HUMAN_DETAIL.md#赠礼结果66)列明总统未消费帧裁片限制、66无实例满恢复条与60的差异、字体及共享表现帧适配。普通道具目录说明与61／64实际滚动仍待接。
+赠礼66结果也接同一有序计划：总统／buy01动作、礼盒抛物线／开盒、商品／闪光、三档评价、冻结气泡、学习／回复分支及共用奖励动画；不重复兑现或回复HP。`world-human-gift-opening`／`world-human-gift-result`分别真实回答65、父64兑现并到45／162，最终确认前停；两入口需搭配有界窗口参数。原副作用由Owner显式输出消费，皮肤不发声／抽随机；[合同](../ui/STEAM_HUMAN_DETAIL.md#赠礼结果66)列明总统未消费帧裁片限制、66无实例满恢复条与60的差异、字体及共享表现帧适配。
+
+职业61／赠礼64目录及普通道具说明已接同模块；真实`human_page_scroll`支持五／四行窗口、切页规则、子返回及退休，缺键／越界拒绝，codec新布局拒旧不迁移，详见[PERSISTENCE](PERSISTENCE.md#人物管理目录滚动恢复)。`input_human_catalogue_page`合成原同轮次序，`input_human_detail_page`补60滚动及上下边界而无需新载荷；平台手势不存档。`world-human-professions`／`world-human-gifts`／`world-human-items`三个有界入口从真实首访进入目录。68／69复用既有choice冻结真实头来源和三值显示，`world-human-equipment-result`／`world-human-item-result`真实消费礼物到73／45，停止于最终确认前；只读皮肤不再次消费。原字体／完整TextLayout、人物scratch与OS动态仍独立未验。
 
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。

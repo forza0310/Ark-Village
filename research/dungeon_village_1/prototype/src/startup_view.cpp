@@ -24,6 +24,7 @@
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_visuals.hpp"
 #include "dungeon_village_prototype/steam_facility_skin.hpp"
+#include "dungeon_village_prototype/steam_human_skin.hpp"
 #include "dungeon_village_reference/world_notices.hpp"
 #include "dungeon_village_tools/sprite.hpp"
 #include "dungeon_village_tools/table.hpp"
@@ -268,24 +269,35 @@ class SourceSprites {
     void facility_image(const SteamFacilityImage &request,Vector2 origin) {
         const auto resource=steam_facility_resource(request.asset);
         if(!resource)throw std::runtime_error("设施Steam资源映射缺失");
-        const Vector2 position{origin.x+request.position[0],origin.y+request.position[1]};
-        if(request.crop) {
-            const auto &c=*request.crop;
+        published_sprite(resource->image,resource->published_image,resource->published_sprite,
+                         request.position,request.frame,request.crop,origin);
+    }
+    void human_image(const SteamHumanImage &request,Vector2 origin) {
+        const auto resource=steam_human_resource(request.asset);
+        if(!resource)throw std::runtime_error("人物Steam资源映射缺失");
+        published_sprite(resource->image,resource->published_image,resource->published_sprite,
+                         request.position,request.frame,request.crop,origin);
+    }
+    void published_sprite(int image_id,const char *png,const char *seb,std::array<int,2> anchor,
+                          int frame,std::optional<std::array<int,4>> rectangle,Vector2 origin) {
+        const Vector2 position{origin.x+anchor[0],origin.y+anchor[1]};
+        if(rectangle) {
+            const auto &c=*rectangle;
             if(!c[2]||!c[3])return; // DrawWindow整40宽尾项保留空请求，无像素。
-            crop(resource->published_image,{float(c[0]),float(c[1]),float(c[2]),float(c[3])},position,true);
+            crop(png,{float(c[0]),float(c[1]),float(c[2]),float(c[3])},position,true);
             return;
         }
-        if(!resource->published_sprite)throw std::runtime_error("设施SEB资源缺失");
-        const auto key=std::string(resource->published_sprite);
+        if(!seb)throw std::runtime_error("正式SEB资源缺失");
+        const auto key=std::string(seb);
         auto found=sprites_.find(key);
         if(found==sprites_.end())found=sprites_.emplace(key,dungeon_village_tools::parse_legacy_seb(
             read_bytes(root_.parent_path()/key))).first;
         // 原SEB缺帧不绘；保留请求，不补猜测减号或逗号。
         for(const auto &layer:found->second.layers)for(const auto &part:layer.parts) {
-            if(part.frame!=request.frame||part.image_index<0||part.width<=0||part.height<=0)continue;
-            if(part.image_index!=resource->image||part.flip_x<0||part.flip_x>1||part.flip_y<0||part.flip_y>1)
-                throw std::runtime_error("设施SEB图片身份/翻转无效");
-            crop(resource->published_image,{float(part.source_x),float(part.source_y),float(part.width),float(part.height)},
+            if(part.frame!=frame||part.image_index<0||part.width<=0||part.height<=0)continue;
+            if(part.image_index!=image_id||part.flip_x<0||part.flip_x>1||part.flip_y<0||part.flip_y>1)
+                throw std::runtime_error("正式SEB图片身份/翻转无效");
+            crop(png,{float(part.source_x),float(part.source_y),float(part.width),float(part.height)},
                  {position.x+part.offset_x,position.y+part.offset_y},true,{},
                  {part.flip_x!=0,part.flip_y!=0});
         }
@@ -800,6 +812,91 @@ void draw_facility_detail(const SteamFacilityDetailSkinPlan &plan,SourceSprites 
     }
     if(!clips.empty()){EndScissorMode();throw std::runtime_error("设施详情裁剪未退休");}
     font.text("返回",188,272); // 框架右软标签研究适配；左侧不再伪造确定/返回。
+}
+constexpr Vector2 human_overview_origin{0,40};
+const char *human_overview_label(SteamHumanOverviewTextRole role,bool recovery) {
+    switch(role) {
+    case SteamHumanOverviewTextRole::satisfaction:return "满意度";
+    case SteamHumanOverviewTextRole::effort:return "努力";
+    case SteamHumanOverviewTextRole::gift:return recovery?"赠送回复道具":"赠送礼物";
+    default:return "";
+    }
+}
+std::optional<SteamHumanOverviewPlan> window_human_overview_plan(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const ChineseFont &font) {
+    const auto view=inspect_startup_world_human_presentation(s,id);
+    if(!view||view->tab!=0)return {};
+    SteamHumanOverviewOptions options;options.view_y=23;options.finger_frame=0;
+    const auto title="冒险者信息";
+    options.title_widths=std::array<int,2>{int(font.measure(title)),int(font.measure(title))};
+    const auto &job=s.rules->jobs[view->human.profession].name;
+    options.profession_width=int(font.measure(job));
+    if(*options.profession_width>=53)options.profession_repeat_width=int(font.measure(job));
+    options.bottom_widths={int(font.measure("赠送礼物")),int(font.measure("赠送回复道具"))};
+    if(view->live&&view->live->state==7)options.down_text_width=int(font.measure("倒下中"));
+    return steam_human_overview_skin(s,id,options);
+}
+void draw_human_overview(const SteamHumanOverviewPlan &plan,SourceSprites &sprites,const ChineseFont &font) {
+    const auto color=[](std::array<int,3> c) {return Color{static_cast<unsigned char>(c[0]),
+        static_cast<unsigned char>(c[1]),static_cast<unsigned char>(c[2]),255};};
+    const auto rectangle=[&](const StartupSkinRect &r) {
+        const Rectangle box{human_overview_origin.x+r.rect[0],human_overview_origin.y+r.rect[1],float(r.rect[2]),float(r.rect[3])};
+        if(r.outline)DrawRectangleLinesEx(box,1,color(r.rgb));else DrawRectangleRec(box,color(r.rgb));
+    };
+    const auto text=[&](const std::string &value,std::array<int,4> r,int anchor,int size,
+                        bool layout,std::array<int,3> rgb) {
+        const float fs=size?float(size):12.F;
+        float x=human_overview_origin.x+r[0],y=human_overview_origin.y+r[1];
+        if(anchor&2)x+=(layout?float(r[2]):0.F)/2-font.measure(value,fs)/2;
+        else if(anchor&4)x+=(layout?float(r[2]):0.F)-font.measure(value,fs);
+        if(layout) {
+            y+=std::max(0.F,(float(r[3])-fs)/2);
+            BeginScissorMode(int(human_overview_origin.x)+r[0],int(human_overview_origin.y)+r[1],r[2],r[3]);
+        }
+        font.text(value,x,y,color(rgb),fs);
+        if(layout)EndScissorMode();
+    };
+    const auto human_parts=[&](const SteamHumanSkinPlan &p) {
+        for(const auto &part:p.draws) {
+            if(const auto *r=std::get_if<StartupSkinRect>(&part))rectangle(*r);
+            else if(const auto *image=std::get_if<SteamHumanImage>(&part))sprites.human_image(*image,human_overview_origin);
+            else if(const auto *t=std::get_if<SteamHumanText>(&part))
+                text("倒下中",{t->position[0],t->position[1],0,0},t->anchor,0,false,t->rgb);
+        }
+    };
+    for(const auto &op:plan.operations) {
+        if(const auto *frame=std::get_if<SteamStartupFrameDraw>(&op)) {
+            if(const auto *r=std::get_if<StartupSkinRect>(frame))rectangle(*r);
+            else if(const auto *image=std::get_if<StartupSkinDraw>(frame)) {
+                const auto asset=image->image==28?SteamFacilityAsset::wood:
+                    image->image==29?SteamFacilityAsset::title_bar:SteamFacilityAsset::corner;
+                if(image->image!=28&&image->image!=29&&image->image!=30)
+                    throw std::runtime_error("人物窗框资源载荷拒绝");
+                sprites.facility_image({asset,image->offset,image->frame,
+                    image->sprite<0?std::optional<std::array<int,4>>(image->crop):std::nullopt},human_overview_origin);
+            } else if(const auto *t=std::get_if<SteamStartupText>(frame))
+                text("冒险者信息",{int(t->rectangle[0]),int(t->rectangle[1]),int(t->rectangle[2]),int(t->rectangle[3])},
+                    t->anchor.value_or(0),t->font_size,t->placement==SteamStartupTextPlacement::layout,
+                    t->rgb.value_or(std::array<int,3>{0,0,0}));
+        } else if(const auto *image=std::get_if<SteamHumanImage>(&op))sprites.human_image(*image,human_overview_origin);
+        else if(const auto *image=std::get_if<SteamFacilityImage>(&op))sprites.facility_image(*image,human_overview_origin);
+        else if(const auto *number=std::get_if<SteamFacilityNumber>(&op))sprites.menu_number(*number,human_overview_origin);
+        else if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))
+            text(t->value.empty()?human_overview_label(t->role,plan.recovery_gift):t->value,
+                 t->rectangle,t->anchor,t->font_size,t->layout,t->rgb);
+        else if(const auto *p=std::get_if<SteamHumanDetailSkin>(&op)) {
+            human_parts(p->medals);
+            const Vector2 anchor{human_overview_origin.x+p->portrait_position[0],human_overview_origin.y+p->portrait_position[1]};
+            if(p->portrait.shadow)throw std::runtime_error("人物详情不允许标题阴影");
+            if(p->portrait.weapon)sprites.visual(*p->portrait.weapon,anchor);
+            sprites.actor(false,p->portrait.body.sprite,p->portrait.body.image,p->portrait.body.frame,anchor);
+            human_parts(p->after_portrait);
+        } else if(const auto *scroll=std::get_if<SteamHumanOverviewScroll>(&op)) {
+            for(const auto &r:scroll->rectangles)rectangle(r);
+        } else if(!std::holds_alternative<SteamStartupTouch>(op))throw std::runtime_error("人物概览未消费图元");
+    }
+    if(plan.soft_labels[0]==8)font.text("追踪",18,272);
+    font.text("返回",188,272);
 }
 struct Window {
     Window() {
@@ -1604,7 +1701,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
             throw std::runtime_error("真实初局旅店详情检查入口失败");
     } else if (inspect_page == "world-month" || inspect_page == "world-active" ||
                inspect_page == "task-team" || inspect_page == "world-award" ||
-               inspect_page == "world-human") {
+               inspect_page == "world-human" || inspect_page == "world-human-directory") {
         bool reached{};
         // 显式窗口检查策略：只给真实页栈逐轮确认，不改人物/日期/随机/资金。
         for (int step = 0; step < (inspect_page == "world-award" ? 50000 : 20000); ++step) {
@@ -1635,13 +1732,26 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 session.open_task_menu() != StartupWorldRuntimeError::none)
                 throw std::runtime_error("任务检查预运行菜单入口失败");
             const auto &current = session.state();
-            if (inspect_page == "world-human" && top.kind == ref::WorldScriptPageKind::scene &&
+            if ((inspect_page == "world-human" || inspect_page == "world-human-directory") && top.kind == ref::WorldScriptPageKind::scene &&
                 top.lifecycle != 4 && current.scene.scene_state == 0 &&
                 !current.scene.world.world.ai.human_order.empty()) {
                 const int human = current.scene.world.world.ai.battle.actors
                                       .at(current.scene.world.world.ai.human_order.front())
                                       .definition;
-                if (session.open_human_page(human) != StartupWorldRuntimeError::none)
+                if (inspect_page == "world-human-directory") {
+                    // 自然首访后实际9→35→60；只输入原目录，不注入W或页面载荷。
+                    if(session.open_information_menu()!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("自然人物情报入口失败");
+                    for(int n=0;n<3;++n)if(!session.update().committed)
+                        throw std::runtime_error("自然人物情报初始化失败");
+                    StartupInformationInput confirm;confirm.confirm=true;
+                    if(session.input_information_page(session.state().scripts.pages.back().id,confirm)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("自然人物目录入口失败");
+                    for(int n=0;n<3;++n)if(!session.update().committed)
+                        throw std::runtime_error("自然人物目录初始化失败");
+                    if(session.input_information_page(session.state().scripts.pages.back().id,confirm)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("自然人物目录详情确认失败");
+                } else if (session.open_human_page(human) != StartupWorldRuntimeError::none)
                     throw std::runtime_error("自然人物详情检查入口失败");
                 for (int n = 0; n < 100; ++n) {
                     if (!session.update().committed)
@@ -1655,6 +1765,26 @@ int run_startup_world_window(const std::filesystem::path &assets,
                         throw std::runtime_error("人物详情首次说明确认失败");
                     if (n == 99)
                         throw std::runtime_error("人物首次说明有界检查未返回详情");
+                }
+                if(inspect_page=="world-human-directory") {
+                    const auto detail=session.state().scripts.pages.back().id;
+                    const auto view=inspect_startup_world_human_presentation(session.state(),detail);
+                    if(!view||!view->tracking_available||session.act_human_page(detail,StartupHumanPageAction::cancel)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("目录详情追踪来源或返回拒绝");
+                    for(int n=0;n<3;++n)if(!session.update().committed)
+                        throw std::runtime_error("人物详情返回退休失败");
+                    const auto parent=session.state().scripts.pages.back().id;
+                    const auto directory=inspect_startup_world_information_page(session.state(),parent);
+                    if(!directory||directory->raw!=35||directory->selection!=0||directory->first_visible!=0||
+                       session.state().human_detail_contexts.count(detail))
+                        throw std::runtime_error("人物目录返回选择或引用退休失败");
+                    StartupInformationInput confirm;confirm.confirm=true;
+                    if(session.input_information_page(parent,confirm)!=StartupWorldRuntimeError::none)
+                        throw std::runtime_error("人物目录重进详情拒绝");
+                    for(int n=0;n<3;++n)if(!session.update().committed)
+                        throw std::runtime_error("人物目录重进初始化失败");
+                    if(!startup_world_human_page_ready(session.state(),session.state().scripts.pages.back().id))
+                        throw std::runtime_error("人物目录重进未就绪");
                 }
                 reached = true;
                 break;
@@ -2062,6 +2192,28 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             throw std::runtime_error("人物页面输入失败");
                     };
                     if (raw == 60) {
+                        const auto view=inspect_startup_world_human_presentation(session.state(),pid);
+                        if(!view)throw std::runtime_error("人物详情显示载荷拒绝");
+                        if(view->tab==0) {
+                            const auto overview=window_human_overview_plan(session.state(),pid,font);
+                            if(!overview)throw std::runtime_error("人物概览输入计划拒绝");
+                            const bool cancel_pointer=hit({176,265,58,24});
+                            bool gift_pointer{};
+                            for(const auto &op:overview->operations)if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                                if(touch->component==4&&touch->rectangle&&!cancel_pointer) {
+                                    const auto &r=*touch->rectangle;
+                                    gift_pointer=hit({human_overview_origin.x+r[0],human_overview_origin.y+r[1],float(r[2]),float(r[3])});
+                                }
+                            }
+                            // 原raw60概览使用上下；另三页继续保留旧研究展示。
+                            if(IsKeyPressed(KEY_UP))act(A::previous);
+                            if(IsKeyPressed(KEY_DOWN))act(A::next);
+                            const auto current=inspect_startup_world_human_presentation(session.state(),pid);
+                            if(!current)throw std::runtime_error("人物详情导航载荷拒绝");
+                            if((IsKeyPressed(KEY_ENTER)||gift_pointer)&&current->tab==0)act(A::gifts);
+                            else if(IsKeyPressed(KEY_ESCAPE)||cancel_pointer)act(A::cancel);
+                            else if(current->tracking_available&&(IsKeyPressed(KEY_T)||hit({8,265,58,24})))act(A::track);
+                        } else {
                         for (int tab = 0; tab < 4; ++tab)
                             if (hit({8.F + tab * 56, 45, 56, 18}))
                                 act(A::view_tab, tab);
@@ -2075,6 +2227,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                             act(A::professions);
                         else if (IsKeyPressed(KEY_ESCAPE) || hit({8, 265, 58, 24}))
                             act(A::cancel);
+                        }
                     } else if (raw == 61 || raw == 62 || raw == 64 || raw == 73) {
                         const int chosen = session.state().human_page_selections.at(pid);
                         if (raw == 64) {
@@ -2922,7 +3075,9 @@ int run_startup_world_window(const std::filesystem::path &assets,
             if(!command_feedback.empty())font.text(command_feedback,12,282,ink,10);
         } else if (const auto page = top_page()) {
             const bool steam_facility=page->legacy_page==74&&startup_world_facility_page_count(state,*page)==2;
-            if (page->legacy_page != 21&&!steam_facility) DrawRectangle(5, 170, 230, 119, paper);
+            const auto human_view=page->legacy_page==60?inspect_startup_world_human_presentation(state,page->id):std::nullopt;
+            const bool steam_human=human_view&&human_view->tab==0;
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human) DrawRectangle(5, 170, 230, 119, paper);
             std::string title = page->title;
             if (title.empty() && page->kind == ref::WorldScriptPageKind::raw_page) {
                 if (page->legacy_page == 30 || page->legacy_page == 31 || page->legacy_page == 32)
@@ -2943,7 +3098,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                          page->monster_definition)
                     title = rules.monsters.at(*page->monster_definition).name;
             }
-            if (page->legacy_page != 21&&!steam_facility)
+            if (page->legacy_page != 21&&!steam_facility&&!steam_human)
                 font.text(title, 12, 177, ink, font.measure(title) > 208 ? 10 : 12);
             if (page->legacy_page >= 41 && page->legacy_page <= 47) {
                 DrawRectangle(8, 42, 224, 214, paper);
@@ -3483,6 +3638,11 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 if (!command_feedback.empty())
                     font.text(command_feedback, 92, 272, RED, 10);
             } else if (page->legacy_page == 60 && startup_world_human_page_ready(state, page->id)) {
+                if(steam_human) {
+                    const auto plan=window_human_overview_plan(state,page->id,font);
+                    if(!plan)throw std::runtime_error("Steam人物概览显示载荷拒绝");
+                    draw_human_overview(*plan,sprites,font);
+                } else {
                 const int human = state.page_human_bindings.at(page->id);
                 const auto details = startup_world_human_details(state, human);
                 if (!details)
@@ -3553,6 +3713,7 @@ int run_startup_world_window(const std::filesystem::path &assets,
                 font.text("装备礼物", 23, 238, ink, 11);
                 font.text("转职", 164, 238, ink, 11);
                 font.text("返回", 18, 272);
+                }
             } else if ((page->legacy_page == 61 || page->legacy_page == 62) &&
                        startup_world_human_page_ready(state, page->id)) {
                 const auto &list = state.human_page_catalogs.at(page->id);

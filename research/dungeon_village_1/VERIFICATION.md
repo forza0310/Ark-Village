@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## 人物60概览维护交付2026-10-12
+
+本批仅共用上半区和页0：真实Owner查询、Steam资源映射／有序计划、肖像／装备／经验／满意与努力／四战斗缓存、恢复提示、研究窗口赠礼／追踪／返回接线及产品参考图。职业53阈值保留两次改字号前测宽；经验1/12填6、大师填79且隐藏等级／剩余数；小人物HP使用实例NOW／AFTER及共享最大缓存，四值HP不误用伤后HP。缺库存／坏装备／缺测宽／错误页签／退休显式拒绝。现有pages主责35→60、source1无W事件137／有W镜头、source0拒追踪、父选择恢复与退休；visuals扩展概览资源、边界及24次只读digest／输出规模稳定，不复制该Owner套件。
+
+最终单Release动态树构建成功，pages与visuals共2项短测3.69秒通过（2.80／0.88）。source0／source1各8帧有界窗口退出0，均为真实新局自然首访：420世界更新、1人、5000G、5随机抽。source1实际9→35→60，确认首次说明，返回检查父35选择0／scroll0及旧引用退休，再重进详情；截图已查看并合并为[960×640示例](ui/examples/steam-human-overview.png)。共用资源执行器改动后，设施第一页面8帧复验退出0、0世界更新／人物／随机、5000G，截图已查看。三窗口均RAII正常退出，无本轮遗留进程；未接触原游戏／原档或其他维护者文件。
+
+没有新增target、长期Driver、Owner字段／格式、audit脚本、指纹或过程报告；已有素材复用，只新增一张65120字节产品参考PNG。绘制计划逐轮临时消费，退休由既有Owner负责；有限重复稳定不证明现金流水／任务历史永久有界。Noto／中文文字／静态手形及软按钮为窗口适配，原OS实际投递、完整TextLayout、人物滚动鼠标与原窗口动态仍未验；另三页／成长子窗未扩。研究按短功能／逻辑收口，产品长跑及自然通关不由本批替代。
+
 旧快照清理状态（2026-10-10）：用户授权清理后，`work/snapshots/` 下的 `natural-application-v1`～`v4`、`natural-application-audio-v1`、`natural-application-menu-v1`、`application-clear-v1`～`v3`、`progression-prefixes`及`progression38000.awr`与侧车已删除。本次逐ID goal又核验并清理`active-application-v1`、其draft、`active-application-v2`、`active-residence-v1`及`natural-application-economy-v1`：27份应用载荷全为当前读器显式拒绝的语义7，连侧车54文件679438776字节。下文保留历史结论、规模和当批目录名，不再提供这些载荷恢复入口；未修改原档或必要反向输入。
 
 ## 普通设施74两页维护交付2026-10-11

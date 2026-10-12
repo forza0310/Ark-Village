@@ -1,5 +1,7 @@
 # Steam人物详情60：四页布局与输入
 
+2026-10-12维护交付：共用上半区和页0已接[只读计划](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)及研究窗口，[双入口参考图](examples/steam-human-overview.png)直接来自真实新局自然首访。source0直接详情左软标签为空；source1经9→35→60显示追踪，返回保留父目录选择／滚动并退休详情引用。概览上下翻页、Enter／底部赠礼、Esc／右返回、source1的T／左追踪接已有Owner，绘制不重算、抽随机或发声。另三页继续使用旧研究展示，不能视为完整Steam四页皮肤。原字体、TextLayout完整后端、原窗口／物理输入动态及滚动条鼠标操作仍未认证；验证见[当前短测](../VERIFICATION.md#人物60概览维护交付2026-10-12)。以下2026-10-10静态包范围保留，不代表本次消费者仍缺失。
+
 后继：[外层更新与触摸补证](STEAM_HUMAN_INPUT.md)已确认普通Update／Update2翻页链不按页重配label11；本页原“外层Update尚未闭合”属于初批边界。完整平台覆盖仍未验，不扩大成任何外部回调均不改标签。
 
 2026-10-10。固定Steam DLL、metadata身份及字节锚见[研究包](../verification/steam-human-detail/README.md)和证据清单（本地核对材料，不随仓库交付）。本页只认证具名方法中的局部静态消费者；没有本轮原窗口截图或完整皮肤像素验收。既有[人物UI示例](examples/README.md)是APK示意，不能反过来证明Steam坐标或文字。
@@ -29,7 +31,7 @@
 | 人物底图 | image39 `mp_back`源`(0,5,90,57)`→`(25,69)`，再RGB(148,148,148)框`(25,69,89,56)` |
 | 住宅与奖章 | `myHouse_[2]==1`叠image94 `myHomeBack(27,82)`；`Draw_medal(83,70,medalNum_)` |
 
-非日文职业名先以原Font测宽，默认size9、y=88；宽≥53时先选择size8、y=89，再次用该Font测宽，仍≥53时改size7；之后才调用`SetFontSize`，绘制后`ResetFontSize`。这里记录原调用顺序，不擅自替换为“逐字号试排直到适配”。字体平台实际字宽与[窗口字体合同](STEAM_WINDOW_FRAME.md)分别核验。
+非日文职业名先以原Font测宽，默认size9、y=88；首次宽≥53才再测一次，第二次宽<53选size8，否则size7，两者y=89。**两次StringWidth均在SetFontSize之前**，不是以8号字重测；之后才改字号绘制并ResetFontSize。字体平台实际字宽与[窗口字体合同](STEAM_WINDOW_FRAME.md)分别核验。
 
 普通人物交给`Draw_charaInfoChara(g,liveOrNull,definition,frame_)`。实际实例`state_==7`时改走倒下展示：`GetImgId(definition)`；`SetDispPlayerData(7,body,0,1,0)`；简版`DrawDispPlayer(75,121)`；`Draw_fukidashi("ﾀﾞｳﾝ中",75,79)`。
 
@@ -65,7 +67,7 @@ mode7/index i图标在`(x,y)`，标签`(x+18,y+2)`，SEB15数值右锚`(x+83,y+3
 
 底部统计整个`magic_`布尔数组的true个数，直接索引五项说明：0为“特定の職業をﾏｽﾀｰすると習得”，经`Draw_btmMsg(202,false,false,200)`；1–4为“１つ…/２つ…/３つ…/あらゆる魔法を使えます”，中心锚`(120,204)`。魔法页确认在本局部不推进子页。
 
-四页末尾都调用`DrawVerticalScroll2(221,69,4,127,page_,3,1)`。该helper[已证只注册触摸组件而不画图元](STEAM_FACILITY_DRAW_HELPERS.md)，不能凭函数名补造可见滚动条。
+四页末尾都调用`DrawVerticalScroll2(221,69,4,127,page_,3,1)`。helper只注册组件，图元由GameView即时消费者产生，见[设施同一滚动消费者](STEAM_FACILITY_DETAIL.md)。四页、可见1页保持：轨道(220,69,5,127)、RGB(7,5,78)，页0蓝块(220,69,5,32)、RGB(48,160,255)；组件12滑块基矩形(221,69,5,31)，组件25仍为(221,69,3,127)。本批仅实现概览不能把总数改为1；鼠标拖动尚未接入人物窗口，不以画出蓝条冒认输入完成。
 
 ## 输入、软标签与初始化副作用
 
@@ -101,7 +103,7 @@ EVIDENCE（本地核对材料，不随仓库交付）登记25个common逻辑引�
 
 ## 未闭合与后续最小范围
 
-1. 外层Init/Update的触摸输入转换、软标签动态刷新、初页与返回父选择恢复；不在此以APK填空。
-2. 人物静态调度行、power-bar／奖章／气泡及动态human/weapon依赖集；优先具名helper闭合，不重扫巨型绘制方法。
-3. 原窗口实际四页、触摸及字号折行证据；本批源码坐标与原画面分开认证。
-4. image88已独立发布，最终完整皮肤接线仍需验收；本批未写C++、未修改原游戏／存档、未做游戏回归。
+1. 页1–3及成长／转职子窗口的完整Steam绘制。现有业务消费者和旧研究展示不等于完整皮肤。
+2. 完整字体／TextLayout／平台触摸flags与实际物理输入动态、四页滚动条鼠标投递。维护窗口使用Noto12、中文译文和手形帧0，未认证原共享scratch的附加效果。
+3. 原窗口四页同身份截图及字号折行；源码、研究有界窗口与原窗口证据分别登记。概览已消费Steam差异图、现有动态human/weapon及image88，不再将这些基础资源列为缺失。
+4. 页0确认在原版是赠礼，维护窗口明确发`gifts`，不调用当前会关闭详情的`confirm`动作；其余页仍保留旧展示／输入适配，后续按原上下及装备页四槽顺序接线。

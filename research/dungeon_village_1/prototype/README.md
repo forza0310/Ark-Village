@@ -53,6 +53,8 @@ raw9的`steam_information_menu_status_skin`已交付右上HUD及四摘要，在�
 设施74第二页现提供[逐来源只读行及五行视窗](../ui/FACILITY_BONUS_ROWS.md)，配套[类别9／属性7图块与效果加号](../ui/FACILITY_BONUS_ICONS.md)。按原序显示实例后缀与固定y值，不从累计分摊；不会因读页再次计算或提交加成。
 有界`--world --inspect-page world-facility-details --frames 8`和`world-facility-bonuses`分别打开真实新局同一已营业、有来源设施的第一/第二页，不构造示例数值；普通74现消费[正式两页皮肤计划](STEAM_FACILITY_SKIN.md)，[参考图](../ui/examples/steam-facility-detail.png)供产品看框/图/数字/效果与来源。原字体/全局手形动画、最终OS输入及原EXE动态另验；特殊74模板另批。
 
+人物60概览由[steam_human_skin](include/dungeon_village_prototype/steam_human_skin.hpp)只读查询当前定义／实例，生成共用区及页0的有序图元；复用已核窗框、肖像／奖章／HP、当前装备图标和Steam差异资源，不新增Owner字段、target或存档布局。`--world --inspect-page world-human --frames 8`自然首访后打开source0详情；`world-human-directory`经9→35→60，实际返回、检查父选择／滚动和引用退休，再重进source1详情。概览上下导航、Enter／橙条赠礼、Esc／右返回、T／左追踪均经Owner；无W不补HP，回复提示要求实际W及回复道具库存。另三页仍为旧研究展示，字体／手形及底部软控件为适配；人物蓝条鼠标操作和原OS动态未验。产品参考见[双入口原图](../ui/examples/steam-human-overview.png)，边界及短测见[合同](../ui/STEAM_HUMAN_DETAIL.md)。
+
 2026-10-08：[普通道具图标](../ui/ITEM_ICON_RENDER.md)按原item列5投影，并接礼物64／设施75／商会84；
 [六属性头标](../ui/ATTRIBUTE_GAIN_RENDER.md)通过字体度量回调生成只读计划，与举物按原cd索引归并。接口不推进计数、累计属性或随机。
 18项受影响Release测试和8帧共同世界窗口通过；窗口未捕获cd13或道具目录，原身体bl偏移／精确原布局／Steam消费者仍未认证，详见[需求回应](../verification/PRODUCT_REQUESTS.md)。

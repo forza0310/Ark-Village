@@ -29,7 +29,7 @@ struct WorldHumanView {
     std::optional<simulation::StartupHumanPresentationLive> live;
     // Input-only projections may omit the measured down text width; rendering must supply it.
     std::optional<simulation::SteamHumanDetailSkin> detail_skin;
-    // Present only after the renderer supplies actual font widths for raw60 page0/1.
+    // Present only after the renderer supplies actual font widths for raw60's four pages.
     std::optional<simulation::SteamHumanOverviewPlan> detail_page_skin;
     std::array<std::string, 4> equipment_names;
     std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};

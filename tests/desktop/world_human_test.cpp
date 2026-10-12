@@ -164,6 +164,32 @@ void world_human() {
     input.escape = true;
     check(ui::world_human_input(view, layout, input, false)->action == Action::cancel,
           "Human detail Back is routed to source cancel");
+    {
+        auto equipment = view;
+        equipment.phase = 2;
+        equipment.selection = 2;
+        ui::WorldHumanInput enter;
+        enter.enter = true;
+        check(ui::world_human_input(equipment, layout, enter, false)->action == Action::gifts &&
+                  !ui::world_human_input(equipment, layout, enter, true),
+              "Equipment Enter opens Owner-selected gift slot and rejects pending duplicates");
+        const auto rows = ui::world_human_detail_layout(layout).body;
+        for (int slot = 0; slot < 4; ++slot) {
+            ui::WorldHumanInput click;
+            click.click = middle({rows.x, rows.y + slot * 17, rows.width, 17});
+            const auto intent = ui::world_human_input(equipment, layout, click, false);
+            check(intent && intent->action == Action::select && intent->selection == slot &&
+                      !ui::world_human_input(equipment, layout, click, true),
+                  "Visible equipment row selects its source slot without opening or spending");
+        }
+        ui::WorldHumanInput inspect;
+        inspect.inspect = true;
+        check(ui::world_human_input(equipment, layout, inspect, false)->selection == 2,
+              "Explicit equipment inspection retains selected second-armour slot");
+        equipment.phase = 3;
+        check(!ui::world_human_input(equipment, layout, enter, false),
+              "Magic Enter has no source action and cannot accidentally close the page");
+    }
     for (int tab = 0; tab < 4; ++tab) {
         input = {};
         input.click = middle(ui::world_human_detail_layout(layout).tabs[tab]);

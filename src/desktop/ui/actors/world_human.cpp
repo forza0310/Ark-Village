@@ -269,8 +269,10 @@ std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
             return intent(Action::gifts);
         if (view.phase <= 1 && (input.enter || hit(input.click, layout.primary)))
             return intent(view.phase == 0 ? Action::gifts : Action::professions);
+        if (view.phase == 2 && input.enter)
+            return intent(Action::gifts);
         if (input.inspect && view.phase == 2)
-            return intent(Action::inspect_equipment, 0);
+            return intent(Action::inspect_equipment, view.selection);
         if (input.left || input.right || input.up || input.down || input.wheel_rows)
             return intent(input.left || input.up || input.wheel_rows < 0 ? Action::previous
                                                                          : Action::next);
@@ -278,7 +280,8 @@ std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
             for (int slot = 0; slot < 4; ++slot)
                 if (hit(input.click, {layout.body.x, layout.body.y + slot * layout.body.height / 4,
                                       layout.body.width, layout.body.height / 4}))
-                    return intent(Action::inspect_equipment, slot);
+                    return intent(Action::select, slot);
+        return {}; // The source magic page has no confirmation command; Back remains above.
     }
     if (list_page(view.raw) || browse_page(view.raw)) {
         if (!view.rows.empty()) {

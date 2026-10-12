@@ -100,8 +100,12 @@ void world_human_render_fixture() {
     // They deliberately do not claim natural combat, acquisitions or job progression.
     for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
         SetWindowSize(extent.width, extent.height);
-        for (int sample = 0; sample < 7; ++sample) {
-            const int phase = sample < 4 ? sample : sample == 5 ? 1 : 0;
+        for (int sample = 0; sample < 10; ++sample) {
+            const int phase = sample < 4                   ? sample
+                              : sample == 5                ? 1
+                              : sample == 7 || sample == 9 ? 2
+                              : sample == 8                ? 3
+                                                           : 0;
             auto owner = initial_world();
             auto catalogue = *owner.rules;
             owner.rules = &catalogue;
@@ -119,6 +123,18 @@ void world_human_render_fixture() {
             auto &ai = owner.scene.world.world.ai;
             ai.growth.at(human).definition.current_profession = 2;
             owner.shop_humans.at(human).equipment[0] = 0;
+            if (sample == 7)
+                owner.human_page_selections[detail.id] = 2;
+            if (sample == 8)
+                ai.growth.at(human).derived.available_spells = {true, false, false, true};
+            if (sample == 9) {
+                auto weapon =
+                    std::find_if(catalogue.equipment.begin(), catalogue.equipment.end(),
+                                 [](const auto &e) { return e.shop.kind == 1 && e.shop.id == 0; });
+                weapon->name = "名称很长的测试武器";
+                if (!text.include_text(weapon->name))
+                    throw std::runtime_error("Long weapon font glyph missing");
+            }
             if (sample == 5) {
                 catalogue.humans.at(human).name = "名称较长的冒险人物";
                 catalogue.jobs.at(2).name = "LongProfessionName";
@@ -156,9 +172,9 @@ void world_human_render_fixture() {
             ui::prepare_world_human_detail(view, owner, skin);
             if (!view.initialized || !view.detail_skin)
                 throw std::runtime_error("Synthetic raw60 fixture has no complete portrait plan");
-            if (phase <= 1 && !view.detail_page_skin)
+            if (!view.detail_page_skin)
                 throw std::runtime_error(
-                    "Synthetic raw60 page0/1 did not bind the formal measured plan");
+                    "Synthetic raw60 did not bind the formal four-page measured plan");
             if ((sample == 4 || sample == 6) && !view.detail_page_skin->recovery_gift)
                 throw std::runtime_error("Target HP/down fixture lost the actual recovery hint");
             for (int draw = 0; draw < 8; ++draw) {
@@ -174,7 +190,10 @@ void world_human_render_fixture() {
             const std::string suffix = sample < 4    ? "phase" + std::to_string(phase)
                                        : sample == 4 ? "recovery"
                                        : sample == 5 ? "long-attributes"
-                                                     : "down-overview";
+                                       : sample == 6 ? "down-overview"
+                                       : sample == 7 ? "empty-slot2"
+                                       : sample == 8 ? "mixed-magic"
+                                                     : "long-equipment";
             const auto file = output / ("synthetic-raw60-" + std::to_string(extent.width) + "-" +
                                         suffix + ".png");
             auto capture = LoadImageFromScreen();

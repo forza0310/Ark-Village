@@ -4,10 +4,11 @@
 
 ## 当前接入与收口
 
-- [x] 正式e81d1ce/b2ae248概览及六属性维护计划已迁入原skin模块/套件，455来源/70适配保留；现有Steam副本不重复新增，见[B1](docs/stages/B1-playable-prototype.md#research-b2ae248-human-ui)。
-- [x] 现actors UI执行raw60页0/1有序计划、实际字体测宽/恢复提示/四页比例条；Enter/橙条赠礼或转职，保留PC页签/捷径及FIFO/pending。
+- [x] 正式e81d1ce/b2ae248/4b655d0人物四页计划和装备选择修正已迁入原模块/套件，455来源/70适配保留；现有Steam副本不重复新增，见[B1](docs/stages/B1-playable-prototype.md#research-4b655d0-human-ui)。
+- [x] 现actors UI执行raw60四页有序计划、实际字体测宽/恢复提示/比例条；保留PC页签/捷径与FIFO/pending，装备方向先走四槽、行点击选择、Enter进入对应赠礼槽，魔法Enter无操作。
 - [x] 用户指定的小窗preview.mjs及所引设施/道具/菜单/提示/人物示例已纳入本goal，复用各自正式合同及套件，对照入口见[清单](docs/reference/REFERENCE_CHECKLIST.md#ui-small-window-goal)。预览服务、CSS和夹具数值不进入游戏。
-- [ ] 人物装备/魔法两页接后续正式Steam计划；原字体、OS输入与完整动态/滚动条鼠标验收仍分开，不用概览/六属性完成宣称四页全部对齐。
+- [ ] 人物原字体、OS输入与完整动态/滚动条鼠标、控制器提示及73装备详情皮肤继续按正式交付接续，不用四页局部计划与产品截图宣称原版全部对齐。
+- [ ] 单月经营分段等待确认：季度分支限6分钟止于月98，失败报告保持；新月度保存时点被自动审批拒绝，原月96仍是最后有效玩家档。方案见[计划](docs/MILESTONES.md)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
 - [x] 普通raw74两页已接现facilities UI：正式c3b568c滚动皮肤/事件及原套件增量迁入，原序绘制/Steam箭头、字体测宽与五行光标沿已批桌面适配；窗口/剩余原版输入边界见[B1](docs/stages/B1-playable-prototype.md#research-c3b568c-detail-ui)。

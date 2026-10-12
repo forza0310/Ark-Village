@@ -1,4 +1,4 @@
-// Execute the formal raw60 page0/1 stream. Font/GPU adaptation stays outside the Owner.
+// Execute the formal raw60 four-page stream. Font/GPU adaptation stays outside the Owner.
 #include "../common/skin.hpp"
 #include "world_human_detail.hpp"
 #include <algorithm>
@@ -29,11 +29,26 @@ std::string label(const sim::SteamHumanOverviewText &p, bool recovery) {
     case Role::attribute:
         return std::array<const char *, 6>{"体力", "力量", "灵巧", "耐力", "魔力", "运气"}.at(
             p.argument);
+    case Role::equipment_slot:
+        return std::array<const char *, 4>{"武器", "防具1", "防具2", "饰品"}.at(p.argument);
+    case Role::equipment_empty:
+        return "未装备";
+    case Role::equipment_hint:
+        return "按确认键赠送礼物";
+    case Role::magic_title:
+        return "习得魔法";
+    case Role::spell:
+        return std::array<const char *, 4>{"火魔法", "冰魔法", "雷魔法", "回复魔法"}.at(p.argument);
+    case Role::magic_status:
+        return std::array<const char *, 5>{"精通特定职业可以习得", "可以使用一种魔法",
+                                           "可以使用两种魔法", "可以使用三种魔法",
+                                           "可以使用全部魔法"}
+            .at(p.argument);
     default:
         throw std::invalid_argument("Human skin text has no bound value");
     }
 }
-// This small executor owns no state or animation clock. It also serves the old page2/3 portrait.
+// This small executor owns no state or animation clock; every page shares its portrait helper.
 class HumanSkinDraw {
   public:
     HumanSkinDraw(Vector2 origin, const Skin &skin) : origin_(origin), skin_(skin) {}
@@ -116,11 +131,12 @@ class HumanSkinDraw {
         const auto &r = p.rectangle;
         float size = p.font_size ? float(p.font_size) : 12.F;
         // Desktop Chinese typography fits the complete text into source columns.
-        const float width = r[2] > 0                                                ? float(r[2])
-                            : p.role == sim::SteamHumanOverviewTextRole::name       ? 86.F
-                            : p.role == sim::SteamHumanOverviewTextRole::profession ? 53.F
-                            : p.role == sim::SteamHumanOverviewTextRole::attribute  ? 38.F
-                                                                                    : 60.F;
+        const float width = r[2] > 0                                                  ? float(r[2])
+                            : p.role == sim::SteamHumanOverviewTextRole::name         ? 86.F
+                            : p.role == sim::SteamHumanOverviewTextRole::profession   ? 53.F
+                            : p.role == sim::SteamHumanOverviewTextRole::attribute    ? 38.F
+                            : p.role == sim::SteamHumanOverviewTextRole::magic_status ? 200.F
+                                                                                      : 60.F;
         size *= std::min(1.F, width / std::max(1.F, skin_.text.width(value, size)));
         const float measured = skin_.text.width(value, size);
         float x = origin_.x + r[0], y = origin_.y + r[1];
@@ -136,6 +152,8 @@ class HumanSkinDraw {
                 x -= measured / 2;
             else if (p.anchor & 4)
                 x -= measured;
+            if (p.anchor & 0x20)
+                y -= size / 2;
         }
         skin_.text.draw(value, x, y, color(p.rgb), size);
     }
@@ -181,7 +199,7 @@ class HumanSkinDraw {
 void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntimeState &state,
                                 const Skin &skin) {
     v.detail_page_skin.reset();
-    if (!v.initialized || v.raw != 60 || v.phase > 1)
+    if (!v.initialized || v.raw != 60)
         return;
     sim::SteamHumanOverviewOptions o;
     o.view_y = 23; // Published helper input; outer desktop origin is applied once when drawing.
@@ -193,15 +211,12 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
         o.profession_repeat_width = int(skin.text.width(v.profession));
     o.bottom_widths = {int(skin.text.width("赠送礼物")), int(skin.text.width("赠送回复道具"))};
     o.profession_change_width = int(skin.text.width("转职"));
+    o.equipment_hint_width = int(skin.text.width("按确认键赠送礼物"));
+    o.magic_hint_width = int(skin.text.width("精通特定职业可以习得"));
     o.down_text_width = int(std::ceil(skin.text.width(world_human_down_text)));
-    v.detail_page_skin = v.phase == 0 ? sim::steam_human_overview_skin(state, v.page, o)
-                                      : sim::steam_human_attributes_skin(state, v.page, o);
+    v.detail_page_skin = sim::steam_human_information_skin(state, v.page, o);
     if (!v.detail_page_skin)
         throw std::invalid_argument("Measured human page rejected its bound Owner");
-}
-void draw_world_human_portrait(const sim::SteamHumanDetailSkin &plan, Vector2 origin,
-                               const Skin &skin) {
-    HumanSkinDraw(origin, skin).portrait(plan);
 }
 void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 origin,
                            const Skin &skin) {

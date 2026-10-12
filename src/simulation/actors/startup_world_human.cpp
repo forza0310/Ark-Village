@@ -638,12 +638,13 @@ inspect_startup_world_human_presentation(const State &s, std::uint64_t id) {
     const auto selection = s.human_page_selections.find(id);
     if (binding == s.page_human_bindings.end() || tab == s.page_phases.end() ||
         frame == s.page_counters.end() || selection == s.human_page_selections.end() ||
-        tab->second < 0 || tab->second > 3 || frame->second < 0 || selection->second != 0)
+        tab->second < 0 || tab->second > 3 || frame->second < 0 || selection->second < 0 || selection->second > 3)
         return {};
     const auto details = startup_world_human_details(s, binding->second);
     if (!details)
         return {};
     StartupHumanPresentationView view{id, tab->second, frame->second, *details, {}};
+    view.equipment_selection=selection->second;
     const auto &context = s.human_detail_contexts.find(id)->second;
     view.tracking_available = context.chase_mode == 1;
     if (context.actor)
@@ -699,7 +700,7 @@ bool valid_startup_world_human_detail_context(const State &s, std::uint64_t id) 
         if (phase == s.page_phases.end() || counter == s.page_counters.end() ||
             selection == s.human_page_selections.end() || phase->second < 0 || phase->second > 3 ||
             counter->second < 0 || counter->second == std::numeric_limits<int>::max() ||
-            selection->second != 0)
+            selection->second < 0 || selection->second > 3)
             return false;
     }
     // 来源1只来自实际35父页，或scene6确认后带W的新详情；来源不是可随意授予的标志。
@@ -906,9 +907,20 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
         } else if (action == A::view_tab) {
             if (selection < 0 || selection > 3)
                 return Error::invalid_page;
+            if(selection==2&&phase!=2)chosen=phase==3?3:0;
             phase = selection;
+        } else if(action==A::select) {
+            if(phase!=2||selection<0||selection>3)return Error::invalid_page;
+            chosen=selection;
         } else if (action == A::previous || action == A::next) {
-            phase = (phase + (action == A::previous ? 3 : 1)) % 4;
+            if(phase==2) {
+                if(action==A::previous) {if(chosen>0)--chosen;else phase=1;}
+                else {if(chosen<3)++chosen;else phase=3;}
+            } else {
+                const int previous=phase;
+                phase=(phase+(action==A::previous?3:1))%4;
+                if(phase==2)chosen=previous==3?3:0;
+            }
         } else if (action == A::cancel || action == A::confirm) {
             if (!close(next, id))
                 return Error::script_failed;
@@ -917,8 +929,10 @@ Error act_startup_world_human_page(State &s, std::uint64_t id, StartupHumanPageA
                 !open(next, 61, human))
                 return Error::script_failed;
         } else if (action == A::gifts) {
-            if (!open(next, 64, human))
+            const auto child=open(next,64,human);
+            if(!child)
                 return Error::script_failed;
+            if(phase==2)next.page_phases[*child]=chosen;
         } else if (action == A::inspect_equipment) {
             if (selection < 0 || selection > 3)
                 return Error::invalid_page;

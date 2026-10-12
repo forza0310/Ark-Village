@@ -38,6 +38,7 @@ struct StartupHumanPresentationView {
     StartupHumanDetails human;
     std::optional<StartupHumanPresentationLive> live;
     bool tracking_available{}; // 只读来源资格：source1显示追踪；输入另查栈顶/生命周期/暂停。
+    int equipment_selection{}; // raw60原select_，0..3；离开装备页保留，下次进入按方向重置。
 };
 // 投影指定已初始化raw60，含被子页遮住的挂起父页；可绘制不代表可交互。
 // 坏载荷返回空，不初始化页面、不推进帧或修改HP。

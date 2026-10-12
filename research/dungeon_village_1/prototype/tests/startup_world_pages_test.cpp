@@ -1206,6 +1206,19 @@ void human_details_and_gifts() {
         edge.scene.world.world.ai.battle.actors.at(first.id).control.state=7;route(edge,true);
         edge=recovery;edge.scene.world.world.ai.human_order.clear();route(edge,false);
         edge=recovery;stock(edge,29,0);route(edge,false);
+        {
+            auto extended=recovery;
+            for(int item=0;item<6;++item)stock(extended,item,1);
+            const auto before=startup_world_state_digest(extended);
+            check(act_startup_world_human_page(extended,id,A::gifts)==E::none,
+                  "recovery entry accepts an owned ordinary prefix beyond four rows");
+            const auto extended_child=extended.scripts.pages.back().id;page_tick(extended);
+            const auto cursor=inspect_startup_world_human_catalogue_cursor(extended,extended_child);
+            check(cursor&&cursor->selection==6&&cursor->first==3&&cursor->visible==4&&
+                  extended.equipment_page_catalogs.at(extended_child)[4].at(cursor->selection)==29&&
+                  startup_world_state_digest(extended)!=before&&extended.items.at(29).inventory==1,
+                  "first catalogue frame scrolls to actual recovery prefix instead of rejecting valid preselection");
+        }
         // 第一回复定义无库存：select仍是首回复定义前的正库存数量，选择后续持有回复项。
         auto later=recovery;stock(later,29,0);stock(later,30,2);
         const auto later_cash=later.scene.world.world.ai.accounting.funds();const auto later_draws=later.scene.random.draws();

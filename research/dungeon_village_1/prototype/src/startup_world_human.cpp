@@ -230,7 +230,16 @@ bool initialize(State &s, std::uint64_t id, int raw) {
     s.page_phases.try_emplace(id, 0);
     s.page_counters.try_emplace(id, 0);
     s.human_page_selections.try_emplace(id, 0);
-    if(raw==61||raw==64)s.human_page_scroll.emplace(id,0);
+    if(raw==61||raw==64) {
+        auto first=s.human_page_scroll.emplace(id,0).first;
+        const int phase=s.page_phases.at(id),selected=s.human_page_selections.at(id);
+        if(selected<0||phase<0||phase>(raw==61?1:4))return false;
+        const auto count=raw==61?s.human_page_catalogs.at(id).size():s.equipment_page_catalogs.at(id)[phase].size();
+        if(count?std::size_t(selected)>=count:selected!=0)return false;
+        // 回复入口可预选屏外道具；首轮按原窗口规则修正，不能将合法前缀判为坏载荷。
+        const int visible=raw==61?5:4;
+        if(selected>=visible)first->second=selected-visible+1;
+    }
     if (raw == 60) {
         // Init可压入首次说明111，栈顶已不是60；完成Init的本页仍须进入Start阶段。
         // 不能靠框架仅更新back()把已初始化却被遮住的60遗留为生命周期0。

@@ -13,6 +13,8 @@
 
 赠礼68复用既有`human_equipment_choices`保存真实装备槽／新ID，69仍保存道具ID；不是从读档后现装倒推头栏。已创建的68缺键、道具槽4或坏ID拒绝，Finish释放；这项只扩现map的使用范围而不增加字段。新scroll布局已经拒绝此前世界／应用文件，旧68载荷不补默认；60同轮滚动仍用已有phase／selection，不引入第二份持久游标。
 
+回复入口的合法预选可能超过四行：首次建立scroll后按原首轮窗口规则使预选可见，六项普通前缀初选6／首行3；已初始化的屏外选择仍拒绝，不借首次修窗补坏档。此边界短测见[联合验收](../VERIFICATION.md#人物管理目录与联合收口2026-10-13)。
+
 说明raw13追加`manual_page_data`，保存冻结人物`decorations`、最后实际正文页`text_page`及`localize_text`；页码与单次更新计数仍使用phase／counter。首次Init要求LT，后续真正换到非关于页才安装未LT正文；关于页隐藏但保留先前正文缓存，恢复不重新Init、洗牌或执行LT。完整世界／应用研究回放保留这些字段，normal普通档仍拒绝模态13。新字段布局及固定APK `manual.txt`来源身份使旧布局／旧来源文件明确拒绝，不迁移；世界5／应用8／系统2和128MiB预算不变。该格式仍是研究维护格式，不是APK／Steam原档。当前检查记录见[说明页面批](../VERIFICATION.md#说明页面owner与steam局部皮肤2026-10-10)。
 
 NEW批追加任务实例`newly_available`及Owner的`facility_build_present`／`build_category_new`，更新字段schema，旧布局普通档、世界及应用精确快照拒绝、不迁移；世界5／应用8／系统2与128MiB不变。任务j随实例保存；P／aY按现完整Owner维护策略保存，不据此声称原APK保存了同一套缓存。恢复保留原值，仅核定义键等结构与引用，不能按当前实例重算或拒绝合法陈旧P／aY。新局缓存全false，raw21普通／道路选中及真实raw3 Init才由显式消费者刷新；raw22确认／取消清当前完整task_order的j，入页不清，22软追踪出口仍未接。历史批检查见[验证](../VERIFICATION.md#任务new建设缓存与菜单owner投影2026-10-10)。

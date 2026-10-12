@@ -59,6 +59,7 @@ class WorldManagement {
     ui::WorldFacilityItemsSelection facility_items_;
     ui::WorldAwardSelection award_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
+    mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;
     int rank_{};
     int edit_mode_{-1};
     std::optional<int> definition_;

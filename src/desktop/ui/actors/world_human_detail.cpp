@@ -4,6 +4,29 @@
 #include <stdexcept>
 
 namespace ark::desktop::ui {
+bool world_human_source_child(const WorldHumanView &v) {
+    return v.raw == 73 || (v.raw == 65 && (!v.choice || v.choice->slot < 4));
+}
+Vector2 world_human_skin_origin(const WorldHumanLayout &l) {
+    // Source helper: VIEW_Y23, vertical0. This also yields top44 for the 220x175 parent.
+    return {l.panel.x - (120 - int(l.panel.width) / 2),
+            l.panel.y - (131 - int(l.panel.height) / 2)};
+}
+WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int raw) {
+    if (raw != 65 && raw != 73)
+        throw std::invalid_argument("Unsupported human source child");
+    auto out = base;
+    const float width = raw == 73 ? 170.F : 220.F, height = raw == 73 ? 125.F : 136.F;
+    const auto center =
+        Vector2{base.panel.x + base.panel.width / 2, base.panel.y + base.panel.height / 2};
+    out.panel = {center.x - width / 2, center.y - height / 2, width, height};
+    out.cancel = {raw == 73 ? out.panel.x : out.panel.x + width - 50, out.panel.y + height + 4, 50,
+                  18};
+    out.confirm =
+        raw == 73 ? Rectangle{out.panel.x + width - 50, out.cancel.y, 50, 18} : Rectangle{};
+    out.previous = out.next = {}; // Real title arrows are measured from their SEB helper.
+    return out;
+}
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base) {
     auto out = base;
     const auto center =
@@ -37,7 +60,7 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
         if (!v.detail_page_skin)
             throw std::runtime_error("Human four-page rendering requires an actual measured plan");
         // VIEW_Y23 makes the source window top44. Align that window once to the PC panel.
-        draw_world_human_skin(*v.detail_page_skin, {l.panel.x - 10, l.panel.y - 44}, s);
+        draw_world_human_skin(*v.detail_page_skin, world_human_skin_origin(l), s);
     }
     // PC navigation stays explicit and separate from the unbound source soft-label lifecycle.
     s.button(l.cancel, "返回", enabled && v.initialized);
@@ -48,6 +71,23 @@ void draw_world_human_detail(const WorldHumanView &v, const WorldHumanLayout &l,
     if (!feedback.empty()) {
         const float size = 9.F * std::min(1.F, 185.F / std::max(1.F, s.text.width(feedback, 9.F)));
         s.text.draw(feedback, l.panel.x + 15, l.panel.y + 200, MAROON, size);
+    }
+}
+void draw_world_human_subwindow(const WorldHumanView &v, const WorldHumanLayout &l, const Skin &s,
+                                bool enabled, const std::string &feedback) {
+    if (v.initialized) {
+        if (!v.detail_page_skin)
+            throw std::runtime_error("Human child needs its measured source plan");
+        draw_world_human_skin(*v.detail_page_skin, world_human_skin_origin(l), s);
+    } else
+        s.window(l.panel, v.raw == 73 ? "装备信息" : "赠送礼物");
+    s.button(l.cancel, "返回", enabled && v.initialized);
+    if (v.raw == 73)
+        s.button(l.confirm, "返回", enabled && v.initialized);
+    if (!feedback.empty()) {
+        const float size =
+            9.F * std::min(1.F, l.panel.width / std::max(1.F, s.text.width(feedback, 9.F)));
+        s.text.draw(feedback, l.panel.x, l.cancel.y + 21, MAROON, size);
     }
 }
 } // namespace ark::desktop::ui

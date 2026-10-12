@@ -161,6 +161,8 @@ void overview_checks(Checks &check) {
     auto plan=steam_human_overview_skin(owner,id,options);
     check(plan&&plan->soft_labels==std::array<int,2>{0,2}&&!plan->recovery_gift,"概览source0左空右返回且无W不补回复资格");
     const auto texts=parts<SteamHumanOverviewText>(*plan);
+    check(std::all_of(texts.begin(),texts.end(),[](const auto &t){return t.rgb==std::array<int,3>{92,51,31};}),
+          "概览正文读取固定SC_WINDOW_BLACK92/51/31，不借其它窗口棕色");
     const auto job=std::find_if(texts.begin(),texts.end(),[](const auto &t){return t.role==SteamHumanOverviewTextRole::profession;});
     check(job!=texts.end()&&job->font_size==9&&job->rectangle[1]==88,"职业首次测宽52选择原9号字体");
     options.profession_width=53;
@@ -409,9 +411,95 @@ void equipment_magic_checks(Checks &check) {
     owner.human_page_selections[id]=4;
     check(!steam_human_information_skin(owner,id,options),"选择4严格拒绝，不映射到某个合法槽");
 }
+void equipment_detail_checks(Checks &check) {
+    // 展示目录条件，未认证真实玩家已经开放第二武器。
+    auto owner=test_support::page_fixture(73);const auto id=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=1;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[id]=1;owner.page_phases[id]=0;owner.page_counters[id]=0;
+    owner.human_page_selections[id]=0;owner.human_pages_initialized.insert(id);
+    owner.equipment_page_catalogs[id][0]={0,1};owner.human_equipment_choices[id]={0,0};
+    SteamHumanOverviewOptions options;options.title_widths=std::array<int,2>{90,90};
+    const auto plan=steam_human_equipment_detail_skin(owner,id,options);
+    check(plan&&plan->soft_labels==std::array<int,2>{2,2}&&plan->title=="装备信息 1/2","原73双返回及真实目录序号");
+    const auto arrows=parts<SteamFacilityArrowTouch>(*plan);
+    check(arrows.size()==2&&arrows[0].position==std::array<int,2>{51,77}&&arrows[0].frame==3&&arrows[0].value==16&&
+          arrows[1].position==std::array<int,2>{189,77}&&arrows[1].frame==0&&arrows[1].value==18,
+          "TitleArrow170/125原y77，注册SEB请求后委托真实按钮纹理");
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    check(std::any_of(numbers.begin(),numbers.end(),[](const auto &n){return n.kind==SteamFacilityNumberKind::money&&
+          n.asset==SteamFacilityAsset::number08&&n.position==std::array<int,2>{189,92}&&n.value==400;}),
+          "短剑原基础价400而非赠礼600或render_image50");
+    const auto text=parts<SteamHumanOverviewText>(*plan);
+    check(std::any_of(text.begin(),text.end(),[](const auto &t){return t.value=="--"&&t.rectangle==std::array<int,4>{173,119,0,0}&&
+          t.anchor==34&&t.rgb==std::array<int,3>{92,51,31};}),"非正HP原--173/119居中，不猜---184/115");
+    const auto before=startup_world_state_digest(owner);
+    for(int i=0;i<12;++i)check(steam_human_equipment_detail_skin(owner,id,options)->operations.size()==plan->operations.size()&&
+        startup_world_state_digest(owner)==before,"73读取不收费/装配/清NEW/抽随机，输出稳定");
+    owner.human_page_selections[id]=1;
+    const auto second=steam_human_equipment_detail_skin(owner,id,options);
+    const auto names=parts<SteamHumanOverviewText>(*second);
+    const auto expected=std::find_if(owner.rules->equipment.begin(),owner.rules->equipment.end(),[](const auto &d){return d.shop.kind==1&&d.shop.id==1;});
+    check(second->title=="装备信息 2/2"&&std::any_of(names.begin(),names.end(),[&](const auto &t){return t.role==SteamHumanOverviewTextRole::equipment_name&&t.value==expected->name;}),
+          "73切目录读取当前选择1，不固定初始choice0");
+    owner.equipment_page_catalogs[id][0]={0};owner.human_page_selections[id]=0;
+    check(parts<SteamFacilityArrowTouch>(*steam_human_equipment_detail_skin(owner,id,options)).empty(),"原单元素目录没有TitleArrow");
+    owner.human_page_selections[id]=1;
+    check(!steam_human_equipment_detail_skin(owner,id,options),"73越界目录选择显式拒绝");
+    owner.human_page_selections[id]=0;owner.human_equipment_choices.erase(id);
+    check(!steam_human_equipment_detail_skin(owner,id,options),"73缺初始化来源拒绝而非容错补默认");
+}
+void gift_confirmation_checks(Checks &check) {
+    auto owner=test_support::page_fixture(64);const auto parent=owner.scripts.pages.back().id;
+    owner.scripts.pages.back().lifecycle=3;owner.scripts.executing_page.reset();
+    owner.page_human_bindings[parent]=1;owner.page_phases[parent]=0;owner.page_counters[parent]=0;
+    owner.human_page_selections[parent]=0;owner.human_pages_initialized.insert(parent);
+    owner.equipment_page_catalogs[parent][0]={1};owner.human_equipment_choices[parent]={0,1};
+    ref::WorldScriptPage child;child.id=owner.scripts.next_page_id++;child.kind=ref::WorldScriptPageKind::raw_page;
+    child.legacy_page=65;child.lifecycle=1;owner.scripts.pages.push_back(child);const auto id=child.id;
+    owner.page_human_bindings[id]=1;owner.page_phases[id]=0;owner.page_counters[id]=0;
+    owner.human_page_selections[id]=0;owner.human_pages_initialized.insert(id);
+    owner.human_equipment_choices[id]={0,1};owner.human_page_parents[id]=parent;
+    owner.shop_humans.at(1).equipment[0]=0;owner.scene.world.world.ai.growth.at(1).derived.combat={100,999,888,777};
+    SteamHumanOverviewOptions options;options.title_widths=std::array<int,2>{48,48};
+    options.comparison_name_widths={20,20};options.gift_accept_width=48;
+    auto plan=steam_human_gift_confirmation_skin(owner,id,options);
+    check(plan&&plan->soft_labels==std::array<int,2>{0,2}&&plan->title=="赠送礼物","65固定赠礼标题，左空右返回");
+    owner.scripts.pages[owner.scripts.pages.size()-2].lifecycle=2;
+    check(steam_human_gift_confirmation_skin(owner,id,options).has_value(),"真实通用open的父64仍life2可绘制，不伪定必须life3");
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    check(numbers.size()==4&&numbers[0].value==5&&numbers[0].asset==SteamFacilityAsset::number08&&
+          numbers[1].value==8&&numbers[1].asset==SteamFacilityAsset::number05&&numbers[2].value==0&&
+          numbers[3].value==0&&numbers[3].asset==SteamFacilityAsset::number08,"短剑5与铁剑8为装备定义参数，不用人物缓存999；升值12同值15");
+    check(std::none_of(numbers.begin(),numbers.end(),[](const auto &n){return n.kind!=SteamFacilityNumberKind::number;}),
+          "确认65没有价格/库存/加号，不提前报价或兑现");
+    const auto images=parts<SteamFacilityImage>(*plan);
+    check(std::count_if(images.begin(),images.end(),[](const auto &i){return i.asset==SteamFacilityAsset::title_arrows;})==3&&
+          images[0].frame==3&&images[1].frame==1&&images[2].frame==1,"counter0三箭头首项frame3，其余1");
+    auto width=options;width.comparison_name_widths[0]=std::numeric_limits<int>::max();
+    check(steam_human_gift_confirmation_skin(owner,id,width).has_value(),"名称测宽先Clamp90，不能int+20溢出");
+    owner.shop_humans.at(1).equipment[0]=1;owner.human_equipment_choices[parent]=owner.human_equipment_choices[id]={0,0};
+    owner.equipment_page_catalogs[parent][0]={0};owner.page_counters[id]=16;
+    plan=steam_human_gift_confirmation_skin(owner,id,options);const auto decreased=parts<SteamFacilityNumber>(*plan);
+    check(decreased[1].value==5&&decreased[1].asset==SteamFacilityAsset::number12,"下降用原SEB19而非普通/红字体数字");
+    const auto before=startup_world_state_digest(owner);const auto size=plan->operations.size();
+    for(int i=0;i<12;++i)check(steam_human_gift_confirmation_skin(owner,id,options)->operations.size()==size&&
+        startup_world_state_digest(owner)==before,"65重复绘制不装配/扣款/答案/声音/随机变更");
+    auto bad=owner;bad.page_human_bindings.erase(parent);
+    check(!steam_human_gift_confirmation_skin(bad,id,options),"65父绑定缺失显式拒绝");
+    bad=owner;bad.equipment_page_catalogs.erase(parent);
+    check(!steam_human_gift_confirmation_skin(bad,id,options),"65父目录缺载荷不能从候选装备补默认");
+    bad=owner;bad.scripts.pages[bad.scripts.pages.size()-2].lifecycle=4;
+    check(!steam_human_gift_confirmation_skin(bad,id,options),"65退休父64不能冒认有效候选来源");
+    bad=owner;bad.page_phases.erase(id);
+    check(!steam_human_gift_confirmation_skin(bad,id,options),"已初始化65缺phase不能靠绘制补键");
+    bad=owner;bad.human_equipment_choices.at(parent)[1]=1;
+    check(!steam_human_gift_confirmation_skin(bad,id,options),"65错误父候选拒绝");
+    auto missing=options;missing.comparison_name_widths[0].reset();
+    check(!steam_human_gift_confirmation_skin(owner,id,missing),"缺实际字号10测宽拒绝");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
-    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);
+    Checks check;power_checks(check);medal_bubble_checks(check);resources(check,source_root);owner_checks(check);overview_checks(check);attributes_checks(check);equipment_magic_checks(check);equipment_detail_checks(check);gift_confirmation_checks(check);
     return check.count;
 }

@@ -1,5 +1,6 @@
 // Execute the formal raw60 four-page stream. Font/GPU adaptation stays outside the Owner.
 #include "../common/skin.hpp"
+#include "ark/simulation/presentation/steam_manual_skin.hpp"
 #include "world_human_detail.hpp"
 #include <algorithm>
 #include <cmath>
@@ -44,14 +45,33 @@ std::string label(const sim::SteamHumanOverviewText &p, bool recovery) {
                                            "可以使用两种魔法", "可以使用三种魔法",
                                            "可以使用全部魔法"}
             .at(p.argument);
+    case Role::gift_change_prompt:
+        return "赠礼更换装备";
+    case Role::gift_accept:
+        return "赠送礼物";
     default:
         throw std::invalid_argument("Human skin text has no bound value");
     }
 }
+sim::SteamManualArrowPlan arrow(const sim::SteamFacilityArrowTouch &p, const Skin &skin) {
+    const auto resource = sim::steam_facility_resource(sim::SteamFacilityAsset::title_arrows);
+    if (!resource || !resource->published_sprite)
+        throw std::invalid_argument("Human arrow resource missing");
+    const auto bounds = skin.sprites.frame_bounds(
+        std::filesystem::path(resource->published_sprite).filename().string(), p.frame,
+        Sprites::Binding::common);
+    const auto result = sim::steam_manual_arrow_skin(
+        {p.position, p.frame, false},
+        {int(bounds.x), int(bounds.y), int(bounds.width), int(bounds.height)}, 128);
+    if (!result)
+        throw std::invalid_argument("Human arrow helper rejected source bounds");
+    return *result;
+}
 // This small executor owns no state or animation clock; every page shares its portrait helper.
 class HumanSkinDraw {
   public:
-    HumanSkinDraw(Vector2 origin, const Skin &skin) : origin_(origin), skin_(skin) {}
+    HumanSkinDraw(Vector2 origin, const Skin &skin, std::string title)
+        : origin_(origin), skin_(skin), title_(std::move(title)) {}
     Vector2 point(std::array<int, 2> p) const { return {origin_.x + p[0], origin_.y + p[1]}; }
     void rectangle(const sim::StartupSkinRect &p) const {
         const auto &r = p.rect;
@@ -75,10 +95,9 @@ class HumanSkinDraw {
         const auto resource = sim::steam_facility_resource(p.asset);
         if (!resource)
             throw std::invalid_argument("Missing human number/label resource");
-        const auto group = p.asset == sim::SteamFacilityAsset::number05 ||
-                                   p.asset == sim::SteamFacilityAsset::number08
-                               ? Sprites::Binding::steam_common
-                               : Sprites::Binding::common;
+        const auto group = std::string(resource->published_image).rfind("original/", 0) == 0
+                               ? Sprites::Binding::common
+                               : Sprites::Binding::steam_common;
         image(resource->published_image, resource->published_sprite, p.position, p.frame, p.crop,
               group);
     }
@@ -91,8 +110,12 @@ class HumanSkinDraw {
                    std::filesystem::path(resource->published_sprite).filename().string()));
         if (!digits)
             throw std::invalid_argument("Human number request rejected");
-        for (const auto &digit : *digits)
-            facility_image(digit);
+        for (const auto &digit : *digits) {
+            // Ordinary source numbers can request a negative SEB frame. No published glyph
+            // binds it; keep that request invisible, as in the information-page executor.
+            if (digit.frame >= 0)
+                facility_image(digit);
+        }
     }
     void portrait(const sim::SteamHumanDetailSkin &p) const {
         parts(p.medals);
@@ -122,7 +145,7 @@ class HumanSkinDraw {
         } else if (const auto *t = std::get_if<sim::SteamStartupText>(&p)) {
             if (t->role != sim::SteamStartupTextRole::message_title || !t->rgb)
                 throw std::invalid_argument("Unsupported human frame text");
-            skin_.text.draw("冒险者信息", origin_.x + float(t->rectangle[0]),
+            skin_.text.draw(title_, origin_.x + float(t->rectangle[0]),
                             origin_.y + float(t->rectangle[1]), color(*t->rgb));
         }
     }
@@ -131,12 +154,14 @@ class HumanSkinDraw {
         const auto &r = p.rectangle;
         float size = p.font_size ? float(p.font_size) : 12.F;
         // Desktop Chinese typography fits the complete text into source columns.
-        const float width = r[2] > 0                                                  ? float(r[2])
-                            : p.role == sim::SteamHumanOverviewTextRole::name         ? 86.F
-                            : p.role == sim::SteamHumanOverviewTextRole::profession   ? 53.F
-                            : p.role == sim::SteamHumanOverviewTextRole::attribute    ? 38.F
-                            : p.role == sim::SteamHumanOverviewTextRole::magic_status ? 200.F
-                                                                                      : 60.F;
+        const float width = r[2] > 0                                                ? float(r[2])
+                            : p.role == sim::SteamHumanOverviewTextRole::name       ? 86.F
+                            : p.role == sim::SteamHumanOverviewTextRole::profession ? 53.F
+                            : p.role == sim::SteamHumanOverviewTextRole::attribute  ? 38.F
+                            : p.role == sim::SteamHumanOverviewTextRole::magic_status ||
+                                    p.role == sim::SteamHumanOverviewTextRole::gift_change_prompt
+                                ? 200.F
+                                : 60.F;
         size *= std::min(1.F, width / std::max(1.F, skin_.text.width(value, size)));
         const float measured = skin_.text.width(value, size);
         float x = origin_.x + r[0], y = origin_.y + r[1];
@@ -193,19 +218,22 @@ class HumanSkinDraw {
     }
     Vector2 origin_;
     const Skin &skin_;
+    std::string title_;
 };
 } // namespace
 
 void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntimeState &state,
                                 const Skin &skin) {
     v.detail_page_skin.reset();
-    if (!v.initialized || v.raw != 60)
+    if (!v.initialized || (v.raw != 60 && !world_human_source_child(v)))
         return;
     sim::SteamHumanOverviewOptions o;
     o.view_y = 23; // Published helper input; outer desktop origin is applied once when drawing.
     o.finger_frame = 0; // No Owner animation clock mapping: never animate by drawing FPS.
-    o.title_widths =
-        std::array<int, 2>{int(skin.text.width("冒险者信息")), int(skin.text.width("冒险者信息"))};
+    std::string title = v.raw == 73 ? "装备信息" : v.raw == 65 ? "赠送礼物" : "冒险者信息";
+    if (v.raw == 73 && v.rows.size() > 1)
+        title += " " + std::to_string(v.selection + 1) + "/" + std::to_string(v.rows.size());
+    o.title_widths = std::array<int, 2>{int(skin.text.width(title)), int(skin.text.width(title))};
     o.profession_width = int(skin.text.width(v.profession));
     if (*o.profession_width >= 53)
         o.profession_repeat_width = int(skin.text.width(v.profession));
@@ -214,13 +242,24 @@ void prepare_world_human_detail(WorldHumanView &v, const sim::StartupWorldRuntim
     o.equipment_hint_width = int(skin.text.width("按确认键赠送礼物"));
     o.magic_hint_width = int(skin.text.width("精通特定职业可以习得"));
     o.down_text_width = int(std::ceil(skin.text.width(world_human_down_text)));
-    v.detail_page_skin = sim::steam_human_information_skin(state, v.page, o);
+    if (v.raw == 73)
+        v.detail_page_skin = sim::steam_human_equipment_detail_skin(state, v.page, o);
+    else if (v.raw == 65 && v.choice) {
+        const int slot = v.choice->slot;
+        o.comparison_name_widths = {
+            int(skin.text.width(v.details.equipment[slot] ? v.equipment_names[slot] : "未装备",
+                                10)),
+            int(skin.text.width(v.choice->name, 10))};
+        o.gift_accept_width = int(skin.text.width("赠送礼物"));
+        v.detail_page_skin = sim::steam_human_gift_confirmation_skin(state, v.page, o);
+    } else
+        v.detail_page_skin = sim::steam_human_information_skin(state, v.page, o);
     if (!v.detail_page_skin)
         throw std::invalid_argument("Measured human page rejected its bound Owner");
 }
 void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 origin,
                            const Skin &skin) {
-    const HumanSkinDraw draw(origin, skin);
+    const HumanSkinDraw draw(origin, skin, plan.title.empty() ? "冒险者信息" : plan.title);
     for (const auto &op : plan.operations) {
         if (const auto *p = std::get_if<sim::SteamStartupFrameDraw>(&op))
             draw.frame(*p);
@@ -237,7 +276,52 @@ void draw_world_human_skin(const sim::SteamHumanOverviewPlan &plan, Vector2 orig
         else if (const auto *p = std::get_if<sim::SteamHumanOverviewScroll>(&op))
             for (const auto &r : p->rectangles)
                 draw.rectangle(r);
+        else if (const auto *p = std::get_if<sim::SteamFacilityArrowTouch>(&op)) {
+            const auto expanded = arrow(*p, skin);
+            const auto &c = expanded.crop;
+            const auto &d = expanded.destination;
+            skin.sprites.image(
+                "buttoneffect.png", {float(c[0]), float(c[1]), float(c[2]), float(c[3])},
+                {origin.x + d[0], origin.y + d[1], d[2], d[3]}, Sprites::Binding::steam_common);
+        }
         // Source touch components are metadata. PC intents stay in world_human_input.
     }
+}
+std::optional<WorldHumanPaintedControls> world_human_painted_controls(const WorldHumanView &v,
+                                                                      const WorldHumanLayout &base,
+                                                                      Extent extent,
+                                                                      const Skin &skin) {
+    if (!v.initialized || !world_human_source_child(v) || !v.detail_page_skin)
+        return {};
+    const auto layout = world_human_subwindow_layout(base, v.raw);
+    const auto origin = world_human_skin_origin(layout);
+    WorldHumanPaintedControls out;
+    out.page = v.page;
+    out.raw = v.raw;
+    out.phase = v.phase;
+    out.selection = v.selection;
+    out.human = v.human;
+    out.choice = v.choice ? v.choice->identity : -1;
+    out.extent = extent;
+    out.back = layout.cancel;
+    out.other_back = layout.confirm;
+    for (const auto &op : v.detail_page_skin->operations) {
+        if (const auto *p = std::get_if<sim::SteamHumanOverviewText>(&op);
+            p && p->role == sim::SteamHumanOverviewTextRole::gift_accept) {
+            const auto &r = p->rectangle;
+            out.primary = Rectangle{origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])};
+        } else if (const auto *p = std::get_if<sim::SteamFacilityArrowTouch>(&op)) {
+            const auto expanded = arrow(*p, skin);
+            const auto &r = expanded.touch_rectangle;
+            const Rectangle hit{origin.x + r[0], origin.y + r[1], float(r[2]), float(r[3])};
+            if (p->value == 16)
+                out.previous = hit;
+            else if (p->value == 18)
+                out.next = hit;
+            else
+                throw std::invalid_argument("Unsupported human arrow intent");
+        }
+    }
+    return out; // Stores painted coordinates and semantic tags, never a snapshot/Owner or clock.
 }
 } // namespace ark::desktop::ui

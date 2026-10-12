@@ -145,17 +145,6 @@ WorldHumanView world_human_view(const State &state, const Page &page,
         view.equipment_names[slot] = details->equipment[slot]
                                          ? equipment(state, slot, *details->equipment[slot]).name
                                          : "无";
-        if (details->equipment[slot]) {
-            const int kind = slot == 0 ? 1 : slot == 3 ? 3 : 2;
-            const int id = *details->equipment[slot];
-            const auto found =
-                std::find_if(state.rules->equipment.begin(), state.rules->equipment.end(),
-                             [&](const auto &e) { return e.shop.kind == kind && e.shop.id == id; });
-            if (found == state.rules->equipment.end())
-                throw std::invalid_argument("Missing human equipment icon");
-            view.equipment_icons[slot] = kind == 1 ? found->shop.type : found->render_image;
-            view.equipment_values[slot] = found->shop.combat;
-        }
     }
     if (view.raw == 61 || view.raw == 62) {
         for (const int id : state.human_page_catalogs.at(page.id)) {
@@ -241,15 +230,43 @@ int world_human_first_row(const WorldHumanView &view) { return std::max(0, view.
 Rectangle world_tracking_confirm(Extent extent) {
     return {extent.width / 2.F - 37, extent.height - 51.F, 74, 20};
 }
-std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
-                                                  const WorldHumanLayout &base_layout,
-                                                  const WorldHumanInput &input, bool blocked) {
-    const auto layout = view.raw == 60 ? world_human_detail_layout(base_layout) : base_layout;
+std::optional<WorldHumanIntent>
+world_human_input(const WorldHumanView &view, const WorldHumanLayout &base_layout,
+                  const WorldHumanInput &input, bool blocked,
+                  const std::optional<WorldHumanPaintedControls> &painted, Extent extent) {
+    const auto layout = view.raw == 60 ? world_human_detail_layout(base_layout)
+                        : world_human_source_child(view)
+                            ? world_human_subwindow_layout(base_layout, view.raw)
+                            : base_layout;
     if (blocked || !view.initialized)
         return {};
     const auto intent = [&](Action action, int selection = 0) {
         return WorldHumanIntent{action, view.page, selection};
     };
+    if (world_human_source_child(view)) {
+        const bool current = painted && painted->page == view.page && painted->raw == view.raw &&
+                             painted->phase == view.phase && painted->selection == view.selection &&
+                             painted->human == view.human &&
+                             painted->choice == (view.choice ? view.choice->identity : -1) &&
+                             painted->extent.width == extent.width &&
+                             painted->extent.height == extent.height;
+        if (view.can_cancel &&
+            (input.escape || (current && (hit(input.click, painted->back) ||
+                                          hit(input.click, painted->other_back)))))
+            return intent(Action::cancel);
+        if (view.raw == 73 && !view.rows.empty()) {
+            if (input.left ||
+                (current && hit(input.click, painted->previous.value_or(Rectangle{}))))
+                return intent(Action::previous);
+            if (input.right || (current && hit(input.click, painted->next.value_or(Rectangle{}))))
+                return intent(Action::next);
+        }
+        if (view.can_confirm &&
+            (input.enter || (view.raw == 65 && current &&
+                             hit(input.click, painted->primary.value_or(Rectangle{})))))
+            return intent(Action::confirm);
+        return {}; // No guessed whole-window click, arrow bounds, price or payment here.
+    }
     if (view.can_cancel && (input.escape || hit(input.click, layout.cancel)))
         return intent(Action::cancel);
     if (view.raw == 60 || view.raw == 64) {
@@ -324,6 +341,11 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
         draw_world_human_detail(view, world_human_detail_layout(layout), skin, enabled, feedback);
         return;
     }
+    if (world_human_source_child(view)) {
+        draw_world_human_subwindow(view, world_human_subwindow_layout(layout, view.raw), skin,
+                                   enabled, feedback);
+        return;
+    }
     skin.window(layout.panel, view.title);
     skin.content(
         {layout.body.x - 2, layout.body.y - 2, layout.body.width + 4, layout.body.height + 4});
@@ -374,34 +396,6 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
                     {box.x + 3 + icon_width, box.y + 2, box.width * .60F - icon_width, box.height});
                 skin.right(value, box.x + box.width - 3, box.y + 2, blue, 10);
             }
-        } else if (view.raw == 60) {
-            if (view.phase == 0) {
-                grid("经验 " + std::to_string(view.details.experience) + "/" +
-                         std::to_string(view.details.threshold),
-                     0, 4);
-                grid(view.details.resident ? "住宅 已入住" : "住宅 未入住", 1, 4);
-                grid("满足 " + std::to_string(view.details.satisfaction), 2, 4);
-                grid("努力 " + std::to_string(view.details.effort), 3, 4);
-                grid("勋章 " + std::to_string(view.details.medals), 4, 4);
-                grid(std::string(combat[0]) + " " + std::to_string(view.details.combat[0]), 5, 4);
-                grid("攻击 " + std::to_string(view.details.combat[1]), 6, 4);
-                grid("防御 " + std::to_string(view.details.combat[2]) + " 魔法 " +
-                         std::to_string(view.details.combat[3]),
-                     7, 4);
-            } else if (view.phase == 1) {
-                for (int n = 0; n < 6; ++n)
-                    grid(std::string(attributes[n]) + " " +
-                             std::to_string(view.details.attributes[n]),
-                         n, 3);
-            } else if (view.phase == 2) {
-                for (int n = 0; n < 4; ++n)
-                    line(std::string(slots[n]) + "  " + view.equipment_names[n], n, 4);
-            } else {
-                for (int n = 0; n < 4; ++n)
-                    line("魔法 " + std::to_string(n + 1) +
-                             (view.details.spells[n] ? "  可使用" : "  不可使用"),
-                         n, 4);
-            }
         } else if (view.raw == 62 && view.choice) {
             fitted(skin,
                    view.choice->name + "  " + std::to_string(view.choice->cost) + "点  勋章" +
@@ -450,11 +444,6 @@ void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout
                         DrawRectangleRec(box, {255, 236, 174, 255});
                     line(n == 0 ? "转职" : "保持现状", n + 2, 4);
                 }
-        } else if (view.raw == 73 && view.choice) {
-            fitted(skin, view.choice->name,
-                   {layout.tabs[0].x, layout.tabs[0].y + 3, layout.body.width, 16}, blue);
-            for (int n = 0; n < 4; ++n)
-                line(std::string(combat[n]) + "  " + std::to_string(view.choice->combat[n]), n, 4);
         }
     }
     if (view.can_cancel)

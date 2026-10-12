@@ -414,6 +414,95 @@ void world_human() {
                   !desktop::human_inspection_ready(*after, "world-commerce-receipt", diagnostic),
               "First original86 update retires the receipt without a second purchase");
     }
+    {
+        // Only painted controls can emit pointer intents for source child windows.
+        // Their geometry is exercised by the renderer fixture; this suite owns stale-input gates.
+        ui::WorldHumanView child;
+        child.raw = 65;
+        child.page = 902;
+        child.human = 0;
+        child.initialized = child.can_cancel = child.can_confirm = true;
+        child.choice = ui::WorldHumanRow{};
+        child.choice->identity = 1;
+        ui::WorldHumanPaintedControls painted;
+        painted.page = child.page;
+        painted.raw = child.raw;
+        painted.human = child.human;
+        painted.choice = 1;
+        painted.extent = {240, 256};
+        painted.primary = Rectangle{90, 180, 60, 16};
+        painted.back = {180, 208, 50, 18};
+        ui::WorldHumanInput pointer;
+        pointer.click = middle(*painted.primary);
+        const auto command =
+            ui::world_human_input(child, layout, pointer, false, painted, {240, 256});
+        check(command && command->page == child.page && command->action == Action::confirm &&
+                  !ui::world_human_input(child, layout, pointer, true, painted, {240, 256}) &&
+                  !ui::world_human_input(child, layout, pointer, false, {}, {240, 256}),
+              "Gift confirmation requires the last painted control and blocks pending repeats");
+        for (int mismatch = 0; mismatch < 8; ++mismatch) {
+            auto stale = painted;
+            switch (mismatch) {
+            case 0:
+                ++stale.page;
+                break;
+            case 1:
+                ++stale.raw;
+                break;
+            case 2:
+                ++stale.phase;
+                break;
+            case 3:
+                ++stale.selection;
+                break;
+            case 4:
+                ++stale.human;
+                break;
+            case 5:
+                ++stale.choice;
+                break;
+            case 6:
+                ++stale.extent.width;
+                break;
+            case 7:
+                ++stale.extent.height;
+                break;
+            }
+            check(!ui::world_human_input(child, layout, pointer, false, stale, {240, 256}),
+                  "Stale page, slot, selection, person, candidate or viewport rejects pointer");
+            ui::WorldHumanInput key;
+            key.enter = true;
+            check(ui::world_human_input(child, layout, key, false, stale, {240, 256})->action ==
+                      Action::confirm,
+                  "Keyboard confirmation remains independent of the previous draw cache");
+        }
+        pointer.click = {painted.primary->x - 1, painted.primary->y};
+        check(!ui::world_human_input(child, layout, pointer, false, painted, {240, 256}),
+              "Gift window background is not an extra confirmation button");
+        child.raw = painted.raw = 73;
+        child.rows = {*child.choice, *child.choice};
+        painted.other_back = {10, 208, 50, 18};
+        painted.previous = Rectangle{40, 65, 18, 18};
+        painted.next = Rectangle{182, 65, 18, 18};
+        for (const bool previous : {false, true}) {
+            pointer.click = middle(previous ? *painted.previous : *painted.next);
+            check(
+                ui::world_human_input(child, layout, pointer, false, painted, {240, 256})->action ==
+                    (previous ? Action::previous : Action::next),
+                "Equipment title arrows emit catalogue navigation without selecting a slot");
+        }
+        for (const auto back : {painted.back, painted.other_back}) {
+            pointer.click = middle(back);
+            check(
+                ui::world_human_input(child, layout, pointer, false, painted, {240, 256})->action ==
+                    Action::cancel,
+                "Both equipment soft-label returns close through source cancel");
+        }
+        ui::WorldHumanInput up;
+        up.up = true;
+        check(!ui::world_human_input(child, layout, up, false, painted, {240, 256}),
+              "Equipment child does not inherit unsupported vertical list navigation");
+    }
     for (const auto extent :
          {desktop::Extent{240, 256}, desktop::Extent{384, 256}, desktop::Extent{1080, 720}}) {
         const auto frame = ui::world_human_layout(extent);

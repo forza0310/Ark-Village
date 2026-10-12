@@ -183,6 +183,8 @@ template <class PlayerStrategy> struct CampaignRun {
     PlayerStrategy strategy;
     std::uint64_t rounds{};
     ark::test::CampaignCoverage coverage{};
+    enum class Prefix { complete, quarter, month };
+    int steam_checkpoint_interval{3}; // Normal campaign retains quarterly recovery points.
     int saved_steam_month{-1};
     int steam_prefix_month{-1};
 
@@ -225,7 +227,8 @@ template <class PlayerStrategy> struct CampaignRun {
                     const auto effects =
                         ark::test::activity_human_effect_receipts(state, candidate);
                     pending_receipts.insert(pending_receipts.end(), effects.begin(), effects.end());
-                    if (const auto queued = ark::test::activity_popularity_queue_receipt(state, candidate))
+                    if (const auto queued =
+                            ark::test::activity_popularity_queue_receipt(state, candidate))
                         pending_receipts.push_back(*queued);
                 }
                 promotion = ark::test::rank_promotion_receipt(state, candidate);
@@ -347,16 +350,16 @@ template <class PlayerStrategy> struct CampaignRun {
             std::cout << "MONTH " << strategy.diagnose(state) << std::endl;
         if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>) {
             const int current_month = month(state);
-            if (current_month % 3 == 0 && current_month > steam_prefix_month &&
-                current_month != saved_steam_month && strategy.checkpoint(state) &&
-                app::world_save_eligible(state)) {
-                // Keep genuine player checkpoints at stable quarterly boundaries. A later
-                // strategy bug can resume here instead of replaying the entire business prefix.
+            if (current_month % steam_checkpoint_interval == 0 &&
+                current_month > steam_prefix_month && current_month != saved_steam_month &&
+                strategy.checkpoint(state) && app::world_save_eligible(state)) {
+                // Save only after a later complete business month at a stable source scene.
+                // Approved monthly segments share the same strategy and real player-save bridge.
                 const auto parent = directory / "checkpoints";
                 std::filesystem::create_directories(parent);
                 const auto destination = parent / ("month-" + std::to_string(current_month));
                 require(std::filesystem::create_directory(destination),
-                        "Quarter checkpoint already exists");
+                        "Business checkpoint already exists");
                 std::ofstream(destination / "ACTIVE_CAMPAIGN", std::ios::binary)
                     << "ark-steam-village-v1\n";
                 std::filesystem::copy_file(app::world_system_path(directory),
@@ -364,37 +367,44 @@ template <class PlayerStrategy> struct CampaignRun {
                 CampaignRun snapshot{state, system, destination, strategy};
                 snapshot.save(0);
                 saved_steam_month = current_month;
-                std::cout << "QUARTER_CHECKPOINT " << destination.u8string() << std::endl;
+                std::cout << (steam_checkpoint_interval == 1 ? "MONTH_CHECKPOINT "
+                                                             : "QUARTER_CHECKPOINT ")
+                          << destination.u8string() << std::endl;
             }
         }
     }
-    void run(bool resume, bool quarter_only = false) {
+    void run(bool resume, Prefix prefix = Prefix::complete) {
+        const bool prefix_only = prefix != Prefix::complete;
+        steam_checkpoint_interval = prefix == Prefix::month ? 1 : 3;
         const auto start = std::chrono::steady_clock::now();
         auto report = start;
-        const std::uint64_t budget = quarter_only ? 10000 : Route<PlayerStrategy>::budget(resume);
+        const std::uint64_t budget = prefix_only ? 10000 : Route<PlayerStrategy>::budget(resume);
         for (;;) {
-            if (quarter_only && saved_steam_month >= 0)
+            if (prefix_only && saved_steam_month >= 0)
                 break;
             const bool achieved = resume ? strategy.complete(state)
                                          : Route<PlayerStrategy>::checkpoint(strategy, state);
-            if (!quarter_only && achieved && app::world_save_eligible(state))
+            if (!prefix_only && achieved && app::world_save_eligible(state))
                 break;
             if (rounds >= budget) {
                 ark::test::capture_campaign_observation(directory, state);
-                throw std::runtime_error("Active business step budget exhausted at round=" + std::to_string(rounds));
+                throw std::runtime_error("Active business step budget exhausted at round=" +
+                                         std::to_string(rounds));
             }
             step();
             const auto now = std::chrono::steady_clock::now();
-            if (now - start >= std::chrono::minutes(quarter_only ? 6 : Route<PlayerStrategy>::minutes)) {
+            if (now - start >=
+                std::chrono::minutes(prefix_only ? 6 : Route<PlayerStrategy>::minutes)) {
                 ark::test::capture_campaign_observation(directory, state);
-                throw std::runtime_error("Active business time budget exhausted at round=" + std::to_string(rounds));
+                throw std::runtime_error("Active business time budget exhausted at round=" +
+                                         std::to_string(rounds));
             }
             if (now - report >= std::chrono::seconds(30)) {
                 std::cout << "PROGRESS " << strategy.diagnose(state) << std::endl;
                 report = now;
             }
         }
-        std::cout << (quarter_only ? "PREFIX " : "MILESTONE ") << strategy.diagnose(state)
+        std::cout << (prefix_only ? "PREFIX " : "MILESTONE ") << strategy.diagnose(state)
                   << std::endl;
     }
     void save(int slot) {
@@ -460,7 +470,7 @@ CampaignRun<PlayerStrategy> load(const std::filesystem::path &directory, int slo
             "Loaded active business milestone lost");
     CampaignRun<PlayerStrategy> result{
         std::move(*saved.state), {*records.records, {}}, directory, std::move(strategy)};
-    // A cold quarterly prefix must advance to a later quarter; otherwise repeated
+    // A cold business prefix must advance to a later complete month; otherwise repeated
     // segmented runs could each save a few ticks into the same month forever.
     if constexpr (std::is_same_v<PlayerStrategy, ark::test::SteamVillageStrategy>)
         result.steam_prefix_month = month(result.state);
@@ -868,8 +878,8 @@ int main(int argc, char **argv) {
         require(argc == 3, "Expected campaign phase and runner-created isolated directory");
         const std::string mode = argv[1];
         if (mode == "steam-new" || mode == "steam-resume" || mode == "steam-verify" ||
-            mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-observe" ||
-            mode == "steam-withdraw") {
+            mode == "steam-inspect" || mode == "steam-quarter" || mode == "steam-month" ||
+            mode == "steam-observe" || mode == "steam-withdraw") {
             const auto directory = isolated_directory(argv[0], argv[2], "ark-steam-village-v1\n");
             if (mode == "steam-new") {
                 auto prefix = load<LateStrategy>(directory, 0);
@@ -881,15 +891,19 @@ int main(int argc, char **argv) {
                 std::cout << "PASS Steam business prefix; layout/loot policy checkpoint only, not "
                              "four-star completion"
                           << std::endl;
-            } else if (mode == "steam-resume" || mode == "steam-quarter") {
+            } else if (mode == "steam-resume" || mode == "steam-quarter" || mode == "steam-month") {
                 steam_campaign.emplace(load<ark::test::SteamVillageStrategy>(directory, 0));
                 steam_campaign->strategy.continue_campaign();
-                steam_campaign->run(true, mode == "steam-quarter");
-                if (mode == "steam-quarter") {
+                using Prefix = CampaignRun<ark::test::SteamVillageStrategy>::Prefix;
+                steam_campaign->run(true, mode == "steam-quarter" ? Prefix::quarter
+                                          : mode == "steam-month" ? Prefix::month
+                                                                  : Prefix::complete);
+                if (mode == "steam-quarter" || mode == "steam-month") {
                     require(steam_campaign->saved_steam_month >= 0,
-                            "Quarter route ended without a saved player prefix");
-                    std::cout << "PASS Steam quarterly player prefix; not four-star completion"
-                              << std::endl;
+                            "Business route ended without a saved player prefix");
+                    std::cout << (mode == "steam-month" ? "PASS Steam monthly player prefix"
+                                                        : "PASS Steam quarterly player prefix")
+                              << "; not all-content completion" << std::endl;
                 } else {
                     steam_campaign->save(1);
                     std::cout
@@ -904,8 +918,8 @@ int main(int argc, char **argv) {
                 auto &run = *steam_campaign;
                 run.strategy.continue_campaign();
                 const bool withdraw = mode == "steam-withdraw";
-                const auto deadline = std::chrono::steady_clock::now() +
-                                      std::chrono::minutes(withdraw ? 6 : 2);
+                const auto deadline =
+                    std::chrono::steady_clock::now() + std::chrono::minutes(withdraw ? 6 : 2);
                 ark::test::inspect_campaign_progress(run.state, std::cout);
                 if (withdraw) {
                     const auto original_task = run.state.active_task;
@@ -945,11 +959,12 @@ int main(int argc, char **argv) {
                 ark::test::capture_campaign_observation(directory, run.state);
                 ark::test::inspect_income(run.state, std::cout);
                 if (withdraw) {
-                    for (int step = 0; step < 300 &&
-                                       !(app::world_save_eligible(run.state) &&
-                                         run.strategy.checkpoint(run.state)); ++step)
+                    for (int step = 0; step < 300 && !(app::world_save_eligible(run.state) &&
+                                                       run.strategy.checkpoint(run.state));
+                         ++step)
                         run.step();
-                    require(app::world_save_eligible(run.state) && run.strategy.checkpoint(run.state),
+                    require(app::world_save_eligible(run.state) &&
+                                run.strategy.checkpoint(run.state),
                             "Withdrawal recovery did not reach a stable player save boundary");
                     run.save(1);
                 }

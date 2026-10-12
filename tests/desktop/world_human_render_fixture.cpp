@@ -5,6 +5,7 @@
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../support/world_fixture.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <filesystem>
 #include <iostream>
@@ -209,6 +210,109 @@ void world_human_render_fixture() {
                 throw std::runtime_error("Rendering raw60 unexpectedly changed the Owner");
             std::cout << "UI fixture / synthetic raw60 phase=" << phase
                       << " frames=8 screenshot=" << file.string() << '\n';
+        }
+    }
+    // Child pages retain a complete parent binding. These display conditions do not acquire,
+    // pay for or equip anything; the existing runtime suites own those transactions.
+    constexpr const char *samples[]{"single",   "multiple", "long-name",    "increase",
+                                    "decrease", "same",     "empty-armour", "long-comparison"};
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int sample = 0; sample < 8; ++sample) {
+            auto owner = initial_world();
+            auto catalogue = *owner.rules;
+            owner.rules = &catalogue;
+            const bool info = sample < 3;
+            const int slot = sample == 6 ? 1 : 0;
+            const int current = sample == 4 ? 1 : 0;
+            const int candidate = sample == 3 || sample == 7 ? 1 : 0;
+            owner.shop_humans.at(human).equipment[slot] =
+                sample == 6 ? std::optional<int>{} : current;
+            auto parent = page;
+            parent.legacy_page = 64;
+            parent.lifecycle = 3;
+            if (!info) {
+                owner.scripts.pages.push_back(parent);
+                owner.page_human_bindings[parent.id] = human;
+                owner.page_phases[parent.id] = slot;
+                owner.page_counters[parent.id] = 0;
+                owner.human_page_selections[parent.id] = 0;
+                owner.human_pages_initialized.insert(parent.id);
+                owner.equipment_page_catalogs[parent.id][slot] = {candidate};
+                owner.human_equipment_choices[parent.id] = {slot, candidate};
+            }
+            auto child = page;
+            child.id = 902;
+            child.legacy_page = info ? 73 : 65;
+            owner.scripts.pages.push_back(child);
+            owner.page_human_bindings[child.id] = human;
+            owner.page_phases[child.id] = slot;
+            owner.page_counters[child.id] = 16 * (sample % 3);
+            owner.human_page_selections[child.id] = 0;
+            owner.human_pages_initialized.insert(child.id);
+            owner.human_equipment_choices[child.id] = {slot, candidate};
+            if (info)
+                owner.equipment_page_catalogs[child.id][slot] =
+                    sample == 0 ? std::vector<int>{0} : std::vector<int>{0, 1};
+            else
+                owner.human_page_parents[child.id] = parent.id;
+            if (sample == 2 || sample == 7) {
+                for (auto &definition : catalogue.equipment)
+                    if (definition.shop.kind == 1)
+                        definition.name = "很长的装备测试名称";
+                if (!text.include_text("很长的装备测试名称"))
+                    throw std::runtime_error("Long child equipment font glyph missing");
+            }
+            const auto before = owner;
+            const auto frame = ui::world_human_layout(extent);
+            auto view = ui::world_human_view(owner, child);
+            ui::prepare_world_human_detail(view, owner, skin);
+            const auto controls = ui::world_human_painted_controls(view, frame, extent, skin);
+            if (!view.detail_page_skin || !controls ||
+                (info && (bool(controls->previous) != (sample != 0) ||
+                          bool(controls->next) != (sample != 0))) ||
+                (!info && !controls->primary))
+                throw std::runtime_error("Child plan did not bind its actual painted controls");
+            // Feed the coordinates actually produced by the source renderer, not guessed boxes.
+            ui::WorldHumanInput pointer;
+            const auto target = info ? controls->back : *controls->primary;
+            pointer.click = Vector2{target.x + target.width / 2, target.y + target.height / 2};
+            const auto action =
+                ui::world_human_input(view, frame, pointer, false, controls, extent);
+            if (!action || action->page != child.id ||
+                action->action != (info ? simulation::StartupHumanPageAction::cancel
+                                        : simulation::StartupHumanPageAction::confirm))
+                throw std::runtime_error("Painted child control did not emit its bound intent");
+            for (int draw = 0; draw < 8; ++draw) {
+                if (WindowShouldClose())
+                    throw std::runtime_error("Child renderer fixture was closed before capture");
+                BeginDrawing();
+                ClearBackground({145, 211, 247, 255});
+                DrawText("SYNTHETIC child UI", 4, 4, 12, BLACK);
+                ui::draw_world_human(view, frame, skin, true);
+                text.flush(1, {});
+                EndDrawing();
+            }
+            const auto file =
+                output / ("synthetic-raw" + std::to_string(child.legacy_page) + "-" +
+                          std::to_string(extent.width) + "-" + samples[sample] + ".png");
+            auto capture = LoadImageFromScreen();
+            const bool saved = capture.data && ExportImage(capture, file.string().c_str());
+            UnloadImage(capture);
+            if (!saved || !std::filesystem::is_regular_file(file) ||
+                std::filesystem::file_size(file) == 0)
+                throw std::runtime_error("Child fixture failed to write its screenshot");
+            if (!same_world_clock(owner, before) || owner.page_counters != before.page_counters ||
+                owner.scene.random.draws() != before.scene.random.draws() ||
+                owner.scene.world.world.ai.accounting.funds() !=
+                    before.scene.world.world.ai.accounting.funds() ||
+                owner.shop_humans.at(human).equipment != before.shop_humans.at(human).equipment ||
+                owner.human_page_answers != before.human_page_answers)
+                throw std::runtime_error(
+                    "Rendering a child changed funds, equipment, answer or tick");
+            std::cout << "UI fixture / synthetic raw=" << child.legacy_page
+                      << " sample=" << samples[sample] << " frames=8 screenshot=" << file.string()
+                      << '\n';
         }
     }
 }

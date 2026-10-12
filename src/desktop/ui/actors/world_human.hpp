@@ -29,11 +29,9 @@ struct WorldHumanView {
     std::optional<simulation::StartupHumanPresentationLive> live;
     // Input-only projections may omit the measured down text width; rendering must supply it.
     std::optional<simulation::SteamHumanDetailSkin> detail_skin;
-    // Present only after the renderer supplies actual font widths for raw60's four pages.
+    // Present after actual font widths are supplied for raw60, equipment73 or confirmation65.
     std::optional<simulation::SteamHumanOverviewPlan> detail_page_skin;
     std::array<std::string, 4> equipment_names;
-    std::array<int, 4> equipment_icons{{-1, -1, -1, -1}};
-    std::array<std::array<int, 4>, 4> equipment_values{};
     std::vector<WorldHumanRow> rows;
     std::optional<WorldHumanRow> choice;
     std::array<std::array<int, 6>, 3> attributes{};
@@ -53,6 +51,14 @@ struct WorldHumanInput {
     int wheel_rows{};
     bool professions{}, gifts{}, inspect{};
 };
+// Last drawn child controls only; semantic tags reject stale mouse areas without owning a world.
+struct WorldHumanPaintedControls {
+    std::uint64_t page{};
+    int raw{}, phase{}, selection{}, human{}, choice{-1};
+    Extent extent;
+    Rectangle back{}, other_back{};
+    std::optional<Rectangle> primary, previous, next;
+};
 struct WorldHumanIntent {
     simulation::StartupHumanPageAction action;
     std::uint64_t page{};
@@ -67,11 +73,19 @@ void prepare_world_human_detail(WorldHumanView &view,
                                 const Skin &skin);
 WorldHumanLayout world_human_layout(Extent extent);
 WorldHumanLayout world_human_detail_layout(const WorldHumanLayout &base);
+bool world_human_source_child(const WorldHumanView &view);
+WorldHumanLayout world_human_subwindow_layout(const WorldHumanLayout &base, int raw);
+Vector2 world_human_skin_origin(const WorldHumanLayout &layout);
+std::optional<WorldHumanPaintedControls> world_human_painted_controls(const WorldHumanView &view,
+                                                                      const WorldHumanLayout &base,
+                                                                      Extent extent,
+                                                                      const Skin &skin);
 Rectangle world_tracking_confirm(Extent extent);
 int world_human_first_row(const WorldHumanView &view);
-std::optional<WorldHumanIntent> world_human_input(const WorldHumanView &view,
-                                                  const WorldHumanLayout &layout,
-                                                  const WorldHumanInput &input, bool blocked);
+std::optional<WorldHumanIntent>
+world_human_input(const WorldHumanView &view, const WorldHumanLayout &layout,
+                  const WorldHumanInput &input, bool blocked,
+                  const std::optional<WorldHumanPaintedControls> &painted = {}, Extent extent = {});
 void draw_world_human(const WorldHumanView &view, const WorldHumanLayout &layout, const Skin &skin,
                       bool enabled, const std::string &feedback = {});
 } // namespace ark::desktop::ui

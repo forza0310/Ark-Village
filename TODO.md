@@ -23,6 +23,7 @@
 - [x] 对齐周期扣费负余额：真实月报跨零、主动建设拒绝及五种经营策略配置的负最低值往返通过，长跑不以一次负债判世界失败；健康经营仍须实际恢复与后继推进，见[B1](docs/stages/B1-playable-prototype.md#campaign-negative-balance)。
 
 - [ ] 按[全解锁主动经营合同](docs/stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)覆盖所有可达定义的取得、消费、效果与后继，包含建设营业、活动培养、任务胜利、逐星和新解锁消费，最终自然通关、继续经营与继承。代表样例、仅解锁或日期推进不算全覆盖。
+- [ ] 月100只读资格核对已通过：玩家完整再编码不变，系统是有效维护格式但被产品身份拒绝；先完成合法隔离输入转接再续经营。月63→100的16个通过分段只有92定义的部分回执，职业/法术/配方在该段无消费回执，按[覆盖核对](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-coverage-audit)补实际输入及效果，不以目录或历史回执认证全量。
 - [x] 修后三星申请及学校首次营业：月74收入35551G及四条件正式回执通过，学校63真实支付2000G、完工并营业690G，烤肉店41图纸支付90点/领取；月75保存/冷载通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-third-star)。
 - [x] 月87定向中止恢复营业、月88玩家存读、限时经营至月90四星及独立冷载；真实付费补员至9人后任务42胜利，现金145338G、两月预算31460G、布局50/50，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-fourth-star)。
 - [x] 月93有限季度存读通过：真实13次付费/4免费装备装配、任务43胜利、炖肉39营业及25目标位置全收入；月亏损仍保留，见[B1](docs/stages/B1-playable-prototype.md#four-star-consumption-20261012)。

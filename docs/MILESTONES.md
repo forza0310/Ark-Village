@@ -6,6 +6,23 @@
 
 复用[研究内容索引](../research/dungeon_village_1/rules/PROGRESSION_CONTENT.md)、[研究路线合同](../research/dungeon_village_1/rules/PROGRESSION_ROUTES.md)和[产品经营覆盖](stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)，不另建逐ID重复策划库或每批报告。实际玩家取得、消费、效果和冷载证据由产品验收，定义枚举/条件夹具不升级为自然全覆盖。源码按已存在游戏模块与依赖方向组织，高内聚、避免桌面反向承载核心；清理无用/退休/重复过程项前核引用和覆盖归属，保留核心代码、来源适配、DLL防错、存档身份及有效证据。可重建临时输出留忽略build，不恢复research/work重构任务。
 
+<a id="research-755fdf2-facility-pages"></a>
+### 设施商品、强化与口碑接续（755fdf2，2026-10-13）
+
+沿持续goal与既有桌面映射授权，固定正式755fdf2：20份现有闭包增量、六份纯计划新文件及最小Steam响应素材。保留73项适配，维护世界5/应用8/系统2与产品独立系统身份保持；新增facility_item_page_scroll进入维护codec，玩家仍按schema5丢弃并冷清页面状态。旧完整维护布局拒绝，不重签历史业务档、不改research在途成果。
+
+现facilities模块消费商品79/装备72、道具75/投放76/结果77及口碑82的有序只读计划，复用人物/数字/Mapchip2末端；实际测宽、居中和PC释放/滚动沿既有适配。整帧DTO通过WorldSession一次交源事务，原同轮输入优先级、NEW与库存兑现保持；75继续ADR-0058的已提交行二次点击。Owner保存滚动和82独立双计数，绘制不抽随机、不发奖励/声音、不建第二时钟。共享人物帧读取正式entry_updates桥，仅替换已证人物演出，不替代手形独立时钟。
+
+正式导入范围为27个产品目标（20更新、6新增及SOURCES），写入前核当前字节，任一并发变化停止对应导入；不自动改写断言或重签旧报告。此次自动审批连续拒绝导入与仅生成build副本的准备，要求本批具体范围获得明确确认，落盘暂未执行。
+
+- 更新公开头：`include/ark/simulation/application/startup_application.hpp`；`include/ark/simulation/facilities/startup_world_facility_catalog.hpp`、`startup_world_facility_items.hpp`；`include/ark/simulation/world/startup_world_runtime.hpp`；`include/ark/simulation/presentation/steam_human_skin.hpp`。
+- 更新实现：`src/simulation/application/startup_application.cpp`、`startup_window_host.hpp`；`src/simulation/persistence/startup_world_codec_fields.inc`、`startup_world_codec_fields.json`、`startup_world_restore_validation.cpp`；`src/simulation/facilities/startup_world_facility_catalog.cpp`、`startup_world_facility_items.cpp`；`src/simulation/actors/startup_world_human.cpp`；`src/simulation/world/startup_world_runtime.cpp`；`src/simulation/presentation/steam_human_skin.cpp`。
+- 更新既有测试：`tests/simulation/startup_world_building_test.cpp`、`startup_world_pages_test.cpp`、`startup_world_restore_checks.cpp`、`steam_facility_skin_checks.cpp`、`steam_human_skin_checks.cpp`。保留原有效断言、Windows分函数及全部来源适配，仅加入正式维护增量和明确资源路径。
+- 新增公开头及对应实现：`include/ark/simulation/presentation/`和`src/simulation/presentation/`中的`steam_facility_catalog_skin`、`steam_facility_effect_skin`、`steam_facility_reputation_skin`，各一份hpp/cpp。
+- 更新来源：`assets/simulation/SOURCES.json`，冻结455→461文件，73项既有适配保持。
+
+扩展现building/pages/restore/visuals及session/save/UI套件，验收同轮合成、真实滚动、父子返回/退休、两计数暂停/快进/往返、声音38时点、玩家清理和FIFO拒绝；集中desktop/headless Debug标准排三个月，补Release受影响、真实新局与最小窗口/长列表/帧边界截图。条件渲染、程序化输入、原OS输入及全部775定义经营分别记录。月100系统文件仍须合法资格转接，不能用身份回退或清系统替代。
+
 ### 人物目录、结果与同轮输入接续（4c7a490，2026-10-13）
 
 集中接bcf5340/4c7a490的21份冻结增量及SOURCES，保留已批准的性能/图纸资格/Windows恢复套件分函数/资源路径适配和全部有效断言。新增human_page_scroll仅供61五行、64四行及维护Owner往返；玩家schema5仍清理页面缓存/随机不保存，新增字段分类为discard并在恢复时清理，固定原表数据身份不变。新维护字段布局拒绝旧全量快照，不从旧68现装倒推来源，不迁移旧档或重签业务证书。job列22仅补只读经济说明投影。
@@ -126,7 +143,7 @@ actors复用既有源计划执行器接61/64/68/69，按真实目录/scroll/冻�
 
 范围为系统codec公开头/实现与私有字节接口、产品world_system接口/实现、现存档命令套件和来源适配登记；验收9bee964真实隔离系统文件保持数值、当前产品/维护身份互不冒认、坏身份/损坏/旧版本拒绝及原子失败保旧。该存储政策是独立决策；说明页及索引接线继续。
 
-2026-10-13用户报告正式Release启动被“系统记录固定数据来源不匹配”阻断。只读核验其本地system.arksys：版本2、555字节、整体摘要正确；从当前来源清单仅移除manual.txt后计算的身份与文件头完全相同，证明本次差异为说明正文加入，非文件损坏。诊断入口为用户所报ark-01dd5ac9042871bb-6244；具体只读核验留build/validation/research-4c7a490/system-identity.json。用户已明确批准上述解耦：只增加同一codec的显式身份重载及三个来源适配，默认维护接口保持；不删除或改写用户系统纪录/手动档。原只读核验及新拒绝/失败保旧场景扩展现系统命令套件，待集中两Debug与真实Release标题验收。
+2026-10-13用户报告正式Release启动被“系统记录固定数据来源不匹配”阻断。只读核验其本地system.arksys：版本2、555字节、整体摘要正确；从当前来源清单仅移除manual.txt后计算的身份与文件头完全相同，证明本次差异为说明正文加入，非文件损坏。诊断入口为用户所报ark-01dd5ac9042871bb-6244；具体只读核验留build/validation/research-4c7a490/system-identity.json。用户已明确批准上述解耦：只增加同一codec的显式身份重载及三个来源适配，默认维护接口保持；不删除或改写用户系统纪录/手动档。原只读核验及新拒绝/失败保旧场景扩展现系统命令套件，两Debug与真实Release标题验收已完成，见[B1](stages/B1-playable-prototype.md#research-4c7a490-human-catalogues)。
 
 <a id="research-776508c-integration"></a>
 ## 正式导航、NEW与保存接续（2026-10-10，用户已确认，本地接入验收完成）

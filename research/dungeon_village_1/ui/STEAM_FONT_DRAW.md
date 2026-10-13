@@ -1,6 +1,6 @@
 # Steam文字绘制：锚点、阴影与GUI坐标
 
-2026-10-10。本页接[字体选择与测宽合同](STEAM_FONT_CONSUMER.md)，闭合Graphics普通文字请求的局部落点及阴影调用顺序。固定DLL／metadata、9个具名方法共8,064字节、68个指令／调用锚见[研究包](../verification/steam-font-draw-contract/README.md)和EVIDENCE（本地核对材料，不随仓库交付）。没有指定当前中文字体名称，也没有把GUI矩形y当作字体的实际字形基线。
+2026-10-10。本页接[字体选择与测宽合同](STEAM_FONT_CONSUMER.md)，闭合Graphics普通文字请求的局部落点及阴影调用顺序。固定DLL／metadata身份见[证据入口](../EVIDENCE.md)，9个具名方法共8,064字节及68个指令／调用锚的消费者归于本页。没有指定当前中文字体名称，也没有把GUI矩形y当作字体的实际字形基线。
 
 [本次原窗口反馈](../verification/skin-observation-analysis/ANALYSIS.md)观察到白色阴影标题等外观，但JPEG、1067×910外框及未知DPI不能反推原Font测宽、RGB或比例。本页公式来自原代码，与该窗口观察分开认证。
 
@@ -102,3 +102,17 @@ bottom = trunc(float32(y + h + float32(0.01)))
 CheckClip读取clipEnable；关闭时可能按原警告条件记日志／递增警告计数并返回false。`_setClip`不拿返回值提前退出，仍更新上述字段；因此“clipEnable=false”不能被实现成“不存裁剪矩形”。反过来，保存裁剪区域也不单独证明所有图元已被硬件裁剪。
 
 这些原请求、临时状态和坐标接口可用于研究皮肤接线；本包未写维护渲染代码、未运行游戏或导出字体。父窗口的完整裁剪栈、实际DPI／屏幕矩阵、原字体字形基线及原窗口像素验收分别保留。
+
+## 具名入口范围
+
+| 原方法 | RVA | 有界方法字节 |
+| --- | --- | ---: |
+| 默认／显式anchor DrawString | 766290／7678C0 | 各64 |
+| DrawString主实现 | 7663D0 | 5360 |
+| 普通DrawStringShadow | 765E60 | 1072 |
+| CheckClip／_setClip | 75DA80／77BC40 | 224／288 |
+| Font.GetWidth | 77D980 | 32 |
+| BeginRenderMatrix | 75D570 | 592 |
+| GetTransRectGUI | 76F4A0 | 368 |
+
+这些窗口核到普通GUI、阴影、锚点和局部裁剪，4个float常量及16个字段／anchor映射支持上述公式；GLText、纹理、离屏和TextLayout标签阴影没有因同属方法体而自动认证。截图只作外观参照，不推实际语言返回值、Font对象、DPI或客户端比例。源方法范围是静态证据范围，不是运行内存有界保证；临时字体／颜色／矩阵状态清理也不替代世界随机及存档恢复。

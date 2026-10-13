@@ -395,7 +395,7 @@ Owner codec为97记录／12枚举，新增`human_detail_contexts`随正常退休
 
 ## Steam文字落点与阴影2026-10-10
 
-[合同](ui/STEAM_FONT_DRAW.md)和[研究包](verification/steam-font-draw-contract/README.md)完成9具名方法8,064字节、68锚、4个float位型、16字段映射。主会话复算保持EVIDENCE `2e269c12…80af`，语法、编码及本地链接检查通过。只核GUI调用参数、局部化／锚点／矩阵／clip和普通阴影，不指定当前中文字体或字形baseline；无图片／字体副本、构建或后台进程。
+[合同及来源范围](ui/STEAM_FONT_DRAW.md)完成9具名方法8,064字节、68锚、4个float位型、16字段映射。当时语法、编码及本地链接检查通过。只核GUI调用参数、局部化／锚点／矩阵／clip和普通阴影，不指定当前中文字体或字形baseline；无图片／字体副本、构建或后台进程。
 
 ## Steam人物危险偏移闭合2026-10-10
 
@@ -598,7 +598,7 @@ Owner codec现95记录／12枚举，world schema `7f33851d…dbf440`，世界语
 
 ## Steam字体消费者静态交叉2026-10-09
 
-[正式合同](ui/STEAM_FONT_CONSUMER.md)及[证据包](verification/steam-font-consumer/README.md)核12个具名入口共6416字节（含异常尾／填充）、6个字符串槽及7个float32常量。语言地区→基础→Japanese-ja→default的资源链、GUIStyle按invalid名单才替换、0.83／0.98本地化比例及两种测宽分支已核；当前实际开关／语言码、Unity空font回退、TextLayout和DrawString基线另验。
+[正式合同及解析限制](ui/STEAM_FONT_CONSUMER.md)核12个具名入口共6416字节（含异常尾／填充）、6个字符串槽及7个float32常量。语言地区→基础→Japanese-ja→default的资源链、GUIStyle按invalid名单才替换、0.83／0.98本地化比例及两种测宽分支已核；当前实际开关／语言码、Unity空font回退、TextLayout和DrawString基线另验。
 
 资源首表1251行、4外部引用及12字体／材质／纹理引用逐项核验；同路径允许不同对象，使用联合身份不覆盖行。仅有en-switch／hi／ja／th四字体路径，没有中文／通用default路径，不能认定中文使用内嵌M+。来源hash、有限解析边界和未解析2352字节尾部保留在JSON。静态脚本、7个新增文档链接及差异检查通过；不执行游戏回归，无原窗口／原档／产品修改、无新增字体副本／构建缓存／后台进程。新资料已归档，后继继续标题Steam实际绘制交叉。
 

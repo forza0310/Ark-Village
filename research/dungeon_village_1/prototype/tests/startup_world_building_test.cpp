@@ -782,6 +782,14 @@ void residence() {
               s.scene.world.world.ai.battle.actors.empty(),
           "completion commits same shared definition reward5/15, event202 and no celebration or "
           "actor creation");
+    const auto result_page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[](const auto &page) {
+        return page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==96;
+    });
+    check(result_page!=s.scripts.pages.end()&&result_page->legacy_f==25&&result_page->lifecycle==0&&
+          s.page_human_bindings.at(result_page->id)==1&&s.page_counters.at(result_page->id)==0&&
+          s.page_phases.at(result_page->id)==0&&s.page_secondary_counters.at(result_page->id)==0&&
+          valid_startup_world_runtime_residence_result_page(s,*result_page),
+          "actual residence completion binds definition25 and human1 with complete independent zero clocks");
     const auto pages = s.scripts.pages.size();
     const auto repeat = ref::prepare_world_facility_update(adapter.facilities.read(s),
                                                            *home.created, adapter.catalog);

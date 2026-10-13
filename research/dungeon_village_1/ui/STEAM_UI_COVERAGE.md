@@ -119,7 +119,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 77 | TENANT_ANIME2 | 设施 | 静态及维护：49快进／55关闭、前后数字与角色资源计划已接；S045仅结果局部，完整OS动态另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 78 | TENANT_SERVICE | 设施 | 仅声明；更新／绘制／动态链待逐项 |
 | 79 | TENANT_EQUIPLIST | 设施 | 静态及维护：四行两页／NEW、商品信息72与真实Owner整轮输入已交付；确认清标记不购买，原动态另验，见[商品合同](../rules/COMMERCE.md) |
-| 80 | TENANT_RESIDENT_LIST | 设施 | [局部Init／Update／Draw合同](PAGES.md#steam住宅候选80与授勋目录87)已核，原更新四行而绘制五行；现有入住事务，纯皮肤／Owner游标／原动态待接 |
+| 80 | TENANT_RESIDENT_LIST | 设施 | [局部合同与纯皮肤](PAGES.md#steam住宅候选80与授勋目录87)及显式游标helper已接，保留四行更新／五行绘制及marker16；现有入住事务，Owner游标／完整窗口与原动态待接 |
 | 81 | TENANT_LVUP_ANIME | 设施 | 静态：[Init真正升级、40／55确认、独立frame2及完整局部Draw](STEAM_FACILITY_UPGRADE.md)已核；维护：Owner与数字动画／角色／框及触摸计划已接。动态：无连续原窗口认证；原字体、平台热区仍独立 |
 | 82 | TENANT_STREN_BONUS | 设施 | 静态及维护：两阶段口碑／人气、有序皮肤、独立双钟／恢复与条件参考已交付；未认证自然36个月触发、完整scratch或原OS动态，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 83 | SHOPPING_TOP | 商会 | 仅声明；更新／绘制／动态链待逐项 |
@@ -135,7 +135,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
-| 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp及首轮jingle5已核；副钟Owner域／完整计划及原动态待接 |
+| 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [局部合同与维护计划](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp／jingle5、严格Owner桥及窗口已接；短拒绝／恢复／退休已验，完整字体与原OS动态待证 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 98 | TAX_INCOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |

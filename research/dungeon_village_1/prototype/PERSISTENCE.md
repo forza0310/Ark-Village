@@ -22,6 +22,12 @@
 
 30成果页另复用`page_secondary_counters`保存原frame2；探索与战斗两个真实producer在插页时完整安装phase／main／secondary三零，探索以原summary绑定任务，不强加战斗producer的optional。原获准轮双钟递增并按INT_MAX回卷，快进40及切第二段只改主钟；暂停保持，phase1不重播首段jingle4。恢复、输入和退休前共用完整校验，缺键、错summary／任务、负值／非法阶段及损坏关闭载荷明确拒绝，Finish释放双钟与摘要。没有新字段／schema或演员快照；演员从当前m和现职业／装备只读取得。旧缺副钟的30模态拒绝，不自动补零；稳定普通档边界不变。
 
+### 住宅完成96的显示载荷
+
+96沿真实住宅完成producer一次安装住户定义绑定、住宅定义legacy_f及phase／main／secondary三零，复用现`page_secondary_counters`，无新codec字段。主副钟随获准页面更新各自模INT_MAX；40／77快进和两段转换只写主钟，暂停不初始化或偷跑，首段主1仅产生一次jingle5。旧缺副钟的96模态明确拒绝，不从main猜补；稳定普通档及世界5／应用8／系统2不变。
+
+输入、恢复与Finish之前共用校验：住宅必须原kind12，住户定义及显示依赖存在，完整钟／阶段、共享奖励三行自身关系均合法，坏关闭载荷不能靠先擦除隐瞒。绑定的是定义，不额外要求旧设施实例仍活跃，也不把原共享奖励数组强行改成页面私有快照；当前人物数值不要求与旧显示行相同。Finish沿既有机制释放页面绑定和双钟，查询不创建实体、重发入住奖励或声音。[住宅合同](../ui/STEAM_HUMAN_DETAIL.md#human-reward-followups)与短恢复结果分别维护。
+
 ### 任务后继UI载荷设计（待确认）
 
 下一批25–28、31–33需要独立游标，现28演出phase／双钟／预测／加速都有实际消费者，27也同时持有页签、选择和首行，不能挤占这些字段。拟仅新增`task_page_ui: map<pageID,StartupTaskPageUi>`，结构为`selection`、`first`、`tab`（初始0）、`member_rows: vector<int>`、`parent: optional<pageID>`和`answer: optional<int>`。按页类型限制所有字段，不将结构作为任意页面容器：

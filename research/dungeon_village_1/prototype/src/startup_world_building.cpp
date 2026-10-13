@@ -1118,6 +1118,13 @@ std::optional<State> prepare_startup_world_residence_completion(const State &s, 
             if (page == next.scripts.pages.end())
                 return {};
             page->legacy_f = *p.second.facility_definition;
+            if(page->kind==ref::WorldScriptPageKind::raw_page&&page->legacy_page==96) {
+                // 新住宅完成页的原构造钟；已存在的半载荷不能由producer补修。
+                if(page->lifecycle!=0||!next.page_counters.emplace(page->id,0).second||
+                   !next.page_phases.emplace(page->id,0).second||
+                   !next.page_secondary_counters.emplace(page->id,0).second||
+                   !valid_startup_world_runtime_residence_result_page(next,*page))return {};
+            }
         }
     }
     return next;

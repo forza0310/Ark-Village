@@ -135,6 +135,8 @@ Options parse_options(int argc, char **argv) {
           options.inspect_page != "task-map-info" && options.inspect_page != "task-info" &&
           options.inspect_page != "task-battle-result" && options.inspect_page != "task-reward-result" &&
           options.inspect_page != "task-victory" && options.inspect_page != "task-victory-reputation" &&
+          options.inspect_page != "residence-candidates" &&
+          options.inspect_page != "residence-completed" && options.inspect_page != "residence-reward" &&
           options.inspect_page != "task-deadline" && options.inspect_page != "task-deadline-battle" && options.inspect_page != "task-deadline-continue" &&
           options.inspect_page != "task-roster" && options.inspect_page != "task-extra" && options.inspect_page != "task-extra-stats" &&
           options.inspect_page != "task-departure" && options.inspect_page != "task-departing" &&

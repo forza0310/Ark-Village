@@ -205,7 +205,8 @@ std::optional<SteamTaskVictoryPlan> steam_task_victory_skin(const SteamTaskVicto
     p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{30,66},std::array<int,4>{0,0,93,82},0});
     p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{109,66},std::array<int,4>{1,0,91,82},0});
     p.operations.emplace_back(SteamTaskRosterImage{SteamTaskRosterAsset::departure_background,{189,66},std::array<int,4>{1,0,20,82},0});
-    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,66,179,81},{148,148,148},true}});
+    // Steam1032FF65 DrawRect(30,66,179,81)含右下端点，平台半开矩形各加1。
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{30,66,180,82},{148,148,148},true}});
     const int exp_left=120-(8*figures(in.experience)+22)/2;
     p.operations.emplace_back(SteamHumanImage{SteamHumanAsset::experience_label,{exp_left,74},0,{}});
     p.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::number,SteamFacilityAsset::number05,in.experience,{exp_left+22,73},0,1,-1});

@@ -178,13 +178,15 @@ Steam共用helper `102D0F00`／`102D0420`及两组静态表分别2/42/52/67/73�
 <a id="human-reward-followups"></a>
 ## 住宅、努力与授勋后继67／88／96：有限静态
 
-这三页尚未交完整皮肤，本节只登记可直接复用的已核路径。67在`SubForm._draw2_2` VA10340A27–10340DD0，10340B5D调用`Draw_charaPutUpBonus RVA2D0F00`的index0；68已用同helper的index1，可复用四战斗值演出，但不能为通过68入口伪造装备choice。67小肖像clip(30,68,15,14)、脚底(38,89)，当前职业／性别；努力旧／新百分比各由`(legacy_f/10)*10+100`、`(legacy_g/10)*10+100`取得，不能从当前努力倒推旧值。现Owner已有绑定、main、phase、effort_display和f/g；这部分不需要新增持久字段。
+96已交只读计划及真实Owner桥，67／88仍是有限静态。67在`SubForm._draw2_2` VA10340A27–10340DD0，10340B5D调用`Draw_charaPutUpBonus RVA2D0F00`的index0；68已用同helper的index1，可复用四战斗值演出，但不能为通过68入口伪造装备choice。67小肖像clip(30,68,15,14)、脚底(38,89)，当前职业／性别；努力旧／新百分比各由`(legacy_f/10)*10+100`、`(legacy_g/10)*10+100`取得，不能从当前努力倒推旧值。现Owner已有绑定、main、phase、effort_display和f/g；这部分不需要新增持久字段。
 
 88的`_draw2_4` VA1034B396–1034BC4B在尾1034BC3E调用已有`mentalUp(human,page,main−page×135)`；96在10347B1D–10347FC5，phase1的10347B97调用同helper但使用原main。两者小肖像仍要求显式共享`character_frame`，不能拿仪式主钟替代。88／96公共尾103477DA–10347816注册无显式矩形Touch2／option2；配置门控key64支路未认证实际运行值，不写成普通取消。
 
-96上方用mp_back三原裁片和RGB148边框；10347E5C调用**DrawMapchip2 RVA21B9C0**、锚(120,113)，与33普通Mapchip不同。住宅定义由现producer的legacy_f绑定，不是实例ID。人物读取独立frame2(+A4)，模26前10走路、后16 action6/step0并用8／16的float抛物线；主钟(+A0)与副钟在10321B63–10321B88各自+1模INT_MAX，换段只清主。主1／phase0在10317E9F–10317EC1请求jingle5；40和77确认门槛沿当前合同。维护96尚需扩现secondary的初始化、暂停、恢复／拒绝及退休域，不能默认用main兜底；没有据此新建codec字段。
+96上方用mp_back三原裁片和RGB148边框；原DrawRect179×81含端点，平台半开计划为180×82。10347E5C调用**DrawMapchip2 RVA21B9C0**、锚(120,113)，与33普通Mapchip不同。住宅定义由现producer的legacy_f绑定，不是实例ID。人物读取独立frame2(+A4)，模26前10走路、后16 action6/step0并用8／16的float抛物线，body方向2、脚基(175,142)，无武器；阴影固定(175,142)，不随跳高改变。主钟(+A0)与副钟在10321B63–10321B88各自+1模INT_MAX，换段只清主。主1／phase0在10317E9F–10317EC1请求jingle5；40和77确认门槛沿当前合同。维护96已扩现secondary初始化、暂停、恢复／拒绝及退休域，缺键不能默认用main兜底，没有新codec字段。
 
-未闭合最小范围：67／88完整字号、字面与图元顺序；88上方event13背景和event12陪衬仅有APK候选，Steam全部演员帧／资源及声音／Init待逐项核；96初始化副钟和完整Owner桥另批短验。此处的有限定位不提升为原动态、自然入住／授勋或完整皮肤认证。
+实际接口`steam_human_residence_result_skin`纯DTO与严格Owner桥位于[人物公共头](../prototype/include/dungeon_village_prototype/steam_human_skin.hpp)，实现归同模块[住宅演出源](../prototype/src/steam_human_ceremony_skin.cpp)。原序为窗→内框→底文或mentalUp→mp_back三裁→边框→Mapchip2→固定阴影→身体→Touch2。phase0只对底文push交集裁剪(0,158,240,Rate(main,5,40,0,48))，姓名句DrawString2在120,165，完成句普通DrawString在120,187，然后pop；箭头main≥50且main%25<15，与40确认门槛不同。phase1复用同一个mentalUp纯消费者，底小人物带当前主武器／共享character_frame，上方身体仍用副钟。Owner桥读取已维护的共享人物钟，不推进它；原文字后端／OS投递仍另验。
+
+研究窗口96执行正式计划和确认适配，Enter／画布内鼠标松开不等于原Steam物理输入；不把Esc接作未经认证的原取消。三种[条件例图](examples/README.md)含80名单及96两段，字体Noto／中文句式为适配；满意标签原窄TextLayout在当前后端仍有截断，不为示例改变原宽度，完整字体排版待闭合。未决为67／88完整字号／字面／图元顺序，以及88上方event13、event12陪衬的全部Steam演员帧／声音／Init；这些APK候选不提升为原动态、自然入住／授勋或完整皮肤认证。
 
 ## 未闭合与后续最小范围
 

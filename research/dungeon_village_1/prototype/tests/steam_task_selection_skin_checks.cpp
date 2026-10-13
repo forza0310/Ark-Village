@@ -558,6 +558,9 @@ void victory(Checks &c) {
     in.options.title_widths=std::array<int,2>{24,24};in.options.reputation_suffix_width=48;
     in.humans={{0,0,0,0},{1,0,1,0},{0,0,0,0}};
     auto plan=steam_task_victory_skin(in);c(bool(plan),"30当前演员计划与合法重复参与者");
+    bool border=false;for(const auto &op:plan->operations)if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))
+        if(const auto *r=std::get_if<StartupSkinRect>(f))border|=r->outline&&r->rect==std::array<int,4>{30,66,180,82}&&r->rgb==std::array<int,3>{148,148,148};
+    c(border,"30原DrawRect179/81含端点，半开计划180/82");
     const auto confirm=parts<SteamStartupTouch>(*plan);
     c(plan->title=="胜利！"&&confirm.size()==1&&confirm[0].component==2&&confirm[0].value==0&&
       !confirm[0].rectangle&&confirm[0].option==2,"30标题胜利且无条件注册无显式矩形Touch2/option2");

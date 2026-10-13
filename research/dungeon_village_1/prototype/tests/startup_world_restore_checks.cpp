@@ -173,6 +173,54 @@ int check_startup_world_restore_contracts(
         expect(victory,true,"retired30 no residual map entries");
     }
     {
+        // 96页面调用点夹具：定义引用来自真实原表；不以codec测试冒认自然入住。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore residence96: ")+why);};
+        auto home=baseline;
+        r::WorldScriptPage page;page.kind=r::WorldScriptPageKind::raw_page;page.legacy_page=96;page.legacy_f=25;
+        const auto made=r::prepare_world_script_page(p::startup_world_runtime_scripts(home),page);
+        require(made.candidate&&made.candidate->last_page&&p::write_startup_world_runtime_scripts(home,made.candidate->state),"page insertion");
+        const auto id=*made.candidate->last_page;
+        home.page_human_bindings.emplace(id,1);home.page_counters.emplace(id,0);
+        home.page_phases.emplace(id,0);home.page_secondary_counters.emplace(id,0);
+        home.reward_display={{{98,90},{100,100},{5,15}}};
+        expect(home,true,"96 complete pending constructor payload");
+        const auto reject=[&](const auto &source,const char *why,const auto &damage){auto bad=source;damage(bad);expect(bad,false,why);};
+        reject(home,"pending96 cannot start with advanced independent clock",[&](auto &s){s.page_secondary_counters.at(id)=1;});
+        reject(home,"pending96 missing main",[&](auto &s){s.page_counters.erase(id);});
+        reject(home,"96 wrong nonresidential definition",[&](auto &s){s.scripts.pages.back().legacy_f=33;});
+        reject(home,"96 absent human definition",[&](auto &s){s.page_human_bindings.at(id)=-1;});
+        const auto advance=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"admitted update");s=*next.candidate;};
+        const auto check_replay=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"exact clocks/definition references decode");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),
+                    "same input retains independent clocks, random and single output");
+        };
+        auto paused=home;paused.scene.framework_paused=true;
+        check_replay(paused,advance,"96 paused pending remains uninitialized across restore");
+        check_replay(home,advance,"96 pending first jingle replay");advance(home);
+        const auto next_phase=[&](auto &s){
+            require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&
+                    p::acknowledge_startup_world_runtime_page(s,id)==E::none,"phase0 skip then enter phase1");advance(s);
+        };
+        check_replay(home,next_phase,"96 phase transition retains independent frame2");next_phase(home);
+        require(home.page_counters.at(id)==1&&home.page_secondary_counters.at(id)==2&&home.page_phases.at(id)==1,
+                "phase1 main differs from preserved frame2");
+        reject(home,"initialized96 missing secondary",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(home,"initialized96 invalid phase",[&](auto &s){s.page_phases.at(id)=2;});
+        reject(home,"initialized96 overflow clock",[&](auto &s){s.page_secondary_counters.at(id)=std::numeric_limits<int>::max();});
+        reject(home,"96 orphan secondary",[&](auto &s){s.page_secondary_counters.emplace(s.scripts.next_page_id+1,0);});
+        const auto close=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,id)==E::none&&
+            p::acknowledge_startup_world_runtime_page(s,id)==E::none,"phase1 skip77 then close");};
+        check_replay(home,close,"96 close restores complete retained payload");close(home);
+        reject(home,"closed96 missing secondary",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(home,"closed96 missing human binding",[&](auto &s){s.page_human_bindings.erase(id);});
+        check_replay(home,advance,"96 Finish releases restored references once");
+    }
+    {
         const auto require = [&](bool valid, const char *scenario) {
             ++checks;
             if (!valid) throw std::runtime_error(std::string("restore manual save: ") + scenario);

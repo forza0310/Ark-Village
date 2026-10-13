@@ -1825,6 +1825,84 @@ void tax_pages() {
               broken.page_counters.empty(),
           "tax ledger overflow rolls back cash, F/G, counter and close");
 }
+void residence_result() {
+    // 住宅完成页调用点夹具；真实producer安装另由现building residence套件覆盖。
+    auto s=fixture(96);
+    auto &page=s.scripts.pages.back();const auto id=page.id;
+    page.lifecycle=0;page.legacy_f=25;
+    s.page_human_bindings.emplace(id,1);s.page_counters.emplace(id,0);
+    s.page_phases.emplace(id,0);s.page_secondary_counters.emplace(id,0);
+    s.reward_display={{{98,90},{100,100},{5,15}}}; // 原请求显示保留封顶前的5/15。
+    check(valid_startup_world_runtime_residence_result_page(s,page),"96 pending carries complete constructor payload");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::missing_source,
+          "96 pending cannot consume confirm before admitted Init");
+    auto paused=s;paused.scene.framework_paused=true;
+    auto tick=prepare_startup_world_runtime(paused);
+    check(tick.candidate&&tick.candidate->scripts.pages.back().lifecycle==0&&
+          tick.candidate->page_counters.at(id)==0&&tick.candidate->page_secondary_counters.at(id)==0&&
+          tick.candidate->sound_requests.empty(),"96 paused pending keeps lifecycle and both clocks");
+    const auto cash=s.scene.world.world.ai.accounting.funds();
+    const auto reward=s.reward_display;
+    tick=prepare_startup_world_runtime(s);
+    check(tick.candidate&&tick.candidate->page_counters.at(id)==1&&tick.candidate->page_secondary_counters.at(id)==1&&
+          tick.candidate->sound_requests==std::vector<StartupAudioRequest>{{StartupAudioOperation::jingle,5}}&&
+          tick.candidate->scene.calendar.units==s.scene.calendar.units&&tick.candidate->scene.random.draws()==s.scene.random.draws()&&
+          tick.candidate->scene.world.updates==s.scene.world.updates,"96 first admitted update advances dual clocks and jingle5 only");
+    s=*tick.candidate;
+    for(int fault=0;fault<12;++fault) {
+        auto bad=s;
+        if(fault==0)bad.page_counters.erase(id);
+        if(fault==1)bad.page_phases.erase(id);
+        if(fault==2)bad.page_secondary_counters.erase(id);
+        if(fault==3)bad.page_secondary_counters.at(id)=-1;
+        if(fault==4)bad.page_secondary_counters.at(id)=std::numeric_limits<int>::max();
+        if(fault==5)bad.page_phases.at(id)=2;
+        if(fault==6)bad.page_human_bindings.erase(id);
+        if(fault==7)bad.page_human_bindings.at(id)=-1;
+        if(fault==8)bad.scripts.pages.back().legacy_f=33;
+        if(fault==9)bad.reward_display[0][0]=-1;
+        if(fault==10)bad.reward_display[1][0]=99;
+        if(fault==11)bad.reward_display[2][1]=-1;
+        const auto before=startup_world_state_digest(bad);
+        check(acknowledge_startup_world_runtime_page(bad,id)==StartupWorldRuntimeError::missing_source&&
+              !update_startup_world_runtime_page(bad)&&!prepare_startup_world_runtime(bad).candidate&&
+              startup_world_state_digest(bad)==before,"96 invalid payload rejects without page repair or partial state");
+        bad.scene.framework_paused=true;
+        check(!update_startup_world_runtime_page(bad)&&!prepare_startup_world_runtime(bad).candidate,
+              "96 pause cannot hide malformed payload");
+    }
+    paused=s;paused.scene.framework_paused=true;tick=prepare_startup_world_runtime(paused);
+    check(tick.candidate&&tick.candidate->page_counters.at(id)==1&&tick.candidate->page_secondary_counters.at(id)==1&&
+          tick.candidate->sound_requests==s.sound_requests,"96 pause preserves dual clocks and pending output");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::none&&
+          s.page_counters.at(id)==40&&s.page_phases.at(id)==0&&s.page_secondary_counters.at(id)==1,
+          "96 early confirm skips only main to40");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::none&&
+          s.page_counters.at(id)==0&&s.page_phases.at(id)==1&&s.page_secondary_counters.at(id)==1,
+          "96 phase transition resets main but keeps independent frame2");
+    tick=prepare_startup_world_runtime(s);
+    check(tick.candidate&&tick.candidate->page_counters.at(id)==1&&tick.candidate->page_secondary_counters.at(id)==2&&
+          tick.candidate->sound_requests==s.sound_requests,"96 phase1 does not replay jingle5");
+    s=*tick.candidate;
+    auto boundary=s;boundary.page_counters.at(id)=std::numeric_limits<int>::max()-1;
+    boundary.page_secondary_counters.at(id)=std::numeric_limits<int>::max()-1;
+    const auto wrapped=update_startup_world_runtime_page(boundary);
+    check(wrapped&&wrapped->page_counters.at(id)==0&&wrapped->page_secondary_counters.at(id)==0,
+          "96 both source clocks wrap moduloINTMAX without signed overflow");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::none&&
+          s.page_counters.at(id)==77&&s.page_secondary_counters.at(id)==2&&s.scripts.pages.back().lifecycle==2,
+          "96 phase1 early confirm skips only main to77");
+    check(acknowledge_startup_world_runtime_page(s,id)==StartupWorldRuntimeError::none&&s.scripts.pages.back().lifecycle==4&&
+          s.scene.world.world.ai.accounting.funds()==cash&&s.reward_display==reward&&s.page_secondary_counters.at(id)==2,
+          "96 ready confirmation closes without rewarding again or prematurely releasing clocks");
+    auto broken=s;broken.page_secondary_counters.erase(id);
+    check(!prepare_startup_world_runtime(broken).candidate&&broken.page_human_bindings.count(id),
+          "96 malformed closed payload rejects before Finish erases evidence");
+    tick=prepare_startup_world_runtime(s);
+    check(tick.candidate&&!tick.candidate->page_counters.count(id)&&!tick.candidate->page_phases.count(id)&&
+          !tick.candidate->page_secondary_counters.count(id)&&!tick.candidate->page_human_bindings.count(id),
+          "96 successful Finish retires all page clocks and human reference");
+}
 void summary() {
     auto s = test_support::world_fixture();
     const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
@@ -5106,6 +5184,7 @@ int main() {
         village_activity_pages();
         village_expansion_pages();
         village_activity_effect_rollback();
+        residence_result();
         summary();
         gift();
         unlock_rewards();

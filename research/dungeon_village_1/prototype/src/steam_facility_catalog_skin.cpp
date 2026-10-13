@@ -4,6 +4,8 @@
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include <algorithm>
 #include <limits>
+#include <map>
+#include <set>
 
 namespace dungeon_village_prototype {
 std::optional<SteamHumanOverviewPlan> steam_facility_commodity_skin(
@@ -67,6 +69,75 @@ std::optional<SteamHumanOverviewPlan> steam_facility_commodity_skin(
     const std::string bottom=std::to_string(count)+"种"+(kind==1?"武器":kind==2?"防具":"饰品")+"出售中";
     const int width=std::min(*o.bottom_widths[0],200)+16;
     text(bottom,120-width/2,197,width,16,34,0,true);
+    return out;
+}
+std::optional<SteamResidenceCursor> steam_residence_cursor(
+    SteamResidenceCursor cursor,int count,bool up,bool down) {
+    // Steam Update2 VA1031A887..1031A94B：上、下各自执行，之后才修四行首行。
+    if(count<=0||count>65536||cursor.selection<0||cursor.selection>=count||
+       cursor.first<0||cursor.first>=count)return {};
+    if(up)cursor.selection=(cursor.selection+count-1)%count;
+    if(down)cursor.selection=(cursor.selection+1)%count;
+    if(cursor.first>cursor.selection)cursor.first=cursor.selection;
+    if(cursor.first+4<=cursor.selection)cursor.first=cursor.selection-3;
+    return cursor;
+}
+std::optional<SteamHumanOverviewPlan> steam_residence_skin(const SteamResidenceInput &in) {
+    const auto &o=in.options;
+    if(in.order.empty()||in.order.size()>65536||in.humans.size()>65536||
+       o.view_y< -65536||o.view_y>65536||o.finger_frame<0||o.finger_frame>5||
+       !o.title_widths||!o.bottom_width||*o.bottom_width<0||*o.bottom_width>4096)return {};
+    const int count=static_cast<int>(in.order.size());
+    const auto cursor=steam_residence_cursor(in.cursor,count,false,false);
+    if(!cursor||cursor->selection!=in.cursor.selection||cursor->first!=in.cursor.first)return {};
+    std::map<int,const SteamResidenceHuman *> humans;
+    for(const auto &h:in.humans) {
+        if(h.identity<0||h.fee<0||h.name.empty()||h.name.size()>4096||
+           !startup_title_actor_skin(h.profession,h.sex,-1,0,1,false)||
+           !humans.emplace(h.identity,&h).second)return {};
+    }
+    std::set<int> seen;
+    // 原EnumerateMyHomeChara遍历定义一次；不接受重复候选或可见行之外的悬空身份。
+    for(int id:in.order)if(!humans.count(id)||!seen.insert(id).second)return {};
+    const auto w=steam_startup_window_skin({220,168,0,0,SteamStartupTextRole::message_title,0},o.view_y,o.title_widths);
+    const auto b=steam_startup_box_skin({17,74,219,184},o.view_y);
+    if(!w||!b)return {};
+    SteamHumanOverviewPlan out;out.title="选择入住者";out.soft_labels={0,2};
+    for(const auto &part:w->draws)out.operations.emplace_back(part);
+    for(const auto &part:b->draws)out.operations.emplace_back(part);
+    const auto text=[&](std::string value,int x,int y,int anchor=0,bool layout=false,int width=0,int height=0) {
+        out.operations.emplace_back(SteamHumanOverviewText{SteamHumanOverviewTextRole::equipment_name,
+            std::move(value),{x,y,width,height},anchor,0,layout});
+    };
+    text("姓名",30,69);text("费用",192,69,2);
+    // Steam Draw2_3 VA10342F17..1034339B确实绘五行；不得随Update四行修首行裁成四行。
+    for(int row=cursor->first;row<count&&row-cursor->first<5;++row) {
+        const auto &h=*humans.find(in.order[row])->second;const int y=97+19*(row-cursor->first);
+        if(row==cursor->selection)out.operations.emplace_back(SteamStartupFrameDraw{
+            StartupSkinRect{{23,y-2,191,16},{255,153,55},false}});
+        out.operations.emplace_back(SteamHumanEquipmentRow{
+            SteamStartupTouch{11,0x20000|row,std::array<int,4>{23,y-2,191,16},{},16},{29,29,0,0}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,y-2,16,16},{196,236,169},false}});
+        out.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{29,y-2,16,16},{204,204,204},true}});
+        const auto actor=startup_title_actor_skin(h.profession,h.sex,-1,0,1,false);
+        if(!actor)return {};
+        out.operations.emplace_back(SteamHumanPortrait{*actor,{37,y+20},std::array<int,4>{29,y-1,15,14},false});
+        if(row==cursor->selection)out.operations.emplace_back(SteamFacilityImage{
+            SteamFacilityAsset::finger,{21,y+8},o.finger_frame,{}});
+        text(h.name,48,y);
+        out.operations.emplace_back(SteamFacilityNumber{SteamFacilityNumberKind::money,
+            h.affordable?SteamFacilityAsset::number08:SteamFacilityAsset::number12,h.fee,{212,y+1},0,4,-1});
+    }
+    // 原DrawVerticalScroll2实参w4/h111；内条／触区宽为w−1，largeChange仍5。
+    const int denominator=std::max(count,5),top=85+111*cursor->first/denominator,height=555/denominator;
+    const std::array<int,4> track{221,85,3,111};
+    out.operations.emplace_back(SteamHumanCatalogueScroll{
+        {StartupSkinRect{{220,85,5,111},{7,5,78},false},StartupSkinRect{{220,top,5,height+1},
+            o.scroll_first_touch&&count>5?std::array<int,3>{246,129,0}:std::array<int,3>{48,160,255},false}},
+        SteamStartupTouch{12,0x40000,track,{},0},{3,20,0,0},{count,5,0x20000},SteamStartupTouch{25,0,track,{},4}});
+    const int width=std::min(*o.bottom_width,200)+16;
+    // VA10343376..1034338D：select/cursor均false，无Touch4；只有原提示TextLayout。
+    text("请选择入住者",120-width/2,197,34,true,width,16);
     return out;
 }
 } // namespace dungeon_village_prototype

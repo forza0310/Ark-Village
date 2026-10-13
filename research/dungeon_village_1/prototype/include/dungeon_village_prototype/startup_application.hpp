@@ -158,6 +158,7 @@ class StartupApplication {
     std::string input_facility_catalog_page(std::uint64_t page,const StartupFacilityCatalogInput &input);
     std::string input_facility_item_page(std::uint64_t page,const StartupFacilityItemInput &input);
     std::string input_human_detail_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
+    std::string input_human_mastery_page(std::uint64_t page,const StartupHumanCatalogueInput &input);
     std::string act_rank_page(std::uint64_t page, int selection = 0, bool cancel = false);
     std::string input_rank_page(std::uint64_t page,const StartupTownRankInput &input);
     std::string cancel_page(std::uint64_t page);

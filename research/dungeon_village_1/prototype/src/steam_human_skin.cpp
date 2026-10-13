@@ -60,6 +60,7 @@ std::optional<SteamHumanResource> steam_human_resource(Asset asset) {
     case Asset::continue_cursor:return SteamHumanResource{72,2,"original/common/arrow01.png","original/common/arrow01.seb"};
     case Asset::result_icon:return SteamHumanResource{31,44,"original/common/icon_result00.png","original/common/icon_result00.seb"};
     case Asset::president:return SteamHumanResource{171,46,"original/common/chara_president.png","original/common/chara_president.seb"};
+    case Asset::secretary:return SteamHumanResource{172,31,"original/common/chara_hishoko.png","original/common/chara_hisho.seb"};
     case Asset::award_crowd:return SteamHumanResource{12,6,"original/event/event_medelCelemony_chara.png","original/event/event_medelCelemony_chara.seb"};
     case Asset::gift_box:return SteamHumanResource{82,73,"original/common/present00.png","original/common/present00.seb"};
     case Asset::gift_face:return SteamHumanResource{11,29,"original/common/icon_nico00.png","original/common/icon_nico00.seb"};

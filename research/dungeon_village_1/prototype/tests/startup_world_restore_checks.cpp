@@ -35,6 +35,95 @@ int check_startup_world_restore_contracts(
     };
     expect(baseline, true, "natural baseline");
     {
+        // 复用实际增长producer；只冻结演出门槛，不重复自然经营到大师的长前缀。
+        using E=p::StartupWorldRuntimeError;
+        const auto require=[&](bool ok,const char *why){++checks;if(!ok)throw std::runtime_error(std::string("restore mastery/gift: ")+why);};
+        auto state=p::test_support::mastery_fixture();
+        const auto mastery=state.scripts.pages.back().id;
+        const auto notice=std::find_if(state.scripts.pages.begin(),state.scripts.pages.end(),[](const auto &v){return v.legacy_page==94;})->id;
+        const auto tick=[&](auto &s){const auto next=p::prepare_startup_world_runtime(s);require(next.candidate.has_value(),"real framework");s=*next.candidate;};
+        const auto replay=[&](const auto &source,const auto &consume,const char *why){
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"all loaded clocks and bindings exact");
+            consume(live);consume(restored);expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),"same input preserves complete Owner and random");
+        };
+        for(int fault=0;fault<8;++fault) {
+            auto bad=state;
+            if(fault==0)bad.page_secondary_counters.erase(mastery);
+            if(fault==1)bad.page_counters.erase(mastery);
+            if(fault==2)bad.page_phases.at(mastery)=3;
+            if(fault==3)bad.human_page_selections.at(mastery)=2;
+            if(fault==4)bad.human_page_selections.at(mastery)=1;
+            if(fault==5)bad.page_human_bindings.erase(mastery);
+            if(fault==6)bad.page_secondary_counters.at(mastery)=std::numeric_limits<int>::max();
+            if(fault==7)bad.human_pages_initialized.erase(mastery);
+            expect(bad,false,"70 missing double-clock payload or invalid source phase/selection");
+            require(!p::prepare_startup_world_runtime(bad).candidate,"70 damaged state refuses before update/retirement");
+        }
+        {
+            auto paused=state;paused.scene.framework_paused=true;
+            replay(paused,[&](auto &s){const auto main=s.page_counters.at(mastery),secondary=s.page_secondary_counters.at(mastery);tick(s);
+                require(s.page_counters.at(mastery)==main&&s.page_secondary_counters.at(mastery)==secondary,"pause freezes both70 clocks");},"70 paused snapshot");
+            auto boundary=state;boundary.page_counters.at(mastery)=boundary.page_secondary_counters.at(mastery)=std::numeric_limits<int>::max()-1;
+            replay(boundary,[&](auto &s){tick(s);require(s.page_counters.at(mastery)==0&&s.page_secondary_counters.at(mastery)==0,"70 source modulo clocks");},"70 modulo boundary");
+        }
+        const auto extra=state.scene.world.world.ai.growth.at(4).definition.extra;
+        replay(state,[&](auto &s){p::StartupHumanCatalogueInput input;input.left=input.right=true;
+            require(p::input_startup_world_human_mastery_page(s,mastery,input)==E::none&&s.human_page_selections.at(mastery)==0,
+                    "70 directions are ignored before choice phase");},"70 same-tick input before choice");
+        for(int phase=0;phase<2;++phase) {
+            const auto press=[&](auto &s){const auto secondary=s.page_secondary_counters.at(mastery);
+                require(p::acknowledge_startup_world_runtime_page(s,mastery)==E::none&&
+                        p::acknowledge_startup_world_runtime_page(s,mastery)==E::none&&
+                        s.page_phases.at(mastery)==phase+1&&s.page_counters.at(mastery)==0&&
+                        s.page_secondary_counters.at(mastery)==secondary&&s.scene.world.world.ai.growth.at(4).definition.extra==extra,
+                        "70 phase changes only main and never grants early");};
+            replay(state,press,"70 phase transition restore");press(state);
+        }
+        replay(state,[&](auto &s){p::StartupHumanCatalogueInput input;input.left=input.right=true;
+            require(p::input_startup_world_human_mastery_page(s,mastery,input)==E::none&&s.human_page_selections.at(mastery)==0,
+                    "70 left then right cancel within same tick");},"70 simultaneous choice directions");
+        {
+            auto failed=state;failed.page_counters.at(mastery)=40;
+            const int attribute=failed.rules->jobs.at(4).mastery_attribute;
+            require(attribute>=0&&attribute<6,"source warrior mastery is an attribute reward");
+            failed.scene.world.world.ai.growth.at(4).definition.extra.at(attribute)=std::numeric_limits<int>::max();
+            const auto before=p::persistence_detail::encode_state(failed);p::StartupHumanCatalogueInput input;input.right=input.confirm=true;
+            require(p::input_startup_world_human_mastery_page(failed,mastery,input)==E::missing_source&&
+                    p::persistence_detail::encode_state(failed)==before,"late mastery overflow rolls back same-tick selection and reward");
+        }
+        const auto claim=[&](auto &s){p::StartupHumanCatalogueInput input;input.selection=1;input.confirm=input.cancel=true;
+            require(p::input_startup_world_human_mastery_page(s,mastery,input)==E::none&&
+                    s.page_counters.at(mastery)==40&&s.scene.world.world.ai.growth.at(4).definition.extra==extra,
+                    "70 simultaneous confirm/cancel fast-forward only once");
+            input.selection.reset();require(p::input_startup_world_human_mastery_page(s,mastery,input)==E::none,"70 actual final claim");};
+        replay(state,claim,"70 final claim restores once");claim(state);
+        auto bad=state;bad.page_secondary_counters.erase(mastery);expect(bad,false,"closed70 retains independent clock until Finish");
+        replay(state,tick,"70 retirement resumes94");tick(state);
+        require(!state.page_secondary_counters.count(mastery)&&!state.human_pages_initialized.count(mastery)&&
+                state.scripts.pages.back().id==notice&&state.page_counters.at(notice)==1,"70 full retirement and94 first update");
+        for(int fault=0;fault<4;++fault) {
+            bad=state;if(fault==0)bad.page_counters.erase(notice);
+            if(fault==1)bad.page_human_bindings.erase(notice);
+            if(fault==2)bad.page_secondary_counters.emplace(notice,0);
+            if(fault==3)bad.page_phases.emplace(notice,0);
+            expect(bad,false,"94 explicit missing or unrelated page payload rejection");
+            require(!p::prepare_startup_world_runtime(bad).candidate,"94 cannot initialize a missing live clock");
+        }
+        {
+            auto boundary=state;boundary.page_counters.at(notice)=std::numeric_limits<int>::max()-1;
+            replay(boundary,[&](auto &s){tick(s);require(s.page_counters.at(notice)==0,"94 source modulo main");},"94 modulo boundary");
+        }
+        const auto grant=[&](auto &s){require(p::acknowledge_startup_world_runtime_page(s,notice)==E::none&&
+            p::acknowledge_startup_world_runtime_page(s,notice)==E::none,"94 early then final confirm");};
+        replay(state,grant,"94 final claim with actual already-unlocked profession");grant(state);
+        bad=state;bad.page_counters.erase(notice);expect(bad,false,"closed94 counter cannot be omitted");
+        replay(state,tick,"94 real Finish cleanup");tick(state);
+        require(!state.page_counters.count(notice)&&!state.page_human_bindings.count(notice),"94 full retirement releases giver and clock");
+    }
+    {
         // 原工厂与页面producer负责实体/载荷，仅人数资格和演出边界使用条件夹具。
         using E=p::StartupWorldRuntimeError;using A=p::StartupWorldTaskAction;
         const auto require=[&](bool ok,const char *why) {++checks;if(!ok)throw std::runtime_error(std::string("restore task input: ")+why);};
@@ -1353,6 +1442,14 @@ int check_startup_world_restore_contracts(
                 p::persistence_detail::encode_state(state)==p::persistence_detail::encode_state(restored),
                 "85 deducts points identically but leaves p0/H0 pending93");
         expect(state,true,"uninitialized93 after points payment");
+        for(int fault=0;fault<3;++fault) {
+            auto invalid=state;
+            if(fault==0)invalid.page_counters.emplace(reward,0);
+            if(fault==1)invalid.commerce_page_data.emplace(reward,std::array<int,6>{0,0,0,0,34,0});
+            if(fault==2)invalid.page_secondary_counters.emplace(reward,0);
+            expect(invalid,false,"pending93 cannot inherit partial initialized payload");
+            require(!p::prepare_startup_world_runtime(invalid).candidate,"93 partial Init rejects without overwriting evidence");
+        }
         for(const int presence:{1,2}) {
             auto stale=state;stale.facility_presence.at(34)=presence;
             expect(stale,false,"pending Init93 also requires unclaimed p0 definition");
@@ -1361,6 +1458,15 @@ int check_startup_world_restore_contracts(
         const auto waiting=p::persistence_detail::encode_state(state);
         restored=p::persistence_detail::decode_state(waiting,*state.rules);
         expect(restored,true,"initialized live93 p0 pending entitlement");
+        {
+            auto boundary=restored;boundary.page_counters.at(reward)=std::numeric_limits<int>::max()-1;
+            expect(boundary,true,"93 modulo boundary snapshot");
+            auto copy=p::persistence_detail::decode_state(p::persistence_detail::encode_state(boundary),*boundary.rules);
+            tick(boundary);tick(copy);
+            require(boundary.page_counters.at(reward)==0&&boundary.facility_free_builds.at(34)==0&&
+                    p::persistence_detail::encode_state(boundary)==p::persistence_detail::encode_state(copy),
+                    "93 modulo tick replays without granting entitlement");
+        }
         for(const int presence:{1,2}) {
             auto stale=restored;stale.facility_presence.at(34)=presence;
             expect(stale,false,"live93 cannot restore after external p1/p2 unlock");

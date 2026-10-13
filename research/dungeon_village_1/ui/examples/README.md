@@ -1,5 +1,7 @@
 # 产品侧小窗 UI 示例
 
+[职业大师三段](steam-mastery.png)（1440×640／65857字节）和[来源奖励四态](steam-source-gifts.png)（960×1280／90178字节）由七个480×640研究窗口原尺寸拼接。大师依次为宣布、能力奖励、转职选择；奖励按左上93建筑、右上94职业、左下94装备、右下94道具排列。消费正式70／93／94计划与已出版原素材；人物4、职业／奖励、设施33、武器0和道具0来自原初装定义，阶段／主钟40／副钟18为显示条件，不发放奖励。`mastery-announcement`／`mastery-bonus`／`mastery-choice`／`gift-facility`／`gift-profession`／`gift-equipment`／`gift-item`各8帧、0世界更新，不加`--world`。Owner时点、恢复与退休另经短测；Steam70软标签为0／0，不把APK取消行为接成Steam返回。中文／Noto、绿色背景和条件标签属于适配；不认证原字体、物理输入、自然职业大师或Steam成就，见[人物合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)与[领取合同](../../rules/ACCOUNTING.md)。
+
 [授勋仪式四时点](steam-award-ceremony.png)（960×1280／121324字节）：左上授予35、右上举章65、左下庆祝100、右下phase1奖励212。`award-giving`／`award-lift`／`award-celebration`／`award-reward`各8帧、0世界更新，原尺寸480×640拼接；人物1的职业／性别／装备取新局，共享人物钟12、奖励20/30→40/40及请求20/10是明确显示条件，不发放年度奖励。原event背景、陪衬、大臣、人物、奖章和气泡执行正式计划；严格Owner桥另验。中文／Noto、底满意标签窄框截断和物理输入均保留适配限制，不认证原动态、历史scratch附效或自然授勋，见[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)。
 
 [努力奖励与授勋三页](steam-effort-award.png)（960×1280／74385字节），按左上67、右上87贡献、左下87年取得／消费、右下87住宅／勋章排列。四个480×640窗口原尺寸拼接；`effort-result`、`award-contribution`、`award-income`、`award-residents`各8帧、0世界更新。67人物1职业／性别取新局，旧努力19→25、四战斗值50/10/8/5→55/11/9/6及主73为显示条件；87六人目录／剩一枚勋章为条件，其余姓名、贡献、年取得／消费、住宅和奖章读取原初装零值，没有授勋或自然年度资格。贡献后原图是“点”，不是百分比；67底旧新基础能力才是百分数。87只交纯目录和游标helper，原问答及UI持久载荷未接；67严格Owner桥另经短验。Noto、中文／原日文图签、底软控件为研究适配，不认证原窗口／OS动态；[合同](../STEAM_HUMAN_DETAIL.md#human-reward-followups)和[授勋目录](../PAGES.md#steam住宅候选80与授勋目录87)分别维护。

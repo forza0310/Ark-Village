@@ -109,7 +109,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 67 | CHARA_PUTUP_BONUS | 人物／成长／礼物 | [合同与有序皮肤](STEAM_HUMAN_DETAIL.md#human-reward-followups)：与68共用四战斗行，冻结努力百分比／严格Owner桥／窗口及短恢复已接；原字体与OS动态仍待证 |
 | 68 | CHARA_EQUIP_EFFECT | 人物／成长／礼物 | 静态及维护：冻结装备槽／新ID、当前与差额动画、有序计划与真实消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 69 | CHARA_ITEM_EFFECT | 人物／成长／礼物 | 静态及维护：普通道具结果、冻结前值、当前能力动画与实际消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
-| 70 | CHARA_LVMAX | 人物／成长／礼物 | 仅声明；更新／绘制／动态链待逐项 |
+| 70 | CHARA_LVMAX | 人物／成长／礼物 | [大师合同](STEAM_HUMAN_DETAIL.md#职业大师70与人物奖励后继)：三段原序皮肤、双钟、同轮Owner输入／严格恢复与窗口已接；Steam软标签0/0，APK取消合同不扩成Steam Esc，原字体／成就旁支与动态另验 |
 | 71 | EQUIP_INFO | 装备详情 | 仅声明；更新／绘制／动态链待逐项 |
 | 72 | EQUIP_INFO_FROM_TENANT | 装备详情 | 静态及维护：单项装备说明、原1/1／双箭头和79真实父绑定已接；原动态另验，见[商品合同](../rules/COMMERCE.md) |
 | 73 | EQUIP_INFO_FROM_PRESENT | 装备详情 | 静态及维护：只读装备信息、资源／数值与赠礼目录返回已交付；原字体／OS另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
@@ -132,8 +132,8 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，完整Steam Update／Draw未核。维护：已有草稿／正式开始与APK图片计划；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |
 | 92 | MONSTER_INFO | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 93 | GET_OBJ | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
-| 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
+| 93 | GET_OBJ | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：商会已维护r3的原序皮肤、严格Owner桥及窗口已接；无给予人物，85先付点、93满40确认才开放，原动态另验 |
+| 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | [共享领取合同](../rules/ACCOUNTING.md#script-rewards)：已维护r3–8的真实给予人、装备／道具图标、原序皮肤及严格Owner桥已接；新职业早已开放与实际领取分开，完整字体／动态另验 |
 | 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
 | 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [局部合同与维护计划](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp／jingle5、严格Owner桥及窗口已接；短拒绝／恢复／退休已验，完整字体与原OS动态待证 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |

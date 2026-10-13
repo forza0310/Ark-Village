@@ -30,6 +30,9 @@ bool valid_startup_world_runtime_effort_result_page(const StartupWorldRuntimeSta
 // raw88年度授勋结果持人物、主钟和两段状态；共享奖励值不等同人物当前值。
 bool valid_startup_world_runtime_award_result_page(const StartupWorldRuntimeState &state,
                                                    const ref::WorldScriptPage &page);
+// raw70原构造双钟；阶段切换只归零主钟，不能由绘制补建缺失副钟。
+bool valid_startup_world_human_mastery_page(const StartupWorldRuntimeState &state,
+                                          const ref::WorldScriptPage &page);
 // 原页0回复入口资格：每次实时按人物原序取首个同定义W，缺来源返回空。
 std::optional<bool> startup_world_human_recovery_gift(const StartupWorldRuntimeState &state,int human);
 struct StartupHumanPresentationLive {
@@ -86,6 +89,9 @@ StartupWorldRuntimeError input_startup_world_human_catalogue_page(StartupWorldRu
 // raw60组件滚动先同步page，再按进入本轮的页分支合成上下；最终页决定确认路由。
 // 复用非持久DTO；不监听左右/装备信息，追踪仍由既有独立动作处理。
 StartupWorldRuntimeError input_startup_world_human_detail_page(StartupWorldRuntimeState &state,
+    std::uint64_t page,const StartupHumanCatalogueInput &input);
+// raw70同轮选择/左右后确认；失败不留下选择改变，副钟不受早确认/切段影响。
+StartupWorldRuntimeError input_startup_world_human_mastery_page(StartupWorldRuntimeState &state,
     std::uint64_t page,const StartupHumanCatalogueInput &input);
 // 仅对事务候选调用：合法场景/35入口创建raw60并绑定追踪来源，不复制Owner。
 std::optional<std::uint64_t> append_startup_world_human_detail_page(

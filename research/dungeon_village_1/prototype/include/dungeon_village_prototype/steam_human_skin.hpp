@@ -17,7 +17,7 @@ enum class SteamHumanAsset {
     equipment_background, weapon_icon, armour_icon, accessory_icon, magic_icon, catalogue_new, catalogue_get, gift_tab,
     ceremony_background, curtain, continue_cursor, result_icon,
     president, gift_box, gift_face, item_icon, gift_flash, recovery_effect, recovery_number,
-    residence_background, shadow, contribution_unit, residence_icon, award_crowd
+    residence_background, shadow, contribution_unit, residence_icon, award_crowd, secretary
 };
 struct SteamHumanResource {
     int image{}, sprite{-1};
@@ -153,6 +153,8 @@ struct SteamHumanOverviewOptions {
     std::array<std::optional<int>,3> item_explain_widths;
     std::optional<int> result_name_width, result_suffix_width; // 68非JP在11号字测，69沿当前字号；68JP后缀固定36。
     std::array<std::optional<int>,2> ceremony_message_widths; // 88两句气泡按当前Font实测，仅当前可见句必需。
+    std::array<std::optional<int>,3> mastery_widths; // 70奖励名／数值串／“上升了!”当前Font实测。
+    std::array<std::optional<int>,2> mastery_button_widths; // 70 phase2两按钮，原夹60再加16。
 };
 // 共用mentalUp的只读调用输入，三行仍分别为旧值／新值／原请求，不补封顶差。
 struct SteamHumanRewardInput {
@@ -173,6 +175,14 @@ struct SteamHumanAwardResultInput {
     int phase{},counter{};
     SteamHumanRewardInput human;
 };
+struct SteamHumanMasteryInput {
+    int profession{},sex{},phase{},counter{},secondary{},selection{},bonus{},value{};
+    std::string human_name,profession_name;
+};
+std::optional<SteamHumanOverviewPlan> steam_human_mastery_skin(
+    const SteamHumanMasteryInput &,const SteamHumanOverviewOptions &);
+std::optional<SteamHumanOverviewPlan> steam_human_mastery_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamHumanOverviewOptions &);
 // raw88授勋仪式：上方演员读主钟，底部mentalUp小像另读共享character_frame。
 std::optional<SteamHumanOverviewPlan> steam_human_award_result_skin(
     const SteamHumanAwardResultInput &,const SteamHumanOverviewOptions &);

@@ -10,6 +10,7 @@
 #include "dungeon_village_prototype/startup_world_save.hpp"
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
 #include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
@@ -722,7 +723,7 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{22,24,28,30,44,50,81,82,96})||
+            if (!counter(n)||!page_kind(id,{22,24,28,30,44,50,70,81,82,96})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
@@ -1061,13 +1062,15 @@ struct Validation {
                 (p.legacy_page == 9 || (p.legacy_page >= 34 && p.legacy_page <= 40)) &&
                 !valid_startup_world_information_page(s, p.id))
                 return fail("information page: 初始化/页签/选择/计数载荷非法");
-            // 93领取后的关闭态仍保存交易载荷；不能以通用退休跳过掩盖重复领取资格。
-            // Finish全量清除后的退休对象可以无载荷，其它半清状态仍由同一消费者拒绝。
-            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page == 93 &&
-                p.lifecycle == 4 && (s.commerce_pages_initialized.count(p.id) ||
-                s.commerce_page_data.count(p.id) || s.page_counters.count(p.id)) &&
-                !commerce_page(p))
-                return false;
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==70&&
+               !valid_startup_world_human_mastery_page(s,p))
+                return fail("mastery page: 人物/双钟/阶段选择或关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==94&&
+               !valid_startup_world_gift_notice_page(s,p))
+                return fail("gift notice: 赠予人物/主钟/初始化或关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==93&&
+               !valid_startup_world_commerce_claim_page(s,p))
+                return fail("commerce claim: 设施/交易载荷/初始化或关闭待退休载荷非法");
             if(p.kind==ref::WorldScriptPageKind::raw_page&&
                (p.legacy_page==48||p.legacy_page==49||p.legacy_page==50||p.legacy_page==95)&&
                !valid_startup_world_town_progress_page(s,p))

@@ -1284,6 +1284,67 @@ void residence_result_checks(Checks &check,const std::filesystem::path &source_r
     broken=bound;broken.page_human_bindings[id]=999;check(!steam_human_residence_result_skin(broken,id,o),"96错人物显式拒绝");
     broken=bound;broken.scripts.pages.back().lifecycle=4;check(!steam_human_residence_result_skin(broken,id,o),"96退休后不能再绘制");
 }
+void mastery_skin_checks(Checks &c) {
+    SteamHumanMasteryInput in{0,1,0,4,17,0,4,20,"大师条件","职业条件"};
+    SteamHumanOverviewOptions o;o.title_widths=std::array<int,2>{48,48};
+    o.mastery_widths={24,12,36};o.mastery_button_widths={90,24};
+    auto plan=steam_human_mastery_skin(in,o);c(bool(plan),"70纯皮肤显式主副钟");
+    c(plan->soft_labels==std::array<int,2>{0,0},"70源Init表raw70零数组，不能借旧人物页返回标签");
+    const auto images=parts<SteamHumanImage>(*plan);const auto actors=parts<SteamHumanPortrait>(*plan);
+    c(std::any_of(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::president&&v.frame==7;})&&
+      std::any_of(images.begin(),images.end(),[](const auto &v){return v.asset==SteamHumanAsset::secretary&&v.frame==6;}),
+      "70大臣方向1帧7/秘书方向0帧6沿主钟4，不用副钟17");
+    c(actors.size()==1&&actors[0].position==std::array<int,2>{120,131}&&actors[0].actor.body.sprite==9&&
+      actors[0].actor.body.frame==0&&!actors[0].actor.weapon,"70副钟17跳8、方向1喜悦SEB9且无武器");
+    for(const auto sample:std::array<std::array<int,3>,4>{{{9,1,139},{10,9,139},{11,9,137},{26,1,139}}}) {
+        in.secondary=sample[0];const auto value=steam_human_mastery_skin(in,o);const auto person=parts<SteamHumanPortrait>(*value);
+        c(person[0].position==std::array<int,2>{120,sample[2]}&&person[0].actor.body.sprite==sample[1],
+          "70副钟26跳跃起点和回绕，固定独立脚点oracle");
+    }
+    for(int phase:{0,1})for(const auto sample:std::array<std::array<int,2>,3>{{{5,0},{6,1},{40,48}}}) {
+        in.phase=phase;in.counter=sample[0];plan=steam_human_mastery_skin(in,o);
+        const auto clips=parts<SteamHumanClip>(*plan);const auto touches=parts<SteamStartupTouch>(*plan);
+        c(clips.size()==2&&clips[0].rectangle==std::array<int,4>{0,158,240,sample[1]}&&
+          clips[1].kind==SteamHumanClipKind::pop&&touches.size()==1&&touches[0].component==2,
+          "70两说明段同5..40裁剪且配对退休，未借第三段按钮");
+    }
+    for(const auto sample:std::array<std::array<int,2>,4>{{{39,0},{50,1},{64,1},{65,0}}}) {
+        in.counter=sample[0];plan=steam_human_mastery_skin(in,o);const auto imgs=parts<SteamHumanImage>(*plan);
+        c(std::count_if(imgs.begin(),imgs.end(),[](const auto &v){return v.asset==SteamHumanAsset::continue_cursor;})==sample[1],
+          "70箭头需主钟至少40且模25小于15");
+    }
+    in.phase=1;in.counter=40;in.bonus=4;in.value=20;plan=steam_human_mastery_skin(in,o);
+    const auto numbers=parts<SteamFacilityNumber>(*plan);
+    c(numbers.size()==1&&numbers[0].position==std::array<int,2>{114,183}&&numbers[0].value==20,
+      "70非JP数值串实测12×10/6，名字24/后缀36组合宽104，数锚114");
+    auto jp=o;jp.japanese=true;jp.mastery_widths[1].reset();plan=steam_human_mastery_skin(in,jp);
+    c(plan&&parts<SteamFacilityNumber>(*plan)[0].position==std::array<int,2>{91,193},
+      "70JP用GetFig两位20+2+36宽58，不读取非JP数值测宽");
+    in.bonus=13;auto magic=o;magic.mastery_widths[1].reset();magic.mastery_widths[2].reset();
+    plan=steam_human_mastery_skin(in,magic);c(bool(plan),"70魔法奖励不要求未消费数字/后缀宽");
+    const auto magic_images=parts<SteamHumanImage>(*plan);
+    c(std::any_of(magic_images.begin(),magic_images.end(),[](const auto &v){return v.asset==SteamHumanAsset::magic_icon&&
+        v.crop==std::optional<std::array<int,4>>{{64,0,16,16}};}),"70恢复魔法type14映index4，不能直接index3");
+    in.phase=2;in.selection=1;plan=steam_human_mastery_skin(in,o);const auto touches=parts<SteamStartupTouch>(*plan);
+    c(touches.size()==2&&touches[0].component==3&&touches[1].component==3&&
+      touches[0].rectangle==std::optional<std::array<int,4>>{{22,154,116,56}}&&
+      touches[1].rectangle==std::optional<std::array<int,4>>{{120,154,80,56}}&&parts<SteamHumanClip>(*plan).empty(),
+      "70phase2字宽90夹60+16与24+16独立触区，没有Touch2或底部clip");
+    auto bad=in;bad.phase=3;c(!steam_human_mastery_skin(bad,o),"70坏阶段拒绝");
+    bad=in;bad.bonus=14;c(!steam_human_mastery_skin(bad,o),"70魔法越界拒绝");
+    auto missing=o;missing.mastery_button_widths[1].reset();c(!steam_human_mastery_skin(in,missing),"70真实二选按钮缺测宽拒绝");
+    auto s=test_support::mastery_fixture();
+    const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[](const auto &p){return p.legacy_page==70&&p.lifecycle!=4;});
+    c(page!=s.scripts.pages.end()&&page->lifecycle==2,"70真实成长producer及框架已激活");const auto id=page->id;
+    const auto digest=startup_world_state_digest(s);const auto draws=s.scene.random.draws();
+    plan=steam_human_mastery_skin(s,id,o);c(bool(plan),"70严格Owner桥读当前职业奖励及保存双钟");
+    for(int repeat=0;repeat<3;++repeat)c(steam_human_mastery_skin(s,id,o)->operations.size()==plan->operations.size()&&
+        startup_world_state_digest(s)==digest&&s.scene.random.draws()==draws,"70查询不发大师奖励/随机/输出，规模稳定");
+    auto broken=s;broken.page_secondary_counters.erase(id);c(!steam_human_mastery_skin(broken,id,o),"70缺副钟不代用主钟");
+    broken=s;broken.page_human_bindings.erase(id);c(!steam_human_mastery_skin(broken,id,o),"70缺真实人物绑定不猜giver");
+    broken=s;broken.human_page_selections.erase(id);c(!steam_human_mastery_skin(broken,id,o),"70缺选择字段拒绝");
+    broken=s;broken.human_page_scroll[id]=0;c(!steam_human_mastery_skin(broken,id,o),"70错页孤立滚动载荷拒绝");
+}
 }
 // 复用既有visuals执行文件；本层只验表现边界，不重测人物成长/战斗/职业业务。
 int check_steam_human_skin(const std::filesystem::path &source_root) {
@@ -1292,5 +1353,6 @@ int check_steam_human_skin(const std::filesystem::path &source_root) {
     residence_result_checks(check,source_root);
     award_skin_checks(check,source_root);effort_skin_checks(check);
     award_result_checks(check,source_root);
+    mastery_skin_checks(check);
     return check.count;
 }

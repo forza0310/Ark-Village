@@ -75,6 +75,20 @@ HEIGHT来自Font.cctor RVA77EDD0的实际InitializeArray调用（1077EE60，slot
 
 整数普通路径最终是`trunc(StringWidthF(...) + 0.01)`，不是四舍五入。null分支、TextLayout分支与原生纹理分支不能合并成一个简单字宽公式。`CalcSize`与插件内部字形选择／kerning／fallback仍是外部消费者边界；本批未执行它们生成“实测中文宽度”。
 
+### TextLayout渐显块的测宽
+
+2026-10-13补核实例`TextLayout.StringWidth` RVA7CCB10（400字节）、`TextBlock.StringWidth(len,out width)` RVA7DB0D0（880字节）及其直接清理helper7D0660；这段消费**已经排好的块**，不认证`_makeTextBlocks`完整标签解析、换行或字号适配。
+
+实例入口将`pos_`有符号向零除1000作为本次字符预算，按`textBlocks_`原序逐块消费，预算≤0即停。千分单位另由`Flush` RVA7CAC70的VA107CAC7B直接`length_×1000→pos_`交叉。首横坐标初值为NaN（float位型0x7FC00000），遇首块才写其`x_`；每块返回已消费数量，从预算扣除，同时把末端写成该块`x_+width`。结束时有有效末端则返回`trunc(float32(末端−首横坐标))`，无消费仍是NaN时返回0（107CCC6E–8F）。**不是各行最大宽或全部块宽相加**；函数内没有最大值比较，也不调用Frame／Flush推进渐显。完整布局`textWidth_`另由GetTextWidth／GetTextWidthF读取，不能混用实例渐显测宽。
+
+块入口先把输出宽度置0，分支顺序为图标、按钮、普通文本：
+
+- 普通文本把消耗数量取为`min(len,String.Length)`；预算0直接返回0，否则不足整串时测`Substring(0,len)`，足够时测整串，调用本块Font.StringWidth RVA77E930。这里是C#字符串的UTF-16代码单元，不证明按Unicode码点或用户可见字素截取；负预算不在本函数夹成0，外层正常调用资格才保证预算>0。
+- 按钮块在此固定输出宽12、消耗1（107DB255–25B）；不是标签串长度或实际按钮字宽。这是测宽分支，不据此改按钮绘制尺寸。
+- 图标预算0消耗0，否则消耗1。先按`pictographParam_[0]`查已注册Pictograph；找不到或静态pictographVisible=false时宽仍为0，不补Font字宽。默认帧取Pictograph.Frame，第二参数非空时若为精确字面`∞`（槽110EF444）则用−1，否则交Int32.Parse。取得Seb.GetSprites(frame) RVA7C2A80后，按记录原序对`record[1]≥0`的项把输出宽覆写为`record[4]`（107DB393–3A5），因此本局部是最后符合项的值，不求各层最大包围盒；Margin／Scale／Transform没有在本测宽方法消费。SEB展开及图标实际绘制仍由各自消费者负责。
+
+测宽存在原共享副作用：块入口VA107DB18E把`Language.UnicodeToChanakyaEnable`静态+C8写false；正常两收尾及所核异常续体均调用helper7D0660–06B9，将同字段写true。这里**未保存进入前布尔值**，不能实现成“始终无修改”或擅称恢复原值；异常清理后仍重新抛出，不吞解析／空引用错误。类型槽110FB03C独立解码为Language（TypeDef由本样本registration解析），与dump的+C8字段一致，不靠共享setter名字认证。Font、插件字形度量及标签生产者边界保持；本批不运行原游戏、不导出字体、不新增核对脚本或过程指纹。
+
 ## 仍需闭合及产品使用边界
 
 已核层级是资源查找顺序、GUIStyle对象切换资格、本地化公式和两种测宽调用链。仍缺当前语言真实返回值、Unity空font具体回退、局部开关／scale／offset完整设置来源、TextLayout完整标签处理及实际字形baseline。[文字后端](STEAM_FONT_BACKEND.md)已有开关资格及栈恢复，[普通DrawString](STEAM_FONT_DRAW.md)已核锚点／字号补偿／矩阵→clip→GUI位置；这些不代替当前运行字体对象和字形度量。

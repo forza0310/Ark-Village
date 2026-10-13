@@ -1,6 +1,8 @@
 #include "dungeon_village_prototype/steam_town_progress_skin.hpp"
 #include "dungeon_village_prototype/startup_world_runtime.hpp"
 #include "dungeon_village_prototype/startup_world_persistence.hpp"
+#include "dungeon_village_prototype/startup_world_human.hpp"
+#include "dungeon_village_prototype/startup_world_commerce.hpp"
 #include "support/world_fixture.hpp"
 #include <algorithm>
 #include <filesystem>
@@ -109,6 +111,77 @@ void owner(Checks &c) {
     bad=s;bad.scripts.pages.back().lifecycle=4;c(!steam_town_conditions_skin(bad,id,o),"退休页不再保持绘制引用");
     bad=s;bad.page_phases[id]=5;c(!steam_town_conditions_skin(bad,id,o),"越界行不以map.at异常代替显式拒绝");
 }
+void source_gift_pages(Checks &c) {
+    const auto initial=test_support::world_fixture();
+    const auto giver=startup_world_human_details(initial,1);c(bool(giver),"94有真实giver定义");
+    SteamTownGiftInput in;in.raw_page=93;in.kind=3;in.value=0;in.mapchip=0;
+    in.name=initial.rules->facilities.front().name;in.frame=50;in.options=options();
+    in.options.bubble_widths[3].reset();
+    auto plan=steam_town_gift_skin(in);c(bool(plan),"93设施领取没有giver/气泡字宽依赖");
+    c(parts<SteamHumanPortrait>(*plan).empty()&&std::none_of(plan->operations.begin(),plan->operations.end(),[](const auto &op){
+        const auto *v=std::get_if<SteamTownText>(&op);return v&&v->value=="请";
+    }),"93不同于94/95，不画175赠送演员或请气泡");
+    const auto purchase_words=parts<SteamTownText>(*plan);
+    c(purchase_words.back().value=="可以建设了。"&&purchase_words.back().rectangle[1]==192,"93建设开放三行文本保持末行192");
+    const auto career=startup_title_actor_skin(giver->profession,giver->sex,-1,0,2,false);c(bool(career),"94giver皮肤源");
+    for(int reward:{3,4,5,6,7,8}) {
+        in.raw_page=94;in.kind=reward;in.options=options();
+        in.giver=SteamTownGiftInput::Giver{giver->profession,giver->sex,giver->name};in.reward_icon.clear();
+        if(reward==4) {in.value=0;in.sex=0;in.name=initial.rules->jobs.front().name;}
+        else if(reward>=5&&reward<=7) {
+            const int kind=reward-4;const auto d=std::find_if(initial.rules->equipment.begin(),initial.rules->equipment.end(),
+                [=](const auto &v){return v.shop.kind==kind;});c(d!=initial.rules->equipment.end(),"94装备独立namespace源");
+            in.value=d->shop.id;in.name=d->name;in.reward_icon=*startup_world_equipment_icon_draws(initial,kind,in.value);
+        } else if(reward==8) {
+            const auto &d=initial.rules->items.front();in.value=d.identity;in.name=d.name;
+            in.reward_icon=*startup_world_item_icon_draws(initial,in.value);
+        }
+        plan=steam_town_gift_skin(in);c(bool(plan),"94六种已维护通知纯计划");
+        const auto people=parts<SteamHumanPortrait>(*plan);
+        c(!people.empty()&&people.back().position==std::array<int,2>{175,145}&&
+          people.back().actor.body.image==career->body.image&&!people.back().actor.weapon,
+          "94原m当前职业/性别赠送演员，无武器，不套95special演员");
+        const auto words=parts<SteamTownText>(*plan);
+        c(std::any_of(words.begin(),words.end(),[=](const auto &v){return v.value==(reward==4?"注目!":"请");}),
+          "94职业独立注目句，其余通知请句");
+        if(reward>=5) {
+            const auto images=parts<SteamHumanImage>(*plan);const auto wanted=reward==5?SteamHumanAsset::weapon_icon:
+                reward==6?SteamHumanAsset::armour_icon:reward==7?SteamHumanAsset::accessory_icon:SteamHumanAsset::item_icon;
+            c(std::any_of(images.begin(),images.end(),[=](const auto &v){return v.asset==wanted;}),
+              "94四奖励图标沿武器/防具/饰品/道具namespace，不按共享定义ID猜裁片");
+        }
+        auto broken=in;broken.giver.reset();c(!steam_town_gift_skin(broken),"94缺giver不能补95演员");
+        if(reward==4) {
+            broken=in;broken.options.bubble_widths[3].reset();c(!steam_town_gift_skin(broken),"94显示注目气泡必须测本句");
+            broken.frame=39;c(bool(steam_town_gift_skin(broken)),"94未到40不依赖尚未显示的气泡测宽");
+        }
+        auto s=test_support::page_fixture(94);const auto id=s.scripts.pages.back().id;
+        auto &page=s.scripts.pages.back();page.lifecycle=0;page.legacy_r=reward;page.legacy_s=in.value;page.legacy_t=in.sex;
+        s.page_human_bindings[id]=1;
+        c(initialize_startup_world_gift_notice_pages(s),"94真实通知Init，仅安装主钟");
+        s.scripts.pages.back().lifecycle=2;s.page_counters[id]=50;
+        const auto digest=startup_world_state_digest(s);const auto draws=s.scene.random.draws();
+        const auto bound=steam_town_gift_skin(s,id,in.options);c(bool(bound),"94严格Owner桥六类型");
+        c(startup_world_state_digest(s)==digest&&s.scene.random.draws()==draws,"94投影不领取/解锁/改库存或随机");
+        auto bad=s;bad.page_human_bindings.erase(id);c(!steam_town_gift_skin(bad,id,in.options),"94缺冻结giver绑定拒绝");
+        bad=s;bad.page_counters.erase(id);c(!steam_town_gift_skin(bad,id,in.options),"94缺main不能临时初始化");
+        bad=s;bad.page_secondary_counters[id]=0;c(!steam_town_gift_skin(bad,id,in.options),"94误挂其它结果页副钟拒绝");
+        if(reward==8)for(int repeat=0;repeat<3;++repeat)c(steam_town_gift_skin(s,id,in.options)->operations.size()==bound->operations.size()&&
+            startup_world_state_digest(s)==digest,"94重复计划输出规模稳定，不消费通知");
+    }
+    auto purchase=test_support::page_fixture(93);const auto id=purchase.scripts.pages.back().id;
+    const auto definition=std::find_if(purchase.rules->facilities.begin(),purchase.rules->facilities.end(),
+        [&](const auto &d){const auto status=purchase.facility_presence.find(d.id);return status!=purchase.facility_presence.end()&&status->second==0;});
+    c(definition!=purchase.rules->facilities.end(),"93未领取设施源");
+    purchase.scripts.pages.back().lifecycle=0;
+    purchase.scripts.pages.back().legacy_r=3;purchase.scripts.pages.back().legacy_s=definition->id;
+    c(initialize_startup_world_commerce_pages(purchase),"93真实commerce Init安装唯一领取载荷");
+    purchase.scripts.pages.back().lifecycle=2;purchase.page_counters[id]=50;
+    const auto digest=startup_world_state_digest(purchase);const auto bound=steam_town_gift_skin(purchase,id,options());
+    c(bound&&parts<SteamHumanPortrait>(*bound).empty()&&startup_world_state_digest(purchase)==digest,
+      "93实际Owner领取前只读桥不解锁设施或造giver");
+    purchase.commerce_page_data.erase(id);c(!steam_town_gift_skin(purchase,id,options()),"93已初始化缺领取payload拒绝");
+}
 void resources(Checks &c,const std::filesystem::path &source_root) {
     const auto root=source_root.parent_path();
     for(auto asset:{SteamTownAsset::star,SteamTownAsset::rank_star,SteamTownAsset::rank_frame,
@@ -122,5 +195,5 @@ void resources(Checks &c,const std::filesystem::path &source_root) {
 }
 // 扩展现有visuals套件；规则、资金、随机消费和确认时点仍由原pages/gift套件负责。
 int check_steam_town_progress_skin(const std::filesystem::path &source_root) {
-    Checks c;conditions(c);celebration(c);gifts(c);owner(c);resources(c,source_root);return c.count;
+    Checks c;conditions(c);celebration(c);gifts(c);owner(c);source_gift_pages(c);resources(c,source_root);return c.count;
 }

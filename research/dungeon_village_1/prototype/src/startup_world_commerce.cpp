@@ -124,6 +124,7 @@ bool payload(const State &s, const Page &p) {
     return true;
 }
 bool initialize(State &s, const Page &p) {
+    if(p.legacy_page==93&&!valid_startup_world_commerce_claim_page(s,p))return false;
     if (s.commerce_pages_initialized.count(p.id))
         return payload(s, p);
     if (!s.rules || !supported(p.legacy_page) ||
@@ -158,6 +159,7 @@ bool initialize(State &s, const Page &p) {
         if (list.empty())
             return event(s, 13) && close(s, p.id);
     }
+    if(p.legacy_page==93)for(auto &page:s.scripts.pages)if(page.id==p.id&&page.lifecycle==0)page.lifecycle=1;
     return payload(s, p);
 }
 void scroll(std::array<int, 6> &v, int count, int rows) {
@@ -192,6 +194,16 @@ bool cash(State &s, int amount, bool sale) {
     return true;
 }
 } // namespace
+
+bool valid_startup_world_commerce_claim_page(const State &s,const Page &p) {
+    if(!s.rules||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=93||p.lifecycle<0||p.lifecycle>4||
+       p.legacy_r!=3||!facility_state(s,p.legacy_s)||s.page_phases.count(p.id)||
+       s.page_secondary_counters.count(p.id)||s.commerce_page_lists.count(p.id))return false;
+    if(!s.commerce_pages_initialized.count(p.id))return p.lifecycle==0&&
+        !s.commerce_page_data.count(p.id)&&!s.page_counters.count(p.id)&&s.facility_presence.at(p.legacy_s)==0;
+    const auto count=s.page_counters.find(p.id);
+    return p.lifecycle!=0&&count!=s.page_counters.end()&&count->second<std::numeric_limits<int>::max()&&payload(s,p);
+}
 
 Error open_startup_world_commerce(State &s) {
     const auto p = top(s);
@@ -235,6 +247,7 @@ std::optional<StartupCommerceView> inspect_startup_world_commerce_page(const Sta
     const auto p = top(s);
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page || !payload(s, *p))
         return {};
+    if(p->legacy_page==93&&!valid_startup_world_commerce_claim_page(s,*p))return {};
     const auto &v = s.commerce_page_data.at(id);
     StartupCommerceView r{p->legacy_page,         v[0], v[1], v[2], v[3], v[4], v[5],
                           s.page_counters.at(id), {}};
@@ -263,7 +276,7 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
         s = std::move(next);
         return Error::none;
     }
-    if (!payload(s, *p))
+    if (!payload(s, *p)||(p->legacy_page==93&&!valid_startup_world_commerce_claim_page(s,*p)))
         return Error::missing_source;
     const int raw = p->legacy_page;
     auto next = s;
@@ -410,6 +423,7 @@ std::optional<State> update_startup_world_commerce_page(const State &s, std::uin
         if (counter == std::numeric_limits<int>::max())
             return {};
         ++counter;
+        if(original.legacy_page==93)counter%=std::numeric_limits<int>::max();
         if (original.legacy_page == 93 && counter == 1)
             next.sound_requests.push_back({StartupAudioOperation::jingle, 5});
         auto &feedback = next.commerce_page_data.at(id)[5];

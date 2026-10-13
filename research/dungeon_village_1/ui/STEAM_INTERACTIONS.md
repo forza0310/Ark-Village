@@ -46,6 +46,25 @@
 真实保存的共享改良和库存差异已由[只读审计](../work/window-save-analysis/ANALYSIS.md)交叉；
 两个保存之间有自然经营，不能把全部差异归给这一操作。人物“好满足！”和设施“升级↑”不是已识别的序列化 `p` 冒泡。
 
+## 游戏设置与标题平台按钮
+
+2026-10-14按本页固定DLL／metadata身份重新核对调用链。**游戏内系统菜单tag21确实打开SubForm raw12**：Update在VA`103276CD`比较21，`10327858–10327874`创建对象并传类型12，公共`10328228–10328248`依次构造SubForm、Push、退休菜单。这不是只有`TYPE_CONFIG=12`声明而没有入口的旧页；四项非日文目录及返回SaveSystem的边界见[设置12](PAGES.md#设置12值所属与返回边界)。本次未实际打开或修改设置。
+
+标题左上此前按外观统称“设置”的按钮应标为**Steam控制器绑定入口**。`TitleForm._draw`在`102108F7–1021095A`检查标题为顶层且state0，再以`(20,20,id=2)`调用`SteamInputManager.DrawButton`；helper只在`Platforms.x86=4`注册。delegate槽`110EE040`从metadata原字节解析为`<DrawButton>b__16_0`，`107B94BC–107B9565`只在CLICK5且`Config.USE_STEAM`、`initialized_`成立时，以当前controllerHandle调用`Steamworks.SteamInput.ShowBindingPanel`。这条链不创建raw12，不能用标题图标证明游戏画质／音量页已观察；是否成功显示Steam面板仍需对应运行环境，未动态验证。
+
+相邻键盘按钮在`1021098D`以`(21,51,id=2)`调用`DrawKeyboardButton`，delegate槽`110EE06C`对应`<DrawKeyboardButton>b__18_0`；CLICK5在`107B9744–107B9796`拼接`https://kairosoft.net/steam/?_lh=`、当前语言码及`#controlmap`并调用`Canvas.OpenBrowser`，属于外部操作说明链接。两个helper另外含`Config.DEBUG`限定的TrophyManagementForm旁支，不能当作普通设置入口。本次只读解码，不点击平台面板、外链或调试分支；图标资源身份、OS投递和平台实际行为另验。
+
+raw12同身份静态子批进一步核定以下生命周期；字段含义及四项数组沿[设置12](PAGES.md#设置12值所属与返回边界)，不由按钮外观补齐平台功能。
+
+| 环节 | Steam机器码所证及维护边界 |
+| --- | --- |
+| Init | `10312755–10312758`将类型12送至`10314B3B–10314B77`，只把进入时世界P.int[12]复制到页字段`+B8`；通用`10312616`清主钟。没有建立可取消的完整设置副本。 |
+| Draw | `1035321A–1035321D`分派raw12；`10355DCA–10355E37`先Jp、再En，分别调用`DrawConfig_jp`／`DrawConfig_en`。后者`1030601F–1030603E`实参窗宽210、高186，按四项CONFIG_EN目录绘制；本次不把语言helper名直接等同当前中文平台的实际语言配置。两helper末尾的键盘按钮仍走前述外部说明入口，不是第五项游戏设置。 |
+| 高速准入 | 非日文`1030673E–10306778`在速度行、选项0、J.int[9]==0时跳过该项Touch6注册；JP对应`103078FF–1030793F`。文字仍绘制，灰色路径分别在`103065F8–1030661A`／`103077C3–103077E5`，普通行选择热区也仍保留。选项值经过REVERSE后才交setter；键盘禁改整速度行、绘制只禁高速选项、基类setter本身没有相同门控，是三个不同层次，不能相互替代。 |
+| Update与返回 | 通用`10321B63–10321B84`推进主副钟，raw12在`1032692E–1032693D`对主钟再加1模20。软标签2在`10326D03`／`10327139`进入返回；非日文依次SaveSystem、ResetOffscreen、Pop（`10326D28/49/5B`），JP保存后到公共Pop。捕获异常的路径也可进入`10326E07–10326E0A`关闭，未回滚即时设置；不把该原行为当作维护事务保证。 |
+
+`AppData.SaveSystem`在`102640DC–10264119`打开RecordStore0并写record0，取`sysSave_`（`+40`），没有顺带序列化世界P。下一步可以据已核目录、触摸注册与值映射实现独立只读计划；完整设置消费者仍需确定系统音量／通关资格的跨局权威字段、画质刷新与音频输出、返回写失败策略及快照归属。原字体、实际OS输入、平台初始值及中文语言配置未在本批动态认证；不扩展为平台Config／Option窗口已实现。
+
 ## 后续业务重载观察
 
 用户交回[第二次窗口实验](../work/window-restore-observation/20261007-120056-business-reload-p/RESULT.md)，

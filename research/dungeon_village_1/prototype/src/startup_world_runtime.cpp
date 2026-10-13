@@ -965,6 +965,12 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::input_menu_page(
     std::uint64_t page, const StartupWorldMenuInput &input) {
     return input_startup_world_menu_page(state_, page, input);
 }
+StartupWorldTaskPageResult StartupWorldRuntimeSession::input_task_page(std::uint64_t page,const StartupTaskPageInput &input) {
+    return input_startup_world_runtime_task_page(state_,page,input);
+}
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_task_tracking_scene(const StartupTaskPageInput &input) {
+    return input_startup_world_runtime_task_tracking_scene(state_,input);
+}
 StartupWorldTaskPageResult StartupWorldRuntimeSession::act_task_page(std::uint64_t page,
                                                                      StartupWorldTaskAction action,
                                                                      int selection) {

@@ -373,7 +373,7 @@ raw4／7／9／10位置为`xChild=xParent+68+(En?28:0)`、`yChild=yParent+28×�
 
 **NEW的真实来源。** raw3局部`10309543–1030986C`：建设读Init刷新后的三类aY任一；冒险为任务实例j任一且没有选中任务，否则装备`p!=0&&r`画GET；村办为`flag16&&(商品未阅||设施未阅)`或可举办活动NEW；情报为人物`p!=0&&r`；开发仅flag2。raw3 Init只刷新建设aY／定义P，不清r；21选中定义才先清该定义r再刷新P／aY，商会O另行维护。任务j构造置true且原档保存，22确认／返回／追踪三个出口才清，不能以任务数量、瞬态created_task或入页动作代替。原商会未阅设施过滤p!=2与维护已批准p0策略分别登记。
 
-维护任务实例现持`newly_available`，`startup_world_has_new_tasks`按当前task_order查询；raw22确认／取消在候选上清**操作当时完整task_order**，不只清入页冻结X，不改不在名单中的保留历史对象，后续拒绝不提交清标志。22软追踪出口仍未接。建设`facility_build_present`与`build_category_new`初始全false，由`refresh_startup_world_build_notices`原子刷新：所有真实设施实例先标P，再由开放非零、flag4、kind2／3且无P的定义按tab置三类aY；住宅／道路不贡献类别NEW。raw21普通及道路定义选择先清r再刷新，放置／撤除不自动刷新，陈旧P／aY合法；真实raw3 Init现也调用同一刷新。`steam_main_menu_notices`只读这些字段及其它已核NEW资格供局部皮肤使用，不隐式刷新缓存。字段保存边界见[存取模块](../prototype/PERSISTENCE.md)，NEW批已验，真实菜单与窗口接线的本批范围见[当前验证](../VERIFICATION.md)。
+维护任务实例现持`newly_available`，`startup_world_has_new_tasks`按当前task_order查询；raw22确认／取消在候选上清**操作当时完整task_order**，不只清入页冻结X，不改不在名单中的保留历史对象，后续拒绝不提交清标志。22软追踪按下述[Steam任务合同](#steam任务选择与募集22–24)独立重抄当前名单，并转场景5→4；不把查看位置当作真正出发。建设`facility_build_present`与`build_category_new`初始全false，由`refresh_startup_world_build_notices`原子刷新：所有真实设施实例先标P，再由开放非零、flag4、kind2／3且无P的定义按tab置三类aY；住宅／道路不贡献类别NEW。raw21普通及道路定义选择先清r再刷新，放置／撤除不自动刷新，陈旧P／aY合法；真实raw3 Init现也调用同一刷新。`steam_main_menu_notices`只读这些字段及其它已核NEW资格供局部皮肤使用，不隐式刷新缓存。字段保存边界见[存取模块](../prototype/PERSISTENCE.md)，NEW批已验，真实菜单与窗口接线的本批范围见[当前验证](../VERIFICATION.md)。
 
 **期间显示与真正处理分开。** APK `c/n.l:4589`及Steam `IsOpenMPotDevelWindow`（RVA `2E0260`）取日期差与n1较小值，整数映射到百分比后逐一检查n7..10的整数产出，首个正值才返回期间；全0返回0，没有真正process的满容量补1。[只读查询](../prototype/include/dungeon_village_prototype/startup_world_magic_pot.hpp)复用Owner的13槽和日期，不写壶或计数。期间P初0、英语28、JP覆盖10；依次画common2/image0于`(dx+69+P,Y+4)`、SEB15期间数字于`(dx+104+P,Y+10)`、SEB76/frame5斜线于`(dx+112+P,Y+10)`、SEB15的**n1分母**于`(dx+128+P,Y+10)`，数字padding0／anchor2。SEB15是Steam number08/image105，不是SEB12的number05；分母不是壶容量。
 
@@ -554,6 +554,23 @@ Update `b/g.java:11468–11484`先以确认或右重复输入向后循环，再�
   [更新4879](../work/decompiled/sources/b/g.java:4879)首次音效5、满70确认写aq10/关闭，早确认不快进；
   [绘制3262](../work/decompiled/sources/b/g.java:3262)标题“活动”、60出现问候、70出现页脚。
   解锁定义和真正到访实例分开，不在画面显示时创建人物。
+
+
+### Steam任务选择与募集22–24
+
+Steam2.56静态来源：22为`SubForm._draw` VA10353269–10353798，23／24为`_draw1_1` VA10332B89–10332D59／10332116–10332B88；Update22为1032572B–10325999、23为10325566–1032572A。固定APK的对应准备链见上节，维护[有序计划](../prototype/include/dungeon_village_prototype/steam_task_selection_skin.hpp)只投影Owner，不重抽报名、不付款。原字体、完整TextLayout、共享人物scratch及OS输入动态仍待证。
+
+| 页 | 输入／事务 | 有序绘制及素材 |
+| --- | --- | --- |
+| 22目录 | 上→下→修五行窗→确认优先取消、再软6查看位置；确认／取消清操作当时全部任务NEW，确认开23，不提前扣费。行Touch11无marker，同次UP可选中并确认 | 220×168窗，内容框(17,74)-(219,184)；姓名(30,69)、费用(185,69)，行y97+19×slot；选框(23,y−2,191,16)，Touch(10,y,230,16)。NEW图147；非JP名字9号字／(29,y+2)，金额右214。kind0显示common6／SEB27宝箱frame2及真实宝箱等级，不能标成怪物数；原111高滑条保留短尾 |
+| 23募集提示 | 左右依次切选择，但原确认不读此选择；确认优先取消，实际业务检查费用／报名资格，成功才开24 | 222×170窗及event0背景；蓝色费用标签＋可负担15／不足19数字，底部是单个“募集冒险者”BTMT确认4/value20，测宽夹200再加16；取消软2独立，不画两按钮 |
+| 24募集演出 | 自动原Update与held确认，不接受取消；持有原双钟、X各人计数／发言、Y肖像队列和as显示人数；不是按X.size重新计数 | 背景→clip(30,67,180,80)→X中age0..129人物与20..54冻结发言→背景裁片(0,38,19,22)@30,105→恢复clip→Y首人@48,183及姓名／职业Lv／勋章→as人数→无矩形Touch5/value20；没有进度条 |
+
+任务名取原`QuestData.GetName(false)` RVA21D6B0→21D6D0（APK a/m:67–76）：flags2优先，关联怪物victories>0时追加(v+1)；否则flags4且完成次数>0时追加`+min(次数×2,10)`。目录费用与NEW读取时点独立，不因截屏冻结全部定义。24人物用当前职业／性别／主武器，三段位置按各自age0→80→110→130插值，Y肖像朝向1；职业等级10画MAX，勋章少于5逐枚，否则乘号数字。event_backNormal180×80、treasure00／SEB、fukidashi_back／SEB、medal、wnd_lv／max／new均复用已出版同字节资源；不复制新图集。
+
+22的软6在一个候选中先RefreshNewQuest，再将**当前task_order**抄入scene自己的目录，保留22的当前行号（越新目录则0），激活主场景5；不能沿22入页冻结名单绑定任务。Steam GameForm mode5 VA10303C78–1030407C读取qsite投影(+30,−5)，速度按距离10..150插值5..26并夹边，严格distance<step才将current／previous镜头一并对齐并转4，否则两镜头各加同速度；维护地图q基准已含+15，最终Y为(y−x)×15+10。mode4从10304081起先左→右、最终行变则转5，仍继续同轮确认；够钱开23、不足事件11，取消／软6返回0并重开22。未设置active_task，28满96真正出发仍是另一链。特殊Camera.subQuest入口未维护，不用此主路径宣称该入口完成。
+
+22选择／首行和23选择保存于现page maps；scene目录／选择有独立sceneID键，关闭22只退休22键，镜头移动中恢复不重抄目录。24 portrait_timer允许原held造成的−1，entries负计数是合法入场延迟；28确有独立副钟，不能因旧白名单遗漏而禁止其恢复。具体边界见[存取模块](../prototype/PERSISTENCE.md#任务目录与查看位置的载荷)。本批验收以[验证入口](../VERIFICATION.md)为准，不将维护窗口提升为原Steam动态。
 
 ## 绘图坐标与资源链
 

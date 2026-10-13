@@ -143,6 +143,8 @@ class StartupApplication {
     std::string input_magic_pot_page(std::uint64_t page, const StartupMagicPotInput &input);
     std::string open_task_menu();
     std::string open_task_control_menu();
+    StartupApplicationTaskResult input_task_page(std::uint64_t page,const StartupTaskPageInput &input);
+    std::string input_task_tracking_scene(const StartupTaskPageInput &input);
     StartupApplicationTaskResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                                int selection = 0);
     std::string open_human_page(int human);

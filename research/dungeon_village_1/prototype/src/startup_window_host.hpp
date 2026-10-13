@@ -235,6 +235,12 @@ class StartupWindowHost {
     StartupBuildResult act_residence_page(std::uint64_t page, int human, bool cancel = false) {
         return command([&](auto &owner) { return owner.act_residence_page(page, human, cancel); });
     }
+    StartupWorldTaskPageResult input_task_page(std::uint64_t page,const StartupTaskPageInput &input) {
+        return command([&](auto &owner) {return owner.input_task_page(page,input);});
+    }
+    StartupWorldRuntimeError input_task_tracking_scene(const StartupTaskPageInput &input) {
+        return command([&](auto &owner) {return owner.input_task_tracking_scene(input);});
+    }
     StartupWorldTaskPageResult act_task_page(std::uint64_t page, StartupWorldTaskAction action, int selection = 0) {
         return command([&](auto &owner) { return owner.act_task_page(page, action, selection); });
     }

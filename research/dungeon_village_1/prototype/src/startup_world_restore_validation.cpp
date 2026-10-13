@@ -11,6 +11,7 @@
 #include "dungeon_village_prototype/startup_world_manual.hpp"
 #include "dungeon_village_prototype/startup_world_human.hpp"
 #include "dungeon_village_prototype/startup_world_village_activity.hpp"
+#include "dungeon_village_prototype/startup_world_runtime_tasks.hpp"
 #include "dungeon_village_reference/actor_control.hpp"
 #include "dungeon_village_reference/world_perception.hpp"
 
@@ -720,12 +721,18 @@ struct Validation {
             if (!counter(n))
                 return fail("page: 计数非法");
         for (const auto &[id, n] : s.page_secondary_counters)
-            if (!counter(n)||!page_kind(id,{24,44,50,81,82})||
+            if (!counter(n)||!page_kind(id,{22,24,28,44,50,81,82})||
                 (page_kind(id,{82})&&(!s.facility_catalog_pages_initialized.count(id)||n==std::numeric_limits<int>::max())))
                 return fail("page: 独立计数非法");
         for (const auto &[id, n] : s.page_phases)
             if (n < 0)
                 return fail("page: 阶段非法");
+        for (const auto &[id, list] : s.task_page_lists) {
+            (void)list;
+            const auto owner = page(id);
+            if (!owner || (owner->kind != ref::WorldScriptPageKind::scene && !page_kind(id,{22})))
+                return fail("task page: 目录只能属于22或唯一追踪scene");
+        }
         for (const auto &[id, h] : s.page_human_bindings)
             if (!human(h))
                 return fail("page: 人物定义悬空");
@@ -1027,6 +1034,8 @@ struct Validation {
         }
         if (scenes != 1 || !page_payload_keys())
             return scenes != 1 ? fail("page: 必须有唯一主场景") : false;
+        if (!valid_startup_world_runtime_task_tracking_scene(s))
+            return fail("task scene: 追踪名单/选择/目标载荷非法");
         for (const auto &p : s.scripts.pages) {
             if (p.kind == ref::WorldScriptPageKind::raw_page &&
                 p.legacy_page == 13 && !valid_startup_world_manual_page(s,p.id))
@@ -1056,6 +1065,9 @@ struct Validation {
             if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page >= 41 && p.legacy_page <= 47 &&
                 !valid_startup_world_magic_pot_page(s, p))
                 return fail("magic pot page: 初始化/关闭待退休载荷非法");
+            if (p.kind == ref::WorldScriptPageKind::raw_page && p.legacy_page >= 22 && p.legacy_page <= 28 &&
+                !valid_startup_world_runtime_task_page(s,p))
+                return fail("task page: 目录/选择/独立计数/演出载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;
@@ -1159,35 +1171,6 @@ struct Validation {
                 (!s.facility_page_bindings.count(id) || !s.residence_page_candidates.count(id))) {
                 return fail("residence page: 缺原设施/候选名单");
             }
-            if (raw == 22) {
-                const auto list = get(s.task_page_lists, id);
-                if (!list || !s.page_counters.count(id) ||
-                    !every(*list, [&](auto n) { return s.tasks.count(n) != 0; }))
-                    return fail("task page: 缺任务目录");
-            }
-            if (raw >= 23 && raw <= 28) {
-                if (!p.task_identity || !s.page_counters.count(id))
-                    return fail("task page: 缺任务/计数绑定");
-            }
-            if (raw == 24) {
-                const auto r = get(s.task_recruitment_pages, id);
-                if (!r || !s.page_secondary_counters.count(id) || !counter(r->portrait_timer) ||
-                    r->arrival_extent < 0 || r->completion_tick < 0 || r->displayed_count < 0 ||
-                    !every(
-                        r->portraits, [&](int h) { return human(h); }) ||
-                    !every(
-                        r->entries,
-                        [&](const auto &e) {
-                            return human(e.human) && e.phrase >= -1 && e.phrase < 6;
-                        }))
-                    return fail("task page: 征集动画载荷非法");
-            }
-            if (raw == 27 && !s.task_extra_pages.count(id))
-                return fail("task page: 缺追加人物名单");
-            if (raw == 28 &&
-                (!s.page_phases.count(id) || !s.task_page_predictions.count(id) ||
-                 !s.task_page_acceleration.count(id) || s.page_phases.find(id)->second > 1))
-                return fail("task page: 缺出发载荷");
             if ((raw == 99 || raw == 100) && !p.monster_definition)
                 return fail("task page: 缺演出怪物定义");
             if (s.task_display_initialized.count(id) && !s.page_counters.count(id))

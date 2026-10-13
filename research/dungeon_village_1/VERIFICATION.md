@@ -1,5 +1,15 @@
 # 当前研究验证与历史索引
 
+## Steam任务选择、募集与查看位置 2026-10-13
+
+接`e4dc38a`完成[22–24合同](ui/PAGES.md#steam任务选择与募集22–24)、有序只读计划、整轮输入及Session／Application／窗口接线。22原任务名／费用／NEW／宝箱等级和无marker行、23单募集按钮、24各人入场／冻结发言／肖像／勋章／as人数沿Steam具名消费者；22软6另复制当前名单，场景5双镜头移动→4选择／确认／返回，未借active_task冒充。复用原page maps，无新字段／协议；特殊Camera.subQuest非空入口仍未接，25–33完整皮肤为后继。
+
+单Release动态构建及application／runtime_tasks／runtime／pages／codec_coverage／visuals六项通过39.73秒；修复输入生命周期0／1拒绝、同帧Esc重复投递、24合法portrait_timer−1和28真实副钟后保留原边界。现restore／codec临时入口通过1292项、433轮稳定前缀、347791字节当前文件完整Session／控制器往返，另含22→23→24→25→28、scene5短恢复及同输入／随机／输出一致。未运行自然长跑或他人在途住宅测试。
+
+三个8帧窗口退出0并查看，[拼图](ui/examples/steam-task-selection-recruitment.png)61416字节；原工厂目录及明确age35募集条件不宣称自然解锁或原动态。实际执行修正了无SEB的具名NEW／Lv／MAX整PNG分支，非零帧拒绝，不虚构SEB；原字体／TextLayout与OS另验。原素材无新副本，计划资源边界、clip、三页各8次查询无状态或输出累积已核；两目录按原时点区分，页退休不误删scene缓存，账本历史仍可增长。
+
+清理9个本轮临时源码／EXE、重复截图／日志和AST共37547666字节；单Release1363文件／135834317字节（约130MiB）。静态助手已清理自己的可重建反汇编，未动旧证据／他人工作；本批构建、测试与窗口已收齐，只提交已验research，不推送。外部任务提示放忽略work，后继任务名单／追加与出发正在静态研究。
+
 <a id="steam魔法壶七页2026-10-13"></a>
 ## Steam魔法壶七页 2026-10-13
 

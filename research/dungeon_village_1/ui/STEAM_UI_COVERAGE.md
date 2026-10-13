@@ -61,9 +61,9 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 19 | NO_MYMENU | 事件／系统 | 仅声明；更新／绘制／动态链待逐项 |
 | 20 | SAVE_MENU | 事件／系统 | 三项原序、raw1父子消费、取消清结果、SEB2/3／测宽／触摸窄矩形已核，见[合同](STEAM_SAVE_MENU.md)；已有S040不代替全链动态，维护文件17命令另验 |
 | 21 | BUILD | 建设目录 | Init／Update、绘制／marker／滚动、85定义pattern、资源安装／旋转准入静态已核；完整父栈、最终OS输入／落点后续待证 |
-| 22 | QUEST_SELECT | 任务 | 仅声明；更新／绘制／动态链待逐项 |
-| 23 | QUEST_GATHER | 任务 | 仅声明；更新／绘制／动态链待逐项 |
-| 24 | QUEST_GATHERANIME | 任务 | 仅声明；更新／绘制／动态链待逐项 |
+| 22 | QUEST_SELECT | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：目录／原任务名／NEW／费用／宝箱等级及软6场景5→4已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
+| 23 | QUEST_GATHER | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：单募集确认／费用／取消与整轮方向输入已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
+| 24 | QUEST_GATHERANIME | 任务 | [局部合同](PAGES.md#steam任务选择与募集22–24)：真实X/Y报名演出／冻结发言／肖像／勋章／人数与held已接；静态／维护短测与原窗口动态分开，字体／OS和特殊subQuest待证 |
 | 25 | QUEST_GATHERLIST | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 26 | QUEST_GATHERLIST_SELECTING | 任务 | 仅声明；更新／绘制／动态链待逐项 |
 | 27 | QUEST_GATHERLIST_ADD | 任务 | 仅声明；更新／绘制／动态链待逐项 |

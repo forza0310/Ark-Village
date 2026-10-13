@@ -235,9 +235,16 @@ void configure_startup_world_runtime_scene_adapter(ref::WorldRuntimeAdapter<Stat
             if (!build_update(s))
                 return {};
             break;
-        case Stage::normal_input:
         case Stage::task_list_input:
-        case Stage::task_camera_input:
+        case Stage::task_camera_input: {
+            // 输入由显式事务处理；世界轮只消费原任务定位状态机与镜头推进。
+            if(s.confirm_input||s.cancel_input)return {};
+            auto next=update_startup_world_runtime_task_tracking_scene(s);
+            if(!next)return {};
+            s=std::move(*next);
+            break;
+        }
+        case Stage::normal_input:
         case Stage::build_input:
             if (s.confirm_input || s.cancel_input)
                 return {}; // 非空页面/建设输入必须走已证命令消费者。

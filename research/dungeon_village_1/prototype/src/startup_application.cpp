@@ -437,6 +437,18 @@ std::string StartupApplication::input_magic_pot_page(std::uint64_t page,const St
 std::string StartupApplication::open_task_control_menu() {
     return apply_world_action([](auto &world) { return world.open_task_control_menu(); });
 }
+StartupApplicationTaskResult StartupApplication::input_task_page(std::uint64_t page,const StartupTaskPageInput &input) {
+    StartupApplicationTaskResult result;
+    result.error=apply_world_action([&](auto &world) {
+        const auto r=world.input_task_page(page,input);
+        result.denial=r.denial;result.accepted=r.accepted;result.departed=r.departed;return r.error;
+    });
+    if(!result.error.empty()) {result.denial=ref::TaskCommandDenial::none;result.accepted=result.departed=false;}
+    return result;
+}
+std::string StartupApplication::input_task_tracking_scene(const StartupTaskPageInput &input) {
+    return apply_world_action([&](auto &world) {return world.input_task_tracking_scene(input);});
+}
 StartupApplicationTaskResult StartupApplication::act_task_page(std::uint64_t page,
                                                                StartupWorldTaskAction action,
                                                                int selection) {

@@ -2,7 +2,9 @@
 #include "dungeon_village_prototype/startup_world_menu.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
+#include <set>
 
 namespace dungeon_village_prototype {
 namespace {
@@ -47,6 +49,11 @@ std::optional<std::uint64_t> open(State &s, int raw, std::optional<std::uint64_t
         return {};
     const auto id = r.candidate->inserted_pages.front().id;
     s.page_counters[id] = 0;
+    if (raw == 22) {
+        s.task_page_lists.emplace(id, s.task_order);
+        s.page_phases.emplace(id, 0);
+        s.page_secondary_counters.emplace(id, 0); // 原bJ首行，不是演出副钟。
+    } else if (raw == 23) s.page_phases.emplace(id, 0);
     return id;
 }
 Command project(const State &s, const ref::WorldScriptPage &page) {
@@ -121,6 +128,17 @@ bool write(State &s, const Command &c) {
     }
     return true;
 }
+bool activate_scene(State &s) {
+    const auto scene = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.kind == ref::WorldScriptPageKind::scene; });
+    if (scene == s.scripts.pages.end() || s.scripts.page_mutations_locked) return false;
+    auto main = *scene;
+    s.scripts.pages.erase(scene);
+    for (auto &p : s.scripts.pages) p.lifecycle = 4;
+    main.lifecycle = 2;
+    s.scripts.pages.push_back(main);
+    return true;
+}
 // 回调只修改整轮私有Owner；每个副作用前同步领域候选，之后返还脚本改变的共享字段。
 ref::TaskCommandConsumer consumer(State &s, std::uint64_t source, std::uint64_t &target) {
     return [&, source](const Command &c, const Effect &e) -> std::optional<Command> {
@@ -161,18 +179,7 @@ ref::TaskCommandConsumer consumer(State &s, std::uint64_t source, std::uint64_t 
             }
         } else if (e.kind == Kind::activate_main_scene) {
             // kairo/android/a/b.a(a)：移出scene、标其余页关闭，再将scene放回栈顶。
-            const auto scene =
-                std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &p) {
-                    return p.kind == ref::WorldScriptPageKind::scene;
-                });
-            if (scene == s.scripts.pages.end() || s.scripts.page_mutations_locked)
-                return {};
-            auto main = *scene;
-            s.scripts.pages.erase(scene);
-            for (auto &p : s.scripts.pages)
-                p.lifecycle = 4;
-            main.lifecycle = 2;
-            s.scripts.pages.push_back(main);
+            if (!activate_scene(s)) return {};
         } else if (e.kind == Kind::notice15) {
             // 原av.b(15,name)是横幅通知，不是音乐。
             s.scripts.notices.push_back(
@@ -192,10 +199,15 @@ StartupWorldTaskPageResult commit(State &state, State &next, std::uint64_t targe
         return {Error::missing_source};
     const auto &c = r.candidate->state;
     next.page_counters[target] = c.page_counter;
-    next.page_secondary_counters[target] = c.secondary_counter;
+    const auto owner = std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(),
+        [=](const auto &p) { return p.id == target; });
+    if (owner == next.scripts.pages.end()) return {Error::missing_source};
+    // Command是多页临时投影；只有真实24/28消费独立副钟，不能污染23/25/26/27。
+    if (owner->legacy_page == 24 || owner->legacy_page == 28)
+        next.page_secondary_counters[target] = c.secondary_counter;
     if (c.phase == ref::TaskCommandPhase::recruiting)
         next.task_recruitment_pages[target] = c.recruitment;
-    else if (c.phase == ref::TaskCommandPhase::extra)
+    else if (owner->legacy_page == 27)
         next.task_extra_pages[target] = c.extra_candidates;
     else if (c.phase == ref::TaskCommandPhase::departure_prompt ||
              c.phase == ref::TaskCommandPhase::departing) {
@@ -208,6 +220,82 @@ StartupWorldTaskPageResult commit(State &state, State &next, std::uint64_t targe
     return {Error::none, r.candidate->denial, r.candidate->accepted, r.candidate->departed};
 }
 } // namespace
+
+bool valid_startup_world_runtime_task_page(const State &s, const ref::WorldScriptPage &p) {
+    const int raw = p.legacy_page; const auto id = p.id;
+    if (!s.rules || p.kind != ref::WorldScriptPageKind::raw_page || raw < 22 || raw > 28 ||
+        p.lifecycle < 0 || p.lifecycle > 4) return false;
+    const auto count = s.page_counters.find(id), phase = s.page_phases.find(id), second = s.page_secondary_counters.find(id);
+    const auto list = s.task_page_lists.find(id);
+    const auto extra = s.task_extra_pages.find(id);
+    const auto recruitment = s.task_recruitment_pages.find(id);
+    const auto prediction = s.task_page_predictions.find(id);
+    const auto acceleration = s.task_page_acceleration.find(id);
+    if (p.lifecycle == 4 && count == s.page_counters.end() && phase == s.page_phases.end() &&
+        second == s.page_secondary_counters.end() && list == s.task_page_lists.end() &&
+        extra == s.task_extra_pages.end() && recruitment == s.task_recruitment_pages.end() &&
+        prediction == s.task_page_predictions.end() && acceleration == s.task_page_acceleration.end()) return true;
+    if (count == s.page_counters.end() || count->second < 0 || count->second == std::numeric_limits<int>::max()) return false;
+    if (raw == 22) {
+        if (p.task_identity || p.task_definition || list == s.task_page_lists.end() ||
+            list->second.size() > std::size_t(std::numeric_limits<int>::max()) || phase == s.page_phases.end() ||
+            second == s.page_secondary_counters.end() || phase->second < 0 || second->second < 0) return false;
+        for (const auto task : list->second) if (!valid_task_reference(s, task)) return false;
+        if (list->second.empty() ? phase->second != 0 || second->second != 0
+            : std::size_t(phase->second) >= list->second.size() || second->second > phase->second ||
+              phase->second - second->second >= 5) return false;
+    } else {
+        if (!p.task_identity || !valid_task_reference(s, *p.task_identity) || !p.task_definition ||
+            *p.task_definition != s.tasks.find(*p.task_identity)->second.definition || list != s.task_page_lists.end()) return false;
+        if (raw == 23) {
+            if (phase == s.page_phases.end() || phase->second < 0 || phase->second > 1) return false;
+        } else if (raw == 28) {
+            if (phase == s.page_phases.end() || phase->second < 0 || phase->second > 1 ||
+                prediction == s.task_page_predictions.end() || prediction->second < 0 || prediction->second > 6 ||
+                acceleration == s.task_page_acceleration.end()) return false;
+        } else if (phase != s.page_phases.end()) return false;
+        if (raw == 24 || raw == 28) {
+            if (second == s.page_secondary_counters.end() || second->second < 0 ||
+                second->second == std::numeric_limits<int>::max()) return false;
+        } else if (second != s.page_secondary_counters.end()) return false;
+    }
+    if (raw == 24) {
+        if (recruitment == s.task_recruitment_pages.end()) return false;
+        const auto &r = recruitment->second;
+        if (r.portrait_timer < -1 || r.portrait_timer == std::numeric_limits<int>::max() ||
+            r.arrival_extent < 0 || r.completion_tick < 0 || r.displayed_count < 0) return false;
+        for (const auto human : r.portraits) if (!s.human_presence.count(human)) return false;
+        for (const auto &entry : r.entries)
+            if (!s.human_presence.count(entry.human) || entry.phrase < -1 || entry.phrase >= 6 ||
+                entry.counter == std::numeric_limits<int>::max()) return false;
+    } else if (recruitment != s.task_recruitment_pages.end()) return false;
+    if (raw == 27) {
+        if (extra == s.task_extra_pages.end()) return false;
+        std::set<int> seen;
+        for (const auto human : extra->second) if (!s.human_presence.count(human) || !seen.insert(human).second) return false;
+    } else if (extra != s.task_extra_pages.end()) return false;
+    return raw == 28 || (prediction == s.task_page_predictions.end() && acceleration == s.task_page_acceleration.end());
+}
+
+bool valid_startup_world_runtime_task_tracking_scene(const State &s) {
+    const auto scene = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.kind == ref::WorldScriptPageKind::scene; });
+    if (scene == s.scripts.pages.end() || std::count_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+        [](const auto &p) { return p.kind == ref::WorldScriptPageKind::scene; }) != 1) return false;
+    const auto list = s.task_page_lists.find(scene->id);
+    const auto selected = s.page_phases.find(scene->id);
+    const bool needed = s.scene.scene_state == 4 || s.scene.scene_state == 5;
+    if (list == s.task_page_lists.end() && selected == s.page_phases.end()) return !needed;
+    if (list == s.task_page_lists.end() || selected == s.page_phases.end() || list->second.empty() ||
+        selected->second < 0 || std::size_t(selected->second) >= list->second.size()) return false;
+    for (const auto id : list->second) {
+        if (!valid_task_reference(s, id)) return false;
+        const auto &task = s.tasks.find(id)->second;
+        const auto &map = s.scene.world.world.map;
+        if (!task.site || task.site->x < 0 || task.site->y < 0 || task.site->x >= map.width || task.site->y >= map.height) return false;
+    }
+    return true;
+}
 
 std::optional<bool> startup_world_has_new_tasks(const State &s) {
     for(const auto id:s.task_order) {
@@ -327,6 +415,8 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     auto next = state;
     next.scripts.executing_page = id;
     const int raw = p->legacy_page;
+    if (raw >= 22 && raw <= 28 && !valid_startup_world_runtime_task_page(state, *p))
+        return {Error::missing_source};
     if (raw == 60 && next.page_human_bindings.count(id)) {
         if (action != StartupWorldTaskAction::cancel || !close(next, id))
             return {Error::invalid_page};
@@ -393,6 +483,10 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
                 selection >= static_cast<int>(list->second.size()) ||
                 !open(next, 23, list->second[selection]))
                 return {Error::invalid_page};
+            next.page_phases.at(id) = selection;
+            auto &first = next.page_secondary_counters.at(id);
+            if (selection < first) first = selection;
+            else if (selection - first >= 5) first = selection - 4;
         } else if (raw == 25 || raw == 26) {
             auto target = id;
             const auto c = project(next, *p);
@@ -453,6 +547,128 @@ StartupWorldTaskPageResult act_startup_world_runtime_task_page(State &state, std
     return commit(state, next, target, result);
 }
 
+StartupWorldTaskPageResult input_startup_world_runtime_task_page(State &state, std::uint64_t id,
+                                                                const StartupTaskPageInput &input) {
+    const auto p = top(state);
+    if (state.scene.framework_paused || !p || p->id != id || p->lifecycle != 2 ||
+        (p->legacy_page != 22 && p->legacy_page != 23)) return {Error::invalid_page};
+    if (!valid_startup_world_runtime_task_page(state, *p)) return {Error::missing_source};
+    const int raw = p->legacy_page;
+    if ((raw == 22 && (input.left || input.right)) ||
+        (raw == 23 && (input.up || input.down || input.scroll || input.track))) return {Error::invalid_page};
+    auto next = state;
+    auto &selected = next.page_phases.at(id);
+    const int count = raw == 22 ? static_cast<int>(next.task_page_lists.at(id).size()) : 2;
+    if (!count) return {Error::invalid_page};
+    if (input.scroll) {
+        auto &first = next.page_secondary_counters.at(id);
+        if (input.scroll->value == std::numeric_limits<int>::max()) return {Error::invalid_page};
+        const auto wanted = input.scroll->absolute ? std::int64_t(input.scroll->value) : std::int64_t(first) + input.scroll->value;
+        const int moved = static_cast<int>(std::clamp(wanted, std::int64_t(0), std::int64_t(std::max(0, count - 5))));
+        selected += moved - first; first = moved;
+    }
+    if (input.selection) {
+        if (*input.selection < 0 || *input.selection >= count) return {Error::invalid_page};
+        selected = *input.selection;
+    }
+    if (raw == 22 ? input.up : input.left) selected = selected ? selected - 1 : count - 1;
+    if (raw == 22 ? input.down : input.right) selected = selected == count - 1 ? 0 : selected + 1;
+    if (raw == 22) {
+        auto &first = next.page_secondary_counters.at(id);
+        if (selected < first) first = selected;
+        else if (selected - first >= 5) first = selected - 4;
+    }
+    StartupWorldTaskPageResult result;
+    if (input.confirm || input.cancel) {
+        result = act_startup_world_runtime_task_page(next, id,
+            input.confirm ? StartupWorldTaskAction::confirm : StartupWorldTaskAction::cancel, selected);
+        if (result.error != Error::none) return result;
+    } else if (input.track) {
+        if (!clear_current_task_notices(next) || next.task_order.empty()) return {Error::missing_source};
+        const auto scene = std::find_if(next.scripts.pages.begin(), next.scripts.pages.end(),
+            [](const auto &entry) { return entry.kind == ref::WorldScriptPageKind::scene; });
+        if (scene == next.scripts.pages.end()) return {Error::missing_source};
+        // StartDungeonStart按当前bq重抄，不能复用raw22入页时冻结X。
+        next.task_page_lists[scene->id] = next.task_order;
+        next.page_phases[scene->id] = std::size_t(selected) >= next.task_order.size() ? 0 : selected;
+        next.scene.scene_state = 5; next.scene.scene_counter = 0;
+        if (!valid_startup_world_runtime_task_tracking_scene(next)) return {Error::missing_source};
+        if (!activate_scene(next)) return {Error::script_failed};
+        next.scripts.executing_page.reset();
+    }
+    state = std::move(next); return result;
+}
+
+Error input_startup_world_runtime_task_tracking_scene(State &state, const StartupTaskPageInput &input) {
+    const auto p = top(state);
+    if (state.scene.framework_paused || state.scene.scene_state != 4 || !p ||
+        p->kind != ref::WorldScriptPageKind::scene || p->lifecycle != 2 || input.up || input.down || input.scroll) return Error::invalid_page;
+    if (!valid_startup_world_runtime_task_tracking_scene(state) || !state.rules) return Error::missing_source;
+    auto next = state; next.scripts.executing_page = p->id;
+    auto &selected = next.page_phases.at(p->id);
+    const auto &list = next.task_page_lists.at(p->id);
+    const int old = selected, count = static_cast<int>(list.size());
+    if (input.selection) {if (*input.selection < 0 || *input.selection >= count) return Error::invalid_page;selected = *input.selection;}
+    if (input.left) selected = selected ? selected - 1 : count - 1;
+    if (input.right) selected = selected == count - 1 ? 0 : selected + 1;
+    if (selected != old) {next.scene.scene_state = 5;next.scene.scene_counter = 0;}
+    if (input.confirm) {
+        const auto task = next.tasks.find(list[selected]);
+        const auto definition = std::find_if(next.rules->tasks.begin(), next.rules->tasks.end(),
+            [&](const auto &d) {return d.factory.identity == task->second.definition;});
+        if (definition == next.rules->tasks.end()) return Error::missing_source;
+        if (next.scene.world.world.ai.accounting.funds() >= definition->recruitment_fee) {
+            if (!open(next, 23, task->first)) return Error::script_failed;
+        } else {
+            const auto result = ref::prepare_world_script(startup_world_runtime_catalog(), startup_world_runtime_scripts(next), {11,{},{}});
+            if (!result.candidate || !write_startup_world_runtime_scripts(next, result.candidate->state)) return Error::script_failed;
+        }
+    } else if (input.cancel || input.track) {
+        // 本入口来自22，尚无Camera.subQuest对象；不假造另一任务指针或执行其专用清理。
+        next.scene.scene_state = 0; next.scene.scene_counter = 0;
+        for (const auto task : next.task_order) if (!valid_task_reference(next, task)) return Error::missing_source;
+        const auto directory = open(next, 22, {});
+        if (!directory) return Error::script_failed;
+        if (next.task_order.empty()) {
+            const auto result = ref::prepare_world_script(startup_world_runtime_catalog(), startup_world_runtime_scripts(next), {29,{},{}});
+            if (!result.candidate || !write_startup_world_runtime_scripts(next, result.candidate->state) || !close(next,*directory)) return Error::script_failed;
+        }
+    }
+    next.confirm_input = next.cancel_input = false;
+    next.scripts.executing_page.reset(); state = std::move(next); return Error::none;
+}
+
+std::optional<State> update_startup_world_runtime_task_tracking_scene(const State &state) {
+    if (state.scene.scene_state != 4 && state.scene.scene_state != 5) return {};
+    if (state.scene.framework_paused) return state;
+    if (!valid_startup_world_runtime_task_tracking_scene(state)) return {};
+    if (state.scene.scene_state == 4) return state;
+    const auto scene = std::find_if(state.scripts.pages.begin(), state.scripts.pages.end(),
+        [](const auto &p) {return p.kind == ref::WorldScriptPageKind::scene;});
+    const auto selected = state.page_phases.at(scene->id);
+    const auto &site = *state.tasks.at(state.task_page_lists.at(scene->id)[selected]).site;
+    const auto x = std::int64_t(site.x), y = std::int64_t(site.y);
+    const std::array<float,2> target{float((x+y)*30+30),float((y-x)*15+10)}; // 地图j的Y自身含+15，原qY再-5。
+    const float dx = target[0] - state.camera[0], dy = target[1] - state.camera[1];
+    const float distance = std::sqrt(dx*dx+dy*dy);
+    if (!std::isfinite(distance) || !std::all_of(state.previous_camera.begin(),state.previous_camera.end(),
+        [](float value) {return std::isfinite(value);})) return {};
+    const float speed = std::clamp(5.F+(distance-10.F)*21.F/140.F,5.F,26.F);
+    auto next = state;
+    if (distance < speed) {
+        next.camera = next.previous_camera = target;
+        next.scene.scene_state = 4;next.scene.scene_counter = 0;
+    } else {
+        next.camera_velocity = {dx*speed/distance,dy*speed/distance};
+        for (std::size_t axis=0;axis<2;++axis) {
+            next.camera[axis] += next.camera_velocity[axis];
+            next.previous_camera[axis] += next.camera_velocity[axis];
+            if (!std::isfinite(next.camera[axis]) || !std::isfinite(next.previous_camera[axis])) return {};
+        }
+    }
+    return next;
+}
+
 std::optional<State> update_startup_world_runtime_task_control_page(const State &state,
                                                                     std::uint64_t id) {
     const auto *p = top(state);
@@ -496,6 +712,7 @@ std::optional<State> update_startup_world_runtime_task_page(const State &state, 
     const auto p = top(state);
     if (!p || p->id != id || state.scene.framework_paused)
         return {};
+    if ((p->legacy_page != 24 && p->legacy_page != 28) || !valid_startup_world_runtime_task_page(state,*p)) return {};
     auto next = state;
     next.scripts.executing_page = id;
     auto target = id;

@@ -132,6 +132,8 @@ Options parse_options(int argc, char **argv) {
          (options.inspect_page != "roads" && options.inspect_page != "shops" &&
           options.inspect_page != "food" && options.inspect_page != "arrival" &&
           options.inspect_page != "visitor" && options.inspect_page != "facility-reputation" && options.inspect_page != "facility-reputation-result" &&
+          options.inspect_page != "task-map-info" && options.inspect_page != "task-info" &&
+          options.inspect_page != "task-battle-result" && options.inspect_page != "task-reward-result" &&
           options.inspect_page != "task-roster" && options.inspect_page != "task-extra" && options.inspect_page != "task-extra-stats" &&
           options.inspect_page != "task-departure" && options.inspect_page != "task-departing" &&
           options.inspect_page != "task-selection" && options.inspect_page != "task-offer" && options.inspect_page != "task-recruitment" &&

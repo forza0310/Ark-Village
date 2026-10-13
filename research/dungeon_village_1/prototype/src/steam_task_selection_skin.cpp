@@ -225,4 +225,100 @@ std::optional<Plan> steam_task_selection_skin(const StartupWorldRuntimeState &s,
     }
     return steam_task_selection_skin(in);
 }
+
+namespace {
+// AppData.DrawBox2 RVA24ABE0：蓝色直角框与八个内环角点，不走普通绿色DrawBox。
+void info_box(Plan &p,int left,int top,int right,int bottom,int view_y) {
+    top+=view_y/2;bottom+=view_y/2;const int w=right-left,h=bottom-top;
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{left,top,w,h},{247,253,247},false}});
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{left,top,w,h},{11,93,196},true}});
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{left+1,top+1,w-2,h-2},{138,171,218},true}});
+    for(int inset=1;inset<=2;++inset)for(int side=0;side<4;++side) {
+        const int x=(side==0||side==3)?left+inset:right-inset-1;
+        const int y=side<2?top+inset:bottom-inset-1;
+        p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{x,y,1,1},
+            inset==1?std::array<int,3>{11,93,196}:std::array<int,3>{138,171,218},false}});
+    }
+}
+std::optional<SteamTaskInfoInput> info_task(const StartupWorldRuntimeState &s,std::uint64_t id,
+                                         SteamTaskInfoSource source,const SteamTaskInfoOptions &o) {
+    if(!s.rules)return {};const auto task=s.tasks.find(id);
+    if(task==s.tasks.end()||task->second.identity!=id||id==0)return {};
+    const auto d=std::find_if(s.rules->tasks.begin(),s.rules->tasks.end(),
+        [&](const auto &v){return v.factory.identity==task->second.definition;});
+    if(d==s.rules->tasks.end())return {};const auto name=task_name(s,*d);if(!name)return {};
+    SteamTaskInfoInput in;in.source=source;in.kind=d->factory.kind;in.name=*name;
+    in.treasure_level=task->second.difficulty;in.monster_rank=d->factory.exploration_stage;
+    in.fee=d->recruitment_fee;in.affordable=s.scene.world.world.ai.accounting.funds()>=in.fee;
+    in.frame=s.scene.frame_counter;in.options=o;
+    if(s.task_order.size()>65536)return {};in.available_tasks=static_cast<int>(s.task_order.size());
+    return in;
+}
+}
+std::optional<Plan> steam_task_information_skin(const SteamTaskInfoInput &in) {
+    const auto &o=in.options;
+    const bool scene=in.source==SteamTaskInfoSource::tracking_scene;
+    if((!scene&&in.source!=SteamTaskInfoSource::raw29)||in.kind<0||in.kind>1||in.treasure_level<0||
+        in.monster_rank<0||in.monster_rank==std::numeric_limits<int>::max()||in.fee<0||in.frame<0||
+        in.frame==std::numeric_limits<int>::max()||in.available_tasks<0||in.available_tasks>65536||
+        o.finger_frame<0||o.finger_frame>5||!width(o.bottom_width)||in.name.empty()||in.name.size()>4096||
+        o.view_y< -65536||o.view_y>65536)return {};
+    int ox=0,oy=0;
+    if(scene) {
+        if(!o.view_layout)return {};const auto &v=*o.view_layout;
+        if(std::any_of(v.begin(),v.end(),[](int n){return n< -65536||n>65536;}))return {};
+        ox=(v[0]+v[2])/2-120;oy=(v[1]+v[3])/2-120;
+    }
+    Plan p;p.soft_labels=scene?std::array<int,2>{6,2}:std::array<int,2>{0,2};
+    info_box(p,ox+17,oy+40,ox+219,oy+60,o.view_y);
+    text(p,in.name,ox+120,oy+56,2,scene?11:0);
+    if(scene&&in.available_tasks>1) {
+        const int shift=3*((in.frame%16)/8);
+        // UserData helper实际AddTouchHelper，SubForm未用mode0的纯Draw分支不能替代它。
+        p.operations.emplace_back(SteamFacilityArrowTouch{{ox+46-shift,oy+61},3,16});
+        p.operations.emplace_back(SteamFacilityArrowTouch{{ox+194+shift,oy+61},0,18});
+    }
+    info_box(p,ox+17,oy+150,ox+219,oy+200,o.view_y);
+    if(in.kind==0) {
+        image(p,SteamTaskSelectionAsset::treasure,ox+44,oy+184,2);
+        number(p,SteamFacilityAsset::number03,in.treasure_level,ox+66,oy+172);
+    } else {
+        p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::level_label,{ox+37,oy+174},0,{}});
+        number(p,SteamFacilityAsset::number03,in.monster_rank+1,ox+66,oy+172);
+    }
+    // UserData在Steam改为右锚156；raw29仍沿SubForm点锚136。两者同SC_WINDOW_BLUE。
+    text(p,"费用",ox+(scene?156:136),oy+172,scene?4:0,0,false,0,0,{0,100,255});
+    number(p,scene&&!in.affordable?SteamFacilityAsset::number12:SteamFacilityAsset::number08,
+        in.fee,ox+208,oy+173,4,SteamFacilityNumberKind::money);
+    const int w=(scene?*o.bottom_width:std::min(*o.bottom_width,200))+16,left=ox+120-w/2,y=oy+190;
+    p.operations.emplace_back(SteamStartupFrameDraw{StartupSkinRect{{left,y,w,16},{255,153,55},false}});
+    p.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{left-20,y-20,w+40,56},{},0});
+    if(scene)text(p,"攻略",ox+120,y+2,2);
+    else text(p,"了解",left,y,34,0,true,w,16);
+    p.operations.emplace_back(SteamFacilityImage{SteamFacilityAsset::finger,{left-4,y+9},o.finger_frame,{}});
+    return p;
+}
+std::optional<Plan> steam_task_information_scene_skin(const StartupWorldRuntimeState &s,
+                                                     const SteamTaskInfoOptions &o) {
+    const auto p=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    if(s.scene.scene_state!=4||p==s.scripts.pages.rend()||p->kind!=ref::WorldScriptPageKind::scene||
+       p->lifecycle!=2||!valid_startup_world_runtime_task_tracking_scene(s))return {};
+    const auto list=s.task_page_lists.find(p->id);
+    const auto cursor=s.page_phases.find(p->id);
+    if(list==s.task_page_lists.end()||cursor==s.page_phases.end()||cursor->second<0||std::size_t(cursor->second)>=list->second.size())return {};
+    const auto in=info_task(s,list->second[cursor->second],SteamTaskInfoSource::tracking_scene,o);
+    return in?steam_task_information_skin(*in):std::nullopt;
+}
+std::optional<Plan> steam_task_information_skin(const StartupWorldRuntimeState &s,std::uint64_t id,
+                                               const SteamTaskInfoOptions &o) {
+    const auto p=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    const auto clock=s.page_counters.find(id);
+    if(p==s.scripts.pages.rend()||p->id!=id||p->kind!=ref::WorldScriptPageKind::raw_page||
+       p->legacy_page!=29||p->lifecycle!=2||!p->task_identity||!p->task_definition||
+       clock==s.page_counters.end()||clock->second<0||clock->second==std::numeric_limits<int>::max())return {};
+    const auto task=s.tasks.find(*p->task_identity);
+    if(task==s.tasks.end()||task->second.definition!=*p->task_definition)return {};
+    const auto in=info_task(s,*p->task_identity,SteamTaskInfoSource::raw29,o);
+    return in?steam_task_information_skin(*in):std::nullopt;
+}
 } // namespace dungeon_village_prototype

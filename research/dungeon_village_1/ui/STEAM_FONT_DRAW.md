@@ -49,6 +49,10 @@ W来自Font RVA0x77E770的共享入口；methods索引中`StringWidthF(string)`�
 
 先锚点、后当前screenMatrix、再减整数裁剪区域左／上。不能直接从窗口截图宽高求一个倍率替代这条路径，也不能在矩阵已经包含平移时再加世界坐标。
 
+### DrawText宽度重载的垂直锚定
+
+Graphics.DrawText(string,x,y,width,anchor) RVA7688A0转7688E0；10768B37读取Font.usedSize。anchor含0x60且实测字宽大于width时先逐号缩小临时字号，最低3（10768B44–10768BC7）；再以实际usedSize处理垂直锚：MIDDLE32先y减usedSize×0.5，否则BOTTOM64减usedSize（10768BDB／10768C12–10768C33），去掉相应垂直位后将高度usedSize交TextLayout.Draw RVA7CABD0。0.5原float常量位于10DDE528。研究窄执行器已消费此宽度重载的缩字号／垂直锚，不把零高占位当作没有垂直处理；完整TextLayout换行／插件仍不是这一局部修正的认证范围。
+
 ## GUI字号和矩形不是字形基线
 
 短方法`Font.GetWidth`（RVA0x77D980）确实返回`float32(U)×0.5`。这只是原Font的基准宽度，**不是任意字符串宽度W**。
@@ -84,7 +88,15 @@ delta = float32(i) × D / float32(Q+1)
 DrawString(text,x,y,anchor)
 ```
 
-所以普通支有`3×(Q+1)+1`次文字调用，不是单一右下偏移，也不是描四周边框。每次调用复用上述字体／锚点／矩阵消费者；外层已经做完TextFormat修正，传给内层的TextFormat为null。必要时尾部解除本地化锁并恢复原Font.size。D、Q的当前默认值和设置时机本批没有追上游，不能用“通常1像素”替代输入字段，也不把标签Shadow2分支自动认证。
+所以普通支有`3×(Q+1)+1`次文字调用，不是单一右下偏移，也不是描四周边框。每次调用复用上述字体／锚点／矩阵消费者；外层已经做完TextFormat修正，传给内层的TextFormat为null。必要时尾部解除本地化锁并恢复原Font.size。D／Q上游现已补下述有限静态链，不用“通常1像素”替代实际输入，也不把标签Shadow2分支自动认证。
+
+### 阴影参数的静态初值与Splash后继
+
+2026-10-13独立核Graphics.cctor RVA775990：VA10775DEE将static+2C写float32位型0x3F800000，即D=1.0；cctor未写static+30，Q采用静态零初值0。`SetOutlineWidth` RVA7748E0／`SetOutlineQuality` RVA774890各直接写对应字段，无夹限／归一；getter76E1C0／76E180与字段对应。不能从调用者可写任意值推原函数会拒绝坏值。
+
+原Splash还会改变宽度：独立setter helper RVA7E0410–7E0457写同一D；SplashForm.Update RVA7F14B0在VA107F1948传0x3F000000、194F调用，即D=0.5。state0在frame>60时转9(READY)并进入共享192A分支清frame、设置D；state11的Resume成立后转12也经过该分支。state9路径107F1B6F切nextForm并移出栈，没有再改D。
+
+因此通过该已核启动路径且未有后继改写时，普通阴影使用D0.5、Q0：三次(0.5,0)／(0,0.5)／(0.5,0.5)逻辑偏移再正文。这里的0.5是原逻辑输入，不等于最终屏幕半像素，仍须经过上述字体与矩阵／clip链。具名setter的有限直接调用扫描不能证明不存在内联或间接writer，也未读取当前原进程参数；不能声称所有原窗口始终是这个值。原默认白标题阴影与当前中文glyph对象是两项不同证据。
 
 ## 局部裁剪的整数边界
 

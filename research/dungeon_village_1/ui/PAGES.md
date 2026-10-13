@@ -588,13 +588,29 @@ DTO严格区分冻结X、实时人数、候选四战斗值、费用可负担和�
 
 ### Steam任务成果与期限的后继定位
 
-29–33业务已有维护消费者，以下为本轮固定Steam静态补证，完整皮肤／Owner游标尚未交付。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护后继应复用secondary保存副钟，切段不清零，不重复奖励。
+29–33业务已有维护消费者；[31／32纯皮肤](../prototype/include/dungeon_village_prototype/steam_task_result_skin.hpp)和条件例图已交，Owner游标待新布局确认，30／33完整皮肤仍后继。以下为固定Steam静态补证。29在_draw1_1 VA10330601–10330629调用`Draw_dungeonInfo RVA30BED0(mode1)`，确认／取消关闭，无新增游标。30在10330284／1033029E明确用独立frame2模26，10330321又传给人物动作；主frame只控制展开5–40／40门槛，page控制两段。维护后继应复用secondary保存副钟，切段不清零，不重复奖励。
 
 31 Update VA10324073–10324126为上→下→五行修首行；Draw1032F67A–1032FDAD从first最多五人，y97+19×offset。肖像底(29,y−2)16×16，clip15×15，人物脚底(37,y+21)朝向1；手形(21,y+8)、名(48,y)，击杀H／倒下I分别用`Draw_count3 RVA252EA0`右162／`Draw_count2 RVA252E10`右210，共SEB12。第三栏标题使用DrawText(185,75,40,anchor32)，不同于APK普通文字(185,69)。110高滑条，未见整行Touch11，不能照25追加行注册。底部f/g人物分别脚底(21,220)朝向1／(218,220)朝向2，不从当前队伍猜首尾。
 
 32 Update VA10323F23–10323FCC以`max(X.Count−4,0)`循环first，不维护选中奖励行；与31汇合10323FCD，确认优先取消后关闭。Draw1032EFE1–1032F679五行同间距，任务名(34,69)、宝箱SEB27 frame2@(186,81)、等级右208。图标(30,y−3)按奖励kind1–4原DrawIcon，数量右210；没有选中手形／行注册，110高滑条。底部冻结f/g人物脚底(42,220)/(196,220)，不复用31位置。已有crew_summaries／exploration_summaries和页面f/g应继续作为唯一冻结来源，绘制不重新结算。
 
-33 Update10323D24–10323F12的phase0左右按钮、先核费用再写答案K并转phase1；phase1确认只置末门槛，无普通取消。继续／中止底文锚点(80,197)/(160,197)，Touch基准(51+90×i,195,58,16)，Steam附加margin仍待核。33最多三名人物与31五行不是同页策略。状态头标、特殊怪物／设施完整绘制与动态仍缺，不能将此定位当整页完成。
+33 Update10323D24–10323F12的phase0左右按钮、先核费用再写答案K并转phase1；phase1确认只置末门槛，无普通取消。继续／中止底文锚点(80,197)/(160,197)，Touch基准(51+90×i,195,58,16)，Steam静态DLGSEL_TRECT六行同值(−20,−20,40,40)，最终触区(31+90×i,175,98,56)，无marker；按钮实际字宽+16不夹200、底197／文字199／手206。33最多三名人物与31五行不是同页策略。本批继续补下述局部分支；原动态仍缺，不能将静态定位当整页完成。
+
+31数字的两种计数帮助器已进一步分别核实：击杀Draw_count3非日文只Comma右162；日文右152再补SEB76 frame1单位。倒下Draw_count2全部语言先Comma右201，再画SEB12 frame19单位，不是现count类型的frame2。31可见行之外的坏数据仍拒绝，原合法重复X保序；32的0价格仍显示，不能按value>0过滤。两页滚条参数真实为110高，查询及回放不把它改成其它页的111。31宽度标题anchor32应由后端按实际usedSize减半；研究Noto12条件下y75→69，长字串按源先缩字，不能改原坐标凑齐。
+
+30原人物不是另存的演出快照，每次读取m全部原序与当前职业／性别／主武器；legacy_f是经验share。Steam经验宽为GetFig(share)×8+22，EXP SEB60 frame0@(120−w/2,74)、数SEB12@(left+22,73)。人物分布同28，副钟模26前10为action0/step0，后16为action6/step0并按CalcParabola(8,16,phase−10)向上移；body action6+direction2=SEB10/frame0，当前武器取WEAPON_MAGIC_POS。仅底文clip(0,158,240,Rate(main,5,40,0,48,true))，不能把人物背景一起裁。phase0任务完成句，phase1含pending_completion_value的SEB16数与实际后缀测宽；main>=40且main%25<15才画继续箭头。主1且phase0请求jingle4；早确认／返回置主40，第一段结束仅清主钟、切第二段，副钟继续。奖励已在原结算提交，不在演出重发。
+
+33的JobData.GetImage() RVA21AC60无人物参数，职业图固定男图；这与28／30尊重性别的重载不同。只画m前3人@(49/69/89,145)，却合计全部m的quest_downNum_。每人按原bl顺序找首同定义实例，state7用action7无武器；否则phase0走路，phase1答案0按2–7／12–17／22–35举手，其余走路，答案1固定walk0。已有实例HPafter槽3×100/GetHpMax≤30且main%12/6为0时显示pinch，无实例不造假HP条或头标。两按钮在phase1仍绘制但不再读方向；确认置主50、下次Update关闭，真正续费／中止仍由父主场景下一入口消费。底预测grade0–4与秘书框按实测宽。kind0设施用普通MapchipData.DrawMapchip RVA21BCA0（不是DrawMapchip2），clip(17,85,202,110)，各tile锚((x+y)×30+130,121−(−x+y)×15)，不补居中。kind1怪物最多3个，按i2→0逆序，step复用最后展示人物的最终step，无人物才0。全部是只读局部计划依据，共享disp scratch的全局副作用未由此闭合。
+
+### Steam地图候选信息与raw29不同入口
+
+地图场景4实际调用`UserData.Draw_dungeonInfo RVA2F82B0`（GameForm._draw VA10302D4F），场景5仅移动镜头、不画此信息；raw29调用SubForm同名助手RVA30BED0。两者现由[任务信息接口](../prototype/include/dungeon_village_prototype/steam_task_selection_skin.hpp)分source输出有序图元，不互借箭头、字号／费用颜色及底按钮参数。
+
+scene4先用原VIEW_X/Y/W/H计算origin=((X+W)/2−120,(Y+H)/2−120)，DrawBox2另加VIEW_Y/2；研究布局(0,23,240,217)的origin为0。两个蓝直角框边界(17,40)-(219,60)、(17,150)-(219,200)，填色247/253/247、外环11/93/196、内环138/171/218及角点，不套普通绿色DrawBox。顶部GetName(false)居中(120,56)，scene字号11、raw29用当前字号。kind0宝箱SEB27 frame2@(44,184)及宝箱等级右66/y172；kind1为wnd_lv@(37,174)及原monsterRank+1，同数字锚。
+
+scene费用标签右锚156/y172，余额不足时费用用SEB19；raw29点锚136/y172且金额始终SEB15，右208/y173。底y190：scene实际字宽+16不夹200、普通中心字y192；raw29字宽夹200+16、TextLayout。两者Touch4/value20有各自实际大矩形，无marker。scene在**当前task_order.size>1**时注册ArrowTouch3/value16与0/value18，横摆由已存scene.frame_counter模16/8控制；选择仍来自冻结scene名单。raw29无箭头；SubForm助手mode0的纯Draw箭头0/1不是场景真正入口，不能拿错分支接PC热区。
+
+窗口现接scene4的实际只读桥／输入热区，原点只加一次，不再额外叠研究小窗的40偏移；raw29只支持已有合法任务绑定的严格桥和只读示例，没有创建未证菜单入口。关键目录缺失／非激活／错绑定／坏计数显式拒绝，scene5不画信息。原字体、VIEW实际设置上游、OS投递与特殊Camera.subQuest路径仍分别待证。
 
 ## 绘图坐标与资源链
 

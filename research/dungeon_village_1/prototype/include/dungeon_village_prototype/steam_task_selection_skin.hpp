@@ -22,7 +22,7 @@ struct SteamTaskSelectionText {
 struct SteamTaskSelectionClip { bool push{}; std::array<int,4> rectangle{}; };
 using SteamTaskSelectionOperation=std::variant<SteamStartupFrameDraw,SteamTaskSelectionImage,
     SteamTaskSelectionText,SteamTaskSelectionClip,SteamHumanImage,SteamHumanPortrait,
-    SteamFacilityImage,SteamFacilityNumber,SteamHumanCatalogueScroll,SteamStartupTouch>;
+    SteamFacilityImage,SteamFacilityNumber,SteamHumanCatalogueScroll,SteamFacilityArrowTouch,SteamStartupTouch>;
 struct SteamTaskSelectionPlan {
     std::vector<SteamTaskSelectionOperation> operations;
     std::string title;
@@ -57,4 +57,29 @@ struct SteamTaskSelectionInput {
 std::optional<SteamTaskSelectionPlan> steam_task_selection_skin(const SteamTaskSelectionInput &);
 std::optional<SteamTaskSelectionPlan> steam_task_selection_skin(
     const StartupWorldRuntimeState &,std::uint64_t page,const SteamTaskSelectionOptions &);
+
+// 同名原helper有两个实现：scene4实际调用UserData，raw29调用SubForm。
+// 两者字体、箭头注册、费用颜色和底按钮重载有差异，不能混成一个mode分支。
+enum class SteamTaskInfoSource { tracking_scene, raw29 };
+struct SteamTaskInfoOptions {
+    int view_y{},finger_frame{};
+    std::optional<int> bottom_width;
+    // scene4必须提供原VIEW_X/Y/W/H；origin=((X+W)/2-120,(Y+H)/2-120)。
+    // DrawBox2另加view_y/2，不能用origin抵消它；raw29不读取此项。
+    std::optional<std::array<int,4>> view_layout;
+};
+struct SteamTaskInfoInput {
+    SteamTaskInfoSource source{SteamTaskInfoSource::raw29};
+    int kind{},treasure_level{},monster_rank{},fee{},frame{},available_tasks{};
+    std::string name; // QuestData.GetName(false)，不读GetName(true)成果标题。
+    bool affordable{};
+    SteamTaskInfoOptions options;
+};
+std::optional<SteamTaskSelectionPlan> steam_task_information_skin(const SteamTaskInfoInput &);
+// 已存scene.frame_counter是原GameForm.frame_；scene5移动不绘此helper。
+std::optional<SteamTaskSelectionPlan> steam_task_information_scene_skin(
+    const StartupWorldRuntimeState &,const SteamTaskInfoOptions &);
+// 只接受真实栈顶已初始化29及具体任务绑定；不创建未接入口或伪造aa。
+std::optional<SteamTaskSelectionPlan> steam_task_information_skin(
+    const StartupWorldRuntimeState &,std::uint64_t page,const SteamTaskInfoOptions &);
 } // namespace dungeon_village_prototype

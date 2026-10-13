@@ -6,6 +6,15 @@
 
 复用[研究内容索引](../research/dungeon_village_1/rules/PROGRESSION_CONTENT.md)、[研究路线合同](../research/dungeon_village_1/rules/PROGRESSION_ROUTES.md)和[产品经营覆盖](stages/ACTIVE_VILLAGE_PLAN.md#full-unlock-campaign)，不另建逐ID重复策划库或每批报告。实际玩家取得、消费、效果和冷载证据由产品验收，定义枚举/条件夹具不升级为自然全覆盖。源码按已存在游戏模块与依赖方向组织，高内聚、避免桌面反向承载核心；清理无用/退休/重复过程项前核引用和覆盖归属，保留核心代码、来源适配、DLL防错、存档身份及有效证据。可重建临时输出留忽略build，不恢复research/work重构任务。
 
+<a id="research-48574b5-task-pages"></a>
+### 任务选择、募集及地图追踪接续（57a31cb／48574b5）
+
+魔法壶checkpoint25f7dab后沿同一goal固定48574b5及前置57a31cb。接正式22–24选择/费用/募集皮肤、同轮DTO和scene4/5追踪消费者，目录选择及首行移交Owner，保留page-bound held与失焦/暂停释放；募集按原X/Y/ap/phrase、职业/武器/勋章和原序裁剪展示。追踪只由源消费者移动镜头，禁止地图拖动或提前募集旁路。复用tasks、session、restore、visuals及原UI套件，不建新的规则target。
+
+48574b5的25–28是纯皮肤交付，正式PAGES/PERSISTENCE明确其冻结X、游标及副钟Owner方案仍待闭合。本批冻结纯接口/检查；运行页面暂沿已有消费者，不用实时participants代替冻结名单、不添加临时玩家字段。后继29–33同样仅有静态定位，按既有研究需求等待。Steam已证字号preset0/1/2为12/24/30，实际字体和PC测宽/缩放政策仍分开，不认定当前Noto为原窗口字体。
+
+无新增wire字段，玩家schema5、独立系统身份与随机/冷清保持；scene键的目录/选择/首行沿现字段存取，覆盖scene5恢复与同输入后继、过期/半载荷/NEW清理/随机和回滚。集中两Debug标准排三个月，补Release受影响及22–24条件图/真实新局任务流程；每个证据区分皮肤、程序化输入、OS和自然经营，不据新增纯计划宣称全部任务或全定义完成。
+
 <a id="research-e4dc38a-magic-pot"></a>
 ### 魔法壶目录与演出接续（e4dc38a）
 

@@ -14,6 +14,7 @@
 namespace ark::desktop::ui {
 bool world_hud_buttons_visible(const simulation::rules::WorldScriptPage *page) {
     return !page || (page->legacy_page != 21 && page->legacy_page != 74 &&
+                     (page->legacy_page < 22 || page->legacy_page > 24) &&
                      !world_source_menu_page(*page) && page->legacy_page != 9 &&
                      page->legacy_page != 13 && page->legacy_page != 14 &&
                      (page->legacy_page < 34 || page->legacy_page > 40));

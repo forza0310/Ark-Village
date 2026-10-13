@@ -81,7 +81,9 @@ enum class WorldCommandKind {
     facility_item_input,
     village_activity_input,
     rank_input,
-    magic_pot_input
+    magic_pot_input,
+    task_page_input,
+    task_tracking_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -153,6 +155,7 @@ struct WorldCommand {
     simulation::StartupVillageActivityInput village_activity_input;
     simulation::StartupTownRankInput rank_input;
     simulation::StartupMagicPotInput magic_pot_input;
+    simulation::StartupTaskPageInput task_input;
     simulation::StartupFacilityItemAction facility_item_action{
         simulation::StartupFacilityItemAction::confirm};
     simulation::StartupFacilityCatalogAction facility_catalog_action{
@@ -269,6 +272,10 @@ class WorldSession {
     std::uint64_t act_residence(std::uint64_t page, int human, bool cancel = false);
     std::uint64_t act_task_page(std::uint64_t page, simulation::StartupWorldTaskAction action,
                                 int selection = 0);
+    std::uint64_t input_task_page(std::uint64_t page,
+                                  const simulation::StartupTaskPageInput &input);
+    std::uint64_t input_task_tracking(std::uint64_t scene_page,
+                                      const simulation::StartupTaskPageInput &input);
     // A held edge belongs only to this raw24 identity. Send false on release/focus loss;
     // page transitions and pause also clear it. Source page updates, never FPS, consume it.
     std::uint64_t set_page_confirm_held(std::uint64_t page, bool held);

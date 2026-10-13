@@ -5187,6 +5187,16 @@
       "width": 48,
       "height": 49,
       "purpose": "Steam95 compact background for profession/medal reward, event image15; preserve distinct mini2 background"
+    },
+    {
+      "file": "event/event_backNormal.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_backNormal.png",
+      "source_revision": "48574b5",
+      "sha256": "971294268e50bb1b3fbf63cb8854aab3b6831c360c215b77a0cdc71baf7d09b8",
+      "bytes": 19851,
+      "width": 180,
+      "height": 80,
+      "purpose": "Steam23/24 recruitment background image0, original ordered whole image and foreground crop"
     }
   ]
 }

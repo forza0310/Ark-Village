@@ -209,6 +209,24 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
         result.runtime_error = simulation::input_startup_world_magic_pot_page(
             state, command.page, command.magic_pot_input);
         break;
+    case Kind::task_page_input: {
+        const auto source = simulation::input_startup_world_runtime_task_page(state, command.page,
+                                                                              command.task_input);
+        result.runtime_error = source.error;
+        result.denial = source.denial;
+        result.task_accepted = source.accepted;
+        result.departed = source.departed;
+        break;
+    }
+    case Kind::task_tracking_input: {
+        const auto page = std::find_if(state.scripts.pages.rbegin(), state.scripts.pages.rend(),
+                                       [](const auto &p) { return p.lifecycle != 4; });
+        result.runtime_error = page != state.scripts.pages.rend() && page->id == command.page
+                                   ? simulation::input_startup_world_runtime_task_tracking_scene(
+                                         state, command.task_input)
+                                   : Error::invalid_page;
+        break;
+    }
     case Kind::open_menu_tasks:
     case Kind::open_task_menu:
         result.runtime_error = simulation::open_startup_world_runtime_task_menu(state);
@@ -761,6 +779,22 @@ std::uint64_t WorldSession::input_magic_pot(std::uint64_t page,
     command.kind = WorldCommandKind::magic_pot_input;
     command.page = page;
     command.magic_pot_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_task_page(std::uint64_t page,
+                                            const simulation::StartupTaskPageInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::task_page_input;
+    command.page = page;
+    command.task_input = input;
+    return submit(command);
+}
+std::uint64_t WorldSession::input_task_tracking(std::uint64_t page,
+                                                const simulation::StartupTaskPageInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::task_tracking_input;
+    command.page = page;
+    command.task_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::act_magic_pot(std::uint64_t page,

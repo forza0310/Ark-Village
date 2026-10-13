@@ -14,6 +14,7 @@
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/facilities/startup_world_facility_items.hpp"
 #include "ark/simulation/village/startup_world_village_activity.hpp"
+#include "ark/simulation/tasks/startup_world_runtime_tasks.hpp"
 
 #include <algorithm>
 
@@ -50,6 +51,90 @@ int check_navigation_restore(
             stale.facility_presence.at(definition) = presence;
             expect(stale, false, "restored catalogue rejects already unlocked blueprint");
         }
+    }
+    {
+        // 原工厂与页面producer负责实体/载荷，仅人数资格和演出边界使用条件夹具。
+        using E=p::StartupWorldRuntimeError;using A=p::StartupWorldTaskAction;
+        const auto require=[&](bool ok,const char *why) {++checks;if(!ok)throw std::runtime_error(std::string("restore task input: ")+why);};
+        auto tasks=baseline;tasks.human_presence.at(1)=1;
+        const auto made=r::prepare_world_task_creation(p::startup_world_runtime_factory(tasks),0);
+        require(made.candidate&&made.candidate->created_task&&p::write_startup_world_runtime_factory(tasks,made.candidate->state),"real factory");
+        const auto task=*made.candidate->created_task;
+        tasks.task_order.assign(7,task);
+        require(p::open_startup_world_runtime_task_menu(tasks)==E::none,"open22");
+        const auto id=tasks.scripts.pages.back().id;
+        tasks.scripts.pages.back().lifecycle=2; // DTO作用于已获准轮，不以待Init producer代替。
+        tasks.page_phases.at(id)=6;tasks.page_secondary_counters.at(id)=6;
+        expect(tasks,true,"22 legal short-tail producer state");
+        const auto reject=[&](const auto &source,const char *why,const auto &damage) {auto bad=source;damage(bad);expect(bad,false,why);};
+        reject(tasks,"22 missing selection",[&](auto &s){s.page_phases.erase(id);});
+        reject(tasks,"22 missing first",[&](auto &s){s.page_secondary_counters.erase(id);});
+        reject(tasks,"22 selected offscreen",[&](auto &s){s.page_phases.at(id)=0;});
+        const auto roundtrip=[&](const auto &source,const auto &consume,const char *why) {
+            expect(source,true,why);const auto bytes=p::persistence_detail::encode_state(source);
+            auto restored=p::persistence_detail::decode_state(bytes,*source.rules),live=source;
+            require(p::persistence_detail::encode_state(restored)==bytes,"exact task state roundtrip");
+            consume(live);consume(restored);
+            expect(live,true,why);expect(restored,true,why);
+            require(p::persistence_detail::encode_state(live)==p::persistence_detail::encode_state(restored),
+                    "same task input preserves common random, counters and outputs");
+        };
+        p::StartupTaskPageInput input;input.up=input.down=input.confirm=true;
+        const auto choose=[&](auto &s){require(p::input_startup_world_runtime_task_page(s,id,input).error==E::none,"22 combined confirm");};
+        roundtrip(tasks,choose,"22 same-row confirmation to23 restore");choose(tasks);
+        const auto offer=tasks.scripts.pages.back().id;
+        tasks.scripts.pages.back().lifecycle=2;
+        input={};input.right=true;
+        require(p::input_startup_world_runtime_task_page(tasks,offer,input).error==E::none,"23 stored option1");
+        reject(tasks,"23 spurious secondary",[&](auto &s){s.page_secondary_counters[offer]=0;});
+        auto cancelled=tasks;require(p::act_startup_world_runtime_task_page(cancelled,offer,A::cancel).error==E::none,"23 actual cancel");
+        expect(cancelled,true,"closed23 without invented secondary remains restorable");
+        reject(cancelled,"closed23 missing selection",[&](auto &s){s.page_phases.erase(offer);});
+        input={};input.confirm=true;
+        const auto recruit=[&](auto &s){const auto result=p::input_startup_world_runtime_task_page(s,offer,input);require(result.error==E::none&&result.accepted,"23 paid recruitment");};
+        roundtrip(tasks,recruit,"23 option1 confirmation still creates24");recruit(tasks);
+        const auto animation=tasks.scripts.pages.back().id;
+        auto &display=tasks.task_recruitment_pages.at(animation);
+        require(!display.entries.empty(),"real recruited source exists");
+        display.portraits={display.entries.front().human};display.portrait_timer=1;display.completion_tick=1000;
+        for(auto &entry:display.entries)entry.counter=-100;
+        const auto held=[&](auto &s){const auto result=p::update_startup_world_runtime_task_page(s,animation,true);require(result.has_value(),"24 held update");s=*result;};
+        roundtrip(tasks,held,"24 independent clocks and ar1 to minus1");held(tasks);
+        require(tasks.task_recruitment_pages.at(animation).portrait_timer==-1,"ar minus1 retained");
+        reject(tasks,"24 timer below original minus1",[&](auto &s){s.task_recruitment_pages.at(animation).portrait_timer=-2;});
+        reject(tasks,"24 missing independent clock",[&](auto &s){s.page_secondary_counters.erase(animation);});
+        tasks.task_recruitment_pages.at(animation).completion_tick=tasks.page_counters.at(animation)+1;
+        const auto completed=p::update_startup_world_runtime_task_page(tasks,animation,false);
+        require(completed.has_value(),"24 real completion to25");tasks=*completed;
+        expect(tasks,true,"24 completion and closed animation do not put secondary on25");
+        for(int turn=0;turn<40;++turn) {
+            const auto top=std::find_if(tasks.scripts.pages.rbegin(),tasks.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+            if(top!=tasks.scripts.pages.rend()&&top->legacy_page==25)break;
+            require(top!=tasks.scripts.pages.rend()&&p::acknowledge_startup_world_runtime_page(tasks,top->id)==E::none,"consume real recruitment message");
+            const auto next=p::prepare_startup_world_runtime(tasks);require(next.candidate.has_value(),"recruitment message frame");tasks=*next.candidate;
+        }
+        const auto team=std::find_if(tasks.scripts.pages.rbegin(),tasks.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+        require(team!=tasks.scripts.pages.rend()&&team->legacy_page==25,"25 becomes real top");
+        require(!tasks.page_secondary_counters.count(team->id)&&p::act_startup_world_runtime_task_page(tasks,team->id,A::depart).error==E::none,"25 real opens28 without extra clock");
+        const auto departure=tasks.scripts.pages.back().id;expect(tasks,true,"28 actual producer has independent clock");
+        reject(tasks,"28 missing independent clock",[&](auto &s){s.page_secondary_counters.erase(departure);});
+        roundtrip(tasks,[&](auto &s){require(p::act_startup_world_runtime_task_page(s,departure,A::confirm).error==E::none,"28 begin departure");},
+                  "28 main reset retains real secondary after replay");
+
+        auto tracking=baseline;
+        const auto candidate=r::prepare_world_task_creation(p::startup_world_runtime_factory(tracking),0);
+        require(candidate.candidate&&candidate.candidate->created_task&&p::write_startup_world_runtime_factory(tracking,candidate.candidate->state),"tracking real task");
+        require(p::open_startup_world_runtime_task_menu(tracking)==E::none,"tracking open22");
+        tracking.scripts.pages.back().lifecycle=2;
+        const auto directory=tracking.scripts.pages.back().id;input={};input.track=true;
+        roundtrip(tracking,[&](auto &s){require(p::input_startup_world_runtime_task_page(s,directory,input).error==E::none,"soft6 activation");},
+                  "22 soft6 source tracking state5 restore");
+        require(p::input_startup_world_runtime_task_page(tracking,directory,input).error==E::none,"tracking scene installed");
+        const auto scene=tracking.scripts.pages.back().id;
+        reject(tracking,"scene5 missing copied catalogue",[&](auto &s){s.task_page_lists.erase(scene);});
+        reject(tracking,"scene5 missing selection",[&](auto &s){s.page_phases.erase(scene);});
+        roundtrip(tracking,[&](auto &s){const auto next=p::update_startup_world_runtime_task_tracking_scene(s);require(next.has_value(),"source camera update");s=*next;},
+                  "scene5 both cameras replay from exact source snapshot");
     }
     {
         const auto require = [&](bool valid, const char *scenario) {

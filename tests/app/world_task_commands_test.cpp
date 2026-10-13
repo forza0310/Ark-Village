@@ -67,6 +67,14 @@ std::shared_ptr<const app::WorldFrame> menu_ready(app::WorldSession &session, in
                             sim::inspect_startup_world_menu_page(*f.state, p.id).has_value());
     });
 }
+// Task payload readiness is distinct from the navigation-menu descriptor.
+std::shared_ptr<const app::WorldFrame> task_ready(app::WorldSession &session, int raw) {
+    return await(session, [raw](const auto &f) {
+        const auto &p = task_top(*f.state);
+        return f.failed || (p.legacy_page == raw && p.lifecycle == 2 &&
+                            sim::valid_startup_world_runtime_task_page(*f.state, p));
+    });
+}
 std::shared_ptr<const app::WorldFrame> menu_tag(app::WorldSession &session, int raw, int tag) {
     const auto f = menu_ready(session, raw);
     check(!f->failed, "source navigation ready");
@@ -146,6 +154,31 @@ void main_menu_task_transaction() {
         check(has_task ? task_top(*result->state).legacy_page == 22
                        : event_count(*result->state, 29) == 1,
               "actual adventure source selects catalog or original empty-task feedback");
+        if (has_task) {
+            const auto ready = task_ready(session, 22);
+            const auto directory = task_top(*ready->state).id;
+            sim::StartupTaskPageInput tracking;
+            tracking.track = true;
+            const auto start = session.input_task_page(directory, tracking);
+            const auto scene = input_frame(session, start);
+            check(!scene->failed &&
+                      input_result(*scene, start).outcome == app::WorldCommandOutcome::applied &&
+                      sim::valid_startup_world_runtime_task_tracking_scene(*scene->state) &&
+                      scene->state->scene.world.world.ai.accounting.funds() == funds &&
+                      !scene->state->active_task,
+                  "22 tracking copies current task IDs without charging or accepting");
+            const auto located = await(
+                session, [](const auto &f) { return f.failed || f.state->scene.scene_state == 4; });
+            check(!located->failed, "Source camera reaches ready tracking scene4");
+            tracking = {};
+            tracking.cancel = true;
+            const auto returned = input_frame(
+                session, session.input_task_tracking(task_top(*located->state).id, tracking));
+            check(!returned->failed && task_top(*returned->state).legacy_page == 22 &&
+                      returned->state->scene.world.world.ai.accounting.funds() == funds &&
+                      !returned->state->active_task,
+                  "Tracking cancellation reopens22 through the same Owner without a hidden offer");
+        }
         const auto stale = input_frame(session, session.open_menu_tasks());
         check(!stale->failed && input_result(*stale, stale->last_command_serial).outcome ==
                                     app::WorldCommandOutcome::rejected,
@@ -187,7 +220,10 @@ void task_inputs_and_denials() {
     check(source.error == sim::StartupWorldRuntimeError::none && source.accepted,
           "Reference task offer accepts the current funds");
     app::WorldSession session(offer);
-    const auto accepted = session.act_task_page(page, Action::confirm);
+    task_ready(session, 23);
+    sim::StartupTaskPageInput accept_input;
+    accept_input.left = accept_input.right = accept_input.confirm = accept_input.cancel = true;
+    const auto accepted = session.input_task_page(page, accept_input);
     const auto paused = session.set_paused(true);
     check(paused == accepted + 1, "Task accept and pause retain common FIFO order");
     const auto result = input_frame(session, paused);
@@ -518,7 +554,8 @@ void human_command_transactions() {
               frame->state->page_phases.at(simultaneous_page) == 1 &&
               frame->state->human_page_selections.at(simultaneous_page) == 1 &&
               frame->state->scene.random.draws() == simultaneous.scene.random.draws(),
-          "Composite human frame retains branch ordering; invalid selection and generation roll back");
+          "Composite human frame retains branch ordering; invalid selection and generation roll "
+          "back");
     composed.stop();
 
     auto report = state;

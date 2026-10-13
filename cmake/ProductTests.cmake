@@ -152,6 +152,7 @@ if(ARK_BUILD_DESKTOP)
         SOURCES tests/desktop/world_ui_main.cpp tests/desktop/world_panels_test.cpp
             tests/desktop/world_award_ui_test.cpp tests/desktop/world_crew_summary_test.cpp
             tests/desktop/world_tasks_test.cpp tests/desktop/world_menu_test.cpp
+            tests/desktop/world_task_render_fixture.cpp
             tests/desktop/world_building_test.cpp tests/desktop/world_building_render_fixture.cpp
             tests/desktop/world_business_render_fixture.cpp
             src/desktop/ui/common/world_panels.cpp
@@ -171,7 +172,8 @@ if(ARK_BUILD_DESKTOP)
             src/desktop/ui/village/world_tax.cpp
             src/desktop/ui/information/world_information.cpp
             src/desktop/ui/village/world_award.cpp src/desktop/ui/tasks/world_crew_summary.cpp src/desktop/ui/common/world_reports.cpp
-            src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/system/world_menu.cpp
+            src/desktop/ui/tasks/world_tasks.cpp src/desktop/ui/tasks/world_task_selection.cpp
+            src/desktop/ui/tasks/world_task_tracking.cpp src/desktop/ui/system/world_menu.cpp
             src/desktop/ui/system/world_manual.cpp # raw13 reuses the existing world_menu scenarios.
             src/desktop/ui/facilities/world_building_view.cpp
         src/desktop/ui/facilities/world_building_input.cpp src/desktop/ui/facilities/world_building_render.cpp

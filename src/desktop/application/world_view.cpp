@@ -1,29 +1,30 @@
+#include "../ui/tasks/world_task_tracking.hpp"
 // Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
-#include "world_view.hpp"
+#include "../input/world_management.hpp"
+#include "../input/world_pointer.hpp"
+#include "../input/world_save_menu.hpp"
+#include "../inspection/world_inspection.hpp"
+#include "../inspection/world_management_inspection.hpp"
+#include "../inspection/world_render_statistics.hpp"
 #include "../platform/crash_report.hpp"
-#include "ark/app/session/world_report.hpp"
-#include "ark/app/session/world_session.hpp"
 #include "../platform/desktop_session.hpp"
-#include "../ui/common/layout.hpp"
-#include "ark/presentation/script_text.hpp"
-#include "../ui/common/skin.hpp"
-#include "../ui/village/world_award.hpp"
-#include "../ui/tasks/world_crew_summary.hpp"
-#include "../ui/system/world_menu.hpp"
-#include "../ui/common/world_panels.hpp"
-#include "../ui/common/world_reports.hpp"
-#include "../ui/system/world_startup.hpp"
-#include "../ui/tasks/world_tasks.hpp"
 #include "../platform/world_audio.hpp"
 #include "../scene/world_canvas.hpp"
-#include "../inspection/world_inspection.hpp"
-#include "../input/world_management.hpp"
-#include "../inspection/world_management_inspection.hpp"
-#include "../input/world_pointer.hpp"
-#include "../inspection/world_render_statistics.hpp"
-#include "../input/world_save_menu.hpp"
 #include "../scene/world_scene.hpp"
+#include "../ui/common/layout.hpp"
+#include "../ui/common/skin.hpp"
+#include "../ui/common/world_panels.hpp"
+#include "../ui/common/world_reports.hpp"
+#include "../ui/system/world_menu.hpp"
+#include "../ui/system/world_startup.hpp"
+#include "../ui/tasks/world_crew_summary.hpp"
+#include "../ui/tasks/world_tasks.hpp"
+#include "../ui/village/world_award.hpp"
+#include "ark/app/session/world_report.hpp"
+#include "ark/app/session/world_session.hpp"
+#include "ark/presentation/script_text.hpp"
 #include "world_title.hpp"
+#include "world_view.hpp"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -167,14 +168,14 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                          management_inspection.preview_orientation);
     }
     ui::WorldTaskSelection task_selection;
+    std::optional<ui::WorldTaskPaintedControls> task_controls;
     std::string task_feedback;
     bool desired_pause = publication->state->scene.framework_paused;
     const auto started = GetTime();
     auto next_render = started;
     double last_render{};
     WorldPointerGesture pointer;
-    std::optional<
-        std::tuple<std::uint64_t, std::uint64_t, bool, bool, int, int, int, int, int>>
+    std::optional<std::tuple<std::uint64_t, std::uint64_t, bool, bool, int, int, int, int, int>>
         pointer_context;
     WorldRenderStatistics render_statistics(options.frames);
     while (!WindowShouldClose() && (options.frames == 0 || frames < options.frames)) {
@@ -203,6 +204,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             management = {};
             save_menu = {};
             task_selection = {};
+            task_controls.reset();
             menu_feedback.clear();
             task_feedback.clear();
             view = {current.camera, current.reference_viewport};
@@ -351,7 +353,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         // This bounded diagnostic navigates the same source menu commands as the player.
         if (options.inspect_page == "world-village-menu" && !menu_pending && input_page &&
             input_page->legacy_page == 3) {
-            if (const auto source = simulation::inspect_startup_world_menu_page(current, input_page->id)) {
+            if (const auto source =
+                    simulation::inspect_startup_world_menu_page(current, input_page->id)) {
                 simulation::StartupWorldMenuInput input;
                 if (menu_inspection_phase == 0) {
                     const auto tag = std::find(source->tags.begin(), source->tags.end(), 2);
@@ -380,8 +383,8 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         }
         // A pending open is already a local input barrier; it cannot leak T/drag/Enter to the
         // old scene while the simulation worker completes its previous atomic update.
-        const bool menu_blocked = publication->save_menu_open ||
-                                  pending_menu || save_menu.pending() || management.pending();
+        const bool menu_blocked = publication->save_menu_open || pending_menu ||
+                                  save_menu.pending() || management.pending();
         if (!menu_blocked && !active_page(current) && (gesture.pan.x != 0 || gesture.pan.y != 0)) {
             const float factor = destination.width / extent.width * zoom;
             view.camera[0] -= gesture.pan.x / factor;
@@ -389,19 +392,22 @@ static void run_world_game_capture(const app::LaunchOptions &options,
             view_changed = true;
         }
         if (!menu_blocked && mouse && CheckCollisionPointRec(*mouse, layout.scene) &&
-            !active_page(current)) {
+            !active_page(current) && current.scene.scene_state <= 1) {
             if (const auto wheel = GetMouseWheelMove(); wheel) {
                 world_zoom_camera(view, extent, *mouse, wheel, zoom);
                 view_changed = true;
             }
         }
-        if (view_changed && !failed && !publication->save_menu_open && !save_menu.pending())
+        const bool task_tracking = current.scene.scene_state == 4 || current.scene.scene_state == 5;
+        if (view_changed && !task_tracking && !failed && !publication->save_menu_open &&
+            !save_menu.pending())
             pending_view = session.set_view(view.camera, view.viewport);
         if (const auto *page = menu_blocked ? nullptr : active_page(current)) {
             if (viewed_page != page->id) {
                 viewed_page = page->id;
                 paragraph = scroll = 0;
                 task_selection = {};
+                task_controls.reset();
                 task_feedback.clear();
             }
             if (page->legacy_page == 17) {
@@ -417,7 +423,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 // Management controller owns only selection and forwards explicit FIFO intents.
             } else if (ui::world_task_page(current, *page)) {
                 const auto task = ui::world_task_view(current, *page);
-                const auto task_layout = ui::world_task_layout(extent);
+                const auto task_layout = ui::world_task_layout(extent, task.raw);
                 ui::WorldTaskInput input;
                 input.click = click ? mouse : std::nullopt;
                 input.enter = IsKeyPressed(KEY_ENTER);
@@ -426,14 +432,21 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 input.down = IsKeyPressed(KEY_DOWN);
                 input.left = IsKeyPressed(KEY_LEFT);
                 input.right = IsKeyPressed(KEY_RIGHT);
+                input.track = IsKeyPressed(KEY_F);
+                input.pointer = IsWindowFocused() ? mouse : std::nullopt;
+                input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+                input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+                input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
                 if (mouse && CheckCollisionPointRec(*mouse, task_layout.rows))
                     input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
-                const auto intent = ui::world_task_input(task, task_layout, task_selection, input,
-                                                         desired_pause || failed || pending_task);
+                const auto intent =
+                    ui::world_task_input(task, task_layout, task_selection, input,
+                                         desired_pause || failed || pending_task, task_controls);
                 if (intent) {
                     task_feedback.clear();
-                    pending_task =
-                        session.act_task_page(page->id, intent->action, intent->selection);
+                    pending_task = intent->input ? session.input_task_page(page->id, *intent->input)
+                                                 : session.act_task_page(page->id, intent->action,
+                                                                         intent->selection);
                 }
             } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
                        page->legacy_page == 83) {
@@ -485,7 +498,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
         }
         // Held acceleration is page-bound and edge-triggered; 60 FPS cannot add source ticks.
         const auto *held_page = active_page(current);
-        const auto held_layout = ui::world_task_layout(extent);
+        const auto held_layout = ui::world_task_layout(extent, 24);
         const bool held =
             !menu_blocked && held_page && held_page->legacy_page == 24 && !desired_pause &&
             !failed && IsWindowFocused() &&
@@ -499,7 +512,22 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 session.set_page_confirm_held(next_held_page, true);
             held_task_page = next_held_page;
         }
-        const bool main_scene = !menu_blocked && !active_page(current);
+        if (!menu_blocked && !active_page(current) && task_tracking) {
+            if (const auto tracked = ui::world_task_tracking_view(current)) {
+                ui::WorldTaskInput in;
+                in.click = click ? mouse : std::nullopt;
+                in.left = IsKeyPressed(KEY_LEFT);
+                in.right = IsKeyPressed(KEY_RIGHT);
+                in.enter = IsKeyPressed(KEY_ENTER);
+                in.escape = back;
+                in.track = IsKeyPressed(KEY_F);
+                if (const auto logical = ui::world_task_tracking_input(
+                        *tracked, ui::world_task_tracking_layout(extent), in,
+                        desired_pause || failed || pending_task || pending_ack))
+                    pending_task = session.input_task_tracking(tracked->scene, *logical);
+            }
+        }
+        const bool main_scene = !menu_blocked && !active_page(current) && !task_tracking;
         // Click the last presented artwork, including its actual interpolated actor positions.
         // Loading replaces all identities; never reuse a hit list across world generations.
         if (pick_generation != publication->generation) {
@@ -559,9 +587,15 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                                 !pending_task)) {
                 // Source-bound management pages are drawn by their own small UI modules.
             } else if (ui::world_task_page(current, *page)) {
-                ui::draw_world_task(ui::world_task_view(current, *page),
-                                    ui::world_task_layout(extent), skin, task_selection,
-                                    !desired_pause && !failed && !pending_task, task_feedback);
+                auto task = ui::world_task_view(current, *page);
+                ui::prepare_world_task(task, current, skin, task_selection.gesture.scrolling);
+                const auto box = ui::world_task_layout(extent, task.raw);
+                if (task.raw >= 22 && task.raw <= 24)
+                    task_controls = ui::draw_world_task_selection(
+                        task, box, skin, !desired_pause && !failed && !pending_task, task_feedback);
+                else
+                    ui::draw_world_task(task, box, skin, task_selection,
+                                        !desired_pause && !failed && !pending_task, task_feedback);
             } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
                        page->legacy_page == 31) {
                 const auto crew = ui::world_crew_summary_view(current, page->id);
@@ -608,6 +642,11 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                 !desired_pause && !failed && !pending_ack);
             }
         }
+        if (!active_page(current) && task_tracking)
+            if (const auto tracked = ui::world_task_tracking_view(current))
+                ui::draw_world_task_tracking(*tracked, ui::world_task_tracking_layout(extent), skin,
+                                             !desired_pause && !failed && !pending_task &&
+                                                 !menu_blocked);
         if (!publication->system_error.empty()) {
             skin.content({8, extent.height - 92.F, extent.width - 16.F, 68});
             skin.centered("系统纪录写入失败，进度已保留",

@@ -7,6 +7,7 @@ void world_award_ui();
 void world_award_render_fixture();
 void world_crew_summary();
 void world_tasks();
+void world_task_render_fixture();
 void world_menu();
 void world_building();
 void world_human();
@@ -31,6 +32,7 @@ int main(int argc, char **argv) {
          {"world_award_render_fixture", ark::test::world_award_render_fixture},
          {"world_crew_summary", ark::test::world_crew_summary},
          {"world_tasks", ark::test::world_tasks},
+         {"world_task_render_fixture", ark::test::world_task_render_fixture},
          {"world_menu", ark::test::world_menu},
          {"world_building", ark::test::world_building},
          {"world_human", ark::test::world_human},

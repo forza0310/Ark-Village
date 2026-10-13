@@ -1,9 +1,11 @@
 // Deliberately sparse definition/instance IDs catch accidental row-index ownership. These are
 // presentation fixtures, not evidence of natural recruitment or successful task completion.
-#include "../support/checks.hpp"
-#include "../../src/desktop/ui/village/world_award.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
+#include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
 #include "../../src/desktop/ui/tasks/world_tasks.hpp"
+#include "../../src/desktop/ui/village/world_award.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 #include <iostream>
 
 namespace {
@@ -49,9 +51,12 @@ void world_tasks() {
     page.kind = rules::WorldScriptPageKind::raw_page;
     page.id = 15;
     page.legacy_page = 22;
+    page.lifecycle = 2;
     check(!ui::world_task_view(state, page).initialized && state.task_page_lists.empty(),
           "Read-only UI must not initialize a task list");
     state.task_page_lists[page.id] = {900, 120, 900};
+    state.page_phases[page.id] = 0;
+    state.page_secondary_counters[page.id] = 0;
     auto view = ui::world_task_view(state, page);
     check(view.initialized && view.rows.size() == 3 && view.rows[0].task == 900 &&
               view.rows[0].name == "task-3" && view.rows[1].task == 120 && view.rows[2].task == 900,
@@ -60,7 +65,11 @@ void world_tasks() {
     ui::WorldTaskSelection selection;
     ui::WorldTaskInput input;
     input.down = true;
-    (void)ui::world_task_input(view, layout, selection, input, false);
+    const auto move = ui::world_task_input(view, layout, selection, input, false);
+    check(move && move->input && move->input->down && selection.selected == 0,
+          "22 forwards direction without keeping a second desktop cursor");
+    state.page_phases.at(page.id) = 1; // Published Owner acknowledgement, not UI mutation.
+    view = ui::world_task_view(state, page);
     input = {};
     input.enter = true;
     auto intent = ui::world_task_input(view, layout, selection, input, false);
@@ -220,6 +229,63 @@ void world_tasks() {
     (void)ui::world_task_input(view, layout, selection, input, false);
     check(selection.selected == 1, "Deadline choice cannot change after source animation starts");
 
+    {
+        auto owner = initial_world();
+        const auto created =
+            rules::prepare_world_task_creation(sim::startup_world_runtime_factory(owner), 0);
+        check(created.candidate &&
+                  sim::write_startup_world_runtime_factory(owner, created.candidate->state),
+              "Tracking UI creates its task with the actual factory");
+        check(sim::open_startup_world_runtime_task_menu(owner) ==
+                  sim::StartupWorldRuntimeError::none,
+              "Tracking UI enters the source22 catalogue");
+        for (int n = 0; n < 6 && owner.scripts.pages.back().lifecycle != 2; ++n) {
+            auto next = sim::prepare_startup_world_runtime(owner);
+            check(next.candidate.has_value(), "22 real Init ready");
+            owner = std::move(*next.candidate);
+        }
+        const auto id = owner.scripts.pages.back().id;
+        const auto list = ui::world_task_view(owner, owner.scripts.pages.back());
+        ui::WorldTaskPaintedControls painted;
+        painted.geometry.page = id;
+        painted.geometry.raw = 22;
+        painted.geometry.selection = list.selected;
+        painted.geometry.first = list.first;
+        painted.geometry.count = int(list.rows.size());
+        painted.geometry.extent = {240, 256};
+        painted.geometry.rows = {{0, 0, {25, 95, 180, 16}}};
+        for (const auto &r : list.rows)
+            painted.tasks.push_back(*r.task);
+        ui::WorldTaskSelection device;
+        ui::WorldTaskInput click;
+        click.click = Vector2{30, 100};
+        const auto picked = ui::world_task_input(list, ui::world_task_layout({240, 256}, 22),
+                                                 device, click, false, painted);
+        check(
+            picked && picked->input && picked->input->selection == 0 && picked->input->confirm,
+            "22 row release keeps64-bit source identities and submits selection/confirm together");
+        painted.tasks.front() += 1;
+        check(!ui::world_task_input(list, ui::world_task_layout({240, 256}, 22), device, click,
+                                    false, painted),
+              "A replaced frozen task identity rejects old geometry even at the same row");
+        sim::StartupTaskPageInput track;
+        track.track = true;
+        check(sim::input_startup_world_runtime_task_page(owner, id, track).error ==
+                  sim::StartupWorldRuntimeError::none,
+              "22 enters actual tracking scene5");
+        const auto before = owner;
+        const auto tracking = ui::world_task_tracking_view(owner);
+        check(tracking && !tracking->ready && tracking->name == list.rows.front().name,
+              "Tracking UI reads the Owner and waits during source camera movement");
+        click = {};
+        click.enter = true;
+        check(!ui::world_task_tracking_input(*tracking, ui::world_task_tracking_layout({240, 256}),
+                                             click, false) &&
+                  owner.camera == before.camera &&
+                  owner.previous_camera == before.previous_camera &&
+                  owner.scene.random.draws() == before.scene.random.draws(),
+              "Scene5 input/query cannot start recruitment or move the source camera");
+    }
     const auto draws = state.scene.random.draws();
     const auto cash = state.scene.world.world.ai.accounting.funds();
     (void)ui::world_task_view(state, page);

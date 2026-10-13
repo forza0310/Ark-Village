@@ -36,6 +36,13 @@ struct StartupVillageActivityInput;
 struct StartupTownRankInput;
 struct StartupWorldMenuInput;
 struct StartupManualInput;
+// 任务目录/募集与主场景追踪的一轮解析输入，不持久保存设备状态。
+struct StartupTaskPageInput {
+    bool up{}, down{}, left{}, right{}, confirm{}, cancel{}, track{};
+    std::optional<int> selection;
+    struct Scroll { bool absolute{}; int value{}; };
+    std::optional<Scroll> scroll;
+};
 struct StartupManualPageData {
     std::vector<int> decorations;
     int text_page{}; // 关于页保留上次已装入TextLayout的正文索引。
@@ -228,7 +235,7 @@ struct StartupWorldRuntimeState {
     std::array<int, 2> main_menu_position{{0, 25}};
     std::map<std::uint64_t, StartupWorldMenuPageData> menu_page_data; // raw3/4/7/10。
     std::map<std::uint64_t, std::array<int, 2>> menu_page_positions; // 另保留实际raw3→9位置。
-    std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X快照。
+    std::map<std::uint64_t, std::vector<std::uint64_t>> task_page_lists; // raw22的X；scene键为StartDungeonStart另抄的当前名单。
     std::map<std::uint64_t, ref::TaskRecruitmentAnimation>
         task_recruitment_pages;                                 // raw24 X/Y/ap/aq/ar/as。
     std::map<std::uint64_t, std::vector<int>> task_extra_pages; // raw27 X，仅页面期间存在。
@@ -499,6 +506,8 @@ class StartupWorldRuntimeSession {
     StartupBuildResult act_residence_page(std::uint64_t page, int human, bool cancel = false);
     StartupWorldTaskPageResult act_task_page(std::uint64_t page, StartupWorldTaskAction action,
                                              int selection = 0);
+    StartupWorldTaskPageResult input_task_page(std::uint64_t page, const StartupTaskPageInput &input);
+    StartupWorldRuntimeError input_task_tracking_scene(const StartupTaskPageInput &input);
     const std::vector<std::shared_ptr<const StartupWorldRuntimeState>> &checkpoints() const;
 
   private:

@@ -75,7 +75,9 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
     if (!world_task_page(s, page) || !s.rules)
         throw std::invalid_argument("Task view requires a supported page and catalogue");
     WorldTaskView view;
+    view.page = page.id;
     view.raw = page.legacy_page;
+    view.interactive = page.lifecycle == 2 && !s.scene.framework_paused;
     view.title = title(view.raw);
     view.task = page.task_identity;
     if (page.task_definition)
@@ -85,6 +87,20 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
         view.counter = counter->second;
     const auto phase = s.page_phases.find(page.id);
     view.animating = phase != s.page_phases.end() && phase->second == 1;
+    if (view.raw >= 22 && view.raw <= 24 && page.lifecycle != 2)
+        return view;
+    if (view.raw == 22 || view.raw == 23) {
+        const auto selected = s.page_phases.find(page.id);
+        if (selected == s.page_phases.end())
+            return view;
+        view.selected = selected->second;
+        if (view.raw == 22) {
+            const auto first = s.page_secondary_counters.find(page.id);
+            if (first == s.page_secondary_counters.end())
+                return view;
+            view.first = first->second;
+        }
+    }
     if (view.raw == 1) {
         view.abort_question = true;
     } else if (view.raw == 4) {
@@ -148,12 +164,24 @@ WorldTaskView world_task_view(const State &s, const Page &page) {
     view.initialized = true;
     return view;
 }
-WorldTaskLayout world_task_layout(Extent extent) {
+WorldTaskLayout world_task_layout(Extent extent, int raw) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Task page requires the supported logical viewport");
     const float width = std::min(310.F, extent.width - 16.F);
     const float height = std::min(250.F, extent.height - 68.F);
     WorldTaskLayout layout;
+    layout.viewport = extent;
+    if (raw >= 22 && raw <= 24) {
+        const float w = raw == 22 ? 220.F : 222.F, h = raw == 22 ? 168.F : 170.F;
+        layout.panel = {(extent.width - w) / 2, (extent.height - h) / 2, w, h};
+        const auto o = world_list_skin_origin(layout.panel);
+        layout.rows = {o.x + 23, o.y + 95, 191, 95};
+        layout.body = layout.rows;
+        layout.cancel = {layout.panel.x + w - 50, layout.panel.y + h + 4, 50, 18};
+        layout.confirm = {layout.panel.x, layout.panel.y + h + 4, 50, 18};
+        layout.inspect = {layout.panel.x + w / 2 - 25, layout.panel.y + h + 4, 50, 18};
+        return layout;
+    }
     layout.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &p = layout.panel;
     layout.body = {p.x + 12, p.y + 30, width - 24, height - 75};
@@ -178,10 +206,12 @@ Rectangle world_task_menu_button(Extent extent) {
 int world_task_visible_rows(const WorldTaskLayout &layout) {
     return std::clamp(static_cast<int>(layout.rows.height / 20), 1, 5);
 }
-std::optional<WorldTaskIntent> world_task_input(const WorldTaskView &view,
-                                                const WorldTaskLayout &layout,
-                                                WorldTaskSelection &selection,
-                                                const WorldTaskInput &input, bool blocked) {
+std::optional<WorldTaskIntent>
+world_task_input(const WorldTaskView &view, const WorldTaskLayout &layout,
+                 WorldTaskSelection &selection, const WorldTaskInput &input, bool blocked,
+                 const std::optional<WorldTaskPaintedControls> &painted) {
+    if (view.raw >= 22 && view.raw <= 24)
+        return world_task_selection_input(view, layout, selection, input, blocked, painted);
     if (blocked || !view.initialized)
         return {};
     if (view.abort_question) {
@@ -214,8 +244,6 @@ std::optional<WorldTaskIntent> world_task_input(const WorldTaskView &view,
             if (hit(input.click, {layout.rows.x, layout.rows.y + row * 20, layout.rows.width, 20}))
                 selection.selected = selection.first_row + row;
     }
-    if (view.raw == 24)
-        return {}; // Recruitment consumes held edges through a separate page-bound command.
     if (view.raw == 33 && !view.animating) {
         selection.selected = std::clamp(selection.selected, 0, 1);
         if (input.left || input.right)
@@ -250,6 +278,10 @@ std::optional<WorldTaskIntent> world_task_input(const WorldTaskView &view,
 void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, const Skin &skin,
                      const WorldTaskSelection &selection, bool enabled,
                      const std::string &feedback) {
+    if (view.raw >= 22 && view.raw <= 24) {
+        draw_world_task_selection(view, layout, skin, enabled, feedback);
+        return;
+    }
     skin.window(layout.panel, view.title);
     skin.content(
         {layout.body.x - 5, layout.body.y - 5, layout.body.width + 10, layout.body.height + 10});
@@ -293,24 +325,8 @@ void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, c
                                                   "重新来过比较好", "应该撤退…"};
             fitted(skin, grades[*view.deadline_grade], {body.x, body.y + 45, body.width, 17});
         }
-        if (view.raw == 24) {
-            skin.text.draw(std::to_string(view.recruited_count) + "人", body.x, body.y + 24);
-            if (!view.recruitment_names.empty())
-                skin.text.paragraph(view.recruitment_names.front(), layout.recruitment_name.x,
-                                    layout.recruitment_name.y, layout.recruitment_name.width);
-            if (view.recruitment_actor) {
-                // research33ee056 startup_view: Y.front(), current profession/sex, actor0/frame0.
-                // The source page ticks switch Y; rendering does not advance that clock.
-                // This restores the delivered prototype's character switch only. Exact X-entry
-                // movement/expressions for the full original recruitment animation remain
-                // unshipped.
-                skin.sprites.actor(
-                    false, 0, view.recruitment_actor->image, 0,
-                    {layout.recruitment_actor.x + 20, layout.recruitment_actor.y + 36});
-            }
-        }
     }
-    if (view.initialized && (view.raw == 24 || view.animating)) {
+    if (view.initialized && view.animating) {
         const float ratio =
             view.extent > 0 ? std::clamp(view.counter / static_cast<float>(view.extent), 0.F, 1.F)
                             : 0.F;
@@ -330,7 +346,7 @@ void draw_world_task(const WorldTaskView &view, const WorldTaskLayout &layout, c
     if (!view.abort_question && view.raw != 24 && view.raw != 33 &&
         !(view.raw == 28 && view.animating))
         skin.button(layout.cancel, "取消", interactive);
-    std::string confirm = view.raw == 24 ? "加速" : "确定";
+    std::string confirm = "确定";
     if ((view.raw == 25 || view.raw == 26) && !view.rows.empty())
         confirm =
             view.rows.at(std::clamp(selection.selected, 0, static_cast<int>(view.rows.size()) - 1))

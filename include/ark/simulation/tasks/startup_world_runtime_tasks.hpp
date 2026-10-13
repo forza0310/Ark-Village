@@ -7,6 +7,16 @@ namespace ark::simulation {
 // 原n.z()/IsExistQuestNew：按当前task_order原序，重复引用合法，首个NEW即返回。
 // 只核实际读取的稳定引用；空名单false，读取到坏引用返回空，不扫描历史tasks。
 std::optional<bool> startup_world_has_new_tasks(const StartupWorldRuntimeState &state);
+bool valid_startup_world_runtime_task_page(const StartupWorldRuntimeState &state,
+                                          const ref::WorldScriptPage &page);
+bool valid_startup_world_runtime_task_tracking_scene(const StartupWorldRuntimeState &state);
+StartupWorldTaskPageResult input_startup_world_runtime_task_page(
+    StartupWorldRuntimeState &state, std::uint64_t page, const StartupTaskPageInput &input);
+// scene4处理同轮输入；scene5只按真正框架更新移动镜头，不可提前确认募集。
+StartupWorldRuntimeError input_startup_world_runtime_task_tracking_scene(
+    StartupWorldRuntimeState &state, const StartupTaskPageInput &input);
+std::optional<StartupWorldRuntimeState> update_startup_world_runtime_task_tracking_scene(
+    const StartupWorldRuntimeState &state);
 // 玩家显式打开任务列表/操作栈顶页；不自动接任务，不绕过征集、费用或出发动画。
 StartupWorldRuntimeError open_startup_world_runtime_task_menu(StartupWorldRuntimeState &state);
 // 原冒险页4入口由导航菜单维护；不替玩家选择任务或中止。

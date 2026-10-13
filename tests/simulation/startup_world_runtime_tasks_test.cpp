@@ -6,6 +6,7 @@
 #include "ark/simulation/village/rules/world_notices.hpp"
 #include "support/world_fixture.hpp"
 #include "support/audio_requests.hpp"
+#include "../../src/simulation/persistence/startup_world_codec.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -153,6 +154,125 @@ void task_new_notices() {
                   StartupWorldRuntimeError::none && startup_world_state_digest(late)==unchanged,
               "failed row or later locked child insertion rolls back already prepared NEW clearing and page state");
     }
+}
+void task_page_input_and_tracking() {
+    using E=StartupWorldRuntimeError;
+    auto s=test_support::world_fixture();
+    s.human_presence.at(1)=1; // 最小募集资格组合，非自然到访证据。
+    const auto made=ref::prepare_world_task_creation(startup_world_runtime_factory(s),0);
+    check(made.candidate&&made.candidate->created_task&&write_startup_world_runtime_factory(s,made.candidate->state),
+          "task input fixture uses a real factory task/site");
+    const auto task=*made.candidate->created_task;
+    s.task_order.assign(7,task); // 合法重复引用的尾窗夹具，不生成七个伪实体。
+    check(open_startup_world_runtime_task_menu(s)==E::none,"actual producer installs22 cursor and catalogue");
+    const auto directory=s.scripts.pages.back().id;
+    const auto reject_unadmitted=[&](const auto &source,std::uint64_t page) {
+        for(const int lifecycle:{0,1}) {
+            auto pending=source;
+            const auto found=std::find_if(pending.scripts.pages.begin(),pending.scripts.pages.end(),
+                [=](const auto &p){return p.id==page;});
+            check(found!=pending.scripts.pages.end(),"lifecycle fixture retains real page identity");
+            found->lifecycle=lifecycle;
+            const auto bytes=persistence_detail::encode_state(pending);
+            StartupTaskPageInput command;command.confirm=true;
+            check(input_startup_world_runtime_task_page(pending,page,command).error==E::invalid_page&&
+                  persistence_detail::encode_state(pending)==bytes,
+                  "new task DTO rejects lifecycle0/1 with complete encoded state unchanged");
+        }
+    };
+    reject_unadmitted(s,directory);
+    s.scripts.pages.back().lifecycle=2; // 本组输入夹具明确位于获准页面轮。
+    StartupTaskPageInput input;input.selection=6;input.up=input.down=true;
+    check(input_startup_world_runtime_task_page(s,directory,input).error==E::none&&
+          s.page_phases.at(directory)==6&&s.page_secondary_counters.at(directory)==2,
+          "22 selection then up/down keeps final row and repairs visible first once");
+    s.page_secondary_counters.at(directory)=6;
+    input={};input.up=input.down=true;
+    check(input_startup_world_runtime_task_page(s,directory,input).error==E::none&&s.page_secondary_counters.at(directory)==6,
+          "22 legal short tail is not clamped to count minus five");
+    auto malformed=s;malformed.page_phases.erase(directory);
+    const auto damaged=startup_world_state_digest(malformed);
+    input={};input.confirm=true;
+    check(input_startup_world_runtime_task_page(malformed,directory,input).error==E::missing_source&&
+          startup_world_state_digest(malformed)==damaged,"22 missing Owner selection is rejected without implicit initialization");
+    auto offered=s;input.confirm=input.cancel=input.track=true;
+    check(input_startup_world_runtime_task_page(offered,directory,input).error==E::none&&offered.scripts.pages.back().legacy_page==23,
+          "22 same-round confirm wins cancel and tracking");
+    const auto offer=offered.scripts.pages.back().id;
+    reject_unadmitted(offered,offer);
+    offered.scripts.pages.back().lifecycle=2;
+    input={};input.right=true;
+    check(input_startup_world_runtime_task_page(offered,offer,input).error==E::none&&offered.page_phases.at(offer)==1,
+          "23 right stores source display choice1");
+    const auto funds=offered.scene.world.world.ai.accounting.funds();
+    input={};input.confirm=true;
+    const auto accepted=input_startup_world_runtime_task_page(offered,offer,input);
+    check(accepted.error==E::none&&accepted.accepted&&offered.scripts.pages.back().legacy_page==24&&
+          offered.scene.world.world.ai.accounting.funds()==funds-s.rules->tasks.at(s.tasks.at(task).definition).recruitment_fee&&
+          !offered.page_secondary_counters.count(offer),"23 confirmation ignores stored1 and recruits, without stray secondary on23");
+    const auto animation=offered.scripts.pages.back().id;
+    auto &recruitment=offered.task_recruitment_pages.at(animation);
+    check(!recruitment.entries.empty(),"actual recruitment supplies portrait source");
+    recruitment.portraits={recruitment.entries.front().human};recruitment.portrait_timer=1;
+    recruitment.completion_tick=1000;for(auto &entry:recruitment.entries)entry.counter=-100;
+    const auto secondary=offered.page_secondary_counters.at(animation);
+    const auto advanced=update_startup_world_runtime_task_page(offered,animation,true);
+    check(advanced&&advanced->task_recruitment_pages.at(animation).portrait_timer==-1&&
+          advanced->page_secondary_counters.at(animation)==secondary+2&&
+          valid_startup_world_runtime_task_page(*advanced,advanced->scripts.pages.back()),
+          "24 held crosses ar1 to legal minus1 and advances both source clocks");
+
+    s.task_order={task}; // StartDungeonStart重新抄当下名单，入页七行X保持。
+    input={};input.track=true;
+    auto blocked=s;blocked.scripts.page_mutations_locked=true;
+    const auto before=startup_world_state_digest(blocked);
+    check(input_startup_world_runtime_task_page(blocked,directory,input).error==E::script_failed&&
+          startup_world_state_digest(blocked)==before,"late scene activation failure rolls back NEW, both catalogues and cursor");
+    const auto cash=s.scene.world.world.ai.accounting.funds();const auto draws=s.scene.random.draws();
+    const auto updates=s.scene.world.updates;const auto date=s.scene.calendar.units;
+    check(input_startup_world_runtime_task_page(s,directory,input).error==E::none&&s.scene.scene_state==5&&
+          s.scripts.pages.back().kind==ref::WorldScriptPageKind::scene&&!s.active_task,
+          "22 tracking activates scene5 without starting task or charging recruitment");
+    const auto scene=s.scripts.pages.back().id;
+    check(s.task_page_lists.at(directory).size()==7&&s.task_page_lists.at(scene)==std::vector<std::uint64_t>{task}&&
+          s.page_phases.at(scene)==0&&!s.tasks.at(task).newly_available,
+          "scene has separate current-list snapshot and resets out-of-range startIndex to0");
+    const auto site=*s.tasks.at(task).site;
+    const std::array<float,2> target{float((site.x+site.y)*30+30),float((site.y-site.x)*15+10)};
+    s.camera={target[0]-5,target[1]};s.previous_camera={target[0]-7,target[1]};
+    const auto equal=update_startup_world_runtime_task_tracking_scene(s);
+    check(equal&&equal->scene.scene_state==5&&equal->camera==target&&equal->previous_camera[0]==target[0]-2,
+          "scene5 distance exactly step moves both cameras but does not prematurely transition");
+    const auto arrived=update_startup_world_runtime_task_tracking_scene(*equal);
+    check(arrived&&arrived->scene.scene_state==4&&arrived->camera==target&&arrived->previous_camera==target&&
+          arrived->scene.world.world.ai.accounting.funds()==cash&&arrived->scene.random.draws()==draws&&
+          arrived->scene.world.updates==updates&&arrived->scene.calendar.units==date,
+          "scene5 strict distance below step aligns both and enters4 without world simulation or spending");
+    s=*arrived;
+    for(const int lifecycle:{0,1}) {
+        auto pending=s;pending.scripts.pages.back().lifecycle=lifecycle;
+        const auto bytes=persistence_detail::encode_state(pending);
+        StartupTaskPageInput command;command.cancel=true;
+        check(input_startup_world_runtime_task_tracking_scene(pending,command)==E::invalid_page&&
+              persistence_detail::encode_state(pending)==bytes,
+              "scene DTO rejects lifecycle0/1 without changing complete encoded world or tracking cache");
+    }
+    auto invalid=s;invalid.task_page_lists.erase(scene);
+    check(!valid_startup_world_runtime_task_tracking_scene(invalid)&&
+          input_startup_world_runtime_task_tracking_scene(invalid,{} )==E::missing_source,
+          "scene4 missing tracking catalogue is not reconstructed from current tasks");
+    auto chosen=s;chosen.task_page_lists.at(scene).push_back(task);
+    input={};input.left=input.confirm=true;
+    check(input_startup_world_runtime_task_tracking_scene(chosen,input)==E::none&&chosen.page_phases.at(scene)==1&&
+          chosen.scene.scene_state==5&&chosen.scripts.pages.back().legacy_page==23,
+          "scene4 changed selection sets5 but same-round confirmation still opens selected23");
+    input={};input.cancel=true;
+    check(input_startup_world_runtime_task_tracking_scene(s,input)==E::none&&s.scene.scene_state==0&&
+          s.scripts.pages.back().legacy_page==22&&s.task_page_lists.at(scene)==std::vector<std::uint64_t>{task},
+          "scene4 cancel reopens22 and retains separate scene cache until source refresh");
+    auto normal=test_support::world_fixture();
+    check(valid_startup_world_runtime_task_tracking_scene(normal)&&!update_startup_world_runtime_task_tracking_scene(normal),
+          "normal scene0 needs no tracking fields and is not advanced by tracking consumer");
 }
 void selection_catalogue_consumers() {
     StartupSession initial;
@@ -1141,6 +1261,7 @@ int main() {
     try {
         factory();
         task_new_notices();
+        task_page_input_and_tracking();
         selection_catalogue_consumers();
         crew_item_reward_writeback();
         encounter();

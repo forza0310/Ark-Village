@@ -142,6 +142,10 @@ Steam标题Update另有诊断下载分支把当前手动日期写300，不属于
 `10800` 是原逻辑进度边界，不擅自换算成秒，也不描述成仅“每月自动保存”。
 保存程序先设 `P.int[15]=1`，手动和自动都如此。
 
+Steam同一路径的调用资格已静态收窄：`GameForm._update`仅一处`ProgressTime`调用（VA10305BA2），前置普通事件（10305181）或到期续体（103052BE）返回时不到此处。世界Update（103052E0）之后仍先处理通知与底栏；若软标签4命中，Push菜单后返回（10305B64–10305BDE），否则须state仍为0（10305B70）才传FRAME_TIME1和当前frameCount。`GameForm.Update`在103017A3–103017C3循环调用内部方法，普通路径按P13取1／2轮（值1为2），非主场景改1，内部返回true则提前停止；配置／调试还可覆盖，不能把单一调用点写成每个外层最多调用一次。
+
+跨界的即时`SaveGame(true)`在`ProgressTime`的102FD319／102FD31C传参／调用；正常返回后102FD34F才恢复试加time，102FD360才增加monthCnt。该方法没有本地异常恢复路径；保存异常向上传播时，后续线性恢复与日历步骤不会执行。原行为不是维护Owner式事务回滚，此路径也不等于下文预留SaveAll；FRAME_TIME1的全部运行期赋值、异常展开及实际平台时序仍另验。
+
 已见 Android 生命周期 [IApplication.java](../work/decompiled/sources/kairo/android/ui/IApplication.java)
 的 `onPause`／`onStop`／`onDestroy` 没有调用游戏保存，最后一项直接结束进程。
 全游戏调用核对只找到日历的直接 `a(true)` 和手动 `e()->a(false)`。
@@ -693,6 +697,7 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 这是Steam独立事实，不将APK暂停／退出改判为同样行为。
 
 `FormManagerBase._execute`先取得`KairoBase.GetInstance`，成功尾段VA `0x107EA7D7`调用辅助`0x107E0210`。
+2026-10-13补核同方法异常续体：107EA81B暂存异常指针，107EA826给出续体地址107EA82C；后者在107EA836也调用同辅助，随后107EA83B检查暂存异常，非空则107EA843重新抛出。因此预留分派不只位于成功更新尾段；未穷尽全部EH展开，不能外推为任何异常都保存，也不能将日历即时保存异常当作自动产生了reserveSave=2。
 辅助要求对象非null、`reserveSaveEnable`为真、`reserveSave`非零；先复制预留值并清原值，再分派：
 值1→槽17 `Save`，值2→槽18 `SaveAll`；其它非零值在本处清除但不执行这两种保存。
 虚分派帮助器的实际指针公式为类偏移`0xBC+slot*8`，槽18对应`0x14C`；不是由方法名称猜调用。
@@ -708,7 +713,7 @@ SaveAll已证true→false→system的顺序保留，完整生命周期上游仍�
 
 原先Close候选的对象是`KairoPlugin.languageDialogWindows_`。其已登记构造仅订阅Click／CheckedChanged／SizeChanged；
 本样本`Form.Close`是交给runtime帮助器的48字节stub，不能补成标准.NET主窗口Closing／Closed事件链。
-因此本批闭合的是运行尾段的预留保存分派；全部请求产生入口、停止运行后是否有消费机会、
+因此已闭合正常尾段及所核异常续体的预留保存分派；普通暂停／退出／后台如何提出值2、停止运行后是否有消费机会、
 OS关闭／暂停／强制终止是否触发保存仍未知。已有五处Billing setter记录不是完整入口清单或玩家动态认证。
 
 ## 当前C++边界与持续存取

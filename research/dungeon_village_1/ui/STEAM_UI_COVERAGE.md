@@ -106,7 +106,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 64 | CHARA_PRESENT_ITEMSELECT | 人物／成长／礼物 | 静态及维护：装备／普通道具目录、五槽／四行／首行、回复预选及整轮输入已接；原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 65 | CHARA_PRESENT_ITEMSELECT_INFO | 人物／成长／礼物 | 静态及维护：装备赠礼确认皮肤及答案回父64，父恢复才支付／装配；原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 66 | CHARA_PRESENT_ANIME | 人物／成长／礼物 | 静态及维护：赠礼演出、类别结果和原资源计划已交付；Owner显式表现请求与原Draw准入分开，完整scratch／字体／OS仍缺，见[人物合同](STEAM_HUMAN_DETAIL.md) |
-| 67 | CHARA_PUTUP_BONUS | 人物／成长／礼物 | 仅声明；更新／绘制／动态链待逐项 |
+| 67 | CHARA_PUTUP_BONUS | 人物／成长／礼物 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：已定位四战斗值helper index0、肖像与冻结努力百分比；完整图元／桥及原动态待补 |
 | 68 | CHARA_EQUIP_EFFECT | 人物／成长／礼物 | 静态及维护：冻结装备槽／新ID、当前与差额动画、有序计划与真实消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 69 | CHARA_ITEM_EFFECT | 人物／成长／礼物 | 静态及维护：普通道具结果、冻结前值、当前能力动画与实际消费参考已交付；完整原动态另验，见[人物合同](STEAM_HUMAN_DETAIL.md) |
 | 70 | CHARA_LVMAX | 人物／成长／礼物 | 仅声明；更新／绘制／动态链待逐项 |
@@ -119,15 +119,15 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 77 | TENANT_ANIME2 | 设施 | 静态及维护：49快进／55关闭、前后数字与角色资源计划已接；S045仅结果局部，完整OS动态另验，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 78 | TENANT_SERVICE | 设施 | 仅声明；更新／绘制／动态链待逐项 |
 | 79 | TENANT_EQUIPLIST | 设施 | 静态及维护：四行两页／NEW、商品信息72与真实Owner整轮输入已交付；确认清标记不购买，原动态另验，见[商品合同](../rules/COMMERCE.md) |
-| 80 | TENANT_RESIDENT_LIST | 设施 | 仅声明；更新／绘制／动态链待逐项 |
+| 80 | TENANT_RESIDENT_LIST | 设施 | [局部Init／Update／Draw合同](PAGES.md#steam住宅候选80与授勋目录87)已核，原更新四行而绘制五行；现有入住事务，纯皮肤／Owner游标／原动态待接 |
 | 81 | TENANT_LVUP_ANIME | 设施 | 静态：[Init真正升级、40／55确认、独立frame2及完整局部Draw](STEAM_FACILITY_UPGRADE.md)已核；维护：Owner与数字动画／角色／框及触摸计划已接。动态：无连续原窗口认证；原字体、平台热区仍独立 |
 | 82 | TENANT_STREN_BONUS | 设施 | 静态及维护：两阶段口碑／人气、有序皮肤、独立双钟／恢复与条件参考已交付；未认证自然36个月触发、完整scratch或原OS动态，见[效果合同](../rules/FACILITY_EFFECTS.md) |
 | 83 | SHOPPING_TOP | 商会 | 仅声明；更新／绘制／动态链待逐项 |
 | 84 | SHOPPING_ITEMSELECT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
 | 85 | SHOPPING_TENANT | 商会 | 仅声明；更新／绘制／动态链待逐项 |
 | 86 | SHOPPING_ACT_AFTER | 商会 | 仅声明；更新／绘制／动态链待逐项 |
-| 87 | MEDAL_LIST | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
-| 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
+| 87 | MEDAL_LIST | 授勋／怪物／住宅 | [局部Init／Update／Draw合同](PAGES.md#steam住宅候选80与授勋目录87)已核：三页签、五行及两种问答；现奖励消费者不等于原dialog父子页，纯皮肤／UI持久接线／动态待补 |
+| 88 | MEDAL_CELEMONY | 授勋／怪物／住宅 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：mentalUp偏移135及公共确认已核；Steam顶图／演员帧／声音、完整皮肤与动态未闭合 |
 | 89 | MONSTER_NEWAPPEAR | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 90 | MYHOME_TAX | 授勋／怪物／住宅 | 仅声明；更新／绘制／动态链待逐项 |
 | 91 | NEWGAME | 新局／奖励／解锁／事件 | 静态：[NewGame／默认参数小方法](../rules/STARTUP_RECORDS.md#steam小方法交叉及设计决策)及[标题空栏入口](STEAM_TITLE_MENU.md)已核，完整Steam Update／Draw未核。维护：已有草稿／正式开始与APK图片计划；动态：空栏配置、默认联动／输入面板局部已见，未读运行页号；自定义保名／取消保留属用户批准策略，非Steam实测 |
@@ -135,7 +135,7 @@ DLL与metadata身份沿用[Steam交互合同](STEAM_INTERACTIONS.md#来源与证
 | 93 | GET_OBJ | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 94 | GET_OBJ_FROM_CHARA | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 95 | GET_OBJ_FROM_AWARD | 新局／奖励／解锁／事件 | 静态：共93／94绘制模板的七类图文、SetClip替换及r11择一后缀已核。维护：真实r/s/t只读皮肤、等待／40领取及拒绝已接，范围见[合同](../rules/ACCOUNTING.md#script-rewards)。动态：原窗口／字体与94其它分支仍缺 |
-| 96 | GET_MYHOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
+| 96 | GET_MYHOME | 新局／奖励／解锁／事件 | [有限静态](STEAM_HUMAN_DETAIL.md#human-reward-followups)：Mapchip2、独立副钟、人物抛物、mentalUp及首轮jingle5已核；副钟Owner域／完整计划及原动态待接 |
 | 97 | TP_LOCKOFF | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 98 | TAX_INCOME | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |
 | 99 | BOSS_APPEAR | 新局／奖励／解锁／事件 | 仅声明；更新／绘制／动态链待逐项 |

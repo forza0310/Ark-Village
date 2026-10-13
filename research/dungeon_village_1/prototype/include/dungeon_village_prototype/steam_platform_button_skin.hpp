@@ -2,6 +2,7 @@
 
 #include <array>
 #include <optional>
+#include <vector>
 
 namespace dungeon_village_prototype {
 // SteamInputManager平台按钮，不占用游戏common图片命名空间。
@@ -84,4 +85,38 @@ struct SteamButtonImagePlan {
 std::optional<SteamButtonImagePlan> steam_button_image_layout(const SteamButtonImageInput &input);
 // frame7、USE_STEAM且HasController=false的原整图；不是SEB裁片或控制器后备。
 inline constexpr const char *steam_right_click_image_path="steam-platform/right_click.png";
+
+struct SteamLanguageButtonInput {
+    bool switch_enabled{}, touched{}; // 当前Language配置的Switch资格，不用语言名或平台猜。
+    int width{}, height{}, anchor{20}; // 原anchor位；标题RIGHT|TOP为20。
+    std::optional<float> scale_ratio;
+    int new_state{};
+    std::optional<int> new_frame; // 仅new_state==2消费0..15，其余不读。
+};
+struct SteamLanguageNewText {
+    std::array<float,2> anchor{};
+    int next_frame{}; // 仅在一次获准Draw提交；重复展示计划不推进。
+    int frame{8}, layer{-1};
+    float scale{0.75F};
+};
+enum class SteamLanguageButtonStep {
+    push_origin_zero, replace_callback, draw_button, draw_new,
+    register_touch, register_joystick, pop_origin
+};
+struct SteamLanguageButtonPlan {
+    std::optional<SteamPlatformButtonBody> body;
+    std::optional<SteamLanguageNewText> new_text;
+    int collision_mode{1}, screen_mode{1}; // 原TOUCHPARAMS[3]后两项；仅register_touch消费。
+    // body各部分按steps分别消费，不在draw_button时提前登记输入/手柄。
+    // body.reset_origin=false；两层origin均由steps配对，不额外插入第三层。
+    std::vector<SteamLanguageButtonStep> steps;
+};
+// callback由调用方提供并按显式step替换；此纯计划不保存指针、不打开页面或更改语言。
+// 尺寸1..65536、比例(0,10000]为维护预算；资格不满足合法隐藏，不读取其余输入。
+std::optional<SteamLanguageButtonPlan> steam_language_button_skin(const SteamLanguageButtonInput &input);
+struct SteamLanguageTouchResult { bool propagate{}, open_language{}; };
+// 匹配组件3/value0x133A066只在UP1请求入页；其它匹配事件截断分发，不调callback。
+SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type);
+inline constexpr const char *steam_language_new_image_path="steam-platform/new.png";
+inline constexpr const char *steam_language_new_sprite_path="steam-platform/new.seb";
 } // namespace dungeon_village_prototype

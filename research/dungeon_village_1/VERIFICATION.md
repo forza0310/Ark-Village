@@ -1,5 +1,13 @@
 # 当前研究验证与历史索引
 
+## Steam语言按钮、NEW与入页意图 2026-10-14
+
+接`6f946d9`，扩现[平台按钮模块](prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，交付语言Switch资格、anchor优先级、两层原点与callback请求、按钮高亮、独立NEW、触区／手柄登记及UP入页意图。补核默认TOUCHPARAMS[3]为16／16／8／8＋1／1，NEW为SEB21显式frame8而非字体；四原素材共5426字节按现索引核源并查看，无新裁片副本或CMake目标。
+
+最终单Release动态visuals **1/1通过1.54秒**，覆盖资源、奇数／负锚、NEW7→8／15→0、独立高亮、原序输出、非法与未消费字段、UP传播规则及重复只读。复核后明确body不额外清原点，两层仅由steps管理；不接实际语言选择／文件保存、callback最终消费或OS平台动态，也未新增持久字段。合同合入[标题绘制](ui/STEAM_TITLE_DRAW.md#右上语言按钮)，无新报告／核对脚本／指纹清单，不编他人住宅测试或重跑世界长测。
+
+纯计划不持回调／Owner引用，图像按测试作用域释放，显式副作用需由消费者按真实准入一次提交；合法历史仍可增长。Release1376文件／145393646字节，assets863文件／9488214字节，无新增临时取证文件。本轮构建、测试与子任务均结束，差异及链接检查后只提交研究白名单，不推送。
+
 ## Steam虚拟光标原序绘制与语言按钮来源 2026-10-14
 
 接`2ca7ebc`，新增[虚拟光标模块](prototype/include/dungeon_village_prototype/steam_cursor_skin.hpp)，在现application目标登记；交付按下图资格、独立绘制计数下一值、平台坐标补偿、Easing恢复及原序矩阵／混合请求。原managed PNG／SEB两文件5085字节已核并查看，真实消费layer1两帧；不重复出版裁片或复制无关资源。单Release动态构建，现visuals **1/1通过1.55秒**，覆盖独立数值、原裁片／热点、隐藏时钟、未消费字段、拒绝、固定输出规模及恢复栈顺序；无Owner／codec／持久格式变更，未编他人住宅在途测试、不跑长测。

@@ -80,4 +80,40 @@ std::optional<SteamButtonImagePlan> steam_button_image_layout(const SteamButtonI
     plan.recheck_matrix_before_pop=true;
     return plan;
 }
+std::optional<SteamLanguageButtonPlan> steam_language_button_skin(const SteamLanguageButtonInput &in) {
+    SteamLanguageButtonPlan plan;
+    if(!in.switch_enabled)return plan;
+    if(in.width<=0||in.width>65536||in.height<=0||in.height>65536||!in.scale_ratio||
+       !std::isfinite(*in.scale_ratio)||*in.scale_ratio<=0.F||*in.scale_ratio>10000.F)return {};
+    if(in.new_state==2&&(!in.new_frame||*in.new_frame<0||*in.new_frame>=16))return {};
+    // 源anchor以居中优先于右/下，其余位不改变本helper分支。
+    const int x=(in.anchor&2)?in.width/2:(in.anchor&4)?in.width-20:20;
+    const int y=(in.anchor&32)?in.height/2:(in.anchor&64)?in.height-20:20;
+    const float scale=in.touched?1.1F*0.5F:0.5F;
+    SteamPlatformButtonBody body;
+    body.resource={"steam-platform/button_language.png","steam-platform/button_language.seb",
+                   0,0,{0,0,60,60},{-30,-30}};
+    body.destination={float(x)-30.F*scale,float(y)-30.F*scale,60.F*scale,60.F*scale};
+    if(in.touched)body.blend=SteamPlatformBlend{1,{255,255,255,128}};
+    body.component=3;body.value=0x133A066;
+    body.reset_origin=false; // steps显式持有两层原点，按钮图元不再自行清原点。
+    body.touch_rectangle={x-15,y-15,30,30};
+    body.margin={16,16,8,8}; // 默认TOUCHPARAMS[3]；不是平台键盘helper的显式四边15。
+    body.joystick=SteamPlatformJoystickRequest{9,2,100,
+        {int(float(x+14)*(*in.scale_ratio)/100.F),int(float(y-14)*(*in.scale_ratio)/100.F)}};
+    plan.body=body;
+    using Step=SteamLanguageButtonStep;
+    plan.steps={Step::push_origin_zero,Step::replace_callback,Step::push_origin_zero,Step::draw_button};
+    if(in.new_state==2) {
+        const int next=(*in.new_frame+1)%16;
+        plan.new_text=SteamLanguageNewText{{float(x)-0.5F,float(y-next/8+16)},next,8,-1,0.75F};
+        plan.steps.push_back(Step::draw_new);
+    }
+    plan.steps.insert(plan.steps.end(),{Step::register_touch,Step::register_joystick,Step::pop_origin,Step::pop_origin});
+    return plan;
+}
+SteamLanguageTouchResult steam_language_button_touch(int component,int value,int event_type) {
+    if(component!=3||value!=0x133A066)return {true,false};
+    return {false,event_type==1};
+}
 } // namespace dungeon_village_prototype

@@ -10,6 +10,8 @@
 
 - [Steam控制器后备图集](steam-platform)：`buttons_switch`／`buttons_ps4`／`buttons_xbox`各含原PNG及SEB，共6文件103028字节；3张图均512×512，SEB各1层44帧，按[全量索引](IMAGE_COVERAGE.json)中的managed kairolib身份校验。源槽分别为SEB13／image15、SEB19／image22、SEB29／image33；[正式后备接口](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)保留设备类型分流、实际OK／Cancel反转与层重映射。[裁片参考](../ui/examples/steam-controller-buttons.png)不是当前设备绑定或原窗口；动态图像优先、无控制器frame7鼠标图及外层字体矩阵仍按[字体合同](../ui/STEAM_FONT_CONSUMER.md#内嵌按钮提示)分开。
 
+- [Steam语言按钮与NEW](steam-platform)：`button_language.png/.seb`与`new.png/.seb`共5426字节，managed kairolib槽为image0／SEB0、image24／SEB21，沿[全量索引](IMAGE_COVERAGE.json)核原身份。按钮60×60；NEW28×22、16逻辑帧／4关键帧，语言提示实际取第8帧下半裁片。已交[纯计划与事件分流](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)，没有额外裁片副本或字体替代。
+
 - [Steam虚拟光标](steam-platform)：`screen_cursor.png/.seb`共5085字节，PNG311×236、SEB4层×2帧，复用[全量索引](IMAGE_COVERAGE.json)的managed kairolib身份。`DrawScreenCursor`消费SEB10／image12的layer1两帧，裁片均64×64、热点偏移分别−9／−11及−16／−8；其余层不冒称本消费者使用。已交[原序纯计划](../prototype/include/dungeon_village_prototype/steam_cursor_skin.hpp)，原图完整保留，不额外出版裁片副本。
 
 - [Steam右键提示](steam-platform/right_click.png)：managed kairolib的image31原整图，128×128、3548字节，复用[全量索引](IMAGE_COVERAGE.json)身份。源GetMouseButtonImage由SEB27找到它，但绘制消费整图；仅出版PNG。`steam_button_image_layout`保留无控制器frame7的75最大边及两种矩阵路径，不把它并入60控制器glyph或RB后备。

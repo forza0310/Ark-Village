@@ -1463,6 +1463,85 @@ void steam_platform_skin_checks(Checks &check,const std::filesystem::path &sourc
               "重复控制器后备只读输出保持固定一个请求，不改输入或累积资源设备任务");
     }
 }
+void steam_language_checks(Checks &check,const std::filesystem::path &root) {
+    const auto directory=root.parent_path()/"steam-platform";
+    CpuImage button(LoadImage((directory/"button_language.png").string().c_str()));
+    const auto button_seb=tools::parse_legacy_seb(read_bytes(directory/"button_language.seb"));
+    check(button.image.width==60&&button.image.height==60&&button_seb.layers.size()==1&&
+          button_seb.frame_count==1&&button_seb.layers[0].parts.size()==1,"语言按钮实际原资源独立于键盘/控制器按钮");
+    const auto &part=button_seb.layers[0].parts[0];
+    check(part.frame==0&&part.image_index==0&&part.source_x==0&&part.source_y==0&&part.width==60&&
+          part.height==60&&part.offset_x==-30&&part.offset_y==-30&&part.flip_x==0&&part.flip_y==0,
+          "语言SEB0/image0保留原60方裁片与中心偏移");
+    CpuImage badge(LoadImage((root.parent_path()/steam_language_new_image_path).string().c_str()));
+    const auto new_seb=tools::parse_legacy_seb(read_bytes(root.parent_path()/steam_language_new_sprite_path));
+    check(badge.image.width==28&&badge.image.height==22&&new_seb.frame_count==16&&
+          new_seb.layers.size()==1&&new_seb.layers[0].parts.size()==4,"NEW使用真实图字和关键帧，不以字体文字替代");
+    for(std::size_t i=0;i<4;++i) {
+        const auto &p=new_seb.layers[0].parts[i];
+        check(p.frame==std::array<int,4>{0,7,8,15}[i]&&p.image_index==24&&p.source_x==0&&
+              p.source_y==(i<2?0:11)&&p.width==28&&p.height==11&&p.offset_x==-14&&p.offset_y==-5&&
+              p.flip_x==0&&p.flip_y==0,"原NEW四关键帧及两种裁片保持，标题只显式消费第8帧");
+    }
+    SteamLanguageButtonInput in;in.switch_enabled=true;in.width=241;in.height=321;in.scale_ratio=100.F;
+    const auto plain=steam_language_button_skin(in);
+    using Step=SteamLanguageButtonStep;
+    const std::vector<Step> base_steps{Step::push_origin_zero,Step::replace_callback,Step::push_origin_zero,
+        Step::draw_button,Step::register_touch,Step::register_joystick,Step::pop_origin,Step::pop_origin};
+    check(plain&&plain->body&&!plain->new_text&&plain->steps==base_steps&&
+          plain->body->destination==std::array<float,4>{206.F,5.F,30.F,30.F}&&
+          plain->body->touch_rectangle==std::array<int,4>{206,5,30,30}&&
+          plain->body->margin==std::array<int,4>{16,16,8,8}&&plain->collision_mode==1&&plain->screen_mode==1&&
+          plain->body->component==3&&plain->body->value==0x133A066&&!plain->body->blend&&!plain->body->reset_origin&&
+          plain->body->resource.image==0&&plain->body->resource.sprite==0&&
+          plain->body->joystick&&plain->body->joystick->button==9&&plain->body->joystick->registration==2&&
+          plain->body->joystick->scale==100&&plain->body->joystick->anchor==std::array<int,2>{235,6},
+          "标题anchor20在奇数宽的右上定位，callback在两层原点之间替换，先绘制后注册");
+    in.touched=true;in.new_state=2;
+    for(const auto [old_frame,next_frame,y]:std::array<std::array<int,3>,3>{{{0,1,36},{7,8,35},{15,0,36}}}) {
+        in.new_frame=old_frame;
+        const auto plan=steam_language_button_skin(in);
+        auto steps=base_steps;steps.insert(steps.begin()+4,Step::draw_new);
+        check(plan&&plan->body&&plan->new_text&&plan->steps==steps&&
+              plan->body->destination==std::array<float,4>{204.5F,3.5F,33.F,33.F}&&
+              plan->body->touch_rectangle==plain->body->touch_rectangle&&plan->body->blend&&
+              plan->body->blend->mode==1&&plan->body->blend->rgba==std::array<int,4>{255,255,255,128}&&
+              plan->new_text->anchor==std::array<float,2>{220.5F,float(y)}&&
+              plan->new_text->next_frame==next_frame&&plan->new_text->frame==8&&plan->new_text->layer==-1&&
+              plan->new_text->scale==0.75F&&in.new_frame==old_frame,
+              "高亮只缩按钮不扩热区；NEW先算下一钟再独立摆动，图字始终frame8/scale0.75");
+        const auto repeated=steam_language_button_skin(in);
+        check(repeated&&repeated->steps==steps&&repeated->new_text->next_frame==next_frame,
+              "只读重复计划不写callback/NEW钟或新增累计登记，副作用待实际准入一次消费");
+    }
+    in.anchor=2|4|32|64;in.touched=false;in.new_state=0;in.new_frame=-1;
+    const auto centered=steam_language_button_skin(in);
+    check(centered&&centered->body->touch_rectangle==std::array<int,4>{105,145,30,30}&&!centered->new_text,
+          "居中位优先于右下位且整数除2；无NEW资格不消费无效可选计数");
+    in.width=1;in.height=1;in.anchor=4|64;in.scale_ratio=50.F;
+    const auto negative=steam_language_button_skin(in);
+    check(negative&&negative->body->joystick->anchor==std::array<int,2>{-2,-16},
+          "原负锚手柄位置乘比例后向零截断，不floor也不缩放按钮本体锚");
+    for(int fault=0;fault<7;++fault) {
+        auto bad=in;
+        if(fault==0)bad.width=0;if(fault==1)bad.height=65537;if(fault==2)bad.scale_ratio.reset();
+        if(fault==3)bad.scale_ratio=std::numeric_limits<float>::infinity();if(fault==4)bad.scale_ratio=0.F;
+        if(fault==5){bad.new_state=2;bad.new_frame.reset();}if(fault==6){bad.new_state=2;bad.new_frame=16;}
+        check(!steam_language_button_skin(bad),"已消费尺寸/比例/NEW计数明确拒绝，不补默认值");
+    }
+    in.switch_enabled=false;in.width=0;in.scale_ratio.reset();in.new_state=2;in.new_frame.reset();
+    const auto hidden=steam_language_button_skin(in);
+    check(hidden&&!hidden->body&&!hidden->new_text&&hidden->steps.empty(),
+          "Switch资格不满足合法隐藏，不替换callback/推进NEW或消费其它字段");
+    for(int event:{-1,0,1,2,5}) {
+        const auto matched=steam_language_button_touch(3,0x133A066,event);
+        const auto wrong_component=steam_language_button_touch(2,0x133A066,event);
+        const auto wrong_value=steam_language_button_touch(3,0x133A067,event);
+        check(!matched.propagate&&matched.open_language==(event==1)&&wrong_component.propagate&&
+              !wrong_component.open_language&&wrong_value.propagate&&!wrong_value.open_language,
+              "只在匹配UP1请求入语言页，匹配其它事件截断分发，不匹配继续原链");
+    }
+}
 void steam_cursor_checks(Checks &check,const std::filesystem::path &root) {
     const auto assets=root.parent_path();
     CpuImage image(LoadImage((assets/steam_cursor_image_path).string().c_str()));
@@ -3300,6 +3379,7 @@ int check_startup_skin(const std::filesystem::path &source_root,
     steam_commerce_result_skin_checks(check);
     steam_commerce_facility_skin_checks(check,source_root);
     steam_platform_skin_checks(check,source_root);
+    steam_language_checks(check,source_root);
     steam_cursor_checks(check,source_root);
     frame_geometry(check);
     income_information(check);

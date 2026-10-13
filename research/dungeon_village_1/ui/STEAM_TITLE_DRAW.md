@@ -56,13 +56,17 @@
 | 素材 | `IApplication.GetResource()`的managed `KairoLibrary.resource.kairolib.bytes`，`seb.inf`槽0=`button_language.seb`、`img.inf`槽0=`button_language.png,bin`。PNG为60×60；SEB一层一帧，image0、源矩形`(0,0,60,60)`、偏移`(−30,−30)`、末两字段0。身份沿[图像索引](../assets/IMAGE_COVERAGE.json)，不混用Unity同名载荷。 |
 | 常态绘制 | `DrawSeb(g,x,y,0)`外套临时0.5矩阵，视觉为锚点中心30×30。 |
 | 触摸高亮 | `CheckTouch(component3,value0x133A066)`为真时，外加`PushBlendMode(1,255,255,255,128)`与1.1矩阵，再套0.5矩阵；按相反顺序恢复。高亮不扩大触区。 |
-| 触区 | `GetSprite(frame0,line0)`取尺寸／偏移，各向零除2；`AddTouch`注册component3、value`0x133A066`，矩形`(x−15,y−15,30,30)`；标题即`(W−35,5,30,30)`。 |
+| 触区 | `GetSprite(frame0,line0)`取尺寸／偏移，各向零除2；`AddTouch`注册component3、value`0x133A066`，基矩形`(x−15,y−15,30,30)`；标题即`(W−35,5,30,30)`。无显式TouchOption，使用`TOUCHPARAMS[3]`四边margin **左16／右16／上8／下8**，不是平台按钮显式15。屏幕裁切与组件碰撞调整仍交共同触区注册器。 |
 | 手柄提示请求 | `SetJoystickButtonDraw(button9, X,Y, registerID2, scale100)`；`X=trunc(float32((x+14)×ratio/100))`、`Y=trunc(float32((y−14)×ratio/100))`，ratio来自`GetScaleRatio(false)`。不是平台控制器按钮的button8／register24。 |
 | 输入 | `OnTouchEvent`匹配同一component／value后，仅`event.type==1（UP）`构造`LanguageForm`并`FormManager.Push`；匹配的其它事件也返回false，阻止通用分发。不匹配才返回true。不是CLICK5，也不在此直接切换语言或调用callback。 |
 
-该Draw并非完全只读：坐标重载先把callback写入`LanguageForm.callback_`。图像矩阵恢复后另调用`Language.DrawNewLanguage(g,x,y,−1,8)`；只有`newState_==2`时绘制，先将`newFrame_=(newFrame_+1)%16`写回，再发`Kairolib.DrawNewText(g,float(x)−0.5,float(y−trunc(newFrame_/8)+16),frame8,scale0.75)`。NEW标记不随按钮0.5／1.1矩阵缩放，且每次合格Draw都会推进其静态帧，不能借标题逻辑钟替代。此处闭合到具名DrawNewText请求，尚未在本节认证该helper内部字形展开。
+该Draw并非完全只读：外层先资格检查、PushOrigin及算锚，内层再检查资格，随后才写`LanguageForm.callback_`（VA `101EAD4F`），再执行第二层PushOrigin。图像矩阵恢复后另调用`Language.DrawNewLanguage(g,x,y,−1,8)`；只有`newState_==2`时绘制，先将`newFrame_=(newFrame_+1)%16`写回，再发`Kairolib.DrawNewText(g,float(x)−0.5,float(y−trunc(newFrame_/8)+16),frame8,scale0.75)`。NEW标记不随按钮0.5／1.1矩阵缩放，且每次合格Draw都会推进其静态帧，不能借标题逻辑钟替代。正常尾序为**NEW→注册触区→注册手柄提示→内层PopOrigin→返回后外层PopOrigin**；不能将NEW留在按钮高亮混合或缩放栈内。
 
-维护边界：当前尚未发布语言按钮PNG／SEB，也没有语言页内部选择、设置保存和callback最终消费的完整合同；实际会话的Switch资格仍需显式提供已取得值。纯皮肤计划可以接收资格／NEW状态并输出绘制与触区请求，不能声称已维护换语言、上述静态副作用或原应用恢复。尾部开发警告提示支路不计入普通按钮合同。
+`DrawNewText`（RVA `8055B0`）已补核：它不调用字体或翻译，取managed kairolib的SEB21 `new.seb`，以`frame%16、layer−1`显式调用`Seb.Draw`；scale不为1时在此前Push `ScaleTemporary(scale,scale,0,0)`，之后Pop。`new.png`为image24、28×22；SEB一层、16帧、tag16，关键帧0／7为源`(0,0,28,11)`，8／15为`(0,11,28,11)`，偏移均`(−14,−5)`、末两字段0。标题固定传8，因此使用第二行裁片；`newFrame_`只影响本调用的纵向摆动，不轮换NEW的图像帧。0.75是图像局部矩阵缩放，不是字体字号；锚／偏移的合成沿[平台按钮共同矩阵合同](STEAM_INTERACTIONS.md)，不由截图估算像素。显式帧调用不执行当前帧Draw的自动登记，见[表现请求](INPUT_RENDER_REQUESTS.md)。
+
+触区默认值来源独立核至`GameView..cctor`：VA `10240317`以使用槽`110F5D00`初始化六整数，`1024034C`写入`TOUCHPARAMS[3]`；使用槽经FieldRef到私有字段25442的默认值为`(16,16,8,8,1,1)`。`_addTouch` RVA `23E010`在无opt覆盖时取该行，后两值分别控制碰撞和屏幕约束。这里保留基矩形及margin请求，不把扩大后的矩形冒充经过其它组件避让后的最终命中范围。
+
+维护交付：[平台按钮模块](../prototype/include/dungeon_village_prototype/steam_platform_button_skin.hpp)的`steam_language_button_skin`接显式Switch资格、原anchor、窗口逻辑尺寸、比例、触摸与NEW状态，返回原序steps及图元／注册参数；callback替换、NEW下一帧是显式请求，不在查询中写静态状态。`body`各部分必须按steps分别消费，绘按钮时不能提前注册触摸／手柄；两层原点由steps管理，body.reset_origin=false，不能额外叠第三层。`steam_language_button_touch`仅分类传播或UP入页意图，不实际切语言。按钮与NEW四原文件已出版，复用现资源身份；尺寸1..65536、比例(0,10000]及NEW帧0..15是维护预算，合法隐藏不消费其它字段。尚未维护语言页内部选择、设置保存、callback最终消费或完整平台恢复；实际会话资格仍由调用方提供。尾部开发警告提示支路不计入普通按钮合同。
 
 ## Logo资源选择链与中文资格
 

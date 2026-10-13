@@ -402,6 +402,29 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
     s = std::move(next);
     return Error::none;
 }
+Error input_startup_world_commerce_top(State &s,std::uint64_t id,const StartupCommerceTopInput &input) {
+    const auto p=top(s);
+    if(s.scene.framework_paused||!p||p->id!=id||
+       p->kind!=ref::WorldScriptPageKind::raw_page||p->legacy_page!=83)
+        return Error::invalid_page;
+    if(!payload(s,*p)||s.commerce_page_lists.count(id))return Error::missing_source;
+    if(input.selection&&(*input.selection<0||*input.selection>=3))return Error::invalid_page;
+    auto next=s;
+    auto &selected=next.commerce_page_data.find(id)->second[2];
+    if(input.selection)selected=*input.selection;
+    if(input.up)selected=(selected+2)%3;
+    if(input.down)selected=(selected+1)%3;
+    // 子页创建也在同一候选；插页失败不能留下已改变的父选择。
+    if(input.confirm||input.cancel) {
+        next.scripts.executing_page=id;
+        if(input.confirm) {
+            if(!open(next,selected==2?85:84,selected==1?1:0))return Error::script_failed;
+        } else if(!close(next,id))return Error::script_failed;
+        next.scripts.executing_page.reset();
+    }
+    s=std::move(next);
+    return Error::none;
+}
 std::optional<State> update_startup_world_commerce_page(const State &s, std::uint64_t id) {
     const auto p = top(s);
     if (!p || p->id != id || p->kind != ref::WorldScriptPageKind::raw_page ||

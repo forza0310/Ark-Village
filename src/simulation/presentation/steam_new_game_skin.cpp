@@ -19,7 +19,8 @@ void frame(SteamNewGamePlan &plan,const SteamStartupFramePlan &source) {
 }
 std::optional<SteamNewGamePlan> steam_new_game_skin(const SteamNewGameInput &in,const SteamNewGameOptions &o) {
     const auto &rules=startup_world_rules();
-    if(in.village.empty()||in.name.empty()||in.village.size()>4096||in.name.size()>4096||
+    // 草稿沿现profile合同允许空串；绘制保留空字段，不补名字或新增非空业务门槛。
+    if(in.village.size()>4096||in.name.size()>4096||
        in.sex<0||in.sex>1||in.selection<0||in.selection>3||in.main<0||in.main==std::numeric_limits<int>::max()||
        in.adventure_profession<0||in.adventure_profession>=static_cast<int>(rules.jobs.size())||
        (rules.jobs[in.adventure_profession].flags&4U)==0||o.finger_frame<0||o.finger_frame>5||

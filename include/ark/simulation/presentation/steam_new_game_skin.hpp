@@ -32,6 +32,7 @@ struct SteamNewGamePlan {
 };
 // 标题/四项中文沿已见Steam窗口；布局/资源/字号资格独立核验，字体与度量仍为维护适配。
 // 维护来源预算4096字节/字宽；缺真实冒险者职业、测宽、手形帧或非法选择显式拒绝。
+// 草稿空村名/姓名原样留空，不添加原平台尚未闭合的非空门槛。
 // 不创建世界、修改草稿、推进随机/时钟或执行开始/取消。
 std::optional<SteamNewGamePlan> steam_new_game_skin(
     const SteamNewGameInput &input,const SteamNewGameOptions &options);

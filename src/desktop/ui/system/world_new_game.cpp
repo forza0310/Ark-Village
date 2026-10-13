@@ -36,8 +36,8 @@ std::optional<sim::SteamNewGamePlan> world_new_game_plan(const app::WorldNewGame
                                         [](const auto &job) { return (job.flags & 4U) != 0; });
     if (adventure == jobs.end())
         return {};
-    sim::SteamNewGameInput input{draft.village.empty() ? " " : draft.village,
-                                 draft.human.name.empty() ? " " : draft.human.name,
+    sim::SteamNewGameInput input{draft.village,
+                                 draft.human.name,
                                  draft.human.sex,
                                  selected,
                                  main,
@@ -47,19 +47,7 @@ std::optional<sim::SteamNewGamePlan> world_new_game_plan(const app::WorldNewGame
     options.finger_frame = finger_frame;
     options.title_widths = title_widths;
     options.start_width = start_width;
-    auto plan = sim::steam_new_game_skin(input, options);
-    if (!plan)
-        return {};
-    // The source skin's nonempty input budget is narrower than the approved PC draft policy.
-    // Restore the real empty value after geometry planning; no text or gameplay value is invented.
-    for (auto &operation : plan->operations)
-        if (auto *text = std::get_if<sim::SteamHumanOverviewText>(&operation)) {
-            if (text->rectangle == std::array<int, 4>{163, 135, 0, 0})
-                text->value = draft.village;
-            else if (text->rectangle == std::array<int, 4>{163, 157, 0, 0})
-                text->value = draft.human.name;
-        }
-    return plan;
+    return sim::steam_new_game_skin(input, options);
 }
 WorldNewGameLayout world_new_game_layout(const sim::SteamNewGamePlan &source, Extent extent,
                                          const std::array<sim::SteamManualArrowPlan, 2> &arrows) {

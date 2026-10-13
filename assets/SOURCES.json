@@ -5211,6 +5211,54 @@
       "source": "research/dungeon_village_1/assets/original/event/event_medelCelemony_chara.seb",
       "sha256": "d1f0a039e1a4053a50721de0e50fec34165352e5424a4da17390d78617b0e8c5",
       "bytes": 128
+    },
+    {
+      "file": "steam_platform/button_gamepad.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_gamepad.png",
+      "sha256": "e15cf310a1ae340ba022194e88015c162763f6c5dab98f78d65b1812144a7a73",
+      "bytes": 4225,
+      "purpose": "Published platform-button pure-plan resource and CPU pixel oracle; no Steam service integration.",
+      "width": 64,
+      "height": 60
+    },
+    {
+      "file": "steam_platform/button_gamepad.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_gamepad.seb",
+      "sha256": "adc42910632c778f17b4f2753e2f2817a6f340871c888c0d55c3adf8da728d4e",
+      "bytes": 28,
+      "purpose": "Published platform-button pure-plan resource and CPU pixel oracle; no Steam service integration."
+    },
+    {
+      "file": "steam_platform/button_keyboard.png",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_keyboard.png",
+      "sha256": "0f54f5ee7d69e3f5312e675a0e2b3b555f4e75066ed9f6f1cf1c44ad96599e72",
+      "bytes": 1681,
+      "purpose": "Published platform-button pure-plan resource and CPU pixel oracle; no Steam service integration.",
+      "width": 64,
+      "height": 42
+    },
+    {
+      "file": "steam_platform/button_keyboard.seb",
+      "source": "research/dungeon_village_1/assets/steam-platform/button_keyboard.seb",
+      "sha256": "e802a0a9fc5f8b2ed36d3e8eb923633d29712fb1c3bc4d82599a8abf5fd5f908",
+      "bytes": 28,
+      "purpose": "Published platform-button pure-plan resource and CPU pixel oracle; no Steam service integration."
+    },
+    {
+      "file": "common2/icon_shopTop.png",
+      "source": "research/dungeon_village_1/assets/original/common2/icon_shopTop.png",
+      "sha256": "c54b462d3e7060897922efd61bcc3ed303d8c35f935917b87bc8ef87ceeee2e9",
+      "bytes": 597,
+      "purpose": "Commerce83 three category icons; independent common2 image2 and SEB1.",
+      "width": 48,
+      "height": 17
+    },
+    {
+      "file": "common2/icon_shopTop.seb",
+      "source": "research/dungeon_village_1/assets/original/common2/icon_shopTop.seb",
+      "sha256": "7387ea688a142c547bed1ec0d643ab7c11762cd21ab27f40ebdc1fe7eca1ad96",
+      "bytes": 68,
+      "purpose": "Commerce83 three category icons; independent common2 image2 and SEB1."
     }
   ]
 }

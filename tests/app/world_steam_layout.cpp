@@ -1,6 +1,8 @@
 #include "world_steam_layout.hpp"
 #include "../support/world_fixture.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
+#include "ark/simulation/facilities/startup_world_editing.hpp"
+#include "ark/simulation/map/startup_world_expansion.hpp"
 
 #include <algorithm>
 #include <set>
@@ -116,6 +118,145 @@ std::vector<std::uint64_t> steam_layout_blockers(const State &s, const SteamLayo
     return {unique.begin(), unique.end()};
 }
 
+namespace {
+bool extension_candidate(const State &s, const SteamLayoutTarget &target,
+                         std::optional<std::uint64_t> moving) {
+    auto candidate = s; // Original references, route caches, residents and random stay independent.
+    simulation::StartupBuildResult built;
+    if (moving) {
+        const auto opened = simulation::begin_startup_world_edit(candidate, true);
+        if (opened.error != simulation::StartupWorldRuntimeError::none ||
+            opened.denial != simulation::StartupBuildDenial::none)
+            return false;
+        const auto selected = simulation::confirm_startup_world_edit(
+            candidate, s.scene.world.world.facilities.at(*moving).placement.anchor,
+            ref::FacilityOrientation::first);
+        if (selected.error != simulation::StartupWorldRuntimeError::none ||
+            selected.denial != simulation::StartupBuildDenial::none)
+            return false;
+        built =
+            simulation::confirm_startup_world_edit(candidate, target.anchor, target.orientation);
+    } else {
+        const auto opened = simulation::begin_startup_world_build(candidate, target.definition);
+        if (opened.error != simulation::StartupWorldRuntimeError::none ||
+            opened.denial != simulation::StartupBuildDenial::none)
+            return false;
+        built =
+            simulation::confirm_startup_world_build(candidate, target.anchor, target.orientation);
+    }
+    // Both source transactions already recompute connection flags, preserving their exact
+    // placement/retirement order. Do not replace that consumer with a copied path algorithm.
+    if (built.error != simulation::StartupWorldRuntimeError::none ||
+        built.denial != simulation::StartupBuildDenial::none || !built.created ||
+        (candidate.facility_flags.at(*built.created) & 1U))
+        return false;
+    // The source warning flag covers shops/houses, while recruitment also needs a reachable
+    // tile. Plants are blocked decorations rather than destinations; do not invent an entrance.
+    const auto paths = ref::search_legacy_map(candidate.scene.world.world.map,
+                                              simulation::startup_evidence().spawn_points.at(0));
+    if (!paths.field)
+        return false;
+    std::vector<ref::FacilityPlacement> placements;
+    for (const auto id : candidate.scene.world.facility_order)
+        placements.push_back(candidate.scene.world.world.facilities.at(id).placement);
+    const auto access = ref::inspect_facility_access(*paths.field, placements);
+    if (access.error != ref::MapAccessError::none)
+        return false;
+    const auto reachable = [&](std::uint64_t id) {
+        const auto status =
+            std::find_if(access.facilities.begin(), access.facilities.end(),
+                         [id](const auto &entry) { return entry.instance_id.value == id; });
+        return status != access.facilities.end() && !status->cells.empty();
+    };
+    if (!reachable(*built.created))
+        return false;
+    for (const auto &goal : layout) {
+        const auto before = steam_layout_match(s, goal);
+        if (!before)
+            continue;
+        const auto after = steam_layout_match(candidate, goal);
+        if (after != before || (candidate.facility_flags.at(*after) & 1U) ||
+            (goal.role != Role::plant && !reachable(*after)) ||
+            (goal.role == Role::residence &&
+             candidate.facility_residents.at(*after) != s.facility_residents.at(*before)))
+            return false;
+    }
+    return true;
+}
+} // namespace
+
+std::optional<SteamLayoutTarget> steam_connected_extension(const State &s, int definition,
+                                                           std::optional<std::uint64_t> moving) {
+    if (moving &&
+        (!s.scene.world.world.facilities.count(*moving) || steam_layout_slot(s, *moving) ||
+         s.scene.world.world.facilities.at(*moving).placement.definition_id != definition))
+        return {}; // The source blueprint's occupied targets are protected, including houses.
+    std::vector<std::pair<int, SteamLayoutTarget>> candidates;
+    std::set<std::pair<int, int>> blueprint_cells;
+    for (const auto &goal : layout)
+        for (const auto &cell : steam_layout_footprint(s, goal).cells)
+            blueprint_cells.emplace(cell.position.x, cell.position.y);
+    const auto &map = s.scene.world.world.map;
+    for (int y = 4; y < map.height; ++y)
+        for (int x = 1; x < map.width; ++x)
+            for (const auto orientation : {first, second}) {
+                const SteamLayoutTarget target{definition, {x, y}, orientation, Role::shop};
+                const auto footprint = steam_layout_footprint(s, target);
+                if (!steam_layout_inside_fence(s, target) ||
+                    !steam_layout_blockers(s, target).empty())
+                    continue;
+                int covered_roads{};
+                bool reserved{};
+                for (const auto &cell : footprint.cells) {
+                    const auto &tile = map.cells.at(cell.position.y * map.width + cell.position.x);
+                    if (tile.legacy_state == 1 || tile.legacy_state == 2 || tile.legacy_state == 10)
+                        reserved = true;
+                    covered_roads += tile.category == ref::RouteCategory::road;
+                    reserved |= blueprint_cells.count({cell.position.x, cell.position.y}) != 0;
+                }
+                if (!reserved)
+                    candidates.emplace_back(covered_roads, target);
+            }
+    std::stable_sort(candidates.begin(), candidates.end(),
+                     [](const auto &a, const auto &b) { return a.first < b.first; });
+    for (const auto &[roads, target] : candidates) {
+        (void)roads;
+        if (extension_candidate(s, target, moving))
+            return target;
+    }
+    return {};
+}
+
+std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
+steam_layout_access_repair(const State &s) {
+    std::set<std::uint64_t> blockers;
+    const auto &map = s.scene.world.world.map;
+    for (const auto &goal : layout) {
+        const auto id = steam_layout_match(s, goal);
+        if (!id || !(s.facility_flags.at(*id) & 1U))
+            continue;
+        const auto ring = ref::facility_surroundings(
+            static_cast<ref::FacilityShape>(s.rules->facilities.at(goal.definition).shape),
+            goal.orientation, goal.anchor, map.width, map.height);
+        if (ring.error != ref::GeometryError::none)
+            continue;
+        for (const auto &cell : ring.cells) {
+            const auto &tile = map.cells.at(cell.y * map.width + cell.x);
+            if (!tile.facility)
+                continue;
+            const auto blocker = tile.facility->instance_id.value;
+            const auto &facility = s.scene.world.world.facilities.at(blocker);
+            if (facility.kind == 3 && facility.status == 1 && !steam_layout_slot(s, blocker))
+                blockers.insert(blocker);
+        }
+    }
+    for (const auto id : blockers)
+        if (const auto target = steam_connected_extension(
+                s, s.scene.world.world.facilities.at(id).placement.definition_id, id))
+            return std::pair{id, *target};
+    return {};
+}
+
 void steam_layout_contract() {
     const auto require = [](bool value, const char *message) {
         if (!value)
@@ -192,5 +333,68 @@ void steam_layout_contract() {
     p.orientation = p.orientation == first ? second : first;
     require(!steam_layout_match(family, *home),
             "wrong facing cannot certify the audited housing slot");
+
+    // An isolated map/affordability qualification reproduces the obstructed left entrance.
+    // No actor update, natural unlock, resident grant or campaign coverage is claimed.
+    auto corner = initial_world();
+    corner.scene.world.world.ai.accounting = ref::PeriodAccounting(100000);
+    corner.scripts.user_flags |= 32U;
+    corner.scripts.event_calls[115] = 1; // This planning fixture has already seen the warning.
+    corner.facility_presence.at(64) = 2;
+    const auto old_facilities = corner.scene.world.facility_order;
+    for (const auto id : old_facilities) {
+        // Expansion replaces the real entrances; retiring them first closes the fence.
+        const auto kind = corner.scene.world.world.facilities.at(id).kind;
+        if (kind == 4 || kind == 5)
+            continue;
+        require(simulation::retire_startup_world_facility(corner, id),
+                "corner fixture retirement failed");
+    }
+    require(simulation::expand_startup_world_map(corner), "corner fixture expansion failed");
+    std::uint64_t protected_home{};
+    for (const ref::Position anchor : {ref::Position{4, 3}, {4, 4}, {4, 6}}) {
+        const auto installed =
+            simulation::install_startup_world_facility(corner, 25, anchor, first);
+        require(installed.created.has_value(), "corner fixture house insertion failed");
+        if (anchor == ref::Position{4, 4})
+            protected_home = *installed.created;
+    }
+    const auto road = simulation::begin_startup_world_road(corner, 18);
+    require(road.error == simulation::StartupWorldRuntimeError::none &&
+                simulation::confirm_startup_world_edit(corner, {5, 3}, first).error ==
+                    simulation::StartupWorldRuntimeError::none &&
+                simulation::confirm_startup_world_edit(corner, {5, 6}, first).error ==
+                    simulation::StartupWorldRuntimeError::none &&
+                simulation::cancel_startup_world_edit(corner) ==
+                    simulation::StartupWorldRuntimeError::none &&
+                simulation::refresh_startup_world_connections(corner),
+            "corner fixture must start with genuine accessible road and house");
+    require(!(corner.facility_flags.at(protected_home) & 1U),
+            "the original corner residence must be connected before the extra shop");
+    const SteamLayoutTarget obstructing{64, {5, 4}, first, Role::shop};
+    const auto unchanged = corner;
+    require(!extension_candidate(corner, obstructing, {}),
+            "an empty legal footprint must not certify a build that disconnects a retained home");
+    const auto destination = steam_connected_extension(corner, 64);
+    require(destination && extension_candidate(corner, *destination, {}) &&
+                same_world_clock(corner, unchanged) &&
+                corner.page_counters == unchanged.page_counters &&
+                corner.sound_requests == unchanged.sound_requests &&
+                corner.scene.random.draws() == unchanged.scene.random.draws() &&
+                corner.scene.world.world.ai.accounting.funds() ==
+                    unchanged.scene.world.world.ai.accounting.funds() &&
+                corner.facility_flags == unchanged.facility_flags,
+            "connected extension query must discard every private paid candidate");
+    require(!steam_connected_extension(corner, 25, protected_home),
+            "repair planning must never relocate a protected blueprint residence");
+    const auto inserted = simulation::install_startup_world_facility(corner, 64, {5, 4}, first);
+    require(inserted.created.has_value(), "obstructing-shop qualification failed");
+    corner.scene.world.world.facilities.at(*inserted.created).status = 1;
+    require(corner.facility_flags.at(protected_home) & 1U,
+            "ordinary source connection flags must detect the blocked corner");
+    const auto repair = steam_layout_access_repair(corner);
+    require(repair && repair->first == *inserted.created &&
+                extension_candidate(corner, repair->second, repair->first),
+            "repair must move the external shop and restore all retained source targets");
 }
 } // namespace ark::test

@@ -946,6 +946,51 @@ void village_command_transactions() {
 void commerce_command_transactions() {
     using A = sim::StartupCommerceAction;
     {
+        // The maintained suite owns raw83 arithmetic/order. This checks one FIFO frame,
+        // parent/child publication, generation gating and the absence of a trade charge.
+        auto state = initial();
+        state.scripts.user_flags |= 16U;
+        state.scripts.event_calls[97] = 1;
+        check(sim::open_startup_world_commerce(state) == sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_commerce_pages(state),
+              "Commerce transport prepares the actual initialized top page");
+        const auto page = task_top(state).id;
+        const auto cash = state.scene.world.world.ai.accounting.funds();
+        const auto points = state.village_points;
+        const auto random = state.scene.random.draws();
+        app::WorldSession session(state);
+        sim::StartupCommerceTopInput input;
+        input.selection = 2;
+        input.up = input.down = input.confirm = input.cancel = true;
+        app::WorldCommand stale;
+        stale.kind = app::WorldCommandKind::commerce_top_input;
+        stale.page = page;
+        stale.generation = session.frame()->generation + 1;
+        stale.commerce_top_input = input;
+        const auto old_generation = session.submit(stale);
+        const auto wrong_page = session.input_commerce_top(page + 100, input);
+        const auto valid = session.input_commerce_top(page, input);
+        const auto result = input_frame(session, session.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, old_generation).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, wrong_page).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, valid).outcome == app::WorldCommandOutcome::applied &&
+                  input_result(*result, valid).kind == app::WorldCommandKind::commerce_top_input &&
+                  task_top(*result->state).legacy_page == 85 &&
+                  result->state->commerce_page_data.at(page)[2] == 2 &&
+                  result->state->scene.world.world.ai.accounting.funds() == cash &&
+                  result->state->village_points == points &&
+                  result->state->scene.random.draws() == random,
+              "Commerce FIFO retains selection/up/down/confirm-before-cancel in one unpaid navigation");
+        const auto refused = input_frame(session, session.input_commerce_top(page, input));
+        check(!refused->failed &&
+                  input_result(*refused, refused->last_command_serial).outcome ==
+                      app::WorldCommandOutcome::rejected,
+              "Commerce top input cannot target a paused parent hidden below its new catalogue");
+        same_world(*result->state, *refused->state);
+        session.stop();
+    }
+    {
         // A real sale generates both C25 and a new durable cash peak in one candidate.
         // This fixture tests transport atomicity, not natural unlock/income evidence.
         const auto directory = std::filesystem::current_path() / "world-audio-transaction-test";

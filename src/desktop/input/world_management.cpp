@@ -41,6 +41,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         commerce_amount_.reset();
         building_ = {};
         manual_layout_.reset();
+        commerce_top_controls_.reset();
         human_controls_.reset();
         human_gesture_ = {};
         facility_controls_.reset();
@@ -76,6 +77,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     if (page_ != page.id) {
         page_ = page.id;
         manual_layout_.reset();
+        commerce_top_controls_.reset();
         human_controls_.reset();
         human_gesture_ = {};
         building_ = {};
@@ -196,6 +198,22 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             queued(intent->input
                        ? session.input_facility_catalog(page.id, *intent->input)
                        : session.act_facility_catalog(page.id, intent->action, intent->selection));
+        return true;
+    }
+    if (ui::world_commerce_page(page) && page.legacy_page == 83) {
+        const auto view = ui::world_commerce_top_view(state, page);
+        ui::WorldCommerceInput input;
+        input.click = point;
+        input.enter = enter;
+        input.escape = escape;
+        input.up = up;
+        input.down = down;
+        input.focus_lost = !IsWindowFocused();
+        if (input.focus_lost)
+            commerce_top_controls_.reset();
+        if (const auto action =
+                ui::world_commerce_top_input(view, extent, commerce_top_controls_, input, blocked))
+            queued(session.input_commerce_top(page.id, *action));
         return true;
     }
     if (ui::world_commerce_page(page)) {
@@ -400,6 +418,11 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::prepare_world_facility_catalog(view, state, skin, facility_catalog_gesture_.scrolling);
         facility_controls_ = ui::draw_world_facility_catalog(
             view, ui::world_facility_catalog_layout(extent, view.raw), skin, enabled, feedback_);
+    } else if (ui::world_commerce_page(page) && page.legacy_page == 83) {
+        auto view = ui::world_commerce_top_view(state, page);
+        ui::prepare_world_commerce_top(view, skin);
+        const auto controls = ui::draw_world_commerce_top(view, extent, skin, enabled, feedback_);
+        commerce_top_controls_ = IsWindowFocused() ? controls : std::nullopt;
     } else if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
         ui::draw_world_commerce(view, ui::world_commerce_layout(extent), skin, enabled, feedback_,

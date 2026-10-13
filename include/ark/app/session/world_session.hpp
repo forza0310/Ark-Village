@@ -83,7 +83,8 @@ enum class WorldCommandKind {
     rank_input,
     magic_pot_input,
     task_page_input,
-    task_tracking_input
+    task_tracking_input,
+    commerce_top_input
 };
 enum class WorldCommandOutcome { applied, rejected };
 struct WorldCommandResult {
@@ -146,6 +147,7 @@ struct WorldCommand {
     simulation::StartupVillageActivityAction village_activity_action{
         simulation::StartupVillageActivityAction::confirm};
     simulation::StartupCommerceAction commerce_action{simulation::StartupCommerceAction::confirm};
+    simulation::StartupCommerceTopInput commerce_top_input; // One source navigation frame; no payment.
     simulation::StartupInformationInput information_input;
     simulation::StartupWorldMenuInput menu_input;
     simulation::StartupManualInput manual_input;
@@ -257,6 +259,8 @@ class WorldSession {
                                 int selection = 0);
     std::uint64_t act_commerce(std::uint64_t page, simulation::StartupCommerceAction action,
                                int selection = 0);
+    std::uint64_t input_commerce_top(std::uint64_t page,
+                                    const simulation::StartupCommerceTopInput &input);
     std::uint64_t act_facility_item(std::uint64_t page,
                                     simulation::StartupFacilityItemAction action,
                                     int selection = -1);

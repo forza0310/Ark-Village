@@ -467,12 +467,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                                                  : session.act_task_page(page->id, intent->action,
                                                                          intent->selection);
                 }
-            } else if (page->kind == rules::WorldScriptPageKind::raw_page &&
-                       page->legacy_page == 83) {
-                const auto box = ui::world_page_layout(*page, extent);
-                const Rectangle cancel{box.panel.x + 10, box.confirm.y, 58, 20};
-                if (!desired_pause && !failed && !pending_task && (hit(cancel) || back))
-                    pending_task = session.cancel_page(page->id);
             } else if (page->legacy_page == 30) {
                 const auto victory = ui::world_victory_view(current, *page);
                 if (page->lifecycle == 2 && victory.initialized && !desired_pause && !failed &&
@@ -651,10 +645,7 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                         text.draw(wrapped[scroll + row], page_layout.body.x, y);
                 }
                 const bool more_text = scroll + visible < static_cast<int>(wrapped.size());
-                if (page->legacy_page == 83)
-                    skin.button({page_layout.panel.x + 10, page_layout.confirm.y, 58, 20}, "取消",
-                                !desired_pause && !failed && !pending_task);
-                else if (ui::world_task_related_confirmation(current, *page))
+                if (ui::world_task_related_confirmation(current, *page))
                     skin.button(page_layout.confirm,
                                 more_text ? "下一屏"
                                 : paragraph + 1 < static_cast<int>(page->paragraphs.size())

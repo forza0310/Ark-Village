@@ -146,6 +146,9 @@ set(ARK_WORLD_RUNTIME_SOURCES
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_startup_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_clear_score_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_new_game_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_config_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_platform_button_skin.cpp"
+    "${ARK_WORLD_ROOT}/src/simulation/presentation/steam_commerce_skin.cpp"
     "${ARK_WORLD_ROOT}/src/simulation/facilities/startup_world_facility_update_private.cpp"
 )
 set(ARK_WORLD_TEST_SOURCES

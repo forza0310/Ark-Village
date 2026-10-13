@@ -13,6 +13,7 @@
 #include "../ui/system/world_manual.hpp"
 #include "../ui/village/world_award.hpp"
 #include "../ui/village/world_commerce.hpp"
+#include "../ui/village/world_commerce_top.hpp"
 #include "../ui/village/world_magic_pot.hpp"
 #include "../ui/village/world_progression.hpp"
 #include "../ui/village/world_tax.hpp"
@@ -68,6 +69,7 @@ class WorldManagement {
     mutable std::optional<ui::WorldFacilityPaintedControls> facility_controls_;
     ui::WorldAwardSelection award_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
+    mutable std::optional<ui::WorldCommerceTopControls> commerce_top_controls_;
     mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;
     ui::WorldHumanGesture human_gesture_;
     mutable std::optional<ui::WorldFacilityPaintedControls> village_controls_;

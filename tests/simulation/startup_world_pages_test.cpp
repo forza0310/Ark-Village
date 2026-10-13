@@ -4248,7 +4248,76 @@ void village_activity_effect_rollback() {
     }
 }
 
-// 合并到既有startup_world_pages_test.cpp；加commerce头并在main调用以下两函数。
+// 商会主页输入与交易在同一套件覆盖；条件夹具不冒称自然开放。
+void commerce_top_input() {
+    using E = StartupWorldRuntimeError;
+    for (int row = 0; row < 3; ++row) {
+        auto s = fixture(83);
+        const auto id = s.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(s), "83 frame fixture initialized");
+        const auto cash = s.scene.world.world.ai.accounting.funds();
+        StartupCommerceTopInput input;
+        input.selection = row;
+        input.up = true;
+        input.down = true;
+        input.confirm = true;
+        input.cancel = true;
+        check(input_startup_world_commerce_top(s, id, input) == E::none &&
+                  s.commerce_page_data.at(id)[2] == row &&
+                  s.scripts.pages.back().legacy_page == (row == 2 ? 85 : 84) &&
+                  s.scripts.pages.back().legacy_f == (row == 1 ? 1 : 0) &&
+                  s.scene.world.world.ai.accounting.funds() == cash && s.scene.random.draws() == 0,
+              "83 consumes up then down, confirmation wins return and opens correct child without "
+              "payment");
+    }
+    auto s = fixture(83);
+    const auto id = s.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(s), "83 rejection fixture initialized");
+    for (int fault = 0; fault < 7; ++fault) {
+        auto broken = s;
+        StartupCommerceTopInput input;
+        input.down = true;
+        input.confirm = true;
+        if (fault == 0)
+            broken.commerce_page_data.erase(id);
+        if (fault == 1)
+            broken.page_counters.erase(id);
+        if (fault == 2)
+            broken.commerce_page_lists[id] = {0};
+        if (fault == 3)
+            input.selection = 3;
+        if (fault == 4)
+            broken.scene.framework_paused = true;
+        if (fault == 5)
+            broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+        if (fault == 6)
+            broken.commerce_page_data.at(id)[2] = 3;
+        const auto payload = broken.commerce_page_data;
+        const auto lists = broken.commerce_page_lists;
+        const auto pages = broken.scripts.pages.size();
+        check(input_startup_world_commerce_top(broken, id, input) != E::none &&
+                  broken.commerce_page_data == payload && broken.commerce_page_lists == lists &&
+                  broken.scripts.pages.size() == pages && broken.scene.random.draws() == 0 &&
+                  broken.scene.world.world.ai.accounting.funds() == 5000 &&
+                  broken.sound_requests.empty(),
+              "83 bad initialized payload, pause and late child insertion failure preserve "
+              "selection and all outputs");
+    }
+    StartupCommerceTopInput wrap;
+    wrap.up = true;
+    check(input_startup_world_commerce_top(s, id, wrap) == E::none &&
+              s.commerce_page_data.at(id)[2] == 2,
+          "83 upward input wraps to facility row");
+    StartupCommerceTopInput leave;
+    leave.cancel = true;
+    check(input_startup_world_commerce_top(s, id, leave) == E::none &&
+              s.scripts.pages.back().lifecycle == 4 && s.commerce_page_data.at(id)[2] == 2,
+          "83 close retains payload until actual retirement");
+    page_tick(s);
+    check(!s.commerce_pages_initialized.count(id) && !s.commerce_page_data.count(id) &&
+              !s.commerce_page_lists.count(id) && !s.page_counters.count(id),
+          "83 actual retirement releases all page references");
+}
 void commerce_transactions() {
     using A = StartupCommerceAction;
     using E = StartupWorldRuntimeError;
@@ -6375,6 +6444,7 @@ int main() {
         adventurer_information_pages();
         ordinary_item_pages();
         commerce_after_reward_writeback();
+        commerce_top_input();
         commerce_transactions();
         commerce_facility_and_projection();
         magic_pot_menu_information();

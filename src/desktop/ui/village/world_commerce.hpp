@@ -1,6 +1,6 @@
 #pragma once
 
-// Commerce83–86 keeps buy/sell direction and source scroll; reward93 is drawn by progression.
+// Commerce84–86 keeps buy/sell direction and source scroll; raw83 has its own ordered top skin.
 #include "../../scene/world_build_placement.hpp"
 #include "../common/layout.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
@@ -37,6 +37,7 @@ struct WorldCommerceInput {
     std::optional<Vector2> click;
     bool enter{}, escape{}, up{}, down{}, left{}, right{}, inspect{};
     int wheel_rows{};
+    bool focus_lost{};
 };
 struct WorldCommerceIntent {
     simulation::StartupCommerceAction action;

@@ -25,6 +25,14 @@ struct StartupCommerceView {
     int counter{};
     std::vector<int> entries;
 };
+// Steam83的一轮已解析输入；设备选择先安装，再按上→下→确认优先返回消费。
+// 仅作用于主页，不提前定义84/85的反馈、滚动和marker契约。
+struct StartupCommerceTopInput {
+    bool up{}, down{}, confirm{}, cancel{};
+    std::optional<int> selection;
+};
+StartupWorldRuntimeError input_startup_world_commerce_top(
+    StartupWorldRuntimeState &state,std::uint64_t page,const StartupCommerceTopInput &input);
 StartupWorldRuntimeError open_startup_world_commerce(StartupWorldRuntimeState &state);
 bool initialize_startup_world_commerce_pages(StartupWorldRuntimeState &state);
 // raw93领取前后沿同一交易载荷；关闭待退休不能通过删除字段伪装未初始化。

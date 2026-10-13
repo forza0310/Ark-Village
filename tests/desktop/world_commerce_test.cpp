@@ -1,12 +1,16 @@
 // UI owns source identity/currency/selection projection. Frozen commerce suites own transactions.
+#include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/facilities/world_facility_catalog.hpp"
 #include "../../src/desktop/ui/village/world_award.hpp"
 #include "../../src/desktop/ui/village/world_commerce.hpp"
+#include "../../src/desktop/ui/village/world_commerce_top.hpp"
 #include "../../src/desktop/ui/village/world_magic_pot.hpp"
 #include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
 #include <algorithm>
+#include <filesystem>
+#include <iostream>
 #include <stdexcept>
 
 namespace ark::test {
@@ -65,9 +69,120 @@ sim::StartupWorldRuntimeState source_reward(int raw, int kind = 3) {
     state.scripts.pages.back().lifecycle = 2; // Explicit published presentation callsite.
     return state;
 }
+void commerce_top_ui(Checks &check) {
+    auto state = initial_world();
+    const auto page = commerce_page(state, 83);
+    state.commerce_pages_initialized.erase(page.id);
+    ui::WorldCommerceInput input;
+    input.enter = true;
+    const auto before = state;
+    auto view = ui::world_commerce_top_view(state, page);
+    check(!view.initialized && !ui::world_commerce_top_input(view, {240, 256}, {}, input, false) &&
+              state.commerce_pages_initialized.empty() && same_world_clock(state, before),
+          "Drawing an uninitialized commerce page cannot initialize or acknowledge it");
+    state.commerce_pages_initialized.insert(page.id);
+    view = ui::world_commerce_top_view(state, page);
+    check(view.initialized && view.source && view.source->selection == 0,
+          "Commerce top reads its committed source selection without a desktop cursor");
+    sim::SteamCommerceSkinOptions options;
+    options.view_y = 23;
+    options.text.title = "南瓜商会";
+    options.text.welcome = "欢迎光临";
+    options.text.names = {"购买道具", "出售道具", "购买设施"};
+    options.text.explanations = options.text.names;
+    options.text.title_widths = std::array<int, 2>{48, 48};
+    view.skin = sim::steam_commerce_skin(*view.source, options);
+    check(view.skin.has_value(), "Commerce top uses the published three-choice source skin");
+    for (const auto extent :
+         {desktop::Extent{240, 256}, desktop::Extent{540, 360}, desktop::Extent{541, 361}}) {
+        const auto painted = ui::world_commerce_top_controls(view, extent);
+        check(painted.origin.x == (extent.width - 240) / 2 &&
+                  painted.origin.y == (extent.height - 256) / 2,
+              "Commerce top keeps one integer-centred source canvas on odd and ordinary viewports");
+        for (int row = 0; row < 3; ++row) {
+            const auto &box = painted.rows[row];
+            check(box.x >= 0 && box.y >= 0 && box.x + box.width <= extent.width &&
+                      box.y + box.height <= extent.height &&
+                      !CheckCollisionRecs(box, painted.cancel),
+                  "Raw83 source Touch and PC return have separate visible hit regions");
+            input = {};
+            input.click = Vector2{box.x + 1, box.y + 1}; // Wider than the painted 134px row bar.
+            const auto intent = ui::world_commerce_top_input(view, extent, painted, input, false);
+            check(intent && intent->selection == row && intent->confirm && !intent->cancel,
+                  "No-marker menu release selects the source row and opens its child once");
+            auto opened = state;
+            check(
+                sim::input_startup_world_commerce_top(opened, page.id, *intent) ==
+                        sim::StartupWorldRuntimeError::none &&
+                    opened.scripts.pages.back().legacy_page == (row == 2 ? 85 : 84) &&
+                    opened.scripts.pages.back().legacy_f == (row == 1 ? 1 : 0) &&
+                    opened.commerce_page_data.at(page.id)[2] == row &&
+                    opened.scene.world.world.ai.accounting.funds() ==
+                        state.scene.world.world.ai.accounting.funds() &&
+                    opened.village_points == state.village_points &&
+                    opened.scene.random.draws() == state.scene.random.draws() &&
+                    opened.item_commerce_read == state.item_commerce_read &&
+                    opened.facility_commerce_read == state.facility_commerce_read &&
+                    std::all_of(state.items.begin(), state.items.end(),
+                                [&](const auto &item) {
+                                    return opened.items.at(item.first).inventory ==
+                                               item.second.inventory &&
+                                           opened.shop_item_stock.at(item.first).quantity ==
+                                               state.shop_item_stock.at(item.first).quantity;
+                                }),
+                "The source-selected child preserves parent choice without paying or clearing NEW");
+        }
+        input = {};
+        input.click = Vector2{painted.rows[0].x - 1, painted.rows[0].y + 1};
+        check(!ui::world_commerce_top_input(view, extent, painted, input, false),
+              "A release outside source row margins cannot activate a catalogue");
+        input.click = center(painted.rows[1]);
+        for (int fault = 0; fault < 4; ++fault) {
+            auto stale = painted;
+            if (fault == 0)
+                ++stale.page;
+            if (fault == 1)
+                ++stale.selection;
+            if (fault == 2)
+                ++stale.extent.width;
+            if (fault == 3)
+                ++stale.extent.height;
+            check(!ui::world_commerce_top_input(view, extent, stale, input, false),
+                  "A stale page, selection or resized commerce paint cannot consume a release");
+        }
+        check(!ui::world_commerce_top_input(view, extent, {}, input, false) &&
+                  !ui::world_commerce_top_input(view, extent, painted, input, true),
+              "Missing paint and a pending FIFO command both reject repeated pointer input");
+        input.focus_lost = true;
+        check(!ui::world_commerce_top_input(view, extent, painted, input, false),
+              "Lost focus cannot turn a commerce release into navigation");
+        input = {};
+        input.click = center(painted.cancel);
+        const auto cancel = ui::world_commerce_top_input(view, extent, painted, input, false);
+        check(cancel && cancel->cancel && !cancel->confirm && !cancel->selection,
+              "The single PC return maps to source soft2 without an independent confirm button");
+    }
+    input = {};
+    input.up = input.down = input.enter = input.escape = true;
+    const auto keys = ui::world_commerce_top_input(view, {240, 256}, {}, input, false);
+    check(keys && keys->up && keys->down && keys->confirm && keys->cancel && !keys->selection,
+          "One keyboard frame retains both directions and source confirm-before-return priority");
+    input = {};
+    input.left = input.right = input.inspect = true;
+    input.wheel_rows = 1;
+    check(!ui::world_commerce_top_input(view, {240, 256}, {}, input, false),
+          "Raw83 does not invent a tab, inspection or scrolling consumer");
+    state.scene.framework_paused = true;
+    const auto paused = ui::world_commerce_top_view(state, page);
+    input = {};
+    input.enter = true;
+    check(!ui::world_commerce_top_input(paused, {240, 256}, {}, input, false),
+          "Framework pause keeps commerce navigation closed");
+}
 } // namespace
 void world_commerce() {
     Checks check{"world_commerce"};
+    commerce_top_ui(check);
     {
         auto state = initial_world();
         state.scripts.user_flags |= 3U;
@@ -334,28 +449,10 @@ void world_commerce() {
     using Action = sim::StartupCommerceAction;
     auto state = initial_world();
     const auto layout = ui::world_commerce_layout({240, 256});
-    auto page = commerce_page(state, 83);
-    state.commerce_pages_initialized.erase(page.id);
     ui::WorldCommerceInput input;
-    input.enter = true;
-    const auto unopened = state;
-    auto view = ui::world_commerce_view(state, page);
-    check(!view.initialized && !ui::world_commerce_input(view, layout, input, false) &&
-              state.commerce_pages_initialized.empty() && same_world_clock(state, unopened),
-          "Drawing an uninitialized commerce page cannot initialize or acknowledge it");
-    state.commerce_pages_initialized.insert(page.id);
-    view = ui::world_commerce_view(state, page);
-    check(view.rows.size() == 3 && view.rows[0].name == "购买道具" &&
-              view.rows[1].name == "出售道具" && view.rows[2].name == "购买设施",
-          "Commerce menu preserves source choice order");
-    input = {};
-    input.click = center({layout.rows.x, layout.rows.y + layout.rows.height * 2 / 3,
-                          layout.rows.width, layout.rows.height / 3});
-    auto intent = ui::world_commerce_input(view, layout, input, false);
-    check(intent && intent->action == Action::select && intent->selection == 2,
-          "Menu row clicks select the source index without executing a purchase");
-
-    page = commerce_page(state, 84);
+    ui::WorldCommerceView view;
+    std::optional<ui::WorldCommerceIntent> intent;
+    auto page = commerce_page(state, 84);
     std::vector<int> ids;
     for (int n = 0; n < 6; ++n) {
         const int id = state.rules->items.at(5 - n).identity;
@@ -556,5 +653,82 @@ void world_commerce() {
                   !CheckCollisionRecs(frame.inspect, frame.confirm),
               "Commerce controls and rows clear the date/footer across supported viewports");
     }
+}
+// Optional raw83 draw snapshots; injected presentation conditions are not natural unlock evidence.
+void world_commerce_top_render_fixture() {
+    Checks check{"world_commerce_top_render_fixture"};
+    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "commerce-top";
+    std::filesystem::create_directories(output);
+    struct Window {
+        Window() {
+            InitWindow(720, 600, "Ark-Village UI fixture / commerce top");
+            if (!IsWindowReady())
+                throw std::runtime_error("Commerce top fixture could not create its window");
+            SetTargetFPS(60);
+        }
+        ~Window() { CloseWindow(); }
+    } window;
+    desktop::Sprites sprites(ARK_TEST_ASSETS);
+    desktop::Text text(ARK_TEST_FONT);
+    ui::Skin skin(sprites, text);
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (int fresh = 0; fresh < 2; ++fresh)
+            for (int selected = 0; selected < 3; ++selected) {
+                auto state = initial_world();
+                const auto page = commerce_page(state, 83);
+                state.rank = 4; // Explicit eligible-NEW snapshot, never a claimed earned star.
+                state.commerce_page_data.at(page.id)[2] = selected;
+                for (auto &[id, read] : state.item_commerce_read) {
+                    read = !fresh;
+                    state.shop_item_stock.at(id).quantity = fresh ? 1 : 0;
+                }
+                for (auto &[id, read] : state.facility_commerce_read) {
+                    (void)id;
+                    read = !fresh;
+                }
+                const auto before = state;
+                auto view = ui::world_commerce_top_view(state, page);
+                check(view.source && view.source->item_new == bool(fresh) &&
+                          view.source->facility_new == bool(fresh),
+                      "Commerce fixture uses both actual source NEW predicates");
+                ui::prepare_world_commerce_top(view, skin);
+                std::optional<ui::WorldCommerceTopControls> painted;
+                for (int frame = 0; frame < 8; ++frame) {
+                    check(!WindowShouldClose(), "Commerce top fixture remains open for capture");
+                    BeginDrawing();
+                    ClearBackground({145, 211, 247, 255});
+                    DrawText("CONDITIONAL commerce UI", 4, 4, 12, BLACK);
+                    painted = ui::draw_world_commerce_top(view, extent, skin, true);
+                    text.flush(1, {});
+                    EndDrawing();
+                }
+                check(painted && painted->selection == selected &&
+                          painted->extent.width == extent.width,
+                      "Actual ordered drawing publishes the same page and selected row geometry");
+                const auto file =
+                    output / ("raw83-" + std::to_string(extent.width) + "-row" +
+                              std::to_string(selected) + "-new" + std::to_string(fresh) + ".png");
+                auto image = LoadImageFromScreen();
+                const bool exported = image.data && ExportImage(image, file.string().c_str());
+                UnloadImage(image);
+                check(exported && std::filesystem::file_size(file) > 0,
+                      "Commerce top writes its actual common/common2/private-character screenshot");
+                check(state.item_commerce_read == before.item_commerce_read &&
+                          state.facility_commerce_read == before.facility_commerce_read &&
+                          state.commerce_page_data == before.commerce_page_data &&
+                          state.page_counters == before.page_counters &&
+                          state.village_points == before.village_points &&
+                          state.scene.world.world.ai.accounting.funds() ==
+                              before.scene.world.world.ai.accounting.funds() &&
+                          same_world_clock(state, before),
+                      "Repeated commerce rendering preserves NEW, selection, funds and source "
+                      "clocks");
+                std::cout << "UI fixture / conditional raw83 selection=" << selected
+                          << " NEW=" << fresh << " extent=" << extent.width << 'x' << extent.height
+                          << " frames=8 screenshot=" << file.string() << '\n';
+            }
+    }
+    std::cout << "Commerce top rendering: " << check.count() << " checks\n";
 }
 } // namespace ark::test

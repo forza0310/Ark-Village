@@ -1,6 +1,10 @@
 #include "ark/simulation/presentation/startup_skin.hpp"
 #include "ark/simulation/presentation/steam_clear_score_skin.hpp"
 #include "ark/simulation/presentation/steam_new_game_skin.hpp"
+#include "ark/simulation/presentation/steam_config_skin.hpp"
+#include "ark/simulation/presentation/steam_commerce_skin.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
+#include "ark/simulation/presentation/steam_platform_button_skin.hpp"
 #include "ark/simulation/village/startup_information.hpp"
 #include "ark/simulation/presentation/steam_information_skin.hpp"
 #include "ark/simulation/village/startup_world_information.hpp"
@@ -15,6 +19,7 @@
 #include <raylib.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -569,6 +574,19 @@ void steam_new_game_skin_checks(Checks &check) {
         }
         check(box<background&&background<border&&border<first_label,"Steam91框helper消费VIEW_Y一半，box→背景→蓝边→标签原序");
     }
+    // 产品交回的合法维护草稿边界：村名/姓名可分别清空，纯皮肤不能要求表现占位再还原。
+    for(int empty_fields=1;empty_fields<=3;++empty_fields) {
+        auto draft=in;
+        if(empty_fields&1)draft.village.clear();
+        if(empty_fields&2)draft.name.clear();
+        const auto plan=steam_new_game_skin(draft,o);
+        check(bool(plan),"Steam91合法维护空草稿仍可绘制，不私加原版未证非空门槛");
+        const auto tx=texts(*plan);
+        check(tx[4].value==draft.village&&tx[5].value==draft.name&&
+            tx[4].rectangle==std::array<int,4>{163,135,0,0}&&tx[5].rectangle==std::array<int,4>{163,157,0,0}&&
+            portrait(*plan).actor.body.image==15,
+            "Steam91空字段原样保留，文字锚与女角色不变，不补默认名或改变草稿");
+    }
     const auto stable=*steam_new_game_skin(in,o);const auto original=in;
     for(int repeat=0;repeat<4;++repeat)check(steam_new_game_skin(in,o)->operations.size()==stable.operations.size()&&
         in.village==original.village&&in.name==original.name&&in.sex==original.sex&&in.main==16&&in.selection==0,
@@ -581,6 +599,393 @@ void steam_new_game_skin_checks(Checks &check) {
         if(fault==8)options.start_width.reset();if(fault==9)options.start_width=-1;
         if(fault==10){options.english=true;options.japanese=true;}if(fault==11)bad.name=std::string(4097,'a');
         check(!steam_new_game_skin(bad,options),"Steam91缺显式来源/错职业/越界/坏实测宽拒绝，不补默认W或猜资源");
+    }
+}
+void steam_config_skin_checks(Checks &check) {
+    // Steam DrawConfig_en及_addTouch的独立坐标；只测只读皮肤，不运行设置setter或保存。
+    SteamConfigSkinInput in{{0,1,0,5},0,false};
+    SteamConfigSkinOptions o;o.view_y=23;o.graphics_origin={10,20};o.steam_platform=true;o.on_top=true;
+    o.arrow_selected={{{true,false},{false,true}}};
+    o.text.title="设置";o.text.names={"画质","速度","BGM","效果音"};
+    o.text.choices={{{"画质优先","速度优先"},{"高速","普通"}}};
+    o.text.explanation={"说明甲","说明乙"};o.text.title_widths=std::array<int,2>{24,26};
+    const auto touches=[](const SteamConfigSkinPlan &p) {
+        std::vector<SteamConfigTouch> out;
+        for(const auto &op:p.operations)if(const auto *t=std::get_if<SteamConfigTouch>(&op))out.push_back(*t);
+        return out;
+    };
+    const auto texts=[](const SteamConfigSkinPlan &p) {
+        std::vector<SteamHumanOverviewText> out;
+        for(const auto &op:p.operations)if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))out.push_back(*t);
+        return out;
+    };
+    const auto rectangles=[](const SteamConfigSkinPlan &p) {
+        std::vector<StartupSkinRect> out;
+        for(const auto &op:p.operations)if(const auto *f=std::get_if<SteamStartupFrameDraw>(&op))
+            if(const auto *r=std::get_if<StartupSkinRect>(f))out.push_back(*r);
+        return out;
+    };
+    const auto has_rectangle=[&](const SteamConfigSkinPlan &p,std::array<int,4> rect,std::array<int,3> rgb) {
+        const auto all=rectangles(p);return std::any_of(all.begin(),all.end(),[&](const auto &r){return r.rect==rect&&r.rgb==rgb&&!r.outline;});
+    };
+    const auto has_touch=[](const std::vector<SteamConfigTouch> &all,int component,int value) {
+        return std::find_if(all.begin(),all.end(),[=](const auto &t){return t.touch.component==component&&t.touch.value==value;});
+    };
+    for(int selection=0;selection<4;++selection) {
+        in.selection=selection;const auto result=steam_config_skin(in,o);check(bool(result),"Steam12四项显式选择可绘");
+        const auto &p=*result;const auto all=touches(p);const auto tx=texts(p);
+        check(p.title=="设置"&&p.soft_labels==std::array<int,2>{0,2}&&all.size()==13,
+            "Steam12固定四项与软标签，J9锁定只减一个值组件，不补方向第五项");
+        check(has_rectangle(p,{19,46,202,127},{247,253,247})&&
+            has_rectangle(p,{28,56+24*selection,56,14},{159,189,255}),
+            "Steam12窗口返回box47/174先减off12再加VIEW_Y半值11，行选择独立底色");
+        for(int row=0;row<4;++row) {
+            const auto t=has_touch(all,6,0x20000|row);
+            check(t!=all.end()&&t->source_rectangle==std::array<int,4>{-120,51+24*row,179,24}&&
+                t->touch.rectangle==t->source_rectangle&&!t->extended_value&&!t->drag,
+                "Steam12所有行保留component6原负x大矩形，不以可见名称框替代热区");
+            const auto name=std::find_if(tx.begin(),tx.end(),[&](const auto &v){return v.value==o.text.names[row];});
+            check(name!=tx.end()&&name->rectangle==std::array<int,4>{29,57+24*row,row==3?40:0,row==3?11:0}&&
+                name->anchor==(row==3?32:0)&&name->layout==(row==3)&&name->font_size==0,
+                "Steam12前三项普通正文，SE名字单独40×11 TextLayout，字号不猜常量");
+        }
+        check(tx[tx.size()-2].rectangle==std::array<int,4>{34,178,0,0}&&tx[tx.size()-2].anchor==17&&
+            tx.back().rectangle==(selection==1?std::array<int,4>{34,196,180,11}:std::array<int,4>{34,196,0,0})&&
+            tx.back().anchor==(selection==1?32:17)&&tx.back().layout==(selection==1)&&
+            tx.back().rgb==(selection==1?std::array<int,3>{200,0,0}:std::array<int,3>{30,30,30}),
+            "Steam12当前说明两行固定锚，速度第二行红色限框并不因J9隐藏");
+    }
+    in.selection=3;
+    for(int quality:{0,1})for(int speed:{0,1})for(bool unlocked:{false,true}) {
+        in.values[0]=quality;in.values[1]=speed;in.speed_unlocked=unlocked;
+        const auto p=*steam_config_skin(in,o);const auto all=touches(p);const auto tx=texts(p);
+        check(has_rectangle(p,{quality==0?151:94,56,54,14},{159,189,255})&&
+            has_rectangle(p,{speed==0?151:94,80,54,14},{159,189,255}),
+            "Steam12前两行存储0显示右项、存储1显示左项，当前值底与当前选择行无关");
+        for(int row=0;row<2;++row)for(int choice=0;choice<2;++choice) {
+            const int value=(row==0?0x60000:0x70000)|(choice==0?1:0);
+            const auto t=has_touch(all,6,value);const bool blocked=row==1&&choice==0&&!unlocked;
+            check((t==all.end())==blocked,"Steam12 J9仅屏蔽高速左项组件，普通/画质组件仍存在");
+            if(!blocked)check(t->touch.rectangle==
+                (choice==0?std::array<int,4>{59,51+24*row,92,24}:std::array<int,4>{149,51+24*row,240,24})&&
+                t->extended_value==(0x20000|row),"Steam12值组件编码实际存储与ExtendValues父行，矩形不缩成选项色块");
+        }
+        const auto fast=std::find_if(tx.begin(),tx.end(),[](const auto &t){return t.value=="高速";});
+        check(fast!=tx.end()&&fast->rectangle==std::array<int,4>{121,81,0,0}&&fast->rgb==
+            (unlocked?std::array<int,3>{30,30,30}:std::array<int,3>{128,128,128}),
+            "Steam12锁定高速文字变灰，合法历史值的底色仍绘制，不在查询中夹回普通");
+    }
+    for(int volume=0;volume<6;++volume) {
+        in.values[2]=volume;in.values[3]=5-volume;const auto p=*steam_config_skin(in,o);const auto all=touches(p);
+        std::vector<SteamConfigImage> images;
+        for(const auto &op:p.operations)if(const auto *image=std::get_if<SteamConfigImage>(&op))images.push_back(*image);
+        check(images.size()==6,"Steam12音量两行各左/右/knob三个图像请求，无插帧资源增长");
+        for(int row=0;row<2;++row) {
+            const int dy=24*row,level=row==0?volume:5-volume;
+            check(images[3*row].image==(row==0?6:4)&&images[3*row].anchor==std::array<int,2>{99,111+dy}&&
+                images[3*row+1].image==(row==0?5:7)&&images[3*row+1].anchor==std::array<int,2>{201,111+dy}&&
+                images[3*row+2].image==11&&images[3*row+2].anchor==std::array<int,2>{119+12*level,111+dy},
+                "Steam12按下图4/6与5/7独立，六档knob整数步宽12且图元不重加graphics_origin");
+            const int key=0x20002|row;const auto left=has_touch(all,21,key),right=has_touch(all,20,key);
+            const auto drag=has_touch(all,19,row==0?0x80000:0x90000);
+            check(left!=all.end()&&right!=all.end()&&drag!=all.end(),"Steam12音量减/加/拖动三组件分开");
+            check(left->source_rectangle==std::array<int,4>{59,99+dy,55,24}&&left->extended_value==0x10010&&
+                right->source_rectangle==std::array<int,4>{186,99+dy,240,24}&&right->extended_value==0x10012,
+                "Steam12左右组件保留原不同大矩形与逻辑方向值，非点击直写音量");
+            check(drag->source_rectangle==std::array<int,4>{119,99+dy,62,24}&&
+                drag->touch.rectangle==std::array<int,4>{104+12*level,99+dy,32,24}&&drag->touch.option==4&&
+                drag->extended_value==key&&drag->drag==std::array<int,6>{129,20,62,0,6,0},
+                "Steam12拖动注册thumb32宽，原轨道62宽，绝对Drag只一次加原点且y不加行号");
+            check(has_rectangle(p,{120,109+dy,60,4},{30,30,30})&&has_rectangle(p,{119,110+dy,62,2},{30,30,30}),
+                "Steam12两层轨道实参独立于thumb触区和最终缩放图块");
+        }
+    }
+    struct ImageOracle {int id;std::array<int,2> anchor;std::array<int,4> crop;std::array<float,4> destination;};
+    const std::array<ImageOracle,5> images{{
+        {4,{99,111},{1,85,22,21},{90.75F,102.75F,16.5F,15.75F}},
+        {5,{201,111},{24,85,22,21},{192.75F,102.75F,16.5F,15.75F}},
+        {6,{99,111},{47,85,28,28},{88.5F,100.5F,21.F,21.F}},
+        {7,{201,111},{76,85,28,28},{190.5F,100.5F,21.F,21.F}},
+        {11,{119,111},{73,57,9,23},{117.5F,101.25F,6.75F,17.25F}}}};
+    for(const auto &sample:images)for(int density:{1,2}) {
+        const auto image=steam_config_image_skin({sample.id,sample.anchor},128*density);
+        const std::array<int,4> crop{sample.crop[0]*density,sample.crop[1]*density,sample.crop[2]*density,sample.crop[3]*density};
+        check(image&&image->crop==crop&&image->destination==sample.destination,
+            "Steam12独立metadata IMAGE_DATA裁片：128/256密度只改源crop，目标offset/size保持0.75");
+    }
+    for(int id:{-1,0,3,8,12})check(!steam_config_image_skin({id,{0,0}},128),"Steam12未闭合image索引不能借其它control图回落");
+    for(int width:{-1,0,1,8193})check(!steam_config_image_skin({4,{0,0}},width),"Steam12错误密度/舍入空裁片/超过维护预算拒绝，不猜图宽");
+    const auto largest=steam_config_image_skin({4,{99,111}},8192);
+    check(largest&&largest->crop==std::array<int,4>{64,5440,1408,1344}&&
+        largest->destination==std::array<float,4>{90.75F,102.75F,16.5F,15.75F},
+        "Steam12维护图宽上界允许，源64倍仍保持独立目标大小与锚");
+    for(bool platform:{false,true})for(bool top:{false,true}) {
+        o.steam_platform=platform;o.on_top=top;const auto p=*steam_config_skin(in,o);
+        const auto count=std::count_if(p.operations.begin(),p.operations.end(),[](const auto &op){return std::holds_alternative<SteamConfigPlatformKeyboard>(op);});
+        check(count==(platform&&top?1:0),"Steam12末平台键盘请求仅Steam资格及当前顶页，不伪装第五项设置");
+        if(count){const auto &keyboard=std::get<SteamConfigPlatformKeyboard>(p.operations.back());
+            check(keyboard.anchor==std::array<int,2>{21,51}&&keyboard.component==2,"Steam12平台请求原锚与组件，保持在说明之后");}
+    }
+    o.text.explanation={"",""};check(bool(steam_config_skin(in,o)),"Steam12空说明行保留平台解析结果，不补演示句或无源拒绝");
+    for(int fault=0;fault<14;++fault) {
+        auto bad=in;auto options=o;
+        if(fault==0)bad.selection=4;if(fault==1)bad.values[0]=-1;if(fault==2)bad.values[1]=2;
+        if(fault==3)bad.values[2]=6;if(fault==4)bad.values[3]=-1;if(fault==5)options.text.title.clear();
+        if(fault==6)options.text.names[3].clear();if(fault==7)options.text.choices[1][0].clear();
+        if(fault==8)options.text.title_widths.reset();if(fault==9)options.text.title_widths=std::array<int,2>{-1,20};
+        if(fault==10)options.text.title_widths=std::array<int,2>{20,4097};if(fault==11)options.graphics_origin[0]=65537;
+        if(fault==12)options.view_y=-65537;if(fault==13)options.text.explanation[1]=std::string(4097,'a');
+        check(!steam_config_skin(bad,options),"Steam12坏值/选择/缺文本测宽/维护预算显式拒，不放宽门控或补默认值");
+    }
+    const auto baseline=*steam_config_skin(in,o);const auto values=in.values;
+    for(int repeat=0;repeat<4;++repeat)check(steam_config_skin(in,o)->operations.size()==baseline.operations.size()&&
+        in.values==values&&in.selection==3&&o.graphics_origin==std::array<int,2>{10,20},
+        "Steam12重复纯查询输出规模稳定，不写设置、选择或消费坐标，未新增Owner或平台任务");
+}
+void steam_commerce_skin_checks(Checks &check,const std::filesystem::path &root) {
+    // raw83纯输入条件夹具；NEW不是购买资格，rank不是现金，不运行Owner事务。
+    SteamCommerceSkinInput in{0,2,true,true};
+    SteamCommerceSkinOptions o;o.view_y=23;o.finger_frame=5;
+    o.text.title="南瓜商会";o.text.welcome="欢迎光临";
+    o.text.names={"购买道具","出售道具","购买设施"};
+    o.text.explanations={"说明甲","说明乙","说明丙"};
+    o.text.title_widths=std::array<int,2>{48,50};
+    for(bool japanese:{false,true})for(int selection=0;selection<3;++selection) {
+        in.selection=selection;o.japanese=japanese;const auto result=steam_commerce_skin(in,o);
+        check(bool(result),"Steam83两语言与三选项的纯计划接受完整显式输入");
+        const auto &p=*result;
+        check(p.title=="南瓜商会"&&p.soft_labels==std::array<int,2>{0,2},"Steam83标题和软标签不借84/85目录页");
+        std::vector<SteamHumanOverviewText> texts;std::vector<SteamFacilityNumber> numbers;
+        std::vector<SteamFacilityImage> facilities;std::vector<std::size_t> bars,icons;
+        std::vector<SteamStartupTouch> touches;std::vector<SteamHumanImage> new_marks;
+        std::size_t pumpkin=p.operations.size();
+        for(std::size_t i=0;i<p.operations.size();++i) {
+            const auto &op=p.operations[i];
+            if(const auto *t=std::get_if<SteamHumanOverviewText>(&op))texts.push_back(*t);
+            if(const auto *n=std::get_if<SteamFacilityNumber>(&op))numbers.push_back(*n);
+            if(const auto *f=std::get_if<SteamFacilityImage>(&op))facilities.push_back(*f);
+            if(const auto *t=std::get_if<SteamStartupTouch>(&op))touches.push_back(*t);
+            if(const auto *n=std::get_if<SteamHumanImage>(&op))new_marks.push_back(*n);
+            if(const auto *image=std::get_if<SteamCommerceImage>(&op)) {
+                if(image->asset==SteamCommerceAsset::row_background)bars.push_back(i);
+                if(image->asset==SteamCommerceAsset::category_icon)icons.push_back(i);
+                if(image->asset==SteamCommerceAsset::private_pumpkin) {
+                    pumpkin=i;check(image->position==std::array<int,2>{30,94}&&image->frame==0&&!image->crop,
+                        "Steam83私有南瓜SEB38沿原锚，不能套公共ID2大臣或二次补offset");
+                }
+            }
+        }
+        check(pumpkin>0&&pumpkin+1<p.operations.size(),"Steam83存在可消费的独立私有人物请求");
+        const auto *before=std::get_if<SteamHumanClip>(&p.operations[pumpkin-1]);
+        const auto *after=std::get_if<SteamHumanClip>(&p.operations[pumpkin+1]);
+        check(before&&after&&before->kind==SteamHumanClipKind::push_intersect&&
+            before->rectangle==std::array<int,4>{21,66,18,18}&&after->kind==SteamHumanClipKind::pop,
+            "Steam83人物只显示上部18高且clip原序退休，不裁整张素材");
+        check(numbers.size()==1&&numbers[0].asset==SteamFacilityAsset::number03_hud&&
+            numbers[0].value==3&&numbers[0].position==std::array<int,2>{202,69}&&
+            numbers[0].padding==0&&numbers[0].anchor==1&&facilities.size()==2&&
+            facilities[0].asset==SteamFacilityAsset::level_label&&facilities[0].position==std::array<int,2>{181,71}&&
+            facilities[1].asset==SteamFacilityAsset::finger&&facilities[1].frame==5&&
+            facilities[1].position==std::array<int,2>{japanese?68:66,114+26*selection},
+            "Steam83等级是rank+1/SEB10，手形保留调用者当前帧及语言偏移");
+        check(bars.size()==3&&icons.size()==3&&touches.size()==3&&texts.size()==5&&new_marks.size()==2,
+            "Steam83只有三行、欢迎和选中说明；NEW只在购道具/购设施，没有额外价签或滚动条");
+        check(texts[0].value=="欢迎光临"&&texts[0].rectangle==std::array<int,4>{45,70,0,0}&&
+            texts[0].anchor==1&&texts[4].value==o.text.explanations[selection]&&
+            texts[4].rectangle==std::array<int,4>{120,198,0,0}&&texts[4].anchor==2,
+            "Steam83欢迎/当前说明的普通DrawString锚和当前文本正确");
+        for(int row=0;row<3;++row) {
+            const int y=101+26*row;const auto &bar=std::get<SteamCommerceImage>(p.operations[bars[row]]);
+            const auto &icon=std::get<SteamCommerceImage>(p.operations[icons[row]]);
+            const auto *touch=std::get_if<SteamStartupTouch>(&p.operations[bars[row]+1]);
+            const auto *name=std::get_if<SteamHumanOverviewText>(&p.operations[bars[row]+2]);
+            check(bar.position==std::array<int,2>{53,y}&&bar.crop==std::array<int,4>{0,row==selection?0:26,134,26}&&
+                touch&&name&&touch->component==11&&touch->value==(0x20000|row)&&
+                touch->rectangle==std::array<int,4>{33,y,174,26}&&touch->option==0&&
+                !touch->image_draw&&name->value==o.text.names[row],
+                "Steam83逐行底图→组件11→名称，热区不套75 marker16或附加Margin");
+            check(icon.frame==row&&icon.position==std::array<int,2>{japanese?77:75,y+4}&&
+                !icon.crop&&icons[row]>bars[row]+2&&name->rgb==std::array<int,3>{92,51,31}&&
+                name->rectangle==(japanese?std::array<int,4>{127,y+7,0,0}:std::array<int,4>{99,y+7,85,11})&&
+                name->font_size==(japanese?0:11)&&name->anchor==(japanese?2:32)&&name->layout==!japanese,
+                "Steam83类别图在文字/NEW之后，日文普通字与非日文11号限框分别消费");
+        }
+        check(new_marks[0].asset==SteamHumanAsset::catalogue_new&&new_marks[0].position==std::array<int,2>{164,115}&&
+            new_marks[1].asset==SteamHumanAsset::catalogue_new&&new_marks[1].position==std::array<int,2>{164,167},
+            "Steam83两NEW原坐标，出售行不得误画NEW");
+    }
+    for(bool items:{false,true})for(bool facilities:{false,true}) {
+        in.item_new=items;in.facility_new=facilities;const auto p=*steam_commerce_skin(in,o);
+        const auto count=std::count_if(p.operations.begin(),p.operations.end(),[](const auto &op) {
+            return std::holds_alternative<SteamHumanImage>(op);
+        });
+        check(count==int(items)+int(facilities),"Steam83两个NEW独立控制输出，均空仍保留三可选入口");
+    }
+    for(int fault=0;fault<9;++fault) {
+        auto bad=in;auto options=o;
+        if(fault==0)bad.selection=-1;if(fault==1)bad.selection=3;
+        if(fault==2)bad.rank=-1;if(fault==3)bad.rank=std::numeric_limits<int>::max();
+        if(fault==4)options.finger_frame=6;if(fault==5)options.text.title_widths.reset();
+        if(fault==6)options.text.names[1].clear();if(fault==7)(*options.text.title_widths)[1]=-1;
+        if(fault==8)options.view_y=std::numeric_limits<int>::max();
+        check(!steam_commerce_skin(bad,options),"Steam83坏选择/算术/字体输入显式拒绝，无默认值补齐");
+    }
+    for(const auto asset:{SteamCommerceAsset::row_background,SteamCommerceAsset::category_icon,
+                          SteamCommerceAsset::private_pumpkin}) {
+        const auto r=steam_commerce_resource(asset);check(bool(r),"Steam83三个资源提供者都有出版入口");
+        CpuImage image(LoadImage((root/std::filesystem::path(r->published_image).lexically_relative("original")).string().c_str()));
+        check(image.image.data!=nullptr,"Steam83已出版PNG可真实解码，无新素材副本");
+        if(asset==SteamCommerceAsset::row_background)
+            check(r->image==19&&r->sprite==-1&&image.image.width==134&&image.image.height==52,
+                "Steam83底图两裁片在原134×52图内");
+        else {
+            const auto seb=tools::parse_legacy_seb(read_bytes(root/std::filesystem::path(r->published_sprite).lexically_relative("original")));
+            bool found=false;
+            for(const auto &layer:seb.layers)for(const auto &part:layer.parts) {
+                if(part.image_index<0)continue;
+                check(part.source_x>=0&&part.source_y>=0&&part.source_x+part.width<=image.image.width&&
+                    part.source_y+part.height<=image.image.height,"Steam83 SEB引用裁片在对应PNG内");
+                if(asset==SteamCommerceAsset::private_pumpkin&&part.frame==0) {
+                    found=part.image_index==173&&part.source_x==18&&part.source_y==0&&part.width==18&&
+                        part.height==28&&part.offset_x==-9&&part.offset_y==-28;
+                }
+            }
+            check(asset==SteamCommerceAsset::category_icon?(r->image==2&&r->sprite==1&&seb.frame_count==3):
+                (r->image==173&&r->sprite==38&&found),"Steam83类别三帧/私有南瓜源矩形及offset有真实SEB oracle");
+        }
+    }
+    check(!steam_commerce_resource(static_cast<SteamCommerceAsset>(99)),"Steam83未知资源身份不借公共角色兜底");
+    auto state=test_support::page_fixture(83);const auto id=state.scripts.pages.back().id;
+    check(!steam_commerce_input(state,id),"Steam83纯查询不补未初始化载荷");
+    check(initialize_startup_world_commerce_pages(state),"Steam83只读Owner夹具真实初始化");
+    for(auto &read:state.item_commerce_read)read.second=true;
+    for(auto &read:state.facility_commerce_read)read.second=true;
+    state.shop_item_stock.at(0).quantity=1;state.item_commerce_read.at(0)=false;
+    const auto eligible=std::find_if(state.rules->facilities.begin(),state.rules->facilities.end(),
+        [](const auto &f){return f.unlock_rank>=0;});
+    check(eligible!=state.rules->facilities.end(),"Steam83夹具从真实设施定义找可售卖星级");
+    state.rank=eligible->unlock_rank;state.facility_presence.at(eligible->id)=1;
+    state.facility_commerce_read.at(eligible->id)=false;
+    const auto snapshot=state.commerce_page_data;const auto random=state.scene.random.draws();
+    for(int repeat=0;repeat<3;++repeat) {
+        const auto input=steam_commerce_input(state,id);
+        check(input&&input->item_new&&input->facility_new&&input->rank==state.rank&&input->selection==0&&
+            state.commerce_page_data==snapshot&&state.scene.random.draws()==random&&state.sound_requests.empty(),
+            "Steam83真实NEW保留p1设施提示，不套p0交易策略；重复查询不推进页面或一次性输出");
+    }
+    state.facility_presence.at(eligible->id)=2;state.shop_item_stock.at(0).quantity=0;
+    const auto no_new=steam_commerce_input(state,id);
+    check(no_new&&!no_new->item_new&&!no_new->facility_new,"Steam83库存0/设施p2不产生NEW");
+    for(int fault=0;fault<4;++fault) {
+        auto invalid=state;
+        if(fault==0)invalid.commerce_page_data.erase(id);
+        if(fault==1)invalid.page_counters.erase(id);
+        if(fault==2)invalid.commerce_page_lists[id]={0};
+        if(fault==3)invalid.shop_item_stock.erase(0);
+        check(!steam_commerce_input(invalid,id),"Steam83Owner只读桥拒缺键/错误页目录，不以默认值凑输出");
+    }
+}
+void steam_platform_skin_checks(Checks &check,const std::filesystem::path &source_root) {
+    // 原managed kairolib的显式seb23/img27及seb25/img29；与游戏common包不同。
+    struct Oracle {const char *stem;int image,width,height,dx,dy;};
+    constexpr std::array<Oracle,2> resources{{{"button_gamepad",27,64,60,-32,-30},
+                                           {"button_keyboard",29,64,42,-32,-21}}};
+    for(const auto &expected:resources) {
+        const auto root=source_root/"steam_platform";
+        CpuImage image(LoadImage((root/(std::string(expected.stem)+".png")).string().c_str()));
+        check(image.image.width==expected.width&&image.image.height==expected.height,
+              "Steam平台图像原尺寸真实解码，不借common或按截图画替代图");
+        const auto seb=tools::parse_legacy_seb(read_bytes(root/(std::string(expected.stem)+".seb")));
+        check(seb.frame_count==1&&seb.layers.size()==1&&seb.layers[0].parts.size()==1,
+              "Steam平台按钮原SEB只有layer0/frame0一个实际裁片，不补高亮帧");
+        const auto &part=seb.layers[0].parts[0];
+        check(part.frame==0&&part.image_index==expected.image&&part.source_x==0&&part.source_y==0&&
+              part.width==expected.width&&part.height==expected.height&&part.offset_x==expected.dx&&
+              part.offset_y==expected.dy&&part.flip_x==0&&part.flip_y==0,
+              "Steam平台SEB原img身份、完整裁片与不同居中偏移保持独立oracle");
+        int opaque{};
+        for(int y=0;y<image.image.height;++y)for(int x=0;x<image.image.width;++x)
+            opaque+=GetImageColor(image.image,x,y).a>0;
+        check(opaque>0,"Steam平台源裁片真实非空，不以目录存在替代图像消费检查");
+    }
+    using Kind=SteamPlatformButtonKind;
+    const auto close=[](const std::array<float,4> &actual,const std::array<float,4> &expected) {
+        for(std::size_t n=0;n<actual.size();++n)if(std::abs(actual[n]-expected[n])>0.00002F)return false;
+        return true;
+    };
+    SteamPlatformButtonInput in{Kind::controller_binding,{20,20},2,true,false,false,100.F};
+    for(const auto kind:{Kind::controller_binding,Kind::keyboard_guide})for(bool touched:{false,true}) {
+        const bool keyboard=kind==Kind::keyboard_guide;
+        in.kind=kind;in.anchor=keyboard?std::array<int,2>{21,51}:std::array<int,2>{20,20};in.touched=touched;
+        const auto result=steam_platform_button_skin(in);
+        check(result&&result->body,"Steam两平台按钮可发布独立纯计划，不执行外链或Steam面板");
+        const auto &body=*result->body;const auto &resource=body.resource;
+        check(resource.image==(keyboard?29:27)&&resource.sprite==(keyboard?25:23)&&
+              resource.crop==(keyboard?std::array<int,4>{0,0,64,42}:std::array<int,4>{0,0,64,60})&&
+              resource.offset==(keyboard?std::array<int,2>{-32,-21}:std::array<int,2>{-32,-30})&&
+              std::string(resource.image_path)==(keyboard?"steam-platform/button_keyboard.png":"steam-platform/button_gamepad.png")&&
+              std::string(resource.sprite_path)==(keyboard?"steam-platform/button_keyboard.seb":"steam-platform/button_gamepad.seb"),
+              "Steam平台资源身份/路径均来自managed kairolib，不混Unity同名包或common ID");
+        const auto expected=keyboard?(touched?std::array<float,4>{3.4F,39.45F,35.2F,23.1F}:
+                                             std::array<float,4>{5.F,40.5F,32.F,21.F}):
+                                    (touched?std::array<float,4>{2.4F,3.5F,35.2F,33.F}:
+                                             std::array<float,4>{4.F,5.F,32.F,30.F});
+        check(close(body.destination,expected)&&body.reset_origin,
+              "Steam平台T锚/S尺寸/T偏移原序：锚不缩放且不再叠表单origin，高亮1.1只放大裁片");
+        check(body.component==2&&body.value==(keyboard?0x13489A9:0x13465BA)&&
+              body.touch_rectangle==(keyboard?std::array<int,4>{5,36,32,30}:std::array<int,4>{4,5,32,30})&&
+              body.margin==std::array<int,4>{15,15,15,15},
+              "Steam平台两热区固定gamepad23的半尺寸，键盘图高42和高亮都不改变普通30高热区");
+        check(bool(body.blend)==touched,"Steam平台普通继承混色，高亮才带显式混色请求");
+        if(touched)check(body.blend->mode==1&&body.blend->rgba==std::array<int,4>{255,255,255,128},
+              "Steam平台高亮保留BLEND_COLOR1白128实参，不转换成未经核验的普通alpha混合");
+        check(bool(body.joystick)==!keyboard,"Steam控制器额外glyph独立请求，键盘不虚构glyph");
+        if(!keyboard)check(body.joystick->button==8&&body.joystick->registration==24&&
+              body.joystick->scale==100&&body.joystick->anchor==std::array<int,2>{6,6},
+              "Steam控制器glyph保留原button8/registration24/scale100，实际比例只缩放附加glyph锚");
+    }
+    in.touched=false;
+    for(const auto kind:{Kind::controller_binding,Kind::keyboard_guide})for(bool desktop:{false,true})for(bool xbox:{false,true}) {
+        in.kind=kind;in.desktop=desktop;in.xbox=xbox;
+        const auto p=steam_platform_button_skin(in);
+        check(p&&bool(p->body)==(desktop&&(kind==Kind::controller_binding||!xbox)),
+              "Steam helper仅桌面；Xbox仅隐藏keyboard，外层顶页资格不冒充helper内部条件");
+    }
+    in.kind=Kind::keyboard_guide;in.desktop=true;in.xbox=false;in.scale_ratio.reset();
+    check(steam_platform_button_skin(in)->body.has_value(),"Steam keyboard不消费仅controller需要的比例，缺值仍合法");
+    in.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+    check(steam_platform_button_skin(in)->body.has_value(),"Steam keyboard不提前校验未消费glyph比例");
+    in.kind=Kind::controller_binding;in.scale_ratio=75.F;in.anchor={-15,15};
+    check(steam_platform_button_skin(in)->body->joystick->anchor==std::array<int,2>{-21,0},
+          "Steam控制器glyph负乘积向零截断，不套floor或缩放按钮本体锚");
+    in.scale_ratio=10000.F;in.anchor={65536,-65536};in.component=65535;
+    const auto limit=steam_platform_button_skin(in);
+    check(limit&&limit->body&&limit->body->component==65535&&
+          limit->body->touch_rectangle==std::array<int,4>{65520,-65551,32,30},
+          "Steam平台维护坐标/组件/比例上界合法，输出保留显式负坐标而不夹回屏幕");
+    in={Kind::controller_binding,{20,20},2,true,false,false,100.F};
+    for(int fault=0;fault<12;++fault) {
+        auto bad=in;
+        if(fault==0)bad.kind=static_cast<Kind>(2);if(fault==1)bad.anchor[0]=-65537;
+        if(fault==2)bad.anchor[1]=65537;if(fault==3)bad.component=-1;if(fault==4)bad.component=65536;
+        if(fault==5)bad.scale_ratio.reset();if(fault==6)bad.scale_ratio=0.F;if(fault==7)bad.scale_ratio=-1.F;
+        if(fault==8)bad.scale_ratio=10001.F;if(fault==9)bad.scale_ratio=std::numeric_limits<float>::quiet_NaN();
+        if(fault==10)bad.scale_ratio=std::numeric_limits<float>::infinity();
+        if(fault==11)bad.scale_ratio=-std::numeric_limits<float>::infinity();
+        check(!steam_platform_button_skin(bad),"Steam平台错kind/坐标/组件/缺实际比例/非法浮点预算显式拒绝，不生成部分请求");
+    }
+    check(!steam_platform_button_resource(static_cast<Kind>(2)),"Steam平台非法资源kind不能回落到keyboard");
+    in.desktop=false;in.scale_ratio.reset();
+    const auto hidden=steam_platform_button_skin(in);
+    check(hidden&&!hidden->body,"Steam非桌面隐藏不提前消费controller比例或发布图像/热区/glyph");
+    in.desktop=true;in.scale_ratio=100.F;
+    const auto baseline=steam_platform_button_skin(in);
+    for(int repeat=0;repeat<4;++repeat) {
+        const auto p=steam_platform_button_skin(in);
+        check(p&&p->body&&p->body->destination==baseline->body->destination&&
+              p->body->touch_rectangle==baseline->body->touch_rectangle&&p->body->joystick&&
+              in.anchor==std::array<int,2>{20,20}&&in.scale_ratio==100.F&&in.component==2,
+              "Steam重复只读平台计划保持一个本体/一个glyph固定规模，不写输入或累积平台任务");
     }
 }
 struct SpriteOracle {
@@ -2256,6 +2661,9 @@ int check_startup_skin(const std::filesystem::path &source_root,
     phases(check);
     steam_clear_score_skin_checks(check);
     steam_new_game_skin_checks(check);
+    steam_config_skin_checks(check);
+    steam_commerce_skin_checks(check,source_root);
+    steam_platform_skin_checks(check,source_root);
     frame_geometry(check);
     income_information(check);
     income_skin(check,source_root);

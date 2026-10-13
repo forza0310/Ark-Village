@@ -18,7 +18,8 @@
 - [x] 正式cee9cee任务25–28/31–33 Owner游标/冻结名单、父答案、成果与期限皮肤已接，旧第二游标/手写成果退休；本地及窗口见[B1](docs/stages/B1-playable-prototype.md#research-cee9cee-task-successors)。
 - [x] 正式a98f70d职业大师70、93/94来源奖励及严格恢复已接入，本地/两尺寸窗口/真实图纸扣点链通过；见[B1](docs/stages/B1-playable-prototype.md#research-a98f70d-mastery-gifts)。
 - [x] 正式8665a17计分双钟/应用恢复、18f810e新局纯皮肤及既有PC适配已接；487来源/79适配、两Debug检查修正及Release窗口通过，见[B1](docs/stages/B1-playable-prototype.md#research-80d8b8d-score-startup)。
-- [ ] 下一批核2d8745a设置纯皮肤；原91动态钟、授勋双询问Owner、跨局音量/设置存取、80住宅候选输入及完整字体/OS动态仍按正式交付门槛等待，不接Steam服务或恢复二倍速。
+- [x] ea9876a商会83有序皮肤/整帧FIFO、21e4d27设置/平台纯计划及空草稿修正完成本地短检和两尺寸窗口；493来源/79适配、731素材，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
+- [ ] 按正式后继接商会85设施购买/86交易反馈；原91动态钟、授勋双询问Owner、跨局音量/设置存取、80住宅候选输入及完整字体/OS动态仍按正式交付门槛等待，不接Steam服务或恢复二倍速。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
@@ -38,7 +39,8 @@
 - [x] 修后三星申请及学校首次营业：月74收入35551G及四条件正式回执通过，学校63真实支付2000G、完工并营业690G，烤肉店41图纸支付90点/领取；月75保存/冷载通过，见[B1](docs/stages/B1-playable-prototype.md#campaign-third-star)。
 - [x] 月87定向中止恢复营业、月88玩家存读、限时经营至月90四星及独立冷载；真实付费补员至9人后任务42胜利，现金145338G、两月预算31460G、布局50/50，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-fourth-star)。
 - [x] 月93有限季度存读通过：真实13次付费/4免费装备装配、任务43胜利、炖肉39营业及25目标位置全收入；月亏损仍保留，见[B1](docs/stages/B1-playable-prototype.md#four-star-consumption-20261012)。
-- [ ] 从有效月104前缀修复新馆选址堵路导致住宅110断连的49/50布局，并补任务道具、优先强化博物馆64及验首次营业（已完工，sales0）；现金123560G/预算38820G，五星人气差278、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
+- [x] 月104→105真实300G移动博物馆及20G补两格道路，布局恢复50/50、原住宅/住户保留，保存和独立冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
+- [ ] 从有效月105前缀继续任务47取得道具，优先强化博物馆64并验首次营业（sales0/共享魅力10）；现金111865G/预算38820G，五星人气差261、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
 
 ## 表现与研究边界
 

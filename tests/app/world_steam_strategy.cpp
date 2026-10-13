@@ -119,33 +119,28 @@ void SteamVillageStrategy::reconcile(const State &s) {
 
 std::optional<Command> SteamVillageStrategy::layout(const State &s) {
     const auto funds = cash(s) - reserve(s);
+    // A later extension may have closed a blueprint entrance without occupying its footprint.
+    // Repair by moving the external shop through the existing paid operation, never a house.
+    if ((s.scripts.user_flags & 32U) && funds >= 300)
+        if (const auto repair = steam_layout_access_repair(s)) {
+            operation_ = Operation::move;
+            moving_ = repair->first;
+            target_ = repair->second;
+            operation_committed_ = false;
+            return cmd(Kind::open_build_menu);
+        }
     // Preserve the copied Steam layout. A later-star required building extends it
     // only into unoccupied, legal cells, with the real quote and construction command.
     if (const auto required = steam_required_facility(s)) {
         if (buildable(s, *required)) {
             const auto quote = sim::startup_world_build_quote(s, *required);
             if (quote && funds >= quote->construction_cost + 2 * quote->definition_attributes[3]) {
-                for (int y = 4; y < s.scene.world.world.map.height; ++y)
-                    for (int x = 1; x < s.scene.world.world.map.width; ++x)
-                        for (const auto orientation : {ref::FacilityOrientation::first,
-                                                       ref::FacilityOrientation::second}) {
-                            const SteamLayoutTarget t{*required, {x, y}, orientation, SteamLayoutRole::shop};
-                            const auto footprint = steam_layout_footprint(s, t);
-                            if (!steam_layout_inside_fence(s, t) ||
-                                !steam_layout_blockers(s, t).empty() ||
-                                std::any_of(footprint.cells.begin(), footprint.cells.end(),
-                                            [&](const auto &cell) {
-                                                const auto terrain = s.scene.world.world.map.cells.at(
-                                                    cell.position.y * s.scene.world.world.map.width + cell.position.x).legacy_state;
-                                                return reserved_cell(s, cell.position) || terrain == 1 ||
-                                                       terrain == 2 || terrain == 10;
-                                            }))
-                                continue;
-                            operation_ = Operation::build;
-                            target_ = t;
-                            operation_committed_ = false;
-                            return cmd(Kind::open_build_menu);
-                        }
+                if (const auto target = steam_connected_extension(s, *required)) {
+                    operation_ = Operation::build;
+                    target_ = *target;
+                    operation_committed_ = false;
+                    return cmd(Kind::open_build_menu);
+                }
             }
         } else if (const auto goal = steam_progress_point_goal(s);
                    goal && goal->kind == SteamProgressPurchase::blueprint &&

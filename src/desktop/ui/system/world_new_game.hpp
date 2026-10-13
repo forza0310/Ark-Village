@@ -20,7 +20,7 @@ struct WorldNewGamePaint {
     std::array<simulation::SteamManualArrowPlan, 2> arrows;
 };
 // Explicit presentation clocks keep a static PC preview distinct from an unbound source Owner.
-// Empty names remain legal product drafts; a drawing-only placeholder never changes the draft.
+// Empty names remain legal product drafts and pass directly to the maintained skin.
 std::optional<simulation::SteamNewGamePlan>
 world_new_game_plan(const app::WorldNewGameDraft &draft, int selected, int main, int finger_frame,
                     std::array<int, 2> title_widths, int start_width);

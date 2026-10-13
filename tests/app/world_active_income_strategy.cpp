@@ -281,7 +281,17 @@ IncomeDecision ActiveIncomeStrategy::next(const State &s, std::int64_t reserve, 
             // their original total budget, two-star boundary and 24-use limit.
             const auto available = reward_only_ ? 0 : std::min(10000 - spent_, cash(s) - reserve);
             bool constructing{};
-            for (const auto id : new_shops_) {
+            std::vector<std::uint64_t> introductions(new_shops_.begin(), new_shops_.end());
+            // A newly unlocked, never-used shop should receive held attraction loot before
+            // older introductions. choose_income_investment still checks shared charm, not
+            // adjacency-inflated instance charm, and never buys under reward_only.
+            if (reward_only_)
+                std::stable_sort(introductions.begin(), introductions.end(), [&](auto a, auto b) {
+                    const bool fresh_a = s.scene.world.world.facilities.at(a).sales == 0;
+                    const bool fresh_b = s.scene.world.world.facilities.at(b).sales == 0;
+                    return fresh_a != fresh_b ? fresh_a : fresh_a && a > b;
+                });
+            for (const auto id : introductions) {
                 if (s.scene.world.world.facilities.at(id).status != 1) {
                     constructing = true;
                     continue;
@@ -541,6 +551,49 @@ void income_strategy_contract() {
     }
     require(!choose_income_investment(empty_inventory, 10000, {}, true),
             "empty inventory cannot be replenished by the reward-only selector");
+    // Explicit placement/history/loot qualification isolates player priority, not a dungeon grant.
+    auto introductions = empty_inventory;
+    const auto store =
+        std::find_if(introductions.scene.world.world.facilities.begin(),
+                     introductions.scene.world.world.facilities.end(), [&](const auto &entry) {
+                         return entry.second.placement.definition_id == 28 &&
+                                entry.second.status == 1;
+                     });
+    require(store != introductions.scene.world.world.facilities.end(),
+            "priority fixture requires an ordinary source shop");
+    const auto older = store->first;
+    const auto newer = introductions.next_facility_identity++;
+    auto fresh_shop = store->second;
+    fresh_shop.placement.instance_id.value = newer;
+    fresh_shop.sales = 0;
+    introductions.scene.world.world.facilities.emplace(newer, fresh_shop);
+    introductions.scene.world.world.facilities.at(older).sales = 1;
+    introductions.facility_flags[newer] = 0;
+    introductions.neighbourhood[newer] = {0, 0, 80};
+    introductions.facility_monthly_cash[newer] = {};
+    const auto definition = fresh_shop.placement.definition_id;
+    introductions.scripts.facilities.at(definition).improvements = {};
+    // Fixed item3 (premium ham): category4, price/quality/charm 20/0/2. Inn28's
+    // category4 affinity is0, so the source keeps the positive charm increment unscaled.
+    constexpr int attraction_item = 3;
+    const auto &loot = introductions.rules->items.at(attraction_item);
+    require(loot.identity == attraction_item && loot.category == 4 &&
+                loot.facility_improvements == std::array<int, 3>{20, 0, 2} &&
+                introductions.rules->facility_initial.at(28).item_affinities.at(4) == 0,
+            "source catalogue must provide effective attraction loot");
+    introductions.items.at(attraction_item).inventory = 1;
+    introductions.catalog.at({0, attraction_item}).inventory = 1;
+    ActiveIncomeStrategy priority(3600, true);
+    priority.register_new_shop(older);
+    priority.register_new_shop(newer);
+    const auto preview = simulation::startup_world_facility_values(introductions, newer);
+    const auto chosen = priority.next(introductions, 0, true);
+    require(preview && preview->definition_attributes[2] < 20 &&
+                preview->instance_attributes[2] >= 20 && chosen.command &&
+                chosen.command->kind == Kind::open_facility && chosen.command->facility == newer &&
+                introductions.items.at(attraction_item).inventory == 1,
+            "held loot must first select the zero-sales new shop using shared charm, without use "
+            "or purchase");
     // Source item0 has price/quality/charm increments 0/2/0. This isolated
     // selection fixture gives one held unit, without inventing past business.
     auto quality = empty_inventory;

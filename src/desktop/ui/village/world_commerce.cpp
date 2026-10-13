@@ -54,7 +54,7 @@ bool world_commerce_page(const Page &page) {
            page.legacy_page >= 83 && page.legacy_page <= 86;
 }
 WorldCommerceView world_commerce_view(const State &state, const Page &page) {
-    if (!state.rules || !world_commerce_page(page))
+    if (!state.rules || !world_commerce_page(page) || page.legacy_page == 83)
         throw std::invalid_argument("Commerce view requires a supported source page");
     WorldCommerceView out;
     out.page = page.id;
@@ -89,13 +89,7 @@ WorldCommerceView world_commerce_view(const State &state, const Page &page) {
     out.feedback_counter = source->feedback_counter;
     out.points = state.village_points;
     out.funds = state.scene.world.world.ai.accounting.funds();
-    if (out.raw == 83) {
-        for (const char *name : {"购买道具", "出售道具", "购买设施"}) {
-            WorldCommerceRow row;
-            row.name = name;
-            out.rows.push_back(std::move(row));
-        }
-    } else if (out.raw == 84 || out.raw == 85) {
+    if (out.raw == 84 || out.raw == 85) {
         out.title = out.raw == 85 ? "购买设施" : out.mode == 0 ? "购买道具" : "出售道具";
         for (const int entry : source->entries)
             out.rows.push_back(out.raw == 85 ? facility(state, entry)
@@ -105,7 +99,7 @@ WorldCommerceView world_commerce_view(const State &state, const Page &page) {
     }
     if (!out.rows.empty())
         out.choice = out.rows.at(out.selection);
-    out.can_cancel = out.raw == 83 || out.raw == 84 || out.raw == 85;
+    out.can_cancel = out.raw == 84 || out.raw == 85;
     out.can_confirm = out.raw != 86;
     out.can_inspect = out.raw == 85;
     out.initialized = true;
@@ -135,7 +129,7 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
                                                         const WorldCommerceLayout &layout,
                                                         const WorldCommerceInput &input,
                                                         bool blocked) {
-    if (blocked || !view.initialized || view.raw == 86)
+    if (blocked || !view.initialized || view.raw == 83 || view.raw == 86)
         return {};
     const auto intent = [&](Action action, int selection = 0) {
         return WorldCommerceIntent{action, view.page, selection};
@@ -155,7 +149,7 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
         if (input.wheel_rows)
             return intent(Action::select, std::clamp(view.selection + input.wheel_rows, 0,
                                                      static_cast<int>(view.rows.size()) - 1));
-        const int visible = view.raw == 85 || view.raw == 83 ? 3 : 5;
+        const int visible = view.raw == 85 ? 3 : 5;
         const float height = layout.rows.height / visible;
         for (int n = 0; n < visible && n + view.first_visible < static_cast<int>(view.rows.size());
              ++n)
@@ -171,6 +165,8 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
 void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayout &layout,
                          const Skin &skin, bool enabled, const std::string &feedback,
                          std::optional<std::int64_t> last_amount) {
+    if (view.raw == 83)
+        throw std::invalid_argument("Commerce top uses its dedicated source drawing plan");
     skin.window(layout.panel, view.title);
     skin.content(
         {layout.rows.x - 2, layout.rows.y - 2, layout.rows.width + 4, layout.rows.height + 4});
@@ -186,7 +182,7 @@ void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayou
                 skin.centered(n == 0 ? "价格" : "持有", layout.tabs[n], ink, 10);
             }
         if (!view.rows.empty()) {
-            const int visible = view.raw == 85 || view.raw == 83 ? 3 : 5;
+            const int visible = view.raw == 85 ? 3 : 5;
             const float height = layout.rows.height / visible;
             for (int n = 0;
                  n < visible && n + view.first_visible < static_cast<int>(view.rows.size()); ++n) {
@@ -211,16 +207,14 @@ void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayou
                 }
                 fitted(skin, row.name,
                        {x, box.y + 2, box.x + box.width - x - (view.raw == 84 ? 65 : 35), height});
-                if (view.raw != 83) {
-                    if (view.raw == 85 && row.fresh)
-                        skin.sprites.image("wnd_new.png", {0, 0, 20, 9},
-                                           {box.x + box.width - 24, box.y + 2, 20, 9});
-                    const auto value = view.raw == 85  ? std::to_string(row.price) + "点"
-                                       : view.tab == 1 ? std::to_string(row.owned) + "个"
-                                                       : std::to_string(row.price) + "G";
-                    skin.right(value, box.x + box.width - 3,
-                               view.raw == 84 ? box.y + 2 : box.y + height - 12, blue, 10);
-                }
+                if (view.raw == 85 && row.fresh)
+                    skin.sprites.image("wnd_new.png", {0, 0, 20, 9},
+                                       {box.x + box.width - 24, box.y + 2, 20, 9});
+                const auto value = view.raw == 85  ? std::to_string(row.price) + "点"
+                                   : view.tab == 1 ? std::to_string(row.owned) + "个"
+                                                   : std::to_string(row.price) + "G";
+                skin.right(value, box.x + box.width - 3,
+                           view.raw == 84 ? box.y + 2 : box.y + height - 12, blue, 10);
             }
         } else if (view.choice) {
             if (!view.choice->graphic.frames.empty())

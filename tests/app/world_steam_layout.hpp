@@ -2,6 +2,7 @@
 
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include <array>
+#include <utility>
 
 namespace ark::test {
 enum class SteamLayoutRole { shop, plant, residence, recruitment };
@@ -34,5 +35,13 @@ std::optional<std::size_t> steam_layout_slot(const simulation::StartupWorldRunti
 // instance. Empty does not certify terrain, road connectivity, unlocks or affordability.
 std::vector<std::uint64_t> steam_layout_blockers(const simulation::StartupWorldRuntimeState &state,
                                                  const SteamLayoutTarget &target);
+// Discard complete source build/move candidates after checking every existing blueprint
+// instance and the new shop. Prefer fewer covered road cells; no preview is a paid receipt.
+std::optional<SteamLayoutTarget>
+steam_connected_extension(const simulation::StartupWorldRuntimeState &state, int definition,
+                          std::optional<std::uint64_t> moving = {});
+// Move a non-blueprint shop bordering a disconnected target; never move a retained residence.
+std::optional<std::pair<std::uint64_t, SteamLayoutTarget>>
+steam_layout_access_repair(const simulation::StartupWorldRuntimeState &state);
 void steam_layout_contract();
 } // namespace ark::test

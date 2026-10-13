@@ -1205,6 +1205,10 @@ StartupWorldRuntimeError StartupWorldRuntimeSession::act_facility_item_page(
     std::uint64_t page, StartupFacilityItemAction action, int selection) {
     return act_startup_world_facility_item_page(state_, page, action, selection);
 }
+StartupWorldRuntimeError StartupWorldRuntimeSession::input_commerce_top(
+    std::uint64_t page,const StartupCommerceTopInput &input) {
+    return input_startup_world_commerce_top(state_,page,input);
+}
 StartupWorldRuntimeError StartupWorldRuntimeSession::act_facility_catalog_page(
     std::uint64_t page, StartupFacilityCatalogAction action, int selection) {
     return act_startup_world_facility_catalog_page(state_, page, action, selection);

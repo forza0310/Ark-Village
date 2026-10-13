@@ -3,8 +3,10 @@
 // Commerce84–86 keeps buy/sell direction and source scroll; raw83 has its own ordered top skin.
 #include "../../scene/world_build_placement.hpp"
 #include "../common/layout.hpp"
+#include "../common/world_list_input.hpp"
 #include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
+#include "ark/simulation/presentation/steam_commerce_skin.hpp"
 #include <optional>
 #include <string>
 #include <vector>
@@ -27,6 +29,7 @@ struct WorldCommerceView {
     std::string title;
     std::vector<WorldCommerceRow> rows;
     std::optional<WorldCommerceRow> choice;
+    std::optional<simulation::SteamCommerceSkinPlan> source_skin;
 };
 struct WorldCommerceLayout {
     Rectangle panel, heading, rows, status, feedback, cancel, confirm, inspect;
@@ -38,6 +41,9 @@ struct WorldCommerceInput {
     bool enter{}, escape{}, up{}, down{}, left{}, right{}, inspect{};
     int wheel_rows{};
     bool focus_lost{};
+    bool keyboard_event{};
+    std::optional<Vector2> pointer{};
+    bool pointer_pressed{}, pointer_down{}, pointer_released{};
 };
 struct WorldCommerceIntent {
     simulation::StartupCommerceAction action;
@@ -48,6 +54,20 @@ bool world_commerce_page(const simulation::rules::WorldScriptPage &page);
 WorldCommerceView world_commerce_view(const simulation::StartupWorldRuntimeState &state,
                                       const simulation::rules::WorldScriptPage &page);
 WorldCommerceLayout world_commerce_layout(Extent extent);
+// Raw85/86 use the source plan; preparation, drawing and gestures never transact.
+void prepare_world_commerce_source(WorldCommerceView &view,
+                                   const simulation::StartupWorldRuntimeState &state,
+                                   const Skin &skin, bool scrolling = false);
+WorldFacilityPaintedControls world_commerce_source_controls(const WorldCommerceView &view,
+                                                            Extent extent);
+std::optional<simulation::StartupCommerceFacilityInput>
+world_commerce_facility_input(const WorldCommerceView &view, Extent extent,
+                              const std::optional<WorldFacilityPaintedControls> &painted,
+                              WorldFacilityGesture &gesture, const WorldCommerceInput &input,
+                              bool blocked);
+std::optional<WorldFacilityPaintedControls>
+draw_world_commerce_source(const WorldCommerceView &view, Extent extent, const Skin &skin,
+                           bool enabled, const std::string &feedback = {});
 std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView &view,
                                                         const WorldCommerceLayout &layout,
                                                         const WorldCommerceInput &input,

@@ -19,7 +19,8 @@
 - [x] 正式a98f70d职业大师70、93/94来源奖励及严格恢复已接入，本地/两尺寸窗口/真实图纸扣点链通过；见[B1](docs/stages/B1-playable-prototype.md#research-a98f70d-mastery-gifts)。
 - [x] 正式8665a17计分双钟/应用恢复、18f810e新局纯皮肤及既有PC适配已接；487来源/79适配、两Debug检查修正及Release窗口通过，见[B1](docs/stages/B1-playable-prototype.md#research-80d8b8d-score-startup)。
 - [x] ea9876a商会83有序皮肤/整帧FIFO、21e4d27设置/平台纯计划及空草稿修正完成本地短检和两尺寸窗口；493来源/79适配、731素材，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
-- [ ] 按正式后继接商会85设施购买/86交易反馈；原91动态钟、授勋双询问Owner、跨局音量/设置存取、80住宅候选输入及完整字体/OS动态仍按正式交付门槛等待，不接Steam服务或恢复二倍速。
+- [x] 正式68acd7c/a87e9b7商会85设施图纸三行目录/整帧事务、86原单件反馈及底栏防重叠已接，本地检查与两尺寸/真实窗口见[B1](docs/stages/B1-playable-prototype.md#research-68acd7c-commerce-successors)。
+- [ ] 集中接3f744f3普通定义预览/挂起父商会、c982176装备店/植物、048b282募集详情及保存生命周期分支；原91动态钟、授勋双询问Owner、跨局音量/设置存取、80住宅候选输入及完整字体/OS动态仍分开核门槛，不接Steam服务或恢复二倍速。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。
@@ -40,7 +41,7 @@
 - [x] 月87定向中止恢复营业、月88玩家存读、限时经营至月90四星及独立冷载；真实付费补员至9人后任务42胜利，现金145338G、两月预算31460G、布局50/50，见[经营状态](docs/stages/ACTIVE_VILLAGE_PLAN.md#campaign-fourth-star)。
 - [x] 月93有限季度存读通过：真实13次付费/4免费装备装配、任务43胜利、炖肉39营业及25目标位置全收入；月亏损仍保留，见[B1](docs/stages/B1-playable-prototype.md#four-star-consumption-20261012)。
 - [x] 月104→105真实300G移动博物馆及20G补两格道路，布局恢复50/50、原住宅/住户保留，保存和独立冷载通过，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
-- [ ] 从有效月105前缀继续任务47取得道具，优先强化博物馆64并验首次营业（sales0/共享魅力10）；现金111865G/预算38820G，五星人气差261、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
+- [ ] 从有效月106前缀定向核任务47与现金流，取得任务道具、优先强化博物馆64并验首次营业（sales0/共享魅力10）；现金87945G/预算38820G，五星人气差224、最高月收入差30460。活动19独立延迟效果、活动7人物效果、职业/魔法和余项继续覆盖，再通关/继续/继承及全部可达定义，不注资或降低阈值。
 
 ## 表现与研究边界
 

@@ -79,6 +79,7 @@ if(ARK_BUILD_DESKTOP)
         src/desktop/ui/information/world_information.cpp
         src/desktop/ui/village/world_village_activity.cpp
         src/desktop/ui/village/world_commerce.cpp src/desktop/ui/village/world_commerce_top.cpp
+        src/desktop/ui/village/world_commerce_skin.cpp
         src/desktop/ui/facilities/world_facility_items.cpp
         src/desktop/ui/facilities/world_facility_catalog.cpp
         src/desktop/ui/facilities/world_facility_skin.cpp

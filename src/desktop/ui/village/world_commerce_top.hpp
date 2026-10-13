@@ -23,6 +23,9 @@ struct WorldCommerceTopControls {
 WorldCommerceTopView world_commerce_top_view(const simulation::StartupWorldRuntimeState &state,
                                              const simulation::rules::WorldScriptPage &page);
 void prepare_world_commerce_top(WorldCommerceTopView &view, const Skin &skin);
+// Shared ordered GPU terminal for83/85/86. Touch operations remain input metadata.
+void draw_world_commerce_plan(const simulation::SteamCommerceSkinPlan &plan, Vector2 origin,
+                              const Skin &skin);
 WorldCommerceTopControls world_commerce_top_controls(const WorldCommerceTopView &view,
                                                      Extent extent);
 std::optional<simulation::StartupCommerceTopInput>

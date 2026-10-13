@@ -179,10 +179,83 @@ void commerce_top_ui(Checks &check) {
     check(!ui::world_commerce_top_input(paused, {240, 256}, {}, input, false),
           "Framework pause keeps commerce navigation closed");
 }
+void commerce_facility_ui(Checks &check) {
+    auto state = initial_world();
+    const auto page = commerce_page(state, 85);
+    state.rank = 4; // Explicit catalogue conditions, not a natural promotion claim.
+    state.village_points = 999;
+    for (const auto &definition : state.rules->facilities)
+        if (state.facility_presence.at(definition.id) == 0 &&
+            definition.unlock_rank >= 0 && definition.unlock_rank <= state.rank &&
+            definition.kind == 3)
+            state.commerce_page_lists[page.id].push_back(definition.id);
+    check(state.commerce_page_lists.at(page.id).size() > 3,
+          "Source-defined facility input fixture exercises a scrollable catalogue");
+    auto view = ui::world_commerce_view(state, page);
+    sim::SteamCommerceFacilityOptions options;
+    options.view_y = 23;
+    options.text = {"购买设施", "设施", "价格", "购买后即可建设", std::array<int, 2>{40, 40}, 20};
+    view.source_skin = sim::steam_commerce_facility_skin(state, page.id, options);
+    check(view.source_skin.has_value(), "A maintained85 plan supplies the actual row geometry");
+    const auto before = state;
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        const auto painted = ui::world_commerce_source_controls(view, extent);
+        check(painted.rows.size() == 3 && painted.scroll && painted.scroll_visible == 3 &&
+                  painted.confirm.width == 0 && painted.rows[0].identity == view.rows[0].identity,
+              "Blueprint controls use three original rows and no invented purchase button");
+        ui::WorldFacilityGesture gesture;
+        ui::WorldCommerceInput input;
+        input.click = center(painted.rows[0].rectangle);
+        const auto first =
+            ui::world_commerce_facility_input(view, extent, painted, gesture, input, false);
+        const auto second =
+            ui::world_commerce_facility_input(view, extent, painted, gesture, input, false);
+        check(first && first->selection == 0 && !first->confirm && second && second->confirm,
+              "Marker16 buys only on the second click of the already committed source row");
+        check(!ui::world_commerce_facility_input(view, extent, painted, gesture, input, true),
+              "A pending blueprint transaction refuses repeated pointer confirmation");
+        auto stale = painted;
+        ++stale.extent.width;
+        check(!ui::world_commerce_facility_input(view, extent, stale, gesture, input, false) &&
+                  !gesture.marked_row,
+              "Resized geometry drops the marker and cannot buy a blueprint");
+        input = {};
+        input.up = input.down = input.enter = input.escape = input.inspect = true;
+        const auto keys =
+            ui::world_commerce_facility_input(view, extent, {}, gesture, input, false);
+        check(keys && keys->up && keys->down && keys->confirm && keys->cancel && keys->inspect,
+              "Blueprint directions and confirm/return/inspect keep one source input mask");
+        input = {};
+        input.pointer = center(*painted.scroll);
+        input.pointer_pressed = input.pointer_down = true;
+        (void)ui::world_commerce_facility_input(view, extent, painted, gesture, input, false);
+        input.pointer_pressed = false;
+        input.pointer_down = false;
+        input.pointer_released = true;
+        input.pointer->y += 50;
+        input.click = center(painted.rows[0].rectangle);
+        const auto drag =
+            ui::world_commerce_facility_input(view, extent, painted, gesture, input, false);
+        check(drag && drag->scroll && drag->scroll->absolute && !drag->selection && !drag->confirm,
+              "Dragging the original scrollbar emits one scroll without a release purchase");
+        input = {};
+        input.focus_lost = true;
+        input.enter = true;
+        check(!ui::world_commerce_facility_input(view, extent, painted, gesture, input, false),
+              "Lost focus refuses even explicit blueprint confirmation");
+    }
+    check(state.commerce_page_data == before.commerce_page_data &&
+              state.facility_commerce_read == before.facility_commerce_read &&
+              state.village_points == before.village_points &&
+              state.scene.random.draws() == before.scene.random.draws() &&
+              same_world_clock(state, before),
+          "Blueprint preparation and gestures own neither cursor, NEW, payment nor world clock");
+}
 } // namespace
 void world_commerce() {
     Checks check{"world_commerce"};
     commerce_top_ui(check);
+    commerce_facility_ui(check);
     {
         auto state = initial_world();
         state.scripts.user_flags |= 3U;
@@ -570,7 +643,10 @@ void world_commerce() {
           "Facility commerce uses village points and the actual definition graphic");
     input = {};
     input.inspect = true;
-    check(ui::world_commerce_input(view, layout, input, false)->action == Action::inspect,
+    ui::WorldFacilityGesture facility_gesture;
+    const auto inspect =
+        ui::world_commerce_facility_input(view, {240, 256}, {}, facility_gesture, input, false);
+    check(inspect && inspect->inspect && !inspect->confirm,
           "Definition inspection is a separate source action, not a purchase");
     // These source receipts now share the ordered town plan; commerce owns93's actual claim.
     for (const int raw : {93, 94})
@@ -654,9 +730,9 @@ void world_commerce() {
               "Commerce controls and rows clear the date/footer across supported viewports");
     }
 }
-// Optional raw83 draw snapshots; injected presentation conditions are not natural unlock evidence.
-void world_commerce_top_render_fixture() {
-    Checks check{"world_commerce_top_render_fixture"};
+// Optional commerce snapshots; injected presentation conditions are not natural unlock evidence.
+void world_commerce_render_fixture() {
+    Checks check{"world_commerce_render_fixture"};
     const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "commerce-top";
     std::filesystem::create_directories(output);
     struct Window {
@@ -730,5 +806,76 @@ void world_commerce_top_render_fixture() {
             }
     }
     std::cout << "Commerce top rendering: " << check.count() << " checks\n";
+    // Child snapshots use the same source terminal and actual packaged sprites/fonts.
+    const auto capture = [&](sim::StartupWorldRuntimeState &state, const Page &page,
+                             desktop::Extent extent, const std::string &name) {
+        const auto before = state;
+        auto view = ui::world_commerce_view(state, page);
+        ui::prepare_world_commerce_source(view, state, skin);
+        for (int frame = 0; frame < 8; ++frame) {
+            check(!WindowShouldClose(), "Commerce child fixture remains open for capture");
+            BeginDrawing();
+            ClearBackground({145, 211, 247, 255});
+            DrawText("CONDITIONAL commerce UI", 4, 4, 12, BLACK);
+            const auto painted = ui::draw_world_commerce_source(view, extent, skin, true);
+            check((page.legacy_page == 85) == bool(painted),
+                  "Only the facility catalogue publishes interactive source geometry");
+            text.flush(1, {});
+            EndDrawing();
+        }
+        const auto file = output / (name + ".png");
+        auto image = LoadImageFromScreen();
+        const bool exported = image.data && ExportImage(image, file.string().c_str());
+        UnloadImage(image);
+        check(exported && std::filesystem::file_size(file) > 0 &&
+                  state.commerce_page_data == before.commerce_page_data &&
+                  state.facility_commerce_read == before.facility_commerce_read &&
+                  std::all_of(before.items.begin(), before.items.end(),
+                              [&](const auto &entry) {
+                                  return state.items.at(entry.first).inventory ==
+                                         entry.second.inventory;
+                              }) &&
+                  state.village_points == before.village_points &&
+                  state.scene.random.draws() == before.scene.random.draws() &&
+                  same_world_clock(state, before),
+              "Commerce child capture preserves its real payload, holdings and source clock");
+        std::cout << "UI fixture / conditional " << name << " frames=8 screenshot=" << file.string()
+                  << '\n';
+    };
+    for (const auto extent : {desktop::Extent{240, 256}, desktop::Extent{720, 600}}) {
+        SetWindowSize(extent.width, extent.height);
+        for (const int first : {0, 3})
+            for (const int points : {0, 999}) {
+                auto state = initial_world();
+                const auto page = commerce_page(state, 85);
+                state.rank = 4;
+                state.village_points = points;
+                auto &entries = state.commerce_page_lists[page.id];
+                for (const auto &definition : state.rules->facilities)
+                    if (definition.kind == 3 && definition.unlock_rank >= 0 &&
+                        definition.unlock_rank <= state.rank &&
+                        state.facility_presence.at(definition.id) == 0)
+                        entries.push_back(definition.id);
+                check(entries.size() >= 6,
+                      "Conditional facility snapshot has six source definitions");
+                state.commerce_page_data.at(page.id)[2] = first + 2;
+                state.commerce_page_data.at(page.id)[3] = first;
+                capture(state, page, extent,
+                        "raw85-" + std::to_string(extent.width) + "-first" + std::to_string(first) +
+                            "-points" + std::to_string(points));
+            }
+        for (const int mode : {0, 1}) {
+            auto state = initial_world();
+            auto page = commerce_page(state, 86, mode);
+            const auto item =
+                std::find_if(state.rules->items.begin(), state.rules->items.end(),
+                             [](const auto &definition) { return definition.commerce_price > 0; });
+            check(item != state.rules->items.end(), "Conditional receipt has a real priced item");
+            page.legacy_s = state.scripts.pages.back().legacy_s = item->identity;
+            state.commerce_page_data.at(page.id)[4] = item->identity;
+            capture(state, page, extent,
+                    "raw86-" + std::to_string(extent.width) + "-mode" + std::to_string(mode));
+        }
+    }
 }
 } // namespace ark::test

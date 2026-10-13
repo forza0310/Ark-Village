@@ -129,14 +129,14 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
                                                         const WorldCommerceLayout &layout,
                                                         const WorldCommerceInput &input,
                                                         bool blocked) {
-    if (blocked || !view.initialized || view.raw == 83 || view.raw == 86)
+    if (blocked || !view.initialized || view.raw != 84)
         return {};
     const auto intent = [&](Action action, int selection = 0) {
         return WorldCommerceIntent{action, view.page, selection};
     };
     if (view.can_cancel && (input.escape || hit(input, layout.cancel)))
         return intent(Action::cancel);
-    if (view.raw == 84 && view.mode == 0) {
+    if (view.mode == 0) {
         if (input.left || input.right)
             return intent(input.left ? Action::previous_tab : Action::next_tab);
         for (int n = 0; n < 2; ++n)
@@ -149,15 +149,13 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
         if (input.wheel_rows)
             return intent(Action::select, std::clamp(view.selection + input.wheel_rows, 0,
                                                      static_cast<int>(view.rows.size()) - 1));
-        const int visible = view.raw == 85 ? 3 : 5;
+        constexpr int visible = 5;
         const float height = layout.rows.height / visible;
         for (int n = 0; n < visible && n + view.first_visible < static_cast<int>(view.rows.size());
              ++n)
             if (hit(input, {layout.rows.x, layout.rows.y + n * height, layout.rows.width, height}))
                 return intent(Action::select, n + view.first_visible);
     }
-    if (view.can_inspect && (input.inspect || hit(input, layout.inspect)))
-        return intent(Action::inspect);
     if (view.can_confirm && (input.enter || hit(input, layout.confirm)))
         return intent(Action::confirm);
     return {};
@@ -165,76 +163,46 @@ std::optional<WorldCommerceIntent> world_commerce_input(const WorldCommerceView 
 void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayout &layout,
                          const Skin &skin, bool enabled, const std::string &feedback,
                          std::optional<std::int64_t> last_amount) {
-    if (view.raw == 83)
-        throw std::invalid_argument("Commerce top uses its dedicated source drawing plan");
+    if (view.raw != 84)
+        throw std::invalid_argument("Commerce84 alone uses the existing item catalogue renderer");
     skin.window(layout.panel, view.title);
     skin.content(
         {layout.rows.x - 2, layout.rows.y - 2, layout.rows.width + 4, layout.rows.height + 4});
     if (view.initialized) {
-        fitted(skin,
-               view.raw == 85 ? std::to_string(view.points) + "点"
-                              : std::to_string(view.funds) + "G",
-               layout.heading, blue);
-        if (view.raw == 84 && view.mode == 0)
+        fitted(skin, std::to_string(view.funds) + "G", layout.heading, blue);
+        if (view.mode == 0)
             for (int n = 0; n < 2; ++n) {
                 if (view.tab == n)
                     DrawRectangleRec(layout.tabs[n], {210, 229, 195, 255});
                 skin.centered(n == 0 ? "价格" : "持有", layout.tabs[n], ink, 10);
             }
-        if (!view.rows.empty()) {
-            const int visible = view.raw == 85 ? 3 : 5;
-            const float height = layout.rows.height / visible;
-            for (int n = 0;
-                 n < visible && n + view.first_visible < static_cast<int>(view.rows.size()); ++n) {
-                const int index = n + view.first_visible;
-                const auto &row = view.rows[index];
-                Rectangle box{layout.rows.x, layout.rows.y + n * height, layout.rows.width, height};
-                if (index == view.selection)
-                    DrawRectangleRec(box, {255, 153, 55, 255});
-                float x = box.x + 3;
-                if (!row.icon.empty()) {
-                    draw_world_visuals(row.icon, skin.sprites, {x + 1, box.y + 1}, 1);
-                    x += 20;
-                }
-                if (!row.graphic.frames.empty()) {
-                    skin.sprites.thumbnail(row.graphic.sprite, row.graphic.frames,
-                                           {box.x + 2, box.y + 2, 42, height - 4});
-                    x += 44;
-                }
-                if (view.raw == 84 && row.fresh) {
-                    skin.sprites.image("wnd_new.png", {0, 0, 20, 9}, {x, box.y + 3, 20, 9});
-                    x += 24;
-                }
-                fitted(skin, row.name,
-                       {x, box.y + 2, box.x + box.width - x - (view.raw == 84 ? 65 : 35), height});
-                if (view.raw == 85 && row.fresh)
-                    skin.sprites.image("wnd_new.png", {0, 0, 20, 9},
-                                       {box.x + box.width - 24, box.y + 2, 20, 9});
-                const auto value = view.raw == 85  ? std::to_string(row.price) + "点"
-                                   : view.tab == 1 ? std::to_string(row.owned) + "个"
-                                                   : std::to_string(row.price) + "G";
-                skin.right(value, box.x + box.width - 3,
-                           view.raw == 84 ? box.y + 2 : box.y + height - 12, blue, 10);
+        const float height = layout.rows.height / 5;
+        for (int n = 0; n < 5 && n + view.first_visible < int(view.rows.size()); ++n) {
+            const int index = n + view.first_visible;
+            const auto &row = view.rows[index];
+            Rectangle box{layout.rows.x, layout.rows.y + n * height, layout.rows.width, height};
+            if (index == view.selection)
+                DrawRectangleRec(box, {255, 153, 55, 255});
+            float x = box.x + 3;
+            if (!row.icon.empty()) {
+                draw_world_visuals(row.icon, skin.sprites, {x + 1, box.y + 1}, 1);
+                x += 20;
             }
-        } else if (view.choice) {
-            if (!view.choice->graphic.frames.empty())
-                skin.sprites.thumbnail(view.choice->graphic.sprite, view.choice->graphic.frames,
-                                       {layout.rows.x + 5, layout.rows.y + 5,
-                                        layout.rows.width - 10, layout.rows.height - 30});
-            skin.centered(
-                view.choice->name,
-                {layout.rows.x, layout.rows.y + layout.rows.height - 22, layout.rows.width, 18});
+            if (row.fresh) {
+                skin.sprites.image("wnd_new.png", {0, 0, 20, 9}, {x, box.y + 3, 20, 9});
+                x += 24;
+            }
+            fitted(skin, row.name, {x, box.y + 2, box.x + box.width - x - 65, height});
+            const auto value =
+                view.tab == 1 ? std::to_string(row.owned) + "个" : std::to_string(row.price) + "G";
+            skin.right(value, box.x + box.width - 3, box.y + 2, blue, 10);
         }
-        // A sold-out item can change selection. Only a FIFO success receipt supplies that amount.
+        // Only the actual FIFO receipt supplies the amount after a sold-out row changes selection.
         if (view.feedback_counter > 0)
             fitted(skin,
                    "多谢惠顾!" + (last_amount ? " " + std::to_string(*last_amount) + "G" : ""),
                    layout.status);
-        else if (view.raw == 86 && view.choice)
-            fitted(skin,
-                   (view.mode == 0 ? "购买 " : "出售 ") + std::to_string(view.choice->price) + "G",
-                   layout.status);
-        else if (view.raw == 84 && view.choice)
+        else if (view.choice)
             fitted(skin,
                    (view.mode == 1 || view.tab == 1 ? "持有 " : "剩余 ") +
                        std::to_string(view.mode == 1 || view.tab == 1 ? view.choice->owned
@@ -244,11 +212,7 @@ void draw_world_commerce(const WorldCommerceView &view, const WorldCommerceLayou
     const bool active = enabled && view.initialized;
     if (view.can_cancel)
         skin.button(layout.cancel, "返回", active);
-    if (view.can_inspect)
-        skin.button(layout.inspect, "情报", active);
-    if (view.raw != 86)
-        skin.button(layout.confirm, view.raw == 84 ? (view.mode == 0 ? "购买" : "出售") : "确定",
-                    active && view.can_confirm);
+    skin.button(layout.confirm, view.mode == 0 ? "购买" : "出售", active && view.can_confirm);
     if (!feedback.empty())
         fitted(skin, feedback, layout.feedback, MAROON);
 }

@@ -4606,6 +4606,178 @@ void commerce_facility_and_projection() {
           "maintenance reads current shared item definition, never overwrites reward from stale "
           "stock mirror");
 }
+// 85整轮输入主责同轮优先级、三行滚动与迟失败；付款/93效果仍由前述交易用例覆盖。
+void commerce_facility_input() {
+    using E = StartupWorldRuntimeError;
+    using Input = StartupCommerceFacilityInput;
+    auto s = fixture(85);
+    s.rank = 4;
+    const auto id = s.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(s),
+          "85 input fixture uses actual rank4 catalogue");
+    const auto list = s.commerce_page_lists.at(id);
+    const int count = static_cast<int>(list.size());
+    const auto cold = std::find(list.begin(), list.end(), 34);
+    check(count >= 5 && cold != list.end(),
+          "85 original catalogue supplies scrolling and real cold drink shop34");
+    const int row = static_cast<int>(cold - list.begin());
+    const auto read = s.facility_commerce_read;
+    const auto cash = s.scene.world.world.ai.accounting.funds();
+
+    Input tail;
+    tail.selection = count - 1;
+    check(input_startup_world_commerce_facility(s, id, tail) == E::none &&
+              s.commerce_page_data.at(id)[2] == count - 1 &&
+              s.commerce_page_data.at(id)[3] == count - 3,
+          "85 device selection repairs the three-row window");
+    Input origin;
+    origin.scroll = Input::Scroll{true, 0};
+    check(input_startup_world_commerce_facility(s, id, origin) == E::none &&
+              s.commerce_page_data.at(id)[2] == 2 && s.commerce_page_data.at(id)[3] == 0,
+          "85 absolute scroll preserves the selected row offset");
+    Input relative;
+    relative.scroll = Input::Scroll{false, 1};
+    check(input_startup_world_commerce_facility(s, id, relative) == E::none &&
+              s.commerce_page_data.at(id)[2] == 3 && s.commerce_page_data.at(id)[3] == 1,
+          "85 relative scroll moves selection with its window");
+    Input both;
+    both.scroll = Input::Scroll{true, count};
+    both.selection = 0;
+    both.up = true;
+    both.down = true;
+    check(input_startup_world_commerce_facility(s, id, both) == E::none &&
+              s.commerce_page_data.at(id)[2] == 0 && s.commerce_page_data.at(id)[3] == 0 &&
+              s.facility_commerce_read == read && s.village_points == 10 &&
+              s.scene.random.draws() == 0,
+          "85 scroll precedes device selection, independent up then down precede a single window "
+          "repair");
+    Input upward;
+    upward.up = true;
+    check(input_startup_world_commerce_facility(s, id, upward) == E::none &&
+              s.commerce_page_data.at(id)[2] == count - 1 &&
+              s.commerce_page_data.at(id)[3] == count - 3,
+          "85 upward input wraps through the genuine catalogue");
+    Input negative;
+    negative.scroll = Input::Scroll{false, std::numeric_limits<int>::min()};
+    check(input_startup_world_commerce_facility(s, id, negative) == E::none &&
+              s.commerce_page_data.at(id)[2] == 2 && s.commerce_page_data.at(id)[3] == 0,
+          "85 wide relative scroll calculation safely clamps to the first window");
+
+    // 先安装本轮选择，再打开原定义74；返回与退休不重新初始化父目录。
+    Input detail;
+    detail.selection = count - 1;
+    detail.inspect = true;
+    check(input_startup_world_commerce_facility(s, id, detail) == E::none &&
+              s.scripts.pages.back().legacy_page == 74 &&
+              s.facility_definition_page_bindings.at(s.scripts.pages.back().id) == list.back(),
+          "85 same-frame detail binds the newly selected facility rather than the old cursor");
+    const auto child = s.scripts.pages.back().id;
+    const auto parent = s.commerce_page_data.at(id);
+    check(input_startup_world_commerce_facility(s, id, Input{}) == E::invalid_page,
+          "85 suspended parent rejects input while definition74 is active");
+    check(act_startup_world_facility_page(s, child, StartupFacilityPageAction::cancel) == E::none &&
+              s.commerce_page_data.at(id) == parent && s.facility_commerce_read == read &&
+              s.village_points == 10 && s.scene.world.world.ai.accounting.funds() == cash &&
+              s.scene.random.draws() == 0,
+          "74 return preserves the whole85 selection and first row without points, NEW or random "
+          "effects");
+    page_tick(s);
+    check(s.scripts.pages.back().id == id && s.commerce_page_data.at(id) == parent &&
+              !s.facility_definition_page_bindings.count(child),
+          "74 actual retirement releases its binding and leaves85 viewport intact");
+
+    auto cancelled = s;
+    Input leave;
+    leave.selection = 0;
+    leave.cancel = true;
+    leave.inspect = true;
+    check(input_startup_world_commerce_facility(cancelled, id, leave) == E::none &&
+              cancelled.scripts.pages.back().id == id &&
+              cancelled.scripts.pages.back().lifecycle == 4 && cancelled.village_points == 10 &&
+              cancelled.facility_definition_page_bindings.empty() &&
+              cancelled.commerce_page_data.at(id)[2] == 0 &&
+              cancelled.commerce_page_data.at(id)[3] == 0,
+          "85 cancel wins detail, marks the frozen directory and retains final viewport until "
+          "retirement");
+    for (int entry : list)
+        check(cancelled.facility_commerce_read.at(entry),
+              "85 cancel marks offscreen frozen entries read");
+    page_tick(cancelled);
+    check(!cancelled.commerce_pages_initialized.count(id) &&
+              !cancelled.commerce_page_data.count(id) && !cancelled.commerce_page_lists.count(id) &&
+              !cancelled.page_counters.count(id),
+          "85 actual retirement releases all directory references");
+
+    auto purchased = s;
+    purchased.village_points = 30;
+    Input buy;
+    buy.selection = row;
+    buy.up = true;
+    buy.down = true;
+    buy.confirm = true;
+    buy.cancel = true;
+    buy.inspect = true;
+    check(input_startup_world_commerce_facility(purchased, id, buy) == E::none &&
+              purchased.scripts.pages.back().legacy_page == 93 &&
+              purchased.scripts.pages.back().legacy_s == 34 && purchased.village_points == 0 &&
+              purchased.facility_presence.at(34) == 0 &&
+              purchased.facility_free_builds.at(34) == 0 &&
+              purchased.facility_definition_page_bindings.empty() &&
+              purchased.scene.world.world.ai.accounting.funds() == cash &&
+              purchased.scene.random.draws() == 0,
+          "85 same-frame confirm wins cancel and detail, pays the final selection but leaves93 "
+          "grant pending");
+
+    for (int fault = 0; fault < 12; ++fault) {
+        auto broken = s;
+        broken.village_points = 30;
+        Input input;
+        input.selection = row;
+        input.confirm = true;
+        if (fault == 0)
+            broken.commerce_page_data.erase(id);
+        if (fault == 1)
+            broken.commerce_page_lists.erase(id);
+        if (fault == 2)
+            broken.page_counters.erase(id);
+        if (fault == 3)
+            broken.commerce_page_lists.at(id).back() = list.front();
+        if (fault == 4)
+            input.selection = count;
+        if (fault == 5)
+            input.scroll = Input::Scroll{true, std::numeric_limits<int>::max()};
+        if (fault == 6)
+            broken.scene.framework_paused = true;
+        if (fault == 7)
+            broken.commerce_page_data.at(id)[3] = count;
+        if (fault == 8)
+            broken.facility_commerce_read.erase(34);
+        if (fault >= 9)
+            broken.scripts.next_page_id = std::numeric_limits<std::uint64_t>::max();
+        if (fault == 10) {
+            input.confirm = false;
+            input.inspect = true;
+        }
+        if (fault == 11)
+            broken.village_points = 29; // 缺点事件12的插页也须整候选回滚。
+        const auto before = startup_world_state_digest(broken);
+        const auto data = broken.commerce_page_data;
+        const auto lists = broken.commerce_page_lists;
+        const auto reads = broken.facility_commerce_read;
+        const auto pages = broken.scripts.pages.size();
+        const auto points = broken.village_points;
+        check(input_startup_world_commerce_facility(broken, id, input) != E::none &&
+                  startup_world_state_digest(broken) == before &&
+                  broken.commerce_page_data == data && broken.commerce_page_lists == lists &&
+                  broken.facility_commerce_read == reads && broken.scripts.pages.size() == pages &&
+                  broken.village_points == points &&
+                  broken.scene.world.world.ai.accounting.funds() == cash &&
+                  broken.scene.random.draws() == 0 && broken.sound_requests.empty() &&
+                  broken.facility_definition_page_bindings.empty(),
+              "85 missing payload, invalid input and late93/74/12 insertion failures roll back "
+              "cursor and all domains");
+    }
+}
 void ordinary_item_pages() {
     using A = StartupHumanPageAction;
     using E = StartupWorldRuntimeError;
@@ -6447,6 +6619,7 @@ int main() {
         commerce_top_input();
         commerce_transactions();
         commerce_facility_and_projection();
+        commerce_facility_input();
         magic_pot_menu_information();
         magic_pot_entry_and_retirement();
         magic_pot_deposit_pages();

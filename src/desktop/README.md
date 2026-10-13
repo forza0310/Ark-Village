@@ -1,5 +1,7 @@
 # desktop
 
+`ui/village/world_commerce_top`负责83导航及83/85/86共用有序绘制末端，`world_commerce_skin`专责85/86实测文本、原三行/滚动/已画几何与PC标记手势。设备输入经Session整帧交唯一Owner，原图纸只解锁一次，86自动退休；未Init载荷等待真实消费者，不由绘制补状态、付费或延寿。84实际成交临时回执仍独立，商会底栏与通用HUD鼠标按钮互斥。
+
 `ui/system/world_new_game`只准备和执行正式91有序计划，PC草稿/文本编辑/开始由`application/world_title`控制。字段和性别箭头热区来自同次计划及实际SEB bounds；显式静态钟保持已确认适配；21e4d27后空草稿直接交正式皮肤，旧占位与按坐标恢复文字循环已撤。`ui/system/world_clear_score`严格绑定同一世界与应用计分控制器的双钟/六行，实际字体双测宽后有序绘制；不推进计分、不写纪录或发声音。`world_startup`仅保留标题纪录显示，旧手写新局/计分路径已撤。
 
 `ui/tasks/world_task_result`执行30胜利的主钟裁剪/经验/人气、独立副钟跳跃和当前职业/性别/主武器。`ui/actors/world_human_ceremony`执行67努力奖励、88授勋、96住宅完成的严格Owner计划，经village进程页面适配接入正常绘制，复用人物GPU末端的富文本、clip和Mapchip2。`ui/village/world_award`负责87三页名单及PC选中/询问，不重新排序或授奖。绘制不更新计数或重发奖励，确认仍经Session提交；80候选与33期限仅冻结纯接口，完整输入桥单列。

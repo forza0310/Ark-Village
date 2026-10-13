@@ -972,7 +972,8 @@ void commerce_command_transactions() {
         const auto valid = session.input_commerce_top(page, input);
         const auto result = input_frame(session, session.set_paused(true));
         check(!result->failed &&
-                  input_result(*result, old_generation).outcome == app::WorldCommandOutcome::rejected &&
+                  input_result(*result, old_generation).outcome ==
+                      app::WorldCommandOutcome::rejected &&
                   input_result(*result, wrong_page).outcome == app::WorldCommandOutcome::rejected &&
                   input_result(*result, valid).outcome == app::WorldCommandOutcome::applied &&
                   input_result(*result, valid).kind == app::WorldCommandKind::commerce_top_input &&
@@ -981,13 +982,63 @@ void commerce_command_transactions() {
                   result->state->scene.world.world.ai.accounting.funds() == cash &&
                   result->state->village_points == points &&
                   result->state->scene.random.draws() == random,
-              "Commerce FIFO retains selection/up/down/confirm-before-cancel in one unpaid navigation");
+              "Commerce FIFO retains selection/up/down/confirm-before-cancel in one unpaid "
+              "navigation");
         const auto refused = input_frame(session, session.input_commerce_top(page, input));
-        check(!refused->failed &&
-                  input_result(*refused, refused->last_command_serial).outcome ==
-                      app::WorldCommandOutcome::rejected,
+        check(!refused->failed && input_result(*refused, refused->last_command_serial).outcome ==
+                                      app::WorldCommandOutcome::rejected,
               "Commerce top input cannot target a paused parent hidden below its new catalogue");
         same_world(*result->state, *refused->state);
+        session.stop();
+    }
+    {
+        // Source pages owns arithmetic/rollback; verify one paid85 FIFO and stale repetition.
+        auto state = initial();
+        state.scripts.user_flags |= 16U;
+        state.scripts.event_calls[97] = 1;
+        state.village_points = 999; // Explicit short transport affordability, not earned progress.
+        check(sim::open_startup_world_commerce(state) == sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_commerce_pages(state) &&
+                  sim::act_startup_world_commerce_page(state, task_top(state).id, A::select, 2) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::act_startup_world_commerce_page(state, task_top(state).id, A::confirm) ==
+                      sim::StartupWorldRuntimeError::none &&
+                  sim::initialize_startup_world_commerce_pages(state),
+              "Commerce facility transport uses the source-created85 catalogue");
+        const auto page = task_top(state).id;
+        const auto listing = sim::inspect_startup_world_commerce_page(state, page);
+        check(listing && !listing->entries.empty(), "Source85 has a real unopened blueprint");
+        const auto definition = listing->entries.front();
+        const auto points = state.village_points;
+        const auto price = state.rules->facility_initial.at(definition).capacity;
+        const auto cash = state.scene.world.world.ai.accounting.funds();
+        const auto random = state.scene.random.draws();
+        app::WorldSession session(state);
+        sim::StartupCommerceFacilityInput input;
+        input.selection = 0;
+        input.up = input.down = input.confirm = input.cancel = input.inspect = true;
+        app::WorldCommand stale;
+        stale.kind = app::WorldCommandKind::commerce_facility_input;
+        stale.page = page;
+        stale.generation = session.frame()->generation + 1;
+        stale.commerce_facility_input = input;
+        const auto old_generation = session.submit(stale);
+        const auto paid = session.input_commerce_facility(page, input);
+        const auto repeated = session.input_commerce_facility(page, input);
+        const auto result = input_frame(session, session.set_paused(true));
+        check(!result->failed &&
+                  input_result(*result, old_generation).outcome ==
+                      app::WorldCommandOutcome::rejected &&
+                  input_result(*result, paid).outcome == app::WorldCommandOutcome::applied &&
+                  input_result(*result, repeated).outcome == app::WorldCommandOutcome::rejected &&
+                  task_top(*result->state).legacy_page == 93 &&
+                  task_top(*result->state).legacy_s == definition &&
+                  result->state->village_points == points - price &&
+                  result->state->facility_presence.at(definition) == 0 &&
+                  result->state->scene.world.world.ai.accounting.funds() == cash &&
+                  result->state->scene.random.draws() == random,
+              "One85 FIFO pays the selected blueprint once and opens93 before cancel/inspect; "
+              "claim, stale generation and duplicate payment cannot bypass the source");
         session.stop();
     }
     {

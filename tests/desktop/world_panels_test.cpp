@@ -20,7 +20,8 @@ void world_panels() {
     using namespace ark::simulation::rules;
     check(ui::world_hud_buttons_visible(nullptr), "Main scene retains mouse pause/menu controls");
     for (const int raw :
-         {3, 4, 7, 9, 10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36, 37, 38, 39, 40, 74, 75, 60}) {
+         {3, 4, 7, 9, 10, 13, 14, 21, 22, 23, 24, 29, 34, 35, 36, 37, 38, 39, 40, 74, 75, 60,
+          83, 84, 85, 86}) {
         WorldScriptPage page;
         page.kind = WorldScriptPageKind::raw_page;
         page.legacy_page = raw;

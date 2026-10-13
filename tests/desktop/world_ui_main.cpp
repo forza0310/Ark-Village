@@ -18,7 +18,7 @@ void world_clear_score_render_fixture();
 void world_clear_score_ui();
 void world_new_game_render_fixture();
 void world_commerce();
-void world_commerce_top_render_fixture();
+void world_commerce_render_fixture();
 void world_facility_items();
 void world_human_render_fixture();
 void render_world_edit_fixture();
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
          {"world_clear_score_ui", ark::test::world_clear_score_ui},
          {"world_new_game_render_fixture", ark::test::world_new_game_render_fixture},
          {"world_commerce", ark::test::world_commerce},
-         {"world_commerce_top_render_fixture", ark::test::world_commerce_top_render_fixture},
+         {"world_commerce_render_fixture", ark::test::world_commerce_render_fixture},
          {"world_facility_items", ark::test::world_facility_items},
          {"world_human_render_fixture", ark::test::world_human_render_fixture},
          {"world_edit_render_fixture", ark::test::render_world_edit_fixture},

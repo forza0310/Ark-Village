@@ -70,6 +70,8 @@ class WorldManagement {
     ui::WorldAwardSelection award_;
     mutable std::optional<ui::WorldManualLayout> manual_layout_; // Last painted controls only.
     mutable std::optional<ui::WorldCommerceTopControls> commerce_top_controls_;
+    mutable std::optional<ui::WorldFacilityPaintedControls> commerce_facility_controls_;
+    ui::WorldFacilityGesture commerce_facility_gesture_;
     mutable std::optional<ui::WorldHumanPaintedControls> human_controls_;
     ui::WorldHumanGesture human_gesture_;
     mutable std::optional<ui::WorldFacilityPaintedControls> village_controls_;

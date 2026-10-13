@@ -193,6 +193,29 @@ bool cash(State &s, int amount, bool sale) {
     }
     return true;
 }
+// 仅由已验证85载荷的Owner候选调用；旧单动作和整轮输入共享付款、已读及插页顺序。
+Error facility_action(State &s, std::uint64_t id, Action action) {
+    const auto &list = s.commerce_page_lists.at(id);
+    if (action == Action::inspect)
+        return open_startup_world_facility_definition(s, list[s.commerce_page_data.at(id)[2]]);
+    if (action == Action::cancel) {
+        for (int entry : list)
+            s.facility_commerce_read.at(entry) = true;
+        return close(s, id) ? Error::none : Error::script_failed;
+    }
+    if (action != Action::confirm)
+        return Error::invalid_page;
+    const int entry = list[s.commerce_page_data.at(id)[2]];
+    const int price = s.rules->facility_initial[entry].capacity;
+    if (s.village_points < price)
+        return event(s, 12) ? Error::none : Error::script_failed;
+    s.village_points = std::clamp(s.village_points - price, 0, 999);
+    if (!open(s, 93, 0, entry) || !close(s, id))
+        return Error::script_failed;
+    for (int known : list)
+        s.facility_commerce_read.at(known) = true;
+    return Error::none;
+}
 } // namespace
 
 bool valid_startup_world_commerce_claim_page(const State &s,const Page &p) {
@@ -301,22 +324,23 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
     } else if (action == Action::inspect) {
         if (raw != 85)
             return Error::invalid_page;
-        const int definition = next.commerce_page_lists.at(id)[v[2]];
-        const auto result = open_startup_world_facility_definition(next, definition);
+        const auto result = facility_action(next, id, action);
         if (result != Error::none)
             return result;
     } else if (action == Action::cancel) {
         if (raw != 83 && raw != 84 && raw != 85)
             return Error::invalid_page;
-        if (raw != 83)
-            for (int entry : next.commerce_page_lists.at(id)) {
-                if (raw == 84)
+        if (raw == 85) {
+            const auto result = facility_action(next, id, action);
+            if (result != Error::none)
+                return result;
+        } else {
+            if (raw == 84)
+                for (int entry : next.commerce_page_lists.at(id))
                     next.item_commerce_read.at(entry) = true;
-                else
-                    next.facility_commerce_read.at(entry) = true;
-            }
-        if (!close(next, id))
-            return Error::script_failed;
+            if (!close(next, id))
+                return Error::script_failed;
+        }
     } else if (action != Action::confirm)
         return Error::invalid_page;
     else if (raw == 83) {
@@ -367,19 +391,9 @@ Error act_startup_world_commerce_page(State &s, std::uint64_t id, Action action,
             }
         }
     } else if (raw == 85) {
-        const auto &list = next.commerce_page_lists.at(id);
-        const int entry = list[v[2]];
-        const int price = next.rules->facility_initial[entry].capacity;
-        if (next.village_points < price) {
-            if (!event(next, 12))
-                return Error::script_failed;
-        } else {
-            next.village_points = std::clamp(next.village_points - price, 0, 999);
-            if (!open(next, 93, 0, entry) || !close(next, id))
-                return Error::script_failed;
-            for (int known : list)
-                next.facility_commerce_read.at(known) = true;
-        }
+        const auto result = facility_action(next, id, action);
+        if (result != Error::none)
+            return result;
     } else if (raw == 93) {
         auto &counter = next.page_counters.at(id);
         if (counter < 40)
@@ -420,6 +434,35 @@ Error input_startup_world_commerce_top(State &s,std::uint64_t id,const StartupCo
         if(input.confirm) {
             if(!open(next,selected==2?85:84,selected==1?1:0))return Error::script_failed;
         } else if(!close(next,id))return Error::script_failed;
+        next.scripts.executing_page.reset();
+    }
+    s=std::move(next);
+    return Error::none;
+}
+Error input_startup_world_commerce_facility(State &s,std::uint64_t id,const StartupCommerceFacilityInput &input) {
+    const auto p=top(s);
+    if(s.scene.framework_paused||!p||p->id!=id||
+       p->kind!=ref::WorldScriptPageKind::raw_page||p->legacy_page!=85)
+        return Error::invalid_page;
+    if(!payload(s,*p))return Error::missing_source;
+    const int count=static_cast<int>(s.commerce_page_lists.at(id).size());
+    if(input.selection&&(*input.selection<0||*input.selection>=count))return Error::invalid_page;
+    if(input.scroll&&input.scroll->value==std::numeric_limits<int>::max())return Error::invalid_page;
+    auto next=s;
+    auto &v=next.commerce_page_data.at(id);
+    if(input.scroll) {
+        const auto wanted=input.scroll->absolute?std::int64_t(input.scroll->value):std::int64_t(v[3])+input.scroll->value;
+        const int first=static_cast<int>(std::clamp(wanted,std::int64_t(0),std::int64_t(std::max(0,count-3))));
+        v[2]+=first-v[3];v[3]=first;
+    }
+    if(input.selection)v[2]=*input.selection;
+    if(input.up)v[2]=v[2]==0?count-1:v[2]-1;
+    if(input.down)v[2]=v[2]==count-1?0:v[2]+1;
+    scroll(v,count,3);
+    if(input.confirm||input.cancel||input.inspect) {
+        next.scripts.executing_page=id;
+        const auto result=facility_action(next,id,input.confirm?Action::confirm:input.cancel?Action::cancel:Action::inspect);
+        if(result!=Error::none)return result;
         next.scripts.executing_page.reset();
     }
     s=std::move(next);

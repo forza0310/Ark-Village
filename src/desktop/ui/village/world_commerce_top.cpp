@@ -111,15 +111,10 @@ world_commerce_top_input(const WorldCommerceTopView &view, Extent extent,
         return out;
     return {};
 }
-std::optional<WorldCommerceTopControls> draw_world_commerce_top(const WorldCommerceTopView &view,
-                                                                Extent extent, const Skin &skin,
-                                                                bool enabled,
-                                                                const std::string &feedback) {
-    if (!view.initialized)
-        return {};
-    const auto controls = world_commerce_top_controls(view, extent);
-    SteamPlanDraw draw(controls.origin, skin, view.skin->title);
-    for (const auto &operation : view.skin->operations)
+void draw_world_commerce_plan(const sim::SteamCommerceSkinPlan &plan, Vector2 origin,
+                              const Skin &skin) {
+    SteamPlanDraw draw(origin, skin, plan.title);
+    for (const auto &operation : plan.operations)
         std::visit(
             [&](const auto &part) {
                 using T = std::decay_t<decltype(part)>;
@@ -151,7 +146,12 @@ std::optional<WorldCommerceTopControls> draw_world_commerce_top(const WorldComme
                         draw.facility_image(part);
                 } else if constexpr (std::is_same_v<T, sim::SteamFacilityNumber>)
                     draw.number(part);
-                else if constexpr (std::is_same_v<T, sim::SteamHumanImage>) {
+                else if constexpr (std::is_same_v<T, sim::SteamFacilityMapchip2>)
+                    draw.mapchip(part);
+                else if constexpr (std::is_same_v<T, sim::SteamHumanCatalogueScroll>) {
+                    for (const auto &rectangle : part.rectangles)
+                        draw.rectangle(rectangle);
+                } else if constexpr (std::is_same_v<T, sim::SteamHumanImage>) {
                     const auto resource = sim::steam_human_resource(part.asset);
                     if (!resource)
                         throw std::invalid_argument("Commerce top NEW has no source binding");
@@ -171,6 +171,15 @@ std::optional<WorldCommerceTopControls> draw_world_commerce_top(const WorldComme
             },
             operation);
     draw.finish();
+}
+std::optional<WorldCommerceTopControls> draw_world_commerce_top(const WorldCommerceTopView &view,
+                                                                Extent extent, const Skin &skin,
+                                                                bool enabled,
+                                                                const std::string &feedback) {
+    if (!view.initialized)
+        return {};
+    const auto controls = world_commerce_top_controls(view, extent);
+    draw_world_commerce_plan(*view.skin, controls.origin, skin);
     skin.button(controls.cancel, "返回", enabled && view.interactive);
     if (!feedback.empty())
         skin.text.draw(feedback, controls.panel.x, controls.panel.y + controls.panel.height + 2,

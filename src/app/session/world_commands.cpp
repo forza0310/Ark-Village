@@ -277,11 +277,17 @@ void apply_world_decision(WorldState &state, const WorldCommand &command,
     case Kind::commerce_top_input:
         // One navigation frame preserves source ordering and the parent/child transaction.
         // This page only opens a catalogue; payment remains in the later trade consumer.
-        result.runtime_error =
-            state.commerce_pages_initialized.count(command.page)
-                ? simulation::input_startup_world_commerce_top(
-                      state, command.page, command.commerce_top_input)
-                : Error::invalid_page;
+        result.runtime_error = state.commerce_pages_initialized.count(command.page)
+                                   ? simulation::input_startup_world_commerce_top(
+                                         state, command.page, command.commerce_top_input)
+                                   : Error::invalid_page;
+        break;
+    case Kind::commerce_facility_input:
+        // Scroll, selection and confirmation share one source candidate and payment boundary.
+        result.runtime_error = state.commerce_pages_initialized.count(command.page)
+                                   ? simulation::input_startup_world_commerce_facility(
+                                         state, command.page, command.commerce_facility_input)
+                                   : Error::invalid_page;
         break;
     case Kind::commerce_action: {
         if (!valid_commerce_action(command.commerce_action) ||
@@ -729,12 +735,21 @@ std::uint64_t WorldSession::act_commerce(std::uint64_t page,
     command.selection = selection;
     return submit(command);
 }
-std::uint64_t WorldSession::input_commerce_top(
-    std::uint64_t page, const simulation::StartupCommerceTopInput &input) {
+std::uint64_t WorldSession::input_commerce_top(std::uint64_t page,
+                                               const simulation::StartupCommerceTopInput &input) {
     WorldCommand command;
     command.kind = WorldCommandKind::commerce_top_input;
     command.page = page;
     command.commerce_top_input = input;
+    return submit(command);
+}
+std::uint64_t
+WorldSession::input_commerce_facility(std::uint64_t page,
+                                      const simulation::StartupCommerceFacilityInput &input) {
+    WorldCommand command;
+    command.kind = WorldCommandKind::commerce_facility_input;
+    command.page = page;
+    command.commerce_facility_input = input;
     return submit(command);
 }
 std::uint64_t WorldSession::act_facility_item(std::uint64_t page,

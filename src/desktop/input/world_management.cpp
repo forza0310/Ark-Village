@@ -42,6 +42,8 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         building_ = {};
         manual_layout_.reset();
         commerce_top_controls_.reset();
+        commerce_facility_controls_.reset();
+        commerce_facility_gesture_ = {};
         human_controls_.reset();
         human_gesture_ = {};
         facility_controls_.reset();
@@ -78,6 +80,8 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         page_ = page.id;
         manual_layout_.reset();
         commerce_top_controls_.reset();
+        commerce_facility_controls_.reset();
+        commerce_facility_gesture_ = {};
         human_controls_.reset();
         human_gesture_ = {};
         building_ = {};
@@ -93,8 +97,10 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         feedback_.clear();
     }
     blocked = blocked || pending();
-    if (keyboard_event)
+    if (keyboard_event) {
         building_.marked_definition.reset();
+        commerce_facility_gesture_.marked_row.reset();
+    }
     const auto point = click ? mouse : std::nullopt;
     const bool enter = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
                        (ui::world_facility_items_page(page) && IsKeyPressed(KEY_SPACE));
@@ -214,6 +220,35 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
         if (const auto action =
                 ui::world_commerce_top_input(view, extent, commerce_top_controls_, input, blocked))
             queued(session.input_commerce_top(page.id, *action));
+        return true;
+    }
+    if (ui::world_commerce_page(page) && page.legacy_page == 85) {
+        const auto view = ui::world_commerce_view(state, page);
+        ui::WorldCommerceInput input;
+        input.click = point;
+        input.enter = enter;
+        input.escape = escape;
+        input.up = up;
+        input.down = down;
+        input.inspect = IsKeyPressed(KEY_I);
+        input.keyboard_event = keyboard_event;
+        input.focus_lost = !IsWindowFocused();
+        input.pointer = mouse;
+        input.pointer_pressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        input.pointer_down = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        input.pointer_released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+        if (commerce_facility_controls_ &&
+            (hit(mouse, commerce_facility_controls_->scroll.value_or(Rectangle{})) ||
+             std::any_of(commerce_facility_controls_->rows.begin(),
+                         commerce_facility_controls_->rows.end(),
+                         [&](const auto &row) { return hit(mouse, row.rectangle); })))
+            input.wheel_rows = -static_cast<int>(GetMouseWheelMove() * 2);
+        if (input.focus_lost)
+            commerce_facility_controls_.reset();
+        if (const auto action =
+                ui::world_commerce_facility_input(view, extent, commerce_facility_controls_,
+                                                  commerce_facility_gesture_, input, blocked))
+            queued(session.input_commerce_facility(page.id, *action));
         return true;
     }
     if (ui::world_commerce_page(page)) {
@@ -423,6 +458,12 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
         ui::prepare_world_commerce_top(view, skin);
         const auto controls = ui::draw_world_commerce_top(view, extent, skin, enabled, feedback_);
         commerce_top_controls_ = IsWindowFocused() ? controls : std::nullopt;
+    } else if (ui::world_commerce_page(page) && page.legacy_page >= 85) {
+        auto view = ui::world_commerce_view(state, page);
+        ui::prepare_world_commerce_source(view, state, skin, commerce_facility_gesture_.scrolling);
+        const auto controls =
+            ui::draw_world_commerce_source(view, extent, skin, enabled, feedback_);
+        commerce_facility_controls_ = IsWindowFocused() ? controls : std::nullopt;
     } else if (ui::world_commerce_page(page)) {
         const auto view = ui::world_commerce_view(state, page);
         ui::draw_world_commerce(view, ui::world_commerce_layout(extent), skin, enabled, feedback_,

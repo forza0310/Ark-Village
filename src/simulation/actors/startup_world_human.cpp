@@ -84,6 +84,9 @@ bool reward(State &s, int human, const ref::HumanRewardCandidate &r) {
 bool reward_page(State &s, int human, const ref::HumanRewardCandidate &r) {
     if (!r.effort_display)
         return true;
+    const auto next_id=s.scripts.next_page_id;
+    if(s.page_human_bindings.count(next_id)||s.page_counters.count(next_id)||s.page_phases.count(next_id)||
+       s.page_secondary_counters.count(next_id))return false;
     const auto id = open(s, 67, human);
     if (!id)
         return false;
@@ -91,7 +94,7 @@ bool reward_page(State &s, int human, const ref::HumanRewardCandidate &r) {
                              [&](const auto &p) { return p.id == *id; });
     page->legacy_f = r.reward_display[0][1];
     page->legacy_g = r.reward_display[1][1];
-    return true;
+    return valid_startup_world_runtime_effort_result_page(s,*page);
 }
 bool initialize(State &s, std::uint64_t id, int raw) {
     const auto h = s.page_human_bindings.find(id);

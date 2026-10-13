@@ -14,7 +14,8 @@
 - [x] 正式57a31cb/48574b5任务选择22、费用23、完整募集24与地图追踪已接同轮FIFO/有序计划；477来源/78适配、723素材，见[B1](docs/stages/B1-playable-prototype.md#research-48574b5-task-pages)。
 - [x] 2112dd7信息桥/成果纯计划已冻结，scene4/raw29已接实际按钮/箭头与FIFO；文字重放生命周期分别登记，见[B1](docs/stages/B1-playable-prototype.md#research-2112dd7-task-information)。
 - [x] 正式d05fe81/24f628a胜利30、住宅完成96双钟/恢复与Owner计划已接桌面；33期限/80候选纯计划已冻结，见[B1](docs/stages/B1-playable-prototype.md#research-24f628a-task-residence)。
-- [ ] 接续正式b260639/6f93c0c努力奖励/授勋三页及严格恢复；80完整候选输入、25–28及31–33游标/冻结Owner后继按正式交付再接，不用实时参与名单替代X，原字体/OS动态分别保留。
+- [x] 正式b260639/6f93c0c努力奖励67/授勋87三页、88仪式及严格恢复已接，96正常管理绘制接线同时修正；本地检查与条件窗口见[B1](docs/stages/B1-playable-prototype.md#research-6f93c0c-award-effort)。
+- [ ] 80完整候选输入、25–28及31–33游标/冻结Owner后继按正式交付再接，不用实时参与名单替代X，原字体/OS动态分别保留。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

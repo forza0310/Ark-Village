@@ -1,8 +1,9 @@
 #include "ark/simulation/actors/startup_world_profile.hpp"
-// Frozen research e8f66d9 publishes raw87 ranking, award selection and separate questions.
-// S067/S068 supply the five-row composition and question text; values remain fixed-APK data.
-#include "ark/simulation/presentation/startup_world_visuals.hpp"
+// Research 6f93c0c supplies the three-page plan; PC award/termination questions remain separate.
+#include "../actors/world_human_detail.hpp"
 #include "../common/skin.hpp"
+#include "../common/world_list_controls.hpp"
+#include "ark/simulation/presentation/startup_world_visuals.hpp"
 #include "world_award.hpp"
 #include <algorithm>
 #include <stdexcept>
@@ -42,6 +43,7 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
         throw std::invalid_argument("Annual display requires initialized owner data");
     view.initialized = true;
     view.medals = state.medal_count;
+    view.frame = state.page_counters.at(page);
     view.termination_pending = state.award_termination_pending.at(page);
     const auto pending = state.award_pending_humans.find(page);
     if (pending != state.award_pending_humans.end())
@@ -54,10 +56,15 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
         const auto portrait = simulation::startup_world_portrait(state, id);
         if (!portrait)
             throw std::invalid_argument("Annual display references a missing current portrait");
+        const auto profile = simulation::startup_world_human_profile(state, id).value();
         view.rows.push_back(
             {id, simulation::startup_world_human_profile(state, human->identity).value().name,
              state.human_calendar.at(id).contribution,
-             state.scene.world.world.ai.growth.at(id).definition.legacy_u, portrait->image});
+             state.scene.world.world.ai.growth.at(id).definition.legacy_u, portrait->image,
+             state.scene.world.world.ai.growth.at(id).definition.current_profession, profile.sex,
+             state.scene.world.world.ai.battle.humans.at(id).killed_stat1,
+             state.scene.world.world.human_spending.at(id), state.human_homes.at(id)[2],
+             state.human_calendar.at(id).celebrations});
         if (view.pending_human == id)
             view.pending_name =
                 simulation::startup_world_human_profile(state, human->identity).value().name;
@@ -67,15 +74,21 @@ WorldAwardView world_award_view(const simulation::StartupWorldRuntimeState &stat
 WorldAwardLayout world_award_layout(Extent extent, bool pending) {
     if (extent.width < 240 || extent.height < 256)
         throw std::invalid_argument("Annual page requires the supported logical viewport");
-    const float width = std::min(240.F, extent.width - 16.F);
-    const float height = pending ? 120.F : 188.F;
+    const float width = pending ? std::min(240.F, extent.width - 16.F) : 220.F;
+    const float height = pending ? 120.F : 168.F;
     WorldAwardLayout layout;
     layout.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     const auto &p = layout.panel;
-    layout.rows = {p.x + 12, p.y + 47, width - 24, height - 101};
-    layout.row_height = layout.rows.height / 5;
-    layout.terminate = {p.x + 12, p.y + height - 29, 78, 21};
-    layout.grant = {p.x + width - 78, p.y + height - 29, 66, 21};
+    layout.rows = {p.x + 3, p.y + 48, width - 6, 95};
+    layout.row_height = 19;
+    layout.terminate = {p.x, p.y + height + 4, 50, 18};
+    layout.grant = {p.x + width - 50, p.y + height + 4, 50, 18};
+    if (pending) {
+        layout.terminate = {p.x + 12, p.y + height - 29, 78, 21};
+        layout.grant = {p.x + width - 78, p.y + height - 29, 66, 21};
+    }
+    layout.previous = {p.x + 4, p.y, 30, 20};
+    layout.next = {p.x + width - 34, p.y, 30, 20};
     layout.prompt = {p.x + 12, p.y + 30, width - 24, height - 66};
     layout.yes = {p.x + width / 2 - 66, p.y + height - 29, 58, 21};
     layout.no = {p.x + width / 2 + 8, p.y + height - 29, 58, 21};
@@ -111,17 +124,21 @@ std::optional<WorldAwardIntent> world_award_input(const WorldAwardView &view,
         selection.selected = std::clamp(selection.selected, 0, count - 1);
         selection.first_row =
             std::clamp(selection.first_row + input.wheel_rows, 0, std::max(0, count - visible));
-        if (input.up)
-            selection.selected = (selection.selected + count - 1) % count;
-        if (input.down)
-            selection.selected = (selection.selected + 1) % count;
-        if (input.up || input.down)
-            selection.first_row =
-                std::clamp(selection.first_row, std::max(0, selection.selected - visible + 1),
-                           std::min(selection.selected, std::max(0, count - visible)));
+        if (input.wheel_rows)
+            selection.selected = std::clamp(selection.selected, selection.first_row,
+                                            std::min(count - 1, selection.first_row + visible - 1));
+        const auto moved = simulation::steam_human_award_cursor(
+            {selection.selected, selection.first_row, selection.tab}, count, input.up, input.down,
+            input.left || hit(input.click, layout.previous),
+            input.right || hit(input.click, layout.next));
+        if (!moved)
+            throw std::invalid_argument("Invalid PC annual cursor");
+        selection.selected = moved->selection;
+        selection.first_row = moved->first;
+        selection.tab = moved->tab;
         for (int n = 0; n < visible && n + selection.first_row < count; ++n)
-            if (hit(input.click, {layout.rows.x, layout.rows.y + n * layout.row_height,
-                                  layout.rows.width, layout.row_height}))
+            if (hit(input.click,
+                    {layout.rows.x, layout.rows.y + n * layout.row_height, layout.rows.width, 16}))
                 selection.selected = selection.first_row + n;
     }
     if (input.escape || hit(input.click, layout.terminate)) {
@@ -152,55 +169,37 @@ void draw_world_award(const WorldAwardView &view, const WorldAwardLayout &layout
         skin.centered("否", layout.no, color);
         return;
     }
-    skin.window(layout.panel, "授勋仪式");
-    skin.centered(
-        "勋章 " + std::to_string(view.medals) + "个 剩余",
-        {layout.panel.x, layout.panel.y + layout.panel.height - 48, layout.panel.width, 16});
-    skin.text.draw("名称", layout.rows.x + 4, layout.panel.y + 29);
-    skin.right("贡献", layout.rows.x + layout.rows.width - 47, layout.panel.y + 29, ink, 10);
-    skin.right("勤奋度", layout.rows.x + layout.rows.width - 2, layout.panel.y + 29, ink, 10);
-    skin.content(
-        {layout.rows.x - 5, layout.rows.y - 4, layout.rows.width + 10, layout.rows.height + 8});
-    constexpr int count = 5;
-    const int first =
-        std::clamp(selection.first_row, 0, std::max(0, static_cast<int>(view.rows.size()) - count));
-    for (int index = first; index < static_cast<int>(view.rows.size()) && index < first + count;
-         ++index) {
-        const auto &row = view.rows[index];
-        const float y = layout.rows.y + (index - first) * layout.row_height;
-        if (index == selection.selected) {
-            DrawRectangleRec({layout.rows.x, y, layout.rows.width, layout.row_height},
-                             Color{255, 155, 48, 255});
-            skin.sprites.draw("finger_r.seb", 0, {layout.rows.x - 4, y + layout.row_height / 2},
-                              WHITE, Sprites::Binding::common);
-        }
-        const float portrait_size = std::min(15.F, layout.row_height - 2);
-        skin.sprites.human_image(row.portrait_image, {1, 27, 15, 14},
-                                 {layout.rows.x + 2, y + 1, portrait_size, portrait_size});
-        // Scale long names only; ranking and numeric contribution retain their source identity.
-        const auto &name = row.name;
-        const float size =
-            std::min({11.F, layout.row_height - 2,
-                      12.F * (layout.rows.width - 106) / std::max(1.F, skin.text.width(name))});
-        skin.text.draw(name, layout.rows.x + 20, y + 1, ink, size);
-        skin.right(std::to_string(row.contribution), layout.rows.x + layout.rows.width - 47, y + 1,
-                   blue, std::min(11.F, layout.row_height - 2));
-        skin.right(std::to_string(row.effort), layout.rows.x + layout.rows.width - 2, y + 1, blue,
-                   std::min(11.F, layout.row_height - 2));
-    }
-    if (!view.termination_pending && !view.pending_human &&
-        static_cast<int>(view.rows.size()) > count) {
-        const Rectangle track{layout.rows.x + layout.rows.width + 4, layout.rows.y, 4,
-                              layout.rows.height};
-        DrawRectangleRec(track, {33, 20, 91, 255});
-        const float thumb = track.height * count / view.rows.size();
-        DrawRectangleRec({track.x,
-                          track.y + (track.height - thumb) * first / (view.rows.size() - count),
-                          track.width, thumb},
-                         {47, 165, 237, 255});
-    }
-    skin.button(layout.terminate, "中止", enabled && view.initialized);
-    skin.button(layout.grant, "授予",
+    const auto plan = prepare_world_award(view, selection, skin);
+    if (plan)
+        draw_world_human_skin(*plan, world_list_skin_origin(layout.panel), skin);
+    else
+        skin.window(layout.panel, "勋章授予式");
+    skin.choice(layout.terminate, "中止", enabled && view.initialized);
+    skin.choice(layout.grant, "授予",
                 enabled && view.initialized && view.medals > 0 && !view.rows.empty());
+}
+std::optional<simulation::SteamHumanOverviewPlan>
+prepare_world_award(const WorldAwardView &v, const WorldAwardSelection &s, const Skin &skin) {
+    if (!v.initialized || v.termination_pending || v.pending_human)
+        return {};
+    simulation::SteamHumanAwardInput in;
+    in.cursor = {s.selected, s.first_row, s.tab};
+    in.frame = v.frame;
+    in.medals_left = v.medals;
+    for (const auto &h : v.rows) {
+        in.rank_order.push_back(h.definition);
+        in.humans.push_back({h.definition, h.profession, h.sex, h.contribution, h.effort,
+                             h.year_acquired, h.year_spent, h.residence, h.medals, h.name});
+    }
+    const auto title = "勋章授予式 " + std::to_string(s.tab + 1) + "/3";
+    const int width = int(skin.text.width(title));
+    in.options.view_y = 23;
+    in.options.title_widths = std::array<int, 2>{width, width};
+    in.options.footer_widths = std::array<int, 2>{
+        int(skin.text.width(std::to_string(v.medals) + "个")), int(skin.text.width("还有"))};
+    const auto plan = simulation::steam_human_award_skin(in);
+    if (!plan && !v.rows.empty())
+        throw std::invalid_argument("Invalid bound annual roster plan");
+    return plan;
 }
 } // namespace ark::desktop::ui

@@ -5197,6 +5197,20 @@
       "width": 180,
       "height": 80,
       "purpose": "Steam23/24 recruitment background image0, original ordered whole image and foreground crop"
+    },
+    {
+      "file": "event/event_medelCelemony_chara.png",
+      "source": "research/dungeon_village_1/assets/original/event/event_medelCelemony_chara.png",
+      "sha256": "47955257927041bd32368ff1508baa3a64dedc6190fedb01fe5c33f93eb55ab9",
+      "bytes": 817,
+      "width": 32,
+      "height": 63
+    },
+    {
+      "file": "event/event_medelCelemony_chara.seb",
+      "source": "research/dungeon_village_1/assets/original/event/event_medelCelemony_chara.seb",
+      "sha256": "d1f0a039e1a4053a50721de0e50fec34165352e5424a4da17390d78617b0e8c5",
+      "bytes": 128
     }
   ]
 }

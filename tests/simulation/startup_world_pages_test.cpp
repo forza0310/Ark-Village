@@ -2222,6 +2222,11 @@ void human_profession_and_mastery() {
     check(s.human_pages_initialized.count(aid) && s.page_counters.at(aid) == 0 &&
               s.scene.random.draws() == 1 && s.scripts.pages.back().legacy_page == 67,
           "framework initializes hidden63 before updating result67; draw5 does not wait for focus");
+    check(valid_startup_world_runtime_effort_result_page(s, s.scripts.pages.back()) &&
+              s.scripts.pages.back().legacy_f == effort &&
+              s.scripts.pages.back().legacy_g == effort + 3 &&
+              !s.human_pages_initialized.count(s.scripts.pages.back().id),
+          "profession reward67 retains actual old/new effort with independent result contract");
     // 领域67已单独覆盖；这里只按合法确认消掉它，保留63的真实计数时点。
     for (int n = 0; n < 120 && s.scripts.pages.back().id != aid; ++n) {
         page_tick(s);
@@ -2425,6 +2430,112 @@ void tax_pages() {
               broken.scene.world.world.ai.accounting.funds() == cash &&
               broken.page_counters.empty(),
           "tax ledger overflow rolls back cash, F/G, counter and close");
+}
+void effort_result() {
+    // 单页调用点夹具；年度、转职和住宅三个真实producer分别沿原套件验证。
+    auto s = fixture(67);
+    const auto id = s.scripts.pages.back().id;
+    s.scripts.pages.back().lifecycle = 0;
+    s.scripts.pages.back().legacy_f = 19;
+    s.scripts.pages.back().legacy_g = 20;
+    s.page_human_bindings.emplace(id, 1);
+    s.page_counters.emplace(id, 0);
+    s.page_phases.emplace(id, 0);
+    s.effort_display = {{{10, 20, 30, 40}, {11, 22, 30, 44}, {1, 2, 0, 4}}};
+    check(valid_startup_world_runtime_effort_result_page(s, s.scripts.pages.back()),
+          "67 pending has complete producer clocks");
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::missing_source,
+          "67 cannot acknowledge pending constructor before admitted initialization");
+    auto paused = s;
+    paused.scene.framework_paused = true;
+    auto tick = prepare_startup_world_runtime(paused);
+    check(tick.candidate && tick.candidate->scripts.pages.back().lifecycle == 0 &&
+              tick.candidate->page_counters.at(id) == 0 && tick.candidate->page_phases.at(id) == 0,
+          "67 pause leaves pending initialization untouched");
+    tick = prepare_startup_world_runtime(s);
+    check(tick.candidate && tick.candidate->page_counters.at(id) == 1 &&
+              tick.candidate->page_phases.at(id) == 0 && tick.candidate->sound_requests.empty() &&
+              tick.candidate->scene.random.draws() == s.scene.random.draws() &&
+              tick.candidate->scene.calendar.units == s.scene.calendar.units,
+          "67 first update only advances main clock");
+    s = *tick.candidate;
+    for (int fault = 0; fault < 12; ++fault) {
+        auto bad = s;
+        if (fault == 0)
+            bad.page_counters.erase(id);
+        if (fault == 1)
+            bad.page_phases.erase(id);
+        if (fault == 2)
+            bad.page_phases.at(id) = 1;
+        if (fault == 3)
+            bad.page_counters.at(id) = -1;
+        if (fault == 4)
+            bad.page_counters.at(id) = std::numeric_limits<int>::max();
+        if (fault == 5)
+            bad.page_human_bindings.erase(id);
+        if (fault == 6)
+            bad.page_human_bindings.at(id) = -1;
+        if (fault == 7)
+            bad.scripts.pages.back().legacy_f = -1;
+        if (fault == 8)
+            bad.scripts.pages.back().legacy_g = 19;
+        if (fault == 9)
+            bad.effort_display[2][0] = 2;
+        if (fault == 10)
+            bad.page_secondary_counters.emplace(id, 0);
+        if (fault == 11)
+            bad.effort_display[0][0] = std::numeric_limits<int>::min();
+        const auto before = startup_world_state_digest(bad);
+        check(acknowledge_startup_world_runtime_page(bad, id) ==
+                      StartupWorldRuntimeError::missing_source &&
+                  !update_startup_world_runtime_page(bad) &&
+                  !prepare_startup_world_runtime(bad).candidate &&
+                  startup_world_state_digest(bad) == before,
+              "67 malformed payload rejects update/confirmation without partial repair");
+        bad.scene.framework_paused = true;
+        check(!update_startup_world_runtime_page(bad) &&
+                  !prepare_startup_world_runtime(bad).candidate,
+              "67 pause does not hide corrupted payload");
+    }
+    auto zero = s;
+    zero.effort_display = {{{10, 20, 30, 40}, {10, 20, 30, 40}, {0, 0, 0, 0}}};
+    auto skipped = update_startup_world_runtime_page(zero);
+    check(skipped && skipped->page_counters.at(id) == 8 &&
+              skipped->scripts.pages.back().lifecycle == 2,
+          "67 empty active delta window skips six slots and does not auto-close");
+    zero = *skipped;
+    for (int n = 0; n < 74; ++n) {
+        auto next = update_startup_world_runtime_page(zero);
+        check(next.has_value(), "67 zero delta bounded updates");
+        zero = *next;
+    }
+    check(zero.page_counters.at(id) >= 73 && zero.scripts.pages.back().lifecycle == 2 &&
+              acknowledge_startup_world_runtime_page(zero, id) == StartupWorldRuntimeError::none &&
+              zero.scripts.pages.back().lifecycle == 4,
+          "67 even all-zero delta waits for actual confirmation beyond73");
+    check(acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.page_counters.at(id) == 67 &&
+              acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.page_counters.at(id) == 67 && s.scripts.pages.back().lifecycle == 2,
+          "67 fast-forward stops at67, repeated input does not bypass73");
+    for (int n = 0; n < 6; ++n) {
+        tick = prepare_startup_world_runtime(s);
+        check(tick.candidate.has_value(), "67 admitted threshold update");
+        s = *tick.candidate;
+    }
+    check(s.page_counters.at(id) == 73 &&
+              acknowledge_startup_world_runtime_page(s, id) == StartupWorldRuntimeError::none &&
+              s.scripts.pages.back().lifecycle == 4,
+          "67 closes only at73 confirmation");
+    auto broken = s;
+    broken.page_counters.erase(id);
+    check(!prepare_startup_world_runtime(broken).candidate && broken.page_human_bindings.count(id),
+          "closed67 bad payload is rejected before retirement erases source binding");
+    tick = prepare_startup_world_runtime(s);
+    check(tick.candidate && !tick.candidate->page_counters.count(id) &&
+              !tick.candidate->page_phases.count(id) &&
+              !tick.candidate->page_human_bindings.count(id),
+          "67 successful Finish retires result-owned references");
 }
 void residence_result() {
     // 住宅完成页调用点夹具；真实producer安装另由现building residence套件覆盖。
@@ -3281,9 +3392,111 @@ void annual_award() {
     check(s.scripts.pages.back().legacy_page == 88 &&
               s.page_human_bindings.at(s.scripts.pages.back().id) == 1,
           "framework inserts each child after same callback anchor: raw88 above later67");
+    const auto produced_effort =
+        std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(), [](const auto &page) {
+            return page.kind == ref::WorldScriptPageKind::raw_page && page.legacy_page == 67;
+        });
+    check(produced_effort != s.scripts.pages.end() && produced_effort->legacy_f == old_u &&
+              produced_effort->legacy_g == std::min(old_u + 10, 100) &&
+              produced_effort->lifecycle == 0 &&
+              valid_startup_world_runtime_effort_result_page(s, *produced_effort),
+          "actual annual award initializes its67 payload before the covering88 starts");
     const auto display = s.scripts.pages.back().id;
-    s.page_phases[display] = 1;
-    s.page_counters[display] = 212;
+    check(valid_startup_world_runtime_award_result_page(s, s.scripts.pages.back()) &&
+              s.page_phases.at(display) == 0 && s.page_counters.at(display) == 0 &&
+              acknowledge_startup_world_runtime_page(s, display) ==
+                  StartupWorldRuntimeError::missing_source,
+          "real88 producer has full zero payload but pending Init cannot consume confirmation");
+    auto paused = s;
+    paused.scene.framework_paused = true;
+    const auto frozen = prepare_startup_world_runtime(paused);
+    check(frozen.candidate && frozen.candidate->scripts.pages.back().lifecycle == 0 &&
+              frozen.candidate->page_counters.at(display) == 0 &&
+              frozen.candidate->page_phases.at(display) == 0 &&
+              frozen.candidate->sound_requests == s.sound_requests,
+          "paused88 leaves pending Init and parent audio unchanged");
+    const auto begun = prepare_startup_world_runtime(s);
+    check(begun.candidate && begun.candidate->page_counters.at(display) == 1 &&
+              begun.candidate->page_phases.at(display) == 0 &&
+              begun.candidate->sound_requests == s.sound_requests,
+          "88 first update has no extra jingle or reward");
+    s = *begun.candidate;
+    for (int fault = 0; fault < 11; ++fault) {
+        auto bad = s;
+        if (fault == 0)
+            bad.page_counters.erase(display);
+        if (fault == 1)
+            bad.page_phases.erase(display);
+        if (fault == 2)
+            bad.page_phases.at(display) = 2;
+        if (fault == 3)
+            bad.page_counters.at(display) = -1;
+        if (fault == 4)
+            bad.page_counters.at(display) = std::numeric_limits<int>::max();
+        if (fault == 5)
+            bad.page_human_bindings.erase(display);
+        if (fault == 6)
+            bad.page_human_bindings.at(display) = -1;
+        if (fault == 7)
+            bad.reward_display[0][0] = -1;
+        if (fault == 8)
+            bad.reward_display[1][0] = 101;
+        if (fault == 9)
+            bad.reward_display[2][0] = -1;
+        if (fault == 10)
+            bad.page_secondary_counters.emplace(display, 0);
+        const auto before = startup_world_state_digest(bad);
+        check(acknowledge_startup_world_runtime_page(bad, display) ==
+                      StartupWorldRuntimeError::missing_source &&
+                  !update_startup_world_runtime_page(bad) &&
+                  !prepare_startup_world_runtime(bad).candidate &&
+                  startup_world_state_digest(bad) == before,
+              "88 malformed payload rejects without repair, reward or random mutation");
+        bad.scene.framework_paused = true;
+        check(!update_startup_world_runtime_page(bad) &&
+                  !prepare_startup_world_runtime(bad).candidate,
+              "88 malformed pause rejects missing payload");
+    }
+    check(acknowledge_startup_world_runtime_page(s, display) == StartupWorldRuntimeError::none &&
+              s.page_counters.at(display) == 1,
+          "88 phase0 early confirmation cannot skip the first135");
+    auto same_round = s;
+    same_round.page_counters.at(display) = 135;
+    same_round.scene.random = ref::WorldRandomStream::from_raw({0});
+    check(acknowledge_startup_world_runtime_page(same_round, display) ==
+                  StartupWorldRuntimeError::none &&
+              same_round.scene.random.draws() == 1 && same_round.scripts.event_calls.at(24) == 1 &&
+              same_round.page_phases.at(display) == 1 &&
+              same_round.page_counters.at(display) == 212,
+          "88 phase0 exactly135 confirmation uses pre-transition local135 and draws immediately");
+    s.page_counters.at(display) = 134;
+    const auto transitioned = prepare_startup_world_runtime(s);
+    check(transitioned.candidate && transitioned.candidate->page_counters.at(display) == 135 &&
+              transitioned.candidate->page_phases.at(display) == 1 &&
+              transitioned.candidate->scene.random.draws() == s.scene.random.draws(),
+          "88 ordinary update at135 automatically enters phase1 without resetting main or drawing");
+    s = *transitioned.candidate;
+    auto wrapped = s;
+    wrapped.page_counters.at(display) = std::numeric_limits<int>::max() - 1;
+    const auto wrapped_update = update_startup_world_runtime_page(wrapped);
+    check(wrapped_update && wrapped_update->page_counters.at(display) == 0 &&
+              wrapped_update->page_phases.at(display) == 1 &&
+              valid_startup_world_runtime_award_result_page(*wrapped_update,
+                                                            wrapped_update->scripts.pages.back()),
+          "88 phase1 main wraps moduloINTMAX, preserving legitimate negative local time");
+    wrapped = *wrapped_update;
+    check(acknowledge_startup_world_runtime_page(wrapped, display) ==
+                  StartupWorldRuntimeError::none &&
+              wrapped.page_counters.at(display) == 202 &&
+              wrapped.scene.random.draws() == s.scene.random.draws(),
+          "88 wrapped negative local confirmation fast-forwards202 without random event");
+    check(acknowledge_startup_world_runtime_page(s, display) == StartupWorldRuntimeError::none &&
+              s.page_counters.at(display) == 202 &&
+              acknowledge_startup_world_runtime_page(s, display) ==
+                  StartupWorldRuntimeError::none &&
+              s.page_counters.at(display) == 212 && s.scripts.pages.back().id == display &&
+              s.scripts.pages.back().lifecycle == 2,
+          "88 phase1 uses old local for separate202 and212 confirmations before final draw");
     s.scene.random = ref::WorldRandomStream::from_raw({1});
     auto exhausted = s;
     exhausted.scene.random = ref::WorldRandomStream::from_raw({});
@@ -3300,6 +3513,11 @@ void annual_award() {
             s.scene.world.world.ai.accounting.funds() == cash && s.scene.calendar.units == 0 &&
             s.scene.world.world.ai.battle.actors.empty(),
         "raw88 selects actual event25 on sole RNG and binds last page without world/cash advance");
+    auto malformed_closed = s;
+    malformed_closed.page_phases.erase(display);
+    check(!prepare_startup_world_runtime(malformed_closed).candidate &&
+              malformed_closed.page_human_bindings.count(display),
+          "88 closed malformed payload rejects before Finish erases source binding");
     for (int n = 0; n < 100 && !ref::world_script_seen(s.scripts, 22); ++n) {
         const auto next = prepare_startup_world_runtime(s);
         check(next.candidate.has_value(), "award return chain keeps valid Owner");
@@ -3317,7 +3535,8 @@ void annual_award() {
         }
     }
     check(ref::world_script_seen(s.scripts, 22) && s.medal_count == 0 &&
-              s.human_calendar.at(1).celebrations == 1,
+              s.human_calendar.at(1).celebrations == 1 && !s.page_human_bindings.count(display) &&
+              !s.page_counters.count(display) && !s.page_phases.count(display),
           "zero medals close ceremony after child return, never repeat reward");
 }
 void task_display() {
@@ -6153,6 +6372,7 @@ int main() {
         village_activity_pages();
         village_expansion_pages();
         village_activity_effect_rollback();
+        effort_result();
         residence_result();
         summary();
         gift();

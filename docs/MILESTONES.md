@@ -1,5 +1,12 @@
 # 计划与决策
 
+<a id="research-6f93c0c-award-effort"></a>
+## 授勋与努力奖励接续（b260639/6f93c0c，沿持续goal）
+
+固定正式6f93c0c，接67真实奖励producer、88授勋绑定/两阶段主钟及严格恢复/退休；共享四战斗值演出沿正式helper，不重算冻结奖励、不加声音或随机。87三页使用正式纯DTO，保持冻结排名；年度取得读取battle.humans.killed_stat1，消费读取human_spending，居住读取human_homes[2]，不按标签另算账本。名单的选中、翻页及滚轮仍属PC状态，授予/中止及独立询问沿原已批操作，不凭触摸元数据新增支付路径。
+
+67/88/96归同一个actors仪式适配，复用人物GPU末端、字体实测和现progression输入门槛；87布局留village。新增award纯计划显式登记到既有presentation目标及visuals套件，素材先核正式映射与现副本，不复制示例图。保留现有78项适配及有效断言，玩家schema5、独立系统身份、随机/稳定存取政策保持。集中desktop/headless Debug标准排三个月，Release受影响及两尺寸/边界条件窗口与便携验收；条件图不认证自然授勋、入住或全经营。
+
 <a id="research-24f628a-task-residence"></a>
 ## 胜利与住宅完成双钟（d05fe81/24f628a，沿持续goal）
 

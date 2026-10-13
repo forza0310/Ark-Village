@@ -22,6 +22,15 @@ namespace ark::simulation {
 namespace {
 using State = StartupWorldRuntimeState;
 using Error = StartupWorldRuntimeError;
+bool valid_reward_display(const State &s) {
+    // 原n.aH共享旧/新/请求三行；两种奖励页都不能从当前人物反推或修补。
+    for(std::size_t column=0;column<2;++column) {
+        const int before=s.reward_display[0][column],after=s.reward_display[1][column],request=s.reward_display[2][column];
+        if(before<0||before>100||after<0||after>100||request<0||
+           after!=std::min<std::int64_t>(100,static_cast<std::int64_t>(before)+request))return false;
+    }
+    return true;
+}
 bool unlock_human_valid(const State &s, const ref::WorldScriptPage &p) {
     // b/g:3467的X仅含bv[f]；aq由到访排序读取，不在此页直接创建人物实例。
     return s.rules && s.human_calendar.count(p.legacy_f) &&
@@ -218,8 +227,10 @@ bool award_reward(State &s, int human) {
         if (!page.candidate || !write_startup_world_runtime_scripts(s, page.candidate->state))
             return false;
         for (const auto &inserted : page.candidate->inserted_pages) {
-            s.page_human_bindings[inserted.id] = human;
-            s.page_phases[inserted.id] = s.page_counters[inserted.id] = 0;
+            if(!s.page_human_bindings.emplace(inserted.id,human).second||
+               !s.page_phases.emplace(inserted.id,0).second||!s.page_counters.emplace(inserted.id,0).second||
+               !(raw==67?valid_startup_world_runtime_effort_result_page(s,inserted):
+                         valid_startup_world_runtime_award_result_page(s,inserted)))return false;
         }
     }
     return true;
@@ -279,19 +290,24 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
         return false;
     bool close{};
     if (raw == 67) {
+        const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+        if(page==s.scripts.pages.end()||page->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(s,*page))return false;
         const auto r =
-            ref::prepare_world_effort_display(s.page_counters[id], confirm, s.effort_display[2]);
+            ref::prepare_world_effort_display(s.page_counters.at(id), confirm, s.effort_display[2]);
         if (!r)
             return false;
-        s.page_counters[id] = r->counter;
+        s.page_counters.at(id) = r->counter;
         close = r->closed;
     } else {
-        const auto r = ref::prepare_world_award_display({s.page_counters[id], s.page_phases[id]},
+        const auto page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[=](const auto &p){return p.id==id;});
+        if(raw!=88||page==s.scripts.pages.end()||page->lifecycle!=2||
+           !valid_startup_world_runtime_award_result_page(s,*page))return false;
+        const auto r = ref::prepare_world_award_display({s.page_counters.at(id), s.page_phases.at(id)},
                                                         confirm, s.scene.random);
         if (!r)
             return false;
-        s.page_counters[id] = r->state.counter;
-        s.page_phases[id] = r->state.phase;
+        s.page_counters.at(id) = r->state.counter;
+        s.page_phases.at(id) = r->state.phase;
         s.scene.random = r->random;
         if (r->event) {
             const auto event =
@@ -319,6 +335,39 @@ bool consume_award_display(State &s, std::uint64_t id, bool confirm, int raw) {
 }
 } // namespace
 
+bool valid_startup_world_runtime_award_result_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=88||p.lifecycle<0||p.lifecycle>4)return false;
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id);
+    const auto human=s.page_human_bindings.find(p.id);
+    if(count==s.page_counters.end()||phase==s.page_phases.end()||count->second<0||
+       count->second==std::numeric_limits<int>::max()||phase->second<0||phase->second>1||
+       s.page_secondary_counters.count(p.id)||human==s.page_human_bindings.end()||
+       !s.human_calendar.count(human->second)||!s.shop_humans.count(human->second)||
+       !s.scene.world.world.ai.growth.count(human->second)||
+       std::none_of(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==human->second;}))return false;
+    if(p.lifecycle==0&&(count->second!=0||phase->second!=0))return false;
+    // phase1主钟回绕后local可为负；不得以main>=135拒绝原模INT_MAX轨迹。
+    return valid_reward_display(s);
+}
+
+bool valid_startup_world_runtime_effort_result_page(const State &s,const ref::WorldScriptPage &p) {
+    if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=67||p.lifecycle<0||p.lifecycle>4||
+       p.legacy_f<0||p.legacy_f>100||p.legacy_g<0||p.legacy_g>100||p.legacy_g/10<=p.legacy_f/10)return false;
+    const auto count=s.page_counters.find(p.id),phase=s.page_phases.find(p.id);
+    const auto human=s.page_human_bindings.find(p.id);
+    if(count==s.page_counters.end()||phase==s.page_phases.end()||count->second<0||
+       count->second==std::numeric_limits<int>::max()||phase->second!=0||s.page_secondary_counters.count(p.id)||
+       human==s.page_human_bindings.end()||!s.human_calendar.count(human->second)||
+       !s.shop_humans.count(human->second)||!s.scene.world.world.ai.growth.count(human->second)||
+       std::none_of(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==human->second;}))return false;
+    if(p.lifecycle==0&&count->second!=0)return false;
+    // as[0]共享显示不重算人物当前值；原派生只上封9999，差额须在宽整数中核对。
+    for(std::size_t column=0;column<4;++column)
+        if(s.effort_display[0][column]>9999||s.effort_display[1][column]>9999||
+           static_cast<std::int64_t>(s.effort_display[1][column])-s.effort_display[0][column]!=s.effort_display[2][column])return false;
+    return true;
+}
+
 bool valid_startup_world_runtime_residence_result_page(const State &s,const ref::WorldScriptPage &p) {
     if(!s.rules||p.id==0||p.kind!=ref::WorldScriptPageKind::raw_page||p.legacy_page!=96||
        p.lifecycle<0||p.lifecycle>4)return false;
@@ -332,13 +381,7 @@ bool valid_startup_world_runtime_residence_result_page(const State &s,const ref:
        std::none_of(s.rules->humans.begin(),s.rules->humans.end(),[&](const auto &h){return h.identity==human->second;})||
        std::none_of(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &d){return d.id==p.legacy_f&&d.kind==12;}))return false;
     if(p.lifecycle==0&&(count->second!=0||second->second!=0||phase->second!=0))return false;
-    // 原n.aH是共享奖励显示，并非此页冻结的当前人物值；仅验其三行自身契约。
-    for(std::size_t column=0;column<2;++column) {
-        const int before=s.reward_display[0][column],after=s.reward_display[1][column],request=s.reward_display[2][column];
-        if(before<0||before>100||after<0||after>100||request<0||
-           after!=std::min<std::int64_t>(100,static_cast<std::int64_t>(before)+request))return false;
-    }
-    return true;
+    return valid_reward_display(s);
 }
 
 bool valid_startup_world_runtime_task_victory_page(const State &s,const ref::WorldScriptPage &p) {
@@ -457,6 +500,12 @@ Error acknowledge_startup_world_runtime_page(State &state, std::uint64_t id) {
         return Error::missing_source;
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
        (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))
+        return Error::missing_source;
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==67&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(state,*top)))
+        return Error::missing_source;
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==88&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_award_result_page(state,*top)))
         return Error::missing_source;
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return act_startup_world_save_page(state,id);
@@ -803,6 +852,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
            page->legacy_page==30&&!valid_startup_world_runtime_task_victory_page(state,*page))return {};
         if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
            page->legacy_page==96&&!valid_startup_world_runtime_residence_result_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==67&&!valid_startup_world_runtime_effort_result_page(state,*page))return {};
+        if(page!=state.scripts.pages.rend()&&page->kind==ref::WorldScriptPageKind::raw_page&&
+           page->legacy_page==88&&!valid_startup_world_runtime_award_result_page(state,*page))return {};
         if (page != state.scripts.pages.rend() && page->kind == ref::WorldScriptPageKind::raw_page &&
             (page->legacy_page == 3 || page->legacy_page == 4 || page->legacy_page == 7 ||
              page->legacy_page == 10) && !valid_startup_world_menu_page(state, page->id))
@@ -817,6 +870,10 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
        (top->lifecycle!=2||!valid_startup_world_runtime_task_victory_page(state,*top)))return {};
     if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==96&&
        (top->lifecycle!=2||!valid_startup_world_runtime_residence_result_page(state,*top)))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==67&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_effort_result_page(state,*top)))return {};
+    if(top->kind==ref::WorldScriptPageKind::raw_page&&top->legacy_page==88&&
+       (top->lifecycle!=2||!valid_startup_world_runtime_award_result_page(state,*top)))return {};
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 14)
         return update_startup_world_save_page(state,top->id);
     if (top->kind == ref::WorldScriptPageKind::raw_page && top->legacy_page == 13)
@@ -889,6 +946,7 @@ std::optional<State> update_startup_world_runtime_page(const State &state) {
     if (counter == std::numeric_limits<int>::max())
         return {};
     ++counter;
+    if(top->legacy_page==67||top->legacy_page==88)counter%=std::numeric_limits<int>::max();
     if(top->legacy_page==50||top->legacy_page==30||top->legacy_page==96) {
         auto &secondary=next.page_secondary_counters.at(top->id);
         counter%=std::numeric_limits<int>::max();

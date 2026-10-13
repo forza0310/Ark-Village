@@ -90,12 +90,14 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                         : binding == Binding::monster                           ? "monster"
                         : binding == Binding::weapon                            ? "weapon"
                         : binding == Binding::effect                            ? "effect"
+                        : binding == Binding::event                             ? "event"
                         : binding == Binding::common2                           ? "common2"
                         : binding == Binding::secretary || binding == Binding::common ||
                                 binding == Binding::steam_common
                             ? "common"
                             : "image";
-    if (binding == Binding::effect && !actor_images_.count(group))
+    // Event SEBs address the event image table, just as effects address their own table.
+    if ((binding == Binding::effect || binding == Binding::event) && !actor_images_.count(group))
         actor_images_.emplace(group, image_index(root_, group));
     // Steam status SEB17 has its own crop; same filename does not imply APK geometry.
     const auto relative =
@@ -135,7 +137,7 @@ void Sprites::draw(const std::string &sprite, int frame, Vector2 anchor, Color t
                 : binding == Binding::common || binding == Binding::steam_common
                     ? root_ / group / common_images_.at(p.image_index)
                 : binding == Binding::common2 ? root_ / group / common2_images_.at(p.image_index)
-                : binding == Binding::effect
+                : binding == Binding::effect || binding == Binding::event
                     ? root_ / group / actor_images_.at(group).at(p.image_index)
                     : root_ / "image" / images_.at(p.image_index);
             const auto &image = texture(path);

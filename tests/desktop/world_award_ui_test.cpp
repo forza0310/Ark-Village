@@ -4,6 +4,7 @@
 #include "../../src/desktop/ui/village/world_progression.hpp"
 #include "../support/checks.hpp"
 #include "../support/world_fixture.hpp"
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 
@@ -25,30 +26,44 @@ void world_award_render_fixture() {
     for (int id = 0; id < 7; ++id)
         state.award_rankings[page].push_back(id);
     state.award_termination_pending[page] = false;
+    state.page_counters[page] = 8;
     const auto before = state;
     InitWindow(540, 360, "Ark-Village annual UI / supplied roster fixture");
     struct WindowScope {
         ~WindowScope() { CloseWindow(); }
     } window;
     Sprites sprites(ARK_TEST_ASSETS);
-    Text text(ARK_TEST_FONT, "");
+    std::string glyphs = "信息勋章授予式中止授予还有个姓名贡献努力获得消费居住要仪吗是否恭喜!"
+                         "太好了!的能力上升基础奖励满意度确定→";
+    for (const auto &h : state.rules->humans)
+        glyphs += h.name;
+    Text text(ARK_TEST_FONT, glyphs);
     ui::Skin skin(sprites, text);
-    const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "award";
+    const auto *isolated = std::getenv("ARK_TEST_OUTPUT_DIR");
+    const auto output = std::filesystem::path(isolated ? isolated : ARK_TEST_OUTPUT) / "award";
     std::filesystem::create_directories(output);
     for (const auto extent : {Extent{540, 360}, Extent{240, 256}}) {
         SetWindowSize(extent.width, extent.height);
-        for (const bool pending : {false, true}) {
+        for (int tab = 0; tab < 4; ++tab) {
+            const bool pending = tab == 3;
+            ui::WorldAwardSelection selection;
+            selection.tab = pending ? 0 : tab;
+            selection.selected = 6;
+            selection.first_row = 2;
             auto view = ui::world_award_view(state, page);
             view.termination_pending = pending; // Read-only display variant, no award command.
             for (int frame = 0; frame < 4; ++frame) {
                 BeginDrawing();
                 ClearBackground({145, 211, 247, 255});
-                ui::draw_world_award(view, ui::world_award_layout(extent, pending), skin, {}, true);
+                ui::draw_world_award(view, ui::world_award_layout(extent, pending), skin, selection,
+                                     true);
                 text.flush(1, {});
                 EndDrawing();
             }
-            const auto file = output / (std::string(pending ? "question-" : "candidates-") +
-                                        std::to_string(extent.width) + ".png");
+            const auto file =
+                output /
+                (std::string(pending ? "question-" : "candidates-" + std::to_string(tab) + "-") +
+                 std::to_string(extent.width) + ".png");
             auto image = LoadImageFromScreen();
             const bool saved = image.data && ExportImage(image, file.string().c_str());
             if (image.data)
@@ -58,6 +73,56 @@ void world_award_render_fixture() {
             std::cout << "Annual supplied-roster fixture: " << file.string() << '\n';
         }
     }
+    // Source-bound display conditions cover the real desktop dispatcher, not natural awards.
+    auto ceremony = initial_world();
+    simulation::rules::WorldScriptPage result;
+    result.id = ceremony.scripts.next_page_id++;
+    result.kind = simulation::rules::WorldScriptPageKind::raw_page;
+    result.lifecycle = 2;
+    ceremony.scripts.pages.push_back(result);
+    ceremony.page_human_bindings[result.id] = 1;
+    ceremony.page_phases[result.id] = 0;
+    ceremony.reward_display = {{{19, 19}, {25, 25}, {6, 6}}};
+    ceremony.effort_display = {{{40, 50, 60, 70}, {42, 51, 59, 80}, {2, 1, -1, 10}}};
+    for (const auto extent : {Extent{240, 256}, Extent{720, 600}})
+        for (int raw : {67, 88})
+            for (int counter : raw == 67 ? std::vector<int>{0, 42, 52, 67, 73}
+                                         : std::vector<int>{0, 35, 65, 100, 135, 202, 212}) {
+                auto s = ceremony;
+                auto &p = s.scripts.pages.back();
+                p.legacy_page = raw;
+                p.legacy_f = 19;
+                p.legacy_g = 25;
+                s.page_counters[p.id] = counter;
+                s.page_phases[p.id] = raw == 88 && counter >= 135 ? 1 : 0;
+                const auto frozen = s;
+                auto v = ui::world_progression_view(s, p);
+                ui::prepare_world_progression(v, s, skin);
+                if (!v.ceremony)
+                    throw std::runtime_error("Desktop ceremony lost strict source bridge");
+                SetWindowSize(extent.width, extent.height);
+                for (int frame = 0; frame < 4; ++frame) {
+                    BeginDrawing();
+                    ClearBackground({145, 211, 247, 255});
+                    ui::draw_world_progression(v, ui::world_progression_layout(extent, raw), skin,
+                                               true);
+                    text.flush(1, {});
+                    EndDrawing();
+                }
+                const auto file = output / (std::to_string(raw) + "-" + std::to_string(counter) +
+                                            "-" + std::to_string(extent.width) + ".png");
+                auto image = LoadImageFromScreen();
+                const bool saved = image.data && ExportImage(image, file.string().c_str());
+                if (image.data)
+                    UnloadImage(image);
+                if (!saved || !same_world_clock(s, frozen) ||
+                    s.page_counters != frozen.page_counters ||
+                    s.page_phases != frozen.page_phases ||
+                    s.sound_requests != frozen.sound_requests ||
+                    s.scene.random.draws() != frozen.scene.random.draws())
+                    throw std::runtime_error("Ceremony render changed state or screenshot failed");
+                std::cout << "Annual conditional ceremony: " << file.string() << '\n';
+            }
     if (!same_world_clock(state, before) || state.medal_count != before.medal_count ||
         state.scene.random.draws() != before.scene.random.draws())
         throw std::runtime_error("Annual rendering changed world time, medals or randomness");
@@ -109,17 +174,41 @@ void world_award_ui() {
           "Reading a newly inserted page must not initialize ranks or grant a medal");
     state.award_rankings[123] = {19, 42, 7};
     state.award_termination_pending[123] = false;
+    state.page_counters[123] = 8;
+    for (int id : {19, 42, 7}) {
+        state.scene.world.world.ai.battle.humans[id].killed_stat1 = id + 100;
+        state.scene.world.world.human_spending[id] = id + 200;
+        state.human_homes[id] = {0, 0, id == 19 ? 1 : 0};
+        state.human_calendar[id].celebrations = id + 1;
+    }
     const auto view = ui::world_award_view(state, 123);
     check(view.initialized && view.medals == 7 && view.rows.size() == 3 &&
               view.rows[0].definition == 19 && view.rows[0].name == "human-19" &&
               view.rows[1].definition == 42 && view.rows[2].contribution == 60 &&
               view.rows[0].effort == 24 && view.rows[0].portrait_image == 21 &&
-              view.rows[1].portrait_image == 11,
+              view.rows[1].portrait_image == 11 && view.rows[0].year_acquired == 119 &&
+              view.rows[0].year_spent == 219 && view.rows[0].residence == 1 &&
+              view.rows[0].medals == 20,
           "Display must resolve definition identities and preserve source order including tied "
           "ranks");
     check(state.medal_count == 7 && !state.award_termination_pending.at(123),
           "Rendering data must not consume or offer awards");
     ui::WorldAwardSelection selection;
+    const auto navigation = ui::world_award_layout({240, 256}, false);
+    ui::WorldAwardInput both;
+    both.left = both.right = both.up = both.down = true;
+    check(!ui::world_award_input(view, navigation, selection, both, false) && selection.tab == 0 &&
+              selection.selected == 0,
+          "Source annual cursor processes both directions in order without submitting an award");
+    both = {};
+    both.left = true;
+    ui::world_award_input(view, navigation, selection, both, false);
+    check(selection.tab == 2 && selection.selected == 0 && state.medal_count == 7,
+          "Annual three-page wrap preserves selected identity and never spends a medal");
+    both = {};
+    both.right = true;
+    ui::world_award_input(view, navigation, selection, both, true);
+    check(selection.tab == 2, "Pending input cannot turn an annual page");
     const auto click_action = [&](const auto &v, const auto &layout, std::optional<Vector2> click,
                                   bool enter, bool escape, bool blocked) -> std::optional<Action> {
         const auto intent =
@@ -132,8 +221,10 @@ void world_award_ui() {
               "S067 keeps five readable candidates at the minimum and ordinary viewport");
         check(contains({0, 24, static_cast<float>(extent.width), extent.height - 53.F},
                        layout.panel) &&
-                  contains(layout.panel, layout.rows) && contains(layout.panel, layout.terminate),
-              "Annual content and command must remain within the playable viewport");
+                  contains(layout.panel, layout.rows) &&
+                  contains({0, 24, float(extent.width), extent.height - 24.F}, layout.terminate) &&
+                  !CheckCollisionRecs(layout.panel, layout.terminate),
+              "Annual source content and separate PC command fit within the viewport");
         check(click_action(view, layout, middle(layout.terminate), false, false, false) ==
                   Action::request_termination,
               "End button requests a question rather than immediately closing the page");

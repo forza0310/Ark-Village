@@ -1,4 +1,5 @@
 #include "world_progression.hpp"
+#include "../actors/world_human_ceremony.hpp"
 #include "../common/skin.hpp"
 #include "ark/simulation/actors/startup_world_profile.hpp"
 #include "ark/simulation/village/rules/world_calendar_tasks.hpp"
@@ -37,8 +38,8 @@ WorldProgressionView world_progression_view(const State &state, const Page &page
     view.title = view.raw == 48   ? "晋级申请"
                  : view.raw == 49 ? "城镇等级"
                  : view.raw == 50 ? "晋级庆典"
-                 : view.raw == 67 ? "能力上升"
-                 : view.raw == 88 ? "勋章授予"
+                 : view.raw == 67 ? "努力奖励"
+                 : view.raw == 88 ? "勋章授予式"
                                   : "自宅完成";
     const auto counter = state.page_counters.find(page.id);
     if (counter == state.page_counters.end())
@@ -110,11 +111,12 @@ WorldProgressionLayout world_progression_layout(Extent extent, int raw) {
         throw std::invalid_argument("Unsupported progression viewport");
     WorldProgressionLayout out;
     out.extent = extent;
-    const bool source = raw == 48 || raw == 49 || raw == 50 || raw == 95;
-    const float width =
-        source ? (raw == 48 || raw == 49 ? 220.F : 222.F) : std::min(310.F, extent.width - 16.F);
-    const float height =
-        source ? (raw == 48 || raw == 49 ? 168.F : 170.F) : std::min(250.F, extent.height - 68.F);
+    const bool source =
+        raw == 48 || raw == 49 || raw == 50 || raw == 95 || raw == 67 || raw == 88 || raw == 96;
+    const float width = source ? (raw == 48 || raw == 49 || raw == 67 ? 220.F : 222.F)
+                               : std::min(310.F, extent.width - 16.F);
+    const float height = source ? (raw == 48 || raw == 49 || raw == 67 ? 168.F : 170.F)
+                                : std::min(250.F, extent.height - 68.F);
     out.panel = {(extent.width - width) / 2, (extent.height - height) / 2, width, height};
     out.body = {out.panel.x + 12, out.panel.y + 52, width - 24, height - 87};
     out.cancel = {out.panel.x + width - 50, out.panel.y + height + 4, 50, 18};
@@ -123,8 +125,17 @@ WorldProgressionLayout world_progression_layout(Extent extent, int raw) {
 }
 void prepare_world_progression(WorldProgressionView &v, const State &s, const Skin &skin) {
     v.skin.reset();
+    v.ceremony.reset();
     if (!v.initialized)
         return;
+    if (v.raw == 67 || v.raw == 88 || v.raw == 96) {
+        const auto page = std::find_if(s.scripts.pages.begin(), s.scripts.pages.end(),
+                                       [&](const auto &p) { return p.id == v.page; });
+        if (page == s.scripts.pages.end())
+            throw std::invalid_argument("Human ceremony lost its page");
+        v.ceremony = prepare_world_human_ceremony(s, *page, skin);
+        return;
+    }
     if (v.raw != 48 && v.raw != 49 && v.raw != 50 && v.raw != 95)
         return;
     simulation::SteamTownProgressOptions o;
@@ -190,6 +201,11 @@ world_progression_input(const WorldProgressionView &v, const WorldProgressionLay
 std::optional<WorldFacilityPaintedControls> draw_world_progression(const WorldProgressionView &v,
                                                                    const WorldProgressionLayout &l,
                                                                    const Skin &skin, bool enabled) {
+    if (v.raw == 67 || v.raw == 88 || v.raw == 96) {
+        draw_world_human_ceremony(v.ceremony, {l.panel, l.body, l.confirm}, skin,
+                                  enabled && v.initialized && v.confirm_enabled, v.title);
+        return {};
+    }
     if (v.raw == 48 || v.raw == 49 || v.raw == 50 || v.raw == 95) {
         if (!v.initialized) {
             skin.window(l.panel, v.title);

@@ -4,6 +4,7 @@
 // owned by the runtime; input sends one command and drawing never advances the source pages.
 #include "../common/layout.hpp"
 #include "../common/world_list_controls.hpp"
+#include "ark/simulation/presentation/steam_human_skin.hpp"
 #include "ark/simulation/presentation/steam_town_progress_skin.hpp"
 #include "ark/simulation/world/startup_world_runtime.hpp"
 #include <optional>
@@ -19,6 +20,7 @@ struct WorldProgressionView {
     std::string title, human;
     std::vector<std::string> rows;
     std::optional<simulation::SteamTownProgressPlan> skin;
+    std::optional<simulation::SteamHumanOverviewPlan> ceremony;
 };
 struct WorldProgressionLayout {
     Extent extent;

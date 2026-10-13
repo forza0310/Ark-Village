@@ -1,4 +1,3 @@
-#include "../ui/actors/world_residence_result.hpp"
 #include "../ui/tasks/world_task_tracking.hpp"
 // Canonical world owns simulation and page effects; this adapter owns only window/input/raster.
 #include "../input/world_management.hpp"
@@ -638,11 +637,6 @@ static void run_world_game_capture(const app::LaunchOptions &options,
                 ui::prepare_world_victory(victory, current, skin);
                 ui::draw_world_victory(victory, ui::world_victory_layout(extent), skin,
                                        !desired_pause && !failed && !pending_ack);
-            } else if (page->legacy_page == 96) {
-                ui::draw_world_residence_result(
-                    ui::prepare_world_residence_result(current, *page, skin),
-                    ui::world_victory_layout(extent), skin,
-                    !desired_pause && !failed && !pending_ack);
             } else if (!ui::world_page_automatic(*page)) {
                 // Timed waits and camera pages draw the world only; they do not expose a fake modal
                 // or a confirmation capable of skipping their source-owned counter/focus consumer.

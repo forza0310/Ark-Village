@@ -1074,6 +1074,12 @@ struct Validation {
             if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==96&&
                !valid_startup_world_runtime_residence_result_page(s,p))
                 return fail("residence result page: 住户/住宅定义/双计数及关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==67&&
+               !valid_startup_world_runtime_effort_result_page(s,p))
+                return fail("effort result page: 人物/旧新努力/主计数/显示及关闭待退休载荷非法");
+            if(p.kind==ref::WorldScriptPageKind::raw_page&&p.legacy_page==88&&
+               !valid_startup_world_runtime_award_result_page(s,p))
+                return fail("award result page: 人物/主计数/阶段/共享奖励及关闭待退休载荷非法");
             if (p.lifecycle == 4 || p.kind == ref::WorldScriptPageKind::scene)
                 continue;
             const auto id = p.id;

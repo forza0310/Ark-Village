@@ -1,6 +1,6 @@
 # desktop
 
-`ui/tasks/world_task_result`执行30胜利的主钟裁剪/经验/人气、独立副钟跳跃和当前职业/性别/主武器，退休旧静态胜利绘制。`ui/actors/world_residence_result`执行96住宅完成及共享奖励计划，复用人物GPU末端的富文本、clip和Mapchip2；二者只读真实栈顶，既有PC确认经Session提交，不按绘制FPS改计数/重发奖励。80候选与33期限目前只冻结纯接口，完整输入桥单列。
+`ui/tasks/world_task_result`执行30胜利的主钟裁剪/经验/人气、独立副钟跳跃和当前职业/性别/主武器。`ui/actors/world_human_ceremony`执行67努力奖励、88授勋、96住宅完成的严格Owner计划，经village进程页面适配接入正常绘制，复用人物GPU末端的富文本、clip和Mapchip2。`ui/village/world_award`负责87三页名单及PC选中/询问，不重新排序或授奖。绘制不更新计数或重发奖励，确认仍经Session提交；80候选与33期限仅冻结纯接口，完整输入桥单列。
 
 `ui/tasks/world_task_selection`共用有序图元末端；`world_task_tracking`准备scene4/raw29信息计划并记录实际按钮/箭头热区，scene5只移动镜头。热区绑定冻结任务目录、当前目录规模、选择与窗口尺寸，换代/过期/pending拒绝命中；确认仍通过Session交唯一Owner。2112dd7的31/32纯计划已冻结，完整冻结f/g与游标桥另待，不能从实时队伍补造。文字队列每帧flush清理是本产品生命周期；未实现原Image文字缓存及重复重放，不把它混成GLText退休。
 

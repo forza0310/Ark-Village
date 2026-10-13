@@ -1,7 +1,8 @@
 // Optional actual-window task callsites. Conditions are explicit, not natural unlock evidence.
 #include "../../src/desktop/scene/projection.hpp"
 #include "../../src/desktop/scene/world_canvas.hpp"
-#include "../../src/desktop/ui/actors/world_residence_result.hpp"
+#include "../../src/desktop/ui/village/world_progression.hpp"
+#include "../../src/desktop/ui/actors/world_human_ceremony.hpp"
 #include "../../src/desktop/ui/common/skin.hpp"
 #include "../../src/desktop/ui/common/world_reports.hpp"
 #include "../../src/desktop/ui/tasks/world_task_tracking.hpp"
@@ -189,10 +190,13 @@ void world_task_render_fixture() {
                     require(bool(v.skin), "Victory Owner bridge unavailable");
                     ui::draw_world_victory(v, ui::world_victory_layout(extent), skin, true);
                 } else if (top(s).legacy_page == 96) {
-                    const auto plan = ui::prepare_world_residence_result(s, top(s), skin);
+                    const auto plan = ui::prepare_world_human_ceremony(s, top(s), skin);
                     require(bool(plan), "Residence Owner bridge unavailable");
-                    ui::draw_world_residence_result(plan, ui::world_victory_layout(extent), skin,
-                                                    true);
+                    auto v = ui::world_progression_view(s, top(s));
+                    ui::prepare_world_progression(v, s, skin);
+                    require(bool(v.ceremony),
+                            "Normal management progression must bind the residence ceremony");
+                    ui::draw_world_progression(v, ui::world_progression_layout(extent, 96), skin, true);
                 } else if (s.scene.scene_state == 4 || s.scene.scene_state == 5 ||
                            top(s).legacy_page == 29) {
                     auto v = top(s).legacy_page == 29 ? ui::world_task_information_view(s, top(s))

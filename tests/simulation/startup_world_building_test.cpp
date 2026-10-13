@@ -942,6 +942,14 @@ void residence() {
           s.page_phases.at(result_page->id)==0&&s.page_secondary_counters.at(result_page->id)==0&&
           valid_startup_world_runtime_residence_result_page(s,*result_page),
           "actual residence completion binds definition25 and human1 with complete independent zero clocks");
+    const auto effort_page=std::find_if(s.scripts.pages.begin(),s.scripts.pages.end(),[](const auto &page) {
+        return page.kind==ref::WorldScriptPageKind::raw_page&&page.legacy_page==67;
+    });
+    check(effort_page!=s.scripts.pages.end()&&effort_page->legacy_f==u&&effort_page->legacy_g==std::min(u+15,100)&&
+          effort_page->lifecycle==0&&s.page_human_bindings.at(effort_page->id)==1&&
+          s.page_counters.at(effort_page->id)==0&&s.page_phases.at(effort_page->id)==0&&
+          valid_startup_world_runtime_effort_result_page(s,*effort_page),
+          "actual residence crossed-decade producer initializes67 without human menu or fabricated old effort");
     const auto pages = s.scripts.pages.size();
     const auto repeat = ref::prepare_world_facility_update(adapter.facilities.read(s),
                                                            *home.created, adapter.catalog);

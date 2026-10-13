@@ -114,10 +114,12 @@ std::optional<SteamFacilitySkinPlan> steam_facility_upgrade_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     const SteamFacilityUpgradeSkinOptions &options);
 
-// raw74普通实例两页。保留文字重载与绘制/触摸交错；不含住宅、预览和商品页。
+// raw74共用有序图元：普通实例两页、装备/植物单页及定义预览；住宅/入住另列。
 enum class SteamFacilityDetailTextRole {
     title, name, price, parameter, remaining, maximum_level, no_effects,
-    bonus_title, maintenance, no_bonus, bonus_name, bonus_value, bottom
+    bonus_title, maintenance, no_bonus, bonus_name, bonus_value, bottom,
+    equipment_count, sale_description, plant_price, plant_quality, plant_description,
+    recruitment_status
 };
 enum class SteamFacilityTextMethod { draw_string, draw_string2, text_layout };
 struct SteamFacilityDetailText {
@@ -172,14 +174,15 @@ struct SteamFacilityDetailSkinInput {
     int definition{}, mapchip{}, icon{}, level{1}, page{}, frame{}, view_y{};
     std::string name;
     bool japanese{}, english{};
-    std::array<int,4> values{}; // 实例价格/品质/魅力/维护费，只读Owner计算结果。
-    std::array<int,3> limits{};
+    std::array<int,4> values{}; // 实例四属性；definition_preview时为不加邻接的共享定义值。
+    std::array<int,3> limits{}; // 仅实例作MAX判断；预览不消费这些限值。
     int remaining{}, finger_frame{}; // SEB当前帧由表现消费者提供，不按页面frame猜帧。
     std::vector<std::array<int,2>> effects; // 原z/A的[属性,加号数]原序。
     std::vector<SteamFacilityDetailBonus> bonuses; // 初始化Y原序，包括隐藏行。
     SteamFacilityBonusCursor cursor;
     std::optional<std::array<int,2>> title_widths;
     std::optional<int> bottom_width; // 原Font.StringWidth的结果；不按汉字数估宽。
+    bool definition_preview{}; // 只支持普通布局3单页；无实例Y、箭头/MAX提示或互动底钮。
 };
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     const SteamFacilityDetailSkinInput &input);
@@ -194,4 +197,39 @@ struct SteamFacilityDetailSkinOptions {
 std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     const StartupWorldRuntimeState &state, std::uint64_t page,
     const SteamFacilityDetailSkinOptions &options);
+// 商会85→raw74定义预览的严格桥；真实parent/冻结定义/单页及退休沿现Owner契约。
+// 只支持普通布局，特殊模板拒绝；不伪造实例/邻接，不新增页面字段或重做交易。
+// preview不需要bottom_width，也不绘手形；标题两次真实测宽仍必填。
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_definition_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,
+    const SteamFacilityDetailSkinOptions &options);
+
+// raw74装备店/植物/入住单页与普通两页分开；翻译及实测宽由表现后端提供。
+struct SteamFacilitySpecialSkinInput {
+    int definition{}, mapchip{}, icon{}, frame{}, view_y{}, finger_frame{};
+    std::string name;
+    bool japanese{}, definition_preview{};
+    std::optional<int> equipment_count; // 已开放定义种类，零种合法，不是库存总数。
+    std::optional<int> applicant_count; // 入住模板仅消费资格计数，不绘人物或目录。
+    std::optional<std::string> applicant_text; // 零人/有N人的原翻译结果，普通居中文本。
+    std::optional<std::array<int,2>> plant_deltas; // 原邻接定义前两项，非经济/使用属性。
+    std::optional<std::string> plant_money_text; // YEN("G",delta0)结果，不包含源前缀'+'。
+    std::optional<std::string> sale_text; // 装备类别译文填入销售说明后的完整字符串。
+    std::optional<std::string> bottom_text; // 装备互动提示或植物实例非互动说明。
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> bottom_width; // 装备/入住实例Draw_btmMsg使用，零人也保留互动。
+};
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_special_skin(
+    const SteamFacilitySpecialSkinInput &input);
+struct SteamFacilitySpecialSkinOptions {
+    int view_y{}, finger_frame{};
+    bool japanese{};
+    std::optional<std::string> plant_money_text, sale_text, bottom_text, applicant_text;
+    std::optional<std::array<int,2>> title_widths;
+    std::optional<int> bottom_width;
+};
+// 严格真实实例或85定义预览，只投影目录状态与邻接定义，不推进/修复页面。
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_special_skin(
+    const StartupWorldRuntimeState &state,std::uint64_t page,
+    const SteamFacilitySpecialSkinOptions &options);
 } // namespace ark::simulation

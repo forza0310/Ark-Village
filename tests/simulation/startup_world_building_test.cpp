@@ -96,6 +96,75 @@ void new_world_inheritance() {
               startup_world_state_digest(running) == digest,
           "inherited system bytes cannot overwrite running world");
 }
+// 定义预览的Owner来源接线；底层各职业分组/经济公式矩阵仍由example经济套件主责。
+void definition_values() {
+    auto s=test_support::world_fixture();
+    constexpr int id=34; // 原未开放冷饮店，初始地图无实例；查询不要求可购买/可建设。
+    check(std::none_of(s.scene.world.world.facilities.begin(),s.scene.world.world.facilities.end(),
+                      [](const auto &entry){return entry.second.placement.definition_id==id;}),
+          "definition34 has no initial map instance");
+    const auto &source=s.rules->facilities.at(id).economy;
+    const auto before=startup_world_state_digest(s);
+    const auto initial=startup_world_facility_definition_values(s,id);
+    check(initial&&initial->definition_attributes==initial->instance_attributes&&
+          initial->definition_attributes[1]==source.attributes[1].first&&
+          initial->upgrade_uses==source.upgrade_uses.first&&
+          initial->construction_cost==source.construction_cost&&startup_world_state_digest(s)==before,
+          "unbuilt definition derives current shared values with zero instance modifiers and no Owner writes");
+    check(source.upgrade_uses.first>0&&source.upgrade_uses.fifth>0&&source.attributes[1].fifth>0,
+          "original cold drink definition has an upgrade and quality source");
+    s.scene.world.world.facility_uses.at(id).completed_uses=source.upgrade_uses.first;
+    const auto ready=startup_world_facility_definition_values(s,id);
+    check(ready&&ready->upgrade_ready&&s.scene.world.world.facility_uses.at(id).level==1,
+          "definition preview reads actual completed uses without applying an upgrade");
+    s.scene.world.world.facility_uses.at(id).level=5;
+    s.scripts.facilities.at(id).level=5;
+    s.scripts.facilities.at(id).improvements[1]=1;
+    const auto improved=startup_world_facility_definition_values(s,id);
+    check(improved&&improved->definition_attributes[1]==source.attributes[1].fifth+1&&
+          improved->definition_attributes==improved->instance_attributes&&!improved->upgrade_ready,
+          "definition preview reads shared level and improvements without inventing neighbours or a sixth level");
+
+    // 仅准备职业人数条件；改当前定义职业不回写缓存，也不宣称自然转职已完成。
+    for(auto &entry:s.human_presence)entry.second=0;
+    s.human_presence.at(1)=2; // 原人数规则p非零，包含已到访p2。
+    const auto farmer=std::find_if(s.rules->jobs.begin(),s.rules->jobs.end(),[](const auto &job){return job.type==0;});
+    const auto carpenter=std::find_if(s.rules->jobs.begin(),s.rules->jobs.end(),[](const auto &job){return job.type==9;});
+    check(farmer!=s.rules->jobs.end()&&carpenter!=s.rules->jobs.end(),"original jobs supply ordinary and construction groups");
+    s.scene.world.world.ai.growth.at(1).definition.current_profession=static_cast<int>(farmer-s.rules->jobs.begin());
+    const auto ordinary=startup_world_facility_definition_values(s,id);
+    s.scene.world.world.ai.growth.at(1).definition.current_profession=static_cast<int>(carpenter-s.rules->jobs.begin());
+    const auto current=startup_world_state_digest(s);
+    const auto accelerated=startup_world_facility_definition_values(s,id);
+    check(ordinary&&accelerated&&accelerated->construction_ticks<ordinary->construction_ticks&&
+          startup_world_state_digest(s)==current,
+          "definition preview counts current active job type9 and remains read-only instead of using stale counts");
+    auto neighbour_only=s;
+    for(auto &entry:neighbour_only.neighbourhood)entry.second={999,999,999};
+    const auto independent=startup_world_facility_definition_values(neighbour_only,id);
+    check(independent&&independent->definition_attributes==accelerated->definition_attributes&&
+          independent->instance_attributes==accelerated->instance_attributes,
+          "definition preview ignores even unrelated existing instance neighbourhoods");
+
+    for(int fault=0;fault<10;++fault) {
+        auto broken=s;auto rules=*s.rules;broken.rules=&rules;
+        int requested=id;
+        if(fault==0)broken.rules=nullptr;
+        if(fault==1)requested=-1;
+        if(fault==2)broken.scene.world.world.facility_uses.erase(id);
+        if(fault==3)broken.scripts.facilities.erase(id);
+        if(fault==4)broken.human_presence.erase(1);
+        if(fault==5)broken.scene.world.world.ai.growth.erase(1);
+        if(fault==6)broken.scene.world.world.ai.growth.at(1).definition.current_profession=-1;
+        if(fault==7)rules.jobs[static_cast<std::size_t>(carpenter-s.rules->jobs.begin())].type=10;
+        if(fault==8)broken.scene.world.world.facility_uses.at(id).completed_uses=-1;
+        if(fault==9)broken.scene.world.world.facility_uses.at(id).level=6;
+        const auto digest=startup_world_state_digest(broken);
+        check(!startup_world_facility_definition_values(broken,requested)&&
+              startup_world_state_digest(broken)==digest,
+              "definition query rejects missing rules/fields/growth and invalid job/use/level without throws or writes");
+    }
+}
 ref::Position empty_anchor(const StartupWorldRuntimeState &s, int definition,
                            ref::FacilityOrientation orientation = ref::FacilityOrientation::first) {
     const auto &d = s.rules->facilities.at(definition);
@@ -552,6 +621,46 @@ void details() {
     check(act_startup_world_facility_page(s, page, StartupFacilityPageAction::cancel) ==
               StartupWorldRuntimeError::invalid_page,
           "stale double close rejected");
+    // 原初始实例66向日葵，无合成数值或额外建设；植物确认与预览关闭不能混用。
+    auto plant=test_support::world_fixture();
+    const auto sunflower=source_facility(plant,66);
+    check(open_startup_world_facility_page(plant,sunflower)==StartupWorldRuntimeError::none,
+          "initial sunflower instance opens genuine single-page74");
+    const auto plant_page=plant.scripts.pages.back().id;
+    check(startup_world_facility_page_count(plant,plant.scripts.pages.back())==1,
+          "plant74 has no invented bonus page");
+    const auto plant_digest=startup_world_state_digest(plant);
+    const auto plant_draws=plant.scene.random.draws();
+    const auto outputs=plant.sound_requests.size();
+    for(int repeat=0;repeat<2;++repeat)
+        check(act_startup_world_facility_page(plant,plant_page,StartupFacilityPageAction::confirm)==
+                  StartupWorldRuntimeError::none&&startup_world_state_digest(plant)==plant_digest&&
+              plant.scene.random.draws()==plant_draws&&plant.sound_requests.size()==outputs,
+              "plant instance confirm succeeds without changing any Owner state, random or one-shot output");
+    check(act_startup_world_facility_page(plant,plant_page,StartupFacilityPageAction::cancel)==
+              StartupWorldRuntimeError::none&&plant.scripts.pages.back().lifecycle==4,
+          "plant cancel still closes the actual74 page");
+    const auto retired=prepare_startup_world_runtime(plant);
+    check(retired.candidate&&!retired.candidate->facility_page_bindings.count(plant_page)&&
+          !retired.candidate->facility_page_neighbours.count(plant_page)&&
+          !retired.candidate->page_counters.count(plant_page)&&!retired.candidate->page_phases.count(plant_page),
+          "plant cancel follows framework retirement and releases all74 payload references");
+
+    auto preview=test_support::page_fixture(85);
+    const auto commerce=preview.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(preview),"plant preview fixture initializes actual85");
+    const auto &entries=preview.commerce_page_lists.at(commerce);
+    const auto tulip=std::find(entries.begin(),entries.end(),67);
+    check(tulip!=entries.end()&&act_startup_world_commerce_page(preview,commerce,
+              StartupCommerceAction::select,static_cast<int>(tulip-entries.begin()))==StartupWorldRuntimeError::none&&
+          act_startup_world_commerce_page(preview,commerce,StartupCommerceAction::inspect)==StartupWorldRuntimeError::none,
+          "original eligible tulip67 opens real definition preview from85");
+    const auto preview_page=preview.scripts.pages.back().id;
+    const auto points=preview.village_points;
+    check(act_startup_world_facility_page(preview,preview_page,StartupFacilityPageAction::confirm)==
+              StartupWorldRuntimeError::none&&preview.scripts.pages.back().lifecycle==4&&
+          preview.village_points==points&&preview.scene.random.draws()==0,
+          "plant definition preview confirmation keeps its earlier close priority without point or random effects");
 }
 void facility_bonus_rows() {
     auto s = test_support::world_fixture();
@@ -865,14 +974,45 @@ void residence() {
     check(tick.candidate && adapter.facilities.write(s, tick.candidate->state) &&
               s.scene.world.world.facilities.at(*build.created).status == 1,
           "actual recruitment construction completes at original threshold");
+    const auto empty_candidates=startup_world_residence_candidates(s);
+    check(empty_candidates&&empty_candidates->empty(),"residence enumeration keeps legal empty candidates distinct from missing source");
     // 住户申请资格夹具：仅提高真实定义满足度到原表门槛，不补人物实例或改原表。
     s.shop_humans.at(1).satisfaction = s.rules->humans.at(1).residence_threshold;
+    const auto candidates=startup_world_residence_candidates(s);
+    check(candidates&&*candidates==std::vector<int>{1},"residence shared query uses source state/satisfaction/home qualification");
+    auto query=s;query.human_flags.at(1)|=2U;
+    check(startup_world_residence_candidates(query)==candidates&&query.scene.world.world.ai.battle.actors.empty(),
+          "residence enumeration does not filter flags or require a live actor");
+    query=s;query.shop_humans.at(2).satisfaction=query.rules->humans.at(2).residence_threshold;
+    const auto ordered=startup_world_residence_candidates(query);
+    check(ordered&&*ordered==std::vector<int>({1,2}),"residence enumeration retains definition source order");
+    for(int fault=0;fault<3;++fault) {
+        query=s;
+        if(fault==0)query.human_presence.at(1)=0;
+        if(fault==1)query.shop_humans.at(1).satisfaction=query.rules->humans.at(1).residence_threshold-1;
+        if(fault==2)query.human_homes.at(1)[2]=1;
+        const auto excluded=startup_world_residence_candidates(query);
+        check(excluded&&excluded->empty(),"residence enumeration independently applies each source qualification predicate");
+    }
     for (auto &page : s.scripts.pages)
         if (page.kind != ref::WorldScriptPageKind::scene)
             page.lifecycle = 4;
     check(open_startup_world_facility_page(s, *build.created) == StartupWorldRuntimeError::none,
           "source recruitment facility opens details74");
     const auto detail = s.scripts.pages.back().id;
+    for(int fault=0;fault<3;++fault) {
+        auto bad=s;
+        if(fault==0)bad.human_presence.erase(0);
+        if(fault==1)bad.shop_humans.erase(0);
+        if(fault==2)bad.human_homes.erase(0);
+        const auto before=startup_world_state_digest(bad);
+        check(!startup_world_residence_candidates(bad)&&
+              act_startup_world_facility_page(bad,detail,StartupFacilityPageAction::confirm)==StartupWorldRuntimeError::missing_source&&
+              startup_world_state_digest(bad)==before,"residence missing source rejects enumeration and 74-to-80 without partial page publication");
+    }
+    const auto before_query=startup_world_state_digest(s);
+    check(startup_world_residence_candidates(s)==candidates&&startup_world_state_digest(s)==before_query,
+          "residence qualification read does not refresh requests, random or page output");
     check(act_startup_world_facility_page(s, detail, StartupFacilityPageAction::confirm) ==
                   StartupWorldRuntimeError::none &&
               s.scripts.pages.back().legacy_page == 80 &&
@@ -2221,6 +2361,7 @@ int main() {
         repeat_blueprint_construction();
         progression_building_unlocks();
         new_world_inheritance();
+        definition_values();
         multi_tile_and_rollback();
         new_shop_projection();
         details();

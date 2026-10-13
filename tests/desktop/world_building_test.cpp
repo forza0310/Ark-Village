@@ -1,10 +1,10 @@
 // Presentation contracts use sparse page/definition identities and explicit minimal page caches.
 // Rule arithmetic/transactions stay in frozen building tests; this suite owns mapping and input.
-#include "../support/checks.hpp"
-#include "../support/world_fixture.hpp"
-#include "../../src/desktop/ui/facilities/world_building.hpp"
 #include "../../src/desktop/scene/world_build_placement.hpp"
 #include "../../src/desktop/scene/world_editing.hpp"
+#include "../../src/desktop/ui/facilities/world_building.hpp"
+#include "../support/checks.hpp"
+#include "../support/world_fixture.hpp"
 #include <algorithm>
 #include <utility>
 
@@ -518,7 +518,8 @@ void world_building() {
             navigation = {};
             check(!ui::world_building_input(scrolling, frame, cursor, navigation, false) &&
                       cursor.selected == 7 && cursor.first_row == 3,
-                  "Returning to page1 keeps a valid page2 cursor instead of resetting only its scroll");
+                  "Returning to page1 keeps a valid page2 cursor instead of resetting only its "
+                  "scroll");
         }
     }
     // Action gating must use current view phase/count, not assume every facility has two pages.
@@ -584,15 +585,12 @@ void world_building() {
                 minis.push_back(*image);
         const bool jumping = secondary < 20;
         check(minis.size() == 4 && minis[0].frame == (jumping ? 1 : 0) &&
-                  minis[1].frame == (jumping ? 5 : 3) &&
-                  minis[2].frame == (jumping ? 1 : 0) &&
+                  minis[1].frame == (jumping ? 5 : 3) && minis[2].frame == (jumping ? 1 : 0) &&
                   minis[3].frame == (jumping ? 4 : 2) &&
                   minis[0].position == std::array<int, 2>{52, 144} &&
-                  minis[2].position == std::array<int, 2>{188, 144} &&
-                  minis[1].position[0] == 52 && minis[3].position[0] == 188 &&
-                  minis[1].position[1] == minis[3].position[1] &&
-                  (secondary == 10 ? minis[1].position[1] < 144
-                                   : minis[1].position[1] == 144) &&
+                  minis[2].position == std::array<int, 2>{188, 144} && minis[1].position[0] == 52 &&
+                  minis[3].position[0] == 188 && minis[1].position[1] == minis[3].position[1] &&
+                  (secondary == 10 ? minis[1].position[1] < 144 : minis[1].position[1] == 144) &&
                   mapped.upgrade_skin->frame == 0 && request.frame2 == secondary,
               "Secondary clock alone drives left shadow/body then right shadow/body");
     }
@@ -638,10 +636,8 @@ void world_building() {
     {
         auto preview_state = initial_world();
         const auto offer = std::find_if(preview_state.rules->facilities.begin(),
-                                        preview_state.rules->facilities.end(), [](const auto &d) {
-                                            return (d.flags & 4) && d.unlock_rank >= 0 &&
-                                                   d.detail != 1 && d.detail != 4 && d.detail != 5;
-                                        });
+                                        preview_state.rules->facilities.end(),
+                                        [](const auto &d) { return d.id == 34; });
         check(offer != preview_state.rules->facilities.end(),
               "Published ordinary facility offer exists");
         rules::WorldScriptPage commerce;
@@ -654,6 +650,7 @@ void world_building() {
         preview_state.commerce_pages_initialized.insert(commerce.id);
         preview_state.commerce_page_lists[commerce.id] = {offer->id};
         preview_state.commerce_page_data[commerce.id] = {0, 0, 0, 0, -1, 0};
+        preview_state.page_counters[commerce.id] = 0;
         auto preview = commerce;
         preview.id = 778;
         preview.legacy_page = 74;
@@ -667,14 +664,14 @@ void world_building() {
         preview_state.scripts.facilities.at(offer->id).attributes = {411, 22, 33, 44};
         const auto preview_before = preview_state;
         view = ui::world_building_view(preview_state, preview);
-        check(
-            view.definition_preview && !view.facility && !view.cumulative_profit &&
-                view.page_count == 1 && view.phase == 0 &&
-                view.attributes == std::array<std::int64_t, 4>{411, 22, 33, 44} &&
-                !view.can_use_items && view.income == 0 && view.neighbours == 0 &&
-                !view.graphic.frames.empty(),
-            "Definition preview reads shared attributes and artwork with no instance economics or "
-            "second page");
+        check(view.definition_preview && !view.facility && !view.cumulative_profit &&
+                  view.page_count == 1 && view.phase == 0 &&
+                  view.attributes[1] == offer->economy.attributes[1].first &&
+                  view.attributes != std::array<std::int64_t, 4>{411, 22, 33, 44} &&
+                  !view.can_use_items && view.income == 0 && view.neighbours == 0 &&
+                  !view.graphic.frames.empty(),
+              "Definition preview derives actual shared quality instead of a stale cache, with "
+              "no fabricated instance economics or second page");
         input = {};
         input.enter = true;
         check(ui::world_building_input(view, layout, selection, input, false)->action ==

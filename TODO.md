@@ -20,7 +20,8 @@
 - [x] 正式8665a17计分双钟/应用恢复、18f810e新局纯皮肤及既有PC适配已接；487来源/79适配、两Debug检查修正及Release窗口通过，见[B1](docs/stages/B1-playable-prototype.md#research-80d8b8d-score-startup)。
 - [x] ea9876a商会83有序皮肤/整帧FIFO、21e4d27设置/平台纯计划及空草稿修正完成本地短检和两尺寸窗口；493来源/79适配、731素材，见[B1](docs/stages/B1-playable-prototype.md#research-ea9876a-commerce-top)。
 - [x] 正式68acd7c/a87e9b7商会85设施图纸三行目录/整帧事务、86原单件反馈及底栏防重叠已接，本地检查与两尺寸/真实窗口见[B1](docs/stages/B1-playable-prototype.md#research-68acd7c-commerce-successors)。
-- [ ] 集中接3f744f3普通定义预览/挂起父商会、c982176装备店/植物、048b282募集详情及保存生命周期分支；原91动态钟、授勋双询问Owner、跨局音量/设置存取、80住宅候选输入及完整字体/OS动态仍分开核门槛，不接Steam服务或恢复二倍速。
+- [x] 3f744f3普通定义预览/严格挂起父商会、c982176装备店/植物、048b282募集详情已接；真实共享值/商品数/植物增量/入住资格、绘后热区及两Debug/Release检查通过，保存生命周期仅登记合同，玩家政策保持。见[B1](docs/stages/B1-playable-prototype.md#research-048b282-facility-details)。
+- [ ] 接正式8e37f2d/613f45c税收90皮肤/四键Init/整帧事务及89介绍生命周期；16目标已在build准备且79适配保持，尚未落盘。原91动态钟、授勋双询问Owner、跨局音量/设置存取、80完整候选输入及完整字体/OS动态仍分开等待，不接Steam服务或恢复二倍速。
 - [x] 获批steam-month分段月96→97→98→99及三次独立冷载通过；每段6分钟/10000轮，原季度入口保持，失败观察档不作输入，见[B1](docs/stages/B1-playable-prototype.md#research-e22ed0a-human-ui)。
 
 - [x] 正式bb61d5f普通设施两页维护计划：获批四目标已导入，455来源/70适配保留，新增资源映射现有Steam属性图标；后续c6b1a5b无闭包增量，见[方案](docs/MILESTONES.md#research-bb61d5f-detail-plan)。

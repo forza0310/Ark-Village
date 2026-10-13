@@ -42,7 +42,7 @@ std::optional<std::size_t> open_products(const State &state,
             ++count;
     return count;
 }
-}
+} // namespace
 const std::vector<WorldBuildingRow> &world_building_rows(const WorldBuildingView &view, int tab) {
     return view.raw == 21 ? view.catalogs.at(std::clamp(tab, 0, 2)) : view.residents;
 }
@@ -130,8 +130,10 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
         view.title = item.name;
         view.page_count = 1;
         view.phase = state.page_phases.at(page.id);
-        const auto &attributes = state.scripts.facilities.at(id).attributes;
-        std::copy(attributes.begin(), attributes.end(), view.attributes.begin());
+        const auto values = simulation::startup_world_facility_definition_values(state, id);
+        if (!values)
+            throw std::invalid_argument("Definition preview lost its shared economy source");
+        view.attributes = values->definition_attributes;
         view.graphic =
             world_build_graphic(state, item.id, simulation::rules::FacilityOrientation::first);
         view.detail_type = detail_type(item);
@@ -155,7 +157,8 @@ WorldBuildingView world_building_view(const State &state, const Page &page) {
                 return view;
             upgrade = simulation::inspect_startup_world_facility_upgrade(state, page.id);
             if (!upgrade)
-                throw std::invalid_argument("Initialized facility upgrade has invalid source payload");
+                throw std::invalid_argument(
+                    "Initialized facility upgrade has invalid source payload");
         }
         const auto binding = state.facility_page_bindings.find(page.id);
         if (binding == state.facility_page_bindings.end())

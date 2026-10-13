@@ -5,8 +5,8 @@
 #include "../../scene/world_overlay_render.hpp"
 #include "../common/skin.hpp"
 #include "world_building.hpp"
-#include "world_facility_upgrade.hpp"
 #include "world_facility_detail.hpp"
+#include "world_facility_upgrade.hpp"
 #include <algorithm>
 #include <limits>
 #include <stdexcept>
@@ -16,12 +16,6 @@ namespace {
 void fitted(const Skin &skin, const std::string &text, Rectangle box, Color color = ink) {
     const float size = std::min(12.F, 12.F * box.width / std::max(1.F, skin.text.width(text)));
     skin.text.draw(text, box.x, box.y, color, size);
-}
-void detail_money(const Skin &skin, std::int64_t value, Rectangle box) {
-    skin.number(value, {box.x + box.width - 10, box.y + 2}, "number08.seb",
-                Sprites::Binding::steam_common);
-    skin.sprites.draw("number08.seb", 20, {box.x + box.width - 9, box.y + 2}, WHITE,
-                      Sprites::Binding::steam_common);
 }
 void detail_field(Rectangle box, Color fill, Color border) {
     DrawRectangleRec(box, fill);
@@ -55,142 +49,28 @@ void draw_facility_footer(const WorldBuildingView &view, const WorldBuildingLayo
     }
     skin.sprites.draw(sprite, 20, {x, y}, WHITE, Sprites::Binding::common, scale);
 }
-void draw_detail(const WorldBuildingView &view, const WorldBuildingLayout &layout, const Skin &skin,
-                 const WorldBuildingSelection &selection) {
-    using Type = app::WorldFacilityTemplate;
+// Home retains its existing static subset; other74 templates require the maintained plan.
+void draw_home_detail(const WorldBuildingView &view, const WorldBuildingLayout &layout,
+                      const Skin &skin) {
+    if (view.detail_type != app::WorldFacilityTemplate::home)
+        throw std::invalid_argument("Facility detail requires its measured source plan");
     const auto boxes = world_building_detail_layout(layout, view.detail_type);
-    if (view.phase == 1 && !view.definition_preview) {
-        fitted(skin, "设施加成", boxes.source_heading);
-        fitted(skin, "维护费", {boxes.maintenance.x, boxes.maintenance.y, 42, 14}, blue);
-        detail_money(skin, view.attributes[3], boxes.maintenance);
-        if (view.bonus_rows.empty()) {
-            skin.centered("没有奖励", boxes.sources, ink, 11);
-        } else {
-            // Published source positions, translated to the existing centered panel.
-            const Vector2 origin{layout.panel.x - 8, layout.panel.y - 44};
-            const int visible =
-                std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
-            const int first =
-                std::clamp(selection.first_row, 0,
-                           std::max(0, static_cast<int>(view.bonus_rows.size()) - visible));
-            for (int visible_row = 0; visible_row < visible; ++visible_row) {
-                const int source_index = first + visible_row;
-                if (source_index >= static_cast<int>(view.bonus_rows.size()))
-                    break;
-                const auto &bonus = view.bonus_rows[source_index];
-                // Scrolling changes source_index only; vertical position uses visible_row.
-                const float y = origin.y + 97 + visible_row * 19;
-                draw_world_visuals({bonus.icon}, skin.sprites, {origin.x + 26, y - 2}, 1);
-                const float name_x = origin.x + 44;
-                const float first_value_x =
-                    origin.x + (bonus.source.values.size() == 2 ? 121 : 147);
-                const float name_width = first_value_x - name_x - 2;
-                const float name_size =
-                    12 * std::min(1.F, name_width /
-                                           std::max(1.F, skin.text.width(bonus.source.name, 12)));
-                skin.text.draw(bonus.source.name, name_x, y, ink, name_size);
-                for (const auto &value : bonus.source.values) {
-                    const float x = origin.x + (value.attribute == 0   ? 121
-                                                : value.attribute == 1 ? 171
-                                                                       : 147);
-                    const float right = origin.x + (value.attribute == 0 ? 169 : 219);
-                    const float measured =
-                        skin.text.width(value.label, 12) + skin.text.width(value.text, 12);
-                    const float size = 12 * std::min(1.F, (right - x) / std::max(1.F, measured));
-                    skin.text.draw(value.label, x, y, {0, 101, 255, 255}, size);
-                    skin.text.draw(value.text, x + skin.text.width(value.label, size), y, ink,
-                                   size);
-                }
-            }
-        }
-        const int count = std::max(1, static_cast<int>(view.bonus_rows.size()));
-        const int visible =
-            std::min(5, static_cast<int>(boxes.sources.height / boxes.source_row_height));
-        const int first = std::clamp(selection.first_row, 0, std::max(0, count - visible));
-        const auto track = boxes.source_scroll;
-        DrawRectangleRec(track, {223, 234, 215, 255});
-        const float height = track.height * std::min(count, visible) / count;
-        const float y = track.y + (track.height - height) * first / std::max(1, count - visible);
-        DrawRectangleRec({track.x, y, track.width, height}, {50, 164, 234, 255});
-        skin.centered("周围设施的加成", boxes.source_footer, ink, 12);
-        return;
-    }
     if (view.category_icon)
         draw_world_visuals({*view.category_icon}, skin.sprites,
                            {layout.panel.x + 13, layout.panel.y + 22}, 1);
     fitted(skin, view.title, boxes.name, ink);
-    if (view.detail_type == Type::ordinary) {
-        fitted(skin, "价格", {boxes.price.x, boxes.price.y, 32, 14}, blue);
-        detail_money(skin, view.attributes[0], boxes.price);
-        if (!view.definition_preview && view.attributes[0] >= view.attribute_limits[0])
-            skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
-                               {boxes.price.x + 27, boxes.price.y + 3, 20, 6});
-    }
     detail_field(boxes.picture, {226, 247, 212, 255}, {184, 211, 168, 255});
-    // Steam details always use orientation0 and Mapchip2's source center, with clipping;
-    // fitting the image to its frame changed building scale and concealed tall buildings.
     const auto pieces = simulation::steam_facility_mapchip2_draws({view.mapchip, {49, 37}, 0});
     if (!pieces)
-        throw std::invalid_argument("Facility detail has invalid mapchip");
+        throw std::invalid_argument("Home detail has invalid mapchip");
     for (const auto &piece : *pieces)
         skin.sprites.draw(
             piece.sprite, piece.frame,
             {boxes.picture.x + piece.position[0], boxes.picture.y + piece.position[1]}, WHITE,
             Sprites::Binding::map, 1, -1, boxes.picture);
-    if (view.detail_type == Type::ordinary) {
-        detail_field(boxes.values, {255, 248, 214, 255}, {239, 208, 119, 255});
-        // Effects carry absolute source coordinates; translate once from panel (8,44).
-        detail_field(boxes.effects, {255, 248, 214, 255}, {239, 208, 119, 255});
-        for (const auto &effect : view.exit_effects) {
-            const Vector2 origin{layout.panel.x - 8, layout.panel.y - 44};
-            const auto &icon = effect.icon;
-            const auto &r = icon.crop;
-            skin.sprites.image(
-                "icon_param00.png", {float(r[0]), float(r[1]), float(r[2]), float(r[3])},
-                {origin.x + icon.offset[0], origin.y + icon.offset[1], float(r[2]), float(r[3])},
-                Sprites::Binding::steam_common);
-            for (const auto &plus : effect.pluses)
-                skin.sprites.draw("number08.seb", plus.frame,
-                                  {origin.x + plus.offset[0], origin.y + plus.offset[1]}, WHITE,
-                                  Sprites::Binding::steam_common);
-        }
-        constexpr const char *labels[]{"品质", "魅力"};
-        for (int row = 0; row < 2; ++row) {
-            const float y = boxes.values.y + 4 + row * 15;
-            fitted(skin, labels[row], {boxes.values.x + 6, y, 40, 14}, blue);
-            skin.number(view.attributes[row + 1], {boxes.values.x + boxes.values.width - 6, y + 1},
-                        "number08.seb", Sprites::Binding::steam_common);
-            if (!view.definition_preview &&
-                view.attributes[row + 1] >= view.attribute_limits[row + 1])
-                skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
-                                   {boxes.values.x + 39, y + 3, 20, 6});
-        }
-        skin.sprites.image("wnd_lv.png", {0, 0, 17, 10}, {boxes.level.x, boxes.level.y, 17, 10});
-        if (view.level == 5)
-            skin.sprites.image("wnd_max.png", {0, 0, 20, 6},
-                               {boxes.level.x + 22, boxes.level.y + 2, 20, 6});
-        else {
-            skin.number(view.level, {boxes.level.x + 31, boxes.level.y}, "number05.seb",
-                        Sprites::Binding::steam_common);
-            if (view.remaining_uses) {
-                fitted(skin, "距离下个等级还有", {boxes.remaining.x, boxes.remaining.y, 126, 14});
-                skin.number(*view.remaining_uses,
-                            {boxes.remaining.x + boxes.remaining.width - 16, boxes.remaining.y + 2},
-                            "number09.seb");
-                skin.text.draw("人", boxes.remaining.x + boxes.remaining.width - 13,
-                               boxes.remaining.y, ink);
-            }
-        }
-    } else {
-        const std::string label = view.detail_type == Type::equipment
-                                      ? "商品种类 " + std::to_string(view.product_count.value_or(0))
-                                  : view.detail_type == Type::recruitment ? "入住希望者"
-                                  : view.detail_type == Type::home        ? "住宅"
-                                                                          : "周围设施";
-        skin.centered(label, boxes.remaining, ink, 11);
-    }
+    skin.centered("住宅", boxes.remaining, ink, 11);
 }
-}
+} // namespace
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback) {
@@ -199,7 +79,8 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
         draw_facility_footer(view, layout, skin);
         skin.button(layout.cancel, "返回", enabled);
         if (!feedback.empty())
-            fitted(skin, feedback, {layout.body.x, layout.panel.y + 132, layout.body.width, 14}, MAROON);
+            fitted(skin, feedback, {layout.body.x, layout.panel.y + 132, layout.body.width, 14},
+                   MAROON);
         return;
     }
     if (view.raw == 81 && view.initialized) {
@@ -310,7 +191,7 @@ void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayou
                                  {50, 164, 234, 255});
             }
         } else if (view.raw == 74) {
-            draw_detail(view, layout, skin, selection);
+            draw_home_detail(view, layout, skin);
         } else {
             constexpr const char *labels[]{"价格", "品质", "魅力", "维护费"};
             for (int row = 0; row < 3; ++row) {

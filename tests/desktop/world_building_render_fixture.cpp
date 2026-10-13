@@ -330,6 +330,7 @@ void render_world_edit_fixture() {
 // Source consumers create/initialize the actual pages; no natural unlock or gameplay claim.
 void world_facility_static_render_fixture() {
     const bool magic_only = std::getenv("ARK_POT_RENDER_ONLY") != nullptr;
+    const bool detail_only = std::getenv("ARK_DETAIL_RENDER_ONLY") != nullptr;
     namespace sim = simulation;
     namespace ui = desktop::ui;
     const auto top_page = [](const auto &state) -> const sim::rules::WorldScriptPage & {
@@ -523,25 +524,24 @@ void world_facility_static_render_fixture() {
     commerce_page = top_page(preview).id;
     const auto offers = sim::inspect_startup_world_commerce_page(preview, commerce_page);
     require(offers.has_value(), "source lost facilities85 offers");
-    int equipment_index = -1;
+    int preview_index = -1;
     for (std::size_t index = 0; index < offers->entries.size(); ++index) {
         const auto definition =
             std::find_if(preview.rules->facilities.begin(), preview.rules->facilities.end(),
                          [&](const auto &d) { return d.id == offers->entries[index]; });
-        if (definition != preview.rules->facilities.end() &&
-            (definition->detail == 1 || definition->detail == 4 || definition->detail == 5)) {
-            equipment_index = static_cast<int>(index);
+        if (definition != preview.rules->facilities.end() && definition->id == 34) {
+            preview_index = static_cast<int>(index);
             break;
         }
     }
-    require(equipment_index >= 0, "supplied rank has no actual equipment offer");
+    require(preview_index >= 0, "supplied rank has no actual cold-drink blueprint offer");
     require(sim::act_startup_world_commerce_page(
-                preview, commerce_page, sim::StartupCommerceAction::select, equipment_index) ==
+                preview, commerce_page, sim::StartupCommerceAction::select, preview_index) ==
                     sim::StartupWorldRuntimeError::none &&
                 sim::act_startup_world_commerce_page(preview, commerce_page,
                                                      sim::StartupCommerceAction::inspect) ==
                     sim::StartupWorldRuntimeError::none,
-            "source cannot open real equipment definition preview");
+            "source cannot open the real unbuilt definition preview");
     const auto output = std::filesystem::path(ARK_TEST_OUTPUT) / "facility-details";
     std::filesystem::create_directories(output);
     EditFixtureWindow window;
@@ -570,7 +570,8 @@ void world_facility_static_render_fixture() {
     const auto capture = [&](const auto &state, const char *filename, bool narrow,
                              const ui::WorldBuildingView *display_override = nullptr,
                              int first_row = 0) {
-        if (magic_only && !ui::world_magic_pot_page(top_page(state)))
+        if ((magic_only && !ui::world_magic_pot_page(top_page(state))) ||
+            (detail_only && top_page(state).legacy_page != 74))
             return;
         const auto before = state;
         const desktop::Extent extent =
@@ -629,8 +630,38 @@ void world_facility_static_render_fixture() {
                                 part->value = view.bonus_rows.at(0).source.values.at(value++).text;
                         }
                 }
-                ui::draw_world_building(view, ui::world_building_layout(extent, page.legacy_page),
-                                        skin, selection, true);
+                const auto layout = ui::world_building_source_layout(
+                    view, ui::world_building_layout(extent, page.legacy_page), skin);
+                if (view.detail_skin) {
+                    const bool passive = view.definition_preview ||
+                                         view.detail_type == app::WorldFacilityTemplate::booster;
+                    require(passive ? layout.confirm.width == 0
+                                    : layout.confirm.width > 0 || view.phase == 1,
+                            "Real source74 plan publishes only its actual interactive bottom");
+                    auto pointer_selection = selection;
+                    ui::WorldBuildingInput pointer;
+                    if (passive) {
+                        const auto retired = ui::world_building_layout(extent, 74).confirm;
+                        pointer.click =
+                            Vector2{retired.x + retired.width / 2, retired.y + retired.height / 2};
+                        require(!ui::world_building_input(view, layout, pointer_selection, pointer,
+                                                          false),
+                                "Passive details reject the retired invisible confirmation box");
+                    } else if (layout.confirm.width > 0) {
+                        pointer.click = Vector2{layout.confirm.x + layout.confirm.width / 2,
+                                                layout.confirm.y + layout.confirm.height / 2};
+                        const auto intent = ui::world_building_input(
+                            view, layout, pointer_selection, pointer, false);
+                        require(intent &&
+                                    intent->action == ui::WorldBuildingAction::facility_confirm &&
+                                    intent->page == page.id,
+                                "Painted source bottom dispatches the bound facility confirmation");
+                    }
+                    if (view.page_count == 1)
+                        require(layout.previous.width == 0 && layout.next.width == 0,
+                                "Source single-page details do not publish hidden title arrows");
+                }
+                ui::draw_world_building(view, layout, skin, selection, true);
             }
             EndMode2D();
             text.flush(raster.zoom, raster.offset);
@@ -752,7 +783,107 @@ void world_facility_static_render_fixture() {
     long_rows.bonus_rows[0].source.values[1].text = "+-2147483648";
     capture(bonuses, "raw74-long-text-minimum.png", true, &long_rows);
     capture(maximum, "raw74-max.png", false);
-    capture(preview, "raw74-equipment-preview.png", false);
+    capture(preview, "raw74-ordinary-preview.png", false);
+    // Reuse this established readonly renderer batch for all newly published74 templates.
+    for (int kind = 0; kind < 3; ++kind) {
+        auto state = initial_world();
+        std::optional<std::uint64_t> identity;
+        if (kind == 2) {
+            // Recruitment24 is initially buildable, but has no initial map instance.
+            // Use its paid construction and one-call completion; do not insert a mock facility.
+            accepted(sim::begin_startup_world_build(state, 24),
+                     "Initial recruitment blueprint enters real construction");
+            const auto &map = state.scene.world.world.map;
+            for (int y = 0; y < map.height && !identity; ++y)
+                for (int x = 0; x < map.width && !identity; ++x) {
+                    const auto placed = sim::confirm_startup_world_build(
+                        state, {x, y}, sim::rules::FacilityOrientation::first);
+                    require(placed.error == sim::StartupWorldRuntimeError::none,
+                            "Recruitment placement search encountered an invalid Owner");
+                    identity = placed.created;
+                }
+            require(identity.has_value() && sim::cancel_startup_world_build(state) ==
+                                                sim::StartupWorldRuntimeError::none,
+                    "Recruitment construction finds a legal paid footprint");
+            const auto adapter = sim::startup_world_runtime_adapter();
+            const auto completed = sim::rules::prepare_world_facility_update(
+                adapter.facilities.read(state), *identity, adapter.catalog);
+            require(completed.candidate &&
+                        adapter.facilities.write(state, completed.candidate->state) &&
+                        state.scene.world.world.facilities.at(*identity).status == 1,
+                    "Recruitment completes through its actual facility consumer");
+        } else {
+            const auto facility =
+                std::find_if(state.scene.world.world.facilities.begin(),
+                             state.scene.world.world.facilities.end(), [&](const auto &entry) {
+                                 const auto &d = state.rules->facilities.at(
+                                     entry.second.placement.definition_id);
+                                 return kind == 0 ? d.detail == 1 : d.kind == 2;
+                             });
+            require(facility != state.scene.world.world.facilities.end(),
+                    "Real initial facilities include equipment and plant templates");
+            identity = facility->first;
+        }
+        require(sim::open_startup_world_facility_page(state, *identity) ==
+                    sim::StartupWorldRuntimeError::none,
+                "Source opens the actual special74 instance");
+        for (const bool narrow : {true, false}) {
+            const auto file =
+                "raw74-special" + std::to_string(kind) + (narrow ? "-minimum.png" : "-desktop.png");
+            capture(state, file.c_str(), narrow);
+        }
+        if (kind == 2) {
+            state.human_presence.at(0) =
+                1; // Explicit eligibility-only image, not earned residency.
+            state.shop_humans.at(0).satisfaction = state.rules->humans.at(0).residence_threshold;
+            state.human_homes.at(0)[2] = 0;
+            const auto candidates = sim::startup_world_residence_candidates(state);
+            require(candidates && !candidates->empty(),
+                    "Qualified recruitment image uses the real predicate");
+            capture(state, "raw74-recruitment-qualified-minimum.png", true);
+        }
+    }
+    auto definition_preview = initial_world();
+    definition_preview.scripts.user_flags |= 16U;
+    definition_preview.scripts.event_calls[97] = 1;
+    definition_preview.rank = 4; // Published offer eligibility only, not natural fourth-star proof.
+    require(sim::open_startup_world_commerce(definition_preview) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_commerce_pages(definition_preview),
+            "Definition preview batch opens its actual83");
+    const auto merchant = top_page(definition_preview).id;
+    require(sim::act_startup_world_commerce_page(definition_preview, merchant,
+                                                 sim::StartupCommerceAction::select,
+                                                 2) == sim::StartupWorldRuntimeError::none &&
+                sim::act_startup_world_commerce_page(definition_preview, merchant,
+                                                     sim::StartupCommerceAction::confirm) ==
+                    sim::StartupWorldRuntimeError::none &&
+                sim::initialize_startup_world_commerce_pages(definition_preview),
+            "Definition preview batch enters actual85");
+    const auto offers_page = top_page(definition_preview).id;
+    const auto candidates =
+        sim::inspect_startup_world_commerce_page(definition_preview, offers_page);
+    require(candidates.has_value(), "Definition preview batch has the frozen source offer list");
+    for (const int definition : {34, 30, 70, 24}) {
+        auto state = definition_preview;
+        const auto found =
+            std::find(candidates->entries.begin(), candidates->entries.end(), definition);
+        if (found == candidates->entries.end())
+            continue; // Initial opened diagrams are absent; never insert a fake offered row.
+        require(sim::act_startup_world_commerce_page(state, offers_page,
+                                                     sim::StartupCommerceAction::select,
+                                                     int(found - candidates->entries.begin())) ==
+                        sim::StartupWorldRuntimeError::none &&
+                    sim::act_startup_world_commerce_page(state, offers_page,
+                                                         sim::StartupCommerceAction::inspect) ==
+                        sim::StartupWorldRuntimeError::none,
+                "Actual85 opens its strictly bound definition preview");
+        for (const bool narrow : {true, false}) {
+            const auto file = "raw74-definition" + std::to_string(definition) +
+                              (narrow ? "-minimum.png" : "-desktop.png");
+            capture(state, file.c_str(), narrow);
+        }
+    }
     capture(items, "raw75-minimum.png", true);
     capture(items, "raw75-list.png", false);
     capture(buy_items, "raw84-items-minimum.png", true);

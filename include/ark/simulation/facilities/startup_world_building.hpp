@@ -75,6 +75,10 @@ bool valid_startup_world_runtime_residence_result_page(const StartupWorldRuntime
 // 详情只读当前共享成长/职业及实例邻接；不刷新提示、不扣款、不升级。
 std::optional<ref::FacilityEconomyValues>
 startup_world_facility_values(const StartupWorldRuntimeState &state, std::uint64_t facility);
+// raw74定义预览：读共享等级、使用次数、改善与当前在籍职业，不要求地图实例或邻接。
+// 缺共享字段或职业来源显式拒绝；查询不刷新共享缓存或任何实例。
+std::optional<ref::FacilityEconomyValues>
+startup_world_facility_definition_values(const StartupWorldRuntimeState &state, int definition);
 // raw74第二页读初始化Y的原序，不重新扫描邻接或从累计s分摊贡献。
 // 显示标签按原来源kind固定，value按原y位置取；不按规则attribute_slot重排。
 struct StartupFacilityBonusValue {
@@ -99,6 +103,10 @@ struct StartupFacilityBonusWindow {
 std::optional<StartupFacilityBonusWindow>
 startup_world_facility_bonus_window(const StartupWorldRuntimeState &state, std::uint64_t page,
                                    std::size_t first);
+// 原EnumerateMyHomeChara：全部定义原序，仅p/C/g/D2资格，不创建人物或刷新申请脚本。
+// 合法空名单与缺失目录明确分开；74只消费计数，80保留名单身份。
+std::optional<std::vector<int>>
+startup_world_residence_candidates(const StartupWorldRuntimeState &state);
 // raw80实际住户名单和替换事务；入住收费与住宅建设造价不是两笔扣款。
 StartupBuildResult act_startup_world_residence_page(StartupWorldRuntimeState &state,
                                                     std::uint64_t page, int human,

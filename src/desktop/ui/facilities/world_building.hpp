@@ -3,11 +3,11 @@
 // 2b479f6 building pages read the canonical Owner. Selection and responsive geometry are
 // desktop state; only intents cross to the simulation thread, carrying stable page/definition IDs.
 #include "../../scene/world_build_placement.hpp"
+#include "../common/layout.hpp"
 #include "ark/app/queries/world_facility_queries.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
 #include "ark/simulation/presentation/startup_world_visuals.hpp"
 #include "ark/simulation/presentation/steam_facility_skin.hpp"
-#include "../common/layout.hpp"
 #include <optional>
 #include <string>
 #include <vector>
@@ -63,8 +63,8 @@ struct WorldBuildingLayout {
     std::array<Rectangle, 3> tabs;
     float row_height{38};
 };
-// Responsive desktop positions for the published raw74 static subset. Picture dimensions
-// follow the 97x74 source region; the source image group is fitted inside this desktop region.
+// Legacy geometry retained only for the residential static subset; other74 templates
+// use the maintained ordered skin and its measured controls.
 struct WorldBuildingDetailLayout {
     Rectangle name, price, picture, level, values, effects, remaining, maintenance, sources,
         source_heading, source_footer, source_scroll;
@@ -109,6 +109,9 @@ bool world_building_page(const simulation::rules::WorldScriptPage &page);
 WorldBuildingView world_building_view(const simulation::StartupWorldRuntimeState &state,
                                       const simulation::rules::WorldScriptPage &page);
 WorldBuildingLayout world_building_layout(Extent extent, int raw = 21);
+// Replace legacy hit boxes with the measured plan's actual bottom and arrow Touch requests.
+WorldBuildingLayout world_building_source_layout(const WorldBuildingView &view,
+                                                 WorldBuildingLayout layout, const Skin &skin);
 int world_building_visible_rows(const WorldBuildingLayout &layout);
 WorldBuildingIcon world_building_icon(const WorldBuildingLayout &layout, int visible_row);
 std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView &view,
@@ -119,9 +122,9 @@ std::optional<WorldBuildingIntent> world_building_input(const WorldBuildingView 
 void draw_world_building(const WorldBuildingView &view, const WorldBuildingLayout &layout,
                          const Skin &skin, const WorldBuildingSelection &selection, bool enabled,
                          const std::string &feedback = {});
-// Only ordinary bound raw74 instances use this plan; special templates/preview retain
-// their existing contracts. This bridge never initializes pages or advances a clock.
+// Prepare ordinary/special74 instance or definition-preview plans with actual font widths.
+// Home retains its existing subset. This bridge never initializes pages or advances a clock.
 void prepare_world_building_detail(WorldBuildingView &view,
-                                    const simulation::StartupWorldRuntimeState &state,
-                                    const WorldBuildingSelection &selection, const Skin &skin);
+                                   const simulation::StartupWorldRuntimeState &state,
+                                   const WorldBuildingSelection &selection, const Skin &skin);
 } // namespace ark::desktop::ui

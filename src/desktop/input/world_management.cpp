@@ -41,6 +41,7 @@ void WorldManagement::observe(const app::WorldFrame &frame) {
         commerce_amount_.reset();
         building_ = {};
         manual_layout_.reset();
+        building_detail_paint_.reset();
         commerce_top_controls_.reset();
         commerce_facility_controls_.reset();
         commerce_facility_gesture_ = {};
@@ -79,6 +80,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     if (page_ != page.id) {
         page_ = page.id;
         manual_layout_.reset();
+        building_detail_paint_.reset();
         commerce_top_controls_.reset();
         commerce_facility_controls_.reset();
         commerce_facility_gesture_ = {};
@@ -348,7 +350,7 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
     }
     if (ui::world_building_page(page)) {
         const auto view = ui::world_building_view(state, page);
-        const auto layout = ui::world_building_layout(extent, page.legacy_page);
+        auto layout = ui::world_building_layout(extent, page.legacy_page);
         ui::WorldBuildingInput input{
             point,
             enter,
@@ -358,6 +360,19 @@ bool WorldManagement::input_page(const State &state, const Page &page, Extent ex
             IsKeyPressed(KEY_LEFT),
             IsKeyPressed(KEY_RIGHT),
             hit(mouse, layout.rows) ? -static_cast<int>(GetMouseWheelMove() * 2) : 0};
+        if (view.raw == 74 && view.detail_type != app::WorldFacilityTemplate::home) {
+            const bool fresh = building_detail_paint_ && IsWindowFocused() &&
+                               building_detail_paint_->page == page.id &&
+                               building_detail_paint_->phase == view.phase &&
+                               building_detail_paint_->mapchip == view.mapchip &&
+                               building_detail_paint_->preview == view.definition_preview &&
+                               building_detail_paint_->extent.width == extent.width &&
+                               building_detail_paint_->extent.height == extent.height;
+            if (fresh)
+                layout = building_detail_paint_->layout;
+            else
+                input.click.reset();
+        }
         const auto intent = ui::world_building_input(view, layout, building_, input, blocked);
         if (!intent)
             return true;
@@ -494,8 +509,14 @@ bool WorldManagement::draw_page(const State &state, const Page &page, Extent ext
     } else if (ui::world_building_page(page)) {
         auto view = ui::world_building_view(state, page);
         ui::prepare_world_building_detail(view, state, building_, skin);
-        ui::draw_world_building(view, ui::world_building_layout(extent, page.legacy_page), skin,
-                                building_, enabled, feedback_);
+        const auto layout = ui::world_building_source_layout(
+            view, ui::world_building_layout(extent, page.legacy_page), skin);
+        ui::draw_world_building(view, layout, skin, building_, enabled, feedback_);
+        building_detail_paint_ =
+            view.detail_skin && IsWindowFocused()
+                ? std::optional<BuildingPaint>{{page.id, view.phase, view.mapchip,
+                                                view.definition_preview, extent, layout}}
+                : std::nullopt;
     } else if (page.kind == simulation::rules::WorldScriptPageKind::raw_page &&
                page.legacy_page == 87) {
         const auto view = ui::world_award_view(state, page.id);

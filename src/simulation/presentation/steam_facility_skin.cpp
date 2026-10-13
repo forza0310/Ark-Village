@@ -368,7 +368,16 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
     if(in.definition<0||in.mapchip<0||in.icon<0||in.icon>6||in.level<1||in.level>5||
        in.page<0||in.page>1||in.frame<0||in.finger_frame<0||in.finger_frame>5||
        in.name.empty()||in.name.size()>4096||in.bonuses.size()>65536||
-       in.effects.size()>4096||!in.title_widths||!in.bottom_width||*in.bottom_width<0)return {};
+       in.effects.size()>4096||!in.title_widths||
+       (!in.definition_preview&&(!in.bottom_width||*in.bottom_width<0)))return {};
+    if(in.definition_preview) {
+        // 初始地图证据仅含开局子集；商会预览须核完整冻结设施目录。
+        const auto &definitions=startup_world_rules().facilities;
+        const auto d=std::find_if(definitions.begin(),definitions.end(),[&](const auto &v){return v.id==in.definition;});
+        if(d==definitions.end()||d->kind==2||d->kind==12||d->detail==1||d->detail==4||
+           d->detail==5||d->detail==6||in.page!=0||!in.bonuses.empty()||
+           in.cursor.selection!=0||in.cursor.first!=0)return {};
+    }
     const auto cursor=steam_facility_bonus_cursor(static_cast<int>(in.bonuses.size()),in.cursor,false,false);
     if(!cursor)return {};
     const auto &art=startup_evidence().displays;
@@ -385,7 +394,8 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
         if(e[1]>0)budget+=static_cast<std::size_t>(e[1]);
         if(budget>4096)return {}; // 维护短寿命输出预算，非原加号或效果规则上限。
     }
-    SteamStartupWindow window{220,168,0,0,SteamStartupTextRole::slot_title,in.page+1};
+    SteamStartupWindow window{220,168,0,0,in.definition_preview?SteamStartupTextRole::message_title:
+        SteamStartupTextRole::slot_title,in.definition_preview?0:in.page+1};
     const auto frame=steam_startup_window_skin(window,in.view_y,in.title_widths);
     const auto box=steam_startup_box_skin({17,74,219,184},in.view_y);
     if(!frame||!box)return {};
@@ -404,7 +414,7 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
                     i->offset,i->frame,i->sprite<0?std::optional<std::array<int,4>>(i->crop):std::nullopt});
             } else if(const auto *t=std::get_if<SteamStartupText>(&v)) {
                 if(!t->rgb)return false;
-                label(DR::title,in.page+1,{},static_cast<int>(t->rectangle[0]),
+                label(DR::title,in.definition_preview?0:in.page+1,{},static_cast<int>(t->rectangle[0]),
                       static_cast<int>(t->rectangle[1]),0,0,t->anchor,0,TM::draw_string,*t->rgb);
             }
         }
@@ -420,15 +430,17 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
         draw(StartupSkinRect{{x,y,w,h},color,outline});
     };
     if(!frame_ops(*frame)||!frame_ops(*box))return {};
-    const int k=(in.frame%16)/8;
-    out.operations.emplace_back(SteamFacilityArrowTouch{{26-3*k,55},3,16});
-    out.operations.emplace_back(SteamFacilityArrowTouch{{214+3*k,55},0,18});
+    if(!in.definition_preview) {
+        const int k=(in.frame%16)/8;
+        out.operations.emplace_back(SteamFacilityArrowTouch{{26-3*k,55},3,16});
+        out.operations.emplace_back(SteamFacilityArrowTouch{{214+3*k,55},0,18});
+    }
     if(in.page==0) {
         img(Asset::facility_icon,21,66,0,std::array<int,4>{16*in.icon,0,16,16});
         label(DR::name,in.definition,in.name,41,69,in.japanese?0:85,in.japanese?0:11,
               in.japanese?1:32,in.japanese?0:11,in.japanese?TM::draw_string:TM::text_layout);
         label(DR::price,0,{},in.japanese?136:133,in.japanese?69:70,0,0,{},in.japanese?0:10,TM::draw_string,blue);
-        if(in.values[0]>=in.limits[0])img(Asset::maximum,160,72,0,std::array<int,4>{0,0,20,6});
+        if(!in.definition_preview&&in.values[0]>=in.limits[0])img(Asset::maximum,160,72,0,std::array<int,4>{0,0,20,6});
         num(SteamFacilityNumberKind::money,Asset::number08,in.values[0],223,70,0,0);
         rectangle(23,88,98,75,{181,219,166},true);
         rectangle(24,89,96,73,{219,249,207},false);
@@ -445,7 +457,7 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
         for(int slot=1;slot<3;++slot) {
             const int y=93+15*(slot-1);
             label(DR::parameter,slot,{},in.japanese?136:130,y+(in.japanese?0:2),0,0,{},in.japanese?0:8,TM::draw_string,blue);
-            if(in.values[slot]>=in.limits[slot])img(Asset::maximum,160,y+3,0,std::array<int,4>{0,0,20,6});
+            if(!in.definition_preview&&in.values[slot]>=in.limits[slot])img(Asset::maximum,160,y+3,0,std::array<int,4>{0,0,20,6});
             num(SteamFacilityNumberKind::number,Asset::number08,in.values[slot],in.japanese?205:207,y,4,slot);
         }
         for(std::size_t i=0;i<in.effects.size();++i) {
@@ -482,6 +494,10 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
             }
         }
         out.operations.emplace_back(SteamFacilityScrollRequest{{221,85,3,110},static_cast<int>(in.bonuses.size()),5,0x20000,{3,20,0,0}});
+    }
+    if(in.definition_preview) {
+        out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+        return out;
     }
     const int width=std::min(*in.bottom_width,200)+16,left=120-width/2;
     if(in.page==0) {
@@ -546,5 +562,163 @@ std::optional<SteamFacilityDetailSkinPlan> steam_facility_detail_skin(
         in.bonuses.push_back(std::move(row));
     }
     return steam_facility_detail_skin(in);
+}
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_definition_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamFacilityDetailSkinOptions &o) {
+    const auto p=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    if(!s.rules||p==s.scripts.pages.rend()||p->id!=id||p->kind!=ref::WorldScriptPageKind::raw_page||
+       p->legacy_g!=1||!valid_startup_world_facility_page(s,*p)||startup_world_facility_page_count(s,*p)!=1)return {};
+    const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==p->legacy_f;});
+    const auto use=s.scene.world.world.facility_uses.find(p->legacy_f);
+    if(d==s.rules->facilities.end()||d->kind==2||d->kind==12||d->detail==1||d->detail==4||
+       d->detail==5||d->detail==6||use==s.scene.world.world.facility_uses.end()||
+       use->second.completed_uses<0||d->exit_effects.size()>4096)return {};
+    const auto values=startup_world_facility_definition_values(s,d->id);
+    if(!values||!fits(values->upgrade_uses))return {};
+    SteamFacilityDetailSkinInput in;
+    in.definition=d->id;in.mapchip=d->display_id;in.icon=d->legacy_icon;in.name=d->name;
+    in.level=use->second.level;in.page=0;in.frame=s.page_counters.find(id)->second;
+    in.view_y=o.view_y;in.japanese=o.japanese;in.english=o.english;in.title_widths=o.title_widths;
+    in.definition_preview=true;
+    for(int slot=0;slot<4;++slot) {
+        if(!fits(values->definition_attributes[slot]))return {};
+        in.values[slot]=static_cast<int>(values->definition_attributes[slot]);
+    }
+    const auto remaining=values->upgrade_uses-static_cast<std::int64_t>(use->second.completed_uses);
+    if(!fits(remaining))return {};
+    in.remaining=static_cast<int>(remaining);
+    for(const auto &effect:d->exit_effects)in.effects.push_back({effect.attribute_index,effect.delta});
+    return steam_facility_detail_skin(in);
+}
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_special_skin(
+    const SteamFacilitySpecialSkinInput &in) {
+    using DR=SteamFacilityDetailTextRole;using TM=SteamFacilityTextMethod;
+    const auto &definitions=startup_world_rules().facilities;
+    const auto d=std::find_if(definitions.begin(),definitions.end(),[&](const auto &v){return v.id==in.definition;});
+    if(d==definitions.end()||d->kind==12)return {};
+    const bool equipment=d->detail==1||d->detail==4||d->detail==5;
+    const bool recruitment=!equipment&&d->detail==6;
+    const bool plant=!equipment&&!recruitment&&d->kind==2;
+    const auto text_ok=[](const std::optional<std::string> &text) {
+        return text&&!text->empty()&&text->size()<=4096;
+    };
+    if((!equipment&&!plant&&!recruitment)||in.mapchip!=d->display_id||in.icon<0||in.icon>6||
+       in.name.empty()||in.name.size()>4096||in.frame<0||in.finger_frame<0||in.finger_frame>5||
+       !in.title_widths)return {};
+    if(equipment) {
+        if(!in.equipment_count||*in.equipment_count<0||!text_ok(in.sale_text)||
+           in.plant_deltas||in.plant_money_text||in.applicant_count||in.applicant_text||
+           (!in.definition_preview&&(!text_ok(in.bottom_text)||!in.bottom_width||*in.bottom_width<0)))return {};
+    } else if(recruitment) {
+        if(!in.applicant_count||*in.applicant_count<0||!text_ok(in.applicant_text)||
+           in.equipment_count||in.sale_text||in.plant_deltas||in.plant_money_text||
+           (!in.definition_preview&&(!text_ok(in.bottom_text)||!in.bottom_width||*in.bottom_width<0)))return {};
+    } else if(in.equipment_count||in.sale_text||in.applicant_count||in.applicant_text||
+              !in.plant_deltas||!text_ok(in.plant_money_text)||(!in.definition_preview&&!text_ok(in.bottom_text)))return {};
+    const auto frame=steam_startup_window_skin({220,168,0,0,SteamStartupTextRole::message_title,0},
+        in.view_y,in.title_widths);
+    const auto box=steam_startup_box_skin({17,74,219,184},in.view_y);
+    if(!frame||!box)return {};
+    SteamFacilityDetailSkinPlan out;
+    const auto draw=[&](auto value){out.operations.emplace_back(SteamFacilityDraw{value});};
+    const auto label=[&](DR role,int arg,std::string value,int x,int y,int w,int h,
+                         std::optional<int> anchor,int size,TM method,std::array<int,3> rgb=black) {
+        out.operations.emplace_back(SteamFacilityDetailText{role,arg,std::move(value),{x,y,w,h},anchor,size,method,rgb});
+    };
+    const auto frame_ops=[&](const SteamStartupFramePlan &parts) {
+        for(const auto &v:parts.draws) {
+            if(const auto *r=std::get_if<StartupSkinRect>(&v))draw(*r);
+            else if(const auto *i=std::get_if<StartupSkinDraw>(&v)) {
+                if(i->image!=28&&i->image!=29&&i->image!=30)return false;
+                draw(SteamFacilityImage{i->image==28?Asset::wood:i->image==29?Asset::title_bar:Asset::corner,
+                    i->offset,i->frame,i->sprite<0?std::optional<std::array<int,4>>(i->crop):std::nullopt});
+            } else if(const auto *t=std::get_if<SteamStartupText>(&v)) {
+                if(!t->rgb)return false;
+                label(DR::title,0,{},static_cast<int>(t->rectangle[0]),static_cast<int>(t->rectangle[1]),
+                    0,0,t->anchor,0,TM::draw_string,*t->rgb);
+            }
+        }
+        return true;
+    };
+    if(!frame_ops(*frame)||!frame_ops(*box))return {};
+    draw(SteamFacilityImage{Asset::facility_icon,{21,66},0,std::array<int,4>{16*in.icon,0,16,16}});
+    label(DR::name,in.definition,in.name,41,69,in.japanese?0:85,in.japanese?0:11,
+        in.japanese?1:32,in.japanese?0:11,in.japanese?TM::draw_string:TM::text_layout);
+    if(equipment) {
+        label(DR::equipment_count,0,{},140,69,0,0,{},0,TM::draw_string,blue);
+        draw(SteamFacilityNumber{SteamFacilityNumberKind::number,Asset::number08,*in.equipment_count,{214,70},0,4,-1});
+    }
+    draw(StartupSkinRect{{71,88,98,75},{181,219,166},true});
+    draw(StartupSkinRect{{72,89,96,73},{219,249,207},false});
+    draw(SteamFacilityClip{SteamFacilityClipKind::push_intersect,{71,88,98,75}});
+    draw(SteamFacilityMapchip2{in.mapchip,{120,125},0});
+    draw(SteamFacilityClip{SteamFacilityClipKind::pop,{}});
+    if(equipment)label(DR::sale_description,d->detail,*in.sale_text,120,172,0,0,2,0,TM::draw_string);
+    else if(recruitment)label(DR::recruitment_status,*in.applicant_count,*in.applicant_text,120,172,0,0,2,0,TM::draw_string);
+    else {
+        const int size=in.japanese?11:10,y=in.japanese?172:173;
+        label(DR::plant_price,0,{},in.japanese?54:78,y,0,0,in.japanese?std::optional<int>{}:4,size,TM::draw_string,blue);
+        label(DR::plant_price,1,"+"+*in.plant_money_text,in.japanese?118:82,y,0,0,in.japanese?4:1,size,TM::draw_string);
+        label(DR::plant_quality,0,{},in.japanese?134:158,y,0,0,in.japanese?std::optional<int>{}:4,size,TM::draw_string,blue);
+        label(DR::plant_quality,1,"+"+std::to_string((*in.plant_deltas)[1]),in.japanese?187:162,y,0,0,in.japanese?4:1,size,TM::draw_string);
+    }
+    if(in.definition_preview)out.operations.emplace_back(SteamStartupTouch{2,0,{},{},2});
+    else if(equipment||recruitment) {
+        const int width=std::min(*in.bottom_width,200)+16,left=120-width/2;
+        draw(StartupSkinRect{{left,197,width,16},{255,153,55},false});
+        out.operations.emplace_back(SteamStartupTouch{4,20,std::array<int,4>{left-20,177,width+40,56},{},0});
+        label(DR::bottom,0,*in.bottom_text,left,197,width,16,34,0,TM::text_layout);
+        draw(SteamFacilityImage{Asset::finger,{left-4,206},in.finger_frame,{}});
+    } else label(DR::plant_description,0,*in.bottom_text,120,199,0,0,2,0,TM::draw_string);
+    return out;
+}
+std::optional<SteamFacilityDetailSkinPlan> steam_facility_special_skin(
+    const StartupWorldRuntimeState &s,std::uint64_t id,const SteamFacilitySpecialSkinOptions &o) {
+    const auto p=std::find_if(s.scripts.pages.rbegin(),s.scripts.pages.rend(),[](const auto &v){return v.lifecycle!=4;});
+    if(!s.rules||p==s.scripts.pages.rend()||p->id!=id||p->kind!=ref::WorldScriptPageKind::raw_page||
+       (p->legacy_g!=0&&p->legacy_g!=1)||!valid_startup_world_facility_page(s,*p)||
+       startup_world_facility_page_count(s,*p)!=1)return {};
+    const auto d=std::find_if(s.rules->facilities.begin(),s.rules->facilities.end(),[&](const auto &v){return v.id==p->legacy_f;});
+    if(d==s.rules->facilities.end()||d->kind==12)return {};
+    const bool equipment=d->detail==1||d->detail==4||d->detail==5;
+    const bool recruitment=!equipment&&d->detail==6;
+    const bool plant=!equipment&&!recruitment&&d->kind==2;
+    if(!equipment&&!plant&&!recruitment)return {};
+    if(p->legacy_g==0) {
+        const auto neighbours=s.facility_page_neighbours.find(id);
+        if(neighbours==s.facility_page_neighbours.end()||neighbours->second.size()>65536||
+           !startup_world_facility_bonus_rows(s,id))return {};
+    }
+    SteamFacilitySpecialSkinInput in;
+    in.definition=d->id;in.mapchip=d->display_id;in.icon=d->legacy_icon;in.name=d->name;
+    in.frame=s.page_counters.find(id)->second;in.definition_preview=p->legacy_g==1;
+    in.view_y=o.view_y;in.finger_frame=o.finger_frame;in.japanese=o.japanese;
+    in.plant_money_text=o.plant_money_text;in.sale_text=o.sale_text;in.bottom_text=o.bottom_text;
+    in.applicant_text=o.applicant_text;
+    in.title_widths=o.title_widths;in.bottom_width=o.bottom_width;
+    if(equipment) {
+        const int kind=d->detail==1?1:d->detail==4?2:3;
+        int count=0;std::vector<int> seen;
+        for(const auto &e:s.rules->equipment)if(e.shop.kind==kind) {
+            const auto c=s.catalog.find({kind,e.shop.id});
+            if(e.shop.id<0||std::find(seen.begin(),seen.end(),e.shop.id)!=seen.end()||c==s.catalog.end()||
+               c->second.status<0||c->second.status>2)return {};
+            seen.push_back(e.shop.id);
+            if(c->second.status!=0) {
+                if(count==std::numeric_limits<int>::max())return {};
+                ++count;
+            }
+        }
+        if(seen.empty())return {}; // 缺定义源与合法全部未开放不同。
+        in.equipment_count=count;
+    } else if(recruitment) {
+        const auto candidates=startup_world_residence_candidates(s);
+        if(!candidates||candidates->size()>static_cast<std::size_t>(std::numeric_limits<int>::max()))return {};
+        in.applicant_count=static_cast<int>(candidates->size());
+    } else {
+        if(d->neighbour_effects.size()<2||!fits(d->neighbour_effects[0].delta)||!fits(d->neighbour_effects[1].delta))return {};
+        in.plant_deltas=std::array<int,2>{static_cast<int>(d->neighbour_effects[0].delta),static_cast<int>(d->neighbour_effects[1].delta)};
+    }
+    return steam_facility_special_skin(in);
 }
 } // namespace ark::simulation

@@ -3,6 +3,7 @@
 #include "ark/simulation/presentation/steam_facility_reputation_skin.hpp"
 #include "ark/simulation/presentation/steam_facility_effect_skin.hpp"
 #include "ark/simulation/facilities/startup_world_facility_catalog.hpp"
+#include "ark/simulation/facilities/startup_world_commerce.hpp"
 #include "ark/simulation/world/startup.hpp"
 #include "ark/simulation/map/startup_world_projection.hpp"
 #include "ark/simulation/facilities/startup_world_building.hpp"
@@ -540,6 +541,58 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     });
     check(buttons==1&&detail_labels(*details,DR::bottom)[0].rectangle==std::array<int,4>{88,197,64,16},
           "底部使用道具按实测宽+16，不把200当最终宽");
+    // 普通定义预览复用第一页内容，但不能用无实例载荷伪造两页/加成/道具按钮。
+    auto preview=detail;preview.definition_preview=true;preview.bottom_width.reset();preview.limits={0,0,0};
+    const auto preview_images=[](const SteamFacilityDetailSkinPlan &p,SteamFacilityAsset asset) {
+        int count=0;for(const auto &op:p.operations)if(const auto *d=std::get_if<SteamFacilityDraw>(&op))
+            if(const auto *image=std::get_if<SteamFacilityImage>(d))if(image->asset==asset)++count;
+        return count;
+    };
+    for(bool japanese:{false,true}) {
+        preview.japanese=japanese;const auto plan=steam_facility_detail_skin(preview);
+        check(plan&&plan->soft_labels==std::array<int,2>{0,2},"74普通定义预览无需无底钮测宽，左空右返回保持");
+        const auto title=detail_labels(*plan,DR::title);const auto name=detail_labels(*plan,DR::name);
+        check(title.size()==2&&title[0].argument==0&&title[1].argument==0&&
+            name.size()==1&&name[0].value=="咖啡厅"&&name[0].font_size==(japanese?0:11)&&
+            detail_labels(*plan,DR::bottom).empty()&&detail_labels(*plan,DR::bonus_title).empty(),
+            "74预览纯标题没有/2；保留源两语言名称，不显示实例邻接页或使用道具提示");
+        check(std::none_of(plan->operations.begin(),plan->operations.end(),[](const auto &op) {
+            return std::holds_alternative<SteamFacilityArrowTouch>(op)||std::holds_alternative<SteamFacilityScrollRequest>(op);
+        })&&preview_images(*plan,SteamFacilityAsset::maximum)==0&&preview_images(*plan,SteamFacilityAsset::finger)==0,
+            "74预览不画双箭头/实例MAX/手形，不能用0限值补出MAX");
+        const auto *confirm=std::get_if<SteamStartupTouch>(&plan->operations.back());
+        check(confirm&&confirm->component==2&&confirm->option==2&&!confirm->rectangle&&
+            std::count_if(plan->operations.begin(),plan->operations.end(),[](const auto &op){return std::holds_alternative<SteamStartupTouch>(op);})==1,
+            "74预览末仅原Touch2 option2，无猜测矩形或购买/使用道具Touch4");
+        std::vector<SteamFacilityNumber> numbers;std::vector<SteamFacilityMapchip2> mapchips;
+        for(const auto &op:plan->operations)if(const auto *draw=std::get_if<SteamFacilityDraw>(&op)) {
+            if(const auto *number=std::get_if<SteamFacilityNumber>(draw))numbers.push_back(*number);
+            if(const auto *map=std::get_if<SteamFacilityMapchip2>(draw))mapchips.push_back(*map);
+        }
+        check(numbers.size()==5&&numbers[0].value==490&&numbers[1].value==1&&numbers[2].value==21&&
+            numbers[3].value==25&&numbers[4].value==18&&mapchips.size()==1&&mapchips[0].mapchip==65&&
+            mapchips[0].position==std::array<int,2>{72,125}&&mapchips[0].orientation==0&&
+            preview_images(*plan,SteamFacilityAsset::number08)==4,
+            "74预览保留显式定义价/品质/魅力、共享等级/剩余及四个效果点，不从实例或邻接再计算");
+    }
+    preview.level=5;const auto max_preview=steam_facility_detail_skin(preview);
+    check(max_preview&&preview_images(*max_preview,SteamFacilityAsset::maximum)==1&&
+        detail_labels(*max_preview,DR::maximum_level).size()==1&&detail_labels(*max_preview,DR::remaining).empty(),
+        "74预览保留共享最高等级标记，区别于被禁用的三属性实例MAX");
+    preview.level=1;
+    for(int fault=0;fault<4;++fault) {
+        auto bad=preview;
+        if(fault==0)bad.page=1;
+        if(fault==1)bad.bonuses.push_back({71,0,6,2,"槙树",{20,25}});
+        if(fault==2)bad.cursor.first=1;
+        if(fault==3)bad.title_widths.reset();
+        check(!steam_facility_detail_skin(bad),"74定义预览拒第二页/假邻接/孤立游标/缺标题测宽");
+    }
+    for(const auto &definition:startup_world_rules().facilities)
+        if(definition.kind==2||definition.kind==12||definition.detail==1||definition.detail==4||definition.detail==5||definition.detail==6) {
+            auto bad=preview;bad.definition=definition.id;bad.mapchip=definition.display_id;
+            check(!steam_facility_detail_skin(bad),"74本批明确拒特殊模板，不借普通布局伪造住宅/装备/入住/植物");
+        }
     detail.page=1;details=steam_facility_detail_skin(detail);
     check(details&&detail_labels(*details,DR::no_bonus).size()==1&&detail_labels(*details,DR::name).empty()&&
           std::count_if(details->operations.begin(),details->operations.end(),[](const auto &v){return std::holds_alternative<SteamFacilityScrollRequest>(v);})==1,
@@ -634,6 +687,214 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
         const auto diagnostic="74拒绝场景"+std::to_string(fault)+"：隐藏坏载荷/缺测宽/越界选择/输出或坐标超限";
         check(!steam_facility_detail_skin(bad),diagnostic.c_str());
     }
+    // 特殊74仅装备/植物；源坐标独立断言，不复算库存、经济或邻接规则。
+    const auto special_source=[](int definition) -> const StartupDefinition & {
+        const auto &definitions=startup_world_rules().facilities;
+        const auto d=std::find_if(definitions.begin(),definitions.end(),[&](const auto &v){return v.id==definition;});
+        if(d==definitions.end())throw std::runtime_error("特殊74缺冻结定义");
+        return *d;
+    };
+    for(const int definition:{30,31,32,66})for(const bool japanese:{false,true})
+        for(const bool is_preview:{false,true}) {
+            const auto &source=special_source(definition);
+            SteamFacilitySpecialSkinInput in;in.definition=definition;in.mapchip=source.display_id;
+            in.icon=source.legacy_icon;in.name=source.name;in.japanese=japanese;in.definition_preview=is_preview;
+            in.title_widths=std::array<int,2>{48,50};
+            if(definition==66) {
+                in.plant_deltas=std::array<int,2>{1234,-7};in.plant_money_text="1,234G";
+                if(!is_preview)in.bottom_text="会给周围带来好的影响";
+            } else {
+                in.equipment_count=0;in.sale_text="类别出售中";
+                if(!is_preview){in.bottom_text="查看商品";in.bottom_width=48;}
+            }
+            const auto plan=steam_facility_special_skin(in);
+            check(plan&&plan->soft_labels==std::array<int,2>{0,2},"特殊74两语言/实例/预览均单页左空右返回，装备零种合法");
+            const auto title=detail_labels(*plan,DR::title),names=detail_labels(*plan,DR::name);
+            check(title.size()==2&&title[0].argument==0&&names.size()==1&&
+                names[0].rectangle==std::array<int,4>{41,69,japanese?0:85,japanese?0:11}&&
+                detail_labels(*plan,DR::parameter).empty()&&detail_labels(*plan,DR::remaining).empty()&&
+                preview_images(*plan,A::level_label)==0&&preview_images(*plan,A::maximum)==0,
+                "特殊标题无/2，名称沿两语言；无普通数值面板/Lv/MAX/剩余");
+            int maps=0,clips=0,rectangles=0,interactive=0,preview_touches=0,numbers=0;
+            for(const auto &op:plan->operations) {
+                if(const auto *draw=std::get_if<SteamFacilityDraw>(&op)) {
+                    if(const auto *map=std::get_if<SteamFacilityMapchip2>(draw)) {
+                        ++maps;check(map->position==std::array<int,2>{120,125}&&map->orientation==0,"特殊Mapchip2图居中方向0");
+                    }
+                    if(const auto *clip=std::get_if<SteamFacilityClip>(draw)) {
+                        ++clips;if(clip->kind==SteamFacilityClipKind::push_intersect)
+                            check(clip->rectangle==std::array<int,4>{71,88,98,75},"特殊大图独立居中clip");
+                    }
+                    if(const auto *r=std::get_if<StartupSkinRect>(draw))if(r->rect==std::array<int,4>{71,88,98,75})++rectangles;
+                    if(const auto *number=std::get_if<SteamFacilityNumber>(draw)) {
+                        ++numbers;check(definition!=66&&number->value==0&&number->asset==A::number08&&
+                            number->position==std::array<int,2>{214,70}&&number->anchor==4,"装备种类用SEB15零数字右锚，不是库存");
+                    }
+                }
+                if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                    if(touch->component==4) {
+                        ++interactive;check(touch->value==20&&touch->rectangle==std::array<int,4>{68,177,104,56},"装备互动提示原Touch4边距");
+                    }
+                    if(touch->component==2) {++preview_touches;check(!touch->rectangle&&touch->option==2,"特殊预览仅源无坐标Touch2");}
+                }
+                check(!std::holds_alternative<SteamFacilityArrowTouch>(op)&&!std::holds_alternative<SteamFacilityScrollRequest>(op),
+                    "特殊不借普通双箭头/邻接滚动");
+            }
+            check(maps==1&&clips==2&&rectangles==1&&numbers==(definition==66?0:1)&&
+                interactive==(!is_preview&&definition!=66?1:0)&&preview_touches==(is_preview?1:0)&&
+                preview_images(*plan,A::finger)==(!is_preview&&definition!=66?1:0),"特殊输出规模与互动归属明确");
+            if(definition==66) {
+                const auto price=detail_labels(*plan,DR::plant_price),quality=detail_labels(*plan,DR::plant_quality);
+                check(price.size()==2&&quality.size()==2&&price[0].rectangle[0]==(japanese?54:78)&&
+                    price[1].rectangle[0]==(japanese?118:82)&&quality[0].rectangle[0]==(japanese?134:158)&&
+                    quality[1].rectangle[0]==(japanese?187:162)&&price[1].value=="+1,234G"&&quality[1].value=="+-7"&&
+                    price[1].anchor==(japanese?4:1)&&price[1].font_size==(japanese?11:10)&&
+                    detail_labels(*plan,DR::plant_description).size()==(is_preview?0U:1U)&&
+                    detail_labels(*plan,DR::bottom).empty(),"Steam植物语言锚点/显式货币/邻接品质signed串；实例底文没有互动按钮");
+                auto bad=in;bad.plant_money_text.reset();check(!steam_facility_special_skin(bad),"植物缺后端货币串显式拒绝，不猜G格式");
+            } else {
+                const auto sale=detail_labels(*plan,DR::sale_description);
+                check(sale.size()==1&&sale[0].value=="类别出售中"&&sale[0].rectangle[0]==120&&sale[0].rectangle[1]==172&&
+                    sale[0].anchor==2&&detail_labels(*plan,DR::bottom).size()==(is_preview?0U:1U),"销售说明始终存在，预览仅跳过实例互动底钮");
+                auto bad=in;bad.sale_text.reset();check(!steam_facility_special_skin(bad),"装备缺销售译文拒绝，不猜类别格式");
+            }
+            auto bad=in;bad.title_widths.reset();check(!steam_facility_special_skin(bad),"特殊缺标题实测宽拒绝");
+            bad=in;bad.definition=34;check(!steam_facility_special_skin(bad),"特殊API拒普通设施，避免另建数值皮肤");
+            bad=in;bad.bottom_text=std::string(4097,'x');if(!is_preview)
+                check(!steam_facility_special_skin(bad),"特殊实例输出文本预算拒超限，不累计字符串");
+        }
+    const auto &recruitment_source=special_source(24);
+    for(const int applicants:{0,2})for(const bool japanese:{false,true})for(const bool is_preview:{false,true}) {
+        SteamFacilitySpecialSkinInput in;in.definition=24;in.mapchip=recruitment_source.display_id;
+        in.icon=recruitment_source.legacy_icon;in.name=recruitment_source.name;
+        in.japanese=japanese;in.definition_preview=is_preview;in.title_widths=std::array<int,2>{48,50};
+        in.applicant_count=applicants;in.applicant_text=applicants?"现在有2人希望入住":"现在没有希望入住的人";
+        if(!is_preview){in.bottom_text="入住申请者";in.bottom_width=60;}
+        // 定义24原初p2；preview这里只认证静态绘制分支，不伪造85中的未开放资格。
+        const auto plan=steam_facility_special_skin(in);
+        check(plan.has_value(),"入住74零/多人数及两语言静态模板；预览条件绘制不认证自然入口");
+        const auto status=detail_labels(*plan,DR::recruitment_status);
+        check(status.size()==1&&status[0].argument==applicants&&status[0].value==*in.applicant_text&&
+            status[0].rectangle==std::array<int,4>{120,172,0,0}&&status[0].anchor==2&&status[0].font_size==0&&
+            status[0].method==SteamFacilityTextMethod::draw_string&&status[0].rgb==std::array<int,3>{92,51,31}&&
+            detail_labels(*plan,DR::equipment_count).empty()&&detail_labels(*plan,DR::plant_price).empty()&&
+            detail_labels(*plan,DR::parameter).empty(),"入住仅计数译文居中普通棕字，不借种类/数值/植物或人物布局");
+        int touch4=0,touch2=0,numbers=0;
+        for(const auto &op:plan->operations) {
+            if(const auto *draw=std::get_if<SteamFacilityDraw>(&op))numbers+=std::holds_alternative<SteamFacilityNumber>(*draw);
+            if(const auto *touch=std::get_if<SteamStartupTouch>(&op)) {
+                if(touch->component==4){++touch4;check(touch->value==20&&touch->rectangle==std::array<int,4>{62,177,116,56},"入住底钮真实测宽及原Touch4边距");}
+                if(touch->component==2){++touch2;check(!touch->rectangle&&touch->option==2,"入住静态预览末Touch2不猜坐标");}
+            }
+        }
+        check(numbers==0&&touch4==(is_preview?0:1)&&touch2==(is_preview?1:0)&&
+            preview_images(*plan,A::finger)==(is_preview?0:1)&&detail_labels(*plan,DR::bottom).size()==(is_preview?0U:1U),
+            "入住零人也保留实例底钮/手形，不隐藏或禁用确认；preview跳互动");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=in;
+            if(fault==0)bad.applicant_count.reset();
+            if(fault==1)bad.applicant_count=-1;
+            if(fault==2)bad.applicant_text.reset();
+            if(fault==3)bad.equipment_count=0;
+            if(fault==4)bad.plant_deltas=std::array<int,2>{0,0};
+            check(!steam_facility_special_skin(bad),"入住拒缺/负人数、缺译文或混入其他模板载荷");
+        }
+    }
+    auto recruitment_base=test_support::world_fixture();
+    const auto recruited=install_startup_world_facility(recruitment_base,24,{8,4},ref::FacilityOrientation::first);
+    check(recruited.created.has_value(),"入住皮肤条件夹具用现Owner安装真实募集定义，不另造实例字段");
+    const auto residence_adapter=startup_world_runtime_adapter();
+    const auto recruitment_finished=ref::prepare_world_facility_update(residence_adapter.facilities.read(recruitment_base),
+        *recruited.created,residence_adapter.catalog);
+    check(recruitment_finished.candidate&&residence_adapter.facilities.write(recruitment_base,recruitment_finished.candidate->state),
+        "入住皮肤仅复用募集实际施工完成，100G收费/整链仍由building residence主责");
+    for(const bool applicant:{false,true}) {
+        auto state=recruitment_base;
+        if(applicant)state.shop_humans.at(1).satisfaction=state.rules->humans.at(1).residence_threshold;
+        check(open_startup_world_facility_page(state,*recruited.created)==StartupWorldRuntimeError::none,"入住真实募集实例打开74");
+        const auto page=state.scripts.pages.back().id;
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};options.bottom_width=60;
+        options.bottom_text="入住申请者";options.applicant_text=applicant?"现在有1人希望入住":"现在没有希望入住的人";
+        const auto before=startup_world_state_digest(state);const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan&&detail_labels(*plan,DR::recruitment_status)[0].argument==(applicant?1:0)&&
+            startup_world_state_digest(state)==before,"入住Owner完整资格计数只读投影，不创建人物/申请事件/随机或输出");
+        const auto same=steam_facility_special_skin(state,page,options);
+        check(same&&same->operations.size()==plan->operations.size(),"入住重复查询输出规模稳定");
+        auto bad=state;bad.human_homes.erase(0);
+        check(!steam_facility_special_skin(bad,page,options),"入住缺资格字段明确拒绝，不靠map.at或少算人数");
+        bad=state;bad.page_phases.at(page)=1;check(!steam_facility_special_skin(bad,page,options),"入住单页拒第二页载荷");
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"入住取消后皮肤引用退休；80问答不在本批重造");
+    }
+    for(const int definition:{30,66}) {
+        auto state=test_support::world_fixture();
+        const auto installed=std::find_if(state.scene.world.world.facilities.begin(),state.scene.world.world.facilities.end(),
+            [&](const auto &f){return f.second.placement.definition_id==definition;});
+        check(installed!=state.scene.world.world.facilities.end(),"特殊定义真实初装存在，不猜维护实例ID");
+        const auto instance=installed->first;
+        check(open_startup_world_facility_page(state,instance)==StartupWorldRuntimeError::none,"特殊真实原初实例进入74");
+        const auto page=state.scripts.pages.back().id;
+        const auto &source=special_source(state.scripts.pages.back().legacy_f);
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};
+        if(definition==30){options.sale_text="武器出售中";options.bottom_text="查看商品";options.bottom_width=48;}
+        else {options.plant_money_text="源货币译文";options.bottom_text="会给周围带来好的影响";}
+        const auto before=startup_world_state_digest(state);
+        const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan.has_value(),"特殊Owner严格真实绑定可读，无普通经济依赖");
+        if(definition==30) {
+            int expected=0;for(const auto &e:state.rules->equipment)if(e.shop.kind==1&&state.catalog.at({1,e.shop.id}).status!=0)++expected;
+            for(const auto &op:plan->operations)if(const auto *draw=std::get_if<SteamFacilityDraw>(&op))
+                if(const auto *number=std::get_if<SteamFacilityNumber>(draw))check(number->value==expected,"装备完整定义目录状态投影只计种类");
+            auto zero=state;for(auto &e:zero.catalog)if(e.first.first==1)e.second.status=0;
+            check(steam_facility_special_skin(zero,page,options).has_value(),"装备全未开放是合法零种，不用拒空商品helper");
+            auto bad=state;bad.catalog.erase({1,0});check(!steam_facility_special_skin(bad,page,options),"装备缺目录键不可当未开放");
+            bad=state;bad.catalog.at({1,0}).status=3;check(!steam_facility_special_skin(bad,page,options),"装备坏状态明确拒绝");
+        } else {
+            const auto quality=detail_labels(*plan,DR::plant_quality);
+            check(quality[1].value=="+"+std::to_string(source.neighbour_effects[1].delta),"植物Owner只读邻接前两项，不用经济或exit效果");
+            auto bad=state;auto missing_source=*state.rules;
+            for(auto &d:missing_source.facilities)if(d.id==source.id)d.neighbour_effects.resize(1);
+            bad.rules=&missing_source;
+            check(!steam_facility_special_skin(bad,page,options),"植物缺第二项邻接定义拒绝，不补品质零值");
+        }
+        for(int n=0;n<2;++n)check(steam_facility_special_skin(state,page,options)->operations.size()==plan->operations.size(),"特殊重复只读输出规模稳定");
+        check(startup_world_state_digest(state)==before,"特殊绘制不改页/资金/随机/一次性输出");
+        for(int fault=0;fault<5;++fault) {
+            auto bad=state;
+            if(fault==0)bad.page_counters.erase(page);
+            if(fault==1)bad.page_phases.at(page)=1;
+            if(fault==2)bad.facility_page_bindings.erase(page);
+            if(fault==3)bad.facility_definition_page_bindings[page]=source.id;
+            if(fault==4)bad.facility_page_neighbours.at(page).push_back({ref::BuildingId{999999},source.id});
+            check(!steam_facility_special_skin(bad,page,options),"特殊拒缺初始化/越界phase/孤立绑定或邻接源");
+        }
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"特殊实例页退休后不能再出图");
+    }
+    for(const bool equipment_preview:{true,false}) {
+        auto state=test_support::page_fixture(85);state.rank=5;
+        const auto parent=state.scripts.pages.back().id;
+        check(initialize_startup_world_commerce_pages(state),"特殊预览真实初始化85");
+        const auto &list=state.commerce_page_lists.at(parent);
+        const auto selected=std::find_if(list.begin(),list.end(),[&](int id) {
+            const auto &d=special_source(id);
+            return equipment_preview?(d.detail==1||d.detail==4||d.detail==5):d.kind==2;
+        });
+        check(selected!=list.end(),"特殊定义在原p0商会候选目录中");
+        const int definition=*selected;
+        // 原flags30/31为101/103，bit1使新局p2；32为100、rank1，才是首个装备p0候选。
+        check(definition==(equipment_preview?32:67),"冻结初值首个未开放装备/植物为32/67，不改变原开放位造候选");
+        check(act_startup_world_commerce_page(state,parent,StartupCommerceAction::select,static_cast<int>(selected-list.begin()))==StartupWorldRuntimeError::none&&
+            act_startup_world_commerce_page(state,parent,StartupCommerceAction::inspect)==StartupWorldRuntimeError::none,"特殊通过实际85详情生成74");
+        const auto page=state.scripts.pages.back().id;
+        SteamFacilitySpecialSkinOptions options;options.title_widths=std::array<int,2>{48,50};
+        if(equipment_preview)options.sale_text="饰品出售中";else options.plant_money_text="源货币译文";
+        const auto before=startup_world_state_digest(state);const auto plan=steam_facility_special_skin(state,page,options);
+        check(plan&&startup_world_state_digest(state)==before&&std::holds_alternative<SteamStartupTouch>(plan->operations.back()),"特殊85预览无实例/底宽/互动字段，末Touch2且Owner不变");
+        auto bad=state;bad.page_counters.erase(parent);check(!steam_facility_special_skin(bad,page,options),"特殊预览父85缺载荷明确拒绝");
+        check(act_startup_world_facility_page(state,page,StartupFacilityPageAction::confirm)==StartupWorldRuntimeError::none&&
+            !steam_facility_special_skin(state,page,options),"特殊预览确认退休仍沿既有Owner，无购买副作用");
+    }
     auto detail_owner=test_support::world_fixture();
     check(open_startup_world_facility_page(detail_owner,4)==StartupWorldRuntimeError::none,"74真实实例入口");
     const auto detail_page=detail_owner.scripts.pages.back().id;
@@ -654,6 +915,63 @@ int check_steam_facility_skin(const std::filesystem::path &source_root) {
     }
     check(act_startup_world_facility_page(detail_owner,detail_page,StartupFacilityPageAction::cancel)==StartupWorldRuntimeError::none&&
           !steam_facility_detail_skin(detail_owner,detail_page,detail_options),"关闭后皮肤引用退休");
+    // 85真实详情消费者产生单页74，定义34尚无实例；只检验皮肤桥的接线/引用边界。
+    auto preview_owner=test_support::page_fixture(85);preview_owner.rank=5;
+    const auto parent_id=preview_owner.scripts.pages.back().id;
+    check(initialize_startup_world_commerce_pages(preview_owner),"74预览Owner条件夹具真实初始化85");
+    const auto &preview_list=preview_owner.commerce_page_lists.at(parent_id);
+    const auto chosen=std::find(preview_list.begin(),preview_list.end(),34);
+    check(chosen!=preview_list.end(),"74普通定义34在真实p0冻结商会目录中");
+    const int preview_selection=static_cast<int>(chosen-preview_list.begin());
+    check(act_startup_world_commerce_page(preview_owner,parent_id,StartupCommerceAction::select,preview_selection)==StartupWorldRuntimeError::none&&
+        act_startup_world_commerce_page(preview_owner,parent_id,StartupCommerceAction::inspect)==StartupWorldRuntimeError::none,
+        "85真实选择/详情生成74预览，不付点或构造设施实例");
+    const auto preview_page=preview_owner.scripts.pages.back().id;
+    const auto &preview_source=preview_owner.scripts.pages.back();
+    check(preview_source.legacy_page==74&&preview_source.legacy_f==34&&preview_source.legacy_g==1&&
+        preview_owner.facility_definition_page_bindings.at(preview_page)==34&&
+        !preview_owner.facility_page_bindings.count(preview_page)&&!preview_owner.facility_page_neighbours.count(preview_page)&&
+        std::none_of(preview_owner.scene.world.world.facilities.begin(),preview_owner.scene.world.world.facilities.end(),
+            [](const auto &f){return f.second.placement.definition_id==34;}),
+        "74预览保持共享定义引用，无实例/初始化Y，不能为绘制伪造世界建筑");
+    SteamFacilityDetailSkinOptions preview_options;preview_options.title_widths=std::array<int,2>{48,50};
+    const auto shared=startup_world_facility_definition_values(preview_owner,34);
+    check(shared.has_value(),"74定义共享数值帮助器可读未建设定义");
+    const auto before_preview=startup_world_state_digest(preview_owner);
+    const auto preview_plan=steam_facility_definition_skin(preview_owner,preview_page,preview_options);
+    check(preview_plan.has_value()&&!steam_facility_detail_skin(preview_owner,preview_page,preview_options),
+        "74预览严格使用新共享桥，旧实例API仍拒无实例页");
+    for(const auto &op:preview_plan->operations)if(const auto *draw=std::get_if<SteamFacilityDraw>(&op))
+        if(const auto *number=std::get_if<SteamFacilityNumber>(draw))if(number->parameter>=0)
+            check(number->value==shared->definition_attributes[number->parameter],
+                "74预览上层只投影共享定义属性，计算oracle继续由经济套件主责");
+    const auto same_preview=steam_facility_definition_skin(preview_owner,preview_page,preview_options);
+    check(same_preview&&same_preview->operations.size()==preview_plan->operations.size()&&
+        startup_world_state_digest(preview_owner)==before_preview,"74预览重复查询规模稳定，无资金/村点/随机/页面或一次性输出修改");
+    for(int fault=0;fault<11;++fault) {
+        auto bad=preview_owner;
+        if(fault==0)bad.page_counters.erase(preview_page);
+        if(fault==1)bad.facility_definition_page_bindings.erase(preview_page);
+        if(fault==2)for(auto &p:bad.scripts.pages)if(p.id==parent_id)p.legacy_page=83;
+        if(fault==3)bad.page_phases.at(preview_page)=1;
+        if(fault==4)bad.scripts.pages.back().legacy_g=0;
+        if(fault==5)bad.facility_page_bindings[preview_page]=4;
+        if(fault==6)bad.facility_page_neighbours[preview_page]={};
+        if(fault==7)bad.page_counters.erase(parent_id);
+        if(fault==8)bad.page_counters.at(parent_id)=-1;
+        if(fault==9)bad.commerce_page_data.at(parent_id)[3]=static_cast<int>(bad.commerce_page_lists.at(parent_id).size());
+        if(fault==10)bad.commerce_page_lists.at(parent_id).back()=bad.commerce_page_lists.at(parent_id).front();
+        const auto before=startup_world_state_digest(bad);
+        check(!steam_facility_definition_skin(bad,preview_page,preview_options)&&startup_world_state_digest(bad)==before,
+            "74预览拒自身坏载荷及父85缺/负计数、越界首行或重复目录，不修复坏档");
+    }
+    for(const auto action:{StartupFacilityPageAction::confirm,StartupFacilityPageAction::cancel}) {
+        auto closed=preview_owner;
+        check(act_startup_world_facility_page(closed,preview_page,action)==StartupWorldRuntimeError::none&&
+            !steam_facility_definition_skin(closed,preview_page,preview_options)&&
+            closed.commerce_page_data.at(parent_id)[2]==preview_selection,
+            "74预览关闭即不再绘制，父85真实选择保留；业务组合沿pages套件主责");
+    }
     for(int id=static_cast<int>(A::facility_icon);id<=static_cast<int>(A::people);++id) {
         const auto resource=steam_facility_resource(static_cast<A>(id));
         check(resource&&std::filesystem::is_regular_file(packaged(source_root, resource->published_image)),"74复用已出版Steam资源，不读Unity/work");
